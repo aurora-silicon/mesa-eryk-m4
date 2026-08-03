@@ -23,8 +23,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "agx_bg_eot.h"
 #include "agx_device.h"
 
+#undef MESA_LOG_TAG
 #define MESA_LOG_TAG "d3d12agx"
 #include "util/log.h"
 #include "util/macros.h"
@@ -53,8 +55,75 @@ struct d12_device {
    /* The real GPU. Owned: closed on final release. */
    struct agx_device dev;
 
+   /* Precompiled libagx kernel cache (copy/fill engines etc.), the same
+    * mechanism Honeykrisp uses for its internal dispatches.
+    */
+   struct agx_bg_eot_cache bg_eot;
+
    D3D_FEATURE_LEVEL feature_level;
 };
+
+/* Committed buffer resource: one agx_bo. UMA means every heap type is the
+ * same memory; Map is just the BO's CPU mapping.
+ */
+struct d12_resource {
+   ID3D12Resource iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   D3D12_RESOURCE_DESC desc;
+   D3D12_HEAP_PROPERTIES heap_props;
+   struct agx_bo *bo;
+};
+
+struct d12_cmd_allocator {
+   ID3D12CommandAllocator iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   D3D12_COMMAND_LIST_TYPE type;
+};
+
+enum d12_list_state {
+   D12_LIST_RECORDING,
+   D12_LIST_CLOSED,
+   D12_LIST_ERROR,
+};
+
+/* Command list = one CDM control stream, encoded at record time exactly the
+ * way hk encodes internal dispatches: agx_cdm_launch + agx_cdm_barrier per
+ * dispatch, agx_cdm_terminate at Close. Arg blobs bump down from the top of
+ * the stream BO; USC words live in a separate AGX_BO_LOW_VA BO so
+ * agx_usc_addr can encode them.
+ */
+struct d12_cmd_list {
+   ID3D12GraphicsCommandList iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   D3D12_COMMAND_LIST_TYPE type;
+   enum d12_list_state state;
+
+   struct agx_bo *stream_bo; /* control stream (bottom-up) + data (top-down) */
+   struct agx_bo *usc_bo;    /* USC words, AGX_BO_LOW_VA */
+
+   uint8_t *stream_cur;   /* next control word write */
+   size_t data_floor;     /* offset of lowest data byte (bumps down) */
+   size_t usc_offset;     /* next USC byte (bumps up) */
+   uint32_t dispatches;
+};
+
+static inline struct d12_resource *
+d12_resource_from_iface(ID3D12Resource *iface)
+{
+   return (struct d12_resource *)iface;
+}
+
+static inline struct d12_cmd_list *
+d12_cmd_list_from_iface(ID3D12GraphicsCommandList *iface)
+{
+   return (struct d12_cmd_list *)iface;
+}
 
 struct d12_fence {
    ID3D12Fence iface; /* must be first */
@@ -113,6 +182,16 @@ HRESULT d12_fence_create(struct d12_device *device, UINT64 initial_value,
 HRESULT d12_queue_create(struct d12_device *device,
                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
                          void **out);
+HRESULT d12_resource_create_committed(struct d12_device *device,
+                                      const D3D12_HEAP_PROPERTIES *heap_props,
+                                      const D3D12_RESOURCE_DESC *desc,
+                                      REFIID riid, void **out);
+HRESULT d12_cmd_allocator_create(struct d12_device *device,
+                                 D3D12_COMMAND_LIST_TYPE type, REFIID riid,
+                                 void **out);
+HRESULT d12_cmd_list_create(struct d12_device *device,
+                            D3D12_COMMAND_LIST_TYPE type, REFIID riid,
+                            void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

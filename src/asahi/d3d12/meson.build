@@ -16,9 +16,11 @@ if not dep_dxheaders_d12.found()
 endif
 
 libd3d12agx_files = files(
+  'd12_cmd.c',
   'd12_device.c',
   'd12_fence.c',
   'd12_queue.c',
+  'd12_resource.c',
 )
 
 libd3d12agx = shared_library(
@@ -50,6 +52,13 @@ libd3d12agx = shared_library(
 d3d12agx_g1_smoke = executable(
   'd3d12agx_g1_smoke',
   files('tests/g1_smoke.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
+d3d12agx_g2_smoke = executable(
+  'd3d12agx_g2_smoke',
+  files('tests/g2_smoke.c'),
   dependencies : [dep_dxheaders_d12],
   link_with : [libd3d12agx],
 )

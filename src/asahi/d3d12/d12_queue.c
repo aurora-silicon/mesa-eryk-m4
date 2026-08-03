@@ -109,9 +109,73 @@ static void STDMETHODCALLTYPE
 d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                               ID3D12CommandList *const *lists)
 {
-   mesa_loge("ID3D12CommandQueue::ExecuteCommandLists: not until G2 "
-             "(%u lists dropped)",
-             count);
+   struct d12_queue *queue = d12_queue_from_iface(iface);
+   struct agx_device *dev = &queue->device->dev;
+
+   simple_mtx_lock(&queue->lock);
+
+   for (UINT i = 0; i < count; i++) {
+      /* Our lists are always ID3D12GraphicsCommandList objects. */
+      struct d12_cmd_list *list = (struct d12_cmd_list *)lists[i];
+
+      if (!list || list->state != D12_LIST_CLOSED) {
+         mesa_loge("ExecuteCommandLists: list %u not closed; dropped", i);
+         continue;
+      }
+
+      if (list->dispatches == 0)
+         continue;
+
+      uint8_t *stream_map = agx_bo_map(list->stream_bo);
+      size_t stream_len = list->stream_cur - stream_map;
+
+      /* One CDM command per list. In-sync on the queue's progress timeline
+       * (honoring earlier Wait() transfers), out-sync advances it — the
+       * same scheme hk_queue uses, so fence Signal() transfers now
+       * represent real GPU completion.
+       */
+      struct drm_asahi_sync syncs[2] = {
+         {
+            .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
+            .handle = queue->syncobj,
+            .timeline_value = queue->timeline_value,
+         },
+         {
+            .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
+            .handle = queue->syncobj,
+            .timeline_value = queue->timeline_value + 1,
+         },
+      };
+
+      struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
+      struct drm_asahi_cmd_compute compute = {
+         .cdm_ctrl_stream_base = list->stream_bo->va->addr,
+         .cdm_ctrl_stream_end = list->stream_bo->va->addr + stream_len,
+      };
+
+      uint8_t payload[sizeof(header) + sizeof(compute)];
+      memcpy(payload, &header, sizeof(header));
+      memcpy(payload + sizeof(header), &compute, sizeof(compute));
+
+      struct drm_asahi_submit submit = {
+         .queue_id = queue->agx_queue_id,
+         .in_sync_count = 1,
+         .out_sync_count = 1,
+         .cmdbuf_size = sizeof(payload),
+         .syncs = (uint64_t)(uintptr_t)syncs,
+         .cmdbuf = (uint64_t)(uintptr_t)payload,
+      };
+
+      struct agx_submit_virt virt = {.ring_idx = 0};
+      int ret = dev->ops.submit(dev, &submit, &virt);
+      if (ret) {
+         mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d", i, ret);
+      } else {
+         queue->timeline_value++;
+      }
+   }
+
+   simple_mtx_unlock(&queue->lock);
 }
 
 static void STDMETHODCALLTYPE

@@ -100,6 +100,7 @@ d12_device_Release(ID3D12Device *iface)
 
    if (refs == 0) {
       mesa_logi("closing device %s", device->dev.name);
+      agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
    }
@@ -174,8 +175,8 @@ d12_device_CreateCommandAllocator(ID3D12Device *iface,
                                   D3D12_COMMAND_LIST_TYPE type, REFIID riid,
                                   void **out)
 {
-   mesa_loge("ID3D12Device::CreateCommandAllocator: not until G2");
-   return E_NOTIMPL;
+   struct d12_device *device = d12_device_from_iface(iface);
+   return d12_cmd_allocator_create(device, type, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -185,8 +186,17 @@ d12_device_CreateCommandList(ID3D12Device *iface, UINT node_mask,
                              ID3D12PipelineState *initial_state, REFIID riid,
                              void **out)
 {
-   mesa_loge("ID3D12Device::CreateCommandList: not until G2");
-   return E_NOTIMPL;
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (node_mask > 1)
+      return E_INVALIDARG;
+   if (!allocator)
+      return E_INVALIDARG;
+   if (initial_state)
+      mesa_logw("CreateCommandList: initial pipeline state ignored (no PSOs "
+                "until G4)");
+
+   return d12_cmd_list_create(device, type, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -293,8 +303,8 @@ d12_device_CreateCommittedResource(ID3D12Device *iface,
                                    const D3D12_CLEAR_VALUE *clear_value,
                                    REFIID riid, void **out)
 {
-   mesa_loge("ID3D12Device::CreateCommittedResource: not until G2");
-   return E_NOTIMPL;
+   struct d12_device *device = d12_device_from_iface(iface);
+   return d12_resource_create_committed(device, heap_props, desc, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -385,6 +395,15 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    if (!agx_open_device(NULL, &device->dev)) {
       mesa_loge("D3D12CreateDevice: agx_open_device failed");
       close(fd);
+      free(device);
+      return E_FAIL;
+   }
+
+   /* Precompiled internal kernels (copy/fill engines) */
+   agx_bg_eot_init(&device->bg_eot, &device->dev);
+   if (!device->bg_eot.ht) {
+      mesa_loge("D3D12CreateDevice: agx_bg_eot_init failed");
+      agx_close_device(&device->dev);
       free(device);
       return E_FAIL;
    }
