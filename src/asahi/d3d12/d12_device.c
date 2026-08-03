@@ -561,3 +561,76 @@ D3D12GetDebugInterface(REFIID riid, void **out)
       *out = NULL;
    return E_NOINTERFACE;
 }
+
+/*
+ * Remaining module-level entry points.
+ *
+ * These are exported so a conformance suite can LINK and RUN against us:
+ * a missing symbol fails to resolve and kills the process before a single
+ * test reports, whereas an honest failure here is a recordable result.
+ * They are deliberately not faked — each returns a real failure until the
+ * corresponding feature exists.
+ */
+
+PUBLIC HRESULT WINAPI
+D3D12SerializeRootSignature(const D3D12_ROOT_SIGNATURE_DESC *desc,
+                            D3D_ROOT_SIGNATURE_VERSION version,
+                            ID3DBlob **blob, ID3DBlob **error_blob)
+{
+   d12_stub_report("D3D12SerializeRootSignature");
+   if (blob)
+      *blob = NULL;
+   if (error_blob)
+      *error_blob = NULL;
+   return E_NOTIMPL;
+}
+
+PUBLIC HRESULT WINAPI
+D3D12SerializeVersionedRootSignature(
+   const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *desc, ID3DBlob **blob,
+   ID3DBlob **error_blob)
+{
+   d12_stub_report("D3D12SerializeVersionedRootSignature");
+   if (blob)
+      *blob = NULL;
+   if (error_blob)
+      *error_blob = NULL;
+   return E_NOTIMPL;
+}
+
+PUBLIC HRESULT WINAPI
+D3D12CreateRootSignatureDeserializer(const void *src, SIZE_T size,
+                                     REFIID riid, void **out)
+{
+   d12_stub_report("D3D12CreateRootSignatureDeserializer");
+   if (out)
+      *out = NULL;
+   return E_NOTIMPL;
+}
+
+PUBLIC HRESULT WINAPI
+D3D12CreateVersionedRootSignatureDeserializer(const void *src, SIZE_T size,
+                                              REFIID riid, void **out)
+{
+   d12_stub_report("D3D12CreateVersionedRootSignatureDeserializer");
+   if (out)
+      *out = NULL;
+   return E_NOTIMPL;
+}
+
+PUBLIC HRESULT WINAPI
+D3D12GetInterface(REFCLSID rclsid, REFIID riid, void **out)
+{
+   d12_stub_report("D3D12GetInterface");
+   if (out)
+      *out = NULL;
+   return E_NOINTERFACE;
+}
+
+PUBLIC HRESULT WINAPI
+D3D12EnableExperimentalFeatures(UINT num_features, const IID *iids,
+                                void *configs, UINT *configs_sizes)
+{
+   d12_stub_report("D3D12EnableExperimentalFeatures");
+   return E_NOINTERFACE;
+}
