@@ -34,6 +34,7 @@ struct parse_ctx {
 
    /* Function parsing state */
    struct d12_function *cur_func;
+   uint32_t cur_block; /* basic block the next instruction lands in */
    unsigned next_func_to_define; /* module order of the next FUNCTION block */
 
    /* Metadata naming: MD_NAME is followed by MD_NAMED_NODE */
@@ -528,9 +529,26 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
       break;
 
    case D12_FUNC_INST_PHI:
-      /* [ty, (val, bb)...] — values are signed-relative here */
+      /* [ty, (val, bb)...]. The values are signed-relative to this
+       * instruction's own value number, which is how a phi can name a
+       * value defined later in the module -- a loop back edge.
+       */
       if (rec->num_ops >= 1)
          inst->result_type = (uint32_t)rec->ops[0];
+
+      for (unsigned i = 1; i + 1 < rec->num_ops &&
+                           inst->num_phi_srcs < D12_MAX_PHI_SOURCES;
+           i += 2) {
+         struct d12_phi_src *src = &inst->phi_srcs[inst->num_phi_srcs++];
+         int64_t rel = (int64_t)decode_signed_vbr(rec->ops[i]);
+         int64_t abs = (int64_t)ctx->mod->num_values - rel;
+
+         src->value = (abs >= 0 && abs < (int64_t)D12_MAX_VALUES)
+                         ? (uint32_t)abs
+                         : ~0u;
+         src->block = (uint32_t)rec->ops[i + 1];
+      }
+
       defines_value = true;
       break;
 
@@ -574,6 +592,15 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
          return false;
       inst->result_value = mod->num_values - 1;
    }
+
+   /* Basic block boundaries are implicit in LLVM bitcode: a block ends at
+    * a terminator and the next instruction begins the next one. Recording
+    * the block per instruction here means the translator does not have to
+    * rediscover it.
+    */
+   inst->block = ctx->cur_block;
+   if (d12_inst_is_terminator(inst))
+      ctx->cur_block++;
 
    f->num_insts++;
    return true;
@@ -622,6 +649,7 @@ on_enter_block(void *user, unsigned block_id, unsigned depth)
       }
 
       ctx->cur_func = f;
+      ctx->cur_block = 0;
    }
 
    return true;

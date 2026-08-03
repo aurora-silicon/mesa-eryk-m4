@@ -327,6 +327,17 @@ struct d12_value {
 /* One decoded instruction, operands kept as value indices where resolved */
 #define D12_MAX_INST_OPS 16
 
+/* A phi's incoming edge: which value arrives from which basic block. */
+#define D12_MAX_PHI_SOURCES 8
+
+/* Basic blocks per function. Real HLSL is far below this. */
+#define D12_MAX_BLOCKS 256
+
+struct d12_phi_src {
+   uint32_t value; /* ~0u when it could not be resolved */
+   uint32_t block;
+};
+
 struct d12_inst {
    enum d12_func_code code;
    uint32_t result_type;              /* type index, or ~0 if void */
@@ -335,7 +346,31 @@ struct d12_inst {
    unsigned num_ops;
    uint64_t extra[4];                 /* opcode-specific immediates */
    unsigned num_extra;
+
+   /* Which basic block this instruction belongs to, filled in by the
+    * parser: LLVM marks block boundaries only implicitly, by terminators.
+    */
+   uint32_t block;
+
+   /* PHI only */
+   struct d12_phi_src phi_srcs[D12_MAX_PHI_SOURCES];
+   unsigned num_phi_srcs;
 };
+
+/* Does this instruction end a basic block? */
+static inline bool
+d12_inst_is_terminator(const struct d12_inst *inst)
+{
+   switch (inst->code) {
+   case D12_FUNC_INST_RET:
+   case D12_FUNC_INST_BR:
+   case D12_FUNC_INST_SWITCH:
+   case D12_FUNC_INST_UNREACHABLE:
+      return true;
+   default:
+      return false;
+   }
+}
 
 #define D12_MAX_INSTS 4096
 

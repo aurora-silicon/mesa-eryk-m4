@@ -134,10 +134,122 @@ struct trans_ctx {
    uint32_t slot_stride[D12_MAX_RESOURCE_BINDINGS];
    uint32_t slot_kind[D12_MAX_RESOURCE_BINDINGS];
 
+   /* One NIR block per DXIL basic block, joined by goto/goto_if and
+    * structurized afterwards. Empty for a single-block function, which is
+    * built structured as before.
+    */
+   nir_block *blocks[D12_MAX_BLOCKS];
+   unsigned num_blocks;
+
+   /* value index -> the register a phi reads, for values that cross a
+    * block boundary.
+    */
+   nir_def **phi_reg;
+
    const char *error;
 };
 
 static void trans_fail(struct trans_ctx *ctx, const char *msg);
+static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
+static unsigned type_bit_size(const struct d12_module *mod, uint32_t type);
+
+/*
+ * Write the values this block feeds into its successor's phis, then
+ * branch. The stores have to happen in the PREDECESSOR, before the jump:
+ * that is what makes a phi a phi -- which value arrives depends on where
+ * control came from, and only the predecessor knows.
+ */
+static void
+store_phis_for_edge(struct trans_ctx *ctx, const struct d12_function *func,
+                    unsigned from_block, unsigned to_block)
+{
+   for (unsigned i = 0; i < func->num_insts; i++) {
+      const struct d12_inst *phi = &func->insts[i];
+
+      if (phi->code != D12_FUNC_INST_PHI || phi->block != to_block)
+         continue;
+      if (phi->result_value == ~0u || !ctx->phi_reg[phi->result_value])
+         continue;
+
+      for (unsigned s = 0; s < phi->num_phi_srcs; s++) {
+         if (phi->phi_srcs[s].block != from_block)
+            continue;
+
+         nir_def *val = get_def(ctx, phi->phi_srcs[s].value);
+         if (!val) {
+            /* A back edge whose value is not defined yet. Undefined is
+             * wrong but silent; refuse instead.
+             */
+            trans_fail(ctx, "phi source is not available at the branch");
+            return;
+         }
+
+         nir_store_reg(ctx->b, val, ctx->phi_reg[phi->result_value]);
+         break;
+      }
+   }
+}
+
+static void
+translate_branch(struct trans_ctx *ctx, const struct d12_function *func,
+                 const struct d12_inst *inst)
+{
+   nir_builder *b = ctx->b;
+
+   if (ctx->num_blocks <= 1) {
+      trans_fail(ctx, "branch in a single-block function");
+      return;
+   }
+
+   const unsigned from = inst->block;
+
+   if (inst->num_extra == 1) {
+      /* Unconditional: [bb#] */
+      unsigned target = (unsigned)inst->extra[0];
+      if (target >= ctx->num_blocks) {
+         trans_fail(ctx, "branch target out of range");
+         return;
+      }
+
+      store_phis_for_edge(ctx, func, from, target);
+      nir_goto(b, ctx->blocks[target]);
+      return;
+   }
+
+   if (inst->num_extra >= 3 && inst->num_ops >= 1) {
+      /* Conditional: [true bb#, false bb#, cond] */
+      unsigned t = (unsigned)inst->extra[0];
+      unsigned f = (unsigned)inst->extra[1];
+
+      if (t >= ctx->num_blocks || f >= ctx->num_blocks) {
+         trans_fail(ctx, "branch target out of range");
+         return;
+      }
+
+      nir_def *cond = get_def(ctx, inst->ops[0]);
+      if (!cond) {
+         trans_fail(ctx, "branch condition is not available");
+         return;
+      }
+
+      /* NIR wants a 1-bit condition. */
+      if (cond->bit_size != 1)
+         cond = nir_ine_imm(b, cond, 0);
+
+      store_phis_for_edge(ctx, func, from, t);
+      if (f != t)
+         store_phis_for_edge(ctx, func, from, f);
+
+      if (t == f) {
+         nir_goto(b, ctx->blocks[t]);
+      } else {
+         nir_goto_if(b, ctx->blocks[t], cond, ctx->blocks[f]);
+      }
+      return;
+   }
+
+   trans_fail(ctx, "malformed branch");
+}
 
 /*
  * Decode a ResBind constant aggregate: { i32 rangeLowerBound,
@@ -1108,8 +1220,11 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    };
 
    ctx.defs = calloc(mod->num_values, sizeof(*ctx.defs));
-   if (!ctx.defs) {
+   ctx.phi_reg = calloc(mod->num_values, sizeof(*ctx.phi_reg));
+   if (!ctx.defs || !ctx.phi_reg) {
       *error = "out of memory";
+      free(ctx.defs);
+      free(ctx.phi_reg);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -1145,8 +1260,72 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       }
    }
 
+   /*
+    * Control flow.
+    *
+    * DXIL is LLVM: an unstructured CFG of basic blocks joined by branches.
+    * NIR wants structured control flow. Rather than reconstruct if/loop
+    * shapes ourselves, the function is built UNSTRUCTURED -- one NIR block
+    * per DXIL block, joined by nir_goto/nir_goto_if -- and handed to
+    * nir_lower_goto_ifs, the structurizer Mesa already uses for SPIR-V
+    * kernels. Doing it any other way means writing a structurizer.
+    */
+   unsigned num_blocks = 1;
+   for (unsigned i = 0; i < entry->num_insts; i++)
+      num_blocks = MAX2(num_blocks, entry->insts[i].block + 1);
+
+   if (num_blocks > D12_MAX_BLOCKS) {
+      *error = "function has too many basic blocks";
+      free(ctx.defs);
+      ralloc_free(b.shader);
+      return NULL;
+   }
+
+   ctx.num_blocks = num_blocks;
+
+   if (num_blocks > 1) {
+      b.impl->structured = false;
+
+      ctx.blocks[0] = nir_start_block(b.impl);
+      for (unsigned i = 1; i < num_blocks; i++) {
+         nir_block *blk = nir_block_create(b.shader);
+         exec_list_push_tail(&b.impl->body, &blk->cf_node.node);
+         blk->cf_node.parent = &b.impl->cf_node;
+         ctx.blocks[i] = blk;
+      }
+
+      /*
+       * Phis become registers rather than NIR phi nodes: each predecessor
+       * stores its incoming value just before branching, and the phi reads
+       * it back. nir_lower_reg_intrinsics_to_ssa then rebuilds real phis
+       * with correct placement. Constructing them here instead would mean
+       * doing SSA construction by hand, for no gain.
+       */
+      b.cursor = nir_before_block(ctx.blocks[0]);
+      for (unsigned i = 0; i < entry->num_insts; i++) {
+         const struct d12_inst *inst = &entry->insts[i];
+         if (inst->code != D12_FUNC_INST_PHI || inst->result_value == ~0u)
+            continue;
+
+         unsigned bits = type_bit_size(mod, inst->result_type);
+         ctx.phi_reg[inst->result_value] = nir_decl_reg(&b, 1, bits, 0);
+      }
+   }
+
+   unsigned cur_block = ~0u;
+
    for (unsigned i = 0; i < entry->num_insts && !ctx.error; i++) {
       const struct d12_inst *inst = &entry->insts[i];
+
+      /* Move to this instruction's block when it changes. */
+      if (num_blocks > 1 && inst->block != cur_block) {
+         cur_block = inst->block;
+         if (cur_block >= num_blocks) {
+            trans_fail(&ctx, "instruction in a block that does not exist");
+            break;
+         }
+         b.cursor = nir_after_block(ctx.blocks[cur_block]);
+      }
 
       switch (inst->code) {
       case D12_FUNC_INST_CALL: {
@@ -1196,17 +1375,32 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          translate_select(&ctx, inst);
          break;
 
+      case D12_FUNC_INST_PHI:
+         /* Read the register its predecessors wrote. */
+         if (inst->result_value != ~0u && ctx.phi_reg[inst->result_value]) {
+            def_result(&ctx, inst,
+                       nir_load_reg(&b, ctx.phi_reg[inst->result_value]));
+         } else {
+            trans_fail(&ctx, "phi outside a multi-block function");
+         }
+         break;
+
+      case D12_FUNC_INST_BR:
+         translate_branch(&ctx, entry, inst);
+         break;
+
       case D12_FUNC_INST_RET:
-         /* Falls out of the builder's single block. */
+      case D12_FUNC_INST_UNREACHABLE:
+         /* In an unstructured function EVERY block needs a terminator,
+          * including the last: the structurizer walks successors and
+          * follows a null pointer off a block that has none. A return is
+          * a branch to the function's end block, not an absence of one.
+          */
+         if (num_blocks > 1)
+            nir_goto(&b, b.impl->end_block);
          break;
 
       case D12_FUNC_DECLAREBLOCKS:
-         if (inst->extra[0] > 1) {
-            /* Control flow needs the CFG reconstruction that comes with
-             * loops/branches; single-block shaders work today.
-             */
-            trans_fail(&ctx, "multi-block shaders not yet supported");
-         }
          break;
 
       default:
@@ -1238,11 +1432,23 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    }
 
    free(ctx.defs);
+   free(ctx.phi_reg);
 
    if (ctx.error) {
       *error = ctx.error;
       ralloc_free(b.shader);
       return NULL;
+   }
+
+   /*
+    * Turn the unstructured CFG into structured NIR, then turn the phi
+    * registers back into real SSA phis. Both passes are Mesa's own; the
+    * translator's job was only to present the CFG in the shape they
+    * expect.
+    */
+   if (num_blocks > 1) {
+      nir_lower_goto_ifs(b.shader);
+      nir_lower_reg_intrinsics_to_ssa(b.shader);
    }
 
    nir_validate_shader(b.shader, "after DXIL translation");

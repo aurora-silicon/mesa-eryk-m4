@@ -185,6 +185,9 @@ main(int argc, char **argv)
    struct agx_shader_key key = {
       .no_stop = false,
       .promote_constants = true,
+      /* Large shaders spill; without this the allocator asserts that
+       * internal shaders are unspillable. */
+      .has_scratch = true,
       .dev = {
          /* M-series with one cluster per die: no G13X coherency. */
          .needs_g13x_coherency = U_TRISTATE_NO,
