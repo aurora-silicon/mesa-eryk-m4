@@ -194,8 +194,7 @@ main(int argc, char **argv)
          printf(" stride=%uB", rb->stride_B);
       if (rb->cb_size_B)
          printf(" size=%uB", rb->cb_size_B);
-      printf(" -> slot %u\n",
-             d12_binding_slot(rb->klass, rb->lower_bound));
+      printf("\n");
    }
 
    for (unsigned i = 0; i < mod.num_named_md; i++) {

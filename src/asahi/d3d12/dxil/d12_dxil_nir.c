@@ -119,6 +119,11 @@ struct trans_ctx {
 
    struct output_slot outputs[D12_MAX_OUTPUTS];
 
+   /* Which slot each binding lives in. Assigned densely from the root
+    * signature, so a register space costs nothing unless it is used.
+    */
+   const struct d12_binding_map *map;
+
    /* Per binding slot, from dx.resources: the structured element stride
     * (zero for raw and typed buffers) and the resource shape, which is
     * what actually decides how an access is addressed.
@@ -214,8 +219,9 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
       if (rb->klass != klass || rb->id != range_id)
          continue;
 
-      if (rb->space != 0) {
-         trans_fail(ctx, "resource in a register space other than 0");
+      unsigned count = d12_range_count(rb);
+      if (!count) {
+         trans_fail(ctx, "unbounded resource array (bindless) unsupported");
          return false;
       }
 
@@ -223,23 +229,23 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
        * inside the declared range, relative otherwise.
        */
       unsigned reg = index;
-      if (reg < rb->lower_bound ||
-          reg >= rb->lower_bound + MAX2(rb->range_size, 1))
+      if (reg < rb->lower_bound || reg >= rb->lower_bound + count)
          reg = rb->lower_bound + index;
 
-      if (reg >= D12_REGS_PER_CLASS) {
-         trans_fail(ctx, "shader register out of range");
+      *out_slot = d12_binding_map_find(ctx->map, klass, rb->space, reg);
+      if (*out_slot == ~0u) {
+         trans_fail(ctx, "shader uses a resource the root signature does "
+                         "not bind");
          return false;
       }
 
-      *out_slot = d12_binding_slot(klass, reg);
-
       if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
          fprintf(stderr,
-                 "binding: class %u rangeId %u index %u -> register %u, "
-                 "slot %u (declared %u..%u, stride %uB)\n",
-                 klass, range_id, index, reg, *out_slot, rb->lower_bound,
-                 rb->lower_bound + MAX2(rb->range_size, 1) - 1, rb->stride_B);
+                 "binding: class %u rangeId %u index %u -> register %u "
+                 "space %u, slot %u (declared %u..%u, stride %uB)\n",
+                 klass, range_id, index, reg, rb->space, *out_slot,
+                 rb->lower_bound,
+                 rb->lower_bound + count - 1, rb->stride_B);
       }
 
       return true;
@@ -707,28 +713,28 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!decode_res_bind(ctx, p[0], &lower, &space, &klass))
          return false;
 
-      if (space != 0) {
-         trans_fail(ctx, "resource in a register space other than 0");
-         return false;
-      }
-
       /* `index` is the absolute shader register. */
       unsigned reg = (unsigned)index;
       if (reg < lower)
          reg = lower + (unsigned)index;
 
-      if (reg >= D12_REGS_PER_CLASS || klass >= D12_RES_CLASS_COUNT) {
-         trans_fail(ctx, "shader register out of range");
+      if (klass >= D12_RES_CLASS_COUNT) {
+         trans_fail(ctx, "ResBind names an unknown resource class");
          return false;
       }
 
-      unsigned slot = d12_binding_slot(klass, reg);
+      unsigned slot = d12_binding_map_find(ctx->map, klass, space, reg);
+      if (slot == ~0u) {
+         trans_fail(ctx, "shader uses a resource the root signature does "
+                         "not bind");
+         return false;
+      }
 
       if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
          fprintf(stderr,
                  "binding: fromBinding class %u lower %u index %llu -> "
-                 "register %u, slot %u\n",
-                 klass, lower, (unsigned long long)index, reg, slot);
+                 "register %u space %u, slot %u\n",
+                 klass, lower, (unsigned long long)index, reg, space, slot);
       }
 
       def_result(ctx, inst, nir_imm_int(b, slot));
@@ -992,7 +998,7 @@ call_dxop_opcode(struct trans_ctx *ctx, const struct d12_inst *inst,
 
 nir_shader *
 d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
-                const char **error)
+                const struct d12_binding_map *map, const char **error)
 {
    /* The entry point is the module's single function definition. */
    const struct d12_function *entry = NULL;
@@ -1013,6 +1019,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
    struct trans_ctx ctx = {
       .mod = mod,
+      .map = map,
       .func = entry,
       .b = &b,
       .num_defs = mod->num_values,
@@ -1030,15 +1037,19 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
     */
    for (unsigned i = 0; i < mod->num_resources; i++) {
       const struct d12_resource_binding *rb = &mod->resources[i];
-      if (rb->space != 0 || rb->klass >= D12_RES_CLASS_COUNT)
+      if (rb->klass >= D12_RES_CLASS_COUNT)
          continue;
 
-      for (unsigned r = 0; r < MAX2(rb->range_size, 1); r++) {
-         unsigned reg = rb->lower_bound + r;
-         if (reg >= D12_REGS_PER_CLASS)
-            break;
-         ctx.slot_stride[d12_binding_slot(rb->klass, reg)] = rb->stride_B;
-         ctx.slot_kind[d12_binding_slot(rb->klass, reg)] = rb->kind;
+      unsigned count = d12_range_count(rb);
+
+      for (unsigned r = 0; r < count; r++) {
+         unsigned slot = d12_binding_map_find(map, rb->klass, rb->space,
+                                              rb->lower_bound + r);
+         if (slot == ~0u)
+            continue; /* not bound by the signature; caught at first use */
+
+         ctx.slot_stride[slot] = rb->stride_B;
+         ctx.slot_kind[slot] = rb->kind;
       }
    }
 

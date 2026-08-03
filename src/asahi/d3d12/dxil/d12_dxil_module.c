@@ -1058,3 +1058,32 @@ d12_dxil_find_named_md(const struct d12_module *mod, const char *name)
    }
    return NULL;
 }
+
+/*
+ * Build a binding map from the module's own declarations, in declaration
+ * order. Only for the standalone compiler tool, which has no root
+ * signature: in the driver, compile time and bind time must agree on an
+ * assignment that neither derives from the other, so both read the one on
+ * the root signature.
+ */
+void
+d12_binding_map_from_module(const struct d12_module *mod,
+                            struct d12_binding_map *out)
+{
+   memset(out, 0, sizeof(*out));
+
+   for (unsigned i = 0; i < mod->num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod->resources[i];
+
+      /* An unbounded array cannot be enumerated; a shader that uses one
+       * fails at its first access with a message about bindless.
+       */
+      unsigned count = d12_range_count(rb);
+
+      for (unsigned r = 0; r < count; r++) {
+         if (d12_binding_map_add(out, rb->klass, rb->space,
+                                 rb->lower_bound + r) == ~0u)
+            return; /* full; anything past here fails at first use */
+      }
+   }
+}

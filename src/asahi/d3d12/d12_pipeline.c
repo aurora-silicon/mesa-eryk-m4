@@ -144,6 +144,8 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
       return E_INVALIDARG;
    }
 
+   d12_root_layout_build_map(&rs->layout, &rs->map);
+
    rs->iface.lpVtbl = (ID3D12RootSignatureVtbl *)&d12_root_sig_vtbl;
    rs->refcount = 1;
    rs->device = device;
@@ -270,6 +272,7 @@ static const ID3D12PipelineStateVtbl d12_pso_vtbl = {
 HRESULT
 d12_pipeline_state_create_compute(struct d12_device *device,
                                   const void *dxil, size_t dxil_size,
+                                  const struct d12_binding_map *map,
                                   REFIID riid, void **out)
 {
    if (!out)
@@ -293,7 +296,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    }
 
    const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, &error);
+   nir_shader *nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, map, &error);
    d12_dxil_module_finish(&mod);
 
    if (!nir) {
@@ -392,7 +395,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
  * stage's mandatory lowering (tilebuffer for fragment, UVS for vertex).
  */
 static bool
-compile_gfx_stage(struct d12_device *device, const void *dxil,
+compile_gfx_stage(struct d12_device *device,
+                  const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage,
                   struct agx_tilebuffer_layout *tib,
                   struct agx_unlinked_uvs_layout *uvs,
@@ -414,7 +418,7 @@ compile_gfx_stage(struct d12_device *device, const void *dxil,
    }
 
    const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, stage, &error);
+   nir_shader *nir = d12_dxil_to_nir(&mod, stage, map, &error);
    d12_dxil_module_finish(&mod);
 
    if (!nir) {
@@ -513,6 +517,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
+                                   const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
    if (!out)
@@ -591,13 +596,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_build_tilebuffer_layout(formats, 1, 1, false);
 
    struct agx_shader_part vs_part, fs_part;
-   if (!compile_gfx_stage(device, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
+   if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
                           &pso->uvs, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
 
-   if (!compile_gfx_stage(device, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
+   if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
                           &tib, NULL, &fs_part)) {
       free(vs_part.binary);
       free(pso);

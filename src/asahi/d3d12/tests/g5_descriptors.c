@@ -29,7 +29,7 @@
  * pass means the GPU agreed element by element, not that it wrote
  * something.
  *
- * Usage: g5_descriptors res_probe.dxil [rootsig blobs...]
+ * Usage: g5_descriptors res_probe.dxil rs1.rs rs2.rs rs3.rs space_probe.dxil
  */
 
 #define COBJMACROS
@@ -178,7 +178,8 @@ main(int argc, char **argv)
    /* Blobs produced by Microsoft's own compiler must parse too: agreeing
     * with our serializer proves only that we are self-consistent.
     */
-   for (int i = 2; i < argc; i++) {
+   const int last_blob = argc > 5 ? argc - 1 : argc;
+   for (int i = 2; i < last_blob; i++) {
       size_t blob_size;
       void *blob = slurp(argv[i], &blob_size);
       if (!blob) {
@@ -397,6 +398,105 @@ main(int argc, char **argv)
    else
       printf("       spot check: [0]=%u [1]=%u [255]=%u\n", dst_map[0],
              dst_map[1], dst_map[255]);
+
+   /* ---- Register spaces ----
+    *
+    * The same register number in different spaces names different
+    * resources. Slots are assigned densely from the root signature rather
+    * than by a formula over (class, register), so this costs nothing and,
+    * more to the point, cannot collide.
+    */
+   if (argc > 2 + 3) {
+      size_t sp_size;
+      void *sp_cs = slurp(argv[argc - 1], &sp_size);
+      if (sp_cs) {
+         D3D12_DESCRIPTOR_RANGE sp_ranges[] = {
+            {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+            {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 2,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+            {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 5,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+            {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 3,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+         };
+         D3D12_ROOT_PARAMETER sp_param = {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            .DescriptorTable = {.NumDescriptorRanges = 4,
+                                .pDescriptorRanges = sp_ranges},
+         };
+         D3D12_ROOT_SIGNATURE_DESC sp_rsd = {.NumParameters = 1,
+                                             .pParameters = &sp_param};
+
+         ID3DBlob *sb = NULL;
+         D3D12SerializeRootSignature(&sp_rsd, D3D_ROOT_SIGNATURE_VERSION_1_0,
+                                     &sb, NULL);
+         ID3D12RootSignature *sp_rs = NULL;
+         ID3D12Device_CreateRootSignature(
+            dev, 0, ID3D10Blob_GetBufferPointer(sb),
+            ID3D10Blob_GetBufferSize(sb), &IID_ID3D12RootSignature,
+            (void **)&sp_rs);
+         ID3D10Blob_Release(sb);
+
+         D3D12_COMPUTE_PIPELINE_STATE_DESC sp_pd = {
+            .pRootSignature = sp_rs,
+            .CS = {.pShaderBytecode = sp_cs, .BytecodeLength = sp_size},
+         };
+         ID3D12PipelineState *sp_pso = NULL;
+         hr = ID3D12Device_CreateComputePipelineState(
+            dev, &sp_pd, &IID_ID3D12PipelineState, (void **)&sp_pso);
+         CHECK(hr == S_OK && sp_pso,
+               "compile t0/space0, t0/space2, t0/space5 and u0/space3 "
+               "without collision");
+
+         /* The same shader against a signature that only covers space 0
+          * must be refused: those bindings genuinely are not there.
+          */
+         D3D12_DESCRIPTOR_RANGE only0[] = {
+            {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+            {D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0,
+             D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND},
+         };
+         D3D12_ROOT_PARAMETER only0_param = {
+            .ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+            .DescriptorTable = {.NumDescriptorRanges = 2,
+                                .pDescriptorRanges = only0},
+         };
+         D3D12_ROOT_SIGNATURE_DESC only0_rsd = {.NumParameters = 1,
+                                                .pParameters = &only0_param};
+         ID3DBlob *ob = NULL;
+         D3D12SerializeRootSignature(&only0_rsd,
+                                     D3D_ROOT_SIGNATURE_VERSION_1_0, &ob,
+                                     NULL);
+         ID3D12RootSignature *only0_rs = NULL;
+         ID3D12Device_CreateRootSignature(
+            dev, 0, ID3D10Blob_GetBufferPointer(ob),
+            ID3D10Blob_GetBufferSize(ob), &IID_ID3D12RootSignature,
+            (void **)&only0_rs);
+         ID3D10Blob_Release(ob);
+
+         D3D12_COMPUTE_PIPELINE_STATE_DESC bad_pd = {
+            .pRootSignature = only0_rs,
+            .CS = {.pShaderBytecode = sp_cs, .BytecodeLength = sp_size},
+         };
+         ID3D12PipelineState *bad_pso = NULL;
+         hr = ID3D12Device_CreateComputePipelineState(
+            dev, &bad_pd, &IID_ID3D12PipelineState, (void **)&bad_pso);
+         CHECK(FAILED(hr) && !bad_pso,
+               "a shader using a space the signature omits is refused");
+         if (bad_pso)
+            ID3D12PipelineState_Release(bad_pso);
+
+         if (sp_pso)
+            ID3D12PipelineState_Release(sp_pso);
+         if (sp_rs)
+            ID3D12RootSignature_Release(sp_rs);
+         if (only0_rs)
+            ID3D12RootSignature_Release(only0_rs);
+         free(sp_cs);
+      }
+   }
 
    /* Binding a table against a root parameter that is not one must fail
     * rather than write addresses into arbitrary slots.

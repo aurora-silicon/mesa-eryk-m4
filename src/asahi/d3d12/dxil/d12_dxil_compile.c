@@ -124,7 +124,14 @@ main(int argc, char **argv)
 
    /* 3. module -> NIR (no SPIR-V anywhere in here) */
    const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, stage, &error);
+   /* No root signature here, so the map comes from what the module itself
+    * declares. The driver never does this: there, both sides read the
+    * assignment stored on the root signature.
+    */
+   struct d12_binding_map map;
+   d12_binding_map_from_module(&mod, &map);
+
+   nir_shader *nir = d12_dxil_to_nir(&mod, stage, &map, &error);
    if (!nir) {
       fprintf(stderr, "DXIL->NIR failed: %s\n", error);
       d12_dxil_module_finish(&mod);

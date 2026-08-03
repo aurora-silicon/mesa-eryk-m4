@@ -1208,10 +1208,11 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   unsigned slot = d12_root_param_slot(rp);
-   if (slot >= D12_MAX_RESOURCE_BINDINGS) {
-      mesa_loge("root parameter %u names register %u in space %u, which is "
-                "outside the binding table",
+   unsigned slot = d12_binding_map_find(&rs->map, d12_root_param_class(rp),
+                                        rp->space, rp->base_register);
+   if (slot == ~0u) {
+      mesa_loge("root parameter %u names register %u in space %u, which the "
+                "signature's binding map does not cover",
                 root_param_index, rp->base_register, rp->space);
       list->state = D12_LIST_ERROR;
       return;
@@ -1290,13 +1291,6 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          return;
       }
 
-      if (range->space != 0) {
-         mesa_loge("descriptor range in register space %u; only space 0 is "
-                   "supported", range->space);
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
       /* An unbounded range is descriptor indexing, which this flattening
        * model cannot express: there is no count to flatten.
        */
@@ -1307,16 +1301,16 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       }
 
       for (unsigned i = 0; i < range->num_descriptors; i++) {
-         unsigned reg = range->base_register + i;
-         if (reg >= D12_REGS_PER_CLASS) {
-            mesa_loge("descriptor range reaches register %u, past the "
-                      "binding table", reg);
+         unsigned slot = d12_binding_map_find(&rs->map, klass, range->space,
+                                              range->base_register + i);
+         if (slot == ~0u) {
+            mesa_loge("descriptor range reaches a register the signature's "
+                      "binding map does not cover");
             list->state = D12_LIST_ERROR;
             return;
          }
 
-         const struct d12_descriptor *d = &slots[offset + i];
-         table[d12_binding_slot(klass, reg)] = d->address;
+         table[slot] = slots[offset + i].address;
       }
 
       cursor = offset + range->num_descriptors;

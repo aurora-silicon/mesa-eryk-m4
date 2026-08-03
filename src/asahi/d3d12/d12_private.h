@@ -202,6 +202,11 @@ struct d12_root_signature {
    uint32_t refcount;
    struct d12_device *device; /* holds a device ref */
    struct d12_root_layout layout;
+
+   /* The slot assignment derived from the layout. Shaders are compiled
+    * against it and the command list fills the root table through it.
+    */
+   struct d12_binding_map map;
 };
 
 /* Root signature blobs (d12_root_sig.c) */
@@ -209,8 +214,10 @@ HRESULT d12_serialize_root_signature(const D3D12_ROOT_SIGNATURE_DESC *desc,
                                      void **out_blob, size_t *out_size);
 bool d12_root_signature_parse(const void *blob, size_t blob_size,
                               struct d12_root_layout *out);
-unsigned d12_root_param_slot(const struct d12_root_param *rp);
+unsigned d12_root_param_class(const struct d12_root_param *rp);
 unsigned d12_descriptor_range_class(D3D12_DESCRIPTOR_RANGE_TYPE type);
+void d12_root_layout_build_map(const struct d12_root_layout *layout,
+                               struct d12_binding_map *out);
 ID3DBlob *d12_blob_create(const void *data, size_t size);
 
 /* One linked graphics stage */
@@ -526,12 +533,14 @@ HRESULT d12_root_signature_create(struct d12_device *device,
                                   REFIID riid, void **out);
 HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           const void *dxil, size_t dxil_size,
+                                          const struct d12_binding_map *map,
                                           REFIID riid, void **out);
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
    const void *ps_dxil, size_t ps_size, enum pipe_format rt_format,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
-   const D3D12_RASTERIZER_DESC *rs_desc, REFIID riid, void **out);
+   const D3D12_RASTERIZER_DESC *rs_desc, const struct d12_binding_map *map,
+   REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

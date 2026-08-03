@@ -318,6 +318,24 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
    }
 }
 
+/*
+ * The binding assignment a pipeline is compiled against. It has to be the
+ * one stored on the root signature: the command list fills the root table
+ * through the same assignment at bind time, and two sides deriving their
+ * own would only agree by luck.
+ */
+static const struct d12_binding_map *
+d12_pso_binding_map(ID3D12RootSignature *rs)
+{
+   /* No signature is legal only for a shader that binds nothing. The
+    * translator reports it by name if the shader does declare a resource,
+    * rather than silently resolving it to slot 0.
+    */
+   static const struct d12_binding_map empty;
+
+   return rs ? &((struct d12_root_signature *)rs)->map : &empty;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateComputePipelineState(
    ID3D12Device *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
@@ -328,9 +346,16 @@ d12_device_CreateComputePipelineState(
    if (!desc || !desc->CS.pShaderBytecode || !desc->CS.BytecodeLength)
       return E_INVALIDARG;
 
+   /* A pipeline is compiled against its root signature's binding
+    * assignment. Without one there is nothing to bind resources through,
+    * so a shader that declares any would resolve to no slot at all.
+    */
+   const struct d12_binding_map *map =
+      d12_pso_binding_map(desc->pRootSignature);
+
    return d12_pipeline_state_create_compute(device, desc->CS.pShaderBytecode,
-                                            desc->CS.BytecodeLength, riid,
-                                            out);
+                                            desc->CS.BytecodeLength, map,
+                                            riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -350,11 +375,14 @@ d12_device_CreateGraphicsPipelineState(
    if (desc->NumRenderTargets >= 1)
       rt_format = d12_format_to_pipe(desc->RTVFormats[0]);
 
+   const struct d12_binding_map *map =
+      d12_pso_binding_map(desc->pRootSignature);
+
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
       desc->PS.pShaderBytecode, desc->PS.BytecodeLength, rt_format,
       &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
-      riid, out);
+      map, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE

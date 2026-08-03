@@ -421,34 +421,22 @@ truncated:
 }
 
 /*
- * Which binding slot does a root parameter's resource land in? Root
- * descriptors name one register directly; descriptor tables name a range
- * per entry, resolved at bind time.
+ * The resource class a root descriptor parameter binds.
  */
 unsigned
-d12_root_param_slot(const struct d12_root_param *rp)
+d12_root_param_class(const struct d12_root_param *rp)
 {
-   unsigned klass;
-
    switch (rp->type) {
    case D3D12_ROOT_PARAMETER_TYPE_SRV:
-      klass = D12_RES_SRV;
-      break;
+      return D12_RES_SRV;
    case D3D12_ROOT_PARAMETER_TYPE_UAV:
-      klass = D12_RES_UAV;
-      break;
+      return D12_RES_UAV;
    case D3D12_ROOT_PARAMETER_TYPE_CBV:
    case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-      klass = D12_RES_CBV;
-      break;
+      return D12_RES_CBV;
    default:
       return ~0u;
    }
-
-   if (rp->space != 0 || rp->base_register >= D12_REGS_PER_CLASS)
-      return ~0u;
-
-   return d12_binding_slot(klass, rp->base_register);
 }
 
 unsigned
@@ -553,4 +541,64 @@ d12_blob_create(const void *data, size_t size)
    blob->size = size;
    memcpy(blob->data, data, size);
    return &blob->iface;
+}
+
+/*
+ * Assign a binding slot to every resource the signature can bind, in root
+ * parameter order. This is the assignment BOTH sides use: shaders are
+ * compiled against it and the command list fills the table through it, so
+ * it has to be a property of the signature rather than something either
+ * side works out for itself.
+ *
+ * Root constants get a slot too. They appear to a shader as a constant
+ * buffer at their register, so they need somewhere for their address to go
+ * once the values are uploaded at draw time.
+ */
+void
+d12_root_layout_build_map(const struct d12_root_layout *layout,
+                          struct d12_binding_map *out)
+{
+   memset(out, 0, sizeof(*out));
+
+   for (uint32_t i = 0; i < layout->num_params; i++) {
+      const struct d12_root_param *rp = &layout->params[i];
+
+      switch (rp->type) {
+      case D3D12_ROOT_PARAMETER_TYPE_CBV:
+      case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+         d12_binding_map_add(out, D12_RES_CBV, rp->space, rp->base_register);
+         break;
+
+      case D3D12_ROOT_PARAMETER_TYPE_SRV:
+         d12_binding_map_add(out, D12_RES_SRV, rp->space, rp->base_register);
+         break;
+
+      case D3D12_ROOT_PARAMETER_TYPE_UAV:
+         d12_binding_map_add(out, D12_RES_UAV, rp->space, rp->base_register);
+         break;
+
+      case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+         for (uint32_t r = 0; r < rp->num_ranges; r++) {
+            const struct d12_root_range *range = &rp->ranges[r];
+            unsigned klass = d12_descriptor_range_class(range->type);
+            if (klass >= D12_RES_CLASS_COUNT)
+               continue;
+
+            /* An unbounded range cannot be enumerated; it is rejected at
+             * bind time with a message about bindless.
+             */
+            if (range->num_descriptors == UINT32_MAX)
+               continue;
+
+            for (uint32_t d = 0; d < range->num_descriptors; d++) {
+               d12_binding_map_add(out, klass, range->space,
+                                   range->base_register + d);
+            }
+         }
+         break;
+
+      default:
+         break;
+      }
+   }
 }

@@ -426,13 +426,22 @@ enum d12_resource_kind {
    D12_RES_KIND_STRUCTURED_BUFFER = 12,
 };
 
+/*
+ * An unbounded resource array -- `Texture2D t[] : register(t0)`, the basis
+ * of bindless -- declares a range size of UINT32_MAX. Anything that
+ * enumerates a range has to check for it: a loop to range_size runs four
+ * billion times, which is not a hang anyone would look for in a binding
+ * table.
+ */
+#define D12_RANGE_UNBOUNDED UINT32_MAX
+
 struct d12_resource_binding {
    uint32_t id;    /* rangeId: index within its class's list */
    uint32_t klass; /* enum d12_resource_class */
    uint32_t kind;  /* enum d12_resource_kind (shape) */
    uint32_t space;
    uint32_t lower_bound; /* first shader register in the range */
-   uint32_t range_size;
+   uint32_t range_size;  /* D12_RANGE_UNBOUNDED for a bindless array */
 
    /* Structured-buffer element stride, from metadata tag 1. Zero for raw
     * and typed buffers, whose accesses are byte-addressed.
@@ -522,22 +531,81 @@ struct nir_shader;
 #define D12_UNIFORM_ROOT_REGS       4
 
 /*
- * Root-table layout. The table is indexed by (resource class, shader
- * register), not by shader register alone: D3D12 gives each class its own
- * register namespace, so t0, u0 and b0 are three distinct resources that
- * would otherwise all land in slot 0 and overwrite each other.
+ * Root-table layout.
  *
- * Register space is not yet part of the index; a resource declared in a
- * space other than 0 is refused at translation rather than aliased onto
- * space 0.
+ * A resource is named by three things -- class, register space and shader
+ * register -- and all three matter: t0, u0 and b0 are different resources,
+ * and so are t0 space0 and t0 space1. A formula over those would need a
+ * slot for every combination that could exist, most of them empty, and
+ * uploaded on every draw.
+ *
+ * Instead the slots are assigned DENSELY, from the root signature, which
+ * enumerates exactly the bindings a pipeline can have. Both sides read the
+ * same assignment: the shader is compiled against it, and the command list
+ * fills the table through it. Spaces cost nothing because an unused one
+ * takes no slot.
  */
-#define D12_REGS_PER_CLASS          32
-#define D12_MAX_RESOURCE_BINDINGS   (D12_RES_CLASS_COUNT * D12_REGS_PER_CLASS)
+#define D12_MAX_RESOURCE_BINDINGS 128
 
+struct d12_binding_map {
+   struct {
+      uint32_t klass;
+      uint32_t space;
+      uint32_t reg;
+   } entries[D12_MAX_RESOURCE_BINDINGS];
+   unsigned count;
+};
+
+/* Slot for a binding, or ~0u when the map does not name it. */
 static inline unsigned
-d12_binding_slot(unsigned klass, unsigned shader_register)
+d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
+                     unsigned space, unsigned reg)
 {
-   return klass * D12_REGS_PER_CLASS + shader_register;
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].klass == klass && map->entries[i].space == space &&
+          map->entries[i].reg == reg)
+         return i;
+   }
+   return ~0u;
+}
+
+/* Append a binding if it is not already present; returns its slot. */
+static inline unsigned
+d12_binding_map_add(struct d12_binding_map *map, unsigned klass,
+                    unsigned space, unsigned reg)
+{
+   unsigned existing = d12_binding_map_find(map, klass, space, reg);
+   if (existing != ~0u)
+      return existing;
+
+   if (map->count >= D12_MAX_RESOURCE_BINDINGS)
+      return ~0u;
+
+   unsigned slot = map->count++;
+   map->entries[slot].klass = klass;
+   map->entries[slot].space = space;
+   map->entries[slot].reg = reg;
+   return slot;
+}
+
+/*
+ * Build a map from a module's own declarations. Used when there is no root
+ * signature to derive one from -- the standalone compiler tool -- and never
+ * by the driver, where compile time and bind time have to agree on an
+ * assignment neither derives from the other.
+ */
+void d12_binding_map_from_module(const struct d12_module *mod,
+                                 struct d12_binding_map *out);
+
+/* How many registers a declared range actually covers, clamped so an
+ * unbounded array cannot be walked. Returns 0 for unbounded.
+ */
+static inline unsigned
+d12_range_count(const struct d12_resource_binding *rb)
+{
+   if (rb->range_size == D12_RANGE_UNBOUNDED)
+      return 0;
+   return MAX2(rb->range_size, 1u);
 }
 
 /*
@@ -546,6 +614,7 @@ d12_binding_slot(unsigned klass, unsigned shader_register)
  */
 struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
                                    mesa_shader_stage stage,
+                                   const struct d12_binding_map *map,
                                    const char **error);
 
 /*
