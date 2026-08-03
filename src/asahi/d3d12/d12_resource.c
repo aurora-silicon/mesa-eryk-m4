@@ -120,6 +120,11 @@ static D3D12_GPU_VIRTUAL_ADDRESS STDMETHODCALLTYPE
 d12_resource_GetGPUVirtualAddress(ID3D12Resource *iface)
 {
    struct d12_resource *res = d12_resource_from_iface(iface);
+
+   /* Per the D3D12 contract this is only valid for buffers. */
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
+      return 0;
+
    return res->bo->va->addr;
 }
 
@@ -185,23 +190,56 @@ d12_resource_create_committed(struct d12_device *device,
    if (!heap_props || !desc)
       return E_INVALIDARG;
 
-   if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
-      mesa_loge("CreateCommittedResource: only buffers until G3 "
-                "(dimension %d)",
+   uint64_t size_B;
+   struct ail_layout layout = {0};
+
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (desc->Width == 0)
+         return E_INVALIDARG;
+      size_B = desc->Width;
+   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      /* G3 scope: single-level, single-layer, single-sample RGBA8. LINEAR
+       * tiling so the CPU can verify pixels; twiddled/compressed layouts
+       * arrive with real texturing (G4+).
+       */
+      if (desc->Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+          desc->MipLevels > 1 || desc->DepthOrArraySize > 1 ||
+          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
+         mesa_loge("CreateCommittedResource: texture shape unsupported in "
+                   "G3 (fmt %d, mips %u, layers %u, samples %u)",
+                   (int)desc->Format, desc->MipLevels,
+                   desc->DepthOrArraySize, desc->SampleDesc.Count);
+         return E_NOTIMPL;
+      }
+
+      layout = (struct ail_layout){
+         .width_px = (uint32_t)desc->Width,
+         .height_px = desc->Height,
+         .depth_px = 1,
+         .sample_count_sa = 1,
+         .levels = 1,
+         .tiling = AIL_TILING_LINEAR,
+         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
+         /* 64-byte-aligned rows; the g3 smoke test mirrors this constant */
+         .linear_stride_B = align((uint32_t)desc->Width * 4, 64),
+      };
+      ail_make_miptree(&layout);
+      size_B = layout.size_B;
+   } else {
+      mesa_loge("CreateCommittedResource: dimension %d unsupported",
                 (int)desc->Dimension);
       return E_NOTIMPL;
    }
-
-   if (desc->Width == 0)
-      return E_INVALIDARG;
 
    struct d12_resource *res = calloc(1, sizeof(*res));
    if (!res)
       return E_OUTOFMEMORY;
 
+   res->layout = layout;
+
    /* UMA: every heap type is the same cached, coherent memory. */
-   res->bo = agx_bo_create(&device->dev, desc->Width, 0, AGX_BO_WRITEBACK,
-                           "d3d12 buffer");
+   res->bo = agx_bo_create(&device->dev, size_B, 0, AGX_BO_WRITEBACK,
+                           "d3d12 resource");
    if (!res->bo) {
       free(res);
       return E_OUTOFMEMORY;

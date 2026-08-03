@@ -19,6 +19,8 @@
 
 #include <xf86drm.h>
 
+#include "util/u_math.h"
+
 static HRESULT STDMETHODCALLTYPE
 d12_queue_QueryInterface(ID3D12CommandQueue *iface, REFIID riid, void **out)
 {
@@ -105,12 +107,84 @@ d12_queue_GetDevice(ID3D12CommandQueue *iface, REFIID riid, void **out)
    return ID3D12Device_QueryInterface(&queue->device->iface, riid, out);
 }
 
+/*
+ * Fill a drm_asahi_cmd_render for a clear-only render segment. Mirrors
+ * hk_queue.c's asahi_fill_vdm_command for the color-only, single-sampled,
+ * single-layer case.
+ */
+static void
+d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
+                    const struct d12_segment *seg,
+                    struct drm_asahi_cmd_render *c)
+{
+   memset(c, 0, sizeof(*c));
+
+   c->vdm_ctrl_stream_base = list->stream_bo->va->addr + seg->stream_start;
+
+   agx_pack(&c->ppp_ctrl, CR_PPP_CONTROL, cfg) {
+      cfg.enable_w_clamp = true;
+      cfg.fixed_point_format = 1;
+   }
+
+   c->width_px = seg->width_px;
+   c->height_px = seg->height_px;
+
+   /* Color-only pass: no depth/stencil planes, background object vals base
+    * per hk (0x300), ZLS fully off.
+    */
+   c->isp_bgobjdepth = 0;
+   c->isp_bgobjvals = 0x300;
+
+   agx_tilebuffer_set_drm_cmd(c, &seg->tib);
+   c->samples = 1;
+   c->sample_size_B = seg->tib.sample_size_B;
+   c->layers = 1;
+
+   const float tan_60 = 1.732051f;
+   c->isp_merge_upper_x = fui(tan_60 / seg->width_px);
+   c->isp_merge_upper_y = fui(tan_60 / seg->height_px);
+
+   c->bg.usc = seg->bg_usc | 4;
+   c->eot.usc = seg->eot_usc | 4;
+
+   /* Partial-render programs can only run when the tiler spills mid-pass,
+    * which requires geometry; a clear-only pass has none. Point the partial
+    * slots at the main programs as placeholders. Real partial programs
+    * (LOAD-based) arrive with draws in G4.
+    */
+   c->partial_bg.usc = seg->bg_usc | 4;
+   c->partial_eot.usc = seg->eot_usc | 4;
+
+   static_assert(sizeof(c->bg.rsrc_spec) == sizeof(seg->bg_counts),
+                 "counts word must match rsrc_spec");
+   memcpy(&c->bg.rsrc_spec, &seg->bg_counts, sizeof(seg->bg_counts));
+   memcpy(&c->eot.rsrc_spec, &seg->eot_counts, sizeof(seg->eot_counts));
+   memcpy(&c->partial_bg.rsrc_spec, &seg->bg_counts,
+          sizeof(seg->bg_counts));
+   memcpy(&c->partial_eot.rsrc_spec, &seg->eot_counts,
+          sizeof(seg->eot_counts));
+
+   /* No draws consume scissors/depth-bias; occlusion scratch must be valid
+    * memory regardless (mirrors hk pointing at the device query heap).
+    */
+   c->isp_scissor_base = 0;
+   c->isp_dbias_base = 0;
+   c->isp_oclqry_base = device->oclqry_bo->va->addr;
+
+   /* The whole point: with no geometry, every tile is "empty", and this
+    * flag is what makes the hardware still run background (clear) +
+    * end-of-tile (store) on each of them.
+    */
+   c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
+}
+
 static void STDMETHODCALLTYPE
 d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                               ID3D12CommandList *const *lists)
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
-   struct agx_device *dev = &queue->device->dev;
+   struct d12_device *device = queue->device;
+   struct agx_device *dev = &device->dev;
 
    simple_mtx_lock(&queue->lock);
 
@@ -123,16 +197,66 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          continue;
       }
 
-      if (list->dispatches == 0)
+      if (list->segment_count == 0)
          continue;
 
-      uint8_t *stream_map = agx_bo_map(list->stream_bo);
-      size_t stream_len = list->stream_cur - stream_map;
+      /* All of a list's segments go in one submission, ordered by the
+       * per-command barrier fields exactly as hk_queue does: each command
+       * barriers on all previously-submitted commands of both types.
+       */
+      size_t max_payload =
+         list->segment_count *
+         (sizeof(struct drm_asahi_cmd_header) +
+          MAX2(sizeof(struct drm_asahi_cmd_compute),
+               sizeof(struct drm_asahi_cmd_render)));
+      uint8_t *payload = malloc(max_payload);
+      if (!payload) {
+         mesa_loge("ExecuteCommandLists: out of memory");
+         break;
+      }
 
-      /* One CDM command per list. In-sync on the queue's progress timeline
-       * (honoring earlier Wait() transfers), out-sync advances it — the
-       * same scheme hk_queue uses, so fence Signal() transfers now
-       * represent real GPU completion.
+      size_t payload_size = 0;
+      unsigned nr_vdm = 0, nr_cdm = 0;
+
+      for (unsigned s = 0; s < list->segment_count; s++) {
+         const struct d12_segment *seg = &list->segments[s];
+         bool compute = seg->type == D12_SEG_CDM;
+
+         if (compute && seg->dispatches == 0)
+            continue;
+
+         struct drm_asahi_cmd_header header =
+            agx_cmd_header(compute, nr_vdm, nr_cdm);
+         memcpy(payload + payload_size, &header, sizeof(header));
+         payload_size += sizeof(header);
+
+         if (compute) {
+            struct drm_asahi_cmd_compute cmd = {
+               .cdm_ctrl_stream_base =
+                  list->stream_bo->va->addr + seg->stream_start,
+               .cdm_ctrl_stream_end =
+                  list->stream_bo->va->addr + seg->stream_end,
+            };
+            memcpy(payload + payload_size, &cmd, sizeof(cmd));
+            payload_size += sizeof(cmd);
+            nr_cdm++;
+         } else {
+            struct drm_asahi_cmd_render cmd;
+            d12_fill_render_cmd(device, list, seg, &cmd);
+            memcpy(payload + payload_size, &cmd, sizeof(cmd));
+            payload_size += sizeof(cmd);
+            nr_vdm++;
+         }
+      }
+
+      if (!payload_size) {
+         free(payload);
+         continue;
+      }
+
+      /* In-sync on the queue's progress timeline (honoring earlier Wait()
+       * transfers), out-sync advances it — the hk_queue scheme, so fence
+       * Signal() transfers represent real GPU completion.
        */
       struct drm_asahi_sync syncs[2] = {
          {
@@ -147,21 +271,11 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          },
       };
 
-      struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
-      struct drm_asahi_cmd_compute compute = {
-         .cdm_ctrl_stream_base = list->stream_bo->va->addr,
-         .cdm_ctrl_stream_end = list->stream_bo->va->addr + stream_len,
-      };
-
-      uint8_t payload[sizeof(header) + sizeof(compute)];
-      memcpy(payload, &header, sizeof(header));
-      memcpy(payload + sizeof(header), &compute, sizeof(compute));
-
       struct drm_asahi_submit submit = {
          .queue_id = queue->agx_queue_id,
          .in_sync_count = 1,
          .out_sync_count = 1,
-         .cmdbuf_size = sizeof(payload),
+         .cmdbuf_size = payload_size,
          .syncs = (uint64_t)(uintptr_t)syncs,
          .cmdbuf = (uint64_t)(uintptr_t)payload,
       };
@@ -173,6 +287,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       } else {
          queue->timeline_value++;
       }
+
+      free(payload);
    }
 
    simple_mtx_unlock(&queue->lock);

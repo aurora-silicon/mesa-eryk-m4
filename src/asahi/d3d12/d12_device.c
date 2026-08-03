@@ -100,6 +100,7 @@ d12_device_Release(ID3D12Device *iface)
 
    if (refs == 0) {
       mesa_logi("closing device %s", device->dev.name);
+      agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -276,6 +277,52 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
    }
 }
 
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreateDescriptorHeap(ID3D12Device *iface,
+                                const D3D12_DESCRIPTOR_HEAP_DESC *desc,
+                                REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+   return d12_descriptor_heap_create(device, desc, riid, out);
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateRenderTargetView(ID3D12Device *iface,
+                                  ID3D12Resource *resource,
+                                  const D3D12_RENDER_TARGET_VIEW_DESC *desc,
+                                  D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_rtv *slot = (struct d12_rtv *)dest.ptr;
+
+   if (!slot)
+      return;
+
+   if (!resource) {
+      /* Null RTVs are legal placeholders; record an empty slot. */
+      slot->resource = NULL;
+      return;
+   }
+
+   struct d12_resource *res = d12_resource_from_iface(resource);
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       res->desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM) {
+      mesa_loge("CreateRenderTargetView: only RGBA8 2D targets in G3");
+      slot->resource = NULL;
+      return;
+   }
+
+   if (desc && desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D) {
+      mesa_loge("CreateRenderTargetView: view dimension %d unsupported",
+                (int)desc->ViewDimension);
+      slot->resource = NULL;
+      return;
+   }
+
+   slot->resource = res;
+   slot->format = DXGI_FORMAT_R8G8B8A8_UNORM;
+}
+
 static UINT STDMETHODCALLTYPE
 d12_device_GetDescriptorHandleIncrementSize(
    ID3D12Device *iface, D3D12_DESCRIPTOR_HEAP_TYPE type)
@@ -341,6 +388,8 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .CreateCommandAllocator = d12_device_CreateCommandAllocator,
    .CreateCommandList = d12_device_CreateCommandList,
    .CheckFeatureSupport = d12_device_CheckFeatureSupport,
+   .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
+   .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .GetDescriptorHandleIncrementSize =
       d12_device_GetDescriptorHandleIncrementSize,
    .CreateCommittedResource = d12_device_CreateCommittedResource,
@@ -406,6 +455,16 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       agx_close_device(&device->dev);
       free(device);
       return E_FAIL;
+   }
+
+   /* Render commands need a valid occlusion-query scratch base. */
+   device->oclqry_bo =
+      agx_bo_create(&device->dev, 0x4000, 0, 0, "d3d12 oclqry scratch");
+   if (!device->oclqry_bo) {
+      agx_bg_eot_cleanup(&device->bg_eot);
+      agx_close_device(&device->dev);
+      free(device);
+      return E_OUTOFMEMORY;
    }
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;

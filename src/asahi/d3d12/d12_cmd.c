@@ -4,23 +4,24 @@
  *
  * ID3D12CommandAllocator and ID3D12GraphicsCommandList.
  *
- * A command list IS a CDM control stream, encoded at record time the same
- * way Honeykrisp encodes its internal dispatches (hk_dispatch_precomp):
- * per dispatch, upload the kernel args, build USC words with
- * agx_usc_words_precomp, emit agx_cdm_launch + agx_cdm_barrier; Close()
- * emits agx_cdm_terminate. CopyBufferRegion/CopyResource run the
- * precompiled libagx byte-copy kernel — real GPU work, no CPU memcpy lies.
+ * A command list is an ordered sequence of hardware segments (see
+ * d12_private.h): CDM compute streams for copies/dispatches, and RENDER
+ * segments for clears. Encoding happens at record time, mirroring
+ * Honeykrisp's internal-dispatch (hk_dispatch_precomp) and bg/eot
+ * (hk_build_bg_eot) recipes. No CPU-side execution lies anywhere: every
+ * recorded operation becomes real GPU work at ExecuteCommandLists.
  */
 
 #include "d12_private.h"
 
+#include "agx_helpers.h"
 #include "agx_usc.h"
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
 
 #define D12_STREAM_BO_SIZE (1024 * 1024)
 #define D12_USC_BO_SIZE    (256 * 1024)
-/* Worst-case control words per dispatch (launch + barrier), with slack. */
+/* Worst-case control words per dispatch or render prologue, with slack. */
 #define D12_DISPATCH_STREAM_MARGIN 0x300
 
 /*
@@ -180,11 +181,12 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->stream_cur = d12_list_stream_map(list);
    list->data_floor = D12_STREAM_BO_SIZE;
    list->usc_offset = 0;
-   list->dispatches = 0;
+   list->segment_count = 0;
+   list->cdm_open = false;
    list->state = D12_LIST_RECORDING;
 }
 
-/* Upload an arg blob into the top of the stream BO; returns its GPU VA. */
+/* Upload a data blob into the top of the stream BO; returns its GPU VA. */
 static uint64_t
 d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
                 size_t align)
@@ -203,9 +205,72 @@ d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
    return list->stream_bo->va->addr + floor;
 }
 
+/* Allocate USC words; returns CPU pointer and the usc-space address. */
+static uint8_t *
+d12_list_alloc_usc(struct d12_cmd_list *list, size_t size, uint32_t *out_usc)
+{
+   size_t off = ALIGN_POT(list->usc_offset, 64);
+   if (off + size > D12_USC_BO_SIZE) {
+      mesa_loge("command list out of USC space");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+   list->usc_offset = off + size;
+
+   *out_usc =
+      agx_usc_addr(&list->device->dev, list->usc_bo->va->addr + off);
+   return (uint8_t *)agx_bo_map(list->usc_bo) + off;
+}
+
+static bool
+d12_list_check_stream_space(struct d12_cmd_list *list)
+{
+   size_t used = list->stream_cur - d12_list_stream_map(list);
+   if (used + D12_DISPATCH_STREAM_MARGIN > list->data_floor) {
+      mesa_loge("command list out of control-stream space");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   return true;
+}
+
+/* Close the currently-open CDM segment, if any (terminates its stream). */
+static void
+d12_list_close_cdm(struct d12_cmd_list *list)
+{
+   if (!list->cdm_open)
+      return;
+
+   struct d12_segment *seg = &list->segments[list->segment_count - 1];
+   list->stream_cur =
+      (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
+   seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+   list->cdm_open = false;
+}
+
+/* Get an open CDM segment to append dispatches to, starting one if needed. */
+static struct d12_segment *
+d12_list_get_cdm(struct d12_cmd_list *list)
+{
+   if (list->cdm_open)
+      return &list->segments[list->segment_count - 1];
+
+   if (list->segment_count >= D12_MAX_SEGMENTS) {
+      mesa_loge("command list segment limit reached");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   struct d12_segment *seg = &list->segments[list->segment_count++];
+   memset(seg, 0, sizeof(*seg));
+   seg->type = D12_SEG_CDM;
+   seg->stream_start = list->stream_cur - d12_list_stream_map(list);
+   list->cdm_open = true;
+   return seg;
+}
+
 /*
- * The G2 execution engine: dispatch a precompiled libagx kernel, exactly
- * as hk_dispatch_precomp does.
+ * Dispatch a precompiled libagx kernel, exactly as hk_dispatch_precomp does.
  */
 static void
 d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
@@ -219,6 +284,10 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
       return;
    }
 
+   struct d12_segment *seg = d12_list_get_cdm(list);
+   if (!seg)
+      return;
+
    struct agx_precompiled_shader *prog =
       agx_get_precompiled(&device->bg_eot, idx);
    if (!prog) {
@@ -231,36 +300,134 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
    if (!data_gpu)
       return;
 
-   /* USC words in the LOW_VA BO */
-   size_t usc_size = agx_usc_size(15);
-   size_t usc_off = ALIGN_POT(list->usc_offset, 64);
-   if (usc_off + usc_size > D12_USC_BO_SIZE) {
-      mesa_loge("command list out of USC space");
-      list->state = D12_LIST_ERROR;
+   uint32_t usc;
+   uint8_t *usc_cpu = d12_list_alloc_usc(list, agx_usc_size(15), &usc);
+   if (!usc_cpu)
       return;
-   }
-   list->usc_offset = usc_off + usc_size;
-
-   uint8_t *usc_cpu = (uint8_t *)agx_bo_map(list->usc_bo) + usc_off;
-   uint64_t usc_gpu = list->usc_bo->va->addr + usc_off;
 
    agx_usc_words_precomp((uint32_t *)usc_cpu, &prog->b, data_gpu, args_size);
 
-   /* Stream-space check, then launch + cache-flush barrier */
-   size_t used = list->stream_cur - d12_list_stream_map(list);
-   if (used + D12_DISPATCH_STREAM_MARGIN > list->data_floor) {
-      mesa_loge("command list out of control-stream space");
-      list->state = D12_LIST_ERROR;
+   if (!d12_list_check_stream_space(list))
       return;
-   }
 
    list->stream_cur = (uint8_t *)agx_cdm_launch(
       (uint32_t *)list->stream_cur, device->dev.chip, grid, prog->b.workgroup,
-      prog->b.launch, agx_usc_addr(&device->dev, usc_gpu));
+      prog->b.launch, usc);
    list->stream_cur =
       (uint8_t *)agx_cdm_barrier((uint32_t *)list->stream_cur,
                                  device->dev.chip);
-   list->dispatches++;
+   seg->dispatches++;
+}
+
+/*
+ * Build the USC words for a background (clear) or end-of-tile (store)
+ * program targeting one RGBA8 linear render target. Mirrors
+ * hk_build_bg_eot for the single-RT, non-layered, single-sampled case.
+ */
+static uint32_t
+d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
+                     const float color[4], bool store,
+                     const struct agx_tilebuffer_layout *tib,
+                     struct agx_counts_packed *out_counts)
+{
+   struct d12_device *device = list->device;
+
+   uint32_t usc;
+   size_t usc_size = agx_usc_size(3 + 8);
+   uint8_t *cpu = d12_list_alloc_usc(list, usc_size, &usc);
+   if (!cpu)
+      return 0;
+
+   struct agx_usc_builder b = agx_usc_builder(cpu, usc_size);
+   struct agx_bg_eot_key key = {.tib = *tib};
+   unsigned uniforms = 0, nr_tex = 0;
+
+   if (!store) {
+      key.op[0] = AGX_BG_CLEAR;
+
+      /* 16 bytes of clear color, register base 4 — hk's fixed ABI */
+      uint64_t colour = d12_list_upload(list, color, 16, 16);
+      if (!colour)
+         return 0;
+
+      agx_usc_uniform(&b, 4, 8, colour);
+      uniforms = 4 + 8;
+   } else {
+      key.op[0] = AGX_EOT_STORE;
+
+      /* PBE descriptor for the linear RGBA8 target, following the gallium
+       * driver's linear-2D packing (agx_state.c).
+       */
+      struct agx_pbe_packed desc;
+      agx_pack(&desc, PBE, cfg) {
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = agx_translate_layout(AIL_TILING_LINEAR);
+         cfg.channels = ail_pixel_format[PIPE_FORMAT_R8G8B8A8_UNORM].channels;
+         cfg.type = ail_pixel_format[PIPE_FORMAT_R8G8B8A8_UNORM].type;
+         cfg.srgb = false;
+         cfg.swizzle_r = 0;
+         cfg.swizzle_g = 1;
+         cfg.swizzle_b = 2;
+         cfg.swizzle_a = 3;
+         cfg.buffer = rt->bo->va->addr;
+         cfg.width = rt->layout.width_px;
+         cfg.height = rt->layout.height_px;
+         cfg.level = 0;
+         cfg.layers = 1;
+         cfg.levels = 1;
+         cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
+      }
+
+      uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+      if (!desc_ptr)
+         return 0;
+
+      agx_usc_pack(&b, TEXTURE, cfg) {
+         cfg.start = 0;
+         cfg.count = 1;
+         cfg.buffer = desc_ptr;
+      }
+      nr_tex = 1;
+   }
+
+   agx_usc_push_packed(&b, SHARED, &key.tib.usc);
+
+   key.reserved_preamble = uniforms;
+   struct agx_bg_eot_shader *shader =
+      agx_get_bg_eot_shader(&device->bg_eot, &key);
+   if (!shader) {
+      mesa_loge("failed to build bg/eot shader");
+      list->state = D12_LIST_ERROR;
+      return 0;
+   }
+
+   agx_usc_pack(&b, SHADER, cfg) {
+      cfg.code = agx_usc_addr(&device->dev, shader->ptr);
+      cfg.unk_2 = 0;
+   }
+
+   agx_usc_pack(&b, REGISTERS, cfg)
+      cfg.register_count = shader->info.nr_gprs;
+
+   if (shader->info.has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code = agx_usc_addr(&device->dev,
+                                 shader->ptr + shader->info.preamble_offset);
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg)
+         ;
+   }
+
+   agx_pack(out_counts, COUNTS, cfg) {
+      cfg.uniform_register_count = shader->info.push_count;
+      cfg.preshader_register_count = shader->info.nr_preamble_gprs;
+      cfg.texture_state_register_count = nr_tex;
+      cfg.sampler_state_register_count =
+         agx_translate_sampler_state_count(0, false);
+   }
+
+   return usc;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -363,8 +530,7 @@ d12_list_Close(ID3D12GraphicsCommandList *iface)
    if (list->state != D12_LIST_RECORDING)
       return E_FAIL;
 
-   list->stream_cur =
-      (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
+   d12_list_close_cdm(list);
    list->state = D12_LIST_CLOSED;
    return S_OK;
 }
@@ -430,7 +596,7 @@ d12_list_CopyResource(ID3D12GraphicsCommandList *iface, ID3D12Resource *dst,
 
    if (dstr->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
        dstr->desc.Width != srcr->desc.Width) {
-      mesa_loge("CopyResource: only equal-size buffers until G3");
+      mesa_loge("CopyResource: only equal-size buffers for now");
       d12_cmd_list_from_iface(iface)->state = D12_LIST_ERROR;
       return;
    }
@@ -439,13 +605,89 @@ d12_list_CopyResource(ID3D12GraphicsCommandList *iface, ID3D12Resource *dst,
 }
 
 static void STDMETHODCALLTYPE
+d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
+                               D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle,
+                               const FLOAT color[4], UINT num_rects,
+                               const D3D12_RECT *rects)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   struct d12_rtv *rtv = (struct d12_rtv *)rtv_handle.ptr;
+   if (!rtv || !rtv->resource) {
+      mesa_loge("ClearRenderTargetView: invalid RTV handle");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (num_rects != 0) {
+      mesa_loge("ClearRenderTargetView: partial-rect clears not until G4");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_resource *rt = rtv->resource;
+
+   d12_list_close_cdm(list);
+   if (list->segment_count >= D12_MAX_SEGMENTS) {
+      mesa_loge("command list segment limit reached");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_segment *seg = &list->segments[list->segment_count];
+   memset(seg, 0, sizeof(*seg));
+   seg->type = D12_SEG_RENDER;
+   seg->width_px = rt->layout.width_px;
+   seg->height_px = rt->layout.height_px;
+
+   enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+   };
+   seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
+
+   seg->bg_usc =
+      d12_build_bg_eot_usc(list, rt, color, false, &seg->tib,
+                           &seg->bg_counts);
+   seg->eot_usc =
+      d12_build_bg_eot_usc(list, rt, NULL, true, &seg->tib,
+                           &seg->eot_counts);
+   if (!seg->bg_usc || !seg->eot_usc)
+      return; /* error state already set */
+
+   /* The VDM stream: cache-invalidate barrier, then terminate. No geometry
+    * — the clear happens because PROCESS_EMPTY_TILES makes every tile run
+    * background (clear) + end-of-tile (store). Deliberately omits hk's PPP
+    * prologue: with zero draws there is no rasterizer state to configure.
+    * If hardware disagrees, this is the first place to revisit.
+    */
+   if (!d12_list_check_stream_space(list))
+      return;
+
+   seg->stream_start = list->stream_cur - d12_list_stream_map(list);
+
+   agx_pack(list->stream_cur, VDM_BARRIER, cfg) {
+      cfg.usc_cache_inval = true;
+   }
+   list->stream_cur += AGX_VDM_BARRIER_LENGTH;
+
+   list->stream_cur =
+      (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
+
+   seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+   list->segment_count++;
+}
+
+static void STDMETHODCALLTYPE
 d12_list_ResourceBarrier(ID3D12GraphicsCommandList *iface, UINT num_barriers,
                          const D3D12_RESOURCE_BARRIER *barriers)
 {
    /* Every dispatch already ends in agx_cdm_barrier (cache flush), memory
-    * is coherent UMA, and cross-list ordering is queue-sequential. State
-    * transitions are accepted and recorded as no-ops until G3 needs image
-    * layout work.
+    * is coherent UMA, and segments execute in order via the submit-header
+    * barrier fields. State transitions are accepted as no-ops until image
+    * layout transitions matter.
     */
    for (UINT i = 0; i < num_barriers; i++) {
       if (barriers[i].Type != D3D12_RESOURCE_BARRIER_TYPE_TRANSITION &&
@@ -454,6 +696,19 @@ d12_list_ResourceBarrier(ID3D12GraphicsCommandList *iface, UINT num_barriers,
                    (int)barriers[i].Type);
       }
    }
+}
+
+static void STDMETHODCALLTYPE
+d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
+                            const D3D12_CPU_DESCRIPTOR_HANDLE *rtvs,
+                            BOOL single_handle,
+                            const D3D12_CPU_DESCRIPTOR_HANDLE *dsv)
+{
+   /* Recorded state becomes meaningful with draws (G4). Clears take the
+    * RTV handle directly, so this is informational for now.
+    */
+   if (dsv)
+      mesa_logw("OMSetRenderTargets: depth-stencil ignored until G4+");
 }
 
 static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
@@ -471,6 +726,8 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .CopyBufferRegion = d12_list_CopyBufferRegion,
    .CopyResource = d12_list_CopyResource,
    .ResourceBarrier = d12_list_ResourceBarrier,
+   .OMSetRenderTargets = d12_list_OMSetRenderTargets,
+   .ClearRenderTargetView = d12_list_ClearRenderTargetView,
    /* Everything unset is NULL: loud crash over silent lie. */
 };
 
