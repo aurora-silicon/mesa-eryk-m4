@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * d3d12agx G1 acceptance test. Deliberately uses ONLY the public D3D12 ABI
@@ -135,6 +135,24 @@ main(void)
       CHECK(hr == S_OK && dev2 == dev, "fence GetDevice returns the device");
       if (dev2)
          ID3D12Device_Release(dev2);
+   }
+
+   /* Crash safety: an unimplemented method must FAIL, not jump to NULL.
+    * This is the gate to running any external conformance suite.
+    */
+   {
+      ID3D12Heap *heap = NULL;
+      D3D12_HEAP_DESC hd = {.SizeInBytes = 4096};
+      hr = ID3D12Device_CreateHeap(dev, &hd, &IID_ID3D12Heap, (void **)&heap);
+      CHECK(hr == E_NOTIMPL, "unimplemented CreateHeap returns E_NOTIMPL");
+
+      /* A struct-returning unimplemented method must also be safe: the
+       * generic-cast approach would corrupt the return here.
+       */
+      D3D12_RESOURCE_ALLOCATION_INFO ai =
+         ID3D12Device_GetResourceAllocationInfo(dev, 0, 0, NULL);
+      CHECK(ai.SizeInBytes == 0,
+            "unimplemented struct-returning method returns zeroed struct");
    }
 
    if (fence)

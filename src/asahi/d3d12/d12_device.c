@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12Device on a real agx_device, plus the D3D12CreateDevice entry point.
@@ -13,6 +13,29 @@
 #include <string.h>
 #include <unistd.h>
 #include <xf86drm.h>
+
+/*
+ * Report an unimplemented COM method. Logged once per method so a test
+ * suite run produces a readable list of what is missing rather than a
+ * flood, and so an unimplemented call is a recordable failure instead of
+ * a jump to NULL.
+ */
+void
+d12_stub_report(const char *what)
+{
+   static const char *seen[256];
+   static unsigned num_seen;
+
+   for (unsigned i = 0; i < num_seen; i++) {
+      if (seen[i] == what)
+         return;
+   }
+
+   if (num_seen < ARRAY_SIZE(seen))
+      seen[num_seen++] = what;
+
+   mesa_logw("unimplemented: %s", what);
+}
 
 void
 d12_log_unknown_riid(const char *where, REFIID riid)
@@ -419,6 +442,8 @@ d12_device_GetAdapterLuid(ID3D12Device *iface)
 }
 
 static const ID3D12DeviceVtbl d12_device_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12Device_DEFAULTS,
    .QueryInterface = d12_device_QueryInterface,
    .AddRef = d12_device_AddRef,
    .Release = d12_device_Release,

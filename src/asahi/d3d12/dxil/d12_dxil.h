@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * DXIL front end for d3d12agx: DXBC container + LLVM 3.7-era bitstream

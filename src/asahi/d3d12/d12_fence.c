@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12Fence as a DRM timeline syncobj. The mapping is exact: the fence's
@@ -152,6 +152,8 @@ d12_fence_Signal(ID3D12Fence *iface, UINT64 value)
 }
 
 static const ID3D12FenceVtbl d12_fence_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12Fence_DEFAULTS,
    .QueryInterface = d12_fence_QueryInterface,
    .AddRef = d12_fence_AddRef,
    .Release = d12_fence_Release,

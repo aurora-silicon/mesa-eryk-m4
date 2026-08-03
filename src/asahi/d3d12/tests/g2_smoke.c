@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * d3d12agx G2 acceptance test: committed buffer resources, command

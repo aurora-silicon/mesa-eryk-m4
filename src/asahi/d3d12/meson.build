@@ -1,4 +1,4 @@
-# Copyright 2026 NTASP contributors
+# Copyright 2026 Aurora Silicon
 # SPDX-License-Identifier: MIT
 #
 # d3d12agx: experimental native Direct3D 12 driver on the AGX substrate.

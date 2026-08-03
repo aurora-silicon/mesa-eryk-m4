@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12CommandQueue on an asahi hardware queue. Queue-side fence ops use
@@ -412,6 +412,8 @@ d12_queue_GetDesc(ID3D12CommandQueue *iface)
 }
 
 static const ID3D12CommandQueueVtbl d12_queue_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12CommandQueue_DEFAULTS,
    .QueryInterface = d12_queue_QueryInterface,
    .AddRef = d12_queue_AddRef,
    .Release = d12_queue_Release,

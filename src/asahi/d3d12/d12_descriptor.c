@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12DescriptorHeap. G3 scope: RTV heaps only — CPU-side slot storage
@@ -118,6 +118,8 @@ d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
 }
 
 static const ID3D12DescriptorHeapVtbl d12_heap_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12DescriptorHeap_DEFAULTS,
    .QueryInterface = d12_heap_QueryInterface,
    .AddRef = d12_heap_AddRef,
    .Release = d12_heap_Release,

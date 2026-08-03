@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12CommandAllocator and ID3D12GraphicsCommandList.
@@ -121,6 +121,8 @@ d12_alloc_Reset(ID3D12CommandAllocator *iface)
 }
 
 static const ID3D12CommandAllocatorVtbl d12_alloc_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12CommandAllocator_DEFAULTS,
    .QueryInterface = d12_alloc_QueryInterface,
    .AddRef = d12_alloc_AddRef,
    .Release = d12_alloc_Release,
@@ -1291,6 +1293,8 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
 }
 
 static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12GraphicsCommandList_DEFAULTS,
    .QueryInterface = d12_list_QueryInterface,
    .AddRef = d12_list_AddRef,
    .Release = d12_list_Release,

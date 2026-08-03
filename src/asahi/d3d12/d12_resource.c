@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12Resource for committed buffers: one agx_bo with a writeback (cached,
@@ -162,6 +162,8 @@ d12_resource_GetHeapProperties(ID3D12Resource *iface,
 }
 
 static const ID3D12ResourceVtbl d12_resource_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12Resource_DEFAULTS,
    .QueryInterface = d12_resource_QueryInterface,
    .AddRef = d12_resource_AddRef,
    .Release = d12_resource_Release,

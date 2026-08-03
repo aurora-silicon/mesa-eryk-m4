@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * ID3D12PipelineState and ID3D12RootSignature.
@@ -110,6 +110,8 @@ d12_root_sig_GetDevice(ID3D12RootSignature *iface, REFIID riid, void **out)
 }
 
 static const ID3D12RootSignatureVtbl d12_root_sig_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12RootSignature_DEFAULTS,
    .QueryInterface = d12_root_sig_QueryInterface,
    .AddRef = d12_root_sig_AddRef,
    .Release = d12_root_sig_Release,
@@ -236,6 +238,8 @@ d12_pso_GetCachedBlob(ID3D12PipelineState *iface, ID3DBlob **blob)
 }
 
 static const ID3D12PipelineStateVtbl d12_pso_vtbl = {
+   /* every unimplemented slot fails safely */
+   D12_ID3D12PipelineState_DEFAULTS,
    .QueryInterface = d12_pso_QueryInterface,
    .AddRef = d12_pso_AddRef,
    .Release = d12_pso_Release,

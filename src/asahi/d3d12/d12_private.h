@@ -1,5 +1,5 @@
 /*
- * Copyright 2026 NTASP contributors
+ * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
  * d3d12agx: experimental native Direct3D 12 user-mode driver for Apple AGX
@@ -50,6 +50,12 @@ d12_guid_equal(REFIID a, REFIID b)
 {
    return memcmp(a, b, sizeof(GUID)) == 0;
 }
+
+/* Crash-safe vtable defaults (generated). Every slot we do not implement
+ * points at a typed stub that reports and fails, so an unimplemented call
+ * is a recordable failure instead of a jump to NULL.
+ */
+#include "d12_stubs.h"
 
 /* Log an unknown riid so we learn what callers actually want. */
 void d12_log_unknown_riid(const char *where, REFIID riid);
