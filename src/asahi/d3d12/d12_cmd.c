@@ -771,6 +771,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       struct AGX_PPP_HEADER present = {
          .fragment_control = true,
          .fragment_control_2 = true,
+         .fragment_front_face = true,
          .fragment_front_face_2 = true,
          .output_select = true,
          .varying_counts_32 = true,
@@ -803,6 +804,17 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       /* The linker's own fragment control (tag writes etc.). */
       agx_ppp_push_packed(&ppp, &pso->fs.linked.fragment_control,
                           FRAGMENT_CONTROL);
+
+      /* Depth function. AGX_ZS_FUNC_NEVER is 0, so leaving this unset
+       * rejects every fragment — geometry rasterizes and nothing is
+       * written. With no depth attachment the test must be ALWAYS.
+       */
+      agx_ppp_push(&ppp, FRAGMENT_FACE, cfg) {
+         cfg.line_width = agx_pack_line_width(1.0f);
+         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+         cfg.disable_depth_write = true;
+         cfg.depth_function = AGX_ZS_FUNC_ALWAYS;
+      }
 
       /* object_type tells the rasterizer it is drawing triangles. */
       struct agx_fragment_face_2_packed face_2;
