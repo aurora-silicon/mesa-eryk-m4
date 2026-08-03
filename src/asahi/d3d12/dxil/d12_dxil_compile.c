@@ -145,6 +145,7 @@ main(int argc, char **argv)
     */
    NIR_PASS(_, nir, agx_nir_lower_texture);
    agx_preprocess_nir(nir);
+   NIR_PASS(_, nir, d12_dxil_lower_root);
 
    struct agx_tilebuffer_layout tib = {0};
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {

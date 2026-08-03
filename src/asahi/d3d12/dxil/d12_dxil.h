@@ -416,6 +416,9 @@ struct d12_module {
    struct d12_sig_element output_sig[D12_MAX_SIG_ELEMENTS];
    unsigned num_output_sig;
 
+   /* [numthreads(x,y,z)] from the entry-point properties (compute only) */
+   uint32_t num_threads[3];
+
    const char *error;
 };
 
@@ -444,9 +447,36 @@ const struct d12_named_md *d12_dxil_find_named_md(const struct d12_module *mod,
 struct nir_shader;
 
 /*
+ * Resource binding ABI (campaign OQ-2).
+ *
+ * The driver publishes ONE 64-bit pointer — the root table — in AGX
+ * uniform registers (four 16-bit registers). The root table is an array
+ * of 64-bit resource base addresses indexed by binding slot, so a shader
+ * reaches a resource with one indirection:
+ *
+ *     base = load_global(root + binding * 8)
+ *
+ * A single uniform slot keeps the ABI stable no matter how many resources
+ * are bound. The shader reads the root with load_root_agx, a placeholder
+ * that survives agx_preprocess_nir; d12_dxil_lower_root() turns it into a
+ * load_preamble afterwards. Emitting load_preamble before preprocessing
+ * does NOT work — the compiler reassigns its base.
+ */
+#define D12_UNIFORM_ROOT            4
+#define D12_UNIFORM_ROOT_REGS       4
+#define D12_MAX_RESOURCE_BINDINGS   8
+#define D12_STRUCTURED_STRIDE_B     4
+
+/*
  * Translate a parsed module's entry point to NIR for the AGX backend.
  * Returns NULL with *error set on failure. Caller owns the shader.
  */
 struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
                                    mesa_shader_stage stage,
                                    const char **error);
+
+/*
+ * Replace the root-table placeholder with a real uniform read. MUST run
+ * after agx_preprocess_nir and before agx_compile_shader_nir.
+ */
+bool d12_dxil_lower_root(struct nir_shader *nir);

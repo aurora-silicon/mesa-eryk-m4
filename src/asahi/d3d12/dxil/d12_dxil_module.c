@@ -20,6 +20,7 @@
 #include "util/macros.h"
 
 static void parse_entry_signatures(struct d12_module *mod);
+static void parse_entry_properties(struct d12_module *mod);
 
 struct parse_ctx {
    struct d12_module *mod;
@@ -696,8 +697,9 @@ d12_dxil_module_parse(struct d12_module *mod, const uint8_t *bitcode,
          f->name = mod->values[f->value_index].name;
    }
 
-   /* Signatures need the finished value and metadata tables. */
+   /* Signatures and properties need the finished value/metadata tables. */
    parse_entry_signatures(mod);
+   parse_entry_properties(mod);
 
    return mod->error == NULL;
 }
@@ -821,6 +823,63 @@ parse_entry_signatures(struct d12_module *mod)
    if (sigs->node.num_ops >= 2 && !sigs->node.op_is_null[1]) {
       parse_signature(mod, sigs->node.ops[1], mod->output_sig,
                       &mod->num_output_sig);
+   }
+}
+
+/*
+ * Entry-point properties are a flat list of (tag, value) pairs. Tag 4 is
+ * kNumThreads, whose value is a node of three integer constants — the
+ * [numthreads(x,y,z)] attribute. Without it the launch grid collapses to
+ * zero threads and the dispatch silently does nothing.
+ */
+#define D12_ENTRY_PROP_NUM_THREADS 4
+
+static void
+parse_entry_properties(struct d12_module *mod)
+{
+   const struct d12_named_md *eps =
+      d12_dxil_find_named_md(mod, "dx.entryPoints");
+   if (!eps || !eps->num_nodes || eps->nodes[0] >= mod->num_metadata)
+      return;
+
+   const struct d12_metadata *ep = &mod->metadata[eps->nodes[0]];
+   if (ep->kind != D12_MD_NODE || ep->node.num_ops < 5 ||
+       ep->node.op_is_null[4])
+      return;
+
+   uint64_t props_id = ep->node.ops[4];
+   if (props_id >= mod->num_metadata)
+      return;
+
+   const struct d12_metadata *props = &mod->metadata[props_id];
+   if (props->kind != D12_MD_NODE)
+      return;
+
+   for (unsigned i = 0; i + 1 < props->node.num_ops; i += 2) {
+      if (props->node.op_is_null[i] || props->node.op_is_null[i + 1])
+         continue;
+
+      uint64_t tag;
+      if (!md_const_uint(mod, props->node.ops[i], &tag))
+         continue;
+
+      if (tag != D12_ENTRY_PROP_NUM_THREADS)
+         continue;
+
+      uint64_t nt_id = props->node.ops[i + 1];
+      if (nt_id >= mod->num_metadata)
+         continue;
+
+      const struct d12_metadata *nt = &mod->metadata[nt_id];
+      if (nt->kind != D12_MD_NODE || nt->node.num_ops < 3)
+         continue;
+
+      for (unsigned c = 0; c < 3; c++) {
+         uint64_t v = 1;
+         if (md_const_uint(mod, nt->node.ops[c], &v))
+            mod->num_threads[c] = (uint32_t)v;
+      }
+      return;
    }
 }
 

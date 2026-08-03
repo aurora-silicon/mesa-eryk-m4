@@ -20,8 +20,12 @@ libd3d12agx_files = files(
   'd12_descriptor.c',
   'd12_device.c',
   'd12_fence.c',
+  'd12_pipeline.c',
   'd12_queue.c',
   'd12_resource.c',
+  'dxil/d12_dxil_bitstream.c',
+  'dxil/d12_dxil_module.c',
+  'dxil/d12_dxil_nir.c',
 )
 
 libd3d12agx = shared_library(
@@ -33,6 +37,7 @@ libd3d12agx = shared_library(
     inc_asahi,
     inc_virtio_gpu,
     inc_virtio_vdrm,
+    include_directories('../isa'),
   ],
   dependencies : [
     dep_dxheaders_d12,
@@ -44,7 +49,9 @@ libd3d12agx = shared_library(
     idep_libagx,
     idep_libagx_shaders_h,
   ],
-  link_with : [libasahi_lib, libasahi_layout, libasahi_compiler],
+  link_with : [
+    libasahi_lib, libasahi_layout, libasahi_compiler, libagx2_disasm,
+  ],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   install : false,
@@ -67,6 +74,13 @@ d3d12agx_g2_smoke = executable(
 d3d12agx_g3_smoke = executable(
   'd3d12agx_g3_smoke',
   files('tests/g3_smoke.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
+d3d12agx_g4_smoke = executable(
+  'd3d12agx_g4_smoke',
+  files('tests/g4_smoke.c'),
   dependencies : [dep_dxheaders_d12],
   link_with : [libd3d12agx],
 )

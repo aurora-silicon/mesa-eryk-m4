@@ -430,6 +430,152 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
    return usc;
 }
 
+/*
+ * Dispatch a pipeline compiled from the application's DXIL. Mirrors
+ * hk_dispatch_with_usc: build USC words binding the shader, its registers
+ * and our resource-address uniforms, then emit a CDM launch.
+ */
+static void
+d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
+                      unsigned z)
+{
+   struct d12_device *device = list->device;
+   struct d12_pipeline_state *pso = list->pso;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!pso || !pso->is_compute) {
+      mesa_loge("Dispatch without a compute pipeline state");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_segment *seg = d12_list_get_cdm(list);
+   if (!seg)
+      return;
+
+   /* The root table of resource addresses, then a pointer to it: uniform
+    * registers are filled FROM memory, so the pointer itself needs a home.
+    */
+   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
+   memcpy(addrs, list->compute_root_uav, sizeof(addrs));
+   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
+   if (!addrs_gpu)
+      return;
+
+   uint64_t root_gpu = d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8);
+   if (!root_gpu)
+      return;
+
+   uint32_t usc;
+   size_t usc_size = agx_usc_size(8);
+   uint8_t *usc_cpu = d12_list_alloc_usc(list, usc_size, &usc);
+   if (!usc_cpu)
+      return;
+
+   struct agx_usc_builder b = agx_usc_builder(usc_cpu, usc_size);
+
+   /* Four 16-bit uniform registers hold the 64-bit root pointer. */
+   agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+
+   agx_usc_shared_none(&b);
+
+   agx_usc_pack(&b, SHADER, cfg) {
+      cfg.code = agx_usc_addr(&device->dev,
+                              pso->code_va + pso->info.main_offset);
+      cfg.unk_2 = 3; /* compute */
+   }
+
+   agx_usc_pack(&b, REGISTERS, cfg)
+      cfg.register_count = pso->info.nr_gprs;
+
+   if (pso->info.has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code = agx_usc_addr(
+            &device->dev, pso->code_va + pso->info.preamble_offset);
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg)
+         ;
+   }
+
+   struct agx_cdm_launch_word_0_packed launch;
+   agx_pack(&launch, CDM_LAUNCH_WORD_0, cfg) {
+      cfg.texture_state_register_count = pso->info.texture_state_count;
+      cfg.sampler_state_register_count =
+         agx_translate_sampler_state_count(pso->info.sampler_state_count,
+                                           false);
+      cfg.uniform_register_count = pso->info.push_count;
+      cfg.preshader_register_count = pso->info.nr_preamble_gprs;
+   }
+
+   struct agx_workgroup wg = agx_workgroup(pso->info.workgroup_size[0],
+                                           pso->info.workgroup_size[1],
+                                           pso->info.workgroup_size[2]);
+
+   /* D3D12 Dispatch counts thread GROUPS; AGX launches want global
+    * threads, exactly as hk multiplies before launching.
+    */
+   struct agx_grid grid = agx_3d(x * wg.x, y * wg.y, z * wg.z);
+
+   if (!d12_list_check_stream_space(list))
+      return;
+
+   list->stream_cur = (uint8_t *)agx_cdm_launch(
+      (uint32_t *)list->stream_cur, device->dev.chip, grid, wg, launch, usc);
+   list->stream_cur = (uint8_t *)agx_cdm_barrier(
+      (uint32_t *)list->stream_cur, device->dev.chip);
+   seg->dispatches++;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetPipelineState(ID3D12GraphicsCommandList *iface,
+                          ID3D12PipelineState *pso)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->pso = pso ? d12_pipeline_state_from_iface(pso) : NULL;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList *iface,
+                                 ID3D12RootSignature *root_sig)
+{
+   /* Our binding model needs nothing from the signature object yet. */
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
+                                           UINT root_param_index,
+                                           D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   /* A root UAV is a raw GPU virtual address, which is exactly what the
+    * shader's binding ABI wants; root parameter index doubles as the
+    * binding slot.
+    */
+   if (root_param_index >= D12_MAX_RESOURCE_BINDINGS) {
+      mesa_loge("SetComputeRootUnorderedAccessView: slot %u out of range",
+                root_param_index);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   list->compute_root_uav[root_param_index] = address;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_Dispatch(ID3D12GraphicsCommandList *iface, UINT x, UINT y, UINT z)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (!x || !y || !z)
+      return;
+
+   d12_list_dispatch_pso(list, x, y, z);
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_list_QueryInterface(ID3D12GraphicsCommandList *iface, REFIID riid,
                         void **out)
@@ -728,6 +874,11 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
+   .SetPipelineState = d12_list_SetPipelineState,
+   .SetComputeRootSignature = d12_list_SetComputeRootSignature,
+   .SetComputeRootUnorderedAccessView =
+      d12_list_SetComputeRootUnorderedAccessView,
+   .Dispatch = d12_list_Dispatch,
    /* Everything unset is NULL: loud crash over silent lie. */
 };
 

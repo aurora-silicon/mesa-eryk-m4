@@ -60,6 +60,11 @@ enum d12_dxop {
    D12_DXOP_IBFE = 51,
    D12_DXOP_UBFE = 52,
    D12_DXOP_BFI = 53,
+   D12_DXOP_CREATE_HANDLE = 57,
+   D12_DXOP_BUFFER_LOAD = 68,
+   D12_DXOP_BUFFER_STORE = 69,
+   D12_DXOP_RAW_BUFFER_LOAD = 139,
+   D12_DXOP_RAW_BUFFER_STORE = 140,
    D12_DXOP_THREAD_ID = 93,
    D12_DXOP_GROUP_ID = 94,
    D12_DXOP_THREAD_ID_IN_GROUP = 95,
@@ -209,6 +214,46 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 {
    if (inst->result_value < ctx->mod->num_values)
       ctx->defs[inst->result_value] = def;
+}
+
+/*
+ * Resource address arithmetic for the binding model described at
+ * D12_DXOP_CREATE_HANDLE. The base address of binding N is read from
+ * uniform registers, then the DXIL coordinates are applied:
+ *
+ *   structured : addr = base + coord0 * stride + coord1
+ *   raw        : addr = base + coord0            (coord1 unused)
+ *
+ * The structured stride comes from the resource metadata; until that is
+ * interpreted we use 4 bytes, which is correct for the 32-bit element
+ * types DXC emits for these accesses.
+ */
+static nir_def *
+resource_address(struct trans_ctx *ctx, unsigned binding, nir_def *coord0,
+                 nir_def *coord1, bool raw)
+{
+   nir_builder *b = ctx->b;
+
+   /* One indirection through the root table. load_root_agx is a
+    * placeholder lowered to a uniform read after preprocessing.
+    */
+   nir_def *root = nir_load_root_agx(b);
+   nir_def *base = nir_load_global(b, 1, 64,
+                                   nir_iadd_imm(b, root, binding * 8),
+                                   .align_mul = 8);
+
+   nir_def *offset;
+   if (raw) {
+      offset = coord0;
+   } else {
+      offset = nir_iadd(b, nir_imul_imm(b, coord0, D12_STRUCTURED_STRIDE_B),
+                        coord1);
+   }
+
+   if (binding >= D12_MAX_RESOURCE_BINDINGS)
+      trans_fail(ctx, "resource binding index out of range");
+
+   return nir_iadd(b, base, nir_u2u64(b, offset));
 }
 
 /*
@@ -453,6 +498,84 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       def_result(ctx, inst, nir_load_local_invocation_index(b));
       return true;
 
+   /*
+    * Resources. The binding model (campaign OQ-2): each bound resource's
+    * 64-bit base address lives in AGX uniform registers, four 16-bit
+    * registers per resource, starting at D12_UNIFORM_RESOURCE_BASE. The
+    * shader reads them with load_preamble; the driver publishes them with
+    * agx_usc_uniform. createHandle therefore resolves to nothing more than
+    * its binding index, and the address arithmetic happens at the access.
+    */
+   case D12_DXOP_CREATE_HANDLE: {
+      /* (resourceClass, rangeId, index, nonUniformIndex) */
+      NEED(2);
+      uint64_t range_id = 0;
+      if (!const_uint(ctx, p[1], &range_id)) {
+         trans_fail(ctx, "dynamic resource range index unsupported");
+         return false;
+      }
+
+      /* The handle IS the binding index for our model. */
+      def_result(ctx, inst, nir_imm_int(b, (uint32_t)range_id));
+      return true;
+   }
+
+   case D12_DXOP_BUFFER_STORE:
+   case D12_DXOP_RAW_BUFFER_STORE: {
+      /* (handle, coord0, coord1, val0..val3, mask [, align]) */
+      NEED(8);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant resource handle unsupported");
+         return false;
+      }
+      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      uint64_t mask = 0;
+      if (!const_uint(ctx, p[7], &mask))
+         mask = 0xf;
+
+      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+                                       get_def(ctx, p[2]),
+                                       opcode == D12_DXOP_RAW_BUFFER_STORE);
+
+      /* Contiguous low components only; DXIL emits the common case. */
+      unsigned comps = util_last_bit((unsigned)mask & 0xf);
+      if (!comps || ((unsigned)mask & 0xf) != BITFIELD_MASK(comps)) {
+         trans_fail(ctx, "sparse buffer store write mask unsupported");
+         return false;
+      }
+
+      nir_def *vals[4];
+      for (unsigned i = 0; i < comps; i++)
+         vals[i] = get_def(ctx, p[3 + i]);
+
+      nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
+      return true;
+   }
+
+   case D12_DXOP_BUFFER_LOAD:
+   case D12_DXOP_RAW_BUFFER_LOAD: {
+      /* (handle, coord0, coord1 [, mask, align]) */
+      NEED(3);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant resource handle unsupported");
+         return false;
+      }
+      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+                                       get_def(ctx, p[2]),
+                                       opcode == D12_DXOP_RAW_BUFFER_LOAD);
+
+      /* DXIL buffer loads return a 4-vector; extractvalue picks lanes. */
+      def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 4));
+      return true;
+   }
+
    default:
       mesa_loge("dxil: unhandled dx.op opcode %llu",
                 (unsigned long long)opcode);
@@ -661,8 +784,15 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       return NULL;
    }
 
-   if (stage == MESA_SHADER_FRAGMENT)
+   if (stage == MESA_SHADER_FRAGMENT) {
       b.shader->info.fs.untyped_color_outputs = false;
+   } else if (stage == MESA_SHADER_COMPUTE) {
+      /* [numthreads(x,y,z)]; without it the launch grid is empty. */
+      for (unsigned i = 0; i < 3; i++) {
+         b.shader->info.workgroup_size[i] =
+            mod->num_threads[i] ? mod->num_threads[i] : 1;
+      }
+   }
 
    for (unsigned i = 0; i < entry->num_insts && !ctx.error; i++) {
       const struct d12_inst *inst = &entry->insts[i];
@@ -748,4 +878,23 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
    nir_validate_shader(b.shader, "after DXIL translation");
    return b.shader;
+}
+
+static bool
+lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_root_agx)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *rep = nir_load_preamble(b, 1, 64, .base = D12_UNIFORM_ROOT);
+   nir_def_replace(&intr->def, rep);
+   return true;
+}
+
+bool
+d12_dxil_lower_root(nir_shader *nir)
+{
+   return nir_shader_intrinsics_pass(nir, lower_root,
+                                     nir_metadata_control_flow, NULL);
 }

@@ -278,6 +278,34 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
 }
 
 static HRESULT STDMETHODCALLTYPE
+d12_device_CreateComputePipelineState(
+   ID3D12Device *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
+   REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (!desc || !desc->CS.pShaderBytecode || !desc->CS.BytecodeLength)
+      return E_INVALIDARG;
+
+   return d12_pipeline_state_create_compute(device, desc->CS.pShaderBytecode,
+                                            desc->CS.BytecodeLength, riid,
+                                            out);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreateRootSignature(ID3D12Device *iface, UINT node_mask,
+                               const void *blob, SIZE_T blob_size,
+                               REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (node_mask > 1)
+      return E_INVALIDARG;
+
+   return d12_root_signature_create(device, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
 d12_device_CreateDescriptorHeap(ID3D12Device *iface,
                                 const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                 REFIID riid, void **out)
@@ -388,6 +416,8 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .CreateCommandAllocator = d12_device_CreateCommandAllocator,
    .CreateCommandList = d12_device_CreateCommandList,
    .CheckFeatureSupport = d12_device_CheckFeatureSupport,
+   .CreateComputePipelineState = d12_device_CreateComputePipelineState,
+   .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .GetDescriptorHandleIncrementSize =

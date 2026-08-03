@@ -24,8 +24,10 @@
 #include <stdint.h>
 
 #include "agx_bg_eot.h"
+#include "agx_compile.h"
 #include "agx_device.h"
 #include "agx_tilebuffer.h"
+#include "dxil/d12_dxil.h"
 #include "layout.h"
 
 #undef MESA_LOG_TAG
@@ -108,6 +110,31 @@ struct d12_descriptor_heap {
    struct d12_rtv *slots; /* NumDescriptors entries */
 };
 
+struct d12_root_signature {
+   ID3D12RootSignature iface; /* must be first */
+   uint32_t refcount;
+   struct d12_device *device; /* holds a device ref */
+};
+
+/* A compiled pipeline: AGX machine code produced from the app's DXIL. */
+struct d12_pipeline_state {
+   ID3D12PipelineState iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   bool is_compute;
+
+   struct agx_bo *code_bo;
+   uint64_t code_va;
+   struct agx_shader_info info;
+};
+
+static inline struct d12_pipeline_state *
+d12_pipeline_state_from_iface(ID3D12PipelineState *iface)
+{
+   return (struct d12_pipeline_state *)iface;
+}
+
 struct d12_cmd_allocator {
    ID3D12CommandAllocator iface; /* must be first */
    uint32_t refcount;
@@ -180,6 +207,10 @@ struct d12_cmd_list {
    struct d12_segment segments[D12_MAX_SEGMENTS];
    unsigned segment_count;
    bool cdm_open; /* segments[segment_count-1] is an unterminated CDM */
+
+   /* Bound state for dispatches */
+   struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
+   uint64_t compute_root_uav[D12_MAX_RESOURCE_BINDINGS];
 };
 
 static inline struct d12_resource *
@@ -264,6 +295,11 @@ HRESULT d12_cmd_list_create(struct d12_device *device,
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                    REFIID riid, void **out);
+HRESULT d12_root_signature_create(struct d12_device *device, REFIID riid,
+                                  void **out);
+HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
+                                          const void *dxil, size_t dxil_size,
+                                          REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

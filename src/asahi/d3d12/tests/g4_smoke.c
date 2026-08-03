@@ -1,0 +1,216 @@
+/*
+ * Copyright 2026 NTASP contributors
+ * SPDX-License-Identifier: MIT
+ *
+ * d3d12agx G4 acceptance test: the whole campaign in one program.
+ *
+ * An application hands the driver DXIL bytecode through the public D3D12
+ * API. The driver parses it, translates it to NIR, compiles it to AGX
+ * machine code, dispatches it on the Apple GPU, and the results are
+ * checked on the CPU. No SPIR-V, no Vulkan, no external compiler.
+ *
+ * The shader is compute (HLSL written for this project, compiled by dxc):
+ *
+ *   RWStructuredBuffer<uint> outbuf : register(u0);
+ *   [numthreads(64,1,1)]
+ *   void main(uint3 tid : SV_DispatchThreadID) {
+ *       outbuf[tid.x] = tid.x * 3 + 7;
+ *   }
+ *
+ * so element i must equal i*3+7 — a value the CPU never wrote.
+ */
+
+#define COBJMACROS
+#include <wsl/winadapter.h>
+#include <directx/d3d12.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+static int failures = 0;
+
+#define CHECK(cond, what)                                                    \
+   do {                                                                      \
+      if (cond) {                                                            \
+         printf("ok   - %s\n", what);                                        \
+      } else {                                                               \
+         printf("FAIL - %s\n", what);                                        \
+         failures++;                                                         \
+      }                                                                      \
+   } while (0)
+
+#define THREADS_PER_GROUP 64
+#define NUM_GROUPS        4
+#define NUM_ELEMENTS      (THREADS_PER_GROUP * NUM_GROUPS)
+
+int
+main(int argc, char **argv)
+{
+   const char *dxil_path = argc > 1 ? argv[1] : NULL;
+   if (!dxil_path) {
+      fprintf(stderr, "usage: %s cs.dxil\n", argv[0]);
+      return 2;
+   }
+
+   FILE *f = fopen(dxil_path, "rb");
+   if (!f) {
+      fprintf(stderr, "cannot open %s\n", dxil_path);
+      return 2;
+   }
+   fseek(f, 0, SEEK_END);
+   long dxil_size = ftell(f);
+   fseek(f, 0, SEEK_SET);
+   void *dxil = malloc(dxil_size);
+   if (!dxil || fread(dxil, 1, dxil_size, f) != (size_t)dxil_size) {
+      fprintf(stderr, "cannot read %s\n", dxil_path);
+      return 2;
+   }
+   fclose(f);
+
+   ID3D12Device *dev = NULL;
+   HRESULT hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0,
+                                  &IID_ID3D12Device, (void **)&dev);
+   CHECK(hr == S_OK && dev, "D3D12CreateDevice");
+   if (FAILED(hr) || !dev)
+      return 1;
+
+   /* Root signature (our binding model derives nothing from it yet, but
+    * the API requires the object).
+    */
+   ID3D12RootSignature *root_sig = NULL;
+   hr = ID3D12Device_CreateRootSignature(dev, 0, dxil, 4,
+                                         &IID_ID3D12RootSignature,
+                                         (void **)&root_sig);
+   CHECK(hr == S_OK && root_sig, "CreateRootSignature");
+
+   /* THE MILESTONE: the driver compiles application DXIL to AGX. */
+   D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {
+      .pRootSignature = root_sig,
+      .CS = {.pShaderBytecode = dxil, .BytecodeLength = dxil_size},
+   };
+   ID3D12PipelineState *pso = NULL;
+   hr = ID3D12Device_CreateComputePipelineState(dev, &pso_desc,
+                                                &IID_ID3D12PipelineState,
+                                                (void **)&pso);
+   CHECK(hr == S_OK && pso,
+         "CreateComputePipelineState compiles DXIL to AGX machine code");
+   if (FAILED(hr) || !pso)
+      return 1;
+
+   /* Output buffer, poisoned so stale zeroes cannot fake a pass. */
+   D3D12_HEAP_PROPERTIES heap = {.Type = D3D12_HEAP_TYPE_UPLOAD};
+   D3D12_RESOURCE_DESC bd = {
+      .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+      .Width = NUM_ELEMENTS * 4,
+      .Height = 1,
+      .DepthOrArraySize = 1,
+      .MipLevels = 1,
+      .SampleDesc = {.Count = 1},
+      .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+      .Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+   };
+   ID3D12Resource *buf = NULL;
+   hr = ID3D12Device_CreateCommittedResource(
+      dev, &heap, D3D12_HEAP_FLAG_NONE, &bd,
+      D3D12_RESOURCE_STATE_UNORDERED_ACCESS, NULL, &IID_ID3D12Resource,
+      (void **)&buf);
+   CHECK(hr == S_OK && buf, "create UAV buffer");
+
+   uint32_t *map = NULL;
+   ID3D12Resource_Map(buf, 0, NULL, (void **)&map);
+   CHECK(map != NULL, "map UAV buffer");
+   for (unsigned i = 0; i < NUM_ELEMENTS; i++)
+      map[i] = 0xDEADBEEF;
+
+   /* Record: bind the pipeline and the UAV, dispatch. */
+   ID3D12CommandAllocator *alloc = NULL;
+   ID3D12GraphicsCommandList *list = NULL;
+   ID3D12Device_CreateCommandAllocator(dev, D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                                       &IID_ID3D12CommandAllocator,
+                                       (void **)&alloc);
+   hr = ID3D12Device_CreateCommandList(dev, 0, D3D12_COMMAND_LIST_TYPE_COMPUTE,
+                                       alloc, NULL,
+                                       &IID_ID3D12GraphicsCommandList,
+                                       (void **)&list);
+   CHECK(hr == S_OK && list, "CreateCommandList(COMPUTE)");
+
+   ID3D12GraphicsCommandList_SetComputeRootSignature(list, root_sig);
+   ID3D12GraphicsCommandList_SetPipelineState(list, pso);
+   ID3D12GraphicsCommandList_SetComputeRootUnorderedAccessView(
+      list, 0, ID3D12Resource_GetGPUVirtualAddress(buf));
+   ID3D12GraphicsCommandList_Dispatch(list, NUM_GROUPS, 1, 1);
+
+   hr = ID3D12GraphicsCommandList_Close(list);
+   CHECK(hr == S_OK, "Close command list");
+
+   ID3D12CommandQueue *queue = NULL;
+   D3D12_COMMAND_QUEUE_DESC qdesc = {.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE};
+   ID3D12Device_CreateCommandQueue(dev, &qdesc, &IID_ID3D12CommandQueue,
+                                   (void **)&queue);
+   ID3D12Fence *fence = NULL;
+   ID3D12Device_CreateFence(dev, 0, D3D12_FENCE_FLAG_NONE, &IID_ID3D12Fence,
+                            (void **)&fence);
+
+   CHECK(map[0] == 0xDEADBEEF, "buffer still poisoned before execution");
+
+   ID3D12CommandList *lists[] = {(ID3D12CommandList *)list};
+   ID3D12CommandQueue_ExecuteCommandLists(queue, 1, lists);
+   ID3D12CommandQueue_Signal(queue, fence, 1);
+
+   struct timespec t0, t1;
+   clock_gettime(CLOCK_MONOTONIC, &t0);
+   hr = ID3D12Fence_SetEventOnCompletion(fence, 1, NULL);
+   clock_gettime(CLOCK_MONOTONIC, &t1);
+   printf("       fence wait blocked for %.3f ms\n",
+          (t1.tv_sec - t0.tv_sec) * 1e3 +
+             (t1.tv_nsec - t0.tv_nsec) / 1e6);
+   CHECK(hr == S_OK && ID3D12Fence_GetCompletedValue(fence) >= 1,
+         "GPU dispatch complete (fence reached 1)");
+
+   /* Diagnostic: is a miss a fence-ordering bug or a visibility delay?
+    * If the data appears on a later read, the wait returned too early.
+    */
+   if (map[0] != 7) {
+      for (int spin = 0; spin < 100 && map[0] != 7; spin++) {
+         struct timespec ts = {.tv_nsec = 1000000};
+         nanosleep(&ts, NULL);
+      }
+      printf("       NOTE: value after re-read spin: %u (fence returned "
+             "before the write was visible)\n",
+             map[0]);
+   }
+
+   /* The verdict: every element computed by our compiled shader. */
+   int bad = -1;
+   for (unsigned i = 0; i < NUM_ELEMENTS; i++) {
+      if (map[i] != i * 3 + 7) {
+         bad = (int)i;
+         break;
+      }
+   }
+   CHECK(bad < 0, "all 256 elements equal tid*3+7, computed on the GPU");
+   if (bad >= 0) {
+      printf("       element %d: got 0x%08x want 0x%08x\n", bad, map[bad],
+             bad * 3 + 7);
+   } else {
+      printf("       spot check: [0]=%u [1]=%u [64]=%u [255]=%u\n", map[0],
+             map[1], map[64], map[255]);
+   }
+
+   ID3D12Resource_Unmap(buf, 0, NULL);
+   ID3D12Fence_Release(fence);
+   ID3D12CommandQueue_Release(queue);
+   ID3D12GraphicsCommandList_Release(list);
+   ID3D12CommandAllocator_Release(alloc);
+   ID3D12Resource_Release(buf);
+   ID3D12PipelineState_Release(pso);
+   ID3D12RootSignature_Release(root_sig);
+   CHECK(ID3D12Device_Release(dev) == 0, "device refcount reaches 0");
+
+   printf(failures ? "G4 SMOKE: %d FAILURES\n" : "G4 SMOKE: ALL PASS\n",
+          failures);
+   free(dxil);
+   return failures;
+}
