@@ -1326,6 +1326,121 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
    list->render_open = true;
 }
 
+/*
+ * Texture <-> buffer copy. This is how an application gets rendered pixels
+ * back without knowing our internal layout, and therefore how any
+ * independently written test grades our rendering.
+ *
+ * Both sides are linear, but their row strides differ: our textures use a
+ * 64-byte-aligned stride while D3D12 footprints are 256-byte aligned. So the
+ * copy runs one GPU dispatch per row. That is not the fastest possible
+ * encoding, but it is correct for mismatched pitches and reuses the same
+ * bounds-checked kernel as CopyBufferRegion.
+ */
+static void STDMETHODCALLTYPE
+d12_list_CopyTextureRegion(ID3D12GraphicsCommandList *iface,
+                           const D3D12_TEXTURE_COPY_LOCATION *dst,
+                           UINT dst_x, UINT dst_y, UINT dst_z,
+                           const D3D12_TEXTURE_COPY_LOCATION *src,
+                           const D3D12_BOX *src_box)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!dst || !src || !dst->pResource || !src->pResource) {
+      mesa_loge("CopyTextureRegion: null location");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (dst_z != 0) {
+      mesa_loge("CopyTextureRegion: 3D destination offset unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_resource *dres = d12_resource_from_iface(dst->pResource);
+   struct d12_resource *sres = d12_resource_from_iface(src->pResource);
+
+   /* Which direction? One side must be a placed footprint in a buffer and
+    * the other a texture subresource.
+    */
+   bool tex_to_buf = src->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX &&
+                     dst->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+   bool buf_to_tex = src->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT &&
+                     dst->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+
+   if (!tex_to_buf && !buf_to_tex) {
+      mesa_loge("CopyTextureRegion: only texture<->buffer placed-footprint "
+                "copies are supported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const D3D12_PLACED_SUBRESOURCE_FOOTPRINT *fp =
+      tex_to_buf ? &dst->PlacedFootprint : &src->PlacedFootprint;
+   struct d12_resource *tex = tex_to_buf ? sres : dres;
+   struct d12_resource *buf = tex_to_buf ? dres : sres;
+
+   if (tex->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       buf->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      mesa_loge("CopyTextureRegion: expected a 2D texture and a buffer");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   /* Region: the source box if given, else the whole footprint. */
+   unsigned x0 = 0, y0 = 0;
+   unsigned width = fp->Footprint.Width, height = fp->Footprint.Height;
+   if (src_box) {
+      x0 = src_box->left;
+      y0 = src_box->top;
+      width = src_box->right - src_box->left;
+      height = src_box->bottom - src_box->top;
+   }
+
+   if (!width || !height)
+      return;
+
+   const unsigned bpp = 4; /* RGBA8, our texture scope */
+   const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
+   const unsigned buf_stride = fp->Footprint.RowPitch;
+   const uint64_t row_bytes = (uint64_t)width * bpp;
+
+   uint64_t tex_base = tex->bo->va->addr;
+   uint64_t buf_base = buf->bo->va->addr + fp->Offset;
+
+   /* Bounds: refuse rather than scribble outside either allocation. */
+   uint64_t tex_need = (uint64_t)(y0 + height - 1) * tex_stride +
+                       (uint64_t)(x0 + width) * bpp;
+   uint64_t buf_need = (uint64_t)(height - 1) * buf_stride + row_bytes;
+   if (tex_need > tex->bo->size || fp->Offset + buf_need > buf->bo->size) {
+      mesa_loge("CopyTextureRegion: region exceeds a resource");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (unsigned row = 0; row < height; row++) {
+      uint64_t tex_row =
+         tex_base + (uint64_t)(y0 + row) * tex_stride + (uint64_t)x0 * bpp;
+      uint64_t buf_row = buf_base + (uint64_t)(dst_y + row) * buf_stride +
+                         (uint64_t)dst_x * bpp;
+
+      struct libagx_copy_uchar_args args = {
+         .dest = tex_to_buf ? buf_row : tex_row,
+         .src = tex_to_buf ? tex_row : buf_row,
+      };
+
+      d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
+                                agx_1d(row_bytes));
+
+      if (list->state == D12_LIST_ERROR)
+         return;
+   }
+}
+
 static void STDMETHODCALLTYPE
 d12_list_ResourceBarrier(ID3D12GraphicsCommandList *iface, UINT num_barriers,
                          const D3D12_RESOURCE_BARRIER *barriers)
@@ -1387,6 +1502,7 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .Reset = d12_list_Reset,
    .CopyBufferRegion = d12_list_CopyBufferRegion,
    .CopyResource = d12_list_CopyResource,
+   .CopyTextureRegion = d12_list_CopyTextureRegion,
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,

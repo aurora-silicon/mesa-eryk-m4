@@ -264,6 +264,91 @@ main(int argc, char **argv)
             "area below the viewport keeps the clear colour");
    }
 
+   /* THE INDEPENDENT CHECK. Everything above reads the texture through our
+    * own mapping, which only works because our textures happen to be linear
+    * -- our harness both draws the image and grades it. This instead pulls
+    * the pixels out the way any real application (and every pixel assertion
+    * in the vkd3d suite) does: GetCopyableFootprints to learn the layout,
+    * then CopyTextureRegion into a plain buffer.
+    */
+   {
+      D3D12_RESOURCE_DESC rtd = ID3D12Resource_GetDesc(rt);
+      D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp = {0};
+      UINT rows = 0;
+      UINT64 row_bytes = 0, total = 0;
+      ID3D12Device_GetCopyableFootprints(dev, &rtd, 0, 1, 0, &fp, &rows,
+                                         &row_bytes, &total);
+
+      CHECK(fp.Footprint.Width == W && fp.Footprint.Height == H &&
+               rows == H && row_bytes == (UINT64)W * 4,
+            "GetCopyableFootprints describes the render target");
+      CHECK(fp.Footprint.RowPitch % 256 == 0 && fp.Footprint.RowPitch >= W * 4,
+            "footprint row pitch honours the 256-byte D3D12 alignment");
+
+      D3D12_HEAP_PROPERTIES rb = {.Type = D3D12_HEAP_TYPE_READBACK};
+      D3D12_RESOURCE_DESC bd = {
+         .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+         .Width = fp.Footprint.RowPitch * (UINT64)H,
+         .Height = 1,
+         .DepthOrArraySize = 1,
+         .MipLevels = 1,
+         .SampleDesc = {.Count = 1},
+         .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+      };
+      ID3D12Resource *dstbuf = NULL;
+      hr = ID3D12Device_CreateCommittedResource(
+         dev, &rb, D3D12_HEAP_FLAG_NONE, &bd, D3D12_RESOURCE_STATE_COMMON,
+         NULL, &IID_ID3D12Resource, (void **)&dstbuf);
+      CHECK(hr == S_OK && dstbuf, "create readback buffer from the footprint");
+
+      uint8_t *rbmap = NULL;
+      ID3D12Resource_Map(dstbuf, 0, NULL, (void **)&rbmap);
+      memset(rbmap, 0x33, (size_t)(fp.Footprint.RowPitch * (UINT64)H));
+
+      /* Re-render, then copy the texture out through the API. */
+      ID3D12GraphicsCommandList_Reset(list, alloc, NULL);
+      ID3D12GraphicsCommandList_ClearRenderTargetView(list, rtv, clear_red, 0,
+                                                      NULL);
+      ID3D12GraphicsCommandList_RSSetViewports(list, 1, &vp);
+      ID3D12GraphicsCommandList_RSSetScissorRects(list, 1, &sc);
+      ID3D12GraphicsCommandList_SetGraphicsRootSignature(list, root_sig);
+      ID3D12GraphicsCommandList_SetPipelineState(list, pso);
+      ID3D12GraphicsCommandList_IASetPrimitiveTopology(
+         list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+      ID3D12GraphicsCommandList_DrawInstanced(list, 3, 1, 0, 0);
+
+      D3D12_TEXTURE_COPY_LOCATION dloc = {
+         .pResource = dstbuf,
+         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+         .PlacedFootprint = fp,
+      };
+      D3D12_TEXTURE_COPY_LOCATION sloc = {
+         .pResource = rt,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = 0,
+      };
+      ID3D12GraphicsCommandList_CopyTextureRegion(list, &dloc, 0, 0, 0, &sloc,
+                                                  NULL);
+      ID3D12GraphicsCommandList_Close(list);
+      ID3D12CommandQueue_ExecuteCommandLists(queue, 1, lists);
+      ID3D12CommandQueue_Signal(queue, fence, 3);
+      ID3D12Fence_SetEventOnCompletion(fence, 3, NULL);
+
+      const uint8_t *c = rbmap + (H / 2) * fp.Footprint.RowPitch + (W / 2) * 4;
+      const uint8_t *k = rbmap + 2 * fp.Footprint.RowPitch + 2 * 4;
+      printf("       via CopyTextureRegion: centre %02x%02x%02x  "
+             "corner %02x%02x%02x\n",
+             c[0], c[1], c[2], k[0], k[1], k[2]);
+
+      CHECK(c[0] == 0x40 && c[1] == 0x80 && c[2] == 0xbf,
+            "triangle read back through CopyTextureRegion, not our mapping");
+      CHECK(k[0] == 0xff && k[1] == 0x00 && k[2] == 0x00,
+            "clear colour read back through CopyTextureRegion");
+
+      ID3D12Resource_Unmap(dstbuf, 0, NULL);
+      ID3D12Resource_Release(dstbuf);
+   }
+
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);
    ID3D12CommandQueue_Release(queue);

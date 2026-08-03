@@ -438,6 +438,76 @@ d12_device_CreateCommittedResource(ID3D12Device *iface,
    return d12_resource_create_committed(device, heap_props, desc, riid, out);
 }
 
+/*
+ * Describe how a resource's subresources sit in a buffer. This is the API's
+ * own answer to row alignment, and it is what lets an application (or an
+ * independently written test) copy a texture out without knowing anything
+ * about our internal layout.
+ */
+static void STDMETHODCALLTYPE
+d12_device_GetCopyableFootprints(ID3D12Device *iface,
+                                 const D3D12_RESOURCE_DESC *desc,
+                                 UINT first_subresource,
+                                 UINT num_subresources, UINT64 base_offset,
+                                 D3D12_PLACED_SUBRESOURCE_FOOTPRINT *layouts,
+                                 UINT *num_rows, UINT64 *row_size_bytes,
+                                 UINT64 *total_bytes)
+{
+   UINT64 offset = base_offset;
+   UINT64 total = 0;
+
+   if (!desc) {
+      if (total_bytes)
+         *total_bytes = 0;
+      return;
+   }
+
+   for (UINT i = 0; i < num_subresources; i++) {
+      UINT sub = first_subresource + i;
+      UINT width, height, rows, pitch;
+      UINT64 row_size;
+
+      if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+         width = (UINT)desc->Width;
+         height = 1;
+         rows = 1;
+         row_size = desc->Width;
+         pitch = (UINT)ALIGN_POT(desc->Width,
+                                 D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+      } else {
+         /* Single-level RGBA8 is our texture scope; 4 bytes per texel. */
+         width = (UINT)desc->Width;
+         height = desc->Height;
+         rows = height;
+         row_size = (UINT64)width * 4;
+         pitch = (UINT)ALIGN_POT(row_size,
+                                 D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
+      }
+
+      if (layouts) {
+         layouts[i].Offset = offset;
+         layouts[i].Footprint.Format = desc->Format;
+         layouts[i].Footprint.Width = width;
+         layouts[i].Footprint.Height = height;
+         layouts[i].Footprint.Depth = 1;
+         layouts[i].Footprint.RowPitch = pitch;
+      }
+      if (num_rows)
+         num_rows[i] = rows;
+      if (row_size_bytes)
+         row_size_bytes[i] = row_size;
+
+      UINT64 sub_size = (UINT64)pitch * rows;
+      offset += ALIGN_POT(sub_size, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+      total += sub_size;
+
+      (void)sub;
+   }
+
+   if (total_bytes)
+      *total_bytes = total;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateFence(ID3D12Device *iface, UINT64 initial_value,
                        D3D12_FENCE_FLAGS flags, REFIID riid, void **out)
@@ -489,6 +559,7 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .GetDescriptorHandleIncrementSize =
       d12_device_GetDescriptorHandleIncrementSize,
    .CreateCommittedResource = d12_device_CreateCommittedResource,
+   .GetCopyableFootprints = d12_device_GetCopyableFootprints,
    .CreateFence = d12_device_CreateFence,
    .GetDeviceRemovedReason = d12_device_GetDeviceRemovedReason,
    .GetAdapterLuid = d12_device_GetAdapterLuid,
