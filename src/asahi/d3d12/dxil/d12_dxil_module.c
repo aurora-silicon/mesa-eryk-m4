@@ -19,6 +19,8 @@
 #include "util/log.h"
 #include "util/macros.h"
 
+static void parse_entry_signatures(struct d12_module *mod);
+
 struct parse_ctx {
    struct d12_module *mod;
 
@@ -694,6 +696,9 @@ d12_dxil_module_parse(struct d12_module *mod, const uint8_t *bitcode,
          f->name = mod->values[f->value_index].name;
    }
 
+   /* Signatures need the finished value and metadata tables. */
+   parse_entry_signatures(mod);
+
    return mod->error == NULL;
 }
 
@@ -704,6 +709,130 @@ d12_dxil_module_finish(struct d12_module *mod)
       free(mod->functions[i].insts);
    free(mod->strings);
    memset(mod, 0, sizeof(*mod));
+}
+
+/*
+ * Signature metadata. Resolve a metadata operand that is an MD_VALUE
+ * wrapping an integer constant.
+ */
+static bool
+md_const_uint(const struct d12_module *mod, uint64_t md_id, uint64_t *out)
+{
+   if (md_id >= mod->num_metadata)
+      return false;
+
+   const struct d12_metadata *md = &mod->metadata[md_id];
+   if (md->kind != D12_MD_VALUE || md->value_id >= mod->num_values)
+      return false;
+
+   const struct d12_value *v = &mod->values[md->value_id];
+   if (v->kind != D12_VALUE_CONSTANT)
+      return false;
+
+   *out = v->is_null ? 0 : v->const_int;
+   return true;
+}
+
+static const char *
+md_string(const struct d12_module *mod, uint64_t md_id)
+{
+   if (md_id >= mod->num_metadata)
+      return NULL;
+
+   const struct d12_metadata *md = &mod->metadata[md_id];
+   return md->kind == D12_MD_STRING ? md->string : NULL;
+}
+
+/* Parse one signature list node into an element array. */
+static void
+parse_signature(struct d12_module *mod, uint64_t list_id,
+                struct d12_sig_element *out, unsigned *out_count)
+{
+   *out_count = 0;
+
+   if (list_id >= mod->num_metadata)
+      return;
+
+   const struct d12_metadata *list = &mod->metadata[list_id];
+   if (list->kind != D12_MD_NODE)
+      return;
+
+   for (unsigned i = 0;
+        i < list->node.num_ops && *out_count < D12_MAX_SIG_ELEMENTS; i++) {
+      if (list->node.op_is_null[i])
+         continue;
+
+      uint64_t elem_id = list->node.ops[i];
+      if (elem_id >= mod->num_metadata)
+         continue;
+
+      const struct d12_metadata *elem = &mod->metadata[elem_id];
+      if (elem->kind != D12_MD_NODE || elem->node.num_ops < 10)
+         continue;
+
+      struct d12_sig_element *se = &out[(*out_count)++];
+      memset(se, 0, sizeof(*se));
+
+      uint64_t v;
+      if (md_const_uint(mod, elem->node.ops[0], &v))
+         se->id = (uint32_t)v;
+
+      se->name = md_string(mod, elem->node.ops[1]);
+
+      if (md_const_uint(mod, elem->node.ops[7], &v))
+         se->cols = (uint32_t)v;
+      if (md_const_uint(mod, elem->node.ops[8], &v))
+         se->start_row = (uint32_t)v;
+   }
+}
+
+static void
+parse_entry_signatures(struct d12_module *mod)
+{
+   const struct d12_named_md *eps = d12_dxil_find_named_md(mod,
+                                                           "dx.entryPoints");
+   if (!eps || !eps->num_nodes)
+      return;
+
+   uint64_t ep_id = eps->nodes[0];
+   if (ep_id >= mod->num_metadata)
+      return;
+
+   /* Entry node: {function, name, signatures, resources, properties} */
+   const struct d12_metadata *ep = &mod->metadata[ep_id];
+   if (ep->kind != D12_MD_NODE || ep->node.num_ops < 3 ||
+       ep->node.op_is_null[2])
+      return;
+
+   uint64_t sigs_id = ep->node.ops[2];
+   if (sigs_id >= mod->num_metadata)
+      return;
+
+   /* Signatures node: {input, output, patch-constant} */
+   const struct d12_metadata *sigs = &mod->metadata[sigs_id];
+   if (sigs->kind != D12_MD_NODE)
+      return;
+
+   if (sigs->node.num_ops >= 1 && !sigs->node.op_is_null[0]) {
+      parse_signature(mod, sigs->node.ops[0], mod->input_sig,
+                      &mod->num_input_sig);
+   }
+
+   if (sigs->node.num_ops >= 2 && !sigs->node.op_is_null[1]) {
+      parse_signature(mod, sigs->node.ops[1], mod->output_sig,
+                      &mod->num_output_sig);
+   }
+}
+
+const struct d12_sig_element *
+d12_dxil_find_sig(const struct d12_sig_element *sig, unsigned count,
+                  uint32_t id)
+{
+   for (unsigned i = 0; i < count; i++) {
+      if (sig[i].id == id)
+         return &sig[i];
+   }
+   return NULL;
 }
 
 const struct d12_named_md *

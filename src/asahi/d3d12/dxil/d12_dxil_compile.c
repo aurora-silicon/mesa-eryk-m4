@@ -16,6 +16,7 @@
 #include "agx_compile.h"
 #include "agx_nir.h"
 #include "agx_tilebuffer.h"
+#include "agx_uvs.h"
 #include "disasm.h"
 #include "nir.h"
 
@@ -157,6 +158,13 @@ main(int argc, char **argv)
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
    }
+
+   /* Vertex outputs go through the unified vertex store, not plain
+    * store_output — the vertex-stage analogue of the tilebuffer lowering.
+    */
+   struct agx_unlinked_uvs_layout uvs = {0};
+   if (nir->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS(_, nir, agx_nir_lower_uvs, &uvs);
 
    struct agx_shader_key key = {
       .no_stop = false,

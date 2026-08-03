@@ -245,6 +245,40 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
+      /* Resolve the semantic so system values become the right NIR
+       * intrinsic rather than a generic varying read.
+       */
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->input_sig, ctx->mod->num_input_sig,
+                           (uint32_t)sig_id);
+      const char *sem = se ? se->name : NULL;
+
+      if (sem && !strcmp(sem, "SV_VertexID")) {
+         def_result(ctx, inst, nir_load_vertex_id(b));
+         return true;
+      }
+
+      if (sem && !strcmp(sem, "SV_InstanceID")) {
+         def_result(ctx, inst, nir_load_instance_id(b));
+         return true;
+      }
+
+      if (sem && !strcmp(sem, "SV_Position") &&
+          b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+         /* Fragment position is the interpolated frag coord, not a
+          * user varying.
+          */
+         nir_def *coord = nir_load_frag_coord(b);
+         def_result(ctx, inst, nir_channel(b, coord, (unsigned)col));
+         b->shader->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_POS);
+         return true;
+      }
+
+      if (sem && !strcmp(sem, "SV_IsFrontFace")) {
+         def_result(ctx, inst, nir_load_front_face(b, 1));
+         return true;
+      }
+
       /* Signature element -> IO slot. DXIL indexes signature elements;
        * map element N to a generic slot, consistently with outputs.
        */
@@ -296,14 +330,22 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *val = get_def(ctx, p[3]);
 
+      /* Semantic-driven, not positional: SV_Position is the clip-space
+       * position wherever it appears in the signature.
+       */
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->output_sig, ctx->mod->num_output_sig,
+                           (uint32_t)sig_id);
+      const char *sem = se ? se->name : NULL;
+
       unsigned location;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
-         location = FRAG_RESULT_DATA0 + sig_id;
+         /* SV_Target[n]; the semantic index rides in start_row. */
+         location = FRAG_RESULT_DATA0 + (se ? se->start_row : sig_id);
+      } else if (sem && !strcmp(sem, "SV_Position")) {
+         location = VARYING_SLOT_POS;
       } else {
-         /* Vertex position is signature element 0 by DXC convention for
-          * SV_Position; anything else becomes a generic varying.
-          */
-         location = sig_id == 0 ? VARYING_SLOT_POS : (VARYING_SLOT_VAR0 + sig_id);
+         location = VARYING_SLOT_VAR0 + sig_id;
       }
       b->shader->info.outputs_written |= BITFIELD64_BIT(location);
 
@@ -460,6 +502,74 @@ translate_binop(struct trans_ctx *ctx, const struct d12_inst *inst)
    return true;
 }
 
+/* LLVM compare predicates (float 0-15, integer 32-41) */
+static bool
+translate_cmp(struct trans_ctx *ctx, const struct d12_inst *inst)
+{
+   nir_builder *b = ctx->b;
+
+   if (inst->num_ops < 2 || inst->num_extra < 1) {
+      trans_fail(ctx, "malformed compare");
+      return false;
+   }
+
+   nir_def *x = get_def(ctx, inst->ops[0]);
+   nir_def *y = get_def(ctx, inst->ops[1]);
+   nir_def *res = NULL;
+
+   switch (inst->extra[0]) {
+   /* Float predicates. Ordered and unordered forms are mapped to the
+    * same NIR comparison; AGX has no NaN-signalling distinction here.
+    */
+   case 1: case 9:  res = nir_feq(b, x, y); break;  /* OEQ / UEQ */
+   case 2: case 10: res = nir_flt(b, y, x); break;  /* OGT / UGT */
+   case 3: case 11: res = nir_fge(b, x, y); break;  /* OGE / UGE */
+   case 4: case 12: res = nir_flt(b, x, y); break;  /* OLT / ULT */
+   case 5: case 13: res = nir_fge(b, y, x); break;  /* OLE / ULE */
+   case 6: case 14: res = nir_fneu(b, x, y); break; /* ONE / UNE */
+
+   /* Integer predicates */
+   case 32: res = nir_ieq(b, x, y); break;
+   case 33: res = nir_ine(b, x, y); break;
+   case 34: res = nir_ult(b, y, x); break;
+   case 35: res = nir_uge(b, x, y); break;
+   case 36: res = nir_ult(b, x, y); break;
+   case 37: res = nir_uge(b, y, x); break;
+   case 38: res = nir_ilt(b, y, x); break;
+   case 39: res = nir_ige(b, x, y); break;
+   case 40: res = nir_ilt(b, x, y); break;
+   case 41: res = nir_ige(b, y, x); break;
+
+   default:
+      trans_fail(ctx, "unhandled compare predicate");
+      return false;
+   }
+
+   def_result(ctx, inst, res);
+   return true;
+}
+
+/* select: LLVM orders operands (true, false, cond) */
+static bool
+translate_select(struct trans_ctx *ctx, const struct d12_inst *inst)
+{
+   if (inst->num_ops < 3) {
+      trans_fail(ctx, "malformed select");
+      return false;
+   }
+
+   nir_def *t = get_def(ctx, inst->ops[0]);
+   nir_def *f = get_def(ctx, inst->ops[1]);
+   nir_def *cond = get_def(ctx, inst->ops[2]);
+
+   /* NIR wants a 1-bit boolean condition. */
+   if (cond->bit_size != 1)
+      cond = nir_ine_imm(ctx->b, cond, 0);
+
+   def_result(ctx, inst, nir_bcsel(ctx->b, cond, t, f));
+   return true;
+}
+
 static bool
 translate_cast(struct trans_ctx *ctx, const struct d12_inst *inst)
 {
@@ -575,6 +685,16 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
       case D12_FUNC_INST_CAST:
          translate_cast(&ctx, inst);
+         break;
+
+      case D12_FUNC_INST_CMP:
+      case D12_FUNC_INST_CMP2:
+         translate_cmp(&ctx, inst);
+         break;
+
+      case D12_FUNC_INST_SELECT:
+      case D12_FUNC_INST_VSELECT:
+         translate_select(&ctx, inst);
          break;
 
       case D12_FUNC_INST_RET:

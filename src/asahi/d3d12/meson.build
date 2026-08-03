@@ -80,7 +80,7 @@ libd12_dxil_files = files(
 d3d12agx_dxil_dump = executable(
   'd3d12agx_dxil_dump',
   [libd12_dxil_files, files('dxil/d12_dxil_dump.c')],
-  include_directories : [inc_include, inc_src],
+  include_directories : [inc_include, inc_src, inc_compiler],
   dependencies : [idep_mesautil],
 )
 

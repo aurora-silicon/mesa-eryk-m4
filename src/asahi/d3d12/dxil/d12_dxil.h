@@ -366,6 +366,24 @@ struct d12_named_md {
    unsigned num_nodes;
 };
 
+/*
+ * One DXIL signature element. Layout of the metadata node, read out of
+ * real dxc output:
+ *   [0] id  [1] semantic name  [2] component type  [3] system-value kind
+ *   [4] semantic indices  [5] interpolation mode  [6] rows  [7] cols
+ *   [8] start row  [9] start col  [10] name-value pairs
+ * The semantic NAME is the dependable key (SV_Position, SV_Target,
+ * SV_VertexID, TEXCOORD, ...), so that is what we match on.
+ */
+struct d12_sig_element {
+   uint32_t id;         /* what loadInput/storeOutput reference */
+   const char *name;    /* semantic name */
+   uint32_t start_row;
+   uint32_t cols;
+};
+
+#define D12_MAX_SIG_ELEMENTS 32
+
 #define D12_MAX_TYPES     512
 #define D12_MAX_VALUES    8192
 #define D12_MAX_FUNCTIONS 256
@@ -392,8 +410,18 @@ struct d12_module {
    char *strings;
    size_t strings_used, strings_size;
 
+   /* Entry-point signatures, resolved from dx.entryPoints */
+   struct d12_sig_element input_sig[D12_MAX_SIG_ELEMENTS];
+   unsigned num_input_sig;
+   struct d12_sig_element output_sig[D12_MAX_SIG_ELEMENTS];
+   unsigned num_output_sig;
+
    const char *error;
 };
+
+/* Look up a signature element by the id loadInput/storeOutput carries. */
+const struct d12_sig_element *d12_dxil_find_sig(const struct d12_sig_element *sig,
+                                                unsigned count, uint32_t id);
 
 /*
  * Parse a complete module. Returns false with mod->error set on failure.

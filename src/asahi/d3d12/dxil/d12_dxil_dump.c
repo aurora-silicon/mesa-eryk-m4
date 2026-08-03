@@ -183,8 +183,40 @@ main(int argc, char **argv)
 
    for (unsigned i = 0; i < mod.num_named_md; i++) {
       const struct d12_named_md *nmd = &mod.named_md[i];
-      printf("  named md %s: %u node(s)\n", nmd->name ? nmd->name : "(?)",
-             nmd->num_nodes);
+      printf("  named md %s:", nmd->name ? nmd->name : "(?)");
+      for (unsigned n = 0; n < nmd->num_nodes; n++)
+         printf(" !%llu", (unsigned long long)nmd->nodes[n]);
+      printf("\n");
+   }
+
+   if (verbose) {
+      printf("  metadata table:\n");
+      for (unsigned i = 0; i < mod.num_metadata; i++) {
+         const struct d12_metadata *md = &mod.metadata[i];
+         printf("    !%u ", i);
+         switch (md->kind) {
+         case D12_MD_STRING:
+            printf("string %s\n", md->string ? md->string : "");
+            break;
+         case D12_MD_VALUE:
+            printf("value type=%u id=%llu\n", md->value_type,
+                   (unsigned long long)md->value_id);
+            break;
+         case D12_MD_NODE:
+            printf("node {");
+            for (unsigned o = 0; o < md->node.num_ops; o++) {
+               if (md->node.op_is_null[o])
+                  printf(" null");
+               else
+                  printf(" !%llu", (unsigned long long)md->node.ops[o]);
+            }
+            printf(" }\n");
+            break;
+         default:
+            printf("kind %u\n", md->kind);
+            break;
+         }
+      }
    }
 
    printf("MODULE OK: %u function definition(s), %u dx.op intrinsic(s)\n",
