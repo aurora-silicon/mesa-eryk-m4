@@ -879,3 +879,10 @@ option(
   value : false,
   description : 'use experimental virtio backend for intel driver',
 )
+
+option(
+  'asahi-d3d12',
+  type : 'boolean',
+  value : false,
+  description : 'Build the experimental native Direct3D 12 driver for Apple AGX (d3d12agx)'
+)

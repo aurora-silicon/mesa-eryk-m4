@@ -31,6 +31,13 @@ if with_asahi_vk
    subdir('vulkan')
 endif
 
+if get_option('asahi-d3d12')
+   if not with_asahi_vk
+      error('asahi-d3d12 requires -Dvulkan-drivers=asahi (shared AGX substrate)')
+   endif
+   subdir('d3d12')
+endif
+
 if with_tools.contains('drm-shim')
   subdir('drm-shim')
 endif
