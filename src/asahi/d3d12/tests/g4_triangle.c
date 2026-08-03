@@ -63,6 +63,33 @@ slurp(const char *path, size_t *size)
    return p;
 }
 
+/* Build a real root signature blob. CreateRootSignature parses it now, so
+ * the four bytes of shader bytecode that used to be passed here are no
+ * longer accepted -- correctly, since they never described anything.
+ */
+static ID3D12RootSignature *
+make_root_sig(ID3D12Device *dev, const D3D12_ROOT_PARAMETER *params,
+              UINT count)
+{
+   D3D12_ROOT_SIGNATURE_DESC rsd = {
+      .NumParameters = count,
+      .pParameters = params,
+   };
+
+   ID3DBlob *blob = NULL;
+   if (FAILED(D3D12SerializeRootSignature(&rsd,
+                                          D3D_ROOT_SIGNATURE_VERSION_1_0,
+                                          &blob, NULL)))
+      return NULL;
+
+   ID3D12RootSignature *rs = NULL;
+   ID3D12Device_CreateRootSignature(dev, 0, ID3D10Blob_GetBufferPointer(blob),
+                                    ID3D10Blob_GetBufferSize(blob),
+                                    &IID_ID3D12RootSignature, (void **)&rs);
+   ID3D10Blob_Release(blob);
+   return rs;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -87,8 +114,7 @@ main(int argc, char **argv)
       return 1;
 
    ID3D12RootSignature *root_sig = NULL;
-   ID3D12Device_CreateRootSignature(dev, 0, vs, 4, &IID_ID3D12RootSignature,
-                                    (void **)&root_sig);
+   root_sig = make_root_sig(dev, NULL, 0);
 
    /* Compile BOTH shaders from DXIL to AGX inside the driver. */
    D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {

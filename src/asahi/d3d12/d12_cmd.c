@@ -203,6 +203,10 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->bound_rt = NULL;
    list->bound_ds = NULL;
    list->stencil_ref = 0;
+   list->compute_rs = NULL;
+   list->graphics_rs = NULL;
+   memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
+   memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
 }
 
 /* Upload a data blob into the top of the stream BO; returns its GPU VA. */
@@ -541,7 +545,7 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
     * registers are filled FROM memory, so the pointer itself needs a home.
     */
    uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
-   memcpy(addrs, list->compute_root_uav, sizeof(addrs));
+   memcpy(addrs, list->compute_root_table, sizeof(addrs));
    uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
    if (!addrs_gpu)
       return;
@@ -793,9 +797,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       return;
    }
 
-   /* Root table, exactly as the dispatch path builds it. */
+   /* Root table, exactly as the dispatch path builds it -- from the
+    * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
+    */
    uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
-   memcpy(addrs, list->compute_root_uav, sizeof(addrs));
+   memcpy(addrs, list->graphics_root_table, sizeof(addrs));
    uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
    uint64_t root_gpu =
       addrs_gpu ? d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8) : 0;
@@ -1159,6 +1165,236 @@ static void STDMETHODCALLTYPE
 d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList *iface,
                                   ID3D12RootSignature *root_sig)
 {
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->graphics_rs = (struct d12_root_signature *)root_sig;
+}
+
+/*
+ * Bind one root descriptor: a raw GPU address for a single shader
+ * register, named indirectly through a root PARAMETER index.
+ *
+ * The root signature is what turns one into the other. Assuming the
+ * parameter index IS the register happens to hold when an application
+ * declares its parameters in register order and uses one class, and
+ * silently binds the wrong resource the moment it does not.
+ */
+static void
+d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
+                             UINT root_param_index,
+                             D3D12_GPU_VIRTUAL_ADDRESS address,
+                             D3D12_ROOT_PARAMETER_TYPE expected)
+{
+   struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
+
+   if (!rs) {
+      mesa_loge("root descriptor bound with no root signature set");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (root_param_index >= rs->layout.num_params) {
+      mesa_loge("root parameter %u is past the signature's %u parameters",
+                root_param_index, rs->layout.num_params);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const struct d12_root_param *rp = &rs->layout.params[root_param_index];
+   if (rp->type != expected) {
+      mesa_loge("root parameter %u is type %u, bound as type %u",
+                root_param_index, rp->type, expected);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   unsigned slot = d12_root_param_slot(rp);
+   if (slot >= D12_MAX_RESOURCE_BINDINGS) {
+      mesa_loge("root parameter %u names register %u in space %u, which is "
+                "outside the binding table",
+                root_param_index, rp->base_register, rp->space);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t *table =
+      compute ? list->compute_root_table : list->graphics_root_table;
+   table[slot] = address;
+}
+
+/*
+ * Bind a descriptor table: a contiguous run of descriptors in a
+ * shader-visible heap, covering one or more register ranges.
+ *
+ * Our shader ABI reaches resources through a flat table of addresses, so
+ * binding a table means copying each descriptor's address into the slot
+ * for the register that range covers. Descriptor indexing in the shader is
+ * therefore not supported yet -- the flattening happens here, at bind
+ * time, rather than in the shader.
+ */
+static void
+d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
+                        UINT root_param_index,
+                        D3D12_GPU_DESCRIPTOR_HANDLE base)
+{
+   struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
+
+   if (!rs) {
+      mesa_loge("descriptor table bound with no root signature set");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (root_param_index >= rs->layout.num_params) {
+      mesa_loge("root parameter %u is past the signature's %u parameters",
+                root_param_index, rs->layout.num_params);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const struct d12_root_param *rp = &rs->layout.params[root_param_index];
+   if (rp->type != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE) {
+      mesa_loge("root parameter %u is not a descriptor table",
+                root_param_index);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   /* Our GPU descriptor handles are the CPU addresses of heap slots: the
+    * shaders never dereference a descriptor, so no device-visible
+    * descriptor memory has to exist for this model.
+    */
+   const struct d12_descriptor *slots = (const struct d12_descriptor *)base.ptr;
+   if (!slots) {
+      mesa_loge("descriptor table bound with a null GPU handle");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t *table =
+      compute ? list->compute_root_table : list->graphics_root_table;
+
+   unsigned cursor = 0;
+   for (unsigned r = 0; r < rp->num_ranges; r++) {
+      const struct d12_root_range *range = &rp->ranges[r];
+
+      unsigned offset = range->offset_in_descriptors;
+      if (offset == D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND)
+         offset = cursor;
+
+      unsigned klass = d12_descriptor_range_class(range->type);
+      if (klass >= D12_RES_CLASS_COUNT) {
+         mesa_loge("descriptor range has unknown type %u", range->type);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      if (range->space != 0) {
+         mesa_loge("descriptor range in register space %u; only space 0 is "
+                   "supported", range->space);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      /* An unbounded range is descriptor indexing, which this flattening
+       * model cannot express: there is no count to flatten.
+       */
+      if (range->num_descriptors == UINT32_MAX) {
+         mesa_loge("unbounded descriptor range (bindless) unsupported");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      for (unsigned i = 0; i < range->num_descriptors; i++) {
+         unsigned reg = range->base_register + i;
+         if (reg >= D12_REGS_PER_CLASS) {
+            mesa_loge("descriptor range reaches register %u, past the "
+                      "binding table", reg);
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         const struct d12_descriptor *d = &slots[offset + i];
+         table[d12_binding_slot(klass, reg)] = d->address;
+      }
+
+      cursor = offset + range->num_descriptors;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList *iface,
+                                        UINT root_param_index,
+                                        D3D12_GPU_DESCRIPTOR_HANDLE base)
+{
+   d12_list_set_root_table(d12_cmd_list_from_iface(iface), false,
+                           root_param_index, base);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRootDescriptorTable(ID3D12GraphicsCommandList *iface,
+                                       UINT root_param_index,
+                                       D3D12_GPU_DESCRIPTOR_HANDLE base)
+{
+   d12_list_set_root_table(d12_cmd_list_from_iface(iface), true,
+                           root_param_index, base);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList *iface,
+                                           UINT index,
+                                           D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), false, index,
+                                address, D3D12_ROOT_PARAMETER_TYPE_SRV);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList *iface,
+                                          UINT index,
+                                          D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), true, index,
+                                address, D3D12_ROOT_PARAMETER_TYPE_SRV);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList *iface,
+                                           UINT index,
+                                           D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), false, index,
+                                address, D3D12_ROOT_PARAMETER_TYPE_CBV);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList *iface,
+                                          UINT index,
+                                          D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), true, index,
+                                address, D3D12_ROOT_PARAMETER_TYPE_CBV);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
+                                            UINT index,
+                                            D3D12_GPU_VIRTUAL_ADDRESS address)
+{
+   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), false, index,
+                                address, D3D12_ROOT_PARAMETER_TYPE_UAV);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList *iface, UINT count,
+                            ID3D12DescriptorHeap *const *heaps)
+{
+   /* Descriptor tables are flattened into the root table at bind time, so
+    * nothing depends on which heaps are "current". Recorded as accepted
+    * rather than routed through the crash-safe stub, since an application
+    * that calls this is not asking for anything we fail to do.
+    */
 }
 
 static void STDMETHODCALLTYPE
@@ -1173,7 +1409,8 @@ static void STDMETHODCALLTYPE
 d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList *iface,
                                  ID3D12RootSignature *root_sig)
 {
-   /* Our binding model needs nothing from the signature object yet. */
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->compute_rs = (struct d12_root_signature *)root_sig;
 }
 
 static void STDMETHODCALLTYPE
@@ -1184,17 +1421,11 @@ d12_list_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
    /* A root UAV is a raw GPU virtual address, which is exactly what the
-    * shader's binding ABI wants; root parameter index doubles as the
-    * binding slot.
+    * shader's binding ABI wants. Which shader register it feeds comes from
+    * the root signature, not from the parameter index.
     */
-   if (root_param_index >= D12_MAX_RESOURCE_BINDINGS) {
-      mesa_loge("SetComputeRootUnorderedAccessView: slot %u out of range",
-                root_param_index);
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   list->compute_root_uav[root_param_index] = address;
+   d12_list_set_root_descriptor(list, true, root_param_index, address,
+                                D3D12_ROOT_PARAMETER_TYPE_UAV);
 }
 
 static void STDMETHODCALLTYPE
@@ -1700,7 +1931,7 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList *iface,
       return;
 
    struct d12_rtv *dsv = (struct d12_rtv *)dsv_handle.ptr;
-   if (!dsv || !dsv->resource || !dsv->is_dsv) {
+   if (!dsv || !dsv->resource || dsv->kind != D12_DESC_DSV) {
       mesa_loge("ClearDepthStencilView: invalid DSV handle");
       list->state = D12_LIST_ERROR;
       return;
@@ -1781,7 +2012,7 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
    list->bound_ds = NULL;
    if (dsv) {
       struct d12_rtv *view = (struct d12_rtv *)dsv->ptr;
-      if (view && view->resource && view->is_dsv) {
+      if (view && view->resource && view->kind == D12_DESC_DSV) {
          list->bound_ds = view->resource;
          d12_list_attach_ds(list, view->resource);
       } else if (view) {
@@ -1818,6 +2049,19 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .SetComputeRootSignature = d12_list_SetComputeRootSignature,
    .SetComputeRootUnorderedAccessView =
       d12_list_SetComputeRootUnorderedAccessView,
+   .SetGraphicsRootUnorderedAccessView =
+      d12_list_SetGraphicsRootUnorderedAccessView,
+   .SetComputeRootShaderResourceView =
+      d12_list_SetComputeRootShaderResourceView,
+   .SetGraphicsRootShaderResourceView =
+      d12_list_SetGraphicsRootShaderResourceView,
+   .SetComputeRootConstantBufferView =
+      d12_list_SetComputeRootConstantBufferView,
+   .SetGraphicsRootConstantBufferView =
+      d12_list_SetGraphicsRootConstantBufferView,
+   .SetComputeRootDescriptorTable = d12_list_SetComputeRootDescriptorTable,
+   .SetGraphicsRootDescriptorTable = d12_list_SetGraphicsRootDescriptorTable,
+   .SetDescriptorHeaps = d12_list_SetDescriptorHeaps,
    .Dispatch = d12_list_Dispatch,
    .SetGraphicsRootSignature = d12_list_SetGraphicsRootSignature,
    .IASetPrimitiveTopology = d12_list_IASetPrimitiveTopology,

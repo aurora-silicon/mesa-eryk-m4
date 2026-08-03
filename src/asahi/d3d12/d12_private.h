@@ -113,16 +113,41 @@ struct d12_resource {
    struct ail_layout stencil_layout;
 };
 
-/* An RTV or DSV descriptor: sized to exactly the advertised handle increment
- * so CPU-handle arithmetic in apps lands on slot boundaries.
+/*
+ * One descriptor, whatever the heap type. Sized to exactly the advertised
+ * handle increment so CPU-handle arithmetic in applications lands on slot
+ * boundaries.
+ *
+ * Shader-visible descriptors carry a precomputed address rather than a
+ * resource pointer plus offset: binding a descriptor table copies that
+ * address straight into the root table, and nothing on the GPU ever reads
+ * a descriptor.
  */
-struct d12_rtv {
-   struct d12_resource *resource; /* not referenced; app keeps alive */
-   DXGI_FORMAT format;
-   bool is_dsv;
-   uint8_t pad[32 - sizeof(void *) - sizeof(DXGI_FORMAT) - sizeof(bool)];
+enum d12_descriptor_kind {
+   D12_DESC_NONE = 0,
+   D12_DESC_RTV,
+   D12_DESC_DSV,
+   D12_DESC_CBV,
+   D12_DESC_SRV,
+   D12_DESC_UAV,
 };
-static_assert(sizeof(struct d12_rtv) == 32, "must match handle increment");
+
+struct d12_descriptor {
+   struct d12_resource *resource; /* not referenced; app keeps alive */
+   uint64_t address;              /* resource base + view offset */
+   uint32_t size_B;
+   uint32_t stride_B;
+   DXGI_FORMAT format;
+   uint8_t kind; /* enum d12_descriptor_kind */
+   uint8_t pad[3];
+};
+static_assert(sizeof(struct d12_descriptor) == 32,
+              "must match handle increment");
+
+/* The RTV/DSV path predates the unified descriptor and still speaks this
+ * name; they are the same object.
+ */
+#define d12_rtv d12_descriptor
 
 struct d12_descriptor_heap {
    ID3D12DescriptorHeap iface; /* must be first */
@@ -130,14 +155,63 @@ struct d12_descriptor_heap {
 
    struct d12_device *device; /* holds a device ref */
    D3D12_DESCRIPTOR_HEAP_DESC desc;
-   struct d12_rtv *slots; /* NumDescriptors entries */
+   struct d12_descriptor *slots; /* NumDescriptors entries */
+};
+
+/*
+ * The parsed root signature.
+ *
+ * This is the only thing that connects a root PARAMETER index -- what
+ * SetGraphicsRootDescriptorTable and friends name -- to the shader
+ * REGISTER a shader actually asks for. Without it the driver has to assume
+ * they are the same number, which holds only by coincidence.
+ */
+#define D12_MAX_ROOT_PARAMS 64
+#define D12_MAX_ROOT_RANGES 16
+
+struct d12_root_range {
+   D3D12_DESCRIPTOR_RANGE_TYPE type;
+   uint32_t num_descriptors;
+   uint32_t base_register;
+   uint32_t space;
+   uint32_t offset_in_descriptors; /* ~0u means "append" */
+};
+
+struct d12_root_param {
+   D3D12_ROOT_PARAMETER_TYPE type;
+   D3D12_SHADER_VISIBILITY visibility;
+
+   /* Root descriptors and root constants */
+   uint32_t base_register;
+   uint32_t space;
+   uint32_t num_constants;
+
+   /* Descriptor tables */
+   struct d12_root_range ranges[D12_MAX_ROOT_RANGES];
+   uint32_t num_ranges;
+};
+
+struct d12_root_layout {
+   struct d12_root_param params[D12_MAX_ROOT_PARAMS];
+   uint32_t num_params;
+   uint32_t flags;
 };
 
 struct d12_root_signature {
    ID3D12RootSignature iface; /* must be first */
    uint32_t refcount;
    struct d12_device *device; /* holds a device ref */
+   struct d12_root_layout layout;
 };
+
+/* Root signature blobs (d12_root_sig.c) */
+HRESULT d12_serialize_root_signature(const D3D12_ROOT_SIGNATURE_DESC *desc,
+                                     void **out_blob, size_t *out_size);
+bool d12_root_signature_parse(const void *blob, size_t blob_size,
+                              struct d12_root_layout *out);
+unsigned d12_root_param_slot(const struct d12_root_param *rp);
+unsigned d12_descriptor_range_class(D3D12_DESCRIPTOR_RANGE_TYPE type);
+ID3DBlob *d12_blob_create(const void *data, size_t size);
 
 /* One linked graphics stage */
 struct d12_gfx_stage {
@@ -307,7 +381,20 @@ struct d12_cmd_list {
    /* Bound state */
    struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
-   uint64_t compute_root_uav[D12_MAX_RESOURCE_BINDINGS];
+
+   /* Resource addresses indexed by binding slot, one set per pipeline
+    * type: D3D12 keeps graphics and compute root bindings completely
+    * separate, and sharing one table lets a dispatch inherit a draw's
+    * resources.
+    */
+   uint64_t compute_root_table[D12_MAX_RESOURCE_BINDINGS];
+   uint64_t graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
+
+   /* The bound root signatures, which are what map a root parameter index
+    * to a shader register. Not referenced; the app keeps them alive.
+    */
+   struct d12_root_signature *compute_rs;
+   struct d12_root_signature *graphics_rs;
    /* Rasterizer state, actually consumed by the draw path. */
    D3D12_VIEWPORT viewport;
    bool has_viewport;
@@ -434,8 +521,9 @@ enum pipe_format d12_format_depth_plane(DXGI_FORMAT format);
 enum pipe_format d12_format_stencil_plane(DXGI_FORMAT format);
 bool d12_format_depth_is_substituted(DXGI_FORMAT format);
 
-HRESULT d12_root_signature_create(struct d12_device *device, REFIID riid,
-                                  void **out);
+HRESULT d12_root_signature_create(struct d12_device *device,
+                                  const void *blob, size_t blob_size,
+                                  REFIID riid, void **out);
 HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           const void *dxil, size_t dxil_size,
                                           REFIID riid, void **out);

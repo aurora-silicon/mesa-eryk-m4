@@ -123,14 +123,26 @@ static const ID3D12RootSignatureVtbl d12_root_sig_vtbl = {
 };
 
 HRESULT
-d12_root_signature_create(struct d12_device *device, REFIID riid, void **out)
+d12_root_signature_create(struct d12_device *device, const void *blob,
+                          size_t blob_size, REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
+   if (!blob || !blob_size)
+      return E_INVALIDARG;
 
    struct d12_root_signature *rs = calloc(1, sizeof(*rs));
    if (!rs)
       return E_OUTOFMEMORY;
+
+   /* The blob is parsed, not ignored. It is the only description of which
+    * shader register each root parameter feeds, and accepting it without
+    * reading it means every later binding is a guess.
+    */
+   if (!d12_root_signature_parse(blob, blob_size, &rs->layout)) {
+      free(rs);
+      return E_INVALIDARG;
+   }
 
    rs->iface.lpVtbl = (ID3D12RootSignatureVtbl *)&d12_root_sig_vtbl;
    rs->refcount = 1;

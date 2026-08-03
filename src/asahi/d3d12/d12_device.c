@@ -367,7 +367,7 @@ d12_device_CreateRootSignature(ID3D12Device *iface, UINT node_mask,
    if (node_mask > 1)
       return E_INVALIDARG;
 
-   return d12_root_signature_create(device, riid, out);
+   return d12_root_signature_create(device, blob, blob_size, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -415,7 +415,8 @@ d12_device_CreateRenderTargetView(ID3D12Device *iface,
 
    slot->resource = res;
    slot->format = res->desc.Format;
-   slot->is_dsv = false;
+   slot->kind = D12_DESC_RTV;
+   slot->address = res->bo->va->addr;
 }
 
 static void STDMETHODCALLTYPE
@@ -466,7 +467,161 @@ d12_device_CreateDepthStencilView(ID3D12Device *iface,
    slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
                      ? desc->Format
                      : res->desc.Format;
-   slot->is_dsv = true;
+   slot->kind = D12_DESC_DSV;
+   slot->address = res->bo->va->addr;
+}
+
+/*
+ * Buffer views. A descriptor here is just the address the shader will
+ * reach the resource through, resolved once at view creation.
+ *
+ * Only buffer views exist so far: a texture SRV needs an AGX texture
+ * descriptor and a sampler, which is the texturing milestone. Refusing a
+ * texture view is better than recording an address a shader would then
+ * read as if it were linear untiled data.
+ */
+static bool
+d12_fill_buffer_descriptor(struct d12_descriptor *slot,
+                           struct d12_resource *res, uint64_t first_element,
+                           uint32_t num_elements, uint32_t stride_B,
+                           const char *what)
+{
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      mesa_loge("%s: only buffer views are supported so far", what);
+      slot->kind = D12_DESC_NONE;
+      slot->resource = NULL;
+      return false;
+   }
+
+   uint64_t offset = first_element * (uint64_t)MAX2(stride_B, 1);
+   uint64_t span = (uint64_t)num_elements * MAX2(stride_B, 1);
+
+   if (offset + span > res->bo->size) {
+      mesa_loge("%s: view spans past the end of the resource", what);
+      slot->kind = D12_DESC_NONE;
+      slot->resource = NULL;
+      return false;
+   }
+
+   slot->resource = res;
+   slot->address = res->bo->va->addr + offset;
+   slot->size_B = (uint32_t)span;
+   slot->stride_B = stride_B;
+   return true;
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateShaderResourceView(ID3D12Device *iface,
+                                    ID3D12Resource *resource,
+                                    const D3D12_SHADER_RESOURCE_VIEW_DESC *desc,
+                                    D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
+
+   if (!slot)
+      return;
+
+   memset(slot, 0, sizeof(*slot));
+
+   if (!resource)
+      return; /* a null SRV is a legal placeholder */
+
+   struct d12_resource *res = d12_resource_from_iface(resource);
+
+   if (desc && desc->ViewDimension != D3D12_SRV_DIMENSION_BUFFER) {
+      mesa_loge("CreateShaderResourceView: view dimension %d unsupported "
+                "(texture views arrive with texturing)",
+                (int)desc->ViewDimension);
+      return;
+   }
+
+   uint64_t first = desc ? desc->Buffer.FirstElement : 0;
+   uint32_t count = desc ? desc->Buffer.NumElements
+                         : (uint32_t)(res->bo->size / 4);
+   uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
+
+   /* A raw (ByteAddressBuffer) view addresses 4-byte words. */
+   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW))
+      stride = 4;
+   if (!stride)
+      stride = 4;
+
+   if (d12_fill_buffer_descriptor(slot, res, first, count, stride,
+                                  "CreateShaderResourceView")) {
+      slot->kind = D12_DESC_SRV;
+      slot->format = desc ? desc->Format : DXGI_FORMAT_UNKNOWN;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateUnorderedAccessView(
+   ID3D12Device *iface, ID3D12Resource *resource, ID3D12Resource *counter,
+   const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
+
+   if (!slot)
+      return;
+
+   memset(slot, 0, sizeof(*slot));
+
+   if (!resource)
+      return;
+
+   struct d12_resource *res = d12_resource_from_iface(resource);
+
+   if (desc && desc->ViewDimension != D3D12_UAV_DIMENSION_BUFFER) {
+      mesa_loge("CreateUnorderedAccessView: view dimension %d unsupported",
+                (int)desc->ViewDimension);
+      return;
+   }
+
+   /* A UAV counter is a separate hidden allocation the shader reaches
+    * through its own intrinsics. Accepting one silently would make
+    * IncrementCounter read whatever happened to be at the resource base.
+    */
+   if (counter) {
+      mesa_loge("CreateUnorderedAccessView: UAV counters unsupported");
+      return;
+   }
+
+   uint64_t first = desc ? desc->Buffer.FirstElement : 0;
+   uint32_t count = desc ? desc->Buffer.NumElements
+                         : (uint32_t)(res->bo->size / 4);
+   uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
+
+   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW))
+      stride = 4;
+   if (!stride)
+      stride = 4;
+
+   if (d12_fill_buffer_descriptor(slot, res, first, count, stride,
+                                  "CreateUnorderedAccessView")) {
+      slot->kind = D12_DESC_UAV;
+      slot->format = desc ? desc->Format : DXGI_FORMAT_UNKNOWN;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateConstantBufferView(
+   ID3D12Device *iface, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
+
+   if (!slot)
+      return;
+
+   memset(slot, 0, sizeof(*slot));
+
+   if (!desc || !desc->BufferLocation)
+      return;
+
+   /* A CBV names a GPU address directly rather than a resource. */
+   slot->kind = D12_DESC_CBV;
+   slot->address = desc->BufferLocation;
+   slot->size_B = desc->SizeInBytes;
 }
 
 static UINT STDMETHODCALLTYPE
@@ -619,6 +774,9 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
+   .CreateShaderResourceView = d12_device_CreateShaderResourceView,
+   .CreateUnorderedAccessView = d12_device_CreateUnorderedAccessView,
+   .CreateConstantBufferView = d12_device_CreateConstantBufferView,
    .GetDescriptorHandleIncrementSize =
       d12_device_GetDescriptorHandleIncrementSize,
    .CreateCommittedResource = d12_device_CreateCommittedResource,
@@ -740,12 +898,34 @@ D3D12SerializeRootSignature(const D3D12_ROOT_SIGNATURE_DESC *desc,
                             D3D_ROOT_SIGNATURE_VERSION version,
                             ID3DBlob **blob, ID3DBlob **error_blob)
 {
-   d12_stub_report("D3D12SerializeRootSignature");
-   if (blob)
-      *blob = NULL;
    if (error_blob)
       *error_blob = NULL;
-   return E_NOTIMPL;
+   if (!blob)
+      return E_POINTER;
+
+   *blob = NULL;
+
+   if (version != D3D_ROOT_SIGNATURE_VERSION_1_0 &&
+       version != D3D_ROOT_SIGNATURE_VERSION_1_1) {
+      mesa_loge("D3D12SerializeRootSignature: version 0x%x unsupported",
+                (unsigned)version);
+      return E_INVALIDARG;
+   }
+
+   /* Emitted as 1.0 whatever was asked for: the 1.1 additions are
+    * volatility promises that only enable optimizations we do not make.
+    * The parser accepts both, so a 1.1 blob from elsewhere still loads.
+    */
+   void *data = NULL;
+   size_t size = 0;
+   HRESULT hr = d12_serialize_root_signature(desc, &data, &size);
+   if (FAILED(hr))
+      return hr;
+
+   *blob = d12_blob_create(data, size);
+   free(data);
+
+   return *blob ? S_OK : E_OUTOFMEMORY;
 }
 
 PUBLIC HRESULT WINAPI

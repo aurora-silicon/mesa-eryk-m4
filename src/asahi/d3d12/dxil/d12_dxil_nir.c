@@ -119,8 +119,135 @@ struct trans_ctx {
 
    struct output_slot outputs[D12_MAX_OUTPUTS];
 
+   /* Per binding slot, from dx.resources: the structured element stride
+    * (zero for raw and typed buffers) and the resource shape, which is
+    * what actually decides how an access is addressed.
+    */
+   uint32_t slot_stride[D12_MAX_RESOURCE_BINDINGS];
+   uint32_t slot_kind[D12_MAX_RESOURCE_BINDINGS];
+
    const char *error;
 };
+
+static void trans_fail(struct trans_ctx *ctx, const char *msg);
+
+/*
+ * Decode a ResBind constant aggregate: { i32 rangeLowerBound,
+ * i32 rangeUpperBound, i32 spaceID, i8 resourceClass }.
+ */
+static bool
+decode_res_bind(struct trans_ctx *ctx, uint32_t value_id, unsigned *lower,
+                unsigned *space, unsigned *klass)
+{
+   const struct d12_module *mod = ctx->mod;
+
+   if (value_id >= mod->num_values) {
+      trans_fail(ctx, "resource binding operand out of range");
+      return false;
+   }
+
+   const struct d12_value *agg = &mod->values[value_id];
+
+   if (agg->kind != D12_VALUE_CONSTANT) {
+      trans_fail(ctx, "resource binding is not a constant ResBind struct");
+      return false;
+   }
+
+   /* An all-zero ResBind -- register 0, space 0, class SRV -- is emitted
+    * as a null constant of the struct type rather than as an aggregate of
+    * four zeroes. That is the single most common binding in existence, so
+    * treating "no elements" as malformed rejects a large fraction of real
+    * shaders.
+    */
+   if (agg->is_null) {
+      *lower = 0;
+      *space = 0;
+      *klass = D12_RES_SRV;
+      return true;
+   }
+
+   if (agg->num_agg_elems < 4) {
+      trans_fail(ctx, "resource binding is not a constant ResBind struct");
+      return false;
+   }
+
+   unsigned out[4];
+   for (unsigned i = 0; i < 4; i++) {
+      uint32_t elem_id = agg->agg_elems[i];
+      if (elem_id >= mod->num_values) {
+         trans_fail(ctx, "malformed ResBind struct");
+         return false;
+      }
+      const struct d12_value *e = &mod->values[elem_id];
+      if (e->kind != D12_VALUE_CONSTANT) {
+         trans_fail(ctx, "non-constant field in a ResBind struct");
+         return false;
+      }
+      out[i] = e->is_null ? 0 : (unsigned)e->const_int;
+   }
+
+   *lower = out[0];
+   *space = out[2];
+   *klass = out[3];
+   return true;
+}
+
+/*
+ * Resolve a DXIL resource reference to a root-table slot.
+ *
+ * `klass` and `range_id` name an entry in dx.resources; `index` selects a
+ * register within that entry's range. DXC emits `index` as the ABSOLUTE
+ * shader register, so for the common single-register resource it already
+ * equals lowerBound -- but an array declared at t4[8] and indexed at
+ * element 2 gives index = 6, not 2. Clamping to the declared range catches
+ * a resource reference that does not correspond to anything declared,
+ * which would otherwise silently read slot garbage.
+ */
+static bool
+resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
+                     unsigned range_id, unsigned index, unsigned *out_slot)
+{
+   const struct d12_module *mod = ctx->mod;
+
+   for (unsigned i = 0; i < mod->num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod->resources[i];
+      if (rb->klass != klass || rb->id != range_id)
+         continue;
+
+      if (rb->space != 0) {
+         trans_fail(ctx, "resource in a register space other than 0");
+         return false;
+      }
+
+      /* Accept either reading of `index`: absolute when it already lands
+       * inside the declared range, relative otherwise.
+       */
+      unsigned reg = index;
+      if (reg < rb->lower_bound ||
+          reg >= rb->lower_bound + MAX2(rb->range_size, 1))
+         reg = rb->lower_bound + index;
+
+      if (reg >= D12_REGS_PER_CLASS) {
+         trans_fail(ctx, "shader register out of range");
+         return false;
+      }
+
+      *out_slot = d12_binding_slot(klass, reg);
+
+      if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
+         fprintf(stderr,
+                 "binding: class %u rangeId %u index %u -> register %u, "
+                 "slot %u (declared %u..%u, stride %uB)\n",
+                 klass, range_id, index, reg, *out_slot, rb->lower_bound,
+                 rb->lower_bound + MAX2(rb->range_size, 1) - 1, rb->stride_B);
+      }
+
+      return true;
+   }
+
+   trans_fail(ctx, "resource handle names no declared resource");
+   return false;
+}
 
 static void
 trans_fail(struct trans_ctx *ctx, const char *msg)
@@ -224,40 +351,66 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 
 /*
  * Resource address arithmetic for the binding model described at
- * D12_DXOP_CREATE_HANDLE. The base address of binding N is read from
- * uniform registers, then the DXIL coordinates are applied:
+ * D12_DXOP_CREATE_HANDLE. The base address of a slot is read from the root
+ * table, then the DXIL coordinates are applied:
  *
  *   structured : addr = base + coord0 * stride + coord1
  *   raw        : addr = base + coord0            (coord1 unused)
  *
- * The structured stride comes from the resource metadata; until that is
- * interpreted we use 4 bytes, which is correct for the 32-bit element
- * types DXC emits for these accesses.
+ * Which of those applies is decided by the resource SHAPE from
+ * dx.resources, not by which dx.op was called: SM 6.0 reaches a
+ * ByteAddressBuffer through the same bufferLoad a structured buffer uses.
+ * Treating every bufferLoad as structured with an assumed 4-byte stride
+ * multiplied raw byte offsets by four -- addresses that were wrong, in
+ * bounds, and completely silent.
+ *
+ * The stride, when one applies, is the one the shader declared. It was
+ * also previously hardcoded to 4, which is right only for buffers of
+ * 32-bit scalars: a StructuredBuffer of a 12-byte struct indexed at
+ * element 3 read from byte 12 instead of byte 36.
  */
 static nir_def *
-resource_address(struct trans_ctx *ctx, unsigned binding, nir_def *coord0,
-                 nir_def *coord1, bool raw)
+resource_address(struct trans_ctx *ctx, unsigned slot, nir_def *coord0,
+                 nir_def *coord1, bool raw_op)
 {
    nir_builder *b = ctx->b;
+
+   if (slot >= D12_MAX_RESOURCE_BINDINGS) {
+      trans_fail(ctx, "resource binding index out of range");
+      return nir_imm_int64(b, 0);
+   }
 
    /* One indirection through the root table. load_root_agx is a
     * placeholder lowered to a uniform read after preprocessing.
     */
    nir_def *root = nir_load_root_agx(b);
    nir_def *base = nir_load_global(b, 1, 64,
-                                   nir_iadd_imm(b, root, binding * 8),
+                                   nir_iadd_imm(b, root, slot * 8),
                                    .align_mul = 8);
 
-   nir_def *offset;
-   if (raw) {
-      offset = coord0;
-   } else {
-      offset = nir_iadd(b, nir_imul_imm(b, coord0, D12_STRUCTURED_STRIDE_B),
-                        coord1);
+   const uint32_t kind = ctx->slot_kind[slot];
+   const uint32_t stride = ctx->slot_stride[slot];
+
+   /* rawBufferLoad/Store are byte-addressed whatever the shape is. */
+   bool structured =
+      !raw_op && kind == D12_RES_KIND_STRUCTURED_BUFFER;
+
+   if (!raw_op && kind == D12_RES_KIND_TYPED_BUFFER) {
+      trans_fail(ctx, "typed buffer access (needs format conversion)");
+      return nir_imm_int64(b, 0);
    }
 
-   if (binding >= D12_MAX_RESOURCE_BINDINGS)
-      trans_fail(ctx, "resource binding index out of range");
+   nir_def *offset;
+   if (structured) {
+      if (!stride) {
+         trans_fail(ctx, "structured buffer with no declared element "
+                         "stride");
+         return nir_imm_int64(b, 0);
+      }
+      offset = nir_iadd(b, nir_imul_imm(b, coord0, stride), coord1);
+   } else {
+      offset = coord0;
+   }
 
    return nir_iadd(b, base, nir_u2u64(b, offset));
 }
@@ -514,23 +667,34 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
     */
    case D12_DXOP_CREATE_HANDLE: {
       /* (resourceClass, rangeId, index, nonUniformIndex) */
-      NEED(2);
-      uint64_t range_id = 0;
-      if (!const_uint(ctx, p[1], &range_id)) {
+      NEED(3);
+      uint64_t klass = 0, range_id = 0, index = 0;
+      if (!const_uint(ctx, p[0], &klass) ||
+          !const_uint(ctx, p[1], &range_id)) {
          trans_fail(ctx, "dynamic resource range index unsupported");
          return false;
       }
+      if (!const_uint(ctx, p[2], &index)) {
+         trans_fail(ctx, "dynamic resource array index unsupported");
+         return false;
+      }
 
-      /* The handle IS the binding index for our model. */
-      def_result(ctx, inst, nir_imm_int(b, (uint32_t)range_id));
+      unsigned slot;
+      if (!resolve_binding_slot(ctx, (unsigned)klass, (unsigned)range_id,
+                                (unsigned)index, &slot))
+         return false;
+
+      /* The handle IS the binding slot for our model. */
+      def_result(ctx, inst, nir_imm_int(b, slot));
       return true;
    }
 
    case D12_DXOP_CREATE_HANDLE_FROM_BINDING: {
-      /* (bind, index, nonUniformIndex) where bind is a constant
-       * ResBind struct. The shader register is the `index` operand, which
-       * is what our root table is indexed by, so we take that and do not
-       * need to decode the struct.
+      /* (bind, index, nonUniformIndex). `bind` is a constant ResBind
+       * aggregate { rangeLowerBound, rangeUpperBound, spaceID,
+       * resourceClass }; the class must come from it, because the
+       * register alone does not identify a resource -- t2 and u2 are
+       * different bindings with the same number.
        */
       NEED(2);
       uint64_t index = 0;
@@ -539,7 +703,35 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      def_result(ctx, inst, nir_imm_int(b, (uint32_t)index));
+      unsigned klass, lower, space;
+      if (!decode_res_bind(ctx, p[0], &lower, &space, &klass))
+         return false;
+
+      if (space != 0) {
+         trans_fail(ctx, "resource in a register space other than 0");
+         return false;
+      }
+
+      /* `index` is the absolute shader register. */
+      unsigned reg = (unsigned)index;
+      if (reg < lower)
+         reg = lower + (unsigned)index;
+
+      if (reg >= D12_REGS_PER_CLASS || klass >= D12_RES_CLASS_COUNT) {
+         trans_fail(ctx, "shader register out of range");
+         return false;
+      }
+
+      unsigned slot = d12_binding_slot(klass, reg);
+
+      if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
+         fprintf(stderr,
+                 "binding: fromBinding class %u lower %u index %llu -> "
+                 "register %u, slot %u\n",
+                 klass, lower, (unsigned long long)index, reg, slot);
+      }
+
+      def_result(ctx, inst, nir_imm_int(b, slot));
       return true;
    }
 
@@ -831,6 +1023,23 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       *error = "out of memory";
       ralloc_free(b.shader);
       return NULL;
+   }
+
+   /* Index the declared strides by slot so the access sites do not have to
+    * search the resource list again.
+    */
+   for (unsigned i = 0; i < mod->num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod->resources[i];
+      if (rb->space != 0 || rb->klass >= D12_RES_CLASS_COUNT)
+         continue;
+
+      for (unsigned r = 0; r < MAX2(rb->range_size, 1); r++) {
+         unsigned reg = rb->lower_bound + r;
+         if (reg >= D12_REGS_PER_CLASS)
+            break;
+         ctx.slot_stride[d12_binding_slot(rb->klass, reg)] = rb->stride_B;
+         ctx.slot_kind[d12_binding_slot(rb->klass, reg)] = rb->kind;
+      }
    }
 
    if (stage == MESA_SHADER_FRAGMENT) {

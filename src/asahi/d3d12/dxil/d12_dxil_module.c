@@ -21,6 +21,7 @@
 
 static void parse_entry_signatures(struct d12_module *mod);
 static void parse_entry_properties(struct d12_module *mod);
+static void parse_resources(struct d12_module *mod);
 
 struct parse_ctx {
    struct d12_module *mod;
@@ -213,9 +214,18 @@ parse_const_record(struct parse_ctx *ctx, const struct d12_record *rec)
       if (rec->num_ops >= 1)
          v->const_float = rec->ops[0];
       break;
+   case D12_CST_AGGREGATE:
+      /* Element value ids. SM 6.6's createHandleFromBinding names its
+       * resource with one of these (a ResBind struct), so the class and
+       * register cannot be recovered without them.
+       */
+      for (unsigned i = 0; i < rec->num_ops && i < ARRAY_SIZE(v->agg_elems);
+           i++)
+         v->agg_elems[v->num_agg_elems++] = (uint32_t)rec->ops[i];
+      break;
    default:
-      /* Aggregates, strings, const-exprs: slot reserved, contents are
-       * G4c work (only needed once shaders reference them).
+      /* Strings and const-exprs: slot reserved, contents parsed when a
+       * shader is found that needs them.
        */
       break;
    }
@@ -700,6 +710,7 @@ d12_dxil_module_parse(struct d12_module *mod, const uint8_t *bitcode,
    /* Signatures and properties need the finished value/metadata tables. */
    parse_entry_signatures(mod);
    parse_entry_properties(mod);
+   parse_resources(mod);
 
    return mod->error == NULL;
 }
@@ -823,6 +834,150 @@ parse_entry_signatures(struct d12_module *mod)
    if (sigs->node.num_ops >= 2 && !sigs->node.op_is_null[1]) {
       parse_signature(mod, sigs->node.ops[1], mod->output_sig,
                       &mod->num_output_sig);
+   }
+}
+
+/*
+ * Declared resources, from the dx.resources named metadata.
+ *
+ * dx.resources is a node of four lists — SRVs, UAVs, CBVs, samplers — and
+ * each entry shares a common prefix:
+ *
+ *   0 id   1 variable   2 name   3 space   4 lowerBound   5 rangeSize
+ *
+ * after which the classes diverge. What we need past the prefix is the
+ * structured-buffer element stride, which lives in a trailing tag list as
+ * (tag, value) pairs with tag 1 = element stride, and the CBV byte size.
+ *
+ * Field order verified against dxc (SDK 26100) output for resources placed
+ * at t2/u3/b1 with a 12-byte structured element, so that every field is
+ * distinct and a transposition cannot go unnoticed.
+ */
+#define D12_RES_TAG_ELEMENT_STRIDE 1
+
+/* Offset of the tag list within each class's record. */
+#define D12_SRV_TAGS_OP 8
+#define D12_UAV_TAGS_OP 10
+#define D12_CBV_SIZE_OP 6
+
+static uint32_t
+parse_resource_stride(const struct d12_module *mod, uint64_t tags_id)
+{
+   if (tags_id >= mod->num_metadata)
+      return 0;
+
+   const struct d12_metadata *tags = &mod->metadata[tags_id];
+   if (tags->kind != D12_MD_NODE)
+      return 0;
+
+   for (unsigned i = 0; i + 1 < tags->node.num_ops; i += 2) {
+      uint64_t tag, value;
+      if (!md_const_uint(mod, tags->node.ops[i], &tag))
+         continue;
+      if (!md_const_uint(mod, tags->node.ops[i + 1], &value))
+         continue;
+
+      if (tag == D12_RES_TAG_ELEMENT_STRIDE)
+         return (uint32_t)value;
+   }
+
+   return 0;
+}
+
+static void
+parse_resource_list(struct d12_module *mod, uint64_t list_id, unsigned klass)
+{
+   if (list_id >= mod->num_metadata)
+      return;
+
+   const struct d12_metadata *list = &mod->metadata[list_id];
+   if (list->kind != D12_MD_NODE)
+      return;
+
+   for (unsigned i = 0; i < list->node.num_ops; i++) {
+      if (list->node.op_is_null[i])
+         continue;
+      if (mod->num_resources >= D12_MAX_MODULE_RESOURCES)
+         return;
+
+      uint64_t rec_id = list->node.ops[i];
+      if (rec_id >= mod->num_metadata)
+         continue;
+
+      const struct d12_metadata *rec = &mod->metadata[rec_id];
+      if (rec->kind != D12_MD_NODE || rec->node.num_ops < 6)
+         continue;
+
+      struct d12_resource_binding *rb = &mod->resources[mod->num_resources];
+      memset(rb, 0, sizeof(*rb));
+      rb->klass = klass;
+
+      uint64_t v;
+      if (md_const_uint(mod, rec->node.ops[0], &v))
+         rb->id = (uint32_t)v;
+      if (md_const_uint(mod, rec->node.ops[3], &v))
+         rb->space = (uint32_t)v;
+      if (md_const_uint(mod, rec->node.ops[4], &v))
+         rb->lower_bound = (uint32_t)v;
+      if (md_const_uint(mod, rec->node.ops[5], &v))
+         rb->range_size = (uint32_t)v;
+
+      /* Operand 6 is the shape for SRVs and UAVs; for CBVs it is the byte
+       * size instead, handled below.
+       */
+      if (klass != D12_RES_CBV && rec->node.num_ops > 6 &&
+          md_const_uint(mod, rec->node.ops[6], &v))
+         rb->kind = (uint32_t)v;
+
+      unsigned tags_op = 0;
+      switch (klass) {
+      case D12_RES_SRV:
+         tags_op = D12_SRV_TAGS_OP;
+         break;
+      case D12_RES_UAV:
+         tags_op = D12_UAV_TAGS_OP;
+         break;
+      case D12_RES_CBV:
+         if (rec->node.num_ops > D12_CBV_SIZE_OP &&
+             md_const_uint(mod, rec->node.ops[D12_CBV_SIZE_OP], &v))
+            rb->cb_size_B = (uint32_t)v;
+         break;
+      default:
+         break;
+      }
+
+      if (tags_op && rec->node.num_ops > tags_op &&
+          !rec->node.op_is_null[tags_op]) {
+         rb->stride_B =
+            parse_resource_stride(mod, rec->node.ops[tags_op]);
+      }
+
+      mod->num_resources++;
+   }
+}
+
+static void
+parse_resources(struct d12_module *mod)
+{
+   const struct d12_named_md *res =
+      d12_dxil_find_named_md(mod, "dx.resources");
+   if (!res || !res->num_nodes)
+      return;
+
+   uint64_t root_id = res->nodes[0];
+   if (root_id >= mod->num_metadata)
+      return;
+
+   const struct d12_metadata *root = &mod->metadata[root_id];
+   if (root->kind != D12_MD_NODE)
+      return;
+
+   /* Four lists in class order, any of which may be null. */
+   for (unsigned klass = 0;
+        klass < D12_RES_CLASS_COUNT && klass < root->node.num_ops; klass++) {
+      if (root->node.op_is_null[klass])
+         continue;
+      parse_resource_list(mod, root->node.ops[klass], klass);
    }
 }
 

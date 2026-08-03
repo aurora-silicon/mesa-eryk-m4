@@ -181,6 +181,23 @@ main(int argc, char **argv)
    if (dxops)
       printf("\n");
 
+   static const char *const class_name[] = {"SRV t", "UAV u", "CBV b",
+                                            "SMP s"};
+   for (unsigned i = 0; i < mod.num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod.resources[i];
+      printf("  resource %s%u", rb->klass < 4 ? class_name[rb->klass] : "? ",
+             rb->lower_bound);
+      if (rb->range_size != 1)
+         printf("..%u", rb->lower_bound + rb->range_size - 1);
+      printf(" space%u id=%u", rb->space, rb->id);
+      if (rb->stride_B)
+         printf(" stride=%uB", rb->stride_B);
+      if (rb->cb_size_B)
+         printf(" size=%uB", rb->cb_size_B);
+      printf(" -> slot %u\n",
+             d12_binding_slot(rb->klass, rb->lower_bound));
+   }
+
    for (unsigned i = 0; i < mod.num_named_md; i++) {
       const struct d12_named_md *nmd = &mod.named_md[i];
       printf("  named md %s:", nmd->name ? nmd->name : "(?)");
@@ -199,8 +216,19 @@ main(int argc, char **argv)
             printf("string %s\n", md->string ? md->string : "");
             break;
          case D12_MD_VALUE:
-            printf("value type=%u id=%llu\n", md->value_type,
+            printf("value type=%u id=%llu", md->value_type,
                    (unsigned long long)md->value_id);
+            /* Resolve integer constants inline: resource metadata is a
+             * tree of these, and reading it as bare value ids is useless.
+             */
+            if (md->value_id < mod.num_values) {
+               const struct d12_value *v = &mod.values[md->value_id];
+               if (v->kind == D12_VALUE_CONSTANT) {
+                  printf("  = %llu",
+                         (unsigned long long)(v->is_null ? 0 : v->const_int));
+               }
+            }
+            printf("\n");
             break;
          case D12_MD_NODE:
             printf("node {");

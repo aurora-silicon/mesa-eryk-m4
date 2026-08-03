@@ -314,6 +314,12 @@ struct d12_value {
    uint64_t const_int;   /* CST_INTEGER (already un-rotated) */
    uint64_t const_float; /* CST_FLOAT raw bits */
 
+   /* CST_AGGREGATE: element value ids. Needed because SM 6.6 passes the
+    * resource binding to createHandleFromBinding as a constant struct.
+    */
+   uint32_t agg_elems[8];
+   unsigned num_agg_elems;
+
    /* Functions */
    uint32_t func_index; /* index into module->functions, for FUNCTION */
 };
@@ -390,6 +396,52 @@ struct d12_sig_element {
 #define D12_MAX_METADATA  4096
 #define D12_MAX_NAMED_MD  32
 
+/*
+ * Declared resources, from the dx.resources named metadata: four lists,
+ * one per class, each entry describing a range of shader registers.
+ *
+ * This is what lets a shader register be resolved to a binding slot. D3D12
+ * register namespaces are per class -- t0, u0 and b0 are three different
+ * resources -- so a handle cannot be identified by its number alone.
+ */
+enum d12_resource_class {
+   D12_RES_SRV = 0,
+   D12_RES_UAV = 1,
+   D12_RES_CBV = 2,
+   D12_RES_SAMPLER = 3,
+   D12_RES_CLASS_COUNT = 4,
+};
+
+#define D12_MAX_MODULE_RESOURCES 32
+
+/*
+ * DXIL ResourceKind (subset). The shape decides how a buffer access is
+ * addressed, and it is NOT recoverable from which dx.op was called: SM 6.0
+ * reaches a ByteAddressBuffer through bufferLoad, the same intrinsic a
+ * structured buffer uses.
+ */
+enum d12_resource_kind {
+   D12_RES_KIND_TYPED_BUFFER = 10,
+   D12_RES_KIND_RAW_BUFFER = 11,
+   D12_RES_KIND_STRUCTURED_BUFFER = 12,
+};
+
+struct d12_resource_binding {
+   uint32_t id;    /* rangeId: index within its class's list */
+   uint32_t klass; /* enum d12_resource_class */
+   uint32_t kind;  /* enum d12_resource_kind (shape) */
+   uint32_t space;
+   uint32_t lower_bound; /* first shader register in the range */
+   uint32_t range_size;
+
+   /* Structured-buffer element stride, from metadata tag 1. Zero for raw
+    * and typed buffers, whose accesses are byte-addressed.
+    */
+   uint32_t stride_B;
+
+   uint32_t cb_size_B; /* CBV only */
+};
+
 struct d12_module {
    struct d12_type types[D12_MAX_TYPES];
    unsigned num_types;
@@ -418,6 +470,10 @@ struct d12_module {
 
    /* [numthreads(x,y,z)] from the entry-point properties (compute only) */
    uint32_t num_threads[3];
+
+   /* Declared resources, from dx.resources */
+   struct d12_resource_binding resources[D12_MAX_MODULE_RESOURCES];
+   unsigned num_resources;
 
    const char *error;
 };
@@ -464,8 +520,25 @@ struct nir_shader;
  */
 #define D12_UNIFORM_ROOT            4
 #define D12_UNIFORM_ROOT_REGS       4
-#define D12_MAX_RESOURCE_BINDINGS   8
-#define D12_STRUCTURED_STRIDE_B     4
+
+/*
+ * Root-table layout. The table is indexed by (resource class, shader
+ * register), not by shader register alone: D3D12 gives each class its own
+ * register namespace, so t0, u0 and b0 are three distinct resources that
+ * would otherwise all land in slot 0 and overwrite each other.
+ *
+ * Register space is not yet part of the index; a resource declared in a
+ * space other than 0 is refused at translation rather than aliased onto
+ * space 0.
+ */
+#define D12_REGS_PER_CLASS          32
+#define D12_MAX_RESOURCE_BINDINGS   (D12_RES_CLASS_COUNT * D12_REGS_PER_CLASS)
+
+static inline unsigned
+d12_binding_slot(unsigned klass, unsigned shader_register)
+{
+   return klass * D12_REGS_PER_CLASS + shader_register;
+}
 
 /*
  * Translate a parsed module's entry point to NIR for the AGX backend.

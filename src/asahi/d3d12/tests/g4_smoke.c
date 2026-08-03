@@ -76,14 +76,32 @@ main(int argc, char **argv)
    if (FAILED(hr) || !dev)
       return 1;
 
-   /* Root signature (our binding model derives nothing from it yet, but
-    * the API requires the object).
+   /* A real root signature: one root UAV at u0, which is what cs.hlsl
+    * declares. The blob is now parsed, so this has to describe the shader
+    * -- previously four bytes of the shader itself were passed here and
+    * accepted, which described nothing.
     */
+   D3D12_ROOT_PARAMETER param = {
+      .ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV,
+      .Descriptor = {.ShaderRegister = 0, .RegisterSpace = 0},
+      .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+   };
+   D3D12_ROOT_SIGNATURE_DESC rsd = {.NumParameters = 1, .pParameters = &param};
+
+   ID3DBlob *rs_blob = NULL;
+   hr = D3D12SerializeRootSignature(&rsd, D3D_ROOT_SIGNATURE_VERSION_1_0,
+                                    &rs_blob, NULL);
+   CHECK(hr == S_OK && rs_blob, "D3D12SerializeRootSignature");
+   if (FAILED(hr))
+      return 1;
+
    ID3D12RootSignature *root_sig = NULL;
-   hr = ID3D12Device_CreateRootSignature(dev, 0, dxil, 4,
-                                         &IID_ID3D12RootSignature,
-                                         (void **)&root_sig);
-   CHECK(hr == S_OK && root_sig, "CreateRootSignature");
+   hr = ID3D12Device_CreateRootSignature(
+      dev, 0, ID3D10Blob_GetBufferPointer(rs_blob),
+      ID3D10Blob_GetBufferSize(rs_blob), &IID_ID3D12RootSignature,
+      (void **)&root_sig);
+   CHECK(hr == S_OK && root_sig, "CreateRootSignature parses the blob");
+   ID3D10Blob_Release(rs_blob);
 
    /* THE MILESTONE: the driver compiles application DXIL to AGX. */
    D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {

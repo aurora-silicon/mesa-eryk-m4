@@ -24,6 +24,7 @@ libd3d12agx_files = files(
   'd12_pipeline.c',
   'd12_queue.c',
   'd12_resource.c',
+  'd12_root_sig.c',
   'dxil/d12_dxil_bitstream.c',
   'dxil/d12_dxil_module.c',
   'dxil/d12_dxil_nir.c',
@@ -96,6 +97,13 @@ d3d12agx_g4_triangle = executable(
 d3d12agx_g4_smoke = executable(
   'd3d12agx_g4_smoke',
   files('tests/g4_smoke.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
+d3d12agx_g5_descriptors = executable(
+  'd3d12agx_g5_descriptors',
+  files('tests/g5_descriptors.c'),
   dependencies : [dep_dxheaders_d12],
   link_with : [libd3d12agx],
 )

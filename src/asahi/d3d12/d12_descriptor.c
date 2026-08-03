@@ -113,8 +113,22 @@ d12_heap_GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
 static D3D12_GPU_DESCRIPTOR_HANDLE STDMETHODCALLTYPE
 d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
 {
-   /* No shader-visible heaps until the G4 binding model. */
-   D3D12_GPU_DESCRIPTOR_HANDLE handle = {.ptr = 0};
+   struct d12_descriptor_heap *heap = d12_heap_from_iface(iface);
+
+   /*
+    * The GPU handle is the CPU address of the slot array.
+    *
+    * That is legitimate here rather than a shortcut: in this binding model
+    * no shader ever dereferences a descriptor. Binding a table copies the
+    * addresses it names into the root table, so a "GPU handle" only has to
+    * be an opaque token the driver can resolve back to a slot. It carries
+    * the same offset arithmetic applications do on it.
+    */
+   D3D12_GPU_DESCRIPTOR_HANDLE handle = {
+      .ptr = heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+                ? (UINT64)(uintptr_t)heap->slots
+                : 0,
+   };
    return handle;
 }
 
@@ -146,25 +160,34 @@ d12_descriptor_heap_create(struct d12_device *device,
    if (!desc || !desc->NumDescriptors)
       return E_INVALIDARG;
 
-   if (desc->Type != D3D12_DESCRIPTOR_HEAP_TYPE_RTV &&
-       desc->Type != D3D12_DESCRIPTOR_HEAP_TYPE_DSV) {
-      mesa_loge("CreateDescriptorHeap: type %d unsupported (RTV and DSV "
-                "only; shader-visible heaps need the binding model)",
-                (int)desc->Type);
-      return E_NOTIMPL;
-   }
+   switch (desc->Type) {
+   case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
+   case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
+      if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
+         mesa_loge("CreateDescriptorHeap: RTV/DSV heaps cannot be "
+                   "shader-visible");
+         return E_INVALIDARG;
+      }
+      break;
 
-   if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
-      mesa_loge("CreateDescriptorHeap: RTV/DSV heaps cannot be "
-                "shader-visible");
-      return E_INVALIDARG;
+   case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+      /* Shader-visible or not, the storage is the same. Descriptor tables
+       * are flattened into the root table when they are bound, so nothing
+       * here has to be reachable by the GPU.
+       */
+      break;
+
+   default:
+      mesa_loge("CreateDescriptorHeap: type %d unsupported (sampler heaps "
+                "arrive with texturing)", (int)desc->Type);
+      return E_NOTIMPL;
    }
 
    struct d12_descriptor_heap *heap = calloc(1, sizeof(*heap));
    if (!heap)
       return E_OUTOFMEMORY;
 
-   heap->slots = calloc(desc->NumDescriptors, sizeof(struct d12_rtv));
+   heap->slots = calloc(desc->NumDescriptors, sizeof(struct d12_descriptor));
    if (!heap->slots) {
       free(heap);
       return E_OUTOFMEMORY;
