@@ -39,6 +39,28 @@ block_name(unsigned id)
    }
 }
 
+static const char *
+type_kind_name(unsigned kind)
+{
+   switch (kind) {
+   case D12_TYPE_VOID: return "void";
+   case D12_TYPE_FLOAT: return "float";
+   case D12_TYPE_DOUBLE: return "double";
+   case D12_TYPE_LABEL: return "label";
+   case D12_TYPE_OPAQUE: return "opaque";
+   case D12_TYPE_INTEGER: return "int";
+   case D12_TYPE_POINTER: return "ptr";
+   case D12_TYPE_HALF: return "half";
+   case D12_TYPE_ARRAY: return "array";
+   case D12_TYPE_VECTOR: return "vector";
+   case D12_TYPE_METADATA: return "metadata";
+   case D12_TYPE_STRUCT_ANON:
+   case D12_TYPE_STRUCT_NAMED: return "struct";
+   case D12_TYPE_FUNCTION: return "func";
+   default: return "?";
+   }
+}
+
 struct dump_state {
    unsigned records;
    unsigned blocks;
@@ -180,6 +202,26 @@ main(int argc, char **argv)
    }
    if (dxops)
       printf("\n");
+
+   /*
+    * Module globals with their address space. Printed because the address
+    * space is the ONLY thing that distinguishes a groupshared array from a
+    * constant lookup table -- the recorded type is the same shape for both
+    * -- and it is not visible anywhere else without a debugger.
+    */
+   for (unsigned i = 0; i < mod.num_values; i++) {
+      const struct d12_value *v = &mod.values[i];
+      if (v->kind != D12_VALUE_GLOBAL)
+         continue;
+
+      printf("  global @%u %s: type %u (%s) addrspace(%u)%s\n", i,
+             v->name ? v->name : "(unnamed)", v->type,
+             v->type < mod.num_types ? type_kind_name(mod.types[v->type].kind)
+                                     : "?",
+             v->addr_space,
+             v->addr_space == D12_ADDR_SPACE_GROUPSHARED ? " groupshared"
+                                                         : "");
+   }
 
    static const char *const class_name[] = {"SRV t", "UAV u", "CBV b",
                                             "SMP s"};

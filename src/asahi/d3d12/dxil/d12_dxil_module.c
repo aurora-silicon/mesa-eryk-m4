@@ -319,11 +319,38 @@ parse_module_record(struct parse_ctx *ctx, const struct d12_record *rec)
 
    switch (rec->code) {
    case D12_MODULE_GLOBALVAR: {
-      /* [pointer type, isconst, initid, ...] */
-      struct d12_value *v = push_value(
-         mod, D12_VALUE_GLOBAL, rec->num_ops >= 1 ? (uint32_t)rec->ops[0] : 0);
+      /*
+       * [type, flags, initid, linkage, alignment, section, ...]
+       *
+       * The documented layout calls operand 0 a POINTER type, and for
+       * pre-3.7 bitcode it is. DXC's LLVM 3.7 does not write one: dumping
+       * `groupshared uint scratch[64]` gives operand 0 = [64 x i32], an
+       * ARRAY, with the address space folded into operand 1 instead --
+       *
+       *    flags = addrspace << 2 | explicit-type | isconst
+       *
+       * and `explicit-type` set is what says operand 0 is the value type.
+       * Reading the address space off operand 0's type therefore finds
+       * nothing to read, and every groupshared array looks like address
+       * space 0. Both encodings are handled because only the flag bit
+       * distinguishes them.
+       */
+      uint32_t type = rec->num_ops >= 1 ? (uint32_t)rec->ops[0] : 0;
+      uint64_t flags = rec->num_ops >= 2 ? rec->ops[1] : 0;
+      uint32_t addr_space = D12_ADDR_SPACE_DEFAULT;
+
+      if (flags & 2) {
+         addr_space = (uint32_t)(flags >> 2);
+      } else if (type < mod->num_types &&
+                 mod->types[type].kind == D12_TYPE_POINTER) {
+         addr_space = mod->types[type].ptr.addr_space;
+         type = mod->types[type].ptr.pointee;
+      }
+
+      struct d12_value *v = push_value(mod, D12_VALUE_GLOBAL, type);
       if (!v)
          return false;
+      v->addr_space = addr_space;
       break;
    }
 

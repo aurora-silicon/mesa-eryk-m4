@@ -303,9 +303,27 @@ enum d12_value_kind {
    D12_VALUE_INSTRUCTION,
 };
 
+/*
+ * LLVM address spaces as DXC emits them. Only groupshared is distinguished:
+ * everything else a shader declares -- constant lookup tables, the globals
+ * that stand for resources -- lands in 0.
+ */
+#define D12_ADDR_SPACE_DEFAULT     0
+#define D12_ADDR_SPACE_GROUPSHARED 3
+
 struct d12_value {
    enum d12_value_kind kind;
-   uint32_t type;      /* index into the type table */
+
+   /*
+    * Index into the type table, and for a GLOBAL it is the type of the
+    * VALUE -- [64 x i32] for `groupshared uint scratch[64]` -- not a
+    * pointer to it. LLVM 3.7 moved the address space out of the type and
+    * into the record, so `type` alone cannot tell groupshared from
+    * anything else; `addr_space` below is the only thing that can.
+    */
+   uint32_t type;
+   uint32_t addr_space; /* GLOBAL only; see D12_ADDR_SPACE_* */
+
    const char *name;   /* from VALUE_SYMTAB, may be NULL */
 
    /* Constants */
