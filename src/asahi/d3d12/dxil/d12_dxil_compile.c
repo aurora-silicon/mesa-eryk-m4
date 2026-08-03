@@ -174,9 +174,22 @@ main(int argc, char **argv)
    if (nir->info.stage == MESA_SHADER_VERTEX)
       NIR_PASS(_, nir, agx_nir_lower_uvs, &uvs);
 
+   /*
+    * This tool has no open device, so the device key is filled in for the
+    * hardware the campaign targets rather than gathered. It has to be
+    * filled in at all: the AGX backend asserts on an unset coherency
+    * tristate the moment a shader uses a global atomic, and the assert
+    * fires in the packer, a long way from anything that looks like a
+    * missing device property.
+    */
    struct agx_shader_key key = {
       .no_stop = false,
       .promote_constants = true,
+      .dev = {
+         /* M-series with one cluster per die: no G13X coherency. */
+         .needs_g13x_coherency = U_TRISTATE_NO,
+         .soft_fault = false,
+      },
    };
 
    struct agx_shader_part part;

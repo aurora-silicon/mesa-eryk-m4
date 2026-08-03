@@ -101,6 +101,13 @@ d3d12agx_g4_smoke = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g5_atomics = executable(
+  'd3d12agx_g5_atomics',
+  files('tests/g5_atomics.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g5_descriptors = executable(
   'd3d12agx_g5_descriptors',
   files('tests/g5_descriptors.c'),

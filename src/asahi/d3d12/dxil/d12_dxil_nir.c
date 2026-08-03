@@ -67,9 +67,12 @@ enum d12_dxop {
    D12_DXOP_BUFFER_STORE = 69,
    D12_DXOP_RAW_BUFFER_LOAD = 139,
    D12_DXOP_RAW_BUFFER_STORE = 140,
+   D12_DXOP_ATOMIC_BINOP = 78,
+   D12_DXOP_ATOMIC_CMPXCHG = 79,
    /* SM 6.6 replaced createHandle with a binding-descriptor form. It is by
     * far the most common resource intrinsic in modern DXIL.
     */
+   D12_DXOP_ANNOTATE_HANDLE = 216,
    D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
    D12_DXOP_THREAD_ID = 93,
    D12_DXOP_GROUP_ID = 94,
@@ -692,6 +695,85 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       /* The handle IS the binding slot for our model. */
       def_result(ctx, inst, nir_imm_int(b, slot));
+      return true;
+   }
+
+   case D12_DXOP_ATOMIC_BINOP: {
+      /* (handle, atomicOp, offset0, offset1, offset2, value)
+       *
+       * The three offsets address the resource the same way a load or
+       * store does; a buffer uses offset0 and, when structured, offset1.
+       */
+      NEED(6);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant resource handle unsupported");
+         return false;
+      }
+      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      uint64_t dx_op = 0;
+      if (!const_uint(ctx, p[1], &dx_op)) {
+         trans_fail(ctx, "non-constant atomic operation");
+         return false;
+      }
+
+      nir_atomic_op op;
+      switch (dx_op) {
+      case 0: op = nir_atomic_op_iadd; break;
+      case 1: op = nir_atomic_op_iand; break;
+      case 2: op = nir_atomic_op_ior; break;
+      case 3: op = nir_atomic_op_ixor; break;
+      case 4: op = nir_atomic_op_imin; break;
+      case 5: op = nir_atomic_op_imax; break;
+      case 6: op = nir_atomic_op_umin; break;
+      case 7: op = nir_atomic_op_umax; break;
+      case 8: op = nir_atomic_op_xchg; break;
+      default:
+         trans_fail(ctx, "unhandled atomic operation");
+         return false;
+      }
+
+      nir_def *addr = resource_address(ctx, slot, get_def(ctx, p[2]),
+                                       get_def(ctx, p[3]), false);
+      def_result(ctx, inst,
+                 nir_global_atomic(b, 32, addr, get_def(ctx, p[5]),
+                                   .atomic_op = op));
+      return true;
+   }
+
+   case D12_DXOP_ATOMIC_CMPXCHG: {
+      /* (handle, offset0, offset1, offset2, compareValue, newValue) */
+      NEED(6);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant resource handle unsupported");
+         return false;
+      }
+      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      nir_def *addr = resource_address(ctx, slot, get_def(ctx, p[1]),
+                                       get_def(ctx, p[2]), false);
+      def_result(ctx, inst,
+                 nir_global_atomic_swap(b, 32, addr, get_def(ctx, p[4]),
+                                        get_def(ctx, p[5]),
+                                        .atomic_op = nir_atomic_op_cmpxchg));
+      return true;
+   }
+
+   case D12_DXOP_ANNOTATE_HANDLE: {
+      /* (handle, resourceProperties) -> the same handle.
+       *
+       * SM 6.6 attaches the resource's type and dimensions to a handle so
+       * a runtime can validate them; the handle itself is unchanged. It
+       * appears in nearly every SM 6.6 shader that touches a resource,
+       * which made it the single largest blocker in the corpus -- 58 of
+       * 334 shaders -- for what amounts to a rename.
+       */
+      NEED(1);
+      def_result(ctx, inst, get_def(ctx, p[0]));
       return true;
    }
 
