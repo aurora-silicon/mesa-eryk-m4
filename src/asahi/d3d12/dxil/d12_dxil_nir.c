@@ -75,6 +75,19 @@ enum d12_dxop {
    /* SM 6.x declares resources as globals; this converts a loaded global
     * into a handle. Like annotateHandle, it is a rename.
     */
+   /* Wave (subgroup) operations. AGX has these natively and NIR names
+    * them the same way, so the whole family is a mapping exercise.
+    */
+   D12_DXOP_WAVE_GET_LANE_INDEX = 111,
+   D12_DXOP_WAVE_GET_LANE_COUNT = 112,
+   D12_DXOP_WAVE_ANY_TRUE = 113,
+   D12_DXOP_WAVE_ALL_TRUE = 114,
+   D12_DXOP_WAVE_ACTIVE_ALL_EQUAL = 115,
+   D12_DXOP_WAVE_READ_LANE_AT = 117,
+   D12_DXOP_WAVE_READ_LANE_FIRST = 118,
+   D12_DXOP_WAVE_ALL_OP = 119,
+   D12_DXOP_WAVE_PREFIX_OP = 121,
+   D12_DXOP_WAVE_IS_FIRST_LANE = 110,
    D12_DXOP_CREATE_HANDLE_FOR_LIB = 160,
    D12_DXOP_ANNOTATE_HANDLE = 216,
    D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
@@ -155,6 +168,18 @@ struct trans_ctx {
 
 static void trans_fail(struct trans_ctx *ctx, const char *msg);
 static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
+
+/* DXIL carries booleans as i1 already, but a value that reached us as a
+ * wider integer has to be compared before NIR will take it as a condition.
+ */
+static nir_def *
+to_bool(struct trans_ctx *ctx, nir_def *val)
+{
+   if (!val)
+      return NULL;
+   return val->bit_size == 1 ? val : nir_ine_imm(ctx->b, val, 0);
+}
+
 static unsigned type_bit_size(const struct d12_module *mod, uint32_t type);
 
 /*
@@ -904,6 +929,87 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       return true;
    }
 
+   case D12_DXOP_WAVE_GET_LANE_INDEX:
+      def_result(ctx, inst, nir_load_subgroup_invocation(b));
+      return true;
+
+   case D12_DXOP_WAVE_GET_LANE_COUNT:
+      def_result(ctx, inst, nir_load_subgroup_size(b));
+      return true;
+
+   case D12_DXOP_WAVE_IS_FIRST_LANE:
+      def_result(ctx, inst, nir_elect(b, 1));
+      return true;
+
+   case D12_DXOP_WAVE_ANY_TRUE:
+      NEED(1);
+      def_result(ctx, inst, nir_vote_any(b, 1, to_bool(ctx, get_def(ctx, p[0]))));
+      return true;
+
+   case D12_DXOP_WAVE_ALL_TRUE:
+      NEED(1);
+      def_result(ctx, inst, nir_vote_all(b, 1, to_bool(ctx, get_def(ctx, p[0]))));
+      return true;
+
+   case D12_DXOP_WAVE_ACTIVE_ALL_EQUAL:
+      NEED(1);
+      def_result(ctx, inst, nir_vote_ieq(b, 1, get_def(ctx, p[0])));
+      return true;
+
+   case D12_DXOP_WAVE_READ_LANE_FIRST:
+      NEED(1);
+      def_result(ctx, inst, nir_read_first_invocation(b, get_def(ctx, p[0])));
+      return true;
+
+   case D12_DXOP_WAVE_READ_LANE_AT:
+      NEED(2);
+      def_result(ctx, inst,
+                 nir_read_invocation(b, get_def(ctx, p[0]),
+                                     get_def(ctx, p[1])));
+      return true;
+
+   case D12_DXOP_WAVE_ALL_OP:
+   case D12_DXOP_WAVE_PREFIX_OP: {
+      /* (value, op, signedness). WaveActiveSum and friends reduce across
+       * the wave; WavePrefixSum scans it exclusively.
+       */
+      NEED(3);
+
+      uint64_t dx_op = 0, sign = 0;
+      if (!const_uint(ctx, p[1], &dx_op) || !const_uint(ctx, p[2], &sign)) {
+         trans_fail(ctx, "non-constant wave operation");
+         return false;
+      }
+
+      nir_def *val = get_def(ctx, p[0]);
+      bool is_float = val && val->bit_size >= 16 &&
+                      type_is_float(ctx->mod, inst->result_type);
+      bool is_signed = sign == 0;
+
+      nir_op op;
+      switch (dx_op) {
+      case 0: op = is_float ? nir_op_fadd : nir_op_iadd; break; /* Sum */
+      case 1: op = is_float ? nir_op_fmul : nir_op_imul; break; /* Product */
+      case 2: /* Min */
+         op = is_float ? nir_op_fmin : (is_signed ? nir_op_imin : nir_op_umin);
+         break;
+      case 3: /* Max */
+         op = is_float ? nir_op_fmax : (is_signed ? nir_op_imax : nir_op_umax);
+         break;
+      default:
+         trans_fail(ctx, "unhandled wave operation kind");
+         return false;
+      }
+
+      if (opcode == D12_DXOP_WAVE_ALL_OP) {
+         def_result(ctx, inst, nir_reduce(b, val, .reduction_op = op));
+      } else {
+         /* DXIL's WavePrefix* is exclusive. */
+         def_result(ctx, inst, nir_exclusive_scan(b, val, .reduction_op = op));
+      }
+      return true;
+   }
+
    case D12_DXOP_CREATE_HANDLE_FOR_LIB:
    case D12_DXOP_ANNOTATE_HANDLE: {
       /* (handle, resourceProperties) -> the same handle.
@@ -1364,6 +1470,21 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          if (call_dxop_opcode(&ctx, inst, &opcode, &callee)) {
             translate_dxop(&ctx, inst, opcode, callee);
          } else {
+            /* Name it: "some call failed" is not actionable, and the
+             * callee is right there in the module.
+             */
+            /* Report what the callee operand actually resolved to.
+             * "some call failed" is not actionable, and the answer is
+             * usually that the value is not a function at all.
+             */
+            uint32_t cv = inst->num_ops >= 1 ? inst->ops[0] : ~0u;
+            const struct d12_value *cval =
+               cv < mod->num_values ? &mod->values[cv] : NULL;
+            mesa_loge("dxil: call to non-dx.op function: callee value %u "
+                      "kind %d name '%s' (module has %u values)",
+                      cv, cval ? (int)cval->kind : -1,
+                      cval && cval->name ? cval->name : "(none)",
+                      mod->num_values);
             trans_fail(&ctx, "call to a non-dx.op function (inlining "
                              "required)");
          }

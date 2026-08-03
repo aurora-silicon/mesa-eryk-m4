@@ -52,22 +52,29 @@ fail(struct d12_module *mod, const char *msg)
 static const char *
 intern_chars(struct d12_module *mod, const uint64_t *ops, unsigned n)
 {
-   if (mod->strings_used + n + 1 > mod->strings_size) {
-      size_t want = MAX2(mod->strings_size * 2, mod->strings_used + n + 64);
-      char *grown = realloc(mod->strings, want);
-      if (!grown) {
+   /* Start a new chunk when this string does not fit. Chunks are never
+    * grown or moved: the pointers handed out here outlive this call and
+    * are held for the life of the module.
+    */
+   if (!mod->strings || mod->chunk_used + n + 1 > mod->chunk_size) {
+      size_t want = MAX2(4096, n + 1);
+      struct d12_str_chunk *chunk = malloc(sizeof(*chunk) + want);
+      if (!chunk) {
          fail(mod, "out of memory interning a string");
          return NULL;
       }
-      mod->strings = grown;
-      mod->strings_size = want;
+
+      chunk->next = mod->strings;
+      mod->strings = chunk;
+      mod->chunk_size = want;
+      mod->chunk_used = 0;
    }
 
-   char *out = mod->strings + mod->strings_used;
+   char *out = mod->strings->data + mod->chunk_used;
    for (unsigned i = 0; i < n; i++)
       out[i] = (char)ops[i];
    out[n] = '\0';
-   mod->strings_used += n + 1;
+   mod->chunk_used += n + 1;
    return out;
 }
 
@@ -748,7 +755,11 @@ d12_dxil_module_finish(struct d12_module *mod)
 {
    for (unsigned i = 0; i < mod->num_functions; i++)
       free(mod->functions[i].insts);
-   free(mod->strings);
+   for (struct d12_str_chunk *c = mod->strings; c;) {
+      struct d12_str_chunk *next = c->next;
+      free(c);
+      c = next;
+   }
    memset(mod, 0, sizeof(*mod));
 }
 

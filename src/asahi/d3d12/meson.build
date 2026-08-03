@@ -101,6 +101,13 @@ d3d12agx_g4_smoke = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g5_wave = executable(
+  'd3d12agx_g5_wave',
+  files('tests/g5_wave.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g5_control_flow = executable(
   'd3d12agx_g5_control_flow',
   files('tests/g5_control_flow.c'),

@@ -492,6 +492,12 @@ struct d12_resource_binding {
    uint32_t global_value; /* ~0u when unresolved */
 };
 
+/* One never-moved block of interned strings. */
+struct d12_str_chunk {
+   struct d12_str_chunk *next;
+   char data[];
+};
+
 struct d12_module {
    struct d12_type types[D12_MAX_TYPES];
    unsigned num_types;
@@ -508,9 +514,18 @@ struct d12_module {
    struct d12_named_md named_md[D12_MAX_NAMED_MD];
    unsigned num_named_md;
 
-   /* String arena for names parsed out of the bitstream */
-   char *strings;
-   size_t strings_used, strings_size;
+   /*
+    * String arena for names parsed out of the bitstream.
+    *
+    * CHUNKED, and it has to be: every name we hand out is a bare pointer
+    * into this storage, held by types, values and functions for the life
+    * of the module. A single realloc'd buffer moves, and every one of
+    * those pointers silently starts reading whatever now occupies the old
+    * allocation -- a use-after-free that produces plausible-looking
+    * garbage rather than a crash. Chunks are never moved or resized.
+    */
+   struct d12_str_chunk *strings;
+   size_t chunk_used, chunk_size;
 
    /* Entry-point signatures, resolved from dx.entryPoints */
    struct d12_sig_element input_sig[D12_MAX_SIG_ELEMENTS];
