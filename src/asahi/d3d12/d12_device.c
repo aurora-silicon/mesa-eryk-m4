@@ -220,7 +220,9 @@ d12_device_CreateCommandList(ID3D12Device *iface, UINT node_mask,
       mesa_logw("CreateCommandList: initial pipeline state ignored (no PSOs "
                 "until G4)");
 
-   return d12_cmd_list_create(device, type, riid, out);
+   return d12_cmd_list_create(device, type,
+                              d12_cmd_allocator_from_iface(allocator), riid,
+                              out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -238,8 +240,11 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
       memset(opts, 0, sizeof(*opts));
       /* Honest conservative shape; raised only when the backing exists. */
       opts->ResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_1;
-      /* UMA: one memory pool, all heap types equivalent in hardware. */
-      opts->ResourceHeapTier = D3D12_RESOURCE_HEAP_TIER_2;
+      /* TIER_2 means any resource type in any heap. The hardware would
+       * allow it (UMA), but CreateHeap and CreatePlacedResource do not
+       * exist, so claiming it would be a capability we cannot honour.
+       */
+      opts->ResourceHeapTier = D3D12_RESOURCE_HEAP_TIER_1;
       return S_OK;
    }
 
@@ -268,6 +273,19 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
       arch->CacheCoherentUMA = TRUE;
       /* The GPU sits behind its own MMU (GPU VM / DART). */
       arch->IsolatedMMU = TRUE;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_SHADER_MODEL: {
+      D3D12_FEATURE_DATA_SHADER_MODEL *sm = data;
+      if (data_size != sizeof(*sm))
+         return E_INVALIDARG;
+
+      /* Our DXIL front end targets SM 6.0. The query clamps DOWN to what
+       * the driver supports, per the D3D12 contract.
+       */
+      if (sm->HighestShaderModel > D3D_SHADER_MODEL_6_0)
+         sm->HighestShaderModel = D3D_SHADER_MODEL_6_0;
       return S_OK;
    }
 
@@ -431,13 +449,20 @@ d12_device_CreateFence(ID3D12Device *iface, UINT64 initial_value,
 static HRESULT STDMETHODCALLTYPE
 d12_device_GetDeviceRemovedReason(ID3D12Device *iface)
 {
-   return S_OK;
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   /* Real answer: a failed submission removes the device. */
+   return device->removed ? DXGI_ERROR_DEVICE_REMOVED : S_OK;
 }
 
 static LUID STDMETHODCALLTYPE
 d12_device_GetAdapterLuid(ID3D12Device *iface)
 {
-   LUID luid = {0};
+   /* A zero LUID is a valid-looking value that collides with every other
+    * adapter. One fixed non-zero value is honest for a single-adapter
+    * driver and lets callers key on it.
+    */
+   LUID luid = {.LowPart = 0xA6A00001u, .HighPart = 0};
    return luid;
 }
 
@@ -486,23 +511,27 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
                 "asahi render node");
    }
 
-   if (minimum_feature_level > max_fl) {
-      mesa_loge("D3D12CreateDevice: feature level 0x%x not supported (max "
-                "0x%x)",
+   /* D3D12 has no levels below 11_0; accepting 9_x/10_x would claim
+    * support for a contract that does not exist here.
+    */
+   if (minimum_feature_level < D3D_FEATURE_LEVEL_11_0 ||
+       minimum_feature_level > max_fl) {
+      mesa_loge("D3D12CreateDevice: feature level 0x%x unsupported (this "
+                "driver is 0x%x only)",
                 minimum_feature_level, max_fl);
       return E_INVALIDARG;
    }
+
+   /* Answer the capability probe before opening anything, so the result
+    * does not depend on whether a GPU node happens to be present.
+    */
+   if (!out)
+      return S_FALSE;
 
    int fd = d12_open_asahi_fd();
    if (fd < 0) {
       mesa_loge("D3D12CreateDevice: no asahi render node found");
       return E_FAIL;
-   }
-
-   /* NULL out pointer = capability probe, per the D3D12 contract. */
-   if (!out) {
-      close(fd);
-      return S_FALSE;
    }
 
    struct d12_device *device = calloc(1, sizeof(*device));

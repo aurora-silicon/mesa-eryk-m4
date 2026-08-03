@@ -137,6 +137,58 @@ main(void)
          ID3D12Device_Release(dev2);
    }
 
+   /* Honesty checks: these all used to return success while doing
+    * nothing, which is worse than failing because nothing surfaces it.
+    */
+   {
+      ID3D12Device *bad = NULL;
+      hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_9_1, &IID_ID3D12Device,
+                             (void **)&bad);
+      CHECK(hr == E_INVALIDARG && !bad,
+            "feature level 9_1 is rejected, not silently accepted");
+
+      D3D12_FEATURE_DATA_SHADER_MODEL sm = {
+         .HighestShaderModel = D3D_SHADER_MODEL_6_7,
+      };
+      hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_SHADER_MODEL,
+                                            &sm, sizeof(sm));
+      CHECK(hr == S_OK && sm.HighestShaderModel == D3D_SHADER_MODEL_6_0,
+            "SHADER_MODEL query clamps to the 6_0 we actually compile");
+
+      D3D12_FEATURE_DATA_D3D12_OPTIONS opts = {0};
+      hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_D3D12_OPTIONS,
+                                            &opts, sizeof(opts));
+      CHECK(hr == S_OK &&
+               opts.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1,
+            "reports heap TIER_1, not a TIER_2 it cannot honour");
+
+      LUID luid = ID3D12Device_GetAdapterLuid(dev);
+      CHECK(luid.LowPart != 0 || luid.HighPart != 0,
+            "adapter LUID is not all-zero");
+
+      CHECK(ID3D12Device_GetDeviceRemovedReason(dev) == S_OK,
+            "device not removed while healthy");
+
+      /* Reset must fail while a list built from the allocator records. */
+      ID3D12CommandAllocator *ca = NULL;
+      ID3D12GraphicsCommandList *cl = NULL;
+      ID3D12Device_CreateCommandAllocator(dev,
+                                          D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                          &IID_ID3D12CommandAllocator,
+                                          (void **)&ca);
+      ID3D12Device_CreateCommandList(dev, 0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                     ca, NULL,
+                                     &IID_ID3D12GraphicsCommandList,
+                                     (void **)&cl);
+      CHECK(ID3D12CommandAllocator_Reset(ca) == E_FAIL,
+            "allocator Reset fails while a list is recording");
+      ID3D12GraphicsCommandList_Close(cl);
+      CHECK(ID3D12CommandAllocator_Reset(ca) == S_OK,
+            "allocator Reset succeeds once the list is closed");
+      ID3D12GraphicsCommandList_Release(cl);
+      ID3D12CommandAllocator_Release(ca);
+   }
+
    /* Crash safety: an unimplemented method must FAIL, not jump to NULL.
     * This is the gate to running any external conformance suite.
     */

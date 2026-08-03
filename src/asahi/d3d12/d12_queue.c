@@ -289,7 +289,13 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       struct agx_submit_virt virt = {.ring_idx = 0};
       int ret = dev->ops.submit(dev, &submit, &virt);
       if (ret) {
-         mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d", i, ret);
+         mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d -- device "
+                   "marked removed", i, ret);
+         /* Do NOT advance the timeline, and latch removal so a later
+          * Signal cannot transfer the last good point into a fence and
+          * report progress for work that never executed.
+          */
+         queue->device->removed = true;
       } else {
          queue->timeline_value++;
       }
@@ -328,6 +334,12 @@ d12_queue_Signal(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
    struct d12_fence *fence = d12_fence_from_iface(fence_iface);
    struct agx_device *dev = &queue->device->dev;
    HRESULT hr = S_OK;
+
+   /* Once a submission has failed, signalling would claim progress that
+    * never happened. Report removal instead.
+    */
+   if (queue->device->removed)
+      return DXGI_ERROR_DEVICE_REMOVED;
 
    simple_mtx_lock(&queue->lock);
 

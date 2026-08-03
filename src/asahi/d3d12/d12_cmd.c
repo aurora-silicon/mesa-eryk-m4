@@ -29,12 +29,6 @@
  * the allocator is lifetime bookkeeping to honor the API shape.
  */
 
-static struct d12_cmd_allocator *
-d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
-{
-   return (struct d12_cmd_allocator *)iface;
-}
-
 static HRESULT STDMETHODCALLTYPE
 d12_alloc_QueryInterface(ID3D12CommandAllocator *iface, REFIID riid,
                          void **out)
@@ -117,6 +111,18 @@ d12_alloc_GetDevice(ID3D12CommandAllocator *iface, REFIID riid, void **out)
 static HRESULT STDMETHODCALLTYPE
 d12_alloc_Reset(ID3D12CommandAllocator *iface)
 {
+   struct d12_cmd_allocator *alloc = d12_cmd_allocator_from_iface(iface);
+
+   /* D3D12 requires this to FAIL while any list built from the allocator
+    * is still recording. Returning S_OK regardless hides a real
+    * application bug and corrupts whatever that list goes on to emit.
+    */
+   if (alloc->recording_lists) {
+      mesa_loge("CommandAllocator::Reset with %u list(s) still recording",
+                alloc->recording_lists);
+      return E_FAIL;
+   }
+
    return S_OK;
 }
 
@@ -663,6 +669,17 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    struct d12_segment *seg = &list->segments[list->segment_count - 1];
 
+   /* A pass is opened by ClearRenderTargetView against a specific target.
+    * If the application then bound a different one, drawing here would put
+    * pixels in the wrong texture and report success -- fail instead.
+    */
+   if (list->bound_rt && seg->rt && list->bound_rt != seg->rt) {
+      mesa_loge("Draw: OMSetRenderTargets bound a different target than the "
+                "open render pass; refusing to draw into the wrong texture");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    /* Root table, exactly as the dispatch path builds it. */
    uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
    memcpy(addrs, list->compute_root_uav, sizeof(addrs));
@@ -739,27 +756,54 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
       agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg);
 
+      /* Honour RSSetScissorRects, clamped to the target. */
+      unsigned clip_x0 = 0, clip_y0 = 0;
+      unsigned clip_x1 = seg->width_px, clip_y1 = seg->height_px;
+
+      if (list->has_scissor) {
+         clip_x0 = MAX2(list->scissor.left, 0);
+         clip_y0 = MAX2(list->scissor.top, 0);
+         clip_x1 = MIN2((unsigned)MAX2(list->scissor.right, 0),
+                        seg->width_px);
+         clip_y1 = MIN2((unsigned)MAX2(list->scissor.bottom, 0),
+                        seg->height_px);
+      }
+
       agx_ppp_push(&ppp, REGION_CLIP, cfg) {
          cfg.enable = true;
-         cfg.min_x = 0;
-         cfg.min_y = 0;
-         cfg.max_x = DIV_ROUND_UP(MAX2(seg->width_px, 1), 32);
-         cfg.max_y = DIV_ROUND_UP(MAX2(seg->height_px, 1), 32);
+         cfg.min_x = clip_x0 / 32;
+         cfg.min_y = clip_y0 / 32;
+         cfg.max_x = DIV_ROUND_UP(MAX2(clip_x1, 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(clip_y1, 1), 32);
       }
 
       agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg);
 
-      /* Same transform hk applies: a top-left origin viewport of the full
-       * render target, depth 0..1.
+      /* Honour RSSetViewports. Same transform hk applies, but driven by
+       * the viewport the application actually set rather than always the
+       * whole target.
        */
-      agx_ppp_push(&ppp, VIEWPORT, cfg) {
-         cfg.translate_x = 0.5f * seg->width_px;
-         cfg.translate_y = 0.5f * seg->height_px;
-         cfg.translate_z = 0.0f;
+      float vp_x = 0.0f, vp_y = 0.0f;
+      float vp_w = seg->width_px, vp_h = seg->height_px;
+      float vp_zmin = 0.0f, vp_zmax = 1.0f;
 
-         cfg.scale_x = 0.5f * seg->width_px;
-         cfg.scale_y = 0.5f * seg->height_px;
-         cfg.scale_z = 1.0f;
+      if (list->has_viewport) {
+         vp_x = list->viewport.TopLeftX;
+         vp_y = list->viewport.TopLeftY;
+         vp_w = list->viewport.Width;
+         vp_h = list->viewport.Height;
+         vp_zmin = list->viewport.MinDepth;
+         vp_zmax = list->viewport.MaxDepth;
+      }
+
+      agx_ppp_push(&ppp, VIEWPORT, cfg) {
+         cfg.translate_x = vp_x + 0.5f * vp_w;
+         cfg.translate_y = vp_y + 0.5f * vp_h;
+         cfg.translate_z = vp_zmin;
+
+         cfg.scale_x = 0.5f * vp_w;
+         cfg.scale_y = 0.5f * vp_h;
+         cfg.scale_z = vp_zmax - vp_zmin;
       }
 
       agx_ppp_fini(&out, &ppp);
@@ -924,7 +968,17 @@ static void STDMETHODCALLTYPE
 d12_list_RSSetScissorRects(ID3D12GraphicsCommandList *iface, UINT count,
                            const D3D12_RECT *rects)
 {
-   /* The region clip is derived from the render target for now. */
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (count > 1)
+      mesa_logw("RSSetScissorRects: only the first rect is applied");
+
+   if (count >= 1 && rects) {
+      list->scissor = rects[0];
+      list->has_scissor = true;
+   } else {
+      list->has_scissor = false;
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -1082,6 +1136,10 @@ d12_list_Close(ID3D12GraphicsCommandList *iface)
 
    d12_list_close_cdm(list);
    list->state = D12_LIST_CLOSED;
+
+   if (list->allocator && list->allocator->recording_lists)
+      list->allocator->recording_lists--;
+
    return S_OK;
 }
 
@@ -1095,7 +1153,13 @@ d12_list_Reset(ID3D12GraphicsCommandList *iface,
    if (!allocator)
       return E_INVALIDARG;
    if (initial_state)
-      mesa_logw("Reset: initial pipeline state ignored (no PSOs until G4)");
+      list->pso = d12_pipeline_state_from_iface(initial_state);
+
+   /* Re-entering the recording state re-registers with the allocator. */
+   if (list->state != D12_LIST_RECORDING) {
+      list->allocator = d12_cmd_allocator_from_iface(allocator);
+      list->allocator->recording_lists++;
+   }
 
    d12_list_begin_recording(list);
    return S_OK;
@@ -1192,6 +1256,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
    seg->type = D12_SEG_RENDER;
    seg->width_px = rt->layout.width_px;
    seg->height_px = rt->layout.height_px;
+   seg->rt = rt;
 
    enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8G8B8A8_UNORM,
@@ -1285,11 +1350,25 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
                             BOOL single_handle,
                             const D3D12_CPU_DESCRIPTOR_HANDLE *dsv)
 {
-   /* Recorded state becomes meaningful with draws (G4). Clears take the
-    * RTV handle directly, so this is informational for now.
-    */
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
    if (dsv)
-      mesa_logw("OMSetRenderTargets: depth-stencil ignored until G4+");
+      mesa_logw("OMSetRenderTargets: depth-stencil ignored (no DSV support)");
+
+   /* Record the binding. A render pass is still opened by
+    * ClearRenderTargetView, so this cannot yet START a pass -- but it CAN
+    * stop a draw from silently landing in a different texture than the
+    * one the application bound, which is what happens if these disagree.
+    */
+   list->bound_rt = NULL;
+   if (num_rtvs >= 1 && rtvs) {
+      struct d12_rtv *rtv = (struct d12_rtv *)rtvs[0].ptr;
+      if (rtv)
+         list->bound_rt = rtv->resource;
+   }
+
+   if (num_rtvs > 1)
+      mesa_logw("OMSetRenderTargets: only one render target is supported");
 }
 
 static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
@@ -1326,7 +1405,8 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
 
 HRESULT
 d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
-                    REFIID riid, void **out)
+                    struct d12_cmd_allocator *allocator, REFIID riid,
+                    void **out)
 {
    if (!out)
       return E_POINTER;
@@ -1353,6 +1433,9 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->refcount = 1;
    list->device = device;
    list->type = type;
+   list->allocator = allocator;
+   if (allocator)
+      allocator->recording_lists++;
    d12_device_add_ref(device);
 
    /* D3D12 command lists are created in the recording state. */

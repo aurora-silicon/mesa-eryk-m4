@@ -79,6 +79,12 @@ struct d12_device {
    struct agx_bo *oclqry_bo;
 
    D3D_FEATURE_LEVEL feature_level;
+
+   /* Set when a submission fails. D3D12 models this as device removal, and
+    * without it a later Signal would advance a fence past work that never
+    * ran, making every result downstream a lie.
+    */
+   bool removed;
 };
 
 /* Committed resource: one agx_bo. UMA means every heap type is the same
@@ -164,6 +170,11 @@ struct d12_cmd_allocator {
 
    struct d12_device *device; /* holds a device ref */
    D3D12_COMMAND_LIST_TYPE type;
+
+   /* Lists derived from this allocator that are currently recording.
+    * Reset must fail while any are.
+    */
+   unsigned recording_lists;
 };
 
 enum d12_list_state {
@@ -206,6 +217,7 @@ struct d12_segment {
    /* RENDER */
    uint16_t width_px, height_px;
    struct agx_tilebuffer_layout tib;
+   struct d12_resource *rt;  /* the target this pass renders to */
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
    struct agx_counts_packed bg_counts, eot_counts;
    bool has_draws;
@@ -234,10 +246,20 @@ struct d12_cmd_list {
    bool render_open; /* last segment is an unterminated RENDER */
 
    /* Bound state */
+   struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
    uint64_t compute_root_uav[D12_MAX_RESOURCE_BINDINGS];
+   /* Rasterizer state, actually consumed by the draw path. */
    D3D12_VIEWPORT viewport;
    bool has_viewport;
+   D3D12_RECT scissor;
+   bool has_scissor;
+
+   /* The render target bound by OMSetRenderTargets, so a draw into a pass
+    * opened for a different target is caught instead of silently going to
+    * the wrong texture.
+    */
+   struct d12_resource *bound_rt;
 };
 
 static inline struct d12_resource *
@@ -317,8 +339,15 @@ HRESULT d12_cmd_allocator_create(struct d12_device *device,
                                  D3D12_COMMAND_LIST_TYPE type, REFIID riid,
                                  void **out);
 HRESULT d12_cmd_list_create(struct d12_device *device,
-                            D3D12_COMMAND_LIST_TYPE type, REFIID riid,
+                            D3D12_COMMAND_LIST_TYPE type,
+                            struct d12_cmd_allocator *allocator, REFIID riid,
                             void **out);
+
+static inline struct d12_cmd_allocator *
+d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
+{
+   return (struct d12_cmd_allocator *)iface;
+}
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                    REFIID riid, void **out);

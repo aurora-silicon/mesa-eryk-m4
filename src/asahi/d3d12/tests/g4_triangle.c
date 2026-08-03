@@ -224,6 +224,46 @@ main(int argc, char **argv)
    CHECK(covered > (W * H) / 20 && covered < (W * H) * 9 / 10,
          "coverage is a real triangle, not empty or fully filled");
 
+   /* RSSetViewports used to be recorded and never read. Re-render into a
+    * half-height viewport: a viewport that is honoured must shrink the
+    * covered area, and must leave the bottom of the target cleared.
+    */
+   {
+      memset(map, 0x55, STRIDE * H);
+      ID3D12GraphicsCommandList_Reset(list, alloc, NULL);
+      ID3D12GraphicsCommandList_ClearRenderTargetView(list, rtv, clear_red, 0,
+                                                      NULL);
+      D3D12_VIEWPORT half = {.Width = W, .Height = H / 2, .MaxDepth = 1.0f};
+      ID3D12GraphicsCommandList_RSSetViewports(list, 1, &half);
+      ID3D12GraphicsCommandList_RSSetScissorRects(list, 1, &sc);
+      ID3D12GraphicsCommandList_SetGraphicsRootSignature(list, root_sig);
+      ID3D12GraphicsCommandList_SetPipelineState(list, pso);
+      ID3D12GraphicsCommandList_IASetPrimitiveTopology(
+         list, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+      ID3D12GraphicsCommandList_DrawInstanced(list, 3, 1, 0, 0);
+      ID3D12GraphicsCommandList_Close(list);
+      ID3D12CommandQueue_ExecuteCommandLists(queue, 1, lists);
+      ID3D12CommandQueue_Signal(queue, fence, 2);
+      ID3D12Fence_SetEventOnCompletion(fence, 2, NULL);
+
+      unsigned half_cov = 0;
+      for (unsigned y = 0; y < H; y++) {
+         for (unsigned x = 0; x < W; x++) {
+            const uint8_t *p = PIXEL(x, y);
+            if (!(p[0] == 0xff && p[1] == 0x00 && p[2] == 0x00))
+               half_cov++;
+         }
+      }
+      printf("       half-height viewport covered %u (full was %u)\n",
+             half_cov, covered);
+      CHECK(half_cov > 0 && half_cov < covered,
+            "RSSetViewports is honoured: half viewport shrinks coverage");
+
+      const uint8_t *low = PIXEL(W / 2, H - 4);
+      CHECK(low[0] == 0xff && low[1] == 0x00 && low[2] == 0x00,
+            "area below the viewport keeps the clear colour");
+   }
+
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);
    ID3D12CommandQueue_Release(queue);
