@@ -72,6 +72,10 @@ enum d12_dxop {
    /* SM 6.6 replaced createHandle with a binding-descriptor form. It is by
     * far the most common resource intrinsic in modern DXIL.
     */
+   /* SM 6.x declares resources as globals; this converts a loaded global
+    * into a handle. Like annotateHandle, it is a rename.
+    */
+   D12_DXOP_CREATE_HANDLE_FOR_LIB = 160,
    D12_DXOP_ANNOTATE_HANDLE = 216,
    D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
    D12_DXOP_THREAD_ID = 93,
@@ -310,6 +314,31 @@ decode_res_bind(struct trans_ctx *ctx, uint32_t value_id, unsigned *lower,
    *space = out[2];
    *klass = out[3];
    return true;
+}
+
+/*
+ * The binding slot of the resource a global variable stands for, or ~0u if
+ * the global is not a resource.
+ */
+static unsigned
+resource_slot_for_global(struct trans_ctx *ctx, uint32_t value_id)
+{
+   const struct d12_module *mod = ctx->mod;
+
+   if (value_id >= mod->num_values ||
+       mod->values[value_id].kind != D12_VALUE_GLOBAL)
+      return ~0u;
+
+   for (unsigned i = 0; i < mod->num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod->resources[i];
+      if (rb->global_value != value_id)
+         continue;
+
+      return d12_binding_map_find(ctx->map, rb->klass, rb->space,
+                                  rb->lower_bound);
+   }
+
+   return ~0u;
 }
 
 /*
@@ -875,6 +904,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       return true;
    }
 
+   case D12_DXOP_CREATE_HANDLE_FOR_LIB:
    case D12_DXOP_ANNOTATE_HANDLE: {
       /* (handle, resourceProperties) -> the same handle.
        *
@@ -1373,6 +1403,25 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       case D12_FUNC_INST_SELECT:
       case D12_FUNC_INST_VSELECT:
          translate_select(&ctx, inst);
+         break;
+
+      case D12_FUNC_INST_LOAD:
+         /* SM 6.x reaches a resource by loading the global that stands
+          * for it and converting the result with createHandleForLib. The
+          * load itself carries no data: its value IS the resource, so it
+          * resolves to that resource's binding slot exactly as
+          * createHandle does. A load of anything else is real memory
+          * traffic we do not implement, and says so.
+          */
+         if (inst->num_ops >= 1) {
+            unsigned slot = resource_slot_for_global(&ctx, inst->ops[0]);
+            if (slot != ~0u) {
+               def_result(&ctx, inst, nir_imm_int(&b, slot));
+               break;
+            }
+         }
+         trans_fail(&ctx, "load from memory (groupshared or local) "
+                          "unsupported");
          break;
 
       case D12_FUNC_INST_PHI:

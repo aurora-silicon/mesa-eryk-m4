@@ -939,6 +939,14 @@ parse_resource_list(struct d12_module *mod, uint64_t list_id, unsigned klass)
       struct d12_resource_binding *rb = &mod->resources[mod->num_resources];
       memset(rb, 0, sizeof(*rb));
       rb->klass = klass;
+      rb->global_value = ~0u;
+
+      /* Operand 1 names the global variable standing for this resource. */
+      if (rec->node.ops[1] < mod->num_metadata) {
+         const struct d12_metadata *var = &mod->metadata[rec->node.ops[1]];
+         if (var->kind == D12_MD_VALUE)
+            rb->global_value = (uint32_t)var->value_id;
+      }
 
       uint64_t v;
       if (md_const_uint(mod, rec->node.ops[0], &v))

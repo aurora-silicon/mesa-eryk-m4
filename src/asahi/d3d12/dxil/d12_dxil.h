@@ -484,6 +484,12 @@ struct d12_resource_binding {
    uint32_t stride_B;
 
    uint32_t cb_size_B; /* CBV only */
+
+   /* The global variable that stands for this resource. SM 6.x declares
+    * resources as globals, loads them, and converts the loaded value with
+    * createHandleForLib -- so a load has to be traceable back to here.
+    */
+   uint32_t global_value; /* ~0u when unresolved */
 };
 
 struct d12_module {
