@@ -22,6 +22,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "shader_enums.h"
+
 /* Bitstream container magic: 'B','C',0xC0,0xDE */
 #define D12_BITCODE_MAGIC 0xDEC04342u
 
@@ -130,6 +132,13 @@ struct d12_bitstream {
 bool d12_dxil_find_bitcode(const void *data, size_t size_B,
                            const uint8_t **out_bitcode, size_t *out_size_B,
                            const char **why);
+
+/*
+ * Recover the shader stage from a DXBC container's DXIL program version.
+ * Returns false for bare bitcode (no container to ask).
+ */
+bool d12_dxil_container_stage(const void *data, size_t size_B,
+                              mesa_shader_stage *out_stage);
 
 /* Bitstream primitives */
 void d12_bitstream_init(struct d12_bitstream *bs, const uint8_t *data,
@@ -397,3 +406,19 @@ void d12_dxil_module_finish(struct d12_module *mod);
 /* Convenience: find a named metadata node list (e.g. "dx.entryPoints") */
 const struct d12_named_md *d12_dxil_find_named_md(const struct d12_module *mod,
                                                   const char *name);
+
+/*
+ * ---------------------------------------------------------------------
+ * Translation to NIR (G4c) — the "no SPIR-V" step
+ * ---------------------------------------------------------------------
+ */
+
+struct nir_shader;
+
+/*
+ * Translate a parsed module's entry point to NIR for the AGX backend.
+ * Returns NULL with *error set on failure. Caller owns the shader.
+ */
+struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
+                                   mesa_shader_stage stage,
+                                   const char **error);

@@ -382,16 +382,53 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
    bool defines_value = false;
 
    switch (rec->code) {
-   case D12_FUNC_INST_CALL:
-      /* [paramattr, cc, fnty?, fnid, args...] — the callee and args are
-       * relative ids. The result type comes from the callee's function
-       * type; we record operands and let G4c type them.
+   case D12_FUNC_INST_CALL: {
+      /* [paramattr, cc, fnty?, fnid, args...]. Bit 15 of the cc field
+       * (CALL_EXPLICIT_TYPE) says whether the function type is spelled
+       * out before the callee. Everything from the callee on is a
+       * relative value id.
        */
-      for (unsigned i = 2; i < rec->num_ops && inst->num_ops < D12_MAX_INST_OPS;
-           i++)
-         inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[i]);
-      defines_value = true; /* refined below if the callee returns void */
+      if (rec->num_ops < 3) {
+         fail(mod, "malformed call record");
+         return false;
+      }
+
+      unsigned opnum = 2;
+      if ((rec->ops[1] >> 15) & 1) {
+         inst->extra[inst->num_extra++] = rec->ops[opnum]; /* fnty */
+         opnum++;
+      }
+
+      /* ops[0] is the callee; ops[1..] are the arguments. */
+      for (; opnum < rec->num_ops && inst->num_ops < D12_MAX_INST_OPS; opnum++)
+         inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[opnum]);
+
+      /* A call defines a value only if the callee does not return void.
+       * Getting this wrong shifts every later value index in the
+       * function, so resolve it from the callee's type here.
+       */
+      defines_value = false;
+      if (inst->num_ops >= 1 && inst->ops[0] < mod->num_values) {
+         uint32_t fty = mod->values[inst->ops[0]].type;
+
+         /* Function values are typed as pointer-to-function in LLVM. */
+         if (fty < mod->num_types &&
+             mod->types[fty].kind == D12_TYPE_POINTER)
+            fty = mod->types[fty].ptr.pointee;
+
+         if (fty < mod->num_types &&
+             mod->types[fty].kind == D12_TYPE_FUNCTION) {
+            uint32_t ret = mod->types[fty].func.ret;
+            bool returns_void = ret < mod->num_types &&
+                                mod->types[ret].kind == D12_TYPE_VOID;
+            if (!returns_void) {
+               defines_value = true;
+               inst->result_type = ret;
+            }
+         }
+      }
       break;
+   }
 
    case D12_FUNC_INST_BINOP:
       /* [lhs, rhs, opcode, (flags)] */

@@ -94,24 +94,39 @@ d12_dxil_find_bitcode(const void *data, size_t size_B,
 
       const uint8_t *part = p + off + 8;
 
-      /* DXIL part header: u8 major, u8 minor, u16 shader kind, u32
-       * version, u32 bitcode offset (from the start of this header),
-       * u32 bitcode size.
+      /* DxilProgramHeader:
+       *   +0  u32 ProgramVersion  ((kind << 16) | (major << 4) | minor)
+       *   +4  u32 SizeInUint32
+       *   +8  DxilBitcodeHeader:
+       *         +0  char[4] "DXIL"
+       *         +4  u32 DxilVersion
+       *         +8  u32 BitcodeOffset  (relative to the BITCODE HEADER)
+       *         +12 u32 BitcodeSize
+       * Verified against real dxc output rather than assumed.
        */
-      if (part_size < 16) {
+      if (part_size < 24) {
          *why = "truncated DXIL part header";
          return false;
       }
 
-      uint32_t bc_offset = read_le32(part + 8);
-      uint32_t bc_size = read_le32(part + 12);
+      const uint8_t *bc_header = part + 8;
+      if (memcmp(bc_header, "DXIL", 4)) {
+         *why = "DXIL part lacks its bitcode header magic";
+         return false;
+      }
 
-      if ((size_t)bc_offset + bc_size > part_size) {
+      uint32_t bc_offset = read_le32(bc_header + 8);
+      uint32_t bc_size = read_le32(bc_header + 12);
+
+      /* Offsets are from the bitcode header, which sits 8 bytes into the
+       * part payload.
+       */
+      if ((size_t)8 + bc_offset + bc_size > part_size) {
          *why = "DXIL bitcode extends past its part";
          return false;
       }
 
-      const uint8_t *bc = part + bc_offset;
+      const uint8_t *bc = bc_header + bc_offset;
       if (bc_size < 4 || read_le32(bc) != D12_BITCODE_MAGIC) {
          *why = "DXIL part does not contain LLVM bitcode";
          return false;
@@ -123,6 +138,43 @@ d12_dxil_find_bitcode(const void *data, size_t size_B,
    }
 
    *why = "no DXIL part in DXBC container";
+   return false;
+}
+
+bool
+d12_dxil_container_stage(const void *data, size_t size_B,
+                         mesa_shader_stage *out_stage)
+{
+   const uint8_t *p = data;
+
+   if (!p || size_B < 32 || read_le32(p) != D12_DXBC_MAGIC)
+      return false;
+
+   uint32_t part_count = read_le32(p + 28);
+   if (part_count > 64 || 32 + (size_t)part_count * 4 > size_B)
+      return false;
+
+   for (uint32_t i = 0; i < part_count; i++) {
+      uint32_t off = read_le32(p + 32 + i * 4);
+      if (off + 12 > size_B)
+         return false;
+
+      if (memcmp(p + off, "DXIL", 4) && memcmp(p + off, "ILDB", 4))
+         continue;
+
+      /* ProgramVersion's high 16 bits are the DXIL shader kind. */
+      uint32_t program_version = read_le32(p + off + 8);
+      switch (program_version >> 16) {
+      case 0: *out_stage = MESA_SHADER_FRAGMENT; return true;
+      case 1: *out_stage = MESA_SHADER_VERTEX; return true;
+      case 2: *out_stage = MESA_SHADER_GEOMETRY; return true;
+      case 3: *out_stage = MESA_SHADER_TESS_CTRL; return true;
+      case 4: *out_stage = MESA_SHADER_TESS_EVAL; return true;
+      case 5: *out_stage = MESA_SHADER_COMPUTE; return true;
+      default: return false;
+      }
+   }
+
    return false;
 }
 
