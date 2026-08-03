@@ -447,7 +447,8 @@ HRESULT
 d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *vs_dxil, size_t vs_size,
                                    const void *ps_dxil, size_t ps_size,
-                                   REFIID riid, void **out)
+                                   enum pipe_format rt_format, REFIID riid,
+                                   void **out)
 {
    if (!out)
       return E_POINTER;
@@ -458,8 +459,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    if (!pso)
       return E_OUTOFMEMORY;
 
-   /* G3's format: one RGBA8 render target, single sampled. */
-   enum pipe_format formats[8] = {PIPE_FORMAT_R8G8B8A8_UNORM};
+   /* One render target, single sampled, in the format the pipeline
+    * actually declares rather than an assumed RGBA8.
+    */
+   enum pipe_format formats[8] = {rt_format != PIPE_FORMAT_NONE
+                                     ? rt_format
+                                     : PIPE_FORMAT_R8G8B8A8_UNORM};
    struct agx_tilebuffer_layout tib =
       agx_build_tilebuffer_layout(formats, 1, 1, false);
 

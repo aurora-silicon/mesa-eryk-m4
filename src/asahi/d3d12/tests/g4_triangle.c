@@ -349,6 +349,86 @@ main(int argc, char **argv)
       ID3D12Resource_Release(dstbuf);
    }
 
+   /* A SECOND FORMAT. Everything above is RGBA8, which the driver used to
+    * hardcode in eight places. BGRA8 is the sharpest check available: it
+    * has the same size and layout but the opposite channel order, so a
+    * missing swizzle shows up as red and blue swapped rather than as a
+    * crash.
+    */
+   {
+      D3D12_HEAP_PROPERTIES dh = {.Type = D3D12_HEAP_TYPE_DEFAULT};
+      D3D12_RESOURCE_DESC bd2 = {
+         .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+         .Width = 64,
+         .Height = 64,
+         .DepthOrArraySize = 1,
+         .MipLevels = 1,
+         .Format = DXGI_FORMAT_B8G8R8A8_UNORM,
+         .SampleDesc = {.Count = 1},
+         .Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+      };
+      ID3D12Resource *bgra = NULL;
+      hr = ID3D12Device_CreateCommittedResource(
+         dev, &dh, D3D12_HEAP_FLAG_NONE, &bd2,
+         D3D12_RESOURCE_STATE_RENDER_TARGET, NULL, &IID_ID3D12Resource,
+         (void **)&bgra);
+      CHECK(hr == S_OK && bgra, "create a BGRA8 render target");
+
+      D3D12_DESCRIPTOR_HEAP_DESC hd2 = {
+         .Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV, .NumDescriptors = 1};
+      ID3D12DescriptorHeap *h2 = NULL;
+      ID3D12Device_CreateDescriptorHeap(dev, &hd2, &IID_ID3D12DescriptorHeap,
+                                        (void **)&h2);
+      D3D12_CPU_DESCRIPTOR_HANDLE rtv2 =
+         ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(h2);
+      ID3D12Device_CreateRenderTargetView(dev, bgra, NULL, rtv2);
+
+      uint8_t *m2 = NULL;
+      ID3D12Resource_Map(bgra, 0, NULL, (void **)&m2);
+      memset(m2, 0x11, 64 * ((64 * 4 + 63) & ~63u));
+
+      /* Clear to pure red. In BGRA memory order that must land as
+       * 00 00 ff ff, NOT ff 00 00 ff.
+       */
+      ID3D12GraphicsCommandList_Reset(list, alloc, NULL);
+      ID3D12GraphicsCommandList_ClearRenderTargetView(list, rtv2, clear_red,
+                                                      0, NULL);
+      ID3D12GraphicsCommandList_Close(list);
+      ID3D12CommandQueue_ExecuteCommandLists(queue, 1, lists);
+      ID3D12CommandQueue_Signal(queue, fence, 4);
+      ID3D12Fence_SetEventOnCompletion(fence, 4, NULL);
+
+      printf("       BGRA8 cleared to red -> memory %02x %02x %02x %02x\n",
+             m2[0], m2[1], m2[2], m2[3]);
+      CHECK(m2[0] == 0x00 && m2[1] == 0x00 && m2[2] == 0xff && m2[3] == 0xff,
+            "BGRA8 channel order is honoured (red is not swapped to blue)");
+
+      ID3D12Resource_Unmap(bgra, 0, NULL);
+      ID3D12DescriptorHeap_Release(h2);
+      ID3D12Resource_Release(bgra);
+   }
+
+   /* And a format the hardware cannot render must be REFUSED, not
+    * accepted into producing wrong pixels.
+    */
+   {
+      D3D12_HEAP_PROPERTIES dh = {.Type = D3D12_HEAP_TYPE_DEFAULT};
+      D3D12_RESOURCE_DESC bad = {
+         .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+         .Width = 16, .Height = 16, .DepthOrArraySize = 1, .MipLevels = 1,
+         .Format = DXGI_FORMAT_BC1_UNORM, /* block compressed: not an RT */
+         .SampleDesc = {.Count = 1},
+         .Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+      };
+      ID3D12Resource *r = NULL;
+      hr = ID3D12Device_CreateCommittedResource(
+         dev, &dh, D3D12_HEAP_FLAG_NONE, &bad,
+         D3D12_RESOURCE_STATE_RENDER_TARGET, NULL, &IID_ID3D12Resource,
+         (void **)&r);
+      CHECK(FAILED(hr) && !r,
+            "an unrenderable format is refused, not silently accepted");
+   }
+
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);
    ID3D12CommandQueue_Release(queue);

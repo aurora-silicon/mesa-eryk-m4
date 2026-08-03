@@ -200,18 +200,30 @@ d12_resource_create_committed(struct d12_device *device,
          return E_INVALIDARG;
       size_B = desc->Width;
    } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
-      /* G3 scope: single-level, single-layer, single-sample RGBA8. LINEAR
-       * tiling so the CPU can verify pixels; twiddled/compressed layouts
-       * arrive with real texturing (G4+).
+      /* Single-level, single-layer, single-sample. LINEAR tiling so the
+       * CPU can read pixels directly; twiddled layouts arrive with real
+       * texturing. The FORMAT is now whatever the hardware can handle.
        */
-      if (desc->Format != DXGI_FORMAT_R8G8B8A8_UNORM ||
-          desc->MipLevels > 1 || desc->DepthOrArraySize > 1 ||
-          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
-         mesa_loge("CreateCommittedResource: texture shape unsupported in "
-                   "G3 (fmt %d, mips %u, layers %u, samples %u)",
+      enum pipe_format pipe = d12_format_to_pipe(desc->Format);
+
+      if (pipe == PIPE_FORMAT_NONE || desc->MipLevels > 1 ||
+          desc->DepthOrArraySize > 1 || desc->SampleDesc.Count > 1 ||
+          !desc->Width || !desc->Height) {
+         mesa_loge("CreateCommittedResource: texture shape unsupported "
+                   "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,
                    desc->DepthOrArraySize, desc->SampleDesc.Count);
          return E_NOTIMPL;
+      }
+
+      /* Refuse a render target the hardware cannot render to, rather than
+       * accepting it and producing wrong pixels.
+       */
+      if ((desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) &&
+          !d12_format_is_renderable(desc->Format)) {
+         mesa_loge("CreateCommittedResource: format %d is not renderable on "
+                   "this GPU", (int)desc->Format);
+         return E_INVALIDARG;
       }
 
       layout = (struct ail_layout){
@@ -221,9 +233,11 @@ d12_resource_create_committed(struct d12_device *device,
          .sample_count_sa = 1,
          .levels = 1,
          .tiling = AIL_TILING_LINEAR,
-         .format = PIPE_FORMAT_R8G8B8A8_UNORM,
-         /* 64-byte-aligned rows; the g3 smoke test mirrors this constant */
-         .linear_stride_B = align((uint32_t)desc->Width * 4, 64),
+         .format = pipe,
+         /* 64-byte-aligned rows; the smoke tests mirror this constant */
+         .linear_stride_B =
+            align((uint32_t)desc->Width *
+                     d12_format_bytes_per_pixel(desc->Format), 64),
       };
       ail_make_miptree(&layout);
       size_B = layout.size_B;

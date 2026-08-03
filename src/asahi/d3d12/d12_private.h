@@ -351,6 +351,11 @@ d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                    REFIID riid, void **out);
+/* DXGI format support (d12_format.c) */
+enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
+bool d12_format_is_renderable(DXGI_FORMAT format);
+unsigned d12_format_bytes_per_pixel(DXGI_FORMAT format);
+
 HRESULT d12_root_signature_create(struct d12_device *device, REFIID riid,
                                   void **out);
 HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
@@ -358,7 +363,8 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           REFIID riid, void **out);
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
-   const void *ps_dxil, size_t ps_size, REFIID riid, void **out);
+   const void *ps_dxil, size_t ps_size, enum pipe_format rt_format,
+   REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

@@ -417,13 +417,30 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
       agx_pack(&desc, PBE, cfg) {
          cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = agx_translate_layout(AIL_TILING_LINEAR);
-         cfg.channels = ail_pixel_format[PIPE_FORMAT_R8G8B8A8_UNORM].channels;
-         cfg.type = ail_pixel_format[PIPE_FORMAT_R8G8B8A8_UNORM].type;
-         cfg.srgb = false;
+         enum pipe_format pf = rt->layout.format;
+         const struct util_format_description *fdesc =
+            util_format_description(pf);
+
+         cfg.channels = ail_pixel_format[pf].channels;
+         cfg.type = ail_pixel_format[pf].type;
+         cfg.srgb = util_format_is_srgb(pf);
+
+         /* Honour the format's channel order, so BGRA does not come out
+          * with red and blue swapped.
+          */
          cfg.swizzle_r = 0;
          cfg.swizzle_g = 1;
          cfg.swizzle_b = 2;
          cfg.swizzle_a = 3;
+         for (unsigned c = 0; c < fdesc->nr_channels && c < 4; c++) {
+            switch (fdesc->swizzle[c]) {
+            case PIPE_SWIZZLE_X: cfg.swizzle_r = c; break;
+            case PIPE_SWIZZLE_Y: cfg.swizzle_g = c; break;
+            case PIPE_SWIZZLE_Z: cfg.swizzle_b = c; break;
+            case PIPE_SWIZZLE_W: cfg.swizzle_a = c; break;
+            default: break;
+            }
+         }
          cfg.buffer = rt->bo->va->addr;
          cfg.width = rt->layout.width_px;
          cfg.height = rt->layout.height_px;
@@ -1258,9 +1275,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
    seg->height_px = rt->layout.height_px;
    seg->rt = rt;
 
-   enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
-      PIPE_FORMAT_R8G8B8A8_UNORM,
-   };
+   enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rt->layout.format};
    seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
 
    seg->bg_usc =
@@ -1404,7 +1419,12 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList *iface,
    if (!width || !height)
       return;
 
-   const unsigned bpp = 4; /* RGBA8, our texture scope */
+   const unsigned bpp = d12_format_bytes_per_pixel(tex->desc.Format);
+   if (!bpp) {
+      mesa_loge("CopyTextureRegion: unsupported texture format");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
    const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
    const unsigned buf_stride = fp->Footprint.RowPitch;
    const uint64_t row_bytes = (uint64_t)width * bpp;

@@ -343,9 +343,17 @@ d12_device_CreateGraphicsPipelineState(
    if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
       return E_INVALIDARG;
 
+   /* The pipeline's declared render-target format now drives the
+    * tilebuffer layout instead of an assumed RGBA8.
+    */
+   enum pipe_format rt_format = PIPE_FORMAT_NONE;
+   if (desc->NumRenderTargets >= 1)
+      rt_format = d12_format_to_pipe(desc->RTVFormats[0]);
+
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
-      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, riid, out);
+      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, rt_format, riid,
+      out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -390,8 +398,9 @@ d12_device_CreateRenderTargetView(ID3D12Device *iface,
    struct d12_resource *res = d12_resource_from_iface(resource);
 
    if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-       res->desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM) {
-      mesa_loge("CreateRenderTargetView: only RGBA8 2D targets in G3");
+       !d12_format_is_renderable(res->desc.Format)) {
+      mesa_loge("CreateRenderTargetView: format %d is not a renderable 2D "
+                "target", (int)res->desc.Format);
       slot->resource = NULL;
       return;
    }
@@ -404,7 +413,7 @@ d12_device_CreateRenderTargetView(ID3D12Device *iface,
    }
 
    slot->resource = res;
-   slot->format = DXGI_FORMAT_R8G8B8A8_UNORM;
+   slot->format = res->desc.Format;
 }
 
 static UINT STDMETHODCALLTYPE
