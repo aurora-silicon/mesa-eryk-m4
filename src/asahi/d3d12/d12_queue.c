@@ -135,6 +135,12 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    c->isp_bgobjdepth = 0;
    c->isp_bgobjvals = 0x300;
 
+   /* Sample positions. Irrelevant to a clear-only pass, but rasterizing
+    * geometry with this left at zero hangs the GPU. 0x88 is the standard
+    * single-sample centre.
+    */
+   c->ppp_multisamplectl = 0x88;
+
    agx_tilebuffer_set_drm_cmd(c, &seg->tib);
    c->samples = 1;
    c->sample_size_B = seg->tib.sample_size_B;

@@ -78,6 +78,13 @@ d3d12agx_g3_smoke = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g4_triangle = executable(
+  'd3d12agx_g4_triangle',
+  files('tests/g4_triangle.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g4_smoke = executable(
   'd3d12agx_g4_smoke',
   files('tests/g4_smoke.c'),

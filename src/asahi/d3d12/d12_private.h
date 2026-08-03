@@ -26,7 +26,9 @@
 #include "agx_bg_eot.h"
 #include "agx_compile.h"
 #include "agx_device.h"
+#include "agx_linker.h"
 #include "agx_tilebuffer.h"
+#include "agx_uvs.h"
 #include "dxil/d12_dxil.h"
 #include "layout.h"
 
@@ -116,6 +118,15 @@ struct d12_root_signature {
    struct d12_device *device; /* holds a device ref */
 };
 
+/* One linked graphics stage */
+struct d12_gfx_stage {
+   struct agx_shader_info info;
+   struct agx_linked_shader linked;
+   struct agx_counts_packed counts;                  /* vertex */
+   struct agx_fragment_shader_word_0_packed fs_counts; /* fragment */
+   struct agx_fragment_face_2_packed frag_face;        /* fragment */
+};
+
 /* A compiled pipeline: AGX machine code produced from the app's DXIL. */
 struct d12_pipeline_state {
    ID3D12PipelineState iface; /* must be first */
@@ -124,9 +135,15 @@ struct d12_pipeline_state {
    struct d12_device *device; /* holds a device ref */
    bool is_compute;
 
+   /* Compute */
    struct agx_bo *code_bo;
    uint64_t code_va;
    struct agx_shader_info info;
+
+   /* Graphics */
+   struct d12_gfx_stage vs, fs;
+   struct agx_unlinked_uvs_layout uvs;
+   struct agx_varyings_vs varyings;
 };
 
 static inline struct d12_pipeline_state *
@@ -185,6 +202,7 @@ struct d12_segment {
    struct agx_tilebuffer_layout tib;
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
    struct agx_counts_packed bg_counts, eot_counts;
+   bool has_draws;
 };
 
 #define D12_MAX_SEGMENTS 32
@@ -206,11 +224,14 @@ struct d12_cmd_list {
 
    struct d12_segment segments[D12_MAX_SEGMENTS];
    unsigned segment_count;
-   bool cdm_open; /* segments[segment_count-1] is an unterminated CDM */
+   bool cdm_open;    /* last segment is an unterminated CDM */
+   bool render_open; /* last segment is an unterminated RENDER */
 
-   /* Bound state for dispatches */
+   /* Bound state */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
    uint64_t compute_root_uav[D12_MAX_RESOURCE_BINDINGS];
+   D3D12_VIEWPORT viewport;
+   bool has_viewport;
 };
 
 static inline struct d12_resource *
@@ -300,6 +321,9 @@ HRESULT d12_root_signature_create(struct d12_device *device, REFIID riid,
 HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           const void *dxil, size_t dxil_size,
                                           REFIID riid, void **out);
+HRESULT d12_pipeline_state_create_graphics(
+   struct d12_device *device, const void *vs_dxil, size_t vs_size,
+   const void *ps_dxil, size_t ps_size, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

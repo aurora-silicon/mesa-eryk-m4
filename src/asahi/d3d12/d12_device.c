@@ -293,6 +293,21 @@ d12_device_CreateComputePipelineState(
 }
 
 static HRESULT STDMETHODCALLTYPE
+d12_device_CreateGraphicsPipelineState(
+   ID3D12Device *iface, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
+   REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
+      return E_INVALIDARG;
+
+   return d12_pipeline_state_create_graphics(
+      device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
+      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
 d12_device_CreateRootSignature(ID3D12Device *iface, UINT node_mask,
                                const void *blob, SIZE_T blob_size,
                                REFIID riid, void **out)
@@ -416,6 +431,7 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .CreateCommandAllocator = d12_device_CreateCommandAllocator,
    .CreateCommandList = d12_device_CreateCommandList,
    .CheckFeatureSupport = d12_device_CheckFeatureSupport,
+   .CreateGraphicsPipelineState = d12_device_CreateGraphicsPipelineState,
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,

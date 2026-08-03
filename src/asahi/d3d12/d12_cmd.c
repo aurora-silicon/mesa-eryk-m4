@@ -183,6 +183,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->usc_offset = 0;
    list->segment_count = 0;
    list->cdm_open = false;
+   list->render_open = false;
    list->state = D12_LIST_RECORDING;
 }
 
@@ -203,6 +204,33 @@ d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
    memcpy(d12_list_stream_map(list) + floor, data, size);
    list->data_floor = floor;
    return list->stream_bo->va->addr + floor;
+}
+
+/* Reserve zeroed data space; returns its GPU address. */
+static uint64_t
+d12_list_upload_zero(struct d12_cmd_list *list, size_t size, size_t align)
+{
+   size_t floor = (list->data_floor - size) & ~(align - 1);
+   size_t used = list->stream_cur - d12_list_stream_map(list);
+
+   if (floor <= used + D12_DISPATCH_STREAM_MARGIN) {
+      mesa_loge("command list out of stream/data space");
+      list->state = D12_LIST_ERROR;
+      return 0;
+   }
+
+   memset(d12_list_stream_map(list) + floor, 0, size);
+   list->data_floor = floor;
+   return list->stream_bo->va->addr + floor;
+}
+
+/* CPU pointer for a GPU address previously returned by an upload. */
+static uint8_t *
+d12_list_data_cpu(struct d12_cmd_list *list, uint64_t gpu)
+{
+   if (!gpu)
+      return NULL;
+   return d12_list_stream_map(list) + (gpu - list->stream_bo->va->addr);
 }
 
 /* Allocate USC words; returns CPU pointer and the usc-space address. */
@@ -234,18 +262,25 @@ d12_list_check_stream_space(struct d12_cmd_list *list)
    return true;
 }
 
-/* Close the currently-open CDM segment, if any (terminates its stream). */
+/* Close whichever segment is open, terminating its control stream. */
 static void
 d12_list_close_cdm(struct d12_cmd_list *list)
 {
-   if (!list->cdm_open)
-      return;
+   if (list->cdm_open) {
+      struct d12_segment *seg = &list->segments[list->segment_count - 1];
+      list->stream_cur =
+         (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
+      seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+      list->cdm_open = false;
+   }
 
-   struct d12_segment *seg = &list->segments[list->segment_count - 1];
-   list->stream_cur =
-      (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
-   seg->stream_end = list->stream_cur - d12_list_stream_map(list);
-   list->cdm_open = false;
+   if (list->render_open) {
+      struct d12_segment *seg = &list->segments[list->segment_count - 1];
+      list->stream_cur =
+         (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
+      seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+      list->render_open = false;
+   }
 }
 
 /* Get an open CDM segment to append dispatches to, starting one if needed. */
@@ -254,6 +289,10 @@ d12_list_get_cdm(struct d12_cmd_list *list)
 {
    if (list->cdm_open)
       return &list->segments[list->segment_count - 1];
+
+   /* A render pass may still be open; compute work ends it. */
+   if (list->render_open)
+      d12_list_close_cdm(list);
 
    if (list->segment_count >= D12_MAX_SEGMENTS) {
       mesa_loge("command list segment limit reached");
@@ -546,6 +585,340 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    seg->dispatches++;
 }
 
+/*
+ * Build the USC words that bind one linked graphics stage: our root
+ * uniform, the stage's shared config, then the linker's packed program
+ * words. Mirrors hk_upload_usc_words for the no-descriptor case.
+ */
+static uint32_t
+d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
+                  bool fragment, const struct agx_tilebuffer_layout *tib,
+                  uint64_t root_gpu)
+{
+   struct d12_device *device = list->device;
+
+   uint32_t usc;
+   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(8), &usc);
+   if (!cpu)
+      return 0;
+
+   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(8));
+
+   agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+
+   if (fragment) {
+      agx_usc_push_packed(&b, SHARED, &tib->usc);
+   } else {
+      agx_usc_shared_none(&b);
+   }
+
+   agx_usc_push_packed(&b, SHADER, &st->linked.shader);
+   agx_usc_push_packed(&b, REGISTERS, &st->linked.regs);
+
+   if (fragment) {
+      agx_usc_push_packed(&b, FRAGMENT_PROPERTIES,
+                          &st->linked.fragment_props);
+   }
+
+   if (st->info.has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code = agx_usc_addr(&device->dev, st->linked.bo->va->addr +
+                                                  st->info.preamble_offset);
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg)
+         ;
+   }
+
+   return usc;
+}
+
+/*
+ * Emit one draw into the open render segment's VDM stream: vertex-shader
+ * state, the per-draw PPP block, viewport/scissor, then the draw itself.
+ */
+static void
+d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
+              unsigned instance_count, unsigned first_vertex)
+{
+   struct d12_device *device = list->device;
+   struct d12_pipeline_state *pso = list->pso;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!pso || pso->is_compute) {
+      mesa_loge("Draw without a graphics pipeline state");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (!list->render_open) {
+      mesa_loge("Draw outside a render pass (clear a render target first)");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_segment *seg = &list->segments[list->segment_count - 1];
+
+   /* Root table, exactly as the dispatch path builds it. */
+   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
+   memcpy(addrs, list->compute_root_uav, sizeof(addrs));
+   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
+   uint64_t root_gpu =
+      addrs_gpu ? d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8) : 0;
+   if (!root_gpu)
+      return;
+
+   uint32_t vs_usc =
+      d12_gfx_stage_usc(list, &pso->vs, false, &seg->tib, root_gpu);
+   uint32_t fs_usc =
+      d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib, root_gpu);
+   if (!vs_usc || !fs_usc)
+      return;
+
+   /* Coefficient-register bindings linking VS outputs to FS inputs. */
+   uint32_t varyings = 0;
+   unsigned bindings = pso->fs.linked.cf.nr_bindings;
+   if (bindings) {
+      size_t size =
+         AGX_CF_BINDING_HEADER_LENGTH + bindings * AGX_CF_BINDING_LENGTH;
+      uint32_t link_usc;
+      uint8_t *cpu = d12_list_alloc_usc(list, size, &link_usc);
+      if (!cpu)
+         return;
+
+      bool generate_prim_id = false;
+      agx_link_varyings_vs_fs(cpu, &pso->varyings, pso->uvs.user_size,
+                              &pso->fs.linked.cf, 0, 0, &generate_prim_id);
+      varyings = link_usc;
+   }
+
+   if (!d12_list_check_stream_space(list))
+      return;
+
+   uint8_t *out = list->stream_cur;
+
+   /* Vertex shader state */
+   agx_push(out, VDM_STATE, cfg) {
+      cfg.vertex_shader_word_0_present = true;
+      cfg.vertex_shader_word_1_present = true;
+      cfg.vertex_outputs_present = true;
+      cfg.vertex_unknown_present = true;
+   }
+   agx_push_packed(out, pso->vs.counts, VDM_STATE_VERTEX_SHADER_WORD_0);
+   agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
+      cfg.pipeline = vs_usc;
+   }
+   agx_push_packed(out, pso->uvs.vdm, VDM_STATE_VERTEX_OUTPUTS);
+   agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg);
+   /* Pad to a multiple of 8 bytes */
+   memset(out, 0, 4);
+   out += 4;
+
+   /* Viewport, scissor and depth bias */
+   {
+      struct AGX_PPP_HEADER present = {
+         .depth_bias_scissor = true,
+         .region_clip = true,
+         .viewport = true,
+         .viewport_count = 1,
+      };
+
+      size_t size = agx_ppp_update_size(&present);
+      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+      uint8_t *cpu = d12_list_data_cpu(list, gpu);
+      if (!cpu)
+         return;
+
+      struct agx_ppp_update ppp =
+         agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
+                            &present);
+
+      agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg);
+
+      agx_ppp_push(&ppp, REGION_CLIP, cfg) {
+         cfg.enable = true;
+         cfg.min_x = 0;
+         cfg.min_y = 0;
+         cfg.max_x = DIV_ROUND_UP(MAX2(seg->width_px, 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(seg->height_px, 1), 32);
+      }
+
+      agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg);
+
+      /* Same transform hk applies: a top-left origin viewport of the full
+       * render target, depth 0..1.
+       */
+      agx_ppp_push(&ppp, VIEWPORT, cfg) {
+         cfg.translate_x = 0.5f * seg->width_px;
+         cfg.translate_y = 0.5f * seg->height_px;
+         cfg.translate_z = 0.0f;
+
+         cfg.scale_x = 0.5f * seg->width_px;
+         cfg.scale_y = 0.5f * seg->height_px;
+         cfg.scale_z = 1.0f;
+      }
+
+      agx_ppp_fini(&out, &ppp);
+   }
+
+   /* Fragment state */
+   {
+      /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
+       * follow it exactly, or agx_ppp_fini catches a size mismatch.
+       */
+      struct AGX_PPP_HEADER present = {
+         .fragment_control = true,
+         .fragment_control_2 = true,
+         .fragment_front_face_2 = true,
+         .output_select = true,
+         .varying_counts_32 = true,
+         .varying_counts_16 = true,
+         .cull = true,
+         .fragment_shader = true,
+         .occlusion_query = true,
+         .output_size = true,
+         .viewport_count = 1,
+      };
+
+      size_t size = agx_ppp_update_size(&present);
+      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+      uint8_t *cpu = d12_list_data_cpu(list, gpu);
+      if (!cpu)
+         return;
+
+      struct agx_ppp_update ppp =
+         agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
+                            &present);
+
+      agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
+         cfg.visibility_mode = AGX_VISIBILITY_MODE_NONE;
+         /* Scissoring would make the hardware index an isp_scissor_base
+          * array we do not upload; REGION_CLIP already bounds the pass.
+          */
+         cfg.scissor_enable = false;
+      }
+
+      /* The linker's own fragment control (tag writes etc.). */
+      agx_ppp_push_packed(&ppp, &pso->fs.linked.fragment_control,
+                          FRAGMENT_CONTROL);
+
+      /* object_type tells the rasterizer it is drawing triangles. */
+      struct agx_fragment_face_2_packed face_2;
+      agx_pack(&face_2, FRAGMENT_FACE_2, cfg) {
+         cfg.object_type = AGX_OBJECT_TYPE_TRIANGLE;
+      }
+      agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
+      agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
+
+      /* Output select is the MERGE of the vertex side (which says the
+       * position is written) and the fragment side. Pushing only the
+       * fragment half rasterizes nothing.
+       */
+      struct agx_output_select_packed osel = pso->uvs.osel;
+      agx_ppp_push_merged_blobs(&ppp, AGX_OUTPUT_SELECT_LENGTH, &osel,
+                                &pso->fs.linked.osel);
+
+      agx_ppp_push_packed(&ppp, &pso->varyings.counts_32, VARYING_COUNTS);
+      agx_ppp_push_packed(&ppp, &pso->varyings.counts_16, VARYING_COUNTS);
+
+      agx_ppp_push(&ppp, CULL, cfg) {
+         cfg.front_face_ccw = true;
+         cfg.depth_clip = true;
+      }
+
+      agx_ppp_push_packed(&ppp, &pso->fs.fs_counts, FRAGMENT_SHADER_WORD_0);
+
+      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_1, cfg) {
+         cfg.pipeline = fs_usc;
+      }
+
+      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_2, cfg) {
+         cfg.cf_bindings = varyings;
+      }
+
+      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_3, cfg);
+
+      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
+
+      agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) {
+         cfg.count = pso->uvs.size;
+      }
+
+      agx_ppp_fini(&out, &ppp);
+   }
+
+   /* The draw */
+   struct agx_draw draw = {
+      .b = agx_3d(vertex_count, instance_count, 1),
+      .start = first_vertex,
+   };
+
+   out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
+                                 AGX_PRIMITIVE_TRIANGLES);
+
+   list->stream_cur = out;
+   seg->has_draws = true;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_DrawInstanced(ID3D12GraphicsCommandList *iface,
+                       UINT vertex_count_per_instance, UINT instance_count,
+                       UINT start_vertex, UINT start_instance)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (!vertex_count_per_instance || !instance_count)
+      return;
+
+   if (start_instance) {
+      mesa_loge("DrawInstanced: start_instance unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   d12_list_draw(list, vertex_count_per_instance, instance_count,
+                 start_vertex);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
+                                D3D12_PRIMITIVE_TOPOLOGY topology)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (topology != D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) {
+      mesa_loge("IASetPrimitiveTopology: only triangle lists for now");
+      list->state = D12_LIST_ERROR;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_list_RSSetViewports(ID3D12GraphicsCommandList *iface, UINT count,
+                        const D3D12_VIEWPORT *viewports)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (count >= 1 && viewports) {
+      list->viewport = viewports[0];
+      list->has_viewport = true;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_list_RSSetScissorRects(ID3D12GraphicsCommandList *iface, UINT count,
+                           const D3D12_RECT *rects)
+{
+   /* The region clip is derived from the render target for now. */
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList *iface,
+                                  ID3D12RootSignature *root_sig)
+{
+}
+
 static void STDMETHODCALLTYPE
 d12_list_SetPipelineState(ID3D12GraphicsCommandList *iface,
                           ID3D12PipelineState *pso)
@@ -836,11 +1209,42 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
    }
    list->stream_cur += AGX_VDM_BARRIER_LENGTH;
 
-   list->stream_cur =
-      (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
+   /* PPP prologue. A clear-only pass runs without it, but a pass that
+    * carries geometry does not: this is the per-control-stream state
+    * hk_cs_init_graphics establishes before any draw.
+    */
+   {
+      struct AGX_PPP_HEADER present = {
+         .w_clamp = true,
+         .occlusion_query_2 = true,
+         .output_unknown = true,
+         .varying_word_2 = true,
+         .viewport_count = 1,
+      };
 
-   seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+      size_t size = agx_ppp_update_size(&present);
+      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+      uint8_t *cpu = d12_list_data_cpu(list, gpu);
+      if (!cpu)
+         return;
+
+      struct agx_ppp_update ppp = agx_new_ppp_update(
+         (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
+
+      agx_ppp_push(&ppp, W_CLAMP, cfg)
+         cfg.w_clamp = 1e-10;
+      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+      agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+      agx_ppp_push(&ppp, VARYING_2, cfg);
+
+      agx_ppp_fini(&list->stream_cur, &ppp);
+   }
+
+   /* The pass stays OPEN so draws can append to this VDM stream; it is
+    * terminated at Close or when another segment type begins.
+    */
    list->segment_count++;
+   list->render_open = true;
 }
 
 static void STDMETHODCALLTYPE
@@ -896,6 +1300,11 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .SetComputeRootUnorderedAccessView =
       d12_list_SetComputeRootUnorderedAccessView,
    .Dispatch = d12_list_Dispatch,
+   .SetGraphicsRootSignature = d12_list_SetGraphicsRootSignature,
+   .IASetPrimitiveTopology = d12_list_IASetPrimitiveTopology,
+   .RSSetViewports = d12_list_RSSetViewports,
+   .RSSetScissorRects = d12_list_RSSetScissorRects,
+   .DrawInstanced = d12_list_DrawInstanced,
    /* Everything unset is NULL: loud crash over silent lie. */
 };
 
