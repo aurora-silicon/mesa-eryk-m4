@@ -61,10 +61,16 @@ enum d12_dxop {
    D12_DXOP_UBFE = 52,
    D12_DXOP_BFI = 53,
    D12_DXOP_CREATE_HANDLE = 57,
+   D12_DXOP_CBUFFER_LOAD = 58,
+   D12_DXOP_CBUFFER_LOAD_LEGACY = 59,
    D12_DXOP_BUFFER_LOAD = 68,
    D12_DXOP_BUFFER_STORE = 69,
    D12_DXOP_RAW_BUFFER_LOAD = 139,
    D12_DXOP_RAW_BUFFER_STORE = 140,
+   /* SM 6.6 replaced createHandle with a binding-descriptor form. It is by
+    * far the most common resource intrinsic in modern DXIL.
+    */
+   D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
    D12_DXOP_THREAD_ID = 93,
    D12_DXOP_GROUP_ID = 94,
    D12_DXOP_THREAD_ID_IN_GROUP = 95,
@@ -262,7 +268,7 @@ resource_address(struct trans_ctx *ctx, unsigned binding, nir_def *coord0,
  */
 static bool
 translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
-               uint64_t opcode)
+               uint64_t opcode, const char *callee)
 {
    nir_builder *b = ctx->b;
 
@@ -520,6 +526,45 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       return true;
    }
 
+   case D12_DXOP_CREATE_HANDLE_FROM_BINDING: {
+      /* (bind, index, nonUniformIndex) where bind is a constant
+       * ResBind struct. The shader register is the `index` operand, which
+       * is what our root table is indexed by, so we take that and do not
+       * need to decode the struct.
+       */
+      NEED(2);
+      uint64_t index = 0;
+      if (!const_uint(ctx, p[1], &index)) {
+         trans_fail(ctx, "dynamic resource binding index unsupported");
+         return false;
+      }
+
+      def_result(ctx, inst, nir_imm_int(b, (uint32_t)index));
+      return true;
+   }
+
+   case D12_DXOP_CBUFFER_LOAD_LEGACY: {
+      /* (handle, regIndex) -> one 16-byte constant-buffer row, which DXIL
+       * consumes with extractvalue. A row is a vec4.
+       */
+      NEED(2);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant cbuffer handle unsupported");
+         return false;
+      }
+      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      /* Rows are 16 bytes; the row index scales, no second coordinate. */
+      nir_def *offset = nir_imul_imm(b, get_def(ctx, p[1]), 16);
+      nir_def *addr = resource_address(ctx, binding, offset,
+                                       nir_imm_int(b, 0), true);
+
+      def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 16));
+      return true;
+   }
+
    case D12_DXOP_BUFFER_STORE:
    case D12_DXOP_RAW_BUFFER_STORE: {
       /* (handle, coord0, coord1, val0..val3, mask [, align]) */
@@ -577,8 +622,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    }
 
    default:
-      mesa_loge("dxil: unhandled dx.op opcode %llu",
-                (unsigned long long)opcode);
+      /* Name the intrinsic, not just its number: the name is right there
+       * in the module and is what makes a corpus run actionable.
+       */
+      mesa_loge("dxil: unhandled dx.op opcode %llu (%s)",
+                (unsigned long long)opcode, callee ? callee : "?");
       trans_fail(ctx, "unhandled dx.op intrinsic");
       return false;
    }
@@ -730,7 +778,7 @@ translate_cast(struct trans_ctx *ctx, const struct d12_inst *inst)
 /* Is this call a dx.op intrinsic, and if so what opcode? */
 static bool
 call_dxop_opcode(struct trans_ctx *ctx, const struct d12_inst *inst,
-                 uint64_t *opcode)
+                 uint64_t *opcode, const char **name)
 {
    if (inst->num_ops < 2)
       return false;
@@ -746,6 +794,7 @@ call_dxop_opcode(struct trans_ctx *ctx, const struct d12_inst *inst,
    if (strncmp(v->name, "dx.op.", 6))
       return false;
 
+   *name = v->name;
    return const_uint(ctx, inst->ops[1], opcode);
 }
 
@@ -800,8 +849,9 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       switch (inst->code) {
       case D12_FUNC_INST_CALL: {
          uint64_t opcode;
-         if (call_dxop_opcode(&ctx, inst, &opcode)) {
-            translate_dxop(&ctx, inst, opcode);
+         const char *callee = NULL;
+         if (call_dxop_opcode(&ctx, inst, &opcode, &callee)) {
+            translate_dxop(&ctx, inst, opcode, callee);
          } else {
             trans_fail(&ctx, "call to a non-dx.op function (inlining "
                              "required)");
@@ -820,6 +870,23 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       case D12_FUNC_INST_CMP:
       case D12_FUNC_INST_CMP2:
          translate_cmp(&ctx, inst);
+         break;
+
+      case D12_FUNC_INST_EXTRACTVAL:
+         /* Struct-returning dx.op results are vectors in NIR, so an
+          * extractvalue of member N is channel N.
+          */
+         if (inst->num_ops >= 1 && inst->num_extra >= 1) {
+            nir_def *agg = get_def(&ctx, inst->ops[0]);
+            unsigned idx = (unsigned)inst->extra[0];
+            if (idx < agg->num_components) {
+               def_result(&ctx, inst, nir_channel(&b, agg, idx));
+            } else {
+               trans_fail(&ctx, "extractvalue index past aggregate");
+            }
+         } else {
+            trans_fail(&ctx, "malformed extractvalue");
+         }
          break;
 
       case D12_FUNC_INST_SELECT:
