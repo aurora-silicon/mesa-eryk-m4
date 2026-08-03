@@ -103,15 +103,24 @@ struct d12_resource {
 
    /* Textures only */
    struct ail_layout layout;
+
+   /* Depth/stencil only. AGX stores stencil in a physically separate plane
+    * from depth, so a D24S8/D32S8 resource is two allocations behind one
+    * ID3D12Resource. `layout` above is the depth plane.
+    */
+   bool is_depth_stencil;
+   struct agx_bo *stencil_bo; /* NULL when the format has no stencil */
+   struct ail_layout stencil_layout;
 };
 
-/* An RTV descriptor: sized to exactly the advertised handle increment so
- * CPU-handle arithmetic in apps lands on slot boundaries.
+/* An RTV or DSV descriptor: sized to exactly the advertised handle increment
+ * so CPU-handle arithmetic in apps lands on slot boundaries.
  */
 struct d12_rtv {
    struct d12_resource *resource; /* not referenced; app keeps alive */
    DXGI_FORMAT format;
-   uint8_t pad[32 - sizeof(void *) - sizeof(DXGI_FORMAT)];
+   bool is_dsv;
+   uint8_t pad[32 - sizeof(void *) - sizeof(DXGI_FORMAT) - sizeof(bool)];
 };
 static_assert(sizeof(struct d12_rtv) == 32, "must match handle increment");
 
@@ -139,6 +148,35 @@ struct d12_gfx_stage {
    struct agx_fragment_face_2_packed frag_face;        /* fragment */
 };
 
+/* One face's stencil test, translated to hardware enums at PSO creation so
+ * the draw path pushes packed state rather than re-translating per draw.
+ */
+struct d12_stencil_face {
+   enum agx_zs_func compare;
+   enum agx_stencil_op pass, depth_fail, stencil_fail;
+};
+
+/* The pipeline's depth/stencil state, already in AGX terms. */
+struct d12_depth_stencil_state {
+   bool depth_test;  /* DepthEnable */
+   bool depth_write; /* DepthWriteMask == ALL */
+   enum agx_zs_func depth_func;
+
+   bool stencil_test;
+   uint8_t stencil_read_mask, stencil_write_mask;
+   struct d12_stencil_face front, back;
+
+   DXGI_FORMAT dsv_format; /* DSVFormat from the PSO desc */
+};
+
+/* Rasterizer state that reaches the CULL block. Facing was hardcoded until
+ * the depth work measured which winding the hardware calls front.
+ */
+struct d12_raster_state {
+   bool cull_front, cull_back;
+   bool front_face_ccw;
+};
+
 /* A compiled pipeline: AGX machine code produced from the app's DXIL. */
 struct d12_pipeline_state {
    ID3D12PipelineState iface; /* must be first */
@@ -156,6 +194,8 @@ struct d12_pipeline_state {
    struct d12_gfx_stage vs, fs;
    struct agx_unlinked_uvs_layout uvs;
    struct agx_varyings_vs varyings;
+   struct d12_depth_stencil_state ds;
+   struct d12_raster_state raster;
 };
 
 static inline struct d12_pipeline_state *
@@ -221,7 +261,26 @@ struct d12_segment {
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
    struct agx_counts_packed bg_counts, eot_counts;
    bool has_draws;
+
+   /* Depth/stencil attachment. Unlike colour, depth never passes through a
+    * background/end-of-tile USC program: the fixed-function ZLS unit loads
+    * and stores it, driven entirely by the fields below.
+    */
+   struct d12_resource *ds; /* NULL when the pass has no depth/stencil */
+   bool depth_cleared, stencil_cleared;
+   uint32_t isp_bgobjdepth; /* clear value in the depth plane's encoding */
+   uint8_t stencil_clear;
+
+   /* Hardware scissor array (ISP_SCISSOR_BASE). Each draw indexes one
+    * entry. This is not optional state: alongside the XY bounds each entry
+    * carries the depth CLIP range, so a pass without it rasterizes nothing
+    * outside z == 0.
+    */
+   uint64_t scissor_base;
+   unsigned scissor_count;
 };
+
+#define D12_MAX_SCISSORS 256
 
 #define D12_MAX_SEGMENTS 32
 
@@ -260,6 +319,17 @@ struct d12_cmd_list {
     * the wrong texture.
     */
    struct d12_resource *bound_rt;
+
+   /* The depth/stencil target bound by OMSetRenderTargets. Same purpose,
+    * and it is also how a pass acquires depth when the application binds
+    * without clearing (ClearDepthStencilView being the other way in).
+    */
+   struct d12_resource *bound_ds;
+
+   /* OMSetStencilRef. Separate from the PSO because D3D12 makes the
+    * reference value dynamic state while the ops live in the PSO.
+    */
+   uint8_t stencil_ref;
 };
 
 static inline struct d12_resource *
@@ -356,6 +426,14 @@ enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
 bool d12_format_is_renderable(DXGI_FORMAT format);
 unsigned d12_format_bytes_per_pixel(DXGI_FORMAT format);
 
+/* Depth/stencil formats. AGX keeps stencil in a separate plane from depth,
+ * so these are asked for independently rather than as one pipe format.
+ */
+bool d12_format_is_depth_stencil(DXGI_FORMAT format);
+enum pipe_format d12_format_depth_plane(DXGI_FORMAT format);
+enum pipe_format d12_format_stencil_plane(DXGI_FORMAT format);
+bool d12_format_depth_is_substituted(DXGI_FORMAT format);
+
 HRESULT d12_root_signature_create(struct d12_device *device, REFIID riid,
                                   void **out);
 HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
@@ -364,7 +442,8 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
    const void *ps_dxil, size_t ps_size, enum pipe_format rt_format,
-   REFIID riid, void **out);
+   const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
+   const D3D12_RASTERIZER_DESC *rs_desc, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

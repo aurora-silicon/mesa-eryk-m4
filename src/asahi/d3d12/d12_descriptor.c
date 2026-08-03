@@ -2,9 +2,10 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * ID3D12DescriptorHeap. G3 scope: RTV heaps only — CPU-side slot storage
- * whose handles are pointers into the slot array, with the slot size equal
- * to the advertised 32-byte handle increment.
+ * ID3D12DescriptorHeap. RTV and DSV heaps — CPU-side slot storage whose
+ * handles are pointers into the slot array, with the slot size equal to the
+ * advertised 32-byte handle increment. Shader-visible heaps (CBV/SRV/UAV,
+ * SAMPLER) wait on the descriptor binding model.
  */
 
 #include "d12_private.h"
@@ -145,14 +146,17 @@ d12_descriptor_heap_create(struct d12_device *device,
    if (!desc || !desc->NumDescriptors)
       return E_INVALIDARG;
 
-   if (desc->Type != D3D12_DESCRIPTOR_HEAP_TYPE_RTV) {
-      mesa_loge("CreateDescriptorHeap: type %d not until G4 (RTV only)",
+   if (desc->Type != D3D12_DESCRIPTOR_HEAP_TYPE_RTV &&
+       desc->Type != D3D12_DESCRIPTOR_HEAP_TYPE_DSV) {
+      mesa_loge("CreateDescriptorHeap: type %d unsupported (RTV and DSV "
+                "only; shader-visible heaps need the binding model)",
                 (int)desc->Type);
       return E_NOTIMPL;
    }
 
    if (desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) {
-      mesa_loge("CreateDescriptorHeap: RTV heaps cannot be shader-visible");
+      mesa_loge("CreateDescriptorHeap: RTV/DSV heaps cannot be "
+                "shader-visible");
       return E_INVALIDARG;
    }
 

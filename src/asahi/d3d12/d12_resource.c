@@ -46,6 +46,8 @@ d12_resource_Release(ID3D12Resource *iface)
 
    if (refs == 0) {
       agx_bo_unreference(&res->device->dev, res->bo);
+      if (res->stencil_bo)
+         agx_bo_unreference(&res->device->dev, res->stencil_bo);
       d12_device_release(res->device);
       free(res);
    }
@@ -194,11 +196,73 @@ d12_resource_create_committed(struct d12_device *device,
 
    uint64_t size_B;
    struct ail_layout layout = {0};
+   struct ail_layout stencil_layout = {0};
+   bool is_depth_stencil = false;
 
    if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (desc->Width == 0)
          return E_INVALIDARG;
       size_B = desc->Width;
+   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+              d12_format_is_depth_stencil(desc->Format)) {
+      /*
+       * Depth/stencil. Two constraints come straight from the hardware:
+       *
+       * - The ZLS unit cannot address a linear buffer at all (Mesa's
+       *   agx_translate_zls_tiling has no linear case), so unlike our colour
+       *   targets these must be TWIDDLED. The CPU consequently cannot read
+       *   depth by indexing rows; tests detwiddle with ail_detile.
+       * - Stencil is its own plane with its own allocation.
+       */
+      enum pipe_format z = d12_format_depth_plane(desc->Format);
+      enum pipe_format s = d12_format_stencil_plane(desc->Format);
+
+      if (desc->MipLevels > 1 || desc->DepthOrArraySize > 1 ||
+          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
+         mesa_loge("CreateCommittedResource: depth/stencil shape unsupported "
+                   "(mips %u, layers %u, samples %u)",
+                   desc->MipLevels, desc->DepthOrArraySize,
+                   desc->SampleDesc.Count);
+         return E_NOTIMPL;
+      }
+
+      if (d12_format_depth_is_substituted(desc->Format)) {
+         static bool warned = false;
+         if (!warned) {
+            warned = true;
+            mesa_logw("depth format %d has no native equivalent on AGX; "
+                      "using 32-bit float depth. Comparisons and clears "
+                      "quantize as float32, not unorm24.",
+                      (int)desc->Format);
+         }
+      }
+
+      is_depth_stencil = true;
+
+      layout = (struct ail_layout){
+         .width_px = (uint32_t)desc->Width,
+         .height_px = desc->Height,
+         .depth_px = 1,
+         .sample_count_sa = 1,
+         .levels = 1,
+         .tiling = AIL_TILING_TWIDDLED,
+         .format = z,
+      };
+      ail_make_miptree(&layout);
+      size_B = layout.size_B;
+
+      if (s != PIPE_FORMAT_NONE) {
+         stencil_layout = (struct ail_layout){
+            .width_px = (uint32_t)desc->Width,
+            .height_px = desc->Height,
+            .depth_px = 1,
+            .sample_count_sa = 1,
+            .levels = 1,
+            .tiling = AIL_TILING_TWIDDLED,
+            .format = s,
+         };
+         ail_make_miptree(&stencil_layout);
+      }
    } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
       /* Single-level, single-layer, single-sample. LINEAR tiling so the
        * CPU can read pixels directly; twiddled layouts arrive with real
@@ -252,6 +316,8 @@ d12_resource_create_committed(struct d12_device *device,
       return E_OUTOFMEMORY;
 
    res->layout = layout;
+   res->stencil_layout = stencil_layout;
+   res->is_depth_stencil = is_depth_stencil;
 
    /* UMA: every heap type is the same cached, coherent memory. */
    res->bo = agx_bo_create(&device->dev, size_B, 0, AGX_BO_WRITEBACK,
@@ -259,6 +325,17 @@ d12_resource_create_committed(struct d12_device *device,
    if (!res->bo) {
       free(res);
       return E_OUTOFMEMORY;
+   }
+
+   if (is_depth_stencil && stencil_layout.size_B) {
+      res->stencil_bo =
+         agx_bo_create(&device->dev, stencil_layout.size_B, 0,
+                       AGX_BO_WRITEBACK, "d3d12 stencil plane");
+      if (!res->stencil_bo) {
+         agx_bo_unreference(&device->dev, res->bo);
+         free(res);
+         return E_OUTOFMEMORY;
+      }
    }
 
    res->iface.lpVtbl = (ID3D12ResourceVtbl *)&d12_resource_vtbl;

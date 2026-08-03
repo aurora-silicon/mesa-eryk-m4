@@ -100,6 +100,13 @@ d3d12agx_g4_smoke = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g5_depth = executable(
+  'd3d12agx_g5_depth',
+  files('tests/g5_depth.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 # DXIL frontend (G4): standalone of the COM driver for now
 libd12_dxil_files = files(
   'dxil/d12_dxil_bitstream.c',

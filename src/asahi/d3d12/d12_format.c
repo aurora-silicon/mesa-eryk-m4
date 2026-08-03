@@ -89,6 +89,84 @@ static const struct d12_format_entry d12_formats[] = {
    {DXGI_FORMAT_R11G11B10_FLOAT, PIPE_FORMAT_R11G11B10_FLOAT},
 };
 
+/*
+ * Depth/stencil formats.
+ *
+ * The AGX ZLS (Z load/store) unit stores depth as either a 32-bit float or a
+ * 16-bit unorm -- there is no 24-bit depth on this hardware. Stencil is a
+ * physically separate 8-bit plane, not interleaved with depth, which is why
+ * each entry names its depth and stencil planes independently.
+ *
+ * D24_UNORM_S8_UINT therefore maps to a 32-bit FLOAT depth plane. That is a
+ * real behavioural deviation -- comparisons and clears quantize as float32
+ * rather than unorm24 -- and it is the same substitution the Vulkan driver
+ * and vkd3d-proton make on hardware without native 24-bit depth. Refusing
+ * the format instead would reject most existing D3D12 content, so we take
+ * the substitution and say so out loud (once) at resource creation.
+ */
+struct d12_ds_format_entry {
+   DXGI_FORMAT dxgi;
+   enum pipe_format depth; /* PIPE_FORMAT_NONE if stencil-only */
+   enum pipe_format stencil; /* PIPE_FORMAT_NONE if depth-only */
+   bool substituted_depth; /* depth precision differs from the DXGI format */
+};
+
+static const struct d12_ds_format_entry d12_ds_formats[] = {
+   {DXGI_FORMAT_D32_FLOAT, PIPE_FORMAT_Z32_FLOAT, PIPE_FORMAT_NONE, false},
+   {DXGI_FORMAT_D16_UNORM, PIPE_FORMAT_Z16_UNORM, PIPE_FORMAT_NONE, false},
+   {DXGI_FORMAT_D32_FLOAT_S8X24_UINT, PIPE_FORMAT_Z32_FLOAT,
+    PIPE_FORMAT_S8_UINT, false},
+   {DXGI_FORMAT_D24_UNORM_S8_UINT, PIPE_FORMAT_Z32_FLOAT, PIPE_FORMAT_S8_UINT,
+    true},
+
+   /* Typeless spellings an app may use for the resource while the view
+    * names the concrete format.
+    */
+   {DXGI_FORMAT_R32_TYPELESS, PIPE_FORMAT_Z32_FLOAT, PIPE_FORMAT_NONE, false},
+   {DXGI_FORMAT_R16_TYPELESS, PIPE_FORMAT_Z16_UNORM, PIPE_FORMAT_NONE, false},
+   {DXGI_FORMAT_R24G8_TYPELESS, PIPE_FORMAT_Z32_FLOAT, PIPE_FORMAT_S8_UINT,
+    true},
+   {DXGI_FORMAT_R32G8X24_TYPELESS, PIPE_FORMAT_Z32_FLOAT, PIPE_FORMAT_S8_UINT,
+    false},
+};
+
+static const struct d12_ds_format_entry *
+d12_ds_entry(DXGI_FORMAT format)
+{
+   for (unsigned i = 0; i < ARRAY_SIZE(d12_ds_formats); i++) {
+      if (d12_ds_formats[i].dxgi == format)
+         return &d12_ds_formats[i];
+   }
+   return NULL;
+}
+
+bool
+d12_format_is_depth_stencil(DXGI_FORMAT format)
+{
+   return d12_ds_entry(format) != NULL;
+}
+
+enum pipe_format
+d12_format_depth_plane(DXGI_FORMAT format)
+{
+   const struct d12_ds_format_entry *e = d12_ds_entry(format);
+   return e ? e->depth : PIPE_FORMAT_NONE;
+}
+
+enum pipe_format
+d12_format_stencil_plane(DXGI_FORMAT format)
+{
+   const struct d12_ds_format_entry *e = d12_ds_entry(format);
+   return e ? e->stencil : PIPE_FORMAT_NONE;
+}
+
+bool
+d12_format_depth_is_substituted(DXGI_FORMAT format)
+{
+   const struct d12_ds_format_entry *e = d12_ds_entry(format);
+   return e ? e->substituted_depth : false;
+}
+
 enum pipe_format
 d12_format_to_pipe(DXGI_FORMAT format)
 {
@@ -117,6 +195,13 @@ unsigned
 d12_format_bytes_per_pixel(DXGI_FORMAT format)
 {
    enum pipe_format pipe = d12_format_to_pipe(format);
+
+   /* Depth formats are not in the colour table; their size is the size of
+    * the depth plane the hardware actually stores.
+    */
+   if (pipe == PIPE_FORMAT_NONE)
+      pipe = d12_format_depth_plane(format);
+
    if (pipe == PIPE_FORMAT_NONE)
       return 0;
 

@@ -443,12 +443,65 @@ compile_gfx_stage(struct d12_device *device, const void *dxil,
    return out->binary && out->info.binary_size;
 }
 
+/*
+ * D3D12 comparison functions map one-for-one onto the AGX ZS functions, but
+ * write the mapping out rather than relying on the constant offset: a silent
+ * off-by-one here means NEVER where ALWAYS was asked for, which rejects every
+ * fragment and looks like a missing draw rather than a wrong enum.
+ */
+static enum agx_zs_func
+d12_translate_compare(D3D12_COMPARISON_FUNC func)
+{
+   switch (func) {
+   case D3D12_COMPARISON_FUNC_NEVER:         return AGX_ZS_FUNC_NEVER;
+   case D3D12_COMPARISON_FUNC_LESS:          return AGX_ZS_FUNC_LESS;
+   case D3D12_COMPARISON_FUNC_EQUAL:         return AGX_ZS_FUNC_EQUAL;
+   case D3D12_COMPARISON_FUNC_LESS_EQUAL:    return AGX_ZS_FUNC_LEQUAL;
+   case D3D12_COMPARISON_FUNC_GREATER:       return AGX_ZS_FUNC_GREATER;
+   case D3D12_COMPARISON_FUNC_NOT_EQUAL:     return AGX_ZS_FUNC_NOT_EQUAL;
+   case D3D12_COMPARISON_FUNC_GREATER_EQUAL: return AGX_ZS_FUNC_GEQUAL;
+   case D3D12_COMPARISON_FUNC_ALWAYS:        return AGX_ZS_FUNC_ALWAYS;
+   default:
+      /* Includes _NONE (0), which D3D12 uses to mean "no test". */
+      return AGX_ZS_FUNC_ALWAYS;
+   }
+}
+
+static enum agx_stencil_op
+d12_translate_stencil_op(D3D12_STENCIL_OP op)
+{
+   switch (op) {
+   case D3D12_STENCIL_OP_KEEP:     return AGX_STENCIL_OP_KEEP;
+   case D3D12_STENCIL_OP_ZERO:     return AGX_STENCIL_OP_ZERO;
+   case D3D12_STENCIL_OP_REPLACE:  return AGX_STENCIL_OP_REPLACE;
+   case D3D12_STENCIL_OP_INCR_SAT: return AGX_STENCIL_OP_INCR_SAT;
+   case D3D12_STENCIL_OP_DECR_SAT: return AGX_STENCIL_OP_DECR_SAT;
+   case D3D12_STENCIL_OP_INVERT:   return AGX_STENCIL_OP_INVERT;
+   case D3D12_STENCIL_OP_INCR:     return AGX_STENCIL_OP_INCR_WRAP;
+   case D3D12_STENCIL_OP_DECR:     return AGX_STENCIL_OP_DECR_WRAP;
+   default:                        return AGX_STENCIL_OP_KEEP;
+   }
+}
+
+static void
+d12_translate_stencil_face(struct d12_stencil_face *out,
+                           const D3D12_DEPTH_STENCILOP_DESC *in)
+{
+   out->compare = d12_translate_compare(in->StencilFunc);
+   out->pass = d12_translate_stencil_op(in->StencilPassOp);
+   out->depth_fail = d12_translate_stencil_op(in->StencilDepthFailOp);
+   out->stencil_fail = d12_translate_stencil_op(in->StencilFailOp);
+}
+
 HRESULT
 d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *vs_dxil, size_t vs_size,
                                    const void *ps_dxil, size_t ps_size,
-                                   enum pipe_format rt_format, REFIID riid,
-                                   void **out)
+                                   enum pipe_format rt_format,
+                                   const D3D12_DEPTH_STENCIL_DESC *ds_desc,
+                                   DXGI_FORMAT dsv_format,
+                                   const D3D12_RASTERIZER_DESC *rs_desc,
+                                   REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
@@ -458,6 +511,63 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    struct d12_pipeline_state *pso = calloc(1, sizeof(*pso));
    if (!pso)
       return E_OUTOFMEMORY;
+
+   /* Depth/stencil state, resolved to hardware enums once here rather than
+    * per draw. With no DSV format the tests are inert regardless of what
+    * the description asks for, matching D3D12's own rule.
+    */
+   pso->ds.dsv_format = dsv_format;
+   pso->ds.depth_func = AGX_ZS_FUNC_ALWAYS;
+   pso->ds.stencil_read_mask = 0xFF;
+   pso->ds.stencil_write_mask = 0xFF;
+
+   /* Stencil-disabled defaults: pass everything, change nothing. Zeroes
+    * would mean NEVER/KEEP-on-fail, which rejects fragments silently.
+    */
+   pso->ds.front = (struct d12_stencil_face){
+      .compare = AGX_ZS_FUNC_ALWAYS,
+      .pass = AGX_STENCIL_OP_KEEP,
+      .depth_fail = AGX_STENCIL_OP_KEEP,
+      .stencil_fail = AGX_STENCIL_OP_KEEP,
+   };
+   pso->ds.back = pso->ds.front;
+
+   if (ds_desc && dsv_format != DXGI_FORMAT_UNKNOWN) {
+      pso->ds.depth_test = ds_desc->DepthEnable;
+      pso->ds.depth_write =
+         ds_desc->DepthEnable &&
+         ds_desc->DepthWriteMask == D3D12_DEPTH_WRITE_MASK_ALL;
+      if (ds_desc->DepthEnable)
+         pso->ds.depth_func = d12_translate_compare(ds_desc->DepthFunc);
+
+      pso->ds.stencil_test = ds_desc->StencilEnable;
+      if (ds_desc->StencilEnable) {
+         pso->ds.stencil_read_mask = ds_desc->StencilReadMask;
+         pso->ds.stencil_write_mask = ds_desc->StencilWriteMask;
+         d12_translate_stencil_face(&pso->ds.front, &ds_desc->FrontFace);
+         d12_translate_stencil_face(&pso->ds.back, &ds_desc->BackFace);
+      }
+   }
+
+   /*
+    * Facing and culling. Measured on M2 (G14G): with the hardware's
+    * front_face_ccw set, a triangle wound counter-clockwise in NDC is the
+    * FRONT face -- cull_front removes it and cull_back does not.
+    *
+    * D3D12 defines facing after the viewport transform, where +y runs down
+    * the framebuffer; our viewport negates y, so NDC-counter-clockwise is
+    * screen-clockwise, which is D3D12's front face when
+    * FrontCounterClockwise is FALSE. Hence the inversion here.
+    */
+   pso->raster.front_face_ccw = true;
+   if (rs_desc) {
+      pso->raster.front_face_ccw = !rs_desc->FrontCounterClockwise;
+      pso->raster.cull_front = rs_desc->CullMode == D3D12_CULL_MODE_FRONT;
+      pso->raster.cull_back = rs_desc->CullMode == D3D12_CULL_MODE_BACK;
+
+      if (rs_desc->FillMode == D3D12_FILL_MODE_WIREFRAME)
+         mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
+   }
 
    /* One render target, single sampled, in the format the pipeline
     * actually declares rather than an assumed RGBA8.

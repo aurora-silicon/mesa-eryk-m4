@@ -352,8 +352,9 @@ d12_device_CreateGraphicsPipelineState(
 
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
-      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, rt_format, riid,
-      out);
+      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, rt_format,
+      &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
+      riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -414,6 +415,58 @@ d12_device_CreateRenderTargetView(ID3D12Device *iface,
 
    slot->resource = res;
    slot->format = res->desc.Format;
+   slot->is_dsv = false;
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateDepthStencilView(ID3D12Device *iface,
+                                  ID3D12Resource *resource,
+                                  const D3D12_DEPTH_STENCIL_VIEW_DESC *desc,
+                                  D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_rtv *slot = (struct d12_rtv *)dest.ptr;
+
+   if (!slot)
+      return;
+
+   if (!resource) {
+      /* Null DSVs are legal placeholders; record an empty slot. */
+      slot->resource = NULL;
+      return;
+   }
+
+   struct d12_resource *res = d12_resource_from_iface(resource);
+
+   if (!res->is_depth_stencil) {
+      mesa_loge("CreateDepthStencilView: resource format %d is not a "
+                "depth/stencil format", (int)res->desc.Format);
+      slot->resource = NULL;
+      return;
+   }
+
+   if (desc && desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2D) {
+      mesa_loge("CreateDepthStencilView: view dimension %d unsupported",
+                (int)desc->ViewDimension);
+      slot->resource = NULL;
+      return;
+   }
+
+   /* A read-only DSV would need the depth test to run with stores masked
+    * off at the ZLS level; accepting the flag and writing anyway would
+    * corrupt a buffer the app is simultaneously sampling.
+    */
+   if (desc && desc->Flags) {
+      mesa_loge("CreateDepthStencilView: read-only DSV flags 0x%x "
+                "unsupported", (unsigned)desc->Flags);
+      slot->resource = NULL;
+      return;
+   }
+
+   slot->resource = res;
+   slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
+                     ? desc->Format
+                     : res->desc.Format;
+   slot->is_dsv = true;
 }
 
 static UINT STDMETHODCALLTYPE
@@ -565,6 +618,7 @@ static const ID3D12DeviceVtbl d12_device_vtbl = {
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
+   .CreateDepthStencilView = d12_device_CreateDepthStencilView,
    .GetDescriptorHandleIncrementSize =
       d12_device_GetDescriptorHandleIncrementSize,
    .CreateCommittedResource = d12_device_CreateCommittedResource,

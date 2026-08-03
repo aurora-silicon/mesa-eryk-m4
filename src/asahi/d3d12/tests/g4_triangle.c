@@ -190,23 +190,40 @@ main(int argc, char **argv)
 
 #define PIXEL(x, y) (map + (y) * STRIDE + (x) * 4)
 
-   const uint8_t *centre = PIXEL(W / 2, H / 2);
-   const uint8_t *corner = PIXEL(2, 2);
+   /*
+    * tri.hlsl covers NDC (-1,+1) (0,+1) (-1,-1): a right triangle whose
+    * right angle sits at the TOP-LEFT of the image, because D3D12 clip
+    * space has +y up while the framebuffer's first row is the top.
+    *
+    * These sample points were originally the image centre and a corner,
+    * chosen when the viewport transform was missing its Y negation and the
+    * rendered triangle was mirrored. They are now taken from the geometry
+    * the shader actually declares: (30,30) is well inside, (230,230) is
+    * far outside on the other side of the hypotenuse.
+    */
+   const uint8_t *inside = PIXEL(30, 30);
+   const uint8_t *outside = PIXEL(230, 230);
 
-   printf("       centre (128,128) = %02x %02x %02x %02x\n", centre[0],
-          centre[1], centre[2], centre[3]);
-   printf("       corner (2,2)     = %02x %02x %02x %02x\n", corner[0],
-          corner[1], corner[2], corner[3]);
+   printf("       inside  (30,30)   = %02x %02x %02x %02x\n", inside[0],
+          inside[1], inside[2], inside[3]);
+   printf("       outside (230,230) = %02x %02x %02x %02x\n", outside[0],
+          outside[1], outside[2], outside[3]);
 
    /* The clear must have happened everywhere. */
-   bool cleared = corner[0] == 0xff && corner[1] == 0x00 && corner[2] == 0x00;
-   CHECK(cleared, "clear reached the corner (red)");
+   bool cleared =
+      outside[0] == 0xff && outside[1] == 0x00 && outside[2] == 0x00;
+   CHECK(cleared, "clear survives outside the triangle (red)");
 
-   /* The triangle must cover the centre with the pixel shader's colour
-    * (0.25, 0.5, 0.75, 1.0 from solid.hlsl).
+   /* The triangle must cover the inside point with the pixel shader's
+    * colour (0.25, 0.5, 0.75, 1.0 from solid.hlsl).
     */
-   bool drew = centre[0] == 0x40 && centre[1] == 0x80 && centre[2] == 0xbf;
-   CHECK(drew, "triangle covers the centre with the pixel shader colour");
+   bool drew = inside[0] == 0x40 && inside[1] == 0x80 && inside[2] == 0xbf;
+   CHECK(drew, "triangle covers its interior with the pixel shader colour");
+
+   /* The shader's declared NDC coordinates give a right triangle with legs
+    * of half the width and the full height: exactly a quarter of the
+    * image. An off-by-a-flip or a bad clip range does not land on 25%.
+    */
 
    /* Count how many pixels differ from the clear colour: a real triangle
     * covers a meaningful fraction but nowhere near everything.
@@ -221,8 +238,9 @@ main(int argc, char **argv)
    }
    printf("       covered %u of %u pixels (%.1f%%)\n", covered, W * H,
           100.0 * covered / (W * H));
-   CHECK(covered > (W * H) / 20 && covered < (W * H) * 9 / 10,
-         "coverage is a real triangle, not empty or fully filled");
+   CHECK(covered == (W / 2) * H / 2,
+         "coverage is exactly the declared triangle: half-width x full "
+         "height / 2");
 
    /* RSSetViewports used to be recorded and never read. Re-render into a
     * half-height viewport: a viewport that is honoured must shrink the
@@ -259,7 +277,11 @@ main(int argc, char **argv)
       CHECK(half_cov > 0 && half_cov < covered,
             "RSSetViewports is honoured: half viewport shrinks coverage");
 
-      const uint8_t *low = PIXEL(W / 2, H - 4);
+      /* (10,200) is inside the triangle at full height and outside a
+       * half-height viewport, so it discriminates. A point the triangle
+       * never reaches would pass no matter what the viewport did.
+       */
+      const uint8_t *low = PIXEL(10, 200);
       CHECK(low[0] == 0xff && low[1] == 0x00 && low[2] == 0x00,
             "area below the viewport keeps the clear colour");
    }
@@ -334,10 +356,11 @@ main(int argc, char **argv)
       ID3D12CommandQueue_Signal(queue, fence, 3);
       ID3D12Fence_SetEventOnCompletion(fence, 3, NULL);
 
-      const uint8_t *c = rbmap + (H / 2) * fp.Footprint.RowPitch + (W / 2) * 4;
-      const uint8_t *k = rbmap + 2 * fp.Footprint.RowPitch + 2 * 4;
-      printf("       via CopyTextureRegion: centre %02x%02x%02x  "
-             "corner %02x%02x%02x\n",
+      /* Same two sample points as above, read out through the API. */
+      const uint8_t *c = rbmap + 30 * fp.Footprint.RowPitch + 30 * 4;
+      const uint8_t *k = rbmap + 230 * fp.Footprint.RowPitch + 230 * 4;
+      printf("       via CopyTextureRegion: inside %02x%02x%02x  "
+             "outside %02x%02x%02x\n",
              c[0], c[1], c[2], k[0], k[1], k[2]);
 
       CHECK(c[0] == 0x40 && c[1] == 0x80 && c[2] == 0xbf,

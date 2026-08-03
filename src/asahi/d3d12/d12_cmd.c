@@ -18,6 +18,9 @@
 #include "agx_usc.h"
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
+#include "util/format/format_utils.h"
+#include "util/format/u_format.h"
+#include "util/u_math.h"
 
 #define D12_STREAM_BO_SIZE (1024 * 1024)
 #define D12_USC_BO_SIZE    (256 * 1024)
@@ -193,6 +196,13 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->cdm_open = false;
    list->render_open = false;
    list->state = D12_LIST_RECORDING;
+
+   /* Bindings do not survive a reset: a stale render target or depth buffer
+    * here would let the next recording draw into last frame's texture.
+    */
+   list->bound_rt = NULL;
+   list->bound_ds = NULL;
+   list->stencil_ref = 0;
 }
 
 /* Upload a data blob into the top of the stream BO; returns its GPU VA. */
@@ -659,6 +669,92 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
 }
 
 /*
+ * Add a hardware scissor entry for this draw and return its index.
+ *
+ * These are not only the XY bounds. Each entry also carries the depth CLIP
+ * range, and the hardware consults it for every fragment: with no array
+ * uploaded, ISP_SCISSOR_BASE reads as zero, the clip range is [0, 0], and
+ * every fragment with a nonzero window Z is discarded. That failure looks
+ * exactly like a broken depth test, which is how it was found.
+ *
+ * Entries are deduplicated against the previous one, so a pass that never
+ * changes viewport or scissor uses a single entry regardless of draw count.
+ */
+static unsigned
+d12_list_push_scissor(struct d12_cmd_list *list, struct d12_segment *seg,
+                      unsigned x0, unsigned y0, unsigned x1, unsigned y1)
+{
+   struct agx_scissor_packed packed;
+
+   agx_pack(&packed, SCISSOR, cfg) {
+      cfg.min_x = x0;
+      cfg.min_y = y0;
+      cfg.max_x = x1;
+      cfg.max_y = y1;
+
+      /* D3D12 clips against 0 <= z <= w in clip space, which is the whole
+       * window depth range. MinDepth/MaxDepth are a mapping, not a clip.
+       */
+      cfg.min_z = 0.0f;
+      cfg.max_z = 1.0f;
+   }
+
+   uint8_t *array = d12_list_data_cpu(list, seg->scissor_base);
+   if (!array) {
+      mesa_loge("draw into a render pass with no scissor array");
+      list->state = D12_LIST_ERROR;
+      return ~0u;
+   }
+
+   if (seg->scissor_count) {
+      uint8_t *prev = array + (seg->scissor_count - 1) * AGX_SCISSOR_LENGTH;
+      if (!memcmp(prev, &packed, AGX_SCISSOR_LENGTH))
+         return seg->scissor_count - 1;
+   }
+
+   if (seg->scissor_count >= D12_MAX_SCISSORS) {
+      mesa_loge("render pass exceeded %u distinct scissor/viewport states",
+                D12_MAX_SCISSORS);
+      list->state = D12_LIST_ERROR;
+      return ~0u;
+   }
+
+   unsigned index = seg->scissor_count++;
+   memcpy(array + index * AGX_SCISSOR_LENGTH, &packed, AGX_SCISSOR_LENGTH);
+   return index;
+}
+
+/*
+ * Push one face's stencil state. When the test is off the slot still has to
+ * be written: the hardware keeps this state across the control stream, and
+ * an all-zero FRAGMENT_STENCIL means compare NEVER, which discards every
+ * fragment rather than doing nothing.
+ */
+static void
+d12_ppp_push_stencil(struct agx_ppp_update *ppp,
+                     const struct d12_stencil_face *face,
+                     const struct d12_depth_stencil_state *ds, bool enabled)
+{
+   agx_ppp_push(ppp, FRAGMENT_STENCIL, cfg) {
+      if (enabled) {
+         cfg.compare = face->compare;
+         cfg.read_mask = ds->stencil_read_mask;
+         cfg.write_mask = ds->stencil_write_mask;
+         cfg.depth_pass = face->pass;
+         cfg.depth_fail = face->depth_fail;
+         cfg.stencil_fail = face->stencil_fail;
+      } else {
+         cfg.compare = AGX_ZS_FUNC_ALWAYS;
+         cfg.read_mask = 0xFF;
+         cfg.write_mask = 0xFF;
+         cfg.depth_pass = AGX_STENCIL_OP_KEEP;
+         cfg.depth_fail = AGX_STENCIL_OP_KEEP;
+         cfg.stencil_fail = AGX_STENCIL_OP_KEEP;
+      }
+   }
+}
+
+/*
  * Emit one draw into the open render segment's VDM stream: vertex-shader
  * state, the per-draw PPP block, viewport/scissor, then the draw itself.
  */
@@ -771,8 +867,6 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
                             &present);
 
-      agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg);
-
       /* Honour RSSetScissorRects, clamped to the target. */
       unsigned clip_x0 = 0, clip_y0 = 0;
       unsigned clip_x1 = seg->width_px, clip_y1 = seg->height_px;
@@ -784,6 +878,20 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                         seg->width_px);
          clip_y1 = MIN2((unsigned)MAX2(list->scissor.bottom, 0),
                         seg->height_px);
+      }
+
+      /* Pack a hardware scissor entry. REGION_CLIP below is a coarse tile
+       * bound; THIS is the exact one, and it also carries the depth clip
+       * range, which is why a pass has to have it even when the
+       * application never called RSSetScissorRects.
+       */
+      unsigned scissor_index = d12_list_push_scissor(
+         list, seg, clip_x0, clip_y0, clip_x1, clip_y1);
+      if (scissor_index == ~0u)
+         return;
+
+      agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
+         cfg.scissor = scissor_index;
       }
 
       agx_ppp_push(&ppp, REGION_CLIP, cfg) {
@@ -819,7 +927,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          cfg.translate_z = vp_zmin;
 
          cfg.scale_x = 0.5f * vp_w;
-         cfg.scale_y = 0.5f * vp_h;
+
+         /* Y is NEGATED relative to the Vulkan driver this code is modelled
+          * on. Vulkan's clip space has +y pointing down the framebuffer, so
+          * hk uses a positive scale; D3D12's +y points up, so NDC +1 must
+          * land on the TOP row. Getting this wrong renders a vertically
+          * mirrored image, which symmetric test geometry cannot detect.
+          */
+         cfg.scale_y = -0.5f * vp_h;
          cfg.scale_z = vp_zmax - vp_zmin;
       }
 
@@ -828,14 +943,37 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    /* Fragment state */
    {
+      /* Depth and stencil only test against something that exists. A PSO
+       * asking for a depth test with no depth attached would otherwise
+       * compare against whatever the ZLS unit last had pointed at it.
+       */
+      const struct d12_depth_stencil_state *ds = &pso->ds;
+      const bool has_ds = seg->ds != NULL;
+      const bool z_test = has_ds && ds->depth_test;
+      const bool z_write = has_ds && ds->depth_write;
+      const bool s_test =
+         has_ds && ds->stencil_test && seg->ds->stencil_bo != NULL;
+
       /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
        * follow it exactly, or agx_ppp_fini catches a size mismatch.
+       *
+       * Both faces are pushed. Measured on this hardware (M2, G14G): with
+       * two-sided state off, back-facing primitives use the FRONT slot --
+       * a deliberately back-wound triangle depth-tests correctly even with
+       * the back half left unwritten. The back half becomes load-bearing
+       * the moment two_sided_stencil is set below, which is exactly when
+       * D3D12 gives the two faces different stencil ops, so it is
+       * programmed unconditionally rather than left to that coupling.
        */
       struct AGX_PPP_HEADER present = {
          .fragment_control = true,
          .fragment_control_2 = true,
          .fragment_front_face = true,
          .fragment_front_face_2 = true,
+         .fragment_front_stencil = true,
+         .fragment_back_face = true,
+         .fragment_back_face_2 = true,
+         .fragment_back_stencil = true,
          .output_select = true,
          .varying_counts_32 = true,
          .varying_counts_16 = true,
@@ -858,10 +996,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
       agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
          cfg.visibility_mode = AGX_VISIBILITY_MODE_NONE;
-         /* Scissoring would make the hardware index an isp_scissor_base
-          * array we do not upload; REGION_CLIP already bounds the pass.
+         /* Always on: the scissor entry the draw indexes carries the depth
+          * clip range as well as the XY bounds, so this cannot be switched
+          * off just because the application set no scissor rect.
           */
-         cfg.scissor_enable = false;
+         cfg.scissor_enable = true;
+         cfg.stencil_test_enable = s_test;
+         cfg.two_sided_stencil = s_test;
       }
 
       /* The linker's own fragment control (tag writes etc.). */
@@ -872,11 +1013,16 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * rejects every fragment — geometry rasterizes and nothing is
        * written. With no depth attachment the test must be ALWAYS.
        */
-      agx_ppp_push(&ppp, FRAGMENT_FACE, cfg) {
+      struct agx_fragment_face_packed face;
+      agx_pack(&face, FRAGMENT_FACE, cfg) {
          cfg.line_width = agx_pack_line_width(1.0f);
          cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
-         cfg.disable_depth_write = true;
-         cfg.depth_function = AGX_ZS_FUNC_ALWAYS;
+         cfg.disable_depth_write = !z_write;
+         cfg.depth_function = z_test ? ds->depth_func : AGX_ZS_FUNC_ALWAYS;
+      }
+
+      agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
+         cfg.stencil_reference = list->stencil_ref;
       }
 
       /* object_type tells the rasterizer it is drawing triangles. */
@@ -886,6 +1032,15 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       }
       agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
       agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
+
+      d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test);
+
+      /* Back face: same depth state, its own stencil ops. */
+      agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
+         cfg.stencil_reference = list->stencil_ref;
+      }
+      agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
+      d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test);
 
       /* Output select is the MERGE of the vertex side (which says the
        * position is written) and the fragment side. Pushing only the
@@ -899,7 +1054,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       agx_ppp_push_packed(&ppp, &pso->varyings.counts_16, VARYING_COUNTS);
 
       agx_ppp_push(&ppp, CULL, cfg) {
-         cfg.front_face_ccw = true;
+         cfg.front_face_ccw = pso->raster.front_face_ccw;
+         cfg.cull_front = pso->raster.cull_front;
+         cfg.cull_back = pso->raster.cull_back;
          cfg.depth_clip = true;
       }
 
@@ -1278,6 +1435,14 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
    enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rt->layout.format};
    seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
 
+   /* Reserve the pass's scissor array up front: entries have to be
+    * contiguous and indexable, and draws fill them in as they come.
+    */
+   seg->scissor_base = d12_list_upload_zero(
+      list, D12_MAX_SCISSORS * AGX_SCISSOR_LENGTH, 64);
+   if (!seg->scissor_base)
+      return;
+
    seg->bg_usc =
       d12_build_bg_eot_usc(list, rt, color, false, &seg->tib,
                            &seg->bg_counts);
@@ -1479,6 +1644,114 @@ d12_list_ResourceBarrier(ID3D12GraphicsCommandList *iface, UINT num_barriers,
    }
 }
 
+/*
+ * Attach a depth/stencil resource to the open render pass.
+ *
+ * Depth never goes through a background/end-of-tile USC program the way
+ * colour does: the fixed-function ZLS unit loads and stores it, configured
+ * from the render command. So attaching is bookkeeping here, and the actual
+ * hardware setup happens in d12_fill_render_cmd.
+ */
+static bool
+d12_list_attach_ds(struct d12_cmd_list *list, struct d12_resource *ds)
+{
+   if (!list->render_open) {
+      mesa_loge("depth/stencil needs an open render pass; clear the colour "
+                "target first (depth-only passes are not supported yet)");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   struct d12_segment *seg = &list->segments[list->segment_count - 1];
+
+   if (seg->ds && seg->ds != ds) {
+      mesa_loge("two different depth/stencil targets in one render pass");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   /* The ZLS unit addresses one buffer for the whole pass. A depth buffer
+    * smaller than the colour target would leave the uncovered region
+    * testing against memory outside the allocation.
+    */
+   if (ds->layout.width_px < seg->width_px ||
+       ds->layout.height_px < seg->height_px) {
+      mesa_loge("depth/stencil target %ux%u is smaller than the render pass "
+                "%ux%u", ds->layout.width_px, ds->layout.height_px,
+                seg->width_px, seg->height_px);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   seg->ds = ds;
+   return true;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList *iface,
+                               D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle,
+                               D3D12_CLEAR_FLAGS flags, FLOAT depth,
+                               UINT8 stencil, UINT num_rects,
+                               const D3D12_RECT *rects)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   struct d12_rtv *dsv = (struct d12_rtv *)dsv_handle.ptr;
+   if (!dsv || !dsv->resource || !dsv->is_dsv) {
+      mesa_loge("ClearDepthStencilView: invalid DSV handle");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (num_rects != 0) {
+      mesa_loge("ClearDepthStencilView: partial-rect clears unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_resource *ds = dsv->resource;
+
+   if (!d12_list_attach_ds(list, ds))
+      return;
+
+   struct d12_segment *seg = &list->segments[list->segment_count - 1];
+
+   /* The clear is not a draw and not a program: the hardware seeds every
+    * tile's depth from ISP_BGOBJDEPTH, encoded in the depth plane's own
+    * format, and its stencil from the low byte of ISP_BGOBJVALS.
+    */
+   if (flags & D3D12_CLEAR_FLAG_DEPTH) {
+      if (ds->layout.format == PIPE_FORMAT_Z16_UNORM)
+         seg->isp_bgobjdepth = _mesa_float_to_unorm(depth, 16);
+      else
+         seg->isp_bgobjdepth = fui(depth);
+
+      seg->depth_cleared = true;
+   }
+
+   if (flags & D3D12_CLEAR_FLAG_STENCIL) {
+      if (!ds->stencil_bo) {
+         mesa_loge("ClearDepthStencilView: stencil clear on a format with no "
+                   "stencil plane");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      seg->stencil_clear = stencil;
+      seg->stencil_cleared = true;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_list_OMSetStencilRef(ID3D12GraphicsCommandList *iface, UINT ref)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->stencil_ref = (uint8_t)ref;
+}
+
 static void STDMETHODCALLTYPE
 d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
                             const D3D12_CPU_DESCRIPTOR_HANDLE *rtvs,
@@ -1486,9 +1759,6 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
                             const D3D12_CPU_DESCRIPTOR_HANDLE *dsv)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
-
-   if (dsv)
-      mesa_logw("OMSetRenderTargets: depth-stencil ignored (no DSV support)");
 
    /* Record the binding. A render pass is still opened by
     * ClearRenderTargetView, so this cannot yet START a pass -- but it CAN
@@ -1504,6 +1774,22 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
 
    if (num_rtvs > 1)
       mesa_logw("OMSetRenderTargets: only one render target is supported");
+
+   /* Binding is the other way a pass acquires depth: an application may
+    * bind a depth buffer it filled earlier and never clear it.
+    */
+   list->bound_ds = NULL;
+   if (dsv) {
+      struct d12_rtv *view = (struct d12_rtv *)dsv->ptr;
+      if (view && view->resource && view->is_dsv) {
+         list->bound_ds = view->resource;
+         d12_list_attach_ds(list, view->resource);
+      } else if (view) {
+         mesa_loge("OMSetRenderTargets: DSV handle is not a depth/stencil "
+                   "view");
+         list->state = D12_LIST_ERROR;
+      }
+   }
 }
 
 static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
@@ -1525,7 +1811,9 @@ static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
    .CopyTextureRegion = d12_list_CopyTextureRegion,
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
+   .OMSetStencilRef = d12_list_OMSetStencilRef,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
+   .ClearDepthStencilView = d12_list_ClearDepthStencilView,
    .SetPipelineState = d12_list_SetPipelineState,
    .SetComputeRootSignature = d12_list_SetComputeRootSignature,
    .SetComputeRootUnorderedAccessView =

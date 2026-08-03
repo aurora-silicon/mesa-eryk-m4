@@ -19,6 +19,7 @@
 
 #include <xf86drm.h>
 
+#include "agx_helpers.h"
 #include "util/u_math.h"
 
 static HRESULT STDMETHODCALLTYPE
@@ -129,11 +130,66 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    c->width_px = seg->width_px;
    c->height_px = seg->height_px;
 
-   /* Color-only pass: no depth/stencil planes, background object vals base
-    * per hk (0x300), ZLS fully off.
+   /* Background object values: hk's base constant, with the stencil clear
+    * value in the low byte.
     */
-   c->isp_bgobjdepth = 0;
-   c->isp_bgobjvals = 0x300;
+   c->isp_bgobjdepth = seg->isp_bgobjdepth;
+   c->isp_bgobjvals = 0x300 | seg->stencil_clear;
+
+   /*
+    * Depth/stencil. The ZLS unit is fixed-function: unlike colour, there is
+    * no background or end-of-tile program involved. Pointing it at the
+    * buffers and setting the load/store bits is the entire configuration.
+    *
+    * z_load is the interesting bit. If the pass cleared depth, every tile
+    * starts from isp_bgobjdepth and loading would overwrite that with stale
+    * memory. If it did not, the application is continuing from depth it
+    * rendered earlier, and NOT loading would silently discard it.
+    */
+   if (seg->ds) {
+      const struct ail_layout *z = &seg->ds->layout;
+      struct agx_zls zls = {
+         .z_load = !seg->depth_cleared,
+         .z_store = true,
+      };
+
+      c->depth.base = seg->ds->bo->va->addr;
+
+      /* Stride is in pages, biased, with the low bit set — the encoding
+       * hk uses (hk_cmd_draw.c).
+       */
+      unsigned z_pages = z->layer_stride_B / AIL_PAGESIZE;
+      c->depth.stride = ((z_pages - 1) << 14) | 1;
+
+      const struct ail_layout *s = NULL;
+      if (seg->ds->stencil_bo) {
+         s = &seg->ds->stencil_layout;
+         zls.s_load = !seg->stencil_cleared;
+         zls.s_store = true;
+
+         c->stencil.base = seg->ds->stencil_bo->va->addr;
+         unsigned s_pages = s->layer_stride_B / AIL_PAGESIZE;
+         c->stencil.stride = ((s_pages - 1) << 14) | 1;
+      }
+
+      struct agx_zls_control_packed zls_ctrl;
+      agx_pack_zls_control(&zls_ctrl, z, s, &zls);
+      static_assert(sizeof(c->zls_ctrl) == sizeof(zls_ctrl),
+                    "zls_ctrl width must match the packed struct");
+      memcpy(&c->zls_ctrl, &zls_ctrl, sizeof(zls_ctrl));
+
+      /* The depth buffer may be larger than the colour target. */
+      agx_pack(&c->isp_zls_pixels, CR_ISP_ZLS_PIXELS, cfg) {
+         cfg.x = z->width_px;
+         cfg.y = z->height_px;
+      }
+
+      /* Integer depth bias applies to unorm depth buffers, float bias to
+       * floating-point ones.
+       */
+      if (z->format == PIPE_FORMAT_Z16_UNORM)
+         c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
+   }
 
    /* Sample positions. Irrelevant to a clear-only pass, but rasterizing
     * geometry with this left at zero hangs the GPU. 0x88 is the standard
@@ -170,10 +226,11 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    memcpy(&c->partial_eot.rsrc_spec, &seg->eot_counts,
           sizeof(seg->eot_counts));
 
-   /* No draws consume scissors/depth-bias; occlusion scratch must be valid
-    * memory regardless (mirrors hk pointing at the device query heap).
+   /* The scissor array carries both the XY bounds and the depth clip range
+    * that draws index into. Occlusion scratch must be valid memory whether
+    * or not queries run (mirrors hk pointing at the device query heap).
     */
-   c->isp_scissor_base = 0;
+   c->isp_scissor_base = seg->scissor_base;
    c->isp_dbias_base = 0;
    c->isp_oclqry_base = device->oclqry_bo->va->addr;
 
