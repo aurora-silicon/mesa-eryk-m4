@@ -141,6 +141,56 @@ main(int argc, char **argv)
    }
 
    printf("OK: %u blocks, %u records\n", st.blocks, st.records);
+
+   /* Module decode (G4b) */
+   struct d12_module mod;
+   if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
+      fprintf(stderr, "MODULE PARSE FAILED: %s\n",
+              mod.error ? mod.error : "unknown");
+      return 1;
+   }
+
+   printf("module: %u types, %u values, %u functions, %u metadata, "
+          "%u named\n",
+          mod.num_types, mod.num_values, mod.num_functions,
+          mod.num_metadata, mod.num_named_md);
+
+   unsigned defs = 0;
+   for (unsigned i = 0; i < mod.num_functions; i++) {
+      const struct d12_function *f = &mod.functions[i];
+      if (f->is_declaration)
+         continue;
+      defs++;
+      printf("  def %s: %u insts, %u blocks\n", f->name ? f->name : "(unnamed)",
+             f->num_insts, f->num_blocks);
+   }
+
+   /* dx.op intrinsics used, by declaration name */
+   unsigned dxops = 0;
+   for (unsigned i = 0; i < mod.num_functions; i++) {
+      const struct d12_function *f = &mod.functions[i];
+      if (!f->is_declaration || !f->name)
+         continue;
+      if (strncmp(f->name, "dx.op.", 6))
+         continue;
+      if (dxops == 0)
+         printf("  dx.op intrinsics:");
+      printf(" %s", f->name + 6);
+      dxops++;
+   }
+   if (dxops)
+      printf("\n");
+
+   for (unsigned i = 0; i < mod.num_named_md; i++) {
+      const struct d12_named_md *nmd = &mod.named_md[i];
+      printf("  named md %s: %u node(s)\n", nmd->name ? nmd->name : "(?)",
+             nmd->num_nodes);
+   }
+
+   printf("MODULE OK: %u function definition(s), %u dx.op intrinsic(s)\n",
+          defs, dxops);
+
+   d12_dxil_module_finish(&mod);
    free(data);
    return 0;
 }

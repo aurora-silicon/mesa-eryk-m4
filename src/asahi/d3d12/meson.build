@@ -74,6 +74,7 @@ d3d12agx_g3_smoke = executable(
 # DXIL frontend (G4): standalone of the COM driver for now
 libd12_dxil_files = files(
   'dxil/d12_dxil_bitstream.c',
+  'dxil/d12_dxil_module.c',
 )
 
 d3d12agx_dxil_dump = executable(
