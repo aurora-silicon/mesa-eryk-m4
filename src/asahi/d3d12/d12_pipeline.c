@@ -293,7 +293,14 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
-      .promote_constants = true,
+      /* Constant promotion parks constants in uniform registers that only
+       * a shader preamble fills. When the compiler emits no preamble those
+       * registers are never initialized and the shader reads garbage — as
+       * seen when the high half of a 64-bit resource address came back as
+       * 0x86 instead of 0x2f. Keep constants in the binary until we bind a
+       * preamble properly.
+       */
+      .promote_constants = false,
       /* Uniform registers below this are the driver's: the root pointer. */
       .reserved_preamble = D12_UNIFORM_ROOT + D12_UNIFORM_ROOT_REGS,
    };

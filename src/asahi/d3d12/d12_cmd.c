@@ -307,6 +307,14 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
 
    agx_usc_words_precomp((uint32_t *)usc_cpu, &prog->b, data_gpu, args_size);
 
+   if (getenv("D3D12AGX_DUMP_USC")) {
+      fprintf(stderr, "precomp USC @%u:", usc);
+      for (unsigned i = 0; i < 32; i++)
+         fprintf(stderr, " %02x", usc_cpu[i]);
+      fprintf(stderr, "\n  data_gpu=0x%llx size=%zu\n",
+              (unsigned long long)data_gpu, args_size);
+   }
+
    if (!d12_list_check_stream_space(list))
       return;
 
@@ -498,6 +506,15 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    } else {
       agx_usc_pack(&b, NO_PRESHADER, cfg)
          ;
+   }
+
+   if (getenv("D3D12AGX_DUMP_USC")) {
+      fprintf(stderr, "pso USC @%u:", usc);
+      for (unsigned i = 0; i < 32; i++)
+         fprintf(stderr, " %02x", usc_cpu[i]);
+      fprintf(stderr, "\n  root_gpu=0x%llx table_gpu=0x%llx uav0=0x%llx\n",
+              (unsigned long long)root_gpu, (unsigned long long)addrs_gpu,
+              (unsigned long long)addrs[0]);
    }
 
    struct agx_cdm_launch_word_0_packed launch;
