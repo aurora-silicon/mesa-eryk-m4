@@ -4,13 +4,18 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all eight GPU
+Status on `dev`: **321 of 334** corpus shaders compile, and **all nine GPU
 acceptance suites pass on real hardware**:
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
   the hardware vertex shader. A pass-through geometry shader reproduces
   the no-GS control **pixel for pixel** — all 16384 compared, zero differ.
+- `g7_tessellation` — **tessellation executes**: five compute dispatches
+  (software VS, hull, tessellator count, prefix sum, tessellator emit)
+  and an indexed indirect draw whose index count the GPU writes. The
+  tessellated patch matches a derived quad exactly — 4096 pixels, none
+  wrong inside or out.
 - `g5_texture` — reproduces `Texture2D.Load` for all 256 texels of a
   16×16 image.
 - `g4_triangle` — matches a CPU rasterisation of the shader's own
@@ -19,8 +24,8 @@ acceptance suites pass on real hardware**:
 The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
-The corpus figure is a **compile** proxy. Geometry now dispatches;
-tessellation, mesh, amplification, work graphs and ray query still compile
+The corpus figure is a **compile** proxy. Geometry and tessellation now
+dispatch; mesh, amplification, work graphs and ray query still compile
 without executing. See `docs/roadmap.md` — that gap is the current work.
 
 ## Start here

@@ -154,6 +154,66 @@ A 1D gradient sample legitimately ends at `ddy0`, three operands short of the
 fixed signature. Reads past the operand count must mean "absent", not a
 refusal.
 
+### A hull shader has TWO function bodies
+
+DXIL splits it: the entry runs once per output control point, and a
+separate **patch constant function** — named by `HS_STATE` operand 0 — is
+the only thing that writes `SV_TessFactor`. NIR and poly's TCS lowering
+follow GLSL, where one shader writes both, so the bodies have to be
+merged. Translate only the entry and the factors stay zero, the
+tessellator counts zero vertices, and the draw is empty with no error
+anywhere.
+
+Two traps in merging them:
+
+- **Entry selection.** DXC emits the patch constant function FIRST, so
+  "the module's first definition" picks the wrong body. 18 corpus hull
+  shaders were compiling their patch constant function and counting as
+  passes.
+- **Appending it as new blocks segfaults `nir_lower_goto_ifs`.** The
+  entry's terminating `RET` has just been dropped, so its final block has
+  no edge to them. Concatenate into the entry's last block instead, and
+  refuse a patch constant function that has control flow of its own.
+
+### Relative operands are numbered per FUNCTION, not per module
+
+LLVM discards a function's local values when the function ends, so every
+body numbers its locals from the same module-level base. A parser that
+keeps one global value array and decodes relative operands against its
+running length is off by the previous bodies' local count in **every body
+after the first**.
+
+Invisible in a module with one body, which is every shader except a hull
+shader. It presented as `call to a non-dx.op function`: the callee
+resolved to an instruction five slots past the intrinsic it meant.
+
+### Tess levels are not generic patch constants
+
+`patch_outputs_written` is indexed **from `VARYING_SLOT_PATCH0`**, and the
+tess-level slots sit BELOW it. `BITFIELD64_BIT(slot - VARYING_SLOT_PATCH0)`
+therefore underflows and sets a garbage bit; `util_last_bit` reported 28
+patch constants where there were none, and `poly_tcs_out_offs_el` pushed
+every per-vertex output past the end of the stride the driver had sized.
+Tess levels belong in `outputs_written`, which poly places at fixed
+offsets 0..5.
+
+### Hull and domain shaders address control points PER VERTEX
+
+A hull shader's ordinary outputs are per control point and a domain
+shader's inputs are per control point. Both must use the per-vertex
+intrinsics indexed by the invocation ID / the `loadInput` vertex operand.
+
+`poly_nir_lower_tcs` addresses a plain `store_output` with an
+**undefined** vertex index, so every invocation of a patch writes the
+same slot and all but one control point is silently never written. A
+domain shader that falls through to the vertex-attribute path gets
+`VERT_ATTRIB_GENERIC0` slots and no index, so every corner reads the same
+undefined attribute.
+
+All three of the above present identically — a fully tessellated patch
+that draws no pixels — and none is visible without dumping the TCS buffer
+between the stages.
+
 ### The container declares the stage — honour it or refuse
 `d12_dxil_container_stage()` returning plain `false` for shader kinds ≥ 6 let
 a caller's default fill the gap, and library/mesh shaders silently compiled
