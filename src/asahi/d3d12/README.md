@@ -5,13 +5,18 @@ translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
 Status on `dev`: **321 of 334** corpus shaders compile, and **all eight GPU
-acceptance suites pass on real hardware** — including `g6_geometry`:
-**geometry shaders execute**, as two compute dispatches ordered ahead of
-the render pass plus a rasterization program bound as the hardware vertex
-shader — including `g5_texture`, which
-now reproduces `Texture2D.Load` for all 256 texels of a 16×16 image, and
-`g4_triangle`, which matches a CPU rasterisation of the shader's own
-vertices on all 65536 pixels. The remaining 13 shaders are documented in
+acceptance suites pass on real hardware**:
+
+- `g6_geometry` — **geometry shaders execute**, as two compute dispatches
+  ordered ahead of the render pass plus a rasterization program bound as
+  the hardware vertex shader. It proves the path, not the pixels; the
+  suite says exactly what it verified and why it stops there.
+- `g5_texture` — reproduces `Texture2D.Load` for all 256 texels of a
+  16×16 image.
+- `g4_triangle` — matches a CPU rasterisation of the shader's own
+  vertices on all 65536 pixels, D3D top-left fill rule included.
+
+The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
 The corpus figure is a **compile** proxy. Geometry now dispatches;
