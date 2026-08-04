@@ -314,21 +314,51 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
-      /* Constant promotion parks constants in uniform registers that only
-       * a shader preamble fills. When the compiler emits no preamble those
-       * registers are never initialized and the shader reads garbage — as
-       * seen when the high half of a 64-bit resource address came back as
-       * 0x86 instead of 0x2f. Keep constants in the binary until we bind a
-       * preamble properly.
+      /*
+       * Constant promotion parks constants in uniform registers that only
+       * the shader's preamble fills. Both USC builders push a PRESHADER
+       * word, so this looks safe -- and for compute it is. Turning it on
+       * was measured on 2026-08-04 and it fails every graphics test
+       * (g4_triangle, g5_depth) while changing nothing about compute.
+       *
+       * The graphics path takes the preamble's address from
+       * st->info.preamble_offset but the code from st->linked.bo, and
+       * those are the PRE-link info and the POST-fast-link binary. The
+       * offset does not survive agx_fast_link, so the GPU runs whatever
+       * sits at that offset in the linked binary. That is the "high half
+       * of a 64-bit address came back 0x86 instead of 0x2f" this comment
+       * used to describe -- not a missing preamble, a misaddressed one.
+       *
+       * Fix the graphics preamble address before turning this on.
        */
       .promote_constants = false,
       /* Uniform registers below this are the driver's: the root pointer. */
-      .reserved_preamble = D12_UNIFORM_ROOT + D12_UNIFORM_ROOT_REGS,
+      .reserved_preamble = D12_UNIFORM_RESERVED,
    };
 
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));
    agx_compile_shader_nir(nir, &key, &part);
+
+   if (getenv("D3D12AGX_DUMP_TEX") && part.binary) {
+      fprintf(stderr,
+              "driver cs: has_preamble=%d preamble_off=0x%x main_off=0x%x "
+              "push_count=%u nr_preamble_gprs=%u rodata.size_16=%u\n",
+              part.info.has_preamble, part.info.preamble_offset,
+              part.info.main_offset, part.info.push_count,
+              part.info.nr_preamble_gprs, part.info.rodata.size_16);
+      if (part.info.has_preamble) {
+         fprintf(stderr, "; driver preamble\n");
+         agx2_disassemble(part.binary + part.info.preamble_offset,
+                          part.info.main_offset > part.info.preamble_offset
+                             ? part.info.main_offset - part.info.preamble_offset
+                             : part.info.binary_size - part.info.preamble_offset,
+                          stderr);
+      }
+      fprintf(stderr, "; driver main\n");
+      agx2_disassemble(part.binary + part.info.main_offset,
+                       part.info.binary_size - part.info.main_offset, stderr);
+   }
 
    if (!part.binary || !part.info.binary_size) {
       mesa_loge("CreateComputePipelineState: AGX compile produced no code");
@@ -444,8 +474,9 @@ compile_gfx_stage(struct d12_device *device,
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
       /* See the compute path: promotion needs a preamble we do not bind. */
+      /* See the note on the compute key above. */
       .promote_constants = false,
-      .reserved_preamble = D12_UNIFORM_ROOT + D12_UNIFORM_ROOT_REGS,
+      .reserved_preamble = D12_UNIFORM_RESERVED,
       /* The tilebuffer store is lowered INTO this shader, so it is
        * self-contained and must terminate normally. Setting no_stop here
        * would leave the fragment shader running off the end.
@@ -644,12 +675,27 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    pso->vs.info = vs_part.info;
    pso->fs.info = fs_part.info;
 
+   /*
+    * A texel fetch consumes a sampler even though HLSL's Load names none:
+    * the backend lowers txf to `smpi ... ss0` and the driver supplies that
+    * state. The count here is what makes the hardware FETCH it -- leave it
+    * at zero and sampler state 0 is never loaded, so the fetch reads
+    * undefined state and returns mostly out-of-bounds. Honeykrisp does the
+    * same MAX2 (hk_shader.c).
+    */
+   unsigned vs_samplers = vs_part.info.sampler_state_count;
+   if (vs_part.info.uses_txf)
+      vs_samplers = MAX2(vs_samplers, 1);
+
+   unsigned fs_samplers = fs_part.info.sampler_state_count;
+   if (fs_part.info.uses_txf)
+      fs_samplers = MAX2(fs_samplers, 1);
+
    agx_pack(&pso->vs.counts, COUNTS, cfg) {
       cfg.uniform_register_count = vs_part.info.push_count;
       cfg.preshader_register_count = vs_part.info.nr_preamble_gprs;
       cfg.sampler_state_register_count =
-         agx_translate_sampler_state_count(vs_part.info.sampler_state_count,
-                                           false);
+         agx_translate_sampler_state_count(vs_samplers, false);
       cfg.texture_state_register_count = vs_part.info.texture_state_count;
    }
 
@@ -661,8 +707,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       cfg.preshader_register_count = fs_part.info.nr_preamble_gprs;
       cfg.texture_state_register_count = fs_part.info.texture_state_count;
       cfg.sampler_state_register_count =
-         agx_translate_sampler_state_count(fs_part.info.sampler_state_count,
-                                           false);
+         agx_translate_sampler_state_count(fs_samplers, false);
    }
 
    /* Assign vertex output slots; no flat/linear varyings in the first

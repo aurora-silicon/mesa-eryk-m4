@@ -289,8 +289,10 @@ main(int argc, char **argv)
    };
    ID3D12Device_CreateConstantBufferView(dev, &cbv, cpu2);
 
-   /* A texture SRV has no descriptor we can honestly write yet, so it must
-    * be refused rather than recorded as if it were a linear buffer.
+   /* Texture SRVs ARE supported now, so this checks the boundary that
+    * still exists rather than the one that used to: a 2D view records the
+    * resource, and a view dimension we cannot build a descriptor for is
+    * refused rather than recorded as something it is not.
     */
    {
       D3D12_HEAP_PROPERTIES dh = {.Type = D3D12_HEAP_TYPE_DEFAULT};
@@ -309,6 +311,9 @@ main(int argc, char **argv)
          NULL, &IID_ID3D12Resource, (void **)&tex);
 
       if (tex) {
+         struct { uint8_t bytes[32]; } scratch = {0};
+         D3D12_CPU_DESCRIPTOR_HANDLE h = {.ptr = (SIZE_T)&scratch};
+
          D3D12_SHADER_RESOURCE_VIEW_DESC tsrv = {
             .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
             .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D,
@@ -316,15 +321,31 @@ main(int argc, char **argv)
                D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
             .Texture2D = {.MipLevels = 1},
          };
-         /* Write into an unused fourth slot's worth of scratch. */
-         struct { uint8_t bytes[32]; } scratch = {0};
-         D3D12_CPU_DESCRIPTOR_HANDLE h = {.ptr = (SIZE_T)&scratch};
          ID3D12Device_CreateShaderResourceView(dev, tex, &tsrv, h);
+
+         bool recorded = false;
+         for (unsigned i = 0; i < sizeof(scratch); i++)
+            recorded |= scratch.bytes[i] != 0;
+         CHECK(recorded, "a TEXTURE2D shader resource view is recorded");
+
+         /* 3D has a different descriptor shape we do not build. Accepting
+          * it would point the texture unit at a 2D interpretation of a
+          * volume.
+          */
+         memset(&scratch, 0, sizeof(scratch));
+         D3D12_SHADER_RESOURCE_VIEW_DESC bad = {
+            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D,
+            .Shader4ComponentMapping =
+               D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING,
+            .Texture3D = {.MipLevels = 1},
+         };
+         ID3D12Device_CreateShaderResourceView(dev, tex, &bad, h);
 
          bool empty = true;
          for (unsigned i = 0; i < sizeof(scratch); i++)
             empty &= scratch.bytes[i] == 0;
-         CHECK(empty, "a texture SRV is refused, not recorded as a buffer");
+         CHECK(empty, "an unsupported view dimension is still refused");
          ID3D12Resource_Release(tex);
       }
    }

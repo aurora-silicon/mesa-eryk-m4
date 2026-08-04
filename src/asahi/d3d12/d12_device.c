@@ -124,6 +124,7 @@ d12_device_Release(ID3D12Device *iface)
    if (refs == 0) {
       mesa_logi("closing device %s", device->dev.name);
       agx_bo_unreference(&device->dev, device->oclqry_bo);
+      agx_bo_unreference(&device->dev, device->rodata_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -556,9 +557,26 @@ d12_device_CreateShaderResourceView(ID3D12Device *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
+   /* A 2D texture view records the resource; the hardware descriptor is
+    * packed at draw time, when the heap it lives in is built.
+    */
+   if (desc && desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D) {
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+         mesa_loge("CreateShaderResourceView: TEXTURE2D view of a "
+                   "non-texture resource");
+         return;
+      }
+
+      slot->kind = D12_DESC_SRV;
+      slot->resource = res;
+      slot->address = res->bo->va->addr;
+      slot->format = desc->Format != DXGI_FORMAT_UNKNOWN ? desc->Format
+                                                         : res->desc.Format;
+      return;
+   }
+
    if (desc && desc->ViewDimension != D3D12_SRV_DIMENSION_BUFFER) {
-      mesa_loge("CreateShaderResourceView: view dimension %d unsupported "
-                "(texture views arrive with texturing)",
+      mesa_loge("CreateShaderResourceView: view dimension %d unsupported",
                 (int)desc->ViewDimension);
       return;
    }
@@ -903,6 +921,38 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       agx_close_device(&device->dev);
       free(device);
       return E_OUTOFMEMORY;
+   }
+
+   /*
+    * A texel fetch still goes through the sampler hardware on AGX: the
+    * backend lowers txf to `smpi ... ss0`, which reads sampler state 0
+    * from whatever the USC's SAMPLER word points at. HLSL's
+    * Texture2D.Load takes no sampler, so nothing in the application will
+    * ever supply one -- the driver must, exactly as Honeykrisp does
+    * (hk_device.c) with a device-wide read-only sampler.
+    *
+    * Omitting it is not a hard failure. Sampler state 0 is simply
+    * undefined, and undefined here reads as zeroes: the texture
+    * descriptor, the address and the coordinates are all correct and the
+    * fetch still returns nothing.
+    */
+   device->rodata_bo =
+      agx_bo_create(&device->dev, AGX_SAMPLER_LENGTH, 0, 0, "d3d12 rodata");
+   if (!device->rodata_bo) {
+      agx_bo_unreference(&device->dev, device->oclqry_bo);
+      agx_bg_eot_cleanup(&device->bg_eot);
+      agx_close_device(&device->dev);
+      free(device);
+      return E_OUTOFMEMORY;
+   }
+
+   agx_pack_txf_sampler(
+      (struct agx_sampler_packed *)agx_bo_map(device->rodata_bo));
+
+   agx_pack(&device->dev.txf_sampler, USC_SAMPLER, cfg) {
+      cfg.start = 0;
+      cfg.count = 1;
+      cfg.buffer = device->rodata_bo->va->addr;
    }
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;

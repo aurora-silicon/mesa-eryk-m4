@@ -605,6 +605,32 @@ struct nir_shader;
 #define D12_UNIFORM_ROOT_REGS       4
 
 /*
+ * Texture descriptors live in their own heap: AGX reaches a texture
+ * through a hardware descriptor, not a bare address. A bindless handle is
+ * a byte OFFSET into that heap, and the heap's base sits in these uniform
+ * registers -- the instruction takes a 64-bit uniform base plus a 32-bit
+ * offset register and adds them.
+ */
+#define D12_UNIFORM_TEXTURES        8
+#define D12_UNIFORM_TEXTURE_REGS    4
+
+/*
+ * Uniform registers the driver claims for its own ABI. This must cover
+ * EVERY register the driver publishes: the compiler starts push_count
+ * here and allocates its own promoted constants above it, so anything
+ * written past this point is either never loaded by the hardware or
+ * overwritten. Getting it wrong presents as half of a 64-bit pointer
+ * arriving -- a fault at address 0.
+ */
+#define D12_UNIFORM_RESERVED (D12_UNIFORM_TEXTURES + D12_UNIFORM_TEXTURE_REGS)
+
+/* One hardware texture descriptor. Spelled out rather than including
+ * genxml from the front end; asserted against the real value where the
+ * descriptors are packed.
+ */
+#define D12_TEXTURE_DESC_SIZE       24
+
+/*
  * Root-table layout.
  *
  * A resource is named by three things -- class, register space and shader

@@ -129,6 +129,13 @@ d3d12agx_g5_descriptors = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g5_texture = executable(
+  'd3d12agx_g5_texture',
+  files('tests/g5_texture.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g5_depth = executable(
   'd3d12agx_g5_depth',
   files('tests/g5_depth.c'),

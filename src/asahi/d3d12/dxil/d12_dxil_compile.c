@@ -184,7 +184,19 @@ main(int argc, char **argv)
     */
    struct agx_shader_key key = {
       .no_stop = false,
-      .promote_constants = true,
+      /* Must match d12_pipeline.c. The driver keeps constants in the
+       * binary; promoting them here would disassemble a shader the driver
+       * never runs, with different uniform registers.
+       */
+      .promote_constants = false,
+      /* The driver reserves the low uniforms for the root table and the
+       * texture heap, so the preamble must allocate above them. Without
+       * this the tool compiles a DIFFERENT shader from the one the driver
+       * runs -- one whose preamble writes the registers the driver
+       * publishes bindings in -- and its disassembly stops being evidence
+       * about the driver.
+       */
+      .reserved_preamble = D12_UNIFORM_RESERVED,
       /* Large shaders spill; without this the allocator asserts that
        * internal shaders are unspillable. */
       .has_scratch = true,
@@ -194,6 +206,11 @@ main(int argc, char **argv)
          .soft_fault = false,
       },
    };
+
+   if (print_nir) {
+      printf("\n=== NIR after AGX lowering ===\n");
+      nir_print_shader(nir, stdout);
+   }
 
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));

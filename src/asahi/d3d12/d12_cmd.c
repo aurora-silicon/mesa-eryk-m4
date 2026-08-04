@@ -516,6 +516,150 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
    return usc;
 }
 
+
+/*
+ * Build the two tables a shader reaches its resources through, and return
+ * the addresses to publish in uniform registers.
+ *
+ * - The ROOT TABLE is 64-bit addresses indexed by binding slot: buffers,
+ *   read with one indirection.
+ * - The TEXTURE HEAP is hardware texture descriptors at the same slot
+ *   index scaled by the descriptor size. AGX does not reach a texture by
+ *   address; it reads a descriptor, so one must exist in memory even
+ *   though D3D12's own descriptor never becomes memory.
+ *
+ * BOTH out-parameters are addresses of an 8-byte cell CONTAINING the
+ * table's address, not the table itself. agx_usc_uniform fills uniform
+ * registers FROM memory at the address it is given, so handing it a table
+ * directly loads the table's first eight bytes into the register pair.
+ * For the texture heap that is descriptor word 0, which the hardware then
+ * uses as the heap base -- a fault at an address that looks like garbage
+ * but is exactly the descriptor's own first dword.
+ */
+static bool
+d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
+                         uint64_t *out_root, uint64_t *out_textures)
+{
+   const struct d12_descriptor *table =
+      compute ? list->compute_root_table : list->graphics_root_table;
+
+   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++)
+      addrs[i] = table[i].address;
+
+   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
+   if (!addrs_gpu)
+      return false;
+
+   *out_root = d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8);
+   if (!*out_root)
+      return false;
+
+   unsigned last_texture = 0;
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
+      if (table[i].resource && table[i].resource->desc.Dimension ==
+                                  D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+         last_texture = i + 1;
+   }
+
+   *out_textures = 0;
+   if (!last_texture)
+      return true;
+
+   static_assert(AGX_TEXTURE_LENGTH == D12_TEXTURE_DESC_SIZE,
+                 "the front end's descriptor stride must match hardware");
+
+   uint64_t heap_gpu = d12_list_upload_zero(
+      list, (size_t)last_texture * AGX_TEXTURE_LENGTH, 64);
+   if (!heap_gpu)
+      return false;
+
+   struct agx_texture_packed *descs =
+      (struct agx_texture_packed *)d12_list_data_cpu(list, heap_gpu);
+
+   for (unsigned i = 0; i < last_texture; i++) {
+      struct d12_resource *res = table[i].resource;
+      if (!res || res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+         continue;
+
+      const struct ail_layout *layout = &res->layout;
+      enum pipe_format pf = layout->format;
+      const struct util_format_description *fdesc =
+         util_format_description(pf);
+
+      agx_pack(&descs[i], TEXTURE, cfg) {
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = agx_translate_layout(layout->tiling);
+         cfg.channels = ail_pixel_format[pf].channels;
+         cfg.type = ail_pixel_format[pf].type;
+         cfg.srgb = util_format_is_srgb(pf);
+
+         cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+         cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+         cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+         cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+
+         cfg.address = res->bo->va->addr;
+         cfg.width = layout->width_px;
+         cfg.height = layout->height_px;
+         cfg.first_level = 0;
+         cfg.last_level = 0;
+         cfg.unk_mipmapped = layout->levels > 1;
+
+         /* Depth and Stride share bit 110; the hardware reads one or the
+          * other by layout. Depth carries minus(1), so a single-layer
+          * texture packs zero either way -- but write only the one that
+          * applies, because an array does not.
+          */
+         if (layout->tiling == AIL_TILING_LINEAR) {
+            /* TEXTURE.Stride is (bytes - 16) >> 4. Note PBE.Stride is a
+             * different convention: bytes - 4, unshifted.
+             */
+            cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
+         } else {
+            cfg.depth = 1;
+            cfg.page_aligned_layers = layout->page_aligned_layers;
+         }
+      }
+   }
+
+   if (getenv("D3D12AGX_DUMP_TEX")) {
+      for (unsigned i = 0; i < last_texture; i++) {
+         struct d12_resource *res = table[i].resource;
+         if (!res)
+            continue;
+         const uint32_t *px = (const uint32_t *)agx_bo_map(res->bo);
+         fprintf(stderr,
+                 "tex[%u] va=0x%llx tiling=%u %ux%u stride=%u size=%llu "
+                 "px[0]=0x%08x px[1]=0x%08x px[16]=0x%08x\n",
+                 i, (unsigned long long)res->bo->va->addr, res->layout.tiling,
+                 res->layout.width_px, res->layout.height_px,
+                 ail_get_linear_stride_B(&res->layout, 0),
+                 (unsigned long long)res->layout.size_B, px[0], px[1], px[16]);
+         const uint8_t *d = (const uint8_t *)&descs[i];
+         fprintf(stderr, "  desc:");
+         for (unsigned b = 0; b < AGX_TEXTURE_LENGTH; b++)
+            fprintf(stderr, " %02x", d[b]);
+         fprintf(stderr, "\n");
+      }
+   }
+
+   /* The heap needs a home for the same reason the root table does. */
+   *out_textures = d12_list_upload(list, &heap_gpu, sizeof(heap_gpu), 8);
+
+   if (getenv("D3D12AGX_DUMP_TEX") && *out_textures) {
+      uint64_t home = *(uint64_t *)d12_list_data_cpu(list, *out_textures);
+      fprintf(stderr,
+              "chain: textures_gpu=0x%llx -> home holds 0x%llx "
+              "(heap_gpu=0x%llx) %s\n",
+              (unsigned long long)*out_textures, (unsigned long long)home,
+              (unsigned long long)heap_gpu,
+              home == heap_gpu ? "MATCH" : "MISMATCH");
+   }
+
+   return *out_textures != 0;
+}
+
 /*
  * Dispatch a pipeline compiled from the application's DXIL. Mirrors
  * hk_dispatch_with_usc: build USC words binding the shader, its registers
@@ -541,17 +685,8 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!seg)
       return;
 
-   /* The root table of resource addresses, then a pointer to it: uniform
-    * registers are filled FROM memory, so the pointer itself needs a home.
-    */
-   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
-   memcpy(addrs, list->compute_root_table, sizeof(addrs));
-   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
-   if (!addrs_gpu)
-      return;
-
-   uint64_t root_gpu = d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8);
-   if (!root_gpu)
+   uint64_t root_gpu = 0, textures_gpu = 0;
+   if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu))
       return;
 
    uint32_t usc;
@@ -564,6 +699,25 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 
    /* Four 16-bit uniform registers hold the 64-bit root pointer. */
    agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+   if (textures_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
+                      textures_gpu);
+   }
+
+   /*
+    * Constants the compiler promoted out of the instruction stream live in
+    * the shader BO's rodata, and the shader reads them as uniforms above
+    * its push range. Nothing else publishes them: skip this and those
+    * uniforms hold whatever the last dispatch left there, so a shader
+    * computes with stale numbers instead of its own constants.
+    */
+   if (pso->info.rodata.size_16) {
+      agx_usc_immediates(&b, &pso->info.rodata, pso->code_va);
+   }
+
+   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
+   if (pso->info.uses_txf)
+      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
 
    agx_usc_shared_none(&b);
 
@@ -590,17 +744,31 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       fprintf(stderr, "pso USC @%u:", usc);
       for (unsigned i = 0; i < 32; i++)
          fprintf(stderr, " %02x", usc_cpu[i]);
-      fprintf(stderr, "\n  root_gpu=0x%llx table_gpu=0x%llx uav0=0x%llx\n",
-              (unsigned long long)root_gpu, (unsigned long long)addrs_gpu,
-              (unsigned long long)addrs[0]);
+      fprintf(stderr, "\n  root_gpu=0x%llx textures_gpu=0x%llx\n",
+              (unsigned long long)root_gpu,
+              (unsigned long long)textures_gpu);
+   }
+
+   if (getenv("D3D12AGX_DUMP_TEX")) {
+      fprintf(stderr,
+              "cs info: uses_txf=%d sampler_state_count=%u "
+              "texture_state_count=%u push_count=%u nr_preamble_gprs=%u\n",
+              pso->info.uses_txf, pso->info.sampler_state_count,
+              pso->info.texture_state_count, pso->info.push_count,
+              pso->info.nr_preamble_gprs);
+      fprintf(stderr, "   rodata: size_16=%u base_uniform=%u offset=%u\n",
+              pso->info.rodata.size_16, pso->info.rodata.base_uniform,
+              pso->info.rodata.offset);
    }
 
    struct agx_cdm_launch_word_0_packed launch;
    agx_pack(&launch, CDM_LAUNCH_WORD_0, cfg) {
       cfg.texture_state_register_count = pso->info.texture_state_count;
-      cfg.sampler_state_register_count =
-         agx_translate_sampler_state_count(pso->info.sampler_state_count,
-                                           false);
+      /* See the note in d12_pipeline.c: txf needs a sampler counted. */
+      cfg.sampler_state_register_count = agx_translate_sampler_state_count(
+         pso->info.uses_txf ? MAX2(pso->info.sampler_state_count, 1)
+                            : pso->info.sampler_state_count,
+         false);
       cfg.uniform_register_count = pso->info.push_count;
       cfg.preshader_register_count = pso->info.nr_preamble_gprs;
    }
@@ -632,7 +800,7 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
-                  uint64_t root_gpu)
+                  uint64_t root_gpu, uint64_t textures_gpu)
 {
    struct d12_device *device = list->device;
 
@@ -644,6 +812,25 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
    struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(8));
 
    agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+   if (textures_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
+                      textures_gpu);
+   }
+
+   /*
+    * Constants the compiler promoted out of the instruction stream live in
+    * the shader BO's rodata, and the shader reads them as uniforms above
+    * its push range. Nothing else publishes them: skip this and those
+    * uniforms hold whatever the last dispatch left there, so a shader
+    * computes with stale numbers instead of its own constants.
+    */
+   if (st->info.rodata.size_16) {
+      agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
+   }
+
+   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
+   if (st->info.uses_txf)
+      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
 
    if (fragment) {
       agx_usc_push_packed(&b, SHARED, &tib->usc);
@@ -800,18 +987,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    /* Root table, exactly as the dispatch path builds it -- from the
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
     */
-   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
-   memcpy(addrs, list->graphics_root_table, sizeof(addrs));
-   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
-   uint64_t root_gpu =
-      addrs_gpu ? d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8) : 0;
-   if (!root_gpu)
+   uint64_t root_gpu = 0, textures_gpu = 0;
+   if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu))
       return;
 
-   uint32_t vs_usc =
-      d12_gfx_stage_usc(list, &pso->vs, false, &seg->tib, root_gpu);
-   uint32_t fs_usc =
-      d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib, root_gpu);
+   uint32_t vs_usc = d12_gfx_stage_usc(list, &pso->vs, false, &seg->tib,
+                                       root_gpu, textures_gpu);
+   uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
+                                       root_gpu, textures_gpu);
    if (!vs_usc || !fs_usc)
       return;
 
@@ -1218,9 +1401,19 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   uint64_t *table =
+   struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
-   table[slot] = address;
+
+   /* A root descriptor is a bare address: no resource behind it, so no
+    * hardware texture descriptor can be built from one.
+    */
+   memset(&table[slot], 0, sizeof(table[slot]));
+   table[slot].address = address;
+   table[slot].kind = expected == D3D12_ROOT_PARAMETER_TYPE_SRV
+                         ? D12_DESC_SRV
+                         : (expected == D3D12_ROOT_PARAMETER_TYPE_UAV
+                               ? D12_DESC_UAV
+                               : D12_DESC_CBV);
 }
 
 /*
@@ -1273,7 +1466,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   uint64_t *table =
+   struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
 
    unsigned cursor = 0;
@@ -1310,7 +1503,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             return;
          }
 
-         table[slot] = slots[offset + i].address;
+         table[slot] = slots[offset + i];
       }
 
       cursor = offset + range->num_descriptors;

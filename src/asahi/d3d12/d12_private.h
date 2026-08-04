@@ -28,6 +28,7 @@
 #include "agx_device.h"
 #include "agx_linker.h"
 #include "agx_tilebuffer.h"
+#include "agx_helpers.h"
 #include "agx_uvs.h"
 #include "dxil/d12_dxil.h"
 #include "layout.h"
@@ -77,6 +78,9 @@ struct d12_device {
     * device query heap).
     */
    struct agx_bo *oclqry_bo;
+
+   /* One AGX_SAMPLER: the sampler state a texel fetch reads as ss0. */
+   struct agx_bo *rodata_bo;
 
    D3D_FEATURE_LEVEL feature_level;
 
@@ -394,8 +398,12 @@ struct d12_cmd_list {
     * separate, and sharing one table lets a dispatch inherit a draw's
     * resources.
     */
-   uint64_t compute_root_table[D12_MAX_RESOURCE_BINDINGS];
-   uint64_t graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
+   /* Whole descriptors, not just addresses: a texture needs its layout
+    * and format to pack a hardware descriptor at draw time, which an
+    * address alone cannot give.
+    */
+   struct d12_descriptor compute_root_table[D12_MAX_RESOURCE_BINDINGS];
+   struct d12_descriptor graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
 
    /* The bound root signatures, which are what map a root parameter index
     * to a shader register. Not referenced; the app keeps them alive.

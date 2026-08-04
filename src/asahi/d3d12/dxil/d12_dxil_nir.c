@@ -61,6 +61,7 @@ enum d12_dxop {
    D12_DXOP_UBFE = 52,
    D12_DXOP_BFI = 53,
    D12_DXOP_CREATE_HANDLE = 57,
+   D12_DXOP_TEXTURE_LOAD = 66,
    D12_DXOP_CBUFFER_LOAD = 58,
    D12_DXOP_CBUFFER_LOAD_LEGACY = 59,
    D12_DXOP_BUFFER_LOAD = 68,
@@ -91,6 +92,14 @@ enum d12_dxop {
    D12_DXOP_CREATE_HANDLE_FOR_LIB = 160,
    D12_DXOP_ANNOTATE_HANDLE = 216,
    D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
+   /* SM 6.6 8-bit packing. The numbering is easy to transpose and doing so
+    * is not loud: unpack takes two arguments and pack takes five, so a
+    * swap surfaces as "too few arguments" on one of them and as a silently
+    * wrong result on the other. These values are the ones the corpus
+    * actually carries -- dx.op.unpack4x8.* is 219, dx.op.pack4x8.* is 220.
+    */
+   D12_DXOP_UNPACK4X8 = 219,
+   D12_DXOP_PACK4X8 = 220,
    D12_DXOP_THREAD_ID = 93,
    D12_DXOP_GROUP_ID = 94,
    D12_DXOP_THREAD_ID_IN_GROUP = 95,
@@ -111,6 +120,15 @@ enum {
    D12_CAST_FPTOUI = 3, D12_CAST_FPTOSI = 4, D12_CAST_UITOFP = 5,
    D12_CAST_SITOFP = 6, D12_CAST_FPTRUNC = 7, D12_CAST_FPEXT = 8,
    D12_CAST_BITCAST = 11,
+};
+
+/* pack4x8's PackMode and unpack4x8's UnpackMode operands. */
+enum {
+   D12_PACK_TRUNC = 0, D12_PACK_SINT = 1, D12_PACK_UINT = 2,
+};
+
+enum {
+   D12_UNPACK_UNSIGNED = 0, D12_UNPACK_SIGNED = 1,
 };
 
 /*
@@ -807,6 +825,115 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                      get_def(ctx, p[0])));
       return true;
 
+   case D12_DXOP_PACK4X8: {
+      /*
+       * pack4x8(packMode, x, y, z, w) -> i32
+       *
+       * The mode decides whether each component is merely truncated or
+       * first saturated, and a saturating mode is not expressible as a
+       * mask: pack_clamp_s8(200) is 127, not 0xc8 & 0xff. Reading the mode
+       * as a constant is therefore mandatory rather than an optimisation,
+       * and a dynamic one has to be refused instead of assumed -- guessing
+       * Trunc would turn every out-of-range component into wraparound
+       * garbage that still looks like a plausible colour.
+       */
+      NEED(5);
+
+      uint64_t mode = 0;
+      if (!const_uint(ctx, p[0], &mode)) {
+         trans_fail(ctx, "non-constant pack4x8 mode");
+         return false;
+      }
+      if (mode > D12_PACK_UINT) {
+         trans_fail(ctx, "unhandled pack4x8 mode");
+         return false;
+      }
+
+      nir_def *packed = nir_imm_int(b, 0);
+
+      for (unsigned i = 0; i < 4; i++) {
+         nir_def *c = get_def(ctx, p[1 + i]);
+
+         if (mode == D12_PACK_TRUNC) {
+            /* Mask first, then widen: the i16 overload's high bits are
+             * discarded either way, so the widening cannot be signed or
+             * unsigned wrongly.
+             */
+            c = nir_u2u32(b, nir_iand_imm(b, c, 0xff));
+         } else {
+            /* Both saturating modes take a SIGNED source -- UInt clamps
+             * negatives to 0 rather than reinterpreting them as large
+             * positives -- so the i16 overload sign-extends for both.
+             */
+            c = nir_i2i32(b, c);
+            c = mode == D12_PACK_SINT
+                   ? nir_imin_imm(b, nir_imax_imm(b, c, -128), 127)
+                   : nir_imin_imm(b, nir_imax_imm(b, c, 0), 255);
+            c = nir_iand_imm(b, c, 0xff);
+         }
+
+         packed = nir_ior(b, packed, nir_ishl_imm(b, c, 8 * i));
+      }
+
+      def_result(ctx, inst, packed);
+      return true;
+   }
+
+   case D12_DXOP_UNPACK4X8: {
+      /*
+       * unpack4x8(unpackMode, packedVal) -> %dx.types.fouri32
+       *
+       * Struct-returning dx.op results are represented as NIR vectors and
+       * picked apart by extractvalue, so a 4-component vector IS the
+       * struct here and needs nothing further.
+       *
+       * The component width comes from the returned struct rather than
+       * being assumed 32: there is an i16 overload, and it is the more
+       * common one in the corpus. Handing back 32-bit components for it
+       * would mismatch the bit size of every consumer.
+       */
+      NEED(2);
+
+      uint64_t mode = 0;
+      if (!const_uint(ctx, p[0], &mode)) {
+         trans_fail(ctx, "non-constant unpack4x8 mode");
+         return false;
+      }
+      if (mode > D12_UNPACK_SIGNED) {
+         trans_fail(ctx, "unhandled unpack4x8 mode");
+         return false;
+      }
+
+      unsigned bits = 32;
+      if (inst->result_type < ctx->mod->num_types) {
+         const struct d12_type *t = &ctx->mod->types[inst->result_type];
+         if ((t->kind == D12_TYPE_STRUCT_ANON ||
+              t->kind == D12_TYPE_STRUCT_NAMED) && t->strct.num_members)
+            bits = type_bit_size(ctx->mod, t->strct.members[0]);
+      }
+
+      nir_def *packed = get_def(ctx, p[1]);
+      nir_def *comps[4];
+
+      for (unsigned i = 0; i < 4; i++) {
+         if (mode == D12_UNPACK_SIGNED) {
+            /* Shift byte i up to the sign bit and arithmetic-shift back:
+             * sign extension without a dedicated 8-bit type.
+             */
+            nir_def *byte =
+               nir_ishr_imm(b, nir_ishl_imm(b, packed, 24 - 8 * i), 24);
+            comps[i] = nir_i2iN(b, byte, bits);
+         } else {
+            nir_def *byte =
+               nir_iand_imm(b, nir_ushr_imm(b, packed, 8 * i), 0xff);
+            comps[i] = nir_u2uN(b, byte, bits);
+         }
+      }
+
+      def_result(ctx, inst, nir_vec(b, comps, 4));
+      return true;
+   }
+
    /* Compute system values */
    case D12_DXOP_THREAD_ID:
    case D12_DXOP_GROUP_ID:
@@ -926,6 +1053,61 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  nir_global_atomic_swap(b, 32, addr, get_def(ctx, p[4]),
                                         get_def(ctx, p[5]),
                                         .atomic_op = nir_atomic_op_cmpxchg));
+      return true;
+   }
+
+   case D12_DXOP_TEXTURE_LOAD: {
+      /*
+       * textureLoad(handle, mipLevel, x, y, z, ox, oy, oz)
+       *
+       * The hardware takes a 64-bit uniform BASE plus a 32-bit register
+       * OFFSET and adds them, so the handle is a byte offset into the
+       * texture heap and `desc_set` names the uniform holding its base --
+       * not a Vulkan descriptor set.
+       */
+      NEED(4);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!handle || !nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant texture handle unsupported");
+         return false;
+      }
+      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      nir_def *x = get_def(ctx, p[2]);
+      nir_def *y = get_def(ctx, p[3]);
+      if (!x || !y) {
+         trans_fail(ctx, "malformed texture coordinates");
+         return false;
+      }
+
+      nir_def *lod = get_def(ctx, p[1]);
+      if (getenv("D3D12AGX_DUMP_TEX")) {
+         fprintf(stderr, "textureLoad: slot=%u num_ops=%u lod=%s\n", slot,
+                 inst->num_ops, lod ? "yes" : "no");
+      }
+      nir_def *tex_handle = nir_bindless_image_agx(
+         b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_TEXTURES);
+
+      nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
+      tex->op = nir_texop_txf;
+      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      tex->is_array = false;
+      tex->dest_type = nir_type_float32;
+      tex->coord_components = 2;
+
+      tex->src[0] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+      tex->src[1] =
+         nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
+      if (lod)
+         tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
+
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
+      nir_builder_instr_insert(b, &tex->instr);
+
+      def_result(ctx, inst, &tex->def);
       return true;
    }
 
@@ -1090,6 +1272,48 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                        nir_imm_int(b, 0), true);
 
       def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 16));
+      return true;
+   }
+
+   case D12_DXOP_CBUFFER_LOAD: {
+      /*
+       * (handle, byteOffset, alignment) -> one scalar.
+       *
+       * The non-legacy form is byte-addressed, not row-addressed: the
+       * offset is already in bytes and must NOT be scaled by 16 the way
+       * cbufferLoadLegacy's register index is. Scaling it would read the
+       * right buffer at sixteen times the right offset -- in bounds for a
+       * large cbuffer, and therefore silent.
+       *
+       * The width likewise comes from the result type rather than being
+       * assumed 32: DXC emits .i16 and .i64 overloads, and a 32-bit load
+       * standing in for a 64-bit one drops half the value.
+       */
+      NEED(3);
+
+      nir_def *handle = get_def(ctx, p[0]);
+      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
+         trans_fail(ctx, "non-constant cbuffer handle unsupported");
+         return false;
+      }
+      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
+
+      unsigned bits = type_bit_size(ctx->mod, inst->result_type);
+
+      /* DXIL states the alignment; trust it only when it is a sane power
+       * of two, since align_mul is a promise to the backend and an
+       * overstated one miscompiles rather than merely deoptimises.
+       */
+      uint64_t align = 0;
+      if (!const_uint(ctx, p[2], &align) || !align || (align & (align - 1)) ||
+          align > 16)
+         align = bits / 8;
+
+      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+                                       nir_imm_int(b, 0), true);
+
+      def_result(ctx, inst,
+                 nir_load_global(b, 1, bits, addr, .align_mul = align));
       return true;
    }
 
@@ -1476,25 +1700,43 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          const char *callee = NULL;
          if (call_dxop_opcode(&ctx, inst, &opcode, &callee)) {
             translate_dxop(&ctx, inst, opcode, callee);
-         } else {
-            /* Name it: "some call failed" is not actionable, and the
-             * callee is right there in the module.
-             */
-            /* Report what the callee operand actually resolved to.
-             * "some call failed" is not actionable, and the answer is
-             * usually that the value is not a function at all.
-             */
-            uint32_t cv = inst->num_ops >= 1 ? inst->ops[0] : ~0u;
-            const struct d12_value *cval =
-               cv < mod->num_values ? &mod->values[cv] : NULL;
-            mesa_loge("dxil: call to non-dx.op function: callee value %u "
-                      "kind %d name '%s' (module has %u values)",
-                      cv, cval ? (int)cval->kind : -1,
-                      cval && cval->name ? cval->name : "(none)",
-                      mod->num_values);
-            trans_fail(&ctx, "call to a non-dx.op function (inlining "
-                             "required)");
+            break;
          }
+
+         /* Report what the callee operand actually resolved to.
+          * "some call failed" is not actionable, and the answer is
+          * usually that the value is not a function at all.
+          */
+         uint32_t cv = inst->num_ops >= 1 ? inst->ops[0] : ~0u;
+         const struct d12_value *cval =
+            cv < mod->num_values ? &mod->values[cv] : NULL;
+
+         /*
+          * llvm.lifetime.start/end bracket the live range of an alloca so
+          * LLVM can reuse the stack slot. They describe storage, not
+          * computation, and there is nothing for a GPU backend to emit --
+          * dropping them is the whole implementation.
+          *
+          * Skipping is safe for value numbering because these return
+          * void, and the decoder allocates a value index from the
+          * callee's return type rather than assuming every call defines
+          * one. Emitting nothing therefore cannot shift the indices of
+          * later instructions the way it would if a slot had been
+          * reserved. Matching the "llvm.lifetime." prefix rather than the
+          * two exact names also covers the pointer-suffixed spellings a
+          * future DXC could emit.
+          */
+         if (cval && cval->kind == D12_VALUE_FUNCTION && cval->name &&
+             !strncmp(cval->name, "llvm.lifetime.", 14))
+            break;
+
+         mesa_loge("dxil: call to non-dx.op function: callee value %u "
+                   "kind %d name '%s' (module has %u values)",
+                   cv, cval ? (int)cval->kind : -1,
+                   cval && cval->name ? cval->name : "(none)",
+                   mod->num_values);
+         trans_fail(&ctx, "call to a non-dx.op function (inlining "
+                          "required)");
          break;
       }
 
