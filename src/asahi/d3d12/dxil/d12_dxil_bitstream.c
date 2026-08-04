@@ -171,6 +171,16 @@ d12_dxil_container_stage(const void *data, size_t size_B,
       case 3: *out_stage = MESA_SHADER_TESS_CTRL; return true;
       case 4: *out_stage = MESA_SHADER_TESS_EVAL; return true;
       case 5: *out_stage = MESA_SHADER_COMPUTE; return true;
+      /*
+       * Mesh and amplification have no hardware stage and no in-tree
+       * emulation to borrow, so they are translated directly into
+       * compute -- a mesh shader IS a compute shader that writes vertex,
+       * primitive and index buffers. Reporting COMPUTE here is the
+       * truth about what gets compiled, not a fallback: the translator
+       * keys the mesh dx.ops off the container kind, not off this.
+       */
+      case 13: *out_stage = MESA_SHADER_COMPUTE; return true;
+      case 14: *out_stage = MESA_SHADER_COMPUTE; return true;
       default: return false;
       }
    }

@@ -105,6 +105,13 @@ enum d12_dxop {
    D12_DXOP_DOT3 = 55,
    D12_DXOP_DOT4 = 56,
    D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   /* Mesh and amplification */
+   D12_DXOP_SET_MESH_OUTPUT_COUNTS = 168,
+   D12_DXOP_EMIT_INDICES = 169,
+   D12_DXOP_GET_MESH_PAYLOAD = 170,
+   D12_DXOP_STORE_VERTEX_OUTPUT = 171,
+   D12_DXOP_STORE_PRIMITIVE_OUTPUT = 172,
+   D12_DXOP_DISPATCH_MESH = 173,
    /* Tessellation and geometry */
    D12_DXOP_EMIT_STREAM = 97,
    D12_DXOP_CUT_STREAM = 98,
@@ -268,6 +275,7 @@ struct trans_ctx {
    uint8_t *ptr_space;      /* value index -> D12_PTR_*, 0 = not a pointer */
    uint32_t *ptr_base;      /* value index -> constant byte offset */
    uint32_t *ptr_pointee;   /* value index -> type the pointer points at */
+   nir_def **ptr_global;    /* D12_PTR_GLOBAL only: the 64-bit base */
    uint32_t shared_size;    /* bytes of groupshared assigned so far */
    uint32_t scratch_size;   /* bytes of per-thread scratch assigned so far */
 
@@ -277,6 +285,11 @@ struct trans_ctx {
 #define D12_PTR_NONE    0
 #define D12_PTR_SHARED  1
 #define D12_PTR_SCRATCH 2
+/* A 64-bit address in global memory: the amplification payload. The
+ * base address lives in ptr_global[], because defs[] already carries the
+ * pointer's dynamic 32-bit byte offset.
+ */
+#define D12_PTR_GLOBAL  3
 
 static void trans_fail(struct trans_ctx *ctx, const char *msg);
 static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
@@ -1553,6 +1566,126 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       def_result(ctx, inst, nir_channel(b, vec, (unsigned)comp));
       return true;
+   }
+
+   case D12_DXOP_SET_MESH_OUTPUT_COUNTS:
+   case D12_DXOP_EMIT_INDICES:
+   case D12_DXOP_GET_MESH_PAYLOAD:
+   case D12_DXOP_STORE_VERTEX_OUTPUT:
+   case D12_DXOP_STORE_PRIMITIVE_OUTPUT:
+   case D12_DXOP_DISPATCH_MESH: {
+      /* Mesh and amplification run as plain compute: the shader writes
+       * its outputs to driver buffers named by a parameter block (see
+       * D12_UNIFORM_MESH_PARAMS). Every address below is one indirection
+       * through that block, which the driver fills per dispatch.
+       */
+      nir_def *params = nir_load_mesh_param_buffer_agx(b);
+
+#define MESH_PTR(off)                                                        \
+   nir_load_global(b, 1, 64, nir_iadd_imm(b, params, (off)), .align_mul = 8)
+
+      switch (opcode) {
+      case D12_DXOP_SET_MESH_OUTPUT_COUNTS: {
+         /* (numVertices, numPrimitives) */
+         NEED(2);
+         nir_def *counts = MESH_PTR(D12_MESH_OFF_COUNTS);
+         nir_store_global(b, nir_u2u32(b, get_def(ctx, p[0])), counts,
+                          .write_mask = 1, .align_mul = 8);
+         nir_store_global(b, nir_u2u32(b, get_def(ctx, p[1])),
+                          nir_iadd_imm(b, counts, 4), .write_mask = 1,
+                          .align_mul = 4);
+         return true;
+      }
+
+      case D12_DXOP_EMIT_INDICES: {
+         /* (primitiveIndex, i0, i1, i2) -- always three, even for
+          * lines and points; the unused lanes are ignored downstream.
+          */
+         NEED(4);
+         nir_def *base = MESH_PTR(D12_MESH_OFF_INDICES);
+         nir_def *off =
+            nir_imul_imm(b, nir_u2u32(b, get_def(ctx, p[0])), 12);
+         for (unsigned i = 0; i < 3; i++) {
+            nir_store_global(
+               b, nir_u2u32(b, get_def(ctx, p[1 + i])),
+               nir_iadd(b, base, nir_u2u64(b, nir_iadd_imm(b, off, i * 4))),
+               .write_mask = 1, .align_mul = 4);
+         }
+         return true;
+      }
+
+      case D12_DXOP_GET_MESH_PAYLOAD:
+         /* Returns a POINTER into the amplification payload, which the
+          * shader then walks with getelementptr. It joins the pointer
+          * model as a global-space pointer rather than an SSA value.
+          */
+         if (inst->result_value < ctx->mod->num_values) {
+            ctx->ptr_space[inst->result_value] = D12_PTR_GLOBAL;
+            ctx->ptr_base[inst->result_value] = 0;
+            ctx->ptr_global[inst->result_value] =
+               MESH_PTR(D12_MESH_OFF_PAYLOAD);
+            if (inst->result_type < ctx->mod->num_types &&
+                ctx->mod->types[inst->result_type].kind == D12_TYPE_POINTER) {
+               ctx->ptr_pointee[inst->result_value] =
+                  ctx->mod->types[inst->result_type].ptr.pointee;
+            }
+         }
+         return true;
+
+      case D12_DXOP_STORE_VERTEX_OUTPUT:
+      case D12_DXOP_STORE_PRIMITIVE_OUTPUT: {
+         /* (sigId, row, col, value, vertexOrPrimIndex) */
+         NEED(5);
+         uint64_t sig_id = 0, row = 0, col = 0;
+         const_uint(ctx, p[0], &sig_id);
+         const_uint(ctx, p[1], &row);
+         if (!const_uint(ctx, p[2], &col)) {
+            trans_fail(ctx, "dynamic component index on mesh output");
+            return false;
+         }
+         if (sig_id + row >= D12_MESH_MAX_SLOTS) {
+            trans_fail(ctx, "mesh output slot out of range");
+            return false;
+         }
+
+         nir_def *val = get_def(ctx, p[3]);
+         if (!val)
+            return false;
+         if (val->bit_size != 32)
+            val = nir_f2f32(b, val);
+
+         bool prim = opcode == D12_DXOP_STORE_PRIMITIVE_OUTPUT;
+         nir_def *base =
+            MESH_PTR(prim ? D12_MESH_OFF_PRIMITIVES : D12_MESH_OFF_VERTICES);
+
+         /* index * (slots * 16) + (slot * 16) + col * 4 */
+         nir_def *idx = nir_u2u32(b, get_def(ctx, p[4]));
+         nir_def *off = nir_imul_imm(
+            b, idx, D12_MESH_MAX_SLOTS * D12_MESH_SLOT_STRIDE);
+         off = nir_iadd_imm(b, off,
+                            (sig_id + row) * D12_MESH_SLOT_STRIDE + col * 4);
+
+         nir_store_global(b, val, nir_iadd(b, base, nir_u2u64(b, off)),
+                          .write_mask = 1, .align_mul = 4);
+         return true;
+      }
+
+      default: {
+         /* dispatchMesh(x, y, z, payload): the amplification shader's
+          * hand-off. Record the grid; the payload buffer itself is
+          * written through the pointer operand by ordinary stores.
+          */
+         NEED(3);
+         nir_def *d = MESH_PTR(D12_MESH_OFF_DISPATCH);
+         for (unsigned i = 0; i < 3; i++) {
+            nir_store_global(b, nir_u2u32(b, get_def(ctx, p[i])),
+                             nir_iadd_imm(b, d, i * 4), .write_mask = 1,
+                             .align_mul = 4);
+         }
+         return true;
+      }
+      }
+#undef MESH_PTR
    }
 
    case D12_DXOP_DOMAIN_LOCATION: {
@@ -3423,6 +3556,7 @@ translate_cast(struct trans_ctx *ctx, const struct d12_inst *inst)
        inst->result_value < ctx->mod->num_values) {
       ctx->ptr_space[inst->result_value] = ctx->ptr_space[inst->ops[0]];
       ctx->ptr_base[inst->result_value] = ctx->ptr_base[inst->ops[0]];
+      ctx->ptr_global[inst->result_value] = ctx->ptr_global[inst->ops[0]];
       ctx->defs[inst->result_value] = ctx->defs[inst->ops[0]];
 
       uint32_t pointee = ctx->ptr_pointee[inst->ops[0]];
@@ -3532,6 +3666,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    ctx.ptr_space = calloc(mod->num_values, sizeof(*ctx.ptr_space));
    ctx.ptr_base = calloc(mod->num_values, sizeof(*ctx.ptr_base));
    ctx.ptr_pointee = calloc(mod->num_values, sizeof(*ctx.ptr_pointee));
+   ctx.ptr_global = calloc(mod->num_values, sizeof(*ctx.ptr_global));
    ctx.handle_base = malloc(mod->num_values * sizeof(*ctx.handle_base));
    if (ctx.handle_base)
       memset(ctx.handle_base, 0xff, mod->num_values * sizeof(*ctx.handle_base));
@@ -3539,7 +3674,8 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    ctx.handle_kind_v = calloc(mod->num_values, sizeof(*ctx.handle_kind_v));
    ctx.handle_stride_v = calloc(mod->num_values, sizeof(*ctx.handle_stride_v));
    if (!ctx.defs || !ctx.phi_reg || !ctx.ptr_space || !ctx.ptr_base ||
-       !ctx.ptr_pointee || !ctx.handle_base || !ctx.handle_heap ||
+       !ctx.ptr_pointee || !ctx.ptr_global || !ctx.handle_base ||
+       !ctx.handle_heap ||
        !ctx.handle_kind_v || !ctx.handle_stride_v) {
       *error = "out of memory";
       free(ctx.defs);
@@ -3547,6 +3683,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.ptr_space);
       free(ctx.ptr_base);
       free(ctx.ptr_pointee);
+      free(ctx.ptr_global);
       free(ctx.handle_base);
       free(ctx.handle_heap);
       free(ctx.handle_kind_v);
@@ -3678,6 +3815,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.ptr_space);
       free(ctx.ptr_base);
       free(ctx.ptr_pointee);
+      free(ctx.ptr_global);
       free(ctx.handle_base);
       free(ctx.handle_heap);
       free(ctx.handle_kind_v);
@@ -3875,6 +4013,12 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          if (space == D12_PTR_SHARED) {
             val = nir_load_shared(&b, comps, bits, dyn, .base = base,
                                   .align_mul = bits / 8);
+         } else if (space == D12_PTR_GLOBAL) {
+            nir_def *addr = nir_iadd(
+               &b, ctx.ptr_global[inst->ops[0]],
+               nir_u2u64(&b, nir_iadd_imm(&b, dyn, base)));
+            val = nir_load_global(&b, comps, bits, addr,
+                                  .align_mul = bits / 8);
          } else {
             val = nir_load_scratch(&b, comps, bits,
                                    nir_iadd_imm(&b, dyn, base),
@@ -3911,6 +4055,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
          if (space == D12_PTR_SHARED) {
             nir_store_shared(&b, val, dyn, .base = base,
+                             .write_mask = BITFIELD_MASK(val->num_components),
+                             .align_mul = val->bit_size / 8);
+         } else if (space == D12_PTR_GLOBAL) {
+            nir_def *addr = nir_iadd(
+               &b, ctx.ptr_global[inst->ops[0]],
+               nir_u2u64(&b, nir_iadd_imm(&b, dyn, base)));
+            nir_store_global(&b, val, addr,
                              .write_mask = BITFIELD_MASK(val->num_components),
                              .align_mul = val->bit_size / 8);
          } else {
@@ -4035,6 +4186,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          ctx.ptr_space[inst->result_value] = space;
          ctx.ptr_base[inst->result_value] = base;
          ctx.ptr_pointee[inst->result_value] = cur;
+         ctx.ptr_global[inst->result_value] = ctx.ptr_global[ptr_id];
          if (dyn)
             ctx.defs[inst->result_value] = dyn;
          break;
@@ -4187,6 +4339,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    free(ctx.ptr_space);
    free(ctx.ptr_base);
    free(ctx.ptr_pointee);
+   free(ctx.ptr_global);
    free(ctx.handle_base);
    free(ctx.handle_heap);
    free(ctx.handle_kind_v);
@@ -4273,6 +4426,9 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       break;
    case nir_intrinsic_load_descriptor_heap_agx:
       base = D12_UNIFORM_HEAP;
+      break;
+   case nir_intrinsic_load_mesh_param_buffer_agx:
+      base = D12_UNIFORM_MESH_PARAMS;
       break;
    /* Emitted by the GS/tess lowering in src/poly, which leaves them for
     * the driver to answer.

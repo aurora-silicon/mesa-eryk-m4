@@ -709,8 +709,36 @@ struct nir_shader;
 #define D12_UNIFORM_VERTEX_PARAMS   36
 #define D12_UNIFORM_PARAM_REGS      4
 
+/*
+ * Mesh and amplification parameter buffer. AGX has no mesh hardware and
+ * Honeykrisp exposes none, so unlike geometry and tessellation there is
+ * no in-tree emulation to borrow: a mesh shader is translated straight
+ * into a compute shader that writes its outputs to driver buffers. This
+ * uniform points at a struct of addresses describing where:
+ *
+ *    +0   u64  counts      { u32 vertices, u32 primitives }
+ *    +8   u64  vertices    per-vertex outputs, D12_MESH_SLOT_STRIDE each
+ *    +16  u64  primitives  per-primitive outputs, same stride
+ *    +24  u64  indices     3 x u32 per primitive
+ *    +32  u64  payload     amplification payload (0 when there is none)
+ *    +40  u64  dispatch    { u32 x, y, z } written by dispatchMesh
+ */
+#define D12_UNIFORM_MESH_PARAMS     40
+#define D12_UNIFORM_MESH_REGS       4
+
+#define D12_MESH_OFF_COUNTS         0
+#define D12_MESH_OFF_VERTICES       8
+#define D12_MESH_OFF_PRIMITIVES     16
+#define D12_MESH_OFF_INDICES        24
+#define D12_MESH_OFF_PAYLOAD        32
+#define D12_MESH_OFF_DISPATCH       40
+
+/* One 16-byte vec4 per signature slot, indexed by slot then component. */
+#define D12_MESH_SLOT_STRIDE        16
+#define D12_MESH_MAX_SLOTS          32
+
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_VERTEX_PARAMS + D12_UNIFORM_PARAM_REGS)
+   (D12_UNIFORM_MESH_PARAMS + D12_UNIFORM_MESH_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the
