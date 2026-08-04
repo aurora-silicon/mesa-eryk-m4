@@ -138,6 +138,15 @@ d3d12agx_g5_texture = executable(
   link_with : [libd3d12agx],
 )
 
+# Build-time only: generates committable probe DXIL so the suites do not
+# need dxc (absent on aarch64) or the LGPL corpus. Nothing links it.
+d3d12agx_make_probe = executable(
+  'd3d12agx_make_probe',
+  files('tests/make_probe.c'),
+  include_directories : [inc_include, inc_src, inc_compiler, inc_gallium],
+  dependencies : [idep_nir, idep_mesautil, idep_libdxil_compiler],
+)
+
 d3d12agx_g6_geometry = executable(
   'd3d12agx_g6_geometry',
   files('tests/g6_geometry.c'),

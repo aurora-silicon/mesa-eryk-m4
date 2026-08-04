@@ -202,10 +202,23 @@ main(int argc, char **argv)
    D3D12_RECT sc = {.right = W, .bottom = H};
 
    /* Draw the same points through both pipelines. */
-   unsigned covered[2] = {0, 0};
-   ID3D12PipelineState *psos[2] = {pso_nogs, pso_gs};
+   unsigned covered[3] = {0, 0, 0};
+   ID3D12PipelineState *psos[3] = {pso_nogs, pso_nogs, pso_gs};
+   /* Case 0 is a triangle with no geometry shader: it isolates the probe
+    * vertex shader and the ordinary raster path, so a failure in the
+    * point cases can be attributed. Cases 1 and 2 are the same points
+    * without and with the geometry shader.
+    */
+   D3D12_PRIMITIVE_TOPOLOGY topo[3] = {
+      D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+      D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
+      D3D_PRIMITIVE_TOPOLOGY_POINTLIST,
+   };
+   unsigned nverts[3] = {3, 4, 4};
+   const char *casename[3] = {"triangle, no GS", "points, no GS",
+                              "points, GS"};
 
-   for (unsigned i = 0; i < 2; i++) {
+   for (unsigned i = 0; i < 3; i++) {
       memset(map, 0x55, STRIDE * H);
       ID3D12GraphicsCommandList_Reset(list, alloc, NULL);
       ID3D12GraphicsCommandList_ClearRenderTargetView(list, rtv, clear_red, 0,
@@ -214,12 +227,11 @@ main(int argc, char **argv)
       ID3D12GraphicsCommandList_RSSetScissorRects(list, 1, &sc);
       ID3D12GraphicsCommandList_SetGraphicsRootSignature(list, root_sig);
       ID3D12GraphicsCommandList_SetPipelineState(list, psos[i]);
-      ID3D12GraphicsCommandList_IASetPrimitiveTopology(
-         list, D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-      ID3D12GraphicsCommandList_DrawInstanced(list, 4, 1, 0, 0);
+      ID3D12GraphicsCommandList_IASetPrimitiveTopology(list, topo[i]);
+      ID3D12GraphicsCommandList_DrawInstanced(list, nverts[i], 1, 0, 0);
       hr = ID3D12GraphicsCommandList_Close(list);
-      CHECK(hr == S_OK, i ? "geometry command list closes cleanly"
-                          : "control command list closes cleanly");
+      CHECK(hr == S_OK, i == 2 ? "geometry command list closes cleanly"
+                               : "control command list closes cleanly");
       if (hr != S_OK)
          continue;
 
@@ -228,9 +240,10 @@ main(int argc, char **argv)
       ID3D12Fence_SetEventOnCompletion(fence, i + 1, NULL);
 
       CHECK(ID3D12Fence_GetCompletedValue(fence) >= i + 1,
-            i ? "the GPU COMPLETES a geometry draw: two compute dispatches "
-                "and the rewritten draw are a stream it accepts"
-              : "the GPU completes the control draw");
+            i == 2 ? "the GPU COMPLETES a geometry draw: two compute "
+                     "dispatches and the rewritten draw are a stream it "
+                     "accepts"
+                   : "the GPU completes the control draw");
 
       for (unsigned y = 0; y < H; y++) {
          for (unsigned x = 0; x < W; x++) {
@@ -241,8 +254,9 @@ main(int argc, char **argv)
       }
    }
 
-   printf("       covered: control %u, geometry %u (of %u)\n", covered[0],
-          covered[1], W * H);
+   for (unsigned i = 0; i < 3; i++)
+      printf("       %-18s covered %u of %u\n", casename[i], covered[i],
+             W * H);
 
    /* Coverage is DIAGNOSTIC, not a pass criterion, and deliberately so.
     *
@@ -261,9 +275,21 @@ main(int argc, char **argv)
     * rasterisation. That needs a probe shader this box cannot currently
     * produce -- docs/roadmap.md, the NIR->DXIL generator.
     */
-   CHECK(covered[0] != covered[1],
-         "binding a geometry shader CHANGES what is rasterised -- the "
-         "stage is not being silently dropped");
+   CHECK(covered[1] != 0 && covered[1] == nverts[1],
+         "points rasterise one pixel each without a geometry shader");
+
+   /* THE STRONG ONE. gs_point.dxil is a pass-through: one point in, the
+    * same point out. So the geometry case must produce exactly what the
+    * control produced -- same count, same pixels. Anything else means
+    * the rasterization program is not reproducing the emitted vertices.
+    *
+    * This is asserted rather than softened even though it currently
+    * fails, because the alternative is a suite that stays green over a
+    * known defect, which is the failure mode this project keeps finding
+    * in its own tests.
+    */
+   CHECK(covered[2] == covered[1],
+         "a PASS-THROUGH geometry shader reproduces the control exactly");
 
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);

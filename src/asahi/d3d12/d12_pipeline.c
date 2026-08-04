@@ -518,6 +518,14 @@ compile_gfx_stage(struct d12_device *device,
        * fetching prolog keyed from that layout, which does not exist
        * yet: the static_vi prolog only fixes up vertex/instance IDs.
        */
+      /* D3D12 has no point size: a point is always one pixel. AGX reads
+       * the varying regardless, so a shader that never writes it
+       * rasterises points at whatever was left there -- measured as
+       * either nothing at all or the entire render target. hk lowers the
+       * same default for its hardware vertex stage (hk_shader.c:1135).
+       */
+      NIR_PASS(_, nir, nir_lower_default_point_size);
+
       NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
 
@@ -571,6 +579,9 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
    NIR_PASS(_, nir, d12_dxil_lower_root);
 
    if (uvs) {
+      /* Same rule: this program is the hardware vertex stage. */
+      NIR_PASS(_, nir, nir_lower_default_point_size);
+
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
 
       struct agx_varyings_vs linked = {0};

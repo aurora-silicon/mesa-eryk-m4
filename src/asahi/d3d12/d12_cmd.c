@@ -967,16 +967,17 @@ static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
                   uint64_t root_gpu, uint64_t textures_gpu,
-                  uint64_t draw_gpu)
+                  uint64_t draw_gpu,
+                  const struct d12_dispatch_uniforms *poly)
 {
    struct d12_device *device = list->device;
 
    uint32_t usc;
-   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(8), &usc);
+   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(11), &usc);
    if (!cpu)
       return 0;
 
-   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(8));
+   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(11));
 
    agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
    if (textures_gpu) {
@@ -993,6 +994,26 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
     */
    if (st->info.rodata.size_16) {
       agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
+   }
+
+   /*
+    * A geometry shader's RASTERIZATION program is a hardware vertex
+    * shader that re-runs the geometry body, so it reads the same
+    * parameter blocks the compute half does -- and the emitted vertices
+    * through them. Publishing them only for the compute dispatches
+    * leaves this program reading whatever was in those registers, which
+    * measured as a point covering the ENTIRE render target while the
+    * same points without a geometry shader drew four pixels.
+    */
+   if (poly) {
+      if (poly->vertex_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS,
+                         D12_UNIFORM_PARAM_REGS, poly->vertex_params);
+      }
+      if (poly->geom_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
+                         poly->geom_params);
+      }
    }
 
    if (draw_gpu) {
@@ -1121,6 +1142,24 @@ d12_ppp_push_stencil(struct agx_ppp_update *ppp,
  * Emit one draw into the open render segment's VDM stream: vertex-shader
  * state, the per-draw PPP block, viewport/scissor, then the draw itself.
  */
+/*
+ * The rasterizer's object type. It is NOT cosmetic and NOT implied by the
+ * VDM primitive: it tells the rasterizer what shape to fill. It was
+ * hardcoded to TRIANGLE, so a point list rasterised as triangles --
+ * measured as zero pixels without a geometry shader and the ENTIRE render
+ * target with one. hk derives it the same way (hk_cmd_draw.c:2158).
+ */
+static enum agx_object_type
+d12_object_type(enum mesa_prim prim)
+{
+   if (prim == MESA_PRIM_POINTS)
+      return AGX_OBJECT_TYPE_POINT_SPRITE_UV01;
+   else if (prim <= MESA_PRIM_LINE_STRIP)
+      return AGX_OBJECT_TYPE_LINE;
+   else
+      return AGX_OBJECT_TYPE_TRIANGLE;
+}
+
 /* The hardware primitive for a mesa_prim. */
 static enum agx_primitive
 d12_agx_primitive(enum mesa_prim prim)
@@ -1156,7 +1195,8 @@ static bool
 d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
                     uint64_t root_gpu, uint64_t textures_gpu,
-                    unsigned *out_verts, unsigned *out_instances)
+                    unsigned *out_verts, unsigned *out_instances,
+                    struct d12_dispatch_uniforms *out_poly)
 {
    struct d12_device *device = list->device;
 
@@ -1249,6 +1289,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     */
    *out_verts = gp.draw.index_count;
    *out_instances = gp.draw.instance_count;
+   *out_poly = u;
    return true;
 }
 
@@ -1310,6 +1351,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * emitted vertices rather than vertex attributes.
     */
    enum mesa_prim topology = list->topology;
+   struct d12_dispatch_uniforms poly_u = {0};
    const struct d12_gfx_stage *vstage = &pso->vs;
    const struct agx_unlinked_uvs_layout *uvs = &pso->uvs;
    const struct agx_varyings_vs *varys = &pso->varyings;
@@ -1317,7 +1359,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
                                root_gpu, textures_gpu, &vertex_count,
-                               &instance_count))
+                               &instance_count, &poly_u))
          return;
 
       /* Inserting the pre-graphics segment shifted the render segment up
@@ -1335,10 +1377,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       first_vertex = 0;
    }
 
-   uint32_t vs_usc = d12_gfx_stage_usc(list, vstage, false, &seg->tib,
-                                       root_gpu, textures_gpu, draw_gpu);
+   uint32_t vs_usc =
+      d12_gfx_stage_usc(list, vstage, false, &seg->tib, root_gpu,
+                        textures_gpu, draw_gpu, pso->has_gs ? &poly_u : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
-                                       root_gpu, textures_gpu, draw_gpu);
+                                       root_gpu, textures_gpu, draw_gpu, NULL);
    if (!vs_usc || !fs_usc)
       return;
 
@@ -1558,10 +1601,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          cfg.stencil_reference = list->stencil_ref;
       }
 
-      /* object_type tells the rasterizer it is drawing triangles. */
       struct agx_fragment_face_2_packed face_2;
       agx_pack(&face_2, FRAGMENT_FACE_2, cfg) {
-         cfg.object_type = AGX_OBJECT_TYPE_TRIANGLE;
+         cfg.object_type = d12_object_type(topology);
       }
       agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
       agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
