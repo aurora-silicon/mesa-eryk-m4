@@ -1007,6 +1007,11 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
    }
 
+   if (draw_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS,
+                      draw_gpu);
+   }
+
    /*
     * A geometry shader's RASTERIZATION program is a hardware vertex
     * shader that re-runs the geometry body, so it reads the same
@@ -1029,11 +1034,6 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
          agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
                          poly->vs_outputs);
       }
-   }
-
-   if (draw_gpu) {
-      agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS,
-                      draw_gpu);
    }
 
    /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
