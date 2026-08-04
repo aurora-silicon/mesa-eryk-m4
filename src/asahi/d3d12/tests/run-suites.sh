@@ -45,6 +45,20 @@ run g5_control_flow "$S/cf_probe.dxil"                                          
 run g5_wave         "$S/wave_probe.dxil"                                           || fails=$((fails+1))
 [ -x "$B/d3d12agx_g5_texture" ] && { run g5_texture "$S/tex_probe.dxil" || fails=$((fails+1)); }
 
+# G6 needs a geometry shader, and the only ones available are the corpus's
+# -- LGPL-derived from vkd3d-proton, so not vendored here. Point
+# D3D12AGX_CORPUS at a directory holding them to run it. Skipped, loudly,
+# rather than silently absent: a suite that vanishes reads as a suite that
+# passed.
+GS_VS="$D3D12AGX_CORPUS/vrs_vs_code_dxil.dxil"
+GS_GS="$D3D12AGX_CORPUS/gs_topology_point_code_dxil.dxil"
+if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$GS_VS" ] && [ -f "$GS_GS" ]; then
+   run g6_geometry "$GS_VS" "$S/solid.dxil" "$GS_GS" || fails=$((fails+1))
+else
+   printf "%-18s %s\n" "g6_geometry" \
+      "SKIPPED - set D3D12AGX_CORPUS to a directory with the corpus shaders"
+fi
+
 echo
 if [ $fails -eq 0 ]; then echo "GPU SUITES: all green"; else echo "GPU SUITES: $fails suite(s) not green"; fi
 exit $fails
