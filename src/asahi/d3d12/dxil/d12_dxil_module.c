@@ -232,6 +232,23 @@ parse_const_record(struct parse_ctx *ctx, const struct d12_record *rec)
          v->agg_elems[v->num_agg_elems++] = (uint32_t)rec->ops[i];
       break;
 
+   case D12_CST_DATA:
+      /* Raw element values of a constant array or vector -- how DXC
+       * encodes an HLSL `static const` lookup table. The elements are
+       * literals, not value references.
+       */
+      if (rec->num_ops) {
+         v->data_elems = calloc(rec->num_ops, sizeof(*v->data_elems));
+         if (!v->data_elems) {
+            fail(mod, "out of memory for constant data");
+            return false;
+         }
+         for (unsigned i = 0; i < rec->num_ops; i++)
+            v->data_elems[i] = rec->ops[i];
+         v->num_data_elems = rec->num_ops;
+      }
+      break;
+
    case D12_CST_CE_GEP:
    case D12_CST_CE_INBOUNDS_GEP: {
       /* [opt pointee-type, (type, value) pairs]: a pointer computed at
@@ -819,6 +836,8 @@ d12_dxil_module_finish(struct d12_module *mod)
 {
    for (unsigned i = 0; i < mod->num_functions; i++)
       free(mod->functions[i].insts);
+   for (unsigned i = 0; i < mod->num_values; i++)
+      free(mod->values[i].data_elems);
    for (struct d12_str_chunk *c = mod->strings; c;) {
       struct d12_str_chunk *next = c->next;
       free(c);

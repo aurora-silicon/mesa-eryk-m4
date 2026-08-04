@@ -105,6 +105,8 @@ enum d12_dxop {
    D12_DXOP_DOT3 = 55,
    D12_DXOP_DOT4 = 56,
    D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   D12_DXOP_WAVE_MULTI_PREFIX_OP = 166,
+   D12_DXOP_WAVE_MULTI_PREFIX_BIT_COUNT = 167,
    D12_DXOP_DOT2_ADD_HALF = 162,
    D12_DXOP_DOT4_ADD_I8_PACKED = 163,
    D12_DXOP_DOT4_ADD_U8_PACKED = 164,
@@ -803,15 +805,23 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
     * zeroed scratch for it would be silently wrong values.
     */
    if (v->addr_space == D12_ADDR_SPACE_DEFAULT) {
-      bool zeroed = false;
+      /* An HLSL `static`: per-thread storage, same as an alloca. It may
+       * carry an initializer -- zeroes, or a `static const` lookup table
+       * (an "immediate constant buffer"). Either way the values are
+       * materialized into scratch at function entry, because scratch is
+       * not implicitly initialized.
+       */
+      const struct d12_value *init = NULL;
       if (v->global_init_id) {
-         uint32_t init = v->global_init_id - 1;
-         if (init >= ctx->mod->num_values ||
-             ctx->mod->values[init].kind != D12_VALUE_CONSTANT ||
-             !(ctx->mod->values[init].is_null ||
-               ctx->mod->values[init].is_undef))
+         uint32_t iid = v->global_init_id - 1;
+         if (iid >= ctx->mod->num_values ||
+             ctx->mod->values[iid].kind != D12_VALUE_CONSTANT)
             return D12_PTR_NONE;
-         zeroed = ctx->mod->values[init].is_null;
+         init = &ctx->mod->values[iid];
+
+         /* Only forms whose bytes we can actually reproduce. */
+         if (!init->is_null && !init->is_undef && !init->num_data_elems)
+            return D12_PTR_NONE;
       }
 
       if (size > 4096)
@@ -821,19 +831,40 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
       ctx->ptr_space[id] = D12_PTR_SCRATCH;
       ctx->ptr_base[id] = ctx->scratch_size;
       ctx->ptr_pointee[id] = v->type;
+      uint32_t base = ctx->scratch_size;
       ctx->scratch_size += size;
 
-      if (zeroed) {
-         /* Store the zeroes where every use is dominated: the top of
-          * the entry block.
+      bool zeroed = init && init->is_null;
+      bool has_data = init && init->num_data_elems > 0;
+
+      if (zeroed || has_data) {
+         /* Emit where every use is dominated: the top of the entry
+          * block.
           */
          nir_builder *b = ctx->b;
          nir_cursor saved = b->cursor;
          b->cursor = nir_before_impl(b->impl);
-         for (uint32_t off = 0; off < size; off += 4) {
-            nir_store_scratch(b, nir_imm_int(b, 0),
-                              nir_imm_int(b, ctx->ptr_base[id] + off),
-                              .write_mask = 1, .align_mul = 4);
+
+         unsigned esz = 4, ebits = 32;
+         if (has_data) {
+            const struct d12_type *t = &ctx->mod->types[v->type];
+            if (t->kind == D12_TYPE_ARRAY || t->kind == D12_TYPE_VECTOR) {
+               unsigned eb = type_bit_size(ctx->mod, t->seq.elem);
+               if (eb == 16 || eb == 32 || eb == 64) {
+                  ebits = eb;
+                  esz = eb / 8;
+               }
+            }
+         }
+
+         for (uint32_t off = 0, i = 0; off < size; off += esz, i++) {
+            uint64_t val = 0;
+            if (has_data)
+               val = i < init->num_data_elems ? init->data_elems[i] : 0;
+
+            nir_store_scratch(b, nir_imm_intN_t(b, val, ebits),
+                              nir_imm_int(b, base + off),
+                              .write_mask = 1, .align_mul = esz);
          }
          b->cursor = saved;
       }
@@ -1928,17 +1959,19 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
    case D12_DXOP_START_VERTEX_LOCATION:
    case D12_DXOP_START_INSTANCE_LOCATION:
-      /* SM 6.8 extended command info. The prolog ABI has uniform slots
-       * for these (AGX_ABI_VUNI_FIRST_VERTEX/BASE_INSTANCE) but only
-       * the prolog-building side maps them; the main-shader intrinsics
-       * reach the backend unlowered, and the draw path does not publish
-       * the values. A named refusal beats a backend assert -- and beats
-       * a constant 0 that would be wrong for every draw with a nonzero
-       * start vertex, which the runtime does support.
+      /* SM 6.8 extended command info, published per draw in reserved
+       * uniforms (see D12_UNIFORM_DRAW). The prolog ABI's
+       * AGX_ABI_VUNI_FIRST_VERTEX slots are mapped only by the
+       * prolog-building side, so the main shader reads ours instead.
        */
-      trans_fail(ctx, "SM 6.8 draw parameters need an unpublished driver "
-                      "sysval");
-      return false;
+      def_result(ctx, inst,
+                 nir_load_preamble(b, 1, 32,
+                                   .base = D12_UNIFORM_DRAW +
+                                           (opcode ==
+                                                  D12_DXOP_START_INSTANCE_LOCATION
+                                               ? 2
+                                               : 0)));
+      return true;
 
    case D12_DXOP_WAVE_MATCH: {
       /* WaveMatch(val): the mask of lanes holding MY value. No single
@@ -2176,6 +2209,79 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  opcode == D12_DXOP_DOT4_ADD_I8_PACKED
                     ? nir_sdot_4x8_iadd(b, a, bb, acc)
                     : nir_udot_4x8_uadd(b, a, bb, acc));
+      return true;
+   }
+
+   case D12_DXOP_WAVE_MULTI_PREFIX_OP:
+   case D12_DXOP_WAVE_MULTI_PREFIX_BIT_COUNT: {
+      /* (value, mask0..mask3, op, sop) -- or (value, mask0..3) for the
+       * bit-count form. The mask is a PER-LANE uint4 naming the lanes
+       * that share this lane's group; the result folds the values of the
+       * group members STRICTLY BEFORE this lane.
+       *
+       * There is no hardware masked scan, so it is unrolled across the
+       * wave: for each lane i, take its value iff i is in my mask and
+       * i < my lane. The shift amount is uniform, so read_invocation
+       * lowers to a plain broadcast per step. Wave width here is 32 --
+       * mask1..3 address lanes that do not exist on this hardware.
+       */
+      bool bitcount = opcode == D12_DXOP_WAVE_MULTI_PREFIX_BIT_COUNT;
+      NEED(bitcount ? 5 : 7);
+
+      nir_def *value = get_def(ctx, p[0]);
+      nir_def *mask = get_def(ctx, p[1]);
+      if (!value || !mask)
+         return false;
+
+      /* The bit-count form counts predicates; fold 0/1 with a sum. */
+      uint64_t kind = 0;
+      if (!bitcount && !const_uint(ctx, p[5], &kind)) {
+         trans_fail(ctx, "non-constant wave multi-prefix operation");
+         return false;
+      }
+      if (bitcount)
+         value = nir_b2i32(b, to_bool(ctx, value));
+
+      /* Kind numbering verified empirically against a shader calling the
+       * six variants in a known order: Sum=0, And=1, Or=2, Xor=3,
+       * Product=4. It is NOT dxil_wave_op_kind (Sum/Product/Min/Max) nor
+       * dxil_wave_bit_op_kind -- WaveMultiPrefix has its own enum.
+       */
+      unsigned bits = value->bit_size;
+      nir_def *acc;
+      switch (bitcount ? 0 : kind) {
+      case 0: acc = nir_imm_intN_t(b, 0, bits); break;        /* Sum */
+      case 1: acc = nir_imm_intN_t(b, ~0ull, bits); break;    /* And */
+      case 2: acc = nir_imm_intN_t(b, 0, bits); break;        /* Or */
+      case 3: acc = nir_imm_intN_t(b, 0, bits); break;        /* Xor */
+      case 4: acc = nir_imm_intN_t(b, 1, bits); break;        /* Product */
+      default:
+         trans_fail(ctx, "unhandled wave multi-prefix operation");
+         return false;
+      }
+
+      nir_def *lane = nir_load_subgroup_invocation(b);
+
+      for (unsigned i = 0; i < 32; i++) {
+         nir_def *v = nir_read_invocation(b, value, nir_imm_int(b, i));
+         nir_def *in_group =
+            nir_ine_imm(b, nir_iand_imm(b, nir_ushr_imm(b, mask, i), 1), 0);
+         nir_def *before =
+            nir_ilt(b, nir_imm_int(b, i), nir_u2u32(b, lane));
+
+         nir_def *folded;
+         switch (bitcount ? 0 : kind) {
+         case 0: folded = nir_iadd(b, acc, v); break;
+         case 1: folded = nir_iand(b, acc, v); break;
+         case 2: folded = nir_ior(b, acc, v); break;
+         case 3: folded = nir_ixor(b, acc, v); break;
+         default: folded = nir_imul(b, acc, v); break;
+         }
+
+         acc = nir_bcsel(b, nir_iand(b, in_group, before), folded, acc);
+      }
+
+      def_result(ctx, inst, acc);
       return true;
    }
 
@@ -2841,6 +2947,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    }
 
    default:
+      if (getenv("D3D12AGX_DUMP_INSTS")) {
+         fprintf(stderr, "  op %llu operands:", (unsigned long long)opcode);
+         for (unsigned i = 0; i < np; i++) {
+            uint64_t c;
+            if (const_uint(ctx, p[i], &c))
+               fprintf(stderr, " [%u]=%llu", i, (unsigned long long)c);
+            else
+               fprintf(stderr, " [%u]=dyn", i);
+         }
+         fprintf(stderr, "\n");
+      }
       /* Name the intrinsic, not just its number: the name is right there
        * in the module and is what makes a corpus run actionable.
        */

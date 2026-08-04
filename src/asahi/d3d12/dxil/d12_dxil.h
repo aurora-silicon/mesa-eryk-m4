@@ -341,6 +341,13 @@ struct d12_value {
     */
    bool is_ce_gep;
 
+   /* CONSTANT only: CST_DATA payload -- the raw elements of a constant
+    * array initializer (an HLSL `static const` lookup table). Owned by
+    * the module and freed with it.
+    */
+   uint64_t *data_elems;
+   unsigned num_data_elems;
+
    /* Constants */
    bool is_undef;
    bool is_null;
@@ -663,7 +670,15 @@ struct nir_shader;
  */
 #define D12_ROOT_COUNTER_BASE       D12_MAX_RESOURCE_BINDINGS
 
-#define D12_UNIFORM_RESERVED (D12_UNIFORM_HEAP + D12_UNIFORM_HEAP_REGS)
+/*
+ * SM 6.8 extended command info: StartVertexLocation then
+ * StartInstanceLocation, two u32 published per draw. Unlike the tables
+ * above these registers hold the VALUES, not an address.
+ */
+#define D12_UNIFORM_DRAW            20
+#define D12_UNIFORM_DRAW_REGS       4
+
+#define D12_UNIFORM_RESERVED (D12_UNIFORM_DRAW + D12_UNIFORM_DRAW_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the

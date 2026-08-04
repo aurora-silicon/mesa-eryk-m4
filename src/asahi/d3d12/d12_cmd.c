@@ -805,7 +805,8 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
-                  uint64_t root_gpu, uint64_t textures_gpu)
+                  uint64_t root_gpu, uint64_t textures_gpu,
+                  uint64_t draw_gpu)
 {
    struct d12_device *device = list->device;
 
@@ -831,6 +832,11 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
     */
    if (st->info.rodata.size_16) {
       agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
+   }
+
+   if (draw_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS,
+                      draw_gpu);
    }
 
    /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
@@ -956,7 +962,8 @@ d12_ppp_push_stencil(struct agx_ppp_update *ppp,
  */
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
-              unsigned instance_count, unsigned first_vertex)
+              unsigned instance_count, unsigned first_vertex,
+              unsigned first_instance)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -996,10 +1003,19 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu))
       return;
 
+   /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM
+    * memory, so the values are uploaded and the uniform points at them.
+    */
+   uint32_t draw_params[2] = {first_vertex, first_instance};
+   uint64_t draw_gpu =
+      d12_list_upload(list, draw_params, sizeof(draw_params), 8);
+   if (!draw_gpu)
+      return;
+
    uint32_t vs_usc = d12_gfx_stage_usc(list, &pso->vs, false, &seg->tib,
-                                       root_gpu, textures_gpu);
+                                       root_gpu, textures_gpu, draw_gpu);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
-                                       root_gpu, textures_gpu);
+                                       root_gpu, textures_gpu, draw_gpu);
    if (!vs_usc || !fs_usc)
       return;
 
@@ -1298,14 +1314,8 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList *iface,
    if (!vertex_count_per_instance || !instance_count)
       return;
 
-   if (start_instance) {
-      mesa_loge("DrawInstanced: start_instance unsupported");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
    d12_list_draw(list, vertex_count_per_instance, instance_count,
-                 start_vertex);
+                 start_vertex, start_instance);
 }
 
 static void STDMETHODCALLTYPE
