@@ -204,13 +204,24 @@ it at every stage after geometry.
 
 | # | change | how you know it worked |
 |---|---|---|
-| 0 | pre-gfx CDM stream (above) | a dispatch recorded during an open render pass appears BEFORE it in `agxdecode`, and the pass still draws |
-| 1 | device-side geometry heap (`struct poly_heap`, bump allocator, zeroed per command list) | a dispatch that allocates from it does not fault |
+| 0 | pre-gfx CDM stream (above) — **BUILT**, unproven until step 4 | a dispatch recorded during an open render pass appears BEFORE it in `agxdecode`, and the pass still draws |
+| 1 | ~~device-side geometry heap~~ — **NOT NEEDED**, see below | — |
 | 2 | PSO compiles the SW-VS variant and the rast program; rast becomes the hardware VS | PSO with a GS creates instead of returning `E_NOTIMPL` |
 | 3 | upload `poly_vertex_params` (16 words) and `poly_geometry_params` (79 words), align 8 | `agxdecode` shows the uniforms published at the reserved registers |
 | 4 | dispatch SW VS, then the main body, with a CDM barrier between | `agxdecode` shows two dispatches before the VDM stream |
 | 5 | non-indexed draw for `STATIC_PER_INSTANCE` | **`g6_geometry`**: a point GS whose output pixels are compared against a CPU model, the way `g4_triangle` now is |
 | 6 | index buffer + restart + indexed draw | the remaining 14 shapes |
+
+**The geometry heap is not on this path.** hk allocates a 128 MiB
+device-wide `poly_heap` and it looked like a prerequisite. It is not, for
+a *direct* draw: `poly_nir_lower_gs.c` never emits a heap reference at
+all (`grep heap` finds only a comment), and every actual
+`poly_heap_alloc` call site is in code this path does not run —
+`poly_gs_setup_indirect` (`geometry.h:640-650`, indirect draws),
+`restart.h` (primitive-restart unrolling) and `tessellator.h`. For a
+direct draw the CPU allocates `output_buffer` itself. The heap comes back
+with indirect draws, restart, and tessellation; it is not a geometry
+prerequisite.
 
 **Traps already identified** (full list in the session research, and in
 `hk_cmd_draw.c`): grid counts are in THREADS not workgroups; the

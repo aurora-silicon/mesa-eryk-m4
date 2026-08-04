@@ -21,6 +21,7 @@
 #include "dxil/d12_dxil.h"
 #include "nir.h"
 #include "nir_builder.h"
+#include "poly/nir/poly_nir.h"
 
 /*
  * Root signature. D3D12 requires the object; our binding model puts
@@ -432,6 +433,43 @@ d12_pipeline_state_create_compute(struct d12_device *device,
  * Graphics: compile one stage of DXIL to an AGX shader part, running the
  * stage's mandatory lowering (tilebuffer for fragment, UVS for vertex).
  */
+/*
+ * DXIL container -> NIR, with nothing lowered yet.
+ *
+ * Split out because the geometry and tessellation lowerings have to run
+ * on raw NIR, before agx_preprocess_nir: poly_nir_lower_gs REWRITES
+ * info.stage to COMPUTE, so anything that reads the stage back has to
+ * come after it.
+ */
+static nir_shader *
+dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
+                  size_t dxil_size, mesa_shader_stage stage)
+{
+   const uint8_t *bc;
+   size_t bc_size;
+   const char *why = NULL;
+   if (!d12_dxil_find_bitcode(dxil, dxil_size, &bc, &bc_size, &why)) {
+      mesa_loge("graphics PSO: %s", why);
+      return NULL;
+   }
+
+   struct d12_module mod;
+   if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
+      mesa_loge("graphics PSO: DXIL parse failed: %s",
+                mod.error ? mod.error : "unknown");
+      return NULL;
+   }
+
+   const char *error = NULL;
+   nir_shader *nir = d12_dxil_to_nir(&mod, stage, map, &error);
+   d12_dxil_module_finish(&mod);
+
+   if (!nir)
+      mesa_loge("graphics PSO: DXIL->NIR failed: %s", error);
+
+   return nir;
+}
+
 static bool
 compile_gfx_stage(struct d12_device *device,
                   const struct d12_binding_map *map, const void *dxil,
@@ -440,29 +478,9 @@ compile_gfx_stage(struct d12_device *device,
                   struct agx_unlinked_uvs_layout *uvs,
                   struct agx_shader_part *out)
 {
-   const uint8_t *bc;
-   size_t bc_size;
-   const char *why = NULL;
-   if (!d12_dxil_find_bitcode(dxil, dxil_size, &bc, &bc_size, &why)) {
-      mesa_loge("graphics PSO: %s", why);
+   nir_shader *nir = dxil_to_nir_stage(map, dxil, dxil_size, stage);
+   if (!nir)
       return false;
-   }
-
-   struct d12_module mod;
-   if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
-      mesa_loge("graphics PSO: DXIL parse failed: %s",
-                mod.error ? mod.error : "unknown");
-      return false;
-   }
-
-   const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, stage, map, &error);
-   d12_dxil_module_finish(&mod);
-
-   if (!nir) {
-      mesa_loge("graphics PSO: DXIL->NIR failed: %s", error);
-      return false;
-   }
 
    NIR_PASS(_, nir, agx_nir_lower_texture);
    agx_preprocess_nir(nir);
@@ -531,6 +549,122 @@ compile_gfx_stage(struct d12_device *device,
    agx_compile_shader_nir(nir, &key, out);
 
    return out->binary && out->info.binary_size;
+}
+
+/*
+ * Finish one of the programs poly_nir_lower_gs produced. `uvs` non-NULL
+ * marks the RASTERIZATION program, which is a hardware vertex shader and
+ * therefore needs the unified-vertex-store lowering; the others are
+ * compute.
+ */
+static bool
+compile_poly_program(struct d12_device *device, nir_shader *nir,
+                     struct agx_unlinked_uvs_layout *uvs,
+                     struct agx_shader_part *out)
+{
+   NIR_PASS(_, nir, agx_nir_lower_texture);
+   agx_preprocess_nir(nir);
+   NIR_PASS(_, nir, d12_dxil_lower_root);
+
+   if (uvs) {
+      NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
+
+      struct agx_varyings_vs linked = {0};
+      agx_assign_uvs(&linked, uvs, 0, 0);
+      NIR_PASS(_, nir, d12_dxil_lower_uvs_index, linked.slots);
+   }
+
+   struct agx_shader_key key = {
+      .dev = agx_gather_device_key(&device->dev),
+      .has_scratch = true,
+      .promote_constants = false,
+      .reserved_preamble = D12_UNIFORM_RESERVED,
+      .no_stop = false,
+   };
+
+   memset(out, 0, sizeof(*out));
+   agx_compile_shader_nir(nir, &key, out);
+
+   return out->binary && out->info.binary_size;
+}
+
+/*
+ * A geometry shader expands into four programs. Only two are on the
+ * direct-draw path: the main body and the rasterization shader. The
+ * count, prefix-sum and pre-GS programs exist for transform feedback and
+ * GS pipeline-statistics queries, and hk skips all three when neither is
+ * active (hk_cmd_draw.c:1535). Every geometry shader in the corpus has
+ * xfb = 0 and prefix_sum = 0, so this refuses the rest BY NAME rather
+ * than compiling programs it would not dispatch.
+ */
+static bool
+compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
+                 const void *dxil, size_t dxil_size,
+                 struct poly_gs_info *gs_info,
+                 struct agx_unlinked_uvs_layout *rast_uvs,
+                 struct agx_shader_part *main_out,
+                 struct agx_shader_part *rast_out)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_GEOMETRY);
+   if (!nir)
+      return false;
+
+   nir_shader *gs_count = NULL, *gs_copy = NULL, *pre_gs = NULL;
+   NIR_PASS(_, nir, poly_nir_lower_gs, &gs_count, &gs_copy, &pre_gs, gs_info);
+
+   /* The lowering rewrote nir->info.stage to COMPUTE; do not read it back
+    * expecting GEOMETRY.
+    */
+   if (gs_info->xfb || gs_info->prefix_sum) {
+      mesa_loge("graphics PSO: geometry shader uses transform feedback, "
+                "which needs the count and pre-GS programs dispatched. "
+                "Not supported yet.");
+      return false;
+   }
+
+   if (gs_info->shape != POLY_GS_SHAPE_STATIC_PER_INSTANCE) {
+      mesa_loge("graphics PSO: geometry shader needs a %s rasterization "
+                "draw, which requires the output index buffer. Only "
+                "STATIC_PER_INSTANCE is dispatched so far.",
+                gs_info->shape == POLY_GS_SHAPE_DYNAMIC_INDEXED
+                   ? "dynamically indexed"
+                   : "statically indexed");
+      return false;
+   }
+
+   if (!gs_copy) {
+      mesa_loge("graphics PSO: geometry lowering produced no rasterization "
+                "program");
+      return false;
+   }
+
+   if (!compile_poly_program(device, nir, NULL, main_out))
+      return false;
+
+   return compile_poly_program(device, gs_copy, rast_uvs, rast_out);
+}
+
+/*
+ * The vertex shader ahead of a geometry shader does not feed the
+ * rasterizer -- it writes its outputs to a buffer the GS reads. That
+ * makes it a compute shader, and poly_nir_lower_vs_before_gs is what
+ * rewrites its stores into that layout. It must run before
+ * agx_preprocess_nir, like every other poly lowering.
+ */
+static bool
+compile_sw_vs_stage(struct d12_device *device,
+                    const struct d12_binding_map *map, const void *dxil,
+                    size_t dxil_size, struct agx_shader_part *out)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_VERTEX);
+   if (!nir)
+      return false;
+
+   NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
+
+   return compile_poly_program(device, nir, NULL, out);
 }
 
 /*
