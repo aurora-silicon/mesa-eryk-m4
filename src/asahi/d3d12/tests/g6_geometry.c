@@ -202,6 +202,8 @@ main(int argc, char **argv)
    D3D12_RECT sc = {.right = W, .bottom = H};
 
    /* Draw the same points through both pipelines. */
+   static uint8_t control_img[H][W][4];
+   unsigned mismatch = 0;
    unsigned covered[3] = {0, 0, 0};
    ID3D12PipelineState *psos[3] = {pso_nogs, pso_nogs, pso_gs};
    /* Case 0 is a triangle with no geometry shader: it isolates the probe
@@ -250,6 +252,12 @@ main(int argc, char **argv)
             const uint8_t *p = map + y * STRIDE + x * 4;
             if (!(p[0] == 0xff && p[1] == 0x00 && p[2] == 0x00))
                covered[i]++;
+
+            /* Case 1 is the control; case 2 must reproduce it exactly. */
+            if (i == 1)
+               memcpy(control_img[y][x], p, 4);
+            else if (i == 2 && memcmp(control_img[y][x], p, 4))
+               mismatch++;
          }
       }
    }
@@ -280,16 +288,15 @@ main(int argc, char **argv)
 
    /* THE STRONG ONE. gs_point.dxil is a pass-through: one point in, the
     * same point out. So the geometry case must produce exactly what the
-    * control produced -- same count, same pixels. Anything else means
-    * the rasterization program is not reproducing the emitted vertices.
-    *
-    * This is asserted rather than softened even though it currently
-    * fails, because the alternative is a suite that stays green over a
-    * known defect, which is the failure mode this project keeps finding
-    * in its own tests.
+    * control produced -- not a similar count, the SAME PIXELS. Every one
+    * of them is compared, so a geometry shader that emits its points in
+    * the wrong places fails here even if it emits the right number.
     */
-   CHECK(covered[2] == covered[1],
-         "a PASS-THROUGH geometry shader reproduces the control exactly");
+   printf("       geometry vs control: %u pixels differ of %u\n", mismatch,
+          W * H);
+   CHECK(covered[2] == covered[1] && mismatch == 0,
+         "a PASS-THROUGH geometry shader reproduces the control EXACTLY, "
+         "pixel for pixel");
 
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);

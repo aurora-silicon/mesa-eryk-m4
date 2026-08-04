@@ -870,5 +870,11 @@ struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
  * after agx_preprocess_nir and before agx_compile_shader_nir.
  */
 bool d12_dxil_lower_root(struct nir_shader *nir);
+
+/* Vertex-shader sysvals for the SOFTWARE vertex shader -- the compute
+ * program that runs when a geometry or tessellation shader follows it.
+ * Shared so the standalone tool lowers exactly what the driver lowers.
+ */
+bool d12_dxil_lower_sw_vs(struct nir_shader *nir);
 bool d12_dxil_lower_uvs_index(struct nir_shader *nir,
                               const unsigned *slots);

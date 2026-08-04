@@ -371,6 +371,31 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
 
       struct agx_submit_virt virt = {.ring_idx = 0};
       int ret = dev->ops.submit(dev, &submit, &virt);
+
+      /* Read the geometry vertex output buffer back while the command
+       * list -- and therefore its stream BO -- is still alive. Dumping it
+       * at device teardown reads memory the list already freed, which
+       * reports zeroes whatever the GPU did.
+       */
+      if (!ret && device->dbg_gs_vb) {
+         /* The out-sync is timeline_value + 1; waiting on timeline_value
+          * returns immediately on an already-signalled point and reads
+          * the buffer before the GPU has touched it. */
+         uint64_t point = queue->timeline_value + 1;
+         drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &point, 1,
+                                INT64_MAX,
+                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+
+         const float *f = (const float *)device->dbg_gs_vb;
+         unsigned n = MIN2(device->dbg_gs_vb_size / 4, 32);
+         mesa_logi("geometry vertex buffer (%zu bytes):",
+                   device->dbg_gs_vb_size);
+         for (unsigned i = 0; i < n; i += 4) {
+            mesa_logi("  slot %u: %8.4f %8.4f %8.4f %8.4f", i / 4, f[i],
+                      f[i + 1], f[i + 2], f[i + 3]);
+         }
+         device->dbg_gs_vb = NULL;
+      }
       if (ret) {
          mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d -- device "
                    "marked removed", i, ret);

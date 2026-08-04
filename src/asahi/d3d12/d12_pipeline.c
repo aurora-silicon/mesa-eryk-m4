@@ -211,6 +211,8 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
       if (pso->gs_main_bo)
          agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
+      if (pso->gs_rast.code_bo)
+         agx_bo_unreference(&pso->device->dev, pso->gs_rast.code_bo);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -579,8 +581,19 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
    NIR_PASS(_, nir, d12_dxil_lower_root);
 
    if (uvs) {
-      /* Same rule: this program is the hardware vertex stage. */
+      /* This program is the HARDWARE vertex stage, so it needs the whole
+       * hardware-VS lowering sequence, not just the unified vertex
+       * store. hk_lower_hw_vs (hk_shader.c:1045) is the reference and the
+       * order is load-bearing: agx_nir_lower_uvs runs last, over scalar
+       * outputs. Handing it vec4 stores -- which is what the geometry
+       * rasterization program emits -- produced a render command that
+       * died outright, leaving the target not even cleared.
+       */
       NIR_PASS(_, nir, nir_lower_default_point_size);
+      NIR_PASS(_, nir, nir_lower_point_size, 1.0f, 511.95f);
+      NIR_PASS(_, nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL,
+               NULL);
+      NIR_PASS(_, nir, agx_nir_lower_cull_distance_vs);
 
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
 
@@ -699,6 +712,26 @@ compile_sw_vs_stage(struct d12_device *device,
    nir->info.stage = MESA_SHADER_COMPUTE;
    memset(&nir->info.cs, 0, sizeof(nir->info.cs));
    nir->xfb_info = NULL;
+
+   /* The launch programs a local size of 64; say so, so the backend's
+    * thread-index maths agrees with what the hardware is told. */
+   nir->info.workgroup_size[0] = 64;
+   nir->info.workgroup_size[1] = 1;
+   nir->info.workgroup_size[2] = 1;
+
+   /* A compute shader has no vertex ID. poly_nir_lower_sw_vs is what
+    * turns load_vertex_id into global_invocation_id.x (pulling through
+    * the index buffer and adding the base vertex) and load_instance_id
+    * into .y. Without it the shader keeps asking for a sysval that does
+    * not exist in a dispatch, every thread computes the same address,
+    * and the vertex output buffer stays zero -- which then rasterises as
+    * a position of (0,0,0,0).
+    *
+    * It emits load_index_size_poly / load_vertex_param_buffer_poly /
+    * load_first_vertex, so it has to run before d12_dxil_lower_root
+    * resolves those.
+    */
+   NIR_PASS(_, nir, d12_dxil_lower_sw_vs);
 
    return compile_poly_program(device, nir, NULL, out);
 }
@@ -966,6 +999,27 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_fast_link(&pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
                     &rast_prolog, NULL, 0);
       free(rast_prolog.binary);
+
+      /* Keep the compiled part so its PREAMBLE has an address. The linker
+       * copies main/prolog/epilog into linked.bo and leaves the preamble
+       * behind, so info.preamble_offset does not apply there -- the USC
+       * then points the preshader at whatever happens to sit at that
+       * offset, which decoded as a run of `jmp_incomplete 0` and killed
+       * the render command outright: the target was not even cleared.
+       */
+      if (gs_rast_part.info.has_preamble) {
+         pso->gs_rast.code_bo =
+            agx_bo_create(&device->dev, gs_rast_part.info.binary_size, 0,
+                          AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 gs rast");
+         if (!pso->gs_rast.code_bo) {
+            free(pso);
+            return E_OUTOFMEMORY;
+         }
+         memcpy(agx_bo_map(pso->gs_rast.code_bo), gs_rast_part.binary,
+                gs_rast_part.info.binary_size);
+         pso->gs_rast.preamble_va = pso->gs_rast.code_bo->va->addr +
+                                    gs_rast_part.info.preamble_offset;
+      }
       pso->gs_rast.info = gs_rast_part.info;
 
       /* The VDM reads these counts to know how much state to load. Leave

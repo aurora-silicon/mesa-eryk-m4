@@ -17,6 +17,7 @@
  */
 
 #include "d12_dxil.h"
+#include "poly/nir/poly_nir.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -4816,6 +4817,37 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       return true;
    }
 
+   /* poly's software input assembly adds the base vertex after indexing.
+    * D12_UNIFORM_DRAW already carries it as a 32-bit preamble register --
+    * the same one D12_DXOP_START_VERTEX_LOCATION reads.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_first_vertex) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def,
+                      nir_load_preamble(b, 1, 32, .base = D12_UNIFORM_DRAW));
+      return true;
+   }
+
+   /* The software vertex shader's input assembly reads the index size out
+    * of poly_vertex_params rather than from a uniform of its own. It is a
+    * uint32 at offset 8 (poly/geometry.h), so answer it with a load from
+    * the parameter block instead of a preamble register.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_index_size_poly) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def *params =
+         nir_load_preamble(b, 1, 64, .base = D12_UNIFORM_VERTEX_PARAMS);
+      /* poly_vertex_params: uint64 index_buffer, then uint32
+       * index_size_B -- offset 8. The struct is PACKED and static-asserted
+       * at 16 words, so the literal is safe and avoids pulling the
+       * OpenCL-flavoured header into the translator.
+       */
+      nir_def *addr = nir_iadd_imm(b, params, 8);
+      nir_def_replace(&intr->def,
+                      nir_load_global_constant(b, 1, 32, addr, .align_mul = 4));
+      return true;
+   }
+
    unsigned base;
    switch (intr->intrinsic) {
    case nir_intrinsic_load_root_agx:
@@ -4863,4 +4895,43 @@ d12_dxil_lower_root(nir_shader *nir)
 {
    return nir_shader_intrinsics_pass(nir, lower_root,
                                      nir_metadata_control_flow, NULL);
+}
+
+
+/*
+ * Vertex-shader sysvals for the SOFTWARE vertex shader -- the compute
+ * program that runs when a geometry or tessellation shader follows.
+ *
+ * poly_nir_lower_sw_vs answers load_vertex_id and load_instance_id, but
+ * poly_nir_lower_vs_before_gs also emits load_vertex_id_zero_base to
+ * index the output buffer and nothing lowers that. In a compute dispatch
+ * it is not a sysval at all: it reaches the backend as an undefined
+ * register, so every thread computes its output address from garbage and
+ * the vertex buffer stays zero. The zero-based index IS the global
+ * invocation ID -- that is what "zero based" means here.
+ *
+ * Exported so the standalone tool runs exactly what the driver runs. A
+ * tool that lowers a different set of passes disassembles a shader the
+ * driver never builds (docs/findings.md).
+ */
+static bool
+lower_sw_vs_zero_base(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_vertex_id_zero_base)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def_replace(&intr->def,
+                   nir_channel(b, nir_load_global_invocation_id(b, 32), 0));
+   return true;
+}
+
+bool
+d12_dxil_lower_sw_vs(nir_shader *nir)
+{
+   bool progress = false;
+   NIR_PASS(progress, nir, poly_nir_lower_sw_vs);
+   NIR_PASS(progress, nir, nir_shader_intrinsics_pass, lower_sw_vs_zero_base,
+            nir_metadata_control_flow, NULL);
+   return progress;
 }

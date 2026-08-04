@@ -85,6 +85,13 @@ struct d12_device {
 
    D3D_FEATURE_LEVEL feature_level;
 
+   /* Debug: the geometry vertex output buffer, dumped at device
+    * destruction when D3D12AGX_DUMP_GS_VB is set. By then every
+    * submission has completed.
+    */
+   void *dbg_gs_vb;
+   size_t dbg_gs_vb_size;
+
    /* Set when a submission fails. D3D12 models this as device removal, and
     * without it a later Signal would advance a fence past work that never
     * ran, making every result downstream a lie.
@@ -239,6 +246,16 @@ ID3DBlob *d12_blob_create(const void *data, size_t size);
 struct d12_gfx_stage {
    struct agx_shader_info info;
    struct agx_linked_shader linked;
+
+   /* The compiled part's own BO, and the address of its preamble inside
+    * it. agx_fast_link links main + prolog + epilog only: the PREAMBLE is
+    * not copied into linked.bo, so info.preamble_offset is meaningless
+    * there. hk keeps the same thing as hk_shader::preamble_addr.
+    *
+    * Zero when the shader has no preamble.
+    */
+   struct agx_bo *code_bo;
+   uint64_t preamble_va;
    struct agx_counts_packed counts;                  /* vertex */
    struct agx_fragment_shader_word_0_packed fs_counts; /* fragment */
    struct agx_fragment_face_2_packed frag_face;        /* fragment */

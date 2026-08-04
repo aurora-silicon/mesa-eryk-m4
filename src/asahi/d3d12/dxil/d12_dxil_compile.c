@@ -231,6 +231,7 @@ main(int argc, char **argv)
       nir->info.stage = MESA_SHADER_COMPUTE;
       memset(&nir->info.cs, 0, sizeof(nir->info.cs));
       nir->xfb_info = NULL;
+      NIR_PASS(_, nir, d12_dxil_lower_sw_vs);
    }
 
    agx_preprocess_nir(nir);

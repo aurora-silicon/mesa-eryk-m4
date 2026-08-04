@@ -781,6 +781,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 struct d12_dispatch_uniforms {
    uint64_t root;
    uint64_t textures;
+   uint64_t draw;
    uint64_t vertex_params;
    uint64_t geom_params;
    /* Address of the VS output MASK, not the mask itself: agx_usc_uniform
@@ -804,7 +805,7 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    struct d12_device *device = list->device;
 
    uint32_t usc;
-   size_t usc_size = agx_usc_size(10);
+   size_t usc_size = agx_usc_size(16);
    uint8_t *usc_cpu = d12_list_alloc_usc(list, usc_size, &usc);
    if (!usc_cpu)
       return 0;
@@ -825,9 +826,9 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
     * which the DXIL translator already lowers poly's parameter
     * intrinsics to. Nothing else publishes them.
     */
-   if (u->vertex_params) {
-      agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS, D12_UNIFORM_PARAM_REGS,
-                      u->vertex_params);
+   /* Ascending base order: 4, 8, 20, 24, 32, 36. */
+   if (u->draw) {
+      agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS, u->draw);
    }
    if (u->geom_params) {
       agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
@@ -836,6 +837,10 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (u->vs_outputs) {
       agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
                       u->vs_outputs);
+   }
+   if (u->vertex_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS, D12_UNIFORM_PARAM_REGS,
+                      u->vertex_params);
    }
 
    /*
@@ -870,6 +875,27 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    } else {
       agx_usc_pack(&b, NO_PRESHADER, cfg)
          ;
+   }
+
+   if (getenv("D3D12AGX_DUMP_GS_USC")) {
+      mesa_logi("compute USC: code=0x%llx main=%u gprs=%u push=%u "
+                "preamble=%d tex=%u txf=%d pregprs=%u "
+                "root=0x%llx vp=0x%llx gp=0x%llx vso=0x%llx",
+                (unsigned long long)code_va, info->main_offset, info->nr_gprs,
+                info->push_count, info->has_preamble,
+                info->texture_state_count, info->uses_txf, info->nr_preamble_gprs,
+                (unsigned long long)u->root,
+                (unsigned long long)u->vertex_params,
+                (unsigned long long)u->geom_params,
+                (unsigned long long)u->vs_outputs);
+      for (unsigned i = 0; i < 48; i += 16) {
+         mesa_logi("  %02x: %02x %02x %02x %02x %02x %02x %02x %02x "
+                   "%02x %02x %02x %02x %02x %02x %02x %02x", i,
+                   usc_cpu[i], usc_cpu[i+1], usc_cpu[i+2], usc_cpu[i+3],
+                   usc_cpu[i+4], usc_cpu[i+5], usc_cpu[i+6], usc_cpu[i+7],
+                   usc_cpu[i+8], usc_cpu[i+9], usc_cpu[i+10], usc_cpu[i+11],
+                   usc_cpu[i+12], usc_cpu[i+13], usc_cpu[i+14], usc_cpu[i+15]);
+      }
    }
 
    return usc;
@@ -984,11 +1010,11 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
    struct d12_device *device = list->device;
 
    uint32_t usc;
-   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(11), &usc);
+   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(16), &usc);
    if (!cpu)
       return 0;
 
-   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(11));
+   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(16));
 
    agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
    if (textures_gpu) {
@@ -1021,11 +1047,8 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
     * measured as a point covering the ENTIRE render target while the
     * same points without a geometry shader drew four pixels.
     */
+   /* Ascending base order, matching the compute builder: 24, 32, 36. */
    if (poly) {
-      if (poly->vertex_params) {
-         agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS,
-                         D12_UNIFORM_PARAM_REGS, poly->vertex_params);
-      }
       if (poly->geom_params) {
          agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
                          poly->geom_params);
@@ -1033,6 +1056,10 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       if (poly->vs_outputs) {
          agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
                          poly->vs_outputs);
+      }
+      if (poly->vertex_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS,
+                         D12_UNIFORM_PARAM_REGS, poly->vertex_params);
       }
    }
 
@@ -1054,10 +1081,9 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                           &st->linked.fragment_props);
    }
 
-   if (st->info.has_preamble) {
+   if (st->info.has_preamble && st->preamble_va) {
       agx_usc_pack(&b, PRESHADER, cfg) {
-         cfg.code = agx_usc_addr(&device->dev, st->linked.bo->va->addr +
-                                                  st->info.preamble_offset);
+         cfg.code = agx_usc_addr(&device->dev, st->preamble_va);
       }
    } else {
       agx_usc_pack(&b, NO_PRESHADER, cfg)
@@ -1210,7 +1236,8 @@ static bool
 d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
                     uint64_t root_gpu, uint64_t textures_gpu,
-                    unsigned *out_verts, unsigned *out_instances,
+                    uint64_t draw_gpu, unsigned *out_verts,
+                    unsigned *out_instances,
                     struct d12_dispatch_uniforms *out_poly)
 {
    struct d12_device *device = list->device;
@@ -1236,6 +1263,33 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!vp.output_buffer)
       return false;
 
+   /* Remember it so the vertex buffer can be read back once the GPU is
+    * idle. Whether the software vertex shader actually wrote what the
+    * rasterization program then reads is the one question a command
+    * stream dump cannot answer.
+    */
+   if (getenv("D3D12AGX_DUMP_GS_VB")) {
+      list->device->dbg_gs_vb = d12_list_data_cpu(list, vp.output_buffer);
+      list->device->dbg_gs_vb_size = MAX2(out_size, 16);
+      mesa_logi("gs vb: gpu=0x%llx cpu=%p size=%zu outputs=0x%llx "
+                "verts=%u insts=%u",
+                (unsigned long long)vp.output_buffer,
+                list->device->dbg_gs_vb, list->device->dbg_gs_vb_size,
+                (unsigned long long)pso->sw_vs_outputs, vertex_count,
+                instance_count);
+   }
+
+   /* poly's software input assembly always emits the index-buffer pull,
+    * predicated on index_size != 0. We draw non-indexed, so the branch is
+    * never taken -- but the pointer is still materialised, and hk never
+    * leaves it null: it points it at a sink address even when unused
+    * (hk_index_buffer). Leaving it zero puts a null dereference in the
+    * shader, and a fault aborts the whole command buffer, which presents
+    * as the compute half silently doing nothing.
+    */
+   if (!vp.index_buffer)
+      vp.index_buffer = vp.output_buffer;
+
    struct poly_geometry_params gp;
    poly_geometry_params_init(&gp, list->topology, wg_size);
    poly_geometry_params_set_draw(&gp, list->topology, pso->gs_info.shape,
@@ -1250,6 +1304,25 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!vp_gpu || !gp_gpu)
       return false;
 
+   /* THE INDIRECTION. agx_usc_uniform fills uniform registers FROM
+    * memory, so publishing a POINTER means uploading the pointer and
+    * pointing the uniform at that -- the address-of-an-address the root
+    * table already uses (docs/findings.md).
+    *
+    * Pointing the uniform straight at the parameter block instead makes
+    * the shader load the block's first eight bytes AS the block address:
+    * poly_vertex_params begins with index_buffer, so the software vertex
+    * shader took the index buffer pointer to be its own parameter block
+    * and wrote nothing anywhere.
+    *
+    * VS_OUTPUTS is not like this: it is a VALUE (the output mask), so the
+    * uniform correctly points at the mask itself.
+    */
+   uint64_t vp_ptr = d12_list_upload(list, &vp_gpu, sizeof(vp_gpu), 8);
+   uint64_t gp_ptr = d12_list_upload(list, &gp_gpu, sizeof(gp_gpu), 8);
+   if (!vp_ptr || !gp_ptr)
+      return false;
+
    /* The mask lives in memory because the uniform is filled from memory. */
    uint64_t outputs_mask = pso->sw_vs_outputs;
    uint64_t outputs_gpu =
@@ -1260,8 +1333,10 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    struct d12_dispatch_uniforms u = {
       .root = root_gpu,
       .textures = textures_gpu,
-      .vertex_params = vp_gpu,
-      .geom_params = gp_gpu,
+      /* poly_nir_lower_sw_vs reads the base vertex from here. */
+      .draw = draw_gpu,
+      .vertex_params = vp_ptr,
+      .geom_params = gp_ptr,
       .vs_outputs = outputs_gpu,
    };
 
@@ -1381,8 +1456,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
-                               root_gpu, textures_gpu, &vertex_count,
-                               &instance_count, &poly_u))
+                               root_gpu, textures_gpu, draw_gpu,
+                               &vertex_count, &instance_count, &poly_u))
          return;
 
       /* Inserting the pre-graphics segment shifted the render segment up
