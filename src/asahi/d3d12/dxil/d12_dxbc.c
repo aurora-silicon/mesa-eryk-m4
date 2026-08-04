@@ -138,6 +138,45 @@ enum d12_dxbc_op {
    D12_DXBC_OP_USHR = 85,
    D12_DXBC_OP_UTOF = 86,
    D12_DXBC_OP_XOR = 87,
+   D12_DXBC_OP_CONTINUE = 7,
+   D12_DXBC_OP_CONTINUEC = 8,
+   D12_DXBC_OP_CUSTOMDATA = 53,
+   D12_DXBC_OP_NOP = 58,
+   D12_DXBC_OP_RCP = 129,
+   D12_DXBC_OP_F32TOF16 = 130,
+   D12_DXBC_OP_F16TOF32 = 131,
+   D12_DXBC_OP_COUNTBITS = 134,
+   D12_DXBC_OP_FIRSTBIT_HI = 135,
+   D12_DXBC_OP_FIRSTBIT_LO = 136,
+   D12_DXBC_OP_FIRSTBIT_SHI = 137,
+   D12_DXBC_OP_UBFE = 138,
+   D12_DXBC_OP_IBFE = 139,
+   D12_DXBC_OP_BFI = 140,
+   D12_DXBC_OP_BFREV = 141,
+   D12_DXBC_OP_UMAD = 82,
+   D12_DXBC_OP_DCL_INDEX_RANGE = 91,
+   D12_DXBC_OP_DCL_OUTPUT_SGV = 102,
+   /* The SM5 declaration block. Bindings all come from the root
+    * signature and the container's signature chunks, so these carry
+    * nothing the driver needs -- but they must be STEPPED OVER
+    * correctly, or everything after them decodes as garbage. */
+   D12_DXBC_OP_DCL_UAV_TYPED = 156,
+   D12_DXBC_OP_DCL_UAV_RAW = 157,
+   D12_DXBC_OP_DCL_UAV_STRUCTURED = 158,
+   D12_DXBC_OP_DCL_TGSM_RAW = 159,
+   D12_DXBC_OP_DCL_TGSM_STRUCTURED = 160,
+   D12_DXBC_OP_DCL_RESOURCE_RAW = 161,
+   D12_DXBC_OP_DCL_RESOURCE_STRUCTURED = 162,
+   D12_DXBC_OP_DCL_STREAM = 143,
+   D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE = 93,
+   D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY = 92,
+   D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT = 94,
+   D12_DXBC_OP_DCL_INPUT_CONTROL_POINT_COUNT = 147,
+   D12_DXBC_OP_DCL_OUTPUT_CONTROL_POINT_COUNT = 148,
+   D12_DXBC_OP_DCL_TESS_DOMAIN = 149,
+   D12_DXBC_OP_DCL_TESS_PARTITIONING = 150,
+   D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE = 151,
+   D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR = 152,
    D12_DXBC_OP_DCL_RESOURCE = 88,
    D12_DXBC_OP_DCL_CONSTANT_BUFFER = 89,
    D12_DXBC_OP_DCL_SAMPLER = 90,
@@ -180,6 +219,15 @@ struct d12_dxbc_ctx {
 
    nir_variable *temps[D12_DXBC_MAX_TEMPS];
    unsigned num_temps;
+
+   /* DXBC control flow is STRUCTURED -- if/else/endif and loop/endloop
+    * nest properly -- which is exactly what nir_push_if/nir_push_loop
+    * want, so a stack of what we opened is enough to close them. */
+   struct {
+      bool is_loop;
+      bool in_else;
+   } cf[64];
+   unsigned cf_depth;
 
    const char *error;
 };
@@ -493,6 +541,24 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             len = n;
       }
 
+      /* CUSTOMDATA does NOT carry its length in the opcode token: the
+       * count is the token after it. Treating it like an ordinary
+       * instruction desynchronises the whole rest of the stream, which
+       * then decodes as plausible garbage. */
+      if (opcode == D12_DXBC_OP_CUSTOMDATA) {
+         if (ctx->tok + 2 > ctx->end) {
+            fail(ctx, "truncated custom data block");
+            return;
+         }
+         unsigned n = ctx->tok[1];
+         if (n < 2 || ctx->tok + n > ctx->end) {
+            fail(ctx, "bad custom data length");
+            return;
+         }
+         ctx->tok += n;
+         continue;
+      }
+
       if (!len || ctx->tok + len > ctx->end) {
          fail(ctx, "malformed instruction length");
          return;
@@ -521,6 +587,25 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_SAMPLER:
       case D12_DXBC_OP_DCL_CONSTANT_BUFFER:
       case D12_DXBC_OP_DCL_INDEXABLE_TEMP:
+      case D12_DXBC_OP_DCL_INDEX_RANGE:
+      case D12_DXBC_OP_DCL_OUTPUT_SGV:
+      case D12_DXBC_OP_DCL_UAV_TYPED:
+      case D12_DXBC_OP_DCL_UAV_RAW:
+      case D12_DXBC_OP_DCL_UAV_STRUCTURED:
+      case D12_DXBC_OP_DCL_TGSM_RAW:
+      case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
+      case D12_DXBC_OP_DCL_RESOURCE_RAW:
+      case D12_DXBC_OP_DCL_RESOURCE_STRUCTURED:
+      case D12_DXBC_OP_DCL_STREAM:
+      case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE:
+      case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
+      case D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT:
+      case D12_DXBC_OP_DCL_INPUT_CONTROL_POINT_COUNT:
+      case D12_DXBC_OP_DCL_OUTPUT_CONTROL_POINT_COUNT:
+      case D12_DXBC_OP_DCL_TESS_DOMAIN:
+      case D12_DXBC_OP_DCL_TESS_PARTITIONING:
+      case D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE:
+      case D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR:
          /* Signature and binding information all comes from the
           * container's ISGN/OSGN chunks and the root signature, so the
           * declarations themselves carry nothing this driver needs. */
@@ -631,6 +716,136 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          NEED(4);
          DST(nir_bcsel(b, nir_ine_imm(b, SRC(1), 0), SRC(2), SRC(3)));
          break;
+
+      /*
+       * D3D's bit-field ops are defined with explicit 5-bit masking of
+       * the width and offset. GLSL's bitfieldInsert leaves the
+       * out-of-range case undefined, so the formula is spelled out
+       * rather than mapped onto it -- a shader that relies on the
+       * documented wrap must not depend on a lowering's opinion.
+       *
+       *   width  = src0 & 31,  offset = src1 & 31
+       *   mask   = ((1 << width) - 1) << offset
+       *   dest   = ((src2 << offset) & mask) | (src3 & ~mask)
+       */
+      case D12_DXBC_OP_BFI: {
+         NEED(5);
+         nir_def *width = nir_iand_imm(b, SRC(1), 31);
+         nir_def *offset = nir_iand_imm(b, SRC(2), 31);
+         nir_def *ones = nir_imm_int(b, 1);
+         nir_def *mask =
+            nir_ishl(b, nir_isub(b, nir_ishl(b, ones, width), ones), offset);
+         nir_def *ins = nir_iand(b, nir_ishl(b, SRC(3), offset), mask);
+         nir_def *base = nir_iand(b, SRC(4), nir_inot(b, mask));
+         DST(nir_ior(b, ins, base));
+         break;
+      }
+
+      case D12_DXBC_OP_UBFE:
+      case D12_DXBC_OP_IBFE: {
+         NEED(4);
+         nir_def *width = nir_iand_imm(b, SRC(1), 31);
+         nir_def *offset = nir_iand_imm(b, SRC(2), 31);
+         DST(opcode == D12_DXBC_OP_UBFE
+                ? nir_ubitfield_extract(b, SRC(3), offset, width)
+                : nir_ibitfield_extract(b, SRC(3), offset, width));
+         break;
+      }
+
+      case D12_DXBC_OP_RCP:       NEED(2); DST(nir_frcp(b, SRC(1))); break;
+      case D12_DXBC_OP_COUNTBITS: NEED(2); DST(nir_bit_count(b, SRC(1))); break;
+      case D12_DXBC_OP_BFREV:     NEED(2); DST(nir_bitfield_reverse(b, SRC(1))); break;
+      case D12_DXBC_OP_UMAD:      NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
+      case D12_DXBC_OP_UDIV:      NEED(4); DST(nir_udiv(b, SRC(2), SRC(3))); break;
+      case D12_DXBC_OP_UMUL:      NEED(4); DST(nir_imul(b, SRC(2), SRC(3))); break;
+      case D12_DXBC_OP_NOP:       break;
+
+      /*
+       * STRUCTURED CONTROL FLOW. The opcode's control bits say whether
+       * the test is "non-zero" or "zero"; bit 18 carries it.
+       */
+      case D12_DXBC_OP_IF: {
+         NEED(1);
+         if (ctx->cf_depth >= ARRAY_SIZE(ctx->cf)) {
+            fail(ctx, "control flow nested too deeply");
+            return;
+         }
+         bool test_zero = !((op_tok >> 18) & 1);
+         nir_def *c = nir_channel(b, SRC(0), 0);
+         nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
+         ctx->cf[ctx->cf_depth].is_loop = false;
+         ctx->cf[ctx->cf_depth].in_else = false;
+         ctx->cf_depth++;
+         break;
+      }
+
+      case D12_DXBC_OP_ELSE:
+         if (!ctx->cf_depth || ctx->cf[ctx->cf_depth - 1].is_loop) {
+            fail(ctx, "else outside an if");
+            return;
+         }
+         nir_push_else(b, NULL);
+         ctx->cf[ctx->cf_depth - 1].in_else = true;
+         break;
+
+      case D12_DXBC_OP_ENDIF:
+         if (!ctx->cf_depth || ctx->cf[ctx->cf_depth - 1].is_loop) {
+            fail(ctx, "endif outside an if");
+            return;
+         }
+         nir_pop_if(b, NULL);
+         ctx->cf_depth--;
+         break;
+
+      case D12_DXBC_OP_LOOP:
+         if (ctx->cf_depth >= ARRAY_SIZE(ctx->cf)) {
+            fail(ctx, "control flow nested too deeply");
+            return;
+         }
+         nir_push_loop(b);
+         ctx->cf[ctx->cf_depth].is_loop = true;
+         ctx->cf[ctx->cf_depth].in_else = false;
+         ctx->cf_depth++;
+         break;
+
+      case D12_DXBC_OP_ENDLOOP:
+         if (!ctx->cf_depth || !ctx->cf[ctx->cf_depth - 1].is_loop) {
+            fail(ctx, "endloop outside a loop");
+            return;
+         }
+         nir_pop_loop(b, NULL);
+         ctx->cf_depth--;
+         break;
+
+      case D12_DXBC_OP_BREAK:
+         nir_jump(b, nir_jump_break);
+         break;
+
+      case D12_DXBC_OP_CONTINUE:
+         nir_jump(b, nir_jump_continue);
+         break;
+
+      case D12_DXBC_OP_BREAKC:
+      case D12_DXBC_OP_CONTINUEC: {
+         NEED(1);
+         bool test_zero = !((op_tok >> 18) & 1);
+         nir_def *c = nir_channel(b, SRC(0), 0);
+         nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
+         nir_jump(b, opcode == D12_DXBC_OP_BREAKC ? nir_jump_break
+                                                  : nir_jump_continue);
+         nir_pop_if(b, NULL);
+         break;
+      }
+
+      case D12_DXBC_OP_DISCARD: {
+         NEED(1);
+         bool test_zero = !((op_tok >> 18) & 1);
+         nir_def *c = nir_channel(b, SRC(0), 0);
+         nir_discard_if(b, test_zero ? nir_ieq_imm(b, c, 0)
+                                     : nir_ine_imm(b, c, 0));
+         b->shader->info.fs.uses_discard = true;
+         break;
+      }
 
       case D12_DXBC_OP_RET:
          /* Falls out of the shader; NIR's implicit return handles it. */
