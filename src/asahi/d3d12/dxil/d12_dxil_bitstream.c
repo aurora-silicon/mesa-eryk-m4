@@ -179,6 +179,64 @@ d12_dxil_container_stage(const void *data, size_t size_B,
 }
 
 /*
+ * The raw DXIL shader kind, for callers that need to tell "no DXIL part"
+ * from "a kind with no Mesa stage". Returning only a mapped stage was how
+ * library and mesh shaders silently compiled as FRAGMENT: the caller could
+ * not distinguish the two false returns, and its fallback default filled
+ * the gap.
+ */
+bool
+d12_dxil_container_kind(const void *data, size_t size_B, uint32_t *out_kind)
+{
+   const uint8_t *p = data;
+
+   if (!p || size_B < 32 || read_le32(p) != D12_DXBC_MAGIC)
+      return false;
+
+   uint32_t part_count = read_le32(p + 28);
+   if (part_count > 64 || 32 + (size_t)part_count * 4 > size_B)
+      return false;
+
+   for (uint32_t i = 0; i < part_count; i++) {
+      uint32_t off = read_le32(p + 32 + i * 4);
+      if ((size_t)off + 12 > size_B)
+         return false;
+
+      if (memcmp(p + off, "DXIL", 4) && memcmp(p + off, "ILDB", 4))
+         continue;
+
+      *out_kind = read_le32(p + off + 8) >> 16;
+      return true;
+   }
+
+   return false;
+}
+
+const char *
+d12_dxil_kind_name(uint32_t kind)
+{
+   switch (kind) {
+   case 0: return "pixel";
+   case 1: return "vertex";
+   case 2: return "geometry";
+   case 3: return "hull";
+   case 4: return "domain";
+   case 5: return "compute";
+   case 6: return "library";
+   case 7: return "ray generation";
+   case 8: return "intersection";
+   case 9: return "any hit";
+   case 10: return "closest hit";
+   case 11: return "miss";
+   case 12: return "callable";
+   case 13: return "mesh";
+   case 14: return "amplification";
+   case 15: return "node";
+   default: return "unknown";
+   }
+}
+
+/*
  * Bitstream primitives. The stream is a little-endian bit sequence; we read
  * from the low bit of each byte upward.
  */

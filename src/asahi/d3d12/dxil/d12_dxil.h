@@ -137,6 +137,9 @@ bool d12_dxil_find_bitcode(const void *data, size_t size_B,
  * Recover the shader stage from a DXBC container's DXIL program version.
  * Returns false for bare bitcode (no container to ask).
  */
+bool d12_dxil_container_kind(const void *data, size_t size_B,
+                             uint32_t *out_kind);
+const char *d12_dxil_kind_name(uint32_t kind);
 bool d12_dxil_container_stage(const void *data, size_t size_B,
                               mesa_shader_stage *out_stage);
 

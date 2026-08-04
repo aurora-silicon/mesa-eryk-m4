@@ -314,6 +314,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
+      /* Allocas live in per-thread scratch, and large shaders spill. */
+      .has_scratch = true,
       /*
        * Constant promotion parks constants in uniform registers that only
        * the shader's preamble fills. Both USC builders push a PRESHADER
@@ -464,6 +466,10 @@ compile_gfx_stage(struct d12_device *device,
       unsigned bindless_base = 0;
       NIR_PASS(_, nir, agx_nir_lower_tilebuffer, tib, NULL, &bindless_base,
                NULL, NULL);
+      /* Discards become sample_mask writes; hk orders this before the
+       * MSAA lowering for the same reason (hk_shader.c).
+       */
+      NIR_PASS(_, nir, agx_nir_lower_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa, 1);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
@@ -473,6 +479,8 @@ compile_gfx_stage(struct d12_device *device,
 
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
+      /* Allocas live in per-thread scratch, and large shaders spill. */
+      .has_scratch = true,
       /* See the compute path: promotion needs a preamble we do not bind. */
       /* See the note on the compute key above. */
       .promote_constants = false,
@@ -657,6 +665,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    struct agx_shader_key prolog_backend_key = {
       .dev = agx_gather_device_key(&device->dev),
+      /* Allocas live in per-thread scratch, and large shaders spill. */
+      .has_scratch = true,
       .secondary = true,
       .no_stop = true,
    };

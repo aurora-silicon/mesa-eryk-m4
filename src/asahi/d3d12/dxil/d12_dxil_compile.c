@@ -18,6 +18,7 @@
 #include "agx_tilebuffer.h"
 #include "agx_uvs.h"
 #include "disasm.h"
+#include "compiler/glsl_types.h"
 #include "nir.h"
 
 static const char *
@@ -80,6 +81,12 @@ main(int argc, char **argv)
       return 2;
    }
 
+   /* The driver gets this from agx_open_device; a tool with no device
+    * must do it itself before anything touches glsl types (scratch and
+    * shared-memory lowering both do).
+    */
+   glsl_type_singleton_init_or_ref();
+
    FILE *f = fopen(path, "rb");
    if (!f) {
       fprintf(stderr, "cannot open %s\n", path);
@@ -106,9 +113,32 @@ main(int argc, char **argv)
       return 1;
    }
 
+   /* The container names its stage; honour it or refuse. Defaulting on
+    * an unmappable kind is how a mesh shader once "passed" as a fragment
+    * shader.
+    */
    mesa_shader_stage container_stage;
-   if (!stage_forced && d12_dxil_container_stage(data, size, &container_stage))
-      stage = container_stage;
+   if (!stage_forced) {
+      if (d12_dxil_container_stage(data, size, &container_stage)) {
+         stage = container_stage;
+      } else {
+         uint32_t kind;
+         if (d12_dxil_container_kind(data, size, &kind)) {
+            fprintf(stderr, "%s: unsupported shader kind %u (%s)\n", path,
+                    kind, d12_dxil_kind_name(kind));
+            return 1;
+         }
+         fprintf(stderr, "%s: container does not declare a stage\n", path);
+         return 1;
+      }
+   }
+
+   if (stage != MESA_SHADER_FRAGMENT && stage != MESA_SHADER_VERTEX &&
+       stage != MESA_SHADER_COMPUTE) {
+      fprintf(stderr, "%s: stage %s has no AGX backing here\n", path,
+              _mesa_shader_stage_to_string(stage));
+      return 1;
+   }
 
    /* 2. bitcode -> module */
    struct d12_module mod;
@@ -162,6 +192,10 @@ main(int argc, char **argv)
       unsigned bindless_base = 0;
       NIR_PASS(_, nir, agx_nir_lower_tilebuffer, &tib, NULL, &bindless_base,
                NULL, NULL);
+      /* Discards become sample_mask writes; hk orders this before the
+       * MSAA lowering for the same reason (hk_shader.c).
+       */
+      NIR_PASS(_, nir, agx_nir_lower_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa, 1);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);

@@ -100,6 +100,17 @@ enum d12_dxop {
     */
    D12_DXOP_UNPACK4X8 = 219,
    D12_DXOP_PACK4X8 = 220,
+   D12_DXOP_MSAD = 50,
+   D12_DXOP_DISCARD = 82,
+   D12_DXOP_BARRIER = 80,
+   D12_DXOP_SAMPLE_INDEX = 90,
+   D12_DXOP_COVERAGE = 91,
+   D12_DXOP_PRIMITIVE_ID = 108,
+   D12_DXOP_VIEW_ID = 138,
+   D12_DXOP_LEGACY_F32TOF16 = 130,
+   D12_DXOP_LEGACY_F16TOF32 = 131,
+   D12_DXOP_QUAD_READ_LANE_AT = 122,
+   D12_DXOP_QUAD_OP = 123,
    D12_DXOP_THREAD_ID = 93,
    D12_DXOP_GROUP_ID = 94,
    D12_DXOP_THREAD_ID_IN_GROUP = 95,
@@ -181,8 +192,32 @@ struct trans_ctx {
     */
    nir_def **phi_reg;
 
+   /*
+    * Groupshared globals and allocas, modelled as byte offsets into two
+    * flat memories. A pointer value is (space, constant base) plus an
+    * optional dynamic part in defs[] -- a GEP whose indices are all
+    * constant never materializes an instruction, and the constant part
+    * rides in the load/store's immediate base where the backend can fold
+    * it.
+    */
+   /* value index -> the base slot of the RANGE a dynamic handle indexes
+    * into, for stride/kind lookup (~0 = not a handle). A handle's def is
+    * its slot number; for a constant handle the def alone suffices.
+    */
+   uint32_t *handle_base;
+
+   uint8_t *ptr_space;      /* value index -> D12_PTR_*, 0 = not a pointer */
+   uint32_t *ptr_base;      /* value index -> constant byte offset */
+   uint32_t *ptr_pointee;   /* value index -> type the pointer points at */
+   uint32_t shared_size;    /* bytes of groupshared assigned so far */
+   uint32_t scratch_size;   /* bytes of per-thread scratch assigned so far */
+
    const char *error;
 };
+
+#define D12_PTR_NONE    0
+#define D12_PTR_SHARED  1
+#define D12_PTR_SCRATCH 2
 
 static void trans_fail(struct trans_ctx *ctx, const char *msg);
 static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
@@ -521,6 +556,150 @@ get_def(struct trans_ctx *ctx, uint32_t value_index)
 }
 
 /* Constant integer operand (for dx.op opcodes, signature indices, etc.) */
+/*
+ * Natural (LLVM datalayout) size and alignment of a type as laid out in
+ * groupshared or scratch memory. Returns false for types that have no
+ * memory layout here.
+ */
+static bool
+type_size_align(const struct d12_module *mod, uint32_t type,
+                uint32_t *out_size, uint32_t *out_align)
+{
+   if (type >= mod->num_types)
+      return false;
+
+   const struct d12_type *t = &mod->types[type];
+   switch (t->kind) {
+   case D12_TYPE_INTEGER:
+      if (t->int_bits != 8 && t->int_bits != 16 && t->int_bits != 32 &&
+          t->int_bits != 64)
+         return false;
+      *out_size = *out_align = t->int_bits / 8;
+      return true;
+   case D12_TYPE_HALF:
+      *out_size = *out_align = 2;
+      return true;
+   case D12_TYPE_FLOAT:
+      *out_size = *out_align = 4;
+      return true;
+   case D12_TYPE_DOUBLE:
+      *out_size = *out_align = 8;
+      return true;
+   case D12_TYPE_ARRAY:
+   case D12_TYPE_VECTOR: {
+      uint32_t es, ea;
+      if (!type_size_align(mod, t->seq.elem, &es, &ea))
+         return false;
+      *out_size = es * (uint32_t)t->seq.count;
+      *out_align = ea;
+      /* LLVM vectors align to their full size rounded up to a power of
+       * two; arrays align to the element.
+       */
+      if (t->kind == D12_TYPE_VECTOR)
+         *out_align = util_next_power_of_two(*out_size);
+      return true;
+   }
+   case D12_TYPE_STRUCT_ANON:
+   case D12_TYPE_STRUCT_NAMED: {
+      uint32_t off = 0, align = 1;
+      for (unsigned i = 0; i < t->strct.num_members; i++) {
+         uint32_t ms, ma;
+         if (!type_size_align(mod, t->strct.members[i], &ms, &ma))
+            return false;
+         off = ALIGN_POT(off, ma) + ms;
+         align = MAX2(align, ma);
+      }
+      *out_size = ALIGN_POT(off, align);
+      *out_align = align;
+      return true;
+   }
+   default:
+      return false;
+   }
+}
+
+/* Byte offset of struct member `index`, by the same layout rule. */
+static bool
+struct_member_offset(const struct d12_module *mod, const struct d12_type *t,
+                     unsigned index, uint32_t *out_off, uint32_t *out_type)
+{
+   if (index >= t->strct.num_members)
+      return false;
+
+   uint32_t off = 0;
+   for (unsigned i = 0; i <= index; i++) {
+      uint32_t ms, ma;
+      if (!type_size_align(mod, t->strct.members[i], &ms, &ma))
+         return false;
+      off = ALIGN_POT(off, ma);
+      if (i == index) {
+         *out_off = off;
+         *out_type = t->strct.members[i];
+         return true;
+      }
+      off += ms;
+   }
+   return false;
+}
+
+/*
+ * Resolve a value as a pointer, assigning a groupshared global its home on
+ * first use. Assignment order is first-use order, which is deterministic
+ * for a given module. Only the space/base/pointee tables are written --
+ * nothing is emitted, so this is safe under any control flow.
+ */
+static uint8_t
+pointer_for_value(struct trans_ctx *ctx, uint32_t id)
+{
+   if (id >= ctx->mod->num_values)
+      return D12_PTR_NONE;
+   if (ctx->ptr_space[id] != D12_PTR_NONE)
+      return ctx->ptr_space[id];
+
+   const struct d12_value *v = &ctx->mod->values[id];
+   if (v->kind != D12_VALUE_GLOBAL ||
+       v->addr_space != D12_ADDR_SPACE_GROUPSHARED)
+      return D12_PTR_NONE;
+
+   uint32_t size, align;
+   if (!type_size_align(ctx->mod, v->type, &size, &align))
+      return D12_PTR_NONE;
+
+   ctx->shared_size = ALIGN_POT(ctx->shared_size, align);
+   ctx->ptr_space[id] = D12_PTR_SHARED;
+   ctx->ptr_base[id] = ctx->shared_size;
+   /* A global's recorded type IS the pointee (see struct d12_value). */
+   ctx->ptr_pointee[id] = v->type;
+   ctx->shared_size += size;
+   return D12_PTR_SHARED;
+}
+
+/* NIR component shape for a loaded/stored type. */
+static bool
+memory_value_shape(const struct d12_module *mod, uint32_t type,
+                   unsigned *out_comps, unsigned *out_bits)
+{
+   if (type >= mod->num_types)
+      return false;
+
+   const struct d12_type *t = &mod->types[type];
+   if (t->kind == D12_TYPE_VECTOR) {
+      unsigned bits = type_bit_size(mod, t->seq.elem);
+      if (!bits)
+         return false;
+      *out_comps = (unsigned)t->seq.count;
+      *out_bits = bits;
+      return true;
+   }
+
+   unsigned bits = type_bit_size(mod, type);
+   if (!bits || bits == 1)
+      return false;
+   *out_comps = 1;
+   *out_bits = bits;
+   return true;
+}
+
 static bool
 const_uint(struct trans_ctx *ctx, uint32_t value_index, uint64_t *out)
 {
@@ -540,6 +719,38 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 {
    if (inst->result_value < ctx->mod->num_values)
       ctx->defs[inst->result_value] = def;
+}
+
+/*
+ * Resolve a handle operand to (slot def, info slot). The def carries the
+ * slot number and may be dynamic; the info slot names a slot whose
+ * stride/kind describe the access, which is the range's base for a
+ * dynamic handle -- every slot in a range shares them, because they come
+ * from one dx.resources record.
+ */
+static bool
+handle_info(struct trans_ctx *ctx, uint32_t value_id, nir_def **out_def,
+            unsigned *out_info_slot)
+{
+   nir_def *def = get_def(ctx, value_id);
+   if (!def)
+      return false;
+
+   if (nir_src_is_const(nir_src_for_ssa(def))) {
+      *out_def = def;
+      *out_info_slot = nir_src_as_uint(nir_src_for_ssa(def));
+      return true;
+   }
+
+   if (value_id < ctx->mod->num_values &&
+       ctx->handle_base[value_id] != ~0u) {
+      *out_def = def;
+      *out_info_slot = ctx->handle_base[value_id];
+      return true;
+   }
+
+   trans_fail(ctx, "handle is dynamic but names no resource range");
+   return false;
 }
 
 /*
@@ -563,26 +774,31 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
  * element 3 read from byte 12 instead of byte 36.
  */
 static nir_def *
-resource_address(struct trans_ctx *ctx, unsigned slot, nir_def *coord0,
-                 nir_def *coord1, bool raw_op)
+resource_address(struct trans_ctx *ctx, nir_def *slot_def,
+                 unsigned info_slot, nir_def *coord0, nir_def *coord1,
+                 bool raw_op)
 {
    nir_builder *b = ctx->b;
 
-   if (slot >= D12_MAX_RESOURCE_BINDINGS) {
+   if (info_slot >= D12_MAX_RESOURCE_BINDINGS) {
       trans_fail(ctx, "resource binding index out of range");
       return nir_imm_int64(b, 0);
    }
 
    /* One indirection through the root table. load_root_agx is a
-    * placeholder lowered to a uniform read after preprocessing.
+    * placeholder lowered to a uniform read after preprocessing. The slot
+    * may be a runtime value (a resource array indexed by a computed
+    * value); constant folding collapses the multiply for the common
+    * constant case.
     */
    nir_def *root = nir_load_root_agx(b);
-   nir_def *base = nir_load_global(b, 1, 64,
-                                   nir_iadd_imm(b, root, slot * 8),
-                                   .align_mul = 8);
+   nir_def *base = nir_load_global(
+      b, 1, 64,
+      nir_iadd(b, root, nir_imul_imm(b, nir_u2u64(b, slot_def), 8)),
+      .align_mul = 8);
 
-   const uint32_t kind = ctx->slot_kind[slot];
-   const uint32_t stride = ctx->slot_stride[slot];
+   const uint32_t kind = ctx->slot_kind[info_slot];
+   const uint32_t stride = ctx->slot_stride[info_slot];
 
    /* rawBufferLoad/Store are byte-addressed whatever the shape is. */
    bool structured =
@@ -977,8 +1193,60 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
       if (!const_uint(ctx, p[2], &index)) {
-         trans_fail(ctx, "dynamic resource array index unsupported");
-         return false;
+         /* A resource array indexed by a computed value. The range's
+          * registers map to consecutive slots, so the handle is
+          * base_slot + (index - lower_bound); DXC's index operand is the
+          * absolute shader register (it emits the add against the array
+          * base itself).
+          */
+         const struct d12_resource_binding *rb = NULL;
+         for (unsigned i = 0; i < ctx->mod->num_resources; i++) {
+            const struct d12_resource_binding *cand =
+               &ctx->mod->resources[i];
+            if (cand->klass == klass && cand->id == range_id) {
+               rb = cand;
+               break;
+            }
+         }
+         if (!rb) {
+            trans_fail(ctx, "dynamic index into an undeclared range");
+            return false;
+         }
+
+         unsigned count = d12_range_count(rb);
+         if (!count) {
+            trans_fail(ctx, "unbounded resource array (bindless) "
+                            "unsupported");
+            return false;
+         }
+
+         unsigned base_slot = d12_binding_map_find(
+            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
+         unsigned last_slot = d12_binding_map_find(
+            ctx->map, (unsigned)klass, rb->space,
+            rb->lower_bound + count - 1);
+         if (base_slot == ~0u || last_slot != base_slot + count - 1) {
+            /* The stride/kind shortcut and the slot arithmetic both
+             * assume the range is contiguous in slot space. The map
+             * assigns ranges densely, so this only trips if that ever
+             * changes -- and must trip rather than address the wrong
+             * resource.
+             */
+            trans_fail(ctx, "resource range is not contiguous in slots");
+            return false;
+         }
+
+         nir_def *idx = get_def(ctx, p[2]);
+         if (!idx)
+            return false;
+
+         nir_def *slot_def = nir_iadd_imm(
+            b, nir_iadd_imm(b, nir_u2u32(b, idx), -(int)rb->lower_bound),
+            base_slot);
+
+         ctx->handle_base[inst->result_value] = base_slot;
+         def_result(ctx, inst, slot_def);
+         return true;
       }
 
       unsigned slot;
@@ -999,12 +1267,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(6);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant resource handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
 
       uint64_t dx_op = 0;
       if (!const_uint(ctx, p[1], &dx_op)) {
@@ -1028,7 +1294,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      nir_def *addr = resource_address(ctx, slot, get_def(ctx, p[2]),
+      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+                                       get_def(ctx, p[2]),
                                        get_def(ctx, p[3]), false);
       def_result(ctx, inst,
                  nir_global_atomic(b, 32, addr, get_def(ctx, p[5]),
@@ -1040,14 +1307,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, offset0, offset1, offset2, compareValue, newValue) */
       NEED(6);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant resource handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
 
-      nir_def *addr = resource_address(ctx, slot, get_def(ctx, p[1]),
+      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+                                       get_def(ctx, p[1]),
                                        get_def(ctx, p[2]), false);
       def_result(ctx, inst,
                  nir_global_atomic_swap(b, 32, addr, get_def(ctx, p[4]),
@@ -1067,12 +1333,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(4);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!handle || !nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant texture handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned slot = nir_src_as_uint(nir_src_for_ssa(handle));
 
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
@@ -1083,11 +1347,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *lod = get_def(ctx, p[1]);
       if (getenv("D3D12AGX_DUMP_TEX")) {
-         fprintf(stderr, "textureLoad: slot=%u num_ops=%u lod=%s\n", slot,
-                 inst->num_ops, lod ? "yes" : "no");
+         fprintf(stderr, "textureLoad: info_slot=%u num_ops=%u lod=%s\n",
+                 info_slot, inst->num_ops, lod ? "yes" : "no");
       }
       nir_def *tex_handle = nir_bindless_image_agx(
-         b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+         b, nir_imul_imm(b, slot_def, D12_TEXTURE_DESC_SIZE),
          .desc_set = D12_UNIFORM_TEXTURES);
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
@@ -1109,6 +1373,125 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       def_result(ctx, inst, &tex->def);
       return true;
+   }
+
+   case D12_DXOP_MSAD: {
+      /* dx.op.tertiary.i32(50): masked sum of absolute differences.
+       * NIR has the exact operation.
+       */
+      NEED(3);
+      def_result(ctx, inst,
+                 nir_msad_4x8(b, get_def(ctx, p[0]), get_def(ctx, p[1]),
+                              get_def(ctx, p[2])));
+      return true;
+   }
+
+   case D12_DXOP_DISCARD: {
+      /* (condition i1). demote rather than terminate: helpers stay alive
+       * for derivatives, matching D3D's discard semantics. The AGX
+       * backend consumes this only after agx_nir_lower_sample_mask.
+       */
+      NEED(1);
+      nir_demote_if(b, to_bool(ctx, get_def(ctx, p[0])));
+      return true;
+   }
+
+   case D12_DXOP_BARRIER: {
+      /* (mode i32 const): bit 0 sync group, bit 1 UAV global fence,
+       * bit 2 UAV group fence, bit 3 groupshared fence. From DXIL.rst's
+       * BarrierMode, mirrored in DirectXShaderCompiler's DxilConstants.h.
+       */
+      NEED(1);
+      uint64_t mode = 0;
+      if (!const_uint(ctx, p[0], &mode)) {
+         trans_fail(ctx, "non-constant barrier mode");
+         return false;
+      }
+
+      nir_variable_mode modes = 0;
+      if (mode & 0x2)
+         modes |= nir_var_mem_global | nir_var_image;
+      if (mode & 0x4)
+         modes |= nir_var_mem_global | nir_var_image;
+      if (mode & 0x8)
+         modes |= nir_var_mem_shared;
+
+      nir_barrier(b,
+                  .execution_scope = (mode & 0x1) ? SCOPE_WORKGROUP
+                                                  : SCOPE_NONE,
+                  .memory_scope = (mode & 0x2) ? SCOPE_DEVICE
+                                               : SCOPE_WORKGROUP,
+                  .memory_semantics = NIR_MEMORY_ACQ_REL,
+                  .memory_modes = modes);
+      return true;
+   }
+
+   case D12_DXOP_SAMPLE_INDEX:
+      def_result(ctx, inst, nir_load_sample_id(b));
+      return true;
+
+   case D12_DXOP_COVERAGE:
+      def_result(ctx, inst, nir_load_sample_mask_in(b));
+      return true;
+
+   case D12_DXOP_PRIMITIVE_ID:
+      def_result(ctx, inst, nir_load_primitive_id(b));
+      return true;
+
+   case D12_DXOP_VIEW_ID:
+      /* View instancing is not exposed (CheckFeatureSupport reports no
+       * tiers), so every view a shader can run in is view 0. This is the
+       * true value, not a placeholder.
+       */
+      def_result(ctx, inst, nir_imm_int(b, 0));
+      return true;
+
+   case D12_DXOP_LEGACY_F32TOF16: {
+      /* f32tof16 returns the half in the LOW 16 bits of a u32. Packing
+       * against a zero high half gives exactly that.
+       */
+      NEED(1);
+      def_result(ctx, inst,
+                 nir_pack_half_2x16_split(b, get_def(ctx, p[0]),
+                                          nir_imm_float(b, 0.0f)));
+      return true;
+   }
+
+   case D12_DXOP_LEGACY_F16TOF32:
+      NEED(1);
+      def_result(ctx, inst,
+                 nir_channel(b, nir_unpack_half_2x16(b, get_def(ctx, p[0])),
+                             0));
+      return true;
+
+   case D12_DXOP_QUAD_READ_LANE_AT: {
+      NEED(2);
+      def_result(ctx, inst,
+                 nir_quad_broadcast(b, get_def(ctx, p[0]),
+                                    get_def(ctx, p[1])));
+      return true;
+   }
+
+   case D12_DXOP_QUAD_OP: {
+      /* (value, op): 0 across X, 1 across Y, 2 diagonal, from DXIL.rst's
+       * QuadOpKind.
+       */
+      NEED(2);
+      uint64_t qop = 0;
+      if (!const_uint(ctx, p[1], &qop)) {
+         trans_fail(ctx, "non-constant quad op kind");
+         return false;
+      }
+
+      nir_def *v = get_def(ctx, p[0]);
+      switch (qop) {
+      case 0: def_result(ctx, inst, nir_quad_swap_horizontal(b, v)); return true;
+      case 1: def_result(ctx, inst, nir_quad_swap_vertical(b, v)); return true;
+      case 2: def_result(ctx, inst, nir_quad_swap_diagonal(b, v)); return true;
+      default:
+         trans_fail(ctx, "unknown quad op kind");
+         return false;
+      }
    }
 
    case D12_DXOP_WAVE_GET_LANE_INDEX:
@@ -1203,6 +1586,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * 334 shaders -- for what amounts to a rename.
        */
       NEED(1);
+      if (p[0] < ctx->mod->num_values &&
+          inst->result_value < ctx->mod->num_values)
+         ctx->handle_base[inst->result_value] = ctx->handle_base[p[0]];
       def_result(ctx, inst, get_def(ctx, p[0]));
       return true;
    }
@@ -1259,16 +1645,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(2);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant cbuffer handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
 
       /* Rows are 16 bytes; the row index scales, no second coordinate. */
       nir_def *offset = nir_imul_imm(b, get_def(ctx, p[1]), 16);
-      nir_def *addr = resource_address(ctx, binding, offset,
+      nir_def *addr = resource_address(ctx, slot_def, info_slot, offset,
                                        nir_imm_int(b, 0), true);
 
       def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 16));
@@ -1291,12 +1675,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(3);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant cbuffer handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
 
       unsigned bits = type_bit_size(ctx->mod, inst->result_type);
 
@@ -1309,7 +1691,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           align > 16)
          align = bits / 8;
 
-      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+                                       get_def(ctx, p[1]),
                                        nir_imm_int(b, 0), true);
 
       def_result(ctx, inst,
@@ -1322,18 +1705,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, coord0, coord1, val0..val3, mask [, align]) */
       NEED(8);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant resource handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
 
       uint64_t mask = 0;
       if (!const_uint(ctx, p[7], &mask))
          mask = 0xf;
 
-      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+                                       get_def(ctx, p[1]),
                                        get_def(ctx, p[2]),
                                        opcode == D12_DXOP_RAW_BUFFER_STORE);
 
@@ -1357,14 +1739,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, coord0, coord1 [, mask, align]) */
       NEED(3);
 
-      nir_def *handle = get_def(ctx, p[0]);
-      if (!nir_src_is_const(nir_src_for_ssa(handle))) {
-         trans_fail(ctx, "non-constant resource handle unsupported");
+      nir_def *slot_def;
+      unsigned info_slot;
+      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
          return false;
-      }
-      unsigned binding = nir_src_as_uint(nir_src_for_ssa(handle));
 
-      nir_def *addr = resource_address(ctx, binding, get_def(ctx, p[1]),
+      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+                                       get_def(ctx, p[1]),
                                        get_def(ctx, p[2]),
                                        opcode == D12_DXOP_RAW_BUFFER_LOAD);
 
@@ -1578,6 +1959,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    nir_builder b = nir_builder_init_simple_shader(stage, &agx_nir_options,
                                                   "dxil");
 
+   /* These are application shaders. The builder marks its shaders
+    * internal, and the AGX backend treats internal shaders to a scratch
+    * optimization pass pair that leaves small arrays as variable derefs
+    * it then cannot emit.
+    */
+   b.shader->info.internal = false;
+
    struct trans_ctx ctx = {
       .mod = mod,
       .map = map,
@@ -1588,10 +1976,21 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
    ctx.defs = calloc(mod->num_values, sizeof(*ctx.defs));
    ctx.phi_reg = calloc(mod->num_values, sizeof(*ctx.phi_reg));
-   if (!ctx.defs || !ctx.phi_reg) {
+   ctx.ptr_space = calloc(mod->num_values, sizeof(*ctx.ptr_space));
+   ctx.ptr_base = calloc(mod->num_values, sizeof(*ctx.ptr_base));
+   ctx.ptr_pointee = calloc(mod->num_values, sizeof(*ctx.ptr_pointee));
+   ctx.handle_base = malloc(mod->num_values * sizeof(*ctx.handle_base));
+   if (ctx.handle_base)
+      memset(ctx.handle_base, 0xff, mod->num_values * sizeof(*ctx.handle_base));
+   if (!ctx.defs || !ctx.phi_reg || !ctx.ptr_space || !ctx.ptr_base ||
+       !ctx.ptr_pointee || !ctx.handle_base) {
       *error = "out of memory";
       free(ctx.defs);
       free(ctx.phi_reg);
+      free(ctx.ptr_space);
+      free(ctx.ptr_base);
+      free(ctx.ptr_pointee);
+      free(ctx.handle_base);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -1644,6 +2043,11 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    if (num_blocks > D12_MAX_BLOCKS) {
       *error = "function has too many basic blocks";
       free(ctx.defs);
+      free(ctx.phi_reg);
+      free(ctx.ptr_space);
+      free(ctx.ptr_base);
+      free(ctx.ptr_pointee);
+      free(ctx.handle_base);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -1775,13 +2179,12 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          translate_select(&ctx, inst);
          break;
 
-      case D12_FUNC_INST_LOAD:
+      case D12_FUNC_INST_LOAD: {
          /* SM 6.x reaches a resource by loading the global that stands
           * for it and converting the result with createHandleForLib. The
           * load itself carries no data: its value IS the resource, so it
           * resolves to that resource's binding slot exactly as
-          * createHandle does. A load of anything else is real memory
-          * traffic we do not implement, and says so.
+          * createHandle does.
           */
          if (inst->num_ops >= 1) {
             unsigned slot = resource_slot_for_global(&ctx, inst->ops[0]);
@@ -1790,9 +2193,196 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                break;
             }
          }
-         trans_fail(&ctx, "load from memory (groupshared or local) "
-                          "unsupported");
+
+         /* Otherwise it is real memory traffic: groupshared or scratch. */
+         uint8_t space = inst->num_ops >= 1
+                            ? pointer_for_value(&ctx, inst->ops[0])
+                            : D12_PTR_NONE;
+         if (space == D12_PTR_NONE) {
+            trans_fail(&ctx, "load from memory that is neither groupshared "
+                             "nor local");
+            break;
+         }
+
+         unsigned comps, bits;
+         if (!memory_value_shape(mod, inst->result_type, &comps, &bits)) {
+            trans_fail(&ctx, "loaded type has no memory shape");
+            break;
+         }
+
+         uint32_t base = ctx.ptr_base[inst->ops[0]];
+         nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (!dyn)
+            dyn = nir_imm_int(&b, 0);
+
+         nir_def *val;
+         if (space == D12_PTR_SHARED) {
+            val = nir_load_shared(&b, comps, bits, dyn, .base = base,
+                                  .align_mul = bits / 8);
+         } else {
+            val = nir_load_scratch(&b, comps, bits,
+                                   nir_iadd_imm(&b, dyn, base),
+                                   .align_mul = bits / 8);
+         }
+         def_result(&ctx, inst, val);
          break;
+      }
+
+      case D12_FUNC_INST_STORE: {
+         /* [ptr, value] */
+         if (inst->num_ops < 2) {
+            trans_fail(&ctx, "malformed store");
+            break;
+         }
+
+         uint8_t space = pointer_for_value(&ctx, inst->ops[0]);
+         if (space == D12_PTR_NONE) {
+            trans_fail(&ctx, "store to memory that is neither groupshared "
+                             "nor local");
+            break;
+         }
+
+         nir_def *val = get_def(&ctx, inst->ops[1]);
+         if (!val) {
+            trans_fail(&ctx, "stored value is not available");
+            break;
+         }
+
+         uint32_t base = ctx.ptr_base[inst->ops[0]];
+         nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (!dyn)
+            dyn = nir_imm_int(&b, 0);
+
+         if (space == D12_PTR_SHARED) {
+            nir_store_shared(&b, val, dyn, .base = base,
+                             .write_mask = BITFIELD_MASK(val->num_components),
+                             .align_mul = val->bit_size / 8);
+         } else {
+            nir_store_scratch(&b, val, nir_iadd_imm(&b, dyn, base),
+                              .write_mask =
+                                 BITFIELD_MASK(val->num_components),
+                              .align_mul = val->bit_size / 8);
+         }
+         break;
+      }
+
+      case D12_FUNC_INST_ALLOCA: {
+         /* LLVM 3.7's ALLOCA record names the ALLOCATED type directly
+          * (BitcodeWriter pushes getAllocatedType), so the recorded type
+          * is the object itself; carve it out of per-thread scratch. DXC
+          * emits allocas only in the entry block with constant sizes, so
+          * a running total is a correct allocator. Accept a pointer too,
+          * in case a different writer recorded the result type instead.
+          */
+         if (inst->result_type >= mod->num_types) {
+            trans_fail(&ctx, "alloca with no type");
+            break;
+         }
+
+         uint32_t pointee =
+            mod->types[inst->result_type].kind == D12_TYPE_POINTER
+               ? mod->types[inst->result_type].ptr.pointee
+               : inst->result_type;
+         uint32_t size, align;
+         if (!type_size_align(mod, pointee, &size, &align)) {
+            trans_fail(&ctx, "alloca of a type with no memory layout");
+            break;
+         }
+
+         ctx.scratch_size = ALIGN_POT(ctx.scratch_size, align);
+         ctx.ptr_space[inst->result_value] = D12_PTR_SCRATCH;
+         ctx.ptr_base[inst->result_value] = ctx.scratch_size;
+         ctx.ptr_pointee[inst->result_value] = pointee;
+         ctx.scratch_size += size;
+         break;
+      }
+
+      case D12_FUNC_INST_GEP:
+      case D12_FUNC_INST_GEP_OLD: {
+         /* [ptr, idx...]: byte arithmetic over the pointee layout. The
+          * result inherits the pointer's space; constant index chains
+          * stay constant.
+          */
+         if (inst->num_ops < 2) {
+            trans_fail(&ctx, "malformed getelementptr");
+            break;
+         }
+
+         uint32_t ptr_id = inst->ops[0];
+         uint8_t space = pointer_for_value(&ctx, ptr_id);
+         if (space == D12_PTR_NONE) {
+            trans_fail(&ctx, "getelementptr on a non-memory pointer");
+            break;
+         }
+
+         uint32_t base = ctx.ptr_base[ptr_id];
+         nir_def *dyn = ctx.defs[ptr_id];
+         uint32_t cur = ctx.ptr_pointee[ptr_id];
+         bool ok = true;
+
+         for (unsigned i = 1; i < inst->num_ops && ok; i++) {
+            /* Index 1 strides over the whole pointee; later indices step
+             * into it.
+             */
+            uint32_t stride, walk_align, next = cur;
+
+            if (i == 1) {
+               ok = type_size_align(mod, cur, &stride, &walk_align);
+            } else {
+               const struct d12_type *t = &mod->types[cur];
+               if (t->kind == D12_TYPE_ARRAY || t->kind == D12_TYPE_VECTOR) {
+                  next = t->seq.elem;
+                  ok = type_size_align(mod, next, &stride, &walk_align);
+               } else if (t->kind == D12_TYPE_STRUCT_ANON ||
+                          t->kind == D12_TYPE_STRUCT_NAMED) {
+                  /* Struct indices must be constant in LLVM. */
+                  uint64_t member;
+                  uint32_t moff;
+                  if (!const_uint(&ctx, inst->ops[i], &member) ||
+                      !struct_member_offset(mod, t, (unsigned)member, &moff,
+                                            &next)) {
+                     ok = false;
+                     break;
+                  }
+                  base += moff;
+                  cur = next;
+                  continue;
+               } else {
+                  ok = false;
+                  break;
+               }
+            }
+            if (!ok)
+               break;
+
+            uint64_t const_idx;
+            if (const_uint(&ctx, inst->ops[i], &const_idx)) {
+               base += (uint32_t)const_idx * stride;
+            } else {
+               nir_def *idx = get_def(&ctx, inst->ops[i]);
+               if (!idx) {
+                  ok = false;
+                  break;
+               }
+               idx = nir_u2u32(&b, idx);
+               nir_def *scaled = nir_imul_imm(&b, idx, stride);
+               dyn = dyn ? nir_iadd(&b, dyn, scaled) : scaled;
+            }
+            cur = next;
+         }
+
+         if (!ok) {
+            trans_fail(&ctx, "getelementptr walk failed");
+            break;
+         }
+
+         ctx.ptr_space[inst->result_value] = space;
+         ctx.ptr_base[inst->result_value] = base;
+         ctx.ptr_pointee[inst->result_value] = cur;
+         if (dyn)
+            ctx.defs[inst->result_value] = dyn;
+         break;
+      }
 
       case D12_FUNC_INST_PHI:
          /* Read the register its predecessors wrote. */
@@ -1850,8 +2440,18 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                        .io_semantics.num_slots = 1);
    }
 
+   /* Sizes discovered while translating: the launch words read shared
+    * size from here, and the backend sizes its stack from scratch_size.
+    */
+   b.shader->info.shared_size = ctx.shared_size;
+   b.shader->scratch_size = ctx.scratch_size;
+
    free(ctx.defs);
    free(ctx.phi_reg);
+   free(ctx.ptr_space);
+   free(ctx.ptr_base);
+   free(ctx.ptr_pointee);
+   free(ctx.handle_base);
 
    if (ctx.error) {
       *error = ctx.error;
