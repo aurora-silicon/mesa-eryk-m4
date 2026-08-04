@@ -276,6 +276,11 @@ enum dxil_shader_tag {
    DXIL_SHADER_TAG_DS_STATE    = 2,
    DXIL_SHADER_TAG_HS_STATE    = 3,
    DXIL_SHADER_TAG_NUM_THREADS = 4,
+   /* Mesh and amplification carry their thread count INSIDE these, as
+    * operand 0 -- they do not use DXIL_SHADER_TAG_NUM_THREADS.
+    */
+   DXIL_SHADER_TAG_MS_STATE    = 9,
+   DXIL_SHADER_TAG_AS_STATE    = 10,
    DXIL_SHADER_TAG_WAVE_SIZE   = 11,
    DXIL_SHADER_TAG_WAVE_SIZE_RANGE = 23,
 };

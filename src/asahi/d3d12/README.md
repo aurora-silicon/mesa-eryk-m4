@@ -5,10 +5,10 @@ translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
 Status on `dev`: **321 of 334** corpus shaders compile, and **all fifteen
-GPU suites pass on real hardware** — the four G1-G4 milestone smokes plus
-eleven acceptance suites. **Every graphics stage that replaces fixed
-function now executes**: vertex, geometry, tessellation, mesh,
-amplification, pixel.
+GPU suites pass on real hardware, with nothing skipped, from a clean
+checkout** — the four G1-G4 milestone smokes plus eleven acceptance
+suites. **Every graphics stage that replaces fixed function now
+executes**: vertex, geometry, tessellation, mesh, amplification, pixel.
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
@@ -23,7 +23,9 @@ amplification, pixel.
   `ID3D12GraphicsCommandList6::DispatchMesh`. The first stage with no
   Honeykrisp reference: hk implements no mesh shaders, so the parameter
   block, draw-setup shader and rasterisation shader are all this
-  driver's own.
+  driver's own. Its probe is generated here too — `nir_to_dxil` gained
+  mesh and amplification support so that both suites run without the
+  LGPL corpus.
 - `g7_tessellation` — **tessellation executes**: five compute dispatches
   (software VS, hull, tessellator count, prefix sum, tessellator emit)
   and an indexed indirect draw whose index count the GPU writes. The
@@ -37,9 +39,11 @@ amplification, pixel.
 The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
-The corpus figure is a **compile** proxy. Geometry and tessellation now
-dispatch; mesh, amplification, work graphs and ray query still compile
-without executing. See `docs/roadmap.md` — that gap is the current work.
+The corpus figure is a **compile** proxy. Geometry, tessellation, mesh
+and amplification now dispatch; work graphs and ray query still compile
+without executing. The other open gap is that nothing fetches vertex
+attributes yet — every probe here derives its geometry from
+`SV_VertexID`. See `docs/roadmap.md` §1.4; that is the current work.
 
 ## Start here
 
@@ -71,9 +75,11 @@ src/asahi/d3d12/tests/run-suites.sh            # GPU acceptance suites
 src/asahi/d3d12/tests/corpus-passset.sh > now  # corpus compile proxy
 ```
 
-`tests/shaders/` holds the probe shaders — HLSL sources **and** their
-compiled DXIL, committed together because `dxc` does not run on the target
-platform. `tests/corpus/` is empty in this repository: those shaders are
+`tests/shaders/` holds the probe shaders. The older ones are HLSL sources
+**and** their compiled DXIL, committed together because `dxc` does not run
+on the target platform; the newer ones (`gs_*`, `tess_*`, `mesh_quad`,
+`as_dispatch`) are built as NIR by `tests/make_probe.c` and emitted
+through Mesa's own `nir_to_dxil`, so they need nothing but this tree. `tests/corpus/` is empty in this repository: those shaders are
 LGPL-derived from vkd3d-proton and are regenerated rather than vendored
 (see `docs/replication.md`).
 

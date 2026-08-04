@@ -18,9 +18,11 @@
  * behind any of this -- hk implements no mesh shaders -- so the ABI is
  * this driver's own.
  *
- * The mesh shader comes from the corpus: nir_to_dxil has no mesh support,
- * so unlike gs_point.dxil and tess_hs.dxil this probe cannot be
- * generated and committed. The suite takes it as an argument.
+ * The mesh shader is mesh_quad.dxil, generated from NIR by
+ * d3d12agx_make_probe and committed next to it. Generating it is what
+ * mesh support in nir_to_dxil was written for: before that this suite
+ * could only run against the LGPL corpus, and was skipped in a clean
+ * checkout.
  */
 
 #define COBJMACROS
@@ -82,8 +84,7 @@ main(int argc, char **argv)
 {
    if (argc < 3) {
       printf("usage: %s ms.dxil ps.dxil\n", argv[0]);
-      printf("       (mesh probes cannot be generated -- nir_to_dxil has\n");
-      printf("        no mesh support -- so supply a corpus mesh shader)\n");
+      printf("       (run-suites.sh passes shaders/mesh_quad.dxil)\n");
       return 77;
    }
 

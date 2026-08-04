@@ -64,28 +64,13 @@ run g6_geometry "$S/gs_input_vs.dxil" "$S/solid.dxil" "$S/gs_point.dxil" \
 run g7_tessellation "$S/gs_input_vs.dxil" "$S/solid.dxil" "$S/tess_hs.dxil" \
    "$S/tess_ds.dxil" || fails=$((fails+1))
 
-# G8 needs a MESH shader, and unlike the geometry and tessellation probes
-# one cannot be generated: nir_to_dxil has no mesh support at all. Point
-# D3D12AGX_CORPUS at a directory holding the corpus to run it. Skipped
-# LOUDLY when absent -- a suite that vanishes reads as a suite that
-# passed.
-MS="$D3D12AGX_CORPUS/ms_simple_code_dxil.dxil"
-if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$MS" ]; then
-   run g8_mesh "$MS" "$S/solid.dxil" || fails=$((fails+1))
-else
-   skips=$((skips+1))
-   printf "%-18s %s\n" "g8_mesh" \
-      "SKIPPED - set D3D12AGX_CORPUS (no mesh probe can be generated)"
-fi
+# G8 and G9 run against generated probes too. Mesh and amplification
+# support in nir_to_dxil was written for exactly this: before it, no mesh
+# probe could be built and both suites were gated on the LGPL corpus.
+run g8_mesh "$S/mesh_quad.dxil" "$S/solid.dxil" || fails=$((fails+1))
 
-AS="$D3D12AGX_CORPUS/as_simple_code_dxil.dxil"
-if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$AS" ] && [ -f "$MS" ]; then
-   run g9_amplification "$AS" "$MS" "$S/solid.dxil" || fails=$((fails+1))
-else
-   skips=$((skips+1))
-   printf "%-18s %s\n" "g9_amplification" \
-      "SKIPPED - set D3D12AGX_CORPUS (no amplification probe can be generated)"
-fi
+run g9_amplification "$S/as_dispatch.dxil" "$S/mesh_quad.dxil" \
+   "$S/solid.dxil" || fails=$((fails+1))
 
 echo
 # A skipped suite is NOT a green suite. Saying "all green" while two of

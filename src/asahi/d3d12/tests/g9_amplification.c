@@ -18,9 +18,11 @@
  *   4. ms_setup, turning the mesh counts into an indirect draw;
  *   5. the indexed indirect draw.
  *
- * Both shaders come from the corpus: nir_to_dxil has no mesh or
- * amplification support, so these probes cannot be generated and
- * committed the way gs_point.dxil and tess_hs.dxil are.
+ * Both shaders are generated from NIR by d3d12agx_make_probe and
+ * committed next to it -- as_dispatch.dxil and mesh_quad.dxil. That took
+ * mesh AND amplification support in nir_to_dxil, including a
+ * dx.op.dispatchMesh declaration whose overload suffix is a struct type
+ * name rather than a scalar.
  */
 
 #define COBJMACROS
@@ -82,8 +84,8 @@ main(int argc, char **argv)
 {
    if (argc < 4) {
       printf("usage: %s as.dxil ms.dxil ps.dxil\n", argv[0]);
-      printf("       (no amplification/mesh probe can be generated --\n");
-      printf("        nir_to_dxil supports neither stage)\n");
+      printf("       (run-suites.sh passes shaders/as_dispatch.dxil and\n");
+      printf("        shaders/mesh_quad.dxil)\n");
       return 77;
    }
 

@@ -31,9 +31,31 @@ on.
 - Ordinary Mesa build dependencies: meson, ninja, clang/LLVM, libclc, zlib,
   expat, libdrm, wayland.
 - **`dxc` is NOT required** to build or to reproduce these numbers, and is not
-  needed on the target machine at all. It is only needed to *author new* probe
-  shaders, which is why the compiled `.dxil` are committed next to their
-  `.hlsl` in `tests/shaders/`.
+  needed on the target machine at all. It is only needed to *author new*
+  HLSL-sourced probe shaders, which is why the compiled `.dxil` are committed
+  next to their `.hlsl` in `tests/shaders/`.
+
+  The newer probes have no `.hlsl` at all: they are built as NIR by
+  `tests/make_probe.c` and written out through Mesa's own `nir_to_dxil`, so
+  authoring them needs nothing but this tree.
+
+  ```bash
+  P=_build/src/asahi/d3d12/d3d12agx_make_probe
+  S=src/asahi/d3d12/tests/shaders
+  for probe in gs_input_vs gs_point tess_hs tess_ds mesh_quad as_dispatch; do
+     $P $probe $S/$probe.dxil
+  done
+  ```
+
+  `mesh_quad` and `as_dispatch` are why `nir_to_dxil` grew mesh and
+  amplification support (see `findings.md`); before that, `g8_mesh` and
+  `g9_amplification` could only run against the LGPL corpus and were skipped
+  in a clean checkout.
+
+  Regeneration is **byte-reproducible**: all six files come back identical
+  from this tree, so `git status` staying clean after that loop is itself a
+  check. It was not always true — the committed probes had drifted from what
+  the tree produced, which is invisible until you look.
 
 ## Build
 
@@ -56,13 +78,14 @@ inspection).
 src/asahi/d3d12/tests/run-suites.sh [build-dir]
 ```
 
-Expected today: six suites `ALL PASS`, and `g5_texture` failing on the known
-wall (§1.1 of `roadmap.md`). The script takes the build directory as an
+Expected today: **fifteen suites `ALL PASS`, none skipped**, from a clean
+checkout with no corpus present. The script takes the build directory as an
 argument and finds its shaders relative to itself, so no path is baked in.
 
 It treats a **missing verdict line as a failure**: a test given a wrong
 filename prints usage and exits 0, which any harness checking only the last
-line would read as a pass.
+line would read as a pass. It also counts skips separately and refuses to say
+"all green" while any suite did not run.
 
 ### The corpus — the compile-only proxy
 

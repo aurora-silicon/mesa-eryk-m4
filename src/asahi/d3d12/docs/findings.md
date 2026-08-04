@@ -410,3 +410,38 @@ GPU-facing half of the driver; the bug was in the bitcode reader.
 - **Do not build while another process is editing the tree.** One confident,
   wrong conclusion ("the translator broke rasterisation") came from a build
   taken mid-edit and was refuted by a clean rebuild.
+- **A scalarizer ate two thirds of every triangle.** `dx.op.emitIndices`
+  takes a mesh primitive's three indices in ONE call — there is no way to
+  spell one third of it. `nir_to_dxil` runs `nir_lower_io_to_scalar` over
+  all shader outputs, which split the index-triple store into three
+  single-component stores; each then emitted a full `emitIndices` with
+  its one component broadcast to all three operands. The GPU dutifully
+  wrote `2 2 2 / 2 2 2` — a degenerate triangle per primitive, zero
+  pixels — while the vertices, the counts and the draw were all correct.
+  Fixed with a filter that keeps `VARYING_SLOT_PRIMITIVE_INDICES` stores
+  vectorized. The tell was in the buffer dump, not the render target:
+  **when a stage produces nothing visible, dump what the next stage
+  reads.** That is now the fourth stage in a row where it was the whole
+  debugging story.
+- **A branch nested under an impossible condition never runs.** The mesh
+  and amplification entry-property emission first landed inside
+  `else if (shader_kind == DXIL_COMPUTE_SHADER) { if (shader_kind ==
+  DXIL_MESH_SHADER) ... }`. It compiled, it looked right in review, and
+  it emitted nothing. The symptom was an empty entry-property list, which
+  is also what a shader with no properties looks like — so nothing
+  complained. Reading back the emitted container with our own parser is
+  what caught it.
+- **DXIL's MSState topology is not a D3D primitive topology.** Every
+  triangle-output mesh shader dxc produces carries a `2` in that field,
+  where `D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST` would be 4. Confirmed
+  against all fifteen corpus mesh shaders, which agree on 2. The line
+  value remains inferred from the enum ordering and unconfirmed.
+- **`dx.op.dispatchMesh`'s overload suffix is a struct type name**
+  (`dx.op.dispatchMesh.struct.Payload`), not a scalar type. Mesa's
+  descriptor-string function-declaration machinery cannot express that,
+  so the declaration has to be built from explicit types.
+- **Signatures are built from VARIABLES, not intrinsics.** A probe that
+  emits `store_per_vertex_output` directly produces a valid shader with
+  an EMPTY output signature — nothing walks the intrinsics to discover
+  what was written. Declaring the output variable alongside the
+  already-lowered store is what fills OSG1.

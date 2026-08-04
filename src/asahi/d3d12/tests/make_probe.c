@@ -283,28 +283,135 @@ build_tess_ds(const nir_shader_compiler_options *opts)
    return b.shader;
 }
 
+/*
+ * mesh_quad: the smallest thing that is still a mesh shader.
+ *
+ * One workgroup of four threads. Thread i writes control point i of a
+ * full-screen quad at (+-1, +-1); threads 0 and 1 each emit one
+ * triangle. Four vertices, two primitives -- the same shape the corpus
+ * ms_simple produces, but authored here so it can be committed.
+ *
+ * Emitting this at all needed mesh support in nir_to_dxil, which had
+ * none: the shader kind, the MSState entry property (whose operand 0 is
+ * the numthreads node -- mesh shaders do not use the compute NumThreads
+ * tag), and the setMeshOutputCounts / storeVertexOutput / emitIndices
+ * intrinsics.
+ */
+static nir_shader *
+build_mesh_quad(const nir_shader_compiler_options *opts)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_MESH, opts,
+                                                  "mesh_quad");
+   b.shader->info.workgroup_size[0] = 4;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.mesh.max_vertices_out = 4;
+   b.shader->info.mesh.max_primitives_out = 2;
+   b.shader->info.mesh.primitive_type = MESA_PRIM_TRIANGLES;
+
+   /* The store below is emitted as an already-lowered intrinsic, but the
+    * output signature is built by walking VARIABLES -- without this
+    * declaration the container carries an empty OSG1 and no consumer can
+    * see that the shader writes a position. */
+   nir_variable *pos_var = nir_variable_create(
+      b.shader, nir_var_shader_out, glsl_vec4_type(), "position");
+   pos_var->data.location = VARYING_SLOT_POS;
+   pos_var->data.driver_location = 0;
+
+   nir_def *id = nir_channel(&b, nir_load_local_invocation_id(&b), 0);
+
+   nir_set_vertex_and_primitive_count(&b, nir_imm_int(&b, 4),
+                                      nir_imm_int(&b, 2), nir_imm_int(&b, 0));
+
+   /* x = (id & 1) ? 1 : -1 ; y = (id & 2) ? 1 : -1 */
+   nir_def *one = nir_imm_float(&b, 1.0f);
+   nir_def *neg = nir_imm_float(&b, -1.0f);
+   nir_def *x =
+      nir_bcsel(&b, nir_ine_imm(&b, nir_iand_imm(&b, id, 1), 0), one, neg);
+   nir_def *y =
+      nir_bcsel(&b, nir_ine_imm(&b, nir_iand_imm(&b, id, 2), 0), one, neg);
+
+   nir_def *pos = nir_vec4(&b, x, y, nir_imm_float(&b, 0.0f), one);
+
+   nir_store_per_vertex_output(&b, pos, id, nir_imm_int(&b, 0), .base = 0,
+                               .write_mask = 0xf,
+                               .src_type = nir_type_float32,
+                               .io_semantics.location = VARYING_SLOT_POS,
+                               .io_semantics.num_slots = 1);
+
+   /* Threads 0 and 1 emit the two triangles: (0,1,2) and (1,3,2). */
+   nir_push_if(&b, nir_ult_imm(&b, id, 2));
+   {
+      nir_def *i0 = nir_bcsel(&b, nir_ieq_imm(&b, id, 0),
+                              nir_imm_int(&b, 0), nir_imm_int(&b, 1));
+      nir_def *i1 = nir_bcsel(&b, nir_ieq_imm(&b, id, 0),
+                              nir_imm_int(&b, 1), nir_imm_int(&b, 3));
+      nir_def *i2 = nir_imm_int(&b, 2);
+
+      nir_store_per_primitive_output(
+         &b, nir_vec3(&b, i0, i1, i2), id, nir_imm_int(&b, 0), .base = 0,
+         .write_mask = 0x7, .src_type = nir_type_uint32,
+         .io_semantics.location = VARYING_SLOT_PRIMITIVE_INDICES,
+         .io_semantics.num_slots = 1);
+   }
+   nir_pop_if(&b, NULL);
+
+   b.shader->info.outputs_written = BITFIELD64_BIT(VARYING_SLOT_POS);
+   b.shader->info.per_primitive_outputs =
+      BITFIELD64_BIT(VARYING_SLOT_PRIMITIVE_INDICES);
+   return b.shader;
+}
+
+/*
+ * as_dispatch: one amplification thread group that launches one mesh
+ * group. The payload is declared (D3D12 requires one) and never read --
+ * mesh_quad ignores it -- so nothing here depends on payload plumbing.
+ */
+static nir_shader *
+build_as_dispatch(const nir_shader_compiler_options *opts)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TASK, opts,
+                                                  "as_dispatch");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.task_payload_size = 4;
+
+   nir_launch_mesh_workgroups(&b, nir_imm_ivec3(&b, 1, 1, 1));
+   return b.shader;
+}
+
 int
 main(int argc, char **argv)
 {
    if (argc < 3) {
       fprintf(stderr,
-              "usage: %s <gs_input_vs|gs_point|tess_hs|tess_ds> out.dxil\n",
+              "usage: %s <gs_input_vs|gs_point|tess_hs|tess_ds|mesh_quad|"
+              "as_dispatch> out.dxil\n",
               argv[0]);
       return 2;
    }
 
    glsl_type_singleton_init_or_ref();
 
-   nir_shader_compiler_options options;
-   dxil_get_nir_compiler_options(&options, SHADER_MODEL_6_2, 1 << 5,
-                                 1 << 5);
-
    bool want_gs = !strcmp(argv[1], "gs_point");
    bool want_hs = !strcmp(argv[1], "tess_hs");
    bool want_ds = !strcmp(argv[1], "tess_ds");
+   bool want_mesh = !strcmp(argv[1], "mesh_quad");
+   bool want_amp = !strcmp(argv[1], "as_dispatch");
+
+   /* Mesh shaders do not exist below shader model 6.5; everything else
+    * here is expressible in 6.2, which is what the corpus mostly uses. */
+   enum dxil_shader_model sm =
+      (want_mesh || want_amp) ? SHADER_MODEL_6_5 : SHADER_MODEL_6_2;
+
+   nir_shader_compiler_options options;
+   dxil_get_nir_compiler_options(&options, sm, 1 << 5, 1 << 5);
    nir_shader *nir = want_gs   ? build_gs_point_passthrough(&options)
                      : want_hs ? build_tess_hs(&options)
                      : want_ds ? build_tess_ds(&options)
+                     : want_mesh ? build_mesh_quad(&options)
+                     : want_amp ? build_as_dispatch(&options)
                                : build_gs_input_vs(&options);
 
    NIR_PASS(_, nir, nir_lower_variable_initializers, nir_var_all);
@@ -322,7 +429,7 @@ main(int argc, char **argv)
 
    struct nir_to_dxil_options opts = {
       .environment = DXIL_ENVIRONMENT_VULKAN,
-      .shader_model_max = SHADER_MODEL_6_2,
+      .shader_model_max = sm,
       .validator_version_max = DXIL_VALIDATOR_1_6,
    };
 

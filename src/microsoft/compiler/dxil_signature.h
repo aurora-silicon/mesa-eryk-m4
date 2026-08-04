@@ -111,6 +111,20 @@ struct dxil_psv_runtime_info_0 {
          char sample_frequency;
       } ps;
 
+      /* Mesh and amplification. MSInfo is the largest member and is what
+       * the dummy below is sized against. */
+      struct {
+         uint32_t group_shared_bytes_used;
+         uint32_t group_shared_bytes_dependent_on_view_id;
+         uint32_t payload_size_in_bytes;
+         uint16_t max_output_vertices;
+         uint16_t max_output_primitives;
+      } ms;
+
+      struct {
+         uint32_t payload_size_in_bytes;
+      } as;
+
       /* Maximum sized defining the union size (MSInfo)*/
       struct {
          uint32_t dummy1[3];

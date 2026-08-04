@@ -70,6 +70,12 @@ static struct  predefined_func_descr predefined_funcs[] = {
 {"dx.op.discard", "v", "ib", DXIL_ATTR_KIND_NO_UNWIND},
 {"dx.op.sampleIndex", "i", "i", DXIL_ATTR_KIND_READ_NONE},
 {"dx.op.emitStream", "v", "ic", DXIL_ATTR_KIND_NONE},
+/* Mesh shader output. colIndex is i8 and must be a constant; the value is
+ * the overloaded operand. emitIndices always takes three indices. */
+{"dx.op.setMeshOutputCounts", "v", "iii", DXIL_ATTR_KIND_NONE},
+{"dx.op.emitIndices", "v", "iiiii", DXIL_ATTR_KIND_NONE},
+{"dx.op.storeVertexOutput", "v", "iiicOi", DXIL_ATTR_KIND_NONE},
+{"dx.op.storePrimitiveOutput", "v", "iiicOi", DXIL_ATTR_KIND_NONE},
 {"dx.op.cutStream", "v", "ic", DXIL_ATTR_KIND_NONE},
 {"dx.op.getDimensions", "D", "i@i", DXIL_ATTR_KIND_READ_ONLY},
 {"dx.op.calculateLOD", "f", "i@@fffb", DXIL_ATTR_KIND_READ_ONLY},

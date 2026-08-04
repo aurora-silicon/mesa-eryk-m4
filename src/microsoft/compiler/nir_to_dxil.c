@@ -228,6 +228,10 @@ get_shader_kind_str(enum dxil_shader_kind kind)
       return "ds";
    case DXIL_COMPUTE_SHADER:
       return "cs";
+   case DXIL_MESH_SHADER:
+      return "ms";
+   case DXIL_AMPLIFICATION_SHADER:
+      return "as";
    default:
       UNREACHABLE("invalid shader kind");
    }
@@ -342,6 +346,12 @@ enum dxil_intr {
    DXIL_INTR_FLATTENED_THREAD_ID_IN_GROUP = 96,
 
    DXIL_INTR_EMIT_STREAM = 97,
+   DXIL_INTR_SET_MESH_OUTPUT_COUNTS = 168,
+   DXIL_INTR_EMIT_INDICES = 169,
+   DXIL_INTR_GET_MESH_PAYLOAD = 170,
+   DXIL_INTR_STORE_VERTEX_OUTPUT = 171,
+   DXIL_INTR_STORE_PRIMITIVE_OUTPUT = 172,
+   DXIL_INTR_DISPATCH_MESH = 173,
    DXIL_INTR_CUT_STREAM = 98,
 
    DXIL_INTR_GS_INSTANCE_ID = 100,
@@ -1713,6 +1723,62 @@ emit_gs_state(struct ntd_context *ctx)
    return dxil_get_metadata_node(&ctx->mod, gs_state_nodes, ARRAY_SIZE(gs_state_nodes));
 }
 
+static const struct dxil_mdnode *emit_threads(struct ntd_context *ctx);
+
+/*
+ * MSState { numthreads, maxVertexCount, maxPrimitiveCount,
+ *           outputTopology, payloadSizeInBytes }
+ * ASState { numthreads, payloadSizeInBytes }
+ *
+ * Operand 0 is the numthreads NODE. Mesh and amplification shaders do
+ * NOT emit DXIL_SHADER_TAG_NUM_THREADS -- a consumer that only knows
+ * that tag reads no thread count at all and defaults to 1x1x1.
+ */
+static const struct dxil_mdnode *
+emit_ms_state(struct ntd_context *ctx)
+{
+   const nir_shader *s = ctx->shader;
+   const struct dxil_mdnode *nodes[5];
+
+   /* MSState's topology is its own small enum, NOT a D3D primitive
+    * topology: every triangle-output mesh shader dxc produces carries a
+    * 2 here, where D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST would be 4. Only
+    * lines and triangles are legal mesh outputs; the line value is
+    * inferred from the enum ordering and is not yet confirmed against a
+    * dxc-built line-output shader.
+    */
+   unsigned topology = s->info.mesh.primitive_type == MESA_PRIM_LINES ? 1 : 2;
+
+   nodes[0] = emit_threads(ctx);
+   nodes[1] = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.mesh.max_vertices_out, 1));
+   nodes[2] = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.mesh.max_primitives_out, 1));
+   nodes[3] = dxil_get_metadata_int32(&ctx->mod, topology);
+   nodes[4] = dxil_get_metadata_int32(&ctx->mod, s->info.task_payload_size);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(nodes); ++i) {
+      if (!nodes[i])
+         return NULL;
+   }
+
+   return dxil_get_metadata_node(&ctx->mod, nodes, ARRAY_SIZE(nodes));
+}
+
+static const struct dxil_mdnode *
+emit_as_state(struct ntd_context *ctx)
+{
+   const struct dxil_mdnode *nodes[2];
+
+   nodes[0] = emit_threads(ctx);
+   nodes[1] = dxil_get_metadata_int32(&ctx->mod, ctx->shader->info.task_payload_size);
+
+   for (unsigned i = 0; i < ARRAY_SIZE(nodes); ++i) {
+      if (!nodes[i])
+         return NULL;
+   }
+
+   return dxil_get_metadata_node(&ctx->mod, nodes, ARRAY_SIZE(nodes));
+}
+
 static enum dxil_tessellator_domain
 get_tessellator_domain(enum tess_primitive_mode primitive_mode)
 {
@@ -2035,8 +2101,20 @@ emit_metadata(struct ntd_context *ctx)
    } else if (ctx->mod.shader_kind == DXIL_DOMAIN_SHADER) {
       if (!emit_tag(ctx, DXIL_SHADER_TAG_DS_STATE, emit_ds_state(ctx)))
          return false;
-   } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER) {
-      if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
+   } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER ||
+              ctx->mod.shader_kind == DXIL_MESH_SHADER ||
+              ctx->mod.shader_kind == DXIL_AMPLIFICATION_SHADER) {
+      /* Mesh and amplification carry their thread count inside MSState /
+       * ASState as operand 0. They do NOT emit the NumThreads tag -- a
+       * consumer that only looks for tag 4 sees a one-thread group.
+       */
+      if (ctx->mod.shader_kind == DXIL_MESH_SHADER) {
+         if (!emit_tag(ctx, DXIL_SHADER_TAG_MS_STATE, emit_ms_state(ctx)))
+            return false;
+      } else if (ctx->mod.shader_kind == DXIL_AMPLIFICATION_SHADER) {
+         if (!emit_tag(ctx, DXIL_SHADER_TAG_AS_STATE, emit_as_state(ctx)))
+            return false;
+      } else if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
          return false;
       if (ctx->mod.minor_version >= 6 &&
           ctx->shader->info.min_subgroup_size == ctx->shader->info.max_subgroup_size &&
@@ -3076,6 +3154,179 @@ load_ubo(struct ntd_context *ctx, const struct dxil_value *handle,
    if (!func)
       return NULL;
    return dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+/*
+ * dx.op.setMeshOutputCounts(opcode, numVertices, numPrimitives)
+ *
+ * A mesh shader declares how much of its output it actually filled. It
+ * must be called before any vertex or primitive store.
+ */
+static bool
+emit_set_mesh_output_counts(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.setMeshOutputCounts", DXIL_NONE);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(
+      &ctx->mod, DXIL_INTR_SET_MESH_OUTPUT_COUNTS);
+   const struct dxil_value *verts = get_src(ctx, &intr->src[0], 0, nir_type_uint);
+   const struct dxil_value *prims = get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   if (!opcode || !verts || !prims)
+      return false;
+
+   const struct dxil_value *args[] = {opcode, verts, prims};
+   return dxil_emit_call_void(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+/*
+ * dx.op.emitIndices(opcode, primitiveIndex, i0, i1, i2)
+ *
+ * Always three indices, even for lines and points -- the unused lanes
+ * are ignored downstream. In NIR the index triple arrives as a store to
+ * VARYING_SLOT_PRIMITIVE_INDICES.
+ */
+static bool
+emit_indices(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, "dx.op.emitIndices", DXIL_NONE);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode =
+      dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_EMIT_INDICES);
+   const struct dxil_value *prim = get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   if (!opcode || !prim)
+      return false;
+
+   const struct dxil_value *idx[3];
+   for (unsigned i = 0; i < 3; i++) {
+      unsigned c = MIN2(i, nir_src_num_components(intr->src[0]) - 1);
+      idx[i] = get_src(ctx, &intr->src[0], c, nir_type_uint);
+      if (!idx[i])
+         return false;
+   }
+
+   const struct dxil_value *args[] = {opcode, prim, idx[0], idx[1], idx[2]};
+   return dxil_emit_call_void(&ctx->mod, func, args, ARRAY_SIZE(args));
+}
+
+/*
+ * dx.op.dispatchMesh(opcode, x, y, z, payload*)
+ *
+ * The amplification shader's hand-off. Unlike every other dx.op here the
+ * overload suffix is a STRUCT TYPE NAME, not a scalar -- dxc emits
+ * "dx.op.dispatchMesh.struct.Payload" -- so the descriptor-string
+ * machinery in dxil_function.c cannot express it and the declaration is
+ * built from explicit types.
+ *
+ * The payload itself is an alloca in the amplification shader that the
+ * runtime copies to the mesh shader. NIR carries only its size; a shader
+ * that actually reads or writes payload members needs task-payload
+ * lowering that does not exist yet, and hits the unsupported path.
+ */
+static bool
+emit_dispatch_mesh(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   struct dxil_module *m = &ctx->mod;
+
+   unsigned payload_dwords =
+      MAX2(DIV_ROUND_UP(ctx->shader->info.task_payload_size, 4), 1);
+   const struct dxil_type *i32 = dxil_module_get_int_type(m, 32);
+   const struct dxil_type *members[64];
+   payload_dwords = MIN2(payload_dwords, ARRAY_SIZE(members));
+   for (unsigned i = 0; i < payload_dwords; i++)
+      members[i] = i32;
+
+   const struct dxil_type *payload =
+      dxil_module_get_struct_type(m, "struct.Payload", members,
+                                  payload_dwords);
+   const struct dxil_type *payload_ptr =
+      dxil_module_get_pointer_type(m, payload);
+   if (!payload || !payload_ptr)
+      return false;
+
+   const struct dxil_type *args[] = {i32, i32, i32, i32, payload_ptr};
+   const struct dxil_type *func_type =
+      dxil_module_add_function_type(m, dxil_module_get_void_type(m), args,
+                                    ARRAY_SIZE(args));
+   const struct dxil_func *func =
+      dxil_add_function_decl(m, "dx.op.dispatchMesh.struct.Payload",
+                             func_type, DXIL_ATTR_KIND_NONE);
+   if (!func)
+      return false;
+
+   const struct dxil_value *one = dxil_module_get_int32_const(m, 1);
+   const struct dxil_value *alloca =
+      dxil_emit_alloca(m, payload, one, 4);
+   const struct dxil_value *opcode =
+      dxil_module_get_int32_const(m, DXIL_INTR_DISPATCH_MESH);
+   if (!one || !alloca || !opcode)
+      return false;
+
+   /* One vec3 source, not three scalars. */
+   const struct dxil_value *grid[3];
+   for (unsigned i = 0; i < 3; i++) {
+      grid[i] = get_src(ctx, &intr->src[0], i, nir_type_uint);
+      if (!grid[i])
+         return false;
+   }
+
+   const struct dxil_value *call_args[] = {opcode,  grid[0], grid[1],
+                                           grid[2], alloca};
+   return dxil_emit_call_void(m, func, call_args, ARRAY_SIZE(call_args));
+}
+
+/*
+ * dx.op.storeVertexOutput / storePrimitiveOutput
+ *   (opcode, sigId, rowIndex, colIndex, value, vertexOrPrimIndex)
+ */
+static bool
+emit_store_mesh_output(struct ntd_context *ctx, nir_intrinsic_instr *intr,
+                       bool per_primitive)
+{
+   const char *name = per_primitive ? "dx.op.storePrimitiveOutput"
+                                    : "dx.op.storeVertexOutput";
+   nir_alu_type base = nir_alu_type_get_base_type(nir_intrinsic_src_type(intr));
+   const struct dxil_func *func =
+      dxil_get_function(&ctx->mod, name,
+                        base == nir_type_float ? DXIL_F32 : DXIL_I32);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(
+      &ctx->mod, per_primitive ? DXIL_INTR_STORE_PRIMITIVE_OUTPUT
+                               : DXIL_INTR_STORE_VERTEX_OUTPUT);
+   const struct dxil_value *sig =
+      dxil_module_get_int32_const(&ctx->mod, nir_intrinsic_base(intr));
+   const struct dxil_value *row = dxil_module_get_int32_const(&ctx->mod, 0);
+   const struct dxil_value *index =
+      get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   if (!opcode || !sig || !row || !index)
+      return false;
+
+   unsigned write_mask = nir_intrinsic_write_mask(intr);
+   unsigned first = nir_intrinsic_component(intr);
+
+   for (unsigned c = 0; c < nir_src_num_components(intr->src[0]); c++) {
+      if (!(write_mask & (1 << c)))
+         continue;
+
+      const struct dxil_value *col =
+         dxil_module_get_int8_const(&ctx->mod, first + c);
+      const struct dxil_value *val = get_src(ctx, &intr->src[0], c, base);
+      if (!col || !val)
+         return false;
+
+      const struct dxil_value *args[] = {opcode, sig, row, col, val, index};
+      if (!dxil_emit_call_void(&ctx->mod, func, args, ARRAY_SIZE(args)))
+         return false;
+   }
+
+   return true;
 }
 
 static bool
@@ -4872,8 +5123,31 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_load_output:
    case nir_intrinsic_load_per_vertex_output:
       return emit_load_input_via_intrinsic(ctx, intr);
+   case nir_intrinsic_set_vertex_and_primitive_count:
+      return emit_set_mesh_output_counts(ctx, intr);
+
+   case nir_intrinsic_launch_mesh_workgroups:
+      return emit_dispatch_mesh(ctx, intr);
+
+   case nir_intrinsic_store_per_primitive_output:
+      /* The index triple is a per-primitive store to
+       * VARYING_SLOT_PRIMITIVE_INDICES; everything else is a real
+       * per-primitive attribute.
+       */
+      if (nir_intrinsic_io_semantics(intr).location ==
+          VARYING_SLOT_PRIMITIVE_INDICES)
+         return emit_indices(ctx, intr);
+      return emit_store_mesh_output(ctx, intr, true);
+
    case nir_intrinsic_store_output:
    case nir_intrinsic_store_per_vertex_output:
+      /* A mesh shader's per-vertex outputs go through
+       * dx.op.storeVertexOutput, which carries the vertex index the
+       * ordinary signature store has no room for.
+       */
+      if (ctx->mod.shader_kind == DXIL_MESH_SHADER &&
+          intr->intrinsic == nir_intrinsic_store_per_vertex_output)
+         return emit_store_mesh_output(ctx, intr, false);
       return emit_store_output_via_intrinsic(ctx, intr);
 
    case nir_intrinsic_load_barycentric_at_offset:
@@ -6179,6 +6453,10 @@ get_dxil_shader_kind(struct nir_shader *s)
       return DXIL_DOMAIN_SHADER;
    case MESA_SHADER_GEOMETRY:
       return DXIL_GEOMETRY_SHADER;
+   case MESA_SHADER_MESH:
+      return DXIL_MESH_SHADER;
+   case MESA_SHADER_TASK:
+      return DXIL_AMPLIFICATION_SHADER;
    case MESA_SHADER_FRAGMENT:
       return DXIL_PIXEL_SHADER;
    case MESA_SHADER_KERNEL:
@@ -6298,6 +6576,22 @@ lower_mem_access_bit_sizes_cb(nir_intrinsic_op intrin,
    };
 }
 
+/*
+ * A mesh shader's primitive index triple must survive as ONE vector:
+ * dx.op.emitIndices takes all three indices in a single call, and there
+ * is no way to spell one third of it. Scalarizing it silently produced
+ * three calls that each stored the same component into all three slots.
+ */
+static bool
+keep_io_vectorized(const nir_intrinsic_instr *intr, const void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_store_per_primitive_output)
+      return true;
+
+   return nir_intrinsic_io_semantics(intr).location !=
+          VARYING_SLOT_PRIMITIVE_INDICES;
+}
+
 static void
 optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
 {
@@ -6410,6 +6704,22 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
       psv0->ds.tessellator_domain = get_tessellator_domain(ctx->shader->info.tess._primitive_mode);
       psv0->ds.output_position_present = ctx->mod.info.has_out_position;
       psv1->sig_patch_const_or_prim_vectors = ctx->mod.num_psv_patch_consts;
+      break;
+   case DXIL_MESH_SHADER:
+      psv2->num_threads_x = MAX2(ctx->shader->info.workgroup_size[0], 1);
+      psv2->num_threads_y = MAX2(ctx->shader->info.workgroup_size[1], 1);
+      psv2->num_threads_z = MAX2(ctx->shader->info.workgroup_size[2], 1);
+      psv0->ms.group_shared_bytes_used = ctx->shader->info.shared_size;
+      psv0->ms.payload_size_in_bytes = ctx->shader->info.task_payload_size;
+      psv0->ms.max_output_vertices = ctx->shader->info.mesh.max_vertices_out;
+      psv0->ms.max_output_primitives = ctx->shader->info.mesh.max_primitives_out;
+      psv1->sig_patch_const_or_prim_vectors = ctx->mod.num_psv_patch_consts;
+      break;
+   case DXIL_AMPLIFICATION_SHADER:
+      psv2->num_threads_x = MAX2(ctx->shader->info.workgroup_size[0], 1);
+      psv2->num_threads_y = MAX2(ctx->shader->info.workgroup_size[1], 1);
+      psv2->num_threads_z = MAX2(ctx->shader->info.workgroup_size[2], 1);
+      psv0->as.payload_size_in_bytes = ctx->shader->info.task_payload_size;
       break;
    default:
       assert(0 && "Shader type not (yet) supported");
@@ -6631,7 +6941,9 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    s->info.disable_output_offset_src_constant_folding = true;
    NIR_PASS(_, s, dxil_nir_ensure_position_writes);
    NIR_PASS(_, s, dxil_nir_lower_system_values);
-   NIR_PASS(_, s, nir_lower_io_to_scalar, nir_var_shader_in | nir_var_system_value | nir_var_shader_out, NULL, NULL);
+   NIR_PASS(_, s, nir_lower_io_to_scalar,
+            nir_var_shader_in | nir_var_system_value | nir_var_shader_out,
+            keep_io_vectorized, NULL);
 
    /* Do a round of optimization to try to vectorize loads/stores. Otherwise the addresses used for loads
     * might be too opaque for the pass to see that they're next to each other. */

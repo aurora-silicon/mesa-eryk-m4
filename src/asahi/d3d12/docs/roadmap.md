@@ -1,9 +1,11 @@
 # d3d12agx roadmap — from compiling to a conformance number
 
-Written 2026-08-04, at `dev`. **Updated the same day**: `g5_texture` is
-solved and all seven GPU suites are green, so the old §1.1 is closed and
-the geometry-shader runtime (§1.0 below) is now the highest-leverage
-work. §2 and §3 are closed — the corpus is at 321.
+Written 2026-08-04, at `dev`. **Rewritten the same day, twice**: the
+geometry, tessellation, mesh and amplification runtimes all landed, and
+mesh support in `nir_to_dxil` closed the last dependency on the LGPL
+corpus. §1.0, §1.0b, §1.1, §2 and §3 are CLOSED. The highest-leverage
+remaining work is §1.4 (the attribute-fetching vertex prolog) and §5
+(executing vkd3d-proton's tests for real).
 
 This document exists to be **attacked**. Every step states what it changes,
 how you know it worked, and what would prove it wrong. Where a decision is
@@ -14,7 +16,9 @@ places a second opinion is worth the most.
 
 ## 0. Where we actually are
 
-**321 of 334 corpus shaders compile DXIL → NIR → AGX machine code.**
+**321 of 334 corpus shaders compile DXIL → NIR → AGX machine code**, and
+**all fifteen GPU acceptance suites pass on real hardware with nothing
+skipped** — from a clean checkout, with no corpus present.
 No SPIR-V, no Vulkan layer, no dxc at run time.
 
 The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**:
@@ -22,18 +26,29 @@ The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**:
 - **Compiling** means the translator and the AGX backend accepted it.
 - **Conforming** means it produces the right pixels/bytes on hardware.
 
-**All seven GPU acceptance suites pass.** `g5_texture` reproduces
-`Texture2D.Load` for all 256 texels of a 16x16 image; `g4_triangle`
-matches a CPU rasterisation of the shader's own vertices on all 65536
-pixels. See `findings.md` for what that wall actually was (untyped
-`extractvalue`/`binop` results — the GPU-facing driver was correct the
-whole time) and for the two fake passes fixing it exposed.
+**Every graphics stage that replaces fixed function now executes**:
+vertex, geometry, tessellation, mesh, amplification, pixel. Each is
+proven by a suite that derives its expectation from the shader rather
+than from an observed number — `g6_geometry` compares a pass-through GS
+against the no-GS control pixel for pixel, `g7_tessellation` against a
+derived quad, `g8_mesh` and `g9_amplification` against a full-screen quad
+whose vertices and indices are dumped and checked.
 
-**The compiler is no longer the bottleneck, and the gap it leaves is now
-the project's dominant risk.** Geometry, tessellation, mesh,
-amplification, work graphs and ray queries all COMPILE. None of them
-DISPATCH. That is 102 shaders in the "compiles but unproven" state, and
-the GPU suites cover none of them.
+**The compile/execute gap has narrowed to two mechanisms.** Work graphs
+and ray queries still compile without dispatching; everything else in the
+graphics path runs. See "What 'done' means for tiers 2-4" below, and
+§4.3.
+
+### The probes are self-hosting
+
+`g8_mesh` and `g9_amplification` used to be gated on `D3D12AGX_CORPUS`
+because `nir_to_dxil` had no mesh support and no mesh probe could be
+built. It has one now — shader kinds, `MSState`/`ASState` entry
+properties, `setMeshOutputCounts` / `emitIndices` / `storeVertexOutput` /
+`storePrimitiveOutput` / `dispatchMesh`, and PSV runtime info — so
+`tests/make_probe.c` emits `mesh_quad.dxil` and `as_dispatch.dxil`
+alongside the geometry and tessellation probes. **No suite depends on
+LGPL material any more.**
 
 ### The remaining 13 — all Tier 5
 
@@ -55,18 +70,23 @@ work graphs and inline raytracing (321).
 
 ### What "done" means for tiers 2–4
 
-Each shipped a documented ABI the runtime must honour, and none of those
-runtimes exist:
+Each shipped a documented ABI the runtime must honour. Four of the five
+runtimes now exist and are proven on hardware:
 
-- **Geometry** expands into four programs (count, main, copy, pre-GS);
-  only the main body is compiled.
-- **Tessellation** needs the tessellator dispatched around it.
-- **Mesh/amplification** need buffer allocation and the amplification →
-  mesh hand-off (`D12_UNIFORM_MESH_PARAMS`).
-- **Work graphs** need a scheduler (`D12_UNIFORM_NODE_PARAMS`).
-- **Ray queries** compile to "traversal found nothing", which is correct
-  only because the device reports `RaytracingTier 0`. Real traversal
-  needs BVH build plus a traversal kernel.
+- **Geometry** — DONE (`g6_geometry`). Two compute dispatches ordered
+  ahead of the render pass, plus a rasterization program bound as the
+  hardware vertex shader.
+- **Tessellation** — DONE (`g7_tessellation`). Five compute dispatches
+  and an indexed indirect draw whose index count the GPU writes.
+- **Mesh/amplification** — DONE (`g8_mesh`, `g9_amplification`). Buffer
+  allocation and the amplification → mesh hand-off through
+  `D12_UNIFORM_MESH_PARAMS`, the mesh grid dispatched indirectly off
+  words the amplification shader writes.
+- **Work graphs** — still need a scheduler (`D12_UNIFORM_NODE_PARAMS`).
+  ~21 corpus shaders compile against an ABI nothing drives.
+- **Ray queries** — still compile to "traversal found nothing", which is
+  correct only because the device reports `RaytracingTier 0`. Real
+  traversal needs BVH build plus a traversal kernel.
 
 ---|---|---|
 | Work Graphs (SM 6.8 GPU scheduling) | ~21 | §3.6 — needs a scheduler |
@@ -114,7 +134,7 @@ differ in how much of the machinery already exists.
 
 This is the critical path. Everything in §1 gates real conformance numbers.
 
-### 1.0 — Geometry shader dispatch  ★ HIGHEST LEVERAGE
+### 1.0 — ~~Geometry shader dispatch~~ — CLOSED 2026-08-04 (`g6_geometry`)
 
 102 shaders compile that cannot execute. Geometry is the cheapest entry
 into that set, and it is **much cheaper than it looked** — established by
@@ -244,7 +264,7 @@ shaders and remove the `dxc` dependency permanently. (b) is more work and
 strictly better; (a) unblocks step 5 immediately. **This needs a
 decision.**
 
-### 1.0b — Tessellation: the patch constant function  ★ THE G7 BLOCKER
+### 1.0b — ~~Tessellation: the patch constant function~~ — CLOSED 2026-08-04 (`g7_tessellation`)
 
 Everything else in the tessellation path is built and measured working
 (see the commit that added `d12_list_tess_prerast`): heap, three
@@ -366,7 +386,7 @@ descriptors into a parallel heap so heap-handle texture ops resolve.
 **Done when:** a `g5_heap` test binds a resource only via
 `ResourceDescriptorHeap[i]` and reads correct data.
 
-### 1.4 — Attribute-fetching vertex prolog
+### 1.4 — Attribute-fetching vertex prolog  ★ HIGHEST LEVERAGE
 
 Compile side is done: `agx_nir_lower_vs_input_to_prolog` runs, so VS inputs
 become prolog-exported registers. The runtime still builds only a
@@ -376,6 +396,18 @@ become prolog-exported registers. The runtime still builds only a
 bound vertex buffers.
 
 **Done when:** a draw with a real input layout renders correctly.
+
+**Why it is now the top of the list.** Every probe in this tree derives
+its geometry from `SV_VertexID` — `gs_input_vs.dxil`, `tri.dxil`,
+`mesh_quad.dxil`, all of them. That is not a stylistic choice: there is
+no vertex-buffer fetch to write a probe against. `IASetVertexBuffers`
+records the binding and nothing reads it. Until this lands, no real
+application's vertex data can reach a shader, and the corpus cannot tell
+us so because it never executes.
+
+**Falsified by:** a draw whose vertex data comes only from a bound buffer
+producing the same pixels as the equivalent `SV_VertexID` shader. Write
+that as `g10_vertex_buffers` before writing the prolog.
 
 ---
 
@@ -468,7 +500,7 @@ Everything above is still proxy work. The actual G5 goal is
 - Open question when we left it: the MIDL aggregate-return ABI and library
   naming.
 
-**This should start as soon as §1.1 lands**, even at a low pass rate. A real
+**§1.1 landed; this should start now**, even at a low pass rate. A real
 executing test suite finds classes of bug a compile proxy structurally
 cannot, and every number after that is honest end-to-end.
 

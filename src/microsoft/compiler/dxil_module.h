@@ -48,6 +48,8 @@ enum dxil_shader_kind {
    DXIL_HULL_SHADER = 3,
    DXIL_DOMAIN_SHADER = 4,
    DXIL_COMPUTE_SHADER = 5,
+   DXIL_MESH_SHADER = 13,
+   DXIL_AMPLIFICATION_SHADER = 14,
 };
 
 extern int debug_dxil;
