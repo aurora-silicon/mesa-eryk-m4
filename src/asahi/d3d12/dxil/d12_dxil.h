@@ -969,6 +969,16 @@ bool d12_dxil_lower_sw_vs(struct nir_shader *nir);
  */
 bool d12_dxil_lower_vbo_params(struct nir_shader *nir);
 
+/* DXBC (Shader Model 4/5) front end -- see d12_dxbc.c. */
+bool d12_dxbc_find_shader(const void *data, size_t size_B,
+                          const uint8_t **out, size_t *out_size_B,
+                          uint32_t *out_version);
+bool d12_dxbc_is_dxbc_shader(const void *data, size_t size_B);
+struct nir_shader *d12_dxbc_to_nir(const void *data, size_t size_B,
+                                   mesa_shader_stage stage,
+                                   const struct d12_binding_map *map,
+                                   const char **error);
+
 /*
  * Read a shader's INPUT signature out of a DXIL container, without
  * translating it. The pipeline needs the semantic names and indices to

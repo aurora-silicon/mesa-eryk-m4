@@ -28,6 +28,7 @@ libd3d12agx_files = files(
   'd12_root_sig.c',
   'dxil/d12_dxil_bitstream.c',
   'dxil/d12_dxil_module.c',
+  'dxil/d12_dxbc.c',
   'dxil/d12_dxil_nir.c',
 )
 

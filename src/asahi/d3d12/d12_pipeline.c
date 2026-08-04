@@ -484,6 +484,22 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
    size_t bc_size;
    const char *why = NULL;
    if (!d12_dxil_find_bitcode(dxil, dxil_size, &bc, &bc_size, &why)) {
+      /*
+       * No DXIL. Shader Model 5.x has none -- fxc emits a SHEX/SHDR
+       * token stream instead -- and SM 5.1 is legal D3D12, so fall
+       * through to the DXBC front end rather than failing. This is the
+       * single largest conformance gap measured against vkd3d-proton:
+       * 202 of 557 tests stop right here.
+       */
+      if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
+         const char *dxbc_error = "unknown";
+         nir_shader *nir =
+            d12_dxbc_to_nir(dxil, dxil_size, stage, map, &dxbc_error);
+         if (!nir)
+            mesa_loge("graphics PSO: DXBC->NIR failed: %s", dxbc_error);
+         return nir;
+      }
+
       mesa_loge("graphics PSO: %s", why);
       return NULL;
    }
