@@ -16,6 +16,7 @@ Status on `dev`: **219 of 334** corpus shaders compile (127 compute,
 | [`docs/architecture.md`](docs/architecture.md) | the stack, the shader path, the binding model, licensing |
 | [`docs/roadmap.md`](docs/roadmap.md) | what to do next, ordered by leverage, with falsification criteria |
 | [`docs/findings.md`](docs/findings.md) | traps that each cost a wrong hypothesis — read before debugging |
+| [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md) | the last 13 shaders: what each needs, and the two that need a decision |
 
 ## Build
 

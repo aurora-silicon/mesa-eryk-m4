@@ -29,6 +29,11 @@ the GPU suites cover none of them.
 
 ### The remaining 13 — all Tier 5
 
+Full analysis, including the two that cannot be done correctly without a
+robustness tradeoff, is in
+[`tier5-hardware-limits.md`](tier5-hardware-limits.md).
+
+
 | Bucket | N | Why |
 |---|---|---|
 | fp64 arithmetic | 6 | AGX has no fp64 ALU; needs soft-float |
