@@ -217,6 +217,12 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->tcs_bo);
       if (pso->tes.code_bo)
          agx_bo_unreference(&pso->device->dev, pso->tes.code_bo);
+      if (pso->ms_bo)
+         agx_bo_unreference(&pso->device->dev, pso->ms_bo);
+      if (pso->ms_setup_bo)
+         agx_bo_unreference(&pso->device->dev, pso->ms_setup_bo);
+      if (pso->ms_rast.code_bo)
+         agx_bo_unreference(&pso->device->dev, pso->ms_rast.code_bo);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -870,6 +876,259 @@ d12_translate_stencil_face(struct d12_stencil_face *out,
    out->pass = d12_translate_stencil_op(in->StencilPassOp);
    out->depth_fail = d12_translate_stencil_op(in->StencilDepthFailOp);
    out->stencil_fail = d12_translate_stencil_op(in->StencilFailOp);
+}
+
+/*
+ * ms_setup: turn the mesh shader's GPU-written counts into an indirect
+ * draw. The counts do not exist until the mesh shader has run, so the
+ * CPU cannot fill this in -- the same reason tessellation needs its
+ * prefix sum before the draw.
+ *
+ * Reads  { u32 vertices, u32 primitives } from the counts buffer.
+ * Writes { index_count = primitives * 3, 1, 0, 0, 0 }.
+ */
+static nir_shader *
+build_ms_setup(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "d12 mesh draw setup");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.internal = false;
+
+   nir_def *params = nir_load_preamble(&b, 1, 64, .base = D12_UNIFORM_MESH_PARAMS);
+
+   nir_def *counts = nir_load_global(
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_COUNTS),
+      .align_mul = 8);
+   nir_def *draw = nir_load_global(
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_DISPATCH),
+      .align_mul = 8);
+
+   nir_def *prims =
+      nir_load_global(&b, 1, 32, nir_iadd_imm(&b, counts, 4), .align_mul = 4);
+
+   /* A D3D12 mesh shader emits triangles: three indices per primitive. */
+   nir_def *idx = nir_imul_imm(&b, prims, 3);
+
+   nir_store_global(&b, idx, draw, .write_mask = 1, .align_mul = 4);
+   nir_store_global(&b, nir_imm_int(&b, 1), nir_iadd_imm(&b, draw, 4),
+                    .write_mask = 1, .align_mul = 4);
+   for (unsigned i = 2; i < 5; i++) {
+      nir_store_global(&b, nir_imm_int(&b, 0), nir_iadd_imm(&b, draw, i * 4),
+                       .write_mask = 1, .align_mul = 4);
+   }
+
+   return b.shader;
+}
+
+/*
+ * ms_rast: the hardware vertex shader for a mesh pipeline. The mesh
+ * shader wrote per-vertex outputs as a flat array of vec4 slots; this
+ * reads the slot for gl_VertexID and hands it to the rasterizer.
+ *
+ * Slot 0 is POSITION by DXIL's mesh signature convention; the remaining
+ * live slots become VAR0.. varyings for the pixel shader.
+ */
+static nir_shader *
+build_ms_rast(uint64_t outputs)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "d12 mesh rast");
+   b.shader->info.internal = false;
+
+   nir_def *params = nir_load_preamble(&b, 1, 64, .base = D12_UNIFORM_MESH_PARAMS);
+   nir_def *verts = nir_load_global(
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_VERTICES),
+      .align_mul = 8);
+
+   nir_def *vid = nir_load_vertex_id(&b);
+
+   unsigned nr_slots = MAX2(util_last_bit64(outputs), 1);
+   nir_def *base = nir_iadd(
+      &b, verts,
+      nir_u2u64(&b, nir_imul_imm(&b, vid, nr_slots * D12_MESH_SLOT_STRIDE)));
+
+   for (unsigned slot = 0; slot < nr_slots; slot++) {
+      if (!(outputs & BITFIELD64_BIT(slot)))
+         continue;
+
+      nir_def *v = nir_load_global(
+         &b, 4, 32, nir_iadd_imm(&b, base, slot * D12_MESH_SLOT_STRIDE),
+         .align_mul = 16);
+
+      unsigned location = slot == 0 ? VARYING_SLOT_POS
+                                    : VARYING_SLOT_VAR0 + (slot - 1);
+
+      nir_store_output(&b, v, nir_imm_int(&b, 0), .base = slot,
+                       .write_mask = 0xf, .src_type = nir_type_float32,
+                       .io_semantics.location = location,
+                       .io_semantics.num_slots = 1);
+
+      b.shader->info.outputs_written |= BITFIELD64_BIT(location);
+   }
+
+   return b.shader;
+}
+
+HRESULT
+d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
+                               size_t ms_size, const void *as_dxil,
+                               size_t as_size, const void *ps_dxil,
+                               size_t ps_size, enum pipe_format rt_format,
+                               const D3D12_DEPTH_STENCIL_DESC *ds_desc,
+                               DXGI_FORMAT dsv_format,
+                               const D3D12_RASTERIZER_DESC *rs_desc,
+                               const struct d12_binding_map *map, REFIID riid,
+                               void **out)
+{
+   if (as_dxil && as_size) {
+      mesa_loge("CreatePipelineState: amplification shaders are not "
+                "dispatched yet; refusing rather than running the mesh "
+                "shader without its payload");
+      return E_NOTIMPL;
+   }
+
+   /* Build the pipeline the ordinary way first: the pixel shader, the
+    * depth/stencil and rasterizer state and the tilebuffer layout are
+    * all identical to a vertex pipeline. The MESH-specific programs are
+    * then attached, and the rasterization VS replaces pso->vs.
+    *
+    * A mesh shader translates to plain compute writing through
+    * D12_UNIFORM_MESH_PARAMS, so it needs no lowering of its own -- but
+    * nothing generates its rasterization shader either, because there is
+    * no poly emulation for mesh. Both internal programs are built here.
+    */
+   HRESULT hr = d12_pipeline_state_create_graphics(
+      device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
+      rt_format, ds_desc, dsv_format, rs_desc, map, riid, out);
+   if (FAILED(hr))
+      return hr;
+
+   struct d12_pipeline_state *pso =
+      d12_pso_from_iface((ID3D12PipelineState *)*out);
+
+   /* The mesh shader itself, as compute. */
+   struct agx_shader_part ms_part;
+   nir_shader *ms = dxil_to_nir_stage(map, ms_dxil, ms_size,
+                                      MESA_SHADER_COMPUTE);
+   if (!ms) {
+      ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   pso->ms_workgroup[0] = MAX2(ms->info.workgroup_size[0], 1);
+   pso->ms_workgroup[1] = MAX2(ms->info.workgroup_size[1], 1);
+   pso->ms_workgroup[2] = MAX2(ms->info.workgroup_size[2], 1);
+   pso->ms_outputs = ms->info.outputs_written;
+
+   if (!compile_poly_program(device, ms, NULL, &ms_part)) {
+      ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   struct agx_shader_part setup_part;
+   if (!compile_poly_program(device, build_ms_setup(), NULL, &setup_part)) {
+      ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   const struct {
+      struct agx_shader_part *part;
+      struct agx_bo **bo;
+      uint64_t *va;
+      struct agx_shader_info *info;
+      const char *name;
+   } cs[] = {
+      {&ms_part, &pso->ms_bo, &pso->ms_va, &pso->ms_info, "d3d12 mesh"},
+      {&setup_part, &pso->ms_setup_bo, &pso->ms_setup_va, &pso->ms_setup_info,
+       "d3d12 mesh setup"},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
+      *cs[i].bo = agx_bo_create(&device->dev, cs[i].part->info.binary_size, 0,
+                                AGX_BO_EXEC | AGX_BO_LOW_VA, cs[i].name);
+      if (!*cs[i].bo) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_OUTOFMEMORY;
+      }
+      memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
+             cs[i].part->info.binary_size);
+      *cs[i].va = (*cs[i].bo)->va->addr;
+      *cs[i].info = cs[i].part->info;
+   }
+
+   /* The rasterization vertex shader, linked like any other. */
+   struct agx_shader_part rast_part;
+   if (!compile_poly_program(device, build_ms_rast(pso->ms_outputs),
+                             &pso->ms_uvs, &rast_part)) {
+      ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   struct agx_vs_prolog_key pk = {.hw = true, .static_vi = true};
+   struct agx_shader_key pbk = {
+      .dev = agx_gather_device_key(&device->dev),
+      .has_scratch = true,
+      .secondary = true,
+      .no_stop = true,
+   };
+   nir_builder pb = nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
+   agx_nir_vs_prolog(&pb, &pk);
+   struct agx_shader_part prolog;
+   memset(&prolog, 0, sizeof(prolog));
+   agx_compile_shader_nir(pb.shader, &pbk, &prolog);
+   ralloc_free(pb.shader);
+
+   agx_fast_link(&pso->ms_rast.linked, &device->dev, false, &rast_part,
+                 &prolog, NULL, 0);
+   free(prolog.binary);
+   pso->ms_rast.info = rast_part.info;
+   agx_assign_uvs(&pso->ms_varyings, &pso->ms_uvs, 0, 0);
+
+   /* Same preamble rule as every other linked graphics stage. */
+   if (rast_part.info.has_preamble) {
+      pso->ms_rast.code_bo =
+         agx_bo_create(&device->dev, rast_part.info.binary_size, 0,
+                       AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 mesh rast");
+      if (!pso->ms_rast.code_bo) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_OUTOFMEMORY;
+      }
+      memcpy(agx_bo_map(pso->ms_rast.code_bo), rast_part.binary,
+             rast_part.info.binary_size);
+      pso->ms_rast.preamble_va =
+         pso->ms_rast.code_bo->va->addr + rast_part.info.preamble_offset;
+   }
+
+   unsigned samplers = rast_part.info.sampler_state_count;
+   if (rast_part.info.uses_txf)
+      samplers = MAX2(samplers, 1);
+
+   agx_pack(&pso->ms_rast.counts, COUNTS, cfg) {
+      cfg.uniform_register_count = rast_part.info.push_count;
+      cfg.preshader_register_count = rast_part.info.nr_preamble_gprs;
+      cfg.sampler_state_register_count =
+         agx_translate_sampler_state_count(samplers, false);
+      cfg.texture_state_register_count = rast_part.info.texture_state_count;
+   }
+
+   mesa_logi("compiled mesh pipeline: ms %u B, setup %u B, rast %u B, "
+             "wg %ux%ux%u, outputs 0x%llx",
+             ms_part.info.binary_size, setup_part.info.binary_size,
+             rast_part.info.binary_size, pso->ms_workgroup[0],
+             pso->ms_workgroup[1], pso->ms_workgroup[2],
+             (unsigned long long)pso->ms_outputs);
+
+   pso->has_mesh = true;
+   return S_OK;
 }
 
 HRESULT

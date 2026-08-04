@@ -816,6 +816,7 @@ struct d12_dispatch_uniforms {
    uint64_t vertex_params;
    uint64_t geom_params;
    uint64_t tess_params;
+   uint64_t mesh_params;
    /* Address of the VS output MASK, not the mask itself: agx_usc_uniform
     * fills registers FROM memory, and load_vs_outputs_poly reads a 64-bit
     * value. The geometry body computes every vertex address in the output
@@ -877,6 +878,10 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (u->vertex_params) {
       agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS, D12_UNIFORM_PARAM_REGS,
                       u->vertex_params);
+   }
+   if (u->mesh_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_MESH_PARAMS, D12_UNIFORM_MESH_REGS,
+                      u->mesh_params);
    }
 
    /*
@@ -1100,6 +1105,10 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       if (poly->vertex_params) {
          agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS,
                          D12_UNIFORM_PARAM_REGS, poly->vertex_params);
+      }
+      if (poly->mesh_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_MESH_PARAMS, D12_UNIFORM_MESH_REGS,
+                         poly->mesh_params);
       }
    }
 
@@ -1690,6 +1699,126 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    return true;
 }
 
+/*
+ * Run a mesh pipeline's compute half and report the draw it becomes.
+ *
+ * Three dispatches into the pre-graphics stream:
+ *   1. the mesh shader itself, one workgroup per DispatchMesh group
+ *   2. ms_setup, turning the GPU-written counts into an indirect draw
+ *   3. (nothing else -- the rasterization VS is the hardware stage)
+ *
+ * The mesh shader writes its vertices, primitives and indices through
+ * D12_UNIFORM_MESH_PARAMS. Unlike geometry and tessellation there is no
+ * poly emulation behind this: the ABI is this driver's own.
+ */
+static bool
+d12_list_mesh_prerast(struct d12_cmd_list *list,
+                      struct d12_pipeline_state *pso, unsigned tg_x,
+                      unsigned tg_y, unsigned tg_z, uint64_t root_gpu,
+                      uint64_t textures_gpu, uint64_t draw_gpu,
+                      struct agx_draw *out_draw,
+                      struct d12_dispatch_uniforms *out_poly)
+{
+   struct d12_device *device = list->device;
+
+   unsigned groups = tg_x * tg_y * tg_z;
+   if (!groups) {
+      mesa_loge("DispatchMesh with an empty thread group count");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   /* Worst case per workgroup, from the shader's declared maxima. D3D12
+    * caps a mesh shader at 256 vertices and 256 primitives per group.
+    */
+   const unsigned max_verts = 256, max_prims = 256;
+   unsigned nr_slots = MAX2(util_last_bit64(pso->ms_outputs), 1);
+
+   size_t verts_B = (size_t)groups * max_verts * nr_slots *
+                    D12_MESH_SLOT_STRIDE;
+   size_t prims_B = (size_t)groups * max_prims * D12_MESH_SLOT_STRIDE;
+   size_t idx_B = (size_t)groups * max_prims * 3 * 4;
+
+   uint64_t counts = d12_list_upload_zero(list, 8, 8);
+   uint64_t vertices = d12_list_upload_zero(list, verts_B, 16);
+   uint64_t primitives = d12_list_upload_zero(list, prims_B, 16);
+   uint64_t indices = d12_list_upload_zero(list, idx_B, 4);
+   uint64_t drawdesc = d12_list_upload_zero(list, 5 * 4, 4);
+   if (!counts || !vertices || !primitives || !indices || !drawdesc)
+      return false;
+
+   /* The parameter block the shader indirects through. Laid out by
+    * D12_MESH_OFF_*; the payload is null because amplification shaders
+    * are refused at PSO creation.
+    */
+   uint64_t block[6] = {counts, vertices, primitives, indices, 0, drawdesc};
+   uint64_t mp_gpu = d12_list_upload(list, block, sizeof(block), 8);
+   if (!mp_gpu)
+      return false;
+
+   /* Published BY REFERENCE, like every other parameter block. */
+   uint64_t mp_ptr = d12_list_upload(list, &mp_gpu, sizeof(mp_gpu), 8);
+   if (!mp_ptr)
+      return false;
+
+   struct d12_dispatch_uniforms u = {
+      .root = root_gpu,
+      .textures = textures_gpu,
+      .draw = draw_gpu,
+      .mesh_params = mp_ptr,
+   };
+
+   struct d12_segment *seg = d12_list_get_pregfx(list);
+   if (!seg)
+      return false;
+
+   const struct {
+      uint64_t va;
+      const struct agx_shader_info *info;
+      struct agx_grid grid;
+      struct agx_workgroup wg;
+   } stages[] = {
+      {pso->ms_va, &pso->ms_info,
+       agx_3d(tg_x * pso->ms_workgroup[0], tg_y * pso->ms_workgroup[1],
+              tg_z * pso->ms_workgroup[2]),
+       agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
+                     pso->ms_workgroup[2])},
+      {pso->ms_setup_va, &pso->ms_setup_info, agx_3d(1, 1, 1),
+       agx_workgroup(1, 1, 1)},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
+                                                stages[i].info, &u, NULL);
+      if (!usc)
+         return false;
+
+      if (list->pregfx_cur + 0x100 > list->pregfx_end) {
+         mesa_loge("pre-graphics stream full");
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      struct agx_cdm_launch_word_0_packed launch =
+         d12_compute_launch_word(stages[i].info);
+
+      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
+         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
+         stages[i].wg, launch, usc);
+      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
+         (uint32_t *)list->pregfx_cur, device->dev.chip);
+      seg->dispatches++;
+   }
+
+   if (list->state != D12_LIST_RECORDING)
+      return false;
+
+   *out_draw = agx_draw_indexed_indirect(drawdesc, indices, idx_B,
+                                         AGX_INDEX_SIZE_U32, false);
+   *out_poly = u;
+   return true;
+}
+
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
@@ -1761,7 +1890,23 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * -- indexed and indirect, because the index count only exists after
     * the GPU prefix sum.
     */
-   if (pso->has_tess) {
+   if (pso->has_mesh) {
+      /* vertex_count/instance_count carry the DispatchMesh thread group
+       * counts here -- a mesh draw has no vertices of its own.
+       */
+      if (!d12_list_mesh_prerast(list, pso, vertex_count, instance_count,
+                                 first_vertex, root_gpu, textures_gpu,
+                                 draw_gpu, &draw, &poly_u))
+         return;
+
+      seg = &list->segments[list->segment_count - 1];
+
+      vstage = &pso->ms_rast;
+      uvs = &pso->ms_uvs;
+      varys = &pso->ms_varyings;
+      topology = MESA_PRIM_TRIANGLES;
+      draw_set = true;
+   } else if (pso->has_tess) {
       if (!d12_list_tess_prerast(list, pso, vertex_count, instance_count,
                                  root_gpu, textures_gpu, draw_gpu, &draw,
                                  &poly_u))
@@ -1802,7 +1947,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
-      (pso->has_gs || pso->has_tess) ? &poly_u : NULL);
+      (pso->has_gs || pso->has_tess || pso->has_mesh) ? &poly_u : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu, NULL);
    if (!vs_usc || !fs_usc)
@@ -2092,6 +2237,28 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    list->stream_cur = out;
    seg->has_draws = true;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_DispatchMesh(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y,
+                      UINT z)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (!x || !y || !z)
+      return;
+
+   /* A mesh draw has no vertices; the thread group counts ride in the
+    * same three arguments the vertex path uses, and d12_list_draw routes
+    * on pso->has_mesh.
+    */
+   if (!list->pso || !list->pso->has_mesh) {
+      mesa_loge("DispatchMesh without a mesh pipeline state");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   d12_list_draw(list, x, y, z, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -3105,6 +3272,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .RSSetViewports = d12_list_RSSetViewports,
    .RSSetScissorRects = d12_list_RSSetScissorRects,
    .DrawInstanced = d12_list_DrawInstanced,
+   .DispatchMesh = d12_list_DispatchMesh,
    /* Everything unset is NULL: loud crash over silent lie. */
 };
 

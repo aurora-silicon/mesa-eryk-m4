@@ -385,6 +385,175 @@ d12_device_CreateComputePipelineState(
                                             riid, out);
 }
 
+/*
+ * ID3D12Device2::CreatePipelineState — the STREAM descriptor.
+ *
+ * Instead of a fixed struct, the caller hands over a byte stream of
+ * tagged subobjects: each is a D3D12_PIPELINE_STATE_SUBOBJECT_TYPE
+ * followed by its payload, and the whole entry is aligned to void*.
+ * Mesh pipelines exist only in this form -- there is no
+ * D3D12_MESH_PIPELINE_STATE_DESC.
+ *
+ * Unknown subobject types are refused rather than skipped: the stream
+ * gives no length for an entry, so a type this driver does not know is
+ * also a type it cannot step over. Guessing the size would silently
+ * misparse everything after it.
+ */
+struct d12_pso_stream {
+   const D3D12_SHADER_BYTECODE *vs, *ps, *ms, *as, *cs, *gs, *hs, *ds;
+   ID3D12RootSignature *root_sig;
+   const D3D12_RASTERIZER_DESC *raster;
+   const D3D12_DEPTH_STENCIL_DESC *ds_state;
+   struct D3D12_RT_FORMAT_ARRAY rt_formats;
+   DXGI_FORMAT dsv_format;
+   bool have_rt_formats;
+};
+
+static bool
+d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
+                     struct d12_pso_stream *out)
+{
+   const uint8_t *p = (const uint8_t *)desc->pPipelineStateSubobjectStream;
+   const uint8_t *end = p + desc->SizeInBytes;
+
+   memset(out, 0, sizeof(*out));
+
+   while (p + sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) <= end) {
+      D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;
+      memcpy(&type, p, sizeof(type));
+
+      /* The payload begins at the next void*-aligned offset. */
+      const uint8_t *body =
+         p + ALIGN_POT(sizeof(type), sizeof(void *));
+      size_t body_size;
+
+#define SUBOBJ(TY, field, ctype)                                                case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##TY:                                  out->field = (const ctype *)body;                                            body_size = sizeof(ctype);                                                   break
+
+      switch (type) {
+         SUBOBJ(VS, vs, D3D12_SHADER_BYTECODE);
+         SUBOBJ(PS, ps, D3D12_SHADER_BYTECODE);
+         SUBOBJ(MS, ms, D3D12_SHADER_BYTECODE);
+         SUBOBJ(AS, as, D3D12_SHADER_BYTECODE);
+         SUBOBJ(CS, cs, D3D12_SHADER_BYTECODE);
+         SUBOBJ(GS, gs, D3D12_SHADER_BYTECODE);
+         SUBOBJ(HS, hs, D3D12_SHADER_BYTECODE);
+         SUBOBJ(DS, ds, D3D12_SHADER_BYTECODE);
+         SUBOBJ(RASTERIZER, raster, D3D12_RASTERIZER_DESC);
+         SUBOBJ(DEPTH_STENCIL, ds_state, D3D12_DEPTH_STENCIL_DESC);
+
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:
+         memcpy(&out->root_sig, body, sizeof(out->root_sig));
+         body_size = sizeof(ID3D12RootSignature *);
+         break;
+
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS:
+         memcpy(&out->rt_formats, body, sizeof(out->rt_formats));
+         out->have_rt_formats = true;
+         body_size = sizeof(struct D3D12_RT_FORMAT_ARRAY);
+         break;
+
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT:
+         memcpy(&out->dsv_format, body, sizeof(out->dsv_format));
+         body_size = sizeof(DXGI_FORMAT);
+         break;
+
+      /* Accepted and ignored: none of these change what we build. */
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK:
+         body_size = sizeof(UINT);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS:
+         body_size = sizeof(D3D12_PIPELINE_STATE_FLAGS);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
+         body_size = sizeof(UINT);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC:
+         body_size = sizeof(DXGI_SAMPLE_DESC);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
+         body_size = sizeof(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND:
+         body_size = sizeof(D3D12_BLEND_DESC);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO:
+         body_size = sizeof(D3D12_CACHED_PIPELINE_STATE);
+         break;
+
+      default:
+         mesa_loge("CreatePipelineState: unknown stream subobject %d; the "
+                   "stream carries no length so it cannot be stepped over",
+                   (int)type);
+         return false;
+      }
+#undef SUBOBJ
+
+      p = body + ALIGN_POT(body_size, sizeof(void *));
+   }
+
+   return true;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreatePipelineState(ID3D12Device2 *iface,
+                               const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
+                               REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (!out)
+      return E_POINTER;
+   if (!desc || !desc->pPipelineStateSubobjectStream || !desc->SizeInBytes)
+      return E_INVALIDARG;
+
+   struct d12_pso_stream st;
+   if (!d12_parse_pso_stream(desc, &st))
+      return E_INVALIDARG;
+
+   const struct d12_binding_map *map = d12_pso_binding_map(st.root_sig);
+
+   enum pipe_format rt_format = PIPE_FORMAT_NONE;
+   if (st.have_rt_formats && st.rt_formats.NumRenderTargets >= 1)
+      rt_format = d12_format_to_pipe(st.rt_formats.RTFormats[0]);
+
+   /* A compute pipeline expressed as a stream. */
+   if (st.cs && st.cs->pShaderBytecode) {
+      return d12_pipeline_state_create_compute(
+         device, st.cs->pShaderBytecode, st.cs->BytecodeLength, map, riid,
+         out);
+   }
+
+   if (st.ms && st.ms->pShaderBytecode) {
+      if (!st.ps || !st.ps->pShaderBytecode) {
+         mesa_loge("CreatePipelineState: a mesh pipeline needs a pixel "
+                   "shader");
+         return E_INVALIDARG;
+      }
+      return d12_pipeline_state_create_mesh(
+         device, st.ms->pShaderBytecode, st.ms->BytecodeLength,
+         st.as ? st.as->pShaderBytecode : NULL,
+         st.as ? st.as->BytecodeLength : 0, st.ps->pShaderBytecode,
+         st.ps->BytecodeLength, rt_format, st.ds_state, st.dsv_format,
+         st.raster, map, riid, out);
+   }
+
+   if (st.vs && st.vs->pShaderBytecode && st.ps && st.ps->pShaderBytecode) {
+      return d12_pipeline_state_create_graphics(
+         device, st.vs->pShaderBytecode, st.vs->BytecodeLength,
+         st.ps->pShaderBytecode, st.ps->BytecodeLength,
+         st.gs ? st.gs->pShaderBytecode : NULL,
+         st.gs ? st.gs->BytecodeLength : 0,
+         st.hs ? st.hs->pShaderBytecode : NULL,
+         st.hs ? st.hs->BytecodeLength : 0,
+         st.ds ? st.ds->pShaderBytecode : NULL,
+         st.ds ? st.ds->BytecodeLength : 0, rt_format, st.ds_state,
+         st.dsv_format, st.raster, map, riid, out);
+   }
+
+   mesa_loge("CreatePipelineState: stream declares no usable pipeline");
+   return E_INVALIDARG;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateGraphicsPipelineState(
    ID3D12Device2 *iface, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
@@ -885,6 +1054,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateCommandList = d12_device_CreateCommandList,
    .CheckFeatureSupport = d12_device_CheckFeatureSupport,
    .CreateGraphicsPipelineState = d12_device_CreateGraphicsPipelineState,
+   .CreatePipelineState = d12_device_CreatePipelineState,
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,

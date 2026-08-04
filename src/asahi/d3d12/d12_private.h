@@ -387,6 +387,33 @@ struct d12_pipeline_state {
    uint32_t tcs_nr_patch_outputs;
    uint32_t tcs_output_stride;
 
+   /* MESH. There is no hk or poly emulation to borrow -- hk implements
+    * no mesh shaders at all -- so the whole path is this driver's own.
+    * The mesh shader is compiled as compute and writes through
+    * D12_UNIFORM_MESH_PARAMS; two internal NIR shaders complete it:
+    *
+    *   ms_setup  reads the GPU-written {vertices, primitives} counts and
+    *             fills the 5-word indirect draw descriptor. The counts
+    *             only exist after the mesh shader has run, so this
+    *             cannot be done on the CPU.
+    *   ms_rast   the hardware vertex shader: reads the mesh shader's
+    *             per-vertex output slots and feeds the rasterizer.
+    */
+   bool has_mesh;
+   struct agx_bo *ms_bo;
+   uint64_t ms_va;
+   struct agx_shader_info ms_info;
+   uint32_t ms_workgroup[3];
+
+   struct agx_bo *ms_setup_bo;
+   uint64_t ms_setup_va;
+   struct agx_shader_info ms_setup_info;
+
+   struct d12_gfx_stage ms_rast;
+   struct agx_unlinked_uvs_layout ms_uvs;
+   struct agx_varyings_vs ms_varyings;
+   uint64_t ms_outputs;
+
    enum tess_primitive_mode tess_mode;
    enum gl_tess_spacing tess_spacing;
    bool tess_ccw, tess_points;
@@ -682,6 +709,13 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           const void *dxil, size_t dxil_size,
                                           const struct d12_binding_map *map,
                                           REFIID riid, void **out);
+HRESULT d12_pipeline_state_create_mesh(
+   struct d12_device *device, const void *ms_dxil, size_t ms_size,
+   const void *as_dxil, size_t as_size, const void *ps_dxil, size_t ps_size,
+   enum pipe_format rt_format, const D3D12_DEPTH_STENCIL_DESC *ds_desc,
+   DXGI_FORMAT dsv_format, const D3D12_RASTERIZER_DESC *rs_desc,
+   const struct d12_binding_map *map, REFIID riid, void **out);
+
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
    const void *ps_dxil, size_t ps_size, const void *gs_dxil, size_t gs_size,
