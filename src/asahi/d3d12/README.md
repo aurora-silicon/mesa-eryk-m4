@@ -50,6 +50,11 @@ executes**: vertex, geometry, tessellation, mesh, amplification, pixel.
 The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
+**First real conformance number, 2026-08-04**: **173 of 557**
+vkd3d-proton D3D12 test functions complete with no failures against this
+driver, 10 of them with nothing skipped. See `docs/roadmap.md` §5 for the
+breakdown, the 207 crashes it exposed, and how to reproduce it.
+
 The corpus figure is a **compile** proxy. Geometry, tessellation, mesh,
 amplification, vertex attribute fetch, indexed draws and instancing now
 execute; work graphs and ray query still compile without executing. See

@@ -496,22 +496,73 @@ SM 6.9 cooperative matrix. Skip until something needs it.
 
 ---
 
-## 5. The real conformance number
+## 5. The real conformance number — FIRST MEASUREMENT, 2026-08-04
 
-Everything above is still proxy work. The actual G5 goal is
-**vkd3d-proton's 557 D3D12 tests executing correctly.**
+**173 of 557** vkd3d-proton D3D12 test functions complete with zero
+failures against `libd3d12agx.so`. Of those, **10 execute with nothing
+skipped at all**; the other 163 pass in part because a feature check
+skips the body (no SM 6.7, no 64-bit shader ops, and so on). Both numbers
+are the honest headline — the first is "did not fail", the second is
+"actually ran and was right".
 
-- `widl` is built and installed (aarch64), which unblocks
-  `-Denable_tests=true`.
-- Open question when we left it: the MIDL aggregate-return ABI and library
-  naming.
+```
+PASS     173      (10 of them with zero skipped sub-tests)
+FAIL     171
+CRASH    207
+TIMEOUT    5
+SKIP       1
+```
 
-**§1.1 and §1.4 landed; this is now the top of the list**, even at a low
-pass rate. A real
-executing test suite finds classes of bug a compile proxy structurally
-cannot, and every number after that is honest end-to-end.
+Reproduce with `d3d12agx/scripts/vkd3d-suite.sh` in the ntasp repo. It
+builds vkd3d's OWN test harness against our driver and never builds
+vkd3d's D3D12 implementation — reference and oracle only, as the standing
+rule requires.
 
----
+### Two things that made this possible
+
+* **The harness needs almost nothing from vkd3d.** Only `vkd3d-common`
+  (seven files) plus the D3D12 entry points, which we export. Every
+  `vkd3d_*` helper the tests call is defined in
+  `tests/d3d12_crosstest.h`. No Vulkan, no dxil-spirv, no SPIRV-Tools.
+
+* **The aggregate-return ABI, which was the open question all along.**
+  32 methods return a struct by value. DirectX-Headers on non-Windows
+  declares them by value; widl declares them with an explicit hidden
+  pointer. On AArch64 those are not compatible — by-value returns through
+  x8, widl's form passes a pointer in x1 and never sets x8. **327 of 557
+  tests segfaulted on this**, and the backtrace pointed straight at our
+  `GetDesc`, which is exactly what a driver bug would look like. Fixed in
+  the generated header, not in the driver.
+
+### What the 207 crashes actually are
+
+Now that the ABI is right, these are OUR bugs, and they cluster. Sampled
+from the first 60:
+
+| cause | note |
+|---|---|
+| `ExecuteCommandLists: list not closed` | our error path leaves the list unusable, then something dereferences it |
+| `SetEventOnCompletion: non-NULL event` | real event objects are not implemented |
+| `CommandAllocator::Reset with lists recording` | same shape as the first |
+| `CreateCommandAllocator: type 1` | bundles |
+| `CreateDescriptorHeap: type 1` | sampler heaps |
+| `GetResourceAllocationInfo`, `CreateHeap`, `CopyDescriptors` | unimplemented, and the test then uses the result |
+
+**The pattern is not "we do the wrong thing", it is "we refuse and then
+crash".** G5a made the vtables crash-safe by filling them with
+E_NOTIMPL stubs; this is the next layer down — the paths that DO exist,
+fail correctly, and leave the caller holding something unusable. Fixing
+that class is likely worth more than any single feature, because it
+converts crashes into ordinary failures and lets the remaining tests in
+each file run.
+
+### Ordering from here
+
+1. **Crash-to-failure.** Make every refusal leave a usable object. Cheap,
+   mechanical, and it unblocks whole test files at a time.
+2. **The named gaps above** — events, bundles, sampler heaps,
+   `CopyDescriptors`, `GetResourceAllocationInfo`.
+3. Only then chase individual FAILs.
 
 ## 6. Standing rules for whoever picks this up
 
