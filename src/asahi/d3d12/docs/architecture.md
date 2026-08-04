@@ -1,0 +1,126 @@
+# d3d12agx architecture
+
+## The stack
+
+```
+   application / vkd3d-proton test suite
+        │  D3D12 COM ABI (ID3D12Device, ID3D12GraphicsCommandList, …)
+        │  headers: microsoft/DirectX-Headers (MIT) + winadapter.h on Linux
+        ▼
+   libd3d12agx.so                                  ← this driver, src/asahi/d3d12/
+        │        reuses, unmodified where possible:
+        ├─ src/asahi/lib      agx_device / agx_bo / VA / submit  (drm/asahi UAPI)
+        ├─ src/asahi/layout   image/tiling/compression layouts (ail)
+        ├─ src/asahi/genxml   hardware packet packing (agx_pack)
+        ├─ src/asahi/compiler NIR → AGX ISA backend
+        ├─ src/asahi/libagx   internal GPU helper kernels
+        └─ src/compiler/nir   the IR everything meets in
+        ▼
+   /dev/dri/renderD128  (drm/asahi kernel driver — untouched)
+```
+
+The D3D12 object model is implemented directly — COM vtables in plain C
+structs, the way vkd3d-proton does it — but the backend of every object is
+the same AGX substrate Honeykrisp uses, **not** Vulkan calls.
+
+**Honeykrisp (`src/asahi/vulkan/hk_*`) is the worked example** of driving
+this GPU from a modern explicit API: queue submission (`hk_queue.c`), command
+encoding (`hk_cmd_*.c`), memory (`hk_device_memory.c`), meta operations
+(`hk_cmd_meta.c`, `agx_bg_eot.c`). Read it as the map from API concept →
+hardware mechanism, then express the D3D12 version of that concept against
+the same `agx_*` layer. When a hardware question comes up, the answer comes
+from the Asahi/Mesa tree or from measurement on real hardware — never from
+guessing at register semantics.
+
+## Consequences of the substrate
+
+- **Memory:** Apple silicon is UMA. All heaps are host-reachable, heap tiers
+  collapse, and `Map()` never needs a staging dance.
+  `CreateCommittedResource` → `agx_bo_create` + (for textures) `ail` layout
+  selection.
+- **Sync:** D3D12 fences are timeline semantics — they map to DRM syncobj
+  timelines, the same primitive Honeykrisp uses for Vulkan timeline
+  semaphores. CPU and GPU Signal/Wait all reduce to syncobj ops. This is one
+  of the places D3D12 is *simpler* than Vulkan.
+- **Queues:** DIRECT/COMPUTE/COPY all target asahi submit queues; the
+  hardware distinction that matters is render vs compute encoders.
+- **Presentation is deliberately out of scope.** Milestones prove themselves
+  by GPU→CPU readback, hashed and compared against a CPU model. A swapchain
+  needs a windowing decision that can wait.
+
+## The shader path
+
+Shaders arrive as DXIL (SM 6.x, DXC output) — frozen LLVM 3.7 bitcode plus
+metadata. The design constraint is deliberate and absolute:
+
+> **No SPIR-V anywhere in the pipeline.** Not as an intermediate, not for
+> internal shaders. DXIL is translated straight to NIR.
+
+`src/asahi/d3d12/dxil/` contains a self-contained implementation:
+
+| file | role |
+|---|---|
+| `d12_dxil_bitstream.c` | DXBC container + LLVM bitstream reader |
+| `d12_dxil_module.c` | bitcode → types, constants, metadata, functions |
+| `d12_dxil_nir.c` | DXIL ops → NIR (the bulk of the work) |
+| `d12_dxil_compile.c` | standalone tool: DXIL in, AGX disassembly out |
+
+Internal/meta shaders use Mesa's native NIR builders exactly as `agx`/`hk`
+meta code does.
+
+DXBC (SM ≤ 5.1, FXC output) is a later, separate frontend — the format is
+fully publicly documented.
+
+### The binding model
+
+Resource bindings are assigned dense **slots** from the root signature. A
+shader's `createHandle`/`createHandleFromBinding` resolves to its slot; the
+address arithmetic happens at the access site. Three handle flavours exist,
+distinguished in `handle_info()`:
+
+1. **Range handles** — index the root table, an array of 64-bit base
+   addresses in GPU memory, published in a reserved uniform register.
+   A second array at `D12_ROOT_COUNTER_BASE` carries UAV counter addresses.
+2. **Dynamic handles** — the same, with a computed slot. Stride and kind come
+   from the range's base slot, valid because a range shares one
+   `dx.resources` record.
+3. **SM 6.6 heap handles** (`ResourceDescriptorHeap[i]`) — the def is a raw
+   heap index into the shader-visible heap's `struct d12_descriptor` array
+   **in memory**. That layout is therefore ABI: `address` at offset 0,
+   `counter_address` at offset 8, asserted in `d12_private.h`.
+
+Textures are not reachable by address: AGX reads a hardware descriptor, so
+the command list builds a texture heap from the root table and publishes it
+in a uniform. Samplers are different again — the backend's sampler operand
+indexes **sampler state registers** loaded by the USC SAMPLER word, not a
+heap. See `docs/findings.md`, which records how that was established.
+
+Reserved uniform registers (see `dxil/d12_dxil.h`):
+
+| uniform | contents |
+|---|---|
+| `D12_UNIFORM_ROOT` | address of the root table |
+| `D12_UNIFORM_TEXTURES` | address of the texture descriptor heap |
+| `D12_UNIFORM_SAMPLERS` | address of the sampler heap |
+| `D12_UNIFORM_HEAP` | address of the SM 6.6 shader-visible heap |
+
+`reserved_preamble` is set to `D12_UNIFORM_RESERVED` so the compiler's
+preamble allocates above them.
+
+## Licensing boundaries
+
+| Tree | License | Use here |
+|---|---|---|
+| mesa (incl. all `src/asahi`, `src/microsoft/compiler`) | MIT | substrate; new code is MIT, SPDX-tagged, provenance in commit messages |
+| microsoft/DirectX-Headers | MIT | API ABI definitions |
+| DirectXShaderCompiler docs (`DXIL.rst`), Microsoft public specs | public docs | format truth for DXIL |
+| LLVM docs (BitCodeFormat) | public docs | bitcode container truth |
+| vkd3d-proton (+ dxil-spirv) | LGPL-2.1+ | **reference and test oracle only — no code copied into this tree.** Running its test binaries against our library is fine and encouraged |
+| wine/vkd3d (vkd3d-shader) | LGPL-2.1+ | same: DXBC behavioural reference only |
+
+Mesa's `src/microsoft/compiler` is the *reverse* direction (NIR→DXIL) and is
+MIT — its DXIL enums and ABI tables are in-tree and directly reusable as the
+vocabulary of the format.
+
+If velocity ever demands linking LGPL code, that is a deliberate, logged
+decision with isolation (a separate `.so`), not a drive-by.

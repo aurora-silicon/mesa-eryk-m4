@@ -4,38 +4,58 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status at the tip of `dev`: **219 of 334** corpus shaders compile
-(127 compute, 64 fragment, 28 vertex); six GPU acceptance suites pass and
+Status on `dev`: **219 of 334** corpus shaders compile (127 compute,
+64 fragment, 28 vertex). Six GPU acceptance suites pass on real hardware;
 `g5_texture` fails on a known, documented wall.
 
-## This repository is not sufficient on its own
+## Start here
 
-It holds the driver and the test *programs* (`tests/*.c`). It holds none of
-their *inputs*, and none of the campaign record. You also need:
-
-**`RyanTheTide/ntasp`**, specifically:
-
-| path | what |
+| doc | what |
 |---|---|
-| `d3d12agx/testdata/shaders/` | the HLSL + compiled DXIL the tests take as arguments |
-| `d3d12agx/scripts/gpusuite.sh` | runs every GPU suite with the right arguments |
-| `d3d12agx/scripts/passset.sh` | the corpus measurement |
-| `docs/d3d12agx-replication.md` | **start here** — verified build-and-measure recipe |
-| `docs/d3d12agx-roadmap.md` | what to do next, ordered by leverage |
-| `docs/d3d12agx-campaign.md` | architecture and the binding model |
-| `WORKLOG.md` | every session, including the failures |
-
-**System prerequisites** (in no repo): Asahi Linux on AGX hardware, a kernel
-whose UAPI matches Mesa 26.1.4, and DirectX-Headers 1.619.1 installed
-system-wide at `/usr/include/directx` + `/usr/include/wsl`. The tests
-`#include <directx/d3d12.h>` and `<wsl/winadapter.h>` directly.
+| [`docs/replication.md`](docs/replication.md) | build it and reproduce the numbers — **read first** |
+| [`docs/architecture.md`](docs/architecture.md) | the stack, the shader path, the binding model, licensing |
+| [`docs/roadmap.md`](docs/roadmap.md) | what to do next, ordered by leverage, with falsification criteria |
+| [`docs/findings.md`](docs/findings.md) | traps that each cost a wrong hypothesis — read before debugging |
 
 ## Build
 
-```
+```bash
 meson setup _build -Dvulkan-drivers=asahi -Dgallium-drivers= \
                    -Dplatforms=wayland -Dtools=asahi -Dasahi-d3d12=true
 ninja -C _build
+```
+
+Needs Asahi Linux on AGX hardware, a kernel whose drm/asahi UAPI matches
+Mesa 26.1.4, and **DirectX-Headers 1.619.1 installed system-wide** — the
+tests `#include <directx/d3d12.h>` and `<wsl/winadapter.h>` directly.
+Details and the verified procedure are in `docs/replication.md`.
+
+## Test
+
+```bash
+src/asahi/d3d12/tests/run-suites.sh            # GPU acceptance suites
+src/asahi/d3d12/tests/corpus-passset.sh > now  # corpus compile proxy
+```
+
+`tests/shaders/` holds the probe shaders — HLSL sources **and** their
+compiled DXIL, committed together because `dxc` does not run on the target
+platform. `tests/corpus/` is empty in this repository: those shaders are
+LGPL-derived from vkd3d-proton and are regenerated rather than vendored
+(see `docs/replication.md`).
+
+## Layout
+
+```
+d12_device.c       ID3D12Device, adapter/feature queries, view creation
+d12_cmd.c          command lists, draws, dispatches, USC/PPP encoding
+d12_queue.c        submission, fences (DRM syncobj timelines)
+d12_resource.c     CreateCommittedResource, ail layout selection
+d12_descriptor.c   descriptor heaps
+d12_pipeline.c     PSO compile, prolog/epilog linking
+d12_root_sig.c     root signature serialise/parse (RTS0)
+d12_format.c       DXGI ↔ pipe format
+dxil/              DXIL → NIR: container, bitstream, module, translator
+tests/             GPU acceptance suites, standalone tools, shaders
 ```
 
 ## Branches
@@ -44,7 +64,7 @@ ninja -C _build
 |---|---|
 | `mesa/main` | mirror of upstream `main` |
 | `main` | pinned base, `mesa-26.1.4`, no d3d12agx work |
-| `dev` | the campaign |
+| `dev` | this work |
 
 Upstream is `gitlab.freedesktop.org/mesa/mesa` (the `upstream` remote). This
 is not a GitHub fork because Mesa has no GitHub mirror to fork from; the
@@ -52,7 +72,7 @@ relationship is carried by that remote and by real shared ancestry.
 
 ## Licensing
 
-Driver code is MIT, matching Mesa. Anything adapted from Honeykrisp or the
-AGX libraries keeps its license and attribution, noted in the commit that
-introduces it. **vkd3d-proton and dxil-spirv are LGPL and are used as
-reference/oracle only — never copied into this tree.**
+Driver code is MIT, matching Mesa, SPDX-tagged. Anything adapted from
+Honeykrisp or the AGX libraries keeps its license and attribution, noted in
+the commit that introduces it. **vkd3d-proton and dxil-spirv are LGPL and are
+used as reference and test oracle only — never copied into this tree.**

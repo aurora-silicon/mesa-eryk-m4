@@ -1,0 +1,3 @@
+# LGPL-derived from vkd3d-proton test HLSL -- regenerated, never vendored.
+# See ../../docs/replication.md.
+*.dxil
