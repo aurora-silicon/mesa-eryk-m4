@@ -293,6 +293,21 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    if (!dxil || !dxil_size)
       return E_INVALIDARG;
 
+   /* The container declares its stage; honour it or refuse. Forcing a
+    * non-compute shader through this path compiles its store_output
+    * against the compute backend, which asserts "Unhandled intrinsic"
+    * and takes the process with it -- a crash where an E_INVALIDARG
+    * belongs. Same rule the standalone tool already follows
+    * (docs/findings.md).
+    */
+   mesa_shader_stage declared;
+   if (d12_dxil_container_stage(dxil, dxil_size, &declared) &&
+       declared != MESA_SHADER_COMPUTE) {
+      mesa_loge("CreateComputePipelineState: bytecode declares a %s shader",
+                _mesa_shader_stage_to_string(declared));
+      return E_INVALIDARG;
+   }
+
    const uint8_t *bc;
    size_t bc_size;
    const char *why = NULL;

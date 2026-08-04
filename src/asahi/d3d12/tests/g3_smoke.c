@@ -118,7 +118,17 @@ main(void)
    D3D12_CPU_DESCRIPTOR_HANDLE rtv_a =
       ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv_b = {.ptr = rtv_a.ptr + inc};
-   CHECK(inc == 32 && rtv_a.ptr, "heap start + 32B handle increment");
+   /* The increment is sizeof(struct d12_descriptor) and is OPAQUE to
+    * applications. It grew from 32 to 40 when UAV counter addresses were
+    * added to the descriptor, and this assertion kept the old literal --
+    * failing silently because nothing ran this suite afterwards.
+    *
+    * Assert the CONTRACT instead of a number that goes stale: a non-zero
+    * stride that genuinely separates two descriptors. That separation is
+    * exactly what the two pixel-exact clears further down prove.
+    */
+   CHECK(inc >= sizeof(uint64_t) && rtv_a.ptr && rtv_b.ptr != rtv_a.ptr,
+         "heap start, and an opaque non-zero handle increment");
 
    /* Textures: aligned and deliberately unaligned */
    ID3D12Resource *tex_a = NULL, *tex_b = NULL;
