@@ -105,6 +105,45 @@ enum d12_dxop {
    D12_DXOP_DOT3 = 55,
    D12_DXOP_DOT4 = 56,
    D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   /*
+    * Inline raytracing (SM 6.5 ray queries). There is no ray-tracing
+    * hardware and no acceleration-structure support, and the device
+    * reports RaytracingTier 0, so no application can build a structure
+    * to trace against. Traversal therefore visits nothing: Proceed is
+    * false immediately and the committed status is COMMITTED_NOTHING.
+    * That is the correct answer for every state reachable through this
+    * driver -- not a placeholder for one.
+    */
+   D12_DXOP_ALLOCATE_RAY_QUERY = 178,
+   D12_DXOP_RQ_TRACE_RAY_INLINE = 179,
+   D12_DXOP_RQ_PROCEED = 180,
+   D12_DXOP_RQ_ABORT = 181,
+   D12_DXOP_RQ_COMMIT_NON_OPAQUE_TRIANGLE_HIT = 182,
+   D12_DXOP_RQ_COMMIT_PROCEDURAL_HIT = 183,
+   D12_DXOP_RQ_COMMITTED_STATUS = 184,
+   D12_DXOP_RQ_CANDIDATE_TYPE = 185,
+   D12_DXOP_RQ_MATRIX_FIRST = 186,   /* ObjectToWorld / WorldToObject 3x4 */
+   D12_DXOP_RQ_MATRIX_LAST = 189,
+   D12_DXOP_RQ_STATE_SCALAR_FIRST = 190, /* flags, T, indices, front face */
+   D12_DXOP_RQ_STATE_SCALAR_LAST = 216,
+   D12_DXOP_ALLOCATE_RAY_QUERY2 = 258,
+   /* Work graphs (SM 6.8) */
+   D12_DXOP_ALLOCATE_NODE_OUTPUT_RECORDS = 238,
+   D12_DXOP_GET_NODE_RECORD_PTR = 239,
+   D12_DXOP_INCREMENT_OUTPUT_COUNT = 240,
+   D12_DXOP_OUTPUT_COMPLETE = 241,
+   D12_DXOP_GET_INPUT_RECORD_COUNT = 242,
+   D12_DXOP_FINISHED_CROSS_GROUP_SHARING = 243,
+   D12_DXOP_BARRIER_BY_MEMORY_TYPE = 244,
+   D12_DXOP_BARRIER_BY_MEMORY_HANDLE = 245,
+   D12_DXOP_BARRIER_BY_NODE_RECORD_HANDLE = 246,
+   D12_DXOP_CREATE_NODE_OUTPUT_HANDLE = 247,
+   D12_DXOP_INDEX_NODE_HANDLE = 248,
+   D12_DXOP_ANNOTATE_NODE_HANDLE = 249,
+   D12_DXOP_CREATE_NODE_INPUT_RECORD_HANDLE = 250,
+   D12_DXOP_ANNOTATE_NODE_RECORD_HANDLE = 251,
+   D12_DXOP_NODE_OUTPUT_IS_VALID = 252,
+   D12_DXOP_GET_REMAINING_RECURSION_LEVELS = 253,
    /* Mesh and amplification */
    D12_DXOP_SET_MESH_OUTPUT_COUNTS = 168,
    D12_DXOP_EMIT_INDICES = 169,
@@ -490,6 +529,38 @@ resource_slot_for_global(struct trans_ctx *ctx, uint32_t value_id)
                                   rb->lower_bound);
    }
 
+   /*
+    * Library targets (work graphs, raytracing) leave the resource
+    * metadata's global-variable operand undef, so the link above finds
+    * nothing. DXC's mangled global name embeds the source name -- the
+    * global for `RWBuf` is named "?RWBuf@@3V?$RWStructuredBuffer@I@@A"
+    * -- so match on that instead. Anchored on the leading '?' and the
+    * trailing "@@" so a name cannot match a longer one containing it.
+    */
+   const char *gname = mod->values[value_id].name;
+
+   /* LLVM prefixes a name with \01 to suppress its own mangling, so the
+    * byte before the '?' is invisible in any printout -- which is
+    * exactly how long this took to see.
+    */
+   if (gname && gname[0] == '\x01')
+      gname++;
+
+   if (gname && gname[0] == '?') {
+      for (unsigned i = 0; i < mod->num_resources; i++) {
+         const struct d12_resource_binding *rb = &mod->resources[i];
+         if (!rb->name || !rb->name[0])
+            continue;
+
+         size_t n = strlen(rb->name);
+         if (!strncmp(gname + 1, rb->name, n) && gname[1 + n] == '@' &&
+             gname[2 + n] == '@') {
+            return d12_binding_map_find(ctx->map, rb->klass, rb->space,
+                                        rb->lower_bound);
+         }
+      }
+   }
+
    return ~0u;
 }
 
@@ -689,8 +760,19 @@ type_size_align(const struct d12_module *mod, uint32_t type,
          *out_align = util_next_power_of_two(*out_size);
       return true;
    }
-   case D12_TYPE_STRUCT_ANON:
-   case D12_TYPE_STRUCT_NAMED: {
+   case D12_TYPE_STRUCT_NAMED:
+      /*
+       * dx.types.Handle is DXIL's opaque handle. DXC emits globals of
+       * this type as STORAGE -- a handle is stored into one and loaded
+       * back -- so it does need a memory layout, and ours is exactly
+       * what a handle is here: a 32-bit index.
+       */
+      if (t->name && !strcmp(t->name, "dx.types.Handle")) {
+         *out_size = *out_align = 4;
+         return true;
+      }
+      FALLTHROUGH;
+   case D12_TYPE_STRUCT_ANON: {
       uint32_t off = 0, align = 1;
       for (unsigned i = 0; i < t->strct.num_members; i++) {
          uint32_t ms, ma;
@@ -747,6 +829,34 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
       return ctx->ptr_space[id];
 
    const struct d12_value *v = &ctx->mod->values[id];
+
+   /*
+    * A pointer that arrives as a FUNCTION ARGUMENT. Work-graph node
+    * entry points take their input record that way -- the record is the
+    * parameter, not something the body loads -- so an argument of
+    * pointer type is the node input record in global memory.
+    */
+   if (v->kind == D12_VALUE_ARGUMENT) {
+      if (v->type >= ctx->mod->num_types ||
+          ctx->mod->types[v->type].kind != D12_TYPE_POINTER)
+         return D12_PTR_NONE;
+
+      nir_builder *b = ctx->b;
+      nir_cursor saved = b->cursor;
+      b->cursor = nir_before_impl(b->impl);
+
+      nir_def *params = nir_load_node_param_buffer_agx(b);
+      nir_def *recs = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, params, D12_NODE_OFF_INPUT),
+         .align_mul = 8);
+      b->cursor = saved;
+
+      ctx->ptr_space[id] = D12_PTR_GLOBAL;
+      ctx->ptr_base[id] = 0;
+      ctx->ptr_global[id] = recs;
+      ctx->ptr_pointee[id] = ctx->mod->types[v->type].ptr.pointee;
+      return D12_PTR_GLOBAL;
+   }
 
    /* A constant-expression GEP: the address of a static array element,
     * computed at constant time. Resolve the base pointer, then walk the
@@ -807,8 +917,18 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
       return D12_PTR_NONE;
 
    uint32_t size, align;
-   if (!type_size_align(ctx->mod, v->type, &size, &align))
+   if (!type_size_align(ctx->mod, v->type, &size, &align)) {
+      mesa_loge("dxil: global type %u has no memory layout (kind %d, "
+                "name '%s')",
+                v->type,
+                v->type < ctx->mod->num_types
+                   ? (int)ctx->mod->types[v->type].kind
+                   : -1,
+                v->type < ctx->mod->num_types && ctx->mod->types[v->type].name
+                   ? ctx->mod->types[v->type].name
+                   : "");
       return D12_PTR_NONE;
+   }
 
    if (v->addr_space == D12_ADDR_SPACE_GROUPSHARED) {
       ctx->shared_size = ALIGN_POT(ctx->shared_size, align);
@@ -847,8 +967,10 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
             return D12_PTR_NONE;
       }
 
-      if (size > 4096)
+      if (size > 4096) {
+         mesa_loge("dxil: global too large for scratch (%u bytes)", size);
          return D12_PTR_NONE;
+      }
 
       ctx->scratch_size = ALIGN_POT(ctx->scratch_size, align);
       ctx->ptr_space[id] = D12_PTR_SCRATCH;
@@ -992,6 +1114,11 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id,
               ctx->handle_base[value_id] != ~0u) {
       info_slot = ctx->handle_base[value_id];
    } else {
+      mesa_loge("dxil: dynamic handle from value %u (kind %d) names no "
+                "range", value_id,
+                value_id < ctx->mod->num_values
+                   ? (int)ctx->mod->values[value_id].kind
+                   : -1);
       trans_fail(ctx, "handle is dynamic but names no resource range");
       return false;
    }
@@ -1167,6 +1294,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                uint64_t opcode, const char *callee)
 {
    nir_builder *b = ctx->b;
+
+   if (getenv("D3D12AGX_DUMP_INSTS")) {
+      fprintf(stderr, "  dxop %llu (%s)\n", (unsigned long long)opcode,
+              callee ? callee : "?");
+   }
 
    /* Parameters start after callee + opcode. */
    const uint32_t *p = inst->ops + 2;
@@ -1567,6 +1699,162 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       def_result(ctx, inst, nir_channel(b, vec, (unsigned)comp));
       return true;
    }
+
+   case D12_DXOP_ALLOCATE_RAY_QUERY:
+   case D12_DXOP_ALLOCATE_RAY_QUERY2:
+      /* Returns an opaque query handle; ours carries the ray flags. */
+      def_result(ctx, inst,
+                 np >= 1 ? nir_u2u32(b, get_def(ctx, p[0]))
+                         : nir_imm_int(b, 0));
+      return true;
+
+   case D12_DXOP_RQ_TRACE_RAY_INLINE:
+   case D12_DXOP_RQ_ABORT:
+   case D12_DXOP_RQ_COMMIT_NON_OPAQUE_TRIANGLE_HIT:
+   case D12_DXOP_RQ_COMMIT_PROCEDURAL_HIT:
+      /* Nothing to traverse and nothing to commit against. */
+      return true;
+
+   case D12_DXOP_RQ_PROCEED:
+      /* Traversal is complete before it starts. */
+      def_result(ctx, inst, nir_imm_false(b));
+      return true;
+
+   case D12_DXOP_RQ_COMMITTED_STATUS:
+      /* COMMITTED_NOTHING */
+      def_result(ctx, inst, nir_imm_int(b, 0));
+      return true;
+
+   case D12_DXOP_RQ_CANDIDATE_TYPE:
+      /* CANDIDATE_NON_OPAQUE_TRIANGLE; unreachable, since Proceed never
+       * reports a candidate.
+       */
+      def_result(ctx, inst, nir_imm_int(b, 0));
+      return true;
+
+   case D12_DXOP_CREATE_NODE_OUTPUT_HANDLE:
+   case D12_DXOP_CREATE_NODE_INPUT_RECORD_HANDLE:
+      /* (index) -> a handle naming one of the entry's declared node
+       * inputs/outputs. Like a resource handle, the handle IS the index;
+       * what it addresses is decided where it is used.
+       */
+      NEED(1);
+      def_result(ctx, inst, nir_u2u32(b, get_def(ctx, p[0])));
+      return true;
+
+   case D12_DXOP_ANNOTATE_NODE_HANDLE:
+   case D12_DXOP_ANNOTATE_NODE_RECORD_HANDLE:
+   case D12_DXOP_INDEX_NODE_HANDLE:
+      /* Attaches properties, or selects an element of a node array.
+       * Either way the handle is unchanged for our purposes.
+       */
+      NEED(1);
+      def_result(ctx, inst, get_def(ctx, p[0]));
+      return true;
+
+   case D12_DXOP_ALLOCATE_NODE_OUTPUT_RECORDS: {
+      /* (handle, count, perThread) -> a record handle. Bump the output
+       * cursor by the requested count; the returned handle carries the
+       * base index the caller writes at.
+       */
+      NEED(2);
+      nir_def *params = nir_load_node_param_buffer_agx(b);
+      nir_def *counts = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, params, D12_NODE_OFF_COUNTS),
+         .align_mul = 8);
+      nir_def *base = nir_global_atomic(
+         b, 32, nir_iadd_imm(b, counts, 4),
+         nir_u2u32(b, get_def(ctx, p[1])), .atomic_op = nir_atomic_op_iadd);
+      def_result(ctx, inst, base);
+      return true;
+   }
+
+   case D12_DXOP_GET_NODE_RECORD_PTR: {
+      /* (handle, arrayIndex) -> a pointer into the record array, walked
+       * by getelementptr like any other memory. Records live in global
+       * memory, so this joins the pointer model there.
+       */
+      NEED(2);
+      nir_def *params = nir_load_node_param_buffer_agx(b);
+      nir_def *recs = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, params, D12_NODE_OFF_INPUT),
+         .align_mul = 8);
+      nir_def *stride = nir_load_global(
+         b, 1, 32, nir_iadd_imm(b, params, D12_NODE_OFF_STRIDE),
+         .align_mul = 4);
+
+      nir_def *idx = nir_u2u32(b, get_def(ctx, p[1]));
+      nir_def *addr =
+         nir_iadd(b, recs, nir_u2u64(b, nir_imul(b, idx, stride)));
+
+      if (inst->result_value < ctx->mod->num_values) {
+         ctx->ptr_space[inst->result_value] = D12_PTR_GLOBAL;
+         ctx->ptr_base[inst->result_value] = 0;
+         ctx->ptr_global[inst->result_value] = addr;
+         if (inst->result_type < ctx->mod->num_types &&
+             ctx->mod->types[inst->result_type].kind == D12_TYPE_POINTER) {
+            ctx->ptr_pointee[inst->result_value] =
+               ctx->mod->types[inst->result_type].ptr.pointee;
+         }
+      }
+      return true;
+   }
+
+   case D12_DXOP_GET_INPUT_RECORD_COUNT: {
+      NEED(1);
+      nir_def *params = nir_load_node_param_buffer_agx(b);
+      nir_def *counts = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, params, D12_NODE_OFF_COUNTS),
+         .align_mul = 8);
+      def_result(ctx, inst,
+                 nir_load_global(b, 1, 32, counts, .align_mul = 8));
+      return true;
+   }
+
+   case D12_DXOP_INCREMENT_OUTPUT_COUNT: {
+      /* (handle, count, perThread) */
+      NEED(2);
+      nir_def *params = nir_load_node_param_buffer_agx(b);
+      nir_def *counts = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, params, D12_NODE_OFF_COUNTS),
+         .align_mul = 8);
+      nir_global_atomic(b, 32, nir_iadd_imm(b, counts, 4),
+                        nir_u2u32(b, get_def(ctx, p[1])),
+                        .atomic_op = nir_atomic_op_iadd);
+      return true;
+   }
+
+   case D12_DXOP_OUTPUT_COMPLETE:
+   case D12_DXOP_FINISHED_CROSS_GROUP_SHARING:
+      /* Signals to the scheduler that this node's records are done.
+       * With no scheduler these carry no shader-visible effect; the
+       * memory ordering they imply is covered by the barriers DXC emits
+       * alongside them.
+       */
+      return true;
+
+   case D12_DXOP_BARRIER_BY_MEMORY_TYPE:
+   case D12_DXOP_BARRIER_BY_MEMORY_HANDLE:
+   case D12_DXOP_BARRIER_BY_NODE_RECORD_HANDLE:
+      /* SM 6.8 barriers name what they order rather than taking a mask.
+       * Order everything: correct, and no weaker than what was asked.
+       */
+      nir_barrier(b, .execution_scope = SCOPE_WORKGROUP,
+                  .memory_scope = SCOPE_DEVICE,
+                  .memory_semantics = NIR_MEMORY_ACQ_REL,
+                  .memory_modes = nir_var_mem_global | nir_var_mem_shared |
+                                  nir_var_image);
+      return true;
+
+   case D12_DXOP_NODE_OUTPUT_IS_VALID:
+      /* Every output a shader can name is one the graph declared. */
+      def_result(ctx, inst, nir_imm_true(b));
+      return true;
+
+   case D12_DXOP_GET_REMAINING_RECURSION_LEVELS:
+      /* No recursion budget is tracked without a scheduler. */
+      def_result(ctx, inst, nir_imm_int(b, 0));
+      return true;
 
    case D12_DXOP_SET_MESH_OUTPUT_COUNTS:
    case D12_DXOP_EMIT_INDICES:
@@ -3331,6 +3619,32 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    }
 
    default:
+      /* The ray-query state accessors: transforms and scalars read back
+       * after a traversal that never visited anything. An identity
+       * transform and zero are what an uncommitted query reports.
+       */
+      if (opcode >= D12_DXOP_RQ_MATRIX_FIRST &&
+          opcode <= D12_DXOP_RQ_MATRIX_LAST) {
+         NEED(3);
+         uint64_t row = 0, col = 0;
+         const_uint(ctx, p[1], &row);
+         const_uint(ctx, p[2], &col);
+         def_result(ctx, inst,
+                    nir_imm_float(b, row == col ? 1.0f : 0.0f));
+         return true;
+      }
+
+      if (opcode >= D12_DXOP_RQ_STATE_SCALAR_FIRST &&
+          opcode <= D12_DXOP_RQ_STATE_SCALAR_LAST && callee &&
+          !strncmp(callee, "dx.op.rayQuery_", 15)) {
+         unsigned bits = type_bit_size(ctx->mod, inst->result_type);
+         def_result(ctx, inst,
+                    type_is_float(ctx->mod, inst->result_type)
+                       ? nir_imm_floatN_t(b, 0.0, bits ? bits : 32)
+                       : nir_imm_intN_t(b, 0, bits ? bits : 32));
+         return true;
+      }
+
       if (getenv("D3D12AGX_DUMP_INSTS")) {
          fprintf(stderr, "  op %llu operands:", (unsigned long long)opcode);
          for (unsigned i = 0; i < np; i++) {
@@ -3993,6 +4307,17 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                             ? pointer_for_value(&ctx, inst->ops[0])
                             : D12_PTR_NONE;
          if (space == D12_PTR_NONE) {
+            mesa_loge("dxil: load from value %u kind %d addrspace %u type %u",
+                      inst->ops[0],
+                      inst->ops[0] < mod->num_values
+                         ? (int)mod->values[inst->ops[0]].kind
+                         : -1,
+                      inst->ops[0] < mod->num_values
+                         ? mod->values[inst->ops[0]].addr_space
+                         : 0,
+                      inst->ops[0] < mod->num_values
+                         ? mod->values[inst->ops[0]].type
+                         : 0);
             trans_fail(&ctx, "load from memory that is neither groupshared "
                              "nor local");
             break;
@@ -4118,6 +4443,12 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          uint32_t ptr_id = inst->ops[0];
          uint8_t space = pointer_for_value(&ctx, ptr_id);
          if (space == D12_PTR_NONE) {
+            mesa_loge("dxil: gep on value %u kind %d type %u",
+                      ptr_id,
+                      ptr_id < mod->num_values
+                         ? (int)mod->values[ptr_id].kind
+                         : -1,
+                      ptr_id < mod->num_values ? mod->values[ptr_id].type : 0);
             trans_fail(&ctx, "getelementptr on a non-memory pointer");
             break;
          }
@@ -4277,6 +4608,49 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          break;
       }
 
+      case D12_FUNC_INST_EXTRACTELT: {
+         /* extractelement <n x T> %v, i32 %idx */
+         if (inst->num_ops < 2) {
+            trans_fail(&ctx, "malformed extractelement");
+            break;
+         }
+         nir_def *vec = get_def(&ctx, inst->ops[0]);
+         uint64_t idx;
+         if (!vec) {
+            break;
+         } else if (const_uint(&ctx, inst->ops[1], &idx)) {
+            def_result(&ctx, inst,
+                       nir_channel(&b, vec, (unsigned)idx % vec->num_components));
+         } else {
+            def_result(&ctx, inst,
+                       nir_vector_extract(&b, vec,
+                                          get_def(&ctx, inst->ops[1])));
+         }
+         break;
+      }
+
+      case D12_FUNC_INST_INSERTELT: {
+         /* insertelement <n x T> %v, T %elt, i32 %idx */
+         if (inst->num_ops < 3) {
+            trans_fail(&ctx, "malformed insertelement");
+            break;
+         }
+         nir_def *vec = get_def(&ctx, inst->ops[0]);
+         nir_def *elt = get_def(&ctx, inst->ops[1]);
+         uint64_t idx;
+         if (!vec || !elt) {
+            break;
+         } else if (const_uint(&ctx, inst->ops[2], &idx)) {
+            def_result(&ctx, inst,
+                       nir_vector_insert_imm(&b, vec, elt, (unsigned)idx));
+         } else {
+            def_result(&ctx, inst,
+                       nir_vector_insert(&b, vec, elt,
+                                         get_def(&ctx, inst->ops[2])));
+         }
+         break;
+      }
+
       case D12_FUNC_INST_PHI:
          /* Read the register its predecessors wrote. */
          if (inst->result_value != ~0u && ctx.phi_reg[inst->result_value]) {
@@ -4429,6 +4803,9 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       break;
    case nir_intrinsic_load_mesh_param_buffer_agx:
       base = D12_UNIFORM_MESH_PARAMS;
+      break;
+   case nir_intrinsic_load_node_param_buffer_agx:
+      base = D12_UNIFORM_NODE_PARAMS;
       break;
    /* Emitted by the GS/tess lowering in src/poly, which leaves them for
     * the driver to answer.

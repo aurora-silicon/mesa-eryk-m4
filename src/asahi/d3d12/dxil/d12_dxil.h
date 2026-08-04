@@ -525,6 +525,12 @@ struct d12_resource_binding {
 
    uint32_t cb_size_B; /* CBV only */
 
+   /* Source-level name from the resource metadata. Library targets leave
+    * the global-variable operand undef, so this is the only link back to
+    * the global that stands for the resource.
+    */
+   const char *name;
+
    /* The global variable that stands for this resource. SM 6.x declares
     * resources as globals, loads them, and converts the loaded value with
     * createHandleForLib -- so a load has to be traceable back to here.
@@ -737,8 +743,28 @@ struct nir_shader;
 #define D12_MESH_SLOT_STRIDE        16
 #define D12_MESH_MAX_SLOTS          32
 
+/*
+ * Work-graph node parameter block. SM 6.8 work graphs are GPU-scheduled:
+ * a node reads input records, allocates output records for successor
+ * nodes, and the scheduler runs the graph. There is no scheduler here,
+ * so this describes only the DATA the shader touches; dispatching the
+ * graph is runtime that does not exist yet.
+ *
+ *    +0   u64  input records   (this node's input record array)
+ *    +8   u64  output records  (successor record arena)
+ *    +16  u64  counts          { u32 input count, u32 output cursor }
+ *    +24  u32  record stride   bytes per record
+ */
+#define D12_UNIFORM_NODE_PARAMS     44
+#define D12_UNIFORM_NODE_REGS       4
+
+#define D12_NODE_OFF_INPUT          0
+#define D12_NODE_OFF_OUTPUT         8
+#define D12_NODE_OFF_COUNTS         16
+#define D12_NODE_OFF_STRIDE         24
+
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_MESH_PARAMS + D12_UNIFORM_MESH_REGS)
+   (D12_UNIFORM_NODE_PARAMS + D12_UNIFORM_NODE_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the

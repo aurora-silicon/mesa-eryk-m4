@@ -1047,6 +1047,9 @@ parse_resource_list(struct d12_module *mod, uint64_t list_id, unsigned klass)
             rb->global_value = (uint32_t)var->value_id;
       }
 
+      /* Operand 2 is the source-level name. */
+      rb->name = md_string(mod, rec->node.ops[2]);
+
       uint64_t v;
       if (md_const_uint(mod, rec->node.ops[0], &v))
          rb->id = (uint32_t)v;

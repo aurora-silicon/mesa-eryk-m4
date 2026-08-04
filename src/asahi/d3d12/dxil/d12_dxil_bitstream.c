@@ -181,6 +181,13 @@ d12_dxil_container_stage(const void *data, size_t size_B,
        */
       case 13: *out_stage = MESA_SHADER_COMPUTE; return true;
       case 14: *out_stage = MESA_SHADER_COMPUTE; return true;
+      /*
+       * Library targets (lib_6_x): work-graph nodes and raytracing
+       * shaders. Both are compute in every sense that matters here --
+       * a node launches as a threadgroup, and ray-query traversal runs
+       * inline in whatever stage invoked it.
+       */
+      case 6: *out_stage = MESA_SHADER_COMPUTE; return true;
       default: return false;
       }
    }

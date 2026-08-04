@@ -2344,6 +2344,8 @@ system_value("root_agx", 1, bit_sizes=[64])
 system_value("descriptor_heap_agx", 1, bit_sizes=[64])
 # d3d12agx: parameter buffer for the mesh/amplification emulation.
 system_value("mesh_param_buffer_agx", 1, bit_sizes=[64])
+# d3d12agx: parameter buffer for work-graph node records.
+system_value("node_param_buffer_agx", 1, bit_sizes=[64])
 
 # Load a bindless sampler handle mapping a binding table sampler.
 intrinsic("load_sampler_handle_agx", [1], 1, [],

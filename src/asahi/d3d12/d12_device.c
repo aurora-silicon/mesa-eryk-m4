@@ -249,6 +249,24 @@ d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_D3D12_OPTIONS5: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS5 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /*
+       * Stated rather than left absent. The DXIL translator implements
+       * ray queries as a traversal that visits nothing, which is the
+       * correct answer only while no acceleration structure can exist --
+       * and this is what guarantees that.
+       */
+      opts->RaytracingTier = D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+      opts->RenderPassesTier = D3D12_RENDER_PASS_TIER_0;
+      opts->SRVOnlyTiledResourceTier3 = FALSE;
+      return S_OK;
+   }
+
    case D3D12_FEATURE_ARCHITECTURE: {
       D3D12_FEATURE_DATA_ARCHITECTURE *arch = data;
       if (data_size != sizeof(*arch))
