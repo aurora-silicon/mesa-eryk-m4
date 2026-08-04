@@ -1516,38 +1516,53 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def *tex_handle = nir_bindless_image_agx(
          b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
          .desc_set = D12_UNIFORM_TEXTURES);
-      nir_def *samp_handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, sh.slot, D12_SAMPLER_DESC_SIZE),
-         .desc_set = D12_UNIFORM_SAMPLERS);
 
-      nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
+      /* Samplers are NOT reached like textures. The backend's sampler
+       * operand is a 16-bit index into sampler STATE REGISTERS (the USC
+       * SAMPLER word loads them; el size 1 in the IR validator), so a
+       * constant slot is simply sampler_index and a computed one is a
+       * 16-bit sampler_offset. The bindless_sampler_agx path is a
+       * different mechanism (a device sampler heap) we do not use.
+       */
+      bool const_samp = nir_src_is_const(nir_src_for_ssa(sh.slot));
+
+      /* num_srcs was counted with the sampler as a source; a constant
+       * sampler is an index attribute instead, not a source.
+       */
+      nir_tex_instr *tex = nir_tex_instr_create(
+         b->shader, num_srcs - 1 + (const_samp ? 0 : 1));
       tex->op = op;
       tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
       tex->is_array = false;
       tex->dest_type = nir_type_float32;
       tex->coord_components = 2;
 
-      tex->src[0] =
+      unsigned si = 0;
+      tex->src[si++] =
          nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
-      tex->src[1] =
-         nir_tex_src_for_ssa(nir_tex_src_sampler_handle, samp_handle);
-      tex->src[2] =
+      if (const_samp) {
+         tex->sampler_index = nir_src_as_uint(nir_src_for_ssa(sh.slot));
+      } else {
+         tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_sampler_offset,
+                                              nir_u2u16(b, sh.slot));
+      }
+      tex->src[si++] =
          nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
 
       if (opcode == D12_DXOP_SAMPLE_BIAS) {
          NEED(10);
-         tex->src[3] =
+         tex->src[si++] =
             nir_tex_src_for_ssa(nir_tex_src_bias, get_def(ctx, p[9]));
       } else if (opcode == D12_DXOP_SAMPLE_LEVEL) {
          NEED(10);
-         tex->src[3] =
+         tex->src[si++] =
             nir_tex_src_for_ssa(nir_tex_src_lod, get_def(ctx, p[9]));
       } else if (opcode == D12_DXOP_SAMPLE_GRAD) {
          NEED(15);
-         tex->src[3] = nir_tex_src_for_ssa(
+         tex->src[si++] = nir_tex_src_for_ssa(
             nir_tex_src_ddx,
             nir_vec2(b, get_def(ctx, p[9]), get_def(ctx, p[10])));
-         tex->src[4] = nir_tex_src_for_ssa(
+         tex->src[si++] = nir_tex_src_for_ssa(
             nir_tex_src_ddy,
             nir_vec2(b, get_def(ctx, p[12]), get_def(ctx, p[13])));
       } else if (opcode == D12_DXOP_SAMPLE_CMP ||
@@ -1556,19 +1571,19 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  opcode == D12_DXOP_SAMPLE_CMP_BIAS) {
          NEED(10);
          tex->is_shadow = true;
-         tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_comparator,
-                                           get_def(ctx, p[9]));
+         tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_comparator,
+                                              get_def(ctx, p[9]));
          if (opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO) {
-            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_lod,
-                                              nir_imm_int(b, 0));
+            tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                 nir_imm_int(b, 0));
          } else if (opcode == D12_DXOP_SAMPLE_CMP_LEVEL) {
             NEED(11);
-            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_lod,
-                                              get_def(ctx, p[10]));
+            tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                 get_def(ctx, p[10]));
          } else if (opcode == D12_DXOP_SAMPLE_CMP_BIAS) {
             NEED(11);
-            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_bias,
-                                              get_def(ctx, p[10]));
+            tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_bias,
+                                                 get_def(ctx, p[10]));
          }
       } else if (opcode == D12_DXOP_TEXTURE_GATHER_RAW) {
          /* Raw gather: the texel bits, unconverted, channel 0. The
@@ -1586,7 +1601,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
-      def_result(ctx, inst, &tex->def);
+
+      /* The sparse-feedback variants return {vec4, status}; index 4 is
+       * the residency status, constant-mapped since nothing bindable is
+       * sparse (same rule as buffer loads).
+       */
+      nir_def *with_status[5] = {
+         nir_channel(b, &tex->def, 0), nir_channel(b, &tex->def, 1),
+         nir_channel(b, &tex->def, 2), nir_channel(b, &tex->def, 3),
+         nir_imm_int(b, ~0u),
+      };
+      def_result(ctx, inst, nir_vec(b, with_status, 5));
       return true;
    }
 
@@ -1771,7 +1796,16 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
 
-      def_result(ctx, inst, &tex->def);
+      /* The sparse-feedback variants return {vec4, status}; index 4 is
+       * the residency status, constant-mapped since nothing bindable is
+       * sparse (same rule as buffer loads).
+       */
+      nir_def *with_status[5] = {
+         nir_channel(b, &tex->def, 0), nir_channel(b, &tex->def, 1),
+         nir_channel(b, &tex->def, 2), nir_channel(b, &tex->def, 3),
+         nir_imm_int(b, ~0u),
+      };
+      def_result(ctx, inst, nir_vec(b, with_status, 5));
       return true;
    }
 
@@ -1946,23 +1980,29 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       uint64_t clamped = 1;
       const_uint(ctx, p[5], &clamped);
 
-      nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
+      bool const_samp = nir_src_is_const(nir_src_for_ssa(sh.slot));
+
+      nir_tex_instr *tex =
+         nir_tex_instr_create(b->shader, const_samp ? 2 : 3);
       tex->op = nir_texop_lod;
       tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
       tex->is_array = false;
       tex->dest_type = nir_type_float32;
       tex->coord_components = 2;
-      tex->src[0] = nir_tex_src_for_ssa(
+
+      unsigned si = 0;
+      tex->src[si++] = nir_tex_src_for_ssa(
          nir_tex_src_texture_handle,
          nir_bindless_image_agx(
             b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
             .desc_set = D12_UNIFORM_TEXTURES));
-      tex->src[1] = nir_tex_src_for_ssa(
-         nir_tex_src_sampler_handle,
-         nir_bindless_image_agx(
-            b, nir_imul_imm(b, sh.slot, D12_SAMPLER_DESC_SIZE),
-            .desc_set = D12_UNIFORM_SAMPLERS));
-      tex->src[2] =
+      if (const_samp) {
+         tex->sampler_index = nir_src_as_uint(nir_src_for_ssa(sh.slot));
+      } else {
+         tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_sampler_offset,
+                                              nir_u2u16(b, sh.slot));
+      }
+      tex->src[si++] =
          nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
       nir_def_init(&tex->instr, &tex->def, 2, 32);
       nir_builder_instr_insert(b, &tex->instr);
