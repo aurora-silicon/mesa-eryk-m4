@@ -4,9 +4,16 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **219 of 334** corpus shaders compile (127 compute,
-64 fragment, 28 vertex). Six GPU acceptance suites pass on real hardware;
-`g5_texture` fails on a known, documented wall.
+Status on `dev`: **321 of 334** corpus shaders compile, and **all seven GPU
+acceptance suites pass on real hardware** — including `g5_texture`, which
+now reproduces `Texture2D.Load` for all 256 texels of a 16×16 image, and
+`g4_triangle`, which matches a CPU rasterisation of the shader's own
+vertices on all 65536 pixels. The remaining 13 shaders are documented in
+[`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
+
+The corpus figure is a **compile** proxy; 102 of those shaders (geometry,
+tessellation, mesh, amplification, work graphs, ray query) compile but do
+not yet dispatch. See `docs/roadmap.md` — that gap is the current work.
 
 ## Start here
 

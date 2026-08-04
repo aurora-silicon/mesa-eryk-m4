@@ -44,6 +44,64 @@ static int failures = 0;
 #define H 256
 #define STRIDE (((W * 4) + 63) & ~63u)
 
+/* THE ORACLE. tri.dxil declares, per vertex id:
+ *
+ *    x = (float)(vid ^ 1) * 2 - 1        y = (vid > 1) ? 1 : -1
+ *
+ * giving clip-space (1,-1), (-1,-1), (5,1) -- a triangle whose third
+ * vertex is far off screen to the right, so the visible part is the
+ * wedge below the hypotenuse. Nothing here is calibrated against the
+ * GPU: it is the shader's own arithmetic, rasterised on the CPU with
+ * D3D's documented pixel-centre sampling and top-left fill rule.
+ *
+ * This replaces a hand-computed "a quarter of the image" expectation
+ * that was wrong, and that only ever passed because the translator was
+ * emitting integer adds on float bits -- garbage vertices that happened
+ * to cover 25%. A model that derives coverage from the shader cannot
+ * agree with a broken translator by luck.
+ */
+static void
+rasterise_reference(bool covered[H][W], unsigned vp_height)
+{
+   const float ndc[3][2] = {{1.0f, -1.0f}, {-1.0f, -1.0f}, {5.0f, 1.0f}};
+   float p[3][2];
+   for (int i = 0; i < 3; i++) {
+      p[i][0] = (ndc[i][0] * 0.5f + 0.5f) * (float)W;
+      p[i][1] = (0.5f - ndc[i][1] * 0.5f) * (float)vp_height;
+   }
+
+#define EDGE(a, b, px, py)                                                   \
+   ((p[b][0] - p[a][0]) * ((py) - p[a][1]) -                                 \
+    (p[b][1] - p[a][1]) * ((px) - p[a][0]))
+
+   /* Interior is EDGE > 0 for this winding; a zero (pixel centre exactly
+    * on an edge) is covered only for top and left edges.
+    */
+   static const int e0[3] = {0, 1, 2}, e1[3] = {1, 2, 0};
+   bool topleft[3];
+   for (int i = 0; i < 3; i++) {
+      int a = e0[i], b = e1[i];
+      topleft[i] = (p[b][1] == p[a][1]) ? (p[b][0] > p[a][0])
+                                        : (p[b][1] < p[a][1]);
+   }
+
+   for (unsigned y = 0; y < H; y++) {
+      for (unsigned x = 0; x < W; x++) {
+         float cx = (float)x + 0.5f, cy = (float)y + 0.5f;
+         bool in = true;
+         for (int i = 0; i < 3; i++) {
+            float e = EDGE(e0[i], e1[i], cx, cy);
+            if (e < 0 || (e == 0 && !topleft[i])) {
+               in = false;
+               break;
+            }
+         }
+         covered[y][x] = in;
+      }
+   }
+#undef EDGE
+}
+
 static void *
 slurp(const char *path, size_t *size)
 {
@@ -227,12 +285,23 @@ main(int argc, char **argv)
     * the shader actually declares: (30,30) is well inside, (230,230) is
     * far outside on the other side of the hypotenuse.
     */
-   const uint8_t *inside = PIXEL(30, 30);
-   const uint8_t *outside = PIXEL(230, 230);
+   static bool ref[H][W];
+   rasterise_reference(ref, H);
 
-   printf("       inside  (30,30)   = %02x %02x %02x %02x\n", inside[0],
+   /* Pick the sample points out of the model rather than hardcoding them,
+    * so they follow the geometry instead of a memory of it.
+    */
+   unsigned ix = 0, iy = 0, ox = 0, oy = 0;
+   for (unsigned y = 0; y < H; y++)
+      for (unsigned x = 0; x < W; x++)
+         (ref[y][x] ? (ix = x, iy = y) : (ox = x, oy = y));
+
+   const uint8_t *inside = PIXEL(ix, iy);
+   const uint8_t *outside = PIXEL(ox, oy);
+
+   printf("       inside  (%u,%u) = %02x %02x %02x %02x\n", ix, iy, inside[0],
           inside[1], inside[2], inside[3]);
-   printf("       outside (230,230) = %02x %02x %02x %02x\n", outside[0],
+   printf("       outside (%u,%u) = %02x %02x %02x %02x\n", ox, oy, outside[0],
           outside[1], outside[2], outside[3]);
 
    /* The clear must have happened everywhere. */
@@ -246,27 +315,38 @@ main(int argc, char **argv)
    bool drew = inside[0] == 0x40 && inside[1] == 0x80 && inside[2] == 0xbf;
    CHECK(drew, "triangle covers its interior with the pixel shader colour");
 
-   /* The shader's declared NDC coordinates give a right triangle with legs
-    * of half the width and the full height: exactly a quarter of the
-    * image. An off-by-a-flip or a bad clip range does not land on 25%.
+   /* EVERY pixel against the model, not a sample of them. A spot check
+    * passes for a triangle that is merely in the right neighbourhood;
+    * this one fails on a single mis-rasterised pixel, and it fails
+    * loudly enough to say where.
     */
-
-   /* Count how many pixels differ from the clear colour: a real triangle
-    * covers a meaningful fraction but nowhere near everything.
-    */
-   unsigned covered = 0;
+   unsigned covered = 0, mismatch = 0, first_x = 0, first_y = 0;
    for (unsigned y = 0; y < H; y++) {
       for (unsigned x = 0; x < W; x++) {
          const uint8_t *p = PIXEL(x, y);
-         if (!(p[0] == 0xff && p[1] == 0x00 && p[2] == 0x00))
+         bool is_tri = p[0] == 0x40 && p[1] == 0x80 && p[2] == 0xbf;
+         bool is_clear = p[0] == 0xff && p[1] == 0x00 && p[2] == 0x00;
+         if (!is_clear)
             covered++;
+         if (is_tri != ref[y][x] || !(is_tri || is_clear)) {
+            if (!mismatch++)
+               first_x = x, first_y = y;
+         }
       }
    }
-   printf("       covered %u of %u pixels (%.1f%%)\n", covered, W * H,
-          100.0 * covered / (W * H));
-   CHECK(covered == (W / 2) * H / 2,
-         "coverage is exactly the declared triangle: half-width x full "
-         "height / 2");
+
+   unsigned expect = 0;
+   for (unsigned y = 0; y < H; y++)
+      for (unsigned x = 0; x < W; x++)
+         expect += ref[y][x];
+
+   printf("       covered %u of %u pixels (%.1f%%), model says %u\n", covered,
+          W * H, 100.0 * covered / (W * H), expect);
+   if (mismatch)
+      printf("       first mismatch at (%u,%u)\n", first_x, first_y);
+   CHECK(mismatch == 0,
+         "every pixel matches a CPU rasterisation of the shader's own "
+         "vertices (D3D top-left rule)");
 
    /* RSSetViewports used to be recorded and never read. Re-render into a
     * half-height viewport: a viewport that is honoured must shrink the
@@ -303,12 +383,23 @@ main(int argc, char **argv)
       CHECK(half_cov > 0 && half_cov < covered,
             "RSSetViewports is honoured: half viewport shrinks coverage");
 
-      /* (10,200) is inside the triangle at full height and outside a
-       * half-height viewport, so it discriminates. A point the triangle
-       * never reaches would pass no matter what the viewport did.
+      /* A point must be inside at full height and outside at half height
+       * to discriminate; one the triangle never reaches would pass no
+       * matter what the viewport did. Take it from the two models.
        */
-      const uint8_t *low = PIXEL(10, 200);
-      CHECK(low[0] == 0xff && low[1] == 0x00 && low[2] == 0x00,
+      static bool half_ref[H][W];
+      rasterise_reference(half_ref, H / 2);
+      unsigned lx = 0, ly = 0;
+      bool found = false;
+      for (unsigned y = 0; y < H && !found; y++)
+         for (unsigned x = 0; x < W && !found; x++)
+            if (ref[y][x] && !half_ref[y][x])
+               lx = x, ly = y, found = true;
+
+      const uint8_t *low = PIXEL(lx, ly);
+      printf("       (%u,%u) is inside at full height, outside at half\n", lx,
+             ly);
+      CHECK(found && low[0] == 0xff && low[1] == 0x00 && low[2] == 0x00,
             "area below the viewport keeps the clear colour");
    }
 
@@ -383,8 +474,8 @@ main(int argc, char **argv)
       ID3D12Fence_SetEventOnCompletion(fence, 3, NULL);
 
       /* Same two sample points as above, read out through the API. */
-      const uint8_t *c = rbmap + 30 * fp.Footprint.RowPitch + 30 * 4;
-      const uint8_t *k = rbmap + 230 * fp.Footprint.RowPitch + 230 * 4;
+      const uint8_t *c = rbmap + iy * fp.Footprint.RowPitch + ix * 4;
+      const uint8_t *k = rbmap + oy * fp.Footprint.RowPitch + ox * 4;
       printf("       via CopyTextureRegion: inside %02x%02x%02x  "
              "outside %02x%02x%02x\n",
              c[0], c[1], c[2], k[0], k[1], k[2]);

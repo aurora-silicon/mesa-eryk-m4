@@ -51,14 +51,28 @@ static int failures = 0;
 #define H 256
 #define STRIDE (((W * 4) + 63) & ~63u)
 
-/* tri.hlsl covers NDC (-1,+1) (0,+1) (-1,-1): a right triangle with its
- * right angle at the top-left of the image. This point is well inside it,
- * and is where every flat-depth case is graded. The image centre is NOT
- * inside this triangle -- grading there would make each case pass whenever
- * the draw was rejected, for any reason, including the right one.
+/* Where every flat-depth case is graded. It has to be inside BOTH
+ * triangles this test draws, and outside neither by accident: grading at
+ * a point the triangle never covers makes each case pass whenever the
+ * draw was rejected, for any reason, including the right one.
+ *
+ * Read off the DXIL, not off a memory of the HLSL:
+ *
+ *   tri.dxil       clip (1,-1) (-1,-1) (5,1)  -> window (256,256)
+ *                  (0,256) (768,0); the visible part is the wedge under
+ *                  the hypotenuse y = 256 - x/3, so nothing above y=171
+ *                  is covered at all.
+ *   tri_depth.dxil clip (-0.9,-0.9) (0.9,-0.9) (0,0.9) -> window
+ *                  (12.8,243.2) (243.2,243.2) (128,12.8), apex at the top.
+ *
+ * (220,240) is ~58 px below the first triangle's hypotenuse and ~22 px
+ * inside the second's right edge. The previous point, (30,30), was inside
+ * NEITHER -- it was chosen against a triangle description that does not
+ * match either shader, and survived only because a translator bug made
+ * tri.dxil emit garbage vertices. See docs/findings.md.
  */
-#define IN_X 30
-#define IN_Y 30
+#define IN_X 220
+#define IN_Y 240
 
 /* The clear colour, and the two pixel-shader colours, as RGBA8 bytes. */
 static const FLOAT clear_rgba[4] = {1.0f, 0.0f, 0.0f, 1.0f};

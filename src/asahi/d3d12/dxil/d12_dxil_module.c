@@ -519,6 +519,13 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
          inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[0]);
          inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[1]);
          inst->extra[inst->num_extra++] = rec->ops[2];
+
+         /* A binop's type is its operands' type, and it must be recorded
+          * so a CHAIN of them stays typed: `a*b + c` is a float add only
+          * if the multiply that feeds it was known to be float.
+          */
+         if (inst->ops[0] < mod->num_values)
+            inst->result_type = mod->values[inst->ops[0]].type;
       }
       defines_value = true;
       break;
@@ -555,6 +562,30 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
          inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[0]);
          for (unsigned i = 1; i < rec->num_ops && inst->num_extra < 4; i++)
             inst->extra[inst->num_extra++] = rec->ops[i];
+
+         /*
+          * LLVM does not store the extracted type -- it is the aggregate's
+          * member at the given index. Deriving it matters because DXIL
+          * binops are polymorphic: `mul` is integer or floating point
+          * purely by operand TYPE. Leaving this unset made every
+          * arithmetic on a struct-returning dx.op result (a texture
+          * sample, a buffer load) compile to INTEGER ops on float bits.
+          */
+         uint32_t agg = inst->ops[0];
+         if (agg < mod->num_values && inst->num_extra >= 1) {
+            uint32_t t = mod->values[agg].type;
+            if (t < mod->num_types) {
+               const struct d12_type *at = &mod->types[t];
+               unsigned idx = (unsigned)inst->extra[0];
+               if ((at->kind == D12_TYPE_STRUCT_ANON ||
+                    at->kind == D12_TYPE_STRUCT_NAMED) &&
+                   idx < at->strct.num_members)
+                  inst->result_type = at->strct.members[idx];
+               else if ((at->kind == D12_TYPE_ARRAY ||
+                         at->kind == D12_TYPE_VECTOR))
+                  inst->result_type = at->seq.elem;
+            }
+         }
       }
       defines_value = true;
       break;

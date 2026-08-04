@@ -125,7 +125,44 @@ the raw kind and refuse by name.
 
 ---
 
-## The g5_texture wall — what is now RULED OUT
+### A binop's operation is chosen by its operands' TYPE — so every value needs one
+
+**This was the g5_texture wall, and it cost more than anything else in the
+campaign.** LLVM 3.7 bitcode has one `BINOP` record: code 0 is `add` for
+integers and `fadd` for floats, code 2 is `mul` or `fmul`, and so on. The
+record does not say which. **The operand type is the only thing that says.**
+
+So a value whose `result_type` is left unset silently reads as an integer,
+and arithmetic on it compiles to integer arithmetic *on float bits*:
+
+    %13 = imul %9.y, %11 (0x437f0000)     <- should be fmul by 255.0
+    %14 = iadd %13, %12 (0x3f000000)      <- should be fadd  by 0.5
+
+Two records were missing a type:
+
+- **`EXTRACTVAL`** — its result type is the *member* type of the aggregate,
+  not the aggregate's. Every `dx.op` that returns a struct (`sample`,
+  `textureLoad`, `bufferLoad`, `splitDouble`) reaches arithmetic through
+  `extractvalue`, so every texture and buffer computation was affected.
+- **`BINOP` itself** — a binop must record its own result type, or a *chain*
+  of them loses the thread: `a*b + c` is a float add only if the multiply
+  feeding it was known to be float.
+
+The symptom was maximally misleading: the descriptor, the sampler, the USC
+words, the uniform chain, the preamble and the `smpi` encoding were all
+verified byte-correct through `agxdecode`, because they *were* correct. The
+fetch returned the right texels and the shader then did integer maths on
+them. **Nothing in the hardware-facing half of the driver was ever wrong.**
+
+The experiment that finally pointed away from the descriptor: flipping the
+descriptor's layout field Linear→Twiddled, confirming the encoded byte
+changed (`02`→`12`), and observing **zero** change in the output. A
+descriptor field that cannot affect the result is not being used the way
+the theory requires.
+
+---
+
+## The g5_texture wall — the eliminations that were made along the way
 
 `agxdecode` is wired into `d12_queue.c` (`ASAHI_MESA_DEBUG=trace`), which
 was the roadmap's first recommendation and is now a permanent
@@ -169,12 +206,11 @@ them. Everything below was verified through it and needs no re-checking.
   tuple"), so two 32-bit coordinate registers are what the backend
   intends.
 
-**What remains**: the coordinate VALUES reaching the instruction, and
-whatever differs between this dispatch and a Honeykrisp `texelFetch`.
-The next step is the oracle the roadmap already names -- a minimal
-Vulkan compute `texelFetch` through hk on the same box, traced with the
-same decoder, diffed against this dump. Every other link is now
-eliminated.
+All of the above was correct, and none of it was the fault. It is kept
+because it is a map of the hardware path that is now known-good, and
+because it records how much verification can accumulate around a
+hypothesis that was wrong from the start. The suspicion never left the
+GPU-facing half of the driver; the bug was in the bitcode reader.
 
 ---
 
@@ -187,6 +223,27 @@ eliminated.
 - **The count hides regressions.** Compare the pass *set*, not its size:
   `comm -23 before.txt after.txt` must be empty. A change that trades one
   shader for another shows no movement in the total.
+- **A test expectation computed by hand is a hypothesis, not an oracle.**
+  `g4_triangle` asserted the triangle covered exactly a quarter of the
+  image, from a comment describing vertices the shader does not have —
+  and `g5_depth` graded at a point inside neither triangle it draws.
+  Both passed for months. They passed *because* the translator was
+  broken: integer adds on float bits gave `tri.dxil` vertices of
+  (−inf, −1, ~0), garbage that happened to cover 25%. **Fixing a real bug
+  made two green suites go red**, which is exactly backwards, and is the
+  signature of an expectation calibrated against the defect.
+
+  The fix is a model that derives the answer from the shader, so it
+  cannot agree with a broken translator by luck. `g4_triangle` now
+  rasterises the shader's own clip-space vertices on the CPU with D3D's
+  documented pixel-centre sampling and top-left fill rule, and compares
+  **all 65536 pixels**. It matched the GPU exactly — 10965 — including
+  the 85 pixel centres that land precisely on the hypotenuse and are
+  covered only because that edge is a left edge.
+
+  Note what the weaker test could not have caught: strict-interior
+  rasterisation gives 10880, and every one of those 85 pixels is a
+  real fill-rule behaviour that is now verified rather than assumed.
 - **A test that prints usage exits 0.** Any harness that checks only the last
   line reads that as a pass. `tests/run-suites.sh` treats a missing verdict as
   a failure for this reason.
