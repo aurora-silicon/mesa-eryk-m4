@@ -1734,9 +1734,13 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    const unsigned max_verts = 256, max_prims = 256;
    unsigned nr_slots = MAX2(util_last_bit64(pso->ms_outputs), 1);
 
-   size_t verts_B = (size_t)groups * max_verts * nr_slots *
-                    D12_MESH_SLOT_STRIDE;
-   size_t prims_B = (size_t)groups * max_prims * D12_MESH_SLOT_STRIDE;
+   /* Fixed stride: the translator addresses slot (sigId + row) within a
+    * D12_MESH_MAX_SLOTS-wide record per vertex, so the buffer has to be
+    * sized that way whatever the shader actually writes.
+    */
+   const size_t vtx_stride = D12_MESH_MAX_SLOTS * D12_MESH_SLOT_STRIDE;
+   size_t verts_B = (size_t)groups * max_verts * vtx_stride;
+   size_t prims_B = (size_t)groups * max_prims * vtx_stride;
    size_t idx_B = (size_t)groups * max_prims * 3 * 4;
 
    uint64_t counts = d12_list_upload_zero(list, 8, 8);
@@ -1812,6 +1816,16 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
 
    if (list->state != D12_LIST_RECORDING)
       return false;
+
+   if (getenv("D3D12AGX_DUMP_MESH")) {
+      device->dbg_tess_draw = d12_list_data_cpu(list, drawdesc);
+      device->dbg_tess_counts = d12_list_data_cpu(list, counts);
+      device->dbg_tess_counts_n = 2;
+      device->dbg_mesh_verts = d12_list_data_cpu(list, vertices);
+      device->dbg_mesh_idx = d12_list_data_cpu(list, indices);
+      mesa_logi("mesh: groups=%u slots=%u vtx_stride=%zu idx_B=%zu", groups,
+                nr_slots, vtx_stride, idx_B);
+   }
 
    *out_draw = agx_draw_indexed_indirect(drawdesc, indices, idx_B,
                                          AGX_INDEX_SIZE_U32, false);
@@ -1943,6 +1957,12 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       varys = &pso->gs_varyings;
       topology = pso->gs_info.mode;
       first_vertex = 0;
+   }
+
+   if (getenv("D3D12AGX_DUMP_MESH")) {
+      mesa_logi("draw: has_mesh=%d mesh_params=0x%llx vstage=%s",
+                pso->has_mesh, (unsigned long long)poly_u.mesh_params,
+                vstage == &pso->ms_rast ? "ms_rast" : "other");
    }
 
    uint32_t vs_usc = d12_gfx_stage_usc(

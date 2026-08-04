@@ -945,13 +945,26 @@ build_ms_rast(uint64_t outputs)
 
    nir_def *vid = nir_load_vertex_id(&b);
 
+   /* The per-vertex stride is FIXED at D12_MESH_MAX_SLOTS slots, not the
+    * live slot count -- that is what the translator emits for
+    * storeVertexOutput, and the two have to agree. Striding by the live
+    * count instead put vertex 1 at byte 16 while the shader wrote it at
+    * byte 512, so only vertex 0 was ever read back.
+    */
    unsigned nr_slots = MAX2(util_last_bit64(outputs), 1);
    nir_def *base = nir_iadd(
       &b, verts,
-      nir_u2u64(&b, nir_imul_imm(&b, vid, nr_slots * D12_MESH_SLOT_STRIDE)));
+      nir_u2u64(&b, nir_imul_imm(&b, vid,
+                                 D12_MESH_MAX_SLOTS * D12_MESH_SLOT_STRIDE)));
 
    for (unsigned slot = 0; slot < nr_slots; slot++) {
-      if (!(outputs & BITFIELD64_BIT(slot)))
+      /* Slot 0 is POSITION by the mesh output layout and is ALWAYS
+       * present. The mask cannot be consulted for it: a mesh shader
+       * writes its outputs with global stores, so its NIR
+       * outputs_written is empty and gating on it emitted a shader that
+       * wrote nothing but the default point size.
+       */
+      if (slot != 0 && !(outputs & BITFIELD64_BIT(slot)))
          continue;
 
       nir_def *v = nir_load_global(

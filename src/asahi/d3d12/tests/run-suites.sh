@@ -63,6 +63,19 @@ run g6_geometry "$S/gs_input_vs.dxil" "$S/solid.dxil" "$S/gs_point.dxil" \
 run g7_tessellation "$S/gs_input_vs.dxil" "$S/solid.dxil" "$S/tess_hs.dxil" \
    "$S/tess_ds.dxil" || fails=$((fails+1))
 
+# G8 needs a MESH shader, and unlike the geometry and tessellation probes
+# one cannot be generated: nir_to_dxil has no mesh support at all. Point
+# D3D12AGX_CORPUS at a directory holding the corpus to run it. Skipped
+# LOUDLY when absent -- a suite that vanishes reads as a suite that
+# passed.
+MS="$D3D12AGX_CORPUS/ms_simple_code_dxil.dxil"
+if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$MS" ]; then
+   run g8_mesh "$MS" "$S/solid.dxil" || fails=$((fails+1))
+else
+   printf "%-18s %s\n" "g8_mesh" \
+      "SKIPPED - set D3D12AGX_CORPUS (no mesh probe can be generated)"
+fi
+
 echo
 if [ $fails -eq 0 ]; then echo "GPU SUITES: all green"; else echo "GPU SUITES: $fails suite(s) not green"; fi
 exit $fails

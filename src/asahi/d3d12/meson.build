@@ -147,6 +147,13 @@ d3d12agx_make_probe = executable(
   dependencies : [idep_nir, idep_mesautil, idep_libdxil_compiler],
 )
 
+d3d12agx_g8_mesh = executable(
+  'd3d12agx_g8_mesh',
+  files('tests/g8_mesh.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g7_tessellation = executable(
   'd3d12agx_g7_tessellation',
   files('tests/g7_tessellation.c'),

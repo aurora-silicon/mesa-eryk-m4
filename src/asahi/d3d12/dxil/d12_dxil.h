@@ -604,6 +604,16 @@ struct d12_module {
     * Nothing tessellates without it: the factors stay zero, the
     * tessellator counts zero vertices, and the draw is empty.
     */
+   /* Mesh / amplification entry properties (MSState, ASState). The
+    * thread count lives INSIDE these nodes rather than in the compute
+    * NumThreads tag, so a mesh shader parsed as compute silently gets a
+    * 1x1x1 workgroup and only its first thread ever runs.
+    */
+   uint32_t mesh_max_vertices;
+   uint32_t mesh_max_primitives;
+   uint32_t mesh_topology;
+   uint32_t mesh_payload_size;
+
    uint32_t patch_constant_func;
    bool has_patch_constant; /* zero is a valid function index */
    uint32_t gs_input_prim;      /* DXIL InputPrimitive */

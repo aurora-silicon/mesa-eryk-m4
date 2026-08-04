@@ -111,6 +111,8 @@ struct d12_device {
    void *dbg_tess_draw;
    void *dbg_tess_counts;
    unsigned dbg_tess_counts_n;
+   void *dbg_mesh_verts;
+   void *dbg_mesh_idx;
    void *dbg_tcs_buf;
    unsigned dbg_tcs_buf_n;
 

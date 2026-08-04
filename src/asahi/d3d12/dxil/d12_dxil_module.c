@@ -1205,6 +1205,11 @@ parse_resources(struct d12_module *mod)
 #define D12_ENTRY_PROP_DS_STATE     2
 #define D12_ENTRY_PROP_HS_STATE     3
 #define D12_ENTRY_PROP_NUM_THREADS  4
+/* MSState / ASState. Operand 0 is the numthreads NODE -- mesh and
+ * amplification shaders do not use the compute NumThreads tag.
+ */
+#define D12_ENTRY_PROP_MS_STATE     9
+#define D12_ENTRY_PROP_AS_STATE     10
 
 static void
 parse_entry_properties(struct d12_module *mod)
@@ -1242,6 +1247,20 @@ parse_entry_properties(struct d12_module *mod)
 
       const struct d12_metadata *val = &mod->metadata[val_id];
 
+      if (getenv("D3D12AGX_DUMP_ENTRY_PROPS")) {
+         fprintf(stderr, "entry prop tag %u:", (unsigned)tag);
+         if (val->kind == D12_MD_NODE) {
+            for (unsigned k = 0; k < val->node.num_ops; k++) {
+               uint64_t cv;
+               if (md_const_uint(mod, val->node.ops[k], &cv))
+                  fprintf(stderr, " %llu", (unsigned long long)cv);
+               else
+                  fprintf(stderr, " ?");
+            }
+         }
+         fprintf(stderr, "\n");
+      }
+
       if (tag == D12_ENTRY_PROP_NUM_THREADS) {
          if (val->kind != D12_MD_NODE || val->node.num_ops < 3)
             continue;
@@ -1249,6 +1268,40 @@ parse_entry_properties(struct d12_module *mod)
             uint64_t v = 1;
             if (md_const_uint(mod, val->node.ops[c], &v))
                mod->num_threads[c] = (uint32_t)v;
+         }
+      } else if (tag == D12_ENTRY_PROP_MS_STATE ||
+                 tag == D12_ENTRY_PROP_AS_STATE) {
+         /* MSState { numThreads, maxVertexCount, maxPrimitiveCount,
+          *           outputTopology, payloadSizeInBytes }
+          * ASState { numThreads, payloadSizeInBytes }
+          */
+         if (val->kind != D12_MD_NODE || val->node.num_ops < 2)
+            continue;
+
+         uint64_t nt_id = val->node.ops[0];
+         if (nt_id < mod->num_metadata) {
+            const struct d12_metadata *nt = &mod->metadata[nt_id];
+            if (nt->kind == D12_MD_NODE && nt->node.num_ops >= 3) {
+               for (unsigned c = 0; c < 3; c++) {
+                  uint64_t v = 1;
+                  if (md_const_uint(mod, nt->node.ops[c], &v))
+                     mod->num_threads[c] = (uint32_t)v;
+               }
+            }
+         }
+
+         uint64_t v;
+         if (tag == D12_ENTRY_PROP_MS_STATE && val->node.num_ops >= 5) {
+            if (md_const_uint(mod, val->node.ops[1], &v))
+               mod->mesh_max_vertices = (uint32_t)v;
+            if (md_const_uint(mod, val->node.ops[2], &v))
+               mod->mesh_max_primitives = (uint32_t)v;
+            if (md_const_uint(mod, val->node.ops[3], &v))
+               mod->mesh_topology = (uint32_t)v;
+            if (md_const_uint(mod, val->node.ops[4], &v))
+               mod->mesh_payload_size = (uint32_t)v;
+         } else if (md_const_uint(mod, val->node.ops[1], &v)) {
+            mod->mesh_payload_size = (uint32_t)v;
          }
       } else if (tag == D12_ENTRY_PROP_HS_STATE) {
          /* {patchConstantFn, inputCPs, outputCPs, domain, partitioning,

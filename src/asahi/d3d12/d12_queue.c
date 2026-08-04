@@ -421,6 +421,20 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                       ti[i + 1], ti[i + 2], ti[i + 3]);
          }
 
+         if (device->dbg_mesh_verts) {
+            const float *v = (const float *)device->dbg_mesh_verts;
+            unsigned stride_f = (32 * 16) / 4;
+            for (unsigned i = 0; i < 4; i++) {
+               const float *p = v + i * stride_f;
+               mesa_logi("  mesh vtx %u: %8.4f %8.4f %8.4f %8.4f", i, p[0],
+                         p[1], p[2], p[3]);
+            }
+            const uint32_t *ix = (const uint32_t *)device->dbg_mesh_idx;
+            mesa_logi("  mesh indices: %u %u %u / %u %u %u", ix[0], ix[1],
+                      ix[2], ix[3], ix[4], ix[5]);
+            device->dbg_mesh_verts = NULL;
+         }
+
          device->dbg_tess_draw = NULL;
       }
       if (ret) {
