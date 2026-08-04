@@ -321,21 +321,39 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    const uint8_t *bc;
    size_t bc_size;
    const char *why = NULL;
+   nir_shader *dxbc_nir = NULL;
    if (!d12_dxil_find_bitcode(dxil, dxil_size, &bc, &bc_size, &why)) {
-      mesa_loge("CreateComputePipelineState: %s", why);
-      return E_INVALIDARG;
+      /* Shader Model 5.x compute has no DXIL either -- same fallback as
+       * the graphics path. */
+      if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
+         const char *dxbc_error = "unknown";
+         dxbc_nir = d12_dxbc_to_nir(dxil, dxil_size, MESA_SHADER_COMPUTE, map,
+                                    &dxbc_error);
+         if (!dxbc_nir) {
+            mesa_loge("CreateComputePipelineState: DXBC->NIR failed: %s",
+                      dxbc_error);
+            return E_INVALIDARG;
+         }
+      } else {
+         mesa_loge("CreateComputePipelineState: %s", why);
+         return E_INVALIDARG;
+      }
    }
 
-   struct d12_module mod;
-   if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
-      mesa_loge("CreateComputePipelineState: DXIL parse failed: %s",
-                mod.error ? mod.error : "unknown");
-      return E_INVALIDARG;
-   }
-
+   nir_shader *nir = dxbc_nir;
    const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, map, &error);
-   d12_dxil_module_finish(&mod);
+
+   if (!nir) {
+      struct d12_module mod;
+      if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
+         mesa_loge("CreateComputePipelineState: DXIL parse failed: %s",
+                   mod.error ? mod.error : "unknown");
+         return E_INVALIDARG;
+      }
+
+      nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, map, &error);
+      d12_dxil_module_finish(&mod);
+   }
 
    if (!nir) {
       mesa_loge("CreateComputePipelineState: DXIL->NIR failed: %s", error);

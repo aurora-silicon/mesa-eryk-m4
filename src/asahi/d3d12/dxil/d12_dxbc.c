@@ -211,8 +211,34 @@ struct d12_dxbc_operand {
    uint32_t imm[4]; /* IMMEDIATE32 */
 };
 
+/*
+ * One ISGN/OSGN element. The chunk is a flat table: a count, then 24-byte
+ * records, with the semantic name a byte offset from the chunk's data.
+ *
+ * This is where a DXBC output learns WHAT it is. The token stream only
+ * says "o2"; that a given register is SV_Position rather than a generic
+ * varying lives here, and agx_nir_lower_uvs and the tilebuffer lowering
+ * both key on the resulting io_semantics.location. Without this mapping
+ * every store_output reached the backend as location 0 and asserted.
+ */
+struct d12_dxbc_sig_elem {
+   char name[32];
+   uint32_t semantic_index;
+   uint32_t sysval;
+   uint32_t reg;
+   uint8_t mask;
+};
+
+#define D12_DXBC_MAX_SIG 32
+
 struct d12_dxbc_ctx {
    char errbuf[64];
+   const struct d12_binding_map *map;
+
+   struct d12_dxbc_sig_elem in_sig[D12_DXBC_MAX_SIG];
+   unsigned num_in_sig;
+   struct d12_dxbc_sig_elem out_sig[D12_DXBC_MAX_SIG];
+   unsigned num_out_sig;
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -237,6 +263,84 @@ fail(struct d12_dxbc_ctx *ctx, const char *why)
 {
    if (!ctx->error)
       ctx->error = why;
+}
+
+static unsigned
+parse_signature(const uint8_t *base, size_t size_B,
+                struct d12_dxbc_sig_elem *out, unsigned max)
+{
+   if (size_B < 8)
+      return 0;
+
+   uint32_t count;
+   memcpy(&count, base, 4);
+   if (count > max)
+      count = max;
+
+   unsigned n = 0;
+   for (uint32_t i = 0; i < count; i++) {
+      size_t off = 8 + (size_t)i * 24;
+      if (off + 24 > size_B)
+         break;
+
+      uint32_t name_off, sem_idx, sysval, reg;
+      memcpy(&name_off, base + off + 0, 4);
+      memcpy(&sem_idx, base + off + 4, 4);
+      memcpy(&sysval, base + off + 8, 4);
+      memcpy(&reg, base + off + 16, 4);
+
+      struct d12_dxbc_sig_elem *e = &out[n++];
+      memset(e, 0, sizeof(*e));
+      e->semantic_index = sem_idx;
+      e->sysval = sysval;
+      e->reg = reg;
+      e->mask = base[off + 20];
+
+      if (name_off < size_B) {
+         const char *nm = (const char *)base + name_off;
+         size_t avail = size_B - name_off;
+         size_t len = strnlen(nm, MIN2(avail, sizeof(e->name) - 1));
+         memcpy(e->name, nm, len);
+         e->name[len] = 0;
+      }
+   }
+
+   return n;
+}
+
+static const struct d12_dxbc_sig_elem *
+find_sig(const struct d12_dxbc_sig_elem *sig, unsigned n, uint32_t reg)
+{
+   for (unsigned i = 0; i < n; i++) {
+      if (sig[i].reg == reg)
+         return &sig[i];
+   }
+   return NULL;
+}
+
+/* Where a signature element lands in NIR's location space. */
+static unsigned
+output_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
+                uint32_t reg)
+{
+   mesa_shader_stage stage = ctx->b.shader->info.stage;
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      /* Every fragment output is a render target; SV_Depth is the one
+       * exception and is named. */
+      if (e && !strcasecmp(e->name, "SV_Depth"))
+         return FRAG_RESULT_DEPTH;
+      return FRAG_RESULT_DATA0 + (e ? e->semantic_index : reg);
+   }
+
+   if (e) {
+      if (!strcasecmp(e->name, "SV_Position") || e->sysval == 1)
+         return VARYING_SLOT_POS;
+      if (!strcasecmp(e->name, "SV_ClipDistance"))
+         return VARYING_SLOT_CLIP_DIST0 + e->semantic_index;
+   }
+
+   return VARYING_SLOT_VAR0 + reg;
 }
 
 /*
@@ -386,23 +490,89 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    }
 
    case D12_DXBC_FILE_INPUT: {
-      v = nir_load_input(b, 4, 32, nir_imm_int(b, 0),
-                         .base = op->index[op->num_indices ? op->num_indices - 1
-                                                           : 0],
+      uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
+      const struct d12_dxbc_sig_elem *e =
+         find_sig(ctx->in_sig, ctx->num_in_sig, reg);
+
+      /* System values are not varyings: they have their own intrinsics,
+       * and reading them as inputs gives the shader a slot nothing ever
+       * writes. */
+      if (e) {
+         if (!strcasecmp(e->name, "SV_VertexID"))
+            return nir_replicate(b, nir_load_vertex_id(b), 4);
+         if (!strcasecmp(e->name, "SV_InstanceID"))
+            return nir_replicate(b, nir_load_instance_id(b), 4);
+         if (!strcasecmp(e->name, "SV_IsFrontFace"))
+            return nir_replicate(b, nir_b2i32(b, nir_load_front_face(b, 1)), 4);
+         if (!strcasecmp(e->name, "SV_PrimitiveID"))
+            return nir_replicate(b, nir_load_primitive_id(b), 4);
+      }
+
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+         if (e && !strcasecmp(e->name, "SV_Position")) {
+            v = nir_load_frag_coord(b);
+            break;
+         }
+
+         /* A fragment varying must arrive INTERPOLATED: the backend
+          * consumes load_interpolated_input with a barycentric, not a
+          * raw load_input. */
+         unsigned loc = VARYING_SLOT_VAR0 + reg;
+         v = nir_load_interpolated_input(
+            b, 4, 32, nir_load_barycentric_pixel(b, 32), nir_imm_int(b, 0),
+            .base = reg, .dest_type = nir_type_float32,
+            .io_semantics.location = loc, .io_semantics.num_slots = 1);
+         b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+         break;
+      }
+
+      unsigned loc = b->shader->info.stage == MESA_SHADER_VERTEX
+                        ? VERT_ATTRIB_GENERIC0 + reg
+                        : VARYING_SLOT_VAR0 + reg;
+
+      v = nir_load_input(b, 4, 32, nir_imm_int(b, 0), .base = reg,
                          .dest_type = nir_type_float32,
+                         .io_semantics.location = loc,
                          .io_semantics.num_slots = 1);
+      b->shader->info.inputs_read |=
+         BITFIELD64_BIT(b->shader->info.stage == MESA_SHADER_VERTEX ? reg
+                                                                    : loc);
       break;
    }
 
    case D12_DXBC_FILE_CONSTANT_BUFFER: {
-      /* cb<slot>[<row>]: one vec4 per row. */
+      /*
+       * cb<slot>[<row>], one vec4 per row.
+       *
+       * This driver does not have UBOs: a constant buffer is reached
+       * through the ROOT TABLE, one indirection to the address the bind
+       * put in the slot -- exactly what the DXIL front end does for
+       * cbufferLoadLegacy. Emitting nir_load_ubo instead produced NIR the
+       * AGX backend has no lowering for, and it asserted.
+       *
+       * The register number IS the slot: d12_root_layout_build_map
+       * assigns CBV slots in register order, and DXBC has no space
+       * concept below SM 5.1.
+       */
       if (op->num_indices < 2 || op->index_is_relative[1]) {
          fail(ctx, "dynamically indexed constant buffer");
          return nir_imm_zero(b, 4, 32);
       }
-      v = nir_load_ubo(b, 4, 32, nir_imm_int(b, op->index[0]),
-                       nir_imm_int(b, op->index[1] * 16),
-                       .align_mul = 16, .range = ~0);
+
+      unsigned slot = ctx->map
+                         ? d12_binding_map_find(ctx->map, D12_RES_CBV, 0,
+                                                op->index[0])
+                         : op->index[0];
+      if (slot == ~0u)
+         slot = op->index[0];
+
+      nir_def *root = nir_load_root_agx(b);
+      nir_def *base = nir_load_global(
+         b, 1, 64, nir_iadd_imm(b, root, (uint64_t)slot * 8), .align_mul = 8);
+
+      v = nir_load_global(b, 4, 32,
+                          nir_iadd_imm(b, base, op->index[1] * 16),
+                          .align_mul = 16);
       break;
    }
 
@@ -441,13 +611,19 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
       break;
    }
 
-   case D12_DXBC_FILE_OUTPUT:
-      nir_store_output(b, value, nir_imm_int(b, 0),
-                       .base = op->index[op->num_indices ? op->num_indices - 1
-                                                         : 0],
+   case D12_DXBC_FILE_OUTPUT: {
+      uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
+      const struct d12_dxbc_sig_elem *e =
+         find_sig(ctx->out_sig, ctx->num_out_sig, reg);
+      unsigned loc = output_location(ctx, e, reg);
+
+      nir_store_output(b, value, nir_imm_int(b, 0), .base = reg,
                        .write_mask = mask, .src_type = nir_type_float32,
+                       .io_semantics.location = loc,
                        .io_semantics.num_slots = 1);
+      b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
       break;
+   }
 
    case D12_DXBC_FILE_NULL:
       break;
@@ -497,6 +673,44 @@ d12_dxbc_find_shader(const void *data, size_t size_B, const uint8_t **out,
 
       if (out_version)
          memcpy(out_version, p + off + 8, 4);
+
+      *out = p + off + 8;
+      *out_size_B = sz;
+      return true;
+   }
+
+   return false;
+}
+
+/* Locate any chunk by fourcc. ISGN/OSGN are the signature tables;
+ * ISG1/OSG1 are their SM5.1 forms with the same record layout. */
+static bool
+find_chunk(const void *data, size_t size_B, const char *a, const char *b,
+           const uint8_t **out, size_t *out_size_B)
+{
+   const uint8_t *p = data;
+
+   if (!p || size_B < 32)
+      return false;
+
+   uint32_t part_count;
+   memcpy(&part_count, p + 28, 4);
+   if (part_count > 64 || 32 + (size_t)part_count * 4 > size_B)
+      return false;
+
+   for (uint32_t i = 0; i < part_count; i++) {
+      uint32_t off;
+      memcpy(&off, p + 32 + i * 4, 4);
+      if ((size_t)off + 8 > size_B)
+         return false;
+
+      if (memcmp(p + off, a, 4) && (!b || memcmp(p + off, b, 4)))
+         continue;
+
+      uint32_t sz;
+      memcpy(&sz, p + off + 4, 4);
+      if ((size_t)off + 8 + sz > size_B)
+         return false;
 
       *out = p + off + 8;
       *out_size_B = sz;
@@ -894,6 +1108,7 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
    struct d12_dxbc_ctx ctx;
    memset(&ctx, 0, sizeof(ctx));
 
+   ctx.map = map;
    ctx.b = nir_builder_init_simple_shader(stage, &agx_nir_options, "dxbc");
 
    /* Token 0 is the version, token 1 the length in tokens. */
@@ -903,6 +1118,19 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
       *error = "truncated shader chunk";
       ralloc_free(ctx.b.shader);
       return NULL;
+   }
+
+   /* The signatures say what each register MEANS. Parse them before any
+    * instruction, since the very first store_output needs its location. */
+   const uint8_t *sig;
+   size_t sig_size;
+   if (find_chunk(data, size_B, "ISGN", "ISG1", &sig, &sig_size)) {
+      ctx.num_in_sig =
+         parse_signature(sig, sig_size, ctx.in_sig, D12_DXBC_MAX_SIG);
+   }
+   if (find_chunk(data, size_B, "OSGN", "OSG1", &sig, &sig_size)) {
+      ctx.num_out_sig =
+         parse_signature(sig, sig_size, ctx.out_sig, D12_DXBC_MAX_SIG);
    }
 
    ctx.tok = tokens + 2;
