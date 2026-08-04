@@ -244,6 +244,53 @@ shaders and remove the `dxc` dependency permanently. (b) is more work and
 strictly better; (a) unblocks step 5 immediately. **This needs a
 decision.**
 
+### 1.0b — Tessellation: the patch constant function  ★ THE G7 BLOCKER
+
+Everything else in the tessellation path is built and measured working
+(see the commit that added `d12_list_tess_prerast`): heap, three
+compiled programs, five dispatches, indexed indirect draw, patch-list
+topology, probe shaders. On hardware the pipeline creates, the GPU
+completes the whole stream, and the software vertex shader writes its
+control points correctly.
+
+**Nothing tessellates because `counts[0] = 0`.**
+
+A DXIL hull shader has **two function bodies**. The entry runs once per
+output control point. A separate **patch constant function** runs once
+per patch and is the *only* thing that writes `SV_TessFactor`. This
+frontend translates only the entry, so the factors stay zero and the
+tessellator correctly emits nothing. There is no error anywhere — the
+draw is simply empty.
+
+`d3d12agx_dxil_compile -n` now lists the module's functions and marks the
+patch constant one; `HS_STATE` operand 0 identifies it.
+
+Two attempts, both reverted, both worth not repeating blind:
+
+1. **Skipping it when picking the entry** cost 18 corpus hull shaders
+   (321 → 303). So the identification via `HS_STATE` operand 0 is not
+   matching the right function for real DXC output — check how the
+   metadata value wraps the function reference before trusting it.
+2. **Concatenating the two bodies** onto one instruction list is sound in
+   principle: the translator resolves values by absolute module index and
+   never reads `func->first_value`, so the two bodies' value ranges do
+   not collide. It hit a `CALL` whose callee resolved to value 10 — an
+   instruction, not `dx.op.storePatchConstant`. That is a real operand
+   decoding question, not a design flaw in the merge.
+
+Whichever route wins, the patch constant body should end up in the same
+NIR shader as the entry; poly's TCS lowering follows GLSL, where one
+shader writes both the control points and the levels. No invocation
+guard is needed — a GLSL tessellation control shader writes its levels
+from every invocation too, and the values are per-patch.
+
+**Falsification:** `g7_tessellation` grades against a derived quad —
+constant tess factors of 2 on a quad domain, bilinear domain shader,
+control points at (±0.5, ±0.5), so exactly 64×64 = 4096 pixels. A bowtie
+covers half, a dropped ring leaves a hole, an empty tessellator covers
+zero. It reports `counts[]` and the GPU-written draw descriptor under
+`D3D12AGX_DUMP_TESS`.
+
 ### 1.1 — ~~Break the g5_texture wall~~ — CLOSED 2026-08-04
 
 **Symptom.** 100 of 256 `Texture2D.Load` fetches return transparent black
