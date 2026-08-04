@@ -607,6 +607,51 @@ the feature or nothing.
 or not the underlying feature is in scope — the correct answer for
 something unimplemented is a failure the caller survives.
 
+### THE BLOCKER: there is no DXBC front end
+
+Measured 2026-08-05, by running every failing test and grouping the
+driver's own errors:
+
+```
+210  PSO creations fail with "no DXIL part in DXBC container"
+202  DISTINCT TESTS blocked by that, and by nothing else first
+```
+
+vkd3d-proton embeds most of its shaders as fxc-compiled **Shader Model
+5.x DXBC** — a `SHEX` chunk, no DXIL anywhere in the container. Decoded
+from the test source directly:
+
+```
+chunks: 3
+   ISGN 44
+   OSGN 44
+   SHEX 240  sm5.0 kind=1
+```
+
+SM 5.1 is legal D3D12, so this is a real conformance gap, not a test
+artifact. DXBC is a **token stream**, nothing like DXIL's LLVM bitcode:
+a different decoder and a different translator. The container parsing
+already exists (it is how we find the DXIL part); what is missing is the
+`SHDR`/`SHEX` token decoder and the instruction translation.
+
+**This single gap sets the ceiling at 350.** Every other fix competes for
+the remaining 171.
+
+### Why incremental features barely move the number
+
+Root 32-bit constants appeared in the error counts 35 times. Implementing
+them moved the score by **+2**.
+
+The causes are **LAYERED**: a test needs root constants AND a shader we
+can compile AND a texture shape we support. Only the first failure
+appears in the log, so an error histogram badly overstates what any one
+fix is worth. Expect roughly 1-2 tests per bounded feature until the
+layer beneath is gone.
+
+This is the single most useful planning fact in this document: **the way
+to a materially higher score is the DXBC front end, not a longer list of
+small features.**
+
 ### Ordering from here
 
 1. **Query heaps** — 11 tests, 0 passing, one self-contained feature.
