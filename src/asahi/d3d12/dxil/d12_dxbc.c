@@ -66,7 +66,16 @@ enum d12_dxbc_file {
    D12_DXBC_FILE_SAMPLER = 6,
    D12_DXBC_FILE_RESOURCE = 7,
    D12_DXBC_FILE_CONSTANT_BUFFER = 8,
+   D12_DXBC_FILE_OUTPUT_DEPTH = 12,
    D12_DXBC_FILE_NULL = 13,
+   /* Compute system values. These are not varyings and have no
+    * declaration in the token stream -- the register file IS the
+    * meaning. */
+   D12_DXBC_FILE_THREAD_ID = 32,
+   D12_DXBC_FILE_THREAD_GROUP_ID = 33,
+   D12_DXBC_FILE_THREAD_ID_IN_GROUP = 34,
+   D12_DXBC_FILE_COVERAGE_MASK = 35,
+   D12_DXBC_FILE_THREAD_ID_IN_GROUP_FLAT = 36,
 };
 
 /* The opcodes this front end covers. Anything else fails the shader
@@ -489,6 +498,27 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       break;
    }
 
+   /*
+    * A compute shader's thread identifiers. Unlike a vertex or pixel
+    * input these carry no declaration and no signature entry: the
+    * register FILE is the whole meaning, which is why they arrive here
+    * as "unsupported register file" rather than as a missing opcode.
+    */
+   case D12_DXBC_FILE_THREAD_ID:
+      v = nir_pad_vector(b, nir_load_global_invocation_id(b, 32), 4);
+      break;
+
+   case D12_DXBC_FILE_THREAD_GROUP_ID:
+      v = nir_pad_vector(b, nir_load_workgroup_id(b), 4);
+      break;
+
+   case D12_DXBC_FILE_THREAD_ID_IN_GROUP:
+      v = nir_pad_vector(b, nir_load_local_invocation_id(b), 4);
+      break;
+
+   case D12_DXBC_FILE_THREAD_ID_IN_GROUP_FLAT:
+      return nir_replicate(b, nir_load_local_invocation_index(b), 4);
+
    case D12_DXBC_FILE_INPUT: {
       uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
       const struct d12_dxbc_sig_elem *e =
@@ -577,7 +607,9 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    }
 
    default:
-      fail(ctx, "unsupported source register file");
+      snprintf(ctx->errbuf, sizeof(ctx->errbuf),
+               "unsupported source register file %u", op->file);
+      fail(ctx, ctx->errbuf);
       return nir_imm_zero(b, 4, 32);
    }
 
@@ -625,11 +657,22 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
       break;
    }
 
+   case D12_DXBC_FILE_OUTPUT_DEPTH:
+      nir_store_output(b, nir_channel(b, value, 0), nir_imm_int(b, 0),
+                       .base = 0, .write_mask = 1,
+                       .src_type = nir_type_float32,
+                       .io_semantics.location = FRAG_RESULT_DEPTH,
+                       .io_semantics.num_slots = 1);
+      b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+      break;
+
    case D12_DXBC_FILE_NULL:
       break;
 
    default:
-      fail(ctx, "unsupported destination register file");
+      snprintf(ctx->errbuf, sizeof(ctx->errbuf),
+               "unsupported destination register file %u", op->file);
+      fail(ctx, ctx->errbuf);
       break;
    }
 }
