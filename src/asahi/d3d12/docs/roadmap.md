@@ -30,16 +30,38 @@ mostly runtime work.
 
 ### The 115 non-passing, fully classified
 
-| Bucket | N | Status |
-|---|---|---|
+Re-derived from the tree, not carried forward. Emulation tiers are ordered by
+risk, not by size.
+
+| Tier | Bucket | N | Running total |
+|---|---|---|---|
+| **1 — no emulation** | `waveMultiPrefixOp`, immediate constant buffers, SM 6.8 draw params (§2) | 3 | **222** |
+| **2 — emulation ALREADY IN TREE** | geometry 15, hull 18, domain 14 (§3) | 47 | **269** |
+| **3 — greenfield, moderate** | mesh 19 + amplification 3 (§3.5) | 22 | **291** |
+| **4 — greenfield, large** | Work Graphs ~21, raytracing 9 (§3.6) | 30 | **321** |
+| **5 — numeric / ISA** | fp64 6, WaveMMA 3, 64-bit atomics 3, barycentrics 1 (§4) | 13 | **334** |
+
+Two corrections to earlier readings of this corpus:
+
+- The 29 "library" shaders are **not** all raytracing. About 21 are **SM 6.8
+  Work Graphs** (`broadcast_custom_input`, `thread_custom_input`,
+  `coalesce_custom_input`, `two_level_*`, `embedded_subobject`,
+  `local_root_signature`). Emulating those means writing a GPU work
+  scheduler — a different and much larger problem than RT traversal.
+- Honeykrisp exposes `geometryShader` and `tessellationShader` as **true** on
+  this GPU but exposes **no** mesh, task, raytracing or ray-query features.
+  So Tier 2 is wiring; Tiers 3 and 4 are design.
+
+---|---|---|
 | Stage-locked (hull/domain/geometry/mesh/amplification/library/RT/node) | 98 | needs the GS/tess campaign (§3) |
 | fp64 arithmetic | 6 | needs soft-float (§4.2) |
 | WaveMMA (SM 6.9 cooperative matrix) | 4 | out of scope until it matters |
 | Hardware-absent: 64-bit atomics ×3, attributeAtVertex, rayquery | 5 | §4.1, §4.3 |
 | Mechanisms not built, each refusing BY NAME | 3 | §2 |
 
-**222** = 219 + the 3 in §2 — the ceiling of the *current architecture*.
-Not the conformance limit. §3 is what moves the ceiling.
+**222** is the ceiling of the *current architecture* — not the conformance
+limit, and not a hardware limit. Every tier above it is reachable; they
+differ in how much of the machinery already exists.
 
 ---
 
