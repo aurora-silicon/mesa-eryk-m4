@@ -459,6 +459,7 @@ struct d12_named_md {
 struct d12_sig_element {
    uint32_t id;         /* what loadInput/storeOutput reference */
    const char *name;    /* semantic name */
+   uint32_t semantic_index; /* SemanticIndex: TEXCOORD0 vs TEXCOORD1 */
    uint32_t start_row;
    uint32_t cols;
 };
@@ -806,8 +807,57 @@ struct nir_shader;
 #define D12_NODE_OFF_COUNTS         16
 #define D12_NODE_OFF_STRIDE         24
 
+/*
+ * Vertex attribute fetch. Points at a struct d12_vb_params, which the
+ * draw path fills from the bound D3D12_VERTEX_BUFFER_VIEWs and the PSO's
+ * input layout.
+ *
+ * This exists because AGX's own vertex-fetch ABI cannot be used here.
+ * agx_nir_vs_prolog answers load_vbo_base_agx from AGX_ABI_VUNI_VBO_BASE,
+ * which is uniform register 4*n starting at ZERO and growing with the
+ * attribute count -- it would run straight through D12_UNIFORM_ROOT at 4
+ * and D12_UNIFORM_TEXTURES at 8. Honeykrisp has the same problem and
+ * solves it the same way, answering the three intrinsics from its root
+ * table instead (hk_nir_lower_descriptors.c).
+ */
+#define D12_UNIFORM_VB_PARAMS       52
+#define D12_UNIFORM_VB_REGS         4
+
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_STAT_QUERY + D12_UNIFORM_STAT_REGS)
+   (D12_UNIFORM_VB_PARAMS + D12_UNIFORM_VB_REGS)
+
+/*
+ * The vertex attribute parameter block, indexed by DXIL input signature
+ * element id -- which is what agx_nir_lower_vbo uses as its buffer handle,
+ * and what our loadInput lowering already puts in nir_intrinsic_base.
+ *
+ *   base      per-ATTRIBUTE address, with AlignedByteOffset folded in;
+ *             AGX_ZERO_PAGE_ADDRESS when the attribute has no buffer
+ *   clamp     highest in-bounds element index (agx_calculate_vbo_clamp)
+ *   stride_el stride in INTERCHANGE ELEMENTS, not bytes: the shader
+ *             multiplies it by the element index directly
+ */
+#define D12_MAX_VB_ATTRIBS          16
+#define D12_MAX_VB_SLOTS            16
+#define D12_VB_OFF_BASE             0
+#define D12_VB_OFF_CLAMP            (8 * D12_MAX_VB_ATTRIBS)
+#define D12_VB_OFF_STRIDE                                                    \
+   (D12_VB_OFF_CLAMP + 4 * D12_MAX_VB_ATTRIBS)
+#define D12_VB_PARAMS_SIZE                                                   \
+   (D12_VB_OFF_STRIDE + 4 * D12_MAX_VB_ATTRIBS)
+
+struct d12_vb_params {
+   uint64_t base[D12_MAX_VB_ATTRIBS];
+   uint32_t clamp[D12_MAX_VB_ATTRIBS];
+   uint32_t stride_el[D12_MAX_VB_ATTRIBS];
+};
+
+static_assert(sizeof(struct d12_vb_params) == D12_VB_PARAMS_SIZE,
+              "vertex attribute block must match the offsets the shader bakes");
+static_assert(offsetof(struct d12_vb_params, clamp) == D12_VB_OFF_CLAMP,
+              "clamp offset must match D12_VB_OFF_CLAMP");
+static_assert(offsetof(struct d12_vb_params, stride_el) == D12_VB_OFF_STRIDE,
+              "stride offset must match D12_VB_OFF_STRIDE");
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the
@@ -913,5 +963,32 @@ bool d12_dxil_lower_root(struct nir_shader *nir);
  * Shared so the standalone tool lowers exactly what the driver lowers.
  */
 bool d12_dxil_lower_sw_vs(struct nir_shader *nir);
+/*
+ * Answer agx_nir_lower_vbo's three intrinsics from the driver's vertex
+ * attribute parameter block. Run AFTER agx_nir_lower_vbo.
+ */
+bool d12_dxil_lower_vbo_params(struct nir_shader *nir);
+
+/*
+ * Read a shader's INPUT signature out of a DXIL container, without
+ * translating it. The pipeline needs the semantic names and indices to
+ * resolve a D3D12_INPUT_LAYOUT_DESC against the shader's own inputs, and
+ * that happens before -- and independently of -- compilation.
+ *
+ * The name is COPIED: struct d12_sig_element points into the module's
+ * string arena, which d12_dxil_module_finish frees.
+ *
+ * Returns the number of elements written, up to max.
+ */
+struct d12_input_sig_elem {
+   char name[32];
+   uint32_t semantic_index;
+   uint32_t id;
+};
+
+unsigned d12_dxil_input_signature(const void *dxil, size_t size_B,
+                                  struct d12_input_sig_elem *out,
+                                  unsigned max);
+
 bool d12_dxil_lower_uvs_index(struct nir_shader *nir,
                               const unsigned *slots);

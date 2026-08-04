@@ -72,6 +72,12 @@ run g8_mesh "$S/mesh_quad.dxil" "$S/solid.dxil" || fails=$((fails+1))
 run g9_amplification "$S/as_dispatch.dxil" "$S/mesh_quad.dxil" \
    "$S/solid.dxil" || fails=$((fails+1))
 
+# G10 is the first suite whose vertex data comes from a BOUND BUFFER
+# rather than from SV_VertexID. It draws the same triangle twice -- once
+# each way -- and compares.
+run g10_vertex_buffers "$S/tri.dxil" "$S/solid.dxil" "$S/vb_vs.dxil" \
+   "$S/vb_ps.dxil" || fails=$((fails+1))
+
 echo
 # A skipped suite is NOT a green suite. Saying "all green" while two of
 # them never ran is the same lie as a test that prints usage and exits 0.

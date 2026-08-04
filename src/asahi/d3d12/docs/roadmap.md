@@ -17,7 +17,7 @@ places a second opinion is worth the most.
 ## 0. Where we actually are
 
 **321 of 334 corpus shaders compile DXIL → NIR → AGX machine code**, and
-**all fifteen GPU acceptance suites pass on real hardware with nothing
+**all sixteen GPU acceptance suites pass on real hardware with nothing
 skipped** — from a clean checkout, with no corpus present.
 No SPIR-V, no Vulkan layer, no dxc at run time.
 
@@ -36,7 +36,8 @@ whose vertices and indices are dumped and checked.
 
 **The compile/execute gap has narrowed to two mechanisms.** Work graphs
 and ray queries still compile without dispatching; everything else in the
-graphics path runs. See "What 'done' means for tiers 2-4" below, and
+graphics path runs, and since G10 an application's own vertex data
+reaches it. See "What 'done' means for tiers 2-4" below, and
 §4.3.
 
 ### The probes are self-hosting
@@ -386,28 +387,34 @@ descriptors into a parallel heap so heap-handle texture ops resolve.
 **Done when:** a `g5_heap` test binds a resource only via
 `ResourceDescriptorHeap[i]` and reads correct data.
 
-### 1.4 — Attribute-fetching vertex prolog  ★ HIGHEST LEVERAGE
+### 1.4 — ~~Attribute-fetching vertex fetch~~ — CLOSED 2026-08-04 (`g10_vertex_buffers`)
 
 Compile side is done: `agx_nir_lower_vs_input_to_prolog` runs, so VS inputs
 become prolog-exported registers. The runtime still builds only a
 `static_vi` prolog that fixes up vertex/instance IDs.
 
-**Work:** key a prolog from the PSO's `D3D12_INPUT_LAYOUT_DESC` and the
-bound vertex buffers.
+**Done, and not as a prolog.** AGX's prolog vertex-fetch ABI starts at
+uniform register 0 and collides with this driver's reserved block, so the
+fetch is compiled into the MAIN shader with `agx_nir_lower_vbo` and the
+base/clamp/stride come from a driver parameter block — the same choice
+Honeykrisp makes. The prolog stays `static_vi`. See `findings.md`.
 
 **Done when:** a draw with a real input layout renders correctly.
 
-**Why it is now the top of the list.** Every probe in this tree derives
-its geometry from `SV_VertexID` — `gs_input_vs.dxil`, `tri.dxil`,
-`mesh_quad.dxil`, all of them. That is not a stylistic choice: there is
-no vertex-buffer fetch to write a probe against. `IASetVertexBuffers`
-records the binding and nothing reads it. Until this lands, no real
-application's vertex data can reach a shader, and the corpus cannot tell
-us so because it never executes.
+**The falsification was written first and then met.** `g10_vertex_buffers`
+draws one triangle twice — once from `SV_VertexID` (`tri.dxil`), once
+from a bound buffer (`vb_vs.dxil`) — and requires them to agree pixel for
+pixel, both against a CPU rasterisation. 10965 pixels each, zero
+differing. The buffer is interleaved (position at offset 0, colour at
+offset 8, stride 24) so a fetch that ignored attribute offsets would pass
+the position check and fail the colour one.
 
-**Falsified by:** a draw whose vertex data comes only from a bound buffer
-producing the same pixels as the equivalent `SV_VertexID` shader. Write
-that as `g10_vertex_buffers` before writing the prolog.
+**Still open here:** only per-vertex fetch is proven. Per-INSTANCE data
+(`D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA` with a step rate) is
+implemented — it is one field of `agx_velem_key` — but no suite draws
+instanced, so it is in the "compiles, unproven" bucket that this whole
+campaign exists to shrink. Same for `IASetIndexBuffer`: indexed draws
+still do not go through a bound index buffer.
 
 ---
 
@@ -500,7 +507,8 @@ Everything above is still proxy work. The actual G5 goal is
 - Open question when we left it: the MIDL aggregate-return ABI and library
   naming.
 
-**§1.1 landed; this should start now**, even at a low pass rate. A real
+**§1.1 and §1.4 landed; this is now the top of the list**, even at a low
+pass rate. A real
 executing test suite finds classes of bug a compile proxy structurally
 cannot, and every number after that is honest end-to-end.
 

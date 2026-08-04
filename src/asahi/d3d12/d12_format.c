@@ -79,6 +79,14 @@ static const struct d12_format_entry d12_formats[] = {
    {DXGI_FORMAT_R32G32_SINT, PIPE_FORMAT_R32G32_SINT},
    {DXGI_FORMAT_R32G32_FLOAT, PIPE_FORMAT_R32G32_FLOAT},
 
+   /* Three-component 32-bit formats are VERTEX formats: D3D12 does not
+    * allow them as render targets, which is why a table built for RTV
+    * formats did not have them. float3 position is the single most common
+    * vertex attribute there is.
+    */
+   {DXGI_FORMAT_R32G32B32_FLOAT, PIPE_FORMAT_R32G32B32_FLOAT},
+   {DXGI_FORMAT_R32G32B32_UINT, PIPE_FORMAT_R32G32B32_UINT},
+   {DXGI_FORMAT_R32G32B32_SINT, PIPE_FORMAT_R32G32B32_SINT},
    {DXGI_FORMAT_R32G32B32A32_UINT, PIPE_FORMAT_R32G32B32A32_UINT},
    {DXGI_FORMAT_R32G32B32A32_SINT, PIPE_FORMAT_R32G32B32A32_SINT},
    {DXGI_FORMAT_R32G32B32A32_FLOAT, PIPE_FORMAT_R32G32B32A32_FLOAT},

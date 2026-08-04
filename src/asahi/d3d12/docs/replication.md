@@ -42,7 +42,8 @@ on.
   ```bash
   P=_build/src/asahi/d3d12/d3d12agx_make_probe
   S=src/asahi/d3d12/tests/shaders
-  for probe in gs_input_vs gs_point tess_hs tess_ds mesh_quad as_dispatch; do
+  for probe in gs_input_vs gs_point tess_hs tess_ds mesh_quad as_dispatch \
+               vb_vs vb_ps; do
      $P $probe $S/$probe.dxil
   done
   ```
@@ -52,10 +53,24 @@ on.
   `g9_amplification` could only run against the LGPL corpus and were skipped
   in a clean checkout.
 
-  Regeneration is **byte-reproducible**: all six files come back identical
-  from this tree, so `git status` staying clean after that loop is itself a
-  check. It was not always true — the committed probes had drifted from what
-  the tree produced, which is invisible until you look.
+  **The bytes are not stable; the shaders are.** Regenerating with the same
+  binary reproduces the same files, but an unrelated edit to `make_probe.c`
+  perturbs a handful of bytes in every probe — `nir_to_dxil`'s output depends
+  on allocation addresses somewhere, so the bitstream encoding shifts while
+  the shader does not. Measured on all six pre-G10 probes: 9-11 bytes differ,
+  sizes identical, and **the compiled AGX is identical instruction for
+  instruction**.
+
+  So `git status` is NOT the check — a diff here means nothing on its own.
+  The check is:
+
+  ```bash
+  d3d12agx_dxil_compile old.dxil | grep -v 'from '  > a
+  d3d12agx_dxil_compile new.dxil | grep -v 'from '  > b
+  diff a b        # must be empty
+  ```
+
+  and then the suites, which is what actually exercises them.
 
 ## Build
 
@@ -78,7 +93,7 @@ inspection).
 src/asahi/d3d12/tests/run-suites.sh [build-dir]
 ```
 
-Expected today: **fifteen suites `ALL PASS`, none skipped**, from a clean
+Expected today: **sixteen suites `ALL PASS`, none skipped**, from a clean
 checkout with no corpus present. The script takes the build directory as an
 argument and finds its shaders relative to itself, so no path is baked in.
 

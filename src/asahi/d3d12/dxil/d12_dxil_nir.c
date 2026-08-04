@@ -4863,6 +4863,103 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 }
 
 /*
+ * agx_nir_lower_vbo leaves three intrinsics for the driver to answer:
+ * the per-attribute base address, the robustness clamp, and (with
+ * dynamic strides) the stride. Honeykrisp answers them from its root
+ * table; we answer them from a parameter block, for the reason spelled
+ * out at D12_UNIFORM_VB_PARAMS -- AGX's own vertex ABI starts at uniform
+ * register 0 and would overwrite ours.
+ *
+ * The buffer handle is the DXIL input signature element id, because that
+ * is what our loadInput lowering puts in nir_intrinsic_base and what
+ * agx_nir_lower_vbo therefore indexes its key array by.
+ */
+static bool
+lower_vbo_params(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   unsigned off, bits;
+
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_vbo_base_agx:
+      off = D12_VB_OFF_BASE;
+      bits = 64;
+      break;
+   case nir_intrinsic_load_attrib_clamp_agx:
+      off = D12_VB_OFF_CLAMP;
+      bits = 32;
+      break;
+   case nir_intrinsic_load_vbo_stride_agx:
+      off = D12_VB_OFF_STRIDE;
+      bits = 32;
+      break;
+   default:
+      return false;
+   }
+
+   /* The handle is always a constant: agx_nir_lower_vbo builds it with
+    * nir_imm_int from the attribute index it just resolved.
+    */
+   if (!nir_src_is_const(intr->src[0]))
+      return false;
+
+   unsigned idx = nir_src_as_uint(intr->src[0]);
+   if (idx >= D12_MAX_VB_ATTRIBS)
+      return false;
+
+   /* This pass runs after d12_dxil_lower_root, so it reads the uniform
+    * itself rather than emitting an intrinsic for that pass to answer.
+    */
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *params =
+      nir_load_preamble(b, 1, 64, .base = D12_UNIFORM_VB_PARAMS);
+   nir_def *addr = nir_iadd_imm(b, params, off + idx * (bits / 8));
+
+   nir_def_replace(&intr->def,
+                   nir_load_global_constant(b, 1, bits, addr,
+                                            .align_mul = bits / 8));
+   return true;
+}
+
+unsigned
+d12_dxil_input_signature(const void *dxil, size_t size_B,
+                         struct d12_input_sig_elem *out, unsigned max)
+{
+   const uint8_t *bc;
+   size_t bc_size;
+   const char *why = NULL;
+
+   if (!d12_dxil_find_bitcode(dxil, size_B, &bc, &bc_size, &why))
+      return 0;
+
+   struct d12_module mod;
+   if (!d12_dxil_module_parse(&mod, bc, bc_size))
+      return 0;
+
+   unsigned n = MIN2(mod.num_input_sig, max);
+   for (unsigned i = 0; i < n; i++) {
+      const struct d12_sig_element *se = &mod.input_sig[i];
+
+      out[i].id = se->id;
+      out[i].semantic_index = se->semantic_index;
+      out[i].name[0] = '\0';
+      if (se->name) {
+         strncpy(out[i].name, se->name, sizeof(out[i].name) - 1);
+         out[i].name[sizeof(out[i].name) - 1] = '\0';
+      }
+   }
+
+   d12_dxil_module_finish(&mod);
+   return n;
+}
+
+bool
+d12_dxil_lower_vbo_params(nir_shader *nir)
+{
+   return nir_shader_intrinsics_pass(nir, lower_vbo_params,
+                                     nir_metadata_control_flow, NULL);
+}
+
+/*
  * agx_nir_lower_uvs emits load_uvs_index_agx for indexed output stores
  * and leaves it "to be lowered by the driver": Honeykrisp reads the
  * index out of its root descriptor because linking decides the layout at

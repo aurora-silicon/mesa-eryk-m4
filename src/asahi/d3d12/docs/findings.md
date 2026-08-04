@@ -445,3 +445,47 @@ GPU-facing half of the driver; the bug was in the bitcode reader.
   an EMPTY output signature — nothing walks the intrinsics to discover
   what was written. Declaring the output variable alongside the
   already-lowered store is what fills OSG1.
+- **The preamble rule bit the plain vertex shader, three stages later.**
+  `agx_fast_link` links main + prolog + epilog and does NOT copy the
+  PREAMBLE, so `info.preamble_offset` is meaningless inside `linked.bo`.
+  Every stage that could have a preamble already kept its own copy —
+  `gs_rast`, `tes`, `ms_rast` — and the ORDINARY vertex shader did not,
+  because nothing had ever made it compute a uniform. Attribute fetch
+  did: the preamble is what turns the parameter block into the
+  base/clamp/stride uniforms. Without it the fetch ran against whatever
+  those registers held and drew a triangle covering the ENTIRE render
+  target, while the parameter block dumped perfectly correct. The block
+  was the first thing checked and it was not the bug — **a correct input
+  does not clear the stage that reads it.**
+- **AGX's own vertex-fetch ABI cannot be used from this driver.**
+  `agx_nir_vs_prolog` answers `load_vbo_base_agx` from
+  `AGX_ABI_VUNI_VBO_BASE(n)` = uniform register `4*n`, counting from
+  ZERO and growing with the attribute count — straight through
+  `D12_UNIFORM_ROOT` at 4 and `D12_UNIFORM_TEXTURES` at 8. One attribute
+  is enough to collide. Honeykrisp has the identical problem and solves
+  it the identical way: run `agx_nir_lower_vbo` on the MAIN shader and
+  answer the three intrinsics from a driver-owned block
+  (`hk_nir_lower_descriptors.c`). The prolog stays `static_vi`.
+- **D3D12 puts the vertex stride in the VIEW, not the layout.**
+  `StrideInBytes` is on `D3D12_VERTEX_BUFFER_VIEW` — draw state — while
+  Vulkan historically had it in the pipeline, which is why
+  `agx_velem_key` has a `stride` field at all. Baking it would mean
+  recompiling whenever an application rebinds the same geometry with a
+  different stride, so the fetch is compiled with `dynamic_strides` and
+  the stride is published per draw. It is published in INTERCHANGE
+  ELEMENTS, not bytes.
+- **Input layouts bind by name, not by position.** A
+  `D3D12_INPUT_LAYOUT_DESC` may list attributes the shader never reads,
+  in any order, and the shader may read inputs the layout omits. Matching
+  the two lists positionally works for a layout written to match its
+  shader and silently corrupts every other one. The match is
+  `(SemanticName, SemanticIndex)` against the DXIL input signature, which
+  is also where the element id — the thing `agx_nir_lower_vbo` indexes
+  its key array by — comes from.
+- **Probe bytes are not reproducible; probe SHADERS are.** An unrelated
+  edit to `make_probe.c` shifts 9-11 bytes in every generated `.dxil`
+  without changing its size or its compiled AGX: `nir_to_dxil`'s output
+  depends on allocation addresses somewhere. A byte diff on a regenerated
+  probe means nothing on its own — compare the disassembly. An earlier
+  version of `replication.md` claimed byte reproducibility, which was
+  true only for one fixed binary.

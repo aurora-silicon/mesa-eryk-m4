@@ -403,6 +403,7 @@ struct d12_pso_stream {
    const D3D12_SHADER_BYTECODE *vs, *ps, *ms, *as, *cs, *gs, *hs, *ds;
    ID3D12RootSignature *root_sig;
    const D3D12_RASTERIZER_DESC *raster;
+   const D3D12_INPUT_LAYOUT_DESC *input_layout;
    const D3D12_DEPTH_STENCIL_DESC *ds_state;
    struct D3D12_RT_FORMAT_ARRAY rt_formats;
    DXGI_FORMAT dsv_format;
@@ -439,6 +440,7 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          SUBOBJ(HS, hs, D3D12_SHADER_BYTECODE);
          SUBOBJ(DS, ds, D3D12_SHADER_BYTECODE);
          SUBOBJ(RASTERIZER, raster, D3D12_RASTERIZER_DESC);
+         SUBOBJ(INPUT_LAYOUT, input_layout, D3D12_INPUT_LAYOUT_DESC);
          SUBOBJ(DEPTH_STENCIL, ds_state, D3D12_DEPTH_STENCIL_DESC);
 
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:
@@ -547,7 +549,7 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.hs ? st.hs->BytecodeLength : 0,
          st.ds ? st.ds->pShaderBytecode : NULL,
          st.ds ? st.ds->BytecodeLength : 0, rt_format, st.ds_state,
-         st.dsv_format, st.raster, map, riid, out);
+         st.dsv_format, st.raster, st.input_layout, map, riid, out);
    }
 
    mesa_loge("CreatePipelineState: stream declares no usable pipeline");
@@ -595,7 +597,7 @@ d12_device_CreateGraphicsPipelineState(
       desc->HS.pShaderBytecode, desc->HS.BytecodeLength,
       desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
       &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
-      map, riid, out);
+      &desc->InputLayout, map, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE

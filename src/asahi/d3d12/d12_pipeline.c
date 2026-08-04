@@ -505,12 +505,132 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
    return nir;
 }
 
+/*
+ * The vertex-fetch keys a PSO compiles with, indexed by DXIL input
+ * signature element id. Empty means "no input layout", which keeps the
+ * original static_vi prolog path byte for byte.
+ */
+struct d12_vs_fetch {
+   struct agx_velem_key keys[D12_MAX_VB_ATTRIBS];
+   unsigned nr;
+};
+
+/*
+ * Resolve a D3D12_INPUT_LAYOUT_DESC against the vertex shader's own DXIL
+ * input signature.
+ *
+ * D3D12 binds attributes by (SemanticName, SemanticIndex) -- NOT by
+ * position in either list. An input layout may describe attributes the
+ * shader never reads, list them in any order, and the shader may read
+ * inputs the layout does not supply. Matching positionally happens to
+ * work for a layout written to match its shader and silently corrupts
+ * every other one, so the match is done by name.
+ *
+ * Semantic names are ASCII and compared case-insensitively, as D3D does.
+ */
+static void
+resolve_input_layout(struct d12_pipeline_state *pso,
+                     const D3D12_INPUT_LAYOUT_DESC *layout, const void *vs_dxil,
+                     size_t vs_size, struct d12_vs_fetch *fetch)
+{
+   memset(fetch, 0, sizeof(*fetch));
+   pso->nr_vb_attribs = 0;
+
+   if (!layout || !layout->NumElements || !layout->pInputElementDescs)
+      return;
+
+   struct d12_input_sig_elem sig[D12_MAX_SIG_ELEMENTS];
+   unsigned nr_sig =
+      d12_dxil_input_signature(vs_dxil, vs_size, sig, ARRAY_SIZE(sig));
+
+   for (unsigned e = 0; e < layout->NumElements; e++) {
+      const D3D12_INPUT_ELEMENT_DESC *el = &layout->pInputElementDescs[e];
+      if (!el->SemanticName)
+         continue;
+
+      /* Find the shader input this element feeds. An element with no
+       * match is legal and simply unused. */
+      unsigned id = UINT32_MAX;
+      for (unsigned i = 0; i < nr_sig; i++) {
+         if (sig[i].semantic_index == el->SemanticIndex &&
+             !strcasecmp(sig[i].name, el->SemanticName)) {
+            id = sig[i].id;
+            break;
+         }
+      }
+
+      if (id == UINT32_MAX)
+         continue;
+
+      if (id >= D12_MAX_VB_ATTRIBS || el->InputSlot >= D12_MAX_VB_SLOTS) {
+         mesa_logw("input layout: %s%u out of range (id %u, slot %u)",
+                   el->SemanticName, el->SemanticIndex, id, el->InputSlot);
+         continue;
+      }
+
+      enum pipe_format fmt = d12_format_to_pipe(el->Format);
+      if (fmt == PIPE_FORMAT_NONE) {
+         mesa_logw("input layout: %s%u has unsupported DXGI format %u",
+                   el->SemanticName, el->SemanticIndex,
+                   (unsigned)el->Format);
+         continue;
+      }
+
+      bool instanced =
+         el->InputSlotClass == D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA;
+
+      /* D3D12_APPEND_ALIGNED_ELEMENT means "pack after the previous
+       * element in the same slot". */
+      uint32_t offset = el->AlignedByteOffset;
+      if (offset == D3D12_APPEND_ALIGNED_ELEMENT) {
+         offset = 0;
+         for (unsigned k = 0; k < e; k++) {
+            const D3D12_INPUT_ELEMENT_DESC *pe =
+               &layout->pInputElementDescs[k];
+            if (pe->InputSlot != el->InputSlot)
+               continue;
+            enum pipe_format pf = d12_format_to_pipe(pe->Format);
+            if (pf == PIPE_FORMAT_NONE)
+               continue;
+            uint32_t end = (pe->AlignedByteOffset ==
+                            D3D12_APPEND_ALIGNED_ELEMENT)
+                              ? offset
+                              : pe->AlignedByteOffset;
+            offset = MAX2(offset, end + util_format_get_blocksize(pf));
+         }
+      }
+
+      enum pipe_format interchange = agx_vbo_internal_format(fmt);
+
+      pso->vb_attribs[id] = (struct d12_vb_attrib){
+         .live = true,
+         .slot = (uint8_t)el->InputSlot,
+         .offset_B = offset,
+         .format = fmt,
+         .interchange_align = util_format_get_blocksize(interchange),
+      };
+
+      /* stride stays 0: it is published per draw, see the dynamic-stride
+       * note in compile_gfx_stage. */
+      fetch->keys[id] = (struct agx_velem_key){
+         .format = fmt,
+         .stride = 0,
+         .divisor = instanced ? MAX2(el->InstanceDataStepRate, 1) : 0,
+         .instanced = instanced,
+      };
+
+      fetch->nr = MAX2(fetch->nr, id + 1);
+      pso->nr_vb_attribs = fetch->nr;
+   }
+}
+
 static bool
 compile_gfx_stage(struct d12_device *device,
                   const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage,
                   struct agx_tilebuffer_layout *tib,
                   struct agx_unlinked_uvs_layout *uvs,
+                  const struct d12_vs_fetch *fetch,
                   struct agx_shader_part *out)
 {
    nir_shader *nir = dxil_to_nir_stage(map, dxil, dxil_size, stage);
@@ -557,7 +677,36 @@ compile_gfx_stage(struct d12_device *device,
        */
       NIR_PASS(_, nir, nir_lower_default_point_size);
 
-      NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
+      /*
+       * With a real input layout the shader FETCHES its attributes, and
+       * the prolog goes back to being nothing but a vertex-ID fixup.
+       *
+       * The alternative -- agx_nir_lower_vs_input_to_prolog plus an
+       * attribute-fetching prolog -- is what Honeykrisp does when its
+       * pipeline is built in pieces, and it is not available to us: that
+       * prolog answers load_vbo_base_agx from AGX_ABI_VUNI_VBO_BASE,
+       * uniform register 4*n counting from ZERO, which runs straight
+       * through D12_UNIFORM_ROOT at 4. hk takes this same monolithic path
+       * whenever it can (hk_shader.c, !use_prolog).
+       *
+       * Strides are DYNAMIC because D3D12 puts StrideInBytes in the
+       * VERTEX BUFFER VIEW, which is draw state, not in the input layout,
+       * which is pipeline state. Baking it into the key would mean
+       * recompiling whenever an application rebinds the same geometry
+       * with a different stride.
+       */
+      if (fetch && fetch->nr) {
+         struct agx_robustness rs = {
+            .soft_fault = agx_has_soft_fault(&device->dev),
+            .level = AGX_ROBUSTNESS_D3D,
+         };
+
+         NIR_PASS(_, nir, agx_nir_lower_vbo, fetch->keys, rs, true);
+         NIR_PASS(_, nir, d12_dxil_lower_vbo_params);
+      } else {
+         NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
+      }
+
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
 
       /* Indexed output stores read their UVS index through
@@ -590,6 +739,21 @@ compile_gfx_stage(struct d12_device *device,
 
    memset(out, 0, sizeof(*out));
    agx_compile_shader_nir(nir, &key, out);
+
+   if (getenv("D3D12AGX_DUMP_SHADERS") && out->binary) {
+      fprintf(stderr, "; --- %s stage, push_count %u, preamble %d ---\n",
+              _mesa_shader_stage_to_string(stage), out->info.push_count,
+              out->info.has_preamble);
+      if (out->info.has_preamble) {
+         fprintf(stderr, "; preamble +0x%x\n", out->info.preamble_offset);
+         agx2_disassemble(out->binary + out->info.preamble_offset,
+                          out->info.main_offset - out->info.preamble_offset,
+                          stderr);
+      }
+      fprintf(stderr, "; main +0x%x\n", out->info.main_offset);
+      agx2_disassemble(out->binary + out->info.main_offset,
+                       out->info.binary_size - out->info.main_offset, stderr);
+   }
 
    return out->binary && out->info.binary_size;
 }
@@ -1054,7 +1218,7 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
     */
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
-      rt_format, ds_desc, dsv_format, rs_desc, map, riid, out);
+      rt_format, ds_desc, dsv_format, rs_desc, NULL, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -1259,6 +1423,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
+                                   const D3D12_INPUT_LAYOUT_DESC *input_layout,
                                    const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
@@ -1338,14 +1503,17 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_build_tilebuffer_layout(formats, 1, 1, false);
 
    struct agx_shader_part vs_part, fs_part;
+   struct d12_vs_fetch fetch;
+   resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
+
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
-                          &pso->uvs, &vs_part)) {
+                          &pso->uvs, &fetch, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
 
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
-                          &tib, NULL, &fs_part)) {
+                          &tib, NULL, NULL, &fs_part)) {
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;
@@ -1383,6 +1551,36 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    agx_fast_link(&pso->vs.linked, &device->dev, false, &vs_part, &prolog, NULL,
                  0);
    free(prolog.binary);
+
+   /*
+    * THE PREAMBLE RULE, which the ordinary vertex shader had never needed
+    * before: agx_fast_link links main + prolog + epilog and does NOT copy
+    * the preamble, so info.preamble_offset is meaningless inside
+    * linked.bo. Every other stage that can have one already keeps its own
+    * copy (gs_rast, tes, ms_rast); a plain VS could not have one until it
+    * started fetching vertex attributes, because nothing else made it
+    * compute a uniform.
+    *
+    * Missing this does not fail loudly. The preamble is what turns the
+    * attribute parameter block into the base/clamp/stride uniforms, so
+    * without it the fetch runs against whatever those registers held --
+    * measured as a triangle covering the ENTIRE render target.
+    */
+   if (vs_part.info.has_preamble) {
+      pso->vs.code_bo =
+         agx_bo_create(&device->dev, vs_part.info.binary_size, 0,
+                       AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 vs preamble");
+      if (!pso->vs.code_bo) {
+         free(vs_part.binary);
+         free(fs_part.binary);
+         free(pso);
+         return E_OUTOFMEMORY;
+      }
+      memcpy(agx_bo_map(pso->vs.code_bo), vs_part.binary,
+             vs_part.info.binary_size);
+      pso->vs.preamble_va =
+         pso->vs.code_bo->va->addr + vs_part.info.preamble_offset;
+   }
    agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part, NULL, NULL, 1);
 
    pso->vs.info = vs_part.info;

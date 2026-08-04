@@ -329,6 +329,23 @@ struct d12_pipeline_state {
    uint64_t code_va;
    struct agx_shader_info info;
 
+   /* VERTEX ATTRIBUTES. Resolved at PSO creation by matching each
+    * D3D12_INPUT_ELEMENT_DESC's (SemanticName, SemanticIndex) against the
+    * vertex shader's own DXIL input signature, so the index here is the
+    * signature element id -- which is what agx_nir_lower_vbo keys on.
+    *
+    * nr_vb_attribs is 0 for a PSO with no input layout, and that case
+    * keeps the old static_vi prolog exactly as it was.
+    */
+   struct d12_vb_attrib {
+      bool live;
+      uint8_t slot;              /* D3D12 InputSlot -> which VBV */
+      uint32_t offset_B;         /* AlignedByteOffset */
+      enum pipe_format format;
+      uint32_t interchange_align; /* to turn a byte stride into elements */
+   } vb_attribs[D12_MAX_VB_ATTRIBS];
+   unsigned nr_vb_attribs;
+
    /* Graphics */
    struct d12_gfx_stage vs, fs;
    struct agx_unlinked_uvs_layout uvs;
@@ -565,6 +582,15 @@ struct d12_cmd_list {
    bool pregfx_open;
 
    /* Bound state */
+   /* IASetVertexBuffers. Recorded per slot; the draw path turns these,
+    * plus the PSO's resolved attributes, into the fetch parameter block.
+    */
+   struct {
+      uint64_t addr;
+      uint32_t size_B;
+      uint32_t stride_B;
+   } vb[D12_MAX_VB_SLOTS];
+
    enum mesa_prim topology; /* IASetPrimitiveTopology; TRIANGLES by default */
    /* Control points per patch, from a *_CONTROL_POINT_PATCHLIST topology.
     * Zero when the bound topology is not a patch list -- the only thing
@@ -737,8 +763,9 @@ HRESULT d12_pipeline_state_create_graphics(
    const void *hs_dxil, size_t hs_size, const void *ds_dxil, size_t ds_size,
    enum pipe_format rt_format,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
-   const D3D12_RASTERIZER_DESC *rs_desc, const struct d12_binding_map *map,
-   REFIID riid, void **out);
+   const D3D12_RASTERIZER_DESC *rs_desc,
+   const D3D12_INPUT_LAYOUT_DESC *input_layout,
+   const struct d12_binding_map *map, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);

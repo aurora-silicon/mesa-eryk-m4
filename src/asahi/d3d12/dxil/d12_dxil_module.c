@@ -976,6 +976,17 @@ parse_signature(struct d12_module *mod, uint64_t list_id,
 
       se->name = md_string(mod, elem->node.ops[1]);
 
+      /* Operand 4 is the semantic INDEX vector -- one entry per row. A
+       * D3D12 input layout binds by (SemanticName, SemanticIndex), so
+       * without this TEXCOORD0 and TEXCOORD1 are indistinguishable.
+       */
+      if (!elem->node.op_is_null[4] && elem->node.ops[4] < mod->num_metadata) {
+         const struct d12_metadata *iv = &mod->metadata[elem->node.ops[4]];
+         if (iv->kind == D12_MD_NODE && iv->node.num_ops >= 1 &&
+             md_const_uint(mod, iv->node.ops[0], &v))
+            se->semantic_index = (uint32_t)v;
+      }
+
       if (md_const_uint(mod, elem->node.ops[7], &v))
          se->cols = (uint32_t)v;
       if (md_const_uint(mod, elem->node.ops[8], &v))

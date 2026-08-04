@@ -824,6 +824,13 @@ struct d12_dispatch_uniforms {
     * wrong POINTER.
     */
    uint64_t vs_outputs;
+
+   /* Address of a POINTER to the vertex-attribute block, not the block:
+    * agx_usc_uniform fills registers from memory, and the shader reads a
+    * 64-bit base it then adds offsets to. Same indirection as the mesh
+    * and geometry parameter blocks.
+    */
+   uint64_t vb_params;
 };
 
 /* Build the USC words for one compute launch; returns the USC offset, or
@@ -1109,6 +1116,10 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       if (poly->mesh_params) {
          agx_usc_uniform(&b, D12_UNIFORM_MESH_PARAMS, D12_UNIFORM_MESH_REGS,
                          poly->mesh_params);
+      }
+      if (poly->vb_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_VB_PARAMS, D12_UNIFORM_VB_REGS,
+                         poly->vb_params);
       }
    }
 
@@ -2014,9 +2025,66 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                 vstage == &pso->ms_rast ? "ms_rast" : "other");
    }
 
+   /*
+    * VERTEX ATTRIBUTE FETCH. The PSO resolved which signature element
+    * each attribute feeds and where inside a vertex it sits; the view
+    * supplies the address and the stride. agx_calculate_vbo_clamp folds
+    * the attribute's byte offset into the base and returns the highest
+    * in-bounds element index, and it is also what redirects an
+    * out-of-range attribute at the zero page rather than at nothing.
+    */
+   if (pso->nr_vb_attribs) {
+      struct d12_vb_params vbp;
+      memset(&vbp, 0, sizeof(vbp));
+
+      for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
+         const struct d12_vb_attrib *a = &pso->vb_attribs[i];
+
+         if (!a->live || !list->vb[a->slot].addr) {
+            vbp.base[i] = AGX_ZERO_PAGE_ADDRESS;
+            continue;
+         }
+
+         vbp.clamp[i] = agx_calculate_vbo_clamp(
+            list->vb[a->slot].addr, a->format, list->vb[a->slot].size_B,
+            list->vb[a->slot].stride_B, a->offset_B, &vbp.base[i]);
+
+         /* The shader multiplies the element index by this directly, so
+          * it is in interchange elements rather than bytes. */
+         vbp.stride_el[i] =
+            a->interchange_align
+               ? list->vb[a->slot].stride_B / a->interchange_align
+               : 0;
+      }
+
+      if (getenv("D3D12AGX_DUMP_VB")) {
+         for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
+            const struct d12_vb_attrib *a = &pso->vb_attribs[i];
+            mesa_logi("vb attrib %u: live=%d slot=%u off=%u ialign=%u "
+                      "-> base=0x%llx clamp=%u stride_el=%u "
+                      "(vb addr=0x%llx size=%u stride=%u)",
+                      i, a->live, a->slot, a->offset_B, a->interchange_align,
+                      (unsigned long long)vbp.base[i], vbp.clamp[i],
+                      vbp.stride_el[i],
+                      (unsigned long long)list->vb[a->slot].addr,
+                      list->vb[a->slot].size_B, list->vb[a->slot].stride_B);
+         }
+      }
+
+      uint64_t vbp_gpu = d12_list_upload(list, &vbp, sizeof(vbp), 8);
+      if (!vbp_gpu)
+         return;
+
+      poly_u.vb_params = d12_list_upload(list, &vbp_gpu, sizeof(vbp_gpu), 8);
+      if (!poly_u.vb_params)
+         return;
+   }
+
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
-      (pso->has_gs || pso->has_tess || pso->has_mesh) ? &poly_u : NULL);
+      (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
+         ? &poly_u
+         : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu, NULL);
    if (!vs_usc || !fs_usc)
@@ -2342,6 +2410,41 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
 
    d12_list_draw(list, vertex_count_per_instance, instance_count,
                  start_vertex, start_instance);
+}
+
+/*
+ * Record the bound vertex buffers. The view carries the STRIDE, which
+ * D3D12 makes draw state rather than pipeline state -- that is why the
+ * PSO compiles its fetch with dynamic strides and this is published per
+ * draw rather than baked.
+ */
+static void STDMETHODCALLTYPE
+d12_list_IASetVertexBuffers(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
+                            UINT num_views,
+                            const D3D12_VERTEX_BUFFER_VIEW *views)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   for (UINT i = 0; i < num_views; i++) {
+      UINT slot = start_slot + i;
+      if (slot >= D12_MAX_VB_SLOTS) {
+         mesa_logw("IASetVertexBuffers: slot %u beyond %u", slot,
+                   D12_MAX_VB_SLOTS - 1);
+         continue;
+      }
+
+      /* A null view array unbinds, as does a zero BufferLocation. */
+      if (!views) {
+         list->vb[slot].addr = 0;
+         list->vb[slot].size_B = 0;
+         list->vb[slot].stride_B = 0;
+         continue;
+      }
+
+      list->vb[slot].addr = views[i].BufferLocation;
+      list->vb[slot].size_B = views[i].SizeInBytes;
+      list->vb[slot].stride_B = views[i].StrideInBytes;
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -3338,6 +3441,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .Dispatch = d12_list_Dispatch,
    .SetGraphicsRootSignature = d12_list_SetGraphicsRootSignature,
    .IASetPrimitiveTopology = d12_list_IASetPrimitiveTopology,
+   .IASetVertexBuffers = d12_list_IASetVertexBuffers,
    .RSSetViewports = d12_list_RSSetViewports,
    .RSSetScissorRects = d12_list_RSSetScissorRects,
    .DrawInstanced = d12_list_DrawInstanced,

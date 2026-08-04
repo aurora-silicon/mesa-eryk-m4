@@ -4,12 +4,17 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all fifteen
+Status on `dev`: **321 of 334** corpus shaders compile, and **all sixteen
 GPU suites pass on real hardware, with nothing skipped, from a clean
-checkout** — the four G1-G4 milestone smokes plus eleven acceptance
+checkout** — the four G1-G4 milestone smokes plus twelve acceptance
 suites. **Every graphics stage that replaces fixed function now
 executes**: vertex, geometry, tessellation, mesh, amplification, pixel.
 
+- `g10_vertex_buffers` — **an application's own vertex data reaches a
+  shader**. One triangle drawn twice, once from `SV_VertexID` and once
+  from a bound vertex buffer, matching each other and a CPU rasterisation
+  on all 65536 pixels. The buffer is interleaved, so the second
+  attribute's byte offset is load-bearing.
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
   the hardware vertex shader. A pass-through geometry shader reproduces
@@ -39,11 +44,12 @@ executes**: vertex, geometry, tessellation, mesh, amplification, pixel.
 The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
-The corpus figure is a **compile** proxy. Geometry, tessellation, mesh
-and amplification now dispatch; work graphs and ray query still compile
-without executing. The other open gap is that nothing fetches vertex
-attributes yet — every probe here derives its geometry from
-`SV_VertexID`. See `docs/roadmap.md` §1.4; that is the current work.
+The corpus figure is a **compile** proxy. Geometry, tessellation, mesh,
+amplification and vertex attribute fetch now execute; work graphs and ray
+query still compile without executing, and per-instance attributes and
+index buffers are implemented but unproven. See `docs/roadmap.md` — the
+next step is running vkd3d-proton's tests for real, which is the only
+thing that turns the proxy into a conformance number.
 
 ## Start here
 
@@ -78,7 +84,7 @@ src/asahi/d3d12/tests/corpus-passset.sh > now  # corpus compile proxy
 `tests/shaders/` holds the probe shaders. The older ones are HLSL sources
 **and** their compiled DXIL, committed together because `dxc` does not run
 on the target platform; the newer ones (`gs_*`, `tess_*`, `mesh_quad`,
-`as_dispatch`) are built as NIR by `tests/make_probe.c` and emitted
+`as_dispatch`, `vb_*`) are built as NIR by `tests/make_probe.c` and emitted
 through Mesa's own `nir_to_dxil`, so they need nothing but this tree. `tests/corpus/` is empty in this repository: those shaders are
 LGPL-derived from vkd3d-proton and are regenerated rather than vendored
 (see `docs/replication.md`).
