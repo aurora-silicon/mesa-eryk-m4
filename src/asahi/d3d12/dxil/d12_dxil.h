@@ -758,13 +758,19 @@ struct nir_shader;
 #define D12_UNIFORM_NODE_PARAMS     44
 #define D12_UNIFORM_NODE_REGS       4
 
+/* Pipeline-statistics counters the geometry emulation increments, and
+ * the input topology its count pass reads.
+ */
+#define D12_UNIFORM_STAT_QUERY      48
+#define D12_UNIFORM_STAT_REGS       4
+
 #define D12_NODE_OFF_INPUT          0
 #define D12_NODE_OFF_OUTPUT         8
 #define D12_NODE_OFF_COUNTS         16
 #define D12_NODE_OFF_STRIDE         24
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_NODE_PARAMS + D12_UNIFORM_NODE_REGS)
+   (D12_UNIFORM_STAT_QUERY + D12_UNIFORM_STAT_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the

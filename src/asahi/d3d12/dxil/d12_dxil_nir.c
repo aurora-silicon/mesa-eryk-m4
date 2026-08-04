@@ -4776,6 +4776,29 @@ d12_dxil_lower_uvs_index(nir_shader *nir, const unsigned *slots)
 static bool
 lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
+   /*
+    * The geometry count pass asks for the INPUT TOPOLOGY. Honeykrisp
+    * answers per draw because it supports every primitive type; this
+    * driver only accepts triangle lists (IASetPrimitiveTopology refuses
+    * anything else), so the answer is fixed and known at compile time.
+    */
+   /*
+    * D3D12 has no provoking-vertex control: the convention is always
+    * first-vertex. Honeykrisp reads this per pipeline because Vulkan can
+    * switch it; here it is a constant of the API.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_provoking_last) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_int(b, 0));
+      return true;
+   }
+
+   if (intr->intrinsic == nir_intrinsic_load_input_topology_poly) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_int(b, MESA_PRIM_TRIANGLES));
+      return true;
+   }
+
    /* Driver-owned sysvals Honeykrisp reads from its root descriptor at
     * draw time. Ours are compile-time constants: with no MSAA rasterizer
     * state the API sample mask covers every sample, and with monolithic
@@ -4821,6 +4844,9 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       break;
    case nir_intrinsic_load_vertex_param_buffer_poly:
       base = D12_UNIFORM_VERTEX_PARAMS;
+      break;
+   case nir_intrinsic_load_stat_query_address_poly:
+      base = D12_UNIFORM_STAT_QUERY;
       break;
    default:
       return false;

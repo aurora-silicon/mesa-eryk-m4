@@ -304,6 +304,57 @@ main(int argc, char **argv)
       nir_print_shader(nir, stdout);
    }
 
+   /*
+    * A geometry shader is not one program. poly_nir_lower_gs splits it
+    * into a count pass, a pre-GS pass, the main body and a copy shader,
+    * and the driver must run all four. Compiling only the main body
+    * hides failures in the other three -- and makes a trivial main body
+    * look like a broken shader.
+    */
+   if (gs_count || gs_copy || pre_gs) {
+      struct {
+         const char *name;
+         nir_shader *s;
+      } extra[] = {
+         {"gs count", gs_count},
+         {"gs pre", pre_gs},
+         {"gs rast", gs_copy},
+      };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(extra); i++) {
+         if (!extra[i].s)
+            continue;
+
+         /* The third program is the RASTERIZATION shader: it reads the
+          * emitted vertex buffer and feeds the rasterizer, so it is a
+          * hardware vertex shader and needs the vertex output lowering,
+          * exactly as hk_lower_hw_vs does for it (hk_shader.c).
+          */
+         if (extra[i].s->info.stage == MESA_SHADER_VERTEX ||
+             !strcmp(extra[i].name, "gs rast")) {
+            struct agx_unlinked_uvs_layout euvs = {0};
+            extra[i].s->info.stage = MESA_SHADER_VERTEX;
+            NIR_PASS(_, extra[i].s, agx_nir_lower_uvs, &euvs);
+
+            struct agx_varyings_vs elinked = {0};
+            agx_assign_uvs(&elinked, &euvs, 0, 0);
+            NIR_PASS(_, extra[i].s, d12_dxil_lower_uvs_index, elinked.slots);
+         }
+
+         agx_preprocess_nir(extra[i].s);
+         NIR_PASS(_, extra[i].s, d12_dxil_lower_root);
+
+         struct agx_shader_key ekey = key;
+         struct agx_shader_part epart;
+         memset(&epart, 0, sizeof(epart));
+         agx_compile_shader_nir(extra[i].s, &ekey, &epart);
+
+         printf("  %s: %u bytes, %u GPRs\n", extra[i].name,
+                epart.info.binary_size, epart.info.nr_gprs);
+         free(epart.binary);
+      }
+   }
+
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));
    agx_compile_shader_nir(nir, &key, &part);
