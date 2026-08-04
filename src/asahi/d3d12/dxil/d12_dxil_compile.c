@@ -250,13 +250,20 @@ main(int argc, char **argv)
     * store_output — the vertex-stage analogue of the tilebuffer lowering.
     */
    struct agx_unlinked_uvs_layout uvs = {0};
-   if (nir->info.stage == MESA_SHADER_VERTEX)
+   if (nir->info.stage == MESA_SHADER_VERTEX) {
       /* Real vertex attributes arrive through the prolog ABI: the main
        * shader reads registers the prolog exported, so load_input must
        * become load_exported_agx here (see d12_pipeline.c). A
        * DRAW with a nonempty input layout also needs an attribute-
        * fetching prolog keyed from that layout, which does not exist
        * yet: the static_vi prolog only fixes up vertex/instance IDs.
+       *
+       * These braces are load-bearing. Without them only the first pass
+       * was guarded and every stage got the vertex lowerings -- so this
+       * tool, which is what the corpus figure is measured with, was
+       * compiling a shader the driver never builds. That is the
+       * shader-key trap in docs/findings.md, one level worse: not a
+       * different key, different PASSES.
        */
       NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
       NIR_PASS(_, nir, agx_nir_lower_uvs, &uvs);
@@ -265,6 +272,7 @@ main(int argc, char **argv)
       struct agx_varyings_vs linked = {0};
       agx_assign_uvs(&linked, &uvs, 0, 0);
       NIR_PASS(_, nir, d12_dxil_lower_uvs_index, linked.slots);
+   }
 
    /*
     * This tool has no open device, so the device key is filled in for the

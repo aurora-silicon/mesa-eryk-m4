@@ -569,6 +569,55 @@ main(int argc, char **argv)
             "an unrenderable format is refused, not silently accepted");
    }
 
+   /* A stage with no hardware equivalent must be refused too. AGX runs
+    * geometry and tessellation as compute, and that runtime does not
+    * exist yet -- but the descriptions were being dropped on the floor,
+    * so a pipeline with a geometry shader quietly rasterised its pre-GS
+    * geometry. That draws *something*, and something reads as a pass.
+    *
+    * The bytecode here is a vertex shader; the refusal happens on the
+    * stage being bound at all, before anything parses it.
+    */
+   {
+      const struct {
+         const char *name;
+         size_t offset;
+      } stages[] = {
+         {"geometry", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, GS)},
+         {"hull", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS)},
+         {"domain", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, DS)},
+      };
+
+      for (unsigned i = 0; i < 3; i++) {
+         D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {
+            .pRootSignature = root_sig,
+            .VS = {.pShaderBytecode = vs, .BytecodeLength = vs_size},
+            .PS = {.pShaderBytecode = ps, .BytecodeLength = ps_size},
+            .NumRenderTargets = 1,
+            .RTVFormats = {DXGI_FORMAT_R8G8B8A8_UNORM},
+            .RasterizerState = {.CullMode = D3D12_CULL_MODE_NONE},
+            .SampleDesc = {.Count = 1},
+            .SampleMask = ~0u,
+         };
+         *(D3D12_SHADER_BYTECODE *)((char *)&pd + stages[i].offset) =
+            (D3D12_SHADER_BYTECODE){.pShaderBytecode = vs,
+                                    .BytecodeLength = vs_size};
+
+         ID3D12PipelineState *bad_pso = NULL;
+         HRESULT ghr = ID3D12Device_CreateGraphicsPipelineState(
+            dev, &pd, &IID_ID3D12PipelineState, (void **)&bad_pso);
+
+         char what[96];
+         snprintf(what, sizeof(what),
+                  "a pipeline with a %s shader is refused, not silently "
+                  "drawn without one",
+                  stages[i].name);
+         CHECK(FAILED(ghr) && !bad_pso, what);
+         if (bad_pso)
+            ID3D12PipelineState_Release(bad_pso);
+      }
+   }
+
    ID3D12Resource_Unmap(rt, 0, NULL);
    ID3D12Fence_Release(fence);
    ID3D12CommandQueue_Release(queue);

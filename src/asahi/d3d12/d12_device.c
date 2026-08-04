@@ -387,6 +387,39 @@ d12_device_CreateGraphicsPipelineState(
    if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
       return E_INVALIDARG;
 
+   /* AGX has no hardware geometry or tessellation stage: they run as
+    * compute through the poly lowering, and that runtime does not exist
+    * yet. These were being dropped on the floor, which is the worst
+    * available behaviour -- a pipeline that quietly rasterises its
+    * pre-GS geometry draws *something*, and something is indistinguishable
+    * from a pass at a glance. Refuse by name instead.
+    *
+    * The shaders themselves translate: all 15 geometry and every
+    * tessellation shader in the corpus compile. What is missing is the
+    * dispatch sequence around them (docs/roadmap.md).
+    */
+   static const struct {
+      size_t offset;
+      const char *name;
+   } unsupported_stages[] = {
+      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, GS), "geometry"},
+      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS), "hull"},
+      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, DS), "domain"},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(unsupported_stages); i++) {
+      const D3D12_SHADER_BYTECODE *bc =
+         (const D3D12_SHADER_BYTECODE *)((const char *)desc +
+                                         unsupported_stages[i].offset);
+      if (bc->pShaderBytecode && bc->BytecodeLength) {
+         mesa_loge("CreateGraphicsPipelineState: a %s shader is bound, but "
+                   "%s shaders are not dispatched yet. Refusing rather than "
+                   "silently drawing the pipeline without one.",
+                   unsupported_stages[i].name, unsupported_stages[i].name);
+         return E_NOTIMPL;
+      }
+   }
+
    /* The pipeline's declared render-target format now drives the
     * tilebuffer layout instead of an assumed RGBA8.
     */
