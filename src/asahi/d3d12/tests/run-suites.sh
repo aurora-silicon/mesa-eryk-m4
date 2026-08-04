@@ -35,6 +35,7 @@ run() {
 }
 
 fails=0
+skips=0
 
 # The G1-G4 milestone smokes. They were NOT in this runner, so when the
 # descriptor grew from 32 to 40 bytes g3_smoke failed unnoticed for a
@@ -72,6 +73,7 @@ MS="$D3D12AGX_CORPUS/ms_simple_code_dxil.dxil"
 if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$MS" ]; then
    run g8_mesh "$MS" "$S/solid.dxil" || fails=$((fails+1))
 else
+   skips=$((skips+1))
    printf "%-18s %s\n" "g8_mesh" \
       "SKIPPED - set D3D12AGX_CORPUS (no mesh probe can be generated)"
 fi
@@ -80,10 +82,19 @@ AS="$D3D12AGX_CORPUS/as_simple_code_dxil.dxil"
 if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$AS" ] && [ -f "$MS" ]; then
    run g9_amplification "$AS" "$MS" "$S/solid.dxil" || fails=$((fails+1))
 else
+   skips=$((skips+1))
    printf "%-18s %s\n" "g9_amplification" \
       "SKIPPED - set D3D12AGX_CORPUS (no amplification probe can be generated)"
 fi
 
 echo
-if [ $fails -eq 0 ]; then echo "GPU SUITES: all green"; else echo "GPU SUITES: $fails suite(s) not green"; fi
+# A skipped suite is NOT a green suite. Saying "all green" while two of
+# them never ran is the same lie as a test that prints usage and exits 0.
+if [ $fails -ne 0 ]; then
+   echo "GPU SUITES: $fails suite(s) not green, $skips skipped"
+elif [ $skips -ne 0 ]; then
+   echo "GPU SUITES: all RUN suites green, but $skips SKIPPED - not a full pass"
+else
+   echo "GPU SUITES: all green"
+fi
 exit $fails
