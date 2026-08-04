@@ -3950,12 +3950,20 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
     * latter when looking for the entry, or the shader that gets compiled
     * is whichever the bitcode happened to emit first.
     */
+   /* A hull shader has TWO definitions: the per-control-point entry and
+    * the patch constant function that writes SV_TessFactor. DXC emits the
+    * patch constant one FIRST, so "the first definition" picked the wrong
+    * body -- 18 corpus hull shaders were compiling their patch constant
+    * function and counting as passes.
+    */
    const struct d12_function *entry = NULL;
    for (unsigned i = 0; i < mod->num_functions; i++) {
-      if (!mod->functions[i].is_declaration) {
-         entry = &mod->functions[i];
-         break;
-      }
+      if (mod->functions[i].is_declaration)
+         continue;
+      if (mod->has_patch_constant && i == mod->patch_constant_func)
+         continue;
+      entry = &mod->functions[i];
+      break;
    }
 
    if (!entry) {
@@ -3963,12 +3971,66 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       return NULL;
    }
 
-   /* NOT YET MERGED: see docs/roadmap.md. A hull shader's SV_TessFactor
-    * writes live in the patch constant function, and concatenating that
-    * body onto the entry hits a CALL whose callee mis-resolves (value 10,
-    * an instruction rather than dx.op.storePatchConstant). Attempting it
-    * cost 18 corpus hull shaders, so it is left for a proper fix.
+   /*
+    * MERGE THE PATCH CONSTANT FUNCTION INTO THE HULL ENTRY. DXIL keeps
+    * the SV_TessFactor writes in a separate function; NIR and poly's TCS
+    * lowering (which follows GLSL) expect one shader that writes both.
     */
+   struct d12_function merged;
+   struct d12_inst *merged_insts = NULL;
+
+   if (stage == MESA_SHADER_TESS_CTRL && mod->has_patch_constant &&
+       mod->patch_constant_func < mod->num_functions) {
+      const struct d12_function *pc =
+         &mod->functions[mod->patch_constant_func];
+
+      unsigned keep = entry->num_insts;
+      while (keep > 0 && entry->insts[keep - 1].code == D12_FUNC_INST_RET)
+         keep--;
+
+      merged_insts = calloc(keep + pc->num_insts, sizeof(*merged_insts));
+      if (!merged_insts) {
+         *error = "out of memory merging the patch constant function";
+         return NULL;
+      }
+
+      memcpy(merged_insts, entry->insts, keep * sizeof(*merged_insts));
+
+      unsigned entry_blocks = 1;
+      for (unsigned i = 0; i < keep; i++)
+         entry_blocks = MAX2(entry_blocks, entry->insts[i].block + 1);
+
+      /* Append into the entry's LAST block rather than adding blocks.
+       * Offsetting the patch constant's blocks instead leaves the entry's
+       * final block with no edge to them -- the entry's RET was just
+       * dropped -- and nir_lower_goto_ifs segfaults structurizing the
+       * result.
+       *
+       * A patch constant function with control flow of its own would need
+       * real CFG stitching, so refuse it by name rather than mis-compile
+       * it.
+       */
+      unsigned pc_blocks = 1;
+      for (unsigned i = 0; i < pc->num_insts; i++)
+         pc_blocks = MAX2(pc_blocks, pc->insts[i].block + 1);
+
+      if (pc_blocks > 1) {
+         free(merged_insts);
+         *error = "hull patch constant function has control flow";
+         return NULL;
+      }
+
+      for (unsigned i = 0; i < pc->num_insts; i++) {
+         merged_insts[keep + i] = pc->insts[i];
+         merged_insts[keep + i].block = entry_blocks - 1;
+      }
+
+      merged = *entry;
+      merged.insts = merged_insts;
+      merged.num_insts = keep + pc->num_insts;
+      merged.num_blocks = entry_blocks;
+      entry = &merged;
+   }
 
    nir_builder b = nir_builder_init_simple_shader(stage, &agx_nir_options,
                                                   "dxil");
@@ -4721,6 +4783,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    b.shader->info.shared_size = ctx.shared_size;
    b.shader->scratch_size = ctx.scratch_size;
 
+   free(merged_insts);
    free(ctx.defs);
    free(ctx.phi_reg);
    free(ctx.ptr_space);

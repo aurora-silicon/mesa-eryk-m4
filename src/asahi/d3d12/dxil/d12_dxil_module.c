@@ -35,6 +35,18 @@ struct parse_ctx {
    /* Function parsing state */
    struct d12_function *cur_func;
    uint32_t cur_block; /* basic block the next instruction lands in */
+
+   /* Number of MODULE-level values, latched before the first function
+    * body. LLVM discards a function's local values when the function
+    * ends, so every function body numbers its locals starting from this
+    * same base -- but we keep them all in one global array, so relative
+    * operands have to be decoded against the logical number and then
+    * mapped back to the global slot. Getting this wrong is invisible in
+    * a module with ONE body and off-by-the-previous-function's-locals in
+    * every one after it, which is every hull shader.
+    */
+   uint32_t module_values;
+   bool module_values_latched;
    unsigned next_func_to_define; /* module order of the next FUNCTION block */
 
    /* Metadata naming: MD_NAME is followed by MD_NAMED_NODE */
@@ -427,10 +439,24 @@ parse_module_record(struct parse_ctx *ctx, const struct d12_record *rec)
 static uint32_t
 rel_to_abs(struct parse_ctx *ctx, uint64_t rel)
 {
-   uint32_t cur = ctx->mod->num_values;
-   if (rel == 0 || rel > cur)
+   uint32_t mod_vals =
+      ctx->module_values_latched ? ctx->module_values : ctx->mod->num_values;
+   uint32_t base = ctx->cur_func ? ctx->cur_func->first_value : mod_vals;
+
+   /* Where LLVM thinks we are: module values plus this function's own
+    * locals so far, NOT the global array's length.
+    */
+   uint32_t locals = ctx->mod->num_values - base;
+   uint32_t logical = mod_vals + locals;
+
+   if (rel == 0 || rel > logical)
       return ~0u; /* forward reference or invalid; G4c resolves phis */
-   return cur - (uint32_t)rel;
+
+   uint32_t v = logical - (uint32_t)rel;
+   if (v < mod_vals)
+      return v; /* a module-level value: same slot either way */
+
+   return base + (v - mod_vals); /* a local of the function being parsed */
 }
 
 static bool
@@ -753,6 +779,11 @@ on_enter_block(void *user, unsigned block_id, unsigned depth)
       if (!f->insts) {
          fail(mod, "out of memory for function body");
          return false;
+      }
+
+      if (!ctx->module_values_latched) {
+         ctx->module_values = mod->num_values;
+         ctx->module_values_latched = true;
       }
 
       /* Arguments occupy value slots before any instruction. */
