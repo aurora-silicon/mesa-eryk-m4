@@ -498,7 +498,7 @@ SM 6.9 cooperative matrix. Skip until something needs it.
 
 ## 5. The real conformance number — FIRST MEASUREMENT, 2026-08-04
 
-**173 of 557** vkd3d-proton D3D12 test functions complete with zero
+**185 of 557** vkd3d-proton D3D12 test functions complete with zero
 failures against `libd3d12agx.so`. Of those, **10 execute with nothing
 skipped at all**; the other 163 pass in part because a feature check
 skips the body (no SM 6.7, no 64-bit shader ops, and so on). Both numbers
@@ -506,11 +506,12 @@ are the honest headline — the first is "did not fail", the second is
 "actually ran and was right".
 
 ```
-PASS     173      (10 of them with zero skipped sub-tests)
-FAIL     171
-CRASH    207
-TIMEOUT    5
-SKIP       1
+              first    now
+PASS            173    185    (10 with zero skipped sub-tests)
+FAIL            171    188
+CRASH           207    179
+TIMEOUT           5      4
+SKIP              1      1
 ```
 
 Reproduce with `d3d12agx/scripts/vkd3d-suite.sh` in the ntasp repo. It
@@ -556,13 +557,69 @@ that class is likely worth more than any single feature, because it
 converts crashes into ordinary failures and lets the remaining tests in
 each file run.
 
+### Where the addressable work is
+
+Every test mapped to its source file, after the crash-to-failure pass:
+
+| file | pass | fail | crash | note |
+|---|--:|--:|--:|---|
+| `d3d12_shaders.c` | 2 | 26 | 35 | **the biggest single block** |
+| `d3d12_descriptors.c` | 10 | 17 | 25 | |
+| `d3d12_command.c` | 6 | 18 | 16 | |
+| `d3d12_copy.c` | 4 | 12 | 19 | twiddled copies refused |
+| `d3d12_resource.c` | 4 | 8 | 19 | |
+| `d3d12_pso.c` | 4 | 18 | 7 | |
+| `d3d12_query.c` | 0 | 0 | 11 | **no query heaps at all** |
+| `d3d12_geometry_shader.c` | 0 | 0 | 6 | |
+| `d3d12_clear.c` | 3 | 0 | 7 | |
+| `d3d12_mesh_shader.c` | 0 | 6 | 0 | |
+| `d3d12_streamout.c` | 0 | 4 | 0 | no stream output |
+
+### Already at their ceiling
+
+These pass by correctly reporting the feature absent. That IS the right
+answer and needs no work:
+
+| file | pass | why |
+|---|--:|---|
+| `d3d12_sm_advanced.c` | 40 | shader models above ours skip |
+| `d3d12_raytracing.c` | 22 | `RaytracingTier 0` |
+| `d3d12_sampler_feedback.c` | 13 | feature not reported |
+| `d3d12_workgraphs.c` | 10 | feature not reported |
+| `d3d12_enhanced_barriers.c` | 10 | |
+| `d3d12_sparse.c` | 10 | |
+
+### The theoretical limit
+
+**It is close to 557, not far below it** — and that is the useful finding.
+The features this driver will never have (raytracing, work graphs,
+sampler feedback, fp64, 64-bit atomics, WaveMMA) are ones the suite
+already SKIPS when the capability bits say no, and a clean skip counts as
+"no failures". **The ceiling is set by how much ordinary D3D12 surface
+gets implemented, not by the hardware.**
+
+The exception is a test that uses a feature UNCONDITIONALLY after
+checking nothing: `d3d12_query.c` releases a query heap whether or not
+creation succeeded, so nulling the out-pointer cannot save it. Those need
+the feature or nothing.
+
+**A crash is never at the ceiling.** Each of the 179 is a defect whether
+or not the underlying feature is in scope — the correct answer for
+something unimplemented is a failure the caller survives.
+
 ### Ordering from here
 
-1. **Crash-to-failure.** Make every refusal leave a usable object. Cheap,
-   mechanical, and it unblocks whole test files at a time.
-2. **The named gaps above** — events, bundles, sampler heaps,
-   `CopyDescriptors`, `GetResourceAllocationInfo`.
-3. Only then chase individual FAILs.
+1. **Query heaps** — 11 tests, 0 passing, one self-contained feature.
+   The cheapest whole-file win on the board.
+2. **`d3d12_shaders.c`** — 61 failing or crashing, the largest block, and
+   the compiler surface this project is actually about.
+3. **Descriptors (42) and copies (31)** — large crash counts, so likely a
+   few shared root causes rather than 73 separate bugs.
+4. **Twiddled texture copies** — currently refused; needed across
+   `d3d12_copy.c` and `d3d12_resource.c`.
+5. **Stream output** — 4 tests, no implementation at all.
+
+---
 
 ## 6. Standing rules for whoever picks this up
 
