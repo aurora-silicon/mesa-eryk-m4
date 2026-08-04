@@ -1125,10 +1125,23 @@ parse_resources(struct d12_module *mod)
  * [numthreads(x,y,z)] attribute. Without it the launch grid collapses to
  * zero threads and the dispatch silently does nothing.
  */
-#define D12_ENTRY_PROP_GS_STATE     0 /* {inputPrim, maxVerts, ?, topo, instances} */
-#define D12_ENTRY_PROP_DS_STATE     1 /* {domain, inputControlPoints} */
-#define D12_ENTRY_PROP_HS_STATE     2 /* {patchConstFn, inCP, outCP, domain,
-                                       *  partitioning, outputPrim, maxTess} */
+/*
+ * Entry-point property tags. Measured against real DXC output, not
+ * assumed: a first pass had these one lower each, which silently left
+ * every geometry shader with vertices_out = 0 -- and let two of them
+ * compile to a bare `stop`. The hull path looked correct only because
+ * its default control-point count happened to match the source.
+ *
+ *   1  GSState  {inputPrim, maxVertexCount, streamMask, outputTopology,
+ *                instanceCount}
+ *   2  DSState  {domain, inputControlPoints}
+ *   3  HSState  {patchConstantFn, inCP, outCP, domain, partitioning,
+ *                outputPrimitive, maxTessFactor}
+ *   4  NumThreads {x, y, z}
+ */
+#define D12_ENTRY_PROP_GS_STATE     1
+#define D12_ENTRY_PROP_DS_STATE     2
+#define D12_ENTRY_PROP_HS_STATE     3
 #define D12_ENTRY_PROP_NUM_THREADS  4
 
 static void
@@ -1161,6 +1174,7 @@ parse_entry_properties(struct d12_module *mod)
          continue;
 
       uint64_t val_id = props->node.ops[i + 1];
+
       if (val_id >= mod->num_metadata)
          continue;
 
