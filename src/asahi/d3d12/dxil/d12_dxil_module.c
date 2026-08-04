@@ -231,6 +231,22 @@ parse_const_record(struct parse_ctx *ctx, const struct d12_record *rec)
            i++)
          v->agg_elems[v->num_agg_elems++] = (uint32_t)rec->ops[i];
       break;
+
+   case D12_CST_CE_GEP:
+   case D12_CST_CE_INBOUNDS_GEP: {
+      /* [opt pointee-type, (type, value) pairs]: a pointer computed at
+       * constant time -- DXC's address of a static array element. The
+       * value ids are module-level and therefore absolute. The value
+       * slot was already pushed above -- pushing another here shifts
+       * every subsequent value id in the module.
+       */
+      unsigned start = (rec->num_ops & 1) ? 1 : 0;
+      v->is_ce_gep = true;
+      for (unsigned i = start;
+           i + 1 < rec->num_ops && v->num_agg_elems < 8; i += 2)
+         v->agg_elems[v->num_agg_elems++] = (uint32_t)rec->ops[i + 1];
+      break;
+   }
    default:
       /* Strings and const-exprs: slot reserved, contents parsed when a
        * shader is found that needs them.
@@ -351,6 +367,8 @@ parse_module_record(struct parse_ctx *ctx, const struct d12_record *rec)
       if (!v)
          return false;
       v->addr_space = addr_space;
+      v->global_is_const = (flags & 1) != 0;
+      v->global_init_id = rec->num_ops >= 3 ? (uint32_t)rec->ops[2] : 0;
       break;
    }
 
@@ -625,7 +643,11 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
    default:
       /* Unhandled instruction: recorded so the dump can report it, but it
        * must not silently define a value and shift every later index.
+       * When one of these DOES define a value, every later operand in
+       * the function resolves one off -- so say which code it was.
        */
+      mesa_logw("dxil: unnumbered instruction record code %u (%u ops)",
+                rec->code, rec->num_ops);
       break;
    }
 
@@ -1175,8 +1197,16 @@ d12_binding_map_from_module(const struct d12_module *mod,
 
       for (unsigned r = 0; r < count; r++) {
          if (d12_binding_map_add(out, rb->klass, rb->space,
-                                 rb->lower_bound + r) == ~0u)
-            return; /* full; anything past here fails at first use */
+                                 rb->lower_bound + r) == ~0u) {
+            /* Full. Later RANGES still deserve their base slots --
+             * losing them fails whole shaders for registers they never
+             * touch -- so stop enumerating this range but keep going.
+             */
+            mesa_logw("dxil: binding map full at class %u space %u "
+                      "register %u; higher registers unmapped",
+                      rb->klass, rb->space, rb->lower_bound + r);
+            break;
+         }
       }
    }
 }

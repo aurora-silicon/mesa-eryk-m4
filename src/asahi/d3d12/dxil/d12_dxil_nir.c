@@ -109,6 +109,10 @@ enum d12_dxop {
    D12_DXOP_DOT4_ADD_I8_PACKED = 163,
    D12_DXOP_DOT4_ADD_U8_PACKED = 164,
    D12_DXOP_SAMPLE_CMP_GRAD = 254,
+   D12_DXOP_TEXTURE_STORE_SAMPLE = 225,
+   D12_DXOP_START_VERTEX_LOCATION = 256,
+   D12_DXOP_START_INSTANCE_LOCATION = 257,
+   D12_DXOP_WAVE_MATCH = 165,
    D12_DXOP_MSAD = 50,
    D12_DXOP_SAMPLE = 60,
    D12_DXOP_SAMPLE_CMP = 64,
@@ -129,11 +133,13 @@ enum d12_dxop {
    D12_DXOP_BARRIER = 80,
    D12_DXOP_SAMPLE_INDEX = 90,
    D12_DXOP_COVERAGE = 91,
+   D12_DXOP_INNER_COVERAGE = 92,
    D12_DXOP_PRIMITIVE_ID = 108,
    D12_DXOP_VIEW_ID = 138,
    D12_DXOP_LEGACY_F32TOF16 = 130,
    D12_DXOP_LEGACY_F16TOF32 = 131,
    D12_DXOP_WAVE_ALL_BIT_COUNT = 135,
+   D12_DXOP_WAVE_PREFIX_BIT_COUNT = 136,
    D12_DXOP_CALCULATE_LOD = 81,
    D12_DXOP_MAKE_DOUBLE = 101,
    D12_DXOP_SPLIT_DOUBLE = 102,
@@ -262,6 +268,8 @@ struct trans_ctx {
 
 static void trans_fail(struct trans_ctx *ctx, const char *msg);
 static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
+static bool const_uint(struct trans_ctx *ctx, uint32_t value_index,
+                       uint64_t *out);
 
 /* DXIL carries booleans as i1 already, but a value that reached us as a
  * wider integer has to be compared before NIR will take it as a condition.
@@ -485,9 +493,7 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
       unsigned count = d12_range_count(rb);
 
       /* Accept either reading of `index`: absolute when it already lands
-       * inside the declared range, relative otherwise. An UNBOUNDED
-       * range has one mapped slot at its lower bound; a constant index
-       * resolves against it like any other register.
+       * inside the declared range, relative otherwise.
        */
       unsigned reg = index;
       if (!count) {
@@ -495,6 +501,20 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
             reg = rb->lower_bound + index;
       } else if (reg < rb->lower_bound || reg >= rb->lower_bound + count) {
          reg = rb->lower_bound + index;
+      }
+
+      /* An UNBOUNDED range has one mapped slot at its lower bound and
+       * everything above it resolves by arithmetic, exactly as the
+       * dynamic path does -- a constant index is just the degenerate
+       * dynamic one.
+       */
+      if (!count && reg > rb->lower_bound) {
+         unsigned base = d12_binding_map_find(ctx->map, klass, rb->space,
+                                              rb->lower_bound);
+         if (base != ~0u) {
+            *out_slot = base + (reg - rb->lower_bound);
+            return true;
+         }
       }
 
       *out_slot = d12_binding_map_find(ctx->map, klass, rb->space, reg);
@@ -702,21 +722,125 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
       return ctx->ptr_space[id];
 
    const struct d12_value *v = &ctx->mod->values[id];
-   if (v->kind != D12_VALUE_GLOBAL ||
-       v->addr_space != D12_ADDR_SPACE_GROUPSHARED)
+
+   /* A constant-expression GEP: the address of a static array element,
+    * computed at constant time. Resolve the base pointer, then walk the
+    * indices exactly as the GEP instruction does -- every index here is
+    * a constant by construction.
+    */
+   if (v->kind == D12_VALUE_CONSTANT && v->is_ce_gep) {
+      if (!v->num_agg_elems)
+         return D12_PTR_NONE;
+
+      uint8_t space = pointer_for_value(ctx, v->agg_elems[0]);
+      if (space == D12_PTR_NONE)
+         return D12_PTR_NONE;
+
+      uint32_t base = ctx->ptr_base[v->agg_elems[0]];
+      uint32_t cur = ctx->ptr_pointee[v->agg_elems[0]];
+
+      for (unsigned i = 1; i < v->num_agg_elems; i++) {
+         uint64_t idx = 0;
+         if (!const_uint(ctx, v->agg_elems[i], &idx))
+            return D12_PTR_NONE;
+
+         uint32_t stride, walk_align, next = cur;
+         if (i == 1) {
+            if (!type_size_align(ctx->mod, cur, &stride, &walk_align))
+               return D12_PTR_NONE;
+         } else {
+            const struct d12_type *t = &ctx->mod->types[cur];
+            if (t->kind == D12_TYPE_ARRAY || t->kind == D12_TYPE_VECTOR) {
+               next = t->seq.elem;
+               if (!type_size_align(ctx->mod, next, &stride, &walk_align))
+                  return D12_PTR_NONE;
+            } else if (t->kind == D12_TYPE_STRUCT_ANON ||
+                       t->kind == D12_TYPE_STRUCT_NAMED) {
+               uint32_t moff;
+               if (!struct_member_offset(ctx->mod, t, (unsigned)idx, &moff,
+                                         &next))
+                  return D12_PTR_NONE;
+               base += moff;
+               cur = next;
+               continue;
+            } else {
+               return D12_PTR_NONE;
+            }
+         }
+
+         base += (uint32_t)idx * stride;
+         cur = next;
+      }
+
+      ctx->ptr_space[id] = space;
+      ctx->ptr_base[id] = base;
+      ctx->ptr_pointee[id] = cur;
+      return space;
+   }
+
+   if (v->kind != D12_VALUE_GLOBAL)
       return D12_PTR_NONE;
 
    uint32_t size, align;
    if (!type_size_align(ctx->mod, v->type, &size, &align))
       return D12_PTR_NONE;
 
-   ctx->shared_size = ALIGN_POT(ctx->shared_size, align);
-   ctx->ptr_space[id] = D12_PTR_SHARED;
-   ctx->ptr_base[id] = ctx->shared_size;
-   /* A global's recorded type IS the pointee (see struct d12_value). */
-   ctx->ptr_pointee[id] = v->type;
-   ctx->shared_size += size;
-   return D12_PTR_SHARED;
+   if (v->addr_space == D12_ADDR_SPACE_GROUPSHARED) {
+      ctx->shared_size = ALIGN_POT(ctx->shared_size, align);
+      ctx->ptr_space[id] = D12_PTR_SHARED;
+      ctx->ptr_base[id] = ctx->shared_size;
+      /* A global's recorded type IS the pointee (struct d12_value). */
+      ctx->ptr_pointee[id] = v->type;
+      ctx->shared_size += size;
+      return D12_PTR_SHARED;
+   }
+
+   /* An addrspace-0 global DXC did not optimize away is an HLSL static:
+    * per-thread storage, same as an alloca. A missing initializer or a
+    * zeroinitializer both qualify -- the latter gets its zeroes stored
+    * at function entry, since scratch is not implicitly cleared. A
+    * DATA-carrying initializer (a lookup table) does not: handing back
+    * zeroed scratch for it would be silently wrong values.
+    */
+   if (v->addr_space == D12_ADDR_SPACE_DEFAULT) {
+      bool zeroed = false;
+      if (v->global_init_id) {
+         uint32_t init = v->global_init_id - 1;
+         if (init >= ctx->mod->num_values ||
+             ctx->mod->values[init].kind != D12_VALUE_CONSTANT ||
+             !(ctx->mod->values[init].is_null ||
+               ctx->mod->values[init].is_undef))
+            return D12_PTR_NONE;
+         zeroed = ctx->mod->values[init].is_null;
+      }
+
+      if (size > 4096)
+         return D12_PTR_NONE;
+
+      ctx->scratch_size = ALIGN_POT(ctx->scratch_size, align);
+      ctx->ptr_space[id] = D12_PTR_SCRATCH;
+      ctx->ptr_base[id] = ctx->scratch_size;
+      ctx->ptr_pointee[id] = v->type;
+      ctx->scratch_size += size;
+
+      if (zeroed) {
+         /* Store the zeroes where every use is dominated: the top of
+          * the entry block.
+          */
+         nir_builder *b = ctx->b;
+         nir_cursor saved = b->cursor;
+         b->cursor = nir_before_impl(b->impl);
+         for (uint32_t off = 0; off < size; off += 4) {
+            nir_store_scratch(b, nir_imm_int(b, 0),
+                              nir_imm_int(b, ctx->ptr_base[id] + off),
+                              .write_mask = 1, .align_mul = 4);
+         }
+         b->cursor = saved;
+      }
+      return D12_PTR_SCRATCH;
+   }
+
+   return D12_PTR_NONE;
 }
 
 /* NIR component shape for a loaded/stored type. */
@@ -922,6 +1046,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 #define NEED(n)                                                              \
    do {                                                                      \
       if (np < (n)) {                                                        \
+         mesa_loge("dxil: op %u has %u params, needed %u",                   \
+                   (unsigned)opcode, np, (unsigned)(n));                     \
          trans_fail(ctx, "dx.op call has too few arguments");                \
          return false;                                                       \
       }                                                                      \
@@ -969,7 +1095,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       if (sem && !strcmp(sem, "SV_IsFrontFace")) {
-         def_result(ctx, inst, nir_load_front_face(b, 1));
+         /* DXIL declares this i32; the 1-bit sysval must widen or every
+          * comparison against it mismatches.
+          */
+         def_result(ctx, inst,
+                    nir_b2i32(b, nir_load_front_face(b, 1)));
          return true;
       }
 
@@ -1336,6 +1466,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          unsigned base_slot = d12_binding_map_find(
             ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
          if (base_slot == ~0u) {
+            mesa_loge("dxil: dynamic handle: class %u space %u register "
+                      "%u (range %u) unmapped",
+                      (unsigned)klass, rb->space, rb->lower_bound,
+                      (unsigned)range_id);
             trans_fail(ctx, "shader uses a resource the root signature "
                             "does not bind");
             return false;
@@ -1514,6 +1648,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          }
       }
 
+      /* DXC truncates trailing undef operands from the fixed signature
+       * (a 1D gradient sample legitimately ends early); reads past np
+       * mean "absent", value zero.
+       */
+#define TAILD(i)                                                            \
+   ((i) < np && !operand_is_undef(ctx, p[i]) ? get_def(ctx, p[i])           \
+                                             : nir_imm_float(b, 0.0f))
+
       nir_texop op;
       unsigned num_srcs = 3;
       switch (opcode) {
@@ -1618,17 +1760,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                                  get_def(ctx, p[10]));
          }
       } else if (opcode == D12_DXOP_SAMPLE_CMP_GRAD) {
-         /* (srv, samp, c0..c3, off0..2, cmp, ddx0..2, ddy0..2[, clamp]) */
-         NEED(15);
+         /* (srv, samp, c0..c3, off0..2, cmp, ddx0..2, ddy0..2[, clamp]),
+          * with the same trailing truncation as sampleGrad.
+          */
+         NEED(12);
          tex->is_shadow = true;
          tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_comparator,
                                               get_def(ctx, p[9]));
          tex->src[si++] = nir_tex_src_for_ssa(
-            nir_tex_src_ddx,
-            nir_vec2(b, get_def(ctx, p[10]), get_def(ctx, p[11])));
+            nir_tex_src_ddx, nir_vec2(b, TAILD(10), TAILD(11)));
          tex->src[si++] = nir_tex_src_for_ssa(
-            nir_tex_src_ddy,
-            nir_vec2(b, get_def(ctx, p[13]), get_def(ctx, p[14])));
+            nir_tex_src_ddy, nir_vec2(b, TAILD(13), TAILD(14)));
       } else if (opcode == D12_DXOP_TEXTURE_GATHER_RAW) {
          /* Raw gather: the texel bits, unconverted, channel 0. The
           * result width follows the declared overload.
@@ -1643,6 +1785,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          tex->component = (unsigned)channel & 3;
       }
 
+#undef TAILD
       nir_def_init(&tex->instr, &tex->def, 4, 32);
       nir_builder_instr_insert(b, &tex->instr);
 
@@ -1783,11 +1926,69 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       return true;
    }
 
+   case D12_DXOP_START_VERTEX_LOCATION:
+   case D12_DXOP_START_INSTANCE_LOCATION:
+      /* SM 6.8 extended command info. The prolog ABI has uniform slots
+       * for these (AGX_ABI_VUNI_FIRST_VERTEX/BASE_INSTANCE) but only
+       * the prolog-building side maps them; the main-shader intrinsics
+       * reach the backend unlowered, and the draw path does not publish
+       * the values. A named refusal beats a backend assert -- and beats
+       * a constant 0 that would be wrong for every draw with a nonzero
+       * start vertex, which the runtime does support.
+       */
+      trans_fail(ctx, "SM 6.8 draw parameters need an unpublished driver "
+                      "sysval");
+      return false;
+
+   case D12_DXOP_WAVE_MATCH: {
+      /* WaveMatch(val): the mask of lanes holding MY value. No single
+       * instruction computes it, but a waterfall converges: each
+       * iteration, every lane matching the first active lane's value
+       * learns its mask and leaves. Termination is by construction --
+       * at least the first lane exits every trip.
+       *
+       * The loop is structured NIR, so only build it in shaders that
+       * are being built structured.
+       */
+      NEED(1);
+      if (ctx->num_blocks > 1) {
+         trans_fail(ctx, "waveMatch inside control flow unsupported");
+         return false;
+      }
+
+      nir_def *val = get_def(ctx, p[0]);
+      if (!val)
+         return false;
+
+      nir_def *reg = nir_decl_reg(b, 1, 32, 0);
+      nir_push_loop(b);
+      {
+         nir_def *first = nir_read_first_invocation(b, val);
+         nir_def *mine = nir_ieq(b, val, first);
+         nir_def *mask = nir_ballot(b, 1, 32, mine);
+         nir_push_if(b, mine);
+         {
+            nir_store_reg(b, mask, reg);
+            nir_jump(b, nir_jump_break);
+         }
+         nir_pop_if(b, NULL);
+      }
+      nir_pop_loop(b, NULL);
+
+      nir_def *zero = nir_imm_int(b, 0);
+      def_result(ctx, inst,
+                 nir_vec4(b, nir_load_reg(b, reg), zero, zero, zero));
+      return true;
+   }
+
+   case D12_DXOP_TEXTURE_STORE_SAMPLE:
    case D12_DXOP_TEXTURE_STORE: {
-      /* (uav, c0, c1, c2, v0..v3, mask). Compiles against the same heap
-       * offsets as loads; a correct RUNTIME needs writable PBE
-       * descriptors in a parallel heap, which does not exist yet -- the
-       * texture read path has to land first.
+      /* (uav, c0, c1, c2, v0..v3, mask[, sample]). Compiles against the
+       * same heap offsets as loads; a correct RUNTIME needs writable
+       * PBE descriptors in a parallel heap, which does not exist yet --
+       * the texture read path has to land first. The multisampled form
+       * carries the sample index last, and
+       * agx_nir_lower_multisampled_image_store handles the rest.
        */
       NEED(9);
 
@@ -1813,12 +2014,21 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             vals[i] = nir_imm_int(b, 0);
       }
 
+      bool ms = opcode == D12_DXOP_TEXTURE_STORE_SAMPLE;
+      nir_def *sample = nir_imm_int(b, 0);
+      if (ms && np >= 10) {
+         nir_def *si_def = get_def(ctx, p[9]);
+         if (si_def)
+            sample = si_def;
+      }
+
       nir_def *zero = nir_imm_int(b, 0);
       nir_bindless_image_store(
          b, handle,
-         nir_vec4(b, cx, cy, zero, zero), nir_imm_int(b, 0),
+         nir_vec4(b, cx, cy, zero, zero), sample,
          nir_vec(b, vals, 4), nir_imm_int(b, 0),
-         .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = false,
+         .image_dim = ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D,
+         .image_array = false,
          .format = PIPE_FORMAT_NONE, .access = ACCESS_NON_READABLE);
       return true;
    }
@@ -2061,6 +2271,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       def_result(ctx, inst, nir_load_sample_mask_in(b));
       return true;
 
+   case D12_DXOP_INNER_COVERAGE:
+      /* Conservative rasterization is not exposed (no tier reported), so
+       * no PSO that requires InnerCoverage can be created; a shader that
+       * reads it anyway sees "not fully covered", the conservative
+       * answer.
+       */
+      def_result(ctx, inst, nir_imm_int(b, 0));
+      return true;
+
    case D12_DXOP_PRIMITIVE_ID:
       def_result(ctx, inst, nir_load_primitive_id(b));
       return true;
@@ -2127,6 +2346,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                 : nir_quad_vote_any(b, 1, cond));
       return true;
    }
+
+   case D12_DXOP_WAVE_PREFIX_BIT_COUNT:
+      /* WavePrefixCountBits: how many lanes BEFORE mine hold true.
+       * An exclusive scan of the 0/1 predicate is exactly that.
+       */
+      NEED(1);
+      def_result(ctx, inst,
+                 nir_exclusive_scan(
+                    b, nir_b2i32(b, to_bool(ctx, get_def(ctx, p[0]))),
+                    .reduction_op = nir_op_iadd));
+      return true;
 
    case D12_DXOP_WAVE_ALL_BIT_COUNT:
       /* WaveActiveCountBits: how many active lanes hold true. */
@@ -2424,12 +2654,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &h))
          return false;
 
-      /* Rows are 16 bytes; the row index scales, no second coordinate. */
+      /* Rows are 16 bytes; the row index scales, no second coordinate.
+       * The row's SHAPE follows the declared result: four 32-bit
+       * elements normally, eight 16-bit or two 64-bit ones for cbuffers
+       * of halves/shorts or doubles/longs -- same bytes, different
+       * extractvalue indexing.
+       */
+      unsigned bits = 32;
+      if (inst->result_type < ctx->mod->num_types) {
+         const struct d12_type *rt = &ctx->mod->types[inst->result_type];
+         if ((rt->kind == D12_TYPE_STRUCT_ANON ||
+              rt->kind == D12_TYPE_STRUCT_NAMED) &&
+             rt->strct.num_members) {
+            unsigned mb = type_bit_size(ctx->mod, rt->strct.members[0]);
+            if (mb == 16 || mb == 64)
+               bits = mb;
+         }
+      }
+
       nir_def *offset = nir_imul_imm(b, get_def(ctx, p[1]), 16);
       nir_def *addr = resource_address(ctx, &h, offset,
                                        nir_imm_int(b, 0), true);
 
-      def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 16));
+      def_result(ctx, inst,
+                 nir_load_global(b, 128 / bits, bits, addr,
+                                 .align_mul = 16));
       return true;
    }
 
@@ -2626,11 +2875,20 @@ translate_binop(struct trans_ctx *ctx, const struct d12_inst *inst)
                    type_is_float(ctx->mod,
                                  ctx->mod->values[inst->ops[0]].type);
 
+   bool is_shift = inst->extra[0] == D12_BINOP_SHL ||
+                   inst->extra[0] == D12_BINOP_LSHR ||
+                   inst->extra[0] == D12_BINOP_ASHR;
+
    /* Width drift between our IO choices and DXIL's declared types; the
-    * same harmonization translate_cmp does.
+    * same harmonization translate_cmp does. Shifts are exempt: NIR
+    * fixes their AMOUNT operand at 32 bits regardless of the value's
+    * width, so a 64-bit shift takes a 32-bit count, not a widened one.
     */
-   if (x && y && x->bit_size != y->bit_size && x->bit_size > 1 &&
-       y->bit_size > 1) {
+   if (is_shift) {
+      if (y && y->bit_size != 32)
+         y = nir_u2u32(b, y);
+   } else if (x && y && x->bit_size != y->bit_size && x->bit_size > 1 &&
+              y->bit_size > 1) {
       unsigned bits = MAX2(x->bit_size, y->bit_size);
       if (x->bit_size < bits)
          x = is_float ? nir_f2fN(b, x, bits) : nir_u2uN(b, x, bits);
@@ -2734,6 +2992,37 @@ translate_select(struct trans_ctx *ctx, const struct d12_inst *inst)
       return false;
    }
 
+   /* A select BETWEEN POINTERS (cond ? &a[i] : &b[j]) has no SSA value
+    * behind either arm; both are (space, base, dyn) pointers. When the
+    * spaces agree, the selected pointer is the same space with a
+    * selected byte offset.
+    */
+   uint8_t sa = pointer_for_value(ctx, inst->ops[0]);
+   uint8_t sb = pointer_for_value(ctx, inst->ops[1]);
+   if (sa != D12_PTR_NONE && sa == sb) {
+      nir_builder *b = ctx->b;
+
+      nir_def *cond0 = get_def(ctx, inst->ops[2]);
+      if (!cond0)
+         return false;
+      if (cond0->bit_size != 1)
+         cond0 = nir_ine_imm(b, cond0, 0);
+
+      nir_def *ta = ctx->defs[inst->ops[0]];
+      nir_def *fa = ctx->defs[inst->ops[1]];
+      nir_def *toff = nir_iadd_imm(b, ta ? ta : nir_imm_int(b, 0),
+                                   ctx->ptr_base[inst->ops[0]]);
+      nir_def *foff = nir_iadd_imm(b, fa ? fa : nir_imm_int(b, 0),
+                                   ctx->ptr_base[inst->ops[1]]);
+
+      ctx->ptr_space[inst->result_value] = sa;
+      ctx->ptr_base[inst->result_value] = 0;
+      ctx->ptr_pointee[inst->result_value] =
+         ctx->ptr_pointee[inst->ops[0]];
+      ctx->defs[inst->result_value] = nir_bcsel(b, cond0, toff, foff);
+      return true;
+   }
+
    nir_def *t = get_def(ctx, inst->ops[0]);
    nir_def *f = get_def(ctx, inst->ops[1]);
    nir_def *cond = get_def(ctx, inst->ops[2]);
@@ -2756,9 +3045,40 @@ translate_cast(struct trans_ctx *ctx, const struct d12_inst *inst)
       return false;
    }
 
+   /* A bitcast of a POINTER (DXC retypes allocas freely) changes the
+    * pointee type and nothing else: same space, same offset. The
+    * pointee follows the cast's target so later GEP walks use the
+    * retyped layout.
+    */
+   if (inst->extra[0] == D12_CAST_BITCAST &&
+       pointer_for_value(ctx, inst->ops[0]) != D12_PTR_NONE &&
+       inst->result_value < ctx->mod->num_values) {
+      ctx->ptr_space[inst->result_value] = ctx->ptr_space[inst->ops[0]];
+      ctx->ptr_base[inst->result_value] = ctx->ptr_base[inst->ops[0]];
+      ctx->defs[inst->result_value] = ctx->defs[inst->ops[0]];
+
+      uint32_t pointee = ctx->ptr_pointee[inst->ops[0]];
+      if (inst->result_type < ctx->mod->num_types &&
+          ctx->mod->types[inst->result_type].kind == D12_TYPE_POINTER)
+         pointee = ctx->mod->types[inst->result_type].ptr.pointee;
+      ctx->ptr_pointee[inst->result_value] = pointee;
+      return true;
+   }
+
    nir_def *src = get_def(ctx, inst->ops[0]);
    unsigned dst_bits = type_bit_size(ctx->mod, inst->result_type);
    nir_def *res = NULL;
+
+   /* Truncation TO i1 keeps the low bit; the backend has no 1-bit
+    * conversion op, but it has compares.
+    */
+   if (dst_bits == 1 && (inst->extra[0] == D12_CAST_TRUNC ||
+                         inst->extra[0] == D12_CAST_ZEXT ||
+                         inst->extra[0] == D12_CAST_SEXT)) {
+      def_result(ctx, inst,
+                 nir_ine_imm(b, nir_iand_imm(b, src, 1), 0));
+      return true;
+   }
 
    switch (inst->extra[0]) {
    case D12_CAST_TRUNC:   res = nir_u2uN(b, src, dst_bits); break;
@@ -2975,6 +3295,14 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    for (unsigned i = 0; i < entry->num_insts && !ctx.error; i++) {
       const struct d12_inst *inst = &entry->insts[i];
 
+      if (getenv("D3D12AGX_DUMP_INSTS")) {
+         fprintf(stderr, "inst %u: code %u result %d block %u ops", i,
+                 inst->code, (int)inst->result_value, inst->block);
+         for (unsigned o = 0; o < inst->num_ops; o++)
+            fprintf(stderr, " %u", inst->ops[o]);
+         fprintf(stderr, "\n");
+      }
+
       /* Move to this instruction's block when it changes. */
       if (num_blocks > 1 && inst->block != cur_block) {
          cur_block = inst->block;
@@ -3054,6 +3382,8 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
             if (idx < agg->num_components) {
                def_result(&ctx, inst, nir_channel(&b, agg, idx));
             } else {
+               mesa_loge("dxil: extractvalue %u of %u-component value",
+                         idx, agg->num_components);
                trans_fail(&ctx, "extractvalue index past aggregate");
             }
          } else {
@@ -3477,10 +3807,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
     * translator's job was only to present the CFG in the shape they
     * expect.
     */
-   if (num_blocks > 1) {
+   if (num_blocks > 1)
       nir_lower_goto_ifs(b.shader);
-      nir_lower_reg_intrinsics_to_ssa(b.shader);
-   }
+
+   /* Registers appear from phis AND from builder-time loops (waveMatch),
+    * so the SSA rebuild is unconditional; it is a no-op without them.
+    */
+   nir_lower_reg_intrinsics_to_ssa(b.shader);
 
    nir_validate_shader(b.shader, "after DXIL translation");
    return b.shader;

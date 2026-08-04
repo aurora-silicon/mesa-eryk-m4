@@ -182,6 +182,10 @@ main(int argc, char **argv)
     * failure mode where the backend reports "Unhandled intrinsic".
     */
    NIR_PASS(_, nir, agx_nir_lower_texture);
+   /* Multisampled image stores lower the same way in every stage; the
+    * FS-only placement left compute MS stores to hit the backend raw.
+    */
+   NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
    agx_preprocess_nir(nir);
    NIR_PASS(_, nir, d12_dxil_lower_root);
 

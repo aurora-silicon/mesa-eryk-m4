@@ -329,6 +329,18 @@ struct d12_value {
 
    const char *name;   /* from VALUE_SYMTAB, may be NULL */
 
+   /* GLOBAL only: LLVM's initid (value id + 1, 0 = no initializer) and
+    * the isconst flag bit. Distinguishes a mutable static (per-thread
+    * storage) from a constant lookup table (data we must materialize).
+    */
+   uint32_t global_init_id;
+   bool global_is_const;
+
+   /* CONSTANT only: a constant-expression GEP. agg_elems[0] is the base
+    * value, the rest are index value ids.
+    */
+   bool is_ce_gep;
+
    /* Constants */
    bool is_undef;
    bool is_null;
@@ -674,7 +686,7 @@ struct nir_shader;
  * fills the table through it. Spaces cost nothing because an unused one
  * takes no slot.
  */
-#define D12_MAX_RESOURCE_BINDINGS 128
+#define D12_MAX_RESOURCE_BINDINGS 256
 
 struct d12_binding_map {
    struct {

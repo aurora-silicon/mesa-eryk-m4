@@ -307,6 +307,10 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    }
 
    NIR_PASS(_, nir, agx_nir_lower_texture);
+   /* Multisampled image stores lower the same way in every stage; the
+    * FS-only placement left compute MS stores to hit the backend raw.
+    */
+   NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
    agx_preprocess_nir(nir);
 
    /* Must follow preprocessing: emitting the uniform read earlier lets the
