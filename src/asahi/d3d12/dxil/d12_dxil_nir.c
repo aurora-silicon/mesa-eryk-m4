@@ -105,6 +105,7 @@ enum d12_dxop {
    D12_DXOP_DOT3 = 55,
    D12_DXOP_DOT4 = 56,
    D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   D12_DXOP_DOT2_ADD_HALF = 162,
    D12_DXOP_DOT4_ADD_I8_PACKED = 163,
    D12_DXOP_DOT4_ADD_U8_PACKED = 164,
    D12_DXOP_SAMPLE_CMP_GRAD = 254,
@@ -120,6 +121,7 @@ enum d12_dxop {
    D12_DXOP_SAMPLE_LEVEL = 62,
    D12_DXOP_SAMPLE_GRAD = 63,
    D12_DXOP_TEXTURE_STORE = 67,
+   D12_DXOP_BUFFER_UPDATE_COUNTER = 70,
    D12_DXOP_CHECK_ACCESS_FULLY_MAPPED = 71,
    D12_DXOP_GET_DIMENSIONS = 72,
    D12_DXOP_TEXTURE_GATHER = 73,
@@ -481,17 +483,19 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
          continue;
 
       unsigned count = d12_range_count(rb);
-      if (!count) {
-         trans_fail(ctx, "unbounded resource array (bindless) unsupported");
-         return false;
-      }
 
       /* Accept either reading of `index`: absolute when it already lands
-       * inside the declared range, relative otherwise.
+       * inside the declared range, relative otherwise. An UNBOUNDED
+       * range has one mapped slot at its lower bound; a constant index
+       * resolves against it like any other register.
        */
       unsigned reg = index;
-      if (reg < rb->lower_bound || reg >= rb->lower_bound + count)
+      if (!count) {
+         if (reg < rb->lower_bound)
+            reg = rb->lower_bound + index;
+      } else if (reg < rb->lower_bound || reg >= rb->lower_bound + count) {
          reg = rb->lower_bound + index;
+      }
 
       *out_slot = d12_binding_map_find(ctx->map, klass, rb->space, reg);
       if (*out_slot == ~0u) {
@@ -590,6 +594,8 @@ get_def(struct trans_ctx *ctx, uint32_t value_index)
       return def;
    }
 
+   mesa_loge("dxil: undefined operand: value %u kind %d type %u name '%s'",
+             value_index, (int)v->kind, v->type, v->name ? v->name : "");
    trans_fail(ctx, "operand is not a constant or a defined instruction");
    return nir_imm_int(ctx->b, 0);
 }
@@ -1480,21 +1486,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      /* Constant-zero or undef offsets are the common case and mean
-       * "none". A real offset is representable (nir_tex_src_offset) but
-       * has not been needed yet; refuse it loudly.
+      /* Sample offsets, constant or computed: agx_nir_lower_texture
+       * packs a nir_tex_src_offset into the instruction's nibble-packed
+       * backend2 source, so passing the vector through IS the support.
+       * Undef operands mean "no offset on this axis".
        */
-      unsigned num_offsets = (opcode == D12_DXOP_TEXTURE_GATHER ||
-                              opcode == D12_DXOP_TEXTURE_GATHER_RAW)
-                                ? 2
-                                : 3;
-      for (unsigned i = 0; i < num_offsets && 6 + i < np; i++) {
-         uint64_t off = 0;
-         if (operand_is_undef(ctx, p[6 + i]))
-            continue;
-         if (!const_uint(ctx, p[6 + i], &off) || off != 0) {
-            trans_fail(ctx, "programmable sample offsets unsupported");
-            return false;
+      nir_def *offset = NULL;
+      {
+         nir_def *ox = NULL, *oy = NULL;
+         for (unsigned i = 0; i < 2 && 6 + i < np; i++) {
+            if (operand_is_undef(ctx, p[6 + i]))
+               continue;
+            uint64_t c = 0;
+            if (const_uint(ctx, p[6 + i], &c) && c == 0)
+               continue;
+            nir_def *d = get_def(ctx, p[6 + i]);
+            if (!d)
+               continue;
+            if (i == 0)
+               ox = d;
+            else
+               oy = d;
+         }
+         if (ox || oy) {
+            offset = nir_vec2(b, ox ? ox : nir_imm_int(b, 0),
+                              oy ? oy : nir_imm_int(b, 0));
          }
       }
 
@@ -1542,7 +1558,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * sampler is an index attribute instead, not a source.
        */
       nir_tex_instr *tex = nir_tex_instr_create(
-         b->shader, num_srcs - 1 + (const_samp ? 0 : 1));
+         b->shader,
+         num_srcs - 1 + (const_samp ? 0 : 1) + (offset ? 1 : 0));
       tex->op = op;
       tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
       tex->is_array = false;
@@ -1560,6 +1577,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
       tex->src[si++] =
          nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
+      if (offset)
+         tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_offset, offset);
 
       if (opcode == D12_DXOP_SAMPLE_BIAS) {
          NEED(10);
@@ -1637,6 +1656,56 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          nir_imm_int(b, ~0u),
       };
       def_result(ctx, inst, nir_vec(b, with_status, 5));
+      return true;
+   }
+
+   case D12_DXOP_BUFFER_UPDATE_COUNTER: {
+      /* (handle, inc): the append/consume counter. IncrementCounter
+       * returns the PRE-increment value and DecrementCounter the
+       * POST-decrement one (D3D semantics), and a hardware atomic add
+       * returns the pre-value: the decrement result is pre - 1.
+       *
+       * The counter's address lives beside the resource's: second array
+       * of the root table for range handles, the descriptor's
+       * counter_address field for heap handles.
+       */
+      NEED(2);
+
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
+         return false;
+
+      uint64_t inc_raw = 1;
+      if (!const_uint(ctx, p[1], &inc_raw)) {
+         trans_fail(ctx, "non-constant counter direction");
+         return false;
+      }
+      bool dec = (int8_t)inc_raw < 0;
+
+      nir_def *counter_addr;
+      if (h.heap) {
+         nir_def *heap = nir_load_descriptor_heap_agx(b);
+         counter_addr = nir_load_global(
+            b, 1, 64,
+            nir_iadd_imm(b,
+                         nir_iadd(b, heap,
+                                  nir_imul_imm(b, nir_u2u64(b, h.slot),
+                                               D12_HEAP_DESC_SIZE)),
+                         D12_DESC_COUNTER_OFFSET),
+            .align_mul = 8);
+      } else {
+         nir_def *root = nir_load_root_agx(b);
+         nir_def *idx =
+            nir_iadd_imm(b, nir_u2u64(b, h.slot), D12_ROOT_COUNTER_BASE);
+         counter_addr = nir_load_global(
+            b, 1, 64, nir_iadd(b, root, nir_imul_imm(b, idx, 8)),
+            .align_mul = 8);
+      }
+
+      nir_def *pre = nir_global_atomic(b, 32, counter_addr,
+                                       nir_imm_int(b, dec ? -1 : 1),
+                                       .atomic_op = nir_atomic_op_iadd);
+      def_result(ctx, inst, dec ? nir_iadd_imm(b, pre, -1) : pre);
       return true;
    }
 
@@ -1868,6 +1937,22 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       return true;
    }
 
+   case D12_DXOP_DOT2_ADD_HALF: {
+      /* (acc f32, ax, ay, bx, by halves): products at half precision,
+       * accumulation at single, per the SM 6.4 spec.
+       */
+      NEED(5);
+      nir_def *acc = get_def(ctx, p[0]);
+      nir_def *px =
+         nir_fmul(b, get_def(ctx, p[1]), get_def(ctx, p[3]));
+      nir_def *py =
+         nir_fmul(b, get_def(ctx, p[2]), get_def(ctx, p[4]));
+      def_result(ctx, inst,
+                 nir_fadd(b, nir_fadd(b, acc, nir_f2f32(b, px)),
+                          nir_f2f32(b, py)));
+      return true;
+   }
+
    case D12_DXOP_DOT4_ADD_I8_PACKED:
    case D12_DXOP_DOT4_ADD_U8_PACKED: {
       /* (acc, a, b): packed 8-bit dot product with accumulate. NIR has
@@ -1902,9 +1987,25 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * NIR has the exact operation.
        */
       NEED(3);
-      def_result(ctx, inst,
-                 nir_msad_4x8(b, get_def(ctx, p[0]), get_def(ctx, p[1]),
-                              get_def(ctx, p[2])));
+
+      /* The AGX backend has no msad op, so expand: per byte, a zero
+       * REFERENCE byte is masked out, otherwise accumulate |ref - src|.
+       */
+      nir_def *ref = get_def(ctx, p[0]);
+      nir_def *src = get_def(ctx, p[1]);
+      nir_def *acc = get_def(ctx, p[2]);
+
+      for (unsigned i = 0; i < 4; i++) {
+         nir_def *rb =
+            nir_iand_imm(b, nir_ushr_imm(b, ref, i * 8), 0xff);
+         nir_def *sb =
+            nir_iand_imm(b, nir_ushr_imm(b, src, i * 8), 0xff);
+         nir_def *diff = nir_iabs(b, nir_isub(b, rb, sb));
+         nir_def *keep = nir_ine_imm(b, rb, 0);
+         acc = nir_iadd(b, acc,
+                        nir_bcsel(b, keep, diff, nir_imm_int(b, 0)));
+      }
+      def_result(ctx, inst, acc);
       return true;
    }
 
@@ -1915,6 +2016,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(1);
       nir_demote_if(b, to_bool(ctx, get_def(ctx, p[0])));
+      /* agx_nir_lower_discard_zs_emit gates its demote lowering on this
+       * flag; without it the raw demote reaches the backend and asserts.
+       */
+      b->shader->info.fs.uses_discard = true;
       return true;
    }
 

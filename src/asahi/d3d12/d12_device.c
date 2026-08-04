@@ -623,13 +623,16 @@ d12_device_CreateUnorderedAccessView(
       return;
    }
 
-   /* A UAV counter is a separate hidden allocation the shader reaches
-    * through its own intrinsics. Accepting one silently would make
-    * IncrementCounter read whatever happened to be at the resource base.
+   /* A UAV counter is a separate allocation the shader reaches through
+    * bufferUpdateCounter. Its address rides in the descriptor
+    * (counter_address, part of the shader-visible ABI) and in the root
+    * table's second array; the CounterOffsetInBytes applies on top of
+    * the counter resource's base, per the D3D12 spec.
     */
    if (counter) {
-      mesa_loge("CreateUnorderedAccessView: UAV counters unsupported");
-      return;
+      struct d12_resource *cres = d12_resource_from_iface(counter);
+      uint64_t off = desc ? desc->Buffer.CounterOffsetInBytes : 0;
+      slot->counter_address = cres->bo->va->addr + off;
    }
 
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;
@@ -674,15 +677,15 @@ static UINT STDMETHODCALLTYPE
 d12_device_GetDescriptorHandleIncrementSize(
    ID3D12Device *iface, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
-   /* Placeholder stride until the descriptor model lands (G3/G4); apps only
-    * require a stable nonzero constant per heap type.
+   /* sizeof(struct d12_descriptor). Apps must treat this as opaque; the
+    * value only has to be stable and truthful about our layout.
     */
    switch (type) {
    case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
    case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
    case D3D12_DESCRIPTOR_HEAP_TYPE_RTV:
    case D3D12_DESCRIPTOR_HEAP_TYPE_DSV:
-      return 32;
+      return sizeof(struct d12_descriptor);
    default:
       return 0;
    }

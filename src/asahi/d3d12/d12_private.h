@@ -137,16 +137,26 @@ enum d12_descriptor_kind {
 };
 
 struct d12_descriptor {
+   /* GPU-read fields first: an SM 6.6 heap handle indexes this struct
+    * IN MEMORY, so the shader-visible layout is part of the ABI. The
+    * address must sit at offset 0 (resource_address reads it there) and
+    * the UAV counter pointer at offset 8 (D12_DESC_COUNTER_OFFSET).
+    */
+   uint64_t address;         /* resource base + view offset */
+   uint64_t counter_address; /* UAV counter, or 0 */
+
    struct d12_resource *resource; /* not referenced; app keeps alive */
-   uint64_t address;              /* resource base + view offset */
    uint32_t size_B;
    uint32_t stride_B;
    DXGI_FORMAT format;
    uint8_t kind; /* enum d12_descriptor_kind */
    uint8_t pad[3];
 };
-static_assert(sizeof(struct d12_descriptor) == 32,
+static_assert(sizeof(struct d12_descriptor) == 40,
               "must match handle increment");
+static_assert(offsetof(struct d12_descriptor, address) == 0 &&
+                 offsetof(struct d12_descriptor, counter_address) == 8,
+              "shader-visible ABI");
 
 /* The RTV/DSV path predates the unified descriptor and still speaks this
  * name; they are the same object.

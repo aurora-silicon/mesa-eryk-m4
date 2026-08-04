@@ -642,7 +642,14 @@ struct nir_shader;
  */
 #define D12_UNIFORM_HEAP            16
 #define D12_UNIFORM_HEAP_REGS       4
-#define D12_HEAP_DESC_SIZE          32
+#define D12_HEAP_DESC_SIZE          40
+#define D12_DESC_COUNTER_OFFSET     8
+
+/*
+ * The root table ABI: two arrays back to back. addrs[i] at slot * 8,
+ * then UAV counter addresses at (D12_MAX_RESOURCE_BINDINGS + slot) * 8.
+ */
+#define D12_ROOT_COUNTER_BASE       D12_MAX_RESOURCE_BINDINGS
 
 #define D12_UNIFORM_RESERVED (D12_UNIFORM_HEAP + D12_UNIFORM_HEAP_REGS)
 

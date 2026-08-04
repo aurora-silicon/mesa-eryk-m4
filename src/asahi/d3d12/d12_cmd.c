@@ -543,9 +543,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
 
-   uint64_t addrs[D12_MAX_RESOURCE_BINDINGS];
-   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++)
+   /* Two arrays back to back (D12_ROOT_COUNTER_BASE): resource base
+    * addresses, then UAV counter addresses for bufferUpdateCounter.
+    */
+   uint64_t addrs[2 * D12_MAX_RESOURCE_BINDINGS];
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
       addrs[i] = table[i].address;
+      addrs[D12_ROOT_COUNTER_BASE + i] = table[i].counter_address;
+   }
 
    uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
    if (!addrs_gpu)
