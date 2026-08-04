@@ -1173,7 +1173,14 @@ translate_binop(struct trans_ctx *ctx, const struct d12_inst *inst)
 
    nir_def *x = get_def(ctx, inst->ops[0]);
    nir_def *y = get_def(ctx, inst->ops[1]);
-   bool is_float = x->bit_size >= 16 &&
+
+   /* get_def RECORDS a failure for an out-of-range index but still
+    * returns a dummy def, so translation continues -- and indexing
+    * values[] with the index it just rejected reads off the end of a
+    * fixed array whose bound comes from unvalidated bitstream data.
+    */
+   bool is_float = inst->ops[0] < ctx->mod->num_values &&
+                   x->bit_size >= 16 &&
                    type_is_float(ctx->mod,
                                  ctx->mod->values[inst->ops[0]].type);
    nir_def *res = NULL;

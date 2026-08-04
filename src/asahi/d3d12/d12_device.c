@@ -720,11 +720,23 @@ d12_device_GetCopyableFootprints(ID3D12Device *iface,
          pitch = (UINT)ALIGN_POT(desc->Width,
                                  D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
       } else {
-         /* Single-level RGBA8 is our texture scope; 4 bytes per texel. */
+         /* The texel size is the FORMAT's, not four. This function is
+          * how an application sizes the buffer it reads a texture back
+          * into, so a wrong answer here is not a failed call -- it is a
+          * readback that overruns or interleaves rows, in the caller's
+          * own memcpy loop, with S_OK everywhere.
+          */
+         unsigned bpp = d12_format_bytes_per_pixel(desc->Format);
+         if (!bpp) {
+            mesa_loge("GetCopyableFootprints: format %d has no known texel "
+                      "size", (int)desc->Format);
+            return;
+         }
+
          width = (UINT)desc->Width;
          height = desc->Height;
          rows = height;
-         row_size = (UINT64)width * 4;
+         row_size = (UINT64)width * bpp;
          pitch = (UINT)ALIGN_POT(row_size,
                                  D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
       }
@@ -742,9 +754,15 @@ d12_device_GetCopyableFootprints(ID3D12Device *iface,
       if (row_size_bytes)
          row_size_bytes[i] = row_size;
 
+      /* TotalBytes has to cover what the LAYOUT spans, including the
+       * inter-subresource padding `offset` advances by. Summing the
+       * unpadded sizes reports less than layouts[last].Offset + its size,
+       * so an application sizing an upload heap from it writes past the
+       * end of its own buffer.
+       */
       UINT64 sub_size = (UINT64)pitch * rows;
       offset += ALIGN_POT(sub_size, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-      total += sub_size;
+      total = offset;
 
       (void)sub;
    }

@@ -283,7 +283,11 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
 
    for (uint32_t i = 0; i < nparts; i++) {
       uint32_t off = r_u32(p + 32 + i * 4);
-      if (off + 8 > size)
+      /* size_t, or the addition wraps: off = 0xFFFFFFFC makes this 4, the
+       * check passes, and the read below lands ~4 GiB past the blob. The
+       * blob is application-supplied.
+       */
+      if ((size_t)off + 8 > size)
          continue;
       if (r_u32(p + off) != D12_TAG_RTS0)
          continue;

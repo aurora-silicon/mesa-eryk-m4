@@ -75,7 +75,7 @@ d12_dxil_find_bitcode(const void *data, size_t size_B,
       uint32_t off = read_le32(p + 32 + i * 4);
 
       /* Each part: 4-byte fourcc, 4-byte size, then payload */
-      if (off + 8 > size_B) {
+      if ((size_t)off + 8 > size_B) {
          *why = "DXBC part offset out of range";
          return false;
       }
@@ -156,7 +156,7 @@ d12_dxil_container_stage(const void *data, size_t size_B,
 
    for (uint32_t i = 0; i < part_count; i++) {
       uint32_t off = read_le32(p + 32 + i * 4);
-      if (off + 12 > size_B)
+      if ((size_t)off + 12 > size_B)
          return false;
 
       if (memcmp(p + off, "DXIL", 4) && memcmp(p + off, "ILDB", 4))
