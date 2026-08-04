@@ -22,6 +22,24 @@ perfectly correct descriptor.
 The count matters as much as the word: `sampler_state_register_count` must
 follow `info.uses_txf`, or the hardware never loads the state at all.
 
+### Uniforms are published BY REFERENCE, always
+
+`agx_usc_uniform(&b, base, regs, address)` fills uniform registers *from
+memory at `address`*. Publishing a **pointer** therefore takes two steps:
+upload the pointer somewhere, then point the uniform at that -- the
+address-of-an-address the root table already uses.
+
+Pointing a uniform straight at the struct instead is silent and
+plausible-looking: the shader loads the struct's first eight bytes and
+uses them as the address. `poly_vertex_params` begins with
+`index_buffer`, so the software vertex shader took the index buffer to be
+its own parameter block and wrote nothing anywhere, with no fault.
+
+A **value** uniform is the opposite: the mask behind
+`D12_UNIFORM_VS_OUTPUTS` is published by pointing the uniform at the mask
+itself. Getting these two backwards is invisible in the driver and
+obvious in one line of `agxdecode`.
+
 ### Samplers are state registers, not heap handles
 The backend's sampler operand is a **16-bit index into sampler state
 registers**, loaded by the USC SAMPLER word. `bindless_sampler_agx` is a
@@ -40,6 +58,25 @@ Constants the compiler parks in `info.rodata` must be published with
 `agx_usc_immediates`. Nothing else does it — a shader with rodata otherwise
 computes with whatever the previous dispatch left in those uniforms. Silent
 and latent.
+
+### agx_fast_link does not copy the PREAMBLE
+
+`agx_fast_link` links main + prolog + epilog into `linked.bo`. The
+preamble is **not** copied there, so `info.preamble_offset` is
+meaningless against `linked.bo->va->addr`. The USC then points the
+preshader at whatever sits at that offset, which decoded as a run of
+`jmp_incomplete 0` and killed the render command outright -- the target
+was not even cleared, which reads like a missing draw rather than a bad
+shader address.
+
+Keep the compiled part's own BO and take the preamble address from it.
+hk stores exactly this as `hk_shader::preamble_addr` (hk_shader.c:1856).
+
+It went unnoticed for the whole campaign because no graphics shader here
+had a preamble until the geometry rasterization program: with
+`promote_constants = false` the vertex and fragment shaders never
+generated one. The entry below is the same landmine seen from the other
+side.
 
 ### `promote_constants` needs a correctly addressed preamble
 Turning it on fails every graphics test while changing nothing about compute.
@@ -251,6 +288,13 @@ GPU-facing half of the driver; the bug was in the bitcode reader.
   once used different `promote_constants`/`reserved_preamble` settings, so its
   disassembly described a shader the driver never ran — and several
   hypotheses were formed against it before that was noticed.
+- **agxdecode writes to a FILE.** `ASAHI_MESA_DEBUG=trace` alone looks
+  like it does nothing, because the decode goes to `agxdecode.dump.NNNN`.
+  Use `AGXDECODE_DUMP_FILE=stderr ASAHI_MESA_DEBUG=trace`. The decoder
+  went unused for most of this campaign for want of that one variable,
+  and it then answered two bugs in a single line each: a uniform whose
+  buffer decoded as zeroes, and a preshader that decoded as
+  `jmp_incomplete 0`.
 - **Do not build while another process is editing the tree.** One confident,
   wrong conclusion ("the translator broke rasterisation") came from a build
   taken mid-edit and was refuted by a clean rebuild.
