@@ -76,6 +76,14 @@ else
       "SKIPPED - set D3D12AGX_CORPUS (no mesh probe can be generated)"
 fi
 
+AS="$D3D12AGX_CORPUS/as_simple_code_dxil.dxil"
+if [ -n "$D3D12AGX_CORPUS" ] && [ -f "$AS" ] && [ -f "$MS" ]; then
+   run g9_amplification "$AS" "$MS" "$S/solid.dxil" || fails=$((fails+1))
+else
+   printf "%-18s %s\n" "g9_amplification" \
+      "SKIPPED - set D3D12AGX_CORPUS (no amplification probe can be generated)"
+fi
+
 echo
 if [ $fails -eq 0 ]; then echo "GPU SUITES: all green"; else echo "GPU SUITES: $fails suite(s) not green"; fi
 exit $fails

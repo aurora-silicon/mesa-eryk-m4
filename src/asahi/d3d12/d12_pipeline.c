@@ -223,6 +223,10 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->ms_setup_bo);
       if (pso->ms_rast.code_bo)
          agx_bo_unreference(&pso->device->dev, pso->ms_rast.code_bo);
+      if (pso->as_bo)
+         agx_bo_unreference(&pso->device->dev, pso->as_bo);
+      if (pso->as_setup_bo)
+         agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -902,9 +906,11 @@ build_ms_setup(void)
    nir_def *counts = nir_load_global(
       &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_COUNTS),
       .align_mul = 8);
+   /* NOT the dispatch slot: an amplification shader writes its
+    * DispatchMesh grid there, so the draw descriptor has its own.
+    */
    nir_def *draw = nir_load_global(
-      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_DISPATCH),
-      .align_mul = 8);
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_DRAW), .align_mul = 8);
 
    nir_def *prims =
       nir_load_global(&b, 1, 32, nir_iadd_imm(&b, counts, 4), .align_mul = 4);
@@ -918,6 +924,46 @@ build_ms_setup(void)
    for (unsigned i = 2; i < 5; i++) {
       nir_store_global(&b, nir_imm_int(&b, 0), nir_iadd_imm(&b, draw, i * 4),
                        .write_mask = 1, .align_mul = 4);
+   }
+
+   return b.shader;
+}
+
+/*
+ * as_setup: the amplification shader hands off with DispatchMesh(x,y,z),
+ * a THREAD GROUP count written to D12_MESH_OFF_DISPATCH. The mesh
+ * dispatch that follows must be indirect off it, and an AGX indirect
+ * grid is six words -- three THREAD counts then three local sizes -- so
+ * the group-to-thread multiply cannot happen on the CPU.
+ */
+static nir_shader *
+build_as_setup(const unsigned wg[3])
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "d12 amplification setup");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.internal = false;
+
+   nir_def *params =
+      nir_load_preamble(&b, 1, 64, .base = D12_UNIFORM_MESH_PARAMS);
+   nir_def *disp = nir_load_global(
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_DISPATCH),
+      .align_mul = 8);
+   nir_def *grid = nir_load_global(
+      &b, 1, 64, nir_iadd_imm(&b, params, D12_MESH_OFF_GRID), .align_mul = 8);
+
+   for (unsigned i = 0; i < 3; i++) {
+      nir_def *groups = nir_load_global(
+         &b, 1, 32, nir_iadd_imm(&b, disp, i * 4), .align_mul = 4);
+
+      nir_store_global(&b, nir_imul_imm(&b, groups, wg[i]),
+                       nir_iadd_imm(&b, grid, i * 4), .write_mask = 1,
+                       .align_mul = 4);
+      nir_store_global(&b, nir_imm_int(&b, wg[i]),
+                       nir_iadd_imm(&b, grid, (3 + i) * 4), .write_mask = 1,
+                       .align_mul = 4);
    }
 
    return b.shader;
@@ -996,13 +1042,6 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
                                const struct d12_binding_map *map, REFIID riid,
                                void **out)
 {
-   if (as_dxil && as_size) {
-      mesa_loge("CreatePipelineState: amplification shaders are not "
-                "dispatched yet; refusing rather than running the mesh "
-                "shader without its payload");
-      return E_NOTIMPL;
-   }
-
    /* Build the pipeline the ordinary way first: the pixel shader, the
     * depth/stencil and rasterizer state and the tilebuffer layout are
     * all identical to a vertex pipeline. The MESH-specific programs are
@@ -1131,6 +1170,71 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
       cfg.sampler_state_register_count =
          agx_translate_sampler_state_count(samplers, false);
       cfg.texture_state_register_count = rast_part.info.texture_state_count;
+   }
+
+   /* The amplification shader, if there is one. */
+   if (as_dxil && as_size) {
+      nir_shader *as =
+         dxil_to_nir_stage(map, as_dxil, as_size, MESA_SHADER_COMPUTE);
+      if (!as) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_INVALIDARG;
+      }
+
+      pso->as_workgroup[0] = MAX2(as->info.workgroup_size[0], 1);
+      pso->as_workgroup[1] = MAX2(as->info.workgroup_size[1], 1);
+      pso->as_workgroup[2] = MAX2(as->info.workgroup_size[2], 1);
+
+      struct agx_shader_part as_part, as_setup_part;
+      if (!compile_poly_program(device, as, NULL, &as_part) ||
+          !compile_poly_program(device, build_as_setup(pso->ms_workgroup),
+                                NULL, &as_setup_part)) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_INVALIDARG;
+      }
+
+      const struct {
+         struct agx_shader_part *part;
+         struct agx_bo **bo;
+         uint64_t *va;
+         struct agx_shader_info *info;
+         const char *name;
+      } acs[] = {
+         {&as_part, &pso->as_bo, &pso->as_va, &pso->as_info,
+          "d3d12 amplification"},
+         {&as_setup_part, &pso->as_setup_bo, &pso->as_setup_va,
+          &pso->as_setup_info, "d3d12 amplification setup"},
+      };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(acs); i++) {
+         *acs[i].bo =
+            agx_bo_create(&device->dev, acs[i].part->info.binary_size, 0,
+                          AGX_BO_EXEC | AGX_BO_LOW_VA, acs[i].name);
+         if (!*acs[i].bo) {
+            ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+            *out = NULL;
+            return E_OUTOFMEMORY;
+         }
+         memcpy(agx_bo_map(*acs[i].bo), acs[i].part->binary,
+                acs[i].part->info.binary_size);
+         *acs[i].va = (*acs[i].bo)->va->addr;
+         *acs[i].info = acs[i].part->info;
+      }
+
+      /* The payload size is declared in ASState, but the module is gone
+       * by the time the shader is compiled. Allocate a fixed bound: the
+       * D3D12 limit is 16 KB and the shader writes through the pointer
+       * at D12_MESH_OFF_PAYLOAD, so over-allocating is safe and
+       * under-allocating would corrupt whatever follows.
+       */
+      pso->as_payload_size = 16 * 1024;
+      pso->has_amp = true;
+      mesa_logi("  + amplification: as %u B, setup %u B, wg %ux%ux%u",
+                as_part.info.binary_size, as_setup_part.info.binary_size,
+                pso->as_workgroup[0], pso->as_workgroup[1],
+                pso->as_workgroup[2]);
    }
 
    mesa_logi("compiled mesh pipeline: ms %u B, setup %u B, rast %u B, "

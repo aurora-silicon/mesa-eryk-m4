@@ -111,6 +111,8 @@ struct d12_device {
    void *dbg_tess_draw;
    void *dbg_tess_counts;
    unsigned dbg_tess_counts_n;
+   void *dbg_mesh_grid;
+   void *dbg_mesh_disp;
    void *dbg_mesh_verts;
    void *dbg_mesh_idx;
    void *dbg_tcs_buf;
@@ -410,6 +412,17 @@ struct d12_pipeline_state {
    struct agx_bo *ms_setup_bo;
    uint64_t ms_setup_va;
    struct agx_shader_info ms_setup_info;
+
+   /* Amplification: runs before the mesh shader, writes the payload and
+    * the DispatchMesh grid; as_setup turns that grid into the six-word
+    * indirect-local form the mesh dispatch consumes.
+    */
+   bool has_amp;
+   struct agx_bo *as_bo, *as_setup_bo;
+   uint64_t as_va, as_setup_va;
+   struct agx_shader_info as_info, as_setup_info;
+   uint32_t as_workgroup[3];
+   uint32_t as_payload_size;
 
    struct d12_gfx_stage ms_rast;
    struct agx_unlinked_uvs_layout ms_uvs;

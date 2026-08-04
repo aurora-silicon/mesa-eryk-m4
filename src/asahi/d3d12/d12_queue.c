@@ -421,6 +421,15 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                       ti[i + 1], ti[i + 2], ti[i + 3]);
          }
 
+         if (device->dbg_mesh_grid) {
+            const uint32_t *g = (const uint32_t *)device->dbg_mesh_grid;
+            const uint32_t *d = (const uint32_t *)device->dbg_mesh_disp;
+            mesa_logi("  AS DispatchMesh grid: %u %u %u", d[0], d[1], d[2]);
+            mesa_logi("  mesh indirect grid:   threads %u %u %u  local %u %u %u",
+                      g[0], g[1], g[2], g[3], g[4], g[5]);
+            device->dbg_mesh_grid = NULL;
+         }
+
          if (device->dbg_mesh_verts) {
             const float *v = (const float *)device->dbg_mesh_verts;
             unsigned stride_f = (32 * 16) / 4;

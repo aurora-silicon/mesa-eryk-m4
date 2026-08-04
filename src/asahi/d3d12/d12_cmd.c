@@ -1711,6 +1711,13 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
  * D12_UNIFORM_MESH_PARAMS. Unlike geometry and tessellation there is no
  * poly emulation behind this: the ABI is this driver's own.
  */
+struct d12_mesh_stage {
+   uint64_t va;
+   const struct agx_shader_info *info;
+   struct agx_grid grid;
+   struct agx_workgroup wg;
+};
+
 static bool
 d12_list_mesh_prerast(struct d12_cmd_list *list,
                       struct d12_pipeline_state *pso, unsigned tg_x,
@@ -1743,19 +1750,36 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    size_t prims_B = (size_t)groups * max_prims * vtx_stride;
    size_t idx_B = (size_t)groups * max_prims * 3 * 4;
 
+   /* With an amplification shader the mesh grid is GPU-written, so the
+    * worst case has to cover whatever it asks for. D3D12 caps
+    * DispatchMesh at 2^22 groups total but a test-sized bound is what
+    * the buffers can actually hold; anything larger is refused rather
+    * than silently overrun.
+    */
+   if (pso->has_amp)
+      groups = D12_MESH_MAX_AMP_GROUPS;
+
    uint64_t counts = d12_list_upload_zero(list, 8, 8);
    uint64_t vertices = d12_list_upload_zero(list, verts_B, 16);
    uint64_t primitives = d12_list_upload_zero(list, prims_B, 16);
    uint64_t indices = d12_list_upload_zero(list, idx_B, 4);
    uint64_t drawdesc = d12_list_upload_zero(list, 5 * 4, 4);
-   if (!counts || !vertices || !primitives || !indices || !drawdesc)
+   uint64_t dispatch = d12_list_upload_zero(list, 3 * 4, 4);
+   uint64_t gridbuf = d12_list_upload_zero(list, 6 * 4, 4);
+   uint64_t payload =
+      pso->as_payload_size
+         ? d12_list_upload_zero(list, pso->as_payload_size, 16)
+         : 0;
+   if (!counts || !vertices || !primitives || !indices || !drawdesc ||
+       !dispatch || !gridbuf)
       return false;
 
    /* The parameter block the shader indirects through. Laid out by
     * D12_MESH_OFF_*; the payload is null because amplification shaders
     * are refused at PSO creation.
     */
-   uint64_t block[6] = {counts, vertices, primitives, indices, 0, drawdesc};
+   uint64_t block[8] = {counts,   vertices, primitives, indices,
+                        payload,  dispatch, drawdesc,   gridbuf};
    uint64_t mp_gpu = d12_list_upload(list, block, sizeof(block), 8);
    if (!mp_gpu)
       return false;
@@ -1776,22 +1800,45 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    if (!seg)
       return false;
 
-   const struct {
-      uint64_t va;
-      const struct agx_shader_info *info;
-      struct agx_grid grid;
-      struct agx_workgroup wg;
-   } stages[] = {
-      {pso->ms_va, &pso->ms_info,
-       agx_3d(tg_x * pso->ms_workgroup[0], tg_y * pso->ms_workgroup[1],
-              tg_z * pso->ms_workgroup[2]),
-       agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
-                     pso->ms_workgroup[2])},
-      {pso->ms_setup_va, &pso->ms_setup_info, agx_3d(1, 1, 1),
-       agx_workgroup(1, 1, 1)},
-   };
+   /* With an amplification shader the chain grows at the front: AS runs
+    * on the DispatchMesh grid the application gave, writes the payload
+    * and its own DispatchMesh(x,y,z), then as_setup turns that thread
+    * GROUP count into the six-word indirect-local grid the mesh
+    * dispatch consumes. Without one, the mesh grid is known on the CPU.
+    */
+   struct d12_mesh_stage stages[4];
+   unsigned nr_stages = 0;
 
-   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+   if (pso->has_amp) {
+      stages[nr_stages++] = (struct d12_mesh_stage){
+         pso->as_va, &pso->as_info,
+         agx_3d(tg_x * pso->as_workgroup[0], tg_y * pso->as_workgroup[1],
+                tg_z * pso->as_workgroup[2]),
+         agx_workgroup(pso->as_workgroup[0], pso->as_workgroup[1],
+                       pso->as_workgroup[2])};
+
+      stages[nr_stages++] = (struct d12_mesh_stage){
+         pso->as_setup_va, &pso->as_setup_info, agx_3d(1, 1, 1),
+         agx_workgroup(1, 1, 1)};
+
+      stages[nr_stages++] = (struct d12_mesh_stage){
+         pso->ms_va, &pso->ms_info, agx_grid_indirect_local(gridbuf),
+         agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
+                       pso->ms_workgroup[2])};
+   } else {
+      stages[nr_stages++] = (struct d12_mesh_stage){
+         pso->ms_va, &pso->ms_info,
+         agx_3d(tg_x * pso->ms_workgroup[0], tg_y * pso->ms_workgroup[1],
+                tg_z * pso->ms_workgroup[2]),
+         agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
+                       pso->ms_workgroup[2])};
+   }
+
+   stages[nr_stages++] = (struct d12_mesh_stage){
+      pso->ms_setup_va, &pso->ms_setup_info, agx_3d(1, 1, 1),
+      agx_workgroup(1, 1, 1)};
+
+   for (unsigned i = 0; i < nr_stages; i++) {
       uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
                                                 stages[i].info, &u, NULL);
       if (!usc)
@@ -1823,8 +1870,10 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       device->dbg_tess_counts_n = 2;
       device->dbg_mesh_verts = d12_list_data_cpu(list, vertices);
       device->dbg_mesh_idx = d12_list_data_cpu(list, indices);
-      mesa_logi("mesh: groups=%u slots=%u vtx_stride=%zu idx_B=%zu", groups,
-                nr_slots, vtx_stride, idx_B);
+      device->dbg_mesh_grid = d12_list_data_cpu(list, gridbuf);
+      device->dbg_mesh_disp = d12_list_data_cpu(list, dispatch);
+      mesa_logi("mesh: groups=%u slots=%u vtx_stride=%zu idx_B=%zu amp=%d",
+                groups, nr_slots, vtx_stride, idx_B, pso->has_amp);
    }
 
    *out_draw = agx_draw_indexed_indirect(drawdesc, indices, idx_B,

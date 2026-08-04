@@ -749,6 +749,13 @@ struct nir_shader;
  *    +24  u64  indices     3 x u32 per primitive
  *    +32  u64  payload     amplification payload (0 when there is none)
  *    +40  u64  dispatch    { u32 x, y, z } written by dispatchMesh
+ *    +48  u64  draw        the indirect draw descriptor ms_setup fills
+ *    +56  u64  grid        6-word indirect-local grid for the mesh
+ *                          dispatch, filled by as_setup
+ *
+ * The last two are driver-side only -- the translator never reads them.
+ * They are separate slots because an AMPLIFICATION shader writes the
+ * dispatch grid at +40 itself, so the draw descriptor cannot share it.
  */
 #define D12_UNIFORM_MESH_PARAMS     40
 #define D12_UNIFORM_MESH_REGS       4
@@ -759,10 +766,19 @@ struct nir_shader;
 #define D12_MESH_OFF_INDICES        24
 #define D12_MESH_OFF_PAYLOAD        32
 #define D12_MESH_OFF_DISPATCH       40
+#define D12_MESH_OFF_DRAW           48
+#define D12_MESH_OFF_GRID           56
 
 /* One 16-byte vec4 per signature slot, indexed by slot then component. */
 #define D12_MESH_SLOT_STRIDE        16
 #define D12_MESH_MAX_SLOTS          32
+
+/* Worst-case mesh workgroups an amplification shader may ask for. Its
+ * DispatchMesh grid is GPU-written, so the output buffers must be sized
+ * before it is known. Exceeding this overruns them, so the mesh shader
+ * is dispatched indirectly but the ALLOCATION is bounded here.
+ */
+#define D12_MESH_MAX_AMP_GROUPS     32
 
 /*
  * Work-graph node parameter block. SM 6.8 work graphs are GPU-scheduled:
