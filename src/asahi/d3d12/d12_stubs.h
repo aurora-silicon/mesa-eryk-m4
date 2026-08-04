@@ -21,6 +21,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_QueryInterface(ID3D12Device * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12Device::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -77,6 +79,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateCommandQueue(ID3D12Device * This, const D3D12_COMMAND_QUEUE_DESC *pDesc, REFIID riid, void **ppCommandQueue)
 {
    d12_stub_report("ID3D12Device::CreateCommandQueue");
+   if (ppCommandQueue)
+      *ppCommandQueue = NULL;
    return E_NOTIMPL;
 }
 
@@ -84,6 +88,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateCommandAllocator(ID3D12Device * This, D3D12_COMMAND_LIST_TYPE type, REFIID riid, void **ppCommandAllocator)
 {
    d12_stub_report("ID3D12Device::CreateCommandAllocator");
+   if (ppCommandAllocator)
+      *ppCommandAllocator = NULL;
    return E_NOTIMPL;
 }
 
@@ -91,6 +97,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateGraphicsPipelineState(ID3D12Device * This, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
 {
    d12_stub_report("ID3D12Device::CreateGraphicsPipelineState");
+   if (ppPipelineState)
+      *ppPipelineState = NULL;
    return E_NOTIMPL;
 }
 
@@ -98,6 +106,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateComputePipelineState(ID3D12Device * This, const D3D12_COMPUTE_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
 {
    d12_stub_report("ID3D12Device::CreateComputePipelineState");
+   if (ppPipelineState)
+      *ppPipelineState = NULL;
    return E_NOTIMPL;
 }
 
@@ -105,6 +115,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateCommandList(ID3D12Device * This, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *pCommandAllocator, ID3D12PipelineState *pInitialState, REFIID riid, void **ppCommandList)
 {
    d12_stub_report("ID3D12Device::CreateCommandList");
+   if (ppCommandList)
+      *ppCommandList = NULL;
    return E_NOTIMPL;
 }
 
@@ -119,6 +131,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateDescriptorHeap(ID3D12Device * This, const D3D12_DESCRIPTOR_HEAP_DESC *pDescriptorHeapDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device::CreateDescriptorHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -133,6 +147,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateRootSignature(ID3D12Device * This, UINT nodeMask, _In_reads_(blobLengthInBytes) const void *pBlobWithRootSignature, SIZE_T blobLengthInBytes, REFIID riid, void **ppvRootSignature)
 {
    d12_stub_report("ID3D12Device::CreateRootSignature");
+   if (ppvRootSignature)
+      *ppvRootSignature = NULL;
    return E_NOTIMPL;
 }
 
@@ -206,6 +222,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateCommittedResource(ID3D12Device * This, const D3D12_HEAP_PROPERTIES *pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialResourceState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riidResource, void **ppvResource)
 {
    d12_stub_report("ID3D12Device::CreateCommittedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -213,6 +231,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateHeap(ID3D12Device * This, const D3D12_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device::CreateHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -220,6 +240,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreatePlacedResource(ID3D12Device * This, ID3D12Heap *pHeap, UINT64 HeapOffset, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
 {
    d12_stub_report("ID3D12Device::CreatePlacedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -227,6 +249,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateReservedResource(ID3D12Device * This, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
 {
    d12_stub_report("ID3D12Device::CreateReservedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -241,6 +265,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_OpenSharedHandle(ID3D12Device * This, HANDLE NTHandle, REFIID riid, void **ppvObj)
 {
    d12_stub_report("ID3D12Device::OpenSharedHandle");
+   if (ppvObj)
+      *ppvObj = NULL;
    return E_NOTIMPL;
 }
 
@@ -269,6 +295,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateFence(ID3D12Device * This, UINT64 InitialValue, D3D12_FENCE_FLAGS Flags, REFIID riid, void **ppFence)
 {
    d12_stub_report("ID3D12Device::CreateFence");
+   if (ppFence)
+      *ppFence = NULL;
    return E_NOTIMPL;
 }
 
@@ -289,6 +317,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateQueryHeap(ID3D12Device * This, const D3D12_QUERY_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device::CreateQueryHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -303,6 +333,8 @@ static inline HRESULT
 d12_stub_ID3D12Device_CreateCommandSignature(ID3D12Device * This, const D3D12_COMMAND_SIGNATURE_DESC *pDesc, ID3D12RootSignature *pRootSignature, REFIID riid, void **ppvCommandSignature)
 {
    d12_stub_report("ID3D12Device::CreateCommandSignature");
+   if (ppvCommandSignature)
+      *ppvCommandSignature = NULL;
    return E_NOTIMPL;
 }
 
@@ -372,6 +404,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_QueryInterface(ID3D12Device2 * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12Device2::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -428,6 +462,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommandQueue(ID3D12Device2 * This, const D3D12_COMMAND_QUEUE_DESC *pDesc, REFIID riid, void **ppCommandQueue)
 {
    d12_stub_report("ID3D12Device2::CreateCommandQueue");
+   if (ppCommandQueue)
+      *ppCommandQueue = NULL;
    return E_NOTIMPL;
 }
 
@@ -435,6 +471,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommandAllocator(ID3D12Device2 * This, D3D12_COMMAND_LIST_TYPE type, REFIID riid, void **ppCommandAllocator)
 {
    d12_stub_report("ID3D12Device2::CreateCommandAllocator");
+   if (ppCommandAllocator)
+      *ppCommandAllocator = NULL;
    return E_NOTIMPL;
 }
 
@@ -442,6 +480,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateGraphicsPipelineState(ID3D12Device2 * This, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
 {
    d12_stub_report("ID3D12Device2::CreateGraphicsPipelineState");
+   if (ppPipelineState)
+      *ppPipelineState = NULL;
    return E_NOTIMPL;
 }
 
@@ -449,6 +489,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateComputePipelineState(ID3D12Device2 * This, const D3D12_COMPUTE_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
 {
    d12_stub_report("ID3D12Device2::CreateComputePipelineState");
+   if (ppPipelineState)
+      *ppPipelineState = NULL;
    return E_NOTIMPL;
 }
 
@@ -456,6 +498,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommandList(ID3D12Device2 * This, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *pCommandAllocator, ID3D12PipelineState *pInitialState, REFIID riid, void **ppCommandList)
 {
    d12_stub_report("ID3D12Device2::CreateCommandList");
+   if (ppCommandList)
+      *ppCommandList = NULL;
    return E_NOTIMPL;
 }
 
@@ -470,6 +514,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateDescriptorHeap(ID3D12Device2 * This, const D3D12_DESCRIPTOR_HEAP_DESC *pDescriptorHeapDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device2::CreateDescriptorHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -484,6 +530,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateRootSignature(ID3D12Device2 * This, UINT nodeMask, _In_reads_(blobLengthInBytes) const void *pBlobWithRootSignature, SIZE_T blobLengthInBytes, REFIID riid, void **ppvRootSignature)
 {
    d12_stub_report("ID3D12Device2::CreateRootSignature");
+   if (ppvRootSignature)
+      *ppvRootSignature = NULL;
    return E_NOTIMPL;
 }
 
@@ -557,6 +605,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommittedResource(ID3D12Device2 * This, const D3D12_HEAP_PROPERTIES *pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialResourceState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riidResource, void **ppvResource)
 {
    d12_stub_report("ID3D12Device2::CreateCommittedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -564,6 +614,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateHeap(ID3D12Device2 * This, const D3D12_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device2::CreateHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -571,6 +623,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreatePlacedResource(ID3D12Device2 * This, ID3D12Heap *pHeap, UINT64 HeapOffset, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
 {
    d12_stub_report("ID3D12Device2::CreatePlacedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -578,6 +632,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateReservedResource(ID3D12Device2 * This, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
 {
    d12_stub_report("ID3D12Device2::CreateReservedResource");
+   if (ppvResource)
+      *ppvResource = NULL;
    return E_NOTIMPL;
 }
 
@@ -592,6 +648,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_OpenSharedHandle(ID3D12Device2 * This, HANDLE NTHandle, REFIID riid, void **ppvObj)
 {
    d12_stub_report("ID3D12Device2::OpenSharedHandle");
+   if (ppvObj)
+      *ppvObj = NULL;
    return E_NOTIMPL;
 }
 
@@ -620,6 +678,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateFence(ID3D12Device2 * This, UINT64 InitialValue, D3D12_FENCE_FLAGS Flags, REFIID riid, void **ppFence)
 {
    d12_stub_report("ID3D12Device2::CreateFence");
+   if (ppFence)
+      *ppFence = NULL;
    return E_NOTIMPL;
 }
 
@@ -640,6 +700,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateQueryHeap(ID3D12Device2 * This, const D3D12_QUERY_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
 {
    d12_stub_report("ID3D12Device2::CreateQueryHeap");
+   if (ppvHeap)
+      *ppvHeap = NULL;
    return E_NOTIMPL;
 }
 
@@ -654,6 +716,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommandSignature(ID3D12Device2 * This, const D3D12_COMMAND_SIGNATURE_DESC *pDesc, ID3D12RootSignature *pRootSignature, REFIID riid, void **ppvCommandSignature)
 {
    d12_stub_report("ID3D12Device2::CreateCommandSignature");
+   if (ppvCommandSignature)
+      *ppvCommandSignature = NULL;
    return E_NOTIMPL;
 }
 
@@ -676,6 +740,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreatePipelineLibrary(ID3D12Device2 * This, _In_reads_(BlobLength) const void *pLibraryBlob, SIZE_T BlobLength, REFIID riid, void **ppPipelineLibrary)
 {
    d12_stub_report("ID3D12Device2::CreatePipelineLibrary");
+   if (ppPipelineLibrary)
+      *ppPipelineLibrary = NULL;
    return E_NOTIMPL;
 }
 
@@ -697,6 +763,8 @@ static inline HRESULT
 d12_stub_ID3D12Device2_CreatePipelineState(ID3D12Device2 * This, const D3D12_PIPELINE_STATE_STREAM_DESC *pDesc, REFIID riid, void **ppPipelineState)
 {
    d12_stub_report("ID3D12Device2::CreatePipelineState");
+   if (ppPipelineState)
+      *ppPipelineState = NULL;
    return E_NOTIMPL;
 }
 
@@ -755,6 +823,8 @@ static inline HRESULT
 d12_stub_ID3D12GraphicsCommandList_QueryInterface(ID3D12GraphicsCommandList * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12GraphicsCommandList::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -804,6 +874,8 @@ static inline HRESULT
 d12_stub_ID3D12GraphicsCommandList_GetDevice(ID3D12GraphicsCommandList * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12GraphicsCommandList::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -1191,6 +1263,8 @@ static inline HRESULT
 d12_stub_ID3D12GraphicsCommandList6_QueryInterface(ID3D12GraphicsCommandList6 * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12GraphicsCommandList6::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -1240,6 +1314,8 @@ static inline HRESULT
 d12_stub_ID3D12GraphicsCommandList6_GetDevice(ID3D12GraphicsCommandList6 * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12GraphicsCommandList6::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -1767,6 +1843,8 @@ static inline HRESULT
 d12_stub_ID3D12CommandQueue_QueryInterface(ID3D12CommandQueue * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12CommandQueue::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -1816,6 +1894,8 @@ static inline HRESULT
 d12_stub_ID3D12CommandQueue_GetDevice(ID3D12CommandQueue * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12CommandQueue::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -1918,6 +1998,8 @@ static inline HRESULT
 d12_stub_ID3D12Resource_QueryInterface(ID3D12Resource * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12Resource::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -1967,6 +2049,8 @@ static inline HRESULT
 d12_stub_ID3D12Resource_GetDevice(ID3D12Resource * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12Resource::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -1974,6 +2058,8 @@ static inline HRESULT
 d12_stub_ID3D12Resource_Map(ID3D12Resource * This, UINT Subresource, const D3D12_RANGE *pReadRange, _Outptr_opt_result_bytebuffer_(_Inexpressible_("Dependent on resource")) void **ppData)
 {
    d12_stub_report("ID3D12Resource::Map");
+   if (ppData)
+      *ppData = NULL;
    return E_NOTIMPL;
 }
 
@@ -2044,6 +2130,8 @@ static inline HRESULT
 d12_stub_ID3D12Fence_QueryInterface(ID3D12Fence * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12Fence::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -2093,6 +2181,8 @@ static inline HRESULT
 d12_stub_ID3D12Fence_GetDevice(ID3D12Fence * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12Fence::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -2135,6 +2225,8 @@ static inline HRESULT
 d12_stub_ID3D12DescriptorHeap_QueryInterface(ID3D12DescriptorHeap * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12DescriptorHeap::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -2184,6 +2276,8 @@ static inline HRESULT
 d12_stub_ID3D12DescriptorHeap_GetDevice(ID3D12DescriptorHeap * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12DescriptorHeap::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -2232,6 +2326,8 @@ static inline HRESULT
 d12_stub_ID3D12PipelineState_QueryInterface(ID3D12PipelineState * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12PipelineState::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -2281,6 +2377,8 @@ static inline HRESULT
 d12_stub_ID3D12PipelineState_GetDevice(ID3D12PipelineState * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12PipelineState::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -2307,6 +2405,8 @@ static inline HRESULT
 d12_stub_ID3D12RootSignature_QueryInterface(ID3D12RootSignature * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12RootSignature::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -2356,6 +2456,8 @@ static inline HRESULT
 d12_stub_ID3D12RootSignature_GetDevice(ID3D12RootSignature * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12RootSignature::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 
@@ -2374,6 +2476,8 @@ static inline HRESULT
 d12_stub_ID3D12CommandAllocator_QueryInterface(ID3D12CommandAllocator * This, REFIID riid, void **ppvObject)
 {
    d12_stub_report("ID3D12CommandAllocator::QueryInterface");
+   if (ppvObject)
+      *ppvObject = NULL;
    return E_NOTIMPL;
 }
 
@@ -2423,6 +2527,8 @@ static inline HRESULT
 d12_stub_ID3D12CommandAllocator_GetDevice(ID3D12CommandAllocator * This, REFIID riid, void **ppvDevice)
 {
    d12_stub_report("ID3D12CommandAllocator::GetDevice");
+   if (ppvDevice)
+      *ppvDevice = NULL;
    return E_NOTIMPL;
 }
 

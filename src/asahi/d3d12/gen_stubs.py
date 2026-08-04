@@ -172,6 +172,18 @@ def emit(header):
             lines.append(f"{fn}({args})")
             lines.append("{")
             lines.append(f'   d12_stub_report("{iface}::{name}");')
+
+            # THE COM CONTRACT. A method that fails must leave the
+            # caller's out-pointer NULL. Returning E_NOTIMPL while
+            # leaving it untouched hands the application back an
+            # uninitialised stack variable, and a well-written one then
+            # passes that garbage to the next call -- so an unimplemented
+            # method here surfaces as a segfault somewhere else entirely.
+            # That was the single largest crash source in the vkd3d-proton
+            # suite.
+            for outp in re.findall(r"void \*\*(\w+)", args):
+                lines.append(f"   if ({outp})")
+                lines.append(f"      *{outp} = NULL;")
             if val is None:
                 pass
             elif val == "ZERO":
