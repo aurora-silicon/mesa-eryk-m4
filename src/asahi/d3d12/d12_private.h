@@ -313,6 +313,11 @@ struct d12_pipeline_state {
    bool has_gs;
    struct poly_gs_info gs_info;
 
+   /* The software VS output mask, captured BEFORE the poly lowering
+    * erases it. The geometry programs address the vertex buffer with it.
+    */
+   uint64_t sw_vs_outputs;
+
    struct agx_bo *sw_vs_bo, *gs_main_bo;
    uint64_t sw_vs_va, gs_main_va;
    struct agx_shader_info sw_vs_info, gs_main_info;

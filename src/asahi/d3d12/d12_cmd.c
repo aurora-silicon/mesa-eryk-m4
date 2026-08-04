@@ -783,6 +783,13 @@ struct d12_dispatch_uniforms {
    uint64_t textures;
    uint64_t vertex_params;
    uint64_t geom_params;
+   /* Address of the VS output MASK, not the mask itself: agx_usc_uniform
+    * fills registers FROM memory, and load_vs_outputs_poly reads a 64-bit
+    * value. The geometry body computes every vertex address in the output
+    * buffer from this mask, so a wrong one is not a wrong value, it is a
+    * wrong POINTER.
+    */
+   uint64_t vs_outputs;
 };
 
 /* Build the USC words for one compute launch; returns the USC offset, or
@@ -825,6 +832,10 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (u->geom_params) {
       agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
                       u->geom_params);
+   }
+   if (u->vs_outputs) {
+      agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
+                      u->vs_outputs);
    }
 
    /*
@@ -1013,6 +1024,10 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       if (poly->geom_params) {
          agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
                          poly->geom_params);
+      }
+      if (poly->vs_outputs) {
+         agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
+                         poly->vs_outputs);
       }
    }
 
@@ -1212,11 +1227,11 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     * keep at least one word rather than handing the shader a null.
     */
    struct poly_vertex_params vp;
-   poly_vertex_params_init(&vp, pso->sw_vs_info.outputs, wg_size);
+   poly_vertex_params_init(&vp, pso->sw_vs_outputs, wg_size);
    poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
 
    size_t out_size = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
-                                      pso->sw_vs_info.outputs);
+                                      pso->sw_vs_outputs);
    vp.output_buffer = d12_list_upload_zero(list, MAX2(out_size, 16), 16);
    if (!vp.output_buffer)
       return false;
@@ -1235,11 +1250,19 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!vp_gpu || !gp_gpu)
       return false;
 
+   /* The mask lives in memory because the uniform is filled from memory. */
+   uint64_t outputs_mask = pso->sw_vs_outputs;
+   uint64_t outputs_gpu =
+      d12_list_upload(list, &outputs_mask, sizeof(outputs_mask), 8);
+   if (!outputs_gpu)
+      return false;
+
    struct d12_dispatch_uniforms u = {
       .root = root_gpu,
       .textures = textures_gpu,
       .vertex_params = vp_gpu,
       .geom_params = gp_gpu,
+      .vs_outputs = outputs_gpu,
    };
 
    struct d12_segment *seg = d12_list_get_pregfx(list);

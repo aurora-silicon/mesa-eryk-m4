@@ -670,12 +670,25 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
 static bool
 compile_sw_vs_stage(struct d12_device *device,
                     const struct d12_binding_map *map, const void *dxil,
-                    size_t dxil_size, struct agx_shader_part *out)
+                    size_t dxil_size, struct agx_shader_part *out,
+                    uint64_t *out_outputs)
 {
    nir_shader *nir =
       dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_VERTEX);
    if (!nir)
       return false;
+
+   /* CAPTURE THE OUTPUT MASK FIRST. The lowering rewrites every
+    * store_output into a global store, so after it runs the shader has no
+    * NIR outputs at all and agx_shader_info::outputs reports 0. That mask
+    * is not decoration: the geometry program derives EVERY vertex address
+    * in the output buffer from it, so a zero mask sends every vertex to
+    * the same address and the rasterization program reads a position of
+    * (0,0,0,0) -- w=0, which rasterises as the entire render target.
+    * hk captures it in the same place, before the branch
+    * (hk_shader.c:1138).
+    */
+   *out_outputs = nir->info.outputs_written;
 
    NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
 
@@ -893,7 +906,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    if (gs_dxil && gs_size) {
       struct agx_shader_part sw_vs_part, gs_main_part, gs_rast_part;
 
-      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part) ||
+      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part,
+                               &pso->sw_vs_outputs) ||
           !compile_gs_stage(device, map, gs_dxil, gs_size, &pso->gs_info,
                             &pso->gs_uvs, &gs_main_part, &gs_rast_part)) {
          free(pso);
@@ -933,12 +947,25 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          *cs[i].info = cs[i].part->info;
       }
 
-      /* The rasterization program is an ordinary hardware vertex shader.
-       * It reads the emitted vertex buffer rather than vertex attributes,
-       * so unlike pso->vs it needs no attribute-fetch prolog.
+      /* The rasterization program is an ordinary hardware vertex shader
+       * and needs the SAME prolog pso->vs gets. It reads no vertex
+       * attributes, but it does read load_vertex_id and load_instance_id
+       * to work out which emitted vertex it represents, and fixing those
+       * up is exactly what the static_vi prolog does. Linking it with no
+       * prolog leaves both IDs undefined, so every invocation reads the
+       * wrong slot of the vertex buffer.
        */
+      struct agx_shader_part rast_prolog;
+      nir_builder rb =
+         nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
+      agx_nir_vs_prolog(&rb, &prolog_key);
+      memset(&rast_prolog, 0, sizeof(rast_prolog));
+      agx_compile_shader_nir(rb.shader, &prolog_backend_key, &rast_prolog);
+      ralloc_free(rb.shader);
+
       agx_fast_link(&pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
-                    NULL, NULL, 0);
+                    &rast_prolog, NULL, 0);
+      free(rast_prolog.binary);
       pso->gs_rast.info = gs_rast_part.info;
 
       /* The VDM reads these counts to know how much state to load. Leave
@@ -959,6 +986,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             gs_rast_part.info.texture_state_count;
       }
       agx_assign_uvs(&pso->gs_varyings, &pso->gs_uvs, 0, 0);
+
+      mesa_logi("compiled geometry pipeline: sw_vs %u B / %u GPRs, "
+                "gs_main %u B, gs_rast %u B / %u GPRs, outputs 0x%llx",
+                sw_vs_part.info.binary_size, sw_vs_part.info.nr_gprs,
+                gs_main_part.info.binary_size, gs_rast_part.info.binary_size,
+                gs_rast_part.info.nr_gprs,
+                (unsigned long long)pso->sw_vs_outputs);
 
       pso->has_gs = true;
    }

@@ -288,6 +288,11 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          const struct d12_segment *seg = &list->segments[s];
          bool compute = seg->type == D12_SEG_CDM;
 
+         if (getenv("D3D12AGX_DUMP_SEGS"))
+            mesa_logi("seg %u: %s start=%zu end=%zu dispatches=%u", s,
+                      compute ? "CDM" : "RENDER", seg->stream_start,
+                      seg->stream_end, seg->dispatches);
+
          if (compute && seg->dispatches == 0)
             continue;
 

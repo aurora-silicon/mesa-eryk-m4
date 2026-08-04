@@ -66,6 +66,11 @@ main(int argc, char **argv)
    bool stage_forced = false;
    const char *path = NULL;
    bool print_nir = false;
+   /* Compile a vertex shader the way the driver does when a geometry
+    * shader follows it: as the COMPUTE program that fills the vertex
+    * output buffer.
+    */
+   bool sw_vs = false;
 
    for (int i = 1; i < argc; i++) {
       if (!strcmp(argv[i], "-s") && i + 1 < argc) {
@@ -76,6 +81,8 @@ main(int argc, char **argv)
          stage_forced = true;
       } else if (!strcmp(argv[i], "-n")) {
          print_nir = true;
+      } else if (!strcmp(argv[i], "-swvs")) {
+         sw_vs = true;
       } else {
          path = argv[i];
       }
@@ -217,8 +224,22 @@ main(int argc, char **argv)
       NIR_PASS(_, nir, poly_nir_lower_tes, true);
    }
 
+   if (sw_vs && nir->info.stage == MESA_SHADER_VERTEX) {
+      printf("sw_vs: outputs_written before lowering = 0x%llx\n",
+             (unsigned long long)nir->info.outputs_written);
+      NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
+      nir->info.stage = MESA_SHADER_COMPUTE;
+      memset(&nir->info.cs, 0, sizeof(nir->info.cs));
+      nir->xfb_info = NULL;
+   }
+
    agx_preprocess_nir(nir);
    NIR_PASS(_, nir, d12_dxil_lower_root);
+
+   if (sw_vs) {
+      printf("\n=== software VS (compute) ===\n");
+      nir_print_shader(nir, stdout);
+   }
 
    struct agx_tilebuffer_layout tib = {0};
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
@@ -391,6 +412,11 @@ main(int argc, char **argv)
 
          agx_preprocess_nir(extra[i].s);
          NIR_PASS(_, extra[i].s, d12_dxil_lower_root);
+
+         if (print_nir) {
+            printf("\n=== %s program ===\n", extra[i].name);
+            nir_print_shader(extra[i].s, stdout);
+         }
 
          struct agx_shader_key ekey = key;
          struct agx_shader_part epart;
