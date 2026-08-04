@@ -762,6 +762,119 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
  * hk_dispatch_with_usc: build USC words binding the shader, its registers
  * and our resource-address uniforms, then emit a CDM launch.
  */
+/*
+ * The uniform registers a compute launch publishes. Split out because the
+ * geometry programs need the same USC construction as an ordinary
+ * dispatch plus the two poly parameter blocks, and duplicating ~60 lines
+ * of USC packing to add two uniforms is how the two paths drift apart.
+ *
+ * A zero address means "not published", which is not the same as
+ * publishing zero: the geometry programs read these as pointers.
+ */
+struct d12_dispatch_uniforms {
+   uint64_t root;
+   uint64_t textures;
+   uint64_t vertex_params;
+   uint64_t geom_params;
+};
+
+/* Build the USC words for one compute launch; returns the USC offset, or
+ * 0 on failure.
+ */
+static uint32_t
+d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
+                           const struct agx_shader_info *info,
+                           const struct d12_dispatch_uniforms *u,
+                           uint8_t **out_cpu)
+{
+   struct d12_device *device = list->device;
+
+   uint32_t usc;
+   size_t usc_size = agx_usc_size(10);
+   uint8_t *usc_cpu = d12_list_alloc_usc(list, usc_size, &usc);
+   if (!usc_cpu)
+      return 0;
+
+   if (out_cpu)
+      *out_cpu = usc_cpu;
+
+   struct agx_usc_builder b = agx_usc_builder(usc_cpu, usc_size);
+
+   /* Four 16-bit uniform registers hold the 64-bit root pointer. */
+   agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, u->root);
+   if (u->textures) {
+      agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
+                      u->textures);
+   }
+
+   /* The geometry programs read their parameter blocks from these two,
+    * which the DXIL translator already lowers poly's parameter
+    * intrinsics to. Nothing else publishes them.
+    */
+   if (u->vertex_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_VERTEX_PARAMS, D12_UNIFORM_PARAM_REGS,
+                      u->vertex_params);
+   }
+   if (u->geom_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
+                      u->geom_params);
+   }
+
+   /*
+    * Constants the compiler promoted out of the instruction stream live in
+    * the shader BO's rodata, and the shader reads them as uniforms above
+    * its push range. Nothing else publishes them: skip this and those
+    * uniforms hold whatever the last dispatch left there, so a shader
+    * computes with stale numbers instead of its own constants.
+    */
+   if (info->rodata.size_16)
+      agx_usc_immediates(&b, &info->rodata, code_va);
+
+   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
+   if (info->uses_txf)
+      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
+
+   agx_usc_shared_none(&b);
+
+   agx_usc_pack(&b, SHADER, cfg) {
+      cfg.code = agx_usc_addr(&device->dev, code_va + info->main_offset);
+      cfg.unk_2 = 3; /* compute */
+   }
+
+   agx_usc_pack(&b, REGISTERS, cfg)
+      cfg.register_count = info->nr_gprs;
+
+   if (info->has_preamble) {
+      agx_usc_pack(&b, PRESHADER, cfg) {
+         cfg.code =
+            agx_usc_addr(&device->dev, code_va + info->preamble_offset);
+      }
+   } else {
+      agx_usc_pack(&b, NO_PRESHADER, cfg)
+         ;
+   }
+
+   return usc;
+}
+
+/* Pack the launch word for one compute program. */
+static struct agx_cdm_launch_word_0_packed
+d12_compute_launch_word(const struct agx_shader_info *info)
+{
+   struct agx_cdm_launch_word_0_packed launch;
+   agx_pack(&launch, CDM_LAUNCH_WORD_0, cfg) {
+      cfg.texture_state_register_count = info->texture_state_count;
+      /* See the note in d12_pipeline.c: txf needs a sampler counted. */
+      cfg.sampler_state_register_count = agx_translate_sampler_state_count(
+         info->uses_txf ? MAX2(info->sampler_state_count, 1)
+                        : info->sampler_state_count,
+         false);
+      cfg.uniform_register_count = info->push_count;
+      cfg.preshader_register_count = info->nr_preamble_gprs;
+   }
+   return launch;
+}
+
 static void
 d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                       unsigned z)
@@ -786,56 +899,14 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu))
       return;
 
-   uint32_t usc;
-   size_t usc_size = agx_usc_size(8);
-   uint8_t *usc_cpu = d12_list_alloc_usc(list, usc_size, &usc);
-   if (!usc_cpu)
+   uint8_t *usc_cpu = NULL;
+   uint32_t usc = d12_list_build_compute_usc(
+      list, pso->code_va, &pso->info,
+      &(struct d12_dispatch_uniforms){.root = root_gpu,
+                                      .textures = textures_gpu},
+      &usc_cpu);
+   if (!usc)
       return;
-
-   struct agx_usc_builder b = agx_usc_builder(usc_cpu, usc_size);
-
-   /* Four 16-bit uniform registers hold the 64-bit root pointer. */
-   agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
-   if (textures_gpu) {
-      agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
-                      textures_gpu);
-   }
-
-   /*
-    * Constants the compiler promoted out of the instruction stream live in
-    * the shader BO's rodata, and the shader reads them as uniforms above
-    * its push range. Nothing else publishes them: skip this and those
-    * uniforms hold whatever the last dispatch left there, so a shader
-    * computes with stale numbers instead of its own constants.
-    */
-   if (pso->info.rodata.size_16) {
-      agx_usc_immediates(&b, &pso->info.rodata, pso->code_va);
-   }
-
-   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
-   if (pso->info.uses_txf)
-      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
-
-   agx_usc_shared_none(&b);
-
-   agx_usc_pack(&b, SHADER, cfg) {
-      cfg.code = agx_usc_addr(&device->dev,
-                              pso->code_va + pso->info.main_offset);
-      cfg.unk_2 = 3; /* compute */
-   }
-
-   agx_usc_pack(&b, REGISTERS, cfg)
-      cfg.register_count = pso->info.nr_gprs;
-
-   if (pso->info.has_preamble) {
-      agx_usc_pack(&b, PRESHADER, cfg) {
-         cfg.code = agx_usc_addr(
-            &device->dev, pso->code_va + pso->info.preamble_offset);
-      }
-   } else {
-      agx_usc_pack(&b, NO_PRESHADER, cfg)
-         ;
-   }
 
    if (getenv("D3D12AGX_DUMP_USC")) {
       fprintf(stderr, "pso USC @%u:", usc);
@@ -858,17 +929,8 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
               pso->info.rodata.offset);
    }
 
-   struct agx_cdm_launch_word_0_packed launch;
-   agx_pack(&launch, CDM_LAUNCH_WORD_0, cfg) {
-      cfg.texture_state_register_count = pso->info.texture_state_count;
-      /* See the note in d12_pipeline.c: txf needs a sampler counted. */
-      cfg.sampler_state_register_count = agx_translate_sampler_state_count(
-         pso->info.uses_txf ? MAX2(pso->info.sampler_state_count, 1)
-                            : pso->info.sampler_state_count,
-         false);
-      cfg.uniform_register_count = pso->info.push_count;
-      cfg.preshader_register_count = pso->info.nr_preamble_gprs;
-   }
+   struct agx_cdm_launch_word_0_packed launch =
+      d12_compute_launch_word(&pso->info);
 
    struct agx_workgroup wg = agx_workgroup(pso->info.workgroup_size[0],
                                            pso->info.workgroup_size[1],
