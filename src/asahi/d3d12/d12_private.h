@@ -591,6 +591,16 @@ struct d12_cmd_list {
       uint32_t stride_B;
    } vb[D12_MAX_VB_SLOTS];
 
+   /* IASetIndexBuffer. size_B of zero means nothing is bound, which is
+    * distinct from a bound buffer of length zero only in that the latter
+    * cannot happen -- D3D12 rejects it.
+    */
+   struct {
+      uint64_t addr;
+      uint32_t size_B;
+      enum agx_index_size index_size;
+   } ib;
+
    enum mesa_prim topology; /* IASetPrimitiveTopology; TRIANGLES by default */
    /* Control points per patch, from a *_CONTROL_POINT_PATCHLIST topology.
     * Zero when the bound topology is not a patch list -- the only thing

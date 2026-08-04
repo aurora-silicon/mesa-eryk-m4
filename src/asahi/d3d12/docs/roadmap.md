@@ -17,7 +17,7 @@ places a second opinion is worth the most.
 ## 0. Where we actually are
 
 **321 of 334 corpus shaders compile DXIL → NIR → AGX machine code**, and
-**all sixteen GPU acceptance suites pass on real hardware with nothing
+**all seventeen GPU acceptance suites pass on real hardware with nothing
 skipped** — from a clean checkout, with no corpus present.
 No SPIR-V, no Vulkan layer, no dxc at run time.
 
@@ -36,8 +36,8 @@ whose vertices and indices are dumped and checked.
 
 **The compile/execute gap has narrowed to two mechanisms.** Work graphs
 and ray queries still compile without dispatching; everything else in the
-graphics path runs, and since G10 an application's own vertex data
-reaches it. See "What 'done' means for tiers 2-4" below, and
+graphics path runs, and since G10/G11 an application's own vertex data
+reaches it — indexed, instanced, and from interleaved buffers. See "What 'done' means for tiers 2-4" below, and
 §4.3.
 
 ### The probes are self-hosting
@@ -409,12 +409,11 @@ differing. The buffer is interleaved (position at offset 0, colour at
 offset 8, stride 24) so a fetch that ignored attribute offsets would pass
 the position check and fail the colour one.
 
-**Still open here:** only per-vertex fetch is proven. Per-INSTANCE data
-(`D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA` with a step rate) is
-implemented — it is one field of `agx_velem_key` — but no suite draws
-instanced, so it is in the "compiles, unproven" bucket that this whole
-campaign exists to shrink. Same for `IASetIndexBuffer`: indexed draws
-still do not go through a bound index buffer.
+**Both follow-ups are now closed too**, by `g11_indexed_instanced`:
+per-instance attributes (`PER_INSTANCE_DATA` with a step rate) and
+indexed draws through a bound index buffer, including non-zero
+`StartIndexLocation` and `BaseVertexLocation`. `IASetIndexBuffer` and
+`DrawIndexedInstanced` were stubs until then.
 
 ---
 

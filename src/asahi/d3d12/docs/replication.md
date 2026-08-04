@@ -43,7 +43,7 @@ on.
   P=_build/src/asahi/d3d12/d3d12agx_make_probe
   S=src/asahi/d3d12/tests/shaders
   for probe in gs_input_vs gs_point tess_hs tess_ds mesh_quad as_dispatch \
-               vb_vs vb_ps; do
+               vb_vs vb_ps vb_inst_vs; do
      $P $probe $S/$probe.dxil
   done
   ```
@@ -93,7 +93,7 @@ inspection).
 src/asahi/d3d12/tests/run-suites.sh [build-dir]
 ```
 
-Expected today: **sixteen suites `ALL PASS`, none skipped**, from a clean
+Expected today: **seventeen suites `ALL PASS`, none skipped**, from a clean
 checkout with no corpus present. The script takes the build directory as an
 argument and finds its shaders relative to itself, so no path is baked in.
 

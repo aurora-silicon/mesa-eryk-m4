@@ -4879,6 +4879,25 @@ lower_vbo_params(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    unsigned off, bits;
 
+   /*
+    * A PER-INSTANCE attribute is fetched at
+    * (instance_id / divisor) + base_instance, so agx_nir_lower_vbo
+    * introduces load_base_instance -- AFTER d12_dxil_lower_root has
+    * already run, which is why it is answered here rather than there.
+    * Missing it is not subtle: the backend asserts on an unhandled
+    * intrinsic.
+    *
+    * D12_UNIFORM_DRAW holds {StartVertexLocation, StartInstanceLocation}
+    * as two 32-bit words, the same pair SM 6.8's
+    * StartInstanceLocation() reads.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_base_instance) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def,
+                      nir_load_preamble(b, 1, 32, .base = D12_UNIFORM_DRAW + 2));
+      return true;
+   }
+
    switch (intr->intrinsic) {
    case nir_intrinsic_load_vbo_base_agx:
       off = D12_VB_OFF_BASE;

@@ -4,12 +4,18 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all sixteen
+Status on `dev`: **321 of 334** corpus shaders compile, and **all seventeen
 GPU suites pass on real hardware, with nothing skipped, from a clean
-checkout** — the four G1-G4 milestone smokes plus twelve acceptance
+checkout** — the four G1-G4 milestone smokes plus thirteen acceptance
 suites. **Every graphics stage that replaces fixed function now
 executes**: vertex, geometry, tessellation, mesh, amplification, pixel.
 
+- `g11_indexed_instanced` — **indexed draws and per-instance
+  attributes**. An indexed draw with a non-zero `StartIndexLocation` and
+  `BaseVertexLocation`, over an index buffer whose padding and decoy
+  vertices make every one of those three links load-bearing, reproduces
+  the `SV_VertexID` control pixel for pixel. Two instances with a
+  per-instance offset attribute land on opposite sides of the target.
 - `g10_vertex_buffers` — **an application's own vertex data reaches a
   shader**. One triangle drawn twice, once from `SV_VertexID` and once
   from a bound vertex buffer, matching each other and a CPU rasterisation
@@ -45,11 +51,11 @@ The remaining 13 corpus shaders are documented in
 [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md).
 
 The corpus figure is a **compile** proxy. Geometry, tessellation, mesh,
-amplification and vertex attribute fetch now execute; work graphs and ray
-query still compile without executing, and per-instance attributes and
-index buffers are implemented but unproven. See `docs/roadmap.md` — the
-next step is running vkd3d-proton's tests for real, which is the only
-thing that turns the proxy into a conformance number.
+amplification, vertex attribute fetch, indexed draws and instancing now
+execute; work graphs and ray query still compile without executing. See
+`docs/roadmap.md` — the next step is running vkd3d-proton's tests for
+real, which is the only thing that turns the proxy into a conformance
+number.
 
 ## Start here
 

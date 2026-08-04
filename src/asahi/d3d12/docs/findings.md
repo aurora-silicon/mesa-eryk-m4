@@ -489,3 +489,26 @@ GPU-facing half of the driver; the bug was in the bitcode reader.
   probe means nothing on its own — compare the disassembly. An earlier
   version of `replication.md` claimed byte reproducibility, which was
   true only for one fixed binary.
+- **`BaseVertexLocation` is not `start`.** `agx_draw` has both a `start`
+  and an `index_bias`, and for an indexed draw D3D12's
+  `BaseVertexLocation` is the BIAS — added to every fetched index —
+  while `StartIndexLocation` is the `start`. Passing the base vertex as
+  `start` skips indices instead of biasing vertices, which on a
+  well-formed index buffer still draws a plausible triangle. G11's index
+  buffer is `{9,9,9, 0,1,2}` with start 3 and base 3 precisely so that
+  confusing the two reads padding or decoy vertices rather than
+  something that happens to look right.
+- **Per-instance attributes need `load_base_instance` answered late.**
+  `agx_nir_lower_vbo` fetches an instanced attribute at
+  `(instance_id / divisor) + base_instance`, so it introduces
+  `load_base_instance` — AFTER `d12_dxil_lower_root` has already run.
+  The failure is loud (the backend asserts on an unhandled intrinsic),
+  which is the good kind: it cannot be mistaken for a wrong pixel.
+- **A CPU rasteriser oracle must not assume a winding.** G11's part B
+  drew correctly on the very first run — two instances, 5202 pixels each
+  side, symmetric — and the test still failed, because the reference
+  triangle wound the other way and the interior test `EDGE > 0` rejected
+  every pixel of it. Culling is off, so the hardware rasterises both
+  windings; the oracle now normalises the signed area first. **An oracle
+  that is stricter than the hardware reports bugs that are not there**,
+  which costs exactly as much time as the opposite mistake.

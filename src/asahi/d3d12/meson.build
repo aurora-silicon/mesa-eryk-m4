@@ -147,6 +147,13 @@ d3d12agx_make_probe = executable(
   dependencies : [idep_nir, idep_mesautil, idep_libdxil_compiler],
 )
 
+d3d12agx_g11_indexed_instanced = executable(
+  'd3d12agx_g11_indexed_instanced',
+  files('tests/g11_indexed_instanced.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g10_vertex_buffers = executable(
   'd3d12agx_g10_vertex_buffers',
   files('tests/g10_vertex_buffers.c'),

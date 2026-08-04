@@ -1896,7 +1896,7 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
-              unsigned first_instance)
+              unsigned first_instance, bool indexed, unsigned first_index)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -2361,12 +2361,26 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       agx_ppp_fini(&out, &ppp);
    }
 
-   /* The draw. Tessellation already built an indexed indirect one. */
+   /* The draw. Tessellation and mesh already built an indexed indirect
+    * one, so only the ordinary path constructs anything here.
+    *
+    * For an indexed draw `first_vertex` is D3D12's BaseVertexLocation --
+    * added to every fetched index -- and is NOT the same thing as the
+    * `start` of a non-indexed draw, which is a vertex offset. Passing it
+    * as `start` would skip indices instead of biasing vertices.
+    */
    if (!draw_set) {
-      draw = (struct agx_draw){
-         .b = agx_3d(vertex_count, instance_count, 1),
-         .start = first_vertex,
-      };
+      if (indexed) {
+         draw = agx_draw_indexed(vertex_count, instance_count, first_index,
+                                 first_vertex, first_instance, list->ib.addr,
+                                 list->ib.size_B, list->ib.index_size, false);
+      } else {
+         draw = (struct agx_draw){
+            .b = agx_3d(vertex_count, instance_count, 1),
+            .start = first_vertex,
+            .start_instance = first_instance,
+         };
+      }
    }
 
    out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
@@ -2395,7 +2409,7 @@ d12_list_DispatchMesh(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y,
       return;
    }
 
-   d12_list_draw(list, x, y, z, 0);
+   d12_list_draw(list, x, y, z, 0, false, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -2409,7 +2423,28 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
       return;
 
    d12_list_draw(list, vertex_count_per_instance, instance_count,
-                 start_vertex, start_instance);
+                 start_vertex, start_instance, false, 0);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
+                              UINT index_count_per_instance,
+                              UINT instance_count, UINT start_index,
+                              INT base_vertex, UINT start_instance)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (!index_count_per_instance || !instance_count)
+      return;
+
+   if (!list->ib.addr) {
+      mesa_loge("DrawIndexedInstanced without a bound index buffer");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   d12_list_draw(list, index_count_per_instance, instance_count,
+                 (unsigned)base_vertex, start_instance, true, start_index);
 }
 
 /*
@@ -2445,6 +2480,41 @@ d12_list_IASetVertexBuffers(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
       list->vb[slot].size_B = views[i].SizeInBytes;
       list->vb[slot].stride_B = views[i].StrideInBytes;
    }
+}
+
+/*
+ * Record the bound index buffer. DXGI gives the index WIDTH as a format;
+ * AGX wants it as an enum, and there are only two legal values -- D3D12
+ * has no 8-bit index buffers.
+ */
+static void STDMETHODCALLTYPE
+d12_list_IASetIndexBuffer(ID3D12GraphicsCommandList6 *iface,
+                          const D3D12_INDEX_BUFFER_VIEW *view)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (!view || !view->BufferLocation || !view->SizeInBytes) {
+      list->ib.addr = 0;
+      list->ib.size_B = 0;
+      return;
+   }
+
+   switch (view->Format) {
+   case DXGI_FORMAT_R16_UINT:
+      list->ib.index_size = AGX_INDEX_SIZE_U16;
+      break;
+   case DXGI_FORMAT_R32_UINT:
+      list->ib.index_size = AGX_INDEX_SIZE_U32;
+      break;
+   default:
+      mesa_loge("IASetIndexBuffer: format %u is not a valid index format",
+                (unsigned)view->Format);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   list->ib.addr = view->BufferLocation;
+   list->ib.size_B = view->SizeInBytes;
 }
 
 static void STDMETHODCALLTYPE
@@ -3445,6 +3515,8 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .RSSetViewports = d12_list_RSSetViewports,
    .RSSetScissorRects = d12_list_RSSetScissorRects,
    .DrawInstanced = d12_list_DrawInstanced,
+   .DrawIndexedInstanced = d12_list_DrawIndexedInstanced,
+   .IASetIndexBuffer = d12_list_IASetIndexBuffer,
    .DispatchMesh = d12_list_DispatchMesh,
    /* Everything unset is NULL: loud crash over silent lie. */
 };

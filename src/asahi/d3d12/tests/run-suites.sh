@@ -78,6 +78,11 @@ run g9_amplification "$S/as_dispatch.dxil" "$S/mesh_quad.dxil" \
 run g10_vertex_buffers "$S/tri.dxil" "$S/solid.dxil" "$S/vb_vs.dxil" \
    "$S/vb_ps.dxil" || fails=$((fails+1))
 
+# G11 closes what G10 left unproven: indexed draws through a bound index
+# buffer, and per-instance attributes.
+run g11_indexed_instanced "$S/tri.dxil" "$S/solid.dxil" "$S/vb_vs.dxil" \
+   "$S/vb_ps.dxil" "$S/vb_inst_vs.dxil" || fails=$((fails+1))
+
 echo
 # A skipped suite is NOT a green suite. Saying "all green" while two of
 # them never ran is the same lie as a test that prints usage and exits 0.

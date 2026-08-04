@@ -462,13 +462,73 @@ build_vb_ps(const nir_shader_compiler_options *opts)
    return b.shader;
 }
 
+/*
+ * vb_inst_vs: three attributes, one of them PER-INSTANCE.
+ *
+ *   TEXCOORD0  float2  per-vertex    position
+ *   TEXCOORD1  float4  per-vertex    colour
+ *   TEXCOORD2  float2  per-INSTANCE  offset, added to the position
+ *
+ * The offset comes from a different vertex buffer slot stepped once per
+ * instance rather than once per vertex, so a driver that treated it as
+ * per-vertex data would put every instance in the same place -- which is
+ * exactly what g11 checks for.
+ */
+static nir_shader *
+build_vb_inst_vs(const nir_shader_compiler_options *opts)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, opts,
+                                                  "vb_inst_vs");
+
+   nir_variable *in_pos = nir_variable_create(
+      b.shader, nir_var_shader_in, glsl_vec_type(2), "pos");
+   in_pos->data.location = VERT_ATTRIB_GENERIC0;
+   in_pos->data.driver_location = 0;
+
+   nir_variable *in_col = nir_variable_create(
+      b.shader, nir_var_shader_in, glsl_vec4_type(), "col");
+   in_col->data.location = VERT_ATTRIB_GENERIC0 + 1;
+   in_col->data.driver_location = 1;
+
+   nir_variable *in_off = nir_variable_create(
+      b.shader, nir_var_shader_in, glsl_vec_type(2), "off");
+   in_off->data.location = VERT_ATTRIB_GENERIC0 + 2;
+   in_off->data.driver_location = 2;
+
+   nir_def *xy = nir_fadd(&b, nir_load_var(&b, in_pos),
+                          nir_load_var(&b, in_off));
+   nir_def *col = nir_load_var(&b, in_col);
+
+   nir_def *pos = nir_vec4(&b, nir_channel(&b, xy, 0), nir_channel(&b, xy, 1),
+                           nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f));
+
+   nir_variable *out_col = nir_variable_create(
+      b.shader, nir_var_shader_out, glsl_vec4_type(), "var0");
+   out_col->data.location = VARYING_SLOT_VAR0;
+   out_col->data.driver_location = 0;
+   nir_store_var(&b, out_col, col, 0xf);
+
+   nir_variable *out_pos = nir_variable_create(
+      b.shader, nir_var_shader_out, glsl_vec4_type(), "gl_Position");
+   out_pos->data.location = VARYING_SLOT_POS;
+   out_pos->data.driver_location = 1;
+   nir_store_var(&b, out_pos, pos, 0xf);
+
+   b.shader->info.inputs_read = BITFIELD64_BIT(VERT_ATTRIB_GENERIC0) |
+                                BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + 1) |
+                                BITFIELD64_BIT(VERT_ATTRIB_GENERIC0 + 2);
+   b.shader->info.outputs_written =
+      BITFIELD64_BIT(VARYING_SLOT_VAR0) | BITFIELD64_BIT(VARYING_SLOT_POS);
+   return b.shader;
+}
+
 int
 main(int argc, char **argv)
 {
    if (argc < 3) {
       fprintf(stderr,
               "usage: %s <gs_input_vs|gs_point|tess_hs|tess_ds|mesh_quad|"
-              "as_dispatch|vb_vs|vb_ps> out.dxil\n",
+              "as_dispatch|vb_vs|vb_ps|vb_inst_vs> out.dxil\n",
               argv[0]);
       return 2;
    }
@@ -482,6 +542,7 @@ main(int argc, char **argv)
    bool want_amp = !strcmp(argv[1], "as_dispatch");
    bool want_vbvs = !strcmp(argv[1], "vb_vs");
    bool want_vbps = !strcmp(argv[1], "vb_ps");
+   bool want_vbinst = !strcmp(argv[1], "vb_inst_vs");
 
    /* Mesh shaders do not exist below shader model 6.5; everything else
     * here is expressible in 6.2, which is what the corpus mostly uses. */
@@ -497,6 +558,7 @@ main(int argc, char **argv)
                      : want_amp ? build_as_dispatch(&options)
                      : want_vbvs ? build_vb_vs(&options)
                      : want_vbps ? build_vb_ps(&options)
+                     : want_vbinst ? build_vb_inst_vs(&options)
                                : build_gs_input_vs(&options);
 
    NIR_PASS(_, nir, nir_lower_variable_initializers, nir_var_all);
@@ -508,7 +570,8 @@ main(int argc, char **argv)
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
    NIR_PASS(_, nir, nir_lower_io,
             nir_var_shader_out |
-               ((want_gs || want_hs || want_ds || want_vbvs || want_vbps)
+               ((want_gs || want_hs || want_ds || want_vbvs || want_vbps ||
+                 want_vbinst)
                    ? nir_var_shader_in
                    : 0),
             probe_type_size, 0);
