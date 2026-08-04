@@ -477,6 +477,11 @@ compile_gfx_stage(struct d12_device *device,
       NIR_PASS(_, nir, agx_nir_lower_sample_intrinsics, false);
       NIR_PASS(_, nir, agx_nir_lower_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa, 1);
+      /* The passes above can introduce driver-owned sysvals
+       * (api_sample_mask, shader_part_tests_zs); rerun the lowering that
+       * resolves them. No-op when none appeared.
+       */
+      NIR_PASS(_, nir, d12_dxil_lower_root);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
    } else {

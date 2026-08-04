@@ -101,6 +101,13 @@ enum d12_dxop {
     */
    D12_DXOP_UNPACK4X8 = 219,
    D12_DXOP_PACK4X8 = 220,
+   D12_DXOP_DOT2 = 54,
+   D12_DXOP_DOT3 = 55,
+   D12_DXOP_DOT4 = 56,
+   D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   D12_DXOP_DOT4_ADD_I8_PACKED = 163,
+   D12_DXOP_DOT4_ADD_U8_PACKED = 164,
+   D12_DXOP_SAMPLE_CMP_GRAD = 254,
    D12_DXOP_MSAD = 50,
    D12_DXOP_SAMPLE = 60,
    D12_DXOP_SAMPLE_CMP = 64,
@@ -1446,6 +1453,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    case D12_DXOP_SAMPLE_CMP_LEVEL_ZERO:
    case D12_DXOP_SAMPLE_CMP_LEVEL:
    case D12_DXOP_SAMPLE_CMP_BIAS:
+   case D12_DXOP_SAMPLE_CMP_GRAD:
    case D12_DXOP_TEXTURE_GATHER:
    case D12_DXOP_TEXTURE_GATHER_RAW: {
       /* (srv, sampler, c0..c3, offsets..., extras...). Only the 2D
@@ -1510,6 +1518,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          op = nir_texop_txb;
          num_srcs = 5;
          break;
+      case D12_DXOP_SAMPLE_CMP_GRAD:
+         op = nir_texop_txd;
+         num_srcs = 6;
+         break;
       default: op = nir_texop_tg4; break;
       }
 
@@ -1558,7 +1570,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          tex->src[si++] =
             nir_tex_src_for_ssa(nir_tex_src_lod, get_def(ctx, p[9]));
       } else if (opcode == D12_DXOP_SAMPLE_GRAD) {
-         NEED(15);
+         /* The trailing clamp may be omitted entirely. */
+         NEED(14);
          tex->src[si++] = nir_tex_src_for_ssa(
             nir_tex_src_ddx,
             nir_vec2(b, get_def(ctx, p[9]), get_def(ctx, p[10])));
@@ -1585,6 +1598,18 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_bias,
                                                  get_def(ctx, p[10]));
          }
+      } else if (opcode == D12_DXOP_SAMPLE_CMP_GRAD) {
+         /* (srv, samp, c0..c3, off0..2, cmp, ddx0..2, ddy0..2[, clamp]) */
+         NEED(15);
+         tex->is_shadow = true;
+         tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_comparator,
+                                              get_def(ctx, p[9]));
+         tex->src[si++] = nir_tex_src_for_ssa(
+            nir_tex_src_ddx,
+            nir_vec2(b, get_def(ctx, p[10]), get_def(ctx, p[11])));
+         tex->src[si++] = nir_tex_src_for_ssa(
+            nir_tex_src_ddy,
+            nir_vec2(b, get_def(ctx, p[13]), get_def(ctx, p[14])));
       } else if (opcode == D12_DXOP_TEXTURE_GATHER_RAW) {
          /* Raw gather: the texel bits, unconverted, channel 0. The
           * result width follows the declared overload.
@@ -1825,6 +1850,52 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       NEED(1);
       def_result(ctx, inst, nir_ddy_fine(b, get_def(ctx, p[0])));
       return true;
+
+   case D12_DXOP_DOT2:
+   case D12_DXOP_DOT3:
+   case D12_DXOP_DOT4: {
+      /* Scalarized operands: (ax.., bx..) pairs. */
+      unsigned n = opcode - D12_DXOP_DOT2 + 2;
+      NEED(2 * n);
+
+      nir_def *acc = NULL;
+      for (unsigned i = 0; i < n; i++) {
+         nir_def *prod =
+            nir_fmul(b, get_def(ctx, p[i]), get_def(ctx, p[n + i]));
+         acc = acc ? nir_fadd(b, acc, prod) : prod;
+      }
+      def_result(ctx, inst, acc);
+      return true;
+   }
+
+   case D12_DXOP_DOT4_ADD_I8_PACKED:
+   case D12_DXOP_DOT4_ADD_U8_PACKED: {
+      /* (acc, a, b): packed 8-bit dot product with accumulate. NIR has
+       * both exactly.
+       */
+      NEED(3);
+      nir_def *acc = get_def(ctx, p[0]);
+      nir_def *a = get_def(ctx, p[1]);
+      nir_def *bb = get_def(ctx, p[2]);
+      def_result(ctx, inst,
+                 opcode == D12_DXOP_DOT4_ADD_I8_PACKED
+                    ? nir_sdot_4x8_iadd(b, a, bb, acc)
+                    : nir_udot_4x8_uadd(b, a, bb, acc));
+      return true;
+   }
+
+   case D12_DXOP_WAVE_ACTIVE_BALLOT: {
+      /* Returns a 4 x u32 mask. The wave is at most 32 wide here, so
+       * lanes 32..127 do not exist and their words are zero -- the true
+       * value, not padding.
+       */
+      NEED(1);
+      nir_def *mask =
+         nir_ballot(b, 1, 32, to_bool(ctx, get_def(ctx, p[0])));
+      nir_def *zero = nir_imm_int(b, 0);
+      def_result(ctx, inst, nir_vec4(b, mask, zero, zero, zero));
+      return true;
+   }
 
    case D12_DXOP_MSAD: {
       /* dx.op.tertiary.i32(50): masked sum of absolute differences.
@@ -2449,6 +2520,19 @@ translate_binop(struct trans_ctx *ctx, const struct d12_inst *inst)
                    x->bit_size >= 16 &&
                    type_is_float(ctx->mod,
                                  ctx->mod->values[inst->ops[0]].type);
+
+   /* Width drift between our IO choices and DXIL's declared types; the
+    * same harmonization translate_cmp does.
+    */
+   if (x && y && x->bit_size != y->bit_size && x->bit_size > 1 &&
+       y->bit_size > 1) {
+      unsigned bits = MAX2(x->bit_size, y->bit_size);
+      if (x->bit_size < bits)
+         x = is_float ? nir_f2fN(b, x, bits) : nir_u2uN(b, x, bits);
+      if (y->bit_size < bits)
+         y = is_float ? nir_f2fN(b, y, bits) : nir_u2uN(b, y, bits);
+   }
+
    nir_def *res = NULL;
 
    switch (inst->extra[0]) {
@@ -2488,6 +2572,21 @@ translate_cmp(struct trans_ctx *ctx, const struct d12_inst *inst)
    nir_def *x = get_def(ctx, inst->ops[0]);
    nir_def *y = get_def(ctx, inst->ops[1]);
    nir_def *res = NULL;
+
+   /* Our IO widths can drift from DXIL's declared types (fp16 inputs,
+    * widened varyings), so two well-typed DXIL operands may reach here
+    * at different bit sizes. Widen the smaller: value-preserving for
+    * both integer and float compares.
+    */
+   if (x && y && x->bit_size != y->bit_size && x->bit_size > 1 &&
+       y->bit_size > 1) {
+      bool flt = inst->extra[0] < 32;
+      unsigned bits = MAX2(x->bit_size, y->bit_size);
+      if (x->bit_size < bits)
+         x = flt ? nir_f2fN(b, x, bits) : nir_u2uN(b, x, bits);
+      if (y->bit_size < bits)
+         y = flt ? nir_f2fN(b, y, bits) : nir_u2uN(b, y, bits);
+   }
 
    switch (inst->extra[0]) {
    /* Float predicates. Ordered and unordered forms are mapped to the
@@ -2725,6 +2824,14 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
    ctx.num_blocks = num_blocks;
 
+   /* Multi-block functions get a synthetic EPILOGUE block: every return
+    * branches to it, and the buffered-output flush is emitted into it.
+    * Flushing after the last instruction instead would place stores
+    * behind whatever goto terminated the final block, which NIR refuses
+    * (nothing may follow a jump).
+    */
+   nir_block *epilogue = NULL;
+
    if (num_blocks > 1) {
       b.impl->structured = false;
 
@@ -2735,6 +2842,10 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          blk->cf_node.parent = &b.impl->cf_node;
          ctx.blocks[i] = blk;
       }
+
+      epilogue = nir_block_create(b.shader);
+      exec_list_push_tail(&b.impl->body, &epilogue->cf_node.node);
+      epilogue->cf_node.parent = &b.impl->cf_node;
 
       /*
        * Phis become registers rather than NIR phi nodes: each predecessor
@@ -3155,12 +3266,17 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          break;
 
       case D12_FUNC_INST_RET:
-      case D12_FUNC_INST_UNREACHABLE:
          /* In an unstructured function EVERY block needs a terminator,
           * including the last: the structurizer walks successors and
-          * follows a null pointer off a block that has none. A return is
-          * a branch to the function's end block, not an absence of one.
+          * follows a null pointer off a block that has none. A return
+          * branches to the epilogue, where the buffered outputs flush.
           */
+         if (num_blocks > 1)
+            nir_goto(&b, epilogue);
+         break;
+
+      case D12_FUNC_INST_UNREACHABLE:
+         /* No outputs on a path that cannot execute. */
          if (num_blocks > 1)
             nir_goto(&b, b.impl->end_block);
          break;
@@ -3175,13 +3291,32 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       }
    }
 
-   /* Flush buffered outputs as one vector store each. */
+   /* Flush buffered outputs as one vector store each -- into the
+    * epilogue when there is one, since the final translated block ended
+    * with a goto and nothing may follow a jump.
+    */
+   if (epilogue)
+      b.cursor = nir_after_block(epilogue);
+
    for (unsigned i = 0; i < D12_MAX_OUTPUTS && !ctx.error; i++) {
       struct output_slot *slot = &ctx.outputs[i];
       if (!slot->used)
          continue;
 
       unsigned num_comps = util_last_bit(slot->write_mask);
+
+      /* A colour store is trimmed BY THE TILEBUFFER LOWERING to the
+       * render target's component count, and trimming can only narrow:
+       * a shader that writes .xy to an RGBA target must still hand the
+       * lowering a 4-vector. The padding lanes are undef, which is
+       * exactly what D3D says unwritten components are.
+       */
+      if (b.shader->info.stage == MESA_SHADER_FRAGMENT &&
+          slot->location >= FRAG_RESULT_DATA0 &&
+          slot->location < FRAG_RESULT_DATA0 + 8 && num_comps < 4) {
+         num_comps = 4;
+         slot->write_mask = 0xf;
+      }
 
       /* Varyings leave the shader as 32-bit: that is both what D3D
        * semantics say (interpolants are float unless the target format
@@ -3205,6 +3340,9 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                        .io_semantics.location = slot->location,
                        .io_semantics.num_slots = 1);
    }
+
+   if (epilogue && !ctx.error)
+      nir_goto(&b, b.impl->end_block);
 
    /* Sizes discovered while translating: the launch words read shared
     * size from here, and the backend sizes its stack from scratch_size.
@@ -3276,6 +3414,23 @@ d12_dxil_lower_uvs_index(nir_shader *nir, const unsigned *slots)
 static bool
 lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
+   /* Driver-owned sysvals Honeykrisp reads from its root descriptor at
+    * draw time. Ours are compile-time constants: with no MSAA rasterizer
+    * state the API sample mask covers every sample, and with monolithic
+    * shaders (no epilog parts) nothing later runs the depth/stencil
+    * tests on the shader's behalf.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_api_sample_mask_agx) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0xffff, 16));
+      return true;
+   }
+   if (intr->intrinsic == nir_intrinsic_load_shader_part_tests_zs_agx) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0, 16));
+      return true;
+   }
+
    unsigned base;
    if (intr->intrinsic == nir_intrinsic_load_root_agx)
       base = D12_UNIFORM_ROOT;
