@@ -622,6 +622,27 @@ resolve_input_layout(struct d12_pipeline_state *pso,
       fetch->nr = MAX2(fetch->nr, id + 1);
       pso->nr_vb_attribs = fetch->nr;
    }
+
+   /*
+    * An input the SHADER reads but the layout does not supply is legal:
+    * D3D12 defines the fetch as reading zeroes. Give it a well-formed key
+    * anyway, because agx_nir_lower_vbo has to fetch SOMETHING for every
+    * load_input it sees -- a zeroed key means PIPE_FORMAT_NONE, which has
+    * no channels to describe. Left un-live, so the draw path points its
+    * base at the zero page.
+    */
+   for (unsigned i = 0; i < nr_sig; i++) {
+      uint32_t id = sig[i].id;
+      if (id >= D12_MAX_VB_ATTRIBS || pso->vb_attribs[id].live)
+         continue;
+
+      fetch->keys[id] = (struct agx_velem_key){
+         .format = PIPE_FORMAT_R32G32B32A32_FLOAT,
+      };
+      fetch->nr = MAX2(fetch->nr, id + 1);
+      pso->vb_attribs[id].interchange_align = 4;
+      pso->nr_vb_attribs = fetch->nr;
+   }
 }
 
 static bool
@@ -943,8 +964,8 @@ compile_tes_stage(struct d12_device *device, const struct d12_binding_map *map,
 static bool
 compile_sw_vs_stage(struct d12_device *device,
                     const struct d12_binding_map *map, const void *dxil,
-                    size_t dxil_size, struct agx_shader_part *out,
-                    uint64_t *out_outputs)
+                    size_t dxil_size, const struct d12_vs_fetch *fetch,
+                    struct agx_shader_part *out, uint64_t *out_outputs)
 {
    nir_shader *nir =
       dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_VERTEX);
@@ -962,6 +983,32 @@ compile_sw_vs_stage(struct d12_device *device,
     * (hk_shader.c:1138).
     */
    *out_outputs = nir->info.outputs_written;
+
+   /*
+    * VERTEX ATTRIBUTES, and this has to happen while the shader is still
+    * a VERTEX shader -- agx_nir_lower_vbo asserts on the stage, and the
+    * switch to compute is a few lines below.
+    *
+    * Skipping it is why every geometry and tessellation test that read a
+    * real vertex attribute aborted the process with "Unhandled intrinsic
+    * load_input": the hardware VS path grew attribute fetch in G10, and
+    * the SOFTWARE VS that a GS or tessellation pipeline substitutes for
+    * it did not. Our own g6/g7 probes never caught it because they
+    * derive their geometry from SV_VertexID.
+    *
+    * The emitted load_vertex_id is resolved further down by
+    * d12_dxil_lower_sw_vs, which turns it into the dispatch's invocation
+    * index pulled through the index buffer.
+    */
+   if (fetch && fetch->nr) {
+      struct agx_robustness rs = {
+         .soft_fault = agx_has_soft_fault(&device->dev),
+         .level = AGX_ROBUSTNESS_D3D,
+      };
+
+      NIR_PASS(_, nir, agx_nir_lower_vbo, fetch->keys, rs, true);
+      NIR_PASS(_, nir, d12_dxil_lower_vbo_params);
+   }
 
    NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
 
@@ -1606,8 +1653,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    if (hs_dxil && hs_size && ds_dxil && ds_size) {
       struct agx_shader_part sw_vs_part, tcs_part, tes_part;
 
-      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part,
-                               &pso->sw_vs_outputs) ||
+      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &fetch,
+                               &sw_vs_part, &pso->sw_vs_outputs) ||
           !compile_tcs_stage(device, map, hs_dxil, hs_size, pso, &tcs_part) ||
           !compile_tes_stage(device, map, ds_dxil, ds_size, pso, &pso->tes_uvs,
                              &tes_part)) {
@@ -1701,8 +1748,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    if (gs_dxil && gs_size) {
       struct agx_shader_part sw_vs_part, gs_main_part, gs_rast_part;
 
-      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part,
-                               &pso->sw_vs_outputs) ||
+      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &fetch,
+                               &sw_vs_part, &pso->sw_vs_outputs) ||
           !compile_gs_stage(device, map, gs_dxil, gs_size, &pso->gs_info,
                             &pso->gs_uvs, &gs_main_part, &gs_rast_part)) {
          free(pso);

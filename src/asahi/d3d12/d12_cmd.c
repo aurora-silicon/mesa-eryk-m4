@@ -3264,6 +3264,24 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
       list->state = D12_LIST_ERROR;
       return;
    }
+   /*
+    * This copy walks rows with a plain stride, which is only where a
+    * pixel lives in a LINEAR image. In a twiddled one the address is an
+    * interleave of the x and y bits, so the arithmetic below would read
+    * and write the wrong bytes -- and ail_get_linear_stride_B asserts
+    * rather than let it, which aborted the process.
+    *
+    * Refuse instead. Twiddled copies need either ail's own addressing or
+    * a detiling compute pass; until one exists this is a clean failure,
+    * not a crash that takes the caller's whole test run with it.
+    */
+   if (tex->layout.tiling != AIL_TILING_LINEAR) {
+      mesa_loge("CopyTextureRegion: texture is twiddled, not linear; "
+                "tiled texture<->buffer copies are not implemented");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
    const unsigned buf_stride = fp->Footprint.RowPitch;
    const uint64_t row_bytes = (uint64_t)width * bpp;

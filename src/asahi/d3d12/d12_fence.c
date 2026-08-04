@@ -12,6 +12,11 @@
 
 #include <xf86drm.h>
 
+#include <sys/eventfd.h>
+#include <unistd.h>
+
+#include "util/u_thread.h"
+
 static HRESULT STDMETHODCALLTYPE
 d12_fence_QueryInterface(ID3D12Fence *iface, REFIID riid, void **out)
 {
@@ -108,6 +113,40 @@ d12_fence_GetCompletedValue(ID3D12Fence *iface)
    return point;
 }
 
+struct d12_fence_waiter {
+   struct d12_fence *fence;
+   uint64_t value;
+   int fd;
+   thrd_t thread;
+};
+
+static ULONG STDMETHODCALLTYPE d12_fence_AddRef(ID3D12Fence *iface);
+static ULONG STDMETHODCALLTYPE d12_fence_Release(ID3D12Fence *iface);
+
+static int
+d12_fence_wait_thread(void *data)
+{
+   struct d12_fence_waiter *w = data;
+   uint64_t point = w->value;
+
+   int ret = drmSyncobjTimelineWait(
+      w->fence->device->dev.fd, &w->fence->syncobj, &point, 1, INT64_MAX,
+      DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+
+   if (ret)
+      mesa_loge("fence event wait failed: %d", ret);
+
+   /* Signal even on failure: a waiter that is never woken hangs the
+    * application, which is strictly worse than waking it early. */
+   const uint64_t one = 1;
+   if (write(w->fd, &one, sizeof(one)) != sizeof(one))
+      mesa_loge("fence event write failed");
+
+   d12_fence_Release(&w->fence->iface);
+   free(w);
+   return 0;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
                                HANDLE event)
@@ -115,12 +154,39 @@ d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
    struct d12_fence *fence = d12_fence_from_iface(iface);
 
    if (event != NULL) {
-      /* Event objects need a real eventing layer (campaign OQ); native
-       * tests use the documented NULL-event blocking form.
+      /*
+       * D3D12 says this returns IMMEDIATELY and signals the event later.
+       * A blocking implementation deadlocks the perfectly legal pattern
+       * "arm the event, then submit the work that signals it", so the
+       * wait happens on its own thread.
+       *
+       * On this platform the HANDLE is an eventfd -- that is what
+       * CreateEventA maps to here, and what the waiter reads. Signalling
+       * is a single 8-byte write, the same one signal_event() does.
+       *
+       * Until this existed, every test that waited on a real event got
+       * E_NOTIMPL and then behaved as though the GPU had finished, which
+       * is why so many of them died downstream rather than here.
        */
-      mesa_loge("ID3D12Fence::SetEventOnCompletion: non-NULL event not "
-                "implemented");
-      return E_NOTIMPL;
+      struct d12_fence_waiter *w = malloc(sizeof(*w));
+      if (!w)
+         return E_OUTOFMEMORY;
+
+      w->fence = fence;
+      w->value = value;
+      w->fd = (int)(intptr_t)event;
+
+      /* The thread outlives this call, so it holds its own reference. */
+      d12_fence_AddRef(iface);
+
+      if (thrd_create(&w->thread, d12_fence_wait_thread, w) != thrd_success) {
+         d12_fence_Release(iface);
+         free(w);
+         return E_FAIL;
+      }
+
+      thrd_detach(w->thread);
+      return S_OK;
    }
 
    /* NULL event: block until the fence reaches the value. */

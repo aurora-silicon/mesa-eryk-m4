@@ -221,6 +221,17 @@ d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
+   /* COM CONTRACT: the out-pointer is set to NULL BEFORE any validation.
+    * A failing Create that leaves it untouched hands the caller back an
+    * uninitialised stack variable, and a well-written application then
+    * passes that garbage to the next call -- which is how a refusal here
+    * turned into a segfault three calls later, in CreateRenderTargetView
+    * and in Draw, with a resource pointer full of ASCII. Nulling first
+    * turns every one of those into an ordinary failure.
+    */
+   if (out)
+      *out = NULL;
+
    if (node_mask > 1)
       return E_INVALIDARG;
    if (!allocator)
@@ -370,6 +381,17 @@ d12_device_CreateComputePipelineState(
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
+   /* COM CONTRACT: the out-pointer is set to NULL BEFORE any validation.
+    * A failing Create that leaves it untouched hands the caller back an
+    * uninitialised stack variable, and a well-written application then
+    * passes that garbage to the next call -- which is how a refusal here
+    * turned into a segfault three calls later, in CreateRenderTargetView
+    * and in Draw, with a resource pointer full of ASCII. Nulling first
+    * turns every one of those into an ordinary failure.
+    */
+   if (out)
+      *out = NULL;
+
    if (!desc || !desc->CS.pShaderBytecode || !desc->CS.BytecodeLength)
       return E_INVALIDARG;
 
@@ -505,6 +527,10 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
 
    if (!out)
       return E_POINTER;
+
+   /* See the COM contract note above: null before validating. */
+   *out = NULL;
+
    if (!desc || !desc->pPipelineStateSubobjectStream || !desc->SizeInBytes)
       return E_INVALIDARG;
 
@@ -563,6 +589,17 @@ d12_device_CreateGraphicsPipelineState(
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
+   /* COM CONTRACT: the out-pointer is set to NULL BEFORE any validation.
+    * A failing Create that leaves it untouched hands the caller back an
+    * uninitialised stack variable, and a well-written application then
+    * passes that garbage to the next call -- which is how a refusal here
+    * turned into a segfault three calls later, in CreateRenderTargetView
+    * and in Draw, with a resource pointer full of ASCII. Nulling first
+    * turns every one of those into an ordinary failure.
+    */
+   if (out)
+      *out = NULL;
+
    if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
       return E_INVALIDARG;
 
@@ -606,6 +643,17 @@ d12_device_CreateRootSignature(ID3D12Device2 *iface, UINT node_mask,
                                REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
+
+   /* COM CONTRACT: the out-pointer is set to NULL BEFORE any validation.
+    * A failing Create that leaves it untouched hands the caller back an
+    * uninitialised stack variable, and a well-written application then
+    * passes that garbage to the next call -- which is how a refusal here
+    * turned into a segfault three calls later, in CreateRenderTargetView
+    * and in Draw, with a resource pointer full of ASCII. Nulling first
+    * turns every one of those into an ordinary failure.
+    */
+   if (out)
+      *out = NULL;
 
    if (node_mask > 1)
       return E_INVALIDARG;
