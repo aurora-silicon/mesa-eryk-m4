@@ -71,6 +71,8 @@ enum d12_dxbc_file {
    /* Compute system values. These are not varyings and have no
     * declaration in the token stream -- the register file IS the
     * meaning. */
+   D12_DXBC_FILE_UAV = 30,
+   D12_DXBC_FILE_TGSM = 31,
    D12_DXBC_FILE_THREAD_ID = 32,
    D12_DXBC_FILE_THREAD_GROUP_ID = 33,
    D12_DXBC_FILE_THREAD_ID_IN_GROUP = 34,
@@ -186,6 +188,11 @@ enum d12_dxbc_op {
    D12_DXBC_OP_DCL_TESS_PARTITIONING = 150,
    D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE = 151,
    D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR = 152,
+   /* Structured buffer access. Identified from the operand register
+    * files rather than assumed: 168 writes to file 30 (a UAV) with four
+    * operands, 165 reads from one into a temporary. */
+   D12_DXBC_OP_LD_STRUCTURED = 165,
+   D12_DXBC_OP_STORE_STRUCTURED = 168,
    D12_DXBC_OP_DCL_RESOURCE = 88,
    D12_DXBC_OP_DCL_CONSTANT_BUFFER = 89,
    D12_DXBC_OP_DCL_SAMPLER = 90,
@@ -248,6 +255,12 @@ struct d12_dxbc_ctx {
    unsigned num_in_sig;
    struct d12_dxbc_sig_elem out_sig[D12_DXBC_MAX_SIG];
    unsigned num_out_sig;
+
+   /* Element stride of each structured buffer, by register. Declared
+    * once and needed at every access, since the address is
+    * index * stride + offset. */
+   uint32_t srv_stride[D12_DXBC_MAX_SIG];
+   uint32_t uav_stride[D12_DXBC_MAX_SIG];
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -628,6 +641,36 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    return v;
 }
 
+/*
+ * Address of element `index`, byte `offset`, in the structured buffer
+ * bound at `reg`. One indirection through the root table, exactly as the
+ * constant-buffer path does.
+ */
+static nir_def *
+buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
+               nir_def *index, nir_def *offset, unsigned stride)
+{
+   nir_builder *b = &ctx->b;
+
+   unsigned slot = ctx->map
+                      ? d12_binding_map_find(ctx->map,
+                                             uav ? D12_RES_UAV : D12_RES_SRV,
+                                             0, reg)
+                      : reg;
+   if (slot == ~0u)
+      slot = reg;
+
+   nir_def *root = nir_load_root_agx(b);
+   nir_def *base = nir_load_global(
+      b, 1, 64, nir_iadd_imm(b, root, (uint64_t)slot * 8), .align_mul = 8);
+
+   nir_def *byte = nir_iadd(b, nir_imul_imm(b, nir_channel(b, index, 0),
+                                            stride ? stride : 4),
+                            nir_channel(b, offset, 0));
+
+   return nir_iadd(b, base, nir_u2u64(b, byte));
+}
+
 static void
 write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
           nir_def *value)
@@ -848,11 +891,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
       case D12_DXBC_OP_DCL_UAV_TYPED:
       case D12_DXBC_OP_DCL_UAV_RAW:
-      case D12_DXBC_OP_DCL_UAV_STRUCTURED:
       case D12_DXBC_OP_DCL_TGSM_RAW:
       case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
       case D12_DXBC_OP_DCL_RESOURCE_RAW:
-      case D12_DXBC_OP_DCL_RESOURCE_STRUCTURED:
       case D12_DXBC_OP_DCL_STREAM:
       case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE:
       case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
@@ -868,6 +909,22 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * declarations themselves carry nothing this driver needs. */
          ctx->tok += len;
          continue;
+
+      case D12_DXBC_OP_DCL_UAV_STRUCTURED:
+      case D12_DXBC_OP_DCL_RESOURCE_STRUCTURED: {
+         /* operand(u#/t#) then the stride. Decode the operand to find
+          * the register, since its own length varies. */
+         struct d12_dxbc_operand r;
+         unsigned n = decode_operand(ctx, args, avail, &r);
+         if (n && avail > n && r.index[0] < D12_DXBC_MAX_SIG) {
+            if (opcode == D12_DXBC_OP_DCL_UAV_STRUCTURED)
+               ctx->uav_stride[r.index[0]] = args[n];
+            else
+               ctx->srv_stride[r.index[0]] = args[n];
+         }
+         ctx->tok += len;
+         continue;
+      }
 
       case D12_DXBC_OP_DCL_THREAD_GROUP:
          if (avail >= 3) {
@@ -1104,6 +1161,49 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
+      /*
+       * STRUCTURED BUFFERS. The address is one indirection through the
+       * root table -- the same shape as a constant buffer -- then
+       * index * stride + offset. The stride comes from the declaration;
+       * assuming 4 is right only for a buffer of 32-bit scalars, and a
+       * 12-byte struct indexed at element 3 would read byte 12 instead
+       * of byte 36.
+       */
+      case D12_DXBC_OP_LD_STRUCTURED: {
+         NEED(4);
+         uint32_t reg = o[3].index[0];
+         bool uav = o[3].file == D12_DXBC_FILE_UAV;
+         unsigned stride = (uav ? ctx->uav_stride : ctx->srv_stride)
+                              [reg < D12_DXBC_MAX_SIG ? reg : 0];
+         nir_def *addr = buffer_address(ctx, reg, uav, SRC(1), SRC(2), stride);
+         nir_def *val = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+         unsigned sw[4] = {o[3].swizzle[0], o[3].swizzle[1], o[3].swizzle[2],
+                           o[3].swizzle[3]};
+         DST(nir_swizzle(b, val, sw, 4));
+         break;
+      }
+
+      case D12_DXBC_OP_STORE_STRUCTURED: {
+         NEED(4);
+         uint32_t reg = o[0].index[0];
+         unsigned stride =
+            ctx->uav_stride[reg < D12_DXBC_MAX_SIG ? reg : 0];
+         nir_def *addr = buffer_address(ctx, reg, true, SRC(1), SRC(2), stride);
+         nir_def *val = SRC(3);
+         unsigned mask = o[0].mask ? o[0].mask : 0xf;
+
+         /* Write the covered components individually: the mask is
+          * arbitrary, and a single vectorised store would write past it. */
+         for (unsigned c = 0; c < 4; c++) {
+            if (!(mask & (1 << c)))
+               continue;
+            nir_store_global(b, nir_channel(b, val, c),
+                             nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
+                             .align_mul = 4);
+         }
+         break;
+      }
+
       case D12_DXBC_OP_RET:
          /* Falls out of the shader; NIR's implicit return handles it. */
          break;
@@ -1111,6 +1211,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       default:
          /* Name the opcode: the next person needs a work list, not a
           * verdict. */
+         if (getenv("D3D12AGX_DUMP_DXBC")) {
+            fprintf(stderr, "dxbc: op %u operands:", opcode);
+            for (unsigned k = 0; k < nops; k++)
+               fprintf(stderr, " file%u/idx%u", o[k].file, o[k].index[0]);
+            fprintf(stderr, "\n");
+         }
          snprintf(ctx->errbuf, sizeof(ctx->errbuf),
                   "unimplemented DXBC opcode %u", opcode);
          fail(ctx, ctx->errbuf);
