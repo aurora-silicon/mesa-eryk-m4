@@ -2095,7 +2095,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_DrawInstanced(ID3D12GraphicsCommandList *iface,
+d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
                        UINT vertex_count_per_instance, UINT instance_count,
                        UINT start_vertex, UINT start_instance)
 {
@@ -2109,7 +2109,7 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
+d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList6 *iface,
                                 D3D12_PRIMITIVE_TOPOLOGY topology)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2156,7 +2156,7 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
 
 
 static void STDMETHODCALLTYPE
-d12_list_RSSetViewports(ID3D12GraphicsCommandList *iface, UINT count,
+d12_list_RSSetViewports(ID3D12GraphicsCommandList6 *iface, UINT count,
                         const D3D12_VIEWPORT *viewports)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2168,7 +2168,7 @@ d12_list_RSSetViewports(ID3D12GraphicsCommandList *iface, UINT count,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_RSSetScissorRects(ID3D12GraphicsCommandList *iface, UINT count,
+d12_list_RSSetScissorRects(ID3D12GraphicsCommandList6 *iface, UINT count,
                            const D3D12_RECT *rects)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2185,7 +2185,7 @@ d12_list_RSSetScissorRects(ID3D12GraphicsCommandList *iface, UINT count,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList *iface,
+d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList6 *iface,
                                   ID3D12RootSignature *root_sig)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2351,7 +2351,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList *iface,
+d12_list_SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList6 *iface,
                                         UINT root_param_index,
                                         D3D12_GPU_DESCRIPTOR_HANDLE base)
 {
@@ -2360,7 +2360,7 @@ d12_list_SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetComputeRootDescriptorTable(ID3D12GraphicsCommandList *iface,
+d12_list_SetComputeRootDescriptorTable(ID3D12GraphicsCommandList6 *iface,
                                        UINT root_param_index,
                                        D3D12_GPU_DESCRIPTOR_HANDLE base)
 {
@@ -2369,7 +2369,7 @@ d12_list_SetComputeRootDescriptorTable(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList *iface,
+d12_list_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
                                            UINT index,
                                            D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2378,7 +2378,7 @@ d12_list_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList *iface,
+d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
                                           UINT index,
                                           D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2387,7 +2387,7 @@ d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList *iface,
+d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList6 *iface,
                                            UINT index,
                                            D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2396,7 +2396,7 @@ d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList *iface,
+d12_list_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList6 *iface,
                                           UINT index,
                                           D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2405,7 +2405,7 @@ d12_list_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetGraphicsRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
+d12_list_SetGraphicsRootUnorderedAccessView(ID3D12GraphicsCommandList6 *iface,
                                             UINT index,
                                             D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2414,7 +2414,7 @@ d12_list_SetGraphicsRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList *iface, UINT count,
+d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList6 *iface, UINT count,
                             ID3D12DescriptorHeap *const *heaps)
 {
    /* Descriptor tables are flattened into the root table at bind time, so
@@ -2425,7 +2425,7 @@ d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList *iface, UINT count,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetPipelineState(ID3D12GraphicsCommandList *iface,
+d12_list_SetPipelineState(ID3D12GraphicsCommandList6 *iface,
                           ID3D12PipelineState *pso)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2433,7 +2433,7 @@ d12_list_SetPipelineState(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList *iface,
+d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList6 *iface,
                                  ID3D12RootSignature *root_sig)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2441,7 +2441,7 @@ d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
+d12_list_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList6 *iface,
                                            UINT root_param_index,
                                            D3D12_GPU_VIRTUAL_ADDRESS address)
 {
@@ -2456,7 +2456,7 @@ d12_list_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_Dispatch(ID3D12GraphicsCommandList *iface, UINT x, UINT y, UINT z)
+d12_list_Dispatch(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y, UINT z)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
@@ -2467,7 +2467,7 @@ d12_list_Dispatch(ID3D12GraphicsCommandList *iface, UINT x, UINT y, UINT z)
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_QueryInterface(ID3D12GraphicsCommandList *iface, REFIID riid,
+d12_list_QueryInterface(ID3D12GraphicsCommandList6 *iface, REFIID riid,
                         void **out)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
@@ -2479,7 +2479,14 @@ d12_list_QueryInterface(ID3D12GraphicsCommandList *iface, REFIID riid,
        d12_guid_equal(riid, &IID_ID3D12Object) ||
        d12_guid_equal(riid, &IID_ID3D12DeviceChild) ||
        d12_guid_equal(riid, &IID_ID3D12CommandList) ||
-       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList)) {
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList1) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList2) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList3) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList4) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList5) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList6)) {
+      /* Same widening as the device: DispatchMesh is on list 6. */
       p_atomic_inc(&list->refcount);
       *out = iface;
       return S_OK;
@@ -2491,14 +2498,14 @@ d12_list_QueryInterface(ID3D12GraphicsCommandList *iface, REFIID riid,
 }
 
 static ULONG STDMETHODCALLTYPE
-d12_list_AddRef(ID3D12GraphicsCommandList *iface)
+d12_list_AddRef(ID3D12GraphicsCommandList6 *iface)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    return p_atomic_inc_return(&list->refcount);
 }
 
 static ULONG STDMETHODCALLTYPE
-d12_list_Release(ID3D12GraphicsCommandList *iface)
+d12_list_Release(ID3D12GraphicsCommandList6 *iface)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    uint32_t refs = p_atomic_dec_return(&list->refcount);
@@ -2514,48 +2521,48 @@ d12_list_Release(ID3D12GraphicsCommandList *iface)
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_GetPrivateData(ID3D12GraphicsCommandList *iface, REFGUID guid,
+d12_list_GetPrivateData(ID3D12GraphicsCommandList6 *iface, REFGUID guid,
                         UINT *size, void *data)
 {
    return E_NOTIMPL;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_SetPrivateData(ID3D12GraphicsCommandList *iface, REFGUID guid,
+d12_list_SetPrivateData(ID3D12GraphicsCommandList6 *iface, REFGUID guid,
                         UINT size, const void *data)
 {
    return E_NOTIMPL;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_SetPrivateDataInterface(ID3D12GraphicsCommandList *iface,
+d12_list_SetPrivateDataInterface(ID3D12GraphicsCommandList6 *iface,
                                  REFGUID guid, const IUnknown *data)
 {
    return E_NOTIMPL;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_SetName(ID3D12GraphicsCommandList *iface, LPCWSTR name)
+d12_list_SetName(ID3D12GraphicsCommandList6 *iface, LPCWSTR name)
 {
    return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_GetDevice(ID3D12GraphicsCommandList *iface, REFIID riid, void **out)
+d12_list_GetDevice(ID3D12GraphicsCommandList6 *iface, REFIID riid, void **out)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    return ID3D12Device_QueryInterface(&list->device->iface, riid, out);
 }
 
 static D3D12_COMMAND_LIST_TYPE STDMETHODCALLTYPE
-d12_list_GetType(ID3D12GraphicsCommandList *iface)
+d12_list_GetType(ID3D12GraphicsCommandList6 *iface)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    return list->type;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_Close(ID3D12GraphicsCommandList *iface)
+d12_list_Close(ID3D12GraphicsCommandList6 *iface)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
@@ -2576,7 +2583,7 @@ d12_list_Close(ID3D12GraphicsCommandList *iface)
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_list_Reset(ID3D12GraphicsCommandList *iface,
+d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
                ID3D12CommandAllocator *allocator,
                ID3D12PipelineState *initial_state)
 {
@@ -2598,7 +2605,7 @@ d12_list_Reset(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_CopyBufferRegion(ID3D12GraphicsCommandList *iface,
+d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
                           ID3D12Resource *dst, UINT64 dst_offset,
                           ID3D12Resource *src, UINT64 src_offset,
                           UINT64 num_bytes)
@@ -2631,7 +2638,7 @@ d12_list_CopyBufferRegion(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_CopyResource(ID3D12GraphicsCommandList *iface, ID3D12Resource *dst,
+d12_list_CopyResource(ID3D12GraphicsCommandList6 *iface, ID3D12Resource *dst,
                       ID3D12Resource *src)
 {
    struct d12_resource *dstr = d12_resource_from_iface(dst);
@@ -2651,7 +2658,7 @@ d12_list_CopyResource(ID3D12GraphicsCommandList *iface, ID3D12Resource *dst,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
+d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
                                D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle,
                                const FLOAT color[4], UINT num_rects,
                                const D3D12_RECT *rects)
@@ -2776,7 +2783,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList *iface,
  * bounds-checked kernel as CopyBufferRegion.
  */
 static void STDMETHODCALLTYPE
-d12_list_CopyTextureRegion(ID3D12GraphicsCommandList *iface,
+d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
                            const D3D12_TEXTURE_COPY_LOCATION *dst,
                            UINT dst_x, UINT dst_y, UINT dst_z,
                            const D3D12_TEXTURE_COPY_LOCATION *src,
@@ -2885,7 +2892,7 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_ResourceBarrier(ID3D12GraphicsCommandList *iface, UINT num_barriers,
+d12_list_ResourceBarrier(ID3D12GraphicsCommandList6 *iface, UINT num_barriers,
                          const D3D12_RESOURCE_BARRIER *barriers)
 {
    /* Every dispatch already ends in agx_cdm_barrier (cache flush), memory
@@ -2946,7 +2953,7 @@ d12_list_attach_ds(struct d12_cmd_list *list, struct d12_resource *ds)
 }
 
 static void STDMETHODCALLTYPE
-d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList *iface,
+d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
                                D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle,
                                D3D12_CLEAR_FLAGS flags, FLOAT depth,
                                UINT8 stencil, UINT num_rects,
@@ -3004,14 +3011,14 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_list_OMSetStencilRef(ID3D12GraphicsCommandList *iface, UINT ref)
+d12_list_OMSetStencilRef(ID3D12GraphicsCommandList6 *iface, UINT ref)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->stencil_ref = (uint8_t)ref;
 }
 
 static void STDMETHODCALLTYPE
-d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
+d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
                             const D3D12_CPU_DESCRIPTOR_HANDLE *rtvs,
                             BOOL single_handle,
                             const D3D12_CPU_DESCRIPTOR_HANDLE *dsv)
@@ -3050,9 +3057,12 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList *iface, UINT num_rtvs,
    }
 }
 
-static const ID3D12GraphicsCommandListVtbl d12_list_vtbl = {
+/* Same widening as the device: ID3D12GraphicsCommandList6 is a superset,
+ * and DispatchMesh lives on it.
+ */
+static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    /* every unimplemented slot fails safely */
-   D12_ID3D12GraphicsCommandList_DEFAULTS,
+   D12_ID3D12GraphicsCommandList6_DEFAULTS,
    .QueryInterface = d12_list_QueryInterface,
    .AddRef = d12_list_AddRef,
    .Release = d12_list_Release,
@@ -3136,7 +3146,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    /* D3D12 command lists are created in the recording state. */
    d12_list_begin_recording(list);
 
-   HRESULT hr = d12_list_QueryInterface(&list->iface, riid, out);
-   d12_list_Release(&list->iface);
+   HRESULT hr = d12_list_QueryInterface((ID3D12GraphicsCommandList6 *)&list->iface, riid, out);
+   d12_list_Release((ID3D12GraphicsCommandList6 *)&list->iface);
    return hr;
 }

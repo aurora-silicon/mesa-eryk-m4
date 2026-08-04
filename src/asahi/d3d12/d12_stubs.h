@@ -367,6 +367,389 @@ d12_stub_ID3D12Device_GetAdapterLuid(ID3D12Device * This)
    .GetResourceTiling = d12_stub_ID3D12Device_GetResourceTiling, \
    .GetAdapterLuid = d12_stub_ID3D12Device_GetAdapterLuid
 
+/* ---- ID3D12Device2: 48 methods ---- */
+static inline HRESULT
+d12_stub_ID3D12Device2_QueryInterface(ID3D12Device2 * This, REFIID riid, void **ppvObject)
+{
+   d12_stub_report("ID3D12Device2::QueryInterface");
+   return E_NOTIMPL;
+}
+
+static inline ULONG
+d12_stub_ID3D12Device2_AddRef(ID3D12Device2 * This)
+{
+   d12_stub_report("ID3D12Device2::AddRef");
+   return 0;
+}
+
+static inline ULONG
+d12_stub_ID3D12Device2_Release(ID3D12Device2 * This)
+{
+   d12_stub_report("ID3D12Device2::Release");
+   return 0;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_GetPrivateData(ID3D12Device2 * This, REFGUID guid, UINT *pDataSize, _Out_writes_bytes_opt_( *pDataSize ) void *pData)
+{
+   d12_stub_report("ID3D12Device2::GetPrivateData");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetPrivateData(ID3D12Device2 * This, REFGUID guid, UINT DataSize, _In_reads_bytes_opt_( DataSize ) const void *pData)
+{
+   d12_stub_report("ID3D12Device2::SetPrivateData");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetPrivateDataInterface(ID3D12Device2 * This, REFGUID guid, const IUnknown *pData)
+{
+   d12_stub_report("ID3D12Device2::SetPrivateDataInterface");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetName(ID3D12Device2 * This, _In_z_ LPCWSTR Name)
+{
+   d12_stub_report("ID3D12Device2::SetName");
+   return E_NOTIMPL;
+}
+
+static inline UINT
+d12_stub_ID3D12Device2_GetNodeCount(ID3D12Device2 * This)
+{
+   d12_stub_report("ID3D12Device2::GetNodeCount");
+   return 0;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateCommandQueue(ID3D12Device2 * This, const D3D12_COMMAND_QUEUE_DESC *pDesc, REFIID riid, void **ppCommandQueue)
+{
+   d12_stub_report("ID3D12Device2::CreateCommandQueue");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateCommandAllocator(ID3D12Device2 * This, D3D12_COMMAND_LIST_TYPE type, REFIID riid, void **ppCommandAllocator)
+{
+   d12_stub_report("ID3D12Device2::CreateCommandAllocator");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateGraphicsPipelineState(ID3D12Device2 * This, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
+{
+   d12_stub_report("ID3D12Device2::CreateGraphicsPipelineState");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateComputePipelineState(ID3D12Device2 * This, const D3D12_COMPUTE_PIPELINE_STATE_DESC *pDesc, REFIID riid, void **ppPipelineState)
+{
+   d12_stub_report("ID3D12Device2::CreateComputePipelineState");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateCommandList(ID3D12Device2 * This, UINT nodeMask, D3D12_COMMAND_LIST_TYPE type, ID3D12CommandAllocator *pCommandAllocator, ID3D12PipelineState *pInitialState, REFIID riid, void **ppCommandList)
+{
+   d12_stub_report("ID3D12Device2::CreateCommandList");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CheckFeatureSupport(ID3D12Device2 * This, D3D12_FEATURE Feature, _Inout_updates_bytes_(FeatureSupportDataSize) void *pFeatureSupportData, UINT FeatureSupportDataSize)
+{
+   d12_stub_report("ID3D12Device2::CheckFeatureSupport");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateDescriptorHeap(ID3D12Device2 * This, const D3D12_DESCRIPTOR_HEAP_DESC *pDescriptorHeapDesc, REFIID riid, void **ppvHeap)
+{
+   d12_stub_report("ID3D12Device2::CreateDescriptorHeap");
+   return E_NOTIMPL;
+}
+
+static inline UINT
+d12_stub_ID3D12Device2_GetDescriptorHandleIncrementSize(ID3D12Device2 * This, D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapType)
+{
+   d12_stub_report("ID3D12Device2::GetDescriptorHandleIncrementSize");
+   return 0;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateRootSignature(ID3D12Device2 * This, UINT nodeMask, _In_reads_(blobLengthInBytes) const void *pBlobWithRootSignature, SIZE_T blobLengthInBytes, REFIID riid, void **ppvRootSignature)
+{
+   d12_stub_report("ID3D12Device2::CreateRootSignature");
+   return E_NOTIMPL;
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateConstantBufferView(ID3D12Device2 * This, const D3D12_CONSTANT_BUFFER_VIEW_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateConstantBufferView");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateShaderResourceView(ID3D12Device2 * This, ID3D12Resource *pResource, const D3D12_SHADER_RESOURCE_VIEW_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateShaderResourceView");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateUnorderedAccessView(ID3D12Device2 * This, ID3D12Resource *pResource, ID3D12Resource *pCounterResource, const D3D12_UNORDERED_ACCESS_VIEW_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateUnorderedAccessView");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateRenderTargetView(ID3D12Device2 * This, ID3D12Resource *pResource, const D3D12_RENDER_TARGET_VIEW_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateRenderTargetView");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateDepthStencilView(ID3D12Device2 * This, ID3D12Resource *pResource, const D3D12_DEPTH_STENCIL_VIEW_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateDepthStencilView");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CreateSampler(ID3D12Device2 * This, const D3D12_SAMPLER_DESC *pDesc, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptor)
+{
+   d12_stub_report("ID3D12Device2::CreateSampler");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CopyDescriptors(ID3D12Device2 * This, UINT NumDestDescriptorRanges, _In_reads_(NumDestDescriptorRanges) const D3D12_CPU_DESCRIPTOR_HANDLE *pDestDescriptorRangeStarts, _In_reads_opt_(NumDestDescriptorRanges) const UINT *pDestDescriptorRangeSizes, UINT NumSrcDescriptorRanges, _In_reads_(NumSrcDescriptorRanges) const D3D12_CPU_DESCRIPTOR_HANDLE *pSrcDescriptorRangeStarts, _In_reads_opt_(NumSrcDescriptorRanges) const UINT *pSrcDescriptorRangeSizes, D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType)
+{
+   d12_stub_report("ID3D12Device2::CopyDescriptors");
+}
+
+static inline void
+d12_stub_ID3D12Device2_CopyDescriptorsSimple(ID3D12Device2 * This, UINT NumDescriptors, D3D12_CPU_DESCRIPTOR_HANDLE DestDescriptorRangeStart, D3D12_CPU_DESCRIPTOR_HANDLE SrcDescriptorRangeStart, D3D12_DESCRIPTOR_HEAP_TYPE DescriptorHeapsType)
+{
+   d12_stub_report("ID3D12Device2::CopyDescriptorsSimple");
+}
+
+static inline D3D12_RESOURCE_ALLOCATION_INFO
+d12_stub_ID3D12Device2_GetResourceAllocationInfo(ID3D12Device2 * This, UINT visibleMask, UINT numResourceDescs, _In_reads_(numResourceDescs) const D3D12_RESOURCE_DESC *pResourceDescs)
+{
+   d12_stub_report("ID3D12Device2::GetResourceAllocationInfo");
+   D3D12_RESOURCE_ALLOCATION_INFO zero;
+   memset(&zero, 0, sizeof(zero));
+   return zero;
+}
+
+static inline D3D12_HEAP_PROPERTIES
+d12_stub_ID3D12Device2_GetCustomHeapProperties(ID3D12Device2 * This, UINT nodeMask, D3D12_HEAP_TYPE heapType)
+{
+   d12_stub_report("ID3D12Device2::GetCustomHeapProperties");
+   D3D12_HEAP_PROPERTIES zero;
+   memset(&zero, 0, sizeof(zero));
+   return zero;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateCommittedResource(ID3D12Device2 * This, const D3D12_HEAP_PROPERTIES *pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialResourceState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riidResource, void **ppvResource)
+{
+   d12_stub_report("ID3D12Device2::CreateCommittedResource");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateHeap(ID3D12Device2 * This, const D3D12_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
+{
+   d12_stub_report("ID3D12Device2::CreateHeap");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreatePlacedResource(ID3D12Device2 * This, ID3D12Heap *pHeap, UINT64 HeapOffset, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
+{
+   d12_stub_report("ID3D12Device2::CreatePlacedResource");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateReservedResource(ID3D12Device2 * This, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riid, void **ppvResource)
+{
+   d12_stub_report("ID3D12Device2::CreateReservedResource");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateSharedHandle(ID3D12Device2 * This, ID3D12DeviceChild *pObject, const SECURITY_ATTRIBUTES *pAttributes, DWORD Access, LPCWSTR Name, HANDLE *pHandle)
+{
+   d12_stub_report("ID3D12Device2::CreateSharedHandle");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_OpenSharedHandle(ID3D12Device2 * This, HANDLE NTHandle, REFIID riid, void **ppvObj)
+{
+   d12_stub_report("ID3D12Device2::OpenSharedHandle");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_OpenSharedHandleByName(ID3D12Device2 * This, LPCWSTR Name, DWORD Access, /* [annotation][out] */ HANDLE *pNTHandle)
+{
+   d12_stub_report("ID3D12Device2::OpenSharedHandleByName");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_MakeResident(ID3D12Device2 * This, UINT NumObjects, _In_reads_(NumObjects) ID3D12Pageable *const *ppObjects)
+{
+   d12_stub_report("ID3D12Device2::MakeResident");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_Evict(ID3D12Device2 * This, UINT NumObjects, _In_reads_(NumObjects) ID3D12Pageable *const *ppObjects)
+{
+   d12_stub_report("ID3D12Device2::Evict");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateFence(ID3D12Device2 * This, UINT64 InitialValue, D3D12_FENCE_FLAGS Flags, REFIID riid, void **ppFence)
+{
+   d12_stub_report("ID3D12Device2::CreateFence");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_GetDeviceRemovedReason(ID3D12Device2 * This)
+{
+   d12_stub_report("ID3D12Device2::GetDeviceRemovedReason");
+   return E_NOTIMPL;
+}
+
+static inline void
+d12_stub_ID3D12Device2_GetCopyableFootprints(ID3D12Device2 * This, const D3D12_RESOURCE_DESC *pResourceDesc, _In_range_(0,D3D12_REQ_SUBRESOURCES) UINT FirstSubresource, _In_range_(0,D3D12_REQ_SUBRESOURCES-FirstSubresource) UINT NumSubresources, UINT64 BaseOffset, _Out_writes_opt_(NumSubresources) D3D12_PLACED_SUBRESOURCE_FOOTPRINT *pLayouts, _Out_writes_opt_(NumSubresources) UINT *pNumRows, _Out_writes_opt_(NumSubresources) UINT64 *pRowSizeInBytes, UINT64 *pTotalBytes)
+{
+   d12_stub_report("ID3D12Device2::GetCopyableFootprints");
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateQueryHeap(ID3D12Device2 * This, const D3D12_QUERY_HEAP_DESC *pDesc, REFIID riid, void **ppvHeap)
+{
+   d12_stub_report("ID3D12Device2::CreateQueryHeap");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetStablePowerState(ID3D12Device2 * This, BOOL Enable)
+{
+   d12_stub_report("ID3D12Device2::SetStablePowerState");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreateCommandSignature(ID3D12Device2 * This, const D3D12_COMMAND_SIGNATURE_DESC *pDesc, ID3D12RootSignature *pRootSignature, REFIID riid, void **ppvCommandSignature)
+{
+   d12_stub_report("ID3D12Device2::CreateCommandSignature");
+   return E_NOTIMPL;
+}
+
+static inline void
+d12_stub_ID3D12Device2_GetResourceTiling(ID3D12Device2 * This, ID3D12Resource *pTiledResource, UINT *pNumTilesForEntireResource, D3D12_PACKED_MIP_INFO *pPackedMipDesc, D3D12_TILE_SHAPE *pStandardTileShapeForNonPackedMips, UINT *pNumSubresourceTilings, UINT FirstSubresourceTilingToGet, _Out_writes_(*pNumSubresourceTilings) D3D12_SUBRESOURCE_TILING *pSubresourceTilingsForNonPackedMips)
+{
+   d12_stub_report("ID3D12Device2::GetResourceTiling");
+}
+
+static inline LUID
+d12_stub_ID3D12Device2_GetAdapterLuid(ID3D12Device2 * This)
+{
+   d12_stub_report("ID3D12Device2::GetAdapterLuid");
+   LUID zero;
+   memset(&zero, 0, sizeof(zero));
+   return zero;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreatePipelineLibrary(ID3D12Device2 * This, _In_reads_(BlobLength) const void *pLibraryBlob, SIZE_T BlobLength, REFIID riid, void **ppPipelineLibrary)
+{
+   d12_stub_report("ID3D12Device2::CreatePipelineLibrary");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetEventOnMultipleFenceCompletion(ID3D12Device2 * This, _In_reads_(NumFences) ID3D12Fence *const *ppFences, _In_reads_(NumFences) const UINT64 *pFenceValues, UINT NumFences, D3D12_MULTIPLE_FENCE_WAIT_FLAGS Flags, HANDLE hEvent)
+{
+   d12_stub_report("ID3D12Device2::SetEventOnMultipleFenceCompletion");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_SetResidencyPriority(ID3D12Device2 * This, UINT NumObjects, _In_reads_(NumObjects) ID3D12Pageable *const *ppObjects, _In_reads_(NumObjects) const D3D12_RESIDENCY_PRIORITY *pPriorities)
+{
+   d12_stub_report("ID3D12Device2::SetResidencyPriority");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12Device2_CreatePipelineState(ID3D12Device2 * This, const D3D12_PIPELINE_STATE_STREAM_DESC *pDesc, REFIID riid, void **ppPipelineState)
+{
+   d12_stub_report("ID3D12Device2::CreatePipelineState");
+   return E_NOTIMPL;
+}
+
+#define D12_ID3D12Device2_DEFAULTS \
+   .QueryInterface = d12_stub_ID3D12Device2_QueryInterface, \
+   .AddRef = d12_stub_ID3D12Device2_AddRef, \
+   .Release = d12_stub_ID3D12Device2_Release, \
+   .GetPrivateData = d12_stub_ID3D12Device2_GetPrivateData, \
+   .SetPrivateData = d12_stub_ID3D12Device2_SetPrivateData, \
+   .SetPrivateDataInterface = d12_stub_ID3D12Device2_SetPrivateDataInterface, \
+   .SetName = d12_stub_ID3D12Device2_SetName, \
+   .GetNodeCount = d12_stub_ID3D12Device2_GetNodeCount, \
+   .CreateCommandQueue = d12_stub_ID3D12Device2_CreateCommandQueue, \
+   .CreateCommandAllocator = d12_stub_ID3D12Device2_CreateCommandAllocator, \
+   .CreateGraphicsPipelineState = d12_stub_ID3D12Device2_CreateGraphicsPipelineState, \
+   .CreateComputePipelineState = d12_stub_ID3D12Device2_CreateComputePipelineState, \
+   .CreateCommandList = d12_stub_ID3D12Device2_CreateCommandList, \
+   .CheckFeatureSupport = d12_stub_ID3D12Device2_CheckFeatureSupport, \
+   .CreateDescriptorHeap = d12_stub_ID3D12Device2_CreateDescriptorHeap, \
+   .GetDescriptorHandleIncrementSize = d12_stub_ID3D12Device2_GetDescriptorHandleIncrementSize, \
+   .CreateRootSignature = d12_stub_ID3D12Device2_CreateRootSignature, \
+   .CreateConstantBufferView = d12_stub_ID3D12Device2_CreateConstantBufferView, \
+   .CreateShaderResourceView = d12_stub_ID3D12Device2_CreateShaderResourceView, \
+   .CreateUnorderedAccessView = d12_stub_ID3D12Device2_CreateUnorderedAccessView, \
+   .CreateRenderTargetView = d12_stub_ID3D12Device2_CreateRenderTargetView, \
+   .CreateDepthStencilView = d12_stub_ID3D12Device2_CreateDepthStencilView, \
+   .CreateSampler = d12_stub_ID3D12Device2_CreateSampler, \
+   .CopyDescriptors = d12_stub_ID3D12Device2_CopyDescriptors, \
+   .CopyDescriptorsSimple = d12_stub_ID3D12Device2_CopyDescriptorsSimple, \
+   .GetResourceAllocationInfo = d12_stub_ID3D12Device2_GetResourceAllocationInfo, \
+   .GetCustomHeapProperties = d12_stub_ID3D12Device2_GetCustomHeapProperties, \
+   .CreateCommittedResource = d12_stub_ID3D12Device2_CreateCommittedResource, \
+   .CreateHeap = d12_stub_ID3D12Device2_CreateHeap, \
+   .CreatePlacedResource = d12_stub_ID3D12Device2_CreatePlacedResource, \
+   .CreateReservedResource = d12_stub_ID3D12Device2_CreateReservedResource, \
+   .CreateSharedHandle = d12_stub_ID3D12Device2_CreateSharedHandle, \
+   .OpenSharedHandle = d12_stub_ID3D12Device2_OpenSharedHandle, \
+   .OpenSharedHandleByName = d12_stub_ID3D12Device2_OpenSharedHandleByName, \
+   .MakeResident = d12_stub_ID3D12Device2_MakeResident, \
+   .Evict = d12_stub_ID3D12Device2_Evict, \
+   .CreateFence = d12_stub_ID3D12Device2_CreateFence, \
+   .GetDeviceRemovedReason = d12_stub_ID3D12Device2_GetDeviceRemovedReason, \
+   .GetCopyableFootprints = d12_stub_ID3D12Device2_GetCopyableFootprints, \
+   .CreateQueryHeap = d12_stub_ID3D12Device2_CreateQueryHeap, \
+   .SetStablePowerState = d12_stub_ID3D12Device2_SetStablePowerState, \
+   .CreateCommandSignature = d12_stub_ID3D12Device2_CreateCommandSignature, \
+   .GetResourceTiling = d12_stub_ID3D12Device2_GetResourceTiling, \
+   .GetAdapterLuid = d12_stub_ID3D12Device2_GetAdapterLuid, \
+   .CreatePipelineLibrary = d12_stub_ID3D12Device2_CreatePipelineLibrary, \
+   .SetEventOnMultipleFenceCompletion = d12_stub_ID3D12Device2_SetEventOnMultipleFenceCompletion, \
+   .SetResidencyPriority = d12_stub_ID3D12Device2_SetResidencyPriority, \
+   .CreatePipelineState = d12_stub_ID3D12Device2_CreatePipelineState
+
 /* ---- ID3D12GraphicsCommandList: 60 methods ---- */
 static inline HRESULT
 d12_stub_ID3D12GraphicsCommandList_QueryInterface(ID3D12GraphicsCommandList * This, REFIID riid, void **ppvObject)
@@ -802,6 +1185,582 @@ d12_stub_ID3D12GraphicsCommandList_ExecuteIndirect(ID3D12GraphicsCommandList * T
    .BeginEvent = d12_stub_ID3D12GraphicsCommandList_BeginEvent, \
    .EndEvent = d12_stub_ID3D12GraphicsCommandList_EndEvent, \
    .ExecuteIndirect = d12_stub_ID3D12GraphicsCommandList_ExecuteIndirect
+
+/* ---- ID3D12GraphicsCommandList6: 80 methods ---- */
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_QueryInterface(ID3D12GraphicsCommandList6 * This, REFIID riid, void **ppvObject)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::QueryInterface");
+   return E_NOTIMPL;
+}
+
+static inline ULONG
+d12_stub_ID3D12GraphicsCommandList6_AddRef(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::AddRef");
+   return 0;
+}
+
+static inline ULONG
+d12_stub_ID3D12GraphicsCommandList6_Release(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::Release");
+   return 0;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_GetPrivateData(ID3D12GraphicsCommandList6 * This, REFGUID guid, UINT *pDataSize, _Out_writes_bytes_opt_( *pDataSize ) void *pData)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::GetPrivateData");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_SetPrivateData(ID3D12GraphicsCommandList6 * This, REFGUID guid, UINT DataSize, _In_reads_bytes_opt_( DataSize ) const void *pData)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetPrivateData");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_SetPrivateDataInterface(ID3D12GraphicsCommandList6 * This, REFGUID guid, const IUnknown *pData)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetPrivateDataInterface");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_SetName(ID3D12GraphicsCommandList6 * This, _In_z_ LPCWSTR Name)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetName");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_GetDevice(ID3D12GraphicsCommandList6 * This, REFIID riid, void **ppvDevice)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::GetDevice");
+   return E_NOTIMPL;
+}
+
+static inline D3D12_COMMAND_LIST_TYPE
+d12_stub_ID3D12GraphicsCommandList6_GetType(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::GetType");
+   D3D12_COMMAND_LIST_TYPE zero;
+   memset(&zero, 0, sizeof(zero));
+   return zero;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_Close(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::Close");
+   return E_NOTIMPL;
+}
+
+static inline HRESULT
+d12_stub_ID3D12GraphicsCommandList6_Reset(ID3D12GraphicsCommandList6 * This, ID3D12CommandAllocator *pAllocator, ID3D12PipelineState *pInitialState)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::Reset");
+   return E_NOTIMPL;
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ClearState(ID3D12GraphicsCommandList6 * This, ID3D12PipelineState *pPipelineState)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ClearState");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_DrawInstanced(ID3D12GraphicsCommandList6 * This, UINT VertexCountPerInstance, UINT InstanceCount, UINT StartVertexLocation, UINT StartInstanceLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::DrawInstanced");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_DrawIndexedInstanced(ID3D12GraphicsCommandList6 * This, UINT IndexCountPerInstance, UINT InstanceCount, UINT StartIndexLocation, INT BaseVertexLocation, UINT StartInstanceLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::DrawIndexedInstanced");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_Dispatch(ID3D12GraphicsCommandList6 * This, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::Dispatch");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_CopyBufferRegion(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT64 NumBytes)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::CopyBufferRegion");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_CopyTextureRegion(ID3D12GraphicsCommandList6 * This, const D3D12_TEXTURE_COPY_LOCATION *pDst, UINT DstX, UINT DstY, UINT DstZ, const D3D12_TEXTURE_COPY_LOCATION *pSrc, const D3D12_BOX *pSrcBox)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::CopyTextureRegion");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_CopyResource(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstResource, ID3D12Resource *pSrcResource)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::CopyResource");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_CopyTiles(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pTiledResource, const D3D12_TILED_RESOURCE_COORDINATE *pTileRegionStartCoordinate, const D3D12_TILE_REGION_SIZE *pTileRegionSize, ID3D12Resource *pBuffer, UINT64 BufferStartOffsetInBytes, D3D12_TILE_COPY_FLAGS Flags)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::CopyTiles");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ResolveSubresource(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstResource, UINT DstSubresource, ID3D12Resource *pSrcResource, UINT SrcSubresource, DXGI_FORMAT Format)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ResolveSubresource");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_IASetPrimitiveTopology(ID3D12GraphicsCommandList6 * This, D3D12_PRIMITIVE_TOPOLOGY PrimitiveTopology)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::IASetPrimitiveTopology");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_RSSetViewports(ID3D12GraphicsCommandList6 * This, _In_range_(0, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) UINT NumViewports, _In_reads_( NumViewports) const D3D12_VIEWPORT *pViewports)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::RSSetViewports");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_RSSetScissorRects(ID3D12GraphicsCommandList6 * This, _In_range_(0, D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE) UINT NumRects, _In_reads_( NumRects) const D3D12_RECT *pRects)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::RSSetScissorRects");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_OMSetBlendFactor(ID3D12GraphicsCommandList6 * This, _In_reads_opt_(4) const FLOAT BlendFactor[ 4 ])
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::OMSetBlendFactor");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_OMSetStencilRef(ID3D12GraphicsCommandList6 * This, UINT StencilRef)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::OMSetStencilRef");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetPipelineState(ID3D12GraphicsCommandList6 * This, ID3D12PipelineState *pPipelineState)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetPipelineState");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ResourceBarrier(ID3D12GraphicsCommandList6 * This, UINT NumBarriers, _In_reads_(NumBarriers) const D3D12_RESOURCE_BARRIER *pBarriers)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ResourceBarrier");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ExecuteBundle(ID3D12GraphicsCommandList6 * This, ID3D12GraphicsCommandList *pCommandList)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ExecuteBundle");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetDescriptorHeaps(ID3D12GraphicsCommandList6 * This, UINT NumDescriptorHeaps, _In_reads_(NumDescriptorHeaps) ID3D12DescriptorHeap *const *ppDescriptorHeaps)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetDescriptorHeaps");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRootSignature(ID3D12GraphicsCommandList6 * This, ID3D12RootSignature *pRootSignature)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRootSignature");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootSignature(ID3D12GraphicsCommandList6 * This, ID3D12RootSignature *pRootSignature)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRootSignature");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRootDescriptorTable(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRootDescriptorTable");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootDescriptorTable(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_DESCRIPTOR_HANDLE BaseDescriptor)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRootDescriptorTable");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRoot32BitConstant(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRoot32BitConstant");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRoot32BitConstant(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, UINT SrcData, UINT DestOffsetIn32BitValues)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRoot32BitConstant");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRoot32BitConstants(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, UINT Num32BitValuesToSet, _In_reads_(Num32BitValuesToSet*sizeof(UINT)) const void *pSrcData, UINT DestOffsetIn32BitValues)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRoot32BitConstants");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRoot32BitConstants(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, UINT Num32BitValuesToSet, _In_reads_(Num32BitValuesToSet*sizeof(UINT)) const void *pSrcData, UINT DestOffsetIn32BitValues)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRoot32BitConstants");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRootConstantBufferView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRootConstantBufferView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRootShaderResourceView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRootShaderResourceView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetComputeRootUnorderedAccessView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetComputeRootUnorderedAccessView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootUnorderedAccessView(ID3D12GraphicsCommandList6 * This, UINT RootParameterIndex, D3D12_GPU_VIRTUAL_ADDRESS BufferLocation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetGraphicsRootUnorderedAccessView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_IASetIndexBuffer(ID3D12GraphicsCommandList6 * This, const D3D12_INDEX_BUFFER_VIEW *pView)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::IASetIndexBuffer");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_IASetVertexBuffers(ID3D12GraphicsCommandList6 * This, UINT StartSlot, UINT NumViews, _In_reads_opt_(NumViews) const D3D12_VERTEX_BUFFER_VIEW *pViews)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::IASetVertexBuffers");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SOSetTargets(ID3D12GraphicsCommandList6 * This, UINT StartSlot, UINT NumViews, _In_reads_opt_(NumViews) const D3D12_STREAM_OUTPUT_BUFFER_VIEW *pViews)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SOSetTargets");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_OMSetRenderTargets(ID3D12GraphicsCommandList6 * This, UINT NumRenderTargetDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE *pRenderTargetDescriptors, BOOL RTsSingleHandleToDescriptorRange, const D3D12_CPU_DESCRIPTOR_HANDLE *pDepthStencilDescriptor)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::OMSetRenderTargets");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ClearDepthStencilView(ID3D12GraphicsCommandList6 * This, D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView, D3D12_CLEAR_FLAGS ClearFlags, FLOAT Depth, UINT8 Stencil, UINT NumRects, _In_reads_(NumRects) const D3D12_RECT *pRects)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ClearDepthStencilView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ClearRenderTargetView(ID3D12GraphicsCommandList6 * This, D3D12_CPU_DESCRIPTOR_HANDLE RenderTargetView, const FLOAT ColorRGBA[ 4 ], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT *pRects)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ClearRenderTargetView");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ClearUnorderedAccessViewUint(ID3D12GraphicsCommandList6 * This, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const UINT Values[ 4 ], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT *pRects)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ClearUnorderedAccessViewUint");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ClearUnorderedAccessViewFloat(ID3D12GraphicsCommandList6 * This, D3D12_GPU_DESCRIPTOR_HANDLE ViewGPUHandleInCurrentHeap, D3D12_CPU_DESCRIPTOR_HANDLE ViewCPUHandle, ID3D12Resource *pResource, const FLOAT Values[ 4 ], UINT NumRects, _In_reads_(NumRects) const D3D12_RECT *pRects)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ClearUnorderedAccessViewFloat");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_DiscardResource(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pResource, const D3D12_DISCARD_REGION *pRegion)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::DiscardResource");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_BeginQuery(ID3D12GraphicsCommandList6 * This, ID3D12QueryHeap *pQueryHeap, D3D12_QUERY_TYPE Type, UINT Index)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::BeginQuery");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_EndQuery(ID3D12GraphicsCommandList6 * This, ID3D12QueryHeap *pQueryHeap, D3D12_QUERY_TYPE Type, UINT Index)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::EndQuery");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ResolveQueryData(ID3D12GraphicsCommandList6 * This, ID3D12QueryHeap *pQueryHeap, D3D12_QUERY_TYPE Type, UINT StartIndex, UINT NumQueries, ID3D12Resource *pDestinationBuffer, UINT64 AlignedDestinationBufferOffset)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ResolveQueryData");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetPredication(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pBuffer, UINT64 AlignedBufferOffset, D3D12_PREDICATION_OP Operation)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetPredication");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetMarker(ID3D12GraphicsCommandList6 * This, UINT Metadata, _In_reads_bytes_opt_(Size) const void *pData, UINT Size)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetMarker");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_BeginEvent(ID3D12GraphicsCommandList6 * This, UINT Metadata, _In_reads_bytes_opt_(Size) const void *pData, UINT Size)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::BeginEvent");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_EndEvent(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::EndEvent");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ExecuteIndirect(ID3D12GraphicsCommandList6 * This, ID3D12CommandSignature *pCommandSignature, UINT MaxCommandCount, ID3D12Resource *pArgumentBuffer, UINT64 ArgumentBufferOffset, ID3D12Resource *pCountBuffer, UINT64 CountBufferOffset)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ExecuteIndirect");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_AtomicCopyBufferUINT(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT Dependencies, _In_reads_(Dependencies) ID3D12Resource *const *ppDependentResources, _In_reads_(Dependencies) const D3D12_SUBRESOURCE_RANGE_UINT64 *pDependentSubresourceRanges)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::AtomicCopyBufferUINT");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_AtomicCopyBufferUINT64(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstBuffer, UINT64 DstOffset, ID3D12Resource *pSrcBuffer, UINT64 SrcOffset, UINT Dependencies, _In_reads_(Dependencies) ID3D12Resource *const *ppDependentResources, _In_reads_(Dependencies) const D3D12_SUBRESOURCE_RANGE_UINT64 *pDependentSubresourceRanges)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::AtomicCopyBufferUINT64");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_OMSetDepthBounds(ID3D12GraphicsCommandList6 * This, FLOAT Min, FLOAT Max)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::OMSetDepthBounds");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetSamplePositions(ID3D12GraphicsCommandList6 * This, UINT NumSamplesPerPixel, UINT NumPixels, _In_reads_(NumSamplesPerPixel*NumPixels) D3D12_SAMPLE_POSITION *pSamplePositions)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetSamplePositions");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ResolveSubresourceRegion(ID3D12GraphicsCommandList6 * This, ID3D12Resource *pDstResource, UINT DstSubresource, UINT DstX, UINT DstY, ID3D12Resource *pSrcResource, UINT SrcSubresource, D3D12_RECT *pSrcRect, DXGI_FORMAT Format, D3D12_RESOLVE_MODE ResolveMode)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ResolveSubresourceRegion");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetViewInstanceMask(ID3D12GraphicsCommandList6 * This, UINT Mask)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetViewInstanceMask");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_WriteBufferImmediate(ID3D12GraphicsCommandList6 * This, UINT Count, _In_reads_(Count) const D3D12_WRITEBUFFERIMMEDIATE_PARAMETER *pParams, _In_reads_opt_(Count) const D3D12_WRITEBUFFERIMMEDIATE_MODE *pModes)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::WriteBufferImmediate");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetProtectedResourceSession(ID3D12GraphicsCommandList6 * This, ID3D12ProtectedResourceSession *pProtectedResourceSession)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetProtectedResourceSession");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_BeginRenderPass(ID3D12GraphicsCommandList6 * This, UINT NumRenderTargets, _In_reads_opt_(NumRenderTargets) const D3D12_RENDER_PASS_RENDER_TARGET_DESC *pRenderTargets, const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *pDepthStencil, D3D12_RENDER_PASS_FLAGS Flags)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::BeginRenderPass");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_EndRenderPass(ID3D12GraphicsCommandList6 * This)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::EndRenderPass");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_InitializeMetaCommand(ID3D12GraphicsCommandList6 * This, ID3D12MetaCommand *pMetaCommand, _In_reads_bytes_opt_(InitializationParametersDataSizeInBytes) const void *pInitializationParametersData, SIZE_T InitializationParametersDataSizeInBytes)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::InitializeMetaCommand");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_ExecuteMetaCommand(ID3D12GraphicsCommandList6 * This, ID3D12MetaCommand *pMetaCommand, _In_reads_bytes_opt_(ExecutionParametersDataSizeInBytes) const void *pExecutionParametersData, SIZE_T ExecutionParametersDataSizeInBytes)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::ExecuteMetaCommand");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_BuildRaytracingAccelerationStructure(ID3D12GraphicsCommandList6 * This, const D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC *pDesc, UINT NumPostbuildInfoDescs, _In_reads_opt_(NumPostbuildInfoDescs) const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC *pPostbuildInfoDescs)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::BuildRaytracingAccelerationStructure");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_EmitRaytracingAccelerationStructurePostbuildInfo(ID3D12GraphicsCommandList6 * This, const D3D12_RAYTRACING_ACCELERATION_STRUCTURE_POSTBUILD_INFO_DESC *pDesc, UINT NumSourceAccelerationStructures, _In_reads_( NumSourceAccelerationStructures ) const D3D12_GPU_VIRTUAL_ADDRESS *pSourceAccelerationStructureData)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::EmitRaytracingAccelerationStructurePostbuildInfo");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_CopyRaytracingAccelerationStructure(ID3D12GraphicsCommandList6 * This, D3D12_GPU_VIRTUAL_ADDRESS DestAccelerationStructureData, D3D12_GPU_VIRTUAL_ADDRESS SourceAccelerationStructureData, D3D12_RAYTRACING_ACCELERATION_STRUCTURE_COPY_MODE Mode)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::CopyRaytracingAccelerationStructure");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_SetPipelineState1(ID3D12GraphicsCommandList6 * This, ID3D12StateObject *pStateObject)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::SetPipelineState1");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_DispatchRays(ID3D12GraphicsCommandList6 * This, const D3D12_DISPATCH_RAYS_DESC *pDesc)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::DispatchRays");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_RSSetShadingRate(ID3D12GraphicsCommandList6 * This, D3D12_SHADING_RATE baseShadingRate, _In_reads_opt_(D3D12_RS_SET_SHADING_RATE_COMBINER_COUNT) const D3D12_SHADING_RATE_COMBINER *combiners)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::RSSetShadingRate");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_RSSetShadingRateImage(ID3D12GraphicsCommandList6 * This, ID3D12Resource *shadingRateImage)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::RSSetShadingRateImage");
+}
+
+static inline void
+d12_stub_ID3D12GraphicsCommandList6_DispatchMesh(ID3D12GraphicsCommandList6 * This, UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ)
+{
+   d12_stub_report("ID3D12GraphicsCommandList6::DispatchMesh");
+}
+
+#define D12_ID3D12GraphicsCommandList6_DEFAULTS \
+   .QueryInterface = d12_stub_ID3D12GraphicsCommandList6_QueryInterface, \
+   .AddRef = d12_stub_ID3D12GraphicsCommandList6_AddRef, \
+   .Release = d12_stub_ID3D12GraphicsCommandList6_Release, \
+   .GetPrivateData = d12_stub_ID3D12GraphicsCommandList6_GetPrivateData, \
+   .SetPrivateData = d12_stub_ID3D12GraphicsCommandList6_SetPrivateData, \
+   .SetPrivateDataInterface = d12_stub_ID3D12GraphicsCommandList6_SetPrivateDataInterface, \
+   .SetName = d12_stub_ID3D12GraphicsCommandList6_SetName, \
+   .GetDevice = d12_stub_ID3D12GraphicsCommandList6_GetDevice, \
+   .GetType = d12_stub_ID3D12GraphicsCommandList6_GetType, \
+   .Close = d12_stub_ID3D12GraphicsCommandList6_Close, \
+   .Reset = d12_stub_ID3D12GraphicsCommandList6_Reset, \
+   .ClearState = d12_stub_ID3D12GraphicsCommandList6_ClearState, \
+   .DrawInstanced = d12_stub_ID3D12GraphicsCommandList6_DrawInstanced, \
+   .DrawIndexedInstanced = d12_stub_ID3D12GraphicsCommandList6_DrawIndexedInstanced, \
+   .Dispatch = d12_stub_ID3D12GraphicsCommandList6_Dispatch, \
+   .CopyBufferRegion = d12_stub_ID3D12GraphicsCommandList6_CopyBufferRegion, \
+   .CopyTextureRegion = d12_stub_ID3D12GraphicsCommandList6_CopyTextureRegion, \
+   .CopyResource = d12_stub_ID3D12GraphicsCommandList6_CopyResource, \
+   .CopyTiles = d12_stub_ID3D12GraphicsCommandList6_CopyTiles, \
+   .ResolveSubresource = d12_stub_ID3D12GraphicsCommandList6_ResolveSubresource, \
+   .IASetPrimitiveTopology = d12_stub_ID3D12GraphicsCommandList6_IASetPrimitiveTopology, \
+   .RSSetViewports = d12_stub_ID3D12GraphicsCommandList6_RSSetViewports, \
+   .RSSetScissorRects = d12_stub_ID3D12GraphicsCommandList6_RSSetScissorRects, \
+   .OMSetBlendFactor = d12_stub_ID3D12GraphicsCommandList6_OMSetBlendFactor, \
+   .OMSetStencilRef = d12_stub_ID3D12GraphicsCommandList6_OMSetStencilRef, \
+   .SetPipelineState = d12_stub_ID3D12GraphicsCommandList6_SetPipelineState, \
+   .ResourceBarrier = d12_stub_ID3D12GraphicsCommandList6_ResourceBarrier, \
+   .ExecuteBundle = d12_stub_ID3D12GraphicsCommandList6_ExecuteBundle, \
+   .SetDescriptorHeaps = d12_stub_ID3D12GraphicsCommandList6_SetDescriptorHeaps, \
+   .SetComputeRootSignature = d12_stub_ID3D12GraphicsCommandList6_SetComputeRootSignature, \
+   .SetGraphicsRootSignature = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootSignature, \
+   .SetComputeRootDescriptorTable = d12_stub_ID3D12GraphicsCommandList6_SetComputeRootDescriptorTable, \
+   .SetGraphicsRootDescriptorTable = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootDescriptorTable, \
+   .SetComputeRoot32BitConstant = d12_stub_ID3D12GraphicsCommandList6_SetComputeRoot32BitConstant, \
+   .SetGraphicsRoot32BitConstant = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRoot32BitConstant, \
+   .SetComputeRoot32BitConstants = d12_stub_ID3D12GraphicsCommandList6_SetComputeRoot32BitConstants, \
+   .SetGraphicsRoot32BitConstants = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRoot32BitConstants, \
+   .SetComputeRootConstantBufferView = d12_stub_ID3D12GraphicsCommandList6_SetComputeRootConstantBufferView, \
+   .SetGraphicsRootConstantBufferView = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootConstantBufferView, \
+   .SetComputeRootShaderResourceView = d12_stub_ID3D12GraphicsCommandList6_SetComputeRootShaderResourceView, \
+   .SetGraphicsRootShaderResourceView = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootShaderResourceView, \
+   .SetComputeRootUnorderedAccessView = d12_stub_ID3D12GraphicsCommandList6_SetComputeRootUnorderedAccessView, \
+   .SetGraphicsRootUnorderedAccessView = d12_stub_ID3D12GraphicsCommandList6_SetGraphicsRootUnorderedAccessView, \
+   .IASetIndexBuffer = d12_stub_ID3D12GraphicsCommandList6_IASetIndexBuffer, \
+   .IASetVertexBuffers = d12_stub_ID3D12GraphicsCommandList6_IASetVertexBuffers, \
+   .SOSetTargets = d12_stub_ID3D12GraphicsCommandList6_SOSetTargets, \
+   .OMSetRenderTargets = d12_stub_ID3D12GraphicsCommandList6_OMSetRenderTargets, \
+   .ClearDepthStencilView = d12_stub_ID3D12GraphicsCommandList6_ClearDepthStencilView, \
+   .ClearRenderTargetView = d12_stub_ID3D12GraphicsCommandList6_ClearRenderTargetView, \
+   .ClearUnorderedAccessViewUint = d12_stub_ID3D12GraphicsCommandList6_ClearUnorderedAccessViewUint, \
+   .ClearUnorderedAccessViewFloat = d12_stub_ID3D12GraphicsCommandList6_ClearUnorderedAccessViewFloat, \
+   .DiscardResource = d12_stub_ID3D12GraphicsCommandList6_DiscardResource, \
+   .BeginQuery = d12_stub_ID3D12GraphicsCommandList6_BeginQuery, \
+   .EndQuery = d12_stub_ID3D12GraphicsCommandList6_EndQuery, \
+   .ResolveQueryData = d12_stub_ID3D12GraphicsCommandList6_ResolveQueryData, \
+   .SetPredication = d12_stub_ID3D12GraphicsCommandList6_SetPredication, \
+   .SetMarker = d12_stub_ID3D12GraphicsCommandList6_SetMarker, \
+   .BeginEvent = d12_stub_ID3D12GraphicsCommandList6_BeginEvent, \
+   .EndEvent = d12_stub_ID3D12GraphicsCommandList6_EndEvent, \
+   .ExecuteIndirect = d12_stub_ID3D12GraphicsCommandList6_ExecuteIndirect, \
+   .AtomicCopyBufferUINT = d12_stub_ID3D12GraphicsCommandList6_AtomicCopyBufferUINT, \
+   .AtomicCopyBufferUINT64 = d12_stub_ID3D12GraphicsCommandList6_AtomicCopyBufferUINT64, \
+   .OMSetDepthBounds = d12_stub_ID3D12GraphicsCommandList6_OMSetDepthBounds, \
+   .SetSamplePositions = d12_stub_ID3D12GraphicsCommandList6_SetSamplePositions, \
+   .ResolveSubresourceRegion = d12_stub_ID3D12GraphicsCommandList6_ResolveSubresourceRegion, \
+   .SetViewInstanceMask = d12_stub_ID3D12GraphicsCommandList6_SetViewInstanceMask, \
+   .WriteBufferImmediate = d12_stub_ID3D12GraphicsCommandList6_WriteBufferImmediate, \
+   .SetProtectedResourceSession = d12_stub_ID3D12GraphicsCommandList6_SetProtectedResourceSession, \
+   .BeginRenderPass = d12_stub_ID3D12GraphicsCommandList6_BeginRenderPass, \
+   .EndRenderPass = d12_stub_ID3D12GraphicsCommandList6_EndRenderPass, \
+   .InitializeMetaCommand = d12_stub_ID3D12GraphicsCommandList6_InitializeMetaCommand, \
+   .ExecuteMetaCommand = d12_stub_ID3D12GraphicsCommandList6_ExecuteMetaCommand, \
+   .BuildRaytracingAccelerationStructure = d12_stub_ID3D12GraphicsCommandList6_BuildRaytracingAccelerationStructure, \
+   .EmitRaytracingAccelerationStructurePostbuildInfo = d12_stub_ID3D12GraphicsCommandList6_EmitRaytracingAccelerationStructurePostbuildInfo, \
+   .CopyRaytracingAccelerationStructure = d12_stub_ID3D12GraphicsCommandList6_CopyRaytracingAccelerationStructure, \
+   .SetPipelineState1 = d12_stub_ID3D12GraphicsCommandList6_SetPipelineState1, \
+   .DispatchRays = d12_stub_ID3D12GraphicsCommandList6_DispatchRays, \
+   .RSSetShadingRate = d12_stub_ID3D12GraphicsCommandList6_RSSetShadingRate, \
+   .RSSetShadingRateImage = d12_stub_ID3D12GraphicsCommandList6_RSSetShadingRateImage, \
+   .DispatchMesh = d12_stub_ID3D12GraphicsCommandList6_DispatchMesh
 
 /* ---- ID3D12CommandQueue: 19 methods ---- */
 static inline HRESULT

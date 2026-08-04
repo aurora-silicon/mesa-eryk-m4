@@ -88,7 +88,7 @@ d12_open_asahi_fd(void)
  */
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_QueryInterface(ID3D12Device *iface, REFIID riid, void **out)
+d12_device_QueryInterface(ID3D12Device2 *iface, REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
@@ -97,7 +97,13 @@ d12_device_QueryInterface(ID3D12Device *iface, REFIID riid, void **out)
 
    if (d12_guid_equal(riid, &IID_IUnknown) ||
        d12_guid_equal(riid, &IID_ID3D12Object) ||
-       d12_guid_equal(riid, &IID_ID3D12Device)) {
+       d12_guid_equal(riid, &IID_ID3D12Device) ||
+       d12_guid_equal(riid, &IID_ID3D12Device1) ||
+       d12_guid_equal(riid, &IID_ID3D12Device2)) {
+      /* One object, one vtable: ID3D12Device2's is a superset, so the
+       * newer IIDs return the same pointer. Mesh pipelines need
+       * ID3D12Device2::CreatePipelineState.
+       */
       d12_device_add_ref(device);
       *out = iface;
       return S_OK;
@@ -109,14 +115,14 @@ d12_device_QueryInterface(ID3D12Device *iface, REFIID riid, void **out)
 }
 
 static ULONG STDMETHODCALLTYPE
-d12_device_AddRef(ID3D12Device *iface)
+d12_device_AddRef(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
    return p_atomic_inc_return(&device->refcount);
 }
 
 static ULONG STDMETHODCALLTYPE
-d12_device_Release(ID3D12Device *iface)
+d12_device_Release(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
    uint32_t refs = p_atomic_dec_return(&device->refcount);
@@ -138,17 +144,17 @@ d12_device_Release(ID3D12Device *iface)
 void
 d12_device_add_ref(struct d12_device *device)
 {
-   d12_device_AddRef(&device->iface);
+   d12_device_AddRef((ID3D12Device2 *)&device->iface);
 }
 
 void
 d12_device_release(struct d12_device *device)
 {
-   d12_device_Release(&device->iface);
+   d12_device_Release((ID3D12Device2 *)&device->iface);
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_GetPrivateData(ID3D12Device *iface, REFGUID guid, UINT *size,
+d12_device_GetPrivateData(ID3D12Device2 *iface, REFGUID guid, UINT *size,
                           void *data)
 {
    mesa_logw("ID3D12Device::GetPrivateData: not implemented");
@@ -156,7 +162,7 @@ d12_device_GetPrivateData(ID3D12Device *iface, REFGUID guid, UINT *size,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_SetPrivateData(ID3D12Device *iface, REFGUID guid, UINT size,
+d12_device_SetPrivateData(ID3D12Device2 *iface, REFGUID guid, UINT size,
                           const void *data)
 {
    mesa_logw("ID3D12Device::SetPrivateData: not implemented");
@@ -164,7 +170,7 @@ d12_device_SetPrivateData(ID3D12Device *iface, REFGUID guid, UINT size,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_SetPrivateDataInterface(ID3D12Device *iface, REFGUID guid,
+d12_device_SetPrivateDataInterface(ID3D12Device2 *iface, REFGUID guid,
                                    const IUnknown *data)
 {
    mesa_logw("ID3D12Device::SetPrivateDataInterface: not implemented");
@@ -172,7 +178,7 @@ d12_device_SetPrivateDataInterface(ID3D12Device *iface, REFGUID guid,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_SetName(ID3D12Device *iface, LPCWSTR name)
+d12_device_SetName(ID3D12Device2 *iface, LPCWSTR name)
 {
    /* Accepted and ignored; nothing consumes debug names yet. */
    return S_OK;
@@ -183,13 +189,13 @@ d12_device_SetName(ID3D12Device *iface, LPCWSTR name)
  */
 
 static UINT STDMETHODCALLTYPE
-d12_device_GetNodeCount(ID3D12Device *iface)
+d12_device_GetNodeCount(ID3D12Device2 *iface)
 {
    return 1;
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateCommandQueue(ID3D12Device *iface,
+d12_device_CreateCommandQueue(ID3D12Device2 *iface,
                               const D3D12_COMMAND_QUEUE_DESC *desc,
                               REFIID riid, void **out)
 {
@@ -198,7 +204,7 @@ d12_device_CreateCommandQueue(ID3D12Device *iface,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateCommandAllocator(ID3D12Device *iface,
+d12_device_CreateCommandAllocator(ID3D12Device2 *iface,
                                   D3D12_COMMAND_LIST_TYPE type, REFIID riid,
                                   void **out)
 {
@@ -207,7 +213,7 @@ d12_device_CreateCommandAllocator(ID3D12Device *iface,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateCommandList(ID3D12Device *iface, UINT node_mask,
+d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
                              D3D12_COMMAND_LIST_TYPE type,
                              ID3D12CommandAllocator *allocator,
                              ID3D12PipelineState *initial_state, REFIID riid,
@@ -229,7 +235,7 @@ d12_device_CreateCommandList(ID3D12Device *iface, UINT node_mask,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CheckFeatureSupport(ID3D12Device *iface, D3D12_FEATURE feature,
+d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
                                void *data, UINT data_size)
 {
    struct d12_device *device = d12_device_from_iface(iface);
@@ -359,7 +365,7 @@ d12_pso_binding_map(ID3D12RootSignature *rs)
 
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateComputePipelineState(
-   ID3D12Device *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
+   ID3D12Device2 *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
    REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
@@ -381,7 +387,7 @@ d12_device_CreateComputePipelineState(
 
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateGraphicsPipelineState(
-   ID3D12Device *iface, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
+   ID3D12Device2 *iface, const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
    REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
@@ -424,7 +430,7 @@ d12_device_CreateGraphicsPipelineState(
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateRootSignature(ID3D12Device *iface, UINT node_mask,
+d12_device_CreateRootSignature(ID3D12Device2 *iface, UINT node_mask,
                                const void *blob, SIZE_T blob_size,
                                REFIID riid, void **out)
 {
@@ -437,7 +443,7 @@ d12_device_CreateRootSignature(ID3D12Device *iface, UINT node_mask,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateDescriptorHeap(ID3D12Device *iface,
+d12_device_CreateDescriptorHeap(ID3D12Device2 *iface,
                                 const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                 REFIID riid, void **out)
 {
@@ -446,7 +452,7 @@ d12_device_CreateDescriptorHeap(ID3D12Device *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_device_CreateRenderTargetView(ID3D12Device *iface,
+d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
                                   ID3D12Resource *resource,
                                   const D3D12_RENDER_TARGET_VIEW_DESC *desc,
                                   D3D12_CPU_DESCRIPTOR_HANDLE dest)
@@ -486,7 +492,7 @@ d12_device_CreateRenderTargetView(ID3D12Device *iface,
 }
 
 static void STDMETHODCALLTYPE
-d12_device_CreateDepthStencilView(ID3D12Device *iface,
+d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                                   ID3D12Resource *resource,
                                   const D3D12_DEPTH_STENCIL_VIEW_DESC *desc,
                                   D3D12_CPU_DESCRIPTOR_HANDLE dest)
@@ -577,7 +583,7 @@ d12_fill_buffer_descriptor(struct d12_descriptor *slot,
 }
 
 static void STDMETHODCALLTYPE
-d12_device_CreateShaderResourceView(ID3D12Device *iface,
+d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                                     ID3D12Resource *resource,
                                     const D3D12_SHADER_RESOURCE_VIEW_DESC *desc,
                                     D3D12_CPU_DESCRIPTOR_HANDLE dest)
@@ -638,7 +644,7 @@ d12_device_CreateShaderResourceView(ID3D12Device *iface,
 
 static void STDMETHODCALLTYPE
 d12_device_CreateUnorderedAccessView(
-   ID3D12Device *iface, ID3D12Resource *resource, ID3D12Resource *counter,
+   ID3D12Device2 *iface, ID3D12Resource *resource, ID3D12Resource *counter,
    const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
    D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
@@ -691,7 +697,7 @@ d12_device_CreateUnorderedAccessView(
 
 static void STDMETHODCALLTYPE
 d12_device_CreateConstantBufferView(
-   ID3D12Device *iface, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
+   ID3D12Device2 *iface, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
    D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
    struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
@@ -712,7 +718,7 @@ d12_device_CreateConstantBufferView(
 
 static UINT STDMETHODCALLTYPE
 d12_device_GetDescriptorHandleIncrementSize(
-   ID3D12Device *iface, D3D12_DESCRIPTOR_HEAP_TYPE type)
+   ID3D12Device2 *iface, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
    /* sizeof(struct d12_descriptor). Apps must treat this as opaque; the
     * value only has to be stable and truthful about our layout.
@@ -729,7 +735,7 @@ d12_device_GetDescriptorHandleIncrementSize(
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateCommittedResource(ID3D12Device *iface,
+d12_device_CreateCommittedResource(ID3D12Device2 *iface,
                                    const D3D12_HEAP_PROPERTIES *heap_props,
                                    D3D12_HEAP_FLAGS heap_flags,
                                    const D3D12_RESOURCE_DESC *desc,
@@ -748,7 +754,7 @@ d12_device_CreateCommittedResource(ID3D12Device *iface,
  * about our internal layout.
  */
 static void STDMETHODCALLTYPE
-d12_device_GetCopyableFootprints(ID3D12Device *iface,
+d12_device_GetCopyableFootprints(ID3D12Device2 *iface,
                                  const D3D12_RESOURCE_DESC *desc,
                                  UINT first_subresource,
                                  UINT num_subresources, UINT64 base_offset,
@@ -830,7 +836,7 @@ d12_device_GetCopyableFootprints(ID3D12Device *iface,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_CreateFence(ID3D12Device *iface, UINT64 initial_value,
+d12_device_CreateFence(ID3D12Device2 *iface, UINT64 initial_value,
                        D3D12_FENCE_FLAGS flags, REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
@@ -838,7 +844,7 @@ d12_device_CreateFence(ID3D12Device *iface, UINT64 initial_value,
 }
 
 static HRESULT STDMETHODCALLTYPE
-d12_device_GetDeviceRemovedReason(ID3D12Device *iface)
+d12_device_GetDeviceRemovedReason(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
@@ -847,7 +853,7 @@ d12_device_GetDeviceRemovedReason(ID3D12Device *iface)
 }
 
 static LUID STDMETHODCALLTYPE
-d12_device_GetAdapterLuid(ID3D12Device *iface)
+d12_device_GetAdapterLuid(ID3D12Device2 *iface)
 {
    /* A zero LUID is a valid-looking value that collides with every other
     * adapter. One fixed non-zero value is honest for a single-adapter
@@ -857,9 +863,15 @@ d12_device_GetAdapterLuid(ID3D12Device *iface)
    return luid;
 }
 
-static const ID3D12DeviceVtbl d12_device_vtbl = {
+/* ID3D12Device2's vtable is a superset of ID3D12Device's, so the object
+ * carries one vtable and QueryInterface hands out the newer IIDs against
+ * the same pointer. Mesh pipelines are created through
+ * ID3D12Device2::CreatePipelineState, which takes a STREAM descriptor
+ * rather than the fixed GRAPHICS/COMPUTE structs.
+ */
+static const ID3D12Device2Vtbl d12_device_vtbl = {
    /* every unimplemented slot fails safely */
-   D12_ID3D12Device_DEFAULTS,
+   D12_ID3D12Device2_DEFAULTS,
    .QueryInterface = d12_device_QueryInterface,
    .AddRef = d12_device_AddRef,
    .Release = d12_device_Release,
@@ -1042,9 +1054,9 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
              device->feature_level);
 
    HRESULT hr =
-      d12_device_QueryInterface(&device->iface, riid, out);
+      d12_device_QueryInterface((ID3D12Device2 *)&device->iface, riid, out);
    /* Drop the construction ref; QueryInterface holds the caller's. */
-   d12_device_Release(&device->iface);
+   d12_device_Release((ID3D12Device2 *)&device->iface);
    return hr;
 }
 

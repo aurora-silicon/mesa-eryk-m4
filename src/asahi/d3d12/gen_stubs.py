@@ -25,7 +25,14 @@ import sys
 
 INTERFACES = [
     "ID3D12Device",
+    # Mesh shaders arrive through ID3D12Device2::CreatePipelineState (a
+    # stream descriptor, not the fixed GRAPHICS/COMPUTE descs) and are
+    # launched by ID3D12GraphicsCommandList6::DispatchMesh. Both vtables
+    # are supersets of the base ones, so the objects keep one vtable each
+    # and QueryInterface just accepts the newer IIDs.
+    "ID3D12Device2",
     "ID3D12GraphicsCommandList",
+    "ID3D12GraphicsCommandList6",
     "ID3D12CommandQueue",
     "ID3D12Resource",
     "ID3D12Fence",

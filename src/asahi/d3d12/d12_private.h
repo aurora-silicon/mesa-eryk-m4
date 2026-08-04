@@ -580,7 +580,7 @@ d12_resource_from_iface(ID3D12Resource *iface)
 }
 
 static inline struct d12_cmd_list *
-d12_cmd_list_from_iface(ID3D12GraphicsCommandList *iface)
+d12_cmd_list_from_iface(void *iface)
 {
    return (struct d12_cmd_list *)iface;
 }
@@ -619,7 +619,7 @@ struct d12_queue {
 };
 
 static inline struct d12_device *
-d12_device_from_iface(ID3D12Device *iface)
+d12_device_from_iface(void *iface)
 {
    return (struct d12_device *)iface;
 }
