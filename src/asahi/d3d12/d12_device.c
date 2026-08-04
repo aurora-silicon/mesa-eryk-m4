@@ -387,22 +387,19 @@ d12_device_CreateGraphicsPipelineState(
    if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
       return E_INVALIDARG;
 
-   /* AGX has no hardware geometry or tessellation stage: they run as
-    * compute through the poly lowering, and that runtime does not exist
-    * yet. These were being dropped on the floor, which is the worst
-    * available behaviour -- a pipeline that quietly rasterises its
-    * pre-GS geometry draws *something*, and something is indistinguishable
-    * from a pass at a glance. Refuse by name instead.
+   /* Tessellation has no hardware stage on AGX and no dispatch sequence
+    * yet. Dropping it on the floor is the worst available behaviour -- a
+    * pipeline that quietly rasterises its pre-tessellation geometry draws
+    * *something*, and something is indistinguishable from a pass at a
+    * glance. Refuse by name instead.
     *
-    * The shaders themselves translate: all 15 geometry and every
-    * tessellation shader in the corpus compile. What is missing is the
-    * dispatch sequence around them (docs/roadmap.md).
+    * Geometry shaders used to be on this list and now dispatch; see
+    * d12_list_gs_prerast.
     */
    static const struct {
       size_t offset;
       const char *name;
    } unsupported_stages[] = {
-      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, GS), "geometry"},
       {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS), "hull"},
       {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, DS), "domain"},
    };
@@ -432,7 +429,8 @@ d12_device_CreateGraphicsPipelineState(
 
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
-      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, NULL, 0, rt_format,
+      desc->PS.pShaderBytecode, desc->PS.BytecodeLength,
+      desc->GS.pShaderBytecode, desc->GS.BytecodeLength, rt_format,
       &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
       map, riid, out);
 }

@@ -195,6 +195,13 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->segment_count = 0;
    list->cdm_open = false;
    list->render_open = false;
+   list->pregfx_open = false;
+   list->pregfx_cur = NULL;
+   /* D3D12 has no default topology, but a list that draws without setting
+    * one used to get triangles implicitly; keep that rather than making
+    * every existing draw path set it.
+    */
+   list->topology = MESA_PRIM_TRIANGLES;
    list->state = D12_LIST_RECORDING;
 
    /* Bindings do not survive a reset: a stale render target or depth buffer
@@ -1114,6 +1121,137 @@ d12_ppp_push_stencil(struct agx_ppp_update *ppp,
  * Emit one draw into the open render segment's VDM stream: vertex-shader
  * state, the per-draw PPP block, viewport/scissor, then the draw itself.
  */
+/* The hardware primitive for a mesa_prim. */
+static enum agx_primitive
+d12_agx_primitive(enum mesa_prim prim)
+{
+   switch (prim) {
+   case MESA_PRIM_POINTS:
+      return AGX_PRIMITIVE_POINTS;
+   case MESA_PRIM_LINES:
+      return AGX_PRIMITIVE_LINES;
+   case MESA_PRIM_LINE_STRIP:
+      return AGX_PRIMITIVE_LINE_STRIP;
+   case MESA_PRIM_TRIANGLE_STRIP:
+      return AGX_PRIMITIVE_TRIANGLE_STRIP;
+   default:
+      return AGX_PRIMITIVE_TRIANGLES;
+   }
+}
+
+/*
+ * Run a geometry shader's compute half and report what the rasterization
+ * draw becomes.
+ *
+ * Only the direct, non-XFB path: the count, prefix-sum and pre-GS
+ * programs exist for transform feedback and GS statistics queries, and hk
+ * skips all three when neither is active (hk_cmd_draw.c:1535). PSO
+ * creation already refused anything that needs them, so what is left is
+ * two dispatches and a rewritten draw.
+ *
+ * The dispatches go in the PRE-GRAPHICS stream so they land before the
+ * open render pass rather than ending it.
+ */
+static bool
+d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
+                    unsigned vertex_count, unsigned instance_count,
+                    uint64_t root_gpu, uint64_t textures_gpu,
+                    unsigned *out_verts, unsigned *out_instances)
+{
+   struct d12_device *device = list->device;
+
+   /* 64 threads, and this value has to agree in three places: both
+    * parameter blocks bake it, and the launch below uses it. Nothing
+    * cross-checks them.
+    */
+   const uint32_t wg_size[3] = {64, 1, 1};
+   struct agx_workgroup wg = agx_workgroup(wg_size[0], wg_size[1], wg_size[2]);
+
+   /* The software VS writes one vec4 per live output per vertex; the GS
+    * reads it back. Zero outputs would mean a zero-size allocation, so
+    * keep at least one word rather than handing the shader a null.
+    */
+   struct poly_vertex_params vp;
+   poly_vertex_params_init(&vp, pso->sw_vs_info.outputs, wg_size);
+   poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
+
+   size_t out_size = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
+                                      pso->sw_vs_info.outputs);
+   vp.output_buffer = d12_list_upload_zero(list, MAX2(out_size, 16), 16);
+   if (!vp.output_buffer)
+      return false;
+
+   struct poly_geometry_params gp;
+   poly_geometry_params_init(&gp, list->topology, wg_size);
+   poly_geometry_params_set_draw(&gp, list->topology, pso->gs_info.shape,
+                                 pso->gs_info.max_indices, vertex_count,
+                                 instance_count);
+
+   /* Both blocks are read through 64-bit constant loads whose offsets the
+    * shaders bake, so the alignment is not cosmetic.
+    */
+   uint64_t vp_gpu = d12_list_upload(list, &vp, sizeof(vp), 8);
+   uint64_t gp_gpu = d12_list_upload(list, &gp, sizeof(gp), 8);
+   if (!vp_gpu || !gp_gpu)
+      return false;
+
+   struct d12_dispatch_uniforms u = {
+      .root = root_gpu,
+      .textures = textures_gpu,
+      .vertex_params = vp_gpu,
+      .geom_params = gp_gpu,
+   };
+
+   struct d12_segment *seg = d12_list_get_pregfx(list);
+   if (!seg)
+      return false;
+
+   /* Software VS, then the geometry body. Grids are in THREADS, not
+    * workgroups -- unlike the API dispatch path, which multiplies.
+    */
+   const struct {
+      uint64_t va;
+      const struct agx_shader_info *info;
+      struct agx_grid grid;
+   } stages[] = {
+      {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1)},
+      {pso->gs_main_va, &pso->gs_main_info, agx_3d(gp.grid[0], gp.grid[1], 1)},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      uint32_t usc =
+         d12_list_build_compute_usc(list, stages[i].va, stages[i].info, &u,
+                                    NULL);
+      if (!usc)
+         return false;
+
+      if (list->pregfx_cur + 0x100 > list->pregfx_end) {
+         mesa_loge("pre-graphics stream full");
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      struct agx_cdm_launch_word_0_packed launch =
+         d12_compute_launch_word(stages[i].info);
+
+      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
+         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid, wg,
+         launch, usc);
+
+      /* The geometry body reads what the software VS wrote. */
+      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
+         (uint32_t *)list->pregfx_cur, device->dev.chip);
+      seg->dispatches++;
+   }
+
+   /* The rasterization draw's extent is closed-form in the shape, not a
+    * GPU-written count -- that is only needed for indirect draws.
+    */
+   *out_verts = gp.draw.index_count;
+   *out_instances = gp.draw.instance_count;
+   return true;
+}
+
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
@@ -1166,7 +1304,38 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (!draw_gpu)
       return;
 
-   uint32_t vs_usc = d12_gfx_stage_usc(list, &pso->vs, false, &seg->tib,
+   /* GEOMETRY. The compute half runs first, into the pre-graphics stream,
+    * and hands back what the rasterization draw becomes. From here on the
+    * "vertex shader" is the GS rasterization program, which reads the
+    * emitted vertices rather than vertex attributes.
+    */
+   enum mesa_prim topology = list->topology;
+   const struct d12_gfx_stage *vstage = &pso->vs;
+   const struct agx_unlinked_uvs_layout *uvs = &pso->uvs;
+   const struct agx_varyings_vs *varys = &pso->varyings;
+
+   if (pso->has_gs) {
+      if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
+                               root_gpu, textures_gpu, &vertex_count,
+                               &instance_count))
+         return;
+
+      /* Inserting the pre-graphics segment shifted the render segment up
+       * one slot, so any pointer taken before the call now aims at the
+       * compute segment. Re-fetch it -- the symptom otherwise is "draw
+       * into a render pass with no scissor array", which reads like a
+       * missing scissor rather than a stale pointer.
+       */
+      seg = &list->segments[list->segment_count - 1];
+
+      vstage = &pso->gs_rast;
+      uvs = &pso->gs_uvs;
+      varys = &pso->gs_varyings;
+      topology = pso->gs_info.mode;
+      first_vertex = 0;
+   }
+
+   uint32_t vs_usc = d12_gfx_stage_usc(list, vstage, false, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu);
@@ -1185,7 +1354,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          return;
 
       bool generate_prim_id = false;
-      agx_link_varyings_vs_fs(cpu, &pso->varyings, pso->uvs.user_size,
+      agx_link_varyings_vs_fs(cpu, varys, uvs->user_size,
                               &pso->fs.linked.cf, 0, 0, &generate_prim_id);
       varyings = link_usc;
    }
@@ -1202,11 +1371,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       cfg.vertex_outputs_present = true;
       cfg.vertex_unknown_present = true;
    }
-   agx_push_packed(out, pso->vs.counts, VDM_STATE_VERTEX_SHADER_WORD_0);
+   agx_push_packed(out, vstage->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
    agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
       cfg.pipeline = vs_usc;
    }
-   agx_push_packed(out, pso->uvs.vdm, VDM_STATE_VERTEX_OUTPUTS);
+   agx_push_packed(out, uvs->vdm, VDM_STATE_VERTEX_OUTPUTS);
    agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg);
    /* Pad to a multiple of 8 bytes */
    memset(out, 0, 4);
@@ -1439,7 +1608,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
 
       agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) {
-         cfg.count = pso->uvs.size;
+         cfg.count = uvs->size;
       }
 
       agx_ppp_fini(&out, &ppp);
@@ -1452,7 +1621,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    };
 
    out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
-                                 AGX_PRIMITIVE_TRIANGLES);
+                                 d12_agx_primitive(topology));
 
    list->stream_cur = out;
    seg->has_draws = true;
@@ -1478,11 +1647,34 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   if (topology != D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST) {
-      mesa_loge("IASetPrimitiveTopology: only triangle lists for now");
+   /* Geometry shaders take points and lines as input, so the topology
+    * can no longer be assumed. Anything not listed here would be drawn
+    * as the wrong primitive, so it is refused rather than approximated.
+    */
+   switch (topology) {
+   case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
+      list->topology = MESA_PRIM_POINTS;
+      break;
+   case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
+      list->topology = MESA_PRIM_LINES;
+      break;
+   case D3D_PRIMITIVE_TOPOLOGY_LINESTRIP:
+      list->topology = MESA_PRIM_LINE_STRIP;
+      break;
+   case D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+      list->topology = MESA_PRIM_TRIANGLES;
+      break;
+   case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
+      list->topology = MESA_PRIM_TRIANGLE_STRIP;
+      break;
+   default:
+      mesa_loge("IASetPrimitiveTopology: topology %d is not supported",
+                (int)topology);
       list->state = D12_LIST_ERROR;
+      break;
    }
 }
+
 
 static void STDMETHODCALLTYPE
 d12_list_RSSetViewports(ID3D12GraphicsCommandList *iface, UINT count,

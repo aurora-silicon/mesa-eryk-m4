@@ -668,6 +668,14 @@ compile_sw_vs_stage(struct d12_device *device,
 
    NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
 
+   /* The pass does NOT rewrite the stage -- the caller must, and the AGX
+    * backend asserts on it ("only for SW VS"). hk does exactly this
+    * immediately after the same pass (hk_shader.c:1143-1147).
+    */
+   nir->info.stage = MESA_SHADER_COMPUTE;
+   memset(&nir->info.cs, 0, sizeof(nir->info.cs));
+   nir->xfb_info = NULL;
+
    return compile_poly_program(device, nir, NULL, out);
 }
 
@@ -896,8 +904,11 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       };
 
       for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
+         /* Same rule as the compute PSO: executable, low-VA, so the USC
+          * can address it 32-bit-relative to the shader base. */
          *cs[i].bo = agx_bo_create(&device->dev, cs[i].part->info.binary_size,
-                                   0, 0, cs[i].name);
+                                   0, AGX_BO_EXEC | AGX_BO_LOW_VA,
+                                   cs[i].name);
          if (!*cs[i].bo) {
             /* Unwind whatever the earlier iteration already took. */
             for (unsigned j = 0; j < i; j++)
@@ -918,6 +929,24 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_fast_link(&pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
                     NULL, NULL, 0);
       pso->gs_rast.info = gs_rast_part.info;
+
+      /* The VDM reads these counts to know how much state to load. Leave
+       * them zero and the rasterization program runs with no uniforms,
+       * no textures and no preamble -- which is not a crash, just a
+       * shader computing from whatever was already in the registers.
+       */
+      unsigned rast_samplers = gs_rast_part.info.sampler_state_count;
+      if (gs_rast_part.info.uses_txf)
+         rast_samplers = MAX2(rast_samplers, 1);
+
+      agx_pack(&pso->gs_rast.counts, COUNTS, cfg) {
+         cfg.uniform_register_count = gs_rast_part.info.push_count;
+         cfg.preshader_register_count = gs_rast_part.info.nr_preamble_gprs;
+         cfg.sampler_state_register_count =
+            agx_translate_sampler_state_count(rast_samplers, false);
+         cfg.texture_state_register_count =
+            gs_rast_part.info.texture_state_count;
+      }
       agx_assign_uvs(&pso->gs_varyings, &pso->gs_uvs, 0, 0);
 
       pso->has_gs = true;

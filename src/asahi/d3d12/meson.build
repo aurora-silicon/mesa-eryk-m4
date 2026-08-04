@@ -138,6 +138,13 @@ d3d12agx_g5_texture = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_g6_geometry = executable(
+  'd3d12agx_g6_geometry',
+  files('tests/g6_geometry.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g5_depth = executable(
   'd3d12agx_g5_depth',
   files('tests/g5_depth.c'),

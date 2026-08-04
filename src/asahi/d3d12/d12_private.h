@@ -453,6 +453,7 @@ struct d12_cmd_list {
    bool pregfx_open;
 
    /* Bound state */
+   enum mesa_prim topology; /* IASetPrimitiveTopology; TRIANGLES by default */
    struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
 
