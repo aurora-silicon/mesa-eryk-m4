@@ -9,8 +9,8 @@ acceptance suites pass on real hardware**:
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
-  the hardware vertex shader. It proves the path, not the pixels; the
-  suite says exactly what it verified and why it stops there.
+  the hardware vertex shader. A pass-through geometry shader reproduces
+  the no-GS control **pixel for pixel** — all 16384 compared, zero differ.
 - `g5_texture` — reproduces `Texture2D.Load` for all 256 texels of a
   16×16 image.
 - `g4_triangle` — matches a CPU rasterisation of the shader's own
