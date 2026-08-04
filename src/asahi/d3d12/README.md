@@ -4,14 +4,20 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all thirteen
+Status on `dev`: **321 of 334** corpus shaders compile, and **all fourteen
 GPU suites pass on real hardware** — the four G1-G4 milestone smokes plus
-nine acceptance suites:
+ten acceptance suites:
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
   the hardware vertex shader. A pass-through geometry shader reproduces
   the no-GS control **pixel for pixel** — all 16384 compared, zero differ.
+- `g8_mesh` — **mesh shaders execute**, via
+  `ID3D12Device2::CreatePipelineState` and
+  `ID3D12GraphicsCommandList6::DispatchMesh`. The first stage with no
+  Honeykrisp reference: hk implements no mesh shaders, so the parameter
+  block, draw-setup shader and rasterisation shader are all this
+  driver's own.
 - `g7_tessellation` — **tessellation executes**: five compute dispatches
   (software VS, hull, tessellator count, prefix sum, tessellator emit)
   and an indexed indirect draw whose index count the GPU writes. The

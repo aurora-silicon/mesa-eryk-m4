@@ -214,6 +214,31 @@ All three of the above present identically — a fully tessellated patch
 that draws no pixels — and none is visible without dumping the TCS buffer
 between the stages.
 
+### Mesh and amplification shaders do not use the compute NumThreads tag
+
+Their thread count lives inside the **MSState** entry property (tag 9)
+and **ASState** (tag 10) — operand 0 of each is the numthreads *node*,
+not a scalar. A parser that only knows tag 4 finds nothing and leaves the
+workgroup at 1×1×1, so only the first thread of every mesh shader runs
+and only the first vertex is ever written.
+
+MSState is `{numthreads, maxVertexCount, maxPrimitiveCount,
+outputTopology, payloadSizeInBytes}`; ASState is
+`{numthreads, payloadSizeInBytes}`.
+
+### A mesh shader's outputs_written is always empty
+
+It writes through global stores into the driver's parameter block, not
+`store_output`, so its NIR output mask says nothing about what it
+produces. Gating the rasterisation shader on it produced a program that
+wrote only the default point size — `ldimm r0, 1.0; st_var r0, 4; stop`.
+Slot 0 is POSITION by the output layout and is unconditional.
+
+The per-vertex stride is likewise FIXED at `D12_MESH_MAX_SLOTS` records
+rather than the live slot count, because that is what the translator
+emits for `storeVertexOutput`. Both sides must agree or vertex N is
+written at one offset and read at another.
+
 ### The container declares the stage — honour it or refuse
 `d12_dxil_container_stage()` returning plain `false` for shader kinds ≥ 6 let
 a caller's default fill the gap, and library/mesh shaders silently compiled
