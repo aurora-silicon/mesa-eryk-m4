@@ -572,9 +572,27 @@ struct d12_module {
    unsigned num_input_sig;
    struct d12_sig_element output_sig[D12_MAX_SIG_ELEMENTS];
    unsigned num_output_sig;
+   /* Patch-constant signature: hull outputs / domain inputs. */
+   struct d12_sig_element patch_sig[D12_MAX_SIG_ELEMENTS];
+   unsigned num_patch_sig;
 
    /* [numthreads(x,y,z)] from the entry-point properties (compute only) */
    uint32_t num_threads[3];
+
+   /*
+    * Tessellation and geometry entry-point properties. DXIL keeps these
+    * in the same (tag, value) list as numthreads; NIR needs them in
+    * shader_info before any lowering runs, because they decide the
+    * shape of the emulation.
+    */
+   uint32_t tess_domain;        /* 1 = isoline, 2 = tri, 3 = quad */
+   uint32_t tess_partitioning;  /* DXIL TessellatorPartitioning */
+   uint32_t tess_output_prim;   /* DXIL TessellatorOutputPrimitive */
+   uint32_t tess_control_points;/* output control points (hull) */
+   uint32_t gs_input_prim;      /* DXIL InputPrimitive */
+   uint32_t gs_output_topology; /* DXIL PrimitiveTopology */
+   uint32_t gs_max_vertices;
+   uint32_t gs_instance_count;
 
    /* Declared resources, from dx.resources */
    struct d12_resource_binding resources[D12_MAX_MODULE_RESOURCES];
@@ -678,7 +696,21 @@ struct nir_shader;
 #define D12_UNIFORM_DRAW            20
 #define D12_UNIFORM_DRAW_REGS       4
 
-#define D12_UNIFORM_RESERVED (D12_UNIFORM_DRAW + D12_UNIFORM_DRAW_REGS)
+/*
+ * Parameter buffers for the geometry/tessellation compute emulation.
+ * src/poly's lowering emits loads of these and leaves them "for the
+ * driver"; Honeykrisp answers them from its root descriptor, we answer
+ * them from reserved uniforms like everything else. Each is a 64-bit
+ * address, so four 16-bit registers apiece.
+ */
+#define D12_UNIFORM_GEOM_PARAMS     24
+#define D12_UNIFORM_TESS_PARAMS     28
+#define D12_UNIFORM_VS_OUTPUTS      32
+#define D12_UNIFORM_VERTEX_PARAMS   36
+#define D12_UNIFORM_PARAM_REGS      4
+
+#define D12_UNIFORM_RESERVED                                                 \
+   (D12_UNIFORM_VERTEX_PARAMS + D12_UNIFORM_PARAM_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the

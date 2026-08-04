@@ -105,6 +105,16 @@ enum d12_dxop {
    D12_DXOP_DOT3 = 55,
    D12_DXOP_DOT4 = 56,
    D12_DXOP_WAVE_ACTIVE_BALLOT = 116,
+   /* Tessellation and geometry */
+   D12_DXOP_EMIT_STREAM = 97,
+   D12_DXOP_CUT_STREAM = 98,
+   D12_DXOP_EMIT_THEN_CUT_STREAM = 99,
+   D12_DXOP_GS_INSTANCE_ID = 100,
+   D12_DXOP_LOAD_OUTPUT_CONTROL_POINT = 103,
+   D12_DXOP_LOAD_PATCH_CONSTANT = 104,
+   D12_DXOP_DOMAIN_LOCATION = 105,
+   D12_DXOP_STORE_PATCH_CONSTANT = 106,
+   D12_DXOP_OUTPUT_CONTROL_POINT_ID = 107,
    D12_DXOP_WAVE_MULTI_PREFIX_OP = 166,
    D12_DXOP_WAVE_MULTI_PREFIX_BIT_COUNT = 167,
    D12_DXOP_DOT2_ADD_HALF = 162,
@@ -1061,6 +1071,81 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
 }
 
 /*
+ * Map a patch-constant semantic to its NIR varying slot. The tessellation
+ * factors are named slots the tessellator reads directly; everything else
+ * is a generic per-patch varying.
+ */
+static unsigned
+patch_location(const char *sem, unsigned sig_id)
+{
+   if (sem) {
+      if (!strcmp(sem, "SV_TessFactor"))
+         return VARYING_SLOT_TESS_LEVEL_OUTER;
+      if (!strcmp(sem, "SV_InsideTessFactor"))
+         return VARYING_SLOT_TESS_LEVEL_INNER;
+   }
+   return VARYING_SLOT_PATCH0 + sig_id;
+}
+
+/*
+ * Emit the buffered per-component output stores as one vector store per
+ * slot, then reset the buffer. Geometry shaders call this at every
+ * emitVertex -- a vertex boundary flushes what has been written so far --
+ * and every stage calls it once at the end.
+ */
+static void
+flush_outputs(struct trans_ctx *ctx)
+{
+   nir_builder *b = ctx->b;
+
+   for (unsigned i = 0; i < D12_MAX_OUTPUTS && !ctx->error; i++) {
+      struct output_slot *slot = &ctx->outputs[i];
+      if (!slot->used)
+         continue;
+
+      unsigned num_comps = util_last_bit(slot->write_mask);
+
+      /* A colour store is trimmed BY THE TILEBUFFER LOWERING to the
+       * render target's component count, and trimming can only narrow:
+       * a shader that writes .xy to an RGBA target must still hand the
+       * lowering a 4-vector. The padding lanes are undef, which is
+       * exactly what D3D says unwritten components are.
+       */
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT &&
+          slot->location >= FRAG_RESULT_DATA0 &&
+          slot->location < FRAG_RESULT_DATA0 + 8 && num_comps < 4) {
+         num_comps = 4;
+         slot->write_mask = 0xf;
+      }
+
+      /* Varyings leave the shader as 32-bit: that is both what D3D
+       * semantics say (interpolants are float unless the target format
+       * narrows them) and what the AGX varying store requires. An fp16
+       * shader's outputs are widened HERE, explicitly -- stamping the
+       * 16-bit value float32 without converting is invalid NIR, and the
+       * backend asserts on a 16-bit st_vary source.
+       */
+      nir_def *comps[4];
+      for (unsigned c = 0; c < num_comps; c++) {
+         nir_def *v = slot->comps[c];
+         if (v && v->bit_size != 32)
+            v = nir_f2f32(b, v);
+         comps[c] = v ? v : nir_undef(b, 1, 32);
+      }
+
+      nir_store_output(b, nir_vec(b, comps, num_comps), nir_imm_int(b, 0),
+                       .base = slot->base,
+                       .write_mask = slot->write_mask,
+                       .src_type = nir_type_float32,
+                       .io_semantics.location = slot->location,
+                       .io_semantics.num_slots = 1);
+   }
+
+
+   memset(ctx->outputs, 0, sizeof(ctx->outputs));
+}
+
+/*
  * dx.op call translation. `args` are the call's operands: args[0] is the
  * callee, args[1] the opcode constant, args[2..] the real parameters.
  */
@@ -1157,6 +1242,26 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
          val = nir_load_interpolated_input(
             b, 1, bits, bary, nir_imm_int(b, row),
+            .base = (unsigned)sig_id, .component = (unsigned)col,
+            .dest_type = nir_type_float | bits,
+            .io_semantics.location = location,
+            .io_semantics.num_slots = 1);
+
+         b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+      } else if (b->shader->info.stage == MESA_SHADER_GEOMETRY ||
+                 b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+         /* These stages read a PRIMITIVE's worth of vertices, so
+          * loadInput's fourth operand selects which one. Emitting a
+          * plain load_input drops that index and hands the backend an
+          * intrinsic no lowering claims.
+          */
+         unsigned location = VARYING_SLOT_VAR0 + sig_id;
+         nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
+                              ? nir_u2u32(b, get_def(ctx, p[3]))
+                              : nir_imm_int(b, 0);
+
+         val = nir_load_per_vertex_input(
+            b, 1, bits, vertex, nir_imm_int(b, row),
             .base = (unsigned)sig_id, .component = (unsigned)col,
             .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
@@ -1447,6 +1552,152 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                               : nir_load_local_invocation_id(b));
 
       def_result(ctx, inst, nir_channel(b, vec, (unsigned)comp));
+      return true;
+   }
+
+   case D12_DXOP_DOMAIN_LOCATION: {
+      /* (component) -> the barycentric/UV coordinate inside the patch. */
+      NEED(1);
+      uint64_t comp = 0;
+      if (!const_uint(ctx, p[0], &comp)) {
+         trans_fail(ctx, "dynamic domainLocation component");
+         return false;
+      }
+      def_result(ctx, inst,
+                 nir_channel(b, nir_load_tess_coord(b), (unsigned)comp & 3));
+      return true;
+   }
+
+   case D12_DXOP_OUTPUT_CONTROL_POINT_ID:
+      def_result(ctx, inst, nir_load_invocation_id(b));
+      return true;
+
+   case D12_DXOP_GS_INSTANCE_ID:
+      def_result(ctx, inst, nir_load_invocation_id(b));
+      return true;
+
+   case D12_DXOP_EMIT_STREAM:
+   case D12_DXOP_CUT_STREAM:
+   case D12_DXOP_EMIT_THEN_CUT_STREAM: {
+      /* (streamId). Outputs buffered by storeOutput are flushed as the
+       * vertex, exactly as the end-of-shader flush does for other
+       * stages -- emitting is a vertex boundary, not a new value.
+       */
+      NEED(1);
+      uint64_t stream = 0;
+      const_uint(ctx, p[0], &stream);
+
+      if (opcode != D12_DXOP_CUT_STREAM) {
+         flush_outputs(ctx);
+         nir_emit_vertex(b, .stream_id = (unsigned)stream);
+      }
+      if (opcode != D12_DXOP_EMIT_STREAM)
+         nir_end_primitive(b, .stream_id = (unsigned)stream);
+      return true;
+   }
+
+   case D12_DXOP_LOAD_PATCH_CONSTANT: {
+      /* (sigId, row, col) -> a per-patch input of the domain shader. */
+      NEED(3);
+      uint64_t sig_id = 0, row = 0, col = 0;
+      const_uint(ctx, p[0], &sig_id);
+      const_uint(ctx, p[1], &row);
+      if (!const_uint(ctx, p[2], &col)) {
+         trans_fail(ctx, "dynamic component index on loadPatchConstant");
+         return false;
+      }
+
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->patch_sig, ctx->mod->num_patch_sig,
+                           (uint32_t)sig_id);
+      const char *sem = se ? se->name : NULL;
+      unsigned location = patch_location(sem, (unsigned)sig_id);
+
+      def_result(ctx, inst,
+                 nir_load_input(b, 1, 32, nir_imm_int(b, row),
+                                .base = (unsigned)sig_id,
+                                .component = (unsigned)col,
+                                .dest_type = nir_type_float32,
+                                .io_semantics.location = location,
+                                .io_semantics.num_slots = 1));
+      b->shader->info.patch_inputs_read |=
+         BITFIELD64_BIT(location - VARYING_SLOT_PATCH0);
+      return true;
+   }
+
+   case D12_DXOP_STORE_PATCH_CONSTANT: {
+      /* (sigId, row, col, value) -> a per-patch output of the hull
+       * shader, including the tessellation factors.
+       */
+      NEED(4);
+      uint64_t sig_id = 0, row = 0, col = 0;
+      const_uint(ctx, p[0], &sig_id);
+      const_uint(ctx, p[1], &row);
+      if (!const_uint(ctx, p[2], &col)) {
+         trans_fail(ctx, "dynamic component index on storePatchConstant");
+         return false;
+      }
+
+      nir_def *val = get_def(ctx, p[3]);
+      if (!val)
+         return false;
+      if (val->bit_size != 32)
+         val = nir_f2f32(b, val);
+
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->patch_sig, ctx->mod->num_patch_sig,
+                           (uint32_t)sig_id);
+      const char *sem = se ? se->name : NULL;
+      unsigned location = patch_location(sem, (unsigned)sig_id);
+
+      /* Tess factors are indexed by ROW; generic patch constants by
+       * their slot with the row selecting the slot.
+       */
+      unsigned slot = location;
+      unsigned comp = (unsigned)col;
+      if (location == VARYING_SLOT_TESS_LEVEL_OUTER ||
+          location == VARYING_SLOT_TESS_LEVEL_INNER)
+         comp = (unsigned)row;
+      else
+         slot = location + (unsigned)row;
+
+      nir_store_output(b, val, nir_imm_int(b, 0), .base = (unsigned)sig_id,
+                       .write_mask = 1, .component = comp,
+                       .src_type = nir_type_float32,
+                       .io_semantics.location = slot,
+                       .io_semantics.num_slots = 1);
+      b->shader->info.patch_outputs_written |=
+         BITFIELD64_BIT(slot - VARYING_SLOT_PATCH0);
+      return true;
+   }
+
+   case D12_DXOP_LOAD_OUTPUT_CONTROL_POINT: {
+      /* (sigId, row, col, vertex) -> a per-vertex output of the hull
+       * shader, read by the domain shader.
+       */
+      NEED(4);
+      uint64_t sig_id = 0, row = 0, col = 0;
+      const_uint(ctx, p[0], &sig_id);
+      const_uint(ctx, p[1], &row);
+      if (!const_uint(ctx, p[2], &col)) {
+         trans_fail(ctx, "dynamic component index on "
+                         "loadOutputControlPoint");
+         return false;
+      }
+
+      nir_def *vertex = get_def(ctx, p[3]);
+      if (!vertex)
+         return false;
+
+      unsigned location = VARYING_SLOT_VAR0 + sig_id;
+      def_result(ctx, inst,
+                 nir_load_per_vertex_input(
+                    b, 1, 32, nir_u2u32(b, vertex), nir_imm_int(b, row),
+                    .base = (unsigned)sig_id, .component = (unsigned)col,
+                    .dest_type = nir_type_float32,
+                    .io_semantics.location = location,
+                    .io_semantics.num_slots = 1));
+      b->shader->info.inputs_read |= BITFIELD64_BIT(location);
       return true;
    }
 
@@ -3325,6 +3576,77 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       }
    }
 
+   if (stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_TESS_EVAL) {
+      /* DXIL's TessellatorDomain/Partitioning/OutputPrimitive, from the
+       * entry-point properties. NIR needs them before any lowering runs
+       * because they decide the shape of the emulation.
+       */
+      static const enum tess_primitive_mode domains[] = {
+         [1] = TESS_PRIMITIVE_ISOLINES,
+         [2] = TESS_PRIMITIVE_TRIANGLES,
+         [3] = TESS_PRIMITIVE_QUADS,
+      };
+      static const enum gl_tess_spacing spacings[] = {
+         [1] = TESS_SPACING_EQUAL,
+         [2] = TESS_SPACING_FRACTIONAL_ODD,
+         [3] = TESS_SPACING_FRACTIONAL_EVEN,
+      };
+
+      b.shader->info.tess._primitive_mode =
+         mod->tess_domain < ARRAY_SIZE(domains) && domains[mod->tess_domain]
+            ? domains[mod->tess_domain]
+            : TESS_PRIMITIVE_TRIANGLES;
+
+      /* DXIL: 1 = integer, 2 = pow2, 3 = fractional_odd,
+       * 4 = fractional_even. AGX has no pow2 spacing; it rounds up to
+       * equal, which is what D3D's pow2 degenerates to here.
+       */
+      unsigned part = mod->tess_partitioning;
+      b.shader->info.tess.spacing =
+         part == 3   ? TESS_SPACING_FRACTIONAL_ODD
+         : part == 4 ? TESS_SPACING_FRACTIONAL_EVEN
+                     : TESS_SPACING_EQUAL;
+      (void)spacings;
+
+      /* DXIL TessellatorOutputPrimitive: 1 = point, 2 = line,
+       * 3 = triangle_cw, 4 = triangle_ccw.
+       */
+      b.shader->info.tess.point_mode = mod->tess_output_prim == 1;
+      b.shader->info.tess.ccw = mod->tess_output_prim == 4;
+
+      if (stage == MESA_SHADER_TESS_CTRL) {
+         b.shader->info.tess.tcs_vertices_out =
+            mod->tess_control_points ? mod->tess_control_points : 3;
+      }
+   } else if (stage == MESA_SHADER_GEOMETRY) {
+      /* DXIL InputPrimitive: 1 = point, 2 = line, 3 = triangle,
+       * 6 = line_adj, 7 = triangle_adj.
+       */
+      unsigned ip = mod->gs_input_prim;
+      b.shader->info.gs.input_primitive =
+         ip == 1   ? MESA_PRIM_POINTS
+         : ip == 2 ? MESA_PRIM_LINES
+         : ip == 6 ? MESA_PRIM_LINES_ADJACENCY
+         : ip == 7 ? MESA_PRIM_TRIANGLES_ADJACENCY
+                   : MESA_PRIM_TRIANGLES;
+
+      /* DXIL PrimitiveTopology: 1 = point, 3 = line strip,
+       * 5 = triangle strip.
+       */
+      unsigned ot = mod->gs_output_topology;
+      b.shader->info.gs.output_primitive =
+         ot == 1   ? MESA_PRIM_POINTS
+         : ot == 3 ? MESA_PRIM_LINE_STRIP
+                   : MESA_PRIM_TRIANGLE_STRIP;
+
+      b.shader->info.gs.vertices_out = mod->gs_max_vertices;
+      b.shader->info.gs.invocations =
+         mod->gs_instance_count ? mod->gs_instance_count : 1;
+      b.shader->info.gs.vertices_in =
+         mesa_vertices_per_prim(b.shader->info.gs.input_primitive);
+      b.shader->info.gs.active_stream_mask = 1;
+   }
+
    if (stage == MESA_SHADER_FRAGMENT) {
       b.shader->info.fs.untyped_color_outputs = false;
    } else if (stage == MESA_SHADER_COMPUTE) {
@@ -3843,55 +4165,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       }
    }
 
-   /* Flush buffered outputs as one vector store each -- into the
-    * epilogue when there is one, since the final translated block ended
-    * with a goto and nothing may follow a jump.
+   /* Flush what the shader buffered. With an epilogue block the stores
+    * go there, since the final translated block ended with a goto and
+    * nothing may follow a jump.
     */
    if (epilogue)
       b.cursor = nir_after_block(epilogue);
-
-   for (unsigned i = 0; i < D12_MAX_OUTPUTS && !ctx.error; i++) {
-      struct output_slot *slot = &ctx.outputs[i];
-      if (!slot->used)
-         continue;
-
-      unsigned num_comps = util_last_bit(slot->write_mask);
-
-      /* A colour store is trimmed BY THE TILEBUFFER LOWERING to the
-       * render target's component count, and trimming can only narrow:
-       * a shader that writes .xy to an RGBA target must still hand the
-       * lowering a 4-vector. The padding lanes are undef, which is
-       * exactly what D3D says unwritten components are.
-       */
-      if (b.shader->info.stage == MESA_SHADER_FRAGMENT &&
-          slot->location >= FRAG_RESULT_DATA0 &&
-          slot->location < FRAG_RESULT_DATA0 + 8 && num_comps < 4) {
-         num_comps = 4;
-         slot->write_mask = 0xf;
-      }
-
-      /* Varyings leave the shader as 32-bit: that is both what D3D
-       * semantics say (interpolants are float unless the target format
-       * narrows them) and what the AGX varying store requires. An fp16
-       * shader's outputs are widened HERE, explicitly -- stamping the
-       * 16-bit value float32 without converting is invalid NIR, and the
-       * backend asserts on a 16-bit st_vary source.
-       */
-      nir_def *comps[4];
-      for (unsigned c = 0; c < num_comps; c++) {
-         nir_def *v = slot->comps[c];
-         if (v && v->bit_size != 32)
-            v = nir_f2f32(&b, v);
-         comps[c] = v ? v : nir_undef(&b, 1, 32);
-      }
-
-      nir_store_output(&b, nir_vec(&b, comps, num_comps), nir_imm_int(&b, 0),
-                       .base = slot->base,
-                       .write_mask = slot->write_mask,
-                       .src_type = nir_type_float32,
-                       .io_semantics.location = slot->location,
-                       .io_semantics.num_slots = 1);
-   }
+   flush_outputs(&ctx);
 
    if (epilogue && !ctx.error)
       nir_goto(&b, b.impl->end_block);
@@ -3987,12 +4267,31 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
 
    unsigned base;
-   if (intr->intrinsic == nir_intrinsic_load_root_agx)
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_root_agx:
       base = D12_UNIFORM_ROOT;
-   else if (intr->intrinsic == nir_intrinsic_load_descriptor_heap_agx)
+      break;
+   case nir_intrinsic_load_descriptor_heap_agx:
       base = D12_UNIFORM_HEAP;
-   else
+      break;
+   /* Emitted by the GS/tess lowering in src/poly, which leaves them for
+    * the driver to answer.
+    */
+   case nir_intrinsic_load_geometry_param_buffer_poly:
+      base = D12_UNIFORM_GEOM_PARAMS;
+      break;
+   case nir_intrinsic_load_tess_param_buffer_poly:
+      base = D12_UNIFORM_TESS_PARAMS;
+      break;
+   case nir_intrinsic_load_vs_outputs_poly:
+      base = D12_UNIFORM_VS_OUTPUTS;
+      break;
+   case nir_intrinsic_load_vertex_param_buffer_poly:
+      base = D12_UNIFORM_VERTEX_PARAMS;
+      break;
+   default:
       return false;
+   }
 
    b->cursor = nir_before_instr(&intr->instr);
    nir_def *rep = nir_load_preamble(b, 1, 64, .base = base);

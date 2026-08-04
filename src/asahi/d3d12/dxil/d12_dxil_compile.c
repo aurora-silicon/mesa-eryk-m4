@@ -16,6 +16,7 @@
 #include "agx_compile.h"
 #include "agx_linker.h"
 #include "agx_nir.h"
+#include "poly/nir/poly_nir.h"
 #include "agx_tilebuffer.h"
 #include "agx_uvs.h"
 #include "disasm.h"
@@ -29,6 +30,9 @@ stage_name(mesa_shader_stage stage)
    case MESA_SHADER_VERTEX: return "vertex";
    case MESA_SHADER_FRAGMENT: return "fragment";
    case MESA_SHADER_COMPUTE: return "compute";
+   case MESA_SHADER_GEOMETRY: return "geometry";
+   case MESA_SHADER_TESS_CTRL: return "hull";
+   case MESA_SHADER_TESS_EVAL: return "domain";
    default: return "?";
    }
 }
@@ -135,7 +139,8 @@ main(int argc, char **argv)
    }
 
    if (stage != MESA_SHADER_FRAGMENT && stage != MESA_SHADER_VERTEX &&
-       stage != MESA_SHADER_COMPUTE) {
+       stage != MESA_SHADER_COMPUTE && stage != MESA_SHADER_GEOMETRY &&
+       stage != MESA_SHADER_TESS_CTRL && stage != MESA_SHADER_TESS_EVAL) {
       fprintf(stderr, "%s: stage %s has no AGX backing here\n", path,
               _mesa_shader_stage_to_string(stage));
       return 1;
@@ -186,6 +191,32 @@ main(int argc, char **argv)
     * FS-only placement left compute MS stores to hit the backend raw.
     */
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
+
+   /*
+    * Geometry and tessellation have no hardware stages on AGX: they run
+    * as compute, through the same lowering Honeykrisp uses
+    * (src/poly/nir). The lowering REWRITES info.stage to COMPUTE, so it
+    * has to happen before anything reads the stage back.
+    *
+    * A geometry shader expands into four programs -- count, the main
+    * body, a copy shader and a pre-GS pass. Only the main body is
+    * compiled here; running the whole set is the runtime's job.
+    */
+   struct poly_gs_info gs_info = {0};
+   nir_shader *gs_count = NULL, *gs_copy = NULL, *pre_gs = NULL;
+
+   if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+      NIR_PASS(_, nir, poly_nir_lower_gs, &gs_count, &gs_copy, &pre_gs,
+               &gs_info);
+   } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
+      NIR_PASS(_, nir, poly_nir_lower_tcs);
+   } else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+      /* to_hw_vs: the domain shader becomes the hardware vertex shader
+       * when nothing follows it.
+       */
+      NIR_PASS(_, nir, poly_nir_lower_tes, true);
+   }
+
    agx_preprocess_nir(nir);
    NIR_PASS(_, nir, d12_dxil_lower_root);
 

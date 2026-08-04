@@ -50,9 +50,11 @@ libd3d12agx = shared_library(
     idep_agx_pack,
     idep_libagx,
     idep_libagx_shaders_h,
+    idep_libpoly,
   ],
   link_with : [
     libasahi_lib, libasahi_layout, libasahi_compiler, libagx2_disasm,
+    libpoly_nir,
   ],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',

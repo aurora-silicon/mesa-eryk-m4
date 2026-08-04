@@ -957,6 +957,11 @@ parse_entry_signatures(struct d12_module *mod)
       parse_signature(mod, sigs->node.ops[1], mod->output_sig,
                       &mod->num_output_sig);
    }
+
+   if (sigs->node.num_ops >= 3 && !sigs->node.op_is_null[2]) {
+      parse_signature(mod, sigs->node.ops[2], mod->patch_sig,
+                      &mod->num_patch_sig);
+   }
 }
 
 /*
@@ -1117,7 +1122,11 @@ parse_resources(struct d12_module *mod)
  * [numthreads(x,y,z)] attribute. Without it the launch grid collapses to
  * zero threads and the dispatch silently does nothing.
  */
-#define D12_ENTRY_PROP_NUM_THREADS 4
+#define D12_ENTRY_PROP_GS_STATE     0 /* {inputPrim, maxVerts, ?, topo, instances} */
+#define D12_ENTRY_PROP_DS_STATE     1 /* {domain, inputControlPoints} */
+#define D12_ENTRY_PROP_HS_STATE     2 /* {patchConstFn, inCP, outCP, domain,
+                                       *  partitioning, outputPrim, maxTess} */
+#define D12_ENTRY_PROP_NUM_THREADS  4
 
 static void
 parse_entry_properties(struct d12_module *mod)
@@ -1148,23 +1157,60 @@ parse_entry_properties(struct d12_module *mod)
       if (!md_const_uint(mod, props->node.ops[i], &tag))
          continue;
 
-      if (tag != D12_ENTRY_PROP_NUM_THREADS)
+      uint64_t val_id = props->node.ops[i + 1];
+      if (val_id >= mod->num_metadata)
          continue;
 
-      uint64_t nt_id = props->node.ops[i + 1];
-      if (nt_id >= mod->num_metadata)
-         continue;
+      const struct d12_metadata *val = &mod->metadata[val_id];
 
-      const struct d12_metadata *nt = &mod->metadata[nt_id];
-      if (nt->kind != D12_MD_NODE || nt->node.num_ops < 3)
-         continue;
-
-      for (unsigned c = 0; c < 3; c++) {
-         uint64_t v = 1;
-         if (md_const_uint(mod, nt->node.ops[c], &v))
-            mod->num_threads[c] = (uint32_t)v;
+      if (tag == D12_ENTRY_PROP_NUM_THREADS) {
+         if (val->kind != D12_MD_NODE || val->node.num_ops < 3)
+            continue;
+         for (unsigned c = 0; c < 3; c++) {
+            uint64_t v = 1;
+            if (md_const_uint(mod, val->node.ops[c], &v))
+               mod->num_threads[c] = (uint32_t)v;
+         }
+      } else if (tag == D12_ENTRY_PROP_HS_STATE) {
+         /* {patchConstantFn, inputCPs, outputCPs, domain, partitioning,
+          *  outputPrimitive, maxTessFactor}
+          */
+         if (val->kind != D12_MD_NODE || val->node.num_ops < 6)
+            continue;
+         uint64_t v;
+         if (md_const_uint(mod, val->node.ops[2], &v))
+            mod->tess_control_points = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[3], &v))
+            mod->tess_domain = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[4], &v))
+            mod->tess_partitioning = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[5], &v))
+            mod->tess_output_prim = (uint32_t)v;
+      } else if (tag == D12_ENTRY_PROP_DS_STATE) {
+         /* {domain, inputControlPoints} */
+         if (val->kind != D12_MD_NODE || val->node.num_ops < 2)
+            continue;
+         uint64_t v;
+         if (md_const_uint(mod, val->node.ops[0], &v))
+            mod->tess_domain = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[1], &v))
+            mod->tess_control_points = (uint32_t)v;
+      } else if (tag == D12_ENTRY_PROP_GS_STATE) {
+         /* {inputPrimitive, maxVertexCount, streamMask, outputTopology,
+          *  instanceCount}
+          */
+         if (val->kind != D12_MD_NODE || val->node.num_ops < 5)
+            continue;
+         uint64_t v;
+         if (md_const_uint(mod, val->node.ops[0], &v))
+            mod->gs_input_prim = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[1], &v))
+            mod->gs_max_vertices = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[3], &v))
+            mod->gs_output_topology = (uint32_t)v;
+         if (md_const_uint(mod, val->node.ops[4], &v))
+            mod->gs_instance_count = (uint32_t)v;
       }
-      return;
    }
 }
 
