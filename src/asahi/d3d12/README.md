@@ -4,8 +4,9 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all nine GPU
-acceptance suites pass on real hardware**:
+Status on `dev`: **321 of 334** corpus shaders compile, and **all thirteen
+GPU suites pass on real hardware** — the four G1-G4 milestone smokes plus
+nine acceptance suites:
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as

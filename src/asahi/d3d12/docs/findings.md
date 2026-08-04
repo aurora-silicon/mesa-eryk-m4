@@ -341,6 +341,16 @@ GPU-facing half of the driver; the bug was in the bitcode reader.
   Note what the weaker test could not have caught: strict-interior
   rasterisation gives 10880, and every one of those 85 pixels is a
   real fill-rule behaviour that is now verified rather than assumed.
+- **A suite that nothing runs is not green.** `run-suites.sh` covered only
+  the acceptance suites, so the G1-G4 milestone smokes went unrun. When
+  the descriptor grew from 32 to 40 bytes for UAV counter addresses,
+  `g3_smoke`'s hardcoded increment failed silently for a day. Every test
+  binary belongs in the runner.
+- **Assert the contract, not a literal.** That same assertion encoded a
+  size that was correct when written and stale a day later. The check is
+  now "a non-zero, opaque stride that separates two descriptors", which
+  cannot go stale — and the separation is what the test's own pixel-exact
+  clears already prove.
 - **A test that prints usage exits 0.** Any harness that checks only the last
   line reads that as a pass. `tests/run-suites.sh` treats a missing verdict as
   a failure for this reason.

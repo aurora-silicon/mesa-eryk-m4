@@ -35,6 +35,15 @@ run() {
 }
 
 fails=0
+
+# The G1-G4 milestone smokes. They were NOT in this runner, so when the
+# descriptor grew from 32 to 40 bytes g3_smoke failed unnoticed for a
+# day. A suite that nothing runs is a suite that is not green.
+run g1_smoke                                                                       || fails=$((fails+1))
+run g2_smoke                                                                       || fails=$((fails+1))
+run g3_smoke                                                                       || fails=$((fails+1))
+run g4_smoke        "$S/cs.dxil"                                                   || fails=$((fails+1))
+
 run g4_triangle     "$S/tri.dxil" "$S/solid.dxil"                                  || fails=$((fails+1))
 run g5_depth        "$S/tri.dxil" "$S/solid.dxil" "$S/tri_depth.dxil" \
                     "$S/solid_g.dxil" "$S/tri_depth_cw.dxil"                       || fails=$((fails+1))
