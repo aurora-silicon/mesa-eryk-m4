@@ -11,30 +11,51 @@ places a second opinion is worth the most.
 
 ## 0. Where we actually are
 
-**291 of 334 corpus shaders compile DXIL → NIR → AGX machine code.**
-128 compute, 65 fragment, 29 vertex, 18 hull, 15 geometry, 14 domain, plus
-19 mesh and 3 amplification compiled as compute. No SPIR-V, no Vulkan
-layer, no dxc at run time.
+**321 of 334 corpus shaders compile DXIL → NIR → AGX machine code.**
+No SPIR-V, no Vulkan layer, no dxc at run time.
 
-The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**.
-That distinction runs through this whole document:
+The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**:
 
 - **Compiling** means the translator and the AGX backend accepted it.
 - **Conforming** means it produces the right pixels/bytes on hardware.
 
-We have measured the first. Six GPU acceptance suites pass
-(`g4_triangle`, `g5_depth`, `g5_descriptors`, `g5_atomics`,
-`g5_control_flow`, `g5_wave`) and one fails (`g5_texture`).
+Six GPU acceptance suites pass; `g5_texture` fails on a known wall.
 
-**The compiler has stopped being the bottleneck.** Everything below is
-runtime work, and the gap between "compiles" and "runs" is now the
-project's dominant risk: geometry, tessellation, mesh and amplification
-all COMPILE but none of them DISPATCH yet.
+**The compiler is no longer the bottleneck, and the gap it leaves is now
+the project's dominant risk.** Geometry, tessellation, mesh,
+amplification, work graphs and ray queries all COMPILE. None of them
+DISPATCH. That is 102 shaders in the "compiles but unproven" state, and
+the GPU suites cover none of them.
 
-### The 43 non-passing
+### The remaining 13 — all Tier 5
 
-| Bucket | N | Status |
+| Bucket | N | Why |
 |---|---|---|
+| fp64 arithmetic | 6 | AGX has no fp64 ALU; needs soft-float |
+| WaveMMA | 3 | SM 6.9 cooperative matrix lowering |
+| 64-bit atomics | 3 | hk reports all three Int64Atomics features false |
+| `attributeAtVertex` | 1 | hk reports `fragmentShaderBarycentric` false |
+
+Tiers 1–4 are **done**: named refusals (222), geometry and tessellation
+on the `poly` emulation (269), mesh and amplification as compute (291),
+work graphs and inline raytracing (321).
+
+### What "done" means for tiers 2–4
+
+Each shipped a documented ABI the runtime must honour, and none of those
+runtimes exist:
+
+- **Geometry** expands into four programs (count, main, copy, pre-GS);
+  only the main body is compiled.
+- **Tessellation** needs the tessellator dispatched around it.
+- **Mesh/amplification** need buffer allocation and the amplification →
+  mesh hand-off (`D12_UNIFORM_MESH_PARAMS`).
+- **Work graphs** need a scheduler (`D12_UNIFORM_NODE_PARAMS`).
+- **Ray queries** compile to "traversal found nothing", which is correct
+  only because the device reports `RaytracingTier 0`. Real traversal
+  needs BVH build plus a traversal kernel.
+
+---|---|---|
 | Work Graphs (SM 6.8 GPU scheduling) | ~21 | §3.6 — needs a scheduler |
 | Raytracing (library + `rayquery`) | 9 | §3.6 — needs BVH + traversal |
 | fp64 arithmetic | 6 | §4.2 — soft-float |
