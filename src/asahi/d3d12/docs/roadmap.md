@@ -11,9 +11,10 @@ places a second opinion is worth the most.
 
 ## 0. Where we actually are
 
-**219 of 334 corpus shaders compile DXIL → NIR → AGX machine code.**
-127 compute, 64 fragment, 28 vertex. No SPIR-V, no Vulkan layer, no dxc at
-run time.
+**291 of 334 corpus shaders compile DXIL → NIR → AGX machine code.**
+128 compute, 65 fragment, 29 vertex, 18 hull, 15 geometry, 14 domain, plus
+19 mesh and 3 amplification compiled as compute. No SPIR-V, no Vulkan
+layer, no dxc at run time.
 
 The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**.
 That distinction runs through this whole document:
@@ -21,20 +22,30 @@ That distinction runs through this whole document:
 - **Compiling** means the translator and the AGX backend accepted it.
 - **Conforming** means it produces the right pixels/bytes on hardware.
 
-We have measured the first. We have barely started measuring the second:
-six GPU acceptance suites pass (`g4_triangle`, `g5_depth`, `g5_descriptors`,
-`g5_atomics`, `g5_control_flow`, `g5_wave`) and one fails (`g5_texture`).
+We have measured the first. Six GPU acceptance suites pass
+(`g4_triangle`, `g5_depth`, `g5_descriptors`, `g5_atomics`,
+`g5_control_flow`, `g5_wave`) and one fails (`g5_texture`).
 
 **The compiler has stopped being the bottleneck.** Everything below is
-mostly runtime work.
+runtime work, and the gap between "compiles" and "runs" is now the
+project's dominant risk: geometry, tessellation, mesh and amplification
+all COMPILE but none of them DISPATCH yet.
 
-### The 115 non-passing, fully classified
+### The 43 non-passing
 
-Re-derived from the tree, not carried forward. Emulation tiers are ordered by
-risk, not by size.
+| Bucket | N | Status |
+|---|---|---|
+| Work Graphs (SM 6.8 GPU scheduling) | ~21 | §3.6 — needs a scheduler |
+| Raytracing (library + `rayquery`) | 9 | §3.6 — needs BVH + traversal |
+| fp64 arithmetic | 6 | §4.2 — soft-float |
+| WaveMMA (SM 6.9 cooperative matrix) | 4 | §4.4 |
+| 64-bit atomics | 3 | §4.1 — hk reports the feature absent |
 
-| Tier | Bucket | N | Running total |
-|---|---|---|---|
+Tiers 1–3 of the earlier plan are **done**: the three named refusals
+(222), geometry and tessellation via the `poly` compute emulation (269),
+and mesh/amplification translated directly to compute (291).
+
+---|---|---|---|
 | **1 — no emulation** | `waveMultiPrefixOp`, immediate constant buffers, SM 6.8 draw params (§2) | 3 | **222** |
 | **2 — emulation ALREADY IN TREE** | geometry 15, hull 18, domain 14 (§3) | 47 | **269** |
 | **3 — greenfield, moderate** | mesh 19 + amplification 3 (§3.5) | 22 | **291** |
