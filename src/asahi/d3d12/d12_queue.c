@@ -396,6 +396,33 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          }
          device->dbg_gs_vb = NULL;
       }
+
+      if (!ret && device->dbg_tess_draw) {
+         uint64_t point = queue->timeline_value + 1;
+         drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &point, 1,
+                                INT64_MAX,
+                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+
+         const uint32_t *d = (const uint32_t *)device->dbg_tess_draw;
+         mesa_logi("tess out_draws: count=%u inst=%u first=%u bias=%u "
+                   "start_inst=%u",
+                   d[0], d[1], d[2], d[3], d[4]);
+
+         const uint32_t *c = (const uint32_t *)device->dbg_tess_counts;
+         for (unsigned i = 0; i < MIN2(device->dbg_tess_counts_n, 8); i++)
+            mesa_logi("  counts[%u] = %u", i, c[i]);
+
+         const float *t = (const float *)device->dbg_tcs_buf;
+         const uint32_t *ti = (const uint32_t *)device->dbg_tcs_buf;
+         for (unsigned i = 0; i < MIN2(device->dbg_tcs_buf_n, 24); i += 4) {
+            mesa_logi("  tcs[%2u] %8.3f %8.3f %8.3f %8.3f  (0x%08x %08x "
+                      "%08x %08x)",
+                      i, t[i], t[i + 1], t[i + 2], t[i + 3], ti[i],
+                      ti[i + 1], ti[i + 2], ti[i + 3]);
+         }
+
+         device->dbg_tess_draw = NULL;
+      }
       if (ret) {
          mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d -- device "
                    "marked removed", i, ret);

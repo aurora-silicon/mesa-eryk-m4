@@ -165,6 +165,15 @@ main(int argc, char **argv)
           stage_name(stage), mod.num_types, mod.num_values,
           mod.num_functions);
 
+   for (unsigned i = 0; print_nir && i < mod.num_functions; i++) {
+      printf("  fn %u: %-28s %s val=%u insts=%u%s\n", i,
+             mod.functions[i].name ? mod.functions[i].name : "(none)",
+             mod.functions[i].is_declaration ? "decl" : "DEF ",
+             mod.functions[i].value_index, mod.functions[i].num_insts,
+             (mod.has_patch_constant && i == mod.patch_constant_func)
+                ? "  <-- patch constant" : "");
+   }
+
    /* 3. module -> NIR (no SPIR-V anywhere in here) */
    const char *error = NULL;
    /* No root signature here, so the map comes from what the module itself

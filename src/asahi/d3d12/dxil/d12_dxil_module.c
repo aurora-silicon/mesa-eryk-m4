@@ -1226,6 +1226,23 @@ parse_entry_properties(struct d12_module *mod)
          if (val->kind != D12_MD_NODE || val->node.num_ops < 6)
             continue;
          uint64_t v;
+
+         /* Operand 0 names the patch constant function, as a metadata
+          * value wrapping a function reference. Resolve it to an index.
+          */
+         if (val->node.ops[0] < mod->num_metadata) {
+            const struct d12_metadata *fn = &mod->metadata[val->node.ops[0]];
+            if (fn->kind == D12_MD_VALUE) {
+               for (unsigned f = 0; f < mod->num_functions; f++) {
+                  if (mod->functions[f].value_index == fn->value_id) {
+                     mod->patch_constant_func = f;
+                     mod->has_patch_constant = true;
+                     break;
+                  }
+               }
+            }
+         }
+
          if (md_const_uint(mod, val->node.ops[2], &v))
             mod->tess_control_points = (uint32_t)v;
          if (md_const_uint(mod, val->node.ops[3], &v))

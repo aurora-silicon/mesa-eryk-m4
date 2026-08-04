@@ -149,11 +149,147 @@ build_gs_point_passthrough(const nir_shader_compiler_options *opts)
    return b.shader;
 }
 
+/*
+ * tess_hs / tess_ds: the minimum that is still a tessellation pipeline.
+ *
+ * Quad domain, integer spacing. The hull shader is a pass-through with
+ * constant tessellation factors, so the tessellated output is a fixed,
+ * hand-checkable grid rather than something that depends on the input
+ * patch. The domain shader places each domain point by bilinear
+ * interpolation of the patch corners, which is the identity for a patch
+ * covering the viewport -- so the result is a solid filled quad, and any
+ * mis-tessellation shows up as missing coverage.
+ */
+static nir_shader *
+build_tess_hs(const nir_shader_compiler_options *opts)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_CTRL, opts,
+                                                  "tess_hs");
+   b.shader->info.tess._primitive_mode = TESS_PRIMITIVE_QUADS;
+   b.shader->info.tess.spacing = TESS_SPACING_EQUAL;
+   b.shader->info.tess.tcs_vertices_out = 4;
+   b.shader->info.tess.ccw = false;
+   b.shader->info.tess.point_mode = false;
+
+   nir_variable *in = nir_variable_create(
+      b.shader, nir_var_shader_in,
+      glsl_array_type(glsl_vec4_type(), 4, 0), "in_pos");
+   in->data.location = VARYING_SLOT_VAR0;
+   in->data.driver_location = 0;
+
+   nir_variable *out = nir_variable_create(
+      b.shader, nir_var_shader_out,
+      glsl_array_type(glsl_vec4_type(), 4, 0), "out_pos");
+   out->data.location = VARYING_SLOT_VAR0;
+   out->data.driver_location = 0;
+
+   /* Pass the control point through. */
+   nir_def *id = nir_load_invocation_id(&b);
+   nir_deref_instr *src =
+      nir_build_deref_array(&b, nir_build_deref_var(&b, in), id);
+   nir_deref_instr *dst =
+      nir_build_deref_array(&b, nir_build_deref_var(&b, out), id);
+   nir_store_deref(&b, dst, nir_load_deref(&b, src), 0xf);
+
+   /* Constant tessellation factors: a 2x2 grid of quads. */
+   nir_variable *outer = nir_variable_create(
+      b.shader, nir_var_shader_out, glsl_array_type(glsl_float_type(), 4, 0),
+      "outer");
+   outer->data.location = VARYING_SLOT_TESS_LEVEL_OUTER;
+   outer->data.driver_location = 4;
+   outer->data.patch = true;
+   /* The tess factors are COMPACT arrays -- floats packed into one slot's
+    * components rather than one slot each. dxil_signature asserts on it.
+    */
+   outer->data.compact = true;
+
+   nir_variable *inner = nir_variable_create(
+      b.shader, nir_var_shader_out, glsl_array_type(glsl_float_type(), 2, 0),
+      "inner");
+   inner->data.location = VARYING_SLOT_TESS_LEVEL_INNER;
+   inner->data.driver_location = 8;
+   inner->data.patch = true;
+   inner->data.compact = true;
+
+   for (unsigned i = 0; i < 4; i++) {
+      nir_store_deref(&b,
+                      nir_build_deref_array_imm(
+                         &b, nir_build_deref_var(&b, outer), i),
+                      nir_imm_float(&b, 2.0f), 0x1);
+   }
+   for (unsigned i = 0; i < 2; i++) {
+      nir_store_deref(&b,
+                      nir_build_deref_array_imm(
+                         &b, nir_build_deref_var(&b, inner), i),
+                      nir_imm_float(&b, 2.0f), 0x1);
+   }
+
+   b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   b.shader->info.patch_outputs_written =
+      BITFIELD_BIT(VARYING_SLOT_TESS_LEVEL_OUTER - VARYING_SLOT_PATCH0) |
+      BITFIELD_BIT(VARYING_SLOT_TESS_LEVEL_INNER - VARYING_SLOT_PATCH0);
+   return b.shader;
+}
+
+static nir_shader *
+build_tess_ds(const nir_shader_compiler_options *opts)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_TESS_EVAL, opts,
+                                                  "tess_ds");
+   b.shader->info.tess._primitive_mode = TESS_PRIMITIVE_QUADS;
+   b.shader->info.tess.spacing = TESS_SPACING_EQUAL;
+   b.shader->info.tess.ccw = false;
+   b.shader->info.tess.point_mode = false;
+
+   nir_variable *in = nir_variable_create(
+      b.shader, nir_var_shader_in,
+      glsl_array_type(glsl_vec4_type(), 4, 0), "in_pos");
+   in->data.location = VARYING_SLOT_VAR0;
+   in->data.driver_location = 0;
+
+   nir_variable *pos = nir_variable_create(b.shader, nir_var_shader_out,
+                                           glsl_vec4_type(), "gl_Position");
+   pos->data.location = VARYING_SLOT_POS;
+   pos->data.driver_location = 0;
+
+   nir_def *uv = nir_load_tess_coord(&b);
+   nir_def *u = nir_channel(&b, uv, 0);
+   nir_def *v = nir_channel(&b, uv, 1);
+
+   nir_def *c[4];
+   for (unsigned i = 0; i < 4; i++) {
+      c[i] = nir_load_deref(
+         &b, nir_build_deref_array_imm(&b, nir_build_deref_var(&b, in), i));
+   }
+
+   /* Bilinear over a GRID-ordered patch, matching gs_input_vs, which
+    * places control point i at x = (i & 1), y = (i & 2). Ring order
+    * (c0,c1,c3,c2) would twist the quad into a bowtie and cover half the
+    * area, which is exactly the kind of thing this test should catch
+    * rather than encode.
+    */
+   nir_def *top = nir_flrp(&b, c[0], c[1], u);
+   nir_def *bot = nir_flrp(&b, c[2], c[3], u);
+   nir_def *p = nir_flrp(&b, top, bot, v);
+
+   nir_store_var(&b, pos,
+                 nir_vec4(&b, nir_channel(&b, p, 0), nir_channel(&b, p, 1),
+                          nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f)),
+                 0xf);
+
+   b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(VARYING_SLOT_POS);
+   return b.shader;
+}
+
 int
 main(int argc, char **argv)
 {
    if (argc < 3) {
-      fprintf(stderr, "usage: %s <gs_input_vs|gs_point> out.dxil\n", argv[0]);
+      fprintf(stderr,
+              "usage: %s <gs_input_vs|gs_point|tess_hs|tess_ds> out.dxil\n",
+              argv[0]);
       return 2;
    }
 
@@ -164,8 +300,12 @@ main(int argc, char **argv)
                                  1 << 5);
 
    bool want_gs = !strcmp(argv[1], "gs_point");
-   nir_shader *nir = want_gs ? build_gs_point_passthrough(&options)
-                             : build_gs_input_vs(&options);
+   bool want_hs = !strcmp(argv[1], "tess_hs");
+   bool want_ds = !strcmp(argv[1], "tess_ds");
+   nir_shader *nir = want_gs   ? build_gs_point_passthrough(&options)
+                     : want_hs ? build_tess_hs(&options)
+                     : want_ds ? build_tess_ds(&options)
+                               : build_gs_input_vs(&options);
 
    NIR_PASS(_, nir, nir_lower_variable_initializers, nir_var_all);
    NIR_PASS(_, nir, nir_lower_io_vars_to_temporaries,
@@ -175,7 +315,8 @@ main(int argc, char **argv)
    NIR_PASS(_, nir, nir_lower_var_copies);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);
    NIR_PASS(_, nir, nir_lower_io,
-            nir_var_shader_out | (want_gs ? nir_var_shader_in : 0),
+            nir_var_shader_out |
+               ((want_gs || want_hs || want_ds) ? nir_var_shader_in : 0),
             probe_type_size, 0);
    NIR_PASS(_, nir, nir_opt_dce);
 

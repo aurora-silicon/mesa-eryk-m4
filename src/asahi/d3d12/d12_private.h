@@ -33,6 +33,7 @@
 #include "dxil/d12_dxil.h"
 #include "layout.h"
 #include "poly/nir/poly_nir.h"
+#include "poly/tessellator.h"
 
 #undef MESA_LOG_TAG
 #define MESA_LOG_TAG "d3d12agx"
@@ -80,8 +81,24 @@ struct d12_device {
     */
    struct agx_bo *oclqry_bo;
 
-   /* One AGX_SAMPLER: the sampler state a texel fetch reads as ss0. */
+   /* One AGX_SAMPLER: the sampler state a texel fetch reads as ss0,
+    * followed by the tessellation heap's `struct poly_heap` descriptor.
+    */
    struct agx_bo *rodata_bo;
+
+   /* THE TESSELLATION HEAP. Unlike geometry, tessellation genuinely needs
+    * it: the tessellator allocates domain points from it, and the prefix
+    * sum allocates the final index buffer out of it. The whole heap is
+    * then bound as the index buffer, with out_draws[2] carrying the
+    * element offset -- so it must be one contiguous allocation.
+    *
+    * `bottom` is reset per command list. hk queues a GPU write instead,
+    * because a Vulkan command buffer can be resubmitted; a D3D12 command
+    * list must be Reset before re-recording, so the CPU can zero it then.
+    */
+   struct agx_bo *heap_bo;
+   uint64_t heap_desc_va; /* struct poly_heap inside rodata_bo */
+   struct poly_heap *heap_desc_cpu;
 
    D3D_FEATURE_LEVEL feature_level;
 
@@ -91,6 +108,11 @@ struct d12_device {
     */
    void *dbg_gs_vb;
    size_t dbg_gs_vb_size;
+   void *dbg_tess_draw;
+   void *dbg_tess_counts;
+   unsigned dbg_tess_counts_n;
+   void *dbg_tcs_buf;
+   unsigned dbg_tcs_buf_n;
 
    /* Set when a submission fails. D3D12 models this as device removal, and
     * without it a later Signal would advance a fence past work that never
@@ -342,6 +364,32 @@ struct d12_pipeline_state {
    struct d12_gfx_stage gs_rast;
    struct agx_unlinked_uvs_layout gs_uvs;
    struct agx_varyings_vs gs_varyings;
+
+   /* TESSELLATION. Same shape as geometry: the vertex shader becomes a
+    * compute prepass, the hull shader is compute, and the DOMAIN shader
+    * becomes the hardware vertex shader -- the tessellator writes an
+    * index buffer and the domain shader is invoked per index.
+    *
+    * The mode/spacing/winding are declared by the SHADERS, not by API
+    * state, and either stage may declare them, so they are merged.
+    */
+   bool has_tess;
+   struct agx_bo *tcs_bo;
+   uint64_t tcs_va;
+   struct agx_shader_info tcs_info;
+
+   struct d12_gfx_stage tes;
+   struct agx_unlinked_uvs_layout tes_uvs;
+   struct agx_varyings_vs tes_varyings;
+
+   uint32_t tcs_output_patch_size;
+   uint64_t tcs_per_vertex_outputs;
+   uint32_t tcs_nr_patch_outputs;
+   uint32_t tcs_output_stride;
+
+   enum tess_primitive_mode tess_mode;
+   enum gl_tess_spacing tess_spacing;
+   bool tess_ccw, tess_points;
 };
 
 static inline struct d12_pipeline_state *
@@ -476,6 +524,11 @@ struct d12_cmd_list {
 
    /* Bound state */
    enum mesa_prim topology; /* IASetPrimitiveTopology; TRIANGLES by default */
+   /* Control points per patch, from a *_CONTROL_POINT_PATCHLIST topology.
+    * Zero when the bound topology is not a patch list -- the only thing
+    * API state contributes to tessellation.
+    */
+   unsigned patch_control_points;
    struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
 
@@ -632,6 +685,7 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
    const void *ps_dxil, size_t ps_size, const void *gs_dxil, size_t gs_size,
+   const void *hs_dxil, size_t hs_size, const void *ds_dxil, size_t ds_size,
    enum pipe_format rt_format,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
    const D3D12_RASTERIZER_DESC *rs_desc, const struct d12_binding_map *map,

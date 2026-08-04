@@ -125,6 +125,8 @@ d12_device_Release(ID3D12Device *iface)
       mesa_logi("closing device %s", device->dev.name);
       agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bo_unreference(&device->dev, device->rodata_bo);
+      if (device->heap_bo)
+         agx_bo_unreference(&device->dev, device->heap_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -387,34 +389,18 @@ d12_device_CreateGraphicsPipelineState(
    if (!desc || !desc->VS.pShaderBytecode || !desc->PS.pShaderBytecode)
       return E_INVALIDARG;
 
-   /* Tessellation has no hardware stage on AGX and no dispatch sequence
-    * yet. Dropping it on the floor is the worst available behaviour -- a
-    * pipeline that quietly rasterises its pre-tessellation geometry draws
-    * *something*, and something is indistinguishable from a pass at a
-    * glance. Refuse by name instead.
-    *
-    * Geometry shaders used to be on this list and now dispatch; see
-    * d12_list_gs_prerast.
+   /* Tessellation needs BOTH stages. One without the other would fall
+    * through the tessellation path and draw the control points
+    * untessellated -- which draws something, and something reads as a
+    * pass. Refuse by name.
     */
-   static const struct {
-      size_t offset;
-      const char *name;
-   } unsupported_stages[] = {
-      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS), "hull"},
-      {offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, DS), "domain"},
-   };
-
-   for (unsigned i = 0; i < ARRAY_SIZE(unsupported_stages); i++) {
-      const D3D12_SHADER_BYTECODE *bc =
-         (const D3D12_SHADER_BYTECODE *)((const char *)desc +
-                                         unsupported_stages[i].offset);
-      if (bc->pShaderBytecode && bc->BytecodeLength) {
-         mesa_loge("CreateGraphicsPipelineState: a %s shader is bound, but "
-                   "%s shaders are not dispatched yet. Refusing rather than "
-                   "silently drawing the pipeline without one.",
-                   unsupported_stages[i].name, unsupported_stages[i].name);
-         return E_NOTIMPL;
-      }
+   bool has_hs = desc->HS.pShaderBytecode && desc->HS.BytecodeLength;
+   bool has_ds = desc->DS.pShaderBytecode && desc->DS.BytecodeLength;
+   if (has_hs != has_ds) {
+      mesa_loge("CreateGraphicsPipelineState: a %s shader is bound without "
+                "a %s shader; tessellation needs both.",
+                has_hs ? "hull" : "domain", has_hs ? "domain" : "hull");
+      return E_INVALIDARG;
    }
 
    /* The pipeline's declared render-target format now drives the
@@ -430,7 +416,9 @@ d12_device_CreateGraphicsPipelineState(
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
       desc->PS.pShaderBytecode, desc->PS.BytecodeLength,
-      desc->GS.pShaderBytecode, desc->GS.BytecodeLength, rt_format,
+      desc->GS.pShaderBytecode, desc->GS.BytecodeLength,
+      desc->HS.pShaderBytecode, desc->HS.BytecodeLength,
+      desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
       &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
       map, riid, out);
 }
@@ -988,8 +976,12 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
     * descriptor, the address and the coordinates are all correct and the
     * fetch still returns nothing.
     */
+   /* Sampler state, then the tessellation heap descriptor. */
    device->rodata_bo =
-      agx_bo_create(&device->dev, AGX_SAMPLER_LENGTH, 0, 0, "d3d12 rodata");
+      agx_bo_create(&device->dev,
+                    ALIGN_POT(AGX_SAMPLER_LENGTH, 16) +
+                       sizeof(struct poly_heap),
+                    0, 0, "d3d12 rodata");
    if (!device->rodata_bo) {
       agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
@@ -1006,6 +998,40 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       cfg.count = 1;
       cfg.buffer = device->rodata_bo->va->addr;
    }
+
+   /*
+    * The tessellation heap. The tessellator bump-allocates domain points
+    * from it and the prefix sum carves the final index buffer out of it,
+    * and that index buffer is then bound as the WHOLE heap with an
+    * element offset -- so it has to be one contiguous allocation.
+    *
+    * 32 MiB rather than hk's 128: this driver runs one command list at a
+    * time and `bottom` is reset per list, so the live set is a single
+    * draw's tessellation output. Overflow is not silent -- the allocator
+    * aborts on the GPU -- so a too-small heap fails loudly.
+    */
+   device->heap_bo = agx_bo_create(&device->dev, 32 * 1024 * 1024, 0, 0,
+                                   "d3d12 tessellation heap");
+   if (!device->heap_bo) {
+      agx_bo_unreference(&device->dev, device->rodata_bo);
+      agx_bo_unreference(&device->dev, device->oclqry_bo);
+      agx_bg_eot_cleanup(&device->bg_eot);
+      agx_close_device(&device->dev);
+      free(device);
+      return E_OUTOFMEMORY;
+   }
+
+   size_t heap_off = ALIGN_POT(AGX_SAMPLER_LENGTH, 16);
+   device->heap_desc_va = device->rodata_bo->va->addr + heap_off;
+   device->heap_desc_cpu =
+      (struct poly_heap *)((uint8_t *)agx_bo_map(device->rodata_bo) +
+                           heap_off);
+
+   *device->heap_desc_cpu = (struct poly_heap){
+      .base = (DEVICE(uchar))device->heap_bo->va->addr,
+      .bottom = 0,
+      .size = (uint32_t)device->heap_bo->size,
+   };
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
    device->refcount = 1;

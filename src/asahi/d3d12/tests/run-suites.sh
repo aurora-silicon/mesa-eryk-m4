@@ -51,6 +51,12 @@ run g5_wave         "$S/wave_probe.dxil"                                        
 run g6_geometry "$S/gs_input_vs.dxil" "$S/solid.dxil" "$S/gs_point.dxil" \
    || fails=$((fails+1))
 
+# G7 is not wired in yet: the hull shader's SV_TessFactor writes live in a
+# patch constant function the DXIL frontend does not translate, so the
+# tessellator counts zero. Run it by hand:
+#   d3d12agx_g7_tessellation gs_input_vs.dxil solid.dxil tess_hs.dxil \
+#                            tess_ds.dxil
+
 echo
 if [ $fails -eq 0 ]; then echo "GPU SUITES: all green"; else echo "GPU SUITES: $fails suite(s) not green"; fi
 exit $fails

@@ -43,6 +43,7 @@ static int failures = 0;
 #define W 256
 #define H 256
 #define STRIDE (((W * 4) + 63) & ~63u)
+#define ARRAY_SIZE_LOCAL(x) (sizeof(x) / sizeof((x)[0]))
 
 /* THE ORACLE. tri.dxil declares, per vertex id:
  *
@@ -579,16 +580,20 @@ main(int argc, char **argv)
     * stage being bound at all, before anything parses it.
     */
    {
+      /* Geometry and tessellation now DISPATCH (g6_geometry,
+       * g7_tessellation), so binding them is no longer a refusal. What is
+       * still worth asserting is that an incomplete tessellation pipeline
+       * -- a hull shader with no domain shader -- does not silently draw
+       * without tessellating.
+       */
       const struct {
          const char *name;
          size_t offset;
       } stages[] = {
-         {"geometry", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, GS)},
-         {"hull", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS)},
-         {"domain", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, DS)},
+         {"hull without a domain", offsetof(D3D12_GRAPHICS_PIPELINE_STATE_DESC, HS)},
       };
 
-      for (unsigned i = 0; i < 3; i++) {
+      for (unsigned i = 0; i < ARRAY_SIZE_LOCAL(stages); i++) {
          D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {
             .pRootSignature = root_sig,
             .VS = {.pShaderBytecode = vs, .BytecodeLength = vs_size},
@@ -607,10 +612,10 @@ main(int argc, char **argv)
          HRESULT ghr = ID3D12Device_CreateGraphicsPipelineState(
             dev, &pd, &IID_ID3D12PipelineState, (void **)&bad_pso);
 
-         char what[96];
+         char what[128];
          snprintf(what, sizeof(what),
                   "a pipeline with a %s shader is refused, not silently "
-                  "drawn without one",
+                  "drawn without tessellating",
                   stages[i].name);
          CHECK(FAILED(ghr) && !bad_pso, what);
          if (bad_pso)

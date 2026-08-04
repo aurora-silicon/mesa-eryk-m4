@@ -3944,7 +3944,12 @@ nir_shader *
 d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                 const struct d12_binding_map *map, const char **error)
 {
-   /* The entry point is the module's single function definition. */
+   /* The entry point is the module's single function definition --
+    * EXCEPT in a hull shader, which has two: the per-control-point entry
+    * and a patch constant function that writes SV_TessFactor. Skip the
+    * latter when looking for the entry, or the shader that gets compiled
+    * is whichever the bitcode happened to emit first.
+    */
    const struct d12_function *entry = NULL;
    for (unsigned i = 0; i < mod->num_functions; i++) {
       if (!mod->functions[i].is_declaration) {
@@ -3957,6 +3962,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       *error = "module has no function definition";
       return NULL;
    }
+
+   /* NOT YET MERGED: see docs/roadmap.md. A hull shader's SV_TessFactor
+    * writes live in the patch constant function, and concatenating that
+    * body onto the entry hits a CALL whose callee mis-resolves (value 10,
+    * an instruction rather than dx.op.storePatchConstant). Attempting it
+    * cost 18 corpus hull shaders, so it is left for a proper fix.
+    */
 
    nir_builder b = nir_builder_init_simple_shader(stage, &agx_nir_options,
                                                   "dxil");

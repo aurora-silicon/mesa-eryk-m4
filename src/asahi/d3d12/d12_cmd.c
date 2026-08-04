@@ -202,6 +202,17 @@ d12_list_begin_recording(struct d12_cmd_list *list)
     * every existing draw path set it.
     */
    list->topology = MESA_PRIM_TRIANGLES;
+   list->patch_control_points = 0;
+
+   /* Free the tessellation heap. hk queues a GPU write because a Vulkan
+    * command buffer can be resubmitted without re-recording; a D3D12 list
+    * must be Reset before re-recording, so the CPU can zero it here --
+    * but only because this driver runs one list at a time. Concurrent
+    * lists would need the per-list descriptor hk uses.
+    */
+   if (list->device->heap_desc_cpu)
+      list->device->heap_desc_cpu->bottom = 0;
+
    list->state = D12_LIST_RECORDING;
 
    /* Bindings do not survive a reset: a stale render target or depth buffer
@@ -433,9 +444,10 @@ d12_list_get_cdm(struct d12_cmd_list *list)
  * Dispatch a precompiled libagx kernel, exactly as hk_dispatch_precomp does.
  */
 static void
-d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
-                          const void *args, size_t args_size,
-                          struct agx_grid grid)
+d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
+                             enum libagx_program idx, const void *args,
+                             size_t args_size, struct agx_grid grid,
+                             bool pre_gfx)
 {
    struct d12_device *device = list->device;
 
@@ -444,7 +456,12 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
       return;
    }
 
-   struct d12_segment *seg = d12_list_get_cdm(list);
+   /* Tessellation runs its libagx kernels ahead of the draw that consumes
+    * them, so they go in the pre-graphics stream rather than ending the
+    * render pass.
+    */
+   struct d12_segment *seg =
+      pre_gfx ? d12_list_get_pregfx(list) : d12_list_get_cdm(list);
    if (!seg)
       return;
 
@@ -475,16 +492,30 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
               (unsigned long long)data_gpu, args_size);
    }
 
-   if (!d12_list_check_stream_space(list))
-      return;
+   uint8_t **cur = pre_gfx ? &list->pregfx_cur : &list->stream_cur;
 
-   list->stream_cur = (uint8_t *)agx_cdm_launch(
-      (uint32_t *)list->stream_cur, device->dev.chip, grid, prog->b.workgroup,
-      prog->b.launch, usc);
-   list->stream_cur =
-      (uint8_t *)agx_cdm_barrier((uint32_t *)list->stream_cur,
-                                 device->dev.chip);
+   if (pre_gfx) {
+      if (list->pregfx_cur + 0x100 > list->pregfx_end) {
+         mesa_loge("pre-graphics stream full");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+   } else if (!d12_list_check_stream_space(list)) {
+      return;
+   }
+
+   *cur = (uint8_t *)agx_cdm_launch((uint32_t *)*cur, device->dev.chip, grid,
+                                    prog->b.workgroup, prog->b.launch, usc);
+   *cur = (uint8_t *)agx_cdm_barrier((uint32_t *)*cur, device->dev.chip);
    seg->dispatches++;
+}
+
+static void
+d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
+                          const void *args, size_t args_size,
+                          struct agx_grid grid)
+{
+   d12_list_dispatch_precomp_to(list, idx, args, args_size, grid, false);
 }
 
 /*
@@ -784,6 +815,7 @@ struct d12_dispatch_uniforms {
    uint64_t draw;
    uint64_t vertex_params;
    uint64_t geom_params;
+   uint64_t tess_params;
    /* Address of the VS output MASK, not the mask itself: agx_usc_uniform
     * fills registers FROM memory, and load_vs_outputs_poly reads a 64-bit
     * value. The geometry body computes every vertex address in the output
@@ -826,9 +858,13 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
     * which the DXIL translator already lowers poly's parameter
     * intrinsics to. Nothing else publishes them.
     */
-   /* Ascending base order: 4, 8, 20, 24, 32, 36. */
+   /* Ascending base order: 4, 8, 20, 24, 28, 32, 36. */
    if (u->draw) {
       agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS, u->draw);
+   }
+   if (u->tess_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_TESS_PARAMS, D12_UNIFORM_PARAM_REGS,
+                      u->tess_params);
    }
    if (u->geom_params) {
       agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
@@ -1047,11 +1083,15 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
     * measured as a point covering the ENTIRE render target while the
     * same points without a geometry shader drew four pixels.
     */
-   /* Ascending base order, matching the compute builder: 24, 32, 36. */
+   /* Ascending base order, matching the compute builder: 24, 28, 32, 36. */
    if (poly) {
       if (poly->geom_params) {
          agx_usc_uniform(&b, D12_UNIFORM_GEOM_PARAMS, D12_UNIFORM_PARAM_REGS,
                          poly->geom_params);
+      }
+      if (poly->tess_params) {
+         agx_usc_uniform(&b, D12_UNIFORM_TESS_PARAMS, D12_UNIFORM_PARAM_REGS,
+                         poly->tess_params);
       }
       if (poly->vs_outputs) {
          agx_usc_uniform(&b, D12_UNIFORM_VS_OUTPUTS, D12_UNIFORM_PARAM_REGS,
@@ -1391,6 +1431,265 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    return true;
 }
 
+/*
+ * Run a tessellation pipeline's compute half and hand back the indexed
+ * indirect draw that rasterises the result.
+ *
+ * Five dispatches, in this order, all into the pre-graphics stream:
+ *
+ *   1. the software vertex shader, writing the VS output buffer
+ *   2. the hull shader, one workgroup per patch, writing the TCS buffer
+ *   3. the tessellator in COUNT mode, writing only per-patch counts
+ *   4. a prefix sum over those counts, which also allocates the index
+ *      buffer out of the heap and writes the indirect draw descriptor
+ *   5. the tessellator again in WITH_COUNTS mode, now emitting domain
+ *      points and indices
+ *
+ * Steps 3 and 5 are the same kernel run twice on purpose: the counts are
+ * prefix-summed IN PLACE between them, and step 5 reads counts[patch-1]
+ * as its write offset. It cannot be fused (hk does the same).
+ */
+static bool
+d12_list_tess_prerast(struct d12_cmd_list *list,
+                      struct d12_pipeline_state *pso, unsigned vertex_count,
+                      unsigned instance_count, uint64_t root_gpu,
+                      uint64_t textures_gpu, uint64_t draw_gpu,
+                      struct agx_draw *out_draw,
+                      struct d12_dispatch_uniforms *out_poly)
+{
+   struct d12_device *device = list->device;
+
+   if (!pso->tcs_output_patch_size || !pso->tcs_output_stride) {
+      mesa_loge("tessellation pipeline has no patch layout");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   /* D3D12 carries the input patch size in the topology; the control
+    * point count is the only thing API state contributes here.
+    */
+   unsigned input_patch_size = list->patch_control_points;
+   if (!input_patch_size) {
+      mesa_loge("draw with a tessellation pipeline but no patch topology; "
+                "call IASetPrimitiveTopology with a control-point patch list");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   unsigned in_patches = vertex_count / input_patch_size;
+   unsigned unrolled = in_patches * instance_count;
+   if (!unrolled) {
+      mesa_loge("tessellation draw covers no whole patches");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   const uint32_t wg_size[3] = {64, 1, 1};
+
+   /* The VS prepass and its output buffer, exactly as the geometry path
+    * builds them: the hull shader reads this.
+    */
+   struct poly_vertex_params vp;
+   poly_vertex_params_init(&vp, pso->sw_vs_outputs, wg_size);
+   poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
+
+   size_t vsout = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
+                                   pso->sw_vs_outputs);
+   vp.output_buffer = d12_list_upload_zero(list, MAX2(vsout, 16), 16);
+   if (!vp.output_buffer)
+      return false;
+
+   /* Never null: the software input assembly materialises this pointer
+    * even on the non-indexed path it does not take. */
+   vp.index_buffer = vp.output_buffer;
+
+   /* One blob for the tessellator's scratch, carved by offset the way hk
+    * does it. out_draws is the 5-word indexed draw the GPU fills in.
+    */
+   size_t tcs_out_B = (size_t)unrolled * pso->tcs_output_stride;
+   size_t coord_B = (size_t)unrolled * 4;
+   size_t count_B = (size_t)unrolled * 4;
+   size_t draw_B = 5 * 4;
+
+   uint64_t tcs_buffer = d12_list_upload_zero(list, tcs_out_B, 16);
+   uint64_t coord_allocs = d12_list_upload_zero(list, coord_B, 4);
+   uint64_t counts = d12_list_upload_zero(list, count_B, 4);
+   uint64_t out_draws = d12_list_upload_zero(list, draw_B, 4);
+   if (!tcs_buffer || !coord_allocs || !counts || !out_draws)
+      return false;
+
+   struct poly_tess_params tp = {
+      .heap = (DEVICE(struct poly_heap))device->heap_desc_va,
+      .patch_coord_buffer =
+         (DEVICE(struct poly_tess_point))device->heap_bo->va->addr,
+      .coord_allocs = (DEVICE(uint32_t))coord_allocs,
+      .out_draws = (DEVICE(uint32_t))out_draws,
+      .tcs_buffer = (DEVICE(float))tcs_buffer,
+      .counts = (DEVICE(uint32_t))counts,
+      /* index_buffer is GPU-written by the prefix sum. */
+      .statistic = (DEVICE(uint32_t))device->heap_desc_va,
+      .tcs_per_vertex_outputs = pso->tcs_per_vertex_outputs,
+      .input_patch_size = input_patch_size,
+      .output_patch_size = pso->tcs_output_patch_size,
+      .tcs_patch_constants = pso->tcs_nr_patch_outputs,
+      .patches_per_instance = in_patches,
+      .tcs_stride_el = pso->tcs_output_stride / 4,
+      .nr_patches = unrolled,
+      .points_mode = pso->tess_points,
+      .isolines = pso->tess_mode == TESS_PRIMITIVE_ISOLINES,
+      .ccw = pso->tess_ccw && !pso->tess_points &&
+             pso->tess_mode != TESS_PRIMITIVE_ISOLINES,
+   };
+
+   switch (pso->tess_spacing) {
+   case TESS_SPACING_EQUAL:
+      tp.partitioning = POLY_TESS_PARTITIONING_INTEGER;
+      break;
+   case TESS_SPACING_FRACTIONAL_ODD:
+      tp.partitioning = POLY_TESS_PARTITIONING_FRACTIONAL_ODD;
+      break;
+   default:
+      tp.partitioning = POLY_TESS_PARTITIONING_FRACTIONAL_EVEN;
+      break;
+   }
+
+   uint64_t vp_gpu = d12_list_upload(list, &vp, sizeof(vp), 8);
+   uint64_t tp_gpu = d12_list_upload(list, &tp, sizeof(tp), 8);
+   if (!vp_gpu || !tp_gpu)
+      return false;
+
+   /* Published BY REFERENCE: the uniform is filled FROM memory, so the
+    * pointer itself has to live somewhere. See docs/findings.md.
+    */
+   uint64_t outputs_mask = pso->sw_vs_outputs;
+   uint64_t vp_ptr = d12_list_upload(list, &vp_gpu, sizeof(vp_gpu), 8);
+   uint64_t tp_ptr = d12_list_upload(list, &tp_gpu, sizeof(tp_gpu), 8);
+   uint64_t vso_ptr =
+      d12_list_upload(list, &outputs_mask, sizeof(outputs_mask), 8);
+   if (!vp_ptr || !tp_ptr || !vso_ptr)
+      return false;
+
+   struct d12_dispatch_uniforms u = {
+      .root = root_gpu,
+      .textures = textures_gpu,
+      .draw = draw_gpu,
+      .vertex_params = vp_ptr,
+      .tess_params = tp_ptr,
+      .vs_outputs = vso_ptr,
+   };
+
+   struct d12_segment *seg = d12_list_get_pregfx(list);
+   if (!seg)
+      return false;
+
+   /* 1 and 2: software VS, then the hull shader. The hull shader runs one
+    * WORKGROUP per patch -- its workgroup size is the output patch size,
+    * not 64, because a patch has to fit in one workgroup for the barrier
+    * elision poly relies on.
+    */
+   const struct {
+      uint64_t va;
+      const struct agx_shader_info *info;
+      struct agx_grid grid;
+      struct agx_workgroup wg;
+   } stages[] = {
+      {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1),
+       agx_workgroup(64, 1, 1)},
+      {pso->tcs_va, &pso->tcs_info,
+       agx_3d(in_patches * pso->tcs_output_patch_size, instance_count, 1),
+       agx_workgroup(pso->tcs_output_patch_size, 1, 1)},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
+                                                stages[i].info, &u, NULL);
+      if (!usc)
+         return false;
+
+      if (list->pregfx_cur + 0x100 > list->pregfx_end) {
+         mesa_loge("pre-graphics stream full");
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      struct agx_cdm_launch_word_0_packed launch =
+         d12_compute_launch_word(stages[i].info);
+
+      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
+         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
+         stages[i].wg, launch, usc);
+      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
+         (uint32_t *)list->pregfx_cur, device->dev.chip);
+      seg->dispatches++;
+   }
+
+   /* 3, 4, 5: the tessellator twice with a prefix sum between. The mode
+    * selects the kernel; the _0/_1 suffix is the COUNT/WITH_COUNTS
+    * shader-key variant, compiled as separate binaries rather than a
+    * runtime branch.
+    */
+   enum libagx_program count_prog, emit_prog;
+   if (pso->tess_mode == TESS_PRIMITIVE_ISOLINES) {
+      count_prog = LIBAGX_TESS_ISOLINE_0;
+      emit_prog = LIBAGX_TESS_ISOLINE_1;
+   } else if (pso->tess_mode == TESS_PRIMITIVE_QUADS) {
+      count_prog = LIBAGX_TESS_QUAD_0;
+      emit_prog = LIBAGX_TESS_QUAD_1;
+   } else {
+      count_prog = LIBAGX_TESS_TRI_0;
+      emit_prog = LIBAGX_TESS_TRI_1;
+   }
+
+   struct {
+      uint64_t params;
+   } targs = {tp_gpu};
+
+   d12_list_dispatch_precomp_to(list, count_prog, &targs, sizeof(targs),
+                                agx_1d(unrolled), true);
+
+   struct {
+      uint64_t params;
+      uint64_t c_prims;
+      uint64_t c_inv;
+   } sargs = {tp_gpu, 0, 0};
+
+   d12_list_dispatch_precomp_to(list, LIBAGX_PREFIX_SUM_TESS_0, &sargs,
+                                sizeof(sargs), agx_1d(1024), true);
+
+   d12_list_dispatch_precomp_to(list, emit_prog, &targs, sizeof(targs),
+                                agx_1d(unrolled), true);
+
+   if (list->state != D12_LIST_RECORDING)
+      return false;
+
+   if (getenv("D3D12AGX_DUMP_TESS")) {
+      list->device->dbg_gs_vb = d12_list_data_cpu(list, vp.output_buffer);
+      list->device->dbg_gs_vb_size = MAX2(vsout, 16);
+      list->device->dbg_tess_draw = d12_list_data_cpu(list, out_draws);
+      list->device->dbg_tess_counts = d12_list_data_cpu(list, counts);
+      list->device->dbg_tess_counts_n = unrolled;
+      list->device->dbg_tcs_buf = d12_list_data_cpu(list, tcs_buffer);
+      list->device->dbg_tcs_buf_n = pso->tcs_output_stride / 4;
+      mesa_logi("tess: patches=%u unrolled=%u patch_size=%u out_patch=%u "
+                "stride=%u mode=%u part=%u tcs_pv_out=0x%llx",
+                in_patches, unrolled, input_patch_size,
+                pso->tcs_output_patch_size, pso->tcs_output_stride,
+                pso->tess_mode, tp.partitioning,
+                (unsigned long long)pso->tcs_per_vertex_outputs);
+   }
+
+   /* The rasterisation draw is always indexed, always indirect and always
+    * U32: the index count only exists after the GPU prefix sum. The WHOLE
+    * heap is the index buffer and out_draws[2] carries the element offset
+    * into it.
+    */
+   *out_draw = agx_draw_indexed_indirect(out_draws, device->heap_bo->va->addr,
+                                         device->heap_bo->size,
+                                         AGX_INDEX_SIZE_U32, false);
+   *out_poly = u;
+   return true;
+}
+
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
@@ -1453,6 +1752,32 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    const struct d12_gfx_stage *vstage = &pso->vs;
    const struct agx_unlinked_uvs_layout *uvs = &pso->uvs;
    const struct agx_varyings_vs *varys = &pso->varyings;
+   struct agx_draw draw = {0};
+   bool draw_set = false;
+
+   /* TESSELLATION. Same shape as geometry: the compute half runs first,
+    * into the pre-graphics stream, and the DOMAIN shader becomes the
+    * hardware vertex stage. Unlike geometry the draw itself is replaced
+    * -- indexed and indirect, because the index count only exists after
+    * the GPU prefix sum.
+    */
+   if (pso->has_tess) {
+      if (!d12_list_tess_prerast(list, pso, vertex_count, instance_count,
+                                 root_gpu, textures_gpu, draw_gpu, &draw,
+                                 &poly_u))
+         return;
+
+      seg = &list->segments[list->segment_count - 1];
+
+      vstage = &pso->tes;
+      uvs = &pso->tes_uvs;
+      varys = &pso->tes_varyings;
+      topology = pso->tess_points  ? MESA_PRIM_POINTS
+                 : pso->tess_mode == TESS_PRIMITIVE_ISOLINES
+                    ? MESA_PRIM_LINES
+                    : MESA_PRIM_TRIANGLES;
+      draw_set = true;
+   }
 
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
@@ -1475,9 +1800,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       first_vertex = 0;
    }
 
-   uint32_t vs_usc =
-      d12_gfx_stage_usc(list, vstage, false, &seg->tib, root_gpu,
-                        textures_gpu, draw_gpu, pso->has_gs ? &poly_u : NULL);
+   uint32_t vs_usc = d12_gfx_stage_usc(
+      list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
+      (pso->has_gs || pso->has_tess) ? &poly_u : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu, NULL);
    if (!vs_usc || !fs_usc)
@@ -1754,11 +2079,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       agx_ppp_fini(&out, &ppp);
    }
 
-   /* The draw */
-   struct agx_draw draw = {
-      .b = agx_3d(vertex_count, instance_count, 1),
-      .start = first_vertex,
-   };
+   /* The draw. Tessellation already built an indexed indirect one. */
+   if (!draw_set) {
+      draw = (struct agx_draw){
+         .b = agx_3d(vertex_count, instance_count, 1),
+         .start = first_vertex,
+      };
+   }
 
    out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
                                  d12_agx_primitive(topology));
@@ -1794,6 +2121,7 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
    switch (topology) {
    case D3D_PRIMITIVE_TOPOLOGY_POINTLIST:
       list->topology = MESA_PRIM_POINTS;
+      list->patch_control_points = 0;
       break;
    case D3D_PRIMITIVE_TOPOLOGY_LINELIST:
       list->topology = MESA_PRIM_LINES;
@@ -1808,6 +2136,17 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList *iface,
       list->topology = MESA_PRIM_TRIANGLE_STRIP;
       break;
    default:
+      /* Patch lists encode their control-point count in the topology
+       * value itself. That count is the only thing API state contributes
+       * to tessellation, so it is recorded rather than refused.
+       */
+      if (topology >= D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST &&
+          topology <= D3D_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST) {
+         list->patch_control_points =
+            1 + (topology - D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
+         list->topology = MESA_PRIM_PATCHES;
+         break;
+      }
       mesa_loge("IASetPrimitiveTopology: topology %d is not supported",
                 (int)topology);
       list->state = D12_LIST_ERROR;

@@ -595,6 +595,17 @@ struct d12_module {
    uint32_t tess_partitioning;  /* DXIL TessellatorPartitioning */
    uint32_t tess_output_prim;   /* DXIL TessellatorOutputPrimitive */
    uint32_t tess_control_points;/* output control points (hull) */
+
+   /* HULL SHADERS HAVE TWO FUNCTION BODIES. The entry runs once per
+    * output control point; a separate PATCH CONSTANT function runs once
+    * per patch and is what writes SV_TessFactor. Named by HS_STATE
+    * operand 0. ~0u when absent.
+    *
+    * Nothing tessellates without it: the factors stay zero, the
+    * tessellator counts zero vertices, and the draw is empty.
+    */
+   uint32_t patch_constant_func;
+   bool has_patch_constant; /* zero is a valid function index */
    uint32_t gs_input_prim;      /* DXIL InputPrimitive */
    uint32_t gs_output_topology; /* DXIL PrimitiveTopology */
    uint32_t gs_max_vertices;

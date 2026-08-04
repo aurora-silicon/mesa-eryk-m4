@@ -213,6 +213,10 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
       if (pso->gs_rast.code_bo)
          agx_bo_unreference(&pso->device->dev, pso->gs_rast.code_bo);
+      if (pso->tcs_bo)
+         agx_bo_unreference(&pso->device->dev, pso->tcs_bo);
+      if (pso->tes.code_bo)
+         agx_bo_unreference(&pso->device->dev, pso->tes.code_bo);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -674,6 +678,73 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
 }
 
 /*
+ * The hull shader. It runs as compute, one workgroup per patch, writing
+ * per-vertex and per-patch outputs into the TCS buffer. Everything the
+ * runtime needs about the patch layout has to be gathered BEFORE the
+ * lowering, which rewrites the output stores into global stores and
+ * takes the shader's tess info with it.
+ */
+static bool
+compile_tcs_stage(struct d12_device *device, const struct d12_binding_map *map,
+                  const void *dxil, size_t dxil_size,
+                  struct d12_pipeline_state *pso,
+                  struct agx_shader_part *out)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_CTRL);
+   if (!nir)
+      return false;
+
+   pso->tess_ccw |= nir->info.tess.ccw;
+   pso->tess_points |= nir->info.tess.point_mode;
+   if (nir->info.tess.spacing)
+      pso->tess_spacing = nir->info.tess.spacing;
+   if (nir->info.tess._primitive_mode)
+      pso->tess_mode = nir->info.tess._primitive_mode;
+
+   pso->tcs_output_patch_size = nir->info.tess.tcs_vertices_out;
+   pso->tcs_per_vertex_outputs = poly_tcs_per_vertex_outputs(nir);
+   pso->tcs_nr_patch_outputs = util_last_bit(nir->info.patch_outputs_written);
+   pso->tcs_output_stride = poly_tcs_output_stride(nir);
+
+   NIR_PASS(_, nir, poly_nir_lower_tcs);
+   nir->info.stage = MESA_SHADER_COMPUTE;
+   memset(&nir->info.cs, 0, sizeof(nir->info.cs));
+
+   return compile_poly_program(device, nir, NULL, out);
+}
+
+/*
+ * The domain shader, as the HARDWARE vertex shader: the tessellator
+ * produces an index buffer and the hardware invokes this once per index,
+ * which is what poly_nir_lower_tes(to_hw_vs = true) sets up.
+ */
+static bool
+compile_tes_stage(struct d12_device *device, const struct d12_binding_map *map,
+                  const void *dxil, size_t dxil_size,
+                  struct d12_pipeline_state *pso,
+                  struct agx_unlinked_uvs_layout *uvs,
+                  struct agx_shader_part *out)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_EVAL);
+   if (!nir)
+      return false;
+
+   /* Gather before lowering: it destroys info. */
+   pso->tess_ccw |= nir->info.tess.ccw;
+   pso->tess_points |= nir->info.tess.point_mode;
+   if (nir->info.tess.spacing)
+      pso->tess_spacing = nir->info.tess.spacing;
+   if (nir->info.tess._primitive_mode)
+      pso->tess_mode = nir->info.tess._primitive_mode;
+
+   NIR_PASS(_, nir, poly_nir_lower_tes, true);
+
+   return compile_poly_program(device, nir, uvs, out);
+}
+
+/*
  * The vertex shader ahead of a geometry shader does not feed the
  * rasterizer -- it writes its outputs to a buffer the GS reads. That
  * makes it a compute shader, and poly_nir_lower_vs_before_gs is what
@@ -791,6 +862,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *vs_dxil, size_t vs_size,
                                    const void *ps_dxil, size_t ps_size,
                                    const void *gs_dxil, size_t gs_size,
+                                   const void *hs_dxil, size_t hs_size,
+                                   const void *ds_dxil, size_t ds_size,
                                    enum pipe_format rt_format,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
@@ -936,6 +1009,106 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     * pipeline without a GS would be the silent-wrong this whole path
     * exists to avoid.
     */
+   /*
+    * TESSELLATION. The vertex shader becomes the same compute prepass the
+    * geometry path uses, the hull shader is compute, and the DOMAIN
+    * shader replaces pso->vs as the hardware vertex stage.
+    */
+   if (hs_dxil && hs_size && ds_dxil && ds_size) {
+      struct agx_shader_part sw_vs_part, tcs_part, tes_part;
+
+      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part,
+                               &pso->sw_vs_outputs) ||
+          !compile_tcs_stage(device, map, hs_dxil, hs_size, pso, &tcs_part) ||
+          !compile_tes_stage(device, map, ds_dxil, ds_size, pso, &pso->tes_uvs,
+                             &tes_part)) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+
+      const struct {
+         struct agx_shader_part *part;
+         struct agx_bo **bo;
+         uint64_t *va;
+         struct agx_shader_info *info;
+         const char *name;
+      } cs[] = {
+         {&sw_vs_part, &pso->sw_vs_bo, &pso->sw_vs_va, &pso->sw_vs_info,
+          "d3d12 sw vs (tess)"},
+         {&tcs_part, &pso->tcs_bo, &pso->tcs_va, &pso->tcs_info,
+          "d3d12 hull"},
+      };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
+         *cs[i].bo = agx_bo_create(&device->dev, cs[i].part->info.binary_size,
+                                   0, AGX_BO_EXEC | AGX_BO_LOW_VA,
+                                   cs[i].name);
+         if (!*cs[i].bo) {
+            for (unsigned j = 0; j < i; j++)
+               agx_bo_unreference(&device->dev, *cs[j].bo);
+            free(pso);
+            return E_OUTOFMEMORY;
+         }
+         memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
+                cs[i].part->info.binary_size);
+         *cs[i].va = (*cs[i].bo)->va->addr;
+         *cs[i].info = cs[i].part->info;
+      }
+
+      struct agx_shader_part tes_prolog;
+      nir_builder tb =
+         nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
+      agx_nir_vs_prolog(&tb, &prolog_key);
+      memset(&tes_prolog, 0, sizeof(tes_prolog));
+      agx_compile_shader_nir(tb.shader, &prolog_backend_key, &tes_prolog);
+      ralloc_free(tb.shader);
+
+      agx_fast_link(&pso->tes.linked, &device->dev, false, &tes_part,
+                    &tes_prolog, NULL, 0);
+      free(tes_prolog.binary);
+      pso->tes.info = tes_part.info;
+      agx_assign_uvs(&pso->tes_varyings, &pso->tes_uvs, 0, 0);
+
+      /* Same preamble rule as the geometry rasterization program: the
+       * linker does not copy it, so keep the compiled part addressable.
+       */
+      if (tes_part.info.has_preamble) {
+         pso->tes.code_bo =
+            agx_bo_create(&device->dev, tes_part.info.binary_size, 0,
+                          AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 domain");
+         if (!pso->tes.code_bo) {
+            free(pso);
+            return E_OUTOFMEMORY;
+         }
+         memcpy(agx_bo_map(pso->tes.code_bo), tes_part.binary,
+                tes_part.info.binary_size);
+         pso->tes.preamble_va =
+            pso->tes.code_bo->va->addr + tes_part.info.preamble_offset;
+      }
+
+      unsigned tes_samplers = tes_part.info.sampler_state_count;
+      if (tes_part.info.uses_txf)
+         tes_samplers = MAX2(tes_samplers, 1);
+
+      agx_pack(&pso->tes.counts, COUNTS, cfg) {
+         cfg.uniform_register_count = tes_part.info.push_count;
+         cfg.preshader_register_count = tes_part.info.nr_preamble_gprs;
+         cfg.sampler_state_register_count =
+            agx_translate_sampler_state_count(tes_samplers, false);
+         cfg.texture_state_register_count = tes_part.info.texture_state_count;
+      }
+
+      mesa_logi("compiled tessellation pipeline: sw_vs %u B, tcs %u B, "
+                "tes %u B, patch_size %u, stride %u, mode %u, spacing %u, "
+                "ccw %d, points %d",
+                sw_vs_part.info.binary_size, tcs_part.info.binary_size,
+                tes_part.info.binary_size, pso->tcs_output_patch_size,
+                pso->tcs_output_stride, pso->tess_mode, pso->tess_spacing,
+                pso->tess_ccw, pso->tess_points);
+
+      pso->has_tess = true;
+   }
+
    if (gs_dxil && gs_size) {
       struct agx_shader_part sw_vs_part, gs_main_part, gs_rast_part;
 
