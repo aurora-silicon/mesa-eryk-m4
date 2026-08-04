@@ -1274,12 +1274,33 @@ flush_outputs(struct trans_ctx *ctx)
          comps[c] = v ? v : nir_undef(b, 1, 32);
       }
 
-      nir_store_output(b, nir_vec(b, comps, num_comps), nir_imm_int(b, 0),
-                       .base = slot->base,
-                       .write_mask = slot->write_mask,
-                       .src_type = nir_type_float32,
-                       .io_semantics.location = slot->location,
-                       .io_semantics.num_slots = 1);
+      /* A HULL shader's ordinary outputs are PER CONTROL POINT, and the
+       * control point is the invocation. poly_nir_lower_tcs addresses a
+       * plain store_output with an undefined vertex index -- so all four
+       * invocations of a four-point patch write the same slot and three
+       * control points are simply never written. The tessellator still
+       * runs on the (correct) patch constants, so this presents as a
+       * fully tessellated patch whose vertices are all at the origin.
+       *
+       * Tess factors and generic patch constants arrive through
+       * storePatchConstant instead, and are per-patch, so they keep the
+       * plain store.
+       */
+      if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+         nir_store_per_vertex_output(
+            b, nir_vec(b, comps, num_comps), nir_load_invocation_id(b),
+            nir_imm_int(b, 0), .base = slot->base,
+            .write_mask = slot->write_mask, .src_type = nir_type_float32,
+            .io_semantics.location = slot->location,
+            .io_semantics.num_slots = 1);
+      } else {
+         nir_store_output(b, nir_vec(b, comps, num_comps), nir_imm_int(b, 0),
+                          .base = slot->base,
+                          .write_mask = slot->write_mask,
+                          .src_type = nir_type_float32,
+                          .io_semantics.location = slot->location,
+                          .io_semantics.num_slots = 1);
+      }
    }
 
 
@@ -1395,11 +1416,18 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
          b->shader->info.inputs_read |= BITFIELD64_BIT(location);
       } else if (b->shader->info.stage == MESA_SHADER_GEOMETRY ||
-                 b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+                 b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
+                 b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
          /* These stages read a PRIMITIVE's worth of vertices, so
           * loadInput's fourth operand selects which one. Emitting a
           * plain load_input drops that index and hands the backend an
           * intrinsic no lowering claims.
+          *
+          * A DOMAIN shader reads the hull shader's CONTROL POINTS the
+          * same way. Falling through to the vertex-attribute branch gave
+          * it VERT_ATTRIB_GENERIC0 slots and no control-point index, so
+          * every corner of the patch read the same undefined attribute
+          * and the interpolated position was garbage.
           */
          unsigned location = VARYING_SLOT_VAR0 + sig_id;
          nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
@@ -2088,8 +2116,23 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                        .src_type = nir_type_float32,
                        .io_semantics.location = slot,
                        .io_semantics.num_slots = 1);
-      b->shader->info.patch_outputs_written |=
-         BITFIELD64_BIT(slot - VARYING_SLOT_PATCH0);
+      /* patch_outputs_written is indexed FROM VARYING_SLOT_PATCH0, and
+       * the tess-level slots sit below it -- the subtraction underflows
+       * and the shift poisons the mask. util_last_bit then reports 28
+       * patch constants where there are none, and
+       * poly_tcs_out_offs_el pushes every per-vertex output out past a
+       * 134-float stride. The tessellator still runs; the domain shader
+       * just reads control points that were never written there.
+       *
+       * Tess levels live in outputs_written, which poly places at fixed
+       * offsets 0..5 ahead of the generic constants.
+       */
+      if (slot >= VARYING_SLOT_PATCH0) {
+         b->shader->info.patch_outputs_written |=
+            BITFIELD64_BIT(slot - VARYING_SLOT_PATCH0);
+      } else {
+         b->shader->info.outputs_written |= BITFIELD64_BIT(slot);
+      }
       return true;
    }
 

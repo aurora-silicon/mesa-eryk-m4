@@ -414,7 +414,7 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
 
          const float *t = (const float *)device->dbg_tcs_buf;
          const uint32_t *ti = (const uint32_t *)device->dbg_tcs_buf;
-         for (unsigned i = 0; i < MIN2(device->dbg_tcs_buf_n, 24); i += 4) {
+         for (unsigned i = 0; i < MIN2(device->dbg_tcs_buf_n, 140); i += 4) {
             mesa_logi("  tcs[%2u] %8.3f %8.3f %8.3f %8.3f  (0x%08x %08x "
                       "%08x %08x)",
                       i, t[i], t[i + 1], t[i + 2], t[i + 3], ti[i],
