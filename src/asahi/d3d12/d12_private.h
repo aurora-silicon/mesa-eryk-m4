@@ -399,6 +399,30 @@ struct d12_cmd_list {
    bool cdm_open;    /* last segment is an unterminated CDM */
    bool render_open; /* last segment is an unterminated RENDER */
 
+   /* THE PRE-GRAPHICS COMPUTE STREAM.
+    *
+    * Geometry, tessellation, mesh and work-graph stages have no hardware
+    * stage on AGX: they run as compute whose output the following DRAW
+    * consumes. So those dispatches must be ordered BEFORE a draw whose
+    * render pass is already open — and `d12_list_get_cdm` cannot do it,
+    * because it resolves the collision by ending the render pass, and a
+    * render pass can only be opened by a clear (see d12_list_get_render).
+    *
+    * Honeykrisp keeps two control streams per command buffer and splices
+    * the compute one in ahead of the graphics one (hk_cmd_buffer.h:615).
+    * This is that, using a property of our segment array: a segment is
+    * just a [stream_start, stream_end) range, and segments are submitted
+    * in ARRAY order, so the bytes need not be laid out in that order.
+    * The pre-gfx stream is therefore carved out of the data area and its
+    * segment inserted before the open render segment.
+    *
+    * pregfx_seg is only meaningful while pregfx_open.
+    */
+   uint8_t *pregfx_cur;  /* next control word write, or NULL */
+   uint8_t *pregfx_end;  /* one past the region: overflow check */
+   unsigned pregfx_seg;  /* index of the inserted segment */
+   bool pregfx_open;
+
    /* Bound state */
    struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */

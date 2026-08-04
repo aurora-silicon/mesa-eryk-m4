@@ -284,6 +284,8 @@ d12_list_check_stream_space(struct d12_cmd_list *list)
    return true;
 }
 
+static void d12_list_close_pregfx(struct d12_cmd_list *list);
+
 /* Close whichever segment is open, terminating its control stream. */
 static void
 d12_list_close_cdm(struct d12_cmd_list *list)
@@ -297,12 +299,102 @@ d12_list_close_cdm(struct d12_cmd_list *list)
    }
 
    if (list->render_open) {
+      /* The pre-graphics stream belongs to this pass; it is meaningless
+       * once the pass it precedes has ended.
+       */
+      d12_list_close_pregfx(list);
+
       struct d12_segment *seg = &list->segments[list->segment_count - 1];
       list->stream_cur =
          (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
       seg->stream_end = list->stream_cur - d12_list_stream_map(list);
       list->render_open = false;
    }
+}
+
+/* Size of one render pass's pre-graphics compute stream. Dispatches are
+ * ~0x40 bytes each plus a barrier, so this holds a few hundred — far more
+ * than a pass with geometry shaders in it will record before the segment
+ * limit bites.
+ */
+#define D12_PREGFX_STREAM_SIZE (32 * 1024)
+
+/*
+ * Terminate the pre-graphics stream, if one is open. Called when the
+ * render pass it belongs to ends, because the pair is what makes the
+ * ordering meaningful: the compute segment sits immediately before the
+ * render segment and nothing may be appended to it afterwards.
+ */
+static void
+d12_list_close_pregfx(struct d12_cmd_list *list)
+{
+   if (!list->pregfx_open)
+      return;
+
+   struct d12_segment *seg = &list->segments[list->pregfx_seg];
+   uint8_t *end = (uint8_t *)agx_cdm_terminate((uint32_t *)list->pregfx_cur);
+   seg->stream_end = end - d12_list_stream_map(list);
+   list->pregfx_open = false;
+   list->pregfx_cur = NULL;
+}
+
+/*
+ * Get the pre-graphics compute segment for the open render pass, creating
+ * it on first use. Unlike d12_list_get_cdm this does NOT end the render
+ * pass -- that is the entire point. See the comment on pregfx_cur in
+ * d12_private.h.
+ *
+ * Returns NULL if there is no open render pass to precede, which is a
+ * caller bug rather than a resource limit: without a render pass the
+ * ordinary CDM path is correct and cheaper.
+ */
+static struct d12_segment *
+d12_list_get_pregfx(struct d12_cmd_list *list)
+{
+   if (list->pregfx_open)
+      return &list->segments[list->pregfx_seg];
+
+   if (!list->render_open) {
+      mesa_loge("pre-graphics compute requested with no open render pass");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   if (list->segment_count >= D12_MAX_SEGMENTS) {
+      mesa_loge("command list segment limit reached");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   /* Carve the stream out of the data area. It is a control stream living
+    * in data space, which the submit path does not care about: it reads
+    * stream_start/stream_end and nothing else.
+    */
+   uint64_t gpu = d12_list_upload_zero(list, D12_PREGFX_STREAM_SIZE, 64);
+   if (!gpu)
+      return NULL;
+
+   size_t offset = gpu - list->stream_bo->va->addr;
+
+   /* Insert BEFORE the open render segment, which is by definition the
+    * last one. Shifting it up by one keeps `render_open` meaning "the
+    * last segment is an unterminated RENDER", which the close path and
+    * every draw rely on.
+    */
+   unsigned at = list->segment_count - 1;
+   list->segments[at + 1] = list->segments[at];
+   list->segment_count++;
+
+   struct d12_segment *seg = &list->segments[at];
+   memset(seg, 0, sizeof(*seg));
+   seg->type = D12_SEG_CDM;
+   seg->stream_start = offset;
+
+   list->pregfx_cur = d12_list_stream_map(list) + offset;
+   list->pregfx_end = list->pregfx_cur + D12_PREGFX_STREAM_SIZE;
+   list->pregfx_seg = at;
+   list->pregfx_open = true;
+   return seg;
 }
 
 /* Get an open CDM segment to append dispatches to, starting one if needed. */
