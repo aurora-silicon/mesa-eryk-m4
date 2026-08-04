@@ -207,6 +207,10 @@ d12_pso_Release(ID3D12PipelineState *iface)
    if (refs == 0) {
       if (pso->code_bo)
          agx_bo_unreference(&pso->device->dev, pso->code_bo);
+      if (pso->sw_vs_bo)
+         agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
+      if (pso->gs_main_bo)
+         agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -721,6 +725,7 @@ HRESULT
 d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *vs_dxil, size_t vs_size,
                                    const void *ps_dxil, size_t ps_size,
+                                   const void *gs_dxil, size_t gs_size,
                                    enum pipe_format rt_format,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
@@ -853,6 +858,70 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    pso->vs.info = vs_part.info;
    pso->fs.info = fs_part.info;
+
+   /*
+    * GEOMETRY. Three more programs, compiled and linked here so a draw
+    * only has to bind them. The rasterization shader replaces pso->vs as
+    * the hardware vertex shader; the other two are compute, uploaded the
+    * same way the compute PSO uploads its single program.
+    *
+    * A failure anywhere here fails PSO creation. Every unsupported
+    * geometry configuration already refused BY NAME inside
+    * compile_gs_stage, so reaching this point and then falling back to a
+    * pipeline without a GS would be the silent-wrong this whole path
+    * exists to avoid.
+    */
+   if (gs_dxil && gs_size) {
+      struct agx_shader_part sw_vs_part, gs_main_part, gs_rast_part;
+
+      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &sw_vs_part) ||
+          !compile_gs_stage(device, map, gs_dxil, gs_size, &pso->gs_info,
+                            &pso->gs_uvs, &gs_main_part, &gs_rast_part)) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+
+      /* The two compute programs live in plain code BOs. */
+      const struct {
+         struct agx_shader_part *part;
+         struct agx_bo **bo;
+         uint64_t *va;
+         struct agx_shader_info *info;
+         const char *name;
+      } cs[] = {
+         {&sw_vs_part, &pso->sw_vs_bo, &pso->sw_vs_va, &pso->sw_vs_info,
+          "d3d12 sw vs"},
+         {&gs_main_part, &pso->gs_main_bo, &pso->gs_main_va,
+          &pso->gs_main_info, "d3d12 gs main"},
+      };
+
+      for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
+         *cs[i].bo = agx_bo_create(&device->dev, cs[i].part->info.binary_size,
+                                   0, 0, cs[i].name);
+         if (!*cs[i].bo) {
+            /* Unwind whatever the earlier iteration already took. */
+            for (unsigned j = 0; j < i; j++)
+               agx_bo_unreference(&device->dev, *cs[j].bo);
+            free(pso);
+            return E_OUTOFMEMORY;
+         }
+         memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
+                cs[i].part->info.binary_size);
+         *cs[i].va = (*cs[i].bo)->va->addr;
+         *cs[i].info = cs[i].part->info;
+      }
+
+      /* The rasterization program is an ordinary hardware vertex shader.
+       * It reads the emitted vertex buffer rather than vertex attributes,
+       * so unlike pso->vs it needs no attribute-fetch prolog.
+       */
+      agx_fast_link(&pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
+                    NULL, NULL, 0);
+      pso->gs_rast.info = gs_rast_part.info;
+      agx_assign_uvs(&pso->gs_varyings, &pso->gs_uvs, 0, 0);
+
+      pso->has_gs = true;
+   }
 
    /*
     * A texel fetch consumes a sampler even though HLSL's Load names none:

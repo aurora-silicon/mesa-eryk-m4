@@ -432,7 +432,7 @@ d12_device_CreateGraphicsPipelineState(
 
    return d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
-      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, rt_format,
+      desc->PS.pShaderBytecode, desc->PS.BytecodeLength, NULL, 0, rt_format,
       &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
       map, riid, out);
 }

@@ -32,6 +32,7 @@
 #include "agx_uvs.h"
 #include "dxil/d12_dxil.h"
 #include "layout.h"
+#include "poly/nir/poly_nir.h"
 
 #undef MESA_LOG_TAG
 #define MESA_LOG_TAG "d3d12agx"
@@ -291,6 +292,34 @@ struct d12_pipeline_state {
    struct agx_varyings_vs varyings;
    struct d12_depth_stencil_state ds;
    struct d12_raster_state raster;
+
+   /* GEOMETRY. AGX has no hardware geometry stage: a GS becomes compute
+    * programs whose output the rasterization draw consumes, so a
+    * geometry pipeline carries three extra programs rather than one.
+    *
+    *   sw_vs    the app's vertex shader, rewritten by
+    *            poly_nir_lower_vs_before_gs to write its outputs to a
+    *            buffer instead of the rasterizer. Compute.
+    *   gs_main  the geometry shader body. Compute. Often empty --
+    *            poly deletes its store_output, so a GS with no side
+    *            effects and static topology compiles to a few bytes.
+    *   gs_rast  re-runs the GS body once per output vertex and feeds the
+    *            rasterizer, so it is the HARDWARE vertex shader and
+    *            replaces pso->vs at draw time.
+    *
+    * The compute programs are plain code BOs like the compute PSO's;
+    * gs_rast is fast-linked like any other vertex stage.
+    */
+   bool has_gs;
+   struct poly_gs_info gs_info;
+
+   struct agx_bo *sw_vs_bo, *gs_main_bo;
+   uint64_t sw_vs_va, gs_main_va;
+   struct agx_shader_info sw_vs_info, gs_main_info;
+
+   struct d12_gfx_stage gs_rast;
+   struct agx_unlinked_uvs_layout gs_uvs;
+   struct agx_varyings_vs gs_varyings;
 };
 
 static inline struct d12_pipeline_state *
@@ -579,7 +608,8 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           REFIID riid, void **out);
 HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
-   const void *ps_dxil, size_t ps_size, enum pipe_format rt_format,
+   const void *ps_dxil, size_t ps_size, const void *gs_dxil, size_t gs_size,
+   enum pipe_format rt_format,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
    const D3D12_RASTERIZER_DESC *rs_desc, const struct d12_binding_map *map,
    REFIID riid, void **out);
