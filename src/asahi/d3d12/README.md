@@ -4,14 +4,20 @@ A native D3D12 user-mode driver on the Mesa/Asahi substrate: DXIL is
 translated straight to NIR and compiled to AGX machine code. **No Vulkan
 layer, no SPIR-V, no `dxc` at run time.**
 
-Status on `dev`: **321 of 334** corpus shaders compile, and **all fourteen
+Status on `dev`: **321 of 334** corpus shaders compile, and **all fifteen
 GPU suites pass on real hardware** — the four G1-G4 milestone smokes plus
-ten acceptance suites:
+eleven acceptance suites. **Every graphics stage that replaces fixed
+function now executes**: vertex, geometry, tessellation, mesh,
+amplification, pixel.
 
 - `g6_geometry` — **geometry shaders execute**, as two compute dispatches
   ordered ahead of the render pass plus a rasterization program bound as
   the hardware vertex shader. A pass-through geometry shader reproduces
   the no-GS control **pixel for pixel** — all 16384 compared, zero differ.
+- `g9_amplification` — **amplification shaders execute**: the AS writes
+  its `DispatchMesh` grid on the GPU and the mesh shader is dispatched
+  INDIRECTLY off it, through a six-word indirect-local grid that
+  `as_setup` builds.
 - `g8_mesh` — **mesh shaders execute**, via
   `ID3D12Device2::CreatePipelineState` and
   `ID3D12GraphicsCommandList6::DispatchMesh`. The first stage with no

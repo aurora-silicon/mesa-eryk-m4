@@ -239,6 +239,23 @@ rather than the live slot count, because that is what the translator
 emits for `storeVertexOutput`. Both sides must agree or vertex N is
 written at one offset and read at another.
 
+### An AGX indirect grid is SIX words, not three
+
+`AGX_CDM_MODE_INDIRECT_LOCAL` reads three THREAD counts followed by three
+local sizes, and the `CDM_LOCAL_SIZE` packet is then omitted from the
+stream. That is what makes a GPU-written dispatch possible at all: the
+API gives thread GROUPS, the hardware wants threads, and with an indirect
+grid the multiply cannot happen on the CPU. A setup kernel has to write
+both halves.
+
+### Do not overload a slot the translator writes
+
+The mesh draw descriptor was parked in `D12_MESH_OFF_DISPATCH`, which is
+where the translator writes `dispatchMesh`'s grid. It worked for as long
+as nothing wrote that slot — and would have silently clobbered the draw
+the moment an amplification shader existed. Driver-side scratch belongs
+in slots the translator never touches.
+
 ### The container declares the stage — honour it or refuse
 `d12_dxil_container_stage()` returning plain `false` for shader kinds ≥ 6 let
 a caller's default fill the gap, and library/mesh shaders silently compiled
