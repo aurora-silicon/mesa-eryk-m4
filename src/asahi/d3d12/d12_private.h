@@ -207,6 +207,25 @@ struct d12_descriptor_heap {
 };
 
 /*
+ * A query heap: storage for Count results of one type. The heap is just
+ * a buffer; Begin/End/Resolve give it meaning.
+ */
+struct d12_query_heap {
+   ID3D12QueryHeap iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   D3D12_QUERY_HEAP_DESC desc;
+   unsigned stride;   /* bytes per result */
+   struct agx_bo *bo;
+};
+
+unsigned d12_query_result_size(D3D12_QUERY_HEAP_TYPE type);
+HRESULT d12_query_heap_create(struct d12_device *device,
+                              const D3D12_QUERY_HEAP_DESC *desc, REFIID riid,
+                              void **out);
+
+/*
  * The parsed root signature.
  *
  * This is the only thing that connects a root PARAMETER index -- what

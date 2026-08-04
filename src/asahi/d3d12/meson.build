@@ -22,6 +22,7 @@ libd3d12agx_files = files(
   'd12_fence.c',
   'd12_format.c',
   'd12_pipeline.c',
+  'd12_query.c',
   'd12_queue.c',
   'd12_resource.c',
   'd12_root_sig.c',

@@ -1088,6 +1088,15 @@ d12_device_GetAdapterLuid(ID3D12Device2 *iface)
  * ID3D12Device2::CreatePipelineState, which takes a STREAM descriptor
  * rather than the fixed GRAPHICS/COMPUTE structs.
  */
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreateQueryHeap(ID3D12Device2 *iface,
+                           const D3D12_QUERY_HEAP_DESC *desc, REFIID riid,
+                           void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+   return d12_query_heap_create(device, desc, riid, out);
+}
+
 static const ID3D12Device2Vtbl d12_device_vtbl = {
    /* every unimplemented slot fails safely */
    D12_ID3D12Device2_DEFAULTS,
@@ -1117,6 +1126,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
       d12_device_GetDescriptorHandleIncrementSize,
    .CreateCommittedResource = d12_device_CreateCommittedResource,
    .GetCopyableFootprints = d12_device_GetCopyableFootprints,
+   .CreateQueryHeap = d12_device_CreateQueryHeap,
    .CreateFence = d12_device_CreateFence,
    .GetDeviceRemovedReason = d12_device_GetDeviceRemovedReason,
    .GetAdapterLuid = d12_device_GetAdapterLuid,
