@@ -2795,6 +2795,128 @@ d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
                                 address, D3D12_ROOT_PARAMETER_TYPE_SRV);
 }
 
+/*
+ * ROOT CONSTANTS. The application hands over N 32-bit values inline; the
+ * shader sees them as a constant buffer at the parameter's register. Our
+ * shader ABI reaches a CBV through an address, so the values are uploaded
+ * into the command list's data area and that address goes in the slot --
+ * the same slot a root CBV would use, which is why the binding map
+ * already assigns one (d12_root_layout_build_map).
+ *
+ * Uploading per call rather than accumulating means a later partial write
+ * has to preserve the earlier values, so the current contents are copied
+ * forward before the new ones land on top.
+ */
+static void
+d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
+                            UINT root_param_index, UINT num_values,
+                            const void *data, UINT offset_in_values)
+{
+   struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
+
+   if (!rs) {
+      mesa_loge("root constants bound with no root signature set");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (root_param_index >= rs->layout.num_params) {
+      mesa_loge("root parameter %u is past the signature's %u parameters",
+                root_param_index, rs->layout.num_params);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const struct d12_root_param *rp = &rs->layout.params[root_param_index];
+   if (rp->type != D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS) {
+      mesa_loge("root parameter %u is type %u, bound as root constants",
+                root_param_index, rp->type);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   unsigned total = MAX2(rp->num_constants, offset_in_values + num_values);
+   if (!total || !data)
+      return;
+
+   unsigned slot = d12_binding_map_find(&rs->map, D12_RES_CBV, rp->space,
+                                        rp->base_register);
+   if (slot == ~0u) {
+      mesa_loge("root constants at register %u space %u are not in the "
+                "signature's binding map",
+                rp->base_register, rp->space);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_descriptor *table =
+      compute ? list->compute_root_table : list->graphics_root_table;
+
+   /* A constant buffer is read in 16-byte units, so round up rather than
+    * leave the tail of the last vector reading past the allocation. */
+   size_t size = ALIGN_POT((size_t)total * 4, 16);
+
+   uint32_t *staging = calloc(1, size);
+   if (!staging)
+      return;
+
+   /* Preserve what a previous call to this same parameter wrote. */
+   if (table[slot].kind == D12_DESC_CBV && table[slot].address) {
+      const void *old = d12_list_data_cpu(list, table[slot].address);
+      if (old)
+         memcpy(staging, old, MIN2(size, (size_t)rp->num_constants * 4));
+   }
+
+   memcpy(staging + offset_in_values, data, (size_t)num_values * 4);
+
+   uint64_t gpu = d12_list_upload(list, staging, size, 16);
+   free(staging);
+
+   if (!gpu) {
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   memset(&table[slot], 0, sizeof(table[slot]));
+   table[slot].address = gpu;
+   table[slot].kind = D12_DESC_CBV;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRoot32BitConstants(ID3D12GraphicsCommandList6 *iface,
+                                       UINT index, UINT num, const void *data,
+                                       UINT offset)
+{
+   d12_list_set_root_constants(d12_cmd_list_from_iface(iface), false, index,
+                               num, data, offset);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRoot32BitConstants(ID3D12GraphicsCommandList6 *iface,
+                                      UINT index, UINT num, const void *data,
+                                      UINT offset)
+{
+   d12_list_set_root_constants(d12_cmd_list_from_iface(iface), true, index,
+                               num, data, offset);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetGraphicsRoot32BitConstant(ID3D12GraphicsCommandList6 *iface,
+                                      UINT index, UINT value, UINT offset)
+{
+   d12_list_set_root_constants(d12_cmd_list_from_iface(iface), false, index, 1,
+                               &value, offset);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetComputeRoot32BitConstant(ID3D12GraphicsCommandList6 *iface,
+                                     UINT index, UINT value, UINT offset)
+{
+   d12_list_set_root_constants(d12_cmd_list_from_iface(iface), true, index, 1,
+                               &value, offset);
+}
+
 static void STDMETHODCALLTYPE
 d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList6 *iface,
                                            UINT index,
@@ -3521,6 +3643,10 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
       d12_list_SetGraphicsRootShaderResourceView,
    .SetComputeRootConstantBufferView =
       d12_list_SetComputeRootConstantBufferView,
+   .SetGraphicsRoot32BitConstants = d12_list_SetGraphicsRoot32BitConstants,
+   .SetComputeRoot32BitConstants = d12_list_SetComputeRoot32BitConstants,
+   .SetGraphicsRoot32BitConstant = d12_list_SetGraphicsRoot32BitConstant,
+   .SetComputeRoot32BitConstant = d12_list_SetComputeRoot32BitConstant,
    .SetGraphicsRootConstantBufferView =
       d12_list_SetGraphicsRootConstantBufferView,
    .SetComputeRootDescriptorTable = d12_list_SetComputeRootDescriptorTable,
