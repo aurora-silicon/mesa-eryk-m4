@@ -587,7 +587,22 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
       break;
 
    case D12_FUNC_INST_ATOMICRMW:
+      /* [ptr, val, operation, vol, ordering, ssid]. Only the first two
+       * are value references; the operation is a LITERAL, and running it
+       * through rel_to_abs silently turned it into a bogus value index.
+       */
+      if (rec->num_ops >= 3) {
+         inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[0]);
+         inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[1]);
+         inst->extra[inst->num_extra++] = rec->ops[2];
+      }
+      defines_value = true;
+      break;
+
    case D12_FUNC_INST_CMPXCHG:
+      /* [ptr, cmp, new, vol, successordering, ssid, failureordering,
+       * weak]: three value references, the rest literals.
+       */
       for (unsigned i = 0; i < rec->num_ops && inst->num_ops < 3; i++)
          inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[i]);
       defines_value = true;

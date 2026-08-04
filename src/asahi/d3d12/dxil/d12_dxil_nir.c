@@ -126,6 +126,13 @@ enum d12_dxop {
    D12_DXOP_LEGACY_F16TOF32 = 131,
    D12_DXOP_WAVE_ALL_BIT_COUNT = 135,
    D12_DXOP_CALCULATE_LOD = 81,
+   D12_DXOP_MAKE_DOUBLE = 101,
+   D12_DXOP_SPLIT_DOUBLE = 102,
+   D12_DXOP_IS_HELPER_LANE = 221,
+   D12_DXOP_QUAD_VOTE = 222,
+   D12_DXOP_TEXTURE_GATHER_RAW = 223,
+   D12_DXOP_SAMPLE_CMP_LEVEL = 224,
+   D12_DXOP_SAMPLE_CMP_BIAS = 255,
    D12_DXOP_QUAD_READ_LANE_AT = 122,
    D12_DXOP_QUAD_OP = 123,
    D12_DXOP_THREAD_ID = 93,
@@ -1020,6 +1027,35 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                            (uint32_t)sig_id);
       const char *sem = se ? se->name : NULL;
 
+      /* Depth, stencil-ref and coverage are scalar side channels with
+       * their own consumers (agx_nir_lower_discard_zs_emit and
+       * agx_nir_lower_sample_intrinsics), not colour outputs: store them
+       * now and skip the vec4 collection entirely.
+       */
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT && sem &&
+          (!strcmp(sem, "SV_Depth") || !strcmp(sem, "SV_StencilRef") ||
+           !strcmp(sem, "SV_Coverage"))) {
+         unsigned loc;
+         nir_alu_type t;
+         if (!strcmp(sem, "SV_Depth")) {
+            loc = FRAG_RESULT_DEPTH;
+            t = nir_type_float32;
+         } else if (!strcmp(sem, "SV_StencilRef")) {
+            loc = FRAG_RESULT_STENCIL;
+            t = nir_type_uint32;
+         } else {
+            loc = FRAG_RESULT_SAMPLE_MASK;
+            t = nir_type_uint32;
+         }
+
+         nir_store_output(b, val, nir_imm_int(b, 0), .base = 0,
+                          .write_mask = 1, .src_type = t,
+                          .io_semantics.location = loc,
+                          .io_semantics.num_slots = 1);
+         b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+         return true;
+      }
+
       unsigned location;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* SV_Target[n]; the semantic index rides in start_row. */
@@ -1408,7 +1444,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    case D12_DXOP_SAMPLE_GRAD:
    case D12_DXOP_SAMPLE_CMP:
    case D12_DXOP_SAMPLE_CMP_LEVEL_ZERO:
-   case D12_DXOP_TEXTURE_GATHER: {
+   case D12_DXOP_SAMPLE_CMP_LEVEL:
+   case D12_DXOP_SAMPLE_CMP_BIAS:
+   case D12_DXOP_TEXTURE_GATHER:
+   case D12_DXOP_TEXTURE_GATHER_RAW: {
       /* (srv, sampler, c0..c3, offsets..., extras...). Only the 2D
        * layouts the texture heap can describe are accepted; everything
        * else refuses by name rather than sampling something that is not
@@ -1437,7 +1476,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * "none". A real offset is representable (nir_tex_src_offset) but
        * has not been needed yet; refuse it loudly.
        */
-      unsigned num_offsets = opcode == D12_DXOP_TEXTURE_GATHER ? 2 : 3;
+      unsigned num_offsets = (opcode == D12_DXOP_TEXTURE_GATHER ||
+                              opcode == D12_DXOP_TEXTURE_GATHER_RAW)
+                                ? 2
+                                : 3;
       for (unsigned i = 0; i < num_offsets && 6 + i < np; i++) {
          uint64_t off = 0;
          if (operand_is_undef(ctx, p[6 + i]))
@@ -1457,8 +1499,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       case D12_DXOP_SAMPLE_GRAD: op = nir_texop_txd; num_srcs = 5; break;
       case D12_DXOP_SAMPLE_CMP: op = nir_texop_tex; num_srcs = 4; break;
       case D12_DXOP_SAMPLE_CMP_LEVEL_ZERO:
-         /* Comparison at exactly LOD 0 is txl with a zero lod. */
+      case D12_DXOP_SAMPLE_CMP_LEVEL:
+         /* Comparison at an explicit level is txl; level zero is the
+          * same instruction with a zero lod.
+          */
          op = nir_texop_txl;
+         num_srcs = 5;
+         break;
+      case D12_DXOP_SAMPLE_CMP_BIAS:
+         op = nir_texop_txb;
          num_srcs = 5;
          break;
       default: op = nir_texop_tg4; break;
@@ -1502,7 +1551,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             nir_tex_src_ddy,
             nir_vec2(b, get_def(ctx, p[12]), get_def(ctx, p[13])));
       } else if (opcode == D12_DXOP_SAMPLE_CMP ||
-                 opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO) {
+                 opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO ||
+                 opcode == D12_DXOP_SAMPLE_CMP_LEVEL ||
+                 opcode == D12_DXOP_SAMPLE_CMP_BIAS) {
          NEED(10);
          tex->is_shadow = true;
          tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_comparator,
@@ -1510,7 +1561,22 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          if (opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO) {
             tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_lod,
                                               nir_imm_int(b, 0));
+         } else if (opcode == D12_DXOP_SAMPLE_CMP_LEVEL) {
+            NEED(11);
+            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                              get_def(ctx, p[10]));
+         } else if (opcode == D12_DXOP_SAMPLE_CMP_BIAS) {
+            NEED(11);
+            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_bias,
+                                              get_def(ctx, p[10]));
          }
+      } else if (opcode == D12_DXOP_TEXTURE_GATHER_RAW) {
+         /* Raw gather: the texel bits, unconverted, channel 0. The
+          * result width follows the declared overload.
+          */
+         tex->dest_type =
+            nir_type_uint | type_bit_size(ctx->mod, inst->result_type);
+         tex->component = 0;
       } else if (opcode == D12_DXOP_TEXTURE_GATHER) {
          NEED(9);
          uint64_t channel = 0;
@@ -1553,15 +1619,28 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!lod || operand_is_undef(ctx, p[1]))
          lod = nir_imm_int(b, 0);
 
+      /* Buffers answer with their element count; the query goes to the
+       * same descriptor with buffer dimension.
+       */
+      bool is_buf = th.kind == D12_RES_KIND_TYPED_BUFFER ||
+                    th.kind == D12_RES_KIND_RAW_BUFFER ||
+                    th.kind == D12_RES_KIND_STRUCTURED_BUFFER;
+
+      /* A buffer's size query is one component (its element count); a
+       * 2D texture's is two.
+       */
+      unsigned txs_comps = is_buf ? 1 : 2;
+
       nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
       txs->op = nir_texop_txs;
-      txs->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      txs->sampler_dim = is_buf ? GLSL_SAMPLER_DIM_BUF
+                                : GLSL_SAMPLER_DIM_2D;
       txs->is_array = false;
       txs->dest_type = nir_type_uint32;
       txs->src[0] =
          nir_tex_src_for_ssa(nir_tex_src_texture_handle, handle);
       txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
-      nir_def_init(&txs->instr, &txs->def, 2, 32);
+      nir_def_init(&txs->instr, &txs->def, txs_comps, 32);
       nir_builder_instr_insert(b, &txs->instr);
 
       nir_tex_instr *lv = nir_tex_instr_create(b->shader, 1);
@@ -1577,10 +1656,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def_init(&lv->instr, &lv->def, 1, 32);
       nir_builder_instr_insert(b, &lv->instr);
 
+      nir_def *height =
+         is_buf ? nir_imm_int(b, 1) : nir_channel(b, &txs->def, 1);
       def_result(ctx, inst,
-                 nir_vec4(b, nir_channel(b, &txs->def, 0),
-                          nir_channel(b, &txs->def, 1), nir_imm_int(b, 1),
-                          &lv->def));
+                 nir_vec4(b, nir_channel(b, &txs->def, 0), height,
+                          nir_imm_int(b, 1), &lv->def));
       return true;
    }
 
@@ -1644,6 +1724,25 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!x || !y) {
          trans_fail(ctx, "malformed texture coordinates");
          return false;
+      }
+
+      /* Texel-fetch offsets are integers added to integer coordinates:
+       * folding them here IS the operation, no hardware support needed.
+       * Undef means absent. Dynamic offsets stay refused.
+       */
+      for (unsigned i = 0; i < 2 && 5 + i < np; i++) {
+         if (operand_is_undef(ctx, p[5 + i]))
+            continue;
+         uint64_t off = 0;
+         if (const_uint(ctx, p[5 + i], &off)) {
+            if (!off)
+               continue;
+            nir_def **c = i ? &y : &x;
+            *c = nir_iadd_imm(b, *c, (int32_t)(int8_t)off);
+         } else {
+            trans_fail(ctx, "dynamic texel-fetch offsets unsupported");
+            return false;
+         }
       }
 
       nir_def *lod = get_def(ctx, p[1]);
@@ -1781,6 +1880,43 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  nir_channel(b, nir_unpack_half_2x16(b, get_def(ctx, p[0])),
                              0));
       return true;
+
+   case D12_DXOP_MAKE_DOUBLE:
+      /* (lo, hi) -> the 64-bit value. Pure bit assembly: no fp64
+       * arithmetic happens here, so this works on hardware with none.
+       * Shaders that go on to ADD doubles still fail, in the backend,
+       * honestly.
+       */
+      NEED(2);
+      def_result(ctx, inst,
+                 nir_pack_64_2x32_split(b, get_def(ctx, p[0]),
+                                        get_def(ctx, p[1])));
+      return true;
+
+   case D12_DXOP_SPLIT_DOUBLE: {
+      /* (double) -> {lo, hi}, consumed by extractvalue. */
+      NEED(1);
+      nir_def *v = get_def(ctx, p[0]);
+      def_result(ctx, inst,
+                 nir_vec2(b, nir_unpack_64_2x32_split_x(b, v),
+                          nir_unpack_64_2x32_split_y(b, v)));
+      return true;
+   }
+
+   case D12_DXOP_IS_HELPER_LANE:
+      def_result(ctx, inst, nir_is_helper_invocation(b, 1));
+      return true;
+
+   case D12_DXOP_QUAD_VOTE: {
+      /* (cond, op): 0 = any, 1 = all. */
+      NEED(2);
+      uint64_t qop = 0;
+      const_uint(ctx, p[1], &qop);
+      nir_def *cond = to_bool(ctx, get_def(ctx, p[0]));
+      def_result(ctx, inst, qop ? nir_quad_vote_all(b, 1, cond)
+                                : nir_quad_vote_any(b, 1, cond));
+      return true;
+   }
 
    case D12_DXOP_WAVE_ALL_BIT_COUNT:
       /* WaveActiveCountBits: how many active lanes hold true. */
@@ -2134,6 +2270,33 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!const_uint(ctx, p[7], &mask))
          mask = 0xf;
 
+      if (opcode == D12_DXOP_BUFFER_STORE &&
+          h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         /* Format conversion on write: an image store with buffer
+          * dimension, mirroring the typed-load path above. Runtime
+          * needs a writable (PBE) descriptor, same caveat as
+          * textureStore.
+          */
+         nir_def *vals4[4];
+         for (unsigned i = 0; i < 4; i++) {
+            vals4[i] = get_def(ctx, p[3 + i]);
+            if (!vals4[i] || operand_is_undef(ctx, p[3 + i]))
+               vals4[i] = nir_imm_int(b, 0);
+         }
+
+         nir_def *zero = nir_imm_int(b, 0);
+         nir_bindless_image_store(
+            b,
+            nir_bindless_image_agx(
+               b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_TEXTURES),
+            nir_vec4(b, get_def(ctx, p[1]), zero, zero, zero),
+            nir_imm_int(b, 0), nir_vec(b, vals4, 4), nir_imm_int(b, 0),
+            .image_dim = GLSL_SAMPLER_DIM_BUF, .image_array = false,
+            .format = PIPE_FORMAT_NONE, .access = ACCESS_NON_READABLE);
+         return true;
+      }
+
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        get_def(ctx, p[2]),
@@ -2163,10 +2326,39 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &h))
          return false;
 
-      nir_def *addr = resource_address(ctx, &h,
-                                       get_def(ctx, p[1]),
-                                       get_def(ctx, p[2]),
-                                       opcode == D12_DXOP_RAW_BUFFER_LOAD);
+      /* A TYPED buffer (Buffer<T>/RWBuffer<T>) is not byte-addressed
+       * memory: the element format converts on access, which on AGX is
+       * the texture unit's job. It reads the same heap descriptor a
+       * texture does, with buffer dimension -- exactly how Honeykrisp
+       * models texel buffers (hk_buffer_view.c).
+       */
+      nir_def *data;
+      if (opcode == D12_DXOP_BUFFER_LOAD &&
+          h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         nir_def *tex_handle = nir_bindless_image_agx(
+            b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES);
+
+         nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
+         tex->op = nir_texop_txf;
+         tex->sampler_dim = GLSL_SAMPLER_DIM_BUF;
+         tex->is_array = false;
+         tex->dest_type = nir_type_float32;
+         tex->coord_components = 1;
+         tex->src[0] =
+            nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+         tex->src[1] =
+            nir_tex_src_for_ssa(nir_tex_src_coord, get_def(ctx, p[1]));
+         nir_def_init(&tex->instr, &tex->def, 4, 32);
+         nir_builder_instr_insert(b, &tex->instr);
+         data = &tex->def;
+      } else {
+         nir_def *addr = resource_address(ctx, &h,
+                                          get_def(ctx, p[1]),
+                                          get_def(ctx, p[2]),
+                                          opcode == D12_DXOP_RAW_BUFFER_LOAD);
+         data = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+      }
 
       /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
        * lanes, and index 4 is the tiled-resource residency status
@@ -2174,7 +2366,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * access that executes is by definition fully mapped: the status
        * is the constant "mapped", not a placeholder.
        */
-      nir_def *data = nir_load_global(b, 4, 32, addr, .align_mul = 4);
       nir_def *mapped[5] = {
          nir_channel(b, data, 0), nir_channel(b, data, 1),
          nir_channel(b, data, 2), nir_channel(b, data, 3),
@@ -2821,6 +3012,91 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          ctx.ptr_pointee[inst->result_value] = cur;
          if (dyn)
             ctx.defs[inst->result_value] = dyn;
+         break;
+      }
+
+      case D12_FUNC_INST_ATOMICRMW: {
+         /* LLVM atomicrmw, which DXC emits only for groupshared -- UAV
+          * atomics go through dx.op.atomicBinOp. Operation numbering is
+          * LLVM's RMWOperations (Bitcode/LLVMBitCodes.h).
+          */
+         if (inst->num_ops < 2 || inst->num_extra < 1) {
+            trans_fail(&ctx, "malformed atomicrmw");
+            break;
+         }
+
+         uint8_t space = pointer_for_value(&ctx, inst->ops[0]);
+         if (space != D12_PTR_SHARED) {
+            trans_fail(&ctx, "atomicrmw outside groupshared unsupported");
+            break;
+         }
+
+         nir_atomic_op op;
+         switch (inst->extra[0]) {
+         case 0: op = nir_atomic_op_xchg; break;
+         case 1: op = nir_atomic_op_iadd; break;
+         case 3: op = nir_atomic_op_iand; break;
+         case 5: op = nir_atomic_op_ior; break;
+         case 6: op = nir_atomic_op_ixor; break;
+         case 7: op = nir_atomic_op_imax; break;
+         case 8: op = nir_atomic_op_imin; break;
+         case 9: op = nir_atomic_op_umax; break;
+         case 10: op = nir_atomic_op_umin; break;
+         default:
+            trans_fail(&ctx, "unhandled atomicrmw operation");
+            break;
+         }
+         if (ctx.error)
+            break;
+
+         nir_def *val = get_def(&ctx, inst->ops[1]);
+         if (!val)
+            break;
+
+         uint32_t base = ctx.ptr_base[inst->ops[0]];
+         nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (!dyn)
+            dyn = nir_imm_int(&b, 0);
+
+         def_result(&ctx, inst,
+                    nir_shared_atomic(&b, val->bit_size,
+                                      nir_iadd_imm(&b, dyn, base), val,
+                                      .atomic_op = op));
+         break;
+      }
+
+      case D12_FUNC_INST_CMPXCHG: {
+         /* Groupshared InterlockedCompareExchange. The LLVM result is
+          * {oldvalue, i1 success}; DXC only ever extracts the value, so
+          * the success channel is derived rather than stored.
+          */
+         if (inst->num_ops < 3) {
+            trans_fail(&ctx, "malformed cmpxchg");
+            break;
+         }
+
+         uint8_t space = pointer_for_value(&ctx, inst->ops[0]);
+         if (space != D12_PTR_SHARED) {
+            trans_fail(&ctx, "cmpxchg outside groupshared unsupported");
+            break;
+         }
+
+         nir_def *cmp = get_def(&ctx, inst->ops[1]);
+         nir_def *new_val = get_def(&ctx, inst->ops[2]);
+         if (!cmp || !new_val)
+            break;
+
+         uint32_t base = ctx.ptr_base[inst->ops[0]];
+         nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (!dyn)
+            dyn = nir_imm_int(&b, 0);
+
+         nir_def *old = nir_shared_atomic_swap(
+            &b, cmp->bit_size, nir_iadd_imm(&b, dyn, base), cmp, new_val,
+            .atomic_op = nir_atomic_op_cmpxchg);
+         nir_def *ok = nir_ieq(&b, old, cmp);
+         def_result(&ctx, inst,
+                    nir_vec2(&b, old, nir_b2iN(&b, ok, old->bit_size)));
          break;
       }
 

@@ -193,9 +193,13 @@ main(int argc, char **argv)
       unsigned bindless_base = 0;
       NIR_PASS(_, nir, agx_nir_lower_tilebuffer, &tib, NULL, &bindless_base,
                NULL, NULL);
-      /* Discards become sample_mask writes; hk orders this before the
-       * MSAA lowering for the same reason (hk_shader.c).
+      /* Depth/stencil-ref writes become zs_emit, a coverage write
+       * becomes demote_samples, and discards become sample_mask writes.
+       * hk orders these the same way (hk_shader.c): zs_emit before the
+       * sample-mask lowering, everything before MSAA lowering.
        */
+      NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
+      NIR_PASS(_, nir, agx_nir_lower_sample_intrinsics, false);
       NIR_PASS(_, nir, agx_nir_lower_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa, 1);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
