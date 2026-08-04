@@ -625,7 +625,26 @@ struct nir_shader;
  * overwritten. Getting it wrong presents as half of a 64-bit pointer
  * arriving -- a fault at address 0.
  */
-#define D12_UNIFORM_RESERVED (D12_UNIFORM_TEXTURES + D12_UNIFORM_TEXTURE_REGS)
+/*
+ * Sampler heap base: hardware sampler descriptors at slot * 8 bytes, the
+ * sampler analogue of the texture heap. 8 is AGX_SAMPLER_LENGTH;
+ * static-asserted where agx_pack.h is visible (d12_cmd.c).
+ */
+#define D12_UNIFORM_SAMPLERS        12
+#define D12_UNIFORM_SAMPLER_REGS    4
+#define D12_SAMPLER_DESC_SIZE       8
+
+/*
+ * SM 6.6 ResourceDescriptorHeap base: the shader-visible heap's
+ * d12_descriptor array, indexed directly by heap index. 32 is
+ * sizeof(struct d12_descriptor); static-asserted in d12_cmd.c where the
+ * struct is visible.
+ */
+#define D12_UNIFORM_HEAP            16
+#define D12_UNIFORM_HEAP_REGS       4
+#define D12_HEAP_DESC_SIZE          32
+
+#define D12_UNIFORM_RESERVED (D12_UNIFORM_HEAP + D12_UNIFORM_HEAP_REGS)
 
 /* One hardware texture descriptor. Spelled out rather than including
  * genxml from the front end; asserted against the real value where the

@@ -2339,6 +2339,9 @@ system_value("is_first_fan_agx", 1, bit_sizes=[1])
 
 # Root descriptor address
 system_value("root_agx", 1, bit_sizes=[64])
+# d3d12agx: base of the SM 6.6 shader-visible descriptor heap's
+# d12_descriptor array. Lowered to a reserved uniform like root_agx.
+system_value("descriptor_heap_agx", 1, bit_sizes=[64])
 
 # Load a bindless sampler handle mapping a binding table sampler.
 intrinsic("load_sampler_handle_agx", [1], 1, [],

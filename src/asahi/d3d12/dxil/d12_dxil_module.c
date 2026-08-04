@@ -1149,10 +1149,14 @@ d12_binding_map_from_module(const struct d12_module *mod,
    for (unsigned i = 0; i < mod->num_resources; i++) {
       const struct d12_resource_binding *rb = &mod->resources[i];
 
-      /* An unbounded array cannot be enumerated; a shader that uses one
-       * fails at its first access with a message about bindless.
+      /* An unbounded array cannot be enumerated, but it still needs a
+       * BASE slot for the dynamic-handle path to index from -- one slot,
+       * carrying the range's stride and kind. The runtime bound is the
+       * descriptor heap's, not the shader's.
        */
       unsigned count = d12_range_count(rb);
+      if (!count)
+         count = 1;
 
       for (unsigned r = 0; r < count; r++) {
          if (d12_binding_map_add(out, rb->klass, rb->space,

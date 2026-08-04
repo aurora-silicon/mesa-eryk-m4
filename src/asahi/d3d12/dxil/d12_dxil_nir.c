@@ -92,6 +92,7 @@ enum d12_dxop {
    D12_DXOP_CREATE_HANDLE_FOR_LIB = 160,
    D12_DXOP_ANNOTATE_HANDLE = 216,
    D12_DXOP_CREATE_HANDLE_FROM_BINDING = 217,
+   D12_DXOP_CREATE_HANDLE_FROM_HEAP = 218,
    /* SM 6.6 8-bit packing. The numbering is easy to transpose and doing so
     * is not loud: unpack takes two arguments and pack takes five, so a
     * swap surfaces as "too few arguments" on one of them and as a silently
@@ -101,6 +102,20 @@ enum d12_dxop {
    D12_DXOP_UNPACK4X8 = 219,
    D12_DXOP_PACK4X8 = 220,
    D12_DXOP_MSAD = 50,
+   D12_DXOP_SAMPLE = 60,
+   D12_DXOP_SAMPLE_CMP = 64,
+   D12_DXOP_SAMPLE_CMP_LEVEL_ZERO = 65,
+   D12_DXOP_DERIV_COARSE_X = 83,
+   D12_DXOP_DERIV_COARSE_Y = 84,
+   D12_DXOP_DERIV_FINE_X = 85,
+   D12_DXOP_DERIV_FINE_Y = 86,
+   D12_DXOP_SAMPLE_BIAS = 61,
+   D12_DXOP_SAMPLE_LEVEL = 62,
+   D12_DXOP_SAMPLE_GRAD = 63,
+   D12_DXOP_TEXTURE_STORE = 67,
+   D12_DXOP_CHECK_ACCESS_FULLY_MAPPED = 71,
+   D12_DXOP_GET_DIMENSIONS = 72,
+   D12_DXOP_TEXTURE_GATHER = 73,
    D12_DXOP_DISCARD = 82,
    D12_DXOP_BARRIER = 80,
    D12_DXOP_SAMPLE_INDEX = 90,
@@ -205,6 +220,14 @@ struct trans_ctx {
     * its slot number; for a constant handle the def alone suffices.
     */
    uint32_t *handle_base;
+
+   /* SM 6.6 heap handles: the def is the HEAP INDEX, not a root slot.
+    * kind/stride come from annotateHandle's DxilResourceProperties
+    * rather than from a declared range.
+    */
+   uint8_t *handle_heap;      /* 0 none, 1 resource heap, 2 sampler heap */
+   uint32_t *handle_kind_v;   /* decoded resource kind, per value */
+   uint32_t *handle_stride_v; /* structured stride, per value */
 
    uint8_t *ptr_space;      /* value index -> D12_PTR_*, 0 = not a pointer */
    uint32_t *ptr_base;      /* value index -> constant byte offset */
@@ -714,6 +737,15 @@ const_uint(struct trans_ctx *ctx, uint32_t value_index, uint64_t *out)
    return true;
 }
 
+/* DXC fills unused trailing operands (offsets, clamp) with undef. */
+static bool
+operand_is_undef(struct trans_ctx *ctx, uint32_t value_index)
+{
+   return value_index < ctx->mod->num_values &&
+          ctx->mod->values[value_index].kind == D12_VALUE_CONSTANT &&
+          ctx->mod->values[value_index].is_undef;
+}
+
 static void
 def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 {
@@ -722,35 +754,56 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 }
 
 /*
- * Resolve a handle operand to (slot def, info slot). The def carries the
- * slot number and may be dynamic; the info slot names a slot whose
- * stride/kind describe the access, which is the range's base for a
- * dynamic handle -- every slot in a range shares them, because they come
- * from one dx.resources record.
+ * A resolved resource handle. `slot` is the index def -- a root-table
+ * slot for range handles, a raw heap index for SM 6.6 heap handles --
+ * and kind/stride describe how an access through it is addressed: from
+ * the declared range for the former, from annotateHandle's
+ * DxilResourceProperties for the latter.
  */
+struct handle_ref {
+   nir_def *slot;
+   bool heap;
+   uint32_t kind;
+   uint32_t stride;
+};
+
 static bool
-handle_info(struct trans_ctx *ctx, uint32_t value_id, nir_def **out_def,
-            unsigned *out_info_slot)
+handle_info(struct trans_ctx *ctx, uint32_t value_id,
+            struct handle_ref *out)
 {
    nir_def *def = get_def(ctx, value_id);
    if (!def)
       return false;
 
+   memset(out, 0, sizeof(*out));
+   out->slot = def;
+
+   if (value_id < ctx->mod->num_values && ctx->handle_heap[value_id]) {
+      out->heap = true;
+      out->kind = ctx->handle_kind_v[value_id];
+      out->stride = ctx->handle_stride_v[value_id];
+      return true;
+   }
+
+   unsigned info_slot;
    if (nir_src_is_const(nir_src_for_ssa(def))) {
-      *out_def = def;
-      *out_info_slot = nir_src_as_uint(nir_src_for_ssa(def));
-      return true;
+      info_slot = nir_src_as_uint(nir_src_for_ssa(def));
+   } else if (value_id < ctx->mod->num_values &&
+              ctx->handle_base[value_id] != ~0u) {
+      info_slot = ctx->handle_base[value_id];
+   } else {
+      trans_fail(ctx, "handle is dynamic but names no resource range");
+      return false;
    }
 
-   if (value_id < ctx->mod->num_values &&
-       ctx->handle_base[value_id] != ~0u) {
-      *out_def = def;
-      *out_info_slot = ctx->handle_base[value_id];
-      return true;
+   if (info_slot >= D12_MAX_RESOURCE_BINDINGS) {
+      trans_fail(ctx, "resource binding index out of range");
+      return false;
    }
 
-   trans_fail(ctx, "handle is dynamic but names no resource range");
-   return false;
+   out->kind = ctx->slot_kind[info_slot];
+   out->stride = ctx->slot_stride[info_slot];
+   return true;
 }
 
 /*
@@ -774,31 +827,37 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id, nir_def **out_def,
  * element 3 read from byte 12 instead of byte 36.
  */
 static nir_def *
-resource_address(struct trans_ctx *ctx, nir_def *slot_def,
-                 unsigned info_slot, nir_def *coord0, nir_def *coord1,
-                 bool raw_op)
+resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
+                 nir_def *coord0, nir_def *coord1, bool raw_op)
 {
    nir_builder *b = ctx->b;
 
-   if (info_slot >= D12_MAX_RESOURCE_BINDINGS) {
-      trans_fail(ctx, "resource binding index out of range");
-      return nir_imm_int64(b, 0);
+   /* One indirection to the resource's base address. Range handles go
+    * through the root table (8-byte entries); SM 6.6 heap handles index
+    * the shader-visible heap's descriptors directly, whose first field
+    * is the address. Both bases are placeholders lowered to reserved
+    * uniforms after preprocessing; the slot may be a runtime value, and
+    * constant folding collapses the multiply for the constant case.
+    */
+   nir_def *base;
+   if (h->heap) {
+      nir_def *heap = nir_load_descriptor_heap_agx(b);
+      base = nir_load_global(
+         b, 1, 64,
+         nir_iadd(b, heap,
+                  nir_imul_imm(b, nir_u2u64(b, h->slot),
+                               D12_HEAP_DESC_SIZE)),
+         .align_mul = 8);
+   } else {
+      nir_def *root = nir_load_root_agx(b);
+      base = nir_load_global(
+         b, 1, 64,
+         nir_iadd(b, root, nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
+         .align_mul = 8);
    }
 
-   /* One indirection through the root table. load_root_agx is a
-    * placeholder lowered to a uniform read after preprocessing. The slot
-    * may be a runtime value (a resource array indexed by a computed
-    * value); constant folding collapses the multiply for the common
-    * constant case.
-    */
-   nir_def *root = nir_load_root_agx(b);
-   nir_def *base = nir_load_global(
-      b, 1, 64,
-      nir_iadd(b, root, nir_imul_imm(b, nir_u2u64(b, slot_def), 8)),
-      .align_mul = 8);
-
-   const uint32_t kind = ctx->slot_kind[info_slot];
-   const uint32_t stride = ctx->slot_stride[info_slot];
+   const uint32_t kind = h->kind;
+   const uint32_t stride = h->stride;
 
    /* rawBufferLoad/Store are byte-addressed whatever the shape is. */
    bool structured =
@@ -1214,27 +1273,36 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          }
 
          unsigned count = d12_range_count(rb);
-         if (!count) {
-            trans_fail(ctx, "unbounded resource array (bindless) "
-                            "unsupported");
-            return false;
-         }
 
          unsigned base_slot = d12_binding_map_find(
             ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
-         unsigned last_slot = d12_binding_map_find(
-            ctx->map, (unsigned)klass, rb->space,
-            rb->lower_bound + count - 1);
-         if (base_slot == ~0u || last_slot != base_slot + count - 1) {
-            /* The stride/kind shortcut and the slot arithmetic both
-             * assume the range is contiguous in slot space. The map
-             * assigns ranges densely, so this only trips if that ever
-             * changes -- and must trip rather than address the wrong
-             * resource.
-             */
-            trans_fail(ctx, "resource range is not contiguous in slots");
+         if (base_slot == ~0u) {
+            trans_fail(ctx, "shader uses a resource the root signature "
+                            "does not bind");
             return false;
          }
+
+         if (count) {
+            unsigned last_slot = d12_binding_map_find(
+               ctx->map, (unsigned)klass, rb->space,
+               rb->lower_bound + count - 1);
+            if (last_slot != base_slot + count - 1) {
+               /* The stride/kind shortcut and the slot arithmetic both
+                * assume the range is contiguous in slot space. The map
+                * assigns ranges densely, so this only trips if that ever
+                * changes -- and must trip rather than address the wrong
+                * resource.
+                */
+               trans_fail(ctx, "resource range is not contiguous in "
+                               "slots");
+               return false;
+            }
+         }
+         /* count == 0 is an UNBOUNDED range: the handle indexes off the
+          * base without a compile-time bound, which is the entire point
+          * of bindless. The runtime bound is the descriptor heap's, not
+          * the shader's.
+          */
 
          nir_def *idx = get_def(ctx, p[2]);
          if (!idx)
@@ -1267,9 +1335,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(6);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
       uint64_t dx_op = 0;
@@ -1294,7 +1361,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+      nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[2]),
                                        get_def(ctx, p[3]), false);
       def_result(ctx, inst,
@@ -1307,18 +1374,239 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, offset0, offset1, offset2, compareValue, newValue) */
       NEED(6);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
-      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+      nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        get_def(ctx, p[2]), false);
       def_result(ctx, inst,
                  nir_global_atomic_swap(b, 32, addr, get_def(ctx, p[4]),
                                         get_def(ctx, p[5]),
                                         .atomic_op = nir_atomic_op_cmpxchg));
+      return true;
+   }
+
+   case D12_DXOP_SAMPLE:
+   case D12_DXOP_SAMPLE_BIAS:
+   case D12_DXOP_SAMPLE_LEVEL:
+   case D12_DXOP_SAMPLE_GRAD:
+   case D12_DXOP_SAMPLE_CMP:
+   case D12_DXOP_SAMPLE_CMP_LEVEL_ZERO:
+   case D12_DXOP_TEXTURE_GATHER: {
+      /* (srv, sampler, c0..c3, offsets..., extras...). Only the 2D
+       * layouts the texture heap can describe are accepted; everything
+       * else refuses by name rather than sampling something that is not
+       * there.
+       *
+       * AGX samples through a hardware sampler descriptor exactly as it
+       * fetches through a texture descriptor: both handles are
+       * base-uniform-plus-byte-offset pairs (agx_translate_bindless_handle),
+       * so the sampler heap mirrors the texture heap at
+       * D12_UNIFORM_SAMPLERS.
+       */
+      NEED(6);
+
+      struct handle_ref th, sh;
+      if (!handle_info(ctx, p[0], &th) || !handle_info(ctx, p[1], &sh))
+         return false;
+
+      nir_def *x = get_def(ctx, p[2]);
+      nir_def *y = get_def(ctx, p[3]);
+      if (!x || !y) {
+         trans_fail(ctx, "malformed sample coordinates");
+         return false;
+      }
+
+      /* Constant-zero or undef offsets are the common case and mean
+       * "none". A real offset is representable (nir_tex_src_offset) but
+       * has not been needed yet; refuse it loudly.
+       */
+      unsigned num_offsets = opcode == D12_DXOP_TEXTURE_GATHER ? 2 : 3;
+      for (unsigned i = 0; i < num_offsets && 6 + i < np; i++) {
+         uint64_t off = 0;
+         if (operand_is_undef(ctx, p[6 + i]))
+            continue;
+         if (!const_uint(ctx, p[6 + i], &off) || off != 0) {
+            trans_fail(ctx, "programmable sample offsets unsupported");
+            return false;
+         }
+      }
+
+      nir_texop op;
+      unsigned num_srcs = 3;
+      switch (opcode) {
+      case D12_DXOP_SAMPLE: op = nir_texop_tex; break;
+      case D12_DXOP_SAMPLE_BIAS: op = nir_texop_txb; num_srcs = 4; break;
+      case D12_DXOP_SAMPLE_LEVEL: op = nir_texop_txl; num_srcs = 4; break;
+      case D12_DXOP_SAMPLE_GRAD: op = nir_texop_txd; num_srcs = 5; break;
+      case D12_DXOP_SAMPLE_CMP: op = nir_texop_tex; num_srcs = 4; break;
+      case D12_DXOP_SAMPLE_CMP_LEVEL_ZERO:
+         /* Comparison at exactly LOD 0 is txl with a zero lod. */
+         op = nir_texop_txl;
+         num_srcs = 5;
+         break;
+      default: op = nir_texop_tg4; break;
+      }
+
+      nir_def *tex_handle = nir_bindless_image_agx(
+         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_TEXTURES);
+      nir_def *samp_handle = nir_bindless_image_agx(
+         b, nir_imul_imm(b, sh.slot, D12_SAMPLER_DESC_SIZE),
+         .desc_set = D12_UNIFORM_SAMPLERS);
+
+      nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
+      tex->op = op;
+      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      tex->is_array = false;
+      tex->dest_type = nir_type_float32;
+      tex->coord_components = 2;
+
+      tex->src[0] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+      tex->src[1] =
+         nir_tex_src_for_ssa(nir_tex_src_sampler_handle, samp_handle);
+      tex->src[2] =
+         nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
+
+      if (opcode == D12_DXOP_SAMPLE_BIAS) {
+         NEED(10);
+         tex->src[3] =
+            nir_tex_src_for_ssa(nir_tex_src_bias, get_def(ctx, p[9]));
+      } else if (opcode == D12_DXOP_SAMPLE_LEVEL) {
+         NEED(10);
+         tex->src[3] =
+            nir_tex_src_for_ssa(nir_tex_src_lod, get_def(ctx, p[9]));
+      } else if (opcode == D12_DXOP_SAMPLE_GRAD) {
+         NEED(15);
+         tex->src[3] = nir_tex_src_for_ssa(
+            nir_tex_src_ddx,
+            nir_vec2(b, get_def(ctx, p[9]), get_def(ctx, p[10])));
+         tex->src[4] = nir_tex_src_for_ssa(
+            nir_tex_src_ddy,
+            nir_vec2(b, get_def(ctx, p[12]), get_def(ctx, p[13])));
+      } else if (opcode == D12_DXOP_SAMPLE_CMP ||
+                 opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO) {
+         NEED(10);
+         tex->is_shadow = true;
+         tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_comparator,
+                                           get_def(ctx, p[9]));
+         if (opcode == D12_DXOP_SAMPLE_CMP_LEVEL_ZERO) {
+            tex->src[4] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                              nir_imm_int(b, 0));
+         }
+      } else if (opcode == D12_DXOP_TEXTURE_GATHER) {
+         NEED(9);
+         uint64_t channel = 0;
+         const_uint(ctx, p[8], &channel);
+         tex->component = (unsigned)channel & 3;
+      }
+
+      nir_def_init(&tex->instr, &tex->def, 4, 32);
+      nir_builder_instr_insert(b, &tex->instr);
+      def_result(ctx, inst, &tex->def);
+      return true;
+   }
+
+   case D12_DXOP_CHECK_ACCESS_FULLY_MAPPED:
+      /* (status) -> bool-as-i32. The status channel our buffer loads
+       * return is already "fully mapped" (nothing bindable is sparse),
+       * so this is the identity on it.
+       */
+      NEED(1);
+      def_result(ctx, inst, get_def(ctx, p[0]));
+      return true;
+
+   case D12_DXOP_GET_DIMENSIONS: {
+      /* (handle, mipLevel) -> (width, height, depth/layers, mip count),
+       * consumed by extractvalue. txs and query_levels both lower to
+       * reads of the descriptor in memory (agx_nir_lower_texture), which
+       * is exactly where our heap keeps it.
+       */
+      NEED(2);
+
+      struct handle_ref th;
+      if (!handle_info(ctx, p[0], &th))
+         return false;
+
+      nir_def *handle = nir_bindless_image_agx(
+         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_TEXTURES);
+
+      nir_def *lod = get_def(ctx, p[1]);
+      if (!lod || operand_is_undef(ctx, p[1]))
+         lod = nir_imm_int(b, 0);
+
+      nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
+      txs->op = nir_texop_txs;
+      txs->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      txs->is_array = false;
+      txs->dest_type = nir_type_uint32;
+      txs->src[0] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_handle, handle);
+      txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
+      nir_def_init(&txs->instr, &txs->def, 2, 32);
+      nir_builder_instr_insert(b, &txs->instr);
+
+      nir_tex_instr *lv = nir_tex_instr_create(b->shader, 1);
+      lv->op = nir_texop_query_levels;
+      lv->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      lv->is_array = false;
+      lv->dest_type = nir_type_uint32;
+      lv->src[0] = nir_tex_src_for_ssa(
+         nir_tex_src_texture_handle,
+         nir_bindless_image_agx(
+            b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES));
+      nir_def_init(&lv->instr, &lv->def, 1, 32);
+      nir_builder_instr_insert(b, &lv->instr);
+
+      def_result(ctx, inst,
+                 nir_vec4(b, nir_channel(b, &txs->def, 0),
+                          nir_channel(b, &txs->def, 1), nir_imm_int(b, 1),
+                          &lv->def));
+      return true;
+   }
+
+   case D12_DXOP_TEXTURE_STORE: {
+      /* (uav, c0, c1, c2, v0..v3, mask). Compiles against the same heap
+       * offsets as loads; a correct RUNTIME needs writable PBE
+       * descriptors in a parallel heap, which does not exist yet -- the
+       * texture read path has to land first.
+       */
+      NEED(9);
+
+      struct handle_ref th;
+      if (!handle_info(ctx, p[0], &th))
+         return false;
+
+      nir_def *cx = get_def(ctx, p[1]);
+      nir_def *cy = get_def(ctx, p[2]);
+      if (!cx || !cy) {
+         trans_fail(ctx, "malformed texture store coordinates");
+         return false;
+      }
+
+      nir_def *handle = nir_bindless_image_agx(
+         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_TEXTURES);
+
+      nir_def *vals[4];
+      for (unsigned i = 0; i < 4; i++) {
+         vals[i] = get_def(ctx, p[4 + i]);
+         if (!vals[i] || operand_is_undef(ctx, p[4 + i]))
+            vals[i] = nir_imm_int(b, 0);
+      }
+
+      nir_def *zero = nir_imm_int(b, 0);
+      nir_bindless_image_store(
+         b, handle,
+         nir_vec4(b, cx, cy, zero, zero), nir_imm_int(b, 0),
+         nir_vec(b, vals, 4), nir_imm_int(b, 0),
+         .image_dim = GLSL_SAMPLER_DIM_2D, .image_array = false,
+         .format = PIPE_FORMAT_NONE, .access = ACCESS_NON_READABLE);
       return true;
    }
 
@@ -1333,9 +1621,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(4);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref th;
+      if (!handle_info(ctx, p[0], &th))
          return false;
 
       nir_def *x = get_def(ctx, p[2]);
@@ -1347,11 +1634,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *lod = get_def(ctx, p[1]);
       if (getenv("D3D12AGX_DUMP_TEX")) {
-         fprintf(stderr, "textureLoad: info_slot=%u num_ops=%u lod=%s\n",
-                 info_slot, inst->num_ops, lod ? "yes" : "no");
+         fprintf(stderr, "textureLoad: num_ops=%u lod=%s\n",
+                 inst->num_ops, lod ? "yes" : "no");
       }
       nir_def *tex_handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, slot_def, D12_TEXTURE_DESC_SIZE),
+         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
          .desc_set = D12_UNIFORM_TEXTURES);
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
@@ -1374,6 +1661,23 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       def_result(ctx, inst, &tex->def);
       return true;
    }
+
+   case D12_DXOP_DERIV_COARSE_X:
+      NEED(1);
+      def_result(ctx, inst, nir_ddx_coarse(b, get_def(ctx, p[0])));
+      return true;
+   case D12_DXOP_DERIV_COARSE_Y:
+      NEED(1);
+      def_result(ctx, inst, nir_ddy_coarse(b, get_def(ctx, p[0])));
+      return true;
+   case D12_DXOP_DERIV_FINE_X:
+      NEED(1);
+      def_result(ctx, inst, nir_ddx_fine(b, get_def(ctx, p[0])));
+      return true;
+   case D12_DXOP_DERIV_FINE_Y:
+      NEED(1);
+      def_result(ctx, inst, nir_ddy_fine(b, get_def(ctx, p[0])));
+      return true;
 
    case D12_DXOP_MSAD: {
       /* dx.op.tertiary.i32(50): masked sum of absolute differences.
@@ -1587,9 +1891,60 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(1);
       if (p[0] < ctx->mod->num_values &&
-          inst->result_value < ctx->mod->num_values)
+          inst->result_value < ctx->mod->num_values) {
          ctx->handle_base[inst->result_value] = ctx->handle_base[p[0]];
+         ctx->handle_heap[inst->result_value] = ctx->handle_heap[p[0]];
+         ctx->handle_kind_v[inst->result_value] = ctx->handle_kind_v[p[0]];
+         ctx->handle_stride_v[inst->result_value] =
+            ctx->handle_stride_v[p[0]];
+      }
+
+      /* annotateHandle's second operand is a constant
+       * DxilResourceProperties pair: dword0's low byte is the resource
+       * kind, dword1 is the element stride for a structured buffer. For
+       * a heap handle this is the ONLY place kind and stride exist --
+       * there is no declared range behind it.
+       */
+      if (opcode == D12_DXOP_ANNOTATE_HANDLE && np >= 2 &&
+          p[1] < ctx->mod->num_values &&
+          inst->result_value < ctx->mod->num_values) {
+         const struct d12_value *props = &ctx->mod->values[p[1]];
+         if (props->kind == D12_VALUE_CONSTANT &&
+             props->num_agg_elems >= 2) {
+            uint64_t d0 = 0, d1 = 0;
+            if (const_uint(ctx, props->agg_elems[0], &d0) &&
+                const_uint(ctx, props->agg_elems[1], &d1)) {
+               ctx->handle_kind_v[inst->result_value] = (uint32_t)d0 & 0xff;
+               ctx->handle_stride_v[inst->result_value] = (uint32_t)d1;
+            }
+         }
+      }
+
       def_result(ctx, inst, get_def(ctx, p[0]));
+      return true;
+   }
+
+   case D12_DXOP_CREATE_HANDLE_FROM_HEAP: {
+      /* (index, samplerHeap, nonUniformIndex): SM 6.6's
+       * ResourceDescriptorHeap[i] / SamplerDescriptorHeap[i]. The handle
+       * is the raw heap index; what it addresses is decided by the
+       * annotateHandle that always follows.
+       */
+      NEED(2);
+
+      nir_def *idx = get_def(ctx, p[0]);
+      if (!idx)
+         return false;
+
+      uint64_t sampler_heap = 0;
+      const_uint(ctx, p[1], &sampler_heap);
+
+      if (inst->result_value < ctx->mod->num_values) {
+         ctx->handle_heap[inst->result_value] = sampler_heap ? 2 : 1;
+         /* Raw buffer until annotateHandle says otherwise. */
+         ctx->handle_kind_v[inst->result_value] = D12_RES_KIND_RAW_BUFFER;
+      }
+      def_result(ctx, inst, nir_u2u32(b, idx));
       return true;
    }
 
@@ -1645,14 +2000,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(2);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
       /* Rows are 16 bytes; the row index scales, no second coordinate. */
       nir_def *offset = nir_imul_imm(b, get_def(ctx, p[1]), 16);
-      nir_def *addr = resource_address(ctx, slot_def, info_slot, offset,
+      nir_def *addr = resource_address(ctx, &h, offset,
                                        nir_imm_int(b, 0), true);
 
       def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 16));
@@ -1675,9 +2029,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        */
       NEED(3);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
       unsigned bits = type_bit_size(ctx->mod, inst->result_type);
@@ -1691,7 +2044,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           align > 16)
          align = bits / 8;
 
-      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+      nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        nir_imm_int(b, 0), true);
 
@@ -1705,16 +2058,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, coord0, coord1, val0..val3, mask [, align]) */
       NEED(8);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
       uint64_t mask = 0;
       if (!const_uint(ctx, p[7], &mask))
          mask = 0xf;
 
-      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+      nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        get_def(ctx, p[2]),
                                        opcode == D12_DXOP_RAW_BUFFER_STORE);
@@ -1739,18 +2091,28 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* (handle, coord0, coord1 [, mask, align]) */
       NEED(3);
 
-      nir_def *slot_def;
-      unsigned info_slot;
-      if (!handle_info(ctx, p[0], &slot_def, &info_slot))
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
          return false;
 
-      nir_def *addr = resource_address(ctx, slot_def, info_slot,
+      nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        get_def(ctx, p[2]),
                                        opcode == D12_DXOP_RAW_BUFFER_LOAD);
 
-      /* DXIL buffer loads return a 4-vector; extractvalue picks lanes. */
-      def_result(ctx, inst, nir_load_global(b, 4, 32, addr, .align_mul = 4));
+      /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
+       * lanes, and index 4 is the tiled-resource residency status
+       * (CheckAccessFullyMapped). Nothing we bind is sparse, so an
+       * access that executes is by definition fully mapped: the status
+       * is the constant "mapped", not a placeholder.
+       */
+      nir_def *data = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+      nir_def *mapped[5] = {
+         nir_channel(b, data, 0), nir_channel(b, data, 1),
+         nir_channel(b, data, 2), nir_channel(b, data, 3),
+         nir_imm_int(b, ~0u),
+      };
+      def_result(ctx, inst, nir_vec(b, mapped, 5));
       return true;
    }
 
@@ -1982,8 +2344,12 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    ctx.handle_base = malloc(mod->num_values * sizeof(*ctx.handle_base));
    if (ctx.handle_base)
       memset(ctx.handle_base, 0xff, mod->num_values * sizeof(*ctx.handle_base));
+   ctx.handle_heap = calloc(mod->num_values, sizeof(*ctx.handle_heap));
+   ctx.handle_kind_v = calloc(mod->num_values, sizeof(*ctx.handle_kind_v));
+   ctx.handle_stride_v = calloc(mod->num_values, sizeof(*ctx.handle_stride_v));
    if (!ctx.defs || !ctx.phi_reg || !ctx.ptr_space || !ctx.ptr_base ||
-       !ctx.ptr_pointee || !ctx.handle_base) {
+       !ctx.ptr_pointee || !ctx.handle_base || !ctx.handle_heap ||
+       !ctx.handle_kind_v || !ctx.handle_stride_v) {
       *error = "out of memory";
       free(ctx.defs);
       free(ctx.phi_reg);
@@ -1991,6 +2357,9 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.ptr_base);
       free(ctx.ptr_pointee);
       free(ctx.handle_base);
+      free(ctx.handle_heap);
+      free(ctx.handle_kind_v);
+      free(ctx.handle_stride_v);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -2048,6 +2417,9 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.ptr_base);
       free(ctx.ptr_pointee);
       free(ctx.handle_base);
+      free(ctx.handle_heap);
+      free(ctx.handle_kind_v);
+      free(ctx.handle_stride_v);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -2452,6 +2824,9 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    free(ctx.ptr_base);
    free(ctx.ptr_pointee);
    free(ctx.handle_base);
+   free(ctx.handle_heap);
+   free(ctx.handle_kind_v);
+   free(ctx.handle_stride_v);
 
    if (ctx.error) {
       *error = ctx.error;
@@ -2477,11 +2852,16 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 static bool
 lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
-   if (intr->intrinsic != nir_intrinsic_load_root_agx)
+   unsigned base;
+   if (intr->intrinsic == nir_intrinsic_load_root_agx)
+      base = D12_UNIFORM_ROOT;
+   else if (intr->intrinsic == nir_intrinsic_load_descriptor_heap_agx)
+      base = D12_UNIFORM_HEAP;
+   else
       return false;
 
    b->cursor = nir_before_instr(&intr->instr);
-   nir_def *rep = nir_load_preamble(b, 1, 64, .base = D12_UNIFORM_ROOT);
+   nir_def *rep = nir_load_preamble(b, 1, 64, .base = base);
    nir_def_replace(&intr->def, rep);
    return true;
 }
