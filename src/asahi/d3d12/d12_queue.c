@@ -17,6 +17,9 @@
 
 #include "d12_private.h"
 
+#include "decode.h"
+#include "util/u_dynarray.h"
+
 #include <xf86drm.h>
 
 #include "agx_helpers.h"
@@ -342,6 +345,24 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          .syncs = (uint64_t)(uintptr_t)syncs,
          .cmdbuf = (uint64_t)(uintptr_t)payload,
       };
+
+      /*
+       * ASAHI_MESA_DEBUG=trace. Mesa's own decoder parsing our command
+       * stream is the highest-information tool available for runtime
+       * bugs -- it reads the USC words, descriptors and launch packets
+       * the way the hardware does, rather than the way we believe we
+       * wrote them. It was never wired up, which is why `trace` printed
+       * nothing useful.
+       */
+      if (dev->debug & AGX_DBG_TRACE) {
+         struct util_dynarray wrapped;
+         util_dynarray_init(&wrapped, NULL);
+         void *copy = util_dynarray_grow_bytes(&wrapped, 1, payload_size);
+         memcpy(copy, payload, payload_size);
+         agxdecode_drm_cmdbuf(dev->agxdecode, &dev->params, &wrapped, true);
+         util_dynarray_fini(&wrapped);
+         agxdecode_next_frame();
+      }
 
       struct agx_submit_virt virt = {.ring_idx = 0};
       int ret = dev->ops.submit(dev, &submit, &virt);

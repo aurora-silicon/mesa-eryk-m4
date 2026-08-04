@@ -125,6 +125,59 @@ the raw kind and refuse by name.
 
 ---
 
+## The g5_texture wall — what is now RULED OUT
+
+`agxdecode` is wired into `d12_queue.c` (`ASAHI_MESA_DEBUG=trace`), which
+was the roadmap's first recommendation and is now a permanent
+instrument: it reads the USC words, descriptors and launch packets the
+way the hardware does, rather than the way the driver believes it wrote
+them. Everything below was verified through it and needs no re-checking.
+
+**Proven correct, by Mesa's own decoder:**
+
+- The texture descriptor. The decoder reads it as Dimension 2D (not
+  multisampled), Layout Linear, Channels R8G8B8A8, Type Unorm, Width 16,
+  Height 16, First/Last level 0, Address exactly the BO VA,
+  `Stride: 0x30` = 48 = 64 − 16 (the field's bytes-minus-16
+  convention), `Depth (linear): 1`. Byte-identical in shape to what
+  `hk_image_view.c` builds for a linear 2D image.
+- The uniform chain. The USC publishes halves 8-11 loaded from an
+  address whose contents are the heap base, exactly 8 bytes on -- the
+  address-of-an-address indirection, confirmed from the hardware side.
+- The preamble. It is bound and it does write the bindless offset
+  register with zero.
+- The sampler. `Start 0, Count 1`, decoding to Nearest/Nearest,
+  Clamp-to-border, Transparent black -- the txf sampler, resolving.
+- The instruction. `smpi` is the ISA's "Sample with integer coordinates"
+  (`intcoord="1"` in `AGX2.xml`), and our encoding matches the ISA's own
+  test vector in `isa/test/cases.txt` almost bit for bit.
+
+**Ruled out by experiment:**
+
+- *Not* a bindless-vs-bound problem. Rebinding the texture through a
+  USC TEXTURE state register produced the identical wrong answer, with
+  the shader confirmed to have changed (`smpi ..., ts0, ss0`). Both
+  paths read the same descriptor, so the fault is not in how the shader
+  names the texture. (That change was reverted: it cost five corpus
+  shaders and bought nothing.)
+- *Not* a LOD or mip problem. Clamping the txf sampler to
+  `maximum_lod = 0` with `MIP_FILTER_NONE` changed nothing, so the
+  `auto_lod` mode a compute shader compiles to is not selecting a
+  nonexistent level.
+- *Not* the 32-bit coordinate tuple. `agx_nir_lower_texture` documents
+  and builds a 32-bit tuple deliberately ("Combine into the final 32-bit
+  tuple"), so two 32-bit coordinate registers are what the backend
+  intends.
+
+**What remains**: the coordinate VALUES reaching the instruction, and
+whatever differs between this dispatch and a Honeykrisp `texelFetch`.
+The next step is the oracle the roadmap already names -- a minimal
+Vulkan compute `texelFetch` through hk on the same box, traced with the
+same decoder, diffed against this dump. Every other link is now
+eliminated.
+
+---
+
 ## Method
 
 - **A loud failure beats a plausible wrong answer.** Every unimplemented path
