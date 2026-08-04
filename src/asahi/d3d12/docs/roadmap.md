@@ -156,10 +156,55 @@ lowers the poly parameter intrinsics to reserved uniforms
 programs compile. **Not built:** anything that publishes those uniforms.
 No `.c` in the driver references them.
 
+#### Step 0 — the actual blocker: the command list cannot order compute before a draw
+
+This is not in the original plan and it gates everything else. Measured,
+not assumed:
+
+- `D12_SEG_RENDER` is created in **exactly one place**,
+  `ClearRenderTargetView` (`d12_cmd.c:1863`). There is no way to open a
+  render pass that **loads** the target instead of clearing it.
+- The command list has **one** stream cursor (`stream_cur`,
+  `d12_private.h:393`) and two open-flags (`cdm_open`, `render_open`).
+- Therefore `d12_list_get_cdm()` handles the collision the only way it
+  can: *"A render pass may still be open; compute work ends it"*
+  (`d12_cmd.c:315-317`).
+
+A GS draw needs compute dispatches to run **before** the draw that
+consumes their output, while the render pass containing that draw is
+already open. Today that closes the pass, and there is no way to reopen
+it without clearing — so the draw would either land in a new pass that
+wipes everything drawn so far, or not run at all.
+
+hk does not have this problem because it keeps **two** control streams
+per command buffer, `current_cs.gfx` and `current_cs.pre_gfx`, and
+splices the pre-gfx CDM stream in *before* the graphics stream
+(`hk_cmd_buffer.h:615-627`). `hk_draw` deliberately fetches the graphics
+stream before the pre-gfx one (`hk_cmd_draw.c:3515`, `:3541`) so the list
+insertion finds it.
+
+Two ways out, and this is a **CONTESTED** choice:
+
+- **(a) Mirror hk — a second stream cursor.** Add a pre-gfx CDM cursor to
+  `d12_cmd_list`, and insert its segment before the open render segment
+  (the segment array is ordered, so this is a `memmove` plus a second
+  cursor). Structurally correct, no per-draw tilebuffer traffic, and it
+  is the shape every later stage needs too — tessellation, mesh and work
+  graphs all dispatch compute before rasterising. More invasive.
+- **(b) Load-preserving pass resume.** Let compute split a render pass
+  and reopen one whose background program *loads* the attachment. Smaller
+  change, but it costs a full store + load of the render target per GS
+  draw, and it needs the background/eot programs that today only exist
+  for the clear path.
+
+**(a) is the recommendation** — (b) buys a smaller diff now and pays for
+it at every stage after geometry.
+
 **Steps, in order:**
 
 | # | change | how you know it worked |
 |---|---|---|
+| 0 | pre-gfx CDM stream (above) | a dispatch recorded during an open render pass appears BEFORE it in `agxdecode`, and the pass still draws |
 | 1 | device-side geometry heap (`struct poly_heap`, bump allocator, zeroed per command list) | a dispatch that allocates from it does not fault |
 | 2 | PSO compiles the SW-VS variant and the rast program; rast becomes the hardware VS | PSO with a GS creates instead of returning `E_NOTIMPL` |
 | 3 | upload `poly_vertex_params` (16 words) and `poly_geometry_params` (79 words), align 8 | `agxdecode` shows the uniforms published at the reserved registers |
