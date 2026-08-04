@@ -12,6 +12,8 @@
 
 #include "d12_private.h"
 
+#include "agx_linker.h"
+
 #include "agx_compile.h"
 #include "agx_helpers.h"
 #include "agx_nir.h"
@@ -474,7 +476,27 @@ compile_gfx_stage(struct d12_device *device,
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
    } else {
+      /* Real vertex attributes arrive through the prolog ABI: the main
+       * shader reads registers the prolog exported, so load_input must
+       * become load_exported_agx here (hk_shader.c does the same). A
+       * DRAW with a nonempty input layout also needs an attribute-
+       * fetching prolog keyed from that layout, which does not exist
+       * yet: the static_vi prolog only fixes up vertex/instance IDs.
+       */
+      NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
+
+      /* Indexed output stores read their UVS index through
+       * load_uvs_index_agx, which the driver must lower. Honeykrisp
+       * defers it to draw time through its root descriptor because
+       * linking happens there; our assignment is deterministic from the
+       * unlinked layout (agx_assign_uvs with the same zero masks the PSO
+       * uses), so the index is a compile-time constant. The PSO-level
+       * agx_assign_uvs later recomputes the identical layout.
+       */
+      struct agx_varyings_vs linked = {0};
+      agx_assign_uvs(&linked, uvs, 0, 0);
+      NIR_PASS(_, nir, d12_dxil_lower_uvs_index, linked.slots);
    }
 
    struct agx_shader_key key = {

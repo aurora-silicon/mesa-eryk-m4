@@ -744,3 +744,5 @@ struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
  * after agx_preprocess_nir and before agx_compile_shader_nir.
  */
 bool d12_dxil_lower_root(struct nir_shader *nir);
+bool d12_dxil_lower_uvs_index(struct nir_shader *nir,
+                              const unsigned *slots);

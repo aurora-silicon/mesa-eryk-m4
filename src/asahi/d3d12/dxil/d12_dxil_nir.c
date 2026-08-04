@@ -124,6 +124,8 @@ enum d12_dxop {
    D12_DXOP_VIEW_ID = 138,
    D12_DXOP_LEGACY_F32TOF16 = 130,
    D12_DXOP_LEGACY_F16TOF32 = 131,
+   D12_DXOP_WAVE_ALL_BIT_COUNT = 135,
+   D12_DXOP_CALCULATE_LOD = 81,
    D12_DXOP_QUAD_READ_LANE_AT = 122,
    D12_DXOP_QUAD_OP = 123,
    D12_DXOP_THREAD_ID = 93,
@@ -953,7 +955,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       /* Signature element -> IO slot. DXIL indexes signature elements;
        * map element N to a generic slot, consistently with outputs.
+       *
+       * The load's width follows the CALL's declared result type: an
+       * fp16 shader loads half-precision inputs, and producing 32-bit
+       * defs for them makes every arithmetic use a bit-size mismatch.
        */
+      unsigned bits = type_bit_size(ctx->mod, inst->result_type);
+      if (bits != 16 && bits != 32)
+         bits = 32;
+
       nir_def *val;
 
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
@@ -965,9 +975,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          nir_def *bary = nir_load_barycentric_pixel(b, 32);
 
          val = nir_load_interpolated_input(
-            b, 1, 32, bary, nir_imm_int(b, row),
+            b, 1, bits, bary, nir_imm_int(b, row),
             .base = (unsigned)sig_id, .component = (unsigned)col,
-            .dest_type = nir_type_float32,
+            .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
             .io_semantics.num_slots = 1);
 
@@ -975,10 +985,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       } else {
          unsigned location = VERT_ATTRIB_GENERIC0 + sig_id;
 
-         val = nir_load_input(b, 1, 32, nir_imm_int(b, row),
+         val = nir_load_input(b, 1, bits, nir_imm_int(b, row),
                               .base = (unsigned)sig_id,
                               .component = (unsigned)col,
-                              .dest_type = nir_type_float32,
+                              .dest_type = nir_type_float | bits,
                               .io_semantics.location = location,
                               .io_semantics.num_slots = 1);
 
@@ -1378,11 +1388,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &h))
          return false;
 
+      unsigned bits = type_bit_size(ctx->mod, inst->result_type);
+      if (bits != 32 && bits != 64)
+         bits = 32;
+
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
                                        get_def(ctx, p[2]), false);
       def_result(ctx, inst,
-                 nir_global_atomic_swap(b, 32, addr, get_def(ctx, p[4]),
+                 nir_global_atomic_swap(b, bits, addr, get_def(ctx, p[4]),
                                         get_def(ctx, p[5]),
                                         .atomic_op = nir_atomic_op_cmpxchg));
       return true;
@@ -1767,6 +1781,60 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  nir_channel(b, nir_unpack_half_2x16(b, get_def(ctx, p[0])),
                              0));
       return true;
+
+   case D12_DXOP_WAVE_ALL_BIT_COUNT:
+      /* WaveActiveCountBits: how many active lanes hold true. */
+      NEED(1);
+      def_result(ctx, inst,
+                 nir_bit_count(b, nir_ballot(b, 1, 32,
+                                             to_bool(ctx, get_def(ctx, p[0])))));
+      return true;
+
+   case D12_DXOP_CALCULATE_LOD: {
+      /* (srv, sampler, c0, c1, c2, clamped) -> the LOD the sample would
+       * use. NIR's lod query returns (clamped, raw); the operand picks.
+       */
+      NEED(6);
+
+      struct handle_ref th, sh;
+      if (!handle_info(ctx, p[0], &th) || !handle_info(ctx, p[1], &sh))
+         return false;
+
+      nir_def *x = get_def(ctx, p[2]);
+      nir_def *y = get_def(ctx, p[3]);
+      if (!x || !y) {
+         trans_fail(ctx, "malformed calculateLOD coordinates");
+         return false;
+      }
+
+      uint64_t clamped = 1;
+      const_uint(ctx, p[5], &clamped);
+
+      nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
+      tex->op = nir_texop_lod;
+      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      tex->is_array = false;
+      tex->dest_type = nir_type_float32;
+      tex->coord_components = 2;
+      tex->src[0] = nir_tex_src_for_ssa(
+         nir_tex_src_texture_handle,
+         nir_bindless_image_agx(
+            b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES));
+      tex->src[1] = nir_tex_src_for_ssa(
+         nir_tex_src_sampler_handle,
+         nir_bindless_image_agx(
+            b, nir_imul_imm(b, sh.slot, D12_SAMPLER_DESC_SIZE),
+            .desc_set = D12_UNIFORM_SAMPLERS));
+      tex->src[2] =
+         nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
+      nir_def_init(&tex->instr, &tex->def, 2, 32);
+      nir_builder_instr_insert(b, &tex->instr);
+
+      def_result(ctx, inst,
+                 nir_channel(b, &tex->def, clamped ? 0 : 1));
+      return true;
+   }
 
    case D12_DXOP_QUAD_READ_LANE_AT: {
       NEED(2);
@@ -2798,10 +2866,20 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          continue;
 
       unsigned num_comps = util_last_bit(slot->write_mask);
+
+      /* Varyings leave the shader as 32-bit: that is both what D3D
+       * semantics say (interpolants are float unless the target format
+       * narrows them) and what the AGX varying store requires. An fp16
+       * shader's outputs are widened HERE, explicitly -- stamping the
+       * 16-bit value float32 without converting is invalid NIR, and the
+       * backend asserts on a 16-bit st_vary source.
+       */
       nir_def *comps[4];
       for (unsigned c = 0; c < num_comps; c++) {
-         comps[c] = slot->comps[c] ? slot->comps[c]
-                                   : nir_undef(&b, 1, 32);
+         nir_def *v = slot->comps[c];
+         if (v && v->bit_size != 32)
+            v = nir_f2f32(&b, v);
+         comps[c] = v ? v : nir_undef(&b, 1, 32);
       }
 
       nir_store_output(&b, nir_vec(&b, comps, num_comps), nir_imm_int(&b, 0),
@@ -2847,6 +2925,36 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
 
    nir_validate_shader(b.shader, "after DXIL translation");
    return b.shader;
+}
+
+/*
+ * agx_nir_lower_uvs emits load_uvs_index_agx for indexed output stores
+ * and leaves it "to be lowered by the driver": Honeykrisp reads the
+ * index out of its root descriptor because linking decides the layout at
+ * draw time. Ours is decided at compile time by the same
+ * agx_nir_lower_uvs call, so the index is a constant from the layout it
+ * just produced.
+ */
+static bool
+lower_uvs_index(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   const unsigned *slots = data;
+
+   if (intr->intrinsic != nir_intrinsic_load_uvs_index_agx)
+      return false;
+
+   gl_varying_slot loc = nir_intrinsic_io_semantics(intr).location;
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def_replace(&intr->def, nir_imm_intN_t(b, slots[loc], 16));
+   return true;
+}
+
+bool
+d12_dxil_lower_uvs_index(nir_shader *nir, const unsigned *slots)
+{
+   return nir_shader_intrinsics_pass(nir, lower_uvs_index,
+                                     nir_metadata_control_flow,
+                                     (void *)slots);
 }
 
 static bool
