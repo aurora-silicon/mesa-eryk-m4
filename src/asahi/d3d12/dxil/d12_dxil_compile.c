@@ -320,6 +320,46 @@ main(int argc, char **argv)
     * look like a broken shader.
     */
    if (gs_count || gs_copy || pre_gs) {
+      /* The lowering already computes everything the runtime has to
+       * honour; printing it is what turns "geometry shaders compile"
+       * into a statement about how much dispatch machinery each one
+       * actually needs. Without XFB and without GS queries the count,
+       * prefix-sum and pre-GS programs are never dispatched at all
+       * (hk_cmd_draw.c:1535), so `xfb`/`prefix_sum` are the fields that
+       * separate a cheap shader from an expensive one.
+       */
+      static const char *const shape_name[] = {
+         [POLY_GS_SHAPE_STATIC_PER_INSTANCE] = "STATIC_PER_INSTANCE",
+         [POLY_GS_SHAPE_STATIC_PER_PRIM] = "STATIC_PER_PRIM",
+         [POLY_GS_SHAPE_STATIC_INDEXED] = "STATIC_INDEXED",
+         [POLY_GS_SHAPE_DYNAMIC_INDEXED] = "DYNAMIC_INDEXED",
+      };
+      const char *sh = (gs_info.shape < ARRAY_SIZE(shape_name) &&
+                        shape_name[gs_info.shape])
+                          ? shape_name[gs_info.shape]
+                          : "?";
+
+      /* u_prim_name lives in gallium's aux, which this build does not
+       * link (-Dgallium-drivers= is empty). Only the modes a GS can
+       * output are reachable here.
+       */
+      static const char *const prim_name[] = {
+         [MESA_PRIM_POINTS] = "POINTS",
+         [MESA_PRIM_LINES] = "LINES",
+         [MESA_PRIM_LINE_STRIP] = "LINE_STRIP",
+         [MESA_PRIM_TRIANGLES] = "TRIANGLES",
+         [MESA_PRIM_TRIANGLE_STRIP] = "TRIANGLE_STRIP",
+      };
+      const char *pm = (gs_info.mode < ARRAY_SIZE(prim_name) &&
+                        prim_name[gs_info.mode])
+                          ? prim_name[gs_info.mode]
+                          : "?";
+
+      printf("gs_info: mode=%s shape=%s max_indices=%u count_words=%u "
+             "xfb=%d prefix_sum=%d multistream=%d\n",
+             pm, sh, gs_info.max_indices, gs_info.count_words, gs_info.xfb,
+             gs_info.prefix_sum, gs_info.multistream);
+
       struct {
          const char *name;
          nir_shader *s;

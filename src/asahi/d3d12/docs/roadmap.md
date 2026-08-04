@@ -1,6 +1,9 @@
-# d3d12agx roadmap — from 219 compiling to a conformance number
+# d3d12agx roadmap — from compiling to a conformance number
 
-Written 2026-08-04, at `dev`.
+Written 2026-08-04, at `dev`. **Updated the same day**: `g5_texture` is
+solved and all seven GPU suites are green, so the old §1.1 is closed and
+the geometry-shader runtime (§1.0 below) is now the highest-leverage
+work. §2 and §3 are closed — the corpus is at 321.
 
 This document exists to be **attacked**. Every step states what it changes,
 how you know it worked, and what would prove it wrong. Where a decision is
@@ -19,7 +22,12 @@ The corpus is vkd3d-proton's test shaders used as a **compile-only proxy**:
 - **Compiling** means the translator and the AGX backend accepted it.
 - **Conforming** means it produces the right pixels/bytes on hardware.
 
-Six GPU acceptance suites pass; `g5_texture` fails on a known wall.
+**All seven GPU acceptance suites pass.** `g5_texture` reproduces
+`Texture2D.Load` for all 256 texels of a 16x16 image; `g4_triangle`
+matches a CPU rasterisation of the shader's own vertices on all 65536
+pixels. See `findings.md` for what that wall actually was (untyped
+`extractvalue`/`binop` results — the GPU-facing driver was correct the
+whole time) and for the two fake passes fixing it exposed.
 
 **The compiler is no longer the bottleneck, and the gap it leaves is now
 the project's dominant risk.** Geometry, tessellation, mesh,
@@ -104,10 +112,83 @@ differ in how much of the machinery already exists.
 
 ## 1. Runtime: make the compiled work actually run
 
-This is the critical path. Everything in §1 gates real conformance numbers,
-and §1.1 gates the other two.
+This is the critical path. Everything in §1 gates real conformance numbers.
 
-### 1.1 — Break the g5_texture wall  ★ HIGHEST LEVERAGE
+### 1.0 — Geometry shader dispatch  ★ HIGHEST LEVERAGE
+
+102 shaders compile that cannot execute. Geometry is the cheapest entry
+into that set, and it is **much cheaper than it looked** — established by
+measurement, not estimate.
+
+`d3d12agx_dxil_compile` now prints the `poly_gs_info` the lowering
+computes. Across all 15 corpus geometry shaders:
+
+```
+xfb=0  prefix_sum=0   — every one of them
+```
+
+That matters because hk only dispatches the count, prefix-sum and pre-GS
+programs when `main->info.gs.xfb` is set or a GS pipeline-statistics
+query is active (`hk_cmd_draw.c:1535-1538`). **Three of the four programs
+are never dispatched for this entire corpus.** What is left is:
+
+1. a compute dispatch of the software VS (`poly_nir_lower_vs_before_gs`)
+   writing `poly_vertex_params::output_buffer`;
+2. a compute dispatch of the main GS body;
+3. the hardware draw, with the **rast** program bound as the hardware
+   vertex shader (`hk_bound_hw_vs` returns the RAST variant).
+
+One shader is cheaper still. `gs_topology_point` is the only
+`STATIC_PER_INSTANCE` shape in the corpus (`max_indices=1`), so it needs
+**no output index buffer, no restart index, and a plain non-indexed
+draw** — and its main program compiles to 18 bytes / 1 GPR, which is an
+empty shader that hk would skip outright (`agx_is_shader_empty`). For
+that one shader the whole runtime is *one compute dispatch and one
+ordinary draw*. It is the correct first target.
+
+The other 14 are `DYNAMIC_INDEXED`, which additionally need the output
+index buffer, the rewritten restart index
+(`BITFIELD_MASK(8 * poly_gs_index_size(shape))`) and an indexed draw.
+
+**Already built:** `libpoly`/`libpoly_nir` are linked, the translator
+lowers the poly parameter intrinsics to reserved uniforms
+(`D12_UNIFORM_GEOM_PARAMS`, `VERTEX_PARAMS`, `VS_OUTPUTS`), and all four
+programs compile. **Not built:** anything that publishes those uniforms.
+No `.c` in the driver references them.
+
+**Steps, in order:**
+
+| # | change | how you know it worked |
+|---|---|---|
+| 1 | device-side geometry heap (`struct poly_heap`, bump allocator, zeroed per command list) | a dispatch that allocates from it does not fault |
+| 2 | PSO compiles the SW-VS variant and the rast program; rast becomes the hardware VS | PSO with a GS creates instead of returning `E_NOTIMPL` |
+| 3 | upload `poly_vertex_params` (16 words) and `poly_geometry_params` (79 words), align 8 | `agxdecode` shows the uniforms published at the reserved registers |
+| 4 | dispatch SW VS, then the main body, with a CDM barrier between | `agxdecode` shows two dispatches before the VDM stream |
+| 5 | non-indexed draw for `STATIC_PER_INSTANCE` | **`g6_geometry`**: a point GS whose output pixels are compared against a CPU model, the way `g4_triangle` now is |
+| 6 | index buffer + restart + indexed draw | the remaining 14 shapes |
+
+**Traps already identified** (full list in the session research, and in
+`hk_cmd_draw.c`): grid counts are in THREADS not workgroups; the
+workgroup size 64 must match in three places with no cross-check;
+`poly_pre_gs` unconditionally dereferences its counter pointers so they
+need scratch/zero-page sentinels; params must be uploaded *before* the
+root table; the compute programs read the **graphics** root descriptor;
+and the 79-word/16-word struct sizes are static-asserted because the
+shaders bake `offsetof` values.
+
+**CONTESTED — the test shader.** `dxc` does not run on this box and the
+corpus is LGPL, so `g6_geometry` cannot ship a committed GS probe the way
+`g4_triangle` ships `tri.dxil`. Two options: (a) the suite takes a GS
+path as an argument and reports "no shader supplied" otherwise, exactly
+as `corpus-passset.sh` already does for an empty corpus directory; or
+(b) generate probe DXIL with Mesa's own **NIR→DXIL** backend
+(`src/microsoft/compiler`, MIT, already in tree — see
+`architecture.md`), which would give clean-room committable probe
+shaders and remove the `dxc` dependency permanently. (b) is more work and
+strictly better; (a) unblocks step 5 immediately. **This needs a
+decision.**
+
+### 1.1 — ~~Break the g5_texture wall~~ — CLOSED 2026-08-04
 
 **Symptom.** 100 of 256 `Texture2D.Load` fetches return transparent black
 (out of bounds) on a 16×16 texture with coordinates 0–15. Deterministic.
