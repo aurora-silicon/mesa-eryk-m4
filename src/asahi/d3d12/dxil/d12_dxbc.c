@@ -1303,6 +1303,117 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
+      /*
+       * TEXTURE ACCESS. t# and s# register numbers map to binding-map
+       * slots the same way every other resource here does, so the tex
+       * instruction is built with those as texture_index/sampler_index
+       * -- the shape the DXIL front end already uses for dx.op.sample.
+       *
+       * DXBC hands the coordinate as a float4 and lets the swizzle pick;
+       * a 2D sample takes .xy, and ld's address carries the mip level in
+       * .w rather than as a separate operand.
+       */
+      case D12_DXBC_OP_SAMPLE:
+      case D12_DXBC_OP_SAMPLE_L:
+      case D12_DXBC_OP_LD: {
+         bool is_ld = opcode == D12_DXBC_OP_LD;
+         bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L;
+         NEED(is_ld ? 3 : 4);
+
+         /* The resource is the operand in the RESOURCE file; the sampler
+          * the one in the SAMPLER file. Finding them by file rather than
+          * by position survives the operand-count differences between
+          * these three. */
+         unsigned tex_reg = 0, smp_reg = 0;
+         bool have_tex = false, have_smp = false;
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_RESOURCE && !have_tex) {
+               tex_reg = o[k].index[0];
+               have_tex = true;
+            } else if (o[k].file == D12_DXBC_FILE_SAMPLER && !have_smp) {
+               smp_reg = o[k].index[0];
+               have_smp = true;
+            }
+         }
+
+         if (!have_tex) {
+            fail(ctx, "texture op with no resource operand");
+            return;
+         }
+
+         unsigned tslot = ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV,
+                                                          0, tex_reg)
+                                   : tex_reg;
+         if (tslot == ~0u)
+            tslot = tex_reg;
+         unsigned sslot = ctx->map ? d12_binding_map_find(ctx->map,
+                                                          D12_RES_SAMPLER, 0,
+                                                          smp_reg)
+                                   : smp_reg;
+         if (sslot == ~0u)
+            sslot = smp_reg;
+
+         nir_def *coord4 = SRC(1);
+
+         /*
+          * AGX reaches a texture ONLY through a bindless handle -- a byte
+          * offset into the texture heap. Setting texture_index and hoping
+          * asserts in agx_nir_lower_texture ("must be bindless"), which
+          * is what three tests turned into crashes before this. Samplers
+          * are NOT the same mechanism: the backend's sampler operand is a
+          * 16-bit index into sampler STATE REGISTERS, so a constant slot
+          * is simply sampler_index. Same split the DXIL path makes.
+          */
+         nir_def *tex_handle = nir_bindless_image_agx(
+            b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES);
+
+         unsigned nsrc = 2 + (is_ld ? 1 : 0) + (has_lod ? 1 : 0);
+
+         nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
+         tex->op = is_ld ? nir_texop_txf : (has_lod ? nir_texop_txl
+                                                    : nir_texop_tex);
+         tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         tex->is_array = false;
+         tex->dest_type = nir_type_float32;
+         tex->coord_components = 2;
+         tex->sampler_index = have_smp ? sslot : 0;
+
+         unsigned si = 0;
+         tex->src[si++] =
+            nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+
+         if (is_ld) {
+            /* Integer texel coordinates, and the mip in .w. */
+            tex->src[si++] = nir_tex_src_for_ssa(
+               nir_tex_src_coord,
+               nir_trim_vector(b, nir_f2i32(b, coord4), 2));
+            tex->src[si++] = nir_tex_src_for_ssa(
+               nir_tex_src_lod, nir_channel(b, nir_f2i32(b, coord4), 3));
+         } else {
+            tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
+                                                 nir_trim_vector(b, coord4, 2));
+            if (has_lod)
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_lod, nir_channel(b, SRC(nops - 1), 0));
+         }
+
+         nir_def_init(&tex->instr, &tex->def, 4, 32);
+         nir_builder_instr_insert(b, &tex->instr);
+
+         /* The RESOURCE operand's swizzle reorders the result. */
+         unsigned rs[4] = {0, 1, 2, 3};
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_RESOURCE) {
+               for (unsigned c = 0; c < 4; c++)
+                  rs[c] = o[k].swizzle[c];
+               break;
+            }
+         }
+         DST(nir_swizzle(b, &tex->def, rs, 4));
+         break;
+      }
+
       case D12_DXBC_OP_RET:
          /* Falls out of the shader; NIR's implicit return handles it. */
          break;
