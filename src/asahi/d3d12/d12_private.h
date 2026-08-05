@@ -648,6 +648,11 @@ struct d12_cmd_list {
    struct d12_descriptor compute_root_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
 
+   /* Zeroed backing for UNBOUND root slots, allocated lazily and reused by
+    * every binding upload in this recording. See d12_list_null_buffer().
+    */
+   uint64_t null_buffer;
+
    /* The bound root signatures, which are what map a root parameter index
     * to a shader register. Not referenced; the app keeps them alive.
     */

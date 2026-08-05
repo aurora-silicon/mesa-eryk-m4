@@ -225,6 +225,11 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+
+   /* Points into the stream BO, whose data floor has just been rewound, so
+    * the old address is about to be handed out to somebody else.
+    */
+   list->null_buffer = 0;
 }
 
 /* Upload a data blob into the top of the stream BO; returns its GPU VA. */
@@ -262,6 +267,26 @@ d12_list_upload_zero(struct d12_cmd_list *list, size_t size, size_t align)
    memset(d12_list_stream_map(list) + floor, 0, size);
    list->data_floor = floor;
    return list->stream_bo->va->addr + floor;
+}
+
+/*
+ * Zeroed memory that an unbound root slot can point at instead of NULL,
+ * allocated once per recording and shared by every slot that needs it.
+ *
+ * 64 KiB is D3D12's own maximum constant-buffer size, so for a null CBV the
+ * emulation is exact: every offset the API can legally address is covered.
+ * A structured SRV/UAV indexed far enough past the end can still walk off
+ * it -- covering that needs per-access bounds checking, not a bigger buffer
+ * -- but it turns the common case from a guaranteed queue timeout into a
+ * spec-correct read of zero.
+ */
+static uint64_t
+d12_list_null_buffer(struct d12_cmd_list *list)
+{
+   if (!list->null_buffer)
+      list->null_buffer = d12_list_upload_zero(list, 64 * 1024, 16);
+
+   return list->null_buffer;
 }
 
 /* CPU pointer for a GPU address previously returned by an upload. */
@@ -676,10 +701,37 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    /* Two arrays back to back (D12_ROOT_COUNTER_BASE): resource base
     * addresses, then UAV counter addresses for bufferUpdateCounter.
     */
+   /* An UNBOUND slot is address 0, and a shader that reads one dereferences
+    * it -- which the GPU reports as
+    *
+    *     address: 0x0  reason: Unmapped  read: true
+    *
+    * and which then times out the queue. Because the compositor shares this
+    * GPU, that stalls the desktop too: 75 such timeouts in one suite run on
+    * 2026-08-05 froze the GUI and cost a physical reboot.
+    *
+    * Substituting zeroed memory is not merely crash avoidance, it is the
+    * specified behaviour: D3D12 defines reads through a null descriptor as
+    * returning zero, and writes as discarded. Faulting was always the wrong
+    * answer.
+    */
+   uint64_t null_buf = 0;
    uint64_t addrs[2 * D12_MAX_RESOURCE_BINDINGS];
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
       addrs[i] = table[i].address;
       addrs[D12_ROOT_COUNTER_BASE + i] = table[i].counter_address;
+
+      if (!addrs[i] || !addrs[D12_ROOT_COUNTER_BASE + i]) {
+         if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
+            return false;
+         if (!addrs[i])
+            addrs[i] = null_buf;
+         /* Counters share the buffer. Distinct unbound counters aliasing
+          * each other is harmless -- none of them is a real resource.
+          */
+         if (!addrs[D12_ROOT_COUNTER_BASE + i])
+            addrs[D12_ROOT_COUNTER_BASE + i] = null_buf;
+      }
    }
 
    uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
