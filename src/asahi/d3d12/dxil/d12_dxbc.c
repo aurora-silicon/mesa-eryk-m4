@@ -193,11 +193,16 @@ enum d12_dxbc_op {
     * files rather than assumed: 168 writes to file 30 (a UAV) with four
     * operands, 165 reads from one into a temporary. */
    D12_DXBC_OP_LD_STRUCTURED = 165,
+   /* Same shape, SRV rather than UAV: dest, index, offset, resource. */
+   D12_DXBC_OP_LD_STRUCTURED_SRV = 167,
    D12_DXBC_OP_STORE_STRUCTURED = 168,
    /* Both write to file 30 with three operands. 164 takes an element
     * coordinate, 166 a byte offset -- typed versus raw. */
    D12_DXBC_OP_STORE_UAV_TYPED = 164,
    D12_DXBC_OP_STORE_RAW = 166,
+   /* The load counterpart to 164: same operand shape, dest in a
+    * temporary and the UAV last. */
+   D12_DXBC_OP_LD_UAV_TYPED = 163,
    /* Geometry shader vertex emission. The _STREAM forms name a stream
     * in their first operand; the plain ones mean stream 0. */
    D12_DXBC_OP_CUT = 9,
@@ -1194,16 +1199,27 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
        * 12-byte struct indexed at element 3 would read byte 12 instead
        * of byte 36.
        */
-      case D12_DXBC_OP_LD_STRUCTURED: {
+      case D12_DXBC_OP_LD_STRUCTURED:
+      case D12_DXBC_OP_LD_STRUCTURED_SRV: {
          NEED(4);
-         uint32_t reg = o[3].index[0];
-         bool uav = o[3].file == D12_DXBC_FILE_UAV;
+         /* Find the resource by FILE, not by position: the two forms
+          * differ in operand count and the resource is not always last. */
+         unsigned ri = nops - 1;
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_UAV ||
+                o[k].file == D12_DXBC_FILE_RESOURCE) {
+               ri = k;
+               break;
+            }
+         }
+         uint32_t reg = o[ri].index[0];
+         bool uav = o[ri].file == D12_DXBC_FILE_UAV;
          unsigned stride = (uav ? ctx->uav_stride : ctx->srv_stride)
                               [reg < D12_DXBC_MAX_SIG ? reg : 0];
          nir_def *addr = buffer_address(ctx, reg, uav, SRC(1), SRC(2), stride);
          nir_def *val = nir_load_global(b, 4, 32, addr, .align_mul = 4);
-         unsigned sw[4] = {o[3].swizzle[0], o[3].swizzle[1], o[3].swizzle[2],
-                           o[3].swizzle[3]};
+         unsigned sw[4] = {o[ri].swizzle[0], o[ri].swizzle[1],
+                           o[ri].swizzle[2], o[ri].swizzle[3]};
          DST(nir_swizzle(b, val, sw, 4));
          break;
       }
@@ -1239,6 +1255,50 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
        * need real format conversion, so it is refused rather than
        * written at the wrong stride.
        */
+      /*
+       * Loading from a UAV. Mirrors the typed store: element addressing,
+       * one indirection through the root table. The resource is found by
+       * REGISTER FILE rather than by position -- the operand count varies
+       * between the load forms and finding it by file survives that.
+       */
+      case D12_DXBC_OP_LD_UAV_TYPED: {
+         NEED(3);
+
+         unsigned reg = 0;
+         bool found = false, uav = true;
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_UAV ||
+                o[k].file == D12_DXBC_FILE_RESOURCE) {
+               reg = o[k].index[0];
+               uav = o[k].file == D12_DXBC_FILE_UAV;
+               found = true;
+               break;
+            }
+         }
+         if (!found) {
+            fail(ctx, "UAV load with no resource operand");
+            return;
+         }
+
+         nir_def *off = nir_imul_imm(b, nir_channel(b, SRC(1), 0), 4);
+         nir_def *addr =
+            buffer_address(ctx, reg, uav, nir_imm_int(b, 0), off, 0);
+         nir_def *val = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+
+         /* The resource operand's swizzle reorders the result. */
+         unsigned rs[4] = {0, 1, 2, 3};
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_UAV ||
+                o[k].file == D12_DXBC_FILE_RESOURCE) {
+               for (unsigned c = 0; c < 4; c++)
+                  rs[c] = o[k].swizzle[c];
+               break;
+            }
+         }
+         DST(nir_swizzle(b, val, rs, 4));
+         break;
+      }
+
       case D12_DXBC_OP_STORE_RAW:
       case D12_DXBC_OP_STORE_UAV_TYPED: {
          NEED(3);
