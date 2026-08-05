@@ -3097,18 +3097,38 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   if (list->state == D12_LIST_ERROR) {
-      mesa_loge("Close on errored command list");
-      return E_FAIL;
-   }
-   if (list->state != D12_LIST_RECORDING)
+   /*
+    * A list that hit an error during recording still CLOSES. D3D12
+    * reports the recording error from Close and transitions the list to
+    * closed regardless; it simply cannot be executed.
+    *
+    * Returning early without closing was a cascade, not a nicety. The
+    * list stayed RECORDING, so the allocator's recording_lists never
+    * dropped, so CommandAllocator::Reset failed for the rest of the
+    * test -- and because these tests LOOP, every later iteration failed
+    * too. It showed up as the two largest failure messages in the whole
+    * vkd3d suite ("Failed to close command list", 43 tests; "Failed to
+    * reset command allocator", 33) and none of them were about the thing
+    * the test was actually checking.
+    */
+   if (list->state != D12_LIST_RECORDING &&
+       list->state != D12_LIST_ERROR)
       return E_FAIL;
 
-   d12_list_close_cdm(list);
+   bool errored = list->state == D12_LIST_ERROR;
+
+   if (!errored)
+      d12_list_close_cdm(list);
+
    list->state = D12_LIST_CLOSED;
 
    if (list->allocator && list->allocator->recording_lists)
       list->allocator->recording_lists--;
+
+   if (errored) {
+      mesa_loge("Close on errored command list");
+      return E_FAIL;
+   }
 
    return S_OK;
 }
