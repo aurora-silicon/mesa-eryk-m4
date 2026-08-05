@@ -20,6 +20,19 @@ Device creation works; anything that **submits** hangs on the fence wait.
 wide, not ours. Bisected: `g2_smoke` hangs with the session's uncommitted
 changes stashed, so it is not the DXBC work.
 
+A full suite run confirms the pattern is perfectly uniform:
+
+```
+g1_smoke                ALL PASS            the ONLY suite that never submits
+g2 .. g11               NO VERDICT (124)    every one times out
+18 pipelines compiled successfully during that run
+```
+
+Every suite compiles its shaders — mesh, tessellation and vertex-buffer
+paths included — and then hangs at execution. **The compiler is fine; the
+queue is stuck.** Nothing in the driver distinguishes the suites that
+hang from the one that does not, except whether they submit work.
+
 Most likely cumulative: ~159 vkd3d-proton tests crash outright per full
 run and the suite was run about ten times, so a great many clients died
 with work in flight. **It needs a reboot** — the driver has not recovered
