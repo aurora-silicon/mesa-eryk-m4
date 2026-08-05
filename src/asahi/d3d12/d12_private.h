@@ -63,6 +63,15 @@ d12_guid_equal(REFIID a, REFIID b)
 /* Log an unknown riid so we learn what callers actually want. */
 void d12_log_unknown_riid(const char *where, REFIID riid);
 
+/*
+ * Backing size for NULL descriptors. 64 KiB is D3D12's maximum constant
+ * buffer size, so a null CBV is covered exactly for every offset the API
+ * can legally address; a structured SRV/UAV indexed far past the end can
+ * still walk off it, which needs per-access bounds checking rather than a
+ * bigger buffer.
+ */
+#define D12_NULL_REGION_SIZE (64 * 1024)
+
 struct d12_device {
    ID3D12Device iface; /* must be first */
    uint32_t refcount;
@@ -98,6 +107,11 @@ struct d12_device {
     */
    struct agx_bo *heap_bo;
    uint64_t heap_desc_va; /* struct poly_heap inside rodata_bo */
+
+   /* Zeroed backing for NULL descriptors, also inside rodata_bo. A null
+    * SRV/UAV/CBV must read as zero, not fault; see D12_NULL_REGION_SIZE.
+    */
+   uint64_t null_va;
    struct poly_heap *heap_desc_cpu;
 
    D3D_FEATURE_LEVEL feature_level;

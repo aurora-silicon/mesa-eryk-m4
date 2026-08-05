@@ -833,6 +833,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                                     const D3D12_SHADER_RESOURCE_VIEW_DESC *desc,
                                     D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
 
    if (!slot)
@@ -840,8 +841,21 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
 
    memset(slot, 0, sizeof(*slot));
 
-   if (!resource)
-      return; /* a null SRV is a legal placeholder */
+   if (!resource) {
+      /*
+       * A null descriptor must READ AS ZERO, not fault. Leaving address 0
+       * here (which zeroing the slot did) makes the shader dereference
+       * NULL: the GPU reports `address: 0x0, reason: Unmapped, read: true`
+       * and times out the queue -- and because the compositor shares this
+       * GPU, that freezes the desktop too.
+       *
+       * Bisecting the suite localised the timeout burst to exactly the
+       * test_null_* cluster: names.txt 1..278 gave +0, 279..418 gave +69.
+       */
+      slot->address = device->null_va;
+      slot->size_B = D12_NULL_REGION_SIZE;
+      return;
+   }
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
@@ -893,6 +907,7 @@ d12_device_CreateUnorderedAccessView(
    const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
    D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
 
    if (!slot)
@@ -900,8 +915,16 @@ d12_device_CreateUnorderedAccessView(
 
    memset(slot, 0, sizeof(*slot));
 
-   if (!resource)
+   if (!resource) {
+      /* Same reasoning as the null SRV above. The counter shares the
+       * region: a null UAV's counter is not a real resource either, so
+       * distinct nulls aliasing it is harmless.
+       */
+      slot->address = device->null_va;
+      slot->counter_address = device->null_va;
+      slot->size_B = D12_NULL_REGION_SIZE;
       return;
+   }
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
@@ -1244,11 +1267,26 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
     * descriptor, the address and the coordinates are all correct and the
     * fetch still returns nothing.
     */
-   /* Sampler state, then the tessellation heap descriptor. */
+   /*
+    * Sampler state, the tessellation heap descriptor, then the NULL
+    * descriptor region.
+    *
+    * D3D12 requires a null descriptor to read as zero and to discard
+    * writes. Recording address 0 instead -- which is what zeroing the
+    * descriptor slot did -- makes the shader dereference NULL, and the GPU
+    * reports `address: 0x0, reason: Unmapped, read: true` and times out the
+    * queue. Bisecting the suite put the fault burst exactly at the
+    * test_null_* cluster (names.txt 279+, +69 timeouts; lines 1..278 gave
+    * +0), which is what identified this.
+    *
+    * It lives inside rodata_bo rather than in a BO of its own so it
+    * inherits the existing device lifetime and every teardown path already
+    * written for it.
+    */
    device->rodata_bo =
       agx_bo_create(&device->dev,
                     ALIGN_POT(AGX_SAMPLER_LENGTH, 16) +
-                       sizeof(struct poly_heap),
+                       sizeof(struct poly_heap) + D12_NULL_REGION_SIZE,
                     0, 0, "d3d12 rodata");
    if (!device->rodata_bo) {
       agx_bo_unreference(&device->dev, device->oclqry_bo);
@@ -1291,6 +1329,15 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
 
    size_t heap_off = ALIGN_POT(AGX_SAMPLER_LENGTH, 16);
    device->heap_desc_va = device->rodata_bo->va->addr + heap_off;
+
+   /* The null region follows the heap descriptor. Zeroed explicitly: a
+    * null descriptor must READ AS ZERO, so whatever the allocator happened
+    * to leave here is not good enough.
+    */
+   size_t null_off = heap_off + sizeof(struct poly_heap);
+   device->null_va = device->rodata_bo->va->addr + null_off;
+   memset((uint8_t *)agx_bo_map(device->rodata_bo) + null_off, 0,
+          D12_NULL_REGION_SIZE);
    device->heap_desc_cpu =
       (struct poly_heap *)((uint8_t *)agx_bo_map(device->rodata_bo) +
                            heap_off);
