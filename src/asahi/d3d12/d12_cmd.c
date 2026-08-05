@@ -550,7 +550,8 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
  */
 static uint32_t
 d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
-                     const float color[4], bool store,
+                     enum pipe_format type_format, const float color[4],
+                     bool store,
                      const struct agx_tilebuffer_layout *tib,
                      struct agx_counts_packed *out_counts)
 {
@@ -569,8 +570,54 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
    if (!store) {
       key.op[0] = AGX_BG_CLEAR;
 
+      /*
+       * ClearRenderTargetView always hands over FLOAT[4], whatever the
+       * target's type. For a PURE INTEGER target those floats are integer
+       * VALUES, not normalized intensities, so they must be converted
+       * rather than forwarded: clearing a UINT target to 1 has to write
+       * the integer 1, where passing the float straight through wrote 255
+       * ("Got 0xff00ff00, expected 0x01000100" in
+       * test_clear_render_target_view).
+       *
+       * The format consulted here is the RESOURCE's, which is safe because
+       * it is only being asked "is this integer-typed?". An earlier attempt
+       * also drove the tilebuffer and PBE from a view format; those describe
+       * MEMORY, so the store wrote the wrong size and produced 75 GPU
+       * timeouts. Type interpretation and memory layout are different
+       * questions -- do not merge them again.
+       */
+      /* The VIEW's format answers "what type is this", which the resource
+       * format cannot for a TYPELESS target -- typeless maps to a float
+       * sibling purely to fix the block size, so a UINT clear otherwise
+       * looked like a float one.
+       *
+       * Measured, not assumed: view format 8 failures vs resource format 15
+       * in test_clear_render_target_view.
+       *
+       * Used for THAT QUESTION ONLY. Memory layout still comes from the
+       * resource; merging the two wrote the wrong size and cost 75 GPU
+       * timeouts.
+       */
+      enum pipe_format cf =
+         type_format != PIPE_FORMAT_NONE ? type_format : rt->layout.format;
+      union {
+         float f[4];
+         uint32_t u[4];
+         int32_t i[4];
+      } cv;
+
+      if (util_format_is_pure_uint(cf)) {
+         for (unsigned c = 0; c < 4; c++)
+            cv.u[c] = (uint32_t)color[c];
+      } else if (util_format_is_pure_sint(cf)) {
+         for (unsigned c = 0; c < 4; c++)
+            cv.i[c] = (int32_t)color[c];
+      } else {
+         memcpy(cv.f, color, sizeof(cv.f));
+      }
+
       /* 16 bytes of clear color, register base 4 — hk's fixed ABI */
-      uint64_t colour = d12_list_upload(list, color, 16, 16);
+      uint64_t colour = d12_list_upload(list, cv.f, 16, 16);
       if (!colour)
          return 0;
 
@@ -3317,10 +3364,11 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       return;
 
    seg->bg_usc =
-      d12_build_bg_eot_usc(list, rt, color, false, &seg->tib,
+      d12_build_bg_eot_usc(list, rt, d12_format_to_pipe(rtv->format), color,
+                           false, &seg->tib,
                            &seg->bg_counts);
    seg->eot_usc =
-      d12_build_bg_eot_usc(list, rt, NULL, true, &seg->tib,
+      d12_build_bg_eot_usc(list, rt, PIPE_FORMAT_NONE, NULL, true, &seg->tib,
                            &seg->eot_counts);
    if (!seg->bg_usc || !seg->eot_usc)
       return; /* error state already set */
