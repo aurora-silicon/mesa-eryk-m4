@@ -193,6 +193,10 @@ enum d12_dxbc_op {
     * operands, 165 reads from one into a temporary. */
    D12_DXBC_OP_LD_STRUCTURED = 165,
    D12_DXBC_OP_STORE_STRUCTURED = 168,
+   /* Both write to file 30 with three operands. 164 takes an element
+    * coordinate, 166 a byte offset -- typed versus raw. */
+   D12_DXBC_OP_STORE_UAV_TYPED = 164,
+   D12_DXBC_OP_STORE_RAW = 166,
    D12_DXBC_OP_DCL_RESOURCE = 88,
    D12_DXBC_OP_DCL_CONSTANT_BUFFER = 89,
    D12_DXBC_OP_DCL_SAMPLER = 90,
@@ -1204,6 +1208,48 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
+      /*
+       * RAW and TYPED UAV stores. Same root-table indirection as every
+       * other resource here; the difference is only how the address is
+       * formed -- a byte offset for raw, an element index for typed.
+       *
+       * Typed is handled for 32-bit-per-element formats, which is what
+       * the tests overwhelmingly use. A wider or packed format would
+       * need real format conversion, so it is refused rather than
+       * written at the wrong stride.
+       */
+      case D12_DXBC_OP_STORE_RAW:
+      case D12_DXBC_OP_STORE_UAV_TYPED: {
+         NEED(3);
+         bool typed = opcode == D12_DXBC_OP_STORE_UAV_TYPED;
+         uint32_t reg = o[0].index[0];
+         bool tgsm = o[0].file == D12_DXBC_FILE_TGSM;
+
+         if (tgsm) {
+            fail(ctx, "thread-group shared memory store");
+            return;
+         }
+
+         nir_def *off = nir_channel(b, SRC(1), 0);
+         if (typed)
+            off = nir_imul_imm(b, off, 4);
+
+         nir_def *addr =
+            buffer_address(ctx, reg, true, nir_imm_int(b, 0), off, 0);
+
+         nir_def *val = SRC(2);
+         unsigned mask = o[0].mask ? o[0].mask : 0xf;
+
+         for (unsigned c = 0; c < 4; c++) {
+            if (!(mask & (1 << c)))
+               continue;
+            nir_store_global(b, nir_channel(b, val, c),
+                             nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
+                             .align_mul = 4);
+         }
+         break;
+      }
+
       case D12_DXBC_OP_RET:
          /* Falls out of the shader; NIR's implicit return handles it. */
          break;
@@ -1211,11 +1257,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       default:
          /* Name the opcode: the next person needs a work list, not a
           * verdict. */
-         if (getenv("D3D12AGX_DUMP_DXBC")) {
-            fprintf(stderr, "dxbc: op %u operands:", opcode);
+         /* SURVEY MODE: keep walking and report EVERY missing opcode
+          * rather than the first. Which shaders are one addition away
+          * from translating is the only thing that predicts what a fix
+          * is worth -- the score moves when a shader completes, not when
+          * an opcode is added. */
+         if (getenv("D3D12AGX_DXBC_SURVEY")) {
+            fprintf(stderr, "dxbc-missing: %u operands:", opcode);
             for (unsigned k = 0; k < nops; k++)
                fprintf(stderr, " file%u/idx%u", o[k].file, o[k].index[0]);
             fprintf(stderr, "\n");
+            ctx->tok += len;
+            continue;
          }
          snprintf(ctx->errbuf, sizeof(ctx->errbuf),
                   "unimplemented DXBC opcode %u", opcode);
