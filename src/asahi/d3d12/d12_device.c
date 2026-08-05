@@ -689,10 +689,32 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-       !d12_format_is_renderable(res->desc.Format)) {
-      mesa_loge("CreateRenderTargetView: format %d is not a renderable 2D "
-                "target", (int)res->desc.Format);
+   /*
+    * The VIEW's format wins over the resource's. That is not a preference:
+    * a TYPELESS resource carries no interpretation at all, and D3D12
+    * requires the view to supply one, so checking the resource format
+    * rejects every typeless render target no matter what the application
+    * asked for. DXGI_FORMAT_UNKNOWN in the desc means "inherit", and a
+    * NULL desc means the same.
+    */
+   DXGI_FORMAT view_format = (desc && desc->Format != DXGI_FORMAT_UNKNOWN)
+                                ? desc->Format
+                                : res->desc.Format;
+
+   /* Report WHICH half failed. Reporting the format for a dimension
+    * mismatch sent a debugging session after a format table that was
+    * already correct.
+    */
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      mesa_loge("CreateRenderTargetView: dimension %d unsupported (need 2D), "
+                "format %d", (int)res->desc.Dimension, (int)view_format);
+      slot->resource = NULL;
+      return;
+   }
+
+   if (!d12_format_is_renderable(view_format)) {
+      mesa_loge("CreateRenderTargetView: format %d is not renderable",
+                (int)view_format);
       slot->resource = NULL;
       return;
    }
@@ -705,7 +727,11 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    }
 
    slot->resource = res;
-   slot->format = res->desc.Format;
+   /* The interpretation the shader and the clear path must both use --
+    * storing the resource's typeless format here would push the same
+    * "no interpretation" problem downstream to every consumer.
+    */
+   slot->format = view_format;
    slot->kind = D12_DESC_RTV;
    slot->address = res->bo->va->addr;
 }

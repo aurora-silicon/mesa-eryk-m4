@@ -95,6 +95,38 @@ static const struct d12_format_entry d12_formats[] = {
    {DXGI_FORMAT_R10G10B10A2_UNORM, PIPE_FORMAT_R10G10B10A2_UNORM},
    {DXGI_FORMAT_R10G10B10A2_UINT, PIPE_FORMAT_R10G10B10A2_UINT},
    {DXGI_FORMAT_R11G11B10_FLOAT, PIPE_FORMAT_R11G11B10_FLOAT},
+
+   /*
+    * TYPELESS colour formats.
+    *
+    * A typeless resource is STORAGE ONLY: D3D12 defers interpretation to
+    * the view, so the resource needs nothing but the right block size and
+    * channel layout. Mapping each to its most common typed sibling is
+    * therefore exact for allocation and layout purposes, not a guess.
+    *
+    * These were missing entirely, and refusing them is not a small gap.
+    * test_clear_render_target_view creates an R8G8B8A8_TYPELESS target
+    * (fmt 27); CreateCommittedResource returned E_NOTIMPL, the test kept
+    * going without checking, built an RTV on the null resource, and
+    * crashed. Twelve tests reported "invalid RTV handle" for exactly that
+    * reason -- a downstream symptom of this table, not an RTV bug.
+    *
+    * R32_TYPELESS, R16_TYPELESS, R24G8_TYPELESS and R32G8X24_TYPELESS are
+    * deliberately NOT here: they live in d12_ds_formats below, where the
+    * depth/stencil lookup claims them first. Listing them in both tables
+    * would make which meaning wins depend on lookup order.
+    */
+   {DXGI_FORMAT_R8_TYPELESS, PIPE_FORMAT_R8_UNORM},
+   {DXGI_FORMAT_R8G8_TYPELESS, PIPE_FORMAT_R8G8_UNORM},
+   {DXGI_FORMAT_R8G8B8A8_TYPELESS, PIPE_FORMAT_R8G8B8A8_UNORM},
+   {DXGI_FORMAT_B8G8R8A8_TYPELESS, PIPE_FORMAT_B8G8R8A8_UNORM},
+   {DXGI_FORMAT_B8G8R8X8_TYPELESS, PIPE_FORMAT_B8G8R8X8_UNORM},
+   {DXGI_FORMAT_R16G16_TYPELESS, PIPE_FORMAT_R16G16_FLOAT},
+   {DXGI_FORMAT_R16G16B16A16_TYPELESS, PIPE_FORMAT_R16G16B16A16_FLOAT},
+   {DXGI_FORMAT_R32G32_TYPELESS, PIPE_FORMAT_R32G32_FLOAT},
+   {DXGI_FORMAT_R32G32B32_TYPELESS, PIPE_FORMAT_R32G32B32_FLOAT},
+   {DXGI_FORMAT_R32G32B32A32_TYPELESS, PIPE_FORMAT_R32G32B32A32_FLOAT},
+   {DXGI_FORMAT_R10G10B10A2_TYPELESS, PIPE_FORMAT_R10G10B10A2_UNORM},
 };
 
 /*
