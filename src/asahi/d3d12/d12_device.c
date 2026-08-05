@@ -1316,7 +1316,24 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
     * draw's tessellation output. Overflow is not silent -- the allocator
     * aborts on the GPU -- so a too-small heap fails loudly.
     */
-   device->heap_bo = agx_bo_create(&device->dev, 32 * 1024 * 1024, 0, 0,
+   /*
+    * 128 MiB, matching hk_init_heap() in the Vulkan driver on this same
+    * hardware. We were at 32 MiB, four times under-sized, and the geometry
+    * heap is a bump allocator (struct poly_heap: base/bottom/size) shared
+    * by tessellation and geometry shaders.
+    *
+    * Overflowing it is what produced the GPU-timeout bursts that froze the
+    * desktop all of 2026-08-05. Bisection put the first fault at
+    * test_quad_tessellation_dxil, reading address 0xbb1ae27b80 -- a real
+    * address just past a live allocation, `reason: Unmapped`. Our own G7
+    * suite passes because its tessellation factors fit inside 32 MiB.
+    *
+    * poly_heap_alloc_offs does bounds-check, but it lives in src/poly and is
+    * shared with the Vulkan driver, and it reacts by printf+abort from the
+    * shader -- so the honest fix here is to stop overflowing rather than to
+    * change a check other drivers depend on.
+    */
+   device->heap_bo = agx_bo_create(&device->dev, 128 * 1024 * 1024, 0, 0,
                                    "d3d12 tessellation heap");
    if (!device->heap_bo) {
       agx_bo_unreference(&device->dev, device->rodata_bo);
