@@ -214,7 +214,8 @@ d3d12agx_dxil_dump = executable(
 # DXIL -> NIR -> AGX, the "no SPIR-V" path end to end
 d3d12agx_dxil_compile = executable(
   'd3d12agx_dxil_compile',
-  [libd12_dxil_files, files('dxil/d12_dxil_nir.c', 'dxil/d12_dxil_compile.c')],
+  [libd12_dxil_files, files('dxil/d12_dxil_nir.c', 'dxil/d12_dxbc.c',
+                            'dxil/d12_dxil_compile.c')],
   include_directories : [
     inc_include, inc_src, inc_asahi, inc_gallium, inc_gallium_aux,
     include_directories('../isa'),

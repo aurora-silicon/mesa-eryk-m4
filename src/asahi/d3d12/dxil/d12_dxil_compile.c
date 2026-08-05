@@ -121,6 +121,41 @@ main(int argc, char **argv)
    size_t bc_size;
    const char *why = NULL;
    if (!d12_dxil_find_bitcode(data, size, &bc, &bc_size, &why)) {
+      /*
+       * No DXIL: Shader Model 5.x, which the DXBC front end handles.
+       * Doing it here as well as in the PSO path matters more than it
+       * looks -- this tool needs NO GPU, so it is the only way to test
+       * shader translation while the hardware is unavailable.
+       */
+      uint32_t ver = 0;
+      const uint8_t *chunk;
+      size_t chunk_size;
+      if (d12_dxbc_find_shader(data, size, &chunk, &chunk_size, &ver)) {
+         static const mesa_shader_stage kind_to_stage[] = {
+            MESA_SHADER_FRAGMENT, MESA_SHADER_VERTEX,   MESA_SHADER_GEOMETRY,
+            MESA_SHADER_TESS_CTRL, MESA_SHADER_TESS_EVAL, MESA_SHADER_COMPUTE,
+         };
+         unsigned kind = ver >> 16;
+         mesa_shader_stage st =
+            kind < ARRAY_SIZE(kind_to_stage) ? kind_to_stage[kind] : stage;
+
+         printf("%s: DXBC sm%u.%u, stage %s\n", path, (ver >> 4) & 0xf,
+                ver & 0xf, _mesa_shader_stage_to_string(st));
+
+         const char *dxbc_err = "unknown";
+         struct d12_binding_map dmap;
+         memset(&dmap, 0, sizeof(dmap));
+         nir_shader *dn = d12_dxbc_to_nir(data, size, st, &dmap, &dxbc_err);
+         if (!dn) {
+            printf("DXBC->NIR FAILED: %s\n", dxbc_err);
+            return 1;
+         }
+         printf("DXBC->NIR OK\n");
+         if (getenv("D3D12AGX_PRINT_NIR"))
+            nir_print_shader(dn, stdout);
+         return 0;
+      }
+
       fprintf(stderr, "%s: %s\n", path, why);
       return 1;
    }

@@ -71,6 +71,7 @@ enum d12_dxbc_file {
    /* Compute system values. These are not varyings and have no
     * declaration in the token stream -- the register file IS the
     * meaning. */
+   D12_DXBC_FILE_OUTPUT_COVERAGE_MASK = 15,
    D12_DXBC_FILE_UAV = 30,
    D12_DXBC_FILE_TGSM = 31,
    D12_DXBC_FILE_THREAD_ID = 32,
@@ -197,6 +198,14 @@ enum d12_dxbc_op {
     * coordinate, 166 a byte offset -- typed versus raw. */
    D12_DXBC_OP_STORE_UAV_TYPED = 164,
    D12_DXBC_OP_STORE_RAW = 166,
+   /* Geometry shader vertex emission. The _STREAM forms name a stream
+    * in their first operand; the plain ones mean stream 0. */
+   D12_DXBC_OP_CUT = 9,
+   D12_DXBC_OP_EMIT = 19,
+   D12_DXBC_OP_EMITTHENCUT = 20,
+   D12_DXBC_OP_EMIT_STREAM = 117,
+   D12_DXBC_OP_CUT_STREAM = 118,
+   D12_DXBC_OP_EMITTHENCUT_STREAM = 119,
    D12_DXBC_OP_DCL_RESOURCE = 88,
    D12_DXBC_OP_DCL_CONSTANT_BUFFER = 89,
    D12_DXBC_OP_DCL_SAMPLER = 90,
@@ -536,6 +545,9 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    case D12_DXBC_FILE_THREAD_ID_IN_GROUP_FLAT:
       return nir_replicate(b, nir_load_local_invocation_index(b), 4);
 
+   case D12_DXBC_FILE_COVERAGE_MASK:
+      return nir_replicate(b, nir_load_sample_mask_in(b), 4);
+
    case D12_DXBC_FILE_INPUT: {
       uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
       const struct d12_dxbc_sig_elem *e =
@@ -711,6 +723,15 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
                        .io_semantics.location = FRAG_RESULT_DEPTH,
                        .io_semantics.num_slots = 1);
       b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DEPTH);
+      break;
+
+   case D12_DXBC_FILE_OUTPUT_COVERAGE_MASK:
+      nir_store_output(b, nir_channel(b, value, 0), nir_imm_int(b, 0),
+                       .base = 0, .write_mask = 1, .src_type = nir_type_uint32,
+                       .io_semantics.location = FRAG_RESULT_SAMPLE_MASK,
+                       .io_semantics.num_slots = 1);
+      b->shader->info.outputs_written |=
+         BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
       break;
 
    case D12_DXBC_FILE_NULL:
@@ -1247,6 +1268,38 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                              nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
                              .align_mul = 4);
          }
+         break;
+      }
+
+      /*
+       * Geometry shader emission. The outputs a shader has stored so far
+       * ARE the vertex, so emitting is a boundary rather than a value --
+       * the same shape the DXIL front end gives emitStream.
+       */
+      case D12_DXBC_OP_EMIT:
+      case D12_DXBC_OP_EMITTHENCUT:
+      case D12_DXBC_OP_CUT:
+      case D12_DXBC_OP_EMIT_STREAM:
+      case D12_DXBC_OP_CUT_STREAM:
+      case D12_DXBC_OP_EMITTHENCUT_STREAM: {
+         unsigned stream = 0;
+         bool streamed = opcode == D12_DXBC_OP_EMIT_STREAM ||
+                         opcode == D12_DXBC_OP_CUT_STREAM ||
+                         opcode == D12_DXBC_OP_EMITTHENCUT_STREAM;
+         if (streamed && nops >= 1)
+            stream = o[0].index[0];
+
+         bool cut = opcode == D12_DXBC_OP_CUT ||
+                    opcode == D12_DXBC_OP_CUT_STREAM ||
+                    opcode == D12_DXBC_OP_EMITTHENCUT ||
+                    opcode == D12_DXBC_OP_EMITTHENCUT_STREAM;
+         bool emit = opcode != D12_DXBC_OP_CUT &&
+                     opcode != D12_DXBC_OP_CUT_STREAM;
+
+         if (emit)
+            nir_emit_vertex(b, .stream_id = stream);
+         if (cut)
+            nir_end_primitive(b, .stream_id = stream);
          break;
       }
 
