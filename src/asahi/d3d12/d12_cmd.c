@@ -3116,6 +3116,8 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
       return E_FAIL;
 
    bool errored = list->state == D12_LIST_ERROR;
+   if (errored)
+      list->had_error = true;
 
    if (!errored)
       d12_list_close_cdm(list);
@@ -3142,6 +3144,9 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
 
    if (!allocator)
       return E_INVALIDARG;
+
+   /* Reset starts a fresh recording, so the previous error is gone. */
+   list->had_error = false;
    if (initial_state)
       list->pso = d12_pipeline_state_from_iface(initial_state);
 

@@ -600,6 +600,13 @@ struct d12_cmd_list {
    unsigned pregfx_seg;  /* index of the inserted segment */
    bool pregfx_open;
 
+   /* Sticky: set when recording hit an error, and NOT cleared by Close.
+    * Close must still transition the list to CLOSED so the allocator can
+    * reset, but an errored list's command stream is incomplete and must
+    * never reach the GPU -- submitting one is how the bench wedged.
+    */
+   bool had_error;
+
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,
     * plus the PSO's resolved attributes, into the fetch parameter block.

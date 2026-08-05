@@ -258,6 +258,15 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       /* Our lists are always ID3D12GraphicsCommandList objects. */
       struct d12_cmd_list *list = (struct d12_cmd_list *)lists[i];
 
+      if (list && list->had_error) {
+         /* Closed, but its stream is incomplete: recording failed part
+          * way. Submitting it is not a wrong picture, it is undefined
+          * work on the GPU -- which is how this bench wedged and cost a
+          * reboot. */
+         mesa_loge("ExecuteCommandLists: list %u errored while recording; "
+                   "dropped", i);
+         continue;
+      }
       if (!list || list->state != D12_LIST_CLOSED) {
          mesa_loge("ExecuteCommandLists: list %u not closed; dropped", i);
          continue;
