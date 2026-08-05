@@ -62,6 +62,11 @@ execute; work graphs and ray query still compile without executing. See
 real, which is the only thing that turns the proxy into a conformance
 number.
 
+> ⚠️ **The last two commits have never run on hardware** — the bench GPU
+> wedged mid-session and needs a reboot. Read
+> [`docs/unverified-on-hardware.md`](docs/unverified-on-hardware.md)
+> before trusting `dev`, and re-run the suites first thing.
+
 ## Start here
 
 | doc | what |
@@ -69,6 +74,7 @@ number.
 | [`docs/replication.md`](docs/replication.md) | build it and reproduce the numbers — **read first** |
 | [`docs/architecture.md`](docs/architecture.md) | the stack, the shader path, the binding model, licensing |
 | [`docs/roadmap.md`](docs/roadmap.md) | what to do next, ordered by leverage, with falsification criteria |
+| [`docs/unverified-on-hardware.md`](docs/unverified-on-hardware.md) | **what has not been tested on the GPU, and how to check it** |
 | [`docs/findings.md`](docs/findings.md) | traps that each cost a wrong hypothesis — read before debugging |
 | [`docs/tier5-hardware-limits.md`](docs/tier5-hardware-limits.md) | the last 13 shaders: what each needs, and the two that need a decision |
 
