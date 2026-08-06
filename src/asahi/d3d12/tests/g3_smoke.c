@@ -91,7 +91,7 @@ check_image(const uint8_t *map, UINT w, UINT h, const uint8_t rgba[4],
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
    ID3D12Device *dev = NULL;
    HRESULT hr;
@@ -101,6 +101,22 @@ main(void)
    CHECK(hr == S_OK && dev, "D3D12CreateDevice");
    if (FAILED(hr) || !dev)
       return 1;
+
+   /*
+    * The unaligned target's size is overridable so this doubles as a
+    * one-variable probe. A 16x16 clear-only pass -- smaller than one
+    * 32x32 utile -- is what test_render_pass_suspend_resume_opts_disabled
+    * submits 32 times, and every one of those hangs the VDM at
+    * 0x4000000000 while this test's 256x256 and 123x77 passes complete.
+    * The two render commands are otherwise byte-for-byte the same shape,
+    * so size is the only variable left to test.
+    */
+   unsigned bw = 123, bh = 77;
+   if (argc >= 3) {
+      bw = (unsigned)atoi(argv[1]);
+      bh = (unsigned)atoi(argv[2]);
+      printf("# unaligned target overridden to %ux%u\n", bw, bh);
+   }
 
    /* RTV heap with two slots */
    D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {
@@ -133,7 +149,7 @@ main(void)
    /* Textures: aligned and deliberately unaligned */
    ID3D12Resource *tex_a = NULL, *tex_b = NULL;
    CHECK(make_rt_texture(dev, 256, 256, &tex_a) == S_OK &&
-            make_rt_texture(dev, 123, 77, &tex_b) == S_OK,
+            make_rt_texture(dev, bw, bh, &tex_b) == S_OK,
          "create 256x256 and 123x77 RGBA8 render targets");
 
    ID3D12Device_CreateRenderTargetView(dev, tex_a, NULL, rtv_a);
@@ -145,7 +161,7 @@ main(void)
          "map textures (UMA linear)");
 
    memset(map_a, 0x55, STRIDE_B(256) * 256);
-   memset(map_b, 0x55, STRIDE_B(123) * 77);
+   memset(map_b, 0x55, STRIDE_B(bw) * bh);
 
    /* Also prove render+compute segment mixing in one list */
    D3D12_HEAP_PROPERTIES hu = {.Type = D3D12_HEAP_TYPE_UPLOAD};
@@ -219,8 +235,8 @@ main(void)
 
    CHECK(check_image(map_a, 256, 256, bytes_a, 0),
          "256x256 cleared pixel-exact to (255,0,128,255)");
-   CHECK(check_image(map_b, 123, 77, bytes_b, 1),
-         "123x77 cleared pixel-exact, row padding untouched");
+   CHECK(check_image(map_b, bw, bh, bytes_b, 1),
+         "unaligned target cleared pixel-exact, row padding untouched");
    CHECK(memcmp(dst_map, src_map, 256) == 0,
          "compute segment after renders landed (256B copy)");
 

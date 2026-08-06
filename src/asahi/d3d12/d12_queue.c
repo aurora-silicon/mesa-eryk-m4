@@ -408,6 +408,27 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       struct agx_submit_virt virt = {.ring_idx = 0};
       int ret = dev->ops.submit(dev, &submit, &virt);
 
+      /*
+       * EXPERIMENT (D3D12AGX_SYNC_SUBMIT), not a behaviour change.
+       *
+       * Nothing in this driver tracks whether a submitted list is still
+       * executing: Reset rewinds the stream and re-records over the same
+       * memory. test_render_pass_suspend_resume_opts_disabled submits 32
+       * render commands that all reuse the identical stream addresses
+       * (0x2ff7ec0000 / 0x2ff7ec002c, sixteen times each) and every one of
+       * them times out, so "the CPU overwrites a control stream the VDM is
+       * still walking" is a live explanation for the dVDM fault.
+       *
+       * Waiting here makes that impossible. If the hang survives a
+       * synchronous submit it is not a reuse race and this can go.
+       */
+      if (!ret && getenv("D3D12AGX_SYNC_SUBMIT")) {
+         uint64_t point = queue->timeline_value + 1;
+         drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &point, 1,
+                                INT64_MAX,
+                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+      }
+
       /* Read the geometry vertex output buffer back while the command
        * list -- and therefore its stream BO -- is still alive. Dumping it
        * at device teardown reads memory the list already freed, which
