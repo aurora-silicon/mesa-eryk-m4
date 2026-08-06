@@ -576,6 +576,7 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
  */
 static uint32_t
 d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
+                     uint64_t rt_address,
                      enum pipe_format type_format, const float color[4],
                      bool store,
                      const struct agx_tilebuffer_layout *tib,
@@ -683,7 +684,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
             default: break;
             }
          }
-         cfg.buffer = rt->bo->va->addr;
+         cfg.buffer = rt_address;
          cfg.width = rt->layout.width_px;
          cfg.height = rt->layout.height_px;
          cfg.level = 0;
@@ -3615,6 +3616,8 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
    seg->width_px = rt->layout.width_px;
    seg->height_px = rt->layout.height_px;
    seg->rt = rt;
+   /* The VIEW's address, not the resource's: an array RTV points at a slice. */
+   seg->rt_address = rtv->address ? rtv->address : rt->bo->va->addr;
 
    enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rt->layout.format};
    seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
@@ -3628,11 +3631,13 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       return;
 
    seg->bg_usc =
-      d12_build_bg_eot_usc(list, rt, d12_format_to_pipe(rtv->format), color,
+      d12_build_bg_eot_usc(list, rt, seg->rt_address,
+                           d12_format_to_pipe(rtv->format), color,
                            false, &seg->tib,
                            &seg->bg_counts);
    seg->eot_usc =
-      d12_build_bg_eot_usc(list, rt, PIPE_FORMAT_NONE, NULL, true, &seg->tib,
+      d12_build_bg_eot_usc(list, rt, seg->rt_address, PIPE_FORMAT_NONE, NULL,
+                           true, &seg->tib,
                            &seg->eot_counts);
    if (!seg->bg_usc || !seg->eot_usc)
       return; /* error state already set */

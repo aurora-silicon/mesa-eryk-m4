@@ -549,6 +549,13 @@ enum d12_segment_type {
 };
 
 struct d12_segment {
+   /* Base address of the render target SLICE this pass writes. A
+    * TEXTURE2DARRAY RTV selects one layer, and layers are contiguous at
+    * layer_stride_B, so the view carries an offset the resource does not.
+    * Using rt->bo->va->addr here would write every array slice to layer 0.
+    */
+   uint64_t rt_address;
+
    enum d12_segment_type type;
 
    /* Control-stream extent within stream_bo (start/end offsets). CDM: the

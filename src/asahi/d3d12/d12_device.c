@@ -719,11 +719,39 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
       return;
    }
 
-   if (desc && desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D) {
-      mesa_loge("CreateRenderTargetView: view dimension %d unsupported",
-                (int)desc->ViewDimension);
-      slot->resource = NULL;
-      return;
+   /*
+    * ARRAY SLICES. A TEXTURE2DARRAY view selects one layer of the resource;
+    * ail lays layers out contiguously at layer_stride_B, so the slice is
+    * just an offset. Refusing the view dimension made every array test fail
+    * at the view even once the resource itself was legal.
+    */
+   uint64_t slice_offset_B = 0;
+
+   if (desc) {
+      if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY) {
+         uint32_t first = desc->Texture2DArray.FirstArraySlice;
+         uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
+
+         if (desc->Texture2DArray.MipSlice != 0 || first >= layers) {
+            mesa_loge("CreateRenderTargetView: array slice %u/%u mip %u "
+                      "out of range",
+                      first, layers, desc->Texture2DArray.MipSlice);
+            slot->resource = NULL;
+            return;
+         }
+
+         slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
+      } else if (desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D) {
+         mesa_loge("CreateRenderTargetView: view dimension %d unsupported",
+                   (int)desc->ViewDimension);
+         slot->resource = NULL;
+         return;
+      } else if (desc->Texture2D.MipSlice != 0) {
+         mesa_loge("CreateRenderTargetView: mip slice %u unsupported",
+                   desc->Texture2D.MipSlice);
+         slot->resource = NULL;
+         return;
+      }
    }
 
    slot->resource = res;
@@ -733,7 +761,7 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     */
    slot->format = view_format;
    slot->kind = D12_DESC_RTV;
-   slot->address = res->bo->va->addr;
+   slot->address = res->bo->va->addr + slice_offset_B;
 }
 
 static void STDMETHODCALLTYPE

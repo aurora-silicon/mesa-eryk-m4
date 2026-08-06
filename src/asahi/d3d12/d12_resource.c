@@ -217,8 +217,8 @@ d12_resource_create_committed(struct d12_device *device,
       enum pipe_format z = d12_format_depth_plane(desc->Format);
       enum pipe_format s = d12_format_stencil_plane(desc->Format);
 
-      if (desc->MipLevels > 1 || desc->DepthOrArraySize > 1 ||
-          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
+      if (desc->MipLevels > 1 || desc->SampleDesc.Count > 1 || !desc->Width ||
+          !desc->Height) {
          mesa_loge("CreateCommittedResource: depth/stencil shape unsupported "
                    "(mips %u, layers %u, samples %u)",
                    desc->MipLevels, desc->DepthOrArraySize,
@@ -239,10 +239,13 @@ d12_resource_create_committed(struct d12_device *device,
 
       is_depth_stencil = true;
 
+      /* Array layers, as for colour. The ZLS unit addresses one layer at a
+       * time; the DSV selects which, and layers sit at layer_stride_B.
+       */
       layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
-         .depth_px = 1,
+         .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = 1,
          .levels = 1,
          .tiling = AIL_TILING_TWIDDLED,
@@ -255,7 +258,7 @@ d12_resource_create_committed(struct d12_device *device,
          stencil_layout = (struct ail_layout){
             .width_px = (uint32_t)desc->Width,
             .height_px = desc->Height,
-            .depth_px = 1,
+            .depth_px = MAX2(desc->DepthOrArraySize, 1),
             .sample_count_sa = 1,
             .levels = 1,
             .tiling = AIL_TILING_TWIDDLED,
@@ -271,8 +274,7 @@ d12_resource_create_committed(struct d12_device *device,
       enum pipe_format pipe = d12_format_to_pipe(desc->Format);
 
       if (pipe == PIPE_FORMAT_NONE || desc->MipLevels > 1 ||
-          desc->DepthOrArraySize > 1 || desc->SampleDesc.Count > 1 ||
-          !desc->Width || !desc->Height) {
+          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
          mesa_loge("CreateCommittedResource: texture shape unsupported "
                    "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,
@@ -290,10 +292,20 @@ d12_resource_create_committed(struct d12_device *device,
          return E_INVALIDARG;
       }
 
+      /*
+       * ARRAY LAYERS. ail computes a linear array as
+       * layer_stride_B = align(linear_stride_B * height_px) and
+       * size_B = layer_stride_B * depth_px, so an array costs nothing here
+       * beyond passing the layer count through; the views are what has to
+       * know about slices (see CreateRenderTargetView).
+       *
+       * Arrays were the single largest refusal cluster in the suite --
+       * ~21 tests, measured per test rather than per message.
+       */
       layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
-         .depth_px = 1,
+         .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = 1,
          .levels = 1,
          .tiling = AIL_TILING_LINEAR,
