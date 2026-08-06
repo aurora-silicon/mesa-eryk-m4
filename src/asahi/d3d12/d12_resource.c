@@ -625,6 +625,19 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
     * caller to try again on better hardware when the request is illegal
     * everywhere.
     */
+   /*
+    * ROW_MAJOR TEXTURES. D3D12 permits a linear-laid-out texture only in a
+    * narrow corner -- one mip, one layer, 2D only -- because it exists for
+    * cross-adapter sharing rather than for general use. desc->Layout was
+    * being ignored entirely, which is the same dropped-parameter shape as
+    * initial_state and clear_value.
+    */
+   if (!is_buffer && desc->Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR) {
+      if (desc->MipLevels != 1 || desc->DepthOrArraySize != 1 ||
+          desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+         return E_INVALIDARG;
+   }
+
    if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D) {
       enum pipe_format pf = d12_format_to_pipe(desc->Format);
       if (pf != PIPE_FORMAT_NONE && (util_format_get_blockwidth(pf) > 1 ||
