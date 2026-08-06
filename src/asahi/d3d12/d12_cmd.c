@@ -967,7 +967,7 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
     * which the DXIL translator already lowers poly's parameter
     * intrinsics to. Nothing else publishes them.
     */
-   /* Ascending base order: 4, 8, 20, 24, 28, 32, 36. */
+   /* Ascending base order: 4, 8, 20, 24, 28, 32, 36, 52. */
    if (u->draw) {
       agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS, u->draw);
    }
@@ -990,6 +990,29 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (u->mesh_params) {
       agx_usc_uniform(&b, D12_UNIFORM_MESH_PARAMS, D12_UNIFORM_MESH_REGS,
                       u->mesh_params);
+   }
+
+   /*
+    * VERTEX ATTRIBUTE FETCH, and this is a COMPUTE builder on purpose.
+    *
+    * The software VS that a tessellation, geometry or mesh pipeline
+    * substitutes for the hardware vertex stage is a compute shader, and
+    * compile_sw_vs_stage runs agx_nir_lower_vbo over it -- so it fetches
+    * its attributes through exactly this uniform. The graphics builder
+    * published it and this one did not, so every such dispatch read the
+    * vertex buffer through uniform registers nobody had written, i.e.
+    * through whatever the previous dispatch happened to leave in them.
+    *
+    * It is the same class of bug as the rodata comment directly below,
+    * and it is what wedged the GPU on test_quad_tessellation_dxil: a read
+    * of an unmapped address in a region we never map, different every
+    * run, belonging to none of our allocations. Our own g7 tessellation
+    * probe never caught it because it derives its geometry from
+    * SV_VertexID and so fetches no attributes at all.
+    */
+   if (u->vb_params) {
+      agx_usc_uniform(&b, D12_UNIFORM_VB_PARAMS, D12_UNIFORM_VB_REGS,
+                      u->vb_params);
    }
 
    /*
@@ -1499,6 +1522,9 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       .vertex_params = vp_ptr,
       .geom_params = gp_ptr,
       .vs_outputs = outputs_gpu,
+      /* Published by the caller BEFORE this function runs: the
+       * software VS fetches attributes through it. */
+      .vb_params = out_poly->vb_params,
    };
 
    struct d12_segment *seg = d12_list_get_pregfx(list);
@@ -1570,6 +1596,71 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
  * prefix-summed IN PLACE between them, and step 5 reads counts[patch-1]
  * as its write offset. It cannot be fused (hk does the same).
  */
+
+/*
+ * VERTEX ATTRIBUTE FETCH parameters. The PSO resolved which signature
+ * element each attribute feeds and where inside a vertex it sits; the view
+ * supplies the address and the stride. agx_calculate_vbo_clamp folds the
+ * attribute's byte offset into the base and returns the highest in-bounds
+ * element index, and it is also what redirects an out-of-range attribute
+ * at the zero page rather than at nothing.
+ *
+ * Returns 0 when the pipeline fetches no attributes, or
+ * D12_VB_PARAMS_FAILED if an upload failed. Callers must publish this
+ * BEFORE any pre-rasterisation compute dispatch -- see the call site.
+ */
+static uint64_t
+d12_list_upload_vb_params(struct d12_cmd_list *list,
+                          struct d12_pipeline_state *pso)
+{
+   if (!pso->nr_vb_attribs)
+      return 0;
+
+   struct d12_vb_params vbp;
+   memset(&vbp, 0, sizeof(vbp));
+
+   for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
+      const struct d12_vb_attrib *a = &pso->vb_attribs[i];
+
+      if (!a->live || !list->vb[a->slot].addr) {
+         vbp.base[i] = AGX_ZERO_PAGE_ADDRESS;
+         continue;
+      }
+
+      vbp.clamp[i] = agx_calculate_vbo_clamp(
+         list->vb[a->slot].addr, a->format, list->vb[a->slot].size_B,
+         list->vb[a->slot].stride_B, a->offset_B, &vbp.base[i]);
+
+      /* The shader multiplies the element index by this directly, so
+       * it is in interchange elements rather than bytes. */
+      vbp.stride_el[i] =
+         a->interchange_align
+            ? list->vb[a->slot].stride_B / a->interchange_align
+            : 0;
+   }
+
+   if (getenv("D3D12AGX_DUMP_VB")) {
+      for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
+         const struct d12_vb_attrib *a = &pso->vb_attribs[i];
+         mesa_logi("vb attrib %u: live=%d slot=%u off=%u ialign=%u "
+                   "-> base=0x%llx clamp=%u stride_el=%u "
+                   "(vb addr=0x%llx size=%u stride=%u)",
+                   i, a->live, a->slot, a->offset_B, a->interchange_align,
+                   (unsigned long long)vbp.base[i], vbp.clamp[i],
+                   vbp.stride_el[i],
+                   (unsigned long long)list->vb[a->slot].addr,
+                   list->vb[a->slot].size_B, list->vb[a->slot].stride_B);
+      }
+   }
+
+   uint64_t vbp_gpu = d12_list_upload(list, &vbp, sizeof(vbp), 8);
+   if (!vbp_gpu)
+      return D12_VB_PARAMS_FAILED;
+
+   uint64_t ptr = d12_list_upload(list, &vbp_gpu, sizeof(vbp_gpu), 8);
+   return ptr ? ptr : D12_VB_PARAMS_FAILED;
+}
+
 static bool
 d12_list_tess_prerast(struct d12_cmd_list *list,
                       struct d12_pipeline_state *pso, unsigned vertex_count,
@@ -1702,6 +1793,9 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       .vertex_params = vp_ptr,
       .tess_params = tp_ptr,
       .vs_outputs = vso_ptr,
+      /* Published by the caller BEFORE this function runs: the
+       * software VS fetches attributes through it. */
+      .vb_params = out_poly->vb_params,
    };
 
    struct d12_segment *seg = d12_list_get_pregfx(list);
@@ -1946,6 +2040,9 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       .textures = textures_gpu,
       .draw = draw_gpu,
       .mesh_params = mp_ptr,
+      /* Published by the caller BEFORE this function runs: the
+       * software VS fetches attributes through it. */
+      .vb_params = out_poly->vb_params,
    };
 
    struct d12_segment *seg = d12_list_get_pregfx(list);
@@ -2093,6 +2190,35 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     */
    enum mesa_prim topology = list->topology;
    struct d12_dispatch_uniforms poly_u = {0};
+
+   /*
+    * VERTEX ATTRIBUTE FETCH has to be published BEFORE the pre-rasterisation
+    * compute half runs, not after it.
+    *
+    * The software VS that a tessellation, geometry or mesh pipeline
+    * substitutes for the hardware vertex stage is lowered by
+    * agx_nir_lower_vbo (compile_sw_vs_stage), so it FETCHES ATTRIBUTES
+    * THROUGH THIS UNIFORM. But d12_list_*_prerast emit their dispatches
+    * internally, and vb_params used to be filled in below them -- so the
+    * software VS was dispatched with vb_params == 0, and
+    * d12_list_build_compute_usc pushes that uniform only when it is
+    * non-zero. The uniform registers were therefore never written and the
+    * shader fetched through whatever the previous dispatch had left in
+    * them: a garbage pointer, different every run, belonging to none of
+    * our allocations.
+    *
+    * That is the fault that cost this campaign several days. It reads as
+    * `unit: UL1C, read: true, reason: Unmapped` at an address in a region
+    * we never map (0xbb..., against allocations at 0x2ff...), and it is
+    * why test_quad_tessellation_dxil wedges the GPU while our own g7
+    * tessellation probe does not -- g7 derives its geometry from
+    * SV_VertexID and so never fetches an attribute at all.
+    */
+   uint64_t vb_params_gpu = d12_list_upload_vb_params(list, pso);
+   if (vb_params_gpu == D12_VB_PARAMS_FAILED)
+      return;
+   poly_u.vb_params = vb_params_gpu;
+
    const struct d12_gfx_stage *vstage = &pso->vs;
    const struct agx_unlinked_uvs_layout *uvs = &pso->uvs;
    const struct agx_varyings_vs *varys = &pso->varyings;
@@ -2166,60 +2292,6 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                 vstage == &pso->ms_rast ? "ms_rast" : "other");
    }
 
-   /*
-    * VERTEX ATTRIBUTE FETCH. The PSO resolved which signature element
-    * each attribute feeds and where inside a vertex it sits; the view
-    * supplies the address and the stride. agx_calculate_vbo_clamp folds
-    * the attribute's byte offset into the base and returns the highest
-    * in-bounds element index, and it is also what redirects an
-    * out-of-range attribute at the zero page rather than at nothing.
-    */
-   if (pso->nr_vb_attribs) {
-      struct d12_vb_params vbp;
-      memset(&vbp, 0, sizeof(vbp));
-
-      for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
-         const struct d12_vb_attrib *a = &pso->vb_attribs[i];
-
-         if (!a->live || !list->vb[a->slot].addr) {
-            vbp.base[i] = AGX_ZERO_PAGE_ADDRESS;
-            continue;
-         }
-
-         vbp.clamp[i] = agx_calculate_vbo_clamp(
-            list->vb[a->slot].addr, a->format, list->vb[a->slot].size_B,
-            list->vb[a->slot].stride_B, a->offset_B, &vbp.base[i]);
-
-         /* The shader multiplies the element index by this directly, so
-          * it is in interchange elements rather than bytes. */
-         vbp.stride_el[i] =
-            a->interchange_align
-               ? list->vb[a->slot].stride_B / a->interchange_align
-               : 0;
-      }
-
-      if (getenv("D3D12AGX_DUMP_VB")) {
-         for (unsigned i = 0; i < pso->nr_vb_attribs; i++) {
-            const struct d12_vb_attrib *a = &pso->vb_attribs[i];
-            mesa_logi("vb attrib %u: live=%d slot=%u off=%u ialign=%u "
-                      "-> base=0x%llx clamp=%u stride_el=%u "
-                      "(vb addr=0x%llx size=%u stride=%u)",
-                      i, a->live, a->slot, a->offset_B, a->interchange_align,
-                      (unsigned long long)vbp.base[i], vbp.clamp[i],
-                      vbp.stride_el[i],
-                      (unsigned long long)list->vb[a->slot].addr,
-                      list->vb[a->slot].size_B, list->vb[a->slot].stride_B);
-         }
-      }
-
-      uint64_t vbp_gpu = d12_list_upload(list, &vbp, sizeof(vbp), 8);
-      if (!vbp_gpu)
-         return;
-
-      poly_u.vb_params = d12_list_upload(list, &vbp_gpu, sizeof(vbp_gpu), 8);
-      if (!poly_u.vb_params)
-         return;
-   }
 
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,

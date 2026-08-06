@@ -72,6 +72,12 @@ void d12_log_unknown_riid(const char *where, REFIID riid);
  */
 #define D12_NULL_REGION_SIZE (64 * 1024)
 
+/* d12_list_upload_vb_params returns 0 for "this pipeline fetches no vertex
+ * attributes", which is a legitimate result, so failure needs a value that
+ * is not a valid GPU address and is not zero.
+ */
+#define D12_VB_PARAMS_FAILED ((uint64_t)~0ull)
+
 struct d12_device {
    ID3D12Device iface; /* must be first */
    uint32_t refcount;
