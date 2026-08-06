@@ -503,6 +503,26 @@ d12_resource_create(struct d12_device *device,
    res->refcount = 1;
    res->device = device;
    res->desc = *desc;
+
+   /*
+    * GetDesc reports the RESOLVED description, not the one passed in.
+    * D3D12 fills in what the application left for the runtime to choose:
+    * MipLevels == 0 means the full chain, and Alignment == 0 means the
+    * runtime picked one. test_create_committed_resource reads both back
+    * and checks them -- returning the caller's zeroes is wrong even
+    * though it looks like faithfully echoing the request.
+    */
+   if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      res->desc.MipLevels = layout.levels ? layout.levels : 1;
+      if (!res->desc.Alignment) {
+         res->desc.Alignment =
+            desc->SampleDesc.Count > 1
+               ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
+               : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+      }
+   } else if (!res->desc.Alignment) {
+      res->desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   }
    res->heap_props = *heap_props;
    d12_device_add_ref(device);
 
