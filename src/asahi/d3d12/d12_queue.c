@@ -295,7 +295,17 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          continue;
       }
       if (!list || list->state != D12_LIST_CLOSED) {
-         mesa_loge("ExecuteCommandLists: list %u not closed; dropped", i);
+         /*
+          * Submitting a list still being recorded is an APPLICATION error,
+          * and D3D12 answers it by removing the device with
+          * DXGI_ERROR_INVALID_CALL -- not by ignoring the list. Dropping it
+          * silently let the application carry on believing the work was
+          * queued.
+          */
+         mesa_loge("ExecuteCommandLists: list %u not closed; device removed",
+                   i);
+         queue->device->removed = true;
+         queue->device->removed_reason = DXGI_ERROR_INVALID_CALL;
          continue;
       }
 

@@ -200,6 +200,11 @@ d12_device_CreateCommandQueue(ID3D12Device2 *iface,
                               REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
+
+   /* Nothing may be created on a removed device. */
+   if (device->removed)
+      return DXGI_ERROR_DEVICE_REMOVED;
+
    return d12_queue_create(device, desc, riid, out);
 }
 
@@ -1474,8 +1479,14 @@ d12_device_GetDeviceRemovedReason(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
-   /* Real answer: a failed submission removes the device. */
-   return device->removed ? DXGI_ERROR_DEVICE_REMOVED : S_OK;
+   if (!device->removed)
+      return S_OK;
+
+   /* The recorded cause, not a blanket DEVICE_REMOVED: an application that
+    * submitted a recording command list needs to see INVALID_CALL to know
+    * the fault was its own. */
+   return device->removed_reason ? device->removed_reason
+                                 : DXGI_ERROR_DEVICE_REMOVED;
 }
 
 static LUID STDMETHODCALLTYPE

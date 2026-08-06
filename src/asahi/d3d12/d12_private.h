@@ -144,6 +144,15 @@ struct d12_device {
     * ran, making every result downstream a lie.
     */
    bool removed;
+
+   /*
+    * WHY the device was removed. D3D12 distinguishes causes:
+    * DXGI_ERROR_INVALID_CALL for an application error such as submitting a
+    * command list still in the recording state, DXGI_ERROR_DEVICE_REMOVED
+    * for a failure below us. GetDeviceRemovedReason returns this, and it is
+    * the only signal an application gets about which of the two happened.
+    */
+   HRESULT removed_reason;
 };
 
 /* Committed resource: one agx_bo. UMA means every heap type is the same
