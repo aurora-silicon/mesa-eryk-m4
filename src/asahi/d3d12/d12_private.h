@@ -172,6 +172,7 @@ struct d12_resource {
    uint64_t stencil_addr;   /* separate plane, same rule */
    uint64_t offset_B;       /* into bo, for CPU maps */
    bool placed;             /* does not own bo */
+   struct d12_heap *heap;   /* referenced while placed; NULL if committed */
 
    /* Textures only */
    struct ail_layout layout;
@@ -184,6 +185,39 @@ struct d12_resource {
    struct agx_bo *stencil_bo; /* NULL when the format has no stencil */
    struct ail_layout stencil_layout;
 };
+
+/*
+ * ID3D12Heap: one agx_bo of the requested size. On UMA every heap type is
+ * the same memory, so a heap really is just an allocation that placed
+ * resources carve windows out of.
+ *
+ * Placed resources hold a REFERENCE to it: D3D12 explicitly allows the
+ * application to release the heap while placed resources are still alive,
+ * and the storage must outlive them.
+ */
+struct d12_heap {
+   ID3D12Heap iface; /* must be first */
+   uint32_t refcount;
+
+   struct d12_device *device; /* holds a device ref */
+   D3D12_HEAP_DESC desc;
+   struct agx_bo *bo;
+};
+
+static inline struct d12_heap *
+d12_memheap_from_iface(ID3D12Heap *iface)
+{
+   return (struct d12_heap *)iface;
+}
+
+HRESULT d12_heap_create(struct d12_device *device,
+                        const D3D12_HEAP_DESC *desc, REFIID riid,
+                        void **out);
+
+HRESULT d12_resource_create_placed(struct d12_device *device,
+                                   struct d12_heap *heap, uint64_t offset_B,
+                                   const D3D12_RESOURCE_DESC *desc,
+                                   REFIID riid, void **out);
 
 /*
  * One descriptor, whatever the heap type. Sized to exactly the advertised

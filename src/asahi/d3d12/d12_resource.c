@@ -45,9 +45,18 @@ d12_resource_Release(ID3D12Resource *iface)
    uint32_t refs = p_atomic_dec_return(&res->refcount);
 
    if (refs == 0) {
-      agx_bo_unreference(&res->device->dev, res->bo);
-      if (res->stencil_bo)
-         agx_bo_unreference(&res->device->dev, res->stencil_bo);
+      /* A PLACED resource borrows the heap's BO -- unreferencing it here
+       * would free storage the heap still owns and other placed resources
+       * are still using. Drop the heap reference instead. */
+      if (res->placed) {
+         if (res->heap)
+            ID3D12Heap_Release(&res->heap->iface);
+      } else {
+         agx_bo_unreference(&res->device->dev, res->bo);
+         if (res->stencil_bo)
+            agx_bo_unreference(&res->device->dev, res->stencil_bo);
+      }
+
       d12_device_release(res->device);
       free(res);
    }
@@ -98,9 +107,11 @@ d12_resource_Map(ID3D12Resource *iface, UINT subresource,
    if (subresource != 0)
       return E_INVALIDARG;
 
-   /* Persistent coherent mapping; ranges are an optimization hint only. */
+   /* Persistent coherent mapping; ranges are an optimization hint only.
+    * offset_B is nonzero for a PLACED resource, which is a window into a
+    * heap -- mapping the BO base would hand back the start of the heap. */
    if (data)
-      *data = agx_bo_map(res->bo);
+      *data = (uint8_t *)agx_bo_map(res->bo) + res->offset_B;
    return S_OK;
 }
 
@@ -183,11 +194,11 @@ static const ID3D12ResourceVtbl d12_resource_vtbl = {
    .GetHeapProperties = d12_resource_GetHeapProperties,
 };
 
-HRESULT
-d12_resource_create_committed(struct d12_device *device,
-                              const D3D12_HEAP_PROPERTIES *heap_props,
-                              const D3D12_RESOURCE_DESC *desc, REFIID riid,
-                              void **out)
+static HRESULT
+d12_resource_create(struct d12_device *device,
+                    const D3D12_HEAP_PROPERTIES *heap_props,
+                    const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
+                    uint64_t heap_offset_B, REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
@@ -331,22 +342,50 @@ d12_resource_create_committed(struct d12_device *device,
    res->stencil_layout = stencil_layout;
    res->is_depth_stencil = is_depth_stencil;
 
-   /* UMA: every heap type is the same cached, coherent memory. */
-   res->bo = agx_bo_create(&device->dev, size_B, 0, AGX_BO_WRITEBACK,
-                           "d3d12 resource");
-   if (!res->bo) {
-      free(res);
-      return E_OUTOFMEMORY;
-   }
+   uint64_t stencil_offset_B = 0;
 
-   if (is_depth_stencil && stencil_layout.size_B) {
-      res->stencil_bo =
-         agx_bo_create(&device->dev, stencil_layout.size_B, 0,
-                       AGX_BO_WRITEBACK, "d3d12 stencil plane");
-      if (!res->stencil_bo) {
-         agx_bo_unreference(&device->dev, res->bo);
+   if (heap) {
+      /*
+       * PLACED: no allocation, a window into the heap's BO. The stencil
+       * plane, when there is one, follows the depth plane inside the same
+       * window -- D3D12 sizes the resource for both, which is what
+       * GetResourceAllocationInfo reports.
+       */
+      uint64_t need = size_B;
+      if (is_depth_stencil && stencil_layout.size_B) {
+         stencil_offset_B = heap_offset_B + size_B;
+         need += stencil_layout.size_B;
+      }
+
+      if (heap_offset_B + need > heap->bo->size) {
+         mesa_loge("CreatePlacedResource: %" PRIu64 " bytes at offset %"
+                   PRIu64 " does not fit a %zu-byte heap",
+                   need, heap_offset_B, (size_t)heap->bo->size);
+         free(res);
+         return E_INVALIDARG;
+      }
+
+      res->bo = heap->bo;
+      res->stencil_bo = (is_depth_stencil && stencil_layout.size_B)
+                           ? heap->bo : NULL;
+   } else {
+      /* UMA: every heap type is the same cached, coherent memory. */
+      res->bo = agx_bo_create(&device->dev, size_B, 0, AGX_BO_WRITEBACK,
+                              "d3d12 resource");
+      if (!res->bo) {
          free(res);
          return E_OUTOFMEMORY;
+      }
+
+      if (is_depth_stencil && stencil_layout.size_B) {
+         res->stencil_bo =
+            agx_bo_create(&device->dev, stencil_layout.size_B, 0,
+                          AGX_BO_WRITEBACK, "d3d12 stencil plane");
+         if (!res->stencil_bo) {
+            agx_bo_unreference(&device->dev, res->bo);
+            free(res);
+            return E_OUTOFMEMORY;
+         }
       }
    }
 
@@ -354,10 +393,23 @@ d12_resource_create_committed(struct d12_device *device,
     * resolved addresses still go through these fields rather than being
     * read from the BO downstream, so a placed resource -- which does not --
     * needs no second code path. */
-   res->addr = res->bo->va->addr;
-   res->offset_B = 0;
-   res->placed = false;
-   res->stencil_addr = res->stencil_bo ? res->stencil_bo->va->addr : 0;
+   if (heap) {
+      res->addr = heap->bo->va->addr + heap_offset_B;
+      res->offset_B = heap_offset_B;
+      res->placed = true;
+      res->heap = heap;
+      res->stencil_addr =
+         res->stencil_bo ? heap->bo->va->addr + stencil_offset_B : 0;
+
+      /* The application may release the heap while this resource lives. */
+      ID3D12Heap_AddRef(&heap->iface);
+   } else {
+      res->addr = res->bo->va->addr;
+      res->offset_B = 0;
+      res->placed = false;
+      res->heap = NULL;
+      res->stencil_addr = res->stencil_bo ? res->stencil_bo->va->addr : 0;
+   }
 
    res->iface.lpVtbl = (ID3D12ResourceVtbl *)&d12_resource_vtbl;
    res->refcount = 1;
@@ -368,5 +420,162 @@ d12_resource_create_committed(struct d12_device *device,
 
    HRESULT hr = d12_resource_QueryInterface(&res->iface, riid, out);
    d12_resource_Release(&res->iface);
+   return hr;
+}
+
+HRESULT
+d12_resource_create_committed(struct d12_device *device,
+                              const D3D12_HEAP_PROPERTIES *heap_props,
+                              const D3D12_RESOURCE_DESC *desc, REFIID riid,
+                              void **out)
+{
+   return d12_resource_create(device, heap_props, desc, NULL, 0, riid, out);
+}
+
+HRESULT
+d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
+                           uint64_t offset_B,
+                           const D3D12_RESOURCE_DESC *desc, REFIID riid,
+                           void **out)
+{
+   if (!heap)
+      return E_INVALIDARG;
+
+   return d12_resource_create(device, &heap->desc.Properties, desc, heap,
+                              offset_B, riid, out);
+}
+
+
+/*
+ * ID3D12Heap. One agx_bo; on UMA every heap type is the same memory, so a
+ * heap is an allocation and nothing more. Placed resources carve windows
+ * out of it and hold a reference, because D3D12 lets the application
+ * release the heap while they are still alive.
+ */
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_QueryInterface(ID3D12Heap *iface, REFIID riid, void **out)
+{
+   struct d12_heap *heap = d12_memheap_from_iface(iface);
+
+   if (!out)
+      return E_POINTER;
+
+   if (d12_guid_equal(riid, &IID_IUnknown) ||
+       d12_guid_equal(riid, &IID_ID3D12Object) ||
+       d12_guid_equal(riid, &IID_ID3D12DeviceChild) ||
+       d12_guid_equal(riid, &IID_ID3D12Pageable) ||
+       d12_guid_equal(riid, &IID_ID3D12Heap)) {
+      p_atomic_inc(&heap->refcount);
+      *out = iface;
+      return S_OK;
+   }
+
+   d12_log_unknown_riid("ID3D12Heap::QueryInterface", riid);
+   *out = NULL;
+   return E_NOINTERFACE;
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_heap_AddRef(ID3D12Heap *iface)
+{
+   return p_atomic_inc_return(&d12_memheap_from_iface(iface)->refcount);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_heap_Release(ID3D12Heap *iface)
+{
+   struct d12_heap *heap = d12_memheap_from_iface(iface);
+   uint32_t refs = p_atomic_dec_return(&heap->refcount);
+
+   if (refs == 0) {
+      agx_bo_unreference(&heap->device->dev, heap->bo);
+      d12_device_release(heap->device);
+      free(heap);
+   }
+
+   return refs;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_GetPrivateData(ID3D12Heap *iface, REFGUID guid, UINT *size,
+                        void *data)
+{
+   return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_SetPrivateData(ID3D12Heap *iface, REFGUID guid, UINT size,
+                        const void *data)
+{
+   return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_SetPrivateDataInterface(ID3D12Heap *iface, REFGUID guid,
+                                 const IUnknown *data)
+{
+   return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_SetName(ID3D12Heap *iface, LPCWSTR name)
+{
+   return S_OK;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_heap_GetDevice(ID3D12Heap *iface, REFIID riid, void **out)
+{
+   struct d12_heap *heap = d12_memheap_from_iface(iface);
+   return ID3D12Device_QueryInterface(&heap->device->iface, riid, out);
+}
+
+static D3D12_HEAP_DESC STDMETHODCALLTYPE
+d12_heap_GetDesc(ID3D12Heap *iface)
+{
+   return d12_memheap_from_iface(iface)->desc;
+}
+
+static const ID3D12HeapVtbl d12_heap_vtbl = {
+   .QueryInterface = d12_heap_QueryInterface,
+   .AddRef = d12_heap_AddRef,
+   .Release = d12_heap_Release,
+   .GetPrivateData = d12_heap_GetPrivateData,
+   .SetPrivateData = d12_heap_SetPrivateData,
+   .SetPrivateDataInterface = d12_heap_SetPrivateDataInterface,
+   .SetName = d12_heap_SetName,
+   .GetDevice = d12_heap_GetDevice,
+   .GetDesc = d12_heap_GetDesc,
+};
+
+HRESULT
+d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
+                REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   if (!desc || !desc->SizeInBytes)
+      return E_INVALIDARG;
+
+   struct d12_heap *heap = calloc(1, sizeof(*heap));
+   if (!heap)
+      return E_OUTOFMEMORY;
+
+   heap->bo = agx_bo_create(&device->dev, desc->SizeInBytes, 0,
+                            AGX_BO_WRITEBACK, "d3d12 heap");
+   if (!heap->bo) {
+      free(heap);
+      return E_OUTOFMEMORY;
+   }
+
+   heap->iface.lpVtbl = (ID3D12HeapVtbl *)&d12_heap_vtbl;
+   heap->refcount = 1;
+   heap->device = device;
+   heap->desc = *desc;
+   d12_device_add_ref(device);
+
+   HRESULT hr = d12_heap_QueryInterface(&heap->iface, riid, out);
+   d12_heap_Release(&heap->iface);
    return hr;
 }

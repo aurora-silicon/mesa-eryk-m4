@@ -872,6 +872,41 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
 }
 
 static HRESULT STDMETHODCALLTYPE
+d12_device_CreateHeap(ID3D12Device2 *iface, const D3D12_HEAP_DESC *desc,
+                      REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (out)
+      *out = NULL;
+
+   return d12_heap_create(device, desc, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreatePlacedResource(ID3D12Device2 *iface, ID3D12Heap *heap_iface,
+                                UINT64 heap_offset,
+                                const D3D12_RESOURCE_DESC *desc,
+                                D3D12_RESOURCE_STATES initial_state,
+                                const D3D12_CLEAR_VALUE *optimized_clear,
+                                REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (out)
+      *out = NULL;
+
+   if (!heap_iface || !desc)
+      return E_INVALIDARG;
+
+   /* Resource STATES are not tracked: this driver has no transition
+    * barriers to honour, and UMA gives no separate layouts to move
+    * between. The optimized clear value is a hint we do not need. */
+   return d12_resource_create_placed(device, d12_memheap_from_iface(heap_iface),
+                                     heap_offset, desc, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
 d12_device_CreateDescriptorHeap(ID3D12Device2 *iface,
                                 const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                 REFIID riid, void **out)
@@ -1404,6 +1439,8 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
+   .CreateHeap = d12_device_CreateHeap,
+   .CreatePlacedResource = d12_device_CreatePlacedResource,
    .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
