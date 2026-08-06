@@ -919,6 +919,45 @@ d12_device_CreatePlacedResource(ID3D12Device2 *iface, ID3D12Heap *heap_iface,
                                      optimized_clear, riid, out);
 }
 
+/*
+ * Command signatures. ExecuteIndirect is not implemented, so a LEGAL
+ * signature is honestly E_NOTIMPL -- but an ILLEGAL one must be rejected as
+ * illegal first. The order matters: "we do not support this" is the wrong
+ * answer to a request that no implementation would accept, and
+ * test_create_command_signature checks only the refusals.
+ *
+ * The rule is that DRAW, DRAW_INDEXED and DISPATCH are terminal: a
+ * signature containing one describes a whole indirect command, so it cannot
+ * be combined with anything else, including another of its own kind.
+ */
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreateCommandSignature(ID3D12Device2 *iface,
+                                  const D3D12_COMMAND_SIGNATURE_DESC *desc,
+                                  ID3D12RootSignature *root_signature,
+                                  REFIID riid, void **out)
+{
+   if (out)
+      *out = NULL;
+
+   if (!desc || !desc->NumArgumentDescs || !desc->pArgumentDescs)
+      return E_INVALIDARG;
+
+   for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
+      D3D12_INDIRECT_ARGUMENT_TYPE type = desc->pArgumentDescs[i].Type;
+
+      bool terminal = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW ||
+                      type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED ||
+                      type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+
+      if (terminal && desc->NumArgumentDescs != 1)
+         return E_INVALIDARG;
+   }
+
+   mesa_logw("ID3D12Device::CreateCommandSignature: valid signature, but "
+             "ExecuteIndirect is not implemented");
+   return E_NOTIMPL;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateDescriptorHeap(ID3D12Device2 *iface,
                                 const D3D12_DESCRIPTOR_HEAP_DESC *desc,
@@ -1485,6 +1524,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
+   .CreateCommandSignature = d12_device_CreateCommandSignature,
    .CreateHeap = d12_device_CreateHeap,
    .CreatePlacedResource = d12_device_CreatePlacedResource,
    .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
