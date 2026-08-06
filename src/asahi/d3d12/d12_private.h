@@ -160,6 +160,19 @@ struct d12_resource {
    D3D12_HEAP_PROPERTIES heap_props;
    struct agx_bo *bo;
 
+   /*
+    * RESOLVED GPU ADDRESS, the same pattern hk uses for a bound image
+    * (hk_image.c: plane->addr = mem->bo->va->addr + offset). A COMMITTED
+    * resource owns its whole BO and sits at offset 0; a PLACED resource is
+    * a window into a heap's BO. Everything downstream must read this and
+    * never bo->va->addr, or a placed resource silently addresses the start
+    * of the heap instead of its own storage.
+    */
+   uint64_t addr;
+   uint64_t stencil_addr;   /* separate plane, same rule */
+   uint64_t offset_B;       /* into bo, for CPU maps */
+   bool placed;             /* does not own bo */
+
    /* Textures only */
    struct ail_layout layout;
 

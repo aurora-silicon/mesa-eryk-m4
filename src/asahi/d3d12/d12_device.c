@@ -971,7 +971,7 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     */
    slot->format = view_format;
    slot->kind = D12_DESC_RTV;
-   slot->address = res->bo->va->addr + slice_offset_B;
+   slot->address = res->addr + slice_offset_B;
 }
 
 static void STDMETHODCALLTYPE
@@ -1023,7 +1023,7 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                      ? desc->Format
                      : res->desc.Format;
    slot->kind = D12_DESC_DSV;
-   slot->address = res->bo->va->addr;
+   slot->address = res->addr;
 }
 
 /*
@@ -1059,7 +1059,7 @@ d12_fill_buffer_descriptor(struct d12_descriptor *slot,
    }
 
    slot->resource = res;
-   slot->address = res->bo->va->addr + offset;
+   slot->address = res->addr + offset;
    slot->size_B = (uint32_t)span;
    slot->stride_B = stride_B;
    return true;
@@ -1109,7 +1109,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
 
       slot->kind = D12_DESC_SRV;
       slot->resource = res;
-      slot->address = res->bo->va->addr;
+      slot->address = res->addr;
       slot->format = desc->Format != DXGI_FORMAT_UNKNOWN ? desc->Format
                                                          : res->desc.Format;
       return;
@@ -1181,7 +1181,7 @@ d12_device_CreateUnorderedAccessView(
    if (counter) {
       struct d12_resource *cres = d12_resource_from_iface(counter);
       uint64_t off = desc ? desc->Buffer.CounterOffsetInBytes : 0;
-      slot->counter_address = cres->bo->va->addr + off;
+      slot->counter_address = cres->addr + off;
    }
 
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;

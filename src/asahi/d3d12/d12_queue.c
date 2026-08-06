@@ -156,7 +156,7 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
          .z_store = true,
       };
 
-      c->depth.base = seg->ds->bo->va->addr;
+      c->depth.base = seg->ds->addr;
 
       /* Stride is in pages, biased, with the low bit set — the encoding
        * hk uses (hk_cmd_draw.c).
@@ -170,7 +170,7 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
          zls.s_load = !seg->stencil_cleared;
          zls.s_store = true;
 
-         c->stencil.base = seg->ds->stencil_bo->va->addr;
+         c->stencil.base = seg->ds->stencil_addr;
          unsigned s_pages = s->layer_stride_B / AIL_PAGESIZE;
          c->stencil.stride = ((s_pages - 1) << 14) | 1;
       }

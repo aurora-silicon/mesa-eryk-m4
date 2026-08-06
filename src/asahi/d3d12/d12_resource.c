@@ -127,7 +127,7 @@ d12_resource_GetGPUVirtualAddress(ID3D12Resource *iface)
    if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
       return 0;
 
-   return res->bo->va->addr;
+   return res->addr;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -349,6 +349,15 @@ d12_resource_create_committed(struct d12_device *device,
          return E_OUTOFMEMORY;
       }
    }
+
+   /* A committed resource owns its whole BO, so it sits at offset 0. The
+    * resolved addresses still go through these fields rather than being
+    * read from the BO downstream, so a placed resource -- which does not --
+    * needs no second code path. */
+   res->addr = res->bo->va->addr;
+   res->offset_B = 0;
+   res->placed = false;
+   res->stencil_addr = res->stencil_bo ? res->stencil_bo->va->addr : 0;
 
    res->iface.lpVtbl = (ID3D12ResourceVtbl *)&d12_resource_vtbl;
    res->refcount = 1;

@@ -860,7 +860,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
          cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
 
-         cfg.address = res->bo->va->addr;
+         cfg.address = res->addr;
          cfg.width = layout->width_px;
          cfg.height = layout->height_px;
          cfg.first_level = 0;
@@ -893,7 +893,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          fprintf(stderr,
                  "tex[%u] va=0x%llx tiling=%u %ux%u stride=%u size=%llu "
                  "px[0]=0x%08x px[1]=0x%08x px[16]=0x%08x\n",
-                 i, (unsigned long long)res->bo->va->addr, res->layout.tiling,
+                 i, (unsigned long long)res->addr, res->layout.tiling,
                  res->layout.width_px, res->layout.height_px,
                  ail_get_linear_stride_B(&res->layout, 0),
                  (unsigned long long)res->layout.size_B, px[0], px[1], px[16]);
@@ -3549,8 +3549,8 @@ d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
    }
 
    struct libagx_copy_uchar_args args = {
-      .dest = dstr->bo->va->addr + dst_offset,
-      .src = srcr->bo->va->addr + src_offset,
+      .dest = dstr->addr + dst_offset,
+      .src = srcr->addr + src_offset,
    };
 
    d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
@@ -3617,7 +3617,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
    seg->height_px = rt->layout.height_px;
    seg->rt = rt;
    /* The VIEW's address, not the resource's: an array RTV points at a slice. */
-   seg->rt_address = rtv->address ? rtv->address : rt->bo->va->addr;
+   seg->rt_address = rtv->address ? rtv->address : rt->addr;
 
    enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rt->layout.format};
    seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
@@ -3802,8 +3802,8 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
    const unsigned buf_stride = fp->Footprint.RowPitch;
    const uint64_t row_bytes = (uint64_t)width * bpp;
 
-   uint64_t tex_base = tex->bo->va->addr;
-   uint64_t buf_base = buf->bo->va->addr + fp->Offset;
+   uint64_t tex_base = tex->addr;
+   uint64_t buf_base = buf->addr + fp->Offset;
 
    /* Bounds: refuse rather than scribble outside either allocation. */
    uint64_t tex_need = (uint64_t)(y0 + height - 1) * tex_stride +
