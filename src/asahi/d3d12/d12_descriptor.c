@@ -188,6 +188,25 @@ d12_descriptor_heap_create(struct d12_device *device,
       return E_OUTOFMEMORY;
 
    heap->slots = calloc(desc->NumDescriptors, sizeof(struct d12_descriptor));
+
+   /*
+    * Start every slot as a NULL descriptor rather than as zeroes.
+    *
+    * A shader may read a descriptor the application never wrote -- D3D12
+    * calls the contents undefined, but the read still has to be survivable,
+    * and the suite tests exactly that (test_undefined_structured_raw_*). A
+    * zeroed slot means address 0, and the GPU faults on it: `address: 0x0,
+    * unit: DCMP, reason: Unmapped`, one of the last GPU timeouts in the
+    * suite. Pointing undefined slots at the zero-filled null region makes
+    * such a read return zeroes, which is what a null descriptor does.
+    */
+   if (heap->slots) {
+      for (UINT i = 0; i < desc->NumDescriptors; i++) {
+         heap->slots[i].address = device->null_va;
+         heap->slots[i].size_B = D12_NULL_REGION_SIZE;
+      }
+   }
+
    if (!heap->slots) {
       free(heap);
       return E_OUTOFMEMORY;
