@@ -996,6 +996,9 @@ struct d12_input_sig_elem {
    uint32_t id;
 };
 
+unsigned d12_dxbc_input_signature(const void *data, size_t size_B,
+                                  struct d12_input_sig_elem *out,
+                                  unsigned max);
 unsigned d12_dxil_input_signature(const void *dxil, size_t size_B,
                                   struct d12_input_sig_elem *out,
                                   unsigned max);

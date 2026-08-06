@@ -573,9 +573,20 @@ resolve_input_layout(struct d12_pipeline_state *pso,
    if (!layout || !layout->NumElements || !layout->pInputElementDescs)
       return;
 
+   /*
+    * DXBC and DXIL keep their input signatures in different places: DXIL
+    * in the LLVM bitcode module, DXBC in the container's ISGN chunk. Using
+    * the DXIL reader on a DXBC shader silently returns zero elements, so
+    * nothing matches the input layout, no attributes are fetched, and
+    * load_input reaches the AGX backend as "Unhandled intrinsic" -- which
+    * was the sole blocker on all eight tests in that cluster, every one of
+    * them a _dxbc variant.
+    */
    struct d12_input_sig_elem sig[D12_MAX_SIG_ELEMENTS];
    unsigned nr_sig =
-      d12_dxil_input_signature(vs_dxil, vs_size, sig, ARRAY_SIZE(sig));
+      d12_dxbc_is_dxbc_shader(vs_dxil, vs_size)
+         ? d12_dxbc_input_signature(vs_dxil, vs_size, sig, ARRAY_SIZE(sig))
+         : d12_dxil_input_signature(vs_dxil, vs_size, sig, ARRAY_SIZE(sig));
 
    for (unsigned e = 0; e < layout->NumElements; e++) {
       const D3D12_INPUT_ELEMENT_DESC *el = &layout->pInputElementDescs[e];

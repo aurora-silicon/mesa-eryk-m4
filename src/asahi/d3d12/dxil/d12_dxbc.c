@@ -836,6 +836,41 @@ find_chunk(const void *data, size_t size_B, const char *a, const char *b,
    return false;
 }
 
+/*
+ * INPUT SIGNATURE of a DXBC shader, in the same shape the DXIL path
+ * reports. resolve_input_layout needs it to match D3D12 input-layout
+ * elements to shader registers; without it nothing resolves, no vertex
+ * attributes are fetched, and load_input survives to the AGX backend as
+ * "Unhandled intrinsic". The DXIL version reads the LLVM bitcode module,
+ * which a DXBC container does not have -- this reads the ISGN chunk the
+ * translator already parses for its own use.
+ */
+unsigned
+d12_dxbc_input_signature(const void *data, size_t size_B,
+                         struct d12_input_sig_elem *out, unsigned max)
+{
+   const uint8_t *sig;
+   size_t sig_size;
+
+   if (!find_chunk(data, size_B, "ISGN", "ISG1", &sig, &sig_size))
+      return 0;
+
+   struct d12_dxbc_sig_elem elems[D12_DXBC_MAX_SIG];
+   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG);
+   n = MIN2(n, max);
+
+   for (unsigned i = 0; i < n; i++) {
+      /* `reg` is the register the shader reads with load_input, which is
+       * what the DXIL path calls `id`. */
+      out[i].id = elems[i].reg;
+      out[i].semantic_index = elems[i].semantic_index;
+      strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
+      out[i].name[sizeof(out[i].name) - 1] = '\0';
+   }
+
+   return n;
+}
+
 bool
 d12_dxbc_is_dxbc_shader(const void *data, size_t size_B)
 {
