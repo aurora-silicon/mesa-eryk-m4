@@ -23,7 +23,7 @@
 #include "util/u_math.h"
 
 #define D12_STREAM_BO_SIZE (1024 * 1024)
-#define D12_USC_BO_SIZE    (256 * 1024)
+#define D12_USC_BO_SIZE    (1024 * 1024)
 /* Worst-case control words per dispatch or render prologue, with slack. */
 #define D12_DISPATCH_STREAM_MARGIN 0x300
 
