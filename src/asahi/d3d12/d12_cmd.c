@@ -263,6 +263,21 @@ static uint64_t
 d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
                 size_t align)
 {
+   /*
+    * Check BEFORE subtracting. data_floor and size are size_t, so an
+    * oversized upload makes `data_floor - size` wrap to a value near
+    * SIZE_MAX -- which then sails past the `floor <= used + MARGIN` guard
+    * (a huge floor looks like plenty of room) and memcpys far outside the
+    * BO. The guard was load-bearing and could be skipped by the very case
+    * it existed to catch.
+    */
+   if (size > list->data_floor) {
+      mesa_loge("command list upload of %zu bytes exceeds data space",
+                size);
+      list->state = D12_LIST_ERROR;
+      return 0;
+   }
+
    size_t floor = (list->data_floor - size) & ~(align - 1);
    size_t used = list->stream_cur - d12_list_stream_map(list);
 
@@ -281,6 +296,14 @@ d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
 static uint64_t
 d12_list_upload_zero(struct d12_cmd_list *list, size_t size, size_t align)
 {
+   /* Same underflow as d12_list_upload -- check before subtracting. */
+   if (size > list->data_floor) {
+      mesa_loge("command list zero-reserve of %zu bytes exceeds data space",
+                size);
+      list->state = D12_LIST_ERROR;
+      return 0;
+   }
+
    size_t floor = (list->data_floor - size) & ~(align - 1);
    size_t used = list->stream_cur - d12_list_stream_map(list);
 
