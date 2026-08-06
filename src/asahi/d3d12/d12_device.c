@@ -241,13 +241,27 @@ d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
       return E_INVALIDARG;
    if (!allocator)
       return E_INVALIDARG;
-   if (initial_state)
-      mesa_logw("CreateCommandList: initial pipeline state ignored (no PSOs "
-                "until G4)");
+   /*
+    * The INITIAL PIPELINE STATE. A list created with one is already bound
+    * to it and may draw without any SetPipelineState call, which is
+    * exactly what test_command_list_initial_pipeline_state does. This was
+    * dropped with a note saying PSOs did not exist yet -- a comment that
+    * went stale the moment they did, leaving a legal draw failing with
+    * "Draw without a graphics pipeline state".
+    *
+    * d12_list_Reset already honours its own initial_state argument, so the
+    * two entry points now agree.
+    */
+   HRESULT hr = d12_cmd_list_create(device, type,
+                                    d12_cmd_allocator_from_iface(allocator),
+                                    riid, out);
 
-   return d12_cmd_list_create(device, type,
-                              d12_cmd_allocator_from_iface(allocator), riid,
-                              out);
+   if (SUCCEEDED(hr) && initial_state && out && *out) {
+      struct d12_cmd_list *list = (struct d12_cmd_list *)*out;
+      list->pso = d12_pipeline_state_from_iface(initial_state);
+   }
+
+   return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE
