@@ -1323,7 +1323,14 @@ d12_device_CreateCommittedResource(ID3D12Device2 *iface,
                                    REFIID riid, void **out)
 {
    struct d12_device *device = d12_device_from_iface(iface);
-   return d12_resource_create_committed(device, heap_props, desc, riid, out);
+
+   /* On failure the out pointer must be NULLED. The suite deliberately
+    * seeds it with 0xdeadbeef and checks it comes back NULL. */
+   if (out)
+      *out = NULL;
+
+   return d12_resource_create_committed(device, heap_props, desc,
+                                        initial_state, riid, out);
 }
 
 /*

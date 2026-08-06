@@ -856,6 +856,7 @@ HRESULT d12_queue_create(struct d12_device *device,
 HRESULT d12_resource_create_committed(struct d12_device *device,
                                       const D3D12_HEAP_PROPERTIES *heap_props,
                                       const D3D12_RESOURCE_DESC *desc,
+                                      D3D12_RESOURCE_STATES initial_state,
                                       REFIID riid, void **out);
 HRESULT d12_cmd_allocator_create(struct d12_device *device,
                                  D3D12_COMMAND_LIST_TYPE type, REFIID riid,

@@ -534,9 +534,66 @@ d12_resource_create(struct d12_device *device,
 HRESULT
 d12_resource_create_committed(struct d12_device *device,
                               const D3D12_HEAP_PROPERTIES *heap_props,
-                              const D3D12_RESOURCE_DESC *desc, REFIID riid,
+                              const D3D12_RESOURCE_DESC *desc,
+                              D3D12_RESOURCE_STATES initial_state, REFIID riid,
                               void **out)
 {
+   if (!heap_props || !desc)
+      return E_INVALIDARG;
+
+   /*
+    * D3D12 VALIDATION. These are refusals the runtime owes the caller, and
+    * accepting them is not harmless leniency -- an application that gets
+    * S_OK for an illegal description carries on and fails somewhere less
+    * obvious. Each rule below is one the suite checks directly.
+    */
+
+   /* A sample count of zero is meaningless; 1 is the minimum. */
+   if (desc->SampleDesc.Count == 0)
+      return E_INVALIDARG;
+
+   bool is_texture = desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER;
+
+   /*
+    * Write states are exclusive: RENDER_TARGET, DEPTH_WRITE, UNORDERED_ACCESS,
+    * COPY_DEST and STREAM_OUT cannot be combined with anything else.
+    */
+   const D3D12_RESOURCE_STATES write_states =
+      D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_DEPTH_WRITE |
+      D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_COPY_DEST |
+      D3D12_RESOURCE_STATE_STREAM_OUT;
+
+   D3D12_RESOURCE_STATES write_bits = initial_state & write_states;
+   if (write_bits && (initial_state & ~write_bits))
+      return E_INVALIDARG;
+   if (write_bits & (write_bits - 1))
+      return E_INVALIDARG;
+
+   /* A state the resource was not created to support is illegal. */
+   if ((initial_state & D3D12_RESOURCE_STATE_RENDER_TARGET) &&
+       !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
+      return E_INVALIDARG;
+
+   if ((initial_state & (D3D12_RESOURCE_STATE_DEPTH_WRITE |
+                         D3D12_RESOURCE_STATE_DEPTH_READ)) &&
+       !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+      return E_INVALIDARG;
+
+   if ((initial_state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS) &&
+       !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+      return E_INVALIDARG;
+
+   /*
+    * Heap type restricts what may live there. UPLOAD and READBACK are
+    * buffer-only, and GPU_UPLOAD is a capability this driver does not
+    * advertise, so a resource on one is refused rather than silently
+    * placed somewhere else.
+    */
+   if (is_texture && (heap_props->Type == D3D12_HEAP_TYPE_UPLOAD ||
+                      heap_props->Type == D3D12_HEAP_TYPE_READBACK ||
+                      heap_props->Type == D3D12_HEAP_TYPE_GPU_UPLOAD))
+      return E_INVALIDARG;
+
    return d12_resource_create(device, heap_props, desc, NULL, 0, riid, out);
 }
 
