@@ -661,6 +661,201 @@ d12_device_CreateRootSignature(ID3D12Device2 *iface, UINT node_mask,
    return d12_root_signature_create(device, blob, blob_size, riid, out);
 }
 
+/*
+ * D3D12_RESOURCE_ALLOCATION_INFO for a set of resource descriptions.
+ *
+ * This is a pure query -- no allocation happens -- but it has to agree with
+ * what CreateCommittedResource would actually allocate, so it runs the same
+ * ail layout maths rather than a second estimate that could drift.
+ *
+ * It was the single largest one-blocker cluster in the suite: 11 tests where
+ * an unimplemented GetResourceAllocationInfo was the ONLY thing standing
+ * between them and a verdict. The stub returned {0, 0}, and a zero size is
+ * not a refusal an application can see -- it silently produces a heap too
+ * small for the resource it was sized for.
+ *
+ * Alignment follows D3D12's documented defaults: 4 MB for multisampled
+ * resources, 64 KB otherwise. Buffers are their own byte length, aligned to
+ * 64 KB. Sizes accumulate with each resource aligned to its own requirement,
+ * which is what a caller placing them consecutively in one heap needs.
+ */
+/*
+ * ABI NOTE, and this cost a segfault to find. Aggregates larger than a
+ * register are returned through an explicit RetVal POINTER here, not by
+ * value: the callee writes the struct through arg 1 and returns that same
+ * pointer. That is widl's WIDL_EXPLICIT_AGGREGATE_RETURNS convention, which
+ * the vkd3d test binary is built with (_agxtest/gen/vkd3d_d3d12.h defines
+ * it) and which matches what MSVC does on Windows for a struct this size.
+ *
+ * DirectX-Headers, which this driver compiles against, declares the
+ * non-_WIN32 branch as returning by value, so writing the obvious C
+ * function produces a vtable slot the caller cannot use: the caller reads
+ * the return value as a pointer and dereferences it. With SizeInBytes = 0
+ * in x0 that is a null dereference, which is exactly how
+ * test_resource_allocation_info crashed -- inside the TEST, one instruction
+ * after the call (`ldp x3, x21, [x0]`), which is why it looked like a test
+ * bug rather than ours.
+ *
+ * Only GetResourceAllocationInfo and GetCustomHeapProperties take this
+ * form among the methods we implement; GetDesc and the descriptor-handle
+ * getters really are by-value, which is why they have always worked. The
+ * slot is assigned with a cast because the header's prototype disagrees.
+ */
+static D3D12_RESOURCE_ALLOCATION_INFO *STDMETHODCALLTYPE
+d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
+                                     D3D12_RESOURCE_ALLOCATION_INFO *ret,
+                                     UINT visible_mask, UINT count,
+                                     const D3D12_RESOURCE_DESC *descs)
+{
+   D3D12_RESOURCE_ALLOCATION_INFO info = {0, 0};
+
+   /*
+    * An EMPTY query is not an invalid one. D3D12 answers count == 0 with
+    * {SizeInBytes = 0, Alignment = 1}, which test_resource_allocation_info
+    * asserts directly. UINT64_MAX is the answer for a description that
+    * cannot be allocated, not for asking about nothing -- I had those two
+    * cases conflated.
+    */
+   if (!count) {
+      info.SizeInBytes = 0;
+      info.Alignment = 1;
+      if (ret)
+         *ret = info;
+      return ret;
+   }
+
+   if (!descs) {
+      info.SizeInBytes = UINT64_MAX;
+      info.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+      if (ret)
+         *ret = info;
+      return ret;
+   }
+
+   uint64_t total = 0;
+   uint64_t max_align = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
+   for (UINT i = 0; i < count; i++) {
+      const D3D12_RESOURCE_DESC *d = &descs[i];
+      uint64_t align = d->SampleDesc.Count > 1
+                          ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
+                          : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+      uint64_t size;
+
+      /*
+       * desc->Alignment is an INPUT: the caller may REQUEST an alignment,
+       * and D3D12 refuses one it cannot honour by answering
+       * {UINT64_MAX, default}. 0 means "pick for me".
+       *
+       * test_resource_allocation_info asserts this directly, including that
+       * a small-alignment (4 KB) request is refused for a texture too large
+       * to be placed that way. Ignoring the field -- which is what this did
+       * at first -- turns every one of those refusals into a plausible
+       * number the caller then trusts.
+       */
+      bool want_small =
+         d->Alignment == D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT &&
+         d->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER &&
+         d->SampleDesc.Count <= 1 &&
+         !(d->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+                       D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL));
+
+      /* Any other explicit request we cannot honour is refused outright.
+       * The small-alignment request is decided AFTER the size is known,
+       * because whether it qualifies depends on the size (below).
+       */
+      if (d->Alignment != 0 && d->Alignment != align && !want_small) {
+         info.SizeInBytes = UINT64_MAX;
+         info.Alignment = align;
+         if (ret)
+            *ret = info;
+         return ret;
+      }
+
+      if (d->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+         size = d->Width;
+      } else {
+         /* Same layout the resource would really get. A format we cannot
+          * express has no honest answer, so say so rather than inventing
+          * a number the caller would then trust.
+          */
+         enum pipe_format pipe = d12_format_is_depth_stencil(d->Format)
+                                    ? d12_format_depth_plane(d->Format)
+                                    : d12_format_to_pipe(d->Format);
+         if (pipe == PIPE_FORMAT_NONE) {
+            /* A refusal still has to report a LEGAL alignment: the caller
+             * feeds it straight into align(), which asserts on zero. The
+             * test checks `Alignment >= D3D12_DEFAULT_RESOURCE_PLACEMENT_
+             * ALIGNMENT` even on the UINT64_MAX path. */
+            info.SizeInBytes = UINT64_MAX;
+            info.Alignment = align;
+            if (ret)
+               *ret = info;
+            return ret;
+         }
+
+         uint32_t base_w = (uint32_t)MAX2(d->Width, 1);
+         uint32_t base_h = MAX2(d->Height, 1);
+         uint32_t full_mip_levels = util_logbase2(MAX2(base_w, base_h)) + 1;
+
+         struct ail_layout layout = {
+            .width_px = (uint32_t)MAX2(d->Width, 1),
+            .height_px = MAX2(d->Height, 1),
+            .depth_px = MAX2(d->DepthOrArraySize, 1),
+            .sample_count_sa = MAX2(d->SampleDesc.Count, 1),
+            /* MipLevels == 0 means the FULL chain in D3D12, not one
+             * level. Treating it as 1 under-reports the size of every
+             * resource an application asks to be fully mipped. */
+            .levels = d->MipLevels ? d->MipLevels : full_mip_levels,
+            .tiling = AIL_TILING_TWIDDLED,
+            .format = pipe,
+         };
+         ail_make_miptree(&layout);
+         size = layout.size_B;
+
+         /* A depth format with a separate stencil plane costs both. */
+         if (d12_format_is_depth_stencil(d->Format)) {
+            enum pipe_format sfmt = d12_format_stencil_plane(d->Format);
+            if (sfmt != PIPE_FORMAT_NONE) {
+               struct ail_layout sl = layout;
+               sl.format = sfmt;
+               ail_make_miptree(&sl);
+               size += sl.size_B;
+            }
+         }
+      }
+
+      /*
+       * SMALL RESOURCE PLACEMENT. 4 KB alignment is only legal when the
+       * resource actually fits the small-resource budget; D3D12 refuses the
+       * request otherwise rather than quietly upgrading it. Deciding this
+       * on the real layout size is what the guess-by-dimensions version got
+       * wrong -- the suite checks a texture that is small in width and
+       * height but too large once its format and mip chain are counted.
+       */
+      if (want_small) {
+         if (size <= D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) {
+            align = D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
+         } else {
+            info.SizeInBytes = UINT64_MAX;
+            info.Alignment = align;
+            if (ret)
+               *ret = info;
+            return ret;
+         }
+      }
+
+      total = align64(total, align) + size;
+      max_align = MAX2(max_align, align);
+   }
+
+   info.SizeInBytes = align64(total, max_align);
+   info.Alignment = max_align;
+   if (ret)
+         *ret = info;
+      return ret;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateDescriptorHeap(ID3D12Device2 *iface,
                                 const D3D12_DESCRIPTOR_HEAP_DESC *desc,
@@ -1194,6 +1389,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
+   .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
    .CreateShaderResourceView = d12_device_CreateShaderResourceView,
