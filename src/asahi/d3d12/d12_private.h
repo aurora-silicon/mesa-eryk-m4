@@ -621,6 +621,14 @@ struct d12_cmd_list {
     */
    bool had_error;
 
+   /* Set when a draw in this list bump-allocates from the device
+    * tessellation heap. Close then appends a GPU-side write zeroing
+    * poly_heap::bottom, so the heap is freed once per EXECUTION rather
+    * than once per Reset -- a closed list may be executed repeatedly with
+    * no Reset between, and each execution allocates again.
+    */
+   bool uses_heap;
+
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,
     * plus the PSO's resolved attributes, into the fetch parameter block.

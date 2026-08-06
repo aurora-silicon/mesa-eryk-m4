@@ -204,11 +204,13 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->topology = MESA_PRIM_TRIANGLES;
    list->patch_control_points = 0;
 
-   /* Free the tessellation heap. hk queues a GPU write because a Vulkan
-    * command buffer can be resubmitted without re-recording; a D3D12 list
-    * must be Reset before re-recording, so the CPU can zero it here --
-    * but only because this driver runs one list at a time. Concurrent
-    * lists would need the per-list descriptor hk uses.
+   list->uses_heap = false;
+
+   /* The real free is the GPU write Close appends (see there): a closed
+    * list can be executed many times without ever being Reset, so a reset
+    * hook cannot be the only thing that frees the heap. This CPU zero
+    * stays as a floor for the first recording, when nothing has been
+    * submitted yet and no GPU write is in flight to race with.
     */
    if (list->device->heap_desc_cpu)
       list->device->heap_desc_cpu->bottom = 0;
@@ -1636,6 +1638,11 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    uint64_t out_draws = d12_list_upload_zero(list, draw_B, 4);
    if (!tcs_buffer || !coord_allocs || !counts || !out_draws)
       return false;
+
+   /* This list bump-allocates from the device tessellation heap, so it owes
+    * the heap a GPU-side reset before it finishes. See d12_list_Close.
+    */
+   list->uses_heap = true;
 
    struct poly_tess_params tp = {
       .heap = (DEVICE(struct poly_heap))device->heap_desc_va,
@@ -3217,6 +3224,38 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
    bool errored = list->state == D12_LIST_ERROR;
    if (errored)
       list->had_error = true;
+
+   /*
+    * Free the tessellation heap from the GPU, at the end of this list's own
+    * execution -- exactly hk_heap()'s queued write.
+    *
+    * The CPU zero in d12_list_reset_state is not enough and the comment
+    * there was wrong about why. D3D12 lets a CLOSED list be handed to
+    * ExecuteCommandLists as many times as the caller likes with no Reset in
+    * between, and the vkd3d tests do precisely that in loops. Every one of
+    * those executions bump-allocates from `bottom` and nothing ever puts it
+    * back, so the heap walks off its end and the tessellator reads unmapped
+    * memory -- the fault first-faulting-test.sh attributed to
+    * test_quad_tessellation_dxil (line 301, unit UL1C, reason Unmapped).
+    *
+    * Growing the heap to 128 MiB did not move that number (+66 against
+    * +69, inside the run-to-run spread), which is what a leak rather than
+    * an under-size predicts: a bigger bucket takes longer to overflow but
+    * still overflows.
+    *
+    * A compute dispatch here ends any open render pass and lands in a
+    * segment that barriers on everything before it, so the reset is
+    * ordered after the tessellation work that consumed the heap.
+    */
+   if (!errored && list->uses_heap && list->device->heap_desc_va) {
+      struct libagx_write_u32_args args = {
+         .address = list->device->heap_desc_va +
+                    offsetof(struct poly_heap, bottom),
+         .value = 0,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_WRITE_U32, &args, sizeof(args),
+                                agx_1d(1));
+   }
 
    if (!errored)
       d12_list_close_cdm(list);
