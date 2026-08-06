@@ -549,10 +549,38 @@ HRESULT
 d12_resource_create_committed(struct d12_device *device,
                               const D3D12_HEAP_PROPERTIES *heap_props,
                               const D3D12_RESOURCE_DESC *desc,
-                              D3D12_RESOURCE_STATES initial_state, REFIID riid,
-                              void **out)
+                              D3D12_RESOURCE_STATES initial_state,
+                              const D3D12_CLEAR_VALUE *clear_value,
+                              REFIID riid, void **out)
 {
    if (!heap_props || !desc)
+      return E_INVALIDARG;
+
+   bool is_buffer = desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER;
+
+   /*
+    * BUFFER-SPECIFIC RULES.
+    *
+    * A buffer has exactly one mip level -- 0 is not "resolve for me" here,
+    * it is invalid -- and an optimized clear value is meaningless for one,
+    * so passing a non-NULL clear value is an error rather than something to
+    * ignore. Both are checked directly by the suite.
+    */
+   if (is_buffer) {
+      if (desc->MipLevels != 1)
+         return E_INVALIDARG;
+
+      if (clear_value)
+         return E_INVALIDARG;
+   }
+
+   /*
+    * GPU_UPLOAD is a capability we do not advertise (CheckFeatureSupport
+    * reports it unsupported), so nothing may be created on such a heap --
+    * buffers included. Refusing only textures left buffers accepted on a
+    * heap type this driver does not implement.
+    */
+   if (heap_props->Type == D3D12_HEAP_TYPE_GPU_UPLOAD)
       return E_INVALIDARG;
 
    /*
@@ -566,7 +594,7 @@ d12_resource_create_committed(struct d12_device *device,
    if (desc->SampleDesc.Count == 0)
       return E_INVALIDARG;
 
-   bool is_texture = desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER;
+   bool is_texture = !is_buffer;
 
    /*
     * Write states are exclusive: RENDER_TARGET, DEPTH_WRITE, UNORDERED_ACCESS,
@@ -631,8 +659,7 @@ d12_resource_create_committed(struct d12_device *device,
    }
 
    if (is_texture && (heap_props->Type == D3D12_HEAP_TYPE_UPLOAD ||
-                      heap_props->Type == D3D12_HEAP_TYPE_READBACK ||
-                      heap_props->Type == D3D12_HEAP_TYPE_GPU_UPLOAD))
+                      heap_props->Type == D3D12_HEAP_TYPE_READBACK))
       return E_INVALIDARG;
 
    return d12_resource_create(device, heap_props, desc, NULL, 0, riid, out);

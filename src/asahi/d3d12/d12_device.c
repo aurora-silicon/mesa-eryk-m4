@@ -1330,7 +1330,7 @@ d12_device_CreateCommittedResource(ID3D12Device2 *iface,
       *out = NULL;
 
    return d12_resource_create_committed(device, heap_props, desc,
-                                        initial_state, riid, out);
+                                        initial_state, clear_value, riid, out);
 }
 
 /*
