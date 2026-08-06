@@ -328,7 +328,14 @@ d12_resource_create(struct d12_device *device,
        * read pixels by indexing rows, which is what the existing texture
        * tests rely on.
        */
-      unsigned levels = desc->MipLevels ? desc->MipLevels : 1;
+      /* MipLevels == 0 means the FULL chain, the same rule
+       * GetResourceAllocationInfo applies -- resolving it in only one of
+       * the two places makes the reported description disagree with the
+       * allocation behind it. */
+      unsigned full_levels =
+         util_logbase2(MAX2((uint32_t)MAX2(desc->Width, 1),
+                            MAX2(desc->Height, 1))) + 1;
+      unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
       unsigned samples = MAX2(desc->SampleDesc.Count, 1);
       bool blocked = util_format_get_blockwidth(pipe) > 1 ||
                      util_format_get_blockheight(pipe) > 1;
