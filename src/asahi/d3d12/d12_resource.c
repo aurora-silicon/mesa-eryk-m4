@@ -584,6 +584,48 @@ d12_resource_create_committed(struct d12_device *device,
       return E_INVALIDARG;
 
    /*
+    * FLAG / HEAP-TYPE COMBINATIONS. An UPLOAD or READBACK heap is CPU-side
+    * staging: a resource there cannot also be a render target or a UAV.
+    * ALLOW_SIMULTANEOUS_ACCESS is not meaningful for a buffer at all, on
+    * any heap.
+    */
+   bool staging_heap = heap_props->Type == D3D12_HEAP_TYPE_UPLOAD ||
+                       heap_props->Type == D3D12_HEAP_TYPE_READBACK;
+
+   if (staging_heap &&
+       (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)))
+      return E_INVALIDARG;
+
+   if (is_buffer && (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS))
+      return E_INVALIDARG;
+
+   /*
+    * A READBACK heap is a destination: the GPU writes, the CPU reads. Only
+    * COPY_DEST (and COMMON, which newer runtimes accept) make sense, so a
+    * read state on one is an error. UPLOAD is the mirror image and is
+    * permissive about read states, which is why it is not checked here.
+    */
+   if (heap_props->Type == D3D12_HEAP_TYPE_READBACK &&
+       initial_state != D3D12_RESOURCE_STATE_COMMON &&
+       initial_state != D3D12_RESOURCE_STATE_COPY_DEST)
+      return E_INVALIDARG;
+
+   /*
+    * A block-compressed format needs a 2D grid of blocks, so D3D12 rejects
+    * it on a 1D texture. This is an INVALID description, not a dimension we
+    * merely have not implemented -- answering E_NOTIMPL would tell the
+    * caller to try again on better hardware when the request is illegal
+    * everywhere.
+    */
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D) {
+      enum pipe_format pf = d12_format_to_pipe(desc->Format);
+      if (pf != PIPE_FORMAT_NONE && (util_format_get_blockwidth(pf) > 1 ||
+                                     util_format_get_blockheight(pf) > 1))
+         return E_INVALIDARG;
+   }
+
+   /*
     * D3D12 VALIDATION. These are refusals the runtime owes the caller, and
     * accepting them is not harmless leniency -- an application that gets
     * S_OK for an illegal description carries on and fails somewhere less
