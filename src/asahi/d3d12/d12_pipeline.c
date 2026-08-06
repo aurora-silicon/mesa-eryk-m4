@@ -24,6 +24,37 @@
 #include "poly/nir/poly_nir.h"
 
 /*
+ * CONFORMITY GAP, reported loudly rather than worked around.
+ *
+ * We compile with has_scratch = true, so the backend is allowed to spill
+ * registers and to put allocas in per-thread scratch. hk then does the
+ * other half of the bargain (hk_queue.c, asahi_fill_vdm_command): when a
+ * shader reports scratch it allocates a scratch buffer, points
+ * vertex_helper/fragment_helper.data at it, binds agx_helper_program()
+ * as .binary, and sets DRM_ASAHI_RENDER_VERTEX_SCRATCH.
+ *
+ * This driver does NONE of that. A shader that actually spills therefore
+ * has nowhere to spill to. That is a plausible contributor to the GPU
+ * faults this campaign has been chasing in complex shaders, and it fails
+ * silently -- there is no error, just wrong memory.
+ *
+ * Reporting is deliberate: implementing the scratch/helper plumbing is a
+ * render-command change that cannot be verified while the GPU is
+ * degraded, and a wrong one faults the hardware. Log which shaders need
+ * it so the fix can be written and checked against real cases.
+ */
+static void
+d12_report_scratch(const char *what, const struct agx_shader_info *info)
+{
+   if (info->scratch_size || info->preamble_scratch_size) {
+      mesa_logw("%s spills to scratch (%u B main, %u B preamble) but this "
+                "driver binds no scratch buffer or helper program -- see "
+                "hk_queue.c asahi_fill_vdm_command",
+                what, info->scratch_size, info->preamble_scratch_size);
+   }
+}
+
+/*
  * Root signature. D3D12 requires the object; our binding model puts
  * resource addresses directly in uniform registers (see d12_dxil.h), so
  * there is no state to derive from the blob yet.
@@ -401,6 +432,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));
    agx_compile_shader_nir(nir, &key, &part);
+   d12_report_scratch("shader", &part.info);
 
    if (getenv("D3D12AGX_DUMP_TEX") && part.binary) {
       fprintf(stderr,
@@ -805,6 +837,7 @@ compile_gfx_stage(struct d12_device *device,
 
    memset(out, 0, sizeof(*out));
    agx_compile_shader_nir(nir, &key, out);
+   d12_report_scratch("shader", &out->info);
 
    if (getenv("D3D12AGX_DUMP_SHADERS") && out->binary) {
       fprintf(stderr, "; --- %s stage, push_count %u, preamble %d ---\n",
@@ -871,6 +904,7 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
 
    memset(out, 0, sizeof(*out));
    agx_compile_shader_nir(nir, &key, out);
+   d12_report_scratch("shader", &out->info);
 
    return out->binary && out->info.binary_size;
 }
