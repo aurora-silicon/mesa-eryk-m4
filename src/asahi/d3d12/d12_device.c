@@ -273,6 +273,37 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_FORMAT_INFO: {
+      D3D12_FEATURE_DATA_FORMAT_INFO *info = data;
+      if (data_size != sizeof(*info))
+         return E_INVALIDARG;
+
+      /*
+       * PLANE COUNT. Every format is one plane except a depth format that
+       * also carries stencil -- on AGX those are physically separate
+       * allocations, which is precisely why d12_format_stencil_plane
+       * exists, so the answer is derived from the same source the resource
+       * path uses rather than from a second table.
+       *
+       * DXGI_FORMAT_UNKNOWN is legal here and answers 1; a format we cannot
+       * express at all is E_INVALIDARG, since a plane count for it would be
+       * an invention.
+       */
+      if (info->Format == DXGI_FORMAT_UNKNOWN) {
+         info->PlaneCount = 1;
+         return S_OK;
+      }
+
+      bool known = d12_format_to_pipe(info->Format) != PIPE_FORMAT_NONE ||
+                   d12_format_is_depth_stencil(info->Format);
+      if (!known)
+         return E_INVALIDARG;
+
+      info->PlaneCount =
+         d12_format_stencil_plane(info->Format) != PIPE_FORMAT_NONE ? 2 : 1;
+      return S_OK;
+   }
+
    case D3D12_FEATURE_D3D12_OPTIONS5: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS5 *opts = data;
       if (data_size != sizeof(*opts))
