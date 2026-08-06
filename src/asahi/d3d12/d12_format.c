@@ -127,6 +127,41 @@ static const struct d12_format_entry d12_formats[] = {
    {DXGI_FORMAT_R32G32B32_TYPELESS, PIPE_FORMAT_R32G32B32_FLOAT},
    {DXGI_FORMAT_R32G32B32A32_TYPELESS, PIPE_FORMAT_R32G32B32A32_FLOAT},
    {DXGI_FORMAT_R10G10B10A2_TYPELESS, PIPE_FORMAT_R10G10B10A2_UNORM},
+
+   /*
+    * BLOCK-COMPRESSED. AGX decodes all of BC1-BC7 in hardware; the pairings
+    * below are read straight out of ail_pixel_format (src/asahi/layout/
+    * formats.c), which is where DXT/RGTC/BPTC are already mapped to the BC
+    * units, rather than being decided here. Keeping the two tables in step
+    * matters: d12_format_is_renderable consults the AGX entry, and every BC
+    * entry there has renderable == NONE, so these are refused as render
+    * targets automatically and correctly.
+    *
+    * The TYPELESS variants resolve to the UNORM interpretation, matching how
+    * the other typeless entries above are handled: the resource is storage
+    * only and the VIEW supplies the interpretation.
+    */
+   {DXGI_FORMAT_BC1_TYPELESS, PIPE_FORMAT_DXT1_RGBA},
+   {DXGI_FORMAT_BC1_UNORM, PIPE_FORMAT_DXT1_RGBA},
+   {DXGI_FORMAT_BC1_UNORM_SRGB, PIPE_FORMAT_DXT1_SRGBA},
+   {DXGI_FORMAT_BC2_TYPELESS, PIPE_FORMAT_DXT3_RGBA},
+   {DXGI_FORMAT_BC2_UNORM, PIPE_FORMAT_DXT3_RGBA},
+   {DXGI_FORMAT_BC2_UNORM_SRGB, PIPE_FORMAT_DXT3_SRGBA},
+   {DXGI_FORMAT_BC3_TYPELESS, PIPE_FORMAT_DXT5_RGBA},
+   {DXGI_FORMAT_BC3_UNORM, PIPE_FORMAT_DXT5_RGBA},
+   {DXGI_FORMAT_BC3_UNORM_SRGB, PIPE_FORMAT_DXT5_SRGBA},
+   {DXGI_FORMAT_BC4_TYPELESS, PIPE_FORMAT_RGTC1_UNORM},
+   {DXGI_FORMAT_BC4_UNORM, PIPE_FORMAT_RGTC1_UNORM},
+   {DXGI_FORMAT_BC4_SNORM, PIPE_FORMAT_RGTC1_SNORM},
+   {DXGI_FORMAT_BC5_TYPELESS, PIPE_FORMAT_RGTC2_UNORM},
+   {DXGI_FORMAT_BC5_UNORM, PIPE_FORMAT_RGTC2_UNORM},
+   {DXGI_FORMAT_BC5_SNORM, PIPE_FORMAT_RGTC2_SNORM},
+   {DXGI_FORMAT_BC6H_TYPELESS, PIPE_FORMAT_BPTC_RGB_UFLOAT},
+   {DXGI_FORMAT_BC6H_UF16, PIPE_FORMAT_BPTC_RGB_UFLOAT},
+   {DXGI_FORMAT_BC6H_SF16, PIPE_FORMAT_BPTC_RGB_FLOAT},
+   {DXGI_FORMAT_BC7_TYPELESS, PIPE_FORMAT_BPTC_RGBA_UNORM},
+   {DXGI_FORMAT_BC7_UNORM, PIPE_FORMAT_BPTC_RGBA_UNORM},
+   {DXGI_FORMAT_BC7_UNORM_SRGB, PIPE_FORMAT_BPTC_SRGBA},
 };
 
 /*

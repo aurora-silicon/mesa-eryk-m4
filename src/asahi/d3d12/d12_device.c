@@ -741,6 +741,7 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
                           ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
                           : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
       uint64_t size;
+      uint64_t slice0_B = 0;
 
       /*
        * desc->Alignment is an INPUT: the caller may REQUEST an alignment,
@@ -813,6 +814,12 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
          ail_make_miptree(&layout);
          size = layout.size_B;
 
+         /* Block-aware size of ONE SLICE OF LEVEL 0; the small-placement
+          * test below is on this, not on the total. */
+         slice0_B = (uint64_t)util_format_get_nblocksx(pipe, base_w) *
+                    util_format_get_nblocksy(pipe, base_h) *
+                    util_format_get_blocksize(pipe);
+
          /* A depth format with a separate stencil plane costs both. */
          if (d12_format_is_depth_stencil(d->Format)) {
             enum pipe_format sfmt = d12_format_stencil_plane(d->Format);
@@ -834,7 +841,15 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
        * height but too large once its format and mip chain are counted.
        */
       if (want_small) {
-         if (size <= D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) {
+         /*
+          * The 4 KB threshold is on ONE SLICE OF LEVEL 0, block-aware --
+          * not on the total. The suite pins this precisely: 256x512 BC1 is
+          * exactly 64 KB per slice and qualifies even with 10 mips or 64
+          * array layers, while 260x512 BC1 (66.5 KB) and 1024x1024 RGBA8
+          * do not. Testing the total size instead refuses the 64-layer and
+          * 1024-layer cases, which is what the first version did.
+          */
+         if (slice0_B <= D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT) {
             align = D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT;
          } else {
             info.SizeInBytes = UINT64_MAX;
