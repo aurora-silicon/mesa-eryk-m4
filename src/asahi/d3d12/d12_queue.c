@@ -242,6 +242,33 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
     * end-of-tile (store) on each of them.
     */
    c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
+
+   /*
+    * Every address this command hands the hardware, so a VDM fault can be
+    * matched to the field that carried it. The fault we are chasing reads
+    * 0x4000000000 -- exactly 1 << 38, a round number rather than a leaked
+    * pointer, and not AGX_ZERO_PAGE_ADDRESS (1 << 32) -- from dVDM_SSD,
+    * the unit that walks this control stream. Print the candidates in the
+    * same run as the fault and match, exactly as the tessellation VA map
+    * did for the last one.
+    */
+   if (getenv("D3D12AGX_DUMP_RENDER_CMD")) {
+      mesa_logi("render cmd: vdm_base=0x%llx (stream_bo 0x%llx..0x%llx, "
+                "seg %zu..%zu, dispatches=%u)",
+                (unsigned long long)c->vdm_ctrl_stream_base,
+                (unsigned long long)list->stream_bo->va->addr,
+                (unsigned long long)(list->stream_bo->va->addr +
+                                     list->stream_bo->size),
+                seg->stream_start, seg->stream_end, seg->dispatches);
+      mesa_logi("  depth=0x%llx stencil=0x%llx scissor=0x%llx oclqry=0x%llx",
+                (unsigned long long)c->depth.base,
+                (unsigned long long)c->stencil.base,
+                (unsigned long long)c->isp_scissor_base,
+                (unsigned long long)c->isp_oclqry_base);
+      mesa_logi("  bg.usc=0x%llx eot.usc=0x%llx  %ux%u samples=%u",
+                (unsigned long long)c->bg.usc, (unsigned long long)c->eot.usc,
+                c->width_px, c->height_px, c->samples);
+   }
 }
 
 static void STDMETHODCALLTYPE
