@@ -1055,6 +1055,17 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
+   /* Same rule as CreateRenderTargetView: MSAA resources can be allocated
+    * but nothing may render into one while the render command hardcodes
+    * samples = 1. This was missed when the RTV refusal was added, which
+    * left the depth path able to reach a multisampled surface. */
+   if (res->desc.SampleDesc.Count > 1) {
+      mesa_loge("CreateDepthStencilView: %u samples unsupported",
+                res->desc.SampleDesc.Count);
+      slot->resource = NULL;
+      return;
+   }
+
    if (!res->is_depth_stencil) {
       mesa_loge("CreateDepthStencilView: resource format %d is not a "
                 "depth/stencil format", (int)res->desc.Format);
