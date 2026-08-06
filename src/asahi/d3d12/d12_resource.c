@@ -596,6 +596,33 @@ d12_resource_create_committed(struct d12_device *device,
     * advertise, so a resource on one is refused rather than silently
     * placed somewhere else.
     */
+   /*
+    * An explicitly requested alignment must be one the resource can
+    * actually use. 4 KB small placement is only legal when a single slice
+    * of level 0 fits in 64 KB -- the same rule GetResourceAllocationInfo
+    * applies, and it has to agree: a description the query refuses cannot
+    * be one creation accepts.
+    */
+   if (is_texture &&
+       desc->Alignment == D3D12_SMALL_RESOURCE_PLACEMENT_ALIGNMENT) {
+      enum pipe_format pf = d12_format_is_depth_stencil(desc->Format)
+                               ? d12_format_depth_plane(desc->Format)
+                               : d12_format_to_pipe(desc->Format);
+
+      if (pf == PIPE_FORMAT_NONE || desc->SampleDesc.Count > 1 ||
+          (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+                          D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)))
+         return E_INVALIDARG;
+
+      uint64_t slice0 =
+         (uint64_t)util_format_get_nblocksx(pf, MAX2((uint32_t)desc->Width, 1)) *
+         util_format_get_nblocksy(pf, MAX2(desc->Height, 1)) *
+         util_format_get_blocksize(pf);
+
+      if (slice0 > D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT)
+         return E_INVALIDARG;
+   }
+
    if (is_texture && (heap_props->Type == D3D12_HEAP_TYPE_UPLOAD ||
                       heap_props->Type == D3D12_HEAP_TYPE_READBACK ||
                       heap_props->Type == D3D12_HEAP_TYPE_GPU_UPLOAD))
