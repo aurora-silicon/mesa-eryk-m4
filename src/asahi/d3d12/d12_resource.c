@@ -49,8 +49,9 @@ d12_resource_Release(ID3D12Resource *iface)
        * would free storage the heap still owns and other placed resources
        * are still using. Drop the heap reference instead. */
       if (res->placed) {
-         if (res->heap)
-            ID3D12Heap_Release(&res->heap->iface);
+         /* Drop the BO reference taken at creation; the heap object's own
+          * refcount was never touched. */
+         agx_bo_unreference(&res->device->dev, res->bo);
       } else {
          agx_bo_unreference(&res->device->dev, res->bo);
          if (res->stencil_bo)
@@ -401,8 +402,20 @@ d12_resource_create(struct d12_device *device,
       res->stencil_addr =
          res->stencil_bo ? heap->bo->va->addr + stencil_offset_B : 0;
 
-      /* The application may release the heap while this resource lives. */
-      ID3D12Heap_AddRef(&heap->iface);
+      /*
+       * Reference the STORAGE, not the heap object.
+       *
+       * The storage must outlive the heap -- D3D12 lets the application
+       * release ID3D12Heap while placed resources are still alive -- but
+       * the heap's PUBLIC refcount must not move: test_suballocate_small_
+       * textures creates ten placed resources and then asserts
+       * get_refcount(heap) == 1. Taking ID3D12Heap_AddRef here reported 11.
+       *
+       * agx_bo_reference is invisible to COM refcounting and does exactly
+       * what is needed: the BO survives until the last placed resource
+       * releases it.
+       */
+      agx_bo_reference(heap->bo);
    } else {
       res->addr = res->bo->va->addr;
       res->offset_B = 0;
