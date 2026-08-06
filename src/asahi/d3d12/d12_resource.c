@@ -285,8 +285,8 @@ d12_resource_create(struct d12_device *device,
        */
       enum pipe_format pipe = d12_format_to_pipe(desc->Format);
 
-      if (pipe == PIPE_FORMAT_NONE || desc->MipLevels > 1 ||
-          desc->SampleDesc.Count > 1 || !desc->Width || !desc->Height) {
+      if (pipe == PIPE_FORMAT_NONE || desc->SampleDesc.Count > 1 ||
+          !desc->Width || !desc->Height) {
          mesa_loge("CreateCommittedResource: texture shape unsupported "
                    "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,
@@ -314,18 +314,41 @@ d12_resource_create(struct d12_device *device,
        * Arrays were the single largest refusal cluster in the suite --
        * ~21 tests, measured per test rather than per message.
        */
+      /*
+       * TILING FOLLOWS THE FORMAT AND SHAPE, and the rule is ail's own,
+       * read from its assertions in ail_make_miptree rather than guessed:
+       * a LINEAR layout requires levels == 1, sample_count == 1, and a 1x1
+       * block. Anything else must be twiddled.
+       *
+       * This matters beyond mips. The block-compressed formats added to
+       * d12_format.c are 4x4-block, so creating one on the linear path
+       * would trip `util_format_get_blockwidth(format) == 1` -- an assert
+       * in a debug build and a mis-sized allocation in a release one.
+       *
+       * Single-level uncompressed 2D stays LINEAR so the CPU can still
+       * read pixels by indexing rows, which is what the existing texture
+       * tests rely on.
+       */
+      unsigned levels = desc->MipLevels ? desc->MipLevels : 1;
+      bool blocked = util_format_get_blockwidth(pipe) > 1 ||
+                     util_format_get_blockheight(pipe) > 1;
+      bool linear_ok = levels == 1 && !blocked;
+
       layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = 1,
-         .levels = 1,
-         .tiling = AIL_TILING_LINEAR,
+         .levels = levels,
+         .tiling = linear_ok ? AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
          .format = pipe,
          /* 64-byte-aligned rows; the smoke tests mirror this constant */
+         /* ail asserts this is ZERO for a non-linear layout, so it has
+          * to follow the tiling decision above. */
          .linear_stride_B =
-            align((uint32_t)desc->Width *
-                     d12_format_bytes_per_pixel(desc->Format), 64),
+            linear_ok ? align((uint32_t)desc->Width *
+                                 d12_format_bytes_per_pixel(desc->Format), 64)
+                      : 0,
       };
       ail_make_miptree(&layout);
       size_B = layout.size_B;
