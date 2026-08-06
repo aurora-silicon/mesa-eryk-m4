@@ -391,6 +391,35 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
             out_range->offset_in_descriptors =
                r_u32(rr + (version == 2 ? 20 : 16));
          }
+
+         /*
+          * A descriptor table is bound to ONE heap, and D3D12 has two heap
+          * types a shader can see -- CBV/SRV/UAV, and SAMPLER. A table
+          * mixing sampler ranges with any of the others could not be
+          * satisfied by a single heap, so the API rejects it outright.
+          *
+          * test_create_root_signature builds exactly that table and expects
+          * E_INVALIDARG. Accepting it also leaked: the test only releases
+          * the root signature on the paths where creation was supposed to
+          * fail, so a stray success showed up a second time as a device
+          * refcount left at 1.
+          */
+         if (nranges > 0) {
+            bool has_sampler = false, has_other = false;
+
+            for (uint32_t r = 0; r < nranges; r++) {
+               if (rp->ranges[r].type == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
+                  has_sampler = true;
+               else
+                  has_other = true;
+            }
+
+            if (has_sampler && has_other) {
+               mesa_loge("descriptor table mixes sampler and non-sampler "
+                         "ranges; no single heap can satisfy it");
+               return false;
+            }
+         }
          break;
       }
 
