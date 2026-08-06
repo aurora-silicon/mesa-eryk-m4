@@ -545,13 +545,20 @@ d12_resource_create(struct d12_device *device,
    return hr;
 }
 
-HRESULT
-d12_resource_create_committed(struct d12_device *device,
-                              const D3D12_HEAP_PROPERTIES *heap_props,
-                              const D3D12_RESOURCE_DESC *desc,
-                              D3D12_RESOURCE_STATES initial_state,
-                              const D3D12_CLEAR_VALUE *clear_value,
-                              REFIID riid, void **out)
+/*
+ * D3D12 description validation, shared by the committed and placed paths.
+ *
+ * It lives in one function on purpose. These rules were originally written
+ * only into CreateCommittedResource, and CreatePlacedResource discarded
+ * initial_state and the clear value exactly as the committed path once did
+ * -- the same silently-dropped-parameter shape, one call site along. A
+ * second copy would drift the moment either is touched.
+ */
+static HRESULT
+d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
+                           const D3D12_RESOURCE_DESC *desc,
+                           D3D12_RESOURCE_STATES initial_state,
+                           const D3D12_CLEAR_VALUE *clear_value)
 {
    if (!heap_props || !desc)
       return E_INVALIDARG;
@@ -704,17 +711,42 @@ d12_resource_create_committed(struct d12_device *device,
                       heap_props->Type == D3D12_HEAP_TYPE_READBACK))
       return E_INVALIDARG;
 
+   return S_OK;
+}
+
+HRESULT
+d12_resource_create_committed(struct d12_device *device,
+                              const D3D12_HEAP_PROPERTIES *heap_props,
+                              const D3D12_RESOURCE_DESC *desc,
+                              D3D12_RESOURCE_STATES initial_state,
+                              const D3D12_CLEAR_VALUE *clear_value,
+                              REFIID riid, void **out)
+{
+   HRESULT valid = d12_validate_resource_desc(heap_props, desc, initial_state,
+                                              clear_value);
+   if (FAILED(valid))
+      return valid;
+
    return d12_resource_create(device, heap_props, desc, NULL, 0, riid, out);
 }
 
 HRESULT
 d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
                            uint64_t offset_B,
-                           const D3D12_RESOURCE_DESC *desc, REFIID riid,
+                           const D3D12_RESOURCE_DESC *desc,
+                           D3D12_RESOURCE_STATES initial_state,
+                           const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
                            void **out)
 {
-   if (!heap)
+   if (!heap || !desc)
       return E_INVALIDARG;
+
+   /* The same rules the committed path enforces. A placed resource is not
+    * exempt from them just because its storage comes from elsewhere. */
+   HRESULT valid = d12_validate_resource_desc(&heap->desc.Properties, desc,
+                                              initial_state, clear_value);
+   if (FAILED(valid))
+      return valid;
 
    return d12_resource_create(device, &heap->desc.Properties, desc, heap,
                               offset_B, riid, out);

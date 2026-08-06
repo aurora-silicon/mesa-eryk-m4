@@ -217,6 +217,8 @@ HRESULT d12_heap_create(struct d12_device *device,
 HRESULT d12_resource_create_placed(struct d12_device *device,
                                    struct d12_heap *heap, uint64_t offset_B,
                                    const D3D12_RESOURCE_DESC *desc,
+                                   D3D12_RESOURCE_STATES initial_state,
+                                   const D3D12_CLEAR_VALUE *clear_value,
                                    REFIID riid, void **out);
 
 /*
