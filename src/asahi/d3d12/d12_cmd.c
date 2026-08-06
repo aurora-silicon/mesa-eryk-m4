@@ -1789,6 +1789,41 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       return false;
 
    if (getenv("D3D12AGX_DUMP_TESS")) {
+      /* The GPU faults here read a real but unmapped address that changes
+       * every run, so the address alone says nothing. Print the extent of
+       * every allocation this draw hands the tessellator, in the same run,
+       * and the faulting address can be attributed to one of them (or to
+       * none, which is its own answer).
+       */
+      mesa_logi("tess VA map:");
+      mesa_logi("  heap        0x%llx..0x%llx",
+                (unsigned long long)device->heap_bo->va->addr,
+                (unsigned long long)(device->heap_bo->va->addr +
+                                     device->heap_bo->size));
+      mesa_logi("  heap_desc   0x%llx  (bottom now %u, size %u)",
+                (unsigned long long)device->heap_desc_va,
+                device->heap_desc_cpu ? device->heap_desc_cpu->bottom : 0,
+                device->heap_desc_cpu ? device->heap_desc_cpu->size : 0);
+      mesa_logi("  tcs_buffer  0x%llx..0x%llx  (%zu B)",
+                (unsigned long long)tcs_buffer,
+                (unsigned long long)(tcs_buffer + tcs_out_B), tcs_out_B);
+      mesa_logi("  coord_alloc 0x%llx..0x%llx  (%zu B)",
+                (unsigned long long)coord_allocs,
+                (unsigned long long)(coord_allocs + coord_B), coord_B);
+      mesa_logi("  counts      0x%llx..0x%llx  (%zu B)",
+                (unsigned long long)counts,
+                (unsigned long long)(counts + count_B), count_B);
+      mesa_logi("  out_draws   0x%llx..0x%llx  (%zu B)",
+                (unsigned long long)out_draws,
+                (unsigned long long)(out_draws + draw_B), draw_B);
+      mesa_logi("  vs_out      0x%llx..0x%llx  (%zu B)",
+                (unsigned long long)vp.output_buffer,
+                (unsigned long long)(vp.output_buffer + vsout), vsout);
+      mesa_logi("  stream_bo   0x%llx..0x%llx",
+                (unsigned long long)list->stream_bo->va->addr,
+                (unsigned long long)(list->stream_bo->va->addr +
+                                     list->stream_bo->size));
+
       list->device->dbg_gs_vb = d12_list_data_cpu(list, vp.output_buffer);
       list->device->dbg_gs_vb_size = MAX2(vsout, 16);
       list->device->dbg_tess_draw = d12_list_data_cpu(list, out_draws);
@@ -3255,6 +3290,16 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
       };
       d12_list_dispatch_precomp(list, LIBAGX_WRITE_U32, &args, sizeof(args),
                                 agx_1d(1));
+
+      /* That dispatch can fail (segment limit, stream full) and signals it
+       * by setting D12_LIST_ERROR. `errored` was sampled before it ran, so
+       * without this re-read a list whose stream is now incomplete would
+       * be closed as good and submitted -- the exact way this bench wedges.
+       */
+      if (list->state == D12_LIST_ERROR) {
+         errored = true;
+         list->had_error = true;
+      }
    }
 
    if (!errored)
