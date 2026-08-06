@@ -3279,8 +3279,25 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
    uint32_t refs = p_atomic_dec_return(&list->refcount);
 
    if (refs == 0) {
-      agx_bo_unreference(&list->device->dev, list->stream_bo);
-      agx_bo_unreference(&list->device->dev, list->usc_bo);
+      /*
+       * Same hazard as Reset: a list released while its last recording is
+       * still executing would free the control stream and USC words out
+       * from under the GPU. Park them on the allocator that recorded them,
+       * which frees them once D3D12 guarantees completion.
+       */
+      if (list->submitted && list->allocator) {
+         util_dynarray_append_typed(&list->allocator->retired_bos,
+                                    struct agx_bo *, list->stream_bo);
+         util_dynarray_append_typed(&list->allocator->retired_bos,
+                                    struct agx_bo *, list->usc_bo);
+         list->stream_bo = NULL;
+         list->usc_bo = NULL;
+      }
+
+      if (list->stream_bo)
+         agx_bo_unreference(&list->device->dev, list->stream_bo);
+      if (list->usc_bo)
+         agx_bo_unreference(&list->device->dev, list->usc_bo);
       d12_device_release(list->device);
       free(list);
    }
