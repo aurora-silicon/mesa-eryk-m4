@@ -728,6 +728,17 @@ d12_queue_create(struct d12_device *device,
    queue->refcount = 1;
    queue->device = device;
    queue->desc = *desc;
+
+   /*
+    * NodeMask 0 means "the one adapter" and D3D12 REPORTS it as 1 -- GetDesc
+    * returns the normalised description, not the request. Echoing the
+    * caller's zero is the same mistake GetDesc on a resource made with
+    * MipLevels and Alignment: a field the runtime is expected to resolve,
+    * handed back unresolved.
+    */
+   if (!queue->desc.NodeMask)
+      queue->desc.NodeMask = 1;
+
    queue->timeline_value = 0;
    simple_mtx_init(&queue->lock, mtx_plain);
    d12_device_add_ref(device);
