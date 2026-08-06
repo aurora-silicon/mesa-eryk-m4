@@ -513,6 +513,12 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          queue->device->removed = true;
       } else {
          queue->timeline_value++;
+         if (getenv("D3D12AGX_DUMP_SYNC")) {
+            mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu",
+                      (void *)queue, queue->agx_queue_id,
+                      (unsigned long long)(queue->timeline_value - 1),
+                      (unsigned long long)queue->timeline_value);
+         }
       }
 
       free(payload);
@@ -561,6 +567,14 @@ d12_queue_Signal(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
    /* Forward current queue progress into the fence's timeline: the fence
     * point signals when everything currently on the queue completes.
     */
+   if (getenv("D3D12AGX_DUMP_SYNC")) {
+      mesa_logi("SYNC Signal: queue %p agxq %u  fence %p value %llu "
+                "<- queue point %llu",
+                (void *)queue, queue->agx_queue_id, (void *)fence,
+                (unsigned long long)value,
+                (unsigned long long)queue->timeline_value);
+   }
+
    int ret = drmSyncobjTransfer(dev->fd, fence->syncobj, value,
                                 queue->syncobj, queue->timeline_value, 0);
    if (ret) {
@@ -587,6 +601,13 @@ d12_queue_Wait(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
     * queue work (and later Signals) depend on it.
     */
    uint64_t next = queue->timeline_value + 1;
+   if (getenv("D3D12AGX_DUMP_SYNC")) {
+      mesa_logi("SYNC Wait:   queue %p agxq %u  fence %p value %llu "
+                "-> queue point %llu",
+                (void *)queue, queue->agx_queue_id, (void *)fence,
+                (unsigned long long)value, (unsigned long long)next);
+   }
+
    int ret = drmSyncobjTransfer(dev->fd, queue->syncobj, next,
                                 fence->syncobj, value, 0);
    if (ret) {
