@@ -514,10 +514,12 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       } else {
          queue->timeline_value++;
          if (getenv("D3D12AGX_DUMP_SYNC")) {
-            mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu",
+            mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
+                      "list %p stream_bo 0x%llx",
                       (void *)queue, queue->agx_queue_id,
                       (unsigned long long)(queue->timeline_value - 1),
-                      (unsigned long long)queue->timeline_value);
+                      (unsigned long long)queue->timeline_value, (void *)list,
+                      (unsigned long long)list->stream_bo->va->addr);
          }
       }
 

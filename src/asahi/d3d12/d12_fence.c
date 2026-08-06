@@ -110,6 +110,10 @@ d12_fence_GetCompletedValue(ID3D12Fence *iface)
       return UINT64_MAX; /* the documented device-removed sentinel */
    }
 
+   if (getenv("D3D12AGX_DUMP_SYNC"))
+      mesa_logi("SYNC GetCompletedValue: fence %p -> %llu", (void *)fence,
+                (unsigned long long)point);
+
    return point;
 }
 
@@ -129,9 +133,22 @@ d12_fence_wait_thread(void *data)
    struct d12_fence_waiter *w = data;
    uint64_t point = w->value;
 
+   if (getenv("D3D12AGX_DUMP_SYNC"))
+      mesa_logi("SYNC event wait ENTER: fence %p value %llu", (void *)w->fence,
+                (unsigned long long)point);
+
    int ret = drmSyncobjTimelineWait(
       w->fence->device->dev.fd, &w->fence->syncobj, &point, 1, INT64_MAX,
       DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+
+   if (getenv("D3D12AGX_DUMP_SYNC")) {
+      uint64_t now = 0;
+      drmSyncobjQuery(w->fence->device->dev.fd, &w->fence->syncobj, &now, 1);
+      mesa_logi("SYNC event wait EXIT:  fence %p value %llu ret %d "
+                "(syncobj now at %llu)",
+                (void *)w->fence, (unsigned long long)point, ret,
+                (unsigned long long)now);
+   }
 
    if (ret)
       mesa_loge("fence event wait failed: %d", ret);
