@@ -273,6 +273,44 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
+      D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT *va = data;
+      if (data_size != sizeof(*va))
+         return E_INVALIDARG;
+
+      /* AGX addresses are 64-bit; agx_bo VAs come out of a 40-bit space,
+       * and a resource cannot exceed what one allocation can cover. */
+      va->MaxGPUVirtualAddressBitsPerResource = 40;
+      va->MaxGPUVirtualAddressBitsPerProcess = 40;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_ROOT_SIGNATURE: {
+      D3D12_FEATURE_DATA_ROOT_SIGNATURE *rs = data;
+      if (data_size != sizeof(*rs))
+         return E_INVALIDARG;
+
+      /*
+       * This is a REQUEST/REPLY field: the caller writes the highest
+       * version it can use and the runtime writes back the highest it
+       * supports, capped by that. d12_root_sig parses both 1.0 and 1.1
+       * blobs (the version-2 range offset is handled there), so 1.1 is
+       * honest.
+       */
+      if (rs->HighestVersion != D3D_ROOT_SIGNATURE_VERSION_1_0 &&
+          rs->HighestVersion != D3D_ROOT_SIGNATURE_VERSION_1_1) {
+         /* An unrecognised version is refused and the field is LEFT
+          * UNTOUCHED -- the suite checks that 0 and 0xdeadbeef both come
+          * back exactly as passed. Clamping them would look like a
+          * successful negotiation of a version the caller never named. */
+         return E_INVALIDARG;
+      }
+
+      /* Both 1.0 and 1.1 parse (d12_root_sig handles the version-2 range
+       * layout), so whatever the caller can use, we support. */
+      return S_OK;
+   }
+
    case D3D12_FEATURE_FORMAT_INFO: {
       D3D12_FEATURE_DATA_FORMAT_INFO *info = data;
       if (data_size != sizeof(*info))
@@ -294,13 +332,45 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
          return S_OK;
       }
 
-      bool known = d12_format_to_pipe(info->Format) != PIPE_FORMAT_NONE ||
-                   d12_format_is_depth_stencil(info->Format);
-      if (!known)
+      /* 66 is an unassigned hole in the DXGI enum -- not a format with no
+       * planes, but no format at all, so it is refused rather than
+       * answered. */
+      if (info->Format == (DXGI_FORMAT)66)
          return E_INVALIDARG;
 
-      info->PlaneCount =
-         d12_format_stencil_plane(info->Format) != PIPE_FORMAT_NONE ? 2 : 1;
+      /*
+       * The PLANE-VIEW formats of a depth/stencil pair. These name one
+       * plane of a two-plane resource -- R32_FLOAT_X8X24_TYPELESS is its
+       * depth half, X32_TYPELESS_G8X24_UINT its stencil half -- so they
+       * describe a 2-plane format even though neither is itself a
+       * depth/stencil format this driver can allocate. They are not in
+       * d12_format_stencil_plane's table for exactly that reason, so they
+       * are listed here rather than by widening a table used for
+       * allocation.
+       */
+      switch (info->Format) {
+      case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+      case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+      case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+      case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+         info->PlaneCount = 2;
+         return S_OK;
+      default:
+         break;
+      }
+
+      /*
+       * Everything else is single-plane, INCLUDING formats this driver
+       * cannot allocate. Plane count is a property of the FORMAT, not of
+       * our support for it -- refusing the query for a format we happen not
+       * to implement was the wrong model, and the suite caught it by asking
+       * about formats we do not map and expecting 1.
+       */
+      if (d12_format_stencil_plane(info->Format) != PIPE_FORMAT_NONE)
+         info->PlaneCount = 2;
+      else
+         info->PlaneCount = 1;
+
       return S_OK;
    }
 
