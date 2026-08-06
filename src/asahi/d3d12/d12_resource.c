@@ -520,7 +520,14 @@ d12_resource_create(struct d12_device *device,
     * though it looks like faithfully echoing the request.
     */
    if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
-      res->desc.MipLevels = layout.levels ? layout.levels : 1;
+      /* Report what was ASKED for when it was explicit. ail clamps
+       * layout.levels to the natural chain, so echoing that turns a
+       * request for 10 levels on a 32x32 texture into a reported 6 --
+       * D3D12 echoes the request. Only MipLevels == 0 is ours to
+       * resolve. */
+      res->desc.MipLevels =
+         desc->MipLevels ? desc->MipLevels
+                         : (layout.levels ? layout.levels : 1);
       if (!res->desc.Alignment) {
          res->desc.Alignment =
             desc->SampleDesc.Count > 1
