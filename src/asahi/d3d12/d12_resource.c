@@ -285,8 +285,7 @@ d12_resource_create(struct d12_device *device,
        */
       enum pipe_format pipe = d12_format_to_pipe(desc->Format);
 
-      if (pipe == PIPE_FORMAT_NONE || desc->SampleDesc.Count > 1 ||
-          !desc->Width || !desc->Height) {
+      if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height) {
          mesa_loge("CreateCommittedResource: texture shape unsupported "
                    "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,
@@ -330,15 +329,20 @@ d12_resource_create(struct d12_device *device,
        * tests rely on.
        */
       unsigned levels = desc->MipLevels ? desc->MipLevels : 1;
+      unsigned samples = MAX2(desc->SampleDesc.Count, 1);
       bool blocked = util_format_get_blockwidth(pipe) > 1 ||
                      util_format_get_blockheight(pipe) > 1;
-      bool linear_ok = levels == 1 && !blocked;
+      bool linear_ok = levels == 1 && samples == 1 && !blocked;
 
       layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
-         .sample_count_sa = 1,
+         /* ail sizes a multisampled layout; the RENDER path does not
+          * support MSAA yet, which is why CreateRenderTargetView still
+          * refuses these. Allocating one is legal and is what the
+          * placement tests need. */
+         .sample_count_sa = samples,
          .levels = levels,
          .tiling = linear_ok ? AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
          .format = pipe,
@@ -380,6 +384,54 @@ d12_resource_create(struct d12_device *device,
          stencil_offset_B = heap_offset_B + size_B;
          need += stencil_layout.size_B;
       }
+
+      /*
+       * The resource's REQUIRED alignment is part of whether it fits, not
+       * just its raw size. desc->Alignment == 0 means "pick for me", which
+       * for a multisampled resource is 4 MB -- so a heap sized from a
+       * 64 KB-aligned query cannot hold it, and D3D12 refuses with
+       * E_INVALIDARG.
+       *
+       * test_placed_msaa_alignment_workaround asserts exactly that, and
+       * conditionally: it expects S_OK only from vkd3d-proton, which
+       * deliberately allows what native rejects. We are not vkd3d-proton,
+       * so the correct answer here is the refusal.
+       */
+      uint64_t required_align =
+         desc->Alignment ? desc->Alignment
+         : (desc->SampleDesc.Count > 1
+               ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
+               : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT);
+
+      /*
+       * The HEAP's alignment must be able to host the resource. A heap
+       * created with Alignment == 0 is a 64 KB heap, and a resource that
+       * requires 4 MB placement cannot go in one -- native D3D12 refuses
+       * this even when the sizes happen to work out, which they do here
+       * because the 64 KB- and 4 MB-aligned sizes of this texture
+       * coincide. Checking only the size therefore accepted a placement
+       * native rejects.
+       */
+      uint64_t heap_align = heap->desc.Alignment
+                               ? heap->desc.Alignment
+                               : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
+      if (required_align > heap_align) {
+         mesa_loge("CreatePlacedResource: resource needs %" PRIu64
+                   "-byte placement, heap provides %" PRIu64,
+                   required_align, heap_align);
+         free(res);
+         return E_INVALIDARG;
+      }
+
+      if (heap_offset_B % required_align) {
+         mesa_loge("CreatePlacedResource: offset %" PRIu64 " is not %"
+                   PRIu64 "-aligned", heap_offset_B, required_align);
+         free(res);
+         return E_INVALIDARG;
+      }
+
+      need = align64(need, required_align);
 
       if (heap_offset_B + need > heap->bo->size) {
          mesa_loge("CreatePlacedResource: %" PRIu64 " bytes at offset %"

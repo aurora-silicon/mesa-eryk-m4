@@ -761,6 +761,18 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
          !(d->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
                        D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL));
 
+      /*
+       * MSAA defaults to 4 MB placement, but an application MAY explicitly
+       * ask for the ordinary 64 KB and D3D12 honours it -- that is the
+       * "workaround" test_placed_msaa_alignment_workaround checks, and it
+       * asserts both halves: Alignment == 0 gives 4 MB, an explicit 64 KB
+       * request gives 64 KB. Treating 4 MB as mandatory refuses a legal
+       * query.
+       */
+      if (d->SampleDesc.Count > 1 &&
+          d->Alignment == D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT)
+         align = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
       /* Any other explicit request we cannot honour is refused outright.
        * The small-alignment request is decided AFTER the size is known,
        * because whether it qualifies depends on the size (below).
@@ -960,6 +972,21 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    if (!d12_format_is_renderable(view_format)) {
       mesa_loge("CreateRenderTargetView: format %d is not renderable",
                 (int)view_format);
+      slot->resource = NULL;
+      return;
+   }
+
+   /*
+    * Multisampled resources can now be ALLOCATED, because the placement
+    * queries need that, but nothing may render into one yet: the render
+    * command hardcodes samples = 1 and the tilebuffer is built for a
+    * single sample, so a draw would write with the wrong sample stride.
+    * Refusing here keeps that impossible rather than merely unlikely.
+    */
+   if (res->desc.SampleDesc.Count > 1) {
+      mesa_loge("CreateRenderTargetView: %u samples unsupported (MSAA "
+                "resources can be allocated but not rendered to)",
+                res->desc.SampleDesc.Count);
       slot->resource = NULL;
       return;
    }
