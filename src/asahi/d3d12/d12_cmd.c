@@ -63,6 +63,20 @@ d12_alloc_AddRef(ID3D12CommandAllocator *iface)
    return p_atomic_inc_return(&alloc->refcount);
 }
 
+/*
+ * Release recording storage parked by lists that were Reset while their
+ * previous submission could still have been executing. Safe only where
+ * D3D12 guarantees GPU completion: allocator Reset, and allocator destroy.
+ */
+static void
+d12_alloc_free_retired(struct d12_cmd_allocator *alloc)
+{
+   util_dynarray_foreach(&alloc->retired_bos, struct agx_bo *, bo)
+      agx_bo_unreference(&alloc->device->dev, *bo);
+
+   util_dynarray_clear(&alloc->retired_bos);
+}
+
 static ULONG STDMETHODCALLTYPE
 d12_alloc_Release(ID3D12CommandAllocator *iface)
 {
@@ -70,6 +84,8 @@ d12_alloc_Release(ID3D12CommandAllocator *iface)
    uint32_t refs = p_atomic_dec_return(&alloc->refcount);
 
    if (refs == 0) {
+      d12_alloc_free_retired(alloc);
+      util_dynarray_fini(&alloc->retired_bos);
       d12_device_release(alloc->device);
       free(alloc);
    }
@@ -125,6 +141,14 @@ d12_alloc_Reset(ID3D12CommandAllocator *iface)
                 alloc->recording_lists);
       return E_FAIL;
    }
+
+   /*
+    * THIS is the point D3D12 guarantees the GPU is finished with everything
+    * recorded from this allocator -- the application is required to have
+    * waited before calling it. Release the recording storage parked here by
+    * lists that were Reset while still in flight.
+    */
+   d12_alloc_free_retired(alloc);
 
    return S_OK;
 }
@@ -3390,6 +3414,55 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
    return S_OK;
 }
 
+/*
+ * Swap in freshly allocated recording storage, parking the submitted set on
+ * the allocator that recorded it. Returns false only on allocation failure,
+ * in which case the list keeps its existing storage untouched.
+ */
+static bool
+d12_list_take_fresh_storage(struct d12_cmd_list *list)
+{
+   struct d12_device *device = list->device;
+
+   struct agx_bo *stream =
+      agx_bo_create(&device->dev, D12_STREAM_BO_SIZE, 0, AGX_BO_WRITEBACK,
+                    "d3d12 cmdlist stream");
+   struct agx_bo *usc =
+      agx_bo_create(&device->dev, D12_USC_BO_SIZE, 0,
+                    AGX_BO_LOW_VA | AGX_BO_WRITEBACK, "d3d12 cmdlist usc");
+
+   if (!stream || !usc) {
+      if (stream)
+         agx_bo_unreference(&device->dev, stream);
+      if (usc)
+         agx_bo_unreference(&device->dev, usc);
+      mesa_loge("command list Reset: out of memory for fresh storage");
+      return false;
+   }
+
+   /*
+    * The allocator that RECORDED the in-flight commands owns them, which is
+    * not necessarily the allocator being passed to this Reset. Without an
+    * allocator to park them on -- which should not happen for a submitted
+    * list -- releasing immediately is still better than rewinding under the
+    * GPU, and is what the old code effectively did.
+    */
+   if (list->allocator) {
+      util_dynarray_append_typed(&list->allocator->retired_bos,
+                                 struct agx_bo *, list->stream_bo);
+      util_dynarray_append_typed(&list->allocator->retired_bos,
+                                 struct agx_bo *, list->usc_bo);
+   } else {
+      agx_bo_unreference(&device->dev, list->stream_bo);
+      agx_bo_unreference(&device->dev, list->usc_bo);
+   }
+
+   list->stream_bo = stream;
+   list->usc_bo = usc;
+   list->submitted = false;
+   return true;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
                ID3D12CommandAllocator *allocator,
@@ -3404,6 +3477,24 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    list->had_error = false;
    if (initial_state)
       list->pso = d12_pipeline_state_from_iface(initial_state);
+
+   /*
+    * If this recording has already been submitted, the GPU may still be
+    * reading its control stream, its USC words and its uploaded data --
+    * all of which live in stream_bo/usc_bo. D3D12 explicitly allows Reset
+    * immediately after ExecuteCommandLists, so we cannot rewind them:
+    * ID3D12CommandAllocator::Reset is where completion is guaranteed, not
+    * here. Park the old storage on the allocator that recorded it and take
+    * fresh storage.
+    *
+    * Rewinding regardless is what corrupted test_copy_queue_buffer (the
+    * readback was recorded over commands still executing) and what hung
+    * the VDM in test_render_pass_suspend_resume_opts_disabled, where one
+    * list was re-recorded 32 times and the hardware walked a control
+    * stream being rewritten beneath it.
+    */
+   if (list->submitted && !d12_list_take_fresh_storage(list))
+      return E_OUTOFMEMORY;
 
    /* Re-entering the recording state re-registers with the allocator. */
    if (list->state != D12_LIST_RECORDING) {

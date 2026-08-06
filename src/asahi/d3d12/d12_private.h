@@ -40,6 +40,7 @@
 #include "util/log.h"
 #include "util/macros.h"
 #include "util/simple_mtx.h"
+#include "util/u_dynarray.h"
 #include "util/u_atomic.h"
 
 /*
@@ -507,6 +508,19 @@ struct d12_cmd_allocator {
     * Reset must fail while any are.
     */
    unsigned recording_lists;
+
+   /*
+    * Recording storage (struct agx_bo *) belonging to lists that were Reset
+    * while their previous submission could still be executing.
+    *
+    * D3D12 lets a list be Reset immediately after ExecuteCommandLists: the
+    * ALLOCATOR owns the recorded commands, and it is the allocator the
+    * application must not reset until the GPU is done. We record into
+    * list-owned BOs, so on such a Reset the old BOs are parked here instead
+    * of being rewound under the GPU, and released at allocator Reset -- the
+    * point where D3D12 guarantees completion.
+    */
+   struct util_dynarray retired_bos;
 };
 
 enum d12_list_state {
@@ -634,6 +648,12 @@ struct d12_cmd_list {
     * no Reset between, and each execution allocates again.
     */
    bool uses_heap;
+
+   /* Set once this recording has been handed to the GPU. Reset must then
+    * take fresh storage rather than rewinding what the GPU may still be
+    * reading. Cleared when fresh storage is taken.
+    */
+   bool submitted;
 
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,

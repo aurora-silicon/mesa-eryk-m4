@@ -513,6 +513,12 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          queue->device->removed = true;
       } else {
          queue->timeline_value++;
+
+         /* The GPU now owns this recording's storage until the allocator
+          * is Reset. Reset on the list must take fresh storage rather than
+          * rewind it -- see d12_list_take_fresh_storage.
+          */
+         list->submitted = true;
          if (getenv("D3D12AGX_DUMP_SYNC")) {
             mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
                       "list %p stream_bo 0x%llx",
