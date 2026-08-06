@@ -878,6 +878,26 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    if (!desc || !desc->SizeInBytes)
       return E_INVALIDARG;
 
+   /*
+    * HEAP VALIDATION -- desc->Flags and desc->Properties were both being
+    * ignored, the same dropped-parameter shape as the resource path.
+    *
+    * Cross-adapter memory is shared with another device, so it cannot also
+    * be CPU-visible: a CUSTOM heap carrying SHARED_CROSS_ADAPTER must have
+    * CPUPageProperty NOT_AVAILABLE. test_map_texture_validation checks both
+    * halves -- WRITE_BACK is refused, NOT_AVAILABLE is accepted.
+    */
+   if ((desc->Flags & D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER) &&
+       desc->Properties.Type == D3D12_HEAP_TYPE_CUSTOM &&
+       desc->Properties.CPUPageProperty !=
+          D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
+      return E_INVALIDARG;
+
+   /* GPU_UPLOAD is a capability we do not advertise, so no heap of that
+    * type either -- matching the resource path. */
+   if (desc->Properties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD)
+      return E_INVALIDARG;
+
    struct d12_heap *heap = calloc(1, sizeof(*heap));
    if (!heap)
       return E_OUTOFMEMORY;
