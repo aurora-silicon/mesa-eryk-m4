@@ -3798,15 +3798,53 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   /*
+    * The subresource index selects WHICH mip and array slice this copy
+    * touches. Ignoring it silently addressed slice 0 every time, so an
+    * array texture read back correct data for slice 0 and slice 0's data
+    * for every other slice -- which looked exactly like a colour bug
+    * ("got green where red was expected") and sent an earlier session
+    * hunting a channel-order swap that does not exist.
+    *
+    * D3D12 packs the index as MipSlice + ArraySlice * MipLevels for a 2D
+    * array (learn.microsoft.com/en-us/windows/win32/direct3d12/subresources).
+    * The RTV path already honours slices (d12_device.c slice_offset_B); this
+    * is the same arithmetic on the copy side.
+    */
+   const UINT subresource =
+      tex_to_buf ? src->SubresourceIndex : dst->SubresourceIndex;
+   const unsigned tex_mips = MAX2(tex->desc.MipLevels, 1);
+   const unsigned mip = subresource % tex_mips;
+   const unsigned layer = subresource / tex_mips;
+
+   if (mip != 0) {
+      /* The row walk below uses the level-0 stride, so a non-zero mip would
+       * read the right slice with the wrong pitch. Refuse rather than
+       * silently corrupt.
+       */
+      mesa_loge("CopyTextureRegion: mip %u unsupported (level-0 only)", mip);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (layer >= MAX2(tex->desc.DepthOrArraySize, 1)) {
+      mesa_loge("CopyTextureRegion: array slice %u out of range (%u slices)",
+                layer, MAX2(tex->desc.DepthOrArraySize, 1));
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
    const unsigned buf_stride = fp->Footprint.RowPitch;
    const uint64_t row_bytes = (uint64_t)width * bpp;
 
-   uint64_t tex_base = tex->addr;
+   const uint64_t layer_offset_B = ail_get_layer_offset_B(&tex->layout, layer);
+   uint64_t tex_base = tex->addr + layer_offset_B;
    uint64_t buf_base = buf->addr + fp->Offset;
 
    /* Bounds: refuse rather than scribble outside either allocation. */
-   uint64_t tex_need = (uint64_t)(y0 + height - 1) * tex_stride +
+   uint64_t tex_need = layer_offset_B +
+                       (uint64_t)(y0 + height - 1) * tex_stride +
                        (uint64_t)(x0 + width) * bpp;
    uint64_t buf_need = (uint64_t)(height - 1) * buf_stride + row_bytes;
    if (tex_need > tex->bo->size || fp->Offset + buf_need > buf->bo->size) {
