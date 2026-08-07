@@ -308,17 +308,121 @@ d12_resource_GetGPUVirtualAddress(ID3D12Resource *iface)
    return res->addr;
 }
 
+struct d12_cpu_subresource {
+   uint8_t *map;
+   uint32_t x_el;
+   uint32_t y_el;
+   uint32_t width_el;
+   uint32_t height_el;
+   uint32_t blocksize_B;
+   uint32_t texture_pitch_B;
+   bool empty;
+};
+
+static HRESULT
+d12_resource_cpu_subresource(struct d12_resource *res, UINT subresource,
+                             const D3D12_BOX *box,
+                             struct d12_cpu_subresource *out)
+{
+   memset(out, 0, sizeof(*out));
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       res->heap_props.Type != D3D12_HEAP_TYPE_CUSTOM ||
+       res->heap_props.CPUPageProperty ==
+          D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE ||
+       subresource != 0)
+      return E_INVALIDARG;
+
+   const enum pipe_format format = res->layout.format;
+   const uint32_t block_width = util_format_get_blockwidth(format);
+   const uint32_t block_height = util_format_get_blockheight(format);
+   const uint32_t blocksize = util_format_get_blocksize(format);
+   const uint32_t width = res->layout.width_px;
+   const uint32_t height = res->layout.height_px;
+   const D3D12_BOX whole = {0, 0, 0, width, height, 1};
+   const D3D12_BOX *b = box ? box : &whole;
+
+   /* Coordinates must still name the resource even when the box is empty:
+    * {width,height,depth,width,height,depth} is a valid no-op, while an empty
+    * box at depth + 1 is invalid. This distinction is covered explicitly by
+    * the conformance test.
+    */
+   if (b->left > width || b->right > width || b->top > height ||
+       b->bottom > height || b->front > 1 || b->back > 1)
+      return E_INVALIDARG;
+
+   if (b->left >= b->right || b->top >= b->bottom || b->front >= b->back) {
+      out->empty = true;
+      return S_OK;
+   }
+
+   if (b->front != 0 || b->back != 1)
+      return E_INVALIDARG;
+
+   /* BC regions are expressed in pixels but copied in whole format blocks.
+    * The right/bottom edge may be the image edge; interior coordinates must
+    * be block aligned.
+    */
+   if (b->left % block_width || b->top % block_height ||
+       (b->right % block_width && b->right != width) ||
+       (b->bottom % block_height && b->bottom != height))
+      return E_INVALIDARG;
+
+   if (res->layout.tiling != AIL_TILING_LINEAR)
+      return E_INVALIDARG;
+
+   const uint32_t right_el = DIV_ROUND_UP(b->right, block_width);
+   const uint32_t bottom_el = DIV_ROUND_UP(b->bottom, block_height);
+   *out = (struct d12_cpu_subresource){
+      .map = (uint8_t *)agx_bo_map(res->bo) + res->offset_B,
+      .x_el = b->left / block_width,
+      .y_el = b->top / block_height,
+      .width_el = right_el - b->left / block_width,
+      .height_el = bottom_el - b->top / block_height,
+      .blocksize_B = blocksize,
+      .texture_pitch_B = ail_get_linear_stride_B(&res->layout, 0),
+   };
+
+   const uint64_t last =
+      (uint64_t)(out->y_el + out->height_el - 1) * out->texture_pitch_B +
+      (uint64_t)(out->x_el + out->width_el) * blocksize;
+   if (last > res->layout.size_B ||
+       res->offset_B > res->bo->size ||
+       last > res->bo->size - res->offset_B)
+      return E_INVALIDARG;
+
+   return S_OK;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_resource_WriteToSubresource(ID3D12Resource *iface, UINT dst_subresource,
                                 const D3D12_BOX *dst_box, const void *src,
                                 UINT src_row_pitch, UINT src_depth_pitch)
 {
+   (void)src_depth_pitch;
+
    struct d12_resource *res = d12_resource_from_iface(iface);
-   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+   struct d12_cpu_subresource surface;
+   HRESULT hr = d12_resource_cpu_subresource(res, dst_subresource, dst_box,
+                                             &surface);
+   if (FAILED(hr) || surface.empty)
+      return hr;
+   if (!src)
       return E_INVALIDARG;
 
-   mesa_logw("ID3D12Resource::WriteToSubresource: not implemented");
-   return E_NOTIMPL;
+   const uint64_t row_bytes =
+      (uint64_t)surface.width_el * surface.blocksize_B;
+   if (src_row_pitch < row_bytes)
+      return E_INVALIDARG;
+
+   uint8_t *dst = surface.map +
+                  (uint64_t)surface.y_el * surface.texture_pitch_B +
+                  (uint64_t)surface.x_el * surface.blocksize_B;
+   for (uint32_t y = 0; y < surface.height_el; ++y)
+      memcpy(dst + (uint64_t)y * surface.texture_pitch_B,
+             (const uint8_t *)src + (uint64_t)y * src_row_pitch, row_bytes);
+
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -327,12 +431,30 @@ d12_resource_ReadFromSubresource(ID3D12Resource *iface, void *dst,
                                  UINT src_subresource,
                                  const D3D12_BOX *src_box)
 {
+   (void)dst_depth_pitch;
+
    struct d12_resource *res = d12_resource_from_iface(iface);
-   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+   struct d12_cpu_subresource surface;
+   HRESULT hr = d12_resource_cpu_subresource(res, src_subresource, src_box,
+                                             &surface);
+   if (FAILED(hr) || surface.empty)
+      return hr;
+   if (!dst)
       return E_INVALIDARG;
 
-   mesa_logw("ID3D12Resource::ReadFromSubresource: not implemented");
-   return E_NOTIMPL;
+   const uint64_t row_bytes =
+      (uint64_t)surface.width_el * surface.blocksize_B;
+   if (dst_row_pitch < row_bytes)
+      return E_INVALIDARG;
+
+   const uint8_t *src = surface.map +
+                        (uint64_t)surface.y_el * surface.texture_pitch_B +
+                        (uint64_t)surface.x_el * surface.blocksize_B;
+   for (uint32_t y = 0; y < surface.height_el; ++y)
+      memcpy((uint8_t *)dst + (uint64_t)y * dst_row_pitch,
+             src + (uint64_t)y * surface.texture_pitch_B, row_bytes);
+
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE

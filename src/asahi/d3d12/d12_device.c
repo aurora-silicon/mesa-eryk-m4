@@ -1993,12 +1993,20 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          return;
       }
 
+      const unsigned plane = desc ? desc->Texture2D.PlaneSlice : 0;
+      if (plane > 1 || (plane == 1 && !res->stencil_bo)) {
+         mesa_loge("CreateShaderResourceView: texture plane %u unsupported",
+                   plane);
+         return;
+      }
+
       slot->kind = D12_DESC_SRV;
       slot->resource = res;
-      slot->address = res->addr;
+      slot->address = plane ? res->stencil_addr : res->addr;
       slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
                         ? desc->Format
                         : res->desc.Format;
+      slot->texture_plane = plane;
       return;
    }
 

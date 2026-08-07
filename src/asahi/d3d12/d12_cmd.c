@@ -1256,22 +1256,33 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
          continue;
 
+      const bool stencil = table[i].texture_plane == 1;
+      const struct ail_layout *layout =
+         stencil ? &res->stencil_layout : &res->layout;
+      struct agx_bo *texture_bo = stencil ? res->stencil_bo : res->bo;
+      if (!texture_bo || !layout->size_B)
+         continue;
+
       if (validate) {
-         uint64_t bo_base = res->bo->va->addr;
+         uint64_t bo_base = texture_bo->va->addr;
          if (table[i].address < bo_base ||
-             table[i].address - bo_base >= res->bo->size) {
+             table[i].address - bo_base >= texture_bo->size) {
             mesa_loge("binding validation: texture slot %u address 0x%llx "
                       "is outside resource BO 0x%llx..0x%llx", i,
                       (unsigned long long)table[i].address,
                       (unsigned long long)bo_base,
-                      (unsigned long long)(bo_base + res->bo->size));
+                      (unsigned long long)(bo_base + texture_bo->size));
             list->state = D12_LIST_ERROR;
             return false;
          }
       }
 
-      const struct ail_layout *layout = &res->layout;
-      enum pipe_format pf = layout->format;
+      /* S8 is a storage/aspect format, not the colour interpretation used by
+       * a Texture2D SRV. D3D12 exposes the stencil plane as an R8_UINT value;
+       * keep the S8 layout/address but pack the descriptor's channels and
+       * type from that view interpretation.
+       */
+      enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT : layout->format;
       const struct util_format_description *fdesc =
          util_format_description(pf);
 
@@ -1287,7 +1298,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
          cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
 
-         cfg.address = res->addr;
+         cfg.address = table[i].address;
          cfg.width = layout->width_px;
          cfg.height = layout->height_px;
          cfg.first_level = 0;
@@ -4571,24 +4582,394 @@ d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
                              agx_1d(num_bytes));
 }
 
+struct d12_copy_surface {
+   struct agx_bo *bo;
+   uint64_t base;
+   uint64_t storage_offset_B;
+   uint64_t size_B;
+   uint32_t width_px;
+   uint32_t height_px;
+   uint32_t width_el;
+   uint32_t height_el;
+   uint32_t block_width_px;
+   uint32_t block_height_px;
+   uint32_t blocksize_B;
+   uint32_t pitch_B;
+   uint32_t stride_el;
+   uint32_t tile_width_el;
+   uint32_t tile_height_el;
+   bool tiled;
+};
+
+static bool
+d12_copy_surface_check_storage(const struct d12_copy_surface *surface,
+                               const char *name)
+{
+   if (!surface->bo || surface->storage_offset_B > surface->bo->size ||
+       surface->size_B > surface->bo->size - surface->storage_offset_B) {
+      mesa_loge("CopyTextureRegion: %s surface [0x%" PRIx64
+                ", +0x%" PRIx64 ") exceeds BO size 0x%zx",
+                name, surface->storage_offset_B, surface->size_B,
+                surface->bo ? (size_t)surface->bo->size : 0);
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+d12_copy_surface_from_texture(struct d12_copy_surface *surface,
+                              struct d12_resource *res, UINT subresource,
+                              const char *name)
+{
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      mesa_loge("CopyTextureRegion: %s is not a 2D texture", name);
+      return false;
+   }
+
+   const unsigned mips = MAX2(res->desc.MipLevels, 1);
+   const unsigned layers = MAX2(res->desc.DepthOrArraySize, 1);
+   const uint64_t plane_size = (uint64_t)mips * layers;
+   const unsigned plane = subresource / plane_size;
+   const unsigned in_plane = subresource % plane_size;
+   const unsigned mip = in_plane % mips;
+   const unsigned layer = in_plane / mips;
+
+   const struct ail_layout *layout;
+   struct agx_bo *bo;
+   uint64_t plane_base;
+   if (plane == 0) {
+      layout = &res->layout;
+      bo = res->bo;
+      plane_base = res->addr;
+   } else if (plane == 1 && res->stencil_bo &&
+              res->stencil_layout.size_B) {
+      layout = &res->stencil_layout;
+      bo = res->stencil_bo;
+      plane_base = res->stencil_addr;
+   } else {
+      mesa_loge("CopyTextureRegion: %s plane %u unsupported", name, plane);
+      return false;
+   }
+
+   if (mip >= layout->levels || layer >= layout->depth_px) {
+      mesa_loge("CopyTextureRegion: %s subresource %u is out of range", name,
+                subresource);
+      return false;
+   }
+
+   const enum pipe_format format = layout->format;
+   const uint32_t width_px = u_minify(layout->width_px, mip);
+   const uint32_t height_px = u_minify(layout->height_px, mip);
+   const uint64_t offset_B = ail_get_layer_level_B(layout, layer, mip);
+   const uint64_t size_B = ail_get_level_size_B(layout, mip);
+   if (!bo || plane_base < bo->va->addr) {
+      mesa_loge("CopyTextureRegion: %s plane has invalid storage", name);
+      return false;
+   }
+
+   *surface = (struct d12_copy_surface){
+      .bo = bo,
+      .base = plane_base + offset_B,
+      .storage_offset_B = plane_base - bo->va->addr + offset_B,
+      .size_B = size_B,
+      .width_px = width_px,
+      .height_px = height_px,
+      .width_el = util_format_get_nblocksx(format, width_px),
+      .height_el = util_format_get_nblocksy(format, height_px),
+      .block_width_px = util_format_get_blockwidth(format),
+      .block_height_px = util_format_get_blockheight(format),
+      .blocksize_B = util_format_get_blocksize(format),
+      .tiled = layout->tiling != AIL_TILING_LINEAR,
+   };
+
+   if (surface->tiled) {
+      if (!ail_is_level_twiddled_uncompressed(layout, mip)) {
+         mesa_loge("CopyTextureRegion: %s uses compressed metadata", name);
+         return false;
+      }
+
+      surface->stride_el = layout->stride_el[mip];
+      surface->tile_width_el = layout->tilesize_el[mip].width_el;
+      surface->tile_height_el = layout->tilesize_el[mip].height_el;
+      if (!surface->stride_el || !surface->tile_width_el ||
+          !surface->tile_height_el) {
+         mesa_loge("CopyTextureRegion: %s has an invalid tiled layout", name);
+         return false;
+      }
+   } else {
+      surface->pitch_B = ail_get_linear_stride_B(layout, mip);
+   }
+
+   return d12_copy_surface_check_storage(surface, name);
+}
+
+static bool
+d12_copy_surface_from_footprint(
+   struct d12_copy_surface *surface, struct d12_resource *res,
+   const D3D12_PLACED_SUBRESOURCE_FOOTPRINT *placed, const char *name)
+{
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      mesa_loge("CopyTextureRegion: %s footprint is not in a buffer", name);
+      return false;
+   }
+
+   enum pipe_format format = d12_format_to_pipe(placed->Footprint.Format);
+   if (format == PIPE_FORMAT_NONE)
+      format = d12_format_depth_plane(placed->Footprint.Format);
+
+   if (format == PIPE_FORMAT_NONE || placed->Footprint.Depth != 1 ||
+       !placed->Footprint.Width || !placed->Footprint.Height) {
+      mesa_loge("CopyTextureRegion: %s has an unsupported footprint", name);
+      return false;
+   }
+
+   const uint32_t block_width = util_format_get_blockwidth(format);
+   const uint32_t block_height = util_format_get_blockheight(format);
+   const uint32_t blocksize = util_format_get_blocksize(format);
+   const uint32_t width_el =
+      util_format_get_nblocksx(format, placed->Footprint.Width);
+   const uint32_t height_el =
+      util_format_get_nblocksy(format, placed->Footprint.Height);
+   const uint64_t minimum_pitch = (uint64_t)width_el * blocksize;
+
+   if (placed->Footprint.RowPitch < minimum_pitch) {
+      mesa_loge("CopyTextureRegion: %s row pitch %u is smaller than %" PRIu64,
+                name, placed->Footprint.RowPitch, minimum_pitch);
+      return false;
+   }
+
+   const uint64_t size_B =
+      (uint64_t)(height_el - 1) * placed->Footprint.RowPitch + minimum_pitch;
+   if (placed->Offset > res->desc.Width ||
+       size_B > res->desc.Width - placed->Offset) {
+      mesa_loge("CopyTextureRegion: %s footprint exceeds its buffer", name);
+      return false;
+   }
+
+   *surface = (struct d12_copy_surface){
+      .bo = res->bo,
+      .base = res->addr + placed->Offset,
+      .storage_offset_B = res->offset_B + placed->Offset,
+      .size_B = size_B,
+      .width_px = placed->Footprint.Width,
+      .height_px = placed->Footprint.Height,
+      .width_el = width_el,
+      .height_el = height_el,
+      .block_width_px = block_width,
+      .block_height_px = block_height,
+      .blocksize_B = blocksize,
+      .pitch_B = placed->Footprint.RowPitch,
+   };
+
+   return d12_copy_surface_check_storage(surface, name);
+}
+
+static bool
+d12_copy_surface_from_location(struct d12_copy_surface *surface,
+                               const D3D12_TEXTURE_COPY_LOCATION *location,
+                               const char *name)
+{
+   struct d12_resource *res = d12_resource_from_iface(location->pResource);
+
+   if (location->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX)
+      return d12_copy_surface_from_texture(surface, res,
+                                           location->SubresourceIndex, name);
+   if (location->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT)
+      return d12_copy_surface_from_footprint(surface, res,
+                                             &location->PlacedFootprint, name);
+
+   mesa_loge("CopyTextureRegion: %s location type %u unsupported", name,
+             location->Type);
+   return false;
+}
+
+static bool
+d12_copy_element_coord(uint32_t px, uint32_t block_px, uint32_t *el,
+                       const char *name)
+{
+   if (px % block_px) {
+      mesa_loge("CopyTextureRegion: %s coordinate %u is not block aligned",
+                name, px);
+      return false;
+   }
+
+   *el = px / block_px;
+   return true;
+}
+
+static void
+d12_copy_texture_region(struct d12_cmd_list *list,
+                        const D3D12_TEXTURE_COPY_LOCATION *dst,
+                        UINT dst_x, UINT dst_y, UINT dst_z,
+                        const D3D12_TEXTURE_COPY_LOCATION *src,
+                        const D3D12_BOX *src_box)
+{
+   if (!dst || !src || !dst->pResource || !src->pResource) {
+      mesa_loge("CopyTextureRegion: null location");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (src_box && (src_box->left >= src_box->right ||
+                   src_box->top >= src_box->bottom ||
+                   src_box->front >= src_box->back))
+      return;
+
+   if (dst_z != 0 || (src_box && (src_box->front != 0 || src_box->back != 1))) {
+      mesa_loge("CopyTextureRegion: 3D copies are unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_copy_surface d, s;
+   if (!d12_copy_surface_from_location(&d, dst, "destination") ||
+       !d12_copy_surface_from_location(&s, src, "source")) {
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (d.blocksize_B != s.blocksize_B) {
+      mesa_loge("CopyTextureRegion: source/destination elements are %u/%u "
+                "bytes", s.blocksize_B, d.blocksize_B);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const uint32_t src_left = src_box ? src_box->left : 0;
+   const uint32_t src_top = src_box ? src_box->top : 0;
+   const uint32_t src_right = src_box ? src_box->right : s.width_px;
+   const uint32_t src_bottom = src_box ? src_box->bottom : s.height_px;
+   uint32_t src_x_el, src_y_el, dst_x_el, dst_y_el;
+
+   if (!d12_copy_element_coord(src_left, s.block_width_px, &src_x_el,
+                               "source x") ||
+       !d12_copy_element_coord(src_top, s.block_height_px, &src_y_el,
+                               "source y") ||
+       !d12_copy_element_coord(dst_x, d.block_width_px, &dst_x_el,
+                               "destination x") ||
+       !d12_copy_element_coord(dst_y, d.block_height_px, &dst_y_el,
+                               "destination y")) {
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const uint32_t src_right_el =
+      DIV_ROUND_UP(src_right, s.block_width_px);
+   const uint32_t src_bottom_el =
+      DIV_ROUND_UP(src_bottom, s.block_height_px);
+   if (src_right_el <= src_x_el || src_bottom_el <= src_y_el)
+      return;
+
+   const uint32_t width_el = src_right_el - src_x_el;
+   const uint32_t height_el = src_bottom_el - src_y_el;
+   if (src_right_el > s.width_el || src_bottom_el > s.height_el ||
+       width_el > d.width_el - MIN2(d.width_el, dst_x_el) ||
+       height_el > d.height_el - MIN2(d.height_el, dst_y_el)) {
+      mesa_loge("CopyTextureRegion: element rectangle is out of bounds "
+                "(src %u,%u..%u,%u of %ux%u; dst %u,%u + %ux%u of %ux%u)",
+                src_x_el, src_y_el, src_right_el, src_bottom_el,
+                s.width_el, s.height_el, dst_x_el, dst_y_el, width_el,
+                height_el, d.width_el, d.height_el);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct libagx_copy_image_args args = {
+      .dest = d.base,
+      .src = s.base,
+      .width_el = width_el,
+      .height_el = height_el,
+      .dest_x_el = dst_x_el,
+      .dest_y_el = dst_y_el,
+      .src_x_el = src_x_el,
+      .src_y_el = src_y_el,
+      .dest_pitch_B = d.pitch_B,
+      .src_pitch_B = s.pitch_B,
+      .dest_stride_el = d.stride_el,
+      .src_stride_el = s.stride_el,
+      .dest_tile_width_el = d.tile_width_el,
+      .dest_tile_height_el = d.tile_height_el,
+      .src_tile_width_el = s.tile_width_el,
+      .src_tile_height_el = s.tile_height_el,
+      .blocksize_B = s.blocksize_B,
+      .dest_tiled = d.tiled,
+      .src_tiled = s.tiled,
+   };
+
+   d12_list_dispatch_precomp(list, LIBAGX_COPY_IMAGE, &args, sizeof(args),
+                             agx_1d((uint64_t)width_el * height_el));
+}
+
 static void STDMETHODCALLTYPE
 d12_list_CopyResource(ID3D12GraphicsCommandList6 *iface, ID3D12Resource *dst,
                       ID3D12Resource *src)
 {
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING || !dst || !src)
+      return;
+
    struct d12_resource *dstr = d12_resource_from_iface(dst);
    struct d12_resource *srcr = d12_resource_from_iface(src);
 
-   if (!dst || !src)
-      return;
+   if (dstr->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+       srcr->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (dstr->desc.Width != srcr->desc.Width) {
+         mesa_loge("CopyResource: buffer sizes differ");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
 
-   if (dstr->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
-       dstr->desc.Width != srcr->desc.Width) {
-      mesa_loge("CopyResource: only equal-size buffers for now");
-      d12_cmd_list_from_iface(iface)->state = D12_LIST_ERROR;
+      d12_list_CopyBufferRegion(iface, dst, 0, src, 0, dstr->desc.Width);
       return;
    }
 
-   d12_list_CopyBufferRegion(iface, dst, 0, src, 0, dstr->desc.Width);
+   if (dstr->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       srcr->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      mesa_loge("CopyResource: resource dimensions differ or are unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   /* Invalid format-size copies are observed in shipped applications. Native
+    * implementations either ignore them or perform an implementation-defined
+    * bit copy; skipping is safe and matches vkd3d-proton's hang avoidance.
+    */
+   if (util_format_get_blocksize(dstr->layout.format) !=
+       util_format_get_blocksize(srcr->layout.format)) {
+      mesa_logw("CopyResource: ignoring incompatible texture element sizes");
+      return;
+   }
+
+   const unsigned dst_subresources =
+      MAX2(dstr->desc.MipLevels, 1) * MAX2(dstr->desc.DepthOrArraySize, 1) *
+      (dstr->stencil_bo ? 2 : 1);
+   const unsigned src_subresources =
+      MAX2(srcr->desc.MipLevels, 1) * MAX2(srcr->desc.DepthOrArraySize, 1) *
+      (srcr->stencil_bo ? 2 : 1);
+   if (dst_subresources != src_subresources) {
+      mesa_loge("CopyResource: texture subresource counts differ");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (unsigned i = 0; i < dst_subresources; ++i) {
+      D3D12_TEXTURE_COPY_LOCATION d = {
+         .pResource = dst,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = i,
+      };
+      D3D12_TEXTURE_COPY_LOCATION s = {
+         .pResource = src,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = i,
+      };
+
+      d12_copy_texture_region(list, &d, 0, 0, 0, &s, NULL);
+      if (list->state == D12_LIST_ERROR)
+         return;
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -4602,6 +4983,12 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
    if (list->state != D12_LIST_RECORDING)
       return;
 
+   if (num_rects && !rects) {
+      mesa_loge("ClearRenderTargetView: null rectangle array");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    struct d12_rtv *rtv = (struct d12_rtv *)rtv_handle.ptr;
    if (!rtv || !rtv->resource || rtv->kind != D12_DESC_RTV) {
       mesa_loge("ClearRenderTargetView: invalid RTV handle");
@@ -4610,25 +4997,108 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
    }
 
    if (num_rects != 0) {
-      mesa_loge("ClearRenderTargetView: partial-rect clears not until G4");
-      list->state = D12_LIST_ERROR;
+      struct d12_resource *res = rtv->resource;
+      struct d12_copy_surface surface;
+      if (!d12_copy_surface_from_texture(&surface, res, 0,
+                                         "partial-clear destination")) {
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      if (rtv->address < res->addr) {
+         mesa_loge("ClearRenderTargetView: RTV address precedes its resource");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const uint64_t view_offset_B = rtv->address - res->addr;
+      if (view_offset_B > res->layout.size_B ||
+          surface.size_B > res->layout.size_B - view_offset_B) {
+         mesa_loge("ClearRenderTargetView: RTV slice exceeds its resource");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      surface.base = rtv->address;
+      surface.storage_offset_B = res->offset_B + view_offset_B;
+      if (!d12_copy_surface_check_storage(&surface,
+                                          "partial-clear destination")) {
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      enum pipe_format format = d12_format_to_pipe(rtv->format);
+      if (format == PIPE_FORMAT_NONE ||
+          util_format_get_blocksize(format) != surface.blocksize_B ||
+          surface.blocksize_B > 16 || surface.block_width_px != 1 ||
+          surface.block_height_px != 1) {
+         mesa_loge("ClearRenderTargetView: partial clear format %u "
+                   "unsupported", (unsigned)rtv->format);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      union {
+         float f[4];
+         uint32_t u[4];
+         int32_t i[4];
+      } converted;
+      if (util_format_is_pure_uint(format)) {
+         for (unsigned c = 0; c < 4; ++c)
+            converted.u[c] = (uint32_t)color[c];
+      } else if (util_format_is_pure_sint(format)) {
+         for (unsigned c = 0; c < 4; ++c)
+            converted.i[c] = (int32_t)color[c];
+      } else {
+         memcpy(converted.f, color, sizeof(converted.f));
+      }
+
+      uint8_t packed[16] = {0};
+      util_format_pack_rgba(format, packed, &converted, 1);
+      uint64_t value = d12_list_upload(list, packed, surface.blocksize_B, 16);
+      if (!value)
+         return;
+
+      for (unsigned i = 0; i < num_rects; ++i) {
+         const int64_t left = MAX2((int64_t)rects[i].left, 0);
+         const int64_t top = MAX2((int64_t)rects[i].top, 0);
+         const int64_t right =
+            MIN2((int64_t)rects[i].right, (int64_t)surface.width_px);
+         const int64_t bottom =
+            MIN2((int64_t)rects[i].bottom, (int64_t)surface.height_px);
+
+         if (right <= left || bottom <= top)
+            continue;
+
+         const uint32_t width = right - left;
+         const uint32_t height = bottom - top;
+         struct libagx_fill_image_args args = {
+            .dest = surface.base,
+            .value = value,
+            .width_el = width,
+            .height_el = height,
+            .dest_x_el = left,
+            .dest_y_el = top,
+            .dest_pitch_B = surface.pitch_B,
+            .dest_stride_el = surface.stride_el,
+            .dest_tile_width_el = surface.tile_width_el,
+            .dest_tile_height_el = surface.tile_height_el,
+            .blocksize_B = surface.blocksize_B,
+            .dest_tiled = surface.tiled,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args,
+                                   sizeof(args),
+                                   agx_1d((uint64_t)width * height));
+         if (list->state == D12_LIST_ERROR)
+            return;
+      }
       return;
    }
 
    d12_list_begin_render(list, rtv, NULL, NULL, AGX_BG_CLEAR, color, true);
 }
 
-/*
- * Texture <-> buffer copy. This is how an application gets rendered pixels
- * back without knowing our internal layout, and therefore how any
- * independently written test grades our rendering.
- *
- * Both sides are linear, but their row strides differ: our textures use a
- * 64-byte-aligned stride while D3D12 footprints are 256-byte aligned. So the
- * copy runs one GPU dispatch per row. That is not the fastest possible
- * encoding, but it is correct for mismatched pitches and reuses the same
- * bounds-checked kernel as CopyBufferRegion.
- */
+/* Raw element copies cover linear placed footprints and AIL tiled texture
+ * subresources through the shared, bounds-checked path above. */
 static void STDMETHODCALLTYPE
 d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
                            const D3D12_TEXTURE_COPY_LOCATION *dst,
@@ -4641,204 +5111,9 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
    if (list->state != D12_LIST_RECORDING)
       return;
 
-   if (!dst || !src || !dst->pResource || !src->pResource) {
-      mesa_loge("CopyTextureRegion: null location");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
+   d12_copy_texture_region(list, dst, dst_x, dst_y, dst_z, src, src_box);
+   return;
 
-   if (dst_z != 0) {
-      mesa_loge("CopyTextureRegion: 3D destination offset unsupported");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   struct d12_resource *dres = d12_resource_from_iface(dst->pResource);
-   struct d12_resource *sres = d12_resource_from_iface(src->pResource);
-
-   /* Which direction? One side must be a placed footprint in a buffer and
-    * the other a texture subresource.
-    */
-   bool tex_to_buf = src->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX &&
-                     dst->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-   bool buf_to_tex = src->Type == D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT &&
-                     dst->Type == D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-
-   if (!tex_to_buf && !buf_to_tex) {
-      mesa_loge("CopyTextureRegion: only texture<->buffer placed-footprint "
-                "copies are supported");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   const D3D12_PLACED_SUBRESOURCE_FOOTPRINT *fp =
-      tex_to_buf ? &dst->PlacedFootprint : &src->PlacedFootprint;
-   struct d12_resource *tex = tex_to_buf ? sres : dres;
-   struct d12_resource *buf = tex_to_buf ? dres : sres;
-
-   if (tex->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-       buf->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
-      mesa_loge("CopyTextureRegion: expected a 2D texture and a buffer");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   /* Region: the source box if given, else the whole footprint. */
-   unsigned x0 = 0, y0 = 0;
-   unsigned width = fp->Footprint.Width, height = fp->Footprint.Height;
-   if (src_box) {
-      x0 = src_box->left;
-      y0 = src_box->top;
-      width = src_box->right - src_box->left;
-      height = src_box->bottom - src_box->top;
-   }
-
-   if (!width || !height)
-      return;
-
-   const unsigned bpp = d12_format_bytes_per_pixel(tex->desc.Format);
-   if (!bpp) {
-      mesa_loge("CopyTextureRegion: unsupported texture format");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-   /*
-    * The subresource index selects WHICH mip and array slice this copy
-    * touches. Ignoring it silently addressed slice 0 every time, so an
-    * array texture read back correct data for slice 0 and slice 0's data
-    * for every other slice -- which looked exactly like a colour bug
-    * ("got green where red was expected") and sent an earlier session
-    * hunting a channel-order swap that does not exist.
-    *
-    * D3D12 packs the index as MipSlice + ArraySlice * MipLevels for a 2D
-    * array (learn.microsoft.com/en-us/windows/win32/direct3d12/subresources).
-    * The RTV path already honours slices (d12_device.c slice_offset_B); this
-    * is the same arithmetic on the copy side.
-    */
-   const UINT subresource =
-      tex_to_buf ? src->SubresourceIndex : dst->SubresourceIndex;
-   const unsigned tex_mips = MAX2(tex->desc.MipLevels, 1);
-   const unsigned mip = subresource % tex_mips;
-   const unsigned layer = subresource / tex_mips;
-
-   if (mip != 0) {
-      /* The row walk below uses the level-0 stride, so a non-zero mip would
-       * read the right slice with the wrong pitch. Refuse rather than
-       * silently corrupt.
-       */
-      mesa_loge("CopyTextureRegion: mip %u unsupported (level-0 only)", mip);
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   if (layer >= MAX2(tex->desc.DepthOrArraySize, 1)) {
-      mesa_loge("CopyTextureRegion: array slice %u out of range (%u slices)",
-                layer, MAX2(tex->desc.DepthOrArraySize, 1));
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   const unsigned buf_stride = fp->Footprint.RowPitch;
-   const uint64_t row_bytes = (uint64_t)width * bpp;
-
-   const uint64_t layer_offset_B = ail_get_layer_offset_B(&tex->layout, layer);
-   uint64_t tex_base = tex->addr + layer_offset_B;
-   uint64_t buf_base = buf->addr + fp->Offset;
-
-   unsigned tex_x = tex_to_buf ? x0 : dst_x;
-   unsigned tex_y = tex_to_buf ? y0 : dst_y;
-   unsigned buf_x = tex_to_buf ? dst_x : x0;
-   unsigned buf_y = tex_to_buf ? dst_y : y0;
-
-   if (tex_x + width > tex->layout.width_px ||
-       tex_y + height > tex->layout.height_px) {
-      mesa_loge("CopyTextureRegion: texture rectangle exceeds the resource");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   uint64_t buf_need = (uint64_t)(buf_y + height - 1) * buf_stride +
-                       (uint64_t)(buf_x + width) * bpp;
-   if (fp->Offset + buf_need > buf->bo->size) {
-      mesa_loge("CopyTextureRegion: buffer rectangle exceeds the resource");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   if (tex->layout.tiling != AIL_TILING_LINEAR) {
-      if (!tex_to_buf || tex->layout.compressed ||
-          !ail_is_level_twiddled_uncompressed(&tex->layout, 0)) {
-         mesa_loge("CopyTextureRegion: tiled buffer-to-texture or compressed "
-                   "copies are not implemented");
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
-      const unsigned layout_bpp =
-         util_format_get_blocksize(tex->layout.format);
-      if (layout_bpp != bpp) {
-         mesa_loge("CopyTextureRegion: view/resource block-size mismatch");
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
-      if (layer_offset_B + tex->layout.layer_stride_B > tex->bo->size) {
-         mesa_loge("CopyTextureRegion: tiled layer exceeds the resource");
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
-      struct ail_tile tile = tex->layout.tilesize_el[0];
-      struct libagx_detile_args args = {
-         .dest = buf_base + (uint64_t)buf_y * buf_stride +
-                 (uint64_t)buf_x * bpp,
-         .src = tex_base,
-         .dest_pitch_B = buf_stride,
-         .width_el = width,
-         .height_el = height,
-         .src_x_el = tex_x,
-         .src_y_el = tex_y,
-         .stride_el = tex->layout.stride_el[0],
-         .tile_width_el = tile.width_el,
-         .tile_height_el = tile.height_el,
-         .blocksize_B = bpp,
-      };
-
-      d12_list_dispatch_precomp(list, LIBAGX_DETILE, &args, sizeof(args),
-                                agx_1d((uint64_t)width * height));
-      return;
-   }
-
-   const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
-
-   /* Bounds: refuse rather than scribble outside either allocation. */
-   uint64_t tex_need = layer_offset_B +
-                       (uint64_t)(tex_y + height - 1) * tex_stride +
-                       (uint64_t)(tex_x + width) * bpp;
-   if (tex_need > tex->bo->size) {
-      mesa_loge("CopyTextureRegion: region exceeds a resource");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   for (unsigned row = 0; row < height; row++) {
-      uint64_t tex_row =
-         tex_base + (uint64_t)(tex_y + row) * tex_stride +
-         (uint64_t)tex_x * bpp;
-      uint64_t buf_row = buf_base + (uint64_t)(buf_y + row) * buf_stride +
-                         (uint64_t)buf_x * bpp;
-
-      struct libagx_copy_uchar_args args = {
-         .dest = tex_to_buf ? buf_row : tex_row,
-         .src = tex_to_buf ? tex_row : buf_row,
-      };
-
-      d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
-                                agx_1d(row_bytes));
-
-      if (list->state == D12_LIST_ERROR)
-         return;
-   }
 }
 
 static void STDMETHODCALLTYPE
@@ -5083,6 +5358,59 @@ d12_list_attach_ds(struct d12_cmd_list *list,
    return true;
 }
 
+static bool
+d12_list_clear_surface_rects(struct d12_cmd_list *list,
+                             const struct d12_copy_surface *surface,
+                             const void *packed, UINT num_rects,
+                             const D3D12_RECT *rects, const char *name)
+{
+   if (!rects || surface->block_width_px != 1 ||
+       surface->block_height_px != 1 || surface->blocksize_B > 16) {
+      mesa_loge("%s: invalid rectangle or surface format", name);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   uint64_t value =
+      d12_list_upload(list, packed, surface->blocksize_B, 16);
+   if (!value)
+      return false;
+
+   for (unsigned i = 0; i < num_rects; ++i) {
+      const int64_t left = MAX2((int64_t)rects[i].left, 0);
+      const int64_t top = MAX2((int64_t)rects[i].top, 0);
+      const int64_t right =
+         MIN2((int64_t)rects[i].right, (int64_t)surface->width_px);
+      const int64_t bottom =
+         MIN2((int64_t)rects[i].bottom, (int64_t)surface->height_px);
+      if (right <= left || bottom <= top)
+         continue;
+
+      const uint32_t width = right - left;
+      const uint32_t height = bottom - top;
+      struct libagx_fill_image_args args = {
+         .dest = surface->base,
+         .value = value,
+         .width_el = width,
+         .height_el = height,
+         .dest_x_el = left,
+         .dest_y_el = top,
+         .dest_pitch_B = surface->pitch_B,
+         .dest_stride_el = surface->stride_el,
+         .dest_tile_width_el = surface->tile_width_el,
+         .dest_tile_height_el = surface->tile_height_el,
+         .blocksize_B = surface->blocksize_B,
+         .dest_tiled = surface->tiled,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args, sizeof(args),
+                                agx_1d((uint64_t)width * height));
+      if (list->state == D12_LIST_ERROR)
+         return false;
+   }
+
+   return true;
+}
+
 static void STDMETHODCALLTYPE
 d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
                                D3D12_CPU_DESCRIPTOR_HANDLE dsv_handle,
@@ -5102,13 +5430,51 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   struct d12_resource *ds = dsv->resource;
+
    if (num_rects != 0) {
-      mesa_loge("ClearDepthStencilView: partial-rect clears unsupported");
-      list->state = D12_LIST_ERROR;
+      if (flags & D3D12_CLEAR_FLAG_DEPTH) {
+         struct d12_copy_surface surface;
+         if (!d12_copy_surface_from_texture(&surface, ds, 0,
+                                            "partial depth clear")) {
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         uint32_t packed = ds->layout.format == PIPE_FORMAT_Z16_UNORM
+                              ? _mesa_float_to_unorm(depth, 16)
+                              : fui(depth);
+         if (!d12_list_clear_surface_rects(list, &surface, &packed,
+                                           num_rects, rects,
+                                           "depth clear"))
+            return;
+      }
+
+      if (flags & D3D12_CLEAR_FLAG_STENCIL) {
+         if (!ds->stencil_bo) {
+            mesa_loge("ClearDepthStencilView: stencil clear on a format "
+                      "with no stencil plane");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         struct d12_copy_surface surface;
+         const unsigned plane_subresource =
+            MAX2(ds->desc.MipLevels, 1) *
+            MAX2(ds->desc.DepthOrArraySize, 1);
+         if (!d12_copy_surface_from_texture(&surface, ds,
+                                            plane_subresource,
+                                            "partial stencil clear")) {
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+         if (!d12_list_clear_surface_rects(list, &surface, &stencil,
+                                           num_rects, rects,
+                                           "stencil clear"))
+            return;
+      }
       return;
    }
-
-   struct d12_resource *ds = dsv->resource;
 
    if (list->render_open) {
       struct d12_segment *open =
