@@ -93,6 +93,7 @@ struct d12_dxbc_relative_operand {
    enum d12_dxbc_file file;
    unsigned num_indices;
    uint32_t index[3];
+   unsigned num_components;
    unsigned sel_mode;
    uint8_t swizzle[4];
    uint8_t mask;
@@ -263,7 +264,9 @@ struct d12_dxbc_operand {
    bool index_is_relative[3];
    struct d12_dxbc_relative_operand relative[3];
 
-   /* Selection: 0 = none, 1 = one component, 2 = swizzle/mask */
+   /* Component count is bits 1:0. For four-component operands only,
+    * selection mode is the separate bits 3:2. */
+   unsigned num_components;
    unsigned sel_mode;
    uint8_t swizzle[4]; /* source form */
    uint8_t mask;       /* destination form */
@@ -430,27 +433,47 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
    uint32_t tok = p[0];
    unsigned used = 1;
 
-   out->sel_mode = tok & 0x3;
+   out->num_components = tok & 0x3;
+   out->sel_mode = (tok >> 2) & 0x3;
    unsigned sel = (tok >> 4) & 0xff;
    out->file = (tok >> 12) & 0xff;
    out->num_indices = (tok >> 20) & 0x3;
 
-   if (out->sel_mode == 1) {
-      /* One component, named by a 2-bit index. */
-      out->swizzle[0] = out->swizzle[1] = out->swizzle[2] = out->swizzle[3] =
-         sel & 0x3;
-      out->mask = 1 << (sel & 0x3);
-   } else if (out->sel_mode == 2) {
-      /* Four components: a mask when written, a swizzle when read. The
-       * two live in the same bits and are told apart by context, which
-       * is why both are filled in here. */
-      out->mask = sel & 0xf;
-      for (unsigned i = 0; i < 4; i++)
-         out->swizzle[i] = (sel >> (i * 2)) & 0x3;
-   } else {
+   if (out->num_components == 1) {
+      /* A one-component operand has no selection field. Represent it as
+       * an x scalar replicated to the vec4 register shape used here. */
+      out->swizzle[0] = out->swizzle[1] = out->swizzle[2] =
+         out->swizzle[3] = 0;
+      out->mask = 1;
+   } else if (out->num_components == 2) {
+      switch (out->sel_mode) {
+      case 0: /* destination mask */
+         out->mask = sel & 0xf;
+         for (unsigned i = 0; i < 4; i++)
+            out->swizzle[i] = i;
+         break;
+      case 1: /* source swizzle */
+         out->mask = 0xf;
+         for (unsigned i = 0; i < 4; i++)
+            out->swizzle[i] = (sel >> (i * 2)) & 0x3;
+         break;
+      case 2: { /* source select-one */
+         unsigned c = sel & 0x3;
+         out->mask = 1 << c;
+         out->swizzle[0] = out->swizzle[1] = out->swizzle[2] =
+            out->swizzle[3] = c;
+         break;
+      }
+      default:
+         return 0;
+      }
+   } else if (out->num_components == 0) {
       out->mask = 0xf;
       for (unsigned i = 0; i < 4; i++)
          out->swizzle[i] = i;
+   } else {
+      /* N-component operands are reserved in the public token format. */
+      return 0;
    }
 
    /* Extended operand token: modifiers (negate / absolute). */
@@ -466,7 +489,7 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
    }
 
    if (out->file == D12_DXBC_FILE_IMMEDIATE32) {
-      unsigned n = out->sel_mode == 1 ? 1 : 4;
+      unsigned n = out->num_components == 1 ? 1 : 4;
       if (used + n > avail)
          return 0;
       for (unsigned i = 0; i < n; i++)
@@ -508,6 +531,7 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
                .valid = true,
                .file = rel.file,
                .num_indices = rel.num_indices,
+               .num_components = rel.num_components,
                .sel_mode = rel.sel_mode,
                .mask = rel.mask,
                .neg = rel.neg,
@@ -545,6 +569,7 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
                .valid = true,
                .file = rel.file,
                .num_indices = rel.num_indices,
+               .num_components = rel.num_components,
                .sel_mode = rel.sel_mode,
                .mask = rel.mask,
                .neg = rel.neg,
@@ -724,6 +749,7 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
          struct d12_dxbc_operand rel = {
             .file = ri->file,
             .num_indices = ri->num_indices,
+            .num_components = ri->num_components,
             .sel_mode = ri->sel_mode,
             .mask = ri->mask,
             .neg = ri->neg,
