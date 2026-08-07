@@ -268,6 +268,8 @@ d12_resource_Map(ID3D12Resource *iface, UINT subresource,
     * but returning a pointer would falsely describe the opaque layout as a
     * linear byte array.  Rejections must leave the caller's sentinel alone. */
    if (res->heap_props.Type == D3D12_HEAP_TYPE_DEFAULT ||
+       res->heap_props.CPUPageProperty ==
+          D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE ||
        (data && res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER &&
         res->desc.Layout == D3D12_TEXTURE_LAYOUT_UNKNOWN))
       return E_INVALIDARG;
@@ -814,7 +816,11 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
     */
    if (!is_buffer && desc->Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR) {
       if (desc->MipLevels != 1 || desc->DepthOrArraySize != 1 ||
-          desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+          desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+          !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER) ||
+          heap_props->Type != D3D12_HEAP_TYPE_CUSTOM ||
+          heap_props->CPUPageProperty !=
+             D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
          return E_INVALIDARG;
    }
 
@@ -1062,11 +1068,15 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
     * CPUPageProperty NOT_AVAILABLE. test_map_texture_validation checks both
     * halves -- WRITE_BACK is refused, NOT_AVAILABLE is accepted.
     */
-   if ((desc->Flags & D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER) &&
-       desc->Properties.Type == D3D12_HEAP_TYPE_CUSTOM &&
-       desc->Properties.CPUPageProperty !=
-          D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
-      return E_INVALIDARG;
+   if (desc->Flags & D3D12_HEAP_FLAG_SHARED_CROSS_ADAPTER) {
+      if (desc->Properties.Type == D3D12_HEAP_TYPE_CUSTOM) {
+         if (desc->Properties.CPUPageProperty !=
+             D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
+            return E_INVALIDARG;
+      } else if (desc->Properties.Type != D3D12_HEAP_TYPE_DEFAULT) {
+         return E_INVALIDARG;
+      }
+   }
 
    /* GPU_UPLOAD is a capability we do not advertise, so no heap of that
     * type either -- matching the resource path. */
