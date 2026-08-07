@@ -1182,9 +1182,9 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
 }
 
 /* Address of a GPU-visible d12_descriptor.  SM 6.6 heap handles use the
- * globally bound resource heap.  An unbounded root range instead stores its
- * descriptor-array base in one ordinary root resource slot, which permits
- * multiple independently based tables without reserving another uniform. */
+ * globally bound resource heap.  A heap-indexed root range instead stores
+ * its descriptor-array base in one ordinary root resource slot, which
+ * permits multiple independently based tables without another uniform. */
 static nir_def *
 descriptor_address(struct trans_ctx *ctx, const struct handle_ref *h)
 {
@@ -2302,7 +2302,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             return false;
          }
 
-         if (count) {
+         bool rooted_heap = d12_binding_map_unbounded(
+            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
+
+         if (count && !rooted_heap) {
             unsigned last_slot = d12_binding_map_find(
                ctx->map, (unsigned)klass, rb->space,
                rb->lower_bound + count - 1);
@@ -2324,9 +2327,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                return false;
             }
          }
-         if (!count && !d12_binding_map_unbounded(
-                          ctx->map, (unsigned)klass, rb->space,
-                          rb->lower_bound)) {
+         if (!count && !rooted_heap) {
             trans_fail(ctx, "unbounded shader range is not backed by an "
                             "unbounded root range");
             return false;
@@ -2339,11 +2340,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          nir_def *slot_def = nir_iadd_imm(
             b, nir_u2u32(b, idx), -(int)rb->lower_bound);
 
-         if (count)
+         if (count && !rooted_heap)
             slot_def = nir_iadd_imm(b, slot_def, base_slot);
 
          ctx->handle_base[inst->result_value] = base_slot;
-         if (!count) {
+         if (rooted_heap) {
             ctx->handle_heap[inst->result_value] = 3;
             ctx->handle_kind_v[inst->result_value] = rb->kind;
             ctx->handle_stride_v[inst->result_value] = rb->stride_B;
@@ -2357,19 +2358,27 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * mistaken for base_slot + index in the finite root table. */
       for (unsigned i = 0; i < ctx->mod->num_resources; i++) {
          const struct d12_resource_binding *rb = &ctx->mod->resources[i];
-         if (rb->klass != klass || rb->id != range_id ||
-             d12_range_count(rb))
+         if (rb->klass != klass || rb->id != range_id)
+            continue;
+
+         if (!d12_binding_map_unbounded(ctx->map, (unsigned)klass,
+                                        rb->space, rb->lower_bound))
             continue;
 
          unsigned reg = (unsigned)index;
          if (reg < rb->lower_bound)
             reg = rb->lower_bound + (unsigned)index;
 
+         unsigned count = d12_range_count(rb);
+         if (count &&
+             ((uint64_t)reg >= (uint64_t)rb->lower_bound + count)) {
+            trans_fail(ctx, "resource index is outside its declared range");
+            return false;
+         }
+
          unsigned base_slot = d12_binding_map_find(
             ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
-         if (base_slot == ~0u ||
-             !d12_binding_map_unbounded(ctx->map, (unsigned)klass,
-                                        rb->space, rb->lower_bound)) {
+         if (base_slot == ~0u) {
             trans_fail(ctx, "unbounded shader range is not backed by an "
                             "unbounded root range");
             return false;
@@ -2405,6 +2414,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       struct handle_ref h;
       if (!handle_info(ctx, p[0], &h))
          return false;
+
+      if (h.rooted_heap &&
+          h.kind != D12_RES_KIND_TYPED_BUFFER &&
+          h.kind != D12_RES_KIND_RAW_BUFFER &&
+          h.kind != D12_RES_KIND_STRUCTURED_BUFFER) {
+         trans_fail(ctx, "heap-indexed texture atomics unsupported");
+         return false;
+      }
 
       uint64_t dx_op = 0;
       if (!const_uint(ctx, p[1], &dx_op)) {
@@ -2444,6 +2461,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       struct handle_ref h;
       if (!handle_info(ctx, p[0], &h))
          return false;
+
+      if (h.rooted_heap &&
+          h.kind != D12_RES_KIND_TYPED_BUFFER &&
+          h.kind != D12_RES_KIND_RAW_BUFFER &&
+          h.kind != D12_RES_KIND_STRUCTURED_BUFFER) {
+         trans_fail(ctx, "heap-indexed texture atomics unsupported");
+         return false;
+      }
 
       unsigned bits = type_bit_size(ctx->mod, inst->result_type);
       if (bits != 32 && bits != 64)
@@ -2486,6 +2511,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       struct handle_ref th, sh;
       if (!handle_info(ctx, p[0], &th) || !handle_info(ctx, p[1], &sh))
          return false;
+
+      /* Rooted buffers can directly dereference d12_descriptor, but texture
+       * and sampler instructions still address the small transient AGX heaps
+       * by slot number.  Refuse the mismatch rather than risking an
+       * out-of-range hardware descriptor fetch. */
+      if (th.rooted_heap || sh.rooted_heap) {
+         trans_fail(ctx, "heap-indexed texture sampling unsupported");
+         return false;
+      }
 
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
@@ -2743,6 +2777,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
+      if (th.rooted_heap) {
+         trans_fail(ctx, "heap-indexed resource dimensions unsupported");
+         return false;
+      }
+
       nir_def *handle = nir_bindless_image_agx(
          b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
          .desc_set = D12_UNIFORM_TEXTURES);
@@ -2894,6 +2933,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
+      if (th.rooted_heap) {
+         trans_fail(ctx, "heap-indexed texture stores unsupported");
+         return false;
+      }
+
       nir_def *cx = get_def(ctx, p[1]);
       nir_def *cy = get_def(ctx, p[2]);
       if (!cx || !cy) {
@@ -2945,6 +2989,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       struct handle_ref th;
       if (!handle_info(ctx, p[0], &th))
          return false;
+
+      if (th.rooted_heap) {
+         trans_fail(ctx, "heap-indexed texture loads unsupported");
+         return false;
+      }
 
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
@@ -3347,6 +3396,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th) || !handle_info(ctx, p[1], &sh))
          return false;
 
+      if (th.rooted_heap || sh.rooted_heap) {
+         trans_fail(ctx, "heap-indexed texture LOD queries unsupported");
+         return false;
+      }
+
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
       if (!x || !y) {
@@ -3708,6 +3762,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       if (opcode == D12_DXOP_BUFFER_STORE &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         if (h.rooted_heap) {
+            trans_fail(ctx, "heap-indexed typed buffer stores unsupported");
+            return false;
+         }
+
          /* Format conversion on write: an image store with buffer
           * dimension, mirroring the typed-load path above. Runtime
           * needs a writable (PBE) descriptor, same caveat as
@@ -3749,9 +3808,20 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       for (unsigned i = 0; i < comps; i++)
          vals[i] = get_def(ctx, p[3 + i]);
 
-      nir_push_if(b, structured_store_in_bounds(ctx, &h, get_def(ctx, p[1])));
-      nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
-      nir_pop_if(b, NULL);
+      /* Heap-backed structured views do not yet have root-plane BUFINFO,
+       * and structured_store_in_bounds() deliberately returns true for
+       * them.  Emitting a syntactic if(true) here is not harmless: DXIL's
+       * multi-block function is still in unstructured form until the final
+       * nir_lower_goto_ifs pass, and mixing a structured if into that CFG
+       * makes dominance calculation assert. */
+      if (h.heap || h.kind != D12_RES_KIND_STRUCTURED_BUFFER) {
+         nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
+      } else {
+         nir_push_if(b, structured_store_in_bounds(ctx, &h,
+                                                   get_def(ctx, p[1])));
+         nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
+         nir_pop_if(b, NULL);
+      }
       return true;
    }
 
@@ -3773,6 +3843,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def *data;
       if (opcode == D12_DXOP_BUFFER_LOAD &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         if (h.rooted_heap) {
+            trans_fail(ctx, "heap-indexed typed buffer loads unsupported");
+            return false;
+         }
+
          nir_def *tex_handle = nir_bindless_image_agx(
             b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
             .desc_set = D12_UNIFORM_TEXTURES);

@@ -1464,12 +1464,13 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
             if (klass >= D12_RES_CLASS_COUNT)
                continue;
 
-            /* An unbounded range consumes one root slot holding the GPU
-             * address of its first descriptor.  The shader indexes the
-             * coherent descriptor heap from there; enumerating an infinite
-             * register range here was the category error that previously
-             * made every bindless root signature unusable. */
-            if (range->num_descriptors == UINT32_MAX) {
+            /* An unbounded or oversized range consumes one root slot holding
+             * the GPU address of its first descriptor. The shader indexes
+             * the coherent descriptor heap from there; enumerating 64K or
+             * UINT_MAX registers into a 256-slot root table is the category
+             * error that previously made these signatures unusable. */
+            if (range->num_descriptors == UINT32_MAX ||
+                range->num_descriptors >= D12_MAX_RESOURCE_BINDINGS) {
                d12_binding_map_add_unbounded(
                   out, klass, range->space, range->base_register,
                   this_range);

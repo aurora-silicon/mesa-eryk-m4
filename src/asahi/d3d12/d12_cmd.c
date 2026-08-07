@@ -3628,9 +3628,11 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          return;
       }
 
-      if (range->num_descriptors == UINT32_MAX) {
+      if (range->num_descriptors == UINT32_MAX ||
+          d12_binding_map_unbounded(&rs->map, klass, range->space,
+                                    range->base_register)) {
          if (klass == D12_RES_SAMPLER) {
-            mesa_loge("unbounded sampler range unsupported");
+            mesa_loge("heap-indexed sampler range unsupported");
             list->state = D12_LIST_ERROR;
             return;
          }
@@ -3639,7 +3641,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             list->resource_descriptor_heap;
          if (!heap || !heap->bo ||
              heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
-            mesa_loge("unbounded descriptor table has no shader-visible "
+            mesa_loge("heap-indexed descriptor table has no shader-visible "
                       "resource heap bound");
             list->state = D12_LIST_ERROR;
             return;
@@ -3651,7 +3653,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          uintptr_t handle = (uintptr_t)slots;
          if (handle < heap_start || handle - heap_start >= heap_bytes ||
              (handle - heap_start) % sizeof(struct d12_descriptor)) {
-            mesa_loge("unbounded descriptor table handle is outside the "
+            mesa_loge("heap-indexed descriptor table handle is outside the "
                       "bound resource heap");
             list->state = D12_LIST_ERROR;
             return;
@@ -3672,7 +3674,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          if (slot == ~0u ||
              !d12_binding_map_unbounded(&rs->map, klass, range->space,
                                         range->base_register)) {
-            mesa_loge("unbounded descriptor range has no binding-map base");
+            mesa_loge("heap-indexed descriptor range has no binding-map base");
             list->state = D12_LIST_ERROR;
             return;
          }
@@ -3684,14 +3686,41 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          };
 
          if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+            size_t first = heap_index + offset;
+            size_t remaining =
+               (size_t)heap->desc.NumDescriptors - first;
+            size_t scan = MIN2(remaining, 256);
+            unsigned populated = 0, counter_ptrs = 0, invalid = 0;
+
+            for (size_t i = 0; i < scan; i++) {
+               const struct d12_descriptor *d = &heap->slots[first + i];
+               populated += d->kind != D12_DESC_NONE;
+               counter_ptrs += d->counter_address != 0;
+
+               if (d->counter_address && (d->counter_address & 3))
+                  invalid++;
+
+               if (d->resource && d->resource->bo) {
+                  uint64_t bo_base = d->resource->bo->va->addr;
+                  if (!d->address || d->address < bo_base ||
+                      d->address - bo_base >= d->resource->bo->size)
+                     invalid++;
+               }
+            }
+
             mesa_logi("binding validation: unbounded range class=%u "
                       "space=%u reg=%u root-slot=%u heap-index=%zu "
-                      "gpu=0x%llx remaining=%zu valid=1", klass,
+                      "gpu=0x%llx remaining=%zu scan=%zu populated=%u "
+                      "counters=%u invalid=%u valid=%u", klass,
                       range->space, range->base_register, slot,
-                      heap_index + offset,
+                      first,
                       (unsigned long long)resource_table[slot].address,
-                      (size_t)heap->desc.NumDescriptors -
-                         (heap_index + offset));
+                      remaining, scan, populated, counter_ptrs, invalid,
+                      invalid == 0);
+            if (invalid) {
+               list->state = D12_LIST_ERROR;
+               return;
+            }
          }
          continue;
       }
