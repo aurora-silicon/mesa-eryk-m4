@@ -67,6 +67,7 @@ d12_queue_Release(ID3D12CommandQueue *iface)
       drmSyncobjDestroy(dev->fd, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       simple_mtx_destroy(&queue->lock);
+      d12_private_data_store_destroy(&queue->private_data);
       d12_device_release(queue->device);
       free(queue);
    }
@@ -74,35 +75,8 @@ d12_queue_Release(ID3D12CommandQueue *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_queue_GetPrivateData(ID3D12CommandQueue *iface, REFGUID guid, UINT *size,
-                         void *data)
-{
-   mesa_logw("ID3D12CommandQueue::GetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_queue_SetPrivateData(ID3D12CommandQueue *iface, REFGUID guid, UINT size,
-                         const void *data)
-{
-   mesa_logw("ID3D12CommandQueue::SetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_queue_SetPrivateDataInterface(ID3D12CommandQueue *iface, REFGUID guid,
-                                  const IUnknown *data)
-{
-   mesa_logw("ID3D12CommandQueue::SetPrivateDataInterface: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_queue_SetName(ID3D12CommandQueue *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_queue, ID3D12CommandQueue,
+                                d12_queue_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_queue_GetDevice(ID3D12CommandQueue *iface, REFIID riid, void **out)
@@ -744,6 +718,7 @@ d12_queue_create(struct d12_device *device,
 
    queue->timeline_value = 0;
    simple_mtx_init(&queue->lock, mtx_plain);
+   d12_private_data_store_init(&queue->private_data);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_queue_QueryInterface(&queue->iface, riid, out);

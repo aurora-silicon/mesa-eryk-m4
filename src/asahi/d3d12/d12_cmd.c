@@ -87,6 +87,7 @@ d12_alloc_Release(ID3D12CommandAllocator *iface)
    if (refs == 0) {
       d12_alloc_free_retired(alloc);
       util_dynarray_fini(&alloc->retired_bos);
+      d12_private_data_store_destroy(&alloc->private_data);
       d12_device_release(alloc->device);
       free(alloc);
    }
@@ -94,32 +95,8 @@ d12_alloc_Release(ID3D12CommandAllocator *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_alloc_GetPrivateData(ID3D12CommandAllocator *iface, REFGUID guid,
-                         UINT *size, void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_alloc_SetPrivateData(ID3D12CommandAllocator *iface, REFGUID guid,
-                         UINT size, const void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_alloc_SetPrivateDataInterface(ID3D12CommandAllocator *iface, REFGUID guid,
-                                  const IUnknown *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_alloc_SetName(ID3D12CommandAllocator *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_alloc, ID3D12CommandAllocator,
+                                d12_cmd_allocator_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_alloc_GetDevice(ID3D12CommandAllocator *iface, REFIID riid, void **out)
@@ -196,6 +173,7 @@ d12_cmd_allocator_create(struct d12_device *device,
    alloc->refcount = 1;
    alloc->device = device;
    alloc->type = type;
+   d12_private_data_store_init(&alloc->private_data);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_alloc_QueryInterface(&alloc->iface, riid, out);
@@ -4036,6 +4014,7 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
          agx_bo_unreference(&list->device->dev, list->stream_bo);
       if (list->usc_bo)
          agx_bo_unreference(&list->device->dev, list->usc_bo);
+      d12_private_data_store_destroy(&list->private_data);
       d12_device_release(list->device);
       free(list);
    }
@@ -4043,32 +4022,8 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_list_GetPrivateData(ID3D12GraphicsCommandList6 *iface, REFGUID guid,
-                        UINT *size, void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_list_SetPrivateData(ID3D12GraphicsCommandList6 *iface, REFGUID guid,
-                        UINT size, const void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_list_SetPrivateDataInterface(ID3D12GraphicsCommandList6 *iface,
-                                 REFGUID guid, const IUnknown *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_list_SetName(ID3D12GraphicsCommandList6 *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_list, ID3D12GraphicsCommandList6,
+                                d12_cmd_list_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_list_GetDevice(ID3D12GraphicsCommandList6 *iface, REFIID riid, void **out)
@@ -5248,6 +5203,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->device = device;
    list->type = type;
    list->allocator = allocator;
+   d12_private_data_store_init(&list->private_data);
    if (allocator)
       allocator->recording_lists++;
    d12_device_add_ref(device);

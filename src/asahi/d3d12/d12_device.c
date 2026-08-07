@@ -129,6 +129,7 @@ d12_device_Release(ID3D12Device2 *iface)
 
    if (refs == 0) {
       mesa_logi("closing device %s", device->dev.name);
+      d12_private_data_store_destroy(&device->private_data);
       agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bo_unreference(&device->dev, device->rodata_bo);
       if (device->heap_bo)
@@ -153,36 +154,8 @@ d12_device_release(struct d12_device *device)
    d12_device_Release((ID3D12Device2 *)&device->iface);
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_device_GetPrivateData(ID3D12Device2 *iface, REFGUID guid, UINT *size,
-                          void *data)
-{
-   mesa_logw("ID3D12Device::GetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_device_SetPrivateData(ID3D12Device2 *iface, REFGUID guid, UINT size,
-                          const void *data)
-{
-   mesa_logw("ID3D12Device::SetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_device_SetPrivateDataInterface(ID3D12Device2 *iface, REFGUID guid,
-                                   const IUnknown *data)
-{
-   mesa_logw("ID3D12Device::SetPrivateDataInterface: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_device_SetName(ID3D12Device2 *iface, LPCWSTR name)
-{
-   /* Accepted and ignored; nothing consumes debug names yet. */
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_device, ID3D12Device2,
+                                d12_device_from_iface)
 
 /*
  * ID3D12Device
@@ -1414,16 +1387,94 @@ d12_device_CreatePlacedResource(ID3D12Device2 *iface, ID3D12Heap *heap_iface,
                                      optimized_clear, riid, out);
 }
 
+static struct d12_command_signature *
+d12_command_signature_from_iface(ID3D12CommandSignature *iface)
+{
+   return (struct d12_command_signature *)iface;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_command_signature_QueryInterface(ID3D12CommandSignature *iface,
+                                     REFIID riid, void **out)
+{
+   struct d12_command_signature *signature =
+      d12_command_signature_from_iface(iface);
+
+   if (!out)
+      return E_POINTER;
+
+   if (d12_guid_equal(riid, &IID_IUnknown) ||
+       d12_guid_equal(riid, &IID_ID3D12Object) ||
+       d12_guid_equal(riid, &IID_ID3D12DeviceChild) ||
+       d12_guid_equal(riid, &IID_ID3D12Pageable) ||
+       d12_guid_equal(riid, &IID_ID3D12CommandSignature)) {
+      p_atomic_inc(&signature->refcount);
+      *out = iface;
+      return S_OK;
+   }
+
+   d12_log_unknown_riid("ID3D12CommandSignature::QueryInterface", riid);
+   *out = NULL;
+   return E_NOINTERFACE;
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_command_signature_AddRef(ID3D12CommandSignature *iface)
+{
+   return p_atomic_inc_return(
+      &d12_command_signature_from_iface(iface)->refcount);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_command_signature_Release(ID3D12CommandSignature *iface)
+{
+   struct d12_command_signature *signature =
+      d12_command_signature_from_iface(iface);
+   uint32_t refs = p_atomic_dec_return(&signature->refcount);
+
+   if (!refs) {
+      d12_private_data_store_destroy(&signature->private_data);
+      d12_device_release(signature->device);
+      free(signature->arguments);
+      free(signature);
+   }
+
+   return refs;
+}
+
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_command_signature,
+                                ID3D12CommandSignature,
+                                d12_command_signature_from_iface)
+
+static HRESULT STDMETHODCALLTYPE
+d12_command_signature_GetDevice(ID3D12CommandSignature *iface, REFIID riid,
+                                void **out)
+{
+   struct d12_command_signature *signature =
+      d12_command_signature_from_iface(iface);
+   return ID3D12Device_QueryInterface(&signature->device->iface, riid, out);
+}
+
+static const ID3D12CommandSignatureVtbl d12_command_signature_vtbl = {
+   .QueryInterface = d12_command_signature_QueryInterface,
+   .AddRef = d12_command_signature_AddRef,
+   .Release = d12_command_signature_Release,
+   .GetPrivateData = d12_command_signature_GetPrivateData,
+   .SetPrivateData = d12_command_signature_SetPrivateData,
+   .SetPrivateDataInterface = d12_command_signature_SetPrivateDataInterface,
+   .SetName = d12_command_signature_SetName,
+   .GetDevice = d12_command_signature_GetDevice,
+};
+
 /*
- * Command signatures. ExecuteIndirect is not implemented, so a LEGAL
- * signature is honestly E_NOTIMPL -- but an ILLEGAL one must be rejected as
- * illegal first. The order matters: "we do not support this" is the wrong
- * answer to a request that no implementation would accept, and
- * test_create_command_signature checks only the refusals.
+ * Command signatures retain their validated public description even though
+ * ExecuteIndirect is not implemented yet.  This is a real pageable D3D12
+ * object, not a success-only token: COM identity, device ownership, private
+ * data, and argument lifetime all follow the ordinary object contract.
  *
- * The rule is that DRAW, DRAW_INDEXED and DISPATCH are terminal: a
- * signature containing one describes a whole indirect command, so it cannot
- * be combined with anything else, including another of its own kind.
+ * DRAW, DRAW_INDEXED and DISPATCH are terminal: a signature containing one
+ * describes a whole indirect command, so it cannot be combined with anything
+ * else, including another of its own kind.
  */
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateCommandSignature(ID3D12Device2 *iface,
@@ -1431,8 +1482,12 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
                                   ID3D12RootSignature *root_signature,
                                   REFIID riid, void **out)
 {
-   if (out)
-      *out = NULL;
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   if (!out)
+      return E_POINTER;
+
+   *out = NULL;
 
    if (!desc || !desc->NumArgumentDescs || !desc->pArgumentDescs)
       return E_INVALIDARG;
@@ -1448,9 +1503,32 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
          return E_INVALIDARG;
    }
 
-   mesa_logw("ID3D12Device::CreateCommandSignature: valid signature, but "
-             "ExecuteIndirect is not implemented");
-   return E_NOTIMPL;
+   struct d12_command_signature *signature = calloc(1, sizeof(*signature));
+   if (!signature)
+      return E_OUTOFMEMORY;
+
+   signature->arguments =
+      malloc(sizeof(*signature->arguments) * desc->NumArgumentDescs);
+   if (!signature->arguments) {
+      free(signature);
+      return E_OUTOFMEMORY;
+   }
+
+   memcpy(signature->arguments, desc->pArgumentDescs,
+          sizeof(*signature->arguments) * desc->NumArgumentDescs);
+   signature->iface.lpVtbl =
+      (ID3D12CommandSignatureVtbl *)&d12_command_signature_vtbl;
+   signature->refcount = 1;
+   signature->device = device;
+   signature->desc = *desc;
+   signature->desc.pArgumentDescs = signature->arguments;
+   d12_private_data_store_init(&signature->private_data);
+   d12_device_add_ref(device);
+
+   HRESULT hr = d12_command_signature_QueryInterface(&signature->iface, riid,
+                                                      out);
+   d12_command_signature_Release(&signature->iface);
+   return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -2574,6 +2652,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
    device->refcount = 1;
    device->feature_level = max_fl;
+   d12_private_data_store_init(&device->private_data);
 
    mesa_logi("opened %s (chip 0x%x) as D3D12 device, feature level 0x%x",
              device->dev.name, device->dev.params.chip_id,

@@ -64,6 +64,64 @@ d12_guid_equal(REFIID a, REFIID b)
 /* Log an unknown riid so we learn what callers actually want. */
 void d12_log_unknown_riid(const char *where, REFIID riid);
 
+struct d12_private_data_entry {
+   struct d12_private_data_entry *next;
+   GUID guid;
+   uint8_t *bytes;
+   UINT size;
+   IUnknown *object;
+   bool is_interface;
+};
+
+struct d12_private_data_store {
+   simple_mtx_t lock;
+   struct d12_private_data_entry *entries;
+};
+
+void d12_private_data_store_init(struct d12_private_data_store *store);
+void d12_private_data_store_destroy(struct d12_private_data_store *store);
+HRESULT d12_private_data_get(struct d12_private_data_store *store,
+                             REFGUID guid, UINT *size, void *data);
+HRESULT d12_private_data_set(struct d12_private_data_store *store,
+                             REFGUID guid, UINT size, const void *data);
+HRESULT d12_private_data_set_interface(struct d12_private_data_store *store,
+                                       REFGUID guid,
+                                       const IUnknown *object);
+HRESULT d12_private_data_set_name(struct d12_private_data_store *store,
+                                  LPCWSTR name);
+
+#define D12_DEFINE_PRIVATE_DATA_METHODS(prefix, iface_type, from_iface)       \
+   static HRESULT STDMETHODCALLTYPE                                           \
+   prefix##_GetPrivateData(iface_type *iface, REFGUID guid, UINT *size,       \
+                           void *data)                                        \
+   {                                                                          \
+      return d12_private_data_get(&from_iface(iface)->private_data, guid,     \
+                                  size, data);                                \
+   }                                                                          \
+                                                                              \
+   static HRESULT STDMETHODCALLTYPE                                           \
+   prefix##_SetPrivateData(iface_type *iface, REFGUID guid, UINT size,        \
+                           const void *data)                                  \
+   {                                                                          \
+      return d12_private_data_set(&from_iface(iface)->private_data, guid,     \
+                                  size, data);                                \
+   }                                                                          \
+                                                                              \
+   static HRESULT STDMETHODCALLTYPE                                           \
+   prefix##_SetPrivateDataInterface(iface_type *iface, REFGUID guid,          \
+                                    const IUnknown *data)                     \
+   {                                                                          \
+      return d12_private_data_set_interface(                                  \
+         &from_iface(iface)->private_data, guid, data);                       \
+   }                                                                          \
+                                                                              \
+   static HRESULT STDMETHODCALLTYPE                                           \
+   prefix##_SetName(iface_type *iface, LPCWSTR name)                          \
+   {                                                                          \
+      return d12_private_data_set_name(&from_iface(iface)->private_data,      \
+                                       name);                                 \
+   }
+
 /*
  * Backing size for NULL descriptors. 64 KiB is D3D12's maximum constant
  * buffer size, so a null CBV is covered exactly for every offset the API
@@ -82,6 +140,7 @@ void d12_log_unknown_riid(const char *where, REFIID riid);
 struct d12_device {
    ID3D12Device iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    /* The real GPU. Owned: closed on final release. */
    struct agx_device dev;
@@ -186,6 +245,7 @@ struct d12_destruction_notifier {
 struct d12_resource {
    ID3D12Resource iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_destruction_notifier destruction_notifier;
 
@@ -232,6 +292,7 @@ struct d12_resource {
 struct d12_heap {
    ID3D12Heap iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_HEAP_DESC desc;
@@ -338,6 +399,7 @@ static_assert(offsetof(struct d12_descriptor, sampler_kind) ==
 struct d12_descriptor_heap {
    ID3D12DescriptorHeap iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_DESCRIPTOR_HEAP_DESC desc;
@@ -351,6 +413,7 @@ struct d12_descriptor_heap {
 struct d12_query_heap {
    ID3D12QueryHeap iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_QUERY_HEAP_DESC desc;
@@ -403,21 +466,6 @@ struct d12_root_layout {
    D3D12_STATIC_SAMPLER_DESC1 *static_samplers;
    uint32_t num_static_samplers;
    uint32_t flags;
-};
-
-struct d12_private_data_entry {
-   struct d12_private_data_entry *next;
-   GUID guid;
-   uint8_t *bytes;
-   UINT size;
-   IUnknown *object;
-   bool is_interface;
-};
-
-/* Kept per object: private data is never shared between root signatures. */
-struct d12_private_data_store {
-   simple_mtx_t lock;
-   struct d12_private_data_entry *entries;
 };
 
 struct d12_root_signature {
@@ -510,6 +558,7 @@ struct d12_raster_state {
 struct d12_pipeline_state {
    ID3D12PipelineState iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    bool is_compute;
@@ -660,6 +709,7 @@ d12_pipeline_state_from_iface(ID3D12PipelineState *iface)
 struct d12_cmd_allocator {
    ID3D12CommandAllocator iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_COMMAND_LIST_TYPE type;
@@ -765,6 +815,7 @@ struct d12_segment {
 struct d12_cmd_list {
    ID3D12GraphicsCommandList iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_COMMAND_LIST_TYPE type;
@@ -935,6 +986,7 @@ d12_cmd_list_from_iface(void *iface)
 struct d12_fence {
    ID3D12Fence iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
 
@@ -949,6 +1001,7 @@ struct d12_fence {
 struct d12_queue {
    ID3D12CommandQueue iface; /* must be first */
    uint32_t refcount;
+   struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_COMMAND_QUEUE_DESC desc;
@@ -963,6 +1016,15 @@ struct d12_queue {
    uint32_t syncobj;
    uint64_t timeline_value;
    simple_mtx_t lock;
+};
+
+struct d12_command_signature {
+   ID3D12CommandSignature iface; /* must be first */
+   uint32_t refcount;
+   struct d12_private_data_store private_data;
+   struct d12_device *device; /* holds a device ref */
+   D3D12_COMMAND_SIGNATURE_DESC desc;
+   D3D12_INDIRECT_ARGUMENT_DESC *arguments;
 };
 
 static inline struct d12_device *

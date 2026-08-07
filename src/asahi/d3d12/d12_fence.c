@@ -55,6 +55,7 @@ d12_fence_Release(ID3D12Fence *iface)
 
    if (refs == 0) {
       drmSyncobjDestroy(fence->device->dev.fd, fence->syncobj);
+      d12_private_data_store_destroy(&fence->private_data);
       d12_device_release(fence->device);
       free(fence);
    }
@@ -62,35 +63,8 @@ d12_fence_Release(ID3D12Fence *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_fence_GetPrivateData(ID3D12Fence *iface, REFGUID guid, UINT *size,
-                         void *data)
-{
-   mesa_logw("ID3D12Fence::GetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_fence_SetPrivateData(ID3D12Fence *iface, REFGUID guid, UINT size,
-                         const void *data)
-{
-   mesa_logw("ID3D12Fence::SetPrivateData: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_fence_SetPrivateDataInterface(ID3D12Fence *iface, REFGUID guid,
-                                  const IUnknown *data)
-{
-   mesa_logw("ID3D12Fence::SetPrivateDataInterface: not implemented");
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_fence_SetName(ID3D12Fence *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_fence, ID3D12Fence,
+                                d12_fence_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_fence_GetDevice(ID3D12Fence *iface, REFIID riid, void **out)
@@ -290,6 +264,7 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    fence->iface.lpVtbl = (ID3D12FenceVtbl *)&d12_fence_vtbl;
    fence->refcount = 1;
    fence->device = device;
+   d12_private_data_store_init(&fence->private_data);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_fence_QueryInterface(&fence->iface, riid, out);

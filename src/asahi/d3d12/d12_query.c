@@ -70,6 +70,7 @@ d12_query_heap_Release(ID3D12QueryHeap *iface)
    if (refs == 0) {
       if (heap->bo)
          agx_bo_unreference(&heap->device->dev, heap->bo);
+      d12_private_data_store_destroy(&heap->private_data);
       d12_device_release(heap->device);
       free(heap);
    }
@@ -77,32 +78,8 @@ d12_query_heap_Release(ID3D12QueryHeap *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_query_heap_GetPrivateData(ID3D12QueryHeap *iface, REFGUID guid,
-                              UINT *size, void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_query_heap_SetPrivateData(ID3D12QueryHeap *iface, REFGUID guid, UINT size,
-                              const void *data)
-{
-   return S_OK;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_query_heap_SetPrivateDataInterface(ID3D12QueryHeap *iface, REFGUID guid,
-                                       const IUnknown *object)
-{
-   return S_OK;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_query_heap_SetName(ID3D12QueryHeap *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_query_heap, ID3D12QueryHeap,
+                                d12_query_heap_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_query_heap_GetDevice(ID3D12QueryHeap *iface, REFIID riid, void **out)
@@ -196,6 +173,7 @@ d12_query_heap_create(struct d12_device *device,
    memset(agx_bo_map(heap->bo), 0, allocation_size);
 
    heap->device = device;
+   d12_private_data_store_init(&heap->private_data);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_query_heap_QueryInterface(&heap->iface, riid, out);

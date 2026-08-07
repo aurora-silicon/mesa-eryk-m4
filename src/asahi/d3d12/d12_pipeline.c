@@ -80,19 +80,19 @@ d12_private_data_find(struct d12_private_data_store *store, REFGUID guid)
 static void
 d12_private_data_entry_destroy(struct d12_private_data_entry *entry)
 {
-   if (entry->is_interface)
+   if (entry->is_interface && entry->object)
       IUnknown_Release(entry->object);
    free(entry->bytes);
    free(entry);
 }
 
-static void
+void
 d12_private_data_store_init(struct d12_private_data_store *store)
 {
    simple_mtx_init(&store->lock, mtx_plain);
 }
 
-static void
+void
 d12_private_data_store_destroy(struct d12_private_data_store *store)
 {
    simple_mtx_lock(&store->lock);
@@ -132,9 +132,9 @@ d12_private_data_replace(struct d12_private_data_store *store, REFGUID guid,
    return old || replacement ? S_OK : S_FALSE;
 }
 
-static HRESULT
-d12_private_data_set_bytes(struct d12_private_data_store *store, REFGUID guid,
-                           UINT size, const void *data)
+HRESULT
+d12_private_data_set(struct d12_private_data_store *store, REFGUID guid,
+                     UINT size, const void *data)
 {
    if (!size || !data)
       return d12_private_data_replace(store, guid, NULL);
@@ -155,15 +155,10 @@ d12_private_data_set_bytes(struct d12_private_data_store *store, REFGUID guid,
    return d12_private_data_replace(store, guid, entry);
 }
 
-static HRESULT
+HRESULT
 d12_private_data_set_interface(struct d12_private_data_store *store,
                                REFGUID guid, const IUnknown *object)
 {
-   if (!object) {
-      HRESULT hr = d12_private_data_replace(store, guid, NULL);
-      return hr == S_FALSE ? S_OK : hr;
-   }
-
    struct d12_private_data_entry *entry = calloc(1, sizeof(*entry));
    if (!entry)
       return E_OUTOFMEMORY;
@@ -172,8 +167,67 @@ d12_private_data_set_interface(struct d12_private_data_store *store,
    entry->size = sizeof(entry->object);
    entry->object = (IUnknown *)object;
    entry->is_interface = true;
-   IUnknown_AddRef(entry->object);
+   if (entry->object)
+      IUnknown_AddRef(entry->object);
    return d12_private_data_replace(store, guid, entry);
+}
+
+HRESULT
+d12_private_data_get(struct d12_private_data_store *store, REFGUID guid,
+                     UINT *size, void *data)
+{
+   if (!size)
+      return E_INVALIDARG;
+
+   simple_mtx_lock(&store->lock);
+   struct d12_private_data_entry **slot = d12_private_data_find(store, guid);
+   struct d12_private_data_entry *entry = *slot;
+
+   if (!entry) {
+      *size = 0;
+      simple_mtx_unlock(&store->lock);
+      return DXGI_ERROR_NOT_FOUND;
+   }
+
+   UINT requested_size = *size;
+   *size = entry->size;
+
+   if (!data) {
+      simple_mtx_unlock(&store->lock);
+      return S_OK;
+   }
+
+   if (requested_size < entry->size) {
+      simple_mtx_unlock(&store->lock);
+      return DXGI_ERROR_MORE_DATA;
+   }
+
+   if (entry->is_interface) {
+      if (entry->object)
+         IUnknown_AddRef(entry->object);
+      *(IUnknown **)data = entry->object;
+   } else {
+      memcpy(data, entry->bytes, entry->size);
+   }
+
+   simple_mtx_unlock(&store->lock);
+   return S_OK;
+}
+
+HRESULT
+d12_private_data_set_name(struct d12_private_data_store *store, LPCWSTR name)
+{
+   /* wsl's host stub typedefs WCHAR as native wchar_t (32-bit on Linux),
+    * while the D3D12 ABI and callers use 16-bit UTF-16 code units.  Treat the
+    * incoming pointer as wire-format UTF-16; sizeof(*name) would report four
+    * and read pairs of code units at a time on this host. */
+   const uint16_t *utf16 = (const uint16_t *)name;
+   size_t length = 0;
+   while (utf16[length])
+      length++;
+
+   return d12_private_data_set(store, &WKPDID_D3DDebugObjectNameW,
+                               (length + 1) * sizeof(*utf16), utf16);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -264,73 +318,8 @@ d12_pack_static_sampler(struct d12_descriptor *out,
    d12_pack_sampler_descriptor(out, &desc);
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_root_sig_GetPrivateData(ID3D12RootSignature *iface, REFGUID guid,
-                            UINT *size, void *data)
-{
-   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
-
-   if (!size)
-      return E_INVALIDARG;
-
-   simple_mtx_lock(&rs->private_data.lock);
-   struct d12_private_data_entry **slot =
-      d12_private_data_find(&rs->private_data, guid);
-   struct d12_private_data_entry *entry = *slot;
-
-   if (!entry) {
-      *size = 0;
-      simple_mtx_unlock(&rs->private_data.lock);
-      return DXGI_ERROR_NOT_FOUND;
-   }
-
-   UINT requested_size = *size;
-   *size = entry->size;
-
-   /* A size-only query succeeds regardless of the input capacity. */
-   if (!data) {
-      simple_mtx_unlock(&rs->private_data.lock);
-      return S_OK;
-   }
-
-   if (requested_size < entry->size) {
-      simple_mtx_unlock(&rs->private_data.lock);
-      return DXGI_ERROR_MORE_DATA;
-   }
-
-   if (entry->is_interface) {
-      /* Hold the stored object while it is returned to the caller. */
-      IUnknown_AddRef(entry->object);
-      *(IUnknown **)data = entry->object;
-   } else {
-      memcpy(data, entry->bytes, entry->size);
-   }
-
-   simple_mtx_unlock(&rs->private_data.lock);
-   return S_OK;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_root_sig_SetPrivateData(ID3D12RootSignature *iface, REFGUID guid,
-                            UINT size, const void *data)
-{
-   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
-   return d12_private_data_set_bytes(&rs->private_data, guid, size, data);
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_root_sig_SetPrivateDataInterface(ID3D12RootSignature *iface, REFGUID guid,
-                                     const IUnknown *data)
-{
-   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
-   return d12_private_data_set_interface(&rs->private_data, guid, data);
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_root_sig_SetName(ID3D12RootSignature *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_root_sig, ID3D12RootSignature,
+                                d12_root_sig_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_root_sig_GetDevice(ID3D12RootSignature *iface, REFIID riid, void **out)
@@ -487,6 +476,7 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->as_bo);
       if (pso->as_setup_bo)
          agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
+      d12_private_data_store_destroy(&pso->private_data);
       d12_device_release(pso->device);
       free(pso);
    }
@@ -494,32 +484,8 @@ d12_pso_Release(ID3D12PipelineState *iface)
    return refs;
 }
 
-static HRESULT STDMETHODCALLTYPE
-d12_pso_GetPrivateData(ID3D12PipelineState *iface, REFGUID guid, UINT *size,
-                       void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_pso_SetPrivateData(ID3D12PipelineState *iface, REFGUID guid, UINT size,
-                       const void *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_pso_SetPrivateDataInterface(ID3D12PipelineState *iface, REFGUID guid,
-                                const IUnknown *data)
-{
-   return E_NOTIMPL;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_pso_SetName(ID3D12PipelineState *iface, LPCWSTR name)
-{
-   return S_OK;
-}
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_pso, ID3D12PipelineState,
+                                d12_pso_from_iface)
 
 static HRESULT STDMETHODCALLTYPE
 d12_pso_GetDevice(ID3D12PipelineState *iface, REFIID riid, void **out)
@@ -774,6 +740,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    pso->is_compute = true;
    pso->info = part.info;
    pso->code_va = pso->code_bo->va->addr;
+   d12_private_data_store_init(&pso->private_data);
    d12_device_add_ref(device);
 
    mesa_logi("compiled compute shader: %u bytes AGX, %u GPRs, main +0x%x, "
@@ -2637,6 +2604,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    pso->refcount = 1;
    pso->device = device;
    pso->is_compute = false;
+   d12_private_data_store_init(&pso->private_data);
    d12_device_add_ref(device);
 
    mesa_logi("compiled graphics pipeline: VS %u B / %u GPRs, FS %u B / %u "
