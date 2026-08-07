@@ -5124,6 +5124,20 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       return true;
    }
 
+   /*
+    * Fragment shaders with memory side effects get a synthetic depth write
+    * from agx_nir_lower_frag_sidefx. Honeykrisp sources this flag from its
+    * draw root; the Gallium AGX path uses zero when no API depth-NEVER
+    * workaround is wired. D3D12 currently has no such draw flag, so use the
+    * same conservative zero here. Leaving the AGX intrinsic intact makes
+    * NIR divergence analysis abort before compilation.
+    */
+   if (intr->intrinsic == nir_intrinsic_load_depth_never_agx) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0, 16));
+      return true;
+   }
+
    /* Driver-owned sysvals Honeykrisp reads from its root descriptor at
     * draw time. Ours are compile-time constants: with no MSAA rasterizer
     * state the API sample mask covers every sample, and with monolithic

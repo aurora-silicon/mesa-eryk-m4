@@ -1045,6 +1045,15 @@ compile_gfx_stage(struct d12_device *device,
    if (!nir)
       return false;
 
+   /*
+    * The DXIL and DXBC front ends do not gather shader-wide metadata.  In
+    * particular, fragment UAV atomics otherwise leave writes_memory false,
+    * causing AGX preprocessing to omit the side-effect lowering and compile
+    * the shader with tag writes disabled.  Honeykrisp gathers this at the
+    * same boundary, before agx_preprocess_nir.
+    */
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {
       mesa_loge("graphics shader sampler state range exceeds the 16 API "
@@ -2010,6 +2019,17 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    struct d12_pipeline_state *pso = calloc(1, sizeof(*pso));
    if (!pso)
       return E_OUTOFMEMORY;
+
+   pso->has_pixel_shader = ps_dxil && ps_size;
+   if (!pso->has_pixel_shader) {
+      /* D3D12 treats declared RTV state as inactive when there is no pixel
+       * shader. Compile the empty hardware fragment stage against a
+       * zero-colour tilebuffer; depth/stencil remains fully active.
+       */
+      rt_format = PIPE_FORMAT_NONE;
+      nr_rt = 0;
+      rt_formats = NULL;
+   }
 
    /* Depth/stencil state, resolved to hardware enums once here rather than
     * per draw. With no DSV format the tests are inert regardless of what

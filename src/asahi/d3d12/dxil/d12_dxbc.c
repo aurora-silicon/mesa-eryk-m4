@@ -219,10 +219,30 @@ enum d12_dxbc_op {
    /* Same shape, SRV rather than UAV: dest, index, offset, resource. */
    D12_DXBC_OP_LD_STRUCTURED_SRV = 167,
    D12_DXBC_OP_STORE_STRUCTURED = 168,
-   /* Non-returning UAV/TGSM atomic add. The public token enum places the
-    * atomic family at 169..181; opcode 173 is ATOMIC_IADD (SYNC is 190).
-    */
+   /* UAV/TGSM atomic family from the public SM5 token enum. */
+   D12_DXBC_OP_ATOMIC_AND = 169,
+   D12_DXBC_OP_ATOMIC_OR = 170,
+   D12_DXBC_OP_ATOMIC_XOR = 171,
+   D12_DXBC_OP_ATOMIC_CMP_STORE = 172,
    D12_DXBC_OP_ATOMIC_IADD = 173,
+   D12_DXBC_OP_ATOMIC_IMAX = 174,
+   D12_DXBC_OP_ATOMIC_IMIN = 175,
+   D12_DXBC_OP_ATOMIC_UMAX = 176,
+   D12_DXBC_OP_ATOMIC_UMIN = 177,
+   /* Append/consume counters: destination and UAV, no element coordinate. */
+   D12_DXBC_OP_IMM_ATOMIC_ALLOC = 178,
+   D12_DXBC_OP_IMM_ATOMIC_CONSUME = 179,
+   /* Value-returning forms: dest, UAV, coordinate, operands. */
+   D12_DXBC_OP_IMM_ATOMIC_IADD = 180,
+   D12_DXBC_OP_IMM_ATOMIC_AND = 181,
+   D12_DXBC_OP_IMM_ATOMIC_OR = 182,
+   D12_DXBC_OP_IMM_ATOMIC_XOR = 183,
+   D12_DXBC_OP_IMM_ATOMIC_EXCH = 184,
+   D12_DXBC_OP_IMM_ATOMIC_CMP_EXCH = 185,
+   D12_DXBC_OP_IMM_ATOMIC_IMAX = 186,
+   D12_DXBC_OP_IMM_ATOMIC_IMIN = 187,
+   D12_DXBC_OP_IMM_ATOMIC_UMAX = 188,
+   D12_DXBC_OP_IMM_ATOMIC_UMIN = 189,
    /* Both write to file 30 with three operands. 164 takes an element
     * coordinate, 166 a byte offset -- typed versus raw. */
    D12_DXBC_OP_STORE_UAV_TYPED = 164,
@@ -309,7 +329,7 @@ struct d12_dxbc_sig_elem {
 
 #define D12_DXBC_MAX_SIG 32
 
-struct d12_dxbc_cb_range {
+struct d12_dxbc_binding_range {
    uint32_t lower_bound;
    uint32_t upper_bound;
    uint32_t space;
@@ -336,7 +356,12 @@ struct d12_dxbc_ctx {
    /* SM 5.1 names constant buffers as cb<range-id>[register][row].  The
     * declaration is the only place that maps that range ID to a register
     * space and to the bounds needed for safe dynamic slot arithmetic. */
-   struct d12_dxbc_cb_range cb_range[D12_DXBC_MAX_SIG];
+   struct d12_dxbc_binding_range cb_range[D12_DXBC_MAX_SIG];
+   /* SM 5.1 UAV operands likewise carry a range ID plus an optional
+    * relative register.  Retain the declaration's bounds and space so a
+    * dynamic counter access maps into the root signature's dense slots.
+    */
+   struct d12_dxbc_binding_range uav_range[D12_DXBC_MAX_SIG];
    bool has_resinfo;
    nir_builder b;
    const uint32_t *tok;
@@ -829,7 +854,7 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       const unsigned binding_index = sm51 ? 1 : 0;
       const unsigned row_index = sm51 ? 2 : 1;
       uint32_t space = 0;
-      const struct d12_dxbc_cb_range *range = NULL;
+      const struct d12_dxbc_binding_range *range = NULL;
 
       if (sm51) {
          if (op->index_is_relative[0] ||
@@ -944,8 +969,32 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    return v;
 }
 
+static nir_def *
+uav_binding_slot(struct d12_dxbc_ctx *ctx,
+                 const struct d12_dxbc_operand *uav);
+
+/* Address through a possibly dynamic dense root-table slot. */
+static nir_def *
+buffer_address_slot(struct d12_dxbc_ctx *ctx, nir_def *slot,
+                    nir_def *index, nir_def *offset, unsigned stride)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
+   nir_def *base = nir_load_global(
+      b, 1, 64,
+      nir_iadd(b, resource_table,
+               nir_imul_imm(b, nir_u2u64(b, slot), sizeof(uint64_t))),
+      .align_mul = 8);
+
+   nir_def *byte = nir_iadd(b, nir_imul_imm(b, nir_channel(b, index, 0),
+                                            stride ? stride : 4),
+                            nir_channel(b, offset, 0));
+
+   return nir_iadd(b, base, nir_u2u64(b, byte));
+}
+
 /*
- * Address of element `index`, byte `offset`, in the structured buffer
+ * Address of element `index`, byte `offset`, in the statically named buffer
  * bound at `reg`. One indirection through the root table, exactly as the
  * constant-buffer path does.
  */
@@ -965,16 +1014,153 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
       return nir_imm_int64(b, 0);
    }
 
-   nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
-   nir_def *base = nir_load_global(
-      b, 1, 64, nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
+   return buffer_address_slot(ctx, nir_imm_int(b, slot), index, offset,
+                              stride);
+}
+
+/*
+ * All SM5 buffer atomics share the same UAV-coordinate rules. Raw buffers
+ * supply a byte offset, structured buffers supply {element, member offset},
+ * and typed buffers use a four-byte element index. Texture UAV atomics need
+ * image descriptors and stay an explicit refusal rather than being mistaken
+ * for linear memory.
+ */
+static nir_def *
+atomic_buffer_address(struct d12_dxbc_ctx *ctx,
+                      const struct d12_dxbc_operand *uav, nir_def *coord)
+{
+   nir_builder *b = &ctx->b;
+
+   if (uav->file != D12_DXBC_FILE_UAV ||
+       uav->index[0] >= D12_DXBC_MAX_SIG) {
+      fail(ctx, "atomic operand is not a declared UAV");
+      return NULL;
+   }
+
+   uint32_t reg = uav->index[0];
+   if (ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
+      fail(ctx, "texture UAV atomic unsupported");
+      return NULL;
+   }
+
+   nir_def *index = coord;
+   nir_def *offset = nir_imm_int(b, 0);
+   unsigned stride = ctx->uav_stride[reg];
+
+   if (ctx->uav_raw[reg]) {
+      index = nir_imm_int(b, 0);
+      offset = coord;
+   } else if (stride) {
+      offset = nir_channel(b, coord, 1);
+   }
+
+   nir_def *slot = uav_binding_slot(ctx, uav);
+   return slot ? buffer_address_slot(ctx, slot, index, offset, stride) : NULL;
+}
+
+/*
+ * Resolve SM 5.0 u# and SM 5.1 u<range-id>[<absolute register>] operands to
+ * the dense slot assigned by the root signature.  Every UAV access must use
+ * this resolver; treating the SM 5.1 range ID as a register aliases dynamic
+ * arrays to their first descriptor.
+ */
+static nir_def *
+uav_binding_slot(struct d12_dxbc_ctx *ctx,
+                 const struct d12_dxbc_operand *uav)
+{
+   nir_builder *b = &ctx->b;
+
+   if (uav->file != D12_DXBC_FILE_UAV ||
+       uav->index[0] >= D12_DXBC_MAX_SIG) {
+         fail(ctx, "operand is not a declared UAV");
+      return NULL;
+   }
+
+   nir_def *slot;
+   const struct d12_dxbc_binding_range *range = NULL;
+
+   if (uav->num_indices == 2) {
+      /* SM 5.1 use-site syntax is u<range-id>[<absolute register>].
+       * The second index, not the range ID, may be relative.
+       */
+      if (!ctx->uav_range[uav->index[0]].valid) {
+         fail(ctx, "SM 5.1 UAV has no declared range");
+         return NULL;
+      }
+      range = &ctx->uav_range[uav->index[0]];
+
+      unsigned first_slot =
+         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_UAV,
+                                         range->space, range->lower_bound)
+                  : range->lower_bound;
+      if (first_slot == ~0u) {
+         fail(ctx, "UAV range is not bound by the root signature");
+         return NULL;
+      }
+
+      if (ctx->map && range->upper_bound != UINT32_MAX) {
+         uint64_t count =
+            (uint64_t)range->upper_bound - range->lower_bound + 1;
+         unsigned last_slot = d12_binding_map_find(
+            ctx->map, D12_RES_UAV, range->space, range->upper_bound);
+         unsigned root_range = d12_binding_map_root_range(
+            ctx->map, D12_RES_UAV, range->space, range->lower_bound);
+
+         if (range->upper_bound < range->lower_bound ||
+             count > D12_MAX_RESOURCE_BINDINGS ||
+             last_slot != first_slot + (unsigned)count - 1 ||
+             root_range == ~0u ||
+             d12_binding_map_root_range(ctx->map, D12_RES_UAV,
+                                        range->space, range->upper_bound) !=
+                root_range) {
+            fail(ctx, "UAV array crosses root descriptor ranges");
+            return NULL;
+         }
+      }
+
+      nir_def *reg = read_operand_index(ctx, uav, 1);
+      if (!reg)
+         return NULL;
+      slot = nir_iadd_imm(b, reg,
+                         (int64_t)first_slot - range->lower_bound);
+   } else if (uav->num_indices == 1 && !uav->index_is_relative[0]) {
+      unsigned static_slot =
+         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_UAV, 0,
+                                         uav->index[0])
+                  : uav->index[0];
+      if (static_slot == ~0u) {
+         fail(ctx, "UAV is not bound by the root signature");
+         return NULL;
+      }
+      slot = nir_imm_int(b, static_slot);
+   } else {
+      fail(ctx, "unsupported UAV index shape");
+      return NULL;
+   }
+
+   return slot;
+}
+
+/*
+ * AppendStructuredBuffer/ConsumeStructuredBuffer counters are separate
+ * allocations.  Command recording publishes their addresses in the counter
+ * root plane at the same dense binding slot as the UAV resource itself.
+ */
+static nir_def *
+uav_counter_address(struct d12_dxbc_ctx *ctx,
+                    const struct d12_dxbc_operand *uav)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *slot = uav_binding_slot(ctx, uav);
+   if (!slot)
+      return NULL;
+
+   nir_def *counter_table = root_plane(ctx, D12_ROOT_COUNTER_BASE);
+   return nir_load_global(
+      b, 1, 64,
+      nir_iadd(b, counter_table,
+               nir_imul_imm(b, nir_u2u64(b, slot), sizeof(uint64_t))),
       .align_mul = 8);
-
-   nir_def *byte = nir_iadd(b, nir_imul_imm(b, nir_channel(b, index, 0),
-                                            stride ? stride : 4),
-                            nir_channel(b, offset, 0));
-
-   return nir_iadd(b, base, nir_u2u64(b, byte));
 }
 
 /*
@@ -983,6 +1169,21 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
  * backing allocation would incorrectly permit accesses beyond a smaller UAV
  * or SRV view.
  */
+static nir_def *
+buffer_element_in_bounds_slot(struct d12_dxbc_ctx *ctx, nir_def *slot,
+                              nir_def *index)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+   nir_def *count = nir_load_global(
+      b, 1, 32,
+      nir_iadd(b, bufinfo_table,
+               nir_imul_imm(b, nir_u2u64(b, slot), sizeof(uint64_t))),
+      .align_mul = 8);
+
+   return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
+}
+
 static nir_def *
 buffer_element_in_bounds(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
                          nir_def *index)
@@ -998,12 +1199,7 @@ buffer_element_in_bounds(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
       return nir_imm_false(b);
    }
 
-   nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
-   nir_def *count = nir_load_global(
-      b, 1, 32, nir_iadd_imm(b, bufinfo_table, (uint64_t)slot * 8),
-      .align_mul = 8);
-
-   return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
+   return buffer_element_in_bounds_slot(ctx, nir_imm_int(b, slot), index);
 }
 
 static void
@@ -1334,7 +1530,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
              cb.num_indices == 3 && !cb.index_is_relative[0] &&
              !cb.index_is_relative[1] && !cb.index_is_relative[2] &&
              cb.index[0] < D12_DXBC_MAX_SIG && n + 2 <= avail) {
-            ctx->cb_range[cb.index[0]] = (struct d12_dxbc_cb_range) {
+            ctx->cb_range[cb.index[0]] = (struct d12_dxbc_binding_range) {
                .lower_bound = cb.index[1],
                .upper_bound = cb.index[2],
                .space = args[n + 1],
@@ -1386,6 +1582,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
                   D12_DXBC_RESOURCE_DIMENSION_SHIFT;
             }
+
+            if (r.num_indices == 3 && !r.index_is_relative[0] &&
+                !r.index_is_relative[1] && !r.index_is_relative[2] &&
+                n + 1 <= avail) {
+               ctx->uav_range[r.index[0]] =
+                  (struct d12_dxbc_binding_range) {
+                     .lower_bound = r.index[1],
+                     .upper_bound = r.index[2],
+                     .space = args[n],
+                     .valid = true,
+                  };
+            }
          }
          ctx->tok += len;
          continue;
@@ -1409,6 +1617,19 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             else
                ctx->srv_dim[r.index[0]] =
                   D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+
+            if (opcode == D12_DXBC_OP_DCL_UAV_STRUCTURED &&
+                r.num_indices == 3 && !r.index_is_relative[0] &&
+                !r.index_is_relative[1] && !r.index_is_relative[2] &&
+                n + 2 <= avail) {
+               ctx->uav_range[r.index[0]] =
+                  (struct d12_dxbc_binding_range) {
+                     .lower_bound = r.index[1],
+                     .upper_bound = r.index[2],
+                     .space = args[n + 1],
+                     .valid = true,
+                  };
+            }
          }
          ctx->tok += len;
          continue;
@@ -1825,13 +2046,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          uint32_t reg = o[0].index[0];
          unsigned stride =
             ctx->uav_stride[reg < D12_DXBC_MAX_SIG ? reg : 0];
-         nir_def *addr = buffer_address(ctx, reg, true, SRC(1), SRC(2), stride);
+         nir_def *slot = uav_binding_slot(ctx, &o[0]);
+         if (!slot)
+            return;
+         nir_def *addr =
+            buffer_address_slot(ctx, slot, SRC(1), SRC(2), stride);
          nir_def *val = SRC(3);
          unsigned mask = o[0].mask ? o[0].mask : 0xf;
 
          /* Write the covered components individually: the mask is
           * arbitrary, and a single vectorised store would write past it. */
-         nir_push_if(b, buffer_element_in_bounds(ctx, reg, true, SRC(1)));
+         nir_push_if(b, buffer_element_in_bounds_slot(ctx, slot, SRC(1)));
          for (unsigned c = 0; c < 4; c++) {
             if (!(mask & (1 << c)))
                continue;
@@ -1943,42 +2168,116 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
-      case D12_DXBC_OP_ATOMIC_IADD: {
-         NEED(3);
+      case D12_DXBC_OP_ATOMIC_AND:
+      case D12_DXBC_OP_ATOMIC_OR:
+      case D12_DXBC_OP_ATOMIC_XOR:
+      case D12_DXBC_OP_ATOMIC_CMP_STORE:
+      case D12_DXBC_OP_ATOMIC_IADD:
+      case D12_DXBC_OP_ATOMIC_IMAX:
+      case D12_DXBC_OP_ATOMIC_IMIN:
+      case D12_DXBC_OP_ATOMIC_UMAX:
+      case D12_DXBC_OP_ATOMIC_UMIN: {
+         bool compare = opcode == D12_DXBC_OP_ATOMIC_CMP_STORE;
+         NEED(compare ? 4 : 3);
 
-         if (o[0].file != D12_DXBC_FILE_UAV ||
-             o[0].index[0] >= D12_DXBC_MAX_SIG) {
-            fail(ctx, "atomic_iadd destination is not a declared UAV");
+         nir_atomic_op op;
+         switch (opcode) {
+         case D12_DXBC_OP_ATOMIC_AND:  op = nir_atomic_op_iand; break;
+         case D12_DXBC_OP_ATOMIC_OR:   op = nir_atomic_op_ior;  break;
+         case D12_DXBC_OP_ATOMIC_XOR:  op = nir_atomic_op_ixor; break;
+         case D12_DXBC_OP_ATOMIC_IADD: op = nir_atomic_op_iadd; break;
+         case D12_DXBC_OP_ATOMIC_IMAX: op = nir_atomic_op_imax; break;
+         case D12_DXBC_OP_ATOMIC_IMIN: op = nir_atomic_op_imin; break;
+         case D12_DXBC_OP_ATOMIC_UMAX: op = nir_atomic_op_umax; break;
+         case D12_DXBC_OP_ATOMIC_UMIN: op = nir_atomic_op_umin; break;
+         default:                      op = nir_atomic_op_cmpxchg; break;
+         }
+
+         nir_def *addr = atomic_buffer_address(ctx, &o[0], SRC(1));
+         if (!addr)
             return;
+
+         if (compare) {
+            nir_global_atomic_swap(b, 32, addr,
+                                   nir_channel(b, SRC(2), 0),
+                                   nir_channel(b, SRC(3), 0),
+                                   .atomic_op = op);
+         } else {
+            nir_global_atomic(b, 32, addr, nir_channel(b, SRC(2), 0),
+                              .atomic_op = op);
+         }
+         break;
+      }
+
+      case D12_DXBC_OP_IMM_ATOMIC_IADD:
+      case D12_DXBC_OP_IMM_ATOMIC_AND:
+      case D12_DXBC_OP_IMM_ATOMIC_OR:
+      case D12_DXBC_OP_IMM_ATOMIC_XOR:
+      case D12_DXBC_OP_IMM_ATOMIC_EXCH:
+      case D12_DXBC_OP_IMM_ATOMIC_CMP_EXCH:
+      case D12_DXBC_OP_IMM_ATOMIC_IMAX:
+      case D12_DXBC_OP_IMM_ATOMIC_IMIN:
+      case D12_DXBC_OP_IMM_ATOMIC_UMAX:
+      case D12_DXBC_OP_IMM_ATOMIC_UMIN: {
+         bool compare = opcode == D12_DXBC_OP_IMM_ATOMIC_CMP_EXCH;
+         NEED(compare ? 5 : 4);
+
+         nir_atomic_op op;
+         switch (opcode) {
+         case D12_DXBC_OP_IMM_ATOMIC_IADD: op = nir_atomic_op_iadd; break;
+         case D12_DXBC_OP_IMM_ATOMIC_AND:  op = nir_atomic_op_iand; break;
+         case D12_DXBC_OP_IMM_ATOMIC_OR:   op = nir_atomic_op_ior;  break;
+         case D12_DXBC_OP_IMM_ATOMIC_XOR:  op = nir_atomic_op_ixor; break;
+         case D12_DXBC_OP_IMM_ATOMIC_EXCH: op = nir_atomic_op_xchg; break;
+         case D12_DXBC_OP_IMM_ATOMIC_IMAX: op = nir_atomic_op_imax; break;
+         case D12_DXBC_OP_IMM_ATOMIC_IMIN: op = nir_atomic_op_imin; break;
+         case D12_DXBC_OP_IMM_ATOMIC_UMAX: op = nir_atomic_op_umax; break;
+         case D12_DXBC_OP_IMM_ATOMIC_UMIN: op = nir_atomic_op_umin; break;
+         default:                          op = nir_atomic_op_cmpxchg; break;
          }
 
-         uint32_t reg = o[0].index[0];
-         if (ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
-            /* Texture UAV descriptors and addressing are not implemented;
-             * refusing the PSO is safer than treating uint2 coordinates as
-             * a linear buffer offset and atomically corrupting memory.
-             */
-            fail(ctx, "texture UAV atomic_iadd unsupported");
+         nir_def *addr = atomic_buffer_address(ctx, &o[1], SRC(2));
+         if (!addr)
             return;
+
+         nir_def *previous;
+         if (compare) {
+            previous = nir_global_atomic_swap(
+               b, 32, addr, nir_channel(b, SRC(3), 0),
+               nir_channel(b, SRC(4), 0), .atomic_op = op);
+         } else {
+            previous = nir_global_atomic(b, 32, addr,
+                                         nir_channel(b, SRC(3), 0),
+                                         .atomic_op = op);
          }
 
-         nir_def *coord = SRC(1);
-         nir_def *index = coord;
-         nir_def *offset = nir_imm_int(b, 0);
-         unsigned stride = ctx->uav_stride[reg];
+         /* DXBC temporaries are vec4 even when the destination mask names
+          * only .x. Preserve the scalar atomic result in that component
+          * without constructing an ill-typed scalar store to a vec4 var.
+          */
+         DST(nir_replicate(b, previous, 4));
+         break;
+      }
 
-         if (ctx->uav_raw[reg]) {
-            /* ByteAddressBuffer coordinates are already byte offsets. */
-            index = nir_imm_int(b, 0);
-            offset = coord;
-         } else if (stride) {
-            /* Structured coordinates carry element and member-byte offset. */
-            offset = nir_channel(b, coord, 1);
-         }
+      case D12_DXBC_OP_IMM_ATOMIC_ALLOC:
+      case D12_DXBC_OP_IMM_ATOMIC_CONSUME: {
+         /* Both instructions are {dest, UAV}.  The hardware atomic returns
+          * the pre-update value.  D3D allocation exposes that value, while
+          * consumption exposes the value after subtracting one.
+          */
+         NEED(2);
 
-         nir_def *addr = buffer_address(ctx, reg, true, index, offset, stride);
-         nir_global_atomic(b, 32, addr, nir_channel(b, SRC(2), 0),
-                           .atomic_op = nir_atomic_op_iadd);
+         nir_def *addr = uav_counter_address(ctx, &o[1]);
+         if (!addr)
+            return;
+
+         bool consume = opcode == D12_DXBC_OP_IMM_ATOMIC_CONSUME;
+         nir_def *previous =
+            nir_global_atomic(b, 32, addr,
+                              nir_imm_int(b, consume ? -1 : 1),
+                              .atomic_op = nir_atomic_op_iadd);
+         nir_def *result = consume ? nir_iadd_imm(b, previous, -1) : previous;
+         DST(nir_replicate(b, result, 4));
          break;
       }
 

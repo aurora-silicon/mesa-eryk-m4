@@ -450,6 +450,7 @@ HRESULT d12_versioned_root_signature_deserializer_create(
    const void *src, size_t size, REFIID riid, void **out);
 bool d12_root_signature_parse(const void *blob, size_t blob_size,
                               struct d12_root_layout *out);
+bool d12_root_signature_has_rts0(const void *blob, size_t blob_size);
 void d12_root_layout_cleanup(struct d12_root_layout *layout);
 unsigned d12_root_param_class(const struct d12_root_param *rp);
 unsigned d12_descriptor_range_class(D3D12_DESCRIPTOR_RANGE_TYPE type);
@@ -512,6 +513,10 @@ struct d12_pipeline_state {
 
    struct d12_device *device; /* holds a device ref */
    bool is_compute;
+   /* A null pixel shader still uses an empty hardware fragment program for
+    * depth/stencil rasterization, but it has no colour attachments or stores.
+    */
+   bool has_pixel_shader;
 
    /* Compute */
    struct agx_bo *code_bo;
@@ -879,6 +884,11 @@ struct d12_cmd_list {
     * every binding upload in this recording. See d12_list_null_buffer().
     */
    uint64_t null_buffer;
+   /* One private zeroed 32-bit counter per binding slot.  Missing UAV
+    * counters must remain mapped for robustness without aliasing each other
+    * or modifying the null resource's read-as-zero backing.
+    */
+   uint64_t null_counters;
 
    /* The bound root signatures, which are what map a root parameter index
     * to a shader register. Not referenced; the app keeps them alive.

@@ -1118,11 +1118,37 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    if (desc->Properties.Type == D3D12_HEAP_TYPE_GPU_UPLOAD)
       return E_INVALIDARG;
 
+   D3D12_HEAP_DESC resolved = *desc;
+
+   /* A zero node mask selects node 0 on this single-node device. Store the
+    * canonical spelling returned by the native runtime rather than echoing
+    * the caller's shorthand from GetDesc().
+    */
+   if (!resolved.Properties.CreationNodeMask)
+      resolved.Properties.CreationNodeMask = 1;
+   if (!resolved.Properties.VisibleNodeMask)
+      resolved.Properties.VisibleNodeMask = 1;
+
+   if (!resolved.Alignment)
+      resolved.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+
+   if (resolved.Alignment != D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT &&
+       resolved.Alignment != D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT)
+      return E_INVALIDARG;
+
+   /* ALLOW_DISPLAY heaps have platform/display ownership requirements that
+    * this driver does not implement. Refuse the capability instead of
+    * returning an ordinary private BO under a display-capable descriptor.
+    */
+   if (resolved.Flags & D3D12_HEAP_FLAG_ALLOW_DISPLAY)
+      return E_INVALIDARG;
+
    struct d12_heap *heap = calloc(1, sizeof(*heap));
    if (!heap)
       return E_OUTOFMEMORY;
 
-   heap->bo = agx_bo_create(&device->dev, desc->SizeInBytes, 0,
+   heap->bo = agx_bo_create(&device->dev, resolved.SizeInBytes,
+                            resolved.Alignment,
                             AGX_BO_WRITEBACK, "d3d12 heap");
    if (!heap->bo) {
       free(heap);
@@ -1132,7 +1158,7 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    heap->iface.lpVtbl = (ID3D12HeapVtbl *)&d12_heap_vtbl;
    heap->refcount = 1;
    heap->device = device;
-   heap->desc = *desc;
+   heap->desc = resolved;
    d12_device_add_ref(device);
 
    HRESULT hr = d12_heap_QueryInterface(&heap->iface, riid, out);

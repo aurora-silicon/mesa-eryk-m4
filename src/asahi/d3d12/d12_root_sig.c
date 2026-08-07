@@ -624,6 +624,15 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
 }
 
 bool
+d12_root_signature_has_rts0(const void *blob, size_t blob_size)
+{
+   const uint8_t *rs;
+   size_t rs_size;
+
+   return find_rts0(blob, blob_size, &rs, &rs_size);
+}
+
+bool
 d12_root_signature_parse(const void *blob, size_t blob_size,
                          struct d12_root_layout *out)
 {

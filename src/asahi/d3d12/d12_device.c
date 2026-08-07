@@ -524,16 +524,23 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
          return S_OK;
       }
 
-      /* A recognized query for a format the driver cannot map is a valid
-       * feature query with a negative answer, not a malformed request.
-       * Keep mapped-format bit reporting conservative until each usage bit
-       * is derived from the corresponding resource/view path.
+      /* Processing the query successfully is distinct from supporting any
+       * particular use of the format: Support1/Support2 are the capability
+       * answer. Keep those bits conservative until each is derived from its
+       * resource/view path, but do not report a well-formed query itself as
+       * invalid merely because the answer is "no supported uses".
+       *
+       * Values 116..129 are the reserved hole in DXGI_FORMAT. Values 133..188
+       * are the ASTC range understood by current D3D runtimes even though the
+       * public enum leaves them unnamed, so they remain valid negative
+       * queries here.
        */
-      if (d12_format_to_pipe(support->Format) == PIPE_FORMAT_NONE &&
-          !d12_format_is_depth_stencil(support->Format))
-         return E_FAIL;
+      if ((UINT)support->Format > (UINT)DXGI_FORMAT_A4B4G4R4_UNORM ||
+          (support->Format > DXGI_FORMAT_B4G4R4A4_UNORM &&
+           support->Format < DXGI_FORMAT_P208))
+         return E_INVALIDARG;
 
-      return E_INVALIDARG;
+      return S_OK;
    }
 
    case D3D12_FEATURE_FORMAT_INFO: {
@@ -705,6 +712,83 @@ d12_pso_binding_map(ID3D12RootSignature *rs)
    return rs ? &((struct d12_root_signature *)rs)->map : &empty;
 }
 
+/* The root-signature parser writes a canonical, zero-initialized layout, so
+ * comparing the populated arrays is both padding-safe and stricter than just
+ * comparing the binding map. The latter would miss flags and static-sampler
+ * state that participate in pipeline compatibility.
+ */
+static bool
+d12_root_layout_equal(const struct d12_root_layout *a,
+                      const struct d12_root_layout *b)
+{
+   if (a->num_params != b->num_params ||
+       a->num_static_samplers != b->num_static_samplers ||
+       a->flags != b->flags ||
+       memcmp(a->params, b->params, sizeof(a->params)))
+      return false;
+
+   return !a->num_static_samplers ||
+          !memcmp(a->static_samplers, b->static_samplers,
+                  a->num_static_samplers * sizeof(*a->static_samplers));
+}
+
+/* When the caller leaves pRootSignature NULL, D3D12 derives the pipeline
+ * layout from a root signature embedded in any participating shader. More
+ * than one shader may carry the signature, but all embedded copies must
+ * describe the same layout. Stages without an RTS0 part are allowed, and if
+ * no stage embeds one the existing empty-map behavior remains available to
+ * resource-free shaders.
+ */
+static HRESULT
+d12_embedded_pso_binding_map(const D3D12_SHADER_BYTECODE *const *stages,
+                             unsigned stage_count,
+                             struct d12_root_layout *owned_layout,
+                             struct d12_binding_map *owned_map,
+                             const struct d12_binding_map **out_map)
+{
+   memset(owned_layout, 0, sizeof(*owned_layout));
+   memset(owned_map, 0, sizeof(*owned_map));
+   bool found = false;
+
+   for (unsigned i = 0; i < stage_count; i++) {
+      const D3D12_SHADER_BYTECODE *stage = stages[i];
+      if (!stage || !stage->pShaderBytecode || !stage->BytecodeLength ||
+          !d12_root_signature_has_rts0(stage->pShaderBytecode,
+                                       stage->BytecodeLength))
+         continue;
+
+      struct d12_root_layout parsed;
+      if (!d12_root_signature_parse(stage->pShaderBytecode,
+                                    stage->BytecodeLength, &parsed)) {
+         d12_root_layout_cleanup(owned_layout);
+         return E_INVALIDARG;
+      }
+
+      if (!found) {
+         *owned_layout = parsed;
+         found = true;
+      } else {
+         bool matches = d12_root_layout_equal(owned_layout, &parsed);
+         d12_root_layout_cleanup(&parsed);
+         if (!matches) {
+            mesa_loge("pipeline shaders contain incompatible embedded root "
+                      "signatures");
+            d12_root_layout_cleanup(owned_layout);
+            return E_INVALIDARG;
+         }
+      }
+   }
+
+   if (found) {
+      d12_root_layout_build_map(owned_layout, owned_map);
+      *out_map = owned_map;
+   } else {
+      *out_map = d12_pso_binding_map(NULL);
+   }
+
+   return S_OK;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateComputePipelineState(
    ID3D12Device2 *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
@@ -730,12 +814,25 @@ d12_device_CreateComputePipelineState(
     * assignment. Without one there is nothing to bind resources through,
     * so a shader that declares any would resolve to no slot at all.
     */
-   const struct d12_binding_map *map =
-      d12_pso_binding_map(desc->pRootSignature);
+   const struct d12_binding_map *map;
+   struct d12_root_layout embedded_layout = {0};
+   struct d12_binding_map embedded_map = {0};
 
-   return d12_pipeline_state_create_compute(device, desc->CS.pShaderBytecode,
-                                            desc->CS.BytecodeLength, map,
-                                            riid, out);
+   if (desc->pRootSignature) {
+      map = d12_pso_binding_map(desc->pRootSignature);
+   } else {
+      const D3D12_SHADER_BYTECODE *stages[] = {&desc->CS};
+      HRESULT hr = d12_embedded_pso_binding_map(
+         stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map, &map);
+      if (FAILED(hr))
+         return hr;
+   }
+
+   HRESULT hr = d12_pipeline_state_create_compute(
+      device, desc->CS.pShaderBytecode, desc->CS.BytecodeLength, map, riid,
+      out);
+   d12_root_layout_cleanup(&embedded_layout);
+   return hr;
 }
 
 /*
@@ -874,8 +971,14 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
    const struct d12_binding_map *map = d12_pso_binding_map(st.root_sig);
 
    enum pipe_format rt_format = PIPE_FORMAT_NONE;
-   if (st.have_rt_formats && st.rt_formats.NumRenderTargets >= 1)
+   if (st.have_rt_formats && st.rt_formats.NumRenderTargets >= 1 &&
+       d12_format_is_renderable(st.rt_formats.RTFormats[0]))
       rt_format = d12_format_to_pipe(st.rt_formats.RTFormats[0]);
+
+   DXGI_FORMAT dsv_format = st.dsv_format;
+   if (dsv_format != DXGI_FORMAT_UNKNOWN &&
+       !d12_format_is_depth_stencil(dsv_format))
+      dsv_format = DXGI_FORMAT_UNKNOWN;
 
    /* A compute pipeline expressed as a stream. */
    if (st.cs && st.cs->pShaderBytecode) {
@@ -896,7 +999,7 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.as ? st.as->BytecodeLength : 0, st.ps->pShaderBytecode,
          st.ps->BytecodeLength, rt_format,
          st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
-         st.rt_formats.RTFormats, st.ds_state, st.dsv_format, st.raster,
+         st.rt_formats.RTFormats, st.ds_state, dsv_format, st.raster,
          st.blend, map, riid, out);
    }
 
@@ -912,7 +1015,7 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.ds ? st.ds->pShaderBytecode : NULL,
          st.ds ? st.ds->BytecodeLength : 0, rt_format,
          st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
-         st.rt_formats.RTFormats, st.ds_state, st.dsv_format, st.raster,
+         st.rt_formats.RTFormats, st.ds_state, dsv_format, st.raster,
          st.blend, st.input_layout, map, riid, out);
    }
 
@@ -955,25 +1058,78 @@ d12_device_CreateGraphicsPipelineState(
       return E_INVALIDARG;
    }
 
+   if (desc->NumRenderTargets > ARRAY_SIZE(desc->RTVFormats))
+      return E_INVALIDARG;
+
+   /* Logic operations use one common output-merger operation. They cannot be
+    * combined with independent per-target blend state on an active target.
+    */
+   if (desc->BlendState.IndependentBlendEnable) {
+      for (unsigned i = 0; i < desc->NumRenderTargets; i++) {
+         if (desc->BlendState.RenderTarget[i].LogicOpEnable)
+            return E_INVALIDARG;
+      }
+   }
+
+   /* Inactive RTV slots are not spare metadata storage: D3D12 requires them
+    * to retain the UNKNOWN spelling beyond NumRenderTargets.
+    */
+   for (unsigned i = desc->NumRenderTargets;
+        i < ARRAY_SIZE(desc->RTVFormats); i++) {
+      if (desc->RTVFormats[i] != DXGI_FORMAT_UNKNOWN)
+         return E_INVALIDARG;
+   }
+
+   /* Stream-output declarations are legal only when the root signature opts
+    * in. The execution path remains explicitly unsupported, but accepting a
+    * PSO that the signature itself forbids is an API validation bug.
+    */
+   if (desc->StreamOutput.NumEntries &&
+       (!desc->pRootSignature ||
+        !(((struct d12_root_signature *)desc->pRootSignature)->layout.flags &
+          D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT)))
+      return E_INVALIDARG;
+
    /* The pipeline's declared render-target format now drives the
     * tilebuffer layout instead of an assumed RGBA8.
-    */
+   */
    enum pipe_format rt_format = PIPE_FORMAT_NONE;
-   if (desc->NumRenderTargets >= 1)
+   if (desc->NumRenderTargets >= 1 &&
+       d12_format_is_renderable(desc->RTVFormats[0]))
       rt_format = d12_format_to_pipe(desc->RTVFormats[0]);
 
-   const struct d12_binding_map *map =
-      d12_pso_binding_map(desc->pRootSignature);
+   DXGI_FORMAT dsv_format = desc->DSVFormat;
+   if (dsv_format != DXGI_FORMAT_UNKNOWN &&
+       !d12_format_is_depth_stencil(dsv_format))
+      dsv_format = DXGI_FORMAT_UNKNOWN;
 
-   return d12_pipeline_state_create_graphics(
+   const struct d12_binding_map *map;
+   struct d12_root_layout embedded_layout = {0};
+   struct d12_binding_map embedded_map = {0};
+
+   if (desc->pRootSignature) {
+      map = d12_pso_binding_map(desc->pRootSignature);
+   } else {
+      const D3D12_SHADER_BYTECODE *stages[] = {
+         &desc->VS, &desc->PS, &desc->GS, &desc->HS, &desc->DS,
+      };
+      HRESULT hr = d12_embedded_pso_binding_map(
+         stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map, &map);
+      if (FAILED(hr))
+         return hr;
+   }
+
+   HRESULT hr = d12_pipeline_state_create_graphics(
       device, desc->VS.pShaderBytecode, desc->VS.BytecodeLength,
       desc->PS.pShaderBytecode, desc->PS.BytecodeLength,
       desc->GS.pShaderBytecode, desc->GS.BytecodeLength,
       desc->HS.pShaderBytecode, desc->HS.BytecodeLength,
       desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
       desc->NumRenderTargets, desc->RTVFormats, &desc->DepthStencilState,
-      desc->DSVFormat, &desc->RasterizerState, &desc->BlendState,
+      dsv_format, &desc->RasterizerState, &desc->BlendState,
       &desc->InputLayout, map, riid, out);
+   d12_root_layout_cleanup(&embedded_layout);
+   return hr;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -1776,12 +1932,11 @@ d12_device_CreateUnorderedAccessView(
    memset(slot, 0, sizeof(*slot));
 
    if (!resource) {
-      /* Same reasoning as the null SRV above. The counter shares the
-       * region: a null UAV's counter is not a real resource either, so
-       * distinct nulls aliasing it is harmless.
+      /* Same reasoning as the null SRV above.  Leave counter_address zero:
+       * command recording replaces absent counters with a distinct mapped
+       * zeroed cell per binding slot, separate from this read-as-zero region.
        */
       slot->address = device->null_va;
-      slot->counter_address = device->null_va;
       slot->size_B = D12_NULL_REGION_SIZE;
       return;
    }
@@ -1962,11 +2117,42 @@ d12_device_CreateCommittedResource(ID3D12Device2 *iface,
                                         initial_state, clear_value, riid, out);
 }
 
+static unsigned
+d12_copyable_plane_count(DXGI_FORMAT format)
+{
+   return d12_format_stencil_plane(format) != PIPE_FORMAT_NONE ? 2 : 1;
+}
+
+static enum pipe_format
+d12_copyable_plane_pipe(DXGI_FORMAT format, unsigned plane)
+{
+   if (d12_format_is_depth_stencil(format)) {
+      return plane == 0 ? d12_format_depth_plane(format)
+                        : d12_format_stencil_plane(format);
+   }
+
+   return plane == 0 ? d12_format_to_pipe(format) : PIPE_FORMAT_NONE;
+}
+
+static DXGI_FORMAT
+d12_copyable_plane_format(DXGI_FORMAT format, unsigned plane,
+                          unsigned plane_count)
+{
+   /* D3D exposes depth/stencil copies as independent typeless planes, even
+    * though the resource itself has a packed or depth-typed DXGI format.
+    */
+   if (plane_count == 2)
+      return plane == 0 ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_R8_TYPELESS;
+
+   return format;
+}
+
 /*
- * Describe how a resource's subresources sit in a buffer. This is the API's
- * own answer to row alignment, and it is what lets an application (or an
- * independently written test) copy a texture out without knowing anything
- * about our internal layout.
+ * Describe how a resource's subresources sit in a buffer.  Offsets are
+ * relative to BaseOffset, while TotalBytes is the exact span of the selected
+ * footprints and deliberately excludes that base.  Rows and depth slices
+ * include padding only between neighbours; the final row/slice ends at its
+ * real byte size.
  */
 static void STDMETHODCALLTYPE
 d12_device_GetCopyableFootprints(ID3D12Device2 *iface,
@@ -1977,55 +2163,105 @@ d12_device_GetCopyableFootprints(ID3D12Device2 *iface,
                                  UINT *num_rows, UINT64 *row_size_bytes,
                                  UINT64 *total_bytes)
 {
-   UINT64 offset = base_offset;
-   UINT64 total = 0;
+   (void)iface;
 
-   if (!desc) {
-      if (total_bytes)
-         *total_bytes = 0;
-      return;
+   if (layouts)
+      memset(layouts, 0xff, (size_t)num_subresources * sizeof(*layouts));
+   if (num_rows)
+      memset(num_rows, 0xff, (size_t)num_subresources * sizeof(*num_rows));
+   if (row_size_bytes)
+      memset(row_size_bytes, 0xff,
+             (size_t)num_subresources * sizeof(*row_size_bytes));
+
+   UINT64 total = UINT64_MAX;
+   bool buffer;
+   unsigned planes, layers, mips;
+
+   if (!desc)
+      goto out;
+
+   buffer = desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER;
+   mips = desc->MipLevels;
+   layers = desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
+               ? 1
+               : desc->DepthOrArraySize;
+   planes = buffer ? 1 : d12_copyable_plane_count(desc->Format);
+
+   /* Reject malformed resource descriptions without partially populating
+    * the caller's arrays.  D3D specifies all-ones sentinels for this void
+    * API's invalid-input result.
+    */
+   if (!desc->Width || !desc->Height || !desc->DepthOrArraySize || !mips ||
+       !desc->SampleDesc.Count ||
+       desc->Dimension < D3D12_RESOURCE_DIMENSION_BUFFER ||
+       desc->Dimension > D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+      goto out;
+
+   if (buffer) {
+      if (desc->Height != 1 || desc->DepthOrArraySize != 1 || mips != 1 ||
+          desc->Format != DXGI_FORMAT_UNKNOWN ||
+          desc->SampleDesc.Count != 1 ||
+          desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR)
+         goto out;
+   } else {
+      if (desc->Format == DXGI_FORMAT_UNKNOWN ||
+          (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+           (desc->Height != 1 || desc->SampleDesc.Count != 1)))
+         goto out;
+
+      for (unsigned plane = 0; plane < planes; plane++) {
+         if (d12_copyable_plane_pipe(desc->Format, plane) == PIPE_FORMAT_NONE)
+            goto out;
+      }
    }
+
+   uint64_t subresource_count = (uint64_t)mips * layers * planes;
+   if (first_subresource >= subresource_count ||
+       num_subresources > subresource_count - first_subresource)
+      goto out;
+
+   UINT64 offset = 0;
+   total = 0;
 
    for (UINT i = 0; i < num_subresources; i++) {
       UINT sub = first_subresource + i;
-      UINT width, height, rows, pitch;
-      UINT64 row_size;
+      unsigned mip = sub % mips;
+      unsigned plane = sub / ((uint64_t)mips * layers);
+      enum pipe_format pipe = buffer ? PIPE_FORMAT_R8_UINT
+                                     : d12_copyable_plane_pipe(desc->Format,
+                                                               plane);
+      unsigned block_w = util_format_get_blockwidth(pipe);
+      unsigned block_h = util_format_get_blockheight(pipe);
+      unsigned block_size = util_format_get_blocksize(pipe);
+      uint64_t width64 = buffer ? desc->Width : MAX2(desc->Width >> mip, 1);
+      UINT height = buffer ? 1 : MAX2(desc->Height >> mip, 1);
+      UINT depth = desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
+                      ? MAX2(desc->DepthOrArraySize >> mip, 1)
+                      : 1;
 
-      if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-         width = (UINT)desc->Width;
-         height = 1;
-         rows = 1;
-         row_size = desc->Width;
-         pitch = (UINT)ALIGN_POT(desc->Width,
-                                 D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-      } else {
-         /* The texel size is the FORMAT's, not four. This function is
-          * how an application sizes the buffer it reads a texture back
-          * into, so a wrong answer here is not a failed call -- it is a
-          * readback that overruns or interleaves rows, in the caller's
-          * own memcpy loop, with S_OK everywhere.
-          */
-         unsigned bpp = d12_format_bytes_per_pixel(desc->Format);
-         if (!bpp) {
-            mesa_loge("GetCopyableFootprints: format %d has no known texel "
-                      "size", (int)desc->Format);
-            return;
-         }
+      width64 = ALIGN_POT(width64, block_w);
+      height = ALIGN_POT(height, block_h);
+      if (width64 > UINT32_MAX)
+         goto invalid;
 
-         width = (UINT)desc->Width;
-         height = desc->Height;
-         rows = height;
-         row_size = (UINT64)width * bpp;
-         pitch = (UINT)ALIGN_POT(row_size,
-                                 D3D12_TEXTURE_DATA_PITCH_ALIGNMENT);
-      }
+      UINT width = width64;
+      UINT rows = height / block_h;
+      UINT64 row_size = (width64 / block_w) * block_size;
+      UINT row_alignment =
+         D3D12_TEXTURE_DATA_PITCH_ALIGNMENT * planes;
+      UINT64 pitch64 = ALIGN_POT(row_size, row_alignment);
+      if (pitch64 > UINT32_MAX)
+         goto invalid;
+      UINT pitch = pitch64;
 
       if (layouts) {
-         layouts[i].Offset = offset;
-         layouts[i].Footprint.Format = desc->Format;
+         layouts[i].Offset = base_offset + offset;
+         layouts[i].Footprint.Format =
+            buffer ? DXGI_FORMAT_UNKNOWN
+                   : d12_copyable_plane_format(desc->Format, plane, planes);
          layouts[i].Footprint.Width = width;
          layouts[i].Footprint.Height = height;
-         layouts[i].Footprint.Depth = 1;
+         layouts[i].Footprint.Depth = depth;
          layouts[i].Footprint.RowPitch = pitch;
       }
       if (num_rows)
@@ -2033,21 +2269,31 @@ d12_device_GetCopyableFootprints(ID3D12Device2 *iface,
       if (row_size_bytes)
          row_size_bytes[i] = row_size;
 
-      /* TotalBytes has to cover what the LAYOUT spans, including the
-       * inter-subresource padding `offset` advances by. Summing the
-       * unpadded sizes reports less than layouts[last].Offset + its size,
-       * so an application sizing an upload heap from it writes past the
-       * end of its own buffer.
-       */
-      UINT64 sub_size = (UINT64)pitch * rows;
-      offset += ALIGN_POT(sub_size, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
-      total = offset;
-
-      (void)sub;
+      UINT64 slice_size = (uint64_t)(rows - 1) * pitch + row_size;
+      UINT64 slice_stride = ALIGN_POT(slice_size, row_alignment);
+      UINT64 sub_size = (uint64_t)(depth - 1) * slice_stride + slice_size;
+      total = offset + sub_size;
+      offset = ALIGN_POT(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
    }
 
+out:
    if (total_bytes)
       *total_bytes = total;
+   return;
+
+invalid:
+   /* A late arithmetic/range failure has the same all-ones contract as an
+    * invalid descriptor; erase any earlier partial results first.
+    */
+   if (layouts)
+      memset(layouts, 0xff, (size_t)num_subresources * sizeof(*layouts));
+   if (num_rows)
+      memset(num_rows, 0xff, (size_t)num_subresources * sizeof(*num_rows));
+   if (row_size_bytes)
+      memset(row_size_bytes, 0xff,
+             (size_t)num_subresources * sizeof(*row_size_bytes));
+   total = UINT64_MAX;
+   goto out;
 }
 
 static HRESULT STDMETHODCALLTYPE

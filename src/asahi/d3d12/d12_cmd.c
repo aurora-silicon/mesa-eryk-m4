@@ -268,6 +268,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
     * the old address is about to be handed out to somebody else.
     */
    list->null_buffer = 0;
+   list->null_counters = 0;
 }
 
 /* Upload a data blob into the top of the stream BO; returns its GPU VA. */
@@ -348,6 +349,17 @@ d12_list_null_buffer(struct d12_cmd_list *list)
       list->null_buffer = d12_list_upload_zero(list, 64 * 1024, 16);
 
    return list->null_buffer;
+}
+
+static uint64_t
+d12_list_null_counters(struct d12_cmd_list *list)
+{
+   if (!list->null_counters) {
+      list->null_counters = d12_list_upload_zero(
+         list, D12_MAX_RESOURCE_BINDINGS * sizeof(uint32_t), 16);
+   }
+
+   return list->null_counters;
 }
 
 /* CPU pointer for a GPU address previously returned by an upload. */
@@ -853,10 +865,10 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
 
 static bool
 d12_segment_matches_bindings(const struct d12_cmd_list *list,
-                             const struct d12_segment *seg)
+                             const struct d12_segment *seg, bool use_rtv)
 {
    const struct d12_descriptor *rtv =
-      list->has_bound_rtv ? &list->bound_rtv : NULL;
+      use_rtv && list->has_bound_rtv ? &list->bound_rtv : NULL;
    const struct d12_descriptor *dsv =
       list->has_bound_dsv ? &list->bound_dsv : NULL;
 
@@ -1076,7 +1088,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * returning zero, and writes as discarded. Faulting was always the wrong
     * answer.
     */
-   uint64_t null_buf = 0;
+   uint64_t null_buf = 0, null_counters = 0;
    uint64_t addrs[D12_ROOT_TABLE_ENTRIES];
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
       addrs[i] = table[i].address;
@@ -1118,16 +1130,18 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          addrs[D12_ROOT_BUFINFO_BASE + i] = UINT32_MAX;
       }
 
-      if (!addrs[i] || !addrs[D12_ROOT_COUNTER_BASE + i]) {
+      if (!addrs[i]) {
          if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
             return false;
-         if (!addrs[i])
-            addrs[i] = null_buf;
-         /* Counters share the buffer. Distinct unbound counters aliasing
-          * each other is harmless -- none of them is a real resource.
-          */
-         if (!addrs[D12_ROOT_COUNTER_BASE + i])
-            addrs[D12_ROOT_COUNTER_BASE + i] = null_buf;
+         addrs[i] = null_buf;
+      }
+
+      if (!addrs[D12_ROOT_COUNTER_BASE + i]) {
+         if (!null_counters &&
+             !(null_counters = d12_list_null_counters(list)))
+            return false;
+         addrs[D12_ROOT_COUNTER_BASE + i] =
+            null_counters + i * sizeof(uint32_t);
       }
    }
 
@@ -2812,14 +2826,16 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (list->render_open) {
       struct d12_segment *open =
          &list->segments[list->segment_count - 1];
-      if (!d12_segment_matches_bindings(list, open) ||
+      if (!d12_segment_matches_bindings(list, open,
+                                        pso->has_pixel_shader) ||
           memcmp(&open->tib, &pso->tib, sizeof(open->tib)) != 0)
          d12_list_close_cdm(list);
    }
 
    if (!list->render_open) {
       const struct d12_descriptor *rtv =
-         list->has_bound_rtv ? &list->bound_rtv : NULL;
+         pso->has_pixel_shader && list->has_bound_rtv ? &list->bound_rtv
+                                                      : NULL;
       const struct d12_descriptor *dsv =
          list->has_bound_dsv ? &list->bound_dsv : NULL;
       if (!d12_list_begin_render(list, rtv, dsv, pso, AGX_BG_LOAD, NULL,
@@ -3990,6 +4006,17 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
    uint32_t refs = p_atomic_dec_return(&list->refcount);
 
    if (refs == 0) {
+      /* A caller may release a list without closing it (or QueryInterface may
+       * fail while the freshly-created list is still recording). Keep the
+       * allocator occupancy invariant balanced on that path too. Close has
+       * already transitioned successful/error recordings to CLOSED and
+       * decremented the same counter.
+       */
+      if ((list->state == D12_LIST_RECORDING ||
+           list->state == D12_LIST_ERROR) &&
+          list->allocator && list->allocator->recording_lists)
+         list->allocator->recording_lists--;
+
       /*
        * Same hazard as Reset: a list released while its last recording is
        * still executing would free the control stream and USC words out
@@ -4204,6 +4231,15 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    struct d12_cmd_allocator *new_allocator =
       d12_cmd_allocator_from_iface(allocator);
    if (new_allocator->type != list->type)
+      return E_INVALIDARG;
+
+   /* Reset is only valid for a closed list, and an allocator can back at most
+    * one actively recording list. Test these before touching list state or
+    * parking any in-flight storage so a rejected call is side-effect free.
+    */
+   if (list->state != D12_LIST_CLOSED)
+      return E_FAIL;
+   if (new_allocator->recording_lists)
       return E_INVALIDARG;
 
    /* Reset starts a fresh recording, so the previous error is gone. */
@@ -4736,6 +4772,184 @@ d12_list_ResourceBarrier(ID3D12GraphicsCommandList6 *iface, UINT num_barriers,
 }
 
 /*
+ * D3D12's integer UAV clear does not numerically convert through the view's
+ * type.  It truncates each UINT component to the corresponding storage
+ * channel.  That distinction matters for views such as R16G16_FLOAT: a UINT
+ * clear of {0x1234, 0xabcd} writes 0xabcd1234, whereas a float pack would
+ * reinterpret those inputs as tiny floating-point values and write zeroes.
+ *
+ * Keep the table deliberately limited to the four-byte buffer formats the
+ * fill kernel below can write exactly.  Unsupported formats fail recording
+ * instead of silently producing a differently converted bit pattern.
+ */
+static bool
+d12_pack_clear_uav_uint(DXGI_FORMAT format, const UINT values[4],
+                        uint32_t *packed)
+{
+   switch (format) {
+   case DXGI_FORMAT_R32_TYPELESS:
+   case DXGI_FORMAT_R32_FLOAT:
+   case DXGI_FORMAT_R32_UINT:
+   case DXGI_FORMAT_R32_SINT:
+      *packed = values[0];
+      return true;
+
+   case DXGI_FORMAT_R16G16_FLOAT:
+   case DXGI_FORMAT_R16G16_UNORM:
+   case DXGI_FORMAT_R16G16_UINT:
+   case DXGI_FORMAT_R16G16_SNORM:
+   case DXGI_FORMAT_R16G16_SINT:
+      *packed = (values[0] & 0xffffu) | ((values[1] & 0xffffu) << 16);
+      return true;
+
+   case DXGI_FORMAT_R8G8B8A8_UNORM:
+   case DXGI_FORMAT_R8G8B8A8_UINT:
+   case DXGI_FORMAT_R8G8B8A8_SNORM:
+   case DXGI_FORMAT_R8G8B8A8_SINT:
+      *packed = (values[0] & 0xffu) | ((values[1] & 0xffu) << 8) |
+                ((values[2] & 0xffu) << 16) |
+                ((values[3] & 0xffu) << 24);
+      return true;
+
+   case DXGI_FORMAT_R11G11B10_FLOAT:
+      *packed = (values[0] & 0x7ffu) | ((values[1] & 0x7ffu) << 11) |
+                ((values[2] & 0x3ffu) << 22);
+      return true;
+
+   case DXGI_FORMAT_R10G10B10A2_UNORM:
+   case DXGI_FORMAT_R10G10B10A2_UINT:
+      *packed = (values[0] & 0x3ffu) | ((values[1] & 0x3ffu) << 10) |
+                ((values[2] & 0x3ffu) << 20) |
+                ((values[3] & 0x3u) << 30);
+      return true;
+
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_pack_clear_uav_float(DXGI_FORMAT format, const FLOAT values[4],
+                         uint32_t *packed)
+{
+   enum pipe_format pipe = d12_format_to_pipe(format);
+
+   if (pipe == PIPE_FORMAT_NONE || util_format_get_blocksize(pipe) != 4)
+      return false;
+
+   util_format_pack_rgba(pipe, packed, values, 1);
+   return true;
+}
+
+static void
+d12_list_clear_uav_buffer(struct d12_cmd_list *list,
+                          D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
+                          D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
+                          ID3D12Resource *resource, uint32_t packed,
+                          UINT num_rects)
+{
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   /*
+    * Hardware implementations generally treat the CPU descriptor as
+    * authoritative for ClearUAV; the API's GPU handle is an opaque companion
+    * used to make the descriptor shader-visible.  This driver flattens GPU
+    * descriptors on the CPU and never dereferences one on the GPU, so using
+    * the CPU view is both the native model and avoids trusting an arbitrary
+    * GPU token as a host pointer.
+    */
+   (void)gpu_handle;
+
+   struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
+   struct d12_resource *res =
+      resource ? d12_resource_from_iface(resource) : NULL;
+
+   if (!view || !res || view->kind != D12_DESC_UAV ||
+       view->resource != res ||
+       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      mesa_loge("ClearUnorderedAccessView: invalid buffer UAV");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (num_rects != 0) {
+      mesa_loge("ClearUnorderedAccessView: buffer rect clears unsupported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if ((view->address & 3) || (view->size_B & 3)) {
+      mesa_loge("ClearUnorderedAccessView: buffer view is not uint-aligned");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (!view->size_B)
+      return;
+
+   struct libagx_fill_args args = {
+      .address = view->address,
+      .value = packed,
+   };
+
+   d12_list_dispatch_precomp(list, LIBAGX_FILL, &args, sizeof(args),
+                             agx_1d(view->size_B / 4));
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ClearUnorderedAccessViewUint(
+   ID3D12GraphicsCommandList6 *iface, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
+   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, ID3D12Resource *resource,
+   const UINT values[4], UINT num_rects, const D3D12_RECT *rects)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
+   uint32_t packed;
+
+   (void)rects;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!values || !view ||
+       !d12_pack_clear_uav_uint(view->format, values, &packed)) {
+      mesa_loge("ClearUnorderedAccessViewUint: unsupported or invalid view");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource, packed,
+                             num_rects);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ClearUnorderedAccessViewFloat(
+   ID3D12GraphicsCommandList6 *iface, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
+   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle, ID3D12Resource *resource,
+   const FLOAT values[4], UINT num_rects, const D3D12_RECT *rects)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
+   uint32_t packed;
+
+   (void)rects;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!values || !view ||
+       !d12_pack_clear_uav_float(view->format, values, &packed)) {
+      mesa_loge("ClearUnorderedAccessViewFloat: unsupported or invalid view");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource, packed,
+                             num_rects);
+}
+
+/*
  * Attach a depth/stencil resource to the open render pass.
  *
  * Depth never goes through a background/end-of-tile USC program the way
@@ -4920,7 +5134,7 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
     */
    if (list->render_open &&
        !d12_segment_matches_bindings(
-          list, &list->segments[list->segment_count - 1]))
+          list, &list->segments[list->segment_count - 1], true))
       d12_list_close_cdm(list);
 }
 
@@ -4950,6 +5164,8 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .OMSetBlendFactor = d12_list_OMSetBlendFactor,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
    .ClearDepthStencilView = d12_list_ClearDepthStencilView,
+   .ClearUnorderedAccessViewUint = d12_list_ClearUnorderedAccessViewUint,
+   .ClearUnorderedAccessViewFloat = d12_list_ClearUnorderedAccessViewFloat,
    .ClearState = d12_list_ClearState,
    .SetPipelineState = d12_list_SetPipelineState,
    .SetComputeRootSignature = d12_list_SetComputeRootSignature,
@@ -5006,7 +5222,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
       return E_INVALIDARG;
    }
 
-   if (!allocator || allocator->type != type)
+   if (!allocator || allocator->type != type || allocator->recording_lists)
       return E_INVALIDARG;
 
    struct d12_cmd_list *list = calloc(1, sizeof(*list));
