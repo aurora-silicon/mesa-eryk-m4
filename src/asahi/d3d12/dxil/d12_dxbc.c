@@ -309,6 +309,13 @@ struct d12_dxbc_sig_elem {
 
 #define D12_DXBC_MAX_SIG 32
 
+struct d12_dxbc_cb_range {
+   uint32_t lower_bound;
+   uint32_t upper_bound;
+   uint32_t space;
+   bool valid;
+};
+
 struct d12_dxbc_ctx {
    char errbuf[64];
    const struct d12_binding_map *map;
@@ -326,6 +333,10 @@ struct d12_dxbc_ctx {
    uint8_t srv_dim[D12_DXBC_MAX_SIG];
    uint8_t uav_dim[D12_DXBC_MAX_SIG];
    bool uav_raw[D12_DXBC_MAX_SIG];
+   /* SM 5.1 names constant buffers as cb<range-id>[register][row].  The
+    * declaration is the only place that maps that range ID to a register
+    * space and to the bounds needed for safe dynamic slot arithmetic. */
+   struct d12_dxbc_cb_range cb_range[D12_DXBC_MAX_SIG];
    bool has_resinfo;
    nir_builder b;
    const uint32_t *tok;
@@ -622,6 +633,48 @@ temp_var(struct d12_dxbc_ctx *ctx, unsigned index)
    return ctx->temps[index];
 }
 
+static nir_def *read_src(struct d12_dxbc_ctx *ctx,
+                         const struct d12_dxbc_operand *op);
+
+/* Materialize one immediate, relative, or immediate-plus-relative operand
+ * index.  SM 5.1 permits this independently for the selected cbuffer and
+ * for the vector within it. */
+static nir_def *
+read_operand_index(struct d12_dxbc_ctx *ctx,
+                   const struct d12_dxbc_operand *op, unsigned index)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *value = nir_imm_int(b, op->index[index]);
+
+   if (!op->index_is_relative[index])
+      return value;
+
+   const struct d12_dxbc_relative_operand *ri = &op->relative[index];
+   if (!ri->valid) {
+      fail(ctx, "missing relative operand index");
+      return NULL;
+   }
+
+   struct d12_dxbc_operand rel = {
+      .file = ri->file,
+      .num_indices = ri->num_indices,
+      .num_components = ri->num_components,
+      .sel_mode = ri->sel_mode,
+      .mask = ri->mask,
+      .neg = ri->neg,
+      .abs = ri->abs,
+   };
+   memcpy(rel.index, ri->index, sizeof(rel.index));
+   memcpy(rel.swizzle, ri->swizzle, sizeof(rel.swizzle));
+   memcpy(rel.imm, ri->imm, sizeof(rel.imm));
+
+   nir_def *relative = read_src(ctx, &rel);
+   if (ctx->error)
+      return NULL;
+
+   return nir_iadd(b, value, nir_channel(b, relative, 0));
+}
+
 /*
  * Select one of the three root-table planes.  The first-level header keeps
  * the hot resource plane direct; its second pointer names a compact metadata
@@ -752,7 +805,9 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
 
    case D12_DXBC_FILE_CONSTANT_BUFFER: {
       /*
-       * cb<slot>[<row>], one vec4 per row.
+       * SM 4/5.0 uses cb<slot>[<row>].  SM 5.1 uses
+       * cb<range-id>[<absolute-register>][<row>], and permits both the
+       * register and row indices to be relative.
        *
        * This driver does not have UBOs: a constant buffer is reached
        * through the ROOT TABLE, one indirection to the address the bind
@@ -760,58 +815,104 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
        * cbufferLoadLegacy. Emitting nir_load_ubo instead produced NIR the
        * AGX backend has no lowering for, and it asserted.
        *
-       * The register number IS the slot: d12_root_layout_build_map
-       * assigns CBV slots in register order, and DXBC has no space
-       * concept below SM 5.1.
+       * The declaration supplies the register space and range bounds for
+       * SM 5.1.  Dynamic registers are legal only when the declared range
+       * maps to one contiguous root-signature descriptor range, matching
+       * the validation used by the DXIL front end.
        */
-      if (op->num_indices < 2 || op->index_is_relative[0]) {
-         fail(ctx, "dynamically selected constant buffer binding");
+      if (op->num_indices != 2 && op->num_indices != 3) {
+         fail(ctx, "invalid constant buffer operand dimensions");
          return nir_imm_zero(b, 4, 32);
       }
 
-      unsigned slot = ctx->map
-                         ? d12_binding_map_find(ctx->map, D12_RES_CBV, 0,
-                                                op->index[0])
-                         : op->index[0];
-      if (slot == ~0u) {
-         fail(ctx, "constant buffer is not bound by the root signature");
+      const bool sm51 = op->num_indices == 3;
+      const unsigned binding_index = sm51 ? 1 : 0;
+      const unsigned row_index = sm51 ? 2 : 1;
+      uint32_t space = 0;
+      const struct d12_dxbc_cb_range *range = NULL;
+
+      if (sm51) {
+         if (op->index_is_relative[0] ||
+             op->index[0] >= D12_DXBC_MAX_SIG ||
+             !ctx->cb_range[op->index[0]].valid) {
+            fail(ctx, "undeclared SM 5.1 constant buffer range");
+            return nir_imm_zero(b, 4, 32);
+         }
+         range = &ctx->cb_range[op->index[0]];
+         space = range->space;
+      } else if (op->index_is_relative[binding_index]) {
+         fail(ctx, "dynamically selected SM 5.0 constant buffer");
          return nir_imm_zero(b, 4, 32);
+      }
+
+      nir_def *slot;
+      if (!op->index_is_relative[binding_index]) {
+         if (sm51 &&
+             (op->index[binding_index] < range->lower_bound ||
+              (range->upper_bound != UINT32_MAX &&
+               op->index[binding_index] > range->upper_bound))) {
+            fail(ctx, "constant buffer register is outside its declared range");
+            return nir_imm_zero(b, 4, 32);
+         }
+
+         unsigned static_slot =
+            ctx->map ? d12_binding_map_find(ctx->map, D12_RES_CBV, space,
+                                             op->index[binding_index])
+                     : op->index[binding_index];
+         if (static_slot == ~0u) {
+            fail(ctx, "constant buffer is not bound by the root signature");
+            return nir_imm_zero(b, 4, 32);
+         }
+         slot = nir_imm_int(b, static_slot);
+      } else {
+         assert(sm51 && range);
+
+         unsigned first_slot =
+            ctx->map ? d12_binding_map_find(ctx->map, D12_RES_CBV, space,
+                                             range->lower_bound)
+                     : range->lower_bound;
+         if (first_slot == ~0u) {
+            fail(ctx, "constant buffer range is not bound by the root signature");
+            return nir_imm_zero(b, 4, 32);
+         }
+
+         if (ctx->map && range->upper_bound != UINT32_MAX) {
+            uint64_t count =
+               (uint64_t)range->upper_bound - range->lower_bound + 1;
+            if (range->upper_bound < range->lower_bound ||
+                count > D12_MAX_RESOURCE_BINDINGS) {
+               fail(ctx, "invalid constant buffer range bounds");
+               return nir_imm_zero(b, 4, 32);
+            }
+
+            unsigned last_slot = d12_binding_map_find(
+               ctx->map, D12_RES_CBV, space, range->upper_bound);
+            unsigned root_range = ctx->map->entries[first_slot].root_range;
+            if (last_slot != first_slot + (unsigned)count - 1 ||
+                root_range == ~0u ||
+                ctx->map->entries[last_slot].root_range != root_range) {
+               fail(ctx, "constant buffer array crosses root descriptor ranges");
+               return nir_imm_zero(b, 4, 32);
+            }
+         }
+
+         nir_def *reg = read_operand_index(ctx, op, binding_index);
+         if (!reg)
+            return nir_imm_zero(b, 4, 32);
+         slot = nir_iadd_imm(b, reg,
+                            (int64_t)first_slot - range->lower_bound);
       }
 
       nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
       nir_def *base = nir_load_global(
          b, 1, 64,
-         nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
+         nir_iadd(b, resource_table,
+                  nir_imul_imm(b, nir_u2u64(b, slot), 8)),
          .align_mul = 8);
 
-      nir_def *row = nir_imm_int(b, op->index[1]);
-
-      if (op->index_is_relative[1]) {
-         const struct d12_dxbc_relative_operand *ri = &op->relative[1];
-         if (!ri->valid) {
-            fail(ctx, "missing relative constant buffer index");
-            return nir_imm_zero(b, 4, 32);
-         }
-
-         struct d12_dxbc_operand rel = {
-            .file = ri->file,
-            .num_indices = ri->num_indices,
-            .num_components = ri->num_components,
-            .sel_mode = ri->sel_mode,
-            .mask = ri->mask,
-            .neg = ri->neg,
-            .abs = ri->abs,
-         };
-         memcpy(rel.index, ri->index, sizeof(rel.index));
-         memcpy(rel.swizzle, ri->swizzle, sizeof(rel.swizzle));
-         memcpy(rel.imm, ri->imm, sizeof(rel.imm));
-
-         nir_def *relative = read_src(ctx, &rel);
-         if (ctx->error)
-            return nir_imm_zero(b, 4, 32);
-
-         row = nir_iadd(b, row, nir_channel(b, relative, 0));
-      }
+      nir_def *row = read_operand_index(ctx, op, row_index);
+      if (!row)
+         return nir_imm_zero(b, 4, 32);
 
       nir_def *byte_offset = nir_u2u64(b, nir_imul_imm(b, row, 16));
       v = nir_load_global(b, 4, 32, nir_iadd(b, base, byte_offset),
@@ -1171,7 +1272,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_OUTPUT:
       case D12_DXBC_OP_DCL_OUTPUT_SIV:
       case D12_DXBC_OP_DCL_SAMPLER:
-      case D12_DXBC_OP_DCL_CONSTANT_BUFFER:
       case D12_DXBC_OP_DCL_INDEXABLE_TEMP:
       case D12_DXBC_OP_DCL_INDEX_RANGE:
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
@@ -1192,6 +1292,27 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * declarations themselves carry nothing this driver needs. */
          ctx->tok += len;
          continue;
+
+      case D12_DXBC_OP_DCL_CONSTANT_BUFFER: {
+         /* SM 5.1 declarations are cb<id>[lower:upper], size, space.
+          * Preserve the ID mapping; accesses carry only the ID and absolute
+          * register, so the space cannot otherwise be recovered. */
+         struct d12_dxbc_operand cb;
+         unsigned n = decode_operand(ctx, args, avail, &cb);
+         if (n && cb.file == D12_DXBC_FILE_CONSTANT_BUFFER &&
+             cb.num_indices == 3 && !cb.index_is_relative[0] &&
+             !cb.index_is_relative[1] && !cb.index_is_relative[2] &&
+             cb.index[0] < D12_DXBC_MAX_SIG && n + 2 <= avail) {
+            ctx->cb_range[cb.index[0]] = (struct d12_dxbc_cb_range) {
+               .lower_bound = cb.index[1],
+               .upper_bound = cb.index[2],
+               .space = args[n + 1],
+               .valid = true,
+            };
+         }
+         ctx->tok += len;
+         continue;
+      }
 
       case D12_DXBC_OP_DCL_RESOURCE: {
          /* The resource dimension is opcode control state, while the t#

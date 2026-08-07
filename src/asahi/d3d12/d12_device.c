@@ -2236,12 +2236,24 @@ D3D12SerializeVersionedRootSignature(
    const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *desc, ID3DBlob **blob,
    ID3DBlob **error_blob)
 {
-   d12_stub_report("D3D12SerializeVersionedRootSignature");
-   if (blob)
-      *blob = NULL;
    if (error_blob)
       *error_blob = NULL;
-   return E_NOTIMPL;
+   if (!blob)
+      return E_POINTER;
+
+   *blob = NULL;
+
+   void *data = NULL;
+   size_t size = 0;
+   HRESULT hr =
+      d12_serialize_versioned_root_signature(desc, &data, &size);
+   if (FAILED(hr))
+      return hr;
+
+   *blob = d12_blob_create(data, size);
+   free(data);
+
+   return *blob ? S_OK : E_OUTOFMEMORY;
 }
 
 PUBLIC HRESULT WINAPI
