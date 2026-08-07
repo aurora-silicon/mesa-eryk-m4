@@ -2547,7 +2547,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (list->state != D12_LIST_RECORDING)
       return;
 
-   if (!pso || pso->is_compute) {
+   /* Native D3D12 ignores a draw recorded before any PSO is bound.  This is
+    * not a command-list recording error; later complete draws still execute.
+    */
+   if (!pso)
+      return;
+
+   if (pso->is_compute) {
       mesa_loge("Draw without a graphics pipeline state");
       list->state = D12_LIST_ERROR;
       return;
@@ -3056,6 +3062,12 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
    if (!index_count_per_instance || !instance_count)
+      return;
+
+   /* Match the non-indexed path: without a PSO this draw is ignored before
+    * any indexed-draw state is validated.
+    */
+   if (list->state != D12_LIST_RECORDING || !list->pso)
       return;
 
    if (!list->ib.addr) {

@@ -326,6 +326,7 @@ struct d12_dxbc_ctx {
    uint8_t srv_dim[D12_DXBC_MAX_SIG];
    uint8_t uav_dim[D12_DXBC_MAX_SIG];
    bool uav_raw[D12_DXBC_MAX_SIG];
+   bool has_resinfo;
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -711,7 +712,8 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
          if (!strcasecmp(e->name, "SV_InstanceID"))
             return nir_replicate(b, nir_load_instance_id(b), 4);
          if (!strcasecmp(e->name, "SV_IsFrontFace"))
-            return nir_replicate(b, nir_b2i32(b, nir_load_front_face(b, 1)), 4);
+            return nir_replicate(
+               b, nir_ineg(b, nir_b2i32(b, nir_load_front_face(b, 1))), 4);
          if (!strcasecmp(e->name, "SV_PrimitiveID"))
             return nir_replicate(b, nir_load_primitive_id(b), 4);
       }
@@ -1722,9 +1724,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         if (uav && (reg >= D12_DXBC_MAX_SIG ||
-                     ctx->uav_dim[reg] !=
-                        D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
+         if (ctx->has_resinfo && uav &&
+             (reg >= D12_DXBC_MAX_SIG ||
+              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
             fail(ctx, "texture UAV load unsupported");
             return;
          }
@@ -1760,9 +1762,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         if (typed && (reg >= D12_DXBC_MAX_SIG ||
-                       ctx->uav_dim[reg] !=
-                          D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
+         if (ctx->has_resinfo && typed &&
+             (reg >= D12_DXBC_MAX_SIG ||
+              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
             fail(ctx, "texture UAV store unsupported");
             return;
          }
@@ -2022,6 +2024,45 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 }
 
 /*
+ * RESINFO made shaders containing texture UAV operations newly reachable.
+ * Those operations still need real texture descriptors and must not fall
+ * through the older buffer-address lowering.  Detect RESINFO up front so the
+ * safety check applies regardless of instruction order, without regressing
+ * pre-existing shaders which merely create (but never execute) such a PSO.
+ */
+static bool
+token_stream_has_resinfo(const uint32_t *tok, const uint32_t *end)
+{
+   while (tok < end) {
+      uint32_t op_tok = *tok;
+      unsigned opcode = op_tok & 0x7ff;
+
+      if (opcode == D12_DXBC_OP_RESINFO)
+         return true;
+
+      if (opcode == D12_DXBC_OP_CUSTOMDATA) {
+         if (tok + 2 > end || tok[1] < 2 || tok + tok[1] > end)
+            return true;
+         tok += tok[1];
+         continue;
+      }
+
+      unsigned len = (op_tok >> 24) & 0x7f;
+      if (!len && (op_tok & 0x80000000u)) {
+         unsigned n = 1;
+         while ((tok[n - 1] & 0x80000000u) && tok + n < end)
+            n++;
+         len = n;
+      }
+      if (!len || tok + len > end)
+         return true;
+      tok += len;
+   }
+
+   return false;
+}
+
+/*
  * Translate a DXBC container to NIR.
  *
  * STATUS: the token decoder and the scalar/vector ALU set are in place
@@ -2074,6 +2115,7 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
 
    ctx.tok = tokens + 2;
    ctx.end = tokens + MIN2(num_tokens, tokens[1]);
+   ctx.has_resinfo = token_stream_has_resinfo(ctx.tok, ctx.end);
 
    translate_tokens(&ctx);
 

@@ -1402,11 +1402,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       if (sem && !strcmp(sem, "SV_IsFrontFace")) {
-         /* DXIL declares this i32; the 1-bit sysval must widen or every
-          * comparison against it mismatches.
+         /* Direct3D represents true as all bits set.  A plain boolean-to-int
+          * conversion produces 1, which breaks comparisons against ~0u.
           */
          def_result(ctx, inst,
-                    nir_b2i32(b, nir_load_front_face(b, 1)));
+                    nir_ineg(b, nir_b2i32(b, nir_load_front_face(b, 1))));
          return true;
       }
 
