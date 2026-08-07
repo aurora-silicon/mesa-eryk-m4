@@ -287,6 +287,53 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   /* A feature-query structure being understood is distinct from the
+    * optional feature being implemented. Return a valid, zero-capability
+    * answer for the structures this runtime exposes instead of E_INVALIDARG:
+    * applications use the fields to choose their fallback paths.
+    */
+   case D3D12_FEATURE_D3D12_OPTIONS1: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS1 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS7: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS7 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      opts->MeshShaderTier = D3D12_MESH_SHADER_TIER_NOT_SUPPORTED;
+      opts->SamplerFeedbackTier = D3D12_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS9: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS9 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS11: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS11 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS13: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS13 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
    case D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
       D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT *va = data;
       if (data_size != sizeof(*va))
