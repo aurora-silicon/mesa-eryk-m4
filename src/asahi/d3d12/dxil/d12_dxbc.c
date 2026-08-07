@@ -228,6 +228,14 @@ enum d12_dxbc_op {
    D12_DXBC_OP_DCL_THREAD_GROUP = 155,
 };
 
+/* Public token encoding from Microsoft's D3D12TokenizedProgramFormat.hpp.
+ * Unlike sampled textures, Buffer<T> must become a NIR buffer texture so
+ * agx_nir_lower_texture applies the texel-buffer addressing rules.
+ */
+#define D12_DXBC_RESOURCE_DIMENSION_MASK  0x0000f800u
+#define D12_DXBC_RESOURCE_DIMENSION_SHIFT 11
+#define D12_DXBC_RESOURCE_DIMENSION_BUFFER 1
+
 struct d12_dxbc_operand {
    enum d12_dxbc_file file;
    unsigned num_indices;
@@ -279,6 +287,7 @@ struct d12_dxbc_ctx {
     * index * stride + offset. */
    uint32_t srv_stride[D12_DXBC_MAX_SIG];
    uint32_t uav_stride[D12_DXBC_MAX_SIG];
+   uint8_t srv_dim[D12_DXBC_MAX_SIG];
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -895,13 +904,19 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       uint32_t op_tok = *ctx->tok;
       unsigned opcode = op_tok & 0x7ff;
       unsigned len = (op_tok >> 24) & 0x7f;
+      unsigned opcode_words = 1;
 
-      /* An extended opcode token means the length lives after it. */
+      /* Bit 31 starts a chain of extended OPCODE words. They are part of
+       * the instruction length but are not operands. Decoding the chain as
+       * operands made the last extension word a fake destination (the LD in
+       * test_uninit_root_parameters consequently wrote only .z).
+       */
       if (op_tok & 0x80000000u) {
          const uint32_t *q = ctx->tok;
          unsigned n = 1;
          while ((q[n - 1] & 0x80000000u) && ctx->tok + n < ctx->end)
             n++;
+         opcode_words = n;
          if (!len)
             len = n;
       }
@@ -929,8 +944,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          return;
       }
 
-      const uint32_t *args = ctx->tok + 1;
-      unsigned avail = len - 1;
+      if (opcode_words > len) {
+         fail(ctx, "extended opcode chain exceeds instruction length");
+         return;
+      }
+
+      const uint32_t *args = ctx->tok + opcode_words;
+      unsigned avail = len - opcode_words;
 
       struct d12_dxbc_operand o[D12_DXBC_MAX_OPERANDS];
       unsigned nops = 0;
@@ -948,7 +968,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_INPUT_PS_SIV:
       case D12_DXBC_OP_DCL_OUTPUT:
       case D12_DXBC_OP_DCL_OUTPUT_SIV:
-      case D12_DXBC_OP_DCL_RESOURCE:
       case D12_DXBC_OP_DCL_SAMPLER:
       case D12_DXBC_OP_DCL_CONSTANT_BUFFER:
       case D12_DXBC_OP_DCL_INDEXABLE_TEMP:
@@ -974,6 +993,23 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * declarations themselves carry nothing this driver needs. */
          ctx->tok += len;
          continue;
+
+      case D12_DXBC_OP_DCL_RESOURCE: {
+         /* The resource dimension is opcode control state, while the t#
+          * register is an ordinary operand. Keep both so LD can distinguish
+          * Buffer<T> from Texture2D<T> instead of treating every SRV as 2D.
+          */
+         struct d12_dxbc_operand r;
+         unsigned n = decode_operand(ctx, args, avail, &r);
+         if (n && r.file == D12_DXBC_FILE_RESOURCE &&
+             r.index[0] < D12_DXBC_MAX_SIG) {
+            ctx->srv_dim[r.index[0]] =
+               (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
+               D12_DXBC_RESOURCE_DIMENSION_SHIFT;
+         }
+         ctx->tok += len;
+         continue;
+      }
 
       case D12_DXBC_OP_DCL_UAV_STRUCTURED:
       case D12_DXBC_OP_DCL_RESOURCE_STRUCTURED: {
@@ -1436,6 +1472,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
+         bool is_buffer =
+            is_ld && tex_reg < D12_DXBC_MAX_SIG &&
+            ctx->srv_dim[tex_reg] == D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+
          unsigned tslot = ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV,
                                                           0, tex_reg)
                                    : tex_reg;
@@ -1463,15 +1503,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
             .desc_set = D12_UNIFORM_TEXTURES);
 
-         unsigned nsrc = 2 + (is_ld ? 1 : 0) + (has_lod ? 1 : 0);
+         unsigned nsrc = 2 + ((is_ld && !is_buffer) ? 1 : 0) +
+                         (has_lod ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld ? nir_texop_txf : (has_lod ? nir_texop_txl
                                                     : nir_texop_tex);
-         tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF
+                                      : GLSL_SAMPLER_DIM_2D;
          tex->is_array = false;
          tex->dest_type = nir_type_float32;
-         tex->coord_components = 2;
+         tex->coord_components = is_buffer ? 1 : 2;
          tex->sampler_index = have_smp ? sslot : 0;
 
          unsigned si = 0;
@@ -1479,12 +1521,20 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
 
          if (is_ld) {
-            /* Integer texel coordinates, and the mip in .w. */
+            /* Buffer coordinates are integer bits already. Texture LD's
+             * packed float4 address retains the older numeric conversion.
+             */
+            nir_def *icoord = is_buffer ? coord4 : nir_f2i32(b, coord4);
             tex->src[si++] = nir_tex_src_for_ssa(
                nir_tex_src_coord,
-               nir_trim_vector(b, nir_f2i32(b, coord4), 2));
-            tex->src[si++] = nir_tex_src_for_ssa(
-               nir_tex_src_lod, nir_channel(b, nir_f2i32(b, coord4), 3));
+               is_buffer ? nir_channel(b, icoord, 0)
+                         : nir_trim_vector(b, icoord, 2));
+
+            /* Buffers have no mip levels. Texture LD carries mip in .w. */
+            if (!is_buffer) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_lod, nir_channel(b, icoord, 3));
+            }
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                                  nir_trim_vector(b, coord4, 2));

@@ -15,6 +15,7 @@
 #include "d12_private.h"
 
 #include "agx_helpers.h"
+#include "agx_nir_texture.h"
 #include "agx_usc.h"
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
@@ -839,16 +840,26 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    if (!*out_root)
       return false;
 
-   unsigned last_texture = 0;
-   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
-      if (table[i].resource && table[i].resource->desc.Dimension ==
-                                  D3D12_RESOURCE_DIMENSION_TEXTURE2D)
-         last_texture = i + 1;
-   }
+   const struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
 
-   *out_textures = 0;
-   if (!last_texture)
-      return true;
+   /* A bindless texture handle is a byte offset from this heap. Allocate a
+    * null descriptor for every slot declared by the active root signature,
+    * even when no texture is currently bound. This keeps stale/uninitialised
+    * root parameters undefined-but-safe instead of making an omitted uniform
+    * read as VA 0 and wedging the GPU.
+    */
+   unsigned last_texture = rs ? MAX2(rs->map.count, 1) : 1;
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
+      if (table[i].kind == D12_DESC_SRV && table[i].resource &&
+          (table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+           (table[i].resource->desc.Dimension ==
+               D3D12_RESOURCE_DIMENSION_BUFFER &&
+            table[i].kind == D12_DESC_SRV &&
+            table[i].format != DXGI_FORMAT_UNKNOWN)))
+         last_texture = MAX2(last_texture, i + 1);
+   }
 
    static_assert(AGX_TEXTURE_LENGTH == D12_TEXTURE_DESC_SIZE,
                  "the front end's descriptor stride must match hardware");
@@ -861,9 +872,63 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    struct agx_texture_packed *descs =
       (struct agx_texture_packed *)d12_list_data_cpu(list, heap_gpu);
 
+   for (unsigned i = 0; i < last_texture; i++)
+      agx_set_null_texture(&descs[i]);
+
    for (unsigned i = 0; i < last_texture; i++) {
+      if (table[i].kind != D12_DESC_SRV)
+         continue;
+
       struct d12_resource *res = table[i].resource;
-      if (!res || res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+      if (!res)
+         continue;
+
+      if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+         if (table[i].kind != D12_DESC_SRV ||
+             table[i].format == DXGI_FORMAT_UNKNOWN)
+            continue;
+
+         enum pipe_format pf = d12_format_to_pipe(table[i].format);
+         if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+             !ail_pixel_format[pf].texturable ||
+             util_format_is_depth_or_stencil(pf))
+            continue;
+
+         const struct util_format_description *fdesc =
+            util_format_description(pf);
+         unsigned blocksize = util_format_get_blocksize(pf);
+         unsigned elements = table[i].size_B / blocksize;
+         if (!elements)
+            continue;
+
+         agx_pack(&descs[i], TEXTURE, cfg) {
+            cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+            cfg.layout = AGX_LAYOUT_LINEAR;
+            cfg.channels = ail_pixel_format[pf].channels;
+            cfg.type = ail_pixel_format[pf].type;
+            cfg.srgb = util_format_is_srgb(pf);
+            cfg.srgb_2_channel =
+               cfg.srgb && util_format_colormask(fdesc) == 0x3;
+
+            cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+            cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+            cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+            cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+
+            cfg.address = table[i].address;
+            cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
+            cfg.height = DIV_ROUND_UP(elements, cfg.width);
+            cfg.first_level = 0;
+            cfg.last_level = 0;
+            cfg.buffer_size_sw = elements;
+            cfg.buffer_offset_sw = 0;
+            cfg.depth = 1;
+            cfg.stride = (cfg.width * blocksize) - 16;
+         }
+         continue;
+      }
+
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
          continue;
 
       const struct ail_layout *layout = &res->layout;
@@ -909,17 +974,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    if (getenv("D3D12AGX_DUMP_TEX")) {
       for (unsigned i = 0; i < last_texture; i++) {
-         struct d12_resource *res = table[i].resource;
-         if (!res)
-            continue;
-         const uint32_t *px = (const uint32_t *)agx_bo_map(res->bo);
+         struct d12_resource *res =
+            table[i].kind == D12_DESC_SRV ? table[i].resource : NULL;
          fprintf(stderr,
-                 "tex[%u] va=0x%llx tiling=%u %ux%u stride=%u size=%llu "
-                 "px[0]=0x%08x px[1]=0x%08x px[16]=0x%08x\n",
-                 i, (unsigned long long)res->addr, res->layout.tiling,
-                 res->layout.width_px, res->layout.height_px,
-                 ail_get_linear_stride_B(&res->layout, 0),
-                 (unsigned long long)res->layout.size_B, px[0], px[1], px[16]);
+                 "tex[%u] kind=%u dimension=%u va=0x%llx size=%u "
+                 "stride=%u format=%u\n", i, table[i].kind,
+                 res ? (unsigned)res->desc.Dimension : 0,
+                 (unsigned long long)table[i].address, table[i].size_B,
+                 table[i].stride_B, (unsigned)table[i].format);
          const uint8_t *d = (const uint8_t *)&descs[i];
          fprintf(stderr, "  desc:");
          for (unsigned b = 0; b < AGX_TEXTURE_LENGTH; b++)

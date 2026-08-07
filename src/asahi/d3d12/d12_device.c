@@ -1360,8 +1360,19 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
    /* A raw (ByteAddressBuffer) view addresses 4-byte words. */
-   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW))
+   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW)) {
       stride = 4;
+   } else if (!stride && desc && desc->Format != DXGI_FORMAT_UNKNOWN) {
+      /* A typed Buffer<T> has StructureByteStride == 0. Its element size
+       * comes from the view format, not from the structured-buffer field.
+       */
+      stride = d12_format_bytes_per_pixel(desc->Format);
+      if (!stride) {
+         mesa_loge("CreateShaderResourceView: typed buffer format %u "
+                   "has no supported element size", (unsigned)desc->Format);
+         return;
+      }
+   }
    if (!stride)
       stride = 4;
 
