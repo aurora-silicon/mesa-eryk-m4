@@ -175,15 +175,25 @@ d12_query_heap_create(struct d12_device *device,
    heap->desc = *desc;
    heap->stride = stride;
 
+   size_t result_size = (size_t)stride * desc->Count;
+   size_t allocation_size = result_size;
+   if (desc->Type == D3D12_QUERY_HEAP_TYPE_OCCLUSION) {
+      /* Final results stay contiguous at the front for ResolveQueryData;
+       * BeginQuery snapshots occupy the equally sized second plane.
+       */
+      heap->start_offset = result_size;
+      allocation_size += result_size;
+   }
+
    /* Zeroed, so a query that is resolved without ever being written
     * reads as "nothing happened" rather than as stale memory. */
-   heap->bo = agx_bo_create(&device->dev, (size_t)stride * desc->Count, 0,
+   heap->bo = agx_bo_create(&device->dev, allocation_size, 0,
                             AGX_BO_WRITEBACK, "d3d12 query heap");
    if (!heap->bo) {
       free(heap);
       return E_OUTOFMEMORY;
    }
-   memset(agx_bo_map(heap->bo), 0, (size_t)stride * desc->Count);
+   memset(agx_bo_map(heap->bo), 0, allocation_size);
 
    heap->device = device;
    d12_device_add_ref(device);

@@ -109,6 +109,19 @@ libagx_copy_query_gl(global uint64_t *query, global uint64_t *dest,
    }
 }
 
+/*
+ * D3D12 allows overlapping ("virtual") occlusion queries even though AGX
+ * exposes one hardware counter per draw.  The D3D12 front end therefore
+ * keeps one continuous hardware counter and snapshots it at BeginQuery;
+ * EndQuery materialises the modular 64-bit delta into the query heap.
+ */
+KERNEL(1)
+libagx_query_delta(global uint64_t *counter, global uint64_t *start,
+                   global uint64_t *result)
+{
+   *result = *counter - *start;
+}
+
 KERNEL(4)
 libagx_copy_xfb_counters(constant struct libagx_xfb_counter_copy *push)
 {

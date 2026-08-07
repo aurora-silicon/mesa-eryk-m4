@@ -304,6 +304,7 @@ struct d12_query_heap {
    struct d12_device *device; /* holds a device ref */
    D3D12_QUERY_HEAP_DESC desc;
    unsigned stride;   /* bytes per result */
+   size_t start_offset; /* occlusion BeginQuery snapshots, 0 otherwise */
    struct agx_bo *bo;
 };
 
@@ -737,6 +738,14 @@ struct d12_cmd_list {
     * reading. Cleared when fresh storage is taken.
     */
    bool submitted;
+
+   /*
+    * AGX exposes one occlusion counter selector per draw, while D3D12
+    * permits overlapping virtual queries.  All active queries therefore
+    * share device counter 0 and store Begin/End snapshots in their heaps.
+    * The draw only needs to know whether that continuous counter is live.
+    */
+   unsigned active_occlusion_queries;
 
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,

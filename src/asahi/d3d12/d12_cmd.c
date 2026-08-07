@@ -230,6 +230,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->patch_control_points = 0;
 
    list->uses_heap = false;
+   list->active_occlusion_queries = 0;
 
    /* The real free is the GPU write Close appends (see there): a closed
     * list can be executed many times without ever being Reset, so a reset
@@ -2894,7 +2895,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                             &present);
 
       agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
-         cfg.visibility_mode = AGX_VISIBILITY_MODE_NONE;
+         cfg.visibility_mode = list->active_occlusion_queries
+                                  ? AGX_VISIBILITY_MODE_COUNTING
+                                  : AGX_VISIBILITY_MODE_NONE;
          /* Always on: the scissor entry the draw indexes carries the depth
           * clip range as well as the XY bounds, so this cannot be switched
           * off just because the application set no scissor rect.
@@ -3943,6 +3946,181 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    return S_OK;
 }
 
+static bool
+d12_query_type_matches(const struct d12_query_heap *heap,
+                       D3D12_QUERY_TYPE type)
+{
+   switch (heap->desc.Type) {
+   case D3D12_QUERY_HEAP_TYPE_OCCLUSION:
+      return type == D3D12_QUERY_TYPE_OCCLUSION ||
+             type == D3D12_QUERY_TYPE_BINARY_OCCLUSION;
+   case D3D12_QUERY_HEAP_TYPE_TIMESTAMP:
+      return type == D3D12_QUERY_TYPE_TIMESTAMP;
+   case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
+      return type == D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
+   case D3D12_QUERY_HEAP_TYPE_SO_STATISTICS:
+      return type >= D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 &&
+             type <= D3D12_QUERY_TYPE_SO_STATISTICS_STREAM3;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_list_validate_query(struct d12_cmd_list *list,
+                        struct d12_query_heap *heap,
+                        D3D12_QUERY_TYPE type, UINT index)
+{
+   if (!heap || index >= heap->desc.Count ||
+       !d12_query_type_matches(heap, type)) {
+      mesa_loge("query type/index does not match its heap");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   return true;
+}
+
+static void
+d12_list_copy_gpu_bytes(struct d12_cmd_list *list, uint64_t dst,
+                        uint64_t src, size_t size_B)
+{
+   struct libagx_copy_uchar_args args = {
+      .dest = dst,
+      .src = src,
+   };
+
+   d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
+                             agx_1d(size_B));
+}
+
+static void STDMETHODCALLTYPE
+d12_list_BeginQuery(ID3D12GraphicsCommandList6 *iface,
+                    ID3D12QueryHeap *query_heap, D3D12_QUERY_TYPE type,
+                    UINT index)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_query_heap *heap = (struct d12_query_heap *)query_heap;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!d12_list_validate_query(list, heap, type, index))
+      return;
+
+   if (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_OCCLUSION) {
+      mesa_loge("BeginQuery currently supports occlusion heaps only");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t start = heap->bo->va->addr + heap->start_offset +
+                    (uint64_t)index * heap->stride;
+   d12_list_copy_gpu_bytes(list, start, list->device->oclqry_bo->va->addr,
+                           sizeof(uint64_t));
+   if (list->state == D12_LIST_RECORDING)
+      list->active_occlusion_queries++;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_EndQuery(ID3D12GraphicsCommandList6 *iface,
+                  ID3D12QueryHeap *query_heap, D3D12_QUERY_TYPE type,
+                  UINT index)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_query_heap *heap = (struct d12_query_heap *)query_heap;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!d12_list_validate_query(list, heap, type, index))
+      return;
+
+   uint64_t result = heap->bo->va->addr + (uint64_t)index * heap->stride;
+
+   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_TIMESTAMP) {
+      /* The kernel-calibrated GPU clock is sampled while recording, then
+       * copied by the GPU at this exact point in the command stream.  This
+       * preserves Resolve-before-rewrite ordering across submissions.
+       */
+      uint64_t timestamp = agx_get_gpu_timestamp(&list->device->dev);
+      uint64_t source =
+         d12_list_upload(list, &timestamp, sizeof(timestamp), 8);
+      if (source)
+         d12_list_copy_gpu_bytes(list, result, source, sizeof(timestamp));
+      return;
+   }
+
+   if (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_OCCLUSION ||
+       !list->active_occlusion_queries) {
+      mesa_loge("EndQuery has no matching active occlusion query");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct libagx_query_delta_args args = {
+      .counter = list->device->oclqry_bo->va->addr,
+      .start = heap->bo->va->addr + heap->start_offset +
+               (uint64_t)index * heap->stride,
+      .result = result,
+   };
+   d12_list_dispatch_precomp(list, LIBAGX_QUERY_DELTA, &args, sizeof(args),
+                             agx_1d(1));
+   list->active_occlusion_queries--;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ResolveQueryData(ID3D12GraphicsCommandList6 *iface,
+                          ID3D12QueryHeap *query_heap,
+                          D3D12_QUERY_TYPE type, UINT first_query,
+                          UINT query_count, ID3D12Resource *destination,
+                          UINT64 destination_offset)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_query_heap *heap = (struct d12_query_heap *)query_heap;
+   struct d12_resource *dst = destination
+                                 ? d12_resource_from_iface(destination)
+                                 : NULL;
+
+   if (list->state != D12_LIST_RECORDING || !query_count)
+      return;
+
+   if (!heap || first_query >= heap->desc.Count ||
+       query_count > heap->desc.Count - first_query ||
+       !d12_query_type_matches(heap, type) || !dst ||
+       dst->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       destination_offset > dst->desc.Width ||
+       (uint64_t)query_count * heap->stride >
+          dst->desc.Width - destination_offset) {
+      mesa_loge("ResolveQueryData: invalid heap, range, or destination");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t src = heap->bo->va->addr +
+                  (uint64_t)first_query * heap->stride;
+   uint64_t out = dst->addr + destination_offset;
+
+   if (type == D3D12_QUERY_TYPE_BINARY_OCCLUSION) {
+      /* libagx_copy_query_gl's U64/bool path canonicalises every nonzero
+       * sample count to the 64-bit value one required by D3D12.
+       */
+      for (UINT i = 0; i < query_count; i++) {
+         struct libagx_copy_query_gl_args args = {
+            .query = src + (uint64_t)i * heap->stride,
+            .dest = out + (uint64_t)i * heap->stride,
+            .value_type = 3, /* PIPE_QUERY_TYPE_U64 */
+            .bool_size = 8,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_COPY_QUERY_GL, &args,
+                                   sizeof(args), agx_1d(1));
+      }
+   } else {
+      d12_list_copy_gpu_bytes(list, out, src,
+                              (size_t)query_count * heap->stride);
+   }
+}
+
 static void STDMETHODCALLTYPE
 d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
                           ID3D12Resource *dst, UINT64 dst_offset,
@@ -4496,6 +4674,9 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .DrawInstanced = d12_list_DrawInstanced,
    .DrawIndexedInstanced = d12_list_DrawIndexedInstanced,
    .IASetIndexBuffer = d12_list_IASetIndexBuffer,
+   .BeginQuery = d12_list_BeginQuery,
+   .EndQuery = d12_list_EndQuery,
+   .ResolveQueryData = d12_list_ResolveQueryData,
    .DispatchMesh = d12_list_DispatchMesh,
    /* Everything unset is NULL: loud crash over silent lie. */
 };
