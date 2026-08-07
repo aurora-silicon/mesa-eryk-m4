@@ -109,8 +109,10 @@ enum d12_dxbc_op {
    D12_DXBC_OP_AND = 1,
    D12_DXBC_OP_BREAK = 2,
    D12_DXBC_OP_BREAKC = 3,
+   D12_DXBC_OP_CASE = 6,
    D12_DXBC_OP_DERIV_RTX = 11,
    D12_DXBC_OP_DERIV_RTY = 12,
+   D12_DXBC_OP_DEFAULT = 10,
    D12_DXBC_OP_DISCARD = 13,
    D12_DXBC_OP_DIV = 14,
    D12_DXBC_OP_DP2 = 15,
@@ -119,6 +121,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_ELSE = 18,
    D12_DXBC_OP_ENDIF = 21,
    D12_DXBC_OP_ENDLOOP = 22,
+   D12_DXBC_OP_ENDSWITCH = 23,
    D12_DXBC_OP_EQ = 24,
    D12_DXBC_OP_EXP = 25,
    D12_DXBC_OP_FRC = 26,
@@ -164,6 +167,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_SAMPLE_C_LZ = 71,
    D12_DXBC_OP_SAMPLE_L = 72,
    D12_DXBC_OP_SQRT = 75,
+   D12_DXBC_OP_SWITCH = 76,
    D12_DXBC_OP_SINCOS = 77,
    D12_DXBC_OP_UDIV = 78,
    D12_DXBC_OP_ULT = 79,
@@ -340,6 +344,21 @@ struct d12_dxbc_binding_range {
    bool valid;
 };
 
+enum d12_dxbc_cf_kind {
+   D12_DXBC_CF_IF,
+   D12_DXBC_CF_LOOP,
+   D12_DXBC_CF_SWITCH,
+};
+
+struct d12_dxbc_cf {
+   enum d12_dxbc_cf_kind kind;
+   bool in_else;
+   bool case_open;
+   nir_def *switch_value;
+   nir_def *switch_any_match;
+   nir_variable *switch_matched;
+};
+
 struct d12_dxbc_ctx {
    char errbuf[64];
    const struct d12_binding_map *map;
@@ -378,10 +397,7 @@ struct d12_dxbc_ctx {
    /* DXBC control flow is STRUCTURED -- if/else/endif and loop/endloop
     * nest properly -- which is exactly what nir_push_if/nir_push_loop
     * want, so a stack of what we opened is enough to close them. */
-   struct {
-      bool is_loop;
-      bool in_else;
-   } cf[64];
+   struct d12_dxbc_cf cf[64];
    unsigned cf_depth;
 
    const char *error;
@@ -1724,6 +1740,71 @@ d12_dxbc_container_stage(const void *data, size_t size_B,
    }
 }
 
+/* A DXBC switch may place DEFAULT before later CASE labels.  Its predicate
+ * is therefore "no case in this switch matches", not merely "no earlier
+ * case matched".  Scan the structured token range once and build that
+ * predicate before opening the synthetic one-iteration NIR loop used for
+ * break/fallthrough semantics.  Nested switches belong to their own scan. */
+static nir_def *
+d12_dxbc_switch_any_match(struct d12_dxbc_ctx *ctx, const uint32_t *tok,
+                          nir_def *value)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *any = nir_imm_false(b);
+   unsigned nested = 0;
+
+   while (tok < ctx->end) {
+      uint32_t op_tok = *tok;
+      unsigned opcode = op_tok & 0x7ff;
+      unsigned len = (op_tok >> 24) & 0x7f;
+      unsigned opcode_words = 1;
+
+      if (opcode == D12_DXBC_OP_CUSTOMDATA) {
+         if (tok + 2 > ctx->end || tok[1] < 2 || tok + tok[1] > ctx->end) {
+            fail(ctx, "malformed custom data in switch");
+            return NULL;
+         }
+         tok += tok[1];
+         continue;
+      }
+
+      if (op_tok & 0x80000000u) {
+         while ((tok[opcode_words - 1] & 0x80000000u) &&
+                tok + opcode_words < ctx->end)
+            opcode_words++;
+         if (!len)
+            len = opcode_words;
+      }
+
+      if (!len || opcode_words > len || tok + len > ctx->end) {
+         fail(ctx, "malformed instruction in switch");
+         return NULL;
+      }
+
+      if (opcode == D12_DXBC_OP_SWITCH) {
+         nested++;
+      } else if (opcode == D12_DXBC_OP_ENDSWITCH) {
+         if (!nested)
+            return any;
+         nested--;
+      } else if (!nested && opcode == D12_DXBC_OP_CASE) {
+         struct d12_dxbc_operand operand;
+         unsigned used = decode_operand(ctx, tok + opcode_words,
+                                        len - opcode_words, &operand);
+         if (!used || operand.file != D12_DXBC_FILE_IMMEDIATE32) {
+            fail(ctx, "switch case is not an immediate constant");
+            return NULL;
+         }
+         any = nir_ior(b, any, nir_ieq_imm(b, value, operand.imm[0]));
+      }
+
+      tok += len;
+   }
+
+   fail(ctx, "unterminated switch");
+   return NULL;
+}
+
 /*
  * Walk the token stream. Every instruction carries its own length, so an
  * opcode this front end does not implement can still be STEPPED OVER --
@@ -2260,14 +2341,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          bool test_zero = !((op_tok >> 18) & 1);
          nir_def *c = nir_channel(b, SRC(0), 0);
          nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
-         ctx->cf[ctx->cf_depth].is_loop = false;
+         ctx->cf[ctx->cf_depth].kind = D12_DXBC_CF_IF;
          ctx->cf[ctx->cf_depth].in_else = false;
          ctx->cf_depth++;
          break;
       }
 
       case D12_DXBC_OP_ELSE:
-         if (!ctx->cf_depth || ctx->cf[ctx->cf_depth - 1].is_loop) {
+         if (!ctx->cf_depth ||
+             ctx->cf[ctx->cf_depth - 1].kind != D12_DXBC_CF_IF) {
             fail(ctx, "else outside an if");
             return;
          }
@@ -2276,7 +2358,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
 
       case D12_DXBC_OP_ENDIF:
-         if (!ctx->cf_depth || ctx->cf[ctx->cf_depth - 1].is_loop) {
+         if (!ctx->cf_depth ||
+             ctx->cf[ctx->cf_depth - 1].kind != D12_DXBC_CF_IF) {
             fail(ctx, "endif outside an if");
             return;
          }
@@ -2290,13 +2373,14 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
          nir_push_loop(b);
-         ctx->cf[ctx->cf_depth].is_loop = true;
+         ctx->cf[ctx->cf_depth].kind = D12_DXBC_CF_LOOP;
          ctx->cf[ctx->cf_depth].in_else = false;
          ctx->cf_depth++;
          break;
 
       case D12_DXBC_OP_ENDLOOP:
-         if (!ctx->cf_depth || !ctx->cf[ctx->cf_depth - 1].is_loop) {
+         if (!ctx->cf_depth ||
+             ctx->cf[ctx->cf_depth - 1].kind != D12_DXBC_CF_LOOP) {
             fail(ctx, "endloop outside a loop");
             return;
          }
@@ -2304,17 +2388,109 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          ctx->cf_depth--;
          break;
 
+      case D12_DXBC_OP_SWITCH: {
+         NEED(1);
+         if (ctx->cf_depth >= ARRAY_SIZE(ctx->cf)) {
+            fail(ctx, "control flow nested too deeply");
+            return;
+         }
+
+         nir_def *value = nir_channel(b, SRC(0), 0);
+         nir_def *any_match =
+            d12_dxbc_switch_any_match(ctx, ctx->tok + len, value);
+         if (ctx->error)
+            return;
+
+         nir_variable *matched = nir_local_variable_create(
+            b->impl, glsl_bool_type(), "switch_matched");
+         nir_store_var(b, matched, nir_imm_false(b), 1);
+         nir_push_loop(b);
+
+         ctx->cf[ctx->cf_depth] = (struct d12_dxbc_cf) {
+            .kind = D12_DXBC_CF_SWITCH,
+            .switch_value = value,
+            .switch_any_match = any_match,
+            .switch_matched = matched,
+         };
+         ctx->cf_depth++;
+         break;
+      }
+
+      case D12_DXBC_OP_CASE:
+      case D12_DXBC_OP_DEFAULT: {
+         if (!ctx->cf_depth ||
+             ctx->cf[ctx->cf_depth - 1].kind != D12_DXBC_CF_SWITCH) {
+            fail(ctx, opcode == D12_DXBC_OP_CASE ? "case outside a switch"
+                                                : "default outside a switch");
+            return;
+         }
+
+         struct d12_dxbc_cf *sw = &ctx->cf[ctx->cf_depth - 1];
+         if (sw->case_open)
+            nir_pop_if(b, NULL);
+
+         nir_def *matched = nir_load_var(b, sw->switch_matched);
+         nir_def *enter;
+         if (opcode == D12_DXBC_OP_CASE) {
+            NEED(1);
+            enter = nir_ior(
+               b, matched,
+               nir_ieq(b, sw->switch_value, nir_channel(b, SRC(0), 0)));
+         } else {
+            enter = nir_ior(b, matched, nir_inot(b, sw->switch_any_match));
+         }
+
+         nir_push_if(b, enter);
+         nir_store_var(b, sw->switch_matched, nir_imm_true(b), 1);
+         sw->case_open = true;
+         break;
+      }
+
+      case D12_DXBC_OP_ENDSWITCH: {
+         if (!ctx->cf_depth ||
+             ctx->cf[ctx->cf_depth - 1].kind != D12_DXBC_CF_SWITCH) {
+            fail(ctx, "endswitch outside a switch");
+            return;
+         }
+
+         struct d12_dxbc_cf *sw = &ctx->cf[ctx->cf_depth - 1];
+         if (sw->case_open)
+            nir_pop_if(b, NULL);
+         nir_jump(b, nir_jump_break);
+         nir_pop_loop(b, NULL);
+         ctx->cf_depth--;
+         break;
+      }
+
       case D12_DXBC_OP_BREAK:
          nir_jump(b, nir_jump_break);
          break;
 
       case D12_DXBC_OP_CONTINUE:
+         for (unsigned i = ctx->cf_depth; i > 0; i--) {
+            if (ctx->cf[i - 1].kind == D12_DXBC_CF_SWITCH) {
+               fail(ctx, "continue inside switch unsupported");
+               return;
+            }
+            if (ctx->cf[i - 1].kind == D12_DXBC_CF_LOOP)
+               break;
+         }
          nir_jump(b, nir_jump_continue);
          break;
 
       case D12_DXBC_OP_BREAKC:
       case D12_DXBC_OP_CONTINUEC: {
          NEED(1);
+         if (opcode == D12_DXBC_OP_CONTINUEC) {
+            for (unsigned i = ctx->cf_depth; i > 0; i--) {
+               if (ctx->cf[i - 1].kind == D12_DXBC_CF_SWITCH) {
+                  fail(ctx, "conditional continue inside switch unsupported");
+                  return;
+               }
+               if (ctx->cf[i - 1].kind == D12_DXBC_CF_LOOP)
+                  break;
+            }
+         }
          bool test_zero = !((op_tok >> 18) & 1);
          nir_def *c = nir_channel(b, SRC(0), 0);
          nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
@@ -2753,8 +2929,32 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
             .desc_set = D12_UNIFORM_TEXTURES);
 
+         /* Public Extended Opcode SAMPLE_CONTROLS packs signed 4-bit U/V/W
+          * immediate texel offsets at bits 9, 13 and 17.  They apply to LD
+          * as well as sampling opcodes.  The AGX texture lowering consumes
+          * the corresponding NIR offset source directly. */
+         int texel_offset[3] = {0};
+         bool has_offset = false;
+         for (unsigned k = 1; k < opcode_words; k++) {
+            uint32_t ext = ctx->tok[k];
+            if ((ext & 0x3f) != 1)
+               continue;
+
+            for (unsigned c = 0; c < 3; c++) {
+               int v = (ext >> (9 + 4 * c)) & 0xf;
+               texel_offset[c] = (v & 8) ? v - 16 : v;
+               has_offset |= texel_offset[c] != 0;
+            }
+         }
+
+         if (is_buffer && has_offset) {
+            fail(ctx, "buffer texture load has a texel offset");
+            return;
+         }
+
          unsigned nsrc = 2 + ((is_ld && !is_buffer) ? 1 : 0) +
-                         (has_lod ? 1 : 0) + (compare ? 1 : 0);
+                         (has_lod ? 1 : 0) + (compare ? 1 : 0) +
+                         (has_offset ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld ? nir_texop_txf : (has_lod ? nir_texop_txl
@@ -2772,14 +2972,22 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
 
          if (is_ld) {
-            /* Buffer coordinates are integer bits already. Texture LD's
-             * packed float4 address retains the older numeric conversion.
-             */
-            nir_def *icoord = is_buffer ? coord4 : nir_f2i32(b, coord4);
+            /* DXBC registers are untyped. LD coordinates are integer bits
+             * for textures as well as buffers; numerically converting the
+             * uint bit-pattern 3 as a float produced zero and fetched texel
+             * (0, 0) for every nonzero location. */
+            nir_def *icoord = coord4;
             tex->src[si++] = nir_tex_src_for_ssa(
                nir_tex_src_coord,
                is_buffer ? nir_channel(b, icoord, 0)
                          : nir_trim_vector(b, icoord, 2));
+
+            if (has_offset) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_offset,
+                  nir_vec2(b, nir_imm_int(b, texel_offset[0]),
+                           nir_imm_int(b, texel_offset[1])));
+            }
 
             /* Buffers have no mip levels. Texture LD carries mip in .w. */
             if (!is_buffer) {
@@ -2789,6 +2997,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                                  nir_trim_vector(b, coord4, 2));
+            if (has_offset) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_offset,
+                  nir_vec2(b, nir_imm_int(b, texel_offset[0]),
+                           nir_imm_int(b, texel_offset[1])));
+            }
             if (compare) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_comparator,
@@ -2818,7 +3032,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       case D12_DXBC_OP_RET:
-         /* Falls out of the shader; NIR's implicit return handles it. */
+         /* RET is not necessarily the final token: fxc emits it inside
+          * switch cases for source-level early returns.  Treating it as an
+          * implicit end-of-shader no-op made the matched case fall through
+          * every later label and overwrite its result. */
+         if (ctx->tok + len < ctx->end)
+            nir_jump(b, nir_jump_return);
          break;
 
       default:
@@ -2953,6 +3172,11 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
       return NULL;
    }
 
+   /* AGX divergence analysis deliberately accepts no return jumps.  fxc
+    * uses RET for source-level early returns inside structured control
+    * flow, so lower those jumps to ordinary control flow while the NIR is
+    * still owned by this front end. */
+   nir_lower_returns(ctx.b.shader);
    nir_validate_shader(ctx.b.shader, "after DXBC translation");
    return ctx.b.shader;
 }
