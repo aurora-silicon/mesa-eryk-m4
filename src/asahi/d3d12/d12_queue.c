@@ -212,6 +212,19 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    if (seg->process_empty_tiles)
       c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
 
+   if (seg->scratch_vs_bo) {
+      c->flags |= DRM_ASAHI_RENDER_VERTEX_SCRATCH;
+      c->vertex_helper.data = seg->scratch_vs_bo->va->addr;
+      c->vertex_helper.cfg = seg->scratch_vs_preamble ? (1 << 16) : 0;
+      c->vertex_helper.binary = agx_helper_program(&device->bg_eot);
+   }
+
+   if (seg->scratch_fs_bo) {
+      c->fragment_helper.data = seg->scratch_fs_bo->va->addr;
+      c->fragment_helper.cfg = seg->scratch_fs_preamble ? (1 << 16) : 0;
+      c->fragment_helper.binary = agx_helper_program(&device->bg_eot);
+   }
+
    /*
     * Every address this command hands the hardware, so a VDM fault can be
     * matched to the field that carried it. The fault we are chasing reads
@@ -323,6 +336,12 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                .cdm_ctrl_stream_end =
                   list->stream_bo->va->addr + seg->stream_end,
             };
+            if (seg->scratch_cs_bo) {
+               cmd.helper.data = seg->scratch_cs_bo->va->addr;
+               cmd.helper.cfg =
+                  seg->scratch_cs_preamble ? (1 << 16) : 0;
+               cmd.helper.binary = agx_helper_program(&device->bg_eot);
+            }
             memcpy(payload + payload_size, &cmd, sizeof(cmd));
             payload_size += sizeof(cmd);
             nr_cdm++;

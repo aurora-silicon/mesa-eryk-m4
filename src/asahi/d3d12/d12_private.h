@@ -27,6 +27,7 @@
 #include "agx_compile.h"
 #include "agx_device.h"
 #include "agx_linker.h"
+#include "agx_scratch.h"
 #include "agx_tilebuffer.h"
 #include "agx_helpers.h"
 #include "agx_uvs.h"
@@ -152,6 +153,15 @@ struct d12_device {
     * mechanism Honeykrisp uses for its internal dispatches.
     */
    struct agx_bg_eot_cache bg_eot;
+
+   /*
+    * AGX register spills and NIR scratch are allocated by a hardware helper
+    * program. Keep one grow-only pool per hardware stage class, matching
+    * Honeykrisp. Command segments retain the exact BO they were recorded
+    * against, so growing a pool cannot invalidate an in-flight submission.
+    */
+   simple_mtx_t scratch_lock;
+   struct agx_scratch scratch_vs, scratch_fs, scratch_cs;
 
    /* Occlusion-query scratch: cmd_render.isp_oclqry_base must point at
     * valid memory even when no queries run (mirrors hk pointing it at the
@@ -815,6 +825,16 @@ struct d12_segment {
 
    /* CDM */
    uint32_t dispatches;
+
+   /* Exact helper-data BOs required by this hardware command. These are
+    * referenced by the segment until the command allocator guarantees that
+    * a submitted recording is idle. */
+   struct agx_bo *scratch_cs_bo;
+   struct agx_bo *scratch_vs_bo;
+   struct agx_bo *scratch_fs_bo;
+   bool scratch_cs_preamble;
+   bool scratch_vs_preamble;
+   bool scratch_fs_preamble;
 
    /* RENDER */
    uint16_t width_px, height_px;

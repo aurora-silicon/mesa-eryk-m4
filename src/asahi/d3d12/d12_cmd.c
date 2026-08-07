@@ -191,9 +191,112 @@ d12_list_stream_map(struct d12_cmd_list *list)
    return agx_bo_map(list->stream_bo);
 }
 
+enum d12_scratch_stage {
+   D12_SCRATCH_CS,
+   D12_SCRATCH_VS,
+   D12_SCRATCH_FS,
+};
+
+/*
+ * Reserve the device-wide scratch pool and retain the exact resulting BO in
+ * the segment. agx_scratch_alloc may grow the pool by replacing its BO; a
+ * segment reference keeps the old mapping alive if another command list grows
+ * the pool after this one has been recorded.
+ */
+static bool
+d12_segment_reserve_scratch(struct d12_cmd_list *list,
+                            struct d12_segment *seg,
+                            enum d12_scratch_stage stage,
+                            const struct agx_shader_info *info)
+{
+   unsigned size = MAX2(info->scratch_size, info->preamble_scratch_size);
+   if (!size)
+      return true;
+
+   struct d12_device *device = list->device;
+   struct agx_scratch *scratch;
+   struct agx_bo **segment_bo;
+   bool *segment_preamble;
+
+   switch (stage) {
+   case D12_SCRATCH_CS:
+      scratch = &device->scratch_cs;
+      segment_bo = &seg->scratch_cs_bo;
+      segment_preamble = &seg->scratch_cs_preamble;
+      break;
+   case D12_SCRATCH_VS:
+      scratch = &device->scratch_vs;
+      segment_bo = &seg->scratch_vs_bo;
+      segment_preamble = &seg->scratch_vs_preamble;
+      break;
+   case D12_SCRATCH_FS:
+      scratch = &device->scratch_fs;
+      segment_bo = &seg->scratch_fs_bo;
+      segment_preamble = &seg->scratch_fs_preamble;
+      break;
+   default:
+      UNREACHABLE("invalid d3d12 scratch stage");
+   }
+
+   simple_mtx_lock(&device->scratch_lock);
+   agx_scratch_alloc(scratch, size, 0);
+
+   if (!scratch->buf) {
+      simple_mtx_unlock(&device->scratch_lock);
+      mesa_loge("failed to allocate %u dwords of shader scratch", size);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   if (*segment_bo != scratch->buf) {
+      agx_bo_reference(scratch->buf);
+      if (*segment_bo)
+         agx_bo_unreference(&device->dev, *segment_bo);
+      *segment_bo = scratch->buf;
+   }
+   *segment_preamble |= info->preamble_scratch_size > 0;
+   simple_mtx_unlock(&device->scratch_lock);
+
+   if (getenv("D3D12AGX_DUMP_SCRATCH"))
+      mesa_logi("scratch stage=%u size=%u preamble=%u bo=0x%llx (%zu B)",
+                stage, info->scratch_size, info->preamble_scratch_size,
+                (unsigned long long)(*segment_bo)->va->addr,
+                (*segment_bo)->size);
+
+   return true;
+}
+
+static void
+d12_list_release_segment_scratch(struct d12_cmd_list *list,
+                                 struct d12_cmd_allocator *retire_to)
+{
+   for (unsigned i = 0; i < list->segment_count; i++) {
+      struct d12_segment *seg = &list->segments[i];
+      struct agx_bo **bos[] = {
+         &seg->scratch_cs_bo,
+         &seg->scratch_vs_bo,
+         &seg->scratch_fs_bo,
+      };
+
+      for (unsigned j = 0; j < ARRAY_SIZE(bos); j++) {
+         if (!*bos[j])
+            continue;
+
+         if (retire_to) {
+            util_dynarray_append_typed(&retire_to->retired_bos,
+                                       struct agx_bo *, *bos[j]);
+         } else {
+            agx_bo_unreference(&list->device->dev, *bos[j]);
+         }
+         *bos[j] = NULL;
+      }
+   }
+}
+
 static void
 d12_list_begin_recording(struct d12_cmd_list *list)
 {
+   d12_list_release_segment_scratch(list, NULL);
    list->stream_cur = d12_list_stream_map(list);
    list->data_floor = D12_STREAM_BO_SIZE;
    list->usc_offset = 0;
@@ -1727,6 +1830,9 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!seg)
       return;
 
+   if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, &pso->info))
+      return;
+
    uint64_t root_gpu = 0, textures_gpu = 0;
    if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu))
       return;
@@ -2209,6 +2315,10 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS,
+                                       stages[i].info))
+         return false;
+
       uint32_t usc =
          d12_list_build_compute_usc(list, stages[i].va, stages[i].info, &u,
                                     false, stages[i].visibility, NULL);
@@ -2409,7 +2519,10 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       .tcs_buffer = (DEVICE(float))tcs_buffer,
       .counts = (DEVICE(uint32_t))counts,
       /* index_buffer is GPU-written by the prefix sum. */
-      .statistic = (DEVICE(uint32_t))device->heap_desc_va,
+      /* No pipeline-statistics query is active. Pointing this at the heap
+       * descriptor corrupts its 64-bit base when the tessellator performs
+       * the documented atomic increment before allocating domain points. */
+      .statistic = 0,
       .tcs_per_vertex_outputs = pso->tcs_per_vertex_outputs,
       .input_patch_size = input_patch_size,
       .output_patch_size = pso->tcs_output_patch_size,
@@ -2488,6 +2601,10 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS,
+                                       stages[i].info))
+         return false;
+
       uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
                                                 stages[i].info, &u, false,
                                                 stages[i].visibility, NULL);
@@ -2758,6 +2875,10 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       agx_workgroup(1, 1, 1), D3D12_SHADER_VISIBILITY_ALL};
 
    for (unsigned i = 0; i < nr_stages; i++) {
+      if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS,
+                                       stages[i].info))
+         return false;
+
       uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
                                                 stages[i].info, &u, false,
                                                 stages[i].visibility, NULL);
@@ -2983,6 +3104,12 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       : vstage == &pso->gs_rast ? D3D12_SHADER_VISIBILITY_GEOMETRY
       : vstage == &pso->ms_rast ? D3D12_SHADER_VISIBILITY_MESH
                                   : D3D12_SHADER_VISIBILITY_VERTEX;
+
+   if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_VS,
+                                    &vstage->info) ||
+       !d12_segment_reserve_scratch(list, seg, D12_SCRATCH_FS,
+                                    &pso->fs.info))
+      return;
 
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
@@ -4146,6 +4273,7 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
        * which frees them once D3D12 guarantees completion.
        */
       if (list->submitted && list->allocator) {
+         d12_list_release_segment_scratch(list, list->allocator);
          util_dynarray_append_typed(&list->allocator->retired_bos,
                                     struct agx_bo *, list->stream_bo);
          util_dynarray_append_typed(&list->allocator->retired_bos,
@@ -4153,6 +4281,8 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
          list->stream_bo = NULL;
          list->usc_bo = NULL;
       }
+
+      d12_list_release_segment_scratch(list, NULL);
 
       if (list->stream_bo)
          agx_bo_unreference(&list->device->dev, list->stream_bo);
@@ -4302,11 +4432,13 @@ d12_list_take_fresh_storage(struct d12_cmd_list *list)
     * GPU, and is what the old code effectively did.
     */
    if (list->allocator) {
+      d12_list_release_segment_scratch(list, list->allocator);
       util_dynarray_append_typed(&list->allocator->retired_bos,
                                  struct agx_bo *, list->stream_bo);
       util_dynarray_append_typed(&list->allocator->retired_bos,
                                  struct agx_bo *, list->usc_bo);
    } else {
+      d12_list_release_segment_scratch(list, NULL);
       agx_bo_unreference(&device->dev, list->stream_bo);
       agx_bo_unreference(&device->dev, list->usc_bo);
    }

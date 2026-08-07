@@ -140,6 +140,10 @@ d12_device_Release(ID3D12Device2 *iface)
       agx_bo_unreference(&device->dev, device->rodata_bo);
       if (device->heap_bo)
          agx_bo_unreference(&device->dev, device->heap_bo);
+      agx_scratch_fini(&device->scratch_vs);
+      agx_scratch_fini(&device->scratch_fs);
+      agx_scratch_fini(&device->scratch_cs);
+      simple_mtx_destroy(&device->scratch_lock);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -2801,6 +2805,11 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       .bottom = 0,
       .size = (uint32_t)device->heap_bo->size,
    };
+
+   simple_mtx_init(&device->scratch_lock, mtx_plain);
+   agx_scratch_init(&device->dev, &device->scratch_vs);
+   agx_scratch_init(&device->dev, &device->scratch_fs);
+   agx_scratch_init(&device->dev, &device->scratch_cs);
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
    device->iface15.lpVtbl = (ID3D12Device15Vtbl *)&d12_device15_vtbl;

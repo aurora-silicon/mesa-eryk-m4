@@ -23,35 +23,15 @@
 #include "nir_builder.h"
 #include "poly/nir/poly_nir.h"
 
-/*
- * CONFORMITY GAP, reported loudly rather than worked around.
- *
- * We compile with has_scratch = true, so the backend is allowed to spill
- * registers and to put allocas in per-thread scratch. hk then does the
- * other half of the bargain (hk_queue.c, asahi_fill_vdm_command): when a
- * shader reports scratch it allocates a scratch buffer, points
- * vertex_helper/fragment_helper.data at it, binds agx_helper_program()
- * as .binary, and sets DRM_ASAHI_RENDER_VERTEX_SCRATCH.
- *
- * This driver does NONE of that. A shader that actually spills therefore
- * has nowhere to spill to. That is a plausible contributor to the GPU
- * faults this campaign has been chasing in complex shaders, and it fails
- * silently -- there is no error, just wrong memory.
- *
- * Reporting is deliberate: implementing the scratch/helper plumbing is a
- * render-command change that cannot be verified while the GPU is
- * degraded, and a wrong one faults the hardware. Log which shaders need
- * it so the fix can be written and checked against real cases.
- */
+/* The runtime mirrors Honeykrisp's helper-program scratch allocation. Keep a
+ * targeted dump for verifying which compiled stages exercise that path. */
 static void
 d12_report_scratch(const char *what, const struct agx_shader_info *info)
 {
-   if (info->scratch_size || info->preamble_scratch_size) {
-      mesa_logw("%s spills to scratch (%u B main, %u B preamble) but this "
-                "driver binds no scratch buffer or helper program -- see "
-                "hk_queue.c asahi_fill_vdm_command",
-                what, info->scratch_size, info->preamble_scratch_size);
-   }
+   if (getenv("D3D12AGX_DUMP_SCRATCH") &&
+       (info->scratch_size || info->preamble_scratch_size))
+      mesa_logi("%s uses scratch (%u dwords main, %u dwords preamble)", what,
+                info->scratch_size, info->preamble_scratch_size);
 }
 
 /*

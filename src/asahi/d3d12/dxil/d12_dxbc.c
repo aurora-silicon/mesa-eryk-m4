@@ -66,12 +66,21 @@ enum d12_dxbc_file {
    D12_DXBC_FILE_SAMPLER = 6,
    D12_DXBC_FILE_RESOURCE = 7,
    D12_DXBC_FILE_CONSTANT_BUFFER = 8,
+   D12_DXBC_FILE_IMMEDIATE_CONSTANT_BUFFER = 9,
+   D12_DXBC_FILE_INPUT_PRIMITIVE_ID = 11,
    D12_DXBC_FILE_OUTPUT_DEPTH = 12,
    D12_DXBC_FILE_NULL = 13,
    /* Compute system values. These are not varyings and have no
     * declaration in the token stream -- the register file IS the
     * meaning. */
    D12_DXBC_FILE_OUTPUT_COVERAGE_MASK = 15,
+   D12_DXBC_FILE_OUTPUT_CONTROL_POINT_ID = 22,
+   D12_DXBC_FILE_INPUT_FORK_INSTANCE_ID = 23,
+   D12_DXBC_FILE_INPUT_JOIN_INSTANCE_ID = 24,
+   D12_DXBC_FILE_INPUT_CONTROL_POINT = 25,
+   D12_DXBC_FILE_OUTPUT_CONTROL_POINT = 26,
+   D12_DXBC_FILE_INPUT_PATCH_CONSTANT = 27,
+   D12_DXBC_FILE_INPUT_DOMAIN_POINT = 28,
    D12_DXBC_FILE_UAV = 30,
    D12_DXBC_FILE_TGSM = 31,
    D12_DXBC_FILE_THREAD_ID = 32,
@@ -194,6 +203,12 @@ enum d12_dxbc_op {
    D12_DXBC_OP_BFI = 140,
    D12_DXBC_OP_BFREV = 141,
    D12_DXBC_OP_UMAD = 82,
+   /* Hull-shader phase delimiters. They carry no operands; the phase bodies
+    * follow as ordinary instructions/declarations. */
+   D12_DXBC_OP_HS_DECLS = 113,
+   D12_DXBC_OP_HS_CONTROL_POINT_PHASE = 114,
+   D12_DXBC_OP_HS_FORK_PHASE = 115,
+   D12_DXBC_OP_HS_JOIN_PHASE = 116,
    D12_DXBC_OP_DCL_INDEX_RANGE = 91,
    D12_DXBC_OP_DCL_OUTPUT_SGV = 102,
    /* The SM5 declaration block. Bindings all come from the root
@@ -217,6 +232,8 @@ enum d12_dxbc_op {
    D12_DXBC_OP_DCL_TESS_PARTITIONING = 150,
    D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE = 151,
    D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR = 152,
+   D12_DXBC_OP_DCL_HS_FORK_PHASE_INSTANCE_COUNT = 153,
+   D12_DXBC_OP_DCL_HS_JOIN_PHASE_INSTANCE_COUNT = 154,
    /* Public SM5 raw/structured buffer access opcodes. Raw loads carry
     * dest, byte offset, resource; structured loads additionally carry a
     * member offset. */
@@ -350,6 +367,13 @@ enum d12_dxbc_cf_kind {
    D12_DXBC_CF_SWITCH,
 };
 
+enum d12_dxbc_hs_phase {
+   D12_DXBC_HS_DECLS,
+   D12_DXBC_HS_CONTROL_POINT,
+   D12_DXBC_HS_FORK,
+   D12_DXBC_HS_JOIN,
+};
+
 struct d12_dxbc_cf {
    enum d12_dxbc_cf_kind kind;
    bool in_else;
@@ -367,6 +391,14 @@ struct d12_dxbc_ctx {
    unsigned num_in_sig;
    struct d12_dxbc_sig_elem out_sig[D12_DXBC_MAX_SIG];
    unsigned num_out_sig;
+   struct d12_dxbc_sig_elem patch_sig[D12_DXBC_MAX_SIG];
+   unsigned num_patch_sig;
+   enum d12_dxbc_hs_phase hs_phase;
+   unsigned hs_input_control_points;
+   bool hs_has_control_point_phase;
+   bool hs_instance_phase_open;
+   const uint32_t *immediate_constants;
+   unsigned num_immediate_constants;
 
    /* Element stride of each structured buffer, by register. Declared
     * once and needed at every access, since the address is
@@ -463,6 +495,18 @@ find_sig(const struct d12_dxbc_sig_elem *sig, unsigned n, uint32_t reg)
    return NULL;
 }
 
+static const struct d12_dxbc_sig_elem *
+find_sig_component(const struct d12_dxbc_sig_elem *sig, unsigned n,
+                   uint32_t reg, unsigned component)
+{
+   for (unsigned i = 0; i < n; i++) {
+      if (sig[i].reg == reg && (sig[i].mask & BITFIELD_BIT(component)))
+         return &sig[i];
+   }
+
+   return find_sig(sig, n, reg);
+}
+
 /* Where a signature element lands in NIR's location space. */
 static unsigned
 output_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
@@ -486,6 +530,36 @@ output_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
    }
 
    return VARYING_SLOT_VAR0 + reg;
+}
+
+static unsigned
+input_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
+               uint32_t reg)
+{
+   if (ctx->b.shader->info.stage == MESA_SHADER_VERTEX)
+      return VERT_ATTRIB_GENERIC0 + reg;
+
+   if (e) {
+      if (!strcasecmp(e->name, "SV_Position") || e->sysval == 1)
+         return VARYING_SLOT_POS;
+      if (!strcasecmp(e->name, "SV_ClipDistance"))
+         return VARYING_SLOT_CLIP_DIST0 + e->semantic_index;
+   }
+
+   return VARYING_SLOT_VAR0 + reg;
+}
+
+static unsigned
+patch_location(const struct d12_dxbc_sig_elem *e, uint32_t reg)
+{
+   if (e) {
+      if (!strcasecmp(e->name, "SV_TessFactor"))
+         return VARYING_SLOT_TESS_LEVEL_OUTER;
+      if (!strcasecmp(e->name, "SV_InsideTessFactor"))
+         return VARYING_SLOT_TESS_LEVEL_INNER;
+   }
+
+   return VARYING_SLOT_PATCH0 + reg;
 }
 
 /*
@@ -765,6 +839,30 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       return nir_build_imm(b, 4, 32, c);
    }
 
+   case D12_DXBC_FILE_IMMEDIATE_CONSTANT_BUFFER: {
+      if (op->num_indices != 1 || !ctx->immediate_constants ||
+          !ctx->num_immediate_constants) {
+         fail(ctx, "invalid immediate constant-buffer operand");
+         return nir_imm_zero(b, 4, 32);
+      }
+
+      nir_def *index = read_operand_index(ctx, op, 0);
+      if (!index)
+         return nir_imm_zero(b, 4, 32);
+
+      nir_def *result = nir_imm_zero(b, 4, 32);
+      for (unsigned i = 0; i < ctx->num_immediate_constants; i++) {
+         nir_const_value c[4];
+         for (unsigned j = 0; j < 4; j++)
+            c[j] = nir_const_value_for_uint(
+               ctx->immediate_constants[i * 4 + j], 32);
+         nir_def *value = nir_build_imm(b, 4, 32, c);
+         result = nir_bcsel(b, nir_ieq_imm(b, index, i), value, result);
+      }
+      v = result;
+      break;
+   }
+
    case D12_DXBC_FILE_TEMP: {
       nir_variable *var = temp_var(ctx, op->index[0]);
       if (!var)
@@ -796,6 +894,97 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
 
    case D12_DXBC_FILE_COVERAGE_MASK:
       return nir_replicate(b, nir_load_sample_mask_in(b), 4);
+
+   case D12_DXBC_FILE_INPUT_PRIMITIVE_ID:
+      return nir_replicate(b, nir_load_primitive_id(b), 4);
+
+   case D12_DXBC_FILE_OUTPUT_CONTROL_POINT_ID:
+      return nir_replicate(b, nir_load_invocation_id(b), 4);
+
+   /* Fork/join phases are distributed over the hull workgroup's invocations;
+    * their declaration wraps the phase body to the requested instance count. */
+   case D12_DXBC_FILE_INPUT_FORK_INSTANCE_ID:
+   case D12_DXBC_FILE_INPUT_JOIN_INSTANCE_ID:
+      return nir_replicate(b, nir_load_invocation_id(b), 4);
+
+   case D12_DXBC_FILE_INPUT_CONTROL_POINT: {
+      if (op->num_indices != 2 || op->index_is_relative[1]) {
+         fail(ctx, "invalid input control-point operand");
+         return nir_imm_zero(b, 4, 32);
+      }
+
+      nir_def *vertex = read_operand_index(ctx, op, 0);
+      if (!vertex)
+         return nir_imm_zero(b, 4, 32);
+
+      uint32_t reg = op->index[1];
+      const struct d12_dxbc_sig_elem *e =
+         find_sig(ctx->in_sig, ctx->num_in_sig, reg);
+      unsigned loc = input_location(ctx, e, reg);
+      v = nir_load_per_vertex_input(
+         b, 4, 32, nir_u2u32(b, vertex), nir_imm_int(b, 0), .base = reg,
+         .dest_type = nir_type_float32, .io_semantics.location = loc,
+         .io_semantics.num_slots = 1);
+      b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+      break;
+   }
+
+   case D12_DXBC_FILE_OUTPUT_CONTROL_POINT: {
+      if (op->num_indices != 2 || op->index_is_relative[1]) {
+         fail(ctx, "invalid output control-point operand");
+         return nir_imm_zero(b, 4, 32);
+      }
+
+      nir_def *vertex = read_operand_index(ctx, op, 0);
+      if (!vertex)
+         return nir_imm_zero(b, 4, 32);
+
+      uint32_t reg = op->index[1];
+      const struct d12_dxbc_sig_elem *e =
+         find_sig(ctx->out_sig, ctx->num_out_sig, reg);
+      unsigned loc = output_location(ctx, e, reg);
+      v = nir_load_per_vertex_output(
+         b, 4, 32, nir_u2u32(b, vertex), nir_imm_int(b, 0), .base = reg,
+         .dest_type = nir_type_float32, .io_semantics.location = loc,
+         .io_semantics.num_slots = 1);
+      break;
+   }
+
+   case D12_DXBC_FILE_INPUT_PATCH_CONSTANT: {
+      if (op->num_indices != 1 || op->index_is_relative[0]) {
+         fail(ctx, "invalid patch-constant operand");
+         return nir_imm_zero(b, 4, 32);
+      }
+
+      uint32_t reg = op->index[0];
+      nir_def *components[4];
+      for (unsigned c = 0; c < 4; c++) {
+         const struct d12_dxbc_sig_elem *e = find_sig_component(
+            ctx->patch_sig, ctx->num_patch_sig, reg, c);
+         unsigned loc = patch_location(e, reg);
+         unsigned component =
+            loc == VARYING_SLOT_TESS_LEVEL_OUTER ||
+                  loc == VARYING_SLOT_TESS_LEVEL_INNER
+               ? e->semantic_index
+               : c;
+
+         components[c] = nir_load_input(
+            b, 1, 32, nir_imm_int(b, 0), .base = reg,
+            .component = component, .dest_type = nir_type_float32,
+            .io_semantics.location = loc, .io_semantics.num_slots = 1);
+         if (loc >= VARYING_SLOT_PATCH0)
+            b->shader->info.patch_inputs_read |=
+               BITFIELD64_BIT(loc - VARYING_SLOT_PATCH0);
+         else
+            b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+      }
+      v = nir_vec(b, components, ARRAY_SIZE(components));
+      break;
+   }
+
+   case D12_DXBC_FILE_INPUT_DOMAIN_POINT:
+      v = nir_pad_vector(b, nir_load_tess_coord(b), 4);
+      break;
 
    case D12_DXBC_FILE_INPUT: {
       uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
@@ -835,14 +1024,28 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
          break;
       }
 
-      unsigned loc = b->shader->info.stage == MESA_SHADER_VERTEX
-                        ? VERT_ATTRIB_GENERIC0 + reg
-                        : VARYING_SLOT_VAR0 + reg;
+      unsigned loc = input_location(ctx, e, reg);
 
-      v = nir_load_input(b, 4, 32, nir_imm_int(b, 0), .base = reg,
-                         .dest_type = nir_type_float32,
-                         .io_semantics.location = loc,
-                         .io_semantics.num_slots = 1);
+      if (b->shader->info.stage == MESA_SHADER_GEOMETRY ||
+          b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
+          b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
+         if (op->num_indices != 2) {
+            fail(ctx, "invalid arrayed shader input operand");
+            return nir_imm_zero(b, 4, 32);
+         }
+         nir_def *vertex = read_operand_index(ctx, op, 0);
+         if (!vertex)
+            return nir_imm_zero(b, 4, 32);
+         v = nir_load_per_vertex_input(
+            b, 4, 32, nir_u2u32(b, vertex), nir_imm_int(b, 0), .base = reg,
+            .dest_type = nir_type_float32, .io_semantics.location = loc,
+            .io_semantics.num_slots = 1);
+      } else {
+         v = nir_load_input(b, 4, 32, nir_imm_int(b, 0), .base = reg,
+                            .dest_type = nir_type_float32,
+                            .io_semantics.location = loc,
+                            .io_semantics.num_slots = 1);
+      }
       b->shader->info.inputs_read |=
          BITFIELD64_BIT(b->shader->info.stage == MESA_SHADER_VERTEX ? reg
                                                                     : loc);
@@ -1525,6 +1728,41 @@ robust_store_buffer_masked(struct d12_dxbc_ctx *ctx, nir_def *address,
 }
 
 static void
+store_patch_output_component(struct d12_dxbc_ctx *ctx, nir_def *value,
+                             unsigned source_component,
+                             const struct d12_dxbc_sig_elem *e)
+{
+   nir_builder *b = &ctx->b;
+   unsigned loc = patch_location(e, e->reg);
+   unsigned component = loc == VARYING_SLOT_TESS_LEVEL_OUTER ||
+                              loc == VARYING_SLOT_TESS_LEVEL_INNER
+                           ? e->semantic_index
+                           : source_component;
+
+   unsigned outer, inner;
+   mesa_count_tess_level_components(b->shader->info.tess._primitive_mode,
+                                    &outer, &inner);
+   unsigned limit = loc == VARYING_SLOT_TESS_LEVEL_OUTER
+                       ? outer
+                       : loc == VARYING_SLOT_TESS_LEVEL_INNER ? inner : 4;
+   if (component >= limit) {
+      fail(ctx, "tessellation factor component exceeds domain");
+      return;
+   }
+
+   nir_store_output(b, nir_channel(b, value, source_component),
+                    nir_imm_int(b, 0), .base = e->reg, .write_mask = 1,
+                    .component = component, .src_type = nir_type_float32,
+                    .io_semantics.location = loc,
+                    .io_semantics.num_slots = 1);
+   if (loc >= VARYING_SLOT_PATCH0)
+      b->shader->info.patch_outputs_written |=
+         BITFIELD64_BIT(loc - VARYING_SLOT_PATCH0);
+   else
+      b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+}
+
+static void
 write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
           nir_def *value)
 {
@@ -1541,15 +1779,64 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
 
    case D12_DXBC_FILE_OUTPUT: {
       uint32_t reg = op->index[op->num_indices ? op->num_indices - 1 : 0];
-      const struct d12_dxbc_sig_elem *e =
-         find_sig(ctx->out_sig, ctx->num_out_sig, reg);
-      unsigned loc = output_location(ctx, e, reg);
+      if (b->shader->info.stage == MESA_SHADER_TESS_CTRL &&
+          (ctx->hs_phase == D12_DXBC_HS_FORK ||
+           ctx->hs_phase == D12_DXBC_HS_JOIN)) {
+         if (op->num_indices != 1) {
+            fail(ctx, "invalid hull patch-output operand");
+            break;
+         }
 
-      nir_store_output(b, value, nir_imm_int(b, 0), .base = reg,
-                       .write_mask = mask, .src_type = nir_type_float32,
-                       .io_semantics.location = loc,
-                       .io_semantics.num_slots = 1);
-      b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+         if (op->index_is_relative[0]) {
+            nir_def *dynamic_reg = read_operand_index(ctx, op, 0);
+            if (!dynamic_reg)
+               break;
+
+            for (unsigned i = 0; i < ctx->num_patch_sig; i++) {
+               const struct d12_dxbc_sig_elem *e = &ctx->patch_sig[i];
+               unsigned component_mask = mask & e->mask;
+               if (!component_mask)
+                  continue;
+
+               nir_push_if(b, nir_ieq_imm(b, dynamic_reg, e->reg));
+               u_foreach_bit(c, component_mask)
+                  store_patch_output_component(ctx, value, c, e);
+               nir_pop_if(b, NULL);
+            }
+         } else {
+            for (unsigned c = 0; c < 4; c++) {
+               if (!(mask & BITFIELD_BIT(c)))
+                  continue;
+               const struct d12_dxbc_sig_elem *e = find_sig_component(
+                  ctx->patch_sig, ctx->num_patch_sig, reg, c);
+               if (!e) {
+                  fail(ctx, "hull patch output has no signature element");
+                  break;
+               }
+               store_patch_output_component(ctx, value, c, e);
+            }
+         }
+      } else {
+         const struct d12_dxbc_sig_elem *e =
+            find_sig(ctx->out_sig, ctx->num_out_sig, reg);
+         unsigned loc = output_location(ctx, e, reg);
+
+         if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
+            nir_store_per_vertex_output(
+               b, value, nir_load_invocation_id(b), nir_imm_int(b, 0),
+               .base = reg, .write_mask = mask,
+               .src_type = nir_type_float32,
+               .io_semantics.location = loc,
+               .io_semantics.num_slots = 1);
+         } else {
+            nir_store_output(b, value, nir_imm_int(b, 0), .base = reg,
+                             .write_mask = mask,
+                             .src_type = nir_type_float32,
+                             .io_semantics.location = loc,
+                             .io_semantics.num_slots = 1);
+         }
+         b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+      }
       break;
    }
 
@@ -1852,6 +2139,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             fail(ctx, "bad custom data length");
             return;
          }
+         unsigned custom_class = op_tok >> 11;
+         if (custom_class == 3) {
+            if ((n - 2) % 4) {
+               fail(ctx, "misaligned immediate constant buffer");
+               return;
+            }
+            ctx->immediate_constants = ctx->tok + 2;
+            ctx->num_immediate_constants = (n - 2) / 4;
+         }
          ctx->tok += n;
          continue;
       }
@@ -1875,6 +2171,113 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       /* Declarations carry their payload inline rather than as operands,
        * and are handled before any operand decoding. */
       switch (opcode) {
+      case D12_DXBC_OP_HS_DECLS:
+         ctx->hs_phase = D12_DXBC_HS_DECLS;
+         ctx->tok += len;
+         continue;
+      case D12_DXBC_OP_HS_CONTROL_POINT_PHASE:
+         if (ctx->hs_instance_phase_open) {
+            nir_pop_if(b, NULL);
+            ctx->hs_instance_phase_open = false;
+         }
+         ctx->hs_phase = D12_DXBC_HS_CONTROL_POINT;
+         ctx->hs_has_control_point_phase = true;
+         ctx->tok += len;
+         continue;
+      case D12_DXBC_OP_HS_FORK_PHASE:
+         if (ctx->hs_instance_phase_open) {
+            nir_pop_if(b, NULL);
+            ctx->hs_instance_phase_open = false;
+         }
+         ctx->hs_phase = D12_DXBC_HS_FORK;
+         ctx->tok += len;
+         continue;
+      case D12_DXBC_OP_HS_JOIN_PHASE:
+         if (ctx->hs_instance_phase_open) {
+            nir_pop_if(b, NULL);
+            ctx->hs_instance_phase_open = false;
+         }
+         ctx->hs_phase = D12_DXBC_HS_JOIN;
+         ctx->tok += len;
+         continue;
+
+      case D12_DXBC_OP_DCL_OUTPUT_CONTROL_POINT_COUNT: {
+         unsigned count = (op_tok >> 11) & 0x3f;
+         if (!count || count > 32) {
+            fail(ctx, "invalid hull output control-point count");
+            return;
+         }
+         b->shader->info.tess.tcs_vertices_out = count;
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_INPUT_CONTROL_POINT_COUNT: {
+         unsigned count = (op_tok >> 11) & 0x3f;
+         if (!count || count > 32) {
+            fail(ctx, "invalid hull input control-point count");
+            return;
+         }
+         ctx->hs_input_control_points = count;
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_TESS_DOMAIN: {
+         switch ((op_tok >> 11) & 0x3) {
+         case 1: b->shader->info.tess._primitive_mode =
+                    TESS_PRIMITIVE_ISOLINES; break;
+         case 2: b->shader->info.tess._primitive_mode =
+                    TESS_PRIMITIVE_TRIANGLES; break;
+         case 3: b->shader->info.tess._primitive_mode =
+                    TESS_PRIMITIVE_QUADS; break;
+         default:
+            fail(ctx, "invalid tessellator domain");
+            return;
+         }
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_TESS_PARTITIONING: {
+         switch ((op_tok >> 11) & 0x7) {
+         case 1: b->shader->info.tess.spacing = TESS_SPACING_EQUAL; break;
+         case 3: b->shader->info.tess.spacing =
+                    TESS_SPACING_FRACTIONAL_ODD; break;
+         case 4: b->shader->info.tess.spacing =
+                    TESS_SPACING_FRACTIONAL_EVEN; break;
+         default:
+            fail(ctx, "unsupported tessellator partitioning");
+            return;
+         }
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE: {
+         unsigned primitive = (op_tok >> 11) & 0x7;
+         if (primitive < 1 || primitive > 4) {
+            fail(ctx, "invalid tessellator output primitive");
+            return;
+         }
+         b->shader->info.tess.point_mode = primitive == 1;
+         b->shader->info.tess.ccw = primitive == 4;
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_HS_FORK_PHASE_INSTANCE_COUNT:
+      case D12_DXBC_OP_DCL_HS_JOIN_PHASE_INSTANCE_COUNT:
+         if (avail != 1 || !args[0] || args[0] > 32 ||
+             ctx->hs_instance_phase_open) {
+            fail(ctx, "invalid hull fork/join instance count");
+            return;
+         }
+         nir_push_if(b, nir_ult_imm(b, nir_load_invocation_id(b), args[0]));
+         ctx->hs_instance_phase_open = true;
+         ctx->tok += len;
+         continue;
+
       case D12_DXBC_OP_DCL_GLOBAL_FLAGS:
       case D12_DXBC_OP_DCL_TEMPS:
       case D12_DXBC_OP_DCL_INPUT:
@@ -1895,11 +2298,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE:
       case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
       case D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT:
-      case D12_DXBC_OP_DCL_INPUT_CONTROL_POINT_COUNT:
-      case D12_DXBC_OP_DCL_OUTPUT_CONTROL_POINT_COUNT:
-      case D12_DXBC_OP_DCL_TESS_DOMAIN:
-      case D12_DXBC_OP_DCL_TESS_PARTITIONING:
-      case D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE:
       case D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR:
          /* Signature and binding information all comes from the
           * container's ISGN/OSGN chunks and the root signature, so the
@@ -3036,8 +3434,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * switch cases for source-level early returns.  Treating it as an
           * implicit end-of-shader no-op made the matched case fall through
           * every later label and overwrite its result. */
-         if (ctx->tok + len < ctx->end)
+         if (ctx->hs_instance_phase_open) {
+            nir_pop_if(b, NULL);
+            ctx->hs_instance_phase_open = false;
+         }
+         if (ctx->tok + len < ctx->end) {
+            const unsigned next_opcode = ctx->tok[len] & 0x7ff;
+            const bool ends_hull_phase =
+               b->shader->info.stage == MESA_SHADER_TESS_CTRL &&
+               (next_opcode == D12_DXBC_OP_HS_CONTROL_POINT_PHASE ||
+                next_opcode == D12_DXBC_OP_HS_FORK_PHASE ||
+                next_opcode == D12_DXBC_OP_HS_JOIN_PHASE);
+            if (ends_hull_phase)
+               break;
             nir_jump(b, nir_jump_return);
+         }
          break;
 
       default:
@@ -3067,6 +3478,42 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 #undef NEED
 
       ctx->tok += len;
+   }
+
+   if (ctx->hs_instance_phase_open) {
+      nir_pop_if(b, NULL);
+      ctx->hs_instance_phase_open = false;
+   }
+
+   /* fxc may omit the control-point phase entirely when it is a pure
+    * passthrough. The public dxbc-spirv implementation synthesizes that
+    * copy from the input and output signatures; without it the tessellator
+    * gets valid factors but undefined control points and emits no pixels. */
+   if (b->shader->info.stage == MESA_SHADER_TESS_CTRL &&
+       !ctx->hs_has_control_point_phase &&
+       b->shader->info.tess.tcs_vertices_out) {
+      if (ctx->hs_input_control_points &&
+          ctx->hs_input_control_points !=
+             b->shader->info.tess.tcs_vertices_out) {
+         fail(ctx, "implicit hull passthrough has mismatched point counts");
+         return;
+      }
+
+      nir_def *vertex = nir_load_invocation_id(b);
+      for (unsigned i = 0; i < ctx->num_out_sig; i++) {
+         const struct d12_dxbc_sig_elem *e = &ctx->out_sig[i];
+         unsigned loc = output_location(ctx, e, e->reg);
+         nir_def *value = nir_load_per_vertex_input(
+            b, 4, 32, vertex, nir_imm_int(b, 0), .base = e->reg,
+            .dest_type = nir_type_float32, .io_semantics.location = loc,
+            .io_semantics.num_slots = 1);
+         nir_store_per_vertex_output(
+            b, value, vertex, nir_imm_int(b, 0), .base = e->reg,
+            .write_mask = e->mask, .src_type = nir_type_float32,
+            .io_semantics.location = loc, .io_semantics.num_slots = 1);
+         b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+         b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+      }
    }
 }
 
@@ -3158,6 +3605,10 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
    if (find_chunk(data, size_B, "OSGN", "OSG1", &sig, &sig_size)) {
       ctx.num_out_sig =
          parse_signature(sig, sig_size, ctx.out_sig, D12_DXBC_MAX_SIG);
+   }
+   if (find_chunk(data, size_B, "PCSG", "PSG1", &sig, &sig_size)) {
+      ctx.num_patch_sig =
+         parse_signature(sig, sig_size, ctx.patch_sig, D12_DXBC_MAX_SIG);
    }
 
    ctx.tok = tokens + 2;

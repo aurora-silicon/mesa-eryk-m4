@@ -1509,7 +1509,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           * every corner of the patch read the same undefined attribute
           * and the interpolated position was garbage.
           */
-         unsigned location = VARYING_SLOT_VAR0 + sig_id;
+         unsigned location = sem && !strcmp(sem, "SV_Position")
+                                ? VARYING_SLOT_POS
+                                : VARYING_SLOT_VAR0 + sig_id;
          nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
                               ? nir_u2u32(b, get_def(ctx, p[3]))
                               : nir_imm_int(b, 0);
@@ -2234,7 +2236,12 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!vertex)
          return false;
 
-      unsigned location = VARYING_SLOT_VAR0 + sig_id;
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->input_sig, ctx->mod->num_input_sig,
+                           (uint32_t)sig_id);
+      unsigned location = se && se->name && !strcmp(se->name, "SV_Position")
+                             ? VARYING_SLOT_POS
+                             : VARYING_SLOT_VAR0 + sig_id;
       def_result(ctx, inst,
                  nir_load_per_vertex_input(
                     b, 1, 32, nir_u2u32(b, vertex), nir_imm_int(b, row),
