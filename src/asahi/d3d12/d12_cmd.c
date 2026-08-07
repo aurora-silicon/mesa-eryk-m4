@@ -3286,6 +3286,43 @@ d12_list_SetPipelineState(ID3D12GraphicsCommandList6 *iface,
    list->pso = pso ? d12_pipeline_state_from_iface(pso) : NULL;
 }
 
+/* Clear API state without rewinding the command stream. Commands recorded
+ * before ClearState remain part of the list; only the state inherited by
+ * later commands returns to defaults, with the optional PSO installed.
+ */
+static void STDMETHODCALLTYPE
+d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
+                    ID3D12PipelineState *initial_state)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   /* Render-target bindings are part of the cleared state. Finish an open
+    * hardware render segment so a later draw cannot inherit its target.
+    */
+   if (list->render_open)
+      d12_list_close_cdm(list);
+
+   list->pso = initial_state ? d12_pipeline_state_from_iface(initial_state)
+                             : NULL;
+   list->compute_rs = NULL;
+   list->graphics_rs = NULL;
+   memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
+   memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+
+   memset(list->vb, 0, sizeof(list->vb));
+   memset(&list->ib, 0, sizeof(list->ib));
+   list->topology = MESA_PRIM_TRIANGLES;
+   list->patch_control_points = 0;
+
+   memset(&list->viewport, 0, sizeof(list->viewport));
+   memset(&list->scissor, 0, sizeof(list->scissor));
+   list->has_viewport = false;
+   list->has_scissor = false;
+   list->bound_rt = NULL;
+   list->bound_ds = NULL;
+   list->stencil_ref = 0;
+}
+
 static void STDMETHODCALLTYPE
 d12_list_SetComputeRootSignature(ID3D12GraphicsCommandList6 *iface,
                                  ID3D12RootSignature *root_sig)
@@ -4148,6 +4185,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .OMSetStencilRef = d12_list_OMSetStencilRef,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
    .ClearDepthStencilView = d12_list_ClearDepthStencilView,
+   .ClearState = d12_list_ClearState,
    .SetPipelineState = d12_list_SetPipelineState,
    .SetComputeRootSignature = d12_list_SetComputeRootSignature,
    .SetComputeRootUnorderedAccessView =
