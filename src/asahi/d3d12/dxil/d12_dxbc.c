@@ -81,6 +81,26 @@ enum d12_dxbc_file {
    D12_DXBC_FILE_THREAD_ID_IN_GROUP_FLAT = 36,
 };
 
+/*
+ * A relative index is encoded as a complete operand nested inside the
+ * containing operand.  Keep a non-recursive copy of it: the public token
+ * grammar permits the nested operand to carry its own ordinary indices, but
+ * another relative index there would require unbounded recursion and is not
+ * produced by the shaders this front end accepts.
+ */
+struct d12_dxbc_relative_operand {
+   bool valid;
+   enum d12_dxbc_file file;
+   unsigned num_indices;
+   uint32_t index[3];
+   unsigned sel_mode;
+   uint8_t swizzle[4];
+   uint8_t mask;
+   bool neg;
+   bool abs;
+   uint32_t imm[4];
+};
+
 /* The opcodes this front end covers. Anything else fails the shader
  * loudly rather than silently miscompiling it. */
 enum d12_dxbc_op {
@@ -241,6 +261,7 @@ struct d12_dxbc_operand {
    unsigned num_indices;
    uint32_t index[3];
    bool index_is_relative[3];
+   struct d12_dxbc_relative_operand relative[3];
 
    /* Selection: 0 = none, 1 = one component, 2 = swizzle/mask */
    unsigned sel_mode;
@@ -466,14 +487,38 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
          break;
       case 2: /* relative */
          out->index_is_relative[i] = true;
-         /* The relative operand itself follows; skip it, since dynamic
-          * indexing is refused below anyway. */
          {
             struct d12_dxbc_operand rel;
             unsigned n = decode_operand(ctx, p + used, avail - used, &rel);
             if (!n)
                return 0;
             used += n;
+
+            /* Relative indices are integer register values. Float
+             * source modifiers have no defined place in address math. */
+            if (rel.neg || rel.abs)
+               return 0;
+
+            for (unsigned j = 0; j < rel.num_indices; j++) {
+               if (rel.index_is_relative[j])
+                  return 0;
+            }
+
+            out->relative[i] = (struct d12_dxbc_relative_operand) {
+               .valid = true,
+               .file = rel.file,
+               .num_indices = rel.num_indices,
+               .sel_mode = rel.sel_mode,
+               .mask = rel.mask,
+               .neg = rel.neg,
+               .abs = rel.abs,
+            };
+            memcpy(out->relative[i].index, rel.index,
+                   sizeof(out->relative[i].index));
+            memcpy(out->relative[i].swizzle, rel.swizzle,
+                   sizeof(out->relative[i].swizzle));
+            memcpy(out->relative[i].imm, rel.imm,
+                   sizeof(out->relative[i].imm));
          }
          break;
       case 3: /* immediate32 + relative */
@@ -487,6 +532,30 @@ decode_operand(struct d12_dxbc_ctx *ctx, const uint32_t *p, unsigned avail,
             if (!n)
                return 0;
             used += n;
+
+            if (rel.neg || rel.abs)
+               return 0;
+
+            for (unsigned j = 0; j < rel.num_indices; j++) {
+               if (rel.index_is_relative[j])
+                  return 0;
+            }
+
+            out->relative[i] = (struct d12_dxbc_relative_operand) {
+               .valid = true,
+               .file = rel.file,
+               .num_indices = rel.num_indices,
+               .sel_mode = rel.sel_mode,
+               .mask = rel.mask,
+               .neg = rel.neg,
+               .abs = rel.abs,
+            };
+            memcpy(out->relative[i].index, rel.index,
+                   sizeof(out->relative[i].index));
+            memcpy(out->relative[i].swizzle, rel.swizzle,
+                   sizeof(out->relative[i].swizzle));
+            memcpy(out->relative[i].imm, rel.imm,
+                   sizeof(out->relative[i].imm));
          }
          break;
       default:
@@ -627,8 +696,8 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
        * assigns CBV slots in register order, and DXBC has no space
        * concept below SM 5.1.
        */
-      if (op->num_indices < 2 || op->index_is_relative[1]) {
-         fail(ctx, "dynamically indexed constant buffer");
+      if (op->num_indices < 2 || op->index_is_relative[0]) {
+         fail(ctx, "dynamically selected constant buffer binding");
          return nir_imm_zero(b, 4, 32);
       }
 
@@ -643,8 +712,36 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       nir_def *base = nir_load_global(
          b, 1, 64, nir_iadd_imm(b, root, (uint64_t)slot * 8), .align_mul = 8);
 
-      v = nir_load_global(b, 4, 32,
-                          nir_iadd_imm(b, base, op->index[1] * 16),
+      nir_def *row = nir_imm_int(b, op->index[1]);
+
+      if (op->index_is_relative[1]) {
+         const struct d12_dxbc_relative_operand *ri = &op->relative[1];
+         if (!ri->valid) {
+            fail(ctx, "missing relative constant buffer index");
+            return nir_imm_zero(b, 4, 32);
+         }
+
+         struct d12_dxbc_operand rel = {
+            .file = ri->file,
+            .num_indices = ri->num_indices,
+            .sel_mode = ri->sel_mode,
+            .mask = ri->mask,
+            .neg = ri->neg,
+            .abs = ri->abs,
+         };
+         memcpy(rel.index, ri->index, sizeof(rel.index));
+         memcpy(rel.swizzle, ri->swizzle, sizeof(rel.swizzle));
+         memcpy(rel.imm, ri->imm, sizeof(rel.imm));
+
+         nir_def *relative = read_src(ctx, &rel);
+         if (ctx->error)
+            return nir_imm_zero(b, 4, 32);
+
+         row = nir_iadd(b, row, nir_channel(b, relative, 0));
+      }
+
+      nir_def *byte_offset = nir_u2u64(b, nir_imul_imm(b, row, 16));
+      v = nir_load_global(b, 4, 32, nir_iadd(b, base, byte_offset),
                           .align_mul = 16);
       break;
    }
