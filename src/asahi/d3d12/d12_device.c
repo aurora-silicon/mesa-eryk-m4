@@ -894,8 +894,10 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          device, st.ms->pShaderBytecode, st.ms->BytecodeLength,
          st.as ? st.as->pShaderBytecode : NULL,
          st.as ? st.as->BytecodeLength : 0, st.ps->pShaderBytecode,
-         st.ps->BytecodeLength, rt_format, st.ds_state, st.dsv_format,
-         st.raster, st.blend, map, riid, out);
+         st.ps->BytecodeLength, rt_format,
+         st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
+         st.rt_formats.RTFormats, st.ds_state, st.dsv_format, st.raster,
+         st.blend, map, riid, out);
    }
 
    if (st.vs && st.vs->pShaderBytecode) {
@@ -908,8 +910,10 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.hs ? st.hs->pShaderBytecode : NULL,
          st.hs ? st.hs->BytecodeLength : 0,
          st.ds ? st.ds->pShaderBytecode : NULL,
-         st.ds ? st.ds->BytecodeLength : 0, rt_format, st.ds_state,
-         st.dsv_format, st.raster, st.blend, st.input_layout, map, riid, out);
+         st.ds ? st.ds->BytecodeLength : 0, rt_format,
+         st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
+         st.rt_formats.RTFormats, st.ds_state, st.dsv_format, st.raster,
+         st.blend, st.input_layout, map, riid, out);
    }
 
    mesa_loge("CreatePipelineState: stream declares no usable pipeline");
@@ -967,8 +971,9 @@ d12_device_CreateGraphicsPipelineState(
       desc->GS.pShaderBytecode, desc->GS.BytecodeLength,
       desc->HS.pShaderBytecode, desc->HS.BytecodeLength,
       desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
-      &desc->DepthStencilState, desc->DSVFormat, &desc->RasterizerState,
-      &desc->BlendState, &desc->InputLayout, map, riid, out);
+      desc->NumRenderTargets, desc->RTVFormats, &desc->DepthStencilState,
+      desc->DSVFormat, &desc->RasterizerState, &desc->BlendState,
+      &desc->InputLayout, map, riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -1454,13 +1459,18 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
       return;
    }
 
-   /* A read-only DSV would need the depth test to run with stores masked
-    * off at the ZLS level; accepting the flag and writing anyway would
-    * corrupt a buffer the app is simultaneously sampling.
-    */
-   if (desc && desc->Flags) {
-      mesa_loge("CreateDepthStencilView: read-only DSV flags 0x%x "
-                "unsupported", (unsigned)desc->Flags);
+   const D3D12_DSV_FLAGS flags = desc ? desc->Flags : D3D12_DSV_FLAG_NONE;
+   const D3D12_DSV_FLAGS valid = D3D12_DSV_FLAG_READ_ONLY_DEPTH |
+                                 D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+   if (flags & ~valid) {
+      mesa_loge("CreateDepthStencilView: invalid flags 0x%x",
+                (unsigned)flags);
+      slot->resource = NULL;
+      return;
+   }
+   if ((flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL) && !res->stencil_bo) {
+      mesa_loge("CreateDepthStencilView: READ_ONLY_STENCIL on a format with "
+                "no stencil plane");
       slot->resource = NULL;
       return;
    }
@@ -1470,7 +1480,104 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                      ? desc->Format
                      : res->desc.Format;
    slot->kind = D12_DESC_DSV;
+   slot->dsv_flags = flags;
    slot->address = res->addr;
+}
+
+static enum agx_wrap
+d12_sampler_wrap(D3D12_TEXTURE_ADDRESS_MODE mode)
+{
+   switch (mode) {
+   case D3D12_TEXTURE_ADDRESS_MODE_WRAP:        return AGX_WRAP_REPEAT;
+   case D3D12_TEXTURE_ADDRESS_MODE_MIRROR:      return AGX_WRAP_MIRRORED_REPEAT;
+   case D3D12_TEXTURE_ADDRESS_MODE_CLAMP:       return AGX_WRAP_CLAMP_TO_EDGE;
+   case D3D12_TEXTURE_ADDRESS_MODE_BORDER:      return AGX_WRAP_CLAMP_TO_BORDER;
+   case D3D12_TEXTURE_ADDRESS_MODE_MIRROR_ONCE: return AGX_WRAP_MIRRORED_CLAMP_TO_EDGE;
+   default:                                     return AGX_WRAP_CLAMP_TO_EDGE;
+   }
+}
+
+static enum agx_compare_func
+d12_sampler_compare(D3D12_COMPARISON_FUNC func)
+{
+   switch (func) {
+   case D3D12_COMPARISON_FUNC_NEVER:         return AGX_COMPARE_FUNC_NEVER;
+   case D3D12_COMPARISON_FUNC_LESS:          return AGX_COMPARE_FUNC_LESS;
+   case D3D12_COMPARISON_FUNC_EQUAL:         return AGX_COMPARE_FUNC_EQUAL;
+   case D3D12_COMPARISON_FUNC_LESS_EQUAL:    return AGX_COMPARE_FUNC_LEQUAL;
+   case D3D12_COMPARISON_FUNC_GREATER:       return AGX_COMPARE_FUNC_GREATER;
+   case D3D12_COMPARISON_FUNC_NOT_EQUAL:     return AGX_COMPARE_FUNC_NOT_EQUAL;
+   case D3D12_COMPARISON_FUNC_GREATER_EQUAL: return AGX_COMPARE_FUNC_GEQUAL;
+   case D3D12_COMPARISON_FUNC_ALWAYS:        return AGX_COMPARE_FUNC_ALWAYS;
+   default:                                  return AGX_COMPARE_FUNC_NEVER;
+   }
+}
+
+static enum agx_border_colour
+d12_sampler_border(const FLOAT color[4])
+{
+   if (color[0] == 0.0f && color[1] == 0.0f && color[2] == 0.0f) {
+      return color[3] == 1.0f ? AGX_BORDER_COLOUR_OPAQUE_BLACK
+                              : AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
+   }
+
+   if (color[0] == 1.0f && color[1] == 1.0f && color[2] == 1.0f &&
+       color[3] == 1.0f)
+      return AGX_BORDER_COLOUR_OPAQUE_WHITE;
+
+   /* The exact value remains in sampler_border for a future custom-border
+    * table.  Until that table is bound, use a deterministic safe fallback. */
+   return AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateSampler(ID3D12Device2 *iface,
+                         const D3D12_SAMPLER_DESC *desc,
+                         D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
+   if (!slot || !desc)
+      return;
+
+   memset(slot, 0, sizeof(*slot));
+
+   unsigned anisotropy = 1;
+   if (D3D12_DECODE_IS_ANISOTROPIC_FILTER(desc->Filter)) {
+      unsigned requested = CLAMP(desc->MaxAnisotropy, 1, 16);
+      while (anisotropy < requested)
+         anisotropy <<= 1;
+   }
+
+   const bool comparison = D3D12_DECODE_IS_COMPARISON_FILTER(desc->Filter);
+   agx_pack(&slot->sampler, SAMPLER, cfg) {
+      cfg.minimum_lod = desc->MinLOD;
+      cfg.maximum_lod = desc->MaxLOD;
+      cfg.magnify = D3D12_DECODE_MAG_FILTER(desc->Filter) ==
+                       D3D12_FILTER_TYPE_LINEAR
+                       ? AGX_FILTER_LINEAR
+                       : AGX_FILTER_NEAREST;
+      cfg.minify = D3D12_DECODE_MIN_FILTER(desc->Filter) ==
+                      D3D12_FILTER_TYPE_LINEAR
+                      ? AGX_FILTER_LINEAR
+                      : AGX_FILTER_NEAREST;
+      cfg.mip_filter = D3D12_DECODE_MIP_FILTER(desc->Filter) ==
+                          D3D12_FILTER_TYPE_LINEAR
+                          ? AGX_MIP_FILTER_LINEAR
+                          : AGX_MIP_FILTER_NEAREST;
+      cfg.wrap_s = d12_sampler_wrap(desc->AddressU);
+      cfg.wrap_t = d12_sampler_wrap(desc->AddressV);
+      cfg.wrap_r = d12_sampler_wrap(desc->AddressW);
+      cfg.maximum_anisotropy = anisotropy;
+      cfg.border_colour = d12_sampler_border(desc->BorderColor);
+      cfg.compare_enable = comparison;
+      cfg.compare_func = d12_sampler_compare(desc->ComparisonFunc);
+   }
+
+   memcpy(slot->sampler_border, desc->BorderColor,
+          sizeof(slot->sampler_border));
+   slot->sampler_lod_bias = desc->MipLODBias;
+   slot->sampler_flags = 0;
+   slot->sampler_kind = D12_DESC_SAMPLER;
 }
 
 /*
@@ -1967,6 +2074,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
+   .CreateSampler = d12_device_CreateSampler,
    .CreateShaderResourceView = d12_device_CreateShaderResourceView,
    .CreateUnorderedAccessView = d12_device_CreateUnorderedAccessView,
    .CreateConstantBufferView = d12_device_CreateConstantBufferView,

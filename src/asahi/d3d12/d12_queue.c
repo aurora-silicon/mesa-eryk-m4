@@ -153,7 +153,7 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
       const struct ail_layout *z = &seg->ds->layout;
       struct agx_zls zls = {
          .z_load = !seg->depth_cleared,
-         .z_store = true,
+         .z_store = !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH),
       };
 
       c->depth.base = seg->ds->addr;
@@ -168,7 +168,8 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
       if (seg->ds->stencil_bo) {
          s = &seg->ds->stencil_layout;
          zls.s_load = !seg->stencil_cleared;
-         zls.s_store = true;
+         zls.s_store =
+            !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL);
 
          c->stencil.base = seg->ds->stencil_addr;
          unsigned s_pages = s->layer_stride_B / AIL_PAGESIZE;

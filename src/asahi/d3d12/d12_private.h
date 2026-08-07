@@ -247,6 +247,7 @@ enum d12_descriptor_kind {
    D12_DESC_CBV,
    D12_DESC_SRV,
    D12_DESC_UAV,
+   D12_DESC_SAMPLER,
 };
 
 enum d12_buffer_view_kind {
@@ -257,27 +258,52 @@ enum d12_buffer_view_kind {
 };
 
 struct d12_descriptor {
-   /* GPU-read fields first: an SM 6.6 heap handle indexes this struct
-    * IN MEMORY, so the shader-visible layout is part of the ABI. The
-    * address must sit at offset 0 (resource_address reads it there) and
-    * the UAV counter pointer at offset 8 (D12_DESC_COUNTER_OFFSET).
-    */
-   uint64_t address;         /* resource base + view offset */
-   uint64_t counter_address; /* UAV counter, or 0 */
+   union {
+      struct {
+         /* GPU-read fields first: an SM 6.6 heap handle indexes this struct
+          * IN MEMORY, so the shader-visible layout is part of the ABI. The
+          * address must sit at offset 0 (resource_address reads it there) and
+          * the UAV counter pointer at offset 8 (D12_DESC_COUNTER_OFFSET).
+          */
+         uint64_t address;         /* resource base + view offset */
+         uint64_t counter_address; /* UAV counter, or 0 */
 
-   struct d12_resource *resource; /* not referenced; app keeps alive */
-   uint32_t size_B;
-   uint32_t stride_B;
-   DXGI_FORMAT format;
-   uint8_t kind; /* enum d12_descriptor_kind */
-   uint8_t buffer_kind; /* enum d12_buffer_view_kind */
-   uint8_t pad[2];
+         struct d12_resource *resource; /* not referenced; app keeps alive */
+         uint32_t size_B;
+         uint32_t stride_B;
+         DXGI_FORMAT format;
+         uint8_t kind; /* enum d12_descriptor_kind */
+         union {
+            uint8_t buffer_kind; /* enum d12_buffer_view_kind */
+            uint8_t dsv_flags;   /* D3D12_DSV_FLAGS */
+         };
+         uint8_t pad[2];
+      };
+
+      /* Sampler heaps are type-disjoint from resource heaps, so their slots
+       * use the same advertised 40-byte increment for a packed AGX sampler
+       * plus the state that AGX keeps outside that descriptor.  Retaining the
+       * exact border colour and LOD bias makes this real descriptor storage,
+       * not a CreateSampler no-op that happens to satisfy an object test. */
+      struct {
+         struct agx_sampler_packed sampler;
+         float sampler_border[4];
+         float sampler_lod_bias;
+         uint32_t sampler_flags;
+         uint32_t sampler_reserved;
+         uint8_t sampler_kind; /* D12_DESC_SAMPLER, same offset as kind */
+         uint8_t sampler_pad[3];
+      };
+   };
 };
 static_assert(sizeof(struct d12_descriptor) == 40,
               "must match handle increment");
 static_assert(offsetof(struct d12_descriptor, address) == 0 &&
                  offsetof(struct d12_descriptor, counter_address) == 8,
               "shader-visible ABI");
+static_assert(offsetof(struct d12_descriptor, sampler_kind) ==
+                 offsetof(struct d12_descriptor, kind),
+              "descriptor kind offset is common to both heap classes");
 
 /* The RTV/DSV path predates the unified descriptor and still speaks this
  * name; they are the same object.
@@ -660,6 +686,7 @@ struct d12_segment {
     * and stores it, driven entirely by the fields below.
     */
    struct d12_resource *ds; /* NULL when the pass has no depth/stencil */
+   uint8_t dsv_flags;       /* D3D12_DSV_FLAGS snapshot for this pass */
    bool depth_cleared, stencil_cleared;
    uint32_t isp_bgobjdepth; /* clear value in the depth plane's encoding */
    uint8_t stencil_clear;
@@ -820,6 +847,10 @@ struct d12_cmd_list {
     * reference value dynamic state while the ops live in the PSO.
     */
    uint8_t stencil_ref;
+
+   /* OMSetBlendFactor. AGX fragment uniforms 4..11 are the four 32-bit
+    * constants; D3D12 resets them to one with command-list state. */
+   float blend_factor[4];
 };
 
 static inline struct d12_resource *
@@ -936,8 +967,9 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
 HRESULT d12_pipeline_state_create_mesh(
    struct d12_device *device, const void *ms_dxil, size_t ms_size,
    const void *as_dxil, size_t as_size, const void *ps_dxil, size_t ps_size,
-   enum pipe_format rt_format, const D3D12_DEPTH_STENCIL_DESC *ds_desc,
-   DXGI_FORMAT dsv_format, const D3D12_RASTERIZER_DESC *rs_desc,
+   enum pipe_format rt_format, unsigned nr_rt, const DXGI_FORMAT *rt_formats,
+   const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
+   const D3D12_RASTERIZER_DESC *rs_desc,
    const D3D12_BLEND_DESC *blend_desc,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
@@ -945,7 +977,7 @@ HRESULT d12_pipeline_state_create_graphics(
    struct d12_device *device, const void *vs_dxil, size_t vs_size,
    const void *ps_dxil, size_t ps_size, const void *gs_dxil, size_t gs_size,
    const void *hs_dxil, size_t hs_size, const void *ds_dxil, size_t ds_size,
-   enum pipe_format rt_format,
+   enum pipe_format rt_format, unsigned nr_rt, const DXGI_FORMAT *rt_formats,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
    const D3D12_RASTERIZER_DESC *rs_desc,
    const D3D12_BLEND_DESC *blend_desc,

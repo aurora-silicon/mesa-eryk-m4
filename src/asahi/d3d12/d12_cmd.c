@@ -253,6 +253,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->has_bound_rtv = false;
    list->has_bound_dsv = false;
    list->stencil_ref = 0;
+   for (unsigned i = 0; i < 4; i++)
+      list->blend_factor[i] = 1.0f;
    list->compute_rs = NULL;
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
@@ -853,6 +855,9 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
                seg->rt_view_format != d12_format_to_pipe(rtv->format)))
       return false;
 
+   if (dsv && seg->dsv_flags != dsv->dsv_flags)
+      return false;
+
    return true;
 }
 
@@ -916,6 +921,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    if (dsv) {
       seg->ds = dsv->resource;
+      seg->dsv_flags = dsv->dsv_flags;
       if (!seg->width_px) {
          seg->width_px = dsv->resource->layout.width_px;
          seg->height_px = dsv->resource->layout.height_px;
@@ -1576,7 +1582,7 @@ static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
                   uint64_t root_gpu, uint64_t textures_gpu,
-                  uint64_t draw_gpu,
+                  uint64_t draw_gpu, uint64_t blend_gpu,
                   const struct d12_dispatch_uniforms *poly)
 {
    struct d12_device *device = list->device;
@@ -1588,18 +1594,21 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
 
    struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(16));
 
-   /* USC uniform records must be emitted in ascending register order. The
-    * fragment root follows the texture base because registers 0..11 belong
-    * to the fragment ABI; non-fragment stages retain root-then-textures.
-    */
-   if (!fragment)
+   /* USC uniform records must be emitted in ascending register order.
+    * Fragment registers 4..11 carry D3D12's four blend constants, followed
+    * by the fragment root at 12 and the texture-heap base at 16. Keeping the
+    * texture base at the old slot 8 would alias the upper half of the blend
+    * constants whenever a shader sampled and blended in the same draw. */
+   if (fragment) {
+      agx_usc_uniform(&b, 4, 8, blend_gpu);
+      agx_usc_uniform(&b, D12_UNIFORM_FRAGMENT_ROOT, D12_UNIFORM_ROOT_REGS,
+                      root_gpu);
+   } else {
       agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+   }
    if (textures_gpu)
       agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
                       textures_gpu);
-   if (fragment)
-      agx_usc_uniform(&b, D12_UNIFORM_FRAGMENT_ROOT, D12_UNIFORM_ROOT_REGS,
-                      root_gpu);
 
    /*
     * Constants the compiler promoted out of the instruction stream live in
@@ -1749,13 +1758,14 @@ d12_list_push_scissor(struct d12_cmd_list *list, struct d12_segment *seg,
 static void
 d12_ppp_push_stencil(struct agx_ppp_update *ppp,
                      const struct d12_stencil_face *face,
-                     const struct d12_depth_stencil_state *ds, bool enabled)
+                     const struct d12_depth_stencil_state *ds, bool enabled,
+                     bool read_only)
 {
    agx_ppp_push(ppp, FRAGMENT_STENCIL, cfg) {
       if (enabled) {
          cfg.compare = face->compare;
          cfg.read_mask = ds->stencil_read_mask;
-         cfg.write_mask = ds->stencil_write_mask;
+         cfg.write_mask = read_only ? 0 : ds->stencil_write_mask;
          cfg.depth_pass = face->pass;
          cfg.depth_fail = face->depth_fail;
          cfg.stencil_fail = face->stencil_fail;
@@ -2707,13 +2717,20 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    }
 
 
+   uint64_t blend_gpu =
+      d12_list_upload(list, list->blend_factor, sizeof(list->blend_factor), 16);
+   if (!blend_gpu)
+      return;
+
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
+      0,
       (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
          ? &poly_u
          : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
-                                       root_gpu, textures_gpu, draw_gpu, NULL);
+                                       root_gpu, textures_gpu, draw_gpu,
+                                       blend_gpu, NULL);
    if (!vs_usc || !fs_usc)
       return;
 
@@ -2858,7 +2875,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       const struct d12_depth_stencil_state *ds = &pso->ds;
       const bool has_ds = seg->ds != NULL;
       const bool z_test = has_ds && ds->depth_test;
-      const bool z_write = has_ds && ds->depth_write;
+      const bool z_read_only =
+         seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH;
+      const bool s_read_only =
+         seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL;
+      const bool z_write = has_ds && ds->depth_write && !z_read_only;
       const bool s_test =
          has_ds && ds->stencil_test && seg->ds->stencil_bo != NULL;
 
@@ -2942,14 +2963,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
       agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
 
-      d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test);
+      d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test, s_read_only);
 
       /* Back face: same depth state, its own stencil ops. */
       agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
          cfg.stencil_reference = list->stencil_ref;
       }
       agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
-      d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test);
+      d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only);
 
       /* Output select is the MERGE of the vertex side (which says the
        * position is written) and the fragment side. Pushing only the
@@ -3633,6 +3654,8 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    list->has_bound_rtv = false;
    list->has_bound_dsv = false;
    list->stencil_ref = 0;
+   for (unsigned i = 0; i < 4; i++)
+      list->blend_factor[i] = 1.0f;
 }
 
 static void STDMETHODCALLTYPE
@@ -4468,8 +4491,10 @@ d12_list_ResourceBarrier(ID3D12GraphicsCommandList6 *iface, UINT num_barriers,
  * hardware setup happens in d12_fill_render_cmd.
  */
 static bool
-d12_list_attach_ds(struct d12_cmd_list *list, struct d12_resource *ds)
+d12_list_attach_ds(struct d12_cmd_list *list,
+                   const struct d12_descriptor *dsv)
 {
+   struct d12_resource *ds = dsv->resource;
    if (!list->render_open) {
       mesa_loge("depth/stencil needs an open render pass; clear the colour "
                 "target first (depth-only passes are not supported yet)");
@@ -4499,6 +4524,7 @@ d12_list_attach_ds(struct d12_cmd_list *list, struct d12_resource *ds)
    }
 
    seg->ds = ds;
+   seg->dsv_flags = dsv->dsv_flags;
    return true;
 }
 
@@ -4543,7 +4569,7 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
       if (!d12_list_begin_render(list, NULL, dsv, NULL, AGX_BG_EOT_NONE,
                                  NULL, true))
          return;
-   } else if (!d12_list_attach_ds(list, ds)) {
+   } else if (!d12_list_attach_ds(list, dsv)) {
       return;
    }
 
@@ -4581,6 +4607,16 @@ d12_list_OMSetStencilRef(ID3D12GraphicsCommandList6 *iface, UINT ref)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->stencil_ref = (uint8_t)ref;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_OMSetBlendFactor(ID3D12GraphicsCommandList6 *iface,
+                          const FLOAT factor[4])
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   static const float one[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+   memcpy(list->blend_factor, factor ? factor : one,
+          sizeof(list->blend_factor));
 }
 
 static void STDMETHODCALLTYPE
@@ -4658,6 +4694,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
    .OMSetStencilRef = d12_list_OMSetStencilRef,
+   .OMSetBlendFactor = d12_list_OMSetBlendFactor,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
    .ClearDepthStencilView = d12_list_ClearDepthStencilView,
    .ClearState = d12_list_ClearState,

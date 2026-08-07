@@ -750,7 +750,8 @@ compile_gfx_stage(struct d12_device *device,
                   struct agx_tilebuffer_layout *tib,
                   struct agx_unlinked_uvs_layout *uvs,
                   const struct d12_vs_fetch *fetch,
-                  uint64_t *outputs_written,
+                  uint64_t *outputs_written, bool *use_fs_epilog,
+                  struct agx_fs_epilog_link_info *fs_epilog_link,
                   struct agx_shader_part *out)
 {
    nir_shader *nir;
@@ -771,11 +772,41 @@ compile_gfx_stage(struct d12_device *device,
    if (outputs_written)
       *outputs_written = nir->info.outputs_written;
 
+   bool split_fs = false;
+   if (stage == MESA_SHADER_FRAGMENT && use_fs_epilog) {
+      split_fs = *use_fs_epilog &&
+                 (nir->info.outputs_written &
+                  BITFIELD64_RANGE(FRAG_RESULT_DATA0, 8));
+      *use_fs_epilog = split_fs;
+   }
+
    NIR_PASS(_, nir, agx_nir_lower_texture);
    agx_preprocess_nir(nir);
    NIR_PASS(_, nir, d12_dxil_lower_root);
 
-   if (stage == MESA_SHADER_FRAGMENT) {
+   if (stage == MESA_SHADER_FRAGMENT && split_fs) {
+      /*
+       * Blending reads the old tile value, so it lives in the standard AGX
+       * fragment epilog rather than in the API shader. Export the API
+       * shader's colours/depth/stencil for that epilog and leave both parts
+       * unterminated; agx_fast_link appends the final stop.
+       *
+       * This is the same split Honeykrisp uses. Keeping it conditional means
+       * the established monolithic path remains byte-for-byte unchanged for
+       * the overwhelmingly common no-blend case.
+       */
+      NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
+      NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog, fs_epilog_link);
+      NIR_PASS(_, nir, agx_nir_lower_sample_intrinsics, false);
+      NIR_PASS(_, nir, agx_nir_lower_sample_mask);
+      NIR_PASS(_, nir, agx_nir_lower_fs_active_samples_to_register);
+      NIR_PASS(_, nir, agx_nir_lower_interpolation);
+
+      /* The passes above may introduce driver-owned sysvals. */
+      NIR_PASS(_, nir, d12_dxil_lower_root);
+      NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
+      NIR_PASS(_, nir, agx_nir_lower_texture);
+   } else if (stage == MESA_SHADER_FRAGMENT) {
       unsigned bindless_base = 0;
       NIR_PASS(_, nir, agx_nir_lower_tilebuffer, tib, NULL, &bindless_base,
                NULL, NULL);
@@ -864,11 +895,9 @@ compile_gfx_stage(struct d12_device *device,
       /* See the note on the compute key above. */
       .promote_constants = false,
       .reserved_preamble = D12_UNIFORM_RESERVED,
-      /* The tilebuffer store is lowered INTO this shader, so it is
-       * self-contained and must terminate normally. Setting no_stop here
-       * would leave the fragment shader running off the end.
-       */
-      .no_stop = false,
+      /* A split fragment main falls through into its epilog. All other
+       * programs are self-contained and terminate normally. */
+      .no_stop = stage == MESA_SHADER_FRAGMENT && split_fs,
    };
 
    memset(out, 0, sizeof(*out));
@@ -1208,6 +1237,93 @@ d12_translate_stencil_face(struct d12_stencil_face *out,
    out->stencil_fail = d12_translate_stencil_op(in->StencilFailOp);
 }
 
+static bool
+d12_translate_blend_factor(D3D12_BLEND in, enum pipe_blendfactor *out)
+{
+   switch (in) {
+   case D3D12_BLEND_ZERO:             *out = PIPE_BLENDFACTOR_ZERO; break;
+   case D3D12_BLEND_ONE:              *out = PIPE_BLENDFACTOR_ONE; break;
+   case D3D12_BLEND_SRC_COLOR:        *out = PIPE_BLENDFACTOR_SRC_COLOR; break;
+   case D3D12_BLEND_INV_SRC_COLOR:    *out = PIPE_BLENDFACTOR_INV_SRC_COLOR; break;
+   case D3D12_BLEND_SRC_ALPHA:        *out = PIPE_BLENDFACTOR_SRC_ALPHA; break;
+   case D3D12_BLEND_INV_SRC_ALPHA:    *out = PIPE_BLENDFACTOR_INV_SRC_ALPHA; break;
+   case D3D12_BLEND_DEST_ALPHA:       *out = PIPE_BLENDFACTOR_DST_ALPHA; break;
+   case D3D12_BLEND_INV_DEST_ALPHA:   *out = PIPE_BLENDFACTOR_INV_DST_ALPHA; break;
+   case D3D12_BLEND_DEST_COLOR:       *out = PIPE_BLENDFACTOR_DST_COLOR; break;
+   case D3D12_BLEND_INV_DEST_COLOR:   *out = PIPE_BLENDFACTOR_INV_DST_COLOR; break;
+   case D3D12_BLEND_SRC_ALPHA_SAT:    *out = PIPE_BLENDFACTOR_SRC_ALPHA_SATURATE; break;
+   case D3D12_BLEND_BLEND_FACTOR:     *out = PIPE_BLENDFACTOR_CONST_COLOR; break;
+   case D3D12_BLEND_INV_BLEND_FACTOR: *out = PIPE_BLENDFACTOR_INV_CONST_COLOR; break;
+   case D3D12_BLEND_SRC1_COLOR:       *out = PIPE_BLENDFACTOR_SRC1_COLOR; break;
+   case D3D12_BLEND_INV_SRC1_COLOR:   *out = PIPE_BLENDFACTOR_INV_SRC1_COLOR; break;
+   case D3D12_BLEND_SRC1_ALPHA:       *out = PIPE_BLENDFACTOR_SRC1_ALPHA; break;
+   case D3D12_BLEND_INV_SRC1_ALPHA:   *out = PIPE_BLENDFACTOR_INV_SRC1_ALPHA; break;
+   case D3D12_BLEND_ALPHA_FACTOR:     *out = PIPE_BLENDFACTOR_CONST_ALPHA; break;
+   case D3D12_BLEND_INV_ALPHA_FACTOR: *out = PIPE_BLENDFACTOR_INV_CONST_ALPHA; break;
+   default:
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+d12_blend_factor_uses_src1(D3D12_BLEND factor)
+{
+   switch (factor) {
+   case D3D12_BLEND_SRC1_COLOR:
+   case D3D12_BLEND_INV_SRC1_COLOR:
+   case D3D12_BLEND_SRC1_ALPHA:
+   case D3D12_BLEND_INV_SRC1_ALPHA:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_translate_blend_op(D3D12_BLEND_OP in, enum pipe_blend_func *out)
+{
+   switch (in) {
+   case D3D12_BLEND_OP_ADD:          *out = PIPE_BLEND_ADD; break;
+   case D3D12_BLEND_OP_SUBTRACT:     *out = PIPE_BLEND_SUBTRACT; break;
+   case D3D12_BLEND_OP_REV_SUBTRACT: *out = PIPE_BLEND_REVERSE_SUBTRACT; break;
+   case D3D12_BLEND_OP_MIN:          *out = PIPE_BLEND_MIN; break;
+   case D3D12_BLEND_OP_MAX:          *out = PIPE_BLEND_MAX; break;
+   default:
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+d12_translate_logic_op(D3D12_LOGIC_OP in, enum pipe_logicop *out)
+{
+   switch (in) {
+   case D3D12_LOGIC_OP_CLEAR:         *out = PIPE_LOGICOP_CLEAR; break;
+   case D3D12_LOGIC_OP_SET:           *out = PIPE_LOGICOP_SET; break;
+   case D3D12_LOGIC_OP_COPY:          *out = PIPE_LOGICOP_COPY; break;
+   case D3D12_LOGIC_OP_COPY_INVERTED: *out = PIPE_LOGICOP_COPY_INVERTED; break;
+   case D3D12_LOGIC_OP_NOOP:          *out = PIPE_LOGICOP_NOOP; break;
+   case D3D12_LOGIC_OP_INVERT:        *out = PIPE_LOGICOP_INVERT; break;
+   case D3D12_LOGIC_OP_AND:           *out = PIPE_LOGICOP_AND; break;
+   case D3D12_LOGIC_OP_NAND:          *out = PIPE_LOGICOP_NAND; break;
+   case D3D12_LOGIC_OP_OR:            *out = PIPE_LOGICOP_OR; break;
+   case D3D12_LOGIC_OP_NOR:           *out = PIPE_LOGICOP_NOR; break;
+   case D3D12_LOGIC_OP_XOR:           *out = PIPE_LOGICOP_XOR; break;
+   case D3D12_LOGIC_OP_EQUIV:         *out = PIPE_LOGICOP_EQUIV; break;
+   case D3D12_LOGIC_OP_AND_REVERSE:   *out = PIPE_LOGICOP_AND_REVERSE; break;
+   case D3D12_LOGIC_OP_AND_INVERTED:  *out = PIPE_LOGICOP_AND_INVERTED; break;
+   case D3D12_LOGIC_OP_OR_REVERSE:    *out = PIPE_LOGICOP_OR_REVERSE; break;
+   case D3D12_LOGIC_OP_OR_INVERTED:   *out = PIPE_LOGICOP_OR_INVERTED; break;
+   default:
+      return false;
+   }
+
+   return true;
+}
+
 /*
  * ms_setup: turn the mesh shader's GPU-written counts into an indirect
  * draw. The counts do not exist until the mesh shader has run, so the
@@ -1362,6 +1478,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
                                size_t ms_size, const void *as_dxil,
                                size_t as_size, const void *ps_dxil,
                                size_t ps_size, enum pipe_format rt_format,
+                               unsigned nr_rt,
+                               const DXGI_FORMAT *rt_formats,
                                const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                DXGI_FORMAT dsv_format,
                                const D3D12_RASTERIZER_DESC *rs_desc,
@@ -1381,8 +1499,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
     */
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
-      rt_format, ds_desc, dsv_format, rs_desc, blend_desc, NULL, map, riid,
-      out);
+      rt_format, nr_rt, rt_formats, ds_desc, dsv_format, rs_desc, blend_desc,
+      NULL, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -1583,7 +1701,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *gs_dxil, size_t gs_size,
                                    const void *hs_dxil, size_t hs_size,
                                    const void *ds_dxil, size_t ds_size,
-                                   enum pipe_format rt_format,
+                                   enum pipe_format rt_format, unsigned nr_rt,
+                                   const DXGI_FORMAT *rt_formats,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
@@ -1665,19 +1784,78 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                   1, false);
    pso->tib = tib;
 
+   const D3D12_RENDER_TARGET_BLEND_DESC default_rt_blend = {
+      .BlendEnable = false,
+      .LogicOpEnable = false,
+      .SrcBlend = D3D12_BLEND_ONE,
+      .DestBlend = D3D12_BLEND_ZERO,
+      .BlendOp = D3D12_BLEND_OP_ADD,
+      .SrcBlendAlpha = D3D12_BLEND_ONE,
+      .DestBlendAlpha = D3D12_BLEND_ZERO,
+      .BlendOpAlpha = D3D12_BLEND_OP_ADD,
+      .LogicOp = D3D12_LOGIC_OP_NOOP,
+      .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
+   };
+   const D3D12_RENDER_TARGET_BLEND_DESC *rt_blend =
+      blend_desc ? &blend_desc->RenderTarget[0] : &default_rt_blend;
+   bool use_fs_epilog =
+      rt_format != PIPE_FORMAT_NONE &&
+      (rt_blend->BlendEnable || rt_blend->LogicOpEnable ||
+       rt_blend->RenderTargetWriteMask != D3D12_COLOR_WRITE_ENABLE_ALL ||
+       (blend_desc && blend_desc->AlphaToCoverageEnable));
+
+   if (rt_blend->BlendEnable && rt_blend->LogicOpEnable) {
+      free(pso);
+      return E_INVALIDARG;
+   }
+
+   struct agx_blend_rt_key blend_key = {
+      .colormask = rt_blend->RenderTargetWriteMask &
+                   D3D12_COLOR_WRITE_ENABLE_ALL,
+   };
+   enum pipe_blend_func rgb_func = PIPE_BLEND_ADD;
+   enum pipe_blend_func alpha_func = PIPE_BLEND_ADD;
+   enum pipe_blendfactor rgb_src = PIPE_BLENDFACTOR_ONE;
+   enum pipe_blendfactor rgb_dst = PIPE_BLENDFACTOR_ZERO;
+   enum pipe_blendfactor alpha_src = PIPE_BLENDFACTOR_ONE;
+   enum pipe_blendfactor alpha_dst = PIPE_BLENDFACTOR_ZERO;
+   enum pipe_logicop logicop = PIPE_LOGICOP_NOOP;
+
+   if (rt_blend->BlendEnable &&
+       (!d12_translate_blend_op(rt_blend->BlendOp, &rgb_func) ||
+        !d12_translate_blend_op(rt_blend->BlendOpAlpha, &alpha_func) ||
+        !d12_translate_blend_factor(rt_blend->SrcBlend, &rgb_src) ||
+        !d12_translate_blend_factor(rt_blend->DestBlend, &rgb_dst) ||
+        !d12_translate_blend_factor(rt_blend->SrcBlendAlpha, &alpha_src) ||
+        !d12_translate_blend_factor(rt_blend->DestBlendAlpha, &alpha_dst))) {
+      free(pso);
+      return E_INVALIDARG;
+   }
+
+   if (rt_blend->LogicOpEnable &&
+       !d12_translate_logic_op(rt_blend->LogicOp, &logicop)) {
+      free(pso);
+      return E_INVALIDARG;
+   }
+
+   blend_key.mode = agx_pack_blend_standard(
+      rgb_func, rgb_src, rgb_dst, alpha_func, alpha_src, alpha_dst);
+
    struct agx_shader_part vs_part, fs_part;
+   struct agx_fs_epilog_link_info fs_epilog_link = {0};
    struct d12_vs_fetch fetch;
    resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
 
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
-                          &pso->uvs, &fetch, NULL, &vs_part)) {
+                          &pso->uvs, &fetch, NULL, NULL, NULL, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
 
    uint64_t fs_outputs = 0;
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
-                          &tib, NULL, NULL, &fs_outputs, &fs_part)) {
+                          &tib, NULL, NULL, &fs_outputs, &use_fs_epilog,
+                          &fs_epilog_link, &fs_part)) {
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;
@@ -1696,6 +1874,93 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;
+   }
+
+   /*
+    * D3D12 dual-source blending consumes the second colour export as SRC1;
+    * it is not a second render target. Consequently a real RT1 is illegal,
+    * and independent blend state for later attachments must stay disabled.
+    * Higher targets are only a conflict when the pixel shader writes them.
+    *
+    * Validate after translation so the shader's actual output mask, rather
+    * than a bytecode-container guess, decides the RT2+ cases.
+    */
+   const bool dual_source =
+      d12_blend_factor_uses_src1(rt_blend->SrcBlend) ||
+      d12_blend_factor_uses_src1(rt_blend->DestBlend) ||
+      d12_blend_factor_uses_src1(rt_blend->SrcBlendAlpha) ||
+      d12_blend_factor_uses_src1(rt_blend->DestBlendAlpha);
+
+   if (dual_source && blend_desc && blend_desc->IndependentBlendEnable) {
+      for (unsigned i = 1; i < ARRAY_SIZE(blend_desc->RenderTarget); ++i) {
+         if (blend_desc->RenderTarget[i].BlendEnable ||
+             blend_desc->RenderTarget[i].LogicOpEnable) {
+            free(fs_part.binary);
+            free(vs_part.binary);
+            free(pso);
+            return E_INVALIDARG;
+         }
+      }
+   }
+
+   if (dual_source && rt_formats) {
+      for (unsigned i = 1; i < MIN2(nr_rt, 8); ++i) {
+         if (rt_formats[i] == DXGI_FORMAT_UNKNOWN)
+            continue;
+
+         if (i == 1 ||
+             (fs_outputs & BITFIELD64_BIT(FRAG_RESULT_DATA0 + i))) {
+            free(fs_part.binary);
+            free(vs_part.binary);
+            free(pso);
+            return E_INVALIDARG;
+         }
+      }
+   }
+
+   struct agx_shader_part fs_epilog = {0};
+   if (use_fs_epilog) {
+      struct agx_fs_epilog_key epilog_key = {
+         .link = fs_epilog_link,
+         .blend.rt[0] = blend_key,
+         .blend.alpha_to_coverage =
+            blend_desc && blend_desc->AlphaToCoverageEnable,
+         .blend.logicop_enable = rt_blend->LogicOpEnable,
+         .blend.logicop_func = logicop,
+         .nr_samples = 1,
+      };
+
+      memset(epilog_key.remap, -1, sizeof(epilog_key.remap));
+      epilog_key.remap[0] = 0;
+      epilog_key.rt_formats[0] = rt_format;
+
+      nir_builder eb =
+         nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
+      agx_nir_fs_epilog(&eb, &epilog_key);
+      agx_preprocess_nir(eb.shader);
+
+      struct agx_shader_key epilog_backend_key = {
+         .dev = agx_gather_device_key(&device->dev),
+         .secondary = true,
+         /* The one-sample fast-link footer appends the terminating stop. */
+         .no_stop = true,
+      };
+      agx_compile_shader_nir(eb.shader, &epilog_backend_key, &fs_epilog);
+      ralloc_free(eb.shader);
+
+      const bool intentionally_empty =
+         blend_key.colormask == 0 && !epilog_key.blend.logicop_enable &&
+         !epilog_key.blend.alpha_to_coverage && !fs_epilog_link.write_z &&
+         !fs_epilog_link.write_s;
+
+      if ((!fs_epilog.binary || !fs_epilog.info.binary_size) &&
+          !intentionally_empty) {
+         free(fs_epilog.binary);
+         free(fs_part.binary);
+         free(vs_part.binary);
+         free(pso);
+         return E_INVALIDARG;
+      }
    }
 
    /* The vertex shader needs a prolog: the AGX ABI has vertex/instance IDs
@@ -1750,6 +2015,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          agx_bo_create(&device->dev, vs_part.info.binary_size, 0,
                        AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 vs preamble");
       if (!pso->vs.code_bo) {
+         free(fs_epilog.binary);
          free(vs_part.binary);
          free(fs_part.binary);
          free(pso);
@@ -1760,7 +2026,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->vs.preamble_va =
          pso->vs.code_bo->va->addr + vs_part.info.preamble_offset;
    }
-   agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part, NULL, NULL, 1);
+   agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part, NULL,
+                 use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL, 1);
+   free(fs_epilog.binary);
 
    pso->vs.info = vs_part.info;
    pso->fs.info = fs_part.info;

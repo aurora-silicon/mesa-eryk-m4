@@ -686,7 +686,7 @@ struct nir_shader;
  * registers -- the instruction takes a 64-bit uniform base plus a 32-bit
  * offset register and adds them.
  */
-#define D12_UNIFORM_TEXTURES        8
+#define D12_UNIFORM_TEXTURES        16
 #define D12_UNIFORM_TEXTURE_REGS    4
 
 /*
@@ -703,7 +703,7 @@ struct nir_shader;
  * sizeof(struct d12_descriptor); static-asserted in d12_cmd.c where the
  * struct is visible.
  */
-#define D12_UNIFORM_HEAP            16
+#define D12_UNIFORM_HEAP            56
 #define D12_UNIFORM_HEAP_REGS       4
 #define D12_HEAP_DESC_SIZE          40
 #define D12_DESC_COUNTER_OFFSET     8
@@ -824,7 +824,7 @@ struct nir_shader;
  * agx_nir_vs_prolog answers load_vbo_base_agx from AGX_ABI_VUNI_VBO_BASE,
  * which is uniform register 4*n starting at ZERO and growing with the
  * attribute count -- it would run straight through D12_UNIFORM_ROOT at 4
- * and D12_UNIFORM_TEXTURES at 8. Honeykrisp has the same problem and
+ * and D12_UNIFORM_TEXTURES at 16. Honeykrisp has the same problem and
  * solves it the same way, answering the three intrinsics from its root
  * table instead (hk_nir_lower_descriptors.c).
  */
@@ -832,7 +832,7 @@ struct nir_shader;
 #define D12_UNIFORM_VB_REGS         4
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_VB_PARAMS + D12_UNIFORM_VB_REGS)
+   (D12_UNIFORM_HEAP + D12_UNIFORM_HEAP_REGS)
 
 /*
  * The vertex attribute parameter block, indexed by DXIL input signature

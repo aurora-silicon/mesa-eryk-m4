@@ -2,10 +2,10 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * ID3D12DescriptorHeap. RTV and DSV heaps — CPU-side slot storage whose
- * handles are pointers into the slot array, with the slot size equal to the
- * advertised 32-byte handle increment. Shader-visible heaps (CBV/SRV/UAV,
- * SAMPLER) wait on the descriptor binding model.
+ * ID3D12DescriptorHeap. CPU-side slot storage whose handles are pointers into
+ * the slot array, with the slot size equal to the advertised 40-byte handle
+ * increment. Shader-visible resource descriptors are flattened into root
+ * bindings; sampler slots retain packed AGX state for the texturing path.
  */
 
 #include "d12_private.h"
@@ -125,7 +125,8 @@ d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
     * the same offset arithmetic applications do on it.
     */
    D3D12_GPU_DESCRIPTOR_HANDLE handle = {
-      .ptr = heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+      .ptr = (heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
+              heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)
                 ? (UINT64)(uintptr_t)heap->slots
                 : 0,
    };
@@ -177,10 +178,15 @@ d12_descriptor_heap_create(struct d12_device *device,
        */
       break;
 
+   case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+      /* Sampler creation is CPU-immediate too.  The packed hardware state
+       * lives in the same fixed-size slot; binding/upload is a later
+       * texturing concern and does not make heap object creation invalid. */
+      break;
+
    default:
-      mesa_loge("CreateDescriptorHeap: type %d unsupported (sampler heaps "
-                "arrive with texturing)", (int)desc->Type);
-      return E_NOTIMPL;
+      mesa_loge("CreateDescriptorHeap: invalid type %d", (int)desc->Type);
+      return E_INVALIDARG;
    }
 
    struct d12_descriptor_heap *heap = calloc(1, sizeof(*heap));
