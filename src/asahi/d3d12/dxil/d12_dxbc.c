@@ -152,6 +152,8 @@ enum d12_dxbc_op {
    D12_DXBC_OP_NE = 57,
    D12_DXBC_OP_NOT = 59,
    D12_DXBC_OP_OR = 60,
+   D12_DXBC_OP_RESINFO = 61,
+   D12_DXBC_OP_BUFINFO = 121,
    D12_DXBC_OP_RET = 62,
    D12_DXBC_OP_ROUND_NE = 64,
    D12_DXBC_OP_ROUND_NI = 65,
@@ -260,6 +262,12 @@ enum d12_dxbc_op {
 #define D12_DXBC_RESOURCE_DIMENSION_MASK  0x0000f800u
 #define D12_DXBC_RESOURCE_DIMENSION_SHIFT 11
 #define D12_DXBC_RESOURCE_DIMENSION_BUFFER 1
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D 3
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY 8
+
+#define D12_DXBC_RESINFO_RETURN_TYPE_MASK  0x00001800u
+#define D12_DXBC_RESINFO_RETURN_TYPE_SHIFT 11
+#define D12_DXBC_RESINFO_RETURN_UINT       2
 
 struct d12_dxbc_operand {
    enum d12_dxbc_file file;
@@ -613,6 +621,33 @@ temp_var(struct d12_dxbc_ctx *ctx, unsigned index)
    return ctx->temps[index];
 }
 
+/*
+ * Select one of the three root-table planes.  The first-level header keeps
+ * the hot resource plane direct; its second pointer names a compact metadata
+ * header containing the counter and BUFINFO planes.
+ */
+static nir_def *
+root_plane(struct d12_dxbc_ctx *ctx, unsigned plane)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *root = nir_load_root_agx(b);
+   nir_def *header = nir_load_global(b, 2, 64, root, .align_mul = 8);
+
+   if (plane == D12_ROOT_RESOURCE_BASE)
+      return nir_channel(b, header, 0);
+
+   nir_def *metadata = nir_load_global(
+      b, 2, 64, nir_channel(b, header, 1), .align_mul = 8);
+
+   if (plane == D12_ROOT_COUNTER_BASE)
+      return nir_channel(b, metadata, 0);
+   if (plane == D12_ROOT_BUFINFO_BASE)
+      return nir_channel(b, metadata, 1);
+
+   fail(ctx, "invalid root-table plane");
+   return nir_imm_int64(b, 0);
+}
+
 /* Read an operand as a vec4 of 32-bit values, swizzle and modifiers
  * applied. Everything is carried as a float-width vector; integer
  * opcodes bitcast at the point of use, exactly as the hardware does. */
@@ -741,10 +776,7 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
          return nir_imm_zero(b, 4, 32);
       }
 
-      nir_def *root = nir_load_root_agx(b);
-      nir_def *root_header =
-         nir_load_global(b, 2, 64, root, .align_mul = 8);
-      nir_def *resource_table = nir_channel(b, root_header, 0);
+      nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
       nir_def *base = nir_load_global(
          b, 1, 64,
          nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
@@ -828,10 +860,7 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
       return nir_imm_int64(b, 0);
    }
 
-   nir_def *root = nir_load_root_agx(b);
-   nir_def *root_header =
-      nir_load_global(b, 2, 64, root, .align_mul = 8);
-   nir_def *resource_table = nir_channel(b, root_header, 0);
+   nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
    nir_def *base = nir_load_global(
       b, 1, 64, nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
       .align_mul = 8);
@@ -1146,7 +1175,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
       case D12_DXBC_OP_DCL_TGSM_RAW:
       case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
-      case D12_DXBC_OP_DCL_RESOURCE_RAW:
       case D12_DXBC_OP_DCL_STREAM:
       case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE:
       case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
@@ -1176,6 +1204,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
                D12_DXBC_RESOURCE_DIMENSION_SHIFT;
          }
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_RESOURCE_RAW: {
+         struct d12_dxbc_operand r;
+         unsigned n = decode_operand(ctx, args, avail, &r);
+         if (n && r.file == D12_DXBC_FILE_RESOURCE &&
+             r.index[0] < D12_DXBC_MAX_SIG)
+            ctx->srv_dim[r.index[0]] = D12_DXBC_RESOURCE_DIMENSION_BUFFER;
          ctx->tok += len;
          continue;
       }
@@ -1213,6 +1251,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
             if (opcode == D12_DXBC_OP_DCL_UAV_STRUCTURED)
                ctx->uav_dim[r.index[0]] =
+                  D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+            else
+               ctx->srv_dim[r.index[0]] =
                   D12_DXBC_RESOURCE_DIMENSION_BUFFER;
          }
          ctx->tok += len;
@@ -1366,6 +1407,144 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_UDIV:      NEED(4); DST(nir_udiv(b, SRC(2), SRC(3))); break;
       case D12_DXBC_OP_UMUL:      NEED(4); DST(nir_imul(b, SRC(2), SRC(3))); break;
       case D12_DXBC_OP_NOP:       break;
+
+      /*
+       * SM5 BUFINFO exposes the logical view size, not the backing BO size.
+       * Descriptor upload has already packed the exact element/byte count in
+       * the low word and a structured stride in the high word.  Restrict this
+       * first implementation to statically indexed SM5.0 t#/u# operands;
+       * SM5.1 range indexing needs a separate dynamic slot calculation.
+       */
+      case D12_DXBC_OP_BUFINFO: {
+         NEED(2);
+
+         const struct d12_dxbc_operand *res = &o[1];
+         bool uav = res->file == D12_DXBC_FILE_UAV;
+         if ((!uav && res->file != D12_DXBC_FILE_RESOURCE) ||
+             res->num_indices != 1 || res->index_is_relative[0]) {
+            fail(ctx, "unsupported BUFINFO resource operand");
+            return;
+         }
+
+         unsigned reg = res->index[0];
+         if (reg >= D12_DXBC_MAX_SIG ||
+             (uav ? ctx->uav_dim[reg] : ctx->srv_dim[reg]) !=
+                D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
+            fail(ctx, "BUFINFO resource is not a declared buffer");
+            return;
+         }
+
+         unsigned slot = ctx->map
+                            ? d12_binding_map_find(ctx->map,
+                                                   uav ? D12_RES_UAV
+                                                       : D12_RES_SRV,
+                                                   0, reg)
+                            : reg;
+         if (slot == ~0u) {
+            fail(ctx, "BUFINFO resource is not bound by the root signature");
+            return;
+         }
+
+         nir_def *table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+         nir_def *info = nir_load_global(
+            b, 2, 32, nir_iadd_imm(b, table, (uint64_t)slot * 8),
+            .align_mul = 8);
+         nir_def *count = nir_channel(b, info, 0);
+         nir_def *stride = nir_channel(b, info, 1);
+         bool structured =
+            (uav ? ctx->uav_stride[reg] : ctx->srv_stride[reg]) != 0;
+         nir_def *value =
+            structured
+               ? nir_vec4(b, count, stride, nir_imm_int(b, 0),
+                          nir_imm_int(b, 1))
+               : nir_replicate(b, count, 4);
+
+         unsigned sw[4] = {res->swizzle[0], res->swizzle[1],
+                           res->swizzle[2], res->swizzle[3]};
+         DST(nir_swizzle(b, value, sw, 4));
+         break;
+      }
+
+      /*
+       * RESINFO first supports the two texture dimensions whose AGX
+       * descriptors and DXIL GetDimensions path are already proven.  Keep
+       * SM5.1 range selection, MSAA and other dimensionalities rejected so
+       * this opcode cannot turn a clean PSO refusal into unsafe execution.
+       */
+      case D12_DXBC_OP_RESINFO: {
+         NEED(3);
+
+         const struct d12_dxbc_operand *res = &o[2];
+         bool uav = res->file == D12_DXBC_FILE_UAV;
+         unsigned return_type =
+            (op_tok & D12_DXBC_RESINFO_RETURN_TYPE_MASK) >>
+            D12_DXBC_RESINFO_RETURN_TYPE_SHIFT;
+         if (return_type != D12_DXBC_RESINFO_RETURN_UINT ||
+             (!uav && res->file != D12_DXBC_FILE_RESOURCE) ||
+             res->num_indices != 1 || res->index_is_relative[0]) {
+            fail(ctx, "unsupported RESINFO resource operand");
+            return;
+         }
+
+         unsigned reg = res->index[0];
+         if (reg >= D12_DXBC_MAX_SIG) {
+            fail(ctx, "RESINFO resource register out of range");
+            return;
+         }
+
+         unsigned dim = uav ? ctx->uav_dim[reg] : ctx->srv_dim[reg];
+         bool is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
+         if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !is_array) {
+            fail(ctx, "unsupported RESINFO resource dimension");
+            return;
+         }
+
+         unsigned slot = ctx->map
+                            ? d12_binding_map_find(ctx->map,
+                                                   uav ? D12_RES_UAV
+                                                       : D12_RES_SRV,
+                                                   0, reg)
+                            : reg;
+         if (slot == ~0u) {
+            fail(ctx, "RESINFO resource is not bound by the root signature");
+            return;
+         }
+
+         nir_def *handle = nir_bindless_image_agx(
+            b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES);
+         nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
+         txs->op = nir_texop_txs;
+         txs->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         txs->is_array = is_array;
+         txs->dest_type = nir_type_uint32;
+         txs->coord_components = is_array ? 3 : 2;
+         txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
+                                            handle);
+         txs->src[1] = nir_tex_src_for_ssa(
+            nir_tex_src_lod, nir_channel(b, SRC(1), 0));
+         nir_def_init(&txs->instr, &txs->def, is_array ? 3 : 2, 32);
+         nir_builder_instr_insert(b, &txs->instr);
+
+         nir_tex_instr *levels = nir_tex_instr_create(b->shader, 1);
+         levels->op = nir_texop_query_levels;
+         levels->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         levels->is_array = is_array;
+         levels->dest_type = nir_type_uint32;
+         levels->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
+                                               handle);
+         nir_def_init(&levels->instr, &levels->def, 1, 32);
+         nir_builder_instr_insert(b, &levels->instr);
+
+         nir_def *value = nir_vec4(
+            b, nir_channel(b, &txs->def, 0), nir_channel(b, &txs->def, 1),
+            is_array ? nir_channel(b, &txs->def, 2) : nir_imm_int(b, 0),
+            &levels->def);
+         unsigned sw[4] = {res->swizzle[0], res->swizzle[1],
+                           res->swizzle[2], res->swizzle[3]};
+         DST(nir_swizzle(b, value, sw, 4));
+         break;
+      }
 
       /*
        * STRUCTURED CONTROL FLOW. The opcode's control bits say whether
@@ -1543,6 +1722,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
+         if (uav && (reg >= D12_DXBC_MAX_SIG ||
+                     ctx->uav_dim[reg] !=
+                        D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
+            fail(ctx, "texture UAV load unsupported");
+            return;
+         }
+
          nir_def *off = nir_imul_imm(b, nir_channel(b, SRC(1), 0), 4);
          nir_def *addr =
             buffer_address(ctx, reg, uav, nir_imm_int(b, 0), off, 0);
@@ -1571,6 +1757,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          if (tgsm) {
             fail(ctx, "thread-group shared memory store");
+            return;
+         }
+
+         if (typed && (reg >= D12_DXBC_MAX_SIG ||
+                       ctx->uav_dim[reg] !=
+                          D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
+            fail(ctx, "texture UAV store unsupported");
             return;
          }
 
