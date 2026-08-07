@@ -175,15 +175,17 @@ d12_cmd_allocator_create(struct d12_device *device,
 {
    if (!out)
       return E_POINTER;
+   *out = NULL;
 
    switch (type) {
    case D3D12_COMMAND_LIST_TYPE_DIRECT:
+   case D3D12_COMMAND_LIST_TYPE_BUNDLE:
    case D3D12_COMMAND_LIST_TYPE_COMPUTE:
    case D3D12_COMMAND_LIST_TYPE_COPY:
       break;
    default:
-      mesa_loge("CreateCommandAllocator: type %d not supported", (int)type);
-      return E_NOTIMPL;
+      mesa_loge("CreateCommandAllocator: invalid type %d", (int)type);
+      return E_INVALIDARG;
    }
 
    struct d12_cmd_allocator *alloc = calloc(1, sizeof(*alloc));
@@ -3093,19 +3095,17 @@ d12_list_IASetVertexBuffers(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
+   /* Unlike IASetIndexBuffer(NULL), a NULL view-array pointer does not
+    * unbind anything.  The call is ignored; zero BufferLocation entries in
+    * a real array are how individual vertex-buffer slots are unbound. */
+   if (!views)
+      return;
+
    for (UINT i = 0; i < num_views; i++) {
       UINT slot = start_slot + i;
       if (slot >= D12_MAX_VB_SLOTS) {
          mesa_logw("IASetVertexBuffers: slot %u beyond %u", slot,
                    D12_MAX_VB_SLOTS - 1);
-         continue;
-      }
-
-      /* A null view array unbinds, as does a zero BufferLocation. */
-      if (!views) {
-         list->vb[slot].addr = 0;
-         list->vb[slot].size_B = 0;
-         list->vb[slot].stride_B = 0;
          continue;
       }
 
@@ -3925,6 +3925,11 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    if (!allocator)
       return E_INVALIDARG;
 
+   struct d12_cmd_allocator *new_allocator =
+      d12_cmd_allocator_from_iface(allocator);
+   if (new_allocator->type != list->type)
+      return E_INVALIDARG;
+
    /* Reset starts a fresh recording, so the previous error is gone. */
    list->had_error = false;
    if (initial_state)
@@ -3950,7 +3955,7 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
 
    /* Re-entering the recording state re-registers with the allocator. */
    if (list->state != D12_LIST_RECORDING) {
-      list->allocator = d12_cmd_allocator_from_iface(allocator);
+      list->allocator = new_allocator;
       list->allocator->recording_lists++;
    }
 
@@ -4700,6 +4705,19 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
 {
    if (!out)
       return E_POINTER;
+
+   switch (type) {
+   case D3D12_COMMAND_LIST_TYPE_DIRECT:
+   case D3D12_COMMAND_LIST_TYPE_BUNDLE:
+   case D3D12_COMMAND_LIST_TYPE_COMPUTE:
+   case D3D12_COMMAND_LIST_TYPE_COPY:
+      break;
+   default:
+      return E_INVALIDARG;
+   }
+
+   if (!allocator || allocator->type != type)
+      return E_INVALIDARG;
 
    struct d12_cmd_list *list = calloc(1, sizeof(*list));
    if (!list)

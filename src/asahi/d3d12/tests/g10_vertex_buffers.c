@@ -302,6 +302,47 @@ main(int argc, char **argv)
    if (!rt[0] || !rt[1])
       return 1;
 
+   /* DEFAULT resources are intentionally not CPU-mappable.  Grade both
+    * draws through the public D3D12 readback path instead of depending on
+    * this driver's internal linear render-target layout. */
+   D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp = {0};
+   UINT rows = 0;
+   UINT64 row_bytes = 0, total = 0;
+   ID3D12Device_GetCopyableFootprints(dev, &td, 0, 1, 0, &fp, &rows,
+                                      &row_bytes, &total);
+   CHECK(fp.Footprint.Width == W && fp.Footprint.Height == H && rows == H &&
+            row_bytes == (UINT64)W * 4,
+         "get a valid render-target readback footprint");
+
+   D3D12_HEAP_PROPERTIES readback_heap = {
+      .Type = D3D12_HEAP_TYPE_READBACK,
+   };
+   D3D12_RESOURCE_DESC readback_desc = {
+      .Dimension = D3D12_RESOURCE_DIMENSION_BUFFER,
+      .Width = total,
+      .Height = 1,
+      .DepthOrArraySize = 1,
+      .MipLevels = 1,
+      .SampleDesc = {.Count = 1},
+      .Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+   };
+   ID3D12Resource *readback[2] = {NULL, NULL};
+   uint8_t *map[2] = {NULL, NULL};
+   for (int i = 0; i < 2; i++) {
+      hr = ID3D12Device_CreateCommittedResource(
+         dev, &readback_heap, D3D12_HEAP_FLAG_NONE, &readback_desc,
+         D3D12_RESOURCE_STATE_COMMON, NULL, &IID_ID3D12Resource,
+         (void **)&readback[i]);
+      if (SUCCEEDED(hr))
+         hr = ID3D12Resource_Map(readback[i], 0, NULL, (void **)&map[i]);
+      if (SUCCEEDED(hr) && map[i])
+         memset(map[i], 0x55, (size_t)total);
+   }
+   CHECK(readback[0] && readback[1] && map[0] && map[1],
+         "create and map both readback buffers");
+   if (!readback[0] || !readback[1] || !map[0] || !map[1])
+      return 1;
+
    D3D12_DESCRIPTOR_HEAP_DESC hd = {.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
                                     .NumDescriptors = 2};
    ID3D12DescriptorHeap *rtv_heap = NULL;
@@ -332,13 +373,6 @@ main(int argc, char **argv)
                             (void **)&fence);
    ID3D12CommandList *lists[] = {(ID3D12CommandList *)list};
 
-   uint8_t *map[2] = {NULL, NULL};
-   for (int i = 0; i < 2; i++) {
-      ID3D12Resource_Map(rt[i], 0, NULL, (void **)&map[i]);
-      if (map[i])
-         memset(map[i], 0x55, STRIDE * H);
-   }
-
    const FLOAT clear[4] = {0.0f, 0.0f, 0.0f, 1.0f};
    D3D12_VIEWPORT vp = {.Width = W, .Height = H, .MaxDepth = 1.0f};
    D3D12_RECT sc = {.right = W, .bottom = H};
@@ -363,6 +397,21 @@ main(int argc, char **argv)
    ID3D12GraphicsCommandList_IASetVertexBuffers(list, 0, 1, &vbv);
    ID3D12GraphicsCommandList_DrawInstanced(list, 3, 1, 0, 0);
 
+   for (int i = 0; i < 2; i++) {
+      D3D12_TEXTURE_COPY_LOCATION dst = {
+         .pResource = readback[i],
+         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+         .PlacedFootprint = fp,
+      };
+      D3D12_TEXTURE_COPY_LOCATION src = {
+         .pResource = rt[i],
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = 0,
+      };
+      ID3D12GraphicsCommandList_CopyTextureRegion(list, &dst, 0, 0, 0, &src,
+                                                  NULL);
+   }
+
    hr = ID3D12GraphicsCommandList_Close(list);
    CHECK(hr == S_OK, "the command list closes cleanly");
    if (hr != S_OK)
@@ -374,12 +423,6 @@ main(int argc, char **argv)
    CHECK(ID3D12Fence_GetCompletedValue(fence) >= 1,
          "the GPU completes both draws");
 
-   if (!map[0] || !map[1]) {
-      printf("FAIL - could not map the render targets\n");
-      failures++;
-      goto teardown;
-   }
-
    {
       static bool ref[H][W];
       rasterise_reference(ref);
@@ -389,8 +432,8 @@ main(int argc, char **argv)
 
       for (unsigned y = 0; y < H; y++) {
          for (unsigned x = 0; x < W; x++) {
-            const uint8_t *a = map[0] + y * STRIDE + x * 4;
-            const uint8_t *b = map[1] + y * STRIDE + x * 4;
+            const uint8_t *a = map[0] + y * fp.Footprint.RowPitch + x * 4;
+            const uint8_t *b = map[1] + y * fp.Footprint.RowPitch + x * 4;
 
             bool ca = !(a[0] == 0 && a[1] == 0 && a[2] == 0);
             bool cb = !(b[0] == 0 && b[1] == 0 && b[2] == 0);
@@ -446,7 +489,9 @@ main(int argc, char **argv)
 teardown:
    for (int i = 0; i < 2; i++) {
       if (map[i])
-         ID3D12Resource_Unmap(rt[i], 0, NULL);
+         ID3D12Resource_Unmap(readback[i], 0, NULL);
+      if (readback[i])
+         ID3D12Resource_Release(readback[i]);
    }
    if (fence)
       ID3D12Fence_Release(fence);

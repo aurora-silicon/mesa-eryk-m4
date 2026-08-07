@@ -108,6 +108,16 @@ d12_resource_Map(ID3D12Resource *iface, UINT subresource,
    if (subresource != 0)
       return E_INVALIDARG;
 
+   /* DEFAULT heaps have no application-visible CPU mapping even on UMA.
+    * For an UNKNOWN-layout texture on a CPU-visible custom heap, Map(NULL)
+    * is still legal (it establishes the mapping without exposing the VA),
+    * but returning a pointer would falsely describe the opaque layout as a
+    * linear byte array.  Rejections must leave the caller's sentinel alone. */
+   if (res->heap_props.Type == D3D12_HEAP_TYPE_DEFAULT ||
+       (data && res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER &&
+        res->desc.Layout == D3D12_TEXTURE_LAYOUT_UNKNOWN))
+      return E_INVALIDARG;
+
    /* Persistent coherent mapping; ranges are an optimization hint only.
     * offset_B is nonzero for a PLACED resource, which is a window into a
     * heap -- mapping the BO base would hand back the start of the heap. */
@@ -147,6 +157,10 @@ d12_resource_WriteToSubresource(ID3D12Resource *iface, UINT dst_subresource,
                                 const D3D12_BOX *dst_box, const void *src,
                                 UINT src_row_pitch, UINT src_depth_pitch)
 {
+   struct d12_resource *res = d12_resource_from_iface(iface);
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+      return E_INVALIDARG;
+
    mesa_logw("ID3D12Resource::WriteToSubresource: not implemented");
    return E_NOTIMPL;
 }
@@ -157,6 +171,10 @@ d12_resource_ReadFromSubresource(ID3D12Resource *iface, void *dst,
                                  UINT src_subresource,
                                  const D3D12_BOX *src_box)
 {
+   struct d12_resource *res = d12_resource_from_iface(iface);
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+      return E_INVALIDARG;
+
    mesa_logw("ID3D12Resource::ReadFromSubresource: not implemented");
    return E_NOTIMPL;
 }

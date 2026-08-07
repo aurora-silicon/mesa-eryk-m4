@@ -241,6 +241,11 @@ d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
       return E_INVALIDARG;
    if (!allocator)
       return E_INVALIDARG;
+
+   struct d12_cmd_allocator *d12_allocator =
+      d12_cmd_allocator_from_iface(allocator);
+   if (d12_allocator->type != type)
+      return E_INVALIDARG;
    /*
     * The INITIAL PIPELINE STATE. A list created with one is already bound
     * to it and may draw without any SetPipelineState call, which is
@@ -253,8 +258,7 @@ d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
     * two entry points now agree.
     */
    HRESULT hr = d12_cmd_list_create(device, type,
-                                    d12_cmd_allocator_from_iface(allocator),
-                                    riid, out);
+                                    d12_allocator, riid, out);
 
    if (SUCCEEDED(hr) && initial_state && out && *out) {
       struct d12_cmd_list *list = (struct d12_cmd_list *)*out;
