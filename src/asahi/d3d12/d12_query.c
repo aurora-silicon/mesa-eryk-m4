@@ -124,16 +124,18 @@ d12_query_result_size(D3D12_QUERY_HEAP_TYPE type)
 }
 
 HRESULT
-d12_query_heap_create(struct d12_device *device,
-                      const D3D12_QUERY_HEAP_DESC *desc, REFIID riid,
-                      void **out)
+d12_query_heap_create_flags(struct d12_device *device,
+                            const D3D12_QUERY_HEAP_DESC *desc,
+                            D3D12_QUERY_HEAP_FLAGS flags, REFIID riid,
+                            void **out)
 {
    if (!out)
       return E_POINTER;
 
    *out = NULL;
 
-   if (!desc || !desc->Count)
+   if (!desc || !desc->Count ||
+       (flags & ~D3D12_QUERY_HEAP_FLAG_CPU_RESOLVE))
       return E_INVALIDARG;
 
    unsigned stride = d12_query_result_size(desc->Type);
@@ -150,6 +152,7 @@ d12_query_heap_create(struct d12_device *device,
    heap->iface.lpVtbl = &d12_query_heap_vtbl;
    heap->refcount = 1;
    heap->desc = *desc;
+   heap->flags = flags;
    heap->stride = stride;
 
    size_t result_size = (size_t)stride * desc->Count;
@@ -179,4 +182,14 @@ d12_query_heap_create(struct d12_device *device,
    HRESULT hr = d12_query_heap_QueryInterface(&heap->iface, riid, out);
    d12_query_heap_Release(&heap->iface);
    return hr;
+}
+
+HRESULT
+d12_query_heap_create(struct d12_device *device,
+                      const D3D12_QUERY_HEAP_DESC *desc, REFIID riid,
+                      void **out)
+{
+   return d12_query_heap_create_flags(device, desc,
+                                      D3D12_QUERY_HEAP_FLAG_NONE,
+                                      riid, out);
 }

@@ -25,6 +25,8 @@
 #include "agx_helpers.h"
 #include "util/u_math.h"
 
+#include <time.h>
+
 static HRESULT STDMETHODCALLTYPE
 d12_queue_QueryInterface(ID3D12CommandQueue *iface, REFIID riid, void **out)
 {
@@ -613,8 +615,22 @@ static HRESULT STDMETHODCALLTYPE
 d12_queue_GetClockCalibration(ID3D12CommandQueue *iface,
                               UINT64 *gpu_timestamp, UINT64 *cpu_timestamp)
 {
-   mesa_logw("ID3D12CommandQueue::GetClockCalibration: not implemented");
-   return E_NOTIMPL;
+   struct d12_queue *queue = d12_queue_from_iface(iface);
+   struct timespec now;
+
+   if (!gpu_timestamp || !cpu_timestamp)
+      return E_POINTER;
+
+   if (clock_gettime(CLOCK_MONOTONIC, &now))
+      return E_FAIL;
+
+   /* The GPU value is in the same calibrated domain used by EndQuery and
+    * GetTimestampFrequency.  Linux has no Windows QPC ABI, so expose the
+    * monotonic nanosecond clock as the paired CPU counter; callers use its
+    * own frequency on this platform. */
+   *cpu_timestamp = (uint64_t)now.tv_sec * 1000000000ull + now.tv_nsec;
+   *gpu_timestamp = agx_get_gpu_timestamp(&queue->device->dev);
+   return S_OK;
 }
 
 static D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE

@@ -109,6 +109,12 @@ d12_device_QueryInterface(ID3D12Device2 *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_guid_equal(riid, &IID_ID3D12Device15)) {
+      d12_device_add_ref(device);
+      *out = &device->iface15;
+      return S_OK;
+   }
+
    d12_log_unknown_riid("ID3D12Device::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -840,6 +846,7 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
 {
    const uint8_t *p = (const uint8_t *)desc->pPipelineStateSubobjectStream;
    const uint8_t *end = p + desc->SizeInBytes;
+   uint64_t seen = 0;
 
    memset(out, 0, sizeof(*out));
 
@@ -847,12 +854,30 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
       D3D12_PIPELINE_STATE_SUBOBJECT_TYPE type;
       memcpy(&type, p, sizeof(type));
 
-      /* The payload begins at the next void*-aligned offset. */
-      const uint8_t *body =
-         p + ALIGN_POT(sizeof(type), sizeof(void *));
+      if ((unsigned)type >= 64 || (seen & BITFIELD64_BIT((unsigned)type))) {
+         mesa_loge("CreatePipelineState: duplicate or invalid stream "
+                   "subobject %d", (int)type);
+         return false;
+      }
+      seen |= BITFIELD64_BIT((unsigned)type);
+
+      const uint8_t *body = NULL;
+      size_t body_offset = 0;
       size_t body_size;
 
-#define SUBOBJ(TY, field, ctype)                                                case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##TY:                                  out->field = (const ctype *)body;                                            body_size = sizeof(ctype);                                                   break
+#define BODY(ctype)                                                            \
+   do {                                                                        \
+      body_offset = ALIGN_POT(sizeof(type), _Alignof(ctype));                  \
+      body = p + body_offset;                                                  \
+      body_size = sizeof(ctype);                                               \
+      if (body > end || (size_t)(end - body) < body_size)                     \
+         return false;                                                         \
+   } while (0)
+#define SUBOBJ(TY, field, ctype)                                                \
+   case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_##TY:                              \
+      BODY(ctype);                                                             \
+      out->field = (const ctype *)body;                                        \
+      break
 
       switch (type) {
          SUBOBJ(VS, vs, D3D12_SHADER_BYTECODE);
@@ -867,44 +892,60 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          SUBOBJ(INPUT_LAYOUT, input_layout, D3D12_INPUT_LAYOUT_DESC);
          SUBOBJ(DEPTH_STENCIL, ds_state, D3D12_DEPTH_STENCIL_DESC);
 
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL1:
+         /* DESC1 appends DepthBoundsTestEnable; the prefix consumed by the
+          * current raster path is byte-for-byte DESC. */
+         BODY(D3D12_DEPTH_STENCIL_DESC1);
+         out->ds_state = (const D3D12_DEPTH_STENCIL_DESC *)body;
+         break;
+
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_ROOT_SIGNATURE:
+         BODY(ID3D12RootSignature *);
          memcpy(&out->root_sig, body, sizeof(out->root_sig));
-         body_size = sizeof(ID3D12RootSignature *);
          break;
 
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_RENDER_TARGET_FORMATS:
+         BODY(struct D3D12_RT_FORMAT_ARRAY);
          memcpy(&out->rt_formats, body, sizeof(out->rt_formats));
          out->have_rt_formats = true;
-         body_size = sizeof(struct D3D12_RT_FORMAT_ARRAY);
          break;
 
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT:
+         BODY(DXGI_FORMAT);
          memcpy(&out->dsv_format, body, sizeof(out->dsv_format));
-         body_size = sizeof(DXGI_FORMAT);
          break;
 
       /* Accepted and ignored: none of these change what we build. */
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK:
-         body_size = sizeof(UINT);
+         BODY(UINT);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS:
-         body_size = sizeof(D3D12_PIPELINE_STATE_FLAGS);
+         BODY(D3D12_PIPELINE_STATE_FLAGS);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
-         body_size = sizeof(UINT);
+         BODY(UINT);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC:
-         body_size = sizeof(DXGI_SAMPLE_DESC);
+         BODY(DXGI_SAMPLE_DESC);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
-         body_size = sizeof(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+         BODY(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT:
+         BODY(D3D12_STREAM_OUTPUT_DESC);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE:
+         BODY(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
+         break;
+      case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING:
+         BODY(D3D12_VIEW_INSTANCING_DESC);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_BLEND:
+         BODY(D3D12_BLEND_DESC);
          out->blend = (const D3D12_BLEND_DESC *)body;
-         body_size = sizeof(D3D12_BLEND_DESC);
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CACHED_PSO:
-         body_size = sizeof(D3D12_CACHED_PIPELINE_STATE);
+         BODY(D3D12_CACHED_PIPELINE_STATE);
          break;
 
       default:
@@ -914,8 +955,9 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          return false;
       }
 #undef SUBOBJ
+#undef BODY
 
-      p = body + ALIGN_POT(body_size, sizeof(void *));
+      p += ALIGN_POT(body_offset + body_size, sizeof(void *));
    }
 
    return true;
@@ -942,6 +984,12 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
       return E_INVALIDARG;
 
    const struct d12_binding_map *map = d12_pso_binding_map(st.root_sig);
+
+   /* A compute stream may carry ignored graphics defaults, but a vertex
+    * shader selects the graphics pipeline class and cannot coexist with CS. */
+   if (st.cs && st.cs->pShaderBytecode &&
+       st.vs && st.vs->pShaderBytecode)
+      return E_INVALIDARG;
 
    enum pipe_format rt_format = PIPE_FORMAT_NONE;
    if (st.have_rt_formats && st.rt_formats.NumRenderTargets >= 1 &&
@@ -2423,6 +2471,103 @@ d12_device_CreateQueryHeap(ID3D12Device2 *iface,
    return d12_query_heap_create(device, desc, riid, out);
 }
 
+static struct d12_device *
+d12_device_from_iface15(ID3D12Device15 *iface)
+{
+   return container_of(iface, struct d12_device, iface15);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device15_QueryInterface(ID3D12Device15 *iface, REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface15(iface);
+   return d12_device_QueryInterface((ID3D12Device2 *)&device->iface,
+                                    riid, out);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_device15_AddRef(ID3D12Device15 *iface)
+{
+   return d12_device_AddRef(
+      (ID3D12Device2 *)&d12_device_from_iface15(iface)->iface);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_device15_Release(ID3D12Device15 *iface)
+{
+   return d12_device_Release(
+      (ID3D12Device2 *)&d12_device_from_iface15(iface)->iface);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device15_CreateQueryHeap1(ID3D12Device15 *iface,
+                              const D3D12_QUERY_HEAP_DESC *desc,
+                              D3D12_QUERY_HEAP_FLAGS flags, REFIID riid,
+                              void **out)
+{
+   return d12_query_heap_create_flags(d12_device_from_iface15(iface), desc,
+                                      flags, riid, out);
+}
+
+static bool
+d12_cpu_query_type_matches(const struct d12_query_heap *heap,
+                           D3D12_QUERY_TYPE type)
+{
+   switch (heap->desc.Type) {
+   case D3D12_QUERY_HEAP_TYPE_OCCLUSION:
+      return type == D3D12_QUERY_TYPE_OCCLUSION ||
+             type == D3D12_QUERY_TYPE_BINARY_OCCLUSION;
+   case D3D12_QUERY_HEAP_TYPE_TIMESTAMP:
+      return type == D3D12_QUERY_TYPE_TIMESTAMP;
+   case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
+      return type == D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
+   case D3D12_QUERY_HEAP_TYPE_SO_STATISTICS:
+      return type == D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0;
+   default:
+      return false;
+   }
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device15_ResolveQueryData(ID3D12Device15 *iface,
+                              ID3D12QueryHeap *query_heap,
+                              D3D12_QUERY_TYPE type, UINT start,
+                              UINT count, void *resolved)
+{
+   struct d12_device *device = d12_device_from_iface15(iface);
+   struct d12_query_heap *heap = (struct d12_query_heap *)query_heap;
+
+   if (!heap || !resolved || heap->device != device ||
+       !(heap->flags & D3D12_QUERY_HEAP_FLAG_CPU_RESOLVE) ||
+       !d12_cpu_query_type_matches(heap, type) ||
+       start > heap->desc.Count || count > heap->desc.Count - start)
+      return E_INVALIDARG;
+
+   const uint8_t *src = agx_bo_map(heap->bo);
+   uint8_t *dst = resolved;
+   for (UINT i = 0; i < count; i++) {
+      const uint8_t *value = src + (size_t)(start + i) * heap->stride;
+      if (type == D3D12_QUERY_TYPE_BINARY_OCCLUSION) {
+         uint64_t sample;
+         memcpy(&sample, value, sizeof(sample));
+         sample = sample != 0;
+         memcpy(dst + (size_t)i * sizeof(sample), &sample, sizeof(sample));
+      } else {
+         memcpy(dst + (size_t)i * heap->stride, value, heap->stride);
+      }
+   }
+
+   return S_OK;
+}
+
+static const ID3D12Device15Vtbl d12_device15_vtbl = {
+   .QueryInterface = d12_device15_QueryInterface,
+   .AddRef = d12_device15_AddRef,
+   .Release = d12_device15_Release,
+   .CreateQueryHeap1 = d12_device15_CreateQueryHeap1,
+   .ResolveQueryData = d12_device15_ResolveQueryData,
+};
+
 static const ID3D12Device2Vtbl d12_device_vtbl = {
    /* every unimplemented slot fails safely */
    D12_ID3D12Device2_DEFAULTS,
@@ -2650,6 +2795,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    };
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
+   device->iface15.lpVtbl = (ID3D12Device15Vtbl *)&d12_device15_vtbl;
    device->refcount = 1;
    device->feature_level = max_fl;
    d12_private_data_store_init(&device->private_data);

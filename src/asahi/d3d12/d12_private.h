@@ -139,6 +139,9 @@ HRESULT d12_private_data_set_name(struct d12_private_data_store *store,
 
 struct d12_device {
    ID3D12Device iface; /* must be first */
+   /* Narrow modern-device tear-off for the CPU query-heap methods added by
+    * ID3D12Device15. IUnknown still resolves to iface above. */
+   ID3D12Device15 iface15;
    uint32_t refcount;
    struct d12_private_data_store private_data;
 
@@ -425,6 +428,7 @@ struct d12_query_heap {
 
    struct d12_device *device; /* holds a device ref */
    D3D12_QUERY_HEAP_DESC desc;
+   D3D12_QUERY_HEAP_FLAGS flags;
    unsigned stride;   /* bytes per result */
    size_t start_offset; /* occlusion BeginQuery snapshots, 0 otherwise */
    struct agx_bo *bo;
@@ -434,6 +438,10 @@ unsigned d12_query_result_size(D3D12_QUERY_HEAP_TYPE type);
 HRESULT d12_query_heap_create(struct d12_device *device,
                               const D3D12_QUERY_HEAP_DESC *desc, REFIID riid,
                               void **out);
+HRESULT d12_query_heap_create_flags(struct d12_device *device,
+                                    const D3D12_QUERY_HEAP_DESC *desc,
+                                    D3D12_QUERY_HEAP_FLAGS flags,
+                                    REFIID riid, void **out);
 
 /*
  * The parsed root signature.
