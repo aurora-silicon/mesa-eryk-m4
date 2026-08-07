@@ -396,6 +396,10 @@ HRESULT d12_serialize_root_signature(const D3D12_ROOT_SIGNATURE_DESC *desc,
 HRESULT d12_serialize_versioned_root_signature(
    const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *desc, void **out_blob,
    size_t *out_size);
+HRESULT d12_root_signature_deserializer_create(const void *src, size_t size,
+                                               REFIID riid, void **out);
+HRESULT d12_versioned_root_signature_deserializer_create(
+   const void *src, size_t size, REFIID riid, void **out);
 bool d12_root_signature_parse(const void *blob, size_t blob_size,
                               struct d12_root_layout *out);
 unsigned d12_root_param_class(const struct d12_root_param *rp);

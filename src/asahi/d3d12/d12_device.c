@@ -2318,19 +2318,18 @@ D3D12SerializeRootSignature(const D3D12_ROOT_SIGNATURE_DESC *desc,
    if (!blob)
       return E_POINTER;
 
-   *blob = NULL;
-
-   if (version != D3D_ROOT_SIGNATURE_VERSION_1_0 &&
-       version != D3D_ROOT_SIGNATURE_VERSION_1_1) {
+   /* The legacy entry point only accepts the legacy description.  Native
+    * also leaves the caller's output pointer untouched for this version
+    * error, which applications use to distinguish argument validation.
+    */
+   if (version != D3D_ROOT_SIGNATURE_VERSION_1_0) {
       mesa_loge("D3D12SerializeRootSignature: version 0x%x unsupported",
                 (unsigned)version);
       return E_INVALIDARG;
    }
 
-   /* Emitted as 1.0 whatever was asked for: the 1.1 additions are
-    * volatility promises that only enable optimizations we do not make.
-    * The parser accepts both, so a 1.1 blob from elsewhere still loads.
-    */
+   *blob = NULL;
+
    void *data = NULL;
    size_t size = 0;
    HRESULT hr = d12_serialize_root_signature(desc, &data, &size);
@@ -2372,20 +2371,15 @@ PUBLIC HRESULT WINAPI
 D3D12CreateRootSignatureDeserializer(const void *src, SIZE_T size,
                                      REFIID riid, void **out)
 {
-   d12_stub_report("D3D12CreateRootSignatureDeserializer");
-   if (out)
-      *out = NULL;
-   return E_NOTIMPL;
+   return d12_root_signature_deserializer_create(src, size, riid, out);
 }
 
 PUBLIC HRESULT WINAPI
 D3D12CreateVersionedRootSignatureDeserializer(const void *src, SIZE_T size,
                                               REFIID riid, void **out)
 {
-   d12_stub_report("D3D12CreateVersionedRootSignatureDeserializer");
-   if (out)
-      *out = NULL;
-   return E_NOTIMPL;
+   return d12_versioned_root_signature_deserializer_create(src, size, riid,
+                                                           out);
 }
 
 PUBLIC HRESULT WINAPI

@@ -40,12 +40,19 @@
 #define D12_RS_DESCRIPTOR_SIZE 8  /* register, space */
 #define D12_RS_CONSTANTS_SIZE 12  /* register, space, num values */
 #define D12_RS_SAMPLER_SIZE 52
+#define D12_RS_RANGE1_SIZE 24
+#define D12_RS_DESCRIPTOR1_SIZE 12
+#define D12_RS_SAMPLER1_SIZE 56
 
 struct d12_writer {
    uint8_t *data;
    size_t size, used;
    bool failed;
 };
+
+static void
+d12_copy_sampler_1_2_to_1_0(D3D12_STATIC_SAMPLER_DESC *dst,
+                             const D3D12_STATIC_SAMPLER_DESC1 *src);
 
 static void
 w_reserve(struct d12_writer *w, size_t n)
@@ -98,6 +105,125 @@ r_u32(const uint8_t *p)
           ((uint32_t)p[3] << 24);
 }
 
+static void
+store_u32(uint8_t *p, uint32_t v)
+{
+   p[0] = v;
+   p[1] = v >> 8;
+   p[2] = v >> 16;
+   p[3] = v >> 24;
+}
+
+/* DXBC uses the RFC 1321 MD5 compression function with a container-specific
+ * final block.  The finalization below was derived from SDK-produced DXBC
+ * fixtures; keeping it here avoids a crypto dependency for a file checksum.
+ */
+static uint32_t
+d12_rotl32(uint32_t x, unsigned n)
+{
+   return (x << n) | (x >> (32 - n));
+}
+
+static void
+d12_md5_transform(uint32_t state[4], const uint8_t block[64])
+{
+   static const uint8_t shifts[64] = {
+      7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+      5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+      4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+      6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+   };
+   static const uint32_t constants[64] = {
+      0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+      0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
+      0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
+      0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
+      0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
+      0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
+      0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
+      0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
+      0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
+      0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
+      0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
+      0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
+      0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
+      0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
+      0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
+      0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+   };
+   uint32_t words[16];
+   for (unsigned i = 0; i < 16; i++)
+      words[i] = r_u32(block + i * 4);
+
+   uint32_t a = state[0], b = state[1], c = state[2], d = state[3];
+   for (unsigned i = 0; i < 64; i++) {
+      uint32_t f, word;
+
+      if (i < 16) {
+         f = (b & c) | (~b & d);
+         word = i;
+      } else if (i < 32) {
+         f = (d & b) | (~d & c);
+         word = (5 * i + 1) & 15;
+      } else if (i < 48) {
+         f = b ^ c ^ d;
+         word = (3 * i + 5) & 15;
+      } else {
+         f = c ^ (b | ~d);
+         word = (7 * i) & 15;
+      }
+
+      uint32_t old_d = d;
+      d = c;
+      c = b;
+      b += d12_rotl32(a + f + constants[i] + words[word], shifts[i]);
+      a = old_d;
+   }
+
+   state[0] += a;
+   state[1] += b;
+   state[2] += c;
+   state[3] += d;
+}
+
+static void
+d12_dxbc_checksum(const uint8_t *container, size_t size, uint32_t digest[4])
+{
+   const uint8_t *data = container + 20;
+   size_t length = size - 20;
+   size_t remaining = length;
+   uint32_t state[4] = {
+      0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476,
+   };
+
+   while (remaining >= 64) {
+      d12_md5_transform(state, data);
+      data += 64;
+      remaining -= 64;
+   }
+
+   uint32_t num_bits = (uint32_t)(length * 8);
+   uint32_t num_bits2 = (num_bits >> 2) | 1;
+   uint8_t block[64] = {0};
+
+   if (remaining >= 56) {
+      memcpy(block, data, remaining);
+      block[remaining] = 0x80;
+      d12_md5_transform(state, block);
+
+      memset(block, 0, sizeof(block));
+      store_u32(block, num_bits);
+   } else {
+      store_u32(block, num_bits);
+      memcpy(block + 4, data, remaining);
+      block[4 + remaining] = 0x80;
+   }
+
+   store_u32(block + 60, num_bits2);
+   d12_md5_transform(state, block);
+   memcpy(digest, state, sizeof(state));
+}
+
 /*
  * Serialize. Offsets inside the RTS0 payload are relative to the start of
  * the payload, not to the file, so everything is written into a standalone
@@ -116,7 +242,7 @@ serialize_rts0(const D3D12_ROOT_SIGNATURE_DESC *desc, struct d12_writer *w)
 
    w_u32(w, 1); /* D3D_ROOT_SIGNATURE_VERSION_1_0 */
    w_u32(w, nparams);
-   w_u32(w, nparams ? params_off : 0);
+   w_u32(w, params_off);
    w_u32(w, nsamplers);
    w_u32(w, 0); /* static sampler offset, patched below */
    w_u32(w, desc->Flags);
@@ -139,6 +265,9 @@ serialize_rts0(const D3D12_ROOT_SIGNATURE_DESC *desc, struct d12_writer *w)
       switch (p->ParameterType) {
       case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
          const D3D12_ROOT_DESCRIPTOR_TABLE *t = &p->DescriptorTable;
+         if (t->NumDescriptorRanges && !t->pDescriptorRanges)
+            return false;
+
          w_u32(w, t->NumDescriptorRanges);
          /* Ranges follow immediately after this 8-byte record. */
          w_u32(w, (uint32_t)(w->used + 4));
@@ -200,34 +329,35 @@ serialize_rts0(const D3D12_ROOT_SIGNATURE_DESC *desc, struct d12_writer *w)
    return !w->failed;
 }
 
-/* Root signature 1.1 is wire version 2.  Parameter records and static
- * samplers keep their 1.0 shape; descriptor ranges and root descriptors add
- * the flags word described by D3D12_ROOT_SIGNATURE_DESC1.
+/* Root signatures 1.1 and 1.2 are wire versions 2 and 3.  They share their
+ * parameter layout.  Version 1.2 only extends each static sampler with the
+ * D3D12_SAMPLER_FLAGS word declared by the public D3D12 headers.
  */
 static bool
-serialize_rts0_1_1(const D3D12_ROOT_SIGNATURE_DESC1 *desc,
-                    struct d12_writer *w)
+serialize_rts0_1_x(uint32_t wire_version, uint32_t nparams,
+                   const D3D12_ROOT_PARAMETER1 *params, uint32_t nsamplers,
+                   const D3D12_STATIC_SAMPLER_DESC *samplers,
+                   const D3D12_STATIC_SAMPLER_DESC1 *samplers1,
+                   D3D12_ROOT_SIGNATURE_FLAGS flags, struct d12_writer *w)
 {
-   const uint32_t nparams = desc->NumParameters;
-   const uint32_t nsamplers = desc->NumStaticSamplers;
    const uint32_t params_off = D12_RS_HEADER_SIZE;
 
-   w_u32(w, 2); /* D3D_ROOT_SIGNATURE_VERSION_1_1 */
+   w_u32(w, wire_version);
    w_u32(w, nparams);
    w_u32(w, params_off);
    w_u32(w, nsamplers);
    w_u32(w, 0); /* static sampler offset, patched below */
-   w_u32(w, desc->Flags);
+   w_u32(w, flags);
 
    size_t param_record = w->used;
    for (uint32_t i = 0; i < nparams; i++) {
-      w_u32(w, desc->pParameters[i].ParameterType);
-      w_u32(w, desc->pParameters[i].ShaderVisibility);
+      w_u32(w, params[i].ParameterType);
+      w_u32(w, params[i].ShaderVisibility);
       w_u32(w, 0);
    }
 
    for (uint32_t i = 0; i < nparams; i++) {
-      const D3D12_ROOT_PARAMETER1 *p = &desc->pParameters[i];
+      const D3D12_ROOT_PARAMETER1 *p = &params[i];
       w_u32_at(w, param_record + i * D12_RS_PARAM_SIZE + 8,
                (uint32_t)w->used);
 
@@ -273,7 +403,14 @@ serialize_rts0_1_1(const D3D12_ROOT_SIGNATURE_DESC1 *desc,
 
    uint32_t samplers_off = (uint32_t)w->used;
    for (uint32_t i = 0; i < nsamplers; i++) {
-      const D3D12_STATIC_SAMPLER_DESC *s = &desc->pStaticSamplers[i];
+      D3D12_STATIC_SAMPLER_DESC sampler;
+      const D3D12_STATIC_SAMPLER_DESC *s;
+      if (wire_version == 3) {
+         d12_copy_sampler_1_2_to_1_0(&sampler, &samplers1[i]);
+         s = &sampler;
+      } else {
+         s = &samplers[i];
+      }
       w_u32(w, s->Filter);
       w_u32(w, s->AddressU);
       w_u32(w, s->AddressV);
@@ -299,6 +436,8 @@ serialize_rts0_1_1(const D3D12_ROOT_SIGNATURE_DESC1 *desc,
       w_u32(w, s->ShaderRegister);
       w_u32(w, s->RegisterSpace);
       w_u32(w, s->ShaderVisibility);
+      if (wire_version == 3)
+         w_u32(w, samplers1[i].Flags);
    }
 
    w_u32_at(w, 16, samplers_off);
@@ -320,10 +459,7 @@ wrap_rts0(const struct d12_writer *payload, void **out_blob, size_t *out_size)
       return E_OUTOFMEMORY;
 
    w_u32(&out, D12_TAG_DXBC);
-   /* The checksum is an MD5-like digest that only the D3D runtime's own
-    * loaders verify. We do not compute one, and we do not pretend to: it
-    * is left zero so a blob of ours is identifiable as such.
-    */
+   /* Reserved until the complete container is available. */
    for (unsigned i = 0; i < 4; i++)
       w_u32(&out, 0);
    w_u32(&out, 1);                  /* container version */
@@ -340,6 +476,11 @@ wrap_rts0(const struct d12_writer *payload, void **out_blob, size_t *out_size)
    }
    memcpy(out.data + out.used, payload->data, payload->used);
    out.used += payload->used;
+
+   uint32_t checksum[4];
+   d12_dxbc_checksum(out.data, out.used, checksum);
+   for (unsigned i = 0; i < 4; i++)
+      w_u32_at(&out, 4 + i * 4, checksum[i]);
 
    *out_blob = out.data;
    *out_size = out.used;
@@ -381,16 +522,40 @@ d12_serialize_versioned_root_signature(
       return d12_serialize_root_signature(&desc->Desc_1_0, out_blob,
                                           out_size);
 
-   if (desc->Version != D3D_ROOT_SIGNATURE_VERSION_1_1)
-      return E_INVALIDARG;
+   uint32_t wire_version, nparams, nsamplers;
+   const D3D12_ROOT_PARAMETER1 *params;
+   const D3D12_STATIC_SAMPLER_DESC *samplers = NULL;
+   const D3D12_STATIC_SAMPLER_DESC1 *samplers1 = NULL;
+   D3D12_ROOT_SIGNATURE_FLAGS flags;
 
-   const D3D12_ROOT_SIGNATURE_DESC1 *v1 = &desc->Desc_1_1;
-   if ((v1->NumParameters && !v1->pParameters) ||
-       (v1->NumStaticSamplers && !v1->pStaticSamplers))
+   if (desc->Version == D3D_ROOT_SIGNATURE_VERSION_1_1) {
+      const D3D12_ROOT_SIGNATURE_DESC1 *v1 = &desc->Desc_1_1;
+      wire_version = 2;
+      nparams = v1->NumParameters;
+      params = v1->pParameters;
+      nsamplers = v1->NumStaticSamplers;
+      samplers = v1->pStaticSamplers;
+      flags = v1->Flags;
+   } else if (desc->Version == D3D_ROOT_SIGNATURE_VERSION_1_2) {
+      const D3D12_ROOT_SIGNATURE_DESC2 *v2 = &desc->Desc_1_2;
+      wire_version = 3;
+      nparams = v2->NumParameters;
+      params = v2->pParameters;
+      nsamplers = v2->NumStaticSamplers;
+      samplers1 = v2->pStaticSamplers;
+      flags = v2->Flags;
+   } else {
+      return E_INVALIDARG;
+   }
+
+   if ((nparams && !params) ||
+       (nsamplers && wire_version == 2 && !samplers) ||
+       (nsamplers && wire_version == 3 && !samplers1))
       return E_INVALIDARG;
 
    struct d12_writer payload = {0};
-   if (!serialize_rts0_1_1(v1, &payload)) {
+   if (!serialize_rts0_1_x(wire_version, nparams, params, nsamplers, samplers,
+                           samplers1, flags, &payload)) {
       free(payload.data);
       return E_INVALIDARG;
    }
@@ -415,9 +580,9 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
 
    uint32_t total = r_u32(p + 24);
    uint32_t nparts = r_u32(p + 28);
-   if (total > size || nparts == 0 || nparts > 64)
+   if (total < 32 || total > size || nparts == 0 || nparts > 64)
       return false;
-   if (32 + (size_t)nparts * 4 > size)
+   if (32 + (size_t)nparts * 4 > total)
       return false;
 
    for (uint32_t i = 0; i < nparts; i++) {
@@ -426,13 +591,13 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
        * check passes, and the read below lands ~4 GiB past the blob. The
        * blob is application-supplied.
        */
-      if ((size_t)off + 8 > size)
+      if ((size_t)off + 8 > total)
          continue;
       if (r_u32(p + off) != D12_TAG_RTS0)
          continue;
 
       uint32_t part_size = r_u32(p + off + 4);
-      if ((size_t)off + 8 + part_size > size)
+      if ((size_t)off + 8 + part_size > total)
          return false;
 
       *out = p + off + 8;
@@ -590,6 +755,481 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
 truncated:
    mesa_loge("root signature parameter payload runs past the blob");
    return false;
+}
+
+/* The public deserializer interfaces expose pointers whose lifetime is tied
+ * to the COM object.  Decode into one owned canonical 1.1-shaped model, then
+ * build stable 1.0, 1.1 and 1.2 views over the same allocation set.
+ */
+struct d12_root_signature_desc_store {
+   D3D_ROOT_SIGNATURE_VERSION source_version;
+   D3D12_VERSIONED_ROOT_SIGNATURE_DESC views[3];
+
+   D3D12_ROOT_PARAMETER *params0;
+   D3D12_ROOT_PARAMETER1 *params1;
+   D3D12_DESCRIPTOR_RANGE *ranges0;
+   D3D12_DESCRIPTOR_RANGE1 *ranges1;
+   D3D12_STATIC_SAMPLER_DESC *samplers0;
+   D3D12_STATIC_SAMPLER_DESC1 *samplers1;
+};
+
+static void
+d12_root_signature_desc_store_cleanup(struct d12_root_signature_desc_store *s)
+{
+   free(s->params0);
+   free(s->params1);
+   free(s->ranges0);
+   free(s->ranges1);
+   free(s->samplers0);
+   free(s->samplers1);
+   memset(s, 0, sizeof(*s));
+}
+
+static bool
+d12_rs_span(size_t size, uint32_t offset, uint32_t count, size_t stride)
+{
+   return (size_t)offset <= size && count <= (size - offset) / stride;
+}
+
+static float
+d12_rs_float(const uint8_t *p)
+{
+   uint32_t bits = r_u32(p);
+   float value;
+   memcpy(&value, &bits, sizeof(value));
+   return value;
+}
+
+static void
+d12_copy_sampler_1_2_to_1_0(D3D12_STATIC_SAMPLER_DESC *dst,
+                             const D3D12_STATIC_SAMPLER_DESC1 *src)
+{
+   dst->Filter = src->Filter;
+   dst->AddressU = src->AddressU;
+   dst->AddressV = src->AddressV;
+   dst->AddressW = src->AddressW;
+   dst->MipLODBias = src->MipLODBias;
+   dst->MaxAnisotropy = src->MaxAnisotropy;
+   dst->ComparisonFunc = src->ComparisonFunc;
+   dst->BorderColor = src->BorderColor;
+   dst->MinLOD = src->MinLOD;
+   dst->MaxLOD = src->MaxLOD;
+   dst->ShaderRegister = src->ShaderRegister;
+   dst->RegisterSpace = src->RegisterSpace;
+   dst->ShaderVisibility = src->ShaderVisibility;
+}
+
+static HRESULT
+d12_root_signature_desc_store_init(struct d12_root_signature_desc_store *s,
+                                   const void *blob, size_t blob_size)
+{
+   const uint8_t *rs;
+   size_t rs_size;
+   size_t range_count = 0;
+
+   memset(s, 0, sizeof(*s));
+   if (!find_rts0(blob, blob_size, &rs, &rs_size) ||
+       rs_size < D12_RS_HEADER_SIZE)
+      return E_INVALIDARG;
+
+   const uint32_t wire_version = r_u32(rs);
+   const uint32_t nparams = r_u32(rs + 4);
+   const uint32_t params_off = r_u32(rs + 8);
+   const uint32_t nsamplers = r_u32(rs + 12);
+   const uint32_t samplers_off = r_u32(rs + 16);
+   const D3D12_ROOT_SIGNATURE_FLAGS flags = r_u32(rs + 20);
+   const uint32_t range_size = wire_version == 1
+      ? D12_RS_RANGE_SIZE : D12_RS_RANGE1_SIZE;
+   const uint32_t descriptor_size = wire_version == 1
+      ? D12_RS_DESCRIPTOR_SIZE : D12_RS_DESCRIPTOR1_SIZE;
+   const uint32_t sampler_size = wire_version == 3
+      ? D12_RS_SAMPLER1_SIZE : D12_RS_SAMPLER_SIZE;
+
+   if (wire_version < 1 || wire_version > 3 ||
+       (nparams && !d12_rs_span(rs_size, params_off, nparams,
+                                D12_RS_PARAM_SIZE)) ||
+       (nsamplers && !d12_rs_span(rs_size, samplers_off, nsamplers,
+                                  sampler_size)))
+      return E_INVALIDARG;
+
+   /* Validate every referenced payload and count the flattened ranges before
+    * allocating anything.  The blob is application-controlled input.
+    */
+   for (uint32_t i = 0; i < nparams; i++) {
+      const uint8_t *rec = rs + params_off + i * D12_RS_PARAM_SIZE;
+      const uint32_t type = r_u32(rec);
+      const uint32_t payload = r_u32(rec + 8);
+
+      switch (type) {
+      case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
+         if (!d12_rs_span(rs_size, payload, 1, D12_RS_TABLE_SIZE))
+            return E_INVALIDARG;
+         const uint32_t nranges = r_u32(rs + payload);
+         const uint32_t ranges_off = r_u32(rs + payload + 4);
+         if ((nranges && !d12_rs_span(rs_size, ranges_off, nranges,
+                                     range_size)) ||
+             nranges > SIZE_MAX - range_count)
+            return E_INVALIDARG;
+         range_count += nranges;
+         break;
+      }
+      case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+         if (!d12_rs_span(rs_size, payload, 1, D12_RS_CONSTANTS_SIZE))
+            return E_INVALIDARG;
+         break;
+      case D3D12_ROOT_PARAMETER_TYPE_CBV:
+      case D3D12_ROOT_PARAMETER_TYPE_SRV:
+      case D3D12_ROOT_PARAMETER_TYPE_UAV:
+         if (!d12_rs_span(rs_size, payload, 1, descriptor_size))
+            return E_INVALIDARG;
+         break;
+      default:
+         return E_INVALIDARG;
+      }
+   }
+
+   if (nparams) {
+      s->params0 = calloc(nparams, sizeof(*s->params0));
+      s->params1 = calloc(nparams, sizeof(*s->params1));
+      if (!s->params0 || !s->params1)
+         goto oom;
+   }
+   if (range_count) {
+      s->ranges0 = calloc(range_count, sizeof(*s->ranges0));
+      s->ranges1 = calloc(range_count, sizeof(*s->ranges1));
+      if (!s->ranges0 || !s->ranges1)
+         goto oom;
+   }
+   if (nsamplers) {
+      s->samplers0 = calloc(nsamplers, sizeof(*s->samplers0));
+      s->samplers1 = calloc(nsamplers, sizeof(*s->samplers1));
+      if (!s->samplers0 || !s->samplers1)
+         goto oom;
+   }
+
+   size_t next_range = 0;
+   for (uint32_t i = 0; i < nparams; i++) {
+      const uint8_t *rec = rs + params_off + i * D12_RS_PARAM_SIZE;
+      D3D12_ROOT_PARAMETER *p0 = &s->params0[i];
+      D3D12_ROOT_PARAMETER1 *p1 = &s->params1[i];
+      const uint32_t payload = r_u32(rec + 8);
+
+      p0->ParameterType = p1->ParameterType = r_u32(rec);
+      p0->ShaderVisibility = p1->ShaderVisibility = r_u32(rec + 4);
+
+      switch (p0->ParameterType) {
+      case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
+         const uint32_t nranges = r_u32(rs + payload);
+         const uint32_t ranges_off = r_u32(rs + payload + 4);
+         p0->DescriptorTable.NumDescriptorRanges = nranges;
+         p1->DescriptorTable.NumDescriptorRanges = nranges;
+         p0->DescriptorTable.pDescriptorRanges = nranges
+            ? &s->ranges0[next_range] : NULL;
+         p1->DescriptorTable.pDescriptorRanges = nranges
+            ? &s->ranges1[next_range] : NULL;
+
+         for (uint32_t r = 0; r < nranges; r++) {
+            const uint8_t *rr = rs + ranges_off + r * range_size;
+            D3D12_DESCRIPTOR_RANGE *r0 = &s->ranges0[next_range + r];
+            D3D12_DESCRIPTOR_RANGE1 *r1 = &s->ranges1[next_range + r];
+
+            r0->RangeType = r1->RangeType = r_u32(rr);
+            r0->NumDescriptors = r1->NumDescriptors = r_u32(rr + 4);
+            r0->BaseShaderRegister = r1->BaseShaderRegister = r_u32(rr + 8);
+            r0->RegisterSpace = r1->RegisterSpace = r_u32(rr + 12);
+            r1->Flags = wire_version == 1
+               ? D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE |
+                    D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE
+               : r_u32(rr + 16);
+            r0->OffsetInDescriptorsFromTableStart =
+               r1->OffsetInDescriptorsFromTableStart =
+                  r_u32(rr + (wire_version == 1 ? 16 : 20));
+         }
+         next_range += nranges;
+         break;
+      }
+      case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+         p0->Constants.ShaderRegister = p1->Constants.ShaderRegister =
+            r_u32(rs + payload);
+         p0->Constants.RegisterSpace = p1->Constants.RegisterSpace =
+            r_u32(rs + payload + 4);
+         p0->Constants.Num32BitValues = p1->Constants.Num32BitValues =
+            r_u32(rs + payload + 8);
+         break;
+      case D3D12_ROOT_PARAMETER_TYPE_CBV:
+      case D3D12_ROOT_PARAMETER_TYPE_SRV:
+      case D3D12_ROOT_PARAMETER_TYPE_UAV:
+         p0->Descriptor.ShaderRegister = p1->Descriptor.ShaderRegister =
+            r_u32(rs + payload);
+         p0->Descriptor.RegisterSpace = p1->Descriptor.RegisterSpace =
+            r_u32(rs + payload + 4);
+         p1->Descriptor.Flags = wire_version == 1
+            ? D3D12_ROOT_DESCRIPTOR_FLAG_DATA_VOLATILE
+            : r_u32(rs + payload + 8);
+         break;
+      }
+   }
+
+   for (uint32_t i = 0; i < nsamplers; i++) {
+      const uint8_t *in = rs + samplers_off + i * sampler_size;
+      D3D12_STATIC_SAMPLER_DESC1 *s1 = &s->samplers1[i];
+      s1->Filter = r_u32(in);
+      s1->AddressU = r_u32(in + 4);
+      s1->AddressV = r_u32(in + 8);
+      s1->AddressW = r_u32(in + 12);
+      s1->MipLODBias = d12_rs_float(in + 16);
+      s1->MaxAnisotropy = r_u32(in + 20);
+      s1->ComparisonFunc = r_u32(in + 24);
+      s1->BorderColor = r_u32(in + 28);
+      s1->MinLOD = d12_rs_float(in + 32);
+      s1->MaxLOD = d12_rs_float(in + 36);
+      s1->ShaderRegister = r_u32(in + 40);
+      s1->RegisterSpace = r_u32(in + 44);
+      s1->ShaderVisibility = r_u32(in + 48);
+      s1->Flags = wire_version == 3 ? r_u32(in + 52)
+                                    : D3D12_SAMPLER_FLAG_NONE;
+      d12_copy_sampler_1_2_to_1_0(&s->samplers0[i], s1);
+   }
+
+   s->source_version = (D3D_ROOT_SIGNATURE_VERSION)wire_version;
+   s->views[0].Version = D3D_ROOT_SIGNATURE_VERSION_1_0;
+   s->views[0].Desc_1_0 = (D3D12_ROOT_SIGNATURE_DESC) {
+      .NumParameters = nparams,
+      .pParameters = nparams ? s->params0 : NULL,
+      .NumStaticSamplers = nsamplers,
+      .pStaticSamplers = nsamplers ? s->samplers0 : NULL,
+      .Flags = flags,
+   };
+   s->views[1].Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
+   s->views[1].Desc_1_1 = (D3D12_ROOT_SIGNATURE_DESC1) {
+      .NumParameters = nparams,
+      .pParameters = nparams ? s->params1 : NULL,
+      .NumStaticSamplers = nsamplers,
+      .pStaticSamplers = nsamplers ? s->samplers0 : NULL,
+      .Flags = flags,
+   };
+   s->views[2].Version = D3D_ROOT_SIGNATURE_VERSION_1_2;
+   s->views[2].Desc_1_2 = (D3D12_ROOT_SIGNATURE_DESC2) {
+      .NumParameters = nparams,
+      .pParameters = nparams ? s->params1 : NULL,
+      .NumStaticSamplers = nsamplers,
+      .pStaticSamplers = nsamplers ? s->samplers1 : NULL,
+      .Flags = flags,
+   };
+   return S_OK;
+
+oom:
+   d12_root_signature_desc_store_cleanup(s);
+   return E_OUTOFMEMORY;
+}
+
+struct d12_root_signature_deserializer {
+   ID3D12RootSignatureDeserializer iface;
+   uint32_t refcount;
+   struct d12_root_signature_desc_store store;
+};
+
+static HRESULT STDMETHODCALLTYPE
+d12_root_signature_deserializer_QueryInterface(
+   ID3D12RootSignatureDeserializer *iface, REFIID riid, void **out)
+{
+   struct d12_root_signature_deserializer *deserializer = (void *)iface;
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+
+   /* Match the native factory object's deliberately narrow interface. */
+   if (!d12_guid_equal(riid, &IID_ID3D12RootSignatureDeserializer))
+      return E_NOINTERFACE;
+
+   p_atomic_inc(&deserializer->refcount);
+   *out = iface;
+   return S_OK;
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_root_signature_deserializer_AddRef(ID3D12RootSignatureDeserializer *iface)
+{
+   struct d12_root_signature_deserializer *deserializer = (void *)iface;
+   return p_atomic_inc_return(&deserializer->refcount);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_root_signature_deserializer_Release(ID3D12RootSignatureDeserializer *iface)
+{
+   struct d12_root_signature_deserializer *deserializer = (void *)iface;
+   uint32_t refs = p_atomic_dec_return(&deserializer->refcount);
+   if (!refs) {
+      d12_root_signature_desc_store_cleanup(&deserializer->store);
+      free(deserializer);
+   }
+   return refs;
+}
+
+static const D3D12_ROOT_SIGNATURE_DESC *STDMETHODCALLTYPE
+d12_root_signature_deserializer_GetRootSignatureDesc(
+   ID3D12RootSignatureDeserializer *iface)
+{
+   struct d12_root_signature_deserializer *deserializer = (void *)iface;
+   return &deserializer->store.views[0].Desc_1_0;
+}
+
+static const ID3D12RootSignatureDeserializerVtbl
+d12_root_signature_deserializer_vtbl = {
+   .QueryInterface = d12_root_signature_deserializer_QueryInterface,
+   .AddRef = d12_root_signature_deserializer_AddRef,
+   .Release = d12_root_signature_deserializer_Release,
+   .GetRootSignatureDesc = d12_root_signature_deserializer_GetRootSignatureDesc,
+};
+
+struct d12_versioned_root_signature_deserializer {
+   ID3D12VersionedRootSignatureDeserializer iface;
+   uint32_t refcount;
+   struct d12_root_signature_desc_store store;
+};
+
+static HRESULT STDMETHODCALLTYPE
+d12_versioned_root_signature_deserializer_QueryInterface(
+   ID3D12VersionedRootSignatureDeserializer *iface, REFIID riid, void **out)
+{
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      (void *)iface;
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+
+   if (!d12_guid_equal(riid, &IID_ID3D12VersionedRootSignatureDeserializer))
+      return E_NOINTERFACE;
+
+   p_atomic_inc(&deserializer->refcount);
+   *out = iface;
+   return S_OK;
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_versioned_root_signature_deserializer_AddRef(
+   ID3D12VersionedRootSignatureDeserializer *iface)
+{
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      (void *)iface;
+   return p_atomic_inc_return(&deserializer->refcount);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_versioned_root_signature_deserializer_Release(
+   ID3D12VersionedRootSignatureDeserializer *iface)
+{
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      (void *)iface;
+   uint32_t refs = p_atomic_dec_return(&deserializer->refcount);
+   if (!refs) {
+      d12_root_signature_desc_store_cleanup(&deserializer->store);
+      free(deserializer);
+   }
+   return refs;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_versioned_root_signature_deserializer_GetRootSignatureDescAtVersion(
+   ID3D12VersionedRootSignatureDeserializer *iface,
+   D3D_ROOT_SIGNATURE_VERSION version,
+   const D3D12_VERSIONED_ROOT_SIGNATURE_DESC **out)
+{
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      (void *)iface;
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (version < D3D_ROOT_SIGNATURE_VERSION_1_0 ||
+       version > D3D_ROOT_SIGNATURE_VERSION_1_2)
+      return E_INVALIDARG;
+
+   *out = &deserializer->store.views[version - 1];
+   return S_OK;
+}
+
+static const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *STDMETHODCALLTYPE
+d12_versioned_root_signature_deserializer_GetUnconvertedRootSignatureDesc(
+   ID3D12VersionedRootSignatureDeserializer *iface)
+{
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      (void *)iface;
+   return &deserializer->store.views[deserializer->store.source_version - 1];
+}
+
+static const ID3D12VersionedRootSignatureDeserializerVtbl
+d12_versioned_root_signature_deserializer_vtbl = {
+   .QueryInterface = d12_versioned_root_signature_deserializer_QueryInterface,
+   .AddRef = d12_versioned_root_signature_deserializer_AddRef,
+   .Release = d12_versioned_root_signature_deserializer_Release,
+   .GetRootSignatureDescAtVersion =
+      d12_versioned_root_signature_deserializer_GetRootSignatureDescAtVersion,
+   .GetUnconvertedRootSignatureDesc =
+      d12_versioned_root_signature_deserializer_GetUnconvertedRootSignatureDesc,
+};
+
+HRESULT
+d12_root_signature_deserializer_create(const void *src, size_t size,
+                                       REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!src || !riid)
+      return E_INVALIDARG;
+   if (!d12_guid_equal(riid, &IID_ID3D12RootSignatureDeserializer))
+      return E_NOINTERFACE;
+
+   struct d12_root_signature_deserializer *deserializer =
+      calloc(1, sizeof(*deserializer));
+   if (!deserializer)
+      return E_OUTOFMEMORY;
+
+   HRESULT hr = d12_root_signature_desc_store_init(&deserializer->store,
+                                                   src, size);
+   if (FAILED(hr)) {
+      free(deserializer);
+      return hr;
+   }
+
+   deserializer->iface.lpVtbl =
+      (ID3D12RootSignatureDeserializerVtbl *)
+         &d12_root_signature_deserializer_vtbl;
+   deserializer->refcount = 1;
+   *out = &deserializer->iface;
+   return S_OK;
+}
+
+HRESULT
+d12_versioned_root_signature_deserializer_create(const void *src, size_t size,
+                                                 REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!src || !riid)
+      return E_INVALIDARG;
+   if (!d12_guid_equal(riid, &IID_ID3D12VersionedRootSignatureDeserializer))
+      return E_NOINTERFACE;
+
+   struct d12_versioned_root_signature_deserializer *deserializer =
+      calloc(1, sizeof(*deserializer));
+   if (!deserializer)
+      return E_OUTOFMEMORY;
+
+   HRESULT hr = d12_root_signature_desc_store_init(&deserializer->store,
+                                                   src, size);
+   if (FAILED(hr)) {
+      free(deserializer);
+      return hr;
+   }
+
+   deserializer->iface.lpVtbl =
+      (ID3D12VersionedRootSignatureDeserializerVtbl *)
+         &d12_versioned_root_signature_deserializer_vtbl;
+   deserializer->refcount = 1;
+   *out = &deserializer->iface;
+   return S_OK;
 }
 
 /*
