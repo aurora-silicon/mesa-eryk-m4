@@ -93,9 +93,11 @@ shader's `createHandle`/`createHandleFromBinding` resolves to its slot; the
 address arithmetic happens at the access site. Three handle flavours exist,
 distinguished in `handle_info()`:
 
-1. **Range handles** — index the root table, an array of 64-bit base
-   addresses in GPU memory, published in a reserved uniform register.
-   A second array at `D12_ROOT_COUNTER_BASE` carries UAV counter addresses.
+1. **Range handles** — index one of three arrays of 64-bit values in GPU
+   memory: resource addresses, UAV counter addresses, and buffer-view counts.
+   A two-level header of two pointers per level is published in a reserved
+   uniform register. Plane selection therefore uses vector channels rather
+   than large AGX global-load immediates.
 2. **Dynamic handles** — the same, with a computed slot. Stride and kind come
    from the range's base slot, valid because a range shares one
    `dx.resources` record.
@@ -114,9 +116,9 @@ Reserved uniform registers (see `dxil/d12_dxil.h`):
 
 | uniform | contents |
 |---|---|
-| `D12_UNIFORM_ROOT` | address of the root table |
+| `D12_UNIFORM_ROOT` | address of the root table (non-fragment stages) |
+| `D12_UNIFORM_FRAGMENT_ROOT` | address of the root table after the fragment ABI's reserved EMRT/blend registers |
 | `D12_UNIFORM_TEXTURES` | address of the texture descriptor heap |
-| `D12_UNIFORM_SAMPLERS` | address of the sampler heap |
 | `D12_UNIFORM_HEAP` | address of the SM 6.6 shader-visible heap |
 
 `reserved_preamble` is set to `D12_UNIFORM_RESERVED` so the compiler's

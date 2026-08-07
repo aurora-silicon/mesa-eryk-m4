@@ -1154,6 +1154,29 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id,
  * 32-bit scalars: a StructuredBuffer of a 12-byte struct indexed at
  * element 3 read from byte 12 instead of byte 36.
  */
+enum d12_root_plane {
+   D12_ROOT_PLANE_RESOURCE,
+   D12_ROOT_PLANE_COUNTER,
+   D12_ROOT_PLANE_BUFINFO,
+};
+
+static nir_def *
+root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
+{
+   nir_builder *b = ctx->b;
+   nir_def *root = nir_load_root_agx(b);
+   nir_def *header = nir_load_global(b, 2, 64, root, .align_mul = 8);
+
+   if (plane == D12_ROOT_PLANE_RESOURCE)
+      return nir_channel(b, header, 0);
+
+   nir_def *metadata = nir_channel(b, header, 1);
+   nir_def *metadata_header =
+      nir_load_global(b, 2, 64, metadata, .align_mul = 8);
+   return nir_channel(b, metadata_header,
+                      plane == D12_ROOT_PLANE_COUNTER ? 0 : 1);
+}
+
 static nir_def *
 resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
                  nir_def *coord0, nir_def *coord1, bool raw_op)
@@ -1177,10 +1200,11 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
                                D12_HEAP_DESC_SIZE)),
          .align_mul = 8);
    } else {
-      nir_def *root = nir_load_root_agx(b);
+      nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
       base = nir_load_global(
          b, 1, 64,
-         nir_iadd(b, root, nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
+         nir_iadd(b, resource_table,
+                  nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
          .align_mul = 8);
    }
 
@@ -2587,11 +2611,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                          D12_DESC_COUNTER_OFFSET),
             .align_mul = 8);
       } else {
-         nir_def *root = nir_load_root_agx(b);
-         nir_def *idx =
-            nir_iadd_imm(b, nir_u2u64(b, h.slot), D12_ROOT_COUNTER_BASE);
+         nir_def *counter_table = root_plane(ctx, D12_ROOT_PLANE_COUNTER);
          counter_addr = nir_load_global(
-            b, 1, 64, nir_iadd(b, root, nir_imul_imm(b, idx, 8)),
+            b, 1, 64,
+            nir_iadd(b, counter_table,
+                     nir_imul_imm(b, nir_u2u64(b, h.slot), 8)),
             .align_mul = 8);
       }
 
@@ -2637,17 +2661,41 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       bool is_buf = th.kind == D12_RES_KIND_TYPED_BUFFER ||
                     th.kind == D12_RES_KIND_RAW_BUFFER ||
                     th.kind == D12_RES_KIND_STRUCTURED_BUFFER;
+      bool is_array = th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
 
-      /* A buffer's size query is one component (its element count); a
-       * 2D texture's is two.
+      /* Fixed-range buffer views carry their exact view count in the root
+       * table. This works for raw/structured/UAV views as well as typed
+       * SRVs and does not pretend they are AGX texture descriptors.
        */
-      unsigned txs_comps = is_buf ? 1 : 2;
+      if (is_buf && !th.heap) {
+         nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
+         nir_def *info = nir_load_global(
+            b, 2, 32,
+            nir_iadd(b, bufinfo_table,
+                     nir_imul_imm(b, nir_u2u64(b, th.slot), 8)),
+            .align_mul = 8);
+         nir_def *count = nir_channel(b, info, 0);
+         nir_def *stride = nir_channel(b, info, 1);
+         def_result(
+            ctx, inst,
+            th.kind == D12_RES_KIND_STRUCTURED_BUFFER
+               ? nir_vec4(b, count, stride, nir_imm_int(b, 0),
+                          nir_imm_int(b, 1))
+               : nir_vec4(b, count, nir_imm_int(b, 1),
+                          nir_imm_int(b, 1), nir_imm_int(b, 1)));
+         return true;
+      }
+
+      /* A buffer's size query is one component (its element count), a
+       * 2D texture's is two, and a 2D array also returns the layer count.
+       */
+      unsigned txs_comps = is_buf ? 1 : is_array ? 3 : 2;
 
       nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
       txs->op = nir_texop_txs;
       txs->sampler_dim = is_buf ? GLSL_SAMPLER_DIM_BUF
                                 : GLSL_SAMPLER_DIM_2D;
-      txs->is_array = false;
+      txs->is_array = is_array;
       txs->dest_type = nir_type_uint32;
       txs->src[0] =
          nir_tex_src_for_ssa(nir_tex_src_texture_handle, handle);
@@ -2658,7 +2706,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_tex_instr *lv = nir_tex_instr_create(b->shader, 1);
       lv->op = nir_texop_query_levels;
       lv->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      lv->is_array = false;
+      lv->is_array = is_array;
       lv->dest_type = nir_type_uint32;
       lv->src[0] = nir_tex_src_for_ssa(
          nir_tex_src_texture_handle,
@@ -2670,9 +2718,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *height =
          is_buf ? nir_imm_int(b, 1) : nir_channel(b, &txs->def, 1);
+      nir_def *depth_or_layers =
+         is_array ? nir_channel(b, &txs->def, 2) : nir_imm_int(b, 1);
       def_result(ctx, inst,
                  nir_vec4(b, nir_channel(b, &txs->def, 0), height,
-                          nir_imm_int(b, 1), &lv->def));
+                          depth_or_layers, &lv->def));
       return true;
    }
 
@@ -5088,7 +5138,9 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    unsigned base;
    switch (intr->intrinsic) {
    case nir_intrinsic_load_root_agx:
-      base = D12_UNIFORM_ROOT;
+      base = b->shader->info.stage == MESA_SHADER_FRAGMENT
+                ? D12_UNIFORM_FRAGMENT_ROOT
+                : D12_UNIFORM_ROOT;
       break;
    case nir_intrinsic_load_descriptor_heap_agx:
       base = D12_UNIFORM_HEAP;

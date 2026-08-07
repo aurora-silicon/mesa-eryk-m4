@@ -1638,19 +1638,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       }
    }
 
-   /*
-    * Facing and culling. Measured on M2 (G14G): with the hardware's
-    * front_face_ccw set, a triangle wound counter-clockwise in NDC is the
-    * FRONT face -- cull_front removes it and cull_back does not.
-    *
-    * D3D12 defines facing after the viewport transform, where +y runs down
-    * the framebuffer; our viewport negates y, so NDC-counter-clockwise is
-    * screen-clockwise, which is D3D12's front face when
-    * FrontCounterClockwise is FALSE. Hence the inversion here.
+   /* D3D12 and Honeykrisp both use a Y-negative viewport here. A
+    * same-hardware command-stream diff therefore gives the direct mapping:
+    * the default FrontCounterClockwise=FALSE PSO uses front_face_ccw=false.
+    * Inverting it culls both triangles of the standard full-screen strip.
     */
-   pso->raster.front_face_ccw = true;
+   pso->raster.front_face_ccw = false;
    if (rs_desc) {
-      pso->raster.front_face_ccw = !rs_desc->FrontCounterClockwise;
+      pso->raster.front_face_ccw = rs_desc->FrontCounterClockwise;
       pso->raster.cull_front = rs_desc->CullMode == D3D12_CULL_MODE_FRONT;
       pso->raster.cull_back = rs_desc->CullMode == D3D12_CULL_MODE_BACK;
 

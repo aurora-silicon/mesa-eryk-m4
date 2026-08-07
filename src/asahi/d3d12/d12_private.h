@@ -249,6 +249,13 @@ enum d12_descriptor_kind {
    D12_DESC_UAV,
 };
 
+enum d12_buffer_view_kind {
+   D12_BUFFER_VIEW_NONE = 0,
+   D12_BUFFER_VIEW_TYPED,
+   D12_BUFFER_VIEW_RAW,
+   D12_BUFFER_VIEW_STRUCTURED,
+};
+
 struct d12_descriptor {
    /* GPU-read fields first: an SM 6.6 heap handle indexes this struct
     * IN MEMORY, so the shader-visible layout is part of the ABI. The
@@ -263,7 +270,8 @@ struct d12_descriptor {
    uint32_t stride_B;
    DXGI_FORMAT format;
    uint8_t kind; /* enum d12_descriptor_kind */
-   uint8_t pad[3];
+   uint8_t buffer_kind; /* enum d12_buffer_view_kind */
+   uint8_t pad[2];
 };
 static_assert(sizeof(struct d12_descriptor) == 40,
               "must match handle increment");

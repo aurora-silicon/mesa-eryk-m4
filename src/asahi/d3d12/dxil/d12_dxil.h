@@ -497,6 +497,7 @@ enum d12_resource_class {
  * structured buffer uses.
  */
 enum d12_resource_kind {
+   D12_RES_KIND_TEXTURE_2D_ARRAY = 7,
    D12_RES_KIND_TYPED_BUFFER = 10,
    D12_RES_KIND_RAW_BUFFER = 11,
    D12_RES_KIND_STRUCTURED_BUFFER = 12,
@@ -672,6 +673,12 @@ struct nir_shader;
 #define D12_UNIFORM_ROOT            4
 #define D12_UNIFORM_ROOT_REGS       4
 
+/* Fragment uniforms 0..11 are reserved by the hardware ABI for the EMRT
+ * heap and blend constants. Honeykrisp consequently publishes its fragment
+ * root at 12; using the generic slot 4 there reads as zero on hardware.
+ */
+#define D12_UNIFORM_FRAGMENT_ROOT   12
+
 /*
  * Texture descriptors live in their own heap: AGX reaches a texture
  * through a hardware descriptor, not a bare address. A bindless handle is
@@ -691,15 +698,6 @@ struct nir_shader;
  * arriving -- a fault at address 0.
  */
 /*
- * Sampler heap base: hardware sampler descriptors at slot * 8 bytes, the
- * sampler analogue of the texture heap. 8 is AGX_SAMPLER_LENGTH;
- * static-asserted where agx_pack.h is visible (d12_cmd.c).
- */
-#define D12_UNIFORM_SAMPLERS        12
-#define D12_UNIFORM_SAMPLER_REGS    4
-#define D12_SAMPLER_DESC_SIZE       8
-
-/*
  * SM 6.6 ResourceDescriptorHeap base: the shader-visible heap's
  * d12_descriptor array, indexed directly by heap index. 32 is
  * sizeof(struct d12_descriptor); static-asserted in d12_cmd.c where the
@@ -711,10 +709,20 @@ struct nir_shader;
 #define D12_DESC_COUNTER_OFFSET     8
 
 /*
- * The root table ABI: two arrays back to back. addrs[i] at slot * 8,
- * then UAV counter addresses at (D12_MAX_RESOURCE_BINDINGS + slot) * 8.
+ * The root binding upload contains three u64 arrays back to back. The root
+ * uniform points at a two-pointer header: resource plane, metadata header.
+ * The metadata header in turn contains the counter and BUFINFO plane
+ * pointers. Both headers are loaded as a 2 x 64-bit vector at byte offset 0.
+ * This avoids AGX global-load immediate folding entirely: the third plane's
+ * 4096-byte offset cannot be represented by that instruction encoding.
  */
+#define D12_ROOT_RESOURCE_BASE      0
 #define D12_ROOT_COUNTER_BASE       D12_MAX_RESOURCE_BINDINGS
+#define D12_ROOT_BUFINFO_BASE       (2 * D12_MAX_RESOURCE_BINDINGS)
+#define D12_ROOT_TABLE_ENTRIES      (3 * D12_MAX_RESOURCE_BINDINGS)
+
+#define D12_ROOT_HEADER_SIZE          16
+#define D12_ROOT_METADATA_HEADER_SIZE 16
 
 /*
  * SM 6.8 extended command info: StartVertexLocation then

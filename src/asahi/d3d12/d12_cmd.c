@@ -1034,8 +1034,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
 
-   /* Two arrays back to back (D12_ROOT_COUNTER_BASE): resource base
-    * addresses, then UAV counter addresses for bufferUpdateCounter.
+   /* Three arrays back to back: resource base addresses, UAV counter
+    * addresses for bufferUpdateCounter, then buffer-view counts for
+    * GetDimensions/BUFINFO. A small header below points to each plane so
+    * shaders never need a global-load immediate beyond the AGX encoding.
     */
    /* An UNBOUND slot is address 0, and a shader that reads one dereferences
     * it -- which the GPU reports as
@@ -1052,10 +1054,34 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * answer.
     */
    uint64_t null_buf = 0;
-   uint64_t addrs[2 * D12_MAX_RESOURCE_BINDINGS];
+   uint64_t addrs[D12_ROOT_TABLE_ENTRIES];
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
       addrs[i] = table[i].address;
       addrs[D12_ROOT_COUNTER_BASE + i] = table[i].counter_address;
+      addrs[D12_ROOT_BUFINFO_BASE + i] = 0;
+
+      if (table[i].resource &&
+          table[i].resource->desc.Dimension ==
+             D3D12_RESOURCE_DIMENSION_BUFFER &&
+          (table[i].kind == D12_DESC_SRV ||
+           table[i].kind == D12_DESC_UAV)) {
+         switch (table[i].buffer_kind) {
+         case D12_BUFFER_VIEW_RAW:
+            addrs[D12_ROOT_BUFINFO_BASE + i] = table[i].size_B;
+            break;
+         case D12_BUFFER_VIEW_TYPED:
+         case D12_BUFFER_VIEW_STRUCTURED:
+            if (table[i].stride_B)
+               addrs[D12_ROOT_BUFINFO_BASE + i] =
+                  table[i].size_B / table[i].stride_B;
+            break;
+         default:
+            break;
+         }
+         if (table[i].buffer_kind == D12_BUFFER_VIEW_STRUCTURED)
+            addrs[D12_ROOT_BUFINFO_BASE + i] |=
+               (uint64_t)table[i].stride_B << 32;
+      }
 
       if (!addrs[i] || !addrs[D12_ROOT_COUNTER_BASE + i]) {
          if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
@@ -1070,11 +1096,34 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
-   uint64_t addrs_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
-   if (!addrs_gpu)
+   uint64_t tables_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
+   if (!tables_gpu)
       return false;
 
-   *out_root = d12_list_upload(list, &addrs_gpu, sizeof(addrs_gpu), 8);
+   uint64_t metadata_header[] = {
+      tables_gpu + D12_ROOT_COUNTER_BASE * sizeof(uint64_t),
+      tables_gpu + D12_ROOT_BUFINFO_BASE * sizeof(uint64_t),
+   };
+   static_assert(sizeof(metadata_header) == D12_ROOT_METADATA_HEADER_SIZE,
+                 "root metadata header ABI mismatch");
+
+   uint64_t metadata_gpu =
+      d12_list_upload(list, metadata_header, sizeof(metadata_header), 8);
+   if (!metadata_gpu)
+      return false;
+
+   uint64_t header[] = {
+      tables_gpu + D12_ROOT_RESOURCE_BASE * sizeof(uint64_t),
+      metadata_gpu,
+   };
+   static_assert(sizeof(header) == D12_ROOT_HEADER_SIZE,
+                 "root header ABI mismatch");
+
+   uint64_t header_gpu = d12_list_upload(list, header, sizeof(header), 8);
+   if (!header_gpu)
+      return false;
+
+   *out_root = d12_list_upload(list, &header_gpu, sizeof(header_gpu), 8);
    if (!*out_root)
       return false;
 
@@ -1536,11 +1585,18 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
 
    struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(16));
 
-   agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
-   if (textures_gpu) {
+   /* USC uniform records must be emitted in ascending register order. The
+    * fragment root follows the texture base because registers 0..11 belong
+    * to the fragment ABI; non-fragment stages retain root-then-textures.
+    */
+   if (!fragment)
+      agx_usc_uniform(&b, D12_UNIFORM_ROOT, D12_UNIFORM_ROOT_REGS, root_gpu);
+   if (textures_gpu)
       agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
                       textures_gpu);
-   }
+   if (fragment)
+      agx_usc_uniform(&b, D12_UNIFORM_FRAGMENT_ROOT, D12_UNIFORM_ROOT_REGS,
+                      root_gpu);
 
    /*
     * Constants the compiler promoted out of the instruction stream live in

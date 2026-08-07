@@ -334,6 +334,138 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_PREDICATION:
+      if (data_size != sizeof(D3D12_FEATURE_DATA_PREDICATION))
+         return E_INVALIDARG;
+      return E_NOTIMPL;
+
+   case D3D12_FEATURE_HARDWARE_COPY:
+      if (data_size != sizeof(D3D12_FEATURE_DATA_HARDWARE_COPY))
+         return E_INVALIDARG;
+      return E_NOTIMPL;
+
+   case D3D12_FEATURE_APPLICATION_SPECIFIC_DRIVER_STATE: {
+      D3D12_FEATURE_DATA_APPLICATION_SPECIFIC_DRIVER_STATE *state = data;
+      if (data_size != sizeof(*state))
+         return E_INVALIDARG;
+      state->Supported = FALSE;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_BYTECODE_BYPASS_HASH_SUPPORTED: {
+      D3D12_FEATURE_DATA_BYTECODE_BYPASS_HASH_SUPPORTED *bypass = data;
+      if (data_size != sizeof(*bypass))
+         return E_INVALIDARG;
+      bypass->Supported = FALSE;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_SHADER_CACHE_ABI_SUPPORT:
+      /* The Windows ABI's WCHAR is 16-bit, while the Linux DirectX-Headers
+       * stub currently typedefs it to 32-bit wchar_t. This query returns no
+       * data when unsupported, so accept either public structure spelling.
+       */
+      if (data_size != sizeof(D3D12_FEATURE_DATA_SHADERCACHE_ABI_SUPPORT) &&
+          data_size != 128 * sizeof(uint16_t) + 4 * sizeof(uint64_t))
+         return E_INVALIDARG;
+      return E_FAIL;
+
+   case D3D12_FEATURE_D3D12_OPTIONS22: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS22 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+      memset(opts, 0, sizeof(*opts));
+      opts->Max1DDispatchSize =
+         D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_BARRIER_LAYOUT: {
+      D3D12_FEATURE_DATA_BARRIER_LAYOUT *layout = data;
+      if (data_size != sizeof(*layout))
+         return E_INVALIDARG;
+
+      bool direct = layout->CommandListType == D3D12_COMMAND_LIST_TYPE_DIRECT;
+      bool compute =
+         layout->CommandListType == D3D12_COMMAND_LIST_TYPE_COMPUTE;
+
+      /* D3D12_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON (value 30) was added after
+       * the DirectX-Headers version this build uses. Keep the public value
+       * here so callers built against the current header get the right
+       * queue/layout validation answer.
+       */
+      if ((unsigned)layout->Layout == 30) {
+         layout->Supported =
+            layout->CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE ||
+            layout->CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_PROCESS ||
+            layout->CommandListType == D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+         return S_OK;
+      }
+
+      switch (layout->Layout) {
+      case D3D12_BARRIER_LAYOUT_COMMON:
+      case D3D12_BARRIER_LAYOUT_UNDEFINED:
+         layout->Supported = TRUE;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON:
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ:
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS:
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE:
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE:
+      case D3D12_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST:
+      case D3D12_BARRIER_LAYOUT_RENDER_TARGET:
+      case D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_READ:
+      case D3D12_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE:
+      case D3D12_BARRIER_LAYOUT_RESOLVE_SOURCE:
+      case D3D12_BARRIER_LAYOUT_RESOLVE_DEST:
+      case D3D12_BARRIER_LAYOUT_SHADING_RATE_SOURCE:
+         layout->Supported = direct;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON:
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ:
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS:
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE:
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE:
+      case D3D12_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST:
+         layout->Supported = compute;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_GENERIC_READ:
+      case D3D12_BARRIER_LAYOUT_UNORDERED_ACCESS:
+      case D3D12_BARRIER_LAYOUT_SHADER_RESOURCE:
+      case D3D12_BARRIER_LAYOUT_COPY_SOURCE:
+      case D3D12_BARRIER_LAYOUT_COPY_DEST:
+         layout->Supported = direct || compute;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_READ:
+      case D3D12_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE:
+         layout->Supported = layout->CommandListType ==
+                             D3D12_COMMAND_LIST_TYPE_VIDEO_PROCESS;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_READ:
+      case D3D12_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE:
+         layout->Supported = layout->CommandListType ==
+                             D3D12_COMMAND_LIST_TYPE_VIDEO_ENCODE;
+         break;
+
+      case D3D12_BARRIER_LAYOUT_VIDEO_DECODE_READ:
+      case D3D12_BARRIER_LAYOUT_VIDEO_DECODE_WRITE:
+         layout->Supported = layout->CommandListType ==
+                             D3D12_COMMAND_LIST_TYPE_VIDEO_DECODE;
+         break;
+
+      default:
+         layout->Supported = FALSE;
+         break;
+      }
+
+      return S_OK;
+   }
+
    case D3D12_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
       D3D12_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT *va = data;
       if (data_size != sizeof(*va))
@@ -370,6 +502,34 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       /* Both 1.0 and 1.1 parse (d12_root_sig handles the version-2 range
        * layout), so whatever the caller can use, we support. */
       return S_OK;
+   }
+
+   case D3D12_FEATURE_FORMAT_SUPPORT: {
+      D3D12_FEATURE_DATA_FORMAT_SUPPORT *support = data;
+      if (data_size != sizeof(*support))
+         return E_INVALIDARG;
+
+      support->Support1 = D3D12_FORMAT_SUPPORT1_NONE;
+      support->Support2 = D3D12_FORMAT_SUPPORT2_NONE;
+
+      /* UNKNOWN is the untyped/raw buffer spelling, which this driver
+       * supports. It is not an image format to look up in the format table.
+       */
+      if (support->Format == DXGI_FORMAT_UNKNOWN) {
+         support->Support1 = D3D12_FORMAT_SUPPORT1_BUFFER;
+         return S_OK;
+      }
+
+      /* A recognized query for a format the driver cannot map is a valid
+       * feature query with a negative answer, not a malformed request.
+       * Keep mapped-format bit reporting conservative until each usage bit
+       * is derived from the corresponding resource/view path.
+       */
+      if (d12_format_to_pipe(support->Format) == PIPE_FORMAT_NONE &&
+          !d12_format_is_depth_stencil(support->Format))
+         return E_FAIL;
+
+      return E_INVALIDARG;
    }
 
    case D3D12_FEATURE_FORMAT_INFO: {
@@ -1430,6 +1590,12 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                                   "CreateShaderResourceView")) {
       slot->kind = D12_DESC_SRV;
       slot->format = desc ? desc->Format : DXGI_FORMAT_UNKNOWN;
+      slot->buffer_kind =
+         desc && (desc->Buffer.Flags & D3D12_BUFFER_SRV_FLAG_RAW)
+            ? D12_BUFFER_VIEW_RAW
+         : desc && desc->Buffer.StructureByteStride
+            ? D12_BUFFER_VIEW_STRUCTURED
+            : D12_BUFFER_VIEW_TYPED;
    }
 }
 
@@ -1483,8 +1649,16 @@ d12_device_CreateUnorderedAccessView(
                          : (uint32_t)(res->bo->size / 4);
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
-   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW))
+   if (desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW)) {
       stride = 4;
+   } else if (!stride && desc && desc->Format != DXGI_FORMAT_UNKNOWN) {
+      stride = d12_format_bytes_per_pixel(desc->Format);
+      if (!stride) {
+         mesa_loge("CreateUnorderedAccessView: typed buffer format %u "
+                   "has no supported element size", (unsigned)desc->Format);
+         return;
+      }
+   }
    if (!stride)
       stride = 4;
 
@@ -1492,6 +1666,12 @@ d12_device_CreateUnorderedAccessView(
                                   "CreateUnorderedAccessView")) {
       slot->kind = D12_DESC_UAV;
       slot->format = desc ? desc->Format : DXGI_FORMAT_UNKNOWN;
+      slot->buffer_kind =
+         desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW)
+            ? D12_BUFFER_VIEW_RAW
+         : desc && desc->Buffer.StructureByteStride
+            ? D12_BUFFER_VIEW_STRUCTURED
+            : D12_BUFFER_VIEW_TYPED;
    }
 }
 

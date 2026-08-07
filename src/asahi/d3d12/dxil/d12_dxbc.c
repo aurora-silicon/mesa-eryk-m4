@@ -742,8 +742,13 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       }
 
       nir_def *root = nir_load_root_agx(b);
+      nir_def *root_header =
+         nir_load_global(b, 2, 64, root, .align_mul = 8);
+      nir_def *resource_table = nir_channel(b, root_header, 0);
       nir_def *base = nir_load_global(
-         b, 1, 64, nir_iadd_imm(b, root, (uint64_t)slot * 8), .align_mul = 8);
+         b, 1, 64,
+         nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
+         .align_mul = 8);
 
       nir_def *row = nir_imm_int(b, op->index[1]);
 
@@ -824,8 +829,12 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
    }
 
    nir_def *root = nir_load_root_agx(b);
+   nir_def *root_header =
+      nir_load_global(b, 2, 64, root, .align_mul = 8);
+   nir_def *resource_table = nir_channel(b, root_header, 0);
    nir_def *base = nir_load_global(
-      b, 1, 64, nir_iadd_imm(b, root, (uint64_t)slot * 8), .align_mul = 8);
+      b, 1, 64, nir_iadd_imm(b, resource_table, (uint64_t)slot * 8),
+      .align_mul = 8);
 
    nir_def *byte = nir_iadd(b, nir_imul_imm(b, nir_channel(b, index, 0),
                                             stride ? stride : 4),
