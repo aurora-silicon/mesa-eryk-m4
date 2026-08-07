@@ -1091,7 +1091,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          default:
             break;
          }
-         if (table[i].buffer_kind == D12_BUFFER_VIEW_STRUCTURED)
+         if (table[i].buffer_kind == D12_BUFFER_VIEW_STRUCTURED ||
+             table[i].buffer_kind == D12_BUFFER_VIEW_TYPED)
             addrs[D12_ROOT_BUFINFO_BASE + i] |=
                (uint64_t)table[i].stride_B << 32;
       } else if (table[i].address && !table[i].resource &&

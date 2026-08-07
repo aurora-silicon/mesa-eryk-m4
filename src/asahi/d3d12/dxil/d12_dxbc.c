@@ -161,6 +161,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_ROUND_Z = 67,
    D12_DXBC_OP_RSQ = 68,
    D12_DXBC_OP_SAMPLE = 69,
+   D12_DXBC_OP_SAMPLE_C_LZ = 71,
    D12_DXBC_OP_SAMPLE_L = 72,
    D12_DXBC_OP_SQRT = 75,
    D12_DXBC_OP_SINCOS = 77,
@@ -212,12 +213,11 @@ enum d12_dxbc_op {
    D12_DXBC_OP_DCL_TESS_PARTITIONING = 150,
    D12_DXBC_OP_DCL_TESS_OUTPUT_PRIMITIVE = 151,
    D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR = 152,
-   /* Structured buffer access. Identified from the operand register
-    * files rather than assumed: 168 writes to file 30 (a UAV) with four
-    * operands, 165 reads from one into a temporary. */
-   D12_DXBC_OP_LD_STRUCTURED = 165,
-   /* Same shape, SRV rather than UAV: dest, index, offset, resource. */
-   D12_DXBC_OP_LD_STRUCTURED_SRV = 167,
+   /* Public SM5 raw/structured buffer access opcodes. Raw loads carry
+    * dest, byte offset, resource; structured loads additionally carry a
+    * member offset. */
+   D12_DXBC_OP_LD_RAW = 165,
+   D12_DXBC_OP_LD_STRUCTURED = 167,
    D12_DXBC_OP_STORE_STRUCTURED = 168,
    /* UAV/TGSM atomic family from the public SM5 token enum. */
    D12_DXBC_OP_ATOMIC_AND = 169,
@@ -1090,6 +1090,43 @@ uav_rooted_descriptor(struct d12_dxbc_ctx *ctx,
 }
 
 static nir_def *
+srv_rooted_descriptor(struct d12_dxbc_ctx *ctx,
+                      const struct d12_dxbc_operand *srv)
+{
+   nir_builder *b = &ctx->b;
+
+   if (srv->file != D12_DXBC_FILE_RESOURCE || srv->num_indices != 2 ||
+       srv->index[0] >= D12_DXBC_MAX_SIG ||
+       !ctx->srv_range[srv->index[0]].valid || !ctx->map)
+      return NULL;
+
+   const struct d12_dxbc_binding_range *range =
+      &ctx->srv_range[srv->index[0]];
+   if (!d12_binding_map_unbounded(ctx->map, D12_RES_SRV, range->space,
+                                  range->lower_bound))
+      return NULL;
+
+   unsigned base_slot = d12_binding_map_find(
+      ctx->map, D12_RES_SRV, range->space, range->lower_bound);
+   nir_def *reg = read_operand_index(ctx, srv, 1);
+   if (base_slot == ~0u || !reg) {
+      fail(ctx, "heap-indexed SRV range has no root base");
+      return NULL;
+   }
+
+   nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
+   nir_def *heap = nir_load_global(
+      b, 1, 64,
+      nir_iadd_imm(b, resource_table, base_slot * sizeof(uint64_t)),
+      .align_mul = 8);
+   nir_def *descriptor_index =
+      nir_iadd_imm(b, reg, -(int64_t)range->lower_bound);
+   return nir_iadd(b, heap,
+                   nir_imul_imm(b, nir_u2u64(b, descriptor_index),
+                                D12_HEAP_DESC_SIZE));
+}
+
+static nir_def *
 uav_buffer_address(struct d12_dxbc_ctx *ctx,
                    const struct d12_dxbc_operand *uav, nir_def *index,
                    nir_def *offset, unsigned stride)
@@ -1150,41 +1187,15 @@ srv_buffer_address(struct d12_dxbc_ctx *ctx,
 {
    nir_builder *b = &ctx->b;
 
-   if (srv->file == D12_DXBC_FILE_RESOURCE && srv->num_indices == 2 &&
-       srv->index[0] < D12_DXBC_MAX_SIG &&
-       ctx->srv_range[srv->index[0]].valid && ctx->map) {
-      const struct d12_dxbc_binding_range *range =
-         &ctx->srv_range[srv->index[0]];
-      if (d12_binding_map_unbounded(ctx->map, D12_RES_SRV, range->space,
-                                    range->lower_bound)) {
-         unsigned base_slot = d12_binding_map_find(
-            ctx->map, D12_RES_SRV, range->space, range->lower_bound);
-         nir_def *reg = read_operand_index(ctx, srv, 1);
-         if (base_slot == ~0u || !reg) {
-            fail(ctx, "heap-indexed SRV range has no root base");
-            return NULL;
-         }
-
-         nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
-         nir_def *heap = nir_load_global(
-            b, 1, 64,
-            nir_iadd_imm(b, resource_table,
-                         base_slot * sizeof(uint64_t)),
-            .align_mul = 8);
-         nir_def *descriptor_index =
-            nir_iadd_imm(b, reg, -(int64_t)range->lower_bound);
-         nir_def *descriptor = nir_iadd(
-            b, heap,
-            nir_imul_imm(b, nir_u2u64(b, descriptor_index),
-                         D12_HEAP_DESC_SIZE));
-         nir_def *base =
-            nir_load_global(b, 1, 64, descriptor, .align_mul = 8);
-         nir_def *byte = nir_iadd(
-            b, nir_imul_imm(b, nir_channel(b, index, 0),
-                            stride ? stride : 4),
-            nir_channel(b, offset, 0));
-         return nir_iadd(b, base, nir_u2u64(b, byte));
-      }
+   nir_def *descriptor = srv_rooted_descriptor(ctx, srv);
+   if (descriptor) {
+      nir_def *base =
+         nir_load_global(b, 1, 64, descriptor, .align_mul = 8);
+      nir_def *byte = nir_iadd(
+         b, nir_imul_imm(b, nir_channel(b, index, 0),
+                         stride ? stride : 4),
+         nir_channel(b, offset, 0));
+      return nir_iadd(b, base, nir_u2u64(b, byte));
    }
 
    return buffer_address(ctx, srv->index[0], false, index, offset, stride);
@@ -1400,6 +1411,101 @@ buffer_element_in_bounds(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
    }
 
    return buffer_element_in_bounds_slot(ctx, nir_imm_int(b, slot), index);
+}
+
+/* Byte extent of the descriptor view selected by a DXBC resource operand.
+ * Heap-rooted descriptors carry size_B directly. Finite root tables publish
+ * {element count or raw byte size, element stride}; multiplying the first
+ * two fields reconstructs the byte extent for typed/structured views while
+ * a zero stride identifies the already-byte-sized raw case. */
+static nir_def *
+buffer_view_size_bytes(struct d12_dxbc_ctx *ctx,
+                       const struct d12_dxbc_operand *resource)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *descriptor = resource->file == D12_DXBC_FILE_UAV
+                            ? uav_rooted_descriptor(ctx, resource)
+                            : srv_rooted_descriptor(ctx, resource);
+   if (descriptor) {
+      return nir_load_global(
+         b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+         .align_mul = 4);
+   }
+
+   nir_def *slot = NULL;
+   if (resource->file == D12_DXBC_FILE_UAV) {
+      slot = uav_binding_slot(ctx, resource);
+   } else if (resource->file == D12_DXBC_FILE_RESOURCE &&
+              resource->num_indices == 1 &&
+              !resource->index_is_relative[0]) {
+      unsigned static_slot =
+         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
+                                         resource->index[0])
+                  : resource->index[0];
+      if (static_slot != ~0u)
+         slot = nir_imm_int(b, static_slot);
+   }
+
+   if (!slot) {
+      fail(ctx, "buffer view size has no resolvable binding slot");
+      return nir_imm_int(b, 0);
+   }
+
+   nir_def *bufinfo = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+   nir_def *info = nir_load_global(
+      b, 2, 32,
+      nir_iadd(b, bufinfo,
+               nir_imul_imm(b, nir_u2u64(b, slot), sizeof(uint64_t))),
+      .align_mul = 8);
+   nir_def *count_or_bytes = nir_channel(b, info, 0);
+   nir_def *stride = nir_channel(b, info, 1);
+   return nir_bcsel(b, nir_ine_imm(b, stride, 0),
+                    nir_imul(b, count_or_bytes, stride), count_or_bytes);
+}
+
+static nir_def *
+robust_load_buffer_vec4(struct d12_dxbc_ctx *ctx, nir_def *address,
+                        nir_def *byte_offset, nir_def *size_bytes)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *values[4];
+   nir_def *offset64 = nir_u2u64(b, nir_channel(b, byte_offset, 0));
+   nir_def *size64 = nir_u2u64(b, size_bytes);
+
+   for (unsigned c = 0; c < 4; c++) {
+      nir_def *component_offset = nir_iadd_imm(b, offset64, c * 4);
+      nir_push_if(b, nir_ult(b, component_offset, size64));
+      nir_def *in_bounds = nir_load_global(
+         b, 1, 32, nir_iadd_imm(b, address, c * 4), .align_mul = 4);
+      nir_push_else(b, NULL);
+      nir_def *out_of_bounds = nir_imm_int(b, 0);
+      nir_pop_if(b, NULL);
+      values[c] = nir_if_phi(b, in_bounds, out_of_bounds);
+   }
+
+   return nir_vec(b, values, ARRAY_SIZE(values));
+}
+
+static void
+robust_store_buffer_masked(struct d12_dxbc_ctx *ctx, nir_def *address,
+                           nir_def *byte_offset, nir_def *size_bytes,
+                           nir_def *value, unsigned mask)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *offset64 = nir_u2u64(b, nir_channel(b, byte_offset, 0));
+   nir_def *size64 = nir_u2u64(b, size_bytes);
+
+   for (unsigned c = 0; c < 4; c++) {
+      if (!(mask & (1 << c)))
+         continue;
+
+      nir_def *component_offset = nir_iadd_imm(b, offset64, c * 4);
+      nir_push_if(b, nir_ult(b, component_offset, size64));
+      nir_store_global(b, nir_channel(b, value, c),
+                       nir_iadd_imm(b, address, c * 4), .write_mask = 1,
+                       .align_mul = 4);
+      nir_pop_if(b, NULL);
+   }
 }
 
 static void
@@ -1868,7 +1974,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 #define NEED(n)                                                              \
    do {                                                                      \
       if (nops < (n)) {                                                      \
-         fail(ctx, "too few operands");                                      \
+         snprintf(ctx->errbuf, sizeof(ctx->errbuf),                          \
+                  "DXBC opcode %u has %u operands, needs %u", opcode,       \
+                  nops, (unsigned)(n));                                      \
+         fail(ctx, ctx->errbuf);                                             \
          return;                                                             \
       }                                                                      \
    } while (0)
@@ -1906,7 +2015,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
       /* Integer opcodes operate on the same registers, reinterpreted. */
       case D12_DXBC_OP_IADD: NEED(3); DST(nir_iadd(b, SRC(1), SRC(2))); break;
-      case D12_DXBC_OP_IMUL: NEED(4); DST(nir_imul(b, SRC(2), SRC(3))); break;
+      case D12_DXBC_OP_IMUL: {
+         NEED(4);
+         nir_def *a = SRC(2), *c = SRC(3);
+         /* SM5 spells this as imul destHI, destLO, src0, src1. The common
+          * address-calculation form deliberately sends destHI to null. */
+         write_dst(ctx, &o[0], nir_imul_high(b, a, c));
+         write_dst(ctx, &o[1], nir_imul(b, a, c));
+         break;
+      }
       case D12_DXBC_OP_IMAD: NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
       case D12_DXBC_OP_IMAX: NEED(3); DST(nir_imax(b, SRC(1), SRC(2))); break;
       case D12_DXBC_OP_IMIN: NEED(3); DST(nir_imin(b, SRC(1), SRC(2))); break;
@@ -1983,7 +2100,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_BFREV:     NEED(2); DST(nir_bitfield_reverse(b, SRC(1))); break;
       case D12_DXBC_OP_UMAD:      NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
       case D12_DXBC_OP_UDIV:      NEED(4); DST(nir_udiv(b, SRC(2), SRC(3))); break;
-      case D12_DXBC_OP_UMUL:      NEED(4); DST(nir_imul(b, SRC(2), SRC(3))); break;
+      case D12_DXBC_OP_UMUL: {
+         NEED(4);
+         nir_def *a = SRC(2), *c = SRC(3);
+         write_dst(ctx, &o[0], nir_umul_high(b, a, c));
+         write_dst(ctx, &o[1], nir_imul(b, a, c));
+         break;
+      }
       case D12_DXBC_OP_NOP:       break;
 
       /*
@@ -2219,8 +2342,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
        * 12-byte struct indexed at element 3 would read byte 12 instead
        * of byte 36.
        */
-      case D12_DXBC_OP_LD_STRUCTURED:
-      case D12_DXBC_OP_LD_STRUCTURED_SRV: {
+      case D12_DXBC_OP_LD_STRUCTURED: {
          NEED(4);
          /* Find the resource by FILE, not by position: the two forms
           * differ in operand count and the resource is not always last. */
@@ -2241,7 +2363,48 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                 : srv_buffer_address(ctx, &o[ri], SRC(1), SRC(2), stride);
          if (!addr)
             return;
-         nir_def *val = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+         nir_def *byte = nir_iadd(
+            b, nir_imul_imm(b, nir_channel(b, SRC(1), 0),
+                            stride ? stride : 4),
+            nir_channel(b, SRC(2), 0));
+         nir_def *size = buffer_view_size_bytes(ctx, &o[ri]);
+         if (ctx->error)
+            return;
+         nir_def *val = robust_load_buffer_vec4(ctx, addr, byte, size);
+         unsigned sw[4] = {o[ri].swizzle[0], o[ri].swizzle[1],
+                           o[ri].swizzle[2], o[ri].swizzle[3]};
+         DST(nir_swizzle(b, val, sw, 4));
+         break;
+      }
+
+      case D12_DXBC_OP_LD_RAW: {
+         NEED(3);
+
+         unsigned ri = nops - 1;
+         for (unsigned k = 1; k < nops; k++) {
+            if (o[k].file == D12_DXBC_FILE_UAV ||
+                o[k].file == D12_DXBC_FILE_RESOURCE) {
+               ri = k;
+               break;
+            }
+         }
+         if (o[ri].file != D12_DXBC_FILE_UAV &&
+             o[ri].file != D12_DXBC_FILE_RESOURCE) {
+            fail(ctx, "raw load with no buffer resource operand");
+            return;
+         }
+
+         nir_def *zero = nir_imm_int(b, 0);
+         nir_def *addr = o[ri].file == D12_DXBC_FILE_UAV
+                            ? uav_buffer_address(ctx, &o[ri], zero, SRC(1), 0)
+                            : srv_buffer_address(ctx, &o[ri], zero, SRC(1), 0);
+         if (!addr)
+            return;
+
+         nir_def *size = buffer_view_size_bytes(ctx, &o[ri]);
+         if (ctx->error)
+            return;
+         nir_def *val = robust_load_buffer_vec4(ctx, addr, SRC(1), size);
          unsigned sw[4] = {o[ri].swizzle[0], o[ri].swizzle[1],
                            o[ri].swizzle[2], o[ri].swizzle[3]};
          DST(nir_swizzle(b, val, sw, 4));
@@ -2259,18 +2422,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          nir_def *val = SRC(3);
          unsigned mask = o[0].mask ? o[0].mask : 0xf;
+         nir_def *byte = nir_iadd(
+            b, nir_imul_imm(b, nir_channel(b, SRC(1), 0),
+                            stride ? stride : 4),
+            nir_channel(b, SRC(2), 0));
+         nir_def *size = buffer_view_size_bytes(ctx, &o[0]);
+         if (ctx->error)
+            return;
 
-         /* Write the covered components individually: the mask is
-          * arbitrary, and a single vectorised store would write past it. */
-         nir_push_if(b, uav_element_in_bounds(ctx, &o[0], SRC(1)));
-         for (unsigned c = 0; c < 4; c++) {
-            if (!(mask & (1 << c)))
-               continue;
-            nir_store_global(b, nir_channel(b, val, c),
-                             nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
-                             .align_mul = 4);
-         }
-         nir_pop_if(b, NULL);
+         robust_store_buffer_masked(ctx, addr, byte, size, val, mask);
          break;
       }
 
@@ -2365,14 +2525,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_def *val = SRC(2);
          unsigned mask = o[0].mask ? o[0].mask : 0xf;
+         nir_def *size = buffer_view_size_bytes(ctx, &o[0]);
+         if (ctx->error)
+            return;
 
-         for (unsigned c = 0; c < 4; c++) {
-            if (!(mask & (1 << c)))
-               continue;
-            nir_store_global(b, nir_channel(b, val, c),
-                             nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
-                             .align_mul = 4);
-         }
+         robust_store_buffer_masked(ctx, addr, off, size, val, mask);
          break;
       }
 
@@ -2532,11 +2689,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
        * .w rather than as a separate operand.
        */
       case D12_DXBC_OP_SAMPLE:
+      case D12_DXBC_OP_SAMPLE_C_LZ:
       case D12_DXBC_OP_SAMPLE_L:
       case D12_DXBC_OP_LD: {
          bool is_ld = opcode == D12_DXBC_OP_LD;
-         bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L;
-         NEED(is_ld ? 3 : 4);
+         bool compare = opcode == D12_DXBC_OP_SAMPLE_C_LZ;
+         bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L || compare;
+         NEED(is_ld ? 3 : (has_lod ? 5 : 4));
 
          /* The resource is the operand in the RESOURCE file; the sampler
           * the one in the SAMPLER file. Finding them by file rather than
@@ -2595,7 +2754,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             .desc_set = D12_UNIFORM_TEXTURES);
 
          unsigned nsrc = 2 + ((is_ld && !is_buffer) ? 1 : 0) +
-                         (has_lod ? 1 : 0);
+                         (has_lod ? 1 : 0) + (compare ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld ? nir_texop_txf : (has_lod ? nir_texop_txl
@@ -2603,6 +2762,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF
                                       : GLSL_SAMPLER_DIM_2D;
          tex->is_array = false;
+         tex->is_shadow = compare;
          tex->dest_type = nir_type_float32;
          tex->coord_components = is_buffer ? 1 : 2;
          tex->sampler_index = have_smp ? sslot : 0;
@@ -2629,9 +2789,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                                  nir_trim_vector(b, coord4, 2));
-            if (has_lod)
+            if (compare) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_comparator,
+                  nir_channel(b, SRC(nops - 1), 0));
+               tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                    nir_imm_int(b, 0));
+            } else if (has_lod) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, nir_channel(b, SRC(nops - 1), 0));
+            }
          }
 
          nir_def_init(&tex->instr, &tex->def, 4, 32);
