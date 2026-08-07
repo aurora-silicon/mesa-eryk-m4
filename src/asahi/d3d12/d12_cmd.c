@@ -249,30 +249,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->stencil_ref = 0;
    list->compute_rs = NULL;
    list->graphics_rs = NULL;
-   /*
-    * Root slots start pointing at the null region, NOT at address 0.
-    *
-    * D3D12 leaves the CONTENTS of an unset root parameter undefined, but a
-    * shader that reads one must not take the GPU down with it -- and
-    * test_uninit_root_parameters exists specifically to do that ("check to
-    * see what happens when we let stale 32-bit constants and descriptor heap
-    * tables pass through a SetRootSignature call"). Zeroing the table left
-    * every unset slot addressing VA 0, which is unmapped, so the dispatch
-    * faulted the hardware: measured 2026-08-07, that ONE test put 3 "GPU
-    * timeout" entries in dmesg and wedged the queue for everything after it.
-    *
-    * null_va is a mapped, explicitly zeroed region already used for null
-    * descriptors, so an unset slot now reads as zero instead of faulting --
-    * undefined VALUES, which is legal, rather than a dead GPU, which is not.
-    */
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
-   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
-      list->compute_root_table[i].address = list->device->null_va;
-      list->compute_root_table[i].counter_address = list->device->null_va;
-      list->graphics_root_table[i].address = list->device->null_va;
-      list->graphics_root_table[i].counter_address = list->device->null_va;
-   }
 
    /* Points into the stream BO, whose data floor has just been rewound, so
     * the old address is about to be handed out to somebody else.
