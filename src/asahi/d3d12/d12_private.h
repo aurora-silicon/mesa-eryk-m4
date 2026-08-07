@@ -403,11 +403,27 @@ struct d12_root_layout {
    uint32_t flags;
 };
 
+struct d12_private_data_entry {
+   struct d12_private_data_entry *next;
+   GUID guid;
+   uint8_t *bytes;
+   UINT size;
+   IUnknown *object;
+   bool is_interface;
+};
+
+/* Kept per object: private data is never shared between root signatures. */
+struct d12_private_data_store {
+   simple_mtx_t lock;
+   struct d12_private_data_entry *entries;
+};
+
 struct d12_root_signature {
    ID3D12RootSignature iface; /* must be first */
    uint32_t refcount;
    struct d12_device *device; /* holds a device ref */
    struct d12_root_layout layout;
+   struct d12_private_data_store private_data;
 
    /* The slot assignment derived from the layout. Shaders are compiled
     * against it and the command list fills the root table through it.

@@ -66,6 +66,116 @@ d12_root_sig_from_iface(ID3D12RootSignature *iface)
    return (struct d12_root_signature *)iface;
 }
 
+static struct d12_private_data_entry **
+d12_private_data_find(struct d12_private_data_store *store, REFGUID guid)
+{
+   struct d12_private_data_entry **entry = &store->entries;
+
+   while (*entry && !d12_guid_equal(&(*entry)->guid, guid))
+      entry = &(*entry)->next;
+
+   return entry;
+}
+
+static void
+d12_private_data_entry_destroy(struct d12_private_data_entry *entry)
+{
+   if (entry->is_interface)
+      IUnknown_Release(entry->object);
+   free(entry->bytes);
+   free(entry);
+}
+
+static void
+d12_private_data_store_init(struct d12_private_data_store *store)
+{
+   simple_mtx_init(&store->lock, mtx_plain);
+}
+
+static void
+d12_private_data_store_destroy(struct d12_private_data_store *store)
+{
+   simple_mtx_lock(&store->lock);
+   struct d12_private_data_entry *entry = store->entries;
+   store->entries = NULL;
+   simple_mtx_unlock(&store->lock);
+
+   while (entry) {
+      struct d12_private_data_entry *next = entry->next;
+      d12_private_data_entry_destroy(entry);
+      entry = next;
+   }
+
+   simple_mtx_destroy(&store->lock);
+}
+
+static HRESULT
+d12_private_data_replace(struct d12_private_data_store *store, REFGUID guid,
+                         struct d12_private_data_entry *replacement)
+{
+   simple_mtx_lock(&store->lock);
+   struct d12_private_data_entry **slot = d12_private_data_find(store, guid);
+   struct d12_private_data_entry *old = *slot;
+
+   if (replacement) {
+      replacement->next = old ? old->next : NULL;
+      *slot = replacement;
+   } else if (old) {
+      *slot = old->next;
+   }
+
+   simple_mtx_unlock(&store->lock);
+
+   if (old)
+      d12_private_data_entry_destroy(old);
+
+   return old || replacement ? S_OK : S_FALSE;
+}
+
+static HRESULT
+d12_private_data_set_bytes(struct d12_private_data_store *store, REFGUID guid,
+                           UINT size, const void *data)
+{
+   if (!size || !data)
+      return d12_private_data_replace(store, guid, NULL);
+
+   struct d12_private_data_entry *entry = calloc(1, sizeof(*entry));
+   if (!entry)
+      return E_OUTOFMEMORY;
+
+   entry->bytes = malloc(size);
+   if (!entry->bytes) {
+      free(entry);
+      return E_OUTOFMEMORY;
+   }
+
+   entry->guid = *guid;
+   entry->size = size;
+   memcpy(entry->bytes, data, size);
+   return d12_private_data_replace(store, guid, entry);
+}
+
+static HRESULT
+d12_private_data_set_interface(struct d12_private_data_store *store,
+                               REFGUID guid, const IUnknown *object)
+{
+   if (!object) {
+      HRESULT hr = d12_private_data_replace(store, guid, NULL);
+      return hr == S_FALSE ? S_OK : hr;
+   }
+
+   struct d12_private_data_entry *entry = calloc(1, sizeof(*entry));
+   if (!entry)
+      return E_OUTOFMEMORY;
+
+   entry->guid = *guid;
+   entry->size = sizeof(entry->object);
+   entry->object = (IUnknown *)object;
+   entry->is_interface = true;
+   IUnknown_AddRef(entry->object);
+   return d12_private_data_replace(store, guid, entry);
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_root_sig_QueryInterface(ID3D12RootSignature *iface, REFIID riid,
                             void **out)
@@ -102,6 +212,7 @@ d12_root_sig_Release(ID3D12RootSignature *iface)
    uint32_t refs = p_atomic_dec_return(&rs->refcount);
 
    if (refs == 0) {
+      d12_private_data_store_destroy(&rs->private_data);
       d12_device_release(rs->device);
       free(rs);
    }
@@ -113,21 +224,62 @@ static HRESULT STDMETHODCALLTYPE
 d12_root_sig_GetPrivateData(ID3D12RootSignature *iface, REFGUID guid,
                             UINT *size, void *data)
 {
-   return E_NOTIMPL;
+   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
+
+   if (!size)
+      return E_INVALIDARG;
+
+   simple_mtx_lock(&rs->private_data.lock);
+   struct d12_private_data_entry **slot =
+      d12_private_data_find(&rs->private_data, guid);
+   struct d12_private_data_entry *entry = *slot;
+
+   if (!entry) {
+      *size = 0;
+      simple_mtx_unlock(&rs->private_data.lock);
+      return DXGI_ERROR_NOT_FOUND;
+   }
+
+   UINT requested_size = *size;
+   *size = entry->size;
+
+   /* A size-only query succeeds regardless of the input capacity. */
+   if (!data) {
+      simple_mtx_unlock(&rs->private_data.lock);
+      return S_OK;
+   }
+
+   if (requested_size < entry->size) {
+      simple_mtx_unlock(&rs->private_data.lock);
+      return DXGI_ERROR_MORE_DATA;
+   }
+
+   if (entry->is_interface) {
+      /* Hold the stored object while it is returned to the caller. */
+      IUnknown_AddRef(entry->object);
+      *(IUnknown **)data = entry->object;
+   } else {
+      memcpy(data, entry->bytes, entry->size);
+   }
+
+   simple_mtx_unlock(&rs->private_data.lock);
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
 d12_root_sig_SetPrivateData(ID3D12RootSignature *iface, REFGUID guid,
                             UINT size, const void *data)
 {
-   return E_NOTIMPL;
+   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
+   return d12_private_data_set_bytes(&rs->private_data, guid, size, data);
 }
 
 static HRESULT STDMETHODCALLTYPE
 d12_root_sig_SetPrivateDataInterface(ID3D12RootSignature *iface, REFGUID guid,
                                      const IUnknown *data)
 {
-   return E_NOTIMPL;
+   struct d12_root_signature *rs = d12_root_sig_from_iface(iface);
+   return d12_private_data_set_interface(&rs->private_data, guid, data);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -187,6 +339,7 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
    rs->iface.lpVtbl = (ID3D12RootSignatureVtbl *)&d12_root_sig_vtbl;
    rs->refcount = 1;
    rs->device = device;
+   d12_private_data_store_init(&rs->private_data);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_root_sig_QueryInterface(&rs->iface, riid, out);
