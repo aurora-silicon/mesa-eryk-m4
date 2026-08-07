@@ -387,6 +387,10 @@ static_assert(sizeof(struct d12_descriptor) == 40,
 static_assert(offsetof(struct d12_descriptor, address) == 0 &&
                  offsetof(struct d12_descriptor, counter_address) == 8,
               "shader-visible ABI");
+static_assert(offsetof(struct d12_descriptor, size_B) == D12_DESC_SIZE_OFFSET &&
+                 offsetof(struct d12_descriptor, stride_B) ==
+                    D12_DESC_STRIDE_OFFSET,
+              "shader-visible buffer metadata ABI");
 static_assert(offsetof(struct d12_descriptor, sampler_kind) ==
                  offsetof(struct d12_descriptor, kind),
               "descriptor kind offset is common to both heap classes");
@@ -404,6 +408,10 @@ struct d12_descriptor_heap {
    struct d12_device *device; /* holds a device ref */
    D3D12_DESCRIPTOR_HEAP_DESC desc;
    struct d12_descriptor *slots; /* NumDescriptors entries */
+   /* Shader-visible heaps are coherent GPU BOs.  Finite descriptor tables
+    * are still snapshotted into the root table, while unbounded ranges and
+    * SM 6.6 heap handles dereference this storage directly. */
+   struct agx_bo *bo;
 };
 
 /*
@@ -930,6 +938,12 @@ struct d12_cmd_list {
     * is reserved for texture Load; API sampler S is uploaded at S + 1. */
    struct d12_descriptor compute_sampler_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_sampler_table[D12_MAX_RESOURCE_BINDINGS];
+
+   /* SetDescriptorHeaps state.  GPU descriptor handles remain CPU pointers
+    * for application arithmetic, so the bound object is also how an
+    * unbounded table resolves that pointer to its GPU-visible BO address. */
+   struct d12_descriptor_heap *resource_descriptor_heap;
+   struct d12_descriptor_heap *sampler_descriptor_heap;
 
    /* Zeroed backing for UNBOUND root slots, allocated lazily and reused by
     * every binding upload in this recording. See d12_list_null_buffer().

@@ -1086,6 +1086,8 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
 struct handle_ref {
    nir_def *slot;
    bool heap;
+   bool rooted_heap;
+   unsigned base_slot;
    uint32_t kind;
    uint32_t stride;
 };
@@ -1103,6 +1105,8 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id,
 
    if (value_id < ctx->mod->num_values && ctx->handle_heap[value_id]) {
       out->heap = true;
+      out->rooted_heap = ctx->handle_heap[value_id] == 3;
+      out->base_slot = ctx->handle_base[value_id];
       out->kind = ctx->handle_kind_v[value_id];
       out->stride = ctx->handle_stride_v[value_id];
       return true;
@@ -1177,6 +1181,31 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
                       plane == D12_ROOT_PLANE_COUNTER ? 0 : 1);
 }
 
+/* Address of a GPU-visible d12_descriptor.  SM 6.6 heap handles use the
+ * globally bound resource heap.  An unbounded root range instead stores its
+ * descriptor-array base in one ordinary root resource slot, which permits
+ * multiple independently based tables without reserving another uniform. */
+static nir_def *
+descriptor_address(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   nir_def *heap;
+
+   if (h->rooted_heap) {
+      nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
+      heap = nir_load_global(
+         b, 1, 64,
+         nir_iadd_imm(b, resource_table, h->base_slot * sizeof(uint64_t)),
+         .align_mul = 8);
+   } else {
+      heap = nir_load_descriptor_heap_agx(b);
+   }
+
+   return nir_iadd(b, heap,
+                   nir_imul_imm(b, nir_u2u64(b, h->slot),
+                                D12_HEAP_DESC_SIZE));
+}
+
 static nir_def *
 resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
                  nir_def *coord0, nir_def *coord1, bool raw_op)
@@ -1192,13 +1221,8 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
     */
    nir_def *base;
    if (h->heap) {
-      nir_def *heap = nir_load_descriptor_heap_agx(b);
-      base = nir_load_global(
-         b, 1, 64,
-         nir_iadd(b, heap,
-                  nir_imul_imm(b, nir_u2u64(b, h->slot),
-                               D12_HEAP_DESC_SIZE)),
-         .align_mul = 8);
+      base = nir_load_global(b, 1, 64, descriptor_address(ctx, h),
+                             .align_mul = 8);
    } else {
       nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
       base = nir_load_global(
@@ -2300,22 +2324,63 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                return false;
             }
          }
-         /* count == 0 is an UNBOUNDED range: the handle indexes off the
-          * base without a compile-time bound, which is the entire point
-          * of bindless. The runtime bound is the descriptor heap's, not
-          * the shader's.
-          */
+         if (!count && !d12_binding_map_unbounded(
+                          ctx->map, (unsigned)klass, rb->space,
+                          rb->lower_bound)) {
+            trans_fail(ctx, "unbounded shader range is not backed by an "
+                            "unbounded root range");
+            return false;
+         }
 
          nir_def *idx = get_def(ctx, p[2]);
          if (!idx)
             return false;
 
          nir_def *slot_def = nir_iadd_imm(
-            b, nir_iadd_imm(b, nir_u2u32(b, idx), -(int)rb->lower_bound),
-            base_slot);
+            b, nir_u2u32(b, idx), -(int)rb->lower_bound);
+
+         if (count)
+            slot_def = nir_iadd_imm(b, slot_def, base_slot);
 
          ctx->handle_base[inst->result_value] = base_slot;
+         if (!count) {
+            ctx->handle_heap[inst->result_value] = 3;
+            ctx->handle_kind_v[inst->result_value] = rb->kind;
+            ctx->handle_stride_v[inst->result_value] = rb->stride_B;
+         }
          def_result(ctx, inst, slot_def);
+         return true;
+      }
+
+      /* A constant access into an unbounded range uses the same rooted
+       * descriptor-array handle as the dynamic case above.  It must not be
+       * mistaken for base_slot + index in the finite root table. */
+      for (unsigned i = 0; i < ctx->mod->num_resources; i++) {
+         const struct d12_resource_binding *rb = &ctx->mod->resources[i];
+         if (rb->klass != klass || rb->id != range_id ||
+             d12_range_count(rb))
+            continue;
+
+         unsigned reg = (unsigned)index;
+         if (reg < rb->lower_bound)
+            reg = rb->lower_bound + (unsigned)index;
+
+         unsigned base_slot = d12_binding_map_find(
+            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
+         if (base_slot == ~0u ||
+             !d12_binding_map_unbounded(ctx->map, (unsigned)klass,
+                                        rb->space, rb->lower_bound)) {
+            trans_fail(ctx, "unbounded shader range is not backed by an "
+                            "unbounded root range");
+            return false;
+         }
+
+         ctx->handle_base[inst->result_value] = base_slot;
+         ctx->handle_heap[inst->result_value] = 3;
+         ctx->handle_kind_v[inst->result_value] = rb->kind;
+         ctx->handle_stride_v[inst->result_value] = rb->stride_B;
+         def_result(ctx, inst,
+                    nir_imm_int(b, reg - rb->lower_bound));
          return true;
       }
 
@@ -2636,13 +2701,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *counter_addr;
       if (h.heap) {
-         nir_def *heap = nir_load_descriptor_heap_agx(b);
          counter_addr = nir_load_global(
             b, 1, 64,
-            nir_iadd_imm(b,
-                         nir_iadd(b, heap,
-                                  nir_imul_imm(b, nir_u2u64(b, h.slot),
-                                               D12_HEAP_DESC_SIZE)),
+            nir_iadd_imm(b, descriptor_address(ctx, &h),
                          D12_DESC_COUNTER_OFFSET),
             .align_mul = 8);
       } else {
@@ -4223,6 +4284,16 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          continue;
 
       unsigned count = d12_range_count(rb);
+
+      if (!count) {
+         unsigned slot = d12_binding_map_find(map, rb->klass, rb->space,
+                                              rb->lower_bound);
+         if (slot != ~0u) {
+            ctx.slot_stride[slot] = rb->stride_B;
+            ctx.slot_kind[slot] = rb->kind;
+         }
+         continue;
+      }
 
       for (unsigned r = 0; r < count; r++) {
          unsigned slot = d12_binding_map_find(map, rb->klass, rb->space,

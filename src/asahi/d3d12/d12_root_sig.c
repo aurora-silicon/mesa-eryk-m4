@@ -1464,11 +1464,17 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
             if (klass >= D12_RES_CLASS_COUNT)
                continue;
 
-            /* An unbounded range cannot be enumerated; it is rejected at
-             * bind time with a message about bindless.
-             */
-            if (range->num_descriptors == UINT32_MAX)
+            /* An unbounded range consumes one root slot holding the GPU
+             * address of its first descriptor.  The shader indexes the
+             * coherent descriptor heap from there; enumerating an infinite
+             * register range here was the category error that previously
+             * made every bindless root signature unusable. */
+            if (range->num_descriptors == UINT32_MAX) {
+               d12_binding_map_add_unbounded(
+                  out, klass, range->space, range->base_register,
+                  this_range);
                continue;
+            }
 
             for (uint32_t d = 0; d < range->num_descriptors; d++) {
                d12_binding_map_add_range(out, klass, range->space,

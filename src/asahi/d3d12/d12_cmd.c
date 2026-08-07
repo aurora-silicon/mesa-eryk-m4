@@ -3597,10 +3597,10 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   /* Our GPU descriptor handles are the CPU addresses of heap slots: the
-    * shaders never dereference a descriptor, so no device-visible
-    * descriptor memory has to exist for this model.
-    */
+   /* GPU handles are opaque CPU pointers into a heap's slot array.  Finite
+    * ranges are snapshotted below.  An unbounded range instead resolves the
+    * pointer through SetDescriptorHeaps to the coherent GPU BO and publishes
+    * that descriptor-array address in one root slot. */
    const struct d12_descriptor *slots = (const struct d12_descriptor *)base.ptr;
    if (!slots) {
       mesa_loge("descriptor table bound with a null GPU handle");
@@ -3628,13 +3628,72 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          return;
       }
 
-      /* An unbounded range is descriptor indexing, which this flattening
-       * model cannot express: there is no count to flatten.
-       */
       if (range->num_descriptors == UINT32_MAX) {
-         mesa_loge("unbounded descriptor range (bindless) unsupported");
-         list->state = D12_LIST_ERROR;
-         return;
+         if (klass == D12_RES_SAMPLER) {
+            mesa_loge("unbounded sampler range unsupported");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         struct d12_descriptor_heap *heap =
+            list->resource_descriptor_heap;
+         if (!heap || !heap->bo ||
+             heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+            mesa_loge("unbounded descriptor table has no shader-visible "
+                      "resource heap bound");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         uintptr_t heap_start = (uintptr_t)heap->slots;
+         size_t heap_bytes = (size_t)heap->desc.NumDescriptors *
+                             sizeof(struct d12_descriptor);
+         uintptr_t handle = (uintptr_t)slots;
+         if (handle < heap_start || handle - heap_start >= heap_bytes ||
+             (handle - heap_start) % sizeof(struct d12_descriptor)) {
+            mesa_loge("unbounded descriptor table handle is outside the "
+                      "bound resource heap");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         size_t heap_index =
+            (handle - heap_start) / sizeof(struct d12_descriptor);
+         if ((size_t)offset >= heap->desc.NumDescriptors - heap_index) {
+            mesa_loge("unbounded descriptor range offset %u is outside a "
+                      "%u-slot heap at index %zu", offset,
+                      heap->desc.NumDescriptors, heap_index);
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         unsigned slot = d12_binding_map_find(
+            &rs->map, klass, range->space, range->base_register);
+         if (slot == ~0u ||
+             !d12_binding_map_unbounded(&rs->map, klass, range->space,
+                                        range->base_register)) {
+            mesa_loge("unbounded descriptor range has no binding-map base");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+
+         resource_table[slot] = (struct d12_descriptor){
+            .address = heap->bo->va->addr +
+                       (heap_index + offset) *
+                          sizeof(struct d12_descriptor),
+         };
+
+         if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+            mesa_logi("binding validation: unbounded range class=%u "
+                      "space=%u reg=%u root-slot=%u heap-index=%zu "
+                      "gpu=0x%llx remaining=%zu valid=1", klass,
+                      range->space, range->base_register, slot,
+                      heap_index + offset,
+                      (unsigned long long)resource_table[slot].address,
+                      (size_t)heap->desc.NumDescriptors -
+                         (heap_index + offset));
+         }
+         continue;
       }
 
       for (unsigned i = 0; i < range->num_descriptors; i++) {
@@ -3845,11 +3904,36 @@ static void STDMETHODCALLTYPE
 d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList6 *iface, UINT count,
                             ID3D12DescriptorHeap *const *heaps)
 {
-   /* Descriptor tables are flattened into the root table at bind time, so
-    * nothing depends on which heaps are "current". Recorded as accepted
-    * rather than routed through the crash-safe stub, since an application
-    * that calls this is not asking for anything we fail to do.
-    */
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (count > 2 || (count && !heaps)) {
+      mesa_loge("SetDescriptorHeaps: invalid heap array");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (UINT i = 0; i < count; i++) {
+      if (!heaps[i]) {
+         mesa_loge("SetDescriptorHeaps: null heap");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      struct d12_descriptor_heap *heap =
+         (struct d12_descriptor_heap *)heaps[i];
+      if (!(heap->desc.Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE) ||
+          (heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV &&
+           heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER)) {
+         mesa_loge("SetDescriptorHeaps: heap %u is not shader-visible", i);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      if (heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
+         list->resource_descriptor_heap = heap;
+      else
+         list->sampler_descriptor_heap = heap;
+   }
 }
 
 static void STDMETHODCALLTYPE

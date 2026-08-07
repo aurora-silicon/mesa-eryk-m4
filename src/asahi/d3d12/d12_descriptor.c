@@ -2,10 +2,10 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * ID3D12DescriptorHeap. CPU-side slot storage whose handles are pointers into
- * the slot array, with the slot size equal to the advertised 40-byte handle
- * increment. Shader-visible resource descriptors are flattened into root
- * bindings; sampler slots retain packed AGX state for the texturing path.
+ * ID3D12DescriptorHeap. Slot storage whose handles are pointers into the slot
+ * array, with the slot size equal to the advertised 40-byte handle increment.
+ * Shader-visible heaps use coherent GPU BOs: finite ranges are snapshotted
+ * into root bindings, while unbounded ranges dereference the slots directly.
  */
 
 #include "d12_private.h"
@@ -53,7 +53,10 @@ d12_heap_Release(ID3D12DescriptorHeap *iface)
    uint32_t refs = p_atomic_dec_return(&heap->refcount);
 
    if (refs == 0) {
-      free(heap->slots);
+      if (heap->bo)
+         agx_bo_unreference(&heap->device->dev, heap->bo);
+      else
+         free(heap->slots);
       d12_private_data_store_destroy(&heap->private_data);
       d12_device_release(heap->device);
       free(heap);
@@ -95,11 +98,10 @@ d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
    /*
     * The GPU handle is the CPU address of the slot array.
     *
-    * That is legitimate here rather than a shortcut: in this binding model
-    * no shader ever dereferences a descriptor. Binding a table copies the
-    * addresses it names into the root table, so a "GPU handle" only has to
-    * be an opaque token the driver can resolve back to a slot. It carries
-    * the same offset arithmetic applications do on it.
+    * The handle stays an opaque CPU token so applications can perform the
+    * advertised 40-byte arithmetic. SetDescriptorHeaps supplies the owning
+    * object when an unbounded table needs to translate that token to the
+    * coherent BO's GPU address.
     */
    D3D12_GPU_DESCRIPTOR_HANDLE handle = {
       .ptr = (heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV ||
@@ -149,10 +151,8 @@ d12_descriptor_heap_create(struct d12_device *device,
       break;
 
    case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
-      /* Shader-visible or not, the storage is the same. Descriptor tables
-       * are flattened into the root table when they are bound, so nothing
-       * here has to be reachable by the GPU.
-       */
+      /* Shader-visible storage is allocated below from a coherent BO so
+       * unbounded ranges can index it directly. */
       break;
 
    case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
@@ -170,7 +170,29 @@ d12_descriptor_heap_create(struct d12_device *device,
    if (!heap)
       return E_OUTOFMEMORY;
 
-   heap->slots = calloc(desc->NumDescriptors, sizeof(struct d12_descriptor));
+   if ((size_t)desc->NumDescriptors >
+       SIZE_MAX / sizeof(struct d12_descriptor)) {
+      free(heap);
+      return E_OUTOFMEMORY;
+   }
+   size_t slots_size =
+      (size_t)desc->NumDescriptors * sizeof(struct d12_descriptor);
+   bool shader_visible =
+      desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+   if (shader_visible) {
+      heap->bo = agx_bo_create(&device->dev, slots_size, 0,
+                               AGX_BO_WRITEBACK,
+                               "d3d12 shader-visible descriptors");
+      if (heap->bo)
+         heap->slots = agx_bo_map(heap->bo);
+   } else {
+      heap->slots = calloc(desc->NumDescriptors,
+                           sizeof(struct d12_descriptor));
+   }
+
+   if (heap->bo && heap->slots)
+      memset(heap->slots, 0, slots_size);
 
    /*
     * Start every slot as a NULL descriptor rather than as zeroes.
@@ -191,6 +213,8 @@ d12_descriptor_heap_create(struct d12_device *device,
    }
 
    if (!heap->slots) {
+      if (heap->bo)
+         agx_bo_unreference(&device->dev, heap->bo);
       free(heap);
       return E_OUTOFMEMORY;
    }

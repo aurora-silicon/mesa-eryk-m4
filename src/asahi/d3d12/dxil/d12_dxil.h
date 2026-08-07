@@ -699,14 +699,16 @@ struct nir_shader;
  */
 /*
  * SM 6.6 ResourceDescriptorHeap base: the shader-visible heap's
- * d12_descriptor array, indexed directly by heap index. 32 is
- * sizeof(struct d12_descriptor); static-asserted in d12_cmd.c where the
- * struct is visible.
+ * d12_descriptor array, indexed directly by heap index. Its 40-byte stride
+ * is sizeof(struct d12_descriptor), static-asserted where the struct is
+ * visible.
  */
 #define D12_UNIFORM_HEAP            56
 #define D12_UNIFORM_HEAP_REGS       4
 #define D12_HEAP_DESC_SIZE          40
 #define D12_DESC_COUNTER_OFFSET     8
+#define D12_DESC_SIZE_OFFSET        24
+#define D12_DESC_STRIDE_OFFSET      28
 
 /*
  * The root binding upload contains three u64 arrays back to back. The root
@@ -904,6 +906,11 @@ struct d12_binding_map {
        * shader array may not spill from one root range into the next.
        */
       uint32_t root_range;
+      /* This entry names the lower bound of an unbounded descriptor range.
+       * The slot contains a GPU pointer to descriptor-array element zero;
+       * shader indexing happens in that array rather than across root slots.
+       */
+      bool unbounded;
    } entries[D12_MAX_RESOURCE_BINDINGS];
    unsigned count;
    unsigned resource_count;
@@ -940,6 +947,14 @@ d12_binding_map_root_range(const struct d12_binding_map *map, unsigned klass,
    return entry == ~0u ? ~0u : map->entries[entry].root_range;
 }
 
+static inline bool
+d12_binding_map_unbounded(const struct d12_binding_map *map, unsigned klass,
+                          unsigned space, unsigned reg)
+{
+   unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
+   return entry != ~0u && map->entries[entry].unbounded;
+}
+
 /* Append a binding with its root-signature range identity. */
 static inline unsigned
 d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
@@ -964,6 +979,20 @@ d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
    map->entries[entry].reg = reg;
    map->entries[entry].slot = slot;
    map->entries[entry].root_range = root_range;
+   map->entries[entry].unbounded = false;
+   return slot;
+}
+
+static inline unsigned
+d12_binding_map_add_unbounded(struct d12_binding_map *map, unsigned klass,
+                              unsigned space, unsigned reg,
+                              unsigned root_range)
+{
+   unsigned slot = d12_binding_map_add_range(map, klass, space, reg,
+                                             root_range);
+   unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
+   if (entry != ~0u)
+      map->entries[entry].unbounded = true;
    return slot;
 }
 
