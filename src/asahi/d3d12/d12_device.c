@@ -1714,6 +1714,72 @@ d12_device_GetDescriptorHandleIncrementSize(
    }
 }
 
+static void STDMETHODCALLTYPE
+d12_device_CopyDescriptorsSimple(
+   ID3D12Device2 *iface, UINT count, D3D12_CPU_DESCRIPTOR_HANDLE dest,
+   D3D12_CPU_DESCRIPTOR_HANDLE src, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+   UINT stride = d12_device_GetDescriptorHandleIncrementSize(iface, type);
+
+   if (!count || !stride || !dest.ptr || !src.ptr)
+      return;
+
+   /* D3D12 forbids overlap between source and destination ranges. */
+   memcpy((void *)(uintptr_t)dest.ptr, (const void *)(uintptr_t)src.ptr,
+          (size_t)count * stride);
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CopyDescriptors(
+   ID3D12Device2 *iface, UINT num_dest_ranges,
+   const D3D12_CPU_DESCRIPTOR_HANDLE *dest_starts,
+   const UINT *dest_sizes, UINT num_src_ranges,
+   const D3D12_CPU_DESCRIPTOR_HANDLE *src_starts, const UINT *src_sizes,
+   D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+   UINT stride = d12_device_GetDescriptorHandleIncrementSize(iface, type);
+
+   if (!stride || !dest_starts || !src_starts)
+      return;
+
+   UINT dest_range = 0, src_range = 0;
+   UINT dest_offset = 0, src_offset = 0;
+
+   /* The API presents two flattened descriptor streams split across
+    * independently-sized ranges. Walk both streams together, skipping empty
+    * ranges and copying the largest contiguous run available on each side.
+    * A NULL size array means one descriptor per range.
+    */
+   while (dest_range < num_dest_ranges && src_range < num_src_ranges) {
+      UINT dest_count = dest_sizes ? dest_sizes[dest_range] : 1;
+      UINT src_count = src_sizes ? src_sizes[src_range] : 1;
+
+      if (dest_offset >= dest_count) {
+         dest_range++;
+         dest_offset = 0;
+         continue;
+      }
+      if (src_offset >= src_count) {
+         src_range++;
+         src_offset = 0;
+         continue;
+      }
+
+      UINT count = MIN2(dest_count - dest_offset, src_count - src_offset);
+      uintptr_t dest = dest_starts[dest_range].ptr +
+                       (uintptr_t)dest_offset * stride;
+      uintptr_t src = src_starts[src_range].ptr +
+                      (uintptr_t)src_offset * stride;
+
+      if (!dest || !src)
+         return;
+
+      memcpy((void *)dest, (const void *)src, (size_t)count * stride);
+      dest_offset += count;
+      src_offset += count;
+   }
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateCommittedResource(ID3D12Device2 *iface,
                                    const D3D12_HEAP_PROPERTIES *heap_props,
@@ -1902,6 +1968,8 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateConstantBufferView = d12_device_CreateConstantBufferView,
    .GetDescriptorHandleIncrementSize =
       d12_device_GetDescriptorHandleIncrementSize,
+   .CopyDescriptors = d12_device_CopyDescriptors,
+   .CopyDescriptorsSimple = d12_device_CopyDescriptorsSimple,
    .CreateCommittedResource = d12_device_CreateCommittedResource,
    .GetCopyableFootprints = d12_device_GetCopyableFootprints,
    .CreateQueryHeap = d12_device_CreateQueryHeap,
