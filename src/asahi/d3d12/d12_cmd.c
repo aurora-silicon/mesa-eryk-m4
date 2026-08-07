@@ -259,6 +259,10 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+   memset(list->compute_sampler_table, 0,
+          sizeof(list->compute_sampler_table));
+   memset(list->graphics_sampler_table, 0,
+          sizeof(list->graphics_sampler_table));
 
    /* Points into the stream BO, whose data floor has just been rewound, so
     * the old address is about to be handed out to somebody else.
@@ -353,6 +357,15 @@ d12_list_data_cpu(struct d12_cmd_list *list, uint64_t gpu)
    if (!gpu)
       return NULL;
    return d12_list_stream_map(list) + (gpu - list->stream_bo->va->addr);
+}
+
+static bool
+d12_list_stream_contains(const struct d12_cmd_list *list, uint64_t gpu,
+                         size_t size)
+{
+   uint64_t base = list->stream_bo->va->addr;
+   return gpu >= base && size <= list->stream_bo->size &&
+          gpu - base <= list->stream_bo->size - size;
 }
 
 /* Allocate USC words; returns CPU pointer and the usc-space address. */
@@ -1040,6 +1053,7 @@ static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures)
 {
+   bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
 
@@ -1157,7 +1171,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * root parameters undefined-but-safe instead of making an omitted uniform
     * read as VA 0 and wedging the GPU.
     */
-   unsigned last_texture = rs ? MAX2(rs->map.count, 1) : 1;
+   unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
       if (table[i].kind == D12_DESC_SRV && table[i].resource &&
           (table[i].resource->desc.Dimension ==
@@ -1176,6 +1190,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       list, (size_t)last_texture * AGX_TEXTURE_LENGTH, 64);
    if (!heap_gpu)
       return false;
+
+   size_t heap_size = (size_t)last_texture * AGX_TEXTURE_LENGTH;
+   if (validate && (!d12_list_stream_contains(list, heap_gpu, heap_size) ||
+                    (heap_gpu & 63))) {
+      mesa_loge("binding validation: texture heap 0x%llx+%zu is outside "
+                "the 64-byte-aligned command-list stream BO",
+                (unsigned long long)heap_gpu, heap_size);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
 
    struct agx_texture_packed *descs =
       (struct agx_texture_packed *)d12_list_data_cpu(list, heap_gpu);
@@ -1239,6 +1263,20 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
          continue;
 
+      if (validate) {
+         uint64_t bo_base = res->bo->va->addr;
+         if (table[i].address < bo_base ||
+             table[i].address - bo_base >= res->bo->size) {
+            mesa_loge("binding validation: texture slot %u address 0x%llx "
+                      "is outside resource BO 0x%llx..0x%llx", i,
+                      (unsigned long long)table[i].address,
+                      (unsigned long long)bo_base,
+                      (unsigned long long)(bo_base + res->bo->size));
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
+      }
+
       const struct ail_layout *layout = &res->layout;
       enum pipe_format pf = layout->format;
       const struct util_format_description *fdesc =
@@ -1301,6 +1339,31 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    /* The heap needs a home for the same reason the root table does. */
    *out_textures = d12_list_upload(list, &heap_gpu, sizeof(heap_gpu), 8);
 
+   if (validate) {
+      if (!*out_textures ||
+          !d12_list_stream_contains(list, *out_textures, sizeof(heap_gpu))) {
+         mesa_loge("binding validation: texture-home cell 0x%llx is outside "
+                   "the command-list stream BO",
+                   (unsigned long long)*out_textures);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      uint64_t home = *(uint64_t *)d12_list_data_cpu(list, *out_textures);
+      if (home != heap_gpu) {
+         mesa_loge("binding validation: texture-home cell holds 0x%llx, "
+                   "expected heap 0x%llx", (unsigned long long)home,
+                   (unsigned long long)heap_gpu);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      mesa_logi("binding validation: texture heap=0x%llx+%zu home=0x%llx "
+                "resource-slots=%u valid=1",
+                (unsigned long long)heap_gpu, heap_size,
+                (unsigned long long)*out_textures, last_texture);
+   }
+
    if (getenv("D3D12AGX_DUMP_TEX") && *out_textures) {
       uint64_t home = *(uint64_t *)d12_list_data_cpu(list, *out_textures);
       fprintf(stderr,
@@ -1352,6 +1415,124 @@ struct d12_dispatch_uniforms {
    uint64_t vb_params;
 };
 
+static bool
+d12_sampler_visible(D3D12_SHADER_VISIBILITY declared,
+                    D3D12_SHADER_VISIBILITY stage)
+{
+   return declared == D3D12_SHADER_VISIBILITY_ALL || declared == stage;
+}
+
+/* Upload one contiguous sampler state file. AGX reserves hardware state 0
+ * for texture Load; application sampler S therefore lives at S + 1. Using
+ * one USC record for the complete file matches the proven Gallium path and
+ * avoids overlapping state records with unrelated backing addresses. */
+static bool
+d12_list_push_samplers(struct d12_cmd_list *list,
+                       struct agx_usc_builder *b,
+                       const struct agx_shader_info *info,
+                       bool compute_bindings,
+                       D3D12_SHADER_VISIBILITY visibility)
+{
+   bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
+   unsigned count = info->uses_txf ? MAX2(info->sampler_state_count, 1)
+                                   : info->sampler_state_count;
+
+   if (getenv("D3D12AGX_DUMP_SAMPLERS"))
+      mesa_logi("sampler requirement: stage=%u compute=%u count=%u txf=%u",
+                (unsigned)visibility, compute_bindings, count,
+                info->uses_txf);
+
+   if (!count)
+      return true;
+   if (count > 17) {
+      mesa_loge("shader requires %u sampler states; AGX supports 17", count);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   struct agx_sampler_packed states[17];
+   for (unsigned i = 0; i < count; i++)
+      agx_pack_txf_sampler(&states[i]);
+
+   const struct d12_descriptor *dynamic =
+      compute_bindings ? list->compute_sampler_table
+                       : list->graphics_sampler_table;
+   const struct d12_root_signature *rs =
+      compute_bindings ? list->compute_rs : list->graphics_rs;
+
+   for (unsigned hw = 1; hw < count; hw++) {
+      unsigned logical = hw - 1;
+      const struct d12_descriptor *chosen = NULL;
+
+      if (rs) {
+         for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
+            const D3D12_STATIC_SAMPLER_DESC1 *s =
+               &rs->layout.static_samplers[i];
+            if (!d12_sampler_visible(s->ShaderVisibility, visibility))
+               continue;
+            if (d12_binding_map_find(&rs->map, D12_RES_SAMPLER,
+                                     s->RegisterSpace,
+                                     s->ShaderRegister) == logical) {
+               chosen = &rs->static_samplers[i];
+               break;
+            }
+         }
+      }
+
+      if (!chosen && dynamic[logical].sampler_kind == D12_DESC_SAMPLER)
+         chosen = &dynamic[logical];
+
+      if (chosen) {
+         states[hw] = chosen->sampler;
+      } else if (validate) {
+         mesa_loge("binding validation: sampler s%u has no visible static "
+                   "or dynamic descriptor for stage %u", logical,
+                   (unsigned)visibility);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
+
+   size_t state_size = count * sizeof(states[0]);
+   uint64_t gpu = d12_list_upload(list, states, state_size, 8);
+   if (!gpu)
+      return false;
+
+   if (validate && ((gpu & 7) ||
+                    !d12_list_stream_contains(list, gpu, state_size))) {
+      mesa_loge("binding validation: sampler file 0x%llx+%zu is outside "
+                "the aligned command-list stream BO",
+                (unsigned long long)gpu, state_size);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   if (getenv("D3D12AGX_DUMP_SAMPLERS")) {
+      mesa_logi("samplers: stage=%u compute=%u states=%u logical=%u "
+                "gpu=0x%llx stream=0x%llx..0x%llx valid=%u",
+                (unsigned)visibility, compute_bindings, count,
+                rs ? rs->map.sampler_count : 0,
+                (unsigned long long)gpu,
+                (unsigned long long)list->stream_bo->va->addr,
+                (unsigned long long)(list->stream_bo->va->addr +
+                                     list->stream_bo->size),
+                d12_list_stream_contains(list, gpu, state_size));
+      for (unsigned i = 0; i < count; i++) {
+         const uint8_t *raw = (const uint8_t *)&states[i];
+         mesa_logi("  ss%u: %02x %02x %02x %02x %02x %02x %02x %02x",
+                   i, raw[0], raw[1], raw[2], raw[3], raw[4], raw[5],
+                   raw[6], raw[7]);
+      }
+   }
+
+   agx_usc_pack(b, SAMPLER, cfg) {
+      cfg.start = 0;
+      cfg.count = count;
+      cfg.buffer = gpu;
+   }
+   return true;
+}
+
 /* Build the USC words for one compute launch; returns the USC offset, or
  * 0 on failure.
  */
@@ -1359,6 +1540,8 @@ static uint32_t
 d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
                            const struct agx_shader_info *info,
                            const struct d12_dispatch_uniforms *u,
+                           bool compute_bindings,
+                           D3D12_SHADER_VISIBILITY visibility,
                            uint8_t **out_cpu)
 {
    struct d12_device *device = list->device;
@@ -1443,9 +1626,8 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (info->rodata.size_16)
       agx_usc_immediates(&b, &info->rodata, code_va);
 
-   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
-   if (info->uses_txf)
-      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
+   if (!d12_list_push_samplers(list, &b, info, compute_bindings, visibility))
+      return 0;
 
    agx_usc_shared_none(&b);
 
@@ -1538,7 +1720,7 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       list, pso->code_va, &pso->info,
       &(struct d12_dispatch_uniforms){.root = root_gpu,
                                       .textures = textures_gpu},
-      &usc_cpu);
+      true, D3D12_SHADER_VISIBILITY_ALL, &usc_cpu);
    if (!usc)
       return;
 
@@ -1595,6 +1777,7 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
                   uint64_t root_gpu, uint64_t textures_gpu,
                   uint64_t draw_gpu, uint64_t blend_gpu,
+                  D3D12_SHADER_VISIBILITY visibility,
                   const struct d12_dispatch_uniforms *poly)
 {
    struct d12_device *device = list->device;
@@ -1675,9 +1858,8 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       }
    }
 
-   /* txf reads sampler state 0 even though HLSL's Load takes no sampler. */
-   if (st->info.uses_txf)
-      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
+   if (!d12_list_push_samplers(list, &b, &st->info, false, visibility))
+      return 0;
 
    if (fragment) {
       agx_usc_push_packed(&b, SHARED, &tib->usc);
@@ -1693,13 +1875,47 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                           &st->linked.fragment_props);
    }
 
-   if (st->info.has_preamble && st->preamble_va) {
+   if (st->info.has_preamble) {
+      bool preamble_valid = st->code_bo &&
+         st->preamble_va >= st->code_bo->va->addr &&
+         st->preamble_va - st->code_bo->va->addr < st->code_bo->size;
+
+      if (!preamble_valid) {
+         mesa_loge("binding validation: %s preamble 0x%llx is not owned "
+                   "by its compiled-part BO",
+                   fragment ? "fragment" : "vertex",
+                   (unsigned long long)st->preamble_va);
+         list->state = D12_LIST_ERROR;
+         return 0;
+      }
+
+      if (getenv("D3D12AGX_DUMP_TEX"))
+         mesa_logi("%s preamble: va=0x%llx bo=0x%llx..0x%llx valid=1 "
+                   "tex_states=%u sampler_states=%u pregprs=%u",
+                   fragment ? "fragment" : "vertex",
+                   (unsigned long long)st->preamble_va,
+                   (unsigned long long)st->code_bo->va->addr,
+                   (unsigned long long)(st->code_bo->va->addr +
+                                        st->code_bo->size),
+                   st->info.texture_state_count,
+                   st->info.sampler_state_count,
+                   st->info.nr_preamble_gprs);
+
       agx_usc_pack(&b, PRESHADER, cfg) {
          cfg.code = agx_usc_addr(&device->dev, st->preamble_va);
       }
    } else {
       agx_usc_pack(&b, NO_PRESHADER, cfg)
          ;
+   }
+
+   size_t usc_used = b.head - cpu;
+   if (getenv("D3D12AGX_VALIDATE_BINDINGS") &&
+       usc_used > agx_usc_size(16)) {
+      mesa_loge("binding validation: graphics USC used %zu bytes of %zu",
+                usc_used, (size_t)agx_usc_size(16));
+      list->state = D12_LIST_ERROR;
+      return 0;
    }
 
    return usc;
@@ -1967,15 +2183,19 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       uint64_t va;
       const struct agx_shader_info *info;
       struct agx_grid grid;
+      D3D12_SHADER_VISIBILITY visibility;
    } stages[] = {
-      {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1)},
-      {pso->gs_main_va, &pso->gs_main_info, agx_3d(gp.grid[0], gp.grid[1], 1)},
+      {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1),
+       D3D12_SHADER_VISIBILITY_VERTEX},
+      {pso->gs_main_va, &pso->gs_main_info,
+       agx_3d(gp.grid[0], gp.grid[1], 1),
+       D3D12_SHADER_VISIBILITY_GEOMETRY},
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
       uint32_t usc =
          d12_list_build_compute_usc(list, stages[i].va, stages[i].info, &u,
-                                    NULL);
+                                    false, stages[i].visibility, NULL);
       if (!usc)
          return false;
 
@@ -2241,17 +2461,20 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       const struct agx_shader_info *info;
       struct agx_grid grid;
       struct agx_workgroup wg;
+      D3D12_SHADER_VISIBILITY visibility;
    } stages[] = {
       {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1),
-       agx_workgroup(64, 1, 1)},
+       agx_workgroup(64, 1, 1), D3D12_SHADER_VISIBILITY_VERTEX},
       {pso->tcs_va, &pso->tcs_info,
        agx_3d(in_patches * pso->tcs_output_patch_size, instance_count, 1),
-       agx_workgroup(pso->tcs_output_patch_size, 1, 1)},
+       agx_workgroup(pso->tcs_output_patch_size, 1, 1),
+       D3D12_SHADER_VISIBILITY_HULL},
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
       uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
-                                                stages[i].info, &u, NULL);
+                                                stages[i].info, &u, false,
+                                                stages[i].visibility, NULL);
       if (!usc)
          return false;
 
@@ -2391,6 +2614,7 @@ struct d12_mesh_stage {
    const struct agx_shader_info *info;
    struct agx_grid grid;
    struct agx_workgroup wg;
+   D3D12_SHADER_VISIBILITY visibility;
 };
 
 static bool
@@ -2493,32 +2717,34 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
          agx_3d(tg_x * pso->as_workgroup[0], tg_y * pso->as_workgroup[1],
                 tg_z * pso->as_workgroup[2]),
          agx_workgroup(pso->as_workgroup[0], pso->as_workgroup[1],
-                       pso->as_workgroup[2])};
+                       pso->as_workgroup[2]),
+         D3D12_SHADER_VISIBILITY_AMPLIFICATION};
 
       stages[nr_stages++] = (struct d12_mesh_stage){
          pso->as_setup_va, &pso->as_setup_info, agx_3d(1, 1, 1),
-         agx_workgroup(1, 1, 1)};
+         agx_workgroup(1, 1, 1), D3D12_SHADER_VISIBILITY_ALL};
 
       stages[nr_stages++] = (struct d12_mesh_stage){
          pso->ms_va, &pso->ms_info, agx_grid_indirect_local(gridbuf),
          agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
-                       pso->ms_workgroup[2])};
+                       pso->ms_workgroup[2]), D3D12_SHADER_VISIBILITY_MESH};
    } else {
       stages[nr_stages++] = (struct d12_mesh_stage){
          pso->ms_va, &pso->ms_info,
          agx_3d(tg_x * pso->ms_workgroup[0], tg_y * pso->ms_workgroup[1],
                 tg_z * pso->ms_workgroup[2]),
          agx_workgroup(pso->ms_workgroup[0], pso->ms_workgroup[1],
-                       pso->ms_workgroup[2])};
+                       pso->ms_workgroup[2]), D3D12_SHADER_VISIBILITY_MESH};
    }
 
    stages[nr_stages++] = (struct d12_mesh_stage){
       pso->ms_setup_va, &pso->ms_setup_info, agx_3d(1, 1, 1),
-      agx_workgroup(1, 1, 1)};
+      agx_workgroup(1, 1, 1), D3D12_SHADER_VISIBILITY_ALL};
 
    for (unsigned i = 0; i < nr_stages; i++) {
       uint32_t usc = d12_list_build_compute_usc(list, stages[i].va,
-                                                stages[i].info, &u, NULL);
+                                                stages[i].info, &u, false,
+                                                stages[i].visibility, NULL);
       if (!usc)
          return false;
 
@@ -2734,15 +2960,22 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (!blend_gpu)
       return;
 
+   D3D12_SHADER_VISIBILITY vertex_visibility =
+      vstage == &pso->tes        ? D3D12_SHADER_VISIBILITY_DOMAIN
+      : vstage == &pso->gs_rast ? D3D12_SHADER_VISIBILITY_GEOMETRY
+      : vstage == &pso->ms_rast ? D3D12_SHADER_VISIBILITY_MESH
+                                  : D3D12_SHADER_VISIBILITY_VERTEX;
+
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
-      0,
+      0, vertex_visibility,
       (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
          ? &poly_u
          : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, draw_gpu,
-                                       blend_gpu, NULL);
+                                       blend_gpu,
+                                       D3D12_SHADER_VISIBILITY_PIXEL, NULL);
    if (!vs_usc || !fs_usc)
       return;
 
@@ -3381,8 +3614,10 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   struct d12_descriptor *table =
+   struct d12_descriptor *resource_table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   struct d12_descriptor *sampler_table =
+      compute ? list->compute_sampler_table : list->graphics_sampler_table;
 
    unsigned cursor = 0;
    for (unsigned r = 0; r < rp->num_ranges; r++) {
@@ -3418,6 +3653,8 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             return;
          }
 
+         struct d12_descriptor *table =
+            klass == D12_RES_SAMPLER ? sampler_table : resource_table;
          table[slot] = slots[offset + i];
       }
 
@@ -3651,6 +3888,10 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+   memset(list->compute_sampler_table, 0,
+          sizeof(list->compute_sampler_table));
+   memset(list->graphics_sampler_table, 0,
+          sizeof(list->graphics_sampler_table));
 
    memset(list->vb, 0, sizeof(list->vb));
    memset(&list->ib, 0, sizeof(list->ib));

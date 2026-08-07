@@ -887,10 +887,12 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
 
             unsigned last_slot = d12_binding_map_find(
                ctx->map, D12_RES_CBV, space, range->upper_bound);
-            unsigned root_range = ctx->map->entries[first_slot].root_range;
+            unsigned root_range = d12_binding_map_root_range(
+               ctx->map, D12_RES_CBV, space, range->lower_bound);
             if (last_slot != first_slot + (unsigned)count - 1 ||
                 root_range == ~0u ||
-                ctx->map->entries[last_slot].root_range != root_range) {
+                d12_binding_map_root_range(ctx->map, D12_RES_CBV, space,
+                                           range->upper_bound) != root_range) {
                fail(ctx, "constant buffer array crosses root descriptor ranges");
                return nir_imm_zero(b, 4, 32);
             }

@@ -895,6 +895,10 @@ struct d12_binding_map {
       uint32_t klass;
       uint32_t space;
       uint32_t reg;
+      /* Resource descriptors and sampler states are different hardware
+       * files. Keep a dense slot in the appropriate file instead of making
+       * unrelated t/u/b bindings consume scarce sampler indices. */
+      uint32_t slot;
       /* One descriptor range/root descriptor in the API root signature.
        * Adjacent shader registers are not necessarily one range: a sized
        * shader array may not spill from one root range into the next.
@@ -902,12 +906,14 @@ struct d12_binding_map {
       uint32_t root_range;
    } entries[D12_MAX_RESOURCE_BINDINGS];
    unsigned count;
+   unsigned resource_count;
+   unsigned sampler_count;
 };
 
-/* Slot for a binding, or ~0u when the map does not name it. */
+/* Entry for a binding, or ~0u when the map does not name it. */
 static inline unsigned
-d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
-                     unsigned space, unsigned reg)
+d12_binding_map_find_entry(const struct d12_binding_map *map, unsigned klass,
+                           unsigned space, unsigned reg)
 {
    for (unsigned i = 0; i < map->count; i++) {
       if (map->entries[i].klass == klass && map->entries[i].space == space &&
@@ -917,27 +923,47 @@ d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
    return ~0u;
 }
 
+/* Slot in the resource root table or sampler-state file. */
+static inline unsigned
+d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
+                     unsigned space, unsigned reg)
+{
+   unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
+   return entry == ~0u ? ~0u : map->entries[entry].slot;
+}
+
+static inline unsigned
+d12_binding_map_root_range(const struct d12_binding_map *map, unsigned klass,
+                           unsigned space, unsigned reg)
+{
+   unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
+   return entry == ~0u ? ~0u : map->entries[entry].root_range;
+}
+
 /* Append a binding with its root-signature range identity. */
 static inline unsigned
 d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
                           unsigned space, unsigned reg,
                           unsigned root_range)
 {
-   unsigned existing = d12_binding_map_find(map, klass, space, reg);
+   unsigned existing = d12_binding_map_find_entry(map, klass, space, reg);
    if (existing != ~0u) {
       if (map->entries[existing].root_range != root_range)
          map->entries[existing].root_range = ~0u;
-      return existing;
+      return map->entries[existing].slot;
    }
 
    if (map->count >= D12_MAX_RESOURCE_BINDINGS)
       return ~0u;
 
-   unsigned slot = map->count++;
-   map->entries[slot].klass = klass;
-   map->entries[slot].space = space;
-   map->entries[slot].reg = reg;
-   map->entries[slot].root_range = root_range;
+   unsigned entry = map->count++;
+   unsigned slot = klass == D12_RES_SAMPLER ? map->sampler_count++
+                                             : map->resource_count++;
+   map->entries[entry].klass = klass;
+   map->entries[entry].space = space;
+   map->entries[entry].reg = reg;
+   map->entries[entry].slot = slot;
+   map->entries[entry].root_range = root_range;
    return slot;
 }
 

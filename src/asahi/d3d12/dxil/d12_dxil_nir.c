@@ -2282,10 +2282,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             unsigned last_slot = d12_binding_map_find(
                ctx->map, (unsigned)klass, rb->space,
                rb->lower_bound + count - 1);
-            unsigned root_range = ctx->map->entries[base_slot].root_range;
+            unsigned root_range = d12_binding_map_root_range(
+               ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
             if (last_slot != base_slot + count - 1 ||
                 root_range == ~0u ||
-                ctx->map->entries[last_slot].root_range != root_range) {
+                d12_binding_map_root_range(
+                   ctx->map, (unsigned)klass, rb->space,
+                   rb->lower_bound + count - 1) != root_range) {
                /* The stride/kind shortcut and the slot arithmetic both
                 * require one contiguous API descriptor range. Adjacent root
                 * ranges do not become one just because their register and

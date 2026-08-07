@@ -105,6 +105,21 @@ r_u32(const uint8_t *p)
           ((uint32_t)p[3] << 24);
 }
 
+static bool
+d12_rs_span(size_t size, uint32_t offset, uint32_t count, size_t stride)
+{
+   return (size_t)offset <= size && count <= (size - offset) / stride;
+}
+
+static float
+d12_rs_float(const uint8_t *p)
+{
+   uint32_t bits = r_u32(p);
+   float value;
+   memcpy(&value, &bits, sizeof(value));
+   return value;
+}
+
 static void
 store_u32(uint8_t *p, uint32_t v)
 {
@@ -629,9 +644,11 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
    uint32_t version = r_u32(rs + 0);
    uint32_t nparams = r_u32(rs + 4);
    uint32_t params_off = r_u32(rs + 8);
+   uint32_t nsamplers = r_u32(rs + 12);
+   uint32_t samplers_off = r_u32(rs + 16);
    out->flags = r_u32(rs + 20);
 
-   if (version != 1 && version != 2) {
+   if (version < 1 || version > 3) {
       mesa_loge("root signature version %u unsupported", version);
       return false;
    }
@@ -641,13 +658,27 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
     * application makes, so it changes the stride, not the meaning.
     */
    const uint32_t range_size =
-      version == 2 ? D12_RS_RANGE_SIZE + 4 : D12_RS_RANGE_SIZE;
+      version == 1 ? D12_RS_RANGE_SIZE : D12_RS_RANGE1_SIZE;
    const uint32_t descriptor_size =
-      version == 2 ? D12_RS_DESCRIPTOR_SIZE + 4 : D12_RS_DESCRIPTOR_SIZE;
+      version == 1 ? D12_RS_DESCRIPTOR_SIZE : D12_RS_DESCRIPTOR1_SIZE;
+   const uint32_t sampler_size =
+      version == 3 ? D12_RS_SAMPLER1_SIZE : D12_RS_SAMPLER_SIZE;
 
    if (nparams > D12_MAX_ROOT_PARAMS) {
       mesa_loge("root signature has %u parameters, limit is %u", nparams,
                 D12_MAX_ROOT_PARAMS);
+      return false;
+   }
+
+   if (nsamplers > D12_MAX_RESOURCE_BINDINGS) {
+      mesa_loge("root signature has %u static samplers, limit is %u",
+                nsamplers, D12_MAX_RESOURCE_BINDINGS);
+      return false;
+   }
+
+   if (nsamplers &&
+       !d12_rs_span(rs_size, samplers_off, nsamplers, sampler_size)) {
+      mesa_loge("root signature static-sampler table runs past the blob");
       return false;
    }
 
@@ -693,7 +724,7 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
             out_range->space = r_u32(rr + 12);
             /* v1.1 puts its flags word before the offset. */
             out_range->offset_in_descriptors =
-               r_u32(rr + (version == 2 ? 20 : 16));
+               r_u32(rr + (version == 1 ? 16 : 20));
          }
 
          /*
@@ -750,11 +781,49 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
       }
    }
 
+   if (nsamplers) {
+      out->static_samplers = calloc(nsamplers, sizeof(*out->static_samplers));
+      if (!out->static_samplers) {
+         mesa_loge("out of memory parsing root-signature static samplers");
+         return false;
+      }
+
+      for (uint32_t i = 0; i < nsamplers; i++) {
+         const uint8_t *in = rs + samplers_off + i * sampler_size;
+         D3D12_STATIC_SAMPLER_DESC1 *s = &out->static_samplers[i];
+
+         s->Filter = r_u32(in + 0);
+         s->AddressU = r_u32(in + 4);
+         s->AddressV = r_u32(in + 8);
+         s->AddressW = r_u32(in + 12);
+         s->MipLODBias = d12_rs_float(in + 16);
+         s->MaxAnisotropy = r_u32(in + 20);
+         s->ComparisonFunc = r_u32(in + 24);
+         s->BorderColor = r_u32(in + 28);
+         s->MinLOD = d12_rs_float(in + 32);
+         s->MaxLOD = d12_rs_float(in + 36);
+         s->ShaderRegister = r_u32(in + 40);
+         s->RegisterSpace = r_u32(in + 44);
+         s->ShaderVisibility = r_u32(in + 48);
+         s->Flags = version == 3 ? r_u32(in + 52)
+                                 : D3D12_SAMPLER_FLAG_NONE;
+      }
+   }
+   out->num_static_samplers = nsamplers;
+
    return true;
 
 truncated:
    mesa_loge("root signature parameter payload runs past the blob");
    return false;
+}
+
+void
+d12_root_layout_cleanup(struct d12_root_layout *layout)
+{
+   free(layout->static_samplers);
+   layout->static_samplers = NULL;
+   layout->num_static_samplers = 0;
 }
 
 /* The public deserializer interfaces expose pointers whose lifetime is tied
@@ -783,21 +852,6 @@ d12_root_signature_desc_store_cleanup(struct d12_root_signature_desc_store *s)
    free(s->samplers0);
    free(s->samplers1);
    memset(s, 0, sizeof(*s));
-}
-
-static bool
-d12_rs_span(size_t size, uint32_t offset, uint32_t count, size_t stride)
-{
-   return (size_t)offset <= size && count <= (size - offset) / stride;
-}
-
-static float
-d12_rs_float(const uint8_t *p)
-{
-   uint32_t bits = r_u32(p);
-   float value;
-   memcpy(&value, &bits, sizeof(value));
-   return value;
 }
 
 static void
@@ -1418,5 +1472,14 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
       default:
          break;
       }
+   }
+
+   /* Static samplers participate in shader binding lookup but not in the
+    * resource root table. d12_binding_map gives them their own dense slot
+    * namespace, so t0 and s0 may both be slot 0 as the API intends. */
+   for (uint32_t i = 0; i < layout->num_static_samplers; i++) {
+      const D3D12_STATIC_SAMPLER_DESC1 *s = &layout->static_samplers[i];
+      d12_binding_map_add_range(out, D12_RES_SAMPLER, s->RegisterSpace,
+                                s->ShaderRegister, root_range++);
    }
 }

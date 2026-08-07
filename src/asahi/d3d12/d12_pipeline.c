@@ -213,11 +213,55 @@ d12_root_sig_Release(ID3D12RootSignature *iface)
 
    if (refs == 0) {
       d12_private_data_store_destroy(&rs->private_data);
+      free(rs->static_samplers);
+      d12_root_layout_cleanup(&rs->layout);
       d12_device_release(rs->device);
       free(rs);
    }
 
    return refs;
+}
+
+static void
+d12_pack_static_sampler(struct d12_descriptor *out,
+                        const D3D12_STATIC_SAMPLER_DESC1 *in)
+{
+   D3D12_SAMPLER_DESC2 desc = {
+      .Filter = in->Filter,
+      .AddressU = in->AddressU,
+      .AddressV = in->AddressV,
+      .AddressW = in->AddressW,
+      .MipLODBias = in->MipLODBias,
+      .MaxAnisotropy = in->MaxAnisotropy,
+      .ComparisonFunc = in->ComparisonFunc,
+      .MinLOD = in->MinLOD,
+      .MaxLOD = in->MaxLOD,
+      .Flags = in->Flags,
+   };
+
+   bool uint_border =
+      (desc.Flags & D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR) ||
+      in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT ||
+      in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT;
+
+   if (uint_border) {
+      desc.Flags |= D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR;
+      if (in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK ||
+          in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK_UINT)
+         desc.UintBorderColor[3] = 1;
+      else if (in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE ||
+               in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE_UINT)
+         for (unsigned c = 0; c < 4; c++)
+            desc.UintBorderColor[c] = 1;
+   } else {
+      if (in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK)
+         desc.FloatBorderColor[3] = 1.0f;
+      else if (in->BorderColor == D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE)
+         for (unsigned c = 0; c < 4; c++)
+            desc.FloatBorderColor[c] = 1.0f;
+   }
+
+   d12_pack_sampler_descriptor(out, &desc);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -336,6 +380,30 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
 
    d12_root_layout_build_map(&rs->layout, &rs->map);
 
+   if (rs->layout.num_static_samplers) {
+      rs->static_samplers = calloc(rs->layout.num_static_samplers,
+                                   sizeof(*rs->static_samplers));
+      if (!rs->static_samplers) {
+         d12_root_layout_cleanup(&rs->layout);
+         free(rs);
+         return E_OUTOFMEMORY;
+      }
+
+      for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
+         const D3D12_STATIC_SAMPLER_DESC1 *s =
+            &rs->layout.static_samplers[i];
+         if (d12_binding_map_find(&rs->map, D12_RES_SAMPLER,
+                                  s->RegisterSpace,
+                                  s->ShaderRegister) == ~0u) {
+            free(rs->static_samplers);
+            d12_root_layout_cleanup(&rs->layout);
+            free(rs);
+            return E_INVALIDARG;
+         }
+         d12_pack_static_sampler(&rs->static_samplers[i], s);
+      }
+   }
+
    rs->iface.lpVtbl = (ID3D12RootSignatureVtbl *)&d12_root_sig_vtbl;
    rs->refcount = 1;
    rs->device = device;
@@ -395,6 +463,10 @@ d12_pso_Release(ID3D12PipelineState *iface)
    if (refs == 0) {
       if (pso->code_bo)
          agx_bo_unreference(&pso->device->dev, pso->code_bo);
+      if (pso->vs.code_bo)
+         agx_bo_unreference(&pso->device->dev, pso->vs.code_bo);
+      if (pso->fs.code_bo)
+         agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
       if (pso->sw_vs_bo)
          agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
       if (pso->gs_main_bo)
@@ -484,6 +556,44 @@ d12_container_stage(const void *data, size_t size_B,
           d12_dxbc_container_stage(data, size_B, stage);
 }
 
+/* Application samplers remain in the USC sampler-state file. Count them
+ * before agx_nir_lower_texture reserves hardware state 0 for texture Load
+ * and rewrites D3D sampler S to hardware state S + 1. The compiler only
+ * reports states it itself promoted into the preamble, which is not enough
+ * to size the runtime state file for an ordinary Sample instruction. */
+static unsigned
+d12_nir_sampler_state_count(nir_shader *nir,
+                            const struct d12_binding_map *map)
+{
+   unsigned count = 0;
+
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            if (!nir_tex_instr_need_sampler(tex))
+               continue;
+
+            if (nir_tex_instr_src_index(tex,
+                                        nir_tex_src_sampler_offset) >= 0) {
+               if (!map || map->sampler_count >= 17)
+                  return UINT_MAX;
+               count = MAX2(count, map->sampler_count + 1);
+            } else {
+               if (tex->sampler_index >= 16)
+                  return UINT_MAX;
+               count = MAX2(count, tex->sampler_index + 2);
+            }
+         }
+      }
+   }
+
+   return count;
+}
+
 /*
  * The real work: application DXIL -> our translator -> NIR -> AGX, then
  * upload. This is the campaign's shader path running inside the driver.
@@ -556,6 +666,14 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       return E_INVALIDARG;
    }
 
+   unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
+   if (runtime_samplers == UINT_MAX) {
+      mesa_loge("CreateComputePipelineState: shader sampler state range "
+                "exceeds the 16 API sampler limit");
+      ralloc_free(nir);
+      return E_INVALIDARG;
+   }
+
    NIR_PASS(_, nir, agx_nir_lower_texture);
    /* Multisampled image stores lower the same way in every stage; the
     * FS-only placement left compute MS stores to hit the backend raw.
@@ -587,7 +705,10 @@ d12_pipeline_state_create_compute(struct d12_device *device,
        * of a 64-bit address came back 0x86 instead of 0x2f" this comment
        * used to describe -- not a missing preamble, a misaddressed one.
        *
-       * Fix the graphics preamble address before turning this on.
+       * Graphics stages now retain their original preamble code, but
+       * constant promotion remains disabled until its separate register and
+       * rodata interactions have a broad regression pass. Texture promotion
+       * below is independently required and validated.
        */
       .promote_constants = false,
       /* Uniform registers below this are the driver's: the root pointer. */
@@ -597,6 +718,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));
    agx_compile_shader_nir(nir, &key, &part);
+   part.info.sampler_state_count =
+      MAX2(part.info.sampler_state_count, runtime_samplers);
    d12_report_scratch("shader", &part.info);
 
    if (getenv("D3D12AGX_DUMP_TEX") && part.binary) {
@@ -922,6 +1045,14 @@ compile_gfx_stage(struct d12_device *device,
    if (!nir)
       return false;
 
+   unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
+   if (runtime_samplers == UINT_MAX) {
+      mesa_loge("graphics shader sampler state range exceeds the 16 API "
+                "sampler limit");
+      ralloc_free(nir);
+      return false;
+   }
+
    if (outputs_written)
       *outputs_written = nir->info.outputs_written;
 
@@ -1044,9 +1175,14 @@ compile_gfx_stage(struct d12_device *device,
       .dev = agx_gather_device_key(&device->dev),
       /* Allocas live in per-thread scratch, and large shaders spill. */
       .has_scratch = true,
-      /* See the compute path: promotion needs a preamble we do not bind. */
-      /* See the note on the compute key above. */
+      /* Constant promotion is still outside this texture-binding change;
+       * see the validation note on the compute key above. */
       .promote_constants = false,
+      /* Honeykrisp's proven path promotes texture descriptors into a
+       * preamble. This avoids leaving a bindless texture-handle load in the
+       * fragment main. The compiled part's preamble must be retained below;
+       * agx_fast_link intentionally copies only main/prolog/epilog. */
+      .promote_textures = true,
       .reserved_preamble = D12_UNIFORM_RESERVED,
       /* A split fragment main falls through into its epilog. All other
        * programs are self-contained and terminate normally. */
@@ -1055,6 +1191,8 @@ compile_gfx_stage(struct d12_device *device,
 
    memset(out, 0, sizeof(*out));
    agx_compile_shader_nir(nir, &key, out);
+   out->info.sampler_state_count =
+      MAX2(out->info.sampler_state_count, runtime_samplers);
    d12_report_scratch("shader", &out->info);
 
    if (getenv("D3D12AGX_DUMP_SHADERS") && out->binary) {
@@ -2182,6 +2320,28 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part, NULL,
                  use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL, 1);
    free(fs_epilog.binary);
+
+   /* Texture promotion gives the fragment shader a preamble that copies
+    * the descriptor reached through D12_UNIFORM_TEXTURES into hardware
+    * texture state. agx_fast_link does not copy that preamble, so retain
+    * the original compiled part exactly as the VS/TES/GS/MS paths do.
+    * Pointing preamble_va into linked.bo executes unrelated linked main
+    * code and is a GPU-fault-class error, not merely a bad sample. */
+   if (fs_part.info.has_preamble) {
+      pso->fs.code_bo =
+         agx_bo_create(&device->dev, fs_part.info.binary_size, 0,
+                       AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 fs preamble");
+      if (!pso->fs.code_bo) {
+         free(vs_part.binary);
+         free(fs_part.binary);
+         free(pso);
+         return E_OUTOFMEMORY;
+      }
+      memcpy(agx_bo_map(pso->fs.code_bo), fs_part.binary,
+             fs_part.info.binary_size);
+      pso->fs.preamble_va =
+         pso->fs.code_bo->va->addr + fs_part.info.preamble_offset;
+   }
 
    pso->vs.info = vs_part.info;
    pso->fs.info = fs_part.info;

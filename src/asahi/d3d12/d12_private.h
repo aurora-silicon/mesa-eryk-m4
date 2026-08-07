@@ -400,6 +400,8 @@ struct d12_root_param {
 struct d12_root_layout {
    struct d12_root_param params[D12_MAX_ROOT_PARAMS];
    uint32_t num_params;
+   D3D12_STATIC_SAMPLER_DESC1 *static_samplers;
+   uint32_t num_static_samplers;
    uint32_t flags;
 };
 
@@ -425,6 +427,11 @@ struct d12_root_signature {
    struct d12_root_layout layout;
    struct d12_private_data_store private_data;
 
+   /* Packed in declaration order. Shader visibility may make two records
+    * with the same register/space legal for disjoint graphics stages, so
+    * retain one runtime descriptor per serialized record. */
+   struct d12_descriptor *static_samplers;
+
    /* The slot assignment derived from the layout. Shaders are compiled
     * against it and the command list fills the root table through it.
     */
@@ -443,6 +450,7 @@ HRESULT d12_versioned_root_signature_deserializer_create(
    const void *src, size_t size, REFIID riid, void **out);
 bool d12_root_signature_parse(const void *blob, size_t blob_size,
                               struct d12_root_layout *out);
+void d12_root_layout_cleanup(struct d12_root_layout *layout);
 unsigned d12_root_param_class(const struct d12_root_param *rp);
 unsigned d12_descriptor_range_class(D3D12_DESCRIPTOR_RANGE_TYPE type);
 void d12_root_layout_build_map(const struct d12_root_layout *layout,
@@ -862,6 +870,10 @@ struct d12_cmd_list {
     */
    struct d12_descriptor compute_root_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
+   /* Samplers use a separate dense binding namespace. AGX sampler state 0
+    * is reserved for texture Load; API sampler S is uploaded at S + 1. */
+   struct d12_descriptor compute_sampler_table[D12_MAX_RESOURCE_BINDINGS];
+   struct d12_descriptor graphics_sampler_table[D12_MAX_RESOURCE_BINDINGS];
 
    /* Zeroed backing for UNBOUND root slots, allocated lazily and reused by
     * every binding upload in this recording. See d12_list_null_buffer().
@@ -989,6 +1001,8 @@ d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                                    REFIID riid, void **out);
+void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
+                                 const D3D12_SAMPLER_DESC2 *desc);
 /* DXGI format support (d12_format.c) */
 enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
 bool d12_format_is_renderable(DXGI_FORMAT format);

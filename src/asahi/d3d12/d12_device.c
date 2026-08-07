@@ -1514,8 +1514,19 @@ d12_sampler_compare(D3D12_COMPARISON_FUNC func)
 }
 
 static enum agx_border_colour
-d12_sampler_border(const FLOAT color[4])
+d12_sampler_border(const D3D12_SAMPLER_DESC2 *desc)
 {
+   if (desc->Flags & D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR) {
+      const UINT *color = desc->UintBorderColor;
+      if (color[0] == 0 && color[1] == 0 && color[2] == 0)
+         return color[3] == 1 ? AGX_BORDER_COLOUR_OPAQUE_BLACK
+                              : AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
+      if (color[0] == 1 && color[1] == 1 && color[2] == 1 && color[3] == 1)
+         return AGX_BORDER_COLOUR_OPAQUE_WHITE;
+      return AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
+   }
+
+   const FLOAT *color = desc->FloatBorderColor;
    if (color[0] == 0.0f && color[1] == 0.0f && color[2] == 0.0f) {
       return color[3] == 1.0f ? AGX_BORDER_COLOUR_OPAQUE_BLACK
                               : AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
@@ -1530,12 +1541,10 @@ d12_sampler_border(const FLOAT color[4])
    return AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
 }
 
-static void STDMETHODCALLTYPE
-d12_device_CreateSampler(ID3D12Device2 *iface,
-                         const D3D12_SAMPLER_DESC *desc,
-                         D3D12_CPU_DESCRIPTOR_HANDLE dest)
+void
+d12_pack_sampler_descriptor(struct d12_descriptor *slot,
+                            const D3D12_SAMPLER_DESC2 *desc)
 {
-   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
    if (!slot || !desc)
       return;
 
@@ -1567,27 +1576,53 @@ d12_device_CreateSampler(ID3D12Device2 *iface,
       cfg.wrap_s = d12_sampler_wrap(desc->AddressU);
       cfg.wrap_t = d12_sampler_wrap(desc->AddressV);
       cfg.wrap_r = d12_sampler_wrap(desc->AddressW);
+      cfg.pixel_coordinates =
+         desc->Flags & D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
       cfg.maximum_anisotropy = anisotropy;
-      cfg.border_colour = d12_sampler_border(desc->BorderColor);
+      cfg.border_colour = d12_sampler_border(desc);
       cfg.compare_enable = comparison;
       cfg.compare_func = d12_sampler_compare(desc->ComparisonFunc);
    }
 
-   memcpy(slot->sampler_border, desc->BorderColor,
+   memcpy(slot->sampler_border, desc->FloatBorderColor,
           sizeof(slot->sampler_border));
    slot->sampler_lod_bias = desc->MipLODBias;
-   slot->sampler_flags = 0;
+   slot->sampler_flags = desc->Flags;
    slot->sampler_kind = D12_DESC_SAMPLER;
+}
+
+static void STDMETHODCALLTYPE
+d12_device_CreateSampler(ID3D12Device2 *iface,
+                         const D3D12_SAMPLER_DESC *desc,
+                         D3D12_CPU_DESCRIPTOR_HANDLE dest)
+{
+   struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
+   if (!slot || !desc)
+      return;
+
+   D3D12_SAMPLER_DESC2 desc2 = {
+      .Filter = desc->Filter,
+      .AddressU = desc->AddressU,
+      .AddressV = desc->AddressV,
+      .AddressW = desc->AddressW,
+      .MipLODBias = desc->MipLODBias,
+      .MaxAnisotropy = desc->MaxAnisotropy,
+      .ComparisonFunc = desc->ComparisonFunc,
+      .MinLOD = desc->MinLOD,
+      .MaxLOD = desc->MaxLOD,
+      .Flags = D3D12_SAMPLER_FLAG_NONE,
+   };
+   memcpy(desc2.FloatBorderColor, desc->BorderColor,
+          sizeof(desc2.FloatBorderColor));
+   d12_pack_sampler_descriptor(slot, &desc2);
 }
 
 /*
  * Buffer views. A descriptor here is just the address the shader will
  * reach the resource through, resolved once at view creation.
  *
- * Only buffer views exist so far: a texture SRV needs an AGX texture
- * descriptor and a sampler, which is the texturing milestone. Refusing a
- * texture view is better than recording an address a shader would then
- * read as if it were linear untiled data.
+ * Texture SRVs are recorded separately below; this helper is deliberately
+ * buffer-only so a tiled resource can never be interpreted as linear data.
  */
 static bool
 d12_fill_buffer_descriptor(struct d12_descriptor *slot,
@@ -1654,18 +1689,34 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
    /* A 2D texture view records the resource; the hardware descriptor is
     * packed at draw time, when the heap it lives in is built.
     */
-   if (desc && desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D) {
+   if ((desc && desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D) ||
+       (!desc &&
+        res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)) {
       if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
          mesa_loge("CreateShaderResourceView: TEXTURE2D view of a "
                    "non-texture resource");
          return;
       }
 
+      /* The implicit view dimension for arrays/MSAA is not Texture2D.
+       * Keep NULL-desc inference deliberately narrow until those hardware
+       * descriptor shapes are implemented and independently decoded. */
+      if (!desc && (res->desc.DepthOrArraySize != 1 ||
+                    res->desc.MipLevels != 1 ||
+                    res->desc.SampleDesc.Count != 1)) {
+         mesa_loge("CreateShaderResourceView: implicit texture view shape "
+                   "unsupported (mips %u, layers %u, samples %u)",
+                   res->desc.MipLevels, res->desc.DepthOrArraySize,
+                   res->desc.SampleDesc.Count);
+         return;
+      }
+
       slot->kind = D12_DESC_SRV;
       slot->resource = res;
       slot->address = res->addr;
-      slot->format = desc->Format != DXGI_FORMAT_UNKNOWN ? desc->Format
-                                                         : res->desc.Format;
+      slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
+                        ? desc->Format
+                        : res->desc.Format;
       return;
    }
 
