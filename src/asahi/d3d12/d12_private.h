@@ -484,6 +484,28 @@ struct d12_root_layout {
    uint32_t flags;
 };
 
+static inline unsigned
+d12_root_param_range_base(const struct d12_root_layout *layout,
+                          unsigned param_index)
+{
+   unsigned root_range = 0;
+   for (unsigned i = 0; i < param_index; i++) {
+      root_range += layout->params[i].type ==
+                       D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE
+                       ? layout->params[i].num_ranges
+                       : 1;
+   }
+   return root_range;
+}
+
+static inline unsigned
+d12_static_sampler_root_range(const struct d12_root_layout *layout,
+                              unsigned sampler_index)
+{
+   return d12_root_param_range_base(layout, layout->num_params) +
+          sampler_index;
+}
+
 struct d12_root_signature {
    ID3D12RootSignature iface; /* must be first */
    uint32_t refcount;

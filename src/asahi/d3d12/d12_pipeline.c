@@ -381,9 +381,10 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
       for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
          const D3D12_STATIC_SAMPLER_DESC1 *s =
             &rs->layout.static_samplers[i];
-         if (d12_binding_map_find(&rs->map, D12_RES_SAMPLER,
-                                  s->RegisterSpace,
-                                  s->ShaderRegister) == ~0u) {
+         if (d12_binding_map_find_root_range(
+                &rs->map,
+                d12_static_sampler_root_range(&rs->layout, i),
+                s->ShaderRegister) == ~0u) {
             free(rs->static_samplers);
             d12_root_layout_cleanup(&rs->layout);
             free(rs);
@@ -522,6 +523,21 @@ d12_container_stage(const void *data, size_t size_B,
           d12_dxbc_container_stage(data, size_B, stage);
 }
 
+static D3D12_SHADER_VISIBILITY
+d12_stage_visibility(mesa_shader_stage stage)
+{
+   switch (stage) {
+   case MESA_SHADER_VERTEX:    return D3D12_SHADER_VISIBILITY_VERTEX;
+   case MESA_SHADER_TESS_CTRL: return D3D12_SHADER_VISIBILITY_HULL;
+   case MESA_SHADER_TESS_EVAL: return D3D12_SHADER_VISIBILITY_DOMAIN;
+   case MESA_SHADER_GEOMETRY:  return D3D12_SHADER_VISIBILITY_GEOMETRY;
+   case MESA_SHADER_FRAGMENT:  return D3D12_SHADER_VISIBILITY_PIXEL;
+   case MESA_SHADER_TASK:      return D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+   case MESA_SHADER_MESH:      return D3D12_SHADER_VISIBILITY_MESH;
+   default:                    return D3D12_SHADER_VISIBILITY_ALL;
+   }
+}
+
 /* Application samplers remain in the USC sampler-state file. Count them
  * before agx_nir_lower_texture reserves hardware state 0 for texture Load
  * and rewrites D3D sampler S to hardware state S + 1. The compiler only
@@ -574,6 +590,13 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       return E_POINTER;
    if (!dxil || !dxil_size)
       return E_INVALIDARG;
+
+   struct d12_binding_map filtered_map;
+   if (map) {
+      filtered_map = *map;
+      filtered_map.visibility_filter = D3D12_SHADER_VISIBILITY_ALL;
+      map = &filtered_map;
+   }
 
    /* The container declares its stage; honour it or refuse. Forcing a
     * non-compute shader through this path compiles its store_output
@@ -785,6 +808,13 @@ static nir_shader *
 dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage)
 {
+   struct d12_binding_map filtered_map;
+   if (map) {
+      filtered_map = *map;
+      filtered_map.visibility_filter = d12_stage_visibility(stage);
+      map = &filtered_map;
+   }
+
    mesa_shader_stage declared;
    if (d12_container_stage(dxil, dxil_size, &declared) &&
        declared != stage) {

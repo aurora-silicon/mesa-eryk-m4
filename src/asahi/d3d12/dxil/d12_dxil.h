@@ -906,6 +906,10 @@ struct d12_binding_map {
        * shader array may not spill from one root range into the next.
        */
       uint32_t root_range;
+      /* ALL or the one graphics stage allowed to see this root-signature
+       * record. Disjoint stages may legally reuse the same class/space/reg
+       * and therefore need distinct runtime slots. */
+      uint32_t visibility;
       /* This entry names the lower bound of an unbounded descriptor range.
        * The slot contains a GPU pointer to descriptor-array element zero;
        * shader indexing happens in that array rather than across root slots.
@@ -915,6 +919,9 @@ struct d12_binding_map {
    unsigned count;
    unsigned resource_count;
    unsigned sampler_count;
+   /* UINT32_MAX for bind-time/root-range lookup, otherwise the stage whose
+    * shader is being translated. */
+   uint32_t visibility_filter;
 };
 
 /* Entry for a binding, or ~0u when the map does not name it. */
@@ -924,10 +931,39 @@ d12_binding_map_find_entry(const struct d12_binding_map *map, unsigned klass,
 {
    for (unsigned i = 0; i < map->count; i++) {
       if (map->entries[i].klass == klass && map->entries[i].space == space &&
-          map->entries[i].reg == reg)
+          map->entries[i].reg == reg &&
+          (map->visibility_filter == UINT32_MAX ||
+           map->entries[i].visibility == 0 ||
+           map->entries[i].visibility == map->visibility_filter))
          return i;
    }
    return ~0u;
+}
+
+/* Bind-time lookup is keyed by the root-signature record, not merely by
+ * register. That distinguishes legal VS/PS records which both name b0. */
+static inline unsigned
+d12_binding_map_find_root_range(const struct d12_binding_map *map,
+                                unsigned root_range, unsigned reg)
+{
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].root_range == root_range &&
+          map->entries[i].reg == reg)
+         return map->entries[i].slot;
+   }
+   return ~0u;
+}
+
+static inline bool
+d12_binding_map_root_range_unbounded(const struct d12_binding_map *map,
+                                     unsigned root_range, unsigned reg)
+{
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].root_range == root_range &&
+          map->entries[i].reg == reg)
+         return map->entries[i].unbounded;
+   }
+   return false;
 }
 
 /* Slot in the resource root table or sampler-state file. */
@@ -937,6 +973,16 @@ d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
 {
    unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
    return entry == ~0u ? ~0u : map->entries[entry].slot;
+}
+
+static inline unsigned
+d12_binding_map_find_visible(const struct d12_binding_map *map,
+                             unsigned klass, unsigned space, unsigned reg,
+                             uint32_t visibility)
+{
+   struct d12_binding_map filtered = *map;
+   filtered.visibility_filter = visibility;
+   return d12_binding_map_find(&filtered, klass, space, reg);
 }
 
 static inline unsigned
@@ -957,15 +1003,19 @@ d12_binding_map_unbounded(const struct d12_binding_map *map, unsigned klass,
 
 /* Append a binding with its root-signature range identity. */
 static inline unsigned
-d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
-                          unsigned space, unsigned reg,
-                          unsigned root_range)
+d12_binding_map_add_range_visible(struct d12_binding_map *map, unsigned klass,
+                                  unsigned space, unsigned reg,
+                                  unsigned root_range,
+                                  uint32_t visibility)
 {
-   unsigned existing = d12_binding_map_find_entry(map, klass, space, reg);
-   if (existing != ~0u) {
-      if (map->entries[existing].root_range != root_range)
-         map->entries[existing].root_range = ~0u;
-      return map->entries[existing].slot;
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].klass == klass && map->entries[i].space == space &&
+          map->entries[i].reg == reg &&
+          map->entries[i].visibility == visibility) {
+         if (map->entries[i].root_range != root_range)
+            map->entries[i].root_range = ~0u;
+         return map->entries[i].slot;
+      }
    }
 
    if (map->count >= D12_MAX_RESOURCE_BINDINGS)
@@ -979,8 +1029,18 @@ d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
    map->entries[entry].reg = reg;
    map->entries[entry].slot = slot;
    map->entries[entry].root_range = root_range;
+   map->entries[entry].visibility = visibility;
    map->entries[entry].unbounded = false;
    return slot;
+}
+
+static inline unsigned
+d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
+                          unsigned space, unsigned reg,
+                          unsigned root_range)
+{
+   return d12_binding_map_add_range_visible(
+      map, klass, space, reg, root_range, 0);
 }
 
 static inline unsigned
@@ -993,6 +1053,23 @@ d12_binding_map_add_unbounded(struct d12_binding_map *map, unsigned klass,
    unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
    if (entry != ~0u)
       map->entries[entry].unbounded = true;
+   return slot;
+}
+
+static inline unsigned
+d12_binding_map_add_unbounded_visible(
+   struct d12_binding_map *map, unsigned klass, unsigned space, unsigned reg,
+   unsigned root_range, uint32_t visibility)
+{
+   unsigned slot = d12_binding_map_add_range_visible(
+      map, klass, space, reg, root_range, visibility);
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].root_range == root_range &&
+          map->entries[i].reg == reg) {
+         map->entries[i].unbounded = true;
+         break;
+      }
+   }
    return slot;
 }
 

@@ -1456,16 +1456,28 @@ d12_list_push_samplers(struct d12_cmd_list *list,
    for (unsigned hw = 1; hw < count; hw++) {
       unsigned logical = hw - 1;
       const struct d12_descriptor *chosen = NULL;
+      bool visible_slot = false;
 
       if (rs) {
+         for (unsigned i = 0; i < rs->map.count; i++) {
+            if (rs->map.entries[i].klass == D12_RES_SAMPLER &&
+                rs->map.entries[i].slot == logical &&
+                (rs->map.entries[i].visibility ==
+                    D3D12_SHADER_VISIBILITY_ALL ||
+                 rs->map.entries[i].visibility == visibility)) {
+               visible_slot = true;
+               break;
+            }
+         }
+
          for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
             const D3D12_STATIC_SAMPLER_DESC1 *s =
                &rs->layout.static_samplers[i];
             if (!d12_sampler_visible(s->ShaderVisibility, visibility))
                continue;
-            if (d12_binding_map_find(&rs->map, D12_RES_SAMPLER,
-                                     s->RegisterSpace,
-                                     s->ShaderRegister) == logical) {
+            if (d12_binding_map_find_visible(
+                   &rs->map, D12_RES_SAMPLER, s->RegisterSpace,
+                   s->ShaderRegister, visibility) == logical) {
                chosen = &rs->static_samplers[i];
                break;
             }
@@ -1477,7 +1489,7 @@ d12_list_push_samplers(struct d12_cmd_list *list,
 
       if (chosen) {
          states[hw] = chosen->sampler;
-      } else if (validate) {
+      } else if (validate && visible_slot) {
          mesa_loge("binding validation: sampler s%u has no visible static "
                    "or dynamic descriptor for stage %u", logical,
                    (unsigned)visibility);
@@ -3534,8 +3546,10 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
       return;
    }
 
-   unsigned slot = d12_binding_map_find(&rs->map, d12_root_param_class(rp),
-                                        rp->space, rp->base_register);
+   unsigned root_range =
+      d12_root_param_range_base(&rs->layout, root_param_index);
+   unsigned slot = d12_binding_map_find_root_range(
+      &rs->map, root_range, rp->base_register);
    if (slot == ~0u) {
       mesa_loge("root parameter %u names register %u in space %u, which the "
                 "signature's binding map does not cover",
@@ -3615,8 +3629,11 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       compute ? list->compute_sampler_table : list->graphics_sampler_table;
 
    unsigned cursor = 0;
+   unsigned root_range_base =
+      d12_root_param_range_base(&rs->layout, root_param_index);
    for (unsigned r = 0; r < rp->num_ranges; r++) {
       const struct d12_root_range *range = &rp->ranges[r];
+      unsigned root_range = root_range_base + r;
 
       unsigned offset = range->offset_in_descriptors;
       if (offset == D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND)
@@ -3630,8 +3647,8 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       }
 
       if (range->num_descriptors == UINT32_MAX ||
-          d12_binding_map_unbounded(&rs->map, klass, range->space,
-                                    range->base_register)) {
+          d12_binding_map_root_range_unbounded(
+             &rs->map, root_range, range->base_register)) {
          if (klass == D12_RES_SAMPLER) {
             mesa_loge("heap-indexed sampler range unsupported");
             list->state = D12_LIST_ERROR;
@@ -3670,11 +3687,11 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             return;
          }
 
-         unsigned slot = d12_binding_map_find(
-            &rs->map, klass, range->space, range->base_register);
+         unsigned slot = d12_binding_map_find_root_range(
+            &rs->map, root_range, range->base_register);
          if (slot == ~0u ||
-             !d12_binding_map_unbounded(&rs->map, klass, range->space,
-                                        range->base_register)) {
+             !d12_binding_map_root_range_unbounded(
+                &rs->map, root_range, range->base_register)) {
             mesa_loge("heap-indexed descriptor range has no binding-map base");
             list->state = D12_LIST_ERROR;
             return;
@@ -3727,8 +3744,8 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       }
 
       for (unsigned i = 0; i < range->num_descriptors; i++) {
-         unsigned slot = d12_binding_map_find(&rs->map, klass, range->space,
-                                              range->base_register + i);
+         unsigned slot = d12_binding_map_find_root_range(
+            &rs->map, root_range, range->base_register + i);
          if (slot == ~0u) {
             mesa_loge("descriptor range reaches a register the signature's "
                       "binding map does not cover");
@@ -3826,8 +3843,10 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
    if (!total || !data)
       return;
 
-   unsigned slot = d12_binding_map_find(&rs->map, D12_RES_CBV, rp->space,
-                                        rp->base_register);
+   unsigned root_range =
+      d12_root_param_range_base(&rs->layout, root_param_index);
+   unsigned slot = d12_binding_map_find_root_range(
+      &rs->map, root_range, rp->base_register);
    if (slot == ~0u) {
       mesa_loge("root constants at register %u space %u are not in the "
                 "signature's binding map",

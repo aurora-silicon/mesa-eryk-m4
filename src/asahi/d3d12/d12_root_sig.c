@@ -1434,6 +1434,7 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
                           struct d12_binding_map *out)
 {
    memset(out, 0, sizeof(*out));
+   out->visibility_filter = UINT32_MAX;
    unsigned root_range = 0;
 
    for (uint32_t i = 0; i < layout->num_params; i++) {
@@ -1442,18 +1443,21 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
       switch (rp->type) {
       case D3D12_ROOT_PARAMETER_TYPE_CBV:
       case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-         d12_binding_map_add_range(out, D12_RES_CBV, rp->space,
-                                   rp->base_register, root_range++);
+         d12_binding_map_add_range_visible(
+            out, D12_RES_CBV, rp->space, rp->base_register, root_range++,
+            rp->visibility);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_SRV:
-         d12_binding_map_add_range(out, D12_RES_SRV, rp->space,
-                                   rp->base_register, root_range++);
+         d12_binding_map_add_range_visible(
+            out, D12_RES_SRV, rp->space, rp->base_register, root_range++,
+            rp->visibility);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_UAV:
-         d12_binding_map_add_range(out, D12_RES_UAV, rp->space,
-                                   rp->base_register, root_range++);
+         d12_binding_map_add_range_visible(
+            out, D12_RES_UAV, rp->space, rp->base_register, root_range++,
+            rp->visibility);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
@@ -1471,16 +1475,16 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
              * error that previously made these signatures unusable. */
             if (range->num_descriptors == UINT32_MAX ||
                 range->num_descriptors >= D12_MAX_RESOURCE_BINDINGS) {
-               d12_binding_map_add_unbounded(
+               d12_binding_map_add_unbounded_visible(
                   out, klass, range->space, range->base_register,
-                  this_range);
+                  this_range, rp->visibility);
                continue;
             }
 
             for (uint32_t d = 0; d < range->num_descriptors; d++) {
-               d12_binding_map_add_range(out, klass, range->space,
-                                         range->base_register + d,
-                                         this_range);
+               d12_binding_map_add_range_visible(
+                  out, klass, range->space, range->base_register + d,
+                  this_range, rp->visibility);
             }
          }
          break;
@@ -1495,7 +1499,8 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
     * namespace, so t0 and s0 may both be slot 0 as the API intends. */
    for (uint32_t i = 0; i < layout->num_static_samplers; i++) {
       const D3D12_STATIC_SAMPLER_DESC1 *s = &layout->static_samplers[i];
-      d12_binding_map_add_range(out, D12_RES_SAMPLER, s->RegisterSpace,
-                                s->ShaderRegister, root_range++);
+      d12_binding_map_add_range_visible(
+         out, D12_RES_SAMPLER, s->RegisterSpace, s->ShaderRegister,
+         root_range++, s->ShaderVisibility);
    }
 }
