@@ -71,6 +71,8 @@ enum d12_dxop {
    D12_DXOP_RAW_BUFFER_STORE = 140,
    D12_DXOP_ATOMIC_BINOP = 78,
    D12_DXOP_ATOMIC_CMPXCHG = 79,
+   D12_DXOP_EVAL_SAMPLE_INDEX = 88,
+   D12_DXOP_EVAL_CENTROID = 89,
    /* SM 6.6 replaced createHandle with a binding-descriptor form. It is by
     * far the most common resource intrinsic in modern DXIL.
     */
@@ -188,6 +190,8 @@ enum d12_dxop {
    D12_DXOP_CHECK_ACCESS_FULLY_MAPPED = 71,
    D12_DXOP_GET_DIMENSIONS = 72,
    D12_DXOP_TEXTURE_GATHER = 73,
+   D12_DXOP_TEXTURE2DMS_GET_SAMPLE_POSITION = 75,
+   D12_DXOP_RENDER_TARGET_GET_SAMPLE_COUNT = 77,
    D12_DXOP_DISCARD = 82,
    D12_DXOP_BARRIER = 80,
    D12_DXOP_SAMPLE_INDEX = 90,
@@ -1466,6 +1470,12 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return true;
       }
 
+      if (sem && !strcmp(sem, "SV_SampleIndex")) {
+         b->shader->info.fs.uses_sample_shading = true;
+         def_result(ctx, inst, nir_load_sample_id(b));
+         return true;
+      }
+
       /* Signature element -> IO slot. DXIL indexes signature elements;
        * map element N to a generic slot, consistently with outputs.
        *
@@ -1485,7 +1495,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           * not a raw load_input.
           */
          unsigned location = VARYING_SLOT_VAR0 + sig_id;
-         nir_def *bary = nir_load_barycentric_pixel(b, 32);
+         const unsigned mode = se ? se->interpolation : 0;
+         if (mode == 1) {
+            val = nir_load_input(
+               b, 1, bits, nir_imm_int(b, row), .base = (unsigned)sig_id,
+               .component = (unsigned)col, .dest_type = nir_type_uint | bits,
+               .io_semantics.location = location,
+               .io_semantics.num_slots = 1);
+            b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+            def_result(ctx, inst, val);
+            return true;
+         }
+         const enum glsl_interp_mode interp =
+            mode == 4 || mode == 5 || mode == 7
+               ? INTERP_MODE_NOPERSPECTIVE
+               : INTERP_MODE_SMOOTH;
+         if (mode == 6 || mode == 7)
+            b->shader->info.fs.uses_sample_shading = true;
+         nir_def *bary = mode == 3 || mode == 5
+                            ? nir_load_barycentric_centroid(
+                                 b, 32, .interp_mode = interp)
+                         : mode == 6 || mode == 7
+                            ? nir_load_barycentric_sample(
+                                 b, 32, .interp_mode = interp)
+                            : nir_load_barycentric_pixel(
+                                 b, 32, .interp_mode = interp);
 
          val = nir_load_interpolated_input(
             b, 1, bits, bary, nir_imm_int(b, row),
@@ -1537,6 +1571,42 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          b->shader->info.inputs_read |= BITFIELD64_BIT(sig_id);
       }
 
+      def_result(ctx, inst, val);
+      return true;
+   }
+
+   case D12_DXOP_EVAL_SAMPLE_INDEX:
+   case D12_DXOP_EVAL_CENTROID: {
+      /* evalSampleIndex(sigId, rowIndex, colIndex, sampleIndex) and
+       * evalCentroid(sigId, rowIndex, colIndex). */
+      NEED(opcode == D12_DXOP_EVAL_SAMPLE_INDEX ? 4 : 3);
+      uint64_t sig_id = 0, row = 0, col = 0;
+      if (!const_uint(ctx, p[0], &sig_id) ||
+          !const_uint(ctx, p[1], &row) ||
+          !const_uint(ctx, p[2], &col)) {
+         trans_fail(ctx, "dynamic evaluated-input location");
+         return false;
+      }
+
+      if (b->shader->info.stage != MESA_SHADER_FRAGMENT) {
+         trans_fail(ctx, "evaluated input outside a fragment shader");
+         return false;
+      }
+
+      unsigned bits = type_bit_size(ctx->mod, inst->result_type);
+      if (bits != 16 && bits != 32)
+         bits = 32;
+
+      nir_def *bary = opcode == D12_DXOP_EVAL_SAMPLE_INDEX
+                         ? nir_load_barycentric_at_sample(
+                              b, 32, nir_u2u32(b, get_def(ctx, p[3])))
+                         : nir_load_barycentric_centroid(b, 32);
+      const unsigned location = VARYING_SLOT_VAR0 + sig_id;
+      nir_def *val = nir_load_interpolated_input(
+         b, 1, bits, bary, nir_imm_int(b, row), .base = (unsigned)sig_id,
+         .component = (unsigned)col, .dest_type = nir_type_float | bits,
+         .io_semantics.location = location, .io_semantics.num_slots = 1);
+      b->shader->info.inputs_read |= BITFIELD64_BIT(location);
       def_result(ctx, inst, val);
       return true;
    }
@@ -3293,6 +3363,63 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    case D12_DXOP_SAMPLE_INDEX:
       def_result(ctx, inst, nir_load_sample_id(b));
       return true;
+
+   case D12_DXOP_RENDER_TARGET_GET_SAMPLE_COUNT:
+      def_result(ctx, inst,
+                 nir_ishl(b, nir_imm_int(b, 1),
+                          nir_u2u32(b, nir_load_samples_log2_agx(b))));
+      return true;
+
+   case D12_DXOP_TEXTURE2DMS_GET_SAMPLE_POSITION: {
+      NEED(2);
+      struct handle_ref h;
+      if (!handle_info(ctx, p[0], &h))
+         return false;
+      if (h.rooted_heap) {
+         trans_fail(ctx, "heap-indexed sample-position query unsupported");
+         return false;
+      }
+
+      nir_def *tex_handle = nir_bindless_image_agx(
+         b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_TEXTURES);
+      nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
+      query->op = nir_texop_texture_samples;
+      query->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      query->dest_type = nir_type_uint32;
+      query->src[0] =
+         nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+      nir_def_init(&query->instr, &query->def, 1, 32);
+      nir_builder_instr_insert(b, &query->instr);
+
+      nir_def *count = &query->def;
+      nir_def *index = get_def(ctx, p[1]);
+      nir_def *x = nir_imm_float(b, -0.125f);
+      nir_def *y = nir_imm_float(b, -0.375f);
+      x = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                    nir_imm_float(b, 0.375f), x);
+      y = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                    nir_imm_float(b, -0.125f), y);
+      x = nir_bcsel(b, nir_ieq_imm(b, index, 2),
+                    nir_imm_float(b, -0.375f), x);
+      y = nir_bcsel(b, nir_ieq_imm(b, index, 2),
+                    nir_imm_float(b, 0.125f), y);
+      x = nir_bcsel(b, nir_ieq_imm(b, index, 3),
+                    nir_imm_float(b, 0.125f), x);
+      y = nir_bcsel(b, nir_ieq_imm(b, index, 3),
+                    nir_imm_float(b, 0.375f), y);
+      nir_def *two = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                               nir_imm_float(b, -0.25f),
+                               nir_imm_float(b, 0.25f));
+      x = nir_bcsel(b, nir_ieq_imm(b, count, 2), two, x);
+      y = nir_bcsel(b, nir_ieq_imm(b, count, 2), two, y);
+      x = nir_bcsel(b, nir_ieq_imm(b, count, 1),
+                    nir_imm_float(b, 0.0f), x);
+      y = nir_bcsel(b, nir_ieq_imm(b, count, 1),
+                    nir_imm_float(b, 0.0f), y);
+      def_result(ctx, inst, nir_vec2(b, x, y));
+      return true;
+   }
 
    case D12_DXOP_COVERAGE:
       def_result(ctx, inst, nir_load_sample_mask_in(b));
@@ -5271,6 +5398,15 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       return true;
    }
 
+   /* D3D12 exposes no triangle-fan topology, so AGX's special first-fan
+    * coefficient layout is never selected. Flat interpolation can therefore
+    * use the ordinary provoking-vertex coefficient unconditionally. */
+   if (intr->intrinsic == nir_intrinsic_load_is_first_fan_agx) {
+      b->cursor = nir_before_instr(&intr->instr);
+      nir_def_replace(&intr->def, nir_imm_false(b));
+      return true;
+   }
+
    if (intr->intrinsic == nir_intrinsic_load_input_topology_poly) {
       b->cursor = nir_before_instr(&intr->instr);
       nir_def_replace(&intr->def, nir_imm_int(b, MESA_PRIM_TRIANGLES));
@@ -5299,7 +5435,8 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
     */
    if (intr->intrinsic == nir_intrinsic_load_api_sample_mask_agx) {
       b->cursor = nir_before_instr(&intr->instr);
-      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0xffff, 16));
+      const uint16_t sample_mask = data ? *(const uint16_t *)data : 0xffff;
+      nir_def_replace(&intr->def, nir_imm_intN_t(b, sample_mask, 16));
       return true;
    }
    if (intr->intrinsic == nir_intrinsic_load_shader_part_tests_zs_agx) {
@@ -5388,6 +5525,14 @@ d12_dxil_lower_root(nir_shader *nir)
 {
    return nir_shader_intrinsics_pass(nir, lower_root,
                                      nir_metadata_control_flow, NULL);
+}
+
+bool
+d12_dxil_lower_root_mask(nir_shader *nir, uint16_t sample_mask)
+{
+   return nir_shader_intrinsics_pass(nir, lower_root,
+                                     nir_metadata_control_flow,
+                                     &sample_mask);
 }
 
 

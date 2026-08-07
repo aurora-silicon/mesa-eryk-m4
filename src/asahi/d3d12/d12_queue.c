@@ -89,9 +89,19 @@ d12_queue_GetDevice(ID3D12CommandQueue *iface, REFIID riid, void **out)
 
 /*
  * Fill a drm_asahi_cmd_render for a clear-only render segment. Mirrors
- * hk_queue.c's asahi_fill_vdm_command for the color-only, single-sampled,
- * single-layer case.
+ * hk_queue.c's asahi_fill_vdm_command for the color-only, single-layer case.
  */
+static uint32_t
+d12_default_sample_positions(unsigned nr_samples)
+{
+   switch (nr_samples) {
+   case 1: return 0x88;
+   case 2: return 0x44cc;
+   case 4: return 0xeaa26e26;
+   default: UNREACHABLE("invalid D3D12 sample count");
+   }
+}
+
 static void
 d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
                     const struct d12_segment *seg,
@@ -171,14 +181,14 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
          c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
    }
 
-   /* Sample positions. Irrelevant to a clear-only pass, but rasterizing
-    * geometry with this left at zero hangs the GPU. 0x88 is the standard
-    * single-sample centre.
+   /* Standard D3D sample positions, in the same packed spelling Honeykrisp
+    * programs. Leaving this zero for a draw is a GPU-hang class bug.
     */
-   c->ppp_multisamplectl = 0x88;
+   unsigned samples = MAX2(seg->tib.nr_samples, 1);
+   c->ppp_multisamplectl = d12_default_sample_positions(samples);
 
    agx_tilebuffer_set_drm_cmd(c, &seg->tib);
-   c->samples = 1;
+   c->samples = samples;
    c->sample_size_B = seg->tib.sample_size_B;
    c->layers = 1;
 

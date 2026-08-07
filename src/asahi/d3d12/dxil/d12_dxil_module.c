@@ -987,6 +987,9 @@ parse_signature(struct d12_module *mod, uint64_t list_id,
             se->semantic_index = (uint32_t)v;
       }
 
+      if (md_const_uint(mod, elem->node.ops[5], &v))
+         se->interpolation = (uint32_t)v;
+
       if (md_const_uint(mod, elem->node.ops[7], &v))
          se->cols = (uint32_t)v;
       if (md_const_uint(mod, elem->node.ops[8], &v))

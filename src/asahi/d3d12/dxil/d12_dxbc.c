@@ -70,6 +70,7 @@ enum d12_dxbc_file {
    D12_DXBC_FILE_INPUT_PRIMITIVE_ID = 11,
    D12_DXBC_FILE_OUTPUT_DEPTH = 12,
    D12_DXBC_FILE_NULL = 13,
+   D12_DXBC_FILE_RASTERIZER = 14,
    /* Compute system values. These are not varyings and have no
     * declaration in the token stream -- the register file IS the
     * meaning. */
@@ -187,6 +188,10 @@ enum d12_dxbc_op {
    D12_DXBC_OP_USHR = 85,
    D12_DXBC_OP_UTOF = 86,
    D12_DXBC_OP_XOR = 87,
+   D12_DXBC_OP_SAMPLE_INFO = 111,
+   D12_DXBC_OP_SAMPLE_POS = 110,
+   D12_DXBC_OP_EVAL_SAMPLE_INDEX = 204,
+   D12_DXBC_OP_EVAL_CENTROID = 205,
    D12_DXBC_OP_CONTINUE = 7,
    D12_DXBC_OP_CONTINUEC = 8,
    D12_DXBC_OP_CUSTOMDATA = 53,
@@ -393,6 +398,7 @@ struct d12_dxbc_ctx {
    unsigned num_out_sig;
    struct d12_dxbc_sig_elem patch_sig[D12_DXBC_MAX_SIG];
    unsigned num_patch_sig;
+   uint8_t input_interp[D12_DXBC_MAX_SIG];
    enum d12_dxbc_hs_phase hs_phase;
    unsigned hs_input_control_points;
    bool hs_has_control_point_phase;
@@ -1004,6 +1010,10 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
                b, nir_ineg(b, nir_b2i32(b, nir_load_front_face(b, 1))), 4);
          if (!strcasecmp(e->name, "SV_PrimitiveID"))
             return nir_replicate(b, nir_load_primitive_id(b), 4);
+         if (!strcasecmp(e->name, "SV_SampleIndex")) {
+            b->shader->info.fs.uses_sample_shading = true;
+            return nir_replicate(b, nir_load_sample_id(b), 4);
+         }
       }
 
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
@@ -1016,8 +1026,34 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
           * consumes load_interpolated_input with a barycentric, not a
           * raw load_input. */
          unsigned loc = VARYING_SLOT_VAR0 + reg;
+         const unsigned mode = reg < D12_DXBC_MAX_SIG
+                                  ? ctx->input_interp[reg]
+                                  : 0;
+         if (mode == 1) {
+            v = nir_load_input(
+               b, 4, 32, nir_imm_int(b, 0), .base = reg,
+               .dest_type = nir_type_uint32,
+               .io_semantics.location = loc,
+               .io_semantics.num_slots = 1);
+            b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+            break;
+         }
+         const enum glsl_interp_mode interp =
+            mode == 4 || mode == 5 || mode == 7
+               ? INTERP_MODE_NOPERSPECTIVE
+               : INTERP_MODE_SMOOTH;
+         if (mode == 6 || mode == 7)
+            b->shader->info.fs.uses_sample_shading = true;
+         nir_def *bary = mode == 3 || mode == 5
+                            ? nir_load_barycentric_centroid(
+                                 b, 32, .interp_mode = interp)
+                         : mode == 6 || mode == 7
+                            ? nir_load_barycentric_sample(
+                                 b, 32, .interp_mode = interp)
+                            : nir_load_barycentric_pixel(
+                                 b, 32, .interp_mode = interp);
          v = nir_load_interpolated_input(
-            b, 4, 32, nir_load_barycentric_pixel(b, 32), nir_imm_int(b, 0),
+            b, 4, 32, bary, nir_imm_int(b, 0),
             .base = reg, .dest_type = nir_type_float32,
             .io_semantics.location = loc, .io_semantics.num_slots = 1);
          b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
@@ -1236,6 +1272,43 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    if (op->neg)
       v = nir_fneg(b, v);
 
+   return v;
+}
+
+static nir_def *
+read_interpolated_src(struct d12_dxbc_ctx *ctx,
+                      const struct d12_dxbc_operand *op, nir_def *bary)
+{
+   nir_builder *b = &ctx->b;
+   if (b->shader->info.stage != MESA_SHADER_FRAGMENT ||
+       op->file != D12_DXBC_FILE_INPUT || op->num_indices != 1 ||
+       op->index_is_relative[0]) {
+      fail(ctx, "invalid evaluated fragment input");
+      return nir_imm_zero(b, 4, 32);
+   }
+
+   const uint32_t reg = op->index[0];
+   const struct d12_dxbc_sig_elem *e =
+      find_sig(ctx->in_sig, ctx->num_in_sig, reg);
+   if (e && !strncasecmp(e->name, "SV_", 3)) {
+      fail(ctx, "cannot evaluate a fragment system value");
+      return nir_imm_zero(b, 4, 32);
+   }
+
+   const unsigned loc = VARYING_SLOT_VAR0 + reg;
+   nir_def *v = nir_load_interpolated_input(
+      b, 4, 32, bary, nir_imm_int(b, 0), .base = reg,
+      .dest_type = nir_type_float32, .io_semantics.location = loc,
+      .io_semantics.num_slots = 1);
+   b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
+
+   unsigned sw[4] = {op->swizzle[0], op->swizzle[1], op->swizzle[2],
+                     op->swizzle[3]};
+   v = nir_swizzle(b, v, sw, 4);
+   if (op->abs)
+      v = nir_fabs(b, v);
+   if (op->neg)
+      v = nir_fneg(b, v);
    return v;
 }
 
@@ -2278,14 +2351,27 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          ctx->tok += len;
          continue;
 
+      case D12_DXBC_OP_DCL_INPUT_PS:
+      case D12_DXBC_OP_DCL_INPUT_PS_SGV:
+      case D12_DXBC_OP_DCL_INPUT_PS_SIV: {
+         struct d12_dxbc_operand input;
+         unsigned used = decode_operand(ctx, args, avail, &input);
+         if (!used || input.file != D12_DXBC_FILE_INPUT ||
+             !input.num_indices || input.index_is_relative[0] ||
+             input.index[0] >= D12_DXBC_MAX_SIG) {
+            fail(ctx, "invalid pixel-shader input declaration");
+            return;
+         }
+         ctx->input_interp[input.index[0]] = (op_tok >> 11) & 0xf;
+         ctx->tok += len;
+         continue;
+      }
+
       case D12_DXBC_OP_DCL_GLOBAL_FLAGS:
       case D12_DXBC_OP_DCL_TEMPS:
       case D12_DXBC_OP_DCL_INPUT:
       case D12_DXBC_OP_DCL_INPUT_SGV:
       case D12_DXBC_OP_DCL_INPUT_SIV:
-      case D12_DXBC_OP_DCL_INPUT_PS:
-      case D12_DXBC_OP_DCL_INPUT_PS_SGV:
-      case D12_DXBC_OP_DCL_INPUT_PS_SIV:
       case D12_DXBC_OP_DCL_OUTPUT:
       case D12_DXBC_OP_DCL_OUTPUT_SIV:
       case D12_DXBC_OP_DCL_SAMPLER:
@@ -2584,6 +2670,19 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          nir_def *a = SRC(2), *c = SRC(3);
          write_dst(ctx, &o[0], nir_umul_high(b, a, c));
          write_dst(ctx, &o[1], nir_imul(b, a, c));
+         break;
+      }
+      case D12_DXBC_OP_EVAL_SAMPLE_INDEX: {
+         NEED(3);
+         nir_def *sample = nir_channel(b, SRC(2), 0);
+         nir_def *bary = nir_load_barycentric_at_sample(b, 32, sample);
+         DST(read_interpolated_src(ctx, &o[1], bary));
+         break;
+      }
+      case D12_DXBC_OP_EVAL_CENTROID: {
+         NEED(2);
+         nir_def *bary = nir_load_barycentric_centroid(b, 32);
+         DST(read_interpolated_src(ctx, &o[1], bary));
          break;
       }
       case D12_DXBC_OP_NOP:       break;
@@ -3217,6 +3316,89 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                               .atomic_op = nir_atomic_op_iadd);
          nir_def *result = consume ? nir_iadd_imm(b, previous, -1) : previous;
          DST(nir_replicate(b, result, 4));
+         break;
+      }
+
+      case D12_DXBC_OP_SAMPLE_INFO: {
+         /* sample_info_{float,uint} dst, rasterizer.  For the rasterizer
+          * pseudo-resource, x is the active render-target sample count and
+          * the source swizzle replicates it for GetRenderTargetSampleCount.
+          * The hardware publishes log2(samples), so recover 1/2/4 here. */
+         NEED(2);
+         if (o[1].file != D12_DXBC_FILE_RASTERIZER) {
+            fail(ctx, "sample_info on texture resource unsupported");
+            return;
+         }
+
+         nir_def *count = nir_ishl(
+            b, nir_imm_int(b, 1),
+            nir_u2u32(b, nir_load_samples_log2_agx(b)));
+         const bool return_uint = (op_tok >> 11) & 1;
+         nir_def *value = return_uint ? count : nir_u2f32(b, count);
+         DST(nir_replicate(b, value, 4));
+         break;
+      }
+
+      case D12_DXBC_OP_SAMPLE_POS: {
+         /* sample_pos dst.xy, Texture2DMS, sample_index. D3D12AGX exposes
+          * only the hardware's standard 1/2/4-sample pattern, whose packed
+          * 4x value is 0xeaa26e26 in render commands. Decode those nibbles
+          * to D3D's centre-relative coordinates. */
+         NEED(3);
+         if (o[1].file != D12_DXBC_FILE_RESOURCE) {
+            fail(ctx, "sample_pos on non-resource operand");
+            return;
+         }
+
+         unsigned tslot =
+            ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
+                                            o[1].index[0])
+                     : o[1].index[0];
+         if (tslot == ~0u) {
+            fail(ctx, "sample_pos resource is not in the root signature");
+            return;
+         }
+
+         nir_def *tex_handle = nir_bindless_image_agx(
+            b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_TEXTURES);
+         nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
+         query->op = nir_texop_texture_samples;
+         query->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         query->dest_type = nir_type_uint32;
+         query->src[0] =
+            nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+         nir_def_init(&query->instr, &query->def, 1, 32);
+         nir_builder_instr_insert(b, &query->instr);
+
+         nir_def *count = &query->def;
+         nir_def *index = nir_channel(b, SRC(2), 0);
+         nir_def *x = nir_imm_float(b, -0.125f);
+         nir_def *y = nir_imm_float(b, -0.375f);
+         x = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                       nir_imm_float(b, 0.375f), x);
+         y = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                       nir_imm_float(b, -0.125f), y);
+         x = nir_bcsel(b, nir_ieq_imm(b, index, 2),
+                       nir_imm_float(b, -0.375f), x);
+         y = nir_bcsel(b, nir_ieq_imm(b, index, 2),
+                       nir_imm_float(b, 0.125f), y);
+         x = nir_bcsel(b, nir_ieq_imm(b, index, 3),
+                       nir_imm_float(b, 0.125f), x);
+         y = nir_bcsel(b, nir_ieq_imm(b, index, 3),
+                       nir_imm_float(b, 0.375f), y);
+         nir_def *two_x = nir_bcsel(b, nir_ieq_imm(b, index, 1),
+                                    nir_imm_float(b, -0.25f),
+                                    nir_imm_float(b, 0.25f));
+         nir_def *two_y = two_x;
+         x = nir_bcsel(b, nir_ieq_imm(b, count, 2), two_x, x);
+         y = nir_bcsel(b, nir_ieq_imm(b, count, 2), two_y, y);
+         x = nir_bcsel(b, nir_ieq_imm(b, count, 1),
+                       nir_imm_float(b, 0.0f), x);
+         y = nir_bcsel(b, nir_ieq_imm(b, count, 1),
+                       nir_imm_float(b, 0.0f), y);
+         DST(nir_vec4(b, x, y, nir_imm_float(b, 0.0f),
+                      nir_imm_float(b, 0.0f)));
          break;
       }
 

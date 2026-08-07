@@ -805,7 +805,10 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
       struct agx_texture_packed desc;
 
       agx_pack(&desc, TEXTURE, cfg) {
-         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+         cfg.dimension = samples > 1
+                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                            : AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = agx_translate_layout(rt->layout.tiling);
          cfg.channels = ail_pixel_format[pf].channels;
          cfg.type = ail_pixel_format[pf].type;
@@ -820,6 +823,9 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
          cfg.first_level = 0;
          cfg.last_level = 0;
          cfg.unk_mipmapped = rt->layout.levels > 1;
+
+         if (samples > 1)
+            cfg.samples = agx_translate_sample_count(samples);
 
          if (rt->layout.tiling == AIL_TILING_LINEAR)
             cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
@@ -848,7 +854,10 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
        */
       struct agx_pbe_packed desc;
       agx_pack(&desc, PBE, cfg) {
-         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+         cfg.dimension = samples > 1
+                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                            : AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = agx_translate_layout(rt->layout.tiling);
          enum pipe_format pf = type_format != PIPE_FORMAT_NONE
                                   ? util_format_linear(type_format)
@@ -883,6 +892,8 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
          cfg.layers = 1;
          cfg.levels = rt->layout.levels;
          cfg.unk_mipmapped = rt->layout.levels > 1;
+         if (samples > 1)
+            cfg.samples = agx_translate_sample_count(samples);
          if (rt->layout.tiling == AIL_TILING_LINEAR)
             cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
          else
@@ -1052,12 +1063,23 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (pso) {
+      if (rtv && pso->tib.nr_samples !=
+                    MAX2(rtv->resource->layout.sample_count_sa, 1)) {
+         mesa_loge("render pass sample mismatch: PSO %u, RTV %u",
+                   pso->tib.nr_samples,
+                   MAX2(rtv->resource->layout.sample_count_sa, 1));
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
       seg->tib = pso->tib;
    } else {
       enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
          rtv ? view_pf : PIPE_FORMAT_NONE,
       };
-      seg->tib = agx_build_tilebuffer_layout(formats, rtv ? 1 : 0, 1, false);
+      unsigned samples =
+         rtv ? MAX2(rtv->resource->layout.sample_count_sa, 1) : 1;
+      seg->tib =
+         agx_build_tilebuffer_layout(formats, rtv ? 1 : 0, samples, false);
    }
 
    seg->scissor_base = d12_list_upload_zero(
@@ -1388,9 +1410,12 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT : layout->format;
       const struct util_format_description *fdesc =
          util_format_description(pf);
+      const unsigned samples = MAX2(layout->sample_count_sa, 1);
 
       agx_pack(&descs[i], TEXTURE, cfg) {
-         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.dimension = samples > 1
+                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                            : AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = agx_translate_layout(layout->tiling);
          cfg.channels = ail_pixel_format[pf].channels;
          cfg.type = ail_pixel_format[pf].type;
@@ -1407,6 +1432,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.first_level = 0;
          cfg.last_level = 0;
          cfg.unk_mipmapped = layout->levels > 1;
+         if (samples > 1)
+            cfg.samples = agx_translate_sample_count(samples);
 
          /* Depth and Stride share bit 110; the hardware reads one or the
           * other by layout. Depth carries minus(1), so a single-layer
@@ -4730,6 +4757,7 @@ struct d12_copy_surface {
    uint32_t stride_el;
    uint32_t tile_width_el;
    uint32_t tile_height_el;
+   uint8_t sample_count;
    bool tiled;
 };
 
@@ -4793,6 +4821,7 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
    const enum pipe_format format = layout->format;
    const uint32_t width_px = u_minify(layout->width_px, mip);
    const uint32_t height_px = u_minify(layout->height_px, mip);
+   const uint32_t samples = MAX2(layout->sample_count_sa, 1);
    const uint64_t offset_B = ail_get_layer_level_B(layout, layer, mip);
    const uint64_t size_B = ail_get_level_size_B(layout, mip);
    if (!bo || plane_base < bo->va->addr) {
@@ -4811,7 +4840,10 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
       .height_el = util_format_get_nblocksy(format, height_px),
       .block_width_px = util_format_get_blockwidth(format),
       .block_height_px = util_format_get_blockheight(format),
-      .blocksize_B = util_format_get_blocksize(format),
+      /* AIL tiles one logical pixel as a block containing all samples. Raw
+       * texture copies therefore copy the whole sample block together. */
+      .blocksize_B = util_format_get_blocksize(format) * samples,
+      .sample_count = samples,
       .tiled = layout->tiling != AIL_TILING_LINEAR,
    };
 
@@ -4892,6 +4924,7 @@ d12_copy_surface_from_footprint(
       .block_height_px = block_height,
       .blocksize_B = blocksize,
       .pitch_B = placed->Footprint.RowPitch,
+      .sample_count = 1,
    };
 
    return d12_copy_surface_check_storage(surface, name);
@@ -4968,6 +5001,13 @@ d12_copy_texture_region(struct d12_cmd_list *list,
       return;
    }
 
+   if (d.sample_count != s.sample_count) {
+      mesa_loge("CopyTextureRegion: source/destination sample counts are "
+                "%u/%u", s.sample_count, d.sample_count);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    const uint32_t src_left = src_box ? src_box->left : 0;
    const uint32_t src_top = src_box ? src_box->top : 0;
    const uint32_t src_right = src_box ? src_box->right : s.width_px;
@@ -5031,6 +5071,159 @@ d12_copy_texture_region(struct d12_cmd_list *list,
 
    d12_list_dispatch_precomp(list, LIBAGX_COPY_IMAGE, &args, sizeof(args),
                              agx_1d((uint64_t)width_el * height_el));
+}
+
+static void
+d12_resolve_average(struct d12_cmd_list *list, ID3D12Resource *dst,
+                    UINT dst_subresource, UINT dst_x, UINT dst_y,
+                    ID3D12Resource *src, UINT src_subresource,
+                    const D3D12_RECT *src_rect, DXGI_FORMAT format)
+{
+   struct d12_resource *dstr = d12_resource_from_iface(dst);
+   struct d12_resource *srcr = d12_resource_from_iface(src);
+   const unsigned dst_samples = MAX2(dstr->layout.sample_count_sa, 1);
+   const unsigned src_samples = MAX2(srcr->layout.sample_count_sa, 1);
+
+   const bool unorm8x4 = format == DXGI_FORMAT_R8G8B8A8_UNORM;
+   const bool float32x4 = format == DXGI_FORMAT_R32G32B32A32_FLOAT;
+   const unsigned pixel_B = unorm8x4 ? 4 : float32x4 ? 16 : 0;
+   if (dst_samples != 1 || (src_samples != 2 && src_samples != 4) ||
+       !pixel_B) {
+      mesa_loge("ResolveSubresource: unsupported format/sample shape "
+                "(format %u, %u -> %u samples)", (unsigned)format,
+                src_samples, dst_samples);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_copy_surface d, s;
+   if (!d12_copy_surface_from_texture(&d, dstr, dst_subresource,
+                                      "resolve destination") ||
+       !d12_copy_surface_from_texture(&s, srcr, src_subresource,
+                                      "resolve source") ||
+       d.blocksize_B != pixel_B ||
+       s.blocksize_B != pixel_B * src_samples || !s.tiled) {
+      mesa_loge("ResolveSubresource: incompatible source/destination");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const int64_t left = src_rect ? src_rect->left : 0;
+   const int64_t top = src_rect ? src_rect->top : 0;
+   const int64_t right = src_rect ? src_rect->right : s.width_px;
+   const int64_t bottom = src_rect ? src_rect->bottom : s.height_px;
+   if (left < 0 || top < 0 || right < left || bottom < top ||
+       right > s.width_px || bottom > s.height_px ||
+       (uint64_t)dst_x + (right - left) > d.width_px ||
+       (uint64_t)dst_y + (bottom - top) > d.height_px) {
+      mesa_loge("ResolveSubresource: resolve rectangle is out of bounds");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const unsigned width_px = right - left;
+   const unsigned height_px = bottom - top;
+   if (!width_px || !height_px)
+      return;
+
+   struct libagx_resolve_unorm8x4_args args = {
+      .dest = d.base,
+      .src = s.base,
+      .width_px = width_px,
+      .height_px = height_px,
+      .dest_x_px = dst_x,
+      .dest_y_px = dst_y,
+      .src_x_px = left,
+      .src_y_px = top,
+      .dest_pitch_B = d.pitch_B,
+      .dest_stride_el = d.stride_el,
+      .src_stride_el = s.stride_el,
+      .dest_tile_width_el = d.tile_width_el,
+      .dest_tile_height_el = d.tile_height_el,
+      .src_tile_width_el = s.tile_width_el,
+      .src_tile_height_el = s.tile_height_el,
+      .sample_count = src_samples,
+      .dest_tiled = d.tiled,
+      .src_tiled = s.tiled,
+   };
+
+   const enum libagx_program shader =
+      unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4 : LIBAGX_RESOLVE_FLOAT32X4;
+   d12_list_dispatch_precomp(list, shader, &args, sizeof(args),
+                             agx_1d((uint64_t)width_px * height_px));
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ResolveSubresource(ID3D12GraphicsCommandList6 *iface,
+                            ID3D12Resource *dst, UINT dst_subresource,
+                            ID3D12Resource *src, UINT src_subresource,
+                            DXGI_FORMAT format)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   if (list->state != D12_LIST_RECORDING || !dst || !src)
+      return;
+
+   d12_resolve_average(list, dst, dst_subresource, 0, 0, src,
+                       src_subresource, NULL, format);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ResolveSubresourceRegion(ID3D12GraphicsCommandList6 *iface,
+                                  ID3D12Resource *dst, UINT dst_subresource,
+                                  UINT dst_x, UINT dst_y, ID3D12Resource *src,
+                                  UINT src_subresource, D3D12_RECT *src_rect,
+                                  DXGI_FORMAT format,
+                                  D3D12_RESOLVE_MODE resolve_mode)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   if (list->state != D12_LIST_RECORDING || !dst || !src)
+      return;
+
+   if (resolve_mode == D3D12_RESOLVE_MODE_AVERAGE) {
+      d12_resolve_average(list, dst, dst_subresource, dst_x, dst_y, src,
+                          src_subresource, src_rect, format);
+      return;
+   }
+
+   if (resolve_mode == D3D12_RESOLVE_MODE_DECOMPRESS) {
+      D3D12_TEXTURE_COPY_LOCATION d = {
+         .pResource = dst,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = dst_subresource,
+      };
+      D3D12_TEXTURE_COPY_LOCATION s = {
+         .pResource = src,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = src_subresource,
+      };
+      D3D12_BOX box;
+      D3D12_BOX *box_ptr = NULL;
+      if (src_rect) {
+         if (src_rect->left < 0 || src_rect->top < 0 ||
+             src_rect->right < src_rect->left ||
+             src_rect->bottom < src_rect->top) {
+            mesa_loge("ResolveSubresourceRegion: invalid source rectangle");
+            list->state = D12_LIST_ERROR;
+            return;
+         }
+         box = (D3D12_BOX){
+            .left = src_rect->left,
+            .top = src_rect->top,
+            .front = 0,
+            .right = src_rect->right,
+            .bottom = src_rect->bottom,
+            .back = 1,
+         };
+         box_ptr = &box;
+      }
+
+      d12_copy_texture_region(list, &d, dst_x, dst_y, 0, &s, box_ptr);
+      return;
+   }
+
+   mesa_loge("ResolveSubresourceRegion: unsupported resolve mode %u",
+             (unsigned)resolve_mode);
+   list->state = D12_LIST_ERROR;
 }
 
 static void STDMETHODCALLTYPE
@@ -5159,9 +5352,11 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       }
 
       enum pipe_format format = d12_format_to_pipe(rtv->format);
+      const unsigned format_blocksize =
+         format != PIPE_FORMAT_NONE ? util_format_get_blocksize(format) : 0;
       if (format == PIPE_FORMAT_NONE ||
-          util_format_get_blocksize(format) != surface.blocksize_B ||
-          surface.blocksize_B > 16 || surface.block_width_px != 1 ||
+          format_blocksize * surface.sample_count != surface.blocksize_B ||
+          surface.blocksize_B > 64 || surface.block_width_px != 1 ||
           surface.block_height_px != 1) {
          mesa_loge("ClearRenderTargetView: partial clear format %u "
                    "unsupported", (unsigned)rtv->format);
@@ -5184,8 +5379,10 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
          memcpy(converted.f, color, sizeof(converted.f));
       }
 
-      uint8_t packed[16] = {0};
+      uint8_t packed[64] = {0};
       util_format_pack_rgba(format, packed, &converted, 1);
+      for (unsigned s = 1; s < surface.sample_count; ++s)
+         memcpy(packed + s * format_blocksize, packed, format_blocksize);
       uint64_t value = d12_list_upload(list, packed, surface.blocksize_B, 16);
       if (!value)
          return;
@@ -5744,6 +5941,8 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .CopyBufferRegion = d12_list_CopyBufferRegion,
    .CopyResource = d12_list_CopyResource,
    .CopyTextureRegion = d12_list_CopyTextureRegion,
+   .ResolveSubresource = d12_list_ResolveSubresource,
+   .ResolveSubresourceRegion = d12_list_ResolveSubresourceRegion,
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
    .OMSetStencilRef = d12_list_OMSetStencilRef,

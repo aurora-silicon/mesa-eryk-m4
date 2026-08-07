@@ -127,6 +127,83 @@ libagx_copy_image(global uint8_t *dest, global uint8_t *src,
       dest[dest_offset_B + b] = src[src_offset_B + b];
 }
 
+/*
+ * Resolve an unorm8x4 multisample surface into a single-sample surface.
+ * AIL tiles one logical pixel as a block containing every sample. Averaging
+ * bytes is format-order agnostic for the four 8-bit UNORM channel formats
+ * this entry point accepts on the CPU side.
+ */
+KERNEL(32)
+libagx_resolve_unorm8x4(global uint8_t *dest, global uint8_t *src,
+                        uint width_px, uint height_px,
+                        uint dest_x_px, uint dest_y_px,
+                        uint src_x_px, uint src_y_px,
+                        uint dest_pitch_B, uint dest_stride_el,
+                        uint src_stride_el,
+                        uint dest_tile_width_el, uint dest_tile_height_el,
+                        uint src_tile_width_el, uint src_tile_height_el,
+                        uint sample_count, uint dest_tiled, uint src_tiled)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, 4, dest_tiled);
+
+   for (uint b = 0; b < 4; ++b) {
+      uint sum = 0;
+      for (uint s = 0; s < sample_count; ++s) {
+         uint src_offset_B = libagx_copy_image_offset(
+            src_x_px + x, src_y_px + y, 0, src_stride_el,
+            src_tile_width_el, src_tile_height_el,
+            4 * sample_count, src_tiled);
+         sum += src[src_offset_B + s * 4 + b];
+      }
+
+      dest[dest_offset_B + b] = (sum + sample_count / 2) / sample_count;
+   }
+}
+
+/* Resolve the R32G32B32A32_FLOAT shape used by the render-target sample-count
+ * probes. Each AIL pixel block contains sample_count consecutive float4s. */
+KERNEL(32)
+libagx_resolve_float32x4(global float *dest, global float *src,
+                         uint width_px, uint height_px,
+                         uint dest_x_px, uint dest_y_px,
+                         uint src_x_px, uint src_y_px,
+                         uint dest_pitch_B, uint dest_stride_el,
+                         uint src_stride_el,
+                         uint dest_tile_width_el, uint dest_tile_height_el,
+                         uint src_tile_width_el, uint src_tile_height_el,
+                         uint sample_count, uint dest_tiled, uint src_tiled)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, 16, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      16 * sample_count, src_tiled);
+
+   for (uint c = 0; c < 4; ++c) {
+      float sum = 0.0f;
+      for (uint s = 0; s < sample_count; ++s)
+         sum += src[(src_offset_B + s * 16) / 4 + c];
+
+      dest[dest_offset_B / 4 + c] = sum / (float)sample_count;
+   }
+}
+
 KERNEL(32)
 libagx_fill_image(global uint8_t *dest, global uint8_t *value,
                   uint width_el, uint height_el,

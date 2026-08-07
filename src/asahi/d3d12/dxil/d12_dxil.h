@@ -460,6 +460,7 @@ struct d12_sig_element {
    uint32_t id;         /* what loadInput/storeOutput reference */
    const char *name;    /* semantic name */
    uint32_t semantic_index; /* SemanticIndex: TEXCOORD0 vs TEXCOORD1 */
+   uint32_t interpolation;
    uint32_t start_row;
    uint32_t cols;
 };
@@ -1115,6 +1116,7 @@ struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
  * after agx_preprocess_nir and before agx_compile_shader_nir.
  */
 bool d12_dxil_lower_root(struct nir_shader *nir);
+bool d12_dxil_lower_root_mask(struct nir_shader *nir, uint16_t sample_mask);
 
 /* Vertex-shader sysvals for the SOFTWARE vertex shader -- the compute
  * program that runs when a geometry or tessellation shader follows it.

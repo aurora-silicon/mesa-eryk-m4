@@ -997,10 +997,41 @@ resolve_input_layout(struct d12_pipeline_state *pso,
 }
 
 static bool
+d12_lower_coverage_to_epilog_intr(nir_builder *b,
+                                  nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   if (sem.location != FRAG_RESULT_SAMPLE_MASK)
+      return false;
+
+   /* The split fragment path writes colour in a linked epilog.  A hardware
+    * sample-mask instruction in the API part does not constrain that later
+    * tilebuffer store, so pass SV_Coverage through the established epilog ABI
+    * as its explicit write-sample mask instead. */
+   b->cursor = nir_instr_remove(&intr->instr);
+   nir_export_agx(b, nir_u2u16(b, intr->src[0].ssa),
+                  .base = AGX_ABI_FOUT_WRITE_SAMPLES);
+   *(bool *)data = true;
+   return true;
+}
+
+static bool
+d12_nir_lower_coverage_to_epilog(nir_shader *nir, bool *lowered)
+{
+   return nir_shader_intrinsics_pass(
+      nir, d12_lower_coverage_to_epilog_intr, nir_metadata_control_flow,
+      lowered);
+}
+
+static bool
 compile_gfx_stage(struct d12_device *device,
                   const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage,
                   struct agx_tilebuffer_layout *tib,
+                  uint16_t api_sample_mask,
                   struct agx_unlinked_uvs_layout *uvs,
                   const struct d12_vs_fetch *fetch,
                   uint64_t *outputs_written, bool *use_fs_epilog,
@@ -1042,9 +1073,28 @@ compile_gfx_stage(struct d12_device *device,
    if (outputs_written)
       *outputs_written = nir->info.outputs_written;
 
+   if (stage == MESA_SHADER_FRAGMENT && api_sample_mask != 0xff) {
+      /* Match Honeykrisp's FS prolog: the D3D12 PSO sample mask kills the
+       * samples it does not cover before the application shader runs. */
+      nir_builder b =
+         nir_builder_at(nir_before_impl(nir_shader_get_entrypoint(nir)));
+      nir_demote_samples(
+         &b, nir_imm_intN_t(&b, api_sample_mask ^ 0xff, 16));
+      nir->info.fs.uses_discard = true;
+   }
+
    bool split_fs = false;
    if (stage == MESA_SHADER_FRAGMENT && use_fs_epilog) {
-      split_fs = *use_fs_epilog &&
+      /* A shader-written coverage mask has to execute before tilebuffer
+       * stores.  A monolithic NIR shader may legally write SV_Target before
+       * SV_Coverage; lowering that literally would place sample_mask after
+       * store_local_pixel, which AGX explicitly forbids.  Honeykrisp's split
+       * path gives the required ordering: the API shader applies coverage and
+       * exports colour, then the epilog writes the tilebuffer. */
+      const bool writes_coverage =
+         nir->info.outputs_written &
+         BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK);
+      split_fs = (*use_fs_epilog || writes_coverage) &&
                  (nir->info.outputs_written &
                   BITFIELD64_RANGE(FRAG_RESULT_DATA0, 8));
       *use_fs_epilog = split_fs;
@@ -1052,7 +1102,7 @@ compile_gfx_stage(struct d12_device *device,
 
    NIR_PASS(_, nir, agx_nir_lower_texture);
    agx_preprocess_nir(nir);
-   NIR_PASS(_, nir, d12_dxil_lower_root);
+   NIR_PASS(_, nir, d12_dxil_lower_root_mask, api_sample_mask);
 
    if (stage == MESA_SHADER_FRAGMENT && split_fs) {
       /*
@@ -1065,6 +1115,10 @@ compile_gfx_stage(struct d12_device *device,
        * the established monolithic path remains byte-for-byte unchanged for
        * the overwhelmingly common no-blend case.
        */
+      bool coverage_to_epilog = false;
+      NIR_PASS(_, nir, d12_nir_lower_coverage_to_epilog,
+               &coverage_to_epilog);
+      fs_epilog_link->sample_mask_after_force_early |= coverage_to_epilog;
       NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
       NIR_PASS(_, nir, agx_nir_lower_fs_output_to_epilog, fs_epilog_link);
       NIR_PASS(_, nir, agx_nir_lower_sample_intrinsics, false);
@@ -1073,7 +1127,7 @@ compile_gfx_stage(struct d12_device *device,
       NIR_PASS(_, nir, agx_nir_lower_interpolation);
 
       /* The passes above may introduce driver-owned sysvals. */
-      NIR_PASS(_, nir, d12_dxil_lower_root);
+      NIR_PASS(_, nir, d12_dxil_lower_root_mask, api_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
    } else if (stage == MESA_SHADER_FRAGMENT) {
@@ -1088,12 +1142,14 @@ compile_gfx_stage(struct d12_device *device,
       NIR_PASS(_, nir, agx_nir_lower_discard_zs_emit);
       NIR_PASS(_, nir, agx_nir_lower_sample_intrinsics, false);
       NIR_PASS(_, nir, agx_nir_lower_sample_mask);
-      NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa, 1);
+      NIR_PASS(_, nir, agx_nir_lower_monolithic_msaa,
+               MAX2(tib->nr_samples, 1));
+      NIR_PASS(_, nir, agx_nir_lower_interpolation);
       /* The passes above can introduce driver-owned sysvals
        * (api_sample_mask, shader_part_tests_zs); rerun the lowering that
        * resolves them. No-op when none appeared.
        */
-      NIR_PASS(_, nir, d12_dxil_lower_root);
+      NIR_PASS(_, nir, d12_dxil_lower_root_mask, api_sample_mask);
       NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, nir, agx_nir_lower_texture);
    } else {
@@ -1757,6 +1813,7 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
                                size_t ps_size, enum pipe_format rt_format,
                                unsigned nr_rt,
                                const DXGI_FORMAT *rt_formats,
+                               unsigned nr_samples, UINT sample_mask,
                                const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                DXGI_FORMAT dsv_format,
                                const D3D12_RASTERIZER_DESC *rs_desc,
@@ -1776,8 +1833,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
     */
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
-      rt_format, nr_rt, rt_formats, ds_desc, dsv_format, rs_desc, blend_desc,
-      NULL, map, riid, out);
+      rt_format, nr_rt, rt_formats, nr_samples, sample_mask, ds_desc,
+      dsv_format, rs_desc, blend_desc, NULL, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -1980,6 +2037,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const void *ds_dxil, size_t ds_size,
                                    enum pipe_format rt_format, unsigned nr_rt,
                                    const DXGI_FORMAT *rt_formats,
+                                   unsigned nr_samples, UINT sample_mask,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
@@ -2006,6 +2064,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       rt_format = PIPE_FORMAT_NONE;
       nr_rt = 0;
       rt_formats = NULL;
+      nr_samples = 1;
+   }
+
+   if (nr_samples != 1 && nr_samples != 2 && nr_samples != 4) {
+      free(pso);
+      return E_INVALIDARG;
    }
 
    /* Depth/stencil state, resolved to hardware enums once here rather than
@@ -2060,7 +2124,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
    }
 
-   /* Single sampled, with zero colour buffers for a depth-only pipeline.
+   /* The tilebuffer sample stride is part of the hardware ABI, so use the
+    * PSO's declared count and require the bound RTV to agree at draw time.
+    * Keep zero colour buffers for a depth-only pipeline.
     * Inventing RGBA8 here makes the fragment shader and render command carry
     * a colour tilebuffer that has no backing attachment; Honeykrisp keeps the
     * zero-colour layout and lets ZLS stand alone.
@@ -2069,7 +2135,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    struct agx_tilebuffer_layout tib =
       agx_build_tilebuffer_layout(formats,
                                   rt_format != PIPE_FORMAT_NONE ? 1 : 0,
-                                  1, false);
+                                  nr_samples, false);
    pso->tib = tib;
 
    const D3D12_RENDER_TARGET_BLEND_DESC default_rt_blend = {
@@ -2134,16 +2200,21 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    struct d12_vs_fetch fetch;
    resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
 
-   if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
-                          &pso->uvs, &fetch, NULL, NULL, NULL, &vs_part)) {
+   if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX,
+                          &tib, 0xffff, &pso->uvs, &fetch, NULL, NULL, NULL,
+                          &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
 
    uint64_t fs_outputs = 0;
+   const uint16_t framebuffer_mask =
+      BITFIELD_MASK(MIN2(nr_samples, 8));
+   uint16_t active_sample_mask =
+      (sample_mask | (uint16_t)~framebuffer_mask) & 0xff;
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
-                          &tib, NULL, NULL, &fs_outputs, &use_fs_epilog,
-                          &fs_epilog_link, &fs_part)) {
+                          &tib, active_sample_mask, NULL, NULL, &fs_outputs,
+                          &use_fs_epilog, &fs_epilog_link, &fs_part)) {
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;
@@ -2215,7 +2286,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             blend_desc && blend_desc->AlphaToCoverageEnable,
          .blend.logicop_enable = rt_blend->LogicOpEnable,
          .blend.logicop_func = logicop,
-         .nr_samples = 1,
+         .nr_samples = nr_samples,
       };
 
       memset(epilog_key.remap, -1, sizeof(epilog_key.remap));

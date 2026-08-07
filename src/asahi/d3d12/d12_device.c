@@ -589,6 +589,34 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS: {
+      D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS *levels = data;
+      if (data_size != sizeof(*levels))
+         return E_INVALIDARG;
+
+      levels->NumQualityLevels = 0;
+
+      /* A zero sample count is a malformed query.  One sample is the
+       * ordinary non-MSAA layout and therefore has one quality level for
+       * every DXGI format spelling, independent of image-format support.
+       * AGX and the resource path currently expose the hardware's 2x and
+       * 4x modes; larger powers of two remain conservatively unsupported.
+       */
+      if (!levels->SampleCount)
+         return E_FAIL;
+
+      if (levels->SampleCount == 1) {
+         levels->NumQualityLevels = 1;
+      } else if (levels->Format != DXGI_FORMAT_UNKNOWN &&
+                 (levels->SampleCount == 2 || levels->SampleCount == 4) &&
+                 (d12_format_to_pipe(levels->Format) != PIPE_FORMAT_NONE ||
+                  d12_format_depth_plane(levels->Format) != PIPE_FORMAT_NONE)) {
+         levels->NumQualityLevels = 1;
+      }
+
+      return S_OK;
+   }
+
    case D3D12_FEATURE_D3D12_OPTIONS5: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS5 *opts = data;
       if (data_size != sizeof(*opts))
@@ -840,8 +868,12 @@ struct d12_pso_stream {
    const D3D12_INPUT_LAYOUT_DESC *input_layout;
    const D3D12_DEPTH_STENCIL_DESC *ds_state;
    struct D3D12_RT_FORMAT_ARRAY rt_formats;
+   DXGI_SAMPLE_DESC sample_desc;
+   UINT sample_mask;
    DXGI_FORMAT dsv_format;
    bool have_rt_formats;
+   bool have_sample_desc;
+   bool have_sample_mask;
 };
 
 static bool
@@ -928,9 +960,13 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
          BODY(UINT);
+         memcpy(&out->sample_mask, body, sizeof(out->sample_mask));
+         out->have_sample_mask = true;
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_DESC:
          BODY(DXGI_SAMPLE_DESC);
+         memcpy(&out->sample_desc, body, sizeof(out->sample_desc));
+         out->have_sample_desc = true;
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
          BODY(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
@@ -1005,6 +1041,12 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
        !d12_format_is_depth_stencil(dsv_format))
       dsv_format = DXGI_FORMAT_UNKNOWN;
 
+   unsigned nr_samples = st.have_sample_desc ? st.sample_desc.Count : 1;
+   UINT sample_mask = st.have_sample_mask ? st.sample_mask : ~0u;
+   if ((nr_samples != 1 && nr_samples != 2 && nr_samples != 4) ||
+       (st.have_sample_desc && st.sample_desc.Quality != 0))
+      return E_INVALIDARG;
+
    /* A compute pipeline expressed as a stream. */
    if (st.cs && st.cs->pShaderBytecode) {
       return d12_pipeline_state_create_compute(
@@ -1024,7 +1066,9 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.as ? st.as->BytecodeLength : 0, st.ps->pShaderBytecode,
          st.ps->BytecodeLength, rt_format,
          st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
-         st.rt_formats.RTFormats, st.ds_state, dsv_format, st.raster,
+         st.rt_formats.RTFormats, nr_samples, sample_mask, st.ds_state,
+         dsv_format,
+         st.raster,
          st.blend, map, riid, out);
    }
 
@@ -1040,7 +1084,9 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.ds ? st.ds->pShaderBytecode : NULL,
          st.ds ? st.ds->BytecodeLength : 0, rt_format,
          st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
-         st.rt_formats.RTFormats, st.ds_state, dsv_format, st.raster,
+         st.rt_formats.RTFormats, nr_samples, sample_mask, st.ds_state,
+         dsv_format,
+         st.raster,
          st.blend, st.input_layout, map, riid, out);
    }
 
@@ -1084,6 +1130,10 @@ d12_device_CreateGraphicsPipelineState(
    }
 
    if (desc->NumRenderTargets > ARRAY_SIZE(desc->RTVFormats))
+      return E_INVALIDARG;
+
+   if ((desc->SampleDesc.Count != 1 && desc->SampleDesc.Count != 2 &&
+        desc->SampleDesc.Count != 4) || desc->SampleDesc.Quality != 0)
       return E_INVALIDARG;
 
    /* Logic operations use one common output-merger operation. They cannot be
@@ -1150,7 +1200,8 @@ d12_device_CreateGraphicsPipelineState(
       desc->GS.pShaderBytecode, desc->GS.BytecodeLength,
       desc->HS.pShaderBytecode, desc->HS.BytecodeLength,
       desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
-      desc->NumRenderTargets, desc->RTVFormats, &desc->DepthStencilState,
+      desc->NumRenderTargets, desc->RTVFormats, desc->SampleDesc.Count,
+      desc->SampleMask, &desc->DepthStencilState,
       dsv_format, &desc->RasterizerState, &desc->BlendState,
       &desc->InputLayout, map, riid, out);
    d12_root_layout_cleanup(&embedded_layout);
@@ -1641,17 +1692,9 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
       return;
    }
 
-   /*
-    * Multisampled resources can now be ALLOCATED, because the placement
-    * queries need that, but nothing may render into one yet: the render
-    * command hardcodes samples = 1 and the tilebuffer is built for a
-    * single sample, so a draw would write with the wrong sample stride.
-    * Refusing here keeps that impossible rather than merely unlikely.
-    */
-   if (res->desc.SampleDesc.Count > 1) {
-      mesa_loge("CreateRenderTargetView: %u samples unsupported (MSAA "
-                "resources can be allocated but not rendered to)",
-                res->desc.SampleDesc.Count);
+   const unsigned samples = res->desc.SampleDesc.Count;
+   if (samples != 1 && samples != 2 && samples != 4) {
+      mesa_loge("CreateRenderTargetView: %u samples unsupported", samples);
       slot->resource = NULL;
       return;
    }
@@ -1665,7 +1708,17 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    uint64_t slice_offset_B = 0;
 
    if (desc) {
-      if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY) {
+      if (samples > 1) {
+         /* The multisample descriptor has no mip field: MSAA resources are
+          * necessarily single-level. Keep arrays closed until their layer
+          * addressing is validated independently. */
+         if (desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2DMS) {
+            mesa_loge("CreateRenderTargetView: multisample view dimension %d "
+                      "unsupported", (int)desc->ViewDimension);
+            slot->resource = NULL;
+            return;
+         }
+      } else if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY) {
          uint32_t first = desc->Texture2DArray.FirstArraySlice;
          uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
 
@@ -1975,7 +2028,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
    /* A 2D texture view records the resource; the hardware descriptor is
     * packed at draw time, when the heap it lives in is built.
     */
-   if ((desc && desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D) ||
+   if ((desc && (desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2D ||
+                 desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2DMS)) ||
        (!desc &&
         res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)) {
       if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
@@ -1984,12 +2038,14 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          return;
       }
 
-      /* The implicit view dimension for arrays/MSAA is not Texture2D.
-       * Keep NULL-desc inference deliberately narrow until those hardware
-       * descriptor shapes are implemented and independently decoded. */
-      if (!desc && (res->desc.DepthOrArraySize != 1 ||
-                    res->desc.MipLevels != 1 ||
-                    res->desc.SampleDesc.Count != 1)) {
+      const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
+      const bool msaa = samples > 1;
+      if ((samples != 1 && samples != 2 && samples != 4) ||
+          res->desc.DepthOrArraySize != 1 || res->desc.MipLevels != 1 ||
+          (desc && msaa &&
+           desc->ViewDimension != D3D12_SRV_DIMENSION_TEXTURE2DMS) ||
+          (desc && !msaa &&
+           desc->ViewDimension != D3D12_SRV_DIMENSION_TEXTURE2D)) {
          mesa_loge("CreateShaderResourceView: implicit texture view shape "
                    "unsupported (mips %u, layers %u, samples %u)",
                    res->desc.MipLevels, res->desc.DepthOrArraySize,
@@ -1997,7 +2053,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          return;
       }
 
-      const unsigned plane = desc ? desc->Texture2D.PlaneSlice : 0;
+      const unsigned plane = desc && !msaa ? desc->Texture2D.PlaneSlice : 0;
       if (plane > 1 || (plane == 1 && !res->stencil_bo)) {
          mesa_loge("CreateShaderResourceView: texture plane %u unsupported",
                    plane);
