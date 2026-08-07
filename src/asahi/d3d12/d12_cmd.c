@@ -245,8 +245,10 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    /* Bindings do not survive a reset: a stale render target or depth buffer
     * here would let the next recording draw into last frame's texture.
     */
-   list->bound_rt = NULL;
-   list->bound_ds = NULL;
+   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
+   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
+   list->has_bound_rtv = false;
+   list->has_bound_dsv = false;
    list->stencil_ref = 0;
    list->compute_rs = NULL;
    list->graphics_rs = NULL;
@@ -602,7 +604,7 @@ static uint32_t
 d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
                      uint64_t rt_address,
                      enum pipe_format type_format, const float color[4],
-                     bool store,
+                     enum agx_bg_eot_op op,
                      const struct agx_tilebuffer_layout *tib,
                      struct agx_counts_packed *out_counts)
 {
@@ -617,8 +619,11 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
    struct agx_usc_builder b = agx_usc_builder(cpu, usc_size);
    struct agx_bg_eot_key key = {.tib = *tib};
    unsigned uniforms = 0, nr_tex = 0;
+   bool uses_txf = false;
 
-   if (!store) {
+   key.op[0] = op;
+
+   if (op == AGX_BG_CLEAR) {
       key.op[0] = AGX_BG_CLEAR;
 
       /*
@@ -674,17 +679,69 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
 
       agx_usc_uniform(&b, 4, 8, colour);
       uniforms = 4 + 8;
-   } else {
-      key.op[0] = AGX_EOT_STORE;
+   } else if (op == AGX_BG_LOAD) {
+      if (!rt) {
+         mesa_loge("background load requested without a render target");
+         list->state = D12_LIST_ERROR;
+         return 0;
+      }
 
-      /* PBE descriptor for the linear RGBA8 target, following the gallium
-       * driver's linear-2D packing (agx_state.c).
+      enum pipe_format pf = type_format != PIPE_FORMAT_NONE
+                               ? type_format
+                               : rt->layout.format;
+      const struct util_format_description *fdesc =
+         util_format_description(pf);
+      struct agx_texture_packed desc;
+
+      agx_pack(&desc, TEXTURE, cfg) {
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = agx_translate_layout(rt->layout.tiling);
+         cfg.channels = ail_pixel_format[pf].channels;
+         cfg.type = ail_pixel_format[pf].type;
+         cfg.srgb = util_format_is_srgb(pf);
+         cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+         cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+         cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+         cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+         cfg.address = rt_address;
+         cfg.width = rt->layout.width_px;
+         cfg.height = rt->layout.height_px;
+         cfg.first_level = 0;
+         cfg.last_level = 0;
+         cfg.unk_mipmapped = rt->layout.levels > 1;
+
+         if (rt->layout.tiling == AIL_TILING_LINEAR)
+            cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
+         else {
+            cfg.depth = 1;
+            cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+         }
+      }
+
+      uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+      if (!desc_ptr)
+         return 0;
+
+      agx_usc_pack(&b, TEXTURE, cfg) {
+         cfg.start = 0;
+         cfg.count = 1;
+         cfg.buffer = desc_ptr;
+      }
+      nr_tex = 1;
+      uses_txf = true;
+   } else if (op == AGX_EOT_STORE) {
+
+      /* EOT uses the view's channel interpretation but the resource's actual
+       * memory layout. This is the single-layer, level-0 subset of
+       * hk_image_view.c::pack_pbe.
        */
       struct agx_pbe_packed desc;
       agx_pack(&desc, PBE, cfg) {
          cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-         cfg.layout = agx_translate_layout(AIL_TILING_LINEAR);
-         enum pipe_format pf = rt->layout.format;
+         cfg.layout = agx_translate_layout(rt->layout.tiling);
+         enum pipe_format pf = type_format != PIPE_FORMAT_NONE
+                                  ? util_format_linear(type_format)
+                                  : rt->layout.format;
          const struct util_format_description *fdesc =
             util_format_description(pf);
 
@@ -713,8 +770,12 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
          cfg.height = rt->layout.height_px;
          cfg.level = 0;
          cfg.layers = 1;
-         cfg.levels = 1;
-         cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
+         cfg.levels = rt->layout.levels;
+         cfg.unk_mipmapped = rt->layout.levels > 1;
+         if (rt->layout.tiling == AIL_TILING_LINEAR)
+            cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
+         else
+            cfg.page_aligned_layers = rt->layout.page_aligned_layers;
       }
 
       uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
@@ -728,6 +789,9 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
       }
       nr_tex = 1;
    }
+
+   if (uses_txf)
+      agx_usc_push_packed(&b, SAMPLER, device->dev.txf_sampler);
 
    agx_usc_push_packed(&b, SHARED, &key.tib.usc);
 
@@ -763,10 +827,184 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
       cfg.preshader_register_count = shader->info.nr_preamble_gprs;
       cfg.texture_state_register_count = nr_tex;
       cfg.sampler_state_register_count =
-         agx_translate_sampler_state_count(0, false);
+         agx_translate_sampler_state_count(uses_txf ? 1 : 0, false);
    }
 
    return usc;
+}
+
+static bool
+d12_segment_matches_bindings(const struct d12_cmd_list *list,
+                             const struct d12_segment *seg)
+{
+   const struct d12_descriptor *rtv =
+      list->has_bound_rtv ? &list->bound_rtv : NULL;
+   const struct d12_descriptor *dsv =
+      list->has_bound_dsv ? &list->bound_dsv : NULL;
+
+   if (seg->rt != (rtv ? rtv->resource : NULL) ||
+       seg->ds != (dsv ? dsv->resource : NULL))
+      return false;
+
+   if (rtv && (seg->rt_address != rtv->address ||
+               seg->rt_view_format != d12_format_to_pipe(rtv->format)))
+      return false;
+
+   return true;
+}
+
+/*
+ * Open a render segment from authoritative OM descriptors. D3D12 does not
+ * require a clear before drawing, so AGX's main background program must LOAD
+ * the target in that case. Partial renders always use their own LOAD/STORE
+ * pair: reusing a CLEAR program after a tiler spill destroys earlier draws.
+ */
+static struct d12_segment *
+d12_list_begin_render(struct d12_cmd_list *list,
+                      const struct d12_descriptor *rtv,
+                      const struct d12_descriptor *dsv,
+                      struct d12_pipeline_state *pso,
+                      enum agx_bg_eot_op bg_op, const float color[4],
+                      bool process_empty_tiles)
+{
+   d12_list_close_cdm(list);
+
+   if (list->segment_count >= D12_MAX_SEGMENTS) {
+      mesa_loge("command list segment limit reached");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   if (rtv && (!rtv->resource || rtv->kind != D12_DESC_RTV)) {
+      mesa_loge("render pass received an invalid RTV descriptor");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   if (dsv && (!dsv->resource || dsv->kind != D12_DESC_DSV)) {
+      mesa_loge("render pass received an invalid DSV descriptor");
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
+
+   struct d12_segment *seg = &list->segments[list->segment_count];
+   memset(seg, 0, sizeof(*seg));
+   seg->type = D12_SEG_RENDER;
+   seg->process_empty_tiles = process_empty_tiles;
+
+   enum pipe_format view_pf = PIPE_FORMAT_NONE;
+   if (rtv) {
+      seg->rt = rtv->resource;
+      seg->rt_address = rtv->address ? rtv->address : rtv->resource->addr;
+      view_pf = d12_format_to_pipe(rtv->format);
+      if (view_pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(view_pf) ||
+          util_format_get_blocksize(view_pf) !=
+             util_format_get_blocksize(rtv->resource->layout.format)) {
+         mesa_loge("RTV format %u is incompatible with resource format %u",
+                   (unsigned)rtv->format,
+                   (unsigned)rtv->resource->layout.format);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+      seg->rt_view_format = view_pf;
+      seg->width_px = rtv->resource->layout.width_px;
+      seg->height_px = rtv->resource->layout.height_px;
+   }
+
+   if (dsv) {
+      seg->ds = dsv->resource;
+      if (!seg->width_px) {
+         seg->width_px = dsv->resource->layout.width_px;
+         seg->height_px = dsv->resource->layout.height_px;
+      } else if (dsv->resource->layout.width_px < seg->width_px ||
+                 dsv->resource->layout.height_px < seg->height_px) {
+         mesa_loge("depth/stencil target %ux%u is smaller than the render "
+                   "target %ux%u", dsv->resource->layout.width_px,
+                   dsv->resource->layout.height_px, seg->width_px,
+                   seg->height_px);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+   }
+
+   if (!seg->width_px) {
+      seg->width_px = list->has_viewport
+                         ? MAX2((unsigned)ceilf(list->viewport.Width), 1)
+                         : 1;
+      seg->height_px = list->has_viewport
+                          ? MAX2((unsigned)ceilf(list->viewport.Height), 1)
+                          : 1;
+   }
+
+   if (pso) {
+      seg->tib = pso->tib;
+   } else {
+      enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
+         rtv ? view_pf : PIPE_FORMAT_NONE,
+      };
+      seg->tib = agx_build_tilebuffer_layout(formats, rtv ? 1 : 0, 1, false);
+   }
+
+   seg->scissor_base = d12_list_upload_zero(
+      list, D12_MAX_SCISSORS * AGX_SCISSOR_LENGTH, 64);
+   if (!seg->scissor_base)
+      return NULL;
+
+   enum agx_bg_eot_op main_bg = rtv ? bg_op : AGX_BG_EOT_NONE;
+   enum agx_bg_eot_op main_eot = rtv ? AGX_EOT_STORE : AGX_BG_EOT_NONE;
+   enum agx_bg_eot_op partial_bg = rtv ? AGX_BG_LOAD : AGX_BG_EOT_NONE;
+   enum agx_bg_eot_op partial_eot = rtv ? AGX_EOT_STORE : AGX_BG_EOT_NONE;
+
+   seg->bg_usc = d12_build_bg_eot_usc(
+      list, seg->rt, seg->rt_address, view_pf, color, main_bg, &seg->tib,
+      &seg->bg_counts);
+   seg->eot_usc = d12_build_bg_eot_usc(
+      list, seg->rt, seg->rt_address, view_pf, NULL, main_eot, &seg->tib,
+      &seg->eot_counts);
+   seg->partial_bg_usc = d12_build_bg_eot_usc(
+      list, seg->rt, seg->rt_address, view_pf, NULL, partial_bg, &seg->tib,
+      &seg->partial_bg_counts);
+   seg->partial_eot_usc = d12_build_bg_eot_usc(
+      list, seg->rt, seg->rt_address, view_pf, NULL, partial_eot, &seg->tib,
+      &seg->partial_eot_counts);
+   if (!seg->bg_usc || !seg->eot_usc || !seg->partial_bg_usc ||
+       !seg->partial_eot_usc)
+      return NULL;
+
+   if (!d12_list_check_stream_space(list))
+      return NULL;
+
+   seg->stream_start = list->stream_cur - d12_list_stream_map(list);
+   agx_pack(list->stream_cur, VDM_BARRIER, cfg) {
+      cfg.usc_cache_inval = true;
+   }
+   list->stream_cur += AGX_VDM_BARRIER_LENGTH;
+
+   struct AGX_PPP_HEADER present = {
+      .w_clamp = true,
+      .occlusion_query_2 = true,
+      .output_unknown = true,
+      .varying_word_2 = true,
+      .viewport_count = 1,
+   };
+   size_t size = agx_ppp_update_size(&present);
+   uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+   uint8_t *cpu = d12_list_data_cpu(list, gpu);
+   if (!cpu)
+      return NULL;
+
+   struct agx_ppp_update ppp = agx_new_ppp_update(
+      (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
+   agx_ppp_push(&ppp, W_CLAMP, cfg)
+      cfg.w_clamp = 1e-10;
+   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+   agx_ppp_push(&ppp, VARYING_2, cfg);
+   agx_ppp_fini(&list->stream_cur, &ppp);
+
+   list->segment_count++;
+   list->render_open = true;
+   return seg;
 }
 
 
@@ -2258,24 +2496,25 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       return;
    }
 
+   if (list->render_open) {
+      struct d12_segment *open =
+         &list->segments[list->segment_count - 1];
+      if (!d12_segment_matches_bindings(list, open) ||
+          memcmp(&open->tib, &pso->tib, sizeof(open->tib)) != 0)
+         d12_list_close_cdm(list);
+   }
+
    if (!list->render_open) {
-      mesa_loge("Draw outside a render pass (clear a render target first)");
-      list->state = D12_LIST_ERROR;
-      return;
+      const struct d12_descriptor *rtv =
+         list->has_bound_rtv ? &list->bound_rtv : NULL;
+      const struct d12_descriptor *dsv =
+         list->has_bound_dsv ? &list->bound_dsv : NULL;
+      if (!d12_list_begin_render(list, rtv, dsv, pso, AGX_BG_LOAD, NULL,
+                                 false))
+         return;
    }
 
    struct d12_segment *seg = &list->segments[list->segment_count - 1];
-
-   /* A pass is opened by ClearRenderTargetView against a specific target.
-    * If the application then bound a different one, drawing here would put
-    * pixels in the wrong texture and report success -- fail instead.
-    */
-   if (list->bound_rt && seg->rt && list->bound_rt != seg->rt) {
-      mesa_loge("Draw: OMSetRenderTargets bound a different target than the "
-                "open render pass; refusing to draw into the wrong texture");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
 
    /* Root table, exactly as the dispatch path builds it -- from the
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
@@ -3318,8 +3557,10 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    memset(&list->scissor, 0, sizeof(list->scissor));
    list->has_viewport = false;
    list->has_scissor = false;
-   list->bound_rt = NULL;
-   list->bound_ds = NULL;
+   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
+   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
+   list->has_bound_rtv = false;
+   list->has_bound_dsv = false;
    list->stencil_ref = 0;
 }
 
@@ -3711,7 +3952,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       return;
 
    struct d12_rtv *rtv = (struct d12_rtv *)rtv_handle.ptr;
-   if (!rtv || !rtv->resource) {
+   if (!rtv || !rtv->resource || rtv->kind != D12_DESC_RTV) {
       mesa_loge("ClearRenderTargetView: invalid RTV handle");
       list->state = D12_LIST_ERROR;
       return;
@@ -3723,99 +3964,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   struct d12_resource *rt = rtv->resource;
-
-   d12_list_close_cdm(list);
-   if (list->segment_count >= D12_MAX_SEGMENTS) {
-      mesa_loge("command list segment limit reached");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   struct d12_segment *seg = &list->segments[list->segment_count];
-   memset(seg, 0, sizeof(*seg));
-   seg->type = D12_SEG_RENDER;
-   seg->width_px = rt->layout.width_px;
-   seg->height_px = rt->layout.height_px;
-   seg->rt = rt;
-   /* The VIEW's address, not the resource's: an array RTV points at a slice. */
-   seg->rt_address = rtv->address ? rtv->address : rt->addr;
-
-   enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {rt->layout.format};
-   seg->tib = agx_build_tilebuffer_layout(formats, 1, 1, false);
-
-   /* Reserve the pass's scissor array up front: entries have to be
-    * contiguous and indexable, and draws fill them in as they come.
-    */
-   seg->scissor_base = d12_list_upload_zero(
-      list, D12_MAX_SCISSORS * AGX_SCISSOR_LENGTH, 64);
-   if (!seg->scissor_base)
-      return;
-
-   seg->bg_usc =
-      d12_build_bg_eot_usc(list, rt, seg->rt_address,
-                           d12_format_to_pipe(rtv->format), color,
-                           false, &seg->tib,
-                           &seg->bg_counts);
-   seg->eot_usc =
-      d12_build_bg_eot_usc(list, rt, seg->rt_address, PIPE_FORMAT_NONE, NULL,
-                           true, &seg->tib,
-                           &seg->eot_counts);
-   if (!seg->bg_usc || !seg->eot_usc)
-      return; /* error state already set */
-
-   /* The VDM stream: cache-invalidate barrier, then terminate. No geometry
-    * — the clear happens because PROCESS_EMPTY_TILES makes every tile run
-    * background (clear) + end-of-tile (store). Deliberately omits hk's PPP
-    * prologue: with zero draws there is no rasterizer state to configure.
-    * If hardware disagrees, this is the first place to revisit.
-    */
-   if (!d12_list_check_stream_space(list))
-      return;
-
-   seg->stream_start = list->stream_cur - d12_list_stream_map(list);
-
-   agx_pack(list->stream_cur, VDM_BARRIER, cfg) {
-      cfg.usc_cache_inval = true;
-   }
-   list->stream_cur += AGX_VDM_BARRIER_LENGTH;
-
-   /* PPP prologue. A clear-only pass runs without it, but a pass that
-    * carries geometry does not: this is the per-control-stream state
-    * hk_cs_init_graphics establishes before any draw.
-    */
-   {
-      struct AGX_PPP_HEADER present = {
-         .w_clamp = true,
-         .occlusion_query_2 = true,
-         .output_unknown = true,
-         .varying_word_2 = true,
-         .viewport_count = 1,
-      };
-
-      size_t size = agx_ppp_update_size(&present);
-      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
-      uint8_t *cpu = d12_list_data_cpu(list, gpu);
-      if (!cpu)
-         return;
-
-      struct agx_ppp_update ppp = agx_new_ppp_update(
-         (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
-
-      agx_ppp_push(&ppp, W_CLAMP, cfg)
-         cfg.w_clamp = 1e-10;
-      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
-      agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
-      agx_ppp_push(&ppp, VARYING_2, cfg);
-
-      agx_ppp_fini(&list->stream_cur, &ppp);
-   }
-
-   /* The pass stays OPEN so draws can append to this VDM stream; it is
-    * terminated at Close or when another segment type begins.
-    */
-   list->segment_count++;
-   list->render_open = true;
+   d12_list_begin_render(list, rtv, NULL, NULL, AGX_BG_CLEAR, color, true);
 }
 
 /*
@@ -3903,24 +4052,6 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
       return;
    }
    /*
-    * This copy walks rows with a plain stride, which is only where a
-    * pixel lives in a LINEAR image. In a twiddled one the address is an
-    * interleave of the x and y bits, so the arithmetic below would read
-    * and write the wrong bytes -- and ail_get_linear_stride_B asserts
-    * rather than let it, which aborted the process.
-    *
-    * Refuse instead. Twiddled copies need either ail's own addressing or
-    * a detiling compute pass; until one exists this is a clean failure,
-    * not a crash that takes the caller's whole test run with it.
-    */
-   if (tex->layout.tiling != AIL_TILING_LINEAR) {
-      mesa_loge("CopyTextureRegion: texture is twiddled, not linear; "
-                "tiled texture<->buffer copies are not implemented");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
-   /*
     * The subresource index selects WHICH mip and array slice this copy
     * touches. Ignoring it silently addressed slice 0 every time, so an
     * array texture read back correct data for slice 0 and slice 0's data
@@ -3956,7 +4087,6 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
    const unsigned buf_stride = fp->Footprint.RowPitch;
    const uint64_t row_bytes = (uint64_t)width * bpp;
 
@@ -3964,12 +4094,77 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
    uint64_t tex_base = tex->addr + layer_offset_B;
    uint64_t buf_base = buf->addr + fp->Offset;
 
+   unsigned tex_x = tex_to_buf ? x0 : dst_x;
+   unsigned tex_y = tex_to_buf ? y0 : dst_y;
+   unsigned buf_x = tex_to_buf ? dst_x : x0;
+   unsigned buf_y = tex_to_buf ? dst_y : y0;
+
+   if (tex_x + width > tex->layout.width_px ||
+       tex_y + height > tex->layout.height_px) {
+      mesa_loge("CopyTextureRegion: texture rectangle exceeds the resource");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t buf_need = (uint64_t)(buf_y + height - 1) * buf_stride +
+                       (uint64_t)(buf_x + width) * bpp;
+   if (fp->Offset + buf_need > buf->bo->size) {
+      mesa_loge("CopyTextureRegion: buffer rectangle exceeds the resource");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (tex->layout.tiling != AIL_TILING_LINEAR) {
+      if (!tex_to_buf || tex->layout.compressed ||
+          !ail_is_level_twiddled_uncompressed(&tex->layout, 0)) {
+         mesa_loge("CopyTextureRegion: tiled buffer-to-texture or compressed "
+                   "copies are not implemented");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const unsigned layout_bpp =
+         util_format_get_blocksize(tex->layout.format);
+      if (layout_bpp != bpp) {
+         mesa_loge("CopyTextureRegion: view/resource block-size mismatch");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      if (layer_offset_B + tex->layout.layer_stride_B > tex->bo->size) {
+         mesa_loge("CopyTextureRegion: tiled layer exceeds the resource");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      struct ail_tile tile = tex->layout.tilesize_el[0];
+      struct libagx_detile_args args = {
+         .dest = buf_base + (uint64_t)buf_y * buf_stride +
+                 (uint64_t)buf_x * bpp,
+         .src = tex_base,
+         .dest_pitch_B = buf_stride,
+         .width_el = width,
+         .height_el = height,
+         .src_x_el = tex_x,
+         .src_y_el = tex_y,
+         .stride_el = tex->layout.stride_el[0],
+         .tile_width_el = tile.width_el,
+         .tile_height_el = tile.height_el,
+         .blocksize_B = bpp,
+      };
+
+      d12_list_dispatch_precomp(list, LIBAGX_DETILE, &args, sizeof(args),
+                                agx_1d((uint64_t)width * height));
+      return;
+   }
+
+   const unsigned tex_stride = ail_get_linear_stride_B(&tex->layout, 0);
+
    /* Bounds: refuse rather than scribble outside either allocation. */
    uint64_t tex_need = layer_offset_B +
-                       (uint64_t)(y0 + height - 1) * tex_stride +
-                       (uint64_t)(x0 + width) * bpp;
-   uint64_t buf_need = (uint64_t)(height - 1) * buf_stride + row_bytes;
-   if (tex_need > tex->bo->size || fp->Offset + buf_need > buf->bo->size) {
+                       (uint64_t)(tex_y + height - 1) * tex_stride +
+                       (uint64_t)(tex_x + width) * bpp;
+   if (tex_need > tex->bo->size) {
       mesa_loge("CopyTextureRegion: region exceeds a resource");
       list->state = D12_LIST_ERROR;
       return;
@@ -3977,9 +4172,10 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
 
    for (unsigned row = 0; row < height; row++) {
       uint64_t tex_row =
-         tex_base + (uint64_t)(y0 + row) * tex_stride + (uint64_t)x0 * bpp;
-      uint64_t buf_row = buf_base + (uint64_t)(dst_y + row) * buf_stride +
-                         (uint64_t)dst_x * bpp;
+         tex_base + (uint64_t)(tex_y + row) * tex_stride +
+         (uint64_t)tex_x * bpp;
+      uint64_t buf_row = buf_base + (uint64_t)(buf_y + row) * buf_stride +
+                         (uint64_t)buf_x * bpp;
 
       struct libagx_copy_uchar_args args = {
          .dest = tex_to_buf ? buf_row : tex_row,
@@ -4082,10 +4278,26 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
 
    struct d12_resource *ds = dsv->resource;
 
-   if (!d12_list_attach_ds(list, ds))
+   if (list->render_open) {
+      struct d12_segment *open =
+         &list->segments[list->segment_count - 1];
+      /* ZLS clear/load state is consumed at pass start. Mutating it after a
+       * draw would reorder Draw->Clear into Clear->Draw.
+       */
+      if (open->has_draws || (open->ds && open->ds != ds))
+         d12_list_close_cdm(list);
+   }
+
+   if (!list->render_open) {
+      if (!d12_list_begin_render(list, NULL, dsv, NULL, AGX_BG_EOT_NONE,
+                                 NULL, true))
+         return;
+   } else if (!d12_list_attach_ds(list, ds)) {
       return;
+   }
 
    struct d12_segment *seg = &list->segments[list->segment_count - 1];
+   seg->process_empty_tiles = true;
 
    /* The clear is not a draw and not a program: the hardware seeds every
     * tile's depth from ISP_BGOBJDEPTH, encoded in the depth plane's own
@@ -4128,36 +4340,48 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   /* Record the binding. A render pass is still opened by
-    * ClearRenderTargetView, so this cannot yet START a pass -- but it CAN
-    * stop a draw from silently landing in a different texture than the
-    * one the application bound, which is what happens if these disagree.
-    */
-   list->bound_rt = NULL;
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
+   list->has_bound_rtv = false;
    if (num_rtvs >= 1 && rtvs) {
       struct d12_rtv *rtv = (struct d12_rtv *)rtvs[0].ptr;
-      if (rtv)
-         list->bound_rt = rtv->resource;
+      if (rtv && rtv->resource && rtv->kind == D12_DESC_RTV) {
+         list->bound_rtv = *rtv;
+         list->has_bound_rtv = true;
+      } else if (rtv && rtv->resource) {
+         mesa_loge("OMSetRenderTargets: handle is not a render-target view");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
    }
 
    if (num_rtvs > 1)
       mesa_logw("OMSetRenderTargets: only one render target is supported");
 
-   /* Binding is the other way a pass acquires depth: an application may
-    * bind a depth buffer it filled earlier and never clear it.
-    */
-   list->bound_ds = NULL;
+   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
+   list->has_bound_dsv = false;
    if (dsv) {
       struct d12_rtv *view = (struct d12_rtv *)dsv->ptr;
       if (view && view->resource && view->kind == D12_DESC_DSV) {
-         list->bound_ds = view->resource;
-         d12_list_attach_ds(list, view->resource);
-      } else if (view) {
+         list->bound_dsv = *view;
+         list->has_bound_dsv = true;
+      } else if (view && view->resource) {
          mesa_loge("OMSetRenderTargets: DSV handle is not a depth/stencil "
                    "view");
          list->state = D12_LIST_ERROR;
+         return;
       }
    }
+
+   /* Ending here makes attachment changes authoritative even if no draw
+    * follows. The next draw opens a pass with the new descriptor snapshot.
+    */
+   if (list->render_open &&
+       !d12_segment_matches_bindings(
+          list, &list->segments[list->segment_count - 1]))
+      d12_list_close_cdm(list);
 }
 
 /* Same widening as the device: ID3D12GraphicsCommandList6 is a superset,

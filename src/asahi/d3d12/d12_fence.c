@@ -254,8 +254,12 @@ HRESULT
 d12_fence_create(struct d12_device *device, UINT64 initial_value,
                  D3D12_FENCE_FLAGS flags, REFIID riid, void **out)
 {
+   /* CreateFence is the odd D3D12 creation call whose NULL output contract is
+    * S_FALSE, even when riid itself is unsupported. QueryInterface retains
+    * the normal E_POINTER rule; this applies only to creation.
+    */
    if (!out)
-      return E_POINTER;
+      return S_FALSE;
 
    if (flags != D3D12_FENCE_FLAG_NONE) {
       mesa_loge("d12_fence_create: fence flags 0x%x not implemented",

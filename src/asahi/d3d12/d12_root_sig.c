@@ -592,6 +592,7 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
                           struct d12_binding_map *out)
 {
    memset(out, 0, sizeof(*out));
+   unsigned root_range = 0;
 
    for (uint32_t i = 0; i < layout->num_params; i++) {
       const struct d12_root_param *rp = &layout->params[i];
@@ -599,21 +600,25 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
       switch (rp->type) {
       case D3D12_ROOT_PARAMETER_TYPE_CBV:
       case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
-         d12_binding_map_add(out, D12_RES_CBV, rp->space, rp->base_register);
+         d12_binding_map_add_range(out, D12_RES_CBV, rp->space,
+                                   rp->base_register, root_range++);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_SRV:
-         d12_binding_map_add(out, D12_RES_SRV, rp->space, rp->base_register);
+         d12_binding_map_add_range(out, D12_RES_SRV, rp->space,
+                                   rp->base_register, root_range++);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_UAV:
-         d12_binding_map_add(out, D12_RES_UAV, rp->space, rp->base_register);
+         d12_binding_map_add_range(out, D12_RES_UAV, rp->space,
+                                   rp->base_register, root_range++);
          break;
 
       case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
          for (uint32_t r = 0; r < rp->num_ranges; r++) {
             const struct d12_root_range *range = &rp->ranges[r];
             unsigned klass = d12_descriptor_range_class(range->type);
+            unsigned this_range = root_range++;
             if (klass >= D12_RES_CLASS_COUNT)
                continue;
 
@@ -624,8 +629,9 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
                continue;
 
             for (uint32_t d = 0; d < range->num_descriptors; d++) {
-               d12_binding_map_add(out, klass, range->space,
-                                   range->base_register + d);
+               d12_binding_map_add_range(out, klass, range->space,
+                                         range->base_register + d,
+                                         this_range);
             }
          }
          break;

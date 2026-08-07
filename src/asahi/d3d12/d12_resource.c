@@ -579,6 +579,12 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
 
       if (clear_value)
          return E_INVALIDARG;
+
+      /* D3D12 oddly permits ALLOW_RENDER_TARGET on a buffer description,
+       * but a buffer can never be a depth/stencil resource.
+       */
+      if (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+         return E_INVALIDARG;
    }
 
    /*
@@ -752,6 +758,24 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
                            void **out)
 {
    if (!heap || !desc)
+      return E_INVALIDARG;
+
+   /* The ALLOW_ONLY_* heap flags are aliases for combinations of these
+    * three DENY flags. Validate the actual resource class before allocating
+    * anything: placed resources do not get to cross a heap's declared type
+    * boundary just because this UMA implementation uses the same BO kind
+    * underneath.
+    */
+   bool is_buffer = desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER;
+   bool is_rt_ds = !is_buffer &&
+      (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET |
+                      D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL));
+
+   if ((is_buffer && (heap->desc.Flags & D3D12_HEAP_FLAG_DENY_BUFFERS)) ||
+       (is_rt_ds &&
+        (heap->desc.Flags & D3D12_HEAP_FLAG_DENY_RT_DS_TEXTURES)) ||
+       (!is_buffer && !is_rt_ds &&
+        (heap->desc.Flags & D3D12_HEAP_FLAG_DENY_NON_RT_DS_TEXTURES)))
       return E_INVALIDARG;
 
    /* The same rules the committed path enforces. A placed resource is not

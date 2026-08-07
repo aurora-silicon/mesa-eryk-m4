@@ -175,7 +175,11 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
     */
    if (!d12_root_signature_parse(blob, blob_size, &rs->layout)) {
       free(rs);
-      return E_INVALIDARG;
+      /* A valid shader container may simply have no embedded root signature.
+       * Native D3D12 distinguishes that case from a malformed argument with
+       * E_FAIL (the conformance suite pins the otherwise surprising result).
+       */
+      return d12_dxbc_is_dxbc_shader(blob, blob_size) ? E_FAIL : E_INVALIDARG;
    }
 
    d12_root_layout_build_map(&rs->layout, &rs->map);
@@ -319,6 +323,14 @@ static const ID3D12PipelineStateVtbl d12_pso_vtbl = {
    .GetCachedBlob = d12_pso_GetCachedBlob,
 };
 
+static bool
+d12_container_stage(const void *data, size_t size_B,
+                    mesa_shader_stage *stage)
+{
+   return d12_dxil_container_stage(data, size_B, stage) ||
+          d12_dxbc_container_stage(data, size_B, stage);
+}
+
 /*
  * The real work: application DXIL -> our translator -> NIR -> AGX, then
  * upload. This is the campaign's shader path running inside the driver.
@@ -342,7 +354,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
     * (docs/findings.md).
     */
    mesa_shader_stage declared;
-   if (d12_dxil_container_stage(dxil, dxil_size, &declared) &&
+   if (d12_container_stage(dxil, dxil_size, &declared) &&
        declared != MESA_SHADER_COMPUTE) {
       mesa_loge("CreateComputePipelineState: bytecode declares a %s shader",
                 _mesa_shader_stage_to_string(declared));
@@ -530,6 +542,15 @@ static nir_shader *
 dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage)
 {
+   mesa_shader_stage declared;
+   if (d12_container_stage(dxil, dxil_size, &declared) &&
+       declared != stage) {
+      mesa_loge("graphics PSO: %s bytecode declares a %s shader",
+                _mesa_shader_stage_to_string(stage),
+                _mesa_shader_stage_to_string(declared));
+      return NULL;
+   }
+
    const uint8_t *bc;
    size_t bc_size;
    const char *why = NULL;
@@ -729,11 +750,26 @@ compile_gfx_stage(struct d12_device *device,
                   struct agx_tilebuffer_layout *tib,
                   struct agx_unlinked_uvs_layout *uvs,
                   const struct d12_vs_fetch *fetch,
+                  uint64_t *outputs_written,
                   struct agx_shader_part *out)
 {
-   nir_shader *nir = dxil_to_nir_stage(map, dxil, dxil_size, stage);
+   nir_shader *nir;
+   if (!dxil && stage == MESA_SHADER_FRAGMENT) {
+      /* D3D12 permits a null pixel shader, notably for depth-only draws.
+       * AGX still needs a fragment program bound, so compile the same empty
+       * NIR stage Honeykrisp uses for API-level null fragment shaders.
+       */
+      nir_builder b = nir_builder_init_simple_shader(
+         MESA_SHADER_FRAGMENT, &agx_nir_options, "d12 empty fragment shader");
+      nir = b.shader;
+   } else {
+      nir = dxil_to_nir_stage(map, dxil, dxil_size, stage);
+   }
    if (!nir)
       return false;
+
+   if (outputs_written)
+      *outputs_written = nir->info.outputs_written;
 
    NIR_PASS(_, nir, agx_nir_lower_texture);
    agx_preprocess_nir(nir);
@@ -1329,6 +1365,7 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
                                const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                DXGI_FORMAT dsv_format,
                                const D3D12_RASTERIZER_DESC *rs_desc,
+                               const D3D12_BLEND_DESC *blend_desc,
                                const struct d12_binding_map *map, REFIID riid,
                                void **out)
 {
@@ -1344,7 +1381,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
     */
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
-      rt_format, ds_desc, dsv_format, rs_desc, NULL, map, riid, out);
+      rt_format, ds_desc, dsv_format, rs_desc, blend_desc, NULL, map, riid,
+      out);
    if (FAILED(hr))
       return hr;
 
@@ -1549,13 +1587,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
+                                   const D3D12_BLEND_DESC *blend_desc,
                                    const D3D12_INPUT_LAYOUT_DESC *input_layout,
                                    const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
-   if (!vs_dxil || !vs_size || !ps_dxil || !ps_size)
+   if (!vs_dxil || !vs_size || (!ps_dxil != !ps_size))
       return E_INVALIDARG;
 
    struct d12_pipeline_state *pso = calloc(1, sizeof(*pso));
@@ -1619,27 +1658,46 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
    }
 
-   /* One render target, single sampled, in the format the pipeline
-    * actually declares rather than an assumed RGBA8.
+   /* Single sampled, with zero colour buffers for a depth-only pipeline.
+    * Inventing RGBA8 here makes the fragment shader and render command carry
+    * a colour tilebuffer that has no backing attachment; Honeykrisp keeps the
+    * zero-colour layout and lets ZLS stand alone.
     */
-   enum pipe_format formats[8] = {rt_format != PIPE_FORMAT_NONE
-                                     ? rt_format
-                                     : PIPE_FORMAT_R8G8B8A8_UNORM};
+   enum pipe_format formats[8] = {rt_format};
    struct agx_tilebuffer_layout tib =
-      agx_build_tilebuffer_layout(formats, 1, 1, false);
+      agx_build_tilebuffer_layout(formats,
+                                  rt_format != PIPE_FORMAT_NONE ? 1 : 0,
+                                  1, false);
+   pso->tib = tib;
 
    struct agx_shader_part vs_part, fs_part;
    struct d12_vs_fetch fetch;
    resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
 
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX, &tib,
-                          &pso->uvs, &fetch, &vs_part)) {
+                          &pso->uvs, &fetch, NULL, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
 
+   uint64_t fs_outputs = 0;
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
-                          &tib, NULL, NULL, &fs_part)) {
+                          &tib, NULL, NULL, &fs_outputs, &fs_part)) {
+      free(vs_part.binary);
+      free(pso);
+      return E_INVALIDARG;
+   }
+
+   /* D3D12 does not define blending for pure-integer render targets. The
+    * validation is conditional on the pixel shader actually exporting that
+    * target: an enabled blend state is inert, and legal, when no colour is
+    * written. Capture outputs_written before tilebuffer lowering consumes the
+    * fragment stores, then reject only the active invalid combination.
+    */
+   if (blend_desc && blend_desc->RenderTarget[0].BlendEnable &&
+       util_format_is_pure_integer(rt_format) &&
+       (fs_outputs & BITFIELD64_BIT(FRAG_RESULT_DATA0))) {
+      free(fs_part.binary);
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;

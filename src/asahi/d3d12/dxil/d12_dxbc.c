@@ -217,6 +217,10 @@ enum d12_dxbc_op {
    /* Same shape, SRV rather than UAV: dest, index, offset, resource. */
    D12_DXBC_OP_LD_STRUCTURED_SRV = 167,
    D12_DXBC_OP_STORE_STRUCTURED = 168,
+   /* Non-returning UAV/TGSM atomic add. The public token enum places the
+    * atomic family at 169..181; opcode 173 is ATOMIC_IADD (SYNC is 190).
+    */
+   D12_DXBC_OP_ATOMIC_IADD = 173,
    /* Both write to file 30 with three operands. 164 takes an element
     * coordinate, 166 a byte offset -- typed versus raw. */
    D12_DXBC_OP_STORE_UAV_TYPED = 164,
@@ -312,6 +316,8 @@ struct d12_dxbc_ctx {
    uint32_t srv_stride[D12_DXBC_MAX_SIG];
    uint32_t uav_stride[D12_DXBC_MAX_SIG];
    uint8_t srv_dim[D12_DXBC_MAX_SIG];
+   uint8_t uav_dim[D12_DXBC_MAX_SIG];
+   bool uav_raw[D12_DXBC_MAX_SIG];
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -730,8 +736,10 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
                          ? d12_binding_map_find(ctx->map, D12_RES_CBV, 0,
                                                 op->index[0])
                          : op->index[0];
-      if (slot == ~0u)
-         slot = op->index[0];
+      if (slot == ~0u) {
+         fail(ctx, "constant buffer is not bound by the root signature");
+         return nir_imm_zero(b, 4, 32);
+      }
 
       nir_def *root = nir_load_root_agx(b);
       nir_def *base = nir_load_global(
@@ -810,8 +818,10 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
                                              uav ? D12_RES_UAV : D12_RES_SRV,
                                              0, reg)
                       : reg;
-   if (slot == ~0u)
-      slot = reg;
+   if (slot == ~0u) {
+      fail(ctx, "buffer is not bound by the root signature");
+      return nir_imm_int64(b, 0);
+   }
 
    nir_def *root = nir_load_root_agx(b);
    nir_def *base = nir_load_global(
@@ -1011,6 +1021,35 @@ d12_dxbc_is_dxbc_shader(const void *data, size_t size_B)
    return d12_dxbc_find_shader(data, size_B, &chunk, &chunk_size, NULL);
 }
 
+bool
+d12_dxbc_container_stage(const void *data, size_t size_B,
+                         mesa_shader_stage *stage)
+{
+   const uint8_t *chunk;
+   size_t chunk_size;
+   uint32_t version;
+
+   if (!stage ||
+       !d12_dxbc_find_shader(data, size_B, &chunk, &chunk_size, &version))
+      return false;
+
+   /* Microsoft D3D12TokenizedProgramFormat.hpp: the program type is bits
+    * 31:16 of the SHEX/SHDR version token. Keep the numeric ABI local so
+    * this C source does not depend on the Windows C++ header.
+    */
+   switch (version >> 16) {
+   case 0:  *stage = MESA_SHADER_FRAGMENT;  return true;
+   case 1:  *stage = MESA_SHADER_VERTEX;    return true;
+   case 2:  *stage = MESA_SHADER_GEOMETRY;  return true;
+   case 3:  *stage = MESA_SHADER_TESS_CTRL; return true;
+   case 4:  *stage = MESA_SHADER_TESS_EVAL; return true;
+   case 5:  *stage = MESA_SHADER_COMPUTE;   return true;
+   case 13: *stage = MESA_SHADER_MESH;      return true;
+   case 14: *stage = MESA_SHADER_TASK;      return true;
+   default: return false;
+   }
+}
+
 /*
  * Walk the token stream. Every instruction carries its own length, so an
  * opcode this front end does not implement can still be STEPPED OVER --
@@ -1096,8 +1135,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_INDEXABLE_TEMP:
       case D12_DXBC_OP_DCL_INDEX_RANGE:
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
-      case D12_DXBC_OP_DCL_UAV_TYPED:
-      case D12_DXBC_OP_DCL_UAV_RAW:
       case D12_DXBC_OP_DCL_TGSM_RAW:
       case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
       case D12_DXBC_OP_DCL_RESOURCE_RAW:
@@ -1134,6 +1171,25 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          continue;
       }
 
+      case D12_DXBC_OP_DCL_UAV_TYPED:
+      case D12_DXBC_OP_DCL_UAV_RAW: {
+         struct d12_dxbc_operand r;
+         unsigned n = decode_operand(ctx, args, avail, &r);
+         if (n && r.file == D12_DXBC_FILE_UAV &&
+             r.index[0] < D12_DXBC_MAX_SIG) {
+            if (opcode == D12_DXBC_OP_DCL_UAV_RAW) {
+               ctx->uav_dim[r.index[0]] = D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+               ctx->uav_raw[r.index[0]] = true;
+            } else {
+               ctx->uav_dim[r.index[0]] =
+                  (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
+                  D12_DXBC_RESOURCE_DIMENSION_SHIFT;
+            }
+         }
+         ctx->tok += len;
+         continue;
+      }
+
       case D12_DXBC_OP_DCL_UAV_STRUCTURED:
       case D12_DXBC_OP_DCL_RESOURCE_STRUCTURED: {
          /* operand(u#/t#) then the stride. Decode the operand to find
@@ -1145,6 +1201,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                ctx->uav_stride[r.index[0]] = args[n];
             else
                ctx->srv_stride[r.index[0]] = args[n];
+
+            if (opcode == D12_DXBC_OP_DCL_UAV_STRUCTURED)
+               ctx->uav_dim[r.index[0]] =
+                  D12_DXBC_RESOURCE_DIMENSION_BUFFER;
          }
          ctx->tok += len;
          continue;
@@ -1525,6 +1585,45 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
+      case D12_DXBC_OP_ATOMIC_IADD: {
+         NEED(3);
+
+         if (o[0].file != D12_DXBC_FILE_UAV ||
+             o[0].index[0] >= D12_DXBC_MAX_SIG) {
+            fail(ctx, "atomic_iadd destination is not a declared UAV");
+            return;
+         }
+
+         uint32_t reg = o[0].index[0];
+         if (ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
+            /* Texture UAV descriptors and addressing are not implemented;
+             * refusing the PSO is safer than treating uint2 coordinates as
+             * a linear buffer offset and atomically corrupting memory.
+             */
+            fail(ctx, "texture UAV atomic_iadd unsupported");
+            return;
+         }
+
+         nir_def *coord = SRC(1);
+         nir_def *index = coord;
+         nir_def *offset = nir_imm_int(b, 0);
+         unsigned stride = ctx->uav_stride[reg];
+
+         if (ctx->uav_raw[reg]) {
+            /* ByteAddressBuffer coordinates are already byte offsets. */
+            index = nir_imm_int(b, 0);
+            offset = coord;
+         } else if (stride) {
+            /* Structured coordinates carry element and member-byte offset. */
+            offset = nir_channel(b, coord, 1);
+         }
+
+         nir_def *addr = buffer_address(ctx, reg, true, index, offset, stride);
+         nir_global_atomic(b, 32, addr, nir_channel(b, SRC(2), 0),
+                           .atomic_op = nir_atomic_op_iadd);
+         break;
+      }
+
       /*
        * Geometry shader emission. The outputs a shader has stored so far
        * ARE the vertex, so emitting is a boundary rather than a value --
@@ -1602,14 +1701,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned tslot = ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV,
                                                           0, tex_reg)
                                    : tex_reg;
-         if (tslot == ~0u)
-            tslot = tex_reg;
+         if (tslot == ~0u) {
+            fail(ctx, "texture is not bound by the root signature");
+            return;
+         }
          unsigned sslot = ctx->map ? d12_binding_map_find(ctx->map,
                                                           D12_RES_SAMPLER, 0,
                                                           smp_reg)
                                    : smp_reg;
-         if (sslot == ~0u)
-            sslot = smp_reg;
+         if (!is_ld && sslot == ~0u) {
+            fail(ctx, "sampler is not bound by the root signature");
+            return;
+         }
 
          nir_def *coord4 = SRC(1);
 

@@ -212,22 +212,17 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    c->bg.usc = seg->bg_usc | 4;
    c->eot.usc = seg->eot_usc | 4;
 
-   /* Partial-render programs can only run when the tiler spills mid-pass,
-    * which requires geometry; a clear-only pass has none. Point the partial
-    * slots at the main programs as placeholders. Real partial programs
-    * (LOAD-based) arrive with draws in G4.
-    */
-   c->partial_bg.usc = seg->bg_usc | 4;
-   c->partial_eot.usc = seg->eot_usc | 4;
+   c->partial_bg.usc = seg->partial_bg_usc | 4;
+   c->partial_eot.usc = seg->partial_eot_usc | 4;
 
    static_assert(sizeof(c->bg.rsrc_spec) == sizeof(seg->bg_counts),
                  "counts word must match rsrc_spec");
    memcpy(&c->bg.rsrc_spec, &seg->bg_counts, sizeof(seg->bg_counts));
    memcpy(&c->eot.rsrc_spec, &seg->eot_counts, sizeof(seg->eot_counts));
-   memcpy(&c->partial_bg.rsrc_spec, &seg->bg_counts,
-          sizeof(seg->bg_counts));
-   memcpy(&c->partial_eot.rsrc_spec, &seg->eot_counts,
-          sizeof(seg->eot_counts));
+   memcpy(&c->partial_bg.rsrc_spec, &seg->partial_bg_counts,
+          sizeof(seg->partial_bg_counts));
+   memcpy(&c->partial_eot.rsrc_spec, &seg->partial_eot_counts,
+          sizeof(seg->partial_eot_counts));
 
    /* The scissor array carries both the XY bounds and the depth clip range
     * that draws index into. Occlusion scratch must be valid memory whether
@@ -237,11 +232,8 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    c->isp_dbias_base = 0;
    c->isp_oclqry_base = device->oclqry_bo->va->addr;
 
-   /* The whole point: with no geometry, every tile is "empty", and this
-    * flag is what makes the hardware still run background (clear) +
-    * end-of-tile (store) on each of them.
-    */
-   c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
+   if (seg->process_empty_tiles)
+      c->flags |= DRM_ASAHI_RENDER_PROCESS_EMPTY_TILES;
 
    /*
     * Every address this command hands the hardware, so a VDM fault can be

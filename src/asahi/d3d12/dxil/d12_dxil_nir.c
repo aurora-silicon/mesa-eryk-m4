@@ -2226,15 +2226,18 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             unsigned last_slot = d12_binding_map_find(
                ctx->map, (unsigned)klass, rb->space,
                rb->lower_bound + count - 1);
-            if (last_slot != base_slot + count - 1) {
+            unsigned root_range = ctx->map->entries[base_slot].root_range;
+            if (last_slot != base_slot + count - 1 ||
+                root_range == ~0u ||
+                ctx->map->entries[last_slot].root_range != root_range) {
                /* The stride/kind shortcut and the slot arithmetic both
-                * assume the range is contiguous in slot space. The map
-                * assigns ranges densely, so this only trips if that ever
-                * changes -- and must trip rather than address the wrong
-                * resource.
+                * require one contiguous API descriptor range. Adjacent root
+                * ranges do not become one just because their register and
+                * slot numbers happen to touch: a sized shader array cannot
+                * spill across that boundary.
                 */
-               trans_fail(ctx, "resource range is not contiguous in "
-                               "slots");
+               trans_fail(ctx, "shader resource array crosses root "
+                               "descriptor ranges");
                return false;
             }
          }

@@ -887,6 +887,11 @@ struct d12_binding_map {
       uint32_t klass;
       uint32_t space;
       uint32_t reg;
+      /* One descriptor range/root descriptor in the API root signature.
+       * Adjacent shader registers are not necessarily one range: a sized
+       * shader array may not spill from one root range into the next.
+       */
+      uint32_t root_range;
    } entries[D12_MAX_RESOURCE_BINDINGS];
    unsigned count;
 };
@@ -904,14 +909,18 @@ d12_binding_map_find(const struct d12_binding_map *map, unsigned klass,
    return ~0u;
 }
 
-/* Append a binding if it is not already present; returns its slot. */
+/* Append a binding with its root-signature range identity. */
 static inline unsigned
-d12_binding_map_add(struct d12_binding_map *map, unsigned klass,
-                    unsigned space, unsigned reg)
+d12_binding_map_add_range(struct d12_binding_map *map, unsigned klass,
+                          unsigned space, unsigned reg,
+                          unsigned root_range)
 {
    unsigned existing = d12_binding_map_find(map, klass, space, reg);
-   if (existing != ~0u)
+   if (existing != ~0u) {
+      if (map->entries[existing].root_range != root_range)
+         map->entries[existing].root_range = ~0u;
       return existing;
+   }
 
    if (map->count >= D12_MAX_RESOURCE_BINDINGS)
       return ~0u;
@@ -920,7 +929,16 @@ d12_binding_map_add(struct d12_binding_map *map, unsigned klass,
    map->entries[slot].klass = klass;
    map->entries[slot].space = space;
    map->entries[slot].reg = reg;
+   map->entries[slot].root_range = root_range;
    return slot;
+}
+
+/* Shader-derived maps have no API range topology. */
+static inline unsigned
+d12_binding_map_add(struct d12_binding_map *map, unsigned klass,
+                    unsigned space, unsigned reg)
+{
+   return d12_binding_map_add_range(map, klass, space, reg, ~0u);
 }
 
 /*
@@ -974,6 +992,8 @@ bool d12_dxbc_find_shader(const void *data, size_t size_B,
                           const uint8_t **out, size_t *out_size_B,
                           uint32_t *out_version);
 bool d12_dxbc_is_dxbc_shader(const void *data, size_t size_B);
+bool d12_dxbc_container_stage(const void *data, size_t size_B,
+                              mesa_shader_stage *stage);
 struct nir_shader *d12_dxbc_to_nir(const void *data, size_t size_B,
                                    mesa_shader_stage stage,
                                    const struct d12_binding_map *map,

@@ -446,6 +446,12 @@ struct d12_pipeline_state {
 
    /* Graphics */
    struct d12_gfx_stage vs, fs;
+   /* Exact layout used while lowering fragment outputs. A lazily opened
+    * render pass must publish the same layout to the hardware even when no
+    * colour attachment is bound (the shader's outputs are then discarded at
+    * EOT, but they still exist in the tilebuffer while rasterizing).
+    */
+   struct agx_tilebuffer_layout tib;
    struct agx_unlinked_uvs_layout uvs;
    struct agx_varyings_vs varyings;
    struct d12_depth_stencil_state ds;
@@ -629,9 +635,13 @@ struct d12_segment {
    uint16_t width_px, height_px;
    struct agx_tilebuffer_layout tib;
    struct d12_resource *rt;  /* the target this pass renders to */
+   enum pipe_format rt_view_format;
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
+   uint32_t partial_bg_usc, partial_eot_usc;
    struct agx_counts_packed bg_counts, eot_counts;
+   struct agx_counts_packed partial_bg_counts, partial_eot_counts;
    bool has_draws;
+   bool process_empty_tiles;
 
    /* Depth/stencil attachment. Unlike colour, depth never passes through a
     * background/end-of-tile USC program: the fixed-function ZLS unit loads
@@ -777,17 +787,14 @@ struct d12_cmd_list {
    D3D12_RECT scissor;
    bool has_scissor;
 
-   /* The render target bound by OMSetRenderTargets, so a draw into a pass
-    * opened for a different target is caught instead of silently going to
-    * the wrong texture.
+   /* OM bindings are descriptor snapshots, not just resource pointers: RTV
+    * array slices share a resource but have different addresses, and typeless
+    * resources acquire their interpretation from the view.
     */
-   struct d12_resource *bound_rt;
-
-   /* The depth/stencil target bound by OMSetRenderTargets. Same purpose,
-    * and it is also how a pass acquires depth when the application binds
-    * without clearing (ClearDepthStencilView being the other way in).
-    */
-   struct d12_resource *bound_ds;
+   struct d12_descriptor bound_rtv;
+   struct d12_descriptor bound_dsv;
+   bool has_bound_rtv;
+   bool has_bound_dsv;
 
    /* OMSetStencilRef. Separate from the PSO because D3D12 makes the
     * reference value dynamic state while the ops live in the PSO.
@@ -911,6 +918,7 @@ HRESULT d12_pipeline_state_create_mesh(
    const void *as_dxil, size_t as_size, const void *ps_dxil, size_t ps_size,
    enum pipe_format rt_format, const D3D12_DEPTH_STENCIL_DESC *ds_desc,
    DXGI_FORMAT dsv_format, const D3D12_RASTERIZER_DESC *rs_desc,
+   const D3D12_BLEND_DESC *blend_desc,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
 HRESULT d12_pipeline_state_create_graphics(
@@ -920,6 +928,7 @@ HRESULT d12_pipeline_state_create_graphics(
    enum pipe_format rt_format,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
    const D3D12_RASTERIZER_DESC *rs_desc,
+   const D3D12_BLEND_DESC *blend_desc,
    const D3D12_INPUT_LAYOUT_DESC *input_layout,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
