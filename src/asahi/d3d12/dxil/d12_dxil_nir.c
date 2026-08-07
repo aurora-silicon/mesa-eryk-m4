@@ -1236,6 +1236,38 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
 }
 
 /*
+ * Structured-buffer robustness is defined against the VIEW, not the backing
+ * allocation.  Descriptor upload places NumElements in the low word of the
+ * BUFINFO plane, so fixed root-table handles can discard an out-of-view store
+ * before it reaches global memory.  The byte offset inside an in-range
+ * structure remains unchecked: D3D12 leaves that case undefined, while the
+ * element-index check is the required robust boundary.
+ *
+ * SM 6.6 heap handles do not pass through the root BUFINFO plane.  Leave those
+ * unchanged until the descriptor-heap metadata path grows the equivalent
+ * runtime query; applying a root-table slot to a heap index would read
+ * unrelated metadata and be less safe than the status quo.
+ */
+static nir_def *
+structured_store_in_bounds(struct trans_ctx *ctx,
+                           const struct handle_ref *h, nir_def *index)
+{
+   nir_builder *b = ctx->b;
+
+   if (h->kind != D12_RES_KIND_STRUCTURED_BUFFER || h->heap)
+      return nir_imm_true(b);
+
+   nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
+   nir_def *count = nir_load_global(
+      b, 1, 32,
+      nir_iadd(b, bufinfo_table,
+               nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
+      .align_mul = 8);
+
+   return nir_ult(b, nir_u2u32(b, index), count);
+}
+
+/*
  * Map a patch-constant semantic to its NIR varying slot. The tessellation
  * factors are named slots the tessellator reads directly; everything else
  * is a generic per-patch varying.
@@ -3653,7 +3685,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       for (unsigned i = 0; i < comps; i++)
          vals[i] = get_def(ctx, p[3 + i]);
 
+      nir_push_if(b, structured_store_in_bounds(ctx, &h, get_def(ctx, p[1])));
       nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
+      nir_pop_if(b, NULL);
       return true;
    }
 

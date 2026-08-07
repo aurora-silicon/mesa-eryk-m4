@@ -975,6 +975,35 @@ buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
    return nir_iadd(b, base, nir_u2u64(b, byte));
 }
 
+/*
+ * Return whether a structured element index lies inside the logical buffer
+ * view.  The BUFINFO plane carries NumElements in its low word; checking the
+ * backing allocation would incorrectly permit accesses beyond a smaller UAV
+ * or SRV view.
+ */
+static nir_def *
+buffer_element_in_bounds(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
+                         nir_def *index)
+{
+   nir_builder *b = &ctx->b;
+   unsigned slot = ctx->map
+                      ? d12_binding_map_find(ctx->map,
+                                             uav ? D12_RES_UAV : D12_RES_SRV,
+                                             0, reg)
+                      : reg;
+   if (slot == ~0u) {
+      fail(ctx, "buffer is not bound by the root signature");
+      return nir_imm_false(b);
+   }
+
+   nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+   nir_def *count = nir_load_global(
+      b, 1, 32, nir_iadd_imm(b, bufinfo_table, (uint64_t)slot * 8),
+      .align_mul = 8);
+
+   return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
+}
+
 static void
 write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
           nir_def *value)
@@ -1800,6 +1829,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          /* Write the covered components individually: the mask is
           * arbitrary, and a single vectorised store would write past it. */
+         nir_push_if(b, buffer_element_in_bounds(ctx, reg, true, SRC(1)));
          for (unsigned c = 0; c < 4; c++) {
             if (!(mask & (1 << c)))
                continue;
@@ -1807,6 +1837,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                              nir_iadd_imm(b, addr, c * 4), .write_mask = 1,
                              .align_mul = 4);
          }
+         nir_pop_if(b, NULL);
          break;
       }
 

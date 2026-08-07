@@ -1090,6 +1090,18 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          if (table[i].buffer_kind == D12_BUFFER_VIEW_STRUCTURED)
             addrs[D12_ROOT_BUFINFO_BASE + i] |=
                (uint64_t)table[i].stride_B << 32;
+      } else if (table[i].address && !table[i].resource &&
+                 (table[i].kind == D12_DESC_SRV ||
+                  table[i].kind == D12_DESC_UAV)) {
+         /* Root SRV/UAV descriptors carry only a GPU address, so D3D12
+          * provides no view extent to publish.  Treat their element count
+          * as unbounded instead of zero: structured-store robustness uses
+          * this plane for descriptor-table views, and must not accidentally
+          * discard every valid access through a bare root descriptor.  Null
+          * root descriptors retain count zero because their address is zero
+          * until the safe null-buffer substitution below.
+          */
+         addrs[D12_ROOT_BUFINFO_BASE + i] = UINT32_MAX;
       }
 
       if (!addrs[i] || !addrs[D12_ROOT_COUNTER_BASE + i]) {
