@@ -304,6 +304,13 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       if (list->segment_count == 0)
          continue;
 
+      if (!d12_cmd_list_refresh_descriptors(list)) {
+         mesa_loge("ExecuteCommandLists: descriptor refresh for list %u "
+                   "references invalid command-list storage; dropped",
+                   i);
+         continue;
+      }
+
       /* All of a list's segments go in one submission, ordered by the
        * per-command barrier fields exactly as hk_queue does: each command
        * barriers on all previously-submitted commands of both types.

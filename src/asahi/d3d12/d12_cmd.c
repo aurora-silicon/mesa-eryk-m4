@@ -340,10 +340,14 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+   memset(list->compute_root_source, 0, sizeof(list->compute_root_source));
+   memset(list->graphics_root_source, 0,
+          sizeof(list->graphics_root_source));
    memset(list->compute_sampler_table, 0,
           sizeof(list->compute_sampler_table));
    memset(list->graphics_sampler_table, 0,
           sizeof(list->graphics_sampler_table));
+   util_dynarray_clear(&list->descriptor_fixups);
 
    /* Points into the stream BO, whose data floor has just been rewound, so
     * the old address is about to be handed out to somebody else.
@@ -1275,6 +1279,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor *const *sources =
+      compute ? list->compute_root_source : list->graphics_root_source;
 
    /* Three arrays back to back: resource base addresses, UAV counter
     * addresses for bufferUpdateCounter, then buffer-view counts for
@@ -1612,7 +1618,223 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
               home == heap_gpu ? "MATCH" : "MISMATCH");
    }
 
+   /* A shader-visible finite table remains mutable until execution.  Record
+    * where this draw/dispatch flattened each source slot so the queue can
+    * refresh it after Close and immediately before submission.
+    */
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
+      if (!sources[i])
+         continue;
+
+      struct d12_descriptor_fixup fixup = {
+         .source = sources[i],
+         .tables_gpu = tables_gpu,
+         .textures_gpu = i < last_texture ? heap_gpu : 0,
+         .slot = i,
+      };
+      util_dynarray_append_typed(&list->descriptor_fixups,
+                                 struct d12_descriptor_fixup, fixup);
+   }
+
    return *out_textures != 0;
+}
+
+static uint64_t
+d12_descriptor_bufinfo(const struct d12_descriptor *d)
+{
+   if (d->resource &&
+       d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+       (d->kind == D12_DESC_SRV || d->kind == D12_DESC_UAV)) {
+      uint64_t count = 0;
+      switch (d->buffer_kind) {
+      case D12_BUFFER_VIEW_RAW:
+         count = d->size_B;
+         break;
+      case D12_BUFFER_VIEW_TYPED:
+      case D12_BUFFER_VIEW_STRUCTURED:
+         if (d->stride_B)
+            count = d->size_B / d->stride_B;
+         break;
+      default:
+         break;
+      }
+
+      if (d->buffer_kind == D12_BUFFER_VIEW_STRUCTURED ||
+          d->buffer_kind == D12_BUFFER_VIEW_TYPED)
+         count |= (uint64_t)d->stride_B << 32;
+      return count;
+   }
+
+   if (d->address && !d->resource &&
+       (d->kind == D12_DESC_SRV || d->kind == D12_DESC_UAV))
+      return UINT32_MAX;
+
+   return 0;
+}
+
+/* Recreate one API SRV's AGX descriptor in already-allocated command-list
+ * storage.  This is the same packing performed while recording; Execute uses
+ * it only for finite shader-visible table slots whose CPU descriptor changed
+ * after Close.
+ */
+static void
+d12_refresh_texture_descriptor(struct agx_texture_packed *out,
+                               const struct d12_descriptor *d)
+{
+   agx_set_null_texture(out);
+
+   if (d->kind != D12_DESC_SRV || !d->resource)
+      return;
+
+   struct d12_resource *res = d->resource;
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (d->format == DXGI_FORMAT_UNKNOWN)
+         return;
+
+      enum pipe_format pf = d12_format_to_pipe(d->format);
+      if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+          !ail_pixel_format[pf].texturable ||
+          util_format_is_depth_or_stencil(pf))
+         return;
+
+      const struct util_format_description *fdesc =
+         util_format_description(pf);
+      unsigned blocksize = util_format_get_blocksize(pf);
+      unsigned elements = d->size_B / blocksize;
+      if (!elements)
+         return;
+
+      agx_pack(out, TEXTURE, cfg) {
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = AGX_LAYOUT_LINEAR;
+         cfg.channels = ail_pixel_format[pf].channels;
+         cfg.type = ail_pixel_format[pf].type;
+         cfg.srgb = util_format_is_srgb(pf);
+         cfg.srgb_2_channel =
+            cfg.srgb && util_format_colormask(fdesc) == 0x3;
+         cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+         cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+         cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+         cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+         cfg.address = d->address;
+         cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
+         cfg.height = DIV_ROUND_UP(elements, cfg.width);
+         cfg.first_level = 0;
+         cfg.last_level = 0;
+         cfg.buffer_size_sw = elements;
+         cfg.buffer_offset_sw = 0;
+         cfg.depth = 1;
+         cfg.stride = (cfg.width * blocksize) - 16;
+      }
+      return;
+   }
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+      return;
+
+   const bool stencil = d->texture_plane == 1;
+   const struct ail_layout *layout =
+      stencil ? &res->stencil_layout : &res->layout;
+   struct agx_bo *texture_bo = stencil ? res->stencil_bo : res->bo;
+   if (!texture_bo || !layout->size_B)
+      return;
+
+   enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT : layout->format;
+   const struct util_format_description *fdesc = util_format_description(pf);
+   const unsigned samples = MAX2(layout->sample_count_sa, 1);
+
+   agx_pack(out, TEXTURE, cfg) {
+      cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                  : AGX_TEXTURE_DIMENSION_2D;
+      cfg.layout = agx_translate_layout(layout->tiling);
+      cfg.channels = ail_pixel_format[pf].channels;
+      cfg.type = ail_pixel_format[pf].type;
+      cfg.srgb = util_format_is_srgb(pf);
+      cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+      cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+      cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+      cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+      cfg.address = d->address;
+      cfg.width = layout->width_px;
+      cfg.height = layout->height_px;
+      cfg.first_level = 0;
+      cfg.last_level = 0;
+      cfg.unk_mipmapped = layout->levels > 1;
+      if (samples > 1)
+         cfg.samples = agx_translate_sample_count(samples);
+
+      if (layout->tiling == AIL_TILING_LINEAR) {
+         cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
+      } else {
+         cfg.depth = 1;
+         cfg.page_aligned_layers = layout->page_aligned_layers;
+      }
+   }
+}
+
+bool
+d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
+{
+   bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
+
+   util_dynarray_foreach (&list->descriptor_fixups,
+                          struct d12_descriptor_fixup, fixup) {
+      if (!fixup->source || fixup->slot >= D12_MAX_RESOURCE_BINDINGS)
+         return false;
+
+      uint64_t *tables =
+         (uint64_t *)d12_list_data_cpu(list, fixup->tables_gpu);
+      if (!tables)
+         return false;
+
+      const struct d12_descriptor *d = fixup->source;
+      unsigned slot = fixup->slot;
+
+      if (validate && d->resource) {
+         struct agx_bo *bo = d->texture_plane == 1 && d->resource->stencil_bo
+                                ? d->resource->stencil_bo
+                                : d->resource->bo;
+         if (!bo || (d->address &&
+                     (d->address < bo->va->addr ||
+                      d->address - bo->va->addr >= bo->size))) {
+            mesa_loge("descriptor refresh: slot %u source address 0x%llx "
+                      "is outside its resource BO",
+                      slot, (unsigned long long)d->address);
+            return false;
+         }
+      }
+
+      tables[D12_ROOT_RESOURCE_BASE + slot] =
+         d->address ? d->address : list->null_buffer;
+      tables[D12_ROOT_COUNTER_BASE + slot] =
+         d->counter_address
+            ? d->counter_address
+            : list->null_counters + slot * sizeof(uint32_t);
+      tables[D12_ROOT_BUFINFO_BASE + slot] = d12_descriptor_bufinfo(d);
+
+      if (fixup->textures_gpu) {
+         struct agx_texture_packed *texture =
+            (struct agx_texture_packed *)d12_list_data_cpu(
+               list, fixup->textures_gpu + slot * AGX_TEXTURE_LENGTH);
+         if (!texture)
+            return false;
+         d12_refresh_texture_descriptor(texture, d);
+      }
+
+      if (getenv("D3D12AGX_DUMP_DESCRIPTOR_FIXUPS"))
+         mesa_logi("descriptor refresh: slot=%u source=%p kind=%u "
+                   "address=0x%llx tables=0x%llx textures=0x%llx valid=1",
+                   slot, (const void *)d, d->kind,
+                   (unsigned long long)d->address,
+                   (unsigned long long)fixup->tables_gpu,
+                   (unsigned long long)fixup->textures_gpu);
+   }
+
+   /* The stream BO is coherent, but order the CPU descriptor writes before
+    * the queue ioctl makes the command stream visible to the GPU.
+    */
+   __sync_synchronize();
+   return true;
 }
 
 /*
@@ -3945,11 +4167,14 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
 
    struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor **sources =
+      compute ? list->compute_root_source : list->graphics_root_source;
 
    /* A root descriptor is a bare address: no resource behind it, so no
     * hardware texture descriptor can be built from one.
     */
    memset(&table[slot], 0, sizeof(table[slot]));
+   sources[slot] = NULL;
    table[slot].address = address;
    table[slot].kind = expected == D3D12_ROOT_PARAMETER_TYPE_SRV
                          ? D12_DESC_SRV
@@ -4010,6 +4235,8 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
 
    struct d12_descriptor *resource_table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor **resource_sources =
+      compute ? list->compute_root_source : list->graphics_root_source;
    struct d12_descriptor *sampler_table =
       compute ? list->compute_sampler_table : list->graphics_sampler_table;
 
@@ -4087,6 +4314,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
                        (heap_index + offset) *
                           sizeof(struct d12_descriptor),
          };
+         resource_sources[slot] = NULL;
 
          if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
             size_t first = heap_index + offset;
@@ -4141,6 +4369,8 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
          struct d12_descriptor *table =
             klass == D12_RES_SAMPLER ? sampler_table : resource_table;
          table[slot] = slots[offset + i];
+         if (klass != D12_RES_SAMPLER)
+            resource_sources[slot] = &slots[offset + i];
       }
 
       cursor = offset + range->num_descriptors;
@@ -4242,6 +4472,8 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
 
    struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor **sources =
+      compute ? list->compute_root_source : list->graphics_root_source;
 
    /* A constant buffer is read in 16-byte units, so round up rather than
     * leave the tail of the last vector reading past the allocation. */
@@ -4269,6 +4501,7 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
    }
 
    memset(&table[slot], 0, sizeof(table[slot]));
+   sources[slot] = NULL;
    table[slot].address = gpu;
    table[slot].kind = D12_DESC_CBV;
 }
@@ -4400,6 +4633,9 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    list->graphics_rs = NULL;
    memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
    memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+   memset(list->compute_root_source, 0, sizeof(list->compute_root_source));
+   memset(list->graphics_root_source, 0,
+          sizeof(list->graphics_root_source));
    memset(list->compute_sampler_table, 0,
           sizeof(list->compute_sampler_table));
    memset(list->graphics_sampler_table, 0,
@@ -4536,6 +4772,7 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
       if (list->usc_bo)
          agx_bo_unreference(&list->device->dev, list->usc_bo);
       d12_private_data_store_destroy(&list->private_data);
+      util_dynarray_fini(&list->descriptor_fixups);
       d12_device_release(list->device);
       free(list);
    }
@@ -6266,6 +6503,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->type = type;
    list->allocator = allocator;
    d12_private_data_store_init(&list->private_data);
+   util_dynarray_init(&list->descriptor_fixups, NULL);
    if (allocator)
       allocator->recording_lists++;
    d12_device_add_ref(device);

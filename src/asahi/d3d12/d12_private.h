@@ -428,6 +428,19 @@ struct d12_descriptor_heap {
    struct agx_bo *bo;
 };
 
+/* A finite descriptor table is flattened into the command-list root and
+ * texture heaps for AGX.  D3D12 nevertheless permits the application to
+ * update a shader-visible descriptor heap after Close and before Execute.
+ * Retain the source slot and the two flattened destinations so Execute can
+ * refresh exactly the cells that remain live.
+ */
+struct d12_descriptor_fixup {
+   const struct d12_descriptor *source;
+   uint64_t tables_gpu;
+   uint64_t textures_gpu;
+   uint16_t slot;
+};
+
 /*
  * A query heap: storage for Count results of one type. The heap is just
  * a buffer; Begin/End/Resolve give it meaning.
@@ -986,10 +999,15 @@ struct d12_cmd_list {
     */
    struct d12_descriptor compute_root_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_root_table[D12_MAX_RESOURCE_BINDINGS];
+   const struct d12_descriptor
+      *compute_root_source[D12_MAX_RESOURCE_BINDINGS];
+   const struct d12_descriptor
+      *graphics_root_source[D12_MAX_RESOURCE_BINDINGS];
    /* Samplers use a separate dense binding namespace. AGX sampler state 0
     * is reserved for texture Load; API sampler S is uploaded at S + 1. */
    struct d12_descriptor compute_sampler_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_sampler_table[D12_MAX_RESOURCE_BINDINGS];
+   struct util_dynarray descriptor_fixups;
 
    /* SetDescriptorHeaps state.  GPU descriptor handles remain CPU pointers
     * for application arithmetic, so the bound object is also how an
@@ -1138,7 +1156,8 @@ d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
 }
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
-                                   REFIID riid, void **out);
+                            REFIID riid, void **out);
+bool d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list);
 void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
 /* DXGI format support (d12_format.c) */
