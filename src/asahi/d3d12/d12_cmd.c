@@ -341,7 +341,11 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
    list->bound_rtv_count = 0;
    list->has_bound_dsv = false;
-   list->stencil_ref = 0;
+   list->stencil_ref_front = 0;
+   list->stencil_ref_back = 0;
+   list->depth_bias = 0.0f;
+   list->depth_bias_clamp = 0.0f;
+   list->slope_scaled_depth_bias = 0.0f;
    for (unsigned i = 0; i < 4; i++)
       list->blend_factor[i] = 1.0f;
    list->compute_rs = NULL;
@@ -1309,7 +1313,9 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    seg->scissor_base = d12_list_upload_zero(
       list, D12_MAX_SCISSORS * AGX_SCISSOR_LENGTH, 64);
-   if (!seg->scissor_base)
+   seg->depth_bias_base = d12_list_upload_zero(
+      list, D12_MAX_SCISSORS * AGX_DEPTH_BIAS_LENGTH, 64);
+   if (!seg->scissor_base || !seg->depth_bias_base)
       return NULL;
 
    enum agx_bg_eot_op main_bg[AGX_MAX_RENDER_TARGETS] = {0};
@@ -3221,6 +3227,67 @@ d12_list_push_scissor(struct d12_cmd_list *list, struct d12_segment *seg,
    return index;
 }
 
+/* Pack one D3D12 rasterizer depth-bias state into the array named by the
+ * render command.  AGX's integer Z16 mode uses the same scale measured by
+ * Honeykrisp. D24 is represented internally as Z32_FLOAT, so one D24 LSB is
+ * 32 float ULPs at the test's exponent and the constant factor is expanded
+ * accordingly. */
+static unsigned
+d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
+                         const struct d12_pipeline_state *pso)
+{
+   float constant = pso->raster.dynamic_depth_bias
+                       ? list->depth_bias
+                       : pso->raster.depth_bias;
+   float clamp = pso->raster.dynamic_depth_bias
+                    ? list->depth_bias_clamp
+                    : pso->raster.depth_bias_clamp;
+   float slope = pso->raster.dynamic_depth_bias
+                    ? list->slope_scaled_depth_bias
+                    : pso->raster.slope_scaled_depth_bias;
+   DXGI_FORMAT format = pso->ds.dsv_format;
+   if (format == DXGI_FORMAT_UNKNOWN && seg->ds)
+      format = seg->ds->desc.Format;
+
+   if (format == DXGI_FORMAT_D16_UNORM)
+      constant /= (1u << 15);
+   else if (format == DXGI_FORMAT_D24_UNORM_S8_UINT)
+      constant *= 32.0f;
+
+   struct agx_depth_bias_packed packed;
+   agx_pack(&packed, DEPTH_BIAS, cfg) {
+      cfg.depth_bias = constant;
+      cfg.slope_scale = slope;
+      cfg.clamp = clamp;
+   }
+
+   uint8_t *array = d12_list_data_cpu(list, seg->depth_bias_base);
+   if (!array) {
+      mesa_loge("draw into a render pass with no depth-bias array");
+      list->state = D12_LIST_ERROR;
+      return ~0u;
+   }
+
+   if (seg->depth_bias_count) {
+      uint8_t *prev = array +
+                      (seg->depth_bias_count - 1) * AGX_DEPTH_BIAS_LENGTH;
+      if (!memcmp(prev, &packed, AGX_DEPTH_BIAS_LENGTH))
+         return seg->depth_bias_count - 1;
+   }
+
+   if (seg->depth_bias_count >= D12_MAX_SCISSORS) {
+      mesa_loge("render pass exceeded %u distinct depth-bias states",
+                D12_MAX_SCISSORS);
+      list->state = D12_LIST_ERROR;
+      return ~0u;
+   }
+
+   unsigned index = seg->depth_bias_count++;
+   memcpy(array + index * AGX_DEPTH_BIAS_LENGTH, &packed,
+          AGX_DEPTH_BIAS_LENGTH);
+   return index;
+}
+
 /*
  * Push one face's stencil state. When the test is off the slot still has to
  * be written: the hardware keeps this state across the control stream, and
@@ -4742,8 +4809,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       if (scissor_index == ~0u)
          return;
 
+      unsigned depth_bias_index = d12_list_push_depth_bias(list, seg, pso);
+      if (depth_bias_index == ~0u)
+         return;
+
       agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
          cfg.scissor = scissor_index;
+         cfg.depth_bias = depth_bias_index;
       }
 
       agx_ppp_push(&ppp, REGION_CLIP, cfg) {
@@ -4796,6 +4868,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       const bool z_write = has_ds && ds->depth_write && !z_read_only;
       const bool s_test =
          has_ds && ds->stencil_test && seg->ds->stencil_bo != NULL;
+      const float effective_depth_bias = pso->raster.dynamic_depth_bias
+                                            ? list->depth_bias
+                                            : pso->raster.depth_bias;
+      const float effective_slope_bias =
+         pso->raster.dynamic_depth_bias
+            ? list->slope_scaled_depth_bias
+            : pso->raster.slope_scaled_depth_bias;
 
       /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
        * follow it exactly, or agx_ppp_fini catches a size mismatch.
@@ -4846,6 +4925,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
           * off just because the application set no scissor rect.
           */
          cfg.scissor_enable = true;
+         cfg.depth_bias_enable =
+            (effective_depth_bias != 0.0f || effective_slope_bias != 0.0f) &&
+            d12_object_type(topology) == AGX_OBJECT_TYPE_TRIANGLE;
          cfg.stencil_test_enable = s_test;
          cfg.two_sided_stencil = s_test;
       }
@@ -4867,7 +4949,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       }
 
       agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
-         cfg.stencil_reference = list->stencil_ref;
+         cfg.stencil_reference = list->stencil_ref_front;
       }
 
       struct agx_fragment_face_2_packed face_2;
@@ -4881,7 +4963,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
       /* Back face: same depth state, its own stencil ops. */
       agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
-         cfg.stencil_reference = list->stencil_ref;
+         cfg.stencil_reference = list->stencil_ref_back;
       }
       agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
       d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only);
@@ -5985,7 +6067,11 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
    list->bound_rtv_count = 0;
    list->has_bound_dsv = false;
-   list->stencil_ref = 0;
+   list->stencil_ref_front = 0;
+   list->stencil_ref_back = 0;
+   list->depth_bias = 0.0f;
+   list->depth_bias_clamp = 0.0f;
+   list->slope_scaled_depth_bias = 0.0f;
    for (unsigned i = 0; i < 4; i++)
       list->blend_factor[i] = 1.0f;
 }
@@ -6052,8 +6138,11 @@ d12_list_QueryInterface(ID3D12GraphicsCommandList6 *iface, REFIID riid,
        d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList3) ||
        d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList4) ||
        d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList5) ||
-       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList6)) {
-      /* Same widening as the device: DispatchMesh is on list 6. */
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList6) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList7) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList8) ||
+       d12_guid_equal(riid, &IID_ID3D12GraphicsCommandList9)) {
+      /* The common vtable is ABI-complete through list 9. */
       p_atomic_inc(&list->refcount);
       *out = iface;
       return S_OK;
@@ -7877,14 +7966,9 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
          }
       }
 
-      if (flags & D3D12_CLEAR_FLAG_STENCIL) {
-         if (!ds->stencil_bo) {
-            mesa_loge("ClearDepthStencilView: stencil clear on a format "
-                      "with no stencil plane");
-            list->state = D12_LIST_ERROR;
-            return;
-         }
-
+      /* A combined DEPTH|STENCIL clear is legal through a depth-only DSV;
+       * the absent aspect is ignored. */
+      if ((flags & D3D12_CLEAR_FLAG_STENCIL) && ds->stencil_bo) {
          struct d12_copy_surface surface;
          const unsigned plane_subresource =
             ds->layout.levels * MAX2(ds->desc.DepthOrArraySize, 1) +
@@ -7951,14 +8035,7 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
       seg->depth_cleared = true;
    }
 
-   if (flags & D3D12_CLEAR_FLAG_STENCIL) {
-      if (!ds->stencil_bo) {
-         mesa_loge("ClearDepthStencilView: stencil clear on a format with no "
-                   "stencil plane");
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
+   if ((flags & D3D12_CLEAR_FLAG_STENCIL) && ds->stencil_bo) {
       seg->stencil_clear = stencil;
       seg->stencil_cleared = true;
    }
@@ -7968,7 +8045,51 @@ static void STDMETHODCALLTYPE
 d12_list_OMSetStencilRef(ID3D12GraphicsCommandList6 *iface, UINT ref)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
-   list->stencil_ref = (uint8_t)ref;
+   list->stencil_ref_front = (uint8_t)ref;
+   list->stencil_ref_back = (uint8_t)ref;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_Barrier(ID3D12GraphicsCommandList9 *iface, UINT32 count,
+                 const D3D12_BARRIER_GROUP *groups)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   (void)count;
+   (void)groups;
+   mesa_loge("ID3D12GraphicsCommandList7::Barrier is unsupported");
+   list->state = D12_LIST_ERROR;
+   list->record_error = E_NOTIMPL;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_OMSetFrontAndBackStencilRef(ID3D12GraphicsCommandList9 *iface,
+                                     UINT front, UINT back)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->stencil_ref_front = (uint8_t)front;
+   list->stencil_ref_back = (uint8_t)back;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_RSSetDepthBias(ID3D12GraphicsCommandList9 *iface, FLOAT depth_bias,
+                        FLOAT clamp, FLOAT slope)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   list->depth_bias = depth_bias;
+   list->depth_bias_clamp = clamp;
+   list->slope_scaled_depth_bias = slope;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_IASetIndexBufferStripCutValue(
+   ID3D12GraphicsCommandList9 *iface,
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   (void)strip_cut;
+   mesa_loge("dynamic index-buffer strip cut is unsupported");
+   list->state = D12_LIST_ERROR;
+   list->record_error = E_NOTIMPL;
 }
 
 static void STDMETHODCALLTYPE
@@ -8076,10 +8197,32 @@ d12_list_SOSetTargets(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
    }
 }
 
-/* Same widening as the device: ID3D12GraphicsCommandList6 is a superset,
- * and DispatchMesh lives on it.
- */
-static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
+/* The generated C interfaces repeat every inherited function pointer with a
+ * newer This type. Keep the already-checked list-6 table as an exact prefix,
+ * then append the list-7/8/9 slots. COM callers see the same flat pointer
+ * array, while the compiler continues checking every existing callback
+ * against the interface it was written for. */
+struct d12_list9_vtbl {
+   ID3D12GraphicsCommandList6Vtbl v6;
+   void (STDMETHODCALLTYPE *Barrier)(ID3D12GraphicsCommandList9 *, UINT32,
+                                     const D3D12_BARRIER_GROUP *);
+   void (STDMETHODCALLTYPE *OMSetFrontAndBackStencilRef)(
+      ID3D12GraphicsCommandList9 *, UINT, UINT);
+   void (STDMETHODCALLTYPE *RSSetDepthBias)(ID3D12GraphicsCommandList9 *,
+                                            FLOAT, FLOAT, FLOAT);
+   void (STDMETHODCALLTYPE *IASetIndexBufferStripCutValue)(
+      ID3D12GraphicsCommandList9 *, D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
+};
+
+static_assert(offsetof(ID3D12GraphicsCommandList9Vtbl, Barrier) ==
+                 sizeof(ID3D12GraphicsCommandList6Vtbl),
+              "command-list 6 must be an exact vtable prefix of list 9");
+static_assert(sizeof(struct d12_list9_vtbl) ==
+                 sizeof(ID3D12GraphicsCommandList9Vtbl),
+              "private list-9 vtable must match the public ABI");
+
+static const struct d12_list9_vtbl d12_list_vtbl = {
+   .v6 = {
    /* every unimplemented slot fails safely */
    D12_ID3D12GraphicsCommandList6_DEFAULTS,
    .QueryInterface = d12_list_QueryInterface,
@@ -8145,6 +8288,11 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .ResolveQueryData = d12_list_ResolveQueryData,
    .DispatchMesh = d12_list_DispatchMesh,
    /* Everything unset is NULL: loud crash over silent lie. */
+   },
+   .Barrier = d12_list_Barrier,
+   .OMSetFrontAndBackStencilRef = d12_list_OMSetFrontAndBackStencilRef,
+   .RSSetDepthBias = d12_list_RSSetDepthBias,
+   .IASetIndexBufferStripCutValue = d12_list_IASetIndexBufferStripCutValue,
 };
 
 HRESULT
@@ -8186,7 +8334,8 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
       return E_OUTOFMEMORY;
    }
 
-   list->iface.lpVtbl = (ID3D12GraphicsCommandListVtbl *)&d12_list_vtbl;
+   list->iface.lpVtbl =
+      (ID3D12GraphicsCommandListVtbl *)&d12_list_vtbl.v6;
    list->refcount = 1;
    list->device = device;
    list->type = type;

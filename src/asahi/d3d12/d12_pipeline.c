@@ -2419,7 +2419,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
       rt_format, nr_rt, rt_formats, nr_samples, sample_mask, ds_desc,
       dsv_format, rs_desc, blend_desc, NULL, NULL,
       D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
-      D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED, map, riid, out);
+      D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
+      D3D12_PIPELINE_STATE_FLAG_NONE, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -2633,6 +2634,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                       primitive_topology_type,
                                    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE
                                       strip_cut,
+                                   D3D12_PIPELINE_STATE_FLAGS flags,
                                    const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
@@ -2717,11 +2719,17 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     */
    pso->raster.front_face_ccw = false;
    pso->raster.depth_clip = true;
+   pso->raster.dynamic_depth_bias =
+      flags & D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
    if (rs_desc) {
       pso->raster.front_face_ccw = rs_desc->FrontCounterClockwise;
       pso->raster.cull_front = rs_desc->CullMode == D3D12_CULL_MODE_FRONT;
       pso->raster.cull_back = rs_desc->CullMode == D3D12_CULL_MODE_BACK;
       pso->raster.depth_clip = rs_desc->DepthClipEnable;
+      pso->raster.depth_bias = rs_desc->DepthBias;
+      pso->raster.depth_bias_clamp = rs_desc->DepthBiasClamp;
+      pso->raster.slope_scaled_depth_bias =
+         rs_desc->SlopeScaledDepthBias;
 
       if (rs_desc->FillMode == D3D12_FILL_MODE_WIREFRAME)
          mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");

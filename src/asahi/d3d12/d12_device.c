@@ -321,7 +321,6 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
    D12_ZERO_OPTIONS(10)
    D12_ZERO_OPTIONS(14)
    D12_ZERO_OPTIONS(15)
-   D12_ZERO_OPTIONS(16)
    D12_ZERO_OPTIONS(17)
    D12_ZERO_OPTIONS(18)
    D12_ZERO_OPTIONS(20)
@@ -386,6 +385,16 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*opts))
          return E_INVALIDARG;
       memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS16: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS16 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      opts->DynamicDepthBiasSupported = TRUE;
       return S_OK;
    }
 
@@ -1036,6 +1045,7 @@ struct d12_pso_stream {
    DXGI_FORMAT dsv_format;
    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology;
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
+   D3D12_PIPELINE_STATE_FLAGS flags;
    bool have_rt_formats;
    bool have_sample_desc;
    bool have_sample_mask;
@@ -1122,6 +1132,7 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_FLAGS:
          BODY(D3D12_PIPELINE_STATE_FLAGS);
+         memcpy(&out->flags, body, sizeof(out->flags));
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK:
          BODY(UINT);
@@ -1257,7 +1268,7 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          dsv_format,
          st.raster,
          st.blend, st.input_layout, st.stream_output, st.primitive_topology,
-         st.strip_cut, map, riid, out);
+         st.strip_cut, st.flags, map, riid, out);
    }
 
    mesa_loge("CreatePipelineState: stream declares no usable pipeline");
@@ -1374,7 +1385,7 @@ d12_device_CreateGraphicsPipelineState(
       desc->SampleMask, &desc->DepthStencilState,
       dsv_format, &desc->RasterizerState, &desc->BlendState,
       &desc->InputLayout, &desc->StreamOutput, desc->PrimitiveTopologyType,
-      desc->IBStripCutValue, map, riid, out);
+      desc->IBStripCutValue, desc->Flags, map, riid, out);
    d12_root_layout_cleanup(&embedded_layout);
    return hr;
 }

@@ -698,6 +698,10 @@ struct d12_raster_state {
    bool cull_front, cull_back;
    bool front_face_ccw;
    bool depth_clip;
+   bool dynamic_depth_bias;
+   float depth_bias;
+   float depth_bias_clamp;
+   float slope_scaled_depth_bias;
 };
 
 /* A compiled pipeline: AGX machine code produced from the app's DXIL. */
@@ -996,6 +1000,8 @@ struct d12_segment {
     */
    uint64_t scissor_base;
    unsigned scissor_count;
+   uint64_t depth_bias_base;
+   unsigned depth_bias_count;
 };
 
 #define D12_MAX_SCISSORS 256
@@ -1188,10 +1194,18 @@ struct d12_cmd_list {
    uint8_t bound_rtv_count;
    bool has_bound_dsv;
 
-   /* OMSetStencilRef. Separate from the PSO because D3D12 makes the
-    * reference value dynamic state while the ops live in the PSO.
+   /* OMSetStencilRef/OMSetFrontAndBackStencilRef. Separate from the PSO
+    * because D3D12 makes the reference values dynamic state while the ops
+    * live in the PSO.
     */
-   uint8_t stencil_ref;
+   uint8_t stencil_ref_front, stencil_ref_back;
+
+   /* RSSetDepthBias state. It is consumed only by a PSO created with the
+    * DYNAMIC_DEPTH_BIAS flag; static PSOs retain their rasterizer values.
+    */
+   float depth_bias;
+   float depth_bias_clamp;
+   float slope_scaled_depth_bias;
 
    /* OMSetBlendFactor. AGX fragment uniforms 4..11 are the four 32-bit
     * constants; D3D12 resets them to one with command-list state. */
@@ -1393,6 +1407,7 @@ HRESULT d12_pipeline_state_create_graphics(
    const D3D12_STREAM_OUTPUT_DESC *so_desc,
    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type,
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut,
+   D3D12_PIPELINE_STATE_FLAGS flags,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);

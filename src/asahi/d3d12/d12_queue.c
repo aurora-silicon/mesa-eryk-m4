@@ -248,7 +248,7 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
     * or not queries run (mirrors hk pointing at the device query heap).
     */
    c->isp_scissor_base = seg->scissor_base;
-   c->isp_dbias_base = 0;
+   c->isp_dbias_base = seg->depth_bias_base;
    c->isp_oclqry_base = device->oclqry_bo->va->addr;
 
    if (seg->process_empty_tiles)
@@ -284,10 +284,12 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
                 (unsigned long long)(list->stream_bo->va->addr +
                                      list->stream_bo->size),
                 seg->stream_start, seg->stream_end, seg->dispatches);
-      mesa_logi("  depth=0x%llx stencil=0x%llx scissor=0x%llx oclqry=0x%llx",
+      mesa_logi("  depth=0x%llx stencil=0x%llx scissor=0x%llx "
+                "dbias=0x%llx oclqry=0x%llx",
                 (unsigned long long)c->depth.base,
                 (unsigned long long)c->stencil.base,
                 (unsigned long long)c->isp_scissor_base,
+                (unsigned long long)c->isp_dbias_base,
                 (unsigned long long)c->isp_oclqry_base);
       mesa_logi("  bg.usc=0x%llx eot.usc=0x%llx  %ux%ux%u samples=%u",
                 (unsigned long long)c->bg.usc, (unsigned long long)c->eot.usc,
@@ -364,6 +366,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       .syncs = (uint64_t)(uintptr_t)syncs,
       .cmdbuf = (uint64_t)(uintptr_t)op->payload,
    };
+
    struct agx_submit_virt virt = {.ring_idx = 0};
    int ret = dev->ops.submit(dev, &submit, &virt);
    if (ret) {
