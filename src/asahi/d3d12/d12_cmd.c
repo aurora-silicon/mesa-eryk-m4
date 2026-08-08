@@ -7732,14 +7732,19 @@ d12_pack_clear_uav_uint(DXGI_FORMAT format, const UINT values[4],
 
 static bool
 d12_pack_clear_uav_float(DXGI_FORMAT format, const FLOAT values[4],
-                         uint32_t *packed)
+                         void *packed, unsigned *packed_size_B)
 {
    enum pipe_format pipe = d12_format_to_pipe(format);
 
-   if (pipe == PIPE_FORMAT_NONE || util_format_get_blocksize(pipe) != 4)
+   if (pipe == PIPE_FORMAT_NONE)
+      return false;
+
+   unsigned blocksize_B = util_format_get_blocksize(pipe);
+   if (!blocksize_B || blocksize_B > 16)
       return false;
 
    util_format_pack_rgba(pipe, packed, values, 1);
+   *packed_size_B = blocksize_B;
    return true;
 }
 
@@ -7803,7 +7808,8 @@ static void
 d12_list_clear_uav_texture(struct d12_cmd_list *list,
                            D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
                            D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
-                           ID3D12Resource *resource, uint32_t packed,
+                           ID3D12Resource *resource, const void *packed,
+                           unsigned packed_size_B,
                            UINT num_rects, const D3D12_RECT *rects)
 {
    /* As with buffer clears, the CPU descriptor is authoritative. The GPU
@@ -7847,7 +7853,7 @@ d12_list_clear_uav_texture(struct d12_cmd_list *list,
 
    enum pipe_format view_format = d12_format_to_pipe(view->format);
    if (view_format == PIPE_FORMAT_NONE ||
-       util_format_get_blocksize(view_format) != sizeof(packed) ||
+       util_format_get_blocksize(view_format) != packed_size_B ||
        util_format_get_blockwidth(view_format) != 1 ||
        util_format_get_blockheight(view_format) != 1) {
       mesa_loge("ClearUnorderedAccessView: texture format %u unsupported",
@@ -7856,7 +7862,7 @@ d12_list_clear_uav_texture(struct d12_cmd_list *list,
       return;
    }
 
-   uint64_t value = d12_list_upload(list, &packed, sizeof(packed), 4);
+   uint64_t value = d12_list_upload(list, packed, packed_size_B, 16);
    if (!value)
       return;
 
@@ -7867,7 +7873,7 @@ d12_list_clear_uav_texture(struct d12_cmd_list *list,
       if (!d12_copy_surface_from_texture(
              &surface, res, subresource, "UAV-clear destination") ||
           surface.sample_count != 1 ||
-          surface.blocksize_B != sizeof(packed) ||
+          surface.blocksize_B != packed_size_B ||
           surface.block_width_px != 1 || surface.block_height_px != 1) {
          mesa_loge("ClearUnorderedAccessView: texture surface unsupported");
          list->state = D12_LIST_ERROR;
@@ -7919,7 +7925,8 @@ static void
 d12_list_clear_uav(struct d12_cmd_list *list,
                    D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
                    D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
-                   ID3D12Resource *resource, uint32_t packed, UINT num_rects,
+                   ID3D12Resource *resource, const void *packed,
+                   unsigned packed_size_B, UINT num_rects,
                    const D3D12_RECT *rects)
 {
    struct d12_resource *res =
@@ -7927,10 +7934,18 @@ d12_list_clear_uav(struct d12_cmd_list *list,
 
    if (res && res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
       d12_list_clear_uav_texture(list, gpu_handle, cpu_handle, resource,
-                                 packed, num_rects, rects);
+                                 packed, packed_size_B, num_rects, rects);
    } else {
+      if (packed_size_B != sizeof(uint32_t)) {
+         mesa_loge("ClearUnorderedAccessView: buffer clear value is not "
+                   "32-bit");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      uint32_t packed_u32;
+      memcpy(&packed_u32, packed, sizeof(packed_u32));
       d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource,
-                                packed, num_rects);
+                                packed_u32, num_rects);
    }
 }
 
@@ -7954,7 +7969,8 @@ d12_list_ClearUnorderedAccessViewUint(
       return;
    }
 
-   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, packed,
+   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, &packed,
+                      sizeof(packed),
                       num_rects, rects);
 }
 
@@ -7966,19 +7982,22 @@ d12_list_ClearUnorderedAccessViewFloat(
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
-   uint32_t packed;
+   uint8_t packed[16] = {0};
+   unsigned packed_size_B;
 
    if (list->state != D12_LIST_RECORDING)
       return;
 
    if (!values || !view ||
-       !d12_pack_clear_uav_float(view->format, values, &packed)) {
+       !d12_pack_clear_uav_float(view->format, values, packed,
+                                 &packed_size_B)) {
       mesa_loge("ClearUnorderedAccessViewFloat: unsupported or invalid view");
       list->state = D12_LIST_ERROR;
       return;
    }
 
    d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, packed,
+                      packed_size_B,
                       num_rects, rects);
 }
 
