@@ -448,10 +448,11 @@ struct d12_descriptor {
 #define D12_CUSTOM_BORDER_U         BITFIELD_BIT(2)
 #define D12_CUSTOM_BORDER_V         BITFIELD_BIT(3)
 #define D12_CUSTOM_BORDER_W         BITFIELD_BIT(4)
+#define D12_SAMPLER_MIP_POINT       BITFIELD_BIT(5)
 
 struct d12_custom_border_entry {
    uint32_t flags;
-   uint32_t pad;
+   float lod_bias;
    uint32_t color[4];
 };
 static_assert(sizeof(struct d12_custom_border_entry) == 24,

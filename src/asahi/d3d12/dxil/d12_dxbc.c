@@ -186,6 +186,8 @@ enum d12_dxbc_op {
    D12_DXBC_OP_SAMPLE_C = 70,
    D12_DXBC_OP_SAMPLE_C_LZ = 71,
    D12_DXBC_OP_SAMPLE_L = 72,
+   D12_DXBC_OP_SAMPLE_D = 73,
+   D12_DXBC_OP_SAMPLE_B = 74,
    D12_DXBC_OP_GATHER4 = 109,
    D12_DXBC_OP_SQRT = 75,
    D12_DXBC_OP_SWITCH = 76,
@@ -4917,6 +4919,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_SAMPLE_C:
       case D12_DXBC_OP_SAMPLE_C_LZ:
       case D12_DXBC_OP_SAMPLE_L:
+      case D12_DXBC_OP_SAMPLE_D:
+      case D12_DXBC_OP_SAMPLE_B:
       case D12_DXBC_OP_GATHER4:
       case D12_DXBC_OP_GATHER4_C:
       case D12_DXBC_OP_GATHER4_PO:
@@ -4937,7 +4941,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                         opcode == D12_DXBC_OP_GATHER4_PO_C;
          bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L ||
                         opcode == D12_DXBC_OP_SAMPLE_C_LZ;
-         NEED(is_ld_ms ? 4 : is_ld ? 3 : 4 + dynamic_offset + compare);
+         bool has_grad = opcode == D12_DXBC_OP_SAMPLE_D;
+         bool has_bias = opcode == D12_DXBC_OP_SAMPLE_B;
+         NEED(is_ld_ms ? 4 : is_ld ? 3
+                                   : 4 + dynamic_offset + compare +
+                                        (has_grad ? 2 : has_bias));
 
          /* The resource is the operand in the RESOURCE file; the sampler
           * the one in the SAMPLER file. Finding them by file rather than
@@ -5122,11 +5130,14 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          bool implicit_min_lod = view_min_lod && !is_ld && !has_lod &&
-                                 !gather;
+                                 !has_grad && !has_bias && !gather;
 
          unsigned nsrc = 2 + ((is_ld && !is_buffer && !is_ld_ms) ? 1 : 0) +
                          (is_ld_ms ? 1 : 0) +
                          (has_lod ? 1 : 0) + (compare ? 1 : 0) +
+                         (has_grad ? 2 : 0) + (has_bias ? 1 : 0) +
+                         (view_min_lod && has_lod && !compare ? 1 : 0) +
+                         (view_min_lod && (has_grad || has_bias) ? 1 : 0) +
                          (dynamic_offset ? 1 : 0) +
                          (has_offset ? 1 : 0) +
                          (rooted_sampler ? 1 : 0) +
@@ -5136,9 +5147,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld_ms ? nir_texop_txf_ms
-                            : is_ld ? nir_texop_txf
+                         : is_ld ? nir_texop_txf
                          : gather ? nir_texop_tg4
                          : has_lod ? nir_texop_txl
+                         : has_grad ? nir_texop_txd
+                         : has_bias ? nir_texop_txb
                          : implicit_min_lod ? nir_texop_txd
                                             : nir_texop_tex;
          tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF : sampler_dim;
@@ -5238,10 +5251,27 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                }
             } else if (has_lod) {
                nir_def *lod = nir_channel(b, SRC(nops - 1), 0);
-               if (view_min_lod)
-                  lod = nir_fmax(b, lod, view_min_lod);
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, lod);
+               if (view_min_lod)
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_min_lod, view_min_lod);
+            } else if (has_grad) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_ddx,
+                  nir_trim_vector(b, SRC(nops - 2), coord_components));
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_ddy,
+                  nir_trim_vector(b, SRC(nops - 1), coord_components));
+               if (view_min_lod)
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_min_lod, view_min_lod);
+            } else if (has_bias) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_bias, nir_channel(b, SRC(nops - 1), 0));
+               if (view_min_lod)
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_min_lod, view_min_lod);
             } else if (implicit_min_lod) {
                /* AGX carries a minimum LOD with explicit gradients.  Rebuild
                 * implicit LOD from the coordinate derivatives; a zero-bias

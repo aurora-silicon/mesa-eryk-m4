@@ -2985,6 +2985,8 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
    slot->sampler_lod_bias = desc->MipLODBias;
    slot->sampler_flags = desc->Flags;
    slot->sampler_reserved = d12_sampler_custom_border_flags(desc);
+   if (D3D12_DECODE_MIP_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT)
+      slot->sampler_reserved |= D12_SAMPLER_MIP_POINT;
    slot->sampler_kind = D12_DESC_SAMPLER;
 }
 

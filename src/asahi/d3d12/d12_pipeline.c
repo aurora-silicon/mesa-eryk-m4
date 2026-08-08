@@ -935,6 +935,98 @@ d12_nir_lower_custom_point_borders(nir_shader *nir)
                               nir_metadata_none, NULL);
 }
 
+/* AGX keeps sampler LOD bias outside its packed sampler descriptor. D3D12
+ * stores it in the sampler and applies it to implicit, biased, explicit-LOD,
+ * and gradient sampling alike, so recover it from the same per-stage side
+ * table used for arbitrary border colours before lowering texture ops. */
+static bool
+d12_lower_sampler_lod_bias(nir_builder *b, nir_tex_instr *tex,
+                           UNUSED void *data)
+{
+   if (!nir_tex_instr_need_sampler(tex) ||
+       nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0 ||
+       (tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
+        tex->op != nir_texop_txl && tex->op != nir_texop_txd))
+      return false;
+
+   b->cursor = nir_before_instr(&tex->instr);
+   nir_def *logical = nir_imm_int(b, tex->sampler_index);
+   int sampler_offset =
+      nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
+   if (sampler_offset >= 0) {
+      logical = nir_iadd(b, logical,
+                         nir_u2u32(b, tex->src[sampler_offset].src.ssa));
+   }
+
+   nir_def *table = nir_load_custom_border_table_agx(b);
+   nir_def *entry = nir_iadd(
+      b, table,
+      nir_u2u64(b, nir_imul_imm(b, logical,
+                                sizeof(struct d12_custom_border_entry))));
+   nir_def *bias = nir_load_global_constant(
+      b, 1, 32, nir_iadd_imm(b, entry, 4),
+      .align_mul = 8, .align_offset = 4);
+   nir_def *flags = nir_load_global_constant(
+      b, 1, 32, entry, .align_mul = 8, .align_offset = 0);
+
+   if (tex->op == nir_texop_txd) {
+      nir_def *ddx = nir_steal_tex_src(tex, nir_tex_src_ddx);
+      nir_def *ddy = nir_steal_tex_src(tex, nir_tex_src_ddy);
+      if (!ddx || !ddy)
+         return false;
+
+      nir_def *scale = nir_fexp2(b, bias);
+      nir_tex_instr_add_src(tex, nir_tex_src_ddx,
+                            nir_fmul(b, ddx, scale));
+      nir_tex_instr_add_src(tex, nir_tex_src_ddy,
+                            nir_fmul(b, ddy, scale));
+   } else if (tex->op == nir_texop_tex) {
+      tex->op = nir_texop_txb;
+      nir_tex_instr_add_src(tex, nir_tex_src_bias, bias);
+   } else if (tex->op == nir_texop_txl || tex->op == nir_texop_txb) {
+      nir_tex_src_type type = tex->op == nir_texop_txl
+                                 ? nir_tex_src_lod
+                                 : nir_tex_src_bias;
+      nir_def *original = nir_steal_tex_src(tex, type);
+      nir_def *combined = original ? nir_fadd(b, original, bias) : bias;
+
+      if (tex->op == nir_texop_txl) {
+         /* AGX and D3D both select the nearest point-filtered mip, but AGX
+          * breaks exact half-level ties downward while D3D breaks them up.
+          * Its LOD input quantizes away an FP16 ULP, so add a visible 1/16
+          * only when the unquantized value is exactly at the tie. */
+         nir_def *point = nir_ine_imm(
+            b, nir_iand_imm(b, flags, D12_SAMPLER_MIP_POINT), 0);
+         nir_def *tie = nir_feq_imm(b, nir_ffract(b, combined), 0.5f);
+         combined = nir_fadd(
+            b, combined,
+            nir_bcsel(b, nir_iand(b, point, tie),
+                      nir_imm_float(b, 0.0625f),
+                      nir_imm_float(b, 0.0f)));
+
+         /* ResourceMinLODClamp applies after the shader and sampler biases.
+          * Consume the temporary NIR source here because AGX txl has no
+          * separate minimum-LOD operand. */
+         nir_def *min_lod = nir_steal_tex_src(tex, nir_tex_src_min_lod);
+         if (min_lod)
+            combined = nir_fmax(b, combined, min_lod);
+      }
+
+      nir_tex_instr_add_src(tex, type, combined);
+   } else {
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+d12_nir_lower_sampler_lod_bias(nir_shader *nir)
+{
+   return nir_shader_tex_pass(nir, d12_lower_sampler_lod_bias,
+                              nir_metadata_none, NULL);
+}
+
 /*
  * The real work: application DXIL -> our translator -> NIR -> AGX, then
  * upload. This is the campaign's shader path running inside the driver.
@@ -1014,6 +1106,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       return E_INVALIDARG;
    }
 
+   NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
@@ -1727,6 +1820,7 @@ compile_gfx_stage(struct d12_device *device,
    nir->info.cull_distance_array_size =
       MAX2(nir->info.cull_distance_array_size, translated_cull_size);
 
+   NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);

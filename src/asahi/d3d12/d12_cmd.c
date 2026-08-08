@@ -2653,10 +2653,8 @@ d12_list_bound_sampler(struct d12_cmd_list *list, bool compute_bindings,
    return chosen;
 }
 
-/* Upload arbitrary point-border colours separately from the compact AGX
- * sampler state file. Hardware encodes only transparent/opaque black and
- * opaque white; the shader consults this table only for a descriptor marked
- * custom, so ordinary sampling remains the native single-sample path. */
+/* Upload sampler state which is not present in the compact AGX descriptor:
+ * arbitrary point-border colours and D3D's floating-point LOD bias. */
 static bool
 d12_list_upload_custom_borders(struct d12_cmd_list *list,
                                const struct agx_shader_info *info,
@@ -2685,6 +2683,7 @@ d12_list_upload_custom_borders(struct d12_cmd_list *list,
 
       if (chosen) {
          entries[logical].flags = chosen->sampler_reserved;
+         entries[logical].lod_bias = chosen->sampler_lod_bias;
          memcpy(entries[logical].color, chosen->sampler_border,
                 sizeof(entries[logical].color));
       } else if (validate && visible_slot) {
@@ -2741,8 +2740,9 @@ d12_list_upload_custom_borders(struct d12_cmd_list *list,
                 d12_list_stream_contains(list, *out_gpu,
                                          sizeof(table_gpu)));
       for (unsigned i = 0; i < count - 1; i++) {
-         mesa_logi("  border%u: flags=0x%x color=%08x %08x %08x %08x",
-                   i, entries[i].flags, entries[i].color[0],
+         mesa_logi("  sampler%u: flags=0x%x lod_bias=%f "
+                   "color=%08x %08x %08x %08x",
+                   i, entries[i].flags, entries[i].lod_bias, entries[i].color[0],
                    entries[i].color[1], entries[i].color[2],
                    entries[i].color[3]);
       }
