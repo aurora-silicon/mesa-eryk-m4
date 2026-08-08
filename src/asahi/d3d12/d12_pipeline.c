@@ -1762,6 +1762,13 @@ compile_tcs_stage(struct d12_device *device, const struct d12_binding_map *map,
    pso->tcs_nr_patch_outputs = util_last_bit(nir->info.patch_outputs_written);
    pso->tcs_output_stride = poly_tcs_output_stride(nir);
 
+   /* The lowered hull shader is a compute workgroup with one invocation per
+    * output control point. Keep the shader metadata consistent with the CDM
+    * launch so local IDs and per-thread scratch use the same group shape. */
+   nir->info.workgroup_size[0] = pso->tcs_output_patch_size;
+   nir->info.workgroup_size[1] = 1;
+   nir->info.workgroup_size[2] = 1;
+
    NIR_PASS(_, nir, poly_nir_lower_tcs);
    nir->info.stage = MESA_SHADER_COMPUTE;
    memset(&nir->info.cs, 0, sizeof(nir->info.cs));

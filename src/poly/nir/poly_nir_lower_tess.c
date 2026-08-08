@@ -95,8 +95,12 @@ lower_tcs_impl(nir_builder *b, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
    case nir_intrinsic_barrier:
-      /* A patch fits in a subgroup, so the barrier is unnecessary. */
-      return NIR_LOWER_INSTR_PROGRESS_REPLACE;
+      /* A patch fits in a subgroup, so a pure execution rendezvous is
+       * redundant. Memory barriers still order the global TCS output buffer
+       * between the control-point and patch-constant phases. */
+      return nir_intrinsic_memory_scope(intr) == SCOPE_NONE
+                ? NIR_LOWER_INSTR_PROGRESS_REPLACE
+                : NULL;
 
    case nir_intrinsic_load_primitive_id:
       return nir_channel(b, nir_load_workgroup_id(b), 0);

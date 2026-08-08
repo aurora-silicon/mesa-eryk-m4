@@ -329,6 +329,11 @@ struct trans_ctx {
    uint32_t shared_size;    /* bytes of groupshared assigned so far */
    uint32_t scratch_size;   /* bytes of per-thread scratch assigned so far */
 
+   /* Latest 32-bit values stored at constant offsets in a small, linear
+    * single-block alloca. Dynamic loads can select these in SSA and avoid
+    * AGX stack traffic entirely. */
+   nir_def *scratch_shadow[256 / 4];
+
    const char *error;
 };
 
@@ -1089,9 +1094,13 @@ pointer_for_value(struct trans_ctx *ctx, uint32_t id)
             if (has_data)
                val = i < init->num_data_elems ? init->data_elems[i] : 0;
 
-            nir_store_scratch(b, nir_imm_intN_t(b, val, ebits),
+            nir_def *init_def = nir_imm_intN_t(b, val, ebits);
+            nir_store_scratch(b, init_def,
                               nir_imm_int(b, base + off),
                               .write_mask = 1, .align_mul = esz);
+            if (ebits == 32 && (base + off) / 4 <
+                                  ARRAY_SIZE(ctx->scratch_shadow))
+               ctx->scratch_shadow[(base + off) / 4] = init_def;
          }
          b->cursor = saved;
       }
@@ -2752,7 +2761,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
 
       const struct d12_sig_element *se =
-         d12_dxil_find_sig(ctx->mod->input_sig, ctx->mod->num_input_sig,
+         d12_dxil_find_sig(ctx->mod->output_sig, ctx->mod->num_output_sig,
                            (uint32_t)sig_id);
       unsigned location = se && se->name && !strcmp(se->name, "SV_Position")
                              ? VARYING_SLOT_POS
@@ -2767,7 +2776,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
       def_result(ctx, inst,
-                 nir_load_per_vertex_input(
+                 nir_load_per_vertex_output(
                     b, 1, 32, nir_u2u32(b, vertex), nir_imm_int(b, row),
                     .base = dxil_sig_start_row(se, (unsigned)sig_id),
                     .component = component,
@@ -4925,6 +4934,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
     */
    struct d12_function merged;
    struct d12_inst *merged_insts = NULL;
+   unsigned patch_constant_start = ~0u;
 
    if (stage == MESA_SHADER_TESS_CTRL && mod->has_patch_constant &&
        mod->patch_constant_func < mod->num_functions) {
@@ -4977,6 +4987,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       merged.num_insts = keep + pc->num_insts;
       merged.num_blocks = entry_blocks;
       entry = &merged;
+      patch_constant_start = keep;
    }
 
    nir_builder b = nir_builder_init_simple_shader(stage, &agx_nir_options,
@@ -5239,6 +5250,18 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          b.cursor = nir_after_block(ctx.blocks[cur_block]);
       }
 
+      /* DXIL's patch-constant function is a distinct phase: it may read the
+       * complete control-point outputs written by every hull invocation.
+       * The translator buffers ordinary outputs, so publish them before the
+       * appended function and order the global TCS-buffer traffic. */
+      if (i == patch_constant_start) {
+         flush_outputs(&ctx);
+         nir_barrier(&b, .execution_scope = SCOPE_WORKGROUP,
+                     .memory_scope = SCOPE_WORKGROUP,
+                     .memory_semantics = NIR_MEMORY_ACQ_REL,
+                     .memory_modes = nir_var_mem_global);
+      }
+
       switch (inst->code) {
       case D12_FUNC_INST_CALL: {
          uint64_t opcode;
@@ -5365,7 +5388,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          }
 
          uint32_t base = ctx.ptr_base[inst->ops[0]];
+         bool dynamic = ctx.defs[inst->ops[0]] != NULL;
          nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (dynamic && nir_src_is_const(nir_src_for_ssa(dyn))) {
+            base += nir_src_as_uint(nir_src_for_ssa(dyn));
+            dyn = NULL;
+            dynamic = false;
+         }
          if (!dyn)
             dyn = nir_imm_int(&b, 0);
 
@@ -5380,9 +5409,44 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
             val = nir_load_global(&b, comps, bits, addr,
                                   .align_mul = bits / 8);
          } else {
-            val = nir_load_scratch(&b, comps, bits,
-                                   nir_iadd_imm(&b, dyn, base),
-                                   .align_mul = bits / 8);
+            unsigned bytes = comps * (bits / 8);
+
+            /* For a small single-block alloca whose constant stores are still
+             * available as SSA, select those values directly. This avoids the
+             * AGX stack path without changing multi-block memory semantics. */
+            bool shadow = dynamic && ctx.num_blocks == 1 && bits == 32 &&
+                          bytes > 0 && ctx.scratch_size <= 256;
+            if (shadow) {
+               nir_def *addr = nir_iadd_imm(&b, dyn, base);
+               val = nir_undef(&b, comps, bits);
+               bool any = false;
+
+               for (unsigned off = 0; off + bytes <= ctx.scratch_size;
+                    off += 4) {
+                  nir_def *cells[4];
+                  bool complete = true;
+                  for (unsigned c = 0; c < comps; c++) {
+                     cells[c] = ctx.scratch_shadow[off / 4 + c];
+                     complete &= cells[c] != NULL;
+                  }
+                  if (!complete)
+                     continue;
+
+                  nir_def *candidate =
+                     comps == 1 ? cells[0] : nir_vec(&b, cells, comps);
+                  val = nir_bcsel(&b, nir_ieq_imm(&b, addr, off), candidate,
+                                  val);
+                  any = true;
+               }
+
+               shadow = any;
+            }
+
+            if (!shadow) {
+               val = nir_load_scratch(&b, comps, bits,
+                                      nir_iadd_imm(&b, dyn, base),
+                                      .align_mul = bits / 8);
+            }
          }
          def_result(&ctx, inst, val);
          break;
@@ -5409,7 +5473,13 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          }
 
          uint32_t base = ctx.ptr_base[inst->ops[0]];
+         bool dynamic = ctx.defs[inst->ops[0]] != NULL;
          nir_def *dyn = ctx.defs[inst->ops[0]];
+         if (dynamic && nir_src_is_const(nir_src_for_ssa(dyn))) {
+            base += nir_src_as_uint(nir_src_for_ssa(dyn));
+            dyn = NULL;
+            dynamic = false;
+         }
          if (!dyn)
             dyn = nir_imm_int(&b, 0);
 
@@ -5425,6 +5495,16 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                              .write_mask = BITFIELD_MASK(val->num_components),
                              .align_mul = val->bit_size / 8);
          } else {
+            if (!dynamic && ctx.num_blocks == 1 && val->bit_size == 32 &&
+                (base & 3) == 0 &&
+                base + val->num_components * 4 <= 256) {
+               for (unsigned c = 0; c < val->num_components; c++)
+                  ctx.scratch_shadow[base / 4 + c] =
+                     nir_channel(&b, val, c);
+            } else {
+               memset(ctx.scratch_shadow, 0, sizeof(ctx.scratch_shadow));
+            }
+
             nir_store_scratch(&b, val, nir_iadd_imm(&b, dyn, base),
                               .write_mask =
                                  BITFIELD_MASK(val->num_components),
