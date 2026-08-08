@@ -1192,6 +1192,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
       seg->ds = dsv->resource;
       seg->ds_address = dsv->address;
       seg->stencil_address = dsv->counter_address;
+      seg->ds_level = dsv->texture_plane;
       seg->dsv_flags = dsv->dsv_flags;
       const unsigned ds_layers = MAX2(dsv->size_B, 1);
       const unsigned ds_samples =
@@ -1214,7 +1215,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
       const uint64_t z_start = dsv->resource->bo->va->addr;
       const uint64_t z_end = z_start + dsv->resource->bo->size;
       const uint64_t z_span =
-         (uint64_t)dsv->resource->layout.layer_stride_B * ds_layers;
+         (uint64_t)dsv->resource->layout.layer_stride_B * (ds_layers - 1) +
+         ail_get_level_size_B(&dsv->resource->layout, seg->ds_level);
       if (seg->ds_address < z_start || seg->ds_address >= z_end ||
           z_span > z_end - seg->ds_address) {
          mesa_loge("DSV depth address 0x%llx span 0x%llx is outside BO "
@@ -1231,7 +1233,9 @@ d12_list_begin_render(struct d12_cmd_list *list,
          const uint64_t s_end = s_start + dsv->resource->stencil_bo->size;
          const uint64_t s_span =
             (uint64_t)dsv->resource->stencil_layout.layer_stride_B *
-            ds_layers;
+               (ds_layers - 1) +
+            ail_get_level_size_B(&dsv->resource->stencil_layout,
+                                 seg->ds_level);
          if (seg->stencil_address < s_start ||
              seg->stencil_address >= s_end ||
              s_span > s_end - seg->stencil_address) {
@@ -1246,15 +1250,17 @@ d12_list_begin_render(struct d12_cmd_list *list,
          }
       }
       rt_samples = ds_samples;
+      const unsigned ds_width =
+         u_minify(dsv->resource->layout.width_px, seg->ds_level);
+      const unsigned ds_height =
+         u_minify(dsv->resource->layout.height_px, seg->ds_level);
       if (!seg->width_px) {
-         seg->width_px = dsv->resource->layout.width_px;
-         seg->height_px = dsv->resource->layout.height_px;
-      } else if (dsv->resource->layout.width_px < seg->width_px ||
-                 dsv->resource->layout.height_px < seg->height_px) {
+         seg->width_px = ds_width;
+         seg->height_px = ds_height;
+      } else if (ds_width < seg->width_px || ds_height < seg->height_px) {
          mesa_loge("depth/stencil target %ux%u is smaller than the render "
-                   "target %ux%u", dsv->resource->layout.width_px,
-                   dsv->resource->layout.height_px, seg->width_px,
-                   seg->height_px);
+                   "target %ux%u", ds_width, ds_height,
+                   seg->width_px, seg->height_px);
          list->state = D12_LIST_ERROR;
          return NULL;
       }
@@ -1803,6 +1809,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
                                     : table[i].kind == D12_DESC_UAV
                                          ? d12_format_to_pipe(table[i].format)
+                                     : table[i].format != DXGI_FORMAT_UNKNOWN
+                                         ? d12_format_to_pipe(table[i].format)
                                          : layout->format;
       if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
           !ail_pixel_format[pf].texturable ||
@@ -1811,6 +1819,36 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
       const struct util_format_description *fdesc =
          util_format_description(pf);
+      uint8_t format_swizzle[4] = {
+         fdesc->swizzle[0], fdesc->swizzle[1],
+         fdesc->swizzle[2], fdesc->swizzle[3],
+      };
+
+      /* The separately allocated stencil byte is physically R8 on AGX, but
+       * D3D12's X24_TYPELESS_G8_UINT and X32_TYPELESS_G8X24_UINT views expose
+       * it as memory component 1.  Keep that logical component placement
+       * before composing Shader4ComponentMapping; treating the plane as a
+       * plain R8 view makes FROM_MEMORY_COMPONENT_1 sample constant zero. */
+      if (stencil &&
+          (table[i].format == DXGI_FORMAT_X24_TYPELESS_G8_UINT ||
+           table[i].format == DXGI_FORMAT_X32_TYPELESS_G8X24_UINT)) {
+         format_swizzle[0] = PIPE_SWIZZLE_0;
+         format_swizzle[1] = PIPE_SWIZZLE_X;
+         format_swizzle[2] = PIPE_SWIZZLE_0;
+         format_swizzle[3] = PIPE_SWIZZLE_1;
+      }
+
+      uint8_t swizzle[4];
+      if (table[i].kind == D12_DESC_SRV) {
+         uint8_t view_swizzle[4];
+         for (unsigned c = 0; c < 4; c++) {
+            view_swizzle[c] = D3D12_DECODE_SHADER_4_COMPONENT_MAPPING(
+               c, table[i].texture_component_mapping);
+         }
+         util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
+      } else {
+         memcpy(swizzle, format_swizzle, sizeof(swizzle));
+      }
       const unsigned samples = MAX2(layout->sample_count_sa, 1);
       const enum agx_texture_dimension dimension =
          d12_native_texture_dimension(&table[i], samples);
@@ -1834,10 +1872,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.type = ail_pixel_format[pf].type;
          cfg.srgb = util_format_is_srgb(pf);
 
-         cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
-         cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
-         cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
-         cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+         cfg.swizzle_r = agx_channel_from_pipe(swizzle[0]);
+         cfg.swizzle_g = agx_channel_from_pipe(swizzle[1]);
+         cfg.swizzle_b = agx_channel_from_pipe(swizzle[2]);
+         cfg.swizzle_a = agx_channel_from_pipe(swizzle[3]);
 
          cfg.address = table[i].address;
          cfg.width = layout->width_px;
@@ -2195,6 +2233,8 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
                                  : d->kind == D12_DESC_UAV
                                       ? d12_format_to_pipe(d->format)
+                                  : d->format != DXGI_FORMAT_UNKNOWN
+                                      ? d12_format_to_pipe(d->format)
                                       : layout->format;
    if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
        !ail_pixel_format[pf].texturable ||
@@ -2215,6 +2255,13 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       format_swizzle[1] = PIPE_SWIZZLE_0;
       format_swizzle[2] = PIPE_SWIZZLE_0;
       format_swizzle[3] = PIPE_SWIZZLE_X;
+   } else if (stencil &&
+              (d->format == DXGI_FORMAT_X24_TYPELESS_G8_UINT ||
+               d->format == DXGI_FORMAT_X32_TYPELESS_G8X24_UINT)) {
+      format_swizzle[0] = PIPE_SWIZZLE_0;
+      format_swizzle[1] = PIPE_SWIZZLE_X;
+      format_swizzle[2] = PIPE_SWIZZLE_0;
+      format_swizzle[3] = PIPE_SWIZZLE_1;
    }
 
    uint8_t swizzle[4];
@@ -7642,11 +7689,12 @@ d12_list_attach_ds(struct d12_cmd_list *list,
     * smaller than the colour target would leave the uncovered region
     * testing against memory outside the allocation.
     */
-   if (ds->layout.width_px < seg->width_px ||
-       ds->layout.height_px < seg->height_px) {
+   const unsigned level = dsv->texture_plane;
+   const unsigned width = u_minify(ds->layout.width_px, level);
+   const unsigned height = u_minify(ds->layout.height_px, level);
+   if (width < seg->width_px || height < seg->height_px) {
       mesa_loge("depth/stencil target %ux%u is smaller than the render pass "
-                "%ux%u", ds->layout.width_px, ds->layout.height_px,
-                seg->width_px, seg->height_px);
+                "%ux%u", width, height, seg->width_px, seg->height_px);
       list->state = D12_LIST_ERROR;
       return false;
    }
@@ -7654,6 +7702,7 @@ d12_list_attach_ds(struct d12_cmd_list *list,
    seg->ds = ds;
    seg->ds_address = dsv->address;
    seg->stencil_address = dsv->counter_address;
+   seg->ds_level = level;
    seg->dsv_flags = dsv->dsv_flags;
    const unsigned ds_layers = MAX2(dsv->size_B, 1);
    if (seg->layers != ds_layers) {
@@ -7760,7 +7809,8 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
    if (num_rects != 0) {
       if (flags & D3D12_CLEAR_FLAG_DEPTH) {
          struct d12_copy_surface surface;
-         if (!d12_copy_surface_from_texture(&surface, ds, 0,
+         if (!d12_copy_surface_from_texture(&surface, ds,
+                                            dsv->texture_plane,
                                             "partial depth clear")) {
             list->state = D12_LIST_ERROR;
             return;
@@ -7793,8 +7843,8 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
 
          struct d12_copy_surface surface;
          const unsigned plane_subresource =
-            MAX2(ds->desc.MipLevels, 1) *
-            MAX2(ds->desc.DepthOrArraySize, 1);
+            ds->layout.levels * MAX2(ds->desc.DepthOrArraySize, 1) +
+            dsv->texture_plane;
          if (!d12_copy_surface_from_texture(&surface, ds,
                                             plane_subresource,
                                             "partial stencil clear")) {

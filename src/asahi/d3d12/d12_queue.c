@@ -196,8 +196,8 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
 
       /* The depth buffer may be larger than the colour target. */
       agx_pack(&c->isp_zls_pixels, CR_ISP_ZLS_PIXELS, cfg) {
-         cfg.x = z->width_px;
-         cfg.y = z->height_px;
+         cfg.x = u_minify(z->width_px, seg->ds_level);
+         cfg.y = u_minify(z->height_px, seg->ds_level);
       }
 
       /* Integer depth bias applies to unorm depth buffers, float bias to

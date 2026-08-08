@@ -977,6 +977,7 @@ struct d12_segment {
     * offsets when the render command is packed. */
    uint64_t ds_address;
    uint64_t stencil_address;
+   uint8_t ds_level;
    uint8_t dsv_flags;       /* D3D12_DSV_FLAGS snapshot for this pass */
    bool depth_cleared, stencil_cleared;
    uint32_t isp_bgobjdepth; /* clear value in the depth plane's encoding */

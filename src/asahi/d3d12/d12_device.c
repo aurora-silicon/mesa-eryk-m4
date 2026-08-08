@@ -2019,6 +2019,7 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
 
    const uint32_t resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
    uint32_t first_layer = 0;
+   uint32_t mip_level = 0;
    /* A NULL descriptor requests the default view over every array slice. */
    uint32_t view_layers = desc ? 1 : resource_layers;
    if (desc) {
@@ -2034,11 +2035,12 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                  D3D12_DSV_DIMENSION_TEXTURE2DARRAY) {
          first_layer = desc->Texture2DArray.FirstArraySlice;
          view_layers = desc->Texture2DArray.ArraySize;
+         mip_level = desc->Texture2DArray.MipSlice;
          if (view_layers == UINT32_MAX)
             view_layers = resource_layers - MIN2(first_layer,
                                                   resource_layers);
 
-         if (desc->Texture2DArray.MipSlice != 0 ||
+         if (mip_level >= res->layout.levels ||
              first_layer >= resource_layers || !view_layers ||
              view_layers > resource_layers - first_layer) {
             mesa_loge("CreateDepthStencilView: array range %u+%u/%u mip %u "
@@ -2052,9 +2054,10 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                    "single-sample resource", (int)desc->ViewDimension);
          slot->resource = NULL;
          return;
-      } else if (desc->Texture2D.MipSlice != 0) {
-         mesa_loge("CreateDepthStencilView: mip slice %u unsupported",
-                   desc->Texture2D.MipSlice);
+      } else if ((mip_level = desc->Texture2D.MipSlice) >=
+                 res->layout.levels) {
+         mesa_loge("CreateDepthStencilView: mip slice %u out of range",
+                   mip_level);
          slot->resource = NULL;
          return;
       }
@@ -2082,15 +2085,17 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                      : res->desc.Format;
    slot->kind = D12_DESC_DSV;
    slot->dsv_flags = flags;
-   slot->address =
-      res->addr + (uint64_t)first_layer * res->layout.layer_stride_B;
+   slot->address = res->addr +
+                   ail_get_layer_level_B(&res->layout, first_layer,
+                                         mip_level);
    slot->counter_address = res->stencil_bo
-      ? res->stencil_addr +
-           (uint64_t)first_layer * res->stencil_layout.layer_stride_B
+      ? res->stencil_addr + ail_get_layer_level_B(
+           &res->stencil_layout, first_layer, mip_level)
       : 0;
    /* CPU-only DSV descriptors reuse size_B for their selected layer count,
     * matching the established RTV representation. */
    slot->size_B = view_layers;
+   slot->texture_plane = mip_level;
 }
 
 static enum agx_wrap
