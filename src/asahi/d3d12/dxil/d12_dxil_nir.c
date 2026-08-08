@@ -1313,6 +1313,36 @@ patch_location(const char *sem, unsigned sig_id)
    return VARYING_SLOT_PATCH0 + sig_id;
 }
 
+static unsigned
+dxil_system_value_component_count(const struct d12_module *mod,
+                                  const char *name)
+{
+   unsigned count = 0;
+   for (unsigned i = 0; i < mod->num_output_sig; ++i) {
+      const struct d12_sig_element *e = &mod->output_sig[i];
+      if (e->name && !strcmp(e->name, name))
+         count += e->cols;
+   }
+   return count;
+}
+
+static unsigned
+dxil_system_value_compact_component(const struct d12_module *mod,
+                                    const struct d12_sig_element *target,
+                                    unsigned col)
+{
+   unsigned base = 0;
+   for (unsigned i = 0; i < mod->num_output_sig; ++i) {
+      const struct d12_sig_element *e = &mod->output_sig[i];
+      if (!e->name || strcmp(e->name, target->name))
+         continue;
+      if (e == target)
+         return base + col;
+      base += e->cols;
+   }
+   return base + col;
+}
+
 /*
  * Emit the buffered per-component output stores as one vector store per
  * slot, then reset the buffer. Geometry shaders call this at every
@@ -1679,6 +1709,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       unsigned location;
+      unsigned output_col = col;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* SV_Target[n]; the semantic index rides in start_row. */
          location = FRAG_RESULT_DATA0 + (se ? se->start_row : sig_id);
@@ -1687,16 +1718,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       } else if (sem && !strcmp(sem, "SV_RenderTargetArrayIndex")) {
          location = VARYING_SLOT_LAYER;
       } else if (sem && !strcmp(sem, "SV_ClipDistance")) {
-         location = VARYING_SLOT_CLIP_DIST0 + se->semantic_index;
-         b->shader->info.clip_distance_array_size =
-            MAX2(b->shader->info.clip_distance_array_size,
-                 se->semantic_index * 4 + col + 1);
+         const unsigned clip_count = dxil_system_value_component_count(
+            ctx->mod, "SV_ClipDistance");
+         const unsigned compact = dxil_system_value_compact_component(
+            ctx->mod, se, col);
+         location = VARYING_SLOT_CLIP_DIST0 + (compact / 4);
+         output_col = compact % 4;
+         b->shader->info.clip_distance_array_size = clip_count;
+      } else if (sem && !strcmp(sem, "SV_CullDistance")) {
+         const unsigned clip_count = dxil_system_value_component_count(
+            ctx->mod, "SV_ClipDistance");
+         const unsigned cull_count = dxil_system_value_component_count(
+            ctx->mod, "SV_CullDistance");
+         const unsigned compact = dxil_system_value_compact_component(
+            ctx->mod, se, col);
+         const unsigned combined = clip_count + compact;
+         location = VARYING_SLOT_CLIP_DIST0 + (combined / 4);
+         output_col = combined % 4;
+         b->shader->info.clip_distance_array_size = clip_count;
+         b->shader->info.cull_distance_array_size = cull_count;
       } else {
          location = VARYING_SLOT_VAR0 + sig_id;
       }
       b->shader->info.outputs_written |= BITFIELD64_BIT(location);
 
-      if (sig_id >= D12_MAX_OUTPUTS || col > 3) {
+      if (sig_id >= D12_MAX_OUTPUTS || output_col > 3) {
          trans_fail(ctx, "output signature index or component out of range");
          return false;
       }
@@ -1718,19 +1764,19 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * flush_outputs still presents AGX with one vector store per output.
        */
       if (ctx->num_blocks > 1) {
-         if (!slot->regs[col]) {
+         if (!slot->regs[output_col]) {
             nir_cursor saved = b->cursor;
             b->cursor = nir_before_block(ctx->blocks[0]);
-            slot->regs[col] = nir_decl_reg(b, 1, val->bit_size, 0);
+            slot->regs[output_col] = nir_decl_reg(b, 1, val->bit_size, 0);
             nir_store_reg(b, nir_undef(b, 1, val->bit_size),
-                          slot->regs[col]);
+                          slot->regs[output_col]);
             b->cursor = saved;
          }
-         nir_store_reg(b, val, slot->regs[col]);
+         nir_store_reg(b, val, slot->regs[output_col]);
       } else {
-         slot->comps[col] = val;
+         slot->comps[output_col] = val;
       }
-      slot->write_mask |= 1u << col;
+      slot->write_mask |= 1u << output_col;
       return true;
    }
 

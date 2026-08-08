@@ -1091,6 +1091,7 @@ compile_gfx_stage(struct d12_device *device,
                   const struct d12_vs_fetch *fetch,
                   uint64_t *outputs_written, bool *use_fs_epilog,
                   struct agx_fs_epilog_link_info *fs_epilog_link,
+                  uint8_t *cull_distance_size,
                   struct agx_shader_part *out)
 {
    nir_shader *nir;
@@ -1107,6 +1108,16 @@ compile_gfx_stage(struct d12_device *device,
    }
    if (!nir)
       return false;
+
+   /* The bytecode front ends lower I/O directly to intrinsics and therefore
+    * set compact clip/cull sizes themselves. nir_shader_gather_info cannot
+    * reconstruct those array lengths from variables (there are none), so
+    * retain them across the generic metadata refresh below. */
+   const uint8_t translated_clip_size = nir->info.clip_distance_array_size;
+   const uint8_t translated_cull_size = nir->info.cull_distance_array_size;
+   if (stage != MESA_SHADER_FRAGMENT && cull_distance_size) {
+      *cull_distance_size = nir->info.cull_distance_array_size;
+   }
 
    /* AGX exposes integer pixel coordinates. D3D12, like Vulkan, defines
     * SV_Position.xy at the sample position (pixel centre without sample
@@ -1126,6 +1137,10 @@ compile_gfx_stage(struct d12_device *device,
     * same boundary, before agx_preprocess_nir.
     */
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
+   nir->info.clip_distance_array_size =
+      MAX2(nir->info.clip_distance_array_size, translated_clip_size);
+   nir->info.cull_distance_array_size =
+      MAX2(nir->info.cull_distance_array_size, translated_cull_size);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {
@@ -1263,6 +1278,11 @@ compile_gfx_stage(struct d12_device *device,
          NIR_PASS(_, nir, agx_nir_lower_vs_input_to_prolog);
       }
 
+      NIR_PASS(_, nir, nir_lower_io_to_scalar, nir_var_shader_out, NULL,
+               NULL);
+      NIR_PASS(_, nir, agx_nir_lower_cull_distance_vs);
+      if (cull_distance_size)
+         *cull_distance_size = nir->info.cull_distance_array_size;
       NIR_PASS(_, nir, agx_nir_lower_uvs, uvs);
 
       /* Indexed output stores read their UVS index through
@@ -2556,13 +2576,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       rgb_func, rgb_src, rgb_dst, alpha_func, alpha_src, alpha_dst);
 
    struct agx_shader_part vs_part, fs_part;
+   uint8_t cull_distance_size = 0;
    struct agx_fs_epilog_link_info fs_epilog_link = {0};
    struct d12_vs_fetch fetch;
    resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
 
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX,
                           &tib, 0xffff, 0, &pso->uvs, &fetch, NULL, NULL, NULL,
-                          &vs_part)) {
+                          &cull_distance_size, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
@@ -2580,10 +2601,47 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
                           &tib, active_sample_mask, a8_mask, NULL, NULL,
                           &fs_outputs,
-                          &use_fs_epilog, &fs_epilog_link, &fs_part)) {
+                          &use_fs_epilog, &fs_epilog_link,
+                          &cull_distance_size, &fs_part)) {
       free(vs_part.binary);
       free(pso);
       return E_INVALIDARG;
+   }
+
+   /* Cull distance is an emulated pre-fragment operation on AGX. Keep it in
+    * the standard fragment prolog, exactly like Honeykrisp, rather than in
+    * the API shader main. Besides preserving the required ordering relative
+    * to depth/stencil tests, the fast linker knows how to merge the prolog's
+    * private coefficient-register bindings after those used by the main. */
+   struct agx_shader_part fs_prolog = {0};
+   if (cull_distance_size) {
+      struct agx_fs_prolog_key prolog_key = {
+         .api_sample_mask = 0xff,
+         .cull_distance_size = cull_distance_size,
+         .run_zs_tests = true,
+         .cf_base = fs_part.info.varyings.fs.nr_cf,
+      };
+
+      nir_builder fb =
+         nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
+      agx_nir_fs_prolog(&fb, &prolog_key);
+
+      struct agx_shader_key prolog_backend_key = {
+         .dev = agx_gather_device_key(&device->dev),
+         .secondary = true,
+         .no_stop = true,
+         .fs.cf_base = prolog_key.cf_base,
+      };
+      agx_compile_shader_nir(fb.shader, &prolog_backend_key, &fs_prolog);
+      ralloc_free(fb.shader);
+
+      if (!fs_prolog.binary || !fs_prolog.info.binary_size) {
+         free(fs_prolog.binary);
+         free(fs_part.binary);
+         free(vs_part.binary);
+         free(pso);
+         return E_INVALIDARG;
+      }
    }
 
    /* D3D12 does not define blending for pure-integer render targets. The
@@ -2751,8 +2809,11 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->vs.preamble_va =
          pso->vs.code_bo->va->addr + vs_part.info.preamble_offset;
    }
-   agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part, NULL,
-                 use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL, 1);
+   agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part,
+                 fs_prolog.binary ? &fs_prolog : NULL,
+                 use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL,
+                 use_fs_epilog ? 1 : 0);
+   free(fs_prolog.binary);
    free(fs_epilog.binary);
 
    /* Texture promotion gives the fragment shader a preamble that copies

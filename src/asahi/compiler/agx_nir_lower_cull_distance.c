@@ -49,13 +49,15 @@ lower_write(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
 
    signed loc = sem.location + nir_src_as_uint(intr->src[1]);
    unsigned total_component =
-      (loc - VARYING_SLOT_CLIP_DIST0) * 4 + nir_intrinsic_component(intr);
+      (loc - VARYING_SLOT_CLIP_DIST0) * 4 +
+      nir_intrinsic_component(intr);
 
    unsigned base = b->shader->info.clip_distance_array_size;
    if (total_component < base)
       return false;
 
    unsigned component = total_component - base;
+
    if (component >= b->shader->info.cull_distance_array_size)
       return false;
 
@@ -69,6 +71,7 @@ lower_write(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
                     .src_type = nir_type_float32,
                     .io_semantics.location = VARYING_SLOT_CULL_PRIMITIVE,
                     .io_semantics.num_slots = 2);
+
    return true;
 }
 
@@ -106,7 +109,7 @@ agx_nir_lower_cull_distance_fs(nir_shader *s, unsigned nr_distances)
       nir_def *cf = nir_load_coefficients_agx(
          b, nir_imm_int(b, 0), .component = i & 3,
          .io_semantics.location = VARYING_SLOT_CULL_PRIMITIVE + (i / 4),
-         .io_semantics.num_slots = nr_distances / 4,
+         .io_semantics.num_slots = DIV_ROUND_UP(nr_distances, 4),
          .interp_mode = INTERP_MODE_NOPERSPECTIVE);
 
       /* If the coefficients are identically zero, then the quantity is

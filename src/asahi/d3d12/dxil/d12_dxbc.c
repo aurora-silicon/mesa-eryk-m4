@@ -526,6 +526,48 @@ find_sig_component(const struct d12_dxbc_sig_elem *sig, unsigned n,
    return find_sig(sig, n, reg);
 }
 
+/* Clip/cull signature elements may share a register at arbitrary component
+ * masks. Their semantic indices enumerate declarations, not vec4 slots, so
+ * `semantic_index * 4 + component` leaves holes (float3 + float is the common
+ * counterexample). D3D's system-value ABI is a compact clip array followed by
+ * a compact cull array. Return the compact component selected by this physical
+ * register component. */
+static unsigned
+system_value_compact_component(const struct d12_dxbc_sig_elem *sig,
+                               unsigned n,
+                               const struct d12_dxbc_sig_elem *target,
+                               unsigned component)
+{
+   unsigned base = 0;
+
+   for (unsigned i = 0; i < n; ++i) {
+      const struct d12_dxbc_sig_elem *e = &sig[i];
+      if (strcasecmp(e->name, target->name))
+         continue;
+
+      if (e == target) {
+         unsigned prior = e->mask & BITFIELD_MASK(component);
+         return base + util_bitcount(prior);
+      }
+
+      base += util_bitcount(e->mask);
+   }
+
+   return base;
+}
+
+static unsigned
+system_value_component_count(const struct d12_dxbc_sig_elem *sig, unsigned n,
+                             const char *name)
+{
+   unsigned count = 0;
+   for (unsigned i = 0; i < n; ++i) {
+      if (!strcasecmp(sig[i].name, name))
+         count += util_bitcount(sig[i].mask);
+   }
+   return count;
+}
+
 /* Where a signature element lands in NIR's location space. */
 static unsigned
 output_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
@@ -1914,18 +1956,70 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
             }
          }
       } else {
+         unsigned packed_clip_cull_mask = 0;
+         if (b->shader->info.stage != MESA_SHADER_TESS_CTRL) {
+            const unsigned clip_count = system_value_component_count(
+               ctx->out_sig, ctx->num_out_sig, "SV_ClipDistance");
+            const unsigned cull_count = system_value_component_count(
+               ctx->out_sig, ctx->num_out_sig, "SV_CullDistance");
+
+            u_foreach_bit(c, mask) {
+               const struct d12_dxbc_sig_elem *ce = find_sig_component(
+                  ctx->out_sig, ctx->num_out_sig, reg, c);
+               const bool is_clip =
+                  ce && !strcasecmp(ce->name, "SV_ClipDistance");
+               const bool is_cull =
+                  ce && !strcasecmp(ce->name, "SV_CullDistance");
+               if (!is_clip && !is_cull)
+                  continue;
+
+               packed_clip_cull_mask |= BITFIELD_BIT(c);
+
+               unsigned compact = system_value_compact_component(
+                  ctx->out_sig, ctx->num_out_sig, ce, c);
+               unsigned combined = compact + (is_cull ? clip_count : 0);
+               unsigned loc = VARYING_SLOT_CLIP_DIST0 + (combined / 4);
+
+               nir_store_output(
+                  b, nir_channel(b, value, c), nir_imm_int(b, 0),
+                  .base = 0, .write_mask = 1, .component = combined % 4,
+                  .src_type = nir_type_float32,
+                  .io_semantics.location = loc,
+                  .io_semantics.num_slots = DIV_ROUND_UP(
+                     clip_count + cull_count, 4));
+               b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+            }
+
+            if (packed_clip_cull_mask) {
+               b->shader->info.clip_distance_array_size = clip_count;
+               b->shader->info.cull_distance_array_size = cull_count;
+
+               /* Signature packing may place an ordinary output beside a
+                * clip/cull component in the same physical register. Preserve
+                * those components with scalar stores to their own varying
+                * locations rather than dropping the whole remainder. */
+               u_foreach_bit(c, mask & ~packed_clip_cull_mask) {
+                  const struct d12_dxbc_sig_elem *ce = find_sig_component(
+                     ctx->out_sig, ctx->num_out_sig, reg, c);
+                  unsigned loc = output_location(ctx, ce, reg);
+
+                  nir_store_output(
+                     b, nir_channel(b, value, c), nir_imm_int(b, 0),
+                     .base = reg, .write_mask = 1, .component = c,
+                     .src_type = nir_type_float32,
+                     .io_semantics.location = loc,
+                     .io_semantics.num_slots = 1);
+                  b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
+               }
+            }
+         }
+
+         if (packed_clip_cull_mask)
+            break;
+
          const struct d12_dxbc_sig_elem *e =
             find_sig(ctx->out_sig, ctx->num_out_sig, reg);
          unsigned loc = output_location(ctx, e, reg);
-
-         if (e && !strcasecmp(e->name, "SV_ClipDistance")) {
-            unsigned written = mask & e->mask;
-            if (written) {
-               b->shader->info.clip_distance_array_size = MAX2(
-                  b->shader->info.clip_distance_array_size,
-                  e->semantic_index * 4 + util_last_bit(written));
-            }
-         }
 
          if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
             nir_store_per_vertex_output(
