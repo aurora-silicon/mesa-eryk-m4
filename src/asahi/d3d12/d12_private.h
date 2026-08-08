@@ -144,6 +144,10 @@ struct d12_device {
    /* Narrow modern-device tear-off for the CPU query-heap methods added by
     * ID3D12Device15. IUnknown still resolves to iface above. */
    ID3D12Device15 iface15;
+   /* D3D12Core configuration is a device-owned tear-off too.  It exposes
+    * serialization helpers without changing the ID3D12Device2 ABI used by
+    * the main interface. */
+   ID3D12DeviceConfiguration1 iface_config1;
    uint32_t refcount;
    struct d12_private_data_store private_data;
 
@@ -635,6 +639,9 @@ HRESULT d12_root_signature_deserializer_create(const void *src, size_t size,
                                                REFIID riid, void **out);
 HRESULT d12_versioned_root_signature_deserializer_create(
    const void *src, size_t size, REFIID riid, void **out);
+HRESULT d12_versioned_root_signature_deserializer_create_from_library(
+   const void *src, size_t size, LPCWSTR subobject_name, REFIID riid,
+   void **out);
 bool d12_root_signature_parse(const void *blob, size_t blob_size,
                               struct d12_root_layout *out);
 bool d12_root_signature_has_rts0(const void *blob, size_t blob_size);

@@ -31,6 +31,7 @@
 
 #define D12_TAG_DXBC D12_FOURCC('D', 'X', 'B', 'C')
 #define D12_TAG_RTS0 D12_FOURCC('R', 'T', 'S', '0')
+#define D12_TAG_RDAT D12_FOURCC('R', 'D', 'A', 'T')
 
 /* Sizes of the serialized records, in bytes. */
 #define D12_RS_HEADER_SIZE 24 /* version, nparam, poff, nsamp, soff, flags */
@@ -586,7 +587,8 @@ d12_serialize_versioned_root_signature(
  * be a rejection rather than a read into whatever follows.
  */
 static bool
-find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
+find_dxbc_part(const void *blob, size_t size, uint32_t tag,
+               const uint8_t **out, size_t *out_size)
 {
    const uint8_t *p = blob;
 
@@ -608,7 +610,7 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
        */
       if ((size_t)off + 8 > total)
          continue;
-      if (r_u32(p + off) != D12_TAG_RTS0)
+      if (r_u32(p + off) != tag)
          continue;
 
       uint32_t part_size = r_u32(p + off + 4);
@@ -621,6 +623,12 @@ find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
    }
 
    return false;
+}
+
+static bool
+find_rts0(const void *blob, size_t size, const uint8_t **out, size_t *out_size)
+{
+   return find_dxbc_part(blob, size, D12_TAG_RTS0, out, out_size);
 }
 
 bool
@@ -1293,6 +1301,176 @@ d12_versioned_root_signature_deserializer_create(const void *src, size_t size,
    deserializer->refcount = 1;
    *out = &deserializer->iface;
    return S_OK;
+}
+
+/*
+ * DXIL libraries store named root-signature subobjects in the public RDAT
+ * container format.  The record layout below follows Microsoft's
+ * RDAT_SubobjectTypes.inl (University of Illinois Open Source License):
+ * kind, string-table reference, then a raw-byte offset/size pair for global
+ * and local root signatures.  Parse the wire format directly rather than
+ * importing DXC's C++ runtime-reflection reader into this C driver.
+ */
+enum d12_rdat_part_type {
+   D12_RDAT_STRING_BUFFER = 1,
+   D12_RDAT_RAW_BYTES = 5,
+   D12_RDAT_SUBOBJECT_TABLE = 6,
+};
+
+enum d12_rdat_subobject_kind {
+   D12_RDAT_GLOBAL_ROOT_SIGNATURE = 1,
+   D12_RDAT_LOCAL_ROOT_SIGNATURE = 2,
+};
+
+static bool
+d12_rdat_name_equal(const uint8_t *string, size_t available,
+                    LPCWSTR requested_name)
+{
+   /* DirectX-Headers uses native wchar_t on Linux even though the D3D ABI is
+    * UTF-16.  Test and application callers pass 16-bit wire units. */
+   const uint16_t *requested = (const uint16_t *)requested_name;
+   size_t offset = 0;
+
+   for (;;) {
+      uint32_t cp = *requested++;
+      if (cp == 0)
+         return offset < available && string[offset] == 0;
+
+      if (cp >= 0xd800 && cp <= 0xdbff) {
+         uint32_t low = *requested++;
+         if (low < 0xdc00 || low > 0xdfff)
+            return false;
+         cp = 0x10000 + ((cp - 0xd800) << 10) + (low - 0xdc00);
+      } else if (cp >= 0xdc00 && cp <= 0xdfff) {
+         return false;
+      }
+
+      uint8_t encoded[4];
+      unsigned length;
+      if (cp < 0x80) {
+         encoded[0] = cp;
+         length = 1;
+      } else if (cp < 0x800) {
+         encoded[0] = 0xc0 | (cp >> 6);
+         encoded[1] = 0x80 | (cp & 0x3f);
+         length = 2;
+      } else if (cp < 0x10000) {
+         encoded[0] = 0xe0 | (cp >> 12);
+         encoded[1] = 0x80 | ((cp >> 6) & 0x3f);
+         encoded[2] = 0x80 | (cp & 0x3f);
+         length = 3;
+      } else {
+         encoded[0] = 0xf0 | (cp >> 18);
+         encoded[1] = 0x80 | ((cp >> 12) & 0x3f);
+         encoded[2] = 0x80 | ((cp >> 6) & 0x3f);
+         encoded[3] = 0x80 | (cp & 0x3f);
+         length = 4;
+      }
+
+      if (offset > available || length > available - offset ||
+          memcmp(string + offset, encoded, length))
+         return false;
+      offset += length;
+   }
+}
+
+HRESULT
+d12_versioned_root_signature_deserializer_create_from_library(
+   const void *src, size_t size, LPCWSTR subobject_name, REFIID riid,
+   void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!src || !subobject_name || !riid)
+      return E_INVALIDARG;
+
+   const uint8_t *rdat;
+   size_t rdat_size;
+   if (!find_dxbc_part(src, size, D12_TAG_RDAT, &rdat, &rdat_size) ||
+       rdat_size < 8 || r_u32(rdat) != 0x10)
+      return E_INVALIDARG;
+
+   uint32_t part_count = r_u32(rdat + 4);
+   if (part_count > 64 || (size_t)part_count * 4 > rdat_size - 8)
+      return E_INVALIDARG;
+
+   const uint8_t *strings = NULL, *raw = NULL, *subobjects = NULL;
+   size_t strings_size = 0, raw_size = 0, subobjects_size = 0;
+
+   for (uint32_t i = 0; i < part_count; i++) {
+      uint32_t offset = r_u32(rdat + 8 + (size_t)i * 4);
+      if ((size_t)offset + 8 > rdat_size)
+         return E_INVALIDARG;
+
+      uint32_t type = r_u32(rdat + offset);
+      uint32_t part_size = r_u32(rdat + offset + 4);
+      if ((size_t)part_size > rdat_size - ((size_t)offset + 8))
+         return E_INVALIDARG;
+
+      const uint8_t *part = rdat + offset + 8;
+      if (type == D12_RDAT_STRING_BUFFER) {
+         strings = part;
+         strings_size = part_size;
+      } else if (type == D12_RDAT_RAW_BYTES) {
+         raw = part;
+         raw_size = part_size;
+      } else if (type == D12_RDAT_SUBOBJECT_TABLE) {
+         subobjects = part;
+         subobjects_size = part_size;
+      }
+   }
+
+   if (!strings || !raw || !subobjects || subobjects_size < 8)
+      return E_INVALIDARG;
+
+   uint32_t record_count = r_u32(subobjects);
+   uint32_t record_stride = r_u32(subobjects + 4);
+   if (record_stride < 16 ||
+       (record_count &&
+        (size_t)record_count > (subobjects_size - 8) / record_stride))
+      return E_INVALIDARG;
+
+   for (uint32_t i = 0; i < record_count; i++) {
+      const uint8_t *record =
+         subobjects + 8 + (size_t)i * record_stride;
+      uint32_t kind = r_u32(record);
+      uint32_t name_offset = r_u32(record + 4);
+      uint32_t data_offset = r_u32(record + 8);
+      uint32_t data_size = r_u32(record + 12);
+
+      if (kind != D12_RDAT_GLOBAL_ROOT_SIGNATURE &&
+          kind != D12_RDAT_LOCAL_ROOT_SIGNATURE)
+         continue;
+      if (name_offset >= strings_size ||
+          !d12_rdat_name_equal(strings + name_offset,
+                               strings_size - name_offset, subobject_name))
+         continue;
+      if (data_offset > raw_size || data_size > raw_size - data_offset)
+         return E_INVALIDARG;
+
+      /* RDAT's RootSignature_t stores the RTS0 payload, not a nested DXBC
+       * container.  Reuse the normal deserializer by supplying the wrapper
+       * it intentionally expects. */
+      if (data_size > UINT32_MAX - 44)
+         return E_INVALIDARG;
+      struct d12_writer payload = {
+         .data = (uint8_t *)raw + data_offset,
+         .size = data_size,
+         .used = data_size,
+      };
+      void *wrapped = NULL;
+      size_t wrapped_size = 0;
+      HRESULT hr = wrap_rts0(&payload, &wrapped, &wrapped_size);
+      if (FAILED(hr))
+         return hr;
+      hr = d12_versioned_root_signature_deserializer_create(
+         wrapped, wrapped_size, riid, out);
+      free(wrapped);
+      return hr;
+   }
+
+   return E_INVALIDARG;
 }
 
 /*

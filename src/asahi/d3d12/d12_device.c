@@ -116,6 +116,13 @@ d12_device_QueryInterface(ID3D12Device2 *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_guid_equal(riid, &IID_ID3D12DeviceConfiguration) ||
+       d12_guid_equal(riid, &IID_ID3D12DeviceConfiguration1)) {
+      d12_device_add_ref(device);
+      *out = &device->iface_config1;
+      return S_OK;
+   }
+
    d12_log_unknown_riid("ID3D12Device::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -3174,6 +3181,115 @@ static const ID3D12Device15Vtbl d12_device15_vtbl = {
    .ResolveQueryData = d12_device15_ResolveQueryData,
 };
 
+static struct d12_device *
+d12_device_from_config1(ID3D12DeviceConfiguration1 *iface)
+{
+   return container_of(iface, struct d12_device, iface_config1);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_config1_QueryInterface(ID3D12DeviceConfiguration1 *iface,
+                                  REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_config1(iface);
+   return d12_device_QueryInterface((ID3D12Device2 *)&device->iface, riid,
+                                    out);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_device_config1_AddRef(ID3D12DeviceConfiguration1 *iface)
+{
+   return d12_device_AddRef(
+      (ID3D12Device2 *)&d12_device_from_config1(iface)->iface);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_device_config1_Release(ID3D12DeviceConfiguration1 *iface)
+{
+   return d12_device_Release(
+      (ID3D12Device2 *)&d12_device_from_config1(iface)->iface);
+}
+
+static D3D12_DEVICE_CONFIGURATION_DESC STDMETHODCALLTYPE
+d12_device_config1_GetDesc(ID3D12DeviceConfiguration1 *iface)
+{
+   (void)iface;
+   return (D3D12_DEVICE_CONFIGURATION_DESC){
+      .Flags = D3D12_DEVICE_FLAG_NONE,
+      .GpuBasedValidationFlags = 0,
+      .SDKVersion = D3D12_SDK_VERSION,
+      .NumEnabledExperimentalFeatures = 0,
+   };
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_config1_GetEnabledExperimentalFeatures(
+   ID3D12DeviceConfiguration1 *iface, GUID *guids, UINT count)
+{
+   (void)iface;
+   (void)guids;
+   return count == 0 ? S_OK : E_INVALIDARG;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_config1_SerializeVersionedRootSignature(
+   ID3D12DeviceConfiguration1 *iface,
+   const D3D12_VERSIONED_ROOT_SIGNATURE_DESC *desc, ID3DBlob **blob,
+   ID3DBlob **error_blob)
+{
+   (void)iface;
+   if (error_blob)
+      *error_blob = NULL;
+   if (!blob)
+      return E_POINTER;
+   *blob = NULL;
+
+   void *data = NULL;
+   size_t size = 0;
+   HRESULT hr = d12_serialize_versioned_root_signature(desc, &data, &size);
+   if (FAILED(hr))
+      return hr;
+
+   *blob = d12_blob_create(data, size);
+   free(data);
+   return *blob ? S_OK : E_OUTOFMEMORY;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_config1_CreateVersionedRootSignatureDeserializer(
+   ID3D12DeviceConfiguration1 *iface, const void *src, SIZE_T size,
+   REFIID riid, void **out)
+{
+   (void)iface;
+   return d12_versioned_root_signature_deserializer_create(src, size, riid,
+                                                           out);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_config1_CreateVersionedRootSignatureDeserializerFromSubobjectInLibrary(
+   ID3D12DeviceConfiguration1 *iface, const void *src, SIZE_T size,
+   LPCWSTR subobject_name, REFIID riid, void **out)
+{
+   (void)iface;
+   return d12_versioned_root_signature_deserializer_create_from_library(
+      src, size, subobject_name, riid, out);
+}
+
+static const ID3D12DeviceConfiguration1Vtbl d12_device_config1_vtbl = {
+   .QueryInterface = d12_device_config1_QueryInterface,
+   .AddRef = d12_device_config1_AddRef,
+   .Release = d12_device_config1_Release,
+   .GetDesc = d12_device_config1_GetDesc,
+   .GetEnabledExperimentalFeatures =
+      d12_device_config1_GetEnabledExperimentalFeatures,
+   .SerializeVersionedRootSignature =
+      d12_device_config1_SerializeVersionedRootSignature,
+   .CreateVersionedRootSignatureDeserializer =
+      d12_device_config1_CreateVersionedRootSignatureDeserializer,
+   .CreateVersionedRootSignatureDeserializerFromSubobjectInLibrary =
+      d12_device_config1_CreateVersionedRootSignatureDeserializerFromSubobjectInLibrary,
+};
+
 static const ID3D12Device2Vtbl d12_device_vtbl = {
    /* every unimplemented slot fails safely */
    D12_ID3D12Device2_DEFAULTS,
@@ -3410,6 +3526,8 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
 
    device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
    device->iface15.lpVtbl = (ID3D12Device15Vtbl *)&d12_device15_vtbl;
+   device->iface_config1.lpVtbl =
+      (ID3D12DeviceConfiguration1Vtbl *)&d12_device_config1_vtbl;
    device->refcount = 1;
    device->feature_level = max_fl;
    d12_private_data_store_init(&device->private_data);
