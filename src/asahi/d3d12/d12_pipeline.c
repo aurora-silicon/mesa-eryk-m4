@@ -2538,50 +2538,70 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       .LogicOp = D3D12_LOGIC_OP_NOOP,
       .RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL,
    };
-   const D3D12_RENDER_TARGET_BLEND_DESC *rt_blend =
-      blend_desc ? &blend_desc->RenderTarget[0] : &default_rt_blend;
-   bool use_fs_epilog =
-      rt_format != PIPE_FORMAT_NONE &&
-      (rt_blend->BlendEnable || rt_blend->LogicOpEnable ||
-       rt_blend->RenderTargetWriteMask != D3D12_COLOR_WRITE_ENABLE_ALL ||
-       (blend_desc && blend_desc->AlphaToCoverageEnable));
-
-   if (rt_blend->BlendEnable && rt_blend->LogicOpEnable) {
-      free(pso);
-      return E_INVALIDARG;
-   }
-
-   struct agx_blend_rt_key blend_key = {
-      .colormask = rt_blend->RenderTargetWriteMask &
-                   D3D12_COLOR_WRITE_ENABLE_ALL,
-   };
-   enum pipe_blend_func rgb_func = PIPE_BLEND_ADD;
-   enum pipe_blend_func alpha_func = PIPE_BLEND_ADD;
-   enum pipe_blendfactor rgb_src = PIPE_BLENDFACTOR_ONE;
-   enum pipe_blendfactor rgb_dst = PIPE_BLENDFACTOR_ZERO;
-   enum pipe_blendfactor alpha_src = PIPE_BLENDFACTOR_ONE;
-   enum pipe_blendfactor alpha_dst = PIPE_BLENDFACTOR_ZERO;
+   const D3D12_RENDER_TARGET_BLEND_DESC *rt_blends[AGX_MAX_RENDER_TARGETS];
+   struct agx_blend_rt_key blend_keys[AGX_MAX_RENDER_TARGETS] = {0};
+   bool use_fs_epilog = blend_desc && blend_desc->AlphaToCoverageEnable;
    enum pipe_logicop logicop = PIPE_LOGICOP_NOOP;
 
-   if (rt_blend->BlendEnable &&
-       (!d12_translate_blend_op(rt_blend->BlendOp, &rgb_func) ||
-        !d12_translate_blend_op(rt_blend->BlendOpAlpha, &alpha_func) ||
-        !d12_translate_blend_factor(rt_blend->SrcBlend, &rgb_src) ||
-        !d12_translate_blend_factor(rt_blend->DestBlend, &rgb_dst) ||
-        !d12_translate_blend_factor(rt_blend->SrcBlendAlpha, &alpha_src) ||
-        !d12_translate_blend_factor(rt_blend->DestBlendAlpha, &alpha_dst))) {
-      free(pso);
-      return E_INVALIDARG;
+   for (unsigned i = 0; i < nr_rt; i++) {
+      const D3D12_RENDER_TARGET_BLEND_DESC *rt_blend =
+         blend_desc
+            ? &blend_desc->RenderTarget[
+                 blend_desc->IndependentBlendEnable ? i : 0]
+            : &default_rt_blend;
+      rt_blends[i] = rt_blend;
+
+      if (rt_blend->BlendEnable && rt_blend->LogicOpEnable) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+
+      /* AGX exposes one logic operation for the whole output merger. D3D12
+       * only permits that shape when independent blending is disabled, in
+       * which case RT0's description is replicated to every active target. */
+      if (rt_blend->LogicOpEnable) {
+         if ((blend_desc && blend_desc->IndependentBlendEnable) ||
+             !d12_translate_logic_op(rt_blend->LogicOp, &logicop)) {
+            free(pso);
+            return E_INVALIDARG;
+         }
+      }
+
+      enum pipe_blend_func rgb_func = PIPE_BLEND_ADD;
+      enum pipe_blend_func alpha_func = PIPE_BLEND_ADD;
+      enum pipe_blendfactor rgb_src = PIPE_BLENDFACTOR_ONE;
+      enum pipe_blendfactor rgb_dst = PIPE_BLENDFACTOR_ZERO;
+      enum pipe_blendfactor alpha_src = PIPE_BLENDFACTOR_ONE;
+      enum pipe_blendfactor alpha_dst = PIPE_BLENDFACTOR_ZERO;
+
+      if (rt_blend->BlendEnable &&
+          (!d12_translate_blend_op(rt_blend->BlendOp, &rgb_func) ||
+           !d12_translate_blend_op(rt_blend->BlendOpAlpha, &alpha_func) ||
+           !d12_translate_blend_factor(rt_blend->SrcBlend, &rgb_src) ||
+           !d12_translate_blend_factor(rt_blend->DestBlend, &rgb_dst) ||
+           !d12_translate_blend_factor(rt_blend->SrcBlendAlpha, &alpha_src) ||
+           !d12_translate_blend_factor(rt_blend->DestBlendAlpha,
+                                       &alpha_dst))) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+
+      blend_keys[i] = (struct agx_blend_rt_key){
+         .colormask = rt_blend->RenderTargetWriteMask &
+                      D3D12_COLOR_WRITE_ENABLE_ALL,
+         .mode = agx_pack_blend_standard(
+            rgb_func, rgb_src, rgb_dst, alpha_func, alpha_src, alpha_dst),
+      };
+
+      if (formats[i] != PIPE_FORMAT_NONE &&
+          (rt_blend->BlendEnable || rt_blend->LogicOpEnable ||
+           rt_blend->RenderTargetWriteMask !=
+              D3D12_COLOR_WRITE_ENABLE_ALL))
+         use_fs_epilog = true;
    }
 
-   if (rt_blend->LogicOpEnable &&
-       !d12_translate_logic_op(rt_blend->LogicOp, &logicop)) {
-      free(pso);
-      return E_INVALIDARG;
-   }
-
-   blend_key.mode = agx_pack_blend_standard(
-      rgb_func, rgb_src, rgb_dst, alpha_func, alpha_src, alpha_dst);
+   const D3D12_RENDER_TARGET_BLEND_DESC *rt_blend =
+      nr_rt ? rt_blends[0] : &default_rt_blend;
 
    struct agx_shader_part vs_part, fs_part;
    uint8_t cull_distance_size = 0;
@@ -2658,13 +2678,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     * written. Capture outputs_written before tilebuffer lowering consumes the
     * fragment stores, then reject only the active invalid combination.
     */
-   if (blend_desc && blend_desc->RenderTarget[0].BlendEnable &&
-       util_format_is_pure_integer(rt_format) &&
-       (fs_outputs & BITFIELD64_BIT(FRAG_RESULT_DATA0))) {
-      free(fs_part.binary);
-      free(vs_part.binary);
-      free(pso);
-      return E_INVALIDARG;
+   for (unsigned i = 0; i < nr_rt; i++) {
+      if (rt_blends[i]->BlendEnable &&
+          util_format_is_pure_integer(formats[i]) &&
+          (fs_outputs & BITFIELD64_BIT(FRAG_RESULT_DATA0 + i))) {
+         free(fs_part.binary);
+         free(vs_part.binary);
+         free(pso);
+         return E_INVALIDARG;
+      }
    }
 
    /*
@@ -2717,7 +2739,6 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
        * zero. */
       struct agx_fs_epilog_key epilog_key = {
          .link = fs_epilog_link,
-         .blend.rt[0] = blend_key,
          .blend.alpha_to_coverage =
             blend_desc && blend_desc->AlphaToCoverageEnable &&
             !(fs_outputs & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)),
@@ -2727,8 +2748,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       };
 
       memset(epilog_key.remap, -1, sizeof(epilog_key.remap));
-      epilog_key.remap[0] = 0;
-      epilog_key.rt_formats[0] = rt_format;
+      for (unsigned i = 0; i < nr_rt; i++) {
+         epilog_key.blend.rt[i] = blend_keys[i];
+         epilog_key.rt_formats[i] = formats[i];
+         if (formats[i] != PIPE_FORMAT_NONE)
+            epilog_key.remap[i] = i;
+      }
 
       nir_builder eb =
          nir_builder_init_simple_shader(0, &agx_nir_options, NULL);
@@ -2744,8 +2769,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_compile_shader_nir(eb.shader, &epilog_backend_key, &fs_epilog);
       ralloc_free(eb.shader);
 
+      bool any_colour_write = false;
+      for (unsigned i = 0; i < nr_rt; i++)
+         any_colour_write |= blend_keys[i].colormask != 0;
+
       const bool intentionally_empty =
-         blend_key.colormask == 0 && !epilog_key.blend.logicop_enable &&
+         !any_colour_write && !epilog_key.blend.logicop_enable &&
          !epilog_key.blend.alpha_to_coverage && !fs_epilog_link.write_z &&
          !fs_epilog_link.write_s;
 
