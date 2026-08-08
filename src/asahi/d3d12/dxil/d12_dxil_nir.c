@@ -3624,7 +3624,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          }
       }
 
-      nir_def *lod = get_def(ctx, p[1]);
+      /* DXIL encodes the mip operand as undef for UAV texture loads.  Do not
+       * turn that SSA undef into a real (and potentially huge) hardware LOD;
+       * UAVs have no mip selection at the use site. */
+      nir_def *lod = operand_is_undef(ctx, p[1]) ? NULL : get_def(ctx, p[1]);
       if (getenv("D3D12AGX_DUMP_TEX")) {
          fprintf(stderr, "textureLoad: num_ops=%u lod=%s\n",
                  inst->num_ops, lod ? "yes" : "no");

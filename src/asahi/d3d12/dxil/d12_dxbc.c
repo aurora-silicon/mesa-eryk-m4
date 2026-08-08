@@ -1704,6 +1704,36 @@ sampler_rooted_index(struct d12_dxbc_ctx *ctx,
                    nir_iadd_imm(b, reg, -(int64_t)rooted_reg));
 }
 
+/* Resolve an ordinary finite SM 5.0/5.1 texture or sampler operand. SM 5.1
+ * use sites carry {range id, absolute register}; the declaration, not the
+ * use-site token, owns the register space. Dynamic finite arrays need a NIR
+ * handle and remain an explicit refusal here rather than aliasing range id
+ * zero in space zero. */
+static unsigned
+finite_binding_slot(struct d12_dxbc_ctx *ctx, unsigned klass,
+                    const struct d12_dxbc_operand *operand,
+                    const struct d12_dxbc_binding_range *ranges)
+{
+   if (!ctx->map)
+      return operand->num_indices == 2 ? operand->index[1]
+                                       : operand->index[0];
+
+   if (operand->num_indices == 1 && !operand->index_is_relative[0])
+      return d12_binding_map_find(ctx->map, klass, 0, operand->index[0]);
+
+   if (operand->num_indices != 2 || operand->index[0] >= D12_DXBC_MAX_SIG ||
+       !ranges[operand->index[0]].valid || operand->index_is_relative[1])
+      return ~0u;
+
+   const struct d12_dxbc_binding_range *range = &ranges[operand->index[0]];
+   unsigned reg = operand->index[1];
+   if (reg < range->lower_bound ||
+       (range->upper_bound != UINT32_MAX && reg > range->upper_bound))
+      return ~0u;
+
+   return d12_binding_map_find(ctx->map, klass, range->space, reg);
+}
+
 static nir_def *
 uav_buffer_address(struct d12_dxbc_ctx *ctx,
                    const struct d12_dxbc_operand *uav, nir_def *index,
@@ -1776,7 +1806,15 @@ srv_buffer_address(struct d12_dxbc_ctx *ctx,
       return nir_iadd(b, base, nir_u2u64(b, byte));
    }
 
-   return buffer_address(ctx, srv->index[0], false, index, offset, stride);
+   unsigned slot =
+      finite_binding_slot(ctx, D12_RES_SRV, srv, ctx->srv_range);
+   if (slot == ~0u) {
+      fail(ctx, "buffer is not bound by the root signature");
+      return nir_imm_int64(b, 0);
+   }
+
+   return buffer_address_slot(ctx, nir_imm_int(b, slot), index, offset,
+                              stride);
 }
 
 /*
@@ -2068,13 +2106,9 @@ buffer_view_size_bytes(struct d12_dxbc_ctx *ctx,
    nir_def *slot = NULL;
    if (resource->file == D12_DXBC_FILE_UAV) {
       slot = uav_binding_slot(ctx, resource);
-   } else if (resource->file == D12_DXBC_FILE_RESOURCE &&
-              resource->num_indices == 1 &&
-              !resource->index_is_relative[0]) {
-      unsigned static_slot =
-         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
-                                         resource->index[0])
-                  : resource->index[0];
+   } else if (resource->file == D12_DXBC_FILE_RESOURCE) {
+      unsigned static_slot = finite_binding_slot(
+         ctx, D12_RES_SRV, resource, ctx->srv_range);
       if (static_slot != ~0u)
          slot = nir_imm_int(b, static_slot);
    }
@@ -3149,8 +3183,23 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          struct d12_dxbc_operand r;
          unsigned n = decode_operand(ctx, args, avail, &r);
          if (n && r.file == D12_DXBC_FILE_RESOURCE &&
-             r.index[0] < D12_DXBC_MAX_SIG)
+             r.index[0] < D12_DXBC_MAX_SIG) {
             ctx->srv_dim[r.index[0]] = D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+
+            /* SM 5.1 raw declarations append the register space directly
+             * after t<range-id>[lower:upper]. */
+            if (r.num_indices == 3 && !r.index_is_relative[0] &&
+                !r.index_is_relative[1] && !r.index_is_relative[2] &&
+                n < avail) {
+               ctx->srv_range[r.index[0]] =
+                  (struct d12_dxbc_binding_range) {
+                     .lower_bound = r.index[1],
+                     .upper_bound = r.index[2],
+                     .space = args[n],
+                     .valid = true,
+                  };
+            }
+         }
          ctx->tok += len;
          continue;
       }
@@ -4113,24 +4162,19 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                 (return_type != D12_DXBC_RESOURCE_RETURN_FLOAT &&
                  return_type != D12_DXBC_RESOURCE_RETURN_UINT &&
                  return_type != D12_DXBC_RESOURCE_RETURN_SINT) ||
-                resource->num_indices != 1 ||
-                resource->index_is_relative[0]) {
+                (resource->num_indices != 1 &&
+                 resource->num_indices != 2)) {
                fail(ctx, "unsupported texture UAV load");
                return;
             }
 
-            unsigned slot =
-               ctx->map
-                  ? d12_binding_map_find(ctx->map, D12_RES_UAV, 0, reg)
-                  : reg;
-            if (slot == ~0u) {
-               fail(ctx, "texture UAV load is not bound by the root "
-                         "signature");
+            nir_def *slot = uav_binding_slot(ctx, resource);
+            if (!slot) {
                return;
             }
 
             nir_def *handle = nir_bindless_image_agx(
-               b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+               b, nir_imul_imm(b, slot, D12_TEXTURE_DESC_SIZE),
                .desc_set = D12_UNIFORM_TEXTURES);
             nir_def *coord = SRC(1);
             nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
@@ -4159,7 +4203,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_def *off = nir_imul_imm(b, nir_channel(b, SRC(1), 0), 4);
          nir_def *addr =
-            buffer_address(ctx, reg, uav, nir_imm_int(b, 0), off, 0);
+            uav ? uav_buffer_address(ctx, resource, nir_imm_int(b, 0), off, 0)
+                : srv_buffer_address(ctx, resource, nir_imm_int(b, 0), off, 0);
+         if (!addr)
+            return;
          nir_def *val = nir_load_global(b, 4, 32, addr, .align_mul = 4);
 
          /* The resource operand's swizzle reorders the result. */
@@ -4679,7 +4726,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * the one in the SAMPLER file. Finding them by file rather than
           * by position survives the operand-count differences between
           * these three. */
-         unsigned tex_reg = 0, smp_reg = 0;
+         unsigned tex_reg = 0;
          bool have_tex = false, have_smp = false;
          const struct d12_dxbc_operand *tex_operand = NULL;
          const struct d12_dxbc_operand *smp_operand = NULL;
@@ -4689,7 +4736,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                tex_operand = &o[k];
                have_tex = true;
             } else if (o[k].file == D12_DXBC_FILE_SAMPLER && !have_smp) {
-               smp_reg = o[k].index[0];
                smp_operand = &o[k];
                have_smp = true;
             }
@@ -4738,10 +4784,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             srv_rooted_descriptor(ctx, tex_operand);
          unsigned tslot = ~0u;
          if (!rooted_texture) {
-            tslot = ctx->map
-                       ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
-                                              tex_reg)
-                       : tex_reg;
+            tslot = finite_binding_slot(ctx, D12_RES_SRV, tex_operand,
+                                        ctx->srv_range);
             if (tslot == ~0u) {
                if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
                   mesa_logi("DXBC texture operand: reg=%u indices=%u "
@@ -4764,10 +4808,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                return;
             }
          }
-         unsigned sslot = ctx->map ? d12_binding_map_find(ctx->map,
-                                                          D12_RES_SAMPLER, 0,
-                                                          smp_reg)
-                                   : smp_reg;
+         unsigned sslot = have_smp
+                             ? finite_binding_slot(ctx, D12_RES_SAMPLER,
+                                                   smp_operand,
+                                                   ctx->sampler_range)
+                             : ~0u;
          nir_def *rooted_sampler =
             have_smp ? sampler_rooted_index(ctx, smp_operand) : NULL;
          if (ctx->error)

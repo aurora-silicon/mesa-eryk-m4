@@ -1722,7 +1722,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
               D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
            (table[i].resource->desc.Dimension ==
                D3D12_RESOURCE_DIMENSION_BUFFER &&
-            table[i].kind == D12_DESC_SRV &&
             table[i].format != DXGI_FORMAT_UNKNOWN)))
          last_texture = MAX2(last_texture, i + 1);
    }
@@ -1762,8 +1761,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          continue;
 
       if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-         if (table[i].kind != D12_DESC_SRV ||
-             table[i].format == DXGI_FORMAT_UNKNOWN)
+         if (table[i].format == DXGI_FORMAT_UNKNOWN)
             continue;
 
          enum pipe_format pf = d12_format_to_pipe(table[i].format);
@@ -2203,7 +2201,7 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
 
    struct d12_resource *res = d->resource;
    if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-      if (d->kind != D12_DESC_SRV || d->format == DXGI_FORMAT_UNKNOWN)
+      if (d->format == DXGI_FORMAT_UNKNOWN)
          return;
 
       enum pipe_format pf = d12_format_to_pipe(d->format);
@@ -2284,12 +2282,16 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    }
 
    uint8_t swizzle[4];
-   uint8_t view_swizzle[4];
-   for (unsigned c = 0; c < 4; c++) {
-      view_swizzle[c] = D3D12_DECODE_SHADER_4_COMPONENT_MAPPING(
-         c, d->texture_component_mapping);
+   if (d->kind == D12_DESC_SRV) {
+      uint8_t view_swizzle[4];
+      for (unsigned c = 0; c < 4; c++) {
+         view_swizzle[c] = D3D12_DECODE_SHADER_4_COMPONENT_MAPPING(
+            c, d->texture_component_mapping);
+      }
+      util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
+   } else {
+      memcpy(swizzle, format_swizzle, sizeof(swizzle));
    }
-   util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
    const enum agx_texture_dimension dimension =
       d12_native_texture_dimension(d, samples);
