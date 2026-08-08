@@ -640,7 +640,11 @@ d12_resource_create(struct d12_device *device,
                      util_format_get_blockheight(pipe) > 1;
       bool writeable_image =
          desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-      bool linear_ok = levels == 1 && samples == 1 && !blocked &&
+      /* Layered resources must remain twiddled. AGX's sampled cube and cube-
+       * array descriptors have no usable linear-face addressing mode; a
+       * linear six-layer allocation makes every face sample as zero. */
+      bool linear_ok = levels == 1 && samples == 1 &&
+                       desc->DepthOrArraySize == 1 && !blocked &&
                        !writeable_image;
 
       layout = (struct ail_layout){

@@ -1494,6 +1494,11 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
  * uses as the heap base -- a fault at an address that looks like garbage
  * but is exactly the descriptor's own first dword.
  */
+static enum agx_texture_dimension
+d12_native_texture_dimension(const struct d12_descriptor *d,
+                             unsigned samples);
+static unsigned d12_native_texture_layers(const struct d12_descriptor *d);
+
 static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures,
@@ -1807,8 +1812,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       const struct util_format_description *fdesc =
          util_format_description(pf);
       const unsigned samples = MAX2(layout->sample_count_sa, 1);
-      const bool array = table[i].kind == D12_DESC_UAV &&
-                         table[i].texture_array;
+      const enum agx_texture_dimension dimension =
+         d12_native_texture_dimension(&table[i], samples);
       const unsigned level = table[i].kind == D12_DESC_UAV
                                 ? table[i].texture_level
                                 : table[i].texture_first_level;
@@ -1816,15 +1821,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                                      ? level
                                      : level + MAX2(
                                           table[i].texture_level_count, 1) - 1;
-      const unsigned layers = table[i].kind == D12_DESC_UAV
-                                 ? MAX2(table[i].texture_layers, 1)
-                                 : 1;
+      const unsigned layers = d12_native_texture_layers(&table[i]);
+      const bool layered =
+         dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
+         dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
+         dimension == AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
 
       agx_pack(&descs[i], TEXTURE, cfg) {
-         cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
-                         : samples > 1
-                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                            : AGX_TEXTURE_DIMENSION_2D;
+         cfg.dimension = dimension;
          cfg.layout = agx_translate_layout(layout->tiling);
          cfg.channels = ail_pixel_format[pf].channels;
          cfg.type = ail_pixel_format[pf].type;
@@ -1854,7 +1858,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
              * different convention: bytes - 4, unshifted.
              */
             cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
-            if (array) {
+            if (layered) {
                cfg.depth_linear = layers;
                cfg.layer_stride_linear = layout->layer_stride_B - 0x80;
                cfg.extended = true;
@@ -2043,6 +2047,44 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    return *out_textures != 0 && *out_pbes != 0;
 }
 
+static enum agx_texture_dimension
+d12_native_texture_dimension(const struct d12_descriptor *d, unsigned samples)
+{
+   if (d->kind == D12_DESC_UAV)
+      return d->texture_array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                              : AGX_TEXTURE_DIMENSION_2D;
+
+   switch ((D3D12_SRV_DIMENSION)d->texture_srv_dimension) {
+   case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
+      return AGX_TEXTURE_DIMENSION_2D_ARRAY;
+   case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
+      return AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED;
+   case D3D12_SRV_DIMENSION_TEXTURECUBE:
+      return AGX_TEXTURE_DIMENSION_CUBE;
+   case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
+      return AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
+   case D3D12_SRV_DIMENSION_TEXTURE2DMS:
+      return AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+   default:
+      return samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                         : AGX_TEXTURE_DIMENSION_2D;
+   }
+}
+
+static unsigned
+d12_native_texture_layers(const struct d12_descriptor *d)
+{
+   if (d->kind == D12_DESC_UAV)
+      return MAX2(d->texture_layers, 1);
+
+   unsigned layers = MAX2(d->texture_srv_layers, 1);
+   if (d->texture_srv_dimension == D3D12_SRV_DIMENSION_TEXTURECUBE ||
+       d->texture_srv_dimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY)
+      return MAX2(layers / 6, 1);
+
+   return layers;
+}
+
 static uint64_t
 d12_descriptor_bufinfo(const struct d12_descriptor *d)
 {
@@ -2183,21 +2225,22 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    }
    util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
-   const bool array = d->kind == D12_DESC_UAV && d->texture_array;
+   const enum agx_texture_dimension dimension =
+      d12_native_texture_dimension(d, samples);
    const unsigned level = d->kind == D12_DESC_UAV
                              ? d->texture_level
                              : d->texture_first_level;
    const unsigned last_level = d->kind == D12_DESC_UAV
                                   ? level
                                   : level + MAX2(d->texture_level_count, 1) - 1;
-   const unsigned layers = d->kind == D12_DESC_UAV
-                              ? MAX2(d->texture_layers, 1)
-                              : 1;
+   const unsigned layers = d12_native_texture_layers(d);
+   const bool layered =
+      dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
+      dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
+      dimension == AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
 
    agx_pack(out, TEXTURE, cfg) {
-      cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
-                      : samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                                    : AGX_TEXTURE_DIMENSION_2D;
+      cfg.dimension = dimension;
       cfg.layout = agx_translate_layout(layout->tiling);
       cfg.channels = ail_pixel_format[pf].channels;
       cfg.type = ail_pixel_format[pf].type;
@@ -2217,7 +2260,7 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
 
       if (layout->tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
-         if (array) {
+         if (layered) {
             cfg.depth_linear = layers;
             cfg.layer_stride_linear = layout->layer_stride_B - 0x80;
             cfg.extended = true;

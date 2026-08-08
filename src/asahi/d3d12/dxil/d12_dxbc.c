@@ -324,7 +324,11 @@ enum d12_dxbc_op {
 #define D12_DXBC_RESOURCE_DIMENSION_BUFFER 1
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D 3
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS 4
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D 5
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE 6
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY 8
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY 9
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY 10
 
 #define D12_DXBC_RESINFO_RETURN_TYPE_MASK  0x00001800u
 #define D12_DXBC_RESINFO_RETURN_TYPE_SHIFT 11
@@ -3643,8 +3647,24 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          unsigned dim = uav ? ctx->uav_dim[reg] : ctx->srv_dim[reg];
-         bool is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
-         if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !is_array) {
+         bool is_array =
+            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY ||
+            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY ||
+            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY;
+         bool is_ms = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS ||
+                      dim ==
+                         D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY;
+         enum glsl_sampler_dim sampler_dim =
+            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
+                  dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
+               ? GLSL_SAMPLER_DIM_CUBE
+               : is_ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
+         if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY) {
             fail(ctx, "unsupported RESINFO resource dimension");
             return;
          }
@@ -3685,33 +3705,39 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
                .desc_set = D12_UNIFORM_TEXTURES);
          }
-         nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
+         nir_tex_instr *txs = nir_tex_instr_create(b->shader, is_ms ? 1 : 2);
          txs->op = nir_texop_txs;
-         txs->sampler_dim = GLSL_SAMPLER_DIM_2D;
+         txs->sampler_dim = sampler_dim;
          txs->is_array = is_array;
          txs->dest_type = nir_type_uint32;
-         txs->coord_components = is_array ? 3 : 2;
+         txs->coord_components = sampler_dim == GLSL_SAMPLER_DIM_CUBE
+                                    ? (is_array ? 4 : 3)
+                                    : is_array ? 3 : 2;
          txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
                                             handle);
-         txs->src[1] = nir_tex_src_for_ssa(
-            nir_tex_src_lod, nir_channel(b, SRC(1), 0));
+         if (!is_ms)
+            txs->src[1] = nir_tex_src_for_ssa(
+               nir_tex_src_lod, nir_channel(b, SRC(1), 0));
          nir_def_init(&txs->instr, &txs->def, is_array ? 3 : 2, 32);
          nir_builder_instr_insert(b, &txs->instr);
 
-         nir_tex_instr *levels = nir_tex_instr_create(b->shader, 1);
-         levels->op = nir_texop_query_levels;
-         levels->sampler_dim = GLSL_SAMPLER_DIM_2D;
-         levels->is_array = is_array;
-         levels->dest_type = nir_type_uint32;
-         levels->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
-                                               handle);
-         nir_def_init(&levels->instr, &levels->def, 1, 32);
-         nir_builder_instr_insert(b, &levels->instr);
+         nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
+         query->op = is_ms ? nir_texop_texture_samples
+                           : nir_texop_query_levels;
+         query->sampler_dim = sampler_dim;
+         query->is_array = is_array;
+         query->dest_type = nir_type_uint32;
+         query->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
+                                              handle);
+         nir_def_init(&query->instr, &query->def, 1, 32);
+         nir_builder_instr_insert(b, &query->instr);
 
          nir_def *value = nir_vec4(
             b, nir_channel(b, &txs->def, 0), nir_channel(b, &txs->def, 1),
-            is_array ? nir_channel(b, &txs->def, 2) : nir_imm_int(b, 0),
-            &levels->def);
+            is_array ? nir_channel(b, &txs->def, 2)
+                     : is_ms ? &query->def : nir_imm_int(b, 0),
+            is_ms && is_array ? &query->def
+                              : is_ms ? nir_imm_int(b, 0) : &query->def);
          if (return_type == D12_DXBC_RESINFO_RETURN_FLOAT)
             value = nir_u2f32(b, value);
          unsigned sw[4] = {res->swizzle[0], res->swizzle[1],
@@ -4459,14 +4485,58 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * the source swizzle replicates it for GetRenderTargetSampleCount.
           * The hardware publishes log2(samples), so recover 1/2/4 here. */
          NEED(2);
-         if (o[1].file != D12_DXBC_FILE_RASTERIZER) {
-            fail(ctx, "sample_info on texture resource unsupported");
+         nir_def *count;
+         if (o[1].file == D12_DXBC_FILE_RASTERIZER) {
+            count = nir_ishl(b, nir_imm_int(b, 1),
+                             nir_u2u32(b, nir_load_samples_log2_agx(b)));
+         } else if (o[1].file == D12_DXBC_FILE_RESOURCE) {
+            unsigned reg = o[1].index[0];
+            unsigned dim = reg < D12_DXBC_MAX_SIG ? ctx->srv_dim[reg] : 0;
+            bool array =
+               dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY;
+            if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
+                !array) {
+               fail(ctx, "sample_info requires a multisample texture");
+               return;
+            }
+
+            nir_def *descriptor = srv_rooted_descriptor(ctx, &o[1]);
+            nir_def *handle;
+            if (descriptor) {
+               nir_def *index = rooted_native_index(ctx, descriptor);
+               handle = nir_bindless_image_agx(
+                  b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+                  .desc_set = D12_UNIFORM_HEAP_TEXTURES);
+            } else {
+               unsigned slot =
+                  ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
+                                                  reg)
+                           : reg;
+               if (slot == ~0u) {
+                  fail(ctx,
+                       "sample_info resource is not in the root signature");
+                  return;
+               }
+               handle = nir_bindless_image_agx(
+                  b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+                  .desc_set = D12_UNIFORM_TEXTURES);
+            }
+
+            nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
+            query->op = nir_texop_texture_samples;
+            query->sampler_dim = GLSL_SAMPLER_DIM_MS;
+            query->is_array = array;
+            query->dest_type = nir_type_uint32;
+            query->src[0] = nir_tex_src_for_ssa(
+               nir_tex_src_texture_handle, handle);
+            nir_def_init(&query->instr, &query->def, 1, 32);
+            nir_builder_instr_insert(b, &query->instr);
+            count = &query->def;
+         } else {
+            fail(ctx, "sample_info on unsupported operand");
             return;
          }
 
-         nir_def *count = nir_ishl(
-            b, nir_imm_int(b, 1),
-            nir_u2u32(b, nir_load_samples_log2_agx(b)));
          const bool return_uint = (op_tok >> 11) & 1;
          nir_def *value = return_uint ? count : nir_u2f32(b, count);
          DST(nir_replicate(b, value, 4));
@@ -4630,10 +4700,33 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          bool is_buffer =
             is_ld && !is_ld_ms && tex_reg < D12_DXBC_MAX_SIG &&
             ctx->srv_dim[tex_reg] == D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         unsigned resource_dim = tex_reg < D12_DXBC_MAX_SIG
+                                    ? ctx->srv_dim[tex_reg]
+                                    : D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D;
+         bool is_array =
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY ||
+            resource_dim ==
+               D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY ||
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY;
+         enum glsl_sampler_dim sampler_dim =
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
+                  resource_dim ==
+                     D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
+               ? GLSL_SAMPLER_DIM_CUBE
+            : resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS ||
+                  resource_dim ==
+                     D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY
+               ? GLSL_SAMPLER_DIM_MS
+               : GLSL_SAMPLER_DIM_2D;
+         unsigned coord_components =
+            sampler_dim == GLSL_SAMPLER_DIM_CUBE ? (is_array ? 4 : 3)
+            : is_array                           ? 3
+                                                 : 2;
          if (is_ld_ms &&
              (tex_reg >= D12_DXBC_MAX_SIG ||
-              ctx->srv_dim[tex_reg] !=
-                 D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS)) {
+              (resource_dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
+               resource_dim !=
+                  D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY))) {
             fail(ctx, "LD_MS requires a Texture2DMS resource");
             return;
          }
@@ -4780,13 +4873,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                             : is_ld ? nir_texop_txf
                          : gather ? nir_texop_tg4
                                   : has_lod ? nir_texop_txl : nir_texop_tex;
-         tex->sampler_dim = is_buffer  ? GLSL_SAMPLER_DIM_BUF
-                            : is_ld_ms ? GLSL_SAMPLER_DIM_MS
-                                       : GLSL_SAMPLER_DIM_2D;
-         tex->is_array = false;
+         tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF : sampler_dim;
+         tex->is_array = !is_buffer && is_array;
          tex->is_shadow = compare;
          tex->dest_type = nir_type_float32;
-         tex->coord_components = is_buffer ? 1 : 2;
+         tex->coord_components = is_buffer ? 1 : coord_components;
          tex->sampler_index = have_smp && !rooted_sampler ? sslot : 0;
          if (gather) {
             for (unsigned k = 1; k < nops; k++) {
@@ -4822,7 +4913,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             tex->src[si++] = nir_tex_src_for_ssa(
                nir_tex_src_coord,
                is_buffer ? nir_channel(b, icoord, 0)
-                         : nir_trim_vector(b, icoord, 2));
+                         : nir_trim_vector(b, icoord, coord_components));
 
             if (has_offset) {
                tex->src[si++] = nir_tex_src_for_ssa(
@@ -4844,7 +4935,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             }
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
-                                                 nir_trim_vector(b, coord4, 2));
+                                                 nir_trim_vector(
+                                                    b, coord4,
+                                                    coord_components));
             if (dynamic_offset) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_offset, nir_trim_vector(b, SRC(2), 2));

@@ -411,9 +411,13 @@ struct d12_descriptor {
          union {
             uint8_t buffer_kind; /* enum d12_buffer_view_kind */
             uint8_t dsv_flags;   /* D3D12_DSV_FLAGS */
+            uint8_t texture_srv_layers;
          };
          uint8_t texture_plane;
-         uint8_t texture_array;
+         union {
+            uint8_t texture_array;
+            uint8_t texture_srv_dimension;
+         };
       };
 
       /* Sampler heaps are type-disjoint from resource heaps, so their slots
