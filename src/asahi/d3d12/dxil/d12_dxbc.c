@@ -1918,6 +1918,15 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
             find_sig(ctx->out_sig, ctx->num_out_sig, reg);
          unsigned loc = output_location(ctx, e, reg);
 
+         if (e && !strcasecmp(e->name, "SV_ClipDistance")) {
+            unsigned written = mask & e->mask;
+            if (written) {
+               b->shader->info.clip_distance_array_size = MAX2(
+                  b->shader->info.clip_distance_array_size,
+                  e->semantic_index * 4 + util_last_bit(written));
+            }
+         }
+
          if (b->shader->info.stage == MESA_SHADER_TESS_CTRL) {
             nir_store_per_vertex_output(
                b, value, nir_load_invocation_id(b), nir_imm_int(b, 0),

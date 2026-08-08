@@ -256,6 +256,7 @@ struct output_slot {
    unsigned location;
    unsigned base;
    nir_def *comps[4];
+   nir_def *regs[4];
    unsigned write_mask;
 };
 
@@ -1352,7 +1353,9 @@ flush_outputs(struct trans_ctx *ctx)
        */
       nir_def *comps[4];
       for (unsigned c = 0; c < num_comps; c++) {
-         nir_def *v = slot->comps[c];
+         nir_def *v = slot->regs[c]
+                         ? nir_load_reg(b, slot->regs[c])
+                         : slot->comps[c];
          if (v && v->bit_size != 32)
             v = nir_f2f32(b, v);
          comps[c] = v ? v : nir_undef(b, 1, 32);
@@ -1556,6 +1559,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           */
          unsigned location = sem && !strcmp(sem, "SV_Position")
                                 ? VARYING_SLOT_POS
+                                : sem && !strcmp(sem, "SV_ClipDistance")
+                                   ? VARYING_SLOT_CLIP_DIST0 +
+                                        (se ? se->semantic_index : 0)
                                 : VARYING_SLOT_VAR0 + sig_id;
          nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
                               ? nir_u2u32(b, get_def(ctx, p[3]))
@@ -1680,6 +1686,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          location = VARYING_SLOT_POS;
       } else if (sem && !strcmp(sem, "SV_RenderTargetArrayIndex")) {
          location = VARYING_SLOT_LAYER;
+      } else if (sem && !strcmp(sem, "SV_ClipDistance")) {
+         location = VARYING_SLOT_CLIP_DIST0 + se->semantic_index;
+         b->shader->info.clip_distance_array_size =
+            MAX2(b->shader->info.clip_distance_array_size,
+                 se->semantic_index * 4 + col + 1);
       } else {
          location = VARYING_SLOT_VAR0 + sig_id;
       }
@@ -1695,7 +1706,30 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       slot->used = true;
       slot->location = location;
       slot->base = (unsigned)sig_id;
-      slot->comps[col] = val;
+
+      /* In a multi-block shader, the latest storeOutput in translation
+       * order is not necessarily the value produced at runtime. DXC
+       * commonly writes a default before an if and overwrites it in one
+       * arm. Keeping only the latter SSA def turns the other arm into
+       * undef when outputs are flushed in the common epilogue.
+       *
+       * Model each component as a NIR register across control flow. The
+       * existing reg-to-SSA pass then reconstructs the required phi, while
+       * flush_outputs still presents AGX with one vector store per output.
+       */
+      if (ctx->num_blocks > 1) {
+         if (!slot->regs[col]) {
+            nir_cursor saved = b->cursor;
+            b->cursor = nir_before_block(ctx->blocks[0]);
+            slot->regs[col] = nir_decl_reg(b, 1, val->bit_size, 0);
+            nir_store_reg(b, nir_undef(b, 1, val->bit_size),
+                          slot->regs[col]);
+            b->cursor = saved;
+         }
+         nir_store_reg(b, val, slot->regs[col]);
+      } else {
+         slot->comps[col] = val;
+      }
       slot->write_mask |= 1u << col;
       return true;
    }
