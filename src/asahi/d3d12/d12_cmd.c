@@ -6021,6 +6021,15 @@ d12_list_Dispatch(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y, UINT z)
    if (!x || !y || !z)
       return;
 
+   /* Native D3D12 implementations tolerate an oversized X dimension, but
+    * discard dispatches whose Y or Z dimension exceeds the API limit.  Do
+    * that before encoding an AGX launch: otherwise the hardware executes a
+    * command D3D12 defines as out of range, potentially doing a very large
+    * amount of unintended work. */
+   if (y > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION ||
+       z > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
+      return;
+
    d12_list_dispatch_pso(list, x, y, z, 0);
 }
 
