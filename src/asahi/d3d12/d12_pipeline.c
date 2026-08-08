@@ -2502,8 +2502,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    }
 
    /* Depth/stencil state, resolved to hardware enums once here rather than
-    * per draw. With no DSV format the tests are inert regardless of what
-    * the description asks for, matching D3D12's own rule.
+    * per draw. DSVFormat may legally be UNKNOWN while depth/stencil state is
+    * still used with a view bound at draw time. The draw path already makes
+    * that state inert when no DSV is actually attached.
     */
    pso->ds.dsv_format = dsv_format;
    pso->ds.depth_func = AGX_ZS_FUNC_ALWAYS;
@@ -2521,7 +2522,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    };
    pso->ds.back = pso->ds.front;
 
-   if (ds_desc && dsv_format != DXGI_FORMAT_UNKNOWN) {
+   if (ds_desc) {
       pso->ds.depth_test = ds_desc->DepthEnable;
       pso->ds.depth_write =
          ds_desc->DepthEnable &&
