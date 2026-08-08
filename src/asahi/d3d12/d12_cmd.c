@@ -4693,17 +4693,38 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
                             &present);
 
-      /* Honour RSSetScissorRects, clamped to the target. */
-      unsigned clip_x0 = 0, clip_y0 = 0;
-      unsigned clip_x1 = seg->width_px, clip_y1 = seg->height_px;
+      /* AGX's viewport transform does not provide the API's exact pixel
+       * clip at fractional edges. Honeykrisp therefore intersects the
+       * hardware scissor with the viewport, truncating each edge to the
+       * integer pixel boundary before applying the API scissor.
+       */
+      float vp_x = 0.0f, vp_y = 0.0f;
+      float vp_w = seg->width_px, vp_h = seg->height_px;
+      float vp_zmin = 0.0f, vp_zmax = 1.0f;
+
+      if (list->has_viewport) {
+         vp_x = list->viewport.TopLeftX;
+         vp_y = list->viewport.TopLeftY;
+         vp_w = list->viewport.Width;
+         vp_h = list->viewport.Height;
+         vp_zmin = list->viewport.MinDepth;
+         vp_zmax = list->viewport.MaxDepth;
+      }
+
+      unsigned clip_x0 = (unsigned)CLAMP(MIN2(vp_x, vp_x + vp_w), 0.0f,
+                                          (float)seg->width_px);
+      unsigned clip_y0 = (unsigned)CLAMP(MIN2(vp_y, vp_y + vp_h), 0.0f,
+                                          (float)seg->height_px);
+      unsigned clip_x1 = (unsigned)CLAMP(MAX2(vp_x, vp_x + vp_w), 0.0f,
+                                          (float)seg->width_px);
+      unsigned clip_y1 = (unsigned)CLAMP(MAX2(vp_y, vp_y + vp_h), 0.0f,
+                                          (float)seg->height_px);
 
       if (list->has_scissor) {
-         clip_x0 = MAX2(list->scissor.left, 0);
-         clip_y0 = MAX2(list->scissor.top, 0);
-         clip_x1 = MIN2((unsigned)MAX2(list->scissor.right, 0),
-                        seg->width_px);
-         clip_y1 = MIN2((unsigned)MAX2(list->scissor.bottom, 0),
-                        seg->height_px);
+         clip_x0 = MAX2(clip_x0, (unsigned)MAX2(list->scissor.left, 0));
+         clip_y0 = MAX2(clip_y0, (unsigned)MAX2(list->scissor.top, 0));
+         clip_x1 = MIN2(clip_x1, (unsigned)MAX2(list->scissor.right, 0));
+         clip_y1 = MIN2(clip_y1, (unsigned)MAX2(list->scissor.bottom, 0));
       }
 
       /* Pack a hardware scissor entry. REGION_CLIP below is a coarse tile
@@ -4734,19 +4755,6 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * the viewport the application actually set rather than always the
        * whole target.
        */
-      float vp_x = 0.0f, vp_y = 0.0f;
-      float vp_w = seg->width_px, vp_h = seg->height_px;
-      float vp_zmin = 0.0f, vp_zmax = 1.0f;
-
-      if (list->has_viewport) {
-         vp_x = list->viewport.TopLeftX;
-         vp_y = list->viewport.TopLeftY;
-         vp_w = list->viewport.Width;
-         vp_h = list->viewport.Height;
-         vp_zmin = list->viewport.MinDepth;
-         vp_zmax = list->viewport.MaxDepth;
-      }
-
       agx_ppp_push(&ppp, VIEWPORT, cfg) {
          cfg.translate_x = vp_x + 0.5f * vp_w;
          cfg.translate_y = vp_y + 0.5f * vp_h;
