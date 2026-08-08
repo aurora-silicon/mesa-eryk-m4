@@ -387,9 +387,13 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       /* We understand the query but do not yet expose RasterizerDesc2.
        * A zero capability answer makes applications take the supported
        * legacy rasterizer path instead of mistaking E_INVALIDARG for an
-       * unknown runtime interface.
+       * unknown runtime interface. AGX point sampling was measured across
+       * the 8-bit subtexel boundary: addresses below the boundary never
+       * round up, while linear sampling and gather retain their normal
+       * fixed-point rules.
        */
       memset(opts, 0, sizeof(*opts));
+      opts->PointSamplingAddressesNeverRoundUp = TRUE;
       return S_OK;
    }
 
