@@ -1505,6 +1505,35 @@ d12_native_texture_dimension(const struct d12_descriptor *d,
                              unsigned samples);
 static unsigned d12_native_texture_layers(const struct d12_descriptor *d);
 
+static enum pipe_format
+d12_native_texture_format(const struct d12_descriptor *d)
+{
+   struct d12_resource *res = d->resource;
+   if (!res)
+      return PIPE_FORMAT_NONE;
+
+   if (d->texture_plane == 1)
+      return PIPE_FORMAT_R8_UINT;
+
+   /* ZLS storage formats are not legal AGX sampled-texture formats.  Depth
+    * SRVs address the same plane but interpret it through the matching colour
+    * format.  This is especially important for the X8/X24 view spellings,
+    * which intentionally have no standalone allocation entry in the DXGI
+    * table. */
+   if (res->is_depth_stencil) {
+      switch (res->layout.format) {
+      case PIPE_FORMAT_Z32_FLOAT: return PIPE_FORMAT_R32_FLOAT;
+      case PIPE_FORMAT_Z16_UNORM: return PIPE_FORMAT_R16_UNORM;
+      default: return PIPE_FORMAT_NONE;
+      }
+   }
+
+   if (d->kind == D12_DESC_UAV || d->format != DXGI_FORMAT_UNKNOWN)
+      return d12_format_to_pipe(d->format);
+
+   return res->layout.format;
+}
+
 static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures,
@@ -1806,12 +1835,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
        * keep the S8 layout/address but pack the descriptor's channels and
        * type from that view interpretation.
        */
-      enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
-                                    : table[i].kind == D12_DESC_UAV
-                                         ? d12_format_to_pipe(table[i].format)
-                                     : table[i].format != DXGI_FORMAT_UNKNOWN
-                                         ? d12_format_to_pipe(table[i].format)
-                                         : layout->format;
+      enum pipe_format pf = d12_native_texture_format(&table[i]);
       if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
           !ail_pixel_format[pf].texturable ||
           util_format_is_depth_or_stencil(pf))
@@ -2230,12 +2254,7 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    if (!texture_bo || !layout->size_B)
       return;
 
-   enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
-                                 : d->kind == D12_DESC_UAV
-                                      ? d12_format_to_pipe(d->format)
-                                  : d->format != DXGI_FORMAT_UNKNOWN
-                                      ? d12_format_to_pipe(d->format)
-                                      : layout->format;
+   enum pipe_format pf = d12_native_texture_format(d);
    if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
        !ail_pixel_format[pf].texturable ||
        util_format_is_depth_or_stencil(pf))

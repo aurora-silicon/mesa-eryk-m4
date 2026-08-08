@@ -183,6 +183,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_ROUND_Z = 67,
    D12_DXBC_OP_RSQ = 68,
    D12_DXBC_OP_SAMPLE = 69,
+   D12_DXBC_OP_SAMPLE_C = 70,
    D12_DXBC_OP_SAMPLE_C_LZ = 71,
    D12_DXBC_OP_SAMPLE_L = 72,
    D12_DXBC_OP_GATHER4 = 109,
@@ -4649,6 +4650,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
        * .w rather than as a separate operand.
        */
       case D12_DXBC_OP_SAMPLE:
+      case D12_DXBC_OP_SAMPLE_C:
       case D12_DXBC_OP_SAMPLE_C_LZ:
       case D12_DXBC_OP_SAMPLE_L:
       case D12_DXBC_OP_GATHER4:
@@ -4665,7 +4667,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                        opcode == D12_DXBC_OP_GATHER4_PO_C;
          bool dynamic_offset = opcode == D12_DXBC_OP_GATHER4_PO ||
                                opcode == D12_DXBC_OP_GATHER4_PO_C;
-         bool compare = opcode == D12_DXBC_OP_SAMPLE_C_LZ ||
+         bool compare = opcode == D12_DXBC_OP_SAMPLE_C ||
+                        opcode == D12_DXBC_OP_SAMPLE_C_LZ ||
                         opcode == D12_DXBC_OP_GATHER4_C ||
                         opcode == D12_DXBC_OP_GATHER4_PO_C;
          bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L ||
@@ -4865,14 +4868,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          (dynamic_offset ? 1 : 0) +
                          (has_offset ? 1 : 0) +
                          (rooted_sampler ? 1 : 0) +
-                         (view_min_lod && (is_ld || implicit_min_lod) ? 1 : 0) +
-                         (implicit_min_lod ? 1 : 0);
+                         (implicit_min_lod
+                             ? 3
+                             : (view_min_lod && is_ld ? 1 : 0));
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld_ms ? nir_texop_txf_ms
                             : is_ld ? nir_texop_txf
                          : gather ? nir_texop_tg4
-                                  : has_lod ? nir_texop_txl : nir_texop_tex;
+                         : has_lod ? nir_texop_txl
+                         : implicit_min_lod ? nir_texop_txd
+                                            : nir_texop_tex;
          tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF : sampler_dim;
          tex->is_array = !is_buffer && is_array;
          tex->is_shadow = compare;
@@ -4958,6 +4964,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                      view_min_lod
                         ? nir_fmax(b, nir_imm_float(b, 0.0f), view_min_lod)
                         : nir_imm_int(b, 0));
+               else if (implicit_min_lod) {
+                  nir_def *gradient_coord =
+                     nir_trim_vector(b, coord4, coord_components);
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_ddx, nir_ddx(b, gradient_coord));
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_ddy, nir_ddy(b, gradient_coord));
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_min_lod, view_min_lod);
+               }
             } else if (has_lod) {
                nir_def *lod = nir_channel(b, SRC(nops - 1), 0);
                if (view_min_lod)
@@ -4965,10 +4981,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, lod);
             } else if (implicit_min_lod) {
-               /* AGX packs bias and minimum LOD together. A zero bias keeps
-                * ordinary Sample semantics while carrying the view clamp. */
+               /* AGX carries a minimum LOD with explicit gradients.  Rebuild
+                * implicit LOD from the coordinate derivatives; a zero-bias
+                * txb is canonicalized back to tex before AGX packs the clamp
+                * and would leave an illegal standalone min_lod source. */
+               nir_def *gradient_coord =
+                  nir_trim_vector(b, coord4, coord_components);
                tex->src[si++] = nir_tex_src_for_ssa(
-                  nir_tex_src_bias, nir_imm_float(b, 0.0f));
+                  nir_tex_src_ddx, nir_ddx(b, gradient_coord));
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_ddy, nir_ddy(b, gradient_coord));
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_min_lod, view_min_lod);
             }
