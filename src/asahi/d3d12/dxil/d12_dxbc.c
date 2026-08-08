@@ -2593,6 +2593,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       case D12_DXBC_OP_DCL_GLOBAL_FLAGS:
+         /* Public DXBC bit 13 is [earlydepthstencil].  Preserve it in NIR
+          * so AGX schedules depth/stencil tests before fragment side effects
+          * instead of allowing depth-failing invocations to reach UAV
+          * atomics. */
+         if (b->shader->info.stage == MESA_SHADER_FRAGMENT &&
+             (op_tok & BITFIELD_BIT(13)))
+            b->shader->info.fs.early_fragment_tests = true;
+         ctx->tok += len;
+         continue;
+
       case D12_DXBC_OP_DCL_TEMPS:
       case D12_DXBC_OP_DCL_INPUT:
       case D12_DXBC_OP_DCL_INPUT_SGV:
@@ -2966,7 +2976,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_COUNTBITS: NEED(2); DST(nir_bit_count(b, SRC(1))); break;
       case D12_DXBC_OP_BFREV:     NEED(2); DST(nir_bitfield_reverse(b, SRC(1))); break;
       case D12_DXBC_OP_UMAD:      NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
-      case D12_DXBC_OP_UDIV:      NEED(4); DST(nir_udiv(b, SRC(2), SRC(3))); break;
+      case D12_DXBC_OP_UDIV: {
+         /* DXBC udiv has two destinations: quotient, then remainder.  The
+          * latter is observable even when the quotient mask is empty (HLSL
+          * `%` commonly emits exactly that form). */
+         NEED(4);
+         nir_def *numerator = SRC(2);
+         nir_def *denominator = SRC(3);
+         write_dst(ctx, &o[0], nir_udiv(b, numerator, denominator));
+         write_dst(ctx, &o[1], nir_umod(b, numerator, denominator));
+         break;
+      }
       case D12_DXBC_OP_UMUL: {
          NEED(4);
          nir_def *a = SRC(2), *c = SRC(3);
