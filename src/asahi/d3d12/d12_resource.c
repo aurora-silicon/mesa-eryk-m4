@@ -409,14 +409,18 @@ d12_resource_create(struct d12_device *device,
          };
          ail_make_miptree(&stencil_layout);
       }
-   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
-      /* Single-level, single-layer, single-sample. LINEAR tiling so the
-       * CPU can read pixels directly; twiddled layouts arrive with real
-       * texturing. The FORMAT is now whatever the hardware can handle.
+   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+              desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+      /* Simple 2D resources may remain LINEAR so the CPU can read pixels
+       * directly. Arrays, mip chains and API-level 3D images are TWIDDLED;
+       * mipmapped_z makes each 3D mip shrink along Z as well as X/Y.
        */
       enum pipe_format pipe = d12_format_to_pipe(desc->Format);
+      const bool is_3d =
+         desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 
-      if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height) {
+      if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height ||
+          !desc->DepthOrArraySize || (is_3d && desc->SampleDesc.Count != 1)) {
          mesa_loge("CreateCommittedResource: texture shape unsupported "
                    "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,
@@ -463,9 +467,11 @@ d12_resource_create(struct d12_device *device,
        * GetResourceAllocationInfo applies -- resolving it in only one of
        * the two places makes the reported description disagree with the
        * allocation behind it. */
-      unsigned full_levels =
-         util_logbase2(MAX2((uint32_t)MAX2(desc->Width, 1),
-                            MAX2(desc->Height, 1))) + 1;
+      unsigned major_axis =
+         MAX2((uint32_t)MAX2(desc->Width, 1), MAX2(desc->Height, 1));
+      if (is_3d)
+         major_axis = MAX2(major_axis, desc->DepthOrArraySize);
+      unsigned full_levels = util_logbase2(major_axis) + 1;
       unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
       unsigned samples = MAX2(desc->SampleDesc.Count, 1);
       bool blocked = util_format_get_blockwidth(pipe) > 1 ||
@@ -475,7 +481,7 @@ d12_resource_create(struct d12_device *device,
       /* Layered resources must remain twiddled. AGX's sampled cube and cube-
        * array descriptors have no usable linear-face addressing mode; a
        * linear six-layer allocation makes every face sample as zero. */
-      bool linear_ok = levels == 1 && samples == 1 &&
+      bool linear_ok = !is_3d && levels == 1 && samples == 1 &&
                        desc->DepthOrArraySize == 1 && !blocked &&
                        !writeable_image;
 
@@ -489,6 +495,7 @@ d12_resource_create(struct d12_device *device,
           * placement tests need. */
          .sample_count_sa = samples,
          .levels = levels,
+         .mipmapped_z = is_3d,
          .tiling = linear_ok ? AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
          .format = pipe,
          .writeable_image = writeable_image,

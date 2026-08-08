@@ -1565,7 +1565,10 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
 
          uint32_t base_w = (uint32_t)MAX2(d->Width, 1);
          uint32_t base_h = MAX2(d->Height, 1);
-         uint32_t full_mip_levels = util_logbase2(MAX2(base_w, base_h)) + 1;
+         uint32_t major_axis = MAX2(base_w, base_h);
+         if (d->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+            major_axis = MAX2(major_axis, d->DepthOrArraySize);
+         uint32_t full_mip_levels = util_logbase2(major_axis) + 1;
 
          struct ail_layout layout = {
             .width_px = (uint32_t)MAX2(d->Width, 1),
@@ -1576,6 +1579,8 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
              * level. Treating it as 1 under-reports the size of every
              * resource an application asks to be fully mipped. */
             .levels = d->MipLevels ? d->MipLevels : full_mip_levels,
+            .mipmapped_z =
+               d->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D,
             .tiling = AIL_TILING_TWIDDLED,
             .format = pipe,
             .writeable_image =

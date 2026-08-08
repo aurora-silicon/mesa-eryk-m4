@@ -6758,12 +6758,14 @@ struct d12_copy_surface {
    uint64_t size_B;
    uint32_t width_px;
    uint32_t height_px;
+   uint32_t depth_px;
    uint32_t width_el;
    uint32_t height_el;
    uint32_t block_width_px;
    uint32_t block_height_px;
    uint32_t blocksize_B;
    uint32_t pitch_B;
+   uint64_t slice_stride_B;
    uint32_t stride_el;
    uint32_t tile_width_el;
    uint32_t tile_height_el;
@@ -6792,13 +6794,15 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
                               struct d12_resource *res, UINT subresource,
                               const char *name)
 {
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
-      mesa_loge("CopyTextureRegion: %s is not a 2D texture", name);
+   const bool is_3d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) {
+      mesa_loge("CopyTextureRegion: %s is not a texture", name);
       return false;
    }
 
    const unsigned mips = MAX2(res->desc.MipLevels, 1);
-   const unsigned layers = MAX2(res->desc.DepthOrArraySize, 1);
+   const unsigned layers = is_3d ? 1 : MAX2(res->desc.DepthOrArraySize, 1);
    const uint64_t plane_size = (uint64_t)mips * layers;
    const unsigned plane = subresource / plane_size;
    const unsigned in_plane = subresource % plane_size;
@@ -6831,9 +6835,12 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
    const enum pipe_format format = layout->format;
    const uint32_t width_px = u_minify(layout->width_px, mip);
    const uint32_t height_px = u_minify(layout->height_px, mip);
+   const uint32_t depth_px = is_3d ? u_minify(layout->depth_px, mip) : 1;
    const uint32_t samples = MAX2(layout->sample_count_sa, 1);
    const uint64_t offset_B = ail_get_layer_level_B(layout, layer, mip);
-   const uint64_t size_B = ail_get_level_size_B(layout, mip);
+   const uint64_t slice_size_B = ail_get_level_size_B(layout, mip);
+   const uint64_t size_B =
+      (uint64_t)(depth_px - 1) * layout->layer_stride_B + slice_size_B;
    if (!bo || plane_base < bo->va->addr) {
       mesa_loge("CopyTextureRegion: %s plane has invalid storage", name);
       return false;
@@ -6846,6 +6853,7 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
       .size_B = size_B,
       .width_px = width_px,
       .height_px = height_px,
+      .depth_px = depth_px,
       .width_el = util_format_get_nblocksx(format, width_px),
       .height_el = util_format_get_nblocksy(format, height_px),
       .block_width_px = util_format_get_blockwidth(format),
@@ -6854,6 +6862,7 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
        * texture copies therefore copy the whole sample block together. */
       .blocksize_B = util_format_get_blocksize(format) * samples,
       .sample_count = samples,
+      .slice_stride_B = layout->layer_stride_B,
       .tiled = layout->tiling != AIL_TILING_LINEAR,
    };
 
@@ -6892,7 +6901,7 @@ d12_copy_surface_from_footprint(
    if (format == PIPE_FORMAT_NONE)
       format = d12_format_depth_plane(placed->Footprint.Format);
 
-   if (format == PIPE_FORMAT_NONE || placed->Footprint.Depth != 1 ||
+   if (format == PIPE_FORMAT_NONE || !placed->Footprint.Depth ||
        !placed->Footprint.Width || !placed->Footprint.Height) {
       mesa_loge("CopyTextureRegion: %s has an unsupported footprint", name);
       return false;
@@ -6913,7 +6922,10 @@ d12_copy_surface_from_footprint(
       return false;
    }
 
+   const uint64_t slice_stride_B =
+      (uint64_t)height_el * placed->Footprint.RowPitch;
    const uint64_t size_B =
+      (uint64_t)(placed->Footprint.Depth - 1) * slice_stride_B +
       (uint64_t)(height_el - 1) * placed->Footprint.RowPitch + minimum_pitch;
    if (placed->Offset > res->desc.Width ||
        size_B > res->desc.Width - placed->Offset) {
@@ -6928,12 +6940,14 @@ d12_copy_surface_from_footprint(
       .size_B = size_B,
       .width_px = placed->Footprint.Width,
       .height_px = placed->Footprint.Height,
+      .depth_px = placed->Footprint.Depth,
       .width_el = width_el,
       .height_el = height_el,
       .block_width_px = block_width,
       .block_height_px = block_height,
       .blocksize_B = blocksize,
       .pitch_B = placed->Footprint.RowPitch,
+      .slice_stride_B = slice_stride_B,
       .sample_count = 1,
    };
 
@@ -6991,12 +7005,6 @@ d12_copy_texture_region(struct d12_cmd_list *list,
                    src_box->front >= src_box->back))
       return;
 
-   if (dst_z != 0 || (src_box && (src_box->front != 0 || src_box->back != 1))) {
-      mesa_loge("CopyTextureRegion: 3D copies are unsupported");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
    struct d12_copy_surface d, s;
    if (!d12_copy_surface_from_location(&d, dst, "destination") ||
        !d12_copy_surface_from_location(&s, src, "source")) {
@@ -7020,8 +7028,10 @@ d12_copy_texture_region(struct d12_cmd_list *list,
 
    const uint32_t src_left = src_box ? src_box->left : 0;
    const uint32_t src_top = src_box ? src_box->top : 0;
+   const uint32_t src_front = src_box ? src_box->front : 0;
    const uint32_t src_right = src_box ? src_box->right : s.width_px;
    const uint32_t src_bottom = src_box ? src_box->bottom : s.height_px;
+   const uint32_t src_back = src_box ? src_box->back : s.depth_px;
    uint32_t src_x_el, src_y_el, dst_x_el, dst_y_el;
 
    if (!d12_copy_element_coord(src_left, s.block_width_px, &src_x_el,
@@ -7045,21 +7055,24 @@ d12_copy_texture_region(struct d12_cmd_list *list,
 
    const uint32_t width_el = src_right_el - src_x_el;
    const uint32_t height_el = src_bottom_el - src_y_el;
+   const uint32_t depth_px = src_back - src_front;
    if (src_right_el > s.width_el || src_bottom_el > s.height_el ||
+       src_back > s.depth_px || dst_z > d.depth_px ||
+       depth_px > d.depth_px - dst_z ||
        width_el > d.width_el - MIN2(d.width_el, dst_x_el) ||
        height_el > d.height_el - MIN2(d.height_el, dst_y_el)) {
       mesa_loge("CopyTextureRegion: element rectangle is out of bounds "
-                "(src %u,%u..%u,%u of %ux%u; dst %u,%u + %ux%u of %ux%u)",
-                src_x_el, src_y_el, src_right_el, src_bottom_el,
-                s.width_el, s.height_el, dst_x_el, dst_y_el, width_el,
-                height_el, d.width_el, d.height_el);
+                "(src %u,%u,%u..%u,%u,%u of %ux%ux%u; "
+                "dst %u,%u,%u + %ux%ux%u of %ux%ux%u)",
+                src_x_el, src_y_el, src_front, src_right_el, src_bottom_el,
+                src_back, s.width_el, s.height_el, s.depth_px, dst_x_el,
+                dst_y_el, dst_z, width_el, height_el, depth_px, d.width_el,
+                d.height_el, d.depth_px);
       list->state = D12_LIST_ERROR;
       return;
    }
 
    struct libagx_copy_image_args args = {
-      .dest = d.base,
-      .src = s.base,
       .width_el = width_el,
       .height_el = height_el,
       .dest_x_el = dst_x_el,
@@ -7079,8 +7092,18 @@ d12_copy_texture_region(struct d12_cmd_list *list,
       .src_tiled = s.tiled,
    };
 
-   d12_list_dispatch_precomp(list, LIBAGX_COPY_IMAGE, &args, sizeof(args),
-                             agx_1d((uint64_t)width_el * height_el));
+   /* The proven copy kernel is two-dimensional. AIL stores a 3D mip as a
+    * stack of equally-strided twiddled slices, so preserve that kernel and
+    * advance only the validated source/destination bases for each Z slice.
+    */
+   for (uint32_t z = 0; z < depth_px; ++z) {
+      args.dest = d.base + (uint64_t)(dst_z + z) * d.slice_stride_B;
+      args.src = s.base + (uint64_t)(src_front + z) * s.slice_stride_B;
+      d12_list_dispatch_precomp(list, LIBAGX_COPY_IMAGE, &args, sizeof(args),
+                                agx_1d((uint64_t)width_el * height_el));
+      if (list->state == D12_LIST_ERROR)
+         return;
+   }
 }
 
 static void
