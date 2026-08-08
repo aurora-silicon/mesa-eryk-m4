@@ -53,6 +53,20 @@ d12_heap_Release(ID3D12DescriptorHeap *iface)
    uint32_t refs = p_atomic_dec_return(&heap->refcount);
 
    if (refs == 0) {
+      simple_mtx_lock(&heap->device->descriptor_heap_lock);
+      struct d12_descriptor_heap **link = &heap->device->descriptor_heaps;
+      while (*link && *link != heap)
+         link = &(*link)->registry_next;
+      if (*link == heap)
+         *link = heap->registry_next;
+      simple_mtx_unlock(&heap->device->descriptor_heap_lock);
+
+      if (heap->texture_bo)
+         agx_bo_unreference(&heap->device->dev, heap->texture_bo);
+      if (heap->pbe_bo)
+         agx_bo_unreference(&heap->device->dev, heap->pbe_bo);
+      if (heap->sampler_bo)
+         agx_bo_unreference(&heap->device->dev, heap->sampler_bo);
       if (heap->bo)
          agx_bo_unreference(&heap->device->dev, heap->bo);
       else
@@ -63,6 +77,50 @@ d12_heap_Release(ID3D12DescriptorHeap *iface)
    }
 
    return refs;
+}
+
+void
+d12_descriptor_heap_update_slot(struct d12_device *device,
+                                struct d12_descriptor *slot)
+{
+   if (!device || !slot)
+      return;
+
+   uintptr_t ptr = (uintptr_t)slot;
+
+   simple_mtx_lock(&device->descriptor_heap_lock);
+   for (struct d12_descriptor_heap *heap = device->descriptor_heaps; heap;
+        heap = heap->registry_next) {
+      uintptr_t start = (uintptr_t)heap->slots;
+      size_t bytes = (size_t)heap->desc.NumDescriptors * sizeof(*slot);
+      if (ptr < start || ptr - start >= bytes ||
+          (ptr - start) % sizeof(*slot))
+         continue;
+
+      size_t index = (ptr - start) / sizeof(*slot);
+      if (heap->texture_bo) {
+         struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
+         d12_refresh_texture_descriptor(&textures[index], slot);
+      }
+      if (heap->pbe_bo) {
+         struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
+         d12_refresh_pbe_descriptor(&pbes[index], slot);
+      }
+      if (heap->sampler_bo) {
+         struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
+         if (slot->sampler_kind == D12_DESC_SAMPLER)
+            samplers[index] = slot->sampler;
+         else
+            agx_pack_txf_sampler(&samplers[index]);
+      }
+
+      /* All three BOs are coherent. Order the native descriptor write after
+       * the application's 40-byte slot write before another thread records
+       * a dispatch that publishes these bases. */
+      __sync_synchronize();
+      break;
+   }
+   simple_mtx_unlock(&device->descriptor_heap_lock);
 }
 
 D12_DEFINE_PRIVATE_DATA_METHODS(d12_heap, ID3D12DescriptorHeap,
@@ -186,6 +244,25 @@ d12_descriptor_heap_create(struct d12_device *device,
                                "d3d12 shader-visible descriptors");
       if (heap->bo)
          heap->slots = agx_bo_map(heap->bo);
+
+      if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+         size_t texture_size =
+            (size_t)desc->NumDescriptors * AGX_TEXTURE_LENGTH;
+         size_t pbe_size =
+            (size_t)desc->NumDescriptors * AGX_PBE_LENGTH;
+         heap->texture_bo =
+            agx_bo_create(&device->dev, texture_size, 0, AGX_BO_WRITEBACK,
+                          "d3d12 bindless texture descriptors");
+         heap->pbe_bo =
+            agx_bo_create(&device->dev, pbe_size, 0, AGX_BO_WRITEBACK,
+                          "d3d12 bindless PBE descriptors");
+      } else if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+         size_t sampler_size =
+            (size_t)desc->NumDescriptors * AGX_SAMPLER_LENGTH;
+         heap->sampler_bo =
+            agx_bo_create(&device->dev, sampler_size, 0, AGX_BO_WRITEBACK,
+                          "d3d12 bindless sampler descriptors");
+      }
    } else {
       heap->slots = calloc(desc->NumDescriptors,
                            sizeof(struct d12_descriptor));
@@ -212,9 +289,37 @@ d12_descriptor_heap_create(struct d12_device *device,
       }
    }
 
-   if (!heap->slots) {
+   if (heap->texture_bo && heap->pbe_bo) {
+      struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
+      struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
+      for (UINT i = 0; i < desc->NumDescriptors; i++) {
+         agx_set_null_texture(&textures[i]);
+         agx_set_null_pbe(&pbes[i]);
+      }
+   }
+   if (heap->sampler_bo) {
+      struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
+      for (UINT i = 0; i < desc->NumDescriptors; i++)
+         agx_pack_txf_sampler(&samplers[i]);
+   }
+
+   bool native_ok = !shader_visible ||
+      (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+          ? heap->texture_bo && heap->pbe_bo
+          : desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
+               ? heap->sampler_bo != NULL
+               : true);
+   if (!heap->slots || !native_ok) {
+      if (heap->texture_bo)
+         agx_bo_unreference(&device->dev, heap->texture_bo);
+      if (heap->pbe_bo)
+         agx_bo_unreference(&device->dev, heap->pbe_bo);
+      if (heap->sampler_bo)
+         agx_bo_unreference(&device->dev, heap->sampler_bo);
       if (heap->bo)
          agx_bo_unreference(&device->dev, heap->bo);
+      else
+         free(heap->slots);
       free(heap);
       return E_OUTOFMEMORY;
    }
@@ -225,6 +330,11 @@ d12_descriptor_heap_create(struct d12_device *device,
    heap->desc = *desc;
    d12_private_data_store_init(&heap->private_data);
    d12_device_add_ref(device);
+
+   simple_mtx_lock(&device->descriptor_heap_lock);
+   heap->registry_next = device->descriptor_heaps;
+   device->descriptor_heaps = heap;
+   simple_mtx_unlock(&device->descriptor_heap_lock);
 
    HRESULT hr = d12_heap_QueryInterface(&heap->iface, riid, out);
    d12_heap_Release(&heap->iface);

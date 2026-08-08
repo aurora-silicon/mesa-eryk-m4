@@ -1652,6 +1652,15 @@ srv_rooted_descriptor(struct d12_dxbc_ctx *ctx,
 }
 
 static nir_def *
+rooted_native_index(struct d12_dxbc_ctx *ctx, nir_def *descriptor)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *heap = nir_load_descriptor_heap_agx(b);
+   nir_def *offset = nir_isub(b, descriptor, heap);
+   return nir_u2u32(b, nir_udiv_imm(b, offset, D12_HEAP_DESC_SIZE));
+}
+
+static nir_def *
 uav_buffer_address(struct d12_dxbc_ctx *ctx,
                    const struct d12_dxbc_operand *uav, nir_def *index,
                    nir_def *offset, unsigned stride)
@@ -1876,11 +1885,12 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
       return NULL;
    }
 
-   if (uav->num_indices == 2 &&
-       (!ctx->uav_range[reg].valid ||
-        ctx->uav_range[reg].upper_bound == UINT32_MAX)) {
-      fail(ctx, "unbounded texture UAV range unsupported");
-      return NULL;
+   nir_def *descriptor = uav_rooted_descriptor(ctx, uav);
+   if (descriptor) {
+      nir_def *index = rooted_native_index(ctx, descriptor);
+      return nir_bindless_image_agx(
+         b, nir_imul_imm(b, index, D12_PBE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_HEAP_PBES);
    }
 
    nir_def *slot = uav_binding_slot(ctx, uav);
@@ -3047,6 +3057,23 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             ctx->srv_dim[r.index[0]] =
                (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
                D12_DXBC_RESOURCE_DIMENSION_SHIFT;
+
+            /* SM 5.1 typed-resource declarations spell
+             * t<range-id>[lower:upper], return-types, space. Texture array
+             * operands retain only the range id plus absolute register, so
+             * preserve the bounds/space just like structured declarations
+             * do below. */
+            if (r.num_indices == 3 && !r.index_is_relative[0] &&
+                !r.index_is_relative[1] && !r.index_is_relative[2] &&
+                n + 2 <= avail) {
+               ctx->srv_range[r.index[0]] =
+                  (struct d12_dxbc_binding_range) {
+                     .lower_bound = r.index[1],
+                     .upper_bound = r.index[2],
+                     .space = args[n + 1],
+                     .valid = true,
+                  };
+            }
          }
          ctx->tok += len;
          continue;
@@ -3079,14 +3106,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   ctx->uav_return_type[r.index[0]] = args[n] & 0xf;
             }
 
+            unsigned space_word =
+               n + (opcode == D12_DXBC_OP_DCL_UAV_TYPED ? 1 : 0);
             if (r.num_indices == 3 && !r.index_is_relative[0] &&
                 !r.index_is_relative[1] && !r.index_is_relative[2] &&
-                n + 1 <= avail) {
+                space_word < avail) {
                ctx->uav_range[r.index[0]] =
                   (struct d12_dxbc_binding_range) {
                      .lower_bound = r.index[1],
                      .upper_bound = r.index[2],
-                     .space = args[n],
+                     .space = args[space_word],
                      .valid = true,
                   };
             }
@@ -3462,7 +3491,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          const struct d12_dxbc_operand *res = &o[1];
          bool uav = res->file == D12_DXBC_FILE_UAV;
          if ((!uav && res->file != D12_DXBC_FILE_RESOURCE) ||
-             res->num_indices != 1 || res->index_is_relative[0]) {
+             (res->num_indices != 1 && res->num_indices != 2) ||
+             (res->num_indices == 1 && res->index_is_relative[0])) {
             fail(ctx, "unsupported BUFINFO resource operand");
             return;
          }
@@ -3475,23 +3505,39 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         unsigned slot = ctx->map
-                            ? d12_binding_map_find(ctx->map,
-                                                   uav ? D12_RES_UAV
-                                                       : D12_RES_SRV,
-                                                   0, reg)
-                            : reg;
-         if (slot == ~0u) {
-            fail(ctx, "BUFINFO resource is not bound by the root signature");
-            return;
-         }
+         nir_def *descriptor = uav ? uav_rooted_descriptor(ctx, res)
+                                   : srv_rooted_descriptor(ctx, res);
+         nir_def *count, *stride;
+         if (descriptor) {
+            nir_def *size = nir_load_global(
+               b, 1, 32,
+               nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+               .align_mul = 4);
+            stride = nir_load_global(
+               b, 1, 32,
+               nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
+               .align_mul = 4);
+            count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
+         } else {
+            unsigned slot = ctx->map
+                               ? d12_binding_map_find(ctx->map,
+                                                      uav ? D12_RES_UAV
+                                                          : D12_RES_SRV,
+                                                      0, reg)
+                               : reg;
+            if (slot == ~0u) {
+               fail(ctx,
+                    "BUFINFO resource is not bound by the root signature");
+               return;
+            }
 
-         nir_def *table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
-         nir_def *info = nir_load_global(
-            b, 2, 32, nir_iadd_imm(b, table, (uint64_t)slot * 8),
-            .align_mul = 8);
-         nir_def *count = nir_channel(b, info, 0);
-         nir_def *stride = nir_channel(b, info, 1);
+            nir_def *table = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+            nir_def *info = nir_load_global(
+               b, 2, 32, nir_iadd_imm(b, table, (uint64_t)slot * 8),
+               .align_mul = 8);
+            count = nir_channel(b, info, 0);
+            stride = nir_channel(b, info, 1);
+         }
          bool structured =
             (uav ? ctx->uav_stride[reg] : ctx->srv_stride[reg]) != 0;
          nir_def *value =
@@ -3523,7 +3569,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if ((return_type != D12_DXBC_RESINFO_RETURN_UINT &&
               return_type != D12_DXBC_RESINFO_RETURN_FLOAT) ||
              (!uav && res->file != D12_DXBC_FILE_RESOURCE) ||
-             res->num_indices != 1 || res->index_is_relative[0]) {
+             (res->num_indices != 1 && res->num_indices != 2) ||
+             (res->num_indices == 1 && res->index_is_relative[0])) {
             fail(ctx, "unsupported RESINFO resource operand");
             return;
          }
@@ -3541,20 +3588,42 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         unsigned slot = ctx->map
-                            ? d12_binding_map_find(ctx->map,
-                                                   uav ? D12_RES_UAV
-                                                       : D12_RES_SRV,
-                                                   0, reg)
-                            : reg;
-         if (slot == ~0u) {
-            fail(ctx, "RESINFO resource is not bound by the root signature");
-            return;
+         nir_def *descriptor = uav ? uav_rooted_descriptor(ctx, res)
+                                   : srv_rooted_descriptor(ctx, res);
+         nir_def *handle;
+         if (descriptor) {
+            nir_def *index = rooted_native_index(ctx, descriptor);
+            handle = nir_bindless_image_agx(
+               b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_HEAP_TEXTURES);
+         } else {
+            unsigned slot = ctx->map
+                               ? d12_binding_map_find(ctx->map,
+                                                      uav ? D12_RES_UAV
+                                                          : D12_RES_SRV,
+                                                      0, reg)
+                               : reg;
+            if (slot == ~0u) {
+               if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+                  const struct d12_dxbc_binding_range *range =
+                     uav ? &ctx->uav_range[reg] : &ctx->srv_range[reg];
+                  mesa_logi("DXBC RESINFO operand: uav=%u reg=%u "
+                            "indices=%u idx0=%u idx1=%u rel0=%u rel1=%u "
+                            "range-valid=%u lower=%u upper=%u space=%u",
+                            uav, reg, res->num_indices, res->index[0],
+                            res->index[1], res->index_is_relative[0],
+                            res->index_is_relative[1], range->valid,
+                            range->lower_bound, range->upper_bound,
+                            range->space);
+               }
+               fail(ctx,
+                    "RESINFO resource is not bound by the root signature");
+               return;
+            }
+            handle = nir_bindless_image_agx(
+               b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_TEXTURES);
          }
-
-         nir_def *handle = nir_bindless_image_agx(
-            b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_TEXTURES);
          nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
          txs->op = nir_texop_txs;
          txs->sampler_dim = GLSL_SAMPLER_DIM_2D;
@@ -4478,9 +4547,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * these three. */
          unsigned tex_reg = 0, smp_reg = 0;
          bool have_tex = false, have_smp = false;
+         const struct d12_dxbc_operand *tex_operand = NULL;
          for (unsigned k = 1; k < nops; k++) {
             if (o[k].file == D12_DXBC_FILE_RESOURCE && !have_tex) {
                tex_reg = o[k].index[0];
+               tex_operand = &o[k];
                have_tex = true;
             } else if (o[k].file == D12_DXBC_FILE_SAMPLER && !have_smp) {
                smp_reg = o[k].index[0];
@@ -4504,12 +4575,35 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         unsigned tslot = ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV,
-                                                          0, tex_reg)
-                                   : tex_reg;
-         if (tslot == ~0u) {
-            fail(ctx, "texture is not bound by the root signature");
-            return;
+         nir_def *rooted_texture =
+            srv_rooted_descriptor(ctx, tex_operand);
+         unsigned tslot = ~0u;
+         if (!rooted_texture) {
+            tslot = ctx->map
+                       ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
+                                              tex_reg)
+                       : tex_reg;
+            if (tslot == ~0u) {
+               if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+                  mesa_logi("DXBC texture operand: reg=%u indices=%u "
+                            "idx0=%u idx1=%u rel0=%u rel1=%u "
+                            "range-valid=%u lower=%u upper=%u space=%u",
+                            tex_reg, tex_operand->num_indices,
+                            tex_operand->index[0], tex_operand->index[1],
+                            tex_operand->index_is_relative[0],
+                            tex_operand->index_is_relative[1],
+                            tex_reg < D12_DXBC_MAX_SIG
+                               ? ctx->srv_range[tex_reg].valid : 0,
+                            tex_reg < D12_DXBC_MAX_SIG
+                               ? ctx->srv_range[tex_reg].lower_bound : 0,
+                            tex_reg < D12_DXBC_MAX_SIG
+                               ? ctx->srv_range[tex_reg].upper_bound : 0,
+                            tex_reg < D12_DXBC_MAX_SIG
+                               ? ctx->srv_range[tex_reg].space : 0);
+               }
+               fail(ctx, "texture is not bound by the root signature");
+               return;
+            }
          }
          unsigned sslot = ctx->map ? d12_binding_map_find(ctx->map,
                                                           D12_RES_SAMPLER, 0,
@@ -4531,9 +4625,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * 16-bit index into sampler STATE REGISTERS, so a constant slot
           * is simply sampler_index. Same split the DXIL path makes.
           */
-         nir_def *tex_handle = nir_bindless_image_agx(
-            b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_TEXTURES);
+         nir_def *tex_handle;
+         if (rooted_texture) {
+            nir_def *index = rooted_native_index(ctx, rooted_texture);
+            tex_handle = nir_bindless_image_agx(
+               b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_HEAP_TEXTURES);
+         } else {
+            tex_handle = nir_bindless_image_agx(
+               b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_TEXTURES);
+         }
 
          /* Public Extended Opcode SAMPLE_CONTROLS packs signed 4-bit U/V/W
           * immediate texel offsets at bits 9, 13 and 17.  They apply to LD

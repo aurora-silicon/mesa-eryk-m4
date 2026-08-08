@@ -164,6 +164,14 @@ struct d12_device {
    simple_mtx_t scratch_lock;
    struct agx_scratch scratch_vs, scratch_fs, scratch_cs;
 
+   /* CPU descriptor handles are opaque pointers into a heap's slot array.
+    * View creation only receives that pointer, so retain a small registry to
+    * locate the owning heap and mirror the slot into its GPU-native texture,
+    * PBE or sampler table. Descriptor heaps hold a device ref, hence every
+    * registry entry is removed before final device destruction. */
+   simple_mtx_t descriptor_heap_lock;
+   struct d12_descriptor_heap *descriptor_heaps;
+
    /* Occlusion-query scratch: cmd_render.isp_oclqry_base must point at
     * valid memory even when no queries run (mirrors hk pointing it at the
     * device query heap).
@@ -440,6 +448,16 @@ struct d12_descriptor_heap {
     * are still snapshotted into the root table, while unbounded ranges and
     * SM 6.6 heap handles dereference this storage directly. */
    struct agx_bo *bo;
+
+   /* AGX does not consume D3D12's 40-byte descriptor directly for images.
+    * Shader-visible resource heaps therefore keep parallel same-index
+    * hardware TEXTURE/PBE tables. Sampler heaps similarly keep the packed
+    * hardware sampler table named by drm_asahi_cmd_*::sampler_heap. */
+   struct agx_bo *texture_bo;
+   struct agx_bo *pbe_bo;
+   struct agx_bo *sampler_bo;
+
+   struct d12_descriptor_heap *registry_next;
 };
 
 /* A finite descriptor table is flattened into the command-list root and
@@ -1271,9 +1289,15 @@ d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
 HRESULT d12_descriptor_heap_create(struct d12_device *device,
                                    const D3D12_DESCRIPTOR_HEAP_DESC *desc,
                             REFIID riid, void **out);
+void d12_descriptor_heap_update_slot(struct d12_device *device,
+                                     struct d12_descriptor *slot);
 bool d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list);
 void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
+void d12_refresh_texture_descriptor(struct agx_texture_packed *out,
+                                    const struct d12_descriptor *d);
+void d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
+                                const struct d12_descriptor *d);
 /* DXGI format support (d12_format.c) */
 enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
 bool d12_format_is_renderable(DXGI_FORMAT format);

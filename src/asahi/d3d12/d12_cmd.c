@@ -1363,7 +1363,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
 }
 
 
-static void
+void
 d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
                            const struct d12_descriptor *d)
 {
@@ -1495,13 +1495,19 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
 static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures,
-                         uint64_t *out_pbes)
+                         uint64_t *out_pbes, uint64_t *out_heap,
+                         uint64_t *out_heap_textures,
+                         uint64_t *out_heap_pbes)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
    const struct d12_descriptor *const *sources =
       compute ? list->compute_root_source : list->graphics_root_source;
+
+   *out_heap = 0;
+   *out_heap_textures = 0;
+   *out_heap_pbes = 0;
 
    /* Three arrays back to back: resource base addresses, UAV counter
     * addresses for bufferUpdateCounter, then buffer-view counts for
@@ -1881,6 +1887,33 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    *out_pbes =
       d12_list_upload(list, &pbe_heap_gpu, sizeof(pbe_heap_gpu), 8);
 
+   /* Heap-rooted and SM 6.6 handles address the application's coherent
+    * 40-byte descriptor array, while AGX texture/image instructions require
+    * parallel 24-byte native arrays. Publish one home cell for each base;
+    * shader lowering derives the same global heap index for all three. */
+   struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
+   if (bound_heap && bound_heap->bo && bound_heap->texture_bo &&
+       bound_heap->pbe_bo) {
+      uint64_t base = bound_heap->bo->va->addr;
+      uint64_t textures = bound_heap->texture_bo->va->addr;
+      uint64_t pbes = bound_heap->pbe_bo->va->addr;
+      *out_heap = d12_list_upload(list, &base, sizeof(base), 8);
+      *out_heap_textures =
+         d12_list_upload(list, &textures, sizeof(textures), 8);
+      *out_heap_pbes = d12_list_upload(list, &pbes, sizeof(pbes), 8);
+      if (!*out_heap || !*out_heap_textures || !*out_heap_pbes)
+         return false;
+
+      if (validate) {
+         mesa_logi("binding validation: bindless heap slots=0x%llx "
+                   "textures=0x%llx pbes=0x%llx count=%u valid=1",
+                   (unsigned long long)base,
+                   (unsigned long long)textures,
+                   (unsigned long long)pbes,
+                   bound_heap->desc.NumDescriptors);
+      }
+   }
+
    if (validate) {
       if (!*out_textures || !*out_pbes ||
           !d12_list_stream_contains(list, *out_textures, sizeof(heap_gpu))) {
@@ -1987,7 +2020,7 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
  * it only for finite shader-visible table slots whose CPU descriptor changed
  * after Close.
  */
-static void
+void
 d12_refresh_texture_descriptor(struct agx_texture_packed *out,
                                const struct d12_descriptor *d)
 {
@@ -2273,6 +2306,9 @@ struct d12_dispatch_uniforms {
    uint64_t root;
    uint64_t textures;
    uint64_t pbes;
+   uint64_t heap;
+   uint64_t heap_textures;
+   uint64_t heap_pbes;
    uint64_t draw;
    uint64_t vertex_params;
    uint64_t geom_params;
@@ -2507,9 +2543,21 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
                       u->vb_params);
    }
 
+   if (u->heap) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP, D12_UNIFORM_HEAP_REGS,
+                      u->heap);
+   }
    if (u->pbes) {
       agx_usc_uniform(&b, D12_UNIFORM_PBES, D12_UNIFORM_PBE_REGS,
                       u->pbes);
+   }
+   if (u->heap_textures) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_TEXTURES,
+                      D12_UNIFORM_HEAP_TEXTURE_REGS, u->heap_textures);
+   }
+   if (u->heap_pbes) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_PBES,
+                      D12_UNIFORM_HEAP_PBE_REGS, u->heap_pbes);
    }
 
    /*
@@ -2614,8 +2662,10 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       return;
 
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
+   uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
    if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu,
-                                 &pbes_gpu))
+                                 &pbes_gpu, &heap_gpu, &heap_textures_gpu,
+                                 &heap_pbes_gpu))
       return;
 
    uint8_t *usc_cpu = NULL;
@@ -2623,7 +2673,10 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       list, pso->code_va, &pso->info,
       &(struct d12_dispatch_uniforms){.root = root_gpu,
                                       .textures = textures_gpu,
-                                      .pbes = pbes_gpu},
+                                      .pbes = pbes_gpu,
+                                      .heap = heap_gpu,
+                                      .heap_textures = heap_textures_gpu,
+                                      .heap_pbes = heap_pbes_gpu},
       true, D3D12_SHADER_VISIBILITY_ALL, &usc_cpu);
    if (!usc)
       return;
@@ -2694,6 +2747,8 @@ static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
                   uint64_t root_gpu, uint64_t textures_gpu, uint64_t pbes_gpu,
+                  uint64_t heap_gpu, uint64_t heap_textures_gpu,
+                  uint64_t heap_pbes_gpu,
                   uint64_t draw_gpu, uint64_t blend_gpu,
                   D3D12_SHADER_VISIBILITY visibility,
                   const struct d12_dispatch_uniforms *poly)
@@ -2765,9 +2820,21 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       }
    }
 
+   if (heap_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP, D12_UNIFORM_HEAP_REGS,
+                      heap_gpu);
+   }
    if (pbes_gpu) {
       agx_usc_uniform(&b, D12_UNIFORM_PBES, D12_UNIFORM_PBE_REGS,
                       pbes_gpu);
+   }
+   if (heap_textures_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_TEXTURES,
+                      D12_UNIFORM_HEAP_TEXTURE_REGS, heap_textures_gpu);
+   }
+   if (heap_pbes_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_PBES,
+                      D12_UNIFORM_HEAP_PBE_REGS, heap_pbes_gpu);
    }
 
    /* Promoted constants start above D12_UNIFORM_RESERVED, so bind them only
@@ -3231,6 +3298,9 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       .root = root_gpu,
       .textures = textures_gpu,
       .pbes = pbes_gpu,
+      .heap = out_poly->heap,
+      .heap_textures = out_poly->heap_textures,
+      .heap_pbes = out_poly->heap_pbes,
       /* poly_nir_lower_sw_vs reads the base vertex from here. */
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
@@ -3510,6 +3580,9 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       .root = root_gpu,
       .textures = textures_gpu,
       .pbes = pbes_gpu,
+      .heap = out_poly->heap,
+      .heap_textures = out_poly->heap_textures,
+      .heap_pbes = out_poly->heap_pbes,
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
       .tess_params = tp_ptr,
@@ -3769,6 +3842,9 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       .root = root_gpu,
       .textures = textures_gpu,
       .pbes = pbes_gpu,
+      .heap = out_poly->heap,
+      .heap_textures = out_poly->heap_textures,
+      .heap_pbes = out_poly->heap_pbes,
       .draw = draw_gpu,
       .mesh_params = mp_ptr,
       /* Published by the caller BEFORE this function runs: the
@@ -3964,8 +4040,10 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
     */
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
+   uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
    if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu,
-                                 &pbes_gpu))
+                                 &pbes_gpu, &heap_gpu, &heap_textures_gpu,
+                                 &heap_pbes_gpu))
       return;
 
    /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM memory.
@@ -3996,7 +4074,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * emitted vertices rather than vertex attributes.
     */
    enum mesa_prim topology = list->topology;
-   struct d12_dispatch_uniforms poly_u = {0};
+   struct d12_dispatch_uniforms poly_u = {
+      .heap = heap_gpu,
+      .heap_textures = heap_textures_gpu,
+      .heap_pbes = heap_pbes_gpu,
+   };
 
    /*
     * VERTEX ATTRIBUTE FETCH has to be published BEFORE the pre-rasterisation
@@ -4123,12 +4205,15 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
+      heap_gpu, heap_textures_gpu, heap_pbes_gpu,
       draw_gpu, 0, vertex_visibility,
       (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
          ? &poly_u
          : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, pbes_gpu,
+                                       heap_gpu, heap_textures_gpu,
+                                       heap_pbes_gpu,
                                        draw_gpu, blend_gpu,
                                        D3D12_SHADER_VISIBILITY_PIXEL, NULL);
    if (!vs_usc || !fs_usc)

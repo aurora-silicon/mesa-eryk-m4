@@ -1295,6 +1295,42 @@ descriptor_address(struct trans_ctx *ctx, const struct handle_ref *h)
                                 D12_HEAP_DESC_SIZE));
 }
 
+/* Convert a heap-backed handle to the global D3D descriptor-heap index.
+ * SM 6.6 handles already carry that index. A root-range handle is relative
+ * to the descriptor-array base stored in its root slot, so recover the
+ * absolute index from the address and the globally bound 40-byte heap base.
+ * The parallel AGX texture/PBE arrays use this same index at a 24-byte
+ * hardware stride. */
+static nir_def *
+native_heap_index(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   if (!h->rooted_heap)
+      return nir_u2u32(b, h->slot);
+
+   nir_def *descriptor = descriptor_address(ctx, h);
+   nir_def *heap = nir_load_descriptor_heap_agx(b);
+   nir_def *offset = nir_isub(b, descriptor, heap);
+   return nir_u2u32(b, nir_udiv_imm(b, offset, D12_HEAP_DESC_SIZE));
+}
+
+static nir_def *
+native_image_handle(struct trans_ctx *ctx, const struct handle_ref *h,
+                    bool writable)
+{
+   nir_builder *b = ctx->b;
+   nir_def *index = h->heap ? native_heap_index(ctx, h) : h->slot;
+   unsigned desc_set = h->heap
+                          ? writable ? D12_UNIFORM_HEAP_PBES
+                                     : D12_UNIFORM_HEAP_TEXTURES
+                          : writable ? D12_UNIFORM_PBES
+                                     : D12_UNIFORM_TEXTURES;
+   return nir_bindless_image_agx(
+      b, nir_imul_imm(b, index,
+                      writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE),
+      .desc_set = desc_set);
+}
+
 static nir_def *
 resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
                  nir_def *coord0, nir_def *coord1)
@@ -3266,15 +3302,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
-      if (th.rooted_heap) {
-         trans_fail(ctx, "heap-indexed resource dimensions unsupported");
-         return false;
-      }
-
-      nir_def *handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
-         .desc_set = D12_UNIFORM_TEXTURES);
-
       nir_def *lod = get_def(ctx, p[1]);
       if (!lod || operand_is_undef(ctx, p[1]))
          lod = nir_imm_int(b, 0);
@@ -3310,6 +3337,29 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return true;
       }
 
+      if (is_buf && th.heap) {
+         nir_def *descriptor = descriptor_address(ctx, &th);
+         nir_def *size = nir_load_global(
+            b, 1, 32,
+            nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+            .align_mul = 4);
+         nir_def *stride = nir_load_global(
+            b, 1, 32,
+            nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
+            .align_mul = 4);
+         nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
+         def_result(
+            ctx, inst,
+            th.kind == D12_RES_KIND_STRUCTURED_BUFFER
+               ? nir_vec4(b, count, stride, nir_imm_int(b, 0),
+                          nir_imm_int(b, 1))
+               : nir_vec4(b, count, nir_imm_int(b, 1),
+                          nir_imm_int(b, 1), nir_imm_int(b, 1)));
+         return true;
+      }
+
+      nir_def *handle = native_image_handle(ctx, &th, false);
+
       /* A buffer's size query is one component (its element count), a
        * 2D texture's is two, and a 2D array also returns the layer count.
        */
@@ -3333,10 +3383,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       lv->is_array = is_array;
       lv->dest_type = nir_type_uint32;
       lv->src[0] = nir_tex_src_for_ssa(
-         nir_tex_src_texture_handle,
-         nir_bindless_image_agx(
-            b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_TEXTURES));
+         nir_tex_src_texture_handle, handle);
       nir_def_init(&lv->instr, &lv->def, 1, 32);
       nir_builder_instr_insert(b, &lv->instr);
 
@@ -3422,11 +3469,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
-      if (th.rooted_heap) {
-         trans_fail(ctx, "heap-indexed texture stores unsupported");
-         return false;
-      }
-
       nir_def *cx = get_def(ctx, p[1]);
       nir_def *cy = get_def(ctx, p[2]);
       if (!cx || !cy) {
@@ -3434,9 +3476,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      nir_def *handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, th.slot, D12_PBE_DESC_SIZE),
-         .desc_set = D12_UNIFORM_PBES);
+      nir_def *handle = native_image_handle(ctx, &th, true);
 
       nir_def *vals[4];
       for (unsigned i = 0; i < 4; i++) {
@@ -3480,11 +3520,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
-      if (th.rooted_heap) {
-         trans_fail(ctx, "heap-indexed texture loads unsupported");
-         return false;
-      }
-
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
       if (!x || !y) {
@@ -3516,9 +3551,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          fprintf(stderr, "textureLoad: num_ops=%u lod=%s\n",
                  inst->num_ops, lod ? "yes" : "no");
       }
-      nir_def *tex_handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
-         .desc_set = D12_UNIFORM_TEXTURES);
+      nir_def *tex_handle = native_image_handle(ctx, &th, false);
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
       tex->op = nir_texop_txf;

@@ -720,6 +720,15 @@ struct nir_shader;
 #define D12_UNIFORM_PBES            60
 #define D12_UNIFORM_PBE_REGS        4
 
+/* Parallel AGX-native arrays for a shader-visible D3D12 resource heap.
+ * D12_UNIFORM_HEAP remains the 40-byte metadata heap. Dynamic texture and
+ * image handles convert that heap index to the 24-byte hardware stride and
+ * use these independent bases. */
+#define D12_UNIFORM_HEAP_TEXTURES   64
+#define D12_UNIFORM_HEAP_TEXTURE_REGS 4
+#define D12_UNIFORM_HEAP_PBES       68
+#define D12_UNIFORM_HEAP_PBE_REGS   4
+
 /*
  * The root binding upload contains three u64 arrays back to back. The root
  * uniform points at a two-pointer header: resource plane, metadata header.
@@ -844,7 +853,7 @@ struct nir_shader;
 #define D12_UNIFORM_VB_REGS         4
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_PBES + D12_UNIFORM_PBE_REGS)
+   (D12_UNIFORM_HEAP_PBES + D12_UNIFORM_HEAP_PBE_REGS)
 
 /*
  * The vertex attribute parameter block, indexed by DXIL input signature

@@ -144,6 +144,7 @@ d12_device_Release(ID3D12Device2 *iface)
       agx_scratch_fini(&device->scratch_fs);
       agx_scratch_fini(&device->scratch_cs);
       simple_mtx_destroy(&device->scratch_lock);
+      simple_mtx_destroy(&device->descriptor_heap_lock);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -2188,6 +2189,7 @@ d12_device_CreateSampler(ID3D12Device2 *iface,
                          const D3D12_SAMPLER_DESC *desc,
                          D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
    if (!slot || !desc)
       return;
@@ -2207,6 +2209,7 @@ d12_device_CreateSampler(ID3D12Device2 *iface,
    memcpy(desc2.FloatBorderColor, desc->BorderColor,
           sizeof(desc2.FloatBorderColor));
    d12_pack_sampler_descriptor(slot, &desc2);
+   d12_descriptor_heap_update_slot(device, slot);
 }
 
 /*
@@ -2259,6 +2262,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
       return;
 
    memset(slot, 0, sizeof(*slot));
+   d12_descriptor_heap_update_slot(device, slot);
 
    if (!resource) {
       /*
@@ -2320,6 +2324,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                         ? desc->Format
                         : res->desc.Format;
       slot->texture_plane = plane;
+      d12_descriptor_heap_update_slot(device, slot);
       return;
    }
 
@@ -2361,6 +2366,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          : desc && desc->Buffer.StructureByteStride
             ? D12_BUFFER_VIEW_STRUCTURED
             : D12_BUFFER_VIEW_TYPED;
+      d12_descriptor_heap_update_slot(device, slot);
    }
 }
 
@@ -2377,6 +2383,7 @@ d12_device_CreateUnorderedAccessView(
       return;
 
    memset(slot, 0, sizeof(*slot));
+   d12_descriptor_heap_update_slot(device, slot);
 
    if (!resource) {
       /* Same reasoning as the null SRV above.  Leave counter_address zero:
@@ -2457,6 +2464,7 @@ d12_device_CreateUnorderedAccessView(
       slot->format = view_format;
       slot->kind = D12_DESC_UAV;
       slot->texture_array = array;
+      d12_descriptor_heap_update_slot(device, slot);
       return;
    }
 
@@ -2507,6 +2515,7 @@ d12_device_CreateUnorderedAccessView(
          : desc && desc->Buffer.StructureByteStride
             ? D12_BUFFER_VIEW_STRUCTURED
             : D12_BUFFER_VIEW_TYPED;
+      d12_descriptor_heap_update_slot(device, slot);
    }
 }
 
@@ -2515,12 +2524,14 @@ d12_device_CreateConstantBufferView(
    ID3D12Device2 *iface, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
    D3D12_CPU_DESCRIPTOR_HANDLE dest)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    struct d12_descriptor *slot = (struct d12_descriptor *)dest.ptr;
 
    if (!slot)
       return;
 
    memset(slot, 0, sizeof(*slot));
+   d12_descriptor_heap_update_slot(device, slot);
 
    if (!desc || !desc->BufferLocation)
       return;
@@ -2529,6 +2540,7 @@ d12_device_CreateConstantBufferView(
    slot->kind = D12_DESC_CBV;
    slot->address = desc->BufferLocation;
    slot->size_B = desc->SizeInBytes;
+   d12_descriptor_heap_update_slot(device, slot);
 }
 
 static UINT STDMETHODCALLTYPE
@@ -2554,6 +2566,7 @@ d12_device_CopyDescriptorsSimple(
    ID3D12Device2 *iface, UINT count, D3D12_CPU_DESCRIPTOR_HANDLE dest,
    D3D12_CPU_DESCRIPTOR_HANDLE src, D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    UINT stride = d12_device_GetDescriptorHandleIncrementSize(iface, type);
 
    if (!count || !stride || !dest.ptr || !src.ptr)
@@ -2562,6 +2575,11 @@ d12_device_CopyDescriptorsSimple(
    /* D3D12 forbids overlap between source and destination ranges. */
    memcpy((void *)(uintptr_t)dest.ptr, (const void *)(uintptr_t)src.ptr,
           (size_t)count * stride);
+   for (UINT i = 0; i < count; i++) {
+      struct d12_descriptor *slot =
+         (struct d12_descriptor *)(uintptr_t)(dest.ptr + (SIZE_T)i * stride);
+      d12_descriptor_heap_update_slot(device, slot);
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -2572,6 +2590,7 @@ d12_device_CopyDescriptors(
    const D3D12_CPU_DESCRIPTOR_HANDLE *src_starts, const UINT *src_sizes,
    D3D12_DESCRIPTOR_HEAP_TYPE type)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    UINT stride = d12_device_GetDescriptorHandleIncrementSize(iface, type);
 
    if (!stride || !dest_starts || !src_starts)
@@ -2610,6 +2629,11 @@ d12_device_CopyDescriptors(
          return;
 
       memcpy((void *)dest, (const void *)src, (size_t)count * stride);
+      for (UINT i = 0; i < count; i++) {
+         struct d12_descriptor *slot =
+            (struct d12_descriptor *)(dest + (uintptr_t)i * stride);
+         d12_descriptor_heap_update_slot(device, slot);
+      }
       dest_offset += count;
       src_offset += count;
    }
@@ -3200,6 +3224,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    };
 
    simple_mtx_init(&device->scratch_lock, mtx_plain);
+   simple_mtx_init(&device->descriptor_heap_lock, mtx_plain);
    agx_scratch_init(&device->dev, &device->scratch_vs);
    agx_scratch_init(&device->dev, &device->scratch_fs);
    agx_scratch_init(&device->dev, &device->scratch_cs);
