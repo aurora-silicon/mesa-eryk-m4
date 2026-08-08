@@ -525,7 +525,9 @@ d12_resource_create(struct d12_device *device,
       enum pipe_format z = d12_format_depth_plane(desc->Format);
       enum pipe_format s = d12_format_stencil_plane(desc->Format);
 
-      if (desc->MipLevels > 1 || desc->SampleDesc.Count > 1 || !desc->Width ||
+      const unsigned samples = MAX2(desc->SampleDesc.Count, 1);
+      if (desc->MipLevels > 1 ||
+          (samples != 1 && samples != 2 && samples != 4) || !desc->Width ||
           !desc->Height) {
          mesa_loge("CreateCommittedResource: depth/stencil shape unsupported "
                    "(mips %u, layers %u, samples %u)",
@@ -554,7 +556,7 @@ d12_resource_create(struct d12_device *device,
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
-         .sample_count_sa = 1,
+         .sample_count_sa = samples,
          .levels = 1,
          .tiling = AIL_TILING_TWIDDLED,
          .format = z,
@@ -567,7 +569,7 @@ d12_resource_create(struct d12_device *device,
             .width_px = (uint32_t)desc->Width,
             .height_px = desc->Height,
             .depth_px = MAX2(desc->DepthOrArraySize, 1),
-            .sample_count_sa = 1,
+            .sample_count_sa = samples,
             .levels = 1,
             .tiling = AIL_TILING_TWIDDLED,
             .format = s,

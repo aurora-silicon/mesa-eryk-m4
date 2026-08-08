@@ -1175,6 +1175,15 @@ d12_list_begin_render(struct d12_cmd_list *list,
    if (dsv) {
       seg->ds = dsv->resource;
       seg->dsv_flags = dsv->dsv_flags;
+      const unsigned ds_samples =
+         MAX2(dsv->resource->layout.sample_count_sa, 1);
+      if (bound_rts && ds_samples != rt_samples) {
+         mesa_loge("render targets and depth/stencil have mismatched sample "
+                   "counts %u and %u", rt_samples, ds_samples);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+      rt_samples = ds_samples;
       if (!seg->width_px) {
          seg->width_px = dsv->resource->layout.width_px;
          seg->height_px = dsv->resource->layout.height_px;
@@ -1199,8 +1208,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (pso) {
-      if (bound_rts && pso->tib.nr_samples != rt_samples) {
-         mesa_loge("render pass sample mismatch: PSO %u, RTVs %u",
+      if ((bound_rts || dsv) && pso->tib.nr_samples != rt_samples) {
+         mesa_loge("render pass sample mismatch: PSO %u, attachments %u",
                    pso->tib.nr_samples, rt_samples);
          list->state = D12_LIST_ERROR;
          return NULL;
@@ -6009,24 +6018,30 @@ d12_copy_texture_region(struct d12_cmd_list *list,
 }
 
 static void
-d12_resolve_average(struct d12_cmd_list *list, ID3D12Resource *dst,
-                    UINT dst_subresource, UINT dst_x, UINT dst_y,
-                    ID3D12Resource *src, UINT src_subresource,
-                    const D3D12_RECT *src_rect, DXGI_FORMAT format)
+d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
+            UINT dst_subresource, UINT dst_x, UINT dst_y,
+            ID3D12Resource *src, UINT src_subresource,
+            const D3D12_RECT *src_rect, DXGI_FORMAT format,
+            D3D12_RESOLVE_MODE mode)
 {
    struct d12_resource *dstr = d12_resource_from_iface(dst);
    struct d12_resource *srcr = d12_resource_from_iface(src);
    const unsigned dst_samples = MAX2(dstr->layout.sample_count_sa, 1);
    const unsigned src_samples = MAX2(srcr->layout.sample_count_sa, 1);
 
-   const bool unorm8x4 = format == DXGI_FORMAT_R8G8B8A8_UNORM;
-   const bool float32x4 = format == DXGI_FORMAT_R32G32B32A32_FLOAT;
-   const unsigned pixel_B = unorm8x4 ? 4 : float32x4 ? 16 : 0;
+   const bool average = mode == D3D12_RESOLVE_MODE_AVERAGE;
+   const bool min_float32 =
+      mode == D3D12_RESOLVE_MODE_MIN && format == DXGI_FORMAT_D32_FLOAT;
+   const bool unorm8x4 = average && format == DXGI_FORMAT_R8G8B8A8_UNORM;
+   const bool float32x4 =
+      average && format == DXGI_FORMAT_R32G32B32A32_FLOAT;
+   const unsigned pixel_B =
+      min_float32 || unorm8x4 ? 4 : float32x4 ? 16 : 0;
    if (dst_samples != 1 || (src_samples != 2 && src_samples != 4) ||
        !pixel_B) {
-      mesa_loge("ResolveSubresource: unsupported format/sample shape "
-                "(format %u, %u -> %u samples)", (unsigned)format,
-                src_samples, dst_samples);
+      mesa_loge("ResolveSubresource: unsupported format/mode/sample shape "
+                "(format %u, mode %u, %u -> %u samples)",
+                (unsigned)format, (unsigned)mode, src_samples, dst_samples);
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -6083,7 +6098,9 @@ d12_resolve_average(struct d12_cmd_list *list, ID3D12Resource *dst,
    };
 
    const enum libagx_program shader =
-      unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4 : LIBAGX_RESOLVE_FLOAT32X4;
+      min_float32 ? LIBAGX_RESOLVE_FLOAT32_MIN
+                  : unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4
+                              : LIBAGX_RESOLVE_FLOAT32X4;
    d12_list_dispatch_precomp(list, shader, &args, sizeof(args),
                              agx_1d((uint64_t)width_px * height_px));
 }
@@ -6098,8 +6115,8 @@ d12_list_ResolveSubresource(ID3D12GraphicsCommandList6 *iface,
    if (list->state != D12_LIST_RECORDING || !dst || !src)
       return;
 
-   d12_resolve_average(list, dst, dst_subresource, 0, 0, src,
-                       src_subresource, NULL, format);
+   d12_resolve(list, dst, dst_subresource, 0, 0, src, src_subresource, NULL,
+               format, D3D12_RESOLVE_MODE_AVERAGE);
 }
 
 static void STDMETHODCALLTYPE
@@ -6114,9 +6131,10 @@ d12_list_ResolveSubresourceRegion(ID3D12GraphicsCommandList6 *iface,
    if (list->state != D12_LIST_RECORDING || !dst || !src)
       return;
 
-   if (resolve_mode == D3D12_RESOLVE_MODE_AVERAGE) {
-      d12_resolve_average(list, dst, dst_subresource, dst_x, dst_y, src,
-                          src_subresource, src_rect, format);
+   if (resolve_mode == D3D12_RESOLVE_MODE_AVERAGE ||
+       resolve_mode == D3D12_RESOLVE_MODE_MIN) {
+      d12_resolve(list, dst, dst_subresource, dst_x, dst_y, src,
+                  src_subresource, src_rect, format, resolve_mode);
       return;
    }
 
@@ -6635,8 +6653,26 @@ d12_list_clear_surface_rects(struct d12_cmd_list *list,
       return false;
    }
 
-   uint64_t value =
-      d12_list_upload(list, packed, surface->blocksize_B, 16);
+   if (!surface->sample_count ||
+       surface->blocksize_B % surface->sample_count != 0) {
+      mesa_loge("%s: invalid multisample block shape", name);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   const unsigned sample_size_B =
+      surface->blocksize_B / surface->sample_count;
+   uint8_t value_pattern[16] = {0};
+   if (sample_size_B > sizeof(value_pattern)) {
+      mesa_loge("%s: sample value is too large", name);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   for (unsigned s = 0; s < surface->sample_count; ++s)
+      memcpy(value_pattern + s * sample_size_B, packed, sample_size_B);
+
+   uint64_t value = d12_list_upload(list, value_pattern,
+                                    surface->blocksize_B, 16);
    if (!value)
       return false;
 

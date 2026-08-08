@@ -204,6 +204,39 @@ libagx_resolve_float32x4(global float *dest, global float *src,
    }
 }
 
+/* Resolve a multisampled 32-bit float depth plane with D3D12's MIN mode. */
+KERNEL(32)
+libagx_resolve_float32_min(global float *dest, global float *src,
+                           uint width_px, uint height_px,
+                           uint dest_x_px, uint dest_y_px,
+                           uint src_x_px, uint src_y_px,
+                           uint dest_pitch_B, uint dest_stride_el,
+                           uint src_stride_el,
+                           uint dest_tile_width_el, uint dest_tile_height_el,
+                           uint src_tile_width_el, uint src_tile_height_el,
+                           uint sample_count, uint dest_tiled, uint src_tiled)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, 4, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      4 * sample_count, src_tiled);
+
+   float value = src[src_offset_B / 4];
+   for (uint s = 1; s < sample_count; ++s)
+      value = fmin(value, src[src_offset_B / 4 + s]);
+
+   dest[dest_offset_B / 4] = value;
+}
+
 KERNEL(32)
 libagx_fill_image(global uint8_t *dest, global uint8_t *value,
                   uint width_el, uint height_el,

@@ -1969,13 +1969,9 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
-   /* Same rule as CreateRenderTargetView: MSAA resources can be allocated
-    * but nothing may render into one while the render command hardcodes
-    * samples = 1. This was missed when the RTV refusal was added, which
-    * left the depth path able to reach a multisampled surface. */
-   if (res->desc.SampleDesc.Count > 1) {
-      mesa_loge("CreateDepthStencilView: %u samples unsupported",
-                res->desc.SampleDesc.Count);
+   const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
+   if (samples != 1 && samples != 2 && samples != 4) {
+      mesa_loge("CreateDepthStencilView: invalid sample count %u", samples);
       slot->resource = NULL;
       return;
    }
@@ -1987,11 +1983,23 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
       return;
    }
 
-   if (desc && desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2D) {
-      mesa_loge("CreateDepthStencilView: view dimension %d unsupported",
-                (int)desc->ViewDimension);
-      slot->resource = NULL;
-      return;
+   if (desc) {
+      const D3D12_DSV_DIMENSION expected =
+         samples > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS
+                     : D3D12_DSV_DIMENSION_TEXTURE2D;
+      if (desc->ViewDimension != expected) {
+         mesa_loge("CreateDepthStencilView: view dimension %d does not match "
+                   "%u-sample resource", (int)desc->ViewDimension, samples);
+         slot->resource = NULL;
+         return;
+      }
+
+      if (samples == 1 && desc->Texture2D.MipSlice != 0) {
+         mesa_loge("CreateDepthStencilView: mip slice %u unsupported",
+                   desc->Texture2D.MipSlice);
+         slot->resource = NULL;
+         return;
+      }
    }
 
    const D3D12_DSV_FLAGS flags = desc ? desc->Flags : D3D12_DSV_FLAG_NONE;
