@@ -704,10 +704,20 @@ struct d12_raster_state {
    float slope_scaled_depth_bias;
 };
 
+struct d12_pipeline_library_key {
+   uint64_t lo, hi;
+};
+
 /* A compiled pipeline: AGX machine code produced from the app's DXIL. */
 struct d12_pipeline_state {
    ID3D12PipelineState iface; /* must be first */
    uint32_t refcount;
+   /* Pipeline libraries retain a hidden ownership reference. It deliberately
+    * does not change the public COM count: a stored PSO may reach public
+    * refcount zero, retain its private data, and later be returned again from
+    * the same library as required by D3D12. */
+   uint32_t library_refcount;
+   bool device_ref_active;
    struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
@@ -717,6 +727,8 @@ struct d12_pipeline_state {
    void *cached_blob;
    size_t cached_blob_size;
    bool is_compute;
+   struct d12_pipeline_library_key library_key;
+   bool library_key_valid;
    /* A null pixel shader still uses an empty hardware fragment program for
     * depth/stencil rasterization, but it has no colour attachments or stores.
     */
@@ -1384,6 +1396,8 @@ HRESULT d12_pipeline_state_create_compute(struct d12_device *device,
                                           const void *dxil, size_t dxil_size,
                                           const struct d12_binding_map *map,
                                           REFIID riid, void **out);
+void d12_pipeline_state_library_ref(struct d12_pipeline_state *pso);
+void d12_pipeline_state_library_unref(struct d12_pipeline_state *pso);
 HRESULT d12_pipeline_state_create_mesh(
    struct d12_device *device, const void *ms_dxil, size_t ms_size,
    const void *as_dxil, size_t as_size, const void *ps_dxil, size_t ps_size,

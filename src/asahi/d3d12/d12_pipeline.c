@@ -557,6 +557,22 @@ d12_pso_from_iface(ID3D12PipelineState *iface)
    return (struct d12_pipeline_state *)iface;
 }
 
+static ULONG
+d12_pso_add_ref(struct d12_pipeline_state *pso)
+{
+   ULONG refs = p_atomic_inc_return(&pso->refcount);
+
+   /* A library-owned PSO can have no public references while its compiled
+    * object and private-data store remain cached. Reacquiring it makes the
+    * device-child reference live again. */
+   if (refs == 1 && !pso->device_ref_active) {
+      d12_device_add_ref(pso->device);
+      pso->device_ref_active = true;
+   }
+
+   return refs;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_pso_QueryInterface(ID3D12PipelineState *iface, REFIID riid, void **out)
 {
@@ -570,7 +586,7 @@ d12_pso_QueryInterface(ID3D12PipelineState *iface, REFIID riid, void **out)
        d12_guid_equal(riid, &IID_ID3D12DeviceChild) ||
        d12_guid_equal(riid, &IID_ID3D12Pageable) ||
        d12_guid_equal(riid, &IID_ID3D12PipelineState)) {
-      p_atomic_inc(&pso->refcount);
+      d12_pso_add_ref(pso);
       *out = iface;
       return S_OK;
    }
@@ -586,7 +602,49 @@ d12_pso_QueryInterface(ID3D12PipelineState *iface, REFIID riid, void **out)
 static ULONG STDMETHODCALLTYPE
 d12_pso_AddRef(ID3D12PipelineState *iface)
 {
-   return p_atomic_inc_return(&d12_pso_from_iface(iface)->refcount);
+   return d12_pso_add_ref(d12_pso_from_iface(iface));
+}
+
+static void
+d12_pso_destroy(struct d12_pipeline_state *pso)
+{
+   if (pso->code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->code_bo);
+   if (pso->vs.code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->vs.code_bo);
+   if (pso->fs.code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
+   if (pso->sw_vs_bo)
+      agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
+   if (pso->sw_tes_bo)
+      agx_bo_unreference(&pso->device->dev, pso->sw_tes_bo);
+   if (pso->gs_count_bo)
+      agx_bo_unreference(&pso->device->dev, pso->gs_count_bo);
+   if (pso->gs_pre_bo)
+      agx_bo_unreference(&pso->device->dev, pso->gs_pre_bo);
+   if (pso->gs_main_bo)
+      agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
+   if (pso->gs_rast.code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->gs_rast.code_bo);
+   if (pso->tcs_bo)
+      agx_bo_unreference(&pso->device->dev, pso->tcs_bo);
+   if (pso->tes.code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->tes.code_bo);
+   if (pso->ms_bo)
+      agx_bo_unreference(&pso->device->dev, pso->ms_bo);
+   if (pso->ms_setup_bo)
+      agx_bo_unreference(&pso->device->dev, pso->ms_setup_bo);
+   if (pso->ms_rast.code_bo)
+      agx_bo_unreference(&pso->device->dev, pso->ms_rast.code_bo);
+   if (pso->as_bo)
+      agx_bo_unreference(&pso->device->dev, pso->as_bo);
+   if (pso->as_setup_bo)
+      agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
+   free(pso->cached_blob);
+   d12_private_data_store_destroy(&pso->private_data);
+   if (pso->device_ref_active)
+      d12_device_release(pso->device);
+   free(pso);
 }
 
 static ULONG STDMETHODCALLTYPE
@@ -595,46 +653,32 @@ d12_pso_Release(ID3D12PipelineState *iface)
    struct d12_pipeline_state *pso = d12_pso_from_iface(iface);
    uint32_t refs = p_atomic_dec_return(&pso->refcount);
 
-   if (refs == 0) {
-      if (pso->code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->code_bo);
-      if (pso->vs.code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->vs.code_bo);
-      if (pso->fs.code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
-      if (pso->sw_vs_bo)
-         agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
-      if (pso->sw_tes_bo)
-         agx_bo_unreference(&pso->device->dev, pso->sw_tes_bo);
-      if (pso->gs_count_bo)
-         agx_bo_unreference(&pso->device->dev, pso->gs_count_bo);
-      if (pso->gs_pre_bo)
-         agx_bo_unreference(&pso->device->dev, pso->gs_pre_bo);
-      if (pso->gs_main_bo)
-         agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
-      if (pso->gs_rast.code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->gs_rast.code_bo);
-      if (pso->tcs_bo)
-         agx_bo_unreference(&pso->device->dev, pso->tcs_bo);
-      if (pso->tes.code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->tes.code_bo);
-      if (pso->ms_bo)
-         agx_bo_unreference(&pso->device->dev, pso->ms_bo);
-      if (pso->ms_setup_bo)
-         agx_bo_unreference(&pso->device->dev, pso->ms_setup_bo);
-      if (pso->ms_rast.code_bo)
-         agx_bo_unreference(&pso->device->dev, pso->ms_rast.code_bo);
-      if (pso->as_bo)
-         agx_bo_unreference(&pso->device->dev, pso->as_bo);
-      if (pso->as_setup_bo)
-         agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
-      free(pso->cached_blob);
-      d12_private_data_store_destroy(&pso->private_data);
-      d12_device_release(pso->device);
-      free(pso);
+   if (!refs) {
+      if (!p_atomic_read(&pso->library_refcount)) {
+         /* Ordinary PSOs must release their BOs while their device reference
+          * is still live. */
+         d12_pso_destroy(pso);
+      } else if (pso->device_ref_active) {
+         d12_device_release(pso->device);
+         pso->device_ref_active = false;
+      }
    }
 
    return refs;
+}
+
+void
+d12_pipeline_state_library_ref(struct d12_pipeline_state *pso)
+{
+   p_atomic_inc(&pso->library_refcount);
+}
+
+void
+d12_pipeline_state_library_unref(struct d12_pipeline_state *pso)
+{
+   uint32_t refs = p_atomic_dec_return(&pso->library_refcount);
+   if (!refs && !p_atomic_read(&pso->refcount))
+      d12_pso_destroy(pso);
 }
 
 D12_DEFINE_PRIVATE_DATA_METHODS(d12_pso, ID3D12PipelineState,
@@ -926,6 +970,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    pso->iface.lpVtbl = (ID3D12PipelineStateVtbl *)&d12_pso_vtbl;
    pso->refcount = 1;
+   pso->device_ref_active = true;
    pso->device = device;
    pso->is_compute = true;
    pso->info = part.info;
@@ -3456,6 +3501,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    pso->iface.lpVtbl = (ID3D12PipelineStateVtbl *)&d12_pso_vtbl;
    pso->refcount = 1;
+   pso->device_ref_active = true;
    pso->device = device;
    pso->is_compute = false;
    d12_private_data_store_init(&pso->private_data, (IUnknown *)&pso->iface);

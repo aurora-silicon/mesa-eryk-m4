@@ -895,6 +895,138 @@ d12_embedded_pso_binding_map(const D3D12_SHADER_BYTECODE *const *stages,
    return S_OK;
 }
 
+/* Pipeline-library blobs must not contain process pointers. Build a stable
+ * descriptor key from the value fields, shader bytes, canonical root layout,
+ * and the pointed-to input/SO declarations. This is validation metadata, not
+ * executable code: a deserialized library recompiles a matching description
+ * on first use and then caches that PSO object. */
+static void
+d12_library_key_add(struct d12_pipeline_library_key *key, const void *data,
+                    size_t size)
+{
+   const uint8_t *bytes = data;
+   for (size_t i = 0; i < size; i++) {
+      key->lo = (key->lo ^ bytes[i]) * UINT64_C(1099511628211);
+      key->hi = (key->hi ^ (uint8_t)(bytes[i] + 0x9d)) *
+                UINT64_C(14029467366897019727);
+   }
+}
+
+static void
+d12_library_key_add_string(struct d12_pipeline_library_key *key,
+                           const char *string)
+{
+   size_t length = string ? strlen(string) : 0;
+   d12_library_key_add(key, &length, sizeof(length));
+   if (length)
+      d12_library_key_add(key, string, length);
+}
+
+static struct d12_pipeline_library_key
+d12_library_key_begin(void)
+{
+   return (struct d12_pipeline_library_key){
+      .lo = UINT64_C(14695981039346656037),
+      .hi = UINT64_C(7809847782465536322),
+   };
+}
+
+static void
+d12_library_key_add_root(struct d12_pipeline_library_key *key,
+                         const struct d12_root_layout *layout)
+{
+   d12_library_key_add(key, &layout->num_params,
+                       sizeof(layout->num_params));
+   d12_library_key_add(key, layout->params,
+                       layout->num_params * sizeof(layout->params[0]));
+   d12_library_key_add(key, &layout->num_static_samplers,
+                       sizeof(layout->num_static_samplers));
+   if (layout->num_static_samplers)
+      d12_library_key_add(key, layout->static_samplers,
+                          layout->num_static_samplers *
+                             sizeof(layout->static_samplers[0]));
+   d12_library_key_add(key, &layout->flags, sizeof(layout->flags));
+}
+
+static struct d12_pipeline_library_key
+d12_compute_library_key(const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
+                        const struct d12_root_layout *layout)
+{
+   struct d12_pipeline_library_key key = d12_library_key_begin();
+   D3D12_COMPUTE_PIPELINE_STATE_DESC canonical = *desc;
+   canonical.pRootSignature = NULL;
+   canonical.CS.pShaderBytecode = NULL;
+   canonical.CachedPSO.pCachedBlob = NULL;
+   canonical.CachedPSO.CachedBlobSizeInBytes = 0;
+
+   d12_library_key_add(&key, &canonical, sizeof(canonical));
+   d12_library_key_add_root(&key, layout);
+   d12_library_key_add(&key, desc->CS.pShaderBytecode,
+                       desc->CS.BytecodeLength);
+   return key;
+}
+
+static struct d12_pipeline_library_key
+d12_graphics_library_key(const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
+                         const struct d12_root_layout *layout)
+{
+   struct d12_pipeline_library_key key = d12_library_key_begin();
+   D3D12_GRAPHICS_PIPELINE_STATE_DESC canonical = *desc;
+   canonical.pRootSignature = NULL;
+   canonical.VS.pShaderBytecode = NULL;
+   canonical.PS.pShaderBytecode = NULL;
+   canonical.DS.pShaderBytecode = NULL;
+   canonical.HS.pShaderBytecode = NULL;
+   canonical.GS.pShaderBytecode = NULL;
+   canonical.InputLayout.pInputElementDescs = NULL;
+   canonical.StreamOutput.pSODeclaration = NULL;
+   canonical.StreamOutput.pBufferStrides = NULL;
+   canonical.CachedPSO.pCachedBlob = NULL;
+   canonical.CachedPSO.CachedBlobSizeInBytes = 0;
+
+   d12_library_key_add(&key, &canonical, sizeof(canonical));
+   d12_library_key_add_root(&key, layout);
+
+   const D3D12_SHADER_BYTECODE *stages[] = {
+      &desc->VS, &desc->PS, &desc->DS, &desc->HS, &desc->GS,
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
+      if (stages[i]->pShaderBytecode && stages[i]->BytecodeLength)
+         d12_library_key_add(&key, stages[i]->pShaderBytecode,
+                             stages[i]->BytecodeLength);
+   }
+
+   for (unsigned i = 0; i < desc->InputLayout.NumElements; i++) {
+      D3D12_INPUT_ELEMENT_DESC element =
+         desc->InputLayout.pInputElementDescs[i];
+      const char *semantic = element.SemanticName;
+      element.SemanticName = NULL;
+      d12_library_key_add(&key, &element, sizeof(element));
+      d12_library_key_add_string(&key, semantic);
+   }
+
+   for (unsigned i = 0; i < desc->StreamOutput.NumEntries; i++) {
+      D3D12_SO_DECLARATION_ENTRY entry =
+         desc->StreamOutput.pSODeclaration[i];
+      const char *semantic = entry.SemanticName;
+      entry.SemanticName = NULL;
+      d12_library_key_add(&key, &entry, sizeof(entry));
+      d12_library_key_add_string(&key, semantic);
+   }
+   if (desc->StreamOutput.NumStrides)
+      d12_library_key_add(&key, desc->StreamOutput.pBufferStrides,
+                          desc->StreamOutput.NumStrides * sizeof(UINT));
+
+   return key;
+}
+
+static bool
+d12_library_key_equal(struct d12_pipeline_library_key a,
+                      struct d12_pipeline_library_key b)
+{
+   return a.lo == b.lo && a.hi == b.hi;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateComputePipelineState(
    ID3D12Device2 *iface, const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
@@ -1010,6 +1142,8 @@ d12_device_CreateComputePipelineState(
       struct d12_pipeline_state *pso = *(void **)out;
       pso->cached_blob = cache;
       pso->cached_blob_size = cache_size;
+      pso->library_key = d12_compute_library_key(desc, layout);
+      pso->library_key_valid = true;
       cache = NULL;
    }
    free(cache);
@@ -1360,11 +1494,13 @@ d12_device_CreateGraphicsPipelineState(
       dsv_format = DXGI_FORMAT_UNKNOWN;
 
    const struct d12_binding_map *map;
+   const struct d12_root_layout *layout;
    struct d12_root_layout embedded_layout = {0};
    struct d12_binding_map embedded_map = {0};
 
    if (desc->pRootSignature) {
       map = d12_pso_binding_map(desc->pRootSignature);
+      layout = &((struct d12_root_signature *)desc->pRootSignature)->layout;
    } else {
       const D3D12_SHADER_BYTECODE *stages[] = {
          &desc->VS, &desc->PS, &desc->GS, &desc->HS, &desc->DS,
@@ -1373,6 +1509,7 @@ d12_device_CreateGraphicsPipelineState(
          stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map, &map);
       if (FAILED(hr))
          return hr;
+      layout = &embedded_layout;
    }
 
    HRESULT hr = d12_pipeline_state_create_graphics(
@@ -1386,6 +1523,11 @@ d12_device_CreateGraphicsPipelineState(
       dsv_format, &desc->RasterizerState, &desc->BlendState,
       &desc->InputLayout, &desc->StreamOutput, desc->PrimitiveTopologyType,
       desc->IBStripCutValue, desc->Flags, map, riid, out);
+   if (SUCCEEDED(hr) && out && *out) {
+      struct d12_pipeline_state *pso = *(void **)out;
+      pso->library_key = d12_graphics_library_key(desc, layout);
+      pso->library_key_valid = true;
+   }
    d12_root_layout_cleanup(&embedded_layout);
    return hr;
 }
@@ -1693,6 +1835,32 @@ struct d12_pipeline_library {
    uint32_t refcount;
    struct d12_private_data_store private_data;
    struct d12_device *device; /* holds a device ref */
+   struct d12_pipeline_library_entry {
+      uint16_t *name;
+      uint32_t name_length;
+      bool is_compute;
+      struct d12_pipeline_library_key key;
+      struct d12_pipeline_state *pipeline; /* hidden library ownership */
+   } *entries;
+   uint32_t entry_count;
+   uint32_t entry_capacity;
+};
+
+struct d12_pipeline_library_blob_header {
+   char magic[8];
+   uint32_t version;
+   uint32_t entry_count;
+   uint64_t total_size;
+};
+
+struct d12_pipeline_library_blob_entry {
+   uint32_t name_length;
+   uint32_t is_compute;
+   struct d12_pipeline_library_key key;
+};
+
+static const char d12_pipeline_library_magic[8] = {
+   'D', '1', '2', 'A', 'G', 'X', 'P', 'L'
 };
 
 static inline struct d12_pipeline_library *
@@ -1743,6 +1911,12 @@ d12_pipeline_library_Release(ID3D12PipelineLibrary *iface)
    uint32_t refs = p_atomic_dec_return(&library->refcount);
 
    if (!refs) {
+      for (uint32_t i = 0; i < library->entry_count; i++) {
+         if (library->entries[i].pipeline)
+            d12_pipeline_state_library_unref(library->entries[i].pipeline);
+         free(library->entries[i].name);
+      }
+      free(library->entries);
       d12_private_data_store_destroy(&library->private_data);
       d12_device_release(library->device);
       free(library);
@@ -1767,10 +1941,141 @@ static HRESULT STDMETHODCALLTYPE
 d12_pipeline_library_StorePipeline(ID3D12PipelineLibrary *iface, LPCWSTR name,
                                    ID3D12PipelineState *pipeline)
 {
-   (void)iface;
-   (void)name;
-   (void)pipeline;
-   return E_NOTIMPL;
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   if (!name || !pipeline)
+      return E_INVALIDARG;
+
+   const uint16_t *wire_name = (const uint16_t *)name;
+   size_t name_length = 0;
+   while (wire_name[name_length])
+      name_length++;
+   if (!name_length || name_length > UINT32_MAX)
+      return E_INVALIDARG;
+
+   for (uint32_t i = 0; i < library->entry_count; i++) {
+      const struct d12_pipeline_library_entry *entry = &library->entries[i];
+      if (entry->name_length == name_length &&
+          !memcmp(entry->name, wire_name, name_length * sizeof(uint16_t)))
+         return E_INVALIDARG;
+   }
+
+   struct d12_pipeline_state *pso = (struct d12_pipeline_state *)pipeline;
+   if (pso->device != library->device || !pso->library_key_valid)
+      return E_INVALIDARG;
+
+   if (library->entry_count == library->entry_capacity) {
+      uint32_t capacity = library->entry_capacity
+                             ? library->entry_capacity * 2
+                             : 4;
+      if (capacity < library->entry_capacity)
+         return E_OUTOFMEMORY;
+      void *entries = realloc(library->entries,
+                              capacity * sizeof(library->entries[0]));
+      if (!entries)
+         return E_OUTOFMEMORY;
+      library->entries = entries;
+      library->entry_capacity = capacity;
+   }
+
+   uint16_t *owned_name = malloc((name_length + 1) * sizeof(uint16_t));
+   if (!owned_name)
+      return E_OUTOFMEMORY;
+   memcpy(owned_name, wire_name, name_length * sizeof(uint16_t));
+   owned_name[name_length] = 0;
+
+   struct d12_pipeline_library_entry *entry =
+      &library->entries[library->entry_count++];
+   *entry = (struct d12_pipeline_library_entry){
+      .name = owned_name,
+      .name_length = name_length,
+      .is_compute = pso->is_compute,
+      .key = pso->library_key,
+      .pipeline = pso,
+   };
+   d12_pipeline_state_library_ref(pso);
+   return S_OK;
+}
+
+static struct d12_pipeline_library_entry *
+d12_pipeline_library_find(struct d12_pipeline_library *library, LPCWSTR name)
+{
+   if (!name)
+      return NULL;
+
+   const uint16_t *wire_name = (const uint16_t *)name;
+   size_t name_length = 0;
+   while (wire_name[name_length])
+      name_length++;
+
+   for (uint32_t i = 0; i < library->entry_count; i++) {
+      struct d12_pipeline_library_entry *entry = &library->entries[i];
+      if (entry->name_length == name_length &&
+          !memcmp(entry->name, wire_name, name_length * sizeof(uint16_t)))
+         return entry;
+   }
+
+   return NULL;
+}
+
+static HRESULT
+d12_compute_desc_library_key(const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc,
+                             struct d12_pipeline_library_key *key)
+{
+   if (!desc || !desc->CS.pShaderBytecode || !desc->CS.BytecodeLength)
+      return E_INVALIDARG;
+
+   struct d12_root_layout embedded_layout = {0};
+   struct d12_binding_map embedded_map = {0};
+   const struct d12_binding_map *unused_map;
+   const struct d12_root_layout *layout;
+
+   if (desc->pRootSignature) {
+      layout = &((struct d12_root_signature *)desc->pRootSignature)->layout;
+   } else {
+      const D3D12_SHADER_BYTECODE *stages[] = {&desc->CS};
+      HRESULT hr = d12_embedded_pso_binding_map(
+         stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map,
+         &unused_map);
+      if (FAILED(hr))
+         return hr;
+      layout = &embedded_layout;
+   }
+
+   *key = d12_compute_library_key(desc, layout);
+   d12_root_layout_cleanup(&embedded_layout);
+   return S_OK;
+}
+
+static HRESULT
+d12_graphics_desc_library_key(const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc,
+                              struct d12_pipeline_library_key *key)
+{
+   if (!desc || !desc->VS.pShaderBytecode || !desc->VS.BytecodeLength)
+      return E_INVALIDARG;
+
+   struct d12_root_layout embedded_layout = {0};
+   struct d12_binding_map embedded_map = {0};
+   const struct d12_binding_map *unused_map;
+   const struct d12_root_layout *layout;
+
+   if (desc->pRootSignature) {
+      layout = &((struct d12_root_signature *)desc->pRootSignature)->layout;
+   } else {
+      const D3D12_SHADER_BYTECODE *stages[] = {
+         &desc->VS, &desc->PS, &desc->GS, &desc->HS, &desc->DS,
+      };
+      HRESULT hr = d12_embedded_pso_binding_map(
+         stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map,
+         &unused_map);
+      if (FAILED(hr))
+         return hr;
+      layout = &embedded_layout;
+   }
+
+   *key = d12_graphics_library_key(desc, layout);
+   d12_root_layout_cleanup(&embedded_layout);
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -1778,13 +2083,43 @@ d12_pipeline_library_LoadGraphicsPipeline(
    ID3D12PipelineLibrary *iface, LPCWSTR name,
    const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, REFIID riid, void **out)
 {
-   (void)iface;
-   (void)name;
-   (void)desc;
-   (void)riid;
    if (out)
       *out = NULL;
-   return E_INVALIDARG;
+   if (!out)
+      return E_POINTER;
+
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   struct d12_pipeline_library_entry *entry =
+      d12_pipeline_library_find(library, name);
+   if (!entry || entry->is_compute)
+      return E_INVALIDARG;
+
+   struct d12_pipeline_library_key key;
+   HRESULT hr = d12_graphics_desc_library_key(desc, &key);
+   if (FAILED(hr) || !d12_library_key_equal(key, entry->key))
+      return E_INVALIDARG;
+
+   if (entry->pipeline)
+      return ID3D12PipelineState_QueryInterface(&entry->pipeline->iface,
+                                                riid, out);
+
+   hr = ID3D12Device_CreateGraphicsPipelineState(
+      &library->device->iface, desc, riid, out);
+   if (FAILED(hr))
+      return hr;
+
+   struct d12_pipeline_state *pso = *out;
+   if (!pso->library_key_valid ||
+       !d12_library_key_equal(pso->library_key, entry->key)) {
+      ID3D12PipelineState_Release(&pso->iface);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   entry->pipeline = pso;
+   d12_pipeline_state_library_ref(pso);
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -1792,30 +2127,99 @@ d12_pipeline_library_LoadComputePipeline(
    ID3D12PipelineLibrary *iface, LPCWSTR name,
    const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc, REFIID riid, void **out)
 {
-   (void)iface;
-   (void)name;
-   (void)desc;
-   (void)riid;
    if (out)
       *out = NULL;
-   return E_INVALIDARG;
+   if (!out)
+      return E_POINTER;
+
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   struct d12_pipeline_library_entry *entry =
+      d12_pipeline_library_find(library, name);
+   if (!entry || !entry->is_compute)
+      return E_INVALIDARG;
+
+   struct d12_pipeline_library_key key;
+   HRESULT hr = d12_compute_desc_library_key(desc, &key);
+   if (FAILED(hr) || !d12_library_key_equal(key, entry->key))
+      return E_INVALIDARG;
+
+   if (entry->pipeline)
+      return ID3D12PipelineState_QueryInterface(&entry->pipeline->iface,
+                                                riid, out);
+
+   hr = ID3D12Device_CreateComputePipelineState(
+      &library->device->iface, desc, riid, out);
+   if (FAILED(hr))
+      return hr;
+
+   struct d12_pipeline_state *pso = *out;
+   if (!pso->library_key_valid ||
+       !d12_library_key_equal(pso->library_key, entry->key)) {
+      ID3D12PipelineState_Release(&pso->iface);
+      *out = NULL;
+      return E_INVALIDARG;
+   }
+
+   entry->pipeline = pso;
+   d12_pipeline_state_library_ref(pso);
+   return S_OK;
 }
 
 static SIZE_T STDMETHODCALLTYPE
 d12_pipeline_library_GetSerializedSize(ID3D12PipelineLibrary *iface)
 {
-   (void)iface;
-   return 0;
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   size_t size = sizeof(struct d12_pipeline_library_blob_header);
+   for (uint32_t i = 0; i < library->entry_count; i++) {
+      const struct d12_pipeline_library_entry *entry = &library->entries[i];
+      size_t name_size = (size_t)entry->name_length * sizeof(uint16_t);
+      if (name_size > SIZE_MAX - size -
+                         sizeof(struct d12_pipeline_library_blob_entry))
+         return 0;
+      size += sizeof(struct d12_pipeline_library_blob_entry) + name_size;
+   }
+   return size;
 }
 
 static HRESULT STDMETHODCALLTYPE
 d12_pipeline_library_Serialize(ID3D12PipelineLibrary *iface, void *data,
                                SIZE_T size)
 {
-   (void)iface;
-   (void)data;
-   (void)size;
-   return E_NOTIMPL;
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   size_t required = d12_pipeline_library_GetSerializedSize(iface);
+   if (!data)
+      return E_POINTER;
+   if (!required || size < required)
+      return E_INVALIDARG;
+
+   struct d12_pipeline_library_blob_header header = {
+      .version = 1,
+      .entry_count = library->entry_count,
+      .total_size = required,
+   };
+   memcpy(header.magic, d12_pipeline_library_magic, sizeof(header.magic));
+
+   uint8_t *cursor = data;
+   memcpy(cursor, &header, sizeof(header));
+   cursor += sizeof(header);
+   for (uint32_t i = 0; i < library->entry_count; i++) {
+      const struct d12_pipeline_library_entry *entry = &library->entries[i];
+      struct d12_pipeline_library_blob_entry serialized = {
+         .name_length = entry->name_length,
+         .is_compute = entry->is_compute,
+         .key = entry->key,
+      };
+      memcpy(cursor, &serialized, sizeof(serialized));
+      cursor += sizeof(serialized);
+      size_t name_size = (size_t)entry->name_length * sizeof(uint16_t);
+      memcpy(cursor, entry->name, name_size);
+      cursor += name_size;
+   }
+
+   return S_OK;
 }
 
 static const ID3D12PipelineLibraryVtbl d12_pipeline_library_vtbl = {
@@ -1834,6 +2238,81 @@ static const ID3D12PipelineLibraryVtbl d12_pipeline_library_vtbl = {
    .Serialize = d12_pipeline_library_Serialize,
 };
 
+static HRESULT
+d12_pipeline_library_deserialize(struct d12_pipeline_library *library,
+                                 const void *blob, size_t blob_size)
+{
+   if (blob_size < sizeof(struct d12_pipeline_library_blob_header))
+      return E_INVALIDARG;
+
+   struct d12_pipeline_library_blob_header header;
+   memcpy(&header, blob, sizeof(header));
+   if (memcmp(header.magic, d12_pipeline_library_magic,
+              sizeof(header.magic)) ||
+       header.version != 1 || header.total_size != blob_size ||
+       header.entry_count > (blob_size - sizeof(header)) /
+                               sizeof(struct d12_pipeline_library_blob_entry))
+      return E_INVALIDARG;
+
+   if (header.entry_count) {
+      library->entries = calloc(header.entry_count,
+                                sizeof(library->entries[0]));
+      if (!library->entries)
+         return E_OUTOFMEMORY;
+      library->entry_capacity = header.entry_count;
+   }
+
+   const uint8_t *cursor = (const uint8_t *)blob + sizeof(header);
+   const uint8_t *end = (const uint8_t *)blob + blob_size;
+   for (uint32_t i = 0; i < header.entry_count; i++) {
+      if ((size_t)(end - cursor) <
+          sizeof(struct d12_pipeline_library_blob_entry))
+         return E_INVALIDARG;
+
+      struct d12_pipeline_library_blob_entry serialized;
+      memcpy(&serialized, cursor, sizeof(serialized));
+      cursor += sizeof(serialized);
+      if (!serialized.name_length || serialized.is_compute > 1 ||
+          serialized.name_length >
+             (size_t)(end - cursor) / sizeof(uint16_t))
+         return E_INVALIDARG;
+
+      size_t name_size =
+         (size_t)serialized.name_length * sizeof(uint16_t);
+      uint16_t *name = malloc(name_size + sizeof(uint16_t));
+      if (!name)
+         return E_OUTOFMEMORY;
+      memcpy(name, cursor, name_size);
+      name[serialized.name_length] = 0;
+      cursor += name_size;
+
+      /* Embedded NULs would make lookup ambiguous; duplicate names make
+       * Store/Load semantics ambiguous as well. Reject both on import. */
+      bool invalid = false;
+      for (uint32_t j = 0; j < serialized.name_length; j++)
+         invalid |= name[j] == 0;
+      for (uint32_t j = 0; j < library->entry_count; j++) {
+         const struct d12_pipeline_library_entry *old = &library->entries[j];
+         invalid |= old->name_length == serialized.name_length &&
+                    !memcmp(old->name, name, name_size);
+      }
+      if (invalid) {
+         free(name);
+         return E_INVALIDARG;
+      }
+
+      library->entries[library->entry_count++] =
+         (struct d12_pipeline_library_entry){
+            .name = name,
+            .name_length = serialized.name_length,
+            .is_compute = serialized.is_compute,
+            .key = serialized.key,
+         };
+   }
+
+   return cursor == end ? S_OK : E_INVALIDARG;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreatePipelineLibrary(ID3D12Device2 *iface,
                                  const void *library_blob,
@@ -1847,7 +2326,7 @@ d12_device_CreatePipelineLibrary(ID3D12Device2 *iface,
       return E_POINTER;
    *out = NULL;
 
-   if (!riid || library_blob || library_blob_length)
+   if (!riid || (!!library_blob != !!library_blob_length))
       return E_INVALIDARG;
 
    struct d12_pipeline_library *library = calloc(1, sizeof(*library));
@@ -1862,8 +2341,16 @@ d12_device_CreatePipelineLibrary(ID3D12Device2 *iface,
    d12_private_data_store_init(&library->private_data,
                                (IUnknown *)&library->iface);
 
-   HRESULT hr = d12_pipeline_library_QueryInterface(&library->iface, riid,
-                                                     out);
+   HRESULT hr = S_OK;
+   if (library_blob)
+      hr = d12_pipeline_library_deserialize(library, library_blob,
+                                            library_blob_length);
+   if (FAILED(hr)) {
+      d12_pipeline_library_Release(&library->iface);
+      return hr;
+   }
+
+   hr = d12_pipeline_library_QueryInterface(&library->iface, riid, out);
    d12_pipeline_library_Release(&library->iface);
    return hr;
 }
