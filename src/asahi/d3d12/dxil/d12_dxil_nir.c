@@ -6484,6 +6484,54 @@ d12_dxil_lower_sample_positions(nir_shader *nir, uint32_t packed_positions)
  * driver never builds (docs/findings.md).
  */
 static bool
+mark_sw_vs_vertex_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_vertex_id)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def_replace(&intr->def, nir_load_vertex_id_zero_base(b));
+   return true;
+}
+
+bool
+d12_dxil_mark_sw_vs_vertex_id(nir_shader *nir)
+{
+   /* Mark the APPLICATION's SV_VertexID before agx_nir_lower_vbo inserts its
+    * own load_vertex_id for attribute addressing.  D3D12's SV_VertexID is the
+    * raw index (or zero-based invocation for a non-indexed draw), while the
+    * VBO address must still include StartVertex/BaseVertex. */
+   return nir_shader_intrinsics_pass(nir, mark_sw_vs_vertex_id,
+                                     nir_metadata_control_flow, NULL);
+}
+
+static bool
+lower_sw_vs_vertex_id(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_vertex_id_zero_base)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *linear =
+      nir_channel(b, nir_load_global_invocation_id(b, 32), 0);
+
+   /* Reuse Poly's robust indexed-input assembly, then remove the D3D draw
+    * bias it adds for attribute addressing.  Unsigned wrap makes this exact
+    * for negative BaseVertexLocation as well. */
+   nir_def *effective = poly_nir_load_vertex_id(b, linear);
+   nir_def *raw = nir_isub(b, effective, nir_load_first_vertex(b));
+   nir_def_replace(&intr->def, raw);
+   return true;
+}
+
+bool
+d12_dxil_lower_sw_vs_vertex_id(nir_shader *nir)
+{
+   return nir_shader_intrinsics_pass(nir, lower_sw_vs_vertex_id,
+                                     nir_metadata_control_flow, NULL);
+}
+
+static bool
 lower_sw_vs_zero_base(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    if (intr->intrinsic != nir_intrinsic_load_vertex_id_zero_base)

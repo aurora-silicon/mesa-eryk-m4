@@ -2544,6 +2544,11 @@ compile_sw_vs_stage(struct d12_device *device,
    if (!nir)
       return false;
 
+   /* Preserve D3D12's raw SV_VertexID before the VBO lowering inserts its
+    * separate effective vertex-id load.  The marker is resolved after that
+    * insertion and before Poly creates its own zero-based output index. */
+   NIR_PASS(_, nir, d12_dxil_mark_sw_vs_vertex_id);
+
    /* CAPTURE THE OUTPUT MASK FIRST. The lowering rewrites every
     * store_output into a global store, so after it runs the shader has no
     * NIR outputs at all and agx_shader_info::outputs reports 0. That mask
@@ -2585,6 +2590,8 @@ compile_sw_vs_stage(struct d12_device *device,
       NIR_PASS(_, nir, agx_nir_lower_vbo, fetch->keys, rs, true);
       NIR_PASS(_, nir, d12_dxil_lower_vbo_params);
    }
+
+   NIR_PASS(_, nir, d12_dxil_lower_sw_vs_vertex_id);
 
    NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
 

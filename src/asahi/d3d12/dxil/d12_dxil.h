@@ -1155,6 +1155,8 @@ bool d12_dxil_lower_sample_positions(struct nir_shader *nir,
  * Shared so the standalone tool lowers exactly what the driver lowers.
  */
 bool d12_dxil_lower_sw_vs(struct nir_shader *nir);
+bool d12_dxil_mark_sw_vs_vertex_id(struct nir_shader *nir);
+bool d12_dxil_lower_sw_vs_vertex_id(struct nir_shader *nir);
 /*
  * Answer agx_nir_lower_vbo's three intrinsics from the driver's vertex
  * attribute parameter block. Run AFTER agx_nir_lower_vbo.
