@@ -3768,11 +3768,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          break;
       }
 
-      /*
-       * RESINFO first supports the two texture dimensions whose AGX
-       * descriptors and DXIL GetDimensions path are already proven.  Keep
-       * SM5.1 range selection, MSAA and other dimensionalities rejected so
-       * this opcode cannot turn a clean PSO refusal into unsafe execution.
+      /* RESINFO lowers to the native descriptor query for every texture
+       * dimensionality whose AGX descriptor path is implemented below.
        */
       case D12_DXBC_OP_RESINFO: {
          NEED(3);
@@ -3805,8 +3802,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          bool is_ms = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS ||
                       dim ==
                          D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY;
+         bool is_3d = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D;
          enum glsl_sampler_dim sampler_dim =
-            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
+            is_3d ? GLSL_SAMPLER_DIM_3D
+            : dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
                   dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
                ? GLSL_SAMPLER_DIM_CUBE
                : is_ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
@@ -3815,7 +3814,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE &&
-             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY) {
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY &&
+             !is_3d) {
             fail(ctx, "unsupported RESINFO resource dimension");
             return;
          }
@@ -3861,15 +3861,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          txs->sampler_dim = sampler_dim;
          txs->is_array = is_array;
          txs->dest_type = nir_type_uint32;
-         txs->coord_components = sampler_dim == GLSL_SAMPLER_DIM_CUBE
+         txs->coord_components = is_3d ? 3
+                                 : sampler_dim == GLSL_SAMPLER_DIM_CUBE
                                     ? (is_array ? 4 : 3)
                                     : is_array ? 3 : 2;
          txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
                                             handle);
+         nir_def *lod = NULL;
          if (!is_ms)
-            txs->src[1] = nir_tex_src_for_ssa(
-               nir_tex_src_lod, nir_channel(b, SRC(1), 0));
-         nir_def_init(&txs->instr, &txs->def, is_array ? 3 : 2, 32);
+            txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                              lod = nir_channel(b, SRC(1), 0));
+         nir_def_init(&txs->instr, &txs->def,
+                      (is_array || is_3d) ? 3 : 2, 32);
          nir_builder_instr_insert(b, &txs->instr);
 
          nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
@@ -3883,10 +3886,26 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          nir_def_init(&query->instr, &query->def, 1, 32);
          nir_builder_instr_insert(b, &query->instr);
 
+         nir_def *width = nir_channel(b, &txs->def, 0);
+         nir_def *height = nir_channel(b, &txs->def, 1);
+         nir_def *depth_or_layers =
+            (is_array || is_3d) ? nir_channel(b, &txs->def, 2)
+                                : is_ms ? &query->def : nir_imm_int(b, 0);
+         if (!is_ms) {
+            /* AGX clamps an out-of-range TCS LOD to the last level. D3D12
+             * RESINFO instead returns zero for every queried dimension while
+             * retaining the resource's level count.
+             */
+            nir_def *in_range = nir_ult(b, lod, &query->def);
+            width = nir_bcsel(b, in_range, width, nir_imm_int(b, 0));
+            height = nir_bcsel(b, in_range, height, nir_imm_int(b, 0));
+            if (is_array || is_3d)
+               depth_or_layers = nir_bcsel(b, in_range, depth_or_layers,
+                                           nir_imm_int(b, 0));
+         }
+
          nir_def *value = nir_vec4(
-            b, nir_channel(b, &txs->def, 0), nir_channel(b, &txs->def, 1),
-            is_array ? nir_channel(b, &txs->def, 2)
-                     : is_ms ? &query->def : nir_imm_int(b, 0),
+            b, width, height, depth_or_layers,
             is_ms && is_array ? &query->def
                               : is_ms ? nir_imm_int(b, 0) : &query->def);
          if (return_type == D12_DXBC_RESINFO_RETURN_FLOAT)

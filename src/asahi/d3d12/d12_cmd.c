@@ -1616,8 +1616,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
             addrs[D12_ROOT_BUFINFO_BASE + i] |=
                (uint64_t)table[i].stride_B << 32;
       } else if (table[i].resource && table[i].kind == D12_DESC_SRV &&
-                 table[i].resource->desc.Dimension ==
-                    D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+                 (table[i].resource->desc.Dimension ==
+                     D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+                  table[i].resource->desc.Dimension ==
+                     D3D12_RESOURCE_DIMENSION_TEXTURE3D)) {
          /* Texture SRVs use the low BUFINFO word for the runtime per-view
           * minimum LOD clamp. Buffer users interpret the same plane as a
           * count, and the resource dimension keeps the meanings disjoint. */
@@ -1730,6 +1732,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
           table[i].resource &&
           (table[i].resource->desc.Dimension ==
               D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+           table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
            (table[i].resource->desc.Dimension ==
                D3D12_RESOURCE_DIMENSION_BUFFER &&
             table[i].format != DXGI_FORMAT_UNKNOWN)))
@@ -1814,7 +1818,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          continue;
       }
 
-      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+          res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)
          continue;
 
       const bool stencil = table[i].texture_plane == 1;
@@ -1891,7 +1896,9 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                                      ? level
                                      : level + MAX2(
                                           table[i].texture_level_count, 1) - 1;
-      const unsigned layers = d12_native_texture_layers(&table[i]);
+      const unsigned layers = dimension == AGX_TEXTURE_DIMENSION_3D
+                                 ? layout->depth_px
+                                 : d12_native_texture_layers(&table[i]);
       const bool layered =
          dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
          dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
@@ -2133,6 +2140,8 @@ d12_native_texture_dimension(const struct d12_descriptor *d, unsigned samples)
       return AGX_TEXTURE_DIMENSION_CUBE;
    case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
       return AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
+   case D3D12_SRV_DIMENSION_TEXTURE3D:
+      return AGX_TEXTURE_DIMENSION_3D;
    case D3D12_SRV_DIMENSION_TEXTURE2DMS:
       return AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
    default:
@@ -2182,7 +2191,8 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
    }
 
    if (d->resource && d->kind == D12_DESC_SRV &&
-       d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+       (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+        d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)) {
       uint32_t info = d->texture_txf_min_level |
                       (d->texture_min_lod_oob ? 0x80000000u : 0);
       return fui(d->texture_min_lod) | (uint64_t)info << 32;
@@ -2252,7 +2262,8 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       return;
    }
 
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)
       return;
 
    const bool stencil = d->texture_plane == 1;
@@ -2311,7 +2322,9 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    const unsigned last_level = d->kind == D12_DESC_UAV
                                   ? level
                                   : level + MAX2(d->texture_level_count, 1) - 1;
-   const unsigned layers = d12_native_texture_layers(d);
+   const unsigned layers = dimension == AGX_TEXTURE_DIMENSION_3D
+                              ? layout->depth_px
+                              : d12_native_texture_layers(d);
    const bool layered =
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||

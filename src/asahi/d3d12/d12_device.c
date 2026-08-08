@@ -2528,19 +2528,27 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2DMS ||
          desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY ||
          desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBE ||
-         desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY)) ||
-       (!desc && res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)) {
-      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
-         mesa_loge("CreateShaderResourceView: TEXTURE2D view of a "
-                   "non-texture resource");
+         desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURECUBEARRAY ||
+         desc->ViewDimension == D3D12_SRV_DIMENSION_TEXTURE3D)) ||
+       (!desc &&
+        (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+         res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D))) {
+      const bool is_3d =
+         res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+          !is_3d) {
+         mesa_loge("CreateShaderResourceView: texture view of a non-texture "
+                   "resource");
          return;
       }
 
       const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
       const bool msaa = samples > 1;
-      const unsigned resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
+      const unsigned resource_layers =
+         is_3d ? 1 : MAX2(res->desc.DepthOrArraySize, 1);
       D3D12_SRV_DIMENSION view_dim =
          desc ? desc->ViewDimension
+              : is_3d ? D3D12_SRV_DIMENSION_TEXTURE3D
               : msaa ? (resource_layers > 1
                            ? D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY
                            : D3D12_SRV_DIMENSION_TEXTURE2DMS)
@@ -2549,7 +2557,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                            : D3D12_SRV_DIMENSION_TEXTURE2D);
       bool view_msaa = view_dim == D3D12_SRV_DIMENSION_TEXTURE2DMS ||
                        view_dim == D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY;
-      if ((samples != 1 && samples != 2 && samples != 4) ||
+      if ((view_dim == D3D12_SRV_DIMENSION_TEXTURE3D) != is_3d ||
+          (samples != 1 && samples != 2 && samples != 4) ||
           view_msaa != msaa) {
          mesa_loge("CreateShaderResourceView: implicit texture view shape "
                    "unsupported (mips %u, layers %u, samples %u)",
@@ -2577,6 +2586,10 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
             first_level = desc->TextureCubeArray.MostDetailedMip;
             level_count = desc->TextureCubeArray.MipLevels;
+            break;
+         case D3D12_SRV_DIMENSION_TEXTURE3D:
+            first_level = desc ? desc->Texture3D.MostDetailedMip : 0;
+            level_count = desc ? desc->Texture3D.MipLevels : UINT32_MAX;
             break;
          default:
             mesa_loge("CreateShaderResourceView: invalid non-MSAA view %u",
@@ -2612,6 +2625,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                       resource_layers);
             return;
          }
+         break;
+      case D3D12_SRV_DIMENSION_TEXTURE3D:
          break;
       case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
          first_layer = desc ? desc->Texture2DArray.FirstArraySlice : 0;
@@ -2681,6 +2696,9 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
             break;
          case D3D12_SRV_DIMENSION_TEXTURECUBEARRAY:
             api_min_lod = desc->TextureCubeArray.ResourceMinLODClamp;
+            break;
+         case D3D12_SRV_DIMENSION_TEXTURE3D:
+            api_min_lod = desc->Texture3D.ResourceMinLODClamp;
             break;
          default:
             break;
