@@ -734,7 +734,13 @@ d12_resource_create(struct d12_device *device,
          return E_INVALIDARG;
       }
 
-      need = align64(need, required_align);
+      /*
+       * Alignment constrains where the resource starts, not how much of the
+       * heap its payload occupies.  In particular, D3D12 permits a 1 KiB
+       * buffer at offset 0 in a 1 KiB heap even though the buffer's placement
+       * alignment is 64 KiB.  Texture backing sizes already come from AIL;
+       * rounding either kind here rejects an otherwise in-bounds resource.
+       */
 
       if (heap_offset_B + need > heap->bo->size) {
          mesa_loge("CreatePlacedResource: %" PRIu64 " bytes at offset %"
