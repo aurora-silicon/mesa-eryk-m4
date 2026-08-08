@@ -884,6 +884,7 @@ struct d12_segment {
 
    /* RENDER */
    uint16_t width_px, height_px;
+   uint16_t layers;
    struct agx_tilebuffer_layout tib;
    struct d12_resource *rt[AGX_MAX_RENDER_TARGETS];
    enum pipe_format rt_view_format[AGX_MAX_RENDER_TARGETS];

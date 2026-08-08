@@ -1881,12 +1881,14 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    }
 
    /*
-    * ARRAY SLICES. A TEXTURE2DARRAY view selects one layer of the resource;
-    * ail lays layers out contiguously at layer_stride_B, so the slice is
-    * just an offset. Refusing the view dimension made every array test fail
-    * at the view even once the resource itself was legal.
+    * ARRAY SLICES. A TEXTURE2DARRAY view selects a consecutive layer range;
+    * ail lays layers out contiguously at layer_stride_B, so the first slice
+    * is just an offset and the view retains the range count. Refusing the
+    * view dimension made every array test fail at the view even once the
+    * resource itself was legal.
     */
    uint64_t slice_offset_B = 0;
+   uint32_t view_layers = MAX2(res->desc.DepthOrArraySize, 1);
 
    if (desc) {
       if (samples > 1) {
@@ -1902,16 +1904,22 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
       } else if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY) {
          uint32_t first = desc->Texture2DArray.FirstArraySlice;
          uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
+         uint32_t count = desc->Texture2DArray.ArraySize;
 
-         if (desc->Texture2DArray.MipSlice != 0 || first >= layers) {
-            mesa_loge("CreateRenderTargetView: array slice %u/%u mip %u "
-                      "out of range",
-                      first, layers, desc->Texture2DArray.MipSlice);
+         if (count == UINT32_MAX)
+            count = layers - MIN2(first, layers);
+
+         if (desc->Texture2DArray.MipSlice != 0 || first >= layers ||
+             !count || count > layers - first) {
+            mesa_loge("CreateRenderTargetView: array range %u+%u/%u mip %u "
+                      "out of range", first, count, layers,
+                      desc->Texture2DArray.MipSlice);
             slot->resource = NULL;
             return;
          }
 
          slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
+         view_layers = count;
       } else if (desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D) {
          mesa_loge("CreateRenderTargetView: view dimension %d unsupported",
                    (int)desc->ViewDimension);
@@ -1923,6 +1931,10 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
          slot->resource = NULL;
          return;
       }
+
+      if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2D ||
+          desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DMS)
+         view_layers = 1;
    }
 
    slot->resource = res;
@@ -1933,6 +1945,9 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    slot->format = view_format;
    slot->kind = D12_DESC_RTV;
    slot->address = res->addr + slice_offset_B;
+   /* RTV descriptors are never shader-visible. Reuse the buffer-size field
+    * for the number of consecutive array layers selected by the view. */
+   slot->size_B = view_layers;
 }
 
 static void STDMETHODCALLTYPE

@@ -1607,14 +1607,10 @@ compile_gs_nir(struct d12_device *device, nir_shader *nir,
    nir_shader *gs_count = NULL, *gs_copy = NULL, *pre_gs = NULL;
    NIR_PASS(_, nir, poly_nir_lower_gs, &gs_count, &gs_copy, &pre_gs, gs_info);
 
-   if (gs_info->shape != POLY_GS_SHAPE_STATIC_PER_INSTANCE &&
-       gs_info->shape != POLY_GS_SHAPE_DYNAMIC_INDEXED) {
-      mesa_loge("graphics PSO: geometry shader needs a %s rasterization "
-                "draw. STATIC_PER_INSTANCE and DYNAMIC_INDEXED are "
-                "dispatched so far.",
-                gs_info->shape == POLY_GS_SHAPE_DYNAMIC_INDEXED
-                   ? "dynamically indexed"
-                   : "statically indexed");
+   if (gs_info->shape < POLY_GS_SHAPE_DYNAMIC_INDEXED ||
+       gs_info->shape > POLY_GS_SHAPE_STATIC_PER_INSTANCE) {
+      mesa_loge("graphics PSO: geometry lowering produced invalid "
+                "rasterization shape %d", gs_info->shape);
       return false;
    }
 

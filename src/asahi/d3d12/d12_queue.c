@@ -190,7 +190,7 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    agx_tilebuffer_set_drm_cmd(c, &seg->tib);
    c->samples = samples;
    c->sample_size_B = seg->tib.sample_size_B;
-   c->layers = 1;
+   c->layers = seg->layers;
 
    const float tan_60 = 1.732051f;
    c->isp_merge_upper_x = fui(tan_60 / seg->width_px);
@@ -257,9 +257,9 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
                 (unsigned long long)c->stencil.base,
                 (unsigned long long)c->isp_scissor_base,
                 (unsigned long long)c->isp_oclqry_base);
-      mesa_logi("  bg.usc=0x%llx eot.usc=0x%llx  %ux%u samples=%u",
+      mesa_logi("  bg.usc=0x%llx eot.usc=0x%llx  %ux%ux%u samples=%u",
                 (unsigned long long)c->bg.usc, (unsigned long long)c->eot.usc,
-                c->width_px, c->height_px, c->samples);
+                c->width_px, c->height_px, c->layers, c->samples);
    }
 }
 
@@ -439,12 +439,15 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                                 DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
 
          const float *f = (const float *)device->dbg_gs_vb;
+         const uint32_t *u = (const uint32_t *)device->dbg_gs_vb;
          unsigned n = MIN2(device->dbg_gs_vb_size / 4, 32);
          mesa_logi("geometry vertex buffer (%zu bytes):",
                    device->dbg_gs_vb_size);
          for (unsigned i = 0; i < n; i += 4) {
-            mesa_logi("  slot %u: %8.4f %8.4f %8.4f %8.4f", i / 4, f[i],
-                      f[i + 1], f[i + 2], f[i + 3]);
+            mesa_logi("  slot %u: %8.4f %8.4f %8.4f %8.4f  "
+                      "[%08x %08x %08x %08x]",
+                      i / 4, f[i], f[i + 1], f[i + 2], f[i + 3], u[i],
+                      u[i + 1], u[i + 2], u[i + 3]);
          }
          device->dbg_gs_vb = NULL;
       }

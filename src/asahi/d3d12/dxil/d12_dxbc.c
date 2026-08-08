@@ -236,6 +236,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE = 93,
    D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY = 92,
    D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT = 94,
+   D12_DXBC_OP_DCL_GS_INSTANCE_COUNT = 206,
    D12_DXBC_OP_DCL_INPUT_CONTROL_POINT_COUNT = 147,
    D12_DXBC_OP_DCL_OUTPUT_CONTROL_POINT_COUNT = 148,
    D12_DXBC_OP_DCL_TESS_DOMAIN = 149,
@@ -455,7 +456,8 @@ fail(struct d12_dxbc_ctx *ctx, const char *why)
 
 static unsigned
 parse_signature(const uint8_t *base, size_t size_B,
-                struct d12_dxbc_sig_elem *out, unsigned max)
+                struct d12_dxbc_sig_elem *out, unsigned max,
+                bool has_stream, bool has_min_precision)
 {
    if (size_B < 8)
       return 0;
@@ -467,22 +469,28 @@ parse_signature(const uint8_t *base, size_t size_B,
 
    unsigned n = 0;
    for (uint32_t i = 0; i < count; i++) {
-      size_t off = 8 + (size_t)i * 24;
-      if (off + 24 > size_B)
+      /* Legacy SGN records are six dwords. OSG5 prefixes the stream index;
+       * SG1 prefixes the stream and appends minimum precision. The semantic
+       * fields therefore start one dword later in both extended layouts. */
+      const size_t stride = 24 + (has_stream ? 4 : 0) +
+                            (has_min_precision ? 4 : 0);
+      const size_t fields = has_stream ? 4 : 0;
+      size_t off = 8 + (size_t)i * stride;
+      if (off + stride > size_B)
          break;
 
       uint32_t name_off, sem_idx, sysval, reg;
-      memcpy(&name_off, base + off + 0, 4);
-      memcpy(&sem_idx, base + off + 4, 4);
-      memcpy(&sysval, base + off + 8, 4);
-      memcpy(&reg, base + off + 16, 4);
+      memcpy(&name_off, base + off + fields + 0, 4);
+      memcpy(&sem_idx, base + off + fields + 4, 4);
+      memcpy(&sysval, base + off + fields + 8, 4);
+      memcpy(&reg, base + off + fields + 16, 4);
 
       struct d12_dxbc_sig_elem *e = &out[n++];
       memset(e, 0, sizeof(*e));
       e->semantic_index = sem_idx;
       e->sysval = sysval;
       e->reg = reg;
-      e->mask = base[off + 20];
+      e->mask = base[off + fields + 20];
 
       if (name_off < size_B) {
          const char *nm = (const char *)base + name_off;
@@ -536,6 +544,8 @@ output_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
    if (e) {
       if (!strcasecmp(e->name, "SV_Position") || e->sysval == 1)
          return VARYING_SLOT_POS;
+      if (!strcasecmp(e->name, "SV_RenderTargetArrayIndex"))
+         return VARYING_SLOT_LAYER;
       if (!strcasecmp(e->name, "SV_ClipDistance"))
          return VARYING_SLOT_CLIP_DIST0 + e->semantic_index;
    }
@@ -553,6 +563,8 @@ input_location(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_sig_elem *e,
    if (e) {
       if (!strcasecmp(e->name, "SV_Position") || e->sysval == 1)
          return VARYING_SLOT_POS;
+      if (!strcasecmp(e->name, "SV_RenderTargetArrayIndex"))
+         return VARYING_SLOT_LAYER;
       if (!strcasecmp(e->name, "SV_ClipDistance"))
          return VARYING_SLOT_CLIP_DIST0 + e->semantic_index;
    }
@@ -1019,6 +1031,9 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
             b->shader->info.fs.uses_sample_shading = true;
             return nir_replicate(b, nir_load_sample_id(b), 4);
          }
+         if (!strcasecmp(e->name, "SV_RenderTargetArrayIndex") &&
+             b->shader->info.stage == MESA_SHADER_FRAGMENT)
+            return nir_replicate(b, nir_load_layer_id(b), 4);
       }
 
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
@@ -1999,8 +2014,7 @@ d12_dxbc_find_shader(const void *data, size_t size_B, const uint8_t **out,
    return false;
 }
 
-/* Locate any chunk by fourcc. ISGN/OSGN are the signature tables;
- * ISG1/OSG1 are their SM5.1 forms with the same record layout. */
+/* Locate any chunk by fourcc. */
 static bool
 find_chunk(const void *data, size_t size_B, const char *a, const char *b,
            const uint8_t **out, size_t *out_size_B)
@@ -2052,12 +2066,15 @@ d12_dxbc_input_signature(const void *data, size_t size_B,
 {
    const uint8_t *sig;
    size_t sig_size;
+   bool extended = find_chunk(data, size_B, "ISG1", NULL, &sig, &sig_size);
 
-   if (!find_chunk(data, size_B, "ISGN", "ISG1", &sig, &sig_size))
+   if (!extended &&
+       !find_chunk(data, size_B, "ISGN", NULL, &sig, &sig_size))
       return 0;
 
    struct d12_dxbc_sig_elem elems[D12_DXBC_MAX_SIG];
-   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG);
+   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG,
+                                extended, extended);
    n = MIN2(n, max);
 
    for (unsigned i = 0; i < n; i++) {
@@ -2080,12 +2097,20 @@ d12_dxbc_output_signature(const void *data, size_t size_B,
 {
    const uint8_t *sig;
    size_t sig_size;
+   bool min_precision =
+      find_chunk(data, size_B, "OSG1", NULL, &sig, &sig_size);
+   bool stream = min_precision;
 
-   if (!find_chunk(data, size_B, "OSGN", "OSG1", &sig, &sig_size))
-      return 0;
+   if (!stream) {
+      stream = find_chunk(data, size_B, "OSG5", NULL, &sig, &sig_size);
+      if (!stream &&
+          !find_chunk(data, size_B, "OSGN", NULL, &sig, &sig_size))
+         return 0;
+   }
 
    struct d12_dxbc_sig_elem elems[D12_DXBC_MAX_SIG];
-   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG);
+   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG,
+                                stream, min_precision);
    n = MIN2(n, max);
 
    for (unsigned i = 0; i < n; i++) {
@@ -2418,14 +2443,55 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_TGSM_RAW:
       case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
       case D12_DXBC_OP_DCL_STREAM:
-      case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
-      case D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT:
       case D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR:
          /* Signature and binding information all comes from the
           * container's ISGN/OSGN chunks and the root signature, so the
           * declarations themselves carry nothing this driver needs. */
          ctx->tok += len;
          continue;
+
+      case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY: {
+         /* Public D3D10_SB_PRIMITIVE_TOPOLOGY values in opcode bits 17:11.
+          * D3D geometry shaders may emit point lists, line strips, or
+          * triangle strips. Poly needs the exact output topology before it
+          * can count emitted primitives and build its rasterization shader. */
+         switch ((op_tok >> 11) & 0x7f) {
+         case 1:
+            b->shader->info.gs.output_primitive = MESA_PRIM_POINTS;
+            break;
+         case 3:
+            b->shader->info.gs.output_primitive = MESA_PRIM_LINE_STRIP;
+            break;
+         case 5:
+            b->shader->info.gs.output_primitive = MESA_PRIM_TRIANGLE_STRIP;
+            break;
+         default:
+            fail(ctx, "invalid geometry output topology");
+            return;
+         }
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT: {
+         if (avail < 1 || !args[0] || args[0] > 1024) {
+            fail(ctx, "invalid geometry maximum output vertex count");
+            return;
+         }
+         b->shader->info.gs.vertices_out = args[0];
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_GS_INSTANCE_COUNT: {
+         if (avail < 1 || !args[0] || args[0] > 32) {
+            fail(ctx, "invalid geometry instance count");
+            return;
+         }
+         b->shader->info.gs.invocations = args[0];
+         ctx->tok += len;
+         continue;
+      }
 
       case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE: {
          /* Public D3D10_SB_PRIMITIVE values in opcode bits 16:11. */
@@ -3888,6 +3954,15 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
    ctx.map = map;
    ctx.b = nir_builder_init_simple_shader(stage, &agx_nir_options, "dxbc");
 
+   /* Geometry instance count defaults to one when DCL_GS_INSTANCE_COUNT is
+    * absent. Stream 0 is likewise always active for the unstreamed EMIT/CUT
+    * opcodes. Leaving either field zero makes libpoly optimize the complete
+    * geometry body away even though the token stream contains valid emits. */
+   if (stage == MESA_SHADER_GEOMETRY) {
+      ctx.b.shader->info.gs.invocations = 1;
+      ctx.b.shader->info.gs.active_stream_mask = 1;
+   }
+
    /* Token 0 is the version, token 1 the length in tokens. */
    const uint32_t *tokens = (const uint32_t *)chunk;
    unsigned num_tokens = chunk_size / 4;
@@ -3901,17 +3976,30 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
     * instruction, since the very first store_output needs its location. */
    const uint8_t *sig;
    size_t sig_size;
-   if (find_chunk(data, size_B, "ISGN", "ISG1", &sig, &sig_size)) {
+   bool extended = find_chunk(data, size_B, "ISG1", NULL, &sig, &sig_size);
+   if (extended ||
+       find_chunk(data, size_B, "ISGN", NULL, &sig, &sig_size)) {
       ctx.num_in_sig =
-         parse_signature(sig, sig_size, ctx.in_sig, D12_DXBC_MAX_SIG);
+         parse_signature(sig, sig_size, ctx.in_sig, D12_DXBC_MAX_SIG,
+                         extended, extended);
    }
-   if (find_chunk(data, size_B, "OSGN", "OSG1", &sig, &sig_size)) {
+   bool min_precision =
+      find_chunk(data, size_B, "OSG1", NULL, &sig, &sig_size);
+   bool stream = min_precision;
+   if (!stream)
+      stream = find_chunk(data, size_B, "OSG5", NULL, &sig, &sig_size);
+   if (stream ||
+       find_chunk(data, size_B, "OSGN", NULL, &sig, &sig_size)) {
       ctx.num_out_sig =
-         parse_signature(sig, sig_size, ctx.out_sig, D12_DXBC_MAX_SIG);
+         parse_signature(sig, sig_size, ctx.out_sig, D12_DXBC_MAX_SIG,
+                         stream, min_precision);
    }
-   if (find_chunk(data, size_B, "PCSG", "PSG1", &sig, &sig_size)) {
+   extended = find_chunk(data, size_B, "PSG1", NULL, &sig, &sig_size);
+   if (extended ||
+       find_chunk(data, size_B, "PCSG", NULL, &sig, &sig_size)) {
       ctx.num_patch_sig =
-         parse_signature(sig, sig_size, ctx.patch_sig, D12_DXBC_MAX_SIG);
+         parse_signature(sig, sig_size, ctx.patch_sig, D12_DXBC_MAX_SIG,
+                         extended, extended);
    }
 
    ctx.tok = tokens + 2;

@@ -1480,6 +1480,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return true;
       }
 
+      if (sem && !strcmp(sem, "SV_RenderTargetArrayIndex") &&
+          b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+         def_result(ctx, inst, nir_load_layer_id(b));
+         b->shader->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_LAYER);
+         return true;
+      }
+
       /* Signature element -> IO slot. DXIL indexes signature elements;
        * map element N to a generic slot, consistently with outputs.
        *
@@ -1671,6 +1678,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          location = FRAG_RESULT_DATA0 + (se ? se->start_row : sig_id);
       } else if (sem && !strcmp(sem, "SV_Position")) {
          location = VARYING_SLOT_POS;
+      } else if (sem && !strcmp(sem, "SV_RenderTargetArrayIndex")) {
+         location = VARYING_SLOT_LAYER;
       } else {
          location = VARYING_SLOT_VAR0 + sig_id;
       }

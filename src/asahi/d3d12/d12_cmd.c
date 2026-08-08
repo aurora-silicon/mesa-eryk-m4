@@ -737,6 +737,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
 
    struct agx_usc_builder b = agx_usc_builder(cpu, usc_size);
    struct agx_bg_eot_key key = {.tib = *tib};
+   key.tib.layered = seg->layers > 1;
    unsigned uniforms = 0, nr_tex = 0;
    bool uses_txf = false;
 
@@ -822,8 +823,13 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
 
          agx_pack(&desc, TEXTURE, cfg) {
             const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-            cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                                        : AGX_TEXTURE_DIMENSION_2D;
+            cfg.dimension =
+               seg->layers > 1
+                  ? (samples > 1
+                        ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED
+                        : AGX_TEXTURE_DIMENSION_2D_ARRAY)
+                  : (samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                 : AGX_TEXTURE_DIMENSION_2D);
             cfg.layout = agx_translate_layout(rt->layout.tiling);
             cfg.channels = ail_pixel_format[pf].channels;
             cfg.type = ail_pixel_format[pf].type;
@@ -842,10 +848,15 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             if (samples > 1)
                cfg.samples = agx_translate_sample_count(samples);
 
-            if (rt->layout.tiling == AIL_TILING_LINEAR)
+            if (rt->layout.tiling == AIL_TILING_LINEAR) {
                cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
-            else {
-               cfg.depth = 1;
+               if (seg->layers > 1) {
+                  cfg.depth_linear = seg->layers;
+                  cfg.layer_stride_linear = rt->layout.layer_stride_B - 0x80;
+                  cfg.extended = true;
+               }
+            } else {
+               cfg.depth = seg->layers;
                cfg.page_aligned_layers = rt->layout.page_aligned_layers;
             }
          }
@@ -879,8 +890,13 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
          struct agx_pbe_packed desc;
          agx_pack(&desc, PBE, cfg) {
             const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-            cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                                        : AGX_TEXTURE_DIMENSION_2D;
+            cfg.dimension =
+               seg->layers > 1
+                  ? (samples > 1
+                        ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED
+                        : AGX_TEXTURE_DIMENSION_2D_ARRAY)
+                  : (samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                 : AGX_TEXTURE_DIMENSION_2D);
             cfg.layout = agx_translate_layout(rt->layout.tiling);
             enum pipe_format pf = type_format != PIPE_FORMAT_NONE
                                      ? util_format_linear(type_format)
@@ -921,15 +937,23 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             cfg.width = rt->layout.width_px;
             cfg.height = rt->layout.height_px;
             cfg.level = 0;
-            cfg.layers = 1;
             cfg.levels = rt->layout.levels;
             cfg.unk_mipmapped = rt->layout.levels > 1;
             if (samples > 1)
                cfg.samples = agx_translate_sample_count(samples);
-            if (rt->layout.tiling == AIL_TILING_LINEAR)
+            if (rt->layout.tiling == AIL_TILING_LINEAR) {
                cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
-            else
+               if (seg->layers > 1) {
+                  cfg.depth_linear = seg->layers;
+                  cfg.layer_stride_linear = rt->layout.layer_stride_B - 0x80;
+                  cfg.extended = true;
+               } else {
+                  cfg.layers = 1;
+               }
+            } else {
+               cfg.layers = seg->layers;
                cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+            }
          }
 
          uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
@@ -1017,7 +1041,8 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
 
       if (rtv->resource &&
           (seg->rt_address[i] != rtv->address ||
-           seg->rt_view_format[i] != d12_format_to_pipe(rtv->format)))
+           seg->rt_view_format[i] != d12_format_to_pipe(rtv->format) ||
+           seg->layers != MAX2(rtv->size_B, 1)))
          return false;
    }
 
@@ -1065,6 +1090,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
    memset(seg, 0, sizeof(*seg));
    seg->type = D12_SEG_RENDER;
    seg->process_empty_tiles = process_empty_tiles;
+   seg->layers = 1;
 
    seg->rt_count = rtv_count;
    unsigned bound_rts = 0;
@@ -1099,6 +1125,14 @@ d12_list_begin_render(struct d12_cmd_list *list,
          return NULL;
       }
 
+      const unsigned layers = MAX2(rtv->size_B, 1);
+      if (bound_rts && layers != seg->layers) {
+         mesa_loge("render targets have mismatched layer counts %u and %u",
+                   seg->layers, layers);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+
       seg->rt[i] = rtv->resource;
       seg->rt_address[i] = rtv->address ? rtv->address : rtv->resource->addr;
       seg->rt_view_format[i] = view_pf;
@@ -1106,7 +1140,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
       if (getenv("D3D12AGX_VALIDATE_MRT")) {
          const uint64_t bo_start = rtv->resource->bo->va->addr;
          const uint64_t bo_end = bo_start + rtv->resource->bo->size;
-         const uint64_t span = rtv->resource->layout.layer_stride_B;
+         const uint64_t span =
+            (uint64_t)rtv->resource->layout.layer_stride_B * layers;
          if (seg->rt_address[i] < bo_start || seg->rt_address[i] >= bo_end ||
              span > bo_end - seg->rt_address[i]) {
             mesa_loge("MRT validate: RT%u address 0x%llx span 0x%llx is "
@@ -1125,6 +1160,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
                    (unsigned long long)bo_end, view_pf, samples);
       }
       rt_samples = samples;
+      seg->layers = layers;
       if (!bound_rts) {
          seg->width_px = rtv->resource->layout.width_px;
          seg->height_px = rtv->resource->layout.height_px;
@@ -1188,7 +1224,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
       for (unsigned i = 0; i < rtv_count; i++)
          formats[i] = seg->rt_view_format[i];
       seg->tib = agx_build_tilebuffer_layout(formats, rtv_count, rt_samples,
-                                             false);
+                                             seg->layers > 1);
    }
 
    seg->scissor_base = d12_list_upload_zero(
@@ -2812,6 +2848,20 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       *out_draw = agx_draw_indexed(
          gp.draw.index_count, gp.draw.instance_count, 0, 0, 0,
          gp.output_index_buffer, index_size, AGX_INDEX_SIZE_U32, false);
+   } else if (pso->gs_info.shape == POLY_GS_SHAPE_STATIC_INDEXED) {
+      /* Poly proved the emitted topology at compile time. Its compact table
+       * is a byte index buffer (0xff is primitive restart), instanced once
+       * per input primitive. Uploading that table avoids the dynamic index
+       * writer while preserving arbitrary static strip breaks. */
+      size_t index_size = pso->gs_info.max_indices;
+      uint64_t index_buffer =
+         d12_list_upload(list, pso->gs_info.topology, index_size, 1);
+      if (!index_buffer)
+         return false;
+
+      *out_draw = agx_draw_indexed(
+         gp.draw.index_count, gp.draw.instance_count, 0, 0, 0, index_buffer,
+         index_size, AGX_INDEX_SIZE_U8, true);
    }
 
    if (getenv("D3D12AGX_DUMP_SO")) {
@@ -3713,7 +3763,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       varys = &pso->gs_varyings;
       topology = pso->gs_info.mode;
       first_vertex = 0;
-      draw_set = pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED;
+      draw_set = poly_gs_indexed(pso->gs_info.shape);
    }
 
    if (getenv("D3D12AGX_DUMP_MESH")) {
@@ -3995,12 +4045,12 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * position is written) and the fragment side. Pushing only the
        * fragment half rasterizes nothing.
        */
-      struct agx_output_select_packed osel = pso->uvs.osel;
+      struct agx_output_select_packed osel = uvs->osel;
       agx_ppp_push_merged_blobs(&ppp, AGX_OUTPUT_SELECT_LENGTH, &osel,
                                 &pso->fs.linked.osel);
 
-      agx_ppp_push_packed(&ppp, &pso->varyings.counts_32, VARYING_COUNTS);
-      agx_ppp_push_packed(&ppp, &pso->varyings.counts_16, VARYING_COUNTS);
+      agx_ppp_push_packed(&ppp, &varys->counts_32, VARYING_COUNTS);
+      agx_ppp_push_packed(&ppp, &varys->counts_16, VARYING_COUNTS);
 
       agx_ppp_push(&ppp, CULL, cfg) {
          cfg.front_face_ccw = pso->raster.front_face_ccw;
