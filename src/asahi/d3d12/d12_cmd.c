@@ -2139,6 +2139,28 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       return;
 
    const struct util_format_description *fdesc = util_format_description(pf);
+   uint8_t format_swizzle[4] = {
+      fdesc->swizzle[0], fdesc->swizzle[1],
+      fdesc->swizzle[2], fdesc->swizzle[3],
+   };
+
+   /* A8 shares R8 storage on AGX, but its D3D view exposes that physical
+    * byte as alpha and forces RGB to zero.  Preserve that logical format
+    * swizzle before composing Shader4ComponentMapping. */
+   if (d->format == DXGI_FORMAT_A8_UNORM) {
+      format_swizzle[0] = PIPE_SWIZZLE_0;
+      format_swizzle[1] = PIPE_SWIZZLE_0;
+      format_swizzle[2] = PIPE_SWIZZLE_0;
+      format_swizzle[3] = PIPE_SWIZZLE_X;
+   }
+
+   uint8_t swizzle[4];
+   uint8_t view_swizzle[4];
+   for (unsigned c = 0; c < 4; c++) {
+      view_swizzle[c] = D3D12_DECODE_SHADER_4_COMPONENT_MAPPING(
+         c, d->texture_component_mapping);
+   }
+   util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
    const bool array = d->kind == D12_DESC_UAV && d->texture_array;
    const unsigned level = d->kind == D12_DESC_UAV ? d->texture_level : 0;
@@ -2154,10 +2176,10 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       cfg.channels = ail_pixel_format[pf].channels;
       cfg.type = ail_pixel_format[pf].type;
       cfg.srgb = util_format_is_srgb(pf);
-      cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
-      cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
-      cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
-      cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+      cfg.swizzle_r = agx_channel_from_pipe(swizzle[0]);
+      cfg.swizzle_g = agx_channel_from_pipe(swizzle[1]);
+      cfg.swizzle_b = agx_channel_from_pipe(swizzle[2]);
+      cfg.swizzle_a = agx_channel_from_pipe(swizzle[3]);
       cfg.address = d->address;
       cfg.width = layout->width_px;
       cfg.height = layout->height_px;

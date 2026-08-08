@@ -391,6 +391,15 @@ struct d12_descriptor {
                uint32_t texture_layers;
                uint32_t texture_level;
             };
+
+            /* SRVs use the first texture metadata word for the API view
+             * swizzle. UAVs instead use the layer/mip interpretation above.
+             * The two descriptor kinds are disjoint, so this retains the
+             * 40-byte shader-visible descriptor ABI. */
+            struct {
+               uint32_t texture_component_mapping;
+               uint32_t texture_srv_reserved;
+            };
          };
          DXGI_FORMAT format;
          uint8_t kind; /* enum d12_descriptor_kind */

@@ -2323,6 +2323,9 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
       slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
                         ? desc->Format
                         : res->desc.Format;
+      slot->texture_component_mapping =
+         desc ? desc->Shader4ComponentMapping
+              : D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
       slot->texture_plane = plane;
       d12_descriptor_heap_update_slot(device, slot);
       return;

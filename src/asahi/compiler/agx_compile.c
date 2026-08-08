@@ -2261,9 +2261,9 @@ agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
          texture = index;
          break;
       case nir_tex_src_sampler_handle:
-         b->shader->out->uses_sampler_heap = true;
          nir_intrinsic_instr *intr = nir_src_as_intrinsic(instr->src[i].src);
          if (intr && intr->intrinsic == nir_intrinsic_bindless_sampler_agx) {
+            b->shader->out->uses_sampler_heap = true;
             /* Heap offset */
             sampler = agx_src_index(&intr->src[1]);
          } else {
