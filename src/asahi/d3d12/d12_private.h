@@ -740,6 +740,7 @@ struct d12_raster_state {
    bool cull_front, cull_back;
    bool front_face_ccw;
    bool depth_clip;
+   bool smooth_line;
    bool dynamic_depth_bias;
    float depth_bias;
    float depth_bias_clamp;

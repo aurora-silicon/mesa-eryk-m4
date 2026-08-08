@@ -247,6 +247,11 @@ struct agx_fs_epilog_key {
    /* Blend state. Blending happens in the epilog. */
    struct agx_blend_key blend;
 
+   /* AGX has no native smooth-line rasterizer. Drivers may request the
+    * conservative two-pixel fallback and attenuate the fragment alpha in
+    * this epilog before ordinary API blending. */
+   bool smooth_line_alpha;
+
    /* Colour attachment remapping for Vulkan. Negative values indicate that an
     * attachment is discarded. Positive values indicate the output location we
     * want to store at the indexed colour attachment.

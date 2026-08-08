@@ -5217,7 +5217,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        */
       struct agx_fragment_face_packed face;
       agx_pack(&face, FRAGMENT_FACE, cfg) {
-         cfg.line_width = agx_pack_line_width(1.0f);
+         cfg.line_width = agx_pack_line_width(
+            pso->raster.smooth_line ? 2.0f : 1.0f);
          cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
          cfg.disable_depth_write = !z_write;
          cfg.depth_function = z_test ? ds->depth_func : AGX_ZS_FUNC_ALWAYS;

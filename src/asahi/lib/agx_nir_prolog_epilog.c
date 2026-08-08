@@ -368,6 +368,11 @@ copy_colour(nir_builder *b, const struct agx_fs_epilog_key *key,
          nir_vector_insert_imm(b, value, nir_imm_floatN_t(b, 1.0, size), 3);
    }
 
+   if (key->smooth_line_alpha && in_loc == 0 && !dual_src) {
+      nir_def *alpha = nir_fmul_imm(b, nir_channel(b, value, 3), 0.5);
+      value = nir_vector_insert_imm(b, value, alpha, 3);
+   }
+
    nir_store_output(b, value, nir_imm_int(b, 0),
                     .io_semantics.location = FRAG_RESULT_DATA0 + out_rt,
                     .io_semantics.dual_source_blend_index = dual_src,

@@ -3252,6 +3252,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->raster.depth_bias_clamp = rs_desc->DepthBiasClamp;
       pso->raster.slope_scaled_depth_bias =
          rs_desc->SlopeScaledDepthBias;
+      /* The legacy state selects alpha-antialiased lines only when
+       * multisample line rasterization is disabled. AGX has no native smooth
+       * mode, so the draw path widens coverage and the fragment epilog
+       * attenuates alpha before applying the application's blend state. */
+      pso->raster.smooth_line =
+         rs_desc->AntialiasedLineEnable && !rs_desc->MultisampleEnable;
 
       if (rs_desc->FillMode == D3D12_FILL_MODE_WIREFRAME)
          mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
@@ -3289,7 +3295,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    };
    const D3D12_RENDER_TARGET_BLEND_DESC *rt_blends[AGX_MAX_RENDER_TARGETS];
    struct agx_blend_rt_key blend_keys[AGX_MAX_RENDER_TARGETS] = {0};
-   bool use_fs_epilog = blend_desc && blend_desc->AlphaToCoverageEnable;
+   bool use_fs_epilog =
+      (blend_desc && blend_desc->AlphaToCoverageEnable) ||
+      pso->raster.smooth_line;
    enum pipe_logicop logicop = PIPE_LOGICOP_NOOP;
 
    for (unsigned i = 0; i < nr_rt; i++) {
@@ -3494,6 +3502,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
        * zero. */
       struct agx_fs_epilog_key epilog_key = {
          .link = fs_epilog_link,
+         .smooth_line_alpha = pso->raster.smooth_line,
          .blend.alpha_to_coverage =
             blend_desc && blend_desc->AlphaToCoverageEnable &&
             !(fs_outputs & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)),
