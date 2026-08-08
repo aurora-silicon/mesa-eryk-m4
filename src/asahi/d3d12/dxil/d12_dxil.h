@@ -720,29 +720,31 @@ struct nir_shader;
 #define D12_UNIFORM_PBES            60
 #define D12_UNIFORM_PBE_REGS        4
 
-/* Parallel AGX-native arrays for a shader-visible D3D12 resource heap.
+/* Parallel AGX-native arrays for shader-visible D3D12 heaps.
  * D12_UNIFORM_HEAP remains the 40-byte metadata heap. Dynamic texture and
  * image handles convert that heap index to the 24-byte hardware stride and
- * use these independent bases. */
+ * use independent bases; bindless samplers use their compact 8-byte heap. */
 #define D12_UNIFORM_HEAP_TEXTURES   64
 #define D12_UNIFORM_HEAP_TEXTURE_REGS 4
 #define D12_UNIFORM_HEAP_PBES       68
 #define D12_UNIFORM_HEAP_PBE_REGS   4
+#define D12_UNIFORM_HEAP_SAMPLERS   72
+#define D12_UNIFORM_HEAP_SAMPLER_REGS 4
 
 /*
- * The root binding upload contains three u64 arrays back to back. The root
- * uniform points at a two-pointer header: resource plane, metadata header.
- * The metadata header in turn contains the counter and BUFINFO plane
- * pointers. Both headers are loaded as a 2 x 64-bit vector at byte offset 0.
- * This avoids AGX global-load immediate folding entirely: the third plane's
- * 4096-byte offset cannot be represented by that instruction encoding.
+ * The root binding upload contains three resource-metadata arrays back to
+ * back plus an optional sampler-index plane. The root uniform points at a
+ * three-pointer header: resource plane, metadata header, sampler plane. The
+ * metadata header contains the counter and BUFINFO pointers plus robust-null
+ * addresses. Loading pointers first avoids AGX's global-load immediate limit.
  */
 #define D12_ROOT_RESOURCE_BASE      0
 #define D12_ROOT_COUNTER_BASE       D12_MAX_RESOURCE_BINDINGS
 #define D12_ROOT_BUFINFO_BASE       (2 * D12_MAX_RESOURCE_BINDINGS)
+#define D12_ROOT_SAMPLER_BASE       (3 * D12_MAX_RESOURCE_BINDINGS)
 #define D12_ROOT_TABLE_ENTRIES      (3 * D12_MAX_RESOURCE_BINDINGS)
 
-#define D12_ROOT_HEADER_SIZE          16
+#define D12_ROOT_HEADER_SIZE          24
 #define D12_ROOT_METADATA_HEADER_SIZE 32
 
 /*
@@ -853,7 +855,7 @@ struct nir_shader;
 #define D12_UNIFORM_VB_REGS         4
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_HEAP_PBES + D12_UNIFORM_HEAP_PBE_REGS)
+   (D12_UNIFORM_HEAP_SAMPLERS + D12_UNIFORM_HEAP_SAMPLER_REGS)
 
 /*
  * The vertex attribute parameter block, indexed by DXIL input signature
@@ -894,6 +896,7 @@ static_assert(offsetof(struct d12_vb_params, stride_el) == D12_VB_OFF_STRIDE,
  */
 #define D12_TEXTURE_DESC_SIZE       24
 #define D12_PBE_DESC_SIZE           24
+#define D12_SAMPLER_DESC_SIZE       8
 
 /*
  * Root-table layout.

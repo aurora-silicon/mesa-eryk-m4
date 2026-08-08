@@ -554,6 +554,12 @@ d12_nir_sampler_state_count(nir_shader *nir,
             if (!nir_tex_instr_need_sampler(tex))
                continue;
 
+            /* A sampler handle selects the command's global sampler heap;
+             * it consumes no entry in the per-stage USC sampler file. */
+            if (nir_tex_instr_src_index(
+                   tex, nir_tex_src_sampler_handle) >= 0)
+               continue;
+
             if (nir_tex_instr_src_index(tex,
                                         nir_tex_src_sampler_offset) >= 0) {
                if (!map || map->sampler_count >= 17)

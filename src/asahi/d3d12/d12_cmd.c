@@ -1497,17 +1497,23 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures,
                          uint64_t *out_pbes, uint64_t *out_heap,
                          uint64_t *out_heap_textures,
-                         uint64_t *out_heap_pbes)
+                         uint64_t *out_heap_pbes,
+                         uint64_t *out_heap_samplers)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
    const struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
    const struct d12_descriptor *const *sources =
       compute ? list->compute_root_source : list->graphics_root_source;
+   const struct d12_descriptor *sampler_table =
+      compute ? list->compute_sampler_table : list->graphics_sampler_table;
+   const struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
 
    *out_heap = 0;
    *out_heap_textures = 0;
    *out_heap_pbes = 0;
+   *out_heap_samplers = 0;
 
    /* Three arrays back to back: resource base addresses, UAV counter
     * addresses for bufferUpdateCounter, then buffer-view counts for
@@ -1610,9 +1616,33 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    if (!metadata_gpu)
       return false;
 
+   /* Resource and sampler slots are independent namespaces. Oversized
+    * sampler ranges store their first global heap index in this fourth
+    * plane; finite/static samplers continue through the compact USC file. */
+   bool rooted_samplers = false;
+   if (rs) {
+      for (unsigned i = 0; i < rs->map.count; i++) {
+         rooted_samplers |= rs->map.entries[i].klass == D12_RES_SAMPLER &&
+                            rs->map.entries[i].unbounded;
+      }
+   }
+
+   uint64_t sampler_tables_gpu = 0;
+   if (rooted_samplers) {
+      uint64_t sampler_bases[D12_MAX_RESOURCE_BINDINGS];
+      for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++)
+         sampler_bases[i] = sampler_table[i].address;
+
+      sampler_tables_gpu = d12_list_upload(
+         list, sampler_bases, sizeof(sampler_bases), 8);
+      if (!sampler_tables_gpu)
+         return false;
+   }
+
    uint64_t header[] = {
       tables_gpu + D12_ROOT_RESOURCE_BASE * sizeof(uint64_t),
       metadata_gpu,
+      sampler_tables_gpu,
    };
    static_assert(sizeof(header) == D12_ROOT_HEADER_SIZE,
                  "root header ABI mismatch");
@@ -1624,9 +1654,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    *out_root = d12_list_upload(list, &header_gpu, sizeof(header_gpu), 8);
    if (!*out_root)
       return false;
-
-   const struct d12_root_signature *rs =
-      compute ? list->compute_rs : list->graphics_rs;
 
    /* A bindless texture handle is a byte offset from this heap. Allocate a
     * null descriptor for every slot declared by the active root signature,
@@ -1911,6 +1938,24 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                    (unsigned long long)textures,
                    (unsigned long long)pbes,
                    bound_heap->desc.NumDescriptors);
+      }
+   }
+
+   struct d12_descriptor_heap *bound_samplers =
+      list->sampler_descriptor_heap;
+   if (bound_samplers && bound_samplers->sampler_bo) {
+      uint64_t samplers = bound_samplers->sampler_bo->va->addr;
+      *out_heap_samplers =
+         d12_list_upload(list, &samplers, sizeof(samplers), 8);
+      if (!*out_heap_samplers)
+         return false;
+
+      if (validate) {
+         mesa_logi("binding validation: bindless sampler heap=0x%llx "
+                   "count=%u home=0x%llx valid=1",
+                   (unsigned long long)samplers,
+                   bound_samplers->desc.NumDescriptors,
+                   (unsigned long long)*out_heap_samplers);
       }
    }
 
@@ -2309,6 +2354,7 @@ struct d12_dispatch_uniforms {
    uint64_t heap;
    uint64_t heap_textures;
    uint64_t heap_pbes;
+   uint64_t heap_samplers;
    uint64_t draw;
    uint64_t vertex_params;
    uint64_t geom_params;
@@ -2474,7 +2520,7 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    struct d12_device *device = list->device;
 
    uint32_t usc;
-   size_t usc_size = agx_usc_size(16);
+   size_t usc_size = agx_usc_size(18);
    uint8_t *usc_cpu = d12_list_alloc_usc(list, usc_size, &usc);
    if (!usc_cpu)
       return 0;
@@ -2559,6 +2605,10 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
       agx_usc_uniform(&b, D12_UNIFORM_HEAP_PBES,
                       D12_UNIFORM_HEAP_PBE_REGS, u->heap_pbes);
    }
+   if (u->heap_samplers) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_SAMPLERS,
+                      D12_UNIFORM_HEAP_SAMPLER_REGS, u->heap_samplers);
+   }
 
    /*
     * Constants the compiler promoted out of the instruction stream live in
@@ -2638,6 +2688,41 @@ d12_compute_launch_word(const struct agx_shader_info *info)
    return launch;
 }
 
+static bool
+d12_segment_bind_sampler_heap(struct d12_cmd_list *list,
+                              struct d12_segment *seg, bool required)
+{
+   if (!required)
+      return true;
+
+   struct d12_descriptor_heap *heap = list->sampler_descriptor_heap;
+   if (!heap || !heap->sampler_bo ||
+       heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+      mesa_loge("shader uses bindless samplers with no sampler heap bound");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   if (heap->desc.NumDescriptors > 1024) {
+      mesa_loge("sampler heap has %u entries; AGX firmware supports 1024",
+                heap->desc.NumDescriptors);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   uint64_t address = heap->sampler_bo->va->addr;
+   if (seg->sampler_heap &&
+       (seg->sampler_heap != address ||
+        seg->sampler_count != heap->desc.NumDescriptors)) {
+      mesa_loge("one hardware segment references multiple sampler heaps");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   seg->sampler_heap = address;
+   seg->sampler_count = heap->desc.NumDescriptors;
+   return true;
+}
+
 static void
 d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                       unsigned z, uint64_t indirect_args)
@@ -2658,14 +2743,19 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!seg)
       return;
 
+   if (!d12_segment_bind_sampler_heap(
+          list, seg, pso->info.uses_sampler_heap))
+      return;
+
    if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, &pso->info))
       return;
 
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
    uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
+   uint64_t heap_samplers_gpu = 0;
    if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu,
                                  &pbes_gpu, &heap_gpu, &heap_textures_gpu,
-                                 &heap_pbes_gpu))
+                                 &heap_pbes_gpu, &heap_samplers_gpu))
       return;
 
    uint8_t *usc_cpu = NULL;
@@ -2676,7 +2766,8 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                                       .pbes = pbes_gpu,
                                       .heap = heap_gpu,
                                       .heap_textures = heap_textures_gpu,
-                                      .heap_pbes = heap_pbes_gpu},
+                                      .heap_pbes = heap_pbes_gpu,
+                                      .heap_samplers = heap_samplers_gpu},
       true, D3D12_SHADER_VISIBILITY_ALL, &usc_cpu);
    if (!usc)
       return;
@@ -2748,7 +2839,7 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
                   uint64_t root_gpu, uint64_t textures_gpu, uint64_t pbes_gpu,
                   uint64_t heap_gpu, uint64_t heap_textures_gpu,
-                  uint64_t heap_pbes_gpu,
+                  uint64_t heap_pbes_gpu, uint64_t heap_samplers_gpu,
                   uint64_t draw_gpu, uint64_t blend_gpu,
                   D3D12_SHADER_VISIBILITY visibility,
                   const struct d12_dispatch_uniforms *poly)
@@ -2756,11 +2847,11 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
    struct d12_device *device = list->device;
 
    uint32_t usc;
-   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(16), &usc);
+   uint8_t *cpu = d12_list_alloc_usc(list, agx_usc_size(18), &usc);
    if (!cpu)
       return 0;
 
-   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(16));
+   struct agx_usc_builder b = agx_usc_builder(cpu, agx_usc_size(18));
 
    /* USC uniform records must be emitted in ascending register order.
     * Fragment registers 4..11 carry D3D12's four blend constants, followed
@@ -2836,6 +2927,10 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
       agx_usc_uniform(&b, D12_UNIFORM_HEAP_PBES,
                       D12_UNIFORM_HEAP_PBE_REGS, heap_pbes_gpu);
    }
+   if (heap_samplers_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_HEAP_SAMPLERS,
+                      D12_UNIFORM_HEAP_SAMPLER_REGS, heap_samplers_gpu);
+   }
 
    /* Promoted constants start above D12_UNIFORM_RESERVED, so bind them only
     * after every driver-owned uniform to preserve ascending register order. */
@@ -2896,9 +2991,9 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
 
    size_t usc_used = b.head - cpu;
    if (getenv("D3D12AGX_VALIDATE_BINDINGS") &&
-       usc_used > agx_usc_size(16)) {
+       usc_used > agx_usc_size(18)) {
       mesa_loge("binding validation: graphics USC used %zu bytes of %zu",
-                usc_used, (size_t)agx_usc_size(16));
+                usc_used, (size_t)agx_usc_size(18));
       list->state = D12_LIST_ERROR;
       return 0;
    }
@@ -3301,6 +3396,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       .heap = out_poly->heap,
       .heap_textures = out_poly->heap_textures,
       .heap_pbes = out_poly->heap_pbes,
+      .heap_samplers = out_poly->heap_samplers,
       /* poly_nir_lower_sw_vs reads the base vertex from here. */
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
@@ -3583,6 +3679,7 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       .heap = out_poly->heap,
       .heap_textures = out_poly->heap_textures,
       .heap_pbes = out_poly->heap_pbes,
+      .heap_samplers = out_poly->heap_samplers,
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
       .tess_params = tp_ptr,
@@ -3845,6 +3942,7 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       .heap = out_poly->heap,
       .heap_textures = out_poly->heap_textures,
       .heap_pbes = out_poly->heap_pbes,
+      .heap_samplers = out_poly->heap_samplers,
       .draw = draw_gpu,
       .mesh_params = mp_ptr,
       /* Published by the caller BEFORE this function runs: the
@@ -4041,9 +4139,10 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     */
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
    uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
+   uint64_t heap_samplers_gpu = 0;
    if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu,
                                  &pbes_gpu, &heap_gpu, &heap_textures_gpu,
-                                 &heap_pbes_gpu))
+                                 &heap_pbes_gpu, &heap_samplers_gpu))
       return;
 
    /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM memory.
@@ -4078,6 +4177,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       .heap = heap_gpu,
       .heap_textures = heap_textures_gpu,
       .heap_pbes = heap_pbes_gpu,
+      .heap_samplers = heap_samplers_gpu,
    };
 
    /*
@@ -4197,6 +4297,11 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       : vstage == &pso->ms_rast ? D3D12_SHADER_VISIBILITY_MESH
                                   : D3D12_SHADER_VISIBILITY_VERTEX;
 
+   if (!d12_segment_bind_sampler_heap(
+          list, seg, vstage->info.uses_sampler_heap ||
+                     pso->fs.info.uses_sampler_heap))
+      return;
+
    if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_VS,
                                     &vstage->info) ||
        !d12_segment_reserve_scratch(list, seg, D12_SCRATCH_FS,
@@ -4205,7 +4310,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    uint32_t vs_usc = d12_gfx_stage_usc(
       list, vstage, false, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
-      heap_gpu, heap_textures_gpu, heap_pbes_gpu,
+      heap_gpu, heap_textures_gpu, heap_pbes_gpu, heap_samplers_gpu,
       draw_gpu, 0, vertex_visibility,
       (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
          ? &poly_u
@@ -4213,7 +4318,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
                                        root_gpu, textures_gpu, pbes_gpu,
                                        heap_gpu, heap_textures_gpu,
-                                       heap_pbes_gpu,
+                                       heap_pbes_gpu, heap_samplers_gpu,
                                        draw_gpu, blend_gpu,
                                        D3D12_SHADER_VISIBILITY_PIXEL, NULL);
    if (!vs_usc || !fs_usc)
@@ -5100,9 +5205,76 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
           d12_binding_map_root_range_unbounded(
              &rs->map, root_range, range->base_register)) {
          if (klass == D12_RES_SAMPLER) {
-            mesa_loge("heap-indexed sampler range unsupported");
-            list->state = D12_LIST_ERROR;
-            return;
+            struct d12_descriptor_heap *heap =
+               list->sampler_descriptor_heap;
+            if (!heap || !heap->sampler_bo ||
+                heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+               mesa_loge("heap-indexed sampler table has no shader-visible "
+                         "sampler heap bound");
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+
+            uintptr_t heap_start = (uintptr_t)heap->slots;
+            size_t heap_bytes = (size_t)heap->desc.NumDescriptors *
+                                sizeof(struct d12_descriptor);
+            uintptr_t handle = (uintptr_t)slots;
+            if (handle < heap_start || handle - heap_start >= heap_bytes ||
+                (handle - heap_start) % sizeof(struct d12_descriptor)) {
+               mesa_loge("heap-indexed sampler table handle is outside the "
+                         "bound sampler heap");
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+
+            size_t heap_index =
+               (handle - heap_start) / sizeof(struct d12_descriptor);
+            if ((size_t)offset >= heap->desc.NumDescriptors - heap_index) {
+               mesa_loge("unbounded sampler range offset %u is outside a "
+                         "%u-slot heap at index %zu", offset,
+                         heap->desc.NumDescriptors, heap_index);
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+
+            unsigned slot = d12_binding_map_find_root_range(
+               &rs->map, root_range, range->base_register);
+            if (slot == ~0u ||
+                !d12_binding_map_root_range_unbounded(
+                   &rs->map, root_range, range->base_register)) {
+               mesa_loge("heap-indexed sampler range has no binding-map "
+                         "base");
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+
+            size_t first = heap_index + offset;
+            sampler_table[slot] = (struct d12_descriptor){
+               /* This plane is an index, not an address. Index zero is a
+                * valid first sampler and must remain distinguishable from
+                * an absent plane through the root-signature map. */
+               .address = first,
+            };
+
+            if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+               size_t remaining = heap->desc.NumDescriptors - first;
+               size_t scan = MIN2(remaining, 1024);
+               unsigned populated = 0;
+               for (size_t i = 0; i < scan; i++)
+                  populated += heap->slots[first + i].sampler_kind ==
+                               D12_DESC_SAMPLER;
+
+               mesa_logi("binding validation: unbounded sampler range "
+                         "space=%u reg=%u root-slot=%u heap-index=%zu "
+                         "remaining=%zu scan=%zu populated=%u valid=%u",
+                         range->space, range->base_register, slot, first,
+                         remaining, scan, populated, populated == scan);
+               if (populated != scan) {
+                  list->state = D12_LIST_ERROR;
+                  return;
+               }
+            }
+            continue;
          }
 
          struct d12_descriptor_heap *heap =
@@ -5437,8 +5609,15 @@ d12_list_SetDescriptorHeaps(ID3D12GraphicsCommandList6 *iface, UINT count,
 
       if (heap->desc.Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV)
          list->resource_descriptor_heap = heap;
-      else
+      else {
+         /* The DRM command, not an individual USC program, owns the
+          * bindless sampler heap. End any existing command before changing
+          * it so earlier dispatches/draws retain their recorded heap. */
+         if (list->sampler_descriptor_heap != heap &&
+             (list->cdm_open || list->render_open))
+            d12_list_close_cdm(list);
          list->sampler_descriptor_heap = heap;
+      }
    }
 }
 

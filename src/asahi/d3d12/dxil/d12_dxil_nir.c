@@ -1246,6 +1246,7 @@ enum d12_root_plane {
    D12_ROOT_PLANE_RESOURCE,
    D12_ROOT_PLANE_COUNTER,
    D12_ROOT_PLANE_BUFINFO,
+   D12_ROOT_PLANE_SAMPLER,
    D12_ROOT_PLANE_ZERO,
    D12_ROOT_PLANE_DISCARD,
 };
@@ -1255,10 +1256,12 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
 {
    nir_builder *b = ctx->b;
    nir_def *root = nir_load_root_agx(b);
-   nir_def *header = nir_load_global(b, 2, 64, root, .align_mul = 8);
+   nir_def *header = nir_load_global(b, 3, 64, root, .align_mul = 8);
 
    if (plane == D12_ROOT_PLANE_RESOURCE)
       return nir_channel(b, header, 0);
+   if (plane == D12_ROOT_PLANE_SAMPLER)
+      return nir_channel(b, header, 2);
 
    nir_def *metadata = nir_channel(b, header, 1);
    nir_def *metadata_header =
@@ -1329,6 +1332,32 @@ native_image_handle(struct trans_ctx *ctx, const struct handle_ref *h,
       b, nir_imul_imm(b, index,
                       writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE),
       .desc_set = desc_set);
+}
+
+static nir_def *
+native_sampler_index(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   if (!h->rooted_heap)
+      return nir_u2u32(b, h->slot);
+
+   nir_def *sampler_table = root_plane(ctx, D12_ROOT_PLANE_SAMPLER);
+   nir_def *base = nir_load_global(
+      b, 1, 64,
+      nir_iadd_imm(b, sampler_table, h->base_slot * sizeof(uint64_t)),
+      .align_mul = 8);
+   return nir_iadd(b, nir_u2u32(b, base), nir_u2u32(b, h->slot));
+}
+
+static nir_def *
+native_sampler_handle(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   nir_def *index = native_sampler_index(ctx, h);
+   return nir_bindless_sampler_agx(
+      b, nir_imul_imm(b, index, D12_SAMPLER_DESC_SIZE),
+      nir_u2u16(b, nir_iadd_imm(b, index, 28)),
+      .desc_set = D12_UNIFORM_HEAP_SAMPLERS);
 }
 
 static nir_def *
@@ -3037,15 +3066,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th) || !handle_info(ctx, p[1], &sh))
          return false;
 
-      /* Rooted buffers can directly dereference d12_descriptor, but texture
-       * and sampler instructions still address the small transient AGX heaps
-       * by slot number.  Refuse the mismatch rather than risking an
-       * out-of-range hardware descriptor fetch. */
-      if (th.rooted_heap || sh.rooted_heap) {
-         trans_fail(ctx, "heap-indexed texture sampling unsupported");
-         return false;
-      }
-
       nir_def *x = get_def(ctx, p[2]);
       nir_def *y = get_def(ctx, p[3]);
       if (!x || !y) {
@@ -3116,18 +3136,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       default: op = nir_texop_tg4; break;
       }
 
-      nir_def *tex_handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
-         .desc_set = D12_UNIFORM_TEXTURES);
+      nir_def *tex_handle = native_image_handle(ctx, &th, false);
 
-      /* Samplers are NOT reached like textures. The backend's sampler
-       * operand is a 16-bit index into sampler STATE REGISTERS (the USC
-       * SAMPLER word loads them; el size 1 in the IR validator), so a
-       * constant slot is simply sampler_index and a computed one is a
-       * 16-bit sampler_offset. The bindless_sampler_agx path is a
-       * different mechanism (a device sampler heap) we do not use.
-       */
-      bool const_samp = nir_src_is_const(nir_src_for_ssa(sh.slot));
+      /* Finite/static samplers stay in the per-stage USC state file. Heap
+       * handles instead name the command's global sampler heap and carry
+       * both the packed-descriptor byte offset and hardware index. */
+      bool heap_samp = sh.heap;
+      bool const_samp = !heap_samp &&
+                        nir_src_is_const(nir_src_for_ssa(sh.slot));
 
       /* num_srcs was counted with the sampler as a source; a constant
        * sampler is an index attribute instead, not a source.
@@ -3144,7 +3160,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       unsigned si = 0;
       tex->src[si++] =
          nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
-      if (const_samp) {
+      if (heap_samp) {
+         tex->src[si++] = nir_tex_src_for_ssa(
+            nir_tex_src_sampler_handle,
+            native_sampler_handle(ctx, &sh));
+      } else if (const_samp) {
          tex->sampler_index = nir_src_as_uint(nir_src_for_ssa(sh.slot));
       } else {
          tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_sampler_offset,

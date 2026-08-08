@@ -446,6 +446,7 @@ struct d12_dxbc_ctx {
     * space and to the bounds needed for safe dynamic slot arithmetic. */
    struct d12_dxbc_binding_range cb_range[D12_DXBC_MAX_SIG];
    struct d12_dxbc_binding_range srv_range[D12_DXBC_MAX_SIG];
+   struct d12_dxbc_binding_range sampler_range[D12_DXBC_MAX_SIG];
    /* SM 5.1 UAV operands likewise carry a range ID plus an optional
     * relative register.  Retain the declaration's bounds and space so a
     * dynamic counter access maps into the root signature's dense slots.
@@ -982,7 +983,7 @@ tgsm_load_vec4(struct d12_dxbc_ctx *ctx,
 }
 
 /*
- * Select one of the three root-table planes.  The first-level header keeps
+ * Select one of the root-table planes. The first-level header keeps
  * the hot resource plane direct; its second pointer names a compact metadata
  * header containing the counter and BUFINFO planes.
  */
@@ -991,10 +992,12 @@ root_plane(struct d12_dxbc_ctx *ctx, unsigned plane)
 {
    nir_builder *b = &ctx->b;
    nir_def *root = nir_load_root_agx(b);
-   nir_def *header = nir_load_global(b, 2, 64, root, .align_mul = 8);
+   nir_def *header = nir_load_global(b, 3, 64, root, .align_mul = 8);
 
    if (plane == D12_ROOT_RESOURCE_BASE)
       return nir_channel(b, header, 0);
+   if (plane == D12_ROOT_SAMPLER_BASE)
+      return nir_channel(b, header, 2);
 
    nir_def *metadata = nir_load_global(
       b, 2, 64, nir_channel(b, header, 1), .align_mul = 8);
@@ -1658,6 +1661,42 @@ rooted_native_index(struct d12_dxbc_ctx *ctx, nir_def *descriptor)
    nir_def *heap = nir_load_descriptor_heap_agx(b);
    nir_def *offset = nir_isub(b, descriptor, heap);
    return nir_u2u32(b, nir_udiv_imm(b, offset, D12_HEAP_DESC_SIZE));
+}
+
+/* Global index selected by an SM 5.1 heap-indexed sampler operand. The root
+ * sampler plane stores the descriptor heap index at the start of each
+ * oversized API range; the operand supplies the register-relative offset. */
+static nir_def *
+sampler_rooted_index(struct d12_dxbc_ctx *ctx,
+                     const struct d12_dxbc_operand *sampler)
+{
+   nir_builder *b = &ctx->b;
+   if (sampler->file != D12_DXBC_FILE_SAMPLER ||
+       sampler->num_indices != 2 ||
+       sampler->index[0] >= D12_DXBC_MAX_SIG ||
+       !ctx->sampler_range[sampler->index[0]].valid || !ctx->map)
+      return NULL;
+
+   const struct d12_dxbc_binding_range *range =
+      &ctx->sampler_range[sampler->index[0]];
+   unsigned base_slot = ~0u;
+   unsigned rooted_reg = 0;
+   if (!unbounded_root_for_register(ctx->map, D12_RES_SAMPLER,
+                                    range->space, range->lower_bound,
+                                    &base_slot, &rooted_reg))
+      return NULL;
+
+   nir_def *reg = read_operand_index(ctx, sampler, 1);
+   if (!reg)
+      return NULL;
+
+   nir_def *sampler_table = root_plane(ctx, D12_ROOT_SAMPLER_BASE);
+   nir_def *base = nir_load_global(
+      b, 1, 64,
+      nir_iadd_imm(b, sampler_table, base_slot * sizeof(uint64_t)),
+      .align_mul = 8);
+   return nir_iadd(b, nir_u2u32(b, base),
+                   nir_iadd_imm(b, reg, -(int64_t)rooted_reg));
 }
 
 static nir_def *
@@ -2939,7 +2978,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_INPUT_SIV:
       case D12_DXBC_OP_DCL_OUTPUT:
       case D12_DXBC_OP_DCL_OUTPUT_SIV:
-      case D12_DXBC_OP_DCL_SAMPLER:
       case D12_DXBC_OP_DCL_INDEX_RANGE:
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
       case D12_DXBC_OP_DCL_STREAM:
@@ -3020,6 +3058,29 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
          b->shader->info.gs.vertices_in =
             mesa_vertices_per_prim(b->shader->info.gs.input_primitive);
+         ctx->tok += len;
+         continue;
+      }
+
+      case D12_DXBC_OP_DCL_SAMPLER: {
+         /* SM 5.1 sampler declarations spell
+          * s<range-id>[lower:upper], space. Preserve that mapping so a
+          * relative use can index the bound sampler heap rather than
+          * aliasing every access to range id zero. */
+         struct d12_dxbc_operand r;
+         unsigned n = decode_operand(ctx, args, avail, &r);
+         if (n && r.file == D12_DXBC_FILE_SAMPLER &&
+             r.num_indices == 3 && !r.index_is_relative[0] &&
+             !r.index_is_relative[1] && !r.index_is_relative[2] &&
+             r.index[0] < D12_DXBC_MAX_SIG && n < avail) {
+            ctx->sampler_range[r.index[0]] =
+               (struct d12_dxbc_binding_range) {
+                  .lower_bound = r.index[1],
+                  .upper_bound = r.index[2],
+                  .space = args[n],
+                  .valid = true,
+               };
+         }
          ctx->tok += len;
          continue;
       }
@@ -4548,6 +4609,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned tex_reg = 0, smp_reg = 0;
          bool have_tex = false, have_smp = false;
          const struct d12_dxbc_operand *tex_operand = NULL;
+         const struct d12_dxbc_operand *smp_operand = NULL;
          for (unsigned k = 1; k < nops; k++) {
             if (o[k].file == D12_DXBC_FILE_RESOURCE && !have_tex) {
                tex_reg = o[k].index[0];
@@ -4555,6 +4617,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                have_tex = true;
             } else if (o[k].file == D12_DXBC_FILE_SAMPLER && !have_smp) {
                smp_reg = o[k].index[0];
+               smp_operand = &o[k];
                have_smp = true;
             }
          }
@@ -4609,7 +4672,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                                                           D12_RES_SAMPLER, 0,
                                                           smp_reg)
                                    : smp_reg;
-         if (!is_ld && sslot == ~0u) {
+         nir_def *rooted_sampler =
+            have_smp ? sampler_rooted_index(ctx, smp_operand) : NULL;
+         if (ctx->error)
+            return;
+         if (!is_ld && sslot == ~0u && !rooted_sampler) {
             fail(ctx, "sampler is not bound by the root signature");
             return;
          }
@@ -4664,7 +4731,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          (is_ld_ms ? 1 : 0) +
                          (has_lod ? 1 : 0) + (compare ? 1 : 0) +
                          (dynamic_offset ? 1 : 0) +
-                         (has_offset ? 1 : 0);
+                         (has_offset ? 1 : 0) +
+                         (rooted_sampler ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld_ms ? nir_texop_txf_ms
@@ -4678,7 +4746,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          tex->is_shadow = compare;
          tex->dest_type = nir_type_float32;
          tex->coord_components = is_buffer ? 1 : 2;
-         tex->sampler_index = have_smp ? sslot : 0;
+         tex->sampler_index = have_smp && !rooted_sampler ? sslot : 0;
          if (gather) {
             for (unsigned k = 1; k < nops; k++) {
                /* SM4/5 encodes GatherRed/Green/Blue/Alpha as a select-one
@@ -4693,6 +4761,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned si = 0;
          tex->src[si++] =
             nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
+
+         if (rooted_sampler) {
+            nir_def *sampler_handle = nir_bindless_sampler_agx(
+               b,
+               nir_imul_imm(b, rooted_sampler, D12_SAMPLER_DESC_SIZE),
+               nir_u2u16(b, nir_iadd_imm(b, rooted_sampler, 28)),
+               .desc_set = D12_UNIFORM_HEAP_SAMPLERS);
+            tex->src[si++] = nir_tex_src_for_ssa(
+               nir_tex_src_sampler_handle, sampler_handle);
+         }
 
          if (is_ld) {
             /* DXBC registers are untyped. LD coordinates are integer bits

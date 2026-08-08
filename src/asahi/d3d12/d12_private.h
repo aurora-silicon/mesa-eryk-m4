@@ -906,6 +906,13 @@ struct d12_segment {
    /* CDM */
    uint32_t dispatches;
 
+   /* Bindless AGX samplers are addressed from one heap named by the DRM
+    * command, not by a USC sampler-state record. Capture the heap selected
+    * while this segment was recorded so a later SetDescriptorHeaps cannot
+    * retarget commands already in its control stream. */
+   uint64_t sampler_heap;
+   uint32_t sampler_count;
+
    /* Exact helper-data BOs required by this hardware command. These are
     * referenced by the segment until the command allocator guarantees that
     * a submitted recording is idle. */

@@ -228,6 +228,9 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    c->partial_bg.usc = seg->partial_bg_usc | 4;
    c->partial_eot.usc = seg->partial_eot_usc | 4;
 
+   c->sampler_heap = seg->sampler_heap;
+   c->sampler_count = seg->sampler_count;
+
    static_assert(sizeof(c->bg.rsrc_spec) == sizeof(seg->bg_counts),
                  "counts word must match rsrc_spec");
    memcpy(&c->bg.rsrc_spec, &seg->bg_counts, sizeof(seg->bg_counts));
@@ -615,6 +618,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                   list->stream_bo->va->addr + seg->stream_start,
                .cdm_ctrl_stream_end =
                   list->stream_bo->va->addr + seg->stream_end,
+               .sampler_heap = seg->sampler_heap,
+               .sampler_count = seg->sampler_count,
             };
             if (seg->scratch_cs_bo) {
                cmd.helper.data = seg->scratch_cs_bo->va->addr;
