@@ -40,7 +40,14 @@
 #include "nir_serialize.h"
 #include "vdrm.h"
 
-static inline int
+/*
+ * honeykrisp-h1-execution.md SS1/SS2.1: promoted from `static inline` to a
+ * plain external function so it can be installed as the `simple_ioctl` op
+ * (agx_device.h) in BOTH agx_device_drm_ops (below) and
+ * agx_virtio_device_ops (agx_device_virtio.c) -- it already dispatches on
+ * dev->is_virtio itself, so one function correctly backs both instances.
+ */
+int
 asahi_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req)
 {
    if (dev->is_virtio) {
@@ -48,6 +55,30 @@ asahi_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req)
    } else {
       return drmIoctl(dev->fd, cmd, req);
    }
+}
+
+/*
+ * honeykrisp-h1-execution.md SS1/SS2.1: Linux body for the `bo_munmap` op.
+ * Installed in both agx_device_drm_ops and agx_virtio_device_ops -- plain
+ * munmap(2) behavior doesn't differ between the two Linux backends.
+ */
+void
+agx_drm_bo_munmap(struct agx_device *dev, struct agx_bo *bo)
+{
+   munmap(bo->_map, bo->size);
+}
+
+/*
+ * honeykrisp-h1-execution.md SS1/SS2.1: Linux body for the `bo_free` op
+ * (the DRM_IOCTL_GEM_CLOSE tail of the former inline agx_bo_free()).
+ * Installed in both agx_device_drm_ops and agx_virtio_device_ops -- GEM
+ * handles are always local-fd DRM-core objects, even under virtio-gpu.
+ */
+void
+agx_drm_bo_close(struct agx_device *dev, uint32_t handle)
+{
+   struct drm_gem_close args = {.handle = handle};
+   drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &args);
 }
 
 /* clang-format off */
@@ -87,7 +118,7 @@ agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
    const uint64_t handle = bo->handle;
 
    if (bo->_map)
-      munmap(bo->_map, bo->size);
+      dev->ops.bo_munmap(dev, bo);
 
    /* Free the VA. No need to unmap the BO or unbind the VA, as the kernel will
     * take care of that when we close it.
@@ -102,8 +133,7 @@ agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
    memset(bo, 0, sizeof(*bo));
    __sync_synchronize();
 
-   struct drm_gem_close args = {.handle = handle};
-   drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &args);
+   dev->ops.bo_free(dev, handle);
 }
 
 static int
@@ -473,6 +503,9 @@ const agx_device_ops_t agx_device_drm_ops = {
    .submit = agx_submit,
    .bo_bind_object = agx_bo_bind_object,
    .bo_unbind_object = agx_bo_unbind_object,
+   .simple_ioctl = asahi_simple_ioctl,
+   .bo_munmap = agx_drm_bo_munmap,
+   .bo_free = agx_drm_bo_close,
 };
 
 static uint64_t
@@ -621,7 +654,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    uint64_t user_size = vm_create.kernel_start - user_start;
 
-   int ret = asahi_simple_ioctl(dev, DRM_IOCTL_ASAHI_VM_CREATE, &vm_create);
+   int ret = dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_VM_CREATE, &vm_create);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_ASAHI_VM_CREATE failed: %m\n");
       assert(0);
@@ -757,7 +790,7 @@ agx_create_command_queue(struct agx_device *dev,
    };
 
    int ret =
-      asahi_simple_ioctl(dev, DRM_IOCTL_ASAHI_QUEUE_CREATE, &queue_create);
+      dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_QUEUE_CREATE, &queue_create);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_ASAHI_QUEUE_CREATE failed: %m\n");
       assert(0);
@@ -781,8 +814,8 @@ agx_destroy_command_queue(struct agx_device *dev, uint32_t queue_id)
       .queue_id = queue_id,
    };
 
-   return asahi_simple_ioctl(dev, DRM_IOCTL_ASAHI_QUEUE_DESTROY,
-                             &queue_destroy);
+   return dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_QUEUE_DESTROY,
+                                &queue_destroy);
 }
 
 int
@@ -873,7 +906,7 @@ agx_get_gpu_timestamp(struct agx_device *dev)
 {
    struct drm_asahi_get_time get_time = {.flags = 0};
 
-   int ret = asahi_simple_ioctl(dev, DRM_IOCTL_ASAHI_GET_TIME, &get_time);
+   int ret = dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_GET_TIME, &get_time);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_ASAHI_GET_TIME failed: %m\n");
    }

@@ -83,6 +83,39 @@ typedef struct {
    int (*bo_bind_object)(struct agx_device *dev,
                          struct drm_asahi_gem_bind_object *bind);
    int (*bo_unbind_object)(struct agx_device *dev, uint32_t object_handle);
+
+   /*
+    * honeykrisp-h1-execution.md SS1 "widen the table by three ops": lets
+    * agx_device.c's remaining out-of-ops-table drm/OS call sites
+    * (asahi_simple_ioctl's four callers -- VM_CREATE, QUEUE_CREATE,
+    * QUEUE_DESTROY, GET_TIME -- plus agx_bo_free()'s munmap and GEM_CLOSE
+    * tail) route through the ops table like every other backend operation,
+    * so a non-libdrm backend (e.g. the Windows winsys, agx_device_win.c)
+    * never needs its own copy of agx_bo_free()/agx_create_command_queue()/
+    * agx_destroy_command_queue()/agx_get_gpu_timestamp() -- only these three
+    * new leaf ops.
+    *
+    * simple_ioctl: passthrough for the four asahi_simple_ioctl callers;
+    * `cmd` is always one of the DRM_IOCTL_ASAHI_* pinned literals. The Linux
+    * body (asahi_simple_ioctl) already dispatches on dev->is_virtio itself,
+    * so the SAME function is installed in both agx_device_drm_ops and
+    * agx_virtio_device_ops.
+    *
+    * bo_munmap: unmap bo->_map (bo->size bytes). Only ever called from
+    * agx_bo_free() when bo->_map is non-NULL.
+    *
+    * bo_free: release the OS/kernel object referenced by `handle` (GEM_CLOSE
+    * on Linux). Deliberately takes the raw handle, not `struct agx_bo *`,
+    * unlike bo_munmap/bo_mmap: agx_bo_free() must memset() the `bo`
+    * bookkeeping struct to all-zero *before* issuing the kernel-visible free
+    * (see the comment at its call site -- avoids a lookup-table race with a
+    * concurrently reused handle number), so by the time this op runs
+    * `bo->handle` has already been zeroed and cannot be read back out of
+    * `bo`.
+    */
+   int (*simple_ioctl)(struct agx_device *dev, unsigned cmd, void *req);
+   void (*bo_munmap)(struct agx_device *dev, struct agx_bo *bo);
+   void (*bo_free)(struct agx_device *dev, uint32_t handle);
 } agx_device_ops_t;
 
 int agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
@@ -90,6 +123,20 @@ int agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
 
 int agx_bind_timestamps(struct agx_device *dev, struct agx_bo *bo,
                         uint32_t *handle);
+
+/*
+ * Linux/virtio-shared op bodies backing the three ops added just above.
+ * Both agx_device_drm_ops (agx_device.c) and agx_virtio_device_ops
+ * (agx_device_virtio.c) install the SAME functions here: generic DRM-core
+ * behavior (GEM_CLOSE, plain munmap) and asahi_simple_ioctl's own existing
+ * is_virtio dispatch don't differ between the two Linux backends -- exactly
+ * why this code was unconditional (not backend-specific) before this ops
+ * widening existed. Declared here (like agx_bo_bind/agx_bind_timestamps
+ * above) so agx_device_virtio.c can reference the agx_device.c definitions.
+ */
+int asahi_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req);
+void agx_drm_bo_munmap(struct agx_device *dev, struct agx_bo *bo);
+void agx_drm_bo_close(struct agx_device *dev, uint32_t handle);
 
 struct agx_device {
    uint32_t debug;
@@ -108,6 +155,16 @@ struct agx_device {
 
    /* Device handle */
    int fd;
+
+   /*
+    * honeykrisp-h1-execution.md SS1: Windows winsys handle (agx_device_win.c
+    * agx_win_open_device()), used as the DeviceIoControl target for every
+    * ntagx_ioctl() call. NULL/unused on Linux/virtio, where `fd` above is
+    * the live handle instead; `fd` stays -1 on Windows (opaque pointer, not
+    * cast to/from `int fd` -- real type is an NT HANDLE, kept void* here so
+    * this header stays includable without <windows.h>).
+    */
+   void *hdev;
 
    /* VM handle */
    uint32_t vm_id;
