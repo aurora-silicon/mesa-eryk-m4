@@ -2377,9 +2377,80 @@ d12_device_CreateUnorderedAccessView(
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
-   if (desc && desc->ViewDimension != D3D12_UAV_DIMENSION_BUFFER) {
+   D3D12_UAV_DIMENSION dimension = desc ? desc->ViewDimension
+                                        : D3D12_UAV_DIMENSION_UNKNOWN;
+
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
+      const uint32_t resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
+      const uint32_t resource_levels = MAX2(res->desc.MipLevels, 1);
+      uint32_t level = 0, first_layer = 0, layers = 1;
+      bool array = false;
+
+      if (samples != 1) {
+         mesa_loge("CreateUnorderedAccessView: multisample textures cannot "
+                   "have UAVs");
+         return;
+      }
+
+      if (!desc) {
+         array = resource_layers > 1;
+         layers = resource_layers;
+      } else if (dimension == D3D12_UAV_DIMENSION_TEXTURE2D) {
+         level = desc->Texture2D.MipSlice;
+         if (resource_layers != 1) {
+            mesa_loge("CreateUnorderedAccessView: TEXTURE2D view requires a "
+                      "single-layer resource");
+            return;
+         }
+      } else if (dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY) {
+         array = true;
+         level = desc->Texture2DArray.MipSlice;
+         first_layer = desc->Texture2DArray.FirstArraySlice;
+         layers = desc->Texture2DArray.ArraySize;
+         if (layers == UINT32_MAX)
+            layers = resource_layers - MIN2(first_layer, resource_layers);
+      } else {
+         mesa_loge("CreateUnorderedAccessView: texture view dimension %d "
+                   "unsupported", (int)dimension);
+         return;
+      }
+
+      if (level >= resource_levels || first_layer >= resource_layers ||
+          !layers || layers > resource_layers - first_layer) {
+         mesa_loge("CreateUnorderedAccessView: texture range level %u/%u "
+                   "layers %u+%u/%u is out of range", level,
+                   resource_levels, first_layer, layers, resource_layers);
+         return;
+      }
+
+      DXGI_FORMAT view_format =
+         desc && desc->Format != DXGI_FORMAT_UNKNOWN ? desc->Format
+                                                     : res->desc.Format;
+      enum pipe_format pf = d12_format_to_pipe(view_format);
+      if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+          !ail_pixel_format[pf].texturable ||
+          util_format_is_depth_or_stencil(pf)) {
+         mesa_loge("CreateUnorderedAccessView: texture format %u is not "
+                   "readable by AGX", (unsigned)view_format);
+         return;
+      }
+
+      slot->resource = res;
+      slot->address =
+         res->addr + (uint64_t)first_layer * res->layout.layer_stride_B;
+      slot->texture_layers = layers;
+      slot->texture_level = level;
+      slot->format = view_format;
+      slot->kind = D12_DESC_UAV;
+      slot->texture_array = array;
+      return;
+   }
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       (desc && dimension != D3D12_UAV_DIMENSION_BUFFER)) {
       mesa_loge("CreateUnorderedAccessView: view dimension %d unsupported",
-                (int)desc->ViewDimension);
+                (int)dimension);
       return;
    }
 

@@ -368,8 +368,20 @@ struct d12_descriptor {
          uint64_t counter_address; /* UAV counter, or 0 */
 
          struct d12_resource *resource; /* not referenced; app keeps alive */
-         uint32_t size_B;
-         uint32_t stride_B;
+         union {
+            struct {
+               uint32_t size_B;
+               uint32_t stride_B;
+            };
+
+            /* Texture views do not publish buffer metadata. Reuse those
+             * two words for the selected layer range and mip while keeping
+             * the descriptor's 40-byte shader-visible ABI unchanged. */
+            struct {
+               uint32_t texture_layers;
+               uint32_t texture_level;
+            };
+         };
          DXGI_FORMAT format;
          uint8_t kind; /* enum d12_descriptor_kind */
          union {
@@ -377,7 +389,7 @@ struct d12_descriptor {
             uint8_t dsv_flags;   /* D3D12_DSV_FLAGS */
          };
          uint8_t texture_plane;
-         uint8_t pad;
+         uint8_t texture_array;
       };
 
       /* Sampler heaps are type-disjoint from resource heaps, so their slots

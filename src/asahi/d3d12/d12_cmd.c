@@ -1501,7 +1501,9 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     */
    unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
-      if (table[i].kind == D12_DESC_SRV && table[i].resource &&
+      if ((table[i].kind == D12_DESC_SRV ||
+           table[i].kind == D12_DESC_UAV) &&
+          table[i].resource &&
           (table[i].resource->desc.Dimension ==
               D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
            (table[i].resource->desc.Dimension ==
@@ -1536,7 +1538,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       agx_set_null_texture(&descs[i]);
 
    for (unsigned i = 0; i < last_texture; i++) {
-      if (table[i].kind != D12_DESC_SRV)
+      if (table[i].kind != D12_DESC_SRV && table[i].kind != D12_DESC_UAV)
          continue;
 
       struct d12_resource *res = table[i].resource;
@@ -1617,13 +1619,30 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
        * keep the S8 layout/address but pack the descriptor's channels and
        * type from that view interpretation.
        */
-      enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT : layout->format;
+      enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
+                                    : table[i].kind == D12_DESC_UAV
+                                         ? d12_format_to_pipe(table[i].format)
+                                         : layout->format;
+      if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+          !ail_pixel_format[pf].texturable ||
+          util_format_is_depth_or_stencil(pf))
+         continue;
+
       const struct util_format_description *fdesc =
          util_format_description(pf);
       const unsigned samples = MAX2(layout->sample_count_sa, 1);
+      const bool array = table[i].kind == D12_DESC_UAV &&
+                         table[i].texture_array;
+      const unsigned level = table[i].kind == D12_DESC_UAV
+                                ? table[i].texture_level
+                                : 0;
+      const unsigned layers = table[i].kind == D12_DESC_UAV
+                                 ? MAX2(table[i].texture_layers, 1)
+                                 : 1;
 
       agx_pack(&descs[i], TEXTURE, cfg) {
-         cfg.dimension = samples > 1
+         cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                         : samples > 1
                             ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
                             : AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = agx_translate_layout(layout->tiling);
@@ -1639,8 +1658,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.address = table[i].address;
          cfg.width = layout->width_px;
          cfg.height = layout->height_px;
-         cfg.first_level = 0;
-         cfg.last_level = 0;
+         cfg.first_level = level;
+         cfg.last_level = level;
          cfg.unk_mipmapped = layout->levels > 1;
          if (samples > 1)
             cfg.samples = agx_translate_sample_count(samples);
@@ -1655,8 +1674,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
              * different convention: bytes - 4, unshifted.
              */
             cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
+            if (array) {
+               cfg.depth_linear = layers;
+               cfg.layer_stride_linear = layout->layer_stride_B - 0x80;
+               cfg.extended = true;
+            }
          } else {
-            cfg.depth = 1;
+            cfg.depth = layers;
             cfg.page_aligned_layers = layout->page_aligned_layers;
          }
       }
@@ -1665,7 +1689,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    if (getenv("D3D12AGX_DUMP_TEX")) {
       for (unsigned i = 0; i < last_texture; i++) {
          struct d12_resource *res =
-            table[i].kind == D12_DESC_SRV ? table[i].resource : NULL;
+            (table[i].kind == D12_DESC_SRV ||
+             table[i].kind == D12_DESC_UAV) ? table[i].resource : NULL;
          fprintf(stderr,
                  "tex[%u] kind=%u dimension=%u va=0x%llx size=%u "
                  "stride=%u format=%u\n", i, table[i].kind,
@@ -1772,7 +1797,7 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
    return 0;
 }
 
-/* Recreate one API SRV's AGX descriptor in already-allocated command-list
+/* Recreate one API SRV/UAV's AGX descriptor in already-allocated command-list
  * storage.  This is the same packing performed while recording; Execute uses
  * it only for finite shader-visible table slots whose CPU descriptor changed
  * after Close.
@@ -1783,12 +1808,12 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
 {
    agx_set_null_texture(out);
 
-   if (d->kind != D12_DESC_SRV || !d->resource)
+   if ((d->kind != D12_DESC_SRV && d->kind != D12_DESC_UAV) || !d->resource)
       return;
 
    struct d12_resource *res = d->resource;
    if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-      if (d->format == DXGI_FORMAT_UNKNOWN)
+      if (d->kind != D12_DESC_SRV || d->format == DXGI_FORMAT_UNKNOWN)
          return;
 
       enum pipe_format pf = d12_format_to_pipe(d->format);
@@ -1839,13 +1864,27 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    if (!texture_bo || !layout->size_B)
       return;
 
-   enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT : layout->format;
+   enum pipe_format pf = stencil ? PIPE_FORMAT_R8_UINT
+                                 : d->kind == D12_DESC_UAV
+                                      ? d12_format_to_pipe(d->format)
+                                      : layout->format;
+   if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+       !ail_pixel_format[pf].texturable ||
+       util_format_is_depth_or_stencil(pf))
+      return;
+
    const struct util_format_description *fdesc = util_format_description(pf);
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
+   const bool array = d->kind == D12_DESC_UAV && d->texture_array;
+   const unsigned level = d->kind == D12_DESC_UAV ? d->texture_level : 0;
+   const unsigned layers = d->kind == D12_DESC_UAV
+                              ? MAX2(d->texture_layers, 1)
+                              : 1;
 
    agx_pack(out, TEXTURE, cfg) {
-      cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                                  : AGX_TEXTURE_DIMENSION_2D;
+      cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                      : samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                    : AGX_TEXTURE_DIMENSION_2D;
       cfg.layout = agx_translate_layout(layout->tiling);
       cfg.channels = ail_pixel_format[pf].channels;
       cfg.type = ail_pixel_format[pf].type;
@@ -1857,16 +1896,21 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       cfg.address = d->address;
       cfg.width = layout->width_px;
       cfg.height = layout->height_px;
-      cfg.first_level = 0;
-      cfg.last_level = 0;
+      cfg.first_level = level;
+      cfg.last_level = level;
       cfg.unk_mipmapped = layout->levels > 1;
       if (samples > 1)
          cfg.samples = agx_translate_sample_count(samples);
 
       if (layout->tiling == AIL_TILING_LINEAR) {
          cfg.stride = ail_get_linear_stride_B(layout, 0) - 16;
+         if (array) {
+            cfg.depth_linear = layers;
+            cfg.layer_stride_linear = layout->layer_stride_B - 0x80;
+            cfg.extended = true;
+         }
       } else {
-         cfg.depth = 1;
+         cfg.depth = layers;
          cfg.page_aligned_layers = layout->page_aligned_layers;
       }
    }

@@ -323,6 +323,8 @@ enum d12_dxbc_op {
 #define D12_DXBC_RESINFO_RETURN_TYPE_SHIFT 11
 #define D12_DXBC_RESINFO_RETURN_FLOAT      0
 #define D12_DXBC_RESINFO_RETURN_UINT       2
+#define D12_DXBC_RESOURCE_RETURN_SINT      3
+#define D12_DXBC_RESOURCE_RETURN_UINT      4
 #define D12_DXBC_RESOURCE_RETURN_FLOAT     5
 
 struct d12_dxbc_operand {
@@ -2850,17 +2852,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_FTOI: NEED(2); DST(nir_f2i32(b, SRC(1))); break;
       case D12_DXBC_OP_FTOU: NEED(2); DST(nir_f2u32(b, SRC(1))); break;
 
-      /* Comparisons produce an all-ones or all-zero mask, not a bool. */
-      case D12_DXBC_OP_EQ:  NEED(3); DST(nir_b2i32(b, nir_feq(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_NE:  NEED(3); DST(nir_b2i32(b, nir_fneu(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_LT:  NEED(3); DST(nir_b2i32(b, nir_flt(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_GE:  NEED(3); DST(nir_b2i32(b, nir_fge(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_IEQ: NEED(3); DST(nir_b2i32(b, nir_ieq(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_INE: NEED(3); DST(nir_b2i32(b, nir_ine(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_ILT: NEED(3); DST(nir_b2i32(b, nir_ilt(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_IGE: NEED(3); DST(nir_b2i32(b, nir_ige(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_ULT: NEED(3); DST(nir_b2i32(b, nir_ult(b, SRC(1), SRC(2)))); break;
-      case D12_DXBC_OP_UGE: NEED(3); DST(nir_b2i32(b, nir_uge(b, SRC(1), SRC(2)))); break;
+      /* Comparisons produce an all-ones or all-zero mask, not NIR's 1/0
+       * integer conversion of a boolean. Negating the 1/0 value preserves
+       * DXBC bitwise use of comparison results as well as control flow. */
+#define DXBC_MASK(cmp) nir_ineg(b, nir_b2i32(b, (cmp)))
+      case D12_DXBC_OP_EQ:  NEED(3); DST(DXBC_MASK(nir_feq(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_NE:  NEED(3); DST(DXBC_MASK(nir_fneu(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_LT:  NEED(3); DST(DXBC_MASK(nir_flt(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_GE:  NEED(3); DST(DXBC_MASK(nir_fge(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_IEQ: NEED(3); DST(DXBC_MASK(nir_ieq(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_INE: NEED(3); DST(DXBC_MASK(nir_ine(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_ILT: NEED(3); DST(DXBC_MASK(nir_ilt(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_IGE: NEED(3); DST(DXBC_MASK(nir_ige(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_ULT: NEED(3); DST(DXBC_MASK(nir_ult(b, SRC(1), SRC(2)))); break;
+      case D12_DXBC_OP_UGE: NEED(3); DST(DXBC_MASK(nir_uge(b, SRC(1), SRC(2)))); break;
+#undef DXBC_MASK
 
       case D12_DXBC_OP_MOVC:
          NEED(4);
@@ -3406,9 +3412,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             unsigned dim = ctx->uav_dim[reg];
             bool is_array =
                dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
+            unsigned return_type = ctx->uav_return_type[reg];
             if ((dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
                  !is_array) ||
-                ctx->uav_return_type[reg] != D12_DXBC_RESOURCE_RETURN_FLOAT ||
+                (return_type != D12_DXBC_RESOURCE_RETURN_FLOAT &&
+                 return_type != D12_DXBC_RESOURCE_RETURN_UINT &&
+                 return_type != D12_DXBC_RESOURCE_RETURN_SINT) ||
                 resource->num_indices != 1 ||
                 resource->index_is_relative[0]) {
                fail(ctx, "unsupported texture UAV load");
@@ -3433,7 +3442,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             tex->op = nir_texop_txf;
             tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
             tex->is_array = is_array;
-            tex->dest_type = nir_type_float32;
+            tex->dest_type = return_type == D12_DXBC_RESOURCE_RETURN_UINT
+                                ? nir_type_uint32
+                             : return_type == D12_DXBC_RESOURCE_RETURN_SINT
+                                ? nir_type_int32
+                                : nir_type_float32;
             tex->coord_components = is_array ? 3 : 2;
             tex->src[0] = nir_tex_src_for_ssa(
                nir_tex_src_texture_handle, handle);
