@@ -412,6 +412,7 @@ enum d12_dxbc_hs_phase {
 
 struct d12_dxbc_cf {
    enum d12_dxbc_cf_kind kind;
+   nir_if *nif;
    bool in_else;
    bool case_open;
    nir_def *switch_value;
@@ -470,12 +471,15 @@ struct d12_dxbc_ctx {
    unsigned num_temps;
    nir_variable *indexable_temps[D12_DXBC_MAX_SIG];
    uint32_t indexable_temp_size[D12_DXBC_MAX_SIG];
+   nir_def **indexable_temp_shadow[D12_DXBC_MAX_SIG];
+   bool indexable_temp_shadow_valid[D12_DXBC_MAX_SIG];
 
    /* DXBC control flow is STRUCTURED -- if/else/endif and loop/endloop
     * nest properly -- which is exactly what nir_push_if/nir_push_loop
     * want, so a stack of what we opened is enough to close them. */
    struct d12_dxbc_cf cf[64];
    unsigned cf_depth;
+   nir_if *conditional_return_if;
 
    const char *error;
 };
@@ -867,6 +871,46 @@ read_src_int(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    return read_src_typed(ctx, op, true);
 }
 
+static nir_def *
+emit_derivative(struct d12_dxbc_ctx *ctx, unsigned opcode,
+                const struct d12_dxbc_operand *src)
+{
+   nir_builder *b = &ctx->b;
+   bool hoist = src->file == D12_DXBC_FILE_INPUT &&
+                (ctx->cf_depth || ctx->conditional_return_if);
+
+   /* AGX evaluates derivatives using the currently active quad lanes. D3D
+    * keeps direct pixel-input derivatives valid across structured divergent
+    * branches, so place that pure input/derivative chain before the outermost
+    * if. Restrict this to direct inputs and all-if nesting: temporaries and
+    * loop-carried values need real dependence analysis rather than guessing. */
+   for (unsigned i = 0; hoist && i < ctx->cf_depth; i++)
+      hoist &= ctx->cf[i].kind == D12_DXBC_CF_IF && ctx->cf[i].nif;
+
+   nir_if *outer = ctx->conditional_return_if
+                      ? ctx->conditional_return_if
+                      : ctx->cf[0].nif;
+   nir_cursor saved = b->cursor;
+   if (hoist)
+      b->cursor = nir_before_cf_node(&outer->cf_node);
+
+   nir_def *value = read_src(ctx, src);
+   switch (opcode) {
+   case D12_DXBC_OP_DERIV_RTX:        value = nir_ddx(b, value); break;
+   case D12_DXBC_OP_DERIV_RTY:        value = nir_ddy(b, value); break;
+   case D12_DXBC_OP_DERIV_RTX_COARSE: value = nir_ddx_coarse(b, value); break;
+   case D12_DXBC_OP_DERIV_RTX_FINE:   value = nir_ddx_fine(b, value); break;
+   case D12_DXBC_OP_DERIV_RTY_COARSE: value = nir_ddy_coarse(b, value); break;
+   case D12_DXBC_OP_DERIV_RTY_FINE:   value = nir_ddy_fine(b, value); break;
+   default: UNREACHABLE("not a derivative opcode");
+   }
+
+   if (hoist)
+      b->cursor = saved;
+
+   return value;
+}
+
 /* Materialize one immediate, relative, or immediate-plus-relative operand
  * index.  SM 5.1 permits this independently for the selected cbuffer and
  * for the vector within it. */
@@ -1078,6 +1122,35 @@ read_src_typed(struct d12_dxbc_ctx *ctx,
       nir_def *index = read_operand_index(ctx, op, 1);
       if (!index)
          return nir_imm_zero(b, 4, 32);
+
+      /* fxc commonly materializes a small source array as an indexable
+       * temporary and then reads it under divergent fragment control flow.
+       * When every element has a dominating top-level SSA store, select the
+       * values directly. This avoids lowering a dynamic local-array read to
+       * AGX fragment stack traffic without weakening general memory
+       * semantics. */
+      unsigned file = op->index[0];
+      nir_def **shadow = ctx->indexable_temp_shadow[file];
+      unsigned count = ctx->indexable_temp_size[file];
+      bool complete = ctx->indexable_temp_shadow_valid[file] && shadow;
+      for (unsigned i = 0; complete && i < count; i++)
+         complete &= shadow[i] != NULL;
+
+      if (complete) {
+         if (nir_src_is_const(nir_src_for_ssa(index))) {
+            unsigned element = nir_src_as_uint(nir_src_for_ssa(index));
+            if (element < count) {
+               v = shadow[element];
+               break;
+            }
+         } else {
+            v = nir_undef(b, 4, 32);
+            for (unsigned i = 0; i < count; i++)
+               v = nir_bcsel(b, nir_ieq_imm(b, index, i), shadow[i], v);
+            break;
+         }
+      }
+
       nir_deref_instr *array =
          nir_build_deref_var(b, ctx->indexable_temps[op->index[0]]);
       v = nir_load_deref(b, nir_build_deref_array(b, array, index));
@@ -2311,6 +2384,30 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
       nir_def *index = read_operand_index(ctx, op, 1);
       if (!index)
          break;
+
+      unsigned file = op->index[0];
+      nir_def **shadow = ctx->indexable_temp_shadow[file];
+      if (ctx->cf_depth || !shadow ||
+          !nir_src_is_const(nir_src_for_ssa(index))) {
+         ctx->indexable_temp_shadow_valid[file] = false;
+      } else {
+         unsigned element = nir_src_as_uint(nir_src_for_ssa(index));
+         if (element >= ctx->indexable_temp_size[file]) {
+            ctx->indexable_temp_shadow_valid[file] = false;
+         } else {
+            nir_def *old = shadow[element];
+            if (!old)
+               old = nir_undef(b, 4, 32);
+
+            nir_def *components[4];
+            for (unsigned c = 0; c < 4; c++)
+               components[c] = nir_channel(b, mask & BITFIELD_BIT(c) ? value
+                                                                     : old,
+                                           c);
+            shadow[element] = nir_vec(b, components, 4);
+         }
+      }
+
       nir_deref_instr *array =
          nir_build_deref_var(b, ctx->indexable_temps[op->index[0]]);
       nir_store_deref(b, nir_build_deref_array(b, array, index), value, mask);
@@ -3007,6 +3104,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          ctx->indexable_temps[args[0]] = nir_local_variable_create(
             b->impl, glsl_array_type(glsl_vec4_type(), args[1], 0), "x");
          ctx->indexable_temp_size[args[0]] = args[1];
+         ctx->indexable_temp_shadow[args[0]] =
+            rzalloc_array(b->shader, nir_def *, args[1]);
+         if (!ctx->indexable_temp_shadow[args[0]]) {
+            fail(ctx, "out of memory for indexable temporary shadow");
+            return;
+         }
+         ctx->indexable_temp_shadow_valid[args[0]] = true;
          ctx->tok += len;
          continue;
       }
@@ -3499,16 +3603,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       case D12_DXBC_OP_RCP:       NEED(2); DST(nir_frcp(b, SRC(1))); break;
-      case D12_DXBC_OP_DERIV_RTX: NEED(2); DST(nir_ddx(b, SRC(1))); break;
-      case D12_DXBC_OP_DERIV_RTY: NEED(2); DST(nir_ddy(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTX:
+      case D12_DXBC_OP_DERIV_RTY:
       case D12_DXBC_OP_DERIV_RTX_COARSE:
-         NEED(2); DST(nir_ddx_coarse(b, SRC(1))); break;
       case D12_DXBC_OP_DERIV_RTX_FINE:
-         NEED(2); DST(nir_ddx_fine(b, SRC(1))); break;
       case D12_DXBC_OP_DERIV_RTY_COARSE:
-         NEED(2); DST(nir_ddy_coarse(b, SRC(1))); break;
       case D12_DXBC_OP_DERIV_RTY_FINE:
-         NEED(2); DST(nir_ddy_fine(b, SRC(1))); break;
+         NEED(2); DST(emit_derivative(ctx, opcode, &o[1])); break;
       case D12_DXBC_OP_COUNTBITS: NEED(2); DST(nir_bit_count(b, SRC(1))); break;
       case D12_DXBC_OP_FIRSTBIT_LO:  NEED(2); DST(nir_find_lsb(b, SRC(1))); break;
       case D12_DXBC_OP_FIRSTBIT_HI:
@@ -3808,9 +3909,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
          bool test_zero = !((op_tok >> 18) & 1);
          nir_def *c = nir_channel(b, SRC(0), 0);
-         nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
-         ctx->cf[ctx->cf_depth].kind = D12_DXBC_CF_IF;
-         ctx->cf[ctx->cf_depth].in_else = false;
+         nir_if *nif = nir_push_if(
+            b, test_zero ? nir_ieq_imm(b, c, 0) : nir_ine_imm(b, c, 0));
+         ctx->cf[ctx->cf_depth] = (struct d12_dxbc_cf) {
+            .kind = D12_DXBC_CF_IF,
+            .nif = nif,
+         };
          ctx->cf_depth++;
          break;
       }
@@ -5072,6 +5176,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             nir_pop_if(b, NULL);
             ctx->hs_instance_phase_open = false;
          }
+         if (ctx->cf_depth && !ctx->conditional_return_if &&
+             ctx->cf[0].kind == D12_DXBC_CF_IF && ctx->cf[0].nif)
+            ctx->conditional_return_if = ctx->cf[0].nif;
          if (ctx->tok + len < ctx->end) {
             const unsigned next_opcode = ctx->tok[len] & 0x7ff;
             const bool ends_hull_phase =
@@ -5089,8 +5196,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          NEED(1);
          bool test_zero = !((op_tok >> 18) & 1);
          nir_def *c = nir_channel(b, SRC(0), 0);
-         nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0)
-                                  : nir_ine_imm(b, c, 0));
+         nir_if *nif = nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0)
+                                                : nir_ine_imm(b, c, 0));
+         if (!ctx->conditional_return_if)
+            ctx->conditional_return_if = nif;
          nir_jump(b, nir_jump_return);
          nir_pop_if(b, NULL);
          break;
