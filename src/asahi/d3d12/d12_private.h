@@ -540,6 +540,30 @@ struct d12_indirect_argument_fixup {
 };
 
 /*
+ * Bundles are recorded before the direct command list state they inherit is
+ * known.  Keep draw calls logical until ExecuteBundle so render targets,
+ * viewport/scissor and root bindings come from the calling list.  Pipeline
+ * state and primitive topology are deliberately snapshotted separately:
+ * D3D12 does not inherit either of those into a bundle.
+ */
+struct d12_bundle_draw {
+   uint32_t vertex_count;
+   uint32_t instance_count;
+   uint32_t first_vertex;
+   uint32_t first_instance;
+   uint32_t first_index;
+   bool indexed;
+
+   struct d12_pipeline_state *pso;
+   struct d12_root_signature *graphics_rs;
+   enum mesa_prim topology;
+   unsigned patch_control_points;
+   bool pso_set;
+   bool graphics_rs_set;
+   bool topology_set;
+};
+
+/*
  * A query heap: storage for Count results of one type. The heap is just
  * a buffer; Begin/End/Resolve give it meaning.
  */
@@ -1189,6 +1213,14 @@ struct d12_cmd_list {
    struct util_dynarray descriptor_fixups;
    struct util_dynarray indirect_constant_fixups;
    struct util_dynarray indirect_argument_fixups;
+   struct util_dynarray bundle_draws;
+
+   /* Explicit state written while recording a bundle.  The final values are
+    * inherited back into its caller even when the bundle contains no draw.
+    */
+   bool bundle_pso_set;
+   bool bundle_graphics_rs_set;
+   bool bundle_topology_set;
 
    /* SetDescriptorHeaps state.  GPU descriptor handles remain CPU pointers
     * for application arithmetic, so the bound object is also how an

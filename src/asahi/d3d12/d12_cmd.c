@@ -362,6 +362,10 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    util_dynarray_clear(&list->descriptor_fixups);
    util_dynarray_clear(&list->indirect_constant_fixups);
    util_dynarray_clear(&list->indirect_argument_fixups);
+   util_dynarray_clear(&list->bundle_draws);
+   list->bundle_pso_set = false;
+   list->bundle_graphics_rs_set = false;
+   list->bundle_topology_set = false;
 
    /* Points into the stream BO, whose data floor has just been rewound, so
     * the old address is about to be handed out to somebody else.
@@ -5274,6 +5278,25 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
    if (!vertex_count_per_instance || !instance_count)
       return;
 
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE) {
+      struct d12_bundle_draw draw = {
+         .vertex_count = vertex_count_per_instance,
+         .instance_count = instance_count,
+         .first_vertex = start_vertex,
+         .first_instance = start_instance,
+         .pso = list->pso,
+         .graphics_rs = list->graphics_rs,
+         .topology = list->topology,
+         .patch_control_points = list->patch_control_points,
+         .pso_set = list->bundle_pso_set,
+         .graphics_rs_set = list->bundle_graphics_rs_set,
+         .topology_set = list->bundle_topology_set,
+      };
+      util_dynarray_append_typed(&list->bundle_draws,
+                                 struct d12_bundle_draw, draw);
+      return;
+   }
+
    d12_list_draw(list, vertex_count_per_instance, instance_count,
                  start_vertex, start_instance, false, 0, 0);
 }
@@ -5288,6 +5311,27 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
 
    if (!index_count_per_instance || !instance_count)
       return;
+
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE) {
+      struct d12_bundle_draw draw = {
+         .vertex_count = index_count_per_instance,
+         .instance_count = instance_count,
+         .first_vertex = (unsigned)base_vertex,
+         .first_instance = start_instance,
+         .first_index = start_index,
+         .indexed = true,
+         .pso = list->pso,
+         .graphics_rs = list->graphics_rs,
+         .topology = list->topology,
+         .patch_control_points = list->patch_control_points,
+         .pso_set = list->bundle_pso_set,
+         .graphics_rs_set = list->bundle_graphics_rs_set,
+         .topology_set = list->bundle_topology_set,
+      };
+      util_dynarray_append_typed(&list->bundle_draws,
+                                 struct d12_bundle_draw, draw);
+      return;
+   }
 
    /* Match the non-indexed path: without a PSO this draw is ignored before
     * any indexed-draw state is validated.
@@ -5554,6 +5598,9 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      list->bundle_topology_set = true;
+
    /* Geometry shaders take points and lines as input, so the topology
     * can no longer be assumed. Anything not listed here would be drawn
     * as the wrong primitive, so it is refused rather than approximated.
@@ -5630,6 +5677,8 @@ d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->graphics_rs = (struct d12_root_signature *)root_sig;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      list->bundle_graphics_rs_set = true;
 }
 
 /*
@@ -6247,6 +6296,61 @@ d12_list_SetPipelineState(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->pso = pso ? d12_pipeline_state_from_iface(pso) : NULL;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      list->bundle_pso_set = true;
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
+                       ID3D12GraphicsCommandList *bundle_iface)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_cmd_list *bundle = d12_cmd_list_from_iface(bundle_iface);
+
+   if (list->state != D12_LIST_RECORDING ||
+       list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      return;
+
+   if (!bundle || bundle->type != D3D12_COMMAND_LIST_TYPE_BUNDLE ||
+       bundle->state != D12_LIST_CLOSED || bundle->had_error) {
+      mesa_loge("ExecuteBundle: invalid or unclosed bundle");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   util_dynarray_foreach (&bundle->bundle_draws, struct d12_bundle_draw,
+                          draw) {
+      /* Pipeline state and primitive topology are not inherited from the
+       * caller.  A draw missing either has undefined output, so leave it as
+       * a no-op instead of silently borrowing the direct-list value.
+       */
+      if (!draw->pso_set || !draw->pso || !draw->topology_set)
+         continue;
+
+      list->pso = draw->pso;
+      list->topology = draw->topology;
+      list->patch_control_points = draw->patch_control_points;
+      if (draw->graphics_rs_set)
+         list->graphics_rs = draw->graphics_rs;
+
+      d12_list_draw(list, draw->vertex_count, draw->instance_count,
+                    draw->first_vertex, draw->first_instance, draw->indexed,
+                    draw->first_index, 0);
+      if (list->state != D12_LIST_RECORDING)
+         return;
+   }
+
+   /* All state explicitly set in a bundle is inherited back into the direct
+    * command list, including a bundle that records no draw.
+    */
+   if (bundle->bundle_pso_set)
+      list->pso = bundle->pso;
+   if (bundle->bundle_graphics_rs_set)
+      list->graphics_rs = bundle->graphics_rs;
+   if (bundle->bundle_topology_set) {
+      list->topology = bundle->topology;
+      list->patch_control_points = bundle->patch_control_points;
+   }
 }
 
 /* Clear API state without rewinding the command stream. Commands recorded
@@ -6432,6 +6536,7 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
       util_dynarray_fini(&list->descriptor_fixups);
       util_dynarray_fini(&list->indirect_constant_fixups);
       util_dynarray_fini(&list->indirect_argument_fixups);
+      util_dynarray_fini(&list->bundle_draws);
       d12_device_release(list->device);
       free(list);
    }
@@ -8637,6 +8742,7 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
    .RSSetScissorRects = d12_list_RSSetScissorRects,
    .DrawInstanced = d12_list_DrawInstanced,
    .DrawIndexedInstanced = d12_list_DrawIndexedInstanced,
+   .ExecuteBundle = d12_list_ExecuteBundle,
    .ExecuteIndirect = d12_list_ExecuteIndirect,
    .IASetIndexBuffer = d12_list_IASetIndexBuffer,
    .BeginQuery = d12_list_BeginQuery,
@@ -8700,6 +8806,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    util_dynarray_init(&list->descriptor_fixups, NULL);
    util_dynarray_init(&list->indirect_constant_fixups, NULL);
    util_dynarray_init(&list->indirect_argument_fixups, NULL);
+   util_dynarray_init(&list->bundle_draws, NULL);
    if (allocator)
       allocator->recording_lists++;
    d12_device_add_ref(device);
