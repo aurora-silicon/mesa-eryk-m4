@@ -289,6 +289,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
     */
    list->topology = MESA_PRIM_TRIANGLES;
    list->patch_control_points = 0;
+   list->predicate_gpu = 0;
+   list->predicate_op = D3D12_PREDICATION_OP_EQUAL_ZERO;
    memset(list->so, 0, sizeof(list->so));
 
    list->uses_heap = false;
@@ -726,6 +728,48 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
                           struct agx_grid grid)
 {
    d12_list_dispatch_precomp_to(list, idx, args, args_size, grid, false);
+}
+
+/* Return an indirect argument record which is either an exact copy of `input`
+ * or all zeroes according to the SetPredication snapshot. The pre-graphics
+ * form is inserted before an already-open render segment, while compute uses
+ * the ordinary ordered CDM stream. */
+static uint64_t
+d12_list_apply_predication(struct d12_cmd_list *list, uint64_t input,
+                           unsigned words, bool pre_gfx)
+{
+   if (!list->predicate_gpu)
+      return input;
+
+   if (!input || !words || words > 5) {
+      mesa_loge("invalid predicated argument record");
+      list->state = D12_LIST_ERROR;
+      return 0;
+   }
+
+   uint64_t output = d12_list_upload_zero(list, words * sizeof(uint32_t), 4);
+   if (!output)
+      return 0;
+
+   struct libagx_d3d12_predicate_args args = {
+      .out = output,
+      .in = input,
+      .predicate = list->predicate_gpu,
+      .words = words,
+      .skip_if_nonzero =
+         list->predicate_op == D3D12_PREDICATION_OP_NOT_EQUAL_ZERO,
+   };
+
+   d12_list_dispatch_precomp_to(list, LIBAGX_D3D12_PREDICATE, &args,
+                                sizeof(args), agx_1d(1), pre_gfx);
+   if (getenv("D3D12AGX_DUMP_PREDICATION"))
+      mesa_logi("predication patch: snapshot=0x%llx input=0x%llx "
+                "output=0x%llx words=%u skip_if_nonzero=%u pregfx=%u",
+                (unsigned long long)args.predicate,
+                (unsigned long long)args.in,
+                (unsigned long long)args.out, args.words,
+                args.skip_if_nonzero, pre_gfx);
+   return list->state == D12_LIST_RECORDING ? output : 0;
 }
 
 /*
@@ -3236,13 +3280,30 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                                            pso->info.workgroup_size[1],
                                            pso->info.workgroup_size[2]);
 
+   const bool predicated_direct = list->predicate_gpu && !indirect_args;
+   if (list->predicate_gpu) {
+      if (!indirect_args) {
+         const D3D12_DISPATCH_ARGUMENTS args = {
+            .ThreadGroupCountX = x * wg.x,
+            .ThreadGroupCountY = y * wg.y,
+            .ThreadGroupCountZ = z * wg.z,
+         };
+         indirect_args = d12_list_upload(list, &args, sizeof(args), 4);
+      }
+
+      indirect_args =
+         d12_list_apply_predication(list, indirect_args, 3, false);
+      if (!indirect_args)
+         return;
+   }
+
    /* D3D12 Dispatch counts thread GROUPS; AGX launches want global threads.
     * A native indirect pointer is therefore directly compatible only for a
     * 1x1x1 workgroup. Larger workgroups need a GPU-side argument rewrite.
     */
    struct agx_grid grid;
    if (indirect_args) {
-      if (wg.x != 1 || wg.y != 1 || wg.z != 1) {
+      if (!predicated_direct && (wg.x != 1 || wg.y != 1 || wg.z != 1)) {
          mesa_loge("ExecuteIndirect: dispatch workgroup %ux%ux%u needs an "
                    "argument rewrite", wg.x, wg.y, wg.z);
          list->state = D12_LIST_ERROR;
@@ -5306,6 +5367,43 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       enum agx_index_size index_size = list->ib.addr
                                           ? list->ib.index_size
                                           : AGX_INDEX_SIZE_U16;
+
+      if (list->predicate_gpu) {
+         if (!indirect_args) {
+            if (indexed) {
+               const D3D12_DRAW_INDEXED_ARGUMENTS args = {
+                  .IndexCountPerInstance = vertex_count,
+                  .InstanceCount = instance_count,
+                  .StartIndexLocation = first_index,
+                  .BaseVertexLocation = (INT)first_vertex,
+                  .StartInstanceLocation = first_instance,
+               };
+               indirect_args =
+                  d12_list_upload(list, &args, sizeof(args), 4);
+            } else {
+               const D3D12_DRAW_ARGUMENTS args = {
+                  .VertexCountPerInstance = vertex_count,
+                  .InstanceCount = instance_count,
+                  .StartVertexLocation = first_vertex,
+                  .StartInstanceLocation = first_instance,
+               };
+               indirect_args =
+                  d12_list_upload(list, &args, sizeof(args), 4);
+            }
+         }
+
+         indirect_args = d12_list_apply_predication(
+            list, indirect_args, indexed ? 5 : 4, true);
+         if (!indirect_args)
+            return;
+
+         /* d12_list_get_pregfx inserts a CDM segment before the render
+          * segment and shifts the latter up by one. Refresh the pointer so
+          * has_draws is recorded on the render command, not its new prelude.
+          */
+         seg = &list->segments[list->segment_count - 1];
+      }
+
       if (indirect_args && indexed) {
          draw = agx_draw_indexed_indirect(
             indirect_args, index_buffer, index_range, index_size, restart);
@@ -6878,6 +6976,57 @@ d12_list_copy_gpu_bytes(struct d12_cmd_list *list, uint64_t dst,
 
    d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
                              agx_1d(size_B));
+}
+
+static void STDMETHODCALLTYPE
+d12_list_SetPredication(ID3D12GraphicsCommandList6 *iface,
+                        ID3D12Resource *buffer_iface,
+                        UINT64 aligned_buffer_offset,
+                        D3D12_PREDICATION_OP operation)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!buffer_iface) {
+      list->predicate_gpu = 0;
+      return;
+   }
+
+   struct d12_resource *buffer = d12_resource_from_iface(buffer_iface);
+   if (buffer->device != list->device ||
+       buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       (aligned_buffer_offset & 7) ||
+       aligned_buffer_offset > buffer->desc.Width ||
+       sizeof(uint64_t) > buffer->desc.Width - aligned_buffer_offset ||
+       (operation != D3D12_PREDICATION_OP_EQUAL_ZERO &&
+        operation != D3D12_PREDICATION_OP_NOT_EQUAL_ZERO)) {
+      mesa_loge("SetPredication: invalid buffer, offset, or operation");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   uint64_t snapshot = d12_list_upload_zero(list, sizeof(uint64_t), 8);
+   if (!snapshot)
+      return;
+
+   d12_list_copy_gpu_bytes(list, snapshot,
+                           buffer->addr + aligned_buffer_offset,
+                           sizeof(uint64_t));
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   list->predicate_gpu = snapshot;
+   list->predicate_op = operation;
+
+   if (getenv("D3D12AGX_DUMP_PREDICATION"))
+      mesa_logi("SetPredication snapshot: source=0x%llx latch=0x%llx "
+                "skip_if_nonzero=%u",
+                (unsigned long long)(buffer->addr + aligned_buffer_offset),
+                (unsigned long long)snapshot,
+                operation == D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
 }
 
 static void STDMETHODCALLTYPE
@@ -8906,6 +9055,7 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
    .DrawIndexedInstanced = d12_list_DrawIndexedInstanced,
    .ExecuteBundle = d12_list_ExecuteBundle,
    .ExecuteIndirect = d12_list_ExecuteIndirect,
+   .SetPredication = d12_list_SetPredication,
    .IASetIndexBuffer = d12_list_IASetIndexBuffer,
    .BeginQuery = d12_list_BeginQuery,
    .EndQuery = d12_list_EndQuery,

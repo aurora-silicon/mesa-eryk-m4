@@ -30,6 +30,27 @@ libagx_predicate_indirect(global uint32_t *out, constant uint32_t *in,
 }
 
 /*
+ * D3D12 predication applies to both draws and dispatches and reads a 64-bit
+ * value. The command-list front end snapshots that value at SetPredication,
+ * then uses this kernel to turn an ordinary indirect argument record into a
+ * zero-count record when the selected comparison says to skip the command.
+ *
+ * `skip_if_nonzero` names D3D12_PREDICATION_OP_NOT_EQUAL_ZERO. The API's
+ * operation describes the condition which suppresses execution, so equality
+ * between the snapshot's truth value and this flag means zero the record.
+ */
+KERNEL(1)
+libagx_d3d12_predicate(global uint32_t *out, constant uint32_t *in,
+                       constant uint64_t *predicate, uint32_t words,
+                       uint32_t skip_if_nonzero)
+{
+   bool skip = ((*predicate != 0) == (skip_if_nonzero != 0));
+
+   for (uint i = 0; i < words; ++i)
+      out[i] = skip ? 0 : in[i];
+}
+
+/*
  * Indexing/offseting is in software if necessary so we strip all
  * indexing/offset information.
  */

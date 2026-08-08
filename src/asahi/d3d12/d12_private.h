@@ -1184,6 +1184,13 @@ struct d12_cmd_list {
    struct d12_cmd_allocator *allocator; /* the one it is recording into */
    struct d12_pipeline_state *pso; /* not referenced; app keeps alive */
 
+   /* SetPredication snapshots the API buffer's 64-bit value into command-list
+    * storage at the exact point where the call is recorded. Later draw and
+    * dispatch argument patching reads this GPU address, preserving D3D12's
+    * latch-before-subsequent-writes semantics. Zero means disabled. */
+   uint64_t predicate_gpu;
+   D3D12_PREDICATION_OP predicate_op;
+
    /* Resource addresses indexed by binding slot, one set per pipeline
     * type: D3D12 keeps graphics and compute root bindings completely
     * separate, and sharing one table lets a dispatch inherit a draw's
