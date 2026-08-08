@@ -193,6 +193,133 @@ d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
    return S_OK;
 }
 
+struct d12_fence_multi_waiter {
+   struct d12_device *device;
+   struct d12_fence **fences;
+   uint32_t *syncobjs;
+   uint64_t *values;
+   unsigned count;
+   bool wait_all;
+   int fd;
+   thrd_t thread;
+};
+
+static int
+d12_fence_multi_wait(struct d12_fence_multi_waiter *w)
+{
+   unsigned flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT;
+   if (w->wait_all)
+      flags |= DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL;
+
+   return drmSyncobjTimelineWait(w->device->dev.fd, w->syncobjs, w->values,
+                                 w->count, INT64_MAX, flags, NULL);
+}
+
+static void
+d12_fence_multi_waiter_destroy(struct d12_fence_multi_waiter *w)
+{
+   for (unsigned i = 0; i < w->count; i++)
+      d12_fence_Release(&w->fences[i]->iface);
+
+   free(w->values);
+   free(w->syncobjs);
+   free(w->fences);
+   free(w);
+}
+
+static int
+d12_fence_multi_wait_thread(void *data)
+{
+   struct d12_fence_multi_waiter *w = data;
+   int ret = d12_fence_multi_wait(w);
+
+   if (ret)
+      mesa_loge("multiple fence event wait failed: %d", ret);
+
+   /* As with the single-fence waiter, wake on a kernel error rather than
+    * leaving the application permanently blocked on an event which can no
+    * longer become signaled.
+    */
+   const uint64_t one = 1;
+   if (write(w->fd, &one, sizeof(one)) != sizeof(one))
+      mesa_loge("multiple fence event write failed");
+
+   d12_fence_multi_waiter_destroy(w);
+   return 0;
+}
+
+HRESULT
+d12_fence_set_event_multiple(struct d12_device *device,
+                             ID3D12Fence *const *fences,
+                             const UINT64 *values, UINT count,
+                             D3D12_MULTIPLE_FENCE_WAIT_FLAGS flags,
+                             HANDLE event)
+{
+   if (!fences || !values || count == 0 ||
+       (flags != D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL &&
+        flags != D3D12_MULTIPLE_FENCE_WAIT_FLAG_ANY))
+      return E_INVALIDARG;
+
+   struct d12_fence_multi_waiter *w = calloc(1, sizeof(*w));
+   if (!w)
+      return E_OUTOFMEMORY;
+
+   w->fences = calloc(count, sizeof(*w->fences));
+   w->syncobjs = calloc(count, sizeof(*w->syncobjs));
+   w->values = calloc(count, sizeof(*w->values));
+   if (!w->fences || !w->syncobjs || !w->values) {
+      free(w->values);
+      free(w->syncobjs);
+      free(w->fences);
+      free(w);
+      return E_OUTOFMEMORY;
+   }
+
+   w->device = device;
+   w->count = count;
+   w->wait_all = flags == D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL;
+   w->fd = (int)(intptr_t)event;
+
+   for (unsigned i = 0; i < count; i++) {
+      if (!fences[i]) {
+         w->count = i;
+         d12_fence_multi_waiter_destroy(w);
+         return E_INVALIDARG;
+      }
+
+      struct d12_fence *fence = d12_fence_from_iface(fences[i]);
+      if (fence->device != device) {
+         w->count = i;
+         d12_fence_multi_waiter_destroy(w);
+         return E_INVALIDARG;
+      }
+
+      d12_fence_AddRef(fences[i]);
+      w->fences[i] = fence;
+      w->syncobjs[i] = fence->syncobj;
+      w->values[i] = values[i];
+   }
+
+   if (!event) {
+      int ret = d12_fence_multi_wait(w);
+      d12_fence_multi_waiter_destroy(w);
+      if (ret) {
+         mesa_loge("multiple fence wait failed: %d", ret);
+         return E_FAIL;
+      }
+      return S_OK;
+   }
+
+   if (thrd_create(&w->thread, d12_fence_multi_wait_thread, w) !=
+       thrd_success) {
+      d12_fence_multi_waiter_destroy(w);
+      return E_FAIL;
+   }
+
+   thrd_detach(w->thread);
+   return S_OK;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_fence_Signal(ID3D12Fence *iface, UINT64 value)
 {

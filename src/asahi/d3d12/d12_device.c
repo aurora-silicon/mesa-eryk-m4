@@ -2703,6 +2703,17 @@ d12_device_CreateFence(ID3D12Device2 *iface, UINT64 initial_value,
 }
 
 static HRESULT STDMETHODCALLTYPE
+d12_device_SetEventOnMultipleFenceCompletion(
+   ID3D12Device2 *iface, ID3D12Fence *const *fences,
+   const UINT64 *values, UINT count,
+   D3D12_MULTIPLE_FENCE_WAIT_FLAGS flags, HANDLE event)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+   return d12_fence_set_event_multiple(device, fences, values, count, flags,
+                                       event);
+}
+
+static HRESULT STDMETHODCALLTYPE
 d12_device_GetDeviceRemovedReason(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
@@ -2878,6 +2889,8 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .GetCopyableFootprints = d12_device_GetCopyableFootprints,
    .CreateQueryHeap = d12_device_CreateQueryHeap,
    .CreateFence = d12_device_CreateFence,
+   .SetEventOnMultipleFenceCompletion =
+      d12_device_SetEventOnMultipleFenceCompletion,
    .GetDeviceRemovedReason = d12_device_GetDeviceRemovedReason,
    .GetAdapterLuid = d12_device_GetAdapterLuid,
    /* Everything unset is NULL: a call is a loud crash, not silent lies. */

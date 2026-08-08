@@ -1180,6 +1180,10 @@ d12_queue_from_iface(ID3D12CommandQueue *iface)
 /* Object constructors (Create* device methods land here) */
 HRESULT d12_fence_create(struct d12_device *device, UINT64 initial_value,
                          D3D12_FENCE_FLAGS flags, REFIID riid, void **out);
+HRESULT d12_fence_set_event_multiple(
+   struct d12_device *device, ID3D12Fence *const *fences,
+   const UINT64 *values, UINT count,
+   D3D12_MULTIPLE_FENCE_WAIT_FLAGS flags, HANDLE event);
 HRESULT d12_queue_create(struct d12_device *device,
                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
                          void **out);
