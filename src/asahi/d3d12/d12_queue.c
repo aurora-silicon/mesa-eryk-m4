@@ -115,7 +115,7 @@ d12_queue_GetDevice(ID3D12CommandQueue *iface, REFIID riid, void **out)
  * Fill a drm_asahi_cmd_render for a clear-only render segment. Mirrors
  * hk_queue.c's asahi_fill_vdm_command for the color-only, single-layer case.
  */
-static uint32_t
+uint32_t
 d12_default_sample_positions(unsigned nr_samples)
 {
    switch (nr_samples) {

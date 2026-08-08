@@ -1139,6 +1139,8 @@ struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
  */
 bool d12_dxil_lower_root(struct nir_shader *nir);
 bool d12_dxil_lower_root_mask(struct nir_shader *nir, uint16_t sample_mask);
+bool d12_dxil_lower_sample_positions(struct nir_shader *nir,
+                                     uint32_t packed_positions);
 
 /* Vertex-shader sysvals for the SOFTWARE vertex shader -- the compute
  * program that runs when a geometry or tessellation shader follows it.

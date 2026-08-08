@@ -1515,6 +1515,11 @@ compile_gfx_stage(struct d12_device *device,
       NIR_PASS(_, nir, d12_dxil_lower_uvs_index, linked.slots);
    }
 
+   if (stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS(_, nir, d12_dxil_lower_sample_positions,
+               d12_default_sample_positions(MAX2(tib->nr_samples, 1)));
+   }
+
    struct agx_shader_key key = {
       .dev = agx_gather_device_key(&device->dev),
       /* Allocas live in per-thread scratch, and large shaders spill. */

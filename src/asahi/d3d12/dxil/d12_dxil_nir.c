@@ -6347,6 +6347,26 @@ d12_dxil_lower_root_mask(nir_shader *nir, uint16_t sample_mask)
                                      &sample_mask);
 }
 
+static bool
+lower_sample_positions(nir_builder *b, nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_sample_positions_agx)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def_replace(&intr->def,
+                   nir_imm_int(b, *(const uint32_t *)data));
+   return true;
+}
+
+bool
+d12_dxil_lower_sample_positions(nir_shader *nir, uint32_t packed_positions)
+{
+   return nir_shader_intrinsics_pass(nir, lower_sample_positions,
+                                     nir_metadata_control_flow,
+                                     &packed_positions);
+}
+
 
 /*
  * Vertex-shader sysvals for the SOFTWARE vertex shader -- the compute

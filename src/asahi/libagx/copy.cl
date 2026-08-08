@@ -237,6 +237,109 @@ libagx_resolve_float32_min(global float *dest, global float *src,
    dest[dest_offset_B / 4] = value;
 }
 
+/* Resolve one 32-bit float channel by averaging all samples. This is the
+ * scalar counterpart of libagx_resolve_float32x4 and also covers a D32_FLOAT
+ * source resolved through the compatible R32_FLOAT view required by D3D12. */
+KERNEL(32)
+libagx_resolve_float32_average(global float *dest, global float *src,
+                               uint width_px, uint height_px,
+                               uint dest_x_px, uint dest_y_px,
+                               uint src_x_px, uint src_y_px,
+                               uint dest_pitch_B, uint dest_stride_el,
+                               uint src_stride_el,
+                               uint dest_tile_width_el,
+                               uint dest_tile_height_el,
+                               uint src_tile_width_el,
+                               uint src_tile_height_el,
+                               uint sample_count, uint dest_tiled,
+                               uint src_tiled)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, 4, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      4 * sample_count, src_tiled);
+
+   float sum = 0.0f;
+   for (uint s = 0; s < sample_count; ++s)
+      sum += src[src_offset_B / 4 + s];
+
+   dest[dest_offset_B / 4] = sum / (float)sample_count;
+}
+
+/* Resolve the scalar MIN/MAX modes used by 32-bit float/integer colour and
+ * depth planes, plus the separate 8-bit stencil plane. Operation values are
+ * private to d3d12agx: 0=float, 1=uint, 2=sint; choose_max selects the
+ * extremum. Keeping the scalar size explicit makes every address bounded by
+ * the same checked surface geometry used by the copy kernels. */
+KERNEL(32)
+libagx_resolve_scalar_extrema(global uint8_t *dest, global uint8_t *src,
+                              uint width_px, uint height_px,
+                              uint dest_x_px, uint dest_y_px,
+                              uint src_x_px, uint src_y_px,
+                              uint dest_pitch_B, uint dest_stride_el,
+                              uint src_stride_el,
+                              uint dest_tile_width_el,
+                              uint dest_tile_height_el,
+                              uint src_tile_width_el,
+                              uint src_tile_height_el,
+                              uint sample_count, uint dest_tiled,
+                              uint src_tiled, uint scalar_size_B,
+                              uint operation, uint choose_max)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, scalar_size_B, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      scalar_size_B * sample_count, src_tiled);
+
+   if (scalar_size_B == 1) {
+      uint8_t value = src[src_offset_B];
+      for (uint s = 1; s < sample_count; ++s) {
+         uint8_t next = src[src_offset_B + s];
+         value = choose_max ? max(value, next) : min(value, next);
+      }
+      dest[dest_offset_B] = value;
+   } else if (operation == 0) {
+      global float *src_f = (global float *)(src + src_offset_B);
+      global float *dest_f = (global float *)(dest + dest_offset_B);
+      float value = src_f[0];
+      for (uint s = 1; s < sample_count; ++s)
+         value = choose_max ? fmax(value, src_f[s]) : fmin(value, src_f[s]);
+      dest_f[0] = value;
+   } else if (operation == 1) {
+      global uint *src_u = (global uint *)(src + src_offset_B);
+      global uint *dest_u = (global uint *)(dest + dest_offset_B);
+      uint value = src_u[0];
+      for (uint s = 1; s < sample_count; ++s)
+         value = choose_max ? max(value, src_u[s]) : min(value, src_u[s]);
+      dest_u[0] = value;
+   } else {
+      global int *src_i = (global int *)(src + src_offset_B);
+      global int *dest_i = (global int *)(dest + dest_offset_B);
+      int value = src_i[0];
+      for (uint s = 1; s < sample_count; ++s)
+         value = choose_max ? max(value, src_i[s]) : min(value, src_i[s]);
+      dest_i[0] = value;
+   }
+}
+
 KERNEL(32)
 libagx_fill_image(global uint8_t *dest, global uint8_t *value,
                   uint width_el, uint height_el,

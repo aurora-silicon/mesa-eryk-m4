@@ -65,6 +65,7 @@ d12_guid_equal(REFIID a, REFIID b)
 
 /* Log an unknown riid so we learn what callers actually want. */
 void d12_log_unknown_riid(const char *where, REFIID riid);
+uint32_t d12_default_sample_positions(unsigned nr_samples);
 
 struct d12_private_data_entry {
    struct d12_private_data_entry *next;

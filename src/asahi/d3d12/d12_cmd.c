@@ -7147,14 +7147,31 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const unsigned dst_samples = MAX2(dstr->layout.sample_count_sa, 1);
    const unsigned src_samples = MAX2(srcr->layout.sample_count_sa, 1);
 
+   const bool minimum = mode == D3D12_RESOLVE_MODE_MIN;
+   const bool maximum = mode == D3D12_RESOLVE_MODE_MAX;
    const bool average = mode == D3D12_RESOLVE_MODE_AVERAGE;
-   const bool min_float32 =
-      mode == D3D12_RESOLVE_MODE_MIN && format == DXGI_FORMAT_D32_FLOAT;
+   const bool float32_scalar =
+      format == DXGI_FORMAT_D32_FLOAT ||
+      format == DXGI_FORMAT_R32_FLOAT ||
+      format == DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
+   const bool min_float32 = minimum && float32_scalar;
+   const bool average_float32 = average && float32_scalar;
+   const bool extrema_uint32 =
+      (minimum || maximum) && format == DXGI_FORMAT_R32_UINT;
+   const bool extrema_sint32 =
+      (minimum || maximum) && format == DXGI_FORMAT_R32_SINT;
+   const bool extrema_stencil8 =
+      (minimum || maximum) && format == DXGI_FORMAT_X32_TYPELESS_G8X24_UINT;
+   const bool extrema_scalar =
+      (maximum && float32_scalar) || extrema_uint32 || extrema_sint32 ||
+      extrema_stencil8;
    const bool unorm8x4 = average && format == DXGI_FORMAT_R8G8B8A8_UNORM;
    const bool float32x4 =
       average && format == DXGI_FORMAT_R32G32B32A32_FLOAT;
    const unsigned pixel_B =
-      min_float32 || unorm8x4 ? 4 : float32x4 ? 16 : 0;
+      extrema_stencil8 ? 1
+      : min_float32 || average_float32 || extrema_scalar || unorm8x4 ? 4
+      : float32x4 ? 16 : 0;
    if (dst_samples != 1 || (src_samples != 2 && src_samples != 4) ||
        !pixel_B) {
       mesa_loge("ResolveSubresource: unsupported format/mode/sample shape "
@@ -7215,12 +7232,42 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
       .src_tiled = s.tiled,
    };
 
-   const enum libagx_program shader =
-      min_float32 ? LIBAGX_RESOLVE_FLOAT32_MIN
-                  : unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4
-                              : LIBAGX_RESOLVE_FLOAT32X4;
-   d12_list_dispatch_precomp(list, shader, &args, sizeof(args),
-                             agx_1d((uint64_t)width_px * height_px));
+   if (extrema_scalar) {
+      struct libagx_resolve_scalar_extrema_args extrema_args = {
+         .dest = d.base,
+         .src = s.base,
+         .width_px = width_px,
+         .height_px = height_px,
+         .dest_x_px = dst_x,
+         .dest_y_px = dst_y,
+         .src_x_px = left,
+         .src_y_px = top,
+         .dest_pitch_B = d.pitch_B,
+         .dest_stride_el = d.stride_el,
+         .src_stride_el = s.stride_el,
+         .dest_tile_width_el = d.tile_width_el,
+         .dest_tile_height_el = d.tile_height_el,
+         .src_tile_width_el = s.tile_width_el,
+         .src_tile_height_el = s.tile_height_el,
+         .sample_count = src_samples,
+         .dest_tiled = d.tiled,
+         .src_tiled = s.tiled,
+         .scalar_size_B = pixel_B,
+         .operation = extrema_uint32 ? 1 : extrema_sint32 ? 2 : 0,
+         .choose_max = maximum,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_RESOLVE_SCALAR_EXTREMA,
+                                &extrema_args, sizeof(extrema_args),
+                                agx_1d((uint64_t)width_px * height_px));
+   } else {
+      const enum libagx_program shader =
+         min_float32 ? LIBAGX_RESOLVE_FLOAT32_MIN
+                     : average_float32 ? LIBAGX_RESOLVE_FLOAT32_AVERAGE
+                     : unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4
+                                 : LIBAGX_RESOLVE_FLOAT32X4;
+      d12_list_dispatch_precomp(list, shader, &args, sizeof(args),
+                                agx_1d((uint64_t)width_px * height_px));
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -7250,7 +7297,8 @@ d12_list_ResolveSubresourceRegion(ID3D12GraphicsCommandList6 *iface,
       return;
 
    if (resolve_mode == D3D12_RESOLVE_MODE_AVERAGE ||
-       resolve_mode == D3D12_RESOLVE_MODE_MIN) {
+       resolve_mode == D3D12_RESOLVE_MODE_MIN ||
+       resolve_mode == D3D12_RESOLVE_MODE_MAX) {
       d12_resolve(list, dst, dst_subresource, dst_x, dst_y, src,
                   src_subresource, src_rect, format, resolve_mode);
       return;
