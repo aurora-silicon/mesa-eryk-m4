@@ -315,6 +315,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
 
    list->uses_heap = false;
    list->active_occlusion_queries = 0;
+   list->active_pipeline_stats_heap = NULL;
+   memset(&list->pipeline_stats, 0, sizeof(list->pipeline_stats));
 
    /* The real free is the GPU write Close appends (see there): a closed
     * list can be executed many times without ever being Reset, so a reset
@@ -3522,6 +3524,40 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       return;
    }
 
+   if (list->active_pipeline_stats_heap && vertex_count && instance_count) {
+      uint64_t vertices = (uint64_t)vertex_count * instance_count;
+      uint64_t primitives;
+      switch (list->topology) {
+      case MESA_PRIM_POINTS:
+         primitives = vertices;
+         break;
+      case MESA_PRIM_LINES:
+         primitives = (vertex_count / 2u) * (uint64_t)instance_count;
+         break;
+      case MESA_PRIM_LINE_STRIP:
+         primitives = vertex_count > 1
+                         ? (uint64_t)(vertex_count - 1) * instance_count
+                         : 0;
+         break;
+      case MESA_PRIM_TRIANGLE_STRIP:
+         primitives = vertex_count > 2
+                         ? (uint64_t)(vertex_count - 2) * instance_count
+                         : 0;
+         break;
+      default:
+         primitives = (vertex_count / 3u) * (uint64_t)instance_count;
+         break;
+      }
+
+      list->pipeline_stats.IAVertices += vertices;
+      list->pipeline_stats.IAPrimitives += primitives;
+      list->pipeline_stats.VSInvocations += vertices;
+      list->pipeline_stats.CInvocations += primitives;
+      list->pipeline_stats.CPrimitives += primitives;
+      if (pso->has_pixel_shader && primitives)
+         list->pipeline_stats.PSInvocations++;
+   }
+
    if (list->render_open) {
       struct d12_segment *open =
          &list->segments[list->segment_count - 1];
@@ -3970,7 +4006,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          cfg.front_face_ccw = pso->raster.front_face_ccw;
          cfg.cull_front = pso->raster.cull_front;
          cfg.cull_back = pso->raster.cull_back;
-         cfg.depth_clip = true;
+         cfg.depth_clip = pso->raster.depth_clip;
       }
 
       agx_ppp_push_packed(&ppp, &pso->fs.fs_counts, FRAGMENT_SHADER_WORD_0);
@@ -5189,7 +5225,7 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
 
    if (errored) {
       mesa_loge("Close on errored command list");
-      return E_FAIL;
+      return FAILED(list->record_error) ? list->record_error : E_FAIL;
    }
 
    return S_OK;
@@ -5272,6 +5308,7 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
 
    /* Reset starts a fresh recording, so the previous error is gone. */
    list->had_error = false;
+   list->record_error = S_OK;
    if (initial_state)
       list->pso = d12_pipeline_state_from_iface(initial_state);
 
@@ -5365,6 +5402,18 @@ d12_list_BeginQuery(ID3D12GraphicsCommandList6 *iface,
    if (!d12_list_validate_query(list, heap, type, index))
       return;
 
+   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS) {
+      if (list->active_pipeline_stats_heap) {
+         mesa_loge("BeginQuery: pipeline statistics query already active");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      list->active_pipeline_stats_heap = heap;
+      list->active_pipeline_stats_index = index;
+      memset(&list->pipeline_stats, 0, sizeof(list->pipeline_stats));
+      return;
+   }
+
    if (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_OCCLUSION) {
       mesa_loge("BeginQuery currently supports occlusion heaps only");
       list->state = D12_LIST_ERROR;
@@ -5394,6 +5443,23 @@ d12_list_EndQuery(ID3D12GraphicsCommandList6 *iface,
       return;
 
    uint64_t result = heap->bo->va->addr + (uint64_t)index * heap->stride;
+
+   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS) {
+      if (list->active_pipeline_stats_heap != heap ||
+          list->active_pipeline_stats_index != index) {
+         mesa_loge("EndQuery has no matching pipeline statistics query");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      uint64_t source = d12_list_upload(
+         list, &list->pipeline_stats, sizeof(list->pipeline_stats), 8);
+      if (source)
+         d12_list_copy_gpu_bytes(list, result, source,
+                                 sizeof(list->pipeline_stats));
+      list->active_pipeline_stats_heap = NULL;
+      return;
+   }
 
    if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_TIMESTAMP) {
       /* The kernel-calibrated GPU clock is sampled while recording, then
@@ -5509,6 +5575,55 @@ d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
 
    d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
                              agx_1d(num_bytes));
+}
+
+static void STDMETHODCALLTYPE
+d12_list_WriteBufferImmediate(
+   ID3D12GraphicsCommandList6 *iface, UINT count,
+   const D3D12_WRITEBUFFERIMMEDIATE_PARAMETER *params,
+   const D3D12_WRITEBUFFERIMMEDIATE_MODE *modes)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (count && !params) {
+      mesa_loge("WriteBufferImmediate: null parameter array");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (UINT i = 0; i < count; i++) {
+      D3D12_WRITEBUFFERIMMEDIATE_MODE mode =
+         modes ? modes[i] : D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
+      if (mode != D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT &&
+          mode != D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_IN &&
+          mode != D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT) {
+         mesa_loge("WriteBufferImmediate: invalid mode %u", (unsigned)mode);
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         return;
+      }
+
+      if (!params[i].Dest || (params[i].Dest & 3)) {
+         mesa_loge("WriteBufferImmediate: invalid destination 0x%llx",
+                   (unsigned long long)params[i].Dest);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      /* Marker modes differ only in observability to profiling tools. The
+       * memory operation is still the same ordered 32-bit write. */
+      struct libagx_write_u32_args args = {
+         .address = params[i].Dest,
+         .value = params[i].Value,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_WRITE_U32, &args, sizeof(args),
+                                agx_1d(1));
+      if (list->state == D12_LIST_ERROR)
+         return;
+   }
 }
 
 struct d12_copy_surface {
@@ -6752,6 +6867,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .Close = d12_list_Close,
    .Reset = d12_list_Reset,
    .CopyBufferRegion = d12_list_CopyBufferRegion,
+   .WriteBufferImmediate = d12_list_WriteBufferImmediate,
    .CopyResource = d12_list_CopyResource,
    .CopyTextureRegion = d12_list_CopyTextureRegion,
    .ResolveSubresource = d12_list_ResolveSubresource,

@@ -1046,11 +1046,47 @@ d12_nir_lower_coverage_to_epilog(nir_shader *nir, bool *lowered)
 }
 
 static bool
+d12_lower_a8_output_instr(nir_builder *b, nir_intrinsic_instr *intr,
+                          void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   unsigned rt = sem.location - FRAG_RESULT_DATA0;
+   uint8_t mask = *(const uint8_t *)data;
+   if (sem.location < FRAG_RESULT_DATA0 || rt >= 8 ||
+       !(mask & BITFIELD_BIT(rt)))
+      return false;
+
+   nir_def *value = intr->src[0].ssa;
+   if (value->num_components < 4)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *alpha = nir_channel(b, value, 3);
+   nir_src_rewrite(&intr->src[0], nir_replicate(b, alpha,
+                                                value->num_components));
+   return true;
+}
+
+static bool
+d12_nir_lower_a8_outputs(nir_shader *nir, uint8_t mask)
+{
+   if (!mask)
+      return false;
+
+   return nir_shader_intrinsics_pass(
+      nir, d12_lower_a8_output_instr, nir_metadata_control_flow, &mask);
+}
+
+static bool
 compile_gfx_stage(struct d12_device *device,
                   const struct d12_binding_map *map, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage,
                   struct agx_tilebuffer_layout *tib,
                   uint16_t api_sample_mask,
+                  uint8_t a8_mask,
                   struct agx_unlinked_uvs_layout *uvs,
                   const struct d12_vs_fetch *fetch,
                   uint64_t *outputs_written, bool *use_fs_epilog,
@@ -1071,6 +1107,16 @@ compile_gfx_stage(struct d12_device *device,
    }
    if (!nir)
       return false;
+
+   /* AGX exposes integer pixel coordinates. D3D12, like Vulkan, defines
+    * SV_Position.xy at the sample position (pixel centre without sample
+    * shading), so add the standard half-pixel/sample offset before the
+    * backend splits frag_coord into pixel-coordinate and Z/W loads. */
+   if (stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS(_, nir, nir_lower_wpos_center);
+
+   if (stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS(_, nir, d12_nir_lower_a8_outputs, a8_mask);
 
    /*
     * The DXIL and DXBC front ends do not gather shader-wide metadata.  In
@@ -2427,10 +2473,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     * Inverting it culls both triangles of the standard full-screen strip.
     */
    pso->raster.front_face_ccw = false;
+   pso->raster.depth_clip = true;
    if (rs_desc) {
       pso->raster.front_face_ccw = rs_desc->FrontCounterClockwise;
       pso->raster.cull_front = rs_desc->CullMode == D3D12_CULL_MODE_FRONT;
       pso->raster.cull_back = rs_desc->CullMode == D3D12_CULL_MODE_BACK;
+      pso->raster.depth_clip = rs_desc->DepthClipEnable;
 
       if (rs_desc->FillMode == D3D12_FILL_MODE_WIREFRAME)
          mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
@@ -2517,7 +2565,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    resolve_input_layout(pso, input_layout, vs_dxil, vs_size, &fetch);
 
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX,
-                          &tib, 0xffff, &pso->uvs, &fetch, NULL, NULL, NULL,
+                          &tib, 0xffff, 0, &pso->uvs, &fetch, NULL, NULL, NULL,
                           &vs_part)) {
       free(pso);
       return E_INVALIDARG;
@@ -2528,8 +2576,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       BITFIELD_MASK(MIN2(nr_samples, 8));
    uint16_t active_sample_mask =
       (sample_mask | (uint16_t)~framebuffer_mask) & 0xff;
+   uint8_t a8_mask = 0;
+   for (unsigned i = 0; rt_formats && i < nr_rt; i++) {
+      if (rt_formats[i] == DXGI_FORMAT_A8_UNORM)
+         a8_mask |= BITFIELD_BIT(i);
+   }
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
-                          &tib, active_sample_mask, NULL, NULL, &fs_outputs,
+                          &tib, active_sample_mask, a8_mask, NULL, NULL,
+                          &fs_outputs,
                           &use_fs_epilog, &fs_epilog_link, &fs_part)) {
       free(vs_part.binary);
       free(pso);

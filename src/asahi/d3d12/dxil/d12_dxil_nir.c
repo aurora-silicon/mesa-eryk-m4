@@ -1453,10 +1453,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (sem && !strcmp(sem, "SV_Position") &&
           b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* Fragment position is the interpolated frag coord, not a
-          * user varying.
+          * user varying. NIR follows OpenGL/Vulkan and exposes reciprocal
+          * clip-W in frag_coord.w, while D3D's SV_Position.w is clip-W.
           */
          nir_def *coord = nir_load_frag_coord(b);
-         def_result(ctx, inst, nir_channel(b, coord, (unsigned)col));
+         nir_def *component = nir_channel(b, coord, (unsigned)col);
+         if (col == 3)
+            component = nir_frcp(b, component);
+         def_result(ctx, inst, component);
          b->shader->info.inputs_read |= BITFIELD64_BIT(VARYING_SLOT_POS);
          return true;
       }

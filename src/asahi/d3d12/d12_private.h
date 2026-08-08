@@ -640,6 +640,7 @@ struct d12_depth_stencil_state {
 struct d12_raster_state {
    bool cull_front, cull_back;
    bool front_face_ccw;
+   bool depth_clip;
 };
 
 /* A compiled pipeline: AGX machine code produced from the app's DXIL. */
@@ -968,6 +969,10 @@ struct d12_cmd_list {
     * never reach the GPU -- submitting one is how the bench wedged.
     */
    bool had_error;
+   /* HRESULT reported by Close for recording-time validation failures.
+    * Most internal failures retain E_FAIL; API argument validation can set
+    * the more specific code required by D3D12. */
+   HRESULT record_error;
 
    /* Set when a draw in this list bump-allocates from the device
     * tessellation heap. Close then appends a GPU-side write zeroing
@@ -990,6 +995,9 @@ struct d12_cmd_list {
     * The draw only needs to know whether that continuous counter is live.
     */
    unsigned active_occlusion_queries;
+   struct d12_query_heap *active_pipeline_stats_heap;
+   UINT active_pipeline_stats_index;
+   D3D12_QUERY_DATA_PIPELINE_STATISTICS pipeline_stats;
 
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,

@@ -167,6 +167,9 @@ enum d12_dxbc_op {
    D12_DXBC_OP_OR = 60,
    D12_DXBC_OP_RESINFO = 61,
    D12_DXBC_OP_BUFINFO = 121,
+   D12_DXBC_OP_GATHER4_C = 126,
+   D12_DXBC_OP_GATHER4_PO = 127,
+   D12_DXBC_OP_GATHER4_PO_C = 128,
    D12_DXBC_OP_RET = 62,
    D12_DXBC_OP_ROUND_NE = 64,
    D12_DXBC_OP_ROUND_NI = 65,
@@ -176,6 +179,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_SAMPLE = 69,
    D12_DXBC_OP_SAMPLE_C_LZ = 71,
    D12_DXBC_OP_SAMPLE_L = 72,
+   D12_DXBC_OP_GATHER4 = 109,
    D12_DXBC_OP_SQRT = 75,
    D12_DXBC_OP_SWITCH = 76,
    D12_DXBC_OP_SINCOS = 77,
@@ -192,6 +196,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_SAMPLE_POS = 110,
    D12_DXBC_OP_EVAL_SAMPLE_INDEX = 204,
    D12_DXBC_OP_EVAL_CENTROID = 205,
+   D12_DXBC_OP_MSAD = 213,
    D12_DXBC_OP_CONTINUE = 7,
    D12_DXBC_OP_CONTINUEC = 8,
    D12_DXBC_OP_CUSTOMDATA = 53,
@@ -1019,6 +1024,10 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          if (e && !strcasecmp(e->name, "SV_Position")) {
             v = nir_load_frag_coord(b);
+            /* NIR frag_coord.w is reciprocal clip-W; D3D SV_Position.w
+             * exposes clip-W itself. */
+            v = nir_vector_insert_imm(
+               b, v, nir_frcp(b, nir_channel(b, v, 3)), 3);
             break;
          }
 
@@ -2730,6 +2739,28 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          write_dst(ctx, &o[1], nir_imul(b, a, c));
          break;
       }
+      case D12_DXBC_OP_MSAD: {
+         NEED(4);
+         nir_def *ref = SRC(1);
+         nir_def *src = SRC(2);
+         nir_def *acc = SRC(3);
+
+         /* Per D3D11.1, zero reference bytes are masked out. Expand the
+          * operation because AGX has no native MSAD instruction. */
+         for (unsigned i = 0; i < 4; i++) {
+            nir_def *rb =
+               nir_iand_imm(b, nir_ushr_imm(b, ref, i * 8), 0xff);
+            nir_def *sb =
+               nir_iand_imm(b, nir_ushr_imm(b, src, i * 8), 0xff);
+            nir_def *diff = nir_iabs(b, nir_isub(b, rb, sb));
+            acc = nir_iadd(
+               b, acc,
+               nir_bcsel(b, nir_ine_imm(b, rb, 0), diff,
+                          nir_imm_int(b, 0)));
+         }
+         DST(acc);
+         break;
+      }
       case D12_DXBC_OP_EVAL_SAMPLE_INDEX: {
          NEED(3);
          nir_def *sample = nir_channel(b, SRC(2), 0);
@@ -3505,11 +3536,24 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_SAMPLE:
       case D12_DXBC_OP_SAMPLE_C_LZ:
       case D12_DXBC_OP_SAMPLE_L:
+      case D12_DXBC_OP_GATHER4:
+      case D12_DXBC_OP_GATHER4_C:
+      case D12_DXBC_OP_GATHER4_PO:
+      case D12_DXBC_OP_GATHER4_PO_C:
       case D12_DXBC_OP_LD: {
          bool is_ld = opcode == D12_DXBC_OP_LD;
-         bool compare = opcode == D12_DXBC_OP_SAMPLE_C_LZ;
-         bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L || compare;
-         NEED(is_ld ? 3 : (has_lod ? 5 : 4));
+         bool gather = opcode == D12_DXBC_OP_GATHER4 ||
+                       opcode == D12_DXBC_OP_GATHER4_C ||
+                       opcode == D12_DXBC_OP_GATHER4_PO ||
+                       opcode == D12_DXBC_OP_GATHER4_PO_C;
+         bool dynamic_offset = opcode == D12_DXBC_OP_GATHER4_PO ||
+                               opcode == D12_DXBC_OP_GATHER4_PO_C;
+         bool compare = opcode == D12_DXBC_OP_SAMPLE_C_LZ ||
+                        opcode == D12_DXBC_OP_GATHER4_C ||
+                        opcode == D12_DXBC_OP_GATHER4_PO_C;
+         bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L ||
+                        opcode == D12_DXBC_OP_SAMPLE_C_LZ;
+         NEED(is_ld ? 3 : 4 + dynamic_offset + compare);
 
          /* The resource is the operand in the RESOURCE file; the sampler
           * the one in the SAMPLER file. Finding them by file rather than
@@ -3592,11 +3636,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          unsigned nsrc = 2 + ((is_ld && !is_buffer) ? 1 : 0) +
                          (has_lod ? 1 : 0) + (compare ? 1 : 0) +
+                         (dynamic_offset ? 1 : 0) +
                          (has_offset ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
-         tex->op = is_ld ? nir_texop_txf : (has_lod ? nir_texop_txl
-                                                    : nir_texop_tex);
+         tex->op = is_ld ? nir_texop_txf
+                         : gather ? nir_texop_tg4
+                                  : has_lod ? nir_texop_txl : nir_texop_tex;
          tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF
                                       : GLSL_SAMPLER_DIM_2D;
          tex->is_array = false;
@@ -3604,6 +3650,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          tex->dest_type = nir_type_float32;
          tex->coord_components = is_buffer ? 1 : 2;
          tex->sampler_index = have_smp ? sslot : 0;
+         if (gather) {
+            for (unsigned k = 1; k < nops; k++) {
+               /* SM4/5 encodes GatherRed/Green/Blue/Alpha as a select-one
+                * swizzle on the sampler operand. */
+               if (o[k].file == D12_DXBC_FILE_SAMPLER) {
+                  tex->component = o[k].swizzle[0];
+                  break;
+               }
+            }
+         }
 
          unsigned si = 0;
          tex->src[si++] =
@@ -3635,6 +3691,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
                                                  nir_trim_vector(b, coord4, 2));
+            if (dynamic_offset) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_offset, nir_trim_vector(b, SRC(2), 2));
+            }
             if (has_offset) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_offset,
@@ -3645,8 +3705,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_comparator,
                   nir_channel(b, SRC(nops - 1), 0));
-               tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
-                                                    nir_imm_int(b, 0));
+               if (has_lod)
+                  tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
+                                                       nir_imm_int(b, 0));
             } else if (has_lod) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, nir_channel(b, SRC(nops - 1), 0));
@@ -3658,11 +3719,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          /* The RESOURCE operand's swizzle reorders the result. */
          unsigned rs[4] = {0, 1, 2, 3};
-         for (unsigned k = 1; k < nops; k++) {
-            if (o[k].file == D12_DXBC_FILE_RESOURCE) {
-               for (unsigned c = 0; c < 4; c++)
-                  rs[c] = o[k].swizzle[c];
-               break;
+         if (!gather) {
+            for (unsigned k = 1; k < nops; k++) {
+               if (o[k].file == D12_DXBC_FILE_RESOURCE) {
+                  for (unsigned c = 0; c < 4; c++)
+                     rs[c] = o[k].swizzle[c];
+                  break;
+               }
             }
          }
          DST(nir_swizzle(b, &tex->def, rs, 4));

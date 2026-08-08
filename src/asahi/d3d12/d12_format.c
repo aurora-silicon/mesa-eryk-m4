@@ -31,6 +31,9 @@ struct d12_format_entry {
  */
 static const struct d12_format_entry d12_formats[] = {
    /* 8-bit */
+   /* A8 has the same one-byte storage as R8. Fragment export remaps the
+    * D3D alpha component into this physical channel at PSO compilation. */
+   {DXGI_FORMAT_A8_UNORM, PIPE_FORMAT_R8_UNORM},
    {DXGI_FORMAT_R8_UNORM, PIPE_FORMAT_R8_UNORM},
    {DXGI_FORMAT_R8_SNORM, PIPE_FORMAT_R8_SNORM},
    {DXGI_FORMAT_R8_UINT, PIPE_FORMAT_R8_UINT},
