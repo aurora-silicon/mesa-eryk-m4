@@ -317,6 +317,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->active_occlusion_queries = 0;
    list->active_pipeline_stats_heap = NULL;
    memset(&list->pipeline_stats, 0, sizeof(list->pipeline_stats));
+   memset(list->active_so_stats_heap, 0,
+          sizeof(list->active_so_stats_heap));
 
    /* The real free is the GPU write Close appends (see there): a closed
     * list can be executed many times without ever being Reset, so a reset
@@ -3177,6 +3179,7 @@ static bool
 d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
                     bool indexed, unsigned first_index,
+                    const struct agx_draw *upstream_draw,
                     uint64_t root_gpu, uint64_t textures_gpu,
                     uint64_t pbes_gpu,
                     uint64_t draw_gpu, unsigned *out_verts,
@@ -3194,11 +3197,25 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     * reads it back. Zero outputs would mean a zero-size allocation, so
     * keep at least one word rather than handing the shader a null.
     */
-   struct poly_vertex_params vp;
-   poly_vertex_params_init(&vp, pso->sw_vs_outputs, wg_size);
-   poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
+   const bool indirect =
+      upstream_draw && agx_is_indirect(upstream_draw->b);
+   const uint64_t sw_outputs =
+      pso->has_tess ? pso->sw_tes_outputs : pso->sw_vs_outputs;
+   const enum mesa_prim input_prim =
+      pso->has_tess
+         ? (pso->tess_points
+               ? MESA_PRIM_POINTS
+               : pso->tess_mode == TESS_PRIMITIVE_ISOLINES
+                    ? MESA_PRIM_LINES
+                    : MESA_PRIM_TRIANGLES)
+         : list->topology;
 
-   if (indexed) {
+   struct poly_vertex_params vp;
+   poly_vertex_params_init(&vp, sw_outputs, wg_size);
+   if (!indirect)
+      poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
+
+   if (!indirect && indexed) {
       enum agx_index_size index_size = list->ib.addr
                                           ? list->ib.index_size
                                           : AGX_INDEX_SIZE_U16;
@@ -3220,25 +3237,28 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       }
    }
 
-   size_t out_size = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
-                                      pso->sw_vs_outputs);
-   vp.output_buffer = d12_list_upload_zero(list, MAX2(out_size, 16), 16);
-   if (!vp.output_buffer)
-      return false;
+   size_t out_size = 0;
+   if (!indirect) {
+      out_size = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
+                                  sw_outputs);
+      vp.output_buffer = d12_list_upload_zero(list, MAX2(out_size, 16), 16);
+      if (!vp.output_buffer)
+         return false;
+   }
 
    /* Remember it so the vertex buffer can be read back once the GPU is
     * idle. Whether the software vertex shader actually wrote what the
     * rasterization program then reads is the one question a command
     * stream dump cannot answer.
     */
-   if (getenv("D3D12AGX_DUMP_GS_VB")) {
+   if (!indirect && getenv("D3D12AGX_DUMP_GS_VB")) {
       list->device->dbg_gs_vb = d12_list_data_cpu(list, vp.output_buffer);
       list->device->dbg_gs_vb_size = MAX2(out_size, 16);
       mesa_logi("gs vb: gpu=0x%llx cpu=%p size=%zu outputs=0x%llx "
                 "verts=%u insts=%u",
                 (unsigned long long)vp.output_buffer,
                 list->device->dbg_gs_vb, list->device->dbg_gs_vb_size,
-                (unsigned long long)pso->sw_vs_outputs, vertex_count,
+                (unsigned long long)sw_outputs, vertex_count,
                 instance_count);
    }
 
@@ -3254,10 +3274,12 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       vp.index_buffer = list->device->null_va;
 
    struct poly_geometry_params gp;
-   poly_geometry_params_init(&gp, list->topology, wg_size);
-   poly_geometry_params_set_draw(&gp, list->topology, pso->gs_info.shape,
-                                 pso->gs_info.max_indices, vertex_count,
-                                 instance_count);
+   poly_geometry_params_init(&gp, input_prim, wg_size);
+   if (!indirect) {
+      poly_geometry_params_set_draw(&gp, input_prim, pso->gs_info.shape,
+                                    pso->gs_info.max_indices, vertex_count,
+                                    instance_count);
+   }
 
    /* poly's pre-GS program always dereferences the query/counter pointers,
     * even when D3D12 has no corresponding query active. Give every unused
@@ -3273,6 +3295,21 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       gp.prims_generated_counter[i] = sink + 4 * sink_word++;
       gp.xfb_prims_generated_counter[i] = sink + 4 * sink_word++;
       gp.xfb_overflow[i] = sink + 4 * sink_word++;
+
+      if (i < ARRAY_SIZE(list->active_so_stats_heap) &&
+          list->active_so_stats_heap[i]) {
+         struct d12_query_heap *heap = list->active_so_stats_heap[i];
+         uint64_t result = heap->bo->va->addr +
+                           (uint64_t)list->active_so_stats_index[i] *
+                              heap->stride;
+
+         /* D3D12_QUERY_DATA_SO_STATISTICS is two uint64_t fields:
+          * {written, storage-needed}. Poly increments uint32_t counters;
+          * BeginQuery has already zeroed both complete fields.
+          */
+         gp.xfb_prims_generated_counter[i] = result;
+         gp.prims_generated_counter[i] = result + sizeof(uint64_t);
+      }
    }
    gp.xfb_any_overflow = sink + 4 * sink_word++;
 
@@ -3293,7 +3330,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    }
 
    gp.count_buffer_stride = pso->gs_info.count_words * 4;
-   if (gp.count_buffer_stride) {
+   if (!indirect && gp.count_buffer_stride) {
       /* With prefix sums, each input primitive owns one count record. The
        * fixed-count form only needs poly's documented 16-byte scratch.
        */
@@ -3307,7 +3344,9 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
          return false;
    }
 
-   if (pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED) {
+   uint64_t static_index_buffer = 0;
+   size_t static_index_size = 0;
+   if (pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED && !indirect) {
       size_t index_size = (size_t)gp.draw.index_count * sizeof(uint32_t);
       if (!index_size || index_size > UINT32_MAX) {
          mesa_loge("geometry output index buffer size %zu is invalid",
@@ -3328,15 +3367,17 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
        * is a byte index buffer (0xff is primitive restart), instanced once
        * per input primitive. Uploading that table avoids the dynamic index
        * writer while preserving arbitrary static strip breaks. */
-      size_t index_size = pso->gs_info.max_indices;
-      uint64_t index_buffer =
-         d12_list_upload(list, pso->gs_info.topology, index_size, 1);
-      if (!index_buffer)
+      static_index_size = pso->gs_info.max_indices;
+      static_index_buffer = d12_list_upload(
+         list, pso->gs_info.topology, static_index_size, 1);
+      if (!static_index_buffer)
          return false;
 
-      *out_draw = agx_draw_indexed(
-         gp.draw.index_count, gp.draw.instance_count, 0, 0, 0, index_buffer,
-         index_size, AGX_INDEX_SIZE_U8, true);
+      if (!indirect) {
+         *out_draw = agx_draw_indexed(
+            gp.draw.index_count, gp.draw.instance_count, 0, 0, 0,
+            static_index_buffer, static_index_size, AGX_INDEX_SIZE_U8, true);
+      }
    }
 
    if (getenv("D3D12AGX_DUMP_SO")) {
@@ -3363,6 +3404,31 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!vp_gpu || !gp_gpu)
       return false;
 
+   if (indirect && getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+      const uint64_t heap_base = list->device->heap_bo->va->addr;
+      const uint64_t heap_size = list->device->heap_bo->size;
+      bool valid =
+         d12_list_stream_contains(list, upstream_draw->b.ptr,
+                                  sizeof(struct poly_indirect_draw)) &&
+         d12_list_stream_contains(list, vp_gpu, sizeof(vp)) &&
+         d12_list_stream_contains(list, gp_gpu, sizeof(gp)) &&
+         upstream_draw->index_buffer == heap_base &&
+         upstream_draw->index_buffer_range_B <= heap_size;
+
+      mesa_logi("tess->GS validate: draw=0x%llx vp=0x%llx gp=0x%llx "
+                "index=[0x%llx,+0x%x] heap=[0x%llx,+0x%llx] valid=%d",
+                (unsigned long long)upstream_draw->b.ptr,
+                (unsigned long long)vp_gpu, (unsigned long long)gp_gpu,
+                (unsigned long long)upstream_draw->index_buffer,
+                upstream_draw->index_buffer_range_B,
+                (unsigned long long)heap_base,
+                (unsigned long long)heap_size, valid);
+      if (!valid) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
+
    /* THE INDIRECTION. agx_usc_uniform fills uniform registers FROM
     * memory, so publishing a POINTER means uploading the pointer and
     * pointing the uniform at that -- the address-of-an-address the root
@@ -3383,7 +3449,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       return false;
 
    /* The mask lives in memory because the uniform is filled from memory. */
-   uint64_t outputs_mask = pso->sw_vs_outputs;
+   uint64_t outputs_mask = sw_outputs;
    uint64_t outputs_gpu =
       d12_list_upload(list, &outputs_mask, sizeof(outputs_mask), 8);
    if (!outputs_gpu)
@@ -3401,6 +3467,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
       .geom_params = gp_ptr,
+      .tess_params = out_poly->tess_params,
       .vs_outputs = outputs_gpu,
       /* Published by the caller BEFORE this function runs: the
        * software VS fetches attributes through it. */
@@ -3411,21 +3478,76 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!seg)
       return false;
 
-   /* Software VS first. Grids are in THREADS, not workgroups -- unlike the
+   struct agx_grid sw_grid = agx_3d(vp.grid[0], vp.grid[1], 1);
+   struct agx_grid gs_grid = agx_3d(gp.grid[0], gp.grid[1], 1);
+
+   if (indirect) {
+      if (!upstream_draw->indexed) {
+         mesa_loge("geometry after tessellation requires the indexed "
+                   "tessellator draw");
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      list->uses_heap = true;
+      struct libagx_gs_setup_indirect_args args = {
+         .index_buffer = upstream_draw->index_buffer,
+         .draw = upstream_draw->b.ptr,
+         .vp = vp_gpu,
+         .p = gp_gpu,
+         .heap = list->device->heap_desc_va,
+         .vs_outputs = sw_outputs,
+         .index_size_B = agx_index_size_to_B(upstream_draw->index_size),
+         .index_buffer_range_el =
+            upstream_draw->index_buffer_range_B /
+            agx_index_size_to_B(upstream_draw->index_size),
+         .prim = input_prim,
+         .is_prefix_summing = pso->gs_info.prefix_sum,
+         .max_indices = pso->gs_info.max_indices,
+         .shape = pso->gs_info.shape,
+      };
+      d12_list_dispatch_precomp_to(list, LIBAGX_GS_SETUP_INDIRECT, &args,
+                                   sizeof(args), agx_1d(1), true);
+      if (list->state != D12_LIST_RECORDING)
+         return false;
+
+      sw_grid = agx_grid_indirect_local(
+         vp_gpu + offsetof(struct poly_vertex_params, grid));
+      gs_grid = agx_grid_indirect_local(
+         gp_gpu + offsetof(struct poly_geometry_params, grid));
+
+      uint64_t indirect_draw =
+         gp_gpu + offsetof(struct poly_geometry_params, draw);
+      if (pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED) {
+         *out_draw = agx_draw_indexed_indirect(
+            indirect_draw, list->device->heap_bo->va->addr,
+            list->device->heap_bo->size, AGX_INDEX_SIZE_U32, true);
+      } else if (pso->gs_info.shape == POLY_GS_SHAPE_STATIC_INDEXED) {
+         *out_draw = agx_draw_indexed_indirect(
+            indirect_draw, static_index_buffer, static_index_size,
+            AGX_INDEX_SIZE_U8, true);
+      } else {
+         *out_draw = agx_draw_indirect(indirect_draw);
+      }
+   }
+
+   /* Software VS/TES first. Grids are in THREADS, not workgroups -- unlike the
     * API dispatch path, which multiplies. Each helper appends a full barrier
     * because every following program consumes the previous one's output.
     */
    if (!d12_list_dispatch_gs_stage(
-          list, seg, pso->sw_vs_va, &pso->sw_vs_info,
-          agx_3d(vp.grid[0], vp.grid[1], 1), wg, &u,
-          D3D12_SHADER_VISIBILITY_VERTEX))
+          list, seg, pso->has_tess ? pso->sw_tes_va : pso->sw_vs_va,
+          pso->has_tess ? &pso->sw_tes_info : &pso->sw_vs_info,
+          sw_grid, wg, &u,
+          pso->has_tess ? D3D12_SHADER_VISIBILITY_DOMAIN
+                        : D3D12_SHADER_VISIBILITY_VERTEX))
       return false;
 
    if (pso->gs_info.xfb) {
       if (pso->gs_info.count_words &&
           !d12_list_dispatch_gs_stage(
              list, seg, pso->gs_count_va, &pso->gs_count_info,
-             agx_3d(gp.grid[0], gp.grid[1], 1), wg, &u,
+             gs_grid, wg, &u,
              D3D12_SHADER_VISIBILITY_GEOMETRY))
          return false;
 
@@ -3447,15 +3569,15 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
 
    if (!d12_list_dispatch_gs_stage(
           list, seg, pso->gs_main_va, &pso->gs_main_info,
-          agx_3d(gp.grid[0], gp.grid[1], 1), wg, &u,
+          gs_grid, wg, &u,
           D3D12_SHADER_VISIBILITY_GEOMETRY))
       return false;
 
    /* The rasterization draw's extent is closed-form in the shape, not a
     * GPU-written count -- that is only needed for indirect draws.
     */
-   *out_verts = gp.draw.index_count;
-   *out_instances = gp.draw.instance_count;
+   *out_verts = indirect ? 0 : gp.draw.index_count;
+   *out_instances = indirect ? 0 : gp.draw.instance_count;
    *out_poly = u;
    return true;
 }
@@ -3822,7 +3944,8 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       list->device->dbg_tess_counts = d12_list_data_cpu(list, counts);
       list->device->dbg_tess_counts_n = unrolled;
       list->device->dbg_tcs_buf = d12_list_data_cpu(list, tcs_buffer);
-      list->device->dbg_tcs_buf_n = pso->tcs_output_stride / 4;
+      list->device->dbg_tcs_buf_n =
+         unrolled * (pso->tcs_output_stride / 4);
       mesa_logi("tess: patches=%u unrolled=%u patch_size=%u out_patch=%u "
                 "stride=%u mode=%u part=%u tcs_pv_out=0x%llx",
                 in_patches, unrolled, input_patch_size,
@@ -4258,6 +4381,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
                                indexed, first_index,
+                               pso->has_tess ? &draw : NULL,
                                root_gpu, textures_gpu, pbes_gpu, draw_gpu,
                                &vertex_count, &instance_count, &draw,
                                &poly_u))
@@ -4276,7 +4400,10 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       varys = &pso->gs_varyings;
       topology = pso->gs_info.mode;
       first_vertex = 0;
-      draw_set = poly_gs_indexed(pso->gs_info.shape);
+      /* A geometry stage fed by tessellation is always driven by the
+       * tessellator's GPU-written indirect draw, even when the geometry
+       * lowering itself uses a non-indexed output shape. */
+      draw_set = pso->has_tess || poly_gs_indexed(pso->gs_info.shape);
    }
 
    if (getenv("D3D12AGX_DUMP_MESH")) {
@@ -4351,11 +4478,19 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * selected by the PSO, not inferred from the bound index width (D3D12
     * deliberately permits 0xffff with a 32-bit buffer and vice versa). */
    bool restart = indexed && d12_strip_cut_enabled(pso, topology);
-   if (restart) {
-      uint32_t restart_index =
-         pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
-            ? UINT16_MAX
-            : UINT32_MAX;
+   bool vdm_restart = draw_set ? draw.restart : restart;
+   if (vdm_restart) {
+      /* Poly-generated GS index buffers always carry their natural all-ones
+       * restart sentinel. They are independent of the application's strip-cut
+       * PSO state (and may exist for a non-indexed D3D draw), so key this from
+       * the final draw rather than the original Draw[Indexed] call. Leaving
+       * the persistent VDM sentinel at its reset value made generated index 0
+       * look like a restart and dropped the first stream-output vertex. */
+      uint32_t restart_index = draw_set
+         ? BITFIELD_MASK(8 * agx_index_size_to_B(draw.index_size))
+         : pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
+              ? UINT16_MAX
+              : UINT32_MAX;
 
       agx_push(out, VDM_STATE, cfg) {
          cfg.restart_index_present = true;
@@ -4594,6 +4729,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
       agx_ppp_push(&ppp, CULL, cfg) {
          cfg.front_face_ccw = pso->raster.front_face_ccw;
+         /* Direct hardware TES needs the tessellator's declared winding folded
+          * into culling, as in Honeykrisp. Once any geometry stage follows,
+          * however, Poly presents an explicit list of fully ordered output
+          * triangles; applying the tessellation XOR again reverses them. This
+          * includes the XFB passthrough synthesized by this driver. D3D12 has
+          * no selectable domain origin, so there is no lower-left XOR. */
+         if (pso->has_tess && !pso->has_gs)
+            cfg.front_face_ccw ^= pso->tess_ccw;
          cfg.cull_front = pso->raster.cull_front;
          cfg.cull_back = pso->raster.cull_back;
          cfg.depth_clip = pso->raster.depth_clip;
@@ -6085,6 +6228,31 @@ d12_list_BeginQuery(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_SO_STATISTICS) {
+      unsigned stream = type - D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0;
+      if (stream >= ARRAY_SIZE(list->active_so_stats_heap) ||
+          list->active_so_stats_heap[stream]) {
+         mesa_loge("BeginQuery: stream-output statistics query already "
+                   "active for stream %u", stream);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const D3D12_QUERY_DATA_SO_STATISTICS zero = {0};
+      uint64_t source = d12_list_upload(list, &zero, sizeof(zero), 8);
+      uint64_t result = heap->bo->va->addr + (uint64_t)index * heap->stride;
+      if (!source)
+         return;
+
+      d12_list_copy_gpu_bytes(list, result, source, sizeof(zero));
+      if (list->state != D12_LIST_RECORDING)
+         return;
+
+      list->active_so_stats_heap[stream] = heap;
+      list->active_so_stats_index[stream] = index;
+      return;
+   }
+
    if (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_OCCLUSION) {
       mesa_loge("BeginQuery currently supports occlusion heaps only");
       list->state = D12_LIST_ERROR;
@@ -6114,6 +6282,20 @@ d12_list_EndQuery(ID3D12GraphicsCommandList6 *iface,
       return;
 
    uint64_t result = heap->bo->va->addr + (uint64_t)index * heap->stride;
+
+   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_SO_STATISTICS) {
+      unsigned stream = type - D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0;
+      if (stream >= ARRAY_SIZE(list->active_so_stats_heap) ||
+          list->active_so_stats_heap[stream] != heap ||
+          list->active_so_stats_index[stream] != index) {
+         mesa_loge("EndQuery has no matching stream-output statistics query");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      list->active_so_stats_heap[stream] = NULL;
+      return;
+   }
 
    if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS) {
       if (list->active_pipeline_stats_heap != heap ||

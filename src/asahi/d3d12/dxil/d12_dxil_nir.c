@@ -1549,6 +1549,21 @@ dxil_generic_location(const struct d12_sig_element *se, unsigned sig_id)
    return VARYING_SLOT_VAR0 + dxil_sig_start_row(se, sig_id);
 }
 
+/*
+ * The component carried by loadInput/storeOutput is relative to the
+ * signature element.  Multiple elements may share one physical register,
+ * in which case DXIL metadata's start column places each element inside that
+ * register.  Vertex inputs are deliberately exempt: our VBO lowering gives
+ * every input-layout element its own NIR attribute and therefore starts it at
+ * component zero.  All inter-stage and patch traffic uses the packed physical
+ * register and must apply this offset.
+ */
+static unsigned
+dxil_sig_component(const struct d12_sig_element *se, unsigned col)
+{
+   return (se ? se->start_col : 0) + col;
+}
+
 static unsigned
 patch_location(const char *sem, unsigned sig_id)
 {
@@ -1821,11 +1836,16 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          unsigned location = dxil_generic_location(se, (unsigned)sig_id);
          unsigned base = dxil_sig_start_row(se, (unsigned)sig_id);
          unsigned rows = dxil_sig_rows(se);
+         unsigned component = dxil_sig_component(se, (unsigned)col);
+         if (component > 3) {
+            trans_fail(ctx, "packed input component outside register");
+            return false;
+         }
          const unsigned mode = se ? se->interpolation : 0;
          if (mode == 1) {
             val = nir_load_input(
                b, 1, bits, row, .base = base,
-               .component = (unsigned)col, .dest_type = nir_type_uint | bits,
+               .component = component, .dest_type = nir_type_uint | bits,
                .io_semantics.location = location,
                .io_semantics.num_slots = rows);
             b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
@@ -1849,7 +1869,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
          val = nir_load_interpolated_input(
             b, 1, bits, bary, row,
-            .base = base, .component = (unsigned)col,
+            .base = base, .component = component,
             .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
             .io_semantics.num_slots = rows);
@@ -1882,13 +1902,19 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                             ? dxil_sig_start_row(se, (unsigned)sig_id)
                             : (unsigned)sig_id;
          unsigned rows = generic ? dxil_sig_rows(se) : 1;
+         unsigned component =
+            generic ? dxil_sig_component(se, (unsigned)col) : (unsigned)col;
+         if (component > 3) {
+            trans_fail(ctx, "packed per-vertex component outside register");
+            return false;
+         }
          nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
                               ? nir_u2u32(b, get_def(ctx, p[3]))
                               : nir_imm_int(b, 0);
 
          val = nir_load_per_vertex_input(
             b, 1, bits, vertex, row,
-            .base = base, .component = (unsigned)col,
+            .base = base, .component = component,
             .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
             .io_semantics.num_slots = rows);
@@ -1943,9 +1969,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       const unsigned location = dxil_generic_location(se, (unsigned)sig_id);
       const unsigned base = dxil_sig_start_row(se, (unsigned)sig_id);
       const unsigned rows = dxil_sig_rows(se);
+      const unsigned component = dxil_sig_component(se, (unsigned)col);
+      if (component > 3) {
+         trans_fail(ctx, "packed evaluated-input component outside register");
+         return false;
+      }
       nir_def *val = nir_load_interpolated_input(
          b, 1, bits, bary, nir_imm_int(b, row), .base = base,
-         .component = (unsigned)col, .dest_type = nir_type_float | bits,
+         .component = component, .dest_type = nir_type_float | bits,
          .io_semantics.location = location, .io_semantics.num_slots = rows);
       b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
       def_result(ctx, inst, val);
@@ -2010,7 +2041,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       unsigned location;
-      unsigned output_col = col;
+      unsigned output_col = dxil_sig_component(se, (unsigned)col);
       unsigned output_base = (unsigned)sig_id;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* SV_Target[n]; the semantic index rides in start_row. */
@@ -2612,11 +2643,19 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                            (uint32_t)sig_id);
       const char *sem = se ? se->name : NULL;
       unsigned location = patch_location(sem, (unsigned)sig_id);
+      unsigned component = (unsigned)col;
+      if (location != VARYING_SLOT_TESS_LEVEL_OUTER &&
+          location != VARYING_SLOT_TESS_LEVEL_INNER)
+         component = dxil_sig_component(se, component);
+      if (component > 3) {
+         trans_fail(ctx, "packed patch-input component outside register");
+         return false;
+      }
 
       def_result(ctx, inst,
                  nir_load_input(b, 1, 32, nir_imm_int(b, row),
                                 .base = (unsigned)sig_id,
-                                .component = (unsigned)col,
+                                .component = component,
                                 .dest_type = nir_type_float32,
                                 .io_semantics.location = location,
                                 .io_semantics.num_slots = 1));
@@ -2658,8 +2697,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (location == VARYING_SLOT_TESS_LEVEL_OUTER ||
           location == VARYING_SLOT_TESS_LEVEL_INNER)
          comp = (unsigned)row;
-      else
+      else {
          slot = location + (unsigned)row;
+         comp = dxil_sig_component(se, comp);
+      }
+      if (comp > 3) {
+         trans_fail(ctx, "packed patch-output component outside register");
+         return false;
+      }
 
       nir_store_output(b, val, nir_imm_int(b, 0), .base = (unsigned)sig_id,
                        .write_mask = 1, .component = comp,
@@ -2708,11 +2753,21 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                            (uint32_t)sig_id);
       unsigned location = se && se->name && !strcmp(se->name, "SV_Position")
                              ? VARYING_SLOT_POS
-                             : VARYING_SLOT_VAR0 + sig_id;
+                             : dxil_generic_location(se, (unsigned)sig_id);
+      unsigned component =
+         location == VARYING_SLOT_POS
+            ? (unsigned)col
+            : dxil_sig_component(se, (unsigned)col);
+      if (component > 3) {
+         trans_fail(ctx,
+                    "packed output-control-point component outside register");
+         return false;
+      }
       def_result(ctx, inst,
                  nir_load_per_vertex_input(
                     b, 1, 32, nir_u2u32(b, vertex), nir_imm_int(b, row),
-                    .base = (unsigned)sig_id, .component = (unsigned)col,
+                    .base = dxil_sig_start_row(se, (unsigned)sig_id),
+                    .component = component,
                     .dest_type = nir_type_float32,
                     .io_semantics.location = location,
                     .io_semantics.num_slots = 1));

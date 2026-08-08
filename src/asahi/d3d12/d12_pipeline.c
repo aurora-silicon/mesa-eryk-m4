@@ -440,6 +440,8 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
       if (pso->sw_vs_bo)
          agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
+      if (pso->sw_tes_bo)
+         agx_bo_unreference(&pso->device->dev, pso->sw_tes_bo);
       if (pso->gs_count_bo)
          agx_bo_unreference(&pso->device->dev, pso->gs_count_bo);
       if (pso->gs_pre_bo)
@@ -1798,6 +1800,45 @@ compile_tes_stage(struct d12_device *device, const struct d12_binding_map *map,
 }
 
 /*
+ * The domain shader immediately ahead of a geometry/XFB stage.  The
+ * tessellator still produces an indexed indirect draw, but instead of feeding
+ * the hardware vertex stage directly, the domain shader runs as compute and
+ * writes the ordinary poly vertex-output buffer consumed by the geometry
+ * stage.  This is the same tessellation -> software TES -> GS composition
+ * used by Honeykrisp.
+ */
+static bool
+compile_sw_tes_stage(struct d12_device *device,
+                     const struct d12_binding_map *map, const void *dxil,
+                     size_t dxil_size, struct agx_shader_part *out,
+                     uint64_t *out_outputs, uint8_t *out_clip_size,
+                     uint8_t *out_cull_size)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_EVAL);
+   if (!nir)
+      return false;
+
+   NIR_PASS(_, nir, poly_nir_lower_tes, false);
+
+   *out_outputs = nir->info.outputs_written;
+   if (out_clip_size)
+      *out_clip_size = nir->info.clip_distance_array_size;
+   if (out_cull_size)
+      *out_cull_size = nir->info.cull_distance_array_size;
+
+   NIR_PASS(_, nir, poly_nir_lower_vs_before_gs);
+   nir->info.stage = MESA_SHADER_COMPUTE;
+   memset(&nir->info.cs, 0, sizeof(nir->info.cs));
+   nir->xfb_info = NULL;
+   nir->info.workgroup_size[0] = 64;
+   nir->info.workgroup_size[1] = 1;
+   nir->info.workgroup_size[2] = 1;
+
+   return compile_poly_program(device, nir, NULL, out);
+}
+
+/*
  * The vertex shader ahead of a geometry shader does not feed the
  * rasterizer -- it writes its outputs to a buffer the GS reads. That
  * makes it a compute shader, and poly_nir_lower_vs_before_gs is what
@@ -3008,22 +3049,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          gs_main_part, gs_rast_part;
       uint8_t clip_size = 0, cull_size = 0;
 
-      /* Stream output after tessellation captures the domain-shader output.
-       * That needs a passthrough GS layered after the existing tessellator;
-       * keep it a named refusal until those two preraster paths can compose.
-       */
-      if (has_so && pso->has_tess && !has_app_gs) {
-         mesa_loge("graphics PSO: stream output after tessellation is not "
-                   "composed with the domain-shader path yet");
-         free(pso);
-         return E_INVALIDARG;
-      }
-
       nir_xfb_info *xfb = NULL;
       if (has_so) {
          bool valid = false;
-         const void *capture = has_app_gs ? gs_dxil : vs_dxil;
-         size_t capture_size = has_app_gs ? gs_size : vs_size;
+         const void *capture = has_app_gs ? gs_dxil
+                               : pso->has_tess ? ds_dxil
+                                               : vs_dxil;
+         size_t capture_size = has_app_gs ? gs_size
+                               : pso->has_tess ? ds_size
+                                               : vs_size;
          xfb = d12_build_xfb_info(NULL, so_desc, capture, capture_size,
                                   &valid);
          if (!valid || !xfb) {
@@ -3034,9 +3068,19 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          }
       }
 
-      bool compiled = compile_sw_vs_stage(
-         device, map, vs_dxil, vs_size, &fetch, &sw_vs_part,
-         &pso->sw_vs_outputs, &clip_size, &cull_size);
+      bool compiled;
+      uint64_t gs_input_outputs;
+      if (pso->has_tess) {
+         compiled = compile_sw_tes_stage(
+            device, map, ds_dxil, ds_size, &sw_vs_part,
+            &pso->sw_tes_outputs, &clip_size, &cull_size);
+         gs_input_outputs = pso->sw_tes_outputs;
+      } else {
+         compiled = compile_sw_vs_stage(
+            device, map, vs_dxil, vs_size, &fetch, &sw_vs_part,
+            &pso->sw_vs_outputs, &clip_size, &cull_size);
+         gs_input_outputs = pso->sw_vs_outputs;
+      }
 
       if (compiled && has_app_gs) {
          compiled = compile_gs_stage(
@@ -3045,14 +3089,21 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             &pso->gs_uvs, &gs_count_part, &gs_pre_part, &gs_main_part,
             &gs_rast_part);
       } else if (compiled) {
-         enum mesa_prim prim = d12_so_primitive(primitive_topology_type);
+         enum mesa_prim prim =
+            pso->has_tess
+               ? (pso->tess_points
+                     ? MESA_PRIM_POINTS
+                     : pso->tess_mode == TESS_PRIMITIVE_ISOLINES
+                          ? MESA_PRIM_LINES
+                          : MESA_PRIM_TRIANGLES)
+               : d12_so_primitive(primitive_topology_type);
          if (prim == MESA_PRIM_UNKNOWN) {
             mesa_loge("graphics PSO: stream output needs a point, line, or "
                       "triangle primitive topology type");
             compiled = false;
          } else {
             nir_shader *passthrough = d12_build_so_passthrough_gs(
-               pso->sw_vs_outputs, clip_size, cull_size, prim, xfb);
+               gs_input_outputs, clip_size, cull_size, prim, xfb);
             compiled = compile_gs_nir(
                device, passthrough, &pso->gs_info, &pso->gs_uvs,
                &gs_count_part, &gs_pre_part, &gs_main_part, &gs_rast_part);
@@ -3068,6 +3119,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       /* The software VS, optional count/pre-GS, and geometry body are
        * ordinary compute programs. Count/pre-GS are present when XFB needs
        * capacity accounting and filled-size updates. */
+      struct agx_bo **sw_bo =
+         pso->has_tess ? &pso->sw_tes_bo : &pso->sw_vs_bo;
+      uint64_t *sw_va = pso->has_tess ? &pso->sw_tes_va : &pso->sw_vs_va;
+      struct agx_shader_info *sw_info =
+         pso->has_tess ? &pso->sw_tes_info : &pso->sw_vs_info;
+
       const struct {
          struct agx_shader_part *part;
          struct agx_bo **bo;
@@ -3075,8 +3132,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          struct agx_shader_info *info;
          const char *name;
       } cs[] = {
-         {&sw_vs_part, &pso->sw_vs_bo, &pso->sw_vs_va, &pso->sw_vs_info,
-          "d3d12 sw vs"},
+         {&sw_vs_part, sw_bo, sw_va, sw_info,
+          pso->has_tess ? "d3d12 sw domain" : "d3d12 sw vs"},
          {&gs_count_part, &pso->gs_count_bo, &pso->gs_count_va,
           &pso->gs_count_info, "d3d12 gs count"},
          {&gs_pre_part, &pso->gs_pre_bo, &pso->gs_pre_va,

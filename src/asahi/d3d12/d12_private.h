@@ -760,6 +760,18 @@ struct d12_pipeline_state {
    struct agx_shader_info sw_vs_info, gs_count_info, gs_pre_info,
       gs_main_info;
 
+   /* When a geometry stage (including the driver-created XFB passthrough)
+    * follows tessellation, the software vertex stage immediately ahead of
+    * that geometry stage is the domain shader, not the application's vertex
+    * shader.  Keep the two compute variants separate: sw_vs still feeds the
+    * hull shader, while sw_tes consumes the tessellator's indirect draw and
+    * feeds geometry/XFB.
+    */
+   struct agx_bo *sw_tes_bo;
+   uint64_t sw_tes_va;
+   struct agx_shader_info sw_tes_info;
+   uint64_t sw_tes_outputs;
+
    struct d12_gfx_stage gs_rast;
    struct agx_unlinked_uvs_layout gs_uvs;
    struct agx_varyings_vs gs_varyings;
@@ -1045,6 +1057,14 @@ struct d12_cmd_list {
    struct d12_query_heap *active_pipeline_stats_heap;
    UINT active_pipeline_stats_index;
    D3D12_QUERY_DATA_PIPELINE_STATISTICS pipeline_stats;
+
+   /* One transform-feedback statistics query may be active per stream.  Poly
+    * writes the two low 32-bit counters directly into the 64-bit D3D12 result
+    * fields; BeginQuery zeroes the complete result first, so the upper halves
+    * remain canonical zeroes.
+    */
+   struct d12_query_heap *active_so_stats_heap[4];
+   UINT active_so_stats_index[4];
 
    /* Bound state */
    /* IASetVertexBuffers. Recorded per slot; the draw path turns these,
