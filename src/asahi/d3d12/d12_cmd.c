@@ -1801,7 +1801,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          table[i].texture_array;
       const unsigned level = table[i].kind == D12_DESC_UAV
                                 ? table[i].texture_level
-                                : 0;
+                                : table[i].texture_first_level;
+      const unsigned last_level = table[i].kind == D12_DESC_UAV
+                                     ? level
+                                     : level + MAX2(
+                                          table[i].texture_level_count, 1) - 1;
       const unsigned layers = table[i].kind == D12_DESC_UAV
                                  ? MAX2(table[i].texture_layers, 1)
                                  : 1;
@@ -1825,7 +1829,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.width = layout->width_px;
          cfg.height = layout->height_px;
          cfg.first_level = level;
-         cfg.last_level = level;
+         cfg.last_level = last_level;
          cfg.unk_mipmapped = layout->levels > 1;
          if (samples > 1)
             cfg.samples = agx_translate_sample_count(samples);
@@ -2163,7 +2167,12 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    util_format_compose_swizzles(format_swizzle, view_swizzle, swizzle);
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
    const bool array = d->kind == D12_DESC_UAV && d->texture_array;
-   const unsigned level = d->kind == D12_DESC_UAV ? d->texture_level : 0;
+   const unsigned level = d->kind == D12_DESC_UAV
+                             ? d->texture_level
+                             : d->texture_first_level;
+   const unsigned last_level = d->kind == D12_DESC_UAV
+                                  ? level
+                                  : level + MAX2(d->texture_level_count, 1) - 1;
    const unsigned layers = d->kind == D12_DESC_UAV
                               ? MAX2(d->texture_layers, 1)
                               : 1;
@@ -2184,7 +2193,7 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       cfg.width = layout->width_px;
       cfg.height = layout->height_px;
       cfg.first_level = level;
-      cfg.last_level = level;
+      cfg.last_level = last_level;
       cfg.unk_mipmapped = layout->levels > 1;
       if (samples > 1)
          cfg.samples = agx_translate_sample_count(samples);

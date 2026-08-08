@@ -2298,7 +2298,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
       const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
       const bool msaa = samples > 1;
       if ((samples != 1 && samples != 2 && samples != 4) ||
-          res->desc.DepthOrArraySize != 1 || res->desc.MipLevels != 1 ||
+          res->desc.DepthOrArraySize != 1 ||
           (desc && msaa &&
            desc->ViewDimension != D3D12_SRV_DIMENSION_TEXTURE2DMS) ||
           (desc && !msaa &&
@@ -2308,6 +2308,30 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
                    res->desc.MipLevels, res->desc.DepthOrArraySize,
                    res->desc.SampleDesc.Count);
          return;
+      }
+
+      unsigned first_level = 0;
+      unsigned level_count = 1;
+      if (!msaa) {
+         first_level = desc ? desc->Texture2D.MostDetailedMip : 0;
+         if (first_level >= res->desc.MipLevels) {
+            mesa_loge("CreateShaderResourceView: first mip %u is outside "
+                      "%u resource levels", first_level,
+                      res->desc.MipLevels);
+            return;
+         }
+
+         unsigned remaining = res->desc.MipLevels - first_level;
+         level_count = desc ? desc->Texture2D.MipLevels : remaining;
+         if (level_count == UINT32_MAX)
+            level_count = remaining;
+         if (!level_count || level_count > remaining ||
+             first_level > UINT16_MAX || level_count > UINT16_MAX) {
+            mesa_loge("CreateShaderResourceView: mip range %u+%u is outside "
+                      "%u resource levels", first_level, level_count,
+                      res->desc.MipLevels);
+            return;
+         }
       }
 
       const unsigned plane = desc && !msaa ? desc->Texture2D.PlaneSlice : 0;
@@ -2326,6 +2350,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
       slot->texture_component_mapping =
          desc ? desc->Shader4ComponentMapping
               : D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+      slot->texture_first_level = first_level;
+      slot->texture_level_count = level_count;
       slot->texture_plane = plane;
       d12_descriptor_heap_update_slot(device, slot);
       return;
