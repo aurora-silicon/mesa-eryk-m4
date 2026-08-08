@@ -787,6 +787,154 @@ d12_nir_sampler_state_count(nir_shader *nir,
    return count;
 }
 
+/* AGX sampler state has only three fixed border colours. Preserve the native
+ * path for those and for every non-point filter; for an arbitrary point
+ * border, replace an out-of-range sample with the descriptor's exact value.
+ * This is deliberately narrower than Honeykrisp's two-sample linear-filter
+ * emulation, but it is fully correct for the covered point-filter case and
+ * does not claim or perturb the still-unimplemented linear case. */
+static nir_def *
+d12_custom_border_apply_heap_swizzle(nir_builder *b, nir_tex_instr *tex,
+                                     nir_def *border, nir_alu_type type)
+{
+   int handle_src =
+      nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+   if (handle_src < 0)
+      return border;
+
+   nir_instr *producer = nir_def_instr(tex->src[handle_src].src.ssa);
+   if (producer->type != nir_instr_type_intrinsic)
+      return border;
+
+   nir_intrinsic_instr *handle = nir_instr_as_intrinsic(producer);
+   if (handle->intrinsic != nir_intrinsic_bindless_image_agx ||
+       nir_intrinsic_desc_set(handle) != D12_UNIFORM_HEAP_TEXTURES)
+      return border;
+
+   /* The native texture heap uses 24-byte AGX descriptors, while the
+    * parallel D3D heap retains each SRV's 40-byte API descriptor. Recover
+    * the common heap index from the bindless texture byte offset. */
+   nir_def *slot =
+      nir_udiv_imm(b, nir_u2u64(b, handle->src[0].ssa),
+                   D12_TEXTURE_DESC_SIZE);
+   nir_def *descriptor = nir_iadd(
+      b, nir_load_descriptor_heap_agx(b),
+      nir_imul_imm(b, slot, D12_HEAP_DESC_SIZE));
+   nir_def *mapping = nir_load_global_constant(
+      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+      .align_mul = 4);
+
+   nir_def *zero = nir_alu_type_get_base_type(type) == nir_type_float
+                      ? nir_imm_floatN_t(b, 0.0, border->bit_size)
+                      : nir_imm_intN_t(b, 0, border->bit_size);
+   nir_def *one = nir_alu_type_get_base_type(type) == nir_type_float
+                     ? nir_imm_floatN_t(b, 1.0, border->bit_size)
+                     : nir_imm_intN_t(b, 1, border->bit_size);
+   nir_def *result[4];
+
+   for (unsigned c = 0; c < 4; c++) {
+      nir_def *select =
+         nir_iand_imm(b, nir_ushr_imm(b, mapping, c * 3), 0x7);
+      nir_def *value = nir_channel(b, border, 0);
+      for (unsigned source = 1; source < 4; source++) {
+         value = nir_bcsel(b, nir_ieq_imm(b, select, source),
+                           nir_channel(b, border, source), value);
+      }
+      value = nir_bcsel(b, nir_ieq_imm(b, select, 4), zero, value);
+      result[c] = nir_bcsel(b, nir_ieq_imm(b, select, 5), one, value);
+   }
+
+   return nir_vec(b, result, 4);
+}
+
+static bool
+d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
+                              UNUSED void *data)
+{
+   if (!nir_tex_instr_need_sampler(tex) || tex->is_shadow ||
+       nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0 ||
+       nir_tex_instr_src_index(tex, nir_tex_src_offset) >= 0 ||
+       tex->op == nir_texop_tg4)
+      return false;
+
+   unsigned spatial;
+   switch (tex->sampler_dim) {
+   case GLSL_SAMPLER_DIM_1D: spatial = 1; break;
+   case GLSL_SAMPLER_DIM_2D: spatial = 2; break;
+   case GLSL_SAMPLER_DIM_3D: spatial = 3; break;
+   default: return false;
+   }
+
+   int coord_src = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   if (coord_src < 0 || tex->src[coord_src].src.ssa->num_components < spatial)
+      return false;
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   /* Keep an independent copy of the hardware sample. Replacing tex->def
+    * below then dead-code-eliminates the original without making the bcsel
+    * self-referential. */
+   nir_instr *clone = nir_instr_clone(b->shader, &tex->instr);
+   nir_builder_instr_insert(b, clone);
+   nir_def *sample = &nir_instr_as_tex(clone)->def;
+
+   nir_def *logical = nir_imm_int(b, tex->sampler_index);
+   int sampler_offset =
+      nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
+   if (sampler_offset >= 0) {
+      logical = nir_iadd(b, logical,
+                         nir_u2u32(b, tex->src[sampler_offset].src.ssa));
+   }
+
+   nir_def *table = nir_load_custom_border_table_agx(b);
+   nir_def *entry = nir_iadd(
+      b, table,
+      nir_u2u64(b, nir_imul_imm(b, logical,
+                                sizeof(struct d12_custom_border_entry))));
+   nir_def *flags = nir_load_global_constant(
+      b, 1, 32, entry, .align_mul = 8, .align_offset = 0);
+   nir_def *border = nir_load_global_constant(
+      b, 4, 32, nir_iadd_imm(b, entry, 8),
+      .align_mul = 8, .align_offset = 0);
+
+   nir_def *oob = nir_imm_false(b);
+   nir_def *coord = tex->src[coord_src].src.ssa;
+   const uint32_t axis_flags[] = {
+      D12_CUSTOM_BORDER_U, D12_CUSTOM_BORDER_V, D12_CUSTOM_BORDER_W,
+   };
+   for (unsigned i = 0; i < spatial; i++) {
+      nir_def *c = nir_channel(b, coord, i);
+      nir_def *axis_oob = nir_ior(b, nir_flt_imm(b, c, 0.0f),
+                                 nir_fge_imm(b, c, 1.0f));
+      nir_def *axis_border =
+         nir_ine_imm(b, nir_iand_imm(b, flags, axis_flags[i]), 0);
+      oob = nir_ior(b, oob, nir_iand(b, axis_border, axis_oob));
+   }
+
+   const uint32_t enabled =
+      D12_CUSTOM_BORDER_ENABLE | D12_CUSTOM_BORDER_POINT;
+   nir_def *custom_point =
+      nir_ieq_imm(b, nir_iand_imm(b, flags, enabled), enabled);
+   nir_def *replace = nir_iand(b, custom_point, oob);
+
+   nir_alu_type type = nir_alu_type_get_base_type(tex->dest_type);
+   border = nir_convert_to_bit_size(b, border, type, tex->def.bit_size);
+   border = d12_custom_border_apply_heap_swizzle(b, tex, border, type);
+   if (tex->def.num_components < 4)
+      border = nir_trim_vector(b, border, tex->def.num_components);
+
+   nir_def *result = nir_bcsel(b, replace, border, sample);
+   nir_def_replace(&tex->def, result);
+   return true;
+}
+
+static bool
+d12_nir_lower_custom_point_borders(nir_shader *nir)
+{
+   return nir_shader_tex_pass(nir, d12_lower_custom_point_border,
+                              nir_metadata_none, NULL);
+}
+
 /*
  * The real work: application DXIL -> our translator -> NIR -> AGX, then
  * upload. This is the campaign's shader path running inside the driver.
@@ -865,6 +1013,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       mesa_loge("CreateComputePipelineState: DXIL->NIR failed: %s", error);
       return E_INVALIDARG;
    }
+
+   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {
@@ -1576,6 +1726,8 @@ compile_gfx_stage(struct d12_device *device,
       MAX2(nir->info.clip_distance_array_size, translated_clip_size);
    nir->info.cull_distance_array_size =
       MAX2(nir->info.cull_distance_array_size, translated_cull_size);
+
+   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {

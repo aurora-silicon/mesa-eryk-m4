@@ -441,6 +441,21 @@ struct d12_descriptor {
       };
    };
 };
+
+/* sampler_reserved and the GPU side table use the same flag word. */
+#define D12_CUSTOM_BORDER_ENABLE    BITFIELD_BIT(0)
+#define D12_CUSTOM_BORDER_POINT     BITFIELD_BIT(1)
+#define D12_CUSTOM_BORDER_U         BITFIELD_BIT(2)
+#define D12_CUSTOM_BORDER_V         BITFIELD_BIT(3)
+#define D12_CUSTOM_BORDER_W         BITFIELD_BIT(4)
+
+struct d12_custom_border_entry {
+   uint32_t flags;
+   uint32_t pad;
+   uint32_t color[4];
+};
+static_assert(sizeof(struct d12_custom_border_entry) == 24,
+              "custom-border table ABI");
 static_assert(sizeof(struct d12_descriptor) == 40,
               "must match handle increment");
 static_assert(offsetof(struct d12_descriptor, address) == 0 &&

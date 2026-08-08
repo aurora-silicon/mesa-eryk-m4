@@ -733,6 +733,12 @@ struct nir_shader;
 #define D12_UNIFORM_HEAP_SAMPLERS   72
 #define D12_UNIFORM_HEAP_SAMPLER_REGS 4
 
+/* Per-stage custom-border side table. Bound samplers are still ordinary AGX
+ * sampler states; this table supplies the arbitrary colour that the hardware
+ * sampler descriptor cannot encode. */
+#define D12_UNIFORM_CUSTOM_BORDERS  76
+#define D12_UNIFORM_CUSTOM_BORDER_REGS 4
+
 /*
  * The root binding upload contains three resource-metadata arrays back to
  * back plus an optional sampler-index plane. The root uniform points at a
@@ -857,7 +863,7 @@ struct nir_shader;
 #define D12_UNIFORM_VB_REGS         4
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_HEAP_SAMPLERS + D12_UNIFORM_HEAP_SAMPLER_REGS)
+   (D12_UNIFORM_CUSTOM_BORDERS + D12_UNIFORM_CUSTOM_BORDER_REGS)
 
 /*
  * The vertex attribute parameter block, indexed by DXIL input signature

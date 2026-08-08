@@ -2609,6 +2609,148 @@ d12_sampler_visible(D3D12_SHADER_VISIBILITY declared,
    return declared == D3D12_SHADER_VISIBILITY_ALL || declared == stage;
 }
 
+static const struct d12_descriptor *
+d12_list_bound_sampler(struct d12_cmd_list *list, bool compute_bindings,
+                       D3D12_SHADER_VISIBILITY visibility, unsigned logical,
+                       bool *visible_slot)
+{
+   const struct d12_descriptor *dynamic =
+      compute_bindings ? list->compute_sampler_table
+                       : list->graphics_sampler_table;
+   const struct d12_root_signature *rs =
+      compute_bindings ? list->compute_rs : list->graphics_rs;
+   const struct d12_descriptor *chosen = NULL;
+
+   *visible_slot = false;
+   if (rs) {
+      for (unsigned i = 0; i < rs->map.count; i++) {
+         if (rs->map.entries[i].klass == D12_RES_SAMPLER &&
+             rs->map.entries[i].slot == logical &&
+             (rs->map.entries[i].visibility == D3D12_SHADER_VISIBILITY_ALL ||
+              rs->map.entries[i].visibility == visibility)) {
+            *visible_slot = true;
+            break;
+         }
+      }
+
+      for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
+         const D3D12_STATIC_SAMPLER_DESC1 *s =
+            &rs->layout.static_samplers[i];
+         if (!d12_sampler_visible(s->ShaderVisibility, visibility))
+            continue;
+         if (d12_binding_map_find_visible(
+                &rs->map, D12_RES_SAMPLER, s->RegisterSpace,
+                s->ShaderRegister, visibility) == logical) {
+            chosen = &rs->static_samplers[i];
+            break;
+         }
+      }
+   }
+
+   if (!chosen && dynamic[logical].sampler_kind == D12_DESC_SAMPLER)
+      chosen = &dynamic[logical];
+
+   return chosen;
+}
+
+/* Upload arbitrary point-border colours separately from the compact AGX
+ * sampler state file. Hardware encodes only transparent/opaque black and
+ * opaque white; the shader consults this table only for a descriptor marked
+ * custom, so ordinary sampling remains the native single-sample path. */
+static bool
+d12_list_upload_custom_borders(struct d12_cmd_list *list,
+                               const struct agx_shader_info *info,
+                               bool compute_bindings,
+                               D3D12_SHADER_VISIBILITY visibility,
+                               uint64_t *out_gpu)
+{
+   bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
+   unsigned count = info->uses_txf ? MAX2(info->sampler_state_count, 1)
+                                   : info->sampler_state_count;
+   *out_gpu = 0;
+
+   if (count <= 1)
+      return true;
+   if (count > 17) {
+      mesa_loge("shader requires %u sampler states; AGX supports 17", count);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   struct d12_custom_border_entry entries[16] = {{0}};
+   for (unsigned logical = 0; logical < count - 1; logical++) {
+      bool visible_slot;
+      const struct d12_descriptor *chosen = d12_list_bound_sampler(
+         list, compute_bindings, visibility, logical, &visible_slot);
+
+      if (chosen) {
+         entries[logical].flags = chosen->sampler_reserved;
+         memcpy(entries[logical].color, chosen->sampler_border,
+                sizeof(entries[logical].color));
+      } else if (validate && visible_slot) {
+         mesa_loge("binding validation: sampler s%u has no visible static "
+                   "or dynamic descriptor for stage %u", logical,
+                   (unsigned)visibility);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
+
+   size_t size = (count - 1) * sizeof(entries[0]);
+   uint64_t table_gpu = d12_list_upload(list, entries, size, 8);
+   if (!table_gpu)
+      return false;
+
+   if (validate && ((table_gpu & 7) ||
+                    !d12_list_stream_contains(list, table_gpu, size))) {
+      mesa_loge("binding validation: custom-border table 0x%llx+%zu is "
+                "outside the aligned command-list stream BO",
+                (unsigned long long)table_gpu, size);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   /* USC UNIFORM records copy bytes from the supplied GPU address. The
+    * shader uniform is a pointer, so publish an address-of-address home
+    * cell, not the table itself (whose first eight bytes are flags/pad). */
+   *out_gpu = d12_list_upload(list, &table_gpu, sizeof(table_gpu), 8);
+   if (!*out_gpu)
+      return false;
+
+   if (validate && ((*out_gpu & 7) ||
+                    !d12_list_stream_contains(list, *out_gpu,
+                                              sizeof(table_gpu)))) {
+      mesa_loge("binding validation: custom-border pointer home 0x%llx+%zu "
+                "is outside the aligned command-list stream BO",
+                (unsigned long long)*out_gpu, sizeof(table_gpu));
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   if (getenv("D3D12AGX_DUMP_SAMPLERS")) {
+      mesa_logi("custom borders: stage=%u compute=%u entries=%u "
+                "table=0x%llx home=0x%llx stream=0x%llx..0x%llx "
+                "valid=%u/%u",
+                (unsigned)visibility, compute_bindings, count - 1,
+                (unsigned long long)table_gpu,
+                (unsigned long long)*out_gpu,
+                (unsigned long long)list->stream_bo->va->addr,
+                (unsigned long long)(list->stream_bo->va->addr +
+                                     list->stream_bo->size),
+                d12_list_stream_contains(list, table_gpu, size),
+                d12_list_stream_contains(list, *out_gpu,
+                                         sizeof(table_gpu)));
+      for (unsigned i = 0; i < count - 1; i++) {
+         mesa_logi("  border%u: flags=0x%x color=%08x %08x %08x %08x",
+                   i, entries[i].flags, entries[i].color[0],
+                   entries[i].color[1], entries[i].color[2],
+                   entries[i].color[3]);
+      }
+   }
+
+   return true;
+}
+
 /* Upload one contiguous sampler state file. AGX reserves hardware state 0
  * for texture Load; application sampler S therefore lives at S + 1. Using
  * one USC record for the complete file matches the proven Gallium path and
@@ -2641,45 +2783,11 @@ d12_list_push_samplers(struct d12_cmd_list *list,
    for (unsigned i = 0; i < count; i++)
       agx_pack_txf_sampler(&states[i]);
 
-   const struct d12_descriptor *dynamic =
-      compute_bindings ? list->compute_sampler_table
-                       : list->graphics_sampler_table;
-   const struct d12_root_signature *rs =
-      compute_bindings ? list->compute_rs : list->graphics_rs;
-
    for (unsigned hw = 1; hw < count; hw++) {
       unsigned logical = hw - 1;
-      const struct d12_descriptor *chosen = NULL;
-      bool visible_slot = false;
-
-      if (rs) {
-         for (unsigned i = 0; i < rs->map.count; i++) {
-            if (rs->map.entries[i].klass == D12_RES_SAMPLER &&
-                rs->map.entries[i].slot == logical &&
-                (rs->map.entries[i].visibility ==
-                    D3D12_SHADER_VISIBILITY_ALL ||
-                 rs->map.entries[i].visibility == visibility)) {
-               visible_slot = true;
-               break;
-            }
-         }
-
-         for (uint32_t i = 0; i < rs->layout.num_static_samplers; i++) {
-            const D3D12_STATIC_SAMPLER_DESC1 *s =
-               &rs->layout.static_samplers[i];
-            if (!d12_sampler_visible(s->ShaderVisibility, visibility))
-               continue;
-            if (d12_binding_map_find_visible(
-                   &rs->map, D12_RES_SAMPLER, s->RegisterSpace,
-                   s->ShaderRegister, visibility) == logical) {
-               chosen = &rs->static_samplers[i];
-               break;
-            }
-         }
-      }
-
-      if (!chosen && dynamic[logical].sampler_kind == D12_DESC_SAMPLER)
-         chosen = &dynamic[logical];
+      bool visible_slot;
+      const struct d12_descriptor *chosen = d12_list_bound_sampler(
+         list, compute_bindings, visibility, logical, &visible_slot);
 
       if (chosen) {
          states[hw] = chosen->sampler;
@@ -2710,7 +2818,10 @@ d12_list_push_samplers(struct d12_cmd_list *list,
       mesa_logi("samplers: stage=%u compute=%u states=%u logical=%u "
                 "gpu=0x%llx stream=0x%llx..0x%llx valid=%u",
                 (unsigned)visibility, compute_bindings, count,
-                rs ? rs->map.sampler_count : 0,
+                (compute_bindings ? list->compute_rs : list->graphics_rs)
+                   ? (compute_bindings ? list->compute_rs : list->graphics_rs)
+                        ->map.sampler_count
+                   : 0,
                 (unsigned long long)gpu,
                 (unsigned long long)list->stream_bo->va->addr,
                 (unsigned long long)(list->stream_bo->va->addr +
@@ -2834,6 +2945,15 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (u->heap_samplers) {
       agx_usc_uniform(&b, D12_UNIFORM_HEAP_SAMPLERS,
                       D12_UNIFORM_HEAP_SAMPLER_REGS, u->heap_samplers);
+   }
+
+   uint64_t custom_borders;
+   if (!d12_list_upload_custom_borders(list, info, compute_bindings,
+                                       visibility, &custom_borders))
+      return 0;
+   if (custom_borders) {
+      agx_usc_uniform(&b, D12_UNIFORM_CUSTOM_BORDERS,
+                      D12_UNIFORM_CUSTOM_BORDER_REGS, custom_borders);
    }
 
    /*
@@ -3156,6 +3276,15 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
    if (heap_samplers_gpu) {
       agx_usc_uniform(&b, D12_UNIFORM_HEAP_SAMPLERS,
                       D12_UNIFORM_HEAP_SAMPLER_REGS, heap_samplers_gpu);
+   }
+
+   uint64_t custom_borders;
+   if (!d12_list_upload_custom_borders(list, &st->info, false, visibility,
+                                       &custom_borders))
+      return 0;
+   if (custom_borders) {
+      agx_usc_uniform(&b, D12_UNIFORM_CUSTOM_BORDERS,
+                      D12_UNIFORM_CUSTOM_BORDER_REGS, custom_borders);
    }
 
    /* Promoted constants start above D12_UNIFORM_RESERVED, so bind them only

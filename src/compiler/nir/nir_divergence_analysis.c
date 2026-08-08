@@ -346,6 +346,7 @@ visit_intrinsic(nir_intrinsic_instr *instr, struct divergence_state *state)
    case nir_intrinsic_load_active_subgroup_count_agx:
    case nir_intrinsic_load_depth_never_agx:
    case nir_intrinsic_load_root_agx:
+   case nir_intrinsic_load_custom_border_table_agx:
    case nir_intrinsic_load_descriptor_set_agx:
    case nir_intrinsic_load_sm_count_nv:
    case nir_intrinsic_load_warps_per_sm_nv:

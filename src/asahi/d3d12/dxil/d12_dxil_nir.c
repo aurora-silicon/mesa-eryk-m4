@@ -6338,6 +6338,9 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    case nir_intrinsic_load_descriptor_heap_agx:
       base = D12_UNIFORM_HEAP;
       break;
+   case nir_intrinsic_load_custom_border_table_agx:
+      base = D12_UNIFORM_CUSTOM_BORDERS;
+      break;
    case nir_intrinsic_load_mesh_param_buffer_agx:
       base = D12_UNIFORM_MESH_PARAMS;
       break;

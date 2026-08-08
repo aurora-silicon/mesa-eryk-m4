@@ -2893,6 +2893,50 @@ d12_sampler_border(const D3D12_SAMPLER_DESC2 *desc)
    return AGX_BORDER_COLOUR_TRANSPARENT_BLACK;
 }
 
+static uint32_t
+d12_sampler_custom_border_flags(const D3D12_SAMPLER_DESC2 *desc)
+{
+   /* The shader fallback compares normalized coordinates against [0, 1).
+    * Leave D3D12's non-normalized-coordinate extension on the native path. */
+   if (desc->Flags & D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES)
+      return 0;
+
+   uint32_t flags = 0;
+   if (desc->AddressU == D3D12_TEXTURE_ADDRESS_MODE_BORDER)
+      flags |= D12_CUSTOM_BORDER_U;
+   if (desc->AddressV == D3D12_TEXTURE_ADDRESS_MODE_BORDER)
+      flags |= D12_CUSTOM_BORDER_V;
+   if (desc->AddressW == D3D12_TEXTURE_ADDRESS_MODE_BORDER)
+      flags |= D12_CUSTOM_BORDER_W;
+
+   if (!flags)
+      return 0;
+
+   bool standard;
+   if (desc->Flags & D3D12_SAMPLER_FLAG_UINT_BORDER_COLOR) {
+      const UINT *c = desc->UintBorderColor;
+      standard = (c[0] == 0 && c[1] == 0 && c[2] == 0 &&
+                  (c[3] == 0 || c[3] == 1)) ||
+                 (c[0] == 1 && c[1] == 1 && c[2] == 1 && c[3] == 1);
+   } else {
+      const FLOAT *c = desc->FloatBorderColor;
+      standard = (c[0] == 0.0f && c[1] == 0.0f && c[2] == 0.0f &&
+                  (c[3] == 0.0f || c[3] == 1.0f)) ||
+                 (c[0] == 1.0f && c[1] == 1.0f && c[2] == 1.0f &&
+                  c[3] == 1.0f);
+   }
+
+   if (standard)
+      return 0;
+
+   flags |= D12_CUSTOM_BORDER_ENABLE;
+   if (D3D12_DECODE_MIN_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT &&
+       D3D12_DECODE_MAG_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT)
+      flags |= D12_CUSTOM_BORDER_POINT;
+
+   return flags;
+}
+
 void
 d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                             const D3D12_SAMPLER_DESC2 *desc)
@@ -2940,6 +2984,7 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
           sizeof(slot->sampler_border));
    slot->sampler_lod_bias = desc->MipLODBias;
    slot->sampler_flags = desc->Flags;
+   slot->sampler_reserved = d12_sampler_custom_border_flags(desc);
    slot->sampler_kind = D12_DESC_SAMPLER;
 }
 
