@@ -319,7 +319,9 @@ enum d12_dxbc_op {
 
 #define D12_DXBC_RESINFO_RETURN_TYPE_MASK  0x00001800u
 #define D12_DXBC_RESINFO_RETURN_TYPE_SHIFT 11
+#define D12_DXBC_RESINFO_RETURN_FLOAT      0
 #define D12_DXBC_RESINFO_RETURN_UINT       2
+#define D12_DXBC_RESOURCE_RETURN_FLOAT     5
 
 struct d12_dxbc_operand {
    enum d12_dxbc_file file;
@@ -419,6 +421,7 @@ struct d12_dxbc_ctx {
    uint32_t uav_stride[D12_DXBC_MAX_SIG];
    uint8_t srv_dim[D12_DXBC_MAX_SIG];
    uint8_t uav_dim[D12_DXBC_MAX_SIG];
+   uint8_t uav_return_type[D12_DXBC_MAX_SIG];
    bool uav_raw[D12_DXBC_MAX_SIG];
    /* SM 5.1 names constant buffers as cb<range-id>[register][row].  The
     * declaration is the only place that maps that range ID to a register
@@ -430,7 +433,6 @@ struct d12_dxbc_ctx {
     * dynamic counter access maps into the root signature's dense slots.
     */
    struct d12_dxbc_binding_range uav_range[D12_DXBC_MAX_SIG];
-   bool has_resinfo;
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
@@ -2688,6 +2690,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                ctx->uav_dim[r.index[0]] =
                   (op_tok & D12_DXBC_RESOURCE_DIMENSION_MASK) >>
                   D12_DXBC_RESOURCE_DIMENSION_SHIFT;
+               if (n < avail)
+                  ctx->uav_return_type[r.index[0]] = args[n] & 0xf;
             }
 
             if (r.num_indices == 3 && !r.index_is_relative[0] &&
@@ -3016,7 +3020,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned return_type =
             (op_tok & D12_DXBC_RESINFO_RETURN_TYPE_MASK) >>
             D12_DXBC_RESINFO_RETURN_TYPE_SHIFT;
-         if (return_type != D12_DXBC_RESINFO_RETURN_UINT ||
+         if ((return_type != D12_DXBC_RESINFO_RETURN_UINT &&
+              return_type != D12_DXBC_RESINFO_RETURN_FLOAT) ||
              (!uav && res->file != D12_DXBC_FILE_RESOURCE) ||
              res->num_indices != 1 || res->index_is_relative[0]) {
             fail(ctx, "unsupported RESINFO resource operand");
@@ -3077,6 +3082,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             b, nir_channel(b, &txs->def, 0), nir_channel(b, &txs->def, 1),
             is_array ? nir_channel(b, &txs->def, 2) : nir_imm_int(b, 0),
             &levels->def);
+         if (return_type == D12_DXBC_RESINFO_RETURN_FLOAT)
+            value = nir_u2f32(b, value);
          unsigned sw[4] = {res->swizzle[0], res->swizzle[1],
                            res->swizzle[2], res->swizzle[3]};
          DST(nir_swizzle(b, value, sw, 4));
@@ -3366,16 +3373,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       /*
-       * RAW and TYPED UAV stores. Same root-table indirection as every
-       * other resource here; the difference is only how the address is
-       * formed -- a byte offset for raw, an element index for typed.
-       *
-       * Typed is handled for 32-bit-per-element formats, which is what
-       * the tests overwhelmingly use. A wider or packed format would
-       * need real format conversion, so it is refused rather than
-       * written at the wrong stride.
-       */
-      /*
        * Loading from a UAV. Mirrors the typed store: element addressing,
        * one indirection through the root table. The resource is found by
        * REGISTER FILE rather than by position -- the operand count varies
@@ -3386,11 +3383,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          unsigned reg = 0;
          bool found = false, uav = true;
+         const struct d12_dxbc_operand *resource = NULL;
          for (unsigned k = 1; k < nops; k++) {
             if (o[k].file == D12_DXBC_FILE_UAV ||
                 o[k].file == D12_DXBC_FILE_RESOURCE) {
                reg = o[k].index[0];
                uav = o[k].file == D12_DXBC_FILE_UAV;
+               resource = &o[k];
                found = true;
                break;
             }
@@ -3400,11 +3399,52 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         if (ctx->has_resinfo && uav &&
-             (reg >= D12_DXBC_MAX_SIG ||
-              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
-            fail(ctx, "texture UAV load unsupported");
-            return;
+         if (uav && reg < D12_DXBC_MAX_SIG &&
+             ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
+            unsigned dim = ctx->uav_dim[reg];
+            bool is_array =
+               dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
+            if ((dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
+                 !is_array) ||
+                ctx->uav_return_type[reg] != D12_DXBC_RESOURCE_RETURN_FLOAT ||
+                resource->num_indices != 1 ||
+                resource->index_is_relative[0]) {
+               fail(ctx, "unsupported texture UAV load");
+               return;
+            }
+
+            unsigned slot =
+               ctx->map
+                  ? d12_binding_map_find(ctx->map, D12_RES_UAV, 0, reg)
+                  : reg;
+            if (slot == ~0u) {
+               fail(ctx, "texture UAV load is not bound by the root "
+                         "signature");
+               return;
+            }
+
+            nir_def *handle = nir_bindless_image_agx(
+               b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_TEXTURES);
+            nir_def *coord = SRC(1);
+            nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
+            tex->op = nir_texop_txf;
+            tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+            tex->is_array = is_array;
+            tex->dest_type = nir_type_float32;
+            tex->coord_components = is_array ? 3 : 2;
+            tex->src[0] = nir_tex_src_for_ssa(
+               nir_tex_src_texture_handle, handle);
+            tex->src[1] = nir_tex_src_for_ssa(
+               nir_tex_src_coord,
+               nir_trim_vector(b, coord, tex->coord_components));
+            nir_def_init(&tex->instr, &tex->def, 4, 32);
+            nir_builder_instr_insert(b, &tex->instr);
+
+            unsigned rs[4] = {resource->swizzle[0], resource->swizzle[1],
+                              resource->swizzle[2], resource->swizzle[3]};
+            DST(nir_swizzle(b, &tex->def, rs, 4));
+            break;
          }
 
          nir_def *off = nir_imul_imm(b, nir_channel(b, SRC(1), 0), 4);
@@ -3990,45 +4030,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 }
 
 /*
- * RESINFO made shaders containing texture UAV operations newly reachable.
- * Those operations still need real texture descriptors and must not fall
- * through the older buffer-address lowering.  Detect RESINFO up front so the
- * safety check applies regardless of instruction order, without regressing
- * pre-existing shaders which merely create (but never execute) such a PSO.
- */
-static bool
-token_stream_has_resinfo(const uint32_t *tok, const uint32_t *end)
-{
-   while (tok < end) {
-      uint32_t op_tok = *tok;
-      unsigned opcode = op_tok & 0x7ff;
-
-      if (opcode == D12_DXBC_OP_RESINFO)
-         return true;
-
-      if (opcode == D12_DXBC_OP_CUSTOMDATA) {
-         if (tok + 2 > end || tok[1] < 2 || tok + tok[1] > end)
-            return true;
-         tok += tok[1];
-         continue;
-      }
-
-      unsigned len = (op_tok >> 24) & 0x7f;
-      if (!len && (op_tok & 0x80000000u)) {
-         unsigned n = 1;
-         while ((tok[n - 1] & 0x80000000u) && tok + n < end)
-            n++;
-         len = n;
-      }
-      if (!len || tok + len > end)
-         return true;
-      tok += len;
-   }
-
-   return false;
-}
-
-/*
  * Translate a DXBC container to NIR.
  *
  * STATUS: the token decoder and the scalar/vector ALU set are in place
@@ -4107,7 +4108,6 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
 
    ctx.tok = tokens + 2;
    ctx.end = tokens + MIN2(num_tokens, tokens[1]);
-   ctx.has_resinfo = token_stream_has_resinfo(ctx.tok, ctx.end);
 
    translate_tokens(&ctx);
 

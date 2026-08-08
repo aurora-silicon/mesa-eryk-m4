@@ -249,10 +249,12 @@ enum {
  * column index), but the AGX lowering wants one vector store per output.
  * Collect components here and flush them at the end of translation.
  */
-#define D12_MAX_OUTPUTS 16
+#define D12_MAX_OUTPUTS 128
 
 struct output_slot {
    bool used;
+   unsigned sig_id;
+   unsigned row;
    unsigned location;
    unsigned base;
    nir_def *comps[4];
@@ -1302,6 +1304,24 @@ structured_store_in_bounds(struct trans_ctx *ctx,
  * is a generic per-patch varying.
  */
 static unsigned
+dxil_sig_rows(const struct d12_sig_element *se)
+{
+   return se && se->rows ? se->rows : 1;
+}
+
+static unsigned
+dxil_sig_start_row(const struct d12_sig_element *se, unsigned sig_id)
+{
+   return se ? se->start_row : sig_id;
+}
+
+static unsigned
+dxil_generic_location(const struct d12_sig_element *se, unsigned sig_id)
+{
+   return VARYING_SLOT_VAR0 + dxil_sig_start_row(se, sig_id);
+}
+
+static unsigned
 patch_location(const char *sem, unsigned sig_id)
 {
    if (sem) {
@@ -1424,6 +1444,30 @@ flush_outputs(struct trans_ctx *ctx)
    memset(ctx->outputs, 0, sizeof(ctx->outputs));
 }
 
+static struct output_slot *
+find_output_slot(struct trans_ctx *ctx, unsigned sig_id, unsigned row)
+{
+   struct output_slot *free_slot = NULL;
+
+   for (unsigned i = 0; i < D12_MAX_OUTPUTS; ++i) {
+      struct output_slot *slot = &ctx->outputs[i];
+      if (slot->used && slot->sig_id == sig_id && slot->row == row)
+         return slot;
+      if (!slot->used && !free_slot)
+         free_slot = slot;
+   }
+
+   if (!free_slot) {
+      trans_fail(ctx, "too many output signature rows");
+      return NULL;
+   }
+
+   free_slot->used = true;
+   free_slot->sig_id = sig_id;
+   free_slot->row = row;
+   return free_slot;
+}
+
 /*
  * dx.op call translation. `args` are the call's operands: args[0] is the
  * callee, args[1] the opcode constant, args[2..] the real parameters.
@@ -1457,9 +1501,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    case D12_DXOP_LOAD_INPUT: {
       /* (sigId, rowIndex, colIndex, gsVertexAxis) */
       NEED(3);
-      uint64_t sig_id = 0, row = 0, col = 0;
+      uint64_t sig_id = 0, col = 0;
       const_uint(ctx, p[0], &sig_id);
-      const_uint(ctx, p[1], &row);
       if (!const_uint(ctx, p[2], &col)) {
          trans_fail(ctx, "dynamic component index on loadInput");
          return false;
@@ -1472,6 +1515,15 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          d12_dxil_find_sig(ctx->mod->input_sig, ctx->mod->num_input_sig,
                            (uint32_t)sig_id);
       const char *sem = se ? se->name : NULL;
+      nir_def *row = nir_imm_int(b, 0);
+      if (dxil_sig_rows(se) > 1) {
+         row = get_def(ctx, p[1]);
+         if (!row) {
+            trans_fail(ctx, "invalid row index on loadInput");
+            return false;
+         }
+         row = nir_u2u32(b, row);
+      }
 
       if (sem && !strcmp(sem, "SV_VertexID")) {
          def_result(ctx, inst, nir_load_vertex_id(b));
@@ -1538,15 +1590,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           * consumes load_interpolated_input with a barycentric source,
           * not a raw load_input.
           */
-         unsigned location = VARYING_SLOT_VAR0 + sig_id;
+         unsigned location = dxil_generic_location(se, (unsigned)sig_id);
+         unsigned base = dxil_sig_start_row(se, (unsigned)sig_id);
+         unsigned rows = dxil_sig_rows(se);
          const unsigned mode = se ? se->interpolation : 0;
          if (mode == 1) {
             val = nir_load_input(
-               b, 1, bits, nir_imm_int(b, row), .base = (unsigned)sig_id,
+               b, 1, bits, row, .base = base,
                .component = (unsigned)col, .dest_type = nir_type_uint | bits,
                .io_semantics.location = location,
-               .io_semantics.num_slots = 1);
-            b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+               .io_semantics.num_slots = rows);
+            b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
             def_result(ctx, inst, val);
             return true;
          }
@@ -1566,13 +1620,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                  b, 32, .interp_mode = interp);
 
          val = nir_load_interpolated_input(
-            b, 1, bits, bary, nir_imm_int(b, row),
-            .base = (unsigned)sig_id, .component = (unsigned)col,
+            b, 1, bits, bary, row,
+            .base = base, .component = (unsigned)col,
             .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
-            .io_semantics.num_slots = 1);
+            .io_semantics.num_slots = rows);
 
-         b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+         b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
       } else if (b->shader->info.stage == MESA_SHADER_GEOMETRY ||
                  b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
                  b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
@@ -1587,33 +1641,40 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
           * every corner of the patch read the same undefined attribute
           * and the interpolated position was garbage.
           */
+         bool generic = !(sem && (!strcmp(sem, "SV_Position") ||
+                                  !strcmp(sem, "SV_ClipDistance")));
          unsigned location = sem && !strcmp(sem, "SV_Position")
                                 ? VARYING_SLOT_POS
                                 : sem && !strcmp(sem, "SV_ClipDistance")
                                    ? VARYING_SLOT_CLIP_DIST0 +
                                         (se ? se->semantic_index : 0)
-                                : VARYING_SLOT_VAR0 + sig_id;
+                                : dxil_generic_location(se,
+                                                        (unsigned)sig_id);
+         unsigned base = generic
+                            ? dxil_sig_start_row(se, (unsigned)sig_id)
+                            : (unsigned)sig_id;
+         unsigned rows = generic ? dxil_sig_rows(se) : 1;
          nir_def *vertex = np >= 4 && !operand_is_undef(ctx, p[3])
                               ? nir_u2u32(b, get_def(ctx, p[3]))
                               : nir_imm_int(b, 0);
 
          val = nir_load_per_vertex_input(
-            b, 1, bits, vertex, nir_imm_int(b, row),
-            .base = (unsigned)sig_id, .component = (unsigned)col,
+            b, 1, bits, vertex, row,
+            .base = base, .component = (unsigned)col,
             .dest_type = nir_type_float | bits,
             .io_semantics.location = location,
-            .io_semantics.num_slots = 1);
+            .io_semantics.num_slots = rows);
 
-         b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+         b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
       } else {
          unsigned location = VERT_ATTRIB_GENERIC0 + sig_id;
 
-         val = nir_load_input(b, 1, bits, nir_imm_int(b, row),
+         val = nir_load_input(b, 1, bits, row,
                               .base = (unsigned)sig_id,
                               .component = (unsigned)col,
                               .dest_type = nir_type_float | bits,
                               .io_semantics.location = location,
-                              .io_semantics.num_slots = 1);
+                              .io_semantics.num_slots = dxil_sig_rows(se));
 
          b->shader->info.inputs_read |= BITFIELD64_BIT(sig_id);
       }
@@ -1648,12 +1709,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                          ? nir_load_barycentric_at_sample(
                               b, 32, nir_u2u32(b, get_def(ctx, p[3])))
                          : nir_load_barycentric_centroid(b, 32);
-      const unsigned location = VARYING_SLOT_VAR0 + sig_id;
+      const struct d12_sig_element *se =
+         d12_dxil_find_sig(ctx->mod->input_sig, ctx->mod->num_input_sig,
+                           (uint32_t)sig_id);
+      const unsigned location = dxil_generic_location(se, (unsigned)sig_id);
+      const unsigned base = dxil_sig_start_row(se, (unsigned)sig_id);
+      const unsigned rows = dxil_sig_rows(se);
       nir_def *val = nir_load_interpolated_input(
-         b, 1, bits, bary, nir_imm_int(b, row), .base = (unsigned)sig_id,
+         b, 1, bits, bary, nir_imm_int(b, row), .base = base,
          .component = (unsigned)col, .dest_type = nir_type_float | bits,
-         .io_semantics.location = location, .io_semantics.num_slots = 1);
-      b->shader->info.inputs_read |= BITFIELD64_BIT(location);
+         .io_semantics.location = location, .io_semantics.num_slots = rows);
+      b->shader->info.inputs_read |= BITFIELD64_RANGE(location, rows);
       def_result(ctx, inst, val);
       return true;
    }
@@ -1663,7 +1729,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       NEED(4);
       uint64_t sig_id = 0, row = 0, col = 0;
       const_uint(ctx, p[0], &sig_id);
-      const_uint(ctx, p[1], &row);
+      if (!const_uint(ctx, p[1], &row)) {
+         trans_fail(ctx, "dynamic row index on storeOutput");
+         return false;
+      }
       if (!const_uint(ctx, p[2], &col)) {
          trans_fail(ctx, "dynamic component index on storeOutput");
          return false;
@@ -1678,6 +1747,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          d12_dxil_find_sig(ctx->mod->output_sig, ctx->mod->num_output_sig,
                            (uint32_t)sig_id);
       const char *sem = se ? se->name : NULL;
+      if (row >= dxil_sig_rows(se)) {
+         trans_fail(ctx, "storeOutput row outside signature element");
+         return false;
+      }
 
       /* Depth, stencil-ref and coverage are scalar side channels with
        * their own consumers (agx_nir_lower_discard_zs_emit and
@@ -1710,6 +1783,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       unsigned location;
       unsigned output_col = col;
+      unsigned output_base = (unsigned)sig_id;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
          /* SV_Target[n]; the semantic index rides in start_row. */
          location = FRAG_RESULT_DATA0 + (se ? se->start_row : sig_id);
@@ -1738,20 +1812,23 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          b->shader->info.clip_distance_array_size = clip_count;
          b->shader->info.cull_distance_array_size = cull_count;
       } else {
-         location = VARYING_SLOT_VAR0 + sig_id;
+         output_base = dxil_sig_start_row(se, (unsigned)sig_id) + row;
+         location = VARYING_SLOT_VAR0 + output_base;
       }
       b->shader->info.outputs_written |= BITFIELD64_BIT(location);
 
-      if (sig_id >= D12_MAX_OUTPUTS || output_col > 3) {
+      if (output_col > 3) {
          trans_fail(ctx, "output signature index or component out of range");
          return false;
       }
 
       /* Buffered; flushed as one vector store per output. */
-      struct output_slot *slot = &ctx->outputs[sig_id];
-      slot->used = true;
+      struct output_slot *slot =
+         find_output_slot(ctx, (unsigned)sig_id, (unsigned)row);
+      if (!slot)
+         return false;
       slot->location = location;
-      slot->base = (unsigned)sig_id;
+      slot->base = output_base;
 
       /* In a multi-block shader, the latest storeOutput in translation
        * order is not necessarily the value produced at runtime. DXC
@@ -2394,7 +2471,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                          "loadOutputControlPoint");
          return false;
       }
-
       nir_def *vertex = get_def(ctx, p[3]);
       if (!vertex)
          return false;

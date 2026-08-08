@@ -461,6 +461,7 @@ struct d12_sig_element {
    const char *name;    /* semantic name */
    uint32_t semantic_index; /* SemanticIndex: TEXCOORD0 vs TEXCOORD1 */
    uint32_t interpolation;
+   uint32_t rows;
    uint32_t start_row;
    uint32_t start_col;
    uint32_t cols;
