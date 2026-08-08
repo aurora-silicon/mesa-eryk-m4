@@ -2093,9 +2093,13 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     * mismatch sent a debugging session after a format table that was
     * already correct.
     */
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
-      mesa_loge("CreateRenderTargetView: dimension %d unsupported (need 2D), "
-                "format %d", (int)res->desc.Dimension, (int)view_format);
+   const bool is_3d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) {
+      mesa_loge("CreateRenderTargetView: dimension %d unsupported (need 2D or "
+                "3D), format %d", (int)res->desc.Dimension,
+                (int)view_format);
       slot->resource = NULL;
       return;
    }
@@ -2108,7 +2112,8 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    }
 
    const unsigned samples = res->desc.SampleDesc.Count;
-   if (samples != 1 && samples != 2 && samples != 4) {
+   if ((is_3d && samples != 1) ||
+       (!is_3d && samples != 1 && samples != 2 && samples != 4)) {
       mesa_loge("CreateRenderTargetView: %u samples unsupported", samples);
       slot->resource = NULL;
       return;
@@ -2125,7 +2130,36 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    uint32_t view_layers = MAX2(res->desc.DepthOrArraySize, 1);
 
    if (desc) {
-      if (samples > 1) {
+      if (is_3d) {
+         if (desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE3D) {
+            mesa_loge("CreateRenderTargetView: 3D view dimension %d "
+                      "unsupported", (int)desc->ViewDimension);
+            slot->resource = NULL;
+            return;
+         }
+
+         uint32_t first = desc->Texture3D.FirstWSlice;
+         uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
+         uint32_t count = desc->Texture3D.WSize;
+
+         if (count == UINT32_MAX)
+            count = layers - MIN2(first, layers);
+
+         /* The render-segment layout currently describes mip zero. Keep the
+          * newly enabled 3D path deliberately bounded to that proven layout;
+          * other mips need their own width, height, and layer-stride state. */
+         if (desc->Texture3D.MipSlice != 0 || first >= layers || !count ||
+             count > layers - first) {
+            mesa_loge("CreateRenderTargetView: 3D W range %u+%u/%u mip %u "
+                      "out of range", first, count, layers,
+                      desc->Texture3D.MipSlice);
+            slot->resource = NULL;
+            return;
+         }
+
+         slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
+         view_layers = count;
+      } else if (samples > 1) {
          /* MSAA resources are necessarily single-level, but may expose a
           * bounded array-slice range just like ordinary 2D arrays. */
          if (desc->ViewDimension ==
