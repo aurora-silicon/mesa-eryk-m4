@@ -24,7 +24,7 @@
 #include "util/u_math.h"
 
 #define D12_STREAM_BO_SIZE (1024 * 1024)
-#define D12_USC_BO_SIZE    (1024 * 1024)
+#define D12_USC_BO_SIZE    (2 * 1024 * 1024)
 /* Worst-case control words per dispatch or render prologue, with slack. */
 #define D12_DISPATCH_STREAM_MARGIN 0x300
 
@@ -1046,7 +1046,11 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
          return false;
    }
 
-   if (dsv && seg->dsv_flags != dsv->dsv_flags)
+   if (dsv &&
+       (seg->dsv_flags != dsv->dsv_flags ||
+        seg->ds_address != dsv->address ||
+        seg->stencil_address != dsv->counter_address ||
+        seg->layers != MAX2(dsv->size_B, 1)))
       return false;
 
    return true;
@@ -1174,7 +1178,10 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    if (dsv) {
       seg->ds = dsv->resource;
+      seg->ds_address = dsv->address;
+      seg->stencil_address = dsv->counter_address;
       seg->dsv_flags = dsv->dsv_flags;
+      const unsigned ds_layers = MAX2(dsv->size_B, 1);
       const unsigned ds_samples =
          MAX2(dsv->resource->layout.sample_count_sa, 1);
       if (bound_rts && ds_samples != rt_samples) {
@@ -1182,6 +1189,49 @@ d12_list_begin_render(struct d12_cmd_list *list,
                    "counts %u and %u", rt_samples, ds_samples);
          list->state = D12_LIST_ERROR;
          return NULL;
+      }
+      if (bound_rts && ds_layers != seg->layers) {
+         mesa_loge("render targets and depth/stencil have mismatched layer "
+                   "counts %u and %u", seg->layers, ds_layers);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+      if (!bound_rts)
+         seg->layers = ds_layers;
+
+      const uint64_t z_start = dsv->resource->bo->va->addr;
+      const uint64_t z_end = z_start + dsv->resource->bo->size;
+      const uint64_t z_span =
+         (uint64_t)dsv->resource->layout.layer_stride_B * ds_layers;
+      if (seg->ds_address < z_start || seg->ds_address >= z_end ||
+          z_span > z_end - seg->ds_address) {
+         mesa_loge("DSV depth address 0x%llx span 0x%llx is outside BO "
+                   "[0x%llx, 0x%llx)",
+                   (unsigned long long)seg->ds_address,
+                   (unsigned long long)z_span,
+                   (unsigned long long)z_start,
+                   (unsigned long long)z_end);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+      if (dsv->resource->stencil_bo) {
+         const uint64_t s_start = dsv->resource->stencil_bo->va->addr;
+         const uint64_t s_end = s_start + dsv->resource->stencil_bo->size;
+         const uint64_t s_span =
+            (uint64_t)dsv->resource->stencil_layout.layer_stride_B *
+            ds_layers;
+         if (seg->stencil_address < s_start ||
+             seg->stencil_address >= s_end ||
+             s_span > s_end - seg->stencil_address) {
+            mesa_loge("DSV stencil address 0x%llx span 0x%llx is outside BO "
+                      "[0x%llx, 0x%llx)",
+                      (unsigned long long)seg->stencil_address,
+                      (unsigned long long)s_span,
+                      (unsigned long long)s_start,
+                      (unsigned long long)s_end);
+            list->state = D12_LIST_ERROR;
+            return NULL;
+         }
       }
       rt_samples = ds_samples;
       if (!seg->width_px) {
@@ -6636,7 +6686,16 @@ d12_list_attach_ds(struct d12_cmd_list *list,
    }
 
    seg->ds = ds;
+   seg->ds_address = dsv->address;
+   seg->stencil_address = dsv->counter_address;
    seg->dsv_flags = dsv->dsv_flags;
+   const unsigned ds_layers = MAX2(dsv->size_B, 1);
+   if (seg->layers != ds_layers) {
+      mesa_loge("render pass and depth/stencil have mismatched layer counts "
+                "%u and %u", seg->layers, ds_layers);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
    return true;
 }
 
@@ -6744,10 +6803,18 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
          uint32_t packed = ds->layout.format == PIPE_FORMAT_Z16_UNORM
                               ? _mesa_float_to_unorm(depth, 16)
                               : fui(depth);
-         if (!d12_list_clear_surface_rects(list, &surface, &packed,
-                                           num_rects, rects,
-                                           "depth clear"))
-            return;
+         for (unsigned layer = 0; layer < MAX2(dsv->size_B, 1); ++layer) {
+            surface.base = dsv->address +
+               (uint64_t)layer * ds->layout.layer_stride_B;
+            surface.storage_offset_B =
+               surface.base - surface.bo->va->addr;
+            if (!d12_copy_surface_check_storage(&surface,
+                                                "partial depth clear") ||
+                !d12_list_clear_surface_rects(list, &surface, &packed,
+                                              num_rects, rects,
+                                              "depth clear"))
+               return;
+         }
       }
 
       if (flags & D3D12_CLEAR_FLAG_STENCIL) {
@@ -6768,10 +6835,18 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
             list->state = D12_LIST_ERROR;
             return;
          }
-         if (!d12_list_clear_surface_rects(list, &surface, &stencil,
-                                           num_rects, rects,
-                                           "stencil clear"))
-            return;
+         for (unsigned layer = 0; layer < MAX2(dsv->size_B, 1); ++layer) {
+            surface.base = dsv->counter_address +
+               (uint64_t)layer * ds->stencil_layout.layer_stride_B;
+            surface.storage_offset_B =
+               surface.base - surface.bo->va->addr;
+            if (!d12_copy_surface_check_storage(&surface,
+                                                "partial stencil clear") ||
+                !d12_list_clear_surface_rects(list, &surface, &stencil,
+                                              num_rects, rects,
+                                              "stencil clear"))
+               return;
+         }
       }
       return;
    }
@@ -6780,9 +6855,15 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
       struct d12_segment *open =
          &list->segments[list->segment_count - 1];
       /* ZLS clear/load state is consumed at pass start. Mutating it after a
-       * draw would reorder Draw->Clear into Clear->Draw.
+       * draw would reorder Draw->Clear into Clear->Draw. A clear view is
+       * independent of current OM bindings, so a different slice/range (or
+       * an incompatible colour-pass layer count) also needs its own pass.
        */
-      if (open->has_draws || (open->ds && open->ds != ds))
+      if (open->has_draws || open->layers != MAX2(dsv->size_B, 1) ||
+          (open->ds &&
+           (open->ds != ds || open->ds_address != dsv->address ||
+            open->stencil_address != dsv->counter_address ||
+            open->dsv_flags != dsv->dsv_flags)))
          d12_list_close_cdm(list);
    }
 

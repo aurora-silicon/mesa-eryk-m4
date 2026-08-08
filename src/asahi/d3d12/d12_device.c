@@ -1961,6 +1961,8 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
    if (!slot)
       return;
 
+   memset(slot, 0, sizeof(*slot));
+
    if (!resource) {
       /* Null DSVs are legal placeholders; record an empty slot. */
       slot->resource = NULL;
@@ -1983,18 +1985,42 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
       return;
    }
 
+   const uint32_t resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
+   uint32_t first_layer = 0;
+   /* A NULL descriptor requests the default view over every array slice. */
+   uint32_t view_layers = desc ? 1 : resource_layers;
    if (desc) {
-      const D3D12_DSV_DIMENSION expected =
-         samples > 1 ? D3D12_DSV_DIMENSION_TEXTURE2DMS
-                     : D3D12_DSV_DIMENSION_TEXTURE2D;
-      if (desc->ViewDimension != expected) {
+      if (samples > 1) {
+         if (desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2DMS) {
+            mesa_loge("CreateDepthStencilView: view dimension %d does not "
+                      "match %u-sample resource",
+                      (int)desc->ViewDimension, samples);
+            slot->resource = NULL;
+            return;
+         }
+      } else if (desc->ViewDimension ==
+                 D3D12_DSV_DIMENSION_TEXTURE2DARRAY) {
+         first_layer = desc->Texture2DArray.FirstArraySlice;
+         view_layers = desc->Texture2DArray.ArraySize;
+         if (view_layers == UINT32_MAX)
+            view_layers = resource_layers - MIN2(first_layer,
+                                                  resource_layers);
+
+         if (desc->Texture2DArray.MipSlice != 0 ||
+             first_layer >= resource_layers || !view_layers ||
+             view_layers > resource_layers - first_layer) {
+            mesa_loge("CreateDepthStencilView: array range %u+%u/%u mip %u "
+                      "out of range", first_layer, view_layers,
+                      resource_layers, desc->Texture2DArray.MipSlice);
+            slot->resource = NULL;
+            return;
+         }
+      } else if (desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2D) {
          mesa_loge("CreateDepthStencilView: view dimension %d does not match "
-                   "%u-sample resource", (int)desc->ViewDimension, samples);
+                   "single-sample resource", (int)desc->ViewDimension);
          slot->resource = NULL;
          return;
-      }
-
-      if (samples == 1 && desc->Texture2D.MipSlice != 0) {
+      } else if (desc->Texture2D.MipSlice != 0) {
          mesa_loge("CreateDepthStencilView: mip slice %u unsupported",
                    desc->Texture2D.MipSlice);
          slot->resource = NULL;
@@ -2024,7 +2050,15 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
                      : res->desc.Format;
    slot->kind = D12_DESC_DSV;
    slot->dsv_flags = flags;
-   slot->address = res->addr;
+   slot->address =
+      res->addr + (uint64_t)first_layer * res->layout.layer_stride_B;
+   slot->counter_address = res->stencil_bo
+      ? res->stencil_addr +
+           (uint64_t)first_layer * res->stencil_layout.layer_stride_B
+      : 0;
+   /* CPU-only DSV descriptors reuse size_B for their selected layer count,
+    * matching the established RTV representation. */
+   slot->size_B = view_layers;
 }
 
 static enum agx_wrap

@@ -139,10 +139,14 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
       const struct ail_layout *z = &seg->ds->layout;
       struct agx_zls zls = {
          .z_load = !seg->depth_cleared,
-         .z_store = !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH),
+         /* READ_ONLY constrains draw writes, not an explicit clear. The draw
+          * state masks those writes separately; a cleared aspect must still
+          * be committed at the end of this pass. */
+         .z_store = seg->depth_cleared ||
+                    !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH),
       };
 
-      c->depth.base = seg->ds->addr;
+      c->depth.base = seg->ds_address;
 
       /* Stride is in pages, biased, with the low bit set — the encoding
        * hk uses (hk_cmd_draw.c).
@@ -154,10 +158,11 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
       if (seg->ds->stencil_bo) {
          s = &seg->ds->stencil_layout;
          zls.s_load = !seg->stencil_cleared;
-         zls.s_store =
-            !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL);
+         zls.s_store = seg->stencil_cleared ||
+                       !(seg->dsv_flags &
+                         D3D12_DSV_FLAG_READ_ONLY_STENCIL);
 
-         c->stencil.base = seg->ds->stencil_addr;
+         c->stencil.base = seg->stencil_address;
          unsigned s_pages = s->layer_stride_B / AIL_PAGESIZE;
          c->stencil.stride = ((s_pages - 1) << 14) | 1;
       }
