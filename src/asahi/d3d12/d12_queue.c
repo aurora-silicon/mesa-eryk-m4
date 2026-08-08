@@ -414,8 +414,77 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       .cmdbuf = (uint64_t)(uintptr_t)op->payload,
    };
 
-   struct agx_submit_virt virt = {.ring_idx = 0};
-   int ret = dev->ops.submit(dev, &submit, &virt);
+   /* The kernel/firmware accept at most 64 commands in one submit ioctl.
+    * Follow Honeykrisp's queue_submit_looped model: slice the packed payload,
+    * make barriers ioctl-relative, wait only on the first slice and signal
+    * only from the last.  The queue itself preserves slice order. */
+   const unsigned command_count = op->nr_vdm + op->nr_cdm;
+   const unsigned max_commands = 64;
+   uint8_t *cmdbuf = op->payload;
+   uint32_t offs = 0;
+   unsigned submitted_vdm = 0, submitted_cdm = 0;
+   unsigned commands_remaining = command_count;
+   int ret = 0;
+
+   while (commands_remaining) {
+      bool first = commands_remaining == command_count;
+      unsigned count = MIN2(commands_remaining, max_commands);
+      commands_remaining -= count;
+      bool last = commands_remaining == 0;
+      uint32_t base_offs = offs;
+      unsigned vdm_count = 0, cdm_count = 0;
+
+      for (unsigned i = 0; i < count; i++) {
+         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + offs);
+         offs += sizeof(*cmd) + cmd->size;
+
+         if (cmd->cmd_type == DRM_ASAHI_CMD_RENDER)
+            vdm_count++;
+         else
+            cdm_count++;
+
+         if (cmd->vdm_barrier != DRM_ASAHI_BARRIER_NONE) {
+            assert(cmd->vdm_barrier >= submitted_vdm);
+            cmd->vdm_barrier -= submitted_vdm;
+         }
+         if (cmd->cdm_barrier != DRM_ASAHI_BARRIER_NONE) {
+            assert(cmd->cdm_barrier >= submitted_cdm);
+            cmd->cdm_barrier -= submitted_cdm;
+         }
+      }
+
+      /* If the final slice starts with work from only one engine, make it
+       * wait for both engines from the preceding ioctl before it publishes
+       * the command-list completion point. */
+      if (last && !first) {
+         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + base_offs);
+         if (cmd->vdm_barrier == DRM_ASAHI_BARRIER_NONE)
+            cmd->vdm_barrier = 0;
+         if (cmd->cdm_barrier == DRM_ASAHI_BARRIER_NONE)
+            cmd->cdm_barrier = 0;
+      }
+
+      struct drm_asahi_submit slice = {
+         .queue_id = submit.queue_id,
+         .in_sync_count = first ? submit.in_sync_count : 0,
+         .out_sync_count = last ? submit.out_sync_count : 0,
+         .cmdbuf_size = offs - base_offs,
+         .syncs = first ? submit.syncs
+                        : submit.syncs +
+                             sizeof(struct drm_asahi_sync) *
+                                submit.in_sync_count,
+         .cmdbuf = submit.cmdbuf + base_offs,
+      };
+
+      struct agx_submit_virt virt = {.ring_idx = 0};
+      ret = dev->ops.submit(dev, &slice, &virt);
+      if (ret)
+         break;
+
+      submitted_vdm += vdm_count;
+      submitted_cdm += cdm_count;
+   }
+
    if (ret) {
       mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed: %d -- device marked removed",
                 ret);
@@ -641,10 +710,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                    list->usc_bo->size, list->segment_count);
       }
 
-      /* All of a list's segments go in one submission, ordered by the
-       * per-command barrier fields exactly as hk_queue does: each command
-       * barriers on all previously-submitted commands of both types.
-       */
+      /* Pack the list as one logical payload. The worker slices it to the
+       * kernel command-count limit while preserving these global barriers. */
       size_t max_payload =
          list->segment_count *
          (sizeof(struct drm_asahi_cmd_header) +

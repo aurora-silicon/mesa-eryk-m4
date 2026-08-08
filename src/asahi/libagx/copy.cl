@@ -142,7 +142,8 @@ libagx_resolve_unorm8x4(global uint8_t *dest, global uint8_t *src,
                         uint src_stride_el,
                         uint dest_tile_width_el, uint dest_tile_height_el,
                         uint src_tile_width_el, uint src_tile_height_el,
-                        uint sample_count, uint dest_tiled, uint src_tiled)
+                        uint sample_count, uint dest_tiled, uint src_tiled,
+                        uint resolve_mode)
 {
    uint id = cl_global_id.x;
    if (id >= width_px * height_px)
@@ -156,15 +157,21 @@ libagx_resolve_unorm8x4(global uint8_t *dest, global uint8_t *src,
 
    for (uint b = 0; b < 4; ++b) {
       uint sum = 0;
+      uint extrema = resolve_mode == 1 ? 255 : 0;
       for (uint s = 0; s < sample_count; ++s) {
          uint src_offset_B = libagx_copy_image_offset(
             src_x_px + x, src_y_px + y, 0, src_stride_el,
             src_tile_width_el, src_tile_height_el,
             4 * sample_count, src_tiled);
-         sum += src[src_offset_B + s * 4 + b];
+         uint value = src[src_offset_B + s * 4 + b];
+         sum += value;
+         extrema = resolve_mode == 1 ? min(extrema, value)
+                                      : max(extrema, value);
       }
 
-      dest[dest_offset_B + b] = (sum + sample_count / 2) / sample_count;
+      dest[dest_offset_B + b] = resolve_mode
+                                   ? extrema
+                                   : (sum + sample_count / 2) / sample_count;
    }
 }
 

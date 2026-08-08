@@ -1054,7 +1054,11 @@ struct d12_segment {
 
 #define D12_MAX_SCISSORS 256
 
-#define D12_MAX_SEGMENTS 32
+/* A command list may legally contain a large sequence of independent render
+ * passes.  Exhaustive descriptor tests use one clear-only pass per array
+ * layer, so keep enough inline metadata for those passes while the control
+ * and USC storage remain independently bounded. */
+#define D12_MAX_SEGMENTS 2048
 
 struct d12_cmd_list {
    ID3D12GraphicsCommandList iface; /* must be first */

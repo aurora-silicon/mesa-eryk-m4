@@ -7524,9 +7524,12 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const bool extrema_scalar =
       (maximum && float32_scalar) || extrema_uint32 || extrema_sint32 ||
       extrema_stencil8;
-   const bool unorm8x4 =
+   const bool unorm8x4_average =
       average && (format == DXGI_FORMAT_R8G8B8A8_UNORM ||
                   format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+   const bool unorm8x4_extrema =
+      (minimum || maximum) && format == DXGI_FORMAT_R8G8B8A8_UNORM;
+   const bool unorm8x4 = unorm8x4_average || unorm8x4_extrema;
    /* Native D3D12 accepts these mutually reinterpreted 16-bit resolves as
     * undefined behaviour. Recording a bounded no-op is therefore valid and
     * preserves the API acceptance without inventing a conversion rule. */
@@ -7601,10 +7604,11 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
       .sample_count = src_samples,
       .dest_tiled = d.tiled,
       .src_tiled = s.tiled,
+      .resolve_mode = minimum ? 1 : maximum ? 2 : 0,
    };
 
    const bool typed_unorm8x4 =
-      unorm8x4 &&
+      unorm8x4_average &&
       (util_format_is_srgb(s.format) ||
        format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
 
