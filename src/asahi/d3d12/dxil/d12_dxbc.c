@@ -153,6 +153,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_ISHR = 42,
    D12_DXBC_OP_ITOF = 43,
    D12_DXBC_OP_LD = 45,
+   D12_DXBC_OP_LD_MS = 46,
    D12_DXBC_OP_LOG = 47,
    D12_DXBC_OP_LOOP = 48,
    D12_DXBC_OP_LT = 49,
@@ -315,6 +316,7 @@ enum d12_dxbc_op {
 #define D12_DXBC_RESOURCE_DIMENSION_SHIFT 11
 #define D12_DXBC_RESOURCE_DIMENSION_BUFFER 1
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D 3
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS 4
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY 8
 
 #define D12_DXBC_RESINFO_RETURN_TYPE_MASK  0x00001800u
@@ -3749,8 +3751,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_GATHER4_C:
       case D12_DXBC_OP_GATHER4_PO:
       case D12_DXBC_OP_GATHER4_PO_C:
-      case D12_DXBC_OP_LD: {
-         bool is_ld = opcode == D12_DXBC_OP_LD;
+      case D12_DXBC_OP_LD:
+      case D12_DXBC_OP_LD_MS: {
+         bool is_ld_ms = opcode == D12_DXBC_OP_LD_MS;
+         bool is_ld = opcode == D12_DXBC_OP_LD || is_ld_ms;
          bool gather = opcode == D12_DXBC_OP_GATHER4 ||
                        opcode == D12_DXBC_OP_GATHER4_C ||
                        opcode == D12_DXBC_OP_GATHER4_PO ||
@@ -3762,7 +3766,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                         opcode == D12_DXBC_OP_GATHER4_PO_C;
          bool has_lod = opcode == D12_DXBC_OP_SAMPLE_L ||
                         opcode == D12_DXBC_OP_SAMPLE_C_LZ;
-         NEED(is_ld ? 3 : 4 + dynamic_offset + compare);
+         NEED(is_ld_ms ? 4 : is_ld ? 3 : 4 + dynamic_offset + compare);
 
          /* The resource is the operand in the RESOURCE file; the sampler
           * the one in the SAMPLER file. Finding them by file rather than
@@ -3786,8 +3790,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          bool is_buffer =
-            is_ld && tex_reg < D12_DXBC_MAX_SIG &&
+            is_ld && !is_ld_ms && tex_reg < D12_DXBC_MAX_SIG &&
             ctx->srv_dim[tex_reg] == D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         if (is_ld_ms &&
+             (tex_reg >= D12_DXBC_MAX_SIG ||
+              ctx->srv_dim[tex_reg] !=
+                 D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS)) {
+            fail(ctx, "LD_MS requires a Texture2DMS resource");
+            return;
+         }
 
          unsigned tslot = ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV,
                                                           0, tex_reg)
@@ -3843,17 +3854,20 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         unsigned nsrc = 2 + ((is_ld && !is_buffer) ? 1 : 0) +
+         unsigned nsrc = 2 + ((is_ld && !is_buffer && !is_ld_ms) ? 1 : 0) +
+                         (is_ld_ms ? 1 : 0) +
                          (has_lod ? 1 : 0) + (compare ? 1 : 0) +
                          (dynamic_offset ? 1 : 0) +
                          (has_offset ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
-         tex->op = is_ld ? nir_texop_txf
+         tex->op = is_ld_ms ? nir_texop_txf_ms
+                            : is_ld ? nir_texop_txf
                          : gather ? nir_texop_tg4
                                   : has_lod ? nir_texop_txl : nir_texop_tex;
-         tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF
-                                      : GLSL_SAMPLER_DIM_2D;
+         tex->sampler_dim = is_buffer  ? GLSL_SAMPLER_DIM_BUF
+                            : is_ld_ms ? GLSL_SAMPLER_DIM_MS
+                                       : GLSL_SAMPLER_DIM_2D;
          tex->is_array = false;
          tex->is_shadow = compare;
          tex->dest_type = nir_type_float32;
@@ -3892,8 +3906,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                            nir_imm_int(b, texel_offset[1])));
             }
 
-            /* Buffers have no mip levels. Texture LD carries mip in .w. */
-            if (!is_buffer) {
+            if (is_ld_ms) {
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_ms_index, nir_channel(b, SRC(3), 0));
+            /* Buffers and multisampled textures have no mip levels.
+             * Ordinary texture LD carries mip in .w. */
+            } else if (!is_buffer) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, nir_channel(b, icoord, 3));
             }

@@ -2711,11 +2711,16 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    struct agx_shader_part fs_epilog = {0};
    if (use_fs_epilog) {
+      /* An explicit SV_Coverage output is the final coverage mask. D3D12
+       * does not additionally alpha-to-coverage that mask; doing both made
+       * an explicit nonzero mask disappear whenever the shader's alpha was
+       * zero. */
       struct agx_fs_epilog_key epilog_key = {
          .link = fs_epilog_link,
          .blend.rt[0] = blend_key,
          .blend.alpha_to_coverage =
-            blend_desc && blend_desc->AlphaToCoverageEnable,
+            blend_desc && blend_desc->AlphaToCoverageEnable &&
+            !(fs_outputs & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)),
          .blend.logicop_enable = rt_blend->LogicOpEnable,
          .blend.logicop_func = logicop,
          .nr_samples = nr_samples,
