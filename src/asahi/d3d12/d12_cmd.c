@@ -349,6 +349,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    memset(list->graphics_sampler_table, 0,
           sizeof(list->graphics_sampler_table));
    util_dynarray_clear(&list->descriptor_fixups);
+   util_dynarray_clear(&list->indirect_constant_fixups);
+   util_dynarray_clear(&list->indirect_argument_fixups);
 
    /* Points into the stream BO, whose data floor has just been rewound, so
     * the old address is about to be handed out to somebody else.
@@ -1829,6 +1831,84 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
                    (unsigned long long)d->address,
                    (unsigned long long)fixup->tables_gpu,
                    (unsigned long long)fixup->textures_gpu);
+   }
+
+   util_dynarray_foreach (&list->indirect_constant_fixups,
+                          struct d12_indirect_constant_fixup, fixup) {
+      const struct d12_resource *source = fixup->source;
+      if (!source || !source->bo ||
+          source->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+          fixup->source_offset_B > source->desc.Width ||
+          fixup->size_B > source->desc.Width - fixup->source_offset_B ||
+          source->offset_B > source->bo->size ||
+          fixup->source_offset_B > source->bo->size - source->offset_B ||
+          fixup->size_B > source->bo->size - source->offset_B -
+                              fixup->source_offset_B ||
+          !d12_list_stream_contains(list, fixup->destination_gpu,
+                                    fixup->size_B)) {
+         mesa_loge("indirect constant refresh references invalid storage");
+         return false;
+      }
+
+      const uint8_t *src = agx_bo_map(source->bo) + source->offset_B +
+                           fixup->source_offset_B;
+      uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
+      memcpy(dst, src, fixup->size_B);
+
+      if (getenv("D3D12AGX_DUMP_INDIRECT"))
+         mesa_logi("indirect constants: source=%p+0x%llx destination=0x%llx "
+                   "size=%u valid=1", (void *)source,
+                   (unsigned long long)fixup->source_offset_B,
+                   (unsigned long long)fixup->destination_gpu,
+                   fixup->size_B);
+   }
+
+   util_dynarray_foreach (&list->indirect_argument_fixups,
+                          struct d12_indirect_argument_fixup, fixup) {
+      const struct d12_resource *source = fixup->source;
+      const struct d12_resource *count = fixup->count_source;
+      if (!source || !source->bo || !count || !count->bo ||
+          source->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+          count->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+          fixup->source_offset_B > source->desc.Width ||
+          fixup->size_B > source->desc.Width - fixup->source_offset_B ||
+          fixup->count_offset_B > count->desc.Width ||
+          sizeof(uint32_t) > count->desc.Width - fixup->count_offset_B ||
+          source->offset_B > source->bo->size ||
+          fixup->source_offset_B > source->bo->size - source->offset_B ||
+          fixup->size_B > source->bo->size - source->offset_B -
+                              fixup->source_offset_B ||
+          count->offset_B > count->bo->size ||
+          fixup->count_offset_B > count->bo->size - count->offset_B ||
+          sizeof(uint32_t) > count->bo->size - count->offset_B -
+                                fixup->count_offset_B ||
+          !d12_list_stream_contains(list, fixup->destination_gpu,
+                                    fixup->size_B)) {
+         mesa_loge("indirect argument refresh references invalid storage");
+         return false;
+      }
+
+      const uint8_t *count_cpu = agx_bo_map(count->bo) + count->offset_B +
+                                 fixup->count_offset_B;
+      uint32_t command_count;
+      memcpy(&command_count, count_cpu, sizeof(command_count));
+
+      uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
+      if (fixup->command_index < command_count) {
+         const uint8_t *src = agx_bo_map(source->bo) + source->offset_B +
+                              fixup->source_offset_B;
+         memcpy(dst, src, fixup->size_B);
+      } else {
+         memset(dst, 0, fixup->size_B);
+      }
+
+      if (getenv("D3D12AGX_DUMP_INDIRECT"))
+         mesa_logi("indirect args: source=%p+0x%llx count=%u index=%u "
+                   "destination=0x%llx size=%u valid=1", (void *)source,
+                   (unsigned long long)fixup->source_offset_B, command_count,
+                   fixup->command_index,
+                   (unsigned long long)fixup->destination_gpu,
+                   fixup->size_B);
    }
 
    /* The stream BO is coherent, but order the CPU descriptor writes before
@@ -4011,6 +4091,11 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
                  (unsigned)base_vertex, start_instance, true, start_index, 0);
 }
 
+static uint64_t
+d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
+                            UINT root_param_index, UINT num_values,
+                            const void *data, UINT offset_in_values);
+
 static void STDMETHODCALLTYPE
 d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                          ID3D12CommandSignature *signature_iface,
@@ -4025,9 +4110,8 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
    if (list->state != D12_LIST_RECORDING || !max_command_count)
       return;
 
-   if (!signature_iface || !argument_buffer_iface || count_buffer_iface) {
-      mesa_loge("ExecuteIndirect: null objects and count buffers are not "
-                "supported");
+   if (!signature_iface || !argument_buffer_iface) {
+      mesa_loge("ExecuteIndirect: null signature or argument buffer");
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -4036,19 +4120,37 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       (struct d12_command_signature *)signature_iface;
    struct d12_resource *argument_buffer =
       d12_resource_from_iface(argument_buffer_iface);
+   struct d12_resource *count_buffer = count_buffer_iface
+      ? d12_resource_from_iface(count_buffer_iface) : NULL;
 
    if (signature->device != list->device ||
-       signature->desc.NumArgumentDescs != 1 ||
        argument_buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
       mesa_loge("ExecuteIndirect: incompatible signature or argument buffer");
       list->state = D12_LIST_ERROR;
       return;
    }
 
-   D3D12_INDIRECT_ARGUMENT_TYPE type = signature->arguments[0].Type;
+   if (count_buffer &&
+       (count_buffer->device != list->device ||
+        count_buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+        count_buffer_offset > count_buffer->desc.Width ||
+        sizeof(uint32_t) > count_buffer->desc.Width - count_buffer_offset ||
+        (count_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
+         count_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD) ||
+        (argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
+         argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD))) {
+      mesa_loge("ExecuteIndirect: count buffers currently require bounded "
+                "CPU-visible argument and count storage");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   UINT terminal_index = signature->desc.NumArgumentDescs - 1;
+   D3D12_INDIRECT_ARGUMENT_TYPE type =
+      signature->arguments[terminal_index].Type;
    const bool dispatch = type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
    const bool indexed = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
-   const size_t argument_size =
+   const size_t terminal_size =
       dispatch ? sizeof(D3D12_DISPATCH_ARGUMENTS)
       : indexed ? sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
                 : sizeof(D3D12_DRAW_ARGUMENTS);
@@ -4074,6 +4176,20 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   size_t terminal_offset = 0;
+   for (UINT i = 0; i < terminal_index; i++) {
+      const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[i];
+      if (arg->Type != D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT ||
+          !arg->Constant.Num32BitValuesToSet) {
+         mesa_loge("ExecuteIndirect: argument type %u before the terminal "
+                   "command is unsupported", arg->Type);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      terminal_offset += (size_t)arg->Constant.Num32BitValuesToSet * 4;
+   }
+
+   const size_t argument_size = terminal_offset + terminal_size;
    const uint64_t stride = signature->desc.ByteStride;
    const uint64_t width = argument_buffer->desc.Width;
    if (stride < argument_size || (stride & 3) ||
@@ -4088,8 +4204,56 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
    }
 
    for (UINT i = 0; i < max_command_count; i++) {
-      uint64_t args = argument_buffer->addr + argument_buffer_offset +
-                      (uint64_t)i * stride;
+      uint64_t command_offset = argument_buffer_offset + (uint64_t)i * stride;
+      size_t running_offset = 0;
+
+      for (UINT j = 0; j < terminal_index; j++) {
+         const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[j];
+         uint32_t size_B = arg->Constant.Num32BitValuesToSet * 4;
+         uint64_t source_offset = command_offset + running_offset;
+         const uint8_t *source = agx_bo_map(argument_buffer->bo) +
+                                 argument_buffer->offset_B + source_offset;
+         uint64_t destination = d12_list_set_root_constants(
+            list, dispatch, arg->Constant.RootParameterIndex,
+            arg->Constant.Num32BitValuesToSet, source,
+            arg->Constant.DestOffsetIn32BitValues);
+         if (!destination || list->state != D12_LIST_RECORDING)
+            return;
+
+         struct d12_indirect_constant_fixup fixup = {
+            .source = argument_buffer,
+            .source_offset_B = source_offset,
+            .destination_gpu = destination +
+               (uint64_t)arg->Constant.DestOffsetIn32BitValues * 4,
+            .size_B = size_B,
+         };
+         util_dynarray_append_typed(&list->indirect_constant_fixups,
+                                    struct d12_indirect_constant_fixup,
+                                    fixup);
+         running_offset += size_B;
+      }
+
+      uint64_t args = argument_buffer->addr + command_offset + terminal_offset;
+      if (count_buffer) {
+         uint64_t destination =
+            d12_list_upload_zero(list, terminal_size, 4);
+         if (!destination)
+            return;
+
+         struct d12_indirect_argument_fixup fixup = {
+            .source = argument_buffer,
+            .count_source = count_buffer,
+            .source_offset_B = command_offset + terminal_offset,
+            .count_offset_B = count_buffer_offset,
+            .destination_gpu = destination,
+            .size_B = terminal_size,
+            .command_index = i,
+         };
+         util_dynarray_append_typed(&list->indirect_argument_fixups,
+                                    struct d12_indirect_argument_fixup,
+                                    fixup);
+         args = destination;
+      }
       if (dispatch)
          d12_list_dispatch_pso(list, 0, 0, 0, args);
       else
@@ -4571,7 +4735,7 @@ d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
  * has to preserve the earlier values, so the current contents are copied
  * forward before the new ones land on top.
  */
-static void
+static uint64_t
 d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
                             UINT root_param_index, UINT num_values,
                             const void *data, UINT offset_in_values)
@@ -4582,14 +4746,14 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
    if (!rs) {
       mesa_loge("root constants bound with no root signature set");
       list->state = D12_LIST_ERROR;
-      return;
+      return 0;
    }
 
    if (root_param_index >= rs->layout.num_params) {
       mesa_loge("root parameter %u is past the signature's %u parameters",
                 root_param_index, rs->layout.num_params);
       list->state = D12_LIST_ERROR;
-      return;
+      return 0;
    }
 
    const struct d12_root_param *rp = &rs->layout.params[root_param_index];
@@ -4597,12 +4761,12 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
       mesa_loge("root parameter %u is type %u, bound as root constants",
                 root_param_index, rp->type);
       list->state = D12_LIST_ERROR;
-      return;
+      return 0;
    }
 
    unsigned total = MAX2(rp->num_constants, offset_in_values + num_values);
    if (!total || !data)
-      return;
+      return 0;
 
    unsigned root_range =
       d12_root_param_range_base(&rs->layout, root_param_index);
@@ -4613,7 +4777,7 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
                 "signature's binding map",
                 rp->base_register, rp->space);
       list->state = D12_LIST_ERROR;
-      return;
+      return 0;
    }
 
    struct d12_descriptor *table =
@@ -4627,7 +4791,7 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
 
    uint32_t *staging = calloc(1, size);
    if (!staging)
-      return;
+      return 0;
 
    /* Preserve what a previous call to this same parameter wrote. */
    if (table[slot].kind == D12_DESC_CBV && table[slot].address) {
@@ -4643,13 +4807,14 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
 
    if (!gpu) {
       list->state = D12_LIST_ERROR;
-      return;
+      return 0;
    }
 
    memset(&table[slot], 0, sizeof(table[slot]));
    sources[slot] = NULL;
    table[slot].address = gpu;
    table[slot].kind = D12_DESC_CBV;
+   return gpu;
 }
 
 static void STDMETHODCALLTYPE
@@ -4919,6 +5084,8 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
          agx_bo_unreference(&list->device->dev, list->usc_bo);
       d12_private_data_store_destroy(&list->private_data);
       util_dynarray_fini(&list->descriptor_fixups);
+      util_dynarray_fini(&list->indirect_constant_fixups);
+      util_dynarray_fini(&list->indirect_argument_fixups);
       d12_device_release(list->device);
       free(list);
    }
@@ -6683,6 +6850,8 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->allocator = allocator;
    d12_private_data_store_init(&list->private_data);
    util_dynarray_init(&list->descriptor_fixups, NULL);
+   util_dynarray_init(&list->indirect_constant_fixups, NULL);
+   util_dynarray_init(&list->indirect_argument_fixups, NULL);
    if (allocator)
       allocator->recording_lists++;
    d12_device_add_ref(device);

@@ -441,6 +441,32 @@ struct d12_descriptor_fixup {
    uint16_t slot;
 };
 
+/* ExecuteIndirect root constants are sourced from the argument buffer at
+ * execution time, not when the command list is recorded.  The draw's root
+ * table points at command-list upload storage; this fixup refreshes that
+ * storage immediately before submission, just like mutable descriptor-table
+ * fixups refresh their flattened cells. */
+struct d12_indirect_constant_fixup {
+   const struct d12_resource *source;
+   uint64_t source_offset_B;
+   uint64_t destination_gpu;
+   uint32_t size_B;
+};
+
+/* A CPU-visible indirect count buffer controls which pre-recorded terminal
+ * commands are live.  Each terminal argument block is copied into bounded
+ * command-list storage at execution; commands beyond the current count receive
+ * a zero argument block and are therefore GPU no-ops. */
+struct d12_indirect_argument_fixup {
+   const struct d12_resource *source;
+   const struct d12_resource *count_source;
+   uint64_t source_offset_B;
+   uint64_t count_offset_B;
+   uint64_t destination_gpu;
+   uint32_t size_B;
+   uint32_t command_index;
+};
+
 /*
  * A query heap: storage for Count results of one type. The heap is just
  * a buffer; Begin/End/Resolve give it meaning.
@@ -1019,6 +1045,8 @@ struct d12_cmd_list {
    struct d12_descriptor compute_sampler_table[D12_MAX_RESOURCE_BINDINGS];
    struct d12_descriptor graphics_sampler_table[D12_MAX_RESOURCE_BINDINGS];
    struct util_dynarray descriptor_fixups;
+   struct util_dynarray indirect_constant_fixups;
+   struct util_dynarray indirect_argument_fixups;
 
    /* SetDescriptorHeaps state.  GPU descriptor handles remain CPU pointers
     * for application arithmetic, so the bound object is also how an

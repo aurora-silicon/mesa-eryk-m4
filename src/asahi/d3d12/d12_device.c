@@ -1717,9 +1717,9 @@ static const ID3D12CommandSignatureVtbl d12_command_signature_vtbl = {
  * object, not a success-only token: COM identity, device ownership, private
  * data, and argument lifetime all follow the ordinary object contract.
  *
- * DRAW, DRAW_INDEXED and DISPATCH are terminal: a signature containing one
- * describes a whole indirect command, so it cannot be combined with anything
- * else, including another of its own kind.
+ * DRAW, DRAW_INDEXED and DISPATCH are terminal.  A signature may place root
+ * arguments before the one terminal command, but the terminal command must be
+ * last and unique.
  */
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateCommandSignature(ID3D12Device2 *iface,
@@ -1737,6 +1737,23 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
    if (!desc || !desc->NumArgumentDescs || !desc->pArgumentDescs)
       return E_INVALIDARG;
 
+   bool saw_terminal = false;
+   for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
+      D3D12_INDIRECT_ARGUMENT_TYPE type = desc->pArgumentDescs[i].Type;
+      bool terminal = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW ||
+                      type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED ||
+                      type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+      if (terminal) {
+         if (saw_terminal || i + 1 != desc->NumArgumentDescs)
+            return E_INVALIDARG;
+         saw_terminal = true;
+      }
+   }
+
+   if (!saw_terminal)
+      return E_INVALIDARG;
+
+   size_t packed_size = 0;
    for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
       D3D12_INDIRECT_ARGUMENT_TYPE type = desc->pArgumentDescs[i].Type;
 
@@ -1744,9 +1761,30 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
                       type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED ||
                       type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
 
-      if (terminal && desc->NumArgumentDescs != 1)
-         return E_INVALIDARG;
+      if (terminal) {
+         packed_size += type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW
+                           ? sizeof(D3D12_DRAW_ARGUMENTS)
+                        : type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED
+                           ? sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
+                           : sizeof(D3D12_DISPATCH_ARGUMENTS);
+      } else if (type == D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT) {
+         if (!root_signature ||
+             !desc->pArgumentDescs[i].Constant.Num32BitValuesToSet)
+            return E_INVALIDARG;
+         if (desc->pArgumentDescs[i].Constant.Num32BitValuesToSet >
+             (SIZE_MAX - packed_size) / 4)
+            return E_INVALIDARG;
+         packed_size +=
+            (size_t)desc->pArgumentDescs[i].Constant.Num32BitValuesToSet * 4;
+      } else {
+         /* Keep creation honest until ExecuteIndirect implements the other
+          * mutable-state argument classes. */
+         return E_NOTIMPL;
+      }
    }
+
+   if (desc->ByteStride < packed_size || (desc->ByteStride & 3))
+      return E_INVALIDARG;
 
    struct d12_command_signature *signature = calloc(1, sizeof(*signature));
    if (!signature)
