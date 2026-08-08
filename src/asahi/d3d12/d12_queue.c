@@ -392,6 +392,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
 
    uint64_t in = queue->timeline_value;
    uint64_t out = in + 1;
+
    struct drm_asahi_sync syncs[2] = {
       {
          .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
@@ -628,6 +629,16 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                    "references invalid command-list storage; dropped",
                    i);
          continue;
+      }
+
+      if (getenv("D3D12AGX_DUMP_SEGS")) {
+         size_t control_used =
+            list->stream_cur - (uint8_t *)agx_bo_map(list->stream_bo);
+         mesa_logi("list storage: control=%zu data=%zu/%zu usc=%zu/%zu "
+                   "segments=%u",
+                   control_used, list->stream_bo->size - list->data_floor,
+                   list->stream_bo->size, list->usc_offset,
+                   list->usc_bo->size, list->segment_count);
       }
 
       /* All of a list's segments go in one submission, ordered by the

@@ -23,12 +23,15 @@
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 
-#define D12_STREAM_BO_SIZE (1024 * 1024)
-#define D12_USC_BO_SIZE    (2 * 1024 * 1024)
+#define D12_STREAM_BO_SIZE (16 * 1024 * 1024)
+#define D12_USC_BO_SIZE    (32 * 1024 * 1024)
 #define D12_RECYCLED_STREAM_MIN (128 * 1024)
 #define D12_RECYCLED_USC_MIN    (64 * 1024)
 /* Worst-case control words per dispatch or render prologue, with slack. */
 #define D12_DISPATCH_STREAM_MARGIN 0x300
+/* Keep a single kernel command bounded even for command lists containing
+ * hundreds of thousands of tiny meta dispatches. */
+#define D12_MAX_DISPATCHES_PER_SEGMENT 8192
 
 /*
  * ID3D12CommandAllocator. The real allocations live on the list for now;
@@ -371,7 +374,11 @@ d12_list_upload(struct d12_cmd_list *list, const void *data, size_t size,
    size_t used = list->stream_cur - d12_list_stream_map(list);
 
    if (floor <= used + D12_DISPATCH_STREAM_MARGIN) {
-      mesa_loge("command list out of stream/data space");
+      mesa_loge("command list out of stream/data space: control=%zu "
+                "data=%zu capacity=%zu request=%zu usc=%zu/%zu",
+                used, list->stream_bo->size - list->data_floor,
+                list->stream_bo->size, size, list->usc_offset,
+                list->usc_bo->size);
       list->state = D12_LIST_ERROR;
       return 0;
    }
@@ -397,7 +404,11 @@ d12_list_upload_zero(struct d12_cmd_list *list, size_t size, size_t align)
    size_t used = list->stream_cur - d12_list_stream_map(list);
 
    if (floor <= used + D12_DISPATCH_STREAM_MARGIN) {
-      mesa_loge("command list out of stream/data space");
+      mesa_loge("command list out of stream/data space: control=%zu "
+                "data=%zu capacity=%zu request=%zu usc=%zu/%zu",
+                used, list->stream_bo->size - list->data_floor,
+                list->stream_bo->size, size, list->usc_offset,
+                list->usc_bo->size);
       list->state = D12_LIST_ERROR;
       return 0;
    }
@@ -656,6 +667,13 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
       pre_gfx ? d12_list_get_pregfx(list) : d12_list_get_cdm(list);
    if (!seg)
       return;
+
+   if (!pre_gfx && seg->dispatches >= D12_MAX_DISPATCHES_PER_SEGMENT) {
+      d12_list_close_cdm(list);
+      seg = d12_list_get_cdm(list);
+      if (!seg)
+         return;
+   }
 
    struct agx_precompiled_shader *prog =
       agx_get_precompiled(&device->bg_eot, idx);
@@ -8002,6 +8020,19 @@ d12_pack_clear_uav_uint(DXGI_FORMAT format, const UINT values[4],
       *packed_size_B = sizeof(uint32_t);
       return true;
 
+   case DXGI_FORMAT_R16G16B16A16_FLOAT:
+   case DXGI_FORMAT_R16G16B16A16_UNORM:
+   case DXGI_FORMAT_R16G16B16A16_UINT:
+   case DXGI_FORMAT_R16G16B16A16_SNORM:
+   case DXGI_FORMAT_R16G16B16A16_SINT: {
+      uint16_t words[4];
+      for (unsigned i = 0; i < ARRAY_SIZE(words); i++)
+         words[i] = values[i];
+      memcpy(packed, words, sizeof(words));
+      *packed_size_B = sizeof(words);
+      return true;
+   }
+
    case DXGI_FORMAT_R8G8B8A8_UNORM:
    case DXGI_FORMAT_R8G8B8A8_UINT:
    case DXGI_FORMAT_R8G8B8A8_SNORM:
@@ -8071,7 +8102,7 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
                           D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
                           ID3D12Resource *resource, const void *packed,
                           unsigned packed_size_B,
-                          UINT num_rects)
+                          UINT num_rects, const D3D12_RECT *rects)
 {
    if (list->state != D12_LIST_RECORDING)
       return;
@@ -8098,8 +8129,8 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
       return;
    }
 
-   if (num_rects != 0) {
-      mesa_loge("ClearUnorderedAccessView: buffer rect clears unsupported");
+   if (num_rects && !rects) {
+      mesa_loge("ClearUnorderedAccessView: missing buffer clear rectangles");
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -8115,37 +8146,60 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
    if (!view->size_B)
       return;
 
-   if (packed_size_B == sizeof(uint32_t)) {
-      uint32_t packed_u32;
-      memcpy(&packed_u32, packed, sizeof(packed_u32));
-      struct libagx_fill_args args = {
-         .address = view->address,
-         .value = packed_u32,
-      };
-      d12_list_dispatch_precomp(list, LIBAGX_FILL, &args, sizeof(args),
-                                agx_1d(view->size_B / 4));
-      return;
+   const uint32_t view_elements = view->size_B / packed_size_B;
+   uint64_t value = 0;
+   if (packed_size_B != sizeof(uint32_t)) {
+      value = d12_list_upload(list, packed, packed_size_B, 16);
+      if (!value)
+         return;
    }
 
-   uint64_t value = d12_list_upload(list, packed, packed_size_B, 16);
-   if (!value)
-      return;
+   const unsigned count = num_rects ? num_rects : 1;
+   for (unsigned i = 0; i < count; i++) {
+      int64_t left = 0, right = view_elements;
+      if (num_rects) {
+         /* A buffer UAV is a one-row image whose X coordinate is the
+          * element index. Rectangles not intersecting row zero are empty. */
+         if (rects[i].top > 0 || rects[i].bottom <= 0)
+            continue;
+         left = MAX2((int64_t)rects[i].left, 0);
+         right = MIN2((int64_t)rects[i].right, (int64_t)view_elements);
+      }
 
-   uint32_t elements = view->size_B / packed_size_B;
-   struct libagx_fill_image_args args = {
-      .dest = view->address,
-      .value = value,
-      .width_el = elements,
-      .height_el = 1,
-      .dest_pitch_B = view->size_B,
-      .dest_stride_el = elements,
-      .dest_tile_width_el = 1,
-      .dest_tile_height_el = 1,
-      .blocksize_B = packed_size_B,
-      .dest_tiled = false,
-   };
-   d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args, sizeof(args),
-                             agx_1d(elements));
+      if (right <= left)
+         continue;
+
+      const uint32_t elements = right - left;
+      const uint64_t address = view->address + left * packed_size_B;
+      if (packed_size_B == sizeof(uint32_t)) {
+         uint32_t packed_u32;
+         memcpy(&packed_u32, packed, sizeof(packed_u32));
+         struct libagx_fill_args args = {
+            .address = address,
+            .value = packed_u32,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_FILL, &args, sizeof(args),
+                                   agx_1d(elements));
+      } else {
+         struct libagx_fill_image_args args = {
+            .dest = address,
+            .value = value,
+            .width_el = elements,
+            .height_el = 1,
+            .dest_pitch_B = elements * packed_size_B,
+            .dest_stride_el = elements,
+            .dest_tile_width_el = 1,
+            .dest_tile_height_el = 1,
+            .blocksize_B = packed_size_B,
+            .dest_tiled = false,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args,
+                                   sizeof(args), agx_1d(elements));
+      }
+
+      if (list->state == D12_LIST_ERROR)
+         return;
+   }
 }
 
 static void
@@ -8281,7 +8335,7 @@ d12_list_clear_uav(struct d12_cmd_list *list,
                                  packed, packed_size_B, num_rects, rects);
    } else {
       d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource,
-                                packed, packed_size_B, num_rects);
+                                packed, packed_size_B, num_rects, rects);
    }
 }
 
