@@ -329,9 +329,9 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    /* Bindings do not survive a reset: a stale render target or depth buffer
     * here would let the next recording draw into last frame's texture.
     */
-   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
+   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
    memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
-   list->has_bound_rtv = false;
+   list->bound_rtv_count = 0;
    list->has_bound_dsv = false;
    list->stencil_ref = 0;
    for (unsigned i = 0; i < 4; i++)
@@ -712,10 +712,9 @@ d12_list_dispatch_precomp(struct d12_cmd_list *list, enum libagx_program idx,
  * hk_build_bg_eot for the single-RT, non-layered, single-sampled case.
  */
 static uint32_t
-d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
-                     uint64_t rt_address,
-                     enum pipe_format type_format, const float color[4],
-                     enum agx_bg_eot_op op,
+d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
+                     const float color[4],
+                     const enum agx_bg_eot_op ops[AGX_MAX_RENDER_TARGETS],
                      const struct agx_tilebuffer_layout *tib,
                      struct agx_counts_packed *out_counts)
 {
@@ -732,184 +731,214 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
    unsigned uniforms = 0, nr_tex = 0;
    bool uses_txf = false;
 
-   key.op[0] = op;
+   for (unsigned rt_index = 0; rt_index < AGX_MAX_RENDER_TARGETS; rt_index++) {
+      enum agx_bg_eot_op op = ops[rt_index];
+      struct d12_resource *rt = seg->rt[rt_index];
+      uint64_t rt_address = seg->rt_address[rt_index];
+      enum pipe_format type_format = seg->rt_view_format[rt_index];
+      key.op[rt_index] = op;
 
-   if (op == AGX_BG_CLEAR) {
-      key.op[0] = AGX_BG_CLEAR;
+      if (op == AGX_BG_EOT_NONE)
+         continue;
 
-      /*
-       * ClearRenderTargetView always hands over FLOAT[4], whatever the
-       * target's type. For a PURE INTEGER target those floats are integer
-       * VALUES, not normalized intensities, so they must be converted
-       * rather than forwarded: clearing a UINT target to 1 has to write
-       * the integer 1, where passing the float straight through wrote 255
-       * ("Got 0xff00ff00, expected 0x01000100" in
-       * test_clear_render_target_view).
-       *
-       * The format consulted here is the RESOURCE's, which is safe because
-       * it is only being asked "is this integer-typed?". An earlier attempt
-       * also drove the tilebuffer and PBE from a view format; those describe
-       * MEMORY, so the store wrote the wrong size and produced 75 GPU
-       * timeouts. Type interpretation and memory layout are different
-       * questions -- do not merge them again.
-       */
-      /* The VIEW's format answers "what type is this", which the resource
-       * format cannot for a TYPELESS target -- typeless maps to a float
-       * sibling purely to fix the block size, so a UINT clear otherwise
-       * looked like a float one.
-       *
-       * Measured, not assumed: view format 8 failures vs resource format 15
-       * in test_clear_render_target_view.
-       *
-       * Used for THAT QUESTION ONLY. Memory layout still comes from the
-       * resource; merging the two wrote the wrong size and cost 75 GPU
-       * timeouts.
-       */
-      enum pipe_format cf =
-         type_format != PIPE_FORMAT_NONE ? type_format : rt->layout.format;
-      union {
-         float f[4];
-         uint32_t u[4];
-         int32_t i[4];
-      } cv;
-
-      if (util_format_is_pure_uint(cf)) {
-         for (unsigned c = 0; c < 4; c++)
-            cv.u[c] = (uint32_t)color[c];
-      } else if (util_format_is_pure_sint(cf)) {
-         for (unsigned c = 0; c < 4; c++)
-            cv.i[c] = (int32_t)color[c];
-      } else {
-         memcpy(cv.f, color, sizeof(cv.f));
-      }
-
-      /* 16 bytes of clear color, register base 4 — hk's fixed ABI */
-      uint64_t colour = d12_list_upload(list, cv.f, 16, 16);
-      if (!colour)
-         return 0;
-
-      agx_usc_uniform(&b, 4, 8, colour);
-      uniforms = 4 + 8;
-   } else if (op == AGX_BG_LOAD) {
       if (!rt) {
-         mesa_loge("background load requested without a render target");
+         mesa_loge("background/EOT operation requested for unbound RT%u",
+                   rt_index);
          list->state = D12_LIST_ERROR;
          return 0;
       }
 
-      enum pipe_format pf = type_format != PIPE_FORMAT_NONE
-                               ? type_format
-                               : rt->layout.format;
-      const struct util_format_description *fdesc =
-         util_format_description(pf);
-      struct agx_texture_packed desc;
+      if (op == AGX_BG_CLEAR) {
 
-      agx_pack(&desc, TEXTURE, cfg) {
-         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-         cfg.dimension = samples > 1
-                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                            : AGX_TEXTURE_DIMENSION_2D;
-         cfg.layout = agx_translate_layout(rt->layout.tiling);
-         cfg.channels = ail_pixel_format[pf].channels;
-         cfg.type = ail_pixel_format[pf].type;
-         cfg.srgb = util_format_is_srgb(pf);
-         cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
-         cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
-         cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
-         cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
-         cfg.address = rt_address;
-         cfg.width = rt->layout.width_px;
-         cfg.height = rt->layout.height_px;
-         cfg.first_level = 0;
-         cfg.last_level = 0;
-         cfg.unk_mipmapped = rt->layout.levels > 1;
+         /*
+          * ClearRenderTargetView always hands over FLOAT[4], whatever the
+          * target's type. For a PURE INTEGER target those floats are integer
+          * VALUES, not normalized intensities, so they must be converted
+          * rather than forwarded: clearing a UINT target to 1 has to write
+          * the integer 1, where passing the float straight through wrote 255
+          * ("Got 0xff00ff00, expected 0x01000100" in
+          * test_clear_render_target_view).
+          *
+          * The format consulted here is the RESOURCE's, which is safe because
+          * it is only being asked "is this integer-typed?". An earlier attempt
+          * also drove the tilebuffer and PBE from a view format; those describe
+          * MEMORY, so the store wrote the wrong size and produced 75 GPU
+          * timeouts. Type interpretation and memory layout are different
+          * questions -- do not merge them again.
+          */
+         /* The VIEW's format answers "what type is this", which the resource
+          * format cannot for a TYPELESS target -- typeless maps to a float
+          * sibling purely to fix the block size, so a UINT clear otherwise
+          * looked like a float one.
+          *
+          * Measured, not assumed: view format 8 failures vs resource format 15
+          * in test_clear_render_target_view.
+          *
+          * Used for THAT QUESTION ONLY. Memory layout still comes from the
+          * resource; merging the two wrote the wrong size and cost 75 GPU
+          * timeouts.
+          */
+         enum pipe_format cf =
+            type_format != PIPE_FORMAT_NONE ? type_format : rt->layout.format;
+         union {
+            float f[4];
+            uint32_t u[4];
+            int32_t i[4];
+         } cv;
 
-         if (samples > 1)
-            cfg.samples = agx_translate_sample_count(samples);
-
-         if (rt->layout.tiling == AIL_TILING_LINEAR)
-            cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
-         else {
-            cfg.depth = 1;
-            cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+         if (util_format_is_pure_uint(cf)) {
+            for (unsigned c = 0; c < 4; c++)
+               cv.u[c] = (uint32_t)color[c];
+         } else if (util_format_is_pure_sint(cf)) {
+            for (unsigned c = 0; c < 4; c++)
+               cv.i[c] = (int32_t)color[c];
+         } else {
+            memcpy(cv.f, color, sizeof(cv.f));
          }
-      }
 
-      uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
-      if (!desc_ptr)
-         return 0;
+         /* 16 bytes of clear color, register base 4 — hk's fixed ABI */
+         uint64_t colour = d12_list_upload(list, cv.f, 16, 16);
+         if (!colour)
+            return 0;
 
-      agx_usc_pack(&b, TEXTURE, cfg) {
-         cfg.start = 0;
-         cfg.count = 1;
-         cfg.buffer = desc_ptr;
-      }
-      nr_tex = 1;
-      uses_txf = true;
-   } else if (op == AGX_EOT_STORE) {
+         agx_usc_uniform(&b, 4 + (8 * rt_index), 8, colour);
+         uniforms = MAX2(uniforms, 4 + (8 * rt_index) + 8);
+      } else if (op == AGX_BG_LOAD) {
 
-      /* EOT uses the view's channel interpretation but the resource's actual
-       * memory layout. This is the single-layer, level-0 subset of
-       * hk_image_view.c::pack_pbe.
-       */
-      struct agx_pbe_packed desc;
-      agx_pack(&desc, PBE, cfg) {
-         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-         cfg.dimension = samples > 1
-                            ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
-                            : AGX_TEXTURE_DIMENSION_2D;
-         cfg.layout = agx_translate_layout(rt->layout.tiling);
-         enum pipe_format pf = type_format != PIPE_FORMAT_NONE
-                                  ? util_format_linear(type_format)
-                                  : rt->layout.format;
+         enum pipe_format pf =
+            type_format != PIPE_FORMAT_NONE ? type_format : rt->layout.format;
          const struct util_format_description *fdesc =
             util_format_description(pf);
+         struct agx_texture_packed desc;
 
-         cfg.channels = ail_pixel_format[pf].channels;
-         cfg.type = ail_pixel_format[pf].type;
-         cfg.srgb = util_format_is_srgb(pf);
+         agx_pack(&desc, TEXTURE, cfg) {
+            const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+            cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                        : AGX_TEXTURE_DIMENSION_2D;
+            cfg.layout = agx_translate_layout(rt->layout.tiling);
+            cfg.channels = ail_pixel_format[pf].channels;
+            cfg.type = ail_pixel_format[pf].type;
+            cfg.srgb = util_format_is_srgb(pf);
+            cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+            cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+            cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+            cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+            cfg.address = rt_address;
+            cfg.width = rt->layout.width_px;
+            cfg.height = rt->layout.height_px;
+            cfg.first_level = 0;
+            cfg.last_level = 0;
+            cfg.unk_mipmapped = rt->layout.levels > 1;
 
-         /* Honour the format's channel order, so BGRA does not come out
-          * with red and blue swapped.
-          */
-         cfg.swizzle_r = 0;
-         cfg.swizzle_g = 1;
-         cfg.swizzle_b = 2;
-         cfg.swizzle_a = 3;
-         for (unsigned c = 0; c < fdesc->nr_channels && c < 4; c++) {
-            switch (fdesc->swizzle[c]) {
-            case PIPE_SWIZZLE_X: cfg.swizzle_r = c; break;
-            case PIPE_SWIZZLE_Y: cfg.swizzle_g = c; break;
-            case PIPE_SWIZZLE_Z: cfg.swizzle_b = c; break;
-            case PIPE_SWIZZLE_W: cfg.swizzle_a = c; break;
-            default: break;
+            if (samples > 1)
+               cfg.samples = agx_translate_sample_count(samples);
+
+            if (rt->layout.tiling == AIL_TILING_LINEAR)
+               cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
+            else {
+               cfg.depth = 1;
+               cfg.page_aligned_layers = rt->layout.page_aligned_layers;
             }
          }
-         cfg.buffer = rt_address;
-         cfg.width = rt->layout.width_px;
-         cfg.height = rt->layout.height_px;
-         cfg.level = 0;
-         cfg.layers = 1;
-         cfg.levels = rt->layout.levels;
-         cfg.unk_mipmapped = rt->layout.levels > 1;
-         if (samples > 1)
-            cfg.samples = agx_translate_sample_count(samples);
-         if (rt->layout.tiling == AIL_TILING_LINEAR)
-            cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
-         else
-            cfg.page_aligned_layers = rt->layout.page_aligned_layers;
-      }
 
-      uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
-      if (!desc_ptr)
-         return 0;
+         uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+         if (!desc_ptr)
+            return 0;
 
-      agx_usc_pack(&b, TEXTURE, cfg) {
-         cfg.start = 0;
-         cfg.count = 1;
-         cfg.buffer = desc_ptr;
+         if (getenv("D3D12AGX_VALIDATE_MRT"))
+            mesa_logi("MRT validate: BG_LOAD RT%u texture_slot=%u "
+                      "desc=0x%llx",
+                      rt_index, rt_index * 2,
+                      (unsigned long long)desc_ptr);
+
+         agx_usc_pack(&b, TEXTURE, cfg) {
+            /* Background texture handles use the even half of eMRT's
+             * two-slots-per-target ABI, matching agx_bg_eot.c.
+             */
+            cfg.start = rt_index * 2;
+            cfg.count = 1;
+            cfg.buffer = desc_ptr;
+         }
+         nr_tex = MAX2(nr_tex, (rt_index * 2) + 1);
+         uses_txf = true;
+      } else if (op == AGX_EOT_STORE) {
+
+         /* EOT uses the view's channel interpretation but the resource's actual
+          * memory layout. This is the single-layer, level-0 subset of
+          * hk_image_view.c::pack_pbe.
+          */
+         struct agx_pbe_packed desc;
+         agx_pack(&desc, PBE, cfg) {
+            const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+            cfg.dimension = samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
+                                        : AGX_TEXTURE_DIMENSION_2D;
+            cfg.layout = agx_translate_layout(rt->layout.tiling);
+            enum pipe_format pf = type_format != PIPE_FORMAT_NONE
+                                     ? util_format_linear(type_format)
+                                     : rt->layout.format;
+            const struct util_format_description *fdesc =
+               util_format_description(pf);
+
+            cfg.channels = ail_pixel_format[pf].channels;
+            cfg.type = ail_pixel_format[pf].type;
+            cfg.srgb = util_format_is_srgb(pf);
+
+            /* Honour the format's channel order, so BGRA does not come out
+             * with red and blue swapped.
+             */
+            cfg.swizzle_r = 0;
+            cfg.swizzle_g = 1;
+            cfg.swizzle_b = 2;
+            cfg.swizzle_a = 3;
+            for (unsigned c = 0; c < fdesc->nr_channels && c < 4; c++) {
+               switch (fdesc->swizzle[c]) {
+               case PIPE_SWIZZLE_X:
+                  cfg.swizzle_r = c;
+                  break;
+               case PIPE_SWIZZLE_Y:
+                  cfg.swizzle_g = c;
+                  break;
+               case PIPE_SWIZZLE_Z:
+                  cfg.swizzle_b = c;
+                  break;
+               case PIPE_SWIZZLE_W:
+                  cfg.swizzle_a = c;
+                  break;
+               default:
+                  break;
+               }
+            }
+            cfg.buffer = rt_address;
+            cfg.width = rt->layout.width_px;
+            cfg.height = rt->layout.height_px;
+            cfg.level = 0;
+            cfg.layers = 1;
+            cfg.levels = rt->layout.levels;
+            cfg.unk_mipmapped = rt->layout.levels > 1;
+            if (samples > 1)
+               cfg.samples = agx_translate_sample_count(samples);
+            if (rt->layout.tiling == AIL_TILING_LINEAR)
+               cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
+            else
+               cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+         }
+
+         uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+         if (!desc_ptr)
+            return 0;
+
+         if (getenv("D3D12AGX_VALIDATE_MRT"))
+            mesa_logi("MRT validate: EOT_STORE RT%u pbe_slot=%u desc=0x%llx",
+                      rt_index, rt_index,
+                      (unsigned long long)desc_ptr);
+
+         agx_usc_pack(&b, TEXTURE, cfg) {
+            cfg.start = rt_index;
+            cfg.count = 1;
+            cfg.buffer = desc_ptr;
+         }
+         nr_tex = MAX2(nr_tex, rt_index + 1);
       }
-      nr_tex = 1;
    }
 
    if (uses_txf)
@@ -952,6 +981,11 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, struct d12_resource *rt,
          agx_translate_sampler_state_count(uses_txf ? 1 : 0, false);
    }
 
+   if (getenv("D3D12AGX_VALIDATE_MRT"))
+      mesa_logi("MRT validate: bg/eot ops ready nr_tex=%u uniforms=%u "
+                "uses_txf=%u",
+                nr_tex, uniforms, uses_txf);
+
    return usc;
 }
 
@@ -959,18 +993,24 @@ static bool
 d12_segment_matches_bindings(const struct d12_cmd_list *list,
                              const struct d12_segment *seg, bool use_rtv)
 {
-   const struct d12_descriptor *rtv =
-      use_rtv && list->has_bound_rtv ? &list->bound_rtv : NULL;
+   const unsigned rtv_count = use_rtv ? list->bound_rtv_count : 0;
    const struct d12_descriptor *dsv =
       list->has_bound_dsv ? &list->bound_dsv : NULL;
 
-   if (seg->rt != (rtv ? rtv->resource : NULL) ||
+   if (seg->rt_count != rtv_count ||
        seg->ds != (dsv ? dsv->resource : NULL))
       return false;
 
-   if (rtv && (seg->rt_address != rtv->address ||
-               seg->rt_view_format != d12_format_to_pipe(rtv->format)))
-      return false;
+   for (unsigned i = 0; i < rtv_count; i++) {
+      const struct d12_descriptor *rtv = &list->bound_rtv[i];
+      if (seg->rt[i] != rtv->resource)
+         return false;
+
+      if (rtv->resource &&
+          (seg->rt_address[i] != rtv->address ||
+           seg->rt_view_format[i] != d12_format_to_pipe(rtv->format)))
+         return false;
+   }
 
    if (dsv && seg->dsv_flags != dsv->dsv_flags)
       return false;
@@ -986,7 +1026,7 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
  */
 static struct d12_segment *
 d12_list_begin_render(struct d12_cmd_list *list,
-                      const struct d12_descriptor *rtv,
+                      const struct d12_descriptor *rtvs, unsigned rtv_count,
                       const struct d12_descriptor *dsv,
                       struct d12_pipeline_state *pso,
                       enum agx_bg_eot_op bg_op, const float color[4],
@@ -1000,8 +1040,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
       return NULL;
    }
 
-   if (rtv && (!rtv->resource || rtv->kind != D12_DESC_RTV)) {
-      mesa_loge("render pass received an invalid RTV descriptor");
+   if (rtv_count > AGX_MAX_RENDER_TARGETS || (rtv_count && !rtvs)) {
+      mesa_loge("render pass received %u RTV descriptors", rtv_count);
       list->state = D12_LIST_ERROR;
       return NULL;
    }
@@ -1017,23 +1057,74 @@ d12_list_begin_render(struct d12_cmd_list *list,
    seg->type = D12_SEG_RENDER;
    seg->process_empty_tiles = process_empty_tiles;
 
-   enum pipe_format view_pf = PIPE_FORMAT_NONE;
-   if (rtv) {
-      seg->rt = rtv->resource;
-      seg->rt_address = rtv->address ? rtv->address : rtv->resource->addr;
-      view_pf = d12_format_to_pipe(rtv->format);
+   seg->rt_count = rtv_count;
+   unsigned bound_rts = 0;
+   unsigned rt_samples = 1;
+   for (unsigned i = 0; i < rtv_count; i++) {
+      const struct d12_descriptor *rtv = &rtvs[i];
+      if (!rtv->resource)
+         continue;
+
+      if (rtv->kind != D12_DESC_RTV) {
+         mesa_loge("render pass received an invalid RTV%u descriptor", i);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+
+      enum pipe_format view_pf = d12_format_to_pipe(rtv->format);
       if (view_pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(view_pf) ||
           util_format_get_blocksize(view_pf) !=
              util_format_get_blocksize(rtv->resource->layout.format)) {
-         mesa_loge("RTV format %u is incompatible with resource format %u",
-                   (unsigned)rtv->format,
+         mesa_loge("RTV%u format %u is incompatible with resource format %u",
+                   i, (unsigned)rtv->format,
                    (unsigned)rtv->resource->layout.format);
          list->state = D12_LIST_ERROR;
          return NULL;
       }
-      seg->rt_view_format = view_pf;
-      seg->width_px = rtv->resource->layout.width_px;
-      seg->height_px = rtv->resource->layout.height_px;
+
+      unsigned samples = MAX2(rtv->resource->layout.sample_count_sa, 1);
+      if (bound_rts && samples != rt_samples) {
+         mesa_loge("render targets have mismatched sample counts %u and %u",
+                   rt_samples, samples);
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+
+      seg->rt[i] = rtv->resource;
+      seg->rt_address[i] = rtv->address ? rtv->address : rtv->resource->addr;
+      seg->rt_view_format[i] = view_pf;
+
+      if (getenv("D3D12AGX_VALIDATE_MRT")) {
+         const uint64_t bo_start = rtv->resource->bo->va->addr;
+         const uint64_t bo_end = bo_start + rtv->resource->bo->size;
+         const uint64_t span = rtv->resource->layout.layer_stride_B;
+         if (seg->rt_address[i] < bo_start || seg->rt_address[i] >= bo_end ||
+             span > bo_end - seg->rt_address[i]) {
+            mesa_loge("MRT validate: RT%u address 0x%llx span 0x%llx is "
+                      "outside BO [0x%llx, 0x%llx)",
+                      i, (unsigned long long)seg->rt_address[i],
+                      (unsigned long long)span, (unsigned long long)bo_start,
+                      (unsigned long long)bo_end);
+            list->state = D12_LIST_ERROR;
+            return NULL;
+         }
+
+         mesa_logi("MRT validate: RT%u addr=0x%llx span=0x%llx "
+                   "bo=[0x%llx,0x%llx) format=%u samples=%u",
+                   i, (unsigned long long)seg->rt_address[i],
+                   (unsigned long long)span, (unsigned long long)bo_start,
+                   (unsigned long long)bo_end, view_pf, samples);
+      }
+      rt_samples = samples;
+      if (!bound_rts) {
+         seg->width_px = rtv->resource->layout.width_px;
+         seg->height_px = rtv->resource->layout.height_px;
+      } else {
+         seg->width_px = MIN2(seg->width_px, rtv->resource->layout.width_px);
+         seg->height_px = MIN2(seg->height_px,
+                               rtv->resource->layout.height_px);
+      }
+      bound_rts++;
    }
 
    if (dsv) {
@@ -1063,23 +1154,32 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (pso) {
-      if (rtv && pso->tib.nr_samples !=
-                    MAX2(rtv->resource->layout.sample_count_sa, 1)) {
-         mesa_loge("render pass sample mismatch: PSO %u, RTV %u",
-                   pso->tib.nr_samples,
-                   MAX2(rtv->resource->layout.sample_count_sa, 1));
+      if (bound_rts && pso->tib.nr_samples != rt_samples) {
+         mesa_loge("render pass sample mismatch: PSO %u, RTVs %u",
+                   pso->tib.nr_samples, rt_samples);
          list->state = D12_LIST_ERROR;
          return NULL;
       }
       seg->tib = pso->tib;
+
+      if (getenv("D3D12AGX_VALIDATE_MRT")) {
+         for (unsigned i = 0; i < rtv_count; i++) {
+            if (seg->rt[i] &&
+                seg->tib.logical_format[i] != seg->rt_view_format[i]) {
+               mesa_loge("MRT validate: RT%u PSO format %u != view format "
+                         "%u", i, seg->tib.logical_format[i],
+                         seg->rt_view_format[i]);
+               list->state = D12_LIST_ERROR;
+               return NULL;
+            }
+         }
+      }
    } else {
-      enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {
-         rtv ? view_pf : PIPE_FORMAT_NONE,
-      };
-      unsigned samples =
-         rtv ? MAX2(rtv->resource->layout.sample_count_sa, 1) : 1;
-      seg->tib =
-         agx_build_tilebuffer_layout(formats, rtv ? 1 : 0, samples, false);
+      enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {0};
+      for (unsigned i = 0; i < rtv_count; i++)
+         formats[i] = seg->rt_view_format[i];
+      seg->tib = agx_build_tilebuffer_layout(formats, rtv_count, rt_samples,
+                                             false);
    }
 
    seg->scissor_base = d12_list_upload_zero(
@@ -1087,23 +1187,27 @@ d12_list_begin_render(struct d12_cmd_list *list,
    if (!seg->scissor_base)
       return NULL;
 
-   enum agx_bg_eot_op main_bg = rtv ? bg_op : AGX_BG_EOT_NONE;
-   enum agx_bg_eot_op main_eot = rtv ? AGX_EOT_STORE : AGX_BG_EOT_NONE;
-   enum agx_bg_eot_op partial_bg = rtv ? AGX_BG_LOAD : AGX_BG_EOT_NONE;
-   enum agx_bg_eot_op partial_eot = rtv ? AGX_EOT_STORE : AGX_BG_EOT_NONE;
+   enum agx_bg_eot_op main_bg[AGX_MAX_RENDER_TARGETS] = {0};
+   enum agx_bg_eot_op main_eot[AGX_MAX_RENDER_TARGETS] = {0};
+   enum agx_bg_eot_op partial_bg[AGX_MAX_RENDER_TARGETS] = {0};
+   enum agx_bg_eot_op partial_eot[AGX_MAX_RENDER_TARGETS] = {0};
+   for (unsigned i = 0; i < rtv_count; i++) {
+      if (!seg->rt[i])
+         continue;
+      main_bg[i] = bg_op;
+      main_eot[i] = AGX_EOT_STORE;
+      partial_bg[i] = AGX_BG_LOAD;
+      partial_eot[i] = AGX_EOT_STORE;
+   }
 
    seg->bg_usc = d12_build_bg_eot_usc(
-      list, seg->rt, seg->rt_address, view_pf, color, main_bg, &seg->tib,
-      &seg->bg_counts);
+      list, seg, color, main_bg, &seg->tib, &seg->bg_counts);
    seg->eot_usc = d12_build_bg_eot_usc(
-      list, seg->rt, seg->rt_address, view_pf, NULL, main_eot, &seg->tib,
-      &seg->eot_counts);
+      list, seg, NULL, main_eot, &seg->tib, &seg->eot_counts);
    seg->partial_bg_usc = d12_build_bg_eot_usc(
-      list, seg->rt, seg->rt_address, view_pf, NULL, partial_bg, &seg->tib,
-      &seg->partial_bg_counts);
+      list, seg, NULL, partial_bg, &seg->tib, &seg->partial_bg_counts);
    seg->partial_eot_usc = d12_build_bg_eot_usc(
-      list, seg->rt, seg->rt_address, view_pf, NULL, partial_eot, &seg->tib,
-      &seg->partial_eot_counts);
+      list, seg, NULL, partial_eot, &seg->tib, &seg->partial_eot_counts);
    if (!seg->bg_usc || !seg->eot_usc || !seg->partial_bg_usc ||
        !seg->partial_eot_usc)
       return NULL;
@@ -1839,7 +1943,7 @@ d12_compute_launch_word(const struct agx_shader_info *info)
 
 static void
 d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
-                      unsigned z)
+                      unsigned z, uint64_t indirect_args)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -1901,10 +2005,22 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                                            pso->info.workgroup_size[1],
                                            pso->info.workgroup_size[2]);
 
-   /* D3D12 Dispatch counts thread GROUPS; AGX launches want global
-    * threads, exactly as hk multiplies before launching.
+   /* D3D12 Dispatch counts thread GROUPS; AGX launches want global threads.
+    * A native indirect pointer is therefore directly compatible only for a
+    * 1x1x1 workgroup. Larger workgroups need a GPU-side argument rewrite.
     */
-   struct agx_grid grid = agx_3d(x * wg.x, y * wg.y, z * wg.z);
+   struct agx_grid grid;
+   if (indirect_args) {
+      if (wg.x != 1 || wg.y != 1 || wg.z != 1) {
+         mesa_loge("ExecuteIndirect: dispatch workgroup %ux%ux%u needs an "
+                   "argument rewrite", wg.x, wg.y, wg.z);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      grid = agx_grid_indirect(indirect_args);
+   } else {
+      grid = agx_3d(x * wg.x, y * wg.y, z * wg.z);
+   }
 
    if (!d12_list_check_stream_space(list))
       return;
@@ -2953,7 +3069,8 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
-              unsigned first_instance, bool indexed, unsigned first_index)
+              unsigned first_instance, bool indexed, unsigned first_index,
+              uint64_t indirect_args)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -2983,13 +3100,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    }
 
    if (!list->render_open) {
-      const struct d12_descriptor *rtv =
-         pso->has_pixel_shader && list->has_bound_rtv ? &list->bound_rtv
-                                                      : NULL;
+      const unsigned rtv_count =
+         pso->has_pixel_shader ? list->bound_rtv_count : 0;
+      const struct d12_descriptor *rtvs =
+         rtv_count ? list->bound_rtv : NULL;
       const struct d12_descriptor *dsv =
          list->has_bound_dsv ? &list->bound_dsv : NULL;
-      if (!d12_list_begin_render(list, rtv, dsv, pso, AGX_BG_LOAD, NULL,
-                                 false))
+      if (!d12_list_begin_render(list, rtvs, rtv_count, dsv, pso,
+                                 AGX_BG_LOAD, NULL, false))
          return;
    }
 
@@ -3002,12 +3120,18 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu))
       return;
 
-   /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM
-    * memory, so the values are uploaded and the uniform points at them.
+   /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM memory.
+    * The two D3D12 indirect structures both end in the exact pair this ABI
+    * needs, so indirect draws can point into the application's buffer and
+    * observe its contents at GPU execution time.
     */
-   uint32_t draw_params[2] = {first_vertex, first_instance};
-   uint64_t draw_gpu =
-      d12_list_upload(list, draw_params, sizeof(draw_params), 8);
+   uint64_t draw_gpu;
+   if (indirect_args) {
+      draw_gpu = indirect_args + (indexed ? 12 : 8);
+   } else {
+      uint32_t draw_params[2] = {first_vertex, first_instance};
+      draw_gpu = d12_list_upload(list, draw_params, sizeof(draw_params), 8);
+   }
    if (!draw_gpu)
       return;
 
@@ -3435,9 +3559,15 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * added to every fetched index -- and is NOT the same thing as the
     * `start` of a non-indexed draw, which is a vertex offset. Passing it
     * as `start` would skip indices instead of biasing vertices.
-    */
+   */
    if (!draw_set) {
-      if (indexed) {
+      if (indirect_args && indexed) {
+         draw = agx_draw_indexed_indirect(
+            indirect_args, list->ib.addr, list->ib.size_B,
+            list->ib.index_size, false);
+      } else if (indirect_args) {
+         draw = agx_draw_indirect(indirect_args);
+      } else if (indexed) {
          draw = agx_draw_indexed(vertex_count, instance_count, first_index,
                                  first_vertex, first_instance, list->ib.addr,
                                  list->ib.size_B, list->ib.index_size, false);
@@ -3476,7 +3606,7 @@ d12_list_DispatchMesh(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y,
       return;
    }
 
-   d12_list_draw(list, x, y, z, 0, false, 0);
+   d12_list_draw(list, x, y, z, 0, false, 0, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -3490,7 +3620,7 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
       return;
 
    d12_list_draw(list, vertex_count_per_instance, instance_count,
-                 start_vertex, start_instance, false, 0);
+                 start_vertex, start_instance, false, 0, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -3517,7 +3647,97 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
    }
 
    d12_list_draw(list, index_count_per_instance, instance_count,
-                 (unsigned)base_vertex, start_instance, true, start_index);
+                 (unsigned)base_vertex, start_instance, true, start_index, 0);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
+                         ID3D12CommandSignature *signature_iface,
+                         UINT max_command_count,
+                         ID3D12Resource *argument_buffer_iface,
+                         UINT64 argument_buffer_offset,
+                         ID3D12Resource *count_buffer_iface,
+                         UINT64 count_buffer_offset)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING || !max_command_count)
+      return;
+
+   if (!signature_iface || !argument_buffer_iface || count_buffer_iface) {
+      mesa_loge("ExecuteIndirect: null objects and count buffers are not "
+                "supported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   struct d12_command_signature *signature =
+      (struct d12_command_signature *)signature_iface;
+   struct d12_resource *argument_buffer =
+      d12_resource_from_iface(argument_buffer_iface);
+
+   if (signature->device != list->device ||
+       signature->desc.NumArgumentDescs != 1 ||
+       argument_buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      mesa_loge("ExecuteIndirect: incompatible signature or argument buffer");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   D3D12_INDIRECT_ARGUMENT_TYPE type = signature->arguments[0].Type;
+   const bool dispatch = type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+   const bool indexed = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+   const size_t argument_size =
+      dispatch ? sizeof(D3D12_DISPATCH_ARGUMENTS)
+      : indexed ? sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
+                : sizeof(D3D12_DRAW_ARGUMENTS);
+   if (type != D3D12_INDIRECT_ARGUMENT_TYPE_DRAW && !indexed && !dispatch) {
+      mesa_loge("ExecuteIndirect: argument type %u unsupported", type);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (!list->pso ||
+       (dispatch && !list->pso->is_compute) ||
+       (!dispatch && (list->pso->is_compute || list->pso->has_gs ||
+                      list->pso->has_tess || list->pso->has_mesh))) {
+      mesa_loge("ExecuteIndirect: only ordinary graphics pipelines are "
+                "supported");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (indexed && !list->ib.addr) {
+      mesa_loge("ExecuteIndirect: indexed draw has no index buffer");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const uint64_t stride = signature->desc.ByteStride;
+   const uint64_t width = argument_buffer->desc.Width;
+   if (stride < argument_size || (stride & 3) ||
+       argument_buffer_offset > width ||
+       (uint64_t)(max_command_count - 1) >
+          (width - argument_buffer_offset) / stride ||
+       argument_size > width - argument_buffer_offset -
+                          (uint64_t)(max_command_count - 1) * stride) {
+      mesa_loge("ExecuteIndirect: argument range is out of bounds");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (UINT i = 0; i < max_command_count; i++) {
+      uint64_t args = argument_buffer->addr + argument_buffer_offset +
+                      (uint64_t)i * stride;
+      if (dispatch)
+         d12_list_dispatch_pso(list, 0, 0, 0, args);
+      else
+         d12_list_draw(list, 0, 0, 0, 0, indexed, 0, args);
+      if (list->state != D12_LIST_RECORDING)
+         return;
+   }
+
+   (void)count_buffer_offset;
 }
 
 /*
@@ -4194,9 +4414,9 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    memset(&list->scissor, 0, sizeof(list->scissor));
    list->has_viewport = false;
    list->has_scissor = false;
-   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
+   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
    memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
-   list->has_bound_rtv = false;
+   list->bound_rtv_count = 0;
    list->has_bound_dsv = false;
    list->stencil_ref = 0;
    for (unsigned i = 0; i < 4; i++)
@@ -4234,7 +4454,7 @@ d12_list_Dispatch(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y, UINT z)
    if (!x || !y || !z)
       return;
 
-   d12_list_dispatch_pso(list, x, y, z);
+   d12_list_dispatch_pso(list, x, y, z, 0);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -5423,7 +5643,7 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   d12_list_begin_render(list, rtv, NULL, NULL, AGX_BG_CLEAR, color, true);
+   d12_list_begin_render(list, rtv, 1, NULL, NULL, AGX_BG_CLEAR, color, true);
 }
 
 /* Raw element copies cover linear placed footprints and AIL tiled texture
@@ -5816,8 +6036,8 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
    }
 
    if (!list->render_open) {
-      if (!d12_list_begin_render(list, NULL, dsv, NULL, AGX_BG_EOT_NONE,
-                                 NULL, true))
+      if (!d12_list_begin_render(list, NULL, 0, dsv, NULL,
+                                 AGX_BG_EOT_NONE, NULL, true))
          return;
    } else if (!d12_list_attach_ds(list, dsv)) {
       return;
@@ -5880,22 +6100,33 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
    if (list->state != D12_LIST_RECORDING)
       return;
 
-   memset(&list->bound_rtv, 0, sizeof(list->bound_rtv));
-   list->has_bound_rtv = false;
-   if (num_rtvs >= 1 && rtvs) {
-      struct d12_rtv *rtv = (struct d12_rtv *)rtvs[0].ptr;
-      if (rtv && rtv->resource && rtv->kind == D12_DESC_RTV) {
-         list->bound_rtv = *rtv;
-         list->has_bound_rtv = true;
-      } else if (rtv && rtv->resource) {
-         mesa_loge("OMSetRenderTargets: handle is not a render-target view");
+   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
+   list->bound_rtv_count = 0;
+   if (num_rtvs > AGX_MAX_RENDER_TARGETS || (num_rtvs && !rtvs)) {
+      mesa_loge("OMSetRenderTargets: invalid RTV count %u", num_rtvs);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (unsigned i = 0; i < num_rtvs; i++) {
+      uintptr_t handle = single_handle
+                            ? rtvs[0].ptr +
+                                 i * sizeof(struct d12_descriptor)
+                            : rtvs[i].ptr;
+      const struct d12_rtv *rtv = (const struct d12_rtv *)handle;
+      if (!rtv || !rtv->resource)
+         continue;
+
+      if (rtv->kind != D12_DESC_RTV) {
+         mesa_loge("OMSetRenderTargets: handle %u is not a render-target "
+                   "view", i);
          list->state = D12_LIST_ERROR;
          return;
       }
-   }
 
-   if (num_rtvs > 1)
-      mesa_logw("OMSetRenderTargets: only one render target is supported");
+      list->bound_rtv[i] = *rtv;
+   }
+   list->bound_rtv_count = num_rtvs;
 
    memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
    list->has_bound_dsv = false;
@@ -5981,6 +6212,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .RSSetScissorRects = d12_list_RSSetScissorRects,
    .DrawInstanced = d12_list_DrawInstanced,
    .DrawIndexedInstanced = d12_list_DrawIndexedInstanced,
+   .ExecuteIndirect = d12_list_ExecuteIndirect,
    .IASetIndexBuffer = d12_list_IASetIndexBuffer,
    .BeginQuery = d12_list_BeginQuery,
    .EndQuery = d12_list_EndQuery,

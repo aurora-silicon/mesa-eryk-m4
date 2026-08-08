@@ -321,6 +321,20 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   case D3D12_FEATURE_D3D12_OPTIONS19: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS19 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      /* We understand the query but do not yet expose RasterizerDesc2.
+       * A zero capability answer makes applications take the supported
+       * legacy rasterizer path instead of mistaking E_INVALIDARG for an
+       * unknown runtime interface.
+       */
+      memset(opts, 0, sizeof(*opts));
+      return S_OK;
+   }
+
    case D3D12_FEATURE_PREDICATION:
       if (data_size != sizeof(D3D12_FEATURE_DATA_PREDICATION))
          return E_INVALIDARG;
@@ -1654,9 +1668,10 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    if (!slot)
       return;
 
+   memset(slot, 0, sizeof(*slot));
+
    if (!resource) {
       /* Null RTVs are legal placeholders; record an empty slot. */
-      slot->resource = NULL;
       return;
    }
 

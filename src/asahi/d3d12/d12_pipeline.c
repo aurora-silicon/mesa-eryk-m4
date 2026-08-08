@@ -966,7 +966,11 @@ resolve_input_layout(struct d12_pipeline_state *pso,
       fetch->keys[id] = (struct agx_velem_key){
          .format = fmt,
          .stride = 0,
-         .divisor = instanced ? MAX2(el->InstanceDataStepRate, 1) : 0,
+         /* StepRate 0 means element zero for every instance in the draw.
+          * agx_nir_lower_vbo already implements that distinct mode when
+          * divisor is zero, so it must not be collapsed to divisor 1.
+          */
+         .divisor = instanced ? el->InstanceDataStepRate : 0,
          .instanced = instanced,
       };
 
@@ -2072,6 +2076,11 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       return E_INVALIDARG;
    }
 
+   if (nr_rt > AGX_MAX_RENDER_TARGETS) {
+      free(pso);
+      return E_INVALIDARG;
+   }
+
    /* Depth/stencil state, resolved to hardware enums once here rather than
     * per draw. With no DSV format the tests are inert regardless of what
     * the description asks for, matching D3D12's own rule.
@@ -2131,11 +2140,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     * a colour tilebuffer that has no backing attachment; Honeykrisp keeps the
     * zero-colour layout and lets ZLS stand alone.
     */
-   enum pipe_format formats[8] = {rt_format};
+   enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {0};
+   if (nr_rt)
+      formats[0] = rt_format;
+   for (unsigned i = 1; i < nr_rt; i++) {
+      if (rt_formats && d12_format_is_renderable(rt_formats[i]))
+         formats[i] = d12_format_to_pipe(rt_formats[i]);
+   }
    struct agx_tilebuffer_layout tib =
-      agx_build_tilebuffer_layout(formats,
-                                  rt_format != PIPE_FORMAT_NONE ? 1 : 0,
-                                  nr_samples, false);
+      agx_build_tilebuffer_layout(formats, nr_rt, nr_samples, false);
    pso->tib = tib;
 
    const D3D12_RENDER_TARGET_BLEND_DESC default_rt_blend = {
@@ -2676,9 +2689,6 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          agx_translate_sampler_state_count(fs_samplers, false);
    }
 
-   /* Assign vertex output slots; no flat/linear varyings in the first
-    * triangle, so both masks are empty.
-    */
    agx_assign_uvs(&pso->varyings, &pso->uvs, 0, 0);
 
    pso->iface.lpVtbl = (ID3D12PipelineStateVtbl *)&d12_pso_vtbl;
