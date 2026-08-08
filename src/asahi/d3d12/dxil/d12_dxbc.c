@@ -168,10 +168,15 @@ enum d12_dxbc_op {
    D12_DXBC_OP_OR = 60,
    D12_DXBC_OP_RESINFO = 61,
    D12_DXBC_OP_BUFINFO = 121,
+   D12_DXBC_OP_DERIV_RTX_COARSE = 122,
+   D12_DXBC_OP_DERIV_RTX_FINE = 123,
+   D12_DXBC_OP_DERIV_RTY_COARSE = 124,
+   D12_DXBC_OP_DERIV_RTY_FINE = 125,
    D12_DXBC_OP_GATHER4_C = 126,
    D12_DXBC_OP_GATHER4_PO = 127,
    D12_DXBC_OP_GATHER4_PO_C = 128,
    D12_DXBC_OP_RET = 62,
+   D12_DXBC_OP_RETC = 63,
    D12_DXBC_OP_ROUND_NE = 64,
    D12_DXBC_OP_ROUND_NI = 65,
    D12_DXBC_OP_ROUND_PI = 66,
@@ -213,6 +218,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_IBFE = 139,
    D12_DXBC_OP_BFI = 140,
    D12_DXBC_OP_BFREV = 141,
+   D12_DXBC_OP_SWAPC = 142,
    D12_DXBC_OP_UMAD = 82,
    /* Hull-shader phase delimiters. They carry no operands; the phase bodies
     * follow as ordinary instructions/declarations. */
@@ -276,6 +282,7 @@ enum d12_dxbc_op {
    D12_DXBC_OP_IMM_ATOMIC_IMIN = 187,
    D12_DXBC_OP_IMM_ATOMIC_UMAX = 188,
    D12_DXBC_OP_IMM_ATOMIC_UMIN = 189,
+   D12_DXBC_OP_SYNC = 190,
    /* Both write to file 30 with three operands. 164 takes an element
     * coordinate, 166 a byte offset -- typed versus raw. */
    D12_DXBC_OP_STORE_UAV_TYPED = 164,
@@ -378,6 +385,13 @@ struct d12_dxbc_binding_range {
    bool valid;
 };
 
+struct d12_dxbc_tgsm_decl {
+   uint32_t base;
+   uint32_t size;
+   uint32_t stride;
+   bool valid;
+};
+
 enum d12_dxbc_cf_kind {
    D12_DXBC_CF_IF,
    D12_DXBC_CF_LOOP,
@@ -437,12 +451,19 @@ struct d12_dxbc_ctx {
     * dynamic counter access maps into the root signature's dense slots.
     */
    struct d12_dxbc_binding_range uav_range[D12_DXBC_MAX_SIG];
+   /* g# declarations occupy one flat NIR workgroup-shared allocation. Raw
+    * declarations have stride zero; structured declarations retain their
+    * public byte stride for element/member addressing. */
+   struct d12_dxbc_tgsm_decl tgsm[D12_DXBC_MAX_SIG];
+   uint32_t shared_size;
    nir_builder b;
    const uint32_t *tok;
    const uint32_t *end;
 
    nir_variable *temps[D12_DXBC_MAX_TEMPS];
    unsigned num_temps;
+   nir_variable *indexable_temps[D12_DXBC_MAX_SIG];
+   uint32_t indexable_temp_size[D12_DXBC_MAX_SIG];
 
    /* DXBC control flow is STRUCTURED -- if/else/endif and loop/endloop
     * nest properly -- which is exactly what nir_push_if/nir_push_loop
@@ -824,8 +845,21 @@ temp_var(struct d12_dxbc_ctx *ctx, unsigned index)
    return ctx->temps[index];
 }
 
-static nir_def *read_src(struct d12_dxbc_ctx *ctx,
-                         const struct d12_dxbc_operand *op);
+static nir_def *read_src_typed(struct d12_dxbc_ctx *ctx,
+                               const struct d12_dxbc_operand *op,
+                               bool integer);
+
+static nir_def *
+read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
+{
+   return read_src_typed(ctx, op, false);
+}
+
+static nir_def *
+read_src_int(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
+{
+   return read_src_typed(ctx, op, true);
+}
 
 /* Materialize one immediate, relative, or immediate-plus-relative operand
  * index.  SM 5.1 permits this independently for the selected cbuffer and
@@ -866,6 +900,87 @@ read_operand_index(struct d12_dxbc_ctx *ctx,
    return nir_iadd(b, value, nir_channel(b, relative, 0));
 }
 
+static const struct d12_dxbc_tgsm_decl *
+tgsm_decl(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
+{
+   if (op->file != D12_DXBC_FILE_TGSM || op->num_indices != 1 ||
+       op->index_is_relative[0] || op->index[0] >= D12_DXBC_MAX_SIG ||
+       !ctx->tgsm[op->index[0]].valid) {
+      fail(ctx, "invalid thread-group shared-memory operand");
+      return NULL;
+   }
+
+   return &ctx->tgsm[op->index[0]];
+}
+
+/* Return a byte offset in NIR's flat shared-memory address space. A raw g#
+ * consumes the byte offset directly; a structured g# consumes
+ * element * declared_stride + member_offset. */
+static nir_def *
+tgsm_byte_offset(struct d12_dxbc_ctx *ctx,
+                 const struct d12_dxbc_operand *op, nir_def *index,
+                 nir_def *offset)
+{
+   nir_builder *b = &ctx->b;
+   const struct d12_dxbc_tgsm_decl *decl = tgsm_decl(ctx, op);
+   if (!decl)
+      return NULL;
+
+   nir_def *byte = nir_channel(b, offset, 0);
+   if (decl->stride) {
+      byte = nir_iadd(
+         b, nir_imul_imm(b, nir_channel(b, index, 0), decl->stride), byte);
+   }
+
+   return nir_iadd_imm(b, byte, decl->base);
+}
+
+static nir_def *
+tgsm_atomic_offset(struct d12_dxbc_ctx *ctx,
+                   const struct d12_dxbc_operand *op, nir_def *coord)
+{
+   const struct d12_dxbc_tgsm_decl *decl = tgsm_decl(ctx, op);
+   if (!decl)
+      return NULL;
+
+   nir_builder *b = &ctx->b;
+   nir_def *index = decl->stride ? coord : nir_imm_int(b, 0);
+   nir_def *offset =
+      decl->stride ? nir_channel(b, coord, 1) : nir_channel(b, coord, 0);
+   return tgsm_byte_offset(ctx, op, index, offset);
+}
+
+/* DXBC loads carry a destination mask and a resource swizzle. Load only the
+ * physical dwords that can reach a written destination component. Besides
+ * avoiding needless traffic, this keeps a scalar load from reading beyond
+ * the final member of a tightly packed shared array. */
+static nir_def *
+tgsm_load_vec4(struct d12_dxbc_ctx *ctx,
+               const struct d12_dxbc_operand *resource, nir_def *byte,
+               unsigned dst_mask)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *component[4] = {
+      nir_imm_int(b, 0), nir_imm_int(b, 0),
+      nir_imm_int(b, 0), nir_imm_int(b, 0),
+   };
+   bool loaded[4] = {false};
+
+   dst_mask = dst_mask ? dst_mask : 0xf;
+   u_foreach_bit(c, dst_mask) {
+      unsigned physical = resource->swizzle[c];
+      if (loaded[physical])
+         continue;
+
+      component[physical] = nir_load_shared(
+         b, 1, 32, nir_iadd_imm(b, byte, physical * 4), .align_mul = 4);
+      loaded[physical] = true;
+   }
+
+   return nir_vec4(b, component[0], component[1], component[2],
+                   component[3]);
+}
+
 /*
  * Select one of the three root-table planes.  The first-level header keeps
  * the hot resource plane direct; its second pointer names a compact metadata
@@ -893,11 +1008,12 @@ root_plane(struct d12_dxbc_ctx *ctx, unsigned plane)
    return nir_imm_int64(b, 0);
 }
 
-/* Read an operand as a vec4 of 32-bit values, swizzle and modifiers
- * applied. Everything is carried as a float-width vector; integer
- * opcodes bitcast at the point of use, exactly as the hardware does. */
+/* Read an operand as a vec4 of 32-bit values, swizzle and modifiers applied.
+ * Registers are typeless, but neg/abs are not: integer ALU instructions need
+ * integer modifiers rather than flipping the IEEE-754 sign bit. */
 static nir_def *
-read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
+read_src_typed(struct d12_dxbc_ctx *ctx,
+               const struct d12_dxbc_operand *op, bool integer)
 {
    nir_builder *b = &ctx->b;
    nir_def *v = NULL;
@@ -907,7 +1023,8 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       nir_const_value c[4];
       for (unsigned i = 0; i < 4; i++)
          c[i] = nir_const_value_for_uint(op->imm[i], 32);
-      return nir_build_imm(b, 4, 32, c);
+      v = nir_build_imm(b, 4, 32, c);
+      break;
    }
 
    case D12_DXBC_FILE_IMMEDIATE_CONSTANT_BUFFER: {
@@ -939,6 +1056,23 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
       if (!var)
          return nir_imm_zero(b, 4, 32);
       v = nir_load_var(b, var);
+      break;
+   }
+
+   case D12_DXBC_FILE_INDEXABLE_TEMP: {
+      if (op->num_indices != 2 || op->index_is_relative[0] ||
+          op->index[0] >= D12_DXBC_MAX_SIG ||
+          !ctx->indexable_temps[op->index[0]]) {
+         fail(ctx, "invalid indexable temporary source");
+         return nir_imm_zero(b, 4, 32);
+      }
+
+      nir_def *index = read_operand_index(ctx, op, 1);
+      if (!index)
+         return nir_imm_zero(b, 4, 32);
+      nir_deref_instr *array =
+         nir_build_deref_var(b, ctx->indexable_temps[op->index[0]]);
+      v = nir_load_deref(b, nir_build_deref_array(b, array, index));
       break;
    }
 
@@ -1340,9 +1474,9 @@ read_src(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op)
    v = nir_swizzle(b, v, sw, 4);
 
    if (op->abs)
-      v = nir_fabs(b, v);
+      v = integer ? nir_iabs(b, v) : nir_fabs(b, v);
    if (op->neg)
-      v = nir_fneg(b, v);
+      v = integer ? nir_ineg(b, v) : nir_fneg(b, v);
 
    return v;
 }
@@ -1391,6 +1525,39 @@ static nir_def *
 buffer_element_in_bounds_slot(struct d12_dxbc_ctx *ctx, nir_def *slot,
                               nir_def *index);
 
+/* An API unbounded range has one map entry at its lower bound, while SM 5.1
+ * may split that same heap into several declarations beginning at u4/t4,
+ * u16/t16, and so on. Exact register lookup therefore cannot identify the
+ * backing heap for every declaration. Match the DXIL front end: select the
+ * nearest visible unbounded root base at or below the shader register. */
+static bool
+unbounded_root_for_register(const struct d12_binding_map *map,
+                            unsigned klass, unsigned space, unsigned reg,
+                            unsigned *out_slot, unsigned *out_reg)
+{
+   bool found = false;
+   unsigned best_reg = 0;
+
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].klass != klass ||
+          map->entries[i].space != space || !map->entries[i].unbounded ||
+          map->entries[i].reg > reg ||
+          (map->visibility_filter != UINT32_MAX &&
+           map->entries[i].visibility != 0 &&
+           map->entries[i].visibility != map->visibility_filter))
+         continue;
+
+      if (!found || map->entries[i].reg > best_reg) {
+         found = true;
+         best_reg = map->entries[i].reg;
+         *out_slot = map->entries[i].slot;
+         *out_reg = map->entries[i].reg;
+      }
+   }
+
+   return found;
+}
+
 /* Address through a possibly dynamic dense root-table slot. */
 static nir_def *
 buffer_address_slot(struct d12_dxbc_ctx *ctx, nir_def *slot,
@@ -1426,22 +1593,18 @@ uav_rooted_descriptor(struct d12_dxbc_ctx *ctx,
 
    const struct d12_dxbc_binding_range *range =
       &ctx->uav_range[uav->index[0]];
-   if (!d12_binding_map_unbounded(ctx->map, D12_RES_UAV, range->space,
-                                  range->lower_bound))
+   unsigned base_slot = ~0u;
+   unsigned rooted_reg = 0;
+   if (!unbounded_root_for_register(ctx->map, D12_RES_UAV, range->space,
+                                    range->lower_bound, &base_slot,
+                                    &rooted_reg))
       return NULL;
-
-   unsigned base_slot = d12_binding_map_find(
-      ctx->map, D12_RES_UAV, range->space, range->lower_bound);
-   if (base_slot == ~0u) {
-      fail(ctx, "unbounded UAV range has no root base");
-      return NULL;
-   }
 
    nir_def *reg = read_operand_index(ctx, uav, 1);
    if (!reg)
       return NULL;
    nir_def *descriptor_index =
-      nir_iadd_imm(b, reg, -(int64_t)range->lower_bound);
+      nir_iadd_imm(b, reg, -(int64_t)rooted_reg);
 
    nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
    nir_def *heap = nir_load_global(
@@ -1466,17 +1629,15 @@ srv_rooted_descriptor(struct d12_dxbc_ctx *ctx,
 
    const struct d12_dxbc_binding_range *range =
       &ctx->srv_range[srv->index[0]];
-   if (!d12_binding_map_unbounded(ctx->map, D12_RES_SRV, range->space,
-                                  range->lower_bound))
+   unsigned base_slot = ~0u;
+   unsigned rooted_reg = 0;
+   if (!unbounded_root_for_register(ctx->map, D12_RES_SRV, range->space,
+                                    range->lower_bound, &base_slot,
+                                    &rooted_reg))
       return NULL;
-
-   unsigned base_slot = d12_binding_map_find(
-      ctx->map, D12_RES_SRV, range->space, range->lower_bound);
    nir_def *reg = read_operand_index(ctx, srv, 1);
-   if (base_slot == ~0u || !reg) {
-      fail(ctx, "heap-indexed SRV range has no root base");
+   if (!reg)
       return NULL;
-   }
 
    nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
    nir_def *heap = nir_load_global(
@@ -1484,7 +1645,7 @@ srv_rooted_descriptor(struct d12_dxbc_ctx *ctx,
       nir_iadd_imm(b, resource_table, base_slot * sizeof(uint64_t)),
       .align_mul = 8);
    nir_def *descriptor_index =
-      nir_iadd_imm(b, reg, -(int64_t)range->lower_bound);
+      nir_iadd_imm(b, reg, -(int64_t)rooted_reg);
    return nir_iadd(b, heap,
                    nir_imul_imm(b, nir_u2u64(b, descriptor_index),
                                 D12_HEAP_DESC_SIZE));
@@ -1881,6 +2042,51 @@ buffer_view_size_bytes(struct d12_dxbc_ctx *ctx,
                     nir_imul(b, count_or_bytes, stride), count_or_bytes);
 }
 
+/* Byte stride of the selected buffer view. Typed buffers derive this from
+ * their DXGI format when the descriptor is created; structured buffers carry
+ * StructureByteStride, and raw buffers use four bytes. */
+static nir_def *
+buffer_view_stride_bytes(struct d12_dxbc_ctx *ctx,
+                         const struct d12_dxbc_operand *resource)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *descriptor = resource->file == D12_DXBC_FILE_UAV
+                            ? uav_rooted_descriptor(ctx, resource)
+                            : srv_rooted_descriptor(ctx, resource);
+   if (descriptor) {
+      return nir_load_global(
+         b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
+         .align_mul = 4);
+   }
+
+   nir_def *slot = NULL;
+   if (resource->file == D12_DXBC_FILE_UAV) {
+      slot = uav_binding_slot(ctx, resource);
+   } else if (resource->file == D12_DXBC_FILE_RESOURCE &&
+              resource->num_indices == 1 &&
+              !resource->index_is_relative[0]) {
+      unsigned static_slot =
+         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_SRV, 0,
+                                         resource->index[0])
+                  : resource->index[0];
+      if (static_slot != ~0u)
+         slot = nir_imm_int(b, static_slot);
+   }
+
+   if (!slot) {
+      fail(ctx, "buffer view stride has no resolvable binding slot");
+      return nir_imm_int(b, 0);
+   }
+
+   nir_def *bufinfo = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+   nir_def *info = nir_load_global(
+      b, 2, 32,
+      nir_iadd(b, bufinfo,
+               nir_imul_imm(b, nir_u2u64(b, slot), sizeof(uint64_t))),
+      .align_mul = 8);
+   return nir_channel(b, info, 1);
+}
+
 static nir_def *
 robust_load_buffer_vec4(struct d12_dxbc_ctx *ctx, nir_def *address,
                         nir_def *byte_offset, nir_def *size_bytes)
@@ -1919,6 +2125,36 @@ robust_store_buffer_masked(struct d12_dxbc_ctx *ctx, nir_def *address,
 
       nir_def *component_offset = nir_iadd_imm(b, offset64, c * 4);
       nir_push_if(b, nir_ult(b, component_offset, size64));
+      nir_store_global(b, nir_channel(b, value, c),
+                       nir_iadd_imm(b, address, c * 4), .write_mask = 1,
+                       .align_mul = 4);
+      nir_pop_if(b, NULL);
+   }
+}
+
+/* A typed UAV store names up to four logical components, but the bound view
+ * decides how many 32-bit lanes physically exist. In particular RWBuffer<T>
+ * with an R32 view only writes X even though fxc encodes the UAV operand as
+ * .xyzw and replicates the scalar source. Treating that as four adjacent
+ * elements shifts every following thread's result by three dwords. */
+static void
+robust_store_typed_buffer(struct d12_dxbc_ctx *ctx, nir_def *address,
+                          nir_def *byte_offset, nir_def *size_bytes,
+                          nir_def *stride_bytes, nir_def *value, unsigned mask)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *offset64 = nir_u2u64(b, nir_channel(b, byte_offset, 0));
+   nir_def *size64 = nir_u2u64(b, size_bytes);
+
+   for (unsigned c = 0; c < 4; c++) {
+      if (!(mask & (1 << c)))
+         continue;
+
+      nir_def *component_end = nir_iadd_imm(b, offset64, (c + 1) * 4);
+      nir_def *component_exists =
+         nir_uge_imm(b, stride_bytes, (c + 1) * 4);
+      nir_def *in_bounds = nir_uge(b, size64, component_end);
+      nir_push_if(b, nir_iand(b, component_exists, in_bounds));
       nir_store_global(b, nir_channel(b, value, c),
                        nir_iadd_imm(b, address, c * 4), .write_mask = 1,
                        .align_mul = 4);
@@ -1973,6 +2209,23 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
       nir_variable *var = temp_var(ctx, op->index[0]);
       if (var)
          nir_store_var(b, var, value, mask);
+      break;
+   }
+
+   case D12_DXBC_FILE_INDEXABLE_TEMP: {
+      if (op->num_indices != 2 || op->index_is_relative[0] ||
+          op->index[0] >= D12_DXBC_MAX_SIG ||
+          !ctx->indexable_temps[op->index[0]]) {
+         fail(ctx, "invalid indexable temporary destination");
+         break;
+      }
+
+      nir_def *index = read_operand_index(ctx, op, 1);
+      if (!index)
+         break;
+      nir_deref_instr *array =
+         nir_build_deref_var(b, ctx->indexable_temps[op->index[0]]);
+      nir_store_deref(b, nir_build_deref_array(b, array, index), value, mask);
       break;
    }
 
@@ -2127,6 +2380,13 @@ write_dst(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *op,
       fail(ctx, ctx->errbuf);
       break;
    }
+}
+
+static nir_def *
+apply_dst_saturate(nir_builder *b, uint32_t op_token, nir_def *value)
+{
+   /* Public token bit 13 is the instruction's _sat result modifier. */
+   return (op_token & BITFIELD_BIT(13)) ? nir_fsat(b, value) : value;
 }
 
 /*
@@ -2592,6 +2852,47 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          continue;
       }
 
+      case D12_DXBC_OP_DCL_TGSM_RAW:
+      case D12_DXBC_OP_DCL_TGSM_STRUCTURED: {
+         struct d12_dxbc_operand g;
+         unsigned used = decode_operand(ctx, args, avail, &g);
+         bool structured = opcode == D12_DXBC_OP_DCL_TGSM_STRUCTURED;
+         unsigned trailing = structured ? 2 : 1;
+         if (!used || used + trailing != avail ||
+             g.file != D12_DXBC_FILE_TGSM || g.num_indices != 1 ||
+             g.index_is_relative[0] || g.index[0] >= D12_DXBC_MAX_SIG ||
+             ctx->tgsm[g.index[0]].valid) {
+            fail(ctx, "invalid thread-group shared-memory declaration");
+            return;
+         }
+
+         uint32_t stride = structured ? args[used] : 0;
+         uint32_t count_or_size = args[used + structured];
+         uint64_t size = structured
+                            ? (uint64_t)stride * count_or_size
+                            : count_or_size;
+         /* D3D11/D3D12 expose 32 KiB of groupshared memory per group. The
+          * public declaration sizes are dword-aligned; reject malformed or
+          * overflowing byte counts before they reach the backend launch. */
+         if (!size || size > 32 * 1024 || (size & 3) ||
+             (structured && (!stride || (stride & 3))) ||
+             (uint64_t)ctx->shared_size + size > 32 * 1024) {
+            fail(ctx, "invalid thread-group shared-memory size");
+            return;
+         }
+
+         ctx->shared_size = ALIGN_POT(ctx->shared_size, 4);
+         ctx->tgsm[g.index[0]] = (struct d12_dxbc_tgsm_decl) {
+            .base = ctx->shared_size,
+            .size = size,
+            .stride = stride,
+            .valid = true,
+         };
+         ctx->shared_size += size;
+         ctx->tok += len;
+         continue;
+      }
+
       case D12_DXBC_OP_DCL_GLOBAL_FLAGS:
          /* Public DXBC bit 13 is [earlydepthstencil].  Preserve it in NIR
           * so AGX schedules depth/stencil tests before fragment side effects
@@ -2603,6 +2904,25 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          ctx->tok += len;
          continue;
 
+      case D12_DXBC_OP_DCL_INDEXABLE_TEMP: {
+         /* The declaration payload is x-register id, array length and
+          * component count.  Keep vec4 elements internally; destination
+          * masks and source swizzles preserve declarations with fewer live
+          * components while making dynamic indexing straightforward. */
+         if (avail < 3 || args[0] >= D12_DXBC_MAX_SIG || !args[1] ||
+             args[1] > D12_DXBC_MAX_TEMPS || !args[2] || args[2] > 4 ||
+             ctx->indexable_temps[args[0]]) {
+            fail(ctx, "invalid indexable temporary declaration");
+            return;
+         }
+
+         ctx->indexable_temps[args[0]] = nir_local_variable_create(
+            b->impl, glsl_array_type(glsl_vec4_type(), args[1], 0), "x");
+         ctx->indexable_temp_size[args[0]] = args[1];
+         ctx->tok += len;
+         continue;
+      }
+
       case D12_DXBC_OP_DCL_TEMPS:
       case D12_DXBC_OP_DCL_INPUT:
       case D12_DXBC_OP_DCL_INPUT_SGV:
@@ -2610,11 +2930,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_OUTPUT:
       case D12_DXBC_OP_DCL_OUTPUT_SIV:
       case D12_DXBC_OP_DCL_SAMPLER:
-      case D12_DXBC_OP_DCL_INDEXABLE_TEMP:
       case D12_DXBC_OP_DCL_INDEX_RANGE:
       case D12_DXBC_OP_DCL_OUTPUT_SGV:
-      case D12_DXBC_OP_DCL_TGSM_RAW:
-      case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
       case D12_DXBC_OP_DCL_STREAM:
       case D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR:
          /* Signature and binding information all comes from the
@@ -2843,7 +3160,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
 #define SRC(i) read_src(ctx, &o[i])
-#define DST(v) write_dst(ctx, &o[0], (v))
+#define ISRC(i) read_src_int(ctx, &o[i])
+#define DST(v) write_dst(ctx, &o[0], apply_dst_saturate(b, op_tok, (v)))
 #define NEED(n)                                                              \
    do {                                                                      \
       if (nops < (n)) {                                                      \
@@ -2872,6 +3190,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_ROUND_NI: NEED(2); DST(nir_ffloor(b, SRC(1))); break;
       case D12_DXBC_OP_ROUND_PI: NEED(2); DST(nir_fceil(b, SRC(1))); break;
       case D12_DXBC_OP_ROUND_Z:  NEED(2); DST(nir_ftrunc(b, SRC(1))); break;
+      case D12_DXBC_OP_SINCOS: {
+         /* Two independently masked destinations: sine first, cosine
+          * second. Either destination may be the public null register. */
+         NEED(3);
+         nir_def *source = SRC(2);
+         write_dst(ctx, &o[0],
+                   apply_dst_saturate(b, op_tok, nir_fsin(b, source)));
+         write_dst(ctx, &o[1],
+                   apply_dst_saturate(b, op_tok, nir_fcos(b, source)));
+         break;
+      }
 
       case D12_DXBC_OP_DP2:
       case D12_DXBC_OP_DP3:
@@ -2887,7 +3216,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       /* Integer opcodes operate on the same registers, reinterpreted. */
-      case D12_DXBC_OP_IADD: NEED(3); DST(nir_iadd(b, SRC(1), SRC(2))); break;
+      case D12_DXBC_OP_IADD: NEED(3); DST(nir_iadd(b, ISRC(1), ISRC(2))); break;
       case D12_DXBC_OP_IMUL: {
          NEED(4);
          nir_def *a = SRC(2), *c = SRC(3);
@@ -2897,7 +3226,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          write_dst(ctx, &o[1], nir_imul(b, a, c));
          break;
       }
-      case D12_DXBC_OP_IMAD: NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
+      case D12_DXBC_OP_IMAD: NEED(4); DST(nir_iadd(b, nir_imul(b, ISRC(1), ISRC(2)), ISRC(3))); break;
       case D12_DXBC_OP_IMAX: NEED(3); DST(nir_imax(b, SRC(1), SRC(2))); break;
       case D12_DXBC_OP_IMIN: NEED(3); DST(nir_imin(b, SRC(1), SRC(2))); break;
       case D12_DXBC_OP_UMAX: NEED(3); DST(nir_umax(b, SRC(1), SRC(2))); break;
@@ -2915,6 +3244,38 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_UTOF: NEED(2); DST(nir_u2f32(b, SRC(1))); break;
       case D12_DXBC_OP_FTOI: NEED(2); DST(nir_f2i32(b, SRC(1))); break;
       case D12_DXBC_OP_FTOU: NEED(2); DST(nir_f2u32(b, SRC(1))); break;
+      case D12_DXBC_OP_F32TOF16:
+      case D12_DXBC_OP_F16TOF32: {
+         NEED(2);
+         nir_def *source = SRC(1);
+         nir_def *component[4];
+         for (unsigned c = 0; c < 4; c++) {
+            nir_def *scalar = nir_channel(b, source, c);
+            if (opcode == D12_DXBC_OP_F32TOF16) {
+               /* SM5 f32tof16 clamps finite overflow to the largest finite
+                * half while preserving infinities and NaNs.  AGX's native
+                * f32-to-f16 conversion otherwise rounds finite overflow to
+                * infinity. */
+               nir_def *exponent = nir_iand_imm(b, scalar, 0x7f800000);
+               nir_def *finite = nir_ine_imm(b, exponent, 0x7f800000);
+               scalar = nir_bcsel(
+                  b, finite,
+                  nir_fclamp(b, scalar, nir_imm_float(b, -65504.0f),
+                             nir_imm_float(b, 65504.0f)),
+                  scalar);
+
+               /* The half bit pattern occupies the low 16 bits of each
+                * 32-bit destination lane. */
+               component[c] = nir_pack_half_2x16_split(
+                  b, scalar, nir_imm_float(b, 0.0f));
+            } else {
+               component[c] = nir_channel(
+                  b, nir_unpack_half_2x16(b, scalar), 0);
+            }
+         }
+         DST(nir_vec(b, component, ARRAY_SIZE(component)));
+         break;
+      }
 
       /* Comparisons produce an all-ones or all-zero mask, not NIR's 1/0
        * integer conversion of a boolean. Negating the 1/0 value preserves
@@ -2936,6 +3297,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          NEED(4);
          DST(nir_bcsel(b, nir_ine_imm(b, SRC(1), 0), SRC(2), SRC(3)));
          break;
+
+      case D12_DXBC_OP_SWAPC: {
+         /* The sources must all be captured before either destination is
+          * written because DXBC permits every source/destination aliasing
+          * combination.  A true condition swaps the two source lanes. */
+         NEED(5);
+         nir_def *cond = nir_ine_imm(b, SRC(2), 0);
+         nir_def *first = SRC(3);
+         nir_def *second = SRC(4);
+         nir_def *dst0 = nir_bcsel(b, cond, second, first);
+         nir_def *dst1 = nir_bcsel(b, cond, first, second);
+         write_dst(ctx, &o[0], apply_dst_saturate(b, op_tok, dst0));
+         write_dst(ctx, &o[1], apply_dst_saturate(b, op_tok, dst1));
+         break;
+      }
 
       /*
        * D3D's bit-field ops are defined with explicit 5-bit masking of
@@ -2966,14 +3342,50 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          NEED(4);
          nir_def *width = nir_iand_imm(b, SRC(1), 31);
          nir_def *offset = nir_iand_imm(b, SRC(2), 31);
-         DST(opcode == D12_DXBC_OP_UBFE
-                ? nir_ubitfield_extract(b, SRC(3), offset, width)
-                : nir_ibitfield_extract(b, SRC(3), offset, width));
+         nir_def *bits = nir_umin(b, width,
+                                  nir_isub(b, nir_imm_int(b, 32), offset));
+         nir_def *shift = nir_isub(b, nir_imm_int(b, 32), bits);
+         nir_def *value = nir_ushr(b, SRC(3), offset);
+         nir_def *result = opcode == D12_DXBC_OP_UBFE
+                              ? nir_ushr(b, nir_ishl(b, value, shift), shift)
+                              : nir_ishr(b, nir_ishl(b, value, shift), shift);
+         DST(nir_bcsel(b, nir_ieq_imm(b, bits, 0), nir_imm_int(b, 0),
+                       result));
          break;
       }
 
       case D12_DXBC_OP_RCP:       NEED(2); DST(nir_frcp(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTX: NEED(2); DST(nir_ddx(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTY: NEED(2); DST(nir_ddy(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTX_COARSE:
+         NEED(2); DST(nir_ddx_coarse(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTX_FINE:
+         NEED(2); DST(nir_ddx_fine(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTY_COARSE:
+         NEED(2); DST(nir_ddy_coarse(b, SRC(1))); break;
+      case D12_DXBC_OP_DERIV_RTY_FINE:
+         NEED(2); DST(nir_ddy_fine(b, SRC(1))); break;
       case D12_DXBC_OP_COUNTBITS: NEED(2); DST(nir_bit_count(b, SRC(1))); break;
+      case D12_DXBC_OP_FIRSTBIT_LO:  NEED(2); DST(nir_find_lsb(b, SRC(1))); break;
+      case D12_DXBC_OP_FIRSTBIT_HI:
+      case D12_DXBC_OP_FIRSTBIT_SHI: {
+         NEED(2);
+         nir_def *value = ISRC(1);
+
+         /* AGX ffs reports the bit position from the MSB, whereas DXBC
+          * firstbit_hi reports it from the LSB.  Signed firstbit_hi searches
+          * for the first bit different from the sign bit. */
+         if (opcode == D12_DXBC_OP_FIRSTBIT_SHI) {
+            nir_def *sign = nir_ishr_imm(b, value, 31);
+            value = nir_ixor(b, value, sign);
+         }
+
+         nir_def *from_msb = nir_ufind_msb(b, value);
+         nir_def *from_lsb = nir_isub(b, nir_imm_int(b, 31), from_msb);
+         DST(nir_bcsel(b, nir_ieq_imm(b, value, 0),
+                       nir_imm_int(b, -1), from_lsb));
+         break;
+      }
       case D12_DXBC_OP_BFREV:     NEED(2); DST(nir_bitfield_reverse(b, SRC(1))); break;
       case D12_DXBC_OP_UMAD:      NEED(4); DST(nir_iadd(b, nir_imul(b, SRC(1), SRC(2)), SRC(3))); break;
       case D12_DXBC_OP_UDIV: {
@@ -2983,8 +3395,14 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          NEED(4);
          nir_def *numerator = SRC(2);
          nir_def *denominator = SRC(3);
-         write_dst(ctx, &o[0], nir_udiv(b, numerator, denominator));
-         write_dst(ctx, &o[1], nir_umod(b, numerator, denominator));
+         nir_def *zero = nir_ieq_imm(b, denominator, 0);
+         nir_def *undefined = nir_imm_int(b, -1);
+         write_dst(ctx, &o[0],
+                   nir_bcsel(b, zero, undefined,
+                             nir_udiv(b, numerator, denominator)));
+         write_dst(ctx, &o[1],
+                   nir_bcsel(b, zero, undefined,
+                             nir_umod(b, numerator, denominator)));
          break;
       }
       case D12_DXBC_OP_UMUL: {
@@ -3216,7 +3634,12 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             fail(ctx, "control flow nested too deeply");
             return;
          }
-         nir_push_loop(b);
+         nir_loop *loop = nir_push_loop(b);
+         /* DXBC loops may contain CONTINUE/CONTINUEC.  NIR requires an
+          * explicit continue construct before a continue jump can target the
+          * loop; lower the construct again once translation is complete so
+          * AGX sees ordinary structured control flow. */
+         nir_loop_add_continue_construct(loop);
          ctx->cf[ctx->cf_depth].kind = D12_DXBC_CF_LOOP;
          ctx->cf[ctx->cf_depth].in_else = false;
          ctx->cf_depth++;
@@ -3369,20 +3792,36 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned ri = nops - 1;
          for (unsigned k = 1; k < nops; k++) {
             if (o[k].file == D12_DXBC_FILE_UAV ||
-                o[k].file == D12_DXBC_FILE_RESOURCE) {
+                o[k].file == D12_DXBC_FILE_RESOURCE ||
+                o[k].file == D12_DXBC_FILE_TGSM) {
                ri = k;
                break;
             }
          }
          uint32_t reg = o[ri].index[0];
          bool uav = o[ri].file == D12_DXBC_FILE_UAV;
-         unsigned stride = (uav ? ctx->uav_stride : ctx->srv_stride)
-                              [reg < D12_DXBC_MAX_SIG ? reg : 0];
-         nir_def *addr =
-            uav ? uav_buffer_address(ctx, &o[ri], SRC(1), SRC(2), stride)
-                : srv_buffer_address(ctx, &o[ri], SRC(1), SRC(2), stride);
+         bool tgsm = o[ri].file == D12_DXBC_FILE_TGSM;
+         unsigned stride =
+            tgsm ? (reg < D12_DXBC_MAX_SIG ? ctx->tgsm[reg].stride : 0)
+                 : (uav ? ctx->uav_stride : ctx->srv_stride)
+                      [reg < D12_DXBC_MAX_SIG ? reg : 0];
+         nir_def *addr = tgsm
+                            ? tgsm_byte_offset(ctx, &o[ri], SRC(1), SRC(2))
+                         : uav
+                            ? uav_buffer_address(ctx, &o[ri], SRC(1), SRC(2),
+                                                 stride)
+                            : srv_buffer_address(ctx, &o[ri], SRC(1), SRC(2),
+                                                 stride);
          if (!addr)
             return;
+         if (tgsm) {
+            nir_def *val =
+               tgsm_load_vec4(ctx, &o[ri], addr, o[0].mask);
+            unsigned sw[4] = {o[ri].swizzle[0], o[ri].swizzle[1],
+                              o[ri].swizzle[2], o[ri].swizzle[3]};
+            DST(nir_swizzle(b, val, sw, 4));
+            break;
+         }
          nir_def *byte = nir_iadd(
             b, nir_imul_imm(b, nir_channel(b, SRC(1), 0),
                             stride ? stride : 4),
@@ -3403,23 +3842,37 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned ri = nops - 1;
          for (unsigned k = 1; k < nops; k++) {
             if (o[k].file == D12_DXBC_FILE_UAV ||
-                o[k].file == D12_DXBC_FILE_RESOURCE) {
+                o[k].file == D12_DXBC_FILE_RESOURCE ||
+                o[k].file == D12_DXBC_FILE_TGSM) {
                ri = k;
                break;
             }
          }
          if (o[ri].file != D12_DXBC_FILE_UAV &&
-             o[ri].file != D12_DXBC_FILE_RESOURCE) {
+             o[ri].file != D12_DXBC_FILE_RESOURCE &&
+             o[ri].file != D12_DXBC_FILE_TGSM) {
             fail(ctx, "raw load with no buffer resource operand");
             return;
          }
 
          nir_def *zero = nir_imm_int(b, 0);
-         nir_def *addr = o[ri].file == D12_DXBC_FILE_UAV
+         bool tgsm = o[ri].file == D12_DXBC_FILE_TGSM;
+         nir_def *addr = tgsm
+                            ? tgsm_byte_offset(ctx, &o[ri], zero, SRC(1))
+                         : o[ri].file == D12_DXBC_FILE_UAV
                             ? uav_buffer_address(ctx, &o[ri], zero, SRC(1), 0)
                             : srv_buffer_address(ctx, &o[ri], zero, SRC(1), 0);
          if (!addr)
             return;
+
+         if (tgsm) {
+            nir_def *val =
+               tgsm_load_vec4(ctx, &o[ri], addr, o[0].mask);
+            unsigned sw[4] = {o[ri].swizzle[0], o[ri].swizzle[1],
+                              o[ri].swizzle[2], o[ri].swizzle[3]};
+            DST(nir_swizzle(b, val, sw, 4));
+            break;
+         }
 
          nir_def *size = buffer_view_size_bytes(ctx, &o[ri]);
          if (ctx->error)
@@ -3434,6 +3887,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_STORE_STRUCTURED: {
          NEED(4);
          uint32_t reg = o[0].index[0];
+         if (o[0].file == D12_DXBC_FILE_TGSM) {
+            nir_def *byte = tgsm_byte_offset(ctx, &o[0], SRC(1), SRC(2));
+            if (!byte)
+               return;
+            nir_def *val = SRC(3);
+            unsigned mask = o[0].mask ? o[0].mask : 0xf;
+            nir_store_shared(b, val, byte, .write_mask = mask,
+                             .align_mul = 4);
+            break;
+         }
+
          unsigned stride =
             ctx->uav_stride[reg < D12_DXBC_MAX_SIG ? reg : 0];
          nir_def *addr =
@@ -3563,8 +4027,19 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          bool tgsm = o[0].file == D12_DXBC_FILE_TGSM;
 
          if (tgsm) {
-            fail(ctx, "thread-group shared memory store");
-            return;
+            if (typed) {
+               fail(ctx, "typed thread-group shared-memory store");
+               return;
+            }
+            nir_def *byte = tgsm_byte_offset(
+               ctx, &o[0], nir_imm_int(b, 0), SRC(1));
+            if (!byte)
+               return;
+            nir_def *val = SRC(2);
+            unsigned mask = o[0].mask ? o[0].mask : 0xf;
+            nir_store_shared(b, val, byte, .write_mask = mask,
+                             .align_mul = 4);
+            break;
          }
 
          if (typed && reg < D12_DXBC_MAX_SIG &&
@@ -3594,9 +4069,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         nir_def *off = nir_channel(b, SRC(1), 0);
-         if (typed)
-            off = nir_imul_imm(b, off, 4);
+         nir_def *element_or_byte = nir_channel(b, SRC(1), 0);
+         nir_def *stride = NULL;
+         nir_def *off = element_or_byte;
+         if (typed) {
+            stride = buffer_view_stride_bytes(ctx, &o[0]);
+            if (ctx->error)
+               return;
+            off = nir_imul(b, element_or_byte, stride);
+         }
 
          nir_def *addr = uav_buffer_address(
             ctx, &o[0], nir_imm_int(b, 0), off, 0);
@@ -3609,7 +4090,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if (ctx->error)
             return;
 
-         robust_store_buffer_masked(ctx, addr, off, size, val, mask);
+         if (typed)
+            robust_store_typed_buffer(ctx, addr, off, size, stride, val, mask);
+         else
+            robust_store_buffer_masked(ctx, addr, off, size, val, mask);
          break;
       }
 
@@ -3670,11 +4154,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             break;
          }
 
-         nir_def *addr = atomic_buffer_address(ctx, &o[0], SRC(1));
+         bool tgsm = o[0].file == D12_DXBC_FILE_TGSM;
+         nir_def *addr = tgsm ? tgsm_atomic_offset(ctx, &o[0], SRC(1))
+                              : atomic_buffer_address(ctx, &o[0], SRC(1));
          if (!addr)
             return;
 
-         if (compare) {
+         if (tgsm && compare) {
+            nir_shared_atomic_swap(b, 32, addr,
+                                   nir_channel(b, SRC(2), 0),
+                                   nir_channel(b, SRC(3), 0),
+                                   .atomic_op = op);
+         } else if (tgsm) {
+            nir_shared_atomic(b, 32, addr, nir_channel(b, SRC(2), 0),
+                              .atomic_op = op);
+         } else if (compare) {
             nir_global_atomic_swap(b, 32, addr,
                                    nir_channel(b, SRC(2), 0),
                                    nir_channel(b, SRC(3), 0),
@@ -3744,11 +4238,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   .image_array = is_array, .format = format, .access = 0);
             }
          } else {
-            nir_def *addr = atomic_buffer_address(ctx, &o[1], SRC(2));
+            bool tgsm = o[1].file == D12_DXBC_FILE_TGSM;
+            nir_def *addr = tgsm
+                               ? tgsm_atomic_offset(ctx, &o[1], SRC(2))
+                               : atomic_buffer_address(ctx, &o[1], SRC(2));
             if (!addr)
                return;
 
-            if (compare) {
+            if (tgsm && compare) {
+               previous = nir_shared_atomic_swap(
+                  b, 32, addr, nir_channel(b, SRC(3), 0),
+                  nir_channel(b, SRC(4), 0), .atomic_op = op);
+            } else if (tgsm) {
+               previous = nir_shared_atomic(
+                  b, 32, addr, nir_channel(b, SRC(3), 0), .atomic_op = op);
+            } else if (compare) {
                previous = nir_global_atomic_swap(
                   b, 32, addr, nir_channel(b, SRC(3), 0),
                   nir_channel(b, SRC(4), 0), .atomic_op = op);
@@ -3786,6 +4290,36 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                               .atomic_op = nir_atomic_op_iadd);
          nir_def *result = consume ? nir_iadd_imm(b, previous, -1) : previous;
          DST(nir_replicate(b, result, 4));
+         break;
+      }
+
+      case D12_DXBC_OP_SYNC: {
+         /* Public opcode-token bits 11..14 independently request group
+          * execution rendezvous, TGSM ordering, group-scoped UAV ordering,
+          * and device-scoped UAV ordering. Preserve both scope axes instead
+          * of treating every memory barrier as a full device barrier. */
+         unsigned flags = op_tok & 0x7800;
+         bool threads = flags & 0x0800;
+         bool shared = flags & 0x1000;
+         bool uav_group = flags & 0x2000;
+         bool uav_global = flags & 0x4000;
+         nir_variable_mode modes = 0;
+         if (shared)
+            modes |= nir_var_mem_shared;
+         if (uav_group || uav_global)
+            modes |= nir_var_mem_global | nir_var_image;
+         if (!threads && !modes) {
+            fail(ctx, "sync instruction has no synchronization flags");
+            return;
+         }
+
+         nir_barrier(
+            b, .execution_scope = threads ? SCOPE_WORKGROUP : SCOPE_NONE,
+            .memory_scope = modes ? (uav_global ? SCOPE_DEVICE
+                                                : SCOPE_WORKGROUP)
+                                  : SCOPE_NONE,
+            .memory_semantics = modes ? NIR_MEMORY_ACQ_REL : 0,
+            .memory_modes = modes);
          break;
       }
 
@@ -4151,6 +4685,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
          break;
 
+      case D12_DXBC_OP_RETC: {
+         NEED(1);
+         bool test_zero = !((op_tok >> 18) & 1);
+         nir_def *c = nir_channel(b, SRC(0), 0);
+         nir_push_if(b, test_zero ? nir_ieq_imm(b, c, 0)
+                                  : nir_ine_imm(b, c, 0));
+         nir_jump(b, nir_jump_return);
+         nir_pop_if(b, NULL);
+         break;
+      }
+
       default:
          /* Name the opcode: the next person needs a work list, not a
           * verdict. */
@@ -4174,6 +4719,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
 #undef SRC
+#undef ISRC
 #undef DST
 #undef NEED
 
@@ -4305,10 +4851,12 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
       return NULL;
    }
 
-   /* AGX divergence analysis deliberately accepts no return jumps.  fxc
-    * uses RET for source-level early returns inside structured control
-    * flow, so lower those jumps to ordinary control flow while the NIR is
-    * still owned by this front end. */
+   ctx.b.shader->info.shared_size = ctx.shared_size;
+
+   /* AGX divergence analysis deliberately accepts neither continue
+    * constructs nor return jumps.  fxc uses both for source-level structured
+    * flow, so lower them while the NIR is still owned by this front end. */
+   nir_lower_continue_constructs(ctx.b.shader);
    nir_lower_returns(ctx.b.shader);
    nir_validate_shader(ctx.b.shader, "after DXBC translation");
    return ctx.b.shader;

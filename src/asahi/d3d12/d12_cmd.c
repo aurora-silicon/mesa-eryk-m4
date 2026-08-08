@@ -2525,7 +2525,10 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
    if (!d12_list_push_samplers(list, &b, info, compute_bindings, visibility))
       return 0;
 
-   agx_usc_shared_none(&b);
+   /* The compiler publishes static TGSM usage in info->local_size. Mirror
+    * Honeykrisp's non-fragment program binding so AGX allocates that shared
+    * memory for the workgroup instead of advertising "no shared memory". */
+   agx_usc_shared_non_fragment(&b, info, 0);
 
    agx_usc_pack(&b, SHADER, cfg) {
       cfg.code = agx_usc_addr(&device->dev, code_va + info->main_offset);
