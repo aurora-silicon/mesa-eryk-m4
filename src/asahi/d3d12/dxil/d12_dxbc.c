@@ -2409,7 +2409,6 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       case D12_DXBC_OP_DCL_TGSM_RAW:
       case D12_DXBC_OP_DCL_TGSM_STRUCTURED:
       case D12_DXBC_OP_DCL_STREAM:
-      case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE:
       case D12_DXBC_OP_DCL_GS_OUTPUT_TOPOLOGY:
       case D12_DXBC_OP_DCL_MAX_OUTPUT_VERTEX_COUNT:
       case D12_DXBC_OP_DCL_HS_MAX_TESSFACTOR:
@@ -2418,6 +2417,37 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
           * declarations themselves carry nothing this driver needs. */
          ctx->tok += len;
          continue;
+
+      case D12_DXBC_OP_DCL_GS_INPUT_PRIMITIVE: {
+         /* Public D3D10_SB_PRIMITIVE values in opcode bits 16:11. */
+         unsigned primitive = (op_tok >> 11) & 0x1f;
+         switch (primitive) {
+         case 1:
+            b->shader->info.gs.input_primitive = MESA_PRIM_POINTS;
+            break;
+         case 2:
+            b->shader->info.gs.input_primitive = MESA_PRIM_LINES;
+            break;
+         case 3:
+            b->shader->info.gs.input_primitive = MESA_PRIM_TRIANGLES;
+            break;
+         case 6:
+            b->shader->info.gs.input_primitive =
+               MESA_PRIM_LINES_ADJACENCY;
+            break;
+         case 7:
+            b->shader->info.gs.input_primitive =
+               MESA_PRIM_TRIANGLES_ADJACENCY;
+            break;
+         default:
+            fail(ctx, "invalid geometry input primitive");
+            return;
+         }
+         b->shader->info.gs.vertices_in =
+            mesa_vertices_per_prim(b->shader->info.gs.input_primitive);
+         ctx->tok += len;
+         continue;
+      }
 
       case D12_DXBC_OP_DCL_CONSTANT_BUFFER: {
          /* SM 5.1 declarations are cb<id>[lower:upper], size, space.

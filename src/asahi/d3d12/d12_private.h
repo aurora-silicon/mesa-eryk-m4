@@ -623,6 +623,11 @@ struct d12_pipeline_state {
    struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
+   /* Driver-private validation blob returned by GetCachedBlob.  The current
+    * implementation still recompiles cached PSOs, but validates that the
+    * supplied shader and canonical root layout are an exact match. */
+   void *cached_blob;
+   size_t cached_blob_size;
    bool is_compute;
    /* A null pixel shader still uses an empty hardware fragment program for
     * depth/stencil rasterization, but it has no colour attachments or stores.

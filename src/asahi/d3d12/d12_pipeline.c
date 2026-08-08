@@ -462,6 +462,7 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->as_bo);
       if (pso->as_setup_bo)
          agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
+      free(pso->cached_blob);
       d12_private_data_store_destroy(&pso->private_data);
       d12_device_release(pso->device);
       free(pso);
@@ -483,7 +484,16 @@ d12_pso_GetDevice(ID3D12PipelineState *iface, REFIID riid, void **out)
 static HRESULT STDMETHODCALLTYPE
 d12_pso_GetCachedBlob(ID3D12PipelineState *iface, ID3DBlob **blob)
 {
-   return E_NOTIMPL;
+   struct d12_pipeline_state *pso = d12_pso_from_iface(iface);
+   if (!blob)
+      return E_POINTER;
+
+   *blob = NULL;
+   if (!pso->cached_blob || !pso->cached_blob_size)
+      return E_NOTIMPL;
+
+   *blob = d12_blob_create(pso->cached_blob, pso->cached_blob_size);
+   return *blob ? S_OK : E_OUTOFMEMORY;
 }
 
 static const ID3D12PipelineStateVtbl d12_pso_vtbl = {
@@ -1589,6 +1599,8 @@ static bool
 compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
                  const void *dxil, size_t dxil_size,
                  const nir_xfb_info *xfb,
+                 D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type,
+                 const struct d12_pipeline_state *pso,
                  struct poly_gs_info *gs_info,
                  struct agx_unlinked_uvs_layout *rast_uvs,
                  struct agx_shader_part *count_out,
@@ -1600,6 +1612,43 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
       dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_GEOMETRY);
    if (!nir)
       return false;
+
+   enum mesa_prim input = nir->info.gs.input_primitive;
+   bool compatible = false;
+   if (pso->has_tess) {
+      /* Tessellation produces points, lines (isolines), or triangles.
+       * Unlike an IA topology, its output never carries adjacency. */
+      enum mesa_prim tess_output =
+         pso->tess_points ? MESA_PRIM_POINTS
+         : pso->tess_mode == TESS_PRIMITIVE_ISOLINES ? MESA_PRIM_LINES
+                                                     : MESA_PRIM_TRIANGLES;
+      compatible = input == tess_output;
+   } else {
+      switch (primitive_topology_type) {
+      case D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT:
+         compatible = input == MESA_PRIM_POINTS;
+         break;
+      case D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE:
+         compatible = input == MESA_PRIM_LINES ||
+                      input == MESA_PRIM_LINES_ADJACENCY;
+         break;
+      case D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE:
+         compatible = input == MESA_PRIM_TRIANGLES ||
+                      input == MESA_PRIM_TRIANGLES_ADJACENCY;
+         break;
+      default:
+         compatible = false;
+         break;
+      }
+   }
+
+   if (!compatible) {
+      mesa_loge("graphics PSO: geometry input primitive %u is incompatible "
+                "with topology type %u%s", input, primitive_topology_type,
+                pso->has_tess ? " after tessellation" : "");
+      ralloc_free(nir);
+      return false;
+   }
 
    if (xfb) {
       nir->xfb_info = ralloc_memdup(nir, xfb,
@@ -2832,7 +2881,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
       if (compiled && has_app_gs) {
          compiled = compile_gs_stage(
-            device, map, gs_dxil, gs_size, xfb, &pso->gs_info,
+            device, map, gs_dxil, gs_size, xfb, primitive_topology_type, pso,
+            &pso->gs_info,
             &pso->gs_uvs, &gs_count_part, &gs_pre_part, &gs_main_part,
             &gs_rast_part);
       } else if (compiled) {

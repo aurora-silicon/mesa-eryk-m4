@@ -888,19 +888,95 @@ d12_device_CreateComputePipelineState(
    struct d12_root_layout embedded_layout = {0};
    struct d12_binding_map embedded_map = {0};
 
+   const struct d12_root_layout *layout;
    if (desc->pRootSignature) {
       map = d12_pso_binding_map(desc->pRootSignature);
+      layout = &((struct d12_root_signature *)desc->pRootSignature)->layout;
    } else {
       const D3D12_SHADER_BYTECODE *stages[] = {&desc->CS};
       HRESULT hr = d12_embedded_pso_binding_map(
          stages, ARRAY_SIZE(stages), &embedded_layout, &embedded_map, &map);
       if (FAILED(hr))
          return hr;
+      layout = &embedded_layout;
+   }
+
+   /*
+    * A cached PSO blob is driver-private.  Keep it deliberately transparent:
+    * an identifying header followed by the original shader bytes and the
+    * canonical parsed root layout.  Exact byte comparison rejects a cache
+    * paired with different shader code or a different root signature without
+    * relying on collision-prone hashes.  We still recompile after validation;
+    * the blob is a correctness contract first, an optimization later.
+    */
+   struct d12_compute_cache_header {
+      char magic[8];
+      uint32_t version;
+      uint32_t shader_size;
+      uint32_t num_params;
+      uint32_t num_static_samplers;
+      uint32_t flags;
+   } header = {
+      .magic = {'D', '1', '2', 'A', 'G', 'X', 'C', 'S'},
+      .version = 1,
+      .shader_size = desc->CS.BytecodeLength,
+      .num_params = layout->num_params,
+      .num_static_samplers = layout->num_static_samplers,
+      .flags = layout->flags,
+   };
+
+   if (desc->CS.BytecodeLength > UINT32_MAX ||
+       layout->num_params > D12_MAX_ROOT_PARAMS) {
+      d12_root_layout_cleanup(&embedded_layout);
+      return E_INVALIDARG;
+   }
+
+   size_t params_size = layout->num_params * sizeof(layout->params[0]);
+   size_t samplers_size =
+      layout->num_static_samplers * sizeof(layout->static_samplers[0]);
+   if (desc->CS.BytecodeLength >
+       SIZE_MAX - sizeof(header) - params_size - samplers_size) {
+      d12_root_layout_cleanup(&embedded_layout);
+      return E_OUTOFMEMORY;
+   }
+
+   size_t cache_size = sizeof(header) + desc->CS.BytecodeLength +
+                       params_size + samplers_size;
+   uint8_t *cache = malloc(cache_size);
+   if (!cache) {
+      d12_root_layout_cleanup(&embedded_layout);
+      return E_OUTOFMEMORY;
+   }
+
+   uint8_t *cursor = cache;
+   memcpy(cursor, &header, sizeof(header));
+   cursor += sizeof(header);
+   memcpy(cursor, desc->CS.pShaderBytecode, desc->CS.BytecodeLength);
+   cursor += desc->CS.BytecodeLength;
+   memcpy(cursor, layout->params, params_size);
+   cursor += params_size;
+   if (samplers_size)
+      memcpy(cursor, layout->static_samplers, samplers_size);
+
+   if (desc->CachedPSO.CachedBlobSizeInBytes &&
+       (!desc->CachedPSO.pCachedBlob ||
+        desc->CachedPSO.CachedBlobSizeInBytes != cache_size ||
+        memcmp(desc->CachedPSO.pCachedBlob, cache, cache_size))) {
+      free(cache);
+      d12_root_layout_cleanup(&embedded_layout);
+      return E_INVALIDARG;
    }
 
    HRESULT hr = d12_pipeline_state_create_compute(
       device, desc->CS.pShaderBytecode, desc->CS.BytecodeLength, map, riid,
       out);
+   if (SUCCEEDED(hr) && out && *out) {
+      struct d12_pipeline_state *pso = *(void **)out;
+      pso->cached_blob = cache;
+      pso->cached_blob_size = cache_size;
+      cache = NULL;
+   }
+   free(cache);
    d12_root_layout_cleanup(&embedded_layout);
    return hr;
 }
