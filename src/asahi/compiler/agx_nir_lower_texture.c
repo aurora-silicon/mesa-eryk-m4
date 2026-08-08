@@ -238,6 +238,11 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
 
       nir_def *min_lod = nir_steal_tex_src(tex, nir_tex_src_min_lod);
 
+      /* libagx's integer-fetch robustness check consumes an integer mip
+       * threshold, while the NIR source is floating point. */
+      if (min_lod)
+         min_lod = nir_f2u16(b, nir_fceil(b, min_lod));
+
       unsigned lidx = coord->num_components - 1;
       nir_def *layer = nir_channel(b, coord, lidx);
 

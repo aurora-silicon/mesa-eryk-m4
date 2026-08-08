@@ -10,6 +10,7 @@
 #include "d12_private.h"
 
 #include <fcntl.h>
+#include <math.h>
 #include <string.h>
 #include <unistd.h>
 #include <xf86drm.h>
@@ -2326,7 +2327,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
          if (level_count == UINT32_MAX)
             level_count = remaining;
          if (!level_count || level_count > remaining ||
-             first_level > UINT16_MAX || level_count > UINT16_MAX) {
+             first_level > 0xf || level_count > 0x1f) {
             mesa_loge("CreateShaderResourceView: mip range %u+%u is outside "
                       "%u resource levels", first_level, level_count,
                       res->desc.MipLevels);
@@ -2352,6 +2353,19 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
               : D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
       slot->texture_first_level = first_level;
       slot->texture_level_count = level_count;
+      float api_min_lod = desc && !msaa
+                             ? MAX2(desc->Texture2D.ResourceMinLODClamp, 0.0f)
+                             : 0.0f;
+      float quantized_min_lod =
+         floorf(api_min_lod * 256.0f + 0.5f) / 256.0f;
+      unsigned last_level = first_level + level_count - 1;
+      slot->texture_min_lod = MAX2(api_min_lod - first_level, 0.0f);
+      slot->texture_min_lod_oob = quantized_min_lod > last_level;
+      slot->texture_txf_min_level = slot->texture_min_lod_oob
+                                       ? 0x1f
+                                       : MAX2((int)floorf(quantized_min_lod) -
+                                                 (int)first_level,
+                                              0);
       slot->texture_plane = plane;
       d12_descriptor_heap_update_slot(device, slot);
       return;

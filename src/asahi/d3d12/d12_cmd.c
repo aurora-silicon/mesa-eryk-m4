@@ -1565,6 +1565,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
              table[i].buffer_kind == D12_BUFFER_VIEW_TYPED)
             addrs[D12_ROOT_BUFINFO_BASE + i] |=
                (uint64_t)table[i].stride_B << 32;
+      } else if (table[i].resource && table[i].kind == D12_DESC_SRV &&
+                 table[i].resource->desc.Dimension ==
+                    D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+         /* Texture SRVs use the low BUFINFO word for the runtime per-view
+          * minimum LOD clamp. Buffer users interpret the same plane as a
+          * count, and the resource dimension keeps the meanings disjoint. */
+         uint32_t info = table[i].texture_txf_min_level |
+                         (table[i].texture_min_lod_oob ? 0x80000000u : 0);
+         addrs[D12_ROOT_BUFINFO_BASE + i] =
+            fui(table[i].texture_min_lod) | (uint64_t)info << 32;
       } else if (table[i].address && !table[i].resource &&
                  (table[i].kind == D12_DESC_SRV ||
                   table[i].kind == D12_DESC_UAV)) {
@@ -2057,6 +2067,13 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
           d->buffer_kind == D12_BUFFER_VIEW_TYPED)
          count |= (uint64_t)d->stride_B << 32;
       return count;
+   }
+
+   if (d->resource && d->kind == D12_DESC_SRV &&
+       d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      uint32_t info = d->texture_txf_min_level |
+                      (d->texture_min_lod_oob ? 0x80000000u : 0);
+      return fui(d->texture_min_lod) | (uint64_t)info << 32;
    }
 
    if (d->address && !d->resource &&

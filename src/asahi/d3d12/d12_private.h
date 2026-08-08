@@ -397,9 +397,13 @@ struct d12_descriptor {
              * The two descriptor kinds are disjoint, so this retains the
              * 40-byte shader-visible descriptor ABI. */
             struct {
-               uint32_t texture_component_mapping;
-               uint16_t texture_first_level;
-               uint16_t texture_level_count;
+               uint32_t texture_component_mapping : 13;
+               uint32_t texture_first_level : 4;
+               uint32_t texture_level_count : 5;
+               uint32_t texture_txf_min_level : 5;
+               uint32_t texture_min_lod_oob : 1;
+               uint32_t texture_srv_reserved : 4;
+               float texture_min_lod;
             };
          };
          DXGI_FORMAT format;

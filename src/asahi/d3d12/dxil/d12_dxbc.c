@@ -4727,12 +4727,53 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
+         /* ResourceMinLODClamp belongs to the SRV, not the sampler. Finite
+          * root-table views publish its float bits in the otherwise buffer-
+          * only BUFINFO plane; rooted heap views retain it in the descriptor
+          * metadata word at the buffer-stride offset. */
+         nir_def *view_min_lod = NULL;
+         nir_def *view_txf_min_lod = NULL;
+         nir_def *view_min_lod_oob = NULL;
+         if (!is_buffer && !is_ld_ms) {
+            if (rooted_texture) {
+               nir_def *packed = nir_load_global(
+                  b, 1, 32,
+                  nir_iadd_imm(b, rooted_texture, D12_DESC_SIZE_OFFSET),
+                  .align_mul = 4);
+               view_min_lod = nir_load_global(
+                  b, 1, 32,
+                  nir_iadd_imm(b, rooted_texture, D12_DESC_STRIDE_OFFSET),
+                  .align_mul = 4);
+               view_txf_min_lod = nir_u2f32(
+                  b, nir_iand_imm(b, nir_ushr_imm(b, packed, 22), 0x1f));
+               view_min_lod_oob =
+                  nir_ine_imm(b, nir_iand_imm(b, packed, 1u << 27), 0);
+            } else {
+               nir_def *bufinfo = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
+               nir_def *info = nir_load_global(
+                  b, 2, 32,
+                  nir_iadd_imm(b, bufinfo, tslot * sizeof(uint64_t)),
+                  .align_mul = 8);
+               view_min_lod = nir_channel(b, info, 0);
+               nir_def *packed = nir_channel(b, info, 1);
+               view_txf_min_lod =
+                  nir_u2f32(b, nir_iand_imm(b, packed, 0x1f));
+               view_min_lod_oob =
+                  nir_ine_imm(b, nir_iand_imm(b, packed, 0x80000000u), 0);
+            }
+         }
+
+         bool implicit_min_lod = view_min_lod && !is_ld && !has_lod &&
+                                 !gather;
+
          unsigned nsrc = 2 + ((is_ld && !is_buffer && !is_ld_ms) ? 1 : 0) +
                          (is_ld_ms ? 1 : 0) +
                          (has_lod ? 1 : 0) + (compare ? 1 : 0) +
                          (dynamic_offset ? 1 : 0) +
                          (has_offset ? 1 : 0) +
-                         (rooted_sampler ? 1 : 0);
+                         (rooted_sampler ? 1 : 0) +
+                         (view_min_lod && (is_ld || implicit_min_lod) ? 1 : 0) +
+                         (implicit_min_lod ? 1 : 0);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, nsrc);
          tex->op = is_ld_ms ? nir_texop_txf_ms
@@ -4798,6 +4839,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             } else if (!is_buffer) {
                tex->src[si++] = nir_tex_src_for_ssa(
                   nir_tex_src_lod, nir_channel(b, icoord, 3));
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_min_lod, view_txf_min_lod);
             }
          } else {
             tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord,
@@ -4817,11 +4860,24 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   nir_tex_src_comparator,
                   nir_channel(b, SRC(nops - 1), 0));
                if (has_lod)
-                  tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_lod,
-                                                       nir_imm_int(b, 0));
+                  tex->src[si++] = nir_tex_src_for_ssa(
+                     nir_tex_src_lod,
+                     view_min_lod
+                        ? nir_fmax(b, nir_imm_float(b, 0.0f), view_min_lod)
+                        : nir_imm_int(b, 0));
             } else if (has_lod) {
+               nir_def *lod = nir_channel(b, SRC(nops - 1), 0);
+               if (view_min_lod)
+                  lod = nir_fmax(b, lod, view_min_lod);
                tex->src[si++] = nir_tex_src_for_ssa(
-                  nir_tex_src_lod, nir_channel(b, SRC(nops - 1), 0));
+                  nir_tex_src_lod, lod);
+            } else if (implicit_min_lod) {
+               /* AGX packs bias and minimum LOD together. A zero bias keeps
+                * ordinary Sample semantics while carrying the view clamp. */
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_bias, nir_imm_float(b, 0.0f));
+               tex->src[si++] = nir_tex_src_for_ssa(
+                  nir_tex_src_min_lod, view_min_lod);
             }
          }
 
@@ -4839,7 +4895,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                }
             }
          }
-         DST(nir_swizzle(b, &tex->def, rs, 4));
+         nir_def *result = nir_swizzle(b, &tex->def, rs, 4);
+         if (view_min_lod_oob)
+            result = nir_bcsel(b, view_min_lod_oob,
+                               nir_imm_vec4(b, 0, 0, 0, 0), result);
+         DST(result);
          break;
       }
 
