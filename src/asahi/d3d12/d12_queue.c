@@ -2,17 +2,13 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * ID3D12CommandQueue on an asahi hardware queue. Queue-side fence ops use
- * the same timeline-transfer scheme as hk_queue.c: the queue owns a progress
- * timeline; Signal() forwards the current progress point into the target
- * fence's timeline, Wait() pulls the target point into the queue's timeline
- * so later work depends on it.
- *
- * G1 limitation, on purpose: there is no execution engine yet (no command
- * lists), so the progress timeline only advances through Wait() transfers,
- * and transfers from not-yet-materialized points are an error rather than a
- * deferred dependency. G2's submission engine replaces that with the
- * wait-for-submit handling hk_queue implements.
+ * ID3D12CommandQueue on an asahi hardware queue.  DRM timeline syncobjs do
+ * not support wait-before-signal: Honeykrisp therefore routes Vulkan submits
+ * through Mesa's threaded-submit layer until every dependency is pending.
+ * D3D12 needs the same property, plus non-monotonic fence values, so each
+ * queue has a small ordered worker.  Wait, submit and Signal calls enqueue
+ * immediately; the worker resolves waits, completes AGX work, and then
+ * publishes fence signals in API order.
  */
 
 #include "d12_private.h"
@@ -26,6 +22,29 @@
 #include "util/u_math.h"
 
 #include <time.h>
+
+enum d12_queue_op_type {
+   D12_QUEUE_OP_WAIT,
+   D12_QUEUE_OP_SUBMIT,
+   D12_QUEUE_OP_SIGNAL,
+};
+
+struct d12_queue_op {
+   struct d12_queue_op *next;
+   enum d12_queue_op_type type;
+
+   struct d12_fence *fence;
+   uint64_t value;
+   struct d12_fence_ticket ticket;
+
+   struct d12_cmd_list *list;
+   void *payload;
+   size_t payload_size;
+   unsigned nr_vdm;
+   unsigned nr_cdm;
+};
+
+static void d12_queue_stop_worker(struct d12_queue *queue);
 
 static HRESULT STDMETHODCALLTYPE
 d12_queue_QueryInterface(ID3D12CommandQueue *iface, REFIID riid, void **out)
@@ -66,9 +85,11 @@ d12_queue_Release(ID3D12CommandQueue *iface)
    if (refs == 0) {
       struct agx_device *dev = &queue->device->dev;
 
+      d12_queue_stop_worker(queue);
       drmSyncobjDestroy(dev->fd, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
-      simple_mtx_destroy(&queue->lock);
+      cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->lock);
       d12_private_data_store_destroy(&queue->private_data);
       d12_device_release(queue->device);
       free(queue);
@@ -268,15 +289,252 @@ d12_fill_render_cmd(struct d12_device *device, struct d12_cmd_list *list,
    }
 }
 
+static void
+d12_queue_op_destroy(struct d12_queue_op *op)
+{
+   if (op->type == D12_QUEUE_OP_WAIT)
+      d12_fence_ticket_fini(&op->ticket);
+   if (op->fence)
+      d12_fence_internal_unref(op->fence);
+   if (op->list)
+      ID3D12GraphicsCommandList_Release(&op->list->iface);
+   free(op->payload);
+   free(op);
+}
+
+static bool
+d12_queue_enqueue_locked(struct d12_queue *queue, struct d12_queue_op *op)
+{
+   if (p_atomic_read(&queue->stop))
+      return false;
+
+   if (queue->op_tail)
+      queue->op_tail->next = op;
+   else
+      queue->op_head = op;
+   queue->op_tail = op;
+   cnd_signal(&queue->work_available);
+   return true;
+}
+
+static bool
+d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
+{
+   struct d12_device *device = queue->device;
+   struct agx_device *dev = &device->dev;
+
+   /* ASAHI_MESA_DEBUG=trace: decode the exact command stream which will be
+    * submitted, not a reconstructed view of it. */
+   if (dev->debug & AGX_DBG_TRACE) {
+      struct util_dynarray wrapped;
+      util_dynarray_init(&wrapped, NULL);
+      void *copy =
+         util_dynarray_grow_bytes(&wrapped, 1, op->payload_size);
+      memcpy(copy, op->payload, op->payload_size);
+      agxdecode_drm_cmdbuf(dev->agxdecode, &dev->params, &wrapped, true);
+      util_dynarray_fini(&wrapped);
+      agxdecode_next_frame();
+   }
+
+   uint64_t in = queue->timeline_value;
+   uint64_t out = in + 1;
+   struct drm_asahi_sync syncs[2] = {
+      {
+         .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
+         .handle = queue->syncobj,
+         .timeline_value = in,
+      },
+      {
+         .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
+         .handle = queue->syncobj,
+         .timeline_value = out,
+      },
+   };
+   struct drm_asahi_submit submit = {
+      .queue_id = queue->agx_queue_id,
+      .in_sync_count = 1,
+      .out_sync_count = 1,
+      .cmdbuf_size = op->payload_size,
+      .syncs = (uint64_t)(uintptr_t)syncs,
+      .cmdbuf = (uint64_t)(uintptr_t)op->payload,
+   };
+   struct agx_submit_virt virt = {.ring_idx = 0};
+   int ret = dev->ops.submit(dev, &submit, &virt);
+   if (ret) {
+      mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed: %d -- device marked removed",
+                ret);
+      device->removed = true;
+      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return false;
+   }
+
+   queue->timeline_value = out;
+   if (getenv("D3D12AGX_DUMP_SYNC")) {
+      mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
+                "list %p stream_bo 0x%llx",
+                (void *)queue, queue->agx_queue_id,
+                (unsigned long long)in, (unsigned long long)out,
+                (void *)op->list,
+                (unsigned long long)op->list->stream_bo->va->addr);
+   }
+
+   /* Serial completion is intentional.  It is the correctness-first D3D12
+    * analogue of Mesa's threaded-submit dependency resolution: later Wait,
+    * submit and Signal operations are not processed until this work really
+    * completed, so cross-queue fence visibility and resource ordering are
+    * exact even though Linux syncobjs cannot model D3D12 fence rewinds. */
+   ret = drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &out, 1,
+                                INT64_MAX,
+                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+   if (ret) {
+      mesa_loge("queue GPU completion wait failed: %d", ret);
+      device->removed = true;
+      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return false;
+   }
+
+   /* Preserve the existing opt-in geometry/tessellation diagnostics.  The
+    * worker has just waited for this exact submission, so these pointers are
+    * read while the recording and its stream BO are still retained. */
+   if (device->dbg_gs_vb) {
+      const float *f = (const float *)device->dbg_gs_vb;
+      const uint32_t *u = (const uint32_t *)device->dbg_gs_vb;
+      unsigned n = MIN2(device->dbg_gs_vb_size / 4, 32);
+      mesa_logi("geometry vertex buffer (%zu bytes):", device->dbg_gs_vb_size);
+      for (unsigned i = 0; i < n; i += 4) {
+         mesa_logi("  slot %u: %8.4f %8.4f %8.4f %8.4f  "
+                   "[%08x %08x %08x %08x]",
+                   i / 4, f[i], f[i + 1], f[i + 2], f[i + 3], u[i],
+                   u[i + 1], u[i + 2], u[i + 3]);
+      }
+      device->dbg_gs_vb = NULL;
+   }
+
+   if (device->dbg_tess_draw) {
+      const uint32_t *d = (const uint32_t *)device->dbg_tess_draw;
+      mesa_logi("tess out_draws: count=%u inst=%u first=%u bias=%u "
+                "start_inst=%u",
+                d[0], d[1], d[2], d[3], d[4]);
+
+      const uint32_t *c = (const uint32_t *)device->dbg_tess_counts;
+      for (unsigned i = 0; i < MIN2(device->dbg_tess_counts_n, 8); i++)
+         mesa_logi("  counts[%u] = %u", i, c[i]);
+
+      const float *t = (const float *)device->dbg_tcs_buf;
+      const uint32_t *ti = (const uint32_t *)device->dbg_tcs_buf;
+      for (unsigned i = 0; i < MIN2(device->dbg_tcs_buf_n, 140); i += 4) {
+         mesa_logi("  tcs[%2u] %8.3f %8.3f %8.3f %8.3f  "
+                   "(0x%08x %08x %08x %08x)",
+                   i, t[i], t[i + 1], t[i + 2], t[i + 3], ti[i],
+                   ti[i + 1], ti[i + 2], ti[i + 3]);
+      }
+
+      if (device->dbg_mesh_grid) {
+         const uint32_t *g = (const uint32_t *)device->dbg_mesh_grid;
+         const uint32_t *disp = (const uint32_t *)device->dbg_mesh_disp;
+         mesa_logi("  AS DispatchMesh grid: %u %u %u", disp[0], disp[1],
+                   disp[2]);
+         mesa_logi("  mesh indirect grid: threads %u %u %u local %u %u %u",
+                   g[0], g[1], g[2], g[3], g[4], g[5]);
+         device->dbg_mesh_grid = NULL;
+      }
+
+      if (device->dbg_mesh_verts) {
+         const float *v = (const float *)device->dbg_mesh_verts;
+         unsigned stride_f = (32 * 16) / 4;
+         for (unsigned i = 0; i < 4; i++) {
+            const float *p = v + i * stride_f;
+            mesa_logi("  mesh vtx %u: %8.4f %8.4f %8.4f %8.4f", i, p[0],
+                      p[1], p[2], p[3]);
+         }
+         const uint32_t *ix = (const uint32_t *)device->dbg_mesh_idx;
+         mesa_logi("  mesh indices: %u %u %u / %u %u %u", ix[0], ix[1],
+                   ix[2], ix[3], ix[4], ix[5]);
+         device->dbg_mesh_verts = NULL;
+      }
+      device->dbg_tess_draw = NULL;
+   }
+
+   return true;
+}
+
+static int
+d12_queue_worker(void *data)
+{
+   struct d12_queue *queue = data;
+
+   for (;;) {
+      mtx_lock(&queue->lock);
+      while (!queue->op_head && !p_atomic_read(&queue->stop))
+         cnd_wait(&queue->work_available, &queue->lock);
+
+      if (p_atomic_read(&queue->stop)) {
+         mtx_unlock(&queue->lock);
+         break;
+      }
+
+      struct d12_queue_op *op = queue->op_head;
+      queue->op_head = op->next;
+      if (!queue->op_head)
+         queue->op_tail = NULL;
+      mtx_unlock(&queue->lock);
+
+      switch (op->type) {
+      case D12_QUEUE_OP_WAIT:
+         if (getenv("D3D12AGX_DUMP_SYNC"))
+            mesa_logi("SYNC Wait worker: queue %p fence %p value %llu",
+                      (void *)queue, (void *)op->fence,
+                      (unsigned long long)op->value);
+         d12_fence_ticket_wait(&op->ticket, &queue->stop);
+         break;
+      case D12_QUEUE_OP_SUBMIT:
+         d12_queue_process_submit(queue, op);
+         break;
+      case D12_QUEUE_OP_SIGNAL:
+         if (getenv("D3D12AGX_DUMP_SYNC"))
+            mesa_logi("SYNC Signal worker: queue %p fence %p value %llu",
+                      (void *)queue, (void *)op->fence,
+                      (unsigned long long)op->value);
+         d12_fence_signal_value(op->fence, op->value);
+         break;
+      }
+
+      d12_queue_op_destroy(op);
+   }
+
+   return 0;
+}
+
+static void
+d12_queue_stop_worker(struct d12_queue *queue)
+{
+   if (!queue->worker_started)
+      return;
+
+   p_atomic_set(&queue->stop, 1);
+   mtx_lock(&queue->lock);
+   cnd_broadcast(&queue->work_available);
+   mtx_unlock(&queue->lock);
+   thrd_join(queue->worker, NULL);
+   queue->worker_started = false;
+
+   struct d12_queue_op *op = queue->op_head;
+   while (op) {
+      struct d12_queue_op *next = op->next;
+      d12_queue_op_destroy(op);
+      op = next;
+   }
+   queue->op_head = queue->op_tail = NULL;
+}
+
 static void STDMETHODCALLTYPE
 d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
                               ID3D12CommandList *const *lists)
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
    struct d12_device *device = queue->device;
-   struct agx_device *dev = &device->dev;
 
-   simple_mtx_lock(&queue->lock);
+   mtx_lock(&queue->lock);
 
    for (UINT i = 0; i < count; i++) {
       /* Our lists are always ID3D12GraphicsCommandList objects. */
@@ -381,161 +639,32 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          continue;
       }
 
-      /* In-sync on the queue's progress timeline (honoring earlier Wait()
-       * transfers), out-sync advances it — the hk_queue scheme, so fence
-       * Signal() transfers represent real GPU completion.
-       */
-      struct drm_asahi_sync syncs[2] = {
-         {
-            .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
-            .handle = queue->syncobj,
-            .timeline_value = queue->timeline_value,
-         },
-         {
-            .sync_type = DRM_ASAHI_SYNC_TIMELINE_SYNCOBJ,
-            .handle = queue->syncobj,
-            .timeline_value = queue->timeline_value + 1,
-         },
-      };
-
-      struct drm_asahi_submit submit = {
-         .queue_id = queue->agx_queue_id,
-         .in_sync_count = 1,
-         .out_sync_count = 1,
-         .cmdbuf_size = payload_size,
-         .syncs = (uint64_t)(uintptr_t)syncs,
-         .cmdbuf = (uint64_t)(uintptr_t)payload,
-      };
-
-      /*
-       * ASAHI_MESA_DEBUG=trace. Mesa's own decoder parsing our command
-       * stream is the highest-information tool available for runtime
-       * bugs -- it reads the USC words, descriptors and launch packets
-       * the way the hardware does, rather than the way we believe we
-       * wrote them. It was never wired up, which is why `trace` printed
-       * nothing useful.
-       */
-      if (dev->debug & AGX_DBG_TRACE) {
-         struct util_dynarray wrapped;
-         util_dynarray_init(&wrapped, NULL);
-         void *copy = util_dynarray_grow_bytes(&wrapped, 1, payload_size);
-         memcpy(copy, payload, payload_size);
-         agxdecode_drm_cmdbuf(dev->agxdecode, &dev->params, &wrapped, true);
-         util_dynarray_fini(&wrapped);
-         agxdecode_next_frame();
+      struct d12_queue_op *op = calloc(1, sizeof(*op));
+      if (!op) {
+         mesa_loge("ExecuteCommandLists: out of memory queuing list %u", i);
+         free(payload);
+         break;
       }
 
-      struct agx_submit_virt virt = {.ring_idx = 0};
-      int ret = dev->ops.submit(dev, &submit, &virt);
+      op->type = D12_QUEUE_OP_SUBMIT;
+      op->list = list;
+      op->payload = payload;
+      op->payload_size = payload_size;
+      op->nr_vdm = nr_vdm;
+      op->nr_cdm = nr_cdm;
 
-
-      /* Read the geometry vertex output buffer back while the command
-       * list -- and therefore its stream BO -- is still alive. Dumping it
-       * at device teardown reads memory the list already freed, which
-       * reports zeroes whatever the GPU did.
-       */
-      if (!ret && device->dbg_gs_vb) {
-         /* The out-sync is timeline_value + 1; waiting on timeline_value
-          * returns immediately on an already-signalled point and reads
-          * the buffer before the GPU has touched it. */
-         uint64_t point = queue->timeline_value + 1;
-         drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &point, 1,
-                                INT64_MAX,
-                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
-
-         const float *f = (const float *)device->dbg_gs_vb;
-         const uint32_t *u = (const uint32_t *)device->dbg_gs_vb;
-         unsigned n = MIN2(device->dbg_gs_vb_size / 4, 32);
-         mesa_logi("geometry vertex buffer (%zu bytes):",
-                   device->dbg_gs_vb_size);
-         for (unsigned i = 0; i < n; i += 4) {
-            mesa_logi("  slot %u: %8.4f %8.4f %8.4f %8.4f  "
-                      "[%08x %08x %08x %08x]",
-                      i / 4, f[i], f[i + 1], f[i + 2], f[i + 3], u[i],
-                      u[i + 1], u[i + 2], u[i + 3]);
-         }
-         device->dbg_gs_vb = NULL;
+      /* Reset is legal as soon as ExecuteCommandLists returns.  Mark this
+       * recording submitted before handing it back to the application, and
+       * keep the list alive until the worker observes GPU completion. */
+      ID3D12GraphicsCommandList_AddRef(&list->iface);
+      list->submitted = true;
+      if (!d12_queue_enqueue_locked(queue, op)) {
+         d12_queue_op_destroy(op);
+         break;
       }
-
-      if (!ret && device->dbg_tess_draw) {
-         uint64_t point = queue->timeline_value + 1;
-         drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &point, 1,
-                                INT64_MAX,
-                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
-
-         const uint32_t *d = (const uint32_t *)device->dbg_tess_draw;
-         mesa_logi("tess out_draws: count=%u inst=%u first=%u bias=%u "
-                   "start_inst=%u",
-                   d[0], d[1], d[2], d[3], d[4]);
-
-         const uint32_t *c = (const uint32_t *)device->dbg_tess_counts;
-         for (unsigned i = 0; i < MIN2(device->dbg_tess_counts_n, 8); i++)
-            mesa_logi("  counts[%u] = %u", i, c[i]);
-
-         const float *t = (const float *)device->dbg_tcs_buf;
-         const uint32_t *ti = (const uint32_t *)device->dbg_tcs_buf;
-         for (unsigned i = 0; i < MIN2(device->dbg_tcs_buf_n, 140); i += 4) {
-            mesa_logi("  tcs[%2u] %8.3f %8.3f %8.3f %8.3f  (0x%08x %08x "
-                      "%08x %08x)",
-                      i, t[i], t[i + 1], t[i + 2], t[i + 3], ti[i],
-                      ti[i + 1], ti[i + 2], ti[i + 3]);
-         }
-
-         if (device->dbg_mesh_grid) {
-            const uint32_t *g = (const uint32_t *)device->dbg_mesh_grid;
-            const uint32_t *d = (const uint32_t *)device->dbg_mesh_disp;
-            mesa_logi("  AS DispatchMesh grid: %u %u %u", d[0], d[1], d[2]);
-            mesa_logi("  mesh indirect grid:   threads %u %u %u  local %u %u %u",
-                      g[0], g[1], g[2], g[3], g[4], g[5]);
-            device->dbg_mesh_grid = NULL;
-         }
-
-         if (device->dbg_mesh_verts) {
-            const float *v = (const float *)device->dbg_mesh_verts;
-            unsigned stride_f = (32 * 16) / 4;
-            for (unsigned i = 0; i < 4; i++) {
-               const float *p = v + i * stride_f;
-               mesa_logi("  mesh vtx %u: %8.4f %8.4f %8.4f %8.4f", i, p[0],
-                         p[1], p[2], p[3]);
-            }
-            const uint32_t *ix = (const uint32_t *)device->dbg_mesh_idx;
-            mesa_logi("  mesh indices: %u %u %u / %u %u %u", ix[0], ix[1],
-                      ix[2], ix[3], ix[4], ix[5]);
-            device->dbg_mesh_verts = NULL;
-         }
-
-         device->dbg_tess_draw = NULL;
-      }
-      if (ret) {
-         mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed for list %u: %d -- device "
-                   "marked removed", i, ret);
-         /* Do NOT advance the timeline, and latch removal so a later
-          * Signal cannot transfer the last good point into a fence and
-          * report progress for work that never executed.
-          */
-         queue->device->removed = true;
-      } else {
-         queue->timeline_value++;
-
-         /* The GPU now owns this recording's storage until the allocator
-          * is Reset. Reset on the list must take fresh storage rather than
-          * rewind it -- see d12_list_take_fresh_storage.
-          */
-         list->submitted = true;
-         if (getenv("D3D12AGX_DUMP_SYNC")) {
-            mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
-                      "list %p stream_bo 0x%llx",
-                      (void *)queue, queue->agx_queue_id,
-                      (unsigned long long)(queue->timeline_value - 1),
-                      (unsigned long long)queue->timeline_value, (void *)list,
-                      (unsigned long long)list->stream_bo->va->addr);
-         }
-      }
-
-      free(payload);
    }
 
-   simple_mtx_unlock(&queue->lock);
+   mtx_unlock(&queue->lock);
 }
 
 static void STDMETHODCALLTYPE
@@ -563,38 +692,37 @@ d12_queue_Signal(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
                  UINT64 value)
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
+   if (!fence_iface)
+      return E_INVALIDARG;
    struct d12_fence *fence = d12_fence_from_iface(fence_iface);
-   struct agx_device *dev = &queue->device->dev;
-   HRESULT hr = S_OK;
 
-   /* Once a submission has failed, signalling would claim progress that
-    * never happened. Report removal instead.
-    */
    if (queue->device->removed)
       return DXGI_ERROR_DEVICE_REMOVED;
+   if (fence->device != queue->device)
+      return E_INVALIDARG;
 
-   simple_mtx_lock(&queue->lock);
+   struct d12_queue_op *op = calloc(1, sizeof(*op));
+   if (!op)
+      return E_OUTOFMEMORY;
+   op->type = D12_QUEUE_OP_SIGNAL;
+   op->fence = fence;
+   op->value = value;
+   d12_fence_internal_ref(fence);
 
-   /* Forward current queue progress into the fence's timeline: the fence
-    * point signals when everything currently on the queue completes.
-    */
    if (getenv("D3D12AGX_DUMP_SYNC")) {
-      mesa_logi("SYNC Signal: queue %p agxq %u  fence %p value %llu "
-                "<- queue point %llu",
+      mesa_logi("SYNC Signal enqueue: queue %p agxq %u fence %p value %llu",
                 (void *)queue, queue->agx_queue_id, (void *)fence,
-                (unsigned long long)value,
-                (unsigned long long)queue->timeline_value);
+                (unsigned long long)value);
    }
 
-   int ret = drmSyncobjTransfer(dev->fd, fence->syncobj, value,
-                                queue->syncobj, queue->timeline_value, 0);
-   if (ret) {
-      mesa_loge("queue Signal: drmSyncobjTransfer failed: %d", ret);
-      hr = E_FAIL;
+   mtx_lock(&queue->lock);
+   bool queued = d12_queue_enqueue_locked(queue, op);
+   mtx_unlock(&queue->lock);
+   if (!queued) {
+      d12_queue_op_destroy(op);
+      return DXGI_ERROR_DEVICE_REMOVED;
    }
-
-   simple_mtx_unlock(&queue->lock);
-   return hr;
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -602,36 +730,35 @@ d12_queue_Wait(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
                UINT64 value)
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
+   if (!fence_iface)
+      return E_INVALIDARG;
    struct d12_fence *fence = d12_fence_from_iface(fence_iface);
-   struct agx_device *dev = &queue->device->dev;
-   HRESULT hr = S_OK;
+   if (fence->device != queue->device)
+      return E_INVALIDARG;
 
-   simple_mtx_lock(&queue->lock);
+   struct d12_queue_op *op = calloc(1, sizeof(*op));
+   if (!op)
+      return E_OUTOFMEMORY;
+   op->type = D12_QUEUE_OP_WAIT;
+   op->fence = fence;
+   op->value = value;
+   d12_fence_internal_ref(fence);
+   d12_fence_ticket_init(fence, &op->ticket, value);
 
-   /* Pull the fence point into the queue's progress timeline, so all later
-    * queue work (and later Signals) depend on it.
-    */
-   uint64_t next = queue->timeline_value + 1;
    if (getenv("D3D12AGX_DUMP_SYNC")) {
-      mesa_logi("SYNC Wait:   queue %p agxq %u  fence %p value %llu "
-                "-> queue point %llu",
+      mesa_logi("SYNC Wait enqueue: queue %p agxq %u fence %p value %llu",
                 (void *)queue, queue->agx_queue_id, (void *)fence,
-                (unsigned long long)value, (unsigned long long)next);
+                (unsigned long long)value);
    }
 
-   int ret = drmSyncobjTransfer(dev->fd, queue->syncobj, next,
-                                fence->syncobj, value, 0);
-   if (ret) {
-      mesa_loge("queue Wait: drmSyncobjTransfer failed: %d (G1 cannot wait "
-                "on unmaterialized points)",
-                ret);
-      hr = E_FAIL;
-   } else {
-      queue->timeline_value = next;
+   mtx_lock(&queue->lock);
+   bool queued = d12_queue_enqueue_locked(queue, op);
+   mtx_unlock(&queue->lock);
+   if (!queued) {
+      d12_queue_op_destroy(op);
+      return DXGI_ERROR_DEVICE_REMOVED;
    }
-
-   simple_mtx_unlock(&queue->lock);
-   return hr;
+   return S_OK;
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -755,9 +882,7 @@ d12_queue_create(struct d12_device *device,
       return E_FAIL;
    }
 
-   /* Materialize point 0 as signaled so "no work yet" transfers resolve
-    * immediately, exactly as hk_queue does on init.
-    */
+   /* Materialize point 0 for the first real AGX submission. */
    uint64_t zero = 0;
    drmSyncobjTimelineSignal(dev->fd, &queue->syncobj, &zero, 1);
 
@@ -777,9 +902,33 @@ d12_queue_create(struct d12_device *device,
       queue->desc.NodeMask = 1;
 
    queue->timeline_value = 0;
-   simple_mtx_init(&queue->lock, mtx_plain);
+   if (mtx_init(&queue->lock, mtx_plain) != thrd_success) {
+      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
+   if (cnd_init(&queue->work_available) != thrd_success) {
+      mtx_destroy(&queue->lock);
+      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
    d12_private_data_store_init(&queue->private_data);
    d12_device_add_ref(device);
+
+   if (thrd_create(&queue->worker, d12_queue_worker, queue) != thrd_success) {
+      d12_device_release(device);
+      d12_private_data_store_destroy(&queue->private_data);
+      cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->lock);
+      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
+   queue->worker_started = true;
 
    HRESULT hr = d12_queue_QueryInterface(&queue->iface, riid, out);
    d12_queue_Release(&queue->iface);

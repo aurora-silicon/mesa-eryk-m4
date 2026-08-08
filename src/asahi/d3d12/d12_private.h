@@ -43,6 +43,7 @@
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
 #include "util/u_atomic.h"
+#include "c11/threads.h"
 
 /*
  * COM plumbing. Every d12 object embeds its COM interface as the FIRST
@@ -1139,6 +1140,15 @@ d12_cmd_list_from_iface(void *iface)
    return (struct d12_cmd_list *)iface;
 }
 
+struct d12_fence_event_waiter;
+struct d12_fence_ticket {
+   struct d12_fence_ticket *next;
+   struct d12_fence *fence;
+   uint64_t value;
+   bool registered;
+   uint32_t satisfied;
+};
+
 struct d12_fence {
    ID3D12Fence iface; /* must be first */
    uint32_t refcount;
@@ -1146,13 +1156,24 @@ struct d12_fence {
 
    struct d12_device *device; /* holds a device ref */
 
-   /* DRM timeline syncobj: D3D12 fences ARE timeline semaphores. The
-    * completed value is the syncobj's signaled point; CPU Signal is a
-    * timeline signal; queue Signal/Wait are syncobj transfers, mirroring
-    * hk_queue.c.
-    */
-   uint32_t syncobj;
+   /* A D3D12 fence is not a Linux timeline syncobj.  In particular, CPU
+    * Signal() may move its completed value backwards, while DRM timeline
+    * points are permanently signaled and monotonic.  Keep the public value
+    * in userspace and let command-queue workers turn ordered GPU completion
+    * into calls to d12_fence_signal_value(). */
+   mtx_t lock;
+   cnd_t changed;
+   uint64_t completed_value;
+   bool destroyed;
+   struct d12_fence_event_waiter *event_waiters;
+   struct d12_fence_ticket *tickets;
+
+   /* Queue operations and asynchronous event waiters must keep the storage
+    * alive without changing the public COM reference count. */
+   uint32_t lifetime_refcount;
 };
+
+struct d12_queue_op;
 
 struct d12_queue {
    ID3D12CommandQueue iface; /* must be first */
@@ -1165,13 +1186,19 @@ struct d12_queue {
    /* Hardware queue on the asahi device */
    uint32_t agx_queue_id;
 
-   /* Queue-progress timeline, same scheme as hk_queue: point N signals when
-    * the Nth chunk of queue work completes. With no execution engine yet
-    * (G1), the timeline only advances through Wait() transfers.
-    */
+   /* Queue-progress timeline used only for real AGX submissions.  D3D12
+    * Wait/Signal operations are ordered by the worker below because Linux
+    * syncobjs cannot natively represent wait-before-signal. */
    uint32_t syncobj;
    uint64_t timeline_value;
-   simple_mtx_t lock;
+
+   mtx_t lock;
+   cnd_t work_available;
+   thrd_t worker;
+   struct d12_queue_op *op_head;
+   struct d12_queue_op *op_tail;
+   uint32_t stop;
+   bool worker_started;
 };
 
 struct d12_command_signature {
@@ -1204,6 +1231,16 @@ d12_queue_from_iface(ID3D12CommandQueue *iface)
 /* Object constructors (Create* device methods land here) */
 HRESULT d12_fence_create(struct d12_device *device, UINT64 initial_value,
                          D3D12_FENCE_FLAGS flags, REFIID riid, void **out);
+void d12_fence_internal_ref(struct d12_fence *fence);
+void d12_fence_internal_unref(struct d12_fence *fence);
+void d12_fence_signal_value(struct d12_fence *fence, uint64_t value);
+bool d12_fence_wait_value(struct d12_fence *fence, uint64_t value,
+                          const uint32_t *cancel);
+void d12_fence_ticket_init(struct d12_fence *fence,
+                           struct d12_fence_ticket *ticket, uint64_t value);
+void d12_fence_ticket_fini(struct d12_fence_ticket *ticket);
+bool d12_fence_ticket_wait(struct d12_fence_ticket *ticket,
+                           const uint32_t *cancel);
 HRESULT d12_fence_set_event_multiple(
    struct d12_device *device, ID3D12Fence *const *fences,
    const UINT64 *values, UINT count,
