@@ -1479,10 +1479,12 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
  * later invalid reads. */
 static nir_def *
 robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
-                        nir_def *byte_offset, nir_def *size_bytes)
+                        nir_def *byte_offset, nir_def *size_bytes,
+                        unsigned bits)
 {
    nir_builder *b = ctx->b;
    nir_def *values[4];
+   unsigned bytes = bits / 8;
    /* ByteAddressBuffer addressing is 32-bit.  Each vector lane adds its
     * component offset in u32 and may therefore wrap independently.  Doing
     * this add after extending to u64 incorrectly turned a wrapped address
@@ -1493,12 +1495,12 @@ robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
    nir_def *zero = root_plane(ctx, D12_ROOT_PLANE_ZERO);
 
    for (unsigned c = 0; c < 4; c++) {
-      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * 4);
+      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
       nir_def *component_offset = nir_u2u64(b, component_offset32);
       nir_def *safe = nir_bcsel(
          b, nir_ult(b, component_offset, size64),
          nir_iadd(b, base, component_offset), zero);
-      values[c] = nir_load_global(b, 1, 32, safe, .align_mul = 4);
+      values[c] = nir_load_global(b, 1, bits, safe, .align_mul = bytes);
    }
 
    return nir_vec(b, values, ARRAY_SIZE(values));
@@ -1510,19 +1512,20 @@ robust_store_buffer_masked(struct trans_ctx *ctx, nir_def *address,
                            nir_def **values, unsigned components)
 {
    nir_builder *b = ctx->b;
+   unsigned bytes = values[0]->bit_size / 8;
    nir_def *offset32 = nir_u2u32(b, byte_offset);
    nir_def *base = nir_isub(b, address, nir_u2u64(b, offset32));
    nir_def *size64 = nir_u2u64(b, size_bytes);
    nir_def *discard = root_plane(ctx, D12_ROOT_PLANE_DISCARD);
 
    for (unsigned c = 0; c < components; c++) {
-      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * 4);
+      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
       nir_def *component_offset = nir_u2u64(b, component_offset32);
       nir_def *safe = nir_bcsel(
          b, nir_ult(b, component_offset, size64),
          nir_iadd(b, base, component_offset), discard);
       nir_store_global(b, values[c], safe,
-                       .write_mask = 1, .align_mul = 4);
+                       .write_mask = 1, .align_mul = bytes);
    }
 }
 
@@ -4490,6 +4493,16 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * models texel buffers (hk_buffer_view.c).
        */
       nir_def *data;
+      unsigned bits = 32;
+      if (inst->result_type < ctx->mod->num_types) {
+         const struct d12_type *rt = &ctx->mod->types[inst->result_type];
+         if ((rt->kind == D12_TYPE_STRUCT_ANON ||
+              rt->kind == D12_TYPE_STRUCT_NAMED) && rt->strct.num_members)
+            bits = type_bit_size(ctx->mod, rt->strct.members[0]);
+      }
+      if (bits != 16 && bits != 32 && bits != 64)
+         bits = 32;
+
       if (opcode == D12_DXOP_BUFFER_LOAD &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
          if (h.rooted_heap) {
@@ -4524,7 +4537,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                           get_def(ctx, p[2]))
                : get_def(ctx, p[1]);
          data = robust_load_buffer_vec4(
-            ctx, addr, byte_offset, resource_view_size_bytes(ctx, &h));
+            ctx, addr, byte_offset, resource_view_size_bytes(ctx, &h), bits);
       }
 
       /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
@@ -4536,7 +4549,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def *mapped[5] = {
          nir_channel(b, data, 0), nir_channel(b, data, 1),
          nir_channel(b, data, 2), nir_channel(b, data, 3),
-         nir_imm_int(b, ~0u),
+         nir_imm_intN_t(b, ~0u, data->bit_size),
       };
       def_result(ctx, inst, nir_vec(b, mapped, 5));
       return true;
