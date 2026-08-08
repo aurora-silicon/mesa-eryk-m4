@@ -1371,6 +1371,31 @@ d12_list_begin_render(struct d12_cmd_list *list,
 }
 
 
+static bool
+d12_buffer_tail_descriptor(const struct d12_descriptor *d,
+                           struct d12_descriptor *tail)
+{
+   if (!d || !d->resource ||
+       d->resource->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       d->buffer_kind != D12_BUFFER_VIEW_TYPED || !d->stride_B)
+      return false;
+
+   uint64_t elements = d->size_B / d->stride_B;
+   if (elements <= AGX_TEXTURE_BUFFER_MAX_SIZE)
+      return false;
+
+   uint64_t tail_elements = elements - AGX_TEXTURE_BUFFER_MAX_SIZE;
+   if (tail_elements > AGX_TEXTURE_BUFFER_MAX_SIZE ||
+       tail_elements * d->stride_B > UINT32_MAX)
+      return false;
+
+   *tail = *d;
+   tail->address +=
+      (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE * d->stride_B;
+   tail->size_B = tail_elements * d->stride_B;
+   return true;
+}
+
 void
 d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
                            const struct d12_descriptor *d)
@@ -1379,6 +1404,19 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
 
    if (d->kind != D12_DESC_UAV || !d->resource)
       return;
+
+   struct d12_descriptor chunk;
+   if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+       d->buffer_kind == D12_BUFFER_VIEW_TYPED) {
+      unsigned stride = d->stride_B;
+      uint64_t elements = stride ? d->size_B / stride : 0;
+      if (!stride || !elements)
+         return;
+      chunk = *d;
+      chunk.size_B = MIN2(elements,
+                          (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE) * stride;
+      d = &chunk;
+   }
 
    struct d12_resource *res = d->resource;
    enum pipe_format pf = d12_format_to_pipe(d->format);
@@ -1564,6 +1602,21 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    const struct d12_root_signature *rs =
       compute ? list->compute_rs : list->graphics_rs;
 
+   unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
+      if ((table[i].kind == D12_DESC_SRV ||
+           table[i].kind == D12_DESC_UAV) &&
+          table[i].resource &&
+          (table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+           table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
+           (table[i].resource->desc.Dimension ==
+               D3D12_RESOURCE_DIMENSION_BUFFER &&
+            table[i].format != DXGI_FORMAT_UNKNOWN)))
+         last_texture = MAX2(last_texture, i + 1);
+   }
+
    *out_heap = 0;
    *out_heap_textures = 0;
    *out_heap_pbes = 0;
@@ -1642,6 +1695,12 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
           */
          addrs[D12_ROOT_BUFINFO_BASE + i] = UINT32_MAX;
       }
+
+      /* The upper half of BUFINFO's metadata word publishes the compact
+       * native heap's head count. Large typed views use it to select the
+       * same slot in the immediately following tail heap. */
+      addrs[D12_ROOT_BUFINFO_BASE + i] |=
+         (uint64_t)last_texture << 48;
 
       if (!addrs[i]) {
          if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
@@ -1727,32 +1786,21 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * root parameters undefined-but-safe instead of making an omitted uniform
     * read as VA 0 and wedging the GPU.
     */
-   unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
-   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
-      if ((table[i].kind == D12_DESC_SRV ||
-           table[i].kind == D12_DESC_UAV) &&
-          table[i].resource &&
-          (table[i].resource->desc.Dimension ==
-              D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-           table[i].resource->desc.Dimension ==
-              D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
-           (table[i].resource->desc.Dimension ==
-               D3D12_RESOURCE_DIMENSION_BUFFER &&
-            table[i].format != DXGI_FORMAT_UNKNOWN)))
-         last_texture = MAX2(last_texture, i + 1);
-   }
-
    static_assert(AGX_TEXTURE_LENGTH == D12_TEXTURE_DESC_SIZE,
                  "the front end's descriptor stride must match hardware");
    static_assert(AGX_PBE_LENGTH == D12_PBE_DESC_SIZE,
                  "the PBE descriptor stride must match hardware");
 
+   /* A finite typed-buffer view may span two native AGX descriptor windows.
+    * Slots [0, last_texture) are heads and the following equally sized
+    * compact range contains their tails. */
+   const unsigned native_desc_count = 2 * last_texture;
    uint64_t heap_gpu = d12_list_upload_zero(
-      list, (size_t)last_texture * AGX_TEXTURE_LENGTH, 64);
+      list, (size_t)native_desc_count * AGX_TEXTURE_LENGTH, 64);
    if (!heap_gpu)
       return false;
 
-   size_t heap_size = (size_t)last_texture * AGX_TEXTURE_LENGTH;
+   size_t heap_size = (size_t)native_desc_count * AGX_TEXTURE_LENGTH;
    if (validate && (!d12_list_stream_contains(list, heap_gpu, heap_size) ||
                     (heap_gpu & 63))) {
       mesa_loge("binding validation: texture heap 0x%llx+%zu is outside "
@@ -1765,7 +1813,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    struct agx_texture_packed *descs =
       (struct agx_texture_packed *)d12_list_data_cpu(list, heap_gpu);
 
-   for (unsigned i = 0; i < last_texture; i++)
+   for (unsigned i = 0; i < native_desc_count; i++)
       agx_set_null_texture(&descs[i]);
 
    for (unsigned i = 0; i < last_texture; i++) {
@@ -1777,47 +1825,32 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          continue;
 
       if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-         if (table[i].format == DXGI_FORMAT_UNKNOWN)
-            continue;
-
-         enum pipe_format pf = d12_format_to_pipe(table[i].format);
-         if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
-             !ail_pixel_format[pf].texturable ||
-             util_format_is_depth_or_stencil(pf))
-            continue;
-
-         const struct util_format_description *fdesc =
-            util_format_description(pf);
-         unsigned blocksize = util_format_get_blocksize(pf);
-         unsigned elements = table[i].size_B / blocksize;
-         uint64_t base = table[i].address & ~0xfull;
-         unsigned tail_B = table[i].address & 0xf;
-         if (!elements || tail_B % blocksize)
-            continue;
-
-         agx_pack(&descs[i], TEXTURE, cfg) {
-            cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-            cfg.layout = AGX_LAYOUT_LINEAR;
-            cfg.channels = ail_pixel_format[pf].channels;
-            cfg.type = ail_pixel_format[pf].type;
-            cfg.srgb = util_format_is_srgb(pf);
-            cfg.srgb_2_channel =
-               cfg.srgb && util_format_colormask(fdesc) == 0x3;
-
-            cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
-            cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
-            cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
-            cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
-
-            cfg.address = base;
-            cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
-            cfg.height = DIV_ROUND_UP(elements, cfg.width);
-            cfg.first_level = 0;
-            cfg.last_level = 0;
-            cfg.buffer_size_sw = elements;
-            cfg.buffer_offset_sw = tail_B / blocksize;
-            cfg.depth = 1;
-            cfg.stride = (cfg.width * blocksize) - 16;
+         d12_refresh_texture_descriptor(&descs[i], &table[i]);
+         struct d12_descriptor tail;
+         if (d12_buffer_tail_descriptor(&table[i], &tail)) {
+            uint64_t bo_base = res->bo->va->addr;
+            uint64_t bo_end = bo_base + res->bo->size;
+            uint64_t tail_end = tail.address + tail.size_B;
+            if (tail.address < bo_base || tail_end < tail.address ||
+                tail_end > bo_end) {
+               mesa_loge("binding validation: large typed-buffer tail slot "
+                         "%u spans outside its resource BO", i);
+               list->state = D12_LIST_ERROR;
+               return false;
+            }
+            if (validate)
+               mesa_logi("binding validation: large typed-buffer slot %u "
+                         "head=0x%llx+%u tail=0x%llx+%u bo=0x%llx..0x%llx "
+                         "valid=1", i,
+                         (unsigned long long)table[i].address,
+                         MIN2(table[i].size_B,
+                              AGX_TEXTURE_BUFFER_MAX_SIZE *
+                                 table[i].stride_B),
+                         (unsigned long long)tail.address, tail.size_B,
+                         (unsigned long long)bo_base,
+                         (unsigned long long)bo_end);
+            d12_refresh_texture_descriptor(
+               &descs[last_texture + i], &tail);
          }
          continue;
       }
@@ -1952,11 +1985,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    }
 
    uint64_t pbe_heap_gpu = d12_list_upload_zero(
-      list, (size_t)last_texture * AGX_PBE_LENGTH, 64);
+      list, (size_t)native_desc_count * AGX_PBE_LENGTH, 64);
    if (!pbe_heap_gpu)
       return false;
 
-   size_t pbe_heap_size = (size_t)last_texture * AGX_PBE_LENGTH;
+   size_t pbe_heap_size = (size_t)native_desc_count * AGX_PBE_LENGTH;
    if (validate &&
        (!d12_list_stream_contains(list, pbe_heap_gpu, pbe_heap_size) ||
         (pbe_heap_gpu & 63))) {
@@ -1969,6 +2002,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    struct agx_pbe_packed *pbes =
       (struct agx_pbe_packed *)d12_list_data_cpu(list, pbe_heap_gpu);
+   for (unsigned i = 0; i < native_desc_count; i++)
+      agx_set_null_pbe(&pbes[i]);
    for (unsigned i = 0; i < last_texture; i++) {
       if (validate && table[i].kind == D12_DESC_UAV && table[i].resource &&
           table[i].resource->desc.Dimension ==
@@ -1981,6 +2016,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
       }
       d12_refresh_pbe_descriptor(&pbes[i], &table[i]);
+      struct d12_descriptor tail;
+      if (d12_buffer_tail_descriptor(&table[i], &tail))
+         d12_refresh_pbe_descriptor(
+            &pbes[last_texture + i], &tail);
 
       if (getenv("D3D12AGX_DUMP_TEX")) {
          const uint8_t *raw = (const uint8_t *)&pbes[i];
@@ -2227,6 +2266,19 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    if ((d->kind != D12_DESC_SRV && d->kind != D12_DESC_UAV) || !d->resource)
       return;
 
+   struct d12_descriptor chunk;
+   if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+       d->buffer_kind == D12_BUFFER_VIEW_TYPED) {
+      unsigned stride = d->stride_B;
+      uint64_t elements = stride ? d->size_B / stride : 0;
+      if (!stride || !elements)
+         return;
+      chunk = *d;
+      chunk.size_B = MIN2(elements,
+                          (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE) * stride;
+      d = &chunk;
+   }
+
    struct d12_resource *res = d->resource;
    if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (d->format == DXGI_FORMAT_UNKNOWN)
@@ -2419,24 +2471,46 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          d->counter_address
             ? d->counter_address
             : list->null_counters + slot * sizeof(uint32_t);
-      tables[D12_ROOT_BUFINFO_BASE + slot] = d12_descriptor_bufinfo(d);
+      uint64_t heap_layout =
+         tables[D12_ROOT_BUFINFO_BASE + slot] & 0xffff000000000000ull;
+      unsigned last_texture = heap_layout >> 48;
+      if (!last_texture)
+         return false;
+      tables[D12_ROOT_BUFINFO_BASE + slot] =
+         d12_descriptor_bufinfo(d) | heap_layout;
 
       if (fixup->textures_gpu) {
          struct agx_texture_packed *texture =
             (struct agx_texture_packed *)d12_list_data_cpu(
                list, fixup->textures_gpu + slot * AGX_TEXTURE_LENGTH);
-         if (!texture)
+         struct agx_texture_packed *texture_tail =
+            (struct agx_texture_packed *)d12_list_data_cpu(
+               list, fixup->textures_gpu +
+                        (last_texture + slot) * AGX_TEXTURE_LENGTH);
+         if (!texture || !texture_tail)
             return false;
          d12_refresh_texture_descriptor(texture, d);
+         agx_set_null_texture(texture_tail);
+         struct d12_descriptor tail;
+         if (d12_buffer_tail_descriptor(d, &tail))
+            d12_refresh_texture_descriptor(texture_tail, &tail);
       }
 
       if (fixup->pbes_gpu) {
          struct agx_pbe_packed *pbe =
             (struct agx_pbe_packed *)d12_list_data_cpu(
                list, fixup->pbes_gpu + slot * AGX_PBE_LENGTH);
-         if (!pbe)
+         struct agx_pbe_packed *pbe_tail =
+            (struct agx_pbe_packed *)d12_list_data_cpu(
+               list, fixup->pbes_gpu +
+                        (last_texture + slot) * AGX_PBE_LENGTH);
+         if (!pbe || !pbe_tail)
             return false;
          d12_refresh_pbe_descriptor(pbe, d);
+         agx_set_null_pbe(pbe_tail);
+         struct d12_descriptor tail;
+         if (d12_buffer_tail_descriptor(d, &tail))
+            d12_refresh_pbe_descriptor(pbe_tail, &tail);
       }
 
       if (getenv("D3D12AGX_DUMP_DESCRIPTOR_FIXUPS"))
@@ -7905,14 +7979,17 @@ d12_list_ResourceBarrier(ID3D12GraphicsCommandList6 *iface, UINT num_barriers,
  */
 static bool
 d12_pack_clear_uav_uint(DXGI_FORMAT format, const UINT values[4],
-                        uint32_t *packed)
+                        void *packed, unsigned *packed_size_B)
 {
+   uint32_t word;
+
    switch (format) {
    case DXGI_FORMAT_R32_TYPELESS:
    case DXGI_FORMAT_R32_FLOAT:
    case DXGI_FORMAT_R32_UINT:
    case DXGI_FORMAT_R32_SINT:
-      *packed = values[0];
+      memcpy(packed, &values[0], sizeof(uint32_t));
+      *packed_size_B = sizeof(uint32_t);
       return true;
 
    case DXGI_FORMAT_R16G16_FLOAT:
@@ -7920,32 +7997,53 @@ d12_pack_clear_uav_uint(DXGI_FORMAT format, const UINT values[4],
    case DXGI_FORMAT_R16G16_UINT:
    case DXGI_FORMAT_R16G16_SNORM:
    case DXGI_FORMAT_R16G16_SINT:
-      *packed = (values[0] & 0xffffu) | ((values[1] & 0xffffu) << 16);
+      word = (values[0] & 0xffffu) | ((values[1] & 0xffffu) << 16);
+      memcpy(packed, &word, sizeof(word));
+      *packed_size_B = sizeof(uint32_t);
       return true;
 
    case DXGI_FORMAT_R8G8B8A8_UNORM:
    case DXGI_FORMAT_R8G8B8A8_UINT:
    case DXGI_FORMAT_R8G8B8A8_SNORM:
    case DXGI_FORMAT_R8G8B8A8_SINT:
-      *packed = (values[0] & 0xffu) | ((values[1] & 0xffu) << 8) |
-                ((values[2] & 0xffu) << 16) |
-                ((values[3] & 0xffu) << 24);
+      word = (values[0] & 0xffu) | ((values[1] & 0xffu) << 8) |
+             ((values[2] & 0xffu) << 16) |
+             ((values[3] & 0xffu) << 24);
+      memcpy(packed, &word, sizeof(word));
+      *packed_size_B = sizeof(uint32_t);
       return true;
 
    case DXGI_FORMAT_R11G11B10_FLOAT:
-      *packed = (values[0] & 0x7ffu) | ((values[1] & 0x7ffu) << 11) |
-                ((values[2] & 0x3ffu) << 22);
+      word = (values[0] & 0x7ffu) | ((values[1] & 0x7ffu) << 11) |
+             ((values[2] & 0x3ffu) << 22);
+      memcpy(packed, &word, sizeof(word));
+      *packed_size_B = sizeof(uint32_t);
       return true;
 
    case DXGI_FORMAT_R10G10B10A2_UNORM:
    case DXGI_FORMAT_R10G10B10A2_UINT:
-      *packed = (values[0] & 0x3ffu) | ((values[1] & 0x3ffu) << 10) |
-                ((values[2] & 0x3ffu) << 20) |
-                ((values[3] & 0x3u) << 30);
+      word = (values[0] & 0x3ffu) | ((values[1] & 0x3ffu) << 10) |
+             ((values[2] & 0x3ffu) << 20) |
+             ((values[3] & 0x3u) << 30);
+      memcpy(packed, &word, sizeof(word));
+      *packed_size_B = sizeof(uint32_t);
       return true;
 
-   default:
-      return false;
+   default: {
+      enum pipe_format pipe = d12_format_to_pipe(format);
+      if (pipe == PIPE_FORMAT_NONE ||
+          (!util_format_is_pure_uint(pipe) &&
+           !util_format_is_pure_sint(pipe)))
+         return false;
+
+      unsigned blocksize_B = util_format_get_blocksize(pipe);
+      if (!blocksize_B || blocksize_B > 16)
+         return false;
+
+      util_format_pack_rgba(pipe, packed, values, 1);
+      *packed_size_B = blocksize_B;
+      return true;
+   }
    }
 }
 
@@ -7971,7 +8069,8 @@ static void
 d12_list_clear_uav_buffer(struct d12_cmd_list *list,
                           D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
                           D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
-                          ID3D12Resource *resource, uint32_t packed,
+                          ID3D12Resource *resource, const void *packed,
+                          unsigned packed_size_B,
                           UINT num_rects)
 {
    if (list->state != D12_LIST_RECORDING)
@@ -8005,8 +8104,10 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
       return;
    }
 
-   if ((view->address & 3) || (view->size_B & 3)) {
-      mesa_loge("ClearUnorderedAccessView: buffer view is not uint-aligned");
+   if (!packed_size_B || packed_size_B > 16 ||
+       view->address % packed_size_B || view->size_B % packed_size_B) {
+      mesa_loge("ClearUnorderedAccessView: buffer view has invalid element "
+                "alignment");
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -8014,13 +8115,37 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
    if (!view->size_B)
       return;
 
-   struct libagx_fill_args args = {
-      .address = view->address,
-      .value = packed,
-   };
+   if (packed_size_B == sizeof(uint32_t)) {
+      uint32_t packed_u32;
+      memcpy(&packed_u32, packed, sizeof(packed_u32));
+      struct libagx_fill_args args = {
+         .address = view->address,
+         .value = packed_u32,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_FILL, &args, sizeof(args),
+                                agx_1d(view->size_B / 4));
+      return;
+   }
 
-   d12_list_dispatch_precomp(list, LIBAGX_FILL, &args, sizeof(args),
-                             agx_1d(view->size_B / 4));
+   uint64_t value = d12_list_upload(list, packed, packed_size_B, 16);
+   if (!value)
+      return;
+
+   uint32_t elements = view->size_B / packed_size_B;
+   struct libagx_fill_image_args args = {
+      .dest = view->address,
+      .value = value,
+      .width_el = elements,
+      .height_el = 1,
+      .dest_pitch_B = view->size_B,
+      .dest_stride_el = elements,
+      .dest_tile_width_el = 1,
+      .dest_tile_height_el = 1,
+      .blocksize_B = packed_size_B,
+      .dest_tiled = false,
+   };
+   d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args, sizeof(args),
+                             agx_1d(elements));
 }
 
 static void
@@ -8155,16 +8280,8 @@ d12_list_clear_uav(struct d12_cmd_list *list,
       d12_list_clear_uav_texture(list, gpu_handle, cpu_handle, resource,
                                  packed, packed_size_B, num_rects, rects);
    } else {
-      if (packed_size_B != sizeof(uint32_t)) {
-         mesa_loge("ClearUnorderedAccessView: buffer clear value is not "
-                   "32-bit");
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-      uint32_t packed_u32;
-      memcpy(&packed_u32, packed, sizeof(packed_u32));
       d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource,
-                                packed_u32, num_rects);
+                                packed, packed_size_B, num_rects);
    }
 }
 
@@ -8176,20 +8293,22 @@ d12_list_ClearUnorderedAccessViewUint(
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
-   uint32_t packed;
+   uint8_t packed[16] = {0};
+   unsigned packed_size_B;
 
    if (list->state != D12_LIST_RECORDING)
       return;
 
    if (!values || !view ||
-       !d12_pack_clear_uav_uint(view->format, values, &packed)) {
+       !d12_pack_clear_uav_uint(view->format, values, packed,
+                                &packed_size_B)) {
       mesa_loge("ClearUnorderedAccessViewUint: unsupported or invalid view");
       list->state = D12_LIST_ERROR;
       return;
    }
 
-   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, &packed,
-                      sizeof(packed),
+   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, packed,
+                      packed_size_B,
                       num_rects, rects);
 }
 

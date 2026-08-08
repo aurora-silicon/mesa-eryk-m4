@@ -1464,7 +1464,8 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
                   nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
          .align_mul = 8);
       nir_def *count_or_bytes = nir_channel(b, info, 0);
-      nir_def *descriptor_stride = nir_channel(b, info, 1);
+      nir_def *descriptor_stride =
+         nir_iand_imm(b, nir_channel(b, info, 1), 0xffff);
 
       size = nir_bcsel(b, nir_ine_imm(b, descriptor_stride, 0),
                        nir_imul(b, count_or_bytes, descriptor_stride),
@@ -3547,7 +3548,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                      nir_imul_imm(b, nir_u2u64(b, th.slot), 8)),
             .align_mul = 8);
          nir_def *count = nir_channel(b, info, 0);
-         nir_def *stride = nir_channel(b, info, 1);
+         nir_def *stride =
+            nir_iand_imm(b, nir_channel(b, info, 1), 0xffff);
          def_result(
             ctx, inst,
             th.kind == D12_RES_KIND_STRUCTURED_BUFFER
