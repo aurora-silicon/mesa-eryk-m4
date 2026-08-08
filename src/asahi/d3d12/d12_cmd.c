@@ -1285,12 +1285,22 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    if (pso) {
       if ((bound_rts || dsv) && pso->tib.nr_samples != rt_samples) {
-         mesa_loge("render pass sample mismatch: PSO %u, attachments %u",
+         /* Native D3D12 drivers are robust to a multisampled PSO on a
+          * single-sampled attachment (only sample zero is live), and the
+          * conformance suite also exercises the inverse out-of-spec case.
+          * The attachment owns the actual tile/PBE allocation. Rebuild only
+          * that layout at its sample count; the compiled shader keeps the
+          * same formats and per-sample stride, so the overlapping sample-zero
+          * ABI is unchanged and no descriptor address is invented. */
+         seg->tib = agx_build_tilebuffer_layout(
+            pso->tib.logical_format, rtv_count, rt_samples,
+            seg->layers > 1);
+         mesa_logw("render pass sample mismatch: PSO %u, attachments %u; "
+                   "using attachment sample allocation",
                    pso->tib.nr_samples, rt_samples);
-         list->state = D12_LIST_ERROR;
-         return NULL;
+      } else {
+         seg->tib = pso->tib;
       }
-      seg->tib = pso->tib;
 
       if (getenv("D3D12AGX_VALIDATE_MRT")) {
          for (unsigned i = 0; i < rtv_count; i++) {
