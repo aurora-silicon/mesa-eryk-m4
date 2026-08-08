@@ -23,7 +23,12 @@
 #include "util/format/u_format.h"
 #include "util/u_math.h"
 
-#define D12_STREAM_BO_SIZE (16 * 1024 * 1024)
+/* A legal ExecuteIndirect count call may retain thousands of software-
+ * geometry placeholders until the count is known on the GPU.  Keep one
+ * bounded command-list allocation large enough for that worst case; reset
+ * still recycles subsequent recordings toward their measured high-water
+ * mark in d12_list_take_fresh_storage(). */
+#define D12_STREAM_BO_SIZE (32 * 1024 * 1024)
 #define D12_USC_BO_SIZE    (32 * 1024 * 1024)
 #define D12_RECYCLED_STREAM_MIN (128 * 1024)
 #define D12_RECYCLED_USC_MIN    (64 * 1024)
@@ -535,12 +540,13 @@ d12_list_close_cdm(struct d12_cmd_list *list)
    }
 }
 
-/* Size of one render pass's pre-graphics compute stream. Dispatches are
- * ~0x40 bytes each plus a barrier, so this holds a few hundred — far more
- * than a pass with geometry shaders in it will record before the segment
- * limit bites.
+/* Size of one render pass's pre-graphics compute stream. ExecuteIndirect
+ * count-buffer calls retain zero-count placeholders up to MaxCommandCount so
+ * their GPU-late count remains correct. The conformance state test legally
+ * records 2,052 software-geometry draws in one pass; allow that bounded case
+ * within the bounded command-list BO.
  */
-#define D12_PREGFX_STREAM_SIZE (32 * 1024)
+#define D12_PREGFX_STREAM_SIZE (512 * 1024)
 
 /*
  * Terminate the pre-graphics stream, if one is open. Called when the
@@ -4872,7 +4878,9 @@ static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
               unsigned first_instance, bool indexed, unsigned first_index,
-              uint64_t indirect_args)
+              uint64_t indirect_args,
+              const struct libagx_d3d12_indirect_patch_args *indirect_patches,
+              unsigned indirect_patch_count)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -4949,6 +4957,21 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    }
 
    struct d12_segment *seg = &list->segments[list->segment_count - 1];
+
+   /* ExecuteIndirect argument and root-constant data may have been produced
+    * by GPU work earlier in this command list. Patch bounded snapshots in a
+    * compute segment immediately before the render pass which consumes them.
+    */
+   for (unsigned i = 0; i < indirect_patch_count; i++) {
+      d12_list_dispatch_precomp_to(list, LIBAGX_D3D12_INDIRECT_PATCH,
+                                   &indirect_patches[i],
+                                   sizeof(indirect_patches[i]), agx_1d(1),
+                                   true);
+      if (list->state != D12_LIST_RECORDING)
+         return;
+   }
+   if (indirect_patch_count)
+      seg = &list->segments[list->segment_count - 1];
 
    /* Root table, exactly as the dispatch path builds it -- from the
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
@@ -5627,7 +5650,7 @@ d12_list_DispatchMesh(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y,
       return;
    }
 
-   d12_list_draw(list, x, y, z, 0, false, 0, 0);
+   d12_list_draw(list, x, y, z, 0, false, 0, 0, NULL, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -5660,7 +5683,7 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
    }
 
    d12_list_draw(list, vertex_count_per_instance, instance_count,
-                 start_vertex, start_instance, false, 0, 0);
+                 start_vertex, start_instance, false, 0, 0, NULL, 0);
 }
 
 static void STDMETHODCALLTYPE
@@ -5702,7 +5725,8 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
       return;
 
    d12_list_draw(list, index_count_per_instance, instance_count,
-                 (unsigned)base_vertex, start_instance, true, start_index, 0);
+                 (unsigned)base_vertex, start_instance, true, start_index, 0,
+                 NULL, 0);
 }
 
 static uint64_t
@@ -5748,13 +5772,8 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
        (count_buffer->device != list->device ||
         count_buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
         count_buffer_offset > count_buffer->desc.Width ||
-        sizeof(uint32_t) > count_buffer->desc.Width - count_buffer_offset ||
-        (count_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
-         count_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD) ||
-        (argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
-         argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD))) {
-      mesa_loge("ExecuteIndirect: count buffers currently require bounded "
-                "CPU-visible argument and count storage");
+        sizeof(uint32_t) > count_buffer->desc.Width - count_buffer_offset)) {
+      mesa_loge("ExecuteIndirect: invalid count buffer");
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -5770,6 +5789,17 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                 : sizeof(D3D12_DRAW_ARGUMENTS);
    if (type != D3D12_INDIRECT_ARGUMENT_TYPE_DRAW && !indexed && !dispatch) {
       mesa_loge("ExecuteIndirect: argument type %u unsupported", type);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (dispatch && count_buffer &&
+       ((count_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
+         count_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD) ||
+        (argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_UPLOAD &&
+         argument_buffer->heap_props.Type != D3D12_HEAP_TYPE_GPU_UPLOAD))) {
+      mesa_loge("ExecuteIndirect: dispatch count buffers currently require "
+                "CPU-visible argument and count storage");
       list->state = D12_LIST_ERROR;
       return;
    }
@@ -5817,9 +5847,18 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   if (terminal_index > D12_MAX_ROOT_PARAMS) {
+      mesa_loge("ExecuteIndirect: too many root argument records");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    for (UINT i = 0; i < max_command_count; i++) {
       uint64_t command_offset = argument_buffer_offset + (uint64_t)i * stride;
       size_t running_offset = 0;
+      struct libagx_d3d12_indirect_patch_args
+         patches[D12_MAX_ROOT_PARAMS + 1];
+      unsigned patch_count = 0;
 
       for (UINT j = 0; j < terminal_index; j++) {
          const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[j];
@@ -5834,16 +5873,29 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
          if (!destination || list->state != D12_LIST_RECORDING)
             return;
 
-         struct d12_indirect_constant_fixup fixup = {
-            .source = argument_buffer,
-            .source_offset_B = source_offset,
-            .destination_gpu = destination +
-               (uint64_t)arg->Constant.DestOffsetIn32BitValues * 4,
-            .size_B = size_B,
-         };
-         util_dynarray_append_typed(&list->indirect_constant_fixups,
-                                    struct d12_indirect_constant_fixup,
-                                    fixup);
+         if (dispatch) {
+            struct d12_indirect_constant_fixup fixup = {
+               .source = argument_buffer,
+               .source_offset_B = source_offset,
+               .destination_gpu = destination +
+                  (uint64_t)arg->Constant.DestOffsetIn32BitValues * 4,
+               .size_B = size_B,
+            };
+            util_dynarray_append_typed(&list->indirect_constant_fixups,
+                                       struct d12_indirect_constant_fixup,
+                                       fixup);
+         } else {
+            patches[patch_count++] =
+               (struct libagx_d3d12_indirect_patch_args){
+                  .out = destination +
+                     (uint64_t)arg->Constant.DestOffsetIn32BitValues * 4,
+                  .in = argument_buffer->addr + source_offset,
+                  .draw_count = count_buffer
+                     ? count_buffer->addr + count_buffer_offset : 0,
+                  .command_index = i,
+                  .size_B = size_B,
+               };
+         }
          running_offset += size_B;
       }
 
@@ -5854,29 +5906,39 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
          if (!destination)
             return;
 
-         struct d12_indirect_argument_fixup fixup = {
-            .source = argument_buffer,
-            .count_source = count_buffer,
-            .source_offset_B = command_offset + terminal_offset,
-            .count_offset_B = count_buffer_offset,
-            .destination_gpu = destination,
-            .size_B = terminal_size,
-            .command_index = i,
-         };
-         util_dynarray_append_typed(&list->indirect_argument_fixups,
-                                    struct d12_indirect_argument_fixup,
-                                    fixup);
+         if (dispatch) {
+            struct d12_indirect_argument_fixup fixup = {
+               .source = argument_buffer,
+               .count_source = count_buffer,
+               .source_offset_B = command_offset + terminal_offset,
+               .count_offset_B = count_buffer_offset,
+               .destination_gpu = destination,
+               .size_B = terminal_size,
+               .command_index = i,
+            };
+            util_dynarray_append_typed(&list->indirect_argument_fixups,
+                                       struct d12_indirect_argument_fixup,
+                                       fixup);
+         } else {
+            patches[patch_count++] =
+               (struct libagx_d3d12_indirect_patch_args){
+                  .out = destination,
+                  .in = argument_buffer->addr + command_offset + terminal_offset,
+                  .draw_count = count_buffer->addr + count_buffer_offset,
+                  .command_index = i,
+                  .size_B = terminal_size,
+               };
+         }
          args = destination;
       }
       if (dispatch)
          d12_list_dispatch_pso(list, 0, 0, 0, args);
       else
-         d12_list_draw(list, 0, 0, 0, 0, indexed, 0, args);
+         d12_list_draw(list, 0, 0, 0, 0, indexed, 0, args, patches,
+                       patch_count);
       if (list->state != D12_LIST_RECORDING)
          return;
    }
-
-   (void)count_buffer_offset;
 }
 
 /*
@@ -6697,7 +6759,7 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
 
       d12_list_draw(list, draw->vertex_count, draw->instance_count,
                     draw->first_vertex, draw->first_instance, draw->indexed,
-                    draw->first_index, 0);
+                    draw->first_index, 0, NULL, 0);
       if (list->state != D12_LIST_RECORDING)
          return;
    }

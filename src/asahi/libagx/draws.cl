@@ -30,6 +30,23 @@ libagx_predicate_indirect(global uint32_t *out, constant uint32_t *in,
 }
 
 /*
+ * D3D12 ExecuteIndirect may source both its terminal draw record and root
+ * constants from buffers written earlier on the GPU. Patch one bounded
+ * argument slice in the pre-graphics stream so the draw observes those
+ * writes, and predicate it against the execution-time count buffer.
+ */
+KERNEL(1)
+libagx_d3d12_indirect_patch(global uint8_t *out, constant uint8_t *in,
+                            constant uint32_t *draw_count,
+                            uint32_t command_index, uint32_t size_B)
+{
+   bool enabled = !draw_count || command_index < *draw_count;
+
+   for (uint i = 0; i < size_B; ++i)
+      out[i] = enabled ? in[i] : 0;
+}
+
+/*
  * D3D12 predication applies to both draws and dispatches and reads a 64-bit
  * value. The command-list front end snapshots that value at SetPredication,
  * then uses this kernel to turn an ordinary indirect argument record into a
