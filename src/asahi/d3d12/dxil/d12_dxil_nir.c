@@ -1723,6 +1723,140 @@ find_output_slot(struct trans_ctx *ctx, unsigned sig_id, unsigned row)
    return free_slot;
 }
 
+/* DXC is permitted to leave derivatives in non-uniform LLVM blocks and
+ * relies on the target compiler to execute them for the whole quad.  NIR's
+ * derivative intrinsics describe the operation, but they do not repair that
+ * placement by themselves.  Move a derivative and its safe dependency chain
+ * to the entry block while the DXIL CFG is still explicit.
+ *
+ * Ordinary global loads are intentionally not speculatable.  Constant-buffer
+ * reads are the one exception here: D3D12 makes a CBV read-only to the shader,
+ * and the root-table/descriptor loads needed to reach it are immutable for the
+ * draw.  Recognize that provenance from the DXIL value graph instead of
+ * treating arbitrary load_global instructions (notably UAV reads) as safe.
+ */
+static bool
+dxil_value_is_cbuffer_data(const struct trans_ctx *ctx, uint32_t value)
+{
+   for (unsigned i = 0; i < ctx->func->num_insts; i++) {
+      const struct d12_inst *producer = &ctx->func->insts[i];
+      if (producer->result_value != value)
+         continue;
+
+      if (producer->code == D12_FUNC_INST_EXTRACTVAL && producer->num_ops)
+         return dxil_value_is_cbuffer_data(ctx, producer->ops[0]);
+
+      if (producer->code != D12_FUNC_INST_CALL || producer->num_ops < 1)
+         return false;
+
+      uint32_t callee_id = producer->ops[0];
+      if (callee_id >= ctx->mod->num_values)
+         return false;
+
+      const struct d12_value *callee = &ctx->mod->values[callee_id];
+      return callee->kind == D12_VALUE_FUNCTION && callee->name &&
+             (!strncmp(callee->name, "dx.op.cbufferLoad.", 18) ||
+              !strncmp(callee->name, "dx.op.cbufferLoadLegacy.", 24));
+   }
+
+   return false;
+}
+
+struct d12_derivative_hoist {
+   nir_block *entry;
+   nir_cursor cursor;
+   bool allow_cbuffer_loads;
+};
+
+static bool
+can_hoist_derivative_def(nir_def *def, struct d12_derivative_hoist *state);
+
+static bool
+can_hoist_derivative_src(nir_src *src, void *data)
+{
+   return can_hoist_derivative_def(src->ssa, data);
+}
+
+static bool
+can_hoist_derivative_def(nir_def *def, struct d12_derivative_hoist *state)
+{
+   if (nir_def_block(def) == state->entry)
+      return true;
+
+   nir_instr *instr = nir_def_instr(def);
+   bool safe = nir_instr_can_speculate(instr);
+
+   if (!safe && state->allow_cbuffer_loads &&
+       instr->type == nir_instr_type_intrinsic) {
+      nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
+      safe = op == nir_intrinsic_load_global ||
+             op == nir_intrinsic_load_root_agx;
+   }
+
+   return safe && nir_foreach_src(instr, can_hoist_derivative_src, state);
+}
+
+static bool
+hoist_derivative_src(nir_src *src, void *data);
+
+static void
+hoist_derivative_def(nir_def *def, struct d12_derivative_hoist *state)
+{
+   nir_instr *instr = nir_def_instr(def);
+   if (instr->block == state->entry)
+      return;
+
+   nir_foreach_src(instr, hoist_derivative_src, state);
+   nir_instr_move(state->cursor, instr);
+   state->cursor = nir_after_instr(instr);
+}
+
+static bool
+hoist_derivative_src(nir_src *src, void *data)
+{
+   hoist_derivative_def(src->ssa, data);
+   return true;
+}
+
+static nir_def *
+emit_dxil_derivative(struct trans_ctx *ctx, nir_def *src,
+                     nir_intrinsic_op op, bool cbuffer)
+{
+   nir_builder *b = ctx->b;
+   nir_cursor saved = b->cursor;
+   nir_block *saved_block = nir_cursor_current_block(saved);
+   nir_block *entry = nir_start_block(b->impl);
+   struct d12_derivative_hoist state = {
+      .entry = entry,
+      .cursor = nir_after_block_before_jump(entry),
+      .allow_cbuffer_loads = cbuffer,
+   };
+
+   bool hoist = ctx->num_blocks > 1 &&
+                saved_block != entry &&
+                can_hoist_derivative_def(src, &state);
+   if (hoist) {
+      hoist_derivative_def(src, &state);
+      b->cursor = state.cursor;
+   }
+
+   nir_def *result;
+   switch (op) {
+   case nir_intrinsic_ddx_coarse: result = nir_ddx_coarse(b, src); break;
+   case nir_intrinsic_ddy_coarse: result = nir_ddy_coarse(b, src); break;
+   case nir_intrinsic_ddx_fine:   result = nir_ddx_fine(b, src); break;
+   case nir_intrinsic_ddy_fine:   result = nir_ddy_fine(b, src); break;
+   default: UNREACHABLE("not a derivative intrinsic");
+   }
+
+   if (hoist)
+      /* The saved cursor may name the operand instruction we just moved.
+       * Reconstruct it from the original block instead of following that
+       * instruction into the entry block. */
+      b->cursor = nir_after_block_before_jump(saved_block);
+   return result;
+}
+
 /*
  * dx.op call translation. `args` are the call's operands: args[0] is the
  * callee, args[1] the opcode constant, args[2..] the real parameters.
@@ -3675,19 +3809,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
    case D12_DXOP_DERIV_COARSE_X:
       NEED(1);
-      def_result(ctx, inst, nir_ddx_coarse(b, get_def(ctx, p[0])));
+      def_result(ctx, inst,
+                 emit_dxil_derivative(ctx, get_def(ctx, p[0]),
+                                      nir_intrinsic_ddx_coarse,
+                                      dxil_value_is_cbuffer_data(ctx, p[0])));
       return true;
    case D12_DXOP_DERIV_COARSE_Y:
       NEED(1);
-      def_result(ctx, inst, nir_ddy_coarse(b, get_def(ctx, p[0])));
+      def_result(ctx, inst,
+                 emit_dxil_derivative(ctx, get_def(ctx, p[0]),
+                                      nir_intrinsic_ddy_coarse,
+                                      dxil_value_is_cbuffer_data(ctx, p[0])));
       return true;
    case D12_DXOP_DERIV_FINE_X:
       NEED(1);
-      def_result(ctx, inst, nir_ddx_fine(b, get_def(ctx, p[0])));
+      def_result(ctx, inst,
+                 emit_dxil_derivative(ctx, get_def(ctx, p[0]),
+                                      nir_intrinsic_ddx_fine,
+                                      dxil_value_is_cbuffer_data(ctx, p[0])));
       return true;
    case D12_DXOP_DERIV_FINE_Y:
       NEED(1);
-      def_result(ctx, inst, nir_ddy_fine(b, get_def(ctx, p[0])));
+      def_result(ctx, inst,
+                 emit_dxil_derivative(ctx, get_def(ctx, p[0]),
+                                      nir_intrinsic_ddy_fine,
+                                      dxil_value_is_cbuffer_data(ctx, p[0])));
       return true;
 
    case D12_DXOP_DOT2:

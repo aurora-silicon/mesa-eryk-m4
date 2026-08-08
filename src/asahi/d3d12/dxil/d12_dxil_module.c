@@ -580,6 +580,14 @@ parse_function_record(struct parse_ctx *ctx, const struct d12_record *rec)
    case D12_FUNC_INST_VSELECT:
       for (unsigned i = 0; i < rec->num_ops && inst->num_ops < 3; i++)
          inst->ops[inst->num_ops++] = rel_to_abs(ctx, rec->ops[i]);
+
+      /* LLVM does not spell out a select's result type: it is the type of
+       * either selected value (operands 0 and 1).  Preserve it here so a
+       * floating binop fed by a select remains floating.  Leaving this at
+       * ~0u silently turned e.g. `select ...; mul float` into integer
+       * multiplication on the float bit patterns. */
+      if (inst->num_ops >= 1 && inst->ops[0] < mod->num_values)
+         inst->result_type = mod->values[inst->ops[0]].type;
       defines_value = true;
       break;
 
