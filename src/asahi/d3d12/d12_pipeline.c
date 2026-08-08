@@ -2908,6 +2908,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       return E_INVALIDARG;
    }
 
+   for (unsigned i = 0; i < nr_rt; i++) {
+      if (formats[i] != PIPE_FORMAT_NONE && blend_keys[i].colormask &&
+          (fs_outputs & BITFIELD64_BIT(FRAG_RESULT_DATA0 + i)))
+         pso->rt_write_mask |= BITFIELD_BIT(i);
+   }
+
    /* Cull distance is an emulated pre-fragment operation on AGX. Keep it in
     * the standard fragment prolog, exactly like Honeykrisp, rather than in
     * the API shader main. Besides preserving the required ordering relative

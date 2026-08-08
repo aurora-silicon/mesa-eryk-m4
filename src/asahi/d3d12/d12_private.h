@@ -766,6 +766,11 @@ struct d12_pipeline_state {
    struct agx_tilebuffer_layout tib;
    struct agx_unlinked_uvs_layout uvs;
    struct agx_varyings_vs varyings;
+   /* Render targets the pixel shader can actually modify after applying the
+    * D3D12 write mask. Bound-but-unwritten attachments must not get an EOT
+    * store: doing so turns a stale background load into an observable write.
+    */
+   uint8_t rt_write_mask;
    struct d12_depth_stencil_state ds;
    struct d12_raster_state raster;
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
@@ -982,6 +987,7 @@ struct d12_segment {
    struct d12_resource *rt[AGX_MAX_RENDER_TARGETS];
    enum pipe_format rt_view_format[AGX_MAX_RENDER_TARGETS];
    uint8_t rt_count;
+   uint8_t rt_write_mask;
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
    uint32_t partial_bg_usc, partial_eot_usc;
    struct agx_counts_packed bg_counts, eot_counts;

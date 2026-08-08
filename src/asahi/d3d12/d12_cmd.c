@@ -1284,6 +1284,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (pso) {
+      seg->rt_write_mask = pso->rt_write_mask;
       if ((bound_rts || dsv) && pso->tib.nr_samples != rt_samples) {
          /* Native D3D12 drivers are robust to a multisampled PSO on a
           * single-sampled attachment (only sample zero is live), and the
@@ -1315,6 +1316,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
          }
       }
    } else {
+      seg->rt_write_mask = BITFIELD_MASK(rtv_count);
       enum pipe_format formats[AGX_MAX_RENDER_TARGETS] = {0};
       for (unsigned i = 0; i < rtv_count; i++)
          formats[i] = seg->rt_view_format[i];
@@ -1335,6 +1337,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
    enum agx_bg_eot_op partial_eot[AGX_MAX_RENDER_TARGETS] = {0};
    for (unsigned i = 0; i < rtv_count; i++) {
       if (!seg->rt[i])
+         continue;
+      if (!(seg->rt_write_mask & BITFIELD_BIT(i)))
          continue;
       main_bg[i] = bg_op;
       main_eot[i] = AGX_EOT_STORE;
@@ -4492,7 +4496,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          &list->segments[list->segment_count - 1];
       if (!d12_segment_matches_bindings(list, open,
                                         pso->has_pixel_shader) ||
-          memcmp(&open->tib, &pso->tib, sizeof(open->tib)) != 0)
+          memcmp(&open->tib, &pso->tib, sizeof(open->tib)) != 0 ||
+          open->rt_write_mask != pso->rt_write_mask)
          d12_list_close_cdm(list);
    }
 
