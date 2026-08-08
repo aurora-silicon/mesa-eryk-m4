@@ -64,6 +64,9 @@ d12_queue_QueryInterface(ID3D12CommandQueue *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&queue->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12CommandQueue::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -920,7 +923,8 @@ d12_queue_create(struct d12_device *device,
       free(queue);
       return E_FAIL;
    }
-   d12_private_data_store_init(&queue->private_data);
+   d12_private_data_store_init(&queue->private_data,
+                               (IUnknown *)&queue->iface);
    d12_device_add_ref(device);
 
    if (thrd_create(&queue->worker, d12_queue_worker, queue) != thrd_success) {

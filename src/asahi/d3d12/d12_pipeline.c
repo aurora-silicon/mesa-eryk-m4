@@ -67,15 +67,173 @@ d12_private_data_entry_destroy(struct d12_private_data_entry *entry)
    free(entry);
 }
 
+/* DirectX-Guids in the current build does not export this d3dcommon IID. */
+static const GUID d12_iid_destruction_notifier = {
+   0xa06eb39a, 0x50da, 0x425b,
+   {0x8c, 0x31, 0x4e, 0xec, 0xd6, 0xc2, 0x70, 0xf3},
+};
+
+static inline struct d12_destruction_notifier *
+d12_notifier_from_iface(ID3DDestructionNotifier *iface)
+{
+   return (struct d12_destruction_notifier *)iface;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_notifier_QueryInterface(ID3DDestructionNotifier *iface, REFIID riid,
+                            void **out)
+{
+   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
+   return IUnknown_QueryInterface(notifier->parent, riid, out);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_notifier_AddRef(ID3DDestructionNotifier *iface)
+{
+   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
+   return IUnknown_AddRef(notifier->parent);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_notifier_Release(ID3DDestructionNotifier *iface)
+{
+   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
+   return IUnknown_Release(notifier->parent);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_notifier_RegisterDestructionCallback(ID3DDestructionNotifier *iface,
+                                         PFN_DESTRUCTION_CALLBACK callback,
+                                         void *data, UINT *callback_id)
+{
+   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
+
+   if (!callback)
+      return DXGI_ERROR_INVALID_CALL;
+
+   simple_mtx_lock(&notifier->lock);
+
+   if (notifier->notified) {
+      simple_mtx_unlock(&notifier->lock);
+      return DXGI_ERROR_INVALID_CALL;
+   }
+
+   if (notifier->callback_count == notifier->callback_capacity) {
+      uint32_t capacity = notifier->callback_capacity
+                              ? 2 * notifier->callback_capacity
+                              : 4;
+      struct d12_destruction_callback *callbacks =
+         realloc(notifier->callbacks, capacity * sizeof(*callbacks));
+
+      if (!callbacks) {
+         simple_mtx_unlock(&notifier->lock);
+         return E_OUTOFMEMORY;
+      }
+
+      notifier->callbacks = callbacks;
+      notifier->callback_capacity = capacity;
+   }
+
+   struct d12_destruction_callback *entry =
+      &notifier->callbacks[notifier->callback_count++];
+   entry->callback = callback;
+   entry->data = data;
+   entry->id = 0;
+
+   if (callback_id) {
+      if (!(++notifier->next_callback_id))
+         ++notifier->next_callback_id;
+
+      entry->id = notifier->next_callback_id;
+      *callback_id = entry->id;
+   }
+
+   simple_mtx_unlock(&notifier->lock);
+   return S_OK;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_notifier_UnregisterDestructionCallback(ID3DDestructionNotifier *iface,
+                                           UINT callback_id)
+{
+   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
+
+   if (!callback_id)
+      return DXGI_ERROR_NOT_FOUND;
+
+   simple_mtx_lock(&notifier->lock);
+
+   for (uint32_t i = 0; i < notifier->callback_count; ++i) {
+      if (notifier->callbacks[i].id != callback_id)
+         continue;
+
+      memmove(&notifier->callbacks[i], &notifier->callbacks[i + 1],
+              (notifier->callback_count - i - 1) *
+                 sizeof(notifier->callbacks[0]));
+      --notifier->callback_count;
+      simple_mtx_unlock(&notifier->lock);
+      return S_OK;
+   }
+
+   simple_mtx_unlock(&notifier->lock);
+   return DXGI_ERROR_NOT_FOUND;
+}
+
+static const ID3DDestructionNotifierVtbl d12_notifier_vtbl = {
+   .QueryInterface = d12_notifier_QueryInterface,
+   .AddRef = d12_notifier_AddRef,
+   .Release = d12_notifier_Release,
+   .RegisterDestructionCallback = d12_notifier_RegisterDestructionCallback,
+   .UnregisterDestructionCallback = d12_notifier_UnregisterDestructionCallback,
+};
+
+static void
+d12_notifier_notify_and_destroy(struct d12_destruction_notifier *notifier)
+{
+   simple_mtx_lock(&notifier->lock);
+   struct d12_destruction_callback *callbacks = notifier->callbacks;
+   uint32_t callback_count = notifier->callback_count;
+   notifier->callbacks = NULL;
+   notifier->callback_count = 0;
+   notifier->callback_capacity = 0;
+   notifier->notified = true;
+   simple_mtx_unlock(&notifier->lock);
+
+   for (uint32_t i = 0; i < callback_count; ++i)
+      callbacks[i].callback(callbacks[i].data);
+
+   free(callbacks);
+   simple_mtx_destroy(&notifier->lock);
+}
+
 void
-d12_private_data_store_init(struct d12_private_data_store *store)
+d12_private_data_store_init(struct d12_private_data_store *store,
+                            IUnknown *parent)
 {
    simple_mtx_init(&store->lock, mtx_plain);
+   store->destruction_notifier.iface.lpVtbl =
+      (ID3DDestructionNotifierVtbl *)&d12_notifier_vtbl;
+   store->destruction_notifier.parent = parent;
+   simple_mtx_init(&store->destruction_notifier.lock, mtx_plain);
+}
+
+bool
+d12_private_data_query_notifier(struct d12_private_data_store *store,
+                                REFIID riid, void **out)
+{
+   if (!d12_guid_equal(riid, &d12_iid_destruction_notifier))
+      return false;
+
+   d12_notifier_AddRef(&store->destruction_notifier.iface);
+   *out = &store->destruction_notifier.iface;
+   return true;
 }
 
 void
 d12_private_data_store_destroy(struct d12_private_data_store *store)
 {
+   d12_notifier_notify_and_destroy(&store->destruction_notifier);
+
    simple_mtx_lock(&store->lock);
    struct d12_private_data_entry *entry = store->entries;
    store->entries = NULL;
@@ -229,6 +387,9 @@ d12_root_sig_QueryInterface(ID3D12RootSignature *iface, REFIID riid,
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&rs->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12RootSignature::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -378,7 +539,7 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
    rs->iface.lpVtbl = (ID3D12RootSignatureVtbl *)&d12_root_sig_vtbl;
    rs->refcount = 1;
    rs->device = device;
-   d12_private_data_store_init(&rs->private_data);
+   d12_private_data_store_init(&rs->private_data, (IUnknown *)&rs->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_root_sig_QueryInterface(&rs->iface, riid, out);
@@ -413,6 +574,9 @@ d12_pso_QueryInterface(ID3D12PipelineState *iface, REFIID riid, void **out)
       *out = iface;
       return S_OK;
    }
+
+   if (d12_private_data_query_notifier(&pso->private_data, riid, out))
+      return S_OK;
 
    d12_log_unknown_riid("ID3D12PipelineState::QueryInterface", riid);
    *out = NULL;
@@ -766,7 +930,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    pso->is_compute = true;
    pso->info = part.info;
    pso->code_va = pso->code_bo->va->addr;
-   d12_private_data_store_init(&pso->private_data);
+   d12_private_data_store_init(&pso->private_data, (IUnknown *)&pso->iface);
    d12_device_add_ref(device);
 
    mesa_logi("compiled compute shader: %u bytes AGX, %u GPRs, main +0x%x, "
@@ -3286,7 +3450,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    pso->refcount = 1;
    pso->device = device;
    pso->is_compute = false;
-   d12_private_data_store_init(&pso->private_data);
+   d12_private_data_store_init(&pso->private_data, (IUnknown *)&pso->iface);
    d12_device_add_ref(device);
 
    mesa_logi("compiled graphics pipeline: VS %u B / %u GPRs, FS %u B / %u "

@@ -123,6 +123,9 @@ d12_device_QueryInterface(ID3D12Device2 *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&device->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12Device::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -1666,6 +1669,186 @@ d12_command_signature_from_iface(ID3D12CommandSignature *iface)
    return (struct d12_command_signature *)iface;
 }
 
+struct d12_pipeline_library {
+   ID3D12PipelineLibrary iface; /* must be first */
+   uint32_t refcount;
+   struct d12_private_data_store private_data;
+   struct d12_device *device; /* holds a device ref */
+};
+
+static inline struct d12_pipeline_library *
+d12_pipeline_library_from_iface(ID3D12PipelineLibrary *iface)
+{
+   return (struct d12_pipeline_library *)iface;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_QueryInterface(ID3D12PipelineLibrary *iface,
+                                    REFIID riid, void **out)
+{
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+
+   if (!out)
+      return E_POINTER;
+
+   if (d12_guid_equal(riid, &IID_IUnknown) ||
+       d12_guid_equal(riid, &IID_ID3D12Object) ||
+       d12_guid_equal(riid, &IID_ID3D12DeviceChild) ||
+       d12_guid_equal(riid, &IID_ID3D12PipelineLibrary)) {
+      p_atomic_inc(&library->refcount);
+      *out = iface;
+      return S_OK;
+   }
+
+   if (d12_private_data_query_notifier(&library->private_data, riid, out))
+      return S_OK;
+
+   d12_log_unknown_riid("ID3D12PipelineLibrary::QueryInterface", riid);
+   *out = NULL;
+   return E_NOINTERFACE;
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_pipeline_library_AddRef(ID3D12PipelineLibrary *iface)
+{
+   return p_atomic_inc_return(
+      &d12_pipeline_library_from_iface(iface)->refcount);
+}
+
+static ULONG STDMETHODCALLTYPE
+d12_pipeline_library_Release(ID3D12PipelineLibrary *iface)
+{
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   uint32_t refs = p_atomic_dec_return(&library->refcount);
+
+   if (!refs) {
+      d12_private_data_store_destroy(&library->private_data);
+      d12_device_release(library->device);
+      free(library);
+   }
+
+   return refs;
+}
+
+D12_DEFINE_PRIVATE_DATA_METHODS(d12_pipeline_library, ID3D12PipelineLibrary,
+                                d12_pipeline_library_from_iface)
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_GetDevice(ID3D12PipelineLibrary *iface, REFIID riid,
+                               void **out)
+{
+   struct d12_pipeline_library *library =
+      d12_pipeline_library_from_iface(iface);
+   return ID3D12Device_QueryInterface(&library->device->iface, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_StorePipeline(ID3D12PipelineLibrary *iface, LPCWSTR name,
+                                   ID3D12PipelineState *pipeline)
+{
+   (void)iface;
+   (void)name;
+   (void)pipeline;
+   return E_NOTIMPL;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_LoadGraphicsPipeline(
+   ID3D12PipelineLibrary *iface, LPCWSTR name,
+   const D3D12_GRAPHICS_PIPELINE_STATE_DESC *desc, REFIID riid, void **out)
+{
+   (void)iface;
+   (void)name;
+   (void)desc;
+   (void)riid;
+   if (out)
+      *out = NULL;
+   return E_INVALIDARG;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_LoadComputePipeline(
+   ID3D12PipelineLibrary *iface, LPCWSTR name,
+   const D3D12_COMPUTE_PIPELINE_STATE_DESC *desc, REFIID riid, void **out)
+{
+   (void)iface;
+   (void)name;
+   (void)desc;
+   (void)riid;
+   if (out)
+      *out = NULL;
+   return E_INVALIDARG;
+}
+
+static SIZE_T STDMETHODCALLTYPE
+d12_pipeline_library_GetSerializedSize(ID3D12PipelineLibrary *iface)
+{
+   (void)iface;
+   return 0;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_pipeline_library_Serialize(ID3D12PipelineLibrary *iface, void *data,
+                               SIZE_T size)
+{
+   (void)iface;
+   (void)data;
+   (void)size;
+   return E_NOTIMPL;
+}
+
+static const ID3D12PipelineLibraryVtbl d12_pipeline_library_vtbl = {
+   .QueryInterface = d12_pipeline_library_QueryInterface,
+   .AddRef = d12_pipeline_library_AddRef,
+   .Release = d12_pipeline_library_Release,
+   .GetPrivateData = d12_pipeline_library_GetPrivateData,
+   .SetPrivateData = d12_pipeline_library_SetPrivateData,
+   .SetPrivateDataInterface = d12_pipeline_library_SetPrivateDataInterface,
+   .SetName = d12_pipeline_library_SetName,
+   .GetDevice = d12_pipeline_library_GetDevice,
+   .StorePipeline = d12_pipeline_library_StorePipeline,
+   .LoadGraphicsPipeline = d12_pipeline_library_LoadGraphicsPipeline,
+   .LoadComputePipeline = d12_pipeline_library_LoadComputePipeline,
+   .GetSerializedSize = d12_pipeline_library_GetSerializedSize,
+   .Serialize = d12_pipeline_library_Serialize,
+};
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreatePipelineLibrary(ID3D12Device2 *iface,
+                                 const void *library_blob,
+                                 SIZE_T library_blob_length, REFIID riid,
+                                 void **out)
+{
+   if (!riid && !out && !library_blob && !library_blob_length)
+      return S_FALSE;
+
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+
+   if (!riid || library_blob || library_blob_length)
+      return E_INVALIDARG;
+
+   struct d12_pipeline_library *library = calloc(1, sizeof(*library));
+   if (!library)
+      return E_OUTOFMEMORY;
+
+   library->iface.lpVtbl =
+      (ID3D12PipelineLibraryVtbl *)&d12_pipeline_library_vtbl;
+   library->refcount = 1;
+   library->device = d12_device_from_iface(iface);
+   d12_device_add_ref(library->device);
+   d12_private_data_store_init(&library->private_data,
+                               (IUnknown *)&library->iface);
+
+   HRESULT hr = d12_pipeline_library_QueryInterface(&library->iface, riid,
+                                                     out);
+   d12_pipeline_library_Release(&library->iface);
+   return hr;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_command_signature_QueryInterface(ID3D12CommandSignature *iface,
                                      REFIID riid, void **out)
@@ -1685,6 +1868,9 @@ d12_command_signature_QueryInterface(ID3D12CommandSignature *iface,
       *out = iface;
       return S_OK;
    }
+
+   if (d12_private_data_query_notifier(&signature->private_data, riid, out))
+      return S_OK;
 
    d12_log_unknown_riid("ID3D12CommandSignature::QueryInterface", riid);
    *out = NULL;
@@ -1833,7 +2019,8 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
    signature->device = device;
    signature->desc = *desc;
    signature->desc.pArgumentDescs = signature->arguments;
-   d12_private_data_store_init(&signature->private_data);
+   d12_private_data_store_init(&signature->private_data,
+                               (IUnknown *)&signature->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_command_signature_QueryInterface(&signature->iface, riid,
@@ -3308,6 +3495,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateGraphicsPipelineState = d12_device_CreateGraphicsPipelineState,
    .CreatePipelineState = d12_device_CreatePipelineState,
    .CreateComputePipelineState = d12_device_CreateComputePipelineState,
+   .CreatePipelineLibrary = d12_device_CreatePipelineLibrary,
    .CreateRootSignature = d12_device_CreateRootSignature,
    .CreateDescriptorHeap = d12_device_CreateDescriptorHeap,
    .CreateCommandSignature = d12_device_CreateCommandSignature,
@@ -3530,7 +3718,8 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       (ID3D12DeviceConfiguration1Vtbl *)&d12_device_config1_vtbl;
    device->refcount = 1;
    device->feature_level = max_fl;
-   d12_private_data_store_init(&device->private_data);
+   d12_private_data_store_init(&device->private_data,
+                               (IUnknown *)&device->iface);
 
    mesa_logi("opened %s (chip 0x%x) as D3D12 device, feature level 0x%x",
              device->dev.name, device->dev.params.chip_id,

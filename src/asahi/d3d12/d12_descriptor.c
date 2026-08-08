@@ -34,6 +34,9 @@ d12_heap_QueryInterface(ID3D12DescriptorHeap *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&heap->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12DescriptorHeap::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -328,7 +331,7 @@ d12_descriptor_heap_create(struct d12_device *device,
    heap->refcount = 1;
    heap->device = device;
    heap->desc = *desc;
-   d12_private_data_store_init(&heap->private_data);
+   d12_private_data_store_init(&heap->private_data, (IUnknown *)&heap->iface);
    d12_device_add_ref(device);
 
    simple_mtx_lock(&device->descriptor_heap_lock);

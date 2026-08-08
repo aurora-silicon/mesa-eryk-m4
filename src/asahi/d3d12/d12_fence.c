@@ -92,6 +92,9 @@ d12_fence_QueryInterface(ID3D12Fence *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&fence->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12Fence::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -511,7 +514,8 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    fence->lifetime_refcount = 1;
    fence->device = device;
    fence->completed_value = initial_value;
-   d12_private_data_store_init(&fence->private_data);
+   d12_private_data_store_init(&fence->private_data,
+                               (IUnknown *)&fence->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_fence_QueryInterface(&fence->iface, riid, out);

@@ -8,20 +8,8 @@
 
 #include "d12_private.h"
 
-/* DirectX-Guids in the current build does not export this d3dcommon IID. */
-static const GUID d12_iid_destruction_notifier = {
-   0xa06eb39a, 0x50da, 0x425b,
-   {0x8c, 0x31, 0x4e, 0xec, 0xd6, 0xc2, 0x70, 0xf3},
-};
-
 static ULONG STDMETHODCALLTYPE
 d12_resource_AddRef(ID3D12Resource *iface);
-
-static ULONG STDMETHODCALLTYPE
-d12_notifier_AddRef(ID3DDestructionNotifier *iface);
-
-static void
-d12_notifier_notify_and_destroy(struct d12_destruction_notifier *notifier);
 
 static HRESULT STDMETHODCALLTYPE
 d12_resource_QueryInterface(ID3D12Resource *iface, REFIID riid, void **out)
@@ -41,11 +29,8 @@ d12_resource_QueryInterface(ID3D12Resource *iface, REFIID riid, void **out)
       return S_OK;
    }
 
-   if (d12_guid_equal(riid, &d12_iid_destruction_notifier)) {
-      d12_notifier_AddRef(&res->destruction_notifier.iface);
-      *out = &res->destruction_notifier.iface;
+   if (d12_private_data_query_notifier(&res->private_data, riid, out))
       return S_OK;
-   }
 
    d12_log_unknown_riid("ID3D12Resource::QueryInterface", riid);
    *out = NULL;
@@ -66,14 +51,6 @@ d12_resource_Release(ID3D12Resource *iface)
    uint32_t refs = p_atomic_dec_return(&res->refcount);
 
    if (refs == 0) {
-      /*
-       * The callback observes the resource's implicit relationships, so run
-       * it before dropping backing storage or the device reference. The
-       * notifier detaches its list before calling user code: a callback must
-       * never run while our mutex is held.
-       */
-      d12_notifier_notify_and_destroy(&res->destruction_notifier);
-
       /* A PLACED resource borrows the heap's BO -- unreferencing it here
        * would free storage the heap still owns and other placed resources
        * are still using. Drop the heap reference instead. */
@@ -93,154 +70,6 @@ d12_resource_Release(ID3D12Resource *iface)
    }
 
    return refs;
-}
-
-static inline struct d12_destruction_notifier *
-d12_notifier_from_iface(ID3DDestructionNotifier *iface)
-{
-   return (struct d12_destruction_notifier *)iface;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_notifier_QueryInterface(ID3DDestructionNotifier *iface, REFIID riid,
-                            void **out)
-{
-   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
-   return d12_resource_QueryInterface(&notifier->resource->iface, riid, out);
-}
-
-static ULONG STDMETHODCALLTYPE
-d12_notifier_AddRef(ID3DDestructionNotifier *iface)
-{
-   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
-   return d12_resource_AddRef(&notifier->resource->iface);
-}
-
-static ULONG STDMETHODCALLTYPE
-d12_notifier_Release(ID3DDestructionNotifier *iface)
-{
-   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
-   return d12_resource_Release(&notifier->resource->iface);
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_notifier_RegisterDestructionCallback(ID3DDestructionNotifier *iface,
-                                         PFN_DESTRUCTION_CALLBACK callback,
-                                         void *data, UINT *callback_id)
-{
-   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
-
-   /* Reject before touching the caller's output value. */
-   if (!callback)
-      return DXGI_ERROR_INVALID_CALL;
-
-   simple_mtx_lock(&notifier->lock);
-
-   if (notifier->notified) {
-      simple_mtx_unlock(&notifier->lock);
-      return DXGI_ERROR_INVALID_CALL;
-   }
-
-   if (notifier->callback_count == notifier->callback_capacity) {
-      uint32_t capacity = notifier->callback_capacity
-                              ? 2 * notifier->callback_capacity
-                              : 4;
-      struct d12_destruction_callback *callbacks =
-         realloc(notifier->callbacks, capacity * sizeof(*callbacks));
-
-      if (!callbacks) {
-         simple_mtx_unlock(&notifier->lock);
-         return E_OUTOFMEMORY;
-      }
-
-      notifier->callbacks = callbacks;
-      notifier->callback_capacity = capacity;
-   }
-
-   struct d12_destruction_callback *entry =
-      &notifier->callbacks[notifier->callback_count++];
-   entry->callback = callback;
-   entry->data = data;
-   entry->id = 0;
-
-   if (callback_id) {
-      /* Zero is reserved: it is never a valid callback ID. */
-      if (!(++notifier->next_callback_id))
-         ++notifier->next_callback_id;
-
-      entry->id = notifier->next_callback_id;
-      *callback_id = entry->id;
-   }
-
-   simple_mtx_unlock(&notifier->lock);
-   return S_OK;
-}
-
-static HRESULT STDMETHODCALLTYPE
-d12_notifier_UnregisterDestructionCallback(ID3DDestructionNotifier *iface,
-                                           UINT callback_id)
-{
-   struct d12_destruction_notifier *notifier = d12_notifier_from_iface(iface);
-
-   if (!callback_id)
-      return DXGI_ERROR_NOT_FOUND;
-
-   simple_mtx_lock(&notifier->lock);
-
-   for (uint32_t i = 0; i < notifier->callback_count; ++i) {
-      if (notifier->callbacks[i].id != callback_id)
-         continue;
-
-      /* Preserve invocation order for the remaining registrations. */
-      memmove(&notifier->callbacks[i], &notifier->callbacks[i + 1],
-              (notifier->callback_count - i - 1) *
-                 sizeof(notifier->callbacks[0]));
-      --notifier->callback_count;
-      simple_mtx_unlock(&notifier->lock);
-      return S_OK;
-   }
-
-   simple_mtx_unlock(&notifier->lock);
-   return DXGI_ERROR_NOT_FOUND;
-}
-
-static const ID3DDestructionNotifierVtbl d12_notifier_vtbl = {
-   .QueryInterface = d12_notifier_QueryInterface,
-   .AddRef = d12_notifier_AddRef,
-   .Release = d12_notifier_Release,
-   .RegisterDestructionCallback = d12_notifier_RegisterDestructionCallback,
-   .UnregisterDestructionCallback = d12_notifier_UnregisterDestructionCallback,
-};
-
-static void
-d12_notifier_init(struct d12_destruction_notifier *notifier,
-                  struct d12_resource *resource)
-{
-   notifier->iface.lpVtbl = (ID3DDestructionNotifierVtbl *)&d12_notifier_vtbl;
-   notifier->resource = resource;
-   simple_mtx_init(&notifier->lock, mtx_plain);
-}
-
-static void
-d12_notifier_notify_and_destroy(struct d12_destruction_notifier *notifier)
-{
-   struct d12_destruction_callback *callbacks;
-   uint32_t callback_count;
-
-   simple_mtx_lock(&notifier->lock);
-   callbacks = notifier->callbacks;
-   callback_count = notifier->callback_count;
-   notifier->callbacks = NULL;
-   notifier->callback_count = 0;
-   notifier->callback_capacity = 0;
-   notifier->notified = true;
-   simple_mtx_unlock(&notifier->lock);
-
-   for (uint32_t i = 0; i < callback_count; ++i)
-      callbacks[i].callback(callbacks[i].data);
-
-   free(callbacks);
-   simple_mtx_destroy(&notifier->lock);
 }
 
 D12_DEFINE_PRIVATE_DATA_METHODS(d12_resource, ID3D12Resource,
@@ -828,8 +657,7 @@ d12_resource_create(struct d12_device *device,
 
    res->iface.lpVtbl = (ID3D12ResourceVtbl *)&d12_resource_vtbl;
    res->refcount = 1;
-   d12_private_data_store_init(&res->private_data);
-   d12_notifier_init(&res->destruction_notifier, res);
+   d12_private_data_store_init(&res->private_data, (IUnknown *)&res->iface);
    res->device = device;
    res->desc = *desc;
 
@@ -1145,6 +973,9 @@ d12_heap_QueryInterface(ID3D12Heap *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&heap->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12Heap::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -1277,7 +1108,7 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    heap->refcount = 1;
    heap->device = device;
    heap->desc = resolved;
-   d12_private_data_store_init(&heap->private_data);
+   d12_private_data_store_init(&heap->private_data, (IUnknown *)&heap->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_heap_QueryInterface(&heap->iface, riid, out);

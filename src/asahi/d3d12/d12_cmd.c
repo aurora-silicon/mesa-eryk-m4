@@ -52,6 +52,9 @@ d12_alloc_QueryInterface(ID3D12CommandAllocator *iface, REFIID riid,
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&alloc->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12CommandAllocator::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -173,7 +176,7 @@ d12_cmd_allocator_create(struct d12_device *device,
    alloc->refcount = 1;
    alloc->device = device;
    alloc->type = type;
-   d12_private_data_store_init(&alloc->private_data);
+   d12_private_data_store_init(&alloc->private_data, (IUnknown *)&alloc->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_alloc_QueryInterface(&alloc->iface, riid, out);
@@ -6047,6 +6050,9 @@ d12_list_QueryInterface(ID3D12GraphicsCommandList6 *iface, REFIID riid,
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&list->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12GraphicsCommandList::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -8176,7 +8182,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->device = device;
    list->type = type;
    list->allocator = allocator;
-   d12_private_data_store_init(&list->private_data);
+   d12_private_data_store_init(&list->private_data, (IUnknown *)&list->iface);
    util_dynarray_init(&list->descriptor_fixups, NULL);
    util_dynarray_init(&list->indirect_constant_fixups, NULL);
    util_dynarray_init(&list->indirect_argument_fixups, NULL);

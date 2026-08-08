@@ -75,13 +75,37 @@ struct d12_private_data_entry {
    bool is_interface;
 };
 
+struct d12_destruction_callback {
+   PFN_DESTRUCTION_CALLBACK callback;
+   void *data;
+   UINT id;
+};
+
+/* ID3DDestructionNotifier is an embedded tear-off whose IUnknown methods
+ * forward to the parent object, preserving COM identity and refcounts. */
+struct d12_destruction_notifier {
+   ID3DDestructionNotifier iface;
+   IUnknown *parent;
+
+   simple_mtx_t lock;
+   struct d12_destruction_callback *callbacks;
+   uint32_t callback_count;
+   uint32_t callback_capacity;
+   UINT next_callback_id;
+   bool notified;
+};
+
 struct d12_private_data_store {
    simple_mtx_t lock;
    struct d12_private_data_entry *entries;
+   struct d12_destruction_notifier destruction_notifier;
 };
 
-void d12_private_data_store_init(struct d12_private_data_store *store);
+void d12_private_data_store_init(struct d12_private_data_store *store,
+                                 IUnknown *parent);
 void d12_private_data_store_destroy(struct d12_private_data_store *store);
+bool d12_private_data_query_notifier(struct d12_private_data_store *store,
+                                     REFIID riid, void **out);
 HRESULT d12_private_data_get(struct d12_private_data_store *store,
                              REFGUID guid, UINT *size, void *data);
 HRESULT d12_private_data_set(struct d12_private_data_store *store,
@@ -245,35 +269,10 @@ struct d12_device {
  * carry an ail_layout (G3: 2D single-level RGBA8, LINEAR tiling so the CPU
  * can verify pixels directly).
  */
-struct d12_destruction_callback {
-   PFN_DESTRUCTION_CALLBACK callback;
-   void *data;
-   UINT id;
-};
-
-/*
- * ID3DDestructionNotifier is a tear-off of its parent resource rather than a
- * separately refcounted object. Its IUnknown methods therefore forward to the
- * resource, preserving the parent's COM identity and lifetime.
- */
-struct d12_destruction_notifier {
-   ID3DDestructionNotifier iface;
-   struct d12_resource *resource;
-
-   simple_mtx_t lock;
-   struct d12_destruction_callback *callbacks;
-   uint32_t callback_count;
-   uint32_t callback_capacity;
-   UINT next_callback_id;
-   bool notified;
-};
-
 struct d12_resource {
    ID3D12Resource iface; /* must be first */
    uint32_t refcount;
    struct d12_private_data_store private_data;
-
-   struct d12_destruction_notifier destruction_notifier;
 
    struct d12_device *device; /* holds a device ref */
    D3D12_RESOURCE_DESC desc;

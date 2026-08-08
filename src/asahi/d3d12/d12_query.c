@@ -50,6 +50,9 @@ d12_query_heap_QueryInterface(ID3D12QueryHeap *iface, REFIID riid, void **out)
       return S_OK;
    }
 
+   if (d12_private_data_query_notifier(&heap->private_data, riid, out))
+      return S_OK;
+
    d12_log_unknown_riid("ID3D12QueryHeap::QueryInterface", riid);
    *out = NULL;
    return E_NOINTERFACE;
@@ -176,7 +179,7 @@ d12_query_heap_create_flags(struct d12_device *device,
    memset(agx_bo_map(heap->bo), 0, allocation_size);
 
    heap->device = device;
-   d12_private_data_store_init(&heap->private_data);
+   d12_private_data_store_init(&heap->private_data, (IUnknown *)&heap->iface);
    d12_device_add_ref(device);
 
    HRESULT hr = d12_query_heap_QueryInterface(&heap->iface, riid, out);
