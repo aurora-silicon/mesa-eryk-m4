@@ -1479,8 +1479,11 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
    return h->valid ? nir_bcsel(b, h->valid, size, nir_imm_int(b, 0)) : size;
 }
 
-/* D3D buffer robustness is component-granular: a vec4 load straddling the
+/* Raw D3D buffer robustness is component-granular: a vec4 load straddling the
  * end of a view preserves its in-range lanes and returns zero for the rest.
+ * Structured accesses additionally pass element_valid, because their API
+ * boundary is NumElements and wrapped byte arithmetic must not resurrect an
+ * out-of-range structure.
  *
  * DXIL is still an unstructured LLVM CFG while intrinsics are translated,
  * so inserting nir_if here corrupts multi-block shaders. Select mapped
@@ -1490,7 +1493,7 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
 static nir_def *
 robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
                         nir_def *byte_offset, nir_def *size_bytes,
-                        unsigned bits)
+                        nir_def *element_valid, unsigned bits)
 {
    nir_builder *b = ctx->b;
    nir_def *values[4];
@@ -1507,8 +1510,11 @@ robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
    for (unsigned c = 0; c < 4; c++) {
       nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
       nir_def *component_offset = nir_u2u64(b, component_offset32);
+      nir_def *in_bounds = nir_ult(b, component_offset, size64);
+      if (element_valid)
+         in_bounds = nir_iand(b, in_bounds, element_valid);
       nir_def *safe = nir_bcsel(
-         b, nir_ult(b, component_offset, size64),
+         b, in_bounds,
          nir_iadd(b, base, component_offset), zero);
       values[c] = nir_load_global(b, 1, bits, safe, .align_mul = bytes);
    }
@@ -1519,7 +1525,8 @@ robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
 static void
 robust_store_buffer_masked(struct trans_ctx *ctx, nir_def *address,
                            nir_def *byte_offset, nir_def *size_bytes,
-                           nir_def **values, unsigned components)
+                           nir_def *element_valid, nir_def **values,
+                           unsigned components)
 {
    nir_builder *b = ctx->b;
    unsigned bytes = values[0]->bit_size / 8;
@@ -1531,8 +1538,11 @@ robust_store_buffer_masked(struct trans_ctx *ctx, nir_def *address,
    for (unsigned c = 0; c < components; c++) {
       nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
       nir_def *component_offset = nir_u2u64(b, component_offset32);
+      nir_def *in_bounds = nir_ult(b, component_offset, size64);
+      if (element_valid)
+         in_bounds = nir_iand(b, in_bounds, element_valid);
       nir_def *safe = nir_bcsel(
-         b, nir_ult(b, component_offset, size64),
+         b, in_bounds,
          nir_iadd(b, base, component_offset), discard);
       nir_store_global(b, values[c], safe,
                        .write_mask = 1, .align_mul = bytes);
@@ -4620,6 +4630,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                        get_def(ctx, p[2]))
             : get_def(ctx, p[1]);
       nir_def *size_bytes = resource_view_size_bytes(ctx, &h);
+      nir_def *element_valid =
+         h.kind == D12_RES_KIND_STRUCTURED_BUFFER
+            ? nir_ult(b, get_def(ctx, p[1]),
+                      nir_udiv_imm(b, size_bytes, h.stride))
+            : NULL;
 
       /* Contiguous low components only; DXIL emits the common case. */
       unsigned comps = util_last_bit((unsigned)mask & 0xf);
@@ -4632,8 +4647,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       for (unsigned i = 0; i < comps; i++)
          vals[i] = get_def(ctx, p[3 + i]);
 
-      robust_store_buffer_masked(ctx, addr, byte_offset, size_bytes, vals,
-                                 comps);
+      robust_store_buffer_masked(ctx, addr, byte_offset, size_bytes,
+                                 element_valid, vals, comps);
       return true;
    }
 
@@ -4696,8 +4711,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                ? nir_iadd(b, nir_imul_imm(b, get_def(ctx, p[1]), h.stride),
                           get_def(ctx, p[2]))
                : get_def(ctx, p[1]);
+         nir_def *size_bytes = resource_view_size_bytes(ctx, &h);
+         nir_def *element_valid =
+            h.kind == D12_RES_KIND_STRUCTURED_BUFFER
+               ? nir_ult(b, get_def(ctx, p[1]),
+                         nir_udiv_imm(b, size_bytes, h.stride))
+               : NULL;
          data = robust_load_buffer_vec4(
-            ctx, addr, byte_offset, resource_view_size_bytes(ctx, &h), bits);
+            ctx, addr, byte_offset, size_bytes, element_valid, bits);
       }
 
       /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
