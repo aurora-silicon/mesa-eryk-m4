@@ -1475,7 +1475,10 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
    }
 
    uint64_t total = 0;
-   uint64_t max_align = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   /* Each resource below contributes its actual placement requirement.
+    * Starting at the ordinary 64 KiB default prevents a single qualifying
+    * small texture from ever reporting its requested 4 KiB alignment. */
+   uint64_t max_align = 1;
 
    for (UINT i = 0; i < count; i++) {
       const D3D12_RESOURCE_DESC *d = &descs[i];
