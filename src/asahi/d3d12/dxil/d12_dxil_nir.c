@@ -6092,10 +6092,12 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
 
    /* Driver-owned sysvals Honeykrisp reads from its root descriptor at
-    * draw time. Ours are compile-time constants: with no MSAA rasterizer
-    * state the API sample mask covers every sample, and with monolithic
-    * shaders (no epilog parts) nothing later runs the depth/stencil
-    * tests on the shader's behalf.
+    * draw time. Ours are compile-time constants: the API sample mask comes
+    * from the PSO, and a monolithic fragment shader is the final shader part,
+    * so it must run tests for every sample that survives discard. AGX requires
+    * each sample affected by sample_mask to be killed or tested exactly once;
+    * spelling tests_zs as zero made a false conditional discard suppress the
+    * following tilebuffer store.
     */
    if (intr->intrinsic == nir_intrinsic_load_api_sample_mask_agx) {
       b->cursor = nir_before_instr(&intr->instr);
@@ -6105,7 +6107,7 @@ lower_root(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    }
    if (intr->intrinsic == nir_intrinsic_load_shader_part_tests_zs_agx) {
       b->cursor = nir_before_instr(&intr->instr);
-      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0, 16));
+      nir_def_replace(&intr->def, nir_imm_intN_t(b, 0xff, 16));
       return true;
    }
 
