@@ -1802,7 +1802,9 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
             util_format_description(pf);
          unsigned blocksize = util_format_get_blocksize(pf);
          unsigned elements = table[i].size_B / blocksize;
-         if (!elements)
+         uint64_t base = table[i].address & ~0xfull;
+         unsigned tail_B = table[i].address & 0xf;
+         if (!elements || tail_B % blocksize)
             continue;
 
          agx_pack(&descs[i], TEXTURE, cfg) {
@@ -1819,13 +1821,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
             cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
             cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
 
-            cfg.address = table[i].address;
+            cfg.address = base;
             cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
             cfg.height = DIV_ROUND_UP(elements, cfg.width);
             cfg.first_level = 0;
             cfg.last_level = 0;
             cfg.buffer_size_sw = elements;
-            cfg.buffer_offset_sw = 0;
+            cfg.buffer_offset_sw = tail_B / blocksize;
             cfg.depth = 1;
             cfg.stride = (cfg.width * blocksize) - 16;
          }
@@ -2248,7 +2250,9 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
          util_format_description(pf);
       unsigned blocksize = util_format_get_blocksize(pf);
       unsigned elements = d->size_B / blocksize;
-      if (!elements)
+      uint64_t base = d->address & ~0xfull;
+      unsigned tail_B = d->address & 0xf;
+      if (!elements || tail_B % blocksize)
          return;
 
       agx_pack(out, TEXTURE, cfg) {
@@ -2263,13 +2267,16 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
          cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
          cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
          cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
-         cfg.address = d->address;
+         /* AGX requires a 16-byte-aligned texture address. Preserve a
+          * texel-aligned D3D buffer-view offset in the descriptor's software
+          * element offset, as Honeykrisp does for VkBufferView. */
+         cfg.address = base;
          cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
          cfg.height = DIV_ROUND_UP(elements, cfg.width);
          cfg.first_level = 0;
          cfg.last_level = 0;
          cfg.buffer_size_sw = elements;
-         cfg.buffer_offset_sw = 0;
+         cfg.buffer_offset_sw = tail_B / blocksize;
          cfg.depth = 1;
          cfg.stride = (cfg.width * blocksize) - 16;
       }
@@ -5601,6 +5608,60 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
       return;
    }
 
+   /*
+    * A GPU descriptor handle is an opaque token into the currently bound
+    * shader-visible heap.  Do not dereference it until ownership and slot
+    * alignment have been proved.  Apart from avoiding a CPU fault, ignoring
+    * a malformed handle preserves the previous table binding, matching the
+    * robust behaviour applications rely on for obviously corrupt table VAs.
+    *
+    * D3D12 root tables cannot mix sampler ranges with CBV/SRV/UAV ranges, so
+    * the first range selects the one compatible bound heap.  Empty tables do
+    * not consume a handle.
+    */
+   if (!rp->num_ranges)
+      return;
+
+   unsigned table_class = d12_descriptor_range_class(rp->ranges[0].type);
+   if (table_class >= D12_RES_CLASS_COUNT) {
+      mesa_loge("descriptor table has unknown range type %u",
+                rp->ranges[0].type);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   bool table_is_sampler = table_class == D12_RES_SAMPLER;
+   for (unsigned r = 1; r < rp->num_ranges; r++) {
+      unsigned klass = d12_descriptor_range_class(rp->ranges[r].type);
+      if (klass >= D12_RES_CLASS_COUNT ||
+          (klass == D12_RES_SAMPLER) != table_is_sampler) {
+         mesa_loge("descriptor table mixes incompatible heap types");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+   }
+
+   struct d12_descriptor_heap *bound_heap =
+      table_is_sampler ? list->sampler_descriptor_heap
+                       : list->resource_descriptor_heap;
+   uintptr_t handle = (uintptr_t)slots;
+   uintptr_t heap_start = bound_heap ? (uintptr_t)bound_heap->slots : 0;
+   size_t heap_bytes =
+      bound_heap ? (size_t)bound_heap->desc.NumDescriptors *
+                      sizeof(struct d12_descriptor)
+                 : 0;
+
+   if (!bound_heap || handle < heap_start ||
+       handle - heap_start >= heap_bytes ||
+       (handle - heap_start) % sizeof(struct d12_descriptor)) {
+      mesa_logw("ignoring descriptor-table handle outside the bound %s heap",
+                table_is_sampler ? "sampler" : "resource");
+      return;
+   }
+
+   size_t heap_index =
+      (handle - heap_start) / sizeof(struct d12_descriptor);
+
    struct d12_descriptor *resource_table =
       compute ? list->compute_root_table : list->graphics_root_table;
    const struct d12_descriptor **resource_sources =
@@ -5640,20 +5701,6 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
                return;
             }
 
-            uintptr_t heap_start = (uintptr_t)heap->slots;
-            size_t heap_bytes = (size_t)heap->desc.NumDescriptors *
-                                sizeof(struct d12_descriptor);
-            uintptr_t handle = (uintptr_t)slots;
-            if (handle < heap_start || handle - heap_start >= heap_bytes ||
-                (handle - heap_start) % sizeof(struct d12_descriptor)) {
-               mesa_loge("heap-indexed sampler table handle is outside the "
-                         "bound sampler heap");
-               list->state = D12_LIST_ERROR;
-               return;
-            }
-
-            size_t heap_index =
-               (handle - heap_start) / sizeof(struct d12_descriptor);
             if ((size_t)offset >= heap->desc.NumDescriptors - heap_index) {
                mesa_loge("unbounded sampler range offset %u is outside a "
                          "%u-slot heap at index %zu", offset,
@@ -5712,20 +5759,6 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             return;
          }
 
-         uintptr_t heap_start = (uintptr_t)heap->slots;
-         size_t heap_bytes = (size_t)heap->desc.NumDescriptors *
-                             sizeof(struct d12_descriptor);
-         uintptr_t handle = (uintptr_t)slots;
-         if (handle < heap_start || handle - heap_start >= heap_bytes ||
-             (handle - heap_start) % sizeof(struct d12_descriptor)) {
-            mesa_loge("heap-indexed descriptor table handle is outside the "
-                      "bound resource heap");
-            list->state = D12_LIST_ERROR;
-            return;
-         }
-
-         size_t heap_index =
-            (handle - heap_start) / sizeof(struct d12_descriptor);
          if ((size_t)offset >= heap->desc.NumDescriptors - heap_index) {
             mesa_loge("unbounded descriptor range offset %u is outside a "
                       "%u-slot heap at index %zu", offset,
@@ -5803,9 +5836,21 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
 
          struct d12_descriptor *table =
             klass == D12_RES_SAMPLER ? sampler_table : resource_table;
-         table[slot] = slots[offset + i];
-         if (klass != D12_RES_SAMPLER)
-            resource_sources[slot] = &slots[offset + i];
+         size_t source_index = heap_index + (size_t)offset + i;
+
+         if (source_index < bound_heap->desc.NumDescriptors) {
+            table[slot] = bound_heap->slots[source_index];
+            if (klass != D12_RES_SAMPLER)
+               resource_sources[slot] = &bound_heap->slots[source_index];
+         } else {
+            /* A finite root range may legally extend beyond the heap even
+             * when the shader only addresses its in-bounds prefix.  Keep the
+             * CPU snapshot bounded and represent the inaccessible suffix as
+             * null descriptors. */
+            memset(&table[slot], 0, sizeof(table[slot]));
+            if (klass != D12_RES_SAMPLER)
+               resource_sources[slot] = NULL;
+         }
       }
 
       cursor = offset + range->num_descriptors;
