@@ -1264,12 +1264,13 @@ d12_list_begin_render(struct d12_cmd_list *list,
       if (!seg->width_px) {
          seg->width_px = ds_width;
          seg->height_px = ds_height;
-      } else if (ds_width < seg->width_px || ds_height < seg->height_px) {
-         mesa_loge("depth/stencil target %ux%u is smaller than the render "
-                   "target %ux%u", ds_width, ds_height,
-                   seg->width_px, seg->height_px);
-         list->state = D12_LIST_ERROR;
-         return NULL;
+      } else {
+         /* D3D12 permits mismatched RTV/DSV extents. Restrict the hardware
+          * render area to their intersection, matching the minimum already
+          * selected for multiple colour attachments and preventing either
+          * ZLS or PBE from walking beyond its smaller image. */
+         seg->width_px = MIN2(seg->width_px, ds_width);
+         seg->height_px = MIN2(seg->height_px, ds_height);
       }
    }
 
@@ -7818,19 +7819,14 @@ d12_list_attach_ds(struct d12_cmd_list *list,
       return false;
    }
 
-   /* The ZLS unit addresses one buffer for the whole pass. A depth buffer
-    * smaller than the colour target would leave the uncovered region
-    * testing against memory outside the allocation.
-    */
+   /* The ZLS unit addresses one buffer for the whole pass. Clamp a colour
+    * clear pass to the DSV intersection before any draw is emitted, so the
+    * uncovered region can never test outside the smaller allocation. */
    const unsigned level = dsv->texture_plane;
    const unsigned width = u_minify(ds->layout.width_px, level);
    const unsigned height = u_minify(ds->layout.height_px, level);
-   if (width < seg->width_px || height < seg->height_px) {
-      mesa_loge("depth/stencil target %ux%u is smaller than the render pass "
-                "%ux%u", width, height, seg->width_px, seg->height_px);
-      list->state = D12_LIST_ERROR;
-      return false;
-   }
+   seg->width_px = MIN2(seg->width_px, width);
+   seg->height_px = MIN2(seg->height_px, height);
 
    seg->ds = ds;
    seg->ds_address = dsv->address;
