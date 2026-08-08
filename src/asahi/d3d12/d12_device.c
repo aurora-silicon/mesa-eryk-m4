@@ -1008,6 +1008,7 @@ struct d12_pso_stream {
    UINT sample_mask;
    DXGI_FORMAT dsv_format;
    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology;
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
    bool have_rt_formats;
    bool have_sample_desc;
    bool have_sample_mask;
@@ -1116,6 +1117,7 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE:
          BODY(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
+         memcpy(&out->strip_cut, body, sizeof(out->strip_cut));
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VIEW_INSTANCING:
          BODY(D3D12_VIEW_INSTANCING_DESC);
@@ -1228,7 +1230,7 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          dsv_format,
          st.raster,
          st.blend, st.input_layout, st.stream_output, st.primitive_topology,
-         map, riid, out);
+         st.strip_cut, map, riid, out);
    }
 
    mesa_loge("CreatePipelineState: stream declares no usable pipeline");
@@ -1345,7 +1347,7 @@ d12_device_CreateGraphicsPipelineState(
       desc->SampleMask, &desc->DepthStencilState,
       dsv_format, &desc->RasterizerState, &desc->BlendState,
       &desc->InputLayout, &desc->StreamOutput, desc->PrimitiveTopologyType,
-      map, riid, out);
+      desc->IBStripCutValue, map, riid, out);
    d12_root_layout_cleanup(&embedded_layout);
    return hr;
 }

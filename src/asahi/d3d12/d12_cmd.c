@@ -3609,6 +3609,17 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    return true;
 }
 
+static bool
+d12_strip_cut_enabled(const struct d12_pipeline_state *pso,
+                      enum mesa_prim topology)
+{
+   if (topology != MESA_PRIM_LINE_STRIP &&
+       topology != MESA_PRIM_TRIANGLE_STRIP)
+      return false;
+
+   return pso->strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+}
+
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
@@ -3884,6 +3895,25 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    uint8_t *out = list->stream_cur;
 
+   /* Primitive restart has two independent pieces of VDM state: the draw's
+    * enable bit and a persistent 32-bit sentinel register. The sentinel is
+    * selected by the PSO, not inferred from the bound index width (D3D12
+    * deliberately permits 0xffff with a 32-bit buffer and vice versa). */
+   bool restart = indexed && d12_strip_cut_enabled(pso, topology);
+   if (restart) {
+      uint32_t restart_index =
+         pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
+            ? UINT16_MAX
+            : UINT32_MAX;
+
+      agx_push(out, VDM_STATE, cfg) {
+         cfg.restart_index_present = true;
+      }
+      agx_push(out, VDM_STATE_RESTART_INDEX, cfg) {
+         cfg.value = restart_index;
+      }
+   }
+
    /* Vertex shader state */
    agx_push(out, VDM_STATE, cfg) {
       cfg.vertex_shader_word_0_present = true;
@@ -4156,13 +4186,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                                           : AGX_INDEX_SIZE_U16;
       if (indirect_args && indexed) {
          draw = agx_draw_indexed_indirect(
-            indirect_args, index_buffer, index_range, index_size, false);
+            indirect_args, index_buffer, index_range, index_size, restart);
       } else if (indirect_args) {
          draw = agx_draw_indirect(indirect_args);
       } else if (indexed) {
          draw = agx_draw_indexed(vertex_count, instance_count, first_index,
                                  first_vertex, first_instance, index_buffer,
-                                 index_range, index_size, false);
+                                 index_range, index_size, restart);
       } else {
          draw = (struct agx_draw){
             .b = agx_3d(vertex_count, instance_count, 1),

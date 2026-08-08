@@ -2200,7 +2200,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
       rt_format, nr_rt, rt_formats, nr_samples, sample_mask, ds_desc,
       dsv_format, rs_desc, blend_desc, NULL, NULL,
-      D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED, map, riid, out);
+      D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
+      D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -2412,6 +2413,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_STREAM_OUTPUT_DESC *so_desc,
                                    D3D12_PRIMITIVE_TOPOLOGY_TYPE
                                       primitive_topology_type,
+                                   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE
+                                      strip_cut,
                                    const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
@@ -2419,12 +2422,17 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       return E_POINTER;
    if (!vs_dxil || !vs_size || (!ps_dxil != !ps_size))
       return E_INVALIDARG;
+   if (strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED &&
+       strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF &&
+       strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF)
+      return E_INVALIDARG;
 
    struct d12_pipeline_state *pso = calloc(1, sizeof(*pso));
    if (!pso)
       return E_OUTOFMEMORY;
 
    pso->has_pixel_shader = ps_dxil && ps_size;
+   pso->strip_cut = strip_cut;
    if (!pso->has_pixel_shader) {
       /* D3D12 treats declared RTV state as inactive when there is no pixel
        * shader. Compile the empty hardware fragment stage against a

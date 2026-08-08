@@ -695,6 +695,7 @@ struct d12_pipeline_state {
    struct agx_varyings_vs varyings;
    struct d12_depth_stencil_state ds;
    struct d12_raster_state raster;
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
 
    /* GEOMETRY. AGX has no hardware geometry stage: a GS becomes compute
     * programs whose output the rasterization draw consumes, so a
@@ -1259,6 +1260,7 @@ HRESULT d12_pipeline_state_create_graphics(
    const D3D12_INPUT_LAYOUT_DESC *input_layout,
    const D3D12_STREAM_OUTPUT_DESC *so_desc,
    D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type,
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);
