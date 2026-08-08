@@ -373,6 +373,8 @@ struct d12_dxbc_sig_elem {
    char name[32];
    uint32_t semantic_index;
    uint32_t sysval;
+   uint32_t component_type;
+   uint32_t min_precision;
    uint32_t reg;
    uint8_t mask;
 };
@@ -517,18 +519,22 @@ parse_signature(const uint8_t *base, size_t size_B,
       if (off + stride > size_B)
          break;
 
-      uint32_t name_off, sem_idx, sysval, reg;
+      uint32_t name_off, sem_idx, sysval, component_type, reg;
       memcpy(&name_off, base + off + fields + 0, 4);
       memcpy(&sem_idx, base + off + fields + 4, 4);
       memcpy(&sysval, base + off + fields + 8, 4);
+      memcpy(&component_type, base + off + fields + 12, 4);
       memcpy(&reg, base + off + fields + 16, 4);
 
       struct d12_dxbc_sig_elem *e = &out[n++];
       memset(e, 0, sizeof(*e));
       e->semantic_index = sem_idx;
       e->sysval = sysval;
+      e->component_type = component_type;
       e->reg = reg;
       e->mask = base[off + fields + 20];
+      if (has_min_precision)
+         memcpy(&e->min_precision, base + off + fields + 24, 4);
 
       if (name_off < size_B) {
          const char *nm = (const char *)base + name_off;
@@ -1183,6 +1189,15 @@ read_src_typed(struct d12_dxbc_ctx *ctx,
       return nir_replicate(b, nir_load_sample_mask_in(b), 4);
 
    case D12_DXBC_FILE_INPUT_PRIMITIVE_ID:
+      if (b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+         nir_def *id = nir_load_input(
+            b, 1, 32, nir_imm_int(b, 0), .base = 0,
+            .dest_type = nir_type_uint32,
+            .io_semantics.location = VARYING_SLOT_PRIMITIVE_ID,
+            .io_semantics.num_slots = 1);
+         b->shader->info.inputs_read |= VARYING_BIT_PRIMITIVE_ID;
+         return nir_replicate(b, id, 4);
+      }
       return nir_replicate(b, nir_load_primitive_id(b), 4);
 
    case D12_DXBC_FILE_OUTPUT_CONTROL_POINT_ID:
@@ -1289,6 +1304,16 @@ read_src_typed(struct d12_dxbc_ctx *ctx,
          if (!strcasecmp(e->name, "SV_IsFrontFace"))
             return nir_replicate(
                b, nir_ineg(b, nir_b2i32(b, nir_load_front_face(b, 1))), 4);
+         if (!strcasecmp(e->name, "SV_PrimitiveID") &&
+             b->shader->info.stage == MESA_SHADER_FRAGMENT) {
+            nir_def *id = nir_load_input(
+               b, 1, 32, nir_imm_int(b, 0), .base = reg,
+               .dest_type = nir_type_uint32,
+               .io_semantics.location = VARYING_SLOT_PRIMITIVE_ID,
+               .io_semantics.num_slots = 1);
+            b->shader->info.inputs_read |= VARYING_BIT_PRIMITIVE_ID;
+            return nir_replicate(b, id, 4);
+         }
          if (!strcasecmp(e->name, "SV_PrimitiveID"))
             return nir_replicate(b, nir_load_primitive_id(b), 4);
          if (!strcasecmp(e->name, "SV_SampleIndex")) {
@@ -2690,9 +2715,14 @@ d12_dxbc_input_signature(const void *data, size_t size_B,
       /* `reg` is the register the shader reads with load_input, which is
        * what the DXIL path calls `id`. */
       out[i].id = elems[i].reg;
+      out[i].register_index = elems[i].reg;
       out[i].semantic_index = elems[i].semantic_index;
       out[i].start_component = elems[i].mask ? ffs(elems[i].mask) - 1 : 0;
       out[i].component_count = util_bitcount(elems[i].mask);
+      out[i].rows = 1;
+      out[i].component_type = elems[i].component_type;
+      out[i].min_precision = elems[i].min_precision;
+      out[i].system_value = elems[i].sysval;
       strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
       out[i].name[sizeof(out[i].name) - 1] = '\0';
    }
@@ -2724,9 +2754,48 @@ d12_dxbc_output_signature(const void *data, size_t size_B,
 
    for (unsigned i = 0; i < n; i++) {
       out[i].id = elems[i].reg;
+      out[i].register_index = elems[i].reg;
       out[i].semantic_index = elems[i].semantic_index;
       out[i].start_component = elems[i].mask ? ffs(elems[i].mask) - 1 : 0;
       out[i].component_count = util_bitcount(elems[i].mask);
+      out[i].rows = 1;
+      out[i].component_type = elems[i].component_type;
+      out[i].min_precision = elems[i].min_precision;
+      out[i].system_value = elems[i].sysval;
+      strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
+      out[i].name[sizeof(out[i].name) - 1] = '\0';
+   }
+
+   return n;
+}
+
+unsigned
+d12_dxbc_patch_signature(const void *data, size_t size_B,
+                         struct d12_input_sig_elem *out, unsigned max)
+{
+   const uint8_t *sig;
+   size_t sig_size;
+   bool extended = find_chunk(data, size_B, "PSG1", NULL, &sig, &sig_size);
+
+   if (!extended &&
+       !find_chunk(data, size_B, "PCSG", NULL, &sig, &sig_size))
+      return 0;
+
+   struct d12_dxbc_sig_elem elems[D12_DXBC_MAX_SIG];
+   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG,
+                                extended, extended);
+   n = MIN2(n, max);
+
+   for (unsigned i = 0; i < n; i++) {
+      out[i].id = elems[i].reg;
+      out[i].register_index = elems[i].reg;
+      out[i].semantic_index = elems[i].semantic_index;
+      out[i].start_component = elems[i].mask ? ffs(elems[i].mask) - 1 : 0;
+      out[i].component_count = util_bitcount(elems[i].mask);
+      out[i].rows = 1;
+      out[i].component_type = elems[i].component_type;
+      out[i].min_precision = elems[i].min_precision;
+      out[i].system_value = elems[i].sysval;
       strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
       out[i].name[sizeof(out[i].name) - 1] = '\0';
    }

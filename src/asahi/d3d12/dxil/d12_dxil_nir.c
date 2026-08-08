@@ -6083,9 +6083,50 @@ lower_vbo_params(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
-unsigned
-d12_dxil_input_signature(const void *dxil, size_t size_B,
-                         struct d12_input_sig_elem *out, unsigned max)
+enum d12_signature_kind {
+   D12_SIGNATURE_INPUT,
+   D12_SIGNATURE_OUTPUT,
+   D12_SIGNATURE_PATCH,
+};
+
+/* Normalize DXIL's component enum to the serialized D3D signature classes:
+ * 1 = uint, 2 = sint, 3 = float. Keep minimum-width compatibility separate. */
+static void
+d12_dxil_signature_type(uint32_t dxil_type, uint32_t *type,
+                        uint32_t *min_precision)
+{
+   *type = 0;
+   *min_precision = 0;
+
+   switch (dxil_type) {
+   case 1: /* i1 */
+   case 3: /* u16 */
+   case 5: /* u32 */
+      *type = 1;
+      if (dxil_type == 3)
+         *min_precision = 5;
+      break;
+   case 2: /* i16 */
+   case 4: /* i32 */
+      *type = 2;
+      if (dxil_type == 2)
+         *min_precision = 4;
+      break;
+   case 8: /* f16 */
+   case 9: /* f32 */
+      *type = 3;
+      if (dxil_type == 8)
+         *min_precision = 1;
+      break;
+   default:
+      break;
+   }
+}
+
+static unsigned
+d12_dxil_signature(const void *dxil, size_t size_B,
+                   struct d12_input_sig_elem *out, unsigned max,
+                   enum d12_signature_kind kind)
 {
    const uint8_t *bc;
    size_t bc_size;
@@ -6098,14 +6139,26 @@ d12_dxil_input_signature(const void *dxil, size_t size_B,
    if (!d12_dxil_module_parse(&mod, bc, bc_size))
       return 0;
 
-   unsigned n = MIN2(mod.num_input_sig, max);
+   const struct d12_sig_element *sig =
+      kind == D12_SIGNATURE_INPUT  ? mod.input_sig
+      : kind == D12_SIGNATURE_OUTPUT ? mod.output_sig
+                                     : mod.patch_sig;
+   unsigned count = kind == D12_SIGNATURE_INPUT  ? mod.num_input_sig
+                    : kind == D12_SIGNATURE_OUTPUT ? mod.num_output_sig
+                                                   : mod.num_patch_sig;
+   unsigned n = MIN2(count, max);
    for (unsigned i = 0; i < n; i++) {
-      const struct d12_sig_element *se = &mod.input_sig[i];
+      const struct d12_sig_element *se = &sig[i];
 
       out[i].id = se->id;
+      out[i].register_index = se->start_row;
       out[i].semantic_index = se->semantic_index;
       out[i].start_component = se->start_col;
       out[i].component_count = se->cols;
+      out[i].rows = MAX2(se->rows, 1);
+      out[i].system_value = se->system_value;
+      d12_dxil_signature_type(se->component_type, &out[i].component_type,
+                              &out[i].min_precision);
       out[i].name[0] = '\0';
       if (se->name) {
          strncpy(out[i].name, se->name, sizeof(out[i].name) - 1);
@@ -6118,37 +6171,24 @@ d12_dxil_input_signature(const void *dxil, size_t size_B,
 }
 
 unsigned
+d12_dxil_input_signature(const void *dxil, size_t size_B,
+                         struct d12_input_sig_elem *out, unsigned max)
+{
+   return d12_dxil_signature(dxil, size_B, out, max, D12_SIGNATURE_INPUT);
+}
+
+unsigned
 d12_dxil_output_signature(const void *dxil, size_t size_B,
                           struct d12_input_sig_elem *out, unsigned max)
 {
-   const uint8_t *bc;
-   size_t bc_size;
-   const char *why = NULL;
+   return d12_dxil_signature(dxil, size_B, out, max, D12_SIGNATURE_OUTPUT);
+}
 
-   if (!d12_dxil_find_bitcode(dxil, size_B, &bc, &bc_size, &why))
-      return 0;
-
-   struct d12_module mod;
-   if (!d12_dxil_module_parse(&mod, bc, bc_size))
-      return 0;
-
-   unsigned n = MIN2(mod.num_output_sig, max);
-   for (unsigned i = 0; i < n; i++) {
-      const struct d12_sig_element *se = &mod.output_sig[i];
-
-      out[i].id = se->id;
-      out[i].semantic_index = se->semantic_index;
-      out[i].start_component = se->start_col;
-      out[i].component_count = se->cols;
-      out[i].name[0] = '\0';
-      if (se->name) {
-         strncpy(out[i].name, se->name, sizeof(out[i].name) - 1);
-         out[i].name[sizeof(out[i].name) - 1] = '\0';
-      }
-   }
-
-   d12_dxil_module_finish(&mod);
-   return n;
+unsigned
+d12_dxil_patch_signature(const void *dxil, size_t size_B,
+                         struct d12_input_sig_elem *out, unsigned max)
+{
+   return d12_dxil_signature(dxil, size_B, out, max, D12_SIGNATURE_PATCH);
 }
 
 bool

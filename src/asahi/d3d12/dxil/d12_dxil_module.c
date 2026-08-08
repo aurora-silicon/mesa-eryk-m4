@@ -984,6 +984,11 @@ parse_signature(struct d12_module *mod, uint64_t list_id,
 
       se->name = md_string(mod, elem->node.ops[1]);
 
+      if (md_const_uint(mod, elem->node.ops[2], &v))
+         se->component_type = (uint32_t)v;
+      if (md_const_uint(mod, elem->node.ops[3], &v))
+         se->system_value = (uint32_t)v;
+
       /* Operand 4 is the semantic INDEX vector -- one entry per row. A
        * D3D12 input layout binds by (SemanticName, SemanticIndex), so
        * without this TEXCOORD0 and TEXCOORD1 are indistinguishable.

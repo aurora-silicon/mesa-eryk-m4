@@ -1087,6 +1087,224 @@ struct d12_vs_fetch {
    unsigned nr;
 };
 
+enum d12_sig_section {
+   D12_SIG_INPUT,
+   D12_SIG_OUTPUT,
+   D12_SIG_PATCH,
+};
+
+static unsigned
+d12_read_signature(const void *bytecode, size_t size,
+                   enum d12_sig_section section,
+                   struct d12_input_sig_elem *out, unsigned max)
+{
+   bool dxbc = d12_dxbc_is_dxbc_shader(bytecode, size);
+
+   switch (section) {
+   case D12_SIG_INPUT:
+      return dxbc ? d12_dxbc_input_signature(bytecode, size, out, max)
+                  : d12_dxil_input_signature(bytecode, size, out, max);
+   case D12_SIG_OUTPUT:
+      return dxbc ? d12_dxbc_output_signature(bytecode, size, out, max)
+                  : d12_dxil_output_signature(bytecode, size, out, max);
+   case D12_SIG_PATCH:
+      return dxbc ? d12_dxbc_patch_signature(bytecode, size, out, max)
+                  : d12_dxil_patch_signature(bytecode, size, out, max);
+   }
+
+   return 0;
+}
+
+static bool
+d12_sig_is_system(const struct d12_input_sig_elem *e)
+{
+   return !strncasecmp(e->name, "SV_", 3);
+}
+
+/* System values in this list are supplied by fixed function or by the stage
+ * invocation itself; they need not occupy an output register in the preceding
+ * shader. SV_PrimitiveID is only generated for the pixel shader when no
+ * geometry shader intervenes -- a GS must explicitly forward it. */
+static bool
+d12_sig_is_generated(const struct d12_input_sig_elem *e,
+                     mesa_shader_stage consumer_stage,
+                     bool generate_primitive_id)
+{
+   if (!strcasecmp(e->name, "SV_VertexID") ||
+       !strcasecmp(e->name, "SV_InstanceID"))
+      return consumer_stage == MESA_SHADER_VERTEX;
+   if (!strcasecmp(e->name, "SV_OutputControlPointID"))
+      return consumer_stage == MESA_SHADER_TESS_CTRL;
+   if (!strcasecmp(e->name, "SV_DomainLocation"))
+      return consumer_stage == MESA_SHADER_TESS_EVAL;
+   if (!strcasecmp(e->name, "SV_GSInstanceID"))
+      return consumer_stage == MESA_SHADER_GEOMETRY;
+   if (!strcasecmp(e->name, "SV_PrimitiveID"))
+      return consumer_stage == MESA_SHADER_GEOMETRY ||
+             (consumer_stage == MESA_SHADER_FRAGMENT &&
+              generate_primitive_id);
+   if (consumer_stage != MESA_SHADER_FRAGMENT)
+      return false;
+
+   return !strcasecmp(e->name, "SV_Position") ||
+          !strcasecmp(e->name, "SV_IsFrontFace") ||
+          !strcasecmp(e->name, "SV_SampleIndex") ||
+          !strcasecmp(e->name, "SV_Coverage") ||
+          !strcasecmp(e->name, "SV_InnerCoverage") ||
+          !strcasecmp(e->name, "SV_Barycentrics");
+}
+
+static const struct d12_input_sig_elem *
+d12_find_signature_semantic(const struct d12_input_sig_elem *sig, unsigned nr,
+                            const struct d12_input_sig_elem *needle)
+{
+   for (unsigned i = 0; i < nr; i++) {
+      if (sig[i].semantic_index == needle->semantic_index &&
+          !strcasecmp(sig[i].name, needle->name))
+         return &sig[i];
+   }
+
+   return NULL;
+}
+
+static bool
+d12_signature_element_compatible(const struct d12_input_sig_elem *producer,
+                                 const struct d12_input_sig_elem *consumer,
+                                 bool exact)
+{
+   if (producer->register_index != consumer->register_index ||
+       producer->start_component != consumer->start_component ||
+       (producer->component_type && consumer->component_type &&
+        producer->component_type != consumer->component_type) ||
+       producer->min_precision != consumer->min_precision)
+      return false;
+
+   if (exact)
+      return producer->rows == consumer->rows &&
+             producer->component_count == consumer->component_count;
+
+   return producer->rows >= consumer->rows &&
+          producer->component_count >= consumer->component_count;
+}
+
+static bool
+d12_validate_stage_link(const void *producer_bc, size_t producer_size,
+                        enum d12_sig_section producer_section,
+                        const void *consumer_bc, size_t consumer_size,
+                        enum d12_sig_section consumer_section,
+                        mesa_shader_stage consumer_stage,
+                        bool generate_primitive_id, bool exact)
+{
+   struct d12_input_sig_elem producer[D12_MAX_SIG_ELEMENTS] = {0};
+   struct d12_input_sig_elem consumer[D12_MAX_SIG_ELEMENTS] = {0};
+   unsigned nr_producer = d12_read_signature(
+      producer_bc, producer_size, producer_section, producer,
+      ARRAY_SIZE(producer));
+   unsigned nr_consumer = d12_read_signature(
+      consumer_bc, consumer_size, consumer_section, consumer,
+      ARRAY_SIZE(consumer));
+
+   for (unsigned i = 0; i < nr_consumer; i++) {
+      const struct d12_input_sig_elem *p =
+         d12_find_signature_semantic(producer, nr_producer, &consumer[i]);
+
+      if (!p && d12_sig_is_generated(&consumer[i], consumer_stage,
+                                     generate_primitive_id))
+         continue;
+
+      if (!p || !d12_signature_element_compatible(p, &consumer[i], exact))
+         return false;
+   }
+
+   if (exact) {
+      for (unsigned i = 0; i < nr_producer; i++) {
+         if (!d12_find_signature_semantic(consumer, nr_consumer,
+                                          &producer[i]))
+            return false;
+      }
+   }
+
+   return true;
+}
+
+static bool
+d12_validate_vertex_input_layout(const void *vs, size_t vs_size,
+                                 const D3D12_INPUT_LAYOUT_DESC *layout)
+{
+   struct d12_input_sig_elem sig[D12_MAX_SIG_ELEMENTS] = {0};
+   unsigned nr = d12_read_signature(vs, vs_size, D12_SIG_INPUT, sig,
+                                    ARRAY_SIZE(sig));
+
+   for (unsigned i = 0; i < nr; i++) {
+      if (d12_sig_is_system(&sig[i]))
+         continue;
+
+      bool found = false;
+      if (layout && layout->pInputElementDescs) {
+         for (unsigned e = 0; e < layout->NumElements; e++) {
+            const D3D12_INPUT_ELEMENT_DESC *el =
+               &layout->pInputElementDescs[e];
+            if (el->SemanticName &&
+                el->SemanticIndex == sig[i].semantic_index &&
+                !strcasecmp(el->SemanticName, sig[i].name)) {
+               found = true;
+               break;
+            }
+         }
+      }
+
+      if (!found)
+         return false;
+   }
+
+   return true;
+}
+
+static bool
+d12_validate_graphics_signatures(
+   const void *vs, size_t vs_size, const void *ps, size_t ps_size,
+   const void *gs, size_t gs_size, const void *hs, size_t hs_size,
+   const void *ds, size_t ds_size, const D3D12_INPUT_LAYOUT_DESC *layout)
+{
+   if (!d12_validate_vertex_input_layout(vs, vs_size, layout))
+      return false;
+
+   const void *last = vs;
+   size_t last_size = vs_size;
+
+   if (hs && hs_size && ds && ds_size) {
+      if (!d12_validate_stage_link(vs, vs_size, D12_SIG_OUTPUT,
+                                   hs, hs_size, D12_SIG_INPUT,
+                                   MESA_SHADER_TESS_CTRL, false, false) ||
+          !d12_validate_stage_link(hs, hs_size, D12_SIG_OUTPUT,
+                                   ds, ds_size, D12_SIG_INPUT,
+                                   MESA_SHADER_TESS_EVAL, false, true) ||
+          !d12_validate_stage_link(hs, hs_size, D12_SIG_PATCH,
+                                   ds, ds_size, D12_SIG_PATCH,
+                                   MESA_SHADER_TESS_EVAL, false, true))
+         return false;
+      last = ds;
+      last_size = ds_size;
+   }
+
+   if (gs && gs_size) {
+      if (!d12_validate_stage_link(last, last_size, D12_SIG_OUTPUT,
+                                   gs, gs_size, D12_SIG_INPUT,
+                                   MESA_SHADER_GEOMETRY, false, false))
+         return false;
+      last = gs;
+      last_size = gs_size;
+   }
+
+   if (ps && ps_size &&
+       !d12_validate_stage_link(last, last_size, D12_SIG_OUTPUT,
+                                ps, ps_size, D12_SIG_INPUT,
+                                MESA_SHADER_FRAGMENT, !gs_size, false))
+      return false;
+
+   return true;
+}
+
 /*
  * Resolve a D3D12_INPUT_LAYOUT_DESC against the vertex shader's own DXIL
  * input signature.
@@ -2698,6 +2916,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
        strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF &&
        strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF)
       return E_INVALIDARG;
+   if (!d12_validate_graphics_signatures(
+          vs_dxil, vs_size, ps_dxil, ps_size, gs_dxil, gs_size,
+          hs_dxil, hs_size, ds_dxil, ds_size, input_layout)) {
+      mesa_loge("CreateGraphicsPipelineState: incompatible shader signatures");
+      return E_INVALIDARG;
+   }
 
    struct d12_pipeline_state *pso = calloc(1, sizeof(*pso));
    if (!pso)
