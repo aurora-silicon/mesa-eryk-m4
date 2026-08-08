@@ -109,7 +109,10 @@ lower_tcs_impl(nir_builder *b, nir_intrinsic_instr *intr)
       return nir_channel(b, nir_load_workgroup_id(b), 1);
 
    case nir_intrinsic_load_invocation_id:
-      if (b->shader->info.tess.tcs_vertices_out == 1)
+      /* A DXBC hull shader may have one output control point but wider
+       * fork/join phases. In that case the workgroup still needs distinct
+       * phase invocation IDs even though the control-point phase is scalar. */
+      if (b->shader->info.workgroup_size[0] == 1)
          return nir_imm_int(b, 0);
       else
          return nir_channel(b, nir_load_local_invocation_id(b), 0);

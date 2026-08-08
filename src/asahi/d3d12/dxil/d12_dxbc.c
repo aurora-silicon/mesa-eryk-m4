@@ -433,6 +433,7 @@ struct d12_dxbc_ctx {
    uint8_t input_interp[D12_DXBC_MAX_SIG];
    enum d12_dxbc_hs_phase hs_phase;
    unsigned hs_input_control_points;
+   unsigned hs_max_invocations;
    bool hs_has_control_point_phase;
    bool hs_instance_phase_open;
    const uint32_t *immediate_constants;
@@ -2925,6 +2926,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
          ctx->hs_phase = D12_DXBC_HS_CONTROL_POINT;
          ctx->hs_has_control_point_phase = true;
+         nir_push_if(b, nir_ult_imm(
+                           b, nir_load_invocation_id(b),
+                           b->shader->info.tess.tcs_vertices_out));
+         ctx->hs_instance_phase_open = true;
          ctx->tok += len;
          continue;
       case D12_DXBC_OP_HS_FORK_PHASE:
@@ -2951,6 +2956,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
          b->shader->info.tess.tcs_vertices_out = count;
+         ctx->hs_max_invocations = MAX2(ctx->hs_max_invocations, count);
          ctx->tok += len;
          continue;
       }
@@ -3018,6 +3024,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
          nir_push_if(b, nir_ult_imm(b, nir_load_invocation_id(b), args[0]));
          ctx->hs_instance_phase_open = true;
+         ctx->hs_max_invocations = MAX2(ctx->hs_max_invocations, args[0]);
          ctx->tok += len;
          continue;
 
@@ -5274,6 +5281,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
       }
 
       nir_def *vertex = nir_load_invocation_id(b);
+      nir_push_if(b, nir_ult_imm(
+                        b, vertex, b->shader->info.tess.tcs_vertices_out));
       for (unsigned i = 0; i < ctx->num_out_sig; i++) {
          const struct d12_dxbc_sig_elem *e = &ctx->out_sig[i];
          unsigned loc = output_location(ctx, e, e->reg);
@@ -5288,7 +5297,11 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          b->shader->info.inputs_read |= BITFIELD64_BIT(loc);
          b->shader->info.outputs_written |= BITFIELD64_BIT(loc);
       }
+      nir_pop_if(b, NULL);
    }
+
+   if (b->shader->info.stage == MESA_SHADER_TESS_CTRL)
+      b->shader->info.workgroup_size[0] = ctx->hs_max_invocations;
 }
 
 /*

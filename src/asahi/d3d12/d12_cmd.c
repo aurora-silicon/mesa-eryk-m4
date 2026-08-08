@@ -4087,8 +4087,8 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1),
        agx_workgroup(64, 1, 1), D3D12_SHADER_VISIBILITY_VERTEX},
       {pso->tcs_va, &pso->tcs_info,
-       agx_3d(in_patches * pso->tcs_output_patch_size, instance_count, 1),
-       agx_workgroup(pso->tcs_output_patch_size, 1, 1),
+       agx_3d(in_patches * pso->tcs_info.workgroup_size[0], instance_count, 1),
+       agx_workgroup(pso->tcs_info.workgroup_size[0], 1, 1),
        D3D12_SHADER_VISIBILITY_HULL},
    };
 
@@ -4204,9 +4204,10 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       list->device->dbg_tcs_buf_n =
          unrolled * (pso->tcs_output_stride / 4);
       mesa_logi("tess: patches=%u unrolled=%u patch_size=%u out_patch=%u "
-                "stride=%u mode=%u part=%u tcs_pv_out=0x%llx",
+                "hs_wg=%u stride=%u mode=%u part=%u tcs_pv_out=0x%llx",
                 in_patches, unrolled, input_patch_size,
-                pso->tcs_output_patch_size, pso->tcs_output_stride,
+                pso->tcs_output_patch_size, pso->tcs_info.workgroup_size[0],
+                pso->tcs_output_stride,
                 pso->tess_mode, tp.partitioning,
                 (unsigned long long)pso->tcs_per_vertex_outputs);
    }

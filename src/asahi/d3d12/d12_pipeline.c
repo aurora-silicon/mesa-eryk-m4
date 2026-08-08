@@ -1971,10 +1971,12 @@ compile_tcs_stage(struct d12_device *device, const struct d12_binding_map *map,
    pso->tcs_nr_patch_outputs = util_last_bit(nir->info.patch_outputs_written);
    pso->tcs_output_stride = poly_tcs_output_stride(nir);
 
-   /* The lowered hull shader is a compute workgroup with one invocation per
-    * output control point. Keep the shader metadata consistent with the CDM
-    * launch so local IDs and per-thread scratch use the same group shape. */
-   nir->info.workgroup_size[0] = pso->tcs_output_patch_size;
+   /* DXBC fork/join phases can require more invocations than there are output
+    * control points. The translator records the largest phase width; DXIL has
+    * no phase-width metadata here and therefore falls back to one invocation
+    * per output control point. */
+   nir->info.workgroup_size[0] =
+      MAX2(nir->info.workgroup_size[0], pso->tcs_output_patch_size);
    nir->info.workgroup_size[1] = 1;
    nir->info.workgroup_size[2] = 1;
 
@@ -3463,7 +3465,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                 sw_vs_part.info.binary_size, sw_vs_part.info.nr_gprs,
                 gs_main_part.info.binary_size, gs_rast_part.info.binary_size,
                 gs_rast_part.info.nr_gprs,
-                (unsigned long long)pso->sw_vs_outputs);
+                (unsigned long long)(pso->has_tess ? pso->sw_tes_outputs
+                                                   : pso->sw_vs_outputs));
 
       pso->has_gs = true;
    }
