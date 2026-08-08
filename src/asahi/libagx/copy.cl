@@ -168,6 +168,68 @@ libagx_resolve_unorm8x4(global uint8_t *dest, global uint8_t *src,
    }
 }
 
+static float
+libagx_srgb_to_linear(float value)
+{
+   return value <= 0.04045f
+             ? value / 12.92f
+             : native_powr((value + 0.055f) / 1.055f, 2.4f);
+}
+
+static float
+libagx_linear_to_srgb(float value)
+{
+   return value <= 0.0031308f
+             ? value * 12.92f
+             : 1.055f * native_powr(value, 1.0f / 2.4f) - 0.055f;
+}
+
+/* Strongly-typed RGBA8 resolves convert the source storage encoding to
+ * linear before averaging and encode according to the resolve format. */
+KERNEL(32)
+libagx_resolve_unorm8x4_typed(global uint8_t *dest, global uint8_t *src,
+                              uint width_px, uint height_px,
+                              uint dest_x_px, uint dest_y_px,
+                              uint src_x_px, uint src_y_px,
+                              uint dest_pitch_B, uint dest_stride_el,
+                              uint src_stride_el,
+                              uint dest_tile_width_el,
+                              uint dest_tile_height_el,
+                              uint src_tile_width_el,
+                              uint src_tile_height_el,
+                              uint sample_count, uint dest_tiled,
+                              uint src_tiled, uint src_srgb, uint dest_srgb)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, 4, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      4 * sample_count, src_tiled);
+
+   for (uint c = 0; c < 4; ++c) {
+      float sum = 0.0f;
+      for (uint s = 0; s < sample_count; ++s) {
+         float value = (float)src[src_offset_B + s * 4 + c] / 255.0f;
+         if (src_srgb && c < 3)
+            value = libagx_srgb_to_linear(value);
+         sum += value;
+      }
+
+      float value = sum / (float)sample_count;
+      if (dest_srgb && c < 3)
+         value = libagx_linear_to_srgb(value);
+      dest[dest_offset_B + c] = convert_uchar_sat_rte(value * 255.0f);
+   }
+}
+
 /* Resolve the R32G32B32A32_FLOAT shape used by the render-target sample-count
  * probes. Each AIL pixel block contains sample_count consecutive float4s. */
 KERNEL(32)

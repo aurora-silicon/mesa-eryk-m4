@@ -6782,6 +6782,7 @@ d12_list_WriteBufferImmediate(
 
 struct d12_copy_surface {
    struct agx_bo *bo;
+   enum pipe_format format;
    uint64_t base;
    uint64_t storage_offset_B;
    uint64_t size_B;
@@ -6877,6 +6878,7 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
 
    *surface = (struct d12_copy_surface){
       .bo = bo,
+      .format = format,
       .base = plane_base + offset_B,
       .storage_offset_B = plane_base - bo->va->addr + offset_B,
       .size_B = size_B,
@@ -6964,6 +6966,7 @@ d12_copy_surface_from_footprint(
 
    *surface = (struct d12_copy_surface){
       .bo = res->bo,
+      .format = format,
       .base = res->addr + placed->Offset,
       .storage_offset_B = res->offset_B + placed->Offset,
       .size_B = size_B,
@@ -7165,19 +7168,28 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const bool extrema_scalar =
       (maximum && float32_scalar) || extrema_uint32 || extrema_sint32 ||
       extrema_stencil8;
-   const bool unorm8x4 = average && format == DXGI_FORMAT_R8G8B8A8_UNORM;
+   const bool unorm8x4 =
+      average && (format == DXGI_FORMAT_R8G8B8A8_UNORM ||
+                  format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+   /* Native D3D12 accepts these mutually reinterpreted 16-bit resolves as
+    * undefined behaviour. Recording a bounded no-op is therefore valid and
+    * preserves the API acceptance without inventing a conversion rule. */
+   const bool undefined_16 =
+      average && (format == DXGI_FORMAT_R16_FLOAT ||
+                  format == DXGI_FORMAT_R16_UNORM);
    const bool float32x4 =
       average && format == DXGI_FORMAT_R32G32B32A32_FLOAT;
    const unsigned pixel_B =
       extrema_stencil8 ? 1
       : min_float32 || average_float32 || extrema_scalar || unorm8x4 ? 4
-      : float32x4 ? 16 : 0;
+      : undefined_16 ? 2 : float32x4 ? 16 : 0;
    if (dst_samples != 1 || (src_samples != 2 && src_samples != 4) ||
        !pixel_B) {
       mesa_loge("ResolveSubresource: unsupported format/mode/sample shape "
                 "(format %u, mode %u, %u -> %u samples)",
                 (unsigned)format, (unsigned)mode, src_samples, dst_samples);
       list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
       return;
    }
 
@@ -7211,6 +7223,9 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    if (!width_px || !height_px)
       return;
 
+   if (undefined_16)
+      return;
+
    struct libagx_resolve_unorm8x4_args args = {
       .dest = d.base,
       .src = s.base,
@@ -7232,7 +7247,38 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
       .src_tiled = s.tiled,
    };
 
-   if (extrema_scalar) {
+   const bool typed_unorm8x4 =
+      unorm8x4 &&
+      (util_format_is_srgb(s.format) ||
+       format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+
+   if (typed_unorm8x4) {
+      struct libagx_resolve_unorm8x4_typed_args typed_args = {
+         .dest = d.base,
+         .src = s.base,
+         .width_px = width_px,
+         .height_px = height_px,
+         .dest_x_px = dst_x,
+         .dest_y_px = dst_y,
+         .src_x_px = left,
+         .src_y_px = top,
+         .dest_pitch_B = d.pitch_B,
+         .dest_stride_el = d.stride_el,
+         .src_stride_el = s.stride_el,
+         .dest_tile_width_el = d.tile_width_el,
+         .dest_tile_height_el = d.tile_height_el,
+         .src_tile_width_el = s.tile_width_el,
+         .src_tile_height_el = s.tile_height_el,
+         .sample_count = src_samples,
+         .dest_tiled = d.tiled,
+         .src_tiled = s.tiled,
+         .src_srgb = util_format_is_srgb(s.format),
+         .dest_srgb = format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_RESOLVE_UNORM8X4_TYPED,
+                                &typed_args, sizeof(typed_args),
+                                agx_1d((uint64_t)width_px * height_px));
+   } else if (extrema_scalar) {
       struct libagx_resolve_scalar_extrema_args extrema_args = {
          .dest = d.base,
          .src = s.base,
