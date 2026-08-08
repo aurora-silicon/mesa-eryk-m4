@@ -689,9 +689,10 @@ struct d12_pipeline_state {
     */
    uint64_t sw_vs_outputs;
 
-   struct agx_bo *sw_vs_bo, *gs_main_bo;
-   uint64_t sw_vs_va, gs_main_va;
-   struct agx_shader_info sw_vs_info, gs_main_info;
+   struct agx_bo *sw_vs_bo, *gs_count_bo, *gs_pre_bo, *gs_main_bo;
+   uint64_t sw_vs_va, gs_count_va, gs_pre_va, gs_main_va;
+   struct agx_shader_info sw_vs_info, gs_count_info, gs_pre_info,
+      gs_main_info;
 
    struct d12_gfx_stage gs_rast;
    struct agx_unlinked_uvs_layout gs_uvs;
@@ -979,6 +980,11 @@ struct d12_cmd_list {
       enum agx_index_size index_size;
    } ib;
 
+   /* SOSetTargets state. The filled-size address names the low 32 bits of
+    * D3D12's 64-bit byte counter; stream-output sizes are bounded below
+    * 4 GiB by the API and poly's native offset ABI is uint32_t. */
+   D3D12_STREAM_OUTPUT_BUFFER_VIEW so[4];
+
    enum mesa_prim topology; /* IASetPrimitiveTopology; TRIANGLES by default */
    /* Control points per patch, from a *_CONTROL_POINT_PATCHLIST topology.
     * Zero when the bound topology is not a patch list -- the only thing
@@ -1200,6 +1206,8 @@ HRESULT d12_pipeline_state_create_graphics(
    const D3D12_RASTERIZER_DESC *rs_desc,
    const D3D12_BLEND_DESC *blend_desc,
    const D3D12_INPUT_LAYOUT_DESC *input_layout,
+   const D3D12_STREAM_OUTPUT_DESC *so_desc,
+   D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology_type,
    const struct d12_binding_map *map, REFIID riid, void **out);
 
 void d12_device_add_ref(struct d12_device *device);

@@ -287,6 +287,51 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
+   /* These optional capability structures contain only output fields whose
+    * zero spelling means unsupported/tier 0.  Understanding the query is not
+    * a capability claim: returning E_INVALIDARG here prevents applications
+    * from taking their specified fallback paths.  Keep the answers
+    * conservative until the corresponding command/shader path is complete.
+    */
+#define D12_ZERO_OPTIONS(N)                                                   \
+   case D3D12_FEATURE_D3D12_OPTIONS##N: {                                    \
+      D3D12_FEATURE_DATA_D3D12_OPTIONS##N *opts = data;                      \
+      if (data_size != sizeof(*opts))                                        \
+         return E_INVALIDARG;                                                \
+      memset(opts, 0, sizeof(*opts));                                        \
+      return S_OK;                                                           \
+   }
+
+   D12_ZERO_OPTIONS(2)
+   D12_ZERO_OPTIONS(3)
+   D12_ZERO_OPTIONS(4)
+   D12_ZERO_OPTIONS(6)
+   D12_ZERO_OPTIONS(8)
+   D12_ZERO_OPTIONS(10)
+   D12_ZERO_OPTIONS(14)
+   D12_ZERO_OPTIONS(15)
+   D12_ZERO_OPTIONS(16)
+   D12_ZERO_OPTIONS(17)
+   D12_ZERO_OPTIONS(18)
+   D12_ZERO_OPTIONS(20)
+
+#undef D12_ZERO_OPTIONS
+
+   case D3D12_FEATURE_D3D12_OPTIONS12: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS12 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /* This counter convention is not known because mesh shaders and their
+       * pipeline statistics are not exposed.  UNKNOWN is the conservative
+       * public spelling, unlike zero/FALSE which would assert a convention.
+       */
+      opts->MSPrimitivesPipelineStatisticIncludesCulledPrimitives =
+         D3D12_TRI_STATE_UNKNOWN;
+      return S_OK;
+   }
+
    case D3D12_FEATURE_D3D12_OPTIONS7: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS7 *opts = data;
       if (data_size != sizeof(*opts))
@@ -880,11 +925,13 @@ struct d12_pso_stream {
    const D3D12_RASTERIZER_DESC *raster;
    const D3D12_BLEND_DESC *blend;
    const D3D12_INPUT_LAYOUT_DESC *input_layout;
+   const D3D12_STREAM_OUTPUT_DESC *stream_output;
    const D3D12_DEPTH_STENCIL_DESC *ds_state;
    struct D3D12_RT_FORMAT_ARRAY rt_formats;
    DXGI_SAMPLE_DESC sample_desc;
    UINT sample_mask;
    DXGI_FORMAT dsv_format;
+   D3D12_PRIMITIVE_TOPOLOGY_TYPE primitive_topology;
    bool have_rt_formats;
    bool have_sample_desc;
    bool have_sample_mask;
@@ -984,9 +1031,12 @@ d12_parse_pso_stream(const D3D12_PIPELINE_STATE_STREAM_DESC *desc,
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PRIMITIVE_TOPOLOGY:
          BODY(D3D12_PRIMITIVE_TOPOLOGY_TYPE);
+         memcpy(&out->primitive_topology, body,
+                sizeof(out->primitive_topology));
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_STREAM_OUTPUT:
          BODY(D3D12_STREAM_OUTPUT_DESC);
+         out->stream_output = (const D3D12_STREAM_OUTPUT_DESC *)body;
          break;
       case D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_IB_STRIP_CUT_VALUE:
          BODY(D3D12_INDEX_BUFFER_STRIP_CUT_VALUE);
@@ -1101,7 +1151,8 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.rt_formats.RTFormats, nr_samples, sample_mask, st.ds_state,
          dsv_format,
          st.raster,
-         st.blend, st.input_layout, map, riid, out);
+         st.blend, st.input_layout, st.stream_output, st.primitive_topology,
+         map, riid, out);
    }
 
    mesa_loge("CreatePipelineState: stream declares no usable pipeline");
@@ -1217,7 +1268,8 @@ d12_device_CreateGraphicsPipelineState(
       desc->NumRenderTargets, desc->RTVFormats, desc->SampleDesc.Count,
       desc->SampleMask, &desc->DepthStencilState,
       dsv_format, &desc->RasterizerState, &desc->BlendState,
-      &desc->InputLayout, map, riid, out);
+      &desc->InputLayout, &desc->StreamOutput, desc->PrimitiveTopologyType,
+      map, riid, out);
    d12_root_layout_cleanup(&embedded_layout);
    return hr;
 }

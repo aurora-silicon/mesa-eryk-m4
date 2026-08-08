@@ -5330,6 +5330,42 @@ d12_dxil_input_signature(const void *dxil, size_t size_B,
 
       out[i].id = se->id;
       out[i].semantic_index = se->semantic_index;
+      out[i].start_component = se->start_col;
+      out[i].component_count = se->cols;
+      out[i].name[0] = '\0';
+      if (se->name) {
+         strncpy(out[i].name, se->name, sizeof(out[i].name) - 1);
+         out[i].name[sizeof(out[i].name) - 1] = '\0';
+      }
+   }
+
+   d12_dxil_module_finish(&mod);
+   return n;
+}
+
+unsigned
+d12_dxil_output_signature(const void *dxil, size_t size_B,
+                          struct d12_input_sig_elem *out, unsigned max)
+{
+   const uint8_t *bc;
+   size_t bc_size;
+   const char *why = NULL;
+
+   if (!d12_dxil_find_bitcode(dxil, size_B, &bc, &bc_size, &why))
+      return 0;
+
+   struct d12_module mod;
+   if (!d12_dxil_module_parse(&mod, bc, bc_size))
+      return 0;
+
+   unsigned n = MIN2(mod.num_output_sig, max);
+   for (unsigned i = 0; i < n; i++) {
+      const struct d12_sig_element *se = &mod.output_sig[i];
+
+      out[i].id = se->id;
+      out[i].semantic_index = se->semantic_index;
+      out[i].start_component = se->start_col;
+      out[i].component_count = se->cols;
       out[i].name[0] = '\0';
       if (se->name) {
          strncpy(out[i].name, se->name, sizeof(out[i].name) - 1);

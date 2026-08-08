@@ -21,6 +21,7 @@
 #include "dxil/d12_dxil.h"
 #include "nir.h"
 #include "nir_builder.h"
+#include "nir_xfb_info.h"
 #include "poly/nir/poly_nir.h"
 
 /* The runtime mirrors Honeykrisp's helper-program scratch allocation. Keep a
@@ -439,6 +440,10 @@ d12_pso_Release(ID3D12PipelineState *iface)
          agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
       if (pso->sw_vs_bo)
          agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
+      if (pso->gs_count_bo)
+         agx_bo_unreference(&pso->device->dev, pso->gs_count_bo);
+      if (pso->gs_pre_bo)
+         agx_bo_unreference(&pso->device->dev, pso->gs_pre_bo);
       if (pso->gs_main_bo)
          agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
       if (pso->gs_rast.code_bo)
@@ -1311,45 +1316,246 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
    return out->binary && out->info.binary_size;
 }
 
+/* Build NIR's byte-addressed transform-feedback description from D3D12's
+ * semantic declaration. D3D12 packs declaration entries per OutputSlot in
+ * declaration order; a NULL semantic is an explicit gap. */
+static nir_xfb_info *
+d12_build_xfb_info(void *mem_ctx,
+                   const D3D12_STREAM_OUTPUT_DESC *so,
+                   const void *bytecode, size_t bytecode_size,
+                   bool *valid)
+{
+   *valid = false;
+   if (!so || !so->NumEntries) {
+      *valid = true;
+      return NULL;
+   }
+
+   if (!so->pSODeclaration || so->NumEntries > 64 ||
+       so->NumStrides > NIR_MAX_XFB_BUFFERS ||
+       (so->NumStrides && !so->pBufferStrides) ||
+       (so->RasterizedStream != D3D12_SO_NO_RASTERIZED_STREAM &&
+        so->RasterizedStream >= NIR_MAX_XFB_STREAMS))
+      return NULL;
+
+   struct d12_input_sig_elem sig[D12_MAX_SIG_ELEMENTS];
+   bool dxbc = d12_dxbc_is_dxbc_shader(bytecode, bytecode_size);
+   unsigned nr_sig =
+      dxbc ? d12_dxbc_output_signature(bytecode, bytecode_size, sig,
+                                       ARRAY_SIZE(sig))
+           : d12_dxil_output_signature(bytecode, bytecode_size, sig,
+                                       ARRAY_SIZE(sig));
+   if (!nr_sig)
+      return NULL;
+
+   unsigned output_count = 0;
+   for (unsigned i = 0; i < so->NumEntries; i++)
+      output_count += so->pSODeclaration[i].SemanticName != NULL;
+   if (!output_count)
+      return NULL;
+
+   nir_xfb_info *xfb =
+      rzalloc_size(mem_ctx, nir_xfb_info_size(output_count));
+   if (!xfb)
+      return NULL;
+
+   uint16_t packed_offset[NIR_MAX_XFB_BUFFERS] = {0};
+   bool buffer_seen[NIR_MAX_XFB_BUFFERS] = {0};
+
+   for (unsigned i = 0; i < so->NumEntries; i++) {
+      const D3D12_SO_DECLARATION_ENTRY *entry = &so->pSODeclaration[i];
+      if (entry->Stream >= NIR_MAX_XFB_STREAMS ||
+          entry->OutputSlot >= NIR_MAX_XFB_BUFFERS ||
+          entry->StartComponent > 3 || !entry->ComponentCount ||
+          entry->StartComponent + entry->ComponentCount > 4 ||
+          entry->OutputSlot >= so->NumStrides)
+         goto fail;
+
+      unsigned buffer = entry->OutputSlot;
+      unsigned bytes = entry->ComponentCount * 4;
+      if (packed_offset[buffer] > UINT16_MAX - bytes)
+         goto fail;
+
+      if (!entry->SemanticName) {
+         packed_offset[buffer] += bytes;
+         continue;
+      }
+
+      const struct d12_input_sig_elem *match = NULL;
+      for (unsigned s = 0; s < nr_sig; s++) {
+         if (sig[s].semantic_index == entry->SemanticIndex &&
+             !strcasecmp(sig[s].name, entry->SemanticName)) {
+            match = &sig[s];
+            break;
+         }
+      }
+      if (!match || match->id >= 32 ||
+          match->start_component + entry->StartComponent +
+                entry->ComponentCount >
+             4)
+         goto fail;
+
+      if (buffer_seen[buffer] &&
+          xfb->buffer_to_stream[buffer] != entry->Stream)
+         goto fail;
+
+      unsigned component = match->start_component + entry->StartComponent;
+      unsigned location;
+      if (!strcasecmp(match->name, "SV_Position")) {
+         location = VARYING_SLOT_POS;
+      } else if (dxbc && !strcasecmp(match->name, "SV_ClipDistance")) {
+         location = VARYING_SLOT_CLIP_DIST0 + match->semantic_index;
+      } else {
+         location = VARYING_SLOT_VAR0 + match->id;
+      }
+
+      nir_xfb_output_info *out = &xfb->outputs[xfb->output_count++];
+      *out = (nir_xfb_output_info){
+         .buffer = buffer,
+         .offset = packed_offset[buffer],
+         .location = location,
+         .component_mask = BITFIELD_RANGE(component, entry->ComponentCount),
+         .component_offset = component,
+      };
+
+      xfb->buffers[buffer].varying_count++;
+      xfb->buffers_written |= BITFIELD_BIT(buffer);
+      xfb->streams_written |= BITFIELD_BIT(entry->Stream);
+      xfb->buffer_to_stream[buffer] = entry->Stream;
+      buffer_seen[buffer] = true;
+      packed_offset[buffer] += bytes;
+   }
+
+   for (unsigned b = 0; b < so->NumStrides; b++) {
+      UINT stride = so->pBufferStrides[b];
+      if ((stride & 3) || stride > UINT16_MAX || packed_offset[b] > stride)
+         goto fail;
+      xfb->buffers[b].stride = stride;
+   }
+
+   *valid = true;
+   return xfb;
+
+fail:
+   ralloc_free(xfb);
+   return NULL;
+}
+
+static enum mesa_prim
+d12_so_primitive(D3D12_PRIMITIVE_TOPOLOGY_TYPE type)
+{
+   switch (type) {
+   case D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT:    return MESA_PRIM_POINTS;
+   case D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE:     return MESA_PRIM_LINES;
+   case D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE: return MESA_PRIM_TRIANGLES;
+   default:                                     return MESA_PRIM_UNKNOWN;
+   }
+}
+
+/* MIT-derived from Honeykrisp's passthrough-GS builder. The DXBC/DXIL
+ * front ends use intrinsic I/O rather than variables, so Mesa's generic
+ * variable-based nir_create_passthrough_gs cannot preserve their slots. */
+static nir_shader *
+d12_build_so_passthrough_gs(uint64_t outputs, uint8_t clip_size,
+                            uint8_t cull_size, enum mesa_prim prim,
+                            const nir_xfb_info *xfb)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_GEOMETRY, &agx_nir_options, "d12 stream-output passthrough");
+   nir_shader *s = b.shader;
+
+   enum mesa_prim out_prim = prim == MESA_PRIM_POINTS
+                                ? MESA_PRIM_POINTS
+                                : prim == MESA_PRIM_LINES
+                                     ? MESA_PRIM_LINE_STRIP
+                                     : MESA_PRIM_TRIANGLE_STRIP;
+   unsigned vertices = mesa_vertices_per_prim(prim);
+
+   s->info.inputs_read = outputs;
+   s->info.outputs_written = outputs;
+   s->info.clip_distance_array_size = clip_size;
+   s->info.cull_distance_array_size = cull_size;
+   s->info.gs.input_primitive = prim;
+   s->info.gs.output_primitive = out_prim;
+   s->info.gs.vertices_in = vertices;
+   s->info.gs.vertices_out = vertices;
+   s->info.gs.invocations = 1;
+   s->info.gs.active_stream_mask = 1;
+
+   if (xfb) {
+      s->xfb_info = ralloc_memdup(s, xfb,
+                                  nir_xfb_info_size(xfb->output_count));
+      s->info.has_transform_feedback_varyings = true;
+      for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++)
+         s->info.xfb_stride[i] = xfb->buffers[i].stride / 4;
+   }
+
+   nir_def *zero = nir_imm_int(&b, 0);
+   nir_def *one = nir_imm_int(&b, 1);
+   for (unsigned v = 0; v < vertices; v++) {
+      nir_def *vertex = nir_imm_int(&b, v);
+
+      u_foreach_bit64(loc, outputs) {
+         unsigned adjusted_loc = loc;
+         nir_def *offset = zero;
+         unsigned num_slots = 1;
+         bool scalar = loc == VARYING_SLOT_LAYER ||
+                       loc == VARYING_SLOT_VIEW_INDEX ||
+                       loc == VARYING_SLOT_VIEWPORT ||
+                       loc == VARYING_SLOT_PSIZ;
+         unsigned comps = scalar ? 1 : 4;
+
+         if (loc == VARYING_SLOT_CLIP_DIST1 ||
+             loc == VARYING_SLOT_CULL_DIST1) {
+            adjusted_loc--;
+            offset = one;
+         }
+         if (adjusted_loc == VARYING_SLOT_CLIP_DIST0 ||
+             adjusted_loc == VARYING_SLOT_CULL_DIST0) {
+            num_slots = clip_size + cull_size;
+            comps = loc > adjusted_loc ? num_slots - 4 : MIN2(num_slots, 4);
+         }
+
+         nir_io_semantics sem = {
+            .location = adjusted_loc,
+            .num_slots = num_slots,
+         };
+         nir_def *value = nir_load_per_vertex_input(
+            &b, comps, 32, vertex, offset, .io_semantics = sem);
+         for (unsigned c = 0; c < comps; c++) {
+            nir_store_output(&b, nir_channel(&b, value, c), offset,
+                             .io_semantics = sem,
+                             .src_type = nir_type_uint32, .component = c);
+         }
+      }
+      nir_emit_vertex(&b, 0);
+   }
+
+   return s;
+}
+
 /*
- * A geometry shader expands into four programs. Only two are on the
- * direct-draw path: the main body and the rasterization shader. The
- * count, prefix-sum and pre-GS programs exist for transform feedback and
- * GS pipeline-statistics queries, and hk skips all three when neither is
- * active (hk_cmd_draw.c:1535). Every geometry shader in the corpus has
- * xfb = 0 and prefix_sum = 0, so this refuses the rest BY NAME rather
- * than compiling programs it would not dispatch.
+ * A geometry shader expands into the main body and rasterization shader,
+ * plus count/pre-GS programs when transform feedback needs them. The draw
+ * path dispatches the latter only for XFB, matching hk_cmd_draw.c.
  */
 static bool
-compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
-                 const void *dxil, size_t dxil_size,
-                 struct poly_gs_info *gs_info,
-                 struct agx_unlinked_uvs_layout *rast_uvs,
-                 struct agx_shader_part *main_out,
-                 struct agx_shader_part *rast_out)
+compile_gs_nir(struct d12_device *device, nir_shader *nir,
+               struct poly_gs_info *gs_info,
+               struct agx_unlinked_uvs_layout *rast_uvs,
+               struct agx_shader_part *count_out,
+               struct agx_shader_part *pre_out,
+               struct agx_shader_part *main_out,
+               struct agx_shader_part *rast_out)
 {
-   nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_GEOMETRY);
-   if (!nir)
-      return false;
-
    nir_shader *gs_count = NULL, *gs_copy = NULL, *pre_gs = NULL;
    NIR_PASS(_, nir, poly_nir_lower_gs, &gs_count, &gs_copy, &pre_gs, gs_info);
 
-   /* The lowering rewrote nir->info.stage to COMPUTE; do not read it back
-    * expecting GEOMETRY.
-    */
-   if (gs_info->xfb || gs_info->prefix_sum) {
-      mesa_loge("graphics PSO: geometry shader uses transform feedback, "
-                "which needs the count and pre-GS programs dispatched. "
-                "Not supported yet.");
-      return false;
-   }
-
-   if (gs_info->shape != POLY_GS_SHAPE_STATIC_PER_INSTANCE) {
+   if (gs_info->shape != POLY_GS_SHAPE_STATIC_PER_INSTANCE &&
+       gs_info->shape != POLY_GS_SHAPE_DYNAMIC_INDEXED) {
       mesa_loge("graphics PSO: geometry shader needs a %s rasterization "
-                "draw, which requires the output index buffer. Only "
-                "STATIC_PER_INSTANCE is dispatched so far.",
+                "draw. STATIC_PER_INSTANCE and DYNAMIC_INDEXED are "
+                "dispatched so far.",
                 gs_info->shape == POLY_GS_SHAPE_DYNAMIC_INDEXED
                    ? "dynamically indexed"
                    : "statically indexed");
@@ -1362,10 +1568,49 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
       return false;
    }
 
+   memset(count_out, 0, sizeof(*count_out));
+   memset(pre_out, 0, sizeof(*pre_out));
+   if (gs_count && !compile_poly_program(device, gs_count, NULL, count_out))
+      return false;
+   if (pre_gs && !compile_poly_program(device, pre_gs, NULL, pre_out))
+      return false;
+   if (gs_info->xfb && (!pre_gs || !pre_out->binary)) {
+      mesa_loge("graphics PSO: transform feedback produced no pre-GS program");
+      return false;
+   }
+
    if (!compile_poly_program(device, nir, NULL, main_out))
       return false;
 
    return compile_poly_program(device, gs_copy, rast_uvs, rast_out);
+}
+
+static bool
+compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
+                 const void *dxil, size_t dxil_size,
+                 const nir_xfb_info *xfb,
+                 struct poly_gs_info *gs_info,
+                 struct agx_unlinked_uvs_layout *rast_uvs,
+                 struct agx_shader_part *count_out,
+                 struct agx_shader_part *pre_out,
+                 struct agx_shader_part *main_out,
+                 struct agx_shader_part *rast_out)
+{
+   nir_shader *nir =
+      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_GEOMETRY);
+   if (!nir)
+      return false;
+
+   if (xfb) {
+      nir->xfb_info = ralloc_memdup(nir, xfb,
+                                    nir_xfb_info_size(xfb->output_count));
+      nir->info.has_transform_feedback_varyings = true;
+      for (unsigned i = 0; i < NIR_MAX_XFB_BUFFERS; i++)
+         nir->info.xfb_stride[i] = xfb->buffers[i].stride / 4;
+   }
+
+   return compile_gs_nir(device, nir, gs_info, rast_uvs, count_out, pre_out,
+                         main_out, rast_out);
 }
 
 /*
@@ -1446,7 +1691,8 @@ static bool
 compile_sw_vs_stage(struct d12_device *device,
                     const struct d12_binding_map *map, const void *dxil,
                     size_t dxil_size, const struct d12_vs_fetch *fetch,
-                    struct agx_shader_part *out, uint64_t *out_outputs)
+                    struct agx_shader_part *out, uint64_t *out_outputs,
+                    uint8_t *out_clip_size, uint8_t *out_cull_size)
 {
    nir_shader *nir =
       dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_VERTEX);
@@ -1464,6 +1710,10 @@ compile_sw_vs_stage(struct d12_device *device,
     * (hk_shader.c:1138).
     */
    *out_outputs = nir->info.outputs_written;
+   if (out_clip_size)
+      *out_clip_size = nir->info.clip_distance_array_size;
+   if (out_cull_size)
+      *out_cull_size = nir->info.cull_distance_array_size;
 
    /*
     * VERTEX ATTRIBUTES, and this has to happen while the shader is still
@@ -1838,7 +2088,8 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
       rt_format, nr_rt, rt_formats, nr_samples, sample_mask, ds_desc,
-      dsv_format, rs_desc, blend_desc, NULL, map, riid, out);
+      dsv_format, rs_desc, blend_desc, NULL, NULL,
+      D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED, map, riid, out);
    if (FAILED(hr))
       return hr;
 
@@ -2047,6 +2298,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
                                    const D3D12_BLEND_DESC *blend_desc,
                                    const D3D12_INPUT_LAYOUT_DESC *input_layout,
+                                   const D3D12_STREAM_OUTPUT_DESC *so_desc,
+                                   D3D12_PRIMITIVE_TOPOLOGY_TYPE
+                                      primitive_topology_type,
                                    const struct d12_binding_map *map,
                                    REFIID riid, void **out)
 {
@@ -2448,7 +2702,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       struct agx_shader_part sw_vs_part, tcs_part, tes_part;
 
       if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &fetch,
-                               &sw_vs_part, &pso->sw_vs_outputs) ||
+                               &sw_vs_part, &pso->sw_vs_outputs, NULL, NULL) ||
           !compile_tcs_stage(device, map, hs_dxil, hs_size, pso, &tcs_part) ||
           !compile_tes_stage(device, map, ds_dxil, ds_size, pso, &pso->tes_uvs,
                              &tes_part)) {
@@ -2539,18 +2793,72 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->has_tess = true;
    }
 
-   if (gs_dxil && gs_size) {
-      struct agx_shader_part sw_vs_part, gs_main_part, gs_rast_part;
+   bool has_app_gs = gs_dxil && gs_size;
+   bool has_so = so_desc && so_desc->NumEntries;
+   if (has_app_gs || has_so) {
+      struct agx_shader_part sw_vs_part, gs_count_part, gs_pre_part,
+         gs_main_part, gs_rast_part;
+      uint8_t clip_size = 0, cull_size = 0;
 
-      if (!compile_sw_vs_stage(device, map, vs_dxil, vs_size, &fetch,
-                               &sw_vs_part, &pso->sw_vs_outputs) ||
-          !compile_gs_stage(device, map, gs_dxil, gs_size, &pso->gs_info,
-                            &pso->gs_uvs, &gs_main_part, &gs_rast_part)) {
+      /* Stream output after tessellation captures the domain-shader output.
+       * That needs a passthrough GS layered after the existing tessellator;
+       * keep it a named refusal until those two preraster paths can compose.
+       */
+      if (has_so && pso->has_tess && !has_app_gs) {
+         mesa_loge("graphics PSO: stream output after tessellation is not "
+                   "composed with the domain-shader path yet");
          free(pso);
          return E_INVALIDARG;
       }
 
-      /* The two compute programs live in plain code BOs. */
+      nir_xfb_info *xfb = NULL;
+      if (has_so) {
+         bool valid = false;
+         const void *capture = has_app_gs ? gs_dxil : vs_dxil;
+         size_t capture_size = has_app_gs ? gs_size : vs_size;
+         xfb = d12_build_xfb_info(NULL, so_desc, capture, capture_size,
+                                  &valid);
+         if (!valid || !xfb) {
+            mesa_loge("graphics PSO: invalid stream-output declaration or "
+                      "unmatched output semantic");
+            free(pso);
+            return E_INVALIDARG;
+         }
+      }
+
+      bool compiled = compile_sw_vs_stage(
+         device, map, vs_dxil, vs_size, &fetch, &sw_vs_part,
+         &pso->sw_vs_outputs, &clip_size, &cull_size);
+
+      if (compiled && has_app_gs) {
+         compiled = compile_gs_stage(
+            device, map, gs_dxil, gs_size, xfb, &pso->gs_info,
+            &pso->gs_uvs, &gs_count_part, &gs_pre_part, &gs_main_part,
+            &gs_rast_part);
+      } else if (compiled) {
+         enum mesa_prim prim = d12_so_primitive(primitive_topology_type);
+         if (prim == MESA_PRIM_UNKNOWN) {
+            mesa_loge("graphics PSO: stream output needs a point, line, or "
+                      "triangle primitive topology type");
+            compiled = false;
+         } else {
+            nir_shader *passthrough = d12_build_so_passthrough_gs(
+               pso->sw_vs_outputs, clip_size, cull_size, prim, xfb);
+            compiled = compile_gs_nir(
+               device, passthrough, &pso->gs_info, &pso->gs_uvs,
+               &gs_count_part, &gs_pre_part, &gs_main_part, &gs_rast_part);
+         }
+      }
+      ralloc_free(xfb);
+
+      if (!compiled) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+
+      /* The software VS, optional count/pre-GS, and geometry body are
+       * ordinary compute programs. Count/pre-GS are present when XFB needs
+       * capacity accounting and filled-size updates. */
       const struct {
          struct agx_shader_part *part;
          struct agx_bo **bo;
@@ -2560,11 +2868,18 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       } cs[] = {
          {&sw_vs_part, &pso->sw_vs_bo, &pso->sw_vs_va, &pso->sw_vs_info,
           "d3d12 sw vs"},
+         {&gs_count_part, &pso->gs_count_bo, &pso->gs_count_va,
+          &pso->gs_count_info, "d3d12 gs count"},
+         {&gs_pre_part, &pso->gs_pre_bo, &pso->gs_pre_va,
+          &pso->gs_pre_info, "d3d12 gs pre"},
          {&gs_main_part, &pso->gs_main_bo, &pso->gs_main_va,
           &pso->gs_main_info, "d3d12 gs main"},
       };
 
       for (unsigned i = 0; i < ARRAY_SIZE(cs); i++) {
+         if (!cs[i].part->binary || !cs[i].part->info.binary_size)
+            continue;
+
          /* Same rule as the compute PSO: executable, low-VA, so the USC
           * can address it 32-bit-relative to the shader base. */
          *cs[i].bo = agx_bo_create(&device->dev, cs[i].part->info.binary_size,
@@ -2572,8 +2887,10 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    cs[i].name);
          if (!*cs[i].bo) {
             /* Unwind whatever the earlier iteration already took. */
-            for (unsigned j = 0; j < i; j++)
-               agx_bo_unreference(&device->dev, *cs[j].bo);
+            for (unsigned j = 0; j < i; j++) {
+               if (*cs[j].bo)
+                  agx_bo_unreference(&device->dev, *cs[j].bo);
+            }
             free(pso);
             return E_OUTOFMEMORY;
          }

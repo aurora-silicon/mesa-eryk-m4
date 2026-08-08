@@ -2056,6 +2056,34 @@ d12_dxbc_input_signature(const void *data, size_t size_B,
        * what the DXIL path calls `id`. */
       out[i].id = elems[i].reg;
       out[i].semantic_index = elems[i].semantic_index;
+      out[i].start_component = elems[i].mask ? ffs(elems[i].mask) - 1 : 0;
+      out[i].component_count = util_bitcount(elems[i].mask);
+      strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
+      out[i].name[sizeof(out[i].name) - 1] = '\0';
+   }
+
+   return n;
+}
+
+unsigned
+d12_dxbc_output_signature(const void *data, size_t size_B,
+                          struct d12_input_sig_elem *out, unsigned max)
+{
+   const uint8_t *sig;
+   size_t sig_size;
+
+   if (!find_chunk(data, size_B, "OSGN", "OSG1", &sig, &sig_size))
+      return 0;
+
+   struct d12_dxbc_sig_elem elems[D12_DXBC_MAX_SIG];
+   unsigned n = parse_signature(sig, sig_size, elems, D12_DXBC_MAX_SIG);
+   n = MIN2(n, max);
+
+   for (unsigned i = 0; i < n; i++) {
+      out[i].id = elems[i].reg;
+      out[i].semantic_index = elems[i].semantic_index;
+      out[i].start_component = elems[i].mask ? ffs(elems[i].mask) - 1 : 0;
+      out[i].component_count = util_bitcount(elems[i].mask);
       strncpy(out[i].name, elems[i].name, sizeof(out[i].name) - 1);
       out[i].name[sizeof(out[i].name) - 1] = '\0';
    }

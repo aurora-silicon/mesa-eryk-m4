@@ -462,6 +462,7 @@ struct d12_sig_element {
    uint32_t semantic_index; /* SemanticIndex: TEXCOORD0 vs TEXCOORD1 */
    uint32_t interpolation;
    uint32_t start_row;
+   uint32_t start_col;
    uint32_t cols;
 };
 
@@ -1156,6 +1157,8 @@ struct d12_input_sig_elem {
    char name[32];
    uint32_t semantic_index;
    uint32_t id;
+   uint32_t start_component;
+   uint32_t component_count;
 };
 
 unsigned d12_dxbc_input_signature(const void *data, size_t size_B,
@@ -1164,6 +1167,12 @@ unsigned d12_dxbc_input_signature(const void *data, size_t size_B,
 unsigned d12_dxil_input_signature(const void *dxil, size_t size_B,
                                   struct d12_input_sig_elem *out,
                                   unsigned max);
+unsigned d12_dxbc_output_signature(const void *data, size_t size_B,
+                                   struct d12_input_sig_elem *out,
+                                   unsigned max);
+unsigned d12_dxil_output_signature(const void *dxil, size_t size_B,
+                                   struct d12_input_sig_elem *out,
+                                   unsigned max);
 
 bool d12_dxil_lower_uvs_index(struct nir_shader *nir,
                               const unsigned *slots);

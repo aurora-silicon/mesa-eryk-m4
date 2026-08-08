@@ -994,6 +994,8 @@ parse_signature(struct d12_module *mod, uint64_t list_id,
          se->cols = (uint32_t)v;
       if (md_const_uint(mod, elem->node.ops[8], &v))
          se->start_row = (uint32_t)v;
+      if (md_const_uint(mod, elem->node.ops[9], &v))
+         se->start_col = (uint32_t)v;
    }
 }
 

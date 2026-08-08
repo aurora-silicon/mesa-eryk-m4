@@ -311,6 +311,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
     */
    list->topology = MESA_PRIM_TRIANGLES;
    list->patch_control_points = 0;
+   memset(list->so, 0, sizeof(list->so));
 
    list->uses_heap = false;
    list->active_occlusion_queries = 0;
@@ -2535,15 +2536,47 @@ d12_agx_primitive(enum mesa_prim prim)
    }
 }
 
+static bool
+d12_list_dispatch_gs_stage(struct d12_cmd_list *list,
+                           struct d12_segment *seg, uint64_t va,
+                           const struct agx_shader_info *info,
+                           struct agx_grid grid, struct agx_workgroup wg,
+                           const struct d12_dispatch_uniforms *u,
+                           D3D12_SHADER_VISIBILITY visibility)
+{
+   if (!va || !info->binary_size ||
+       !d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, info))
+      return false;
+
+   uint32_t usc = d12_list_build_compute_usc(
+      list, va, info, u, false, visibility, NULL);
+   if (!usc)
+      return false;
+
+   if (list->pregfx_cur + 0x100 > list->pregfx_end) {
+      mesa_loge("pre-graphics stream full");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   struct agx_cdm_launch_word_0_packed launch =
+      d12_compute_launch_word(info);
+   list->pregfx_cur = (uint8_t *)agx_cdm_launch(
+      (uint32_t *)list->pregfx_cur, list->device->dev.chip, grid, wg,
+      launch, usc);
+   list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
+      (uint32_t *)list->pregfx_cur, list->device->dev.chip);
+   seg->dispatches++;
+   return true;
+}
+
 /*
  * Run a geometry shader's compute half and report what the rasterization
  * draw becomes.
  *
- * Only the direct, non-XFB path: the count, prefix-sum and pre-GS
- * programs exist for transform feedback and GS statistics queries, and hk
- * skips all three when neither is active (hk_cmd_draw.c:1535). PSO
- * creation already refused anything that needs them, so what is left is
- * two dispatches and a rewritten draw.
+ * For transform feedback, this includes the count, optional prefix-sum and
+ * pre-GS programs before the ordinary geometry body. When XFB is absent,
+ * the same path remains the two-dispatch software-VS/GS sequence.
  *
  * The dispatches go in the PRE-GRAPHICS stream so they land before the
  * open render pass rather than ending it.
@@ -2551,13 +2584,12 @@ d12_agx_primitive(enum mesa_prim prim)
 static bool
 d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
+                    bool indexed, unsigned first_index,
                     uint64_t root_gpu, uint64_t textures_gpu,
                     uint64_t draw_gpu, unsigned *out_verts,
-                    unsigned *out_instances,
+                    unsigned *out_instances, struct agx_draw *out_draw,
                     struct d12_dispatch_uniforms *out_poly)
 {
-   struct d12_device *device = list->device;
-
    /* 64 threads, and this value has to agree in three places: both
     * parameter blocks bake it, and the launch below uses it. Nothing
     * cross-checks them.
@@ -2572,6 +2604,28 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    struct poly_vertex_params vp;
    poly_vertex_params_init(&vp, pso->sw_vs_outputs, wg_size);
    poly_vertex_params_set_draw(&vp, vertex_count, instance_count);
+
+   if (indexed) {
+      enum agx_index_size index_size = list->ib.addr
+                                          ? list->ib.index_size
+                                          : AGX_INDEX_SIZE_U16;
+      unsigned index_size_B = agx_index_size_to_B(index_size);
+      unsigned range_el = list->ib.size_B / index_size_B;
+
+      vp.index_size_B = index_size_B;
+      if (list->ib.addr && first_index < range_el) {
+         vp.index_buffer = list->ib.addr +
+                           (uint64_t)first_index * index_size_B;
+         vp.index_buffer_range_el = range_el - first_index;
+      } else {
+         /* poly_load_index still performs one physical load before it
+          * substitutes zero for an OOB element, so an empty/null view needs
+          * mapped zero storage rather than VA 0.
+          */
+         vp.index_buffer = list->device->null_va;
+         vp.index_buffer_range_el = 0;
+      }
+   }
 
    size_t out_size = poly_tcs_in_size((uint64_t)vertex_count * instance_count,
                                       pso->sw_vs_outputs);
@@ -2604,13 +2658,95 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     * as the compute half silently doing nothing.
     */
    if (!vp.index_buffer)
-      vp.index_buffer = vp.output_buffer;
+      vp.index_buffer = list->device->null_va;
 
    struct poly_geometry_params gp;
    poly_geometry_params_init(&gp, list->topology, wg_size);
    poly_geometry_params_set_draw(&gp, list->topology, pso->gs_info.shape,
                                  pso->gs_info.max_indices, vertex_count,
                                  instance_count);
+
+   /* poly's pre-GS program always dereferences the query/counter pointers,
+    * even when D3D12 has no corresponding query active. Give every unused
+    * field its own writable word in the command-list BO rather than a null
+    * address. This is also the sink for an unbound SO slot's offset.
+    */
+   uint64_t sink = d12_list_upload_zero(list, 128, 8);
+   if (!sink)
+      return false;
+
+   unsigned sink_word = 0;
+   for (unsigned i = 0; i < POLY_MAX_VERTEX_STREAMS; i++) {
+      gp.prims_generated_counter[i] = sink + 4 * sink_word++;
+      gp.xfb_prims_generated_counter[i] = sink + 4 * sink_word++;
+      gp.xfb_overflow[i] = sink + 4 * sink_word++;
+   }
+   gp.xfb_any_overflow = sink + 4 * sink_word++;
+
+   for (unsigned i = 0; i < POLY_MAX_SO_BUFFERS; i++) {
+      const D3D12_STREAM_OUTPUT_BUFFER_VIEW *view = &list->so[i];
+      bool bound = pso->gs_info.xfb && view->BufferLocation &&
+                   view->SizeInBytes && view->BufferFilledSizeLocation;
+
+      if (bound) {
+         gp.xfb_base_original[i] = view->BufferLocation;
+         gp.xfb_size[i] = view->SizeInBytes;
+         gp.xfb_offs_ptrs[i] = view->BufferFilledSizeLocation;
+      } else {
+         gp.xfb_base_original[i] = sink + 4 * sink_word++;
+         gp.xfb_size[i] = 0;
+         gp.xfb_offs_ptrs[i] = sink + 4 * sink_word++;
+      }
+   }
+
+   gp.count_buffer_stride = pso->gs_info.count_words * 4;
+   if (gp.count_buffer_stride) {
+      /* With prefix sums, each input primitive owns one count record. The
+       * fixed-count form only needs poly's documented 16-byte scratch.
+       */
+      size_t count_size = pso->gs_info.prefix_sum
+                             ? (size_t)gp.input_primitives *
+                                  gp.count_buffer_stride
+                             : 16;
+      gp.count_buffer =
+         d12_list_upload_zero(list, MAX2(count_size, 16), 4);
+      if (!gp.count_buffer)
+         return false;
+   }
+
+   if (pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED) {
+      size_t index_size = (size_t)gp.draw.index_count * sizeof(uint32_t);
+      if (!index_size || index_size > UINT32_MAX) {
+         mesa_loge("geometry output index buffer size %zu is invalid",
+                   index_size);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      gp.output_index_buffer = d12_list_upload_zero(list, index_size, 4);
+      if (!gp.output_index_buffer)
+         return false;
+
+      *out_draw = agx_draw_indexed(
+         gp.draw.index_count, gp.draw.instance_count, 0, 0, 0,
+         gp.output_index_buffer, index_size, AGX_INDEX_SIZE_U32, false);
+   }
+
+   if (getenv("D3D12AGX_DUMP_SO")) {
+      mesa_logi("SO draw: xfb=%u prefix=%u count_words=%u count=0x%llx "
+                "stride=%u input_prims=%u grid=%ux%u shape=%u",
+                pso->gs_info.xfb, pso->gs_info.prefix_sum,
+                pso->gs_info.count_words,
+                (unsigned long long)gp.count_buffer,
+                gp.count_buffer_stride, gp.input_primitives, gp.grid[0],
+                gp.grid[1], pso->gs_info.shape);
+      for (unsigned i = 0; i < POLY_MAX_SO_BUFFERS; i++) {
+         mesa_logi("  SO%u: base=0x%llx size=%u filled=0x%llx",
+                   i, (unsigned long long)gp.xfb_base_original[i],
+                   gp.xfb_size[i],
+                   (unsigned long long)gp.xfb_offs_ptrs[i]);
+      }
+   }
 
    /* Both blocks are read through 64-bit constant loads whose offsets the
     * shaders bake, so the alignment is not cosmetic.
@@ -2663,51 +2799,45 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    if (!seg)
       return false;
 
-   /* Software VS, then the geometry body. Grids are in THREADS, not
-    * workgroups -- unlike the API dispatch path, which multiplies.
+   /* Software VS first. Grids are in THREADS, not workgroups -- unlike the
+    * API dispatch path, which multiplies. Each helper appends a full barrier
+    * because every following program consumes the previous one's output.
     */
-   const struct {
-      uint64_t va;
-      const struct agx_shader_info *info;
-      struct agx_grid grid;
-      D3D12_SHADER_VISIBILITY visibility;
-   } stages[] = {
-      {pso->sw_vs_va, &pso->sw_vs_info, agx_3d(vp.grid[0], vp.grid[1], 1),
-       D3D12_SHADER_VISIBILITY_VERTEX},
-      {pso->gs_main_va, &pso->gs_main_info,
-       agx_3d(gp.grid[0], gp.grid[1], 1),
-       D3D12_SHADER_VISIBILITY_GEOMETRY},
-   };
+   if (!d12_list_dispatch_gs_stage(
+          list, seg, pso->sw_vs_va, &pso->sw_vs_info,
+          agx_3d(vp.grid[0], vp.grid[1], 1), wg, &u,
+          D3D12_SHADER_VISIBILITY_VERTEX))
+      return false;
 
-   for (unsigned i = 0; i < ARRAY_SIZE(stages); i++) {
-      if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS,
-                                       stages[i].info))
+   if (pso->gs_info.xfb) {
+      if (pso->gs_info.count_words &&
+          !d12_list_dispatch_gs_stage(
+             list, seg, pso->gs_count_va, &pso->gs_count_info,
+             agx_3d(gp.grid[0], gp.grid[1], 1), wg, &u,
+             D3D12_SHADER_VISIBILITY_GEOMETRY))
          return false;
 
-      uint32_t usc =
-         d12_list_build_compute_usc(list, stages[i].va, stages[i].info, &u,
-                                    false, stages[i].visibility, NULL);
-      if (!usc)
-         return false;
-
-      if (list->pregfx_cur + 0x100 > list->pregfx_end) {
-         mesa_loge("pre-graphics stream full");
-         list->state = D12_LIST_ERROR;
-         return false;
+      if (pso->gs_info.prefix_sum) {
+         struct libagx_prefix_sum_geom_args args = {.p = gp_gpu};
+         d12_list_dispatch_precomp_to(
+            list, LIBAGX_PREFIX_SUM_GEOM, &args, sizeof(args),
+            agx_1d(1024 * pso->gs_info.count_words), true);
+         if (list->state != D12_LIST_RECORDING)
+            return false;
       }
 
-      struct agx_cdm_launch_word_0_packed launch =
-         d12_compute_launch_word(stages[i].info);
-
-      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
-         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid, wg,
-         launch, usc);
-
-      /* The geometry body reads what the software VS wrote. */
-      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
-         (uint32_t *)list->pregfx_cur, device->dev.chip);
-      seg->dispatches++;
+      if (!d12_list_dispatch_gs_stage(
+             list, seg, pso->gs_pre_va, &pso->gs_pre_info, agx_1d(1),
+             agx_workgroup(1, 1, 1), &u,
+             D3D12_SHADER_VISIBILITY_GEOMETRY))
+         return false;
    }
+
+   if (!d12_list_dispatch_gs_stage(
+          list, seg, pso->gs_main_va, &pso->gs_main_info,
+          agx_3d(gp.grid[0], gp.grid[1], 1), wg, &u,
+          D3D12_SHADER_VISIBILITY_GEOMETRY))
+      return false;
 
    /* The rasterization draw's extent is closed-form in the shape, not a
     * GPU-written count -- that is only needed for indirect draws.
@@ -3351,7 +3481,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (indirect_args) {
       draw_gpu = indirect_args + (indexed ? 12 : 8);
    } else {
-      uint32_t draw_params[2] = {first_vertex, first_instance};
+      /* D3D robust null-index behaviour selects vertex zero. Applying a
+       * BaseVertexLocation after substituting the zero index defeats that
+       * guarantee (and native implementations explicitly ignore it here).
+       */
+      uint32_t draw_params[2] = {
+         indexed && !list->ib.addr ? 0 : first_vertex,
+         first_instance,
+      };
       draw_gpu = d12_list_upload(list, draw_params, sizeof(draw_params), 8);
    }
    if (!draw_gpu)
@@ -3441,8 +3578,10 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
+                               indexed, first_index,
                                root_gpu, textures_gpu, draw_gpu,
-                               &vertex_count, &instance_count, &poly_u))
+                               &vertex_count, &instance_count, &draw,
+                               &poly_u))
          return;
 
       /* Inserting the pre-graphics segment shifted the render segment up
@@ -3458,6 +3597,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       varys = &pso->gs_varyings;
       topology = pso->gs_info.mode;
       first_vertex = 0;
+      draw_set = pso->gs_info.shape == POLY_GS_SHAPE_DYNAMIC_INDEXED;
    }
 
    if (getenv("D3D12AGX_DUMP_MESH")) {
@@ -3783,16 +3923,21 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * as `start` would skip indices instead of biasing vertices.
    */
    if (!draw_set) {
+      uint64_t index_buffer = list->ib.addr ? list->ib.addr
+                                            : device->null_va;
+      uint32_t index_range = list->ib.addr ? list->ib.size_B : 4;
+      enum agx_index_size index_size = list->ib.addr
+                                          ? list->ib.index_size
+                                          : AGX_INDEX_SIZE_U16;
       if (indirect_args && indexed) {
          draw = agx_draw_indexed_indirect(
-            indirect_args, list->ib.addr, list->ib.size_B,
-            list->ib.index_size, false);
+            indirect_args, index_buffer, index_range, index_size, false);
       } else if (indirect_args) {
          draw = agx_draw_indirect(indirect_args);
       } else if (indexed) {
          draw = agx_draw_indexed(vertex_count, instance_count, first_index,
-                                 first_vertex, first_instance, list->ib.addr,
-                                 list->ib.size_B, list->ib.index_size, false);
+                                 first_vertex, first_instance, index_buffer,
+                                 index_range, index_size, false);
       } else {
          draw = (struct agx_draw){
             .b = agx_3d(vertex_count, instance_count, 1),
@@ -3861,12 +4006,6 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
     */
    if (list->state != D12_LIST_RECORDING || !list->pso)
       return;
-
-   if (!list->ib.addr) {
-      mesa_loge("DrawIndexedInstanced without a bound index buffer");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
 
    d12_list_draw(list, index_count_per_instance, instance_count,
                  (unsigned)base_vertex, start_instance, true, start_index, 0);
@@ -4006,9 +4145,10 @@ d12_list_IASetIndexBuffer(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   if (!view || !view->BufferLocation || !view->SizeInBytes) {
+   if (!view) {
       list->ib.addr = 0;
       list->ib.size_B = 0;
+      list->ib.index_size = AGX_INDEX_SIZE_U16;
       return;
    }
 
@@ -4018,6 +4158,12 @@ d12_list_IASetIndexBuffer(ID3D12GraphicsCommandList6 *iface,
       break;
    case DXGI_FORMAT_R32_UINT:
       list->ib.index_size = AGX_INDEX_SIZE_U32;
+      break;
+   case DXGI_FORMAT_UNKNOWN:
+      /* Native drivers commonly accept UNKNOWN as the historical 16-bit
+       * default. vkd3d's robustness coverage relies on that behaviour.
+       */
+      list->ib.index_size = AGX_INDEX_SIZE_U16;
       break;
    default:
       mesa_loge("IASetIndexBuffer: format %u is not a valid index format",
@@ -6389,6 +6535,38 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
       d12_list_close_cdm(list);
 }
 
+static void STDMETHODCALLTYPE
+d12_list_SOSetTargets(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
+                      UINT num_views,
+                      const D3D12_STREAM_OUTPUT_BUFFER_VIEW *views)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+   if (start_slot > ARRAY_SIZE(list->so) ||
+       num_views > ARRAY_SIZE(list->so) - start_slot) {
+      mesa_loge("SOSetTargets: slot range %u+%u exceeds four buffers",
+                start_slot, num_views);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   for (unsigned i = 0; i < num_views; i++) {
+      D3D12_STREAM_OUTPUT_BUFFER_VIEW view = views ? views[i] :
+                                                    (D3D12_STREAM_OUTPUT_BUFFER_VIEW){0};
+      if ((view.BufferLocation || view.SizeInBytes ||
+           view.BufferFilledSizeLocation) &&
+          (!view.BufferLocation || !view.SizeInBytes ||
+           !view.BufferFilledSizeLocation || view.SizeInBytes > UINT32_MAX)) {
+         mesa_loge("SOSetTargets: incomplete or oversized buffer view %u", i);
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      list->so[start_slot + i] = view;
+   }
+}
+
 /* Same widening as the device: ID3D12GraphicsCommandList6 is a superset,
  * and DispatchMesh lives on it.
  */
@@ -6413,6 +6591,7 @@ static const ID3D12GraphicsCommandList6Vtbl d12_list_vtbl = {
    .ResolveSubresourceRegion = d12_list_ResolveSubresourceRegion,
    .ResourceBarrier = d12_list_ResourceBarrier,
    .OMSetRenderTargets = d12_list_OMSetRenderTargets,
+   .SOSetTargets = d12_list_SOSetTargets,
    .OMSetStencilRef = d12_list_OMSetStencilRef,
    .OMSetBlendFactor = d12_list_OMSetBlendFactor,
    .ClearRenderTargetView = d12_list_ClearRenderTargetView,
