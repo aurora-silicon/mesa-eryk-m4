@@ -356,6 +356,7 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
               enum agx_bo_flags flags, const char *label)
 {
    struct agx_bo *bo;
+   bool reused = false;
    assert(size > 0);
 
    /* BOs are allocated in pages */
@@ -364,6 +365,7 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
 
    /* See if we have a BO already in the cache */
    bo = agx_bo_cache_fetch(dev, size, align, flags, true);
+   reused = bo != NULL;
 
    /* Update stats based on the first attempt to fetch */
    if (bo != NULL)
@@ -377,8 +379,10 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
     */
    if (!bo)
       bo = dev->ops.bo_alloc(dev, size, align, flags);
-   if (!bo)
+   if (!bo) {
       bo = agx_bo_cache_fetch(dev, size, align, flags, false);
+      reused = bo != NULL;
+   }
    if (!bo) {
       agx_bo_cache_evict_all(dev);
       bo = dev->ops.bo_alloc(dev, size, align, flags);
@@ -391,6 +395,9 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
 
    bo->label = label;
    p_atomic_set(&bo->refcnt, 1);
+
+   if (reused && (flags & AGX_BO_ZERO_ON_REUSE))
+      memset(agx_bo_map(bo), 0, bo->size);
 
    if (dev->debug & AGX_DBG_TRACE) {
       agx_bo_map(bo);

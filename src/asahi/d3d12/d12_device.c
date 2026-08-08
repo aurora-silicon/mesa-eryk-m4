@@ -304,7 +304,6 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
 
    D12_ZERO_OPTIONS(2)
    D12_ZERO_OPTIONS(3)
-   D12_ZERO_OPTIONS(4)
    D12_ZERO_OPTIONS(6)
    D12_ZERO_OPTIONS(8)
    D12_ZERO_OPTIONS(10)
@@ -316,6 +315,18 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
    D12_ZERO_OPTIONS(20)
 
 #undef D12_ZERO_OPTIONS
+
+   case D3D12_FEATURE_D3D12_OPTIONS4: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS4 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /* Apple AGX has native 16-bit floating-point ALU support and both the
+       * DXIL front end and AGX compiler retain f16 arithmetic. */
+      opts->Native16BitShaderOpsSupported = TRUE;
+      return S_OK;
+   }
 
    case D3D12_FEATURE_D3D12_OPTIONS12: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS12 *opts = data;
@@ -2618,7 +2629,7 @@ d12_device_CreateCommittedResource(ID3D12Device2 *iface,
    if (out)
       *out = NULL;
 
-   return d12_resource_create_committed(device, heap_props, desc,
+   return d12_resource_create_committed(device, heap_props, heap_flags, desc,
                                         initial_state, clear_value, riid, out);
 }
 

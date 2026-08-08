@@ -727,7 +727,7 @@ struct nir_shader;
 #define D12_ROOT_TABLE_ENTRIES      (3 * D12_MAX_RESOURCE_BINDINGS)
 
 #define D12_ROOT_HEADER_SIZE          16
-#define D12_ROOT_METADATA_HEADER_SIZE 16
+#define D12_ROOT_METADATA_HEADER_SIZE 32
 
 /*
  * SM 6.8 extended command info: StartVertexLocation then

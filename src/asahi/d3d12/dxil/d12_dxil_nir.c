@@ -318,6 +318,9 @@ struct trans_ctx {
    uint8_t *handle_heap;      /* 0 none, 1 resource heap, 2 sampler heap */
    uint32_t *handle_kind_v;   /* decoded resource kind, per value */
    uint32_t *handle_stride_v; /* structured stride, per value */
+   /* Runtime validity for a shader-unbounded handle backed by a finite
+    * API descriptor range.  NULL means the handle is statically valid. */
+   nir_def **handle_valid;
 
    uint8_t *ptr_space;      /* value index -> D12_PTR_*, 0 = not a pointer */
    uint32_t *ptr_base;      /* value index -> constant byte offset */
@@ -342,6 +345,72 @@ static void trans_fail(struct trans_ctx *ctx, const char *msg);
 static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
 static bool const_uint(struct trans_ctx *ctx, uint32_t value_index,
                        uint64_t *out);
+
+/* An API unbounded range has one map entry at its lower bound, while DXIL
+ * may split that same heap into several declared ranges beginning at u4,
+ * u32, and so on.  Exact register lookup therefore cannot answer whether a
+ * shader range lives in the heap.  Find the nearest visible unbounded base
+ * at or below the shader register and return both its root slot and register
+ * bias for descriptor-array indexing. */
+static bool
+unbounded_root_for_register(const struct d12_binding_map *map,
+                            unsigned klass, unsigned space, unsigned reg,
+                            unsigned *out_slot, unsigned *out_reg)
+{
+   bool found = false;
+   unsigned best_reg = 0;
+
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].klass != klass ||
+          map->entries[i].space != space || !map->entries[i].unbounded ||
+          map->entries[i].reg > reg ||
+          (map->visibility_filter != UINT32_MAX &&
+           map->entries[i].visibility != 0 &&
+           map->entries[i].visibility != map->visibility_filter))
+         continue;
+
+      if (!found || map->entries[i].reg > best_reg) {
+         found = true;
+         best_reg = map->entries[i].reg;
+         *out_slot = map->entries[i].slot;
+         *out_reg = map->entries[i].reg;
+      }
+   }
+
+   return found;
+}
+
+/* Return the number of consecutive descriptors in the finite API root range
+ * beginning at (class, space, reg).  A DXIL declaration may call that range
+ * unbounded even when the root signature deliberately supplies a finite
+ * table.  Slot arithmetic is valid only while register, slot, range identity,
+ * and stage visibility all remain contiguous. */
+static unsigned
+finite_root_range_count(const struct d12_binding_map *map, unsigned klass,
+                        unsigned space, unsigned reg, unsigned base_slot)
+{
+   unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
+   if (entry == ~0u || map->entries[entry].unbounded ||
+       map->entries[entry].slot != base_slot)
+      return 0;
+
+   unsigned root_range = map->entries[entry].root_range;
+   if (root_range == ~0u)
+      return 0;
+
+   unsigned count = 0;
+   while (count < D12_MAX_RESOURCE_BINDINGS) {
+      unsigned next = d12_binding_map_find_entry(
+         map, klass, space, reg + count);
+      if (next == ~0u || map->entries[next].unbounded ||
+          map->entries[next].root_range != root_range ||
+          map->entries[next].slot != base_slot + count)
+         break;
+      count++;
+   }
+
+   return count;
+}
 
 /* DXIL carries booleans as i1 already, but a value that reached us as a
  * wider integer has to be compared before NIR will take it as a condition.
@@ -685,10 +754,16 @@ get_def(struct trans_ctx *ctx, uint32_t value_index)
       return nir_imm_int(ctx->b, 0);
    }
 
-   if (ctx->defs[value_index])
-      return ctx->defs[value_index];
-
    const struct d12_value *v = &ctx->mod->values[value_index];
+
+   /* A constant first materialized inside one CFG branch does not dominate
+    * a later use in a sibling branch.  Caching that NIR SSA def globally
+    * therefore created invalid SSA; structurization repaired the illegal
+    * cross-branch references as undef, silently corrupting vector lanes.
+    * Materialize constants at each use and let the normal optimization
+    * passes fold duplicates within their valid dominance scopes. */
+   if (v->kind != D12_VALUE_CONSTANT && ctx->defs[value_index])
+      return ctx->defs[value_index];
 
    if (v->kind == D12_VALUE_CONSTANT) {
       unsigned bits = type_bit_size(ctx->mod, v->type);
@@ -714,7 +789,6 @@ get_def(struct trans_ctx *ctx, uint32_t value_index)
          def = nir_imm_intN_t(ctx->b, v->const_int, bits);
       }
 
-      ctx->defs[value_index] = def;
       return def;
    }
 
@@ -1092,6 +1166,7 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
  */
 struct handle_ref {
    nir_def *slot;
+   nir_def *valid;
    bool heap;
    bool rooted_heap;
    unsigned base_slot;
@@ -1109,6 +1184,8 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id,
 
    memset(out, 0, sizeof(*out));
    out->slot = def;
+   if (value_id < ctx->mod->num_values)
+      out->valid = ctx->handle_valid[value_id];
 
    if (value_id < ctx->mod->num_values && ctx->handle_heap[value_id]) {
       out->heap = true;
@@ -1169,6 +1246,8 @@ enum d12_root_plane {
    D12_ROOT_PLANE_RESOURCE,
    D12_ROOT_PLANE_COUNTER,
    D12_ROOT_PLANE_BUFINFO,
+   D12_ROOT_PLANE_ZERO,
+   D12_ROOT_PLANE_DISCARD,
 };
 
 static nir_def *
@@ -1183,9 +1262,12 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
 
    nir_def *metadata = nir_channel(b, header, 1);
    nir_def *metadata_header =
-      nir_load_global(b, 2, 64, metadata, .align_mul = 8);
-   return nir_channel(b, metadata_header,
-                      plane == D12_ROOT_PLANE_COUNTER ? 0 : 1);
+      nir_load_global(b, 4, 64, metadata, .align_mul = 8);
+   unsigned channel = plane == D12_ROOT_PLANE_COUNTER ? 0
+                    : plane == D12_ROOT_PLANE_BUFINFO ? 1
+                    : plane == D12_ROOT_PLANE_ZERO    ? 2
+                                                     : 3;
+   return nir_channel(b, metadata_header, channel);
 }
 
 /* Address of a GPU-visible d12_descriptor.  SM 6.6 heap handles use the
@@ -1215,7 +1297,7 @@ descriptor_address(struct trans_ctx *ctx, const struct handle_ref *h)
 
 static nir_def *
 resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
-                 nir_def *coord0, nir_def *coord1, bool raw_op)
+                 nir_def *coord0, nir_def *coord1)
 {
    nir_builder *b = ctx->b;
 
@@ -1242,11 +1324,13 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
    const uint32_t kind = h->kind;
    const uint32_t stride = h->stride;
 
-   /* rawBufferLoad/Store are byte-addressed whatever the shape is. */
-   bool structured =
-      !raw_op && kind == D12_RES_KIND_STRUCTURED_BUFFER;
+   /* DXC uses rawBufferLoad/Store for structured resources in modern DXIL.
+    * Their two coordinates retain the structured meaning (element, byte
+    * offset); the declared resource shape, not the intrinsic spelling,
+    * therefore decides whether the first coordinate needs the stride. */
+   bool structured = kind == D12_RES_KIND_STRUCTURED_BUFFER;
 
-   if (!raw_op && kind == D12_RES_KIND_TYPED_BUFFER) {
+   if (kind == D12_RES_KIND_TYPED_BUFFER) {
       trans_fail(ctx, "typed buffer access (needs format conversion)");
       return nir_imm_int64(b, 0);
    }
@@ -1279,23 +1363,102 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
  * runtime query; applying a root-table slot to a heap index would read
  * unrelated metadata and be less safe than the status quo.
  */
+/* The shader declaration decides address arithmetic, but robustness is
+ * defined by the descriptor VIEW actually bound at execution.  A raw shader
+ * may legally alias a structured descriptor (and vice versa), so looking at
+ * h->kind here silently turns a small view into its whole backing BO.
+ *
+ * Finite root tables publish {count-or-bytes, descriptor stride} in BUFINFO.
+ * Shader-visible heap handles can read the same byte extent directly from
+ * the GPU descriptor ABI. */
 static nir_def *
-structured_store_in_bounds(struct trans_ctx *ctx,
-                           const struct handle_ref *h, nir_def *index)
+resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
 {
    nir_builder *b = ctx->b;
 
-   if (h->kind != D12_RES_KIND_STRUCTURED_BUFFER || h->heap)
-      return nir_imm_true(b);
+   nir_def *size;
+   if (h->heap) {
+      nir_def *descriptor = descriptor_address(ctx, h);
+      size = nir_load_global(
+         b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+         .align_mul = 4);
+   } else {
+      nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
+      nir_def *info = nir_load_global(
+         b, 2, 32,
+         nir_iadd(b, bufinfo_table,
+                  nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
+         .align_mul = 8);
+      nir_def *count_or_bytes = nir_channel(b, info, 0);
+      nir_def *descriptor_stride = nir_channel(b, info, 1);
 
-   nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
-   nir_def *count = nir_load_global(
-      b, 1, 32,
-      nir_iadd(b, bufinfo_table,
-               nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
-      .align_mul = 8);
+      size = nir_bcsel(b, nir_ine_imm(b, descriptor_stride, 0),
+                       nir_imul(b, count_or_bytes, descriptor_stride),
+                       count_or_bytes);
+   }
 
-   return nir_ult(b, nir_u2u32(b, index), count);
+   /* The slot for an invalid finite-table index is deliberately clamped to
+    * a mapped descriptor so merely reading its metadata is safe.  A zero
+    * size then redirects every raw/structured load or store to the command
+    * list's mapped zero/sink buffers. */
+   return h->valid ? nir_bcsel(b, h->valid, size, nir_imm_int(b, 0)) : size;
+}
+
+/* D3D buffer robustness is component-granular: a vec4 load straddling the
+ * end of a view preserves its in-range lanes and returns zero for the rest.
+ *
+ * DXIL is still an unstructured LLVM CFG while intrinsics are translated,
+ * so inserting nir_if here corrupts multi-block shaders. Select mapped
+ * command-list-local zero/sink addresses instead. Invalid accesses remain
+ * legal memory operations, but can neither escape the view nor contaminate
+ * later invalid reads. */
+static nir_def *
+robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
+                        nir_def *byte_offset, nir_def *size_bytes)
+{
+   nir_builder *b = ctx->b;
+   nir_def *values[4];
+   /* ByteAddressBuffer addressing is 32-bit.  Each vector lane adds its
+    * component offset in u32 and may therefore wrap independently.  Doing
+    * this add after extending to u64 incorrectly turned a wrapped address
+    * near UINT32_MAX into a robust OOB read. */
+   nir_def *offset32 = nir_u2u32(b, byte_offset);
+   nir_def *base = nir_isub(b, address, nir_u2u64(b, offset32));
+   nir_def *size64 = nir_u2u64(b, size_bytes);
+   nir_def *zero = root_plane(ctx, D12_ROOT_PLANE_ZERO);
+
+   for (unsigned c = 0; c < 4; c++) {
+      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * 4);
+      nir_def *component_offset = nir_u2u64(b, component_offset32);
+      nir_def *safe = nir_bcsel(
+         b, nir_ult(b, component_offset, size64),
+         nir_iadd(b, base, component_offset), zero);
+      values[c] = nir_load_global(b, 1, 32, safe, .align_mul = 4);
+   }
+
+   return nir_vec(b, values, ARRAY_SIZE(values));
+}
+
+static void
+robust_store_buffer_masked(struct trans_ctx *ctx, nir_def *address,
+                           nir_def *byte_offset, nir_def *size_bytes,
+                           nir_def **values, unsigned components)
+{
+   nir_builder *b = ctx->b;
+   nir_def *offset32 = nir_u2u32(b, byte_offset);
+   nir_def *base = nir_isub(b, address, nir_u2u64(b, offset32));
+   nir_def *size64 = nir_u2u64(b, size_bytes);
+   nir_def *discard = root_plane(ctx, D12_ROOT_PLANE_DISCARD);
+
+   for (unsigned c = 0; c < components; c++) {
+      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * 4);
+      nir_def *component_offset = nir_u2u64(b, component_offset32);
+      nir_def *safe = nir_bcsel(
+         b, nir_ult(b, component_offset, size64),
+         nir_iadd(b, base, component_offset), discard);
+      nir_store_global(b, values[c], safe,
+                       .write_mask = 1, .align_mul = 4);
+   }
 }
 
 /*
@@ -2536,8 +2699,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
          unsigned count = d12_range_count(rb);
 
-         unsigned base_slot = d12_binding_map_find(
-            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
+         unsigned rooted_reg = 0;
+         unsigned base_slot = ~0u;
+         bool rooted_heap = unbounded_root_for_register(
+            ctx->map, (unsigned)klass, rb->space, rb->lower_bound,
+            &base_slot, &rooted_reg);
+         if (!rooted_heap)
+            base_slot = d12_binding_map_find(
+               ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
          if (base_slot == ~0u) {
             mesa_loge("dxil: dynamic handle: class %u space %u register "
                       "%u (range %u) unmapped",
@@ -2547,9 +2716,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                             "does not bind");
             return false;
          }
-
-         bool rooted_heap = d12_binding_map_unbounded(
-            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
 
          if (count && !rooted_heap) {
             unsigned last_slot = d12_binding_map_find(
@@ -2573,21 +2739,46 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                return false;
             }
          }
+         unsigned finite_count = 0;
          if (!count && !rooted_heap) {
-            trans_fail(ctx, "unbounded shader range is not backed by an "
-                            "unbounded root range");
-            return false;
+            finite_count = finite_root_range_count(
+               ctx->map, (unsigned)klass, rb->space, rb->lower_bound,
+               base_slot);
+            if (!finite_count) {
+               mesa_loge("dxil: unbounded shader range class %u space %u "
+                         "register %u has no contiguous API descriptor "
+                         "range at root slot %u",
+                         (unsigned)klass, rb->space, rb->lower_bound,
+                         base_slot);
+               trans_fail(ctx, "unbounded shader range is not backed by a "
+                               "contiguous root range");
+               return false;
+            }
          }
 
          nir_def *idx = get_def(ctx, p[2]);
          if (!idx)
             return false;
 
-         nir_def *slot_def = nir_iadd_imm(
-            b, nir_u2u32(b, idx), -(int)rb->lower_bound);
+         nir_def *index32 = nir_u2u32(b, idx);
+         unsigned lower = rooted_heap ? rooted_reg : rb->lower_bound;
+         nir_def *slot_def = nir_iadd_imm(b, index32, -(int)lower);
 
-         if (count && !rooted_heap)
+         if (!rooted_heap) {
             slot_def = nir_iadd_imm(b, slot_def, base_slot);
+
+            if (!count) {
+               nir_def *at_or_above =
+                  nir_uge(b, index32, nir_imm_int(b, rb->lower_bound));
+               nir_def *below_end = nir_ult(
+                  b, index32,
+                  nir_imm_int(b, rb->lower_bound + finite_count));
+               nir_def *valid = nir_iand(b, at_or_above, below_end);
+               slot_def = nir_bcsel(b, valid, slot_def,
+                                    nir_imm_int(b, base_slot));
+               ctx->handle_valid[inst->result_value] = valid;
+            }
+         }
 
          ctx->handle_base[inst->result_value] = base_slot;
          if (rooted_heap) {
@@ -2607,8 +2798,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          if (rb->klass != klass || rb->id != range_id)
             continue;
 
-         if (!d12_binding_map_unbounded(ctx->map, (unsigned)klass,
-                                        rb->space, rb->lower_bound))
+         unsigned base_slot = 0, rooted_reg = 0;
+         if (!unbounded_root_for_register(
+                ctx->map, (unsigned)klass, rb->space, rb->lower_bound,
+                &base_slot, &rooted_reg))
             continue;
 
          unsigned reg = (unsigned)index;
@@ -2622,20 +2815,12 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             return false;
          }
 
-         unsigned base_slot = d12_binding_map_find(
-            ctx->map, (unsigned)klass, rb->space, rb->lower_bound);
-         if (base_slot == ~0u) {
-            trans_fail(ctx, "unbounded shader range is not backed by an "
-                            "unbounded root range");
-            return false;
-         }
-
          ctx->handle_base[inst->result_value] = base_slot;
          ctx->handle_heap[inst->result_value] = 3;
          ctx->handle_kind_v[inst->result_value] = rb->kind;
          ctx->handle_stride_v[inst->result_value] = rb->stride_B;
          def_result(ctx, inst,
-                    nir_imm_int(b, reg - rb->lower_bound));
+                    nir_imm_int(b, reg - rooted_reg));
          return true;
       }
 
@@ -2693,7 +2878,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[2]),
-                                       get_def(ctx, p[3]), false);
+                                       get_def(ctx, p[3]));
       def_result(ctx, inst,
                  nir_global_atomic(b, 32, addr, get_def(ctx, p[5]),
                                    .atomic_op = op));
@@ -2722,7 +2907,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
-                                       get_def(ctx, p[2]), false);
+                                       get_def(ctx, p[2]));
       def_result(ctx, inst,
                  nir_global_atomic_swap(b, bits, addr, get_def(ctx, p[4]),
                                         get_def(ctx, p[5]),
@@ -3875,6 +4060,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          ctx->handle_kind_v[inst->result_value] = ctx->handle_kind_v[p[0]];
          ctx->handle_stride_v[inst->result_value] =
             ctx->handle_stride_v[p[0]];
+         ctx->handle_valid[inst->result_value] = ctx->handle_valid[p[0]];
       }
 
       /* annotateHandle's second operand is a constant
@@ -4002,7 +4188,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *offset = nir_imul_imm(b, get_def(ctx, p[1]), 16);
       nir_def *addr = resource_address(ctx, &h, offset,
-                                       nir_imm_int(b, 0), true);
+                                       nir_imm_int(b, 0));
 
       def_result(ctx, inst,
                  nir_load_global(b, 128 / bits, bits, addr,
@@ -4043,7 +4229,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
-                                       nir_imm_int(b, 0), true);
+                                       nir_imm_int(b, 0));
 
       def_result(ctx, inst,
                  nir_load_global(b, 1, bits, addr, .align_mul = align));
@@ -4097,8 +4283,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
-                                       get_def(ctx, p[2]),
-                                       opcode == D12_DXOP_RAW_BUFFER_STORE);
+                                       get_def(ctx, p[2]));
+      nir_def *byte_offset =
+         h.kind == D12_RES_KIND_STRUCTURED_BUFFER
+            ? nir_iadd(b, nir_imul_imm(b, get_def(ctx, p[1]), h.stride),
+                       get_def(ctx, p[2]))
+            : get_def(ctx, p[1]);
+      nir_def *size_bytes = resource_view_size_bytes(ctx, &h);
 
       /* Contiguous low components only; DXIL emits the common case. */
       unsigned comps = util_last_bit((unsigned)mask & 0xf);
@@ -4111,20 +4302,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       for (unsigned i = 0; i < comps; i++)
          vals[i] = get_def(ctx, p[3 + i]);
 
-      /* Heap-backed structured views do not yet have root-plane BUFINFO,
-       * and structured_store_in_bounds() deliberately returns true for
-       * them.  Emitting a syntactic if(true) here is not harmless: DXIL's
-       * multi-block function is still in unstructured form until the final
-       * nir_lower_goto_ifs pass, and mixing a structured if into that CFG
-       * makes dominance calculation assert. */
-      if (h.heap || h.kind != D12_RES_KIND_STRUCTURED_BUFFER) {
-         nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
-      } else {
-         nir_push_if(b, structured_store_in_bounds(ctx, &h,
-                                                   get_def(ctx, p[1])));
-         nir_store_global(b, nir_vec(b, vals, comps), addr, .align_mul = 4);
-         nir_pop_if(b, NULL);
-      }
+      robust_store_buffer_masked(ctx, addr, byte_offset, size_bytes, vals,
+                                 comps);
       return true;
    }
 
@@ -4171,9 +4350,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       } else {
          nir_def *addr = resource_address(ctx, &h,
                                           get_def(ctx, p[1]),
-                                          get_def(ctx, p[2]),
-                                          opcode == D12_DXOP_RAW_BUFFER_LOAD);
-         data = nir_load_global(b, 4, 32, addr, .align_mul = 4);
+                                          get_def(ctx, p[2]));
+         nir_def *byte_offset =
+            h.kind == D12_RES_KIND_STRUCTURED_BUFFER
+               ? nir_iadd(b, nir_imul_imm(b, get_def(ctx, p[1]), h.stride),
+                          get_def(ctx, p[2]))
+               : get_def(ctx, p[1]);
+         data = robust_load_buffer_vec4(
+            ctx, addr, byte_offset, resource_view_size_bytes(ctx, &h));
       }
 
       /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
@@ -4478,6 +4662,14 @@ translate_cast(struct trans_ctx *ctx, const struct d12_inst *inst)
    case D12_CAST_UITOFP:  res = nir_u2fN(b, src, dst_bits); break;
    case D12_CAST_SITOFP:  res = nir_i2fN(b, src, dst_bits); break;
    case D12_CAST_FPTRUNC:
+      /* LLVM fptrunc must perform an observable narrowing. Using NIR's
+       * rounding-unspecified f2f16 lets the AGX optimizer fold the adjacent
+       * f2f32 back into a full-precision use. DXIL permits native FP16 to
+       * round to nearest here, and the explicit opcode preserves that
+       * quantization across backend optimization. */
+      res = dst_bits == 16 ? nir_f2f16_rtne(b, src)
+                           : nir_f2fN(b, src, dst_bits);
+      break;
    case D12_CAST_FPEXT:   res = nir_f2fN(b, src, dst_bits); break;
    case D12_CAST_BITCAST: res = src; break;
    default:
@@ -4634,10 +4826,11 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    ctx.handle_heap = calloc(mod->num_values, sizeof(*ctx.handle_heap));
    ctx.handle_kind_v = calloc(mod->num_values, sizeof(*ctx.handle_kind_v));
    ctx.handle_stride_v = calloc(mod->num_values, sizeof(*ctx.handle_stride_v));
+   ctx.handle_valid = calloc(mod->num_values, sizeof(*ctx.handle_valid));
    if (!ctx.defs || !ctx.phi_reg || !ctx.ptr_space || !ctx.ptr_base ||
        !ctx.ptr_pointee || !ctx.ptr_global || !ctx.handle_base ||
        !ctx.handle_heap ||
-       !ctx.handle_kind_v || !ctx.handle_stride_v) {
+       !ctx.handle_kind_v || !ctx.handle_stride_v || !ctx.handle_valid) {
       *error = "out of memory";
       free(ctx.defs);
       free(ctx.phi_reg);
@@ -4649,6 +4842,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.handle_heap);
       free(ctx.handle_kind_v);
       free(ctx.handle_stride_v);
+      free(ctx.handle_valid);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -4791,6 +4985,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
       free(ctx.handle_heap);
       free(ctx.handle_kind_v);
       free(ctx.handle_stride_v);
+      free(ctx.handle_valid);
       ralloc_free(b.shader);
       return NULL;
    }
@@ -5376,6 +5571,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    free(ctx.handle_heap);
    free(ctx.handle_kind_v);
    free(ctx.handle_stride_v);
+   free(ctx.handle_valid);
 
    if (ctx.error) {
       *error = ctx.error;

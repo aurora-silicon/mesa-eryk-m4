@@ -37,6 +37,10 @@ enum agx_bo_flags {
    /* BO is read-only from the GPU side
     */
    AGX_BO_READONLY = 1 << 5,
+
+   /* Fresh kernel allocations are already zeroed. If a BO is recycled from
+    * the userspace cache, clear it before returning it to the caller. */
+   AGX_BO_ZERO_ON_REUSE = 1 << 6,
 };
 
 enum agx_va_flags {

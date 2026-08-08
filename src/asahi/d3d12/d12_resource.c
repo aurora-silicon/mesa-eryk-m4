@@ -467,7 +467,7 @@ d12_resource_GetHeapProperties(ID3D12Resource *iface,
    if (heap_props)
       *heap_props = res->heap_props;
    if (heap_flags)
-      *heap_flags = D3D12_HEAP_FLAG_NONE;
+      *heap_flags = res->heap_flags;
    return S_OK;
 }
 
@@ -494,6 +494,7 @@ static const ID3D12ResourceVtbl d12_resource_vtbl = {
 static HRESULT
 d12_resource_create(struct d12_device *device,
                     const D3D12_HEAP_PROPERTIES *heap_props,
+                    D3D12_HEAP_FLAGS heap_flags,
                     const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
                     uint64_t heap_offset_B, REFIID riid, void **out)
 {
@@ -757,7 +758,11 @@ d12_resource_create(struct d12_device *device,
                            ? heap->bo : NULL;
    } else {
       /* UMA: every heap type is the same cached, coherent memory. */
-      res->bo = agx_bo_create(&device->dev, size_B, 0, AGX_BO_WRITEBACK,
+      enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK;
+      if (!(heap_flags & D3D12_HEAP_FLAG_CREATE_NOT_ZEROED))
+         bo_flags |= AGX_BO_ZERO_ON_REUSE;
+
+      res->bo = agx_bo_create(&device->dev, size_B, 0, bo_flags,
                               "d3d12 resource");
       if (!res->bo) {
          free(res);
@@ -767,7 +772,7 @@ d12_resource_create(struct d12_device *device,
       if (is_depth_stencil && stencil_layout.size_B) {
          res->stencil_bo =
             agx_bo_create(&device->dev, stencil_layout.size_B, 0,
-                          AGX_BO_WRITEBACK, "d3d12 stencil plane");
+                          bo_flags, "d3d12 stencil plane");
          if (!res->stencil_bo) {
             agx_bo_unreference(&device->dev, res->bo);
             free(res);
@@ -844,6 +849,7 @@ d12_resource_create(struct d12_device *device,
       res->desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
    }
    res->heap_props = *heap_props;
+   res->heap_flags = heap_flags;
    d12_device_add_ref(device);
 
    HRESULT hr = d12_resource_QueryInterface(&res->iface, riid, out);
@@ -1046,6 +1052,7 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
 HRESULT
 d12_resource_create_committed(struct d12_device *device,
                               const D3D12_HEAP_PROPERTIES *heap_props,
+                              D3D12_HEAP_FLAGS heap_flags,
                               const D3D12_RESOURCE_DESC *desc,
                               D3D12_RESOURCE_STATES initial_state,
                               const D3D12_CLEAR_VALUE *clear_value,
@@ -1056,7 +1063,8 @@ d12_resource_create_committed(struct d12_device *device,
    if (FAILED(valid))
       return valid;
 
-   return d12_resource_create(device, heap_props, desc, NULL, 0, riid, out);
+   return d12_resource_create(device, heap_props, heap_flags, desc, NULL, 0,
+                              riid, out);
 }
 
 HRESULT
@@ -1095,8 +1103,9 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
    if (FAILED(valid))
       return valid;
 
-   return d12_resource_create(device, &heap->desc.Properties, desc, heap,
-                              offset_B, riid, out);
+   return d12_resource_create(device, &heap->desc.Properties,
+                              heap->desc.Flags, desc, heap, offset_B, riid,
+                              out);
 }
 
 
@@ -1242,9 +1251,12 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    if (!heap)
       return E_OUTOFMEMORY;
 
+   enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK;
+   if (!(resolved.Flags & D3D12_HEAP_FLAG_CREATE_NOT_ZEROED))
+      bo_flags |= AGX_BO_ZERO_ON_REUSE;
+
    heap->bo = agx_bo_create(&device->dev, resolved.SizeInBytes,
-                            resolved.Alignment,
-                            AGX_BO_WRITEBACK, "d3d12 heap");
+                            resolved.Alignment, bo_flags, "d3d12 heap");
    if (!heap->bo) {
       free(heap);
       return E_OUTOFMEMORY;

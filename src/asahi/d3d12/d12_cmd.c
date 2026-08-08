@@ -358,6 +358,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
     * the old address is about to be handed out to somebody else.
     */
    list->null_buffer = 0;
+   list->discard_buffer = 0;
    list->null_counters = 0;
 }
 
@@ -450,6 +451,15 @@ d12_list_null_counters(struct d12_cmd_list *list)
    }
 
    return list->null_counters;
+}
+
+static uint64_t
+d12_list_discard_buffer(struct d12_cmd_list *list)
+{
+   if (!list->discard_buffer)
+      list->discard_buffer = d12_list_upload_zero(list, 16, 16);
+
+   return list->discard_buffer;
 }
 
 /* CPU pointer for a GPU address previously returned by an upload. */
@@ -1463,9 +1473,17 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    if (!tables_gpu)
       return false;
 
+   if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
+      return false;
+   uint64_t discard_buf = d12_list_discard_buffer(list);
+   if (!discard_buf)
+      return false;
+
    uint64_t metadata_header[] = {
       tables_gpu + D12_ROOT_COUNTER_BASE * sizeof(uint64_t),
       tables_gpu + D12_ROOT_BUFINFO_BASE * sizeof(uint64_t),
+      null_buf,
+      discard_buf,
    };
    static_assert(sizeof(metadata_header) == D12_ROOT_METADATA_HEADER_SIZE,
                  "root metadata header ABI mismatch");
@@ -4675,12 +4693,19 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
    }
 
    const struct d12_root_param *rp = &rs->layout.params[root_param_index];
-   if (rp->type != expected) {
-      mesa_loge("root parameter %u is type %u, bound as type %u",
-                root_param_index, rp->type, expected);
+   if (rp->type != D3D12_ROOT_PARAMETER_TYPE_CBV &&
+       rp->type != D3D12_ROOT_PARAMETER_TYPE_SRV &&
+       rp->type != D3D12_ROOT_PARAMETER_TYPE_UAV) {
+      mesa_loge("root parameter %u is not an address descriptor (type %u)",
+                root_param_index, rp->type);
       list->state = D12_LIST_ERROR;
       return;
    }
+
+   /* The three Set*Root*View entry points all write the same 64-bit root
+    * descriptor slot. The signature, not the chosen setter spelling,
+    * determines how the shader interprets that address. */
+   (void)expected;
 
    unsigned root_range =
       d12_root_param_range_base(&rs->layout, root_param_index);
@@ -4705,9 +4730,9 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
    memset(&table[slot], 0, sizeof(table[slot]));
    sources[slot] = NULL;
    table[slot].address = address;
-   table[slot].kind = expected == D3D12_ROOT_PARAMETER_TYPE_SRV
+   table[slot].kind = rp->type == D3D12_ROOT_PARAMETER_TYPE_SRV
                          ? D12_DESC_SRV
-                         : (expected == D3D12_ROOT_PARAMETER_TYPE_UAV
+                         : (rp->type == D3D12_ROOT_PARAMETER_TYPE_UAV
                                ? D12_DESC_UAV
                                : D12_DESC_CBV);
 }

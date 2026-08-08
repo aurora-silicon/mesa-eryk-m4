@@ -265,6 +265,7 @@ struct d12_resource {
    struct d12_device *device; /* holds a device ref */
    D3D12_RESOURCE_DESC desc;
    D3D12_HEAP_PROPERTIES heap_props;
+   D3D12_HEAP_FLAGS heap_flags;
    struct agx_bo *bo;
 
    /*
@@ -1085,6 +1086,10 @@ struct d12_cmd_list {
     * every binding upload in this recording. See d12_list_null_buffer().
     */
    uint64_t null_buffer;
+   /* Writable sink for robust out-of-view stores.  It must not alias the
+    * zero source above: an invalid store followed by an invalid load still
+    * has to read zero. */
+   uint64_t discard_buffer;
    /* One private zeroed 32-bit counter per binding slot.  Missing UAV
     * counters must remain mapped for robustness without aliasing each other
     * or modifying the null resource's read-as-zero backing.
@@ -1207,6 +1212,7 @@ HRESULT d12_queue_create(struct d12_device *device,
                          void **out);
 HRESULT d12_resource_create_committed(struct d12_device *device,
                                       const D3D12_HEAP_PROPERTIES *heap_props,
+                                      D3D12_HEAP_FLAGS heap_flags,
                                       const D3D12_RESOURCE_DESC *desc,
                                       D3D12_RESOURCE_STATES initial_state,
                                       const D3D12_CLEAR_VALUE *clear_value,
