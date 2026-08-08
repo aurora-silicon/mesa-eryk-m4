@@ -1363,6 +1363,116 @@ d12_list_begin_render(struct d12_cmd_list *list,
 }
 
 
+static void
+d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
+                           const struct d12_descriptor *d)
+{
+   agx_set_null_pbe(out);
+
+   if (d->kind != D12_DESC_UAV || !d->resource)
+      return;
+
+   struct d12_resource *res = d->resource;
+   enum pipe_format pf = d12_format_to_pipe(d->format);
+   if (pf == PIPE_FORMAT_NONE || !ail_is_valid_pixel_format(pf) ||
+       !ail_pixel_format[pf].texturable ||
+       util_format_is_depth_or_stencil(pf))
+      return;
+
+   const struct util_format_description *fdesc =
+      util_format_description(pf);
+   const unsigned blocksize = util_format_get_blocksize(pf);
+
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (d->buffer_kind != D12_BUFFER_VIEW_TYPED || !blocksize ||
+          !d->size_B)
+         return;
+
+      uint64_t base = d->address & ~0xfull;
+      unsigned tail_B = d->address & 0xf;
+      if (tail_B % blocksize)
+         return;
+
+      unsigned elements = d->size_B / blocksize;
+      agx_pack(out, PBE, cfg) {
+         cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
+         cfg.layout = AGX_LAYOUT_LINEAR;
+         cfg.channels = ail_pixel_format[pf].channels;
+         cfg.type = ail_pixel_format[pf].type;
+         cfg.srgb = util_format_is_srgb(pf);
+
+         for (unsigned i = 0; i < fdesc->nr_channels && i < 4; i++) {
+            if (fdesc->swizzle[i] == PIPE_SWIZZLE_X)
+               cfg.swizzle_r = i;
+            else if (fdesc->swizzle[i] == PIPE_SWIZZLE_Y)
+               cfg.swizzle_g = i;
+            else if (fdesc->swizzle[i] == PIPE_SWIZZLE_Z)
+               cfg.swizzle_b = i;
+            else if (fdesc->swizzle[i] == PIPE_SWIZZLE_W)
+               cfg.swizzle_a = i;
+         }
+
+         cfg.buffer = base;
+         cfg.buffer_offset_sw = tail_B / blocksize;
+         cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
+         cfg.height = DIV_ROUND_UP(elements, cfg.width);
+         cfg.level = 0;
+         cfg.levels = 1;
+         cfg.stride = (cfg.width * blocksize) - 4;
+         cfg.layers = 1;
+      }
+      return;
+   }
+
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       !res->layout.size_B || !res->layout.writeable_image ||
+       res->layout.tiling == AIL_TILING_LINEAR)
+      return;
+
+   const struct ail_layout *layout = &res->layout;
+   const unsigned level = d->texture_level;
+   const unsigned layers = MAX2(d->texture_layers, 1);
+   const bool array = d->texture_array;
+
+   agx_pack(out, PBE, cfg) {
+      cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                            : AGX_TEXTURE_DIMENSION_2D;
+      cfg.layout = agx_translate_layout(layout->tiling);
+      cfg.channels = ail_pixel_format[pf].channels;
+      cfg.type = ail_pixel_format[pf].type;
+      cfg.srgb = util_format_is_srgb(pf);
+
+      for (unsigned i = 0; i < fdesc->nr_channels && i < 4; i++) {
+         if (fdesc->swizzle[i] == PIPE_SWIZZLE_X)
+            cfg.swizzle_r = i;
+         else if (fdesc->swizzle[i] == PIPE_SWIZZLE_Y)
+            cfg.swizzle_g = i;
+         else if (fdesc->swizzle[i] == PIPE_SWIZZLE_Z)
+            cfg.swizzle_b = i;
+         else if (fdesc->swizzle[i] == PIPE_SWIZZLE_W)
+            cfg.swizzle_a = i;
+      }
+
+      cfg.buffer = d->address;
+      cfg.width = layout->width_px;
+      cfg.height = layout->height_px;
+      cfg.level = level;
+      cfg.levels = layout->levels;
+      cfg.layers = layers;
+      cfg.page_aligned_layers = layout->page_aligned_layers;
+
+      /* PBE words 4/5 are software sideband when the architectural
+       * descriptor is not extended. libagx_image_texel_address consumes
+       * these fields for tiled image atomics. */
+      if (!cfg.extended) {
+         cfg.level_offset_sw = ail_get_level_offset_B(layout, level);
+         cfg.tile_width_sw = layout->tilesize_el[level].width_el;
+         cfg.tile_height_sw = layout->tilesize_el[level].height_el;
+         cfg.layer_stride_sw = layout->layer_stride_B;
+      }
+   }
+}
+
 /*
  * Build the two tables a shader reaches its resources through, and return
  * the addresses to publish in uniform registers.
@@ -1384,7 +1494,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
  */
 static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
-                         uint64_t *out_root, uint64_t *out_textures)
+                         uint64_t *out_root, uint64_t *out_textures,
+                         uint64_t *out_pbes)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
    const struct d12_descriptor *table =
@@ -1533,6 +1644,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    static_assert(AGX_TEXTURE_LENGTH == D12_TEXTURE_DESC_SIZE,
                  "the front end's descriptor stride must match hardware");
+   static_assert(AGX_PBE_LENGTH == D12_PBE_DESC_SIZE,
+                 "the PBE descriptor stride must match hardware");
 
    uint64_t heap_gpu = d12_list_upload_zero(
       list, (size_t)last_texture * AGX_TEXTURE_LENGTH, 64);
@@ -1704,6 +1817,46 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
+   uint64_t pbe_heap_gpu = d12_list_upload_zero(
+      list, (size_t)last_texture * AGX_PBE_LENGTH, 64);
+   if (!pbe_heap_gpu)
+      return false;
+
+   size_t pbe_heap_size = (size_t)last_texture * AGX_PBE_LENGTH;
+   if (validate &&
+       (!d12_list_stream_contains(list, pbe_heap_gpu, pbe_heap_size) ||
+        (pbe_heap_gpu & 63))) {
+      mesa_loge("binding validation: PBE heap 0x%llx+%zu is outside "
+                "the 64-byte-aligned command-list stream BO",
+                (unsigned long long)pbe_heap_gpu, pbe_heap_size);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   struct agx_pbe_packed *pbes =
+      (struct agx_pbe_packed *)d12_list_data_cpu(list, pbe_heap_gpu);
+   for (unsigned i = 0; i < last_texture; i++) {
+      if (validate && table[i].kind == D12_DESC_UAV && table[i].resource &&
+          table[i].resource->desc.Dimension ==
+             D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+          (!table[i].resource->layout.writeable_image ||
+           table[i].resource->layout.tiling == AIL_TILING_LINEAR)) {
+         mesa_loge("binding validation: writable texture slot %u has no "
+                   "atomic-capable tiled layout", i);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+      d12_refresh_pbe_descriptor(&pbes[i], &table[i]);
+
+      if (getenv("D3D12AGX_DUMP_TEX")) {
+         const uint8_t *raw = (const uint8_t *)&pbes[i];
+         fprintf(stderr, "pbe[%u]:", i);
+         for (unsigned b = 0; b < AGX_PBE_LENGTH; b++)
+            fprintf(stderr, " %02x", raw[b]);
+         fprintf(stderr, "\n");
+      }
+   }
+
    if (getenv("D3D12AGX_DUMP_TEX")) {
       for (unsigned i = 0; i < last_texture; i++) {
          struct d12_resource *res =
@@ -1725,13 +1878,24 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    /* The heap needs a home for the same reason the root table does. */
    *out_textures = d12_list_upload(list, &heap_gpu, sizeof(heap_gpu), 8);
+   *out_pbes =
+      d12_list_upload(list, &pbe_heap_gpu, sizeof(pbe_heap_gpu), 8);
 
    if (validate) {
-      if (!*out_textures ||
+      if (!*out_textures || !*out_pbes ||
           !d12_list_stream_contains(list, *out_textures, sizeof(heap_gpu))) {
          mesa_loge("binding validation: texture-home cell 0x%llx is outside "
                    "the command-list stream BO",
                    (unsigned long long)*out_textures);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      if (!d12_list_stream_contains(list, *out_pbes,
+                                    sizeof(pbe_heap_gpu)) ||
+          *(uint64_t *)d12_list_data_cpu(list, *out_pbes) != pbe_heap_gpu) {
+         mesa_loge("binding validation: PBE-home cell 0x%llx is invalid",
+                   (unsigned long long)*out_pbes);
          list->state = D12_LIST_ERROR;
          return false;
       }
@@ -1746,9 +1910,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
 
       mesa_logi("binding validation: texture heap=0x%llx+%zu home=0x%llx "
-                "resource-slots=%u valid=1",
+                "PBE=0x%llx+%zu home=0x%llx resource-slots=%u valid=1",
                 (unsigned long long)heap_gpu, heap_size,
-                (unsigned long long)*out_textures, last_texture);
+                (unsigned long long)*out_textures,
+                (unsigned long long)pbe_heap_gpu, pbe_heap_size,
+                (unsigned long long)*out_pbes, last_texture);
    }
 
    if (getenv("D3D12AGX_DUMP_TEX") && *out_textures) {
@@ -1773,13 +1939,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          .source = sources[i],
          .tables_gpu = tables_gpu,
          .textures_gpu = i < last_texture ? heap_gpu : 0,
+         .pbes_gpu = i < last_texture ? pbe_heap_gpu : 0,
          .slot = i,
       };
       util_dynarray_append_typed(&list->descriptor_fixups,
                                  struct d12_descriptor_fixup, fixup);
    }
 
-   return *out_textures != 0;
+   return *out_textures != 0 && *out_pbes != 0;
 }
 
 static uint64_t
@@ -1983,13 +2150,24 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          d12_refresh_texture_descriptor(texture, d);
       }
 
+      if (fixup->pbes_gpu) {
+         struct agx_pbe_packed *pbe =
+            (struct agx_pbe_packed *)d12_list_data_cpu(
+               list, fixup->pbes_gpu + slot * AGX_PBE_LENGTH);
+         if (!pbe)
+            return false;
+         d12_refresh_pbe_descriptor(pbe, d);
+      }
+
       if (getenv("D3D12AGX_DUMP_DESCRIPTOR_FIXUPS"))
          mesa_logi("descriptor refresh: slot=%u source=%p kind=%u "
-                   "address=0x%llx tables=0x%llx textures=0x%llx valid=1",
+                   "address=0x%llx tables=0x%llx textures=0x%llx "
+                   "pbes=0x%llx valid=1",
                    slot, (const void *)d, d->kind,
                    (unsigned long long)d->address,
                    (unsigned long long)fixup->tables_gpu,
-                   (unsigned long long)fixup->textures_gpu);
+                   (unsigned long long)fixup->textures_gpu,
+                   (unsigned long long)fixup->pbes_gpu);
    }
 
    util_dynarray_foreach (&list->indirect_constant_fixups,
@@ -2094,6 +2272,7 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
 struct d12_dispatch_uniforms {
    uint64_t root;
    uint64_t textures;
+   uint64_t pbes;
    uint64_t draw;
    uint64_t vertex_params;
    uint64_t geom_params;
@@ -2328,6 +2507,11 @@ d12_list_build_compute_usc(struct d12_cmd_list *list, uint64_t code_va,
                       u->vb_params);
    }
 
+   if (u->pbes) {
+      agx_usc_uniform(&b, D12_UNIFORM_PBES, D12_UNIFORM_PBE_REGS,
+                      u->pbes);
+   }
+
    /*
     * Constants the compiler promoted out of the instruction stream live in
     * the shader BO's rodata, and the shader reads them as uniforms above
@@ -2426,15 +2610,17 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, &pso->info))
       return;
 
-   uint64_t root_gpu = 0, textures_gpu = 0;
-   if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu))
+   uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
+   if (!d12_list_upload_bindings(list, true, &root_gpu, &textures_gpu,
+                                 &pbes_gpu))
       return;
 
    uint8_t *usc_cpu = NULL;
    uint32_t usc = d12_list_build_compute_usc(
       list, pso->code_va, &pso->info,
       &(struct d12_dispatch_uniforms){.root = root_gpu,
-                                      .textures = textures_gpu},
+                                      .textures = textures_gpu,
+                                      .pbes = pbes_gpu},
       true, D3D12_SHADER_VISIBILITY_ALL, &usc_cpu);
    if (!usc)
       return;
@@ -2443,9 +2629,11 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       fprintf(stderr, "pso USC @%u:", usc);
       for (unsigned i = 0; i < 32; i++)
          fprintf(stderr, " %02x", usc_cpu[i]);
-      fprintf(stderr, "\n  root_gpu=0x%llx textures_gpu=0x%llx\n",
+      fprintf(stderr, "\n  root_gpu=0x%llx textures_gpu=0x%llx "
+                      "pbes_gpu=0x%llx\n",
               (unsigned long long)root_gpu,
-              (unsigned long long)textures_gpu);
+              (unsigned long long)textures_gpu,
+              (unsigned long long)pbes_gpu);
    }
 
    if (getenv("D3D12AGX_DUMP_TEX")) {
@@ -2502,7 +2690,7 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 static uint32_t
 d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
                   bool fragment, const struct agx_tilebuffer_layout *tib,
-                  uint64_t root_gpu, uint64_t textures_gpu,
+                  uint64_t root_gpu, uint64_t textures_gpu, uint64_t pbes_gpu,
                   uint64_t draw_gpu, uint64_t blend_gpu,
                   D3D12_SHADER_VISIBILITY visibility,
                   const struct d12_dispatch_uniforms *poly)
@@ -2531,17 +2719,6 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
    if (textures_gpu)
       agx_usc_uniform(&b, D12_UNIFORM_TEXTURES, D12_UNIFORM_TEXTURE_REGS,
                       textures_gpu);
-
-   /*
-    * Constants the compiler promoted out of the instruction stream live in
-    * the shader BO's rodata, and the shader reads them as uniforms above
-    * its push range. Nothing else publishes them: skip this and those
-    * uniforms hold whatever the last dispatch left there, so a shader
-    * computes with stale numbers instead of its own constants.
-    */
-   if (st->info.rodata.size_16) {
-      agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
-   }
 
    if (draw_gpu) {
       agx_usc_uniform(&b, D12_UNIFORM_DRAW, D12_UNIFORM_DRAW_REGS,
@@ -2583,6 +2760,17 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
          agx_usc_uniform(&b, D12_UNIFORM_VB_PARAMS, D12_UNIFORM_VB_REGS,
                          poly->vb_params);
       }
+   }
+
+   if (pbes_gpu) {
+      agx_usc_uniform(&b, D12_UNIFORM_PBES, D12_UNIFORM_PBE_REGS,
+                      pbes_gpu);
+   }
+
+   /* Promoted constants start above D12_UNIFORM_RESERVED, so bind them only
+    * after every driver-owned uniform to preserve ascending register order. */
+   if (st->info.rodata.size_16) {
+      agx_usc_immediates(&b, &st->info.rodata, st->linked.bo->va->addr);
    }
 
    if (!d12_list_push_samplers(list, &b, &st->info, false, visibility))
@@ -2825,6 +3013,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
                     bool indexed, unsigned first_index,
                     uint64_t root_gpu, uint64_t textures_gpu,
+                    uint64_t pbes_gpu,
                     uint64_t draw_gpu, unsigned *out_verts,
                     unsigned *out_instances, struct agx_draw *out_draw,
                     struct d12_dispatch_uniforms *out_poly)
@@ -3038,6 +3227,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    struct d12_dispatch_uniforms u = {
       .root = root_gpu,
       .textures = textures_gpu,
+      .pbes = pbes_gpu,
       /* poly_nir_lower_sw_vs reads the base vertex from here. */
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
@@ -3188,7 +3378,8 @@ static bool
 d12_list_tess_prerast(struct d12_cmd_list *list,
                       struct d12_pipeline_state *pso, unsigned vertex_count,
                       unsigned instance_count, uint64_t root_gpu,
-                      uint64_t textures_gpu, uint64_t draw_gpu,
+                      uint64_t textures_gpu, uint64_t pbes_gpu,
+                      uint64_t draw_gpu,
                       struct agx_draw *out_draw,
                       struct d12_dispatch_uniforms *out_poly)
 {
@@ -3315,6 +3506,7 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    struct d12_dispatch_uniforms u = {
       .root = root_gpu,
       .textures = textures_gpu,
+      .pbes = pbes_gpu,
       .draw = draw_gpu,
       .vertex_params = vp_ptr,
       .tess_params = tp_ptr,
@@ -3502,7 +3694,8 @@ static bool
 d12_list_mesh_prerast(struct d12_cmd_list *list,
                       struct d12_pipeline_state *pso, unsigned tg_x,
                       unsigned tg_y, unsigned tg_z, uint64_t root_gpu,
-                      uint64_t textures_gpu, uint64_t draw_gpu,
+                      uint64_t textures_gpu, uint64_t pbes_gpu,
+                      uint64_t draw_gpu,
                       struct agx_draw *out_draw,
                       struct d12_dispatch_uniforms *out_poly)
 {
@@ -3572,6 +3765,7 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    struct d12_dispatch_uniforms u = {
       .root = root_gpu,
       .textures = textures_gpu,
+      .pbes = pbes_gpu,
       .draw = draw_gpu,
       .mesh_params = mp_ptr,
       /* Published by the caller BEFORE this function runs: the
@@ -3766,8 +3960,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    /* Root table, exactly as the dispatch path builds it -- from the
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
     */
-   uint64_t root_gpu = 0, textures_gpu = 0;
-   if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu))
+   uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
+   if (!d12_list_upload_bindings(list, false, &root_gpu, &textures_gpu,
+                                 &pbes_gpu))
       return;
 
    /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM memory.
@@ -3846,7 +4041,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        */
       if (!d12_list_mesh_prerast(list, pso, vertex_count, instance_count,
                                  first_vertex, root_gpu, textures_gpu,
-                                 draw_gpu, &draw, &poly_u))
+                                 pbes_gpu, draw_gpu, &draw, &poly_u))
          return;
 
       seg = &list->segments[list->segment_count - 1];
@@ -3858,7 +4053,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       draw_set = true;
    } else if (pso->has_tess) {
       if (!d12_list_tess_prerast(list, pso, vertex_count, instance_count,
-                                 root_gpu, textures_gpu, draw_gpu, &draw,
+                                 root_gpu, textures_gpu, pbes_gpu, draw_gpu,
+                                 &draw,
                                  &poly_u))
          return;
 
@@ -3877,7 +4073,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    if (pso->has_gs) {
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
                                indexed, first_index,
-                               root_gpu, textures_gpu, draw_gpu,
+                               root_gpu, textures_gpu, pbes_gpu, draw_gpu,
                                &vertex_count, &instance_count, &draw,
                                &poly_u))
          return;
@@ -3923,14 +4119,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       return;
 
    uint32_t vs_usc = d12_gfx_stage_usc(
-      list, vstage, false, &seg->tib, root_gpu, textures_gpu, draw_gpu,
-      0, vertex_visibility,
+      list, vstage, false, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
+      draw_gpu, 0, vertex_visibility,
       (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
          ? &poly_u
          : NULL);
    uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
-                                       root_gpu, textures_gpu, draw_gpu,
-                                       blend_gpu,
+                                       root_gpu, textures_gpu, pbes_gpu,
+                                       draw_gpu, blend_gpu,
                                        D3D12_SHADER_VISIBILITY_PIXEL, NULL);
    if (!vs_usc || !fs_usc)
       return;
@@ -6691,6 +6887,141 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
                              agx_1d(view->size_B / 4));
 }
 
+static void
+d12_list_clear_uav_texture(struct d12_cmd_list *list,
+                           D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
+                           D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
+                           ID3D12Resource *resource, uint32_t packed,
+                           UINT num_rects, const D3D12_RECT *rects)
+{
+   /* As with buffer clears, the CPU descriptor is authoritative. The GPU
+    * handle is the shader-visible companion and need not be dereferenced by
+    * this command-recording implementation. */
+   (void)gpu_handle;
+
+   struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
+   struct d12_resource *res =
+      resource ? d12_resource_from_iface(resource) : NULL;
+
+   if (!view || !res || view->kind != D12_DESC_UAV ||
+       view->resource != res ||
+       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       (num_rects && !rects)) {
+      mesa_loge("ClearUnorderedAccessView: invalid texture UAV");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const unsigned mips = MAX2(res->desc.MipLevels, 1);
+   const unsigned resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
+   const uint64_t layer_stride = res->layout.layer_stride_B;
+   if (view->address < res->addr || !layer_stride ||
+       (view->address - res->addr) % layer_stride) {
+      mesa_loge("ClearUnorderedAccessView: invalid texture layer address");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const uint64_t first_layer64 =
+      (view->address - res->addr) / layer_stride;
+   const unsigned layers = MAX2(view->texture_layers, 1);
+   const unsigned level = view->texture_level;
+   if (first_layer64 >= resource_layers ||
+       layers > resource_layers - first_layer64 || level >= mips) {
+      mesa_loge("ClearUnorderedAccessView: texture range is out of bounds");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   enum pipe_format view_format = d12_format_to_pipe(view->format);
+   if (view_format == PIPE_FORMAT_NONE ||
+       util_format_get_blocksize(view_format) != sizeof(packed) ||
+       util_format_get_blockwidth(view_format) != 1 ||
+       util_format_get_blockheight(view_format) != 1) {
+      mesa_loge("ClearUnorderedAccessView: texture format %u unsupported",
+                (unsigned)view->format);
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   uint64_t value = d12_list_upload(list, &packed, sizeof(packed), 4);
+   if (!value)
+      return;
+
+   for (unsigned layer = 0; layer < layers; layer++) {
+      const unsigned subresource =
+         level + ((unsigned)first_layer64 + layer) * mips;
+      struct d12_copy_surface surface;
+      if (!d12_copy_surface_from_texture(
+             &surface, res, subresource, "UAV-clear destination") ||
+          surface.sample_count != 1 ||
+          surface.blocksize_B != sizeof(packed) ||
+          surface.block_width_px != 1 || surface.block_height_px != 1) {
+         mesa_loge("ClearUnorderedAccessView: texture surface unsupported");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const unsigned count = num_rects ? num_rects : 1;
+      for (unsigned i = 0; i < count; i++) {
+         int64_t left = 0, top = 0;
+         int64_t right = surface.width_px, bottom = surface.height_px;
+         if (num_rects) {
+            left = MAX2((int64_t)rects[i].left, 0);
+            top = MAX2((int64_t)rects[i].top, 0);
+            right = MIN2((int64_t)rects[i].right,
+                         (int64_t)surface.width_px);
+            bottom = MIN2((int64_t)rects[i].bottom,
+                          (int64_t)surface.height_px);
+         }
+
+         if (right <= left || bottom <= top)
+            continue;
+
+         const uint32_t width = right - left;
+         const uint32_t height = bottom - top;
+         struct libagx_fill_image_args args = {
+            .dest = surface.base,
+            .value = value,
+            .width_el = width,
+            .height_el = height,
+            .dest_x_el = left,
+            .dest_y_el = top,
+            .dest_pitch_B = surface.pitch_B,
+            .dest_stride_el = surface.stride_el,
+            .dest_tile_width_el = surface.tile_width_el,
+            .dest_tile_height_el = surface.tile_height_el,
+            .blocksize_B = surface.blocksize_B,
+            .dest_tiled = surface.tiled,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args,
+                                   sizeof(args),
+                                   agx_1d((uint64_t)width * height));
+         if (list->state == D12_LIST_ERROR)
+            return;
+      }
+   }
+}
+
+static void
+d12_list_clear_uav(struct d12_cmd_list *list,
+                   D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
+                   D3D12_CPU_DESCRIPTOR_HANDLE cpu_handle,
+                   ID3D12Resource *resource, uint32_t packed, UINT num_rects,
+                   const D3D12_RECT *rects)
+{
+   struct d12_resource *res =
+      resource ? d12_resource_from_iface(resource) : NULL;
+
+   if (res && res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+      d12_list_clear_uav_texture(list, gpu_handle, cpu_handle, resource,
+                                 packed, num_rects, rects);
+   } else {
+      d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource,
+                                packed, num_rects);
+   }
+}
+
 static void STDMETHODCALLTYPE
 d12_list_ClearUnorderedAccessViewUint(
    ID3D12GraphicsCommandList6 *iface, D3D12_GPU_DESCRIPTOR_HANDLE gpu_handle,
@@ -6700,8 +7031,6 @@ d12_list_ClearUnorderedAccessViewUint(
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
    uint32_t packed;
-
-   (void)rects;
 
    if (list->state != D12_LIST_RECORDING)
       return;
@@ -6713,8 +7042,8 @@ d12_list_ClearUnorderedAccessViewUint(
       return;
    }
 
-   d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource, packed,
-                             num_rects);
+   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, packed,
+                      num_rects, rects);
 }
 
 static void STDMETHODCALLTYPE
@@ -6727,8 +7056,6 @@ d12_list_ClearUnorderedAccessViewFloat(
    struct d12_descriptor *view = (struct d12_descriptor *)cpu_handle.ptr;
    uint32_t packed;
 
-   (void)rects;
-
    if (list->state != D12_LIST_RECORDING)
       return;
 
@@ -6739,8 +7066,8 @@ d12_list_ClearUnorderedAccessViewFloat(
       return;
    }
 
-   d12_list_clear_uav_buffer(list, gpu_handle, cpu_handle, resource, packed,
-                             num_rects);
+   d12_list_clear_uav(list, gpu_handle, cpu_handle, resource, packed,
+                      num_rects, rects);
 }
 
 /*

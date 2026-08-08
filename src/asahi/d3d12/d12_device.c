@@ -1548,6 +1548,8 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
             .levels = d->MipLevels ? d->MipLevels : full_mip_levels,
             .tiling = AIL_TILING_TWIDDLED,
             .format = pipe,
+            .writeable_image =
+               d->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
          };
          ail_make_miptree(&layout);
          size = layout.size_B;

@@ -451,6 +451,7 @@ struct d12_descriptor_fixup {
    const struct d12_descriptor *source;
    uint64_t tables_gpu;
    uint64_t textures_gpu;
+   uint64_t pbes_gpu;
    uint16_t slot;
 };
 

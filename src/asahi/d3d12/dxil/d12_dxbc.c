@@ -1688,6 +1688,60 @@ uav_binding_slot(struct d12_dxbc_ctx *ctx,
 }
 
 /*
+ * Writable texture operations use the parallel PBE heap.  It is indexed by
+ * the same dense binding slot as the read-only texture and buffer heaps, but
+ * each entry has AGX's PBE descriptor size.  Restrict the first DXBC path to
+ * the 2D dimensions the command-list uploader can describe and to finite
+ * descriptor ranges; an unbounded range needs a GPU-visible descriptor heap,
+ * not the command-local flattened table used here.
+ */
+static nir_def *
+uav_image_handle(struct d12_dxbc_ctx *ctx,
+                 const struct d12_dxbc_operand *uav, bool *is_array)
+{
+   nir_builder *b = &ctx->b;
+
+   if (uav->file != D12_DXBC_FILE_UAV ||
+       uav->index[0] >= D12_DXBC_MAX_SIG) {
+      fail(ctx, "image operand is not a declared UAV");
+      return NULL;
+   }
+
+   unsigned reg = uav->index[0];
+   unsigned dim = ctx->uav_dim[reg];
+   *is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
+   if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !*is_array) {
+      fail(ctx, "unsupported texture UAV dimension");
+      return NULL;
+   }
+
+   if (uav->num_indices == 2 &&
+       (!ctx->uav_range[reg].valid ||
+        ctx->uav_range[reg].upper_bound == UINT32_MAX)) {
+      fail(ctx, "unbounded texture UAV range unsupported");
+      return NULL;
+   }
+
+   nir_def *slot = uav_binding_slot(ctx, uav);
+   if (!slot)
+      return NULL;
+
+   return nir_bindless_image_agx(
+      b, nir_imul_imm(b, slot, D12_PBE_DESC_SIZE),
+      .desc_set = D12_UNIFORM_PBES);
+}
+
+static nir_def *
+uav_image_coord(struct d12_dxbc_ctx *ctx, nir_def *coord, bool is_array)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *zero = nir_imm_int(b, 0);
+
+   return nir_vec4(b, nir_channel(b, coord, 0), nir_channel(b, coord, 1),
+                   is_array ? nir_channel(b, coord, 2) : zero, zero);
+}
+
+/*
  * AppendStructuredBuffer/ConsumeStructuredBuffer counters are separate
  * allocations.  Command recording publishes their addresses in the counter
  * root plane at the same dense binding slot as the UAV resource itself.
@@ -3493,10 +3547,30 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             return;
          }
 
-         if (typed &&
-             (reg >= D12_DXBC_MAX_SIG ||
-              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER)) {
-            fail(ctx, "texture UAV store unsupported");
+         if (typed && reg < D12_DXBC_MAX_SIG &&
+             ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
+            bool is_array;
+            nir_def *handle = uav_image_handle(ctx, &o[0], &is_array);
+            if (!handle)
+               return;
+
+            unsigned mask = o[0].mask ? o[0].mask : 0xf;
+            if (mask != 0xf) {
+               fail(ctx, "sparse texture UAV store mask unsupported");
+               return;
+            }
+
+            nir_bindless_image_store(
+               b, handle, uav_image_coord(ctx, SRC(1), is_array),
+               nir_imm_int(b, 0), SRC(2), nir_imm_int(b, 0),
+               .image_dim = GLSL_SAMPLER_DIM_2D,
+               .image_array = is_array, .format = PIPE_FORMAT_NONE,
+               .access = ACCESS_NON_READABLE);
+            break;
+         }
+
+         if (typed && reg >= D12_DXBC_MAX_SIG) {
+            fail(ctx, "texture UAV register out of range");
             return;
          }
 
@@ -3544,6 +3618,38 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          default:                      op = nir_atomic_op_cmpxchg; break;
          }
 
+         unsigned reg = o[0].index[0];
+         bool image = o[0].file == D12_DXBC_FILE_UAV &&
+                      reg < D12_DXBC_MAX_SIG &&
+                      ctx->uav_dim[reg] !=
+                         D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         if (image) {
+            bool is_array;
+            nir_def *handle = uav_image_handle(ctx, &o[0], &is_array);
+            if (!handle)
+               return;
+
+            nir_def *coord = uav_image_coord(ctx, SRC(1), is_array);
+            enum pipe_format format =
+               op == nir_atomic_op_imin || op == nir_atomic_op_imax
+                  ? PIPE_FORMAT_R32_SINT
+                  : PIPE_FORMAT_R32_UINT;
+            if (compare) {
+               nir_bindless_image_atomic_swap(
+                  b, 32, handle, coord, nir_imm_int(b, 0),
+                  nir_channel(b, SRC(2), 0), nir_channel(b, SRC(3), 0),
+                  .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_array = is_array, .format = format, .access = 0);
+            } else {
+               nir_bindless_image_atomic(
+                  b, 32, handle, coord, nir_imm_int(b, 0),
+                  nir_channel(b, SRC(2), 0), .atomic_op = op,
+                  .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_array = is_array, .format = format, .access = 0);
+            }
+            break;
+         }
+
          nir_def *addr = atomic_buffer_address(ctx, &o[0], SRC(1));
          if (!addr)
             return;
@@ -3587,19 +3693,50 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          default:                          op = nir_atomic_op_cmpxchg; break;
          }
 
-         nir_def *addr = atomic_buffer_address(ctx, &o[1], SRC(2));
-         if (!addr)
-            return;
-
          nir_def *previous;
-         if (compare) {
-            previous = nir_global_atomic_swap(
-               b, 32, addr, nir_channel(b, SRC(3), 0),
-               nir_channel(b, SRC(4), 0), .atomic_op = op);
+         unsigned reg = o[1].index[0];
+         bool image = o[1].file == D12_DXBC_FILE_UAV &&
+                      reg < D12_DXBC_MAX_SIG &&
+                      ctx->uav_dim[reg] !=
+                         D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         if (image) {
+            bool is_array;
+            nir_def *handle = uav_image_handle(ctx, &o[1], &is_array);
+            if (!handle)
+               return;
+
+            nir_def *coord = uav_image_coord(ctx, SRC(2), is_array);
+            enum pipe_format format =
+               op == nir_atomic_op_imin || op == nir_atomic_op_imax
+                  ? PIPE_FORMAT_R32_SINT
+                  : PIPE_FORMAT_R32_UINT;
+            if (compare) {
+               previous = nir_bindless_image_atomic_swap(
+                  b, 32, handle, coord, nir_imm_int(b, 0),
+                  nir_channel(b, SRC(3), 0), nir_channel(b, SRC(4), 0),
+                  .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_array = is_array, .format = format, .access = 0);
+            } else {
+               previous = nir_bindless_image_atomic(
+                  b, 32, handle, coord, nir_imm_int(b, 0),
+                  nir_channel(b, SRC(3), 0), .atomic_op = op,
+                  .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_array = is_array, .format = format, .access = 0);
+            }
          } else {
-            previous = nir_global_atomic(b, 32, addr,
-                                         nir_channel(b, SRC(3), 0),
-                                         .atomic_op = op);
+            nir_def *addr = atomic_buffer_address(ctx, &o[1], SRC(2));
+            if (!addr)
+               return;
+
+            if (compare) {
+               previous = nir_global_atomic_swap(
+                  b, 32, addr, nir_channel(b, SRC(3), 0),
+                  nir_channel(b, SRC(4), 0), .atomic_op = op);
+            } else {
+               previous = nir_global_atomic(b, 32, addr,
+                                            nir_channel(b, SRC(3), 0),
+                                            .atomic_op = op);
+            }
          }
 
          /* DXBC temporaries are vec4 even when the destination mask names

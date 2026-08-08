@@ -638,7 +638,10 @@ d12_resource_create(struct d12_device *device,
       unsigned samples = MAX2(desc->SampleDesc.Count, 1);
       bool blocked = util_format_get_blockwidth(pipe) > 1 ||
                      util_format_get_blockheight(pipe) > 1;
-      bool linear_ok = levels == 1 && samples == 1 && !blocked;
+      bool writeable_image =
+         desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+      bool linear_ok = levels == 1 && samples == 1 && !blocked &&
+                       !writeable_image;
 
       layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
@@ -652,6 +655,7 @@ d12_resource_create(struct d12_device *device,
          .levels = levels,
          .tiling = linear_ok ? AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
          .format = pipe,
+         .writeable_image = writeable_image,
          /* 64-byte-aligned rows; the smoke tests mirror this constant */
          /* ail asserts this is ZERO for a non-linear layout, so it has
           * to follow the tiling decision above. */

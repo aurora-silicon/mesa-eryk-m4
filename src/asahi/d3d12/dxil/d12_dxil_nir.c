@@ -2876,6 +2876,34 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
+      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
+                   h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
+      if (image) {
+         nir_def *zero = nir_imm_int(b, 0);
+         nir_def *handle = nir_bindless_image_agx(
+            b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_PBES);
+         nir_def *coord =
+            nir_vec4(b, get_def(ctx, p[2]), get_def(ctx, p[3]),
+                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                        ? get_def(ctx, p[4])
+                        : zero,
+                     zero);
+
+         def_result(
+            ctx, inst,
+            nir_bindless_image_atomic(
+               b, 32, handle, coord, zero, get_def(ctx, p[5]),
+               .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+               .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
+               .format = op == nir_atomic_op_imin ||
+                                op == nir_atomic_op_imax
+                            ? PIPE_FORMAT_R32_SINT
+                            : PIPE_FORMAT_R32_UINT,
+               .access = 0));
+         return true;
+      }
+
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[2]),
                                        get_def(ctx, p[3]));
@@ -2904,6 +2932,36 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       unsigned bits = type_bit_size(ctx->mod, inst->result_type);
       if (bits != 32 && bits != 64)
          bits = 32;
+
+      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
+                   h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
+      if (image) {
+         if (bits != 32) {
+            trans_fail(ctx, "64-bit texture atomics unsupported");
+            return false;
+         }
+
+         nir_def *zero = nir_imm_int(b, 0);
+         nir_def *handle = nir_bindless_image_agx(
+            b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
+            .desc_set = D12_UNIFORM_PBES);
+         nir_def *coord =
+            nir_vec4(b, get_def(ctx, p[1]), get_def(ctx, p[2]),
+                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                        ? get_def(ctx, p[3])
+                        : zero,
+                     zero);
+
+         def_result(
+            ctx, inst,
+            nir_bindless_image_atomic_swap(
+               b, 32, handle, coord, zero, get_def(ctx, p[4]),
+               get_def(ctx, p[5]), .atomic_op = nir_atomic_op_cmpxchg,
+               .image_dim = GLSL_SAMPLER_DIM_2D,
+               .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
+               .format = PIPE_FORMAT_R32_UINT, .access = 0));
+         return true;
+      }
 
       nir_def *addr = resource_address(ctx, &h,
                                        get_def(ctx, p[1]),
@@ -3377,8 +3435,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       nir_def *handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
-         .desc_set = D12_UNIFORM_TEXTURES);
+         b, nir_imul_imm(b, th.slot, D12_PBE_DESC_SIZE),
+         .desc_set = D12_UNIFORM_PBES);
 
       nir_def *vals[4];
       for (unsigned i = 0; i < 4; i++) {
@@ -3396,12 +3454,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       nir_def *zero = nir_imm_int(b, 0);
+      bool array = th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       nir_bindless_image_store(
          b, handle,
-         nir_vec4(b, cx, cy, zero, zero), sample,
+         nir_vec4(b, cx, cy, array ? get_def(ctx, p[3]) : zero, zero), sample,
          nir_vec(b, vals, 4), nir_imm_int(b, 0),
          .image_dim = ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D,
-         .image_array = false,
+         .image_array = array,
          .format = PIPE_FORMAT_NONE, .access = ACCESS_NON_READABLE);
       return true;
    }
@@ -4272,8 +4331,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          nir_bindless_image_store(
             b,
             nir_bindless_image_agx(
-               b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
-               .desc_set = D12_UNIFORM_TEXTURES),
+               b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
+               .desc_set = D12_UNIFORM_PBES),
             nir_vec4(b, get_def(ctx, p[1]), zero, zero, zero),
             nir_imm_int(b, 0), nir_vec(b, vals4, 4), nir_imm_int(b, 0),
             .image_dim = GLSL_SAMPLER_DIM_BUF, .image_array = false,

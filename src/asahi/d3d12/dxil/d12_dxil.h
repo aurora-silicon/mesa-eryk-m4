@@ -500,6 +500,7 @@ enum d12_resource_class {
  * structured buffer uses.
  */
 enum d12_resource_kind {
+   D12_RES_KIND_TEXTURE_2D = 2,
    D12_RES_KIND_TEXTURE_2D_ARRAY = 7,
    D12_RES_KIND_TYPED_BUFFER = 10,
    D12_RES_KIND_RAW_BUFFER = 11,
@@ -713,6 +714,12 @@ struct nir_shader;
 #define D12_DESC_SIZE_OFFSET        24
 #define D12_DESC_STRIDE_OFFSET      28
 
+/* Writable image operations do not consume AGX TEXTURE descriptors.  Stores
+ * and atomics take a PBE descriptor with a different binary layout, so they
+ * have a parallel same-slot heap and a distinct uniform base. */
+#define D12_UNIFORM_PBES            60
+#define D12_UNIFORM_PBE_REGS        4
+
 /*
  * The root binding upload contains three u64 arrays back to back. The root
  * uniform points at a two-pointer header: resource plane, metadata header.
@@ -837,7 +844,7 @@ struct nir_shader;
 #define D12_UNIFORM_VB_REGS         4
 
 #define D12_UNIFORM_RESERVED                                                 \
-   (D12_UNIFORM_HEAP + D12_UNIFORM_HEAP_REGS)
+   (D12_UNIFORM_PBES + D12_UNIFORM_PBE_REGS)
 
 /*
  * The vertex attribute parameter block, indexed by DXIL input signature
@@ -877,6 +884,7 @@ static_assert(offsetof(struct d12_vb_params, stride_el) == D12_VB_OFF_STRIDE,
  * descriptors are packed.
  */
 #define D12_TEXTURE_DESC_SIZE       24
+#define D12_PBE_DESC_SIZE           24
 
 /*
  * Root-table layout.
