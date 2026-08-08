@@ -947,18 +947,6 @@ struct d12_cmd_allocator {
     */
    unsigned recording_lists;
 
-   /*
-    * Recording storage (struct agx_bo *) belonging to lists that were Reset
-    * while their previous submission could still be executing.
-    *
-    * D3D12 lets a list be Reset immediately after ExecuteCommandLists: the
-    * ALLOCATOR owns the recorded commands, and it is the allocator the
-    * application must not reset until the GPU is done. We record into
-    * list-owned BOs, so on such a Reset the old BOs are parked here instead
-    * of being rewound under the GPU, and released at allocator Reset -- the
-    * point where D3D12 guarantees completion.
-    */
-   struct util_dynarray retired_bos;
 };
 
 enum d12_list_state {

@@ -46,7 +46,7 @@ d12_fence_signal_waiters_locked(struct d12_fence *fence, bool all)
    struct d12_fence_event_waiter **link = &fence->event_waiters;
    while (*link) {
       struct d12_fence_event_waiter *waiter = *link;
-      if (!all && fence->completed_value < waiter->value) {
+      if (!all && p_atomic_read(&fence->completed_value) < waiter->value) {
          link = &waiter->next;
          continue;
       }
@@ -63,7 +63,7 @@ d12_fence_satisfy_tickets_locked(struct d12_fence *fence, bool all)
    struct d12_fence_ticket **link = &fence->tickets;
    while (*link) {
       struct d12_fence_ticket *ticket = *link;
-      if (!all && fence->completed_value < ticket->value) {
+      if (!all && p_atomic_read(&fence->completed_value) < ticket->value) {
          link = &ticket->next;
          continue;
       }
@@ -144,9 +144,15 @@ static UINT64 STDMETHODCALLTYPE
 d12_fence_GetCompletedValue(ID3D12Fence *iface)
 {
    struct d12_fence *fence = d12_fence_from_iface(iface);
-   mtx_lock(&fence->lock);
-   uint64_t point = fence->completed_value;
-   mtx_unlock(&fence->lock);
+   /*
+    * This is a polling API.  Taking the waiter-list mutex here allowed a
+    * tight application poll loop to repeatedly steal the lock from command
+    * queue workers publishing progress.  Besides turning a read into a
+    * scalability bottleneck, that could make a live wait-before-signal chain
+    * look deadlocked.  The value itself is independent of the protected
+    * waiter/ticket lists, so publish and read it atomically.
+    */
+   uint64_t point = p_atomic_read(&fence->completed_value);
 
    if (getenv("D3D12AGX_DUMP_SYNC"))
       mesa_logi("SYNC GetCompletedValue: fence %p -> %llu", (void *)fence,
@@ -179,11 +185,21 @@ d12_fence_signal_value(struct d12_fence *fence, uint64_t value)
 {
    mtx_lock(&fence->lock);
    if (!fence->destroyed) {
-      fence->completed_value = value;
-      d12_fence_signal_waiters_locked(fence, false);
-      d12_fence_satisfy_tickets_locked(fence, false);
+      uint64_t old = p_atomic_read(&fence->completed_value);
+
+      /*
+       * Registration checks the current value while holding this same lock,
+       * so an idempotent signal cannot make any existing waiter or ticket
+       * newly ready.  Avoid rescanning thousands of queued wait tickets on
+       * every iteration of an application's fence-rewind polling loop.
+       */
+      if (old != value) {
+         p_atomic_set(&fence->completed_value, value);
+         d12_fence_signal_waiters_locked(fence, false);
+         d12_fence_satisfy_tickets_locked(fence, false);
+         cnd_broadcast(&fence->changed);
+      }
    }
-   cnd_broadcast(&fence->changed);
    mtx_unlock(&fence->lock);
 }
 
@@ -194,7 +210,8 @@ d12_fence_wait_value(struct d12_fence *fence, uint64_t value,
    bool completed = true;
 
    mtx_lock(&fence->lock);
-   while (!fence->destroyed && fence->completed_value < value) {
+   while (!fence->destroyed &&
+          p_atomic_read(&fence->completed_value) < value) {
       if (!cancel) {
          cnd_wait(&fence->changed, &fence->lock);
          continue;
@@ -231,7 +248,8 @@ d12_fence_ticket_init(struct d12_fence *fence,
    ticket->value = value;
 
    mtx_lock(&fence->lock);
-   if (fence->destroyed || fence->completed_value >= value) {
+   if (fence->destroyed ||
+       p_atomic_read(&fence->completed_value) >= value) {
       p_atomic_set(&ticket->satisfied, 1);
    } else {
       ticket->next = fence->tickets;
@@ -307,7 +325,8 @@ d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
       waiter->fd = (int)(intptr_t)event;
 
       mtx_lock(&fence->lock);
-      if (fence->destroyed || fence->completed_value >= value) {
+      if (fence->destroyed ||
+          p_atomic_read(&fence->completed_value) >= value) {
          d12_signal_event_fd(waiter->fd);
          free(waiter);
       } else {
@@ -346,7 +365,7 @@ d12_fence_multi_wait(struct d12_fence_multi_waiter *w)
          struct d12_fence *fence = w->fences[i];
          mtx_lock(&fence->lock);
          bool reached = fence->destroyed ||
-                        fence->completed_value >= w->values[i];
+                        p_atomic_read(&fence->completed_value) >= w->values[i];
          mtx_unlock(&fence->lock);
          any |= reached;
          all &= reached;
@@ -513,7 +532,7 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    fence->refcount = 1;
    fence->lifetime_refcount = 1;
    fence->device = device;
-   fence->completed_value = initial_value;
+   p_atomic_set(&fence->completed_value, initial_value);
    d12_private_data_store_init(&fence->private_data,
                                (IUnknown *)&fence->iface);
    d12_device_add_ref(device);

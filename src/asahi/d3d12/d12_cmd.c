@@ -25,6 +25,8 @@
 
 #define D12_STREAM_BO_SIZE (1024 * 1024)
 #define D12_USC_BO_SIZE    (2 * 1024 * 1024)
+#define D12_RECYCLED_STREAM_MIN (128 * 1024)
+#define D12_RECYCLED_USC_MIN    (64 * 1024)
 /* Worst-case control words per dispatch or render prologue, with slack. */
 #define D12_DISPATCH_STREAM_MARGIN 0x300
 
@@ -67,20 +69,6 @@ d12_alloc_AddRef(ID3D12CommandAllocator *iface)
    return p_atomic_inc_return(&alloc->refcount);
 }
 
-/*
- * Release recording storage parked by lists that were Reset while their
- * previous submission could still have been executing. Safe only where
- * D3D12 guarantees GPU completion: allocator Reset, and allocator destroy.
- */
-static void
-d12_alloc_free_retired(struct d12_cmd_allocator *alloc)
-{
-   util_dynarray_foreach(&alloc->retired_bos, struct agx_bo *, bo)
-      agx_bo_unreference(&alloc->device->dev, *bo);
-
-   util_dynarray_clear(&alloc->retired_bos);
-}
-
 static ULONG STDMETHODCALLTYPE
 d12_alloc_Release(ID3D12CommandAllocator *iface)
 {
@@ -88,8 +76,6 @@ d12_alloc_Release(ID3D12CommandAllocator *iface)
    uint32_t refs = p_atomic_dec_return(&alloc->refcount);
 
    if (refs == 0) {
-      d12_alloc_free_retired(alloc);
-      util_dynarray_fini(&alloc->retired_bos);
       d12_private_data_store_destroy(&alloc->private_data);
       d12_device_release(alloc->device);
       free(alloc);
@@ -122,14 +108,6 @@ d12_alloc_Reset(ID3D12CommandAllocator *iface)
                 alloc->recording_lists);
       return E_FAIL;
    }
-
-   /*
-    * THIS is the point D3D12 guarantees the GPU is finished with everything
-    * recorded from this allocator -- the application is required to have
-    * waited before calling it. Release the recording storage parked here by
-    * lists that were Reset while still in flight.
-    */
-   d12_alloc_free_retired(alloc);
 
    return S_OK;
 }
@@ -270,8 +248,7 @@ d12_segment_reserve_scratch(struct d12_cmd_list *list,
 }
 
 static void
-d12_list_release_segment_scratch(struct d12_cmd_list *list,
-                                 struct d12_cmd_allocator *retire_to)
+d12_list_release_segment_scratch(struct d12_cmd_list *list)
 {
    for (unsigned i = 0; i < list->segment_count; i++) {
       struct d12_segment *seg = &list->segments[i];
@@ -285,12 +262,7 @@ d12_list_release_segment_scratch(struct d12_cmd_list *list,
          if (!*bos[j])
             continue;
 
-         if (retire_to) {
-            util_dynarray_append_typed(&retire_to->retired_bos,
-                                       struct agx_bo *, *bos[j]);
-         } else {
-            agx_bo_unreference(&list->device->dev, *bos[j]);
-         }
+         agx_bo_unreference(&list->device->dev, *bos[j]);
          *bos[j] = NULL;
       }
    }
@@ -299,9 +271,9 @@ d12_list_release_segment_scratch(struct d12_cmd_list *list,
 static void
 d12_list_begin_recording(struct d12_cmd_list *list)
 {
-   d12_list_release_segment_scratch(list, NULL);
+   d12_list_release_segment_scratch(list);
    list->stream_cur = d12_list_stream_map(list);
-   list->data_floor = D12_STREAM_BO_SIZE;
+   list->data_floor = list->stream_bo->size;
    list->usc_offset = 0;
    list->segment_count = 0;
    list->cdm_open = false;
@@ -498,7 +470,7 @@ static uint8_t *
 d12_list_alloc_usc(struct d12_cmd_list *list, size_t size, uint32_t *out_usc)
 {
    size_t off = ALIGN_POT(list->usc_offset, 64);
-   if (off + size > D12_USC_BO_SIZE) {
+   if (size > list->usc_bo->size || off > list->usc_bo->size - size) {
       mesa_loge("command list out of USC space");
       list->state = D12_LIST_ERROR;
       return NULL;
@@ -6510,23 +6482,8 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
           list->allocator && list->allocator->recording_lists)
          list->allocator->recording_lists--;
 
-      /*
-       * Same hazard as Reset: a list released while its last recording is
-       * still executing would free the control stream and USC words out
-       * from under the GPU. Park them on the allocator that recorded them,
-       * which frees them once D3D12 guarantees completion.
-       */
-      if (list->submitted && list->allocator) {
-         d12_list_release_segment_scratch(list, list->allocator);
-         util_dynarray_append_typed(&list->allocator->retired_bos,
-                                    struct agx_bo *, list->stream_bo);
-         util_dynarray_append_typed(&list->allocator->retired_bos,
-                                    struct agx_bo *, list->usc_bo);
-         list->stream_bo = NULL;
-         list->usc_bo = NULL;
-      }
-
-      d12_list_release_segment_scratch(list, NULL);
+      /* Submitted queue operations own the exact BOs they reference. */
+      d12_list_release_segment_scratch(list);
 
       if (list->stream_bo)
          agx_bo_unreference(&list->device->dev, list->stream_bo);
@@ -6646,21 +6603,42 @@ d12_list_Close(ID3D12GraphicsCommandList6 *iface)
    return S_OK;
 }
 
-/*
- * Swap in freshly allocated recording storage, parking the submitted set on
- * the allocator that recorded it. Returns false only on allocation failure,
- * in which case the list keeps its existing storage untouched.
- */
+/* Swap in freshly allocated recording storage. The queue operation owns the
+ * submitted set. Returns false only on allocation failure, in which case the
+ * list keeps its existing storage untouched. */
 static bool
 d12_list_take_fresh_storage(struct d12_cmd_list *list)
 {
    struct d12_device *device = list->device;
 
+   /*
+    * Size the next recording from this one's actual high-water marks.  The
+    * first recording still gets the conservative 1 MiB/2 MiB capacities;
+    * repeated small submissions then halve toward compact floors while
+    * retaining at least twice their observed demand.  This matters for
+    * legal wait-before-signal chains, where thousands of closed recordings
+    * can be queued before any of them is allowed to retire.
+    */
+   size_t control_used =
+      list->stream_cur - d12_list_stream_map(list);
+   size_t data_used = list->stream_bo->size - list->data_floor;
+   size_t stream_need = control_used + data_used +
+                        D12_DISPATCH_STREAM_MARGIN;
+   size_t stream_size = MAX3(D12_RECYCLED_STREAM_MIN,
+                             ALIGN_POT(stream_need * 2, 16 * 1024),
+                             list->stream_bo->size / 2);
+   stream_size = MIN2(stream_size, (size_t)D12_STREAM_BO_SIZE);
+
+   size_t usc_size = MAX3(D12_RECYCLED_USC_MIN,
+                          ALIGN_POT(list->usc_offset * 2, 16 * 1024),
+                          list->usc_bo->size / 2);
+   usc_size = MIN2(usc_size, (size_t)D12_USC_BO_SIZE);
+
    struct agx_bo *stream =
-      agx_bo_create(&device->dev, D12_STREAM_BO_SIZE, 0, AGX_BO_WRITEBACK,
+      agx_bo_create(&device->dev, stream_size, 0, AGX_BO_WRITEBACK,
                     "d3d12 cmdlist stream");
    struct agx_bo *usc =
-      agx_bo_create(&device->dev, D12_USC_BO_SIZE, 0,
+      agx_bo_create(&device->dev, usc_size, 0,
                     AGX_BO_LOW_VA | AGX_BO_WRITEBACK, "d3d12 cmdlist usc");
 
    if (!stream || !usc) {
@@ -6672,24 +6650,10 @@ d12_list_take_fresh_storage(struct d12_cmd_list *list)
       return false;
    }
 
-   /*
-    * The allocator that RECORDED the in-flight commands owns them, which is
-    * not necessarily the allocator being passed to this Reset. Without an
-    * allocator to park them on -- which should not happen for a submitted
-    * list -- releasing immediately is still better than rewinding under the
-    * GPU, and is what the old code effectively did.
-    */
-   if (list->allocator) {
-      d12_list_release_segment_scratch(list, list->allocator);
-      util_dynarray_append_typed(&list->allocator->retired_bos,
-                                 struct agx_bo *, list->stream_bo);
-      util_dynarray_append_typed(&list->allocator->retired_bos,
-                                 struct agx_bo *, list->usc_bo);
-   } else {
-      d12_list_release_segment_scratch(list, NULL);
-      agx_bo_unreference(&device->dev, list->stream_bo);
-      agx_bo_unreference(&device->dev, list->usc_bo);
-   }
+   /* Queue operations now own references to the exact submitted BOs. */
+   d12_list_release_segment_scratch(list);
+   agx_bo_unreference(&device->dev, list->stream_bo);
+   agx_bo_unreference(&device->dev, list->usc_bo);
 
    list->stream_bo = stream;
    list->usc_bo = usc;

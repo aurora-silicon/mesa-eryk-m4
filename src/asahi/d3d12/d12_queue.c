@@ -38,6 +38,16 @@ struct d12_queue_op {
    struct d12_fence_ticket ticket;
 
    struct d12_cmd_list *list;
+   /*
+    * A command list is mutable as soon as ExecuteCommandLists returns: the
+    * application may Reset it while this operation is still waiting behind
+    * an earlier fence.  Keep the exact storage referenced by the packed
+    * payload alive here instead of relying on the list's current BOs (which
+    * Reset replaces) or retaining every old recording until allocator
+    * Reset.  The latter made a long wait-before-signal chain consume 3 MiB
+    * per submit and exhaust system memory before either queue could run.
+    */
+   struct util_dynarray bos;
    void *payload;
    size_t payload_size;
    unsigned nr_vdm;
@@ -304,10 +314,46 @@ d12_queue_op_destroy(struct d12_queue_op *op)
       d12_fence_ticket_fini(&op->ticket);
    if (op->fence)
       d12_fence_internal_unref(op->fence);
+   if (op->type == D12_QUEUE_OP_SUBMIT && op->list) {
+      util_dynarray_foreach(&op->bos, struct agx_bo *, bo)
+         agx_bo_unreference(&op->list->device->dev, *bo);
+      util_dynarray_fini(&op->bos);
+   }
    if (op->list)
       ID3D12GraphicsCommandList_Release(&op->list->iface);
    free(op->payload);
    free(op);
+}
+
+static void
+d12_queue_op_capture_bos(struct d12_queue_op *op,
+                         struct d12_cmd_list *list)
+{
+   util_dynarray_init(&op->bos, NULL);
+
+   struct agx_bo *bo = list->stream_bo;
+   agx_bo_reference(bo);
+   util_dynarray_append_typed(&op->bos, struct agx_bo *, bo);
+
+   bo = list->usc_bo;
+   agx_bo_reference(bo);
+   util_dynarray_append_typed(&op->bos, struct agx_bo *, bo);
+
+   /* Scratch addresses are packed directly into the DRM command payload. */
+   for (unsigned i = 0; i < list->segment_count; i++) {
+      struct agx_bo *scratch[] = {
+         list->segments[i].scratch_cs_bo,
+         list->segments[i].scratch_vs_bo,
+         list->segments[i].scratch_fs_bo,
+      };
+
+      for (unsigned j = 0; j < ARRAY_SIZE(scratch); j++) {
+         if (!scratch[j])
+            continue;
+         agx_bo_reference(scratch[j]);
+         util_dynarray_append_typed(&op->bos, struct agx_bo *, scratch[j]);
+      }
+   }
 }
 
 static bool
@@ -384,7 +430,8 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
                 (void *)queue, queue->agx_queue_id,
                 (unsigned long long)in, (unsigned long long)out,
                 (void *)op->list,
-                (unsigned long long)op->list->stream_bo->va->addr);
+                (unsigned long long)(*(struct agx_bo **)
+                   util_dynarray_begin(&op->bos))->va->addr);
    }
 
    /* Serial completion is intentional.  It is the correctness-first D3D12
@@ -663,6 +710,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       op->payload_size = payload_size;
       op->nr_vdm = nr_vdm;
       op->nr_cdm = nr_cdm;
+
+      d12_queue_op_capture_bos(op, list);
 
       /* Reset is legal as soon as ExecuteCommandLists returns.  Mark this
        * recording submitted before handing it back to the application, and
