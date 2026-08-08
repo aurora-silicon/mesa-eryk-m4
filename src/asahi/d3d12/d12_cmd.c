@@ -3864,6 +3864,12 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
 
    struct poly_geometry_params gp;
    poly_geometry_params_init(&gp, input_prim, wg_size);
+   gp.flat_outputs = pso->flat_outputs;
+   if (getenv("D3D12AGX_VALIDATE_BINDINGS") && pso->flat_outputs) {
+      mesa_logi("GS flat transport: outputs=0x%llx topology=%u shape=%u",
+                (unsigned long long)gp.flat_outputs, input_prim,
+                pso->gs_info.shape);
+   }
    if (!indirect) {
       poly_geometry_params_set_draw(&gp, input_prim, pso->gs_info.shape,
                                     pso->gs_info.max_indices, vertex_count,
@@ -4026,6 +4032,25 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
    uint64_t gp_gpu = d12_list_upload(list, &gp, sizeof(gp), 8);
    if (!vp_gpu || !gp_gpu)
       return false;
+
+   if (!indirect && getenv("D3D12AGX_VALIDATE_BINDINGS")) {
+      size_t output_size = MAX2(out_size, 16);
+      bool valid =
+         d12_list_stream_contains(list, vp_gpu, sizeof(vp)) &&
+         d12_list_stream_contains(list, gp_gpu, sizeof(gp)) &&
+         d12_list_stream_contains(list, vp.output_buffer, output_size) &&
+         (!vp.index_size_B || (vp.index_buffer && vp.index_buffer_range_el));
+      mesa_logi("direct GS validate: vp=0x%llx gp=0x%llx "
+                "output=[0x%llx,+0x%zx] index=[0x%llx,%u x %u] valid=%u",
+                (unsigned long long)vp_gpu, (unsigned long long)gp_gpu,
+                (unsigned long long)vp.output_buffer, output_size,
+                (unsigned long long)vp.index_buffer,
+                vp.index_buffer_range_el, vp.index_size_B, valid);
+      if (!valid) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
 
    if (indirect && getenv("D3D12AGX_VALIDATE_BINDINGS")) {
       const uint64_t heap_base = list->device->heap_bo->va->addr;

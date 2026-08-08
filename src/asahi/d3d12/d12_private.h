@@ -838,6 +838,15 @@ struct d12_pipeline_state {
    bool has_gs;
    struct poly_gs_info gs_info;
 
+   /*
+    * Native AGX flat coefficient state is not usable for a D3D12 link which
+    * mixes integer and floating-point flat varyings.  Such a link is routed
+    * through Poly, whose pass-through geometry stage copies the provoking
+    * vertex value to every raster vertex.  Poly consumes this location mask
+    * from its per-draw parameter block.
+    */
+   uint64_t flat_outputs;
+
    /* The software VS output mask, captured BEFORE the poly lowering
     * erases it. The geometry programs address the vertex buffer with it.
     */

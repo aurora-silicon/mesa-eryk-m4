@@ -1330,6 +1330,20 @@ struct d12_vs_fetch {
    unsigned nr;
 };
 
+/*
+ * AGX's coefficient unit transports floating-point varyings.  Integer flat
+ * values therefore need an explicit integer -> float -> integer round trip,
+ * but only when we also bypass native flat interpolation through Poly.  Keep
+ * the component masks exact so ordinary integer links retain their established
+ * path byte-for-byte.
+ */
+struct d12_flat_transport {
+   uint64_t uint_components[4];
+   uint64_t sint_components[4];
+   uint64_t flat_outputs;
+   bool enabled;
+};
+
 enum d12_sig_section {
    D12_SIG_INPUT,
    D12_SIG_OUTPUT,
@@ -1758,6 +1772,159 @@ d12_nir_lower_a8_outputs(nir_shader *nir, uint8_t mask)
       nir, d12_lower_a8_output_instr, nir_metadata_control_flow, &mask);
 }
 
+static unsigned
+d12_flat_transport_type(const struct d12_flat_transport *transport,
+                        unsigned location, unsigned component)
+{
+   if (!transport || !transport->enabled || location >= 64 || component >= 4)
+      return 0;
+
+   uint64_t bit = BITFIELD64_BIT(location);
+   if (transport->uint_components[component] & bit)
+      return 1;
+   if (transport->sint_components[component] & bit)
+      return 2;
+   return 0;
+}
+
+static bool
+d12_lower_flat_input_transport_instr(nir_builder *b,
+                                     nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_load_input)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   unsigned first = nir_intrinsic_component(intr);
+   nir_def *components[NIR_MAX_VEC_COMPONENTS];
+   bool progress = false;
+
+   b->cursor = nir_after_instr(&intr->instr);
+   for (unsigned i = 0; i < intr->def.num_components; i++) {
+      nir_def *value = nir_channel(b, &intr->def, i);
+      unsigned type = d12_flat_transport_type(data, sem.location, first + i);
+      components[i] = type == 1 ? nir_f2u32(b, value)
+                                : type == 2 ? nir_f2i32(b, value) : value;
+      progress |= type != 0;
+   }
+
+   if (!progress)
+      return false;
+
+   nir_def *replacement =
+      nir_vec(b, components, intr->def.num_components);
+   nir_def_rewrite_uses_after(&intr->def, replacement);
+   return true;
+}
+
+static bool
+d12_nir_lower_flat_input_transport(
+   nir_shader *nir, const struct d12_flat_transport *transport)
+{
+   if (!transport || !transport->enabled)
+      return false;
+
+   return nir_shader_intrinsics_pass(
+      nir, d12_lower_flat_input_transport_instr, nir_metadata_control_flow,
+      (void *)transport);
+}
+
+static bool
+d12_lower_flat_output_transport_instr(nir_builder *b,
+                                      nir_intrinsic_instr *intr, void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_store_output)
+      return false;
+
+   nir_io_semantics sem = nir_intrinsic_io_semantics(intr);
+   unsigned first = nir_intrinsic_component(intr);
+   nir_def *value = intr->src[0].ssa;
+   nir_def *components[NIR_MAX_VEC_COMPONENTS];
+   bool progress = false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   for (unsigned i = 0; i < value->num_components; i++) {
+      nir_def *component = nir_channel(b, value, i);
+      unsigned type = d12_flat_transport_type(data, sem.location, first + i);
+      components[i] = type == 1 ? nir_u2f32(b, component)
+                                : type == 2 ? nir_i2f32(b, component)
+                                            : component;
+      progress |= type != 0;
+   }
+
+   if (!progress)
+      return false;
+
+   nir_src_rewrite(&intr->src[0],
+                   nir_vec(b, components, value->num_components));
+   nir_intrinsic_set_src_type(intr, nir_type_float32);
+   return true;
+}
+
+static bool
+d12_nir_lower_flat_output_transport(
+   nir_shader *nir, const struct d12_flat_transport *transport)
+{
+   if (!transport || !transport->enabled)
+      return false;
+
+   return nir_shader_intrinsics_pass(
+      nir, d12_lower_flat_output_transport_instr, nir_metadata_control_flow,
+      (void *)transport);
+}
+
+static void
+d12_gather_flat_transport(const void *bytecode, size_t size,
+                          const nir_shader *nir,
+                          struct d12_flat_transport *transport)
+{
+   memset(transport, 0, sizeof(*transport));
+
+   const uint64_t generic_inputs =
+      nir->info.inputs_read & ~BITFIELD64_MASK(VARYING_SLOT_VAR0);
+   transport->flat_outputs =
+      generic_inputs &
+      ~(nir->info.linear_varyings | nir->info.perspective_varyings);
+
+   struct d12_input_sig_elem sig[D12_MAX_SIG_ELEMENTS] = {0};
+   unsigned nr = d12_read_signature(bytecode, size, D12_SIG_INPUT, sig,
+                                    ARRAY_SIZE(sig));
+   bool has_integer = false, has_float = false;
+
+   for (unsigned i = 0; i < nr; i++) {
+      /* DXIL signature IDs name semantic elements, while start_row is the
+       * packed interstage register used by loadInput. DXBC exposes the same
+       * value in both fields. Multiple mixed-type elements may therefore
+       * share one varying slot at different start components. */
+      unsigned location = VARYING_SLOT_VAR0 + sig[i].register_index;
+      if (location >= 64 ||
+          !(transport->flat_outputs & BITFIELD64_BIT(location)))
+         continue;
+
+      if (sig[i].component_type == 3)
+         has_float = true;
+      else if (sig[i].component_type == 1 || sig[i].component_type == 2)
+         has_integer = true;
+      else
+         continue;
+
+      for (unsigned c = 0; c < sig[i].component_count; c++) {
+         unsigned component = sig[i].start_component + c;
+         if (component >= 4)
+            continue;
+         if (sig[i].component_type == 1)
+            transport->uint_components[component] |=
+               BITFIELD64_BIT(location);
+         else if (sig[i].component_type == 2)
+            transport->sint_components[component] |=
+               BITFIELD64_BIT(location);
+      }
+   }
+
+   /* Preserve the native path unless flat integer and float inputs coexist. */
+   transport->enabled = has_integer && has_float;
+}
+
 static bool
 compile_gfx_stage(struct d12_device *device,
                   const struct d12_binding_map *map, const void *dxil,
@@ -1769,6 +1936,7 @@ compile_gfx_stage(struct d12_device *device,
                   const struct d12_vs_fetch *fetch,
                   uint64_t *outputs_written, bool *use_fs_epilog,
                   struct agx_fs_epilog_link_info *fs_epilog_link,
+                  struct d12_flat_transport *flat_transport,
                   uint8_t *cull_distance_size,
                   struct agx_shader_part *out)
 {
@@ -1819,6 +1987,11 @@ compile_gfx_stage(struct d12_device *device,
       MAX2(nir->info.clip_distance_array_size, translated_clip_size);
    nir->info.cull_distance_array_size =
       MAX2(nir->info.cull_distance_array_size, translated_cull_size);
+
+   if (stage == MESA_SHADER_FRAGMENT && flat_transport) {
+      d12_gather_flat_transport(dxil, dxil_size, nir, flat_transport);
+      NIR_PASS(_, nir, d12_nir_lower_flat_input_transport, flat_transport);
+   }
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
@@ -2075,6 +2248,16 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
    agx_compile_shader_nir(nir, &key, out);
    d12_report_scratch("shader", &out->info);
 
+   if (getenv("D3D12AGX_DUMP_SHADERS") && out->binary) {
+      fprintf(stderr, "; --- poly %s%s, push_count %u ---\n",
+              nir->info.name ? nir->info.name : "program",
+              uvs ? " (raster)" : "", out->info.push_count);
+      fprintf(stderr, "; main +0x%x\n", out->info.main_offset);
+      agx2_disassemble(out->binary + out->info.main_offset,
+                       out->info.binary_size - out->info.main_offset,
+                       stderr);
+   }
+
    return out->binary && out->info.binary_size;
 }
 
@@ -2220,7 +2403,7 @@ d12_so_primitive(D3D12_PRIMITIVE_TOPOLOGY_TYPE type)
 static nir_shader *
 d12_build_so_passthrough_gs(uint64_t outputs, uint8_t clip_size,
                             uint8_t cull_size, enum mesa_prim prim,
-                            const nir_xfb_info *xfb)
+                            const nir_xfb_info *xfb, bool handle_flat)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_GEOMETRY, &agx_nir_options, "d12 stream-output passthrough");
@@ -2254,6 +2437,15 @@ d12_build_so_passthrough_gs(uint64_t outputs, uint8_t clip_size,
 
    nir_def *zero = nir_imm_int(&b, 0);
    nir_def *one = nir_imm_int(&b, 1);
+   nir_def *flat_mask = handle_flat ? nir_load_flat_mask(&b) : NULL;
+   nir_def *provoking = NULL;
+   if (handle_flat) {
+      nir_def *last = nir_imm_int(&b, vertices - 1);
+      provoking = nir_bcsel(&b,
+                            nir_ine_imm(&b, nir_load_provoking_last(&b), 0),
+                            last, zero);
+   }
+
    for (unsigned v = 0; v < vertices; v++) {
       nir_def *vertex = nir_imm_int(&b, v);
 
@@ -2282,8 +2474,14 @@ d12_build_so_passthrough_gs(uint64_t outputs, uint8_t clip_size,
             .location = adjusted_loc,
             .num_slots = num_slots,
          };
+         nir_def *input_vertex = vertex;
+         if (handle_flat && loc != VARYING_SLOT_POS) {
+            nir_def *is_flat = nir_ine_imm(
+               &b, nir_iand_imm(&b, flat_mask, BITFIELD64_BIT(loc)), 0);
+            input_vertex = nir_bcsel(&b, is_flat, provoking, vertex);
+         }
          nir_def *value = nir_load_per_vertex_input(
-            &b, comps, 32, vertex, offset, .io_semantics = sem);
+            &b, comps, 32, input_vertex, offset, .io_semantics = sem);
          for (unsigned c = 0; c < comps; c++) {
             nir_store_output(&b, nir_channel(&b, value, c), offset,
                              .io_semantics = sem,
@@ -2305,12 +2503,14 @@ static bool
 compile_gs_nir(struct d12_device *device, nir_shader *nir,
                struct poly_gs_info *gs_info,
                struct agx_unlinked_uvs_layout *rast_uvs,
+               const struct d12_flat_transport *flat_transport,
                struct agx_shader_part *count_out,
                struct agx_shader_part *pre_out,
                struct agx_shader_part *main_out,
                struct agx_shader_part *rast_out)
 {
    nir_shader *gs_count = NULL, *gs_copy = NULL, *pre_gs = NULL;
+   NIR_PASS(_, nir, d12_nir_lower_flat_output_transport, flat_transport);
    NIR_PASS(_, nir, poly_nir_lower_gs, &gs_count, &gs_copy, &pre_gs, gs_info);
 
    if (gs_info->shape < POLY_GS_SHAPE_DYNAMIC_INDEXED ||
@@ -2406,8 +2606,8 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
          nir->info.xfb_stride[i] = xfb->buffers[i].stride / 4;
    }
 
-   return compile_gs_nir(device, nir, gs_info, rast_uvs, count_out, pre_out,
-                         main_out, rast_out);
+   return compile_gs_nir(device, nir, gs_info, rast_uvs, NULL, count_out,
+                         pre_out, main_out, rast_out);
 }
 
 /*
@@ -3375,7 +3575,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    if (!compile_gfx_stage(device, map, vs_dxil, vs_size, MESA_SHADER_VERTEX,
                           &tib, 0xffff, 0, &pso->uvs, &fetch, NULL, NULL, NULL,
-                          &cull_distance_size, &vs_part)) {
+                          NULL, &cull_distance_size, &vs_part)) {
       free(pso);
       return E_INVALIDARG;
    }
@@ -3390,10 +3590,17 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       if (rt_formats[i] == DXGI_FORMAT_A8_UNORM)
          a8_mask |= BITFIELD_BIT(i);
    }
+
+   struct d12_flat_transport flat_transport = {0};
+   const bool allow_flat_geometry =
+      ps_dxil && ps_size && !(gs_dxil && gs_size) &&
+      !(hs_dxil && hs_size) && !(ds_dxil && ds_size) &&
+      !(so_desc && so_desc->NumEntries);
    if (!compile_gfx_stage(device, map, ps_dxil, ps_size, MESA_SHADER_FRAGMENT,
                           &tib, active_sample_mask, a8_mask, NULL, NULL,
                           &fs_outputs,
                           &use_fs_epilog, &fs_epilog_link,
+                          allow_flat_geometry ? &flat_transport : NULL,
                           &cull_distance_size, &fs_part)) {
       free(vs_part.binary);
       free(pso);
@@ -3768,7 +3975,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    bool has_app_gs = gs_dxil && gs_size;
    bool has_so = so_desc && so_desc->NumEntries;
-   if (has_app_gs || has_so) {
+   bool has_flat_geometry = flat_transport.enabled;
+   if (has_app_gs || has_so || has_flat_geometry) {
       struct agx_shader_part sw_vs_part, gs_count_part, gs_pre_part,
          gs_main_part, gs_rast_part;
       uint8_t clip_size = 0, cull_size = 0;
@@ -3827,10 +4035,12 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             compiled = false;
          } else {
             nir_shader *passthrough = d12_build_so_passthrough_gs(
-               gs_input_outputs, clip_size, cull_size, prim, xfb);
+               gs_input_outputs, clip_size, cull_size, prim, xfb,
+               has_flat_geometry);
             compiled = compile_gs_nir(
                device, passthrough, &pso->gs_info, &pso->gs_uvs,
-               &gs_count_part, &gs_pre_part, &gs_main_part, &gs_rast_part);
+               has_flat_geometry ? &flat_transport : NULL, &gs_count_part,
+               &gs_pre_part, &gs_main_part, &gs_rast_part);
          }
       }
       ralloc_free(xfb);
@@ -3950,6 +4160,8 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             gs_rast_part.info.texture_state_count;
       }
       agx_assign_uvs(&pso->gs_varyings, &pso->gs_uvs, 0, 0);
+      pso->flat_outputs =
+         has_flat_geometry ? flat_transport.flat_outputs : 0;
 
       mesa_logi("compiled geometry pipeline: sw_vs %u B / %u GPRs, "
                 "gs_main %u B, gs_rast %u B / %u GPRs, outputs 0x%llx",
