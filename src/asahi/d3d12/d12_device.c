@@ -3331,12 +3331,13 @@ d12_device_CreateUnorderedAccessView(
    D3D12_UAV_DIMENSION dimension = desc ? desc->ViewDimension
                                         : D3D12_UAV_DIMENSION_UNKNOWN;
 
-   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
       const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
-      const uint32_t resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
       const uint32_t resource_levels = MAX2(res->desc.MipLevels, 1);
       uint32_t level = 0, first_layer = 0, layers = 1;
-      bool array = false;
+      const bool is_3d =
+         res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 
       if (samples != 1) {
          mesa_loge("CreateUnorderedAccessView: multisample textures cannot "
@@ -3345,28 +3346,39 @@ d12_device_CreateUnorderedAccessView(
       }
 
       if (!desc) {
-         array = resource_layers > 1;
-         layers = resource_layers;
-      } else if (dimension == D3D12_UAV_DIMENSION_TEXTURE2D) {
+         layers = MAX2(res->desc.DepthOrArraySize, 1);
+         dimension = is_3d ? D3D12_UAV_DIMENSION_TEXTURE3D
+                           : layers > 1
+                                ? D3D12_UAV_DIMENSION_TEXTURE2DARRAY
+                                : D3D12_UAV_DIMENSION_TEXTURE2D;
+      } else if (!is_3d && dimension == D3D12_UAV_DIMENSION_TEXTURE2D) {
          level = desc->Texture2D.MipSlice;
-         if (resource_layers != 1) {
+         if (res->desc.DepthOrArraySize != 1) {
             mesa_loge("CreateUnorderedAccessView: TEXTURE2D view requires a "
                       "single-layer resource");
             return;
          }
-      } else if (dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY) {
-         array = true;
+      } else if (!is_3d &&
+                 dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY) {
          level = desc->Texture2DArray.MipSlice;
          first_layer = desc->Texture2DArray.FirstArraySlice;
          layers = desc->Texture2DArray.ArraySize;
-         if (layers == UINT32_MAX)
-            layers = resource_layers - MIN2(first_layer, resource_layers);
+      } else if (is_3d &&
+                 dimension == D3D12_UAV_DIMENSION_TEXTURE3D) {
+         level = desc->Texture3D.MipSlice;
+         first_layer = desc->Texture3D.FirstWSlice;
+         layers = desc->Texture3D.WSize;
       } else {
          mesa_loge("CreateUnorderedAccessView: texture view dimension %d "
                    "unsupported", (int)dimension);
          return;
       }
 
+      const uint32_t resource_layers =
+         is_3d ? MAX2(res->desc.DepthOrArraySize >> MIN2(level, 31), 1)
+               : MAX2(res->desc.DepthOrArraySize, 1);
+      if (layers == UINT32_MAX)
+         layers = resource_layers - MIN2(first_layer, resource_layers);
       if (level >= resource_levels || first_layer >= resource_layers ||
           !layers || layers > resource_layers - first_layer) {
          mesa_loge("CreateUnorderedAccessView: texture range level %u/%u "
@@ -3388,13 +3400,36 @@ d12_device_CreateUnorderedAccessView(
       }
 
       slot->resource = res;
-      slot->address =
-         res->addr + (uint64_t)first_layer * res->layout.layer_stride_B;
+      slot->address = res->addr +
+                      (uint64_t)first_layer * res->layout.layer_stride_B;
+      /* A sliced 3D UAV is easiest and safest to describe as a view-local
+       * miptree: fold its selected mip into the base, then expose level 0
+       * with exactly WSize layers.  This makes both GetDimensions and PBE
+       * robustness relative to the D3D view instead of to the full image. */
+      if (is_3d)
+         slot->address += ail_get_level_offset_B(&res->layout, level);
+
+      if (is_3d) {
+         uint64_t end = (slot->address - res->addr) +
+                        (uint64_t)(layers - 1) *
+                           res->layout.layer_stride_B +
+                        ail_get_level_size_B(&res->layout, level);
+         if (!res->bo || end > res->bo->size) {
+            mesa_loge("CreateUnorderedAccessView: 3D slice span "
+                      "0x%llx..0x%llx exceeds its 0x%zx-byte BO",
+                      (unsigned long long)(slot->address - res->addr),
+                      (unsigned long long)end,
+                      res->bo ? res->bo->size : 0);
+            memset(slot, 0, sizeof(*slot));
+            d12_descriptor_heap_update_slot(device, slot);
+            return;
+         }
+      }
       slot->texture_layers = layers;
       slot->texture_level = level;
       slot->format = view_format;
       slot->kind = D12_DESC_UAV;
-      slot->texture_array = array;
+      slot->texture_uav_dimension = dimension;
       d12_descriptor_heap_update_slot(device, slot);
       return;
    }

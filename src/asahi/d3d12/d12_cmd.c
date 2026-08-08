@@ -1456,7 +1456,11 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
       return;
    }
 
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+   const bool is_3d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D &&
+      d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE3D;
+   if ((res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+        !is_3d) ||
        !res->layout.size_B || !res->layout.writeable_image ||
        res->layout.tiling == AIL_TILING_LINEAR)
       return;
@@ -1464,11 +1468,18 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
    const struct ail_layout *layout = &res->layout;
    const unsigned level = d->texture_level;
    const unsigned layers = MAX2(d->texture_layers, 1);
-   const bool array = d->texture_array;
+   const bool array = d->texture_uav_dimension ==
+                      D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+   const unsigned descriptor_level = is_3d ? 0 : level;
+   const unsigned width = is_3d ? u_minify(layout->width_px, level)
+                                : layout->width_px;
+   const unsigned height = is_3d ? u_minify(layout->height_px, level)
+                                 : layout->height_px;
 
    agx_pack(out, PBE, cfg) {
-      cfg.dimension = array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
-                            : AGX_TEXTURE_DIMENSION_2D;
+      cfg.dimension = is_3d ? AGX_TEXTURE_DIMENSION_3D
+                      : array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                              : AGX_TEXTURE_DIMENSION_2D;
       cfg.layout = agx_translate_layout(layout->tiling);
       cfg.channels = ail_pixel_format[pf].channels;
       cfg.type = ail_pixel_format[pf].type;
@@ -1486,10 +1497,10 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
       }
 
       cfg.buffer = d->address;
-      cfg.width = layout->width_px;
-      cfg.height = layout->height_px;
-      cfg.level = level;
-      cfg.levels = layout->levels;
+      cfg.width = width;
+      cfg.height = height;
+      cfg.level = descriptor_level;
+      cfg.levels = is_3d ? 1 : layout->levels;
       cfg.layers = layers;
       cfg.page_aligned_layers = layout->page_aligned_layers;
 
@@ -1497,7 +1508,8 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
        * descriptor is not extended. libagx_image_texel_address consumes
        * these fields for tiled image atomics. */
       if (!cfg.extended) {
-         cfg.level_offset_sw = ail_get_level_offset_B(layout, level);
+         cfg.level_offset_sw =
+            is_3d ? 0 : ail_get_level_offset_B(layout, level);
          cfg.tile_width_sw = layout->tilesize_el[level].width_el;
          cfg.tile_height_sw = layout->tilesize_el[level].height_el;
          cfg.layer_stride_sw = layout->layer_stride_B;
@@ -2143,9 +2155,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 static enum agx_texture_dimension
 d12_native_texture_dimension(const struct d12_descriptor *d, unsigned samples)
 {
-   if (d->kind == D12_DESC_UAV)
-      return d->texture_array ? AGX_TEXTURE_DIMENSION_2D_ARRAY
-                              : AGX_TEXTURE_DIMENSION_2D;
+   if (d->kind == D12_DESC_UAV) {
+      if (d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE3D)
+         return AGX_TEXTURE_DIMENSION_3D;
+      return d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY
+                ? AGX_TEXTURE_DIMENSION_2D_ARRAY
+                : AGX_TEXTURE_DIMENSION_2D;
+   }
 
    switch ((D3D12_SRV_DIMENSION)d->texture_srv_dimension) {
    case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -2337,15 +2353,16 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    const unsigned samples = MAX2(layout->sample_count_sa, 1);
    const enum agx_texture_dimension dimension =
       d12_native_texture_dimension(d, samples);
-   const unsigned level = d->kind == D12_DESC_UAV
-                             ? d->texture_level
-                             : d->texture_first_level;
+   const bool rebased_3d_uav =
+      d->kind == D12_DESC_UAV && dimension == AGX_TEXTURE_DIMENSION_3D;
+   const unsigned source_level = d->kind == D12_DESC_UAV
+                                    ? d->texture_level
+                                    : d->texture_first_level;
+   const unsigned level = rebased_3d_uav ? 0 : source_level;
    const unsigned last_level = d->kind == D12_DESC_UAV
                                   ? level
                                   : level + MAX2(d->texture_level_count, 1) - 1;
-   const unsigned layers = dimension == AGX_TEXTURE_DIMENSION_3D
-                              ? layout->depth_px
-                              : d12_native_texture_layers(d);
+   const unsigned layers = d12_native_texture_layers(d);
    const bool layered =
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
@@ -2362,11 +2379,15 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       cfg.swizzle_b = agx_channel_from_pipe(swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(swizzle[3]);
       cfg.address = d->address;
-      cfg.width = layout->width_px;
-      cfg.height = layout->height_px;
+      cfg.width = rebased_3d_uav
+                     ? u_minify(layout->width_px, source_level)
+                     : layout->width_px;
+      cfg.height = rebased_3d_uav
+                      ? u_minify(layout->height_px, source_level)
+                      : layout->height_px;
       cfg.first_level = level;
       cfg.last_level = last_level;
-      cfg.unk_mipmapped = layout->levels > 1;
+      cfg.unk_mipmapped = !rebased_3d_uav && layout->levels > 1;
       if (samples > 1)
          cfg.samples = agx_translate_sample_count(samples);
 

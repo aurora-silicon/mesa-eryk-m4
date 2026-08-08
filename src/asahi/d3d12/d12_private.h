@@ -421,6 +421,7 @@ struct d12_descriptor {
          union {
             uint8_t texture_array;
             uint8_t texture_srv_dimension;
+            uint8_t texture_uav_dimension;
          };
       };
 

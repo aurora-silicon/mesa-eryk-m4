@@ -2048,7 +2048,8 @@ uav_binding_slot(struct d12_dxbc_ctx *ctx,
  */
 static nir_def *
 uav_image_handle(struct d12_dxbc_ctx *ctx,
-                 const struct d12_dxbc_operand *uav, bool *is_array)
+                 const struct d12_dxbc_operand *uav,
+                 enum glsl_sampler_dim *image_dim, bool *is_array)
 {
    nir_builder *b = &ctx->b;
 
@@ -2061,7 +2062,11 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
    unsigned reg = uav->index[0];
    unsigned dim = ctx->uav_dim[reg];
    *is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
-   if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !*is_array) {
+   *image_dim = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D
+                   ? GLSL_SAMPLER_DIM_3D
+                   : GLSL_SAMPLER_DIM_2D;
+   if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !*is_array &&
+       dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D) {
       fail(ctx, "unsupported texture UAV dimension");
       return NULL;
    }
@@ -2084,13 +2089,17 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
 }
 
 static nir_def *
-uav_image_coord(struct d12_dxbc_ctx *ctx, nir_def *coord, bool is_array)
+uav_image_coord(struct d12_dxbc_ctx *ctx, nir_def *coord,
+                enum glsl_sampler_dim image_dim, bool is_array)
 {
    nir_builder *b = &ctx->b;
    nir_def *zero = nir_imm_int(b, 0);
 
    return nir_vec4(b, nir_channel(b, coord, 0), nir_channel(b, coord, 1),
-                   is_array ? nir_channel(b, coord, 2) : zero, zero);
+                   (is_array || image_dim == GLSL_SAMPLER_DIM_3D)
+                      ? nir_channel(b, coord, 2)
+                      : zero,
+                   zero);
 }
 
 /*
@@ -4448,7 +4457,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if (typed && reg < D12_DXBC_MAX_SIG &&
              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
             bool is_array;
-            nir_def *handle = uav_image_handle(ctx, &o[0], &is_array);
+            enum glsl_sampler_dim image_dim;
+            nir_def *handle =
+               uav_image_handle(ctx, &o[0], &image_dim, &is_array);
             if (!handle)
                return;
 
@@ -4459,9 +4470,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             }
 
             nir_bindless_image_store(
-               b, handle, uav_image_coord(ctx, SRC(1), is_array),
+               b, handle,
+               uav_image_coord(ctx, SRC(1), image_dim, is_array),
                nir_imm_int(b, 0), SRC(2), nir_imm_int(b, 0),
-               .image_dim = GLSL_SAMPLER_DIM_2D,
+               .image_dim = image_dim,
                .image_array = is_array, .format = PIPE_FORMAT_NONE,
                .access = ACCESS_NON_READABLE);
             break;
@@ -4532,11 +4544,14 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          D12_DXBC_RESOURCE_DIMENSION_BUFFER;
          if (image) {
             bool is_array;
-            nir_def *handle = uav_image_handle(ctx, &o[0], &is_array);
+            enum glsl_sampler_dim image_dim;
+            nir_def *handle =
+               uav_image_handle(ctx, &o[0], &image_dim, &is_array);
             if (!handle)
                return;
 
-            nir_def *coord = uav_image_coord(ctx, SRC(1), is_array);
+            nir_def *coord =
+               uav_image_coord(ctx, SRC(1), image_dim, is_array);
             enum pipe_format format =
                op == nir_atomic_op_imin || op == nir_atomic_op_imax
                   ? PIPE_FORMAT_R32_SINT
@@ -4545,13 +4560,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                nir_bindless_image_atomic_swap(
                   b, 32, handle, coord, nir_imm_int(b, 0),
                   nir_channel(b, SRC(2), 0), nir_channel(b, SRC(3), 0),
-                  .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .atomic_op = op, .image_dim = image_dim,
                   .image_array = is_array, .format = format, .access = 0);
             } else {
                nir_bindless_image_atomic(
                   b, 32, handle, coord, nir_imm_int(b, 0),
                   nir_channel(b, SRC(2), 0), .atomic_op = op,
-                  .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_dim = image_dim,
                   .image_array = is_array, .format = format, .access = 0);
             }
             break;
@@ -4618,11 +4633,14 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          D12_DXBC_RESOURCE_DIMENSION_BUFFER;
          if (image) {
             bool is_array;
-            nir_def *handle = uav_image_handle(ctx, &o[1], &is_array);
+            enum glsl_sampler_dim image_dim;
+            nir_def *handle =
+               uav_image_handle(ctx, &o[1], &image_dim, &is_array);
             if (!handle)
                return;
 
-            nir_def *coord = uav_image_coord(ctx, SRC(2), is_array);
+            nir_def *coord =
+               uav_image_coord(ctx, SRC(2), image_dim, is_array);
             enum pipe_format format =
                op == nir_atomic_op_imin || op == nir_atomic_op_imax
                   ? PIPE_FORMAT_R32_SINT
@@ -4631,13 +4649,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                previous = nir_bindless_image_atomic_swap(
                   b, 32, handle, coord, nir_imm_int(b, 0),
                   nir_channel(b, SRC(3), 0), nir_channel(b, SRC(4), 0),
-                  .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .atomic_op = op, .image_dim = image_dim,
                   .image_array = is_array, .format = format, .access = 0);
             } else {
                previous = nir_bindless_image_atomic(
                   b, 32, handle, coord, nir_imm_int(b, 0),
                   nir_channel(b, SRC(3), 0), .atomic_op = op,
-                  .image_dim = GLSL_SAMPLER_DIM_2D,
+                  .image_dim = image_dim,
                   .image_array = is_array, .format = format, .access = 0);
             }
          } else {
