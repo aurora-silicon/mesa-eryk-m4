@@ -1070,6 +1070,19 @@ root_plane(struct d12_dxbc_ctx *ctx, unsigned plane)
    return nir_imm_int64(b, 0);
 }
 
+/* Byte offset of the permanently-null PBE descriptor appended to the
+ * shader-visible heap.  Keep this separate from root_plane(): that helper
+ * returns GPU addresses, while an AGX bindless image handle is an offset
+ * from its uniform-selected descriptor heap. */
+static nir_def *
+root_heap_pbe_null_offset(struct d12_dxbc_ctx *ctx)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *root = nir_load_root_agx(b);
+   nir_def *header = nir_load_global(b, 4, 64, root, .align_mul = 8);
+   return nir_u2u32(b, nir_channel(b, header, 3));
+}
+
 /* Native AGX buffer-texture descriptors encode at most 2^28 elements.  A
  * finite D3D12 view may be twice that large, so the command stream places a
  * compact tail heap immediately after its head heap and publishes the head
@@ -2186,6 +2199,34 @@ uav_element_in_bounds(struct d12_dxbc_ctx *ctx,
       .align_mul = 4);
    nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
    return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
+}
+
+/* The AGX buffer-image atomic path does not suppress an out-of-range
+ * coordinate itself.  For an SM 5.1 unbounded typed UAV, select either its
+ * live PBE descriptor or the extra null descriptor at the end of the bound
+ * heap.  The selection must stay inside the bindless-image intrinsic so its
+ * producer retains the shape required by the AGX backend. */
+static nir_def *
+uav_rooted_typed_atomic_handle(struct d12_dxbc_ctx *ctx,
+                               nir_def *descriptor, nir_def *element)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *size = nir_load_global(
+      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+      .align_mul = 4);
+   nir_def *stride = nir_load_global(
+      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
+      .align_mul = 4);
+   nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
+   nir_def *valid = nir_ult(
+      b, nir_u2u32(b, nir_channel(b, element, 0)), count);
+   nir_def *live_offset = nir_imul_imm(
+      b, rooted_native_index(ctx, descriptor), D12_PBE_DESC_SIZE);
+
+   return nir_bindless_image_agx(
+      b, nir_bcsel(b, valid, live_offset,
+                   root_heap_pbe_null_offset(ctx)),
+      .desc_set = D12_UNIFORM_HEAP_PBES);
 }
 
 /*
@@ -4648,20 +4689,42 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          unsigned reg = o[0].index[0];
-         bool image = o[0].file == D12_DXBC_FILE_UAV &&
-                      reg < D12_DXBC_MAX_SIG &&
-                      ctx->uav_dim[reg] !=
-                         D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         nir_def *typed_descriptor =
+            o[0].file == D12_DXBC_FILE_UAV &&
+                  reg < D12_DXBC_MAX_SIG &&
+                  ctx->uav_dim[reg] == D12_DXBC_RESOURCE_DIMENSION_BUFFER &&
+                  !ctx->uav_raw[reg] && ctx->uav_stride[reg] == 0
+               ? uav_rooted_descriptor(ctx, &o[0])
+               : NULL;
+         bool typed_buffer = typed_descriptor != NULL;
+         bool image = typed_buffer ||
+                      (o[0].file == D12_DXBC_FILE_UAV &&
+                       reg < D12_DXBC_MAX_SIG &&
+                       ctx->uav_dim[reg] !=
+                          D12_DXBC_RESOURCE_DIMENSION_BUFFER);
          if (image) {
             bool is_array;
             enum glsl_sampler_dim image_dim;
-            nir_def *handle =
-               uav_image_handle(ctx, &o[0], &image_dim, &is_array);
+            nir_def *handle;
+            if (typed_buffer) {
+               image_dim = GLSL_SAMPLER_DIM_BUF;
+               is_array = false;
+               handle = uav_rooted_typed_atomic_handle(
+                  ctx, typed_descriptor, SRC(1));
+            } else {
+               handle =
+                  uav_image_handle(ctx, &o[0], &image_dim, &is_array);
+            }
             if (!handle)
                return;
 
-            nir_def *coord =
-               uav_image_coord(ctx, SRC(1), image_dim, is_array);
+            nir_def *coord = typed_buffer
+                                ? nir_vec4(b, nir_channel(b, SRC(1), 0),
+                                           nir_imm_int(b, 0),
+                                           nir_imm_int(b, 0),
+                                           nir_imm_int(b, 0))
+                                : uav_image_coord(ctx, SRC(1), image_dim,
+                                                  is_array);
             enum pipe_format format =
                op == nir_atomic_op_imin || op == nir_atomic_op_imax
                   ? PIPE_FORMAT_R32_SINT
@@ -4737,20 +4800,42 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_def *previous;
          unsigned reg = o[1].index[0];
-         bool image = o[1].file == D12_DXBC_FILE_UAV &&
-                      reg < D12_DXBC_MAX_SIG &&
-                      ctx->uav_dim[reg] !=
-                         D12_DXBC_RESOURCE_DIMENSION_BUFFER;
+         nir_def *typed_descriptor =
+            o[1].file == D12_DXBC_FILE_UAV &&
+                  reg < D12_DXBC_MAX_SIG &&
+                  ctx->uav_dim[reg] == D12_DXBC_RESOURCE_DIMENSION_BUFFER &&
+                  !ctx->uav_raw[reg] && ctx->uav_stride[reg] == 0
+               ? uav_rooted_descriptor(ctx, &o[1])
+               : NULL;
+         bool typed_buffer = typed_descriptor != NULL;
+         bool image = typed_buffer ||
+                      (o[1].file == D12_DXBC_FILE_UAV &&
+                       reg < D12_DXBC_MAX_SIG &&
+                       ctx->uav_dim[reg] !=
+                          D12_DXBC_RESOURCE_DIMENSION_BUFFER);
          if (image) {
             bool is_array;
             enum glsl_sampler_dim image_dim;
-            nir_def *handle =
-               uav_image_handle(ctx, &o[1], &image_dim, &is_array);
+            nir_def *handle;
+            if (typed_buffer) {
+               image_dim = GLSL_SAMPLER_DIM_BUF;
+               is_array = false;
+               handle = uav_rooted_typed_atomic_handle(
+                  ctx, typed_descriptor, SRC(2));
+            } else {
+               handle =
+                  uav_image_handle(ctx, &o[1], &image_dim, &is_array);
+            }
             if (!handle)
                return;
 
-            nir_def *coord =
-               uav_image_coord(ctx, SRC(2), image_dim, is_array);
+            nir_def *coord = typed_buffer
+                                ? nir_vec4(b, nir_channel(b, SRC(2), 0),
+                                           nir_imm_int(b, 0),
+                                           nir_imm_int(b, 0),
+                                           nir_imm_int(b, 0))
+                                : uav_image_coord(ctx, SRC(2), image_dim,
+                                                  is_array);
             enum pipe_format format =
                op == nir_atomic_op_imin || op == nir_atomic_op_imax
                   ? PIPE_FORMAT_R32_SINT

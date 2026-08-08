@@ -251,8 +251,12 @@ d12_descriptor_heap_create(struct d12_device *device,
       if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
          size_t texture_size =
             (size_t)desc->NumDescriptors * AGX_TEXTURE_LENGTH;
+         /* One extra permanently-null PBE slot is the robust sink for
+          * dynamically indexed typed-buffer atomics. Unlike texture fetch,
+          * AGX buffer image atomics do not suppress coordinates beyond the
+          * descriptor's element count. */
          size_t pbe_size =
-            (size_t)desc->NumDescriptors * AGX_PBE_LENGTH;
+            ((size_t)desc->NumDescriptors + 1) * AGX_PBE_LENGTH;
          heap->texture_bo =
             agx_bo_create(&device->dev, texture_size, 0, AGX_BO_WRITEBACK,
                           "d3d12 bindless texture descriptors");
@@ -295,8 +299,9 @@ d12_descriptor_heap_create(struct d12_device *device,
    if (heap->texture_bo && heap->pbe_bo) {
       struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
       struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
-      for (UINT i = 0; i < desc->NumDescriptors; i++) {
-         agx_set_null_texture(&textures[i]);
+      for (uint64_t i = 0; i <= desc->NumDescriptors; i++) {
+         if (i < desc->NumDescriptors)
+            agx_set_null_texture(&textures[i]);
          agx_set_null_pbe(&pbes[i]);
       }
    }

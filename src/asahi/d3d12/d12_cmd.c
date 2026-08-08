@@ -1782,10 +1782,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
    }
 
+   struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
+   uint64_t heap_pbe_null_offset =
+      bound_heap && bound_heap->pbe_bo
+         ? (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE
+         : 0;
    uint64_t header[] = {
       tables_gpu + D12_ROOT_RESOURCE_BASE * sizeof(uint64_t),
       metadata_gpu,
       sampler_tables_gpu,
+      heap_pbe_null_offset,
    };
    static_assert(sizeof(header) == D12_ROOT_HEADER_SIZE,
                  "root header ABI mismatch");
@@ -2076,7 +2082,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * 40-byte descriptor array, while AGX texture/image instructions require
     * parallel 24-byte native arrays. Publish one home cell for each base;
     * shader lowering derives the same global heap index for all three. */
-   struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
    if (bound_heap && bound_heap->bo && bound_heap->texture_bo &&
        bound_heap->pbe_bo) {
       uint64_t base = bound_heap->bo->va->addr;
@@ -2090,12 +2095,27 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
 
       if (validate) {
+         struct agx_pbe_packed expected_null;
+         agx_set_null_pbe(&expected_null);
+         const uint64_t null_offset =
+            (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE;
+         const bool null_valid =
+            null_offset <= bound_heap->pbe_bo->size &&
+            D12_PBE_DESC_SIZE <= bound_heap->pbe_bo->size - null_offset &&
+            memcmp((uint8_t *)agx_bo_map(bound_heap->pbe_bo) + null_offset,
+                   &expected_null, sizeof(expected_null)) == 0;
          mesa_logi("binding validation: bindless heap slots=0x%llx "
-                   "textures=0x%llx pbes=0x%llx count=%u valid=1",
+                   "textures=0x%llx pbes=0x%llx count=%u "
+                   "null-pbe-offset=0x%llx valid=%u",
                    (unsigned long long)base,
                    (unsigned long long)textures,
                    (unsigned long long)pbes,
-                   bound_heap->desc.NumDescriptors);
+                   bound_heap->desc.NumDescriptors,
+                   (unsigned long long)null_offset, null_valid);
+         if (!null_valid) {
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
       }
    }
 

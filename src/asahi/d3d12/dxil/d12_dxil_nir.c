@@ -1258,6 +1258,7 @@ enum d12_root_plane {
    D12_ROOT_PLANE_SAMPLER,
    D12_ROOT_PLANE_ZERO,
    D12_ROOT_PLANE_DISCARD,
+   D12_ROOT_PLANE_HEAP_PBE_NULL,
 };
 
 static nir_def *
@@ -1265,12 +1266,14 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
 {
    nir_builder *b = ctx->b;
    nir_def *root = nir_load_root_agx(b);
-   nir_def *header = nir_load_global(b, 3, 64, root, .align_mul = 8);
+   nir_def *header = nir_load_global(b, 4, 64, root, .align_mul = 8);
 
    if (plane == D12_ROOT_PLANE_RESOURCE)
       return nir_channel(b, header, 0);
    if (plane == D12_ROOT_PLANE_SAMPLER)
       return nir_channel(b, header, 2);
+   if (plane == D12_ROOT_PLANE_HEAP_PBE_NULL)
+      return nir_channel(b, header, 3);
 
    nir_def *metadata = nir_channel(b, header, 1);
    nir_def *metadata_header =
@@ -1341,6 +1344,39 @@ native_image_handle(struct trans_ctx *ctx, const struct handle_ref *h,
       b, nir_imul_imm(b, index,
                       writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE),
       .desc_set = desc_set);
+}
+
+static nir_def *
+resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h);
+
+/* AGX texture-buffer loads honour the packed descriptor extent, but typed
+ * buffer image atomics do not. Route an out-of-view atomic to the extra null
+ * PBE slot at the end of the shader-visible heap. Keeping the selection in
+ * the byte offset preserves the bindless-image intrinsic as the handle's
+ * direct producer, as required by the AGX backend. */
+static nir_def *
+native_typed_atomic_handle(struct trans_ctx *ctx, const struct handle_ref *h,
+                           nir_def *element)
+{
+   nir_builder *b = ctx->b;
+   if (!h->rooted_heap)
+      return native_image_handle(ctx, h, true);
+
+   nir_def *descriptor = descriptor_address(ctx, h);
+   nir_def *size = resource_view_size_bytes(ctx, h);
+   nir_def *stride = nir_load_global(
+      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
+      .align_mul = 4);
+   nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
+   nir_def *valid = nir_ult(b, element, count);
+   nir_def *live_offset = nir_imul_imm(
+      b, native_heap_index(ctx, h), D12_PBE_DESC_SIZE);
+   nir_def *null_offset =
+      nir_u2u32(b, root_plane(ctx, D12_ROOT_PLANE_HEAP_PBE_NULL));
+
+   return nir_bindless_image_agx(
+      b, nir_bcsel(b, valid, live_offset, null_offset),
+      .desc_set = D12_UNIFORM_HEAP_PBES);
 }
 
 static nir_def *
@@ -3153,25 +3189,31 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
+      bool typed_buffer = h.kind == D12_RES_KIND_TYPED_BUFFER;
+      bool image = typed_buffer || h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       if (image) {
          nir_def *zero = nir_imm_int(b, 0);
-         nir_def *handle = nir_bindless_image_agx(
-            b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_PBES);
+         nir_def *handle =
+            typed_buffer
+               ? native_typed_atomic_handle(ctx, &h, get_def(ctx, p[2]))
+               : native_image_handle(ctx, &h, true);
          nir_def *coord =
-            nir_vec4(b, get_def(ctx, p[2]), get_def(ctx, p[3]),
-                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
-                        ? get_def(ctx, p[4])
-                        : zero,
-                     zero);
+            typed_buffer
+               ? nir_vec4(b, get_def(ctx, p[2]), zero, zero, zero)
+               : nir_vec4(b, get_def(ctx, p[2]), get_def(ctx, p[3]),
+                          h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                             ? get_def(ctx, p[4])
+                             : zero,
+                          zero);
 
          def_result(
             ctx, inst,
             nir_bindless_image_atomic(
                b, 32, handle, coord, zero, get_def(ctx, p[5]),
-               .atomic_op = op, .image_dim = GLSL_SAMPLER_DIM_2D,
+               .atomic_op = op,
+               .image_dim = typed_buffer ? GLSL_SAMPLER_DIM_BUF
+                                         : GLSL_SAMPLER_DIM_2D,
                .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
                .format = op == nir_atomic_op_imin ||
                                 op == nir_atomic_op_imax
@@ -3210,7 +3252,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (bits != 32 && bits != 64)
          bits = 32;
 
-      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
+      bool typed_buffer = h.kind == D12_RES_KIND_TYPED_BUFFER;
+      bool image = typed_buffer || h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       if (image) {
          if (bits != 32) {
@@ -3219,22 +3262,26 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          }
 
          nir_def *zero = nir_imm_int(b, 0);
-         nir_def *handle = nir_bindless_image_agx(
-            b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_PBES);
+         nir_def *handle =
+            typed_buffer
+               ? native_typed_atomic_handle(ctx, &h, get_def(ctx, p[1]))
+               : native_image_handle(ctx, &h, true);
          nir_def *coord =
-            nir_vec4(b, get_def(ctx, p[1]), get_def(ctx, p[2]),
-                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
-                        ? get_def(ctx, p[3])
-                        : zero,
-                     zero);
+            typed_buffer
+               ? nir_vec4(b, get_def(ctx, p[1]), zero, zero, zero)
+               : nir_vec4(b, get_def(ctx, p[1]), get_def(ctx, p[2]),
+                          h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                             ? get_def(ctx, p[3])
+                             : zero,
+                          zero);
 
          def_result(
             ctx, inst,
             nir_bindless_image_atomic_swap(
                b, 32, handle, coord, zero, get_def(ctx, p[4]),
                get_def(ctx, p[5]), .atomic_op = nir_atomic_op_cmpxchg,
-               .image_dim = GLSL_SAMPLER_DIM_2D,
+               .image_dim = typed_buffer ? GLSL_SAMPLER_DIM_BUF
+                                         : GLSL_SAMPLER_DIM_2D,
                .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
                .format = PIPE_FORMAT_R32_UINT, .access = 0));
          return true;
@@ -4591,15 +4638,11 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       if (opcode == D12_DXOP_BUFFER_STORE &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
-         if (h.rooted_heap) {
-            trans_fail(ctx, "heap-indexed typed buffer stores unsupported");
-            return false;
-         }
-
          /* Format conversion on write: an image store with buffer
           * dimension, mirroring the typed-load path above. Runtime
           * needs a writable (PBE) descriptor, same caveat as
-          * textureStore.
+          * textureStore. native_image_handle also resolves a dynamically
+          * indexed root range into the parallel PBE heap's absolute slot.
           */
          nir_def *vals4[4];
          for (unsigned i = 0; i < 4; i++) {
@@ -4610,10 +4653,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
          nir_def *zero = nir_imm_int(b, 0);
          nir_bindless_image_store(
-            b,
-            nir_bindless_image_agx(
-               b, nir_imul_imm(b, h.slot, D12_PBE_DESC_SIZE),
-               .desc_set = D12_UNIFORM_PBES),
+            b, native_image_handle(ctx, &h, true),
             nir_vec4(b, get_def(ctx, p[1]), zero, zero, zero),
             nir_imm_int(b, 0), nir_vec(b, vals4, 4), nir_imm_int(b, 0),
             .image_dim = GLSL_SAMPLER_DIM_BUF, .image_array = false,
@@ -4680,14 +4720,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       if (opcode == D12_DXOP_BUFFER_LOAD &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
-         if (h.rooted_heap) {
-            trans_fail(ctx, "heap-indexed typed buffer loads unsupported");
-            return false;
-         }
-
-         nir_def *tex_handle = nir_bindless_image_agx(
-            b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
-            .desc_set = D12_UNIFORM_TEXTURES);
+         nir_def *tex_handle = native_image_handle(ctx, &h, false);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
          tex->op = nir_texop_txf;
