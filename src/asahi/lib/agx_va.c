@@ -25,17 +25,21 @@ agx_va_alloc(struct agx_device *dev, uint64_t size_B, uint64_t align_B,
     */
    size_B += dev->guard_size;
 
-   struct util_vma_heap *heap = agx_vma_heap(dev, flags);
    uint64_t addr = 0;
 
-   simple_mtx_lock(&dev->vma_lock);
-   if (flags & AGX_VA_FIXED) {
-      if (util_vma_heap_alloc_addr(heap, fixed_va, size_B))
-         addr = fixed_va;
+   if (dev->ops.va_alloc != NULL) {
+      addr = dev->ops.va_alloc(dev, size_B, align_B, flags, fixed_va);
    } else {
-      addr = util_vma_heap_alloc(heap, size_B, align_B);
+      struct util_vma_heap *heap = agx_vma_heap(dev, flags);
+      simple_mtx_lock(&dev->vma_lock);
+      if (flags & AGX_VA_FIXED) {
+         if (util_vma_heap_alloc_addr(heap, fixed_va, size_B))
+            addr = fixed_va;
+      } else {
+         addr = util_vma_heap_alloc(heap, size_B, align_B);
+      }
+      simple_mtx_unlock(&dev->vma_lock);
    }
-   simple_mtx_unlock(&dev->vma_lock);
 
    if (addr == 0)
       return NULL;
@@ -59,10 +63,13 @@ agx_va_free(struct agx_device *dev, struct agx_va *va, bool unbind)
       agx_bo_bind(dev, NULL, va->addr, va->size_B, 0, DRM_ASAHI_BIND_UNBIND);
    }
 
-   struct util_vma_heap *heap = agx_vma_heap(dev, va->flags);
-
-   simple_mtx_lock(&dev->vma_lock);
-   util_vma_heap_free(heap, va->addr, va->size_B);
-   simple_mtx_unlock(&dev->vma_lock);
+   if (dev->ops.va_free != NULL) {
+      dev->ops.va_free(dev, va->addr, va->size_B, va->flags);
+   } else {
+      struct util_vma_heap *heap = agx_vma_heap(dev, va->flags);
+      simple_mtx_lock(&dev->vma_lock);
+      util_vma_heap_free(heap, va->addr, va->size_B);
+      simple_mtx_unlock(&dev->vma_lock);
+   }
    free(va);
 }

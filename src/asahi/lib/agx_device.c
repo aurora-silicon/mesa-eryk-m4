@@ -577,6 +577,27 @@ agx_init_timestamps(struct agx_device *dev)
       dev->params.command_timestamp_frequency_hz / user_ts_gcd;
 }
 
+static struct agx_bo *
+agx_create_fixed_bo(struct agx_device *dev, size_t size,
+                    enum agx_bo_flags flags, uint64_t address,
+                    uint32_t bind_flags, const char *label)
+{
+   if (dev->ops.bo_alloc_fixed != NULL)
+      return dev->ops.bo_alloc_fixed(dev, size, flags, address, bind_flags,
+                                     label);
+
+   struct agx_bo *bo = agx_bo_create(dev, size, 0, flags, label);
+   if (bo == NULL)
+      return NULL;
+
+   if (agx_bo_bind(dev, bo, address, size, 0, bind_flags) != 0) {
+      agx_bo_free(dev, bo);
+      return NULL;
+   }
+
+   return bo;
+}
+
 bool
 agx_open_device(void *memctx, struct agx_device *dev)
 {
@@ -745,6 +766,13 @@ agx_open_device(void *memctx, struct agx_device *dev)
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
 
+   if (dev->ops.va_init != NULL &&
+       !dev->ops.va_init(dev, user_start, user_size, dev->shader_base,
+                         shader_size)) {
+      fprintf(stderr, "Failed to initialize process GPU VA allocator\n");
+      return false;
+   }
+
    dev->vm_id = vm_create.vm_id;
 
    glsl_type_singleton_init_or_ref();
@@ -771,10 +799,10 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * robustness optimization even without soft fault.
     */
    {
-      void *bo = agx_bo_create(dev, 16384, 0, 0, "Zero page");
-      int ret = agx_bo_bind(dev, bo, AGX_ZERO_PAGE_ADDRESS, 16384, 0,
-                            DRM_ASAHI_BIND_READ);
-      if (ret) {
+      struct agx_bo *bo =
+         agx_create_fixed_bo(dev, AGX_ZERO_PAGE_SIZE, 0, AGX_ZERO_PAGE_ADDRESS,
+                             DRM_ASAHI_BIND_READ, "Zero page");
+      if (bo == NULL) {
          fprintf(stderr, "Failed to bind zero page");
          return false;
       }
@@ -783,11 +811,11 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    {
-      void *bo = agx_bo_create(dev, AIL_PAGESIZE, 0, 0, "Scratch page");
-      int ret = agx_bo_bind(dev, bo, AGX_SCRATCH_PAGE_ADDRESS, AIL_PAGESIZE, 0,
-                            DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE);
-      if (ret) {
-         fprintf(stderr, "Failed to bind zero page");
+      struct agx_bo *bo = agx_create_fixed_bo(
+         dev, AIL_PAGESIZE, 0, AGX_SCRATCH_PAGE_ADDRESS,
+         DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "Scratch page");
+      if (bo == NULL) {
+         fprintf(stderr, "Failed to bind scratch page");
          return false;
       }
 
@@ -799,13 +827,11 @@ agx_open_device(void *memctx, struct agx_device *dev)
       memset(agx_bo_map(dev->scratch_bo), 0xCA, AIL_PAGESIZE);
    }
 
-   void *bo = agx_bo_create(dev, LIBAGX_PRINTF_BUFFER_SIZE, 0, AGX_BO_WRITEBACK,
-                            "Printf/abort");
-
-   ret = agx_bo_bind(dev, bo, LIBAGX_PRINTF_BUFFER_ADDRESS,
-                     LIBAGX_PRINTF_BUFFER_SIZE, 0,
-                     DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE);
-   if (ret) {
+   struct agx_bo *bo = agx_create_fixed_bo(
+      dev, LIBAGX_PRINTF_BUFFER_SIZE, AGX_BO_WRITEBACK,
+      LIBAGX_PRINTF_BUFFER_ADDRESS, DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE,
+      "Printf/abort");
+   if (bo == NULL) {
       fprintf(stderr, "Failed to bind printf buffer");
       return false;
    }

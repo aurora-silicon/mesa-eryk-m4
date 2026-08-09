@@ -317,6 +317,154 @@ agx_d3dkmt_va_split_carveout(uint64_t base, uint64_t size,
    return n;
 }
 
+static bool
+va_bitmap_range(uint64_t base, uint64_t size, uint64_t addr,
+                uint64_t range_size, uint64_t *first_page, uint64_t *page_count)
+{
+   const uint64_t page = AGX_D3DKMT_PAGE_SIZE;
+
+   if (size == 0 || range_size == 0 || (base % page) != 0 ||
+       (size % page) != 0 || (addr % page) != 0 || (range_size % page) != 0 ||
+       base > UINT64_MAX - size || addr < base ||
+       addr > UINT64_MAX - range_size || addr + range_size > base + size)
+      return false;
+
+   *first_page = (addr - base) / page;
+   *page_count = range_size / page;
+   return true;
+}
+
+uint32_t
+agx_d3dkmt_va_bitmap_word_count(uint64_t base, uint64_t size)
+{
+   const uint64_t page = AGX_D3DKMT_PAGE_SIZE;
+   if (size == 0 || (base % page) != 0 || (size % page) != 0 ||
+       base > UINT64_MAX - size)
+      return 0;
+
+   uint64_t pages = size / page;
+   uint64_t words = (pages + 63) / 64;
+   return words <= UINT32_MAX ? (uint32_t)words : 0;
+}
+
+static bool
+va_bitmap_find_highest_set(const uint64_t *words, uint64_t first,
+                           uint64_t count, uint64_t *highest)
+{
+   uint64_t last = first + count - 1;
+   uint64_t first_word = first / 64;
+   uint64_t last_word = last / 64;
+
+   for (uint64_t w = last_word;; --w) {
+      unsigned lo = w == first_word ? (unsigned)(first % 64) : 0;
+      unsigned hi = w == last_word ? (unsigned)(last % 64) : 63;
+      uint64_t lo_mask = UINT64_MAX << lo;
+      uint64_t hi_mask =
+         hi == 63 ? UINT64_MAX : ((UINT64_C(1) << (hi + 1)) - 1);
+      uint64_t used = words[w] & lo_mask & hi_mask;
+      if (used != 0) {
+         unsigned bit = 63u;
+         while (((used >> bit) & 1u) == 0)
+            bit--;
+         *highest = w * 64 + bit;
+         return true;
+      }
+
+      if (w == first_word)
+         break;
+   }
+
+   return false;
+}
+
+static void
+va_bitmap_set(uint64_t *words, uint64_t first, uint64_t count, bool used)
+{
+   for (uint64_t page = first; page < first + count; ++page) {
+      uint64_t mask = UINT64_C(1) << (page % 64);
+      if (used)
+         words[page / 64] |= mask;
+      else
+         words[page / 64] &= ~mask;
+   }
+}
+
+uint64_t
+agx_d3dkmt_va_bitmap_alloc(uint64_t *words, uint32_t word_count, uint64_t base,
+                           uint64_t size, uint64_t allowed_base,
+                           uint64_t allowed_size, uint64_t request_size,
+                           uint64_t alignment, uint64_t fixed_va)
+{
+   const uint64_t page = AGX_D3DKMT_PAGE_SIZE;
+   uint64_t allowed_first, allowed_pages;
+
+   if (words == NULL || word_count == 0 || alignment < page ||
+       (alignment % page) != 0 || (alignment & (alignment - 1)) != 0 ||
+       !va_bitmap_range(base, size, allowed_base, allowed_size, &allowed_first,
+                        &allowed_pages) ||
+       request_size == 0 || request_size > allowed_size ||
+       (request_size % page) != 0 || (uint64_t)word_count * 64 < size / page)
+      return 0;
+
+   uint64_t request_pages = request_size / page;
+   uint64_t candidate;
+   if (fixed_va != 0) {
+      if ((fixed_va % alignment) != 0 || fixed_va < allowed_base ||
+          fixed_va > UINT64_MAX - request_size ||
+          fixed_va + request_size > allowed_base + allowed_size)
+         return 0;
+      candidate = fixed_va;
+   } else {
+      candidate =
+         (allowed_base + allowed_size - request_size) & ~(alignment - 1);
+   }
+
+   for (;;) {
+      if (candidate < allowed_base)
+         return 0;
+
+      uint64_t first, pages;
+      if (!va_bitmap_range(base, size, candidate, request_size, &first,
+                           &pages) ||
+          pages != request_pages)
+         return 0;
+
+      uint64_t highest;
+      if (!va_bitmap_find_highest_set(words, first, pages, &highest)) {
+         va_bitmap_set(words, first, pages, true);
+         return candidate;
+      }
+
+      if (fixed_va != 0)
+         return 0;
+
+      uint64_t occupied = base + highest * page;
+      if (occupied < allowed_base + request_size)
+         return 0;
+      candidate = (occupied - request_size) & ~(alignment - 1);
+   }
+}
+
+bool
+agx_d3dkmt_va_bitmap_free(uint64_t *words, uint32_t word_count, uint64_t base,
+                          uint64_t size, uint64_t addr,
+                          uint64_t allocation_size)
+{
+   uint64_t first, pages;
+   if (words == NULL || word_count == 0 ||
+       (uint64_t)word_count * 64 < size / AGX_D3DKMT_PAGE_SIZE ||
+       !va_bitmap_range(base, size, addr, allocation_size, &first, &pages))
+      return false;
+
+   for (uint64_t page = first; page < first + pages; ++page) {
+      if ((words[page / 64] & (UINT64_C(1) << (page % 64))) == 0)
+         return false;
+   }
+
+   va_bitmap_set(words, first, pages, false);
+   return true;
+}
+
 /* -------------------------------------------------------------------------
  * Sync table.
  * ------------------------------------------------------------------------- */

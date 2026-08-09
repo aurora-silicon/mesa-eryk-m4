@@ -277,6 +277,35 @@ uint32_t agx_d3dkmt_va_split_carveout(uint64_t base, uint64_t size,
                                       struct agx_d3dkmt_va_range out[2]);
 
 /* -------------------------------------------------------------------------
+ * 2c. Process-wide VA allocation.
+ *
+ * WDDM gives every device opened on one adapter in a process the same GPU-VA
+ * root.  A Vulkan physical device, its logical devices, and a native D3D12
+ * device used alongside the D3D11 presentation UMD therefore cannot each use
+ * a private util_vma_heap over the same addresses.  The Windows shell keeps a
+ * page bitmap in a PID+adapter named section and serializes these helpers with
+ * a named mutex.  This portable half deliberately owns no synchronization or
+ * Windows handles; it only validates and mutates the caller-provided bitmap.
+ *
+ * All ranges use the native AGX page size.  `allowed_*` selects one logical
+ * heap (USC or main) inside the bitmap's complete reservation.  Allocation is
+ * high-to-low, matching util_vma_heap's default policy.  A zero return means
+ * failure (the AGX user VA window never includes address zero).
+ * ------------------------------------------------------------------------- */
+uint32_t agx_d3dkmt_va_bitmap_word_count(uint64_t base, uint64_t size);
+
+uint64_t agx_d3dkmt_va_bitmap_alloc(uint64_t *words, uint32_t word_count,
+                                    uint64_t base, uint64_t size,
+                                    uint64_t allowed_base,
+                                    uint64_t allowed_size,
+                                    uint64_t request_size, uint64_t alignment,
+                                    uint64_t fixed_va);
+
+bool agx_d3dkmt_va_bitmap_free(uint64_t *words, uint32_t word_count,
+                               uint64_t base, uint64_t size, uint64_t addr,
+                               uint64_t allocation_size);
+
+/* -------------------------------------------------------------------------
  * 3. Binary syncobjs over monotonic monitored fences.
  *
  * CONTRACT.md SS6.4: the miniport deliberately does NOT emulate DRM's reset in

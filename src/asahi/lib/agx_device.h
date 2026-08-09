@@ -132,6 +132,30 @@ typedef struct {
    int (*simple_ioctl)(struct agx_device *dev, unsigned cmd, void *req);
    void (*bo_munmap)(struct agx_device *dev, struct agx_bo *bo);
    void (*bo_free)(struct agx_device *dev, uint32_t handle);
+
+   /*
+    * Optional process-VA hooks.  Linux/virtio leave these NULL and retain the
+    * local util_vma_heap implementation byte-for-byte.  WDDM installs them
+    * because every D3DKMT device opened by one process shares a GPU-VA root,
+    * including devices opened from different UMD DLLs.
+    */
+   bool (*va_init)(struct agx_device *dev, uint64_t main_base,
+                   uint64_t main_size, uint64_t usc_base, uint64_t usc_size);
+   uint64_t (*va_alloc)(struct agx_device *dev, uint64_t size_B,
+                        uint64_t align_B, enum agx_va_flags flags,
+                        uint64_t fixed_va);
+   void (*va_free)(struct agx_device *dev, uint64_t addr, uint64_t size_B,
+                   enum agx_va_flags flags);
+
+   /*
+    * Optional fixed-ABI BO hook.  AGX shaders bake the zero, scratch and
+    * printf addresses into code.  On WDDM these mappings must name one shared
+    * backing allocation across every UMD in the process; ordinary backends
+    * create and bind private BOs in agx_device.c as before.
+    */
+   struct agx_bo *(*bo_alloc_fixed)(struct agx_device *dev, size_t size,
+                                    enum agx_bo_flags flags, uint64_t fixed_va,
+                                    uint32_t bind_flags, const char *label);
 } agx_device_ops_t;
 
 int agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,

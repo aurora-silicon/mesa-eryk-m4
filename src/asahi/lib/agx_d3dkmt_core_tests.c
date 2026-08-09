@@ -455,6 +455,70 @@ test_va_split_carveout(void)
 }
 
 static void
+test_process_va_bitmap(void)
+{
+   const uint64_t page = AGX_D3DKMT_PAGE_SIZE;
+   const uint64_t base = 0x100000000ull;
+   const uint64_t size = 256 * page;
+   uint64_t words[4] = {0};
+
+   CHECK_EQ(agx_d3dkmt_va_bitmap_word_count(base, size), 4);
+   CHECK_EQ(agx_d3dkmt_va_bitmap_word_count(base + 1, size), 0);
+   CHECK_EQ(agx_d3dkmt_va_bitmap_word_count(base, size - 1), 0);
+
+   /* The shared allocator preserves util_vma_heap's high-address policy. */
+   uint64_t a = agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size,
+                                           2 * page, page, 0);
+   CHECK_EQ(a, base + 254 * page);
+
+   /* A second independently linked client sees the first client's bits. */
+   uint64_t b = agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size,
+                                           3 * page, page, 0);
+   CHECK_EQ(b, base + 251 * page);
+   CHECK(b + 3 * page <= a);
+
+   /* Alignment is honored while scanning below an occupied run. */
+   uint64_t c = agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size,
+                                           4 * page, 8 * page, 0);
+   CHECK_EQ(c, base + 240 * page);
+
+   /* Fixed allocations fail on overlap and become reusable after free. */
+   uint64_t fixed = base + 64 * page;
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size,
+                                       4 * page, page, fixed),
+            fixed);
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size, page,
+                                       page, fixed),
+            0);
+   CHECK(agx_d3dkmt_va_bitmap_free(words, 4, base, size, fixed, 4 * page));
+   CHECK(!agx_d3dkmt_va_bitmap_free(words, 4, base, size, fixed, 4 * page));
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size,
+                                       4 * page, page, fixed),
+            fixed);
+
+   /* Heap bounds are enforced even though the bitmap covers a larger VM. */
+   uint64_t sub_base = base + 128 * page;
+   uint64_t sub_size = 32 * page;
+   uint64_t sub = agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, sub_base,
+                                             sub_size, page, page, 0);
+   CHECK_EQ(sub, sub_base + 31 * page);
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, sub_base, sub_size,
+                                       page, page, base + page),
+            0);
+
+   /* Malformed and undersized bitmaps fail without touching memory. */
+   uint64_t snapshot[4];
+   memcpy(snapshot, words, sizeof(words));
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 3, base, size, base, size, page,
+                                       page, 0),
+            0);
+   CHECK_EQ(agx_d3dkmt_va_bitmap_alloc(words, 4, base, size, base, size, page,
+                                       page + 1, 0),
+            0);
+   CHECK(memcmp(snapshot, words, sizeof(words)) == 0);
+}
+
+static void
 test_bind_sizing_and_overflow(void)
 {
    struct agx_d3dkmt_policy policy = agx_d3dkmt_policy_default();
@@ -864,6 +928,7 @@ main(void)
    test_bind_write_only_and_usc();
    test_bind_rejects_kernel_carveout();
    test_va_split_carveout();
+   test_process_va_bitmap();
    test_bind_sizing_and_overflow();
    test_binary_sync_epoch();
    test_sync_current_takes_the_max();

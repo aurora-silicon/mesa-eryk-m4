@@ -48,6 +48,8 @@ struct agx_d3dkmt_ctx {
    unsigned staging_slot;
 };
 
+struct agx_d3dkmt_process_va;
+
 struct agx_d3dkmt_winsys {
    struct agx_d3dkmt_fns fns;
    struct agx_d3dkmt_policy policy;
@@ -91,6 +93,11 @@ struct agx_d3dkmt_winsys {
     * MIDDLE of the window, so it is not one contiguous reservation. */
    struct agx_d3dkmt_va_range va[2];
    uint32_t va_count;
+
+   /* PID+adapter process broker.  WDDM has one GPU-VA root per process, not
+    * per D3DKMT device; this object joins every statically linked driver copy
+    * to the same reservation, allocation bitmap and fixed ABI BOs. */
+   struct agx_d3dkmt_process_va *process_va;
 
    /* KMTQAITYPE_UMDRIVERPRIVATE payload: the AGX params blob verbatim. */
    void *params;

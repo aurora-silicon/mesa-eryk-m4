@@ -36,9 +36,11 @@
 #include <string.h>
 #include <winternl.h>
 
+#include "clc/asahi_clc.h"
 #include "util/macros.h"
-#include "util/u_math.h"
 #include "util/u_atomic.h"
+#include "util/u_math.h"
+#include "agx_abi.h"
 #include "agx_bo.h"
 #include "layout.h"
 
@@ -70,6 +72,183 @@ static_assert((int)AGXW_PRIORITY_LOW == (int)DRM_ASAHI_PRIORITY_LOW,
               "priority LOW");
 static_assert((int)AGXW_PRIORITY_REALTIME == (int)DRM_ASAHI_PRIORITY_REALTIME,
               "priority REALTIME");
+
+/* -------------------------------------------------------------------------
+ * Process-wide GPU VA broker.
+ *
+ * D3DKMT devices on one adapter do not own independent page-table roots:
+ * VidMm's root is keyed by process.  Mesa is statically linked into both the
+ * native D3D12 DLL and Honeykrisp (including the copy embedded by the D3D11
+ * presentation UMD), so C globals cannot coordinate those modules.  A named
+ * section and mutex keyed by PID+adapter LUID provide that missing process
+ * scope without adding a service, a translation layer, or Linux code paths.
+ *
+ * The section is deliberately pointer-free.  NT and D3DKMT handles are valid
+ * process-wide and may be published as integer values because the name also
+ * includes the PID; no handle is ever consumed by another process.
+ * ------------------------------------------------------------------------- */
+#define AGX_D3DKMT_PROCESS_VA_MAGIC   0x41565841u /* 'AXVA' */
+#define AGX_D3DKMT_PROCESS_VA_VERSION 1u
+#define AGX_D3DKMT_FIXED_BO_COUNT     3u
+
+struct agx_d3dkmt_shared_fixed_bo {
+   uint64_t address;
+   uint64_t size;
+   uint64_t nt_handle;
+   uint32_t allocation;
+   uint32_t resource;
+   uint32_t flags;
+   uint32_t bind_flags;
+};
+
+struct agx_d3dkmt_process_va_shared {
+   uint32_t magic;
+   uint32_t version;
+   uint32_t mapping_bytes;
+   uint32_t word_count;
+   uint64_t va_base;
+   uint64_t va_size;
+   uint32_t clients;
+   uint32_t reservation_ready;
+   uint32_t reservation_count;
+   uint32_t layout_ready;
+   struct agx_d3dkmt_va_range reservations[2];
+   uint64_t main_base;
+   uint64_t main_size;
+   uint64_t usc_base;
+   uint64_t usc_size;
+   uint32_t anchor_device;
+   uint32_t anchor_adapter;
+   struct agx_d3dkmt_shared_fixed_bo fixed[AGX_D3DKMT_FIXED_BO_COUNT];
+   uint64_t bitmap[];
+};
+
+struct agx_d3dkmt_process_va {
+   HANDLE mapping;
+   HANDLE mutex;
+   struct agx_d3dkmt_process_va_shared *shared;
+   size_t mapping_bytes;
+   bool attached;
+};
+
+static bool
+process_va_lock(struct agx_d3dkmt_process_va *process)
+{
+   DWORD result = WaitForSingleObject(process->mutex, INFINITE);
+   if (result == WAIT_OBJECT_0 || result == WAIT_ABANDONED)
+      return true;
+
+   errno = EIO;
+   return false;
+}
+
+static void
+process_va_unlock(struct agx_d3dkmt_process_va *process)
+{
+   ReleaseMutex(process->mutex);
+}
+
+static void
+process_va_close_mapping(struct agx_d3dkmt_process_va *process)
+{
+   if (process == NULL)
+      return;
+   if (process->shared != NULL)
+      UnmapViewOfFile(process->shared);
+   if (process->mapping != NULL)
+      CloseHandle(process->mapping);
+   if (process->mutex != NULL)
+      CloseHandle(process->mutex);
+   free(process);
+}
+
+static bool
+process_va_open(struct agx_d3dkmt_winsys *ws, uint64_t base, uint64_t size)
+{
+   uint32_t words = agx_d3dkmt_va_bitmap_word_count(base, size);
+   if (words == 0 ||
+       words > (UINT32_MAX - sizeof(struct agx_d3dkmt_process_va_shared)) /
+                  sizeof(uint64_t)) {
+      errno = EOVERFLOW;
+      return false;
+   }
+
+   size_t bytes = sizeof(struct agx_d3dkmt_process_va_shared) +
+                  (size_t)words * sizeof(uint64_t);
+   struct agx_d3dkmt_process_va *process = calloc(1, sizeof(*process));
+   if (process == NULL)
+      return false;
+
+   wchar_t section_name[96];
+   wchar_t mutex_name[96];
+   DWORD pid = GetCurrentProcessId();
+   swprintf(section_name, ARRAY_SIZE(section_name),
+            L"Local\\MesaAgxVa-%08lx-%08x-%08x", (unsigned long)pid,
+            (unsigned)ws->luid.HighPart, (unsigned)ws->luid.LowPart);
+   swprintf(mutex_name, ARRAY_SIZE(mutex_name),
+            L"Local\\MesaAgxVaMutex-%08lx-%08x-%08x", (unsigned long)pid,
+            (unsigned)ws->luid.HighPart, (unsigned)ws->luid.LowPart);
+
+   process->mutex = CreateMutexW(NULL, FALSE, mutex_name);
+   if (process->mutex == NULL)
+      goto fail;
+
+   process->mapping =
+      CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
+                         (DWORD)(bytes >> 32), (DWORD)bytes, section_name);
+   if (process->mapping == NULL)
+      goto fail;
+
+   process->shared =
+      MapViewOfFile(process->mapping, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+   if (process->shared == NULL)
+      goto fail;
+
+   MEMORY_BASIC_INFORMATION info;
+   if (VirtualQuery(process->shared, &info, sizeof(info)) != sizeof(info) ||
+       info.RegionSize < sizeof(*process->shared)) {
+      errno = EIO;
+      goto fail;
+   }
+
+   process->mapping_bytes = bytes;
+   if (!process_va_lock(process))
+      goto fail;
+
+   struct agx_d3dkmt_process_va_shared *shared = process->shared;
+   if (shared->magic == 0) {
+      if (info.RegionSize < bytes) {
+         process_va_unlock(process);
+         errno = EOVERFLOW;
+         goto fail;
+      }
+      memset(shared, 0, bytes);
+      shared->magic = AGX_D3DKMT_PROCESS_VA_MAGIC;
+      shared->version = AGX_D3DKMT_PROCESS_VA_VERSION;
+      shared->mapping_bytes = (uint32_t)bytes;
+      shared->word_count = words;
+      shared->va_base = base;
+      shared->va_size = size;
+   }
+
+   bool valid = shared->magic == AGX_D3DKMT_PROCESS_VA_MAGIC &&
+                shared->version == AGX_D3DKMT_PROCESS_VA_VERSION &&
+                shared->mapping_bytes == bytes && shared->word_count == words &&
+                shared->va_base == base && shared->va_size == size &&
+                info.RegionSize >= bytes;
+   process_va_unlock(process);
+   if (!valid) {
+      errno = EPROTO;
+      goto fail;
+   }
+
+   ws->process_va = process;
+   return true;
+
+fail:
+   process_va_close_mapping(process);
+   return false;
+}
 
 /* Frontend-owned resource metadata is small (the D3D12 interop descriptor is
  * 264 bytes), but QueryResourceInfo reports an arbitrary kernel-owned size.
@@ -350,9 +529,10 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
 }
 
 static struct agx_bo *
-d3dkmt_adopt_allocation(
-   struct agx_device *dev, size_t size, size_t align, enum agx_bo_flags flags,
-   const struct agx_d3dkmt_allocation_record *record)
+d3dkmt_adopt_allocation(struct agx_device *dev, size_t size, size_t align,
+                        enum agx_bo_flags flags,
+                        const struct agx_d3dkmt_allocation_record *record,
+                        bool allocate_and_bind)
 {
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    struct agx_bo *bo;
@@ -379,6 +559,9 @@ d3dkmt_adopt_allocation(
    bo->handle = handle;
    bo->uapi_handle = record->allocation;
    bo->prime_fd = -1;
+
+   if (!allocate_and_bind)
+      return bo;
 
    enum agx_va_flags va_flags = flags & AGX_BO_LOW_VA ? AGX_VA_USC : 0;
    bo->va = agx_va_alloc(dev, size, bo->align, va_flags, 0);
@@ -428,7 +611,7 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    }
 
    struct agx_bo *bo =
-      d3dkmt_adopt_allocation(dev, size, align, flags, &record);
+      d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    return bo;
 }
 
@@ -666,6 +849,153 @@ d3dkmt_external_open(
    return true;
 }
 
+static bool
+d3dkmt_create_fixed_anchors(struct agx_device *dev)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_process_va_shared *shared = ws->process_va->shared;
+   static const struct {
+      uint64_t address;
+      uint64_t size;
+      enum agx_bo_flags flags;
+      uint32_t bind_flags;
+   } desc[AGX_D3DKMT_FIXED_BO_COUNT] = {
+      {AGX_ZERO_PAGE_ADDRESS, AGX_ZERO_PAGE_SIZE, 0, DRM_ASAHI_BIND_READ},
+      {AGX_SCRATCH_PAGE_ADDRESS, AIL_PAGESIZE, 0,
+       DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE},
+      {LIBAGX_PRINTF_BUFFER_ADDRESS, LIBAGX_PRINTF_BUFFER_SIZE,
+       AGX_BO_WRITEBACK, DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE},
+   };
+   struct agx_d3dkmt_allocation_record records[AGX_D3DKMT_FIXED_BO_COUNT] = {0};
+   uint32_t created = 0;
+   uint32_t bound = 0;
+
+   for (uint32_t i = 0; i < AGX_D3DKMT_FIXED_BO_COUNT; ++i) {
+      enum agx_bo_flags flags =
+         desc[i].flags | AGX_BO_SHARED | AGX_BO_SHAREABLE;
+      if (!d3dkmt_create_allocation(ws, desc[i].size, flags,
+                                    AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32,
+                                    NULL, 0, &records[i]))
+         goto fail;
+      created++;
+
+      struct agx_bo anchor = {.uapi_handle = records[i].allocation};
+      if (agx_bo_bind(dev, &anchor, desc[i].address, desc[i].size, 0,
+                      desc[i].bind_flags) != 0)
+         goto fail;
+      bound++;
+
+      OBJECT_ATTRIBUTES attributes;
+      InitializeObjectAttributes(&attributes, NULL, 0, NULL, NULL);
+      void *nt_handle = NULL;
+      agx_kmt_status st =
+         ws->fns.ShareObjects(1, &records[i].resource, &attributes,
+                              AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS, &nt_handle);
+      if (!AGX_KMT_SUCCESS(st) || nt_handle == NULL) {
+         if (!AGX_KMT_SUCCESS(st))
+            agx_d3dkmt_fail(st);
+         else
+            errno = EIO;
+         goto fail;
+      }
+
+      shared->fixed[i] = (struct agx_d3dkmt_shared_fixed_bo){
+         .address = desc[i].address,
+         .size = desc[i].size,
+         .nt_handle = (uintptr_t)nt_handle,
+         .allocation = records[i].allocation,
+         .resource = records[i].resource,
+         .flags = flags,
+         .bind_flags = desc[i].bind_flags,
+      };
+   }
+
+   shared->anchor_device = ws->device;
+   shared->anchor_adapter = ws->adapter;
+   return true;
+
+fail:
+   for (uint32_t i = 0; i < bound; ++i)
+      agx_bo_bind(dev, NULL, desc[i].address, desc[i].size, 0,
+                  DRM_ASAHI_BIND_UNBIND);
+   for (uint32_t i = 0; i < created; ++i) {
+      if (shared->fixed[i].nt_handle != 0)
+         CloseHandle((HANDLE)(uintptr_t)shared->fixed[i].nt_handle);
+      d3dkmt_destroy_record(ws, &records[i]);
+      memset(&shared->fixed[i], 0, sizeof(shared->fixed[i]));
+   }
+   shared->anchor_device = 0;
+   shared->anchor_adapter = 0;
+   return false;
+}
+
+static int
+d3dkmt_fixed_bo_index(uint64_t address)
+{
+   if (address == AGX_ZERO_PAGE_ADDRESS)
+      return 0;
+   if (address == AGX_SCRATCH_PAGE_ADDRESS)
+      return 1;
+   if (address == LIBAGX_PRINTF_BUFFER_ADDRESS)
+      return 2;
+   return -1;
+}
+
+static struct agx_bo *
+d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
+                      enum agx_bo_flags flags, uint64_t fixed_va,
+                      uint32_t bind_flags, const char *label)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_process_va *process = ws->process_va;
+   int index = d3dkmt_fixed_bo_index(fixed_va);
+   if (process == NULL || !process->attached || index < 0 ||
+       !process_va_lock(process)) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   struct agx_d3dkmt_process_va_shared *shared = process->shared;
+   if (shared->fixed[0].nt_handle == 0 && !d3dkmt_create_fixed_anchors(dev)) {
+      process_va_unlock(process);
+      return NULL;
+   }
+
+   struct agx_d3dkmt_shared_fixed_bo *fixed = &shared->fixed[index];
+   enum agx_bo_flags shared_flags = flags | AGX_BO_SHARED | AGX_BO_SHAREABLE;
+   if (fixed->nt_handle == 0 || fixed->address != fixed_va ||
+       fixed->size != ALIGN_POT(size, AIL_PAGESIZE) ||
+       fixed->flags != (uint32_t)shared_flags ||
+       fixed->bind_flags != bind_flags) {
+      process_va_unlock(process);
+      errno = EPROTO;
+      return NULL;
+   }
+
+   struct agx_d3dkmt_allocation_record record;
+   struct agxw_alloc_private private_data;
+   bool opened = d3dkmt_external_open(ws, (uintptr_t)fixed->nt_handle,
+                                      AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32,
+                                      &record, &private_data, NULL, NULL);
+   if (!opened || private_data.size != fixed->size) {
+      if (opened)
+         d3dkmt_destroy_record(ws, &record);
+      process_va_unlock(process);
+      errno = EIO;
+      return NULL;
+   }
+
+   struct agx_bo *bo = d3dkmt_adopt_allocation(dev, fixed->size, AIL_PAGESIZE,
+                                               shared_flags, &record, false);
+   process_va_unlock(process);
+   if (bo == NULL)
+      return NULL;
+
+   bo->label = label;
+   p_atomic_set(&bo->refcnt, 1);
+   return bo;
+}
+
 struct agx_bo *
 agx_d3dkmt_bo_create_external(
    struct agx_device *dev, size_t size, unsigned align,
@@ -703,7 +1033,7 @@ agx_d3dkmt_bo_create_external_with_runtime_data(
       return NULL;
 
    struct agx_bo *bo =
-      d3dkmt_adopt_allocation(dev, size, align, flags, &record);
+      d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    if (bo != NULL) {
       bo->label = label;
       p_atomic_set(&bo->refcnt, 1);
@@ -739,7 +1069,7 @@ agx_d3dkmt_bo_import_external_with_runtime_data(
    const size_t size = ALIGN_POT((size_t)private_data.size, AIL_PAGESIZE);
 
    struct agx_bo *bo =
-      d3dkmt_adopt_allocation(dev, size, AIL_PAGESIZE, flags, &record);
+      d3dkmt_adopt_allocation(dev, size, AIL_PAGESIZE, flags, &record, true);
    if (bo != NULL) {
       bo->label = label;
       p_atomic_set(&bo->refcnt, 1);
@@ -1670,24 +2000,52 @@ d3dkmt_vm_create(struct agx_device *dev, struct drm_asahi_vm_create *vm)
       return -1;
    }
 
-   for (uint32_t i = 0; i < n; ++i) {
-      if (d3dkmt_reserve(ws, ranges[i].base, ranges[i].size)) {
-         /* Roll back anything already taken so a retry is clean. */
-         for (uint32_t j = 0; j < i; ++j) {
-            struct agx_kmt_freegpuva f = {
-               .hAdapter = ws->adapter,
-               .BaseAddress = ranges[j].base,
-               .Size = ranges[j].size,
-            };
-            ws->fns.FreeGpuVirtualAddress(&f);
-         }
+   if (!process_va_open(ws, base, end - base) ||
+       !process_va_lock(ws->process_va))
+      return -1;
+
+   struct agx_d3dkmt_process_va_shared *shared = ws->process_va->shared;
+   if (shared->reservation_ready) {
+      if (shared->reservation_count != n ||
+          memcmp(shared->reservations, ranges, n * sizeof(ranges[0])) != 0) {
+         process_va_unlock(ws->process_va);
+         errno = EPROTO;
          return -1;
       }
+   } else {
+      for (uint32_t i = 0; i < n; ++i) {
+         if (d3dkmt_reserve(ws, ranges[i].base, ranges[i].size)) {
+            /* Roll back anything already taken so a retry is clean. */
+            for (uint32_t j = 0; j < i; ++j) {
+               struct agx_kmt_freegpuva f = {
+                  .hAdapter = ws->adapter,
+                  .BaseAddress = ranges[j].base,
+                  .Size = ranges[j].size,
+               };
+               ws->fns.FreeGpuVirtualAddress(&f);
+            }
+            process_va_unlock(ws->process_va);
+            return -1;
+         }
+      }
+
+      memcpy(shared->reservations, ranges, n * sizeof(ranges[0]));
+      shared->reservation_count = n;
+      shared->reservation_ready = 1;
    }
 
-   ws->va_count = n;
-   for (uint32_t i = 0; i < n; ++i)
-      ws->va[i] = ranges[i];
+   if (shared->clients == UINT32_MAX) {
+      process_va_unlock(ws->process_va);
+      errno = EOVERFLOW;
+      return -1;
+   }
+   shared->clients++;
+   ws->process_va->attached = true;
+   process_va_unlock(ws->process_va);
+
+   /* The process broker owns the reservation.  A device close must not free
+    * ranges still used by another UMD copy. */
+   ws->va_count = 0;
 
    /*
     * CONTRACT.md SS3.3: AGX_BO_EXEC is a MAPPING protection, not an
@@ -1704,21 +2062,106 @@ d3dkmt_vm_create(struct agx_device *dev, struct drm_asahi_vm_create *vm)
     * and its monitored fence. Establish that interlock before
     * agx_open_device() performs its first zero-page bind. */
    if (d3dkmt_va_update_init(ws) != 0) {
-      for (uint32_t i = 0; i < n; ++i) {
-         struct agx_kmt_freegpuva f = {
-            .hAdapter = ws->adapter,
-            .BaseAddress = ranges[i].base,
-            .Size = ranges[i].size,
-         };
-         ws->fns.FreeGpuVirtualAddress(&f);
+      if (process_va_lock(ws->process_va)) {
+         assert(shared->clients > 0);
+         shared->clients--;
+         ws->process_va->attached = false;
+         if (shared->clients == 0) {
+            for (uint32_t i = 0; i < shared->reservation_count; ++i) {
+               struct agx_kmt_freegpuva f = {
+                  .hAdapter = ws->adapter,
+                  .BaseAddress = shared->reservations[i].base,
+                  .Size = shared->reservations[i].size,
+               };
+               ws->fns.FreeGpuVirtualAddress(&f);
+            }
+            shared->reservation_ready = 0;
+            shared->reservation_count = 0;
+         }
+         process_va_unlock(ws->process_va);
       }
-      ws->va_count = 0;
       return -1;
    }
 
    /* One VM per device; the id is never interpreted by the kernel here. */
    vm->vm_id = 1;
    return 0;
+}
+
+static bool
+d3dkmt_process_va_init(struct agx_device *dev, uint64_t main_base,
+                       uint64_t main_size, uint64_t usc_base, uint64_t usc_size)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_process_va *process = ws->process_va;
+   if (process == NULL || !process->attached || !process_va_lock(process))
+      return false;
+
+   struct agx_d3dkmt_process_va_shared *shared = process->shared;
+   if (!shared->layout_ready) {
+      shared->main_base = main_base;
+      shared->main_size = main_size;
+      shared->usc_base = usc_base;
+      shared->usc_size = usc_size;
+      memset(shared->bitmap, 0,
+             (size_t)shared->word_count * sizeof(shared->bitmap[0]));
+      shared->layout_ready = 1;
+   }
+
+   bool valid = shared->main_base == main_base &&
+                shared->main_size == main_size &&
+                shared->usc_base == usc_base && shared->usc_size == usc_size;
+   process_va_unlock(process);
+   if (!valid)
+      errno = EPROTO;
+   return valid;
+}
+
+static uint64_t
+d3dkmt_process_va_alloc(struct agx_device *dev, uint64_t size_B,
+                        uint64_t align_B, enum agx_va_flags flags,
+                        uint64_t fixed_va)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_process_va *process = ws->process_va;
+   if (process == NULL || !process->attached || !process_va_lock(process))
+      return 0;
+
+   struct agx_d3dkmt_process_va_shared *shared = process->shared;
+   uint64_t allowed_base =
+      (flags & AGX_VA_USC) ? shared->usc_base : shared->main_base;
+   uint64_t allowed_size =
+      (flags & AGX_VA_USC) ? shared->usc_size : shared->main_size;
+   uint64_t addr = shared->layout_ready
+                      ? agx_d3dkmt_va_bitmap_alloc(
+                           shared->bitmap, shared->word_count, shared->va_base,
+                           shared->va_size, allowed_base, allowed_size, size_B,
+                           align_B, fixed_va)
+                      : 0;
+   process_va_unlock(process);
+   if (addr == 0)
+      errno = ENOSPC;
+   return addr;
+}
+
+static void
+d3dkmt_process_va_free(struct agx_device *dev, uint64_t addr, uint64_t size_B,
+                       enum agx_va_flags flags)
+{
+   (void)flags;
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_process_va *process = ws->process_va;
+   if (process == NULL || !process->attached || !process_va_lock(process))
+      return;
+
+   struct agx_d3dkmt_process_va_shared *shared = process->shared;
+   bool freed =
+      agx_d3dkmt_va_bitmap_free(shared->bitmap, shared->word_count,
+                                shared->va_base, shared->va_size, addr, size_B);
+   process_va_unlock(process);
+   if (!freed)
+      fprintf(stderr, "Invalid process GPU VA free at 0x%llx\n",
+              (unsigned long long)addr);
 }
 
 static int
@@ -1902,6 +2345,10 @@ const agx_device_ops_t agx_device_d3dkmt_ops = {
    .simple_ioctl = d3dkmt_simple_ioctl,
    .bo_munmap = d3dkmt_bo_munmap,
    .bo_free = d3dkmt_bo_free,
+   .va_init = d3dkmt_process_va_init,
+   .va_alloc = d3dkmt_process_va_alloc,
+   .va_free = d3dkmt_process_va_free,
+   .bo_alloc_fixed = d3dkmt_bo_alloc_fixed,
 };
 
 /* -------------------------------------------------------------------------
@@ -2094,6 +2541,98 @@ fail_alloc:
    return false;
 }
 
+static void
+process_va_destroy_anchor_record(struct agx_d3dkmt_winsys *ws,
+                                 agx_kmt_handle device,
+                                 const struct agx_d3dkmt_shared_fixed_bo *fixed)
+{
+   if (fixed->allocation == 0 && fixed->resource == 0)
+      return;
+
+   const agx_kmt_handle allocation = fixed->allocation;
+   struct agx_kmt_destroyallocation2 destroy = {
+      .hDevice = device,
+      .hResource = fixed->resource,
+      .phAllocationList = fixed->resource ? NULL : &allocation,
+      .AllocationCount = fixed->resource ? 0 : 1,
+   };
+   agx_kmt_status status = ws->fns.DestroyAllocation2(&destroy);
+   if (!AGX_KMT_SUCCESS(status))
+      agx_d3dkmt_fail(status);
+}
+
+static void
+process_va_detach(struct agx_d3dkmt_winsys *ws, bool *defer_device,
+                  bool *defer_adapter)
+{
+   struct agx_d3dkmt_process_va *process = ws->process_va;
+   *defer_device = false;
+   *defer_adapter = false;
+   if (process == NULL)
+      return;
+
+   if (process->attached && process_va_lock(process)) {
+      struct agx_d3dkmt_process_va_shared *shared = process->shared;
+      if (shared->clients > 0)
+         shared->clients--;
+
+      agx_kmt_handle anchor_device = shared->anchor_device;
+      agx_kmt_handle anchor_adapter = shared->anchor_adapter;
+      if (shared->clients == 0) {
+         for (uint32_t i = 0; i < AGX_D3DKMT_FIXED_BO_COUNT; ++i) {
+            if (shared->fixed[i].nt_handle != 0)
+               CloseHandle((HANDLE)(uintptr_t)shared->fixed[i].nt_handle);
+            process_va_destroy_anchor_record(ws, anchor_device,
+                                             &shared->fixed[i]);
+            memset(&shared->fixed[i], 0, sizeof(shared->fixed[i]));
+         }
+
+         for (uint32_t i = 0; i < shared->reservation_count; ++i) {
+            struct agx_kmt_freegpuva free_va = {
+               .hAdapter = ws->adapter,
+               .BaseAddress = shared->reservations[i].base,
+               .Size = shared->reservations[i].size,
+            };
+            ws->fns.FreeGpuVirtualAddress(&free_va);
+         }
+
+         shared->anchor_device = 0;
+         shared->anchor_adapter = 0;
+         shared->reservation_ready = 0;
+         shared->reservation_count = 0;
+         shared->layout_ready = 0;
+         memset(shared->reservations, 0, sizeof(shared->reservations));
+         memset(shared->bitmap, 0,
+                (size_t)shared->word_count * sizeof(shared->bitmap[0]));
+
+         if (anchor_device != 0 && anchor_device != ws->device) {
+            struct agx_kmt_destroydevice destroy = {
+               .hDevice = anchor_device,
+            };
+            ws->fns.DestroyDevice(&destroy);
+         }
+         if (anchor_adapter != 0 && anchor_adapter != ws->adapter) {
+            struct agx_kmt_closeadapter close = {
+               .hAdapter = anchor_adapter,
+            };
+            ws->fns.CloseAdapter(&close);
+         }
+      } else {
+         /* The anchor allocation mappings must outlive every client.  If the
+          * device that created them closes first, transfer its raw KMT handle
+          * lifetime to the shared section; the last client destroys it. */
+         *defer_device = anchor_device != 0 && anchor_device == ws->device;
+         *defer_adapter = anchor_adapter != 0 && anchor_adapter == ws->adapter;
+      }
+
+      process->attached = false;
+      process_va_unlock(process);
+   }
+
+   process_va_close_mapping(process);
+   ws->process_va = NULL;
+}
+
 void
 agx_d3dkmt_close_device(struct agx_device *dev)
 {
@@ -2149,11 +2688,19 @@ agx_d3dkmt_close_device(struct agx_device *dev)
    struct agx_kmt_destroypagingqueue dpq = {.hPagingQueue = ws->paging_queue};
    ws->fns.DestroyPagingQueue(&dpq);
 
-   struct agx_kmt_destroydevice dd = {.hDevice = ws->device};
-   ws->fns.DestroyDevice(&dd);
+   bool defer_device = false;
+   bool defer_adapter = false;
+   process_va_detach(ws, &defer_device, &defer_adapter);
 
-   struct agx_kmt_closeadapter ca = {.hAdapter = ws->adapter};
-   ws->fns.CloseAdapter(&ca);
+   if (!defer_device) {
+      struct agx_kmt_destroydevice dd = {.hDevice = ws->device};
+      ws->fns.DestroyDevice(&dd);
+   }
+
+   if (!defer_adapter) {
+      struct agx_kmt_closeadapter ca = {.hAdapter = ws->adapter};
+      ws->fns.CloseAdapter(&ca);
+   }
 
    agx_d3dkmt_pool_finish(&ws->pool);
    agx_d3dkmt_sync_table_finish(&ws->syncs);
