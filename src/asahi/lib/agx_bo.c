@@ -13,6 +13,13 @@
 #include "decode.h"
 #include "layout.h"
 
+/* A time-only eviction policy can retain a complete multi-gigabyte resource
+ * phase while its replacement is allocated.  Apart from defeating memory
+ * budgets, that lets the kernel's cgroup OOM kill arrive before bo_alloc()
+ * can fail and trigger agx_bo_cache_evict_all().  Keep enough for ordinary
+ * command/resource reuse while making the cache a bounded optimization. */
+#define AGX_BO_CACHE_MAX_SIZE (256ull * 1024 * 1024)
+
 /* Helper to calculate the bucket index of a BO */
 static unsigned
 agx_bucket_index(size_t size)
@@ -141,6 +148,13 @@ agx_bo_cache_put(struct agx_device *dev, struct agx_bo *bo)
       return false;
    } else {
       simple_mtx_lock(&dev->bo_cache.lock);
+
+      if (bo->size > AGX_BO_CACHE_MAX_SIZE ||
+          dev->bo_cache.size > AGX_BO_CACHE_MAX_SIZE - bo->size) {
+         simple_mtx_unlock(&dev->bo_cache.lock);
+         return false;
+      }
+
       agx_bo_cache_put_locked(dev, bo);
       simple_mtx_unlock(&dev->bo_cache.lock);
 
