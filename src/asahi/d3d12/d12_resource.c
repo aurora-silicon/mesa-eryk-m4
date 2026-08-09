@@ -139,11 +139,12 @@ d12_resource_Unmap(ID3D12Resource *iface, UINT subresource,
    /* Coherent UMA: nothing to flush. */
 }
 
-static D3D12_RESOURCE_DESC STDMETHODCALLTYPE
-d12_resource_GetDesc(ID3D12Resource *iface)
+static D12_AGGREGATE_RETURN(D3D12_RESOURCE_DESC) STDMETHODCALLTYPE
+d12_resource_GetDesc(ID3D12Resource *iface
+                     D12_AGGREGATE_OUT(D3D12_RESOURCE_DESC))
 {
    struct d12_resource *res = d12_resource_from_iface(iface);
-   return res->desc;
+   D12_RETURN_AGGREGATE(res->desc);
 }
 
 static D3D12_GPU_VIRTUAL_ADDRESS STDMETHODCALLTYPE
@@ -1791,10 +1792,10 @@ d12_heap_GetDevice(ID3D12Heap *iface, REFIID riid, void **out)
    return ID3D12Device_QueryInterface(&heap->device->iface, riid, out);
 }
 
-static D3D12_HEAP_DESC STDMETHODCALLTYPE
-d12_heap_GetDesc(ID3D12Heap *iface)
+static D12_AGGREGATE_RETURN(D3D12_HEAP_DESC) STDMETHODCALLTYPE
+d12_heap_GetDesc(ID3D12Heap *iface D12_AGGREGATE_OUT(D3D12_HEAP_DESC))
 {
-   return d12_memheap_from_iface(iface)->desc;
+   D12_RETURN_AGGREGATE(d12_memheap_from_iface(iface)->desc);
 }
 
 static const ID3D12HeapVtbl d12_heap_vtbl = {

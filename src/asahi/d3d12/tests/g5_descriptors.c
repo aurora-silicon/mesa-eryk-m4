@@ -36,6 +36,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -254,9 +256,9 @@ main(int argc, char **argv)
    UINT inc = ID3D12Device_GetDescriptorHandleIncrementSize(
       dev, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
    D3D12_CPU_DESCRIPTOR_HANDLE cpu =
-      ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(heap);
+      d12_test_descriptor_heap_get_cpu_start(heap);
    D3D12_GPU_DESCRIPTOR_HANDLE gpu =
-      ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(heap);
+      d12_test_descriptor_heap_get_gpu_start(heap);
    CHECK(inc && cpu.ptr && gpu.ptr, "heap start handles are usable");
 
    /* Table slot 0: the SRV. Its 12-byte stride is the shader's, not four. */

@@ -16,7 +16,7 @@
 #include "decode.h"
 #include "util/u_dynarray.h"
 
-#include <xf86drm.h>
+#include "drm-uapi/drm.h"
 
 #include "agx_helpers.h"
 #include "util/u_math.h"
@@ -108,11 +108,9 @@ d12_queue_Release(ID3D12CommandQueue *iface)
    uint32_t refs = p_atomic_dec_return(&queue->refcount);
 
    if (refs == 0) {
-      struct agx_device *dev = &queue->device->dev;
-
       d12_queue_stop_worker(queue);
-      drmSyncobjDestroy(dev->fd, queue->syncobj);
-      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      queue->device->sync->destroy(queue->device->sync, queue->syncobj);
+      agx_destroy_command_queue(&queue->device->dev, queue->agx_queue_id);
       cnd_destroy(&queue->work_available);
       mtx_destroy(&queue->lock);
       d12_private_data_store_destroy(&queue->private_data);
@@ -522,9 +520,9 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
     * submit and Signal operations are not processed until this work really
     * completed, so cross-queue fence visibility and resource ordering are
     * exact even though Linux syncobjs cannot model D3D12 fence rewinds. */
-   ret = drmSyncobjTimelineWait(dev->fd, &queue->syncobj, &out, 1,
-                                INT64_MAX,
-                                DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
+   ret = device->sync->timeline_wait(
+      device->sync, &queue->syncobj, &out, 1, INT64_MAX,
+      DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
    if (ret) {
       mesa_loge("queue GPU completion wait failed: %d", ret);
       device->removed = true;
@@ -1100,11 +1098,12 @@ d12_queue_GetClockCalibration(ID3D12CommandQueue *iface,
    return S_OK;
 }
 
-static D3D12_COMMAND_QUEUE_DESC STDMETHODCALLTYPE
-d12_queue_GetDesc(ID3D12CommandQueue *iface)
+static D12_AGGREGATE_RETURN(D3D12_COMMAND_QUEUE_DESC) STDMETHODCALLTYPE
+d12_queue_GetDesc(ID3D12CommandQueue *iface
+                  D12_AGGREGATE_OUT(D3D12_COMMAND_QUEUE_DESC))
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
-   return queue->desc;
+   D12_RETURN_AGGREGATE(queue->desc);
 }
 
 static const ID3D12CommandQueueVtbl d12_queue_vtbl = {
@@ -1170,8 +1169,8 @@ d12_queue_create(struct d12_device *device,
    queue->agx_queue_id =
       agx_create_command_queue(dev, DRM_ASAHI_PRIORITY_MEDIUM);
 
-   if (drmSyncobjCreate(dev->fd, 0, &queue->syncobj)) {
-      mesa_loge("d12_queue_create: drmSyncobjCreate failed");
+   if (device->sync->create(device->sync, 0, &queue->syncobj)) {
+      mesa_loge("d12_queue_create: sync object creation failed");
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       free(queue);
       return E_FAIL;
@@ -1179,7 +1178,14 @@ d12_queue_create(struct d12_device *device,
 
    /* Materialize point 0 for the first real AGX submission. */
    uint64_t zero = 0;
-   drmSyncobjTimelineSignal(dev->fd, &queue->syncobj, &zero, 1);
+   if (device->sync->timeline_signal(device->sync, &queue->syncobj, &zero,
+                                     1)) {
+      mesa_loge("d12_queue_create: initial sync signal failed");
+      device->sync->destroy(device->sync, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
 
    queue->iface.lpVtbl = (ID3D12CommandQueueVtbl *)&d12_queue_vtbl;
    queue->refcount = 1;
@@ -1198,14 +1204,14 @@ d12_queue_create(struct d12_device *device,
 
    queue->timeline_value = 0;
    if (mtx_init(&queue->lock, mtx_plain) != thrd_success) {
-      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       free(queue);
       return E_FAIL;
    }
    if (cnd_init(&queue->work_available) != thrd_success) {
       mtx_destroy(&queue->lock);
-      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       free(queue);
       return E_FAIL;
@@ -1219,7 +1225,7 @@ d12_queue_create(struct d12_device *device,
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->work_available);
       mtx_destroy(&queue->lock);
-      drmSyncobjDestroy(dev->fd, queue->syncobj);
+      device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       free(queue);
       return E_FAIL;

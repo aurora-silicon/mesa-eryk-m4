@@ -5631,7 +5631,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    const struct d12_gfx_stage *vstage = &pso->vs;
    const struct agx_unlinked_uvs_layout *uvs = &pso->uvs;
-   const struct agx_varyings_vs *varys = &pso->varyings;
+   struct agx_varyings_vs *varys = &pso->varyings;
    struct agx_draw draw = {0};
    bool draw_set = false;
    struct agx_draw gs_upstream = {0};

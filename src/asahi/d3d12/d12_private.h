@@ -43,7 +43,24 @@
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
 #include "util/u_atomic.h"
+#include "util/u_sync_provider.h"
 #include "c11/threads.h"
+
+/* widl/Windows spells aggregate COM returns as an explicit out pointer,
+ * while the same DirectX-Headers interfaces return them by value elsewhere. */
+#ifdef _WIN32
+#define D12_AGGREGATE_RETURN(type) type *
+#define D12_AGGREGATE_OUT(type) , type *ret
+#define D12_RETURN_AGGREGATE(value)                                          \
+   do {                                                                       \
+      *ret = (value);                                                         \
+      return ret;                                                             \
+   } while (0)
+#else
+#define D12_AGGREGATE_RETURN(type) type
+#define D12_AGGREGATE_OUT(type)
+#define D12_RETURN_AGGREGATE(value) return (value)
+#endif
 
 /*
  * COM plumbing. Every d12 object embeds its COM interface as the FIRST
@@ -178,6 +195,12 @@ struct d12_device {
 
    /* The real GPU. Owned: closed on final release. */
    struct agx_device dev;
+
+   /* Platform sync objects use one provider surface on DRM and D3DKMT. */
+   struct util_sync_provider *sync;
+
+   /* The adapter identity DXGI and D3DKMT use for zero-copy interop. */
+   LUID adapter_luid;
 
    /* Precompiled libagx kernel cache (copy/fill engines etc.), the same
     * mechanism Honeykrisp uses for its internal dispatches.
@@ -1636,3 +1659,7 @@ HRESULT d12_pipeline_state_create_graphics(
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);
+
+bool d12_platform_open_device(struct d12_device *device, IUnknown *adapter);
+void d12_platform_close_device(struct d12_device *device);
+void d12_platform_signal_event(HANDLE event);

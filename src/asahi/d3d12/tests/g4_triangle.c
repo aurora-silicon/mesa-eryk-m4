@@ -23,6 +23,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -221,7 +223,7 @@ main(int argc, char **argv)
    ID3D12Device_CreateDescriptorHeap(dev, &hd, &IID_ID3D12DescriptorHeap,
                                      (void **)&rtv_heap);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv =
-      ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
+      d12_test_descriptor_heap_get_cpu_start(rtv_heap);
    ID3D12Device_CreateRenderTargetView(dev, rt, NULL, rtv);
 
    uint8_t *map = NULL;
@@ -412,7 +414,7 @@ main(int argc, char **argv)
     * then CopyTextureRegion into a plain buffer.
     */
    {
-      D3D12_RESOURCE_DESC rtd = ID3D12Resource_GetDesc(rt);
+      D3D12_RESOURCE_DESC rtd = d12_test_resource_get_desc(rt);
       D3D12_PLACED_SUBRESOURCE_FOOTPRINT fp = {0};
       UINT rows = 0;
       UINT64 row_bytes = 0, total = 0;
@@ -521,7 +523,7 @@ main(int argc, char **argv)
       ID3D12Device_CreateDescriptorHeap(dev, &hd2, &IID_ID3D12DescriptorHeap,
                                         (void **)&h2);
       D3D12_CPU_DESCRIPTOR_HANDLE rtv2 =
-         ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(h2);
+         d12_test_descriptor_heap_get_cpu_start(h2);
       ID3D12Device_CreateRenderTargetView(dev, bgra, NULL, rtv2);
 
       uint8_t *m2 = NULL;

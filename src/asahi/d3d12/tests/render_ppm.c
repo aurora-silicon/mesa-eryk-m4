@@ -16,6 +16,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,7 +141,7 @@ main(int argc, char **argv)
    ID3D12Device_CreateDescriptorHeap(dev, &hd, &IID_ID3D12DescriptorHeap,
                                      (void **)&rtv_heap);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv =
-      ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
+      d12_test_descriptor_heap_get_cpu_start(rtv_heap);
    ID3D12Device_CreateRenderTargetView(dev, rt, NULL, rtv);
 
    uint8_t *map = NULL;

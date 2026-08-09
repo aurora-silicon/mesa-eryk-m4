@@ -23,6 +23,7 @@ libasahi_lib_files = files(
 )
 
 asahi_lib_is_windows = host_machine.system() == 'windows'
+asahi_lib_has_virtio = not asahi_lib_is_windows and with_vdrm
 
 if asahi_lib_is_windows
   libasahi_lib_files += files(
@@ -44,9 +45,32 @@ if asahi_lib_is_windows
 
   libasahi_lib_files += files(agxw_contract_dir / 'agxw_contract.c')
   libasahi_lib_inc_win = include_directories(agxw_contract_dir)
-else
+elif asahi_lib_has_virtio
   libasahi_lib_files += files('agx_device_virtio.c')
   libasahi_lib_inc_win = []
+else
+  libasahi_lib_inc_win = []
+endif
+
+if asahi_lib_is_windows
+  libasahi_lib_includes = [inc_asahi, libasahi_lib_inc_win]
+  libasahi_lib_links = [libpoly_nir]
+  libasahi_lib_deps = [
+    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
+  ]
+elif asahi_lib_has_virtio
+  libasahi_lib_includes = [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm]
+  libasahi_lib_links = [libasahi_decode, libvdrm, libpoly_nir]
+  libasahi_lib_deps = [
+    dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx,
+    idep_libpoly,
+  ]
+else
+  libasahi_lib_includes = [inc_asahi]
+  libasahi_lib_links = [libasahi_decode, libpoly_nir]
+  libasahi_lib_deps = [
+    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
+  ]
 endif
 libasahi_decode_files = files(
   'decode.c',
@@ -85,17 +109,11 @@ idep_libagx_shaders_h = declare_dependency(
 libasahi_lib = static_library(
   'asahi_lib',
   [libasahi_lib_files, libagx_shaders, agx_pack, sha1_h],
-  include_directories : _asahi_lib_no_virtio
-    ? [inc_asahi, libasahi_lib_inc_win]
-    : [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm],
+  include_directories : libasahi_lib_includes,
   c_args : [no_override_init_args, '-Wno-c2x-extensions'],
   gnu_symbol_visibility : 'hidden',
-  link_with: asahi_lib_is_windows
-    ? [libpoly_nir]
-    : [libasahi_decode, libvdrm, libpoly_nir],
-  dependencies: asahi_lib_is_windows
-    ? [dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly]
-    : [dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly],
+  link_with: libasahi_lib_links,
+  dependencies: libasahi_lib_deps,
   build_by_default : false,
 )
 

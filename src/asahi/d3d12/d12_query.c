@@ -152,7 +152,7 @@ d12_query_heap_create_flags(struct d12_device *device,
    if (!heap)
       return E_OUTOFMEMORY;
 
-   heap->iface.lpVtbl = &d12_query_heap_vtbl;
+   heap->iface.lpVtbl = (ID3D12QueryHeapVtbl *)&d12_query_heap_vtbl;
    heap->refcount = 1;
    heap->desc = *desc;
    heap->flags = flags;

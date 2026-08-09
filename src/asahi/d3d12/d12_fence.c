@@ -10,35 +10,13 @@
 
 #include "d12_private.h"
 
-#include <xf86drm.h>
-
-#include <errno.h>
-#include <sys/eventfd.h>
-#include <sys/poll.h>
-#include <unistd.h>
-
 #include "util/u_thread.h"
 
 struct d12_fence_event_waiter {
    struct d12_fence_event_waiter *next;
    uint64_t value;
-   int fd;
+   HANDLE event;
 };
-
-static void
-d12_signal_event_fd(int fd)
-{
-   /* Native Linux tests represent an auto-reset event with eventfd.  Win32
-    * SetEvent coalesces repeated signals while an event is already set, so
-    * avoid accumulating another eventfd token in that case. */
-   struct pollfd pfd = {.fd = fd, .events = POLLIN};
-   if (poll(&pfd, 1, 0) > 0)
-      return;
-
-   const uint64_t one = 1;
-   if (write(fd, &one, sizeof(one)) != sizeof(one) && errno != EAGAIN)
-      mesa_loge("fence event write failed: %s", strerror(errno));
-}
 
 static void
 d12_fence_signal_waiters_locked(struct d12_fence *fence, bool all)
@@ -52,7 +30,7 @@ d12_fence_signal_waiters_locked(struct d12_fence *fence, bool all)
       }
 
       *link = waiter->next;
-      d12_signal_event_fd(waiter->fd);
+      d12_platform_signal_event(waiter->event);
       free(waiter);
    }
 }
@@ -322,12 +300,12 @@ d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
       if (!waiter)
          return E_OUTOFMEMORY;
       waiter->value = value;
-      waiter->fd = (int)(intptr_t)event;
+      waiter->event = event;
 
       mtx_lock(&fence->lock);
       if (fence->destroyed ||
           p_atomic_read(&fence->completed_value) >= value) {
-         d12_signal_event_fd(waiter->fd);
+         d12_platform_signal_event(waiter->event);
          free(waiter);
       } else {
          waiter->next = fence->event_waiters;
@@ -348,7 +326,7 @@ struct d12_fence_multi_waiter {
    uint64_t *values;
    unsigned count;
    bool wait_all;
-   int fd;
+   HANDLE event;
    thrd_t thread;
 };
 
@@ -398,7 +376,7 @@ d12_fence_multi_wait_thread(void *data)
    if (ret)
       mesa_loge("multiple fence event wait failed: %d", ret);
 
-   d12_signal_event_fd(w->fd);
+   d12_platform_signal_event(w->event);
 
    d12_fence_multi_waiter_destroy(w);
    return 0;
@@ -432,7 +410,7 @@ d12_fence_set_event_multiple(struct d12_device *device,
    w->device = device;
    w->count = count;
    w->wait_all = flags == D3D12_MULTIPLE_FENCE_WAIT_FLAG_ALL;
-   w->fd = (int)(intptr_t)event;
+   w->event = event;
 
    for (unsigned i = 0; i < count; i++) {
       if (!fences[i]) {

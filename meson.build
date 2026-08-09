@@ -306,6 +306,7 @@ with_imagination_srv = get_option('imagination-srv')
 with_microsoft_vk = _vulkan_drivers.contains('microsoft-experimental')
 with_nouveau_vk = _vulkan_drivers.contains('nouveau')
 with_asahi_vk = _vulkan_drivers.contains('asahi')
+with_asahi_d3d12 = get_option('asahi-d3d12')
 with_gfxstream_vk = _vulkan_drivers.contains('gfxstream')
 with_kosmickrisp_vk = _vulkan_drivers.contains('kosmickrisp')
 with_any_vk = _vulkan_drivers.length() != 0
@@ -350,6 +351,7 @@ with_vdrm = [
   freedreno_kmds.contains('virtio'),
   with_gallium_asahi,
   with_asahi_vk,
+  with_asahi_d3d12 and host_machine.system() != 'windows',
   with_intel_virtio,
 ].contains(true)
 
@@ -924,7 +926,8 @@ endif
 
 with_driver_using_cl = [
   with_gallium_iris, with_gallium_crocus, with_intel_vk, with_intel_hasvk,
-  with_gallium_asahi, with_asahi_vk, with_tools.contains('asahi'),
+  with_gallium_asahi, with_asahi_vk, with_asahi_d3d12,
+  with_tools.contains('asahi'),
   with_gallium_panfrost, with_panfrost_vk,
   with_nouveau_vk, with_imagination_vk,
   with_kosmickrisp_vk,
@@ -945,7 +948,8 @@ with_llvm = with_llvm \
   .enable_if(with_clc, error_message : 'CLC requires LLVM')
 
 with_poly = [
-  with_gallium_asahi, with_asahi_vk, with_tools.contains('asahi'),
+  with_gallium_asahi, with_asahi_vk, with_asahi_d3d12,
+  with_tools.contains('asahi'),
 ].contains(true)
 
 dep_clc = null_dep

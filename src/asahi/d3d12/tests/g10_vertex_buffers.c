@@ -39,6 +39,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -351,7 +353,7 @@ main(int argc, char **argv)
    UINT inc = ID3D12Device_GetDescriptorHandleIncrementSize(
       dev, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv0 =
-      ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
+      d12_test_descriptor_heap_get_cpu_start(rtv_heap);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv1 = {rtv0.ptr + inc};
    ID3D12Device_CreateRenderTargetView(dev, rt[0], NULL, rtv0);
    ID3D12Device_CreateRenderTargetView(dev, rt[1], NULL, rtv1);

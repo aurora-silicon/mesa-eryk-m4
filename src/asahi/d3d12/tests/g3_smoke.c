@@ -17,6 +17,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -132,7 +134,7 @@ main(int argc, char **argv)
    UINT inc = ID3D12Device_GetDescriptorHandleIncrementSize(
       dev, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv_a =
-      ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
+      d12_test_descriptor_heap_get_cpu_start(rtv_heap);
    D3D12_CPU_DESCRIPTOR_HANDLE rtv_b = {.ptr = rtv_a.ptr + inc};
    /* The increment is sizeof(struct d12_descriptor) and is OPAQUE to
     * applications. It grew from 32 to 40 when UAV counter addresses were

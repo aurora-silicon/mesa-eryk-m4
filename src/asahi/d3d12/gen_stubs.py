@@ -60,8 +60,8 @@ def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def vtable_body(header, iface):
-    """Extract the body of <iface>Vtbl, keeping the non-_WIN32 branches."""
+def vtable_body(header, iface, windows=False):
+    """Extract <iface>Vtbl for either the Windows or non-Windows ABI."""
     m = re.search(
         r"typedef\s+struct\s+" + iface + r"Vtbl\s*\{(.*?)\}\s*" + iface + r"Vtbl;",
         header,
@@ -72,8 +72,8 @@ def vtable_body(header, iface):
 
     body = m.group(1)
 
-    # Resolve #if !defined(_WIN32) / #else / #endif in favour of non-Windows,
-    # which is where the struct-return quirk lives.
+    # DirectX-Headers expresses aggregate returns with an explicit RetVal
+    # pointer on Windows and by value elsewhere. Keep the requested branch.
     out = []
     depth_stack = []
     keep = True
@@ -81,8 +81,8 @@ def vtable_body(header, iface):
         s = line.strip()
         if s.startswith("#if"):
             non_win = "!defined(_WIN32)" in s or "!defined( _WIN32 )" in s
-            depth_stack.append(non_win)
-            keep = non_win
+            keep = not non_win if windows else non_win
+            depth_stack.append(keep)
             continue
         if s.startswith("#else"):
             if depth_stack:
@@ -132,6 +132,35 @@ def default_return(ret):
     return "ZERO"
 
 
+def emit_stub(lines, iface, ret, name, args):
+    fn = f"d12_stub_{iface}_{name}"
+    val = default_return(ret)
+
+    lines.append(f"static inline {ret}")
+    lines.append(f"{fn}({args})")
+    lines.append("{")
+    lines.append(f'   d12_stub_report("{iface}::{name}");')
+
+    for outp in re.findall(r"void \*\*(\w+)", args):
+        lines.append(f"   if ({outp})")
+        lines.append(f"      *{outp} = NULL;")
+
+    if val is None:
+        pass
+    elif val == "ZERO":
+        lines.append(f"   {ret} zero;")
+        lines.append("   memset(&zero, 0, sizeof(zero));")
+        lines.append("   return zero;")
+    elif ret.rstrip().endswith("*") and re.search(r"\bRetVal\b", args):
+        lines.append("   if (RetVal)")
+        lines.append("      memset(RetVal, 0, sizeof(*RetVal));")
+        lines.append("   return RetVal;")
+    else:
+        lines.append(f"   return {val};")
+    lines.append("}")
+    lines.append("")
+
+
 def emit(header):
     lines = []
     lines.append("/*")
@@ -155,45 +184,28 @@ def emit(header):
 
     total = 0
     for iface in INTERFACES:
-        body = vtable_body(header, iface)
-        if body is None:
+        nonwin_body = vtable_body(header, iface, windows=False)
+        win_body = vtable_body(header, iface, windows=True)
+        if nonwin_body is None or win_body is None:
             print(f"WARNING: no vtable for {iface}", file=sys.stderr)
             continue
 
-        methods = parse_methods(body)
+        methods = parse_methods(nonwin_body)
+        win_methods = {name: (ret, args) for ret, name, args in parse_methods(win_body)}
         total += len(methods)
         lines.append(f"/* ---- {iface}: {len(methods)} methods ---- */")
 
         for ret, name, args in methods:
-            fn = f"d12_stub_{iface}_{name}"
-            val = default_return(ret)
-
-            lines.append(f"static inline {ret}")
-            lines.append(f"{fn}({args})")
-            lines.append("{")
-            lines.append(f'   d12_stub_report("{iface}::{name}");')
-
-            # THE COM CONTRACT. A method that fails must leave the
-            # caller's out-pointer NULL. Returning E_NOTIMPL while
-            # leaving it untouched hands the application back an
-            # uninitialised stack variable, and a well-written one then
-            # passes that garbage to the next call -- so an unimplemented
-            # method here surfaces as a segfault somewhere else entirely.
-            # That was the single largest crash source in the vkd3d-proton
-            # suite.
-            for outp in re.findall(r"void \*\*(\w+)", args):
-                lines.append(f"   if ({outp})")
-                lines.append(f"      *{outp} = NULL;")
-            if val is None:
-                pass
-            elif val == "ZERO":
-                lines.append(f"   {ret} zero;")
-                lines.append("   memset(&zero, 0, sizeof(zero));")
-                lines.append("   return zero;")
+            win_ret, win_args = win_methods[name]
+            if (win_ret, win_args) != (ret, args):
+                lines.append("#ifdef _WIN32")
+                emit_stub(lines, iface, win_ret, name, win_args)
+                lines.append("#else")
+                emit_stub(lines, iface, ret, name, args)
+                lines.append("#endif")
+                lines.append("")
             else:
-                lines.append(f"   return {val};")
-            lines.append("}")
-            lines.append("")
+                emit_stub(lines, iface, ret, name, args)
 
         lines.append(f"#define D12_{iface}_DEFAULTS \\")
         entries = [

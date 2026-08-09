@@ -30,6 +30,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -387,8 +389,8 @@ main(int argc, char **argv)
    if (FAILED(hr))
       return 1;
 
-   c.rtv = ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(rtv_heap);
-   c.dsv = ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(dsv_heap);
+   c.rtv = d12_test_descriptor_heap_get_cpu_start(rtv_heap);
+   c.dsv = d12_test_descriptor_heap_get_cpu_start(dsv_heap);
    ID3D12Device_CreateRenderTargetView(c.dev, c.rt, NULL, c.rtv);
    ID3D12Device_CreateDepthStencilView(c.dev, c.ds, NULL, c.dsv);
 

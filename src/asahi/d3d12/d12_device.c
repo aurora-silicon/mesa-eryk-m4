@@ -3,17 +3,13 @@
  * SPDX-License-Identifier: MIT
  *
  * ID3D12Device on a real agx_device, plus the D3D12CreateDevice entry point.
- * Device discovery mirrors hk_physical_device.c: enumerate DRM devices, take
- * the render node whose kernel driver is "asahi".
+ * Platform discovery and winsys lifetime live behind d12_platform_*.
  */
 
 #include "d12_private.h"
 
-#include <fcntl.h>
 #include <math.h>
 #include <string.h>
-#include <unistd.h>
-#include <xf86drm.h>
 
 /*
  * Report an unimplemented COM method. Logged once per method so a test
@@ -44,44 +40,10 @@ d12_log_unknown_riid(const char *where, REFIID riid)
    const GUID *g = riid;
    mesa_loge("%s: unsupported riid "
              "{%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x}",
-             where, g->Data1, g->Data2, g->Data3, g->Data4[0], g->Data4[1],
+             where, (unsigned)g->Data1, g->Data2, g->Data3, g->Data4[0],
+             g->Data4[1],
              g->Data4[2], g->Data4[3], g->Data4[4], g->Data4[5], g->Data4[6],
              g->Data4[7]);
-}
-
-/*
- * Find the asahi render node. Returns an open fd or -1.
- */
-static int
-d12_open_asahi_fd(void)
-{
-   drmDevicePtr devices[8];
-   int count = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
-   int result = -1;
-
-   for (int i = 0; i < count; i++) {
-      if (!(devices[i]->available_nodes & (1 << DRM_NODE_RENDER)))
-         continue;
-
-      int fd = open(devices[i]->nodes[DRM_NODE_RENDER], O_RDWR | O_CLOEXEC);
-      if (fd < 0)
-         continue;
-
-      drmVersionPtr version = drmGetVersion(fd);
-      bool is_asahi = version && !strcmp(version->name, "asahi");
-      drmFreeVersion(version);
-
-      if (is_asahi) {
-         result = fd;
-         break;
-      }
-      close(fd);
-   }
-
-   if (count > 0)
-      drmFreeDevices(devices, count);
-
-   return result;
 }
 
 /*
@@ -158,7 +120,7 @@ d12_device_Release(ID3D12Device2 *iface)
       simple_mtx_destroy(&device->descriptor_heap_lock);
       simple_mtx_destroy(&device->sparse_resource_lock);
       agx_bg_eot_cleanup(&device->bg_eot);
-      agx_close_device(&device->dev);
+      d12_platform_close_device(device);
       free(device);
    }
 
@@ -3973,15 +3935,10 @@ d12_device_GetDeviceRemovedReason(ID3D12Device2 *iface)
                                  : DXGI_ERROR_DEVICE_REMOVED;
 }
 
-static LUID STDMETHODCALLTYPE
-d12_device_GetAdapterLuid(ID3D12Device2 *iface)
+static D12_AGGREGATE_RETURN(LUID) STDMETHODCALLTYPE
+d12_device_GetAdapterLuid(ID3D12Device2 *iface D12_AGGREGATE_OUT(LUID))
 {
-   /* A zero LUID is a valid-looking value that collides with every other
-    * adapter. One fixed non-zero value is honest for a single-adapter
-    * driver and lets callers key on it.
-    */
-   LUID luid = {.LowPart = 0xA6A00001u, .HighPart = 0};
-   return luid;
+   D12_RETURN_AGGREGATE(d12_device_from_iface(iface)->adapter_luid);
 }
 
 /* ID3D12Device2's vtable is a superset of ID3D12Device's, so the object
@@ -4125,16 +4082,19 @@ d12_device_config1_Release(ID3D12DeviceConfiguration1 *iface)
       (ID3D12Device2 *)&d12_device_from_config1(iface)->iface);
 }
 
-static D3D12_DEVICE_CONFIGURATION_DESC STDMETHODCALLTYPE
-d12_device_config1_GetDesc(ID3D12DeviceConfiguration1 *iface)
+static D12_AGGREGATE_RETURN(D3D12_DEVICE_CONFIGURATION_DESC) STDMETHODCALLTYPE
+d12_device_config1_GetDesc(
+   ID3D12DeviceConfiguration1 *iface
+   D12_AGGREGATE_OUT(D3D12_DEVICE_CONFIGURATION_DESC))
 {
    (void)iface;
-   return (D3D12_DEVICE_CONFIGURATION_DESC){
+   D3D12_DEVICE_CONFIGURATION_DESC desc = {
       .Flags = D3D12_DEVICE_FLAG_NONE,
       .GpuBasedValidationFlags = 0,
       .SDKVersion = D3D12_SDK_VERSION,
       .NumEnabledExperimentalFeatures = 0,
    };
+   D12_RETURN_AGGREGATE(desc);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -4264,11 +4224,6 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    /* We support up to 11_0 for now; raised as milestones land. */
    const D3D_FEATURE_LEVEL max_fl = D3D_FEATURE_LEVEL_11_0;
 
-   if (adapter) {
-      mesa_logw("D3D12CreateDevice: ignoring explicit adapter, using the "
-                "asahi render node");
-   }
-
    /* D3D12 has no levels below 11_0; accepting 9_x/10_x would claim
     * support for a contract that does not exist here.
     */
@@ -4286,22 +4241,12 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    if (!out)
       return S_FALSE;
 
-   int fd = d12_open_asahi_fd();
-   if (fd < 0) {
-      mesa_loge("D3D12CreateDevice: no asahi render node found");
-      return E_FAIL;
-   }
-
    struct d12_device *device = calloc(1, sizeof(*device));
-   if (!device) {
-      close(fd);
+   if (!device)
       return E_OUTOFMEMORY;
-   }
 
-   device->dev.fd = fd;
-   if (!agx_open_device(NULL, &device->dev)) {
-      mesa_loge("D3D12CreateDevice: agx_open_device failed");
-      close(fd);
+   if (!d12_platform_open_device(device, adapter)) {
+      mesa_loge("D3D12CreateDevice: no compatible AGX device found");
       free(device);
       return E_FAIL;
    }
@@ -4310,7 +4255,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    agx_bg_eot_init(&device->bg_eot, &device->dev);
    if (!device->bg_eot.ht) {
       mesa_loge("D3D12CreateDevice: agx_bg_eot_init failed");
-      agx_close_device(&device->dev);
+      d12_platform_close_device(device);
       free(device);
       return E_FAIL;
    }
@@ -4320,7 +4265,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       agx_bo_create(&device->dev, 0x4000, 0, 0, "d3d12 oclqry scratch");
    if (!device->oclqry_bo) {
       agx_bg_eot_cleanup(&device->bg_eot);
-      agx_close_device(&device->dev);
+      d12_platform_close_device(device);
       free(device);
       return E_OUTOFMEMORY;
    }
@@ -4362,7 +4307,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
    if (!device->rodata_bo) {
       agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
-      agx_close_device(&device->dev);
+      d12_platform_close_device(device);
       free(device);
       return E_OUTOFMEMORY;
    }
@@ -4410,7 +4355,7 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       agx_bo_unreference(&device->dev, device->rodata_bo);
       agx_bo_unreference(&device->dev, device->oclqry_bo);
       agx_bg_eot_cleanup(&device->bg_eot);
-      agx_close_device(&device->dev);
+      d12_platform_close_device(device);
       free(device);
       return E_OUTOFMEMORY;
    }

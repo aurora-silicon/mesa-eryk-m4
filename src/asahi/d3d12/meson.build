@@ -32,6 +32,17 @@ libd3d12agx_files = files(
   'dxil/d12_dxil_nir.c',
 )
 
+d12_is_windows = host_machine.system() == 'windows'
+if d12_is_windows
+  libd3d12agx_files += files('d12_platform_windows.c')
+  d12_platform_includes = []
+  d12_platform_deps = []
+else
+  libd3d12agx_files += files('d12_platform_linux.c')
+  d12_platform_includes = [inc_virtio_gpu, inc_virtio_vdrm]
+  d12_platform_deps = [dep_libdrm]
+endif
+
 libd3d12agx = shared_library(
   'd3d12agx',
   libd3d12agx_files,
@@ -39,13 +50,12 @@ libd3d12agx = shared_library(
     inc_include,
     inc_src,
     inc_asahi,
-    inc_virtio_gpu,
-    inc_virtio_vdrm,
+    d12_platform_includes,
     include_directories('../isa'),
   ],
   dependencies : [
     dep_dxheaders_d12,
-    dep_libdrm,
+    d12_platform_deps,
     dep_valgrind,
     idep_nir,
     idep_mesautil,
@@ -60,6 +70,8 @@ libd3d12agx = shared_library(
   ],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
+  vs_module_defs : files('d3d12agx.def')[0],
+  name_prefix : d12_is_windows ? '' : [],
   install : false,
 )
 

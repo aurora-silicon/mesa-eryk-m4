@@ -13,6 +13,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_test_abi.h"
+
 #include <inttypes.h>
 #include <stdio.h>
 
@@ -125,7 +127,7 @@ main(void)
       printf("       timestamp frequency: %" PRIu64 " Hz\n", freq);
 
       D3D12_COMMAND_QUEUE_DESC rt_desc =
-         ID3D12CommandQueue_GetDesc(queue);
+         d12_test_command_queue_get_desc(queue);
       CHECK(rt_desc.Type == D3D12_COMMAND_LIST_TYPE_DIRECT,
             "GetDesc round-trips queue type");
 
@@ -162,7 +164,7 @@ main(void)
                opts.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1,
             "reports heap TIER_1, not a TIER_2 it cannot honour");
 
-      LUID luid = ID3D12Device_GetAdapterLuid(dev);
+      LUID luid = d12_test_device_get_adapter_luid(dev);
       CHECK(luid.LowPart != 0 || luid.HighPart != 0,
             "adapter LUID is not all-zero");
 
@@ -202,7 +204,7 @@ main(void)
        * generic-cast approach would corrupt the return here.
        */
       D3D12_RESOURCE_ALLOCATION_INFO ai =
-         ID3D12Device_GetResourceAllocationInfo(dev, 0, 0, NULL);
+         d12_test_device_get_resource_allocation_info(dev, 0, 0, NULL);
       CHECK(ai.SizeInBytes == 0,
             "unimplemented struct-returning method returns zeroed struct");
    }

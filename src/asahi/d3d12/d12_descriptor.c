@@ -187,23 +187,28 @@ d12_heap_GetDevice(ID3D12DescriptorHeap *iface, REFIID riid, void **out)
    return ID3D12Device_QueryInterface(&heap->device->iface, riid, out);
 }
 
-static D3D12_DESCRIPTOR_HEAP_DESC STDMETHODCALLTYPE
-d12_heap_GetDesc(ID3D12DescriptorHeap *iface)
+static D12_AGGREGATE_RETURN(D3D12_DESCRIPTOR_HEAP_DESC) STDMETHODCALLTYPE
+d12_heap_GetDesc(ID3D12DescriptorHeap *iface
+                 D12_AGGREGATE_OUT(D3D12_DESCRIPTOR_HEAP_DESC))
 {
    struct d12_descriptor_heap *heap = d12_heap_from_iface(iface);
-   return heap->desc;
+   D12_RETURN_AGGREGATE(heap->desc);
 }
 
-static D3D12_CPU_DESCRIPTOR_HANDLE STDMETHODCALLTYPE
-d12_heap_GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
+static D12_AGGREGATE_RETURN(D3D12_CPU_DESCRIPTOR_HANDLE) STDMETHODCALLTYPE
+d12_heap_GetCPUDescriptorHandleForHeapStart(
+   ID3D12DescriptorHeap *iface
+   D12_AGGREGATE_OUT(D3D12_CPU_DESCRIPTOR_HANDLE))
 {
    struct d12_descriptor_heap *heap = d12_heap_from_iface(iface);
    D3D12_CPU_DESCRIPTOR_HANDLE handle = {.ptr = (SIZE_T)heap->slots};
-   return handle;
+   D12_RETURN_AGGREGATE(handle);
 }
 
-static D3D12_GPU_DESCRIPTOR_HANDLE STDMETHODCALLTYPE
-d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
+static D12_AGGREGATE_RETURN(D3D12_GPU_DESCRIPTOR_HANDLE) STDMETHODCALLTYPE
+d12_heap_GetGPUDescriptorHandleForHeapStart(
+   ID3D12DescriptorHeap *iface
+   D12_AGGREGATE_OUT(D3D12_GPU_DESCRIPTOR_HANDLE))
 {
    struct d12_descriptor_heap *heap = d12_heap_from_iface(iface);
 
@@ -221,7 +226,7 @@ d12_heap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap *iface)
                 ? (UINT64)(uintptr_t)heap->slots
                 : 0,
    };
-   return handle;
+   D12_RETURN_AGGREGATE(handle);
 }
 
 static const ID3D12DescriptorHeapVtbl d12_heap_vtbl = {

@@ -200,6 +200,17 @@ d12_stub_ID3D12Device_CopyDescriptorsSimple(ID3D12Device * This, UINT NumDescrip
    d12_stub_report("ID3D12Device::CopyDescriptorsSimple");
 }
 
+#ifdef _WIN32
+static inline D3D12_RESOURCE_ALLOCATION_INFO *
+d12_stub_ID3D12Device_GetResourceAllocationInfo(ID3D12Device * This, D3D12_RESOURCE_ALLOCATION_INFO * RetVal, UINT visibleMask, UINT numResourceDescs, _In_reads_(numResourceDescs) const D3D12_RESOURCE_DESC *pResourceDescs)
+{
+   d12_stub_report("ID3D12Device::GetResourceAllocationInfo");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_RESOURCE_ALLOCATION_INFO
 d12_stub_ID3D12Device_GetResourceAllocationInfo(ID3D12Device * This, UINT visibleMask, UINT numResourceDescs, _In_reads_(numResourceDescs) const D3D12_RESOURCE_DESC *pResourceDescs)
 {
@@ -209,6 +220,19 @@ d12_stub_ID3D12Device_GetResourceAllocationInfo(ID3D12Device * This, UINT visibl
    return zero;
 }
 
+#endif
+
+#ifdef _WIN32
+static inline D3D12_HEAP_PROPERTIES *
+d12_stub_ID3D12Device_GetCustomHeapProperties(ID3D12Device * This, D3D12_HEAP_PROPERTIES * RetVal, UINT nodeMask, D3D12_HEAP_TYPE heapType)
+{
+   d12_stub_report("ID3D12Device::GetCustomHeapProperties");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_HEAP_PROPERTIES
 d12_stub_ID3D12Device_GetCustomHeapProperties(ID3D12Device * This, UINT nodeMask, D3D12_HEAP_TYPE heapType)
 {
@@ -217,6 +241,8 @@ d12_stub_ID3D12Device_GetCustomHeapProperties(ID3D12Device * This, UINT nodeMask
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 static inline HRESULT
 d12_stub_ID3D12Device_CreateCommittedResource(ID3D12Device * This, const D3D12_HEAP_PROPERTIES *pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialResourceState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riidResource, void **ppvResource)
@@ -344,6 +370,17 @@ d12_stub_ID3D12Device_GetResourceTiling(ID3D12Device * This, ID3D12Resource *pTi
    d12_stub_report("ID3D12Device::GetResourceTiling");
 }
 
+#ifdef _WIN32
+static inline LUID *
+d12_stub_ID3D12Device_GetAdapterLuid(ID3D12Device * This, LUID * RetVal)
+{
+   d12_stub_report("ID3D12Device::GetAdapterLuid");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline LUID
 d12_stub_ID3D12Device_GetAdapterLuid(ID3D12Device * This)
 {
@@ -352,6 +389,8 @@ d12_stub_ID3D12Device_GetAdapterLuid(ID3D12Device * This)
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 #define D12_ID3D12Device_DEFAULTS \
    .QueryInterface = d12_stub_ID3D12Device_QueryInterface, \
@@ -583,6 +622,17 @@ d12_stub_ID3D12Device2_CopyDescriptorsSimple(ID3D12Device2 * This, UINT NumDescr
    d12_stub_report("ID3D12Device2::CopyDescriptorsSimple");
 }
 
+#ifdef _WIN32
+static inline D3D12_RESOURCE_ALLOCATION_INFO *
+d12_stub_ID3D12Device2_GetResourceAllocationInfo(ID3D12Device2 * This, D3D12_RESOURCE_ALLOCATION_INFO * RetVal, UINT visibleMask, UINT numResourceDescs, _In_reads_(numResourceDescs) const D3D12_RESOURCE_DESC *pResourceDescs)
+{
+   d12_stub_report("ID3D12Device2::GetResourceAllocationInfo");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_RESOURCE_ALLOCATION_INFO
 d12_stub_ID3D12Device2_GetResourceAllocationInfo(ID3D12Device2 * This, UINT visibleMask, UINT numResourceDescs, _In_reads_(numResourceDescs) const D3D12_RESOURCE_DESC *pResourceDescs)
 {
@@ -592,6 +642,19 @@ d12_stub_ID3D12Device2_GetResourceAllocationInfo(ID3D12Device2 * This, UINT visi
    return zero;
 }
 
+#endif
+
+#ifdef _WIN32
+static inline D3D12_HEAP_PROPERTIES *
+d12_stub_ID3D12Device2_GetCustomHeapProperties(ID3D12Device2 * This, D3D12_HEAP_PROPERTIES * RetVal, UINT nodeMask, D3D12_HEAP_TYPE heapType)
+{
+   d12_stub_report("ID3D12Device2::GetCustomHeapProperties");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_HEAP_PROPERTIES
 d12_stub_ID3D12Device2_GetCustomHeapProperties(ID3D12Device2 * This, UINT nodeMask, D3D12_HEAP_TYPE heapType)
 {
@@ -600,6 +663,8 @@ d12_stub_ID3D12Device2_GetCustomHeapProperties(ID3D12Device2 * This, UINT nodeMa
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 static inline HRESULT
 d12_stub_ID3D12Device2_CreateCommittedResource(ID3D12Device2 * This, const D3D12_HEAP_PROPERTIES *pHeapProperties, D3D12_HEAP_FLAGS HeapFlags, const D3D12_RESOURCE_DESC *pDesc, D3D12_RESOURCE_STATES InitialResourceState, const D3D12_CLEAR_VALUE *pOptimizedClearValue, REFIID riidResource, void **ppvResource)
@@ -727,6 +792,17 @@ d12_stub_ID3D12Device2_GetResourceTiling(ID3D12Device2 * This, ID3D12Resource *p
    d12_stub_report("ID3D12Device2::GetResourceTiling");
 }
 
+#ifdef _WIN32
+static inline LUID *
+d12_stub_ID3D12Device2_GetAdapterLuid(ID3D12Device2 * This, LUID * RetVal)
+{
+   d12_stub_report("ID3D12Device2::GetAdapterLuid");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline LUID
 d12_stub_ID3D12Device2_GetAdapterLuid(ID3D12Device2 * This)
 {
@@ -735,6 +811,8 @@ d12_stub_ID3D12Device2_GetAdapterLuid(ID3D12Device2 * This)
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 static inline HRESULT
 d12_stub_ID3D12Device2_CreatePipelineLibrary(ID3D12Device2 * This, _In_reads_(BlobLength) const void *pLibraryBlob, SIZE_T BlobLength, REFIID riid, void **ppPipelineLibrary)
@@ -1963,6 +2041,17 @@ d12_stub_ID3D12CommandQueue_GetClockCalibration(ID3D12CommandQueue * This, UINT6
    return E_NOTIMPL;
 }
 
+#ifdef _WIN32
+static inline D3D12_COMMAND_QUEUE_DESC *
+d12_stub_ID3D12CommandQueue_GetDesc(ID3D12CommandQueue * This, D3D12_COMMAND_QUEUE_DESC * RetVal)
+{
+   d12_stub_report("ID3D12CommandQueue::GetDesc");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_COMMAND_QUEUE_DESC
 d12_stub_ID3D12CommandQueue_GetDesc(ID3D12CommandQueue * This)
 {
@@ -1971,6 +2060,8 @@ d12_stub_ID3D12CommandQueue_GetDesc(ID3D12CommandQueue * This)
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 #define D12_ID3D12CommandQueue_DEFAULTS \
    .QueryInterface = d12_stub_ID3D12CommandQueue_QueryInterface, \
@@ -2069,6 +2160,17 @@ d12_stub_ID3D12Resource_Unmap(ID3D12Resource * This, UINT Subresource, const D3D
    d12_stub_report("ID3D12Resource::Unmap");
 }
 
+#ifdef _WIN32
+static inline D3D12_RESOURCE_DESC *
+d12_stub_ID3D12Resource_GetDesc(ID3D12Resource * This, D3D12_RESOURCE_DESC * RetVal)
+{
+   d12_stub_report("ID3D12Resource::GetDesc");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_RESOURCE_DESC
 d12_stub_ID3D12Resource_GetDesc(ID3D12Resource * This)
 {
@@ -2077,6 +2179,8 @@ d12_stub_ID3D12Resource_GetDesc(ID3D12Resource * This)
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 static inline D3D12_GPU_VIRTUAL_ADDRESS
 d12_stub_ID3D12Resource_GetGPUVirtualAddress(ID3D12Resource * This)
@@ -2281,6 +2385,17 @@ d12_stub_ID3D12DescriptorHeap_GetDevice(ID3D12DescriptorHeap * This, REFIID riid
    return E_NOTIMPL;
 }
 
+#ifdef _WIN32
+static inline D3D12_DESCRIPTOR_HEAP_DESC *
+d12_stub_ID3D12DescriptorHeap_GetDesc(ID3D12DescriptorHeap * This, D3D12_DESCRIPTOR_HEAP_DESC * RetVal)
+{
+   d12_stub_report("ID3D12DescriptorHeap::GetDesc");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_DESCRIPTOR_HEAP_DESC
 d12_stub_ID3D12DescriptorHeap_GetDesc(ID3D12DescriptorHeap * This)
 {
@@ -2290,6 +2405,19 @@ d12_stub_ID3D12DescriptorHeap_GetDesc(ID3D12DescriptorHeap * This)
    return zero;
 }
 
+#endif
+
+#ifdef _WIN32
+static inline D3D12_CPU_DESCRIPTOR_HANDLE *
+d12_stub_ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap * This, D3D12_CPU_DESCRIPTOR_HANDLE * RetVal)
+{
+   d12_stub_report("ID3D12DescriptorHeap::GetCPUDescriptorHandleForHeapStart");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_CPU_DESCRIPTOR_HANDLE
 d12_stub_ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap * This)
 {
@@ -2299,6 +2427,19 @@ d12_stub_ID3D12DescriptorHeap_GetCPUDescriptorHandleForHeapStart(ID3D12Descripto
    return zero;
 }
 
+#endif
+
+#ifdef _WIN32
+static inline D3D12_GPU_DESCRIPTOR_HANDLE *
+d12_stub_ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap * This, D3D12_GPU_DESCRIPTOR_HANDLE * RetVal)
+{
+   d12_stub_report("ID3D12DescriptorHeap::GetGPUDescriptorHandleForHeapStart");
+   if (RetVal)
+      memset(RetVal, 0, sizeof(*RetVal));
+   return RetVal;
+}
+
+#else
 static inline D3D12_GPU_DESCRIPTOR_HANDLE
 d12_stub_ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(ID3D12DescriptorHeap * This)
 {
@@ -2307,6 +2448,8 @@ d12_stub_ID3D12DescriptorHeap_GetGPUDescriptorHandleForHeapStart(ID3D12Descripto
    memset(&zero, 0, sizeof(zero));
    return zero;
 }
+
+#endif
 
 #define D12_ID3D12DescriptorHeap_DEFAULTS \
    .QueryInterface = d12_stub_ID3D12DescriptorHeap_QueryInterface, \
