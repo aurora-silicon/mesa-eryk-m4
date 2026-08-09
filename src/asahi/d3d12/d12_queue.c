@@ -27,6 +27,14 @@ enum d12_queue_op_type {
    D12_QUEUE_OP_WAIT,
    D12_QUEUE_OP_SUBMIT,
    D12_QUEUE_OP_SIGNAL,
+   D12_QUEUE_OP_SPARSE_BIND,
+};
+
+struct d12_sparse_completion {
+   mtx_t lock;
+   cnd_t event;
+   bool done;
+   int result;
 };
 
 struct d12_queue_op {
@@ -52,6 +60,10 @@ struct d12_queue_op {
    size_t payload_size;
    unsigned nr_vdm;
    unsigned nr_cdm;
+
+   struct drm_asahi_gem_bind_op *bind_ops;
+   uint32_t bind_count;
+   struct d12_sparse_completion *completion;
 };
 
 static void d12_queue_stop_worker(struct d12_queue *queue);
@@ -321,6 +333,7 @@ d12_queue_op_destroy(struct d12_queue_op *op)
    }
    if (op->list)
       ID3D12GraphicsCommandList_Release(&op->list->iface);
+   free(op->bind_ops);
    free(op->payload);
    free(op);
 }
@@ -623,6 +636,22 @@ d12_queue_worker(void *data)
                       (unsigned long long)op->value);
          d12_fence_signal_value(op->fence, op->value);
          break;
+      case D12_QUEUE_OP_SPARSE_BIND: {
+         int result = queue->device->dev.ops.bo_bind(
+            &queue->device->dev, op->bind_ops, op->bind_count);
+         if (result) {
+            mesa_loge("sparse VM_BIND batch failed: %d", result);
+            queue->device->removed = true;
+            queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         }
+
+         mtx_lock(&op->completion->lock);
+         op->completion->result = result;
+         op->completion->done = true;
+         cnd_signal(&op->completion->event);
+         mtx_unlock(&op->completion->lock);
+         break;
+      }
       }
 
       d12_queue_op_destroy(op);
@@ -825,6 +854,135 @@ d12_queue_EndEvent(ID3D12CommandQueue *iface)
    /* PIX event: harmless no-op. */
 }
 
+static bool
+d12_queue_bind_sparse_sync(struct d12_queue *queue,
+                           struct drm_asahi_gem_bind_op *bind_ops,
+                           uint32_t bind_count)
+{
+   if (!bind_count) {
+      free(bind_ops);
+      return true;
+   }
+
+   struct d12_sparse_completion completion = {0};
+   if (mtx_init(&completion.lock, mtx_plain) != thrd_success) {
+      free(bind_ops);
+      return false;
+   }
+   if (cnd_init(&completion.event) != thrd_success) {
+      mtx_destroy(&completion.lock);
+      free(bind_ops);
+      return false;
+   }
+
+   struct d12_queue_op *op = calloc(1, sizeof(*op));
+   if (!op) {
+      cnd_destroy(&completion.event);
+      mtx_destroy(&completion.lock);
+      free(bind_ops);
+      return false;
+   }
+   op->type = D12_QUEUE_OP_SPARSE_BIND;
+   op->bind_ops = bind_ops;
+   op->bind_count = bind_count;
+   op->completion = &completion;
+
+   mtx_lock(&completion.lock);
+   mtx_lock(&queue->lock);
+   bool queued = d12_queue_enqueue_locked(queue, op);
+   mtx_unlock(&queue->lock);
+   if (!queued) {
+      mtx_unlock(&completion.lock);
+      d12_queue_op_destroy(op);
+      cnd_destroy(&completion.event);
+      mtx_destroy(&completion.lock);
+      return false;
+   }
+
+   while (!completion.done)
+      cnd_wait(&completion.event, &completion.lock);
+   int result = completion.result;
+   mtx_unlock(&completion.lock);
+   cnd_destroy(&completion.event);
+   mtx_destroy(&completion.lock);
+   return result == 0;
+}
+
+static void STDMETHODCALLTYPE
+d12_queue_UpdateTileMappings(
+   ID3D12CommandQueue *iface, ID3D12Resource *resource_iface,
+   UINT num_regions, const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, ID3D12Heap *heap_iface,
+   UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
+   const UINT *heap_starts, const UINT *range_counts,
+   D3D12_TILE_MAPPING_FLAGS flags)
+{
+   struct d12_queue *queue = d12_queue_from_iface(iface);
+   if (!resource_iface || (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
+      return;
+
+   struct d12_resource *res = d12_resource_from_iface(resource_iface);
+   struct d12_heap *heap =
+      heap_iface ? d12_memheap_from_iface(heap_iface) : NULL;
+   if (res->device != queue->device ||
+       (heap && heap->device != queue->device)) {
+      mesa_loge("UpdateTileMappings: cross-device object");
+      return;
+   }
+
+   struct drm_asahi_gem_bind_op *ops = NULL;
+   uint32_t count = 0;
+   HRESULT hr = d12_sparse_update_tile_mappings(
+      res, num_regions, starts, sizes, heap, num_ranges, range_flags,
+      heap_starts, range_counts, &ops, &count);
+   if (FAILED(hr)) {
+      mesa_loge("UpdateTileMappings: invalid mapping description (%#x)",
+                (unsigned)hr);
+      return;
+   }
+
+   if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
+      queue->device->removed = true;
+      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+   }
+}
+
+static void STDMETHODCALLTYPE
+d12_queue_CopyTileMappings(
+   ID3D12CommandQueue *iface, ID3D12Resource *dst_iface,
+   const D3D12_TILED_RESOURCE_COORDINATE *dst_start,
+   ID3D12Resource *src_iface,
+   const D3D12_TILED_RESOURCE_COORDINATE *src_start,
+   const D3D12_TILE_REGION_SIZE *size, D3D12_TILE_MAPPING_FLAGS flags)
+{
+   struct d12_queue *queue = d12_queue_from_iface(iface);
+   if (!dst_iface || !src_iface ||
+       (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
+      return;
+
+   struct d12_resource *dst = d12_resource_from_iface(dst_iface);
+   struct d12_resource *src = d12_resource_from_iface(src_iface);
+   if (dst->device != queue->device || src->device != queue->device) {
+      mesa_loge("CopyTileMappings: cross-device resource");
+      return;
+   }
+
+   struct drm_asahi_gem_bind_op *ops = NULL;
+   uint32_t count = 0;
+   HRESULT hr = d12_sparse_copy_tile_mappings(
+      dst, dst_start, src, src_start, size, &ops, &count);
+   if (FAILED(hr)) {
+      mesa_loge("CopyTileMappings: invalid mapping description (%#x)",
+                (unsigned)hr);
+      return;
+   }
+
+   if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
+      queue->device->removed = true;
+      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+   }
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_queue_Signal(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
                  UINT64 value)
@@ -969,9 +1127,8 @@ static const ID3D12CommandQueueVtbl d12_queue_vtbl = {
    .GetTimestampFrequency = d12_queue_GetTimestampFrequency,
    .GetClockCalibration = d12_queue_GetClockCalibration,
    .GetDesc = d12_queue_GetDesc,
-   /* UpdateTileMappings/CopyTileMappings deliberately NULL until tiled
-    * resources are a milestone.
-    */
+   .UpdateTileMappings = d12_queue_UpdateTileMappings,
+   .CopyTileMappings = d12_queue_CopyTileMappings,
 };
 
 HRESULT

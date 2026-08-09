@@ -1713,6 +1713,34 @@ d12_native_texture_format(const struct d12_descriptor *d)
    return res->layout.format;
 }
 
+static bool
+d12_descriptor_resource_span(const struct d12_descriptor *d, uint64_t *base,
+                             uint64_t *size)
+{
+   struct d12_resource *res = d->resource;
+   if (!res)
+      return false;
+
+   if (res->reserved) {
+      if (d->texture_plane == 1)
+         return false;
+      *base = res->addr +
+              (d->kind == D12_DESC_SRV ? res->device->dev.sparse_ro_offset
+                                       : 0);
+      *size = res->sparse_size_B;
+      return true;
+   }
+
+   struct agx_bo *bo = d->texture_plane == 1 && res->stencil_bo
+                          ? res->stencil_bo
+                          : res->bo;
+   if (!bo)
+      return false;
+   *base = bo->va->addr;
+   *size = bo->size;
+   return true;
+}
+
 static void
 d12_apply_texture_shape(struct d12_descriptor *d, unsigned shape)
 {
@@ -2148,8 +2176,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          d12_refresh_texture_descriptor(&descs[i], &table[i]);
          struct d12_descriptor tail;
          if (d12_buffer_tail_descriptor(&table[i], &tail)) {
-            uint64_t bo_base = res->bo->va->addr;
-            uint64_t bo_end = bo_base + res->bo->size;
+            uint64_t bo_base, bo_size;
+            if (!d12_descriptor_resource_span(&table[i], &bo_base,
+                                              &bo_size)) {
+               list->state = D12_LIST_ERROR;
+               return false;
+            }
+            uint64_t bo_end = bo_base + bo_size;
             uint64_t tail_end = tail.address + tail.size_B;
             if (tail.address < bo_base || tail_end < tail.address ||
                 tail_end > bo_end) {
@@ -2184,18 +2217,25 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       const struct ail_layout *layout =
          stencil ? &res->stencil_layout : &res->layout;
       struct agx_bo *texture_bo = stencil ? res->stencil_bo : res->bo;
-      if (!texture_bo || !layout->size_B)
+      if ((!texture_bo && !res->reserved) || !layout->size_B ||
+          (stencil && res->reserved))
          continue;
 
       if (validate) {
-         uint64_t bo_base = texture_bo->va->addr;
+         uint64_t bo_base, bo_size;
+         if (!d12_descriptor_resource_span(&table[i], &bo_base, &bo_size)) {
+            mesa_loge("binding validation: texture slot %u has no storage",
+                      i);
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
          if (table[i].address < bo_base ||
-             table[i].address - bo_base >= texture_bo->size) {
+             table[i].address - bo_base >= bo_size) {
             mesa_loge("binding validation: texture slot %u address 0x%llx "
                       "is outside resource BO 0x%llx..0x%llx", i,
                       (unsigned long long)table[i].address,
                       (unsigned long long)bo_base,
-                      (unsigned long long)(bo_base + texture_bo->size));
+                      (unsigned long long)(bo_base + bo_size));
             list->state = D12_LIST_ERROR;
             return false;
          }
@@ -2313,12 +2353,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          d12_apply_texture_shape(&effective, dynamic_ranges[r].shape);
 
          if (validate && effective.resource) {
-            struct agx_bo *bo =
-               effective.texture_plane == 1 && effective.resource->stencil_bo
-                  ? effective.resource->stencil_bo
-                  : effective.resource->bo;
-            if (!bo || !effective.address || effective.address < bo->va->addr ||
-                effective.address - bo->va->addr >= bo->size) {
+            uint64_t bo_base, bo_size;
+            if (!d12_descriptor_resource_span(&effective, &bo_base,
+                                              &bo_size) ||
+                !effective.address || effective.address < bo_base ||
+                effective.address - bo_base >= bo_size) {
                mesa_loge("dynamic texture range %u heap slot %u address "
                          "0x%llx is outside its resource BO",
                          dynamic_ranges[r].root_range, first + i,
@@ -2776,7 +2815,8 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
    const struct ail_layout *layout =
       stencil ? &res->stencil_layout : &res->layout;
    struct agx_bo *texture_bo = stencil ? res->stencil_bo : res->bo;
-   if (!texture_bo || !layout->size_B)
+   if ((!texture_bo && !res->reserved) || !layout->size_B ||
+       (stencil && res->reserved))
       return;
 
    enum pipe_format pf = d12_native_texture_format(d);
@@ -2894,12 +2934,10 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
       unsigned slot = fixup->slot;
 
       if (validate && d->resource) {
-         struct agx_bo *bo = d->texture_plane == 1 && d->resource->stencil_bo
-                                ? d->resource->stencil_bo
-                                : d->resource->bo;
-         if (!bo || (d->address &&
-                     (d->address < bo->va->addr ||
-                      d->address - bo->va->addr >= bo->size))) {
+         uint64_t bo_base, bo_size;
+         if (!d12_descriptor_resource_span(d, &bo_base, &bo_size) ||
+             (d->address && (d->address < bo_base ||
+                             d->address - bo_base >= bo_size))) {
             mesa_loge("descriptor refresh: slot %u source address 0x%llx "
                       "is outside its resource BO",
                       slot, (unsigned long long)d->address);
@@ -7178,8 +7216,10 @@ d12_list_SetGraphicsRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
                                            UINT index,
                                            D3D12_GPU_VIRTUAL_ADDRESS address)
 {
-   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), false, index,
-                                address, D3D12_ROOT_PARAMETER_TYPE_SRV);
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   address = d12_sparse_read_address(list->device, address);
+   d12_list_set_root_descriptor(list, false, index, address,
+                                D3D12_ROOT_PARAMETER_TYPE_SRV);
 }
 
 static void STDMETHODCALLTYPE
@@ -7187,8 +7227,10 @@ d12_list_SetComputeRootShaderResourceView(ID3D12GraphicsCommandList6 *iface,
                                           UINT index,
                                           D3D12_GPU_VIRTUAL_ADDRESS address)
 {
-   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), true, index,
-                                address, D3D12_ROOT_PARAMETER_TYPE_SRV);
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   address = d12_sparse_read_address(list->device, address);
+   d12_list_set_root_descriptor(list, true, index, address,
+                                D3D12_ROOT_PARAMETER_TYPE_SRV);
 }
 
 /*
@@ -7324,8 +7366,10 @@ d12_list_SetGraphicsRootConstantBufferView(ID3D12GraphicsCommandList6 *iface,
                                            UINT index,
                                            D3D12_GPU_VIRTUAL_ADDRESS address)
 {
-   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), false, index,
-                                address, D3D12_ROOT_PARAMETER_TYPE_CBV);
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   address = d12_sparse_read_address(list->device, address);
+   d12_list_set_root_descriptor(list, false, index, address,
+                                D3D12_ROOT_PARAMETER_TYPE_CBV);
 }
 
 static void STDMETHODCALLTYPE
@@ -7333,8 +7377,10 @@ d12_list_SetComputeRootConstantBufferView(ID3D12GraphicsCommandList6 *iface,
                                           UINT index,
                                           D3D12_GPU_VIRTUAL_ADDRESS address)
 {
-   d12_list_set_root_descriptor(d12_cmd_list_from_iface(iface), true, index,
-                                address, D3D12_ROOT_PARAMETER_TYPE_CBV);
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   address = d12_sparse_read_address(list->device, address);
+   d12_list_set_root_descriptor(list, true, index, address,
+                                D3D12_ROOT_PARAMETER_TYPE_CBV);
 }
 
 static void STDMETHODCALLTYPE
@@ -8228,6 +8274,7 @@ struct d12_copy_surface {
    uint64_t base;
    uint64_t storage_offset_B;
    uint64_t size_B;
+   uint64_t allocation_size_B;
    uint32_t width_px;
    uint32_t height_px;
    uint32_t depth_px;
@@ -8243,12 +8290,26 @@ struct d12_copy_surface {
    uint32_t tile_height_el;
    uint8_t sample_count;
    bool tiled;
+   bool reserved;
 };
 
 static bool
 d12_copy_surface_check_storage(const struct d12_copy_surface *surface,
                                const char *name)
 {
+   if (surface->reserved) {
+      if (surface->storage_offset_B > surface->allocation_size_B ||
+          surface->size_B >
+             surface->allocation_size_B - surface->storage_offset_B) {
+         mesa_loge("CopyTextureRegion: %s sparse surface offset 0x%" PRIx64
+                   "+0x%" PRIx64 " exceeds reserved VA size 0x%" PRIx64,
+                   name, surface->storage_offset_B, surface->size_B,
+                   surface->allocation_size_B);
+         return false;
+      }
+      return true;
+   }
+
    if (!surface->bo || surface->storage_offset_B > surface->bo->size ||
        surface->size_B > surface->bo->size - surface->storage_offset_B) {
       mesa_loge("CopyTextureRegion: %s surface [0x%" PRIx64
@@ -8314,7 +8375,8 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
    const uint64_t slice_size_B = ail_get_level_size_B(layout, mip);
    const uint64_t size_B =
       (uint64_t)(depth_px - 1) * layout->layer_stride_B + slice_size_B;
-   if (!bo || plane_base < bo->va->addr) {
+   if ((!res->reserved && (!bo || plane_base < bo->va->addr)) ||
+       (res->reserved && plane != 0)) {
       mesa_loge("CopyTextureRegion: %s plane has invalid storage", name);
       return false;
    }
@@ -8323,8 +8385,10 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
       .bo = bo,
       .format = format,
       .base = plane_base + offset_B,
-      .storage_offset_B = plane_base - bo->va->addr + offset_B,
+      .storage_offset_B = res->reserved ? offset_B
+                                        : plane_base - bo->va->addr + offset_B,
       .size_B = size_B,
+      .allocation_size_B = res->reserved ? res->sparse_size_B : 0,
       .width_px = width_px,
       .height_px = height_px,
       .depth_px = depth_px,
@@ -8338,6 +8402,7 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
       .sample_count = samples,
       .slice_stride_B = layout->layer_stride_B,
       .tiled = layout->tiling != AIL_TILING_LINEAR,
+      .reserved = res->reserved,
    };
 
    if (surface->tiled) {
@@ -9055,6 +9120,170 @@ d12_list_CopyTextureRegion(ID3D12GraphicsCommandList6 *iface,
    d12_copy_texture_region(list, dst, dst_x, dst_y, dst_z, src, src_box);
    return;
 
+}
+
+static void STDMETHODCALLTYPE
+d12_list_CopyTiles(ID3D12GraphicsCommandList6 *iface,
+                   ID3D12Resource *tiled_resource_iface,
+                   const D3D12_TILED_RESOURCE_COORDINATE *start,
+                   const D3D12_TILE_REGION_SIZE *size,
+                   ID3D12Resource *buffer_iface, UINT64 buffer_offset_B,
+                   D3D12_TILE_COPY_FLAGS flags)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   const D3D12_TILE_COPY_FLAGS allowed =
+      D3D12_TILE_COPY_FLAG_NO_HAZARD |
+      D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE |
+      D3D12_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER;
+   const bool to_tiled =
+      flags & D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE;
+   const bool explicit_to_buffer =
+      flags & D3D12_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER;
+
+   if (!tiled_resource_iface || !buffer_iface || !start || !size ||
+       (flags & ~allowed) || (to_tiled && explicit_to_buffer)) {
+      mesa_loge("CopyTiles: invalid arguments or flags %#x", (unsigned)flags);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   /* NONE has the API-defined tiled-to-linear direction. */
+   const bool to_buffer = !to_tiled;
+   struct d12_resource *tiled =
+      d12_resource_from_iface(tiled_resource_iface);
+   struct d12_resource *buffer = d12_resource_from_iface(buffer_iface);
+   if (!tiled->reserved ||
+       buffer->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       buffer->reserved || !buffer->bo) {
+      mesa_loge("CopyTiles: expected one reserved resource and one ordinary "
+                "buffer");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   uint32_t *tiles = NULL;
+   uint32_t tile_count = 0;
+   HRESULT hr = d12_sparse_collect_tiles(tiled, 1, start, size, &tiles,
+                                         &tile_count);
+   const uint64_t tile_B = D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+   uint64_t copy_size_B = (uint64_t)tile_count * tile_B;
+   if (FAILED(hr) || buffer_offset_B > buffer->desc.Width ||
+       copy_size_B > buffer->desc.Width - buffer_offset_B) {
+      mesa_loge("CopyTiles: tile region or linear buffer range is invalid");
+      free(tiles);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   enum pipe_format format = d12_format_to_pipe(tiled->desc.Format);
+   for (uint32_t i = 0; i < tile_count; i++) {
+      struct d12_sparse_tile_copy_info info;
+      if (!d12_sparse_get_tile_copy_info(tiled, tiles[i], &info)) {
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         break;
+      }
+
+      uint64_t linear = buffer->addr + buffer_offset_B + (uint64_t)i * tile_B;
+      if (getenv("D3D12AGX_DUMP_SPARSE")) {
+         simple_mtx_lock(&tiled->sparse_lock);
+         struct d12_sparse_mapping mapping = tiled->sparse_mappings[tiles[i]];
+         simple_mtx_unlock(&tiled->sparse_lock);
+         mesa_logi("CopyTiles tile=%u direction=%s linear=0x%llx "
+                   "mapped-bo=%u heap=0x%llx standard=%u",
+                   tiles[i], to_buffer ? "tiled-to-linear" : "linear-to-tiled",
+                   (unsigned long long)linear,
+                   mapping.bo ? mapping.bo->uapi_handle : 0,
+                   (unsigned long long)mapping.heap_offset_B, info.standard);
+      }
+      if (tiled->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ||
+          !info.standard) {
+         uint64_t remaining = tiled->sparse_size_B - info.offset_B;
+         uint64_t bytes = MIN2(tile_B, remaining);
+         struct libagx_copy_uchar_args args = {
+            .dest = to_buffer ? linear : tiled->addr + info.offset_B,
+            .src = to_buffer ? tiled->addr + info.offset_B : linear,
+         };
+         d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args,
+                                   sizeof(args), agx_1d(bytes));
+         if (list->state == D12_LIST_ERROR)
+            break;
+         continue;
+      }
+
+      if (format == PIPE_FORMAT_NONE ||
+          info.subresource >= tiled->sparse_subresource_count) {
+         mesa_loge("CopyTiles: unsupported sparse texture format/subresource");
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         break;
+      }
+
+      const unsigned level = info.subresource % tiled->sparse_mip_count;
+      const uint32_t mip_width = u_minify(tiled->layout.width_px, level);
+      const uint32_t mip_height = u_minify(tiled->layout.height_px, level);
+      const uint32_t tile_width = tiled->sparse_tile_shape.WidthInTexels;
+      const uint32_t tile_height = tiled->sparse_tile_shape.HeightInTexels;
+      const uint32_t x = info.x * tile_width;
+      const uint32_t y = info.y * tile_height;
+      if (x >= mip_width || y >= mip_height) {
+         mesa_loge("CopyTiles: sparse texture tile lies outside its mip");
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         break;
+      }
+
+      const uint32_t width = MIN2(tile_width, mip_width - x);
+      const uint32_t height = MIN2(tile_height, mip_height - y);
+      const uint32_t row_pitch =
+         util_format_get_nblocksx(format, tile_width) *
+         util_format_get_blocksize(format);
+      if (getenv("D3D12AGX_DUMP_SPARSE")) {
+         mesa_logi("CopyTiles texture subresource=%u tile-xy=%u,%u "
+                   "rect=%u,%u+%ux%u row-pitch=%u",
+                   info.subresource, info.x, info.y, x, y, width, height,
+                   row_pitch);
+      }
+      D3D12_TEXTURE_COPY_LOCATION texture = {
+         .pResource = tiled_resource_iface,
+         .Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX,
+         .SubresourceIndex = info.subresource,
+      };
+      D3D12_TEXTURE_COPY_LOCATION linear_tile = {
+         .pResource = buffer_iface,
+         .Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT,
+         .PlacedFootprint = {
+            .Offset = buffer_offset_B + (uint64_t)i * tile_B,
+            .Footprint = {
+               .Format = tiled->desc.Format,
+               .Width = width,
+               .Height = height,
+               .Depth = 1,
+               .RowPitch = row_pitch,
+            },
+         },
+      };
+
+      if (to_tiled) {
+         D3D12_BOX box = {0, 0, 0, width, height, 1};
+         d12_copy_texture_region(list, &texture, x, y, 0, &linear_tile,
+                                 &box);
+      } else {
+         D3D12_BOX box = {x, y, 0, x + width, y + height, 1};
+         d12_copy_texture_region(list, &linear_tile, 0, 0, 0, &texture,
+                                 &box);
+      }
+      if (list->state == D12_LIST_ERROR)
+         break;
+   }
+
+   free(tiles);
 }
 
 static void STDMETHODCALLTYPE
@@ -9929,6 +10158,7 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
    .WriteBufferImmediate = d12_list_WriteBufferImmediate,
    .CopyResource = d12_list_CopyResource,
    .CopyTextureRegion = d12_list_CopyTextureRegion,
+   .CopyTiles = d12_list_CopyTiles,
    .ResolveSubresource = d12_list_ResolveSubresource,
    .ResolveSubresourceRegion = d12_list_ResolveSubresourceRegion,
    .ResourceBarrier = d12_list_ResourceBarrier,

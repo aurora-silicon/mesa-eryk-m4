@@ -7,6 +7,7 @@
  */
 
 #include "d12_private.h"
+#include "util/os_misc.h"
 
 static ULONG STDMETHODCALLTYPE
 d12_resource_AddRef(ID3D12Resource *iface);
@@ -51,6 +52,23 @@ d12_resource_Release(ID3D12Resource *iface)
    uint32_t refs = p_atomic_dec_return(&res->refcount);
 
    if (refs == 0) {
+      if (res->reserved) {
+         simple_mtx_lock(&res->device->sparse_resource_lock);
+         list_del(&res->sparse_link);
+         simple_mtx_unlock(&res->device->sparse_resource_lock);
+         for (uint32_t i = 0; i < res->sparse_tile_count; i++) {
+            if (res->sparse_mappings[i].bo)
+               agx_bo_unreference(&res->device->dev,
+                                  res->sparse_mappings[i].bo);
+         }
+         free(res->sparse_mappings);
+         free(res->sparse_tilings);
+         simple_mtx_destroy(&res->sparse_lock);
+      }
+
+      if (res->va)
+         agx_va_free(&res->device->dev, res->va, true);
+
       /* A PLACED resource borrows the heap's BO -- unreferencing it here
        * would free storage the heap still owns and other placed resources
        * are still using. Drop the heap reference instead. */
@@ -58,7 +76,7 @@ d12_resource_Release(ID3D12Resource *iface)
          /* Drop the BO reference taken at creation; the heap object's own
           * refcount was never touched. */
          agx_bo_unreference(&res->device->dev, res->bo);
-      } else {
+      } else if (!res->reserved) {
          agx_bo_unreference(&res->device->dev, res->bo);
          if (res->stencil_bo)
             agx_bo_unreference(&res->device->dev, res->stencil_bo);
@@ -89,6 +107,9 @@ d12_resource_Map(ID3D12Resource *iface, UINT subresource,
    struct d12_resource *res = d12_resource_from_iface(iface);
 
    if (subresource != 0)
+      return E_INVALIDARG;
+
+   if (res->reserved)
       return E_INVALIDARG;
 
    /* DEFAULT heaps have no application-visible CPU mapping even on UMA.
@@ -293,6 +314,11 @@ d12_resource_GetHeapProperties(ID3D12Resource *iface,
 {
    struct d12_resource *res = d12_resource_from_iface(iface);
 
+   /* Reserved resources do not have heap properties.  Leave caller-owned
+    * outputs untouched on failure, matching the D3D12 contract. */
+   if (res->reserved)
+      return E_INVALIDARG;
+
    if (heap_props)
       *heap_props = res->heap_props;
    if (heap_flags)
@@ -320,12 +346,601 @@ static const ID3D12ResourceVtbl d12_resource_vtbl = {
    .GetHeapProperties = d12_resource_GetHeapProperties,
 };
 
+static bool
+d12_resource_init_sparse_metadata(struct d12_resource *res,
+                                  const D3D12_RESOURCE_DESC *desc)
+{
+   const uint32_t tile_B = D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+   simple_mtx_init(&res->sparse_lock, mtx_plain);
+
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      res->sparse_tile_count = DIV_ROUND_UP(desc->Width, tile_B);
+      res->sparse_subresource_count = 1;
+      res->sparse_tile_shape = (D3D12_TILE_SHAPE){tile_B, 1, 1};
+      res->sparse_tilings = calloc(1, sizeof(*res->sparse_tilings));
+      if (!res->sparse_tilings)
+         goto fail;
+      res->sparse_tilings[0] = (D3D12_SUBRESOURCE_TILING){
+         .WidthInTiles = res->sparse_tile_count,
+         .HeightInTiles = 1,
+         .DepthInTiles = 1,
+         .StartTileIndexInOverallResource = 0,
+      };
+   } else {
+      const struct ail_layout *layout = &res->layout;
+      const unsigned levels = desc->MipLevels ? desc->MipLevels
+                                               : layout->levels;
+      const unsigned layers = MAX2(desc->DepthOrArraySize, 1);
+      const unsigned tail_first = MIN2(layout->mip_tail_first_lod, levels);
+      const unsigned bw = util_format_get_blockwidth(layout->format);
+      const unsigned bh = util_format_get_blockheight(layout->format);
+      const unsigned block_B =
+         util_format_get_blocksize(layout->format) * layout->sample_count_sa;
+      const struct ail_tile hw = ail_get_max_tile_size(block_B);
+      const unsigned std_w_el = hw.width_el * 2;
+      const unsigned std_h_el = hw.height_el * 2;
+
+      res->sparse_tile_shape = (D3D12_TILE_SHAPE){
+         .WidthInTexels = std_w_el * bw,
+         .HeightInTexels = std_h_el * bh,
+         .DepthInTexels = 1,
+      };
+      res->sparse_subresource_count = levels * layers;
+      res->sparse_mip_count = levels;
+      res->sparse_tilings =
+         calloc(res->sparse_subresource_count, sizeof(*res->sparse_tilings));
+      if (!res->sparse_tilings)
+         goto fail;
+
+      uint32_t tile = 0;
+      for (unsigned layer = 0; layer < layers; layer++) {
+         for (unsigned level = 0; level < tail_first; level++) {
+            const unsigned subresource = layer * levels + level;
+            const unsigned width_el = util_format_get_nblocksx(
+               layout->format, u_minify(layout->width_px, level));
+            const unsigned height_el = util_format_get_nblocksy(
+               layout->format, u_minify(layout->height_px, level));
+            D3D12_SUBRESOURCE_TILING *tiling =
+               &res->sparse_tilings[subresource];
+            tiling->WidthInTiles = DIV_ROUND_UP(width_el, std_w_el);
+            tiling->HeightInTiles = DIV_ROUND_UP(height_el, std_h_el);
+            tiling->DepthInTiles = 1;
+            tiling->StartTileIndexInOverallResource = tile;
+            tile += tiling->WidthInTiles * tiling->HeightInTiles;
+         }
+         for (unsigned level = tail_first; level < levels; level++) {
+            res->sparse_tilings[layer * levels + level]
+               .StartTileIndexInOverallResource = UINT32_MAX;
+         }
+      }
+
+      const uint32_t packed_start = tile;
+      uint32_t packed_tiles = 0;
+      if (tail_first < levels) {
+         uint64_t tail_size_B =
+            (layout->level_offsets_B[levels] -
+             layout->level_offsets_B[tail_first]) * layers;
+         packed_tiles = DIV_ROUND_UP(tail_size_B, tile_B);
+         tile += packed_tiles;
+      }
+      res->sparse_packed_mips = (D3D12_PACKED_MIP_INFO){
+         .NumStandardMips = tail_first,
+         .NumPackedMips = levels - tail_first,
+         .NumTilesForPackedMips = packed_tiles,
+         .StartTileIndexInOverallResource = packed_tiles ? packed_start : 0,
+      };
+      res->sparse_tile_count = tile;
+   }
+
+   res->sparse_mappings =
+      calloc(res->sparse_tile_count, sizeof(*res->sparse_mappings));
+   if (!res->sparse_mappings)
+      goto fail;
+   return true;
+
+fail:
+   free(res->sparse_tilings);
+   res->sparse_tilings = NULL;
+   simple_mtx_destroy(&res->sparse_lock);
+   return false;
+}
+
+struct d12_sparse_update {
+   uint32_t tile;
+   struct agx_bo *bo;
+   uint64_t heap_offset_B;
+   bool skip;
+};
+
+static bool
+d12_sparse_coordinate_tile(const struct d12_resource *res,
+                           const D3D12_TILED_RESOURCE_COORDINATE *coord,
+                           uint32_t *tile)
+{
+   if (coord->Subresource >= res->sparse_subresource_count)
+      return false;
+
+   const D3D12_SUBRESOURCE_TILING *tiling =
+      &res->sparse_tilings[coord->Subresource];
+   if (!tiling->WidthInTiles) {
+      if (coord->Y || coord->Z ||
+          coord->X >= res->sparse_packed_mips.NumTilesForPackedMips)
+         return false;
+      *tile = res->sparse_packed_mips.StartTileIndexInOverallResource +
+              coord->X;
+      return true;
+   }
+
+   if (coord->X >= tiling->WidthInTiles ||
+       coord->Y >= tiling->HeightInTiles ||
+       coord->Z >= tiling->DepthInTiles)
+      return false;
+
+   *tile = tiling->StartTileIndexInOverallResource +
+           ((coord->Z * tiling->HeightInTiles + coord->Y) *
+               tiling->WidthInTiles +
+            coord->X);
+   return true;
+}
+
+HRESULT
+d12_sparse_collect_tiles(
+   const struct d12_resource *res, UINT num_regions,
+   const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, uint32_t **out_tiles,
+   uint32_t *out_count)
+{
+   *out_tiles = NULL;
+   *out_count = 0;
+   if (!num_regions)
+      return S_OK;
+   if (!res->reserved || (!starts && num_regions != 1))
+      return E_INVALIDARG;
+
+   /* A fully omitted one-region description means the complete resource. */
+   if (!starts && !sizes) {
+      uint32_t *tiles = malloc((size_t)res->sparse_tile_count * sizeof(*tiles));
+      if (!tiles)
+         return E_OUTOFMEMORY;
+      for (uint32_t i = 0; i < res->sparse_tile_count; i++)
+         tiles[i] = i;
+      *out_tiles = tiles;
+      *out_count = res->sparse_tile_count;
+      return S_OK;
+   }
+
+   uint64_t total = 0;
+   for (UINT r = 0; r < num_regions; r++) {
+      if (!sizes) {
+         total++;
+      } else if (sizes[r].UseBox) {
+         uint64_t count = (uint64_t)sizes[r].Width * sizes[r].Height *
+                          sizes[r].Depth;
+         if (!count || count != sizes[r].NumTiles)
+            return E_INVALIDARG;
+         total += count;
+      } else {
+         total += sizes[r].NumTiles;
+      }
+      if (total > UINT32_MAX)
+         return E_INVALIDARG;
+   }
+
+   uint32_t *tiles = malloc((size_t)total * sizeof(*tiles));
+   if (!tiles && total)
+      return E_OUTOFMEMORY;
+
+   uint32_t cursor = 0;
+   const D3D12_TILED_RESOURCE_COORDINATE zero = {0};
+   for (UINT r = 0; r < num_regions; r++) {
+      const D3D12_TILED_RESOURCE_COORDINATE *start = starts ? &starts[r] : &zero;
+      uint32_t first;
+      if (!d12_sparse_coordinate_tile(res, start, &first))
+         goto invalid;
+
+      if (!sizes) {
+         tiles[cursor++] = first;
+         continue;
+      }
+
+      const D3D12_TILE_REGION_SIZE *size = &sizes[r];
+      if (!size->UseBox) {
+         if ((uint64_t)first + size->NumTiles > res->sparse_tile_count)
+            goto invalid;
+         for (UINT i = 0; i < size->NumTiles; i++)
+            tiles[cursor++] = first + i;
+         continue;
+      }
+
+      const D3D12_SUBRESOURCE_TILING *tiling =
+         &res->sparse_tilings[start->Subresource];
+      if (!tiling->WidthInTiles ||
+          (uint64_t)start->X + size->Width > tiling->WidthInTiles ||
+          (uint64_t)start->Y + size->Height > tiling->HeightInTiles ||
+          (uint64_t)start->Z + size->Depth > tiling->DepthInTiles)
+         goto invalid;
+
+      for (UINT z = 0; z < size->Depth; z++) {
+         for (UINT y = 0; y < size->Height; y++) {
+            for (UINT x = 0; x < size->Width; x++) {
+               tiles[cursor++] =
+                  tiling->StartTileIndexInOverallResource +
+                  (((start->Z + z) * tiling->HeightInTiles + start->Y + y) *
+                      tiling->WidthInTiles +
+                   start->X + x);
+            }
+         }
+      }
+   }
+
+   *out_tiles = tiles;
+   *out_count = cursor;
+   return S_OK;
+
+invalid:
+   free(tiles);
+   return E_INVALIDARG;
+}
+
+bool
+d12_sparse_get_tile_copy_info(const struct d12_resource *res, uint32_t tile,
+                              struct d12_sparse_tile_copy_info *info)
+{
+   if (!res || !res->reserved || !info || tile >= res->sparse_tile_count)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      info->offset_B =
+         (uint64_t)tile * D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+      return true;
+   }
+
+   if (res->sparse_packed_mips.NumPackedMips &&
+       tile >= res->sparse_packed_mips.StartTileIndexInOverallResource) {
+      const unsigned tail = res->layout.mip_tail_first_lod;
+      info->offset_B =
+         res->layout.level_offsets_B[tail] +
+         (uint64_t)(tile -
+                    res->sparse_packed_mips.StartTileIndexInOverallResource) *
+            D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES;
+      return true;
+   }
+
+   for (uint32_t subresource = 0;
+        subresource < res->sparse_subresource_count; subresource++) {
+      const D3D12_SUBRESOURCE_TILING *tiling =
+         &res->sparse_tilings[subresource];
+      uint64_t count = (uint64_t)tiling->WidthInTiles *
+                       tiling->HeightInTiles * tiling->DepthInTiles;
+      uint64_t end = tiling->StartTileIndexInOverallResource + count;
+      if (!count || tile < tiling->StartTileIndexInOverallResource ||
+          tile >= end)
+         continue;
+
+      uint32_t local = tile - tiling->StartTileIndexInOverallResource;
+      info->standard = true;
+      info->subresource = subresource;
+      info->x = local % tiling->WidthInTiles;
+      local /= tiling->WidthInTiles;
+      info->y = local % tiling->HeightInTiles;
+      info->z = local / tiling->HeightInTiles;
+      return true;
+   }
+
+   return false;
+}
+
+static unsigned
+d12_sparse_tile_pages(const struct d12_resource *res, uint32_t tile,
+                      uint64_t page_offset_B[4], uint8_t heap_page[4])
+{
+   const uint64_t page_B = AIL_PAGESIZE;
+   unsigned count = 0;
+
+   struct d12_sparse_tile_copy_info info;
+   if (!d12_sparse_get_tile_copy_info(res, tile, &info))
+      return 0;
+
+   if (!info.standard) {
+      uint64_t base = info.offset_B;
+
+      for (unsigned q = 0; q < 4; q++) {
+         uint64_t offset = base + q * page_B;
+         if (offset >= res->sparse_size_B)
+            break;
+         page_offset_B[count] = offset;
+         heap_page[count++] = q;
+      }
+      return count;
+   }
+
+   const struct ail_layout *layout = &res->layout;
+   const unsigned levels = res->sparse_mip_count;
+   const unsigned level = info.subresource % levels;
+   const unsigned layer = info.subresource / levels;
+   const unsigned tx = info.x;
+   const unsigned ty = info.y;
+   const struct ail_tile hw = layout->tilesize_el[level];
+   const unsigned std_w = hw.width_el * 2;
+   const unsigned std_h = hw.height_el * 2;
+   const unsigned width_el = util_format_get_nblocksx(
+      layout->format, u_minify(layout->width_px, level));
+   const unsigned height_el = util_format_get_nblocksy(
+      layout->format, u_minify(layout->height_px, level));
+
+   for (unsigned hy = 0; hy < 2; hy++) {
+      for (unsigned hx = 0; hx < 2; hx++) {
+         unsigned x = tx * std_w + hx * hw.width_el;
+         unsigned y = ty * std_h + hy * hw.height_el;
+         if (x >= width_el || y >= height_el)
+            continue;
+
+         uint64_t offset =
+            ail_get_twiddled_block_B(layout, level, x, y, layer);
+         if (offset >= res->sparse_size_B || (offset % page_B))
+            return 0;
+         page_offset_B[count] = offset;
+         heap_page[count++] = hy * 2 + hx;
+      }
+   }
+   return count;
+}
+
+static HRESULT
+d12_sparse_apply_updates(struct d12_resource *res,
+                         const struct d12_sparse_update *updates,
+                         uint32_t update_count,
+                         struct drm_asahi_gem_bind_op **out_ops,
+                         uint32_t *out_count)
+{
+   if (update_count > UINT32_MAX / 8)
+      return E_INVALIDARG;
+   struct drm_asahi_gem_bind_op *ops =
+      calloc((size_t)update_count * 8, sizeof(*ops));
+   if (!ops && update_count)
+      return E_OUTOFMEMORY;
+
+   uint32_t count = 0;
+   for (uint32_t i = 0; i < update_count; i++) {
+      const struct d12_sparse_update *update = &updates[i];
+      if (update->skip)
+         continue;
+
+      uint64_t page_offset_B[4];
+      uint8_t heap_page[4];
+      unsigned pages =
+         d12_sparse_tile_pages(res, update->tile, page_offset_B, heap_page);
+      if (!pages) {
+         free(ops);
+         return E_INVALIDARG;
+      }
+
+      for (unsigned p = 0; p < pages; p++) {
+         struct drm_asahi_gem_bind_op op = {
+            .handle = update->bo ? update->bo->uapi_handle
+                                 : res->device->dev.scratch_bo->uapi_handle,
+            .flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE,
+            .offset = update->bo
+                         ? update->heap_offset_B +
+                              (uint64_t)heap_page[p] * AIL_PAGESIZE
+                         : 0,
+            .range = AIL_PAGESIZE,
+            .addr = res->addr + page_offset_B[p],
+         };
+         if (!update->bo)
+            op.flags |= DRM_ASAHI_BIND_SINGLE_PAGE;
+         ops[count++] = op;
+
+         op.addr += res->device->dev.sparse_ro_offset;
+         op.flags &= ~DRM_ASAHI_BIND_WRITE;
+         if (!update->bo)
+            op.handle = res->device->dev.zero_bo->uapi_handle;
+         ops[count++] = op;
+      }
+
+      if (getenv("D3D12AGX_DUMP_SPARSE")) {
+         mesa_logi("sparse tile %u pages=%u bo=%u heap=0x%llx "
+                   "va=0x%llx..0x%llx",
+                   update->tile, pages,
+                   update->bo ? update->bo->uapi_handle : 0,
+                   (unsigned long long)update->heap_offset_B,
+                   (unsigned long long)ops[count - pages * 2].addr,
+                   (unsigned long long)(ops[count - 2].addr + AIL_PAGESIZE));
+      }
+   }
+
+   /* Hold every replacement alive before dropping any old tile reference.
+    * This is required for overlapping CopyTileMappings within one resource:
+    * a later source tile may be the last owner of a BO overwritten earlier in
+    * the same batch.  These references become the destination tiles' retained
+    * references below. */
+   for (uint32_t i = 0; i < update_count; i++) {
+      if (!updates[i].skip && updates[i].bo)
+         agx_bo_reference(updates[i].bo);
+   }
+
+   /* Mutate the software mapping only after every address and heap range has
+    * validated and the complete kernel batch has been allocated. */
+   for (uint32_t i = 0; i < update_count; i++) {
+      const struct d12_sparse_update *update = &updates[i];
+      if (update->skip)
+         continue;
+      struct d12_sparse_mapping *mapping =
+         &res->sparse_mappings[update->tile];
+      if (mapping->bo)
+         agx_bo_unreference(&res->device->dev, mapping->bo);
+      mapping->bo = update->bo;
+      mapping->heap_offset_B = update->heap_offset_B;
+   }
+
+   *out_ops = ops;
+   *out_count = count;
+   return S_OK;
+}
+
+HRESULT
+d12_sparse_update_tile_mappings(
+   struct d12_resource *res, UINT num_regions,
+   const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, struct d12_heap *heap,
+   UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
+   const UINT *heap_starts, const UINT *range_counts,
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count)
+{
+   *out_ops = NULL;
+   *out_count = 0;
+   uint32_t *tiles = NULL;
+   uint32_t tile_count = 0;
+   HRESULT hr = d12_sparse_collect_tiles(res, num_regions, starts, sizes,
+                                         &tiles, &tile_count);
+   if (FAILED(hr))
+      return hr;
+   if (!tile_count) {
+      free(tiles);
+      return S_OK;
+   }
+   if (!num_ranges || (!range_counts && num_ranges != 1)) {
+      free(tiles);
+      return E_INVALIDARG;
+   }
+
+   struct d12_sparse_update *updates =
+      calloc(tile_count, sizeof(*updates));
+   if (!updates) {
+      free(tiles);
+      return E_OUTOFMEMORY;
+   }
+
+   uint32_t cursor = 0;
+   for (UINT r = 0; r < num_ranges; r++) {
+      D3D12_TILE_RANGE_FLAGS flags =
+         range_flags ? range_flags[r] : D3D12_TILE_RANGE_FLAG_NONE;
+      UINT declared_count = range_counts ? range_counts[r] : tile_count;
+      UINT count = MIN2(declared_count, tile_count - cursor);
+      UINT heap_tile = heap_starts ? heap_starts[r] : 0;
+      if (flags != D3D12_TILE_RANGE_FLAG_NONE &&
+           flags != D3D12_TILE_RANGE_FLAG_NULL &&
+           flags != D3D12_TILE_RANGE_FLAG_SKIP &&
+           flags != D3D12_TILE_RANGE_FLAG_REUSE_SINGLE_TILE) {
+         hr = E_INVALIDARG;
+         goto out;
+      }
+
+      /* The mapping ranges are a stream consumed by the resource regions.
+       * D3D12 permits the final range to extend past that stream; its surplus
+       * entries have no destination tiles and are ignored. */
+      if (!count)
+         break;
+
+      if ((flags == D3D12_TILE_RANGE_FLAG_NONE ||
+           flags == D3D12_TILE_RANGE_FLAG_REUSE_SINGLE_TILE) &&
+          (!heap ||
+           ((uint64_t)heap_tile +
+                (flags == D3D12_TILE_RANGE_FLAG_NONE ? count : 1)) *
+                 D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES >
+              heap->bo->size)) {
+         hr = E_INVALIDARG;
+         goto out;
+      }
+
+      for (UINT i = 0; i < count; i++) {
+         updates[cursor] = (struct d12_sparse_update){
+            .tile = tiles[cursor],
+            .bo = (flags == D3D12_TILE_RANGE_FLAG_NONE ||
+                   flags == D3D12_TILE_RANGE_FLAG_REUSE_SINGLE_TILE)
+                     ? heap->bo
+                     : NULL,
+            .heap_offset_B =
+               (uint64_t)(heap_tile +
+                          (flags == D3D12_TILE_RANGE_FLAG_NONE ? i : 0)) *
+               D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES,
+            .skip = flags == D3D12_TILE_RANGE_FLAG_SKIP,
+         };
+         cursor++;
+      }
+   }
+   if (cursor != tile_count) {
+      hr = E_INVALIDARG;
+      goto out;
+   }
+
+   simple_mtx_lock(&res->sparse_lock);
+   hr = d12_sparse_apply_updates(res, updates, tile_count, out_ops, out_count);
+   simple_mtx_unlock(&res->sparse_lock);
+
+out:
+   free(updates);
+   free(tiles);
+   return hr;
+}
+
+HRESULT
+d12_sparse_copy_tile_mappings(
+   struct d12_resource *dst, const D3D12_TILED_RESOURCE_COORDINATE *dst_start,
+   struct d12_resource *src, const D3D12_TILED_RESOURCE_COORDINATE *src_start,
+   const D3D12_TILE_REGION_SIZE *size,
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count)
+{
+   if (!dst || !src || !dst_start || !src_start || !size ||
+       !dst->reserved || !src->reserved)
+      return E_INVALIDARG;
+
+   uint32_t *dst_tiles = NULL, *src_tiles = NULL;
+   uint32_t dst_count = 0, src_count = 0;
+   HRESULT hr = d12_sparse_collect_tiles(dst, 1, dst_start, size, &dst_tiles,
+                                         &dst_count);
+   if (FAILED(hr))
+      return hr;
+   hr = d12_sparse_collect_tiles(src, 1, src_start, size, &src_tiles,
+                                 &src_count);
+   if (FAILED(hr) || src_count != dst_count) {
+      free(dst_tiles);
+      free(src_tiles);
+      return FAILED(hr) ? hr : E_INVALIDARG;
+   }
+
+   struct d12_sparse_update *updates = calloc(dst_count, sizeof(*updates));
+   if (!updates && dst_count) {
+      free(dst_tiles);
+      free(src_tiles);
+      return E_OUTOFMEMORY;
+   }
+
+   struct d12_resource *first =
+      (uintptr_t)dst < (uintptr_t)src ? dst : src;
+   struct d12_resource *second = first == dst ? src : dst;
+   simple_mtx_lock(&first->sparse_lock);
+   if (second != first)
+      simple_mtx_lock(&second->sparse_lock);
+
+   for (uint32_t i = 0; i < dst_count; i++) {
+      const struct d12_sparse_mapping *mapping =
+         &src->sparse_mappings[src_tiles[i]];
+      updates[i] = (struct d12_sparse_update){
+         .tile = dst_tiles[i],
+         .bo = mapping->bo,
+         .heap_offset_B = mapping->heap_offset_B,
+      };
+   }
+   hr = d12_sparse_apply_updates(dst, updates, dst_count, out_ops, out_count);
+
+   if (second != first)
+      simple_mtx_unlock(&second->sparse_lock);
+   simple_mtx_unlock(&first->sparse_lock);
+   free(updates);
+   free(dst_tiles);
+   free(src_tiles);
+   return hr;
+}
+
 static HRESULT
 d12_resource_create(struct d12_device *device,
                     const D3D12_HEAP_PROPERTIES *heap_props,
                     D3D12_HEAP_FLAGS heap_flags,
                     const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
-                    uint64_t heap_offset_B, REFIID riid, void **out)
+                    uint64_t heap_offset_B, bool reserved, REFIID riid,
+                    void **out)
 {
    if (!out)
       return E_POINTER;
@@ -391,7 +1006,7 @@ d12_resource_create(struct d12_device *device,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = samples,
          .levels = levels,
-         .tiling = AIL_TILING_TWIDDLED,
+         .tiling = reserved ? AIL_TILING_GPU : AIL_TILING_TWIDDLED,
          .format = z,
       };
       ail_make_miptree(&layout);
@@ -500,16 +1115,23 @@ d12_resource_create(struct d12_device *device,
          .sample_count_sa = samples,
          .levels = levels,
          .mipmapped_z = is_3d,
-         .tiling = linear_ok ? AIL_TILING_LINEAR : AIL_TILING_TWIDDLED,
+         /* Reserved textures use AGX's page-addressable GPU-tiled layout.
+          * Fully twiddled miptrees have no page-granular standard-mip model
+          * (AIL deliberately reports their whole allocation as one tail), so
+          * they cannot implement D3D12 tile mappings. */
+         .tiling = reserved ? AIL_TILING_GPU
+                            : (linear_ok ? AIL_TILING_LINEAR
+                                         : AIL_TILING_TWIDDLED),
          .format = pipe,
          .writeable_image = writeable_image,
          /* 64-byte-aligned rows; the smoke tests mirror this constant */
          /* ail asserts this is ZERO for a non-linear layout, so it has
           * to follow the tiling decision above. */
          .linear_stride_B =
-            linear_ok ? align((uint32_t)desc->Width *
-                                 d12_format_bytes_per_pixel(desc->Format), 64)
-                      : 0,
+            !reserved && linear_ok
+               ? align((uint32_t)desc->Width *
+                          d12_format_bytes_per_pixel(desc->Format), 64)
+               : 0,
       };
       ail_make_miptree(&layout);
       size_B = layout.size_B;
@@ -529,7 +1151,45 @@ d12_resource_create(struct d12_device *device,
 
    uint64_t stencil_offset_B = 0;
 
-   if (heap) {
+   if (reserved) {
+      /* D3D12 tiles are 64 KiB while the Asahi VM page and hardware tile are
+       * 16 KiB.  Reserve a 64 KiB-rounded VA and initially back it with the
+       * driver's repeated scratch page, exactly the safe sparse foundation
+       * used by Honeykrisp.  UpdateTileMappings will replace these pages. */
+      const uint64_t sparse_size_B =
+         align64(size_B, D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES);
+      res->va = agx_va_alloc(&device->dev, sparse_size_B,
+                             D3D12_TILED_RESOURCE_TILE_SIZE_IN_BYTES, 0, 0);
+      if (!res->va) {
+         free(res);
+         return E_OUTOFMEMORY;
+      }
+
+      const uint32_t rw_flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE |
+                                DRM_ASAHI_BIND_SINGLE_PAGE;
+      int ret = agx_bo_bind(&device->dev, device->dev.scratch_bo,
+                            res->va->addr, sparse_size_B, 0, rw_flags);
+      if (!ret) {
+         const uint32_t ro_flags =
+            DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_SINGLE_PAGE;
+         ret = agx_bo_bind(&device->dev, device->dev.zero_bo,
+                           res->va->addr + device->dev.sparse_ro_offset,
+                           sparse_size_B, 0, ro_flags);
+      }
+      if (ret) {
+         agx_va_free(&device->dev, res->va, true);
+         free(res);
+         return E_OUTOFMEMORY;
+      }
+
+      res->reserved = true;
+      res->sparse_size_B = sparse_size_B;
+      if (!d12_resource_init_sparse_metadata(res, desc)) {
+         agx_va_free(&device->dev, res->va, true);
+         free(res);
+         return E_OUTOFMEMORY;
+      }
+   } else if (heap) {
       /*
        * PLACED: no allocation, a window into the heap's BO. The stencil
        * plane, when there is one, follows the depth plane inside the same
@@ -640,7 +1300,13 @@ d12_resource_create(struct d12_device *device,
     * resolved addresses still go through these fields rather than being
     * read from the BO downstream, so a placed resource -- which does not --
     * needs no second code path. */
-   if (heap) {
+   if (reserved) {
+      res->addr = res->va->addr;
+      res->offset_B = 0;
+      res->placed = false;
+      res->heap = NULL;
+      res->stencil_addr = 0;
+   } else if (heap) {
       res->addr = heap->bo->va->addr + heap_offset_B;
       res->offset_B = heap_offset_B;
       res->placed = true;
@@ -705,10 +1371,30 @@ d12_resource_create(struct d12_device *device,
    res->heap_props = *heap_props;
    res->heap_flags = heap_flags;
    d12_device_add_ref(device);
+   if (reserved) {
+      simple_mtx_lock(&device->sparse_resource_lock);
+      list_addtail(&res->sparse_link, &device->sparse_resources);
+      simple_mtx_unlock(&device->sparse_resource_lock);
+   }
 
    HRESULT hr = d12_resource_QueryInterface(&res->iface, riid, out);
    d12_resource_Release(&res->iface);
    return hr;
+}
+
+uint64_t
+d12_sparse_read_address(struct d12_device *device, uint64_t address)
+{
+   simple_mtx_lock(&device->sparse_resource_lock);
+   list_for_each_entry(struct d12_resource, res, &device->sparse_resources,
+                       sparse_link) {
+      if (address >= res->addr && address - res->addr < res->sparse_size_B) {
+         address += device->dev.sparse_ro_offset;
+         break;
+      }
+   }
+   simple_mtx_unlock(&device->sparse_resource_lock);
+   return address;
 }
 
 /*
@@ -918,7 +1604,7 @@ d12_resource_create_committed(struct d12_device *device,
       return valid;
 
    return d12_resource_create(device, heap_props, heap_flags, desc, NULL, 0,
-                              riid, out);
+                              false, riid, out);
 }
 
 HRESULT
@@ -958,8 +1644,85 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
       return valid;
 
    return d12_resource_create(device, &heap->desc.Properties,
-                              heap->desc.Flags, desc, heap, offset_B, riid,
-                              out);
+                              heap->desc.Flags, desc, heap, offset_B, false,
+                              riid, out);
+}
+
+HRESULT
+d12_resource_create_reserved(struct d12_device *device,
+                             const D3D12_RESOURCE_DESC *desc,
+                             D3D12_RESOURCE_STATES initial_state,
+                             const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
+                             void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!desc)
+      return E_INVALIDARG;
+
+   const D3D12_HEAP_PROPERTIES props = {
+      .Type = D3D12_HEAP_TYPE_DEFAULT,
+      .CreationNodeMask = 1,
+      .VisibleNodeMask = 1,
+   };
+
+   /* Reserved buffers may begin in UAV state without ALLOW_UNORDERED_ACCESS;
+    * that flag controls whether a UAV view can be created, while sparse root
+    * descriptors still use the resource as an addressable buffer. */
+   D3D12_RESOURCE_DESC validation_desc = *desc;
+   if (initial_state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+      validation_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+   HRESULT valid = d12_validate_resource_desc(&props, &validation_desc,
+                                              initial_state, clear_value);
+   if (FAILED(valid))
+      return valid;
+
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR)
+         return E_INVALIDARG;
+   } else {
+      /* Tier 1 is limited to 2D textures with the undefined 64 KiB swizzle.
+       * Standard swizzle and 1D/3D are separate capabilities. */
+      if (desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+          desc->Layout != D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE)
+         return E_INVALIDARG;
+
+      const bool depth = d12_format_is_depth_stencil(desc->Format);
+      enum pipe_format pipe =
+         depth ? d12_format_depth_plane(desc->Format)
+               : d12_format_to_pipe(desc->Format);
+      /* Multiplane depth/stencil needs independent sparse maps for each plane;
+       * advertise the single-plane D16/D32 subset until that is implemented. */
+      if (depth && d12_format_stencil_plane(desc->Format) != PIPE_FORMAT_NONE)
+         return E_INVALIDARG;
+      if (pipe == PIPE_FORMAT_NONE)
+         return E_INVALIDARG;
+
+      const unsigned major =
+         MAX2((uint32_t)MAX2(desc->Width, 1), MAX2(desc->Height, 1));
+      const unsigned levels =
+         desc->MipLevels ? desc->MipLevels : util_logbase2(major) + 1;
+      struct ail_layout layout = {
+         .width_px = (uint32_t)desc->Width,
+         .height_px = desc->Height,
+         .depth_px = MAX2(desc->DepthOrArraySize, 1),
+         .sample_count_sa = MAX2(desc->SampleDesc.Count, 1),
+         .levels = levels,
+         .tiling = AIL_TILING_GPU,
+         .format = pipe,
+         .writeable_image =
+            desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+      };
+      ail_make_miptree(&layout);
+
+      /* Tier 1 cannot represent a packed mip tail shared by array layers. */
+      if (desc->DepthOrArraySize > 1 && layout.mip_tail_first_lod < levels)
+         return E_INVALIDARG;
+   }
+
+   return d12_resource_create(device, &props, D3D12_HEAP_FLAG_NONE, desc,
+                              NULL, 0, true, riid, out);
 }
 
 
@@ -1054,6 +1817,15 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
       return E_POINTER;
    if (!desc || !desc->SizeInBytes)
       return E_INVALIDARG;
+
+   /* Apple UMA has no separate VRAM pool. Match Honeykrisp's Asahi policy:
+    * expose at most half of physical RAM to one GPU heap so allocation
+    * cannot force the machine into swap or OOM before D3D12 can report a
+    * normal resource-allocation failure. */
+   uint64_t system_memory;
+   if (os_get_total_physical_memory(&system_memory) &&
+       desc->SizeInBytes > system_memory / 2)
+      return E_OUTOFMEMORY;
 
    /*
     * HEAP VALIDATION -- desc->Flags and desc->Properties were both being

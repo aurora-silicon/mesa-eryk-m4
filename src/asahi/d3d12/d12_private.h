@@ -201,6 +201,12 @@ struct d12_device {
    simple_mtx_t descriptor_heap_lock;
    struct d12_descriptor_heap *descriptor_heaps;
 
+   /* Root SRV/CBV setters receive only a raw GPU VA. Retain the live sparse
+    * intervals so read-only root descriptors can select the zero-backed
+    * mirror used for unmapped tiles. */
+   simple_mtx_t sparse_resource_lock;
+   struct list_head sparse_resources;
+
    /* Occlusion-query scratch: cmd_render.isp_oclqry_base must point at
     * valid memory even when no queries run (mirrors hk pointing it at the
     * device query heap).
@@ -281,6 +287,25 @@ struct d12_resource {
    D3D12_HEAP_FLAGS heap_flags;
    struct agx_bo *bo;
 
+   /* A reserved resource owns address space, not backing storage.  Asahi's
+    * VM_BIND UAPI maps 16 KiB GEM ranges into this VMA as D3D12 64 KiB tiles
+    * are updated. */
+   bool reserved;
+   struct agx_va *va;
+   uint64_t sparse_size_B;
+   uint32_t sparse_tile_count;
+   uint32_t sparse_mip_count;
+   uint32_t sparse_subresource_count;
+   D3D12_PACKED_MIP_INFO sparse_packed_mips;
+   D3D12_TILE_SHAPE sparse_tile_shape;
+   D3D12_SUBRESOURCE_TILING *sparse_tilings;
+   struct d12_sparse_mapping {
+      struct agx_bo *bo;
+      uint64_t heap_offset_B;
+   } *sparse_mappings;
+   simple_mtx_t sparse_lock;
+   struct list_head sparse_link;
+
    /*
     * RESOLVED GPU ADDRESS, the same pattern hk uses for a bound image
     * (hk_image.c: plane->addr = mem->bo->va->addr + offset). A COMMITTED
@@ -342,6 +367,40 @@ HRESULT d12_resource_create_placed(struct d12_device *device,
                                    D3D12_RESOURCE_STATES initial_state,
                                    const D3D12_CLEAR_VALUE *clear_value,
                                    REFIID riid, void **out);
+HRESULT d12_resource_create_reserved(struct d12_device *device,
+                                     const D3D12_RESOURCE_DESC *desc,
+                                     D3D12_RESOURCE_STATES initial_state,
+                                     const D3D12_CLEAR_VALUE *clear_value,
+                                     REFIID riid, void **out);
+HRESULT d12_sparse_update_tile_mappings(
+   struct d12_resource *res, UINT num_regions,
+   const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, struct d12_heap *heap,
+   UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
+   const UINT *heap_starts, const UINT *range_counts,
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count);
+HRESULT d12_sparse_copy_tile_mappings(
+   struct d12_resource *dst, const D3D12_TILED_RESOURCE_COORDINATE *dst_start,
+   struct d12_resource *src, const D3D12_TILED_RESOURCE_COORDINATE *src_start,
+   const D3D12_TILE_REGION_SIZE *size,
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count);
+HRESULT d12_sparse_collect_tiles(
+   const struct d12_resource *res, UINT num_regions,
+   const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, uint32_t **out_tiles,
+   uint32_t *out_count);
+uint64_t d12_sparse_read_address(struct d12_device *device, uint64_t address);
+struct d12_sparse_tile_copy_info {
+   bool standard;
+   uint32_t subresource;
+   uint32_t x;
+   uint32_t y;
+   uint32_t z;
+   uint64_t offset_B;
+};
+bool d12_sparse_get_tile_copy_info(
+   const struct d12_resource *res, uint32_t tile,
+   struct d12_sparse_tile_copy_info *info);
 
 /*
  * One descriptor, whatever the heap type. Sized to exactly the advertised

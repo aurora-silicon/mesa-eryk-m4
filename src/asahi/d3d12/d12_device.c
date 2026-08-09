@@ -156,6 +156,7 @@ d12_device_Release(ID3D12Device2 *iface)
       agx_scratch_fini(&device->scratch_cs);
       simple_mtx_destroy(&device->scratch_lock);
       simple_mtx_destroy(&device->descriptor_heap_lock);
+      simple_mtx_destroy(&device->sparse_resource_lock);
       agx_bg_eot_cleanup(&device->bg_eot);
       agx_close_device(&device->dev);
       free(device);
@@ -278,6 +279,7 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       memset(opts, 0, sizeof(*opts));
       /* Honest conservative shape; raised only when the backing exists. */
       opts->ResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_1;
+      opts->TiledResourcesTier = D3D12_TILED_RESOURCES_TIER_1;
       /* TIER_2 means any resource type in any heap. The hardware would
        * allow it (UMA), but CreateHeap and CreatePlacedResource do not
        * exist, so claiming it would be a capability we cannot honour.
@@ -1824,6 +1826,54 @@ d12_device_CreatePlacedResource(ID3D12Device2 *iface, ID3D12Heap *heap_iface,
                                      optimized_clear, riid, out);
 }
 
+static HRESULT STDMETHODCALLTYPE
+d12_device_CreateReservedResource(ID3D12Device2 *iface,
+                                  const D3D12_RESOURCE_DESC *desc,
+                                  D3D12_RESOURCE_STATES initial_state,
+                                  const D3D12_CLEAR_VALUE *optimized_clear,
+                                  REFIID riid, void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+
+   return d12_resource_create_reserved(device, desc, initial_state,
+                                       optimized_clear, riid, out);
+}
+
+static void STDMETHODCALLTYPE
+d12_device_GetResourceTiling(
+   ID3D12Device2 *iface, ID3D12Resource *resource_iface,
+   UINT *num_tiles_for_resource, D3D12_PACKED_MIP_INFO *packed_mips,
+   D3D12_TILE_SHAPE *tile_shape, UINT *num_subresource_tilings,
+   UINT first_subresource, D3D12_SUBRESOURCE_TILING *subresource_tilings)
+{
+   if (!resource_iface)
+      return;
+
+   struct d12_resource *res = d12_resource_from_iface(resource_iface);
+   if (!res->reserved)
+      return;
+
+   if (num_tiles_for_resource)
+      *num_tiles_for_resource = res->sparse_tile_count;
+   if (packed_mips)
+      *packed_mips = res->sparse_packed_mips;
+   if (tile_shape)
+      *tile_shape = res->sparse_tile_shape;
+
+   if (!num_subresource_tilings)
+      return;
+
+   UINT available = first_subresource < res->sparse_subresource_count
+                       ? res->sparse_subresource_count - first_subresource
+                       : 0;
+   UINT count = MIN2(*num_subresource_tilings, available);
+   if (subresource_tilings && count) {
+      memcpy(subresource_tilings, res->sparse_tilings + first_subresource,
+             (size_t)count * sizeof(*subresource_tilings));
+   }
+   *num_subresource_tilings = count;
+}
+
 static struct d12_command_signature *
 d12_command_signature_from_iface(ID3D12CommandSignature *iface)
 {
@@ -3041,7 +3091,7 @@ d12_fill_buffer_descriptor(struct d12_descriptor *slot,
    uint64_t offset = first_element * (uint64_t)MAX2(stride_B, 1);
    uint64_t span = (uint64_t)num_elements * MAX2(stride_B, 1);
 
-   if (offset + span > res->bo->size) {
+   if (offset > res->desc.Width || span > res->desc.Width - offset) {
       mesa_loge("%s: view spans past the end of the resource", what);
       slot->kind = D12_DESC_NONE;
       slot->resource = NULL;
@@ -3300,6 +3350,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
       slot->resource = res;
       slot->address = (plane ? res->stencil_addr : res->addr) +
                       ail_get_layer_offset_B(view_layout, first_layer);
+      if (res->reserved)
+         slot->address += device->dev.sparse_ro_offset;
       slot->format = desc && desc->Format != DXGI_FORMAT_UNKNOWN
                         ? desc->Format
                         : res->desc.Format;
@@ -3333,7 +3385,7 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
 
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;
    uint32_t count = desc ? desc->Buffer.NumElements
-                         : (uint32_t)(res->bo->size / 4);
+                         : (uint32_t)(res->desc.Width / 4);
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
    /* A raw (ByteAddressBuffer) view addresses 4-byte words. */
@@ -3355,6 +3407,8 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
 
    if (d12_fill_buffer_descriptor(slot, res, first, count, stride,
                                   "CreateShaderResourceView")) {
+      if (res->reserved)
+         slot->address += device->dev.sparse_ro_offset;
       slot->kind = D12_DESC_SRV;
       slot->format = desc ? desc->Format : DXGI_FORMAT_UNKNOWN;
       slot->buffer_kind =
@@ -3526,7 +3580,7 @@ d12_device_CreateUnorderedAccessView(
 
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;
    uint32_t count = desc ? desc->Buffer.NumElements
-                         : (uint32_t)(res->bo->size / 4);
+                         : (uint32_t)(res->desc.Width / 4);
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
    if (desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW)) {
@@ -4175,6 +4229,8 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreateCommandSignature = d12_device_CreateCommandSignature,
    .CreateHeap = d12_device_CreateHeap,
    .CreatePlacedResource = d12_device_CreatePlacedResource,
+   .CreateReservedResource = d12_device_CreateReservedResource,
+   .GetResourceTiling = d12_device_GetResourceTiling,
    .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
@@ -4382,6 +4438,8 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
 
    simple_mtx_init(&device->scratch_lock, mtx_plain);
    simple_mtx_init(&device->descriptor_heap_lock, mtx_plain);
+   simple_mtx_init(&device->sparse_resource_lock, mtx_plain);
+   list_inithead(&device->sparse_resources);
    agx_scratch_init(&device->dev, &device->scratch_vs);
    agx_scratch_init(&device->dev, &device->scratch_fs);
    agx_scratch_init(&device->dev, &device->scratch_cs);
