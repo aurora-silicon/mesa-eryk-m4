@@ -437,7 +437,12 @@ struct d12_descriptor {
          uint32_t sampler_flags;
          uint32_t sampler_reserved;
          uint8_t sampler_kind; /* D12_DESC_SAMPLER, same offset as kind */
-         uint8_t sampler_pad[3];
+         uint8_t sampler_pad;
+         /* Logical D3D12 heaps may contain 2,048 samplers, while one AGX
+          * command exposes 1,024 native states.  Exact packed-state
+          * deduplication writes the native index here; bindless shaders read
+          * it from the coherent descriptor heap. */
+         uint16_t sampler_native_index;
       };
    };
 };
@@ -495,6 +500,7 @@ struct d12_descriptor_heap {
    struct agx_bo *texture_bo;
    struct agx_bo *pbe_bo;
    struct agx_bo *sampler_bo;
+   uint32_t sampler_unique_count;
 
    struct d12_descriptor_heap *registry_next;
 };

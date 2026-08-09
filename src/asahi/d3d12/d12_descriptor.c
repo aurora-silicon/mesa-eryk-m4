@@ -82,6 +82,57 @@ d12_heap_Release(ID3D12DescriptorHeap *iface)
    return refs;
 }
 
+static void
+d12_descriptor_heap_rebuild_samplers(struct d12_descriptor_heap *heap)
+{
+   if (!heap->sampler_bo)
+      return;
+
+   struct agx_sampler_packed *native = agx_bo_map(heap->sampler_bo);
+   uint16_t hash_table[2048];
+   uint32_t unique = 0;
+   bool overflow = false;
+   memset(hash_table, 0xff, sizeof(hash_table));
+
+   static_assert(sizeof(struct agx_sampler_packed) == sizeof(uint64_t),
+                 "sampler deduplication key");
+
+   for (UINT logical = 0; logical < heap->desc.NumDescriptors; logical++) {
+      struct agx_sampler_packed state;
+      struct d12_descriptor *slot = &heap->slots[logical];
+      if (slot->sampler_kind == D12_DESC_SAMPLER)
+         state = slot->sampler;
+      else
+         agx_pack_txf_sampler(&state);
+
+      uint64_t key;
+      memcpy(&key, &state, sizeof(key));
+      uint32_t bucket = ((uint32_t)key ^ (uint32_t)(key >> 32)) & 2047;
+      uint32_t index = 0;
+      while (hash_table[bucket] != UINT16_MAX) {
+         index = hash_table[bucket];
+         if (memcmp(&native[index], &state, sizeof(state)) == 0)
+            break;
+         bucket = (bucket + 1) & 2047;
+      }
+
+      if (hash_table[bucket] == UINT16_MAX) {
+         if (unique >= 1024) {
+            overflow = true;
+            index = 0;
+         } else {
+            index = unique++;
+            native[index] = state;
+            hash_table[bucket] = index;
+         }
+      }
+
+      slot->sampler_native_index = index;
+   }
+
+   heap->sampler_unique_count = overflow ? UINT32_MAX : unique;
+}
+
 void
 d12_descriptor_heap_update_slot(struct d12_device *device,
                                 struct d12_descriptor *slot)
@@ -110,11 +161,11 @@ d12_descriptor_heap_update_slot(struct d12_device *device,
          d12_refresh_pbe_descriptor(&pbes[index], slot);
       }
       if (heap->sampler_bo) {
-         struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
-         if (slot->sampler_kind == D12_DESC_SAMPLER)
-            samplers[index] = slot->sampler;
-         else
-            agx_pack_txf_sampler(&samplers[index]);
+         /* The shader-visible D3D12 limit is 2,048, while one AGX command
+          * names at most 1,024 native sampler states.  Rebuild immediately
+          * so descriptor updates remain visible to already-recorded command
+          * lists, exactly like the coherent logical descriptor heap. */
+         d12_descriptor_heap_rebuild_samplers(heap);
       }
 
       /* All three BOs are coherent. Order the native descriptor write after
@@ -265,7 +316,7 @@ d12_descriptor_heap_create(struct d12_device *device,
                           "d3d12 bindless PBE descriptors");
       } else if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
          size_t sampler_size =
-            (size_t)desc->NumDescriptors * AGX_SAMPLER_LENGTH;
+            (size_t)MIN2(desc->NumDescriptors, 1024) * AGX_SAMPLER_LENGTH;
          heap->sampler_bo =
             agx_bo_create(&device->dev, sampler_size, 0, AGX_BO_WRITEBACK,
                           "d3d12 bindless sampler descriptors");
@@ -307,7 +358,7 @@ d12_descriptor_heap_create(struct d12_device *device,
    }
    if (heap->sampler_bo) {
       struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
-      for (UINT i = 0; i < desc->NumDescriptors; i++)
+      for (UINT i = 0; i < MIN2(desc->NumDescriptors, 1024); i++)
          agx_pack_txf_sampler(&samplers[i]);
    }
 
@@ -336,6 +387,7 @@ d12_descriptor_heap_create(struct d12_device *device,
    heap->refcount = 1;
    heap->device = device;
    heap->desc = *desc;
+   d12_descriptor_heap_rebuild_samplers(heap);
    d12_private_data_store_init(&heap->private_data, (IUnknown *)&heap->iface);
    d12_device_add_ref(device);
 

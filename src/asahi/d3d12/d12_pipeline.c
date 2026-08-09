@@ -848,11 +848,45 @@ d12_custom_border_apply_heap_swizzle(nir_builder *b, nir_tex_instr *tex,
 }
 
 static bool
+d12_sampler_sideband_entry(nir_builder *b, nir_tex_instr *tex, bool *bindless,
+                           nir_def **entry)
+{
+   int handle_src = nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle);
+   nir_def *logical;
+
+   *bindless = handle_src >= 0;
+   if (*bindless) {
+      nir_intrinsic_instr *handle =
+         nir_src_as_intrinsic(tex->src[handle_src].src);
+      if (!handle || handle->intrinsic != nir_intrinsic_bindless_sampler_agx)
+         return false;
+
+      /* The translator's pre-compaction handle carries logical+28 in its
+       * hardware-index source.  A later pass replaces both handle sources
+       * with the deduplicated native index. */
+      logical = nir_iadd_imm(b, nir_u2u32(b, handle->src[1].ssa), -28);
+   } else {
+      logical = nir_imm_int(b, tex->sampler_index);
+      int sampler_offset =
+         nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
+      if (sampler_offset >= 0) {
+         logical = nir_iadd(b, logical,
+                            nir_u2u32(b, tex->src[sampler_offset].src.ssa));
+      }
+   }
+
+   nir_def *table = nir_load_custom_border_table_agx(b);
+   unsigned stride = *bindless ? sizeof(struct d12_descriptor)
+                               : sizeof(struct d12_custom_border_entry);
+   *entry = nir_iadd(b, table, nir_u2u64(b, nir_imul_imm(b, logical, stride)));
+   return true;
+}
+
+static bool
 d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
                               UNUSED void *data)
 {
    if (!nir_tex_instr_need_sampler(tex) || tex->is_shadow ||
-       nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0 ||
        nir_tex_instr_src_index(tex, nir_tex_src_offset) >= 0 ||
        tex->op == nir_texop_tg4)
       return false;
@@ -878,23 +912,22 @@ d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
    nir_builder_instr_insert(b, clone);
    nir_def *sample = &nir_instr_as_tex(clone)->def;
 
-   nir_def *logical = nir_imm_int(b, tex->sampler_index);
-   int sampler_offset =
-      nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
-   if (sampler_offset >= 0) {
-      logical = nir_iadd(b, logical,
-                         nir_u2u32(b, tex->src[sampler_offset].src.ssa));
-   }
+   bool bindless;
+   nir_def *entry;
+   if (!d12_sampler_sideband_entry(b, tex, &bindless, &entry))
+      return false;
 
-   nir_def *table = nir_load_custom_border_table_agx(b);
-   nir_def *entry = nir_iadd(
-      b, table,
-      nir_u2u64(b, nir_imul_imm(b, logical,
-                                sizeof(struct d12_custom_border_entry))));
    nir_def *flags = nir_load_global_constant(
-      b, 1, 32, entry, .align_mul = 8, .align_offset = 0);
+      b, 1, 32,
+      nir_iadd_imm(b, entry,
+                   bindless ? offsetof(struct d12_descriptor, sampler_reserved)
+                            : offsetof(struct d12_custom_border_entry, flags)),
+      .align_mul = 4);
    nir_def *border = nir_load_global_constant(
-      b, 4, 32, nir_iadd_imm(b, entry, 8),
+      b, 4, 32,
+      nir_iadd_imm(b, entry,
+                   bindless ? offsetof(struct d12_descriptor, sampler_border)
+                            : offsetof(struct d12_custom_border_entry, color)),
       .align_mul = 8, .align_offset = 0);
 
    nir_def *oob = nir_imm_false(b);
@@ -944,30 +977,29 @@ d12_lower_sampler_lod_bias(nir_builder *b, nir_tex_instr *tex,
                            UNUSED void *data)
 {
    if (!nir_tex_instr_need_sampler(tex) ||
-       nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0 ||
        (tex->op != nir_texop_tex && tex->op != nir_texop_txb &&
         tex->op != nir_texop_txl && tex->op != nir_texop_txd))
       return false;
 
    b->cursor = nir_before_instr(&tex->instr);
-   nir_def *logical = nir_imm_int(b, tex->sampler_index);
-   int sampler_offset =
-      nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset);
-   if (sampler_offset >= 0) {
-      logical = nir_iadd(b, logical,
-                         nir_u2u32(b, tex->src[sampler_offset].src.ssa));
-   }
+   bool bindless;
+   nir_def *entry;
+   if (!d12_sampler_sideband_entry(b, tex, &bindless, &entry))
+      return false;
 
-   nir_def *table = nir_load_custom_border_table_agx(b);
-   nir_def *entry = nir_iadd(
-      b, table,
-      nir_u2u64(b, nir_imul_imm(b, logical,
-                                sizeof(struct d12_custom_border_entry))));
    nir_def *bias = nir_load_global_constant(
-      b, 1, 32, nir_iadd_imm(b, entry, 4),
-      .align_mul = 8, .align_offset = 4);
+      b, 1, 32,
+      nir_iadd_imm(b, entry,
+                   bindless
+                      ? offsetof(struct d12_descriptor, sampler_lod_bias)
+                      : offsetof(struct d12_custom_border_entry, lod_bias)),
+      .align_mul = 4);
    nir_def *flags = nir_load_global_constant(
-      b, 1, 32, entry, .align_mul = 8, .align_offset = 0);
+      b, 1, 32,
+      nir_iadd_imm(b, entry,
+                   bindless ? offsetof(struct d12_descriptor, sampler_reserved)
+                            : offsetof(struct d12_custom_border_entry, flags)),
+      .align_mul = 4);
 
    if (tex->op == nir_texop_txd) {
       nir_def *ddx = nir_steal_tex_src(tex, nir_tex_src_ddx);
@@ -1025,6 +1057,51 @@ d12_nir_lower_sampler_lod_bias(nir_shader *nir)
 {
    return nir_shader_tex_pass(nir, d12_lower_sampler_lod_bias,
                               nir_metadata_none, NULL);
+}
+
+static bool
+d12_lower_bindless_sampler_map(nir_builder *b, nir_intrinsic_instr *intr,
+                               UNUSED void *data)
+{
+   if (intr->intrinsic != nir_intrinsic_bindless_sampler_agx)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_def *logical = nir_iadd_imm(b, nir_u2u32(b, intr->src[1].ssa), -28);
+   nir_def *table = nir_load_custom_border_table_agx(b);
+   nir_def *entry = nir_iadd(
+      b, table,
+      nir_u2u64(b, nir_imul_imm(b, logical, sizeof(struct d12_descriptor))));
+   nir_def *native = nir_load_global_constant(
+      b, 1, 16,
+      nir_iadd_imm(b, entry,
+                   offsetof(struct d12_descriptor, sampler_native_index)),
+      .align_mul = 2);
+
+   nir_src_rewrite(&intr->src[0], nir_imul_imm(b, nir_u2u32(b, native),
+                                               D12_SAMPLER_DESC_SIZE));
+   nir_src_rewrite(&intr->src[1], nir_u2u16(b, nir_iadd_imm(b, native, 28)));
+   return true;
+}
+
+static bool
+d12_nir_lower_bindless_sampler_map(nir_shader *nir)
+{
+   return nir_shader_intrinsics_pass(nir, d12_lower_bindless_sampler_map,
+                                     nir_metadata_none, NULL);
+}
+
+static bool
+d12_binding_map_uses_sampler_heap(const struct d12_binding_map *map)
+{
+   if (!map)
+      return false;
+
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].klass == D12_RES_SAMPLER && map->entries[i].unbounded)
+         return true;
+   }
+   return false;
 }
 
 /*
@@ -1117,6 +1194,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {
@@ -1170,6 +1248,10 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    struct agx_shader_part part;
    memset(&part, 0, sizeof(part));
    agx_compile_shader_nir(nir, &key, &part);
+   /* agx_nir_lower_texture consumes a dynamic sampler handle before the
+    * backend can conservatively set this bit.  The root map remains the
+    * authoritative declaration that the hardware sampler heap is needed. */
+   part.info.uses_sampler_heap |= d12_binding_map_uses_sampler_heap(map);
    part.info.sampler_state_count =
       MAX2(part.info.sampler_state_count, runtime_samplers);
    d12_report_scratch("shader", &part.info);
@@ -2005,6 +2087,7 @@ compile_gfx_stage(struct d12_device *device,
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
    if (runtime_samplers == UINT_MAX) {
@@ -2187,6 +2270,7 @@ compile_gfx_stage(struct d12_device *device,
 
    memset(out, 0, sizeof(*out));
    agx_compile_shader_nir(nir, &key, out);
+   out->info.uses_sampler_heap |= d12_binding_map_uses_sampler_heap(map);
    out->info.sampler_state_count =
       MAX2(out->info.sampler_state_count, runtime_samplers);
    d12_report_scratch("shader", &out->info);

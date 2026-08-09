@@ -3183,6 +3183,34 @@ d12_list_upload_custom_borders(struct d12_cmd_list *list,
                                    : info->sampler_state_count;
    *out_gpu = 0;
 
+   /* A bindless sampler handle indexes the coherent 40-byte D3D12 sampler
+    * heap.  Besides the exact border/bias metadata, each slot carries the
+    * deduplicated native AGX index.  Publish that heap directly so updates
+    * after command-list recording remain visible at execution time. */
+   if (info->uses_sampler_heap) {
+      struct d12_descriptor_heap *heap = list->sampler_descriptor_heap;
+      if (!heap || !heap->bo || !heap->sampler_bo ||
+          heap->desc.Type != D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+         mesa_loge("bindless custom-sampler metadata has no shader-visible "
+                   "sampler heap bound");
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      uint64_t table_gpu = heap->bo->va->addr;
+      *out_gpu = d12_list_upload(list, &table_gpu, sizeof(table_gpu), 8);
+      if (!*out_gpu)
+         return false;
+
+      if (validate) {
+         mesa_logi("binding validation: bindless sampler metadata="
+                   "0x%llx count=%u native=%u home=0x%llx valid=1",
+                   (unsigned long long)table_gpu, heap->desc.NumDescriptors,
+                   heap->sampler_unique_count, (unsigned long long)*out_gpu);
+      }
+      return true;
+   }
+
    if (count <= 1)
       return true;
    if (count > 17) {
@@ -3569,9 +3597,10 @@ d12_segment_bind_sampler_heap(struct d12_cmd_list *list,
       list->state = D12_LIST_ERROR;
       return false;
    }
-   if (heap->desc.NumDescriptors > 1024) {
-      mesa_loge("sampler heap has %u entries; AGX firmware supports 1024",
-                heap->desc.NumDescriptors);
+   if (heap->sampler_unique_count == UINT32_MAX ||
+       heap->sampler_unique_count > 1024) {
+      mesa_loge("sampler heap has more than 1024 distinct native states; "
+                "AGX firmware supports 1024");
       list->state = D12_LIST_ERROR;
       return false;
    }
@@ -3579,14 +3608,20 @@ d12_segment_bind_sampler_heap(struct d12_cmd_list *list,
    uint64_t address = heap->sampler_bo->va->addr;
    if (seg->sampler_heap &&
        (seg->sampler_heap != address ||
-        seg->sampler_count != heap->desc.NumDescriptors)) {
+        seg->sampler_count != heap->sampler_unique_count)) {
       mesa_loge("one hardware segment references multiple sampler heaps");
       list->state = D12_LIST_ERROR;
       return false;
    }
 
    seg->sampler_heap = address;
-   seg->sampler_count = heap->desc.NumDescriptors;
+   seg->sampler_count = heap->sampler_unique_count;
+   if (getenv("D3D12AGX_DUMP_SAMPLERS")) {
+      mesa_logi("bindless sampler compaction: logical=%u native=%u "
+                "heap=0x%llx",
+                heap->desc.NumDescriptors, heap->sampler_unique_count,
+                (unsigned long long)address);
+   }
    return true;
 }
 
@@ -6955,18 +6990,26 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
 
             if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
                size_t remaining = heap->desc.NumDescriptors - first;
-               size_t scan = MIN2(remaining, 1024);
+               size_t scan = remaining;
                unsigned populated = 0;
-               for (size_t i = 0; i < scan; i++)
+               unsigned invalid_native = 0;
+               for (size_t i = 0; i < scan; i++) {
                   populated += heap->slots[first + i].sampler_kind ==
                                D12_DESC_SAMPLER;
+                  invalid_native +=
+                     heap->slots[first + i].sampler_native_index >=
+                     heap->sampler_unique_count;
+               }
 
                mesa_logi("binding validation: unbounded sampler range "
                          "space=%u reg=%u root-slot=%u heap-index=%zu "
-                         "remaining=%zu scan=%zu populated=%u valid=%u",
+                         "remaining=%zu scan=%zu populated=%u "
+                         "native=%u invalid-native=%u valid=%u",
                          range->space, range->base_register, slot, first,
-                         remaining, scan, populated, populated == scan);
-               if (populated != scan) {
+                         remaining, scan, populated, heap->sampler_unique_count,
+                         invalid_native,
+                         populated == scan && invalid_native == 0);
+               if (populated != scan || invalid_native) {
                   list->state = D12_LIST_ERROR;
                   return;
                }
