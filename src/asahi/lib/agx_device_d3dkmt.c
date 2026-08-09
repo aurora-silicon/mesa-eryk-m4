@@ -116,33 +116,42 @@ agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
 {
    const agx_kmt_handle handles[1] = {fence};
    const uint64_t values[1] = {value};
+   HANDLE async_event = NULL;
+
+   if (timeout_ms != AGX_D3DKMT_INFINITE) {
+      async_event = CreateEventW(NULL, FALSE, FALSE, NULL);
+      if (async_event == NULL) {
+         errno = EIO;
+         return -1;
+      }
+   }
 
    struct agx_kmt_waitsyncfromcpu wait = {
       .hDevice = ws->device,
       .ObjectCount = 1,
       .ObjectHandleArray = handles,
       .FenceValueArray = values,
-      .hAsyncEvent = timeout_ms == AGX_D3DKMT_INFINITE ? NULL : ws->wait_event,
+      .hAsyncEvent = async_event,
    };
 
    /*
     * D3DKMTWaitForSynchronizationObjectFromCpu has no timeout parameter at
     * all: with hAsyncEvent NULL it blocks until satisfied, and with an event
     * it returns immediately and signals the event later. DRM's absolute
-    * deadline therefore becomes "arm the event, then wait on the event",
-    * which is why the winsys keeps one around.
+    * deadline therefore becomes "arm a private event, then wait on it".
     */
-   if (wait.hAsyncEvent != NULL)
-      ResetEvent(ws->wait_event);
-
    agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromCpu(&wait);
-   if (!AGX_KMT_SUCCESS(st))
+   if (!AGX_KMT_SUCCESS(st)) {
+      if (async_event != NULL)
+         CloseHandle(async_event);
       return agx_d3dkmt_fail(st);
+   }
 
-   if (wait.hAsyncEvent == NULL)
+   if (async_event == NULL)
       return 0;
 
-   DWORD r = WaitForSingleObject(ws->wait_event, timeout_ms);
+   DWORD r = WaitForSingleObject(async_event, timeout_ms);
+   CloseHandle(async_event);
    if (r == WAIT_OBJECT_0)
       return 0;
    if (r == WAIT_TIMEOUT) {
@@ -883,6 +892,72 @@ agx_d3dkmt_open_nt_handle_from_name(struct agx_device *dev,
  * VM_BIND.
  * ------------------------------------------------------------------------- */
 static int
+d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
+{
+   if (ws->va_context != 0 && ws->va_fence != 0)
+      return 0;
+   if (ws->va_context != 0 || ws->va_fence != 0 ||
+       ws->policy.usc_size == 0) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_kmt_createsyncobj2 fence = {
+      .hDevice = ws->device,
+      .Info = {
+         .Type = AGX_KMT_SYNC_MONITORED_FENCE,
+         .MonitoredFence = {
+            .InitialFenceValue = 0,
+            .EngineAffinity = 1,
+         },
+      },
+   };
+   agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&fence);
+   if (!AGX_KMT_SUCCESS(st))
+      return agx_d3dkmt_fail(st);
+
+   struct agxw_context_private priv = {
+      .version = AGXW_CONTEXT_PRIVATE_VERSION,
+      .struct_size = sizeof(priv),
+      .priority = AGXW_PRIORITY_MEDIUM,
+      .flags = AGXW_CONTEXT_PRIVATE_FLAG_VA_INTERLOCK,
+      .usc_exec_base = ws->policy.usc_base,
+   };
+   if (agxw_context_private_validate(&priv, sizeof(priv), ws->policy.usc_base,
+                                     ws->policy.usc_size) != 0) {
+      struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
+      ws->fns.DestroySynchronizationObject(&d);
+      errno = EINVAL;
+      return -1;
+   }
+
+   /* CreateContextVirtual selects the GPU-VA KMD context. Do not set
+    * SynchronizationOnly: UpdateGpuVirtualAddress requires the same real
+    * virtual-addressing context shape used by normal render queues. */
+   struct agx_kmt_createcontextvirtual create = {
+      .hDevice = ws->device,
+      .NodeOrdinal = ws->policy.node_ordinal,
+      .EngineAffinity = 1,
+      .pPrivateDriverData = &priv,
+      .PrivateDriverDataSize = sizeof(priv),
+   };
+   st = ws->fns.CreateContextVirtual(&create);
+   if (!AGX_KMT_SUCCESS(st)) {
+      struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
+      ws->fns.DestroySynchronizationObject(&d);
+      return agx_d3dkmt_fail(st);
+   }
+
+   ws->va_context = create.hContext;
+   ws->va_fence = fence.hSyncObject;
+   ws->va_fence_cpu =
+      (const volatile uint64_t *)fence.Info.MonitoredFence
+         .FenceValueCPUVirtualAddress;
+   ws->va_fence_next = 0;
+   return 0;
+}
+
+static int
 d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
                uint32_t count)
 {
@@ -946,15 +1021,26 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
     * the synchronous contract rather than push asynchrony up into Honeykrisp.
     */
    simple_mtx_lock(&ws->lock);
-   uint64_t fence_value = ++dev->next_blob_id;
+   if (ws->device_lost || ws->va_context == 0 || ws->va_fence == 0 ||
+       ws->va_fence_next == UINT64_MAX) {
+      simple_mtx_unlock(&ws->lock);
+      errno = ws->device_lost ? EIO : EINVAL;
+      goto out;
+   }
+   uint64_t fence_value = ws->va_fence_next;
+   uint64_t completion_value = fence_value + 1;
    struct agx_kmt_updategpuva update = {
       .hDevice = ws->device,
-      .hFenceObject = ws->paging_fence,
+      .hContext = ws->va_context,
+      .hFenceObject = ws->va_fence,
       .NumOperations = nops,
       .Operations = uops,
       .FenceValue = fence_value,
+      .Flags = 1u, /* D3DKMT_UPDATEGPUVIRTUALADDRESS::DoNotWait */
    };
    agx_kmt_status st = ws->fns.UpdateGpuVirtualAddress(&update);
+   if (AGX_KMT_SUCCESS(st))
+      ws->va_fence_next = completion_value;
    simple_mtx_unlock(&ws->lock);
 
    if (!AGX_KMT_SUCCESS(st)) {
@@ -963,7 +1049,12 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
       goto out;
    }
 
-   ret = agx_d3dkmt_wait_paging(ws, fence_value);
+   if (ws->va_fence_cpu == NULL || *ws->va_fence_cpu < completion_value)
+      ret = agx_d3dkmt_wait_fence(ws, ws->va_fence, completion_value, 10000u);
+   else
+      ret = 0;
+   if (ret != 0)
+      agx_d3dkmt_mark_device_lost(ws, NULL);
 
 out:
    if (binds != stack_binds)
@@ -1544,6 +1635,22 @@ d3dkmt_vm_create(struct agx_device *dev, struct drm_asahi_vm_create *vm)
    ws->policy.usc_base = dev->shader_base;
    ws->policy.usc_size = 0x100000000ull;
 
+   /* UpdateGpuVirtualAddress is sequenced against a real rendering context
+    * and its monitored fence. Establish that interlock before
+    * agx_open_device() performs its first zero-page bind. */
+   if (d3dkmt_va_update_init(ws) != 0) {
+      for (uint32_t i = 0; i < n; ++i) {
+         struct agx_kmt_freegpuva f = {
+            .hAdapter = ws->adapter,
+            .BaseAddress = ranges[i].base,
+            .Size = ranges[i].size,
+         };
+         ws->fns.FreeGpuVirtualAddress(&f);
+      }
+      ws->va_count = 0;
+      return -1;
+   }
+
    /* One VM per device; the id is never interpreted by the kernel here. */
    vm->vm_id = 1;
    return 0;
@@ -1857,10 +1964,6 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    ws->paging_fence_cpu =
       (const volatile uint64_t *)pq.FenceValueCPUVirtualAddress;
 
-   ws->wait_event = CreateEventW(NULL, TRUE /* manual reset */, FALSE, NULL);
-   if (ws->wait_event == NULL)
-      goto fail_paging;
-
    simple_mtx_init(&ws->lock, mtx_plain);
    agx_d3dkmt_pool_init(&ws->pool);
    agx_d3dkmt_sync_table_init(&ws->syncs);
@@ -1871,9 +1974,6 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    dev->ops = agx_device_d3dkmt_ops;
    return true; /* caller then runs agx_open_device() */
 
-fail_paging:;
-   struct agx_kmt_destroypagingqueue dpq = {.hPagingQueue = ws->paging_queue};
-   ws->fns.DestroyPagingQueue(&dpq);
 fail_device:;
    struct agx_kmt_destroydevice dd = {.hDevice = ws->device};
    ws->fns.DestroyDevice(&dd);
@@ -1919,6 +2019,17 @@ agx_d3dkmt_close_device(struct agx_device *dev)
    }
    free(ws->ctxs);
 
+   if (ws->va_context != 0) {
+      struct agx_kmt_destroycontext dc = {.hContext = ws->va_context};
+      ws->fns.DestroyContext(&dc);
+      ws->va_context = 0;
+   }
+   if (ws->va_fence != 0) {
+      struct agx_kmt_destroysyncobj ds = {.hSyncObject = ws->va_fence};
+      ws->fns.DestroySynchronizationObject(&ds);
+      ws->va_fence = 0;
+   }
+
    for (uint32_t i = 0; i < ws->va_count; ++i) {
       struct agx_kmt_freegpuva fva = {
          .hAdapter = ws->adapter,
@@ -1936,9 +2047,6 @@ agx_d3dkmt_close_device(struct agx_device *dev)
 
    struct agx_kmt_closeadapter ca = {.hAdapter = ws->adapter};
    ws->fns.CloseAdapter(&ca);
-
-   if (ws->wait_event != NULL)
-      CloseHandle(ws->wait_event);
 
    agx_d3dkmt_pool_finish(&ws->pool);
    agx_d3dkmt_sync_table_finish(&ws->syncs);

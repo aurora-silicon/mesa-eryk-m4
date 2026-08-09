@@ -64,10 +64,14 @@ struct agx_d3dkmt_winsys {
    agx_kmt_handle paging_fence;
    const volatile uint64_t *paging_fence_cpu;
 
-   /* Reusable event for CPU-side waits. D3DKMT's CPU wait has no timeout
-    * parameter; a timeout is expressed by handing it an event and waiting on
-    * the event instead. */
-   HANDLE wait_event;
+   /* UpdateGpuVirtualAddress is a rendering-context interlock, not a paging-
+    * queue operation. Keep one ordinary WDDM virtual-addressing context and
+    * its monitored fence alive for the device lifetime. Fence N is the value
+    * the update waits for; successful completion signals N + 1. */
+   agx_kmt_handle va_context;
+   agx_kmt_handle va_fence;
+   const volatile uint64_t *va_fence_cpu;
+   uint64_t va_fence_next;
 
    simple_mtx_t lock; /* guards pool, syncs, ctxs and the staging rings */
    struct agx_d3dkmt_handle_pool pool;
@@ -123,8 +127,8 @@ agx_d3dkmt_ws(struct agx_device *dev)
 
 /*
  * Block until `fence` reaches `value`, or `timeout_ms` elapses. Returns 0 on
- * success, -ETIME on timeout, -EIO on failure. Uses ws->wait_event, so the
- * caller must hold no lock that a concurrent waiter needs.
+ * success, -ETIME on timeout, -EIO on failure. A finite wait owns a fresh
+ * event, so concurrent waits and a late signal after timeout cannot alias.
  */
 int agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
                           uint64_t value, uint32_t timeout_ms);
