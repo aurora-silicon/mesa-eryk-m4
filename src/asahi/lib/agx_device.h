@@ -6,7 +6,9 @@
 #pragma once
 
 #include <stdint.h>
+#ifdef HAVE_LIBDRM
 #include <xf86drm.h>
+#endif
 #include "drm-uapi/asahi_drm.h"
 #include "util/ralloc.h"
 #include "util/simple_mtx.h"
@@ -20,9 +22,23 @@
 #include "layout.h"
 #include "libagx_dgc.h"
 
+/*
+ * honeykrisp-h1-execution.md SS2.1 row D2: vdrm.h and asahi_proto.h are not
+ * self-contained without libdrm (asahi_proto.h embeds struct vdrm_shmem,
+ * pulled from vdrm.h's own libdrm-using guts) and neither is needed by this
+ * header itself -- only by pointer (struct vdrm_device *dev->vdrm,
+ * struct asahi_ccmd_submit_res *agx_submit_virt::extres below). On Windows
+ * (no HAVE_LIBDRM) forward-declare instead; the real includes move into the
+ * virtio-only TUs that need the full definitions (agx_device_virtio.c,
+ * agx_device.c under HAVE_LIBDRM).
+ */
+#ifdef HAVE_LIBDRM
 #include "vdrm.h"
-
 #include "asahi_proto.h"
+#else
+struct vdrm_device;
+struct asahi_ccmd_submit_res;
+#endif
 
 enum agx_dbg {
    AGX_DBG_TRACE = BITFIELD_BIT(0),
@@ -196,7 +212,14 @@ struct agx_device {
 
    struct renderonly *ro;
 
-   pthread_mutex_t bo_map_lock;
+   /*
+    * honeykrisp-h1-execution.md SS2.1 "pthread inventory": simple_mtx_t
+    * (already used elsewhere in this struct, e.g. vma_lock/bo_cache.lock
+    * above) instead of pthread_mutex_t -- Windows-clean, mechanical rename,
+    * no Linux behavior change (simple_mtx_t is a thin pthread wrapper
+    * there).
+    */
+   simple_mtx_t bo_map_lock;
    struct util_sparse_array bo_map;
    uint32_t max_handle;
 

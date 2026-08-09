@@ -345,7 +345,7 @@ agx_bo_unreference(struct agx_device *dev, struct agx_bo *bo)
    if (refcnt)
       return;
 
-   pthread_mutex_lock(&dev->bo_map_lock);
+   simple_mtx_lock(&dev->bo_map_lock);
 
    /* Someone might have imported this BO while we were waiting for the
     * lock, let's make sure it's still not referenced before freeing it.
@@ -362,7 +362,7 @@ agx_bo_unreference(struct agx_device *dev, struct agx_bo *bo)
 
    agx_bo_dump_all_periodic(dev);
 
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
 }
 
 struct agx_bo *

@@ -25,20 +25,24 @@
 #include "libagx_shaders.h"
 
 #include <fcntl.h>
+#ifdef HAVE_LIBDRM
 #include <xf86drm.h>
 #include "drm-uapi/dma-buf.h"
+#include "vdrm.h"
+#endif
 #include "util/blob.h"
 #include "util/log.h"
 #include "util/mesa-blake3.h"
 #include "util/os_file.h"
+#ifdef HAVE_LIBDRM
 #include "util/os_mman.h"
+#endif
 #include "util/os_time.h"
 #include "util/simple_mtx.h"
 #include "util/u_math.h"
 #include "util/u_printf.h"
 #include "git_sha1.h"
 #include "nir_serialize.h"
-#include "vdrm.h"
 
 /*
  * honeykrisp-h1-execution.md SS1/SS2.1: promoted from `static inline` to a
@@ -46,7 +50,10 @@
  * (agx_device.h) in BOTH agx_device_drm_ops (below) and
  * agx_virtio_device_ops (agx_device_virtio.c) -- it already dispatches on
  * dev->is_virtio itself, so one function correctly backs both instances.
+ * HAVE_LIBDRM-only: the Windows winsys (agx_device_win.c) installs its own
+ * win_simple_ioctl in agx_device_win_ops instead.
  */
+#ifdef HAVE_LIBDRM
 int
 asahi_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req)
 {
@@ -80,6 +87,7 @@ agx_drm_bo_close(struct agx_device *dev, uint32_t handle)
    struct drm_gem_close args = {.handle = handle};
    drmIoctl(dev->fd, DRM_IOCTL_GEM_CLOSE, &args);
 }
+#endif /* HAVE_LIBDRM */
 
 /* clang-format off */
 static const struct debug_named_value agx_debug_options[] = {
@@ -125,8 +133,11 @@ agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
     */
    agx_va_free(dev, bo->va, false);
 
+#ifdef HAVE_LIBDRM
+   /* prime_fd is always -1 on Windows (no dma-buf import path, SS2.1). */
    if (bo->prime_fd != -1)
       close(bo->prime_fd);
+#endif
 
    /* Reset the handle. This has to happen before the GEM close to avoid a race.
     */
@@ -136,6 +147,7 @@ agx_bo_free(struct agx_device *dev, struct agx_bo *bo)
    dev->ops.bo_free(dev, handle);
 }
 
+#ifdef HAVE_LIBDRM
 static int
 agx_drm_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
                 uint32_t count)
@@ -154,6 +166,7 @@ agx_drm_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
 
    return ret;
 }
+#endif /* HAVE_LIBDRM */
 
 /*
  * Convenience helper to bind a single BO regardless of kernel module.
@@ -192,6 +205,17 @@ agx_bind_timestamps(struct agx_device *dev, struct agx_bo *bo, uint32_t *handle)
    return ret;
 }
 
+/*
+ * honeykrisp-h1-execution.md SS2.1: everything from here through
+ * `agx_device_drm_ops` below is the Linux/libdrm backend body -- the
+ * counterpart of agx_device_win.c's win_* functions and
+ * agx_device_win_ops. `agx_bo_import`/`agx_bo_export` get Windows stubs
+ * (row ":266..."): both are called unconditionally from
+ * hk_device_memory.c (behind extensions that are themselves disabled on
+ * Windows per SS2.2 row P2, but the C call sites still need something to
+ * link against).
+ */
+#ifdef HAVE_LIBDRM
 static struct agx_bo *
 agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
              enum agx_bo_flags flags)
@@ -220,10 +244,10 @@ agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 
    handle = gem_create.handle;
 
-   pthread_mutex_lock(&dev->bo_map_lock);
+   simple_mtx_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
    dev->max_handle = MAX2(dev->max_handle, handle);
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
 
    /* Fresh handle */
    assert(!memcmp(bo, &((struct agx_bo){}), sizeof(*bo)));
@@ -291,12 +315,12 @@ agx_bo_import(struct agx_device *dev, int fd)
    ASSERTED int ret;
    unsigned gem_handle;
 
-   pthread_mutex_lock(&dev->bo_map_lock);
+   simple_mtx_lock(&dev->bo_map_lock);
 
    ret = drmPrimeFDToHandle(dev->fd, fd, &gem_handle);
    if (ret) {
       fprintf(stderr, "import failed: Could not map fd %d to handle\n", fd);
-      pthread_mutex_unlock(&dev->bo_map_lock);
+      simple_mtx_unlock(&dev->bo_map_lock);
       return NULL;
    }
 
@@ -376,7 +400,7 @@ agx_bo_import(struct agx_device *dev, int fd)
       assert(bo->flags & AGX_BO_SHARED);
       assert(bo->prime_fd != -1);
    }
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
 
    assert(bo->dev != NULL && "post-condition");
 
@@ -389,7 +413,7 @@ agx_bo_import(struct agx_device *dev, int fd)
 
 error:
    memset(bo, 0, sizeof(*bo));
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
    return NULL;
 }
 
@@ -507,6 +531,28 @@ const agx_device_ops_t agx_device_drm_ops = {
    .bo_munmap = agx_drm_bo_munmap,
    .bo_free = agx_drm_bo_close,
 };
+#else /* !HAVE_LIBDRM */
+/*
+ * honeykrisp-h1-execution.md SS2.1 row ":266...": dma-buf import/export
+ * has no Windows equivalent in H1 (NT-handle external memory is
+ * post-M-GPU-TRI, per the same row) -- these two are the only bodies from
+ * the block above with call sites reachable outside HAVE_LIBDRM code
+ * (hk_device_memory.c's KHR_external_memory_fd paths, whose *enabling*
+ * extensions are compiled out on Windows per SS2.2 row P2, but whose C
+ * bodies still call these functions unconditionally).
+ */
+struct agx_bo *
+agx_bo_import(struct agx_device *dev, int fd)
+{
+   return NULL;
+}
+
+int
+agx_bo_export(struct agx_device *dev, struct agx_bo *bo)
+{
+   return -1;
+}
+#endif /* HAVE_LIBDRM */
 
 static uint64_t
 gcd(uint64_t n, uint64_t m)
@@ -537,16 +583,27 @@ agx_open_device(void *memctx, struct agx_device *dev)
    dev->debug =
       debug_get_flags_option("ASAHI_MESA_DEBUG", agx_debug_options, 0);
 
-   dev->ops = agx_device_drm_ops;
-
    ssize_t params_size = -1;
 
-   /* DRM version check */
-   {
+   /*
+    * honeykrisp-h1-execution.md SS2.1 row ":511-535": the DRM
+    * version-probe block below is HAVE_LIBDRM/Linux-only (drmGetVersion)
+    * and used to run unconditionally, clobbering any preset dev->ops.
+    * agx_win_open_device() (agx_device_win.c, SS1) presets dev->ops to
+    * agx_device_win_ops *before* calling this function, so skip the probe
+    * whenever a backend has already been selected -- Linux/virtio callers
+    * (which never preset dev->ops) are unaffected, they still take this
+    * branch exactly as before.
+    */
+   if (dev->ops.get_params == NULL) {
+#ifdef HAVE_LIBDRM
+      dev->ops = agx_device_drm_ops;
+
+      /* DRM version check */
       drmVersionPtr version = drmGetVersion(dev->fd);
       if (!version) {
          fprintf(stderr, "cannot get version: %s", strerror(errno));
-         return NULL;
+         return false;
       }
 
       if (!strcmp(version->name, "asahi")) {
@@ -565,6 +622,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
       }
 
       drmFreeVersion(version);
+#else
+      /* No backend preset and no libdrm to probe one with -- shouldn't
+       * happen: every non-HAVE_LIBDRM caller (agx_win_open_device) presets
+       * dev->ops itself. */
+      return false;
+#endif
    }
 
    params_size = dev->ops.get_params(dev, &dev->params, sizeof(dev->params));
@@ -635,7 +698,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
    agx_init_timestamps(dev);
 
    util_sparse_array_init(&dev->bo_map, sizeof(struct agx_bo), 512);
-   pthread_mutex_init(&dev->bo_map_lock, NULL);
+   simple_mtx_init(&dev->bo_map_lock, mtx_plain);
 
    simple_mtx_init(&dev->bo_cache.lock, mtx_plain);
    list_inithead(&dev->bo_cache.lru);
@@ -766,7 +829,11 @@ agx_close_device(struct agx_device *dev)
    util_vma_heap_finish(&dev->usc_heap);
    glsl_type_singleton_decref();
 
+   /* Non-DRM winsyses own their platform handles and tear them down after
+    * the common BO caches and VMA heaps have been finalized here. */
+#ifndef _WIN32
    close(dev->fd);
+#endif
 }
 
 uint32_t
@@ -818,6 +885,12 @@ agx_destroy_command_queue(struct agx_device *dev, uint32_t queue_id)
                                 &queue_destroy);
 }
 
+/*
+ * honeykrisp-h1-execution.md SS2.1 row ":803, :820": dma-buf ioctls, only
+ * reachable from agx_bo_make_shared (itself HAVE_LIBDRM-only above) and
+ * Linux WSI implicit sync -- never taken with the win32 WSI backend (SS4).
+ */
+#ifdef HAVE_LIBDRM
 int
 agx_import_sync_file(struct agx_device *dev, struct agx_bo *bo, int fd)
 {
@@ -853,11 +926,12 @@ agx_export_sync_file(struct agx_device *dev, struct agx_bo *bo)
 
    return ret >= 0 ? export_sync_file_ioctl.fd : ret;
 }
+#endif /* HAVE_LIBDRM */
 
 void
 agx_debug_fault(struct agx_device *dev, uint64_t addr)
 {
-   pthread_mutex_lock(&dev->bo_map_lock);
+   simple_mtx_lock(&dev->bo_map_lock);
 
    struct agx_bo *best = NULL;
 
@@ -898,7 +972,7 @@ agx_debug_fault(struct agx_device *dev, uint64_t addr)
       }
    }
 
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
 }
 
 uint64_t
