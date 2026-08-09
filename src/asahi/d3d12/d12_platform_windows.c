@@ -68,7 +68,6 @@ d12_platform_open_device(struct d12_device *device, IUnknown *adapter)
    device->sync = util_sync_provider_d3dkmt(&device->dev);
    if (!device->sync) {
       agx_close_device(&device->dev);
-      agx_d3dkmt_close_device(&device->dev);
       return false;
    }
 
@@ -89,7 +88,6 @@ d12_platform_close_device(struct d12_device *device)
    }
 
    agx_close_device(&device->dev);
-   agx_d3dkmt_close_device(&device->dev);
 }
 
 void
