@@ -2012,7 +2012,28 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          (uint64_t)dynamic_ranges[r].native_base * D12_TEXTURE_DESC_SIZE;
    }
 
-   uint64_t tables_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
+   /* The shader ABI names the three planes through pointers in the root
+    * headers; they do not need the old fixed 256-entry stride.  Upload only
+    * the dense slots declared by this root signature.  Stress workloads can
+    * record tens of thousands of root-descriptor changes in one list, and a
+    * fixed 6 KiB upload per dispatch exhausts an otherwise-small 32 MiB
+    * command arena. */
+   unsigned root_count = rs ? MAX2(rs->map.resource_count, 1) : 1;
+   if (root_count > D12_MAX_RESOURCE_BINDINGS) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   uint64_t compact[D12_ROOT_TABLE_ENTRIES];
+   memcpy(compact, addrs + D12_ROOT_RESOURCE_BASE,
+          root_count * sizeof(uint64_t));
+   memcpy(compact + root_count, addrs + D12_ROOT_COUNTER_BASE,
+          root_count * sizeof(uint64_t));
+   memcpy(compact + 2 * root_count, addrs + D12_ROOT_BUFINFO_BASE,
+          root_count * sizeof(uint64_t));
+
+   uint64_t tables_gpu = d12_list_upload(
+      list, compact, 3 * root_count * sizeof(uint64_t), 8);
    if (!tables_gpu)
       return false;
 
@@ -2023,8 +2044,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       return false;
 
    uint64_t metadata_header[] = {
-      tables_gpu + D12_ROOT_COUNTER_BASE * sizeof(uint64_t),
-      tables_gpu + D12_ROOT_BUFINFO_BASE * sizeof(uint64_t),
+      tables_gpu + root_count * sizeof(uint64_t),
+      tables_gpu + 2 * root_count * sizeof(uint64_t),
       null_buf,
       discard_buf,
    };
@@ -2064,7 +2085,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          ? (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE
          : 0;
    uint64_t header[] = {
-      tables_gpu + D12_ROOT_RESOURCE_BASE * sizeof(uint64_t),
+      tables_gpu,
       metadata_gpu,
       sampler_tables_gpu,
       heap_pbe_null_offset,
@@ -2537,6 +2558,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          .textures_gpu = i < last_texture ? heap_gpu : 0,
          .pbes_gpu = i < last_texture ? pbe_heap_gpu : 0,
          .slot = i,
+         .table_count = root_count,
          .texture_shape =
             list->pso ? list->pso->texture_shapes[i] : D12_TEXTURE_SHAPE_NONE,
       };
@@ -2860,7 +2882,9 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
    util_dynarray_foreach (&list->descriptor_fixups,
                           struct d12_descriptor_fixup, fixup) {
       if (!fixup->source ||
-          (!fixup->native_only && fixup->slot >= D12_MAX_RESOURCE_BINDINGS))
+          (!fixup->native_only &&
+           (fixup->slot >= D12_MAX_RESOURCE_BINDINGS ||
+            fixup->slot >= fixup->table_count)))
          return false;
 
       const struct d12_descriptor *d = fixup->source;
@@ -2901,18 +2925,18 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
       if (!tables)
          return false;
 
-      tables[D12_ROOT_RESOURCE_BASE + slot] =
+      tables[slot] =
          d->address ? d->address : list->null_buffer;
-      tables[D12_ROOT_COUNTER_BASE + slot] =
+      tables[fixup->table_count + slot] =
          d->counter_address
             ? d->counter_address
             : list->null_counters + slot * sizeof(uint32_t);
       uint64_t heap_layout =
-         tables[D12_ROOT_BUFINFO_BASE + slot] & 0xffff000000000000ull;
+         tables[2 * fixup->table_count + slot] & 0xffff000000000000ull;
       unsigned last_texture = heap_layout >> 48;
       if (!last_texture)
          return false;
-      tables[D12_ROOT_BUFINFO_BASE + slot] =
+      tables[2 * fixup->table_count + slot] =
          d12_descriptor_bufinfo(d) | heap_layout;
 
       if (fixup->textures_gpu) {

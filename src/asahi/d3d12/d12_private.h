@@ -511,6 +511,7 @@ struct d12_descriptor_fixup {
    uint64_t textures_gpu;
    uint64_t pbes_gpu;
    uint32_t slot;
+   uint16_t table_count;
    uint8_t texture_shape;
    bool native_only;
 };
