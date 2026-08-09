@@ -11,19 +11,25 @@ inc_asahi = include_directories([
 
 subdir('isa')
 
-if with_gallium_asahi or with_asahi_vk or with_tools.contains('asahi')
+with_asahi_d3d12 = get_option('asahi-d3d12')
+with_asahi_common = with_gallium_asahi or with_asahi_vk or \
+                    with_asahi_d3d12 or with_tools.contains('asahi')
+
+if with_asahi_common
    subdir('genxml')
    subdir('libagx')
    subdir('compiler')
    subdir('clc')
 endif
 
-if with_gallium_asahi or with_asahi_vk
+if with_gallium_asahi or with_asahi_vk or with_asahi_d3d12
    subdir('layout')
    subdir('lib')
 elif dep_iokit.found()
    # Just build enough for libwrap.dylib
-   subdir('genxml')
+   if not with_asahi_common
+      subdir('genxml')
+   endif
    subdir('lib')
 endif
 
@@ -31,10 +37,7 @@ if with_asahi_vk
    subdir('vulkan')
 endif
 
-if get_option('asahi-d3d12')
-   if not with_asahi_vk
-      error('asahi-d3d12 requires -Dvulkan-drivers=asahi (shared AGX substrate)')
-   endif
+if with_asahi_d3d12
    subdir('d3d12')
 endif
 
