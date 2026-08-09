@@ -278,19 +278,27 @@ uint32_t
 agx_d3dkmt_va_split_carveout(uint64_t base, uint64_t size,
                              struct agx_d3dkmt_va_range out[2])
 {
-   const uint64_t cb = AGXW_VM_KERNEL_CARVEOUT_BASE;
-   const uint64_t ce = AGXW_VM_KERNEL_CARVEOUT_BASE + AGXW_VM_KERNEL_CARVEOUT_SIZE;
+   const uint64_t gran = AGX_D3DKMT_RESERVATION_GRANULARITY;
+   const uint64_t mask = gran - 1;
+   const uint64_t cb = AGXW_VM_KERNEL_CARVEOUT_BASE & ~mask;
+   const uint64_t ce =
+      (AGXW_VM_KERNEL_CARVEOUT_BASE + AGXW_VM_KERNEL_CARVEOUT_SIZE + mask) &
+      ~mask;
    uint32_t n = 0;
 
-   if (size == 0)
+   if (size == 0 || base > UINT64_MAX - size || base > UINT64_MAX - mask)
       return 0;
 
    uint64_t end = base + size;
+   base = (base + mask) & ~mask;
+   end &= ~mask;
+   if (base >= end)
+      return 0;
 
-   /* Entirely below or entirely above: one range, unchanged. */
+   /* Entirely below or entirely above: one inward-aligned range. */
    if (end <= cb || base >= ce) {
       out[0].base = base;
-      out[0].size = size;
+      out[0].size = end - base;
       return 1;
    }
 

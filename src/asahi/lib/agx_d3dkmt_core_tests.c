@@ -402,46 +402,56 @@ test_va_split_carveout(void)
    struct agx_d3dkmt_va_range r[2];
    const uint64_t cb = AGXW_VM_KERNEL_CARVEOUT_BASE;
    const uint64_t cs = AGXW_VM_KERNEL_CARVEOUT_SIZE;
+   const uint64_t gran = AGX_D3DKMT_RESERVATION_GRANULARITY;
 
-   /* Entirely below. */
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(AGXW_VM_USER_START, cb - AGXW_VM_USER_START, r), 1);
-   CHECK_EQ(r[0].base, AGXW_VM_USER_START);
-   CHECK_EQ(r[0].size, cb - AGXW_VM_USER_START);
+   /* The 16 KiB AGX lower bound is rounded inward to WDDM's 64 KiB ABI. */
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(
+               AGXW_VM_USER_START, cb - AGXW_VM_USER_START, r),
+            1);
+   CHECK_EQ(r[0].base, gran);
+   CHECK_EQ(r[0].size, cb - gran);
 
-   /* Entirely above. */
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb + cs, AGXW_PAGE_SIZE, r), 1);
-   CHECK_EQ(r[0].base, cb + cs);
+   /* A sub-64 KiB range cannot be reserved through D3DKMT. */
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb + cs, AGXW_PAGE_SIZE, r), 0);
 
-   /* Spanning it: two ranges that exactly omit the carve-out. */
-   uint64_t base = cb - 4 * AGXW_PAGE_SIZE;
-   uint64_t size = 9 * AGXW_PAGE_SIZE;
+   /* Spanning it omits the complete 64 KiB block containing the carve-out. */
+   uint64_t base = cb - gran;
+   uint64_t size = 3 * gran;
    CHECK_EQ(agx_d3dkmt_va_split_carveout(base, size, r), 2);
    CHECK_EQ(r[0].base, base);
-   CHECK_EQ(r[0].size, 4 * AGXW_PAGE_SIZE);
-   CHECK_EQ(r[1].base, cb + cs);
-   CHECK_EQ(r[1].size, base + size - (cb + cs));
-   CHECK_EQ(r[0].size + r[1].size + cs, size);
+   CHECK_EQ(r[0].size, gran);
+   CHECK_EQ(r[1].base, cb + gran);
+   CHECK_EQ(r[1].size, gran);
+   CHECK_EQ(r[0].size + r[1].size + gran, size);
 
-   /* Ending exactly at the carve-out, and starting exactly after it. */
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb - AGXW_PAGE_SIZE, AGXW_PAGE_SIZE, r), 1);
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb + cs, AGXW_PAGE_SIZE, r), 1);
+   /* Ending exactly at the block and starting exactly after it are legal. */
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb - gran, gran, r), 1);
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb + gran, gran, r), 1);
 
-   /* Exactly the carve-out: nothing reservable. */
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb, cs, r), 0);
+   /* Exactly the carve-out block: nothing reservable. */
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb, gran, r), 0);
 
-   /* Starting on it and extending above: one range above. */
-   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb, cs + AGXW_PAGE_SIZE, r), 1);
-   CHECK_EQ(r[0].base, cb + cs);
-   CHECK_EQ(r[0].size, AGXW_PAGE_SIZE);
+   /* Starting on it and extending above: one aligned range above. */
+   CHECK_EQ(agx_d3dkmt_va_split_carveout(cb, 2 * gran, r), 1);
+   CHECK_EQ(r[0].base, cb + gran);
+   CHECK_EQ(r[0].size, gran);
 
    CHECK_EQ(agx_d3dkmt_va_split_carveout(cb, 0, r), 0);
 
-   /* The whole user window: exactly two ranges, and they tile it. */
+   /* The whole user window becomes two legal WDDM reservations. */
    CHECK_EQ(agx_d3dkmt_va_split_carveout(AGXW_VM_USER_START,
                                          AGXW_VM_USER_END - AGXW_VM_USER_START,
                                          r),
             2);
-   CHECK_EQ(r[0].size + r[1].size + cs, AGXW_VM_USER_END - AGXW_VM_USER_START);
+   CHECK_EQ(r[0].base % gran, 0);
+   CHECK_EQ(r[0].size % gran, 0);
+   CHECK_EQ(r[1].base % gran, 0);
+   CHECK_EQ(r[1].size % gran, 0);
+   CHECK_EQ(r[0].base, gran);
+   CHECK_EQ(r[1].base, cb + gran);
+
+   CHECK_EQ(
+      agx_d3dkmt_va_split_carveout(UINT64_MAX - gran + 1, gran, r), 0);
 }
 
 static void

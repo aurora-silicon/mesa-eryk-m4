@@ -52,6 +52,12 @@ extern "C" {
  * Mesa-free; agx_device_d3dkmt.c static_asserts the two agree. */
 #define AGX_D3DKMT_PAGE_SIZE AGXW_PAGE_SIZE
 
+/* D3DDDI_RESERVEGPUVIRTUALADDRESS is a Windows UMD ABI rather than an AGX
+ * page-table ABI: BaseAddress, MinimumAddress, MaximumAddress and Size are
+ * all required to be 64 KiB aligned even though AGX maps native 16 KiB
+ * pages. Keep that distinction at the D3DKMT boundary. */
+#define AGX_D3DKMT_RESERVATION_GRANULARITY UINT64_C(0x10000)
+
 /*
  * Runtime policy: contract answers that may legitimately differ per adapter or
  * per contract revision, kept out of the call sites so reconciling them is a
@@ -256,9 +262,11 @@ int agx_d3dkmt_translate_binds(const struct agx_d3dkmt_bind *binds,
  * never hands it out -- but a reservation spanning it would still be asking
  * for a range that includes it.
  *
- * Split [base, base+size) around the carve-out. Writes 1 or 2 sub-ranges into
- * out[] and returns the count; returns 0 if the whole range is the carve-out.
- * out must have room for 2.
+ * Align [base, base+size) inward to the WDDM 64 KiB reservation ABI, then
+ * split it around the 64 KiB reservation block containing the 16 KiB AGX
+ * carve-out. Writes 1 or 2 sub-ranges into out[] and returns the count;
+ * returns 0 when no complete WDDM reservation block remains. out must have
+ * room for 2.
  */
 struct agx_d3dkmt_va_range {
    uint64_t base;
