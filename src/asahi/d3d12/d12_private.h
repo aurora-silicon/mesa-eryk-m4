@@ -74,6 +74,16 @@ d12_guid_equal(REFIID a, REFIID b)
    return memcmp(a, b, sizeof(GUID)) == 0;
 }
 
+static inline bool
+d12_handle_is_invalid(HANDLE handle)
+{
+#ifdef _WIN32
+   return !handle || handle == INVALID_HANDLE_VALUE;
+#else
+   return !handle;
+#endif
+}
+
 /* Crash-safe vtable defaults (generated). Every slot we do not implement
  * points at a typed stub that reports and fails, so an unimplemented call
  * is a recordable failure instead of a jump to NULL.

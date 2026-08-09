@@ -2102,7 +2102,7 @@ d12_resource_open_shared_handle(struct d12_device *device, HANDLE handle,
    if (!out)
       return E_POINTER;
    *out = NULL;
-   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+   if (!riid || d12_handle_is_invalid(handle))
       return E_INVALIDARG;
 
    struct d12_d3dkmt_d3d12_desc metadata = {0};
@@ -2365,7 +2365,7 @@ d12_heap_open_shared_handle(struct d12_device *device, HANDLE handle,
    if (!out)
       return E_POINTER;
    *out = NULL;
-   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+   if (!riid || d12_handle_is_invalid(handle))
       return E_INVALIDARG;
 
    uint8_t metadata[sizeof(struct d12_d3dkmt_d3d12_desc)] = {0};

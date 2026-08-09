@@ -95,10 +95,10 @@ agx_virtio_bo_alloc(struct agx_device *dev, size_t size, size_t align,
       return NULL;
    }
 
-   pthread_mutex_lock(&dev->bo_map_lock);
+   simple_mtx_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
    dev->max_handle = MAX2(dev->max_handle, handle);
-   pthread_mutex_unlock(&dev->bo_map_lock);
+   simple_mtx_unlock(&dev->bo_map_lock);
 
    /* Fresh handle */
    assert(!memcmp(bo, &((struct agx_bo){}), sizeof(*bo)));

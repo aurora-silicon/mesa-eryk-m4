@@ -702,7 +702,7 @@ d12_fence_open_shared_handle(struct d12_device *device, HANDLE handle,
    if (!out)
       return E_POINTER;
    *out = NULL;
-   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+   if (!riid || d12_handle_is_invalid(handle))
       return E_INVALIDARG;
 
    uint32_t syncobj = 0;

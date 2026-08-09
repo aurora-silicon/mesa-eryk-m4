@@ -52,26 +52,6 @@ else
   libasahi_lib_inc_win = []
 endif
 
-if asahi_lib_is_windows
-  libasahi_lib_includes = [inc_asahi, libasahi_lib_inc_win]
-  libasahi_lib_links = [libpoly_nir]
-  libasahi_lib_deps = [
-    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
-  ]
-elif asahi_lib_has_virtio
-  libasahi_lib_includes = [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm]
-  libasahi_lib_links = [libasahi_decode, libvdrm, libpoly_nir]
-  libasahi_lib_deps = [
-    dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx,
-    idep_libpoly,
-  ]
-else
-  libasahi_lib_includes = [inc_asahi]
-  libasahi_lib_links = [libasahi_decode, libpoly_nir]
-  libasahi_lib_deps = [
-    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
-  ]
-endif
 libasahi_decode_files = files(
   'decode.c',
 )
@@ -94,6 +74,27 @@ libasahi_decode_shared = shared_library(
   build_by_default : with_tools.contains('asahi'),
   link_with : [libagx2_disasm],
 )
+
+if asahi_lib_is_windows
+  libasahi_lib_includes = [inc_asahi, libasahi_lib_inc_win]
+  libasahi_lib_links = [libpoly_nir]
+  libasahi_lib_deps = [
+    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
+  ]
+elif asahi_lib_has_virtio
+  libasahi_lib_includes = [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm]
+  libasahi_lib_links = [libasahi_decode, libvdrm, libpoly_nir]
+  libasahi_lib_deps = [
+    dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx,
+    idep_libpoly,
+  ]
+else
+  libasahi_lib_includes = [inc_asahi]
+  libasahi_lib_links = [libasahi_decode, libpoly_nir]
+  libasahi_lib_deps = [
+    dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly,
+  ]
+endif
 
 libagx_shaders = custom_target(
   input : libagx_spv,
