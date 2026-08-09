@@ -30,7 +30,9 @@
 #include "agx_d3dkmt_priv.h"
 
 #include <errno.h>
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <winternl.h>
 
@@ -73,6 +75,28 @@ static_assert((int)AGXW_PRIORITY_REALTIME == (int)DRM_ASAHI_PRIORITY_REALTIME,
  * 264 bytes), but QueryResourceInfo reports an arbitrary kernel-owned size.
  * Keep a generous, explicit ceiling before allocating or opening buffers. */
 #define AGX_D3DKMT_MAX_RUNTIME_DATA_SIZE (64u * 1024u)
+
+static bool
+d3dkmt_log_enabled(void)
+{
+   const char *value = getenv("NTAGX_ENUM_LOG");
+   return value != NULL && value[0] != '\0' && value[0] != '0';
+}
+
+static void
+d3dkmt_log(const char *format, ...)
+{
+   if (!d3dkmt_log_enabled())
+      return;
+
+   va_list args;
+   va_start(args, format);
+   fputs("NTAGX_D3DKMT ", stderr);
+   vfprintf(stderr, format, args);
+   fputc('\n', stderr);
+   fflush(stderr);
+   va_end(args);
+}
 
 /* -------------------------------------------------------------------------
  * Error mapping and waits.
@@ -912,7 +936,11 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
          },
       },
    };
+   d3dkmt_log("va-interlock create-fence begin device=0x%08x",
+              (unsigned)ws->device);
    agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&fence);
+   d3dkmt_log("va-interlock create-fence end status=0x%08x fence=0x%08x",
+              (unsigned)st, (unsigned)fence.hSyncObject);
    if (!AGX_KMT_SUCCESS(st))
       return agx_d3dkmt_fail(st);
 
@@ -941,7 +969,11 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
       .pPrivateDriverData = &priv,
       .PrivateDriverDataSize = sizeof(priv),
    };
+   d3dkmt_log("va-interlock create-context begin device=0x%08x",
+              (unsigned)ws->device);
    st = ws->fns.CreateContextVirtual(&create);
+   d3dkmt_log("va-interlock create-context end status=0x%08x context=0x%08x",
+              (unsigned)st, (unsigned)create.hContext);
    if (!AGX_KMT_SUCCESS(st)) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
       ws->fns.DestroySynchronizationObject(&d);
@@ -1038,7 +1070,14 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
       .FenceValue = fence_value,
       .Flags = 1u, /* D3DKMT_UPDATEGPUVIRTUALADDRESS::DoNotWait */
    };
+   d3dkmt_log("update-gpuva begin context=0x%08x fence=0x%08x value=%llu "
+              "operations=%u flags=0x%x",
+              (unsigned)update.hContext, (unsigned)update.hFenceObject,
+              (unsigned long long)update.FenceValue, update.NumOperations,
+              update.Flags);
    agx_kmt_status st = ws->fns.UpdateGpuVirtualAddress(&update);
+   d3dkmt_log("update-gpuva end status=0x%08x completion=%llu",
+              (unsigned)st, (unsigned long long)completion_value);
    if (AGX_KMT_SUCCESS(st))
       ws->va_fence_next = completion_value;
    simple_mtx_unlock(&ws->lock);
@@ -1049,10 +1088,19 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
       goto out;
    }
 
-   if (ws->va_fence_cpu == NULL || *ws->va_fence_cpu < completion_value)
+   if (ws->va_fence_cpu == NULL || *ws->va_fence_cpu < completion_value) {
+      d3dkmt_log("update-gpuva wait begin fence=0x%08x value=%llu",
+                 (unsigned)ws->va_fence,
+                 (unsigned long long)completion_value);
       ret = agx_d3dkmt_wait_fence(ws, ws->va_fence, completion_value, 10000u);
-   else
+      d3dkmt_log("update-gpuva wait end result=%d errno=%d cpu-value=%llu",
+                 ret, errno,
+                 (unsigned long long)(ws->va_fence_cpu
+                                         ? *ws->va_fence_cpu
+                                         : 0));
+   } else {
       ret = 0;
+   }
    if (ret != 0)
       agx_d3dkmt_mark_device_lost(ws, NULL);
 
@@ -1533,7 +1581,13 @@ d3dkmt_reserve(struct agx_d3dkmt_winsys *ws, uint64_t base, uint64_t size)
       .ReservationType = AGX_KMT_GPUVA_RESERVE_NO_ACCESS,
    };
 
+   d3dkmt_log("reserve-gpuva begin queue=0x%08x base=0x%llx size=0x%llx",
+              (unsigned)ws->paging_queue, (unsigned long long)base,
+              (unsigned long long)size);
    agx_kmt_status st = ws->fns.ReserveGpuVirtualAddress(&reserve);
+   d3dkmt_log("reserve-gpuva end status=0x%08x address=0x%llx fence=%llu",
+              (unsigned)st, (unsigned long long)reserve.VirtualAddress,
+              (unsigned long long)reserve.PagingFenceValue);
    if (!AGX_KMT_SUCCESS(st)) {
       fprintf(stderr, "D3DKMTReserveGpuVirtualAddress(0x%llx, 0x%llx) failed\n",
               (unsigned long long)base, (unsigned long long)size);
@@ -1563,7 +1617,15 @@ d3dkmt_reserve(struct agx_d3dkmt_winsys *ws, uint64_t base, uint64_t size)
       return -1;
    }
 
-   return agx_d3dkmt_wait_paging(ws, reserve.PagingFenceValue);
+   d3dkmt_log("reserve-gpuva wait begin fence=%llu",
+              (unsigned long long)reserve.PagingFenceValue);
+   int ret = agx_d3dkmt_wait_paging(ws, reserve.PagingFenceValue);
+   d3dkmt_log("reserve-gpuva wait end result=%d errno=%d cpu-value=%llu", ret,
+              errno,
+              (unsigned long long)(ws->paging_fence_cpu
+                                      ? *ws->paging_fence_cpu
+                                      : 0));
+   return ret;
 }
 
 static int
@@ -1864,7 +1926,12 @@ query_identity(const struct agx_d3dkmt_fns *fns, agx_kmt_handle adapter,
       .PrivateDriverDataSize = sizeof(blob),
    };
 
-   if (!AGX_KMT_SUCCESS(fns->QueryAdapterInfo(&query)))
+   agx_kmt_status status = fns->QueryAdapterInfo(&query);
+   d3dkmt_log("identity adapter=0x%08x status=0x%08x magic=0x%08x "
+              "version=%u size=%u contract=%u params=%u",
+              (unsigned)adapter, (unsigned)status, blob.magic, blob.version,
+              blob.struct_size, blob.contract_version, blob.params_blob_size);
+   if (!AGX_KMT_SUCCESS(status))
       return false;
 
    return agx_d3dkmt_parse_identity(&blob, sizeof(blob), policy, out) ==
@@ -1881,11 +1948,16 @@ agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
 
    *count = 0;
 
-   if (!agx_d3dkmt_load(&fns))
+   if (!agx_d3dkmt_load(&fns)) {
+      d3dkmt_log("enumerate load-thunks failed");
       return false;
+   }
 
    struct agx_kmt_enumadapters2 e = {0};
-   if (!AGX_KMT_SUCCESS(fns.EnumAdapters2(&e)))
+   agx_kmt_status status = fns.EnumAdapters2(&e);
+   d3dkmt_log("enumerate count status=0x%08x adapters=%u", (unsigned)status,
+              e.NumAdapters);
+   if (!AGX_KMT_SUCCESS(status))
       return false;
    if (e.NumAdapters == 0)
       return true;
@@ -1895,7 +1967,10 @@ agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
       return false;
 
    e.pAdapters = infos;
-   if (!AGX_KMT_SUCCESS(fns.EnumAdapters2(&e))) {
+   status = fns.EnumAdapters2(&e);
+   d3dkmt_log("enumerate fill status=0x%08x adapters=%u", (unsigned)status,
+              e.NumAdapters);
+   if (!AGX_KMT_SUCCESS(status)) {
       free(infos);
       return false;
    }
@@ -1903,6 +1978,11 @@ agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
    for (uint32_t i = 0; i < e.NumAdapters; ++i) {
       struct agx_d3dkmt_policy policy;
       struct agxw_adapter_identity id;
+
+      d3dkmt_log("enumerate candidate=%u adapter=0x%08x luid=%08x:%08x", i,
+                 (unsigned)infos[i].hAdapter,
+                 (unsigned)infos[i].AdapterLuid.HighPart,
+                 (unsigned)infos[i].AdapterLuid.LowPart);
 
       /* A foreign adapter's UMDRIVERPRIVATE blob fails the magic/version/
        * contract-version check and is skipped. */
@@ -1916,6 +1996,7 @@ agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
 
    free(infos);
    *count = found;
+   d3dkmt_log("enumerate accepted=%u", found);
    return true;
 }
 
@@ -1933,7 +2014,12 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    ws->luid = *luid;
 
    struct agx_kmt_openadapterfromluid open = {.AdapterLuid = *luid};
-   if (!AGX_KMT_SUCCESS(ws->fns.OpenAdapterFromLuid(&open)))
+   d3dkmt_log("open-adapter begin luid=%08x:%08x", (unsigned)luid->HighPart,
+              (unsigned)luid->LowPart);
+   agx_kmt_status status = ws->fns.OpenAdapterFromLuid(&open);
+   d3dkmt_log("open-adapter end status=0x%08x adapter=0x%08x",
+              (unsigned)status, (unsigned)open.hAdapter);
+   if (!AGX_KMT_SUCCESS(status))
       goto fail_alloc;
    ws->adapter = open.hAdapter;
 
@@ -1948,16 +2034,31 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    ws->params = malloc(ws->params_size);
    if (ws->params == NULL)
       goto fail_adapter;
-   if (d3dkmt_escape(ws, AGXW_ESC_GET_PARAMS, ws->params, ws->params_size))
+   d3dkmt_log("get-params begin size=%u", ws->params_size);
+   int params_status =
+      d3dkmt_escape(ws, AGXW_ESC_GET_PARAMS, ws->params, ws->params_size);
+   d3dkmt_log("get-params end result=%d errno=%d", params_status, errno);
+   if (params_status != 0)
       goto fail_params;
 
    struct agx_kmt_createdevice create = {.hAdapter = ws->adapter};
-   if (!AGX_KMT_SUCCESS(ws->fns.CreateDevice(&create)))
+   d3dkmt_log("create-device begin adapter=0x%08x", (unsigned)ws->adapter);
+   status = ws->fns.CreateDevice(&create);
+   d3dkmt_log("create-device end status=0x%08x device=0x%08x",
+              (unsigned)status, (unsigned)create.hDevice);
+   if (!AGX_KMT_SUCCESS(status))
       goto fail_params;
    ws->device = create.hDevice;
 
    struct agx_kmt_createpagingqueue pq = {.hDevice = ws->device};
-   if (!AGX_KMT_SUCCESS(ws->fns.CreatePagingQueue(&pq)))
+   d3dkmt_log("create-paging-queue begin device=0x%08x",
+              (unsigned)ws->device);
+   status = ws->fns.CreatePagingQueue(&pq);
+   d3dkmt_log("create-paging-queue end status=0x%08x queue=0x%08x "
+              "fence=0x%08x cpu=%p",
+              (unsigned)status, (unsigned)pq.hPagingQueue,
+              (unsigned)pq.hSyncObject, pq.FenceValueCPUVirtualAddress);
+   if (!AGX_KMT_SUCCESS(status))
       goto fail_device;
    ws->paging_queue = pq.hPagingQueue;
    ws->paging_fence = pq.hSyncObject;
