@@ -43,6 +43,9 @@
 #include "util/u_printf.h"
 #include "git_sha1.h"
 #include "nir_serialize.h"
+#ifdef _WIN32
+#include "agx_device_d3dkmt.h"
+#endif
 
 /*
  * honeykrisp-h1-execution.md SS1/SS2.1: promoted from `static inline` to a
@@ -857,7 +860,10 @@ agx_close_device(struct agx_device *dev)
 
    /* Non-DRM winsyses own their platform handles and tear them down after
     * the common BO caches and VMA heaps have been finalized here. */
-#ifndef _WIN32
+#ifdef _WIN32
+   if (dev->ops.simple_ioctl == agx_device_d3dkmt_ops.simple_ioctl)
+      agx_d3dkmt_close_device(dev);
+#else
    close(dev->fd);
 #endif
 }

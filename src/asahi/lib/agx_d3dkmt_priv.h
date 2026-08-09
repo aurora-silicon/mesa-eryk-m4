@@ -48,6 +48,7 @@ struct agx_d3dkmt_ctx {
    unsigned staging_slot;
 };
 
+struct agx_d3dkmt_process_device;
 struct agx_d3dkmt_process_va;
 
 struct agx_d3dkmt_winsys {
@@ -57,6 +58,11 @@ struct agx_d3dkmt_winsys {
 
    agx_kmt_handle adapter;
    agx_kmt_handle device;
+
+   /* PID+adapter lease for the one D3DKMT device backing the process GPU-VA
+    * root.  The section is named so separately linked Mesa copies converge
+    * on the same KMT handle rather than merely sharing an allocator. */
+   struct agx_d3dkmt_process_device *process_device;
 
    /* Paging queue: every GPU VA and residency operation is asynchronous on
     * WDDM and completes on this queue's monitored fence. DRM's VM_BIND is

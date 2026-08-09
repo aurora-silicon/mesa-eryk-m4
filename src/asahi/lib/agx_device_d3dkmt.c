@@ -73,6 +73,237 @@ static_assert((int)AGXW_PRIORITY_LOW == (int)DRM_ASAHI_PRIORITY_LOW,
 static_assert((int)AGXW_PRIORITY_REALTIME == (int)DRM_ASAHI_PRIORITY_REALTIME,
               "priority REALTIME");
 
+static void d3dkmt_log(const char *format, ...);
+
+/* -------------------------------------------------------------------------
+ * Process-wide D3DKMT device lease.
+ *
+ * Dxgkrnl exposes one GPU-VA root per process and adapter.  The KMD also
+ * associates its VM/ASID with D3DKMTCreateDevice, so sharing only the VA
+ * reservation is insufficient: a logical Vulkan device created through a
+ * second KMT device can update the process VA while its render context points
+ * at a different, unpublished KMD root.
+ *
+ * Mesa is statically linked into the native D3D12 DLL and the Vulkan ICD.
+ * A named section therefore carries the process-global KMT device handle and
+ * its owning adapter handle across module boundaries.  Paging queues,
+ * contexts, fences, and frontend state remain private to each winsys.
+ * ------------------------------------------------------------------------- */
+#define AGX_D3DKMT_PROCESS_DEVICE_MAGIC   0x56445841u /* 'AXDV' */
+#define AGX_D3DKMT_PROCESS_DEVICE_VERSION 1u
+
+struct agx_d3dkmt_process_device_shared {
+   uint32_t magic;
+   uint32_t version;
+   uint32_t mapping_bytes;
+   uint32_t clients;
+   uint32_t device;
+   uint32_t owner_adapter;
+};
+
+struct agx_d3dkmt_process_device {
+   HANDLE mapping;
+   HANDLE mutex;
+   struct agx_d3dkmt_process_device_shared *shared;
+   bool attached;
+};
+
+static bool
+process_device_lock(struct agx_d3dkmt_process_device *process)
+{
+   DWORD result = WaitForSingleObject(process->mutex, INFINITE);
+   if (result == WAIT_OBJECT_0 || result == WAIT_ABANDONED)
+      return true;
+
+   errno = EIO;
+   return false;
+}
+
+static void
+process_device_unlock(struct agx_d3dkmt_process_device *process)
+{
+   ReleaseMutex(process->mutex);
+}
+
+static void
+process_device_close_mapping(struct agx_d3dkmt_process_device *process,
+                             bool preserve_failed_state)
+{
+   if (process == NULL)
+      return;
+   if (process->shared != NULL)
+      UnmapViewOfFile(process->shared);
+   if (!preserve_failed_state && process->mapping != NULL)
+      CloseHandle(process->mapping);
+   if (process->mutex != NULL)
+      CloseHandle(process->mutex);
+   free(process);
+}
+
+static bool
+process_device_open(struct agx_d3dkmt_winsys *ws)
+{
+   struct agx_d3dkmt_process_device *process = calloc(1, sizeof(*process));
+   if (process == NULL)
+      return false;
+
+   wchar_t section_name[96];
+   wchar_t mutex_name[96];
+   DWORD pid = GetCurrentProcessId();
+   swprintf(section_name, ARRAY_SIZE(section_name),
+            L"Local\\MesaAgxDevice-%08lx-%08x-%08x", (unsigned long)pid,
+            (unsigned)ws->luid.HighPart, (unsigned)ws->luid.LowPart);
+   swprintf(mutex_name, ARRAY_SIZE(mutex_name),
+            L"Local\\MesaAgxDeviceMutex-%08lx-%08x-%08x", (unsigned long)pid,
+            (unsigned)ws->luid.HighPart, (unsigned)ws->luid.LowPart);
+
+   process->mutex = CreateMutexW(NULL, FALSE, mutex_name);
+   if (process->mutex == NULL)
+      goto fail;
+
+   process->mapping = CreateFileMappingW(
+      INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,
+      sizeof(struct agx_d3dkmt_process_device_shared), section_name);
+   if (process->mapping == NULL)
+      goto fail;
+
+   process->shared =
+      MapViewOfFile(process->mapping, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+   if (process->shared == NULL)
+      goto fail;
+
+   MEMORY_BASIC_INFORMATION info;
+   if (VirtualQuery(process->shared, &info, sizeof(info)) != sizeof(info) ||
+       info.RegionSize < sizeof(*process->shared)) {
+      errno = EIO;
+      goto fail;
+   }
+
+   if (!process_device_lock(process))
+      goto fail;
+
+   struct agx_d3dkmt_process_device_shared *shared = process->shared;
+   if (shared->magic == 0) {
+      memset(shared, 0, sizeof(*shared));
+      shared->magic = AGX_D3DKMT_PROCESS_DEVICE_MAGIC;
+      shared->version = AGX_D3DKMT_PROCESS_DEVICE_VERSION;
+      shared->mapping_bytes = sizeof(*shared);
+   }
+
+   bool valid = shared->magic == AGX_D3DKMT_PROCESS_DEVICE_MAGIC &&
+                shared->version == AGX_D3DKMT_PROCESS_DEVICE_VERSION &&
+                shared->mapping_bytes == sizeof(*shared) &&
+                info.RegionSize >= sizeof(*shared) &&
+                shared->clients != UINT32_MAX &&
+                ((shared->device == 0 && shared->clients == 0) ||
+                 (shared->device != 0 && shared->owner_adapter != 0 &&
+                  shared->clients != 0));
+   if (!valid) {
+      process_device_unlock(process);
+      errno = EPROTO;
+      goto fail;
+   }
+
+   if (shared->device == 0) {
+      struct agx_kmt_createdevice create = {.hAdapter = ws->adapter};
+      d3dkmt_log("create-device begin adapter=0x%08x shared=0",
+                 (unsigned)ws->adapter);
+      agx_kmt_status status = ws->fns.CreateDevice(&create);
+      d3dkmt_log("create-device end status=0x%08x device=0x%08x shared=0",
+                 (unsigned)status, (unsigned)create.hDevice);
+      if (!AGX_KMT_SUCCESS(status)) {
+         process_device_unlock(process);
+         agx_d3dkmt_fail(status);
+         goto fail;
+      }
+
+      shared->device = create.hDevice;
+      shared->owner_adapter = ws->adapter;
+   } else {
+      d3dkmt_log("create-device reuse device=0x%08x owner-adapter=0x%08x "
+                 "clients=%u",
+                 shared->device, shared->owner_adapter, shared->clients);
+   }
+
+   shared->clients++;
+   ws->device = shared->device;
+   process->attached = true;
+   ws->process_device = process;
+   process_device_unlock(process);
+   return true;
+
+fail:
+   process_device_close_mapping(process, false);
+   return false;
+}
+
+static void
+process_device_release(struct agx_d3dkmt_winsys *ws)
+{
+   struct agx_d3dkmt_process_device *process = ws->process_device;
+   if (process == NULL)
+      return;
+
+   bool close_adapter = true;
+   bool preserve_failed_state = false;
+   if (!process->attached || !process_device_lock(process)) {
+      preserve_failed_state = true;
+      close_adapter = false;
+      goto out;
+   }
+
+   struct agx_d3dkmt_process_device_shared *shared = process->shared;
+   if (shared->magic != AGX_D3DKMT_PROCESS_DEVICE_MAGIC ||
+       shared->version != AGX_D3DKMT_PROCESS_DEVICE_VERSION ||
+       shared->device != ws->device || shared->clients == 0) {
+      fprintf(stderr, "D3DKMT process device invariant failure\n");
+      preserve_failed_state = true;
+      close_adapter = shared->owner_adapter != ws->adapter;
+      process_device_unlock(process);
+      goto out;
+   }
+
+   shared->clients--;
+   if (shared->clients == 0) {
+      const agx_kmt_handle device = shared->device;
+      const agx_kmt_handle owner_adapter = shared->owner_adapter;
+      struct agx_kmt_destroydevice destroy = {.hDevice = device};
+      agx_kmt_status status = ws->fns.DestroyDevice(&destroy);
+      if (AGX_KMT_SUCCESS(status)) {
+         shared->device = 0;
+         shared->owner_adapter = 0;
+         if (owner_adapter != 0 && owner_adapter != ws->adapter) {
+            struct agx_kmt_closeadapter close = {
+               .hAdapter = owner_adapter,
+            };
+            ws->fns.CloseAdapter(&close);
+         }
+      } else {
+         fprintf(stderr, "D3DKMTDestroyDevice failed status=0x%08x\n",
+                 (unsigned)status);
+         preserve_failed_state = true;
+         close_adapter = owner_adapter != ws->adapter;
+      }
+   } else if (shared->owner_adapter == ws->adapter) {
+      /* The shared KMT device was created through this adapter handle. Keep
+       * that parent alive until the final device lease is released. */
+      close_adapter = false;
+   }
+
+   process->attached = false;
+   process_device_unlock(process);
+
+out:
+   if (close_adapter && ws->adapter != 0) {
+      struct agx_kmt_closeadapter close = {.hAdapter = ws->adapter};
+      ws->fns.CloseAdapter(&close);
+   }
+   process_device_close_mapping(process, preserve_failed_state);
+   ws->process_device = NULL;
+   ws->device = 0;
+   ws->adapter = 0;
+}
+
 /* -------------------------------------------------------------------------
  * Process-wide GPU VA broker.
  *
@@ -88,7 +319,7 @@ static_assert((int)AGXW_PRIORITY_REALTIME == (int)DRM_ASAHI_PRIORITY_REALTIME,
  * includes the PID; no handle is ever consumed by another process.
  * ------------------------------------------------------------------------- */
 #define AGX_D3DKMT_PROCESS_VA_MAGIC   0x41565841u /* 'AXVA' */
-#define AGX_D3DKMT_PROCESS_VA_VERSION 1u
+#define AGX_D3DKMT_PROCESS_VA_VERSION 2u
 #define AGX_D3DKMT_FIXED_BO_COUNT     3u
 
 struct agx_d3dkmt_shared_fixed_bo {
@@ -118,7 +349,6 @@ struct agx_d3dkmt_process_va_shared {
    uint64_t usc_base;
    uint64_t usc_size;
    uint32_t anchor_device;
-   uint32_t anchor_adapter;
    struct agx_d3dkmt_shared_fixed_bo fixed[AGX_D3DKMT_FIXED_BO_COUNT];
    uint64_t bitmap[];
 };
@@ -911,7 +1141,6 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
    }
 
    shared->anchor_device = ws->device;
-   shared->anchor_adapter = ws->adapter;
    return true;
 
 fail:
@@ -925,7 +1154,6 @@ fail:
       memset(&shared->fixed[i], 0, sizeof(shared->fixed[i]));
    }
    shared->anchor_device = 0;
-   shared->anchor_adapter = 0;
    return false;
 }
 
@@ -958,6 +1186,12 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
    struct agx_d3dkmt_process_va_shared *shared = process->shared;
    if (shared->fixed[0].nt_handle == 0 && !d3dkmt_create_fixed_anchors(dev)) {
       process_va_unlock(process);
+      return NULL;
+   }
+
+   if (shared->anchor_device != ws->device) {
+      process_va_unlock(process);
+      errno = EPROTO;
       return NULL;
    }
 
@@ -2494,14 +2728,8 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    if (params_status != 0)
       goto fail_params;
 
-   struct agx_kmt_createdevice create = {.hAdapter = ws->adapter};
-   d3dkmt_log("create-device begin adapter=0x%08x", (unsigned)ws->adapter);
-   status = ws->fns.CreateDevice(&create);
-   d3dkmt_log("create-device end status=0x%08x device=0x%08x",
-              (unsigned)status, (unsigned)create.hDevice);
-   if (!AGX_KMT_SUCCESS(status))
+   if (!process_device_open(ws))
       goto fail_params;
-   ws->device = create.hDevice;
 
    struct agx_kmt_createpagingqueue pq = {.hDevice = ws->device};
    d3dkmt_log("create-paging-queue begin device=0x%08x",
@@ -2512,7 +2740,7 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
               (unsigned)status, (unsigned)pq.hPagingQueue,
               (unsigned)pq.hSyncObject, pq.FenceValueCPUVirtualAddress);
    if (!AGX_KMT_SUCCESS(status))
-      goto fail_device;
+      goto fail_process_device;
    ws->paging_queue = pq.hPagingQueue;
    ws->paging_fence = pq.hSyncObject;
    ws->paging_fence_cpu =
@@ -2528,9 +2756,11 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    dev->ops = agx_device_d3dkmt_ops;
    return true; /* caller then runs agx_open_device() */
 
-fail_device:;
-   struct agx_kmt_destroydevice dd = {.hDevice = ws->device};
-   ws->fns.DestroyDevice(&dd);
+fail_process_device:
+   process_device_release(ws);
+   free(ws->params);
+   free(ws);
+   return false;
 fail_params:
    free(ws->params);
 fail_adapter:;
@@ -2562,12 +2792,9 @@ process_va_destroy_anchor_record(struct agx_d3dkmt_winsys *ws,
 }
 
 static void
-process_va_detach(struct agx_d3dkmt_winsys *ws, bool *defer_device,
-                  bool *defer_adapter)
+process_va_detach(struct agx_d3dkmt_winsys *ws)
 {
    struct agx_d3dkmt_process_va *process = ws->process_va;
-   *defer_device = false;
-   *defer_adapter = false;
    if (process == NULL)
       return;
 
@@ -2577,7 +2804,6 @@ process_va_detach(struct agx_d3dkmt_winsys *ws, bool *defer_device,
          shared->clients--;
 
       agx_kmt_handle anchor_device = shared->anchor_device;
-      agx_kmt_handle anchor_adapter = shared->anchor_adapter;
       if (shared->clients == 0) {
          for (uint32_t i = 0; i < AGX_D3DKMT_FIXED_BO_COUNT; ++i) {
             if (shared->fixed[i].nt_handle != 0)
@@ -2597,7 +2823,6 @@ process_va_detach(struct agx_d3dkmt_winsys *ws, bool *defer_device,
          }
 
          shared->anchor_device = 0;
-         shared->anchor_adapter = 0;
          shared->reservation_ready = 0;
          shared->reservation_count = 0;
          shared->layout_ready = 0;
@@ -2605,24 +2830,6 @@ process_va_detach(struct agx_d3dkmt_winsys *ws, bool *defer_device,
          memset(shared->bitmap, 0,
                 (size_t)shared->word_count * sizeof(shared->bitmap[0]));
 
-         if (anchor_device != 0 && anchor_device != ws->device) {
-            struct agx_kmt_destroydevice destroy = {
-               .hDevice = anchor_device,
-            };
-            ws->fns.DestroyDevice(&destroy);
-         }
-         if (anchor_adapter != 0 && anchor_adapter != ws->adapter) {
-            struct agx_kmt_closeadapter close = {
-               .hAdapter = anchor_adapter,
-            };
-            ws->fns.CloseAdapter(&close);
-         }
-      } else {
-         /* The anchor allocation mappings must outlive every client.  If the
-          * device that created them closes first, transfer its raw KMT handle
-          * lifetime to the shared section; the last client destroys it. */
-         *defer_device = anchor_device != 0 && anchor_device == ws->device;
-         *defer_adapter = anchor_adapter != 0 && anchor_adapter == ws->adapter;
       }
 
       process->attached = false;
@@ -2688,19 +2895,8 @@ agx_d3dkmt_close_device(struct agx_device *dev)
    struct agx_kmt_destroypagingqueue dpq = {.hPagingQueue = ws->paging_queue};
    ws->fns.DestroyPagingQueue(&dpq);
 
-   bool defer_device = false;
-   bool defer_adapter = false;
-   process_va_detach(ws, &defer_device, &defer_adapter);
-
-   if (!defer_device) {
-      struct agx_kmt_destroydevice dd = {.hDevice = ws->device};
-      ws->fns.DestroyDevice(&dd);
-   }
-
-   if (!defer_adapter) {
-      struct agx_kmt_closeadapter ca = {.hAdapter = ws->adapter};
-      ws->fns.CloseAdapter(&ca);
-   }
+   process_va_detach(ws);
+   process_device_release(ws);
 
    agx_d3dkmt_pool_finish(&ws->pool);
    agx_d3dkmt_sync_table_finish(&ws->syncs);
