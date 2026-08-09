@@ -108,7 +108,11 @@ d3dkmt_syncobj_create_ws(struct agx_d3dkmt_winsys *ws,
       .Info =
          {
             .Type = AGX_KMT_SYNC_MONITORED_FENCE,
-            .Flags = kmt_flags,
+            /* Honeykrisp signals and waits through D3DKMT scheduler packets;
+             * it never writes FenceValueGPUVirtualAddress from a command
+             * stream.  Keep fence storage out of the AGX GPU VA so VidMm
+             * does not create an otherwise-unused mapping. */
+            .Flags = kmt_flags | AGX_KMT_SYNC_NO_GPU_ACCESS,
             .MonitoredFence = {.InitialFenceValue = initial_value},
          },
    };
@@ -177,7 +181,8 @@ agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
    struct agx_kmt_opensyncobjfromnthandle2 open = {
       .hNtHandle = (void *)nt_handle,
       .hDevice = ws->device,
-      .Flags = AGX_KMT_SYNC_SHARED | AGX_KMT_SYNC_NT_SECURITY,
+      .Flags = AGX_KMT_SYNC_SHARED | AGX_KMT_SYNC_NT_SECURITY |
+               AGX_KMT_SYNC_NO_GPU_ACCESS,
    };
    agx_kmt_status st = ws->fns.OpenSyncObjectFromNtHandle2(&open);
    if (!AGX_KMT_SUCCESS(st))

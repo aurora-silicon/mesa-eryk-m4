@@ -486,6 +486,7 @@ struct agx_kmt_submitcommand { /* D3DKMT_SUBMITCOMMAND */
 #define AGX_KMT_SYNC_MONITORED_FENCE 5
 #define AGX_KMT_SYNC_SHARED           (1u << 0)
 #define AGX_KMT_SYNC_NT_SECURITY      (1u << 1)
+#define AGX_KMT_SYNC_NO_GPU_ACCESS    (1u << 7)
 
 struct agx_kmt_syncobjinfo2 { /* D3DDDI_SYNCHRONIZATIONOBJECTINFO2 */
    int32_t Type;

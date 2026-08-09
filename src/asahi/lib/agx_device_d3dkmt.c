@@ -930,6 +930,9 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
       .hDevice = ws->device,
       .Info = {
          .Type = AGX_KMT_SYNC_MONITORED_FENCE,
+         /* UpdateGpuVirtualAddress completes this fence through the paging
+          * scheduler.  No AGX command stream accesses the fence GPU VA. */
+         .Flags = AGX_KMT_SYNC_NO_GPU_ACCESS,
          .MonitoredFence = {
             .InitialFenceValue = 0,
             .EngineAffinity = 1,
@@ -1755,7 +1758,10 @@ d3dkmt_queue_create(struct agx_device *dev, struct drm_asahi_queue_create *q)
    /* Per-context completion fence, used only for staging-ring recycling. */
    struct agx_kmt_createsyncobj2 fence = {
       .hDevice = ws->device,
-      .Info = {.Type = AGX_KMT_SYNC_MONITORED_FENCE},
+      .Info = {
+         .Type = AGX_KMT_SYNC_MONITORED_FENCE,
+         .Flags = AGX_KMT_SYNC_NO_GPU_ACCESS,
+      },
    };
    agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&fence);
    if (!AGX_KMT_SUCCESS(st)) {
