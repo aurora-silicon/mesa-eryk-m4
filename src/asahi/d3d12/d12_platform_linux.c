@@ -96,3 +96,126 @@ d12_platform_signal_event(HANDLE event)
    if (write(fd, &one, sizeof(one)) != sizeof(one) && errno != EAGAIN)
       mesa_loge("fence event write failed: %s", strerror(errno));
 }
+
+HRESULT
+d12_platform_create_shared_bo(struct d12_device *device, size_t size,
+                              unsigned align, enum agx_bo_flags flags,
+                              const void *runtime_data,
+                              uint32_t runtime_data_size, const char *label,
+                              struct agx_bo **bo)
+{
+   (void)device;
+   (void)size;
+   (void)align;
+   (void)flags;
+   (void)runtime_data;
+   (void)runtime_data_size;
+   (void)label;
+   if (bo)
+      *bo = NULL;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_import_shared_bo(struct d12_device *device, HANDLE handle,
+                              void *runtime_data,
+                              uint32_t *runtime_data_size, const char *label,
+                              struct agx_bo **bo)
+{
+   (void)device;
+   (void)handle;
+   (void)runtime_data;
+   (void)runtime_data_size;
+   (void)label;
+   if (bo)
+      *bo = NULL;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_export_shared_bo(struct d12_device *device, struct agx_bo *bo,
+                              const SECURITY_ATTRIBUTES *attributes,
+                              DWORD access, LPCWSTR name, HANDLE *handle)
+{
+   (void)device;
+   (void)bo;
+   (void)attributes;
+   (void)access;
+   (void)name;
+   if (handle)
+      *handle = NULL;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_create_shared_sync(struct d12_device *device,
+                                uint64_t initial_value, uint32_t *syncobj)
+{
+   (void)device;
+   (void)initial_value;
+   if (syncobj)
+      *syncobj = 0;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_import_shared_sync(struct d12_device *device, HANDLE handle,
+                                uint32_t *syncobj)
+{
+   (void)device;
+   (void)handle;
+   if (syncobj)
+      *syncobj = 0;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_export_shared_sync(
+   struct d12_device *device, uint32_t syncobj,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle)
+{
+   (void)device;
+   (void)syncobj;
+   (void)attributes;
+   (void)access;
+   (void)name;
+   if (handle)
+      *handle = NULL;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_query_shared_sync(struct d12_device *device, uint32_t syncobj,
+                               uint64_t *value)
+{
+   (void)device;
+   (void)syncobj;
+   (void)value;
+   return E_NOTIMPL;
+}
+
+HRESULT
+d12_platform_set_bo_resident(struct d12_device *device, struct agx_bo *bo,
+                             bool resident)
+{
+   (void)device;
+   (void)bo;
+   (void)resident;
+   /* DRM manages residency at submit time; there is no explicit equivalent
+    * to D3DKMTMakeResident/Evict for this driver. */
+   return S_OK;
+}
+
+HRESULT
+d12_platform_open_shared_handle_by_name(struct d12_device *device,
+                                        LPCWSTR name, DWORD access,
+                                        HANDLE *handle)
+{
+   (void)device;
+   (void)name;
+   (void)access;
+   if (handle)
+      *handle = NULL;
+   return E_NOTIMPL;
+}

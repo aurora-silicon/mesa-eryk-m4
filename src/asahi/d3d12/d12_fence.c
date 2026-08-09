@@ -131,6 +131,14 @@ d12_fence_GetCompletedValue(ID3D12Fence *iface)
     * waiter/ticket lists, so publish and read it atomically.
     */
    uint64_t point = p_atomic_read(&fence->completed_value);
+   if (fence->shared_syncobj) {
+      uint64_t shared_point;
+      if (SUCCEEDED(d12_platform_query_shared_sync(
+             fence->device, fence->shared_syncobj, &shared_point))) {
+         point = shared_point;
+         p_atomic_set(&fence->completed_value, point);
+      }
+   }
 
    if (getenv("D3D12AGX_DUMP_SYNC"))
       mesa_logi("SYNC GetCompletedValue: fence %p -> %llu", (void *)fence,
@@ -151,6 +159,9 @@ d12_fence_internal_unref(struct d12_fence *fence)
    if (p_atomic_dec_return(&fence->lifetime_refcount) != 0)
       return;
 
+   if (fence->shared_syncobj)
+      fence->device->sync->destroy(fence->device->sync,
+                                   fence->shared_syncobj);
    cnd_destroy(&fence->changed);
    mtx_destroy(&fence->lock);
    d12_private_data_store_destroy(&fence->private_data);
@@ -158,9 +169,20 @@ d12_fence_internal_unref(struct d12_fence *fence)
    free(fence);
 }
 
-void
+HRESULT
 d12_fence_signal_value(struct d12_fence *fence, uint64_t value)
 {
+   if (fence->shared_syncobj) {
+      uint32_t handle = fence->shared_syncobj;
+      uint64_t point = value;
+      if (fence->device->sync->timeline_signal(
+             fence->device->sync, &handle, &point, 1)) {
+         fence->device->removed = true;
+         fence->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         return DXGI_ERROR_DEVICE_REMOVED;
+      }
+   }
+
    mtx_lock(&fence->lock);
    if (!fence->destroyed) {
       uint64_t old = p_atomic_read(&fence->completed_value);
@@ -179,12 +201,39 @@ d12_fence_signal_value(struct d12_fence *fence, uint64_t value)
       }
    }
    mtx_unlock(&fence->lock);
+   return S_OK;
 }
 
 bool
 d12_fence_wait_value(struct d12_fence *fence, uint64_t value,
                      const uint32_t *cancel)
 {
+   if (fence->shared_syncobj) {
+      for (;;) {
+         mtx_lock(&fence->lock);
+         bool destroyed = fence->destroyed;
+         mtx_unlock(&fence->lock);
+         if (destroyed)
+            return false;
+         if (d12_fence_GetCompletedValue(&fence->iface) >= value)
+            return true;
+         if (cancel && p_atomic_read(cancel))
+            return false;
+
+         if (!cancel) {
+            uint32_t handle = fence->shared_syncobj;
+            uint64_t point = value;
+            if (fence->device->sync->timeline_wait(
+                   fence->device->sync, &handle, &point, 1, INT64_MAX, 0,
+                   NULL))
+               return false;
+         } else {
+            const struct timespec pause = {.tv_nsec = 1000 * 1000};
+            thrd_sleep(&pause, NULL);
+         }
+      }
+   }
+
    bool completed = true;
 
    mtx_lock(&fence->lock);
@@ -225,6 +274,12 @@ d12_fence_ticket_init(struct d12_fence *fence,
    ticket->fence = fence;
    ticket->value = value;
 
+   if (fence->shared_syncobj) {
+      if (d12_fence_GetCompletedValue(&fence->iface) >= value)
+         p_atomic_set(&ticket->satisfied, 1);
+      return;
+   }
+
    mtx_lock(&fence->lock);
    if (fence->destroyed ||
        p_atomic_read(&fence->completed_value) >= value) {
@@ -262,6 +317,13 @@ d12_fence_ticket_wait(struct d12_fence_ticket *ticket,
                       const uint32_t *cancel)
 {
    struct d12_fence *fence = ticket->fence;
+   if (fence->shared_syncobj) {
+      bool completed = d12_fence_wait_value(fence, ticket->value, cancel);
+      if (completed)
+         p_atomic_set(&ticket->satisfied, 1);
+      return completed;
+   }
+
    bool completed = true;
 
    mtx_lock(&fence->lock);
@@ -289,11 +351,55 @@ d12_fence_ticket_wait(struct d12_fence_ticket *ticket,
    return completed;
 }
 
+struct d12_fence_shared_event_waiter {
+   struct d12_fence *fence;
+   uint64_t value;
+   HANDLE event;
+   thrd_t thread;
+};
+
+static int
+d12_fence_shared_event_wait(void *data)
+{
+   struct d12_fence_shared_event_waiter *waiter = data;
+   if (d12_fence_wait_value(waiter->fence, waiter->value, NULL))
+      d12_platform_signal_event(waiter->event);
+   d12_fence_internal_unref(waiter->fence);
+   free(waiter);
+   return 0;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_fence_SetEventOnCompletion(ID3D12Fence *iface, UINT64 value,
                                HANDLE event)
 {
    struct d12_fence *fence = d12_fence_from_iface(iface);
+
+   if (fence->shared_syncobj) {
+      if (!event)
+         return d12_fence_wait_value(fence, value, NULL) ? S_OK : E_FAIL;
+      if (d12_fence_GetCompletedValue(iface) >= value) {
+         d12_platform_signal_event(event);
+         return S_OK;
+      }
+
+      struct d12_fence_shared_event_waiter *waiter =
+         calloc(1, sizeof(*waiter));
+      if (!waiter)
+         return E_OUTOFMEMORY;
+      waiter->fence = fence;
+      waiter->value = value;
+      waiter->event = event;
+      d12_fence_internal_ref(fence);
+      if (thrd_create(&waiter->thread, d12_fence_shared_event_wait, waiter) !=
+          thrd_success) {
+         d12_fence_internal_unref(fence);
+         free(waiter);
+         return E_FAIL;
+      }
+      thrd_detach(waiter->thread);
+      return S_OK;
+   }
 
    if (event != NULL) {
       struct d12_fence_event_waiter *waiter = calloc(1, sizeof(*waiter));
@@ -342,9 +448,11 @@ d12_fence_multi_wait(struct d12_fence_multi_waiter *w)
       for (unsigned i = 0; i < w->count; i++) {
          struct d12_fence *fence = w->fences[i];
          mtx_lock(&fence->lock);
-         bool reached = fence->destroyed ||
-                        p_atomic_read(&fence->completed_value) >= w->values[i];
+         bool destroyed = fence->destroyed;
          mtx_unlock(&fence->lock);
+         bool reached = destroyed ||
+                        d12_fence_GetCompletedValue(&fence->iface) >=
+                           w->values[i];
          any |= reached;
          all &= reached;
       }
@@ -455,8 +563,7 @@ static HRESULT STDMETHODCALLTYPE
 d12_fence_Signal(ID3D12Fence *iface, UINT64 value)
 {
    struct d12_fence *fence = d12_fence_from_iface(iface);
-   d12_fence_signal_value(fence, value);
-   return S_OK;
+   return d12_fence_signal_value(fence, value);
 }
 
 static const ID3D12FenceVtbl d12_fence_vtbl = {
@@ -475,9 +582,10 @@ static const ID3D12FenceVtbl d12_fence_vtbl = {
    .Signal = d12_fence_Signal,
 };
 
-HRESULT
-d12_fence_create(struct d12_device *device, UINT64 initial_value,
-                 D3D12_FENCE_FLAGS flags, REFIID riid, void **out)
+static HRESULT
+d12_fence_create_internal(struct d12_device *device, UINT64 initial_value,
+                          D3D12_FENCE_FLAGS flags, uint32_t shared_syncobj,
+                          REFIID riid, void **out)
 {
    /* CreateFence is the odd D3D12 creation call whose NULL output contract is
     * S_FALSE, even when riid itself is unsupported. QueryInterface retains
@@ -486,21 +594,22 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    if (!out)
       return S_FALSE;
 
-   if (flags != D3D12_FENCE_FLAG_NONE) {
-      mesa_loge("d12_fence_create: fence flags 0x%x not implemented",
-                (unsigned)flags);
-      return E_NOTIMPL;
+   struct d12_fence *fence = calloc(1, sizeof(*fence));
+   if (!fence) {
+      if (shared_syncobj)
+         device->sync->destroy(device->sync, shared_syncobj);
+      return E_OUTOFMEMORY;
    }
 
-   struct d12_fence *fence = calloc(1, sizeof(*fence));
-   if (!fence)
-      return E_OUTOFMEMORY;
-
    if (mtx_init(&fence->lock, mtx_plain) != thrd_success) {
+      if (shared_syncobj)
+         device->sync->destroy(device->sync, shared_syncobj);
       free(fence);
       return E_FAIL;
    }
    if (cnd_init(&fence->changed) != thrd_success) {
+      if (shared_syncobj)
+         device->sync->destroy(device->sync, shared_syncobj);
       mtx_destroy(&fence->lock);
       free(fence);
       return E_FAIL;
@@ -510,6 +619,8 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    fence->refcount = 1;
    fence->lifetime_refcount = 1;
    fence->device = device;
+   fence->flags = flags;
+   fence->shared_syncobj = shared_syncobj;
    p_atomic_set(&fence->completed_value, initial_value);
    d12_private_data_store_init(&fence->private_data,
                                (IUnknown *)&fence->iface);
@@ -518,4 +629,95 @@ d12_fence_create(struct d12_device *device, UINT64 initial_value,
    HRESULT hr = d12_fence_QueryInterface(&fence->iface, riid, out);
    d12_fence_Release(&fence->iface);
    return hr;
+}
+
+HRESULT
+d12_fence_create(struct d12_device *device, UINT64 initial_value,
+                 D3D12_FENCE_FLAGS flags, REFIID riid, void **out)
+{
+   if (!out)
+      return S_FALSE;
+   *out = NULL;
+
+   if (flags != D3D12_FENCE_FLAG_NONE &&
+       flags != D3D12_FENCE_FLAG_SHARED) {
+      mesa_loge("d12_fence_create: fence flags 0x%x not implemented",
+                (unsigned)flags);
+      return E_NOTIMPL;
+   }
+
+   uint32_t shared_syncobj = 0;
+   if (flags == D3D12_FENCE_FLAG_SHARED) {
+      HRESULT hr = d12_platform_create_shared_sync(
+         device, initial_value, &shared_syncobj);
+      if (FAILED(hr))
+         return hr;
+   }
+
+   return d12_fence_create_internal(device, initial_value, flags,
+                                    shared_syncobj, riid, out);
+}
+
+HRESULT
+d12_fence_create_shared_handle(
+   struct d12_device *device, ID3D12DeviceChild *object,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle)
+{
+   if (!handle)
+      return E_POINTER;
+   *handle = NULL;
+   if (!object)
+      return E_INVALIDARG;
+
+   ID3D12Fence *fence_iface = NULL;
+   HRESULT hr = ID3D12DeviceChild_QueryInterface(
+      object, &IID_ID3D12Fence, (void **)&fence_iface);
+   if (FAILED(hr))
+      return E_NOTIMPL;
+
+   if (fence_iface->lpVtbl != &d12_fence_vtbl) {
+      ID3D12Fence_Release(fence_iface);
+      return DXGI_ERROR_INVALID_CALL;
+   }
+
+   struct d12_fence *fence = d12_fence_from_iface(fence_iface);
+   if (fence->device != device ||
+       !(fence->flags & D3D12_FENCE_FLAG_SHARED) ||
+       !fence->shared_syncobj) {
+      ID3D12Fence_Release(fence_iface);
+      return DXGI_ERROR_INVALID_CALL;
+   }
+
+   hr = d12_platform_export_shared_sync(
+      device, fence->shared_syncobj, attributes, access, name, handle);
+   ID3D12Fence_Release(fence_iface);
+   return hr;
+}
+
+HRESULT
+d12_fence_open_shared_handle(struct d12_device *device, HANDLE handle,
+                             REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+   uint32_t syncobj = 0;
+   HRESULT hr = d12_platform_import_shared_sync(device, handle, &syncobj);
+   if (FAILED(hr))
+      return hr;
+
+   uint64_t current = 0;
+   hr = d12_platform_query_shared_sync(device, syncobj, &current);
+   if (FAILED(hr)) {
+      device->sync->destroy(device->sync, syncobj);
+      return hr;
+   }
+
+   return d12_fence_create_internal(device, current,
+                                    D3D12_FENCE_FLAG_SHARED, syncobj, riid,
+                                    out);
 }

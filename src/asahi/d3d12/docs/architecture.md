@@ -3,20 +3,23 @@
 ## The stack
 
 ```
-   application / vkd3d-proton test suite
+   application / game / conformance suite
         │  D3D12 COM ABI (ID3D12Device, ID3D12GraphicsCommandList, …)
-        │  headers: microsoft/DirectX-Headers (MIT) + winadapter.h on Linux
+        │  headers: microsoft/DirectX-Headers (MIT) + winadapter.h
         ▼
-   libd3d12agx.so                                  ← this driver, src/asahi/d3d12/
+   d3d12agx.dll (Windows) / libd3d12agx.so (Linux)
+        │                                           ← src/asahi/d3d12/
         │        reuses, unmodified where possible:
-        ├─ src/asahi/lib      agx_device / agx_bo / VA / submit  (drm/asahi UAPI)
+        ├─ src/asahi/lib      agx_device / agx_bo / VA / submit
         ├─ src/asahi/layout   image/tiling/compression layouts (ail)
         ├─ src/asahi/genxml   hardware packet packing (agx_pack)
         ├─ src/asahi/compiler NIR → AGX ISA backend
         ├─ src/asahi/libagx   internal GPU helper kernels
         └─ src/compiler/nir   the IR everything meets in
         ▼
-   /dev/dri/renderD128  (drm/asahi kernel driver — untouched)
+   platform backend
+        ├─ Linux:   /dev/dri/renderD* through drm/asahi
+        └─ Windows: D3DKMT allocation, VA, residency, submit and fences
 ```
 
 The D3D12 object model is implemented directly — COM vtables in plain C
@@ -34,19 +37,47 @@ guessing at register semantics.
 
 ## Consequences of the substrate
 
-- **Memory:** Apple silicon is UMA. All heaps are host-reachable, heap tiers
-  collapse, and `Map()` never needs a staging dance.
-  `CreateCommittedResource` → `agx_bo_create` + (for textures) `ail` layout
-  selection.
-- **Sync:** D3D12 fences are timeline semantics — they map to DRM syncobj
-  timelines, the same primitive Honeykrisp uses for Vulkan timeline
-  semaphores. CPU and GPU Signal/Wait all reduce to syncobj ops. This is one
-  of the places D3D12 is *simpler* than Vulkan.
+- **Memory:** Apple silicon is UMA. All heaps use the same physical memory
+  domain and `Map()` never needs a staging dance. Private resources use the
+  platform's ordinary `agx_bo` allocation path. On Windows, shareable
+  resources and heaps are D3DKMT resources from creation onward, rather than
+  private allocations copied into shareable storage later.
+- **Sync:** D3D12 fences have timeline semantics. Linux maps them to DRM
+  syncobj timelines. Windows maps shared fences to D3DKMT monitored fences;
+  those same objects are usable by CPU waits, AGX queue submission and other
+  D3D processes through NT handles.
 - **Queues:** DIRECT/COMPUTE/COPY all target asahi submit queues; the
   hardware distinction that matters is render vs compute encoders.
-- **Presentation is deliberately out of scope.** Milestones prove themselves
-  by GPU→CPU readback, hashed and compared against a CPU model. A swapchain
-  needs a windowing decision that can wait.
+- **Presentation stays outside this API driver.** On Windows, the Triton
+  D3D11 UMD remains the WDDM/DXGI desktop and presentation driver. Native
+  D3D12 applications hand it the same D3DKMT resource and monitored fence,
+  so presentation does not require a second allocation or a blit.
+
+## Windows process boundary and zero-copy handoff
+
+`d3d12agx.dll` is an application-facing native D3D12 implementation. It is
+not a WDDM D3D12 UMD/DDI and does not replace the D3D11 display stack. Apps
+opt in through the normal D3D12 API; device creation and command submission
+then go straight to AGX through the D3DKMT platform backend.
+
+The bridge to DXGI/D3D11 consists of standard shared-object operations:
+
+1. A resource created with `D3D12_HEAP_FLAG_SHARED` is born as a shareable
+   D3DKMT resource. Its runtime-private data carries the wire-compatible
+   D3D12 descriptor and D3D11 texture prefix needed by either consumer.
+2. `CreateSharedHandle` exports that resource as an NT handle.
+   `OpenSharedHandle` imports and adopts the same KMD allocation; it never
+   allocates replacement storage or copies pixels.
+3. A `D3D12_FENCE_FLAG_SHARED` fence is a shareable D3DKMT monitored fence.
+   The producer signals the final render value and the presentation consumer
+   waits for that same value before scanning out or composing the resource.
+4. Named handles, security descriptors, inheritance and explicit residency
+   are translated only in `d12_platform_windows.c`. Linux keeps its DRM
+   allocation and sync paths, and unsupported Win32 sharing entry points stay
+   isolated as `E_NOTIMPL` stubs there.
+
+This is the zero-copy contract: one KMD allocation, one shared timeline, and
+two API views. Swapchain policy and desktop ownership remain with DXGI/D3D11.
 
 ## The shader path
 

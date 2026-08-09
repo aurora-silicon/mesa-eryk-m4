@@ -82,6 +82,13 @@ d3d12agx_g1_smoke = executable(
   link_with : [libd3d12agx],
 )
 
+d3d12agx_shared_interop = executable(
+  'd3d12agx_shared_interop',
+  files('tests/shared_interop.c'),
+  dependencies : [dep_dxheaders_d12],
+  link_with : [libd3d12agx],
+)
+
 d3d12agx_g2_smoke = executable(
   'd3d12agx_g2_smoke',
   files('tests/g2_smoke.c'),

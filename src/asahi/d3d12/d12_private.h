@@ -424,6 +424,17 @@ struct d12_sparse_tile_copy_info {
 bool d12_sparse_get_tile_copy_info(
    const struct d12_resource *res, uint32_t tile,
    struct d12_sparse_tile_copy_info *info);
+HRESULT d12_resource_create_shared_handle(
+   struct d12_device *device, ID3D12DeviceChild *object,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle);
+HRESULT d12_resource_open_shared_handle(struct d12_device *device,
+                                        HANDLE handle, REFIID riid,
+                                        void **out);
+HRESULT d12_heap_open_shared_handle(struct d12_device *device, HANDLE handle,
+                                    REFIID riid, void **out);
+bool d12_resource_iface_is_ours(ID3D12Resource *iface);
+bool d12_heap_iface_is_ours(ID3D12Heap *iface);
 
 /*
  * One descriptor, whatever the heap type. Sized to exactly the advertised
@@ -1484,6 +1495,8 @@ struct d12_fence {
    struct d12_private_data_store private_data;
 
    struct d12_device *device; /* holds a device ref */
+   D3D12_FENCE_FLAGS flags;
+   uint32_t shared_syncobj;
 
    /* A D3D12 fence is not a Linux timeline syncobj.  In particular, CPU
     * Signal() may move its completed value backwards, while DRM timeline
@@ -1562,7 +1575,7 @@ HRESULT d12_fence_create(struct d12_device *device, UINT64 initial_value,
                          D3D12_FENCE_FLAGS flags, REFIID riid, void **out);
 void d12_fence_internal_ref(struct d12_fence *fence);
 void d12_fence_internal_unref(struct d12_fence *fence);
-void d12_fence_signal_value(struct d12_fence *fence, uint64_t value);
+HRESULT d12_fence_signal_value(struct d12_fence *fence, uint64_t value);
 bool d12_fence_wait_value(struct d12_fence *fence, uint64_t value,
                           const uint32_t *cancel);
 void d12_fence_ticket_init(struct d12_fence *fence,
@@ -1574,6 +1587,12 @@ HRESULT d12_fence_set_event_multiple(
    struct d12_device *device, ID3D12Fence *const *fences,
    const UINT64 *values, UINT count,
    D3D12_MULTIPLE_FENCE_WAIT_FLAGS flags, HANDLE event);
+HRESULT d12_fence_create_shared_handle(
+   struct d12_device *device, ID3D12DeviceChild *object,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle);
+HRESULT d12_fence_open_shared_handle(struct d12_device *device, HANDLE handle,
+                                     REFIID riid, void **out);
 HRESULT d12_queue_create(struct d12_device *device,
                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
                          void **out);
@@ -1663,3 +1682,30 @@ void d12_device_release(struct d12_device *device);
 bool d12_platform_open_device(struct d12_device *device, IUnknown *adapter);
 void d12_platform_close_device(struct d12_device *device);
 void d12_platform_signal_event(HANDLE event);
+HRESULT d12_platform_create_shared_bo(
+   struct d12_device *device, size_t size, unsigned align,
+   enum agx_bo_flags flags, const void *runtime_data,
+   uint32_t runtime_data_size, const char *label, struct agx_bo **bo);
+HRESULT d12_platform_import_shared_bo(
+   struct d12_device *device, HANDLE handle, void *runtime_data,
+   uint32_t *runtime_data_size, const char *label, struct agx_bo **bo);
+HRESULT d12_platform_export_shared_bo(
+   struct d12_device *device, struct agx_bo *bo,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle);
+HRESULT d12_platform_create_shared_sync(struct d12_device *device,
+                                        uint64_t initial_value,
+                                        uint32_t *syncobj);
+HRESULT d12_platform_import_shared_sync(struct d12_device *device,
+                                        HANDLE handle, uint32_t *syncobj);
+HRESULT d12_platform_export_shared_sync(
+   struct d12_device *device, uint32_t syncobj,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle);
+HRESULT d12_platform_query_shared_sync(struct d12_device *device,
+                                       uint32_t syncobj, uint64_t *value);
+HRESULT d12_platform_set_bo_resident(struct d12_device *device,
+                                     struct agx_bo *bo, bool resident);
+HRESULT d12_platform_open_shared_handle_by_name(struct d12_device *device,
+                                                LPCWSTR name, DWORD access,
+                                                HANDLE *handle);

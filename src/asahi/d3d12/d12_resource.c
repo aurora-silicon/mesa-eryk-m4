@@ -9,8 +9,270 @@
 #include "d12_private.h"
 #include "util/os_misc.h"
 
+/* Runtime-private metadata used by the native Windows D3D runtimes and by
+ * vkd3d-proton. Keeping this wire layout compatible is what lets a D3D11
+ * DXGI presentation resource and this native D3D12 driver open the same
+ * D3DKMT resource without a copy or a second WDDM allocation. */
+struct d12_d3dkmt_dxgi_desc {
+   uint32_t size;
+   uint32_t version;
+   uint32_t width;
+   uint32_t height;
+   DXGI_FORMAT format;
+   uint32_t unknown_0;
+   uint32_t unknown_1;
+   uint32_t keyed_mutex;
+   uint32_t mutex_handle;
+   uint32_t sync_handle;
+   uint32_t nt_shared;
+   uint32_t unknown_2;
+   uint32_t unknown_3;
+   uint32_t unknown_4;
+};
+
+struct d12_d3dkmt_texture2d_desc {
+   uint32_t width;
+   uint32_t height;
+   uint32_t mip_levels;
+   uint32_t array_size;
+   DXGI_FORMAT format;
+   DXGI_SAMPLE_DESC sample_desc;
+   uint32_t usage;
+   uint32_t bind_flags;
+   uint32_t cpu_access_flags;
+   uint32_t misc_flags;
+};
+
+struct d12_d3dkmt_d3d11_desc {
+   struct d12_d3dkmt_dxgi_desc dxgi;
+   uint32_t dimension;
+   union {
+      struct d12_d3dkmt_texture2d_desc texture2d;
+      uint8_t padding[44];
+   };
+};
+
+struct d12_d3dkmt_d3d12_desc {
+   struct d12_d3dkmt_d3d11_desc d3d11;
+   uint32_t unknown_5[4];
+   uint32_t resource_size;
+   uint32_t unknown_6[7];
+   uint32_t resource_align;
+   uint32_t unknown_7[9];
+   union {
+      D3D12_RESOURCE_DESC1 desc1;
+      uint32_t padding[16];
+   };
+   uint64_t unknown_8;
+};
+
+static_assert(sizeof(struct d12_d3dkmt_dxgi_desc) == 0x38,
+              "D3DKMT DXGI descriptor ABI");
+static_assert(sizeof(struct d12_d3dkmt_d3d11_desc) == 0x68,
+              "D3DKMT D3D11 descriptor ABI");
+static_assert(sizeof(D3D12_RESOURCE_DESC1) == 0x40,
+              "D3D12_RESOURCE_DESC1 ABI");
+static_assert(sizeof(struct d12_d3dkmt_d3d12_desc) == 0x108,
+              "D3DKMT D3D12 descriptor ABI");
+
+enum {
+   D12_D3D11_RESOURCE_DIMENSION_TEXTURE2D = 3,
+   D12_D3D11_BIND_SHADER_RESOURCE = 0x8,
+   D12_D3D11_BIND_RENDER_TARGET = 0x20,
+   D12_D3D11_BIND_DEPTH_STENCIL = 0x40,
+   D12_D3D11_BIND_UNORDERED_ACCESS = 0x80,
+   D12_D3D11_RESOURCE_MISC_SHARED = 0x2,
+   D12_D3D11_RESOURCE_MISC_SHARED_NTHANDLE = 0x800,
+   D12_D3DKMT_HEAP_MAGIC = 0x48584741, /* "AGXH" */
+};
+
+struct d12_d3dkmt_heap_desc {
+   uint32_t magic;
+   uint32_t version;
+   uint32_t struct_size;
+   uint32_t reserved;
+   uint64_t size;
+   uint64_t alignment;
+   uint32_t type;
+   uint32_t cpu_page_property;
+   uint32_t memory_pool;
+   uint32_t creation_node_mask;
+   uint32_t visible_node_mask;
+   uint32_t flags;
+};
+
+static void
+d12_shared_heap_metadata_init(struct d12_d3dkmt_heap_desc *metadata,
+                              const D3D12_HEAP_DESC *desc)
+{
+   *metadata = (struct d12_d3dkmt_heap_desc){
+      .magic = D12_D3DKMT_HEAP_MAGIC,
+      .version = 1,
+      .struct_size = sizeof(*metadata),
+      .size = desc->SizeInBytes,
+      .alignment = desc->Alignment,
+      .type = desc->Properties.Type,
+      .cpu_page_property = desc->Properties.CPUPageProperty,
+      .memory_pool = desc->Properties.MemoryPoolPreference,
+      .creation_node_mask = desc->Properties.CreationNodeMask,
+      .visible_node_mask = desc->Properties.VisibleNodeMask,
+      .flags = desc->Flags,
+   };
+}
+
+static bool
+d12_shared_heap_metadata_parse(const void *data, uint32_t size,
+                               D3D12_HEAP_DESC *desc)
+{
+   if (!data || !desc || size != sizeof(struct d12_d3dkmt_heap_desc))
+      return false;
+   const struct d12_d3dkmt_heap_desc *metadata = data;
+   if (metadata->magic != D12_D3DKMT_HEAP_MAGIC || metadata->version != 1 ||
+       metadata->struct_size != sizeof(*metadata))
+      return false;
+
+   *desc = (D3D12_HEAP_DESC){
+      .SizeInBytes = metadata->size,
+      .Properties =
+         {
+            .Type = metadata->type,
+            .CPUPageProperty = metadata->cpu_page_property,
+            .MemoryPoolPreference = metadata->memory_pool,
+            .CreationNodeMask = metadata->creation_node_mask,
+            .VisibleNodeMask = metadata->visible_node_mask,
+         },
+      .Alignment = metadata->alignment,
+      .Flags = metadata->flags,
+   };
+   return true;
+}
+
+static void
+d12_shared_metadata_init(struct d12_d3dkmt_d3d12_desc *metadata,
+                         const D3D12_RESOURCE_DESC *desc, uint64_t size_B)
+{
+   memset(metadata, 0, sizeof(*metadata));
+   metadata->d3d11.dxgi.size = sizeof(metadata->d3d11);
+   metadata->d3d11.dxgi.nt_shared = 1;
+   metadata->resource_size = MIN2(size_B, UINT32_MAX);
+   metadata->resource_align = MIN2(desc->Alignment, UINT32_MAX);
+
+   metadata->desc1 = (D3D12_RESOURCE_DESC1){
+      .Dimension = desc->Dimension,
+      .Alignment = desc->Alignment,
+      .Width = desc->Width,
+      .Height = desc->Height,
+      .DepthOrArraySize = desc->DepthOrArraySize,
+      .MipLevels = desc->MipLevels,
+      .Format = desc->Format,
+      .SampleDesc = desc->SampleDesc,
+      .Layout = desc->Layout,
+      .Flags = desc->Flags,
+   };
+
+   if (desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+      return;
+
+   struct d12_d3dkmt_d3d11_desc *d3d11 = &metadata->d3d11;
+   d3d11->dxgi.width = MIN2(desc->Width, UINT32_MAX);
+   d3d11->dxgi.height = desc->Height;
+   d3d11->dxgi.format = desc->Format;
+   d3d11->dimension = D12_D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+   d3d11->texture2d = (struct d12_d3dkmt_texture2d_desc){
+      .width = MIN2(desc->Width, UINT32_MAX),
+      .height = desc->Height,
+      .mip_levels = desc->MipLevels,
+      .array_size = desc->DepthOrArraySize,
+      .format = desc->Format,
+      .sample_desc = desc->SampleDesc,
+      .usage = 0, /* D3D11_USAGE_DEFAULT */
+      .bind_flags = D12_D3D11_BIND_SHADER_RESOURCE,
+      .misc_flags = D12_D3D11_RESOURCE_MISC_SHARED |
+                    D12_D3D11_RESOURCE_MISC_SHARED_NTHANDLE,
+   };
+
+   if (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+      d3d11->texture2d.bind_flags |= D12_D3D11_BIND_RENDER_TARGET;
+   if (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+      d3d11->texture2d.bind_flags |= D12_D3D11_BIND_DEPTH_STENCIL;
+   if (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+      d3d11->texture2d.bind_flags |= D12_D3D11_BIND_UNORDERED_ACCESS;
+   if (desc->Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE)
+      d3d11->texture2d.bind_flags &= ~D12_D3D11_BIND_SHADER_RESOURCE;
+
+   /* Version 4 exposes the D3D11 prefix to DXGI/D3D11 consumers. The full
+    * 0x108-byte blob still carries desc1 for D3D12 consumers. */
+   if (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS)
+      d3d11->dxgi.version = 4;
+}
+
+static bool
+d12_shared_metadata_parse(const void *data, uint32_t size,
+                          D3D12_RESOURCE_DESC *desc)
+{
+   const struct d12_d3dkmt_dxgi_desc *dxgi = data;
+   if (!data || !desc || size < sizeof(*dxgi))
+      return false;
+
+   if (size == sizeof(struct d12_d3dkmt_d3d12_desc) &&
+       dxgi->size == sizeof(struct d12_d3dkmt_d3d11_desc) &&
+       (dxgi->version == 0 || dxgi->version == 4)) {
+      const struct d12_d3dkmt_d3d12_desc *metadata = data;
+      *desc = (D3D12_RESOURCE_DESC){
+         .Dimension = metadata->desc1.Dimension,
+         .Alignment = metadata->desc1.Alignment,
+         .Width = metadata->desc1.Width,
+         .Height = metadata->desc1.Height,
+         .DepthOrArraySize = metadata->desc1.DepthOrArraySize,
+         .MipLevels = metadata->desc1.MipLevels,
+         .Format = metadata->desc1.Format,
+         .SampleDesc = metadata->desc1.SampleDesc,
+         .Layout = metadata->desc1.Layout,
+         .Flags = metadata->desc1.Flags,
+      };
+      return true;
+   }
+
+   if (size == sizeof(struct d12_d3dkmt_d3d11_desc) &&
+       dxgi->size == sizeof(struct d12_d3dkmt_d3d11_desc) &&
+       dxgi->version == 4) {
+      const struct d12_d3dkmt_d3d11_desc *metadata = data;
+      if (metadata->dimension != D12_D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+         return false;
+
+      const struct d12_d3dkmt_texture2d_desc *texture =
+         &metadata->texture2d;
+      *desc = (D3D12_RESOURCE_DESC){
+         .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D,
+         .Width = texture->width,
+         .Height = texture->height,
+         .DepthOrArraySize = texture->array_size,
+         .MipLevels = texture->mip_levels,
+         .Format = texture->format,
+         .SampleDesc = texture->sample_desc,
+         .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,
+         .Flags = D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS,
+      };
+      if (texture->bind_flags & D12_D3D11_BIND_RENDER_TARGET)
+         desc->Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+      if (texture->bind_flags & D12_D3D11_BIND_DEPTH_STENCIL)
+         desc->Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+      if (texture->bind_flags & D12_D3D11_BIND_UNORDERED_ACCESS)
+         desc->Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+      if ((texture->bind_flags & D12_D3D11_BIND_DEPTH_STENCIL) &&
+          !(texture->bind_flags & D12_D3D11_BIND_SHADER_RESOURCE))
+         desc->Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+      return true;
+   }
+
+   return false;
+}
+
 static ULONG STDMETHODCALLTYPE
 d12_resource_AddRef(ID3D12Resource *iface);
+
+static const ID3D12ResourceVtbl d12_resource_vtbl;
+static const ID3D12HeapVtbl d12_heap_vtbl;
 
 static HRESULT STDMETHODCALLTYPE
 d12_resource_QueryInterface(ID3D12Resource *iface, REFIID riid, void **out)
@@ -78,7 +340,7 @@ d12_resource_Release(ID3D12Resource *iface)
          agx_bo_unreference(&res->device->dev, res->bo);
       } else if (!res->reserved) {
          agx_bo_unreference(&res->device->dev, res->bo);
-         if (res->stencil_bo)
+         if (res->stencil_bo && res->stencil_bo != res->bo)
             agx_bo_unreference(&res->device->dev, res->stencil_bo);
       }
 
@@ -935,13 +1197,19 @@ d12_sparse_copy_tile_mappings(
    return hr;
 }
 
+bool
+d12_resource_iface_is_ours(ID3D12Resource *iface)
+{
+   return iface && iface->lpVtbl == &d12_resource_vtbl;
+}
+
 static HRESULT
 d12_resource_create(struct d12_device *device,
                     const D3D12_HEAP_PROPERTIES *heap_props,
                     D3D12_HEAP_FLAGS heap_flags,
                     const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
-                    uint64_t heap_offset_B, bool reserved, REFIID riid,
-                    void **out)
+                    uint64_t heap_offset_B, bool reserved,
+                    struct agx_bo *imported_bo, REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
@@ -1142,6 +1410,20 @@ d12_resource_create(struct d12_device *device,
       return E_NOTIMPL;
    }
 
+   D3D12_RESOURCE_DESC resolved_desc = *desc;
+   if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+      resolved_desc.MipLevels =
+         desc->MipLevels ? desc->MipLevels : (layout.levels ? layout.levels : 1);
+      if (!resolved_desc.Alignment) {
+         resolved_desc.Alignment =
+            desc->SampleDesc.Count > 1
+               ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
+               : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+      }
+   } else if (!resolved_desc.Alignment) {
+      resolved_desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+   }
+
    struct d12_resource *res = calloc(1, sizeof(*res));
    if (!res)
       return E_OUTOFMEMORY;
@@ -1268,6 +1550,19 @@ d12_resource_create(struct d12_device *device,
       res->bo = heap->bo;
       res->stencil_bo = (is_depth_stencil && stencil_layout.size_B)
                            ? heap->bo : NULL;
+   } else if (imported_bo) {
+      uint64_t required_size = size_B + stencil_layout.size_B;
+      if (imported_bo->size < required_size) {
+         free(res);
+         return E_INVALIDARG;
+      }
+
+      res->bo = imported_bo;
+      agx_bo_reference(imported_bo);
+      if (is_depth_stencil && stencil_layout.size_B) {
+         stencil_offset_B = size_B;
+         res->stencil_bo = imported_bo;
+      }
    } else {
       /* UMA: every heap type is the same cached, coherent memory. */
       /* CREATE_NOT_ZEROED permits an implementation to omit the clear; it
@@ -1278,17 +1573,39 @@ d12_resource_create(struct d12_device *device,
       enum agx_bo_flags bo_flags =
          AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE;
 
-      res->bo = agx_bo_create(&device->dev, size_B, 0, bo_flags,
-                              "d3d12 resource");
+      const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
+      HRESULT shared_hr = E_NOTIMPL;
+      if (shared) {
+         uint64_t allocation_size = size_B + stencil_layout.size_B;
+         struct d12_d3dkmt_d3d12_desc metadata;
+         d12_shared_metadata_init(&metadata, &resolved_desc,
+                                  allocation_size);
+         shared_hr = d12_platform_create_shared_bo(
+            device, allocation_size, resolved_desc.Alignment, bo_flags,
+            &metadata, sizeof(metadata), "d3d12 shared resource", &res->bo);
+      }
+
+      /* Linux retains its existing private-allocation behaviour. Its shared
+       * handle methods remain E_NOTIMPL, while Windows must never silently
+       * fall back to an unshareable BO after a real D3DKMT failure. */
+      if (!shared || shared_hr == E_NOTIMPL)
+         res->bo = agx_bo_create(&device->dev, size_B, 0, bo_flags,
+                                 "d3d12 resource");
       if (!res->bo) {
          free(res);
-         return E_OUTOFMEMORY;
+         return shared && shared_hr != E_NOTIMPL ? shared_hr
+                                                 : E_OUTOFMEMORY;
       }
 
       if (is_depth_stencil && stencil_layout.size_B) {
-         res->stencil_bo =
-            agx_bo_create(&device->dev, stencil_layout.size_B, 0,
-                          bo_flags, "d3d12 stencil plane");
+         if (shared_hr == S_OK) {
+            stencil_offset_B = size_B;
+            res->stencil_bo = res->bo;
+         } else {
+            res->stencil_bo =
+               agx_bo_create(&device->dev, stencil_layout.size_B, 0,
+                             bo_flags, "d3d12 stencil plane");
+         }
          if (!res->stencil_bo) {
             agx_bo_unreference(&device->dev, res->bo);
             free(res);
@@ -1334,41 +1651,18 @@ d12_resource_create(struct d12_device *device,
       res->offset_B = 0;
       res->placed = false;
       res->heap = NULL;
-      res->stencil_addr = res->stencil_bo ? res->stencil_bo->va->addr : 0;
+      res->stencil_addr =
+         res->stencil_bo ? res->stencil_bo->va->addr + stencil_offset_B : 0;
    }
 
    res->iface.lpVtbl = (ID3D12ResourceVtbl *)&d12_resource_vtbl;
    res->refcount = 1;
    d12_private_data_store_init(&res->private_data, (IUnknown *)&res->iface);
    res->device = device;
-   res->desc = *desc;
-
-   /*
-    * GetDesc reports the RESOLVED description, not the one passed in.
-    * D3D12 fills in what the application left for the runtime to choose:
-    * MipLevels == 0 means the full chain, and Alignment == 0 means the
-    * runtime picked one. test_create_committed_resource reads both back
-    * and checks them -- returning the caller's zeroes is wrong even
-    * though it looks like faithfully echoing the request.
-    */
-   if (desc->Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
-      /* Report what was ASKED for when it was explicit. ail clamps
-       * layout.levels to the natural chain, so echoing that turns a
-       * request for 10 levels on a 32x32 texture into a reported 6 --
-       * D3D12 echoes the request. Only MipLevels == 0 is ours to
-       * resolve. */
-      res->desc.MipLevels =
-         desc->MipLevels ? desc->MipLevels
-                         : (layout.levels ? layout.levels : 1);
-      if (!res->desc.Alignment) {
-         res->desc.Alignment =
-            desc->SampleDesc.Count > 1
-               ? D3D12_DEFAULT_MSAA_RESOURCE_PLACEMENT_ALIGNMENT
-               : D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-      }
-   } else if (!res->desc.Alignment) {
-      res->desc.Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-   }
+   /* GetDesc reports the resolved description, including runtime-selected
+    * mip count and placement alignment. The shared metadata carries this
+    * same canonical spelling so another process reconstructs it exactly. */
+   res->desc = resolved_desc;
    res->heap_props = *heap_props;
    res->heap_flags = heap_flags;
    d12_device_add_ref(device);
@@ -1605,7 +1899,7 @@ d12_resource_create_committed(struct d12_device *device,
       return valid;
 
    return d12_resource_create(device, heap_props, heap_flags, desc, NULL, 0,
-                              false, riid, out);
+                              false, NULL, riid, out);
 }
 
 HRESULT
@@ -1646,7 +1940,7 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
 
    return d12_resource_create(device, &heap->desc.Properties,
                               heap->desc.Flags, desc, heap, offset_B, false,
-                              riid, out);
+                              NULL, riid, out);
 }
 
 HRESULT
@@ -1723,7 +2017,111 @@ d12_resource_create_reserved(struct d12_device *device,
    }
 
    return d12_resource_create(device, &props, D3D12_HEAP_FLAG_NONE, desc,
-                              NULL, 0, true, riid, out);
+                              NULL, 0, true, NULL, riid, out);
+}
+
+HRESULT
+d12_resource_create_shared_handle(
+   struct d12_device *device, ID3D12DeviceChild *object,
+   const SECURITY_ATTRIBUTES *attributes, DWORD access, LPCWSTR name,
+   HANDLE *handle)
+{
+   if (!handle)
+      return E_POINTER;
+   *handle = NULL;
+   if (!object)
+      return E_INVALIDARG;
+
+   ID3D12Resource *resource_iface = NULL;
+   HRESULT hr = ID3D12DeviceChild_QueryInterface(
+      object, &IID_ID3D12Resource, (void **)&resource_iface);
+   if (FAILED(hr)) {
+      ID3D12Heap *heap_iface = NULL;
+      hr = ID3D12DeviceChild_QueryInterface(
+         object, &IID_ID3D12Heap, (void **)&heap_iface);
+      if (FAILED(hr))
+         return E_NOTIMPL;
+
+      if (!d12_heap_iface_is_ours(heap_iface)) {
+         ID3D12Heap_Release(heap_iface);
+         return DXGI_ERROR_INVALID_CALL;
+      }
+
+      struct d12_heap *heap = d12_memheap_from_iface(heap_iface);
+      if (heap->device != device ||
+          !(heap->desc.Flags & D3D12_HEAP_FLAG_SHARED)) {
+         ID3D12Heap_Release(heap_iface);
+         return DXGI_ERROR_INVALID_CALL;
+      }
+      hr = d12_platform_export_shared_bo(device, heap->bo, attributes,
+                                         access, name, handle);
+      ID3D12Heap_Release(heap_iface);
+      return hr;
+   }
+
+   if (!d12_resource_iface_is_ours(resource_iface)) {
+      ID3D12Resource_Release(resource_iface);
+      return DXGI_ERROR_INVALID_CALL;
+   }
+
+   struct d12_resource *resource =
+      d12_resource_from_iface(resource_iface);
+   if (resource->device != device || resource->placed ||
+       !(resource->heap_flags & D3D12_HEAP_FLAG_SHARED)) {
+      ID3D12Resource_Release(resource_iface);
+      return DXGI_ERROR_INVALID_CALL;
+   }
+
+   hr = d12_platform_export_shared_bo(device, resource->bo, attributes,
+                                      access, name, handle);
+   ID3D12Resource_Release(resource_iface);
+   return hr;
+}
+
+HRESULT
+d12_resource_open_shared_handle(struct d12_device *device, HANDLE handle,
+                                REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+   struct d12_d3dkmt_d3d12_desc metadata = {0};
+   uint32_t metadata_size = sizeof(metadata);
+   struct agx_bo *bo = NULL;
+   HRESULT hr = d12_platform_import_shared_bo(
+      device, handle, &metadata, &metadata_size,
+      "d3d12 imported shared resource", &bo);
+   if (FAILED(hr))
+      return hr;
+
+   D3D12_RESOURCE_DESC desc;
+   if (!d12_shared_metadata_parse(&metadata, metadata_size, &desc)) {
+      agx_bo_unreference(&device->dev, bo);
+      return E_INVALIDARG;
+   }
+
+   const D3D12_HEAP_PROPERTIES heap_props = {
+      .Type = D3D12_HEAP_TYPE_DEFAULT,
+      .CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
+      .MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN,
+      .CreationNodeMask = 1,
+      .VisibleNodeMask = 1,
+   };
+   hr = d12_validate_resource_desc(&heap_props, &desc,
+                                   D3D12_RESOURCE_STATE_COMMON, NULL);
+   if (SUCCEEDED(hr)) {
+      hr = d12_resource_create(device, &heap_props,
+                               D3D12_HEAP_FLAG_SHARED, &desc, NULL, 0, false,
+                               bo, riid, out);
+   }
+
+   /* The constructor takes its own BO reference only after it has validated
+    * and adopted the allocation. This drops the import helper's reference. */
+   agx_bo_unreference(&device->dev, bo);
+   return hr;
 }
 
 
@@ -1810,9 +2208,16 @@ static const ID3D12HeapVtbl d12_heap_vtbl = {
    .GetDesc = d12_heap_GetDesc,
 };
 
-HRESULT
-d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
-                REFIID riid, void **out)
+bool
+d12_heap_iface_is_ours(ID3D12Heap *iface)
+{
+   return iface && iface->lpVtbl == &d12_heap_vtbl;
+}
+
+static HRESULT
+d12_heap_create_internal(struct d12_device *device,
+                         const D3D12_HEAP_DESC *desc,
+                         struct agx_bo *imported_bo, REFIID riid, void **out)
 {
    if (!out)
       return E_POINTER;
@@ -1885,8 +2290,33 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
     * when CREATE_NOT_ZEROED allows us to skip it. */
    enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE;
 
-   heap->bo = agx_bo_create(&device->dev, resolved.SizeInBytes,
-                            resolved.Alignment, bo_flags, "d3d12 heap");
+   if (imported_bo) {
+      if (imported_bo->size < resolved.SizeInBytes) {
+         free(heap);
+         return E_INVALIDARG;
+      }
+      heap->bo = imported_bo;
+      agx_bo_reference(imported_bo);
+   } else {
+      HRESULT shared_hr = E_NOTIMPL;
+      if (resolved.Flags & D3D12_HEAP_FLAG_SHARED) {
+         struct d12_d3dkmt_heap_desc metadata;
+         d12_shared_heap_metadata_init(&metadata, &resolved);
+         shared_hr = d12_platform_create_shared_bo(
+            device, resolved.SizeInBytes, resolved.Alignment, bo_flags,
+            &metadata, sizeof(metadata), "d3d12 shared heap", &heap->bo);
+      }
+      if (!(resolved.Flags & D3D12_HEAP_FLAG_SHARED) ||
+          shared_hr == E_NOTIMPL) {
+         heap->bo = agx_bo_create(&device->dev, resolved.SizeInBytes,
+                                  resolved.Alignment, bo_flags,
+                                  "d3d12 heap");
+      }
+      if (!heap->bo && shared_hr != E_NOTIMPL) {
+         free(heap);
+         return shared_hr;
+      }
+   }
    if (!heap->bo) {
       free(heap);
       return E_OUTOFMEMORY;
@@ -1901,5 +2331,42 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
 
    HRESULT hr = d12_heap_QueryInterface(&heap->iface, riid, out);
    d12_heap_Release(&heap->iface);
+   return hr;
+}
+
+HRESULT
+d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
+                REFIID riid, void **out)
+{
+   return d12_heap_create_internal(device, desc, NULL, riid, out);
+}
+
+HRESULT
+d12_heap_open_shared_handle(struct d12_device *device, HANDLE handle,
+                            REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!riid || !handle || handle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+   uint8_t metadata[sizeof(struct d12_d3dkmt_d3d12_desc)] = {0};
+   uint32_t metadata_size = sizeof(metadata);
+   struct agx_bo *bo = NULL;
+   HRESULT hr = d12_platform_import_shared_bo(
+      device, handle, metadata, &metadata_size, "d3d12 imported shared heap",
+      &bo);
+   if (FAILED(hr))
+      return hr;
+
+   D3D12_HEAP_DESC desc;
+   if (!d12_shared_heap_metadata_parse(metadata, metadata_size, &desc)) {
+      agx_bo_unreference(&device->dev, bo);
+      return E_INVALIDARG;
+   }
+
+   hr = d12_heap_create_internal(device, &desc, bo, riid, out);
+   agx_bo_unreference(&device->dev, bo);
    return hr;
 }

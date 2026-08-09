@@ -3910,6 +3910,122 @@ d12_device_CreateFence(ID3D12Device2 *iface, UINT64 initial_value,
 }
 
 static HRESULT STDMETHODCALLTYPE
+d12_device_CreateSharedHandle(ID3D12Device2 *iface,
+                              ID3D12DeviceChild *object,
+                              const SECURITY_ATTRIBUTES *attributes,
+                              DWORD access, LPCWSTR name, HANDLE *handle)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+   HRESULT hr = d12_resource_create_shared_handle(
+      device, object, attributes, access, name, handle);
+   if (hr == E_NOTIMPL)
+      hr = d12_fence_create_shared_handle(device, object, attributes, access,
+                                          name, handle);
+   return hr;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_OpenSharedHandle(ID3D12Device2 *iface, HANDLE handle, REFIID riid,
+                            void **out)
+{
+   struct d12_device *device = d12_device_from_iface(iface);
+   if (d12_guid_equal(riid, &IID_ID3D12Fence))
+      return d12_fence_open_shared_handle(device, handle, riid, out);
+   if (d12_guid_equal(riid, &IID_ID3D12Heap))
+      return d12_heap_open_shared_handle(device, handle, riid, out);
+   return d12_resource_open_shared_handle(device, handle, riid, out);
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_OpenSharedHandleByName(ID3D12Device2 *iface, LPCWSTR name,
+                                  DWORD access, HANDLE *handle)
+{
+   return d12_platform_open_shared_handle_by_name(
+      d12_device_from_iface(iface), name, access, handle);
+}
+
+static HRESULT
+d12_device_set_pageable_resident(struct d12_device *device,
+                                 ID3D12Pageable *object, bool resident)
+{
+   if (!object)
+      return E_INVALIDARG;
+
+   ID3D12Resource *resource_iface = NULL;
+   if (SUCCEEDED(ID3D12Pageable_QueryInterface(
+          object, &IID_ID3D12Resource, (void **)&resource_iface))) {
+      if (!d12_resource_iface_is_ours(resource_iface)) {
+         ID3D12Resource_Release(resource_iface);
+         return E_INVALIDARG;
+      }
+      struct d12_resource *resource =
+         d12_resource_from_iface(resource_iface);
+      HRESULT hr = resource->device == device
+                      ? d12_platform_set_bo_resident(
+                           device, resource->bo, resident)
+                      : E_INVALIDARG;
+      if (SUCCEEDED(hr) && resource->stencil_bo &&
+          resource->stencil_bo != resource->bo) {
+         hr = d12_platform_set_bo_resident(device, resource->stencil_bo,
+                                           resident);
+      }
+      ID3D12Resource_Release(resource_iface);
+      return hr;
+   }
+
+   ID3D12Heap *heap_iface = NULL;
+   if (SUCCEEDED(ID3D12Pageable_QueryInterface(
+          object, &IID_ID3D12Heap, (void **)&heap_iface))) {
+      if (!d12_heap_iface_is_ours(heap_iface)) {
+         ID3D12Heap_Release(heap_iface);
+         return E_INVALIDARG;
+      }
+      struct d12_heap *heap = d12_memheap_from_iface(heap_iface);
+      HRESULT hr = heap->device == device
+                      ? d12_platform_set_bo_resident(device, heap->bo,
+                                                     resident)
+                      : E_INVALIDARG;
+      ID3D12Heap_Release(heap_iface);
+      return hr;
+   }
+
+   /* Command queues, descriptor heaps and pipeline state objects are also
+    * ID3D12Pageable, but their backing is either permanently resident or
+    * charged through resources referenced by submitted work. */
+   return S_OK;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_MakeResident(ID3D12Device2 *iface, UINT count,
+                        ID3D12Pageable *const *objects)
+{
+   if (count && !objects)
+      return E_INVALIDARG;
+   struct d12_device *device = d12_device_from_iface(iface);
+   for (UINT i = 0; i < count; i++) {
+      HRESULT hr = d12_device_set_pageable_resident(device, objects[i], true);
+      if (FAILED(hr))
+         return hr;
+   }
+   return S_OK;
+}
+
+static HRESULT STDMETHODCALLTYPE
+d12_device_Evict(ID3D12Device2 *iface, UINT count,
+                 ID3D12Pageable *const *objects)
+{
+   if (count && !objects)
+      return E_INVALIDARG;
+   struct d12_device *device = d12_device_from_iface(iface);
+   for (UINT i = 0; i < count; i++) {
+      HRESULT hr = d12_device_set_pageable_resident(device, objects[i], false);
+      if (FAILED(hr))
+         return hr;
+   }
+   return S_OK;
+}
+
+static HRESULT STDMETHODCALLTYPE
 d12_device_SetEventOnMultipleFenceCompletion(
    ID3D12Device2 *iface, ID3D12Fence *const *fences,
    const UINT64 *values, UINT count,
@@ -4206,6 +4322,11 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .GetCopyableFootprints = d12_device_GetCopyableFootprints,
    .CreateQueryHeap = d12_device_CreateQueryHeap,
    .CreateFence = d12_device_CreateFence,
+   .CreateSharedHandle = d12_device_CreateSharedHandle,
+   .OpenSharedHandle = d12_device_OpenSharedHandle,
+   .OpenSharedHandleByName = d12_device_OpenSharedHandleByName,
+   .MakeResident = d12_device_MakeResident,
+   .Evict = d12_device_Evict,
    .SetEventOnMultipleFenceCompletion =
       d12_device_SetEventOnMultipleFenceCompletion,
    .GetDeviceRemovedReason = d12_device_GetDeviceRemovedReason,

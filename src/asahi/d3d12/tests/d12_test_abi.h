@@ -34,6 +34,18 @@ d12_test_resource_get_desc(ID3D12Resource *resource)
 #endif
 }
 
+static inline D3D12_HEAP_DESC
+d12_test_heap_get_desc(ID3D12Heap *heap)
+{
+#ifdef _WIN32
+   D3D12_HEAP_DESC desc;
+   ID3D12Heap_GetDesc(heap, &desc);
+   return desc;
+#else
+   return ID3D12Heap_GetDesc(heap);
+#endif
+}
+
 static inline D3D12_CPU_DESCRIPTOR_HANDLE
 d12_test_descriptor_heap_get_cpu_start(ID3D12DescriptorHeap *heap)
 {
