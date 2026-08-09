@@ -276,9 +276,13 @@ check_d3d11_interop(HANDLE resource_handle,
    ID3D11Texture2D *texture = NULL;
 
    if (create_device) {
+      const D3D_FEATURE_LEVEL feature_levels[] = {
+         D3D_FEATURE_LEVEL_11_0,
+      };
       HRESULT hr = create_device(
          NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-         NULL, 0, D3D11_SDK_VERSION, &device, NULL, &context);
+         feature_levels, sizeof(feature_levels) / sizeof(feature_levels[0]),
+         D3D11_SDK_VERSION, &device, NULL, &context);
       CHECK(SUCCEEDED(hr) && device, "create the presentation D3D11 device");
 
       if (device) {
@@ -320,6 +324,8 @@ check_d3d11_interop(HANDLE resource_handle,
 int
 main(void)
 {
+   setvbuf(stdout, NULL, _IONBF, 0);
+
    ID3D12Device *device = NULL;
    HRESULT hr = D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_11_0,
                                   &IID_ID3D12Device, (void **)&device);
