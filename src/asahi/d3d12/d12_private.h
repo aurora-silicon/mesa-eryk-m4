@@ -815,6 +815,13 @@ struct d12_pipeline_state {
     * EOT, but they still exist in the tilebuffer while rasterizing).
     */
    struct agx_tilebuffer_layout tib;
+   /*
+    * Independent-blend PSOs whose declared RTVs all have one format use a
+    * dense, slot-stable tilebuffer ABI.  UNKNOWN RTV slots do not write, but
+    * reserving their slots lets a bound framebuffer keep one render pass
+    * while PSOs vary which subset is live.
+    */
+   bool stable_unused_rt_layout;
    struct agx_unlinked_uvs_layout uvs;
    struct agx_varyings_vs varyings;
    /* Render targets the pixel shader can actually modify after applying the
@@ -1036,6 +1043,7 @@ struct d12_segment {
    enum pipe_format rt_view_format[AGX_MAX_RENDER_TARGETS];
    uint8_t rt_count;
    uint8_t rt_write_mask;
+   bool merge_unused_rts;
    uint32_t bg_usc, eot_usc; /* agx_usc_addr()-encoded */
    uint32_t partial_bg_usc, partial_eot_usc;
    struct agx_counts_packed bg_counts, eot_counts;
@@ -1068,6 +1076,14 @@ struct d12_segment {
    unsigned scissor_count;
    uint64_t depth_bias_base;
    unsigned depth_bias_count;
+   /* Last viewport/scissor PPP state emitted in this render stream. PPP
+    * state is persistent, so repeating an identical update on every draw is
+    * pure command/data growth. */
+   bool viewport_ppp_valid;
+   uint8_t viewport_scissor_index;
+   uint8_t viewport_depth_bias_index;
+   uint16_t viewport_clip[4];
+   float viewport_transform[6];
 };
 
 #define D12_MAX_SCISSORS 256
@@ -1077,6 +1093,46 @@ struct d12_segment {
  * layer, so keep enough inline metadata for those passes while the control
  * and USC storage remain independently bounded. */
 #define D12_MAX_SEGMENTS 2048
+
+struct d12_binding_upload_cache {
+   bool valid;
+   const struct d12_root_signature *rs;
+   const struct d12_descriptor_heap *resource_heap;
+   const struct d12_descriptor_heap *sampler_heap;
+   struct d12_descriptor table[D12_MAX_RESOURCE_BINDINGS];
+   struct d12_descriptor samplers[D12_MAX_RESOURCE_BINDINGS];
+   const struct d12_descriptor *sources[D12_MAX_RESOURCE_BINDINGS];
+   uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS];
+   uint64_t root, textures, pbes;
+   uint64_t heap, heap_textures, heap_pbes, heap_samplers;
+};
+
+#define D12_GFX_UPLOAD_CACHE_SIZE 1024
+
+struct d12_gfx_upload_cache_entry {
+   bool valid;
+   const struct d12_pipeline_state *pso;
+   struct agx_tilebuffer_layout tib;
+   uint64_t root, textures, pbes;
+   uint64_t heap, heap_textures, heap_pbes, heap_samplers;
+   uint64_t draw, blend;
+   uint32_t vs_usc, fs_usc, varyings;
+};
+
+#define D12_FRAGMENT_STATE_CACHE_SIZE 2048
+
+struct d12_fragment_state_cache_entry {
+   bool valid;
+   const struct d12_pipeline_state *pso;
+   uint32_t fs_usc, varyings;
+   enum mesa_prim topology;
+   uint8_t dsv_flags;
+   uint8_t stencil_ref_front, stencil_ref_back;
+   bool has_ds, has_stencil, depth_bias_enable;
+   bool occlusion_counting;
+   uint64_t gpu;
+   uint16_t size;
+};
 
 struct d12_cmd_list {
    ID3D12GraphicsCommandList iface; /* must be first */
@@ -1231,6 +1287,21 @@ struct d12_cmd_list {
    struct util_dynarray indirect_constant_fixups;
    struct util_dynarray indirect_argument_fixups;
    struct util_dynarray bundle_draws;
+
+   /* Immutable recording-time uploads are shared until their complete key
+    * changes.  Exhaustive PSO-mix tests revisit the same 512 pipelines
+    * hundreds of times; rebuilding 6 KiB root planes and USC programs per
+    * draw is both needless and larger than the command-list arena. */
+   struct d12_binding_upload_cache binding_upload_cache[2];
+   struct d12_gfx_upload_cache_entry gfx_upload_cache[D12_GFX_UPLOAD_CACHE_SIZE];
+   struct d12_fragment_state_cache_entry
+      fragment_state_cache[D12_FRAGMENT_STATE_CACHE_SIZE];
+   bool direct_draw_params_valid;
+   uint32_t direct_draw_params[2];
+   uint64_t direct_draw_params_gpu;
+   bool blend_upload_valid;
+   float blend_upload[4];
+   uint64_t blend_upload_gpu;
 
    /* Explicit state written while recording a bundle.  The final values are
     * inherited back into its caller even when the bundle contains no draw.

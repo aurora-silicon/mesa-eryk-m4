@@ -3547,8 +3547,46 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       if (rt_formats && d12_format_is_renderable(rt_formats[i]))
          formats[i] = d12_format_to_pipe(rt_formats[i]);
    }
-   struct agx_tilebuffer_layout tib =
-      agx_build_tilebuffer_layout(formats, nr_rt, nr_samples, false);
+   enum pipe_format layout_formats[AGX_MAX_RENDER_TARGETS];
+   memcpy(layout_formats, formats, sizeof(layout_formats));
+
+   /*
+    * D3D12 permits UNKNOWN formats for attachments unused by a PSO, then
+    * permits a render pass to bind real RTVs in those slots.  Compacting the
+    * UNKNOWN slots makes every PSO subset a different AGX tilebuffer ABI:
+    * switching masks then requires a new hardware render command and large
+    * mix-and-match command lists exhaust the segment array.
+    *
+    * There is one useful class where the ABI can be made slot-stable without
+    * guessing a format: independent-blend PSOs whose declared RTVs all use
+    * the same format.  Reserve all eight slots with that known format.  The
+    * epilog still exports only the PSO-declared targets, and the command path
+    * only enables this merge when every actually bound RTV has that same
+    * format.  Mixed-format cases retain the established compact layout.
+    */
+   enum pipe_format uniform_rt_format = PIPE_FORMAT_NONE;
+   bool uniform_rt_formats = blend_desc && blend_desc->IndependentBlendEnable;
+   for (unsigned i = 0; i < nr_rt; i++) {
+      if (formats[i] == PIPE_FORMAT_NONE)
+         continue;
+
+      if (uniform_rt_format == PIPE_FORMAT_NONE)
+         uniform_rt_format = formats[i];
+      else if (formats[i] != uniform_rt_format)
+         uniform_rt_formats = false;
+   }
+
+   uniform_rt_formats &= uniform_rt_format != PIPE_FORMAT_NONE;
+   if (uniform_rt_formats) {
+      for (unsigned i = 0; i < ARRAY_SIZE(layout_formats); i++)
+         layout_formats[i] = uniform_rt_format;
+      pso->stable_unused_rt_layout = true;
+   }
+
+   struct agx_tilebuffer_layout tib = agx_build_tilebuffer_layout(
+      layout_formats,
+      pso->stable_unused_rt_layout ? ARRAY_SIZE(layout_formats) : nr_rt,
+      nr_samples, false);
    pso->tib = tib;
 
    const D3D12_RENDER_TARGET_BLEND_DESC default_rt_blend = {
@@ -3789,10 +3827,10 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       };
 
       memset(epilog_key.remap, -1, sizeof(epilog_key.remap));
-      for (unsigned i = 0; i < nr_rt; i++) {
+      for (unsigned i = 0; i < ARRAY_SIZE(epilog_key.rt_formats); i++) {
          epilog_key.blend.rt[i] = blend_keys[i];
-         epilog_key.rt_formats[i] = formats[i];
-         if (formats[i] != PIPE_FORMAT_NONE)
+         epilog_key.rt_formats[i] = tib.logical_format[i];
+         if (i < nr_rt && formats[i] != PIPE_FORMAT_NONE)
             epilog_key.remap[i] = i;
       }
 

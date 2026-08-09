@@ -345,6 +345,13 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    util_dynarray_clear(&list->indirect_constant_fixups);
    util_dynarray_clear(&list->indirect_argument_fixups);
    util_dynarray_clear(&list->bundle_draws);
+   memset(list->binding_upload_cache, 0, sizeof(list->binding_upload_cache));
+   memset(list->gfx_upload_cache, 0, sizeof(list->gfx_upload_cache));
+   memset(list->fragment_state_cache, 0, sizeof(list->fragment_state_cache));
+   list->direct_draw_params_valid = false;
+   list->direct_draw_params_gpu = 0;
+   list->blend_upload_valid = false;
+   list->blend_upload_gpu = 0;
    list->bundle_pso_set = false;
    list->bundle_graphics_rs_set = false;
    list->bundle_topology_set = false;
@@ -1119,6 +1126,42 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
    return true;
 }
 
+/* Return the common format of all non-null RTVs, or NONE for an empty or
+ * mixed-format framebuffer.  A common real format is the proof needed to
+ * materialize UNKNOWN PSO slots without inventing their representation. */
+static enum pipe_format
+d12_segment_uniform_rt_format(const struct d12_segment *seg)
+{
+   enum pipe_format format = PIPE_FORMAT_NONE;
+
+   for (unsigned i = 0; i < seg->rt_count; i++) {
+      if (!seg->rt[i])
+         continue;
+
+      if (format == PIPE_FORMAT_NONE)
+         format = seg->rt_view_format[i];
+      else if (seg->rt_view_format[i] != format)
+         return PIPE_FORMAT_NONE;
+   }
+
+   return format;
+}
+
+static bool
+d12_segment_matches_unused_rt_layout(const struct d12_segment *seg,
+                                     const struct d12_pipeline_state *pso)
+{
+   if (seg->tib.nr_samples != pso->tib.nr_samples)
+      return false;
+
+   /* No colour can reach the tilebuffer, so only the sample ABI matters. */
+   if (!pso->rt_write_mask)
+      return true;
+
+   return pso->stable_unused_rt_layout &&
+          memcmp(&seg->tib, &pso->tib, sizeof(seg->tib)) == 0;
+}
+
 /*
  * Open a render segment from authoritative OM descriptors. D3D12 does not
  * require a clear before drawing, so AGX's main background program must LOAD
@@ -1161,6 +1204,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    seg->rt_count = rtv_count;
    unsigned bound_rts = 0;
+   uint8_t bound_rt_mask = 0;
    unsigned rt_samples = 1;
    for (unsigned i = 0; i < rtv_count; i++) {
       const struct d12_descriptor *rtv = &rtvs[i];
@@ -1201,6 +1245,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
       }
 
       seg->rt[i] = rtv->resource;
+      bound_rt_mask |= BITFIELD_BIT(i);
       seg->rt_address[i] = rtv->address ? rtv->address : rtv->resource->addr;
       seg->rt_view_format[i] = view_pf;
 
@@ -1328,8 +1373,24 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (pso) {
-      seg->rt_write_mask = pso->rt_write_mask;
-      if ((bound_rts || dsv) && pso->tib.nr_samples != rt_samples) {
+      const enum pipe_format uniform_bound_format =
+         d12_segment_uniform_rt_format(seg);
+      const bool stable_pso_matches =
+         pso->stable_unused_rt_layout &&
+         (!bound_rts || uniform_bound_format == pso->tib.logical_format[0]);
+      const bool seed_from_bound =
+         !pso->rt_write_mask && uniform_bound_format != PIPE_FORMAT_NONE;
+
+      seg->merge_unused_rts = stable_pso_matches || seed_from_bound;
+      seg->rt_write_mask =
+         seg->merge_unused_rts ? bound_rt_mask : pso->rt_write_mask;
+      if (seed_from_bound) {
+         enum pipe_format dense[AGX_MAX_RENDER_TARGETS];
+         for (unsigned i = 0; i < ARRAY_SIZE(dense); i++)
+            dense[i] = uniform_bound_format;
+         seg->tib = agx_build_tilebuffer_layout(dense, ARRAY_SIZE(dense),
+                                                rt_samples, seg->layers > 1);
+      } else if ((bound_rts || dsv) && pso->tib.nr_samples != rt_samples) {
          /* Native D3D12 drivers are robust to a multisampled PSO on a
           * single-sampled attachment (only sample zero is live), and the
           * conformance suite also exercises the inverse out-of-spec case.
@@ -1436,8 +1497,7 @@ d12_list_begin_render(struct d12_cmd_list *list,
    list->segment_count++;
    list->render_open = true;
    return seg;
-}
-
+   }
 
 static bool
 d12_buffer_tail_descriptor(const struct d12_descriptor *d,
@@ -1710,6 +1770,29 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    const struct d12_root_signature *rs =
       compute ? list->compute_rs : list->graphics_rs;
    struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
+
+   struct d12_binding_upload_cache *cache =
+      &list->binding_upload_cache[compute ? 1 : 0];
+   uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS] = {0};
+   if (list->pso)
+      memcpy(texture_shapes, list->pso->texture_shapes, sizeof(texture_shapes));
+
+   if (cache->valid && cache->rs == rs && cache->resource_heap == bound_heap &&
+       cache->sampler_heap == list->sampler_descriptor_heap &&
+       memcmp(cache->table, raw_table, sizeof(cache->table)) == 0 &&
+       memcmp(cache->samplers, sampler_table, sizeof(cache->samplers)) == 0 &&
+       memcmp(cache->sources, sources, sizeof(cache->sources)) == 0 &&
+       memcmp(cache->texture_shapes, texture_shapes,
+              sizeof(cache->texture_shapes)) == 0) {
+      *out_root = cache->root;
+      *out_textures = cache->textures;
+      *out_pbes = cache->pbes;
+      *out_heap = cache->heap;
+      *out_heap_textures = cache->heap_textures;
+      *out_heap_pbes = cache->heap_pbes;
+      *out_heap_samplers = cache->heap_samplers;
+      return true;
+   }
 
    unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
@@ -2478,7 +2561,25 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
-   return *out_textures != 0 && *out_pbes != 0;
+   if (!*out_textures || !*out_pbes)
+      return false;
+
+   cache->valid = true;
+   cache->rs = rs;
+   cache->resource_heap = bound_heap;
+   cache->sampler_heap = list->sampler_descriptor_heap;
+   memcpy(cache->table, raw_table, sizeof(cache->table));
+   memcpy(cache->samplers, sampler_table, sizeof(cache->samplers));
+   memcpy(cache->sources, sources, sizeof(cache->sources));
+   memcpy(cache->texture_shapes, texture_shapes, sizeof(cache->texture_shapes));
+   cache->root = *out_root;
+   cache->textures = *out_textures;
+   cache->pbes = *out_pbes;
+   cache->heap = *out_heap;
+   cache->heap_textures = *out_heap_textures;
+   cache->heap_pbes = *out_heap_pbes;
+   cache->heap_samplers = *out_heap_samplers;
+   return true;
 }
 
 static enum agx_texture_dimension
@@ -5146,6 +5247,102 @@ d12_list_unroll_gs_restart(struct d12_cmd_list *list,
    return true;
 }
 
+static struct d12_gfx_upload_cache_entry *
+d12_gfx_upload_cache_lookup(struct d12_cmd_list *list,
+                            const struct d12_pipeline_state *pso,
+                            const struct agx_tilebuffer_layout *tib,
+                            uint64_t root, uint64_t textures, uint64_t pbes,
+                            uint64_t heap, uint64_t heap_textures,
+                            uint64_t heap_pbes, uint64_t heap_samplers,
+                            uint64_t draw, uint64_t blend)
+{
+   uint64_t hash = ((uintptr_t)pso >> 4) ^ root ^ textures ^ pbes ^ draw ^
+                   blend ^ heap ^ heap_textures ^ heap_pbes ^ heap_samplers;
+   unsigned start = hash & (D12_GFX_UPLOAD_CACHE_SIZE - 1);
+
+   static_assert(
+      (D12_GFX_UPLOAD_CACHE_SIZE & (D12_GFX_UPLOAD_CACHE_SIZE - 1)) == 0,
+      "graphics upload cache must be power-of-two sized");
+
+   for (unsigned probe = 0; probe < D12_GFX_UPLOAD_CACHE_SIZE; probe++) {
+      struct d12_gfx_upload_cache_entry *entry =
+         &list->gfx_upload_cache[(start + probe) &
+                                 (D12_GFX_UPLOAD_CACHE_SIZE - 1)];
+
+      if (!entry->valid)
+         return entry;
+
+      if (entry->pso == pso && entry->root == root &&
+          entry->textures == textures && entry->pbes == pbes &&
+          entry->heap == heap && entry->heap_textures == heap_textures &&
+          entry->heap_pbes == heap_pbes &&
+          entry->heap_samplers == heap_samplers && entry->draw == draw &&
+          entry->blend == blend && memcmp(&entry->tib, tib, sizeof(*tib)) == 0)
+         return entry;
+   }
+
+   return NULL;
+}
+
+static struct d12_fragment_state_cache_entry *
+d12_fragment_state_cache_lookup(struct d12_cmd_list *list,
+                                const struct d12_pipeline_state *pso,
+                                uint32_t fs_usc, uint32_t varyings,
+                                enum mesa_prim topology, uint8_t dsv_flags,
+                                uint8_t stencil_ref_front,
+                                uint8_t stencil_ref_back, bool has_ds,
+                                bool has_stencil, bool depth_bias_enable,
+                                bool occlusion_counting)
+{
+   uint64_t hash = ((uintptr_t)pso >> 4) ^ fs_usc ^ ((uint64_t)varyings << 17) ^
+                   ((uint64_t)topology << 9) ^ ((uint64_t)dsv_flags << 25) ^
+                   ((uint64_t)stencil_ref_front << 33) ^
+                   ((uint64_t)stencil_ref_back << 41) ^
+                   ((uint64_t)has_ds << 49) ^ ((uint64_t)has_stencil << 50) ^
+                   ((uint64_t)depth_bias_enable << 51) ^
+                   ((uint64_t)occlusion_counting << 52);
+   unsigned start = hash & (D12_FRAGMENT_STATE_CACHE_SIZE - 1);
+
+   static_assert((D12_FRAGMENT_STATE_CACHE_SIZE &
+                  (D12_FRAGMENT_STATE_CACHE_SIZE - 1)) == 0,
+                 "fragment-state cache must be power-of-two sized");
+
+   for (unsigned probe = 0; probe < D12_FRAGMENT_STATE_CACHE_SIZE; probe++) {
+      struct d12_fragment_state_cache_entry *entry =
+         &list->fragment_state_cache[(start + probe) &
+                                     (D12_FRAGMENT_STATE_CACHE_SIZE - 1)];
+
+      if (!entry->valid)
+         return entry;
+
+      if (entry->pso == pso && entry->fs_usc == fs_usc &&
+          entry->varyings == varyings && entry->topology == topology &&
+          entry->dsv_flags == dsv_flags &&
+          entry->stencil_ref_front == stencil_ref_front &&
+          entry->stencil_ref_back == stencil_ref_back &&
+          entry->has_ds == has_ds && entry->has_stencil == has_stencil &&
+          entry->depth_bias_enable == depth_bias_enable &&
+          entry->occlusion_counting == occlusion_counting)
+         return entry;
+   }
+
+   return NULL;
+}
+
+static void
+d12_emit_ppp_state(uint8_t **out, uint64_t gpu, size_t size)
+{
+   assert(gpu < (1ull << 40));
+   assert((size % 4) == 0 && size / 4 < (1ull << 24));
+
+   agx_pack(*out, PPP_STATE, cfg) {
+      cfg.pointer_hi = gpu >> 32;
+      cfg.pointer_lo = (uint32_t)gpu;
+      cfg.size_words = size / 4;
+   }
+   *out += AGX_PPP_STATE_LENGTH;
+}
+
 static void
 d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               unsigned instance_count, unsigned first_vertex,
@@ -5207,12 +5404,15 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    }
 
    if (list->render_open) {
-      struct d12_segment *open =
-         &list->segments[list->segment_count - 1];
-      if (!d12_segment_matches_bindings(list, open,
-                                        pso->has_pixel_shader) ||
-          memcmp(&open->tib, &pso->tib, sizeof(open->tib)) != 0 ||
-          open->rt_write_mask != pso->rt_write_mask)
+      struct d12_segment *open = &list->segments[list->segment_count - 1];
+      const bool layout_matches =
+         open->merge_unused_rts
+            ? d12_segment_matches_unused_rt_layout(open, pso)
+            : memcmp(&open->tib, &pso->tib, sizeof(open->tib)) == 0 &&
+                 open->rt_write_mask == pso->rt_write_mask;
+
+      if (!d12_segment_matches_bindings(list, open, pso->has_pixel_shader) ||
+          !layout_matches)
          d12_list_close_cdm(list);
    }
 
@@ -5273,7 +5473,18 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          indexed && !list->ib.addr ? 0 : first_vertex,
          first_instance,
       };
-      draw_gpu = d12_list_upload(list, draw_params, sizeof(draw_params), 8);
+      if (list->direct_draw_params_valid &&
+          memcmp(list->direct_draw_params, draw_params, sizeof(draw_params)) ==
+             0) {
+         draw_gpu = list->direct_draw_params_gpu;
+      } else {
+         draw_gpu = d12_list_upload(list, draw_params, sizeof(draw_params), 8);
+         if (draw_gpu) {
+            memcpy(list->direct_draw_params, draw_params, sizeof(draw_params));
+            list->direct_draw_params_gpu = draw_gpu;
+            list->direct_draw_params_valid = true;
+         }
+      }
    }
    if (!draw_gpu)
       return;
@@ -5451,9 +5662,21 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                 vstage == &pso->ms_rast ? "ms_rast" : "other");
    }
 
-
-   uint64_t blend_gpu =
-      d12_list_upload(list, list->blend_factor, sizeof(list->blend_factor), 16);
+   uint64_t blend_gpu;
+   if (list->blend_upload_valid &&
+       memcmp(list->blend_upload, list->blend_factor,
+              sizeof(list->blend_factor)) == 0) {
+      blend_gpu = list->blend_upload_gpu;
+   } else {
+      blend_gpu = d12_list_upload(list, list->blend_factor,
+                                  sizeof(list->blend_factor), 16);
+      if (blend_gpu) {
+         memcpy(list->blend_upload, list->blend_factor,
+                sizeof(list->blend_factor));
+         list->blend_upload_gpu = blend_gpu;
+         list->blend_upload_valid = true;
+      }
+   }
    if (!blend_gpu)
       return;
 
@@ -5474,37 +5697,71 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
                                     &pso->fs.info))
       return;
 
-   uint32_t vs_usc = d12_gfx_stage_usc(
-      list, vstage, false, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
-      heap_gpu, heap_textures_gpu, heap_pbes_gpu, heap_samplers_gpu,
-      draw_gpu, 0, vertex_visibility,
-      (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
-         ? &poly_u
-         : NULL);
-   uint32_t fs_usc = d12_gfx_stage_usc(list, &pso->fs, true, &seg->tib,
-                                       root_gpu, textures_gpu, pbes_gpu,
-                                       heap_gpu, heap_textures_gpu,
-                                       heap_pbes_gpu, heap_samplers_gpu,
-                                       draw_gpu, blend_gpu,
-                                       D3D12_SHADER_VISIBILITY_PIXEL, NULL);
-   if (!vs_usc || !fs_usc)
-      return;
+   const bool cacheable_gfx_upload = vstage == &pso->vs && !pso->has_gs &&
+                                     !pso->has_tess && !pso->has_mesh &&
+                                     !pso->nr_vb_attribs;
+   struct d12_gfx_upload_cache_entry *gfx_cache =
+      cacheable_gfx_upload
+         ? d12_gfx_upload_cache_lookup(list, pso, &seg->tib, root_gpu,
+                                       textures_gpu, pbes_gpu, heap_gpu,
+                                       heap_textures_gpu, heap_pbes_gpu,
+                                       heap_samplers_gpu, draw_gpu, blend_gpu)
+         : NULL;
+   const bool gfx_cache_hit = gfx_cache && gfx_cache->valid;
+   uint32_t vs_usc = gfx_cache_hit ? gfx_cache->vs_usc : 0;
+   uint32_t fs_usc = gfx_cache_hit ? gfx_cache->fs_usc : 0;
+   uint32_t varyings = gfx_cache_hit ? gfx_cache->varyings : 0;
 
-   /* Coefficient-register bindings linking VS outputs to FS inputs. */
-   uint32_t varyings = 0;
-   unsigned bindings = pso->fs.linked.cf.nr_bindings;
-   if (bindings) {
-      size_t size =
-         AGX_CF_BINDING_HEADER_LENGTH + bindings * AGX_CF_BINDING_LENGTH;
-      uint32_t link_usc;
-      uint8_t *cpu = d12_list_alloc_usc(list, size, &link_usc);
-      if (!cpu)
+   if (!gfx_cache_hit) {
+      vs_usc = d12_gfx_stage_usc(
+         list, vstage, false, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
+         heap_gpu, heap_textures_gpu, heap_pbes_gpu, heap_samplers_gpu,
+         draw_gpu, 0, vertex_visibility,
+         (pso->has_gs || pso->has_tess || pso->has_mesh || pso->nr_vb_attribs)
+            ? &poly_u
+            : NULL);
+      fs_usc = d12_gfx_stage_usc(
+         list, &pso->fs, true, &seg->tib, root_gpu, textures_gpu, pbes_gpu,
+         heap_gpu, heap_textures_gpu, heap_pbes_gpu, heap_samplers_gpu,
+         draw_gpu, blend_gpu, D3D12_SHADER_VISIBILITY_PIXEL, NULL);
+      if (!vs_usc || !fs_usc)
          return;
 
-      bool generate_prim_id = false;
-      agx_link_varyings_vs_fs(cpu, varys, uvs->user_size,
-                              &pso->fs.linked.cf, 0, 0, &generate_prim_id);
-      varyings = link_usc;
+      /* Coefficient-register bindings linking VS outputs to FS inputs. */
+      unsigned bindings = pso->fs.linked.cf.nr_bindings;
+      if (bindings) {
+         size_t size =
+            AGX_CF_BINDING_HEADER_LENGTH + bindings * AGX_CF_BINDING_LENGTH;
+         uint32_t link_usc;
+         uint8_t *cpu = d12_list_alloc_usc(list, size, &link_usc);
+         if (!cpu)
+            return;
+
+         bool generate_prim_id = false;
+         agx_link_varyings_vs_fs(cpu, varys, uvs->user_size, &pso->fs.linked.cf,
+                                 0, 0, &generate_prim_id);
+         varyings = link_usc;
+      }
+
+      if (gfx_cache) {
+         *gfx_cache = (struct d12_gfx_upload_cache_entry){
+            .valid = true,
+            .pso = pso,
+            .tib = seg->tib,
+            .root = root_gpu,
+            .textures = textures_gpu,
+            .pbes = pbes_gpu,
+            .heap = heap_gpu,
+            .heap_textures = heap_textures_gpu,
+            .heap_pbes = heap_pbes_gpu,
+            .heap_samplers = heap_samplers_gpu,
+            .draw = draw_gpu,
+            .blend = blend_gpu,
+            .vs_usc = vs_usc,
+            .fs_usc = fs_usc,
+            .varyings = varyings,
+         };
+      }
    }
 
    if (!d12_list_check_stream_space(list))
@@ -5558,23 +5815,6 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
    /* Viewport, scissor and depth bias */
    {
-      struct AGX_PPP_HEADER present = {
-         .depth_bias_scissor = true,
-         .region_clip = true,
-         .viewport = true,
-         .viewport_count = 1,
-      };
-
-      size_t size = agx_ppp_update_size(&present);
-      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
-      uint8_t *cpu = d12_list_data_cpu(list, gpu);
-      if (!cpu)
-         return;
-
-      struct agx_ppp_update ppp =
-         agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
-                            &present);
-
       /* AGX's viewport transform does not provide the API's exact pixel
        * clip at fractional edges. Honeykrisp therefore intersects the
        * hardware scissor with the viewport, truncating each edge to the
@@ -5623,43 +5863,76 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       if (depth_bias_index == ~0u)
          return;
 
-      agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
-         cfg.scissor = scissor_index;
-         cfg.depth_bias = depth_bias_index;
+      const uint16_t clip[4] = {clip_x0, clip_y0, clip_x1, clip_y1};
+      const float transform[6] = {
+         vp_x + 0.5f * vp_w,
+         vp_y + 0.5f * vp_h,
+         vp_zmin,
+         0.5f * vp_w,
+         /* D3D12's +y points up, opposite Vulkan's framebuffer convention. */
+         -0.5f * vp_h,
+         vp_zmax - vp_zmin,
+      };
+      const bool unchanged =
+         seg->viewport_ppp_valid &&
+         seg->viewport_scissor_index == scissor_index &&
+         seg->viewport_depth_bias_index == depth_bias_index &&
+         memcmp(seg->viewport_clip, clip, sizeof(clip)) == 0 &&
+         memcmp(seg->viewport_transform, transform, sizeof(transform)) == 0;
+
+      /* PPP state persists in a render stream. Emit this complete group only
+       * when one of its inputs changes; fragment-only updates below do not
+       * invalidate it. */
+      if (!unchanged) {
+         struct AGX_PPP_HEADER present = {
+            .depth_bias_scissor = true,
+            .region_clip = true,
+            .viewport = true,
+            .viewport_count = 1,
+         };
+
+         size_t size = agx_ppp_update_size(&present);
+         uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+         uint8_t *cpu = d12_list_data_cpu(list, gpu);
+         if (!cpu)
+            return;
+
+         struct agx_ppp_update ppp = agx_new_ppp_update(
+            (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
+
+         agx_ppp_push(&ppp, DEPTH_BIAS_SCISSOR, cfg) {
+            cfg.scissor = scissor_index;
+            cfg.depth_bias = depth_bias_index;
+         }
+
+         agx_ppp_push(&ppp, REGION_CLIP, cfg) {
+            cfg.enable = true;
+            cfg.min_x = clip_x0 / 32;
+            cfg.min_y = clip_y0 / 32;
+            cfg.max_x = DIV_ROUND_UP(MAX2(clip_x1, 1), 32);
+            cfg.max_y = DIV_ROUND_UP(MAX2(clip_y1, 1), 32);
+         }
+
+         agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg);
+
+         agx_ppp_push(&ppp, VIEWPORT, cfg) {
+            cfg.translate_x = transform[0];
+            cfg.translate_y = transform[1];
+            cfg.translate_z = transform[2];
+
+            cfg.scale_x = transform[3];
+
+            cfg.scale_y = transform[4];
+            cfg.scale_z = transform[5];
+         }
+
+         agx_ppp_fini(&out, &ppp);
+         seg->viewport_ppp_valid = true;
+         seg->viewport_scissor_index = scissor_index;
+         seg->viewport_depth_bias_index = depth_bias_index;
+         memcpy(seg->viewport_clip, clip, sizeof(clip));
+         memcpy(seg->viewport_transform, transform, sizeof(transform));
       }
-
-      agx_ppp_push(&ppp, REGION_CLIP, cfg) {
-         cfg.enable = true;
-         cfg.min_x = clip_x0 / 32;
-         cfg.min_y = clip_y0 / 32;
-         cfg.max_x = DIV_ROUND_UP(MAX2(clip_x1, 1), 32);
-         cfg.max_y = DIV_ROUND_UP(MAX2(clip_y1, 1), 32);
-      }
-
-      agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg);
-
-      /* Honour RSSetViewports. Same transform hk applies, but driven by
-       * the viewport the application actually set rather than always the
-       * whole target.
-       */
-      agx_ppp_push(&ppp, VIEWPORT, cfg) {
-         cfg.translate_x = vp_x + 0.5f * vp_w;
-         cfg.translate_y = vp_y + 0.5f * vp_h;
-         cfg.translate_z = vp_zmin;
-
-         cfg.scale_x = 0.5f * vp_w;
-
-         /* Y is NEGATED relative to the Vulkan driver this code is modelled
-          * on. Vulkan's clip space has +y pointing down the framebuffer, so
-          * hk uses a positive scale; D3D12's +y points up, so NDC +1 must
-          * land on the TOP row. Getting this wrong renders a vertically
-          * mirrored image, which symmetric test geometry cannot detect.
-          */
-         cfg.scale_y = -0.5f * vp_h;
-         cfg.scale_z = vp_zmax - vp_zmin;
-      }
-
-      agx_ppp_fini(&out, &ppp);
    }
 
    /* Fragment state */
@@ -5676,8 +5949,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       const bool s_read_only =
          seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL;
       const bool z_write = has_ds && ds->depth_write && !z_read_only;
-      const bool s_test =
-         has_ds && ds->stencil_test && seg->ds->stencil_bo != NULL;
+      const bool has_stencil = has_ds && seg->ds->stencil_bo != NULL;
+      const bool s_test = has_stencil && ds->stencil_test;
       const float effective_depth_bias = pso->raster.dynamic_depth_bias
                                             ? list->depth_bias
                                             : pso->raster.depth_bias;
@@ -5686,144 +5959,177 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             ? list->slope_scaled_depth_bias
             : pso->raster.slope_scaled_depth_bias;
 
-      /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
-       * follow it exactly, or agx_ppp_fini catches a size mismatch.
-       *
-       * Both faces are pushed. Measured on this hardware (M2, G14G): with
-       * two-sided state off, back-facing primitives use the FRONT slot --
-       * a deliberately back-wound triangle depth-tests correctly even with
-       * the back half left unwritten. The back half becomes load-bearing
-       * the moment two_sided_stencil is set below, which is exactly when
-       * D3D12 gives the two faces different stencil ops, so it is
-       * programmed unconditionally rather than left to that coupling.
-       */
-      struct AGX_PPP_HEADER present = {
-         .fragment_control = true,
-         .fragment_control_2 = true,
-         .fragment_front_face = true,
-         .fragment_front_face_2 = true,
-         .fragment_front_stencil = true,
-         .fragment_back_face = true,
-         .fragment_back_face_2 = true,
-         .fragment_back_stencil = true,
-         .output_select = true,
-         .varying_counts_32 = true,
-         .varying_counts_16 = true,
-         .cull = true,
-         .fragment_shader = true,
-         .occlusion_query = true,
-         .output_size = true,
-         .viewport_count = 1,
-      };
+      const bool depth_bias_enable =
+         (effective_depth_bias != 0.0f || effective_slope_bias != 0.0f) &&
+         d12_object_type(topology) == AGX_OBJECT_TYPE_TRIANGLE;
+      const bool occlusion_counting = list->active_occlusion_queries != 0;
+      struct d12_fragment_state_cache_entry *fragment_cache =
+         cacheable_gfx_upload
+            ? d12_fragment_state_cache_lookup(
+                 list, pso, fs_usc, varyings, topology, seg->dsv_flags,
+                 list->stencil_ref_front, list->stencil_ref_back, has_ds,
+                 has_stencil, depth_bias_enable, occlusion_counting)
+            : NULL;
 
-      size_t size = agx_ppp_update_size(&present);
-      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
-      uint8_t *cpu = d12_list_data_cpu(list, gpu);
-      if (!cpu)
-         return;
+      if (fragment_cache && fragment_cache->valid) {
+         d12_emit_ppp_state(&out, fragment_cache->gpu, fragment_cache->size);
+      } else {
 
-      struct agx_ppp_update ppp =
-         agx_new_ppp_update((struct agx_ptr){.cpu = cpu, .gpu = gpu}, size,
-                            &present);
-
-      agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
-         cfg.visibility_mode = list->active_occlusion_queries
-                                  ? AGX_VISIBILITY_MODE_COUNTING
-                                  : AGX_VISIBILITY_MODE_NONE;
-         /* Always on: the scissor entry the draw indexes carries the depth
-          * clip range as well as the XY bounds, so this cannot be switched
-          * off just because the application set no scissor rect.
+         /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
+          * follow it exactly, or agx_ppp_fini catches a size mismatch.
+          *
+          * Both faces are pushed. Measured on this hardware (M2, G14G): with
+          * two-sided state off, back-facing primitives use the FRONT slot --
+          * a deliberately back-wound triangle depth-tests correctly even with
+          * the back half left unwritten. The back half becomes load-bearing
+          * the moment two_sided_stencil is set below, which is exactly when
+          * D3D12 gives the two faces different stencil ops, so it is
+          * programmed unconditionally rather than left to that coupling.
           */
-         cfg.scissor_enable = true;
-         cfg.depth_bias_enable =
-            (effective_depth_bias != 0.0f || effective_slope_bias != 0.0f) &&
-            d12_object_type(topology) == AGX_OBJECT_TYPE_TRIANGLE;
-         cfg.stencil_test_enable = s_test;
-         cfg.two_sided_stencil = s_test;
+         struct AGX_PPP_HEADER present = {
+            .fragment_control = true,
+            .fragment_control_2 = true,
+            .fragment_front_face = true,
+            .fragment_front_face_2 = true,
+            .fragment_front_stencil = true,
+            .fragment_back_face = true,
+            .fragment_back_face_2 = true,
+            .fragment_back_stencil = true,
+            .output_select = true,
+            .varying_counts_32 = true,
+            .varying_counts_16 = true,
+            .cull = true,
+            .fragment_shader = true,
+            .occlusion_query = true,
+            .output_size = true,
+            .viewport_count = 1,
+         };
+
+         size_t size = agx_ppp_update_size(&present);
+         uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+         uint8_t *cpu = d12_list_data_cpu(list, gpu);
+         if (!cpu)
+            return;
+
+         struct agx_ppp_update ppp = agx_new_ppp_update(
+            (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
+
+         agx_ppp_push(&ppp, FRAGMENT_CONTROL, cfg) {
+            cfg.visibility_mode = occlusion_counting
+                                     ? AGX_VISIBILITY_MODE_COUNTING
+                                     : AGX_VISIBILITY_MODE_NONE;
+            /* Always on: the scissor entry the draw indexes carries the depth
+             * clip range as well as the XY bounds, so this cannot be switched
+             * off just because the application set no scissor rect.
+             */
+            cfg.scissor_enable = true;
+            cfg.depth_bias_enable = depth_bias_enable;
+            cfg.stencil_test_enable = s_test;
+            cfg.two_sided_stencil = s_test;
+         }
+
+         /* The linker's own fragment control (tag writes etc.). */
+         agx_ppp_push_packed(&ppp, &pso->fs.linked.fragment_control,
+                             FRAGMENT_CONTROL);
+
+         /* Depth function. AGX_ZS_FUNC_NEVER is 0, so leaving this unset
+          * rejects every fragment — geometry rasterizes and nothing is
+          * written. With no depth attachment the test must be ALWAYS.
+          */
+         struct agx_fragment_face_packed face;
+         agx_pack(&face, FRAGMENT_FACE, cfg) {
+            cfg.line_width =
+               agx_pack_line_width(pso->raster.smooth_line ? 2.0f : 1.0f);
+            cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+            cfg.disable_depth_write = !z_write;
+            cfg.depth_function = z_test ? ds->depth_func : AGX_ZS_FUNC_ALWAYS;
+         }
+
+         agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
+            cfg.stencil_reference = list->stencil_ref_front;
+         }
+
+         struct agx_fragment_face_2_packed face_2;
+         agx_pack(&face_2, FRAGMENT_FACE_2, cfg) {
+            cfg.object_type = d12_object_type(topology);
+         }
+         agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
+         agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
+
+         d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test, s_read_only);
+
+         /* Back face: same depth state, its own stencil ops. */
+         agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
+            cfg.stencil_reference = list->stencil_ref_back;
+         }
+         agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
+         d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only);
+
+         /* Output select is the MERGE of the vertex side (which says the
+          * position is written) and the fragment side. Pushing only the
+          * fragment half rasterizes nothing.
+          */
+         struct agx_output_select_packed osel = uvs->osel;
+         agx_ppp_push_merged_blobs(&ppp, AGX_OUTPUT_SELECT_LENGTH, &osel,
+                                   &pso->fs.linked.osel);
+
+         agx_ppp_push_packed(&ppp, &varys->counts_32, VARYING_COUNTS);
+         agx_ppp_push_packed(&ppp, &varys->counts_16, VARYING_COUNTS);
+
+         agx_ppp_push(&ppp, CULL, cfg) {
+            cfg.front_face_ccw = pso->raster.front_face_ccw;
+            /* Direct hardware TES needs the tessellator's declared winding
+             * folded into culling, as in Honeykrisp. Once any geometry stage
+             * follows, however, Poly presents an explicit list of fully ordered
+             * output triangles; applying the tessellation XOR again reverses
+             * them. This includes the XFB passthrough synthesized by this
+             * driver. D3D12 has no selectable domain origin, so there is no
+             * lower-left XOR. */
+            if (pso->has_tess && !pso->has_gs)
+               cfg.front_face_ccw ^= pso->tess_ccw;
+            cfg.cull_front = pso->raster.cull_front;
+            cfg.cull_back = pso->raster.cull_back;
+            cfg.depth_clip = pso->raster.depth_clip;
+         }
+
+         agx_ppp_push_packed(&ppp, &pso->fs.fs_counts, FRAGMENT_SHADER_WORD_0);
+
+         agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_1, cfg) {
+            cfg.pipeline = fs_usc;
+         }
+
+         agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_2, cfg) {
+            cfg.cf_bindings = varyings;
+         }
+
+         agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_3, cfg);
+
+         agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
+
+         agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) {
+            cfg.count = uvs->size;
+         }
+
+         agx_ppp_fini(&out, &ppp);
+         if (fragment_cache) {
+            *fragment_cache = (struct d12_fragment_state_cache_entry){
+               .valid = true,
+               .pso = pso,
+               .fs_usc = fs_usc,
+               .varyings = varyings,
+               .topology = topology,
+               .dsv_flags = seg->dsv_flags,
+               .stencil_ref_front = list->stencil_ref_front,
+               .stencil_ref_back = list->stencil_ref_back,
+               .has_ds = has_ds,
+               .has_stencil = has_stencil,
+               .depth_bias_enable = depth_bias_enable,
+               .occlusion_counting = occlusion_counting,
+               .gpu = gpu,
+               .size = size,
+            };
+         }
       }
-
-      /* The linker's own fragment control (tag writes etc.). */
-      agx_ppp_push_packed(&ppp, &pso->fs.linked.fragment_control,
-                          FRAGMENT_CONTROL);
-
-      /* Depth function. AGX_ZS_FUNC_NEVER is 0, so leaving this unset
-       * rejects every fragment — geometry rasterizes and nothing is
-       * written. With no depth attachment the test must be ALWAYS.
-       */
-      struct agx_fragment_face_packed face;
-      agx_pack(&face, FRAGMENT_FACE, cfg) {
-         cfg.line_width = agx_pack_line_width(
-            pso->raster.smooth_line ? 2.0f : 1.0f);
-         cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
-         cfg.disable_depth_write = !z_write;
-         cfg.depth_function = z_test ? ds->depth_func : AGX_ZS_FUNC_ALWAYS;
-      }
-
-      agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
-         cfg.stencil_reference = list->stencil_ref_front;
-      }
-
-      struct agx_fragment_face_2_packed face_2;
-      agx_pack(&face_2, FRAGMENT_FACE_2, cfg) {
-         cfg.object_type = d12_object_type(topology);
-      }
-      agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
-      agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
-
-      d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test, s_read_only);
-
-      /* Back face: same depth state, its own stencil ops. */
-      agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
-         cfg.stencil_reference = list->stencil_ref_back;
-      }
-      agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
-      d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only);
-
-      /* Output select is the MERGE of the vertex side (which says the
-       * position is written) and the fragment side. Pushing only the
-       * fragment half rasterizes nothing.
-       */
-      struct agx_output_select_packed osel = uvs->osel;
-      agx_ppp_push_merged_blobs(&ppp, AGX_OUTPUT_SELECT_LENGTH, &osel,
-                                &pso->fs.linked.osel);
-
-      agx_ppp_push_packed(&ppp, &varys->counts_32, VARYING_COUNTS);
-      agx_ppp_push_packed(&ppp, &varys->counts_16, VARYING_COUNTS);
-
-      agx_ppp_push(&ppp, CULL, cfg) {
-         cfg.front_face_ccw = pso->raster.front_face_ccw;
-         /* Direct hardware TES needs the tessellator's declared winding folded
-          * into culling, as in Honeykrisp. Once any geometry stage follows,
-          * however, Poly presents an explicit list of fully ordered output
-          * triangles; applying the tessellation XOR again reverses them. This
-          * includes the XFB passthrough synthesized by this driver. D3D12 has
-          * no selectable domain origin, so there is no lower-left XOR. */
-         if (pso->has_tess && !pso->has_gs)
-            cfg.front_face_ccw ^= pso->tess_ccw;
-         cfg.cull_front = pso->raster.cull_front;
-         cfg.cull_back = pso->raster.cull_back;
-         cfg.depth_clip = pso->raster.depth_clip;
-      }
-
-      agx_ppp_push_packed(&ppp, &pso->fs.fs_counts, FRAGMENT_SHADER_WORD_0);
-
-      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_1, cfg) {
-         cfg.pipeline = fs_usc;
-      }
-
-      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_2, cfg) {
-         cfg.cf_bindings = varyings;
-      }
-
-      agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_3, cfg);
-
-      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY, cfg);
-
-      agx_ppp_push(&ppp, OUTPUT_SIZE, cfg) {
-         cfg.count = uvs->size;
-      }
-
-      agx_ppp_fini(&out, &ppp);
    }
 
    /* The draw. Tessellation and mesh already built an indexed indirect
