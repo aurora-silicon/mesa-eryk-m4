@@ -4529,13 +4529,35 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                return;
             }
 
-            nir_def *offset = uav_texture_offset(ctx, resource);
-            if (!offset) {
-               return;
-            }
+            /* Oversized/rooted ranges publish a GPU address into the
+             * application's 40-byte descriptor heap in the root table.  It
+             * is not a byte offset into the command-local native heap.  The
+             * old path truncated that address to 32 bits and added it to
+             * D12_UNIFORM_TEXTURES; test_null_descriptor_mismatch_type then
+             * faulted at exactly compact_heap + low32(rooted_heap).
+             *
+             * Resolve the global descriptor index and select the parallel
+             * shader-visible AGX texture heap, matching rooted SRV and typed
+             * buffer loads.  Ordinary finite tables retain their compact
+             * command-local heap.
+             */
+            nir_def *descriptor = uav_rooted_descriptor(ctx, resource);
+            nir_def *handle;
+            if (descriptor) {
+               nir_def *native_slot =
+                  rooted_native_index(ctx, descriptor);
+               handle = nir_bindless_image_agx(
+                  b, nir_imul_imm(b, native_slot,
+                                  D12_TEXTURE_DESC_SIZE),
+                  .desc_set = D12_UNIFORM_HEAP_TEXTURES);
+            } else {
+               nir_def *offset = uav_texture_offset(ctx, resource);
+               if (!offset)
+                  return;
 
-            nir_def *handle = nir_bindless_image_agx(
-               b, offset, .desc_set = D12_UNIFORM_TEXTURES);
+               handle = nir_bindless_image_agx(
+                  b, offset, .desc_set = D12_UNIFORM_TEXTURES);
+            }
             nir_def *coord = SRC(1);
             nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
             tex->op = nir_texop_txf;
