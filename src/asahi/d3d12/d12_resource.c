@@ -609,9 +609,13 @@ d12_resource_create(struct d12_device *device,
                            ? heap->bo : NULL;
    } else {
       /* UMA: every heap type is the same cached, coherent memory. */
-      enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK;
-      if (!(heap_flags & D3D12_HEAP_FLAG_CREATE_NOT_ZEROED))
-         bo_flags |= AGX_BO_ZERO_ON_REUSE;
+      /* CREATE_NOT_ZEROED permits an implementation to omit the clear; it
+       * does not require dirty contents.  Native Windows drivers clear in
+       * practice, and applications rely on that behaviour even with the
+       * hint set.  Fresh kernel BOs are already zeroed, so cover only the
+       * userspace-cache reuse case here. */
+      enum agx_bo_flags bo_flags =
+         AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE;
 
       res->bo = agx_bo_create(&device->dev, size_B, 0, bo_flags,
                               "d3d12 resource");
@@ -1104,9 +1108,9 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
    if (!heap)
       return E_OUTOFMEMORY;
 
-   enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK;
-   if (!(resolved.Flags & D3D12_HEAP_FLAG_CREATE_NOT_ZEROED))
-      bo_flags |= AGX_BO_ZERO_ON_REUSE;
+   /* As with committed resources, conservatively clear a cached BO even
+    * when CREATE_NOT_ZEROED allows us to skip it. */
+   enum agx_bo_flags bo_flags = AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE;
 
    heap->bo = agx_bo_create(&device->dev, resolved.SizeInBytes,
                             resolved.Alignment, bo_flags, "d3d12 heap");
