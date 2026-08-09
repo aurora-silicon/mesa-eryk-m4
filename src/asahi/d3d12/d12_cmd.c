@@ -6683,16 +6683,45 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             size_t first = heap_index + offset;
             size_t remaining =
                (size_t)heap->desc.NumDescriptors - first;
-            size_t scan = MIN2(remaining, 256);
-            unsigned populated = 0, counter_ptrs = 0, invalid = 0;
+            size_t scan_limit = range->num_descriptors == UINT32_MAX
+                                   ? 1024
+                                   : range->num_descriptors;
+            size_t scan = MIN2(remaining, scan_limit);
+            unsigned populated = 0, mapped = 0, counter_ptrs = 0;
+            unsigned invalid = 0, invalid_native_null = 0;
+            struct agx_texture_packed null_texture;
+            struct agx_pbe_packed null_pbe;
+            agx_set_null_texture(&null_texture);
+            agx_set_null_pbe(&null_pbe);
+            const struct agx_texture_packed *native_textures =
+               heap->texture_bo ? agx_bo_map(heap->texture_bo) : NULL;
+            const struct agx_pbe_packed *native_pbes =
+               heap->pbe_bo ? agx_bo_map(heap->pbe_bo) : NULL;
 
             for (size_t i = 0; i < scan; i++) {
                const struct d12_descriptor *d = &heap->slots[first + i];
                populated += d->kind != D12_DESC_NONE;
+               mapped += d->address != 0;
                counter_ptrs += d->counter_address != 0;
 
+               /* Heap-indexed shaders dereference the descriptor's first
+                * word directly.  A zero address is therefore unsafe even
+                * for a null descriptor: it must name the resident zero
+                * region.  Also prove that resource-less slots have matching
+                * null AGX texture/PBE descriptors in the parallel heaps.
+                */
+               if (!d->address)
+                  invalid++;
                if (d->counter_address && (d->counter_address & 3))
                   invalid++;
+
+               if (!d->resource &&
+                   (!native_textures || !native_pbes ||
+                    memcmp(&native_textures[first + i], &null_texture,
+                           sizeof(null_texture)) != 0 ||
+                    memcmp(&native_pbes[first + i], &null_pbe,
+                           sizeof(null_pbe)) != 0))
+                  invalid_native_null++;
 
                if (d->resource && d->resource->bo) {
                   uint64_t bo_base = d->resource->bo->va->addr;
@@ -6705,13 +6734,14 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             mesa_logi("binding validation: unbounded range class=%u "
                       "space=%u reg=%u root-slot=%u heap-index=%zu "
                       "gpu=0x%llx remaining=%zu scan=%zu populated=%u "
-                      "counters=%u invalid=%u valid=%u", klass,
-                      range->space, range->base_register, slot,
-                      first,
+                      "mapped=%u counters=%u invalid=%u "
+                      "invalid-native-null=%u valid=%u",
+                      klass, range->space, range->base_register, slot, first,
                       (unsigned long long)resource_table[slot].address,
-                      remaining, scan, populated, counter_ptrs, invalid,
-                      invalid == 0);
-            if (invalid) {
+                      remaining, scan, populated, mapped, counter_ptrs, invalid,
+                      invalid_native_null,
+                      invalid == 0 && invalid_native_null == 0);
+            if (invalid || invalid_native_null) {
                list->state = D12_LIST_ERROR;
                return;
             }

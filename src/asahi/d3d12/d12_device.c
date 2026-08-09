@@ -3570,8 +3570,18 @@ d12_device_CreateConstantBufferView(
    memset(slot, 0, sizeof(*slot));
    d12_descriptor_heap_update_slot(device, slot);
 
-   if (!desc || !desc->BufferLocation)
+   if (!desc || !desc->BufferLocation) {
+      /* Null CBVs need the same mapped read-as-zero backing as null SRVs
+       * and UAVs.  Oversized descriptor tables are dereferenced directly
+       * by the shader, so leaving this field zero turns a legal null CBV
+       * load (or a type-mismatched null descriptor load) into an unmapped
+       * GPU read instead of returning zero.
+       */
+      slot->address = device->null_va;
+      slot->size_B = D12_NULL_REGION_SIZE;
+      d12_descriptor_heap_update_slot(device, slot);
       return;
+   }
 
    /* A CBV names a GPU address directly rather than a resource. */
    slot->kind = D12_DESC_CBV;
