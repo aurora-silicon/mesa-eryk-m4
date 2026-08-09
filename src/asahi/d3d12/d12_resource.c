@@ -1220,6 +1220,10 @@ d12_resource_create(struct d12_device *device,
    struct ail_layout layout = {0};
    struct ail_layout stencil_layout = {0};
    bool is_depth_stencil = false;
+   const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
+   const bool d3d11_interop_layout =
+      shared && desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+      (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
 
    if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (desc->Width == 0)
@@ -1275,8 +1279,12 @@ d12_resource_create(struct d12_device *device,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = samples,
          .levels = levels,
-         .tiling = reserved ? AIL_TILING_GPU : AIL_TILING_TWIDDLED,
+         .tiling = (reserved || d3d11_interop_layout)
+                      ? AIL_TILING_GPU
+                      : AIL_TILING_TWIDDLED,
          .format = z,
+         .writeable_image = d3d11_interop_layout,
+         .renderable = d3d11_interop_layout,
       };
       ail_make_miptree(&layout);
       size_B = layout.size_B;
@@ -1288,8 +1296,11 @@ d12_resource_create(struct d12_device *device,
             .depth_px = MAX2(desc->DepthOrArraySize, 1),
             .sample_count_sa = samples,
             .levels = levels,
-            .tiling = AIL_TILING_TWIDDLED,
+            .tiling = d3d11_interop_layout ? AIL_TILING_GPU
+                                           : AIL_TILING_TWIDDLED,
             .format = s,
+            .writeable_image = d3d11_interop_layout,
+            .renderable = d3d11_interop_layout,
          };
          ail_make_miptree(&stencil_layout);
       }
@@ -1365,7 +1376,8 @@ d12_resource_create(struct d12_device *device,
       bool blocked = util_format_get_blockwidth(pipe) > 1 ||
                      util_format_get_blockheight(pipe) > 1;
       bool writeable_image =
-         desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+         d3d11_interop_layout ||
+         (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
       /* Layered resources must remain twiddled. AGX's sampled cube and cube-
        * array descriptors have no usable linear-face addressing mode; a
        * linear six-layer allocation makes every face sample as zero. */
@@ -1388,11 +1400,17 @@ d12_resource_create(struct d12_device *device,
           * Fully twiddled miptrees have no page-granular standard-mip model
           * (AIL deliberately reports their whole allocation as one tail), so
           * they cannot implement D3D12 tile mappings. */
-         .tiling = reserved ? AIL_TILING_GPU
-                            : (linear_ok ? AIL_TILING_LINEAR
-                                         : AIL_TILING_TWIDDLED),
+         /* D3D11 imports the shared runtime descriptor by creating an
+          * optimal Honeykrisp VkImage over this same allocation. Match that
+          * image's uncompressed GPU layout exactly; an NT handle only aliases
+          * storage and cannot translate between linear/twiddled layouts. */
+         .tiling = (reserved || d3d11_interop_layout)
+                      ? AIL_TILING_GPU
+                      : (linear_ok ? AIL_TILING_LINEAR
+                                   : AIL_TILING_TWIDDLED),
          .format = pipe,
          .writeable_image = writeable_image,
+         .renderable = d3d11_interop_layout,
          /* 64-byte-aligned rows; the smoke tests mirror this constant */
          /* ail asserts this is ZERO for a non-linear layout, so it has
           * to follow the tiling decision above. */
@@ -1573,7 +1591,6 @@ d12_resource_create(struct d12_device *device,
       enum agx_bo_flags bo_flags =
          AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE;
 
-      const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
       HRESULT shared_hr = E_NOTIMPL;
       if (shared) {
          uint64_t allocation_size = size_B + stencil_layout.size_B;

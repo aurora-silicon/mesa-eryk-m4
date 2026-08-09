@@ -2,14 +2,17 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * Live Windows acceptance test for the zero-copy interop primitives. It uses
- * only public D3D12 calls. The shared-heap mapping and shared-fence checks
- * prove cross-object visibility; descriptor checks cover texture metadata.
+ * Live Windows acceptance test for the zero-copy interop primitives. The
+ * shared-heap mapping and shared-fence checks prove cross-object visibility;
+ * opening a shared render target through D3D11 covers the presentation seam.
  */
 
 #define COBJMACROS
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
+#ifdef _WIN32
+#include <d3d11_1.h>
+#endif
 
 #include "d12_test_abi.h"
 
@@ -37,6 +40,68 @@ close_shared_handle(HANDLE handle)
    (void)handle;
 #endif
 }
+
+#ifdef _WIN32
+static void
+check_d3d11_interop(HANDLE resource_handle,
+                    const D3D12_RESOURCE_DESC *resource_desc)
+{
+   HMODULE d3d11_module = LoadLibraryW(L"d3d11.dll");
+   CHECK(d3d11_module, "load the system D3D11 runtime");
+   if (!d3d11_module)
+      return;
+
+   PFN_D3D11_CREATE_DEVICE create_device =
+      (PFN_D3D11_CREATE_DEVICE)(void *)GetProcAddress(d3d11_module,
+                                                      "D3D11CreateDevice");
+   CHECK(create_device, "resolve D3D11CreateDevice");
+
+   ID3D11Device *device = NULL;
+   ID3D11DeviceContext *context = NULL;
+   ID3D11Device1 *device1 = NULL;
+   ID3D11Texture2D *texture = NULL;
+
+   if (create_device) {
+      HRESULT hr = create_device(
+         NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+         NULL, 0, D3D11_SDK_VERSION, &device, NULL, &context);
+      CHECK(SUCCEEDED(hr) && device, "create the presentation D3D11 device");
+
+      if (device) {
+         hr = ID3D11Device_QueryInterface(device, &IID_ID3D11Device1,
+                                          (void **)&device1);
+         CHECK(SUCCEEDED(hr) && device1, "query the D3D11.1 device interface");
+      }
+
+      if (device1) {
+         hr = ID3D11Device1_OpenSharedResource1(
+            device1, resource_handle, &IID_ID3D11Texture2D,
+            (void **)&texture);
+         CHECK(SUCCEEDED(hr) && texture,
+               "open the D3D12 render target through D3D11");
+
+         if (texture) {
+            D3D11_TEXTURE2D_DESC desc;
+            ID3D11Texture2D_GetDesc(texture, &desc);
+            CHECK(desc.Width == resource_desc->Width &&
+                     desc.Height == resource_desc->Height &&
+                     desc.Format == resource_desc->Format,
+                  "D3D11 sees the shared render-target descriptor");
+         }
+      }
+   }
+
+   if (texture)
+      ID3D11Texture2D_Release(texture);
+   if (device1)
+      ID3D11Device1_Release(device1);
+   if (context)
+      ID3D11DeviceContext_Release(context);
+   if (device)
+      ID3D11Device_Release(device);
+   FreeLibrary(d3d11_module);
+}
+#endif
 
 int
 main(void)
@@ -81,6 +146,9 @@ main(void)
          &resource_handle);
       CHECK(SUCCEEDED(hr) && resource_handle, "export resource NT handle");
       if (resource_handle) {
+#ifdef _WIN32
+         check_d3d11_interop(resource_handle, &resource_desc);
+#endif
          hr = ID3D12Device_OpenSharedHandle(
             device, resource_handle, &IID_ID3D12Resource,
             (void **)&opened_resource);
