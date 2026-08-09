@@ -4529,32 +4529,38 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                return;
             }
 
-            nir_def *slot = uav_binding_slot(ctx, resource);
-            if (!slot) {
+            nir_def *offset = uav_texture_offset(ctx, resource);
+            if (!offset) {
                return;
             }
 
             nir_def *handle = nir_bindless_image_agx(
-               b, nir_imul_imm(b, slot, D12_TEXTURE_DESC_SIZE),
-               .desc_set = D12_UNIFORM_TEXTURES);
+               b, offset, .desc_set = D12_UNIFORM_TEXTURES);
             nir_def *coord = SRC(1);
             nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
             tex->op = nir_texop_txf;
-            tex->sampler_dim =
-               is_1d ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D;
+            /* Texture1D resources use height-one 2D AGX descriptors.  Fetch
+             * them through the physical dimension so the backend keeps the
+             * array layer rather than interpreting it as a 1D coordinate. */
+            tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
             tex->is_array = is_array;
             tex->dest_type = return_type == D12_DXBC_RESOURCE_RETURN_UINT
                                 ? nir_type_uint32
                              : return_type == D12_DXBC_RESOURCE_RETURN_SINT
                                 ? nir_type_int32
                                 : nir_type_float32;
-            tex->coord_components =
-               is_1d ? (is_array ? 2 : 1) : (is_array ? 3 : 2);
+            tex->coord_components = is_array ? 3 : 2;
             tex->src[0] = nir_tex_src_for_ssa(
                nir_tex_src_texture_handle, handle);
-            tex->src[1] = nir_tex_src_for_ssa(
-               nir_tex_src_coord,
-               nir_trim_vector(b, coord, tex->coord_components));
+            nir_def *physical_coord =
+               is_1d ? (is_array ? nir_vec3(b, nir_channel(b, coord, 0),
+                                            nir_imm_int(b, 0),
+                                            nir_channel(b, coord, 1))
+                                 : nir_vec2(b, nir_channel(b, coord, 0),
+                                            nir_imm_int(b, 0)))
+                     : nir_trim_vector(b, coord, tex->coord_components);
+            tex->src[1] =
+               nir_tex_src_for_ssa(nir_tex_src_coord, physical_coord);
             nir_def_init(&tex->instr, &tex->def, 4, 32);
             nir_builder_instr_insert(b, &tex->instr);
 
@@ -5441,11 +5447,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          : has_bias ? nir_texop_txb
                          : implicit_min_lod ? nir_texop_txd
                                             : nir_texop_tex;
-         tex->sampler_dim = is_buffer ? GLSL_SAMPLER_DIM_BUF : sampler_dim;
+         const bool physical_1d_load = is_ld && is_1d;
+         tex->sampler_dim = is_buffer          ? GLSL_SAMPLER_DIM_BUF
+                            : physical_1d_load ? GLSL_SAMPLER_DIM_2D
+                                               : sampler_dim;
          tex->is_array = !is_buffer && is_array;
          tex->is_shadow = compare;
          tex->dest_type = nir_type_float32;
-         tex->coord_components = is_buffer ? 1 : coord_components;
+         tex->coord_components = is_buffer          ? 1
+                                 : physical_1d_load ? (is_array ? 3 : 2)
+                                                    : coord_components;
          tex->sampler_index = have_smp && !rooted_sampler ? sslot : 0;
          if (gather) {
             for (unsigned k = 1; k < nops; k++) {
@@ -5478,13 +5489,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
              * uint bit-pattern 3 as a float produced zero and fetched texel
              * (0, 0) for every nonzero location. */
             nir_def *icoord = coord4;
-            tex->src[si++] = nir_tex_src_for_ssa(
-               nir_tex_src_coord,
+            nir_def *load_coord =
                is_buffer ? (rooted_texture
-                                ? buffer_coord
-                                : d12_dxbc_buffer_native_coord(
-                                     b, buffer_coord))
-                         : nir_trim_vector(b, icoord, coord_components));
+                               ? buffer_coord
+                               : d12_dxbc_buffer_native_coord(b, buffer_coord))
+               : physical_1d_load
+                  ? (is_array
+                        ? nir_vec3(b, nir_channel(b, icoord, 0),
+                                   nir_imm_int(b, 0), nir_channel(b, icoord, 1))
+                        : nir_vec2(b, nir_channel(b, icoord, 0),
+                                   nir_imm_int(b, 0)))
+                  : nir_trim_vector(b, icoord, coord_components);
+            tex->src[si++] = nir_tex_src_for_ssa(nir_tex_src_coord, load_coord);
 
             if (has_offset) {
                tex->src[si++] = nir_tex_src_for_ssa(

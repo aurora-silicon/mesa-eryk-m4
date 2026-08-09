@@ -1178,6 +1178,7 @@ struct handle_ref {
    nir_def *valid;
    bool heap;
    bool rooted_heap;
+   bool native_segment;
    unsigned base_slot;
    uint32_t kind;
    uint32_t stride;
@@ -1228,6 +1229,15 @@ handle_info(struct trans_ctx *ctx, uint32_t value_id,
 
    out->kind = ctx->slot_kind[info_slot];
    out->stride = ctx->slot_stride[info_slot];
+   out->base_slot = info_slot;
+
+   /* Dynamic finite texture ranges are not addressed through the dense root
+    * slots.  The command list gives every shader declaration an independent
+    * native descriptor segment and publishes its byte base in the first root
+    * resource slot.  Constant handles retain the compact slot ABI. */
+   out->native_segment =
+      !nir_src_is_const(nir_src_for_ssa(def)) &&
+      d12_texture_shape_from_kind(out->kind) != D12_TEXTURE_SHAPE_NONE;
    return true;
 }
 
@@ -1334,16 +1344,30 @@ native_image_handle(struct trans_ctx *ctx, const struct handle_ref *h,
                     bool writable)
 {
    nir_builder *b = ctx->b;
+   const unsigned stride = writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE;
+
+   if (h->native_segment) {
+      nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
+      nir_def *base = nir_load_global(
+         b, 1, 64,
+         nir_iadd_imm(b, resource_table, h->base_slot * sizeof(uint64_t)),
+         .align_mul = 8);
+      nir_def *relative = nir_iadd_imm(b, h->slot, -(int)h->base_slot);
+      nir_def *offset =
+         nir_iadd(b, nir_u2u32(b, base), nir_imul_imm(b, relative, stride));
+      return nir_bindless_image_agx(
+         b, offset,
+         .desc_set = writable ? D12_UNIFORM_PBES : D12_UNIFORM_TEXTURES);
+   }
+
    nir_def *index = h->heap ? native_heap_index(ctx, h) : h->slot;
    unsigned desc_set = h->heap
                           ? writable ? D12_UNIFORM_HEAP_PBES
                                      : D12_UNIFORM_HEAP_TEXTURES
                           : writable ? D12_UNIFORM_PBES
                                      : D12_UNIFORM_TEXTURES;
-   return nir_bindless_image_agx(
-      b, nir_imul_imm(b, index,
-                      writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE),
-      .desc_set = desc_set);
+   return nir_bindless_image_agx(b, nir_imul_imm(b, index, stride),
+                                 .desc_set = desc_set);
 }
 
 static nir_def *
@@ -3052,6 +3076,9 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                return false;
             }
          }
+         const bool native_segment =
+            !rooted_heap &&
+            d12_texture_shape_from_kind(rb->kind) != D12_TEXTURE_SHAPE_NONE;
          unsigned finite_count = 0;
          if (!count && !rooted_heap) {
             finite_count = finite_root_range_count(
@@ -3080,7 +3107,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          if (!rooted_heap) {
             slot_def = nir_iadd_imm(b, slot_def, base_slot);
 
-            if (!count) {
+            if (!count && !native_segment) {
                nir_def *at_or_above =
                   nir_uge(b, index32, nir_imm_int(b, rb->lower_bound));
                nir_def *below_end = nir_ult(
@@ -3675,12 +3702,24 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_builder_instr_insert(b, &lv->instr);
 
       nir_def *one = nir_imm_int(b, 1);
+      nir_def *width = nir_channel(b, &txs->def, 0);
       nir_def *second = is_1d ? (is_array ? nir_channel(b, &txs->def, 1) : one)
                               : (is_buf ? one : nir_channel(b, &txs->def, 1));
       nir_def *third = !is_1d && is_array ? nir_channel(b, &txs->def, 2) : one;
-      def_result(
-         ctx, inst,
-         nir_vec4(b, nir_channel(b, &txs->def, 0), second, third, &lv->def));
+
+      /* AGX clamps an out-of-range TCS LOD to the last level.  D3D12
+       * GetDimensions instead returns zero for every queried dimension while
+       * retaining the resource's level count.  Keep DXIL aligned with the
+       * DXBC RESINFO path above. */
+      if (!is_buf) {
+         nir_def *in_range = nir_ult(b, lod, &lv->def);
+         nir_def *zero = nir_imm_int(b, 0);
+         width = nir_bcsel(b, in_range, width, zero);
+         second = nir_bcsel(b, in_range, second, zero);
+         third = nir_bcsel(b, in_range, third, zero);
+      }
+
+      def_result(ctx, inst, nir_vec4(b, width, second, third, &lv->def));
       return true;
    }
 
@@ -3857,14 +3896,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
       tex->op = nir_texop_txf;
-      tex->sampler_dim = one_d ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D;
+      /* Texture1D is represented by a height-one 2D AGX descriptor.  Use the
+       * physical fetch dimension so explicit LOD and array-layer coordinates
+       * survive backend lowering. */
+      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
       tex->is_array = array;
       tex->dest_type = nir_type_float32;
-      tex->coord_components = one_d ? (array ? 2 : 1) : (array ? 3 : 2);
+      tex->coord_components = array ? 3 : 2;
 
-      nir_def *coords[3] = {x, y, NULL};
+      nir_def *coords[3] = {x, one_d ? nir_imm_int(b, 0) : y, NULL};
       if (array)
-         coords[one_d ? 1 : 2] = get_def(ctx, p[one_d ? 3 : 4]);
+         coords[2] = get_def(ctx, p[one_d ? 3 : 4]);
       for (unsigned i = 0; i < tex->coord_components; i++) {
          if (!coords[i]) {
             trans_fail(ctx, "malformed texture array coordinate");
