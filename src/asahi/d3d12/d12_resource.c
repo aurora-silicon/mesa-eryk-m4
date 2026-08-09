@@ -75,6 +75,31 @@ static_assert(sizeof(D3D12_RESOURCE_DESC1) == 0x40,
 static_assert(sizeof(struct d12_d3dkmt_d3d12_desc) == 0x108,
               "D3DKMT D3D12 descriptor ABI");
 
+/* DXVK's D3D11 OpenSharedResource1 path recognizes the version-4 prefix by
+ * these exact offsets, even when the runtime returns the complete 0x108-byte
+ * D3D12 blob. Keep more than the aggregate sizes pinned so an otherwise
+ * innocuous field or alignment change cannot silently break zero-copy DXGI
+ * presentation. */
+static_assert(offsetof(struct d12_d3dkmt_dxgi_desc, version) == 0x04,
+              "D3DKMT DXGI version offset");
+static_assert(offsetof(struct d12_d3dkmt_dxgi_desc, keyed_mutex) == 0x1c,
+              "D3DKMT DXGI keyed-mutex offset");
+static_assert(offsetof(struct d12_d3dkmt_dxgi_desc, nt_shared) == 0x28,
+              "D3DKMT DXGI NT-sharing offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d11_desc, dimension) == 0x38,
+              "D3DKMT D3D11 dimension offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d11_desc, texture2d) == 0x3c,
+              "D3DKMT D3D11 texture descriptor offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d11_desc,
+                       texture2d.misc_flags) == 0x64,
+              "D3DKMT D3D11 texture flags offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d12_desc, resource_size) == 0x78,
+              "D3DKMT D3D12 resource size offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d12_desc, resource_align) == 0x98,
+              "D3DKMT D3D12 resource alignment offset");
+static_assert(offsetof(struct d12_d3dkmt_d3d12_desc, desc1) == 0xc0,
+              "D3DKMT D3D12 resource descriptor offset");
+
 enum {
    D12_D3D11_RESOURCE_DIMENSION_TEXTURE2D = 3,
    D12_D3D11_BIND_SHADER_RESOURCE = 0x8,
