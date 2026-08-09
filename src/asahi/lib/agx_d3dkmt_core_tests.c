@@ -88,6 +88,34 @@ test_handle_pool_is_dense(void)
    /* A zero D3DKMT handle is not a valid allocation. */
    CHECK_EQ(agx_d3dkmt_pool_alloc(&pool, 0), 0);
 
+   /* Resource/global-handle identity survives agx_bo's memset and is returned
+    * atomically with the allocation owner. KMT is explicitly non-owning: it
+    * is metadata, while hResource is the object DestroyAllocation2 closes. */
+   struct agx_d3dkmt_allocation_record shared = {
+      .allocation = 0x4000abcdu,
+      .resource = 0x5000abcdu,
+      .global_share = 0x6000abcdu,
+      .external_type = AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT,
+   };
+   uint32_t shared_dense = agx_d3dkmt_pool_alloc_record(&pool, &shared);
+   CHECK(shared_dense != 0);
+   struct agx_d3dkmt_allocation_record got;
+   CHECK(agx_d3dkmt_pool_get_record(&pool, shared_dense, &got));
+   CHECK_EQ(got.allocation, shared.allocation);
+   CHECK_EQ(got.resource, shared.resource);
+   CHECK_EQ(got.global_share, shared.global_share);
+   CHECK_EQ(got.external_type, shared.external_type);
+   memset(&got, 0, sizeof(got));
+   CHECK(agx_d3dkmt_pool_release_record(&pool, shared_dense, &got));
+   CHECK_EQ(got.resource, shared.resource);
+   CHECK(!agx_d3dkmt_pool_get_record(&pool, shared_dense, &got));
+
+   shared.resource = 0;
+   CHECK_EQ(agx_d3dkmt_pool_alloc_record(&pool, &shared), 0);
+   shared.resource = 0x5000abcdu;
+   shared.global_share = 0;
+   CHECK_EQ(agx_d3dkmt_pool_alloc_record(&pool, &shared), 0);
+
    /* Churn: 4000 create/destroy cycles must not grow the dense space. */
    for (unsigned i = 0; i < 4000; ++i) {
       uint32_t h = agx_d3dkmt_pool_alloc(&pool, 0x40000000u + i);
@@ -729,12 +757,20 @@ test_alloc_flags(void)
 
    /* D3DKMT-side creation flags. */
    uint32_t cf = agx_d3dkmt_create_flags(AGX_D3DKMT_BO_SHARED);
+   CHECK(cf & AGX_KMT_CREATEALLOC_CREATERESOURCE);
    CHECK(cf & AGX_KMT_CREATEALLOC_CREATESHARED);
    /* NT-handle sharing, not the legacy global handle: a global shared handle
     * cannot be duplicated into another process the way
     * VK_KHR_external_memory_win32 and D3D11.1 shared NT handles require. */
    CHECK(cf & AGX_KMT_CREATEALLOC_NTSECURITYSHARING);
    CHECK(!(agx_d3dkmt_create_flags(0) & AGX_KMT_CREATEALLOC_CREATESHARED));
+
+   uint32_t kmt = agx_d3dkmt_create_flags_external(
+      AGX_D3DKMT_BO_SHARED,
+      AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT);
+   CHECK(kmt & AGX_KMT_CREATEALLOC_CREATERESOURCE);
+   CHECK(kmt & AGX_KMT_CREATEALLOC_CREATESHARED);
+   CHECK(!(kmt & AGX_KMT_CREATEALLOC_NTSECURITYSHARING));
 
    /* ExistingSysMem is refused by the miniport (CONTRACT.md SS3.6) because
     * AGX BOs must be 16 KiB physically chunked. Never request it. */

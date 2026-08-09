@@ -53,6 +53,12 @@ agx_d3dkmt_load(struct agx_d3dkmt_fns *fns)
    LOAD(DestroyDevice, "D3DKMTDestroyDevice");
 
    LOAD(CreateAllocation2, "D3DKMTCreateAllocation2");
+   LOAD(QueryResourceInfo, "D3DKMTQueryResourceInfo");
+   LOAD(QueryResourceInfoFromNtHandle,
+        "D3DKMTQueryResourceInfoFromNtHandle");
+   LOAD(ShareObjects, "D3DKMTShareObjects");
+   LOAD(OpenResource, "D3DKMTOpenResource");
+   LOAD(OpenResourceFromNtHandle, "D3DKMTOpenResourceFromNtHandle");
    LOAD(DestroyAllocation2, "D3DKMTDestroyAllocation2");
    LOAD(Lock2, "D3DKMTLock2");
    LOAD(Unlock2, "D3DKMTUnlock2");

@@ -203,6 +203,74 @@ struct agx_kmt_createallocation { /* D3DKMT_CREATEALLOCATION */
    void *hPrivateRuntimeResourceHandle;
 };
 
+/* D3DDDI_OPENALLOCATIONINFO2. The pointer-sized Reserved words are 64-bit in
+ * both supported builds (Windows/arm64 and Windows/x64). */
+struct agx_kmt_openallocationinfo2 {
+   agx_kmt_handle hAllocation;
+   const void *pPrivateDriverData;
+   uint32_t PrivateDriverDataSize;
+   agx_kmt_gpuva GpuVirtualAddress;
+   uintptr_t Reserved[6];
+};
+
+struct agx_kmt_queryresourceinfo { /* D3DKMT_QUERYRESOURCEINFO */
+   agx_kmt_handle hDevice;
+   agx_kmt_handle hGlobalShare;
+   void *pPrivateRuntimeData;
+   uint32_t PrivateRuntimeDataSize;
+   uint32_t TotalPrivateDriverDataSize;
+   uint32_t ResourcePrivateDriverDataSize;
+   uint32_t NumAllocations;
+};
+
+struct agx_kmt_queryresourceinfofromnthandle {
+   agx_kmt_handle hDevice;
+   void *hNtHandle;
+   void *pPrivateRuntimeData;
+   uint32_t PrivateRuntimeDataSize;
+   uint32_t TotalPrivateDriverDataSize;
+   uint32_t ResourcePrivateDriverDataSize;
+   uint32_t NumAllocations;
+};
+
+struct agx_kmt_openresource { /* D3DKMT_OPENRESOURCE */
+   agx_kmt_handle hDevice;
+   agx_kmt_handle hGlobalShare;
+   uint32_t NumAllocations;
+   union {
+      void *pOpenAllocationInfo;
+      struct agx_kmt_openallocationinfo2 *pOpenAllocationInfo2;
+   };
+   void *pPrivateRuntimeData;
+   uint32_t PrivateRuntimeDataSize;
+   void *pResourcePrivateDriverData;
+   uint32_t ResourcePrivateDriverDataSize;
+   void *pTotalPrivateDriverDataBuffer;
+   uint32_t TotalPrivateDriverDataBufferSize;
+   agx_kmt_handle hResource;
+};
+
+struct agx_kmt_openresourcefromnthandle {
+   agx_kmt_handle hDevice;
+   void *hNtHandle;
+   uint32_t NumAllocations;
+   struct agx_kmt_openallocationinfo2 *pOpenAllocationInfo2;
+   uint32_t PrivateRuntimeDataSize;
+   void *pPrivateRuntimeData;
+   uint32_t ResourcePrivateDriverDataSize;
+   void *pResourcePrivateDriverData;
+   uint32_t TotalPrivateDriverDataBufferSize;
+   void *pTotalPrivateDriverDataBuffer;
+   agx_kmt_handle hResource;
+   agx_kmt_handle hKeyedMutex;
+   void *pKeyedMutexPrivateRuntimeData;
+   uint32_t KeyedMutexPrivateRuntimeDataSize;
+   agx_kmt_handle hSyncObject;
+};
+
+/* d3dkmthk.h: SHARED_ALLOCATION_ALL_ACCESS. */
+#define AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS 0x000f0001u
+
 struct agx_kmt_destroyallocation2 { /* D3DKMT_DESTROYALLOCATION2 */
    agx_kmt_handle hDevice;
    agx_kmt_handle hResource;
@@ -552,6 +620,16 @@ struct agx_d3dkmt_fns {
 
    agx_kmt_status(AGX_KMT_API *CreateAllocation2)(
       struct agx_kmt_createallocation *);
+   agx_kmt_status(AGX_KMT_API *QueryResourceInfo)(
+      struct agx_kmt_queryresourceinfo *);
+   agx_kmt_status(AGX_KMT_API *QueryResourceInfoFromNtHandle)(
+      struct agx_kmt_queryresourceinfofromnthandle *);
+   agx_kmt_status(AGX_KMT_API *ShareObjects)(uint32_t,
+                                             const agx_kmt_handle *, void *,
+                                             uint32_t, void **);
+   agx_kmt_status(AGX_KMT_API *OpenResource)(struct agx_kmt_openresource *);
+   agx_kmt_status(AGX_KMT_API *OpenResourceFromNtHandle)(
+      struct agx_kmt_openresourcefromnthandle *);
    agx_kmt_status(AGX_KMT_API *DestroyAllocation2)(
       const struct agx_kmt_destroyallocation2 *);
    agx_kmt_status(AGX_KMT_API *Lock2)(struct agx_kmt_lock2 *);

@@ -31,9 +31,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <winternl.h>
 
 #include "util/macros.h"
 #include "util/u_math.h"
+#include "util/u_atomic.h"
 #include "agx_bo.h"
 #include "layout.h"
 
@@ -65,6 +67,11 @@ static_assert((int)AGXW_PRIORITY_LOW == (int)DRM_ASAHI_PRIORITY_LOW,
               "priority LOW");
 static_assert((int)AGXW_PRIORITY_REALTIME == (int)DRM_ASAHI_PRIORITY_REALTIME,
               "priority REALTIME");
+
+/* Frontend-owned resource metadata is small (the D3D12 interop descriptor is
+ * 264 bytes), but QueryResourceInfo reports an arbitrary kernel-owned size.
+ * Keep a generous, explicit ceiling before allocating or opening buffers. */
+#define AGX_D3DKMT_MAX_RUNTIME_DATA_SIZE (64u * 1024u)
 
 /* -------------------------------------------------------------------------
  * Error mapping and waits.
@@ -177,9 +184,57 @@ ctx_get(struct agx_d3dkmt_winsys *ws, uint32_t queue_id)
 /* -------------------------------------------------------------------------
  * GEM_CREATE / GEM_CLOSE.
  * ------------------------------------------------------------------------- */
-static agx_kmt_handle
+static void
+d3dkmt_destroy_record(struct agx_d3dkmt_winsys *ws,
+                      const struct agx_d3dkmt_allocation_record *record)
+{
+   if (record == NULL ||
+       (record->allocation == 0 && record->resource == 0))
+      return;
+
+   const agx_kmt_handle list[1] = {record->allocation};
+   struct agx_kmt_destroyallocation2 destroy = {
+      .hDevice = ws->device,
+      .hResource = record->resource,
+      .phAllocationList = record->resource ? NULL : list,
+      .AllocationCount = record->resource ? 0 : 1,
+   };
+
+   agx_kmt_status st = ws->fns.DestroyAllocation2(&destroy);
+   if (!AGX_KMT_SUCCESS(st))
+      agx_d3dkmt_fail(st);
+}
+
+static bool
+d3dkmt_make_resident(struct agx_d3dkmt_winsys *ws,
+                     agx_kmt_handle allocation)
+{
+   if (!ws->policy.needs_residency)
+      return true;
+
+   const agx_kmt_handle list[1] = {allocation};
+   struct agx_kmt_makeresident mr = {
+      .hPagingQueue = ws->paging_queue,
+      .NumAllocations = 1,
+      .AllocationList = list,
+   };
+
+   agx_kmt_status st = ws->fns.MakeResident(&mr);
+   if (!AGX_KMT_SUCCESS(st)) {
+      agx_d3dkmt_fail(st);
+      return false;
+   }
+
+   return agx_d3dkmt_wait_paging(ws, mr.PagingFenceValue) == 0;
+}
+
+static bool
 d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
-                         enum agx_bo_flags flags)
+                         enum agx_bo_flags flags,
+                         enum agx_d3dkmt_external_memory_type external_type,
+                         const void *runtime_data,
+                         uint32_t runtime_data_size,
+                         struct agx_d3dkmt_allocation_record *record)
 {
    /*
     * CONTRACT.md SS12.1: the private-data size is pinned, and treated as a
@@ -202,90 +257,78 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
       .PrivateDriverDataSize = sizeof(priv),
    };
 
-   /* Honeykrisp has no resource/allocation split at this layer, so the
-    * resource-level blob is absent -- explicitly legal (CONTRACT.md SS3.2). */
+   /* Shared handles name a resource, not a bare allocation. The miniport's
+    * current contract therefore requires the pinned resource blob whenever
+    * CreateResource is set, even though the frontend has one allocation.
+    * pPrivateRuntimeData is separate: dxgkrnl preserves it verbatim for the
+    * frontend opening this handle in another process. */
+   struct agxw_resource_private resource_priv = {
+      .version = AGXW_RESOURCE_PRIVATE_VERSION,
+      .struct_size = sizeof(resource_priv),
+      .allocation_count = AGXW_MAX_ALLOCATIONS_PER_RESOURCE,
+   };
+   const bool external =
+      external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
    struct agx_kmt_createallocation create = {
       .hDevice = ws->device,
+      .pPrivateRuntimeData = runtime_data,
+      .PrivateRuntimeDataSize = runtime_data_size,
+      .pPrivateDriverData = external ? &resource_priv : NULL,
+      .PrivateDriverDataSize = external ? sizeof(resource_priv) : 0,
       .NumAllocations = 1,
       .pAllocationInfo2 = &info,
-      .Flags = agx_d3dkmt_create_flags((uint32_t)flags),
+      .Flags = agx_d3dkmt_create_flags_external((uint32_t)flags,
+                                                external_type),
    };
 
    agx_kmt_status st = ws->fns.CreateAllocation2(&create);
    if (!AGX_KMT_SUCCESS(st)) {
       agx_d3dkmt_fail(st);
-      return 0;
+      return false;
    }
 
-   /*
-    * CONTRACT.md SS7.2 item 3: residency is expressed by MakeResident, not by
-    * a per-submit allocation list. SS4.8 notes the v0.1 aperture never evicts
-    * so the paging fence is normally already signalled -- but the call is not
-    * optional, and getting it wrong faults the GPU rather than returning an
-    * error.
-    */
-   if (ws->policy.needs_residency) {
-      const agx_kmt_handle list[1] = {info.hAllocation};
-      struct agx_kmt_makeresident mr = {
-         .hPagingQueue = ws->paging_queue,
-         .NumAllocations = 1,
-         .AllocationList = list,
-      };
+   *record = (struct agx_d3dkmt_allocation_record){
+      .allocation = info.hAllocation,
+      .resource = create.hResource,
+      .global_share = create.hGlobalShare,
+      .external_type = external_type,
+   };
 
-      st = ws->fns.MakeResident(&mr);
-      if (!AGX_KMT_SUCCESS(st)) {
-         struct agx_kmt_destroyallocation2 destroy = {
-            .hDevice = ws->device,
-            .phAllocationList = list,
-            .AllocationCount = 1,
-         };
-         ws->fns.DestroyAllocation2(&destroy);
-         agx_d3dkmt_fail(st);
-         return 0;
-      }
-
-      if (agx_d3dkmt_wait_paging(ws, mr.PagingFenceValue))
-         return 0;
+   const bool expected_resource =
+      external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
+   const bool expected_global =
+      external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT;
+   if (record->allocation == 0 || (!!record->resource != expected_resource) ||
+       (!!record->global_share != expected_global)) {
+      errno = EIO;
+      d3dkmt_destroy_record(ws, record);
+      memset(record, 0, sizeof(*record));
+      return false;
    }
 
-   return info.hAllocation;
+   if (!d3dkmt_make_resident(ws, record->allocation)) {
+      d3dkmt_destroy_record(ws, record);
+      memset(record, 0, sizeof(*record));
+      return false;
+   }
+
+   return true;
 }
 
-/*
- * Clone of agx_bo_alloc()/win_bo_alloc() with GEM_CREATE replaced by
- * D3DKMTCreateAllocation2. The handle split is the only structural change:
- * bo->handle stays a dense index into dev->bo_map (see agx_d3dkmt_core.h),
- * bo->uapi_handle carries the D3DKMT allocation handle that every kernel-
- * facing call site already passes.
- */
 static struct agx_bo *
-d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
-                enum agx_bo_flags flags)
+d3dkmt_adopt_allocation(
+   struct agx_device *dev, size_t size, size_t align, enum agx_bo_flags flags,
+   const struct agx_d3dkmt_allocation_record *record)
 {
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    struct agx_bo *bo;
 
-   /* executable implies low va */
-   assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
-
-   agx_kmt_handle alloc = d3dkmt_create_allocation(ws, size, flags);
-   if (alloc == 0) {
-      fprintf(stderr, "D3DKMTCreateAllocation2 failed\n");
-      return NULL;
-   }
-
    simple_mtx_lock(&ws->lock);
-   uint32_t handle = agx_d3dkmt_pool_alloc(&ws->pool, alloc);
+   uint32_t handle = agx_d3dkmt_pool_alloc_record(&ws->pool, record);
    simple_mtx_unlock(&ws->lock);
 
    if (handle == 0) {
-      const agx_kmt_handle list[1] = {alloc};
-      struct agx_kmt_destroyallocation2 destroy = {
-         .hDevice = ws->device,
-         .phAllocationList = list,
-         .AllocationCount = 1,
-      };
-      ws->fns.DestroyAllocation2(&destroy);
+      d3dkmt_destroy_record(ws, record);
       return NULL;
    }
 
@@ -294,15 +337,13 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    dev->max_handle = MAX2(dev->max_handle, handle);
    simple_mtx_unlock(&dev->bo_map_lock);
 
-   /* Fresh handle */
    assert(!memcmp(bo, &((struct agx_bo){}), sizeof(*bo)));
-
    bo->dev = dev;
    bo->size = size;
    bo->align = align;
    bo->flags = flags;
    bo->handle = handle;
-   bo->uapi_handle = alloc;
+   bo->uapi_handle = record->allocation;
    bo->prime_fd = -1;
 
    enum agx_va_flags va_flags = flags & AGX_BO_LOW_VA ? AGX_VA_USC : 0;
@@ -326,6 +367,38 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 }
 
 /*
+ * Clone of agx_bo_alloc()/win_bo_alloc() with GEM_CREATE replaced by
+ * D3DKMTCreateAllocation2. The handle split is the only structural change:
+ * bo->handle stays a dense index into dev->bo_map (see agx_d3dkmt_core.h),
+ * bo->uapi_handle carries the D3DKMT allocation handle that every kernel-
+ * facing call site already passes.
+ */
+static struct agx_bo *
+d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
+                enum agx_bo_flags flags)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+
+   /* executable implies low va */
+   assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
+
+   struct agx_d3dkmt_allocation_record record;
+   enum agx_d3dkmt_external_memory_type external_type =
+      (flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))
+         ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
+         : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
+   if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL, 0,
+                                 &record)) {
+      fprintf(stderr, "D3DKMTCreateAllocation2 failed\n");
+      return NULL;
+   }
+
+   struct agx_bo *bo =
+      d3dkmt_adopt_allocation(dev, size, align, flags, &record);
+   return bo;
+}
+
+/*
  * GEM_CLOSE. Takes the DENSE handle, because agx_bo_free() memsets struct
  * agx_bo to zero before calling this (agx_device.c:100-105, deliberately, to
  * avoid a lookup race) -- so bo->uapi_handle is already gone and the pool is
@@ -337,22 +410,361 @@ d3dkmt_bo_free(struct agx_device *dev, uint32_t handle)
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
 
    simple_mtx_lock(&ws->lock);
-   agx_kmt_handle alloc = agx_d3dkmt_pool_release(&ws->pool, handle);
+   struct agx_d3dkmt_allocation_record record;
+   bool found = agx_d3dkmt_pool_release_record(&ws->pool, handle, &record);
    simple_mtx_unlock(&ws->lock);
 
-   if (alloc == 0)
+   if (!found)
       return;
 
-   const agx_kmt_handle list[1] = {alloc};
-   struct agx_kmt_destroyallocation2 destroy = {
-      .hDevice = ws->device,
-      .phAllocationList = list,
-      .AllocationCount = 1,
+   d3dkmt_destroy_record(ws, &record);
+}
+
+static bool
+d3dkmt_external_query(struct agx_d3dkmt_winsys *ws, uintptr_t handle,
+                      enum agx_d3dkmt_external_memory_type external_type,
+                      uint32_t *runtime_data_size)
+{
+   uint32_t runtime_size = 0;
+   uint32_t total_driver_size = 0;
+   uint32_t resource_driver_size = 0;
+   uint32_t allocation_count = 0;
+   agx_kmt_status st;
+
+   if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32) {
+      if (handle == 0)
+         return false;
+      struct agx_kmt_queryresourceinfofromnthandle query = {
+         .hDevice = ws->device,
+         .hNtHandle = (void *)handle,
+      };
+      st = ws->fns.QueryResourceInfoFromNtHandle(&query);
+      runtime_size = query.PrivateRuntimeDataSize;
+      total_driver_size = query.TotalPrivateDriverDataSize;
+      resource_driver_size = query.ResourcePrivateDriverDataSize;
+      allocation_count = query.NumAllocations;
+   } else if (external_type ==
+              AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT) {
+      if (handle == 0 || handle > UINT32_MAX)
+         return false;
+      struct agx_kmt_queryresourceinfo query = {
+         .hDevice = ws->device,
+         .hGlobalShare = (agx_kmt_handle)handle,
+      };
+      st = ws->fns.QueryResourceInfo(&query);
+      runtime_size = query.PrivateRuntimeDataSize;
+      total_driver_size = query.TotalPrivateDriverDataSize;
+      resource_driver_size = query.ResourcePrivateDriverDataSize;
+      allocation_count = query.NumAllocations;
+   } else {
+      errno = EINVAL;
+      return false;
+   }
+
+   if (!AGX_KMT_SUCCESS(st)) {
+      agx_d3dkmt_fail(st);
+      return false;
+   }
+
+   /* This miniport's source-pinned contract is one allocation per resource,
+    * one AGXW resource blob, and exactly one AGXW allocation blob. Runtime
+    * data is frontend-owned and may be absent or carry a versioned object
+    * descriptor. Refuse a foreign driver object before supplying buffers to
+    * OpenResource. */
+   if (allocation_count != AGXW_MAX_ALLOCATIONS_PER_RESOURCE ||
+       runtime_size > AGX_D3DKMT_MAX_RUNTIME_DATA_SIZE ||
+       resource_driver_size != AGXW_RESOURCE_PRIVATE_SIZE ||
+       total_driver_size != AGXW_ALLOC_PRIVATE_SIZE) {
+      errno = EINVAL;
+      return false;
+   }
+
+   *runtime_data_size = runtime_size;
+   return true;
+}
+
+static bool
+d3dkmt_external_open(
+   struct agx_d3dkmt_winsys *ws, uintptr_t handle,
+   enum agx_d3dkmt_external_memory_type external_type,
+   struct agx_d3dkmt_allocation_record *record,
+   struct agxw_alloc_private *private_data, void *runtime_data,
+   uint32_t *runtime_data_size)
+{
+   uint32_t queried_runtime_size = 0;
+   if (!d3dkmt_external_query(ws, handle, external_type,
+                              &queried_runtime_size))
+      return false;
+
+   const uint32_t caller_runtime_size =
+      runtime_data_size ? *runtime_data_size : 0;
+   if (runtime_data != NULL &&
+       (runtime_data_size == NULL ||
+        caller_runtime_size < queried_runtime_size)) {
+      if (runtime_data_size)
+         *runtime_data_size = queried_runtime_size;
+      errno = ENOSPC;
+      return false;
+   }
+
+   void *queried_runtime_data =
+      queried_runtime_size ? malloc(queried_runtime_size) : NULL;
+   if (queried_runtime_size && queried_runtime_data == NULL) {
+      errno = ENOMEM;
+      return false;
+   }
+
+   uint8_t total_driver_data[AGXW_ALLOC_PRIVATE_SIZE] = {0};
+   struct agxw_resource_private resource_private = {0};
+   struct agx_kmt_openallocationinfo2 info = {0};
+   agx_kmt_handle resource = 0;
+   agx_kmt_status st;
+
+   if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32) {
+      struct agx_kmt_openresourcefromnthandle open = {
+         .hDevice = ws->device,
+         .hNtHandle = (void *)handle,
+         .NumAllocations = AGXW_MAX_ALLOCATIONS_PER_RESOURCE,
+         .pOpenAllocationInfo2 = &info,
+         .PrivateRuntimeDataSize = queried_runtime_size,
+         .pPrivateRuntimeData = queried_runtime_data,
+         .ResourcePrivateDriverDataSize = sizeof(resource_private),
+         .pResourcePrivateDriverData = &resource_private,
+         .TotalPrivateDriverDataBufferSize = sizeof(total_driver_data),
+         .pTotalPrivateDriverDataBuffer = total_driver_data,
+      };
+      st = ws->fns.OpenResourceFromNtHandle(&open);
+      resource = open.hResource;
+      if (AGX_KMT_SUCCESS(st) &&
+          (open.hKeyedMutex != 0 || open.hSyncObject != 0)) {
+         errno = ENOTSUP;
+         st = (agx_kmt_status)0xc00000bbu; /* STATUS_NOT_SUPPORTED */
+      }
+   } else {
+      struct agx_kmt_openresource open = {
+         .hDevice = ws->device,
+         .hGlobalShare = (agx_kmt_handle)handle,
+         .NumAllocations = AGXW_MAX_ALLOCATIONS_PER_RESOURCE,
+         .pOpenAllocationInfo2 = &info,
+         .pPrivateRuntimeData = queried_runtime_data,
+         .PrivateRuntimeDataSize = queried_runtime_size,
+         .pResourcePrivateDriverData = &resource_private,
+         .ResourcePrivateDriverDataSize = sizeof(resource_private),
+         .pTotalPrivateDriverDataBuffer = total_driver_data,
+         .TotalPrivateDriverDataBufferSize = sizeof(total_driver_data),
+      };
+      st = ws->fns.OpenResource(&open);
+      resource = open.hResource;
+   }
+
+   if (!AGX_KMT_SUCCESS(st)) {
+      if (resource != 0) {
+         const struct agx_d3dkmt_allocation_record opened = {
+            .allocation = info.hAllocation,
+            .resource = resource,
+         };
+         d3dkmt_destroy_record(ws, &opened);
+      }
+      agx_d3dkmt_fail(st);
+      free(queried_runtime_data);
+      return false;
+   }
+
+   const uintptr_t data_begin = (uintptr_t)total_driver_data;
+   const uintptr_t data_end = data_begin + sizeof(total_driver_data);
+   const uintptr_t private_begin = (uintptr_t)info.pPrivateDriverData;
+   if (resource == 0 || info.hAllocation == 0 ||
+       info.PrivateDriverDataSize != AGXW_ALLOC_PRIVATE_SIZE ||
+       private_begin < data_begin || private_begin > data_end ||
+       AGXW_ALLOC_PRIVATE_SIZE > data_end - private_begin ||
+       agxw_resource_private_validate(&resource_private,
+                                      sizeof(resource_private)) != 0 ||
+       resource_private.allocation_count !=
+          AGXW_MAX_ALLOCATIONS_PER_RESOURCE) {
+      errno = EINVAL;
+      const struct agx_d3dkmt_allocation_record opened = {
+         .allocation = info.hAllocation,
+         .resource = resource,
+      };
+      d3dkmt_destroy_record(ws, &opened);
+      free(queried_runtime_data);
+      return false;
+   }
+
+   memcpy(private_data, info.pPrivateDriverData, sizeof(*private_data));
+   if (agxw_alloc_private_validate(private_data, sizeof(*private_data)) != 0 ||
+       !(private_data->flags & AGXW_ALLOC_SHAREABLE) ||
+       (private_data->flags & AGXW_ALLOC_VM_PRIVATE) ||
+       private_data->size == 0 ||
+       private_data->size > SIZE_MAX - (AIL_PAGESIZE - 1)) {
+      errno = EINVAL;
+      const struct agx_d3dkmt_allocation_record opened = {
+         .allocation = info.hAllocation,
+         .resource = resource,
+      };
+      d3dkmt_destroy_record(ws, &opened);
+      free(queried_runtime_data);
+      return false;
+   }
+
+   *record = (struct agx_d3dkmt_allocation_record){
+      .allocation = info.hAllocation,
+      .resource = resource,
+      .global_share =
+         external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT
+            ? (agx_kmt_handle)handle
+            : 0,
+      .external_type = external_type,
    };
 
-   agx_kmt_status st = ws->fns.DestroyAllocation2(&destroy);
-   if (!AGX_KMT_SUCCESS(st))
-      agx_d3dkmt_fail(st);
+   if (!d3dkmt_make_resident(ws, record->allocation)) {
+      d3dkmt_destroy_record(ws, record);
+      memset(record, 0, sizeof(*record));
+      free(queried_runtime_data);
+      return false;
+   }
+
+   if (runtime_data != NULL && queried_runtime_size)
+      memcpy(runtime_data, queried_runtime_data, queried_runtime_size);
+   if (runtime_data_size)
+      *runtime_data_size = queried_runtime_size;
+   free(queried_runtime_data);
+   return true;
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_create_external(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags,
+   enum agx_d3dkmt_external_memory_type external_type, const char *label)
+{
+   return agx_d3dkmt_bo_create_external_with_runtime_data(
+      dev, size, align, flags, external_type, NULL, 0, label);
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_create_external_with_runtime_data(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags,
+   enum agx_d3dkmt_external_memory_type external_type,
+   const void *runtime_data, uint32_t runtime_data_size, const char *label)
+{
+   if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_NONE ||
+       external_type > AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT ||
+       size == 0 || size > SIZE_MAX - (AIL_PAGESIZE - 1) ||
+       runtime_data_size > AGX_D3DKMT_MAX_RUNTIME_DATA_SIZE ||
+       (runtime_data_size != 0 && runtime_data == NULL)) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   size = ALIGN_POT(size, AIL_PAGESIZE);
+   align = MAX2(align, AIL_PAGESIZE);
+   flags |= AGX_BO_SHARED | AGX_BO_SHAREABLE;
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_allocation_record record;
+   if (!d3dkmt_create_allocation(ws, size, flags, external_type, runtime_data,
+                                 runtime_data_size, &record))
+      return NULL;
+
+   struct agx_bo *bo =
+      d3dkmt_adopt_allocation(dev, size, align, flags, &record);
+   if (bo != NULL) {
+      bo->label = label;
+      p_atomic_set(&bo->refcnt, 1);
+   }
+   return bo;
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_import_external(
+   struct agx_device *dev, uintptr_t handle,
+   enum agx_d3dkmt_external_memory_type external_type, const char *label)
+{
+   return agx_d3dkmt_bo_import_external_with_runtime_data(
+      dev, handle, external_type, NULL, NULL, label);
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_import_external_with_runtime_data(
+   struct agx_device *dev, uintptr_t handle,
+   enum agx_d3dkmt_external_memory_type external_type, void *runtime_data,
+   uint32_t *runtime_data_size, const char *label)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_allocation_record record;
+   struct agxw_alloc_private private_data;
+   if (!d3dkmt_external_open(ws, handle, external_type, &record, &private_data,
+                             runtime_data, runtime_data_size))
+      return NULL;
+
+   enum agx_bo_flags flags = AGX_BO_SHARED | AGX_BO_SHAREABLE;
+   if (private_data.flags & AGXW_ALLOC_WRITEBACK)
+      flags |= AGX_BO_WRITEBACK;
+   const size_t size = ALIGN_POT((size_t)private_data.size, AIL_PAGESIZE);
+
+   struct agx_bo *bo =
+      d3dkmt_adopt_allocation(dev, size, AIL_PAGESIZE, flags, &record);
+   if (bo != NULL) {
+      bo->label = label;
+      p_atomic_set(&bo->refcnt, 1);
+   }
+   return bo;
+}
+
+int
+agx_d3dkmt_bo_export_external(
+   struct agx_device *dev, struct agx_bo *bo,
+   enum agx_d3dkmt_external_memory_type external_type, uintptr_t *handle)
+{
+   if (bo == NULL || handle == NULL ||
+       external_type == AGX_D3DKMT_EXTERNAL_MEMORY_NONE ||
+       external_type > AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_allocation_record record;
+   simple_mtx_lock(&ws->lock);
+   bool found =
+      agx_d3dkmt_pool_get_record(&ws->pool, bo->handle, &record);
+   simple_mtx_unlock(&ws->lock);
+   if (!found || record.allocation != bo->uapi_handle ||
+       record.external_type != external_type || record.resource == 0) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT) {
+      if (record.global_share == 0) {
+         errno = EINVAL;
+         return -1;
+      }
+      /* Non-owning by Vulkan definition: return the stable identifier itself,
+       * not a duplicated/closable kernel handle. */
+      *handle = (uintptr_t)record.global_share;
+      return 0;
+   }
+
+   OBJECT_ATTRIBUTES attributes;
+   InitializeObjectAttributes(&attributes, NULL, 0, NULL, NULL);
+   void *nt_handle = NULL;
+   agx_kmt_status st = ws->fns.ShareObjects(
+      1, &record.resource, &attributes,
+      AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS, &nt_handle);
+   if (!AGX_KMT_SUCCESS(st) || nt_handle == NULL) {
+      if (AGX_KMT_SUCCESS(st))
+         errno = EIO;
+      else
+         agx_d3dkmt_fail(st);
+      return -1;
+   }
+
+   /* The caller owns this NT handle and closes it. The BO retains no copy. */
+   *handle = (uintptr_t)nt_handle;
+   return 0;
 }
 
 /* -------------------------------------------------------------------------

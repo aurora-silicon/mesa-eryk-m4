@@ -133,6 +133,67 @@ CHECK_OFF(D3DKMT_CREATEALLOCATION, agx_kmt_createallocation, Flags);
 CHECK_OFF(D3DKMT_CREATEALLOCATION, agx_kmt_createallocation,
           hPrivateRuntimeResourceHandle);
 
+CHECK_SIZE(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2);
+CHECK_OFF(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2,
+          hAllocation);
+CHECK_OFF(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2,
+          pPrivateDriverData);
+CHECK_OFF(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2,
+          PrivateDriverDataSize);
+CHECK_OFF(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2,
+          GpuVirtualAddress);
+CHECK_OFF(D3DDDI_OPENALLOCATIONINFO2, agx_kmt_openallocationinfo2, Reserved);
+
+CHECK_SIZE(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo, hDevice);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo, hGlobalShare);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo,
+          pPrivateRuntimeData);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo,
+          PrivateRuntimeDataSize);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo,
+          TotalPrivateDriverDataSize);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo,
+          ResourcePrivateDriverDataSize);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFO, agx_kmt_queryresourceinfo, NumAllocations);
+
+CHECK_SIZE(D3DKMT_QUERYRESOURCEINFOFROMNTHANDLE,
+           agx_kmt_queryresourceinfofromnthandle);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFOFROMNTHANDLE,
+          agx_kmt_queryresourceinfofromnthandle, hNtHandle);
+CHECK_OFF(D3DKMT_QUERYRESOURCEINFOFROMNTHANDLE,
+          agx_kmt_queryresourceinfofromnthandle, NumAllocations);
+
+CHECK_SIZE(D3DKMT_OPENRESOURCE, agx_kmt_openresource);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, hDevice);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, hGlobalShare);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, NumAllocations);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, pOpenAllocationInfo2);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, pPrivateRuntimeData);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource,
+          pResourcePrivateDriverData);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource,
+          pTotalPrivateDriverDataBuffer);
+CHECK_OFF(D3DKMT_OPENRESOURCE, agx_kmt_openresource, hResource);
+
+CHECK_SIZE(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+           agx_kmt_openresourcefromnthandle);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, hNtHandle);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, pOpenAllocationInfo2);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, pTotalPrivateDriverDataBuffer);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, hResource);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, hKeyedMutex);
+CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
+          agx_kmt_openresourcefromnthandle, hSyncObject);
+static_assert(SHARED_ALLOCATION_ALL_ACCESS ==
+                 AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS,
+              "SHARED_ALLOCATION_ALL_ACCESS");
+
 CHECK_SIZE(D3DKMT_DESTROYALLOCATION2, agx_kmt_destroyallocation2);
 CHECK_OFF(D3DKMT_DESTROYALLOCATION2, agx_kmt_destroyallocation2, hDevice);
 CHECK_OFF(D3DKMT_DESTROYALLOCATION2, agx_kmt_destroyallocation2, hResource);
@@ -376,6 +437,11 @@ static const struct {
    PFND3DKMT_CREATEDEVICE e;
    PFND3DKMT_DESTROYDEVICE f;
    PFND3DKMT_CREATEALLOCATION2 g;
+   PFND3DKMT_QUERYRESOURCEINFO g1;
+   PFND3DKMT_QUERYRESOURCEINFOFROMNTHANDLE g2;
+   PFND3DKMT_SHAREOBJECTS g3;
+   PFND3DKMT_OPENRESOURCE g4;
+   PFND3DKMT_OPENRESOURCEFROMNTHANDLE g5;
    PFND3DKMT_DESTROYALLOCATION2 h;
    PFND3DKMT_LOCK2 i;
    PFND3DKMT_UNLOCK2 j;

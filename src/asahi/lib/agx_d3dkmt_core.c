@@ -28,7 +28,7 @@ agx_d3dkmt_pool_init(struct agx_d3dkmt_handle_pool *pool)
 void
 agx_d3dkmt_pool_finish(struct agx_d3dkmt_handle_pool *pool)
 {
-   free(pool->kmt);
+   free(pool->records);
    free(pool->freelist);
    memset(pool, 0, sizeof(*pool));
 }
@@ -46,16 +46,25 @@ pool_grow(struct agx_d3dkmt_handle_pool *pool, uint32_t need)
       cap *= 2;
    }
 
-   agx_kmt_handle *kmt = realloc(pool->kmt, (size_t)cap * sizeof(*kmt));
-   if (!kmt)
+   struct agx_d3dkmt_allocation_record *records =
+      calloc(cap, sizeof(*records));
+   uint32_t *fl = malloc((size_t)cap * sizeof(*fl));
+   if (!records || !fl) {
+      free(records);
+      free(fl);
       return false;
-   pool->kmt = kmt;
-   memset(pool->kmt + pool->capacity, 0,
-          (size_t)(cap - pool->capacity) * sizeof(*kmt));
+   }
 
-   uint32_t *fl = realloc(pool->freelist, (size_t)cap * sizeof(*fl));
-   if (!fl)
-      return false;
+   if (pool->capacity > 0) {
+      memcpy(records, pool->records,
+             (size_t)pool->capacity * sizeof(*records));
+      memcpy(fl, pool->freelist,
+             (size_t)pool->capacity * sizeof(*fl));
+   }
+
+   free(pool->records);
+   free(pool->freelist);
+   pool->records = records;
    pool->freelist = fl;
 
    pool->capacity = cap;
@@ -65,12 +74,34 @@ pool_grow(struct agx_d3dkmt_handle_pool *pool, uint32_t need)
 uint32_t
 agx_d3dkmt_pool_alloc(struct agx_d3dkmt_handle_pool *pool, agx_kmt_handle kmt)
 {
-   if (kmt == 0)
+   const struct agx_d3dkmt_allocation_record record = {
+      .allocation = kmt,
+   };
+   return agx_d3dkmt_pool_alloc_record(pool, &record);
+}
+
+uint32_t
+agx_d3dkmt_pool_alloc_record(
+   struct agx_d3dkmt_handle_pool *pool,
+   const struct agx_d3dkmt_allocation_record *record)
+{
+   if (record == NULL || record->allocation == 0)
+      return 0;
+
+   if (record->external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE &&
+       record->resource == 0)
+      return 0;
+   if (record->external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT &&
+       record->global_share == 0)
+      return 0;
+   if (record->external_type !=
+          AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT &&
+       record->global_share != 0)
       return 0;
 
    if (pool->nfree > 0) {
       uint32_t dense = pool->freelist[--pool->nfree];
-      pool->kmt[dense] = kmt;
+      pool->records[dense] = *record;
       return dense;
    }
 
@@ -80,7 +111,7 @@ agx_d3dkmt_pool_alloc(struct agx_d3dkmt_handle_pool *pool, agx_kmt_handle kmt)
       return 0;
 
    uint32_t dense = pool->next++;
-   pool->kmt[dense] = kmt;
+   pool->records[dense] = *record;
    return dense;
 }
 
@@ -89,23 +120,45 @@ agx_d3dkmt_pool_get(const struct agx_d3dkmt_handle_pool *pool, uint32_t dense)
 {
    if (dense == 0 || dense >= pool->capacity)
       return 0;
-   return pool->kmt[dense];
+   return pool->records[dense].allocation;
+}
+
+bool
+agx_d3dkmt_pool_get_record(const struct agx_d3dkmt_handle_pool *pool,
+                           uint32_t dense,
+                           struct agx_d3dkmt_allocation_record *record)
+{
+   if (record == NULL || dense == 0 || dense >= pool->capacity ||
+       pool->records[dense].allocation == 0)
+      return false;
+
+   *record = pool->records[dense];
+   return true;
 }
 
 agx_kmt_handle
 agx_d3dkmt_pool_release(struct agx_d3dkmt_handle_pool *pool, uint32_t dense)
 {
-   if (dense == 0 || dense >= pool->capacity)
+   struct agx_d3dkmt_allocation_record record;
+   if (!agx_d3dkmt_pool_release_record(pool, dense, &record))
       return 0;
+   return record.allocation;
+}
 
-   agx_kmt_handle kmt = pool->kmt[dense];
-   if (kmt == 0)
-      return 0;
+bool
+agx_d3dkmt_pool_release_record(
+   struct agx_d3dkmt_handle_pool *pool, uint32_t dense,
+   struct agx_d3dkmt_allocation_record *record)
+{
+   if (record == NULL || dense == 0 || dense >= pool->capacity ||
+       pool->records[dense].allocation == 0)
+      return false;
 
-   pool->kmt[dense] = 0;
-   /* freelist is sized with kmt, so nfree can never exceed capacity. */
+   *record = pool->records[dense];
+   memset(&pool->records[dense], 0, sizeof(pool->records[dense]));
+   /* freelist is sized with records, so nfree can never exceed capacity. */
    pool->freelist[pool->nfree++] = dense;
-   return kmt;
+   return true;
 }
 
 /* -------------------------------------------------------------------------
@@ -487,15 +540,35 @@ agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags)
 uint32_t
 agx_d3dkmt_create_flags(uint32_t agx_bo_flags)
 {
+   enum agx_d3dkmt_external_memory_type type =
+      (agx_bo_flags & (AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE))
+         ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
+         : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
+   return agx_d3dkmt_create_flags_external(agx_bo_flags, type);
+}
+
+uint32_t
+agx_d3dkmt_create_flags_external(
+   uint32_t agx_bo_flags,
+   enum agx_d3dkmt_external_memory_type external_type)
+{
+   if (external_type > AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT)
+      return 0;
+   if (external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE &&
+       !(agx_bo_flags &
+         (AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE)))
+      return 0;
+
    uint32_t flags = 0;
 
-   if (agx_bo_flags & (AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE)) {
-      /* NT-handle sharing rather than the legacy global shared handle: that
-       * is what VK_KHR_external_memory_win32 and D3D11.1 shared NT handles
-       * both require, and it is the reason this port exists -- one shared
-       * handle namespace across Vulkan and D3D. */
-      flags |= AGX_KMT_CREATEALLOC_CREATESHARED |
-               AGX_KMT_CREATEALLOC_NTSECURITYSHARING;
+   if (external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE) {
+      /* A global share handle always names a RESOURCE, never a bare
+       * allocation. One allocation per resource is the miniport contract. */
+      flags |= AGX_KMT_CREATEALLOC_CREATERESOURCE |
+               AGX_KMT_CREATEALLOC_CREATESHARED;
+
+      if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32)
+         flags |= AGX_KMT_CREATEALLOC_NTSECURITYSHARING;
    }
 
    /* Honeykrisp memsets or fully overwrites everything it allocates, and

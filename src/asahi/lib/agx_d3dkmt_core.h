@@ -116,8 +116,25 @@ agx_d3dkmt_policy_default(void)
  * ops.bo_free -- which is why this pool must also answer "what D3DKMT handle
  * did dense handle N have" AFTER agx_bo_free() has zeroed the struct agx_bo.
  * ------------------------------------------------------------------------- */
+enum agx_d3dkmt_external_memory_type {
+   AGX_D3DKMT_EXTERNAL_MEMORY_NONE = 0,
+   AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32 = 1,
+   AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT = 2,
+};
+
+/* Every local allocation handle has exactly one lifetime owner. A non-zero
+ * resource owns the allocation and is destroyed as a resource; otherwise the
+ * allocation itself is destroyed. global_share is only the non-owning KMT
+ * identifier and must never be closed or treated as a reference. */
+struct agx_d3dkmt_allocation_record {
+   agx_kmt_handle allocation;
+   agx_kmt_handle resource;
+   agx_kmt_handle global_share;
+   enum agx_d3dkmt_external_memory_type external_type;
+};
+
 struct agx_d3dkmt_handle_pool {
-   agx_kmt_handle *kmt; /* kmt[i] for dense handle i; 0 means unused */
+   struct agx_d3dkmt_allocation_record *records;
    uint32_t *freelist;
    uint32_t capacity;
    uint32_t next;  /* lowest dense handle never yet handed out */
@@ -135,9 +152,17 @@ void agx_d3dkmt_pool_finish(struct agx_d3dkmt_handle_pool *pool);
 uint32_t agx_d3dkmt_pool_alloc(struct agx_d3dkmt_handle_pool *pool,
                                agx_kmt_handle kmt);
 
+uint32_t agx_d3dkmt_pool_alloc_record(
+   struct agx_d3dkmt_handle_pool *pool,
+   const struct agx_d3dkmt_allocation_record *record);
+
 /* The D3DKMT handle for `dense`, or 0 if `dense` is not live. */
 agx_kmt_handle agx_d3dkmt_pool_get(const struct agx_d3dkmt_handle_pool *pool,
                                    uint32_t dense);
+
+bool agx_d3dkmt_pool_get_record(
+   const struct agx_d3dkmt_handle_pool *pool, uint32_t dense,
+   struct agx_d3dkmt_allocation_record *record);
 
 /*
  * Release `dense` and return the D3DKMT handle it held (0 if not live). The
@@ -146,6 +171,10 @@ agx_kmt_handle agx_d3dkmt_pool_get(const struct agx_d3dkmt_handle_pool *pool,
  */
 agx_kmt_handle agx_d3dkmt_pool_release(struct agx_d3dkmt_handle_pool *pool,
                                        uint32_t dense);
+
+bool agx_d3dkmt_pool_release_record(
+   struct agx_d3dkmt_handle_pool *pool, uint32_t dense,
+   struct agx_d3dkmt_allocation_record *record);
 
 /* -------------------------------------------------------------------------
  * 2. VM_BIND translation.
@@ -370,6 +399,10 @@ uint32_t agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags);
 
 /* enum agx_bo_flags -> D3DKMT_CREATEALLOCATIONFLAGS. */
 uint32_t agx_d3dkmt_create_flags(uint32_t agx_bo_flags);
+
+uint32_t agx_d3dkmt_create_flags_external(
+   uint32_t agx_bo_flags,
+   enum agx_d3dkmt_external_memory_type external_type);
 
 #ifdef __cplusplus
 }

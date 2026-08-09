@@ -46,6 +46,7 @@
 #include <stdint.h>
 
 #include "agx_d3dkmt.h"
+#include "agx_d3dkmt_core.h"
 #include "agx_device.h"
 
 struct util_sync_provider;
@@ -79,6 +80,38 @@ void agx_d3dkmt_close_device(struct agx_device *dev);
 /* The adapter LUID `dev` was opened from, for VkPhysicalDeviceIDProperties
  * and for matching against a D3D adapter. */
 struct agx_kmt_luid agx_d3dkmt_device_luid(const struct agx_device *dev);
+
+/* Resource-backed external memory. `handle` is an owning NT HANDLE for
+ * OPAQUE_WIN32 and the zero-extended, non-owning hGlobalShare identifier for
+ * OPAQUE_WIN32_KMT. Import never closes either kind. Export returns a fresh
+ * owning NT HANDLE for OPAQUE_WIN32 and the retained identifier for KMT. */
+struct agx_bo *agx_d3dkmt_bo_create_external(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags,
+   enum agx_d3dkmt_external_memory_type external_type, const char *label);
+
+/* Runtime-private data is carried by dxgkrnl with the shared resource and is
+ * returned verbatim to another process opening it. It is frontend metadata,
+ * never interpreted by the miniport. The plain entry points above/below are
+ * equivalent to passing no runtime data. */
+struct agx_bo *agx_d3dkmt_bo_create_external_with_runtime_data(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags,
+   enum agx_d3dkmt_external_memory_type external_type,
+   const void *runtime_data, uint32_t runtime_data_size, const char *label);
+
+struct agx_bo *agx_d3dkmt_bo_import_external(
+   struct agx_device *dev, uintptr_t handle,
+   enum agx_d3dkmt_external_memory_type external_type, const char *label);
+
+struct agx_bo *agx_d3dkmt_bo_import_external_with_runtime_data(
+   struct agx_device *dev, uintptr_t handle,
+   enum agx_d3dkmt_external_memory_type external_type, void *runtime_data,
+   uint32_t *runtime_data_size, const char *label);
+
+int agx_d3dkmt_bo_export_external(
+   struct agx_device *dev, struct agx_bo *bo,
+   enum agx_d3dkmt_external_memory_type external_type, uintptr_t *handle);
 
 /*
  * The Windows util_sync_provider, backed by D3DKMT monitored fences.
