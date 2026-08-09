@@ -7,7 +7,6 @@ libasahi_lib_files = files(
   'agx_bo.c',
   'agx_border.c',
   'agx_device.c',
-  'agx_device_virtio.c',
   'agx_linker.c',
   'agx_bg_eot.c',
   'agx_tilebuffer.c',
@@ -23,6 +22,32 @@ libasahi_lib_files = files(
   'pool.c',
 )
 
+asahi_lib_is_windows = host_machine.system() == 'windows'
+
+if asahi_lib_is_windows
+  libasahi_lib_files += files(
+    'agx_d3dkmt.c',
+    'agx_d3dkmt.h',
+    'agx_d3dkmt_core.c',
+    'agx_d3dkmt_core.h',
+    'agx_d3dkmt_priv.h',
+    'agx_device_d3dkmt.c',
+    'agx_device_d3dkmt.h',
+    'agx_sync_d3dkmt.c',
+    'decode_stub.c',
+  )
+
+  agxw_contract_dir = meson.get_external_property('agx_wddm_contract_core', '')
+  if agxw_contract_dir == ''
+    agxw_contract_dir = meson.get_external_property('ntagx_wddm_contract_core')
+  endif
+
+  libasahi_lib_files += files(agxw_contract_dir / 'agxw_contract.c')
+  libasahi_lib_inc_win = include_directories(agxw_contract_dir)
+else
+  libasahi_lib_files += files('agx_device_virtio.c')
+  libasahi_lib_inc_win = []
+endif
 libasahi_decode_files = files(
   'decode.c',
 )
@@ -60,11 +85,17 @@ idep_libagx_shaders_h = declare_dependency(
 libasahi_lib = static_library(
   'asahi_lib',
   [libasahi_lib_files, libagx_shaders, agx_pack, sha1_h],
-  include_directories : [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm],
+  include_directories : _asahi_lib_no_virtio
+    ? [inc_asahi, libasahi_lib_inc_win]
+    : [inc_asahi, inc_virtio_gpu, inc_virtio_vdrm],
   c_args : [no_override_init_args, '-Wno-c2x-extensions'],
   gnu_symbol_visibility : 'hidden',
-  link_with: [libasahi_decode, libvdrm, libpoly_nir],
-  dependencies: [dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly],
+  link_with: asahi_lib_is_windows
+    ? [libpoly_nir]
+    : [libasahi_decode, libvdrm, libpoly_nir],
+  dependencies: asahi_lib_is_windows
+    ? [dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly]
+    : [dep_libdrm, dep_valgrind, idep_nir, idep_mesautil, idep_libagx, idep_libpoly],
   build_by_default : false,
 )
 
