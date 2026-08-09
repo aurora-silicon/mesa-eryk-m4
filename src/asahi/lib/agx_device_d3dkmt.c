@@ -20,9 +20,10 @@
  *   GEM handle DRM GEM handles are dense small integers; D3DKMT handles are
  *              not, and agx_device.c iterates the handle space.
  *
- * NOT RUNTIME-VERIFIED: there is no WDDM miniport for this GPU yet and no
- * hardware available this session. Everything here cross-compiles for
- * aarch64-w64-mingw32 as part of the real ICD; nothing here has executed.
+ * RUNTIME STATUS: this path cross-compiles for aarch64-w64-mingw32 as part
+ * of the real driver. The hardware acceptance test lives in
+ * src/asahi/d3d12/tests/shared_interop.c; run it in a matching Windows/AGX
+ * session whenever resource, synchronization or private-data ABI changes.
  */
 
 #include "agx_device_d3dkmt.h"
@@ -718,6 +719,17 @@ agx_d3dkmt_bo_export_external(
    struct agx_device *dev, struct agx_bo *bo,
    enum agx_d3dkmt_external_memory_type external_type, uintptr_t *handle)
 {
+   return agx_d3dkmt_bo_export_external_with_attributes(
+      dev, bo, external_type, NULL, AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS,
+      handle);
+}
+
+int
+agx_d3dkmt_bo_export_external_with_attributes(
+   struct agx_device *dev, struct agx_bo *bo,
+   enum agx_d3dkmt_external_memory_type external_type,
+   const void *object_attributes, uint32_t access, uintptr_t *handle)
+{
    if (bo == NULL || handle == NULL ||
        external_type == AGX_D3DKMT_EXTERNAL_MEMORY_NONE ||
        external_type > AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT) {
@@ -738,6 +750,10 @@ agx_d3dkmt_bo_export_external(
    }
 
    if (external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT) {
+      if (object_attributes != NULL) {
+         errno = EINVAL;
+         return -1;
+      }
       if (record.global_share == 0) {
          errno = EINVAL;
          return -1;
@@ -748,12 +764,18 @@ agx_d3dkmt_bo_export_external(
       return 0;
    }
 
-   OBJECT_ATTRIBUTES attributes;
-   InitializeObjectAttributes(&attributes, NULL, 0, NULL, NULL);
+   OBJECT_ATTRIBUTES default_attributes;
+   if (object_attributes == NULL) {
+      InitializeObjectAttributes(&default_attributes, NULL, 0, NULL, NULL);
+      object_attributes = &default_attributes;
+   }
+
+   if (access == 0)
+      access = AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS;
+
    void *nt_handle = NULL;
    agx_kmt_status st = ws->fns.ShareObjects(
-      1, &record.resource, &attributes,
-      AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS, &nt_handle);
+      1, &record.resource, (void *)object_attributes, access, &nt_handle);
    if (!AGX_KMT_SUCCESS(st) || nt_handle == NULL) {
       if (AGX_KMT_SUCCESS(st))
          errno = EIO;
@@ -764,6 +786,96 @@ agx_d3dkmt_bo_export_external(
 
    /* The caller owns this NT handle and closes it. The BO retains no copy. */
    *handle = (uintptr_t)nt_handle;
+   return 0;
+}
+
+static bool
+d3dkmt_bo_record(struct agx_device *dev, struct agx_bo *bo,
+                 struct agx_d3dkmt_allocation_record *record)
+{
+   if (!dev || !bo || !record) {
+      errno = EINVAL;
+      return false;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   simple_mtx_lock(&ws->lock);
+   bool found = agx_d3dkmt_pool_get_record(&ws->pool, bo->handle, record);
+   simple_mtx_unlock(&ws->lock);
+   if (!found || record->allocation != bo->uapi_handle) {
+      errno = EINVAL;
+      return false;
+   }
+   return true;
+}
+
+int
+agx_d3dkmt_bo_make_resident(struct agx_device *dev, struct agx_bo *bo)
+{
+   struct agx_d3dkmt_allocation_record record;
+   if (!d3dkmt_bo_record(dev, bo, &record))
+      return -1;
+   return d3dkmt_make_resident(agx_d3dkmt_ws(dev), record.allocation) ? 0 : -1;
+}
+
+int
+agx_d3dkmt_bo_evict(struct agx_device *dev, struct agx_bo *bo)
+{
+   struct agx_d3dkmt_allocation_record record;
+   if (!d3dkmt_bo_record(dev, bo, &record))
+      return -1;
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   if (!ws->policy.needs_residency)
+      return 0;
+
+   const agx_kmt_handle allocation = record.allocation;
+   struct agx_kmt_evict evict = {
+      .hDevice = ws->device,
+      .NumAllocations = 1,
+      .AllocationList = &allocation,
+   };
+   agx_kmt_status st = ws->fns.Evict(&evict);
+   return AGX_KMT_SUCCESS(st) ? 0 : agx_d3dkmt_fail(st);
+}
+
+int
+agx_d3dkmt_open_nt_handle_from_name(struct agx_device *dev,
+                                    const void *object_attributes,
+                                    uint32_t access, uintptr_t *nt_handle)
+{
+   if (!dev || !object_attributes || !nt_handle) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_kmt_openhandlefromname open = {
+      .dwDesiredAccess = access,
+      .pObjAttrib = (void *)object_attributes,
+   };
+   agx_kmt_status resource_status = ws->fns.OpenNtHandleFromName(&open);
+   if (!AGX_KMT_SUCCESS(resource_status)) {
+      open.hNtHandle = NULL;
+      agx_kmt_status sync_status =
+         ws->fns.OpenSyncObjectNtHandleFromName(&open);
+      if (!AGX_KMT_SUCCESS(sync_status)) {
+         /* The API has separate resource and sync-object name thunks but
+          * ID3D12Device::OpenSharedHandleByName is type-neutral. Preserve an
+          * access failure from either probe instead of hiding it behind the
+          * other probe's expected type mismatch/not-found status. */
+         const agx_kmt_status access_denied = (agx_kmt_status)0xC0000022u;
+         return agx_d3dkmt_fail(resource_status == access_denied
+                                   ? resource_status
+                                   : sync_status);
+      }
+   }
+
+   if (!open.hNtHandle) {
+      errno = EIO;
+      return -1;
+   }
+   *nt_handle = (uintptr_t)open.hNtHandle;
    return 0;
 }
 

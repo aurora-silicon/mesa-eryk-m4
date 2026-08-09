@@ -193,6 +193,9 @@ CHECK_OFF(D3DKMT_OPENRESOURCEFROMNTHANDLE,
 static_assert(SHARED_ALLOCATION_ALL_ACCESS ==
                  AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS,
               "SHARED_ALLOCATION_ALL_ACCESS");
+static_assert(D3DDDI_SYNC_OBJECT_ALL_ACCESS ==
+                 AGX_KMT_SYNC_OBJECT_ALL_ACCESS,
+              "D3DDDI_SYNC_OBJECT_ALL_ACCESS");
 
 CHECK_SIZE(D3DKMT_DESTROYALLOCATION2, agx_kmt_destroyallocation2);
 CHECK_OFF(D3DKMT_DESTROYALLOCATION2, agx_kmt_destroyallocation2, hDevice);
@@ -357,6 +360,34 @@ CHECK_OFF(D3DKMT_CREATESYNCHRONIZATIONOBJECT2, agx_kmt_createsyncobj2, Info);
 CHECK_OFF(D3DKMT_CREATESYNCHRONIZATIONOBJECT2, agx_kmt_createsyncobj2,
           hSyncObject);
 CHECK_SIZE(D3DKMT_DESTROYSYNCHRONIZATIONOBJECT, agx_kmt_destroysyncobj);
+CHECK_SIZE(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+           agx_kmt_opensyncobjfromnthandle2);
+CHECK_OFF(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+          agx_kmt_opensyncobjfromnthandle2, hNtHandle);
+CHECK_OFF(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+          agx_kmt_opensyncobjfromnthandle2, hDevice);
+CHECK_OFF(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+          agx_kmt_opensyncobjfromnthandle2, Flags);
+CHECK_OFF(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+          agx_kmt_opensyncobjfromnthandle2, hSyncObject);
+CHECK_OFF(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+          agx_kmt_opensyncobjfromnthandle2, MonitoredFence);
+static_assert(
+   offsetof(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE2,
+            MonitoredFence.FenceValueCPUVirtualAddress) ==
+      offsetof(vend::agx_kmt_opensyncobjfromnthandle2,
+               MonitoredFence.FenceValueCPUVirtualAddress),
+   "OpenSyncObjectFromNtHandle2 monitored-fence CPU mapping");
+CHECK_SIZE(D3DKMT_OPENNTHANDLEFROMNAME, agx_kmt_openhandlefromname);
+CHECK_OFF(D3DKMT_OPENNTHANDLEFROMNAME, agx_kmt_openhandlefromname,
+          dwDesiredAccess);
+CHECK_OFF(D3DKMT_OPENNTHANDLEFROMNAME, agx_kmt_openhandlefromname,
+          pObjAttrib);
+CHECK_OFF(D3DKMT_OPENNTHANDLEFROMNAME, agx_kmt_openhandlefromname,
+          hNtHandle);
+static_assert(sizeof(D3DKMT_OPENSYNCOBJECTNTHANDLEFROMNAME) ==
+                 sizeof(vend::agx_kmt_openhandlefromname),
+              "OpenSyncObjectNtHandleFromName ABI");
 
 CHECK_SIZE(D3DKMT_SIGNALSYNCHRONIZATIONOBJECTFROMCPU, agx_kmt_signalsyncfromcpu);
 CHECK_OFF(D3DKMT_SIGNALSYNCHRONIZATIONOBJECTFROMCPU, agx_kmt_signalsyncfromcpu,
@@ -458,6 +489,9 @@ static const struct {
    PFND3DKMT_SUBMITCOMMAND u;
    PFND3DKMT_CREATESYNCHRONIZATIONOBJECT2 v;
    PFND3DKMT_DESTROYSYNCHRONIZATIONOBJECT w;
+   PFND3DKMT_OPENSYNCOBJECTFROMNTHANDLE2 w1;
+   PFND3DKMT_OPENNTHANDLEFROMNAME w2;
+   PFND3DKMT_OPENSYNCOBJECTNTHANDLEFROMNAME w3;
    PFND3DKMT_SIGNALSYNCHRONIZATIONOBJECTFROMCPU x;
    PFND3DKMT_WAITFORSYNCHRONIZATIONOBJECTFROMCPU y;
    PFND3DKMT_SIGNALSYNCHRONIZATIONOBJECTFROMGPU z;

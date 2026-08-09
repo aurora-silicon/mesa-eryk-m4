@@ -286,11 +286,11 @@ uint32_t agx_d3dkmt_va_split_carveout(uint64_t base, uint64_t size,
  * exactly as they do in DRM.
  *
  * KNOWN LIMIT, reported back to the miniport: the epoch is process-local. A
- * syncobj shared with another process and then reset would leave the two
- * processes disagreeing about which value means "signalled". No Honeykrisp
- * path does that today -- the fd import/export slots are hard stubs on
- * Windows, so no syncobj can be shared at all -- but it is the constraint that
- * VK_KHR_external_semaphore_win32 would have to be designed around.
+ * binary syncobj shared with another process and then reset would leave the
+ * two processes disagreeing about which value means "signalled". External
+ * D3D12 fences use the monitored fence as a timeline and never apply this
+ * binary epoch. A future VK_KHR_external_semaphore_win32 binary path must
+ * preserve the same constraint.
  * ------------------------------------------------------------------------- */
 struct agx_d3dkmt_sync {
    agx_kmt_handle kmt;    /* monitored fence handle; 0 = free slot */

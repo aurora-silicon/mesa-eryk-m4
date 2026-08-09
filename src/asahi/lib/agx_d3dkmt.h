@@ -270,6 +270,8 @@ struct agx_kmt_openresourcefromnthandle {
 
 /* d3dkmthk.h: SHARED_ALLOCATION_ALL_ACCESS. */
 #define AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS 0x000f0001u
+/* d3dukmdt.h: D3DDDI_SYNC_OBJECT_ALL_ACCESS. */
+#define AGX_KMT_SYNC_OBJECT_ALL_ACCESS 0x001f0003u
 
 struct agx_kmt_destroyallocation2 { /* D3DKMT_DESTROYALLOCATION2 */
    agx_kmt_handle hDevice;
@@ -482,6 +484,8 @@ struct agx_kmt_submitcommand { /* D3DKMT_SUBMITCOMMAND */
  * ------------------------------------------------------------------------- */
 /* D3DDDI_SYNCHRONIZATIONOBJECT_TYPE */
 #define AGX_KMT_SYNC_MONITORED_FENCE 5
+#define AGX_KMT_SYNC_SHARED           (1u << 0)
+#define AGX_KMT_SYNC_NT_SECURITY      (1u << 1)
 
 struct agx_kmt_syncobjinfo2 { /* D3DDDI_SYNCHRONIZATIONOBJECTINFO2 */
    int32_t Type;
@@ -509,6 +513,29 @@ struct agx_kmt_createsyncobj2 { /* D3DKMT_CREATESYNCHRONIZATIONOBJECT2 */
 
 struct agx_kmt_destroysyncobj { /* D3DKMT_DESTROYSYNCHRONIZATIONOBJECT */
    agx_kmt_handle hSyncObject;
+};
+
+struct agx_kmt_opensyncobjfromnthandle2 {
+   void *hNtHandle;
+   agx_kmt_handle hDevice;
+   uint32_t Flags; /* D3DDDI_SYNCHRONIZATIONOBJECT_FLAGS */
+   agx_kmt_handle hSyncObject;
+   uint32_t Padding;
+   union {
+      struct {
+         void *FenceValueCPUVirtualAddress;
+         agx_kmt_gpuva FenceValueGPUVirtualAddress;
+         uint32_t EngineAffinity;
+         uint32_t Padding;
+      } MonitoredFence;
+      uint64_t Reserved[8];
+   };
+};
+
+struct agx_kmt_openhandlefromname {
+   uint32_t dwDesiredAccess;
+   void *pObjAttrib;
+   void *hNtHandle;
 };
 
 struct agx_kmt_signalsyncfromcpu { /* D3DKMT_SIGNALSYNCHRONIZATIONOBJECTFROMCPU */
@@ -660,6 +687,12 @@ struct agx_d3dkmt_fns {
       struct agx_kmt_createsyncobj2 *);
    agx_kmt_status(AGX_KMT_API *DestroySynchronizationObject)(
       const struct agx_kmt_destroysyncobj *);
+   agx_kmt_status(AGX_KMT_API *OpenSyncObjectFromNtHandle2)(
+      struct agx_kmt_opensyncobjfromnthandle2 *);
+   agx_kmt_status(AGX_KMT_API *OpenNtHandleFromName)(
+      struct agx_kmt_openhandlefromname *);
+   agx_kmt_status(AGX_KMT_API *OpenSyncObjectNtHandleFromName)(
+      struct agx_kmt_openhandlefromname *);
    agx_kmt_status(AGX_KMT_API *SignalSynchronizationObjectFromCpu)(
       const struct agx_kmt_signalsyncfromcpu *);
    agx_kmt_status(AGX_KMT_API *WaitForSynchronizationObjectFromCpu)(

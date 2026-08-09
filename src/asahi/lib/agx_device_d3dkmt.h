@@ -113,6 +113,17 @@ int agx_d3dkmt_bo_export_external(
    struct agx_device *dev, struct agx_bo *bo,
    enum agx_d3dkmt_external_memory_type external_type, uintptr_t *handle);
 
+/* D3D shared handles may carry a Win32 name, security descriptor and access
+ * mask. `object_attributes` is an opaque OBJECT_ATTRIBUTES pointer so this
+ * frontend-neutral header does not expose NT types. NULL selects the same
+ * unnamed defaults as agx_d3dkmt_bo_export_external(). */
+int agx_d3dkmt_bo_export_external_with_attributes(
+   struct agx_device *dev, struct agx_bo *bo,
+   enum agx_d3dkmt_external_memory_type external_type,
+   const void *object_attributes, uint32_t access, uintptr_t *handle);
+int agx_d3dkmt_bo_make_resident(struct agx_device *dev, struct agx_bo *bo);
+int agx_d3dkmt_bo_evict(struct agx_device *dev, struct agx_bo *bo);
+
 /*
  * The Windows util_sync_provider, backed by D3DKMT monitored fences.
  *
@@ -123,5 +134,24 @@ int agx_d3dkmt_bo_export_external(
  * own `dev` and must be finalized before agx_d3dkmt_close_device().
  */
 struct util_sync_provider *util_sync_provider_d3dkmt(struct agx_device *dev);
+
+/* External D3D12 fences are the same monitored-fence objects used by the
+ * util sync provider, registered in its dense handle table so queue waits,
+ * CPU waits and AGX submissions all name one WDDM object. */
+int agx_d3dkmt_syncobj_create_external(struct agx_device *dev,
+                                       uint64_t initial_value,
+                                       uint32_t *handle);
+int agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
+                                       uintptr_t nt_handle,
+                                       uint32_t *handle);
+int agx_d3dkmt_syncobj_export_external(
+   struct agx_device *dev, uint32_t handle, const void *object_attributes,
+   uint32_t access, uintptr_t *nt_handle);
+int agx_d3dkmt_syncobj_query(struct agx_device *dev, uint32_t handle,
+                             uint64_t *value);
+int agx_d3dkmt_open_nt_handle_from_name(struct agx_device *dev,
+                                        const void *object_attributes,
+                                        uint32_t access,
+                                        uintptr_t *nt_handle);
 
 extern const agx_device_ops_t agx_device_d3dkmt_ops;

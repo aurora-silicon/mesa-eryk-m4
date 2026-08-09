@@ -78,6 +78,11 @@ agx_d3dkmt_load(struct agx_d3dkmt_fns *fns)
 
    LOAD(CreateSynchronizationObject2, "D3DKMTCreateSynchronizationObject2");
    LOAD(DestroySynchronizationObject, "D3DKMTDestroySynchronizationObject");
+   LOAD(OpenSyncObjectFromNtHandle2,
+        "D3DKMTOpenSyncObjectFromNtHandle2");
+   LOAD(OpenNtHandleFromName, "D3DKMTOpenNtHandleFromName");
+   LOAD(OpenSyncObjectNtHandleFromName,
+        "D3DKMTOpenSyncObjectNtHandleFromName");
    LOAD(SignalSynchronizationObjectFromCpu,
         "D3DKMTSignalSynchronizationObjectFromCpu");
    LOAD(WaitForSynchronizationObjectFromCpu,

@@ -35,16 +35,14 @@
  *
  * fd-based slots (handle_to_fd, fd_to_handle, import_sync_file,
  * export_sync_file) remain hard -EINVAL stubs: every extension that could
- * reach them is Windows-disabled. The WDDM-native replacements for
- * VK_KHR_external_semaphore_win32 are D3DKMTShareObjects and
- * D3DKMTOpenSyncObjectFromNtHandle2, which this port does not yet wire up --
- * but note that the fence objects created here are already the right KIND of
- * object for that, which was not true of the AGXKMD syncobjs.
+ * reach them is Windows-disabled. Native NT-handle sharing is exposed
+ * separately through agx_d3dkmt_syncobj_{create,import,export}_external(),
+ * backed by D3DKMTShareObjects and D3DKMTOpenSyncObjectFromNtHandle2.
  *
- * NOT RUNTIME-VERIFIED: no miniport, no hardware. The parts that ARE verified
- * are the epoch arithmetic, the timeout conversion and first_signaled
- * recovery, all of which live in agx_d3dkmt_core.c and are covered by
- * agx_d3dkmt_core_tests.c.
+ * The Mesa-free epoch arithmetic, timeout conversion and first_signaled
+ * recovery live in agx_d3dkmt_core.c and are covered by
+ * agx_d3dkmt_core_tests.c. Native sharing is additionally covered by the
+ * Windows/AGX acceptance test in d3d12/tests/shared_interop.c.
  */
 
 #include "agx_device_d3dkmt.h"
@@ -53,6 +51,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <winternl.h>
 
 #include "util/u_memory.h"
 #include "util/u_sync_provider.h"
@@ -92,10 +91,10 @@ now_nsec(void)
 }
 
 static int
-d3dkmt_syncobj_create(struct util_sync_provider *p, uint32_t flags,
-                      uint32_t *handle)
+d3dkmt_syncobj_create_ws(struct agx_d3dkmt_winsys *ws,
+                         uint64_t initial_value, uint32_t kmt_flags,
+                         uint32_t *handle)
 {
-   struct agx_d3dkmt_winsys *ws = ws_of(p);
    simple_mtx_lock(&ws->lock);
    bool lost = ws->device_lost;
    simple_mtx_unlock(&ws->lock);
@@ -104,19 +103,13 @@ d3dkmt_syncobj_create(struct util_sync_provider *p, uint32_t flags,
       return -1;
    }
 
-   /*
-    * DRM_SYNCOBJ_CREATE_SIGNALED means "already signalled". With the epoch
-    * model that is simply an initial fence value of 1, since binary-signalled
-    * is defined as fence >= base + 1 and base starts at 0.
-    */
-   const uint64_t initial = (flags & DRM_SYNCOBJ_CREATE_SIGNALED) ? 1 : 0;
-
    struct agx_kmt_createsyncobj2 create = {
       .hDevice = ws->device,
       .Info =
          {
             .Type = AGX_KMT_SYNC_MONITORED_FENCE,
-            .MonitoredFence = {.InitialFenceValue = initial},
+            .Flags = kmt_flags,
+            .MonitoredFence = {.InitialFenceValue = initial_value},
          },
    };
 
@@ -131,7 +124,7 @@ d3dkmt_syncobj_create(struct util_sync_provider *p, uint32_t flags,
                         &ws->syncs, create.hSyncObject,
                         (const volatile uint64_t *)create.Info.MonitoredFence
                            .FenceValueCPUVirtualAddress,
-                        initial);
+                        initial_value);
    lost = ws->device_lost;
    simple_mtx_unlock(&ws->lock);
 
@@ -143,6 +136,152 @@ d3dkmt_syncobj_create(struct util_sync_provider *p, uint32_t flags,
    }
 
    *handle = h;
+   return 0;
+}
+
+static int
+d3dkmt_syncobj_create(struct util_sync_provider *p, uint32_t flags,
+                      uint32_t *handle)
+{
+   /* DRM_SYNCOBJ_CREATE_SIGNALED means "already signalled". With the epoch
+    * model that is simply an initial fence value of 1, since binary-signalled
+    * is defined as fence >= base + 1 and base starts at 0. */
+   const uint64_t initial = (flags & DRM_SYNCOBJ_CREATE_SIGNALED) ? 1 : 0;
+   return d3dkmt_syncobj_create_ws(ws_of(p), initial, 0, handle);
+}
+
+int
+agx_d3dkmt_syncobj_create_external(struct agx_device *dev,
+                                   uint64_t initial_value, uint32_t *handle)
+{
+   if (!dev || !handle) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   return d3dkmt_syncobj_create_ws(
+      agx_d3dkmt_ws(dev), initial_value,
+      AGX_KMT_SYNC_SHARED | AGX_KMT_SYNC_NT_SECURITY, handle);
+}
+
+int
+agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
+                                   uintptr_t nt_handle, uint32_t *handle)
+{
+   if (!dev || !handle || nt_handle == 0) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_kmt_opensyncobjfromnthandle2 open = {
+      .hNtHandle = (void *)nt_handle,
+      .hDevice = ws->device,
+      .Flags = AGX_KMT_SYNC_SHARED | AGX_KMT_SYNC_NT_SECURITY,
+   };
+   agx_kmt_status st = ws->fns.OpenSyncObjectFromNtHandle2(&open);
+   if (!AGX_KMT_SUCCESS(st))
+      return agx_d3dkmt_fail(st);
+
+   if (!open.hSyncObject ||
+       !open.MonitoredFence.FenceValueCPUVirtualAddress) {
+      if (open.hSyncObject) {
+         const struct agx_kmt_destroysyncobj destroy = {
+            .hSyncObject = open.hSyncObject,
+         };
+         ws->fns.DestroySynchronizationObject(&destroy);
+      }
+      errno = EINVAL;
+      return -1;
+   }
+
+   const volatile uint64_t *cpu_value =
+      open.MonitoredFence.FenceValueCPUVirtualAddress;
+   uint64_t initial = *cpu_value;
+   simple_mtx_lock(&ws->lock);
+   uint32_t dense = ws->device_lost
+                       ? 0
+                       : agx_d3dkmt_sync_table_add(
+                            &ws->syncs, open.hSyncObject, cpu_value, initial);
+   bool lost = ws->device_lost;
+   simple_mtx_unlock(&ws->lock);
+   if (!dense) {
+      const struct agx_kmt_destroysyncobj destroy = {
+         .hSyncObject = open.hSyncObject,
+      };
+      ws->fns.DestroySynchronizationObject(&destroy);
+      errno = lost ? EIO : ENOMEM;
+      return -1;
+   }
+
+   *handle = dense;
+   return 0;
+}
+
+int
+agx_d3dkmt_syncobj_export_external(
+   struct agx_device *dev, uint32_t handle, const void *object_attributes,
+   uint32_t access, uintptr_t *nt_handle)
+{
+   if (!dev || !handle || !nt_handle) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   simple_mtx_lock(&ws->lock);
+   struct agx_d3dkmt_sync *sync =
+      agx_d3dkmt_sync_table_get(&ws->syncs, handle);
+   agx_kmt_handle kmt = sync ? sync->kmt : 0;
+   simple_mtx_unlock(&ws->lock);
+   if (!kmt) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   OBJECT_ATTRIBUTES default_attributes;
+   if (!object_attributes) {
+      InitializeObjectAttributes(&default_attributes, NULL, 0, NULL, NULL);
+      object_attributes = &default_attributes;
+   }
+   if (!access)
+      access = AGX_KMT_SYNC_OBJECT_ALL_ACCESS;
+
+   void *exported = NULL;
+   agx_kmt_status st = ws->fns.ShareObjects(
+      1, &kmt, (void *)object_attributes, access, &exported);
+   if (!AGX_KMT_SUCCESS(st) || !exported) {
+      if (!AGX_KMT_SUCCESS(st))
+         return agx_d3dkmt_fail(st);
+      errno = EIO;
+      return -1;
+   }
+
+   *nt_handle = (uintptr_t)exported;
+   return 0;
+}
+
+int
+agx_d3dkmt_syncobj_query(struct agx_device *dev, uint32_t handle,
+                         uint64_t *value)
+{
+   if (!dev || !handle || !value) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   simple_mtx_lock(&ws->lock);
+   struct agx_d3dkmt_sync *sync =
+      agx_d3dkmt_sync_table_get(&ws->syncs, handle);
+   bool found = sync && sync->cpu_va;
+   if (found)
+      *value = *sync->cpu_va;
+   simple_mtx_unlock(&ws->lock);
+   if (!found) {
+      errno = EINVAL;
+      return -1;
+   }
    return 0;
 }
 
@@ -211,6 +350,7 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
    struct agx_d3dkmt_winsys *ws = ws_of(p);
    agx_kmt_handle *kmt = NULL;
    uint64_t *values = NULL;
+   HANDLE async_event = NULL;
    int ret = -1;
 
    if (num_handles == 0)
@@ -248,27 +388,38 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
     * or has not been reached. DRM's flag exists because a syncobj can hold a
     * NULL fence; a monitored fence cannot.
     */
+   uint32_t ms = agx_d3dkmt_timeout_to_ms(timeout_nsec, now_nsec());
+   if (ms != AGX_D3DKMT_INFINITE) {
+      /* A finite D3DKMT wait is armed asynchronously. Use one event per
+       * invocation: shared-fence event waiters can run concurrently, and a
+       * device-global resettable event would let one waiter consume another
+       * waiter's signal (or receive a late signal after a timeout). */
+      async_event = CreateEventW(NULL, FALSE, FALSE, NULL);
+      if (!async_event) {
+         errno = GetLastError() == ERROR_NOT_ENOUGH_MEMORY ? ENOMEM : EIO;
+         goto out;
+      }
+   }
+
    struct agx_kmt_waitsyncfromcpu wait = {
       .hDevice = ws->device,
       .ObjectCount = num_handles,
       .ObjectHandleArray = kmt,
       .FenceValueArray = values,
-      .hAsyncEvent = ws->wait_event,
+      .hAsyncEvent = async_event,
       .Flags = (flags & DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL)
                   ? 0
                   : AGX_KMT_WAITCPU_WAITANY,
    };
 
-   uint32_t ms = agx_d3dkmt_timeout_to_ms(timeout_nsec, now_nsec());
-
-   ResetEvent(ws->wait_event);
    agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromCpu(&wait);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       goto out;
    }
 
-   DWORD r = WaitForSingleObject(ws->wait_event, ms);
+   DWORD r = async_event ? WaitForSingleObject(async_event, ms)
+                         : WAIT_OBJECT_0;
    if (r == WAIT_TIMEOUT) {
       errno = ETIME;
       ret = -1;
@@ -317,6 +468,8 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
    ret = 0;
 
 out:
+   if (async_event)
+      CloseHandle(async_event);
    free(kmt);
    free(values);
    return ret;
