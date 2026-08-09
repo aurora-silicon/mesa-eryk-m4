@@ -12,11 +12,14 @@
 #include <directx/d3d12.h>
 #ifdef _WIN32
 #include <d3d11_1.h>
+#include <winternl.h>
+#include "../../lib/agx_d3dkmt.h"
 #endif
 
 #include "d12_test_abi.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 static unsigned failures;
 
@@ -42,6 +45,217 @@ close_shared_handle(HANDLE handle)
 }
 
 #ifdef _WIN32
+struct d3dkmt_reshare_fns {
+   agx_kmt_status(AGX_KMT_API *OpenAdapterFromLuid)(
+      struct agx_kmt_openadapterfromluid *);
+   agx_kmt_status(AGX_KMT_API *CloseAdapter)(
+      const struct agx_kmt_closeadapter *);
+   agx_kmt_status(AGX_KMT_API *CreateDevice)(struct agx_kmt_createdevice *);
+   agx_kmt_status(AGX_KMT_API *DestroyDevice)(
+      const struct agx_kmt_destroydevice *);
+   agx_kmt_status(AGX_KMT_API *QueryResourceInfoFromNtHandle)(
+      struct agx_kmt_queryresourceinfofromnthandle *);
+   agx_kmt_status(AGX_KMT_API *OpenResourceFromNtHandle)(
+      struct agx_kmt_openresourcefromnthandle *);
+   agx_kmt_status(AGX_KMT_API *ShareObjects)(uint32_t,
+                                             const agx_kmt_handle *, void *,
+                                             uint32_t, void **);
+   agx_kmt_status(AGX_KMT_API *DestroyAllocation2)(
+      const struct agx_kmt_destroyallocation2 *);
+};
+
+static bool
+load_d3dkmt_reshare_fns(HMODULE gdi32, struct d3dkmt_reshare_fns *fns)
+{
+   memset(fns, 0, sizeof(*fns));
+
+#define LOAD(field)                                                           \
+   do {                                                                        \
+      FARPROC proc = GetProcAddress(gdi32, "D3DKMT" #field);                  \
+      if (!proc)                                                               \
+         return false;                                                         \
+      *(FARPROC *)(void *)&fns->field = proc;                                  \
+   } while (0)
+
+   LOAD(OpenAdapterFromLuid);
+   LOAD(CloseAdapter);
+   LOAD(CreateDevice);
+   LOAD(DestroyDevice);
+   LOAD(QueryResourceInfoFromNtHandle);
+   LOAD(OpenResourceFromNtHandle);
+   LOAD(ShareObjects);
+   LOAD(DestroyAllocation2);
+
+#undef LOAD
+   return true;
+}
+
+/*
+ * Model the resource handoff performed by a real D3D11 UMD. The D3D runtime
+ * opens the application's NT handle and gives its UMD process-local
+ * hKMResource/hAllocation values, not the original application handle. The
+ * UMD can legally turn hKMResource back into an NT handle with ShareObjects;
+ * DXVK/Honeykrisp then imports that handle through OPAQUE_WIN32 and aliases
+ * the same WDDM allocation. No private Vulkan extension or copy is needed.
+ */
+static void
+check_d3dkmt_resource_reshare(ID3D12Device *d3d12_device,
+                              HANDLE resource_handle,
+                              const D3D12_RESOURCE_DESC *resource_desc)
+{
+   enum { MAX_PRIVATE_DATA_SIZE = 1024 * 1024 };
+   HMODULE gdi32 = LoadLibraryW(L"gdi32.dll");
+   CHECK(gdi32, "load the D3DKMT thunk provider");
+   if (!gdi32)
+      return;
+
+   struct d3dkmt_reshare_fns fns;
+   const bool loaded = load_d3dkmt_reshare_fns(gdi32, &fns);
+   CHECK(loaded,
+         "resolve the D3DKMT resource-reshare surface");
+   if (!loaded) {
+      FreeLibrary(gdi32);
+      return;
+   }
+
+   LUID adapter_luid = {0};
+   ID3D12Device_GetAdapterLuid(d3d12_device, &adapter_luid);
+   struct agx_kmt_openadapterfromluid adapter = {
+      .AdapterLuid =
+         {
+            .LowPart = adapter_luid.LowPart,
+            .HighPart = adapter_luid.HighPart,
+         },
+   };
+   agx_kmt_status status = fns.OpenAdapterFromLuid(&adapter);
+   CHECK(AGX_KMT_SUCCESS(status) && adapter.hAdapter,
+         "open the D3D12 adapter through D3DKMT");
+   if (!AGX_KMT_SUCCESS(status) || !adapter.hAdapter) {
+      FreeLibrary(gdi32);
+      return;
+   }
+
+   struct agx_kmt_createdevice device = {.hAdapter = adapter.hAdapter};
+   status = fns.CreateDevice(&device);
+   CHECK(AGX_KMT_SUCCESS(status) && device.hDevice,
+         "create the D3DKMT reshare device");
+   if (!AGX_KMT_SUCCESS(status) || !device.hDevice)
+      goto close_adapter;
+
+   struct agx_kmt_queryresourceinfofromnthandle query = {
+      .hDevice = device.hDevice,
+      .hNtHandle = resource_handle,
+   };
+   status = fns.QueryResourceInfoFromNtHandle(&query);
+   bool query_valid =
+      AGX_KMT_SUCCESS(status) && query.NumAllocations == 1 &&
+      query.PrivateRuntimeDataSize <= MAX_PRIVATE_DATA_SIZE &&
+      query.ResourcePrivateDriverDataSize <= MAX_PRIVATE_DATA_SIZE &&
+      query.TotalPrivateDriverDataSize <= MAX_PRIVATE_DATA_SIZE;
+   CHECK(query_valid, "query the shared resource's D3DKMT metadata");
+   if (!query_valid)
+      goto destroy_device;
+
+   void *runtime_data =
+      query.PrivateRuntimeDataSize ? calloc(1, query.PrivateRuntimeDataSize)
+                                   : NULL;
+   void *resource_data = query.ResourcePrivateDriverDataSize
+                            ? calloc(1, query.ResourcePrivateDriverDataSize)
+                            : NULL;
+   void *allocation_data = query.TotalPrivateDriverDataSize
+                              ? calloc(1, query.TotalPrivateDriverDataSize)
+                              : NULL;
+   bool buffers_valid =
+      (!query.PrivateRuntimeDataSize || runtime_data) &&
+      (!query.ResourcePrivateDriverDataSize || resource_data) &&
+      (!query.TotalPrivateDriverDataSize || allocation_data);
+   CHECK(buffers_valid, "allocate D3DKMT resource metadata buffers");
+   if (!buffers_valid) {
+      free(allocation_data);
+      free(resource_data);
+      free(runtime_data);
+      goto destroy_device;
+   }
+
+   struct agx_kmt_openallocationinfo2 allocation = {0};
+   struct agx_kmt_openresourcefromnthandle open = {
+      .hDevice = device.hDevice,
+      .hNtHandle = resource_handle,
+      .NumAllocations = 1,
+      .pOpenAllocationInfo2 = &allocation,
+      .PrivateRuntimeDataSize = query.PrivateRuntimeDataSize,
+      .pPrivateRuntimeData = runtime_data,
+      .ResourcePrivateDriverDataSize = query.ResourcePrivateDriverDataSize,
+      .pResourcePrivateDriverData = resource_data,
+      .TotalPrivateDriverDataBufferSize = query.TotalPrivateDriverDataSize,
+      .pTotalPrivateDriverDataBuffer = allocation_data,
+   };
+   status = fns.OpenResourceFromNtHandle(&open);
+   bool opened = AGX_KMT_SUCCESS(status) && open.hResource &&
+                 allocation.hAllocation && !open.hKeyedMutex &&
+                 !open.hSyncObject;
+   CHECK(opened, "open the NT resource as D3DKMT resource/allocation handles");
+
+   HANDLE reshared_handle = NULL;
+   ID3D12Resource *reshared_resource = NULL;
+   if (opened) {
+      OBJECT_ATTRIBUTES attributes;
+      InitializeObjectAttributes(&attributes, NULL, 0, NULL, NULL);
+      status = fns.ShareObjects(1, &open.hResource, &attributes,
+                                AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS,
+                                (void **)&reshared_handle);
+      CHECK(AGX_KMT_SUCCESS(status) && reshared_handle,
+            "reshare the DDI-style hKMResource as an NT handle");
+
+      if (reshared_handle) {
+         HRESULT hr = ID3D12Device_OpenSharedHandle(
+            d3d12_device, reshared_handle, &IID_ID3D12Resource,
+            (void **)&reshared_resource);
+         CHECK(SUCCEEDED(hr) && reshared_resource,
+               "reopen the reshared D3DKMT resource through D3D12");
+         if (reshared_resource) {
+            D3D12_RESOURCE_DESC desc =
+               d12_test_resource_get_desc(reshared_resource);
+            CHECK(desc.Width == resource_desc->Width &&
+                     desc.Height == resource_desc->Height &&
+                     desc.Format == resource_desc->Format,
+                  "reshared resource preserves the zero-copy descriptor");
+         }
+      }
+   }
+
+   if (reshared_resource)
+      ID3D12Resource_Release(reshared_resource);
+   if (reshared_handle)
+      CloseHandle(reshared_handle);
+   if (open.hResource) {
+      const struct agx_kmt_destroyallocation2 destroy = {
+         .hDevice = device.hDevice,
+         .hResource = open.hResource,
+      };
+      fns.DestroyAllocation2(&destroy);
+   }
+   free(allocation_data);
+   free(resource_data);
+   free(runtime_data);
+
+destroy_device:
+   {
+      const struct agx_kmt_destroydevice destroy = {
+         .hDevice = device.hDevice,
+      };
+      fns.DestroyDevice(&destroy);
+   }
+close_adapter:
+   {
+      const struct agx_kmt_closeadapter close = {
+         .hAdapter = adapter.hAdapter,
+      };
+      fns.CloseAdapter(&close);
+   }
+   FreeLibrary(gdi32);
+}
+
 static void
 check_d3d11_interop(HANDLE resource_handle,
                     const D3D12_RESOURCE_DESC *resource_desc)
@@ -147,6 +361,8 @@ main(void)
       CHECK(SUCCEEDED(hr) && resource_handle, "export resource NT handle");
       if (resource_handle) {
 #ifdef _WIN32
+         check_d3dkmt_resource_reshare(device, resource_handle,
+                                       &resource_desc);
          check_d3d11_interop(resource_handle, &resource_desc);
 #endif
          hr = ID3D12Device_OpenSharedHandle(
