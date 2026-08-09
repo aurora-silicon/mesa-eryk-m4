@@ -326,10 +326,12 @@ enum d12_dxbc_op {
 #define D12_DXBC_RESOURCE_DIMENSION_MASK  0x0000f800u
 #define D12_DXBC_RESOURCE_DIMENSION_SHIFT 11
 #define D12_DXBC_RESOURCE_DIMENSION_BUFFER 1
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D          2
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D 3
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS 4
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D 5
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE 6
+#define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY    7
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY 8
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY 9
 #define D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY 10
@@ -2003,43 +2005,41 @@ atomic_buffer_address(struct d12_dxbc_ctx *ctx,
    return uav_buffer_address(ctx, uav, index, offset, stride);
 }
 
-/*
- * Resolve SM 5.0 u# and SM 5.1 u<range-id>[<absolute register>] operands to
- * the dense slot assigned by the root signature.  Every UAV access must use
- * this resolver; treating the SM 5.1 range ID as a register aliases dynamic
- * arrays to their first descriptor.
- */
+/* Resolve SM 5.0 t#/u# and SM 5.1 range-indexed resource operands to the
+ * dense slot assigned by the root signature. Treating an SM 5.1 range ID as
+ * a register aliases every dynamic array access to its first descriptor. */
 static nir_def *
-uav_binding_slot(struct d12_dxbc_ctx *ctx,
-                 const struct d12_dxbc_operand *uav)
+resource_binding_slot(struct d12_dxbc_ctx *ctx,
+                      const struct d12_dxbc_operand *operand,
+                      enum d12_dxbc_file file, unsigned klass,
+                      const struct d12_dxbc_binding_range *ranges)
 {
    nir_builder *b = &ctx->b;
 
-   if (uav->file != D12_DXBC_FILE_UAV ||
-       uav->index[0] >= D12_DXBC_MAX_SIG) {
-         fail(ctx, "operand is not a declared UAV");
+   if (operand->file != file || operand->index[0] >= D12_DXBC_MAX_SIG) {
+      fail(ctx, "operand is not a declared resource");
       return NULL;
    }
 
    nir_def *slot;
    const struct d12_dxbc_binding_range *range = NULL;
 
-   if (uav->num_indices == 2) {
+   if (operand->num_indices == 2) {
       /* SM 5.1 use-site syntax is u<range-id>[<absolute register>].
        * The second index, not the range ID, may be relative.
        */
-      if (!ctx->uav_range[uav->index[0]].valid) {
-         fail(ctx, "SM 5.1 UAV has no declared range");
+      if (!ranges[operand->index[0]].valid) {
+         fail(ctx, "SM 5.1 resource has no declared range");
          return NULL;
       }
-      range = &ctx->uav_range[uav->index[0]];
+      range = &ranges[operand->index[0]];
 
       unsigned first_slot =
-         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_UAV,
-                                         range->space, range->lower_bound)
+         ctx->map ? d12_binding_map_find(ctx->map, klass, range->space,
+                                         range->lower_bound)
                   : range->lower_bound;
       if (first_slot == ~0u) {
-         fail(ctx, "UAV range is not bound by the root signature");
+         fail(ctx, "resource range is not bound by the root signature");
          return NULL;
       }
 
@@ -2047,43 +2047,107 @@ uav_binding_slot(struct d12_dxbc_ctx *ctx,
          uint64_t count =
             (uint64_t)range->upper_bound - range->lower_bound + 1;
          unsigned last_slot = d12_binding_map_find(
-            ctx->map, D12_RES_UAV, range->space, range->upper_bound);
+            ctx->map, klass, range->space, range->upper_bound);
          unsigned root_range = d12_binding_map_root_range(
-            ctx->map, D12_RES_UAV, range->space, range->lower_bound);
+            ctx->map, klass, range->space, range->lower_bound);
 
          if (range->upper_bound < range->lower_bound ||
              count > D12_MAX_RESOURCE_BINDINGS ||
              last_slot != first_slot + (unsigned)count - 1 ||
              root_range == ~0u ||
-             d12_binding_map_root_range(ctx->map, D12_RES_UAV,
-                                        range->space, range->upper_bound) !=
-                root_range) {
-            fail(ctx, "UAV array crosses root descriptor ranges");
+             d12_binding_map_root_range(ctx->map, klass, range->space,
+                                        range->upper_bound) != root_range) {
+            fail(ctx, "resource array crosses root descriptor ranges");
             return NULL;
          }
       }
 
-      nir_def *reg = read_operand_index(ctx, uav, 1);
+      nir_def *reg = read_operand_index(ctx, operand, 1);
       if (!reg)
          return NULL;
       slot = nir_iadd_imm(b, reg,
                          (int64_t)first_slot - range->lower_bound);
-   } else if (uav->num_indices == 1 && !uav->index_is_relative[0]) {
+   } else if (operand->num_indices == 1 && !operand->index_is_relative[0]) {
       unsigned static_slot =
-         ctx->map ? d12_binding_map_find(ctx->map, D12_RES_UAV, 0,
-                                         uav->index[0])
-                  : uav->index[0];
+         ctx->map ? d12_binding_map_find(ctx->map, klass, 0, operand->index[0])
+                  : operand->index[0];
       if (static_slot == ~0u) {
-         fail(ctx, "UAV is not bound by the root signature");
+         fail(ctx, "resource is not bound by the root signature");
          return NULL;
       }
       slot = nir_imm_int(b, static_slot);
    } else {
-      fail(ctx, "unsupported UAV index shape");
+      fail(ctx, "unsupported resource index shape");
       return NULL;
    }
 
    return slot;
+}
+
+static nir_def *
+uav_binding_slot(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *uav)
+{
+   return resource_binding_slot(ctx, uav, D12_DXBC_FILE_UAV, D12_RES_UAV,
+                                ctx->uav_range);
+}
+
+static nir_def *
+srv_binding_slot(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *srv)
+{
+   return resource_binding_slot(ctx, srv, D12_DXBC_FILE_RESOURCE, D12_RES_SRV,
+                                ctx->srv_range);
+}
+
+/* A dynamically indexed finite texture range is not bounded by the dense
+ * slots which describe its root-signature declaration. The command list
+ * publishes a byte offset to a declaration-shaped native segment in the
+ * first dense resource slot; add the runtime register displacement there.
+ * Static operands keep the compact slot ABI. */
+static nir_def *
+resource_texture_offset(struct d12_dxbc_ctx *ctx,
+                        const struct d12_dxbc_operand *operand,
+                        enum d12_dxbc_file file, unsigned klass,
+                        const struct d12_dxbc_binding_range *ranges)
+{
+   nir_builder *b = &ctx->b;
+   nir_def *slot = resource_binding_slot(ctx, operand, file, klass, ranges);
+   if (!slot)
+      return NULL;
+
+   if (operand->num_indices != 2)
+      return nir_imul_imm(b, slot, D12_TEXTURE_DESC_SIZE);
+
+   const struct d12_dxbc_binding_range *range = &ranges[operand->index[0]];
+   unsigned first_slot =
+      ctx->map ? d12_binding_map_find(ctx->map, klass, range->space,
+                                      range->lower_bound)
+               : range->lower_bound;
+   if (first_slot == ~0u) {
+      fail(ctx, "dynamic texture range has no native-segment base");
+      return NULL;
+   }
+
+   nir_def *resource_table = root_plane(ctx, D12_ROOT_RESOURCE_BASE);
+   nir_def *base = nir_load_global(
+      b, 1, 64, nir_iadd_imm(b, resource_table, first_slot * sizeof(uint64_t)),
+      .align_mul = 8);
+   nir_def *relative = nir_iadd_imm(b, slot, -(int64_t)first_slot);
+   return nir_iadd(b, nir_u2u32(b, base),
+                   nir_imul_imm(b, relative, D12_TEXTURE_DESC_SIZE));
+}
+
+static nir_def *
+srv_texture_offset(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *srv)
+{
+   return resource_texture_offset(ctx, srv, D12_DXBC_FILE_RESOURCE, D12_RES_SRV,
+                                  ctx->srv_range);
+}
+
+static nir_def *
+uav_texture_offset(struct d12_dxbc_ctx *ctx, const struct d12_dxbc_operand *uav)
+{
+   return resource_texture_offset(ctx, uav, D12_DXBC_FILE_UAV, D12_RES_UAV,
+                                  ctx->uav_range);
 }
 
 /*
@@ -2109,11 +2173,16 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
 
    unsigned reg = uav->index[0];
    unsigned dim = ctx->uav_dim[reg];
-   *is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
+   *is_array = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY ||
+               dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
    *image_dim = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D
                    ? GLSL_SAMPLER_DIM_3D
+                : dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D ||
+                      dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY
+                   ? GLSL_SAMPLER_DIM_1D
                    : GLSL_SAMPLER_DIM_2D;
-   if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !*is_array &&
+   if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D &&
+       dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !*is_array &&
        dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D) {
       fail(ctx, "unsupported texture UAV dimension");
       return NULL;
@@ -2127,13 +2196,11 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
          .desc_set = D12_UNIFORM_HEAP_PBES);
    }
 
-   nir_def *slot = uav_binding_slot(ctx, uav);
-   if (!slot)
+   nir_def *offset = uav_texture_offset(ctx, uav);
+   if (!offset)
       return NULL;
 
-   return nir_bindless_image_agx(
-      b, nir_imul_imm(b, slot, D12_PBE_DESC_SIZE),
-      .desc_set = D12_UNIFORM_PBES);
+   return nir_bindless_image_agx(b, offset, .desc_set = D12_UNIFORM_PBES);
 }
 
 static nir_def *
@@ -3956,7 +4023,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          unsigned dim = uav ? ctx->uav_dim[reg] : ctx->srv_dim[reg];
+         bool is_1d = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D ||
+                      dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY;
          bool is_array =
+            dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY ||
             dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY ||
             dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY ||
             dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY;
@@ -3965,18 +4035,21 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                          D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY;
          bool is_3d = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_3D;
          enum glsl_sampler_dim sampler_dim =
-            is_3d ? GLSL_SAMPLER_DIM_3D
+            is_3d   ? GLSL_SAMPLER_DIM_3D
+            : is_1d ? GLSL_SAMPLER_DIM_1D
             : dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
                   dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
                ? GLSL_SAMPLER_DIM_CUBE
-               : is_ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
-         if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
+            : is_ms ? GLSL_SAMPLER_DIM_MS
+                    : GLSL_SAMPLER_DIM_2D;
+         if (dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY &&
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY &&
              dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE &&
-             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY &&
-             !is_3d) {
+             dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY && !is_3d) {
             fail(ctx, "unsupported RESINFO resource dimension");
             return;
          }
@@ -3990,13 +4063,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
                .desc_set = D12_UNIFORM_HEAP_TEXTURES);
          } else {
-            unsigned slot = ctx->map
-                               ? d12_binding_map_find(ctx->map,
-                                                      uav ? D12_RES_UAV
-                                                          : D12_RES_SRV,
-                                                      0, reg)
-                               : reg;
-            if (slot == ~0u) {
+            nir_def *offset = uav ? uav_texture_offset(ctx, res)
+                                  : srv_texture_offset(ctx, res);
+            if (!offset) {
                if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
                   const struct d12_dxbc_binding_range *range =
                      uav ? &ctx->uav_range[reg] : &ctx->srv_range[reg];
@@ -4013,27 +4082,30 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                     "RESINFO resource is not bound by the root signature");
                return;
             }
-            handle = nir_bindless_image_agx(
-               b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
-               .desc_set = D12_UNIFORM_TEXTURES);
+            handle = nir_bindless_image_agx(b, offset,
+                                            .desc_set = D12_UNIFORM_TEXTURES);
          }
          nir_tex_instr *txs = nir_tex_instr_create(b->shader, is_ms ? 1 : 2);
          txs->op = nir_texop_txs;
          txs->sampler_dim = sampler_dim;
          txs->is_array = is_array;
          txs->dest_type = nir_type_uint32;
-         txs->coord_components = is_3d ? 3
+         txs->coord_components = is_3d   ? 3
+                                 : is_1d ? (is_array ? 2 : 1)
                                  : sampler_dim == GLSL_SAMPLER_DIM_CUBE
                                     ? (is_array ? 4 : 3)
-                                    : is_array ? 3 : 2;
+                                 : is_array ? 3
+                                            : 2;
          txs->src[0] = nir_tex_src_for_ssa(nir_tex_src_texture_handle,
                                             handle);
          nir_def *lod = NULL;
          if (!is_ms)
             txs->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod,
                                               lod = nir_channel(b, SRC(1), 0));
-         nir_def_init(&txs->instr, &txs->def,
-                      (is_array || is_3d) ? 3 : 2, 32);
+         unsigned txs_comps = is_1d                 ? (is_array ? 2 : 1)
+                              : (is_array || is_3d) ? 3
+                                                    : 2;
+         nir_def_init(&txs->instr, &txs->def, txs_comps, 32);
          nir_builder_instr_insert(b, &txs->instr);
 
          nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
@@ -4048,10 +4120,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          nir_builder_instr_insert(b, &query->instr);
 
          nir_def *width = nir_channel(b, &txs->def, 0);
-         nir_def *height = nir_channel(b, &txs->def, 1);
-         nir_def *depth_or_layers =
-            (is_array || is_3d) ? nir_channel(b, &txs->def, 2)
-                                : is_ms ? &query->def : nir_imm_int(b, 0);
+         nir_def *height = is_1d ? (is_array ? nir_channel(b, &txs->def, 1)
+                                             : nir_imm_int(b, 0))
+                                 : nir_channel(b, &txs->def, 1);
+         nir_def *depth_or_layers = (!is_1d && (is_array || is_3d))
+                                       ? nir_channel(b, &txs->def, 2)
+                                    : is_ms ? &query->def
+                                            : nir_imm_int(b, 0);
          if (!is_ms) {
             /* AGX clamps an out-of-range TCS LOD to the last level. D3D12
              * RESINFO instead returns zero for every queried dimension while
@@ -4438,16 +4513,18 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if (uav && reg < D12_DXBC_MAX_SIG &&
              ctx->uav_dim[reg] != D12_DXBC_RESOURCE_DIMENSION_BUFFER) {
             unsigned dim = ctx->uav_dim[reg];
+            bool is_1d = dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D ||
+                         dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY;
             bool is_array =
+               dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY ||
                dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY;
             unsigned return_type = ctx->uav_return_type[reg];
-            if ((dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D &&
-                 !is_array) ||
+            if ((dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D &&
+                 dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D && !is_array) ||
                 (return_type != D12_DXBC_RESOURCE_RETURN_FLOAT &&
                  return_type != D12_DXBC_RESOURCE_RETURN_UINT &&
                  return_type != D12_DXBC_RESOURCE_RETURN_SINT) ||
-                (resource->num_indices != 1 &&
-                 resource->num_indices != 2)) {
+                (resource->num_indices != 1 && resource->num_indices != 2)) {
                fail(ctx, "unsupported texture UAV load");
                return;
             }
@@ -4463,14 +4540,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             nir_def *coord = SRC(1);
             nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
             tex->op = nir_texop_txf;
-            tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+            tex->sampler_dim =
+               is_1d ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D;
             tex->is_array = is_array;
             tex->dest_type = return_type == D12_DXBC_RESOURCE_RETURN_UINT
                                 ? nir_type_uint32
                              : return_type == D12_DXBC_RESOURCE_RETURN_SINT
                                 ? nir_type_int32
                                 : nir_type_float32;
-            tex->coord_components = is_array ? 3 : 2;
+            tex->coord_components =
+               is_1d ? (is_array ? 2 : 1) : (is_array ? 3 : 2);
             tex->src[0] = nir_tex_src_for_ssa(
                nir_tex_src_texture_handle, handle);
             tex->src[1] = nir_tex_src_for_ssa(
@@ -5170,25 +5249,29 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          unsigned resource_dim = tex_reg < D12_DXBC_MAX_SIG
                                     ? ctx->srv_dim[tex_reg]
                                     : D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D;
+         bool is_1d =
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D ||
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY;
          bool is_array =
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY ||
             resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY ||
-            resource_dim ==
-               D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY ||
+            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY ||
             resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY;
          enum glsl_sampler_dim sampler_dim =
-            resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
-                  resource_dim ==
-                     D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
+            is_1d ? GLSL_SAMPLER_DIM_1D
+            : resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE ||
+                  resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_CUBE_ARRAY
                ? GLSL_SAMPLER_DIM_CUBE
             : resource_dim == D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS ||
                   resource_dim ==
                      D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS_ARRAY
                ? GLSL_SAMPLER_DIM_MS
                : GLSL_SAMPLER_DIM_2D;
-         unsigned coord_components =
-            sampler_dim == GLSL_SAMPLER_DIM_CUBE ? (is_array ? 4 : 3)
-            : is_array                           ? 3
-                                                 : 2;
+         unsigned coord_components = is_1d ? (is_array ? 2 : 1)
+                                     : sampler_dim == GLSL_SAMPLER_DIM_CUBE
+                                        ? (is_array ? 4 : 3)
+                                     : is_array ? 3
+                                                : 2;
          if (is_ld_ms &&
              (tex_reg >= D12_DXBC_MAX_SIG ||
               (resource_dim != D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_MS &&
@@ -5200,11 +5283,10 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_def *rooted_texture =
             srv_rooted_descriptor(ctx, tex_operand);
-         unsigned tslot = ~0u;
+         nir_def *texture_slot = NULL;
          if (!rooted_texture) {
-            tslot = finite_binding_slot(ctx, D12_RES_SRV, tex_operand,
-                                        ctx->srv_range);
-            if (tslot == ~0u) {
+            texture_slot = srv_binding_slot(ctx, tex_operand);
+            if (!texture_slot) {
                if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
                   mesa_logi("DXBC texture operand: reg=%u indices=%u "
                             "idx0=%u idx1=%u rel0=%u rel1=%u "
@@ -5260,13 +5342,17 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
                .desc_set = D12_UNIFORM_HEAP_TEXTURES);
          } else {
-            nir_def *native_slot = nir_imm_int(b, tslot);
+            nir_def *native_slot = texture_slot;
             if (is_buffer)
                native_slot = d12_dxbc_buffer_native_slot(
                   ctx, native_slot, buffer_coord);
+            nir_def *native_offset =
+               is_buffer ? nir_imul_imm(b, native_slot, D12_TEXTURE_DESC_SIZE)
+                         : srv_texture_offset(ctx, tex_operand);
+            if (!native_offset)
+               return;
             tex_handle = nir_bindless_image_agx(
-               b, nir_imul_imm(b, native_slot, D12_TEXTURE_DESC_SIZE),
-               .desc_set = D12_UNIFORM_TEXTURES);
+               b, native_offset, .desc_set = D12_UNIFORM_TEXTURES);
          }
 
          /* Public Extended Opcode SAMPLE_CONTROLS packs signed 4-bit U/V/W
@@ -5317,7 +5403,9 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                nir_def *bufinfo = root_plane(ctx, D12_ROOT_BUFINFO_BASE);
                nir_def *info = nir_load_global(
                   b, 2, 32,
-                  nir_iadd_imm(b, bufinfo, tslot * sizeof(uint64_t)),
+                  nir_iadd(b, bufinfo,
+                           nir_imul_imm(b, nir_u2u64(b, texture_slot),
+                                        sizeof(uint64_t))),
                   .align_mul = 8);
                view_min_lod = nir_channel(b, info, 0);
                nir_def *packed = nir_channel(b, info, 1);
@@ -5635,7 +5723,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
  */
 nir_shader *
 d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
-                const struct d12_binding_map *map, const char **error)
+                const struct d12_binding_map *map, uint8_t *texture_shapes,
+                const char **error)
 {
    const uint8_t *chunk;
    size_t chunk_size;
@@ -5709,6 +5798,52 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
       *error = ctx.error;
       ralloc_free(ctx.b.shader);
       return NULL;
+   }
+
+   if (texture_shapes && map) {
+      for (unsigned klass = D12_RES_SRV; klass <= D12_RES_UAV; klass++) {
+         const uint8_t *dims = klass == D12_RES_SRV ? ctx.srv_dim : ctx.uav_dim;
+         const struct d12_dxbc_binding_range *ranges =
+            klass == D12_RES_SRV ? ctx.srv_range : ctx.uav_range;
+
+         for (unsigned id = 0; id < D12_DXBC_MAX_SIG; id++) {
+            enum d12_texture_shape shape = D12_TEXTURE_SHAPE_NONE;
+            switch (dims[id]) {
+            case D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D:
+               shape = D12_TEXTURE_SHAPE_1D;
+               break;
+            case D12_DXBC_RESOURCE_DIMENSION_TEXTURE_1D_ARRAY:
+               shape = D12_TEXTURE_SHAPE_1D_ARRAY;
+               break;
+            case D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D:
+               shape = D12_TEXTURE_SHAPE_2D;
+               break;
+            case D12_DXBC_RESOURCE_DIMENSION_TEXTURE_2D_ARRAY:
+               shape = D12_TEXTURE_SHAPE_2D_ARRAY;
+               break;
+            default:
+               continue;
+            }
+
+            unsigned lower = ranges[id].valid ? ranges[id].lower_bound : id;
+            unsigned upper = ranges[id].valid ? ranges[id].upper_bound : id;
+            unsigned space = ranges[id].valid ? ranges[id].space : 0;
+            for (unsigned e = 0; e < map->count; e++) {
+               if (map->entries[e].klass != klass ||
+                   map->entries[e].space != space ||
+                   map->entries[e].reg < lower || map->entries[e].reg > upper)
+                  continue;
+               unsigned slot = map->entries[e].slot;
+               if (texture_shapes[slot] != D12_TEXTURE_SHAPE_NONE &&
+                   texture_shapes[slot] != shape) {
+                  *error = "one root slot has conflicting texture declarations";
+                  ralloc_free(ctx.b.shader);
+                  return NULL;
+               }
+               texture_shapes[slot] = shape;
+            }
+         }
+      }
    }
 
    ctx.b.shader->info.shared_size = ctx.shared_size;

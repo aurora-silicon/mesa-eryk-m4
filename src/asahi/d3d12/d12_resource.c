@@ -409,7 +409,8 @@ d12_resource_create(struct d12_device *device,
          };
          ail_make_miptree(&stencil_layout);
       }
-   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+              desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
               desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
       /* Simple 2D resources may remain LINEAR so the CPU can read pixels
        * directly. Arrays, mip chains and API-level 3D images are TWIDDLED;
@@ -418,9 +419,12 @@ d12_resource_create(struct d12_device *device,
       enum pipe_format pipe = d12_format_to_pipe(desc->Format);
       const bool is_3d =
          desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+      const bool is_1d = desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
 
       if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height ||
-          !desc->DepthOrArraySize || (is_3d && desc->SampleDesc.Count != 1)) {
+          !desc->DepthOrArraySize ||
+          ((is_1d || is_3d) && desc->SampleDesc.Count != 1) ||
+          (is_1d && desc->Height != 1)) {
          mesa_loge("CreateCommittedResource: texture shape unsupported "
                    "(fmt %d, mips %u, layers %u, samples %u)",
                    (int)desc->Format, desc->MipLevels,

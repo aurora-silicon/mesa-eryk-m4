@@ -3591,7 +3591,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       bool is_buf = th.kind == D12_RES_KIND_TYPED_BUFFER ||
                     th.kind == D12_RES_KIND_RAW_BUFFER ||
                     th.kind == D12_RES_KIND_STRUCTURED_BUFFER;
-      bool is_array = th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
+      bool is_1d = th.kind == D12_RES_KIND_TEXTURE_1D ||
+                   th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY;
+      bool is_array = th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY ||
+                      th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
 
       /* Fixed-range buffer views carry their exact view count in the root
        * table. This works for raw/structured/UAV views as well as typed
@@ -3643,12 +3646,16 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       /* A buffer's size query is one component (its element count), a
        * 2D texture's is two, and a 2D array also returns the layer count.
        */
-      unsigned txs_comps = is_buf ? 1 : is_array ? 3 : 2;
+      unsigned txs_comps = is_buf     ? 1
+                           : is_1d    ? (is_array ? 2 : 1)
+                           : is_array ? 3
+                                      : 2;
 
       nir_tex_instr *txs = nir_tex_instr_create(b->shader, 2);
       txs->op = nir_texop_txs;
-      txs->sampler_dim = is_buf ? GLSL_SAMPLER_DIM_BUF
-                                : GLSL_SAMPLER_DIM_2D;
+      txs->sampler_dim = is_buf  ? GLSL_SAMPLER_DIM_BUF
+                         : is_1d ? GLSL_SAMPLER_DIM_1D
+                                 : GLSL_SAMPLER_DIM_2D;
       txs->is_array = is_array;
       txs->dest_type = nir_type_uint32;
       txs->src[0] =
@@ -3659,7 +3666,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_tex_instr *lv = nir_tex_instr_create(b->shader, 1);
       lv->op = nir_texop_query_levels;
-      lv->sampler_dim = GLSL_SAMPLER_DIM_2D;
+      lv->sampler_dim = is_1d ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D;
       lv->is_array = is_array;
       lv->dest_type = nir_type_uint32;
       lv->src[0] = nir_tex_src_for_ssa(
@@ -3667,13 +3674,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       nir_def_init(&lv->instr, &lv->def, 1, 32);
       nir_builder_instr_insert(b, &lv->instr);
 
-      nir_def *height =
-         is_buf ? nir_imm_int(b, 1) : nir_channel(b, &txs->def, 1);
-      nir_def *depth_or_layers =
-         is_array ? nir_channel(b, &txs->def, 2) : nir_imm_int(b, 1);
-      def_result(ctx, inst,
-                 nir_vec4(b, nir_channel(b, &txs->def, 0), height,
-                          depth_or_layers, &lv->def));
+      nir_def *one = nir_imm_int(b, 1);
+      nir_def *second = is_1d ? (is_array ? nir_channel(b, &txs->def, 1) : one)
+                              : (is_buf ? one : nir_channel(b, &txs->def, 1));
+      nir_def *third = !is_1d && is_array ? nir_channel(b, &txs->def, 2) : one;
+      def_result(
+         ctx, inst,
+         nir_vec4(b, nir_channel(b, &txs->def, 0), second, third, &lv->def));
       return true;
    }
 
@@ -3749,8 +3756,12 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
+      bool one_d = th.kind == D12_RES_KIND_TEXTURE_1D ||
+                   th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY;
+      bool array = th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY ||
+                   th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       nir_def *cx = get_def(ctx, p[1]);
-      nir_def *cy = get_def(ctx, p[2]);
+      nir_def *cy = one_d ? nir_imm_int(b, 0) : get_def(ctx, p[2]);
       if (!cx || !cy) {
          trans_fail(ctx, "malformed texture store coordinates");
          return false;
@@ -3774,14 +3785,18 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       nir_def *zero = nir_imm_int(b, 0);
-      bool array = th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
-      nir_bindless_image_store(
-         b, handle,
-         nir_vec4(b, cx, cy, array ? get_def(ctx, p[3]) : zero, zero), sample,
-         nir_vec(b, vals, 4), nir_imm_int(b, 0),
-         .image_dim = ms ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D,
-         .image_array = array,
-         .format = PIPE_FORMAT_NONE, .access = ACCESS_NON_READABLE);
+      nir_def *layer = !array  ? zero
+                       : one_d ? get_def(ctx, p[2])
+                               : get_def(ctx, p[3]);
+      if (!layer)
+         layer = zero;
+      nir_bindless_image_store(b, handle, nir_vec4(b, cx, cy, layer, zero),
+                               sample, nir_vec(b, vals, 4), nir_imm_int(b, 0),
+                               .image_dim = ms      ? GLSL_SAMPLER_DIM_MS
+                                            : one_d ? GLSL_SAMPLER_DIM_1D
+                                                    : GLSL_SAMPLER_DIM_2D,
+                               .image_array = array, .format = PIPE_FORMAT_NONE,
+                               .access = ACCESS_NON_READABLE);
       return true;
    }
 
@@ -3800,9 +3815,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
+      bool one_d = th.kind == D12_RES_KIND_TEXTURE_1D ||
+                   th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY;
+      bool array = th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY ||
+                   th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       nir_def *x = get_def(ctx, p[2]);
-      nir_def *y = get_def(ctx, p[3]);
-      if (!x || !y) {
+      nir_def *y = one_d ? NULL : get_def(ctx, p[3]);
+      if (!x || (!one_d && !y)) {
          trans_fail(ctx, "malformed texture coordinates");
          return false;
       }
@@ -3811,7 +3830,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * folding them here IS the operation, no hardware support needed.
        * Undef means absent. Dynamic offsets stay refused.
        */
-      for (unsigned i = 0; i < 2 && 5 + i < np; i++) {
+      for (unsigned i = 0; i < (one_d ? 1u : 2u) && 5 + i < np; i++) {
          if (operand_is_undef(ctx, p[5 + i]))
             continue;
          uint64_t off = 0;
@@ -3838,15 +3857,25 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       nir_tex_instr *tex = nir_tex_instr_create(b->shader, lod ? 3 : 2);
       tex->op = nir_texop_txf;
-      tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
-      tex->is_array = false;
+      tex->sampler_dim = one_d ? GLSL_SAMPLER_DIM_1D : GLSL_SAMPLER_DIM_2D;
+      tex->is_array = array;
       tex->dest_type = nir_type_float32;
-      tex->coord_components = 2;
+      tex->coord_components = one_d ? (array ? 2 : 1) : (array ? 3 : 2);
+
+      nir_def *coords[3] = {x, y, NULL};
+      if (array)
+         coords[one_d ? 1 : 2] = get_def(ctx, p[one_d ? 3 : 4]);
+      for (unsigned i = 0; i < tex->coord_components; i++) {
+         if (!coords[i]) {
+            trans_fail(ctx, "malformed texture array coordinate");
+            return false;
+         }
+      }
 
       tex->src[0] =
          nir_tex_src_for_ssa(nir_tex_src_texture_handle, tex_handle);
-      tex->src[1] =
-         nir_tex_src_for_ssa(nir_tex_src_coord, nir_vec2(b, x, y));
+      tex->src[1] = nir_tex_src_for_ssa(
+         nir_tex_src_coord, nir_vec(b, coords, tex->coord_components));
       if (lod)
          tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 

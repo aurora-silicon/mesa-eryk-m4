@@ -1541,8 +1541,8 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
    const bool is_3d =
       res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D &&
       d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE3D;
-   if ((res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
-        !is_3d) ||
+   if ((res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+        res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) ||
        !res->layout.size_B || !res->layout.writeable_image ||
        res->layout.tiling == AIL_TILING_LINEAR)
       return;
@@ -1550,8 +1550,9 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
    const struct ail_layout *layout = &res->layout;
    const unsigned level = d->texture_level;
    const unsigned layers = MAX2(d->texture_layers, 1);
-   const bool array = d->texture_uav_dimension ==
-                      D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+   const bool array =
+      d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE1DARRAY ||
+      d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
    const unsigned descriptor_level = is_3d ? 0 : level;
    const unsigned width = is_3d ? u_minify(layout->width_px, level)
                                 : layout->width_px;
@@ -1652,6 +1653,37 @@ d12_native_texture_format(const struct d12_descriptor *d)
    return res->layout.format;
 }
 
+static void
+d12_apply_texture_shape(struct d12_descriptor *d, unsigned shape)
+{
+   if (!d || !d->resource || shape == D12_TEXTURE_SHAPE_NONE ||
+       (d->kind != D12_DESC_SRV && d->kind != D12_DESC_UAV))
+      return;
+
+   const bool array = shape == D12_TEXTURE_SHAPE_1D_ARRAY ||
+                      shape == D12_TEXTURE_SHAPE_2D_ARRAY;
+   const bool one_d =
+      shape == D12_TEXTURE_SHAPE_1D || shape == D12_TEXTURE_SHAPE_1D_ARRAY;
+
+   if (d->kind == D12_DESC_SRV) {
+      d->texture_srv_dimension =
+         one_d ? (array ? D3D12_SRV_DIMENSION_TEXTURE1DARRAY
+                        : D3D12_SRV_DIMENSION_TEXTURE1D)
+               : (array ? D3D12_SRV_DIMENSION_TEXTURE2DARRAY
+                        : D3D12_SRV_DIMENSION_TEXTURE2D);
+      if (!array)
+         d->texture_srv_layers = 1;
+   } else {
+      d->texture_uav_dimension =
+         one_d ? (array ? D3D12_UAV_DIMENSION_TEXTURE1DARRAY
+                        : D3D12_UAV_DIMENSION_TEXTURE1D)
+               : (array ? D3D12_UAV_DIMENSION_TEXTURE2DARRAY
+                        : D3D12_UAV_DIMENSION_TEXTURE2D);
+      if (!array)
+         d->texture_layers = 1;
+   }
+}
+
 static bool
 d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_root, uint64_t *out_textures,
@@ -1661,21 +1693,31 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_heap_samplers)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
-   const struct d12_descriptor *table =
+   const struct d12_descriptor *raw_table =
       compute ? list->compute_root_table : list->graphics_root_table;
+   struct d12_descriptor effective_table[D12_MAX_RESOURCE_BINDINGS];
+   memcpy(effective_table, raw_table, sizeof(effective_table));
+   for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
+      unsigned shape =
+         list->pso ? list->pso->texture_shapes[i] : D12_TEXTURE_SHAPE_NONE;
+      d12_apply_texture_shape(&effective_table[i], shape);
+   }
+   const struct d12_descriptor *table = effective_table;
    const struct d12_descriptor *const *sources =
       compute ? list->compute_root_source : list->graphics_root_source;
    const struct d12_descriptor *sampler_table =
       compute ? list->compute_sampler_table : list->graphics_sampler_table;
    const struct d12_root_signature *rs =
       compute ? list->compute_rs : list->graphics_rs;
+   struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
 
    unsigned last_texture = rs ? MAX2(rs->map.resource_count, 1) : 1;
    for (unsigned i = 0; i < D12_MAX_RESOURCE_BINDINGS; i++) {
-      if ((table[i].kind == D12_DESC_SRV ||
-           table[i].kind == D12_DESC_UAV) &&
+      if ((table[i].kind == D12_DESC_SRV || table[i].kind == D12_DESC_UAV) &&
           table[i].resource &&
           (table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+           table[i].resource->desc.Dimension ==
               D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
            table[i].resource->desc.Dimension ==
               D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
@@ -1683,6 +1725,101 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                D3D12_RESOURCE_DIMENSION_BUFFER &&
             table[i].format != DXGI_FORMAT_UNKNOWN)))
          last_texture = MAX2(last_texture, i + 1);
+   }
+
+   /* A finite root-signature range is a validation/aliasing declaration,
+    * not a hardware bounds check. SM 5.1 and DXIL may dynamically index
+    * beyond NumDescriptors into the rest of the bound shader-visible heap.
+    * Dense root slots cannot represent that: two independently based tables
+    * would overlap, which is exactly what the array-reinterpretation tests
+    * exercise. Give each shader-declared texture range its own native segment
+    * and publish the segment's byte offset through its first resource slot. */
+   struct d12_dynamic_texture_range {
+      uint32_t root_range;
+      uint32_t base_slot;
+      uint32_t first;
+      uint32_t count;
+      uint32_t native_base;
+      uint8_t shape;
+   } dynamic_ranges[D12_MAX_RESOURCE_BINDINGS];
+   unsigned dynamic_range_count = 0;
+   size_t dynamic_native_count = 0;
+
+   if (rs && list->pso && bound_heap) {
+      uintptr_t heap_start = (uintptr_t)bound_heap->slots;
+      size_t heap_bytes =
+         (size_t)bound_heap->desc.NumDescriptors * sizeof(bound_heap->slots[0]);
+
+      for (unsigned e = 0; e < rs->map.count; e++) {
+         const unsigned klass = rs->map.entries[e].klass;
+         const unsigned root_range = rs->map.entries[e].root_range;
+         if ((klass != D12_RES_SRV && klass != D12_RES_UAV) ||
+             rs->map.entries[e].unbounded)
+            continue;
+
+         unsigned base_entry = e;
+         for (unsigned j = 0; j < rs->map.count; j++) {
+            if (rs->map.entries[j].root_range == root_range &&
+                rs->map.entries[j].reg < rs->map.entries[base_entry].reg)
+               base_entry = j;
+         }
+
+         unsigned base_slot = rs->map.entries[base_entry].slot;
+         unsigned shape = list->pso->texture_shapes[base_slot];
+         if (shape == D12_TEXTURE_SHAPE_NONE)
+            continue;
+
+         bool seen = false;
+         for (unsigned j = 0; j < dynamic_range_count; j++)
+            seen |= dynamic_ranges[j].root_range == root_range;
+         if (seen)
+            continue;
+
+         const struct d12_descriptor *source = sources[base_slot];
+         uintptr_t source_ptr = (uintptr_t)source;
+         if (!source || source_ptr < heap_start ||
+             source_ptr - heap_start >= heap_bytes ||
+             (source_ptr - heap_start) % sizeof(*source)) {
+            mesa_loge("dynamic texture range %u has no valid bound-heap base",
+                      root_range);
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
+
+         size_t first =
+            (source_ptr - heap_start) / sizeof(bound_heap->slots[0]);
+         size_t count = bound_heap->desc.NumDescriptors - first;
+         if (!count || dynamic_native_count > UINT32_MAX - count ||
+             dynamic_range_count >= ARRAY_SIZE(dynamic_ranges)) {
+            mesa_loge("dynamic texture range %u is too large", root_range);
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
+
+         dynamic_ranges[dynamic_range_count++] =
+            (struct d12_dynamic_texture_range){
+               .root_range = root_range,
+               .base_slot = base_slot,
+               .first = first,
+               .count = count,
+               .shape = shape,
+            };
+         dynamic_native_count += count;
+      }
+   }
+
+   size_t native_desc_count = 2 * (size_t)last_texture;
+   if (dynamic_native_count > SIZE_MAX - native_desc_count) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   for (unsigned r = 0; r < dynamic_range_count; r++) {
+      if (native_desc_count > UINT32_MAX - dynamic_ranges[r].count) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+      dynamic_ranges[r].native_base = native_desc_count;
+      native_desc_count += dynamic_ranges[r].count;
    }
 
    *out_heap = 0;
@@ -1740,6 +1877,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                (uint64_t)table[i].stride_B << 32;
       } else if (table[i].resource && table[i].kind == D12_DESC_SRV &&
                  (table[i].resource->desc.Dimension ==
+                     D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+                  table[i].resource->desc.Dimension ==
                      D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
                   table[i].resource->desc.Dimension ==
                      D3D12_RESOURCE_DIMENSION_TEXTURE3D)) {
@@ -1783,6 +1922,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          addrs[D12_ROOT_COUNTER_BASE + i] =
             null_counters + i * sizeof(uint32_t);
       }
+   }
+
+   for (unsigned r = 0; r < dynamic_range_count; r++) {
+      addrs[D12_ROOT_RESOURCE_BASE + dynamic_ranges[r].base_slot] =
+         (uint64_t)dynamic_ranges[r].native_base * D12_TEXTURE_DESC_SIZE;
    }
 
    uint64_t tables_gpu = d12_list_upload(list, addrs, sizeof(addrs), 8);
@@ -1832,7 +1976,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
    }
 
-   struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
    uint64_t heap_pbe_null_offset =
       bound_heap && bound_heap->pbe_bo
          ? (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE
@@ -1868,7 +2011,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    /* A finite typed-buffer view may span two native AGX descriptor windows.
     * Slots [0, last_texture) are heads and the following equally sized
     * compact range contains their tails. */
-   const unsigned native_desc_count = 2 * last_texture;
    uint64_t heap_gpu = d12_list_upload_zero(
       list, (size_t)native_desc_count * AGX_TEXTURE_LENGTH, 64);
    if (!heap_gpu)
@@ -1929,7 +2071,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          continue;
       }
 
-      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+          res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
           res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)
          continue;
 
@@ -2058,6 +2201,52 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
+   for (unsigned r = 0; r < dynamic_range_count; r++) {
+      const unsigned base = dynamic_ranges[r].native_base;
+      const unsigned first = dynamic_ranges[r].first;
+      for (unsigned i = 0; i < dynamic_ranges[r].count; i++) {
+         struct d12_descriptor effective = bound_heap->slots[first + i];
+         d12_apply_texture_shape(&effective, dynamic_ranges[r].shape);
+
+         if (validate && effective.resource) {
+            struct agx_bo *bo =
+               effective.texture_plane == 1 && effective.resource->stencil_bo
+                  ? effective.resource->stencil_bo
+                  : effective.resource->bo;
+            if (!bo || !effective.address || effective.address < bo->va->addr ||
+                effective.address - bo->va->addr >= bo->size) {
+               mesa_loge("dynamic texture range %u heap slot %u address "
+                         "0x%llx is outside its resource BO",
+                         dynamic_ranges[r].root_range, first + i,
+                         (unsigned long long)effective.address);
+               list->state = D12_LIST_ERROR;
+               return false;
+            }
+         }
+         d12_refresh_texture_descriptor(&descs[base + i], &effective);
+      }
+
+      if (validate || getenv("D3D12AGX_DUMP_TEX")) {
+         mesa_logi("dynamic texture range=%u root-slot=%u shape=%u "
+                   "heap=%u+%u native=%u+%u bytes=0x%x valid=1",
+                   dynamic_ranges[r].root_range, dynamic_ranges[r].base_slot,
+                   dynamic_ranges[r].shape, dynamic_ranges[r].first,
+                   dynamic_ranges[r].count, dynamic_ranges[r].native_base,
+                   dynamic_ranges[r].count,
+                   dynamic_ranges[r].native_base * D12_TEXTURE_DESC_SIZE);
+         const struct d12_descriptor *first_desc =
+            &bound_heap->slots[dynamic_ranges[r].first];
+         const struct d12_descriptor *last_desc =
+            &bound_heap
+                ->slots[dynamic_ranges[r].first + dynamic_ranges[r].count - 1];
+         mesa_logi("dynamic texture endpoints: range=%u first-kind=%u "
+                   "first-address=0x%llx last-kind=%u last-address=0x%llx",
+                   dynamic_ranges[r].root_range, first_desc->kind,
+                   (unsigned long long)first_desc->address, last_desc->kind,
+                   (unsigned long long)last_desc->address);
+      }
+   }
+
    uint64_t pbe_heap_gpu = d12_list_upload_zero(
       list, (size_t)native_desc_count * AGX_PBE_LENGTH, 64);
    if (!pbe_heap_gpu)
@@ -2080,8 +2269,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       agx_set_null_pbe(&pbes[i]);
    for (unsigned i = 0; i < last_texture; i++) {
       if (validate && table[i].kind == D12_DESC_UAV && table[i].resource &&
-          table[i].resource->desc.Dimension ==
-             D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+          (table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+           table[i].resource->desc.Dimension ==
+              D3D12_RESOURCE_DIMENSION_TEXTURE2D) &&
           (!table[i].resource->layout.writeable_image ||
            table[i].resource->layout.tiling == AIL_TILING_LINEAR)) {
          mesa_loge("binding validation: writable texture slot %u has no "
@@ -2101,6 +2292,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          for (unsigned b = 0; b < AGX_PBE_LENGTH; b++)
             fprintf(stderr, " %02x", raw[b]);
          fprintf(stderr, "\n");
+      }
+   }
+
+   for (unsigned r = 0; r < dynamic_range_count; r++) {
+      const unsigned base = dynamic_ranges[r].native_base;
+      const unsigned first = dynamic_ranges[r].first;
+      for (unsigned i = 0; i < dynamic_ranges[r].count; i++) {
+         struct d12_descriptor effective = bound_heap->slots[first + i];
+         d12_apply_texture_shape(&effective, dynamic_ranges[r].shape);
+         d12_refresh_pbe_descriptor(&pbes[base + i], &effective);
       }
    }
 
@@ -2241,15 +2442,40 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       if (!sources[i])
          continue;
 
+      bool dynamic_base = false;
+      for (unsigned r = 0; r < dynamic_range_count; r++)
+         dynamic_base |= dynamic_ranges[r].base_slot == i;
+      if (dynamic_base)
+         continue;
+
       struct d12_descriptor_fixup fixup = {
          .source = sources[i],
          .tables_gpu = tables_gpu,
          .textures_gpu = i < last_texture ? heap_gpu : 0,
          .pbes_gpu = i < last_texture ? pbe_heap_gpu : 0,
          .slot = i,
+         .texture_shape =
+            list->pso ? list->pso->texture_shapes[i] : D12_TEXTURE_SHAPE_NONE,
       };
       util_dynarray_append_typed(&list->descriptor_fixups,
                                  struct d12_descriptor_fixup, fixup);
+   }
+
+   for (unsigned r = 0; r < dynamic_range_count; r++) {
+      const unsigned first = dynamic_ranges[r].first;
+      const unsigned base = dynamic_ranges[r].native_base;
+      for (unsigned i = 0; i < dynamic_ranges[r].count; i++) {
+         struct d12_descriptor_fixup fixup = {
+            .source = &bound_heap->slots[first + i],
+            .textures_gpu = heap_gpu,
+            .pbes_gpu = pbe_heap_gpu,
+            .slot = base + i,
+            .texture_shape = dynamic_ranges[r].shape,
+            .native_only = true,
+         };
+         util_dynarray_append_typed(&list->descriptor_fixups,
+                                    struct d12_descriptor_fixup, fixup);
+      }
    }
 
    return *out_textures != 0 && *out_pbes != 0;
@@ -2261,12 +2487,14 @@ d12_native_texture_dimension(const struct d12_descriptor *d, unsigned samples)
    if (d->kind == D12_DESC_UAV) {
       if (d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE3D)
          return AGX_TEXTURE_DIMENSION_3D;
-      return d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY
+      return (d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE1DARRAY ||
+              d->texture_uav_dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY)
                 ? AGX_TEXTURE_DIMENSION_2D_ARRAY
                 : AGX_TEXTURE_DIMENSION_2D;
    }
 
    switch ((D3D12_SRV_DIMENSION)d->texture_srv_dimension) {
+   case D3D12_SRV_DIMENSION_TEXTURE1DARRAY:
    case D3D12_SRV_DIMENSION_TEXTURE2DARRAY:
       return AGX_TEXTURE_DIMENSION_2D_ARRAY;
    case D3D12_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -2326,7 +2554,8 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
    }
 
    if (d->resource && d->kind == D12_DESC_SRV &&
-       (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+        d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
         d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)) {
       uint32_t info = d->texture_txf_min_level |
                       (d->texture_min_lod_oob ? 0x80000000u : 0);
@@ -2415,7 +2644,8 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       return;
    }
 
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
        res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)
       return;
 
@@ -2528,15 +2758,14 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
 
    util_dynarray_foreach (&list->descriptor_fixups,
                           struct d12_descriptor_fixup, fixup) {
-      if (!fixup->source || fixup->slot >= D12_MAX_RESOURCE_BINDINGS)
-         return false;
-
-      uint64_t *tables =
-         (uint64_t *)d12_list_data_cpu(list, fixup->tables_gpu);
-      if (!tables)
+      if (!fixup->source ||
+          (!fixup->native_only && fixup->slot >= D12_MAX_RESOURCE_BINDINGS))
          return false;
 
       const struct d12_descriptor *d = fixup->source;
+      struct d12_descriptor effective = *d;
+      d12_apply_texture_shape(&effective, fixup->texture_shape);
+      d = &effective;
       unsigned slot = fixup->slot;
 
       if (validate && d->resource) {
@@ -2552,6 +2781,24 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
             return false;
          }
       }
+
+      if (fixup->native_only) {
+         struct agx_texture_packed *texture =
+            (struct agx_texture_packed *)d12_list_data_cpu(
+               list, fixup->textures_gpu + (uint64_t)slot * AGX_TEXTURE_LENGTH);
+         struct agx_pbe_packed *pbe =
+            (struct agx_pbe_packed *)d12_list_data_cpu(
+               list, fixup->pbes_gpu + (uint64_t)slot * AGX_PBE_LENGTH);
+         if (!texture || !pbe)
+            return false;
+         d12_refresh_texture_descriptor(texture, d);
+         d12_refresh_pbe_descriptor(pbe, d);
+         continue;
+      }
+
+      uint64_t *tables = (uint64_t *)d12_list_data_cpu(list, fixup->tables_gpu);
+      if (!tables)
+         return false;
 
       tables[D12_ROOT_RESOURCE_BASE + slot] =
          d->address ? d->address : list->null_buffer;
@@ -7618,7 +7865,8 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
 {
    const bool is_3d =
       res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) {
+   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) {
       mesa_loge("CopyTextureRegion: %s is not a texture", name);
       return false;
    }

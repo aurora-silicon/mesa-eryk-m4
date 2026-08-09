@@ -1042,6 +1042,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    if (!dxil || !dxil_size)
       return E_INVALIDARG;
 
+   uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS] = {0};
+
    struct d12_binding_map filtered_map;
    if (map) {
       filtered_map = *map;
@@ -1074,7 +1076,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
          const char *dxbc_error = "unknown";
          dxbc_nir = d12_dxbc_to_nir(dxil, dxil_size, MESA_SHADER_COMPUTE, map,
-                                    &dxbc_error);
+                                    texture_shapes, &dxbc_error);
          if (!dxbc_nir) {
             mesa_loge("CreateComputePipelineState: DXBC->NIR failed: %s",
                       dxbc_error);
@@ -1094,6 +1096,13 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
          mesa_loge("CreateComputePipelineState: DXIL parse failed: %s",
                    mod.error ? mod.error : "unknown");
+         return E_INVALIDARG;
+      }
+
+      if (!d12_dxil_collect_texture_shapes(&mod, map, texture_shapes)) {
+         mesa_loge("CreateComputePipelineState: one root slot has "
+                   "conflicting texture declarations");
+         d12_dxil_module_finish(&mod);
          return E_INVALIDARG;
       }
 
@@ -1216,6 +1225,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    pso->device_ref_active = true;
    pso->device = device;
    pso->is_compute = true;
+   memcpy(pso->texture_shapes, texture_shapes, sizeof(texture_shapes));
    pso->info = part.info;
    pso->code_va = pso->code_bo->va->addr;
    d12_private_data_store_init(&pso->private_data, (IUnknown *)&pso->iface);
@@ -1293,7 +1303,7 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
       if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
          const char *dxbc_error = "unknown";
          nir_shader *nir =
-            d12_dxbc_to_nir(dxil, dxil_size, stage, map, &dxbc_error);
+            d12_dxbc_to_nir(dxil, dxil_size, stage, map, NULL, &dxbc_error);
          if (!nir)
             mesa_loge("graphics PSO: DXBC->NIR failed: %s", dxbc_error);
          return nir;

@@ -502,12 +502,43 @@ enum d12_resource_class {
  * structured buffer uses.
  */
 enum d12_resource_kind {
+   D12_RES_KIND_TEXTURE_1D = 1,
    D12_RES_KIND_TEXTURE_2D = 2,
+   D12_RES_KIND_TEXTURE_1D_ARRAY = 6,
    D12_RES_KIND_TEXTURE_2D_ARRAY = 7,
    D12_RES_KIND_TYPED_BUFFER = 10,
    D12_RES_KIND_RAW_BUFFER = 11,
    D12_RES_KIND_STRUCTURED_BUFFER = 12,
 };
+
+/* Native descriptor shape required by a shader declaration. D3D12 permits
+ * one API texture view to be consumed through array and non-array resource
+ * declarations in distinct register spaces. The API descriptor therefore
+ * cannot, by itself, select the AGX descriptor dimension. */
+enum d12_texture_shape {
+   D12_TEXTURE_SHAPE_NONE = 0,
+   D12_TEXTURE_SHAPE_1D,
+   D12_TEXTURE_SHAPE_1D_ARRAY,
+   D12_TEXTURE_SHAPE_2D,
+   D12_TEXTURE_SHAPE_2D_ARRAY,
+};
+
+static inline enum d12_texture_shape
+d12_texture_shape_from_kind(unsigned kind)
+{
+   switch (kind) {
+   case D12_RES_KIND_TEXTURE_1D:
+      return D12_TEXTURE_SHAPE_1D;
+   case D12_RES_KIND_TEXTURE_1D_ARRAY:
+      return D12_TEXTURE_SHAPE_1D_ARRAY;
+   case D12_RES_KIND_TEXTURE_2D:
+      return D12_TEXTURE_SHAPE_2D;
+   case D12_RES_KIND_TEXTURE_2D_ARRAY:
+      return D12_TEXTURE_SHAPE_2D_ARRAY;
+   default:
+      return D12_TEXTURE_SHAPE_NONE;
+   }
+}
 
 /*
  * An unbounded resource array -- `Texture2D t[] : register(t0)`, the basis
@@ -1120,6 +1151,9 @@ d12_binding_map_add(struct d12_binding_map *map, unsigned klass,
  */
 void d12_binding_map_from_module(const struct d12_module *mod,
                                  struct d12_binding_map *out);
+bool d12_dxil_collect_texture_shapes(const struct d12_module *mod,
+                                     const struct d12_binding_map *map,
+                                     uint8_t *texture_shapes);
 
 /* How many registers a declared range actually covers, clamped so an
  * unbounded array cannot be walked. Returns 0 for unbounded.
@@ -1173,7 +1207,7 @@ bool d12_dxbc_container_stage(const void *data, size_t size_B,
 struct nir_shader *d12_dxbc_to_nir(const void *data, size_t size_B,
                                    mesa_shader_stage stage,
                                    const struct d12_binding_map *map,
-                                   const char **error);
+                                   uint8_t *texture_shapes, const char **error);
 
 /*
  * Read a shader's INPUT signature out of a DXIL container, without

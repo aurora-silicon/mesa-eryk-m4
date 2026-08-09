@@ -1394,6 +1394,41 @@ parse_entry_properties(struct d12_module *mod)
    }
 }
 
+bool
+d12_dxil_collect_texture_shapes(const struct d12_module *mod,
+                                const struct d12_binding_map *map,
+                                uint8_t *texture_shapes)
+{
+   if (!map)
+      return true;
+
+   for (unsigned i = 0; i < mod->num_resources; i++) {
+      const struct d12_resource_binding *rb = &mod->resources[i];
+      enum d12_texture_shape shape = d12_texture_shape_from_kind(rb->kind);
+      if (shape == D12_TEXTURE_SHAPE_NONE)
+         continue;
+
+      uint64_t upper = rb->range_size == D12_RANGE_UNBOUNDED
+                          ? UINT64_MAX
+                          : (uint64_t)rb->lower_bound + rb->range_size;
+      for (unsigned e = 0; e < map->count; e++) {
+         if (map->entries[e].klass != rb->klass ||
+             map->entries[e].space != rb->space ||
+             map->entries[e].reg < rb->lower_bound ||
+             map->entries[e].reg >= upper)
+            continue;
+
+         unsigned slot = map->entries[e].slot;
+         if (texture_shapes[slot] != D12_TEXTURE_SHAPE_NONE &&
+             texture_shapes[slot] != shape)
+            return false;
+         texture_shapes[slot] = shape;
+      }
+   }
+
+   return true;
+}
+
 const struct d12_sig_element *
 d12_dxil_find_sig(const struct d12_sig_element *sig, unsigned count,
                   uint32_t id)

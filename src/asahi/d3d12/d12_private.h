@@ -510,7 +510,9 @@ struct d12_descriptor_fixup {
    uint64_t tables_gpu;
    uint64_t textures_gpu;
    uint64_t pbes_gpu;
-   uint16_t slot;
+   uint32_t slot;
+   uint8_t texture_shape;
+   bool native_only;
 };
 
 /* ExecuteIndirect root constants are sourced from the argument buffer at
@@ -776,6 +778,12 @@ struct d12_pipeline_state {
     * depth/stencil rasterization, but it has no colour attachments or stores.
     */
    bool has_pixel_shader;
+
+   /* Shader-declared texture shape for every dense resource slot. This is
+    * intentionally PSO state rather than descriptor state: the same D3D12
+    * descriptor may legally be read as an array in one register space and
+    * as a non-array in another. */
+   uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS];
 
    /* Compute */
    struct agx_bo *code_bo;

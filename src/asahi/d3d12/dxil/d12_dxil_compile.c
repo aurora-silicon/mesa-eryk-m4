@@ -145,7 +145,8 @@ main(int argc, char **argv)
          const char *dxbc_err = "unknown";
          struct d12_binding_map dmap;
          memset(&dmap, 0, sizeof(dmap));
-         nir_shader *dn = d12_dxbc_to_nir(data, size, st, &dmap, &dxbc_err);
+         nir_shader *dn =
+            d12_dxbc_to_nir(data, size, st, &dmap, NULL, &dxbc_err);
          if (!dn) {
             printf("DXBC->NIR FAILED: %s\n", dxbc_err);
             return 1;
