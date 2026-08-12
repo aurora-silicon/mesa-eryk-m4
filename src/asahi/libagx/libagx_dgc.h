@@ -15,7 +15,8 @@
       agx_pack(ptr, T, cfg)
 
 #define agx_push_packed(ptr, src, T)                                           \
-   static_assert(sizeof(src) == AGX_##T##_LENGTH);                             \
+   static_assert(sizeof(src) == AGX_##T##_LENGTH,                             \
+                 "packed AGX command size must match the hardware ABI");     \
    memcpy(ptr, &src, sizeof(src));                                             \
    ptr = (GLOBAL void *)(((uintptr_t)ptr) + sizeof(src));
 
@@ -23,9 +24,12 @@ static inline enum agx_index_size
 agx_translate_index_size(uint8_t size_B)
 {
    /* Index sizes are encoded logarithmically */
-   static_assert(__builtin_ctz(1) == AGX_INDEX_SIZE_U8);
-   static_assert(__builtin_ctz(2) == AGX_INDEX_SIZE_U16);
-   static_assert(__builtin_ctz(4) == AGX_INDEX_SIZE_U32);
+   static_assert(__builtin_ctz(1) == AGX_INDEX_SIZE_U8,
+                 "8-bit index size encoding must match the hardware ABI");
+   static_assert(__builtin_ctz(2) == AGX_INDEX_SIZE_U16,
+                 "16-bit index size encoding must match the hardware ABI");
+   static_assert(__builtin_ctz(4) == AGX_INDEX_SIZE_U32,
+                 "32-bit index size encoding must match the hardware ABI");
 
    assert((size_B == 1) || (size_B == 2) || (size_B == 4));
    return __builtin_ctz(size_B);

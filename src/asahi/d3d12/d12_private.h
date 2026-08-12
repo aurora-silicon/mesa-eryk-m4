@@ -23,6 +23,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "d12_frontend.h"
+
 #include "agx_bg_eot.h"
 #include "agx_compile.h"
 #include "agx_device.h"
@@ -393,6 +395,14 @@ d12_memheap_from_iface(ID3D12Heap *iface)
 HRESULT d12_heap_create(struct d12_device *device,
                         const D3D12_HEAP_DESC *desc, REFIID riid,
                         void **out);
+HRESULT d12_heap_create_from_bo(struct d12_device *device,
+                               const D3D12_HEAP_DESC *desc,
+                               struct agx_bo *bo, REFIID riid, void **out);
+
+void d12_device_get_resource_allocation_info_runtime(
+   struct d12_device *device, UINT visible_mask,
+   const D3D12_RESOURCE_DESC *desc,
+   D3D12_RESOURCE_ALLOCATION_INFO *info);
 
 HRESULT d12_resource_create_placed(struct d12_device *device,
                                    struct d12_heap *heap, uint64_t offset_B,
@@ -1215,6 +1225,8 @@ struct d12_binding_upload_cache {
    uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS];
    uint64_t root, textures, pbes;
    uint64_t heap, heap_textures, heap_pbes, heap_samplers;
+   uint64_t tables;
+   uint32_t table_count;
 };
 
 #define D12_GFX_UPLOAD_CACHE_SIZE 1024
@@ -1525,6 +1537,26 @@ struct d12_fence {
    uint32_t lifetime_refcount;
 };
 
+struct d12_placement_fence_entry {
+   uint64_t current_gpu_address;
+   uint64_t monitored_gpu_address;
+   volatile uint64_t *current_cpu_address;
+   uint32_t flags;
+};
+
+/* Renderer-owned view of the DDI runtime's fence-value placements.  Queue
+ * operations retain this independently of the runtime-owned private object,
+ * just as public ID3D12Fence queue operations retain d12_fence. */
+struct d12_placement_fence {
+   struct d12_device *device;
+   mtx_t lock;
+   cnd_t changed;
+   uint32_t lifetime_refcount;
+   uint32_t count;
+   bool destroyed;
+   struct d12_placement_fence_entry entries[1];
+};
+
 struct d12_queue_op;
 
 struct d12_queue {
@@ -1603,6 +1635,21 @@ HRESULT d12_fence_create_shared_handle(
    HANDLE *handle);
 HRESULT d12_fence_open_shared_handle(struct d12_device *device, HANDLE handle,
                                      REFIID riid, void **out);
+HRESULT d12_placement_fence_create(
+   struct d12_device *device, uint32_t count,
+   const struct d12_placement_fence_entry *entries,
+   struct d12_placement_fence **out_fence);
+void d12_placement_fence_destroy(struct d12_placement_fence *fence);
+void d12_placement_fence_ref(struct d12_placement_fence *fence);
+void d12_placement_fence_unref(struct d12_placement_fence *fence);
+bool d12_placement_fence_wait(struct d12_placement_fence *fence,
+                              uint64_t value, const uint32_t *cancel);
+HRESULT d12_queue_signal_placement_fence(
+   struct d12_queue *queue, struct d12_placement_fence *fence,
+   uint64_t value);
+HRESULT d12_queue_wait_placement_fence(
+   struct d12_queue *queue, struct d12_placement_fence *fence,
+   uint64_t value);
 HRESULT d12_queue_create(struct d12_device *device,
                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
                          void **out);
@@ -1620,6 +1667,10 @@ HRESULT d12_cmd_list_create(struct d12_device *device,
                             D3D12_COMMAND_LIST_TYPE type,
                             struct d12_cmd_allocator *allocator, REFIID riid,
                             void **out);
+HRESULT d12_cmd_present_blt(
+   struct d12_cmd_list *list, struct d12_resource *destination,
+   struct d12_resource *source,
+   const struct d12_frontend_present_blt_desc *desc);
 
 static inline struct d12_cmd_allocator *
 d12_cmd_allocator_from_iface(ID3D12CommandAllocator *iface)
@@ -1631,6 +1682,33 @@ HRESULT d12_descriptor_heap_create(struct d12_device *device,
                             REFIID riid, void **out);
 void d12_descriptor_heap_update_slot(struct d12_device *device,
                                      struct d12_descriptor *slot);
+void d12_device_create_srv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_SHADER_RESOURCE_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_create_uav_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   ID3D12Resource *counter, const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_create_rtv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_RENDER_TARGET_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_create_dsv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_DEPTH_STENCIL_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_create_cbv_runtime(
+   struct d12_device *device, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_create_sampler_runtime(
+   struct d12_device *device, const D3D12_SAMPLER_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination);
+void d12_device_copy_descriptors_simple_runtime(
+   struct d12_device *device, UINT count,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination,
+   D3D12_CPU_DESCRIPTOR_HANDLE source,
+   D3D12_DESCRIPTOR_HEAP_TYPE type);
 bool d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list);
 void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
@@ -1642,6 +1720,7 @@ void d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
 enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
 bool d12_format_is_renderable(DXGI_FORMAT format);
 unsigned d12_format_bytes_per_pixel(DXGI_FORMAT format);
+uint64_t d12_format_frontend_support(DXGI_FORMAT format);
 
 /* Depth/stencil formats. AGX keeps stencil in a separate plane from depth,
  * so these are asked for independently rather than as one pipe format.
@@ -1688,6 +1767,9 @@ HRESULT d12_pipeline_state_create_graphics(
 
 void d12_device_add_ref(struct d12_device *device);
 void d12_device_release(struct d12_device *device);
+HRESULT d12_device_backend_init(struct d12_device *device,
+                                D3D_FEATURE_LEVEL feature_level);
+void d12_device_backend_cleanup(struct d12_device *device);
 
 bool d12_platform_open_device(struct d12_device *device, IUnknown *adapter);
 void d12_platform_close_device(struct d12_device *device);

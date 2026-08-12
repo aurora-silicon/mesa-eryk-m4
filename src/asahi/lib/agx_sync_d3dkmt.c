@@ -117,7 +117,7 @@ d3dkmt_syncobj_create_ws(struct agx_d3dkmt_winsys *ws,
          },
    };
 
-   agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&create);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, CreateSynchronizationObject2, &create);
    if (!AGX_KMT_SUCCESS(st))
       return agx_d3dkmt_fail(st);
 
@@ -134,7 +134,7 @@ d3dkmt_syncobj_create_ws(struct agx_d3dkmt_winsys *ws,
 
    if (h == 0) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = create.hSyncObject};
-      ws->fns.DestroySynchronizationObject(&d);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
       errno = lost ? EIO : ENOMEM;
       return -1;
    }
@@ -184,7 +184,7 @@ agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
       .Flags = AGX_KMT_SYNC_SHARED | AGX_KMT_SYNC_NT_SECURITY |
                AGX_KMT_SYNC_NO_GPU_ACCESS,
    };
-   agx_kmt_status st = ws->fns.OpenSyncObjectFromNtHandle2(&open);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, OpenSyncObjectFromNtHandle2, &open);
    if (!AGX_KMT_SUCCESS(st))
       return agx_d3dkmt_fail(st);
 
@@ -194,7 +194,7 @@ agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
          const struct agx_kmt_destroysyncobj destroy = {
             .hSyncObject = open.hSyncObject,
          };
-         ws->fns.DestroySynchronizationObject(&destroy);
+         AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &destroy);
       }
       errno = EINVAL;
       return -1;
@@ -214,7 +214,7 @@ agx_d3dkmt_syncobj_import_external(struct agx_device *dev,
       const struct agx_kmt_destroysyncobj destroy = {
          .hSyncObject = open.hSyncObject,
       };
-      ws->fns.DestroySynchronizationObject(&destroy);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &destroy);
       errno = lost ? EIO : ENOMEM;
       return -1;
    }
@@ -253,7 +253,7 @@ agx_d3dkmt_syncobj_export_external(
       access = AGX_KMT_SYNC_OBJECT_ALL_ACCESS;
 
    void *exported = NULL;
-   agx_kmt_status st = ws->fns.ShareObjects(
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, ShareObjects,
       1, &kmt, (void *)object_attributes, access, &exported);
    if (!AGX_KMT_SUCCESS(st) || !exported) {
       if (!AGX_KMT_SUCCESS(st))
@@ -305,7 +305,7 @@ d3dkmt_syncobj_destroy(struct util_sync_provider *p, uint32_t handle)
    }
 
    struct agx_kmt_destroysyncobj d = {.hSyncObject = kmt};
-   agx_kmt_status st = ws->fns.DestroySynchronizationObject(&d);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
    return AGX_KMT_SUCCESS(st) ? 0 : agx_d3dkmt_fail(st);
 }
 
@@ -417,7 +417,7 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
                   : AGX_KMT_WAITCPU_WAITANY,
    };
 
-   agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromCpu(&wait);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromCpu, &wait);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       goto out;
@@ -591,7 +591,7 @@ d3dkmt_syncobj_signal(struct util_sync_provider *p, const uint32_t *handles,
       .FenceValueArray = values,
    };
 
-   agx_kmt_status st = ws->fns.SignalSynchronizationObjectFromCpu(&signal);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, SignalSynchronizationObjectFromCpu, &signal);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       agx_d3dkmt_mark_device_lost(ws, NULL);
@@ -650,7 +650,7 @@ d3dkmt_syncobj_timeline_signal(struct util_sync_provider *p,
       .FenceValueArray = points,
    };
 
-   agx_kmt_status st = ws->fns.SignalSynchronizationObjectFromCpu(&signal);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, SignalSynchronizationObjectFromCpu, &signal);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       agx_d3dkmt_mark_device_lost(ws, NULL);
@@ -726,7 +726,7 @@ xfer_context(struct agx_d3dkmt_winsys *ws)
       .PrivateDriverDataSize = sizeof(priv),
    };
 
-   if (!AGX_KMT_SUCCESS(ws->fns.CreateContextVirtual(&create)))
+   if (!AGX_KMT_SUCCESS(AGX_D3DKMT_CALL(ws, CreateContextVirtual, &create)))
       return 0;
 
    ws->xfer_ctx = create.hContext;
@@ -780,7 +780,7 @@ d3dkmt_syncobj_transfer(struct util_sync_provider *p, uint32_t dst_handle,
       .MonitoredFenceValueArray = src_vals,
    };
 
-   agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromGpu(&wait);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromGpu, &wait);
    if (!AGX_KMT_SUCCESS(st)) {
       int ret = agx_d3dkmt_fail(st);
       agx_d3dkmt_mark_device_lost(ws, NULL);
@@ -796,7 +796,7 @@ d3dkmt_syncobj_transfer(struct util_sync_provider *p, uint32_t dst_handle,
       .MonitoredFenceValueArray = dst_vals,
    };
 
-   st = ws->fns.SignalSynchronizationObjectFromGpu(&signal);
+   st = AGX_D3DKMT_CALL(ws, SignalSynchronizationObjectFromGpu, &signal);
    if (!AGX_KMT_SUCCESS(st)) {
       int ret = agx_d3dkmt_fail(st);
       agx_d3dkmt_mark_device_lost(ws, NULL);

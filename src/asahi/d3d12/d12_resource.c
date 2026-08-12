@@ -2384,6 +2384,16 @@ d12_heap_create(struct d12_device *device, const D3D12_HEAP_DESC *desc,
 }
 
 HRESULT
+d12_heap_create_from_bo(struct d12_device *device,
+                        const D3D12_HEAP_DESC *desc, struct agx_bo *bo,
+                        REFIID riid, void **out)
+{
+   if (!bo)
+      return E_INVALIDARG;
+   return d12_heap_create_internal(device, desc, bo, riid, out);
+}
+
+HRESULT
 d12_heap_open_shared_handle(struct d12_device *device, HANDLE handle,
                             REFIID riid, void **out)
 {

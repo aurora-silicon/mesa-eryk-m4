@@ -16,6 +16,7 @@
 
 #include "agx_d3dkmt.h"
 #include "agx_d3dkmt_core.h"
+#include "agx_d3dkmt_runtime.h"
 
 /*
  * Staging ring for AGX command buffers.
@@ -53,6 +54,7 @@ struct agx_d3dkmt_process_va;
 
 struct agx_d3dkmt_winsys {
    struct agx_d3dkmt_fns fns;
+   struct agx_d3dkmt_runtime_transport runtime;
    struct agx_d3dkmt_policy policy;
    struct agx_kmt_luid luid;
 
@@ -108,7 +110,17 @@ struct agx_d3dkmt_winsys {
    /* KMTQAITYPE_UMDRIVERPRIVATE payload: the AGX params blob verbatim. */
    void *params;
    uint32_t params_size;
+
+   /* A Direct3D UMD receives an already-created runtime device.  It owns
+    * child allocations/contexts/synchronization objects and the paging queue
+    * it creates through callbacks, but never the adapter or device itself. */
+   bool runtime_owned;
 };
+
+#define AGX_D3DKMT_CALL(ws, member, ...)                                      \
+   ((ws)->runtime.ops                                                         \
+       ? (ws)->runtime.ops->member((ws)->runtime.userdata, __VA_ARGS__)       \
+       : (ws)->fns.member(__VA_ARGS__))
 
 static inline void
 agx_d3dkmt_mark_device_lost(struct agx_d3dkmt_winsys *ws,

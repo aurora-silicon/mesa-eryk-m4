@@ -1,0 +1,26 @@
+[binaries]
+c = @C_COMPILER@
+cpp = @CPP_COMPILER@
+ar = @AR@
+strip = @STRIP@
+windres = @WINDRES@
+
+[host_machine]
+system = 'windows'
+cpu_family = 'aarch64'
+cpu = 'armv8-a'
+endian = 'little'
+
+[built-in options]
+c_args = [@COMPAT_INCLUDE@, '-mno-ms-bitfields']
+cpp_args = [@COMPAT_INCLUDE@, '-mno-ms-bitfields']
+# Mesa uses its native Win32 C11 implementation and monotonic os_time helper.
+# A system UMD must not import or interpose MinGW's pthread runtime.
+c_link_args = []
+cpp_link_args = []
+
+[properties]
+needs_exe_wrapper = true
+agx_wddm_contract_core = @AGX_WDDM_CONTRACT_CORE@
+d3d12_umd_wdk_include = @D3D12_UMD_WDK_INCLUDE@
+d3d12_umd_generated_include = @D3D12_UMD_GENERATED_INCLUDE@

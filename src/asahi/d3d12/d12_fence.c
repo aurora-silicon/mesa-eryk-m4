@@ -18,6 +18,136 @@ struct d12_fence_event_waiter {
    HANDLE event;
 };
 
+static uint64_t
+d12_placement_load(const volatile uint64_t *address)
+{
+#ifdef _WIN32
+   return (uint64_t)InterlockedCompareExchange64(
+      (volatile LONG64 *)(uintptr_t)address, 0, 0);
+#else
+   return __atomic_load_n(address, __ATOMIC_ACQUIRE);
+#endif
+}
+
+static void
+d12_placement_store(volatile uint64_t *address, uint64_t value)
+{
+#ifdef _WIN32
+   (void)InterlockedExchange64((volatile LONG64 *)(uintptr_t)address,
+                               (LONG64)value);
+#else
+   __atomic_store_n(address, value, __ATOMIC_RELEASE);
+#endif
+}
+
+HRESULT
+d12_placement_fence_create(
+   struct d12_device *device, uint32_t count,
+   const struct d12_placement_fence_entry *entries,
+   struct d12_placement_fence **out_fence)
+{
+   size_t size;
+   struct d12_placement_fence *fence;
+
+   if (!device || !count || count > 32 || !entries || !out_fence)
+      return E_INVALIDARG;
+   *out_fence = NULL;
+   for (uint32_t index = 0; index < count; ++index) {
+      if (!entries[index].current_gpu_address ||
+          !entries[index].monitored_gpu_address ||
+          !entries[index].current_cpu_address ||
+          (entries[index].current_gpu_address & 7) ||
+          (entries[index].monitored_gpu_address & 7))
+         return E_INVALIDARG;
+   }
+
+   size = offsetof(struct d12_placement_fence, entries) +
+          (size_t)count * sizeof(*entries);
+   fence = calloc(1, size);
+   if (!fence)
+      return E_OUTOFMEMORY;
+   if (mtx_init(&fence->lock, mtx_plain) != thrd_success) {
+      free(fence);
+      return E_FAIL;
+   }
+   if (cnd_init(&fence->changed) != thrd_success) {
+      mtx_destroy(&fence->lock);
+      free(fence);
+      return E_FAIL;
+   }
+   fence->device = device;
+   fence->lifetime_refcount = 1;
+   fence->count = count;
+   memcpy(fence->entries, entries, (size_t)count * sizeof(*entries));
+   d12_device_add_ref(device);
+   *out_fence = fence;
+   return S_OK;
+}
+
+void
+d12_placement_fence_ref(struct d12_placement_fence *fence)
+{
+   p_atomic_inc(&fence->lifetime_refcount);
+}
+
+void
+d12_placement_fence_unref(struct d12_placement_fence *fence)
+{
+   if (p_atomic_dec_return(&fence->lifetime_refcount) != 0)
+      return;
+   cnd_destroy(&fence->changed);
+   mtx_destroy(&fence->lock);
+   d12_device_release(fence->device);
+   free(fence);
+}
+
+void
+d12_placement_fence_destroy(struct d12_placement_fence *fence)
+{
+   if (!fence)
+      return;
+   mtx_lock(&fence->lock);
+   fence->destroyed = true;
+   cnd_broadcast(&fence->changed);
+   mtx_unlock(&fence->lock);
+   d12_placement_fence_unref(fence);
+}
+
+bool
+d12_placement_fence_wait(struct d12_placement_fence *fence, uint64_t value,
+                         const uint32_t *cancel)
+{
+   bool completed = false;
+
+   mtx_lock(&fence->lock);
+   while (!fence->destroyed) {
+      completed = true;
+      for (uint32_t index = 0; index < fence->count; ++index) {
+         if (d12_placement_load(
+                fence->entries[index].current_cpu_address) < value) {
+            completed = false;
+            break;
+         }
+      }
+      if (completed || (cancel && p_atomic_read(cancel)))
+         break;
+
+      /* A signal from another process is a coherent GPU/CPU memory update,
+       * not a condition-variable notification.  The bounded timed wait is
+       * therefore both the local fast path and the external-progress poll. */
+      struct timespec deadline;
+      timespec_get(&deadline, TIME_UTC);
+      deadline.tv_nsec += 1000 * 1000;
+      if (deadline.tv_nsec >= 1000 * 1000 * 1000) {
+         deadline.tv_sec++;
+         deadline.tv_nsec -= 1000 * 1000 * 1000;
+      }
+      cnd_timedwait(&fence->changed, &fence->lock, &deadline);
+   }
+   mtx_unlock(&fence->lock);
+   return completed;
+}
+
 static void
 d12_fence_signal_waiters_locked(struct d12_fence *fence, bool all)
 {

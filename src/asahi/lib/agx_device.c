@@ -726,6 +726,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    simple_mtx_init(&dev->bo_cache.lock, mtx_plain);
    list_inithead(&dev->bo_cache.lru);
+   dev->bo_cache.trim_generation = 1;
 
    for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
       list_inithead(&dev->bo_cache.buckets[i]);

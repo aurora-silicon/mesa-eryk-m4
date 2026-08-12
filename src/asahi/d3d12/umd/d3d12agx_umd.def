@@ -1,0 +1,4 @@
+LIBRARY "d3d12agx_umd"
+EXPORTS
+    OpenAdapter12
+

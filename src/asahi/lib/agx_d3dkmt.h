@@ -279,6 +279,10 @@ struct agx_kmt_destroyallocation2 { /* D3DKMT_DESTROYALLOCATION2 */
    const agx_kmt_handle *phAllocationList;
    uint32_t AllocationCount;
    uint32_t Flags; /* D3DDDICB_DESTROYALLOCATION2FLAGS */
+   /* Only the D3D-runtime callback transport consumes this field.  The KMT
+    * transport destroys hResource directly, while a UMD must give the core
+    * runtime the pointer-sized hRTResource it received at CreateHeap time. */
+   void *hPrivateRuntimeResourceHandle;
 };
 
 struct agx_kmt_lock2 { /* D3DKMT_LOCK2 */

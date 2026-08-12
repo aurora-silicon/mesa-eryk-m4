@@ -14,6 +14,7 @@
 #include "d12_private.h"
 
 #include "decode.h"
+#include "util/os_time.h"
 #include "util/u_dynarray.h"
 
 #include "drm-uapi/drm.h"
@@ -27,6 +28,7 @@ enum d12_queue_op_type {
    D12_QUEUE_OP_WAIT,
    D12_QUEUE_OP_SUBMIT,
    D12_QUEUE_OP_SIGNAL,
+   D12_QUEUE_OP_PLACEMENT_WAIT,
    D12_QUEUE_OP_SPARSE_BIND,
 };
 
@@ -42,10 +44,13 @@ struct d12_queue_op {
    enum d12_queue_op_type type;
 
    struct d12_fence *fence;
+   struct d12_placement_fence *placement_fence;
    uint64_t value;
    struct d12_fence_ticket ticket;
 
    struct d12_cmd_list *list;
+   struct d12_device *submit_device;
+   bool bos_initialized;
    /*
     * A command list is mutable as soon as ExecuteCommandLists returns: the
     * application may Reset it while this operation is still waiting behind
@@ -324,9 +329,11 @@ d12_queue_op_destroy(struct d12_queue_op *op)
       d12_fence_ticket_fini(&op->ticket);
    if (op->fence)
       d12_fence_internal_unref(op->fence);
-   if (op->type == D12_QUEUE_OP_SUBMIT && op->list) {
+   if (op->placement_fence)
+      d12_placement_fence_unref(op->placement_fence);
+   if (op->type == D12_QUEUE_OP_SUBMIT && op->bos_initialized) {
       util_dynarray_foreach(&op->bos, struct agx_bo *, bo)
-         agx_bo_unreference(&op->list->device->dev, *bo);
+         agx_bo_unreference(&op->submit_device->dev, *bo);
       util_dynarray_fini(&op->bos);
    }
    if (op->list)
@@ -341,6 +348,8 @@ d12_queue_op_capture_bos(struct d12_queue_op *op,
                          struct d12_cmd_list *list)
 {
    util_dynarray_init(&op->bos, NULL);
+   op->bos_initialized = true;
+   op->submit_device = list->device;
 
    struct agx_bo *bo = list->stream_bo;
    agx_bo_reference(bo);
@@ -633,6 +642,14 @@ d12_queue_worker(void *data)
                       (void *)queue, (void *)op->fence,
                       (unsigned long long)op->value);
          d12_fence_signal_value(op->fence, op->value);
+         break;
+      case D12_QUEUE_OP_PLACEMENT_WAIT:
+         if (getenv("D3D12AGX_DUMP_SYNC"))
+            mesa_logi("SYNC DDI Wait worker: queue %p fence %p value %llu",
+                      (void *)queue, (void *)op->placement_fence,
+                      (unsigned long long)op->value);
+         (void)d12_placement_fence_wait(op->placement_fence, op->value,
+                                        &queue->stop);
          break;
       case D12_QUEUE_OP_SPARSE_BIND: {
          int result = queue->device->dev.ops.bo_bind(
@@ -1055,6 +1072,149 @@ d12_queue_Wait(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
    return S_OK;
 }
 
+HRESULT
+d12_queue_signal_placement_fence(struct d12_queue *queue,
+                                 struct d12_placement_fence *fence,
+                                 uint64_t value)
+{
+   struct d12_queue_op *op;
+   struct agx_device *dev;
+   struct agx_precompiled_shader *program;
+   struct agx_bo *stream = NULL;
+   struct agx_bo *usc = NULL;
+   struct libagx_write_u64_args shader_args;
+   uint8_t *stream_map;
+   uint8_t *control;
+   uint32_t *usc_map;
+   uint32_t usc_offset = 0;
+   size_t control_size;
+   const size_t data_offset = 4096;
+
+   if (!queue || !fence || fence->device != queue->device)
+      return E_INVALIDARG;
+   if (queue->device->removed)
+      return DXGI_ERROR_DEVICE_REMOVED;
+   if (fence->count != 1)
+      return E_NOTIMPL;
+
+   dev = &queue->device->dev;
+   program = agx_get_precompiled(&queue->device->bg_eot,
+                                 LIBAGX_WRITE_U64);
+   if (!program)
+      return E_FAIL;
+   stream = agx_bo_create(dev, AIL_PAGESIZE, 0, AGX_BO_WRITEBACK,
+                          "d3d12 ddi fence signal stream");
+   usc = agx_bo_create(dev, AIL_PAGESIZE, 0,
+                       AGX_BO_LOW_VA | AGX_BO_WRITEBACK,
+                       "d3d12 ddi fence signal usc");
+   if (!stream || !usc) {
+      if (stream)
+         agx_bo_unreference(dev, stream);
+      if (usc)
+         agx_bo_unreference(dev, usc);
+      return E_OUTOFMEMORY;
+   }
+
+   stream_map = agx_bo_map(stream);
+   usc_map = agx_bo_map(usc);
+   if (!stream_map || !usc_map) {
+      agx_bo_unreference(dev, stream);
+      agx_bo_unreference(dev, usc);
+      return E_OUTOFMEMORY;
+   }
+   shader_args = (struct libagx_write_u64_args){
+      .address = fence->entries[0].current_gpu_address,
+      .value = value,
+   };
+   memcpy(stream_map + data_offset, &shader_args, sizeof(shader_args));
+   agx_usc_words_precomp(usc_map, &program->b,
+                         stream->va->addr + data_offset,
+                         sizeof(shader_args));
+   control = stream_map;
+   control = (uint8_t *)agx_cdm_launch(
+      (uint32_t *)control, dev->chip, agx_1d(1), program->b.workgroup,
+      program->b.launch, agx_usc_addr(dev, usc->va->addr + usc_offset));
+   control = (uint8_t *)agx_cdm_barrier((uint32_t *)control, dev->chip);
+   control_size = (size_t)(control - stream_map);
+   if (!control_size || control_size > data_offset) {
+      agx_bo_unreference(dev, stream);
+      agx_bo_unreference(dev, usc);
+      return E_FAIL;
+   }
+
+   op = calloc(1, sizeof(*op));
+   if (!op) {
+      agx_bo_unreference(dev, stream);
+      agx_bo_unreference(dev, usc);
+      return E_OUTOFMEMORY;
+   }
+   op->type = D12_QUEUE_OP_SUBMIT;
+   op->placement_fence = fence;
+   op->value = value;
+   op->submit_device = queue->device;
+   op->payload_size = sizeof(struct drm_asahi_cmd_header) +
+                      sizeof(struct drm_asahi_cmd_compute);
+   op->payload = calloc(1, op->payload_size);
+   if (!op->payload) {
+      free(op);
+      agx_bo_unreference(dev, stream);
+      agx_bo_unreference(dev, usc);
+      return E_OUTOFMEMORY;
+   }
+   const struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
+   const struct drm_asahi_cmd_compute command = {
+      .cdm_ctrl_stream_base = stream->va->addr,
+      .cdm_ctrl_stream_end = stream->va->addr + control_size,
+   };
+   memcpy(op->payload, &header, sizeof(header));
+   memcpy((uint8_t *)op->payload + sizeof(header), &command,
+          sizeof(command));
+   op->nr_cdm = 1;
+   util_dynarray_init(&op->bos, NULL);
+   op->bos_initialized = true;
+   util_dynarray_append_typed(&op->bos, struct agx_bo *, stream);
+   util_dynarray_append_typed(&op->bos, struct agx_bo *, usc);
+   d12_placement_fence_ref(fence);
+
+   mtx_lock(&queue->lock);
+   const bool queued = d12_queue_enqueue_locked(queue, op);
+   mtx_unlock(&queue->lock);
+   if (!queued) {
+      d12_queue_op_destroy(op);
+      return DXGI_ERROR_DEVICE_REMOVED;
+   }
+   return S_OK;
+}
+
+HRESULT
+d12_queue_wait_placement_fence(struct d12_queue *queue,
+                               struct d12_placement_fence *fence,
+                               uint64_t value)
+{
+   struct d12_queue_op *op;
+
+   if (!queue || !fence || fence->device != queue->device)
+      return E_INVALIDARG;
+   if (queue->device->removed)
+      return DXGI_ERROR_DEVICE_REMOVED;
+   op = calloc(1, sizeof(*op));
+   if (!op)
+      return E_OUTOFMEMORY;
+   op->type = D12_QUEUE_OP_PLACEMENT_WAIT;
+   op->placement_fence = fence;
+   op->value = value;
+   d12_placement_fence_ref(fence);
+
+   mtx_lock(&queue->lock);
+   const bool queued = d12_queue_enqueue_locked(queue, op);
+   mtx_unlock(&queue->lock);
+   if (!queued) {
+      d12_queue_op_destroy(op);
+      return DXGI_ERROR_DEVICE_REMOVED;
+   }
+   return S_OK;
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_queue_GetTimestampFrequency(ID3D12CommandQueue *iface, UINT64 *frequency)
 {
@@ -1081,19 +1241,15 @@ d12_queue_GetClockCalibration(ID3D12CommandQueue *iface,
                               UINT64 *gpu_timestamp, UINT64 *cpu_timestamp)
 {
    struct d12_queue *queue = d12_queue_from_iface(iface);
-   struct timespec now;
 
    if (!gpu_timestamp || !cpu_timestamp)
       return E_POINTER;
-
-   if (clock_gettime(CLOCK_MONOTONIC, &now))
-      return E_FAIL;
 
    /* The GPU value is in the same calibrated domain used by EndQuery and
     * GetTimestampFrequency.  Linux has no Windows QPC ABI, so expose the
     * monotonic nanosecond clock as the paired CPU counter; callers use its
     * own frequency on this platform. */
-   *cpu_timestamp = (uint64_t)now.tv_sec * 1000000000ull + now.tv_nsec;
+   *cpu_timestamp = os_time_get_nano();
    *gpu_timestamp = agx_get_gpu_timestamp(&queue->device->dev);
    return S_OK;
 }

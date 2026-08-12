@@ -573,7 +573,7 @@ agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
     * it returns immediately and signals the event later. DRM's absolute
     * deadline therefore becomes "arm a private event, then wait on it".
     */
-   agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromCpu(&wait);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromCpu, &wait);
    if (!AGX_KMT_SUCCESS(st)) {
       if (async_event != NULL)
          CloseHandle(async_event);
@@ -624,6 +624,24 @@ ctx_get(struct agx_d3dkmt_winsys *ws, uint32_t queue_id)
    return ctx->hContext ? ctx : NULL;
 }
 
+bool
+agx_d3dkmt_queue_context_token(struct agx_device *dev, uint32_t queue_id,
+                               uint32_t *token)
+{
+   struct agx_d3dkmt_winsys *ws;
+   struct agx_d3dkmt_ctx *ctx;
+
+   if (!dev || dev->ops.submit != agx_device_d3dkmt_ops.submit || !token)
+      return false;
+   ws = agx_d3dkmt_ws(dev);
+   simple_mtx_lock(&ws->lock);
+   ctx = ctx_get(ws, queue_id);
+   if (ctx)
+      *token = ctx->hContext;
+   simple_mtx_unlock(&ws->lock);
+   return ctx != NULL;
+}
+
 /* -------------------------------------------------------------------------
  * GEM_CREATE / GEM_CLOSE.
  * ------------------------------------------------------------------------- */
@@ -641,9 +659,11 @@ d3dkmt_destroy_record(struct agx_d3dkmt_winsys *ws,
       .hResource = record->resource,
       .phAllocationList = record->resource ? NULL : list,
       .AllocationCount = record->resource ? 0 : 1,
+      .hPrivateRuntimeResourceHandle =
+         (void *)record->runtime_resource,
    };
 
-   agx_kmt_status st = ws->fns.DestroyAllocation2(&destroy);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, DestroyAllocation2, &destroy);
    if (!AGX_KMT_SUCCESS(st))
       agx_d3dkmt_fail(st);
 }
@@ -662,7 +682,7 @@ d3dkmt_make_resident(struct agx_d3dkmt_winsys *ws,
       .AllocationList = list,
    };
 
-   agx_kmt_status st = ws->fns.MakeResident(&mr);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, MakeResident, &mr);
    if (!AGX_KMT_SUCCESS(st)) {
       agx_d3dkmt_fail(st);
       return false;
@@ -675,8 +695,11 @@ static bool
 d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
                          enum agx_bo_flags flags,
                          enum agx_d3dkmt_external_memory_type external_type,
+                         void *runtime_resource,
                          const void *runtime_data,
                          uint32_t runtime_data_size,
+                         const void *resource_driver_data,
+                         uint32_t resource_driver_data_size,
                          struct agx_d3dkmt_allocation_record *record)
 {
    /*
@@ -712,19 +735,30 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
    };
    const bool external =
       external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
+   const bool runtime_owned = runtime_resource != NULL;
+   const void *resource_blob =
+      runtime_owned && resource_driver_data ? resource_driver_data
+                                            : external ? &resource_priv : NULL;
+   const uint32_t resource_blob_size =
+      runtime_owned && resource_driver_data
+         ? resource_driver_data_size
+         : external ? (uint32_t)sizeof(resource_priv) : 0;
    struct agx_kmt_createallocation create = {
       .hDevice = ws->device,
       .pPrivateRuntimeData = runtime_data,
       .PrivateRuntimeDataSize = runtime_data_size,
-      .pPrivateDriverData = external ? &resource_priv : NULL,
-      .PrivateDriverDataSize = external ? sizeof(resource_priv) : 0,
+      .pPrivateDriverData = resource_blob,
+      .PrivateDriverDataSize = resource_blob_size,
       .NumAllocations = 1,
       .pAllocationInfo2 = &info,
-      .Flags = agx_d3dkmt_create_flags_external((uint32_t)flags,
-                                                external_type),
+      .Flags = runtime_owned
+                  ? agx_d3dkmt_create_flags_runtime_resource((uint32_t)flags)
+                  : agx_d3dkmt_create_flags_external((uint32_t)flags,
+                                                     external_type),
+      .hPrivateRuntimeResourceHandle = runtime_resource,
    };
 
-   agx_kmt_status st = ws->fns.CreateAllocation2(&create);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, CreateAllocation2, &create);
    if (!AGX_KMT_SUCCESS(st)) {
       agx_d3dkmt_fail(st);
       return false;
@@ -734,11 +768,11 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
       .allocation = info.hAllocation,
       .resource = create.hResource,
       .global_share = create.hGlobalShare,
+      .runtime_resource = (uintptr_t)runtime_resource,
       .external_type = external_type,
    };
 
-   const bool expected_resource =
-      external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
+   const bool expected_resource = external || runtime_owned;
    const bool expected_global =
       external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT;
    if (record->allocation == 0 || (!!record->resource != expected_resource) ||
@@ -749,7 +783,11 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
       return false;
    }
 
-   if (!d3dkmt_make_resident(ws, record->allocation)) {
+   /* Application heaps are controlled by D3D12 MakeResident/Evict.  Internal
+    * renderer BOs and explicit external-memory BOs retain the winsys paging
+    * path because no D3D runtime object exists to manage them.
+    */
+   if (!runtime_owned && !d3dkmt_make_resident(ws, record->allocation)) {
       d3dkmt_destroy_record(ws, record);
       memset(record, 0, sizeof(*record));
       return false;
@@ -834,8 +872,8 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
       (flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))
          ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
          : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
-   if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL, 0,
-                                 &record)) {
+   if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL, NULL,
+                                 0, NULL, 0, &record)) {
       fprintf(stderr, "D3DKMTCreateAllocation2 failed\n");
       return NULL;
    }
@@ -843,6 +881,185 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
    struct agx_bo *bo =
       d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    return bo;
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_create_runtime_resource(struct agx_device *dev, size_t size,
+                                      unsigned align, enum agx_bo_flags flags,
+                                      void *runtime_resource,
+                                      const char *label)
+{
+   return agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
+      dev, size, align, flags, runtime_resource, NULL, 0, label);
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags, void *runtime_resource,
+   const void *resource_driver_data, uint32_t resource_driver_data_size,
+   const char *label)
+{
+   struct agx_d3dkmt_winsys *ws;
+   struct agx_d3dkmt_allocation_record record;
+   struct agx_bo *bo;
+
+   if (!dev || !dev->hdev || !runtime_resource || !size ||
+       size > SIZE_MAX - (AIL_PAGESIZE - 1) ||
+       (resource_driver_data_size && !resource_driver_data)) {
+      errno = EINVAL;
+      return NULL;
+   }
+   ws = agx_d3dkmt_ws(dev);
+   if (!ws->runtime_owned) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   size = ALIGN_POT(size, AIL_PAGESIZE);
+   align = MAX2(align, AIL_PAGESIZE);
+   if (!d3dkmt_create_allocation(
+          ws, size, flags, AGX_D3DKMT_EXTERNAL_MEMORY_NONE,
+          runtime_resource, NULL, 0, resource_driver_data,
+          resource_driver_data_size, &record))
+      return NULL;
+
+   bo = d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
+   if (bo) {
+      bo->label = label;
+      p_atomic_set(&bo->refcnt, 1);
+   }
+   return bo;
+}
+
+struct agx_bo *
+agx_d3dkmt_bo_open_runtime_resource(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags, void *runtime_resource,
+   uint32_t allocation, uint32_t resource, const char *label)
+{
+   struct agx_d3dkmt_winsys *ws;
+   struct agx_d3dkmt_allocation_record record;
+   struct agx_bo *bo;
+
+   if (!dev || !dev->hdev || !runtime_resource || !allocation || !resource ||
+       !size || size > SIZE_MAX - (AIL_PAGESIZE - 1)) {
+      errno = EINVAL;
+      return NULL;
+   }
+   ws = agx_d3dkmt_ws(dev);
+   if (!ws->runtime_owned) {
+      errno = EINVAL;
+      return NULL;
+   }
+
+   size = ALIGN_POT(size, AIL_PAGESIZE);
+   align = MAX2(align, AIL_PAGESIZE);
+   record = (struct agx_d3dkmt_allocation_record){
+      .allocation = allocation,
+      .resource = resource,
+      .runtime_resource = (uintptr_t)runtime_resource,
+   };
+   bo = d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
+   if (bo) {
+      bo->label = label;
+      p_atomic_set(&bo->refcnt, 1);
+   }
+   return bo;
+}
+
+bool
+agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
+                                        struct agx_bo *const *bos,
+                                        uint32_t count)
+{
+   struct agx_d3dkmt_winsys *ws;
+   uint32_t stack_handles[8];
+   uint32_t *dense_handles = stack_handles;
+   bool result = false;
+
+   if (!dev || dev->ops.submit != agx_device_d3dkmt_ops.submit ||
+       (count && !bos))
+      return false;
+   if (count < 2)
+      return true;
+   if (count > ARRAY_SIZE(stack_handles)) {
+      if ((size_t)count > SIZE_MAX / sizeof(*dense_handles))
+         return false;
+      dense_handles = malloc((size_t)count * sizeof(*dense_handles));
+      if (!dense_handles)
+         return false;
+   }
+
+   ws = agx_d3dkmt_ws(dev);
+   simple_mtx_lock(&ws->lock);
+   if (!ws->runtime_owned)
+      goto out;
+
+   for (uint32_t i = 0; i < count; ++i) {
+      struct agx_d3dkmt_allocation_record record;
+      struct agx_bo *bo = bos[i];
+      if (!bo || bo->dev != dev || !bo->handle || !bo->uapi_handle ||
+          !bo->va || bo->size != bos[0]->size ||
+          bo->align != bos[0]->align || bo->flags != bos[0]->flags ||
+          p_atomic_read(&bo->refcnt) <= 0 ||
+          !agx_d3dkmt_pool_get_record(&ws->pool, bo->handle, &record) ||
+          record.allocation != bo->uapi_handle ||
+          !record.runtime_resource) {
+         goto out;
+      }
+      for (uint32_t j = 0; j < i; ++j) {
+         if (bos[j] == bo)
+            goto out;
+      }
+      dense_handles[i] = bo->handle;
+   }
+
+   if (!agx_d3dkmt_pool_rotate_runtime_identities(
+          &ws->pool, dense_handles, count))
+      goto out;
+
+   struct {
+      uint32_t uapi_handle;
+      struct agx_va *va;
+      void *map;
+      uint64_t writer;
+      time_t last_used;
+      uint64_t cache_generation;
+      int prime_fd;
+   } first = {
+      .uapi_handle = bos[0]->uapi_handle,
+      .va = bos[0]->va,
+      .map = bos[0]->_map,
+      .writer = bos[0]->writer,
+      .last_used = bos[0]->last_used,
+      .cache_generation = bos[0]->cache_generation,
+      .prime_fd = bos[0]->prime_fd,
+   };
+
+   for (uint32_t i = 0; i + 1 < count; ++i) {
+      bos[i]->uapi_handle = bos[i + 1]->uapi_handle;
+      bos[i]->va = bos[i + 1]->va;
+      bos[i]->_map = bos[i + 1]->_map;
+      bos[i]->writer = bos[i + 1]->writer;
+      bos[i]->last_used = bos[i + 1]->last_used;
+      bos[i]->cache_generation = bos[i + 1]->cache_generation;
+      bos[i]->prime_fd = bos[i + 1]->prime_fd;
+   }
+   bos[count - 1]->uapi_handle = first.uapi_handle;
+   bos[count - 1]->va = first.va;
+   bos[count - 1]->_map = first.map;
+   bos[count - 1]->writer = first.writer;
+   bos[count - 1]->last_used = first.last_used;
+   bos[count - 1]->cache_generation = first.cache_generation;
+   bos[count - 1]->prime_fd = first.prime_fd;
+   result = true;
+
+out:
+   simple_mtx_unlock(&ws->lock);
+   if (dense_handles != stack_handles)
+      free(dense_handles);
+   return result;
 }
 
 /*
@@ -885,7 +1102,7 @@ d3dkmt_external_query(struct agx_d3dkmt_winsys *ws, uintptr_t handle,
          .hDevice = ws->device,
          .hNtHandle = (void *)handle,
       };
-      st = ws->fns.QueryResourceInfoFromNtHandle(&query);
+      st = AGX_D3DKMT_CALL(ws, QueryResourceInfoFromNtHandle, &query);
       runtime_size = query.PrivateRuntimeDataSize;
       total_driver_size = query.TotalPrivateDriverDataSize;
       resource_driver_size = query.ResourcePrivateDriverDataSize;
@@ -898,7 +1115,7 @@ d3dkmt_external_query(struct agx_d3dkmt_winsys *ws, uintptr_t handle,
          .hDevice = ws->device,
          .hGlobalShare = (agx_kmt_handle)handle,
       };
-      st = ws->fns.QueryResourceInfo(&query);
+      st = AGX_D3DKMT_CALL(ws, QueryResourceInfo, &query);
       runtime_size = query.PrivateRuntimeDataSize;
       total_driver_size = query.TotalPrivateDriverDataSize;
       resource_driver_size = query.ResourcePrivateDriverDataSize;
@@ -980,7 +1197,7 @@ d3dkmt_external_open(
          .TotalPrivateDriverDataBufferSize = sizeof(total_driver_data),
          .pTotalPrivateDriverDataBuffer = total_driver_data,
       };
-      st = ws->fns.OpenResourceFromNtHandle(&open);
+      st = AGX_D3DKMT_CALL(ws, OpenResourceFromNtHandle, &open);
       resource = open.hResource;
       if (AGX_KMT_SUCCESS(st) &&
           (open.hKeyedMutex != 0 || open.hSyncObject != 0)) {
@@ -1000,7 +1217,7 @@ d3dkmt_external_open(
          .pTotalPrivateDriverDataBuffer = total_driver_data,
          .TotalPrivateDriverDataBufferSize = sizeof(total_driver_data),
       };
-      st = ws->fns.OpenResource(&open);
+      st = AGX_D3DKMT_CALL(ws, OpenResource, &open);
       resource = open.hResource;
    }
 
@@ -1103,9 +1320,10 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
    for (uint32_t i = 0; i < AGX_D3DKMT_FIXED_BO_COUNT; ++i) {
       enum agx_bo_flags flags =
          desc[i].flags | AGX_BO_SHARED | AGX_BO_SHAREABLE;
-      if (!d3dkmt_create_allocation(ws, desc[i].size, flags,
-                                    AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32,
-                                    NULL, 0, &records[i]))
+      if (!d3dkmt_create_allocation(
+             ws, desc[i].size, flags,
+             AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32, NULL, NULL, 0,
+             NULL, 0, &records[i]))
          goto fail;
       created++;
 
@@ -1119,7 +1337,7 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
       InitializeObjectAttributes(&attributes, NULL, 0, NULL, NULL);
       void *nt_handle = NULL;
       agx_kmt_status st =
-         ws->fns.ShareObjects(1, &records[i].resource, &attributes,
+         AGX_D3DKMT_CALL(ws, ShareObjects, 1, &records[i].resource, &attributes,
                               AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS, &nt_handle);
       if (!AGX_KMT_SUCCESS(st) || nt_handle == NULL) {
          if (!AGX_KMT_SUCCESS(st))
@@ -1175,6 +1393,35 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
                       uint32_t bind_flags, const char *label)
 {
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+
+   /* The D3D runtime owns allocation/resource sharing policy.  Until the DDI
+    * shared-resource callbacks are connected, keep fixed bootstrap BOs local
+    * to this runtime device and bind them at the same renderer ABI addresses.
+    * This path deliberately avoids ShareObjects and never fabricates an NT
+    * handle for a runtime-created allocation. */
+   if (ws->runtime_owned) {
+      const size_t aligned_size = ALIGN_POT(size, AIL_PAGESIZE);
+      struct agx_d3dkmt_allocation_record record;
+      if (!d3dkmt_create_allocation(
+             ws, aligned_size, flags, AGX_D3DKMT_EXTERNAL_MEMORY_NONE, NULL,
+             NULL, 0, NULL, 0, &record))
+         return NULL;
+
+      struct agx_bo *bo = d3dkmt_adopt_allocation(
+         dev, aligned_size, AIL_PAGESIZE, flags, &record, false);
+      if (!bo)
+         return NULL;
+
+      if (agx_bo_bind(dev, bo, fixed_va, aligned_size, 0, bind_flags)) {
+         agx_bo_free(dev, bo);
+         return NULL;
+      }
+
+      bo->label = label;
+      p_atomic_set(&bo->refcnt, 1);
+      return bo;
+   }
+
    struct agx_d3dkmt_process_va *process = ws->process_va;
    int index = d3dkmt_fixed_bo_index(fixed_va);
    if (process == NULL || !process->attached || index < 0 ||
@@ -1262,8 +1509,9 @@ agx_d3dkmt_bo_create_external_with_runtime_data(
 
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    struct agx_d3dkmt_allocation_record record;
-   if (!d3dkmt_create_allocation(ws, size, flags, external_type, runtime_data,
-                                 runtime_data_size, &record))
+   if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL,
+                                 runtime_data, runtime_data_size, NULL, 0,
+                                 &record))
       return NULL;
 
    struct agx_bo *bo =
@@ -1371,7 +1619,7 @@ agx_d3dkmt_bo_export_external_with_attributes(
       access = AGX_KMT_SHARED_ALLOCATION_ALL_ACCESS;
 
    void *nt_handle = NULL;
-   agx_kmt_status st = ws->fns.ShareObjects(
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, ShareObjects,
       1, &record.resource, (void *)object_attributes, access, &nt_handle);
    if (!AGX_KMT_SUCCESS(st) || nt_handle == NULL) {
       if (AGX_KMT_SUCCESS(st))
@@ -1432,7 +1680,7 @@ agx_d3dkmt_bo_evict(struct agx_device *dev, struct agx_bo *bo)
       .NumAllocations = 1,
       .AllocationList = &allocation,
    };
-   agx_kmt_status st = ws->fns.Evict(&evict);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, Evict, &evict);
    return AGX_KMT_SUCCESS(st) ? 0 : agx_d3dkmt_fail(st);
 }
 
@@ -1451,11 +1699,11 @@ agx_d3dkmt_open_nt_handle_from_name(struct agx_device *dev,
       .dwDesiredAccess = access,
       .pObjAttrib = (void *)object_attributes,
    };
-   agx_kmt_status resource_status = ws->fns.OpenNtHandleFromName(&open);
+   agx_kmt_status resource_status = AGX_D3DKMT_CALL(ws, OpenNtHandleFromName, &open);
    if (!AGX_KMT_SUCCESS(resource_status)) {
       open.hNtHandle = NULL;
       agx_kmt_status sync_status =
-         ws->fns.OpenSyncObjectNtHandleFromName(&open);
+         AGX_D3DKMT_CALL(ws, OpenSyncObjectNtHandleFromName, &open);
       if (!AGX_KMT_SUCCESS(sync_status)) {
          /* The API has separate resource and sync-object name thunks but
           * ID3D12Device::OpenSharedHandleByName is type-neutral. Preserve an
@@ -1505,7 +1753,7 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
    };
    d3dkmt_log("va-interlock create-fence begin device=0x%08x",
               (unsigned)ws->device);
-   agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&fence);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, CreateSynchronizationObject2, &fence);
    d3dkmt_log("va-interlock create-fence end status=0x%08x fence=0x%08x",
               (unsigned)st, (unsigned)fence.hSyncObject);
    if (!AGX_KMT_SUCCESS(st))
@@ -1521,7 +1769,7 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
    if (agxw_context_private_validate(&priv, sizeof(priv), ws->policy.usc_base,
                                      ws->policy.usc_size) != 0) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
-      ws->fns.DestroySynchronizationObject(&d);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
       errno = EINVAL;
       return -1;
    }
@@ -1538,12 +1786,12 @@ d3dkmt_va_update_init(struct agx_d3dkmt_winsys *ws)
    };
    d3dkmt_log("va-interlock create-context begin device=0x%08x",
               (unsigned)ws->device);
-   st = ws->fns.CreateContextVirtual(&create);
+   st = AGX_D3DKMT_CALL(ws, CreateContextVirtual, &create);
    d3dkmt_log("va-interlock create-context end status=0x%08x context=0x%08x",
               (unsigned)st, (unsigned)create.hContext);
    if (!AGX_KMT_SUCCESS(st)) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
-      ws->fns.DestroySynchronizationObject(&d);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
       return agx_d3dkmt_fail(st);
    }
 
@@ -1642,7 +1890,7 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
               (unsigned)update.hContext, (unsigned)update.hFenceObject,
               (unsigned long long)update.FenceValue, update.NumOperations,
               update.Flags);
-   agx_kmt_status st = ws->fns.UpdateGpuVirtualAddress(&update);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, UpdateGpuVirtualAddress, &update);
    d3dkmt_log("update-gpuva end status=0x%08x completion=%llu",
               (unsigned)st, (unsigned long long)completion_value);
    if (AGX_KMT_SUCCESS(st))
@@ -1704,7 +1952,7 @@ d3dkmt_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
       .hAllocation = bo->uapi_handle,
    };
 
-   agx_kmt_status st = ws->fns.Lock2(&lock);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, Lock2, &lock);
    if (!AGX_KMT_SUCCESS(st)) {
       bo->_map = NULL;
       agx_d3dkmt_fail(st);
@@ -1725,7 +1973,7 @@ d3dkmt_bo_munmap(struct agx_device *dev, struct agx_bo *bo)
       .hAllocation = bo->uapi_handle,
    };
 
-   ws->fns.Unlock2(&unlock);
+   AGX_D3DKMT_CALL(ws, Unlock2, &unlock);
    bo->_map = NULL;
 }
 
@@ -1771,7 +2019,7 @@ d3dkmt_escape(struct agx_d3dkmt_winsys *ws, uint32_t op, void *payload,
       .PrivateDriverDataSize = total,
    };
 
-   agx_kmt_status st = ws->fns.Escape(&escape);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, Escape, &escape);
    if (!AGX_KMT_SUCCESS(st)) {
       free(blob);
       return agx_d3dkmt_fail(st);
@@ -2074,7 +2322,7 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
          .ObjectHandleArray = waits,
          .MonitoredFenceValueArray = wait_values,
       };
-      agx_kmt_status st = ws->fns.WaitForSynchronizationObjectFromGpu(&wait);
+      agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromGpu, &wait);
       if (!AGX_KMT_SUCCESS(st)) {
          ret = agx_d3dkmt_fail(st);
          agx_d3dkmt_mark_device_lost(ws, ctx);
@@ -2092,7 +2340,7 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
       .BroadcastContext = {ctx->hContext},
    };
 
-   agx_kmt_status st = ws->fns.SubmitCommand(&cmd);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, SubmitCommand, &cmd);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       agx_d3dkmt_mark_device_lost(ws, ctx);
@@ -2105,7 +2353,7 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
       .ObjectHandleArray = signals,
       .MonitoredFenceValueArray = signal_values,
    };
-   st = ws->fns.SignalSynchronizationObjectFromGpu(&signal);
+   st = AGX_D3DKMT_CALL(ws, SignalSynchronizationObjectFromGpu, &signal);
    if (!AGX_KMT_SUCCESS(st)) {
       /* The DMA is already in flight but its completion signals were not
        * queued. Poison the context so staging can never be reused unsafely. */
@@ -2151,7 +2399,7 @@ d3dkmt_reserve(struct agx_d3dkmt_winsys *ws, uint64_t base, uint64_t size)
    d3dkmt_log("reserve-gpuva begin queue=0x%08x base=0x%llx size=0x%llx",
               (unsigned)ws->paging_queue, (unsigned long long)base,
               (unsigned long long)size);
-   agx_kmt_status st = ws->fns.ReserveGpuVirtualAddress(&reserve);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, ReserveGpuVirtualAddress, &reserve);
    d3dkmt_log("reserve-gpuva end status=0x%08x address=0x%llx fence=%llu",
               (unsigned)st, (unsigned long long)reserve.VirtualAddress,
               (unsigned long long)reserve.PagingFenceValue);
@@ -2256,7 +2504,7 @@ d3dkmt_vm_create(struct agx_device *dev, struct drm_asahi_vm_create *vm)
                   .BaseAddress = ranges[j].base,
                   .Size = ranges[j].size,
                };
-               ws->fns.FreeGpuVirtualAddress(&f);
+               AGX_D3DKMT_CALL(ws, FreeGpuVirtualAddress, &f);
             }
             process_va_unlock(ws->process_va);
             return -1;
@@ -2307,7 +2555,7 @@ d3dkmt_vm_create(struct agx_device *dev, struct drm_asahi_vm_create *vm)
                   .BaseAddress = shared->reservations[i].base,
                   .Size = shared->reservations[i].size,
                };
-               ws->fns.FreeGpuVirtualAddress(&f);
+               AGX_D3DKMT_CALL(ws, FreeGpuVirtualAddress, &f);
             }
             shared->reservation_ready = 0;
             shared->reservation_count = 0;
@@ -2440,7 +2688,7 @@ d3dkmt_queue_create(struct agx_device *dev, struct drm_asahi_queue_create *q)
          .Flags = AGX_KMT_SYNC_NO_GPU_ACCESS,
       },
    };
-   agx_kmt_status st = ws->fns.CreateSynchronizationObject2(&fence);
+   agx_kmt_status st = AGX_D3DKMT_CALL(ws, CreateSynchronizationObject2, &fence);
    if (!AGX_KMT_SUCCESS(st)) {
       ret = agx_d3dkmt_fail(st);
       goto out;
@@ -2459,7 +2707,7 @@ d3dkmt_queue_create(struct agx_device *dev, struct drm_asahi_queue_create *q)
    if (agxw_context_private_validate(&priv, sizeof(priv), ws->policy.usc_base,
                                      ws->policy.usc_size) != 0) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
-      ws->fns.DestroySynchronizationObject(&d);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
       errno = EINVAL;
       goto out;
    }
@@ -2472,10 +2720,10 @@ d3dkmt_queue_create(struct agx_device *dev, struct drm_asahi_queue_create *q)
       .PrivateDriverDataSize = sizeof(priv),
    };
 
-   st = ws->fns.CreateContextVirtual(&create);
+   st = AGX_D3DKMT_CALL(ws, CreateContextVirtual, &create);
    if (!AGX_KMT_SUCCESS(st)) {
       struct agx_kmt_destroysyncobj d = {.hSyncObject = fence.hSyncObject};
-      ws->fns.DestroySynchronizationObject(&d);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
       ret = agx_d3dkmt_fail(st);
       goto out;
    }
@@ -2519,7 +2767,7 @@ d3dkmt_queue_destroy(struct agx_device *dev, struct drm_asahi_queue_destroy *q)
    simple_mtx_unlock(&ws->lock);
 
    struct agx_kmt_destroycontext destroy = {.hContext = local.hContext};
-   ws->fns.DestroyContext(&destroy);
+   AGX_D3DKMT_CALL(ws, DestroyContext, &destroy);
 
    for (unsigned i = 0; i < AGX_D3DKMT_STAGING_RING; ++i) {
       if (local.staging[i] != NULL)
@@ -2527,7 +2775,7 @@ d3dkmt_queue_destroy(struct agx_device *dev, struct drm_asahi_queue_destroy *q)
    }
 
    struct agx_kmt_destroysyncobj d = {.hSyncObject = local.fence};
-   ws->fns.DestroySynchronizationObject(&d);
+   AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &d);
    return 0;
 }
 
@@ -2625,9 +2873,10 @@ query_identity(const struct agx_d3dkmt_fns *fns, agx_kmt_handle adapter,
           AGX_D3DKMT_OK;
 }
 
-bool
-agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
-                              uint32_t *count)
+static bool
+enumerate_adapters_matching(const struct agxw_adapter_identity *expected,
+                            struct agx_kmt_luid *out, uint32_t capacity,
+                            uint32_t *count)
 {
    struct agx_d3dkmt_fns fns;
    struct agx_kmt_adapterinfo *infos = NULL;
@@ -2673,18 +2922,47 @@ agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
 
       /* A foreign adapter's UMDRIVERPRIVATE blob fails the magic/version/
        * contract-version check and is skipped. */
-      if (!query_identity(&fns, infos[i].hAdapter, &policy, &id))
-         continue;
+      const bool valid =
+         query_identity(&fns, infos[i].hAdapter, &policy, &id);
+      struct agx_kmt_closeadapter close = {
+         .hAdapter = infos[i].hAdapter,
+      };
+      const agx_kmt_status close_status = fns.CloseAdapter(&close);
+      if (!AGX_KMT_SUCCESS(close_status))
+         d3dkmt_log("enumerate close adapter=0x%08x status=0x%08x",
+                    (unsigned)infos[i].hAdapter, (unsigned)close_status);
 
-      if (found < capacity)
-         out[found] = infos[i].AdapterLuid;
-      found++;
+      if (valid && (!expected || !memcmp(&id, expected, sizeof(id)))) {
+         if (found < capacity)
+            out[found] = infos[i].AdapterLuid;
+         found++;
+      }
    }
 
    free(infos);
    *count = found;
    d3dkmt_log("enumerate accepted=%u", found);
    return true;
+}
+
+bool
+agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
+                              uint32_t *count)
+{
+   if (!count || (capacity && !out))
+      return false;
+   return enumerate_adapters_matching(NULL, out, capacity, count);
+}
+
+bool
+agx_d3dkmt_find_adapter_luid(const struct agxw_adapter_identity *identity,
+                             struct agx_kmt_luid *luid)
+{
+   uint32_t count = 0;
+   if (!identity || !luid ||
+       !enumerate_adapters_matching(identity, luid, 1, &count))
+      return false;
+   return count == 1;
 }
 
 bool
@@ -2734,7 +3012,7 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    struct agx_kmt_createpagingqueue pq = {.hDevice = ws->device};
    d3dkmt_log("create-paging-queue begin device=0x%08x",
               (unsigned)ws->device);
-   status = ws->fns.CreatePagingQueue(&pq);
+   status = AGX_D3DKMT_CALL(ws, CreatePagingQueue, &pq);
    d3dkmt_log("create-paging-queue end status=0x%08x queue=0x%08x "
               "fence=0x%08x cpu=%p",
               (unsigned)status, (unsigned)pq.hPagingQueue,
@@ -2771,6 +3049,75 @@ fail_alloc:
    return false;
 }
 
+bool
+agx_d3dkmt_open_runtime_device(
+   struct agx_device *dev,
+   const struct agx_d3dkmt_runtime_device *runtime_device)
+{
+   struct agx_d3dkmt_winsys *ws;
+   struct agx_kmt_createpagingqueue paging = {0};
+   agx_kmt_status status;
+
+   if (!dev || !runtime_device || !runtime_device->transport.userdata ||
+       !agx_d3dkmt_runtime_ops_complete(runtime_device->transport.ops) ||
+       runtime_device->params_size != AGXW_PARAMS_GLOBAL_SIZE)
+      return false;
+
+   ws = calloc(1, sizeof(*ws));
+   if (!ws)
+      return false;
+
+   ws->runtime = runtime_device->transport;
+   ws->runtime_owned = true;
+   ws->policy = agx_d3dkmt_policy_default();
+   ws->luid = runtime_device->process_key;
+
+   /* These are source-side sentinels only. Runtime transport methods ignore
+    * them and use their callback userdata; all returned allocation/sync/
+    * paging handles remain real 32-bit D3DKMT handles. Context HANDLEs are
+    * represented by bridge-owned tokens. */
+   ws->adapter = 1;
+   ws->device = 1;
+   ws->params_size = runtime_device->params_size;
+   ws->params = malloc(ws->params_size);
+   if (!ws->params)
+      goto fail;
+
+   if (d3dkmt_escape(ws, AGXW_ESC_GET_PARAMS, ws->params, ws->params_size))
+      goto fail;
+
+   status = AGX_D3DKMT_CALL(ws, CreatePagingQueue, &paging);
+   if (!AGX_KMT_SUCCESS(status) || !paging.hPagingQueue ||
+       !paging.hSyncObject || !paging.FenceValueCPUVirtualAddress) {
+      if (AGX_KMT_SUCCESS(status) && paging.hPagingQueue) {
+         struct agx_kmt_destroypagingqueue destroy = {
+            .hPagingQueue = paging.hPagingQueue,
+         };
+         (void)AGX_D3DKMT_CALL(ws, DestroyPagingQueue, &destroy);
+      }
+      goto fail;
+   }
+
+   ws->paging_queue = paging.hPagingQueue;
+   ws->paging_fence = paging.hSyncObject;
+   ws->paging_fence_cpu =
+      (const volatile uint64_t *)paging.FenceValueCPUVirtualAddress;
+   simple_mtx_init(&ws->lock, mtx_plain);
+   agx_d3dkmt_pool_init(&ws->pool);
+   agx_d3dkmt_sync_table_init(&ws->syncs);
+
+   dev->hdev = ws;
+   dev->fd = -1;
+   dev->is_virtio = false;
+   dev->ops = agx_device_d3dkmt_ops;
+   return true;
+
+fail:
+   free(ws->params);
+   free(ws);
+   return false;
+}
+
 static void
 process_va_destroy_anchor_record(struct agx_d3dkmt_winsys *ws,
                                  agx_kmt_handle device,
@@ -2786,7 +3133,7 @@ process_va_destroy_anchor_record(struct agx_d3dkmt_winsys *ws,
       .phAllocationList = fixed->resource ? NULL : &allocation,
       .AllocationCount = fixed->resource ? 0 : 1,
    };
-   agx_kmt_status status = ws->fns.DestroyAllocation2(&destroy);
+   agx_kmt_status status = AGX_D3DKMT_CALL(ws, DestroyAllocation2, &destroy);
    if (!AGX_KMT_SUCCESS(status))
       agx_d3dkmt_fail(status);
 }
@@ -2819,7 +3166,7 @@ process_va_detach(struct agx_d3dkmt_winsys *ws)
                .BaseAddress = shared->reservations[i].base,
                .Size = shared->reservations[i].size,
             };
-            ws->fns.FreeGpuVirtualAddress(&free_va);
+            AGX_D3DKMT_CALL(ws, FreeGpuVirtualAddress, &free_va);
          }
 
          shared->anchor_device = 0;
@@ -2851,7 +3198,7 @@ agx_d3dkmt_close_device(struct agx_device *dev)
     * context or render context whose completion became unknowable. */
    if (ws->xfer_ctx != 0) {
       struct agx_kmt_destroycontext dc = {.hContext = ws->xfer_ctx};
-      ws->fns.DestroyContext(&dc);
+      AGX_D3DKMT_CALL(ws, DestroyContext, &dc);
       ws->xfer_ctx = 0;
    }
 
@@ -2860,7 +3207,7 @@ agx_d3dkmt_close_device(struct agx_device *dev)
          continue;
 
       struct agx_kmt_destroycontext dc = {.hContext = ws->ctxs[i].hContext};
-      ws->fns.DestroyContext(&dc);
+      AGX_D3DKMT_CALL(ws, DestroyContext, &dc);
 
       for (unsigned slot = 0; slot < AGX_D3DKMT_STAGING_RING; ++slot) {
          if (ws->ctxs[i].staging[slot] != NULL)
@@ -2868,18 +3215,18 @@ agx_d3dkmt_close_device(struct agx_device *dev)
       }
 
       struct agx_kmt_destroysyncobj ds = {.hSyncObject = ws->ctxs[i].fence};
-      ws->fns.DestroySynchronizationObject(&ds);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &ds);
    }
    free(ws->ctxs);
 
    if (ws->va_context != 0) {
       struct agx_kmt_destroycontext dc = {.hContext = ws->va_context};
-      ws->fns.DestroyContext(&dc);
+      AGX_D3DKMT_CALL(ws, DestroyContext, &dc);
       ws->va_context = 0;
    }
    if (ws->va_fence != 0) {
       struct agx_kmt_destroysyncobj ds = {.hSyncObject = ws->va_fence};
-      ws->fns.DestroySynchronizationObject(&ds);
+      AGX_D3DKMT_CALL(ws, DestroySynchronizationObject, &ds);
       ws->va_fence = 0;
    }
 
@@ -2889,11 +3236,11 @@ agx_d3dkmt_close_device(struct agx_device *dev)
          .BaseAddress = ws->va[i].base,
          .Size = ws->va[i].size,
       };
-      ws->fns.FreeGpuVirtualAddress(&fva);
+      AGX_D3DKMT_CALL(ws, FreeGpuVirtualAddress, &fva);
    }
 
    struct agx_kmt_destroypagingqueue dpq = {.hPagingQueue = ws->paging_queue};
-   ws->fns.DestroyPagingQueue(&dpq);
+   AGX_D3DKMT_CALL(ws, DestroyPagingQueue, &dpq);
 
    process_va_detach(ws);
    process_device_release(ws);

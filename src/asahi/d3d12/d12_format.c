@@ -53,6 +53,8 @@ static const struct d12_format_entry d12_formats[] = {
    {DXGI_FORMAT_B8G8R8A8_UNORM, PIPE_FORMAT_B8G8R8A8_UNORM},
    {DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, PIPE_FORMAT_B8G8R8A8_SRGB},
    {DXGI_FORMAT_B8G8R8X8_UNORM, PIPE_FORMAT_B8G8R8X8_UNORM},
+   {DXGI_FORMAT_B5G6R5_UNORM, PIPE_FORMAT_B5G6R5_UNORM},
+   {DXGI_FORMAT_B5G5R5A1_UNORM, PIPE_FORMAT_B5G5R5A1_UNORM},
 
    /* 16-bit */
    {DXGI_FORMAT_R16_UNORM, PIPE_FORMAT_R16_UNORM},
@@ -286,4 +288,123 @@ d12_format_bytes_per_pixel(DXGI_FORMAT format)
       return 0;
 
    return util_format_get_blocksize(pipe);
+}
+
+static bool
+d12_format_is_typeless(DXGI_FORMAT format)
+{
+   switch (format) {
+   case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+   case DXGI_FORMAT_R32G32B32_TYPELESS:
+   case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+   case DXGI_FORMAT_R32G32_TYPELESS:
+   case DXGI_FORMAT_R32G8X24_TYPELESS:
+   case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+   case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+   case DXGI_FORMAT_R16G16_TYPELESS:
+   case DXGI_FORMAT_R32_TYPELESS:
+   case DXGI_FORMAT_R24G8_TYPELESS:
+   case DXGI_FORMAT_R8G8_TYPELESS:
+   case DXGI_FORMAT_R16_TYPELESS:
+   case DXGI_FORMAT_R8_TYPELESS:
+   case DXGI_FORMAT_BC1_TYPELESS:
+   case DXGI_FORMAT_BC2_TYPELESS:
+   case DXGI_FORMAT_BC3_TYPELESS:
+   case DXGI_FORMAT_BC4_TYPELESS:
+   case DXGI_FORMAT_BC5_TYPELESS:
+   case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+   case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+   case DXGI_FORMAT_BC6H_TYPELESS:
+   case DXGI_FORMAT_BC7_TYPELESS:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_format_is_displayable(DXGI_FORMAT format)
+{
+   switch (format) {
+   case DXGI_FORMAT_R8G8B8A8_UNORM:
+   case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+   case DXGI_FORMAT_B8G8R8A8_UNORM:
+   case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+   case DXGI_FORMAT_B8G8R8X8_UNORM:
+   case DXGI_FORMAT_B5G6R5_UNORM:
+   case DXGI_FORMAT_B5G5R5A1_UNORM:
+   case DXGI_FORMAT_R10G10B10A2_UNORM:
+   case DXGI_FORMAT_R16G16B16A16_FLOAT:
+      return true;
+   default:
+      return false;
+   }
+}
+
+uint64_t
+d12_format_frontend_support(DXGI_FORMAT format)
+{
+   enum pipe_format pipe;
+   uint64_t support;
+   bool depth_stencil;
+
+   if (format == DXGI_FORMAT_UNKNOWN)
+      return D12_FRONTEND_FORMAT_BUFFER;
+
+   depth_stencil = d12_format_is_depth_stencil(format);
+   pipe = depth_stencil ? d12_format_depth_plane(format)
+                        : d12_format_to_pipe(format);
+   if (pipe == PIPE_FORMAT_NONE)
+      return 0;
+
+   support = D12_FRONTEND_FORMAT_TEXTURE_1D |
+             D12_FRONTEND_FORMAT_TEXTURE_2D |
+             D12_FRONTEND_FORMAT_TEXTURE_CUBE |
+             D12_FRONTEND_FORMAT_SHADER_LOAD |
+             D12_FRONTEND_FORMAT_SHADER_SAMPLE |
+             D12_FRONTEND_FORMAT_MIP;
+
+   if (d12_format_is_typeless(format))
+      support |= D12_FRONTEND_FORMAT_CAST_WITHIN_BIT_LAYOUT;
+
+   if (depth_stencil) {
+      support |= D12_FRONTEND_FORMAT_DEPTH_STENCIL |
+                 D12_FRONTEND_FORMAT_SHADER_SAMPLE_COMPARISON |
+                 D12_FRONTEND_FORMAT_SHADER_GATHER_COMPARISON |
+                 D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD;
+      return support;
+   }
+
+   support |= D12_FRONTEND_FORMAT_TEXTURE_3D |
+              D12_FRONTEND_FORMAT_SHADER_GATHER;
+
+   if (!util_format_is_compressed(pipe)) {
+      support |= D12_FRONTEND_FORMAT_BUFFER |
+                 D12_FRONTEND_FORMAT_VERTEX_BUFFER;
+      if (format == DXGI_FORMAT_R16_UINT || format == DXGI_FORMAT_R32_UINT)
+         support |= D12_FRONTEND_FORMAT_INDEX_BUFFER;
+
+      /* Typed UAVs cannot use typeless or sRGB view formats.  The AGX
+       * compiler/resource path handles typed loads and stores for every
+       * remaining uncompressed format in the native mapping table. */
+      if (!d12_format_is_typeless(format) && !util_format_is_srgb(pipe)) {
+         support |= D12_FRONTEND_FORMAT_TYPED_UAV |
+                    D12_FRONTEND_FORMAT_UAV_TYPED_LOAD |
+                    D12_FRONTEND_FORMAT_UAV_TYPED_STORE;
+      }
+   }
+
+   if (d12_format_is_renderable(format)) {
+      support |= D12_FRONTEND_FORMAT_RENDER_TARGET |
+                 D12_FRONTEND_FORMAT_MULTISAMPLE_RESOLVE |
+                 D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
+                 D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD;
+      if (!util_format_is_pure_integer(pipe))
+         support |= D12_FRONTEND_FORMAT_BLENDABLE;
+   }
+
+   if (d12_format_is_displayable(format))
+      support |= D12_FRONTEND_FORMAT_DISPLAY;
+
+   return support;
 }

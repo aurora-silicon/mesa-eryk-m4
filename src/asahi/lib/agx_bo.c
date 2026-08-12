@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include "util/hash_table.h"
+#include "util/os_time.h"
 #include "util/ralloc.h"
 #include "agx_device.h"
 #include "decode.h"
@@ -85,11 +86,8 @@ agx_bo_cache_fetch(struct agx_device *dev, size_t size, size_t align,
 }
 
 static void
-agx_bo_cache_evict_stale_bos(struct agx_device *dev, unsigned tv_sec)
+agx_bo_cache_evict_stale_bos(struct agx_device *dev, int64_t now_sec)
 {
-   struct timespec time;
-
-   clock_gettime(CLOCK_MONOTONIC, &time);
    list_for_each_entry_safe(struct agx_bo, entry, &dev->bo_cache.lru,
                             lru_link) {
       /* We want all entries that have been used more than 1 sec ago to be
@@ -99,7 +97,7 @@ agx_bo_cache_evict_stale_bos(struct agx_device *dev, unsigned tv_sec)
        * seconds old, but we don't really care, as long as unused BOs are
        * dropped at some point.
        */
-      if (time.tv_sec - entry->last_used <= 2)
+      if (now_sec - entry->last_used <= 2)
          break;
 
       agx_bo_cache_remove_locked(dev, entry);
@@ -111,15 +109,13 @@ static void
 agx_bo_cache_put_locked(struct agx_device *dev, struct agx_bo *bo)
 {
    struct list_head *bucket = agx_bucket(dev, bo->size);
-   struct timespec time;
-
    /* Add us to the bucket */
    list_addtail(&bo->bucket_link, bucket);
 
    /* Add us to the LRU list and update the last_used field. */
    list_addtail(&bo->lru_link, &dev->bo_cache.lru);
-   clock_gettime(CLOCK_MONOTONIC, &time);
-   bo->last_used = time.tv_sec;
+   bo->last_used = os_time_get_nano() / INT64_C(1000000000);
+   bo->cache_generation = dev->bo_cache.trim_generation;
 
    /* Update statistics */
    dev->bo_cache.size += bo->size;
@@ -137,7 +133,7 @@ agx_bo_cache_put_locked(struct agx_device *dev, struct agx_bo *bo)
    bo->label = "Unused (BO cache)";
 
    /* Let's do some cleanup in the BO cache while we hold the lock. */
-   agx_bo_cache_evict_stale_bos(dev, time.tv_sec);
+   agx_bo_cache_evict_stale_bos(dev, bo->last_used);
 }
 
 /* Tries to add a BO to the cache. Returns if it was successful */
@@ -175,6 +171,71 @@ agx_bo_cache_evict_all(struct agx_device *dev)
       }
    }
    simple_mtx_unlock(&dev->bo_cache.lock);
+}
+
+static void
+agx_bo_cache_advance_trim_generation_locked(struct agx_device *dev)
+{
+   simple_mtx_assert_locked(&dev->bo_cache.lock);
+
+   if (dev->bo_cache.trim_generation != UINT64_MAX) {
+      ++dev->bo_cache.trim_generation;
+      return;
+   }
+
+   /* A practical process cannot issue 2^64 trim epochs, but keep wraparound
+    * deterministic: every currently cached entry becomes the old generation
+    * and the next insertion is stamped with generation one. */
+   list_for_each_entry(struct agx_bo, entry, &dev->bo_cache.lru, lru_link)
+      entry->cache_generation = 0;
+   dev->bo_cache.trim_generation = 1;
+}
+
+size_t
+agx_bo_cache_trim(struct agx_device *dev, bool periodic,
+                  bool restart_periodic, size_t bytes_to_trim)
+{
+   size_t trimmed = 0;
+
+   if (!dev)
+      return 0;
+
+   simple_mtx_lock(&dev->bo_cache.lock);
+
+   if (periodic) {
+      const uint64_t generation = dev->bo_cache.trim_generation;
+
+      list_for_each_entry_safe(struct agx_bo, entry, &dev->bo_cache.lru,
+                               lru_link) {
+         /* The LRU is insertion ordered and generations only advance, so all
+          * later entries were referenced in this or a newer interval. */
+         if (entry->cache_generation >= generation)
+            break;
+         const size_t size = entry->size;
+         agx_bo_cache_remove_locked(dev, entry);
+         agx_bo_free(dev, entry);
+         trimmed += size;
+      }
+      agx_bo_cache_advance_trim_generation_locked(dev);
+   } else if (restart_periodic) {
+      agx_bo_cache_advance_trim_generation_locked(dev);
+   }
+
+   /* TrimToBudget is a byte target, not permission to throw away every hot
+    * reusable BO. Release the oldest cache entries until the requested
+    * amount has been met; periodic trimming above contributes to the target. */
+   while (trimmed < bytes_to_trim &&
+          !list_is_empty(&dev->bo_cache.lru)) {
+      struct agx_bo *entry =
+         list_first_entry(&dev->bo_cache.lru, struct agx_bo, lru_link);
+      const size_t size = entry->size;
+      agx_bo_cache_remove_locked(dev, entry);
+      agx_bo_free(dev, entry);
+      trimmed += size;
+   }
+
+   simple_mtx_unlock(&dev->bo_cache.lock);
+   return trimmed;
 }
 
 void

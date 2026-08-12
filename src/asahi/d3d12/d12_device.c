@@ -7,6 +7,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_core_caps.h"
 
 #include <math.h>
 #include <string.h>
@@ -108,18 +109,7 @@ d12_device_Release(ID3D12Device2 *iface)
 
    if (refs == 0) {
       mesa_logi("closing device %s", device->dev.name);
-      d12_private_data_store_destroy(&device->private_data);
-      agx_bo_unreference(&device->dev, device->oclqry_bo);
-      agx_bo_unreference(&device->dev, device->rodata_bo);
-      if (device->heap_bo)
-         agx_bo_unreference(&device->dev, device->heap_bo);
-      agx_scratch_fini(&device->scratch_vs);
-      agx_scratch_fini(&device->scratch_fs);
-      agx_scratch_fini(&device->scratch_cs);
-      simple_mtx_destroy(&device->scratch_lock);
-      simple_mtx_destroy(&device->descriptor_heap_lock);
-      simple_mtx_destroy(&device->sparse_resource_lock);
-      agx_bg_eot_cleanup(&device->bg_eot);
+      d12_device_backend_cleanup(device);
       d12_platform_close_device(device);
       free(device);
    }
@@ -230,7 +220,8 @@ static HRESULT STDMETHODCALLTYPE
 d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
                                void *data, UINT data_size)
 {
-   struct d12_device *device = d12_device_from_iface(iface);
+   const struct d12_core_caps *caps = d12_core_get_caps();
+   (void)iface;
 
    switch (feature) {
    case D3D12_FEATURE_D3D12_OPTIONS: {
@@ -240,13 +231,16 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
 
       memset(opts, 0, sizeof(*opts));
       /* Honest conservative shape; raised only when the backing exists. */
-      opts->ResourceBindingTier = D3D12_RESOURCE_BINDING_TIER_1;
-      opts->TiledResourcesTier = D3D12_TILED_RESOURCES_TIER_1;
+      opts->ResourceBindingTier =
+         (D3D12_RESOURCE_BINDING_TIER)caps->resource_binding_tier;
+      opts->TiledResourcesTier =
+         (D3D12_TILED_RESOURCES_TIER)caps->tiled_resources_tier;
       /* TIER_2 means any resource type in any heap. The hardware would
        * allow it (UMA), but CreateHeap and CreatePlacedResource do not
        * exist, so claiming it would be a capability we cannot honour.
        */
-      opts->ResourceHeapTier = D3D12_RESOURCE_HEAP_TIER_1;
+      opts->ResourceHeapTier =
+         (D3D12_RESOURCE_HEAP_TIER)caps->resource_heap_tier;
       return S_OK;
    }
 
@@ -299,7 +293,7 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       memset(opts, 0, sizeof(*opts));
       /* Apple AGX has native 16-bit floating-point ALU support and both the
        * DXIL front end and AGX compiler retain f16 arithmetic. */
-      opts->Native16BitShaderOpsSupported = TRUE;
+      opts->Native16BitShaderOpsSupported = caps->native_16bit_shader_ops;
       return S_OK;
    }
 
@@ -552,35 +546,85 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
 
    case D3D12_FEATURE_FORMAT_SUPPORT: {
       D3D12_FEATURE_DATA_FORMAT_SUPPORT *support = data;
+      uint64_t native_support;
       if (data_size != sizeof(*support))
          return E_INVALIDARG;
 
       support->Support1 = D3D12_FORMAT_SUPPORT1_NONE;
       support->Support2 = D3D12_FORMAT_SUPPORT2_NONE;
 
-      /* UNKNOWN is the untyped/raw buffer spelling, which this driver
-       * supports. It is not an image format to look up in the format table.
-       */
-      if (support->Format == DXGI_FORMAT_UNKNOWN) {
-         support->Support1 = D3D12_FORMAT_SUPPORT1_BUFFER;
-         return S_OK;
-      }
-
       /* Processing the query successfully is distinct from supporting any
-       * particular use of the format: Support1/Support2 are the capability
-       * answer. Keep those bits conservative until each is derived from its
-       * resource/view path, but do not report a well-formed query itself as
-       * invalid merely because the answer is "no supported uses".
-       *
-       * Values 116..129 are the reserved hole in DXGI_FORMAT. Values 133..188
-       * are the ASTC range understood by current D3D runtimes even though the
-       * public enum leaves them unnamed, so they remain valid negative
-       * queries here.
-       */
+       * particular use of the format.  Reserved/forward-compatible DXGI
+       * spellings are valid negative queries; truly out-of-range values are
+       * malformed. */
       if ((UINT)support->Format > (UINT)DXGI_FORMAT_A4B4G4R4_UNORM ||
           (support->Format > DXGI_FORMAT_B4G4R4A4_UNORM &&
            support->Format < DXGI_FORMAT_P208))
          return E_INVALIDARG;
+
+      native_support = d12_format_frontend_support(support->Format);
+#define D12_MAP_FORMAT1(frontend_bit, public_bit)                           \
+   do {                                                                      \
+      if (native_support & (frontend_bit))                                   \
+         support->Support1 =                                                 \
+            (D3D12_FORMAT_SUPPORT1)(support->Support1 | (public_bit));        \
+   } while (0)
+#define D12_MAP_FORMAT2(frontend_bit, public_bit)                           \
+   do {                                                                      \
+      if (native_support & (frontend_bit))                                   \
+         support->Support2 =                                                 \
+            (D3D12_FORMAT_SUPPORT2)(support->Support2 | (public_bit));        \
+   } while (0)
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_BUFFER,
+                      D3D12_FORMAT_SUPPORT1_BUFFER);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_VERTEX_BUFFER,
+                      D3D12_FORMAT_SUPPORT1_IA_VERTEX_BUFFER);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_INDEX_BUFFER,
+                      D3D12_FORMAT_SUPPORT1_IA_INDEX_BUFFER);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_TEXTURE_1D,
+                      D3D12_FORMAT_SUPPORT1_TEXTURE1D);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_TEXTURE_2D,
+                      D3D12_FORMAT_SUPPORT1_TEXTURE2D);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_TEXTURE_3D,
+                      D3D12_FORMAT_SUPPORT1_TEXTURE3D);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_TEXTURE_CUBE,
+                      D3D12_FORMAT_SUPPORT1_TEXTURECUBE);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_SHADER_LOAD,
+                      D3D12_FORMAT_SUPPORT1_SHADER_LOAD);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_SHADER_SAMPLE,
+                      D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_SHADER_SAMPLE_COMPARISON,
+                      D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_MIP,
+                      D3D12_FORMAT_SUPPORT1_MIP);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_RENDER_TARGET,
+                      D3D12_FORMAT_SUPPORT1_RENDER_TARGET);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_BLENDABLE,
+                      D3D12_FORMAT_SUPPORT1_BLENDABLE);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_DEPTH_STENCIL,
+                      D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_MULTISAMPLE_RESOLVE,
+                      D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RESOLVE);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET,
+                      D3D12_FORMAT_SUPPORT1_MULTISAMPLE_RENDERTARGET);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD,
+                      D3D12_FORMAT_SUPPORT1_MULTISAMPLE_LOAD);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_DISPLAY,
+                      D3D12_FORMAT_SUPPORT1_DISPLAY);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_CAST_WITHIN_BIT_LAYOUT,
+                      D3D12_FORMAT_SUPPORT1_CAST_WITHIN_BIT_LAYOUT);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_TYPED_UAV,
+                      D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_SHADER_GATHER,
+                      D3D12_FORMAT_SUPPORT1_SHADER_GATHER);
+      D12_MAP_FORMAT1(D12_FRONTEND_FORMAT_SHADER_GATHER_COMPARISON,
+                      D3D12_FORMAT_SUPPORT1_SHADER_GATHER_COMPARISON);
+      D12_MAP_FORMAT2(D12_FRONTEND_FORMAT_UAV_TYPED_LOAD,
+                      D3D12_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
+      D12_MAP_FORMAT2(D12_FRONTEND_FORMAT_UAV_TYPED_STORE,
+                      D3D12_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+#undef D12_MAP_FORMAT1
+#undef D12_MAP_FORMAT2
 
       return S_OK;
    }
@@ -742,12 +786,9 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (!levels->pFeatureLevelsRequested || !levels->NumFeatureLevels)
          return E_INVALIDARG;
 
-      D3D_FEATURE_LEVEL best = 0;
-      for (UINT i = 0; i < levels->NumFeatureLevels; i++) {
-         D3D_FEATURE_LEVEL fl = levels->pFeatureLevelsRequested[i];
-         if (fl <= device->feature_level && fl > best)
-            best = fl;
-      }
+      D3D_FEATURE_LEVEL best = (D3D_FEATURE_LEVEL)d12_core_choose_feature_level(
+         (const uint32_t *)levels->pFeatureLevelsRequested,
+         levels->NumFeatureLevels);
 
       if (!best)
          return E_INVALIDARG;
@@ -1752,6 +1793,24 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
       return ret;
 }
 
+void
+d12_device_get_resource_allocation_info_runtime(
+   struct d12_device *device, UINT visible_mask,
+   const D3D12_RESOURCE_DESC *desc,
+   D3D12_RESOURCE_ALLOCATION_INFO *info)
+{
+   if (!info)
+      return;
+   *info = (D3D12_RESOURCE_ALLOCATION_INFO){
+      .SizeInBytes = UINT64_MAX,
+      .Alignment = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+   };
+   if (!device || !desc)
+      return;
+   (void)d12_device_GetResourceAllocationInfo(
+      (ID3D12Device2 *)&device->iface, info, visible_mask, 1, desc);
+}
+
 static HRESULT STDMETHODCALLTYPE
 d12_device_CreateHeap(ID3D12Device2 *iface, const D3D12_HEAP_DESC *desc,
                       REFIID riid, void **out)
@@ -2444,10 +2503,10 @@ static const ID3D12CommandSignatureVtbl d12_command_signature_vtbl = {
 };
 
 /*
- * Command signatures retain their validated public description even though
- * ExecuteIndirect is not implemented yet.  This is a real pageable D3D12
- * object, not a success-only token: COM identity, device ownership, private
- * data, and argument lifetime all follow the ordinary object contract.
+ * Command signatures retain their validated public description for the
+ * native ExecuteIndirect recorder. This is a real pageable D3D12 object, not
+ * a success-only token: COM identity, device ownership, private data, and
+ * argument lifetime all follow the ordinary object contract.
  *
  * DRAW, DRAW_INDEXED and DISPATCH are terminal.  A signature may place root
  * arguments before the one terminal command, but the terminal command must be
@@ -2466,7 +2525,13 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
 
    *out = NULL;
 
-   if (!desc || !desc->NumArgumentDescs || !desc->pArgumentDescs)
+   if (!desc || !desc->NumArgumentDescs || desc->NumArgumentDescs > 65 ||
+       !desc->pArgumentDescs || desc->NodeMask > 1)
+      return E_INVALIDARG;
+
+   struct d12_root_signature *rs =
+      (struct d12_root_signature *)root_signature;
+   if (rs && rs->device != device)
       return E_INVALIDARG;
 
    bool saw_terminal = false;
@@ -2486,8 +2551,11 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
       return E_INVALIDARG;
 
    size_t packed_size = 0;
+   bool changes_root_arguments = false;
    for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
-      D3D12_INDIRECT_ARGUMENT_TYPE type = desc->pArgumentDescs[i].Type;
+      const D3D12_INDIRECT_ARGUMENT_DESC *argument =
+         &desc->pArgumentDescs[i];
+      D3D12_INDIRECT_ARGUMENT_TYPE type = argument->Type;
 
       bool terminal = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW ||
                       type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED ||
@@ -2500,20 +2568,66 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
                            ? sizeof(D3D12_DRAW_INDEXED_ARGUMENTS)
                            : sizeof(D3D12_DISPATCH_ARGUMENTS);
       } else if (type == D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT) {
-         if (!root_signature ||
-             !desc->pArgumentDescs[i].Constant.Num32BitValuesToSet)
+         if (!rs || !argument->Constant.Num32BitValuesToSet ||
+             argument->Constant.RootParameterIndex >= rs->layout.num_params)
             return E_INVALIDARG;
-         if (desc->pArgumentDescs[i].Constant.Num32BitValuesToSet >
+         const struct d12_root_param *parameter =
+            &rs->layout.params[argument->Constant.RootParameterIndex];
+         if (parameter->type != D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS ||
+             argument->Constant.DestOffsetIn32BitValues >
+                parameter->num_constants ||
+             argument->Constant.Num32BitValuesToSet >
+                parameter->num_constants -
+                   argument->Constant.DestOffsetIn32BitValues)
+            return E_INVALIDARG;
+         if (argument->Constant.Num32BitValuesToSet >
              (SIZE_MAX - packed_size) / 4)
             return E_INVALIDARG;
          packed_size +=
-            (size_t)desc->pArgumentDescs[i].Constant.Num32BitValuesToSet * 4;
-      } else {
-         /* Keep creation honest until ExecuteIndirect implements the other
-          * mutable-state argument classes. */
+            (size_t)argument->Constant.Num32BitValuesToSet * 4;
+         changes_root_arguments = true;
+      } else if (type ==
+                    D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW ||
+                 type == D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW ||
+                 type ==
+                    D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW) {
+         UINT root_parameter_index;
+         D3D12_ROOT_PARAMETER_TYPE expected;
+         if (type == D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW) {
+            root_parameter_index =
+               argument->ConstantBufferView.RootParameterIndex;
+            expected = D3D12_ROOT_PARAMETER_TYPE_CBV;
+         } else if (type == D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW) {
+            root_parameter_index =
+               argument->ShaderResourceView.RootParameterIndex;
+            expected = D3D12_ROOT_PARAMETER_TYPE_SRV;
+         } else {
+            root_parameter_index =
+               argument->UnorderedAccessView.RootParameterIndex;
+            expected = D3D12_ROOT_PARAMETER_TYPE_UAV;
+         }
+         if (!rs || root_parameter_index >= rs->layout.num_params ||
+             rs->layout.params[root_parameter_index].type != expected ||
+             packed_size > SIZE_MAX - sizeof(uint64_t))
+            return E_INVALIDARG;
+         packed_size += sizeof(uint64_t);
+         changes_root_arguments = true;
+      } else if (type == D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW ||
+                 type == D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW) {
+         /* These two state records need execution-time GPU patching of the
+          * AGX vertex-fetch and index parameters. Keep creation fail-closed
+          * until that path is present; root descriptors above are native. */
          return E_NOTIMPL;
+      } else {
+         return E_INVALIDARG;
       }
    }
+
+   /* Microsoft requires a root signature exactly when the command signature
+    * mutates root arguments. A terminal-only or IA-only signature supplies
+    * NULL; a root constant/view signature supplies its validating layout. */
+   if ((rs != NULL) != changes_root_arguments)
+      return E_INVALIDARG;
 
    if (desc->ByteStride < packed_size || (desc->ByteStride & 3))
       return E_INVALIDARG;
@@ -3624,6 +3738,64 @@ d12_device_GetDescriptorHandleIncrementSize(
    }
 }
 
+void
+d12_device_create_srv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_SHADER_RESOURCE_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateShaderResourceView(
+      (ID3D12Device2 *)&device->iface, resource, desc, destination);
+}
+
+void
+d12_device_create_uav_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   ID3D12Resource *counter, const D3D12_UNORDERED_ACCESS_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateUnorderedAccessView(
+      (ID3D12Device2 *)&device->iface, resource, counter, desc, destination);
+}
+
+void
+d12_device_create_rtv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_RENDER_TARGET_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateRenderTargetView(
+      (ID3D12Device2 *)&device->iface, resource, desc, destination);
+}
+
+void
+d12_device_create_dsv_runtime(
+   struct d12_device *device, ID3D12Resource *resource,
+   const D3D12_DEPTH_STENCIL_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateDepthStencilView(
+      (ID3D12Device2 *)&device->iface, resource, desc, destination);
+}
+
+void
+d12_device_create_cbv_runtime(
+   struct d12_device *device, const D3D12_CONSTANT_BUFFER_VIEW_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateConstantBufferView(
+      (ID3D12Device2 *)&device->iface, desc, destination);
+}
+
+void
+d12_device_create_sampler_runtime(
+   struct d12_device *device, const D3D12_SAMPLER_DESC *desc,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination)
+{
+   d12_device_CreateSampler(
+      (ID3D12Device2 *)&device->iface, desc, destination);
+}
+
 static void STDMETHODCALLTYPE
 d12_device_CopyDescriptorsSimple(
    ID3D12Device2 *iface, UINT count, D3D12_CPU_DESCRIPTOR_HANDLE dest,
@@ -3643,6 +3815,16 @@ d12_device_CopyDescriptorsSimple(
          (struct d12_descriptor *)(uintptr_t)(dest.ptr + (SIZE_T)i * stride);
       d12_descriptor_heap_update_slot(device, slot);
    }
+}
+
+void
+d12_device_copy_descriptors_simple_runtime(
+   struct d12_device *device, UINT count,
+   D3D12_CPU_DESCRIPTOR_HANDLE destination,
+   D3D12_CPU_DESCRIPTOR_HANDLE source, D3D12_DESCRIPTOR_HEAP_TYPE type)
+{
+   d12_device_CopyDescriptorsSimple(
+      (ID3D12Device2 *)&device->iface, count, destination, source, type);
 }
 
 static void STDMETHODCALLTYPE
@@ -4338,18 +4520,119 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
  * Entry points
  */
 
+/*
+ * Frontend-neutral initialization of the native AGX D3D12 backend.  The
+ * caller owns discovery and winsys construction and must provide an already
+ * opened struct agx_device.  This is the seam used by both the public COM
+ * factory and the WDDM DDI adapter: the latter injects runtime callbacks and
+ * therefore must never call d12_platform_open_device().
+ */
+HRESULT
+d12_device_backend_init(struct d12_device *device,
+                        D3D_FEATURE_LEVEL feature_level)
+{
+   agx_bg_eot_init(&device->bg_eot, &device->dev);
+   if (!device->bg_eot.ht)
+      return E_FAIL;
+
+   device->oclqry_bo =
+      agx_bo_create(&device->dev, 0x4000, 0, 0, "d3d12 oclqry scratch");
+   if (!device->oclqry_bo)
+      goto fail_bg;
+
+   /* Sampler 0, tessellation descriptor, then the zero-backed NULL region. */
+   device->rodata_bo =
+      agx_bo_create(&device->dev,
+                    ALIGN_POT(AGX_SAMPLER_LENGTH, 16) +
+                       sizeof(struct poly_heap) + D12_NULL_REGION_SIZE,
+                    0, 0, "d3d12 rodata");
+   if (!device->rodata_bo)
+      goto fail_oclqry;
+
+   agx_pack_txf_sampler(
+      (struct agx_sampler_packed *)agx_bo_map(device->rodata_bo));
+   agx_pack(&device->dev.txf_sampler, USC_SAMPLER, cfg) {
+      cfg.start = 0;
+      cfg.count = 1;
+      cfg.buffer = device->rodata_bo->va->addr;
+   }
+
+   /* Match Honeykrisp's 128 MiB geometry/tessellation heap. */
+   device->heap_bo = agx_bo_create(&device->dev, 128 * 1024 * 1024, 0, 0,
+                                   "d3d12 tessellation heap");
+   if (!device->heap_bo)
+      goto fail_rodata;
+
+   const size_t heap_off = ALIGN_POT(AGX_SAMPLER_LENGTH, 16);
+   const size_t null_off = heap_off + sizeof(struct poly_heap);
+   uint8_t *rodata = agx_bo_map(device->rodata_bo);
+   device->heap_desc_va = device->rodata_bo->va->addr + heap_off;
+   device->null_va = device->rodata_bo->va->addr + null_off;
+   memset(rodata + null_off, 0, D12_NULL_REGION_SIZE);
+   device->heap_desc_cpu = (struct poly_heap *)(rodata + heap_off);
+   *device->heap_desc_cpu = (struct poly_heap){
+      .base = (DEVICE(uchar))device->heap_bo->va->addr,
+      .bottom = 0,
+      .size = (uint32_t)device->heap_bo->size,
+   };
+
+   simple_mtx_init(&device->scratch_lock, mtx_plain);
+   simple_mtx_init(&device->descriptor_heap_lock, mtx_plain);
+   simple_mtx_init(&device->sparse_resource_lock, mtx_plain);
+   list_inithead(&device->sparse_resources);
+   agx_scratch_init(&device->dev, &device->scratch_vs);
+   agx_scratch_init(&device->dev, &device->scratch_fs);
+   agx_scratch_init(&device->dev, &device->scratch_cs);
+
+   device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
+   device->iface15.lpVtbl = (ID3D12Device15Vtbl *)&d12_device15_vtbl;
+   device->iface_config1.lpVtbl =
+      (ID3D12DeviceConfiguration1Vtbl *)&d12_device_config1_vtbl;
+   device->refcount = 1;
+   device->feature_level = feature_level;
+   d12_private_data_store_init(&device->private_data,
+                               (IUnknown *)&device->iface);
+   return S_OK;
+
+fail_rodata:
+   agx_bo_unreference(&device->dev, device->rodata_bo);
+   device->rodata_bo = NULL;
+fail_oclqry:
+   agx_bo_unreference(&device->dev, device->oclqry_bo);
+   device->oclqry_bo = NULL;
+fail_bg:
+   agx_bg_eot_cleanup(&device->bg_eot);
+   return E_OUTOFMEMORY;
+}
+
+void
+d12_device_backend_cleanup(struct d12_device *device)
+{
+   d12_private_data_store_destroy(&device->private_data);
+   agx_bo_unreference(&device->dev, device->oclqry_bo);
+   agx_bo_unreference(&device->dev, device->rodata_bo);
+   if (device->heap_bo)
+      agx_bo_unreference(&device->dev, device->heap_bo);
+   agx_scratch_fini(&device->scratch_vs);
+   agx_scratch_fini(&device->scratch_fs);
+   agx_scratch_fini(&device->scratch_cs);
+   simple_mtx_destroy(&device->scratch_lock);
+   simple_mtx_destroy(&device->descriptor_heap_lock);
+   simple_mtx_destroy(&device->sparse_resource_lock);
+   agx_bg_eot_cleanup(&device->bg_eot);
+}
+
 PUBLIC HRESULT WINAPI
 D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
                   REFIID riid, void **out)
 {
-   /* We support up to 11_0 for now; raised as milestones land. */
-   const D3D_FEATURE_LEVEL max_fl = D3D_FEATURE_LEVEL_11_0;
+   const D3D_FEATURE_LEVEL max_fl =
+      (D3D_FEATURE_LEVEL)d12_core_get_caps()->max_feature_level;
 
    /* D3D12 has no levels below 11_0; accepting 9_x/10_x would claim
     * support for a contract that does not exist here.
     */
-   if (minimum_feature_level < D3D_FEATURE_LEVEL_11_0 ||
-       minimum_feature_level > max_fl) {
+   if (!d12_core_supports_feature_level((uint32_t)minimum_feature_level)) {
       mesa_loge("D3D12CreateDevice: feature level 0x%x unsupported (this "
                 "driver is 0x%x only)",
                 minimum_feature_level, max_fl);
@@ -4372,159 +4655,19 @@ D3D12CreateDevice(IUnknown *adapter, D3D_FEATURE_LEVEL minimum_feature_level,
       return E_FAIL;
    }
 
-   /* Precompiled internal kernels (copy/fill engines) */
-   agx_bg_eot_init(&device->bg_eot, &device->dev);
-   if (!device->bg_eot.ht) {
-      mesa_loge("D3D12CreateDevice: agx_bg_eot_init failed");
+   HRESULT hr = d12_device_backend_init(device, max_fl);
+   if (FAILED(hr)) {
+      mesa_loge("D3D12CreateDevice: native backend initialization failed");
       d12_platform_close_device(device);
       free(device);
-      return E_FAIL;
+      return hr;
    }
-
-   /* Render commands need a valid occlusion-query scratch base. */
-   device->oclqry_bo =
-      agx_bo_create(&device->dev, 0x4000, 0, 0, "d3d12 oclqry scratch");
-   if (!device->oclqry_bo) {
-      agx_bg_eot_cleanup(&device->bg_eot);
-      d12_platform_close_device(device);
-      free(device);
-      return E_OUTOFMEMORY;
-   }
-
-   /*
-    * A texel fetch still goes through the sampler hardware on AGX: the
-    * backend lowers txf to `smpi ... ss0`, which reads sampler state 0
-    * from whatever the USC's SAMPLER word points at. HLSL's
-    * Texture2D.Load takes no sampler, so nothing in the application will
-    * ever supply one -- the driver must, exactly as Honeykrisp does
-    * (hk_device.c) with a device-wide read-only sampler.
-    *
-    * Omitting it is not a hard failure. Sampler state 0 is simply
-    * undefined, and undefined here reads as zeroes: the texture
-    * descriptor, the address and the coordinates are all correct and the
-    * fetch still returns nothing.
-    */
-   /*
-    * Sampler state, the tessellation heap descriptor, then the NULL
-    * descriptor region.
-    *
-    * D3D12 requires a null descriptor to read as zero and to discard
-    * writes. Recording address 0 instead -- which is what zeroing the
-    * descriptor slot did -- makes the shader dereference NULL, and the GPU
-    * reports `address: 0x0, reason: Unmapped, read: true` and times out the
-    * queue. Bisecting the suite put the fault burst exactly at the
-    * test_null_* cluster (names.txt 279+, +69 timeouts; lines 1..278 gave
-    * +0), which is what identified this.
-    *
-    * It lives inside rodata_bo rather than in a BO of its own so it
-    * inherits the existing device lifetime and every teardown path already
-    * written for it.
-    */
-   device->rodata_bo =
-      agx_bo_create(&device->dev,
-                    ALIGN_POT(AGX_SAMPLER_LENGTH, 16) +
-                       sizeof(struct poly_heap) + D12_NULL_REGION_SIZE,
-                    0, 0, "d3d12 rodata");
-   if (!device->rodata_bo) {
-      agx_bo_unreference(&device->dev, device->oclqry_bo);
-      agx_bg_eot_cleanup(&device->bg_eot);
-      d12_platform_close_device(device);
-      free(device);
-      return E_OUTOFMEMORY;
-   }
-
-   agx_pack_txf_sampler(
-      (struct agx_sampler_packed *)agx_bo_map(device->rodata_bo));
-
-   agx_pack(&device->dev.txf_sampler, USC_SAMPLER, cfg) {
-      cfg.start = 0;
-      cfg.count = 1;
-      cfg.buffer = device->rodata_bo->va->addr;
-   }
-
-   /*
-    * The tessellation heap. The tessellator bump-allocates domain points
-    * from it and the prefix sum carves the final index buffer out of it,
-    * and that index buffer is then bound as the WHOLE heap with an
-    * element offset -- so it has to be one contiguous allocation.
-    *
-    * 32 MiB rather than hk's 128: this driver runs one command list at a
-    * time and `bottom` is reset per list, so the live set is a single
-    * draw's tessellation output. Overflow is not silent -- the allocator
-    * aborts on the GPU -- so a too-small heap fails loudly.
-    */
-   /*
-    * 128 MiB, matching hk_init_heap() in the Vulkan driver on this same
-    * hardware. We were at 32 MiB, four times under-sized, and the geometry
-    * heap is a bump allocator (struct poly_heap: base/bottom/size) shared
-    * by tessellation and geometry shaders.
-    *
-    * Overflowing it is what produced the GPU-timeout bursts that froze the
-    * desktop all of 2026-08-05. Bisection put the first fault at
-    * test_quad_tessellation_dxil, reading address 0xbb1ae27b80 -- a real
-    * address just past a live allocation, `reason: Unmapped`. Our own G7
-    * suite passes because its tessellation factors fit inside 32 MiB.
-    *
-    * poly_heap_alloc_offs does bounds-check, but it lives in src/poly and is
-    * shared with the Vulkan driver, and it reacts by printf+abort from the
-    * shader -- so the honest fix here is to stop overflowing rather than to
-    * change a check other drivers depend on.
-    */
-   device->heap_bo = agx_bo_create(&device->dev, 128 * 1024 * 1024, 0, 0,
-                                   "d3d12 tessellation heap");
-   if (!device->heap_bo) {
-      agx_bo_unreference(&device->dev, device->rodata_bo);
-      agx_bo_unreference(&device->dev, device->oclqry_bo);
-      agx_bg_eot_cleanup(&device->bg_eot);
-      d12_platform_close_device(device);
-      free(device);
-      return E_OUTOFMEMORY;
-   }
-
-   size_t heap_off = ALIGN_POT(AGX_SAMPLER_LENGTH, 16);
-   device->heap_desc_va = device->rodata_bo->va->addr + heap_off;
-
-   /* The null region follows the heap descriptor. Zeroed explicitly: a
-    * null descriptor must READ AS ZERO, so whatever the allocator happened
-    * to leave here is not good enough.
-    */
-   size_t null_off = heap_off + sizeof(struct poly_heap);
-   device->null_va = device->rodata_bo->va->addr + null_off;
-   memset((uint8_t *)agx_bo_map(device->rodata_bo) + null_off, 0,
-          D12_NULL_REGION_SIZE);
-   device->heap_desc_cpu =
-      (struct poly_heap *)((uint8_t *)agx_bo_map(device->rodata_bo) +
-                           heap_off);
-
-   *device->heap_desc_cpu = (struct poly_heap){
-      .base = (DEVICE(uchar))device->heap_bo->va->addr,
-      .bottom = 0,
-      .size = (uint32_t)device->heap_bo->size,
-   };
-
-   simple_mtx_init(&device->scratch_lock, mtx_plain);
-   simple_mtx_init(&device->descriptor_heap_lock, mtx_plain);
-   simple_mtx_init(&device->sparse_resource_lock, mtx_plain);
-   list_inithead(&device->sparse_resources);
-   agx_scratch_init(&device->dev, &device->scratch_vs);
-   agx_scratch_init(&device->dev, &device->scratch_fs);
-   agx_scratch_init(&device->dev, &device->scratch_cs);
-
-   device->iface.lpVtbl = (ID3D12DeviceVtbl *)&d12_device_vtbl;
-   device->iface15.lpVtbl = (ID3D12Device15Vtbl *)&d12_device15_vtbl;
-   device->iface_config1.lpVtbl =
-      (ID3D12DeviceConfiguration1Vtbl *)&d12_device_config1_vtbl;
-   device->refcount = 1;
-   device->feature_level = max_fl;
-   d12_private_data_store_init(&device->private_data,
-                               (IUnknown *)&device->iface);
 
    mesa_logi("opened %s (chip 0x%x) as D3D12 device, feature level 0x%x",
              device->dev.name, device->dev.params.chip_id,
              device->feature_level);
 
-   HRESULT hr =
-      d12_device_QueryInterface((ID3D12Device2 *)&device->iface, riid, out);
+   hr = d12_device_QueryInterface((ID3D12Device2 *)&device->iface, riid, out);
    /* Drop the construction ref; QueryInterface holds the caller's. */
    d12_device_Release((ID3D12Device2 *)&device->iface);
    return hr;

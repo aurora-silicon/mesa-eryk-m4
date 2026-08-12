@@ -166,3 +166,12 @@ libagx_write_u32(global uint32_t *address, uint32_t value)
 {
    *address = value;
 }
+
+/* D3D12 DDI fence placements are 64-bit values aligned to eight bytes.  The
+ * WDDM caps advertise AGX as 64-bit-atomic capable, so emit one naturally
+ * aligned global store rather than two tearable 32-bit writes. */
+KERNEL(1)
+libagx_write_u64(global uint64_t *address, uint64_t value)
+{
+   *address = value;
+}

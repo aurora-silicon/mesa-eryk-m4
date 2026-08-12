@@ -5,5 +5,8 @@
 *.pyo
 *.out
 /build
+/_build-d3d12-umd-*
+/_build-native-d3d12-package*/
+/_build-native-d3d12-package*.dmg
 .venv/
 *.mda.tar

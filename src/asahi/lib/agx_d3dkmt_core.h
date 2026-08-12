@@ -129,13 +129,15 @@ enum agx_d3dkmt_external_memory_type {
 };
 
 /* Every local allocation handle has exactly one lifetime owner. A non-zero
- * resource owns the allocation and is destroyed as a resource; otherwise the
- * allocation itself is destroyed. global_share is only the non-owning KMT
- * identifier and must never be closed or treated as a reference. */
+ * resource owns the allocation in a direct KMT process. A runtime-owned UMD
+ * instead releases that same KMD resource through the pointer-sized
+ * runtime_resource handle. global_share is only a non-owning KMT identifier
+ * and must never be closed or treated as a reference. */
 struct agx_d3dkmt_allocation_record {
    agx_kmt_handle allocation;
    agx_kmt_handle resource;
    agx_kmt_handle global_share;
+   uintptr_t runtime_resource;
    enum agx_d3dkmt_external_memory_type external_type;
 };
 
@@ -169,6 +171,18 @@ agx_kmt_handle agx_d3dkmt_pool_get(const struct agx_d3dkmt_handle_pool *pool,
 bool agx_d3dkmt_pool_get_record(
    const struct agx_d3dkmt_handle_pool *pool, uint32_t dense,
    struct agx_d3dkmt_allocation_record *record);
+
+/* Rotate the kernel identity of runtime-owned resources in increasing array
+ * order: [X, Y, Z] becomes [Y, Z, X].  The pointer-sized runtime resource
+ * token deliberately stays in its original dense slot.  DXGI owns that
+ * handle namespace and explicitly requires RotateResourceIdentities to swap
+ * kernel handles without swapping the corresponding runtime handles.
+ *
+ * This is a transactional, host-testable update: invalid, duplicate or
+ * non-runtime-owned handles leave every record untouched. */
+bool agx_d3dkmt_pool_rotate_runtime_identities(
+   struct agx_d3dkmt_handle_pool *pool, const uint32_t *dense_handles,
+   uint32_t count);
 
 /*
  * Release `dense` and return the D3DKMT handle it held (0 if not live). The
@@ -440,6 +454,13 @@ uint32_t agx_d3dkmt_create_flags(uint32_t agx_bo_flags);
 uint32_t agx_d3dkmt_create_flags_external(
    uint32_t agx_bo_flags,
    enum agx_d3dkmt_external_memory_type external_type);
+
+/*
+ * A D3D runtime allocation callback already supplies the owning runtime
+ * resource.  Its callback ABI does not accept CreateResource/CreateShared;
+ * shareability remains encoded in agxw_alloc_private for the miniport.
+ */
+uint32_t agx_d3dkmt_create_flags_runtime_resource(uint32_t agx_bo_flags);
 
 #ifdef __cplusplus
 }

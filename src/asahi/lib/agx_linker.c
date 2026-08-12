@@ -122,6 +122,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    linked->bo = agx_bo_create(dev, size, 0, AGX_BO_EXEC | AGX_BO_LOW_VA,
                               "Linked executable");
+   linked->size = size;
    uint8_t *linked_map = agx_bo_map(linked->bo);
 
    size_t offset = 0;

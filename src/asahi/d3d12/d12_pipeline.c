@@ -3767,7 +3767,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    uint64_t fs_outputs = 0;
    const uint16_t framebuffer_mask =
-      BITFIELD_MASK(MIN2(nr_samples, 8));
+      (uint16_t)BITFIELD_MASK(MIN2(nr_samples, 8));
    uint16_t active_sample_mask =
       (sample_mask | (uint16_t)~framebuffer_mask) & 0xff;
    uint8_t a8_mask = 0;

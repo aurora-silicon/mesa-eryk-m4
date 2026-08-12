@@ -16,6 +16,10 @@ struct agx_linked_shader {
    /* Mapped executable memory */
    struct agx_bo *bo;
 
+   /* Exact executable byte count. BO allocations are page-rounded, so the
+    * BO size is not a safe disassembler bound. */
+   size_t size;
+
    /* Set if the linked SW vertex shader reads base vertex/instance. The VS
     * prolog can read base instance even when the API VS does not, which is why
     * this needs to be aggregated in the linker.

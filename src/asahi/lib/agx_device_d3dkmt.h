@@ -47,6 +47,7 @@
 
 #include "agx_d3dkmt.h"
 #include "agx_d3dkmt_core.h"
+#include "agx_d3dkmt_runtime.h"
 #include "agx_device.h"
 
 struct util_sync_provider;
@@ -62,6 +63,14 @@ struct util_sync_provider;
 bool agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
                                    uint32_t *count);
 
+/* Resolve the one adapter whose complete private identity matches `identity`.
+ * Every temporary handle returned by D3DKMTEnumAdapters2 is closed before
+ * this returns. Ambiguous identical adapters are rejected instead of merging
+ * their process GPU-VA namespaces. */
+bool agx_d3dkmt_find_adapter_luid(
+   const struct agxw_adapter_identity *identity,
+   struct agx_kmt_luid *luid);
+
 /*
  * Open `luid` and install the D3DKMT ops on `dev`. Mirrors
  * agx_virtio_open_device()'s contract: on success the caller runs
@@ -70,6 +79,13 @@ bool agx_d3dkmt_enumerate_adapters(struct agx_kmt_luid *out, uint32_t capacity,
  */
 bool agx_d3dkmt_open_device(struct agx_device *dev,
                             const struct agx_kmt_luid *luid);
+
+/* Install the same AGX winsys on a D3D-runtime-owned device.  The callback
+ * bridge creates child paging/context/allocation objects but this function
+ * never opens or destroys an adapter/device behind the runtime's back. */
+bool agx_d3dkmt_open_runtime_device(
+   struct agx_device *dev,
+   const struct agx_d3dkmt_runtime_device *runtime_device);
 
 /*
  * Tear down what agx_d3dkmt_open_device() built. Call AFTER
@@ -89,6 +105,38 @@ struct agx_bo *agx_d3dkmt_bo_create_external(
    struct agx_device *dev, size_t size, unsigned align,
    enum agx_bo_flags flags,
    enum agx_d3dkmt_external_memory_type external_type, const char *label);
+
+/* Create the sole allocation backing a D3D runtime resource.  This path is
+ * available only on agx_d3dkmt_open_runtime_device() devices: dxgkrnl owns
+ * the hRTResource namespace, while the returned BO owns the corresponding
+ * KMD allocation, GPU-VA binding and renderer references. */
+struct agx_bo *agx_d3dkmt_bo_create_runtime_resource(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags, void *runtime_resource, const char *label);
+
+struct agx_bo *agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags, void *runtime_resource,
+   const void *resource_driver_data, uint32_t resource_driver_data_size,
+   const char *label);
+
+/* Adopt the allocation handles which dxgkrnl supplied to the D3D12
+ * OpenHeapAndResource DDI.  The runtime owns residency policy; this only
+ * installs the allocation in the renderer BO map and binds a process GPU VA.
+ */
+struct agx_bo *agx_d3dkmt_bo_open_runtime_resource(
+   struct agx_device *dev, size_t size, unsigned align,
+   enum agx_bo_flags flags, void *runtime_resource,
+   uint32_t allocation, uint32_t resource, const char *label);
+
+/* Rotate live DXGI runtime-resource identities without moving the BO
+ * objects or their pointer-sized runtime lifetime tokens.  Kernel allocation
+ * handles, KMD resource handles, GPU-VA objects, mappings and writer state
+ * move left in array order.  Every BO must belong to the same runtime-owned
+ * D3DKMT device and have an identical allocation shape. */
+bool agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
+                                             struct agx_bo *const *bos,
+                                             uint32_t count);
 
 /* Runtime-private data is carried by dxgkrnl with the shared resource and is
  * returned verbatim to another process opening it. It is frontend metadata,
@@ -153,5 +201,11 @@ int agx_d3dkmt_open_nt_handle_from_name(struct agx_device *dev,
                                         const void *object_attributes,
                                         uint32_t access,
                                         uintptr_t *nt_handle);
+
+/* Return the runtime-transport token naming a queue's WDDM context.  The D3D
+ * UMD translates this token back to the opaque HANDLE required by Present;
+ * renderer code never casts or truncates the handle itself. */
+bool agx_d3dkmt_queue_context_token(struct agx_device *dev,
+                                    uint32_t queue_id, uint32_t *token);
 
 extern const agx_device_ops_t agx_device_d3dkmt_ops;

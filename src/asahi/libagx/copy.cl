@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "compiler/libcl/libcl.h"
+#include "present_blt.h"
 
 KERNEL(32)
 libagx_fill(global uint32_t *address, uint32_t value)
@@ -189,6 +190,338 @@ libagx_linear_to_srgb(float value)
    return value <= 0.0031308f
              ? value * 12.92f
              : 1.055f * native_powr(value, 1.0f / 2.4f) - 0.055f;
+}
+
+static uint
+libagx_present_load_u16(global uint8_t *address)
+{
+   return (uint)address[0] | ((uint)address[1] << 8);
+}
+
+static uint
+libagx_present_load_u32(global uint8_t *address)
+{
+   return (uint)address[0] | ((uint)address[1] << 8) |
+          ((uint)address[2] << 16) | ((uint)address[3] << 24);
+}
+
+static void
+libagx_present_store_u16(global uint8_t *address, uint value)
+{
+   address[0] = (uint8_t)value;
+   address[1] = (uint8_t)(value >> 8);
+}
+
+static void
+libagx_present_store_u32(global uint8_t *address, uint value)
+{
+   address[0] = (uint8_t)value;
+   address[1] = (uint8_t)(value >> 8);
+   address[2] = (uint8_t)(value >> 16);
+   address[3] = (uint8_t)(value >> 24);
+}
+
+/* Explicit IEEE-754 binary16 conversion keeps the raw-memory kernel
+ * independent of optional OpenCL half-storage extensions. */
+static float
+libagx_present_half_to_float(uint value)
+{
+   uint sign = (value & 0x8000u) << 16;
+   uint exponent = (value >> 10) & 0x1fu;
+   uint mantissa = value & 0x3ffu;
+   uint bits;
+
+   if (exponent == 0) {
+      if (mantissa == 0) {
+         bits = sign;
+      } else {
+         int unbiased = -14;
+         while ((mantissa & 0x400u) == 0) {
+            mantissa <<= 1;
+            --unbiased;
+         }
+         mantissa &= 0x3ffu;
+         bits = sign | (uint)(unbiased + 127) << 23 | mantissa << 13;
+      }
+   } else if (exponent == 0x1fu) {
+      bits = sign | 0x7f800000u | mantissa << 13;
+      if (mantissa)
+         bits |= 1u;
+   } else {
+      bits = sign | (exponent + 112u) << 23 | mantissa << 13;
+   }
+   return as_float(bits);
+}
+
+static uint
+libagx_present_float_to_half(float value)
+{
+   uint bits = as_uint(value);
+   uint sign = (bits >> 16) & 0x8000u;
+   uint exponent = (bits >> 23) & 0xffu;
+   uint mantissa = bits & 0x7fffffu;
+
+   if (exponent == 0xffu) {
+      if (!mantissa)
+         return sign | 0x7c00u;
+      return sign | 0x7c00u | max(1u, mantissa >> 13);
+   }
+   if (exponent > 142u)
+      return sign | 0x7c00u;
+   if (exponent < 113u) {
+      if (exponent < 103u)
+         return sign;
+      mantissa |= 0x800000u;
+      uint shift = 125u - exponent;
+      uint rounded =
+         (mantissa + ((1u << (shift - 1u)) - 1u) +
+          ((mantissa >> shift) & 1u)) >> shift;
+      return sign | rounded;
+   }
+
+   uint half_exponent = exponent - 112u;
+   mantissa += 0xfffu + ((mantissa >> 13) & 1u);
+   if (mantissa & 0x800000u) {
+      mantissa = 0;
+      ++half_exponent;
+      if (half_exponent >= 0x1fu)
+         return sign | 0x7c00u;
+   }
+   return sign | half_exponent << 10 | mantissa >> 13;
+}
+
+static float4
+libagx_present_load_pixel(global uint8_t *address, uint format)
+{
+   if (format == LIBAGX_PRESENT_FORMAT_RGBA8 ||
+       format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB) {
+      return (float4)((float)address[0], (float)address[1],
+                      (float)address[2], (float)address[3]) /
+             255.0f;
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_BGRA8 ||
+       format == LIBAGX_PRESENT_FORMAT_BGRX8) {
+      return (float4)((float)address[2], (float)address[1],
+                      (float)address[0],
+                      format == LIBAGX_PRESENT_FORMAT_BGRX8
+                         ? 255.0f
+                         : (float)address[3]) /
+             255.0f;
+   }
+
+   uint packed = libagx_present_load_u16(address);
+   if (format == LIBAGX_PRESENT_FORMAT_BGR565) {
+      return (float4)((float)((packed >> 11) & 0x1fu) / 31.0f,
+                      (float)((packed >> 5) & 0x3fu) / 63.0f,
+                      (float)(packed & 0x1fu) / 31.0f, 1.0f);
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_BGRA5551) {
+      return (float4)((float)((packed >> 10) & 0x1fu) / 31.0f,
+                      (float)((packed >> 5) & 0x1fu) / 31.0f,
+                      (float)(packed & 0x1fu) / 31.0f,
+                      (float)((packed >> 15) & 1u));
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_RGB10A2) {
+      packed = libagx_present_load_u32(address);
+      return (float4)((float)(packed & 0x3ffu) / 1023.0f,
+                      (float)((packed >> 10) & 0x3ffu) / 1023.0f,
+                      (float)((packed >> 20) & 0x3ffu) / 1023.0f,
+                      (float)((packed >> 30) & 3u) / 3.0f);
+   }
+
+   return (float4)(
+      libagx_present_half_to_float(libagx_present_load_u16(address + 0)),
+      libagx_present_half_to_float(libagx_present_load_u16(address + 2)),
+      libagx_present_half_to_float(libagx_present_load_u16(address + 4)),
+      libagx_present_half_to_float(libagx_present_load_u16(address + 6)));
+}
+
+static uint
+libagx_present_quantize(float value, uint maximum)
+{
+   return convert_uint_sat_rte(clamp(value, 0.0f, 1.0f) *
+                               (float)maximum);
+}
+
+static void
+libagx_present_store_pixel(global uint8_t *address, uint format,
+                           float4 value)
+{
+   if (format == LIBAGX_PRESENT_FORMAT_RGBA8 ||
+       format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB) {
+      address[0] = (uint8_t)libagx_present_quantize(value.x, 255u);
+      address[1] = (uint8_t)libagx_present_quantize(value.y, 255u);
+      address[2] = (uint8_t)libagx_present_quantize(value.z, 255u);
+      address[3] = (uint8_t)libagx_present_quantize(value.w, 255u);
+      return;
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_BGRA8 ||
+       format == LIBAGX_PRESENT_FORMAT_BGRX8) {
+      address[0] = (uint8_t)libagx_present_quantize(value.z, 255u);
+      address[1] = (uint8_t)libagx_present_quantize(value.y, 255u);
+      address[2] = (uint8_t)libagx_present_quantize(value.x, 255u);
+      address[3] = format == LIBAGX_PRESENT_FORMAT_BGRX8
+                      ? 255
+                      : (uint8_t)libagx_present_quantize(value.w, 255u);
+      return;
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_BGR565) {
+      uint packed = libagx_present_quantize(value.z, 31u) |
+                    libagx_present_quantize(value.y, 63u) << 5 |
+                    libagx_present_quantize(value.x, 31u) << 11;
+      libagx_present_store_u16(address, packed);
+      return;
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_BGRA5551) {
+      uint packed = libagx_present_quantize(value.z, 31u) |
+                    libagx_present_quantize(value.y, 31u) << 5 |
+                    libagx_present_quantize(value.x, 31u) << 10 |
+                    libagx_present_quantize(value.w, 1u) << 15;
+      libagx_present_store_u16(address, packed);
+      return;
+   }
+   if (format == LIBAGX_PRESENT_FORMAT_RGB10A2) {
+      uint packed = libagx_present_quantize(value.x, 1023u) |
+                    libagx_present_quantize(value.y, 1023u) << 10 |
+                    libagx_present_quantize(value.z, 1023u) << 20 |
+                    libagx_present_quantize(value.w, 3u) << 30;
+      libagx_present_store_u32(address, packed);
+      return;
+   }
+
+   libagx_present_store_u16(address + 0,
+                            libagx_present_float_to_half(value.x));
+   libagx_present_store_u16(address + 2,
+                            libagx_present_float_to_half(value.y));
+   libagx_present_store_u16(address + 4,
+                            libagx_present_float_to_half(value.z));
+   libagx_present_store_u16(address + 6,
+                            libagx_present_float_to_half(value.w));
+}
+
+static float4
+libagx_present_sample(global uint8_t *src, uint x, uint y,
+                      uint src_pitch_B, uint src_stride_el,
+                      uint src_tile_width_el, uint src_tile_height_el,
+                      uint src_pixel_size_B, uint sample_count,
+                      uint src_tiled, uint src_format, uint decode_gamma)
+{
+   uint offset = libagx_copy_image_offset(
+      x, y, src_pitch_B, src_stride_el, src_tile_width_el,
+      src_tile_height_el, src_pixel_size_B * sample_count, src_tiled);
+   float4 sum = (float4)(0.0f);
+   for (uint sample = 0; sample < sample_count; ++sample) {
+      float4 value = libagx_present_load_pixel(
+         src + offset + sample * src_pixel_size_B, src_format);
+      if (decode_gamma) {
+         value.x = libagx_srgb_to_linear(clamp(value.x, 0.0f, 1.0f));
+         value.y = libagx_srgb_to_linear(clamp(value.y, 0.0f, 1.0f));
+         value.z = libagx_srgb_to_linear(clamp(value.z, 0.0f, 1.0f));
+      }
+      sum += value;
+   }
+   return sum / (float)sample_count;
+}
+
+/*
+ * DXGI presentation blit. Resolve, bilinear scale, counter-clockwise
+ * rotation and display-format conversion happen in one dispatch. This is
+ * intentionally raw-memory based so it works for both linear and AIL tiled
+ * allocations without building transient texture/sampler descriptors.
+ */
+KERNEL(32)
+libagx_present_blt(global uint8_t *dest, global uint8_t *src,
+                   uint dest_width_px, uint dest_height_px,
+                   uint dest_x_px, uint dest_y_px,
+                   uint src_left_px, uint src_top_px,
+                   uint src_right_px, uint src_bottom_px,
+                   uint dest_pitch_B, uint src_pitch_B,
+                   uint dest_stride_el, uint src_stride_el,
+                   uint dest_tile_width_el, uint dest_tile_height_el,
+                   uint src_tile_width_el, uint src_tile_height_el,
+                   uint dest_pixel_size_B, uint src_pixel_size_B,
+                   uint source_sample_count, uint dest_tiled,
+                   uint src_tiled, uint dest_format, uint src_format,
+                   uint rotation)
+{
+   uint id = cl_global_id.x;
+   if (id >= dest_width_px * dest_height_px)
+      return;
+
+   uint x = id % dest_width_px;
+   uint y = id / dest_width_px;
+   float u = ((float)x + 0.5f) / (float)dest_width_px;
+   float v = ((float)y + 0.5f) / (float)dest_height_px;
+   float source_u = u;
+   float source_v = v;
+
+   /* Rotate source contents counter-clockwise, per BltDXGI. These are the
+    * inverse maps from destination space back into the source rectangle. */
+   if (rotation == LIBAGX_PRESENT_ROTATION_CCW_90) {
+      source_u = 1.0f - v;
+      source_v = u;
+   } else if (rotation == LIBAGX_PRESENT_ROTATION_CCW_180) {
+      source_u = 1.0f - u;
+      source_v = 1.0f - v;
+   } else if (rotation == LIBAGX_PRESENT_ROTATION_CCW_270) {
+      source_u = v;
+      source_v = 1.0f - u;
+   }
+
+   float source_x = (float)src_left_px +
+                    source_u * (float)(src_right_px - src_left_px) - 0.5f;
+   float source_y = (float)src_top_px +
+                    source_v * (float)(src_bottom_px - src_top_px) - 0.5f;
+   source_x = clamp(source_x, (float)src_left_px,
+                    (float)(src_right_px - 1u));
+   source_y = clamp(source_y, (float)src_top_px,
+                    (float)(src_bottom_px - 1u));
+   uint x0 = (uint)floor(source_x);
+   uint y0 = (uint)floor(source_y);
+   uint x1 = min(x0 + 1u, src_right_px - 1u);
+   uint y1 = min(y0 + 1u, src_bottom_px - 1u);
+   float x_weight = source_x - (float)x0;
+   float y_weight = source_y - (float)y0;
+
+   uint src_float = src_format == LIBAGX_PRESENT_FORMAT_RGBA16_FLOAT;
+   uint dest_float = dest_format == LIBAGX_PRESENT_FORMAT_RGBA16_FLOAT;
+   uint srgb_roundtrip =
+      src_format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB &&
+      dest_format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB;
+   uint decode_gamma = (!src_float && dest_float) || srgb_roundtrip;
+   uint encode_gamma = (src_float && !dest_float) || srgb_roundtrip;
+
+   float4 c00 = libagx_present_sample(
+      src, x0, y0, src_pitch_B, src_stride_el, src_tile_width_el,
+      src_tile_height_el, src_pixel_size_B, source_sample_count, src_tiled,
+      src_format, decode_gamma);
+   float4 c10 = libagx_present_sample(
+      src, x1, y0, src_pitch_B, src_stride_el, src_tile_width_el,
+      src_tile_height_el, src_pixel_size_B, source_sample_count, src_tiled,
+      src_format, decode_gamma);
+   float4 c01 = libagx_present_sample(
+      src, x0, y1, src_pitch_B, src_stride_el, src_tile_width_el,
+      src_tile_height_el, src_pixel_size_B, source_sample_count, src_tiled,
+      src_format, decode_gamma);
+   float4 c11 = libagx_present_sample(
+      src, x1, y1, src_pitch_B, src_stride_el, src_tile_width_el,
+      src_tile_height_el, src_pixel_size_B, source_sample_count, src_tiled,
+      src_format, decode_gamma);
+   float4 top = c00 + (c10 - c00) * x_weight;
+   float4 bottom = c01 + (c11 - c01) * x_weight;
+   float4 value = top + (bottom - top) * y_weight;
+
+   if (encode_gamma) {
+      value.x = libagx_linear_to_srgb(clamp(value.x, 0.0f, 1.0f));
+      value.y = libagx_linear_to_srgb(clamp(value.y, 0.0f, 1.0f));
+      value.z = libagx_linear_to_srgb(clamp(value.z, 0.0f, 1.0f));
+   }
+
+   uint dest_offset = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, dest_pixel_size_B,
+      dest_tiled);
+   libagx_present_store_pixel(dest + dest_offset, dest_format, value);
 }
 
 /* Strongly-typed RGBA8 resolves convert the source storage encoding to

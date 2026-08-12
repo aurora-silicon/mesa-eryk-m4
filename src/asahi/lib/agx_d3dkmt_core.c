@@ -91,6 +91,10 @@ agx_d3dkmt_pool_alloc_record(
    if (record->external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE &&
        record->resource == 0)
       return 0;
+   if (record->runtime_resource != 0 &&
+       (record->resource == 0 ||
+        record->external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE))
+      return 0;
    if (record->external_type == AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32_KMT &&
        record->global_share == 0)
       return 0;
@@ -133,6 +137,54 @@ agx_d3dkmt_pool_get_record(const struct agx_d3dkmt_handle_pool *pool,
       return false;
 
    *record = pool->records[dense];
+   return true;
+}
+
+bool
+agx_d3dkmt_pool_rotate_runtime_identities(
+   struct agx_d3dkmt_handle_pool *pool, const uint32_t *dense_handles,
+   uint32_t count)
+{
+   if (!pool || (count && !dense_handles))
+      return false;
+   if (count < 2)
+      return true;
+
+   /* Validate the complete set before writing a byte.  In particular, an
+    * external-memory record has different lifetime semantics and must never
+    * be folded into DXGI's runtime-resource rotation. */
+   for (uint32_t i = 0; i < count; ++i) {
+      const uint32_t dense = dense_handles[i];
+      if (!dense || dense >= pool->capacity ||
+          !pool->records[dense].allocation ||
+          !pool->records[dense].resource ||
+          !pool->records[dense].runtime_resource ||
+          pool->records[dense].external_type !=
+             AGX_D3DKMT_EXTERNAL_MEMORY_NONE)
+         return false;
+      for (uint32_t j = 0; j < i; ++j) {
+         if (dense_handles[j] == dense)
+            return false;
+      }
+   }
+
+   const struct agx_d3dkmt_allocation_record first =
+      pool->records[dense_handles[0]];
+   for (uint32_t i = 0; i + 1 < count; ++i) {
+      struct agx_d3dkmt_allocation_record *destination =
+         &pool->records[dense_handles[i]];
+      const struct agx_d3dkmt_allocation_record *source =
+         &pool->records[dense_handles[i + 1]];
+      const uintptr_t runtime_resource = destination->runtime_resource;
+      *destination = *source;
+      destination->runtime_resource = runtime_resource;
+   }
+
+   struct agx_d3dkmt_allocation_record *last =
+      &pool->records[dense_handles[count - 1]];
+   const uintptr_t runtime_resource = last->runtime_resource;
+   *last = first;
+   last->runtime_resource = runtime_resource;
    return true;
 }
 
@@ -735,4 +787,18 @@ agx_d3dkmt_create_flags_external(
     * STATUS_INVALID_PARAMETER because AGX BOs must be 16 KiB
     * physically-chunked and arbitrary user pages are not. */
    return flags;
+}
+
+uint32_t
+agx_d3dkmt_create_flags_runtime_resource(uint32_t agx_bo_flags)
+{
+   /*
+    * pfnAllocateCb receives hResource separately from dxgkrnl.  The public
+    * D3DKMT CreateAllocation2 CreateResource/CreateShared flags would ask it
+    * to create a second resource and are consequently illegal in this path.
+    * Keep the zeroing hint; allocation category/shareability is carried by
+    * the pinned agxw_alloc_private blob, not these transport flags.
+    */
+   (void)agx_bo_flags;
+   return AGX_KMT_CREATEALLOC_ALLOWNOTZEROED;
 }

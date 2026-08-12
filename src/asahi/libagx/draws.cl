@@ -47,6 +47,53 @@ libagx_d3d12_indirect_patch(global uint8_t *out, constant uint8_t *in,
 }
 
 /*
+ * Patch one root CBV/SRV/UAV address into the compact D3D12 root table.
+ *
+ * The argument record is only guaranteed to be DWORD aligned, so load the
+ * 64-bit GPU VA as two words.  A zero address keeps the safe null-buffer
+ * address already present in the table.  Bare root SRV/UAV descriptors have
+ * no declared extent; publish UINT32_MAX in BUFINFO for a live address, just
+ * like the direct root-descriptor path does.
+ *
+ * Reserved buffers have a read-only shadow mapping on AGX.  The CPU direct
+ * setter resolves that mapping from the device's sparse-resource registry;
+ * ExecuteIndirect cannot inspect the GPU-produced VA on the CPU, so it gets
+ * the same registry as a compact base/size array and performs the lookup here.
+ */
+KERNEL(1)
+libagx_d3d12_indirect_root(global uint64_t *out_address,
+                           global uint64_t *out_bufinfo,
+                           constant uint32_t *in,
+                           constant uint32_t *draw_count,
+                           constant uint64_t *sparse_ranges,
+                           uint64_t sparse_ro_offset,
+                           uint32_t sparse_range_count,
+                           uint32_t command_index,
+                           uint32_t publish_unbounded,
+                           uint32_t translate_read)
+{
+   bool enabled = !draw_count || command_index < *draw_count;
+   uint64_t address = enabled ? ((uint64_t)in[1] << 32) | in[0] : 0;
+
+   if (address && translate_read) {
+      for (uint32_t i = 0; i < sparse_range_count; ++i) {
+         uint64_t base = sparse_ranges[2 * i];
+         uint64_t size = sparse_ranges[2 * i + 1];
+         if (address >= base && address - base < size) {
+            address += sparse_ro_offset;
+            break;
+         }
+      }
+   }
+
+   uint64_t null_address = *out_address;
+   uint64_t metadata = *out_bufinfo & 0xffff000000000000ul;
+   *out_address = address ? address : null_address;
+   *out_bufinfo = metadata |
+                  ((address && publish_unbounded) ? UINT32_MAX : 0);
+}
+
+/*
  * D3D12 predication applies to both draws and dispatches and reads a 64-bit
  * value. The command-list front end snapshots that value at SetPredication,
  * then uses this kernel to turn an ordinary indirect argument record into a

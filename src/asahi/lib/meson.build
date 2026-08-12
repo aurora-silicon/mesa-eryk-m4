@@ -32,6 +32,8 @@ if asahi_lib_is_windows
     'agx_d3dkmt_core.c',
     'agx_d3dkmt_core.h',
     'agx_d3dkmt_priv.h',
+    'agx_d3dkmt_runtime.c',
+    'agx_d3dkmt_runtime.h',
     'agx_device_d3dkmt.c',
     'agx_device_d3dkmt.h',
     'agx_sync_d3dkmt.c',

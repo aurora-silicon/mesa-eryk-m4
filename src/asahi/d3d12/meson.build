@@ -16,12 +16,15 @@ if not dep_dxheaders_d12.found()
 endif
 
 libd3d12agx_files = files(
+  'd12_core_caps.c',
+  'd12_dxbc_wrap.c',
   'd12_cmd.c',
   'd12_descriptor.c',
   'd12_device.c',
   'd12_fence.c',
   'd12_format.c',
   'd12_pipeline.c',
+  'd12_present_blt_math.c',
   'd12_query.c',
   'd12_queue.c',
   'd12_resource.c',
@@ -34,8 +37,14 @@ libd3d12agx_files = files(
 
 d12_is_windows = host_machine.system() == 'windows'
 if d12_is_windows
-  libd3d12agx_files += files('d12_platform_windows.c')
-  d12_platform_includes = []
+  libd3d12agx_files += files(
+    'd12_platform_windows.c',
+    'd12_device_runtime.c',
+  )
+  # d12_platform_windows.c includes the D3DKMT winsys interface, whose public
+  # header exposes the shared AppleAgxWddm wire contract.  libasahi_lib uses
+  # this include privately, so propagate it to this direct consumer too.
+  d12_platform_includes = [libasahi_lib_inc_win]
   d12_platform_deps = []
 else
   libd3d12agx_files += files('d12_platform_linux.c')
@@ -43,8 +52,8 @@ else
   d12_platform_deps = [dep_libdrm]
 endif
 
-libd3d12agx = shared_library(
-  'd3d12agx',
+libd3d12agx_core = static_library(
+  'd3d12agx_core',
   libd3d12agx_files,
   include_directories : [
     inc_include,
@@ -61,7 +70,6 @@ libd3d12agx = shared_library(
     idep_mesautil,
     idep_agx_pack,
     idep_libagx,
-    idep_libagx_shaders_h,
     idep_libpoly,
   ],
   link_with : [
@@ -70,10 +78,138 @@ libd3d12agx = shared_library(
   ],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
+  install : false,
+)
+
+# Keep the renderer implementation in one archive.  The public COM frontend
+# and the WDDM DDI frontend select different exports and object-lifetime glue,
+# but link the same compiler, pipeline, resource-layout and command encoder
+# implementation.  link_whole is intentional: the Windows .def files are the
+# roots that retain otherwise-unreferenced entrypoints from the archive.
+libd3d12agx = shared_library(
+  'd3d12agx',
+  link_whole : [libd3d12agx_core],
+  dependencies : [
+    dep_dxheaders_d12,
+    d12_platform_deps,
+    dep_valgrind,
+    idep_nir,
+    idep_mesautil,
+    idep_agx_pack,
+  ],
+  link_with : [
+    libasahi_lib, libasahi_layout, libasahi_compiler, libagx2_disasm,
+    libpoly_nir,
+  ],
   vs_module_defs : files('d3d12agx.def')[0],
   name_prefix : d12_is_windows ? '' : [],
   install : false,
 )
+
+if d12_is_windows
+  d12_umd_wdk_include = meson.get_external_property(
+    'd3d12_umd_wdk_include',
+    '',
+  )
+  d12_umd_generated_include = meson.get_external_property(
+    'd3d12_umd_generated_include',
+    '',
+  )
+
+  if d12_umd_wdk_include != '' and d12_umd_generated_include != ''
+    d12_umd_strict_args = cc.get_supported_arguments(
+      '-Wall',
+      '-Wextra',
+      '-Werror',
+      '-Wpedantic',
+      '-Wconversion',
+      '-Wshadow',
+      '-Wstrict-prototypes',
+      '-Wmissing-prototypes',
+      '-Wundef',
+      '-Wno-unknown-pragmas',
+      '-Wno-ignored-attributes',
+      '-Wno-microsoft-enum-forward-reference',
+      '-Wno-language-extension-token',
+      '-Wno-c23-extensions',
+    )
+    d12_umd_wdk_inc = include_directories(
+      d12_umd_wdk_include,
+      is_system : true,
+    )
+    d12_umd_generated_inc = include_directories(d12_umd_generated_include)
+
+    libd3d12agx_umd_glue = static_library(
+      'd3d12agx_umd_glue',
+      files(
+        'umd/d12_umd_abi.c',
+        'umd/d12_umd_kmt.c',
+        'umd/d12_umd_agx_transport.c',
+        'umd/d12_umd_backend.c',
+        'umd/d12_umd_command_core.c',
+        'umd/d12_umd_command_funcs.c',
+        'umd/d12_umd_pipeline_serialization.c',
+        'umd/d12_umd_pipeline_library.c',
+        'umd/d12_umd_state_funcs.c',
+        'umd/d12_umd_pipeline_funcs.c',
+        'umd/d12_umd_queue_runtime.c',
+        'umd/d12_umd_resource_private.c',
+        'umd/d12_umd_device_funcs.c',
+        'umd/d12_umd_descriptor_funcs.c',
+        'umd/d12_umd_query_funcs.c',
+        'umd/d12_umd_resource_command_funcs.c',
+        'umd/d12_umd_present_funcs.c',
+        'umd/d12_umd_tables.c',
+        'umd/d12_umd_adapter.c',
+      ),
+      include_directories : [
+        inc_include,
+        inc_src,
+        inc_asahi,
+        include_directories('../isa'),
+        d12_platform_includes,
+        d12_umd_wdk_inc,
+        d12_umd_generated_inc,
+      ],
+      dependencies : [dep_dxheaders_d12],
+      c_args : [
+        no_override_init_args,
+        d12_umd_strict_args,
+        '-UWIN32_LEAN_AND_MEAN',
+        '-DNTDDI_VERSION=0x0A000010',
+        '-DD12_UMD_WITH_AGX_BACKEND=1',
+      ],
+      gnu_symbol_visibility : 'hidden',
+      install : false,
+    )
+
+    libd3d12agx_umd = shared_library(
+      'd3d12agx_umd',
+      dependencies : [
+        dep_dxheaders_d12,
+        d12_platform_deps,
+        dep_valgrind,
+        idep_nir,
+        idep_mesautil,
+        idep_agx_pack,
+      ],
+      link_whole : [libd3d12agx_core, libd3d12agx_umd_glue],
+      link_with : [
+        libasahi_lib, libasahi_layout, libasahi_compiler, libagx2_disasm,
+        libpoly_nir,
+      ],
+      gnu_symbol_visibility : 'hidden',
+      vs_module_defs : files('umd/d3d12agx_umd.def')[0],
+      name_prefix : '',
+      install : false,
+    )
+  else
+    warning(
+      'D3D12 WDDM UMD target disabled: set d3d12_umd_wdk_include and ' +
+      'd3d12_umd_generated_include in the Windows cross file',
+    )
+  endif
+endif
 
 d3d12agx_g1_smoke = executable(
   'd3d12agx_g1_smoke',

@@ -8,11 +8,12 @@
  * natively (macOS/Linux, no Windows, no GPU, no miniport) by
  * gpu/honeykrisp-port/tests/run-host-tests.sh.
  *
- * These cover exactly the four places where an AGX concept and a WDDM concept
+ * These cover the places where an AGX concept and a WDDM concept
  * do not line up, because those are the places a wrong answer is silent:
- * handle spaces, VM_BIND expansion, binary-syncobj epochs, and absolute ->
- * relative timeout conversion. Everything else in the winsys is a D3DKMT call
- * whose behaviour cannot be known until the miniport exists.
+ * handle spaces and DXGI identity rotation, VM_BIND expansion,
+ * binary-syncobj epochs, and absolute -> relative timeout conversion.
+ * Everything else in the winsys is a D3DKMT call whose behaviour cannot be
+ * known until the miniport exists.
  */
 
 #include "agx_d3dkmt_core.h"
@@ -104,6 +105,7 @@ test_handle_pool_is_dense(void)
    CHECK_EQ(got.allocation, shared.allocation);
    CHECK_EQ(got.resource, shared.resource);
    CHECK_EQ(got.global_share, shared.global_share);
+   CHECK_EQ(got.runtime_resource, shared.runtime_resource);
    CHECK_EQ(got.external_type, shared.external_type);
    memset(&got, 0, sizeof(got));
    CHECK(agx_d3dkmt_pool_release_record(&pool, shared_dense, &got));
@@ -116,12 +118,88 @@ test_handle_pool_is_dense(void)
    shared.global_share = 0;
    CHECK_EQ(agx_d3dkmt_pool_alloc_record(&pool, &shared), 0);
 
+   /* D3D runtime resources preserve their pointer-width lifetime token and
+    * cannot be confused with externally shared resources. */
+   struct agx_d3dkmt_allocation_record runtime_owned = {
+      .allocation = 0x40001234u,
+      .resource = 0x50001234u,
+      .runtime_resource = UINT64_C(0x1234567887654321),
+   };
+   uint32_t runtime_dense =
+      agx_d3dkmt_pool_alloc_record(&pool, &runtime_owned);
+   CHECK(runtime_dense != 0);
+   CHECK(agx_d3dkmt_pool_release_record(&pool, runtime_dense, &got));
+   CHECK_EQ(got.runtime_resource, runtime_owned.runtime_resource);
+   runtime_owned.resource = 0;
+   CHECK_EQ(agx_d3dkmt_pool_alloc_record(&pool, &runtime_owned), 0);
+   runtime_owned.resource = 0x50001234u;
+   runtime_owned.external_type = AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32;
+   CHECK_EQ(agx_d3dkmt_pool_alloc_record(&pool, &runtime_owned), 0);
+
    /* Churn: 4000 create/destroy cycles must not grow the dense space. */
    for (unsigned i = 0; i < 4000; ++i) {
       uint32_t h = agx_d3dkmt_pool_alloc(&pool, 0x40000000u + i);
       CHECK(h <= 6);
       CHECK_EQ(agx_d3dkmt_pool_release(&pool, h), 0x40000000u + i);
    }
+
+   agx_d3dkmt_pool_finish(&pool);
+}
+
+static void
+test_runtime_resource_identity_rotation(void)
+{
+   struct agx_d3dkmt_handle_pool pool;
+   struct agx_d3dkmt_allocation_record records[3];
+   uint32_t dense[3];
+   agx_d3dkmt_pool_init(&pool);
+
+   for (uint32_t i = 0; i < 3; ++i) {
+      records[i] = (struct agx_d3dkmt_allocation_record){
+         .allocation = 0x41000000u + i,
+         .resource = 0x51000000u + i,
+         .runtime_resource = UINT64_C(0x7100000000000000) + i,
+      };
+      dense[i] = agx_d3dkmt_pool_alloc_record(&pool, &records[i]);
+      CHECK(dense[i] != 0);
+   }
+
+   CHECK(agx_d3dkmt_pool_rotate_runtime_identities(&pool, dense, 3));
+   for (uint32_t i = 0; i < 3; ++i) {
+      struct agx_d3dkmt_allocation_record got;
+      const uint32_t source = (i + 1) % 3;
+      CHECK(agx_d3dkmt_pool_get_record(&pool, dense[i], &got));
+      CHECK_EQ(got.allocation, records[source].allocation);
+      CHECK_EQ(got.resource, records[source].resource);
+      CHECK_EQ(got.runtime_resource, records[i].runtime_resource);
+      CHECK_EQ(got.external_type, AGX_D3DKMT_EXTERNAL_MEMORY_NONE);
+   }
+
+   /* Duplicate, foreign and dead entries are rejected transactionally. */
+   uint32_t duplicate[] = {dense[0], dense[0]};
+   struct agx_d3dkmt_allocation_record before;
+   struct agx_d3dkmt_allocation_record after;
+   CHECK(agx_d3dkmt_pool_get_record(&pool, dense[0], &before));
+   CHECK(!agx_d3dkmt_pool_rotate_runtime_identities(&pool, duplicate, 2));
+   CHECK(agx_d3dkmt_pool_get_record(&pool, dense[0], &after));
+   CHECK(memcmp(&before, &after, sizeof(before)) == 0);
+
+   struct agx_d3dkmt_allocation_record external = {
+      .allocation = 0x42000000u,
+      .resource = 0x52000000u,
+      .external_type = AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32,
+   };
+   uint32_t external_dense =
+      agx_d3dkmt_pool_alloc_record(&pool, &external);
+   uint32_t mixed[] = {dense[0], external_dense};
+   CHECK(external_dense != 0);
+   CHECK(!agx_d3dkmt_pool_rotate_runtime_identities(&pool, mixed, 2));
+   CHECK(!agx_d3dkmt_pool_rotate_runtime_identities(&pool,
+                                                     (uint32_t[]){dense[0],
+                                                                  UINT32_MAX},
+                                                     2));
+   CHECK(agx_d3dkmt_pool_rotate_runtime_identities(&pool, NULL, 0));
+   CHECK(agx_d3dkmt_pool_rotate_runtime_identities(&pool, dense, 1));
 
    agx_d3dkmt_pool_finish(&pool);
 }
@@ -846,6 +924,17 @@ test_alloc_flags(void)
    CHECK(kmt & AGX_KMT_CREATEALLOC_CREATESHARED);
    CHECK(!(kmt & AGX_KMT_CREATEALLOC_NTSECURITYSHARING));
 
+   /* A runtime resource is already owned by dxgkrnl.  Shareability belongs
+    * only in agxw_alloc_private for this callback path; attempting a second
+    * CreateResource/CreateShared operation would be rejected by the D3D12
+    * core-layer callback bridge. */
+   uint32_t runtime = agx_d3dkmt_create_flags_runtime_resource(
+      AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE);
+   CHECK_EQ(runtime, AGX_KMT_CREATEALLOC_ALLOWNOTZEROED);
+   CHECK(!(runtime & AGX_KMT_CREATEALLOC_CREATERESOURCE));
+   CHECK(!(runtime & AGX_KMT_CREATEALLOC_CREATESHARED));
+   CHECK(!(runtime & AGX_KMT_CREATEALLOC_NTSECURITYSHARING));
+
    /* ExistingSysMem is refused by the miniport (CONTRACT.md SS3.6) because
     * AGX BOs must be 16 KiB physically chunked. Never request it. */
    CHECK(!(agx_d3dkmt_create_flags(0xFFFFFFFFu) &
@@ -921,6 +1010,7 @@ int
 main(void)
 {
    test_handle_pool_is_dense();
+   test_runtime_resource_identity_rotation();
    test_bind_plain();
    test_bind_unbind();
    test_bind_alignment_is_rejected();

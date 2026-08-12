@@ -263,6 +263,10 @@ struct agx_device {
       /* Current size of the BO cache in bytes (sum of sizes of cached BOs) */
       size_t size;
 
+      /* Monotonic CPU-side trim epoch. Cached BOs stamped before the current
+       * epoch were not referenced during the latest periodic interval. */
+      uint64_t trim_generation;
+
       /* Number of hits/misses for the BO cache */
       uint64_t hits, misses;
    } bo_cache;

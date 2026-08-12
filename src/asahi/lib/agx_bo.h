@@ -78,6 +78,11 @@ struct agx_bo {
    /* The time this BO was used last, so we can evict stale BOs. */
    time_t last_used;
 
+   /* BO-cache generation in which this allocation was last returned to the
+    * cache.  WDDM periodic trim uses this to retain allocations referenced
+    * since the previous trim while releasing an older idle generation. */
+   uint64_t cache_generation;
+
    /* Creation attributes */
    enum agx_bo_flags flags;
    size_t size;
@@ -143,3 +148,5 @@ struct agx_bo *agx_bo_cache_fetch(struct agx_device *dev, size_t size,
                                   size_t align, uint32_t flags,
                                   const bool dontwait);
 void agx_bo_cache_evict_all(struct agx_device *dev);
+size_t agx_bo_cache_trim(struct agx_device *dev, bool periodic,
+                         bool restart_periodic, size_t bytes_to_trim);
