@@ -1049,6 +1049,43 @@ test_read_range_canonicalization(void)
 }
 
 static void
+test_exact_read_set_transport(void)
+{
+   CHECK_EQ(sizeof(struct agx_submit_read_range), 16);
+   CHECK_EQ(offsetof(struct agx_submit_read_range, gpu_va), 0);
+   CHECK_EQ(offsetof(struct agx_submit_read_range, length), 8);
+   CHECK_EQ(AGX_SUBMIT_VIRT_READ_SET_COMPLETE, 1);
+   CHECK_EQ(AGX_SUBMIT_VIRT_VALID_FLAGS,
+            AGX_SUBMIT_VIRT_READ_SET_COMPLETE);
+
+   const struct agx_submit_read_range exact[] = {
+      {UINT64_C(0x1500080000), UINT64_C(0x4000)},
+      {UINT64_C(0x1500000000), UINT64_C(0x80000)},
+      {UINT64_C(0x1100000000), UINT64_C(0x4000)},
+   };
+   struct agxw_submit_read_range ranges[4] = {
+      {UINT64_C(0x1400000000), UINT64_C(0x4000)},
+   };
+   uint32_t count = 1;
+
+   CHECK_EQ(agx_d3dkmt_read_set_add_exact(
+               ranges, &count, 4, exact, 3),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(count, 3);
+   CHECK_EQ(ranges[0].gpu_va, UINT64_C(0x1100000000));
+   CHECK_EQ(ranges[1].gpu_va, UINT64_C(0x1400000000));
+   CHECK_EQ(ranges[2].gpu_va, UINT64_C(0x1500000000));
+   CHECK_EQ(ranges[2].length, UINT64_C(0x84000));
+
+   CHECK(agx_d3dkmt_read_set_add_exact(ranges, &count, 4, NULL, 1) !=
+         AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_read_set_add_exact(ranges, &count, 4, exact, 5) !=
+         AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_read_set_add_exact(NULL, &count, 4, exact, 1) !=
+         AGX_D3DKMT_OK);
+}
+
+static void
 test_contract_blobs_we_emit(void)
 {
    /* Every blob this port hands the kernel must pass the kernel's own
@@ -1158,6 +1195,7 @@ main(void)
    test_alloc_flags();
    test_bo_read_ranges_are_absolute();
    test_read_range_canonicalization();
+   test_exact_read_set_transport();
    test_contract_blobs_we_emit();
 
    if (failures) {

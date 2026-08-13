@@ -42,6 +42,7 @@
 #include <stdint.h>
 
 #include "agx_d3dkmt.h"
+#include "agx_submit_virt.h"
 #include "agxw_contract.h"
 
 #ifdef __cplusplus
@@ -493,6 +494,14 @@ int agx_d3dkmt_bo_read_range(
 int agx_d3dkmt_read_range_add(struct agxw_submit_read_range *ranges,
                               uint32_t *count, uint32_t capacity,
                               uint64_t gpu_va, uint64_t length);
+
+/* Canonicalise a frontend's bounded, complete read vector into the KMD ABI
+ * representation. The source type is platform-neutral and the destination
+ * type comes directly from the shared UMD/KMD contract. */
+int agx_d3dkmt_read_set_add_exact(
+   struct agxw_submit_read_range *ranges, uint32_t *count,
+   uint32_t capacity, const struct agx_submit_read_range *exact,
+   uint32_t exact_count);
 
 #ifdef __cplusplus
 }

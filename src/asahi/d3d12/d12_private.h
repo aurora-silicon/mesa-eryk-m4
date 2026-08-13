@@ -1674,6 +1674,7 @@ struct d12_queue {
    struct d12_queue_op *retire_tail;
    struct agx_bo *signal_stream_bo;
    struct agx_bo *signal_usc_bo;
+   struct agx_bo *signal_program_bo;
    uint32_t signal_control_size;
    uint64_t signal_slots;
    uint32_t stop;

@@ -110,6 +110,26 @@ agx_d3dkmt_read_range_add(struct agxw_submit_read_range *ranges,
    return AGX_D3DKMT_OK;
 }
 
+int
+agx_d3dkmt_read_set_add_exact(
+   struct agxw_submit_read_range *ranges, uint32_t *count,
+   uint32_t capacity, const struct agx_submit_read_range *exact,
+   uint32_t exact_count)
+{
+   if (ranges == NULL || count == NULL || *count > capacity ||
+       exact_count > capacity || (exact_count != 0 && exact == NULL))
+      return AGX_D3DKMT_ERR_INVAL;
+
+   for (uint32_t i = 0; i < exact_count; ++i) {
+      int ret = agx_d3dkmt_read_range_add(
+         ranges, count, capacity, exact[i].gpu_va, exact[i].length);
+      if (ret != AGX_D3DKMT_OK)
+         return ret;
+   }
+
+   return AGX_D3DKMT_OK;
+}
+
 /* -------------------------------------------------------------------------
  * Handle pool.
  * ------------------------------------------------------------------------- */

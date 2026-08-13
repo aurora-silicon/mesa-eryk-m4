@@ -23,6 +23,7 @@
 #define AGX_SUBMIT_WRITE_SET_COMPLETE (1u << 31)
 #include "agx_bo.h"
 #include "agx_pack.h"
+#include "agx_submit_virt.h"
 #include "decode.h"
 #include "layout.h"
 #include "libagx_dgc.h"
@@ -90,6 +91,9 @@ struct agx_submit_virt {
    uint32_t extres_count;
    struct asahi_ccmd_submit_res *extres;
    uint32_t ring_idx;
+   uint32_t flags;
+   uint32_t read_range_count;
+   const struct agx_submit_read_range *read_ranges;
 };
 
 typedef struct {

@@ -2215,14 +2215,16 @@ staging_for(struct agx_device *dev, struct agx_d3dkmt_ctx *ctx, uint32_t size)
    return bo;
 }
 
-/* Publish a conservative superset of all CPU-writable storage the submitted
- * command stream may read. Whole mapped/shareable BOs keep the declaration
- * independent of shader reflection and cover command/control streams,
- * executables, descriptors, vertex/index/uniform/texture/indirect inputs and
- * cross-API shared storage. The KMD canonical vector is bounded, so overflow
- * fails before SubmitCommand rather than dropping coherency information. */
+/* Publish every CPU-authored range the command stream may read. A frontend
+ * can provide a proven-complete bounded vector; otherwise whole
+ * mapped/shareable BOs form a conservative superset independent of shader
+ * reflection and cover command/control streams, executables, descriptors,
+ * vertex/index/uniform/texture/indirect inputs and cross-API shared storage.
+ * The KMD canonical vector is bounded, so overflow fails before SubmitCommand
+ * rather than dropping coherency information. */
 static int
 d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
+                      const struct agx_submit_virt *virt,
                       struct agxw_submit_read_range *ranges,
                       uint32_t *range_count)
 {
@@ -2240,6 +2242,26 @@ d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
           ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
           range.gpu_va, range.length) != AGX_D3DKMT_OK)
       return -1;
+
+   if (virt != NULL &&
+       (virt->flags & ~AGX_SUBMIT_VIRT_VALID_FLAGS) != 0) {
+      errno = EINVAL;
+      return -1;
+   }
+
+   if (virt != NULL &&
+       (virt->flags & AGX_SUBMIT_VIRT_READ_SET_COMPLETE) != 0) {
+      int exact_ret = agx_d3dkmt_read_set_add_exact(
+         ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
+         virt->read_ranges, virt->read_range_count);
+      if (exact_ret != AGX_D3DKMT_OK) {
+         errno = exact_ret == AGX_D3DKMT_ERR_NOSPACE ? ENOSPC : EINVAL;
+         return -1;
+      }
+
+      *range_count = count;
+      return 0;
+   }
 
    simple_mtx_lock(&dev->bo_map_lock);
    for (uint32_t handle = 0; handle < dev->max_handle; ++handle) {
@@ -2310,8 +2332,6 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    struct agxw_submit_private_v3 *priv = NULL;
    uint32_t priv_size = 0;
    int ret = -1;
-
-   (void)virt; /* no vdrm concept here, same as the Linux drm backend */
 
    const uint32_t n_in = submit->in_sync_count;
    const uint32_t n_out = submit->out_sync_count;
@@ -2403,7 +2423,7 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    }
    struct agxw_submit_read_range *read_ranges =
       (struct agxw_submit_read_range *)(priv + 1);
-   if (d3dkmt_build_read_set(dev, staging, read_ranges,
+   if (d3dkmt_build_read_set(dev, staging, virt, read_ranges,
                              &priv->read_range_count))
       goto out;
 

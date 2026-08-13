@@ -398,6 +398,12 @@ The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
 - Submit coherency metadata uses each BO's exact mapped GPU VA. LOW_VA chooses
   the USC heap but never rebases the address; portable tests cover both heap
   bounds and the otherwise-silent double-base failure case.
+- A frontend-provided `agx_submit_virt` read vector bypasses the winsys's
+  O(total live allocations) conservative scan only when explicitly marked
+  complete. Placement-fence Signal uses the bounded fast path for its
+  control/argument arena, low-VA USC arena and immutable helper-program BO;
+  the winsys adds its own staging BO. General command lists keep the fallback
+  until descriptor, resource, executable and indirect reads are all tracked.
 - Context HANDLEs are stored at native pointer width in a bounded bridge table;
   renderer-side 32-bit IDs are tokens and never truncated HANDLE values.
 - Hot submission callbacks do fixed-field translation only. Heap allocation is

@@ -73,6 +73,9 @@ struct d12_queue_op {
    unsigned nr_vdm;
    unsigned nr_cdm;
    bool write_set_complete;
+   bool read_set_complete;
+   uint32_t exact_read_bo_count;
+   struct agx_bo *exact_read_bos[3];
    bool signal_slot_valid;
    uint32_t signal_slot;
    uint8_t inline_payload[2 * sizeof(struct drm_asahi_cmd_header) +
@@ -673,7 +676,7 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
    uint32_t common_control_size = 0;
    const uint32_t usc_size = agx_usc_size(15);
 
-   if (!program || !dev->params.max_attachments)
+   if (!program || !program->bo || !dev->params.max_attachments)
       return E_FAIL;
 
    stream = agx_bo_create(dev, D12_QUEUE_SIGNAL_ARENA_SIZE, 0,
@@ -732,6 +735,8 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
       goto fail;
    queue->signal_stream_bo = stream;
    queue->signal_usc_bo = usc;
+   agx_bo_reference(program->bo);
+   queue->signal_program_bo = program->bo;
    queue->signal_control_size = common_control_size;
    return S_OK;
 
@@ -748,8 +753,10 @@ d12_queue_signal_arena_cleanup(struct d12_queue *queue)
 
    agx_bo_unreference(dev, queue->signal_stream_bo);
    agx_bo_unreference(dev, queue->signal_usc_bo);
+   agx_bo_unreference(dev, queue->signal_program_bo);
    queue->signal_stream_bo = NULL;
    queue->signal_usc_bo = NULL;
+   queue->signal_program_bo = NULL;
    queue->signal_control_size = 0;
    queue->signal_slots = 0;
 }
@@ -785,7 +792,7 @@ d12_queue_prepare_placement_signal(struct d12_queue *queue,
    int slot;
 
    if (!fence || fence->count != 1 || !queue->signal_stream_bo ||
-       !queue->signal_usc_bo)
+       !queue->signal_usc_bo || !queue->signal_program_bo)
       return false;
 
    mtx_lock(&queue->lock);
@@ -855,6 +862,14 @@ d12_queue_prepare_placement_signal(struct d12_queue *queue,
           sizeof(command));
    op->nr_cdm = 1;
    op->write_set_complete = true;
+   /* libagx_write_u64 performs one store. Its complete read footprint is the
+    * control/argument stream, the USC records, and the pool BO containing
+    * immutable code/rodata. The destination belongs only to the write set. */
+   op->read_set_complete = true;
+   op->exact_read_bo_count = 3;
+   op->exact_read_bos[0] = queue->signal_stream_bo;
+   op->exact_read_bos[1] = queue->signal_usc_bo;
+   op->exact_read_bos[2] = queue->signal_program_bo;
    return true;
 }
 
@@ -921,6 +936,32 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    unsigned submitted_vdm = 0, submitted_cdm = 0;
    unsigned commands_remaining = command_count;
    int ret = 0;
+   struct agx_submit_read_range exact_read_ranges[3];
+   uint32_t exact_read_range_count = 0;
+
+   if (op->read_set_complete) {
+      if (op->exact_read_bo_count > ARRAY_SIZE(exact_read_ranges)) {
+         mesa_loge("command queue exact read set exceeds inline capacity");
+         device->removed = true;
+         device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         return false;
+      }
+
+      for (uint32_t i = 0; i < op->exact_read_bo_count; ++i) {
+         const struct agx_bo *bo = op->exact_read_bos[i];
+         if (!bo || !bo->va || !bo->size) {
+            mesa_loge("command queue exact read set contains invalid BO");
+            device->removed = true;
+            device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+            return false;
+         }
+         exact_read_ranges[exact_read_range_count++] =
+            (struct agx_submit_read_range){
+               .gpu_va = bo->va->addr,
+               .length = bo->size,
+            };
+      }
+   }
 
    while (commands_remaining) {
       bool first = commands_remaining == command_count;
@@ -996,7 +1037,14 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
          .cmdbuf = submit.cmdbuf + base_offs,
       };
 
-      struct agx_submit_virt virt = {.ring_idx = 0};
+      struct agx_submit_virt virt = {
+         .ring_idx = 0,
+         .flags = op->read_set_complete
+                     ? AGX_SUBMIT_VIRT_READ_SET_COMPLETE
+                     : 0,
+         .read_range_count = exact_read_range_count,
+         .read_ranges = exact_read_ranges,
+      };
       ret = dev->ops.submit(dev, &slice, &virt);
       if (ret)
          break;
@@ -1784,7 +1832,8 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
       return DXGI_ERROR_DEVICE_REMOVED;
    if (fence->count != 1)
       return E_NOTIMPL;
-   if (!queue->signal_stream_bo || !queue->signal_usc_bo)
+   if (!queue->signal_stream_bo || !queue->signal_usc_bo ||
+       !queue->signal_program_bo)
       return E_FAIL;
 
    op = calloc(1, sizeof(*op));
