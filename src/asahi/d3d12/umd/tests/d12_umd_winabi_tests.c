@@ -40,7 +40,23 @@ _Static_assert(sizeof(D3D12DDIARG_CREATEDEVICE_0003) == 48,
                "CREATEDEVICE_0003 width");
 _Static_assert(sizeof(DXGI_DDI_BASE_ARGS) == 16,
                "DXGI base arguments width");
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+_Static_assert(sizeof(D3DDDI_ADAPTERCALLBACKS) == 24,
+               "WDDM 2.4 adapter callback table width");
+_Static_assert(offsetof(D3DDDI_ADAPTERCALLBACKS,
+                        pfnQueryAdapterInfoCb2) == 16,
+               "WDDM 2.4 query-adapter-info2 callback offset");
+_Static_assert(sizeof(D3DDDICB_QUERYADAPTERINFO2) == 24,
+               "WDDM 2.4 query-adapter-info2 arguments width");
+_Static_assert(offsetof(D3DDDICB_QUERYADAPTERINFO2,
+                        pPrivateDriverData) == 8,
+               "WDDM 2.4 query-adapter-info2 data offset");
+_Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 504,
+               "WDDM 2.4.2 device callback table width");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
+                        pfnSubmitPresentBltToHwQueueCb) == 496,
+               "WDDM 2.4.2 present-blt callback tail offset");
+#elif D12_UMD_TARGETS_WDDM23_EXACT
 _Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 496,
                "WDDM 2.3 device callback table width");
 _Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnCreateHwContextCb) == 440,
@@ -116,6 +132,28 @@ _Static_assert(sizeof(D3D12DDI_RESOURCE_ALLOCATION_INFO_0022) == 48,
                "DDI 0022 resource allocation info width");
 _Static_assert(sizeof(D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032) == 16,
                "DDI 0032 immediate-write parameter width");
+#endif
+#if D12_UMD_TARGETS_WDDM24
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0040) == 768,
+               "DDI 0040 device table width");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040) == 464,
+               "DDI 0040 command-list table width");
+_Static_assert(sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0041) == 60,
+               "DDI 0041 options width");
+_Static_assert(sizeof(D3D12DDI_MEMORY_ARCHITECTURE_CAPS_0041) == 20,
+               "DDI 0041 memory-architecture caps width");
+_Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0042) == 44,
+               "DDI 0042 shader caps width");
+_Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_POOL_0040) == 4,
+               "DDI 0040 command-pool arguments width");
+_Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_RECORDER_0040) == 8,
+               "DDI 0040 command-recorder arguments width");
+_Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_LIST_0040) == 24,
+               "DDI 0040 command-list arguments width");
+_Static_assert(sizeof(D3D12DDIARG_RESETCOMMANDLIST_0040) == 24,
+               "DDI 0040 reset-command-list arguments width");
+_Static_assert(offsetof(D3D12DDIARG_RESETCOMMANDLIST_0040, ID) == 8,
+               "DDI 0040 reset-command-list id offset");
 #endif
 _Static_assert(sizeof(D3D12DDIARG_CREATECOMMANDALLOCATOR) == 16,
                "CREATECOMMANDALLOCATOR width");

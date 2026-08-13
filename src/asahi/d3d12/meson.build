@@ -164,7 +164,10 @@ if d12_is_windows
 
   if d12_umd_wdk_include != '' and d12_umd_generated_include != ''
     d12_umd_wddm_version = get_option('asahi-d3d12-wddm-version')
-    if d12_umd_wddm_version == '2.3'
+    if d12_umd_wddm_version == '2.4'
+      d12_umd_interface_version = '0x9001'
+      d12_umd_wddm_major = '24'
+    elif d12_umd_wddm_version == '2.3'
       d12_umd_interface_version = '0x8001'
       d12_umd_wddm_major = '23'
     elif d12_umd_wddm_version == '2.1'

@@ -38,6 +38,10 @@ _Static_assert(offsetof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0022,
                   sizeof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0003),
                "DDI 0022 core-callback prefix changed");
 #endif
+#if D12_UMD_TARGETS_WDDM24
+_Static_assert(D3D12DDI_SUPPORTED_0042 == D12_UMD_DDI_SUPPORTED_0042,
+               "pinned WDK D3D12 DDI 0042 value changed");
+#endif
 
 struct d12_umd_adapter {
    D3D12DDI_HRTADAPTER runtime_adapter;
@@ -272,7 +276,25 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_MEMORY_ARCHITECTURE: {
-      D3D12DDI_MEMORY_ARCHITECTURE_CAPS data = {
+#if D12_UMD_TARGETS_WDDM24
+      if (arguments->DataSize ==
+          sizeof(D3D12DDI_MEMORY_ARCHITECTURE_CAPS_0041)) {
+         const D3D12DDI_MEMORY_ARCHITECTURE_CAPS_0041 data = {
+            .UMA = caps->uma,
+            .IOCoherent = caps->cache_coherent_uma,
+            .CacheCoherent = caps->cache_coherent_uma,
+            .HeapSerializationTier =
+               D3D12DDI_HEAP_SERIALIZATION_TIER_0041_0,
+            .ResourceSerializationTier =
+               D3D12DDI_RESOURCE_SERIALIZATION_TIER_0041_0,
+         };
+         HRESULT result = d12_umd_validate_node_cap(arguments);
+         return FAILED(result)
+                   ? result
+                   : d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
+      const D3D12DDI_MEMORY_ARCHITECTURE_CAPS data = {
          .UMA = caps->uma,
          .IOCoherent = caps->cache_coherent_uma,
          .CacheCoherent = caps->cache_coherent_uma,
@@ -290,6 +312,40 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_D3D12_OPTIONS: {
+#if D12_UMD_TARGETS_WDDM24
+      if (arguments->DataSize ==
+          sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0041)) {
+         const D3D12DDI_D3D12_OPTIONS_DATA_0041 data = {
+            .ResourceBindingTier =
+               (D3D12DDI_RESOURCE_BINDING_TIER)caps->resource_binding_tier,
+            .ConservativeRasterizationTier =
+               D3D12DDI_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED,
+            .TiledResourcesTier =
+               (D3D12DDI_TILED_RESOURCES_TIER)caps->tiled_resources_tier,
+            .CrossNodeSharingTier =
+               D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
+            .VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation =
+               FALSE,
+            .OutputMergerLogicOp = FALSE,
+            .ResourceHeapTier =
+               (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
+            .DepthBoundsTestSupported = FALSE,
+            .ProgrammableSamplePositionsTier =
+               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+            .CopyQueueTimestampQueriesSupported =
+               caps->copy_queue_timestamp_queries,
+            .WriteBufferImmediateQueueFlags =
+               d12_umd_immediate_write_queue_flags(
+                  caps->write_buffer_immediate_support_flags),
+            .ViewInstancingTier =
+               D3D12DDI_VIEW_INSTANCING_TIER_NOT_SUPPORTED,
+            .BarycentricsSupported = FALSE,
+            .ReservedBufferPlacementSupported = FALSE,
+            .Deterministic64KBUndefinedSwizzle = FALSE,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
 #if D12_UMD_TARGETS_WDDM23
       if (arguments->DataSize ==
           sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0032)) {
@@ -352,6 +408,24 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_SHADER: {
+#if D12_UMD_TARGETS_WDDM24
+      if (arguments->DataSize == sizeof(D3D12DDI_SHADER_CAPS_0042)) {
+         const D3D12DDI_SHADER_CAPS_0042 data = {
+            .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
+            .DoubleOps = FALSE,
+            .ShaderSpecifiedStencilRef = FALSE,
+            .TypedUAVLoadAdditionalFormats = FALSE,
+            .ROVs = FALSE,
+            .WaveOps = FALSE,
+            .WaveLaneCountMin = 0,
+            .WaveLaneCountMax = 0,
+            .TotalLaneCount = 0,
+            .Int64Ops = FALSE,
+            .Native16BitOps = caps->native_16bit_shader_ops,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
 #if D12_UMD_TARGETS_WDDM21
       if (arguments->DataSize == sizeof(D3D12DDI_SHADER_CAPS_0012)) {
          const D3D12DDI_SHADER_CAPS_0012 data = {
@@ -487,21 +561,39 @@ OpenAdapter12(D3D12DDIARG_OPENADAPTER *arguments)
 {
    struct agxw_adapter_identity identity;
    struct d12_umd_adapter *adapter;
+#if D12_UMD_TARGETS_WDDM24
+   D3DDDICB_QUERYADAPTERINFO2 query;
+#else
    D3DDDICB_QUERYADAPTERINFO query;
+#endif
    HRESULT result;
 
    if (!arguments || !arguments->pAdapterCallbacks ||
+#if D12_UMD_TARGETS_WDDM24
+       !arguments->pAdapterCallbacks->pfnQueryAdapterInfoCb2 ||
+#else
        !arguments->pAdapterCallbacks->pfnQueryAdapterInfoCb ||
+#endif
        !arguments->pAdapterFuncs)
       return E_INVALIDARG;
 
    memset(&identity, 0, sizeof(identity));
+#if D12_UMD_TARGETS_WDDM24
+   query = (D3DDDICB_QUERYADAPTERINFO2){
+      .QueryType = D3DDDI_QUERYADAPTERTYPE_DRIVERPRIVATE,
+      .pPrivateDriverData = &identity,
+      .PrivateDriverDataSize = sizeof(identity),
+   };
+   result = arguments->pAdapterCallbacks->pfnQueryAdapterInfoCb2(
+      arguments->hRTAdapter.handle, &query);
+#else
    query = (D3DDDICB_QUERYADAPTERINFO){
       .pPrivateDriverData = &identity,
       .PrivateDriverDataSize = sizeof(identity),
    };
    result = arguments->pAdapterCallbacks->pfnQueryAdapterInfoCb(
       arguments->hRTAdapter.handle, &query);
+#endif
    if (FAILED(result))
       return result;
 

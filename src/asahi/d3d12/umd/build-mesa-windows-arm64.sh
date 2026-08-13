@@ -26,7 +26,8 @@ case $wddm_target in
     20) wddm_version=2.0; driver_version=20.17.240.0 ;;
     21) wddm_version=2.1; driver_version=21.17.240.0 ;;
     23) wddm_version=2.3; driver_version=23.17.240.0 ;;
-    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, or 23"; exit 2 ;;
+    24) wddm_version=2.4; driver_version=24.17.240.0 ;;
+    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, 23, or 24"; exit 2 ;;
 esac
 # Meson intentionally rejects absolute include paths that point back inside
 # its source tree.  Keep staged WDK/generated headers in the parent workspace

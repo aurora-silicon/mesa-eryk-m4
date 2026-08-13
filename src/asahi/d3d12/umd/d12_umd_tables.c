@@ -174,6 +174,30 @@ _Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032,
                   56u * sizeof(void *),
                "DDI 0032 immediate-write offset changed");
 #endif
+#if D12_UMD_TARGETS_WDDM24
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0040) ==
+                  96u * sizeof(void *),
+               "WDK 26100 DDI 0040 device table width changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0040,
+                        pfnCalcPrivateCommandPoolSize) ==
+                  29u * sizeof(void *),
+               "DDI 0040 command-pool table offset changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0040,
+                        pfnCalcPrivateCommandRecorderSize) ==
+                  92u * sizeof(void *),
+               "DDI 0040 command-recorder table offset changed");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040) ==
+                  58u * sizeof(void *),
+               "WDK 26100 DDI 0040 command-list table width changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040,
+                        pfnResetCommandList) ==
+                  sizeof(void *),
+               "DDI 0040 reset-command-list offset changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040,
+                        pfnSetViewInstanceMask) ==
+                  57u * sizeof(void *),
+               "DDI 0040 view-instance-mask offset changed");
+#endif
 _Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0010,
                         pfnCalcPrivatePipelineLibrarySize) ==
                   85u * sizeof(void *),
@@ -201,9 +225,11 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
    switch (table_type) {
    case D3D12DDI_TABLE_TYPE_DEVICE_CORE:
       if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0040)
+#elif D12_UMD_TARGETS_WDDM23_EXACT
           && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0030)
-#elif D12_UMD_TARGETS_WDDM21
+#elif D12_UMD_TARGETS_WDDM21_EXACT
           && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010) &&
           table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0013)
 #endif
@@ -241,7 +267,21 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
             d12_umd_install_pipeline_device_functions_0010(&release1);
             if (table_size == sizeof(release1)) {
                memcpy(table, &release1, sizeof(release1));
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+            } else {
+               D3D12DDI_DEVICE_FUNCS_CORE_0030 release3;
+               D3D12DDI_DEVICE_FUNCS_CORE_0040 *release4 = table;
+
+               memset(&release3, 0, sizeof(release3));
+               memcpy(&release3, &release1, sizeof(release1));
+               d12_umd_install_state_device_functions_0013(
+                  (D3D12DDI_DEVICE_FUNCS_CORE_0013 *)&release3);
+               d12_umd_install_device_core_functions_0030(&release3);
+               d12_umd_install_pipeline_device_functions_0030(&release3);
+               memcpy(release4, &release3, sizeof(release3));
+               d12_umd_install_command_device_functions_0040(release4);
+               d12_umd_install_pipeline_device_functions_0040(release4);
+#elif D12_UMD_TARGETS_WDDM23_EXACT
             } else {
                D3D12DDI_DEVICE_FUNCS_CORE_0030 *release3 = table;
                memcpy(release3, &release1, sizeof(release1));
@@ -249,7 +289,7 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
                   (D3D12DDI_DEVICE_FUNCS_CORE_0013 *)release3);
                d12_umd_install_device_core_functions_0030(release3);
                d12_umd_install_pipeline_device_functions_0030(release3);
-#elif D12_UMD_TARGETS_WDDM21
+#elif D12_UMD_TARGETS_WDDM21_EXACT
             } else {
                D3D12DDI_DEVICE_FUNCS_CORE_0013 *release1_root11 = table;
                memcpy(release1_root11, &release1, sizeof(release1));
@@ -262,7 +302,9 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
       return S_OK;
    case D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D:
       if (table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0003)
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+          && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040)
+#elif D12_UMD_TARGETS_WDDM23_EXACT
           && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)
 #endif
       )
@@ -280,7 +322,20 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
          d12_umd_install_present_command_list_functions(&baseline);
          memset(table, 0, table_size);
          memcpy(table, &baseline, sizeof(baseline));
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+         if (table_size == sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040)) {
+            D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 release3;
+            D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 *release4 = table;
+
+            memset(&release3, 0, sizeof(release3));
+            memcpy(&release3, &baseline, sizeof(baseline));
+            d12_umd_install_command_list_functions_0032(&release3);
+            d12_umd_install_resource_command_list_functions_0032(&release3);
+            d12_umd_install_present_command_list_functions_0032(&release3);
+            memcpy(release4, &release3, sizeof(release3));
+            d12_umd_install_command_list_functions_0040(release4);
+         }
+#elif D12_UMD_TARGETS_WDDM23_EXACT
          if (table_size == sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)) {
             D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *release3 = table;
             d12_umd_install_command_list_functions_0032(release3);

@@ -61,6 +61,22 @@ d12_umd_command_type(D3D12DDI_COMMAND_LIST_TYPE list_type,
                                         renderer_type);
 }
 
+#if D12_UMD_TARGETS_WDDM24
+static bool
+d12_umd_renderer_type_matches_queue(
+   enum d12_umd_renderer_command_type type,
+   D3D12DDI_COMMAND_QUEUE_FLAGS queue_flags)
+{
+   enum d12_umd_renderer_command_type translated;
+
+   if (type == D12_UMD_RENDERER_COMMAND_BUNDLE)
+      return queue_flags == D3D12DDI_COMMAND_QUEUE_FLAG_3D;
+   return d12_umd_command_type(D3D12DDI_COMMAND_LIST_TYPE_DIRECT,
+                               queue_flags, &translated) &&
+          translated == type;
+}
+#endif
+
 static SIZE_T APIENTRY
 d12_umd_calc_private_command_allocator_size(
    D3D12DDI_HDEVICE handle,
@@ -161,7 +177,7 @@ d12_umd_command_list_arguments_valid(
        (arguments->NodeMask != 0 && arguments->NodeMask != 1) ||
        !d12_umd_command_list_flags_valid(
           (uint32_t)arguments->CommandListFlags,
-          device->interface_version == D3D12DDI_INTERFACE_VERSION_R1) ||
+          device->interface_version >= D3D12DDI_INTERFACE_VERSION_R1) ||
        !d12_umd_command_type(arguments->Type, arguments->QueueFlags, &type))
       return false;
 
@@ -187,6 +203,25 @@ d12_umd_calc_private_command_list_size(
    return d12_umd_command_list_arguments_valid(device, arguments, NULL, NULL)
              ? sizeof(struct d12_umd_command_list)
              : 0;
+}
+
+static HRESULT
+d12_umd_bind_command_list_runtime_table(
+   struct d12_umd_device *device, D3D12DDI_HRTCOMMANDLIST runtime_list)
+{
+   D3D12DDI_HRTTABLE runtime_table = {
+      .handle = device && device->command_list_3d_runtime_table
+                   ? InterlockedCompareExchangePointer(
+                        device->command_list_3d_runtime_table, NULL, NULL)
+                   : NULL,
+   };
+
+   if (!device || !runtime_list.handle || !runtime_table.handle ||
+       !device->core_callbacks.pfnSetCommandListDDITableCb)
+      return E_FAIL;
+   device->core_callbacks.pfnSetCommandListDDITableCb(runtime_list,
+                                                       runtime_table);
+   return S_OK;
 }
 
 static HRESULT APIENTRY
@@ -225,24 +260,14 @@ d12_umd_create_command_list(
    list->type = type;
    list->runtime_list = arguments->hRTCommandList;
    list->id = arguments->ID;
-   {
-      /* FillDDITable's runtime handle selects the command-list dispatch table.
-       * The D3D12 core layer requires the UMD to bind that exact handle before
-       * returning the newly created command list to the runtime. */
-      D3D12DDI_HRTTABLE runtime_table = {
-         .handle = device->command_list_3d_runtime_table
-                      ? InterlockedCompareExchangePointer(
-                           device->command_list_3d_runtime_table, NULL, NULL)
-                      : NULL,
-      };
-      if (!runtime_table.handle ||
-          !device->core_callbacks.pfnSetCommandListDDITableCb) {
-         device->renderer_ops->destroy_command_list(list->backend);
-         SecureZeroMemory(list, sizeof(*list));
-         return E_FAIL;
-      }
-      device->core_callbacks.pfnSetCommandListDDITableCb(
-         arguments->hRTCommandList, runtime_table);
+   /* FillDDITable's runtime handle selects the command-list dispatch table.
+    * Bind that exact handle before publishing the new private object. */
+   result = d12_umd_bind_command_list_runtime_table(
+      device, arguments->hRTCommandList);
+   if (FAILED(result)) {
+      device->renderer_ops->destroy_command_list(list->backend);
+      SecureZeroMemory(list, sizeof(*list));
+      return result;
    }
    return S_OK;
 }
@@ -306,7 +331,7 @@ d12_umd_reset_command_list(
        allocator->type != list->type ||
        !d12_umd_command_list_flags_valid(
           (uint32_t)arguments->CommandListFlags,
-          device->interface_version == D3D12DDI_INTERFACE_VERSION_R1)) {
+          device->interface_version >= D3D12DDI_INTERFACE_VERSION_R1)) {
       d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
@@ -326,6 +351,369 @@ d12_umd_reset_command_list(
    list->slot = arguments->Slot;
    list->id = arguments->ID;
 }
+
+#if D12_UMD_TARGETS_WDDM24
+static bool
+d12_umd_command_pool_arguments_valid(
+   const D3D12DDIARG_CREATE_COMMAND_POOL_0040 *arguments)
+{
+   return arguments &&
+          arguments->PoolFlags == D3D12DDI_COMMAND_POOL_FLAG_NONE;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_command_pool_size_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_POOL_0040 *arguments)
+{
+   return d12_umd_device_from_handle(handle) &&
+                d12_umd_command_pool_arguments_valid(arguments)
+             ? sizeof(struct d12_umd_command_pool)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_command_pool_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_POOL_0040 *arguments,
+   D3D12DDI_HCOMMANDPOOL_0040 pool_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_pool *pool = pool_handle.pDrvPrivate;
+
+   if (!device || !pool || !d12_umd_command_pool_arguments_valid(arguments))
+      return E_INVALIDARG;
+   memset(pool, 0, sizeof(*pool));
+   InitializeSRWLock(&pool->lock);
+   pool->signature = D12_UMD_COMMAND_POOL_SIGNATURE;
+   pool->device = device;
+   return S_OK;
+}
+
+static void APIENTRY
+d12_umd_destroy_command_pool_0040(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HCOMMANDPOOL_0040 pool_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_pool *pool =
+      d12_umd_command_pool_from_handle(pool_handle);
+
+   if (!device || !pool || pool->device != device)
+      return;
+   if (device->renderer_ops &&
+       device->renderer_ops->destroy_command_allocator) {
+      for (UINT index = 0; index < D12_UMD_RENDERER_COMMAND_TYPE_COUNT;
+           ++index) {
+         if (pool->backends[index])
+            device->renderer_ops->destroy_command_allocator(
+               pool->backends[index]);
+      }
+   }
+   SecureZeroMemory(pool, sizeof(*pool));
+}
+
+static void APIENTRY
+d12_umd_reset_command_pool_0040(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HCOMMANDPOOL_0040 pool_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_pool *pool =
+      d12_umd_command_pool_from_handle(pool_handle);
+   HRESULT result;
+
+   if (!device || !pool || pool->device != device) {
+      d12_umd_command_set_error(device, E_INVALIDARG);
+      return;
+   }
+   AcquireSRWLockExclusive(&pool->lock);
+   for (UINT index = 0; index < D12_UMD_RENDERER_COMMAND_TYPE_COUNT;
+        ++index) {
+      if (pool->backends[index])
+         goto has_backend;
+   }
+   ReleaseSRWLockExclusive(&pool->lock);
+   return;
+
+has_backend:
+   if (!device->renderer_ops ||
+       !device->renderer_ops->reset_command_allocator) {
+      ReleaseSRWLockExclusive(&pool->lock);
+      d12_umd_command_set_error(device, E_NOTIMPL);
+      return;
+   }
+   result = S_OK;
+   for (UINT index = 0; index < D12_UMD_RENDERER_COMMAND_TYPE_COUNT;
+        ++index) {
+      if (pool->backends[index]) {
+         result = device->renderer_ops->reset_command_allocator(
+            pool->backends[index]);
+         if (FAILED(result))
+            break;
+      }
+   }
+   ReleaseSRWLockExclusive(&pool->lock);
+   if (FAILED(result))
+      d12_umd_command_set_error(device, result);
+}
+
+static bool
+d12_umd_command_list_arguments_valid_0040(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATE_COMMAND_LIST_0040 *arguments,
+   enum d12_umd_renderer_command_type *out_type)
+{
+   enum d12_umd_renderer_command_type type;
+
+   if (!device || !arguments ||
+       (arguments->NodeMask != 0 && arguments->NodeMask != 1) ||
+       !d12_umd_command_list_flags_valid(
+          (uint32_t)arguments->CommandListFlags, true) ||
+       !d12_umd_command_type(arguments->Type, arguments->QueueFlags, &type))
+      return false;
+   if (out_type)
+      *out_type = type;
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_command_list_size_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_LIST_0040 *arguments)
+{
+   return d12_umd_command_list_arguments_valid_0040(
+             d12_umd_device_from_handle(handle), arguments, NULL)
+             ? sizeof(struct d12_umd_command_list)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_command_list_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_LIST_0040 *arguments,
+   D3D12DDI_HCOMMANDLIST list_handle,
+   D3D12DDI_HRTCOMMANDLIST runtime_list)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_list *list = list_handle.pDrvPrivate;
+   enum d12_umd_renderer_command_type type;
+   HRESULT result;
+
+   if (!list || !runtime_list.handle ||
+       !d12_umd_command_list_arguments_valid_0040(device, arguments, &type))
+      return E_INVALIDARG;
+   if (!device->backend || !device->renderer_ops ||
+       !device->renderer_ops->create_command_list ||
+       !device->renderer_ops->destroy_command_list)
+      return E_NOTIMPL;
+
+   memset(list, 0, sizeof(*list));
+   list->signature = D12_UMD_COMMAND_LIST_SIGNATURE;
+   list->device = device;
+   list->type = type;
+   list->runtime_list = runtime_list;
+   list->id = arguments->ID;
+   result = d12_umd_bind_command_list_runtime_table(device, runtime_list);
+   if (FAILED(result)) {
+      SecureZeroMemory(list, sizeof(*list));
+      return result;
+   }
+   return S_OK;
+}
+
+static bool
+d12_umd_command_recorder_arguments_valid(
+   const D3D12DDIARG_CREATE_COMMAND_RECORDER_0040 *arguments)
+{
+   enum d12_umd_renderer_command_type unused;
+
+   return arguments &&
+          arguments->RecorderFlags ==
+             D3D12DDI_COMMAND_RECORDER_FLAG_NONE &&
+          d12_umd_command_type(D3D12DDI_COMMAND_LIST_TYPE_DIRECT,
+                               arguments->QueueFlags, &unused);
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_command_recorder_size_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_RECORDER_0040 *arguments)
+{
+   return d12_umd_device_from_handle(handle) &&
+                d12_umd_command_recorder_arguments_valid(arguments)
+             ? sizeof(struct d12_umd_command_recorder)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_command_recorder_0040(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_COMMAND_RECORDER_0040 *arguments,
+   D3D12DDI_HCOMMANDRECORDER_0040 recorder_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_recorder *recorder =
+      recorder_handle.pDrvPrivate;
+
+   if (!device || !recorder ||
+       !d12_umd_command_recorder_arguments_valid(arguments))
+      return E_INVALIDARG;
+   memset(recorder, 0, sizeof(*recorder));
+   recorder->signature = D12_UMD_COMMAND_RECORDER_SIGNATURE;
+   recorder->device = device;
+   recorder->queue_flags = arguments->QueueFlags;
+   return S_OK;
+}
+
+static void APIENTRY
+d12_umd_destroy_command_recorder_0040(
+   D3D12DDI_HDEVICE handle,
+   D3D12DDI_HCOMMANDRECORDER_0040 recorder_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_recorder *recorder =
+      d12_umd_command_recorder_from_handle(recorder_handle);
+
+   if (!device || !recorder || recorder->device != device)
+      return;
+   SecureZeroMemory(recorder, sizeof(*recorder));
+}
+
+static void APIENTRY
+d12_umd_command_recorder_set_pool_0040(
+   D3D12DDI_HDEVICE handle,
+   D3D12DDI_HCOMMANDRECORDER_0040 recorder_handle,
+   D3D12DDI_HCOMMANDPOOL_0040 pool_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_command_recorder *recorder =
+      d12_umd_command_recorder_from_handle(recorder_handle);
+   struct d12_umd_command_pool *pool =
+      d12_umd_command_pool_from_handle(pool_handle);
+
+   if (!device || !recorder || recorder->device != device || !pool ||
+       pool->device != device) {
+      d12_umd_command_set_error(device, E_INVALIDARG);
+      return;
+   }
+   InterlockedExchangePointer((PVOID volatile *)&recorder->target, pool);
+}
+
+static HRESULT
+d12_umd_command_pool_allocator(
+   struct d12_umd_command_pool *pool,
+   enum d12_umd_renderer_command_type type,
+   void **out_allocator)
+{
+   struct d12_umd_device *device = pool ? pool->device : NULL;
+   void *backend = NULL;
+   HRESULT result;
+
+   if (!pool || !device || !out_allocator ||
+       (UINT)type >= D12_UMD_RENDERER_COMMAND_TYPE_COUNT)
+      return E_INVALIDARG;
+   *out_allocator = NULL;
+   if (!device->backend || !device->renderer_ops ||
+       !device->renderer_ops->create_command_allocator ||
+       !device->renderer_ops->destroy_command_allocator)
+      return E_NOTIMPL;
+
+   AcquireSRWLockShared(&pool->lock);
+   backend = pool->backends[type];
+   ReleaseSRWLockShared(&pool->lock);
+   if (backend) {
+      *out_allocator = backend;
+      return S_OK;
+   }
+
+   AcquireSRWLockExclusive(&pool->lock);
+   backend = pool->backends[type];
+   if (backend) {
+      ReleaseSRWLockExclusive(&pool->lock);
+      *out_allocator = backend;
+      return S_OK;
+   }
+   result = device->renderer_ops->create_command_allocator(
+      device->backend, type, &backend);
+   result = d12_umd_renderer_object_result(
+      result, &backend, device->renderer_ops->destroy_command_allocator);
+   if (FAILED(result)) {
+      ReleaseSRWLockExclusive(&pool->lock);
+      return result;
+   }
+   pool->backends[type] = backend;
+   ReleaseSRWLockExclusive(&pool->lock);
+   *out_allocator = backend;
+   return S_OK;
+}
+
+static void APIENTRY
+d12_umd_reset_command_list_0040(
+   D3D12DDI_HCOMMANDLIST list_handle,
+   const D3D12DDIARG_RESETCOMMANDLIST_0040 *arguments)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   struct d12_umd_command_recorder *recorder =
+      arguments ? d12_umd_command_recorder_from_handle(
+                     arguments->hDrvCommandRecorder)
+                : NULL;
+   struct d12_umd_device *device = list ? list->device : NULL;
+   struct d12_umd_command_pool *pool =
+      recorder ? InterlockedCompareExchangePointer(
+                    (PVOID volatile *)&recorder->target, NULL, NULL)
+               : NULL;
+   void *allocator = NULL;
+   HRESULT result;
+
+   if (!list || !arguments || !device || !recorder ||
+       recorder->device != device || !pool || pool->device != device ||
+       !d12_umd_renderer_type_matches_queue(list->type,
+                                             recorder->queue_flags) ||
+       !d12_umd_command_list_flags_valid(
+          (uint32_t)arguments->CommandListFlags, true)) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+   result = d12_umd_command_pool_allocator(pool, list->type, &allocator);
+   if (FAILED(result)) {
+      d12_umd_command_list_set_error(list, result);
+      return;
+   }
+   if (!device->renderer_ops || !device->renderer_ops->create_command_list ||
+       !device->renderer_ops->destroy_command_list ||
+       !device->renderer_ops->reset_command_list) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
+
+   if (!list->backend) {
+      result = device->renderer_ops->create_command_list(
+         device->backend, list->type, allocator, &list->backend);
+      result = d12_umd_renderer_object_result(
+         result, &list->backend, device->renderer_ops->destroy_command_list);
+   } else {
+      result = device->renderer_ops->reset_command_list(list->backend,
+                                                         allocator);
+   }
+   if (FAILED(result)) {
+      d12_umd_command_list_set_error(list, result);
+      return;
+   }
+   list->allocator = NULL;
+   list->slot = 0;
+   list->id = arguments->ID;
+}
+
+static void APIENTRY
+d12_umd_set_view_instance_mask_unsupported(
+   D3D12DDI_HCOMMANDLIST list_handle, UINT mask)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   (void)mask;
+   d12_umd_command_list_set_error(list, E_NOTIMPL);
+}
+#endif
 
 static void APIENTRY
 d12_umd_draw_instanced(D3D12DDI_HCOMMANDLIST list_handle,
@@ -659,6 +1047,37 @@ d12_umd_write_buffer_immediate(
    }
    if (FAILED(result))
       d12_umd_command_list_set_error(list, result);
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM24
+void
+d12_umd_install_command_device_functions_0040(
+   D3D12DDI_DEVICE_FUNCS_CORE_0040 *table)
+{
+   table->pfnCalcPrivateCommandPoolSize =
+      d12_umd_calc_private_command_pool_size_0040;
+   table->pfnCreateCommandPool = d12_umd_create_command_pool_0040;
+   table->pfnDestroyCommandPool = d12_umd_destroy_command_pool_0040;
+   table->pfnResetCommandPool = d12_umd_reset_command_pool_0040;
+   table->pfnCalcPrivateCommandListSize =
+      d12_umd_calc_private_command_list_size_0040;
+   table->pfnCreateCommandList = d12_umd_create_command_list_0040;
+   table->pfnCalcPrivateCommandRecorderSize =
+      d12_umd_calc_private_command_recorder_size_0040;
+   table->pfnCreateCommandRecorder = d12_umd_create_command_recorder_0040;
+   table->pfnDestroyCommandRecorder = d12_umd_destroy_command_recorder_0040;
+   table->pfnCommandRecorderSetCommandPoolAsTarget =
+      d12_umd_command_recorder_set_pool_0040;
+}
+
+void
+d12_umd_install_command_list_functions_0040(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 *table)
+{
+   table->pfnResetCommandList = d12_umd_reset_command_list_0040;
+   table->pfnSetViewInstanceMask =
+      d12_umd_set_view_instance_mask_unsupported;
 }
 #endif
 

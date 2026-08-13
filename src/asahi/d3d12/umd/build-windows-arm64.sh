@@ -27,7 +27,8 @@ case $wddm_target in
     20) umd_interface=0x5002; driver_version=20.17.240.0 ;;
     21) umd_interface=0x6003; driver_version=21.17.240.0 ;;
     23) umd_interface=0x8001; driver_version=23.17.240.0 ;;
-    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, or 23"; exit 2 ;;
+    24) umd_interface=0x9001; driver_version=24.17.240.0 ;;
+    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, 23, or 24"; exit 2 ;;
 esac
 
 for required in "$cc" "$readobj" "$windres" \

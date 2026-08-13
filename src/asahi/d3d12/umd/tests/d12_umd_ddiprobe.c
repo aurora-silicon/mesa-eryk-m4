@@ -23,13 +23,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0040 d12_test_extended_device_table;
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0040 d12_test_root_device_table;
+typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 d12_test_command_list_table;
+typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0022 d12_test_core_callbacks;
+typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014
+   d12_test_debug_kmt_allocation_info;
+#define D12_TEST_PRIMARY_INTERFACE D3D12DDI_INTERFACE_VERSION_R4
+#define D12_TEST_PRIMARY_BUILD D3D12DDI_BUILD_VERSION_0042
+#elif D12_UMD_TARGETS_WDDM23_EXACT
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0030 d12_test_extended_device_table;
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0030 d12_test_root_device_table;
 typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 d12_test_command_list_table;
 typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0022 d12_test_core_callbacks;
 typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014
    d12_test_debug_kmt_allocation_info;
+#define D12_TEST_PRIMARY_INTERFACE D3D12DDI_INTERFACE_VERSION_R3
+#define D12_TEST_PRIMARY_BUILD D3D12DDI_BUILD_VERSION_0032
 #else
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0010 d12_test_extended_device_table;
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0013 d12_test_root_device_table;
@@ -37,6 +48,8 @@ typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 d12_test_command_list_table;
 typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 d12_test_core_callbacks;
 typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012
    d12_test_debug_kmt_allocation_info;
+#define D12_TEST_PRIMARY_INTERFACE D3D12DDI_INTERFACE_VERSION
+#define D12_TEST_PRIMARY_BUILD D3D12DDI_BUILD_VERSION
 #endif
 
 #define TEST_RT_QUEUE ((HANDLE)(uintptr_t)0x7000)
@@ -779,6 +792,7 @@ static const struct d12_umd_renderer_ops test_blt_renderer_ops = {
    .present_blt = test_blt_record,
 };
 
+#if !D12_UMD_TARGETS_WDDM24
 static HRESULT APIENTRY
 query_adapter_info(HANDLE runtime_adapter,
                    const D3DDDICB_QUERYADAPTERINFO *query)
@@ -793,6 +807,26 @@ query_adapter_info(HANDLE runtime_adapter,
    memcpy(query->pPrivateDriverData, identity, sizeof(*identity));
    return S_OK;
 }
+#endif
+
+#if D12_UMD_TARGETS_WDDM24
+static HRESULT APIENTRY
+query_adapter_info2(HANDLE runtime_adapter,
+                    const D3DDDICB_QUERYADAPTERINFO2 *query)
+{
+   const struct agxw_adapter_identity *identity =
+      (const struct agxw_adapter_identity *)runtime_adapter;
+
+   if (!identity || !query ||
+       query->QueryType != D3DDDI_QUERYADAPTERTYPE_DRIVERPRIVATE ||
+       !query->pPrivateDriverData ||
+       query->PrivateDriverDataSize != sizeof(*identity))
+      return E_INVALIDARG;
+
+   memcpy(query->pPrivateDriverData, identity, sizeof(*identity));
+   return S_OK;
+}
+#endif
 
 static HRESULT APIENTRY
 unused_allocate(HANDLE runtime_device, D3DDDICB_ALLOCATE *arguments)
@@ -1299,7 +1333,11 @@ wmain(int argc, wchar_t **argv)
       .params_blob_size = AGXW_PARAMS_GLOBAL_SIZE,
    };
    const D3DDDI_ADAPTERCALLBACKS callbacks = {
+#if D12_UMD_TARGETS_WDDM24
+      .pfnQueryAdapterInfoCb2 = query_adapter_info2,
+#else
       .pfnQueryAdapterInfoCb = query_adapter_info,
+#endif
    };
    D3D12DDI_ADAPTERFUNCS functions;
    D3D12DDIARG_OPENADAPTER open_arguments;
@@ -1442,8 +1480,9 @@ wmain(int argc, wchar_t **argv)
    {
       UINT32 count = 0;
       UINT64 versions[4] = {0};
-      const UINT32 expected_count = D12_UMD_TARGETS_WDDM23 ? 2u :
-         (D12_UMD_TARGETS_WDDM21 ? 4u : 1u);
+      const UINT32 expected_count = D12_UMD_TARGETS_WDDM24 ? 2u :
+         (D12_UMD_TARGETS_WDDM23_EXACT ? 2u :
+            (D12_UMD_TARGETS_WDDM21_EXACT ? 4u : 1u));
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, NULL);
       require_result(result == S_OK && count == expected_count,
@@ -1459,7 +1498,10 @@ wmain(int argc, wchar_t **argv)
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, versions);
       require_result(result == S_OK && count == expected_count &&
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+                        versions[0] == D3D12DDI_SUPPORTED_0042 &&
+                        versions[1] == D3D12DDI_SUPPORTED_0003,
+#elif D12_UMD_TARGETS_WDDM23_EXACT
                         versions[0] == D3D12DDI_SUPPORTED_0032 &&
                         versions[1] == D3D12DDI_SUPPORTED_0003,
 #elif D12_UMD_TARGETS_WDDM21
@@ -1487,6 +1529,29 @@ wmain(int argc, wchar_t **argv)
                         data.CacheCoherent,
                      "memory architecture caps");
    }
+
+#if D12_UMD_TARGETS_WDDM24
+   {
+      UINT node = 0;
+      D3D12DDI_MEMORY_ARCHITECTURE_CAPS_0041 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_MEMORY_ARCHITECTURE,
+         .pInfo = &node,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK && data.UMA && data.IOCoherent &&
+            data.CacheCoherent &&
+            data.HeapSerializationTier ==
+               D3D12DDI_HEAP_SERIALIZATION_TIER_0041_0 &&
+            data.ResourceSerializationTier ==
+               D3D12DDI_RESOURCE_SERIALIZATION_TIER_0041_0,
+         "DDI 0041 memory architecture caps");
+   }
+#endif
 
    {
       D3D12DDI_ARCHITECTURE_INFO_DATA data;
@@ -1536,6 +1601,33 @@ wmain(int argc, wchar_t **argv)
                 D3D12DDI_COMMAND_QUEUE_FLAG_COMPUTE |
                 D3D12DDI_COMMAND_QUEUE_FLAG_COPY),
          "DDI 0032 cumulative option caps");
+   }
+#endif
+
+#if D12_UMD_TARGETS_WDDM24
+   {
+      D3D12DDI_D3D12_OPTIONS_DATA_0041 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_D3D12_OPTIONS,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK && data.ResourceBindingTier == 1 &&
+            data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            data.CopyQueueTimestampQueriesSupported &&
+            data.WriteBufferImmediateQueueFlags ==
+               (D3D12DDI_COMMAND_QUEUE_FLAG_3D |
+                D3D12DDI_COMMAND_QUEUE_FLAG_COMPUTE |
+                D3D12DDI_COMMAND_QUEUE_FLAG_COPY) &&
+            data.ViewInstancingTier ==
+               D3D12DDI_VIEW_INSTANCING_TIER_NOT_SUPPORTED &&
+            !data.BarycentricsSupported &&
+            !data.ReservedBufferPlacementSupported &&
+            !data.Deterministic64KBUndefinedSwizzle,
+         "DDI 0041 cumulative option caps");
    }
 #endif
 
@@ -1624,6 +1716,28 @@ wmain(int argc, wchar_t **argv)
       }
    }
 
+#if D12_UMD_TARGETS_WDDM24
+   {
+      D3D12DDI_SHADER_CAPS_0042 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_SHADER,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK &&
+            data.MinPrecision == D3D12DDI_SHADER_MIN_PRECISION_NONE &&
+            !data.DoubleOps && !data.ShaderSpecifiedStencilRef &&
+            !data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
+            !data.WaveOps && data.WaveLaneCountMin == 0 &&
+            data.WaveLaneCountMax == 0 && data.TotalLaneCount == 0 &&
+            !data.Int64Ops && data.Native16BitOps,
+         "DDI 0042 native 16-bit shader caps");
+   }
+#endif
+
    {
       UINT count = 0;
 #if D12_UMD_TARGETS_WDDM21
@@ -1657,8 +1771,8 @@ wmain(int argc, wchar_t **argv)
 
    {
       D3D12DDIARG_CALCPRIVATEDEVICESIZE size_arguments = {
-         .Interface = D3D12DDI_INTERFACE_VERSION,
-         .Version = D3D12DDI_BUILD_VERSION,
+         .Interface = D12_TEST_PRIMARY_INTERFACE,
+         .Version = D12_TEST_PRIMARY_BUILD,
          .Flags = D3D12DDI_CREATE_DEVICE_FLAG_NONE,
       };
       D3D12DDI_DEVICE_FUNCS_CORE_0003 device_table;
@@ -1705,7 +1819,8 @@ wmain(int argc, wchar_t **argv)
 #if D12_UMD_TARGETS_WDDM21
       require_result(result == S_OK, "fill extended device core table");
       require_pointer_slots(&release1_table,
-                            D12_UMD_TARGETS_WDDM23 ? 92 : 91,
+                            D12_UMD_TARGETS_WDDM24 ? 96 :
+                               (D12_UMD_TARGETS_WDDM23_EXACT ? 92 : 91),
                             SIZE_MAX, SIZE_MAX,
                             "extended device core table");
       result = functions.pfnFillDDITable(
@@ -1714,8 +1829,30 @@ wmain(int argc, wchar_t **argv)
          (D3D12DDI_HRTTABLE){0});
       require_result(result == S_OK,
                      "fill root-signature 1.1 device core table");
-      require_pointer_slots(&root11_table, 92, SIZE_MAX, SIZE_MAX,
+      require_pointer_slots(&root11_table,
+                            D12_UMD_TARGETS_WDDM24 ? 96 : 92,
+                            SIZE_MAX, SIZE_MAX,
                             "root-signature 1.1 device core table");
+#if D12_UMD_TARGETS_WDDM24
+      {
+         D3D12DDI_DEVICE_FUNCS_CORE_0030 release3_device_table;
+         D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 release3_command_table;
+
+         result = functions.pfnFillDDITable(
+            open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DEVICE_CORE,
+            &release3_device_table, sizeof(release3_device_table), 0,
+            (D3D12DDI_HRTTABLE){0});
+         require_result(result == E_INVALIDARG,
+                        "DDI 0042 rejects Release 3 device table width");
+         result = functions.pfnFillDDITable(
+            open_arguments.hAdapter,
+            D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D,
+            &release3_command_table, sizeof(release3_command_table), 0,
+            (D3D12DDI_HRTTABLE){.handle = TEST_RT_COMMAND_LIST_TABLE});
+         require_result(result == E_INVALIDARG,
+                        "DDI 0042 rejects Release 3 command table width");
+      }
+#endif
 #else
       require_result(result == E_INVALIDARG,
                      "WDDM 2.0 rejects the DXIL Release 1 table");
@@ -1727,7 +1864,8 @@ wmain(int argc, wchar_t **argv)
          (D3D12DDI_HRTTABLE){.handle = TEST_RT_COMMAND_LIST_TABLE});
       require_result(result == S_OK, "fill command-list table");
       require_pointer_slots(&command_list_table,
-                            D12_UMD_TARGETS_WDDM23 ? 57 : 51,
+                            D12_UMD_TARGETS_WDDM24 ? 58 :
+                               (D12_UMD_TARGETS_WDDM23_EXACT ? 57 : 51),
                             SIZE_MAX, SIZE_MAX,
                             "command-list table");
       result = functions.pfnFillDDITable(
@@ -1806,8 +1944,8 @@ wmain(int argc, wchar_t **argv)
                      "allocate private device storage");
       create_arguments = (D3D12DDIARG_CREATEDEVICE_0003){
          .hRTDevice = {.handle = (void *)(uintptr_t)0x6000},
-         .Interface = D3D12DDI_INTERFACE_VERSION,
-         .Version = D3D12DDI_BUILD_VERSION,
+         .Interface = D12_TEST_PRIMARY_INTERFACE,
+         .Version = D12_TEST_PRIMARY_BUILD,
          .pKTCallbacks = &kernel_callbacks,
          .hDrvDevice = driver_device,
       };
@@ -1826,6 +1964,211 @@ wmain(int argc, wchar_t **argv)
                                          &create_arguments);
       require_result(result == DXGI_STATUS_NO_REDIRECTION,
                      "CreateDevice explicit-present result");
+
+#if D12_UMD_TARGETS_WDDM24
+      {
+         struct d12_umd_device *private_device =
+            driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
+         const D3D12DDIARG_CREATE_COMMAND_POOL_0040 pool_arguments = {
+            .PoolFlags = D3D12DDI_COMMAND_POOL_FLAG_NONE,
+         };
+         const D3D12DDIARG_CREATE_COMMAND_RECORDER_0040 recorder_arguments = {
+            .QueueFlags = D3D12DDI_COMMAND_QUEUE_FLAG_3D,
+            .RecorderFlags = D3D12DDI_COMMAND_RECORDER_FLAG_NONE,
+         };
+         const D3D12DDIARG_CREATE_COMMAND_LIST_0040 list_arguments = {
+            .Type = D3D12DDI_COMMAND_LIST_TYPE_DIRECT,
+            .QueueFlags = D3D12DDI_COMMAND_QUEUE_FLAG_3D,
+            .ID = UINT64_C(0x41),
+            .CommandListFlags = D3D12DDI_COMMAND_LIST_FLAG_NONE,
+            .NodeMask = 1,
+         };
+         const D3D12DDIARG_RESETCOMMANDLIST_0040 first_reset = {
+            .ID = UINT64_C(0x42),
+            .CommandListFlags = D3D12DDI_COMMAND_LIST_FLAG_NONE,
+         };
+         D3D12DDIARG_RESETCOMMANDLIST_0040 reset = first_reset;
+         D3D12DDI_HCOMMANDPOOL_0040 pool;
+         D3D12DDI_HCOMMANDRECORDER_0040 recorder;
+         D3D12DDI_HCOMMANDLIST list;
+         SIZE_T pool_size;
+         SIZE_T recorder_size;
+         SIZE_T list_size;
+
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_blt_renderer_ops;
+         blt_allocator_create_calls = 0;
+         blt_allocator_reset_calls = 0;
+         blt_allocator_destroy_calls = 0;
+         blt_list_create_calls = 0;
+         blt_list_reset_calls = 0;
+         blt_list_close_calls = 0;
+         blt_list_destroy_calls = 0;
+         blt_allocator_create_result = S_OK;
+         blt_list_create_result = S_OK;
+         blt_allocator_output = TEST_BLT_ALLOCATOR;
+         blt_list_output = TEST_BLT_LIST;
+
+         pool_size = release1_table.pfnCalcPrivateCommandPoolSize(
+            driver_device, &pool_arguments);
+         recorder_size =
+            release1_table.pfnCalcPrivateCommandRecorderSize(
+               driver_device, &recorder_arguments);
+         list_size = release1_table.pfnCalcPrivateCommandListSize(
+            driver_device, &list_arguments);
+         require_result(pool_size > 0 && recorder_size > 0 && list_size > 0,
+                        "DDI 0040 command private sizes");
+         pool.pDrvPrivate = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                                      pool_size);
+         recorder.pDrvPrivate = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                                          recorder_size);
+         list.pDrvPrivate = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                                      list_size);
+         require_result(pool.pDrvPrivate && recorder.pDrvPrivate &&
+                           list.pDrvPrivate,
+                        "allocate DDI 0040 command private storage");
+         result = release1_table.pfnCreateCommandPool(
+            driver_device, &pool_arguments, pool);
+         require_result(result == S_OK,
+                        "create DDI 0040 command pool");
+         private_device->renderer_ops = NULL;
+         set_error_calls = 0;
+         release1_table.pfnResetCommandPool(driver_device, pool);
+         require_result(set_error_calls == 0,
+                        "reset empty DDI 0040 command pool is a no-op");
+         private_device->renderer_ops = &test_blt_renderer_ops;
+         result = release1_table.pfnCreateCommandRecorder(
+            driver_device, &recorder_arguments, recorder);
+         require_result(result == S_OK,
+                        "create DDI 0040 command recorder");
+         {
+            const D3D12DDI_HRTPAGINGQUEUE runtime_paging_queue = {
+               .handle = TEST_RT_PAGING_QUEUE,
+            };
+            const D3D12DDI_HANDLE_AND_TYPE command_objects[] = {
+               {
+                  .Handle = pool.pDrvPrivate,
+                  .Type = D3D12DDI_HT_0040_COMMAND_POOL,
+               },
+               {
+                  .Handle = recorder.pDrvPrivate,
+                  .Type = D3D12DDI_HT_0040_COMMAND_RECORDER,
+               },
+            };
+            UINT64 paging_fence = UINT64_MAX;
+            D3D12DDIARG_MAKERESIDENT_0001 make_arguments = {
+               .NumAdapters = 1,
+               .pRTPagingQueue = &runtime_paging_queue,
+               .NumObjects = ARRAYSIZE(command_objects),
+               .pObjects = command_objects,
+               .pPagingFenceValue = &paging_fence,
+            };
+            const D3D12DDIARG_EVICT evict_arguments = {
+               .NumObjects = ARRAYSIZE(command_objects),
+               .pObjects = command_objects,
+            };
+
+            result = release1_table.pfnMakeResident(driver_device,
+                                                     &make_arguments);
+            require_result(result == S_OK && make_resident_calls == 0 &&
+                              make_arguments.WaitMask == 0 &&
+                              paging_fence == 0,
+                           "DDI 0040 command object residency is a "
+                           "validated no-op");
+            result = release1_table.pfnEvict(driver_device,
+                                              &evict_arguments);
+            require_result(result == S_OK && evict_calls == 0,
+                           "DDI 0040 command object eviction is a "
+                           "validated no-op");
+
+            for (UINT index = 0; index < ARRAYSIZE(command_objects);
+                 ++index) {
+               D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 va_info;
+               d12_test_debug_kmt_allocation_info kmt_info;
+               UINT va_count = 1;
+               UINT kmt_count = 1;
+
+               memset(&va_info, 0xcc, sizeof(va_info));
+               memset(&kmt_info, 0xcc, sizeof(kmt_info));
+               root11_table.pfnGetDebugAllocationInfo(
+                  driver_device, command_objects[index], &va_count,
+                  &va_info, &kmt_count, &kmt_info);
+               require_result(va_count == 0 && kmt_count == 0,
+                              "DDI 0040 command object has no "
+                              "runtime-owned allocation");
+            }
+         }
+         release1_table.pfnCommandRecorderSetCommandPoolAsTarget(
+            driver_device, recorder, pool);
+         result = release1_table.pfnCreateCommandList(
+            driver_device, &list_arguments, list,
+            (D3D12DDI_HRTCOMMANDLIST){.handle = TEST_RT_COMMAND_LIST});
+         require_result(result == S_OK &&
+                           blt_allocator_create_calls == 0 &&
+                           blt_list_create_calls == 0,
+                        "DDI 0040 list creation remains allocation-free");
+
+         reset.hDrvCommandRecorder = recorder;
+         command_list_table.pfnResetCommandList(list, &reset);
+         require_result(blt_allocator_create_calls == 1 &&
+                           blt_list_create_calls == 1 &&
+                           blt_allocator_reset_calls == 0 &&
+                           blt_list_reset_calls == 0,
+                        "DDI 0040 first reset binds pool lazily");
+         command_list_table.pfnCloseCommandList(list);
+         release1_table.pfnResetCommandPool(driver_device, pool);
+         reset.ID = UINT64_C(0x43);
+         command_list_table.pfnResetCommandList(list, &reset);
+         command_list_table.pfnCloseCommandList(list);
+         require_result(blt_allocator_create_calls == 1 &&
+                           blt_list_create_calls == 1 &&
+                           blt_allocator_reset_calls == 1 &&
+                           blt_list_reset_calls == 1 &&
+                           blt_list_close_calls == 2,
+                        "DDI 0040 pool/list steady state avoids churn");
+         set_command_list_error_calls = 0;
+         command_list_table.pfnSetViewInstanceMask(list, 1);
+         require_result(set_command_list_error_calls == 1 &&
+                           last_set_command_list_error == E_NOTIMPL,
+                        "unsupported view-instance mask fails explicitly");
+
+         release1_table.pfnDestroyCommandList(driver_device, list);
+         release1_table.pfnDestroyCommandRecorder(driver_device, recorder);
+         release1_table.pfnDestroyCommandPool(driver_device, pool);
+         require_result(blt_list_destroy_calls == 1 &&
+                           blt_allocator_destroy_calls == 1,
+                        "destroy DDI 0040 command ownership graph");
+         HeapFree(GetProcessHeap(), 0, list.pDrvPrivate);
+         HeapFree(GetProcessHeap(), 0, recorder.pDrvPrivate);
+         HeapFree(GetProcessHeap(), 0, pool.pDrvPrivate);
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
+      }
+
+      {
+         D3D12DDI_VIEW_INSTANCE_LOCATION location = {0};
+         D3D12DDIARG_CREATE_PIPELINE_STATE_0033 pipeline_arguments = {
+            .ViewInstancingDesc = {
+               .ViewInstanceCount = 1,
+               .pViewInstanceLocations = &location,
+               .Flags = D3D12DDI_VIEW_INSTANCING_FLAG_NONE,
+            },
+         };
+         require_result(
+            release1_table.pfnCalcPrivatePipelineStateSize(
+               driver_device, &pipeline_arguments) == 0,
+            "reject unsupported DDI 0033 view-instanced PSO size");
+         result = release1_table.pfnCreatePipelineState(
+            driver_device, &pipeline_arguments,
+            (D3D12DDI_HPIPELINESTATE){.pDrvPrivate = &pipeline_arguments},
+            (D3D12DDI_HRTPIPELINESTATE){.handle = TEST_RT_COMMAND_LIST});
+         require_result(result == E_INVALIDARG,
+                        "reject unsupported DDI 0033 view-instanced PSO");
+      }
+#endif
 
       {
          struct d12_umd_command_list fake_list = {
@@ -5175,7 +5518,7 @@ wmain(int argc, wchar_t **argv)
             functions.pfnCalcPrivateDeviceSize(
                open_arguments.hAdapter, &root11_size_arguments);
 
-#if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM21_EXACT
          require_result(release1_device_size == device_size &&
                            root11_device_size == device_size,
                         "Release 1 versioned private device sizes");

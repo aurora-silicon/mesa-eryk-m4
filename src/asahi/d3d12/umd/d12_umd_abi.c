@@ -9,7 +9,9 @@
 #include <string.h>
 
 static const uint64_t d12_umd_versions[] = {
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+   D12_UMD_DDI_SUPPORTED_0042,
+#elif D12_UMD_TARGETS_WDDM23_EXACT
    D12_UMD_DDI_SUPPORTED_0032,
 #elif D12_UMD_TARGETS_WDDM21_EXACT
    D12_UMD_DDI_SUPPORTED_0013,
@@ -66,7 +68,11 @@ d12_umd_version_supported(uint32_t interface_version,
 {
    return (interface_version == D12_UMD_DDI_INTERFACE_0003 &&
            build_version == D12_UMD_DDI_BUILD_0003)
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+          ||
+          (interface_version == D12_UMD_DDI_INTERFACE_R4 &&
+           build_version == D12_UMD_DDI_BUILD_0042)
+#elif D12_UMD_TARGETS_WDDM23_EXACT
           ||
           (interface_version == D12_UMD_DDI_INTERFACE_R3 &&
            build_version == D12_UMD_DDI_BUILD_0032)

@@ -2603,6 +2603,18 @@ d12_umd_residency_object_allocation(
       return library->signature == D12_UMD_PIPELINE_LIBRARY_SIGNATURE &&
              library->device == device;
    }
+#if D12_UMD_TARGETS_WDDM24
+   case D3D12DDI_HT_0040_COMMAND_POOL: {
+      const struct d12_umd_command_pool *pool = object->Handle;
+      return pool->signature == D12_UMD_COMMAND_POOL_SIGNATURE &&
+             pool->device == device;
+   }
+   case D3D12DDI_HT_0040_COMMAND_RECORDER: {
+      const struct d12_umd_command_recorder *recorder = object->Handle;
+      return recorder->signature == D12_UMD_COMMAND_RECORDER_SIGNATURE &&
+             recorder->device == device;
+   }
+#endif
    default:
       return false;
    }

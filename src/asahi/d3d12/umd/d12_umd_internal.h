@@ -20,6 +20,8 @@
 #define D12_UMD_DEVICE_SIGNATURE UINT32_C(0x44323141) /* 'A12D' */
 #define D12_UMD_COMMAND_QUEUE_SIGNATURE UINT32_C(0x51323141) /* 'A12Q' */
 #define D12_UMD_COMMAND_ALLOCATOR_SIGNATURE UINT32_C(0x41323141) /* 'A12A' */
+#define D12_UMD_COMMAND_POOL_SIGNATURE UINT32_C(0x50324341) /* 'AC2P' */
+#define D12_UMD_COMMAND_RECORDER_SIGNATURE UINT32_C(0x52324341) /* 'AC2R' */
 #define D12_UMD_COMMAND_LIST_SIGNATURE UINT32_C(0x4c323141) /* 'A12L' */
 #define D12_UMD_ROOT_SIGNATURE_SIGNATURE UINT32_C(0x53323141) /* 'A12S' */
 #define D12_UMD_SHADER_SIGNATURE UINT32_C(0x58323141) /* 'A12X' */
@@ -109,6 +111,20 @@ struct d12_umd_command_allocator {
    struct d12_umd_device *device;
    enum d12_umd_renderer_command_type type;
    void *backend;
+};
+
+struct d12_umd_command_pool {
+   uint32_t signature;
+   struct d12_umd_device *device;
+   SRWLOCK lock;
+   void *backends[D12_UMD_RENDERER_COMMAND_TYPE_COUNT];
+};
+
+struct d12_umd_command_recorder {
+   uint32_t signature;
+   struct d12_umd_device *device;
+   D3D12DDI_COMMAND_QUEUE_FLAGS queue_flags;
+   struct d12_umd_command_pool *target;
 };
 
 struct d12_umd_command_list {
@@ -352,6 +368,26 @@ d12_umd_command_allocator_from_handle(D3D12DDI_HCOMMANDALLOCATOR handle)
    return allocator &&
                  allocator->signature == D12_UMD_COMMAND_ALLOCATOR_SIGNATURE
              ? allocator
+             : NULL;
+}
+
+static inline struct d12_umd_command_pool *
+d12_umd_command_pool_from_handle(D3D12DDI_HCOMMANDPOOL_0040 handle)
+{
+   struct d12_umd_command_pool *pool =
+      (struct d12_umd_command_pool *)handle.pDrvPrivate;
+   return pool && pool->signature == D12_UMD_COMMAND_POOL_SIGNATURE ? pool
+                                                                    : NULL;
+}
+
+static inline struct d12_umd_command_recorder *
+d12_umd_command_recorder_from_handle(D3D12DDI_HCOMMANDRECORDER_0040 handle)
+{
+   struct d12_umd_command_recorder *recorder =
+      (struct d12_umd_command_recorder *)handle.pDrvPrivate;
+   return recorder &&
+                 recorder->signature == D12_UMD_COMMAND_RECORDER_SIGNATURE
+             ? recorder
              : NULL;
 }
 

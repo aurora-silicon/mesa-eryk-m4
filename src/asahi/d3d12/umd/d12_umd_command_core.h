@@ -29,6 +29,7 @@ enum d12_umd_renderer_command_type {
    D12_UMD_RENDERER_COMMAND_BUNDLE,
    D12_UMD_RENDERER_COMMAND_COMPUTE,
    D12_UMD_RENDERER_COMMAND_COPY,
+   D12_UMD_RENDERER_COMMAND_TYPE_COUNT,
 };
 
 bool d12_umd_command_type_from_ddi(

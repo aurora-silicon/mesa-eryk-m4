@@ -1882,6 +1882,55 @@ d12_umd_create_pipeline_state_0021(
 }
 #endif
 
+#if D12_UMD_TARGETS_WDDM24
+_Static_assert(offsetof(D3D12DDIARG_CREATE_PIPELINE_STATE_0033,
+                        ViewInstancingDesc) ==
+                  sizeof(D3D12DDIARG_CREATE_PIPELINE_STATE_0010),
+               "DDI 0033 pipeline-state prefix changed");
+
+static bool
+d12_umd_translate_pipeline_state_0033(
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0033 *source,
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 *destination)
+{
+   if (!source || !destination ||
+       source->ViewInstancingDesc.ViewInstanceCount != 0 ||
+       source->ViewInstancingDesc.Flags !=
+          D3D12DDI_VIEW_INSTANCING_FLAG_NONE)
+      return false;
+
+   memcpy(destination, source, sizeof(*destination));
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_pipeline_state_size_0033(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0033 *arguments)
+{
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 release1;
+
+   if (!d12_umd_translate_pipeline_state_0033(arguments, &release1))
+      return 0;
+   return d12_umd_calc_private_pipeline_state_size_0010(handle, &release1);
+}
+
+static HRESULT APIENTRY
+d12_umd_create_pipeline_state_0033(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0033 *arguments,
+   D3D12DDI_HPIPELINESTATE output,
+   D3D12DDI_HRTPIPELINESTATE runtime_pipeline)
+{
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 release1;
+
+   if (!d12_umd_translate_pipeline_state_0033(arguments, &release1))
+      return E_INVALIDARG;
+   return d12_umd_create_pipeline_state_0021(
+      handle, &release1, output, runtime_pipeline);
+}
+#endif
+
 static SIZE_T APIENTRY
 d12_umd_calc_private_pipeline_library_size_0010(
    D3D12DDI_HDEVICE handle,
@@ -2163,6 +2212,17 @@ d12_umd_install_pipeline_device_functions_0030(
    table->pfnCreateHullShader = d12_umd_create_hull_shader_0026;
    table->pfnCreateDomainShader = d12_umd_create_domain_shader_0026;
    table->pfnCreatePipelineState = d12_umd_create_pipeline_state_0021;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM24
+void
+d12_umd_install_pipeline_device_functions_0040(
+   D3D12DDI_DEVICE_FUNCS_CORE_0040 *table)
+{
+   table->pfnCalcPrivatePipelineStateSize =
+      d12_umd_calc_private_pipeline_state_size_0033;
+   table->pfnCreatePipelineState = d12_umd_create_pipeline_state_0033;
 }
 #endif
 

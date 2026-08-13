@@ -67,10 +67,16 @@ main(void)
           D12_UMD_IDENTITY_RESERVED);
 
    assert(d12_umd_supported_version_count() ==
-          (D12_UMD_TARGETS_WDDM23 ? 2u :
-             (D12_UMD_TARGETS_WDDM21 ? 4u : 1u)));
+          (D12_UMD_TARGETS_WDDM24 ? 2u :
+             (D12_UMD_TARGETS_WDDM23_EXACT ? 2u :
+                (D12_UMD_TARGETS_WDDM21_EXACT ? 4u : 1u))));
    assert(d12_umd_supported_versions() != NULL);
-#if D12_UMD_TARGETS_WDDM23
+#if D12_UMD_TARGETS_WDDM24
+   assert(d12_umd_supported_versions()[0] ==
+          D12_UMD_DDI_SUPPORTED_0042);
+   assert(d12_umd_supported_versions()[1] ==
+          D12_UMD_DDI_SUPPORTED_0003);
+#elif D12_UMD_TARGETS_WDDM23_EXACT
    assert(d12_umd_supported_versions()[0] ==
           D12_UMD_DDI_SUPPORTED_0032);
    assert(d12_umd_supported_versions()[1] ==
@@ -102,7 +108,10 @@ main(void)
    assert(!d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R1, 2));
    assert(d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R3,
                                     D12_UMD_DDI_BUILD_0032) ==
-          (bool)D12_UMD_TARGETS_WDDM23);
+          (bool)D12_UMD_TARGETS_WDDM23_EXACT);
+   assert(d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R4,
+                                    D12_UMD_DDI_BUILD_0042) ==
+          (bool)D12_UMD_TARGETS_WDDM24);
 
    puts("d12_umd_abi_tests: PASS");
    return 0;
