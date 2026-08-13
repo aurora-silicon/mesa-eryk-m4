@@ -57,6 +57,12 @@ done
 "$out/d12_umd_command_core_tests"
 
 "$cc" "$common[@]" \
+    "$umd_dir/d12_umd_residency_core.c" \
+    "$umd_dir/tests/d12_umd_residency_core_tests.c" \
+    -o "$out/d12_umd_residency_core_tests"
+"$out/d12_umd_residency_core_tests"
+
+"$cc" "$common[@]" \
     -I"$d12_dir" -I"$umd_dir" \
     "$umd_dir/d12_umd_pipeline_serialization.c" \
     "$umd_dir/tests/d12_umd_pipeline_serialization_tests.c" \

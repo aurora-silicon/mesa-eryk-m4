@@ -51,6 +51,10 @@ static unsigned make_resident_calls;
 static unsigned evict_calls;
 static unsigned offer_calls;
 static unsigned reclaim_calls;
+static UINT make_resident_allocation_count;
+static UINT evict_allocation_count;
+static UINT offer_allocation_count;
+static UINT reclaim_allocation_count;
 static unsigned set_error_calls;
 static unsigned priority_calls;
 static unsigned residency_query_calls;
@@ -871,6 +875,7 @@ make_resident(D3D12DDI_HRTDEVICE runtime_device,
          return E_INVALIDARG;
    }
    arguments->PagingFenceValue = UINT64_C(11);
+   make_resident_allocation_count = arguments->NumAllocations;
    ++make_resident_calls;
    return E_PENDING;
 }
@@ -887,6 +892,7 @@ evict(D3D12DDI_HRTDEVICE runtime_device,
       if (arguments->AllocationList[index] != TEST_ALLOCATION)
          return E_INVALIDARG;
    }
+   evict_allocation_count = arguments->NumAllocations;
    ++evict_calls;
    return S_OK;
 }
@@ -903,6 +909,7 @@ offer_allocations(D3D12DDI_HRTDEVICE runtime_device,
       if (arguments->HandleList[index] != TEST_ALLOCATION)
          return E_INVALIDARG;
    }
+   offer_allocation_count = arguments->NumAllocations;
    ++offer_calls;
    return S_OK;
 }
@@ -922,6 +929,7 @@ offer_allocations2(HANDLE runtime_device,
       if (arguments->HandleList[index] != TEST_ALLOCATION)
          return E_INVALIDARG;
    }
+   offer_allocation_count = arguments->NumAllocations;
    ++offer_calls;
    return S_OK;
 }
@@ -941,6 +949,7 @@ reclaim_allocations3(HANDLE runtime_device,
       arguments->pResults[index] = D3DDDI_RECLAIM_RESULT_DISCARDED;
    }
    arguments->PagingFenceValue = UINT64_C(13);
+   reclaim_allocation_count = arguments->NumAllocations;
    ++reclaim_calls;
    return S_OK;
 }
@@ -962,6 +971,7 @@ reclaim_allocations(D3D12DDI_HRTDEVICE runtime_device,
       arguments->pDiscarded[index] = TRUE;
    }
    arguments->PagingFenceValue = UINT64_C(13);
+   reclaim_allocation_count = arguments->NumAllocations;
    ++reclaim_calls;
    return E_PENDING;
 }
@@ -3702,15 +3712,18 @@ wmain(int argc, wchar_t **argv)
             result = device_table.pfnMakeResident(driver_device,
                                                    &make_arguments);
             require_result(result == E_PENDING && make_resident_calls == 1 &&
+                              make_resident_allocation_count == 1 &&
                               make_arguments.WaitMask == 1 &&
                               paging_fence == UINT64_C(11),
                            "MakeResident callback and paging fence");
             result = device_table.pfnEvict(driver_device, &evict_arguments);
-            require_result(result == S_OK && evict_calls == 1,
+            require_result(result == S_OK && evict_calls == 1 &&
+                              evict_allocation_count == 1,
                            "Evict callback translation");
             result = device_table.pfnOfferResources(driver_device,
                                                      &offer_arguments);
-            require_result(result == S_OK && offer_calls == 1,
+            require_result(result == S_OK && offer_calls == 1 &&
+                              offer_allocation_count == 1,
                            "OfferResources callback translation");
             paging_fence = 0;
             result = device_table.pfnReclaimResources(driver_device,
@@ -3721,7 +3734,8 @@ wmain(int argc, wchar_t **argv)
 #else
                               result == E_PENDING && reclaim_calls == 1 &&
 #endif
-                              discarded && reclaim_arguments.WaitMask == 1 &&
+                              reclaim_allocation_count == 1 && discarded &&
+                              reclaim_arguments.WaitMask == 1 &&
                               paging_fence == UINT64_C(13),
                            "ReclaimResources callback and paging fence");
 
@@ -3848,6 +3862,10 @@ wmain(int argc, wchar_t **argv)
                   objects[index] = object;
                   discarded_objects[index] = FALSE;
                }
+               objects[0] = (D3D12DDI_HANDLE_AND_TYPE){
+                  .Handle = heap_handle.pDrvPrivate,
+                  .Type = D3D12DDI_HT_HEAP,
+               };
                make_arguments.NumObjects = ARRAYSIZE(objects);
                make_arguments.pObjects = objects;
                paging_fence = 0;
@@ -3855,16 +3873,19 @@ wmain(int argc, wchar_t **argv)
                                                         &make_arguments);
                require_result(result == E_PENDING &&
                                  make_resident_calls == 3 &&
+                                 make_resident_allocation_count == 1 &&
                                  make_arguments.WaitMask == 1 &&
                                  paging_fence == UINT64_C(11),
-                              "large residency batch callback translation");
+                              "deduplicated large residency batch");
                result = release1_table.pfnEvict(driver_device, &large_evict);
-               require_result(result == S_OK && evict_calls == 2,
-                              "large eviction batch callback translation");
+               require_result(result == S_OK && evict_calls == 2 &&
+                                 evict_allocation_count == 1,
+                              "deduplicated large eviction batch");
                result = release1_table.pfnOfferResources(driver_device,
                                                           &large_offer);
-               require_result(result == S_OK && offer_calls == 2,
-                              "large offer batch callback translation");
+               require_result(result == S_OK && offer_calls == 2 &&
+                                 offer_allocation_count == 1,
+                              "deduplicated large offer batch");
 
                reclaim_arguments.NumObjects = ARRAYSIZE(objects);
                reclaim_arguments.pObjects = objects;
@@ -3878,9 +3899,10 @@ wmain(int argc, wchar_t **argv)
 #else
                                  result == E_PENDING && reclaim_calls == 3 &&
 #endif
+                                 reclaim_allocation_count == 1 &&
                                  reclaim_arguments.WaitMask == 1 &&
                                  paging_fence == UINT64_C(13),
-                              "large reclaim batch callback translation");
+                              "deduplicated large reclaim batch");
                for (UINT index = 0; index < ARRAYSIZE(objects); ++index) {
                   require_result(discarded_objects[index],
                                  "large reclaim maps every discarded result");

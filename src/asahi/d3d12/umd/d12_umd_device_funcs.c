@@ -10,6 +10,7 @@
 #include "d12_umd_device_funcs.h"
 
 #include "d12_umd_internal.h"
+#include "d12_umd_residency_core.h"
 #include "d12_umd_resource_private.h"
 
 #include <stdbool.h>
@@ -2056,12 +2057,27 @@ d12_umd_residency_object_allocation(
 }
 
 struct d12_umd_residency_translation {
-   D3DKMT_HANDLE *allocations;
-   UINT *object_indices;
-   UINT allocation_count;
+   struct d12_umd_residency_set set;
+   void *spill;
    D3DKMT_HANDLE stack_allocations[16];
-   UINT stack_object_indices[16];
+   UINT stack_object_allocation_indices[16];
+   UINT stack_hash_slots[32];
 };
+
+static size_t
+d12_umd_residency_hash_capacity(UINT count)
+{
+   size_t capacity = ARRAYSIZE(
+      ((struct d12_umd_residency_translation *)0)->stack_hash_slots);
+   const size_t required = (size_t)count * 2;
+
+   while (capacity < required) {
+      if (capacity > SIZE_MAX / 2)
+         return 0;
+      capacity *= 2;
+   }
+   return capacity;
+}
 
 #if D12_UMD_TARGETS_WDDM21
 static D3DKMT_HANDLE
@@ -2110,15 +2126,9 @@ d12_umd_residency_translation_cleanup(
 {
    if (!translation)
       return;
-   if (translation->object_indices &&
-       translation->object_indices != translation->stack_object_indices)
-      HeapFree(GetProcessHeap(), 0, translation->object_indices);
-   if (translation->allocations &&
-       translation->allocations != translation->stack_allocations)
-      HeapFree(GetProcessHeap(), 0, translation->allocations);
-   translation->allocations = NULL;
-   translation->object_indices = NULL;
-   translation->allocation_count = 0;
+   HeapFree(GetProcessHeap(), 0, translation->spill);
+   translation->set = (struct d12_umd_residency_set){0};
+   translation->spill = NULL;
 }
 
 static HRESULT
@@ -2127,25 +2137,50 @@ d12_umd_translate_residency_objects(
    const D3D12DDI_HANDLE_AND_TYPE *objects,
    struct d12_umd_residency_translation *translation)
 {
+   size_t allocation_bytes;
+   size_t object_index_bytes;
+   size_t hash_bytes;
+   size_t spill_bytes;
+   size_t hash_capacity;
+   uint32_t *allocations;
+   uint32_t *object_allocation_indices;
+   uint32_t *hash_slots;
+
    if (!device || !translation || (count && !objects))
       return E_INVALIDARG;
    *translation = (struct d12_umd_residency_translation){0};
-   translation->allocations = translation->stack_allocations;
-   translation->object_indices = translation->stack_object_indices;
-   if (!count)
-      return S_OK;
+   allocations = translation->stack_allocations;
+   object_allocation_indices =
+      translation->stack_object_allocation_indices;
+   hash_slots = translation->stack_hash_slots;
+   hash_capacity = d12_umd_residency_hash_capacity(count);
+   if (!hash_capacity)
+      return E_OUTOFMEMORY;
 
    if (count > ARRAYSIZE(translation->stack_allocations)) {
-      translation->allocations = HeapAlloc(
-         GetProcessHeap(), 0,
-         (size_t)count * sizeof(*translation->allocations));
-      translation->object_indices = HeapAlloc(
-         GetProcessHeap(), 0,
-         (size_t)count * sizeof(*translation->object_indices));
-      if (!translation->allocations || !translation->object_indices) {
-         d12_umd_residency_translation_cleanup(translation);
+      allocation_bytes = (size_t)count * sizeof(*allocations);
+      object_index_bytes = (size_t)count * sizeof(*object_allocation_indices);
+      hash_bytes = hash_capacity * sizeof(*hash_slots);
+      if (allocation_bytes > SIZE_MAX - object_index_bytes ||
+          allocation_bytes + object_index_bytes > SIZE_MAX - hash_bytes)
          return E_OUTOFMEMORY;
-      }
+      spill_bytes = allocation_bytes + object_index_bytes + hash_bytes;
+      translation->spill = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                                     spill_bytes);
+      if (!translation->spill)
+         return E_OUTOFMEMORY;
+      allocations = translation->spill;
+      object_allocation_indices =
+         (UINT *)((uint8_t *)translation->spill + allocation_bytes);
+      hash_slots =
+         (UINT *)((uint8_t *)object_allocation_indices +
+                  object_index_bytes);
+   }
+   if (!d12_umd_residency_set_init(
+          &translation->set, allocations, object_allocation_indices, count,
+          hash_slots, hash_capacity)) {
+      d12_umd_residency_translation_cleanup(translation);
+      return E_FAIL;
    }
 
    for (UINT index = 0; index < count; ++index) {
@@ -2155,10 +2190,9 @@ d12_umd_translate_residency_objects(
          d12_umd_residency_translation_cleanup(translation);
          return E_INVALIDARG;
       }
-      if (allocation) {
-         const UINT output = translation->allocation_count++;
-         translation->allocations[output] = allocation;
-         translation->object_indices[output] = index;
+      if (!d12_umd_residency_set_add(&translation->set, index, allocation)) {
+         d12_umd_residency_translation_cleanup(translation);
+         return E_FAIL;
       }
    }
    return S_OK;
@@ -2184,7 +2218,7 @@ d12_umd_make_resident(D3D12DDI_HDEVICE handle,
       device, arguments->NumObjects, arguments->pObjects, &translation);
    if (FAILED(result))
       return result;
-   if (!translation.allocation_count) {
+   if (!translation.set.allocation_count) {
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
@@ -2194,8 +2228,8 @@ d12_umd_make_resident(D3D12DDI_HDEVICE handle,
    }
 
    make_resident = (D3DDDI_MAKERESIDENT){
-      .NumAllocations = translation.allocation_count,
-      .AllocationList = translation.allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .AllocationList = translation.set.allocations,
       .Flags = arguments->Flags,
    };
    result = device->core_callbacks.pfnMakeResidentCb(
@@ -2223,7 +2257,7 @@ d12_umd_evict(D3D12DDI_HDEVICE handle,
       device, arguments->NumObjects, arguments->pObjects, &translation);
    if (FAILED(result))
       return result;
-   if (!translation.allocation_count) {
+   if (!translation.set.allocation_count) {
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
@@ -2233,8 +2267,8 @@ d12_umd_evict(D3D12DDI_HDEVICE handle,
    }
 
    evict = (D3DDDICB_EVICT){
-      .NumAllocations = translation.allocation_count,
-      .AllocationList = translation.allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .AllocationList = translation.set.allocations,
       .Flags = arguments->Flags,
    };
    result = device->core_callbacks.pfnEvictCb(device->runtime_device, &evict);
@@ -2257,7 +2291,7 @@ d12_umd_offer_resources(D3D12DDI_HDEVICE handle,
       device, arguments->NumObjects, arguments->pObjects, &translation);
    if (FAILED(result))
       return result;
-   if (!translation.allocation_count) {
+   if (!translation.set.allocation_count) {
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
@@ -2268,8 +2302,8 @@ d12_umd_offer_resources(D3D12DDI_HDEVICE handle,
    }
    {
       const D3DDDICB_OFFERALLOCATIONS2 offer = {
-         .HandleList = translation.allocations,
-         .NumAllocations = translation.allocation_count,
+         .HandleList = translation.set.allocations,
+         .NumAllocations = translation.set.allocation_count,
          .Priority = arguments->Priority,
          .Flags = {.Value = 0},
       };
@@ -2283,8 +2317,8 @@ d12_umd_offer_resources(D3D12DDI_HDEVICE handle,
    }
    {
       const D3D12DDICB_OFFERALLOCATIONS offer = {
-      .NumAllocations = translation.allocation_count,
-      .HandleList = translation.allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .HandleList = translation.set.allocations,
       .Priority = arguments->Priority,
       };
       result = device->core_callbacks.pfnOfferAllocationsCb(
@@ -2330,7 +2364,7 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       device, arguments->NumObjects, arguments->pObjects, &translation);
    if (FAILED(result))
       return result;
-   if (!translation.allocation_count) {
+   if (!translation.set.allocation_count) {
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
@@ -2346,10 +2380,11 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       return E_INVALIDARG;
    }
    memset(stack_results, 0, sizeof(stack_results));
-   if (translation.allocation_count > ARRAYSIZE(stack_results)) {
+   if (translation.set.allocation_count > ARRAYSIZE(stack_results)) {
       allocation_results = HeapAlloc(
          GetProcessHeap(), HEAP_ZERO_MEMORY,
-         (size_t)translation.allocation_count * sizeof(*allocation_results));
+         (size_t)translation.set.allocation_count *
+            sizeof(*allocation_results));
       if (!allocation_results) {
          d12_umd_residency_release_queue_lock(device, queue_lock_held);
          d12_umd_residency_translation_cleanup(&translation);
@@ -2358,8 +2393,8 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
    }
    reclaim = (D3DDDICB_RECLAIMALLOCATIONS3){
       .PagingQueue = paging_queue,
-      .NumAllocations = translation.allocation_count,
-      .HandleList = translation.allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .HandleList = translation.set.allocations,
       .pResults = allocation_results,
    };
    result = device->kernel_callbacks.pfnReclaimAllocations3Cb(
@@ -2369,9 +2404,14 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       arguments->pPagingFenceValue[0] = reclaim.PagingFenceValue;
       arguments->WaitMask = 1;
    }
-   for (UINT index = 0; index < translation.allocation_count; ++index) {
-      arguments->pDiscarded[translation.object_indices[index]] =
-         allocation_results[index] != D3DDDI_RECLAIM_RESULT_OK;
+   for (UINT index = 0; index < translation.set.object_count; ++index) {
+      const UINT allocation_index =
+         translation.set.object_allocation_indices[index];
+      if (allocation_index != D12_UMD_RESIDENCY_NO_ALLOCATION) {
+         arguments->pDiscarded[index] =
+            allocation_results[allocation_index] !=
+            D3DDDI_RECLAIM_RESULT_OK;
+      }
    }
    if (allocation_results != stack_results)
       HeapFree(GetProcessHeap(), 0, allocation_results);
@@ -2381,10 +2421,10 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       return E_INVALIDARG;
    }
    memset(stack_discarded, 0, sizeof(stack_discarded));
-   if (translation.allocation_count > ARRAYSIZE(stack_discarded)) {
+   if (translation.set.allocation_count > ARRAYSIZE(stack_discarded)) {
       allocation_discarded = HeapAlloc(
          GetProcessHeap(), HEAP_ZERO_MEMORY,
-         (size_t)translation.allocation_count *
+         (size_t)translation.set.allocation_count *
             sizeof(*allocation_discarded));
       if (!allocation_discarded) {
          d12_umd_residency_translation_cleanup(&translation);
@@ -2393,8 +2433,8 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
    }
 
    reclaim = (D3D12DDICB_RECLAIMALLOCATIONS2){
-      .NumAllocations = translation.allocation_count,
-      .HandleList = translation.allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .HandleList = translation.set.allocations,
       .pDiscarded = allocation_discarded,
    };
    result = device->core_callbacks.pfnReclaimAllocations2Cb(
@@ -2403,9 +2443,13 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       arguments->pPagingFenceValue[0] = reclaim.PagingFenceValue;
       arguments->WaitMask = 1;
    }
-   for (UINT index = 0; index < translation.allocation_count; ++index)
-      arguments->pDiscarded[translation.object_indices[index]] =
-         allocation_discarded[index];
+   for (UINT index = 0; index < translation.set.object_count; ++index) {
+      const UINT allocation_index =
+         translation.set.object_allocation_indices[index];
+      if (allocation_index != D12_UMD_RESIDENCY_NO_ALLOCATION)
+         arguments->pDiscarded[index] =
+            allocation_discarded[allocation_index];
+   }
    if (allocation_discarded != stack_discarded)
       HeapFree(GetProcessHeap(), 0, allocation_discarded);
 #endif

@@ -101,6 +101,7 @@ sources=(
     "$umd_dir/d12_umd_state_funcs.c"
     "$umd_dir/d12_umd_pipeline_funcs.c"
     "$umd_dir/d12_umd_queue_runtime.c"
+    "$umd_dir/d12_umd_residency_core.c"
     "$umd_dir/d12_umd_resource_private.c"
     "$umd_dir/d12_umd_device_funcs.c"
     "$umd_dir/d12_umd_descriptor_funcs.c"
