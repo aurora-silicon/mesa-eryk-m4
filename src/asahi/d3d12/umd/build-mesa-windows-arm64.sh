@@ -29,8 +29,11 @@ case $wddm_target in
 esac
 # Meson intentionally rejects absolute include paths that point back inside
 # its source tree.  Keep staged WDK/generated headers in the parent workspace
-# so they are both disposable and unambiguously external inputs.
-support_dir=${D12_UMD_SUPPORT_DIR:-$workspace_root/_build-d3d12-umd-support}
+# so they are both disposable and unambiguously external inputs.  Include the
+# worktree, build and target identities because staticizing a staged WDK header
+# in place is not safe to share between concurrent cross-builds.
+support_default=$workspace_root/_build-d3d12-umd-support-${repo_root:t}-${cross_build:t}-${wddm_target}
+support_dir=${D12_UMD_SUPPORT_DIR:-$support_default}
 python_deps=${D12_UMD_PYTHON_DEPS:-$repo_root/_build-d3d12-umd-python-deps}
 staged_wdk=$support_dir/winddk
 generated=$support_dir/generated
@@ -76,6 +79,9 @@ python3 "$umd_dir/tools/staticize-wdk-c-constants.py" \
 python3 "$umd_dir/tools/generate-ddi-tables.py" \
     --header "$staged_wdk/d3d12umddi.h" \
     --output "$generated/d12_umd_tables_generated.inc"
+python3 "$umd_dir/tests/check_ddi_table_coverage.py" \
+    --header "$staged_wdk/d3d12umddi.h" \
+    --source-dir "$umd_dir"
 python3 "$umd_dir/tools/generate-windows-cross-file.py" \
     --template "$umd_dir/windows-arm64-cross.ini.in" \
     --output "$cross_file" \

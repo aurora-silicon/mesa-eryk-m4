@@ -163,6 +163,10 @@ the generated traps. Remaining void functions report `E_NOTIMPL` through
 `pfnSetErrorCb`; paired destructors are silent because their trapped creators
 allocated nothing. No baseline table has a callable NULL slot (the two WDK
 queue fields explicitly named `pfnUnused*` remain NULL by contract).
+Every Windows build also parses those exact pinned table definitions and the
+typed installer functions, and fails if the WDK table widths change or any
+usable slot is left on a generated trap. This independently guards the handoff
+between table generation and the concrete frontend implementations.
 The runtime handle supplied while filling the command-list table is retained
 per adapter and rebound to every successfully created command list through
 `pfnSetCommandListDDITableCb`, as required by the core-layer dispatch ABI.

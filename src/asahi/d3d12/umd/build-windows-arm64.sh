@@ -58,6 +58,9 @@ python3 "$umd_dir/tools/staticize-wdk-c-constants.py" \
 python3 "$umd_dir/tools/generate-ddi-tables.py" \
     --header "$staged/d3d12umddi.h" \
     --output "$out/generated/d12_umd_tables_generated.inc"
+python3 "$umd_dir/tests/check_ddi_table_coverage.py" \
+    --header "$staged/d3d12umddi.h" \
+    --source-dir "$umd_dir"
 
 cflags=(
     -std=c11
