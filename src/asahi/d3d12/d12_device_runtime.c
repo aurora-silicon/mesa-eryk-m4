@@ -615,6 +615,8 @@ d12_device_runtime_fence_create(
          .monitored_gpu_address = placements[index].monitored_gpu_address,
          .current_cpu_address = placements[index].current_cpu_address,
          .flags = placements[index].flags,
+         .lifetime_cookie = placements[index].lifetime_cookie,
+         .release_lifetime = placements[index].release_lifetime,
       };
    }
    return d12_placement_fence_create(

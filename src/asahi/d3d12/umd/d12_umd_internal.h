@@ -12,6 +12,7 @@
 
 #include "d12_umd_agx_transport.h"
 #include "d12_umd_kmt.h"
+#include "d12_umd_lifetime_core.h"
 #include "d12_umd_pipeline_library.h"
 #include "d12_umd_queue_runtime.h"
 #include "d12_umd_renderer.h"
@@ -209,6 +210,22 @@ struct d12_umd_pipeline_library {
    struct d12_umd_pipeline_library_core core;
 };
 
+/* Runtime-owned DDI heap private storage may disappear before renderer work
+ * which references a monitored-fence placement retires.  Keep the allocation
+ * identity, backend heap and CPU mapping in driver-owned storage so queued
+ * waits/signals can retain them independently. */
+struct d12_umd_heap_storage {
+   struct d12_umd_device *device;
+   void *backend;
+   void (*destroy_backend)(void *heap);
+   struct d12_umd_allocation allocation;
+   HANDLE runtime_resource;
+   D3D12DDI_CPU_PAGE_PROPERTY cpu_page_property;
+   SRWLOCK lock;
+   void *mapping;
+   struct d12_umd_lifetime_core lifetime;
+};
+
 struct d12_umd_heap {
    uint32_t signature;
    struct d12_umd_device *device;
@@ -216,15 +233,12 @@ struct d12_umd_heap {
    struct d12_umd_allocation allocation;
    HANDLE runtime_resource;
    D3D12DDI_CPU_PAGE_PROPERTY cpu_page_property;
-   SRWLOCK map_lock;
-   void *mapping;
-   uint32_t map_count;
+   struct d12_umd_heap_storage *storage;
    struct d12_umd_heap *next;
 };
 
 struct d12_umd_fence_entry {
    struct d12_frontend_fence_placement placement;
-   struct d12_umd_heap *current_heap;
 };
 
 struct d12_umd_fence {

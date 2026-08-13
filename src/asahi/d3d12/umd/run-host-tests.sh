@@ -71,6 +71,12 @@ done
 "$out/d12_umd_command_core_tests"
 
 "$cc" "$common[@]" \
+    "$umd_dir/d12_umd_lifetime_core.c" \
+    "$umd_dir/tests/d12_umd_lifetime_core_tests.c" \
+    -o "$out/d12_umd_lifetime_core_tests"
+"$out/d12_umd_lifetime_core_tests"
+
+"$cc" "$common[@]" \
     "$umd_dir/d12_umd_residency_core.c" \
     "$umd_dir/tests/d12_umd_residency_core_tests.c" \
     -o "$out/d12_umd_residency_core_tests"

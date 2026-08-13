@@ -262,55 +262,173 @@ d12_umd_get_mip_packing(D3D12DDI_HDEVICE handle,
 }
 
 static HRESULT
-d12_umd_heap_retain_mapping(struct d12_umd_heap *heap, void **mapping)
+d12_umd_heap_storage_create(struct d12_umd_heap *heap)
+{
+   struct d12_umd_heap_storage *storage;
+
+   if (!heap || !heap->device || heap->storage ||
+       !heap->allocation.allocation ||
+       (heap->backend &&
+        (!heap->device->renderer_ops ||
+         !heap->device->renderer_ops->destroy_heap)))
+      return E_INVALIDARG;
+   storage = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*storage));
+   if (!storage)
+      return E_OUTOFMEMORY;
+   storage->device = heap->device;
+   storage->backend = heap->backend;
+   storage->destroy_backend =
+      heap->backend ? heap->device->renderer_ops->destroy_heap : NULL;
+   storage->allocation = heap->allocation;
+   storage->runtime_resource = heap->runtime_resource;
+   storage->cpu_page_property = heap->cpu_page_property;
+   InitializeSRWLock(&storage->lock);
+   heap->storage = storage;
+   return S_OK;
+}
+
+static HRESULT
+d12_umd_heap_storage_finalize(struct d12_umd_heap_storage *storage)
 {
    struct d12_umd_device *device;
    HRESULT result = S_OK;
 
+   if (!storage || !(device = storage->device))
+      return E_INVALIDARG;
+   if (storage->mapping) {
+      result = d12_umd_kmt_unlock(&device->kmt,
+                                  storage->allocation.allocation);
+      storage->mapping = NULL;
+   }
+   if (storage->backend && storage->destroy_backend) {
+      storage->destroy_backend(storage->backend);
+   } else {
+      HRESULT deallocate = d12_umd_kmt_deallocate(
+         &device->kmt, storage->runtime_resource, &storage->allocation);
+      if (SUCCEEDED(result))
+         result = deallocate;
+   }
+   SecureZeroMemory(storage, sizeof(*storage));
+   HeapFree(GetProcessHeap(), 0, storage);
+   return result;
+}
+
+static HRESULT
+d12_umd_heap_storage_request_destroy(struct d12_umd_heap_storage *storage)
+{
+   enum d12_umd_lifetime_result lifetime_result;
+
+   if (!storage)
+      return E_INVALIDARG;
+   AcquireSRWLockExclusive(&storage->lock);
+   lifetime_result = d12_umd_lifetime_request_destroy(&storage->lifetime);
+   ReleaseSRWLockExclusive(&storage->lock);
+   if (lifetime_result == D12_UMD_LIFETIME_INVALID)
+      return E_INVALIDARG;
+   return lifetime_result == D12_UMD_LIFETIME_FINALIZE
+             ? d12_umd_heap_storage_finalize(storage)
+             : S_OK;
+}
+
+static HRESULT
+d12_umd_heap_storage_retain_mapping(struct d12_umd_heap_storage *storage,
+                                    void **mapping)
+{
+   struct d12_umd_device *device;
+   enum d12_umd_lifetime_result lifetime_result;
+   HRESULT result = S_OK;
+
    if (mapping)
       *mapping = NULL;
-   if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !mapping ||
-       heap->cpu_page_property == D3D12DDI_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
+   if (!storage || !mapping ||
+       storage->cpu_page_property ==
+          D3D12DDI_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
       return E_INVALIDARG;
-   device = heap->device;
+   device = storage->device;
    if (!device)
       return E_INVALIDARG;
 
-   AcquireSRWLockExclusive(&heap->map_lock);
-   if (!heap->mapping)
-      result = d12_umd_kmt_lock(&device->kmt, heap->allocation.allocation,
-                                &heap->mapping);
-   if (SUCCEEDED(result)) {
-      if (heap->map_count == UINT32_MAX) {
-         result = E_FAIL;
+   AcquireSRWLockExclusive(&storage->lock);
+   lifetime_result = d12_umd_lifetime_retain(&storage->lifetime);
+   if (lifetime_result == D12_UMD_LIFETIME_INVALID) {
+      result = E_INVALIDARG;
+   } else if (lifetime_result == D12_UMD_LIFETIME_OVERFLOW) {
+      result = E_FAIL;
+   } else {
+      if (!storage->mapping)
+         result = d12_umd_kmt_lock(&device->kmt,
+                                   storage->allocation.allocation,
+                                   &storage->mapping);
+      if (SUCCEEDED(result)) {
+         *mapping = storage->mapping;
       } else {
-         ++heap->map_count;
-         *mapping = heap->mapping;
+         (void)d12_umd_lifetime_release(&storage->lifetime);
       }
    }
-   ReleaseSRWLockExclusive(&heap->map_lock);
+   ReleaseSRWLockExclusive(&storage->lock);
    return result;
+}
+
+static HRESULT
+d12_umd_heap_storage_release_mapping(struct d12_umd_heap_storage *storage)
+{
+   struct d12_umd_device *device;
+   enum d12_umd_lifetime_result lifetime_result;
+   HRESULT result = S_OK;
+   bool finalize = false;
+
+   if (!storage || !storage->device)
+      return E_INVALIDARG;
+   device = storage->device;
+   AcquireSRWLockExclusive(&storage->lock);
+   lifetime_result = d12_umd_lifetime_release(&storage->lifetime);
+   if (lifetime_result == D12_UMD_LIFETIME_INVALID) {
+      result = E_INVALIDARG;
+   } else if (!storage->lifetime.retain_count) {
+      result = d12_umd_kmt_unlock(&device->kmt,
+                                  storage->allocation.allocation);
+      if (SUCCEEDED(result))
+         storage->mapping = NULL;
+      if (lifetime_result == D12_UMD_LIFETIME_FINALIZE)
+         finalize = true;
+   }
+   ReleaseSRWLockExclusive(&storage->lock);
+   if (finalize) {
+      HRESULT final_result = d12_umd_heap_storage_finalize(storage);
+      if (SUCCEEDED(result))
+         result = final_result;
+   }
+   return result;
+}
+
+static HRESULT
+d12_umd_heap_retain_mapping(struct d12_umd_heap *heap, void **mapping)
+{
+   if (mapping)
+      *mapping = NULL;
+   if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !mapping ||
+       !heap->storage)
+      return E_INVALIDARG;
+   return d12_umd_heap_storage_retain_mapping(heap->storage, mapping);
 }
 
 static HRESULT
 d12_umd_heap_release_mapping(struct d12_umd_heap *heap)
 {
-   struct d12_umd_device *device;
-   HRESULT result = S_OK;
-
-   if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !heap->device)
+   if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !heap->storage)
       return E_INVALIDARG;
-   device = heap->device;
-   AcquireSRWLockExclusive(&heap->map_lock);
-   if (!heap->map_count) {
-      result = E_INVALIDARG;
-   } else if (--heap->map_count == 0) {
-      result = d12_umd_kmt_unlock(&device->kmt, heap->allocation.allocation);
-      if (SUCCEEDED(result))
-         heap->mapping = NULL;
-   }
-   ReleaseSRWLockExclusive(&heap->map_lock);
-   return result;
+   return d12_umd_heap_storage_release_mapping(heap->storage);
+}
+
+static void
+d12_umd_fence_release_heap_storage(void *cookie)
+{
+   struct d12_umd_heap_storage *storage = cookie;
+   struct d12_umd_device *device = storage ? storage->device : NULL;
+   HRESULT result = d12_umd_heap_storage_release_mapping(storage);
+
+   if (FAILED(result) && device)
+      d12_umd_set_device_error(device, result);
 }
 
 static SIZE_T APIENTRY
@@ -1297,7 +1415,19 @@ d12_umd_create_heap_resource(
    heap->device = device;
    heap->runtime_resource = runtime_resource.handle;
    heap->cpu_page_property = heap_arguments->CPUPageProperty;
-   InitializeSRWLock(&heap->map_lock);
+   result = d12_umd_heap_storage_create(heap);
+   if (FAILED(result)) {
+      if (heap->backend && device->renderer_ops &&
+          device->renderer_ops->destroy_heap) {
+         device->renderer_ops->destroy_heap(heap->backend);
+      } else {
+         (void)d12_umd_kmt_deallocate(&device->kmt,
+                                      heap->runtime_resource,
+                                      &heap->allocation);
+      }
+      SecureZeroMemory(heap, sizeof(*heap));
+      return result;
+   }
 
    AcquireSRWLockExclusive(&device->heap_lock);
    heap->next = device->heaps;
@@ -1327,7 +1457,7 @@ d12_umd_create_heap_resource(
             ReleaseSRWLockExclusive(&device->heap_lock);
             if (resource->backend)
                device->renderer_ops->destroy_resource(resource->backend);
-            device->renderer_ops->destroy_heap(heap->backend);
+            (void)d12_umd_heap_storage_request_destroy(heap->storage);
             SecureZeroMemory(resource, sizeof(*resource));
             SecureZeroMemory(heap, sizeof(*heap));
             return result;
@@ -1552,7 +1682,9 @@ d12_umd_open_heap_resource(
    heap->runtime_resource = runtime_resource.handle;
    heap->cpu_page_property =
       (D3D12DDI_CPU_PAGE_PROPERTY)private_data.heap.cpu_page_property;
-   InitializeSRWLock(&heap->map_lock);
+   result = d12_umd_heap_storage_create(heap);
+   if (FAILED(result))
+      goto fail;
 
    if (has_resource) {
       if (!device->renderer_ops->create_placed_resource) {
@@ -1594,7 +1726,11 @@ d12_umd_open_heap_resource(
 fail:
    if (resource && resource->backend && device->renderer_ops->destroy_resource)
       device->renderer_ops->destroy_resource(resource->backend);
-   device->renderer_ops->destroy_heap(heap->backend);
+   if (heap->storage) {
+      (void)d12_umd_heap_storage_request_destroy(heap->storage);
+   } else if (heap->backend) {
+      device->renderer_ops->destroy_heap(heap->backend);
+   }
    if (resource)
       SecureZeroMemory(resource, sizeof(*resource));
    SecureZeroMemory(heap, sizeof(*heap));
@@ -1610,6 +1746,7 @@ d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
    struct d12_umd_heap *heap = (struct d12_umd_heap *)heap_handle.pDrvPrivate;
    struct d12_umd_resource *resource =
       (struct d12_umd_resource *)resource_handle.pDrvPrivate;
+   struct d12_umd_heap_storage *storage;
    HRESULT result = S_OK;
 
    if (!device)
@@ -1622,8 +1759,9 @@ d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
       SecureZeroMemory(resource, sizeof(*resource));
    }
    if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE ||
-       heap->device != device)
+       heap->device != device || !heap->storage)
       return;
+   storage = heap->storage;
 
    AcquireSRWLockExclusive(&device->heap_lock);
    if (device->heaps == heap) {
@@ -1637,15 +1775,7 @@ d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
    }
    ReleaseSRWLockExclusive(&device->heap_lock);
 
-   if (heap->mapping)
-      (void)d12_umd_kmt_unlock(&device->kmt, heap->allocation.allocation);
-   if (heap->backend && device->renderer_ops &&
-       device->renderer_ops->destroy_heap) {
-      device->renderer_ops->destroy_heap(heap->backend);
-   } else {
-      result = d12_umd_kmt_deallocate(&device->kmt, heap->runtime_resource,
-                                      &heap->allocation);
-   }
+   result = d12_umd_heap_storage_request_destroy(storage);
    if (FAILED(result))
       d12_umd_set_device_error(device, result);
    SecureZeroMemory(heap, sizeof(*heap));
@@ -1662,6 +1792,7 @@ d12_umd_map_heap(D3D12DDI_HDEVICE handle, D3D12DDI_HHEAP heap_handle,
       *mapping = NULL;
    if (!device || !heap || heap->signature != D12_UMD_HEAP_SIGNATURE ||
        heap->device != device || !mapping ||
+       !heap->storage ||
        heap->cpu_page_property == D3D12DDI_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
       return E_INVALIDARG;
    return d12_umd_heap_retain_mapping(heap, mapping);
@@ -1686,13 +1817,13 @@ static HRESULT
 d12_umd_resolve_fence_address(struct d12_umd_device *device,
                               D3DGPU_VIRTUAL_ADDRESS address,
                               volatile uint64_t **cpu_address,
-                              struct d12_umd_heap **retained_heap)
+                              struct d12_umd_heap_storage **retained_storage)
 {
    struct d12_umd_heap *heap;
    HRESULT result = E_INVALIDARG;
 
    if (!device || !address || (address & (sizeof(uint64_t) - 1)) ||
-       !cpu_address || !retained_heap)
+       !cpu_address || !retained_storage)
       return E_INVALIDARG;
 
    AcquireSRWLockShared(&device->heap_lock);
@@ -1707,7 +1838,7 @@ d12_umd_resolve_fence_address(struct d12_umd_device *device,
       result = d12_umd_heap_retain_mapping(heap, &mapping);
       if (SUCCEEDED(result)) {
          *cpu_address = (volatile uint64_t *)((uint8_t *)mapping + offset);
-         *retained_heap = heap;
+         *retained_storage = heap->storage;
       }
       break;
    }
@@ -1748,6 +1879,8 @@ d12_umd_create_fence(D3D12DDI_HDEVICE handle, D3D12DDI_HFENCE fence_handle,
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_fence *fence = fence_handle.pDrvPrivate;
+   struct d12_umd_heap_storage *retained_storage = NULL;
+   bool lifetime_transferred;
    HRESULT result;
 
    if (!device || !fence || !d12_umd_fence_arguments_valid(arguments))
@@ -1770,19 +1903,30 @@ d12_umd_create_fence(D3D12DDI_HDEVICE handle, D3D12DDI_HFENCE fence_handle,
    result = d12_umd_resolve_fence_address(
       device, arguments->Fences[0].FenceValue.BaseAddress,
       &fence->entries[0].placement.current_cpu_address,
-      &fence->entries[0].current_heap);
+      &retained_storage);
    if (FAILED(result))
       goto fail;
+   fence->entries[0].placement.lifetime_cookie = retained_storage;
+   fence->entries[0].placement.release_lifetime =
+      d12_umd_fence_release_heap_storage;
 
    result = device->renderer_ops->create_fence(
       device->backend, fence->count, &fence->entries[0].placement,
       &fence->backend);
+   lifetime_transferred = fence->backend != NULL;
    result = d12_umd_renderer_object_result(
       result, &fence->backend, device->renderer_ops->destroy_fence);
    if (FAILED(result)) {
-      (void)d12_umd_heap_release_mapping(fence->entries[0].current_heap);
+      if (!lifetime_transferred)
+         d12_umd_fence_release_heap_storage(
+            fence->entries[0].placement.lifetime_cookie);
       goto fail;
    }
+   /* The renderer owns the retained mapping until its final asynchronous
+    * fence reference is released.  Keep no actionable duplicate in the
+    * runtime-owned DDI block. */
+   fence->entries[0].placement.lifetime_cookie = NULL;
+   fence->entries[0].placement.release_lifetime = NULL;
    fence->signature = D12_UMD_FENCE_SIGNATURE;
    return S_OK;
 
@@ -1806,12 +1950,6 @@ d12_umd_destroy_fence(D3D12DDI_HDEVICE handle,
    if (fence->backend && device->renderer_ops &&
        device->renderer_ops->destroy_fence)
       device->renderer_ops->destroy_fence(fence->backend);
-   if (fence->entries[0].current_heap) {
-      HRESULT result =
-         d12_umd_heap_release_mapping(fence->entries[0].current_heap);
-      if (FAILED(result))
-         d12_umd_set_device_error(device, result);
-   }
    SecureZeroMemory(fence, size);
 }
 

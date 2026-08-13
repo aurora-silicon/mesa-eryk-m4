@@ -602,4 +602,10 @@ struct d12_frontend_fence_placement {
    uint64_t monitored_gpu_address;
    volatile uint64_t *current_cpu_address;
    uint32_t flags;
+   /* The frontend retains the allocation and its CPU mapping before handing
+    * a placement to the renderer.  A successful renderer fence creation
+    * transfers that reference here; the renderer releases it only after the
+    * last asynchronous queue operation drops the fence. */
+   void *lifetime_cookie;
+   void (*release_lifetime)(void *cookie);
 };

@@ -364,7 +364,7 @@ _Static_assert(sizeof(struct d12_frontend_stream_output_declaration) == 24,
                "frontend stream-output declaration width");
 _Static_assert(sizeof(struct d12_frontend_indirect_argument_desc) == 16,
                "frontend indirect-argument width");
-_Static_assert(sizeof(struct d12_frontend_fence_placement) == 32,
+_Static_assert(sizeof(struct d12_frontend_fence_placement) == 48,
                "frontend fence placement width");
 _Static_assert(sizeof(struct d12_umd_resource_private) == 176,
                "opened-resource private-data width");

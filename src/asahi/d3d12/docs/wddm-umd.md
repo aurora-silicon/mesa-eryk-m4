@@ -358,9 +358,20 @@ marshals the existing `agxw_dma_header`/`agxw_submit_private` contract into
 `pfnSubmitCommandCb`; no side-channel escape or private IOCTL was added.
 
 The callback transport implements WDDM monitored-fence synchronization and
-the existing AGX timeline policy. DDI fence objects retain the runtime's
-placement allocation. Queue Signal emits an ordered AGX compute write to that
-placement, and queue Wait observes its coherent value before later work.
+the existing AGX timeline policy. Resolving a DDI fence placement creates a
+driver-owned heap-storage record which retains the VidMm allocation, renderer
+heap and coherent CPU mapping independently of runtime-owned DDI private
+memory. Successful renderer fence creation takes that reference; the final
+asynchronous renderer fence reference releases it. `DestroyFence` can
+therefore precede retirement of an already-queued Signal or Wait, and
+`DestroyHeapAndResource` defers unlock and deallocation until that work drops
+the last placement reference. Queue Signal emits an ordered AGX compute write
+to the retained placement, and queue Wait observes its coherent value before
+later work. DXGI identity rotation takes the same storage lock, rejects live
+placement/CPU mappings transactionally, and updates both public and retained
+allocation identities while locked. A portable state-machine unit test covers
+retain, destroy-before-release, finalization, invalid release and overflow;
+the ARM64 callback probe additionally checks deferred heap teardown.
 The shared renderer queue uses separate ordered submission and retirement
 workers. The submit worker feeds successive command lists to the same AGX
 timeline without waiting for each list to finish. The retirement worker waits

@@ -137,6 +137,9 @@ static HRESULT transaction_queue_result;
 static HRESULT transaction_fence_result;
 static void *transaction_queue_output;
 static void *transaction_fence_output;
+static struct d12_frontend_fence_placement transaction_fence_placement;
+static bool transaction_fence_owns_lifetime;
+static bool transaction_fence_defer_lifetime_release;
 
 static HRESULT
 test_transaction_create_queue(void *device,
@@ -170,18 +173,39 @@ test_transaction_create_fence(
           TEST_RESOURCE_GPU_VA + sizeof(uint64_t) ||
        placements[0].current_cpu_address !=
           (volatile uint64_t *)(void *)mapped_heap ||
+       !placements[0].lifetime_cookie ||
+       !placements[0].release_lifetime ||
        placements[0].flags != D3D12DDI_FENCE_FLAG_BOTTOM_OF_PIPE)
       return E_INVALIDARG;
    ++transaction_fence_create_calls;
    *out_fence = transaction_fence_output;
+   if (*out_fence) {
+      transaction_fence_placement = placements[0];
+      transaction_fence_owns_lifetime = true;
+   }
    return transaction_fence_result;
+}
+
+static void
+test_transaction_release_fence_lifetime(void)
+{
+   if (!transaction_fence_owns_lifetime)
+      return;
+   transaction_fence_owns_lifetime = false;
+   transaction_fence_placement.release_lifetime(
+      transaction_fence_placement.lifetime_cookie);
+   memset(&transaction_fence_placement, 0,
+          sizeof(transaction_fence_placement));
 }
 
 static void
 test_transaction_destroy_fence(void *fence)
 {
-   if (fence == TEST_TRANSACTION_FENCE)
+   if (fence == TEST_TRANSACTION_FENCE) {
       ++transaction_fence_destroy_calls;
+      if (!transaction_fence_defer_lifetime_release)
+         test_transaction_release_fence_lifetime();
+   }
 }
 
 static const struct d12_umd_renderer_ops test_transaction_renderer_ops = {
@@ -3071,6 +3095,7 @@ wmain(int argc, wchar_t **argv)
                   driver_device.pDrvPrivate;
                struct d12_umd_heap *saved_heaps = private_device->heaps;
                struct d12_umd_heap rotate_heaps[3] = {0};
+               struct d12_umd_heap_storage rotate_storage[3] = {0};
                struct d12_umd_resource rotate_resources[3] = {0};
                DXGI_DDI_HRESOURCE rotate_handles[3];
                HANDLE runtime_handles[3];
@@ -3113,7 +3138,15 @@ wmain(int argc, wchar_t **argv)
                      runtime_handles[index];
                   rotate_heaps[index].cpu_page_property =
                      D3D12DDI_CPU_PAGE_PROPERTY_WRITE_BACK;
-                  InitializeSRWLock(&rotate_heaps[index].map_lock);
+                  rotate_storage[index].device = private_device;
+                  rotate_storage[index].allocation =
+                     rotate_heaps[index].allocation;
+                  rotate_storage[index].runtime_resource =
+                     runtime_handles[index];
+                  rotate_storage[index].cpu_page_property =
+                     D3D12DDI_CPU_PAGE_PROPERTY_WRITE_BACK;
+                  InitializeSRWLock(&rotate_storage[index].lock);
+                  rotate_heaps[index].storage = &rotate_storage[index];
 
                   rotate_resources[index].signature =
                      D12_UMD_RESOURCE_SIGNATURE;
@@ -3148,6 +3181,8 @@ wmain(int argc, wchar_t **argv)
                               (uint64_t)source * UINT64_C(0x10000) &&
                         rotate_resources[index].allocation.allocation ==
                            0x92000000u + source &&
+                        rotate_storage[index].allocation.allocation ==
+                           0x92000000u + source &&
                         rotate_heaps[index].runtime_resource ==
                            runtime_handles[index],
                      "DXGI kernel identity rotates, runtime handle stays");
@@ -3155,7 +3190,7 @@ wmain(int argc, wchar_t **argv)
 
                const struct d12_umd_allocation before =
                   rotate_heaps[0].allocation;
-               rotate_heaps[0].map_count = 1;
+               rotate_storage[0].lifetime.retain_count = 1;
                result = dxgi_table.pfnRotateResourceIdentities(
                   &rotate_arguments);
                require_result(
@@ -3163,7 +3198,7 @@ wmain(int argc, wchar_t **argv)
                      memcmp(&before, &rotate_heaps[0].allocation,
                             sizeof(before)) == 0,
                   "reject rotation of CPU-mapped resource transactionally");
-               rotate_heaps[0].map_count = 0;
+               rotate_storage[0].lifetime.retain_count = 0;
 
                {
                   DXGI_DDI_ARG_BLT blt = {
@@ -3707,15 +3742,15 @@ wmain(int argc, wchar_t **argv)
          {
             struct d12_umd_heap *private_heap = heap_handle.pDrvPrivate;
 
-            private_heap->mapping = mapped_heap;
-            private_heap->map_count = UINT32_MAX;
+            private_heap->storage->mapping = mapped_heap;
+            private_heap->storage->lifetime.retain_count = UINT32_MAX;
             mapping = (void *)(uintptr_t)UINTPTR_MAX;
             result = device_table.pfnMapHeap(driver_device, heap_handle,
                                              &mapping);
             require_result(result == E_FAIL && mapping == NULL,
                            "MapHeap clears output on retain overflow");
-            private_heap->mapping = NULL;
-            private_heap->map_count = 0;
+            private_heap->storage->mapping = NULL;
+            private_heap->storage->lifetime.retain_count = 0;
          }
 
          mapping = NULL;
@@ -3765,6 +3800,10 @@ wmain(int argc, wchar_t **argv)
             private_device->renderer_ops = &test_transaction_renderer_ops;
             transaction_fence_create_calls = 0;
             transaction_fence_destroy_calls = 0;
+            transaction_fence_owns_lifetime = false;
+            transaction_fence_defer_lifetime_release = false;
+            memset(&transaction_fence_placement, 0,
+                   sizeof(transaction_fence_placement));
             mapping_lock_base = lock_calls;
             mapping_unlock_base = unlock_calls;
 
@@ -3808,6 +3847,7 @@ wmain(int argc, wchar_t **argv)
                "require symmetric backend fence destruction");
 
             private_device->renderer_ops = &test_transaction_renderer_ops;
+            transaction_fence_defer_lifetime_release = true;
             result = device_table.pfnCreateFence(
                driver_device, driver_fence, &fence_arguments);
             require_result(
@@ -3818,8 +3858,9 @@ wmain(int argc, wchar_t **argv)
             device_table.pfnDestroyFence(driver_device, driver_fence);
             require_result(
                transaction_fence_destroy_calls == 2 &&
-                  unlock_calls == mapping_unlock_base + 3,
-               "destroy transactional backend fence");
+                  unlock_calls == mapping_unlock_base + 2 &&
+                  transaction_fence_owns_lifetime,
+               "renderer retains placement after DDI fence destruction");
 
             private_device->renderer_ops = saved_renderer_ops;
             private_device->backend = saved_backend;
@@ -4078,10 +4119,26 @@ wmain(int argc, wchar_t **argv)
             }
          }
 
-         device_table.pfnDestroyHeapAndResource(driver_device, heap_handle,
-                                                resource_handle);
-         require_result(deallocation_calls == 1,
-                        "DestroyHeapAndResource deallocation callback");
+         {
+            const unsigned deallocation_base = deallocation_calls;
+            const unsigned unlock_base = unlock_calls;
+
+            device_table.pfnDestroyHeapAndResource(driver_device,
+                                                   heap_handle,
+                                                   resource_handle);
+            require_result(
+               deallocation_calls == deallocation_base &&
+                  unlock_calls == unlock_base &&
+                  transaction_fence_owns_lifetime,
+               "defer heap teardown while queued fence owns placement");
+            test_transaction_release_fence_lifetime();
+            require_result(
+               deallocation_calls == deallocation_base + 1 &&
+                  unlock_calls == unlock_base + 1 &&
+                  !transaction_fence_owns_lifetime,
+               "final fence retirement unlocks and deallocates heap");
+            transaction_fence_defer_lifetime_release = false;
+         }
          HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
          HeapFree(GetProcessHeap(), 0, heap_handle.pDrvPrivate);
       }

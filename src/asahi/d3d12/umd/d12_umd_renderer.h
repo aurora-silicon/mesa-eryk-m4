@@ -46,6 +46,9 @@ struct d12_umd_renderer_ops {
       void *device, uint32_t count,
       const struct d12_frontend_fence_placement *placements,
       void **out_fence);
+   /* A non-NULL fence returned by create_fence owns each placement lifetime
+    * callback, even when the HRESULT reports failure and the caller
+    * immediately destroys that partial object. */
    void (*destroy_fence)(void *fence);
    HRESULT (*signal_fence)(void *queue, void *fence, uint64_t value);
    HRESULT (*wait_fence)(void *queue, void *fence, uint64_t value);

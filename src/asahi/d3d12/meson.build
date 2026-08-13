@@ -180,6 +180,7 @@ if d12_is_windows
         'umd/d12_umd_agx_transport.c',
         'umd/d12_umd_backend.c',
         'umd/d12_umd_command_core.c',
+        'umd/d12_umd_lifetime_core.c',
         'umd/d12_umd_command_funcs.c',
         'umd/d12_umd_pipeline_serialization.c',
         'umd/d12_umd_pipeline_library.c',

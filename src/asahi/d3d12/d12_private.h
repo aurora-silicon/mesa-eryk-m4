@@ -1647,6 +1647,8 @@ struct d12_placement_fence_entry {
    uint64_t monitored_gpu_address;
    volatile uint64_t *current_cpu_address;
    uint32_t flags;
+   void *lifetime_cookie;
+   void (*release_lifetime)(void *cookie);
 };
 
 /* Renderer-owned view of the DDI runtime's fence-value placements.  Queue
@@ -1658,7 +1660,6 @@ struct d12_placement_fence {
    cnd_t changed;
    uint32_t lifetime_refcount;
    uint32_t count;
-   bool destroyed;
    struct d12_placement_fence_entry entries[1];
 };
 

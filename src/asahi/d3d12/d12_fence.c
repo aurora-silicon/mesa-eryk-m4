@@ -95,6 +95,11 @@ d12_placement_fence_unref(struct d12_placement_fence *fence)
 {
    if (p_atomic_dec_return(&fence->lifetime_refcount) != 0)
       return;
+   for (uint32_t index = 0; index < fence->count; ++index) {
+      if (fence->entries[index].release_lifetime)
+         fence->entries[index].release_lifetime(
+            fence->entries[index].lifetime_cookie);
+   }
    cnd_destroy(&fence->changed);
    mtx_destroy(&fence->lock);
    d12_device_release(fence->device);
@@ -106,10 +111,9 @@ d12_placement_fence_destroy(struct d12_placement_fence *fence)
 {
    if (!fence)
       return;
-   mtx_lock(&fence->lock);
-   fence->destroyed = true;
-   cnd_broadcast(&fence->changed);
-   mtx_unlock(&fence->lock);
+   /* Queue Wait/Signal operations already hold renderer lifetime references.
+    * Destroying the runtime-owned DDI wrapper must not cancel those ordered
+    * operations; queue/device shutdown supplies their explicit cancel path. */
    d12_placement_fence_unref(fence);
 }
 
@@ -120,7 +124,7 @@ d12_placement_fence_wait(struct d12_placement_fence *fence, uint64_t value,
    bool completed = false;
 
    mtx_lock(&fence->lock);
-   while (!fence->destroyed) {
+   for (;;) {
       completed = true;
       for (uint32_t index = 0; index < fence->count; ++index) {
          if (d12_placement_load(

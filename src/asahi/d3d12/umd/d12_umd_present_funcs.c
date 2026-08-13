@@ -188,7 +188,7 @@ d12_umd_live_resource_heap(struct d12_umd_device *device,
    for (struct d12_umd_heap *heap = device->heaps; heap; heap = heap->next) {
       if (heap->runtime_resource == resource->runtime_heap_resource &&
           heap->signature == D12_UMD_HEAP_SIGNATURE &&
-          heap->device == device)
+          heap->device == device && heap->storage)
          return heap;
    }
    return NULL;
@@ -489,9 +489,11 @@ d12_umd_dxgi_rotate_resource_identities(
     * Serialize against every heap map and retain the locks until the AGX BO,
     * descriptors and frontend allocation handles all agree. */
    for (UINT i = 0; i < arguments->Resources; ++i) {
-      AcquireSRWLockExclusive(&heaps[i]->map_lock);
+      AcquireSRWLockExclusive(&heaps[i]->storage->lock);
       ++locks_held;
-      if (heaps[i]->map_count || heaps[i]->mapping)
+      if (heaps[i]->storage->lifetime.retain_count ||
+          heaps[i]->storage->mapping ||
+          heaps[i]->storage->lifetime.destroy_requested)
          goto unlock_maps;
    }
 
@@ -518,15 +520,17 @@ d12_umd_dxgi_rotate_resource_identities(
     * the DDI wrappers. */
    for (UINT i = 0; i + 1 < arguments->Resources; ++i) {
       heaps[i]->allocation = allocations[i + 1];
+      heaps[i]->storage->allocation = allocations[i + 1];
       resources[i]->allocation = allocations[i + 1];
    }
    heaps[arguments->Resources - 1]->allocation = allocations[0];
+   heaps[arguments->Resources - 1]->storage->allocation = allocations[0];
    resources[arguments->Resources - 1]->allocation = allocations[0];
    result = S_OK;
 
 unlock_maps:
    while (locks_held)
-      ReleaseSRWLockExclusive(&heaps[--locks_held]->map_lock);
+      ReleaseSRWLockExclusive(&heaps[--locks_held]->storage->lock);
 unlock_rotation:
    ReleaseSRWLockShared(&device->heap_lock);
    ReleaseSRWLockExclusive(&device->rotation_lock);

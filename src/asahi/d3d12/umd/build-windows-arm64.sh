@@ -95,6 +95,7 @@ sources=(
     "$umd_dir/d12_umd_kmt.c"
     "$umd_dir/d12_umd_agx_transport.c"
     "$umd_dir/d12_umd_command_core.c"
+    "$umd_dir/d12_umd_lifetime_core.c"
     "$umd_dir/d12_umd_command_funcs.c"
     "$umd_dir/d12_umd_pipeline_serialization.c"
     "$umd_dir/d12_umd_pipeline_library.c"
