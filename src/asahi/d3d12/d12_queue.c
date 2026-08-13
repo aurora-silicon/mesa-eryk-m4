@@ -374,9 +374,9 @@ d12_queue_resolve_bo_range(struct agx_device *dev, uint64_t address,
       if (!bo->va || !bo->size)
          continue;
 
+      /* agx_va_alloc() returns absolute addresses for both heaps. LOW_VA
+       * selects the USC heap; only packed USC pointers subtract shader_base. */
       uint64_t bo_base = bo->va->addr;
-      if (bo->flags & AGX_BO_LOW_VA)
-         bo_base += dev->shader_base;
       if (address < bo_base || address - bo_base >= bo->size)
          continue;
 

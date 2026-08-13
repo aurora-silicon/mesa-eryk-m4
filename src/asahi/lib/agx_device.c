@@ -985,9 +985,10 @@ agx_debug_fault(struct agx_device *dev, uint64_t addr)
       if (!bo->va)
          continue;
 
+      /* VMA heap addresses are absolute. AGX_BO_LOW_VA selects the USC
+       * heap; agx_usc_addr() is the only layer that converts one to a
+       * shader-base-relative packed pointer. */
       uint64_t bo_addr = bo->va->addr;
-      if (bo->flags & AGX_BO_LOW_VA)
-         bo_addr += dev->shader_base;
 
       if (!bo->size || bo_addr > addr)
          continue;

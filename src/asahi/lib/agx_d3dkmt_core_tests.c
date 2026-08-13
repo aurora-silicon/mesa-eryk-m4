@@ -959,6 +959,55 @@ test_alloc_flags(void)
 }
 
 static void
+test_bo_read_ranges_are_absolute(void)
+{
+   struct agx_d3dkmt_policy policy = agx_d3dkmt_policy_default();
+   struct agxw_submit_read_range range = {0};
+   policy.usc_base = UINT64_C(0x1100000000);
+   policy.usc_size = UINT64_C(0x100000000);
+
+   /* LOW_VA is a heap choice, not a relative-address encoding. Adding the
+    * shader base again would turn this into 0x2200004000 and make the KMD
+    * publish coherency for unrelated storage. */
+   CHECK_EQ(agx_d3dkmt_bo_read_range(
+               &policy, true, policy.usc_base + AGXW_PAGE_SIZE,
+               AGXW_PAGE_SIZE, &range),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(range.gpu_va, policy.usc_base + AGXW_PAGE_SIZE);
+   CHECK_EQ(range.length, AGXW_PAGE_SIZE);
+   CHECK(agxw_va_range_is_user(policy.usc_base + range.gpu_va,
+                               range.length));
+
+   CHECK_EQ(agx_d3dkmt_bo_read_range(
+               &policy, false, UINT64_C(0x1500000000),
+               2 * AGXW_PAGE_SIZE, &range),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(range.gpu_va, UINT64_C(0x1500000000));
+
+   /* A LOW_VA-tagged BO must be wholly contained in the declared USC heap. */
+   CHECK_EQ(agx_d3dkmt_bo_read_range(
+               &policy, true,
+               policy.usc_base + policy.usc_size - AGXW_PAGE_SIZE,
+               AGXW_PAGE_SIZE, &range),
+            AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_bo_read_range(
+            &policy, true, policy.usc_base - AGXW_PAGE_SIZE,
+            AGXW_PAGE_SIZE, &range) != AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_bo_read_range(
+            &policy, true,
+            policy.usc_base + policy.usc_size - AGXW_PAGE_SIZE,
+            2 * AGXW_PAGE_SIZE, &range) != AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_bo_read_range(
+            &policy, true, policy.usc_base, AGXW_PAGE_SIZE, NULL) !=
+         AGX_D3DKMT_OK);
+
+   policy.usc_size = 0;
+   CHECK(agx_d3dkmt_bo_read_range(
+            &policy, true, policy.usc_base, AGXW_PAGE_SIZE, &range) !=
+         AGX_D3DKMT_OK);
+}
+
+static void
 test_read_range_canonicalization(void)
 {
    struct agxw_submit_read_range ranges[4] = {0};
@@ -1107,6 +1156,7 @@ main(void)
    test_first_signaled();
    test_identity_parsing();
    test_alloc_flags();
+   test_bo_read_ranges_are_absolute();
    test_read_range_canonicalization();
    test_contract_blobs_we_emit();
 

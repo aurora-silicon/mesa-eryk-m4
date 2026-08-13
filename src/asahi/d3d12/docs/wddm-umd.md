@@ -247,6 +247,11 @@ of `D3DDDI_DEVICECALLBACKS`.  AGX native 16 KiB pages and the WDDM 64 KiB
 reservation granularity remain separate, as already encoded and host-tested
 in `agx_d3dkmt_core`.  Resource layout selection remains `ail`; WDDM supplies
 allocation ownership and residency, not a new texture layout implementation.
+Mesa VMA addresses are absolute in both the main and USC heaps. The submit-v3
+coherency read set validates low-VA BOs against the declared USC window and
+forwards that absolute address unchanged; only packed AGX USC pointers subtract
+`shader_base`. Host tests specifically prove that a second base addition can
+remain contract-valid while naming unrelated main-heap storage.
 The pre-device texture-layout query reports zero private layouts/swizzles and
 advertises the precise row-major layout subset accepted by the shared AGX
 renderer: cross-adapter 2D textures with one mip, one array layer and one
@@ -390,6 +395,9 @@ The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
   directly; there is no hidden `D3DKMTCreateDevice` in the DDI path.
 - Allocations, residency, paging fences and GPU-VA updates remain explicit
   WDDM objects. UMA does not mean “always resident” or justify bypassing VidMm.
+- Submit coherency metadata uses each BO's exact mapped GPU VA. LOW_VA chooses
+  the USC heap but never rebases the address; portable tests cover both heap
+  bounds and the otherwise-silent double-base failure case.
 - Context HANDLEs are stored at native pointer width in a bounded bridge table;
   renderer-side 32-bit IDs are tokens and never truncated HANDLE values.
 - Hot submission callbacks do fixed-field translation only. Heap allocation is

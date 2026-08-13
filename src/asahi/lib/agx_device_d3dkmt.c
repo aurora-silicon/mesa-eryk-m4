@@ -2226,32 +2226,40 @@ d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
                       struct agxw_submit_read_range *ranges,
                       uint32_t *range_count)
 {
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    uint32_t count = 0;
-   uint64_t staging_va = staging->va->addr;
+   struct agxw_submit_read_range range;
 
-   if (staging->flags & AGX_BO_LOW_VA)
-      staging_va += dev->shader_base;
+   if (agx_d3dkmt_bo_read_range(
+          &ws->policy, (staging->flags & AGX_BO_LOW_VA) != 0,
+          staging->va->addr, staging->size, &range) != AGX_D3DKMT_OK) {
+      errno = EINVAL;
+      return -1;
+   }
    if (agx_d3dkmt_read_range_add(
           ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
-          staging_va, staging->size) != AGX_D3DKMT_OK)
+          range.gpu_va, range.length) != AGX_D3DKMT_OK)
       return -1;
 
    simple_mtx_lock(&dev->bo_map_lock);
    for (uint32_t handle = 0; handle < dev->max_handle; ++handle) {
       struct agx_bo *bo = agx_lookup_bo(dev, handle);
-      uint64_t gpu_va;
 
       if (p_atomic_read(&bo->refcnt) <= 0 || !bo->va || !bo->size ||
           (!bo->_map &&
            !(bo->flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))))
          continue;
 
-      gpu_va = bo->va->addr;
-      if (bo->flags & AGX_BO_LOW_VA)
-         gpu_va += dev->shader_base;
+      if (agx_d3dkmt_bo_read_range(
+             &ws->policy, (bo->flags & AGX_BO_LOW_VA) != 0,
+             bo->va->addr, bo->size, &range) != AGX_D3DKMT_OK) {
+         simple_mtx_unlock(&dev->bo_map_lock);
+         errno = EINVAL;
+         return -1;
+      }
       if (agx_d3dkmt_read_range_add(
              ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
-             gpu_va, bo->size) != AGX_D3DKMT_OK) {
+             range.gpu_va, range.length) != AGX_D3DKMT_OK) {
          simple_mtx_unlock(&dev->bo_map_lock);
          errno = ENOSPC;
          return -1;

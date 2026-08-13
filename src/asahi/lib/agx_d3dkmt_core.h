@@ -478,6 +478,15 @@ uint32_t agx_d3dkmt_create_flags_external(
  */
 uint32_t agx_d3dkmt_create_flags_runtime_resource(uint32_t agx_bo_flags);
 
+/* Resolve the address of a Mesa BO for KMD coherency metadata. agx_va_alloc()
+ * returns an absolute GPU VA for both the main and USC heaps; LOW_VA selects
+ * the heap but never changes the address representation. Validate that rule
+ * against the adapter's USC policy and return the address unchanged. */
+int agx_d3dkmt_bo_read_range(
+   const struct agx_d3dkmt_policy *policy, bool low_va,
+   uint64_t allocated_va, uint64_t length,
+   struct agxw_submit_read_range *range);
+
 /* Insert a user GPU range into a sorted, overlap-free vector, coalescing both
  * overlap and adjacency. This is shared by the Windows winsys and host ABI
  * tests so the KMD's bounded submit-v3 read-set cannot overflow silently. */

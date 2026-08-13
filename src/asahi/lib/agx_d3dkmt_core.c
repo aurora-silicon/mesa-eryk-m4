@@ -29,6 +29,32 @@ agx_d3dkmt_submit_private_flags(uint32_t submit_flags,
 }
 
 int
+agx_d3dkmt_bo_read_range(const struct agx_d3dkmt_policy *policy,
+                         bool low_va, uint64_t allocated_va,
+                         uint64_t length,
+                         struct agxw_submit_read_range *range)
+{
+   if (policy == NULL || range == NULL ||
+       !agxw_va_range_is_user(allocated_va, length))
+      return AGX_D3DKMT_ERR_INVAL;
+
+   if (low_va) {
+      if (policy->usc_size == 0 ||
+          allocated_va < policy->usc_base ||
+          allocated_va - policy->usc_base > policy->usc_size ||
+          length > policy->usc_size -
+                      (allocated_va - policy->usc_base))
+         return AGX_D3DKMT_ERR_INVAL;
+   }
+
+   *range = (struct agxw_submit_read_range){
+      .gpu_va = allocated_va,
+      .length = length,
+   };
+   return AGX_D3DKMT_OK;
+}
+
+int
 agx_d3dkmt_read_range_add(struct agxw_submit_read_range *ranges,
                           uint32_t *count, uint32_t capacity,
                           uint64_t gpu_va, uint64_t length)
