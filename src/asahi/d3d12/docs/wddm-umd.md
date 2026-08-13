@@ -404,6 +404,16 @@ The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
   control/argument arena, low-VA USC arena and immutable helper-program BO;
   the winsys adds its own staging BO. General command lists keep the fallback
   until descriptor, resource, executable and indirect reads are all tracked.
+  That fallback's already-canonical vector is cached by a 64-bit visibility
+  generation, so steady-state command-list submits perform a bounded copy
+  instead of repeatedly walking the BO map. BO activation/retirement, CPU
+  map/unmap, successful GPU-VA updates and DXGI identity rotation advance the
+  generation. Cache publication requires identical generations before and
+  after the locked scan; continuous resource churn retains the original
+  uncached scan result rather than publishing a possibly stale entry. The
+  fixed zero/scratch/printf allocations are included at their renderer ABI
+  addresses even though their process-root mappings intentionally have no
+  ordinary per-wrapper `agx_va` owner.
 - Context HANDLEs are stored at native pointer width in a bounded bridge table;
   renderer-side 32-bit IDs are tokens and never truncated HANDLE values.
 - Hot submission callbacks do fixed-field translation only. Heap allocation is

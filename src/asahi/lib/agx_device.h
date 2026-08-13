@@ -264,6 +264,12 @@ struct agx_device {
    struct util_sparse_array bo_map;
    uint32_t max_handle;
 
+   /* D3DKMT's conservative CPU-read set is cached by this epoch. It changes
+    * only on membership/range events, never on submission, so steady-state
+    * queues do not rescan the complete BO map. Other backends leave
+    * write_set_contract false and pay no atomic-update cost. */
+   uint64_t bo_read_set_generation;
+
    struct {
       simple_mtx_t lock;
 
@@ -305,6 +311,13 @@ struct agx_device {
 
    struct u_printf_ctx printf;
 };
+
+static inline void
+agx_bo_read_set_changed(struct agx_device *dev)
+{
+   if (dev->write_set_contract)
+      p_atomic_inc(&dev->bo_read_set_generation);
+}
 
 static inline int
 agx_bo_sync_for_device(struct agx_bo *bo, size_t offset, size_t size)

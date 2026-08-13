@@ -87,6 +87,11 @@ struct agx_d3dkmt_winsys {
    struct agx_d3dkmt_handle_pool pool;
    struct agx_d3dkmt_sync_table syncs;
 
+   /* Serialises publication/copy of the canonical conservative read vector.
+    * BO membership itself remains guarded by agx_device::bo_map_lock. */
+   simple_mtx_t read_set_lock;
+   struct agx_d3dkmt_read_set_cache read_set_cache;
+
    struct agx_d3dkmt_ctx *ctxs;
    uint32_t ctx_capacity;
    uint32_t active_submits;

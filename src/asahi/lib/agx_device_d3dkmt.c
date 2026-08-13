@@ -858,6 +858,14 @@ d3dkmt_adopt_allocation(struct agx_device *dev, size_t size, size_t align,
    return bo;
 }
 
+static void
+d3dkmt_activate_bo(struct agx_device *dev, struct agx_bo *bo)
+{
+   assert(p_atomic_read(&bo->refcnt) == 0);
+   p_atomic_set(&bo->refcnt, 1);
+   agx_bo_read_set_changed(dev);
+}
+
 /*
  * Clone of agx_bo_alloc()/win_bo_alloc() with GEM_CREATE replaced by
  * D3DKMTCreateAllocation2. The handle split is the only structural change:
@@ -941,7 +949,7 @@ agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
    bo = d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    if (bo) {
       bo->label = label;
-      p_atomic_set(&bo->refcnt, 1);
+      d3dkmt_activate_bo(dev, bo);
    }
    return bo;
 }
@@ -977,7 +985,7 @@ agx_d3dkmt_bo_open_runtime_resource(
    bo = d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    if (bo) {
       bo->label = label;
-      p_atomic_set(&bo->refcnt, 1);
+      d3dkmt_activate_bo(dev, bo);
    }
    return bo;
 }
@@ -1067,6 +1075,7 @@ agx_d3dkmt_bo_rotate_runtime_identities(struct agx_device *dev,
    bos[count - 1]->last_used = first.last_used;
    bos[count - 1]->cache_generation = first.cache_generation;
    bos[count - 1]->prime_fd = first.prime_fd;
+   agx_bo_read_set_changed(dev);
    result = true;
 
 out:
@@ -1432,7 +1441,7 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
       }
 
       bo->label = label;
-      p_atomic_set(&bo->refcnt, 1);
+      d3dkmt_activate_bo(dev, bo);
       return bo;
    }
 
@@ -1487,7 +1496,7 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
       return NULL;
 
    bo->label = label;
-   p_atomic_set(&bo->refcnt, 1);
+   d3dkmt_activate_bo(dev, bo);
    return bo;
 }
 
@@ -1534,7 +1543,7 @@ agx_d3dkmt_bo_create_external_with_runtime_data(
       d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
    if (bo != NULL) {
       bo->label = label;
-      p_atomic_set(&bo->refcnt, 1);
+      d3dkmt_activate_bo(dev, bo);
    }
    return bo;
 }
@@ -1570,7 +1579,7 @@ agx_d3dkmt_bo_import_external_with_runtime_data(
       d3dkmt_adopt_allocation(dev, size, AIL_PAGESIZE, flags, &record, true);
    if (bo != NULL) {
       bo->label = label;
-      p_atomic_set(&bo->refcnt, 1);
+      d3dkmt_activate_bo(dev, bo);
    }
    return bo;
 }
@@ -1954,6 +1963,8 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
       agx_d3dkmt_mark_device_lost(ws, NULL);
 
 out:
+   if (ret == 0)
+      agx_bo_read_set_changed(dev);
    if (binds != stack_binds)
       free(binds);
    if (uops != stack_ops)
@@ -1995,6 +2006,7 @@ d3dkmt_bo_mmap(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr)
    }
 
    bo->_map = lock.pData;
+   agx_bo_read_set_changed(dev);
 }
 
 static void
@@ -2009,6 +2021,7 @@ d3dkmt_bo_munmap(struct agx_device *dev, struct agx_bo *bo)
 
    AGX_D3DKMT_CALL(ws, Unlock2, &unlock);
    bo->_map = NULL;
+   agx_bo_read_set_changed(dev);
 }
 
 static int
@@ -2220,8 +2233,138 @@ staging_for(struct agx_device *dev, struct agx_d3dkmt_ctx *ctx, uint32_t size)
  * mapped/shareable BOs form a conservative superset independent of shader
  * reflection and cover command/control streams, executables, descriptors,
  * vertex/index/uniform/texture/indirect inputs and cross-API shared storage.
- * The KMD canonical vector is bounded, so overflow fails before SubmitCommand
- * rather than dropping coherency information. */
+ *
+ * That conservative walk is a correctness fallback, not submission work: the
+ * live vector changes only when BO visibility or placement changes. Cache its
+ * canonical result by generation so stable workloads take one short mutex,
+ * one generation comparison and one bounded memcpy rather than walking every
+ * Mesa BO on every queue submission. */
+static int
+d3dkmt_add_conservative_bo_range(
+   struct agx_d3dkmt_winsys *ws, struct agx_bo *bo, uint64_t fixed_va,
+   struct agxw_submit_read_range *ranges, uint32_t *count)
+{
+   if (bo == NULL || p_atomic_read(&bo->refcnt) <= 0 || !bo->size ||
+       (!bo->_map &&
+        !(bo->flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))))
+      return 0;
+
+   const uint64_t gpu_va = bo->va != NULL ? bo->va->addr : fixed_va;
+   if (gpu_va == 0)
+      return 0;
+
+   struct agxw_submit_read_range range;
+   if (agx_d3dkmt_bo_read_range(
+          &ws->policy, (bo->flags & AGX_BO_LOW_VA) != 0,
+          gpu_va, bo->size, &range) != AGX_D3DKMT_OK) {
+      errno = EINVAL;
+      return -1;
+   }
+   if (agx_d3dkmt_read_range_add(
+          ranges, count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
+          range.gpu_va, range.length) != AGX_D3DKMT_OK) {
+      errno = ENOSPC;
+      return -1;
+   }
+   return 0;
+}
+
+static int
+d3dkmt_scan_conservative_read_set(
+   struct agx_device *dev, struct agxw_submit_read_range *ranges,
+   uint32_t *range_count)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   uint32_t count = 0;
+
+   simple_mtx_lock(&dev->bo_map_lock);
+   for (uint32_t handle = 0; handle < dev->max_handle; ++handle) {
+      struct agx_bo *bo = agx_lookup_bo(dev, handle);
+      if (bo->va != NULL && d3dkmt_add_conservative_bo_range(
+                               ws, bo, 0, ranges, &count)) {
+         simple_mtx_unlock(&dev->bo_map_lock);
+         return -1;
+      }
+   }
+
+   /* WDDM process-root bootstrap allocations are mapped at renderer ABI
+    * constants and intentionally do not own agx_va records: freeing one Mesa
+    * wrapper must not release the process-wide reservation. Add their actual
+    * fixed GPU addresses explicitly when CPU-visible/shareable, covering the
+    * scratch initialization and printf/control storage the generic bo->va
+    * walk cannot see. */
+   const struct {
+      struct agx_bo *bo;
+      uint64_t gpu_va;
+   } fixed[] = {
+      {dev->zero_bo, AGX_ZERO_PAGE_ADDRESS},
+      {dev->scratch_bo, AGX_SCRATCH_PAGE_ADDRESS},
+      {dev->printf.bo, LIBAGX_PRINTF_BUFFER_ADDRESS},
+   };
+   for (uint32_t i = 0; i < ARRAY_SIZE(fixed); ++i) {
+      if (d3dkmt_add_conservative_bo_range(
+             ws, fixed[i].bo, fixed[i].gpu_va, ranges, &count)) {
+         simple_mtx_unlock(&dev->bo_map_lock);
+         return -1;
+      }
+   }
+   simple_mtx_unlock(&dev->bo_map_lock);
+   *range_count = count;
+   return 0;
+}
+
+static int
+d3dkmt_get_conservative_read_set(
+   struct agx_device *dev, struct agxw_submit_read_range *ranges,
+   uint32_t *range_count)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   int status;
+
+   simple_mtx_lock(&ws->read_set_lock);
+   const uint64_t current = p_atomic_read(&dev->bo_read_set_generation);
+   status = agx_d3dkmt_read_set_cache_copy(
+      &ws->read_set_cache, current, ranges,
+      AGXW_MAX_READ_RANGES_PER_SUBMIT, range_count);
+   if (status == AGX_D3DKMT_OK) {
+      simple_mtx_unlock(&ws->read_set_lock);
+      return 0;
+   }
+   if (status != AGX_D3DKMT_ERR_STALE) {
+      simple_mtx_unlock(&ws->read_set_lock);
+      errno = status == AGX_D3DKMT_ERR_NOSPACE ? ENOSPC : EINVAL;
+      return -1;
+   }
+
+   /* Retry publication across incidental BO churn. If the process is
+    * continuously creating/mapping resources, the final scan is still the
+    * original conservative submit path and is safe to consume; it simply is
+    * not retained as a cache entry. BOs referenced by this submission remain
+    * live for its duration and therefore appear in every scan. */
+   for (uint32_t attempt = 0; attempt < 3; ++attempt) {
+      const uint64_t before = p_atomic_read(&dev->bo_read_set_generation);
+      if (d3dkmt_scan_conservative_read_set(dev, ranges, range_count)) {
+         simple_mtx_unlock(&ws->read_set_lock);
+         return -1;
+      }
+      const uint64_t after = p_atomic_read(&dev->bo_read_set_generation);
+      status = agx_d3dkmt_read_set_cache_publish(
+         &ws->read_set_cache, before, after, ranges, *range_count);
+      if (status == AGX_D3DKMT_OK) {
+         simple_mtx_unlock(&ws->read_set_lock);
+         return 0;
+      }
+      if (status != AGX_D3DKMT_ERR_STALE) {
+         simple_mtx_unlock(&ws->read_set_lock);
+         errno = EINVAL;
+         return -1;
+      }
+   }
+
+   simple_mtx_unlock(&ws->read_set_lock);
+   return 0;
+}
+
 static int
 d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
                       const struct agx_submit_virt *virt,
@@ -2230,18 +2373,7 @@ d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
 {
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    uint32_t count = 0;
-   struct agxw_submit_read_range range;
-
-   if (agx_d3dkmt_bo_read_range(
-          &ws->policy, (staging->flags & AGX_BO_LOW_VA) != 0,
-          staging->va->addr, staging->size, &range) != AGX_D3DKMT_OK) {
-      errno = EINVAL;
-      return -1;
-   }
-   if (agx_d3dkmt_read_range_add(
-          ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
-          range.gpu_va, range.length) != AGX_D3DKMT_OK)
-      return -1;
+   struct agxw_submit_read_range staging_range;
 
    if (virt != NULL &&
        (virt->flags & ~AGX_SUBMIT_VIRT_VALID_FLAGS) != 0) {
@@ -2258,36 +2390,30 @@ d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
          errno = exact_ret == AGX_D3DKMT_ERR_NOSPACE ? ENOSPC : EINVAL;
          return -1;
       }
-
-      *range_count = count;
-      return 0;
+   } else {
+      if (d3dkmt_get_conservative_read_set(dev, ranges, &count))
+         return -1;
    }
 
-   simple_mtx_lock(&dev->bo_map_lock);
-   for (uint32_t handle = 0; handle < dev->max_handle; ++handle) {
-      struct agx_bo *bo = agx_lookup_bo(dev, handle);
-
-      if (p_atomic_read(&bo->refcnt) <= 0 || !bo->va || !bo->size ||
-          (!bo->_map &&
-           !(bo->flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))))
-         continue;
-
-      if (agx_d3dkmt_bo_read_range(
-             &ws->policy, (bo->flags & AGX_BO_LOW_VA) != 0,
-             bo->va->addr, bo->size, &range) != AGX_D3DKMT_OK) {
-         simple_mtx_unlock(&dev->bo_map_lock);
-         errno = EINVAL;
-         return -1;
-      }
-      if (agx_d3dkmt_read_range_add(
-             ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
-             range.gpu_va, range.length) != AGX_D3DKMT_OK) {
-         simple_mtx_unlock(&dev->bo_map_lock);
-         errno = ENOSPC;
-         return -1;
-      }
+   /* The staging BO is compulsory even when a frontend publishes an exact
+    * set. On the conservative path it normally coalesces with the cached
+    * vector; adding it again also makes the invariant robust to future
+    * staging lifetime changes. */
+   if (agx_d3dkmt_bo_read_range(
+          &ws->policy, (staging->flags & AGX_BO_LOW_VA) != 0,
+          staging->va->addr, staging->size,
+          &staging_range) != AGX_D3DKMT_OK) {
+      errno = EINVAL;
+      return -1;
    }
-   simple_mtx_unlock(&dev->bo_map_lock);
+   int add_ret = agx_d3dkmt_read_range_add(
+      ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
+      staging_range.gpu_va, staging_range.length);
+   if (add_ret != AGX_D3DKMT_OK) {
+      errno = add_ret == AGX_D3DKMT_ERR_NOSPACE ? ENOSPC : EINVAL;
+      return -1;
+   }
+
    *range_count = count;
    return 0;
 }
@@ -3197,6 +3323,8 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
       (const volatile uint64_t *)pq.FenceValueCPUVirtualAddress;
 
    simple_mtx_init(&ws->lock, mtx_plain);
+   simple_mtx_init(&ws->read_set_lock, mtx_plain);
+   agx_d3dkmt_read_set_cache_init(&ws->read_set_cache);
    agx_d3dkmt_pool_init(&ws->pool);
    agx_d3dkmt_sync_table_init(&ws->syncs);
 
@@ -3204,6 +3332,7 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    dev->fd = -1;
    dev->is_virtio = false;
    dev->write_set_contract = true;
+   p_atomic_set(&dev->bo_read_set_generation, 1);
    dev->ops = agx_device_d3dkmt_ops;
    return true; /* caller then runs agx_open_device() */
 
@@ -3276,6 +3405,8 @@ agx_d3dkmt_open_runtime_device(
    ws->paging_fence_cpu =
       (const volatile uint64_t *)paging.FenceValueCPUVirtualAddress;
    simple_mtx_init(&ws->lock, mtx_plain);
+   simple_mtx_init(&ws->read_set_lock, mtx_plain);
+   agx_d3dkmt_read_set_cache_init(&ws->read_set_cache);
    agx_d3dkmt_pool_init(&ws->pool);
    agx_d3dkmt_sync_table_init(&ws->syncs);
 
@@ -3283,6 +3414,7 @@ agx_d3dkmt_open_runtime_device(
    dev->fd = -1;
    dev->is_virtio = false;
    dev->write_set_contract = true;
+   p_atomic_set(&dev->bo_read_set_generation, 1);
    dev->ops = agx_device_d3dkmt_ops;
    return true;
 
@@ -3421,6 +3553,7 @@ agx_d3dkmt_close_device(struct agx_device *dev)
 
    agx_d3dkmt_pool_finish(&ws->pool);
    agx_d3dkmt_sync_table_finish(&ws->syncs);
+   simple_mtx_destroy(&ws->read_set_lock);
    simple_mtx_destroy(&ws->lock);
    free(ws->params);
    free(ws);

@@ -406,6 +406,12 @@ agx_bo_unreference(struct agx_device *dev, struct agx_bo *bo)
    if (refcnt)
       return;
 
+   /* A zero-reference cached BO is not eligible for the conservative WDDM
+    * CPU-read set. Publish the transition before another submit can reuse a
+    * snapshot containing it. A concurrent import may make this invalidation
+    * redundant, which is harmless. */
+   agx_bo_read_set_changed(dev);
+
    simple_mtx_lock(&dev->bo_map_lock);
 
    /* Someone might have imported this BO while we were waiting for the
@@ -470,6 +476,7 @@ agx_bo_create(struct agx_device *dev, size_t size, unsigned align,
 
    bo->label = label;
    p_atomic_set(&bo->refcnt, 1);
+   agx_bo_read_set_changed(dev);
 
    if (reused && (flags & AGX_BO_ZERO_ON_REUSE))
       memset(agx_bo_map(bo), 0, bo->size);

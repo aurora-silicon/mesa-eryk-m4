@@ -239,6 +239,7 @@ struct agx_d3dkmt_bind {
 #define AGX_D3DKMT_OK          0
 #define AGX_D3DKMT_ERR_INVAL   (-1)
 #define AGX_D3DKMT_ERR_NOSPACE (-2)
+#define AGX_D3DKMT_ERR_STALE   (-3)
 
 /*
  * Translate `count` binds into exactly `count` D3DKMT page-table operations
@@ -502,6 +503,32 @@ int agx_d3dkmt_read_set_add_exact(
    struct agxw_submit_read_range *ranges, uint32_t *count,
    uint32_t capacity, const struct agx_submit_read_range *exact,
    uint32_t exact_count);
+
+/* A conservative read set is expensive to rediscover because it requires a
+ * walk of the complete Mesa BO map. Keep the already-canonical KMD vector and
+ * associate it with a monotonic visibility generation. The Windows shell
+ * serialises access to this object; the portable helpers enforce that a
+ * snapshot is published only when no BO changed activation, CPU mapping, GPU
+ * VA binding or DXGI identity while it was being collected. */
+struct agx_d3dkmt_read_set_cache {
+   uint64_t generation;
+   uint32_t count;
+   bool valid;
+   struct agxw_submit_read_range ranges[AGXW_MAX_READ_RANGES_PER_SUBMIT];
+};
+
+void agx_d3dkmt_read_set_cache_init(
+   struct agx_d3dkmt_read_set_cache *cache);
+
+int agx_d3dkmt_read_set_cache_publish(
+   struct agx_d3dkmt_read_set_cache *cache,
+   uint64_t generation_begin, uint64_t generation_end,
+   const struct agxw_submit_read_range *ranges, uint32_t count);
+
+int agx_d3dkmt_read_set_cache_copy(
+   const struct agx_d3dkmt_read_set_cache *cache, uint64_t generation,
+   struct agxw_submit_read_range *ranges, uint32_t capacity,
+   uint32_t *count);
 
 #ifdef __cplusplus
 }

@@ -130,6 +130,76 @@ agx_d3dkmt_read_set_add_exact(
    return AGX_D3DKMT_OK;
 }
 
+void
+agx_d3dkmt_read_set_cache_init(struct agx_d3dkmt_read_set_cache *cache)
+{
+   if (cache != NULL)
+      memset(cache, 0, sizeof(*cache));
+}
+
+static bool
+read_set_is_canonical(const struct agxw_submit_read_range *ranges,
+                      uint32_t count)
+{
+   if (count > AGXW_MAX_READ_RANGES_PER_SUBMIT ||
+       (count != 0 && ranges == NULL))
+      return false;
+
+   uint64_t previous_end = 0;
+   for (uint32_t i = 0; i < count; ++i) {
+      const uint64_t gpu_va = ranges[i].gpu_va;
+      const uint64_t length = ranges[i].length;
+      if (length == 0 || gpu_va > UINT64_MAX - length ||
+          !agxw_va_range_is_user(gpu_va, length) ||
+          (i != 0 && gpu_va <= previous_end))
+         return false;
+      previous_end = gpu_va + length;
+   }
+   return true;
+}
+
+int
+agx_d3dkmt_read_set_cache_publish(
+   struct agx_d3dkmt_read_set_cache *cache,
+   uint64_t generation_begin, uint64_t generation_end,
+   const struct agxw_submit_read_range *ranges, uint32_t count)
+{
+   if (cache == NULL || !read_set_is_canonical(ranges, count))
+      return AGX_D3DKMT_ERR_INVAL;
+   if (generation_begin != generation_end)
+      return AGX_D3DKMT_ERR_STALE;
+
+   if (count != 0)
+      memcpy(cache->ranges, ranges, (size_t)count * sizeof(*ranges));
+   cache->generation = generation_end;
+   cache->count = count;
+   cache->valid = true;
+   return AGX_D3DKMT_OK;
+}
+
+int
+agx_d3dkmt_read_set_cache_copy(
+   const struct agx_d3dkmt_read_set_cache *cache, uint64_t generation,
+   struct agxw_submit_read_range *ranges, uint32_t capacity,
+   uint32_t *count)
+{
+   if (cache == NULL || count == NULL ||
+       (capacity > 0 && ranges == NULL))
+      return AGX_D3DKMT_ERR_INVAL;
+   if (!cache->valid || cache->generation != generation)
+      return AGX_D3DKMT_ERR_STALE;
+   if (cache->count > capacity)
+      return AGX_D3DKMT_ERR_NOSPACE;
+   if (!read_set_is_canonical(cache->ranges, cache->count))
+      return AGX_D3DKMT_ERR_INVAL;
+
+   if (cache->count != 0)
+      memcpy(ranges, cache->ranges,
+             (size_t)cache->count * sizeof(*ranges));
+   *count = cache->count;
+   return AGX_D3DKMT_OK;
+}
+
 /* -------------------------------------------------------------------------
  * Handle pool.
  * ------------------------------------------------------------------------- */

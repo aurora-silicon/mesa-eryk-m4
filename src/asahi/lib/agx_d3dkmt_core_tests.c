@@ -1082,7 +1082,74 @@ test_exact_read_set_transport(void)
    CHECK(agx_d3dkmt_read_set_add_exact(ranges, &count, 4, exact, 5) !=
          AGX_D3DKMT_OK);
    CHECK(agx_d3dkmt_read_set_add_exact(NULL, &count, 4, exact, 1) !=
-         AGX_D3DKMT_OK);
+      AGX_D3DKMT_OK);
+}
+
+static void
+test_read_set_generation_cache(void)
+{
+   struct agx_d3dkmt_read_set_cache cache;
+   struct agxw_submit_read_range out[4] = {0};
+   uint32_t count = UINT32_MAX;
+   agx_d3dkmt_read_set_cache_init(&cache);
+
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 1, out, 4, &count),
+            AGX_D3DKMT_ERR_STALE);
+
+   const struct agxw_submit_read_range canonical[] = {
+      {UINT64_C(0x1100000000), UINT64_C(0x4000)},
+      {UINT64_C(0x1500000000), UINT64_C(0x8000)},
+   };
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 7, 7, canonical, 2),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 7, out, 4, &count),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(count, 2);
+   CHECK(memcmp(out, canonical, sizeof(canonical)) == 0);
+
+   /* A visibility transition during collection rejects publication. The old
+    * entry remains internally sound, but cannot match the new generation. */
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 8, 9, canonical, 2),
+            AGX_D3DKMT_ERR_STALE);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 9, out, 4, &count),
+            AGX_D3DKMT_ERR_STALE);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 7, out, 1, &count),
+            AGX_D3DKMT_ERR_NOSPACE);
+
+   /* Cache entries are already canonical: overlap, adjacency, malformed user
+    * addresses and impossible counts are rejected at publication. */
+   const struct agxw_submit_read_range adjacent[] = {
+      {UINT64_C(0x1500000000), UINT64_C(0x4000)},
+      {UINT64_C(0x1500004000), UINT64_C(0x4000)},
+   };
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 10, 10, adjacent, 2),
+            AGX_D3DKMT_ERR_INVAL);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 10, 10, canonical,
+               AGXW_MAX_READ_RANGES_PER_SUBMIT + 1),
+            AGX_D3DKMT_ERR_INVAL);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 10, 10, NULL, 1),
+            AGX_D3DKMT_ERR_INVAL);
+
+   CHECK_EQ(agx_d3dkmt_read_set_cache_publish(
+               &cache, 11, 11, NULL, 0),
+            AGX_D3DKMT_OK);
+   count = UINT32_MAX;
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 11, NULL, 0, &count),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(count, 0);
+   CHECK_EQ(agx_d3dkmt_read_set_cache_copy(
+               &cache, 11, NULL, 1, &count),
+            AGX_D3DKMT_ERR_INVAL);
 }
 
 static void
@@ -1196,6 +1263,7 @@ main(void)
    test_bo_read_ranges_are_absolute();
    test_read_range_canonicalization();
    test_exact_read_set_transport();
+   test_read_set_generation_cache();
    test_contract_blobs_we_emit();
 
    if (failures) {
