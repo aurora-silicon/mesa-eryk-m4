@@ -1690,14 +1690,16 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
       if (d->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
          size = d->Width;
       } else {
-         /* Same layout the resource would really get. A format we cannot
-          * express has no honest answer, so say so rather than inventing
-          * a number the caller would then trust.
-          */
+         /* The resource constructor and this reflection query share one
+          * layout calculation. A format or concrete layout we cannot express
+          * has no honest size, so fail rather than returning a plausible heap
+          * that creation would later overrun or reject. */
          enum pipe_format pipe = d12_format_is_depth_stencil(d->Format)
                                     ? d12_format_depth_plane(d->Format)
                                     : d12_format_to_pipe(d->Format);
-         if (pipe == PIPE_FORMAT_NONE) {
+         if (pipe == PIPE_FORMAT_NONE ||
+             FAILED(d12_resource_get_allocation_size(
+                d, 0, 0, false, &size))) {
             /* A refusal still has to report a LEGAL alignment: the caller
              * feeds it straight into align(), which asserts on zero. The
              * test checks `Alignment >= D3D12_DEFAULT_RESOURCE_PLACEMENT_
@@ -1709,48 +1711,12 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
             return ret;
          }
 
-         uint32_t base_w = (uint32_t)MAX2(d->Width, 1);
-         uint32_t base_h = MAX2(d->Height, 1);
-         uint32_t major_axis = MAX2(base_w, base_h);
-         if (d->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
-            major_axis = MAX2(major_axis, d->DepthOrArraySize);
-         uint32_t full_mip_levels = util_logbase2(major_axis) + 1;
-
-         struct ail_layout layout = {
-            .width_px = (uint32_t)MAX2(d->Width, 1),
-            .height_px = MAX2(d->Height, 1),
-            .depth_px = MAX2(d->DepthOrArraySize, 1),
-            .sample_count_sa = MAX2(d->SampleDesc.Count, 1),
-            /* MipLevels == 0 means the FULL chain in D3D12, not one
-             * level. Treating it as 1 under-reports the size of every
-             * resource an application asks to be fully mipped. */
-            .levels = d->MipLevels ? d->MipLevels : full_mip_levels,
-            .mipmapped_z =
-               d->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D,
-            .tiling = AIL_TILING_TWIDDLED,
-            .format = pipe,
-            .writeable_image =
-               d->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-         };
-         ail_make_miptree(&layout);
-         size = layout.size_B;
-
          /* Block-aware size of ONE SLICE OF LEVEL 0; the small-placement
           * test below is on this, not on the total. */
-         slice0_B = (uint64_t)util_format_get_nblocksx(pipe, base_w) *
-                    util_format_get_nblocksy(pipe, base_h) *
+         slice0_B =
+            (uint64_t)util_format_get_nblocksx(pipe, (uint32_t)d->Width) *
+                    util_format_get_nblocksy(pipe, d->Height) *
                     util_format_get_blocksize(pipe);
-
-         /* A depth format with a separate stencil plane costs both. */
-         if (d12_format_is_depth_stencil(d->Format)) {
-            enum pipe_format sfmt = d12_format_stencil_plane(d->Format);
-            if (sfmt != PIPE_FORMAT_NONE) {
-               struct ail_layout sl = layout;
-               sl.format = sfmt;
-               ail_make_miptree(&sl);
-               size += sl.size_B;
-            }
-         }
       }
 
       /*

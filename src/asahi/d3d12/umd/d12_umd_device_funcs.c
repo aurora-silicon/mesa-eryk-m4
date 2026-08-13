@@ -708,8 +708,8 @@ d12_umd_resource_arguments_valid(
        !arguments->DepthOrArraySize || !arguments->SampleDesc.Count ||
        arguments->ResourceType < D3D12DDI_RT_BUFFER ||
        arguments->ResourceType > D3D12DDI_RT_TEXTURE3D ||
-       arguments->Layout < D3D12DDI_TL_UNDEFINED ||
-       arguments->Layout > D3D12DDI_TL_64KB_TILE_STANDARD_SWIZZLE ||
+       (arguments->Layout != D3D12DDI_TL_ROW_MAJOR &&
+        arguments->Layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE) ||
        ((UINT)arguments->Flags & ~supported_flags) ||
        (arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET &&
         arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL) ||
@@ -758,6 +758,29 @@ d12_umd_resource_arguments_valid(
        arguments->SampleDesc.Count != 1)
       return false;
    return true;
+}
+
+/* CheckResourceAllocationInfo is the one resource path on which the runtime
+ * may pass TL_UNDEFINED.  Microsoft requires the UMD to return a concrete
+ * layout and guarantees that later creation uses that resolved value.  AGX's
+ * opaque page-tiled layout is represented by the standard DDI token for an
+ * undefined swizzle within 64 KiB tiles; it does not require publishing a
+ * device-dependent swizzle table. */
+static bool
+d12_umd_resolve_resource_arguments(
+   const D3D12DDIARG_CREATERESOURCE_0003 *arguments,
+   D3D12DDIARG_CREATERESOURCE_0003 *resolved)
+{
+   if (!arguments || !resolved)
+      return false;
+
+   *resolved = *arguments;
+   if (resolved->Layout == D3D12DDI_TL_UNDEFINED) {
+      if (resolved->ResourceType == D3D12DDI_RT_BUFFER)
+         return false;
+      resolved->Layout = D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE;
+   }
+   return d12_umd_resource_arguments_valid(resolved);
 }
 
 static struct d12_frontend_heap_desc
@@ -1668,6 +1691,7 @@ d12_umd_check_resource_allocation_info(
    D3D12DDI_RESOURCE_ALLOCATION_INFO *info)
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDIARG_CREATERESOURCE_0003 resolved_arguments;
    struct d12_frontend_resource_desc frontend;
    struct d12_frontend_resource_allocation_info allocation_info;
    HRESULT result;
@@ -1677,13 +1701,15 @@ d12_umd_check_resource_allocation_info(
       D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_UNORDERED_ACCESS |
       D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_PRIMARY |
       D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_DETERMINISTIC;
+   if (info)
+      memset(info, 0, sizeof(*info));
    if ((UINT)optimization_flags & ~supported_optimization_flags) {
       d12_umd_set_device_error(device, E_INVALIDARG);
       return;
    }
-   (void)alignment_restriction;
    if (!device || !resource_arguments || !info ||
-       !d12_umd_resource_arguments_valid(resource_arguments) ||
+       !d12_umd_resolve_resource_arguments(resource_arguments,
+                                           &resolved_arguments) ||
        (visible_node_mask != 0 && visible_node_mask != 1)) {
       d12_umd_set_device_error(device, E_INVALIDARG);
       return;
@@ -1691,7 +1717,7 @@ d12_umd_check_resource_allocation_info(
 
    if (device->renderer_ops && device->backend &&
        device->renderer_ops->get_resource_allocation_info) {
-      frontend = d12_umd_frontend_resource_desc(resource_arguments);
+      frontend = d12_umd_frontend_resource_desc(&resolved_arguments);
       frontend.alignment = alignment_restriction;
       result = device->renderer_ops->get_resource_allocation_info(
          device->backend, &frontend, visible_node_mask, &allocation_info);
@@ -1710,11 +1736,11 @@ d12_umd_check_resource_allocation_info(
    }
 
    *info = (D3D12DDI_RESOURCE_ALLOCATION_INFO){
-      .ResourceDataSize = resource_arguments->Width,
+      .ResourceDataSize = resolved_arguments.Width,
       .ResourceDataAlignment = D12_UMD_DEFAULT_PLACEMENT_ALIGNMENT,
       .AdditionalDataHeaderAlignment = 1,
       .AdditionalDataAlignment = 1,
-      .Layout = D3D12DDI_TL_ROW_MAJOR,
+      .Layout = resolved_arguments.Layout,
    };
 }
 

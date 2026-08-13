@@ -435,6 +435,9 @@ HRESULT d12_resource_create_reserved(struct d12_device *device,
 bool d12_resource_explicit_row_major_size(
    const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
    uint32_t slice_pitch_B, uint64_t *size_B);
+HRESULT d12_resource_get_allocation_size(
+   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   uint32_t slice_pitch_B, bool reserved, uint64_t *size_B);
 HRESULT d12_sparse_update_tile_mappings(
    struct d12_resource *res, UINT num_regions,
    const D3D12_TILED_RESOURCE_COORDINATE *starts,

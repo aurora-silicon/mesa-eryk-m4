@@ -1267,61 +1267,64 @@ d12_resource_explicit_row_major_size(
    return true;
 }
 
+/* One texture-layout decision feeds both allocation-size reflection and
+ * resource creation.  The D3D12 DDI explicitly makes sizing the first half
+ * of creation and promises that the resolved layout is passed back in the
+ * second half, so using a second estimate here is an ABI violation rather
+ * than merely wasted padding. */
 static HRESULT
-d12_resource_create(struct d12_device *device,
-                    const D3D12_HEAP_PROPERTIES *heap_props,
-                    D3D12_HEAP_FLAGS heap_flags,
-                    const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
-                    uint64_t heap_offset_B, uint32_t row_pitch_B,
-                    uint32_t slice_pitch_B, bool reserved,
-                    struct agx_bo *imported_bo, REFIID riid, void **out)
+d12_resource_compute_texture_layout(
+   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   uint32_t slice_pitch_B, bool reserved, struct ail_layout *layout,
+   struct ail_layout *stencil_layout, bool *is_depth_stencil)
 {
-   if (!out)
-      return E_POINTER;
-   if (!heap_props || !desc)
-      return E_INVALIDARG;
-
-   uint64_t size_B;
-   struct ail_layout layout = {0};
-   struct ail_layout stencil_layout = {0};
-   bool is_depth_stencil = false;
-   const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
-   const bool d3d11_interop_layout =
-      shared && desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
-      desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
-      (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
    uint64_t explicit_row_major_size_B = 0;
+   const bool interop_layout =
+      desc && desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
+      (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
+   const bool gpu_tiled =
+      desc &&
+      (reserved || interop_layout ||
+       desc->Layout == D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE);
 
-   if (!d12_resource_explicit_row_major_size(
+   if (!desc || !layout || !stencil_layout || !is_depth_stencil ||
+       desc->Dimension < D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+       desc->Dimension > D3D12_RESOURCE_DIMENSION_TEXTURE3D ||
+       (desc->Layout != D3D12_TEXTURE_LAYOUT_UNKNOWN &&
+        desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
+        desc->Layout != D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE) ||
+       !desc->Width || desc->Width > UINT32_MAX || !desc->Height ||
+       !desc->DepthOrArraySize || !desc->SampleDesc.Count ||
+       !d12_resource_explicit_row_major_size(
           desc, row_pitch_B, slice_pitch_B, &explicit_row_major_size_B))
       return E_INVALIDARG;
+   if (desc->Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
+       (desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+        desc->MipLevels != 1 || desc->DepthOrArraySize != 1 ||
+        desc->SampleDesc.Count != 1 || desc->SampleDesc.Quality ||
+        !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER) ||
+        (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL |
+                        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))))
+      return E_INVALIDARG;
 
-   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-      if (desc->Width == 0)
-         return E_INVALIDARG;
-      size_B = desc->Width;
-   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
-              d12_format_is_depth_stencil(desc->Format)) {
-      /*
-       * Depth/stencil. Two constraints come straight from the hardware:
-       *
-       * - The ZLS unit cannot address a linear buffer at all (Mesa's
-       *   agx_translate_zls_tiling has no linear case), so unlike our colour
-       *   targets these must be TWIDDLED. The CPU consequently cannot read
-       *   depth by indexing rows; tests detwiddle with ail_detile.
-       * - Stencil is its own plane with its own allocation.
-       */
+   memset(layout, 0, sizeof(*layout));
+   memset(stencil_layout, 0, sizeof(*stencil_layout));
+   *is_depth_stencil = false;
+
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+       d12_format_is_depth_stencil(desc->Format)) {
       enum pipe_format z = d12_format_depth_plane(desc->Format);
       enum pipe_format s = d12_format_stencil_plane(desc->Format);
-
       const unsigned samples = MAX2(desc->SampleDesc.Count, 1);
       const unsigned full_levels =
          util_logbase2(MAX2((uint32_t)MAX2(desc->Width, 1),
                             MAX2(desc->Height, 1))) + 1;
       const unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
-      if ((samples != 1 && samples != 2 && samples != 4) || !desc->Width ||
+
+      if (z == PIPE_FORMAT_NONE ||
+          (samples != 1 && samples != 2 && samples != 4) || !desc->Width ||
           !desc->Height) {
-         mesa_loge("CreateCommittedResource: depth/stencil shape unsupported "
+         mesa_loge("D3D12 texture layout: depth/stencil shape unsupported "
                    "(mips %u, layers %u, samples %u)",
                    desc->MipLevels, desc->DepthOrArraySize,
                    desc->SampleDesc.Count);
@@ -1339,170 +1342,179 @@ d12_resource_create(struct d12_device *device,
          }
       }
 
-      is_depth_stencil = true;
-
-      /* Array layers, as for colour. The ZLS unit addresses one layer at a
-       * time; the DSV selects which, and layers sit at layer_stride_B.
-       */
-      layout = (struct ail_layout){
+      *is_depth_stencil = true;
+      *layout = (struct ail_layout){
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
          .sample_count_sa = samples,
          .levels = levels,
-         .tiling = (reserved || d3d11_interop_layout)
-                      ? AIL_TILING_GPU
-                      : AIL_TILING_TWIDDLED,
+         .tiling = gpu_tiled ? AIL_TILING_GPU : AIL_TILING_TWIDDLED,
          .format = z,
-         .writeable_image = d3d11_interop_layout,
-         .renderable = d3d11_interop_layout,
+         .writeable_image = interop_layout,
+         .renderable = interop_layout,
       };
-      ail_make_miptree(&layout);
-      size_B = layout.size_B;
+      ail_make_miptree(layout);
 
       if (s != PIPE_FORMAT_NONE) {
-         stencil_layout = (struct ail_layout){
+         *stencil_layout = (struct ail_layout){
             .width_px = (uint32_t)desc->Width,
             .height_px = desc->Height,
             .depth_px = MAX2(desc->DepthOrArraySize, 1),
             .sample_count_sa = samples,
             .levels = levels,
-            .tiling = d3d11_interop_layout ? AIL_TILING_GPU
-                                           : AIL_TILING_TWIDDLED,
+            .tiling = gpu_tiled ? AIL_TILING_GPU : AIL_TILING_TWIDDLED,
             .format = s,
-            .writeable_image = d3d11_interop_layout,
-            .renderable = d3d11_interop_layout,
+            .writeable_image = interop_layout,
+            .renderable = interop_layout,
          };
-         ail_make_miptree(&stencil_layout);
+         ail_make_miptree(stencil_layout);
       }
-   } else if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
-              desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-              desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
-      /* Simple 2D resources may remain LINEAR so the CPU can read pixels
-       * directly. Arrays, mip chains and API-level 3D images are TWIDDLED;
-       * mipmapped_z makes each 3D mip shrink along Z as well as X/Y.
-       */
-      enum pipe_format pipe = d12_format_to_pipe(desc->Format);
-      const bool is_3d =
-         desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-      const bool is_1d = desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+      return S_OK;
+   }
 
-      if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height ||
-          !desc->DepthOrArraySize ||
-          ((is_1d || is_3d) && desc->SampleDesc.Count != 1) ||
-          (is_1d && desc->Height != 1)) {
-         mesa_loge("CreateCommittedResource: texture shape unsupported "
-                   "(fmt %d, mips %u, layers %u, samples %u)",
-                   (int)desc->Format, desc->MipLevels,
-                   desc->DepthOrArraySize, desc->SampleDesc.Count);
-         return E_NOTIMPL;
-      }
+   enum pipe_format pipe = d12_format_to_pipe(desc->Format);
+   const bool is_3d =
+      desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
+   const bool is_1d =
+      desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
 
-      /* Refuse a render target the hardware cannot render to, rather than
-       * accepting it and producing wrong pixels.
-       */
-      if ((desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) &&
-          !d12_format_is_renderable(desc->Format)) {
-         mesa_loge("CreateCommittedResource: format %d is not renderable on "
-                   "this GPU", (int)desc->Format);
-         return E_INVALIDARG;
-      }
-
-      /*
-       * ARRAY LAYERS. ail computes a linear array as
-       * layer_stride_B = align(linear_stride_B * height_px) and
-       * size_B = layer_stride_B * depth_px, so an array costs nothing here
-       * beyond passing the layer count through; the views are what has to
-       * know about slices (see CreateRenderTargetView).
-       *
-       * Arrays were the single largest refusal cluster in the suite --
-       * ~21 tests, measured per test rather than per message.
-       */
-      /*
-       * TILING FOLLOWS THE FORMAT AND SHAPE, and the rule is ail's own,
-       * read from its assertions in ail_make_miptree rather than guessed:
-       * a LINEAR layout requires levels == 1, sample_count == 1, and a 1x1
-       * block. Anything else must be twiddled.
-       *
-       * This matters beyond mips. The block-compressed formats added to
-       * d12_format.c are 4x4-block, so creating one on the linear path
-       * would trip `util_format_get_blockwidth(format) == 1` -- an assert
-       * in a debug build and a mis-sized allocation in a release one.
-       *
-       * Single-level uncompressed 2D stays LINEAR so the CPU can still
-       * read pixels by indexing rows, which is what the existing texture
-       * tests rely on.
-       */
-      /* MipLevels == 0 means the FULL chain, the same rule
-       * GetResourceAllocationInfo applies -- resolving it in only one of
-       * the two places makes the reported description disagree with the
-       * allocation behind it. */
-      unsigned major_axis =
-         MAX2((uint32_t)MAX2(desc->Width, 1), MAX2(desc->Height, 1));
-      if (is_3d)
-         major_axis = MAX2(major_axis, desc->DepthOrArraySize);
-      unsigned full_levels = util_logbase2(major_axis) + 1;
-      unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
-      unsigned samples = MAX2(desc->SampleDesc.Count, 1);
-      bool blocked = util_format_get_blockwidth(pipe) > 1 ||
-                     util_format_get_blockheight(pipe) > 1;
-      bool writeable_image =
-         d3d11_interop_layout ||
-         (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
-      /* Layered resources must remain twiddled. AGX's sampled cube and cube-
-       * array descriptors have no usable linear-face addressing mode; a
-       * linear six-layer allocation makes every face sample as zero. */
-      bool linear_ok = !is_3d && levels == 1 && samples == 1 &&
-                       desc->DepthOrArraySize == 1 && !blocked &&
-                       !writeable_image;
-
-      layout = (struct ail_layout){
-         .width_px = (uint32_t)desc->Width,
-         .height_px = desc->Height,
-         .depth_px = MAX2(desc->DepthOrArraySize, 1),
-         /* ail sizes a multisampled layout; the RENDER path does not
-          * support MSAA yet, which is why CreateRenderTargetView still
-          * refuses these. Allocating one is legal and is what the
-          * placement tests need. */
-         .sample_count_sa = samples,
-         .levels = levels,
-         .mipmapped_z = is_3d,
-         /* Reserved textures use AGX's page-addressable GPU-tiled layout.
-          * Fully twiddled miptrees have no page-granular standard-mip model
-          * (AIL deliberately reports their whole allocation as one tail), so
-          * they cannot implement D3D12 tile mappings. */
-         /* D3D11 imports the shared runtime descriptor by creating an
-          * optimal Honeykrisp VkImage over this same allocation. Match that
-          * image's uncompressed GPU layout exactly; an NT handle only aliases
-          * storage and cannot translate between linear/twiddled layouts. */
-         .tiling = (reserved || d3d11_interop_layout)
-                      ? AIL_TILING_GPU
-                      : (linear_ok ? AIL_TILING_LINEAR
-                                   : AIL_TILING_TWIDDLED),
-         .format = pipe,
-         .writeable_image = writeable_image,
-         .renderable = d3d11_interop_layout,
-         /* 64-byte-aligned rows; the smoke tests mirror this constant */
-         /* ail asserts this is ZERO for a non-linear layout, so it has
-          * to follow the tiling decision above. */
-         .linear_stride_B =
-            !reserved && linear_ok
-               ? (row_pitch_B
-                     ? row_pitch_B
-                     : align((uint32_t)desc->Width *
-                                d12_format_bytes_per_pixel(desc->Format),
-                             64))
-               : 0,
-      };
-      ail_make_miptree(&layout);
-      if (explicit_row_major_size_B &&
-          layout.size_B != explicit_row_major_size_B)
-         return E_INVALIDARG;
-      size_B = layout.size_B;
-   } else {
-      mesa_loge("CreateCommittedResource: dimension %d unsupported",
-                (int)desc->Dimension);
+   if (pipe == PIPE_FORMAT_NONE || !desc->Width || !desc->Height ||
+       !desc->DepthOrArraySize ||
+       ((is_1d || is_3d) && desc->SampleDesc.Count != 1) ||
+       (is_1d && desc->Height != 1)) {
+      mesa_loge("D3D12 texture layout: shape unsupported "
+                "(fmt %d, mips %u, layers %u, samples %u)",
+                (int)desc->Format, desc->MipLevels,
+                desc->DepthOrArraySize, desc->SampleDesc.Count);
       return E_NOTIMPL;
+   }
+   if (desc->Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
+       (util_format_get_blockwidth(pipe) != 1 ||
+        util_format_get_blockheight(pipe) != 1 ||
+        util_format_get_blocksize(pipe) > 16))
+      return E_INVALIDARG;
+   if ((desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET) &&
+       !d12_format_is_renderable(desc->Format))
+      return E_INVALIDARG;
+
+   unsigned major_axis =
+      MAX2((uint32_t)MAX2(desc->Width, 1), MAX2(desc->Height, 1));
+   if (is_3d)
+      major_axis = MAX2(major_axis, desc->DepthOrArraySize);
+   const unsigned full_levels = util_logbase2(major_axis) + 1;
+   const unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
+   const unsigned samples = MAX2(desc->SampleDesc.Count, 1);
+   const bool blocked = util_format_get_blockwidth(pipe) > 1 ||
+                        util_format_get_blockheight(pipe) > 1;
+   const bool writeable_image =
+      interop_layout ||
+      (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+   const bool linear_ok =
+      !gpu_tiled && !is_3d && levels == 1 && samples == 1 &&
+      desc->DepthOrArraySize == 1 && !blocked && !writeable_image;
+   uint32_t linear_stride_B = 0;
+
+   if (linear_ok) {
+      if (row_pitch_B) {
+         linear_stride_B = row_pitch_B;
+      } else {
+         const uint32_t minimum_stride_B =
+            util_format_get_stride(pipe, (uint32_t)desc->Width);
+         const uint32_t alignment_B =
+            desc->Layout == D3D12_TEXTURE_LAYOUT_ROW_MAJOR ? 256u : 64u;
+         if (minimum_stride_B > UINT32_MAX - (alignment_B - 1))
+            return E_INVALIDARG;
+         linear_stride_B = align(minimum_stride_B, alignment_B);
+      }
+   }
+
+   *layout = (struct ail_layout){
+      .width_px = (uint32_t)desc->Width,
+      .height_px = desc->Height,
+      .depth_px = MAX2(desc->DepthOrArraySize, 1),
+      .sample_count_sa = samples,
+      .levels = levels,
+      .mipmapped_z = is_3d,
+      .tiling = gpu_tiled
+                   ? AIL_TILING_GPU
+                   : (linear_ok ? AIL_TILING_LINEAR
+                                : AIL_TILING_TWIDDLED),
+      .format = pipe,
+      .writeable_image = writeable_image,
+      .renderable = interop_layout,
+      .linear_stride_B = linear_stride_B,
+   };
+   ail_make_miptree(layout);
+   if (explicit_row_major_size_B &&
+       layout->size_B != explicit_row_major_size_B)
+      return E_INVALIDARG;
+   return S_OK;
+}
+
+HRESULT
+d12_resource_get_allocation_size(
+   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   uint32_t slice_pitch_B, bool reserved, uint64_t *size_B)
+{
+   struct ail_layout layout;
+   struct ail_layout stencil_layout;
+   bool is_depth_stencil;
+   HRESULT result;
+
+   if (!desc || !size_B ||
+       ((row_pitch_B || slice_pitch_B) &&
+        desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER))
+      return E_INVALIDARG;
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (!desc->Width)
+         return E_INVALIDARG;
+      *size_B = desc->Width;
+      return S_OK;
+   }
+
+   result = d12_resource_compute_texture_layout(
+      desc, row_pitch_B, slice_pitch_B, reserved, &layout,
+      &stencil_layout, &is_depth_stencil);
+   if (FAILED(result))
+      return result;
+   if (stencil_layout.size_B > UINT64_MAX - layout.size_B)
+      return E_INVALIDARG;
+   *size_B = layout.size_B + stencil_layout.size_B;
+   return S_OK;
+}
+
+static HRESULT
+d12_resource_create(struct d12_device *device,
+                    const D3D12_HEAP_PROPERTIES *heap_props,
+                    D3D12_HEAP_FLAGS heap_flags,
+                    const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
+                    uint64_t heap_offset_B, uint32_t row_pitch_B,
+                    uint32_t slice_pitch_B, bool reserved,
+                    struct agx_bo *imported_bo, REFIID riid, void **out)
+{
+   if (!out)
+      return E_POINTER;
+   if (!heap_props || !desc)
+      return E_INVALIDARG;
+
+   uint64_t size_B = 0;
+   struct ail_layout layout = {0};
+   struct ail_layout stencil_layout = {0};
+   bool is_depth_stencil = false;
+   const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
+
+   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      if (!desc->Width || row_pitch_B || slice_pitch_B)
+         return E_INVALIDARG;
+      size_B = desc->Width;
+   } else {
+      HRESULT layout_result = d12_resource_compute_texture_layout(
+         desc, row_pitch_B, slice_pitch_B, reserved, &layout,
+         &stencil_layout, &is_depth_stencil);
+      if (FAILED(layout_result))
+         return layout_result;
+      size_B = layout.size_B;
    }
 
    D3D12_RESOURCE_DESC resolved_desc = *desc;

@@ -246,6 +246,14 @@ preserves the runtime's exact row and slice pitches in the frontend descriptor,
 the versioned open-resource blob and the shared renderer layout. It rejects
 pitch overflow, a non-tight slice pitch and any shape or flag outside that
 advertised subset instead of silently recomputing a different layout.
+`CheckResourceAllocationInfo` is the only path that accepts the runtime's
+`TL_UNDEFINED` request. It resolves ordinary textures to the built-in
+`TL_64KB_TILE_UNDEFINED_SWIZZLE` token, sizes the actual AGX GPU-tiled layout
+and returns that concrete token; later creation rejects an unresolved token or
+the unadvertised standard swizzle. Allocation reflection and construction now
+call the same AIL layout calculation for linear, GPU-tiled, twiddled,
+depth/stencil and explicit-pitch resources, so the heap size cannot drift from
+the resource subsequently placed in it.
 
 Heap/resource creation is attached to the real renderer object graph. A DDI
 heap is one runtime-owned `agx_bo` and one shared `d12_heap`; placed buffers and

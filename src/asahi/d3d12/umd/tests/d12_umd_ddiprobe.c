@@ -2709,7 +2709,7 @@ wmain(int argc, wchar_t **argv)
                   .MipLevels = 1,
                   .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
                   .SampleDesc = {.Count = 1},
-                  .Layout = D3D12DDI_TL_UNDEFINED,
+                  .Layout = D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE,
                   .Flags = D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET |
                            D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE,
                   .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
@@ -3471,7 +3471,7 @@ wmain(int argc, wchar_t **argv)
             .CreationNodeMask = 1,
             .VisibleNodeMask = 1,
          };
-         const D3D12DDIARG_CREATERESOURCE_0003 texture_arguments = {
+         D3D12DDIARG_CREATERESOURCE_0003 texture_arguments = {
             .ResourceType = D3D12DDI_RT_TEXTURE2D,
             .Width = 1024,
             .Height = 1024,
@@ -3483,12 +3483,48 @@ wmain(int argc, wchar_t **argv)
             .Flags = D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE,
             .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
          };
-         const D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes =
-            device_table.pfnCalcPrivateHeapAndResourceSizes(
-               driver_device, &heap_arguments, &texture_arguments);
+         D3D12DDI_RESOURCE_ALLOCATION_INFO allocation_info;
+         D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes;
 
+         memset(&allocation_info, 0xcc, sizeof(allocation_info));
+         set_error_calls = 0;
+         device_table.pfnCheckResourceAllocationInfo(
+            driver_device, &texture_arguments,
+            D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_SHADER_RESOURCE, 0, 1,
+            &allocation_info);
+         require_result(
+            set_error_calls == 0 &&
+               allocation_info.ResourceDataSize == texture_arguments.Width &&
+               allocation_info.ResourceDataAlignment == UINT64_C(0x10000) &&
+               allocation_info.Layout ==
+                  D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE,
+            "resolve undefined texture layout during size reflection");
+
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, &heap_arguments, &texture_arguments);
+         require_result(!sizes.Heap && !sizes.Resource,
+                        "reject unresolved layout during resource creation");
+
+         texture_arguments.Layout =
+            D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE;
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, &heap_arguments, &texture_arguments);
          require_result(sizes.Heap > 0 && sizes.Resource > 0,
-                        "texture heap/resource private sizes");
+                        "resolved texture heap/resource private sizes");
+
+         texture_arguments.Layout =
+            D3D12DDI_TL_64KB_TILE_STANDARD_SWIZZLE;
+         memset(&allocation_info, 0xcc, sizeof(allocation_info));
+         set_error_calls = 0;
+         device_table.pfnCheckResourceAllocationInfo(
+            driver_device, &texture_arguments,
+            D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_SHADER_RESOURCE, 0, 1,
+            &allocation_info);
+         require_result(set_error_calls == 1 &&
+                           last_set_error == E_INVALIDARG &&
+                           allocation_info.ResourceDataSize == 0 &&
+                           allocation_info.Layout == D3D12DDI_TL_UNDEFINED,
+                        "reject unadvertised standard-swizzle layout");
       }
 
       functions.pfnDestroyDevice(driver_device);
