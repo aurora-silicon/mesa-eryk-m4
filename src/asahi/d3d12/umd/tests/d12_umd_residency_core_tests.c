@@ -64,6 +64,9 @@ test_validation(void)
    uint32_t object_indices[2];
    uint32_t hash_slots[4];
 
+   assert(d12_umd_residency_hash_capacity(0) == 32);
+   assert(d12_umd_residency_hash_capacity(16) == 32);
+   assert(d12_umd_residency_hash_capacity(17) == 64);
    assert(!d12_umd_residency_set_init(
       NULL, allocations, object_indices, 2, hash_slots, 4));
    assert(!d12_umd_residency_set_init(

@@ -414,9 +414,12 @@ fail before the callback. The current KMD Present contract carries one
 allocation per source and no subresource selector, so swap-chain presentation
 is intentionally restricted to subresource zero until that shared contract is
 extended. The base table also translates DXGI priority/residency queries to
-batched WDDM callbacks. Residency aggregation returns the exact legacy Direct3D success
-status (`S_OK`, `S_RESIDENT_IN_SHARED_MEMORY`, or `S_NOT_RESIDENT`) required
-by the DXGI DDI while also filling every per-resource status. DXGI
+batched WDDM callbacks. Query, offer and reclaim coalesce repeated resources
+and distinct UMD resources sharing one VidMm allocation, then fan the one
+kernel residency/reclaim result back to every DXGI resource in the original
+order. Residency aggregation returns the exact legacy Direct3D success status
+(`S_OK`, `S_RESIDENT_IN_SHARED_MEMORY`, or `S_NOT_RESIDENT`) required by the
+DXGI DDI while also filling every per-resource status. DXGI
 Offer/Reclaim validates each driver resource and translates it to its VidMm
 allocation. WDDM 2.0 uses the legacy allocation callbacks. WDDM 2.1
 `OfferResources1`/`ReclaimResources1` use Offer2/Reclaim3, preserve the

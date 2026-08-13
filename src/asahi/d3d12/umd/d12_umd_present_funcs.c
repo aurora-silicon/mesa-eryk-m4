@@ -13,6 +13,7 @@
 #include "d12_umd_present_funcs.h"
 
 #include "d12_umd_internal.h"
+#include "d12_umd_residency.h"
 #include "d12_umd_resource_command_funcs.h"
 
 #include <string.h>
@@ -140,6 +141,46 @@ d12_umd_dxgi_resource(struct d12_umd_device *device,
       .pDrvPrivate = (void *)(uintptr_t)handle,
    };
    return d12_umd_present_resource(device, resource);
+}
+
+struct d12_umd_dxgi_residency_context {
+   struct d12_umd_device *device;
+   const DXGI_DDI_HRESOURCE *resources;
+   bool reject_reserved;
+};
+
+static bool
+d12_umd_dxgi_resolve_residency_resource(void *raw_context, UINT index,
+                                        D3DKMT_HANDLE *allocation)
+{
+   const struct d12_umd_dxgi_residency_context *context = raw_context;
+   struct d12_umd_resource *resource;
+
+   if (!context || !allocation ||
+       !(resource = d12_umd_dxgi_resource(
+            context->device, context->resources[index])) ||
+       (context->reject_reserved && resource->reserved))
+      return false;
+   *allocation = resource->allocation.allocation;
+   return true;
+}
+
+static HRESULT
+d12_umd_dxgi_translate_residency_resources(
+   struct d12_umd_device *device, const DXGI_DDI_HRESOURCE *resources,
+   UINT count, bool reject_reserved,
+   struct d12_umd_residency_translation *translation)
+{
+   struct d12_umd_dxgi_residency_context context = {
+      .device = device,
+      .resources = resources,
+      .reject_reserved = reject_reserved,
+   };
+
+   if (!device || (count && !resources))
+      return E_INVALIDARG;
+   return d12_umd_residency_translate(
+      count, d12_umd_dxgi_resolve_residency_resource, &context, translation);
 }
 
 /* Called only while device->heap_lock is held. The runtime token survives
@@ -288,9 +329,8 @@ d12_umd_dxgi_query_resource_residency(
    DXGI_DDI_ARG_QUERYRESOURCERESIDENCY *arguments)
 {
    struct d12_umd_device *device;
-   D3DKMT_HANDLE stack_allocations[16];
+   struct d12_umd_residency_translation translation;
    D3DDDI_RESIDENCYSTATUS stack_status[16];
-   D3DKMT_HANDLE *allocations = stack_allocations;
    D3DDDI_RESIDENCYSTATUS *status = stack_status;
    D3DDDICB_QUERYRESIDENCY query;
    HRESULT result;
@@ -303,54 +343,56 @@ d12_umd_dxgi_query_resource_residency(
       return E_INVALIDARG;
    if (!device->kernel_callbacks.pfnQueryResidencyCb)
       return E_NOTIMPL;
-   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
-      if (arguments->Resources > SIZE_MAX / sizeof(*allocations))
-         return E_OUTOFMEMORY;
-      allocations = HeapAlloc(GetProcessHeap(), 0,
-                              arguments->Resources * sizeof(*allocations));
+   result = d12_umd_dxgi_translate_residency_resources(
+      device, arguments->pResources, (UINT)arguments->Resources,
+      false, &translation);
+   if (FAILED(result))
+      return result;
+   if (translation.set.allocation_count > ARRAYSIZE(stack_status)) {
       status = HeapAlloc(GetProcessHeap(), 0,
-                         arguments->Resources * sizeof(*status));
-      if (!allocations || !status) {
-         HeapFree(GetProcessHeap(), 0, allocations);
-         HeapFree(GetProcessHeap(), 0, status);
-         return E_OUTOFMEMORY;
+                         (size_t)translation.set.allocation_count *
+                            sizeof(*status));
+      if (!status) {
+         result = E_OUTOFMEMORY;
+         goto cleanup_translation;
       }
-   }
-   for (SIZE_T index = 0; index < arguments->Resources; ++index) {
-      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
-         device, arguments->pResources[index]);
-      if (!resource) {
-         result = E_INVALIDARG;
-         goto cleanup;
-      }
-      allocations[index] = resource->allocation.allocation;
    }
    query = (D3DDDICB_QUERYRESIDENCY){
-      .NumAllocations = (UINT)arguments->Resources,
-      .HandleList = allocations,
+      .NumAllocations = translation.set.allocation_count,
+      .HandleList = translation.set.allocations,
       .pResidencyStatus = status,
    };
    result = device->kernel_callbacks.pfnQueryResidencyCb(
       device->runtime_device.handle, &query);
    if (FAILED(result))
       goto cleanup;
-   for (SIZE_T index = 0; index < arguments->Resources; ++index) {
+   for (UINT index = 0; index < translation.set.allocation_count; ++index) {
       switch (status[index]) {
+      case D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY:
+         any_shared_memory = TRUE;
+         break;
+      case D3DDDI_RESIDENCYSTATUS_NOTRESIDENT:
+         any_not_resident = TRUE;
+         break;
+      case D3DDDI_RESIDENCYSTATUS_RESIDENTINGPUMEMORY:
+         break;
+      default:
+         result = E_FAIL;
+         goto cleanup;
+      }
+   }
+   for (SIZE_T index = 0; index < arguments->Resources; ++index) {
+      switch (status[translation.set.object_allocation_indices[index]]) {
       case D3DDDI_RESIDENCYSTATUS_RESIDENTINGPUMEMORY:
          arguments->pStatus[index] = DXGI_DDI_RESIDENCY_FULLY_RESIDENT;
          break;
       case D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY:
          arguments->pStatus[index] =
             DXGI_DDI_RESIDENCY_RESIDENT_IN_SHARED_MEMORY;
-         any_shared_memory = TRUE;
-         break;
-      case D3DDDI_RESIDENCYSTATUS_NOTRESIDENT:
-         arguments->pStatus[index] = DXGI_DDI_RESIDENCY_EVICTED_TO_DISK;
-         any_not_resident = TRUE;
          break;
       default:
-         result = E_FAIL;
-         goto cleanup;
+         arguments->pStatus[index] = DXGI_DDI_RESIDENCY_EVICTED_TO_DISK;
+         break;
       }
    }
    if (any_not_resident)
@@ -359,10 +401,10 @@ d12_umd_dxgi_query_resource_residency(
       result = D12_UMD_S_RESIDENT_IN_SHARED_MEMORY;
 
 cleanup:
-   if (allocations != stack_allocations) {
-      HeapFree(GetProcessHeap(), 0, allocations);
+   if (status != stack_status)
       HeapFree(GetProcessHeap(), 0, status);
-   }
+cleanup_translation:
+   d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
 
@@ -686,8 +728,7 @@ static HRESULT APIENTRY
 d12_umd_dxgi_offer_resources(DXGI_DDI_ARG_OFFERRESOURCES *arguments)
 {
    struct d12_umd_device *device;
-   D3DKMT_HANDLE stack_allocations[16];
-   D3DKMT_HANDLE *allocations = stack_allocations;
+   struct d12_umd_residency_translation translation;
    D3DDDICB_OFFERALLOCATIONS offer;
    HRESULT result;
 
@@ -699,33 +740,19 @@ d12_umd_dxgi_offer_resources(DXGI_DDI_ARG_OFFERRESOURCES *arguments)
       return S_OK;
    if (!device->kernel_callbacks.pfnOfferAllocationsCb)
       return E_NOTIMPL;
-   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
-      allocations = HeapAlloc(
-         GetProcessHeap(), 0,
-         (size_t)arguments->Resources * sizeof(*allocations));
-      if (!allocations)
-         return E_OUTOFMEMORY;
-   }
-   for (UINT index = 0; index < arguments->Resources; ++index) {
-      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
-         device, arguments->pResources[index]);
-      if (!resource) {
-         result = E_INVALIDARG;
-         goto cleanup;
-      }
-      allocations[index] = resource->allocation.allocation;
-   }
+   result = d12_umd_dxgi_translate_residency_resources(
+      device, arguments->pResources, arguments->Resources, false,
+      &translation);
+   if (FAILED(result))
+      return result;
    offer = (D3DDDICB_OFFERALLOCATIONS){
-      .HandleList = allocations,
-      .NumAllocations = arguments->Resources,
+      .HandleList = translation.set.allocations,
+      .NumAllocations = translation.set.allocation_count,
       .Priority = arguments->Priority,
    };
    result = device->kernel_callbacks.pfnOfferAllocationsCb(
       device->runtime_device.handle, &offer);
-
-cleanup:
-   if (allocations != stack_allocations)
-      HeapFree(GetProcessHeap(), 0, allocations);
+   d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
 #endif
@@ -735,8 +762,7 @@ static HRESULT APIENTRY
 d12_umd_dxgi_offer_resources1(DXGI_DDI_ARG_OFFERRESOURCES1 *arguments)
 {
    struct d12_umd_device *device;
-   D3DKMT_HANDLE stack_allocations[16];
-   D3DKMT_HANDLE *allocations = stack_allocations;
+   struct d12_umd_residency_translation translation;
    HRESULT result;
 
    if (!arguments || !(device = d12_umd_dxgi_device(arguments->hDevice)) ||
@@ -748,36 +774,22 @@ d12_umd_dxgi_offer_resources1(DXGI_DDI_ARG_OFFERRESOURCES1 *arguments)
       return S_OK;
    if (!device->kernel_callbacks.pfnOfferAllocations2Cb)
       return E_NOTIMPL;
-   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
-      allocations = HeapAlloc(
-         GetProcessHeap(), 0,
-         (size_t)arguments->Resources * sizeof(*allocations));
-      if (!allocations)
-         return E_OUTOFMEMORY;
-   }
-   for (UINT index = 0; index < arguments->Resources; ++index) {
-      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
-         device, arguments->pResources[index]);
-      if (!resource || resource->reserved) {
-         result = E_INVALIDARG;
-         goto cleanup;
-      }
-      allocations[index] = resource->allocation.allocation;
-   }
+   result = d12_umd_dxgi_translate_residency_resources(
+      device, arguments->pResources, arguments->Resources, true,
+      &translation);
+   if (FAILED(result))
+      return result;
    {
       const D3DDDICB_OFFERALLOCATIONS2 offer = {
-         .HandleList = allocations,
-         .NumAllocations = arguments->Resources,
+         .HandleList = translation.set.allocations,
+         .NumAllocations = translation.set.allocation_count,
          .Priority = arguments->Priority,
          .Flags = arguments->Flags,
       };
       result = device->kernel_callbacks.pfnOfferAllocations2Cb(
          device->runtime_device.handle, &offer);
    }
-
-cleanup:
-   if (allocations != stack_allocations)
-      HeapFree(GetProcessHeap(), 0, allocations);
+   d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
 #endif
@@ -786,8 +798,9 @@ static HRESULT APIENTRY
 d12_umd_dxgi_reclaim_resources(DXGI_DDI_ARG_RECLAIMRESOURCES *arguments)
 {
    struct d12_umd_device *device;
-   D3DKMT_HANDLE stack_allocations[16];
-   D3DKMT_HANDLE *allocations = stack_allocations;
+   struct d12_umd_residency_translation translation;
+   BOOL stack_discarded[16] = {0};
+   BOOL *allocation_discarded = stack_discarded;
    D3DDDICB_RECLAIMALLOCATIONS reclaim;
    HRESULT result;
 
@@ -798,33 +811,39 @@ d12_umd_dxgi_reclaim_resources(DXGI_DDI_ARG_RECLAIMRESOURCES *arguments)
       return S_OK;
    if (!device->kernel_callbacks.pfnReclaimAllocationsCb)
       return E_NOTIMPL;
-   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
-      allocations = HeapAlloc(
-         GetProcessHeap(), 0,
-         (size_t)arguments->Resources * sizeof(*allocations));
-      if (!allocations)
-         return E_OUTOFMEMORY;
-   }
-   for (UINT index = 0; index < arguments->Resources; ++index) {
-      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
-         device, arguments->pResources[index]);
-      if (!resource) {
-         result = E_INVALIDARG;
+   result = d12_umd_dxgi_translate_residency_resources(
+      device, arguments->pResources, arguments->Resources, false,
+      &translation);
+   if (FAILED(result))
+      return result;
+   if (translation.set.allocation_count > ARRAYSIZE(stack_discarded)) {
+      allocation_discarded = HeapAlloc(
+         GetProcessHeap(), HEAP_ZERO_MEMORY,
+         (size_t)translation.set.allocation_count *
+            sizeof(*allocation_discarded));
+      if (!allocation_discarded) {
+         result = E_OUTOFMEMORY;
          goto cleanup;
       }
-      allocations[index] = resource->allocation.allocation;
    }
    reclaim = (D3DDDICB_RECLAIMALLOCATIONS){
-      .HandleList = allocations,
-      .pDiscarded = arguments->pDiscarded,
-      .NumAllocations = arguments->Resources,
+      .HandleList = translation.set.allocations,
+      .pDiscarded = allocation_discarded,
+      .NumAllocations = translation.set.allocation_count,
    };
    result = device->kernel_callbacks.pfnReclaimAllocationsCb(
       device->runtime_device.handle, &reclaim);
+   if (SUCCEEDED(result) && arguments->pDiscarded) {
+      for (UINT index = 0; index < arguments->Resources; ++index) {
+         arguments->pDiscarded[index] = allocation_discarded[
+            translation.set.object_allocation_indices[index]];
+      }
+   }
 
 cleanup:
-   if (allocations != stack_allocations)
-      HeapFree(GetProcessHeap(), 0, allocations);
+   if (allocation_discarded != stack_discarded)
+      HeapFree(GetProcessHeap(), 0, allocation_discarded);
+   d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
 
@@ -833,10 +852,9 @@ static HRESULT APIENTRY
 d12_umd_dxgi_reclaim_resources1(DXGI_DDI_ARG_RECLAIMRESOURCES1 *arguments)
 {
    struct d12_umd_device *device;
-   D3DKMT_HANDLE stack_allocations[16];
+   struct d12_umd_residency_translation translation;
    D3DDDI_RECLAIM_RESULT stack_results[16];
-   D3DKMT_HANDLE *allocations = stack_allocations;
-   D3DDDI_RECLAIM_RESULT *results;
+   D3DDDI_RECLAIM_RESULT *allocation_results = stack_results;
    D3DKMT_HANDLE paging_queue;
    HRESULT result;
 
@@ -851,36 +869,27 @@ d12_umd_dxgi_reclaim_resources1(DXGI_DDI_ARG_RECLAIMRESOURCES1 *arguments)
        !device->renderer_ops->wait_paging ||
        !(paging_queue = device->renderer_ops->paging_queue(device->backend)))
       return E_NOTIMPL;
-   results = arguments->pResults ? arguments->pResults : stack_results;
-   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
-      allocations = HeapAlloc(
+   result = d12_umd_dxgi_translate_residency_resources(
+      device, arguments->pResources, arguments->Resources, true,
+      &translation);
+   if (FAILED(result))
+      return result;
+   if (translation.set.allocation_count > ARRAYSIZE(stack_results)) {
+      allocation_results = HeapAlloc(
          GetProcessHeap(), 0,
-         (size_t)arguments->Resources * sizeof(*allocations));
-      if (!arguments->pResults)
-         results = HeapAlloc(GetProcessHeap(), 0,
-                             (size_t)arguments->Resources * sizeof(*results));
-      if (!allocations || !results) {
-         HeapFree(GetProcessHeap(), 0, allocations);
-         if (results != arguments->pResults)
-            HeapFree(GetProcessHeap(), 0, results);
-         return E_OUTOFMEMORY;
-      }
-   }
-   for (UINT index = 0; index < arguments->Resources; ++index) {
-      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
-         device, arguments->pResources[index]);
-      if (!resource || resource->reserved) {
-         result = E_INVALIDARG;
+         (size_t)translation.set.allocation_count *
+            sizeof(*allocation_results));
+      if (!allocation_results) {
+         result = E_OUTOFMEMORY;
          goto cleanup;
       }
-      allocations[index] = resource->allocation.allocation;
    }
    {
       D3DDDICB_RECLAIMALLOCATIONS3 reclaim = {
          .PagingQueue = paging_queue,
-         .NumAllocations = arguments->Resources,
-         .HandleList = allocations,
-         .pResults = results,
+         .NumAllocations = translation.set.allocation_count,
+         .HandleList = translation.set.allocations,
+         .pResults = allocation_results,
       };
       result = device->kernel_callbacks.pfnReclaimAllocations3Cb(
          device->runtime_device.handle, &reclaim);
@@ -888,12 +897,17 @@ d12_umd_dxgi_reclaim_resources1(DXGI_DDI_ARG_RECLAIMRESOURCES1 *arguments)
          result = device->renderer_ops->wait_paging(
             device->backend, reclaim.PagingFenceValue);
    }
+   if (SUCCEEDED(result) && arguments->pResults) {
+      for (UINT index = 0; index < arguments->Resources; ++index) {
+         arguments->pResults[index] = allocation_results[
+            translation.set.object_allocation_indices[index]];
+      }
+   }
 
 cleanup:
-   if (allocations != stack_allocations)
-      HeapFree(GetProcessHeap(), 0, allocations);
-   if (results != arguments->pResults && results != stack_results)
-      HeapFree(GetProcessHeap(), 0, results);
+   if (allocation_results != stack_results)
+      HeapFree(GetProcessHeap(), 0, allocation_results);
+   d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
 #endif

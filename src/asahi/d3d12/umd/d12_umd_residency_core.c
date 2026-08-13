@@ -7,6 +7,20 @@
 
 #include <string.h>
 
+size_t
+d12_umd_residency_hash_capacity(uint32_t object_count)
+{
+   size_t capacity = 32;
+   const size_t required = (size_t)object_count * 2;
+
+   while (capacity < required) {
+      if (capacity > SIZE_MAX / 2)
+         return 0;
+      capacity *= 2;
+   }
+   return capacity;
+}
+
 bool
 d12_umd_residency_set_init(
    struct d12_umd_residency_set *set, uint32_t *allocations,

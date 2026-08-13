@@ -21,6 +21,8 @@ struct d12_umd_residency_set {
    size_t hash_capacity;
 };
 
+size_t d12_umd_residency_hash_capacity(uint32_t object_count);
+
 bool d12_umd_residency_set_init(
    struct d12_umd_residency_set *set, uint32_t *allocations,
    uint32_t *object_allocation_indices, uint32_t object_count,

@@ -60,6 +60,8 @@ static unsigned priority_calls;
 static unsigned residency_query_calls;
 static unsigned dxgi_offer_calls;
 static unsigned dxgi_reclaim_calls;
+static UINT dxgi_offer_allocation_count;
+static UINT dxgi_reclaim_allocation_count;
 #if D12_UMD_TARGETS_WDDM21
 static uint64_t dxgi_paging_wait_value;
 #endif
@@ -698,6 +700,7 @@ dxgi_offer_allocations(HANDLE runtime_device,
       if (arguments->HandleList[index] != TEST_ALLOCATION)
          return E_INVALIDARG;
    }
+   dxgi_offer_allocation_count = arguments->NumAllocations;
    ++dxgi_offer_calls;
    return S_OK;
 }
@@ -717,6 +720,7 @@ dxgi_offer_allocations2(HANDLE runtime_device,
       if (arguments->HandleList[index] != TEST_ALLOCATION)
          return E_INVALIDARG;
    }
+   dxgi_offer_allocation_count = arguments->NumAllocations;
    ++dxgi_offer_calls;
    return S_OK;
 }
@@ -738,6 +742,7 @@ dxgi_reclaim_allocations3(HANDLE runtime_device,
                                        : D3DDDI_RECLAIM_RESULT_OK;
    }
    arguments->PagingFenceValue = UINT64_C(13);
+   dxgi_reclaim_allocation_count = arguments->NumAllocations;
    ++dxgi_reclaim_calls;
    return S_OK;
 }
@@ -757,6 +762,7 @@ dxgi_reclaim_allocations(
       if (arguments->pDiscarded)
          arguments->pDiscarded[index] = (index & 1u) != 0;
    }
+   dxgi_reclaim_allocation_count = arguments->NumAllocations;
    ++dxgi_reclaim_calls;
    return S_OK;
 }
@@ -2683,18 +2689,20 @@ wmain(int argc, wchar_t **argv)
                   resource_handle.pDrvPrivate,
                .Priority = 7,
             };
-            const DXGI_DDI_HRESOURCE resources[] = {
-               (DXGI_DDI_HRESOURCE)(uintptr_t)
-                  resource_handle.pDrvPrivate,
-            };
-            DXGI_DDI_RESIDENCY residency = 0;
+            DXGI_DDI_HRESOURCE resources[17];
+            DXGI_DDI_RESIDENCY residency[ARRAYSIZE(resources)] = {0};
             DXGI_DDI_ARG_QUERYRESOURCERESIDENCY residency_arguments = {
                .hDevice = (DXGI_DDI_HDEVICE)(uintptr_t)
                   driver_device.pDrvPrivate,
                .pResources = resources,
-               .pStatus = &residency,
+               .pStatus = residency,
                .Resources = ARRAYSIZE(resources),
             };
+
+            for (UINT index = 0; index < ARRAYSIZE(resources); ++index) {
+               resources[index] = (DXGI_DDI_HRESOURCE)(uintptr_t)
+                  resource_handle.pDrvPrivate;
+            }
 
             result = dxgi_table.pfnSetResourcePriority(
                &priority_arguments);
@@ -2705,16 +2713,41 @@ wmain(int argc, wchar_t **argv)
             require_result(
                result == D12_UMD_S_RESIDENT_IN_SHARED_MEMORY &&
                   residency_query_calls == 1 &&
-                  residency ==
+                  residency[0] ==
                      DXGI_DDI_RESIDENCY_RESIDENT_IN_SHARED_MEMORY,
-               "DXGI batched residency callback");
+               "DXGI deduplicated residency callback");
+            for (UINT index = 0; index < ARRAYSIZE(residency); ++index) {
+               require_result(
+                  residency[index] ==
+                     DXGI_DDI_RESIDENCY_RESIDENT_IN_SHARED_MEMORY,
+                  "DXGI shared residency fan-out");
+            }
             query_residency_status = D3DDDI_RESIDENCYSTATUS_NOTRESIDENT;
             result = dxgi_table.pfnQueryResourceResidency(
                &residency_arguments);
             require_result(result == D12_UMD_S_NOT_RESIDENT &&
                               residency_query_calls == 2 &&
-                              residency == DXGI_DDI_RESIDENCY_EVICTED_TO_DISK,
+                              residency[0] ==
+                                 DXGI_DDI_RESIDENCY_EVICTED_TO_DISK,
                            "DXGI nonresident HRESULT and status");
+            for (UINT index = 0; index < ARRAYSIZE(residency); ++index) {
+               require_result(
+                  residency[index] == DXGI_DDI_RESIDENCY_EVICTED_TO_DISK,
+                  "DXGI nonresident residency fan-out");
+            }
+            for (UINT index = 0; index < ARRAYSIZE(residency); ++index)
+               residency[index] = (DXGI_DDI_RESIDENCY)UINT32_MAX;
+            query_residency_status =
+               (D3DDDI_RESIDENCYSTATUS)UINT32_MAX;
+            result = dxgi_table.pfnQueryResourceResidency(
+               &residency_arguments);
+            require_result(result == E_FAIL && residency_query_calls == 3,
+                           "reject invalid kernel residency status");
+            for (UINT index = 0; index < ARRAYSIZE(residency); ++index) {
+               require_result(
+                  residency[index] == (DXGI_DDI_RESIDENCY)UINT32_MAX,
+                  "invalid residency leaves outputs unpublished");
+            }
             query_residency_status =
                D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
 
@@ -2749,14 +2782,16 @@ wmain(int argc, wchar_t **argv)
 #else
                result = dxgi_table.pfnOfferResources(&offer_arguments);
 #endif
-               require_result(result == S_OK && dxgi_offer_calls == 1,
-                              "DXGI OfferResources allocation batching");
+               require_result(result == S_OK && dxgi_offer_calls == 1 &&
+                                 dxgi_offer_allocation_count == 1,
+                              "DXGI OfferResources allocation deduplication");
                result = dxgi_table.pfnReclaimResources(&reclaim_arguments);
-               require_result(result == S_OK && dxgi_reclaim_calls == 1,
-                              "DXGI ReclaimResources allocation batching");
+               require_result(result == S_OK && dxgi_reclaim_calls == 1 &&
+                                 dxgi_reclaim_allocation_count == 1,
+                              "DXGI ReclaimResources allocation deduplication");
                for (UINT index = 0; index < ARRAYSIZE(discarded); ++index) {
-                  require_result(discarded[index] == ((index & 1u) != 0),
-                                 "DXGI ReclaimResources discarded mapping");
+                  require_result(!discarded[index],
+                                 "DXGI ReclaimResources aliased fan-out");
                }
 
                reclaim_arguments.Resources = 1;
@@ -2788,17 +2823,16 @@ wmain(int argc, wchar_t **argv)
                      &reclaim1_arguments);
                   private_device->backend = saved_backend;
                   private_device->renderer_ops = saved_renderer_ops;
-                  require_result(result == S_OK && dxgi_reclaim_calls == 3,
+                  require_result(result == S_OK && dxgi_reclaim_calls == 3 &&
+                                    dxgi_reclaim_allocation_count == 1,
                                  "WDDM 2.1 DXGI ReclaimResources1 callback");
                   require_result(dxgi_paging_wait_value == UINT64_C(13),
                                  "WDDM 2.1 DXGI paging-fence wait");
                   for (UINT index = 0; index < ARRAYSIZE(reclaim_results);
                        ++index) {
                      require_result(
-                        reclaim_results[index] ==
-                           ((index & 1u) ? D3DDDI_RECLAIM_RESULT_DISCARDED
-                                         : D3DDDI_RECLAIM_RESULT_OK),
-                        "WDDM 2.1 DXGI reclaim-result mapping");
+                        reclaim_results[index] == D3DDDI_RECLAIM_RESULT_OK,
+                        "WDDM 2.1 DXGI aliased reclaim-result fan-out");
                   }
 
                   reclaim1_arguments.Resources = 1;
