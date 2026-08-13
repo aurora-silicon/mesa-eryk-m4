@@ -35,6 +35,7 @@
 #define TEST_RT_PAGING_QUEUE ((HANDLE)(uintptr_t)0x8300)
 #define TEST_RT_COMMAND_LIST_TABLE ((HANDLE)(uintptr_t)0x8400)
 #define TEST_DXGI_CONTEXT ((void *)(uintptr_t)0x8500)
+#define TEST_RT_COMMAND_LIST ((HANDLE)(uintptr_t)0x8600)
 
 static volatile uint64_t paging_fence_value;
 static unsigned context_create_calls;
@@ -56,6 +57,7 @@ static UINT evict_allocation_count;
 static UINT offer_allocation_count;
 static UINT reclaim_allocation_count;
 static unsigned set_error_calls;
+static unsigned set_command_list_error_calls;
 static unsigned priority_calls;
 static unsigned residency_query_calls;
 static unsigned dxgi_offer_calls;
@@ -83,6 +85,8 @@ static D3DDDI_RESIDENCYSTATUS query_residency_status =
    D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
 static BOOL set_error_runtime_device_valid;
 static HRESULT last_set_error;
+static BOOL set_error_runtime_command_list_valid;
+static HRESULT last_set_command_list_error;
 static unsigned char mapped_heap[UINT32_C(0x20000)];
 static struct agxw_alloc_private saved_allocation_private;
 static struct d12_umd_resource_private saved_resource_private;
@@ -634,6 +638,15 @@ set_error(D3D10DDI_HRTDEVICE runtime_device, HRESULT error)
    set_error_runtime_device_valid =
       runtime_device.handle == (void *)(uintptr_t)0x6000;
    last_set_error = error;
+}
+
+static void APIENTRY
+set_command_list_error(D3D12DDI_HRTCOMMANDLIST runtime_list, HRESULT error)
+{
+   ++set_command_list_error_calls;
+   set_error_runtime_command_list_valid =
+      runtime_list.handle == TEST_RT_COMMAND_LIST;
+   last_set_command_list_error = error;
 }
 
 static void APIENTRY
@@ -1469,6 +1482,7 @@ wmain(int argc, wchar_t **argv)
       kernel_callbacks.pfnInvalidateCacheCb = invalidate_allocation;
       memset(&core_callbacks, 0, sizeof(core_callbacks));
       core_callbacks.pfnSetErrorCb = set_error;
+      core_callbacks.pfnSetCommandListErrorCb = set_command_list_error;
       core_callbacks.pfnSetCommandListDDITableCb =
          set_command_list_ddi_table;
       core_callbacks.pfnCreateContextVirtualCb = create_context;
@@ -1491,10 +1505,51 @@ wmain(int argc, wchar_t **argv)
          .hDrvDevice = driver_device,
          .p12UMCallbacks = &core_callbacks,
       };
+      core_callbacks.pfnSetCommandListErrorCb = NULL;
+      result = functions.pfnCreateDevice(open_arguments.hAdapter,
+                                         &create_arguments);
+      require_result(result == E_INVALIDARG,
+                     "CreateDevice requires command-list error callback");
+      core_callbacks.pfnSetCommandListErrorCb = set_command_list_error;
       result = functions.pfnCreateDevice(open_arguments.hAdapter,
                                          &create_arguments);
       require_result(result == DXGI_STATUS_NO_REDIRECTION,
                      "CreateDevice explicit-present result");
+
+      {
+         struct d12_umd_command_list fake_list = {
+            .signature = D12_UMD_COMMAND_LIST_SIGNATURE,
+            .device = driver_device.pDrvPrivate,
+            .type = D12_UMD_RENDERER_COMMAND_DIRECT,
+            .runtime_list = {.handle = TEST_RT_COMMAND_LIST},
+            .backend = (void *)(uintptr_t)1,
+         };
+         const D3D12DDI_HCOMMANDLIST fake_handle = {
+            .pDrvPrivate = &fake_list,
+         };
+
+         set_error_calls = 0;
+         set_command_list_error_calls = 0;
+         set_error_runtime_command_list_valid = FALSE;
+         last_set_command_list_error = S_OK;
+         command_list_table.pfnRsSetViewports(
+            fake_handle,
+            D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE + 1,
+            NULL);
+         require_result(
+            set_command_list_error_calls == 1 &&
+               set_error_runtime_command_list_valid &&
+               last_set_command_list_error == E_INVALIDARG &&
+               set_error_calls == 0,
+            "recording validation uses command-list error callback");
+
+         command_list_table.pfnDispatch(fake_handle, 1, 1, 1);
+         require_result(
+            set_command_list_error_calls == 2 &&
+               last_set_command_list_error == E_NOTIMPL &&
+               set_error_calls == 0,
+            "missing recorder operation remains command-list scoped");
+      }
 
 #if D12_UMD_TARGETS_WDDM21
       {

@@ -1835,7 +1835,7 @@ d12_umd_set_pipeline_state(D3D12DDI_HCOMMANDLIST list_handle,
    if (!list || !state || !list->device || state->device != list->device ||
        !list->backend || !state->backend || !list->device->renderer_ops ||
        !list->device->renderer_ops->set_pipeline_state) {
-      d12_umd_pipeline_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->set_pipeline_state(list->backend,

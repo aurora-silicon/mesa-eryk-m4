@@ -41,8 +41,14 @@ _Static_assert(
 static void
 d12_umd_command_set_error(struct d12_umd_device *device, HRESULT result)
 {
-   if (device && device->core_callbacks.pfnSetErrorCb)
-      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
+   d12_umd_report_device_error(device, result);
+}
+
+static void
+d12_umd_command_list_set_error(struct d12_umd_command_list *list,
+                               HRESULT result)
+{
+   d12_umd_report_command_list_error(list, result);
 }
 
 static bool
@@ -270,13 +276,13 @@ d12_umd_close_command_list(D3D12DDI_HCOMMANDLIST list_handle)
    device = list->device;
    if (!device || !list->backend || !device->renderer_ops ||
        !device->renderer_ops->close_command_list) {
-      d12_umd_command_set_error(device, E_NOTIMPL);
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
       return;
    }
 
    result = device->renderer_ops->close_command_list(list->backend);
    if (FAILED(result))
-      d12_umd_command_set_error(device, result);
+      d12_umd_command_list_set_error(list, result);
 }
 
 static void APIENTRY
@@ -296,24 +302,24 @@ d12_umd_reset_command_list(
    allocator = arguments ? d12_umd_command_allocator_from_handle(
                               arguments->hDrvCommandAllocator)
                          : NULL;
-   if (!arguments || !allocator || allocator->device != device ||
+   if (!arguments || !device || !allocator || allocator->device != device ||
        allocator->type != list->type ||
        !d12_umd_command_list_flags_valid(
           (uint32_t)arguments->CommandListFlags,
           device->interface_version == D3D12DDI_INTERFACE_VERSION_R1)) {
-      d12_umd_command_set_error(device, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
    if (!list->backend || !allocator->backend || !device->renderer_ops ||
        !device->renderer_ops->reset_command_list) {
-      d12_umd_command_set_error(device, E_NOTIMPL);
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
       return;
    }
 
    result = device->renderer_ops->reset_command_list(list->backend,
                                                       allocator->backend);
    if (FAILED(result)) {
-      d12_umd_command_set_error(device, result);
+      d12_umd_command_list_set_error(list, result);
       return;
    }
    list->allocator = allocator;
@@ -329,10 +335,15 @@ d12_umd_draw_instanced(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops ||
-       !list->device->renderer_ops->draw_instanced)
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->draw_instanced) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->draw_instanced(
       list->backend, vertex_count_per_instance, instance_count, start_vertex,
       start_instance);
@@ -346,10 +357,15 @@ d12_umd_draw_indexed_instanced(
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops ||
-       !list->device->renderer_ops->draw_indexed_instanced)
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->draw_indexed_instanced) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->draw_indexed_instanced(
       list->backend, index_count_per_instance, instance_count, start_index,
       base_vertex, start_instance);
@@ -362,9 +378,15 @@ d12_umd_dispatch(D3D12DDI_HCOMMANDLIST list_handle, UINT group_count_x,
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops || !list->device->renderer_ops->dispatch)
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->dispatch) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->dispatch(list->backend, group_count_x,
                                          group_count_y, group_count_z);
 }
@@ -378,12 +400,13 @@ d12_umd_execute_bundle(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_command_list *bundle =
       d12_umd_command_list_from_handle(bundle_handle);
 
-   if (!list || !bundle || list->device != bundle->device || !list->backend ||
+   if (!list || !list->device || !bundle || !bundle->device ||
+       list->device != bundle->device || !list->backend ||
        !bundle->backend || list->type != D12_UMD_RENDERER_COMMAND_DIRECT ||
        bundle->type != D12_UMD_RENDERER_COMMAND_BUNDLE ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->execute_bundle) {
-      d12_umd_command_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->execute_bundle(list->backend,
@@ -396,9 +419,10 @@ d12_umd_clear_root_arguments(D3D12DDI_HCOMMANDLIST list_handle)
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->backend || !list->device->renderer_ops ||
+   if (!list || !list->device || !list->backend ||
+       !list->device->renderer_ops ||
        !list->device->renderer_ops->clear_root_arguments) {
-      d12_umd_command_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->clear_root_arguments(list->backend);
@@ -412,7 +436,7 @@ d12_umd_set_marker(D3D12DDI_HCOMMANDLIST list_handle, UINT64 marker)
 
    (void)marker;
    if (!list || !list->backend)
-      d12_umd_command_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
 }
 
 static void APIENTRY
@@ -422,10 +446,15 @@ d12_umd_set_topology(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops ||
-       !list->device->renderer_ops->set_topology)
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_topology) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->set_topology(list->backend,
                                              (uint32_t)topology);
 }
@@ -443,7 +472,7 @@ d12_umd_set_viewports(D3D12DDI_HCOMMANDLIST list_handle, UINT count,
        !list->device->renderer_ops->set_viewports ||
        count > D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE ||
        (count && !viewports)) {
-      d12_umd_command_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
 
@@ -472,7 +501,7 @@ d12_umd_set_scissors(D3D12DDI_HCOMMANDLIST list_handle, UINT count,
        !list->device->renderer_ops->set_scissors ||
        count > D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE ||
        (count && !rects)) {
-      d12_umd_command_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
    }
 
@@ -492,10 +521,15 @@ d12_umd_set_blend_factor(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops ||
-       !list->device->renderer_ops->set_blend_factor)
+   if (!list || !list->device || !list->backend || !factor) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_blend_factor) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->set_blend_factor(list->backend, factor);
 }
 
@@ -505,10 +539,15 @@ d12_umd_set_stencil_ref(D3D12DDI_HCOMMANDLIST list_handle, UINT reference)
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
 
-   if (!list || !list->device || !list->backend ||
-       !list->device->renderer_ops ||
-       !list->device->renderer_ops->set_stencil_ref)
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
       return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_stencil_ref) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
    list->device->renderer_ops->set_stencil_ref(list->backend, reference);
 }
 

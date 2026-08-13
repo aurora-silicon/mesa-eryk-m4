@@ -88,13 +88,6 @@ _Static_assert(D12_UMD_S_RESIDENT_IN_SHARED_MEMORY ==
                   MAKE_HRESULT(0, 0x876, 2166),
                "Direct3D shared-memory status changed value");
 
-static void
-d12_umd_present_error(struct d12_umd_device *device, HRESULT result)
-{
-   if (device && device->core_callbacks.pfnSetErrorCb)
-      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
-}
-
 static struct d12_umd_resource *
 d12_umd_present_resource(struct d12_umd_device *device,
                          D3D12DDI_HRESOURCE handle)
@@ -1118,7 +1111,7 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
    HANDLE context;
 
    if (!queue || queue->signature != D12_UMD_COMMAND_QUEUE_SIGNATURE ||
-       !present)
+       !queue->device || !present)
       return;
    device = queue->device;
    memset(present, 0, sizeof(*present));
@@ -1129,17 +1122,17 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
        arguments->SurfacesToPresent != 1 ||
        !arguments->phSurfacesToPresent ||
        arguments->PrivateDriverDataSize) {
-      d12_umd_present_error(device, E_INVALIDARG);
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
       return;
    }
    source = d12_umd_present_resource(
       device, arguments->phSurfacesToPresent[0].hSurface);
    if (!source) {
-      d12_umd_present_error(device, E_INVALIDARG);
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
       return;
    }
    if (arguments->phSurfacesToPresent[0].SubResourceIndex != 0) {
-      d12_umd_present_error(device, E_INVALIDARG);
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
       return;
    }
    if (arguments->hDstResource.pDrvPrivate) {
@@ -1148,7 +1141,7 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
       if (!destination || arguments->DstSubResourceIndex != 0 ||
           !list->backend || !source->backend || !destination->backend ||
           !device->renderer_ops || !device->renderer_ops->copy_resource) {
-         d12_umd_present_error(device, E_INVALIDARG);
+         d12_umd_report_command_list_error(list, E_INVALIDARG);
          return;
       }
       device->renderer_ops->copy_resource(
@@ -1158,7 +1151,7 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
 
    context = d12_umd_present_context(queue);
    if (!context) {
-      d12_umd_present_error(device, E_FAIL);
+      d12_umd_report_command_list_error(list, E_FAIL);
       return;
    }
    present->hSrcAllocation = source->allocation.allocation;

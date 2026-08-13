@@ -41,10 +41,9 @@ _Static_assert(D3D12DDI_DESCRIPTOR_RANGE_TYPE_SAMPLER == 3,
                "pinned DDI sampler-range encoding changed");
 
 static void
-d12_umd_state_set_error(struct d12_umd_device *device, HRESULT result)
+d12_umd_state_set_error(struct d12_umd_command_list *list, HRESULT result)
 {
-   if (device && device->core_callbacks.pfnSetErrorCb)
-      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
+   d12_umd_report_command_list_error(list, result);
 }
 
 static bool
@@ -327,7 +326,7 @@ d12_umd_root_command_list(D3D12DDI_HCOMMANDLIST handle)
 
    if (!list || !list->device || !list->backend ||
        !list->device->renderer_ops) {
-      d12_umd_state_set_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_state_set_error(list, E_INVALIDARG);
       return NULL;
    }
    return list;
@@ -346,11 +345,11 @@ d12_umd_set_root_signature(D3D12DDI_HCOMMANDLIST list_handle,
       return;
    if ((signature_handle.pDrvPrivate && !signature) ||
        (signature && signature->device != list->device)) {
-      d12_umd_state_set_error(list->device, E_INVALIDARG);
+      d12_umd_state_set_error(list, E_INVALIDARG);
       return;
    }
    if (!list->device->renderer_ops->set_root_signature) {
-      d12_umd_state_set_error(list->device, E_NOTIMPL);
+      d12_umd_state_set_error(list, E_NOTIMPL);
       return;
    }
    list->device->renderer_ops->set_root_signature(
@@ -382,7 +381,7 @@ d12_umd_set_root_descriptor_table(
    if (!list)
       return;
    if (!list->device->renderer_ops->set_root_descriptor_table) {
-      d12_umd_state_set_error(list->device, E_NOTIMPL);
+      d12_umd_state_set_error(list, E_NOTIMPL);
       return;
    }
    list->device->renderer_ops->set_root_descriptor_table(
@@ -420,8 +419,7 @@ d12_umd_set_root_constants(D3D12DDI_HCOMMANDLIST list_handle,
    if ((count && !data) ||
        !list->device->renderer_ops->set_root_constants) {
       d12_umd_state_set_error(
-         list->device,
-         (count && !data) ? E_INVALIDARG : E_NOTIMPL);
+         list, (count && !data) ? E_INVALIDARG : E_NOTIMPL);
       return;
    }
    list->device->renderer_ops->set_root_constants(
@@ -481,7 +479,7 @@ d12_umd_set_root_buffer_view(
    if (!list)
       return;
    if (!list->device->renderer_ops->set_root_buffer_view) {
-      d12_umd_state_set_error(list->device, E_NOTIMPL);
+      d12_umd_state_set_error(list, E_NOTIMPL);
       return;
    }
    list->device->renderer_ops->set_root_buffer_view(

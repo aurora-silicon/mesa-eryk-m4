@@ -53,11 +53,10 @@ d12_umd_blt_display_format(DXGI_FORMAT format)
 }
 
 static void
-d12_umd_resource_command_error(struct d12_umd_device *device,
+d12_umd_resource_command_error(struct d12_umd_command_list *list,
                                HRESULT result)
 {
-   if (device && device->core_callbacks.pfnSetErrorCb)
-      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
+   d12_umd_report_command_list_error(list, result);
 }
 
 static struct d12_umd_resource *
@@ -95,7 +94,7 @@ d12_umd_set_vertex_buffers(D3D12DDI_HCOMMANDLIST list_handle, UINT start_slot,
        start_slot > D12_FRONTEND_MAX_VERTEX_BUFFERS ||
        count > D12_FRONTEND_MAX_VERTEX_BUFFERS - start_slot ||
        (count && !views)) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    for (UINT index = 0; index < count; ++index) {
@@ -119,7 +118,7 @@ d12_umd_set_index_buffer(D3D12DDI_HCOMMANDLIST list_handle,
 
    if (!d12_umd_command_list_ready(list) ||
        !list->device->renderer_ops->set_index_buffer) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    if (!view) {
@@ -129,7 +128,7 @@ d12_umd_set_index_buffer(D3D12DDI_HCOMMANDLIST list_handle,
    if (view->Format != DXGI_FORMAT_UNKNOWN &&
        view->Format != DXGI_FORMAT_R16_UINT &&
        view->Format != DXGI_FORMAT_R32_UINT) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    translated = (struct d12_frontend_index_buffer_view){
@@ -154,7 +153,7 @@ d12_umd_set_stream_output_targets(
        !list->device->renderer_ops->set_stream_output_targets ||
        start_slot > D12_FRONTEND_MAX_STREAM_OUTPUT_BUFFERS ||
        count > D12_FRONTEND_MAX_STREAM_OUTPUT_BUFFERS - start_slot) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    for (UINT index = 0; views && index < count; ++index) {
@@ -165,7 +164,7 @@ d12_umd_set_stream_output_targets(
           (!views[index].BufferLocation || !views[index].SizeInBytes ||
            !views[index].BufferFilledSizeLocation ||
            views[index].SizeInBytes > UINT32_MAX)) {
-         d12_umd_resource_command_error(list->device, E_INVALIDARG);
+         d12_umd_resource_command_error(list, E_INVALIDARG);
          return;
       }
       translated[index] = (struct d12_frontend_stream_output_buffer_view){
@@ -189,12 +188,12 @@ d12_umd_discard_resource(
 
    if (!d12_umd_command_list_ready(list) ||
        (arguments && arguments->NumRects && !arguments->pRects)) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    resource = d12_umd_command_resource(list->device, resource_handle, false);
    if (resource == (void *)(uintptr_t)1) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
 
@@ -219,19 +218,19 @@ d12_umd_set_render_targets(
        !list->device->renderer_ops->set_render_targets ||
        count > D12_FRONTEND_MAX_RENDER_TARGETS ||
        (count && !render_targets)) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    for (UINT index = 0; index < count; ++index) {
       if (!render_targets[index].ptr) {
-         d12_umd_resource_command_error(list->device, E_INVALIDARG);
+         d12_umd_resource_command_error(list, E_INVALIDARG);
          return;
       }
       translated[index] = render_targets[index].ptr;
    }
    if (depth_stencil) {
       if (!depth_stencil->ptr) {
-         d12_umd_resource_command_error(list->device, E_INVALIDARG);
+         d12_umd_resource_command_error(list, E_INVALIDARG);
          return;
       }
       translated_depth = depth_stencil->ptr;
@@ -253,7 +252,7 @@ d12_umd_copy_buffer_region(D3D12DDI_HCOMMANDLIST list_handle,
 
    if (!d12_umd_command_list_ready(list) || !bytes ||
        !list->device->renderer_ops->copy_buffer_region) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    destination_resource = d12_umd_command_resource(
@@ -262,7 +261,7 @@ d12_umd_copy_buffer_region(D3D12DDI_HCOMMANDLIST list_handle,
       list->device, source.BaseAddress.UMD.hResource, false);
    if (destination_resource == (void *)(uintptr_t)1 ||
        source_resource == (void *)(uintptr_t)1) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->copy_buffer_region(
@@ -283,7 +282,7 @@ d12_umd_copy_resource(D3D12DDI_HCOMMANDLIST list_handle,
 
    if (!d12_umd_command_list_ready(list) ||
        !list->device->renderer_ops->copy_resource) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    destination = d12_umd_command_resource(list->device, destination_handle,
@@ -291,7 +290,7 @@ d12_umd_copy_resource(D3D12DDI_HCOMMANDLIST list_handle,
    source = d12_umd_command_resource(list->device, source_handle, false);
    if (destination == (void *)(uintptr_t)1 ||
        source == (void *)(uintptr_t)1) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->copy_resource(
@@ -321,8 +320,7 @@ d12_umd_copy_tiles(
         (flags &
          D3D12DDI_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER)) ||
        !list->device->renderer_ops->copy_tiles) {
-      d12_umd_resource_command_error(list ? list->device : NULL,
-                                     E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    resource = d12_umd_command_resource(list->device, resource_handle, false);
@@ -330,7 +328,7 @@ d12_umd_copy_tiles(
    if (resource == (void *)(uintptr_t)1 ||
        buffer == (void *)(uintptr_t)1 || !resource->reserved ||
        buffer->reserved || buffer->desc.ResourceType != D3D12DDI_RT_BUFFER) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
 
@@ -347,7 +345,7 @@ d12_umd_copy_tiles(
       list->backend, resource->backend, &start, &size, buffer->backend,
       buffer_offset, (uint32_t)flags);
    if (FAILED(result))
-      d12_umd_resource_command_error(list->device, result);
+      d12_umd_resource_command_error(list, result);
 }
 
 static bool
@@ -432,7 +430,7 @@ d12_umd_copy_texture_region(
          source_box->Front < 0 || source_box->Right < source_box->Left ||
          source_box->Bottom < source_box->Top ||
          source_box->Back < source_box->Front))) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    if (source_box) {
@@ -465,7 +463,7 @@ d12_umd_resolve_subresource(D3D12DDI_HCOMMANDLIST list_handle,
 
    if (!d12_umd_command_list_ready(list) ||
        !list->device->renderer_ops->resolve_subresource) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    destination = d12_umd_command_resource(list->device, destination_handle,
@@ -473,7 +471,7 @@ d12_umd_resolve_subresource(D3D12DDI_HCOMMANDLIST list_handle,
    source = d12_umd_command_resource(list->device, source_handle, false);
    if (destination == (void *)(uintptr_t)1 ||
        source == (void *)(uintptr_t)1) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->resolve_subresource(
@@ -690,7 +688,7 @@ d12_umd_blt(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_resource *source;
 
    if (!d12_umd_command_list_ready(list) || !arguments) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    destination = d12_umd_command_resource(list->device,
@@ -699,7 +697,7 @@ d12_umd_blt(D3D12DDI_HCOMMANDLIST list_handle,
                                      false);
    if (destination == (void *)(uintptr_t)1 ||
        source == (void *)(uintptr_t)1) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    const struct d12_umd_blt_desc desc = {
@@ -719,7 +717,7 @@ d12_umd_blt(D3D12DDI_HCOMMANDLIST list_handle,
    const HRESULT result = d12_umd_record_blt(
       list->device, list->backend, destination, source, &desc);
    if (FAILED(result))
-      d12_umd_resource_command_error(list->device, result);
+      d12_umd_resource_command_error(list, result);
 }
 
 static void APIENTRY
@@ -734,18 +732,18 @@ d12_umd_resource_barriers(
 
    if (!d12_umd_command_list_ready(list) || (count && !barriers) ||
        !list->device->renderer_ops->resource_barriers) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    if (count > ARRAYSIZE(local)) {
       if ((SIZE_T)count > SIZE_MAX / sizeof(*translated)) {
-         d12_umd_resource_command_error(list->device, E_OUTOFMEMORY);
+         d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
       translated = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
                              (SIZE_T)count * sizeof(*translated));
       if (!translated) {
-         d12_umd_resource_command_error(list->device, E_OUTOFMEMORY);
+         d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
    }
@@ -804,7 +802,7 @@ d12_umd_resource_barriers(
 invalid:
    if (translated != local)
       HeapFree(GetProcessHeap(), 0, translated);
-   d12_umd_resource_command_error(list->device, E_INVALIDARG);
+   d12_umd_resource_command_error(list, E_INVALIDARG);
 }
 
 static bool
@@ -829,7 +827,7 @@ d12_umd_clear_render_target(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_command_list_from_handle(list_handle);
    if (!d12_umd_clear_arguments_valid(list, descriptor.ptr, count, rects) ||
        !color || !list->device->renderer_ops->clear_render_target) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->clear_render_target(
@@ -848,7 +846,7 @@ d12_umd_clear_depth_stencil(D3D12DDI_HCOMMANDLIST list_handle,
    if (!d12_umd_clear_arguments_valid(list, descriptor.ptr, count, rects) ||
        (flags & ~(D12_UMD_CLEAR_DEPTH | D12_UMD_CLEAR_STENCIL)) || !flags ||
        !list->device->renderer_ops->clear_depth_stencil) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->clear_depth_stencil(
@@ -870,14 +868,14 @@ d12_umd_clear_uav(D3D12DDI_HCOMMANDLIST list_handle,
    if (!d12_umd_clear_arguments_valid(list, cpu_descriptor.ptr, count,
                                       rects) ||
        !gpu_descriptor.ptr || !values) {
-      d12_umd_resource_command_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    resource = d12_umd_command_resource(list->device, resource_handle, false);
    if (resource == (void *)(uintptr_t)1 ||
        (is_float ? !list->device->renderer_ops->clear_uav_float
                  : !list->device->renderer_ops->clear_uav_uint)) {
-      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      d12_umd_resource_command_error(list, E_INVALIDARG);
       return;
    }
    if (is_float) {

@@ -15,10 +15,9 @@
 #include <string.h>
 
 static void
-d12_umd_query_error(struct d12_umd_device *device, HRESULT result)
+d12_umd_query_error(struct d12_umd_command_list *list, HRESULT result)
 {
-   if (device && device->core_callbacks.pfnSetErrorCb)
-      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
+   d12_umd_report_command_list_error(list, result);
 }
 
 static bool
@@ -294,11 +293,11 @@ d12_umd_begin_query(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_query_heap *heap =
       d12_umd_command_query_heap(list, heap_handle, type, index);
 
-   if (!list || !list->backend || !heap ||
+   if (!list || !list->device || !list->backend || !heap ||
        heap->type == D3D12DDI_QUERY_HEAP_TYPE_TIMESTAMP ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->begin_query) {
-      d12_umd_query_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_query_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->begin_query(
@@ -315,9 +314,10 @@ d12_umd_end_query(D3D12DDI_HCOMMANDLIST list_handle,
    struct d12_umd_query_heap *heap =
       d12_umd_command_query_heap(list, heap_handle, type, index);
 
-   if (!list || !list->backend || !heap || !list->device->renderer_ops ||
+   if (!list || !list->device || !list->backend || !heap ||
+       !list->device->renderer_ops ||
        !list->device->renderer_ops->end_query) {
-      d12_umd_query_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_query_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->end_query(
@@ -337,7 +337,8 @@ d12_umd_resolve_query_data(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_query_heap_from_handle(heap_handle);
    struct d12_umd_resource *destination = destination_handle.pDrvPrivate;
 
-   if (!list || !list->backend || !heap || heap->device != list->device ||
+   if (!list || !list->device || !list->backend || !heap ||
+       heap->device != list->device ||
        !heap->backend || !count || first >= heap->count ||
        count > heap->count - first ||
        !d12_umd_query_type_matches(heap->type, type) || !destination ||
@@ -346,7 +347,7 @@ d12_umd_resolve_query_data(D3D12DDI_HCOMMANDLIST list_handle,
        destination->desc.ResourceType != D3D12DDI_RT_BUFFER ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->resolve_query_data) {
-      d12_umd_query_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_query_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->resolve_query_data(
@@ -363,7 +364,8 @@ d12_umd_set_predication(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_command_list_from_handle(list_handle);
    struct d12_umd_resource *resource = resource_handle.pDrvPrivate;
 
-   if (!list || !list->backend || (uint32_t)operation > 1 ||
+   if (!list || !list->device || !list->backend ||
+       (uint32_t)operation > 1 ||
        (resource &&
         (resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
          resource->device != list->device || !resource->backend ||
@@ -372,7 +374,7 @@ d12_umd_set_predication(D3D12DDI_HCOMMANDLIST list_handle,
          sizeof(uint64_t) > resource->desc.Width - offset)) ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->set_predication) {
-      d12_umd_query_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_query_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->set_predication(
@@ -398,7 +400,7 @@ d12_umd_execute_indirect(D3D12DDI_HCOMMANDLIST list_handle,
 
    if (!maximum_count)
       return;
-   if (!list || !list->backend || !signature ||
+   if (!list || !list->device || !list->backend || !signature ||
        signature->device != list->device || !signature->backend ||
        !argument || argument->signature != D12_UMD_RESOURCE_SIGNATURE ||
        argument->device != list->device || !argument->backend ||
@@ -410,7 +412,7 @@ d12_umd_execute_indirect(D3D12DDI_HCOMMANDLIST list_handle,
        (!count && count_placement.BaseAddress.UMD.Offset) ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->execute_indirect) {
-      d12_umd_query_error(list ? list->device : NULL, E_INVALIDARG);
+      d12_umd_query_error(list, E_INVALIDARG);
       return;
    }
    list->device->renderer_ops->execute_indirect(

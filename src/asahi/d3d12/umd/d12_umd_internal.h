@@ -117,6 +117,37 @@ struct d12_umd_command_list {
    void *backend;
 };
 
+/* The D3D12 core layer has separate failure domains for device work and
+ * command-list recording.  A recording error must carry the exact runtime
+ * command-list handle so the runtime can poison only that list; reporting it
+ * through pfnSetErrorCb instead loses the list identity and can incorrectly
+ * escalate an ordinary recording failure to device scope. */
+static inline void
+d12_umd_report_device_error(struct d12_umd_device *device, HRESULT result)
+{
+   if (device && device->core_callbacks.pfnSetErrorCb)
+      device->core_callbacks.pfnSetErrorCb(device->runtime_device, result);
+}
+
+static inline void
+d12_umd_report_command_list_error(struct d12_umd_command_list *list,
+                                  HRESULT result)
+{
+   struct d12_umd_device *device = list ? list->device : NULL;
+
+   if (device && list->runtime_list.handle &&
+       device->core_callbacks.pfnSetCommandListErrorCb) {
+      device->core_callbacks.pfnSetCommandListErrorCb(list->runtime_list,
+                                                       result);
+      return;
+   }
+
+   /* Defensive fallback for a malformed handle or callback table. Normal
+    * device creation requires both callbacks, so valid command lists always
+    * take the command-list-specific path above. */
+   d12_umd_report_device_error(device, result);
+}
+
 struct d12_umd_root_signature {
    uint32_t signature;
    struct d12_umd_device *device;

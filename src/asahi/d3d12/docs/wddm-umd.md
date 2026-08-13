@@ -152,6 +152,12 @@ Device creation receives three callback families:
 copies the runtime callback tables into runtime-owned private device storage
 and, in the renderer-linked DLL, constructs the native backend through those
 callbacks.
+It requires both runtime error channels: device/object failures are reported
+through `pfnSetErrorCb`, while command-recording failures are reported through
+`pfnSetCommandListErrorCb` with the exact `hRTCommandList` supplied by the
+runtime. A malformed command-list callback binding falls back defensively to
+the device channel, but an ordinary list validation or renderer failure never
+poisons or misattributes the whole device.
 It first resolves the exact private adapter identity to a KMT LUID. That LUID
 is the stable key used by every Mesa UMD module's process-wide GPU-VA broker;
 the opaque runtime adapter pointer is never used as an address-space identity.
@@ -536,7 +542,7 @@ does not alter the native D3D12 ABI or command ordering.
 | gate | success criterion | state |
 |---|---|---|
 | A. adapter | ARM64 DLL loads, `OpenAdapter12` validates Apple identity, returns exact adapter table/version/caps | implemented, including conservative texture-layout discovery, and statically/host tested |
-| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; runtime error callback used on void-call failure | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
+| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; void-call failures use the correctly scoped runtime error callback | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; device/object failures use `pfnSetErrorCb`, recording failures preserve the exact runtime list through `pfnSetCommandListErrorCb`, and command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
 | C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; unsupported foreign metadata fails closed |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |

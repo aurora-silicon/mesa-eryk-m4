@@ -90,6 +90,8 @@ d12_umd_create_device(D3D12DDI_HADAPTER handle,
    if (!adapter || !arguments ||
        !arguments->hDrvDevice.pDrvPrivate || !arguments->pKTCallbacks ||
        !arguments->p12UMCallbacks ||
+       !arguments->p12UMCallbacks->pfnSetErrorCb ||
+       !arguments->p12UMCallbacks->pfnSetCommandListErrorCb ||
        !arguments->p12UMCallbacks->pfnSetCommandListDDITableCb)
       return E_INVALIDARG;
    if (!d12_umd_version_supported(arguments->Interface,

@@ -191,7 +191,7 @@ d12_umd_set_descriptor_heaps(D3D12DDI_HCOMMANDLIST handle, UINT count,
    if (!list || !list->backend || !device || count > 2 ||
        (count && !heap_handles) || !device->renderer_ops ||
        !device->renderer_ops->set_descriptor_heaps) {
-      d12_umd_descriptor_error(device, E_INVALIDARG);
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
       return;
    }
    for (UINT index = 0; index < count; ++index) {
@@ -205,7 +205,7 @@ d12_umd_set_descriptor_heaps(D3D12DDI_HCOMMANDLIST handle, UINT count,
               : heap->desc.Type == D3D12DDI_DESCRIPTOR_HEAP_TYPE_SAMPLER
                    ? seen_sampler
                    : true)) {
-         d12_umd_descriptor_error(device, E_INVALIDARG);
+         d12_umd_report_command_list_error(list, E_INVALIDARG);
          return;
       }
       seen_resource |=
