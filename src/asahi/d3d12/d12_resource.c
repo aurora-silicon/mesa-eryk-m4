@@ -2120,34 +2120,10 @@ d12_resource_create_reused(struct d12_device *device,
 }
 
 HRESULT
-d12_resource_create_reserved(struct d12_device *device,
-                             const D3D12_RESOURCE_DESC *desc,
-                             D3D12_RESOURCE_STATES initial_state,
-                             const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
-                             void **out)
+d12_resource_validate_reserved_tier(const D3D12_RESOURCE_DESC *desc)
 {
-   if (!out)
-      return E_POINTER;
-   *out = NULL;
    if (!desc)
       return E_INVALIDARG;
-
-   const D3D12_HEAP_PROPERTIES props = {
-      .Type = D3D12_HEAP_TYPE_DEFAULT,
-      .CreationNodeMask = 1,
-      .VisibleNodeMask = 1,
-   };
-
-   /* Reserved buffers may begin in UAV state without ALLOW_UNORDERED_ACCESS;
-    * that flag controls whether a UAV view can be created, while sparse root
-    * descriptors still use the resource as an addressable buffer. */
-   D3D12_RESOURCE_DESC validation_desc = *desc;
-   if (initial_state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
-      validation_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-   HRESULT valid = d12_validate_resource_desc(&props, &validation_desc,
-                                              initial_state, clear_value);
-   if (FAILED(valid))
-      return valid;
 
    if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR)
@@ -2192,6 +2168,42 @@ d12_resource_create_reserved(struct d12_device *device,
       if (desc->DepthOrArraySize > 1 && layout.mip_tail_first_lod < levels)
          return E_INVALIDARG;
    }
+
+   return S_OK;
+}
+
+HRESULT
+d12_resource_create_reserved(struct d12_device *device,
+                             const D3D12_RESOURCE_DESC *desc,
+                             D3D12_RESOURCE_STATES initial_state,
+                             const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
+                             void **out)
+{
+   if (!out)
+      return E_POINTER;
+   *out = NULL;
+   if (!desc)
+      return E_INVALIDARG;
+
+   const D3D12_HEAP_PROPERTIES props = {
+      .Type = D3D12_HEAP_TYPE_DEFAULT,
+      .CreationNodeMask = 1,
+      .VisibleNodeMask = 1,
+   };
+
+   /* Reserved buffers may begin in UAV state without ALLOW_UNORDERED_ACCESS;
+    * that flag controls whether a UAV view can be created, while sparse root
+    * descriptors still use the resource as an addressable buffer. */
+   D3D12_RESOURCE_DESC validation_desc = *desc;
+   if (initial_state & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+      validation_desc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+   HRESULT valid = d12_validate_resource_desc(&props, &validation_desc,
+                                              initial_state, clear_value);
+   if (FAILED(valid))
+      return valid;
+   valid = d12_resource_validate_reserved_tier(desc);
+   if (FAILED(valid))
+      return valid;
 
    return d12_resource_create(device, &props, D3D12_HEAP_FLAG_NONE, desc,
                               NULL, 0, 0, 0, true, NULL, riid, out);

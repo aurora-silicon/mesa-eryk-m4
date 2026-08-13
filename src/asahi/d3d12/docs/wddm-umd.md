@@ -187,6 +187,13 @@ library functions replace the four baseline serialized-object functions; all
 reserved-resource mappings to the shared renderer. Tier-1 mip packing,
 null/unmap ranges, reuse-single-tile and skip ranges are bounds-checked, and
 `TiledResourcesTier` is reported as one.
+The size-then-create ABI also calls the renderer's shared Tier-1 reserved-
+resource validator before returning private storage. Reserved buffers and
+eligible 2D undefined-swizzle textures are accepted; Texture1D, Texture3D,
+multisampled textures and 2D arrays whose AGX layout has a shared packed-mip
+tail are rejected consistently by both `CalcPrivateHeapAndResourceSizes` and
+creation. This prevents the DDI from exposing a Tier-3 volume-texture shape or
+promising runtime storage for an object the shared renderer cannot construct.
 
 ## 4. Private object and resource ABI
 
@@ -551,7 +558,7 @@ does not alter the native D3D12 ABI or command ordering.
 |---|---|---|
 | A. adapter | ARM64 DLL loads, `OpenAdapter12` validates Apple identity, returns exact adapter table/version/caps | implemented, including conservative texture-layout discovery, and statically/host tested |
 | B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; void-call failures use the correctly scoped runtime error callback | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; device/object failures use `pfnSetErrorCb`, recording failures preserve the exact runtime list through `pfnSetCommandListErrorCb`, and command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
-| C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; unsupported foreign metadata fails closed |
+| C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; Tier-1 reserved-resource sizing and creation share the renderer's exact shape/packed-tail validator, and unsupported foreign metadata fails closed |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, allocation-deduplicated mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including aliased discard fan-out, optional discard output and CPU-only core objects; asynchronous renderer failures now atomically retain the first cause and notify the D3D12 runtime exactly once, while real device-removal and pressure validation remain pending |

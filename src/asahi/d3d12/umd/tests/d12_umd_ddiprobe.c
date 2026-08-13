@@ -198,6 +198,18 @@ static const struct d12_umd_renderer_ops
    };
 
 static HRESULT
+test_sparse_validate_reserved(
+   const struct d12_frontend_resource_desc *desc)
+{
+   if (!desc || desc->dimension != D3D12DDI_RT_TEXTURE2D ||
+       desc->layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE ||
+       desc->sample_count != 1 || desc->sample_quality ||
+       (desc->depth_or_array_size > 1 && desc->mip_levels > 1))
+      return E_INVALIDARG;
+   return S_OK;
+}
+
+static HRESULT
 test_sparse_create_reserved(
    void *device, const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value, void **out_resource)
@@ -305,6 +317,7 @@ static const struct d12_umd_renderer_ops test_sparse_renderer_ops = {
    .update_tile_mappings = test_sparse_update_tile_mappings,
    .copy_tile_mappings = test_sparse_copy_tile_mappings,
    .copy_tiles = test_sparse_copy_tiles,
+   .validate_reserved_resource = test_sparse_validate_reserved,
    .create_reserved_resource = test_sparse_create_reserved,
    .destroy_resource = test_sparse_destroy_resource,
    .resource_gpu_virtual_address = test_sparse_resource_gpu_va,
@@ -2398,6 +2411,72 @@ wmain(int argc, wchar_t **argv)
          sparse_update_calls = 0;
          sparse_copy_mapping_calls = 0;
          sparse_copy_tiles_calls = 0;
+
+         {
+            D3D12DDIARG_CREATERESOURCE_0003 invalid = resource_arguments;
+            struct d12_umd_resource invalid_private;
+            D3D12DDI_HEAP_AND_RESOURCE_SIZES invalid_sizes;
+            D3D12DDI_HRESOURCE invalid_handle = {
+               .pDrvPrivate = &invalid_private,
+            };
+
+            invalid.ResourceType = D3D12DDI_RT_TEXTURE1D;
+            invalid.Height = 1;
+            invalid_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, NULL, &invalid);
+            require_result(!invalid_sizes.Heap && !invalid_sizes.Resource,
+                           "reject Tier-1 reserved Texture1D sizing");
+
+            invalid = resource_arguments;
+            invalid.ResourceType = D3D12DDI_RT_TEXTURE3D;
+            invalid_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, NULL, &invalid);
+            require_result(!invalid_sizes.Heap && !invalid_sizes.Resource,
+                           "reject Tier-1 reserved Texture3D sizing");
+            result = device_table.pfnCreateHeapAndResource(
+               driver_device, NULL, (D3D12DDI_HHEAP){0},
+               (D3D12DDI_HRTRESOURCE){0}, &invalid, NULL,
+               invalid_handle);
+            require_result(result == E_INVALIDARG &&
+                              sparse_create_calls == 0,
+                           "reject Tier-1 reserved Texture3D creation");
+
+            invalid = resource_arguments;
+            invalid.SampleDesc.Count = 2;
+            invalid_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, NULL, &invalid);
+            require_result(!invalid_sizes.Heap && !invalid_sizes.Resource,
+                           "reject Tier-1 reserved 2x MSAA sizing");
+
+            invalid = resource_arguments;
+            invalid.DepthOrArraySize = 2;
+            invalid_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, NULL, &invalid);
+            require_result(!invalid_sizes.Heap && !invalid_sizes.Resource,
+                           "reject Tier-1 packed array mip sizing");
+
+            invalid = (D3D12DDIARG_CREATERESOURCE_0003){
+               .ResourceType = D3D12DDI_RT_BUFFER,
+               .Width = UINT64_C(0x20000),
+               .Height = 1,
+               .DepthOrArraySize = 1,
+               .MipLevels = 1,
+               .Format = DXGI_FORMAT_UNKNOWN,
+               .SampleDesc = {.Count = 1},
+               .Layout = D3D12DDI_TL_ROW_MAJOR,
+               .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
+            };
+            invalid_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, NULL, &invalid);
+            require_result(!invalid_sizes.Heap && invalid_sizes.Resource > 0,
+                           "accept Tier-1 reserved buffer sizing");
+         }
+
          sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
             driver_device, NULL, &resource_arguments);
          require_result(sizes.Heap == 0 && sizes.Resource > 0,

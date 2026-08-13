@@ -230,6 +230,8 @@ HRESULT d12_device_runtime_resource_create_reserved(
    const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value,
    void **out_resource);
+HRESULT d12_device_runtime_resource_validate_reserved(
+   const struct d12_frontend_resource_desc *desc);
 void d12_device_runtime_resource_destroy(void *resource);
 uint64_t d12_device_runtime_resource_gpu_virtual_address(void *resource);
 HRESULT d12_device_runtime_resource_mip_packing(

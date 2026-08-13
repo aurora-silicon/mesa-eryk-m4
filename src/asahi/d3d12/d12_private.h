@@ -449,6 +449,8 @@ HRESULT d12_resource_create_reserved(struct d12_device *device,
                                      D3D12_RESOURCE_STATES initial_state,
                                      const D3D12_CLEAR_VALUE *clear_value,
                                      REFIID riid, void **out);
+HRESULT d12_resource_validate_reserved_tier(
+   const D3D12_RESOURCE_DESC *desc);
 bool d12_resource_explicit_row_major_size(
    const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
    uint32_t slice_pitch_B, uint64_t *size_B);

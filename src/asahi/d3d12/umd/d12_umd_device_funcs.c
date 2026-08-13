@@ -860,6 +860,37 @@ d12_umd_frontend_resource_desc(
    };
 }
 
+static bool
+d12_umd_reserved_resource_valid(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATERESOURCE_0003 *arguments)
+{
+   struct d12_frontend_resource_desc frontend;
+
+   if (!device || !arguments)
+      return false;
+   if (arguments->ResourceType == D3D12DDI_RT_BUFFER)
+      return arguments->Layout == D3D12DDI_TL_ROW_MAJOR;
+   if (arguments->ResourceType != D3D12DDI_RT_TEXTURE2D ||
+       arguments->Layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE ||
+       arguments->SampleDesc.Count != 1 || arguments->SampleDesc.Quality)
+      return false;
+
+   /* Only the renderer knows where its opaque AGX layout begins the packed
+    * mip tail. Tier 1 forbids a tail shared by array layers, so production
+    * sizing must consult the same validator as creation rather than handing
+    * the runtime private storage for an object that will later be rejected. */
+   if (device->backend) {
+      if (!device->renderer_ops ||
+          !device->renderer_ops->validate_reserved_resource)
+         return false;
+      frontend = d12_umd_frontend_resource_desc(arguments);
+      return SUCCEEDED(
+         device->renderer_ops->validate_reserved_resource(&frontend));
+   }
+   return true;
+}
+
 static HRESULT
 d12_umd_resource_allocation_info(
    struct d12_umd_device *device,
@@ -1053,6 +1084,8 @@ d12_umd_calc_private_heap_resource_sizes(
         (heap_arguments ||
          FAILED(d12_umd_reused_resource_info(
             device, resource_arguments, &reuse_info)))) ||
+       (resource_arguments && !heap_arguments && !reuses_gpu_va &&
+        !d12_umd_reserved_resource_valid(device, resource_arguments)) ||
        (heap_arguments && resource_arguments &&
         !d12_umd_heap_resource_compatible(
            device, heap_arguments, resource_arguments)))
@@ -1096,6 +1129,9 @@ d12_umd_create_heap_resource(
    if (!heap_arguments) {
       if (!resource_arguments || !resource || heap ||
           !d12_umd_resource_arguments_valid(resource_arguments) ||
+          (!resource_arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource
+              .pDrvPrivate &&
+           !d12_umd_reserved_resource_valid(device, resource_arguments)) ||
           !device->renderer_ops || !device->backend)
          return E_INVALIDARG;
 

@@ -196,6 +196,8 @@ struct d12_umd_renderer_ops {
       void *device, const struct d12_frontend_resource_desc *desc,
       const struct d12_frontend_clear_value *clear_value,
       void **out_resource);
+   HRESULT (*validate_reserved_resource)(
+      const struct d12_frontend_resource_desc *desc);
    void (*destroy_resource)(void *resource);
    uint64_t (*resource_gpu_virtual_address)(void *resource);
    HRESULT (*resource_mip_packing)(void *resource, uint32_t *packed_mips,

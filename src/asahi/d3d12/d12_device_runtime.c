@@ -2278,6 +2278,17 @@ d12_device_runtime_resource_create_reused(
 }
 
 HRESULT
+d12_device_runtime_resource_validate_reserved(
+   const struct d12_frontend_resource_desc *desc)
+{
+   D3D12_RESOURCE_DESC resource_desc;
+
+   if (!d12_device_runtime_resource_desc(desc, &resource_desc))
+      return E_INVALIDARG;
+   return d12_resource_validate_reserved_tier(&resource_desc);
+}
+
+HRESULT
 d12_device_runtime_resource_create_reserved(
    struct d12_device *device, const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value, void **out_resource)
