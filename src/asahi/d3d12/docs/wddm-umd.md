@@ -274,7 +274,11 @@ result destroys every backend object already returned, clears the runtime's
 private storage, and never links a half-created heap into the device. Newly
 created and opened heaps both read their allocation and KMD-resource handles
 from the locked winsys identity record, so reflection, DXGI identity rotation
-and destruction operate on the same dxgkrnl objects. The
+and destruction operate on the same dxgkrnl objects. Native open metadata
+keeps the application's logical D3D12 heap size distinct from the VidMm
+allocation size: the latter must equal the former rounded once to the 16 KiB
+Apple page, which supports Direct3D's valid non-aligned heap sizes without
+permitting padding or truncation beyond the real backing allocation. The
 frontend supports descriptor heaps and SRV/UAV/RTV/DSV/CBV/sampler creation,
 mapping, GPU virtual addresses, exact allocation-handle queries, subresource
 layout queries and the D3D12 MakeResident/Evict callback model.

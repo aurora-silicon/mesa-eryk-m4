@@ -1350,7 +1350,15 @@ d12_umd_open_private_data(
    if (d12_umd_resource_private_parse(arguments->pPrivateDriverData,
                                       arguments->PrivateDriverDataSize,
                                       private_data)) {
-      if (allocation_private->size != private_data->heap.size ||
+      uint64_t allocation_size;
+
+      if (private_data->heap.size >
+          UINT64_MAX - (AGXW_PAGE_SIZE - UINT64_C(1)))
+         return false;
+      allocation_size =
+         (private_data->heap.size + (AGXW_PAGE_SIZE - UINT64_C(1))) &
+         ~(AGXW_PAGE_SIZE - UINT64_C(1));
+      if (allocation_private->size != allocation_size ||
           !!(allocation_private->flags & AGXW_ALLOC_PRIMARY) !=
              !!(private_data->heap.flags & D12_FRONTEND_HEAP_PRIMARY))
          return false;

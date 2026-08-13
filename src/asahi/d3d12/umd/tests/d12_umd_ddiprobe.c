@@ -3377,6 +3377,58 @@ wmain(int argc, wchar_t **argv)
          }
 
          {
+            struct d12_umd_resource_private rounded_private;
+            struct d12_frontend_heap_desc rounded_heap =
+               saved_resource_private.heap;
+            struct agxw_alloc_private rounded_allocation =
+               saved_allocation_private;
+            D3DDDI_OPENALLOCATIONINFO rounded_open_allocation = {
+               .hAllocation = TEST_ALLOCATION,
+               .pPrivateDriverData = &rounded_allocation,
+               .PrivateDriverDataSize = sizeof(rounded_allocation),
+            };
+            D3D12DDIARG_OPENHEAP_0003 rounded_arguments = {
+               .NumAllocations = 1,
+               .pOpenAllocationInfo = &rounded_open_allocation,
+               .hKMResource = {.handle = TEST_KM_RESOURCE},
+               .pPrivateDriverData = &rounded_private,
+               .PrivateDriverDataSize = sizeof(rounded_private),
+               .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
+            };
+            D3D12DDI_HEAP_AND_RESOURCE_SIZES rounded_sizes;
+
+            --rounded_heap.size;
+            require_result(
+               d12_umd_resource_private_pack(
+                  &rounded_heap, &saved_resource_private.resource,
+                  (saved_resource_private.flags &
+                   D12_UMD_RESOURCE_PRIVATE_HAS_CLEAR_VALUE)
+                     ? &saved_resource_private.clear_value
+                     : NULL,
+                  &rounded_private),
+               "pack non-aligned logical heap fixture");
+            rounded_sizes =
+               device_table.pfnCalcPrivateOpenedHeapAndResourceSizes(
+                  driver_device, &rounded_arguments);
+            require_result(
+               rounded_sizes.Heap > 0 && rounded_sizes.Resource > 0,
+               "accept exact page-rounded WDDM backing allocation");
+
+            rounded_allocation.size += AGXW_PAGE_SIZE;
+            rounded_sizes =
+               device_table.pfnCalcPrivateOpenedHeapAndResourceSizes(
+                  driver_device, &rounded_arguments);
+            require_result(!rounded_sizes.Heap && !rounded_sizes.Resource,
+                           "reject oversized WDDM backing allocation");
+
+            rounded_allocation.size = AGXW_PAGE_SIZE;
+            rounded_sizes =
+               device_table.pfnCalcPrivateOpenedHeapAndResourceSizes(
+                  driver_device, &rounded_arguments);
+            require_result(!rounded_sizes.Heap && !rounded_sizes.Resource,
+                           "reject undersized WDDM backing allocation");
+         }
+         {
             D3DDDI_OPENALLOCATIONINFO opened_allocation = {
                .hAllocation = TEST_ALLOCATION,
                .pPrivateDriverData = &saved_allocation_private,
