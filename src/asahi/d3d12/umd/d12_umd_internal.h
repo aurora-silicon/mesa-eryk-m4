@@ -78,12 +78,16 @@ struct d12_umd_device {
    struct d12_device *backend;
    const struct d12_umd_renderer_ops *renderer_ops;
    volatile LONG unimplemented_hits;
+   volatile LONG destroying;
    SRWLOCK queue_lock;
    SRWLOCK heap_lock;
+   SRWLOCK heap_storage_lock;
    SRWLOCK rotation_lock;
    struct d12_umd_command_queue *queues;
    struct d12_umd_heap *heaps;
+   struct d12_umd_heap_storage *heap_storages;
    uint32_t queue_count;
+   uint32_t heap_storage_count;
    D3DGPU_VIRTUAL_ADDRESS usc_base;
    uint64_t usc_size;
 };
@@ -224,6 +228,9 @@ struct d12_umd_heap_storage {
    SRWLOCK lock;
    void *mapping;
    struct d12_umd_lifetime_core lifetime;
+   uint32_t map_retain_count;
+   uint32_t fence_retain_count;
+   struct d12_umd_heap_storage *next;
 };
 
 struct d12_umd_heap {

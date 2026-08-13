@@ -43,3 +43,16 @@ d12_umd_lifetime_request_destroy(struct d12_umd_lifetime_core *lifetime)
    }
    return D12_UMD_LIFETIME_OK;
 }
+
+enum d12_umd_lifetime_result
+d12_umd_lifetime_abandon_retains(struct d12_umd_lifetime_core *lifetime,
+                                 uint32_t retain_count)
+{
+   if (!lifetime || !lifetime->destroy_requested || lifetime->finalizing ||
+       !retain_count || lifetime->retain_count != retain_count)
+      return D12_UMD_LIFETIME_INVALID;
+
+   lifetime->retain_count = 0;
+   lifetime->finalizing = true;
+   return D12_UMD_LIFETIME_FINALIZE;
+}

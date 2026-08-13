@@ -4209,7 +4209,56 @@ wmain(int argc, wchar_t **argv)
                         "reject unadvertised standard-swizzle layout");
       }
 
-      functions.pfnDestroyDevice(driver_device);
+      {
+         const D3D12DDIARG_CREATEHEAP_0001 heap_arguments = {
+            .ByteSize = sizeof(mapped_heap),
+            .Alignment = UINT64_C(0x10000),
+            .MemoryPool = D3D12DDI_MEMORY_POOL_L0,
+            .CPUPageProperty = D3D12DDI_CPU_PAGE_PROPERTY_WRITE_BACK,
+            .Flags = D3D12DDI_HEAP_FLAG_BUFFERS,
+            .CreationNodeMask = 1,
+            .VisibleNodeMask = 1,
+         };
+         const D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes =
+            device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &heap_arguments, NULL);
+         const D3D12DDI_HRTRESOURCE runtime_resource = {
+            .handle = TEST_RT_RESOURCE,
+         };
+         D3D12DDI_HHEAP heap_handle;
+         void *mapping = NULL;
+         const unsigned allocation_base = allocation_calls;
+         const unsigned deallocation_base = deallocation_calls;
+         const unsigned lock_base = lock_calls;
+         const unsigned unlock_base = unlock_calls;
+         struct d12_umd_device *private_device =
+            driver_device.pDrvPrivate;
+
+         require_result(sizes.Heap > 0 && sizes.Resource == 0,
+                        "teardown-audit heap private size");
+         heap_handle.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Heap);
+         require_result(heap_handle.pDrvPrivate != NULL,
+                        "allocate teardown-audit heap storage");
+         result = device_table.pfnCreateHeapAndResource(
+            driver_device, &heap_arguments, heap_handle, runtime_resource,
+            NULL, NULL, (D3D12DDI_HRESOURCE){0});
+         require_result(result == S_OK &&
+                           allocation_calls == allocation_base + 1 &&
+                           private_device->heap_storage_count == 1,
+                        "register driver-owned heap storage");
+         result = device_table.pfnMapHeap(driver_device, heap_handle,
+                                          &mapping);
+         require_result(result == S_OK && mapping == mapped_heap &&
+                           lock_calls == lock_base + 1,
+                        "retain application map through DestroyDevice");
+
+         functions.pfnDestroyDevice(driver_device);
+         require_result(unlock_calls == unlock_base + 1 &&
+                           deallocation_calls == deallocation_base + 1,
+                        "DestroyDevice abandons maps and drains heap storage");
+         HeapFree(GetProcessHeap(), 0, heap_handle.pDrvPrivate);
+      }
       HeapFree(GetProcessHeap(), 0, driver_device.pDrvPrivate);
 
       {

@@ -283,6 +283,18 @@ d12_umd_heap_storage_create(struct d12_umd_heap *heap)
    storage->runtime_resource = heap->runtime_resource;
    storage->cpu_page_property = heap->cpu_page_property;
    InitializeSRWLock(&storage->lock);
+
+   AcquireSRWLockExclusive(&heap->device->heap_storage_lock);
+   if (InterlockedCompareExchange(&heap->device->destroying, 0, 0)) {
+      ReleaseSRWLockExclusive(&heap->device->heap_storage_lock);
+      SecureZeroMemory(storage, sizeof(*storage));
+      HeapFree(GetProcessHeap(), 0, storage);
+      return DXGI_ERROR_DEVICE_REMOVED;
+   }
+   storage->next = heap->device->heap_storages;
+   heap->device->heap_storages = storage;
+   ++heap->device->heap_storage_count;
+   ReleaseSRWLockExclusive(&heap->device->heap_storage_lock);
    heap->storage = storage;
    return S_OK;
 }
@@ -295,6 +307,20 @@ d12_umd_heap_storage_finalize(struct d12_umd_heap_storage *storage)
 
    if (!storage || !(device = storage->device))
       return E_INVALIDARG;
+
+   AcquireSRWLockExclusive(&device->heap_storage_lock);
+   {
+      struct d12_umd_heap_storage **link = &device->heap_storages;
+      while (*link && *link != storage)
+         link = &(*link)->next;
+      if (*link == storage) {
+         *link = storage->next;
+         if (device->heap_storage_count)
+            --device->heap_storage_count;
+      }
+   }
+   ReleaseSRWLockExclusive(&device->heap_storage_lock);
+
    if (storage->mapping) {
       result = d12_umd_kmt_unlock(&device->kmt,
                                   storage->allocation.allocation);
@@ -331,8 +357,23 @@ d12_umd_heap_storage_request_destroy(struct d12_umd_heap_storage *storage)
 }
 
 static HRESULT
+d12_umd_heap_storage_ensure_destroy_requested(
+   struct d12_umd_heap_storage *storage)
+{
+   bool already_requested;
+
+   if (!storage)
+      return E_INVALIDARG;
+   AcquireSRWLockShared(&storage->lock);
+   already_requested = storage->lifetime.destroy_requested;
+   ReleaseSRWLockShared(&storage->lock);
+   return already_requested ? S_OK
+                            : d12_umd_heap_storage_request_destroy(storage);
+}
+
+static HRESULT
 d12_umd_heap_storage_retain_mapping(struct d12_umd_heap_storage *storage,
-                                    void **mapping)
+                                    void **mapping, bool fence_retain)
 {
    struct d12_umd_device *device;
    enum d12_umd_lifetime_result lifetime_result;
@@ -360,6 +401,10 @@ d12_umd_heap_storage_retain_mapping(struct d12_umd_heap_storage *storage,
                                    storage->allocation.allocation,
                                    &storage->mapping);
       if (SUCCEEDED(result)) {
+         if (fence_retain)
+            ++storage->fence_retain_count;
+         else
+            ++storage->map_retain_count;
          *mapping = storage->mapping;
       } else {
          (void)d12_umd_lifetime_release(&storage->lifetime);
@@ -370,7 +415,8 @@ d12_umd_heap_storage_retain_mapping(struct d12_umd_heap_storage *storage,
 }
 
 static HRESULT
-d12_umd_heap_storage_release_mapping(struct d12_umd_heap_storage *storage)
+d12_umd_heap_storage_release_mapping_kind(
+   struct d12_umd_heap_storage *storage, bool fence_retain)
 {
    struct d12_umd_device *device;
    enum d12_umd_lifetime_result lifetime_result;
@@ -381,10 +427,22 @@ d12_umd_heap_storage_release_mapping(struct d12_umd_heap_storage *storage)
       return E_INVALIDARG;
    device = storage->device;
    AcquireSRWLockExclusive(&storage->lock);
+   if ((fence_retain && !storage->fence_retain_count) ||
+       (!fence_retain && !storage->map_retain_count)) {
+      ReleaseSRWLockExclusive(&storage->lock);
+      return E_INVALIDARG;
+   }
    lifetime_result = d12_umd_lifetime_release(&storage->lifetime);
    if (lifetime_result == D12_UMD_LIFETIME_INVALID) {
       result = E_INVALIDARG;
-   } else if (!storage->lifetime.retain_count) {
+   } else {
+      if (fence_retain)
+         --storage->fence_retain_count;
+      else
+         --storage->map_retain_count;
+   }
+   if (lifetime_result != D12_UMD_LIFETIME_INVALID &&
+       !storage->lifetime.retain_count) {
       result = d12_umd_kmt_unlock(&device->kmt,
                                   storage->allocation.allocation);
       if (SUCCEEDED(result))
@@ -402,6 +460,12 @@ d12_umd_heap_storage_release_mapping(struct d12_umd_heap_storage *storage)
 }
 
 static HRESULT
+d12_umd_heap_storage_release_mapping(struct d12_umd_heap_storage *storage)
+{
+   return d12_umd_heap_storage_release_mapping_kind(storage, false);
+}
+
+static HRESULT
 d12_umd_heap_retain_mapping(struct d12_umd_heap *heap, void **mapping)
 {
    if (mapping)
@@ -409,7 +473,18 @@ d12_umd_heap_retain_mapping(struct d12_umd_heap *heap, void **mapping)
    if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !mapping ||
        !heap->storage)
       return E_INVALIDARG;
-   return d12_umd_heap_storage_retain_mapping(heap->storage, mapping);
+   return d12_umd_heap_storage_retain_mapping(heap->storage, mapping, false);
+}
+
+static HRESULT
+d12_umd_heap_retain_fence_mapping(struct d12_umd_heap *heap, void **mapping)
+{
+   if (mapping)
+      *mapping = NULL;
+   if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !mapping ||
+       !heap->storage)
+      return E_INVALIDARG;
+   return d12_umd_heap_storage_retain_mapping(heap->storage, mapping, true);
 }
 
 static HRESULT
@@ -425,7 +500,8 @@ d12_umd_fence_release_heap_storage(void *cookie)
 {
    struct d12_umd_heap_storage *storage = cookie;
    struct d12_umd_device *device = storage ? storage->device : NULL;
-   HRESULT result = d12_umd_heap_storage_release_mapping(storage);
+   HRESULT result =
+      d12_umd_heap_storage_release_mapping_kind(storage, true);
 
    if (FAILED(result) && device)
       d12_umd_set_device_error(device, result);
@@ -455,6 +531,8 @@ d12_umd_create_command_queue(
 
    if (!device || !arguments || !d12_umd_queue_arguments_valid(arguments))
       return E_INVALIDARG;
+   if (InterlockedCompareExchange(&device->destroying, 0, 0))
+      return DXGI_ERROR_DEVICE_REMOVED;
    if (!arguments->hDrvCommandQueue.pDrvPrivate ||
        !arguments->hRTCommandQueue.handle)
       return E_INVALIDARG;
@@ -564,6 +642,102 @@ d12_umd_destroy_command_queue(D3D12DDI_HDEVICE handle,
    if (FAILED(result))
       d12_umd_set_device_error(device, result);
    SecureZeroMemory(queue, sizeof(*queue));
+}
+
+HRESULT
+d12_umd_prepare_device_destroy(struct d12_umd_device *device)
+{
+   struct d12_umd_heap_storage *storage;
+   HRESULT result = S_OK;
+
+   if (!device || device->signature != D12_UMD_DEVICE_SIGNATURE)
+      return E_INVALIDARG;
+   if (InterlockedExchange(&device->destroying, 1))
+      return S_FALSE;
+
+   /* A renderer queue owns every asynchronous placement-fence reference.
+    * Destroying all queues first joins their workers and releases every
+    * queued Wait/Signal before heap mappings or the shared renderer device
+    * are retired.  The D3D12 runtime normally destroys child objects first;
+    * this loop makes that ordering explicit and defensive. */
+   for (;;) {
+      struct d12_umd_command_queue *queue;
+
+      AcquireSRWLockShared(&device->queue_lock);
+      queue = device->queues;
+      ReleaseSRWLockShared(&device->queue_lock);
+      if (!queue)
+         break;
+      d12_umd_destroy_command_queue(
+         device->driver_device,
+         (D3D12DDI_HCOMMANDQUEUE){.pDrvPrivate = queue});
+   }
+
+   /* Runtime heap blocks cease to be addressable after DestroyDevice.  The
+    * driver-owned storage registry remains authoritative even for heaps
+    * whose DDI private block was destroyed while a fence was queued. */
+   AcquireSRWLockExclusive(&device->heap_lock);
+   device->heaps = NULL;
+   ReleaseSRWLockExclusive(&device->heap_lock);
+
+   AcquireSRWLockShared(&device->heap_storage_lock);
+   storage = device->heap_storages;
+   ReleaseSRWLockShared(&device->heap_storage_lock);
+   while (storage) {
+      struct d12_umd_heap_storage *next = storage->next;
+      HRESULT destroy_result =
+         d12_umd_heap_storage_ensure_destroy_requested(storage);
+      if (FAILED(destroy_result) && SUCCEEDED(result))
+         result = destroy_result;
+      storage = next;
+   }
+
+   /* Unbalanced application MapHeap calls have no asynchronous renderer
+    * owner and can be retired at the device boundary. Fence retains cannot
+    * be forced: seeing one after all queues were joined is an internal
+    * ownership violation and must fail the teardown audit rather than hide
+    * a possible use-after-free. */
+   AcquireSRWLockShared(&device->heap_storage_lock);
+   storage = device->heap_storages;
+   ReleaseSRWLockShared(&device->heap_storage_lock);
+   while (storage) {
+      struct d12_umd_heap_storage *next = storage->next;
+      bool finalize = false;
+
+      AcquireSRWLockExclusive(&storage->lock);
+      if (storage->fence_retain_count ||
+          storage->lifetime.retain_count != storage->map_retain_count) {
+         if (SUCCEEDED(result))
+            result = E_UNEXPECTED;
+      } else {
+         enum d12_umd_lifetime_result lifetime_result =
+            d12_umd_lifetime_abandon_retains(
+               &storage->lifetime, storage->map_retain_count);
+         if (lifetime_result != D12_UMD_LIFETIME_FINALIZE) {
+            if (SUCCEEDED(result))
+               result = E_UNEXPECTED;
+         } else {
+            storage->map_retain_count = 0;
+            finalize = true;
+         }
+      }
+      ReleaseSRWLockExclusive(&storage->lock);
+
+      if (finalize) {
+         HRESULT final_result = d12_umd_heap_storage_finalize(storage);
+         if (FAILED(final_result) && SUCCEEDED(result))
+            result = final_result;
+      }
+      storage = next;
+   }
+
+   AcquireSRWLockShared(&device->heap_storage_lock);
+   if (device->heap_storages || device->heap_storage_count) {
+      if (SUCCEEDED(result))
+         result = E_UNEXPECTED;
+   }
+   ReleaseSRWLockShared(&device->heap_storage_lock);
+   return result;
 }
 
 static void APIENTRY
@@ -1835,7 +2009,7 @@ d12_umd_resolve_fence_address(struct d12_umd_device *device,
       if (address < base || offset > heap->allocation.size ||
           sizeof(uint64_t) > heap->allocation.size - offset)
          continue;
-      result = d12_umd_heap_retain_mapping(heap, &mapping);
+      result = d12_umd_heap_retain_fence_mapping(heap, &mapping);
       if (SUCCEEDED(result)) {
          *cpu_address = (volatile uint64_t *)((uint8_t *)mapping + offset);
          *retained_storage = heap->storage;

@@ -18,6 +18,7 @@
 #include "d12_umd_backend.h"
 #endif
 #include "d12_umd_internal.h"
+#include "d12_umd_device_funcs.h"
 #include "d12_umd_present_funcs.h"
 #include "d12_umd_tables.h"
 
@@ -112,6 +113,7 @@ d12_umd_create_device(D3D12DDI_HADAPTER handle,
    device->core_callbacks = *arguments->p12UMCallbacks;
    InitializeSRWLock(&device->queue_lock);
    InitializeSRWLock(&device->heap_lock);
+   InitializeSRWLock(&device->heap_storage_lock);
    InitializeSRWLock(&device->rotation_lock);
 
    result = d12_umd_kmt_init(&device->kmt, arguments->hRTDevice.handle,
@@ -143,6 +145,9 @@ d12_umd_destroy_device(D3D12DDI_HDEVICE handle)
    struct d12_umd_device *device =
       (struct d12_umd_device *)handle.pDrvPrivate;
    if (device && device->signature == D12_UMD_DEVICE_SIGNATURE) {
+      HRESULT result = d12_umd_prepare_device_destroy(device);
+      if (FAILED(result))
+         d12_umd_report_device_error(device, result);
 #if D12_UMD_WITH_AGX_BACKEND
       d12_umd_backend_destroy(device);
 #endif

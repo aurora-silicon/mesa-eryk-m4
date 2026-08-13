@@ -372,6 +372,18 @@ placement/CPU mappings transactionally, and updates both public and retained
 allocation identities while locked. A portable state-machine unit test covers
 retain, destroy-before-release, finalization, invalid release and overflow;
 the ARM64 callback probe additionally checks deferred heap teardown.
+Every driver-owned heap-storage record is also linked into a device-owned
+registry independent of the runtime heap list. `DestroyDevice` first prevents
+new queue/storage publication, destroys any remaining queue wrappers so their
+workers join and drop queued placement references, then requests destruction
+of every registered storage before releasing the shared AGX device. MapHeap
+and monitored-fence retains are counted separately: the final device boundary
+may abandon an unmatched application CPU map and issue its one corresponding
+Unlock, but it rejects a remaining fence retain as an internal ordering error
+rather than misclassifying asynchronous renderer ownership. The portable
+lifetime test covers exact-count abandonment and the ARM64 callback probe
+constructs a live mapped heap to verify that device teardown unlocks and
+deallocates it before runtime-private device memory is cleared.
 The shared renderer queue uses separate ordered submission and retirement
 workers. The submit worker feeds successive command lists to the same AGX
 timeline without waiting for each list to finish. The retirement worker waits

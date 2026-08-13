@@ -9,7 +9,14 @@
 #include <windows.h>
 #include <d3d12umddi.h>
 
+struct d12_umd_device;
+
 void d12_umd_install_device_core_functions(
    D3D12DDI_DEVICE_FUNCS_CORE_0003 *table);
 void d12_umd_install_command_queue_functions(
    D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 *table);
+
+/* DestroyDevice is the final runtime-private-memory boundary.  Retire queue
+ * work and release driver-owned heap storage before the shared renderer and
+ * the runtime-provided device block disappear. */
+HRESULT d12_umd_prepare_device_destroy(struct d12_umd_device *device);

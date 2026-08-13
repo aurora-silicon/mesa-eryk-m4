@@ -29,3 +29,9 @@ d12_umd_lifetime_release(struct d12_umd_lifetime_core *lifetime);
 
 enum d12_umd_lifetime_result
 d12_umd_lifetime_request_destroy(struct d12_umd_lifetime_core *lifetime);
+
+/* DestroyDevice may discard application-owned CPU map retains after all
+ * asynchronous renderer owners have retired.  The exact-count requirement
+ * prevents this from concealing a live fence/queue reference. */
+enum d12_umd_lifetime_result d12_umd_lifetime_abandon_retains(
+   struct d12_umd_lifetime_core *lifetime, uint32_t retain_count);
