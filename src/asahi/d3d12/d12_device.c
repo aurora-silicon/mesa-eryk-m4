@@ -9,6 +9,7 @@
 #include "d12_private.h"
 #include "d12_attachment_view_core.h"
 #include "d12_core_caps.h"
+#include "d12_query_core.h"
 
 #include <math.h>
 #include <string.h>
@@ -274,7 +275,6 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
    }
 
    D12_ZERO_OPTIONS(2)
-   D12_ZERO_OPTIONS(3)
    D12_ZERO_OPTIONS(6)
    D12_ZERO_OPTIONS(8)
    D12_ZERO_OPTIONS(10)
@@ -285,6 +285,20 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
    D12_ZERO_OPTIONS(20)
 
 #undef D12_ZERO_OPTIONS
+
+   case D3D12_FEATURE_D3D12_OPTIONS3: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS3 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      opts->CopyQueueTimestampQueriesSupported =
+         caps->copy_queue_timestamp_queries;
+      opts->WriteBufferImmediateSupportFlags =
+         (D3D12_COMMAND_LIST_SUPPORT_FLAGS)
+            caps->write_buffer_immediate_support_flags;
+      return S_OK;
+   }
 
    case D3D12_FEATURE_D3D12_OPTIONS4: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS4 *opts = data;
@@ -4379,19 +4393,10 @@ static bool
 d12_cpu_query_type_matches(const struct d12_query_heap *heap,
                            D3D12_QUERY_TYPE type)
 {
-   switch (heap->desc.Type) {
-   case D3D12_QUERY_HEAP_TYPE_OCCLUSION:
-      return type == D3D12_QUERY_TYPE_OCCLUSION ||
-             type == D3D12_QUERY_TYPE_BINARY_OCCLUSION;
-   case D3D12_QUERY_HEAP_TYPE_TIMESTAMP:
-      return type == D3D12_QUERY_TYPE_TIMESTAMP;
-   case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
-      return type == D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
-   case D3D12_QUERY_HEAP_TYPE_SO_STATISTICS:
-      return type == D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0;
-   default:
-      return false;
-   }
+   return d12_query_core_type_matches((uint32_t)heap->desc.Type,
+                                      (uint32_t)type) &&
+          (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_SO_STATISTICS ||
+           type == D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0);
 }
 
 static HRESULT STDMETHODCALLTYPE

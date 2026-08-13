@@ -20,6 +20,9 @@ extern "C" {
 
 #define D12_CORE_FEATURE_LEVEL_11_0 UINT32_C(0x0000b000)
 #define D12_CORE_SHADER_MODEL_6_0 UINT32_C(0x00000060)
+#define D12_CORE_COMMAND_LIST_SUPPORT_DIRECT UINT32_C(0x1)
+#define D12_CORE_COMMAND_LIST_SUPPORT_COMPUTE UINT32_C(0x4)
+#define D12_CORE_COMMAND_LIST_SUPPORT_COPY UINT32_C(0x8)
 
 struct d12_core_caps {
    uint32_t max_feature_level;
@@ -33,6 +36,8 @@ struct d12_core_caps {
    bool isolated_mmu;
    bool tile_based_deferred_renderer;
    bool native_16bit_shader_ops;
+   bool copy_queue_timestamp_queries;
+   uint32_t write_buffer_immediate_support_flags;
 };
 
 const struct d12_core_caps *d12_core_get_caps(void);
@@ -45,4 +50,3 @@ uint32_t d12_core_choose_feature_level(const uint32_t *requested,
 #ifdef __cplusplus
 }
 #endif
-

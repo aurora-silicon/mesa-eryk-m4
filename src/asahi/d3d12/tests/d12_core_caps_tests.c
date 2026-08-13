@@ -25,6 +25,11 @@ main(void)
    assert(caps->tiled_resources_tier == 1);
    assert(caps->uma);
    assert(caps->tile_based_deferred_renderer);
+   assert(caps->copy_queue_timestamp_queries);
+   assert(caps->write_buffer_immediate_support_flags ==
+          (D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |
+           D12_CORE_COMMAND_LIST_SUPPORT_COMPUTE |
+           D12_CORE_COMMAND_LIST_SUPPORT_COPY));
    assert(d12_core_supports_feature_level(D12_CORE_FEATURE_LEVEL_11_0));
    assert(!d12_core_supports_feature_level(UINT32_C(0x0000a100)));
    assert(!d12_core_supports_feature_level(UINT32_C(0x0000c000)));

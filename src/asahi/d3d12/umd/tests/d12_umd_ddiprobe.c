@@ -2155,6 +2155,12 @@ wmain(int argc, wchar_t **argv)
          HeapFree(GetProcessHeap(), 0, query_heap.pDrvPrivate);
 
          query_arguments.Type =
+            D3D12DDI_QUERY_HEAP_TYPE_0032_COPY_QUEUE_TIMESTAMP;
+         require_result(device_table.pfnCalcPrivateQueryHeapSize(
+                           driver_device, &query_arguments) > 0,
+                        "accept copy-queue timestamp heap");
+
+         query_arguments.Type =
             D3D12DDI_QUERY_HEAP_TYPE_0020_VIDEO_DECODE_STATISTICS;
          require_result(device_table.pfnCalcPrivateQueryHeapSize(
                            driver_device, &query_arguments) == 0,

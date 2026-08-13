@@ -12,7 +12,7 @@ one renderer core shared with the existing public COM frontend.
 ## 1. Complete source inventory and ownership
 
 The inventoried COM/core baseline was 48,249 lines before this frontend. The
-current shared tree is 71,865 lines across C/header sources, excluding tests
+current shared tree is 72,071 lines across C/header sources, excluding tests
 and documentation. Its renderer is split by object kind even though the
 original public entry surface is COM.
 
@@ -26,7 +26,7 @@ original public entry surface is COM.
 | `d12_descriptor.c` | descriptor heap backing and shader-visible upload | Reuse descriptor representation and upload. DDI handle calculation supplies runtime-private heap storage. |
 | `d12_queue.c` | command-list aggregation, AGX submit and queue fence ordering | Reuse batching/submission. WDDM queue wrapper creates runtime/KMD contexts and submits through DDI callbacks rather than opening a parallel KMT device. |
 | `d12_fence.c` | timeline fence state, waits, events and sharing | Reuse timeline policy; bind it to WDDM monitored-fence callbacks. |
-| `d12_query.c` | query heaps | Reuse directly behind DDI private handles. |
+| `d12_query.c`, `d12_query_core.c` | query heaps, type matching and queue-family policy | Reuse native heap/timestamp storage behind DDI private handles; the portable policy core keeps COM and DDI query ABIs aligned. |
 | `d12_root_sig.c` | RTS0 parsing/serialization and binding assignment | Pure reusable core except COM blob/deserializer wrappers. |
 | `d12_format.c` | DXGI-to-pipe/AGX format support | Reuse directly for `pfnCheckFormatSupport`, resources, views and presentation. |
 | `dxil/d12_dxil_*` | DXBC container and DXIL bitstream/module parsing, DXIL-to-NIR | Reuse without a DDI fork. |
@@ -343,6 +343,19 @@ view-local addresses are decoded back into the owning miptree before each
 bounded slice fill.  UAV creation reuses the common attachment-range validator
 and rejects unrepresented nonzero plane slices instead of silently clearing a
 different plane.  Buffer UAVs retain their dedicated linear fill path.
+
+Query-heap translation includes the pinned
+`D3D12DDI_QUERY_HEAP_TYPE_0032_COPY_QUEUE_TIMESTAMP` contract. Copy queues
+use the same calibrated AGX timestamp writer, 64-bit heap storage and GPU
+resolver as direct/compute queues, while the shared host-tested policy rejects
+ordinary timestamp heaps on copy lists and copy-queue timestamp heaps on other
+list families. Compile-time ABI assertions bind the public and DDI enum values
+to that frontend-neutral policy rather than duplicating numeric cases. The
+public COM frontend now reports copy timestamps and direct/compute/copy
+`WriteBufferImmediate` through `D3D12_OPTIONS3`. The current Release 1
+WDDM 2.1 DDI negotiation predates the Release 3 options structure which added
+those cap fields, so a later DDI-version milestone can expose the already
+shared renderer path without adding another timestamp implementation.
 
 Resource-only creation implements both reserved resources and the baseline
 `ReuseBufferGPUVA` capture path. For capture, the frontend validates the source

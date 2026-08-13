@@ -66,6 +66,9 @@ d12_device_runtime_query_heap_type(uint32_t runtime_type,
    case 3:
       *type = D3D12_QUERY_HEAP_TYPE_SO_STATISTICS;
       return true;
+   case 5:
+      *type = D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP;
+      return true;
    default:
       return false;
    }

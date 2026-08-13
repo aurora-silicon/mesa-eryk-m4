@@ -25,6 +25,14 @@
  */
 
 #include "d12_private.h"
+#include "d12_query_core.h"
+
+_Static_assert((uint32_t)D3D12_QUERY_HEAP_TYPE_OCCLUSION ==
+                  (uint32_t)D12_QUERY_CORE_HEAP_OCCLUSION,
+               "public query-heap ABI drift");
+_Static_assert((uint32_t)D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP ==
+                  (uint32_t)D12_QUERY_CORE_HEAP_COPY_QUEUE_TIMESTAMP,
+               "public copy-timestamp ABI drift");
 
 static struct d12_query_heap *
 d12_query_heap_from_iface(ID3D12QueryHeap *iface)
@@ -116,6 +124,7 @@ d12_query_result_size(D3D12_QUERY_HEAP_TYPE type)
    case D3D12_QUERY_HEAP_TYPE_OCCLUSION:
       return 8; /* a 64-bit sample count */
    case D3D12_QUERY_HEAP_TYPE_TIMESTAMP:
+   case D3D12_QUERY_HEAP_TYPE_COPY_QUEUE_TIMESTAMP:
       return 8;
    case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
       return sizeof(D3D12_QUERY_DATA_PIPELINE_STATISTICS);

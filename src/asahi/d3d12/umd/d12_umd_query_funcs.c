@@ -10,9 +10,20 @@
 #include "d12_umd_query_funcs.h"
 
 #include "d12_umd_internal.h"
+#include "../d12_query_core.h"
 
 #include <stdbool.h>
 #include <string.h>
+
+_Static_assert((uint32_t)D3D12DDI_QUERY_HEAP_TYPE_OCCLUSION ==
+                  (uint32_t)D12_QUERY_CORE_HEAP_OCCLUSION,
+               "DDI query-heap ABI drift");
+_Static_assert((uint32_t)D3D12DDI_QUERY_HEAP_TYPE_0032_COPY_QUEUE_TIMESTAMP ==
+                  (uint32_t)D12_QUERY_CORE_HEAP_COPY_QUEUE_TIMESTAMP,
+               "DDI copy-timestamp ABI drift");
+_Static_assert((uint32_t)D3D12DDI_QUERY_TYPE_TIMESTAMP ==
+                  (uint32_t)D12_QUERY_CORE_TYPE_TIMESTAMP,
+               "DDI query-type ABI drift");
 
 static void
 d12_umd_query_error(struct d12_umd_command_list *list, HRESULT result)
@@ -27,35 +38,15 @@ d12_umd_query_heap_arguments_valid(
    if (!arguments || !arguments->Count || arguments->NodeMask > 1)
       return false;
 
-   switch (arguments->Type) {
-   case D3D12DDI_QUERY_HEAP_TYPE_OCCLUSION:
-   case D3D12DDI_QUERY_HEAP_TYPE_TIMESTAMP:
-   case D3D12DDI_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
-   case D3D12DDI_QUERY_HEAP_TYPE_SO_STATISTICS:
-      return true;
-   default:
-      return false;
-   }
+   return d12_query_core_heap_supported((uint32_t)arguments->Type);
 }
 
 static bool
 d12_umd_query_type_matches(D3D12DDI_QUERY_HEAP_TYPE heap_type,
                            D3D12DDI_QUERY_TYPE query_type)
 {
-   switch (heap_type) {
-   case D3D12DDI_QUERY_HEAP_TYPE_OCCLUSION:
-      return query_type == D3D12DDI_QUERY_TYPE_OCCLUSION ||
-             query_type == D3D12DDI_QUERY_TYPE_BINARY_OCCLUSION;
-   case D3D12DDI_QUERY_HEAP_TYPE_TIMESTAMP:
-      return query_type == D3D12DDI_QUERY_TYPE_TIMESTAMP;
-   case D3D12DDI_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
-      return query_type == D3D12DDI_QUERY_TYPE_PIPELINE_STATISTICS;
-   case D3D12DDI_QUERY_HEAP_TYPE_SO_STATISTICS:
-      return query_type >= D3D12DDI_QUERY_TYPE_SO_STATISTICS_STREAM0 &&
-             query_type <= D3D12DDI_QUERY_TYPE_SO_STATISTICS_STREAM3;
-   default:
-      return false;
-   }
+   return d12_query_core_type_matches((uint32_t)heap_type,
+                                      (uint32_t)query_type);
 }
 
 static void
@@ -294,7 +285,7 @@ d12_umd_begin_query(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_command_query_heap(list, heap_handle, type, index);
 
    if (!list || !list->device || !list->backend || !heap ||
-       heap->type == D3D12DDI_QUERY_HEAP_TYPE_TIMESTAMP ||
+       d12_query_core_is_timestamp_heap((uint32_t)heap->type) ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->begin_query) {
       d12_umd_query_error(list, E_INVALIDARG);
@@ -315,6 +306,8 @@ d12_umd_end_query(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_command_query_heap(list, heap_handle, type, index);
 
    if (!list || !list->device || !list->backend || !heap ||
+       !d12_query_core_timestamp_command_compatible(
+          (uint32_t)heap->type, (uint32_t)list->type) ||
        !list->device->renderer_ops ||
        !list->device->renderer_ops->end_query) {
       d12_umd_query_error(list, E_INVALIDARG);
@@ -341,7 +334,10 @@ d12_umd_resolve_query_data(D3D12DDI_HCOMMANDLIST list_handle,
        heap->device != list->device ||
        !heap->backend || !count || first >= heap->count ||
        count > heap->count - first ||
-       !d12_umd_query_type_matches(heap->type, type) || !destination ||
+       !d12_umd_query_type_matches(heap->type, type) ||
+       !d12_query_core_timestamp_command_compatible(
+          (uint32_t)heap->type, (uint32_t)list->type) ||
+       !destination ||
        destination->signature != D12_UMD_RESOURCE_SIGNATURE ||
        destination->device != list->device || !destination->backend ||
        destination->desc.ResourceType != D3D12DDI_RT_BUFFER ||

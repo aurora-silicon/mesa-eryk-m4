@@ -28,6 +28,7 @@ libd3d12agx_files = files(
   'd12_pipeline.c',
   'd12_present_blt_math.c',
   'd12_query.c',
+  'd12_query_core.c',
   'd12_queue.c',
   'd12_queue_timeline_core.c',
   'd12_resource.c',

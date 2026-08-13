@@ -164,6 +164,14 @@ main(void)
                opts.ResourceHeapTier == D3D12_RESOURCE_HEAP_TIER_1,
             "reports heap TIER_1, not a TIER_2 it cannot honour");
 
+      D3D12_FEATURE_DATA_D3D12_OPTIONS3 opts3 = {0};
+      hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_D3D12_OPTIONS3,
+                                            &opts3, sizeof(opts3));
+      CHECK(hr == S_OK && opts3.CopyQueueTimestampQueriesSupported &&
+               (opts3.WriteBufferImmediateSupportFlags &
+                D3D12_COMMAND_LIST_SUPPORT_FLAG_COPY),
+            "reports native copy timestamps and immediate writes");
+
       LUID luid = d12_test_device_get_adapter_luid(dev);
       CHECK(luid.LowPart != 0 || luid.HighPart != 0,
             "adapter LUID is not all-zero");

@@ -13,6 +13,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_query_core.h"
 
 #include "agx_helpers.h"
 #include "agx_nir_texture.h"
@@ -8952,20 +8953,8 @@ static bool
 d12_query_type_matches(const struct d12_query_heap *heap,
                        D3D12_QUERY_TYPE type)
 {
-   switch (heap->desc.Type) {
-   case D3D12_QUERY_HEAP_TYPE_OCCLUSION:
-      return type == D3D12_QUERY_TYPE_OCCLUSION ||
-             type == D3D12_QUERY_TYPE_BINARY_OCCLUSION;
-   case D3D12_QUERY_HEAP_TYPE_TIMESTAMP:
-      return type == D3D12_QUERY_TYPE_TIMESTAMP;
-   case D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS:
-      return type == D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
-   case D3D12_QUERY_HEAP_TYPE_SO_STATISTICS:
-      return type >= D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 &&
-             type <= D3D12_QUERY_TYPE_SO_STATISTICS_STREAM3;
-   default:
-      return false;
-   }
+   return d12_query_core_type_matches((uint32_t)heap->desc.Type,
+                                      (uint32_t)type);
 }
 
 static bool
@@ -8974,7 +8963,9 @@ d12_list_validate_query(struct d12_cmd_list *list,
                         D3D12_QUERY_TYPE type, UINT index)
 {
    if (!heap || index >= heap->desc.Count ||
-       !d12_query_type_matches(heap, type)) {
+       !d12_query_type_matches(heap, type) ||
+       !d12_query_core_timestamp_command_compatible(
+          (uint32_t)heap->desc.Type, (uint32_t)list->type)) {
       mesa_loge("query type/index does not match its heap");
       list->state = D12_LIST_ERROR;
       return false;
@@ -9098,6 +9089,12 @@ d12_list_BeginQuery(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   if (d12_query_core_is_timestamp_heap((uint32_t)heap->desc.Type)) {
+      mesa_loge("BeginQuery is invalid for timestamp heaps");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    if (heap->desc.Type != D3D12_QUERY_HEAP_TYPE_OCCLUSION) {
       mesa_loge("BeginQuery currently supports occlusion heaps only");
       list->state = D12_LIST_ERROR;
@@ -9159,7 +9156,7 @@ d12_list_EndQuery(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_TIMESTAMP) {
+   if (d12_query_core_is_timestamp_heap((uint32_t)heap->desc.Type)) {
       /* The kernel-calibrated GPU clock is sampled while recording, then
        * copied by the GPU at this exact point in the command stream.  This
        * preserves Resolve-before-rewrite ordering across submissions.
@@ -9208,7 +9205,10 @@ d12_list_ResolveQueryData(ID3D12GraphicsCommandList6 *iface,
 
    if (!heap || first_query >= heap->desc.Count ||
        query_count > heap->desc.Count - first_query ||
-       !d12_query_type_matches(heap, type) || !dst ||
+       !d12_query_type_matches(heap, type) ||
+       !d12_query_core_timestamp_command_compatible(
+          (uint32_t)heap->desc.Type, (uint32_t)list->type) ||
+       !dst ||
        dst->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
        destination_offset > dst->desc.Width ||
        (uint64_t)query_count * heap->stride >
