@@ -355,7 +355,11 @@ struct d12_resource {
    uint64_t stencil_addr;   /* separate plane, same rule */
    uint64_t offset_B;       /* into bo, for CPU maps */
    bool placed;             /* does not own bo */
-   struct d12_heap *heap;   /* referenced while placed; NULL if committed */
+   /* Keep the placement properties by value. The storage BO is retained,
+    * but D3D12 explicitly permits the public heap object to be released
+    * while placed resources remain alive. A raw heap-object pointer would
+    * therefore become dangling. */
+   D3D12_HEAP_DESC placed_heap_desc;
 
    /* Textures only */
    struct ail_layout layout;
@@ -408,6 +412,13 @@ void d12_device_get_resource_allocation_info_runtime(
 
 HRESULT d12_resource_create_placed(struct d12_device *device,
                                    struct d12_heap *heap, uint64_t offset_B,
+                                   const D3D12_RESOURCE_DESC *desc,
+                                   D3D12_RESOURCE_STATES initial_state,
+                                   const D3D12_CLEAR_VALUE *clear_value,
+                                   REFIID riid, void **out);
+HRESULT d12_resource_create_reused(struct d12_device *device,
+                                   struct d12_resource *source,
+                                   uint64_t source_offset_B,
                                    const D3D12_RESOURCE_DESC *desc,
                                    D3D12_RESOURCE_STATES initial_state,
                                    const D3D12_CLEAR_VALUE *clear_value,

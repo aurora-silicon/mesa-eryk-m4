@@ -1664,13 +1664,12 @@ d12_resource_create(struct d12_device *device,
       res->addr = res->va->addr;
       res->offset_B = 0;
       res->placed = false;
-      res->heap = NULL;
       res->stencil_addr = 0;
    } else if (heap) {
       res->addr = heap->bo->va->addr + heap_offset_B;
       res->offset_B = heap_offset_B;
       res->placed = true;
-      res->heap = heap;
+      res->placed_heap_desc = heap->desc;
       res->stencil_addr =
          res->stencil_bo ? heap->bo->va->addr + stencil_offset_B : 0;
 
@@ -1692,7 +1691,6 @@ d12_resource_create(struct d12_device *device,
       res->addr = res->bo->va->addr;
       res->offset_B = 0;
       res->placed = false;
-      res->heap = NULL;
       res->stencil_addr =
          res->stencil_bo ? res->stencil_bo->va->addr + stencil_offset_B : 0;
    }
@@ -1983,6 +1981,54 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
    return d12_resource_create(device, &heap->desc.Properties,
                               heap->desc.Flags, desc, heap, offset_B, false,
                               NULL, riid, out);
+}
+
+HRESULT
+d12_resource_create_reused(struct d12_device *device,
+                           struct d12_resource *source,
+                           uint64_t source_offset_B,
+                           const D3D12_RESOURCE_DESC *desc,
+                           D3D12_RESOURCE_STATES initial_state,
+                           const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
+                           void **out)
+{
+   struct d12_heap captured_heap = {0};
+   D3D12_RESOURCE_ALLOCATION_INFO allocation_info;
+   uint64_t absolute_offset;
+
+   if (!device || !source || source->device != device || !desc ||
+       source->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+       source->reserved || !source->bo || !source->bo->va ||
+       source_offset_B > source->desc.Width ||
+       source->offset_B > UINT64_MAX - source_offset_B)
+      return E_INVALIDARG;
+
+   d12_device_get_resource_allocation_info_runtime(device, 1, desc,
+                                                    &allocation_info);
+   if (allocation_info.SizeInBytes == UINT64_MAX ||
+       allocation_info.SizeInBytes >
+          source->desc.Width - source_offset_B)
+      return E_INVALIDARG;
+
+   absolute_offset = source->offset_B + source_offset_B;
+   captured_heap.desc = source->placed
+                           ? source->placed_heap_desc
+                           : (D3D12_HEAP_DESC){
+                                .SizeInBytes = source->bo->size,
+                                .Properties = source->heap_props,
+                                .Alignment = source->desc.Alignment,
+                                .Flags = source->heap_flags,
+                             };
+   captured_heap.desc.SizeInBytes = source->bo->size;
+   captured_heap.bo = source->bo;
+
+   /* d12_resource_create_placed consumes the heap description and BO only
+    * during this call, then retains the BO and copies the description. This
+    * exactly models the DDI's capture-GPUVA lifetime without retaining the
+    * public heap COM object. */
+   return d12_resource_create_placed(device, &captured_heap, absolute_offset,
+                                     desc, initial_state, clear_value, riid,
+                                     out);
 }
 
 HRESULT

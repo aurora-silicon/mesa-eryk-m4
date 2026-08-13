@@ -29,6 +29,40 @@ _Static_assert(sizeof(struct agxw_resource_private) == 16,
 _Static_assert(sizeof(struct d12_umd_resource_private) == 176,
                "D3D12 opened-resource private-data width");
 
+bool
+d12_umd_resource_reuse_range(
+   uint64_t source_width, uint64_t source_gpu_virtual_address,
+   uint64_t source_heap_offset, uint64_t source_allocation_size,
+   uint64_t requested_offset, uint64_t requested_size,
+   uint64_t requested_alignment, uint64_t *out_gpu_virtual_address,
+   uint64_t *out_heap_offset)
+{
+   uint64_t gpu_virtual_address;
+   uint64_t heap_offset;
+
+   if (!source_width || !source_gpu_virtual_address || !requested_size ||
+       !requested_alignment ||
+       (requested_alignment & (requested_alignment - 1)) ||
+       requested_offset > source_width ||
+       requested_size > source_width - requested_offset ||
+       requested_offset > UINT64_MAX - source_gpu_virtual_address ||
+       requested_offset > UINT64_MAX - source_heap_offset)
+      return false;
+
+   gpu_virtual_address = source_gpu_virtual_address + requested_offset;
+   heap_offset = source_heap_offset + requested_offset;
+   if (gpu_virtual_address & (requested_alignment - 1) ||
+       heap_offset > source_allocation_size ||
+       requested_size > source_allocation_size - heap_offset)
+      return false;
+
+   if (out_gpu_virtual_address)
+      *out_gpu_virtual_address = gpu_virtual_address;
+   if (out_heap_offset)
+      *out_heap_offset = heap_offset;
+   return true;
+}
+
 static bool
 d12_umd_resource_private_heap_valid(
    const struct d12_frontend_heap_desc *heap)

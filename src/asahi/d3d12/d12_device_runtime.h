@@ -216,6 +216,11 @@ HRESULT d12_device_runtime_resource_create_placed(
    const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value,
    void **out_resource);
+HRESULT d12_device_runtime_resource_create_reused(
+   struct d12_device *device, void *source_resource, uint64_t source_offset,
+   const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value,
+   void **out_resource);
 HRESULT d12_device_runtime_resource_create_reserved(
    struct d12_device *device,
    const struct d12_frontend_resource_desc *desc,

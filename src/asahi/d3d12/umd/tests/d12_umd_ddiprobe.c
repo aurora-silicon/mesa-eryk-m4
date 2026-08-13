@@ -94,12 +94,20 @@ static struct d12_umd_resource_private saved_resource_private;
 #define TEST_TILE_LIST ((void *)(uintptr_t)0xab00)
 #define TEST_TILE_BUFFER ((void *)(uintptr_t)0xac00)
 #define TEST_TILED_GPU_VA UINT64_C(0x3300000000)
+#define TEST_REUSE_SOURCE ((void *)(uintptr_t)0xad00)
+#define TEST_REUSED_RESOURCE ((void *)(uintptr_t)0xae00)
+#define TEST_REUSE_GPU_VA UINT64_C(0x4400010000)
+#define TEST_REUSED_GPU_VA UINT64_C(0x4400020000)
+#define TEST_REUSE_ALLOCATION ((D3DKMT_HANDLE)0xaf00)
 
 static unsigned sparse_create_calls;
 static unsigned sparse_destroy_calls;
 static unsigned sparse_update_calls;
 static unsigned sparse_copy_mapping_calls;
 static unsigned sparse_copy_tiles_calls;
+static unsigned reused_create_calls;
+static unsigned reused_destroy_calls;
+static bool reused_create_null;
 
 static HRESULT
 test_sparse_create_reserved(
@@ -213,6 +221,65 @@ static const struct d12_umd_renderer_ops test_sparse_renderer_ops = {
    .destroy_resource = test_sparse_destroy_resource,
    .resource_gpu_virtual_address = test_sparse_resource_gpu_va,
    .resource_mip_packing = test_sparse_mip_packing,
+};
+
+static HRESULT
+test_reused_resource_allocation_info(
+   void *device, const struct d12_frontend_resource_desc *desc,
+   uint32_t visible_node_mask,
+   struct d12_frontend_resource_allocation_info *info)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !info ||
+       visible_node_mask != 1 || desc->dimension != D3D12DDI_RT_BUFFER ||
+       desc->width != UINT64_C(0x10000) || desc->height != 1 ||
+       desc->depth_or_array_size != 1 || desc->mip_levels != 1 ||
+       desc->format != DXGI_FORMAT_UNKNOWN || desc->sample_count != 1 ||
+       desc->layout != D3D12DDI_TL_ROW_MAJOR)
+      return E_INVALIDARG;
+   *info = (struct d12_frontend_resource_allocation_info){
+      .size = UINT64_C(0x10000),
+      .alignment = UINT64_C(0x10000),
+      .layout = D3D12DDI_TL_ROW_MAJOR,
+   };
+   return S_OK;
+}
+
+static HRESULT
+test_create_reused_resource(
+   void *device, void *source_resource, uint64_t source_offset,
+   const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   if (device != TEST_BLT_DEVICE || source_resource != TEST_REUSE_SOURCE ||
+       source_offset != UINT64_C(0x10000) || !desc || clear_value ||
+       !out_resource || desc->dimension != D3D12DDI_RT_BUFFER ||
+       desc->width != UINT64_C(0x10000))
+      return E_INVALIDARG;
+   ++reused_create_calls;
+   *out_resource = reused_create_null ? NULL : TEST_REUSED_RESOURCE;
+   return S_OK;
+}
+
+static uint64_t
+test_reused_resource_gpu_va(void *resource)
+{
+   if (resource == TEST_REUSE_SOURCE)
+      return TEST_REUSE_GPU_VA;
+   return resource == TEST_REUSED_RESOURCE ? TEST_REUSED_GPU_VA : 0;
+}
+
+static void
+test_destroy_reused_resource(void *resource)
+{
+   if (resource == TEST_REUSED_RESOURCE)
+      ++reused_destroy_calls;
+}
+
+static const struct d12_umd_renderer_ops test_reused_renderer_ops = {
+   .create_reused_resource = test_create_reused_resource,
+   .destroy_resource = test_destroy_reused_resource,
+   .resource_gpu_virtual_address = test_reused_resource_gpu_va,
+   .get_resource_allocation_info = test_reused_resource_allocation_info,
 };
 
 #if D12_UMD_TARGETS_WDDM21
@@ -900,6 +967,10 @@ wmain(int argc, wchar_t **argv)
    }
    memcpy(&open_adapter, &symbol, sizeof(open_adapter));
 
+   require_result(D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT ==
+                     D12_FRONTEND_MAX_VERTEX_BUFFERS,
+                  "D3D12 vertex-buffer slot count");
+
    memset(&functions, 0, sizeof(functions));
    open_arguments = (D3D12DDIARG_OPENADAPTER){
       .hRTAdapter = {.handle = (void *)&identity},
@@ -1045,6 +1116,54 @@ wmain(int argc, wchar_t **argv)
       require_result(result == S_OK &&
                         data == D3D12DDI_3DPIPELINELEVEL_11_0,
                      "3D pipeline cap");
+   }
+
+   {
+      UINT node = 0;
+      D3D12DDI_GPUVA_CAPS_0004 data = {0};
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_GPUVA_CAPS,
+         .pInfo = &node,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        data.MaxGPUVirtualAddressBitsPerResource == 40,
+                     "GPU virtual-address cap");
+
+      node = 1;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject unsupported GPUVA node");
+      node = 0;
+      --query.DataSize;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject wrong GPUVA cap width");
+   }
+
+   {
+      D3D12DDI_SHADER_CAPS_0003 data;
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_SHADER,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        data.MinPrecision ==
+                           D3D12DDI_SHADER_MIN_PRECISION_NONE &&
+                        !data.Doubles &&
+                        !data.ShaderSpecifiedStencilRef &&
+                        !data.TypedUAVLoadAdditionalFormats && !data.ROVs,
+                     "conservative shader caps");
+
+      --query.DataSize;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject wrong shader cap width");
    }
 
    {
@@ -2056,6 +2175,147 @@ wmain(int argc, wchar_t **argv)
       }
 
       {
+         struct d12_umd_device *private_device = driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
+         struct d12_umd_resource source_resource = {
+            .signature = D12_UMD_RESOURCE_SIGNATURE,
+            .device = private_device,
+            .runtime_heap_resource =
+               (HANDLE)(uintptr_t)UINT32_C(0xaef0),
+            .allocation = {
+               .allocation = TEST_REUSE_ALLOCATION,
+               .gpu_virtual_address = UINT64_C(0x4400000000),
+               .size = UINT64_C(0x80000),
+            },
+            .heap_offset = UINT64_C(0x10000),
+            .backend = TEST_REUSE_SOURCE,
+            .desc = {
+               .ResourceType = D3D12DDI_RT_BUFFER,
+               .Width = UINT64_C(0x40000),
+               .Height = 1,
+               .DepthOrArraySize = 1,
+               .MipLevels = 1,
+               .Format = DXGI_FORMAT_UNKNOWN,
+               .SampleDesc = {.Count = 1},
+               .Layout = D3D12DDI_TL_ROW_MAJOR,
+            },
+         };
+         D3D12DDIARG_CREATERESOURCE_0003 reused_arguments = {
+            .ReuseBufferGPUVA.BaseAddress.UMD = {
+               .hResource = {.pDrvPrivate = &source_resource},
+               .Offset = UINT64_C(0x10000),
+            },
+            .ResourceType = D3D12DDI_RT_BUFFER,
+            .Width = UINT64_C(0x10000),
+            .Height = 1,
+            .DepthOrArraySize = 1,
+            .MipLevels = 1,
+            .Format = DXGI_FORMAT_UNKNOWN,
+            .SampleDesc = {.Count = 1},
+            .Layout = D3D12DDI_TL_ROW_MAJOR,
+            .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
+         };
+         const D3D12DDIARG_CREATEHEAP_0001 invalid_heap_arguments = {
+            .ByteSize = UINT64_C(0x80000),
+            .Alignment = UINT64_C(0x10000),
+            .MemoryPool = D3D12DDI_MEMORY_POOL_L0,
+            .CPUPageProperty = D3D12DDI_CPU_PAGE_PROPERTY_WRITE_BACK,
+            .Flags = D3D12DDI_HEAP_FLAG_BUFFERS,
+            .CreationNodeMask = 1,
+            .VisibleNodeMask = 1,
+         };
+         D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes;
+         D3D12DDI_HRESOURCE resource_handle;
+         struct d12_umd_resource *reused_resource;
+
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_reused_renderer_ops;
+         reused_create_calls = 0;
+         reused_destroy_calls = 0;
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, NULL, &reused_arguments);
+         require_result(sizes.Heap == 0 && sizes.Resource > 0,
+                        "capture GPUVA resource private size");
+         resource_handle.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Resource);
+         require_result(resource_handle.pDrvPrivate != NULL,
+                        "allocate capture GPUVA resource storage");
+         result = device_table.pfnCreateHeapAndResource(
+            driver_device, NULL, (D3D12DDI_HHEAP){0},
+            (D3D12DDI_HRTRESOURCE){0}, &reused_arguments, NULL,
+            resource_handle);
+         reused_resource = resource_handle.pDrvPrivate;
+         require_result(
+            result == S_OK && reused_create_calls == 1 &&
+               !reused_resource->reserved &&
+               !reused_resource->runtime_heap_resource &&
+               reused_resource->allocation.allocation ==
+                  TEST_REUSE_ALLOCATION &&
+               reused_resource->heap_offset == UINT64_C(0x20000) &&
+               device_table.pfnCheckResourceVirtualAddress(
+                  driver_device, resource_handle) == TEST_REUSED_GPU_VA &&
+               device_table.pfnCheckResourceAllocationHandle(
+                  driver_device,
+                  (D3D10DDI_HRESOURCE){
+                     .pDrvPrivate = resource_handle.pDrvPrivate,
+                  }) == TEST_REUSE_ALLOCATION,
+            "capture source buffer GPUVA without a new allocation");
+
+         device_table.pfnDestroyHeapAndResource(
+            driver_device, (D3D12DDI_HHEAP){0}, resource_handle);
+         require_result(reused_destroy_calls == 1,
+                        "destroy capture GPUVA resource only");
+         HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
+
+         reused_create_null = true;
+         resource_handle.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Resource);
+         require_result(resource_handle.pDrvPrivate != NULL,
+                        "allocate failed capture resource storage");
+         result = device_table.pfnCreateHeapAndResource(
+            driver_device, NULL, (D3D12DDI_HHEAP){0},
+            (D3D12DDI_HRTRESOURCE){0}, &reused_arguments, NULL,
+            resource_handle);
+         require_result(
+            result == E_FAIL &&
+               !((struct d12_umd_resource *)resource_handle.pDrvPrivate)
+                   ->signature &&
+               reused_destroy_calls == 1,
+            "reject renderer success without capture resource object");
+         HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
+         reused_create_null = false;
+
+         reused_arguments.ReuseBufferGPUVA.BaseAddress.UMD.Offset = 1;
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, NULL, &reused_arguments);
+         require_result(!sizes.Heap && !sizes.Resource,
+                        "reject unaligned capture GPUVA offset");
+         reused_arguments.ReuseBufferGPUVA.BaseAddress.UMD.Offset =
+            UINT64_C(0x40000);
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, NULL, &reused_arguments);
+         require_result(!sizes.Heap && !sizes.Resource,
+                        "reject capture GPUVA range outside source buffer");
+         reused_arguments.ReuseBufferGPUVA.BaseAddress.UMD.Offset =
+            UINT64_C(0x10000);
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, &invalid_heap_arguments, &reused_arguments);
+         require_result(!sizes.Heap && !sizes.Resource,
+                        "reject capture GPUVA with simultaneous heap create");
+         reused_arguments.ReuseBufferGPUVA.BaseAddress.UMD.hResource =
+            (D3D12DDI_HRESOURCE){0};
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, NULL, &reused_arguments);
+         require_result(!sizes.Heap && !sizes.Resource,
+                        "reject capture GPUVA offset without source");
+
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
+      }
+
+      {
          const D3D12DDIARG_CREATEHEAP_0001 heap_arguments = {
             .ByteSize = sizeof(mapped_heap),
             .Alignment = UINT64_C(0x10000),
@@ -2330,6 +2590,7 @@ wmain(int argc, wchar_t **argv)
             {
                struct d12_umd_device *private_device =
                   driver_device.pDrvPrivate;
+               struct d12_umd_heap *saved_heaps = private_device->heaps;
                struct d12_umd_heap rotate_heaps[3] = {0};
                struct d12_umd_resource rotate_resources[3] = {0};
                DXGI_DDI_HRESOURCE rotate_handles[3];
@@ -2378,11 +2639,19 @@ wmain(int argc, wchar_t **argv)
                   rotate_resources[index].signature =
                      D12_UMD_RESOURCE_SIGNATURE;
                   rotate_resources[index].device = private_device;
-                  rotate_resources[index].heap = &rotate_heaps[index];
+                  rotate_resources[index].allocation =
+                     rotate_heaps[index].allocation;
+                  rotate_resources[index].runtime_heap_resource =
+                     runtime_handles[index];
                   rotate_resources[index].desc = rotate_resource_desc;
                   rotate_handles[index] =
                      (DXGI_DDI_HRESOURCE)(uintptr_t)&rotate_resources[index];
+                  rotate_heaps[index].next =
+                     index + 1 < ARRAYSIZE(rotate_heaps)
+                        ? &rotate_heaps[index + 1]
+                        : saved_heaps;
                }
+               private_device->heaps = &rotate_heaps[0];
 
                result = dxgi_table.pfnRotateResourceIdentities(
                   &rotate_arguments);
@@ -2398,6 +2667,8 @@ wmain(int argc, wchar_t **argv)
                         rotate_heaps[index].allocation.gpu_virtual_address ==
                            UINT64_C(0x2400000000) +
                               (uint64_t)source * UINT64_C(0x10000) &&
+                        rotate_resources[index].allocation.allocation ==
+                           0x92000000u + source &&
                         rotate_heaps[index].runtime_resource ==
                            runtime_handles[index],
                      "DXGI kernel identity rotates, runtime handle stays");
@@ -2570,6 +2841,7 @@ wmain(int argc, wchar_t **argv)
                   &rotate_arguments);
                require_result(result == S_OK,
                               "empty DXGI rotation is a no-op");
+               private_device->heaps = saved_heaps;
             }
 
             {

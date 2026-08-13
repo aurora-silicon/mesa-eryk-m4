@@ -187,6 +187,11 @@ struct d12_umd_renderer_ops {
       const struct d12_frontend_resource_desc *desc,
       const struct d12_frontend_clear_value *clear_value,
       void **out_resource);
+   HRESULT (*create_reused_resource)(
+      void *device, void *source_resource, uint64_t source_offset,
+      const struct d12_frontend_resource_desc *desc,
+      const struct d12_frontend_clear_value *clear_value,
+      void **out_resource);
    HRESULT (*create_reserved_resource)(
       void *device, const struct d12_frontend_resource_desc *desc,
       const struct d12_frontend_clear_value *clear_value,

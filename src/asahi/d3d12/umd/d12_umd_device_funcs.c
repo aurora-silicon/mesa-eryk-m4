@@ -713,8 +713,8 @@ d12_umd_resource_arguments_valid(
        ((UINT)arguments->Flags & ~supported_flags) ||
        (arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET &&
         arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL) ||
-       arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource.pDrvPrivate ||
-       arguments->ReuseBufferGPUVA.BaseAddress.UMD.Offset ||
+       (!arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource.pDrvPrivate &&
+        arguments->ReuseBufferGPUVA.BaseAddress.UMD.Offset) ||
        (arguments->pRowMajorLayout &&
         arguments->Layout != D3D12DDI_TL_ROW_MAJOR))
       return false;
@@ -796,6 +796,64 @@ d12_umd_frontend_resource_desc(
    };
 }
 
+struct d12_umd_reused_resource_info {
+   struct d12_umd_resource *source;
+   uint64_t source_offset;
+   uint64_t heap_offset;
+   uint64_t gpu_virtual_address;
+};
+
+static HRESULT
+d12_umd_reused_resource_info(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATERESOURCE_0003 *arguments,
+   struct d12_umd_reused_resource_info *info)
+{
+   const D3D12DDIARG_HRESOURCE_PLACEMENT *placement =
+      &arguments->ReuseBufferGPUVA.BaseAddress.UMD;
+   struct d12_umd_resource *source = placement->hResource.pDrvPrivate;
+   struct d12_frontend_resource_allocation_info allocation_info;
+   struct d12_frontend_resource_desc frontend;
+   uint64_t source_address;
+   HRESULT result;
+
+   if (!device || !arguments || !info || !source ||
+       source->signature != D12_UMD_RESOURCE_SIGNATURE ||
+       source->device != device || !source->backend || source->reserved ||
+       source->desc.ResourceType != D3D12DDI_RT_BUFFER ||
+       !source->allocation.allocation || !source->allocation.size ||
+       !device->backend || !device->renderer_ops ||
+       !device->renderer_ops->create_reused_resource ||
+       !device->renderer_ops->resource_gpu_virtual_address ||
+       !device->renderer_ops->get_resource_allocation_info)
+      return E_INVALIDARG;
+
+   frontend = d12_umd_frontend_resource_desc(arguments);
+   result = device->renderer_ops->get_resource_allocation_info(
+      device->backend, &frontend, 1, &allocation_info);
+   if (FAILED(result))
+      return result;
+
+   source_address = device->renderer_ops->resource_gpu_virtual_address(
+      source->backend);
+   if (!source->allocation.gpu_virtual_address ||
+       source->allocation.gpu_virtual_address >
+          UINT64_MAX - source->heap_offset ||
+       source_address !=
+          source->allocation.gpu_virtual_address + source->heap_offset)
+      return E_INVALIDARG;
+   if (!d12_umd_resource_reuse_range(
+          source->desc.Width, source_address, source->heap_offset,
+          source->allocation.size, placement->Offset, allocation_info.size,
+          allocation_info.alignment, &info->gpu_virtual_address,
+          &info->heap_offset))
+      return E_INVALIDARG;
+
+   info->source = source;
+   info->source_offset = placement->Offset;
+   return S_OK;
+}
+
 static uint32_t
 d12_umd_heap_allocation_flags(
    const D3D12DDIARG_CREATEHEAP_0001 *arguments)
@@ -818,12 +876,22 @@ d12_umd_calc_private_heap_resource_sizes(
    const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments)
 {
    D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes = {0};
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   const bool reuses_gpu_va =
+      resource_arguments &&
+      resource_arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource
+         .pDrvPrivate;
+   struct d12_umd_reused_resource_info reuse_info;
 
-   if (!d12_umd_device_from_handle(handle) ||
+   if (!device ||
        (!heap_arguments && !resource_arguments) ||
        (heap_arguments && !d12_umd_heap_arguments_valid(heap_arguments)) ||
        (resource_arguments &&
         !d12_umd_resource_arguments_valid(resource_arguments)) ||
+       (reuses_gpu_va &&
+        (heap_arguments ||
+         FAILED(d12_umd_reused_resource_info(
+            device, resource_arguments, &reuse_info)))) ||
        (heap_arguments && resource_arguments &&
         resource_arguments->Width > heap_arguments->ByteSize))
       return sizes;
@@ -852,6 +920,7 @@ d12_umd_create_heap_resource(
    struct d12_umd_resource_private private_data;
    struct d12_frontend_heap_allocation frontend_allocation;
    const struct d12_frontend_clear_value *translated_clear = NULL;
+   struct d12_umd_reused_resource_info reuse_info;
    uint64_t alignment;
    uint64_t standard_descriptor = 0;
    HRESULT result;
@@ -859,15 +928,13 @@ d12_umd_create_heap_resource(
    if (!device)
       return E_INVALIDARG;
 
-   /* A resource description without heap arguments is CreateReservedResource
-    * in the baseline DDI.  It owns sparse VA metadata but no runtime/KMD
-    * allocation, so the heap and runtime-resource handles are deliberately
-    * ignored and no private allocation blob is produced. */
+   /* A resource description without heap arguments either reserves new GPU
+    * VA or captures the effective VA of ReuseBufferGPUVA. Neither path owns
+    * a new runtime/KMD allocation. */
    if (!heap_arguments) {
       if (!resource_arguments || !resource || heap ||
           !d12_umd_resource_arguments_valid(resource_arguments) ||
-          !device->renderer_ops || !device->backend ||
-          !device->renderer_ops->create_reserved_resource)
+          !device->renderer_ops || !device->backend)
          return E_INVALIDARG;
 
       memset(resource, 0, sizeof(*resource));
@@ -886,16 +953,49 @@ d12_umd_create_heap_resource(
          }
          translated_clear = &frontend_clear;
       }
-      result = device->renderer_ops->create_reserved_resource(
-         device->backend, &frontend_resource, translated_clear,
-         &resource->backend);
+
+      if (resource_arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource
+             .pDrvPrivate) {
+         result = d12_umd_reused_resource_info(
+            device, resource_arguments, &reuse_info);
+         if (FAILED(result))
+            return result;
+         result = device->renderer_ops->create_reused_resource(
+            device->backend, reuse_info.source->backend,
+            reuse_info.source_offset, &frontend_resource, translated_clear,
+            &resource->backend);
+         if (SUCCEEDED(result) &&
+             (!resource->backend ||
+              device->renderer_ops->resource_gpu_virtual_address(
+                 resource->backend) != reuse_info.gpu_virtual_address)) {
+            if (resource->backend &&
+                device->renderer_ops->destroy_resource)
+               device->renderer_ops->destroy_resource(resource->backend);
+            resource->backend = NULL;
+            result = E_FAIL;
+         }
+      } else {
+         if (!device->renderer_ops->create_reserved_resource)
+            return E_NOTIMPL;
+         result = device->renderer_ops->create_reserved_resource(
+            device->backend, &frontend_resource, translated_clear,
+            &resource->backend);
+      }
+      if (SUCCEEDED(result) && !resource->backend)
+         result = E_FAIL;
       if (FAILED(result)) {
          SecureZeroMemory(resource, sizeof(*resource));
          return result;
       }
       resource->signature = D12_UMD_RESOURCE_SIGNATURE;
       resource->device = device;
-      resource->reserved = true;
+      resource->reserved =
+         !resource_arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource
+             .pDrvPrivate;
+      if (!resource->reserved) {
+         resource->allocation = reuse_info.source->allocation;
+         resource->heap_offset = reuse_info.heap_offset;
+      }
       resource->desc = *resource_arguments;
       if (resource_arguments->pRowMajorLayout) {
          resource->row_major = *resource_arguments->pRowMajorLayout;
@@ -1012,7 +1112,9 @@ d12_umd_create_heap_resource(
       }
       resource->signature = D12_UMD_RESOURCE_SIGNATURE;
       resource->device = device;
-      resource->heap = heap;
+      resource->allocation = heap->allocation;
+      resource->runtime_heap_resource = heap->runtime_resource;
+      resource->heap_offset = 0;
       resource->desc = *resource_arguments;
       if (resource_arguments->pRowMajorLayout) {
          resource->row_major = *resource_arguments->pRowMajorLayout;
@@ -1225,7 +1327,9 @@ d12_umd_open_heap_resource(
 
       resource->signature = D12_UMD_RESOURCE_SIGNATURE;
       resource->device = device;
-      resource->heap = heap;
+      resource->allocation = heap->allocation;
+      resource->runtime_heap_resource = heap->runtime_resource;
+      resource->heap_offset = 0;
       resource->desc = d12_umd_opened_resource_desc(
          &private_data, arguments->InitialResourceState,
          &resource->row_major);
@@ -1527,7 +1631,11 @@ d12_umd_check_resource_virtual_address(D3D12DDI_HDEVICE handle,
        device->renderer_ops->resource_gpu_virtual_address)
       return device->renderer_ops->resource_gpu_virtual_address(
          resource->backend);
-   return resource->heap ? resource->heap->allocation.gpu_virtual_address : 0;
+   if (!resource->allocation.gpu_virtual_address ||
+       resource->allocation.gpu_virtual_address >
+          UINT64_MAX - resource->heap_offset)
+      return 0;
+   return resource->allocation.gpu_virtual_address + resource->heap_offset;
 }
 
 static void APIENTRY
@@ -1650,8 +1758,7 @@ d12_umd_check_existing_resource_allocation_info(
       *allocation = 0;
    if (!device || !resource || !info || !allocation ||
        resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-       resource->device != device || !resource->heap ||
-       !resource->heap->allocation.allocation) {
+       resource->device != device || !resource->allocation.allocation) {
       d12_umd_set_device_error(device, E_INVALIDARG);
       return;
    }
@@ -1659,7 +1766,7 @@ d12_umd_check_existing_resource_allocation_info(
    d12_umd_check_resource_allocation_info(
       handle, &resource->desc, D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_NONE, 0,
       1, info);
-   *allocation = resource->heap->allocation.allocation;
+   *allocation = resource->allocation.allocation;
 }
 
 static D3DKMT_HANDLE APIENTRY
@@ -1671,9 +1778,9 @@ d12_umd_check_resource_allocation_handle(
 
    if (!device || !resource ||
        resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-       resource->device != device || !resource->heap)
+       resource->device != device || !resource->allocation.allocation)
       return 0;
-   return resource->heap->allocation.allocation;
+   return resource->allocation.allocation;
 }
 
 static bool
@@ -1701,12 +1808,9 @@ d12_umd_residency_object_allocation(
    case D3D12DDI_HT_0012_RESOURCE:
       resource = (struct d12_umd_resource *)object->Handle;
       if (resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-          resource->device != device || !resource->heap ||
-          resource->heap->signature != D12_UMD_HEAP_SIGNATURE ||
-          resource->heap->device != device ||
-          !resource->heap->allocation.allocation)
+          resource->device != device || !resource->allocation.allocation)
          return false;
-      *allocation = resource->heap->allocation.allocation;
+      *allocation = resource->allocation.allocation;
       return true;
 
    /* These public objects are ID3D12Pageable, but have no runtime-owned

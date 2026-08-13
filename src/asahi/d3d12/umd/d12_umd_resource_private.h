@@ -62,3 +62,12 @@ bool d12_umd_resource_private_parse_foreign(
    const void *blob, uint32_t blob_size,
    const struct agxw_alloc_private *allocation,
    struct d12_umd_resource_private *data);
+
+/* Validate the capture-GPUVA range used by ReuseBufferGPUVA without any
+ * Windows types so the overflow/alignment rules remain host-unit-testable. */
+bool d12_umd_resource_reuse_range(
+   uint64_t source_width, uint64_t source_gpu_virtual_address,
+   uint64_t source_heap_offset, uint64_t source_allocation_size,
+   uint64_t requested_offset, uint64_t requested_size,
+   uint64_t requested_alignment, uint64_t *out_gpu_virtual_address,
+   uint64_t *out_heap_offset);

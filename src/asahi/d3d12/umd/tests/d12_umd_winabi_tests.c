@@ -372,6 +372,13 @@ _Static_assert(sizeof(D3D12DDI_MEMORY_ARCHITECTURE_CAPS) == 12,
                "memory architecture cap width");
 _Static_assert(sizeof(D3D12DDI_GPUVA_CAPS_0004) == 4,
                "GPUVA cap width");
+_Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0003) == 20,
+               "shader cap width");
+/* The WDK spells D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT as a static const
+ * UINT rather than a C integer constant expression, so pin our side here and
+ * compare both spellings in the executable callback probe. */
+_Static_assert(D12_FRONTEND_MAX_VERTEX_BUFFERS == 32,
+               "frontend vertex-buffer slot count");
 _Static_assert(sizeof(struct agxw_adapter_identity) == 48,
                "KMD identity width");
 _Static_assert(D3D12DDI_SUPPORTED_0003 == D12_UMD_DDI_SUPPORTED_0003,

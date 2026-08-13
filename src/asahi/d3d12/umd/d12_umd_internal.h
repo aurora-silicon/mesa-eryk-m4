@@ -187,7 +187,16 @@ struct d12_umd_fence {
 struct d12_umd_resource {
    uint32_t signature;
    struct d12_umd_device *device;
-   struct d12_umd_heap *heap;
+   /* Keep the runtime allocation identity in the resource itself. Placed
+    * resources retain the renderer's storage independently of the public
+    * heap object, so residency and DXGI must not dereference a heap-private
+    * block after the application releases that heap. */
+   struct d12_umd_allocation allocation;
+   /* The runtime resource token is stable across DXGI identity rotation and
+    * lets that rare path find a still-live heap under device->heap_lock.
+    * Unlike a heap-private pointer, this token is never dereferenced. */
+   HANDLE runtime_heap_resource;
+   uint64_t heap_offset;
    void *backend;
    bool reserved;
    D3D12DDIARG_CREATERESOURCE_0003 desc;

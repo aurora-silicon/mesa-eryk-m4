@@ -592,6 +592,17 @@ d12_umd_backend_create_placed_resource(
 }
 
 static HRESULT
+d12_umd_backend_create_reused_resource(
+   void *backend, void *source_resource, uint64_t source_offset,
+   const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   return d12_device_runtime_resource_create_reused(
+      (struct d12_device *)backend, source_resource, source_offset, desc,
+      clear_value, out_resource);
+}
+
+static HRESULT
 d12_umd_backend_create_reserved_resource(
    void *backend, const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value, void **out_resource)
@@ -869,6 +880,7 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .open_heap = d12_umd_backend_open_heap,
    .destroy_heap = d12_umd_backend_destroy_heap,
    .create_placed_resource = d12_umd_backend_create_placed_resource,
+   .create_reused_resource = d12_umd_backend_create_reused_resource,
    .create_reserved_resource = d12_umd_backend_create_reserved_resource,
    .destroy_resource = d12_umd_backend_destroy_resource,
    .resource_gpu_virtual_address =

@@ -47,6 +47,38 @@ main(void)
    struct d12_umd_resource_private packed;
    struct d12_umd_resource_private parsed;
 
+   {
+      uint64_t gpu_virtual_address = 0;
+      uint64_t heap_offset = 0;
+
+      CHECK(d12_umd_resource_reuse_range(
+         UINT64_C(0x40000), UINT64_C(0x4400010000), UINT64_C(0x10000),
+         UINT64_C(0x80000), UINT64_C(0x10000), UINT64_C(0x10000),
+         UINT64_C(0x10000), &gpu_virtual_address, &heap_offset));
+      CHECK(gpu_virtual_address == UINT64_C(0x4400020000) &&
+            heap_offset == UINT64_C(0x20000));
+      CHECK(!d12_umd_resource_reuse_range(
+         UINT64_C(0x40000), UINT64_C(0x4400010000), UINT64_C(0x10000),
+         UINT64_C(0x80000), 1, UINT64_C(0x10000), UINT64_C(0x10000),
+         NULL, NULL));
+      CHECK(!d12_umd_resource_reuse_range(
+         UINT64_C(0x40000), UINT64_C(0x4400010000), UINT64_C(0x10000),
+         UINT64_C(0x80000), UINT64_C(0x40000), UINT64_C(0x10000),
+         UINT64_C(0x10000), NULL, NULL));
+      CHECK(!d12_umd_resource_reuse_range(
+         UINT64_MAX, UINT64_MAX - UINT64_C(0x7fff), 0,
+         UINT64_MAX, UINT64_C(0x10000), UINT64_C(0x10000),
+         UINT64_C(0x10000), NULL, NULL));
+      CHECK(!d12_umd_resource_reuse_range(
+         UINT64_C(0x40000), UINT64_C(0x4400010000), UINT64_C(0x78000),
+         UINT64_C(0x80000), UINT64_C(0x10000), UINT64_C(0x10000),
+         UINT64_C(0x10000), NULL, NULL));
+      CHECK(!d12_umd_resource_reuse_range(
+         UINT64_C(0x40000), UINT64_C(0x4400010000), UINT64_C(0x10000),
+         UINT64_C(0x80000), UINT64_C(0x10000), UINT64_C(0x10000),
+         UINT64_C(0x18000), NULL, NULL));
+   }
+
    CHECK(sizeof(packed) == 176);
    CHECK(d12_umd_resource_private_pack(&heap, &resource, &clear, 4096,
                                        0x400000, &packed));

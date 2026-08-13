@@ -230,8 +230,8 @@ d12_runtime_rotation_compatible(const struct d12_resource *a,
 {
    const D3D12_RESOURCE_DESC *x = &a->desc;
    const D3D12_RESOURCE_DESC *y = &b->desc;
-   const D3D12_HEAP_DESC *hx = &a->heap->desc;
-   const D3D12_HEAP_DESC *hy = &b->heap->desc;
+   const D3D12_HEAP_DESC *hx = &a->placed_heap_desc;
+   const D3D12_HEAP_DESC *hy = &b->placed_heap_desc;
 
    return x->Dimension == y->Dimension && x->Alignment == y->Alignment &&
           x->Width == y->Width && x->Height == y->Height &&
@@ -319,15 +319,13 @@ d12_device_runtime_rotate_resource_identities(
       struct d12_resource *resource =
          d12_resource_from_iface((ID3D12Resource *)resources[i]);
       if (!resource || resource->device != device || resource->reserved ||
-          !resource->placed || !resource->heap || !resource->bo ||
-          resource->heap->bo != resource->bo || !resource->bo->va ||
+          !resource->placed || !resource->bo || !resource->bo->va ||
           (resource->stencil_bo && resource->stencil_bo != resource->bo) ||
           (i && !d12_runtime_rotation_compatible(entries[0].resource,
                                                   resource)))
          goto cleanup;
       for (uint32_t j = 0; j < i; ++j) {
          if (entries[j].resource == resource ||
-             entries[j].resource->heap == resource->heap ||
              entries[j].bo == resource->bo)
             goto cleanup;
       }
@@ -2221,6 +2219,41 @@ d12_device_runtime_resource_create_placed(
    return d12_resource_create_placed(
       device, d12_memheap_from_iface((ID3D12Heap *)heap), offset,
       &resource_desc, (D3D12_RESOURCE_STATES)desc->initial_state, clear,
+      &IID_ID3D12Resource, out_resource);
+}
+
+HRESULT
+d12_device_runtime_resource_create_reused(
+   struct d12_device *device, void *source_resource, uint64_t source_offset,
+   const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   D3D12_RESOURCE_DESC resource_desc;
+   D3D12_CLEAR_VALUE translated_clear;
+   D3D12_CLEAR_VALUE *clear = NULL;
+   struct d12_resource *source =
+      d12_resource_from_iface((ID3D12Resource *)source_resource);
+
+   if (!device || !source || !out_resource ||
+       !d12_device_runtime_resource_desc(desc, &resource_desc))
+      return E_INVALIDARG;
+   *out_resource = NULL;
+   if (clear_value) {
+      translated_clear.Format = (DXGI_FORMAT)clear_value->format;
+      if (desc->flags & D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL) {
+         translated_clear.DepthStencil.Depth =
+            clear_value->depth_stencil.depth;
+         translated_clear.DepthStencil.Stencil =
+            clear_value->depth_stencil.stencil;
+      } else {
+         memcpy(translated_clear.Color, clear_value->color,
+                sizeof(translated_clear.Color));
+      }
+      clear = &translated_clear;
+   }
+   return d12_resource_create_reused(
+      device, source, source_offset, &resource_desc,
+      (D3D12_RESOURCE_STATES)desc->initial_state, clear,
       &IID_ID3D12Resource, out_resource);
 }
 

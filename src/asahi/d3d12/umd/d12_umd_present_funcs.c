@@ -100,9 +100,8 @@ d12_umd_present_resource(struct d12_umd_device *device,
 {
    struct d12_umd_resource *resource = handle.pDrvPrivate;
    return resource && resource->signature == D12_UMD_RESOURCE_SIGNATURE &&
-                 resource->device == device && resource->heap &&
-                 resource->heap->signature == D12_UMD_HEAP_SIGNATURE &&
-                 resource->heap->allocation.allocation
+                 resource->device == device &&
+                 resource->allocation.allocation
              ? resource
              : NULL;
 }
@@ -141,6 +140,24 @@ d12_umd_dxgi_resource(struct d12_umd_device *device,
       .pDrvPrivate = (void *)(uintptr_t)handle,
    };
    return d12_umd_present_resource(device, resource);
+}
+
+/* Called only while device->heap_lock is held. The runtime token survives
+ * identity rotation but does not keep or expose runtime-owned heap storage. */
+static struct d12_umd_heap *
+d12_umd_live_resource_heap(struct d12_umd_device *device,
+                           const struct d12_umd_resource *resource)
+{
+   if (!resource || !resource->runtime_heap_resource)
+      return NULL;
+
+   for (struct d12_umd_heap *heap = device->heaps; heap; heap = heap->next) {
+      if (heap->runtime_resource == resource->runtime_heap_resource &&
+          heap->signature == D12_UMD_HEAP_SIGNATURE &&
+          heap->device == device)
+         return heap;
+   }
+   return NULL;
 }
 
 static DXGI_DDI_BASE_CALLBACKS *
@@ -204,9 +221,9 @@ d12_umd_dxgi_present(DXGI_DDI_ARG_PRESENT *arguments)
       const HANDLE context = d12_umd_present_context(queue);
       if (context) {
          present = (DXGIDDICB_PRESENT){
-            .hSrcAllocation = source->heap->allocation.allocation,
+            .hSrcAllocation = source->allocation.allocation,
             .hDstAllocation = destination
-                                 ? destination->heap->allocation.allocation
+                                 ? destination->allocation.allocation
                                  : 0,
             .pDXGIContext = arguments->pDXGIContext,
             .hContext = context,
@@ -256,7 +273,7 @@ d12_umd_dxgi_set_resource_priority(
       return E_INVALIDARG;
    if (!device->kernel_callbacks.pfnSetPriorityCb)
       return E_NOTIMPL;
-   allocation = resource->heap->allocation.allocation;
+   allocation = resource->allocation.allocation;
    priority = (D3DDDICB_SETPRIORITY){
       .NumAllocations = 1,
       .HandleList = &allocation,
@@ -306,7 +323,7 @@ d12_umd_dxgi_query_resource_residency(
          result = E_INVALIDARG;
          goto cleanup;
       }
-      allocations[index] = resource->heap->allocation.allocation;
+      allocations[index] = resource->allocation.allocation;
    }
    query = (D3DDDICB_QUERYRESIDENCY){
       .NumAllocations = (UINT)arguments->Resources,
@@ -398,10 +415,10 @@ d12_umd_dxgi_rotate_resource_identities(
    for (UINT i = 0; i < arguments->Resources; ++i) {
       resources[i] = d12_umd_dxgi_resource(device,
                                            arguments->pResources[i]);
-      if (!resources[i])
+      heaps[i] = d12_umd_live_resource_heap(device, resources[i]);
+      if (!heaps[i])
          goto unlock_rotation;
-      heaps[i] = resources[i]->heap;
-      allocations[i] = heaps[i]->allocation;
+      allocations[i] = resources[i]->allocation;
       backends[i] = resources[i]->backend;
       for (UINT j = 0; j < i; ++j) {
          if (resources[j] == resources[i] || heaps[j] == heaps[i])
@@ -464,9 +481,12 @@ d12_umd_dxgi_rotate_resource_identities(
    /* The renderer keeps object pointers and runtime lifetime tokens fixed.
     * Rotate only the WDDM allocation/KMD resource/GPU-VA identity cached by
     * the DDI wrappers. */
-   for (UINT i = 0; i + 1 < arguments->Resources; ++i)
+   for (UINT i = 0; i + 1 < arguments->Resources; ++i) {
       heaps[i]->allocation = allocations[i + 1];
+      resources[i]->allocation = allocations[i + 1];
+   }
    heaps[arguments->Resources - 1]->allocation = allocations[0];
+   resources[arguments->Resources - 1]->allocation = allocations[0];
    result = S_OK;
 
 unlock_maps:
@@ -687,7 +707,7 @@ d12_umd_dxgi_offer_resources(DXGI_DDI_ARG_OFFERRESOURCES *arguments)
          result = E_INVALIDARG;
          goto cleanup;
       }
-      allocations[index] = resource->heap->allocation.allocation;
+      allocations[index] = resource->allocation.allocation;
    }
    offer = (D3DDDICB_OFFERALLOCATIONS){
       .HandleList = allocations,
@@ -732,11 +752,11 @@ d12_umd_dxgi_offer_resources1(DXGI_DDI_ARG_OFFERRESOURCES1 *arguments)
    for (UINT index = 0; index < arguments->Resources; ++index) {
       struct d12_umd_resource *resource = d12_umd_dxgi_resource(
          device, arguments->pResources[index]);
-      if (!resource || resource->reserved || !resource->heap) {
+      if (!resource || resource->reserved) {
          result = E_INVALIDARG;
          goto cleanup;
       }
-      allocations[index] = resource->heap->allocation.allocation;
+      allocations[index] = resource->allocation.allocation;
    }
    {
       const D3DDDICB_OFFERALLOCATIONS2 offer = {
@@ -786,7 +806,7 @@ d12_umd_dxgi_reclaim_resources(DXGI_DDI_ARG_RECLAIMRESOURCES *arguments)
          result = E_INVALIDARG;
          goto cleanup;
       }
-      allocations[index] = resource->heap->allocation.allocation;
+      allocations[index] = resource->allocation.allocation;
    }
    reclaim = (D3DDDICB_RECLAIMALLOCATIONS){
       .HandleList = allocations,
@@ -843,11 +863,11 @@ d12_umd_dxgi_reclaim_resources1(DXGI_DDI_ARG_RECLAIMRESOURCES1 *arguments)
    for (UINT index = 0; index < arguments->Resources; ++index) {
       struct d12_umd_resource *resource = d12_umd_dxgi_resource(
          device, arguments->pResources[index]);
-      if (!resource || resource->reserved || !resource->heap) {
+      if (!resource || resource->reserved) {
          result = E_INVALIDARG;
          goto cleanup;
       }
-      allocations[index] = resource->heap->allocation.allocation;
+      allocations[index] = resource->allocation.allocation;
    }
    {
       D3DDDICB_RECLAIMALLOCATIONS3 reclaim = {
@@ -1121,9 +1141,9 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
       d12_umd_present_error(device, E_FAIL);
       return;
    }
-   present->hSrcAllocation = source->heap->allocation.allocation;
+   present->hSrcAllocation = source->allocation.allocation;
    present->hDstAllocation =
-      destination ? destination->heap->allocation.allocation : 0;
+      destination ? destination->allocation.allocation : 0;
    present->hContext = context;
    present->BroadcastContextCount = 0;
    present->BackBufferMultiplicity = 1;
