@@ -92,6 +92,7 @@ sources=(
     "$d12_dir/d12_dxbc_wrap.c"
     "$d12_dir/d12_present_blt_math.c"
     "$d12_dir/d12_query_core.c"
+    "$d12_dir/d12_resolve_core.c"
     "$umd_dir/d12_umd_abi.c"
     "$umd_dir/d12_umd_kmt.c"
     "$umd_dir/d12_umd_agx_transport.c"

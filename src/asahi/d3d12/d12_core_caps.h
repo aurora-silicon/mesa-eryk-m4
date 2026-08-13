@@ -36,6 +36,8 @@ struct d12_core_caps {
    bool isolated_mmu;
    bool tile_based_deferred_renderer;
    bool native_16bit_shader_ops;
+   bool predication;
+   bool hardware_copy;
    bool copy_queue_timestamp_queries;
    uint32_t write_buffer_immediate_support_flags;
 };

@@ -21,6 +21,8 @@ static const struct d12_core_caps d12_agx_caps = {
    .isolated_mmu = true,
    .tile_based_deferred_renderer = true,
    .native_16bit_shader_ops = true,
+   .predication = true,
+   .hardware_copy = false,
    .copy_queue_timestamp_queries = true,
    .write_buffer_immediate_support_flags =
       D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |

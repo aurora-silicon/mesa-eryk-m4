@@ -1721,6 +1721,13 @@ wmain(int argc, wchar_t **argv)
                (format_support & D3D12DDI_FORMAT_SUPPORT_TILED) &&
                (format_support & D3D12DDI_FORMAT_SUPPORT_DISPLAY),
             "native RGBA8 DDI format support");
+         format_support = 0;
+         device_table.pfnCheckFormatSupport(
+            driver_device, DXGI_FORMAT_R32_UINT, &format_support);
+         require_result(
+            (format_support & D3D12DDI_FORMAT_SUPPORT_RENDERTARGET) &&
+               !(format_support & D3D12DDI_FORMAT_SUPPORT_BLENDABLE),
+            "integer render targets are not advertised as blendable");
          format_support = UINT32_MAX;
          device_table.pfnCheckFormatSupport(
             driver_device, (DXGI_FORMAT)UINT32_MAX, &format_support);

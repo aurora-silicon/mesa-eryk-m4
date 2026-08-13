@@ -4,6 +4,7 @@
  */
 #include "compiler/libcl/libcl.h"
 #include "present_blt.h"
+#include "resolve.h"
 
 KERNEL(32)
 libagx_fill(global uint32_t *address, uint32_t value)
@@ -397,6 +398,404 @@ libagx_present_store_pixel(global uint8_t *address, uint format,
                             libagx_present_float_to_half(value.z));
    libagx_present_store_u16(address + 6,
                             libagx_present_float_to_half(value.w));
+}
+
+static uint
+libagx_resolve_channel_count(uint format)
+{
+   if (format == LIBAGX_RESOLVE_FORMAT_UNORM8_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_SNORM8_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT8_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT8_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_UNORM16_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_SNORM16_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT16_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT16_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_FLOAT16_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT32_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT32_1 ||
+       format == LIBAGX_RESOLVE_FORMAT_FLOAT32_1)
+      return 1;
+
+   if (format == LIBAGX_RESOLVE_FORMAT_UNORM8_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_SNORM8_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT8_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT8_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_UNORM16_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_SNORM16_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT16_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT16_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_FLOAT16_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_UINT32_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_SINT32_2 ||
+       format == LIBAGX_RESOLVE_FORMAT_FLOAT32_2)
+      return 2;
+
+   return 4;
+}
+
+static uint
+libagx_resolve_scalar_size(uint format)
+{
+   if (format >= LIBAGX_RESOLVE_FORMAT_UNORM8_1 &&
+       format <= LIBAGX_RESOLVE_FORMAT_SINT8_4)
+      return 1;
+   if (format >= LIBAGX_RESOLVE_FORMAT_UNORM16_1 &&
+       format <= LIBAGX_RESOLVE_FORMAT_FLOAT16_4)
+      return 2;
+   return 4;
+}
+
+static uint
+libagx_resolve_load_scalar(global uint8_t *address, uint size_B)
+{
+   if (size_B == 1)
+      return address[0];
+   if (size_B == 2)
+      return libagx_present_load_u16(address);
+   return libagx_present_load_u32(address);
+}
+
+static void
+libagx_resolve_store_scalar(global uint8_t *address, uint size_B,
+                            uint value)
+{
+   if (size_B == 1)
+      address[0] = (uint8_t)value;
+   else if (size_B == 2)
+      libagx_present_store_u16(address, value);
+   else
+      libagx_present_store_u32(address, value);
+}
+
+static int
+libagx_resolve_sign_extend(uint value, uint bits)
+{
+   uint sign = 1u << (bits - 1u);
+   return (int)((value ^ sign) - sign);
+}
+
+/* R11G11B10 uses the positive-only five-bit-exponent float encoding. */
+static float
+libagx_resolve_ufloat_to_float(uint value, uint mantissa_bits)
+{
+   uint exponent = value >> mantissa_bits;
+   uint mantissa = value & ((1u << mantissa_bits) - 1u);
+   uint bits;
+
+   if (exponent == 0) {
+      if (mantissa == 0) {
+         bits = 0;
+      } else {
+         int unbiased = -14;
+         uint hidden = 1u << mantissa_bits;
+         while ((mantissa & hidden) == 0) {
+            mantissa <<= 1;
+            --unbiased;
+         }
+         mantissa &= hidden - 1u;
+         bits = (uint)(unbiased + 127) << 23 |
+                mantissa << (23u - mantissa_bits);
+      }
+   } else if (exponent == 0x1fu) {
+      bits = 0x7f800000u | mantissa << (23u - mantissa_bits);
+      if (mantissa)
+         bits |= 1u;
+   } else {
+      bits = (exponent + 112u) << 23 |
+             mantissa << (23u - mantissa_bits);
+   }
+   return as_float(bits);
+}
+
+static uint
+libagx_resolve_float_to_ufloat(float value, uint mantissa_bits)
+{
+   uint bits = as_uint(value);
+   uint exponent = (bits >> 23) & 0xffu;
+   uint mantissa = bits & 0x7fffffu;
+   uint mantissa_shift = 23u - mantissa_bits;
+
+   if (bits & 0x80000000u)
+      return 0;
+   if (exponent == 0xffu) {
+      if (!mantissa)
+         return 0x1fu << mantissa_bits;
+      return 0x1fu << mantissa_bits |
+             max(1u, mantissa >> mantissa_shift);
+   }
+   if (exponent > 142u)
+      return 0x1fu << mantissa_bits;
+   if (exponent < 113u) {
+      if (exponent < 113u - mantissa_bits)
+         return 0;
+      mantissa |= 0x800000u;
+      uint shift = 135u - mantissa_bits - exponent;
+      return (mantissa + ((1u << (shift - 1u)) - 1u) +
+              ((mantissa >> shift) & 1u)) >> shift;
+   }
+
+   uint packed_exponent = exponent - 112u;
+   mantissa += (1u << (mantissa_shift - 1u)) - 1u +
+               ((mantissa >> mantissa_shift) & 1u);
+   if (mantissa & 0x800000u) {
+      mantissa = 0;
+      ++packed_exponent;
+      if (packed_exponent >= 0x1fu)
+         return 0x1fu << mantissa_bits;
+   }
+   return packed_exponent << mantissa_bits |
+          mantissa >> mantissa_shift;
+}
+
+static uint
+libagx_resolve_present_format(uint format)
+{
+   if (format == LIBAGX_RESOLVE_FORMAT_RGBA8_SRGB)
+      return LIBAGX_PRESENT_FORMAT_RGBA8_SRGB;
+   if (format == LIBAGX_RESOLVE_FORMAT_BGRA8_UNORM)
+      return LIBAGX_PRESENT_FORMAT_BGRA8;
+   if (format == LIBAGX_RESOLVE_FORMAT_BGRA8_SRGB)
+      return LIBAGX_PRESENT_FORMAT_BGRA8;
+   if (format == LIBAGX_RESOLVE_FORMAT_BGRX8_UNORM)
+      return LIBAGX_PRESENT_FORMAT_BGRX8;
+   if (format == LIBAGX_RESOLVE_FORMAT_BGR565_UNORM)
+      return LIBAGX_PRESENT_FORMAT_BGR565;
+   if (format == LIBAGX_RESOLVE_FORMAT_BGRA5551_UNORM)
+      return LIBAGX_PRESENT_FORMAT_BGRA5551;
+   if (format == LIBAGX_RESOLVE_FORMAT_RGB10A2_UNORM)
+      return LIBAGX_PRESENT_FORMAT_RGB10A2;
+   return LIBAGX_PRESENT_FORMAT_INVALID;
+}
+
+static float4
+libagx_resolve_load_float(global uint8_t *address, uint format)
+{
+   uint present_format = libagx_resolve_present_format(format);
+   if (present_format) {
+      float4 value = libagx_present_load_pixel(address, present_format);
+      if (format == LIBAGX_RESOLVE_FORMAT_RGBA8_SRGB ||
+          format == LIBAGX_RESOLVE_FORMAT_BGRA8_SRGB) {
+         value.x = libagx_srgb_to_linear(value.x);
+         value.y = libagx_srgb_to_linear(value.y);
+         value.z = libagx_srgb_to_linear(value.z);
+      }
+      return value;
+   }
+
+   if (format == LIBAGX_RESOLVE_FORMAT_R11G11B10_FLOAT) {
+      uint packed = libagx_present_load_u32(address);
+      return (float4)(
+         libagx_resolve_ufloat_to_float(packed & 0x7ffu, 6),
+         libagx_resolve_ufloat_to_float((packed >> 11) & 0x7ffu, 6),
+         libagx_resolve_ufloat_to_float((packed >> 22) & 0x3ffu, 5), 1.0f);
+   }
+
+   uint channels = libagx_resolve_channel_count(format);
+   uint scalar_size_B = libagx_resolve_scalar_size(format);
+   float4 result = (float4)(0.0f, 0.0f, 0.0f, 1.0f);
+   for (uint c = 0; c < channels; ++c) {
+      uint raw = libagx_resolve_load_scalar(address + c * scalar_size_B,
+                                            scalar_size_B);
+      float value;
+      if (format >= LIBAGX_RESOLVE_FORMAT_UNORM8_1 &&
+          format <= LIBAGX_RESOLVE_FORMAT_UNORM8_4) {
+         value = (float)raw / 255.0f;
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_SNORM8_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_SNORM8_4) {
+         value = max(-1.0f, (float)libagx_resolve_sign_extend(raw, 8) /
+                             127.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_UNORM16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_UNORM16_4) {
+         value = (float)raw / 65535.0f;
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_SNORM16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_SNORM16_4) {
+         value = max(-1.0f, (float)libagx_resolve_sign_extend(raw, 16) /
+                             32767.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_FLOAT16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_FLOAT16_4) {
+         value = libagx_present_half_to_float(raw);
+      } else {
+         value = as_float(raw);
+      }
+      result[c] = value;
+   }
+   return result;
+}
+
+static void
+libagx_resolve_store_float(global uint8_t *address, uint format,
+                           float4 value)
+{
+   uint present_format = libagx_resolve_present_format(format);
+   if (present_format) {
+      if (format == LIBAGX_RESOLVE_FORMAT_RGBA8_SRGB ||
+          format == LIBAGX_RESOLVE_FORMAT_BGRA8_SRGB) {
+         value.x = libagx_linear_to_srgb(clamp(value.x, 0.0f, 1.0f));
+         value.y = libagx_linear_to_srgb(clamp(value.y, 0.0f, 1.0f));
+         value.z = libagx_linear_to_srgb(clamp(value.z, 0.0f, 1.0f));
+      }
+      libagx_present_store_pixel(address, present_format, value);
+      return;
+   }
+
+   if (format == LIBAGX_RESOLVE_FORMAT_R11G11B10_FLOAT) {
+      uint packed = libagx_resolve_float_to_ufloat(value.x, 6) |
+                    libagx_resolve_float_to_ufloat(value.y, 6) << 11 |
+                    libagx_resolve_float_to_ufloat(value.z, 5) << 22;
+      libagx_present_store_u32(address, packed);
+      return;
+   }
+
+   uint channels = libagx_resolve_channel_count(format);
+   uint scalar_size_B = libagx_resolve_scalar_size(format);
+   for (uint c = 0; c < channels; ++c) {
+      uint raw;
+      if (format >= LIBAGX_RESOLVE_FORMAT_UNORM8_1 &&
+          format <= LIBAGX_RESOLVE_FORMAT_UNORM8_4) {
+         raw = convert_uint_sat_rte(clamp(value[c], 0.0f, 1.0f) * 255.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_SNORM8_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_SNORM8_4) {
+         raw = (uint)convert_int_rte(clamp(value[c], -1.0f, 1.0f) * 127.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_UNORM16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_UNORM16_4) {
+         raw = convert_uint_sat_rte(clamp(value[c], 0.0f, 1.0f) * 65535.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_SNORM16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_SNORM16_4) {
+         raw = (uint)convert_int_rte(clamp(value[c], -1.0f, 1.0f) *
+                                     32767.0f);
+      } else if (format >= LIBAGX_RESOLVE_FORMAT_FLOAT16_1 &&
+                 format <= LIBAGX_RESOLVE_FORMAT_FLOAT16_4) {
+         raw = libagx_present_float_to_half(value[c]);
+      } else {
+         raw = as_uint(value[c]);
+      }
+      libagx_resolve_store_scalar(address + c * scalar_size_B,
+                                  scalar_size_B, raw);
+   }
+}
+
+static uint4
+libagx_resolve_load_uint(global uint8_t *address, uint format)
+{
+   if (format == LIBAGX_RESOLVE_FORMAT_RGB10A2_UINT) {
+      uint packed = libagx_present_load_u32(address);
+      return (uint4)(packed & 0x3ffu, (packed >> 10) & 0x3ffu,
+                     (packed >> 20) & 0x3ffu, packed >> 30);
+   }
+
+   uint channels = libagx_resolve_channel_count(format);
+   uint scalar_size_B = libagx_resolve_scalar_size(format);
+   uint4 result = (uint4)(0u);
+   for (uint c = 0; c < channels; ++c)
+      result[c] = libagx_resolve_load_scalar(address + c * scalar_size_B,
+                                             scalar_size_B);
+   return result;
+}
+
+static void
+libagx_resolve_store_uint(global uint8_t *address, uint format, uint4 value)
+{
+   if (format == LIBAGX_RESOLVE_FORMAT_RGB10A2_UINT) {
+      libagx_present_store_u32(address, (value.x & 0x3ffu) |
+                               (value.y & 0x3ffu) << 10 |
+                               (value.z & 0x3ffu) << 20 |
+                               (value.w & 3u) << 30);
+      return;
+   }
+
+   uint channels = libagx_resolve_channel_count(format);
+   uint scalar_size_B = libagx_resolve_scalar_size(format);
+   for (uint c = 0; c < channels; ++c)
+      libagx_resolve_store_scalar(address + c * scalar_size_B,
+                                  scalar_size_B, value[c]);
+}
+
+static int4
+libagx_resolve_load_sint(global uint8_t *address, uint format)
+{
+   uint channels = libagx_resolve_channel_count(format);
+   uint scalar_size_B = libagx_resolve_scalar_size(format);
+   uint scalar_bits = scalar_size_B * 8u;
+   int4 result = (int4)(0);
+   for (uint c = 0; c < channels; ++c) {
+      uint raw = libagx_resolve_load_scalar(address + c * scalar_size_B,
+                                            scalar_size_B);
+      result[c] = libagx_resolve_sign_extend(raw, scalar_bits);
+   }
+   return result;
+}
+
+static void
+libagx_resolve_store_sint(global uint8_t *address, uint format, int4 value)
+{
+   libagx_resolve_store_uint(address, format, as_uint4(value));
+}
+
+/* Typed D3D12 MIN/MAX/AVERAGE resolve for every native AGX render-target
+ * scalar/vector format.  The CPU table rejects integer AVERAGE before this
+ * shader is selected.  One dispatch covers linear or AIL-tiled destinations
+ * and the interleaved per-pixel multisample layout without transient views. */
+KERNEL(32)
+libagx_resolve_typed(global uint8_t *dest, global uint8_t *src,
+                     uint width_px, uint height_px,
+                     uint dest_x_px, uint dest_y_px,
+                     uint src_x_px, uint src_y_px,
+                     uint dest_pitch_B, uint dest_stride_el,
+                     uint src_stride_el,
+                     uint dest_tile_width_el, uint dest_tile_height_el,
+                     uint src_tile_width_el, uint src_tile_height_el,
+                     uint sample_count, uint dest_tiled, uint src_tiled,
+                     uint pixel_size_B, uint format, uint resolve_mode,
+                     uint value_class)
+{
+   uint id = cl_global_id.x;
+   if (id >= width_px * height_px)
+      return;
+
+   uint x = id % width_px;
+   uint y = id / width_px;
+   uint dest_offset_B = libagx_copy_image_offset(
+      dest_x_px + x, dest_y_px + y, dest_pitch_B, dest_stride_el,
+      dest_tile_width_el, dest_tile_height_el, pixel_size_B, dest_tiled);
+   uint src_offset_B = libagx_copy_image_offset(
+      src_x_px + x, src_y_px + y, 0, src_stride_el,
+      src_tile_width_el, src_tile_height_el,
+      pixel_size_B * sample_count, src_tiled);
+   uint choose_max = resolve_mode == LIBAGX_RESOLVE_MODE_MAX;
+
+   if (value_class == 1) {
+      uint4 result = libagx_resolve_load_uint(src + src_offset_B, format);
+      for (uint sample = 1; sample < sample_count; ++sample) {
+         uint4 next = libagx_resolve_load_uint(
+            src + src_offset_B + sample * pixel_size_B, format);
+         result = choose_max ? max(result, next) : min(result, next);
+      }
+      libagx_resolve_store_uint(dest + dest_offset_B, format, result);
+   } else if (value_class == 2) {
+      int4 result = libagx_resolve_load_sint(src + src_offset_B, format);
+      for (uint sample = 1; sample < sample_count; ++sample) {
+         int4 next = libagx_resolve_load_sint(
+            src + src_offset_B + sample * pixel_size_B, format);
+         result = choose_max ? max(result, next) : min(result, next);
+      }
+      libagx_resolve_store_sint(dest + dest_offset_B, format, result);
+   } else {
+      float4 result = libagx_resolve_load_float(src + src_offset_B, format);
+      if (resolve_mode == LIBAGX_RESOLVE_MODE_AVERAGE) {
+         for (uint sample = 1; sample < sample_count; ++sample)
+            result += libagx_resolve_load_float(
+               src + src_offset_B + sample * pixel_size_B, format);
+         result /= (float)sample_count;
+      } else {
+         for (uint sample = 1; sample < sample_count; ++sample) {
+            float4 next = libagx_resolve_load_float(
+               src + src_offset_B + sample * pixel_size_B, format);
+            result = choose_max ? fmax(result, next) : fmin(result, next);
+         }
+      }
+      libagx_resolve_store_float(dest + dest_offset_B, format, result);
+   }
 }
 
 static float4

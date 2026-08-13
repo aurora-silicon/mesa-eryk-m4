@@ -12,7 +12,7 @@ one renderer core shared with the existing public COM frontend.
 ## 1. Complete source inventory and ownership
 
 The inventoried COM/core baseline was 48,249 lines before this frontend. The
-current shared tree is 72,071 lines across C/header sources, excluding tests
+current shared tree is 72,808 lines across C/header sources, excluding tests
 and documentation. Its renderer is split by object kind even though the
 original public entry surface is COM.
 
@@ -27,6 +27,7 @@ original public entry surface is COM.
 | `d12_queue.c` | command-list aggregation, AGX submit and queue fence ordering | Reuse batching/submission. WDDM queue wrapper creates runtime/KMD contexts and submits through DDI callbacks rather than opening a parallel KMT device. |
 | `d12_fence.c` | timeline fence state, waits, events and sharing | Reuse timeline policy; bind it to WDDM monitored-fence callbacks. |
 | `d12_query.c`, `d12_query_core.c` | query heaps, type matching and queue-family policy | Reuse native heap/timestamp storage behind DDI private handles; the portable policy core keeps COM and DDI query ABIs aligned. |
+| `d12_resolve_core.c` | typed resolve format, numeric class, mode and resource-family policy | Shared by format-cap queries and the COM/DDI command recorder; portable tests pin all 52 accepted DXGI spellings and reject typed/typeless mismatches. |
 | `d12_root_sig.c` | RTS0 parsing/serialization and binding assignment | Pure reusable core except COM blob/deserializer wrappers. |
 | `d12_format.c` | DXGI-to-pipe/AGX format support | Reuse directly for `pfnCheckFormatSupport`, resources, views and presentation. |
 | `dxil/d12_dxil_*` | DXBC container and DXIL bitstream/module parsing, DXIL-to-NIR | Reuse without a DDI fork. |
@@ -343,6 +344,27 @@ view-local addresses are decoded back into the owning miptree before each
 bounded slice fill.  UAV creation reuses the common attachment-range validator
 and rejects unrepresented nonzero plane slices instead of silently clearing a
 different plane.  Buffer UAVs retain their dedicated linear fill path.
+
+Multisample resolve capability and command validation use one host-tested,
+frontend-neutral typed-format table.  It binds all 52 supported DXGI typed and
+depth/stencil plane-view spellings to a fixed AGX shader format, element size,
+numeric class and legal resolve modes.  Non-integer render targets and depth
+planes expose `AVERAGE`; integer formats and stencil expose only `MIN`/`MAX`,
+matching Microsoft's D3D12 contract.  Resource formats must either match the
+resolve format exactly or belong to its validated typeless/depth-stencil
+family.  The common RGBA8, scalar-float and float4 paths retain specialized
+kernels, while a precompiled native typed kernel covers 8/16/32-bit scalar and
+vector UNORM, SNORM, float, uint and sint formats plus BGRA, 5:6:5, 5:5:5:1,
+10:10:10:2 and R11G11B10 packed encodings.  It addresses AIL's interleaved
+2x/4x sample blocks directly, works with linear or tiled destinations and
+never creates a transient resource/view or performs a CPU readback.  Format
+support now advertises MSAA resolve only where that command path is real.
+
+The public capability policy also reports predication because both COM and
+DDI `SetPredication` reach the shared GPU-ordered predicate implementation.
+The later `HARDWARE_COPY` query is understood and returns `Supported=FALSE`;
+copy queues remain native AGX command queues, but the distinct optional
+hardware-copy capability is not overclaimed.
 
 Query-heap translation includes the pinned
 `D3D12DDI_QUERY_HEAP_TYPE_0032_COPY_QUEUE_TIMESTAMP` contract. Copy queues

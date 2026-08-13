@@ -389,15 +389,21 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;
    }
 
-   case D3D12_FEATURE_PREDICATION:
+   case D3D12_FEATURE_PREDICATION: {
+      D3D12_FEATURE_DATA_PREDICATION *predication = data;
       if (data_size != sizeof(D3D12_FEATURE_DATA_PREDICATION))
          return E_INVALIDARG;
-      return E_NOTIMPL;
+      predication->Supported = caps->predication ? TRUE : FALSE;
+      return S_OK;
+   }
 
-   case D3D12_FEATURE_HARDWARE_COPY:
+   case D3D12_FEATURE_HARDWARE_COPY: {
+      D3D12_FEATURE_DATA_HARDWARE_COPY *hardware_copy = data;
       if (data_size != sizeof(D3D12_FEATURE_DATA_HARDWARE_COPY))
          return E_INVALIDARG;
-      return E_NOTIMPL;
+      hardware_copy->Supported = caps->hardware_copy ? TRUE : FALSE;
+      return S_OK;
+   }
 
    case D3D12_FEATURE_APPLICATION_SPECIFIC_DRIVER_STATE: {
       D3D12_FEATURE_DATA_APPLICATION_SPECIFIC_DRIVER_STATE *state = data;

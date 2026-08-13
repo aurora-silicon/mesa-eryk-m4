@@ -65,6 +65,12 @@ done
 "$out/d12_query_core_tests"
 
 "$cc" "$common[@]" \
+    "$d12_dir/d12_resolve_core.c" \
+    "$d12_dir/tests/d12_resolve_core_tests.c" \
+    -o "$out/d12_resolve_core_tests"
+"$out/d12_resolve_core_tests"
+
+"$cc" "$common[@]" \
     "$d12_dir/d12_write_set_core.c" \
     "$d12_dir/tests/d12_write_set_core_tests.c" \
     -o "$out/d12_write_set_core_tests"

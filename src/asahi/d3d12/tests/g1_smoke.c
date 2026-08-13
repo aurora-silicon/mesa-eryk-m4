@@ -172,6 +172,20 @@ main(void)
                 D3D12_COMMAND_LIST_SUPPORT_FLAG_COPY),
             "reports native copy timestamps and immediate writes");
 
+      D3D12_FEATURE_DATA_PREDICATION predication = {0};
+      hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_PREDICATION,
+                                            &predication,
+                                            sizeof(predication));
+      CHECK(hr == S_OK && predication.Supported,
+            "reports the native predication command path");
+
+      D3D12_FEATURE_DATA_HARDWARE_COPY hardware_copy = {.Supported = TRUE};
+      hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_HARDWARE_COPY,
+                                            &hardware_copy,
+                                            sizeof(hardware_copy));
+      CHECK(hr == S_OK && !hardware_copy.Supported,
+            "understands hardware-copy query without overclaiming it");
+
       LUID luid = d12_test_device_get_adapter_luid(dev);
       CHECK(luid.LowPart != 0 || luid.HighPart != 0,
             "adapter LUID is not all-zero");

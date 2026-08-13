@@ -12,6 +12,7 @@
 #include "d12_umd_internal.h"
 #include "d12_umd_residency.h"
 #include "d12_umd_resource_private.h"
+#include "../d12_resolve_core.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -89,31 +90,35 @@ d12_umd_standalone_format_support(DXGI_FORMAT format)
    const uint64_t color = texture | D12_FRONTEND_FORMAT_BUFFER |
                           D12_FRONTEND_FORMAT_VERTEX_BUFFER |
                           D12_FRONTEND_FORMAT_RENDER_TARGET |
-                          D12_FRONTEND_FORMAT_BLENDABLE |
-                          D12_FRONTEND_FORMAT_MULTISAMPLE_RESOLVE |
                           D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
                           D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD |
                           D12_FRONTEND_FORMAT_TYPED_UAV |
                           D12_FRONTEND_FORMAT_UAV_TYPED_LOAD |
                           D12_FRONTEND_FORMAT_UAV_TYPED_STORE;
+   const uint64_t resolve = d12_resolve_core_supports_average(format)
+                               ? D12_FRONTEND_FORMAT_MULTISAMPLE_RESOLVE
+                               : 0;
+   const uint64_t blendable_color =
+      color | D12_FRONTEND_FORMAT_BLENDABLE | resolve;
 
    switch (format) {
    case DXGI_FORMAT_R8G8B8A8_UNORM:
-      return color | D12_FRONTEND_FORMAT_DISPLAY;
+      return blendable_color | D12_FRONTEND_FORMAT_DISPLAY;
    case DXGI_FORMAT_B8G8R8A8_UNORM:
    case DXGI_FORMAT_B8G8R8X8_UNORM:
       return texture | D12_FRONTEND_FORMAT_RENDER_TARGET |
              D12_FRONTEND_FORMAT_BLENDABLE |
-             D12_FRONTEND_FORMAT_MULTISAMPLE_RESOLVE |
+             resolve |
              D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
              D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD |
              D12_FRONTEND_FORMAT_DISPLAY;
    case DXGI_FORMAT_R32_FLOAT:
+      return blendable_color;
    case DXGI_FORMAT_R32_SINT:
       return color;
    case DXGI_FORMAT_R32_UINT:
    case DXGI_FORMAT_R16_UINT:
-      return color | D12_FRONTEND_FORMAT_INDEX_BUFFER;
+      return color | resolve | D12_FRONTEND_FORMAT_INDEX_BUFFER;
    case DXGI_FORMAT_D32_FLOAT:
    case DXGI_FORMAT_D16_UNORM:
       return D12_FRONTEND_FORMAT_TEXTURE_1D |

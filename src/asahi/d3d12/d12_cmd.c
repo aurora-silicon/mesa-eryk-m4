@@ -14,6 +14,7 @@
 
 #include "d12_private.h"
 #include "d12_query_core.h"
+#include "d12_resolve_core.h"
 
 #include "agx_helpers.h"
 #include "agx_nir_texture.h"
@@ -21,6 +22,7 @@
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
 #include "present_blt.h"
+#include "resolve.h"
 #include "util/format/format_utils.h"
 #include "util/format/u_format.h"
 #include "util/u_math.h"
@@ -9829,6 +9831,35 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const unsigned dst_samples = MAX2(dstr->layout.sample_count_sa, 1);
    const unsigned src_samples = MAX2(srcr->layout.sample_count_sa, 1);
 
+   _Static_assert((int)D3D12_RESOLVE_MODE_MIN ==
+                     (int)D12_RESOLVE_CORE_MODE_MIN,
+                  "D3D12/core MIN resolve ABI drift");
+   _Static_assert((int)D3D12_RESOLVE_MODE_MAX ==
+                     (int)D12_RESOLVE_CORE_MODE_MAX,
+                  "D3D12/core MAX resolve ABI drift");
+   _Static_assert((int)D3D12_RESOLVE_MODE_AVERAGE ==
+                     (int)D12_RESOLVE_CORE_MODE_AVERAGE,
+                  "D3D12/core AVERAGE resolve ABI drift");
+
+   struct d12_resolve_core_format_info resolve_info;
+   if (dstr->device != list->device || srcr->device != list->device ||
+       dstr->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       srcr->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       !d12_resolve_core_resource_compatible((uint32_t)dstr->desc.Format,
+                                             (uint32_t)format) ||
+       !d12_resolve_core_resource_compatible((uint32_t)srcr->desc.Format,
+                                             (uint32_t)format) ||
+       !d12_resolve_core_get_format((uint32_t)format, &resolve_info) ||
+       !d12_resolve_core_supports_mode((uint32_t)format, (uint32_t)mode)) {
+      mesa_loge("ResolveSubresource: incompatible resource/format/mode "
+                "(source %u, destination %u, format %u, mode %u)",
+                (unsigned)srcr->desc.Format, (unsigned)dstr->desc.Format,
+                (unsigned)format, (unsigned)mode);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
    const bool minimum = mode == D3D12_RESOLVE_MODE_MIN;
    const bool maximum = mode == D3D12_RESOLVE_MODE_MAX;
    const bool average = mode == D3D12_RESOLVE_MODE_AVERAGE;
@@ -9853,18 +9884,9 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const bool unorm8x4_extrema =
       (minimum || maximum) && format == DXGI_FORMAT_R8G8B8A8_UNORM;
    const bool unorm8x4 = unorm8x4_average || unorm8x4_extrema;
-   /* Native D3D12 accepts these mutually reinterpreted 16-bit resolves as
-    * undefined behaviour. Recording a bounded no-op is therefore valid and
-    * preserves the API acceptance without inventing a conversion rule. */
-   const bool undefined_16 =
-      average && (format == DXGI_FORMAT_R16_FLOAT ||
-                  format == DXGI_FORMAT_R16_UNORM);
    const bool float32x4 =
       average && format == DXGI_FORMAT_R32G32B32A32_FLOAT;
-   const unsigned pixel_B =
-      extrema_stencil8 ? 1
-      : min_float32 || average_float32 || extrema_scalar || unorm8x4 ? 4
-      : undefined_16 ? 2 : float32x4 ? 16 : 0;
+   const unsigned pixel_B = resolve_info.pixel_size_B;
    if (dst_samples != 1 || (src_samples != 2 && src_samples != 4) ||
        !pixel_B) {
       mesa_loge("ResolveSubresource: unsupported format/mode/sample shape "
@@ -9884,6 +9906,7 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
        s.blocksize_B != pixel_B * src_samples || !s.tiled) {
       mesa_loge("ResolveSubresource: incompatible source/destination");
       list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
       return;
    }
 
@@ -9897,15 +9920,13 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
        (uint64_t)dst_y + (bottom - top) > d.height_px) {
       mesa_loge("ResolveSubresource: resolve rectangle is out of bounds");
       list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
       return;
    }
 
    const unsigned width_px = right - left;
    const unsigned height_px = bottom - top;
    if (!width_px || !height_px)
-      return;
-
-   if (undefined_16)
       return;
 
    struct libagx_resolve_unorm8x4_args args = {
@@ -9955,7 +9976,9 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
          .sample_count = src_samples,
          .dest_tiled = d.tiled,
          .src_tiled = s.tiled,
-         .src_srgb = util_format_is_srgb(s.format),
+         /* ResolveSubresource's Format parameter supplies the typed
+          * interpretation when either allocation is typeless. */
+         .src_srgb = format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
          .dest_srgb = format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
       };
       d12_list_dispatch_precomp(list, LIBAGX_RESOLVE_UNORM8X4_TYPED,
@@ -9988,13 +10011,41 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
       d12_list_dispatch_precomp(list, LIBAGX_RESOLVE_SCALAR_EXTREMA,
                                 &extrema_args, sizeof(extrema_args),
                                 agx_1d((uint64_t)width_px * height_px));
-   } else {
+   } else if (min_float32 || average_float32 || unorm8x4 || float32x4) {
       const enum libagx_program shader =
          min_float32 ? LIBAGX_RESOLVE_FLOAT32_MIN
                      : average_float32 ? LIBAGX_RESOLVE_FLOAT32_AVERAGE
                      : unorm8x4 ? LIBAGX_RESOLVE_UNORM8X4
                                  : LIBAGX_RESOLVE_FLOAT32X4;
       d12_list_dispatch_precomp(list, shader, &args, sizeof(args),
+                                agx_1d((uint64_t)width_px * height_px));
+   } else {
+      struct libagx_resolve_typed_args typed_args = {
+         .dest = d.base,
+         .src = s.base,
+         .width_px = width_px,
+         .height_px = height_px,
+         .dest_x_px = dst_x,
+         .dest_y_px = dst_y,
+         .src_x_px = left,
+         .src_y_px = top,
+         .dest_pitch_B = d.pitch_B,
+         .dest_stride_el = d.stride_el,
+         .src_stride_el = s.stride_el,
+         .dest_tile_width_el = d.tile_width_el,
+         .dest_tile_height_el = d.tile_height_el,
+         .src_tile_width_el = s.tile_width_el,
+         .src_tile_height_el = s.tile_height_el,
+         .sample_count = src_samples,
+         .dest_tiled = d.tiled,
+         .src_tiled = s.tiled,
+         .pixel_size_B = resolve_info.pixel_size_B,
+         .format = resolve_info.shader_format,
+         .resolve_mode = mode,
+         .value_class = resolve_info.value_class,
+      };
+      d12_list_dispatch_precomp(list, LIBAGX_RESOLVE_TYPED, &typed_args,
+                                sizeof(typed_args),
                                 agx_1d((uint64_t)width_px * height_px));
    }
 }

@@ -25,6 +25,8 @@ main(void)
    assert(caps->tiled_resources_tier == 1);
    assert(caps->uma);
    assert(caps->tile_based_deferred_renderer);
+   assert(caps->predication);
+   assert(!caps->hardware_copy);
    assert(caps->copy_queue_timestamp_queries);
    assert(caps->write_buffer_immediate_support_flags ==
           (D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |
