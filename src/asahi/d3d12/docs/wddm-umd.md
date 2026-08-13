@@ -12,7 +12,7 @@ one renderer core shared with the existing public COM frontend.
 ## 1. Complete source inventory and ownership
 
 The inventoried COM/core baseline was 48,249 lines before this frontend. The
-current shared tree is 72,877 lines across C/header sources, excluding tests
+current shared tree is 73,363 lines across C/header sources, excluding tests
 and documentation. Its renderer is split by object kind even though the
 original public entry surface is COM.
 
@@ -102,12 +102,19 @@ official DDI pages are:
 | First complete D3D12 DDI target | interface `0x000c0002`, build `8` | `D3D12DDI_SUPPORTED_0003`, encoded as `0x000c000200080000`. |
 | Release 1 pipeline-library target | interface `0x000c000a`, build `0` | `D3D12DDI_SUPPORTED_0010`, encoded as `0x000c000a00000000`; the 91-slot core table and all six library DDIs are implemented. |
 | Release 1 Shader Model target | interface `0x000c000a`, build `1` | `D3D12DDI_SUPPORTED_0011`, encoded as `0x000c000a00010000`; reports released SM 6.0 and SM 5.1. |
+| Release 1 root-signature 1.1 target | interface `0x000c000a`, build `3` | `D3D12DDI_SUPPORTED_0013`, encoded as `0x000c000a00030000`; the exact 92-slot table implements root-signature 1.1 and debug allocation/GPUVA association. |
 | Latest revision in pinned header | interface R8 `0x000c0050`, build `110` | `D3D12DDI_SUPPORTED_0110`, encoded as `0x000c0050006e0000`. It is a header ceiling, not an implemented claim. |
 
 The D3D12 core DDI revision and WDDM/DXGK interface are separate negotiations.
 WDDM 2.0 advertises only baseline `0003`; it cannot accidentally negotiate
-the DXIL-era tables. The isolated WDDM 2.1 build advertises `0011`, `0010`,
-then `0003`, and table size selects the exact 91- or 89-slot layout. This split
+the DXIL-era tables. The isolated WDDM 2.1 build advertises `0013`, `0011`,
+`0010`, then `0003`, and table size selects the exact 92-, 91- or 89-slot
+layout. Build `0012` is deliberately not advertised: Microsoft gave `0012`
+and `0013` the same 92-pointer table width but changed the two root-signature
+callback types in `0013`, while `FillDDITable` receives only table type and
+size. Advertising only the highest shape makes that callback ABI
+unambiguous, matching Microsoft's sample-driver practice of selecting one
+exact revision per shape family. This split
 is required because Microsoft classifies DXIL, SM 6.0 and PSO libraries as
 WDDM 2.1 features. The 2.1 KMD branch reports `0x2100`, registers a real
 `DxgkDdiValidateUpdateAllocationProperty` policy, uses DriverStore paths and
@@ -151,7 +158,8 @@ Device creation receives three callback families:
 - DXGI callbacks through `DXGI_DDI_BASE_ARGS` when the runtime requests the
   `D3D12DDI_TABLE_TYPE_DXGI` table.
 
-`CreateDevice` accepts the exact `0003`, `0010` or `0011` interface/build,
+`CreateDevice` accepts the exact `0003`, `0010`, `0011` or `0013`
+interface/build,
 copies the runtime callback tables into runtime-owned private device storage
 and, in the renderer-linked DLL, constructs the native backend through those
 callbacks.
@@ -166,7 +174,8 @@ is the stable key used by every Mesa UMD module's process-wide GPU-VA broker;
 the opaque runtime adapter pointer is never used as an address-space identity.
 All temporary handles returned by `D3DKMTEnumAdapters2` are closed as required
 by Microsoft's contract, and no second graphics device is opened.
-`FillDDITable` fills all 89 device, 51 command-list and 7 command-queue slots
+`FillDDITable` fills all 89 baseline or 92 root-signature 1.1 device slots,
+51 command-list slots and 7 command-queue slots
 from a generator that parses the pinned WDK header. Implemented entries replace
 the generated traps. Remaining void functions report `E_NOTIMPL` through
 `pfnSetErrorCb`; paired destructors are silent because their trapped creators
@@ -183,9 +192,15 @@ There are concrete implementations behind all 89 baseline device slots.
 `pfnRetrieveShaderComment` lazily disassembles exact native AGX executable
 ranges and returns bounded, escaped, well-formed XML with program roles,
 code sizes and compiler statistics; ordinary PSO creation pays no disassembly
-cost. The Release 1 device table contains 91 slots because its six pipeline-
+cost. The Release 1 build-0 device table contains 91 slots because its six pipeline-
 library functions replace the four baseline serialized-object functions; all
-91 are populated with correctly typed entrypoints. The command-list
+91 are populated with correctly typed entrypoints. Build `0013` adds the
+92nd debug-allocation callback and replaces the two root-signature callbacks
+with their 1.1 signatures; every usable slot is populated. Heaps and backed
+resources report their exact runtime-owned KMT allocation and bounded GPUVA
+interval, reserved resources report their virtual interval without inventing
+a KMT allocation, and validated CPU-only pageable objects report neither.
+The command-list
 `CopyTiles` and queue `UpdateTileMappings`/`CopyTileMappings` entries translate
 reserved-resource mappings to the shared renderer. Tier-1 mip packing,
 null/unmap ranges, reuse-single-tile and skip ranges are bounds-checked, and
@@ -245,6 +260,15 @@ Static-sampler validation and serialization use the renderer's 256-record
 binding capacity as well, rather than the former 64-record frontend ceiling;
 the host cache test and callback probe cover a 65-sampler signature with
 stage-disjoint visibility.
+
+The `0013` root-signature path deep-copies descriptor-range and root-descriptor
+volatility promises into the same frontend-neutral representation used by
+pipeline serialization and the shared renderer. The private pipeline format
+is versioned, rejects conflicting data-volatility flags, and preserves those
+flags across library/PSO round trips. Baseline 1.0 signatures are translated
+to `DESCRIPTORS_VOLATILE | DATA_VOLATILE` ranges and `DATA_VOLATILE` root
+descriptors before the shared core emits a versioned 1.1 RTS0 blob, preserving
+the 1.0 execution semantics instead of silently applying 1.1 static defaults.
 
 Release 1 implements the distinct indexed pipeline-library ABI. The runtime's
 `PipelineIndex` is stored in a sorted lookup table containing the same
@@ -321,6 +345,10 @@ permitting padding or truncation beyond the real backing allocation. The
 frontend supports descriptor heaps and SRV/UAV/RTV/DSV/CBV/sampler creation,
 mapping, GPU virtual addresses, exact allocation-handle queries, subresource
 layout queries and the D3D12 MakeResident/Evict callback model.
+The Release 1 build-3 diagnostics callback maps those same heap/resource
+identities to physical-adapter zero, KMT handles and overflow-checked,
+exclusive-end GPUVA ranges. Its two-call count/capacity ABI and the ARM64
+structure widths are pinned by the callback and compile-only probes.
 
 RTV translation retains the selected mip and the complete array/W-slice range
 from the DDI descriptor through the shared renderer.  A frontend-neutral,
@@ -661,13 +689,13 @@ does not alter the native D3D12 ABI or command ordering.
 | gate | success criterion | state |
 |---|---|---|
 | A. adapter | ARM64 DLL loads, `OpenAdapter12` validates Apple identity, returns exact adapter table/version/caps | implemented, including conservative texture-layout discovery, and statically/host tested |
-| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; void-call failures use the correctly scoped runtime error callback | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; device/object failures use `pfnSetErrorCb`, recording failures preserve the exact runtime list through `pfnSetCommandListErrorCb`, and command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
+| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; void-call failures use the correctly scoped runtime error callback | `0003` 89-slot, Release 1 build-0 91-slot and build-3 92-slot device tables plus shared 51/7 command tables implemented and statically/host tested; device/object failures use `pfnSetErrorCb`, recording failures preserve the exact runtime list through `pfnSetCommandListErrorCb`, and command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
 | C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; Tier-1 reserved-resource sizing and creation share the renderer's exact shape/packed-tail validator, and unsupported foreign metadata fails closed |
-| D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
+| D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, root-signature 1.0/1.1 with exact volatility semantics, shaders including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, allocation-deduplicated mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including aliased discard fan-out, optional discard output and CPU-only core objects; asynchronous renderer failures now atomically retain the first cause and notify the D3D12 runtime exactly once, while real device-removal and pressure validation remain pending |
 | G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI 1.4 and WDDM 2.1 22-slot DXGI 1.5 tables, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
-| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`, the 91-slot table, pipeline libraries, DXIL import and SM 6.0 caps are exposed only by the WDDM 2.1 build; the isolated 0x6003/0x2100 KMD interface, allocation-property DDI and dual UMD layouts compile and pass host ABI tests; Windows runtime/hardware conformance remains pending |
+| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`/`0013`, exact 91/92-slot tables, pipeline libraries, DXIL import, SM 6.0 caps, root-signature 1.1 and debug allocation association are exposed only by the WDDM 2.1 build; same-width `0012` is omitted to keep callback typing unambiguous; later `0031` copy-timestamp, `0032` immediate-write and `0042` native-16-bit table/cap growth remains unadvertised; the isolated 0x6003/0x2100 KMD interface, allocation-property DDI and dual UMD layouts compile and pass host ABI tests; Windows runtime/hardware conformance remains pending |
 | I. packaging | register native ARM64 D3D12 slot alongside D3D11, then make it default after hardware probe | the isolated WDDM 2.1 worktree atomically copies/registers the self-contained native ARM64 DLL at D3D12 index 3, requires it during packaging/catalog generation, and enforces DriverStore paths, `FeatureScore = D1`, and exact `21.17.240.0` INF/SYS/UMD PE versions; source/package gates pass, but no current package was signed, cataloged, installed or clean-loaded in this host-only pass |
 
 ### Recorded gates before a production claim
@@ -676,7 +704,7 @@ does not alter the native D3D12 ABI or command ordering.
   target is under concurrent bring-up. `d12_umd_runtime_probe.exe` is the first
   authorized runtime/GPU validation and must be run only by the hardware owner.
 - `0003` remains the WDDM 2.0-compatible hardware baseline. Release 1
-  `0010`/`0011` now has matching UMD tables/caps and an isolated WDDM 2.1 KMD
+  `0010`/`0011`/`0013` now has matching UMD tables/caps and an isolated WDDM 2.1 KMD
   source/package target, but that pair still requires Windows runtime and
   hardware validation. A higher WDDM number by itself does not prove the
   mandatory KMD contracts.

@@ -1298,8 +1298,8 @@ d12_device_runtime_root_signature_create(
    const struct d12_frontend_root_signature_desc *frontend,
    void **out_root_signature)
 {
-   D3D12_ROOT_PARAMETER *parameters = NULL;
-   D3D12_DESCRIPTOR_RANGE *ranges = NULL;
+   D3D12_ROOT_PARAMETER1 *parameters = NULL;
+   D3D12_DESCRIPTOR_RANGE1 *ranges = NULL;
    D3D12_STATIC_SAMPLER_DESC *samplers = NULL;
    size_t range_count = 0;
    size_t next_range = 0;
@@ -1339,7 +1339,7 @@ d12_device_runtime_root_signature_create(
    for (uint32_t index = 0; index < frontend->num_parameters; ++index) {
       const struct d12_frontend_root_parameter *source =
          &frontend->parameters[index];
-      D3D12_ROOT_PARAMETER *destination = &parameters[index];
+      D3D12_ROOT_PARAMETER1 *destination = &parameters[index];
 
       destination->ParameterType =
          (D3D12_ROOT_PARAMETER_TYPE)source->parameter_type;
@@ -1355,12 +1355,14 @@ d12_device_runtime_root_signature_create(
               range_index < source->table.num_ranges; ++range_index) {
             const struct d12_frontend_descriptor_range *source_range =
                &source->table.ranges[range_index];
-            ranges[next_range++] = (D3D12_DESCRIPTOR_RANGE){
+            ranges[next_range++] = (D3D12_DESCRIPTOR_RANGE1){
                .RangeType =
                   (D3D12_DESCRIPTOR_RANGE_TYPE)source_range->range_type,
                .NumDescriptors = source_range->num_descriptors,
                .BaseShaderRegister = source_range->base_shader_register,
                .RegisterSpace = source_range->register_space,
+               .Flags =
+                  (D3D12_DESCRIPTOR_RANGE_FLAGS)source_range->flags,
                .OffsetInDescriptorsFromTableStart =
                   source_range->offset_in_descriptors,
             };
@@ -1376,9 +1378,10 @@ d12_device_runtime_root_signature_create(
       case D3D12_ROOT_PARAMETER_TYPE_CBV:
       case D3D12_ROOT_PARAMETER_TYPE_SRV:
       case D3D12_ROOT_PARAMETER_TYPE_UAV:
-         destination->Descriptor = (D3D12_ROOT_DESCRIPTOR){
+         destination->Descriptor = (D3D12_ROOT_DESCRIPTOR1){
             .ShaderRegister = source->descriptor.shader_register,
             .RegisterSpace = source->descriptor.register_space,
+            .Flags = (D3D12_ROOT_DESCRIPTOR_FLAGS)source->descriptor.flags,
          };
          break;
       default:
@@ -1408,14 +1411,17 @@ d12_device_runtime_root_signature_create(
       };
    }
 
-   const D3D12_ROOT_SIGNATURE_DESC desc = {
-      .NumParameters = frontend->num_parameters,
-      .pParameters = parameters,
-      .NumStaticSamplers = frontend->num_static_samplers,
-      .pStaticSamplers = samplers,
-      .Flags = (D3D12_ROOT_SIGNATURE_FLAGS)frontend->flags,
+   const D3D12_VERSIONED_ROOT_SIGNATURE_DESC desc = {
+      .Version = D3D_ROOT_SIGNATURE_VERSION_1_1,
+      .Desc_1_1 = {
+         .NumParameters = frontend->num_parameters,
+         .pParameters = parameters,
+         .NumStaticSamplers = frontend->num_static_samplers,
+         .pStaticSamplers = samplers,
+         .Flags = (D3D12_ROOT_SIGNATURE_FLAGS)frontend->flags,
+      },
    };
-   result = d12_serialize_root_signature(&desc, &blob, &blob_size);
+   result = d12_serialize_versioned_root_signature(&desc, &blob, &blob_size);
    if (SUCCEEDED(result))
       result = d12_root_signature_create(
          device, blob, blob_size, &IID_ID3D12RootSignature,

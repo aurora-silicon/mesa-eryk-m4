@@ -80,6 +80,10 @@ static unsigned blt_execute_calls;
 static unsigned signature_create_calls;
 static unsigned signature_destroy_calls;
 static uint32_t signature_vertex_slot;
+static unsigned root11_create_calls;
+static unsigned root11_destroy_calls;
+static uint32_t expected_root_range_flags;
+static uint32_t expected_root_descriptor_flags;
 static unsigned rtv_create_calls;
 static void *rtv_resource;
 static uint64_t rtv_destination;
@@ -110,6 +114,7 @@ static struct d12_umd_resource_private saved_resource_private;
 #define TEST_BLT_DESTINATION ((void *)(uintptr_t)0xa500)
 #define TEST_BLT_SOURCE ((void *)(uintptr_t)0xa600)
 #define TEST_SIGNATURE ((void *)(uintptr_t)0xa700)
+#define TEST_ROOT_SIGNATURE ((void *)(uintptr_t)0xa710)
 #define TEST_TILED_RESOURCE ((void *)(uintptr_t)0xa800)
 #define TEST_TILE_HEAP ((void *)(uintptr_t)0xa900)
 #define TEST_TILE_QUEUE ((void *)(uintptr_t)0xaa00)
@@ -286,6 +291,26 @@ test_sparse_mip_packing(void *resource, uint32_t *packed_mips,
 }
 
 static HRESULT
+test_sparse_resource_allocation_info(
+   void *device, const struct d12_frontend_resource_desc *desc,
+   uint32_t visible_node_mask,
+   struct d12_frontend_resource_allocation_info *info)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !info ||
+       visible_node_mask != 1)
+      return E_INVALIDARG;
+
+   *info = (struct d12_frontend_resource_allocation_info){
+      .size = desc->dimension == D3D12DDI_RT_BUFFER
+                 ? desc->width
+                 : UINT64_C(0x500000),
+      .alignment = UINT64_C(0x10000),
+      .layout = desc->layout,
+   };
+   return S_OK;
+}
+
+static HRESULT
 test_sparse_update_tile_mappings(
    void *queue, void *resource, uint32_t region_count,
    const struct d12_frontend_tiled_resource_coordinate *region_starts,
@@ -357,6 +382,7 @@ static const struct d12_umd_renderer_ops test_sparse_renderer_ops = {
    .create_reserved_resource = test_sparse_create_reserved,
    .destroy_resource = test_sparse_destroy_resource,
    .resource_gpu_virtual_address = test_sparse_resource_gpu_va,
+   .get_resource_allocation_info = test_sparse_resource_allocation_info,
    .resource_mip_packing = test_sparse_mip_packing,
 };
 
@@ -486,6 +512,43 @@ test_destroy_command_signature(void *signature)
 static const struct d12_umd_renderer_ops test_signature_renderer_ops = {
    .create_command_signature = test_create_command_signature,
    .destroy_command_signature = test_destroy_command_signature,
+};
+
+static HRESULT
+test_create_root_signature(
+   void *device, const struct d12_frontend_root_signature_desc *desc,
+   void **out_root_signature)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !out_root_signature ||
+       desc->num_parameters != 2 || !desc->parameters ||
+       desc->num_static_samplers || desc->static_samplers ||
+       desc->parameters[0].parameter_type !=
+          D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE ||
+       desc->parameters[0].table.num_ranges != 1 ||
+       !desc->parameters[0].table.ranges ||
+       desc->parameters[0].table.ranges[0].flags !=
+          expected_root_range_flags ||
+       desc->parameters[1].parameter_type !=
+          D3D12DDI_ROOT_PARAMETER_TYPE_CBV ||
+       desc->parameters[1].descriptor.flags !=
+          expected_root_descriptor_flags)
+      return E_INVALIDARG;
+
+   ++root11_create_calls;
+   *out_root_signature = TEST_ROOT_SIGNATURE;
+   return S_OK;
+}
+
+static void
+test_destroy_root_signature(void *root_signature)
+{
+   if (root_signature == TEST_ROOT_SIGNATURE)
+      ++root11_destroy_calls;
+}
+
+static const struct d12_umd_renderer_ops test_root11_renderer_ops = {
+   .create_root_signature = test_create_root_signature,
+   .destroy_root_signature = test_destroy_root_signature,
 };
 
 static void
@@ -1298,8 +1361,8 @@ wmain(int argc, wchar_t **argv)
 
    {
       UINT32 count = 0;
-      UINT64 versions[3] = {0};
-      const UINT32 expected_count = D12_UMD_TARGETS_WDDM21 ? 3u : 1u;
+      UINT64 versions[4] = {0};
+      const UINT32 expected_count = D12_UMD_TARGETS_WDDM21 ? 4u : 1u;
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, NULL);
       require_result(result == S_OK && count == expected_count,
@@ -1316,9 +1379,10 @@ wmain(int argc, wchar_t **argv)
                                                   &count, versions);
       require_result(result == S_OK && count == expected_count &&
 #if D12_UMD_TARGETS_WDDM21
-                        versions[0] == D3D12DDI_SUPPORTED_0011 &&
-                        versions[1] == D3D12DDI_SUPPORTED_0010 &&
-                        versions[2] == D3D12DDI_SUPPORTED_0003,
+                        versions[0] == D3D12DDI_SUPPORTED_0013 &&
+                        versions[1] == D3D12DDI_SUPPORTED_0011 &&
+                        versions[2] == D3D12DDI_SUPPORTED_0010 &&
+                        versions[3] == D3D12DDI_SUPPORTED_0003,
 #else
                         versions[0] == D3D12DDI_SUPPORTED_0003,
 #endif
@@ -1466,6 +1530,9 @@ wmain(int argc, wchar_t **argv)
       };
       D3D12DDI_DEVICE_FUNCS_CORE_0003 device_table;
       D3D12DDI_DEVICE_FUNCS_CORE_0010 release1_table;
+#if D12_UMD_TARGETS_WDDM21
+      D3D12DDI_DEVICE_FUNCS_CORE_0013 root11_table;
+#endif
       D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 command_list_table;
       D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 command_queue_table;
 #if D12_UMD_TARGETS_WDDM21
@@ -1506,6 +1573,14 @@ wmain(int argc, wchar_t **argv)
       require_result(result == S_OK, "fill Release 1 device core table");
       require_pointer_slots(&release1_table, 91, SIZE_MAX, SIZE_MAX,
                             "Release 1 device core table");
+      result = functions.pfnFillDDITable(
+         open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DEVICE_CORE,
+         &root11_table, sizeof(root11_table), 0,
+         (D3D12DDI_HRTTABLE){0});
+      require_result(result == S_OK,
+                     "fill root-signature 1.1 device core table");
+      require_pointer_slots(&root11_table, 92, SIZE_MAX, SIZE_MAX,
+                            "root-signature 1.1 device core table");
 #else
       require_result(result == E_INVALIDARG,
                      "WDDM 2.0 rejects the DXIL Release 1 table");
@@ -1864,6 +1939,70 @@ wmain(int argc, wchar_t **argv)
                   driver_root_signature.pDrvPrivate);
 
          {
+            const D3D12DDI_DESCRIPTOR_RANGE range = {
+               .RangeType = D3D12DDI_DESCRIPTOR_RANGE_TYPE_SRV,
+               .NumDescriptors = 8,
+               .BaseShaderRegister = 3,
+               .RegisterSpace = 2,
+            };
+            const D3D12DDI_ROOT_PARAMETER parameters[2] = {
+               {
+                  .ParameterType =
+                     D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+                  .DescriptorTable = {
+                     .NumDescriptorRanges = 1,
+                     .pDescriptorRanges = &range,
+                  },
+                  .ShaderVisibility = D3D12DDI_SHADER_VISIBILITY_ALL,
+               },
+               {
+                  .ParameterType = D3D12DDI_ROOT_PARAMETER_TYPE_CBV,
+                  .Descriptor = {
+                     .ShaderRegister = 7,
+                     .RegisterSpace = 4,
+                  },
+                  .ShaderVisibility = D3D12DDI_SHADER_VISIBILITY_PIXEL,
+               },
+            };
+            const D3D12DDI_ROOT_SIGNATURE volatile_desc = {
+               .NumParameters = ARRAYSIZE(parameters),
+               .pRootParameters = parameters,
+            };
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
+            struct d12_device *saved_backend = private_device->backend;
+            const struct d12_umd_renderer_ops *saved_renderer_ops =
+               private_device->renderer_ops;
+
+            root_arguments.pRootSignature = &volatile_desc;
+            driver_root_signature.pDrvPrivate = HeapAlloc(
+               GetProcessHeap(), HEAP_ZERO_MEMORY, root_signature_size);
+            require_result(driver_root_signature.pDrvPrivate != NULL,
+                           "allocate translated 1.0 root signature");
+            private_device->backend =
+               (struct d12_device *)TEST_BLT_DEVICE;
+            private_device->renderer_ops = &test_root11_renderer_ops;
+            root11_create_calls = 0;
+            root11_destroy_calls = 0;
+            expected_root_range_flags = UINT32_C(0x3);
+            expected_root_descriptor_flags = UINT32_C(0x2);
+            result = device_table.pfnCreateRootSignature(
+               driver_device, &root_arguments, driver_root_signature);
+            require_result(
+               result == S_OK && root11_create_calls == 1,
+               "preserve root-signature 1.0 volatile semantics");
+            device_table.pfnDestroyRootSignature(
+               driver_device, driver_root_signature);
+            require_result(root11_destroy_calls == 1,
+                           "destroy translated 1.0 root signature");
+            private_device->renderer_ops = saved_renderer_ops;
+            private_device->backend = saved_backend;
+            HeapFree(GetProcessHeap(), 0,
+                     driver_root_signature.pDrvPrivate);
+            root_arguments.pRootSignature = &root_desc;
+         }
+
+         {
             const D3D12DDI_ROOT_SIGNATURE invalid_desc = {
                .NumParameters = 1,
             };
@@ -1873,6 +2012,104 @@ wmain(int argc, wchar_t **argv)
                            "reject missing root parameters");
          }
       }
+
+#if D12_UMD_TARGETS_WDDM21
+      {
+         D3D12DDI_DESCRIPTOR_RANGE_0013 range = {
+            .RangeType = D3D12DDI_DESCRIPTOR_RANGE_TYPE_SRV,
+            .NumDescriptors = 8,
+            .BaseShaderRegister = 3,
+            .RegisterSpace = 2,
+            .Flags =
+               D3D12DDI_DESCRIPTOR_RANGE_FLAG_0013_DESCRIPTORS_VOLATILE |
+               D3D12DDI_DESCRIPTOR_RANGE_FLAG_0013_DATA_STATIC_WHILE_SET_AT_EXECUTE,
+            .OffsetInDescriptorsFromTableStart = 0,
+         };
+         D3D12DDI_ROOT_PARAMETER_0013 parameters[2] = {
+            {
+               .ParameterType =
+                  D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+               .DescriptorTable = {
+                  .NumDescriptorRanges = 1,
+                  .pDescriptorRanges = &range,
+               },
+               .ShaderVisibility = D3D12DDI_SHADER_VISIBILITY_ALL,
+            },
+            {
+               .ParameterType = D3D12DDI_ROOT_PARAMETER_TYPE_CBV,
+               .Descriptor = {
+                  .ShaderRegister = 7,
+                  .RegisterSpace = 4,
+                  .Flags = D3D12DDI_ROOT_DESCRIPTOR_FLAG_0013_DATA_STATIC,
+               },
+               .ShaderVisibility = D3D12DDI_SHADER_VISIBILITY_PIXEL,
+            },
+         };
+         const D3D12DDI_ROOT_SIGNATURE_0013 root_desc = {
+            .NumParameters = ARRAYSIZE(parameters),
+            .pRootParameters = parameters,
+         };
+         D3D12DDIARG_CREATE_ROOT_SIGNATURE_0013 root_arguments = {
+            .Version = D3D12DDI_ROOT_SIGNATURE_VERSION_1_1,
+            .pRootSignature_1_1 = &root_desc,
+            .NodeMask = 1,
+         };
+         struct d12_umd_device *private_device =
+            driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
+         D3D12DDI_HROOTSIGNATURE root_signature;
+         const SIZE_T root_signature_size =
+            root11_table.pfnCalcPrivateRootSignatureSize(
+               driver_device, &root_arguments);
+
+         require_result(root_signature_size > 0,
+                        "root-signature 1.1 private size");
+         root_signature.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, root_signature_size);
+         require_result(root_signature.pDrvPrivate != NULL,
+                        "allocate root-signature 1.1 storage");
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_root11_renderer_ops;
+         root11_create_calls = 0;
+         root11_destroy_calls = 0;
+         expected_root_range_flags = UINT32_C(0x5);
+         expected_root_descriptor_flags = UINT32_C(0x8);
+         result = root11_table.pfnCreateRootSignature(
+            driver_device, &root_arguments, root_signature);
+         require_result(result == S_OK && root11_create_calls == 1,
+                        "translate root-signature 1.1 volatility flags");
+         root11_table.pfnDestroyRootSignature(driver_device,
+                                               root_signature);
+         require_result(root11_destroy_calls == 1,
+                        "destroy root-signature 1.1 backend object");
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
+         HeapFree(GetProcessHeap(), 0, root_signature.pDrvPrivate);
+
+         range.Flags =
+            D3D12DDI_DESCRIPTOR_RANGE_FLAG_0013_DATA_VOLATILE |
+            D3D12DDI_DESCRIPTOR_RANGE_FLAG_0013_DATA_STATIC;
+         require_result(
+            root11_table.pfnCalcPrivateRootSignatureSize(
+               driver_device, &root_arguments) == 0,
+            "reject conflicting root-signature 1.1 data volatility");
+         range.Flags =
+            D3D12DDI_DESCRIPTOR_RANGE_FLAG_0013_DATA_STATIC_WHILE_SET_AT_EXECUTE;
+         range.RangeType = D3D12DDI_DESCRIPTOR_RANGE_TYPE_SAMPLER;
+         require_result(
+            root11_table.pfnCalcPrivateRootSignatureSize(
+               driver_device, &root_arguments) == 0,
+            "reject sampler data-volatility flags");
+         range.RangeType = D3D12DDI_DESCRIPTOR_RANGE_TYPE_SRV;
+         root_arguments.Version = D3D12DDI_ROOT_SIGNATURE_VERSION_1_2;
+         require_result(
+            root11_table.pfnCalcPrivateRootSignatureSize(
+               driver_device, &root_arguments) == 0,
+            "reject unsupported root-signature 1.2 ABI");
+      }
+#endif
 
       {
          const UINT compute_tokens[] = {
@@ -2818,6 +3055,30 @@ wmain(int argc, wchar_t **argv)
                device_table.pfnCheckResourceVirtualAddress(
                   driver_device, resource_handle) == TEST_TILED_GPU_VA,
             "create reserved resource without KMD allocation");
+#if D12_UMD_TARGETS_WDDM21
+         {
+            const D3D12DDI_HANDLE_AND_TYPE object = {
+               .Handle = resource_handle.pDrvPrivate,
+               .Type = D3D12DDI_HT_0012_RESOURCE,
+            };
+            D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 va_info;
+            D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+            UINT va_count = 1;
+            UINT kmt_count = 1;
+
+            memset(&va_info, 0, sizeof(va_info));
+            memset(&kmt_info, 0, sizeof(kmt_info));
+            root11_table.pfnGetDebugAllocationInfo(
+               driver_device, object, &va_count, &va_info, &kmt_count,
+               &kmt_info);
+            require_result(
+               va_count == 1 && kmt_count == 0 &&
+                  va_info.StartAddress == TEST_TILED_GPU_VA &&
+                  va_info.EndAddress ==
+                     TEST_TILED_GPU_VA + UINT64_C(0x500000),
+               "reserved-resource debug GPUVA without KMT allocation");
+         }
+#endif
          device_table.pfnGetMipPacking(driver_device, resource_handle,
                                        &packed_mips, &packed_tiles);
          require_result(packed_mips == 3 && packed_tiles == 2,
@@ -3136,6 +3397,60 @@ wmain(int argc, wchar_t **argv)
                            driver_device, resource_handle) ==
                            TEST_RESOURCE_GPU_VA,
                         "resource GPU virtual address");
+
+#if D12_UMD_TARGETS_WDDM21
+         {
+            const D3D12DDI_HANDLE_AND_TYPE resource_object = {
+               .Handle = resource_handle.pDrvPrivate,
+               .Type = D3D12DDI_HT_0012_RESOURCE,
+            };
+            const D3D12DDI_HANDLE_AND_TYPE heap_object = {
+               .Handle = heap_handle.pDrvPrivate,
+               .Type = D3D12DDI_HT_HEAP,
+            };
+            D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 va_info;
+            D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+            UINT va_count = 0;
+            UINT kmt_count = 0;
+
+            root11_table.pfnGetDebugAllocationInfo(
+               driver_device, resource_object, &va_count, NULL, &kmt_count,
+               NULL);
+            require_result(va_count == 1 && kmt_count == 1,
+                           "query resource debug-allocation counts");
+            va_count = 1;
+            kmt_count = 1;
+            memset(&va_info, 0, sizeof(va_info));
+            memset(&kmt_info, 0, sizeof(kmt_info));
+            root11_table.pfnGetDebugAllocationInfo(
+               driver_device, resource_object, &va_count, &va_info,
+               &kmt_count, &kmt_info);
+            require_result(
+               va_count == 1 && kmt_count == 1 &&
+                  va_info.PhysicalAdapterIndex == 0 &&
+                  va_info.StartAddress == TEST_RESOURCE_GPU_VA &&
+                  va_info.EndAddress ==
+                     TEST_RESOURCE_GPU_VA + resource_arguments.Width &&
+                  kmt_info.PhysicalAdapterIndex == 0 &&
+                  kmt_info.hAllocation == TEST_ALLOCATION,
+               "resource debug-allocation translation");
+
+            va_count = 1;
+            kmt_count = 1;
+            memset(&va_info, 0, sizeof(va_info));
+            memset(&kmt_info, 0, sizeof(kmt_info));
+            root11_table.pfnGetDebugAllocationInfo(
+               driver_device, heap_object, &va_count, &va_info, &kmt_count,
+               &kmt_info);
+            require_result(
+               va_count == 1 && kmt_count == 1 &&
+                  va_info.StartAddress == TEST_RESOURCE_GPU_VA &&
+                  va_info.EndAddress ==
+                     TEST_RESOURCE_GPU_VA + sizeof(mapped_heap) &&
+                  kmt_info.hAllocation == TEST_ALLOCATION,
+               "heap debug-allocation translation");
+         }
+#endif
 
          {
             DXGI_DDI_ARG_SETRESOURCEPRIORITY priority_arguments = {
@@ -4280,6 +4595,24 @@ wmain(int argc, wchar_t **argv)
                require_result(result == S_OK,
                               "create pageable pipeline library");
 
+#if D12_UMD_TARGETS_WDDM21
+               {
+                  D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012
+                     va_info;
+                  D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+                  UINT va_count = 1;
+                  UINT kmt_count = 1;
+
+                  memset(&va_info, 0xcc, sizeof(va_info));
+                  memset(&kmt_info, 0xcc, sizeof(kmt_info));
+                  root11_table.pfnGetDebugAllocationInfo(
+                     driver_device, pageable_objects[1], &va_count,
+                     &va_info, &kmt_count, &kmt_info);
+                  require_result(va_count == 0 && kmt_count == 0,
+                                 "CPU-only pageable debug allocation");
+               }
+#endif
+
                make_arguments.NumObjects = 1;
                make_arguments.pObjects = &pageable_objects[1];
                paging_fence = UINT64_MAX;
@@ -4572,13 +4905,22 @@ wmain(int argc, wchar_t **argv)
             .Version = D3D12DDI_BUILD_VERSION_0011,
             .Flags = D3D12DDI_CREATE_DEVICE_FLAG_NONE,
          };
+         const D3D12DDIARG_CALCPRIVATEDEVICESIZE root11_size_arguments = {
+            .Interface = D3D12DDI_INTERFACE_VERSION_R1,
+            .Version = D3D12DDI_BUILD_VERSION_0013,
+            .Flags = D3D12DDI_CREATE_DEVICE_FLAG_NONE,
+         };
          const SIZE_T release1_device_size =
             functions.pfnCalcPrivateDeviceSize(
                open_arguments.hAdapter, &release1_size_arguments);
+         const SIZE_T root11_device_size =
+            functions.pfnCalcPrivateDeviceSize(
+               open_arguments.hAdapter, &root11_size_arguments);
 
 #if D12_UMD_TARGETS_WDDM21
-         require_result(release1_device_size == device_size,
-                        "Release 1 private device size");
+         require_result(release1_device_size == device_size &&
+                           root11_device_size == device_size,
+                        "Release 1 versioned private device sizes");
          driver_device.pDrvPrivate = HeapAlloc(
             GetProcessHeap(), HEAP_ZERO_MEMORY, release1_device_size);
          require_result(driver_device.pDrvPrivate != NULL,
@@ -4592,8 +4934,21 @@ wmain(int argc, wchar_t **argv)
                         "CreateDevice Release 1 explicit-present result");
          functions.pfnDestroyDevice(driver_device);
          HeapFree(GetProcessHeap(), 0, driver_device.pDrvPrivate);
+
+         driver_device.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, root11_device_size);
+         require_result(driver_device.pDrvPrivate != NULL,
+                        "allocate root-signature 1.1 device storage");
+         create_arguments.Version = D3D12DDI_BUILD_VERSION_0013;
+         create_arguments.hDrvDevice = driver_device;
+         result = functions.pfnCreateDevice(open_arguments.hAdapter,
+                                             &create_arguments);
+         require_result(result == DXGI_STATUS_NO_REDIRECTION,
+                        "CreateDevice root-signature 1.1 result");
+         functions.pfnDestroyDevice(driver_device);
+         HeapFree(GetProcessHeap(), 0, driver_device.pDrvPrivate);
 #else
-         require_result(release1_device_size == 0,
+         require_result(release1_device_size == 0 && root11_device_size == 0,
                         "WDDM 2.0 rejects Release 1 device creation");
 #endif
       }

@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define D12_UMD_PIPELINE_SERIALIZATION_VERSION 1u
+#define D12_UMD_PIPELINE_SERIALIZATION_VERSION 2u
 
 enum d12_umd_serialized_pipeline_kind {
    D12_UMD_SERIALIZED_PIPELINE_COMPUTE = 1,
@@ -52,4 +52,3 @@ bool d12_umd_pipeline_deserialize(
 
 void d12_umd_serialized_pipeline_cleanup(
    struct d12_umd_serialized_pipeline *pipeline);
-

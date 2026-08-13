@@ -2425,6 +2425,113 @@ d12_umd_residency_object_allocation(
 }
 
 #if D12_UMD_TARGETS_WDDM21
+static bool
+d12_umd_debug_object_info(struct d12_umd_device *device,
+                          const D3D12DDI_HANDLE_AND_TYPE *object,
+                          D3DKMT_HANDLE *allocation, uint64_t *start,
+                          uint64_t *size)
+{
+   if (!device || !object || !allocation || !start || !size)
+      return false;
+   *allocation = 0;
+   *start = 0;
+   *size = 0;
+
+   switch (object->Type) {
+   case D3D12DDI_HT_HEAP: {
+      const struct d12_umd_heap *heap = object->Handle;
+      if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE ||
+          heap->device != device)
+         return false;
+      *allocation = heap->allocation.allocation;
+      *start = heap->allocation.gpu_virtual_address;
+      *size = heap->allocation.size;
+      return true;
+   }
+   case D3D12DDI_HT_0012_RESOURCE: {
+      const struct d12_umd_resource *resource = object->Handle;
+      D3D12DDI_RESOURCE_ALLOCATION_INFO info;
+      HRESULT result;
+
+      if (!resource || resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
+          resource->device != device)
+         return false;
+      *allocation = resource->allocation.allocation;
+      *start = d12_umd_check_resource_virtual_address(
+         (D3D12DDI_HDEVICE){.pDrvPrivate = device},
+         (D3D12DDI_HRESOURCE){.pDrvPrivate = (void *)resource});
+      memset(&info, 0, sizeof(info));
+      result = d12_umd_resource_allocation_info(
+         device, &resource->desc, 0, 1, false, &info);
+      if (FAILED(result))
+         return false;
+      *size = info.ResourceDataSize;
+      return true;
+   }
+   default:
+      /* Valid CPU-only pageable objects deliberately have no allocation or
+       * GPU VA range. */
+      return d12_umd_residency_object_allocation(device, object, allocation);
+   }
+}
+
+static void APIENTRY
+d12_umd_get_debug_allocation_info_0012(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HANDLE_AND_TYPE object,
+   UINT *virtual_address_count,
+   D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 *virtual_addresses,
+   UINT *kmt_count,
+   D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 *kmt_allocations)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   const UINT virtual_address_capacity =
+      virtual_address_count ? *virtual_address_count : 0;
+   const UINT kmt_capacity = kmt_count ? *kmt_count : 0;
+   D3DKMT_HANDLE allocation = 0;
+   uint64_t start = 0;
+   uint64_t size = 0;
+   bool valid;
+
+   if (!virtual_address_count || !kmt_count)
+      return;
+   *virtual_address_count = 0;
+   *kmt_count = 0;
+   valid = d12_umd_debug_object_info(device, &object, &allocation, &start,
+                                     &size);
+   if (!valid) {
+      d12_umd_set_device_error(device, E_INVALIDARG);
+      return;
+   }
+   if (start && size && start > UINT64_MAX - size) {
+      d12_umd_set_device_error(device, E_FAIL);
+      return;
+   }
+
+   if (allocation) {
+      *kmt_count = 1;
+      if (kmt_allocations && kmt_capacity) {
+         kmt_allocations[0] =
+            (D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012){
+               .PhysicalAdapterIndex = 0,
+               .hAllocation = allocation,
+            };
+      }
+   }
+   if (start && size) {
+      *virtual_address_count = 1;
+      if (virtual_addresses && virtual_address_capacity) {
+         virtual_addresses[0] =
+            (D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012){
+               .PhysicalAdapterIndex = 0,
+               .StartAddress = start,
+               .EndAddress = start + size,
+            };
+      }
+   }
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM21
 static D3DKMT_HANDLE
 d12_umd_residency_paging_queue(
    struct d12_umd_device *device,
@@ -2796,6 +2903,16 @@ d12_umd_install_device_core_functions(
       d12_umd_get_implicit_physical_adapter_mask;
    table->pfnQueryNodeMap = d12_umd_query_node_map;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+void
+d12_umd_install_device_core_functions_0013(
+   D3D12DDI_DEVICE_FUNCS_CORE_0013 *table)
+{
+   table->pfnGetDebugAllocationInfo =
+      d12_umd_get_debug_allocation_info_0012;
+}
+#endif
 
 void
 d12_umd_install_command_queue_functions(

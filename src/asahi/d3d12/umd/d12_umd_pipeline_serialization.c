@@ -14,6 +14,8 @@
 #define D12_UMD_SERIALIZED_MAX_STATIC_SAMPLERS 256u
 #define D12_UMD_SERIALIZED_MAX_ROOT_DWORDS 64u
 #define D12_UMD_SERIALIZED_ROOT_FLAGS_MASK 0x7fu
+#define D12_UMD_SERIALIZED_RANGE_FLAGS_MASK 0x0fu
+#define D12_UMD_SERIALIZED_DESCRIPTOR_FLAGS_MASK 0x0eu
 #define D12_UMD_SERIALIZED_MAX_SHADER_BYTES (64u * 1024u * 1024u)
 #define D12_UMD_SERIALIZED_MAX_TOTAL_BYTES (256u * 1024u * 1024u)
 
@@ -67,10 +69,34 @@ struct d12_umd_pipeline_blob_header {
 
 _Static_assert(sizeof(struct d12_umd_serialized_root_parameter) == 28,
                "serialized root parameter width changed");
-_Static_assert(sizeof(struct d12_frontend_descriptor_range) == 20,
+_Static_assert(sizeof(struct d12_frontend_descriptor_range) == 24,
                "serialized descriptor range width changed");
 _Static_assert(sizeof(struct d12_frontend_static_sampler) == 52,
                "serialized static sampler width changed");
+
+static bool
+d12_umd_serialized_one_data_flag(uint32_t flags)
+{
+   const uint32_t data_flags = flags &
+      D12_UMD_SERIALIZED_DESCRIPTOR_FLAGS_MASK;
+   return data_flags == 0 || (data_flags & (data_flags - 1u)) == 0;
+}
+
+static bool
+d12_umd_serialized_descriptor_flags_valid(uint32_t flags)
+{
+   return !(flags & ~D12_UMD_SERIALIZED_DESCRIPTOR_FLAGS_MASK) &&
+          d12_umd_serialized_one_data_flag(flags);
+}
+
+static bool
+d12_umd_serialized_range_flags_valid(uint32_t range_type, uint32_t flags)
+{
+   return !(flags & ~D12_UMD_SERIALIZED_RANGE_FLAGS_MASK) &&
+          d12_umd_serialized_one_data_flag(flags) &&
+          (range_type != 3u ||
+           !(flags & D12_UMD_SERIALIZED_DESCRIPTOR_FLAGS_MASK));
+}
 _Static_assert(sizeof(struct d12_frontend_input_element) == 24,
                "serialized input element width changed");
 _Static_assert(sizeof(struct d12_frontend_stream_output_declaration) == 24,
@@ -297,7 +323,9 @@ d12_umd_root_counts(const struct d12_frontend_root_signature_desc *root,
               range_index < parameter->table.num_ranges; ++range_index) {
             const struct d12_frontend_descriptor_range *range =
                &parameter->table.ranges[range_index];
-            if (range->range_type > 3u || !range->num_descriptors)
+            if (range->range_type > 3u || !range->num_descriptors ||
+                !d12_umd_serialized_range_flags_valid(range->range_type,
+                                                       range->flags))
                return false;
          }
          ranges += parameter->table.num_ranges;
@@ -309,7 +337,9 @@ d12_umd_root_counts(const struct d12_frontend_root_signature_desc *root,
             return false;
          dword_count += parameter->constants.num_32bit_values;
       } else {
-         if (dword_count > D12_UMD_SERIALIZED_MAX_ROOT_DWORDS - 2u)
+         if (!d12_umd_serialized_descriptor_flags_valid(
+                parameter->descriptor.flags) ||
+             dword_count > D12_UMD_SERIALIZED_MAX_ROOT_DWORDS - 2u)
             return false;
          dword_count += 2u;
       }
@@ -388,6 +418,7 @@ d12_umd_pack_root_parameters(
       case 4:
          destination->data0 = source->descriptor.shader_register;
          destination->data1 = source->descriptor.register_space;
+         destination->data2 = source->descriptor.flags;
          break;
       default:
          break;
@@ -629,7 +660,7 @@ d12_umd_serialized_root_valid(
             return false;
          dword_count += parameter->data2;
       } else {
-         if (parameter->data2 ||
+         if (!d12_umd_serialized_descriptor_flags_valid(parameter->data2) ||
              dword_count > D12_UMD_SERIALIZED_MAX_ROOT_DWORDS - 2u)
             return false;
          dword_count += 2u;
@@ -638,7 +669,9 @@ d12_umd_serialized_root_valid(
    if (next_range != header->root_range_count)
       return false;
    for (uint32_t index = 0; index < header->root_range_count; ++index) {
-      if (ranges[index].range_type > 3u || !ranges[index].num_descriptors)
+      if (ranges[index].range_type > 3u || !ranges[index].num_descriptors ||
+          !d12_umd_serialized_range_flags_valid(ranges[index].range_type,
+                                                ranges[index].flags))
          return false;
    }
    for (uint32_t index = 0; index < header->root_static_sampler_count;
@@ -835,6 +868,7 @@ d12_umd_deserialize_root(
       case 4:
          destination->descriptor.shader_register = source->data0;
          destination->descriptor.register_space = source->data1;
+         destination->descriptor.flags = source->data2;
          break;
       default:
          break;

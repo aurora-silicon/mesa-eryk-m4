@@ -16,6 +16,9 @@ struct d12_frontend_descriptor_range {
    uint32_t num_descriptors;
    uint32_t base_shader_register;
    uint32_t register_space;
+   /* Root-signature 1.1 descriptor/data volatility promises. Version 1.0
+    * frontends supply the equivalent volatile flags when translating. */
+   uint32_t flags;
    uint32_t offset_in_descriptors;
 };
 
@@ -35,6 +38,7 @@ struct d12_frontend_root_parameter {
       struct {
          uint32_t shader_register;
          uint32_t register_space;
+         uint32_t flags;
       } descriptor;
    };
 };

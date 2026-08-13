@@ -17,6 +17,7 @@ static const struct d12_frontend_descriptor_range test_ranges[] = {
       .num_descriptors = 8,
       .base_shader_register = 3,
       .register_space = 2,
+      .flags = 0x5,
       .offset_in_descriptors = 0,
    },
    {
@@ -52,6 +53,7 @@ static const struct d12_frontend_root_parameter test_parameters[] = {
       .descriptor = {
          .shader_register = 9,
          .register_space = 6,
+         .flags = 0x4,
       },
    },
 };
@@ -112,10 +114,13 @@ test_compute_round_trip(void)
    assert(decoded.root_signature.parameters[0].table.num_ranges == 2);
    assert(decoded.root_signature.parameters[0].table.ranges[1].range_type ==
           test_ranges[1].range_type);
+   assert(decoded.root_signature.parameters[0].table.ranges[0].flags ==
+          test_ranges[0].flags);
    assert(decoded.root_signature.parameters[1].constants.num_32bit_values ==
           12);
    assert(decoded.root_signature.parameters[2].descriptor.register_space ==
           6);
+   assert(decoded.root_signature.parameters[2].descriptor.flags == 0x4);
    assert(decoded.root_signature.static_samplers[0].mip_lod_bias == -1.25f);
    assert(decoded.compute.shader.size == sizeof(shader));
    assert(!memcmp(decoded.compute.shader.data, shader, sizeof(shader)));
@@ -376,6 +381,48 @@ test_stage_disjoint_static_samplers(void)
    free(blob);
 }
 
+static void
+test_root_1_1_flag_validation(void)
+{
+   static const uint8_t shader[] = {9, 10, 11, 12};
+   struct d12_frontend_descriptor_range range = {
+      .range_type = 0,
+      .num_descriptors = 1,
+      .flags = 0x6,
+   };
+   struct d12_frontend_root_parameter parameter = {
+      .parameter_type = 0,
+      .table = {
+         .num_ranges = 1,
+         .ranges = &range,
+      },
+   };
+   const struct d12_frontend_root_signature_desc root = {
+      .num_parameters = 1,
+      .parameters = &parameter,
+   };
+   const struct d12_frontend_compute_pipeline_desc source = {
+      .shader = {.data = shader, .size = sizeof(shader)},
+      .root_signature = (void *)(uintptr_t)1,
+   };
+   void *blob = NULL;
+   size_t size = 0;
+
+   assert(!d12_umd_pipeline_serialize_compute(&source, &root, &blob,
+                                              &size));
+   range.range_type = 3;
+   range.flags = 0x4;
+   assert(!d12_umd_pipeline_serialize_compute(&source, &root, &blob,
+                                              &size));
+   parameter.parameter_type = 2;
+   parameter.descriptor.flags = 0x6;
+   assert(!d12_umd_pipeline_serialize_compute(&source, &root, &blob,
+                                              &size));
+   parameter.descriptor.flags = 0x10;
+   assert(!d12_umd_pipeline_serialize_compute(&source, &root, &blob,
+                                              &size));
+}
+
 int
 main(void)
 {
@@ -384,6 +431,7 @@ main(void)
    test_root_presence_validation();
    test_wide_descriptor_table_round_trip();
    test_stage_disjoint_static_samplers();
+   test_root_1_1_flag_validation();
    puts("d12_umd_pipeline_serialization_tests: PASS");
    return 0;
 }

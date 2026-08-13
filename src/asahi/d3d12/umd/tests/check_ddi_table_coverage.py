@@ -13,6 +13,7 @@ from pathlib import Path
 TABLES = {
     "D3D12DDI_DEVICE_FUNCS_CORE_0003": 89,
     "D3D12DDI_DEVICE_FUNCS_CORE_0010": 91,
+    "D3D12DDI_DEVICE_FUNCS_CORE_0013": 92,
     "D3D12DDI_COMMAND_LIST_FUNCS_3D_0003": 51,
     "D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001": 7,
 }
@@ -64,6 +65,9 @@ def installed_fields(source_dir: Path) -> dict[str, set[str]]:
     # those copied ranges therefore inherit the baseline installation proof.
     installed["D3D12DDI_DEVICE_FUNCS_CORE_0010"].update(
         installed["D3D12DDI_DEVICE_FUNCS_CORE_0003"]
+    )
+    installed["D3D12DDI_DEVICE_FUNCS_CORE_0013"].update(
+        installed["D3D12DDI_DEVICE_FUNCS_CORE_0010"]
     )
     return installed
 

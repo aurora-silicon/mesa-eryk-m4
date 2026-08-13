@@ -391,8 +391,27 @@ _Static_assert(D3D12DDI_SUPPORTED_0010 == D12_UMD_DDI_SUPPORTED_0010,
                "Release 1 DDI encoding");
 _Static_assert(D3D12DDI_SUPPORTED_0011 == D12_UMD_DDI_SUPPORTED_0011,
                "Release 1 build 1 DDI encoding");
+_Static_assert(D3D12DDI_SUPPORTED_0013 == D12_UMD_DDI_SUPPORTED_0013,
+               "Release 1 build 3 DDI encoding");
 _Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010) == 91 * sizeof(void *),
                "Release 1 device table width");
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0013) == 92 * sizeof(void *),
+               "Release 1 build 3 device table width");
+_Static_assert(sizeof(D3D12DDI_DESCRIPTOR_RANGE_0013) == 24,
+               "root-signature 1.1 descriptor-range width");
+_Static_assert(sizeof(D3D12DDI_ROOT_DESCRIPTOR_0013) == 12,
+               "root-signature 1.1 root-descriptor width");
+_Static_assert(sizeof(D3D12DDI_ROOT_PARAMETER_0013) == 32,
+               "root-signature 1.1 root-parameter width");
+_Static_assert(sizeof(D3D12DDI_ROOT_SIGNATURE_0013) == 40,
+               "root-signature 1.1 descriptor width");
+_Static_assert(sizeof(D3D12DDIARG_CREATE_ROOT_SIGNATURE_0013) == 24,
+               "root-signature 1.1 create-argument width");
+_Static_assert(
+   sizeof(D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012) == 24,
+   "debug GPU virtual-address allocation width");
+_Static_assert(sizeof(D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012) == 8,
+               "debug KMT allocation width");
 _Static_assert(sizeof(D3D12DDI_LIBRARY_REFERENCE_0010) == 16,
                "Release 1 library-reference width");
 _Static_assert(sizeof(D3D12DDIARG_CREATE_PIPELINE_LIBRARY_0010) == 16,

@@ -133,6 +133,19 @@ _Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003) ==
 _Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010) ==
                   91u * sizeof(void *),
                "WDK 26100 DDI 0010 device table width changed");
+#if D12_UMD_TARGETS_WDDM21
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0013) ==
+                  92u * sizeof(void *),
+               "WDK 26100 DDI 0013 device table width changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0013,
+                        pfnCalcPrivateRootSignatureSize) ==
+                  54u * sizeof(void *),
+               "DDI 0013 root-signature table offset changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0013,
+                        pfnGetDebugAllocationInfo) ==
+                  91u * sizeof(void *),
+               "DDI 0013 debug-allocation table offset changed");
+#endif
 _Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0010,
                         pfnCalcPrivatePipelineLibrarySize) ==
                   85u * sizeof(void *),
@@ -161,7 +174,8 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
    case D3D12DDI_TABLE_TYPE_DEVICE_CORE:
       if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)
 #if D12_UMD_TARGETS_WDDM21
-          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010)
+          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010) &&
+          table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0013)
 #endif
       )
          return E_INVALIDARG;
@@ -181,7 +195,7 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
          if (table_size == sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)) {
             memcpy(table, &baseline, sizeof(baseline));
          } else {
-            D3D12DDI_DEVICE_FUNCS_CORE_0010 *release1 = table;
+            D3D12DDI_DEVICE_FUNCS_CORE_0010 release1;
             const size_t prefix =
                offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0003,
                         pfnSerializeObject);
@@ -190,10 +204,21 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
             const size_t suffix_destination =
                offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0010, pfnMapHeap);
             const size_t suffix_size = sizeof(baseline) - suffix_source;
-            memcpy(release1, &baseline, prefix);
-            memcpy((uint8_t *)release1 + suffix_destination,
+            memset(&release1, 0, sizeof(release1));
+            memcpy(&release1, &baseline, prefix);
+            memcpy((uint8_t *)&release1 + suffix_destination,
                    (const uint8_t *)&baseline + suffix_source, suffix_size);
-            d12_umd_install_pipeline_device_functions_0010(table);
+            d12_umd_install_pipeline_device_functions_0010(&release1);
+            if (table_size == sizeof(release1)) {
+               memcpy(table, &release1, sizeof(release1));
+#if D12_UMD_TARGETS_WDDM21
+            } else {
+               D3D12DDI_DEVICE_FUNCS_CORE_0013 *release1_root11 = table;
+               memcpy(release1_root11, &release1, sizeof(release1));
+               d12_umd_install_state_device_functions_0013(release1_root11);
+               d12_umd_install_device_core_functions_0013(release1_root11);
+#endif
+            }
          }
       }
       return S_OK;

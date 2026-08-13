@@ -10,6 +10,7 @@
 
 static const uint64_t d12_umd_versions[] = {
 #if D12_UMD_TARGETS_WDDM21
+   D12_UMD_DDI_SUPPORTED_0013,
    D12_UMD_DDI_SUPPORTED_0011,
    D12_UMD_DDI_SUPPORTED_0010,
 #endif
@@ -67,7 +68,8 @@ d12_umd_version_supported(uint32_t interface_version,
           ||
           (interface_version == D12_UMD_DDI_INTERFACE_R1 &&
            (build_version == D12_UMD_DDI_BUILD_0010 ||
-            build_version == D12_UMD_DDI_BUILD_0011))
+            build_version == D12_UMD_DDI_BUILD_0011 ||
+            build_version == D12_UMD_DDI_BUILD_0013))
 #endif
       ;
 }

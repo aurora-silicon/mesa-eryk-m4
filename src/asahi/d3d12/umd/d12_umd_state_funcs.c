@@ -20,6 +20,10 @@
 #define D12_UMD_MAX_STATIC_SAMPLERS 256u
 #define D12_UMD_MAX_ROOT_DWORDS 64u
 #define D12_UMD_ROOT_SIGNATURE_FLAGS_1_0_MASK 0x7fu
+#define D12_UMD_ROOT_RANGE_FLAGS_1_0_COMPAT 0x03u
+#define D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_0_COMPAT 0x02u
+#define D12_UMD_ROOT_RANGE_FLAGS_1_1_MASK 0x0fu
+#define D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_1_MASK 0x0eu
 
 _Static_assert(D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE == 0,
                "pinned DDI descriptor-table encoding changed");
@@ -213,6 +217,7 @@ d12_umd_create_root_signature(
                .num_descriptors = source_range->NumDescriptors,
                .base_shader_register = source_range->BaseShaderRegister,
                .register_space = source_range->RegisterSpace,
+               .flags = D12_UMD_ROOT_RANGE_FLAGS_1_0_COMPAT,
                .offset_in_descriptors =
                   source_range->OffsetInDescriptorsFromTableStart,
             };
@@ -232,6 +237,8 @@ d12_umd_create_root_signature(
             source->Descriptor.ShaderRegister;
          destination->descriptor.register_space =
             source->Descriptor.RegisterSpace;
+         destination->descriptor.flags =
+            D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_0_COMPAT;
          break;
       default:
          result = E_INVALIDARG;
@@ -293,6 +300,276 @@ out:
       HeapFree(GetProcessHeap(), 0, parameters);
    return result;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+static bool
+d12_umd_one_data_volatility_flag(uint32_t flags)
+{
+   const uint32_t data_flags = flags &
+      D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_1_MASK;
+   return data_flags == 0 || (data_flags & (data_flags - 1u)) == 0;
+}
+
+static bool
+d12_umd_root_signature_arguments_valid_0013(
+   const D3D12DDIARG_CREATE_ROOT_SIGNATURE_0013 *arguments,
+   uint32_t *out_range_count)
+{
+   const D3D12DDI_ROOT_SIGNATURE_0013 *desc;
+   uint32_t range_count = 0;
+   uint32_t dword_count = 0;
+
+   if (!arguments || arguments->Version != D3D12DDI_ROOT_SIGNATURE_VERSION_1_1 ||
+       !arguments->pRootSignature_1_1 ||
+       (arguments->NodeMask != 0 && arguments->NodeMask != 1))
+      return false;
+
+   desc = arguments->pRootSignature_1_1;
+   if (desc->NumParameters > D12_UMD_MAX_ROOT_PARAMETERS ||
+       desc->NumStaticSamplers > D12_UMD_MAX_STATIC_SAMPLERS ||
+       (desc->NumParameters && !desc->pRootParameters) ||
+       (desc->NumStaticSamplers && !desc->pStaticSamplers) ||
+       ((uint32_t)desc->Flags & ~D12_UMD_ROOT_SIGNATURE_FLAGS_1_0_MASK))
+      return false;
+
+   for (UINT index = 0; index < desc->NumParameters; ++index) {
+      const D3D12DDI_ROOT_PARAMETER_0013 *parameter =
+         &desc->pRootParameters[index];
+
+      if ((uint32_t)parameter->ParameterType >
+             D3D12DDI_ROOT_PARAMETER_TYPE_UAV ||
+          (uint32_t)parameter->ShaderVisibility >
+             D3D12DDI_SHADER_VISIBILITY_PIXEL)
+         return false;
+
+      switch (parameter->ParameterType) {
+      case D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+         if ((parameter->DescriptorTable.NumDescriptorRanges &&
+              !parameter->DescriptorTable.pDescriptorRanges) ||
+             parameter->DescriptorTable.NumDescriptorRanges >
+                D12_UMD_MAX_ROOT_RANGES - range_count)
+            return false;
+         for (UINT range_index = 0;
+              range_index < parameter->DescriptorTable.NumDescriptorRanges;
+              ++range_index) {
+            const D3D12DDI_DESCRIPTOR_RANGE_0013 *range =
+               &parameter->DescriptorTable.pDescriptorRanges[range_index];
+            const uint32_t flags = (uint32_t)range->Flags;
+            if ((uint32_t)range->RangeType >
+                   D3D12DDI_DESCRIPTOR_RANGE_TYPE_SAMPLER ||
+                !range->NumDescriptors ||
+                (flags & ~D12_UMD_ROOT_RANGE_FLAGS_1_1_MASK) ||
+                !d12_umd_one_data_volatility_flag(flags) ||
+                (range->RangeType == D3D12DDI_DESCRIPTOR_RANGE_TYPE_SAMPLER &&
+                 (flags & D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_1_MASK)))
+               return false;
+         }
+         range_count += parameter->DescriptorTable.NumDescriptorRanges;
+         if (dword_count == D12_UMD_MAX_ROOT_DWORDS)
+            return false;
+         ++dword_count;
+         break;
+      case D3D12DDI_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+         if (!parameter->Constants.Num32BitValues ||
+             parameter->Constants.Num32BitValues >
+                D12_UMD_MAX_ROOT_DWORDS - dword_count)
+            return false;
+         dword_count += parameter->Constants.Num32BitValues;
+         break;
+      case D3D12DDI_ROOT_PARAMETER_TYPE_CBV:
+      case D3D12DDI_ROOT_PARAMETER_TYPE_SRV:
+      case D3D12DDI_ROOT_PARAMETER_TYPE_UAV: {
+         const uint32_t flags = (uint32_t)parameter->Descriptor.Flags;
+         if ((flags & ~D12_UMD_ROOT_DESCRIPTOR_FLAGS_1_1_MASK) ||
+             !d12_umd_one_data_volatility_flag(flags) ||
+             dword_count > D12_UMD_MAX_ROOT_DWORDS - 2u)
+            return false;
+         dword_count += 2;
+         break;
+      }
+      default:
+         return false;
+      }
+   }
+
+   for (UINT index = 0; index < desc->NumStaticSamplers; ++index) {
+      const D3D12DDI_STATIC_SAMPLER *sampler = &desc->pStaticSamplers[index];
+      if ((uint32_t)sampler->ShaderVisibility >
+             D3D12DDI_SHADER_VISIBILITY_PIXEL ||
+          (uint32_t)sampler->BorderColor >
+             D3D12DDI_STATIC_BORDER_COLOR_OPAQUE_WHITE)
+         return false;
+   }
+
+   if (out_range_count)
+      *out_range_count = range_count;
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_root_signature_size_0013(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_ROOT_SIGNATURE_0013 *arguments)
+{
+   return d12_umd_device_from_handle(handle) &&
+                 d12_umd_root_signature_arguments_valid_0013(arguments, NULL)
+             ? sizeof(struct d12_umd_root_signature)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_root_signature_0013(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_ROOT_SIGNATURE_0013 *arguments,
+   D3D12DDI_HROOTSIGNATURE root_signature_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_root_signature *root_signature;
+   struct d12_frontend_root_parameter *parameters = NULL;
+   struct d12_frontend_descriptor_range *ranges = NULL;
+   struct d12_frontend_static_sampler *samplers = NULL;
+   struct d12_frontend_root_signature_desc translated;
+   const D3D12DDI_ROOT_SIGNATURE_0013 *desc;
+   uint32_t range_count;
+   uint32_t next_range = 0;
+   HRESULT result;
+
+   if (!device || !root_signature_handle.pDrvPrivate ||
+       !d12_umd_root_signature_arguments_valid_0013(arguments, &range_count))
+      return E_INVALIDARG;
+   if (!device->backend || !device->renderer_ops ||
+       !device->renderer_ops->create_root_signature ||
+       !device->renderer_ops->destroy_root_signature)
+      return E_NOTIMPL;
+
+   desc = arguments->pRootSignature_1_1;
+   if (desc->NumParameters) {
+      parameters = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                             (SIZE_T)desc->NumParameters *
+                                sizeof(*parameters));
+   }
+   if (range_count) {
+      ranges = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                         (SIZE_T)range_count * sizeof(*ranges));
+   }
+   if (desc->NumStaticSamplers) {
+      samplers = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                           (SIZE_T)desc->NumStaticSamplers *
+                              sizeof(*samplers));
+   }
+   if ((desc->NumParameters && !parameters) || (range_count && !ranges) ||
+       (desc->NumStaticSamplers && !samplers)) {
+      result = E_OUTOFMEMORY;
+      goto out;
+   }
+
+   for (UINT index = 0; index < desc->NumParameters; ++index) {
+      const D3D12DDI_ROOT_PARAMETER_0013 *source =
+         &desc->pRootParameters[index];
+      struct d12_frontend_root_parameter *destination = &parameters[index];
+
+      destination->parameter_type = (uint32_t)source->ParameterType;
+      destination->shader_visibility = (uint32_t)source->ShaderVisibility;
+      switch (source->ParameterType) {
+      case D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+         destination->table.num_ranges =
+            source->DescriptorTable.NumDescriptorRanges;
+         destination->table.ranges = source->DescriptorTable.NumDescriptorRanges
+                                        ? &ranges[next_range]
+                                        : NULL;
+         for (UINT range_index = 0;
+              range_index < source->DescriptorTable.NumDescriptorRanges;
+              ++range_index) {
+            const D3D12DDI_DESCRIPTOR_RANGE_0013 *source_range =
+               &source->DescriptorTable.pDescriptorRanges[range_index];
+            ranges[next_range++] = (struct d12_frontend_descriptor_range){
+               .range_type = (uint32_t)source_range->RangeType,
+               .num_descriptors = source_range->NumDescriptors,
+               .base_shader_register = source_range->BaseShaderRegister,
+               .register_space = source_range->RegisterSpace,
+               .flags = (uint32_t)source_range->Flags,
+               .offset_in_descriptors =
+                  source_range->OffsetInDescriptorsFromTableStart,
+            };
+         }
+         break;
+      case D3D12DDI_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
+         destination->constants.shader_register =
+            source->Constants.ShaderRegister;
+         destination->constants.register_space = source->Constants.RegisterSpace;
+         destination->constants.num_32bit_values =
+            source->Constants.Num32BitValues;
+         break;
+      case D3D12DDI_ROOT_PARAMETER_TYPE_CBV:
+      case D3D12DDI_ROOT_PARAMETER_TYPE_SRV:
+      case D3D12DDI_ROOT_PARAMETER_TYPE_UAV:
+         destination->descriptor.shader_register =
+            source->Descriptor.ShaderRegister;
+         destination->descriptor.register_space =
+            source->Descriptor.RegisterSpace;
+         destination->descriptor.flags = (uint32_t)source->Descriptor.Flags;
+         break;
+      default:
+         result = E_INVALIDARG;
+         goto out;
+      }
+   }
+
+   for (UINT index = 0; index < desc->NumStaticSamplers; ++index) {
+      const D3D12DDI_STATIC_SAMPLER *source = &desc->pStaticSamplers[index];
+      samplers[index] = (struct d12_frontend_static_sampler){
+         .filter = (uint32_t)source->Filter,
+         .address_u = (uint32_t)source->AddressU,
+         .address_v = (uint32_t)source->AddressV,
+         .address_w = (uint32_t)source->AddressW,
+         .mip_lod_bias = source->MipLODBias,
+         .max_anisotropy = source->MaxAnisotropy,
+         .comparison_func = (uint32_t)source->ComparisonFunc,
+         .border_color = (uint32_t)source->BorderColor,
+         .min_lod = source->MinLOD,
+         .max_lod = source->MaxLOD,
+         .shader_register = source->ShaderRegister,
+         .register_space = source->RegisterSpace,
+         .shader_visibility = (uint32_t)source->ShaderVisibility,
+      };
+   }
+
+   translated = (struct d12_frontend_root_signature_desc){
+      .num_parameters = desc->NumParameters,
+      .parameters = parameters,
+      .num_static_samplers = desc->NumStaticSamplers,
+      .static_samplers = samplers,
+      .flags = (uint32_t)desc->Flags,
+   };
+   root_signature = root_signature_handle.pDrvPrivate;
+   memset(root_signature, 0, sizeof(*root_signature));
+   result = device->renderer_ops->create_root_signature(
+      device->backend, &translated, &root_signature->backend);
+   result = d12_umd_renderer_object_result(
+      result, &root_signature->backend,
+      device->renderer_ops->destroy_root_signature);
+   if (FAILED(result))
+      goto out;
+
+   root_signature->signature = D12_UMD_ROOT_SIGNATURE_SIGNATURE;
+   root_signature->device = device;
+   root_signature->desc = translated;
+   root_signature->ranges = ranges;
+   parameters = NULL;
+   ranges = NULL;
+   samplers = NULL;
+   result = S_OK;
+
+out:
+   if (samplers)
+      HeapFree(GetProcessHeap(), 0, samplers);
+   if (ranges)
+      HeapFree(GetProcessHeap(), 0, ranges);
+   if (parameters)
+      HeapFree(GetProcessHeap(), 0, parameters);
+   return result;
+}
+#endif
 
 static void APIENTRY
 d12_umd_destroy_root_signature(D3D12DDI_HDEVICE handle,
@@ -521,6 +798,18 @@ d12_umd_install_state_device_functions(
    table->pfnCreateRootSignature = d12_umd_create_root_signature;
    table->pfnDestroyRootSignature = d12_umd_destroy_root_signature;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+void
+d12_umd_install_state_device_functions_0013(
+   D3D12DDI_DEVICE_FUNCS_CORE_0013 *table)
+{
+   table->pfnCalcPrivateRootSignatureSize =
+      d12_umd_calc_private_root_signature_size_0013;
+   table->pfnCreateRootSignature = d12_umd_create_root_signature_0013;
+   table->pfnDestroyRootSignature = d12_umd_destroy_root_signature;
+}
+#endif
 
 void
 d12_umd_install_state_command_list_functions(

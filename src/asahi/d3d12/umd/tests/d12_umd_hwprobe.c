@@ -124,8 +124,8 @@ wmain(int argc, wchar_t **argv)
             .pPrivateDriverData = &runtime_adapter.identity,
             .PrivateDriverDataSize = sizeof(runtime_adapter.identity),
          };
-         UINT32 version_count = 3;
-         UINT64 versions[3] = {0};
+         UINT32 version_count = 4;
+         UINT64 versions[4] = {0};
 
          status = D3DKMTQueryAdapterInfo(&identity_query);
          if (status < 0 ||
@@ -144,9 +144,10 @@ wmain(int argc, wchar_t **argv)
          if (open_result != S_OK ||
 #if D12_UMD_TARGETS_WDDM21
              version_count != ARRAYSIZE(versions) ||
-             versions[0] != D3D12DDI_SUPPORTED_0011 ||
-             versions[1] != D3D12DDI_SUPPORTED_0010 ||
-             versions[2] != D3D12DDI_SUPPORTED_0003) {
+             versions[0] != D3D12DDI_SUPPORTED_0013 ||
+             versions[1] != D3D12DDI_SUPPORTED_0011 ||
+             versions[2] != D3D12DDI_SUPPORTED_0010 ||
+             versions[3] != D3D12DDI_SUPPORTED_0003) {
 #else
              version_count != 1 ||
              versions[0] != D3D12DDI_SUPPORTED_0003) {
