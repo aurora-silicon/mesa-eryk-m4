@@ -343,6 +343,12 @@ the runtime callback returns `E_PENDING`. WDDM 2.1 uses
 maps enum reclaim results back to original pageable objects and returns the
 real paging fence and wait mask. Tier-1 sparse mappings use the same paging
 queue/GPUVA ownership instead of a private memory path.
+
+Queue and fence construction is transactional across the renderer seam. The
+DDI requires paired create/destroy operations before calling the renderer,
+destroys an object returned alongside a failure, rejects success without an
+object, balances every retained fence-placement mapping, and publishes the
+runtime signature/list linkage only after all validation succeeds.
 The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
 
 ### Performance and WDDM memory-model invariants

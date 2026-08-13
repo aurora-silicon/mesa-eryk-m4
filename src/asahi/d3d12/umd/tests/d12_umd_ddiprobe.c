@@ -99,6 +99,8 @@ static struct d12_umd_resource_private saved_resource_private;
 #define TEST_REUSE_GPU_VA UINT64_C(0x4400010000)
 #define TEST_REUSED_GPU_VA UINT64_C(0x4400020000)
 #define TEST_REUSE_ALLOCATION ((D3DKMT_HANDLE)0xaf00)
+#define TEST_TRANSACTION_QUEUE ((void *)(uintptr_t)0xb100)
+#define TEST_TRANSACTION_FENCE ((void *)(uintptr_t)0xb200)
 
 static unsigned sparse_create_calls;
 static unsigned sparse_destroy_calls;
@@ -111,6 +113,73 @@ static bool reused_create_null;
 static bool reused_expect_row_major;
 static bool reused_allocation_info_fail;
 static uint64_t reused_allocation_info_size = UINT64_C(0x10000);
+static unsigned transaction_queue_create_calls;
+static unsigned transaction_queue_destroy_calls;
+static unsigned transaction_fence_create_calls;
+static unsigned transaction_fence_destroy_calls;
+static HRESULT transaction_queue_result;
+static HRESULT transaction_fence_result;
+static void *transaction_queue_output;
+static void *transaction_fence_output;
+
+static HRESULT
+test_transaction_create_queue(void *device,
+                              enum d12_umd_renderer_command_type type,
+                              void **out_queue)
+{
+   if (device != TEST_BLT_DEVICE ||
+       type != D12_UMD_RENDERER_COMMAND_DIRECT || !out_queue)
+      return E_INVALIDARG;
+   ++transaction_queue_create_calls;
+   *out_queue = transaction_queue_output;
+   return transaction_queue_result;
+}
+
+static void
+test_transaction_destroy_queue(void *queue)
+{
+   if (queue == TEST_TRANSACTION_QUEUE)
+      ++transaction_queue_destroy_calls;
+}
+
+static HRESULT
+test_transaction_create_fence(
+   void *device, uint32_t count,
+   const struct d12_frontend_fence_placement *placements, void **out_fence)
+{
+   if (device != TEST_BLT_DEVICE || count != 1 || !placements ||
+       !out_fence ||
+       placements[0].current_gpu_address != TEST_RESOURCE_GPU_VA ||
+       placements[0].monitored_gpu_address !=
+          TEST_RESOURCE_GPU_VA + sizeof(uint64_t) ||
+       placements[0].current_cpu_address !=
+          (volatile uint64_t *)(void *)mapped_heap ||
+       placements[0].flags != D3D12DDI_FENCE_FLAG_BOTTOM_OF_PIPE)
+      return E_INVALIDARG;
+   ++transaction_fence_create_calls;
+   *out_fence = transaction_fence_output;
+   return transaction_fence_result;
+}
+
+static void
+test_transaction_destroy_fence(void *fence)
+{
+   if (fence == TEST_TRANSACTION_FENCE)
+      ++transaction_fence_destroy_calls;
+}
+
+static const struct d12_umd_renderer_ops test_transaction_renderer_ops = {
+   .create_command_queue = test_transaction_create_queue,
+   .destroy_command_queue = test_transaction_destroy_queue,
+   .create_fence = test_transaction_create_fence,
+   .destroy_fence = test_transaction_destroy_fence,
+};
+
+static const struct d12_umd_renderer_ops
+   test_incomplete_transaction_renderer_ops = {
+      .create_command_queue = test_transaction_create_queue,
+      .create_fence = test_transaction_create_fence,
+   };
 
 static HRESULT
 test_sparse_create_reserved(
@@ -2096,6 +2165,83 @@ wmain(int argc, wchar_t **argv)
          struct d12_device *saved_backend = private_device->backend;
          const struct d12_umd_renderer_ops *saved_renderer_ops =
             private_device->renderer_ops;
+         D3D12DDIARG_CREATECOMMANDQUEUE_0001 queue_arguments = {
+            .hRTCommandQueue = {.handle = TEST_RT_QUEUE},
+            .QueueFlags = D3D12DDI_COMMAND_QUEUE_FLAG_3D,
+            .NodeMask = 0,
+         };
+         D3D12DDI_HCOMMANDQUEUE driver_queue;
+         const SIZE_T queue_size =
+            device_table.pfnCalcPrivateCommandQueueSize(driver_device,
+                                                        &queue_arguments);
+
+         driver_queue.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, queue_size);
+         require_result(driver_queue.pDrvPrivate != NULL,
+                        "allocate transactional queue storage");
+         queue_arguments.hDrvCommandQueue = driver_queue;
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_transaction_renderer_ops;
+         transaction_queue_create_calls = 0;
+         transaction_queue_destroy_calls = 0;
+
+         transaction_queue_result = E_FAIL;
+         transaction_queue_output = TEST_TRANSACTION_QUEUE;
+         result = device_table.pfnCreateCommandQueue(driver_device,
+                                                     &queue_arguments);
+         require_result(
+            result == E_FAIL && transaction_queue_create_calls == 1 &&
+               transaction_queue_destroy_calls == 1 &&
+               private_device->queue_count == 0 &&
+               ((struct d12_umd_command_queue *)driver_queue.pDrvPrivate)
+                     ->signature == 0,
+            "rollback backend queue returned with failure");
+
+         transaction_queue_result = S_OK;
+         transaction_queue_output = NULL;
+         result = device_table.pfnCreateCommandQueue(driver_device,
+                                                     &queue_arguments);
+         require_result(
+            result == E_FAIL && transaction_queue_create_calls == 2 &&
+               transaction_queue_destroy_calls == 1 &&
+               private_device->queue_count == 0 &&
+               ((struct d12_umd_command_queue *)driver_queue.pDrvPrivate)
+                     ->signature == 0,
+            "reject backend queue success without object");
+
+         private_device->renderer_ops =
+            &test_incomplete_transaction_renderer_ops;
+         transaction_queue_output = TEST_TRANSACTION_QUEUE;
+         result = device_table.pfnCreateCommandQueue(driver_device,
+                                                     &queue_arguments);
+         require_result(
+            result == E_NOTIMPL && transaction_queue_create_calls == 2 &&
+               transaction_queue_destroy_calls == 1 &&
+               private_device->queue_count == 0,
+            "require symmetric backend queue destruction");
+
+         private_device->renderer_ops = &test_transaction_renderer_ops;
+         result = device_table.pfnCreateCommandQueue(driver_device,
+                                                     &queue_arguments);
+         require_result(
+            result == S_OK && transaction_queue_create_calls == 3 &&
+               private_device->queue_count == 1,
+            "create transactional backend queue");
+         device_table.pfnDestroyCommandQueue(driver_device, driver_queue);
+         require_result(transaction_queue_destroy_calls == 2 &&
+                           private_device->queue_count == 0,
+                        "destroy transactional backend queue");
+
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
+         HeapFree(GetProcessHeap(), 0, driver_queue.pDrvPrivate);
+      }
+
+      {
+         struct d12_umd_device *private_device = driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
          const D3D12DDIARG_CREATERESOURCE_0003 resource_arguments = {
             .ResourceType = D3D12DDI_RT_TEXTURE2D,
             .Width = 1024,
@@ -3253,6 +3399,11 @@ wmain(int argc, wchar_t **argv)
          require_result(unlock_calls == 1, "UnmapHeap Unlock2 callback");
 
          {
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
+            struct d12_device *saved_backend = private_device->backend;
+            const struct d12_umd_renderer_ops *saved_renderer_ops =
+               private_device->renderer_ops;
             D3D12DDI_FENCE placement = {
                .FenceValue = {
                   .BaseAddress = TEST_RESOURCE_GPU_VA,
@@ -3267,6 +3418,8 @@ wmain(int argc, wchar_t **argv)
                .Fences = &placement,
             };
             D3D12DDI_HFENCE driver_fence;
+            unsigned mapping_lock_base;
+            unsigned mapping_unlock_base;
             const SIZE_T fence_size = device_table.pfnCalcPrivateFenceSize(
                driver_device, &fence_arguments);
 
@@ -3279,12 +3432,75 @@ wmain(int argc, wchar_t **argv)
                driver_device, driver_fence, &fence_arguments);
             require_result(result == E_NOTIMPL,
                            "standalone fence has no renderer");
-            HeapFree(GetProcessHeap(), 0, driver_fence.pDrvPrivate);
+
+            private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+            private_device->renderer_ops = &test_transaction_renderer_ops;
+            transaction_fence_create_calls = 0;
+            transaction_fence_destroy_calls = 0;
+            mapping_lock_base = lock_calls;
+            mapping_unlock_base = unlock_calls;
+
+            transaction_fence_result = E_FAIL;
+            transaction_fence_output = TEST_TRANSACTION_FENCE;
+            result = device_table.pfnCreateFence(
+               driver_device, driver_fence, &fence_arguments);
+            require_result(
+               result == E_FAIL && transaction_fence_create_calls == 1 &&
+                  transaction_fence_destroy_calls == 1 &&
+                  lock_calls == mapping_lock_base + 1 &&
+                  unlock_calls == mapping_unlock_base + 1 &&
+                  ((struct d12_umd_fence *)driver_fence.pDrvPrivate)
+                        ->signature == 0,
+               "rollback backend fence returned with failure");
+
+            transaction_fence_result = S_OK;
+            transaction_fence_output = NULL;
+            result = device_table.pfnCreateFence(
+               driver_device, driver_fence, &fence_arguments);
+            require_result(
+               result == E_FAIL && transaction_fence_create_calls == 2 &&
+                  transaction_fence_destroy_calls == 1 &&
+                  lock_calls == mapping_lock_base + 2 &&
+                  unlock_calls == mapping_unlock_base + 2 &&
+                  ((struct d12_umd_fence *)driver_fence.pDrvPrivate)
+                        ->signature == 0,
+               "reject backend fence success without object");
+
+            private_device->renderer_ops =
+               &test_incomplete_transaction_renderer_ops;
+            transaction_fence_output = TEST_TRANSACTION_FENCE;
+            result = device_table.pfnCreateFence(
+               driver_device, driver_fence, &fence_arguments);
+            require_result(
+               result == E_NOTIMPL &&
+                  transaction_fence_create_calls == 2 &&
+                  transaction_fence_destroy_calls == 1 &&
+                  lock_calls == mapping_lock_base + 2 &&
+                  unlock_calls == mapping_unlock_base + 2,
+               "require symmetric backend fence destruction");
+
+            private_device->renderer_ops = &test_transaction_renderer_ops;
+            result = device_table.pfnCreateFence(
+               driver_device, driver_fence, &fence_arguments);
+            require_result(
+               result == S_OK && transaction_fence_create_calls == 3 &&
+                  lock_calls == mapping_lock_base + 3 &&
+                  unlock_calls == mapping_unlock_base + 2,
+               "create transactional backend fence");
+            device_table.pfnDestroyFence(driver_device, driver_fence);
+            require_result(
+               transaction_fence_destroy_calls == 2 &&
+                  unlock_calls == mapping_unlock_base + 3,
+               "destroy transactional backend fence");
+
+            private_device->renderer_ops = saved_renderer_ops;
+            private_device->backend = saved_backend;
 
             fence_arguments.FenceCount = 2;
             require_result(device_table.pfnCalcPrivateFenceSize(
                               driver_device, &fence_arguments) == 0,
                            "reject unsupported multi-adapter fence");
+            HeapFree(GetProcessHeap(), 0, driver_fence.pDrvPrivate);
          }
 
          {

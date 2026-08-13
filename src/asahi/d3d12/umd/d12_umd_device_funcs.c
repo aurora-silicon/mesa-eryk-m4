@@ -346,10 +346,22 @@ d12_umd_create_command_queue(
 
    AcquireSRWLockExclusive(&device->queue_lock);
    reserve_usc = !device->backend && device->queue_count == 0;
-   if (device->backend && device->renderer_ops &&
-       device->renderer_ops->create_command_queue) {
-      result = device->renderer_ops->create_command_queue(
-         device->backend, type, &queue->backend);
+   if (device->backend) {
+      if (!device->renderer_ops ||
+          !device->renderer_ops->create_command_queue ||
+          !device->renderer_ops->destroy_command_queue) {
+         result = E_NOTIMPL;
+      } else {
+         result = device->renderer_ops->create_command_queue(
+            device->backend, type, &queue->backend);
+         if (FAILED(result) || !queue->backend) {
+            if (queue->backend)
+               device->renderer_ops->destroy_command_queue(queue->backend);
+            queue->backend = NULL;
+            if (SUCCEEDED(result))
+               result = E_FAIL;
+         }
+      }
    } else {
       result = d12_umd_queue_runtime_create(
          &device->core_callbacks, &device->kmt, arguments->hRTCommandQueue,
@@ -373,6 +385,8 @@ d12_umd_create_command_queue(
       device->queues = queue;
    }
    ReleaseSRWLockExclusive(&device->queue_lock);
+   if (FAILED(result))
+      SecureZeroMemory(queue, sizeof(*queue));
    return result;
 }
 
@@ -1685,7 +1699,8 @@ d12_umd_create_fence(D3D12DDI_HDEVICE handle, D3D12DDI_HFENCE fence_handle,
    if (!device || !fence || !d12_umd_fence_arguments_valid(arguments))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_fence)
+       !device->renderer_ops->create_fence ||
+       !device->renderer_ops->destroy_fence)
       return E_NOTIMPL;
 
    memset(fence, 0, offsetof(struct d12_umd_fence, entries) +
@@ -1708,7 +1723,12 @@ d12_umd_create_fence(D3D12DDI_HDEVICE handle, D3D12DDI_HFENCE fence_handle,
    result = device->renderer_ops->create_fence(
       device->backend, fence->count, &fence->entries[0].placement,
       &fence->backend);
-   if (FAILED(result)) {
+   if (FAILED(result) || !fence->backend) {
+      if (fence->backend)
+         device->renderer_ops->destroy_fence(fence->backend);
+      fence->backend = NULL;
+      if (SUCCEEDED(result))
+         result = E_FAIL;
       (void)d12_umd_heap_release_mapping(fence->entries[0].current_heap);
       goto fail;
    }
