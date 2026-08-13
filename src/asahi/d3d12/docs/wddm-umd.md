@@ -91,26 +91,31 @@ official DDI pages are:
 
 | layer | pinned/implemented value | meaning |
 |---|---:|---|
-| AppleAgxWddm DXGK KMD interface | `0x5023` | `DXGKDDI_INTERFACE_VERSION_WDDM2_0`, asserted by the KMD. |
-| KMD capability result | `DXGKDDI_WDDMv2` | The adapter currently reports WDDM 2.0, GPU MMU, GPUVA, one node and coherent UMA. |
-| UMD callback-layout define | `0x5002` | `D3D_UMD_INTERFACE_VERSION_WDDM2_0`; exposes the WDDM 2.0 runtime callback members used by D3D12. |
+| AppleAgxWddm DXGK KMD interface | default `0x5023`; isolated branch `0x6003` | The shipping/dev KMD remains WDDM 2.0. `codex/wddm21-dxil` in the separate `AuroraSilicon-wddm21` worktree pins the WDK 26100.6584 WDDM 2.1 interface and is not merged into dev. |
+| KMD capability result | default `DXGKDDI_WDDMv2`; isolated `DXGKDDI_WDDMv2_1` (`0x2100`) | Both retain GPU MMU, GPUVA, one node and coherent UMA. The 2.1 branch also registers allocation-property validation and packages the native D3D12 UMD. |
+| UMD callback-layout define | `0x5002` or `0x6003` | Meson `-Dasahi-d3d12-wddm-version=2.0|2.1` and standalone `D12_UMD_WDDM_TARGET=20|21` select exact callback/DXGI layouts. 2.0 remains the default. |
 | First complete D3D12 DDI target | interface `0x000c0002`, build `8` | `D3D12DDI_SUPPORTED_0003`, encoded as `0x000c000200080000`. |
 | Release 1 pipeline-library target | interface `0x000c000a`, build `0` | `D3D12DDI_SUPPORTED_0010`, encoded as `0x000c000a00000000`; the 91-slot core table and all six library DDIs are implemented. |
 | Release 1 Shader Model target | interface `0x000c000a`, build `1` | `D3D12DDI_SUPPORTED_0011`, encoded as `0x000c000a00010000`; reports released SM 6.0 and SM 5.1. |
 | Latest revision in pinned header | interface R8 `0x000c0050`, build `110` | `D3D12DDI_SUPPORTED_0110`, encoded as `0x000c0050006e0000`. It is a header ceiling, not an implemented claim. |
 
 The D3D12 core DDI revision and WDDM/DXGK interface are separate negotiations.
-Raising AppleAgxWddm above WDDM 2.0 is not a prerequisite for the baseline
-native D3D12 path. Release 1 is now a separate, complete UMD negotiation path:
-`GetSupportedVersions` returns `0011`, `0010`, then `0003`, and table size
-selects the exact 91- or 89-slot layout. Microsoft classifies DXIL, SM 6.0 and
-PSO libraries as WDDM 2.1 features, however, and requires a driver claiming a
-WDDM 2.1 capability to satisfy that model's mandatory KMD requirements. The
-current AppleAgxWddm KMD still asserts `0x5023`/WDDM 2.0. Therefore Release 1
-is build- and ABI-ready, but runtime selection is a coordinated KMD-model gate;
-it is not evidence that changing only the INF or a version number is safe.
-Later DDI values such as `0110` remain unlisted until their exact tables and
-caps are implemented.
+WDDM 2.0 advertises only baseline `0003`; it cannot accidentally negotiate
+the DXIL-era tables. The isolated WDDM 2.1 build advertises `0011`, `0010`,
+then `0003`, and table size selects the exact 91- or 89-slot layout. This split
+is required because Microsoft classifies DXIL, SM 6.0 and PSO libraries as
+WDDM 2.1 features. The 2.1 KMD branch reports `0x2100`, registers a real
+`DxgkDdiValidateUpdateAllocationProperty` policy, uses DriverStore paths and
+ships an atomic native-DX12 registration. Offer2/Reclaim3 and DXGI 1.5 are
+selected only in the matching UMD build. Later DDI values such as `0110`
+remain unlisted until their exact tables and caps are implemented.
+
+WDDM 2.1 also requires a package-wide `AA.BB.CCCCC.DDDDD` file version.
+The isolated package pins `21.17.240.0`: 21 is WDDM 2.1 and 17 is the highest
+reported D3D feature level, 11.0. The INF `DriverVer`, KMD SYS and both
+registered UMD DLLs carry that exact fixed and string `VERSIONINFO`. Each
+build validates its own PE, and the atomic package builder and signed-package
+verifier reject any mismatch before catalog or install work.
 
 ## 3. Entry and adapter ABI
 
@@ -166,8 +171,10 @@ code sizes and compiler statistics; ordinary PSO creation pays no disassembly
 cost. The Release 1 device table contains 91 slots because its six pipeline-
 library functions replace the four baseline serialized-object functions; all
 91 are populated with correctly typed entrypoints. The command-list
-`CopyTiles` and queue tile-mapping entries remain explicit traps while
-`TiledResourcesTier` is honestly reported as zero.
+`CopyTiles` and queue `UpdateTileMappings`/`CopyTileMappings` entries translate
+reserved-resource mappings to the shared renderer. Tier-1 mip packing,
+null/unmap ranges, reuse-single-tile and skip ranges are bounds-checked, and
+`TiledResourcesTier` is reported as one.
 
 ## 4. Private object and resource ABI
 
@@ -222,7 +229,7 @@ Heap/resource creation additionally has two private ABIs:
   from `agxw_contract.h`, passed to `pfnCreateAllocationCb`; it is not a new
   IOCTL or escape channel.
 
-GPU virtual addresses are reserved/mapped/freed through the WDDM 2.0 members
+GPU virtual addresses are reserved/mapped/freed through the WDDM 2.x members
 of `D3DDDI_DEVICECALLBACKS`.  AGX native 16 KiB pages and the WDDM 64 KiB
 reservation granularity remain separate, as already encoded and host-tested
 in `agx_d3dkmt_core`.  Resource layout selection remains `ail`; WDDM supplies
@@ -290,8 +297,11 @@ resident renderer-internal allocations. Mixed requests retain an allocation-
 to-original-object map, so Reclaim propagates discarded-content results to
 the correct object while leaving nonallocation objects nondiscarded. Empty
 requests are valid no-ops. An asynchronous paging fence is returned whenever
-the runtime callback returns `E_PENDING`. Sparse tile mappings remain gated
-and the driver advertises tiled-resources tier zero until they are complete.
+the runtime callback returns `E_PENDING`. WDDM 2.1 uses
+`pfnOfferAllocations2Cb`/`pfnReclaimAllocations3Cb`, preserves AllowDecommit,
+maps enum reclaim results back to original pageable objects and returns the
+real paging fence and wait mask. Tier-1 sparse mappings use the same paging
+queue/GPUVA ownership instead of a private memory path.
 The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
 
 ### Performance and WDDM memory-model invariants
@@ -319,8 +329,9 @@ Presentation has two connected DDI surfaces:
 
 - the core table reports present-private-data size and the command-list table
   implements `pfnPresent`, producing `D3D12DDI_PRESENT_0003`; and
-- `FillDDITable(D3D12DDI_TABLE_TYPE_DXGI, ...)` fills the versioned
-  21-slot WDDM 2.0 `DXGI1_4_DDI_BASE_FUNCTIONS` surface. Its
+- `FillDDITable(D3D12DDI_TABLE_TYPE_DXGI, ...)` fills the exact 21-slot
+  WDDM 2.0 `DXGI1_4_DDI_BASE_FUNCTIONS` or 22-slot WDDM 2.1
+  `DXGI1_5_DDI_BASE_FUNCTIONS` surface. Its
   `DXGI_DDI_BASE_ARGS` callback-table pointer is retained (not individual
   callback addresses), including `pfnPresentCb`; the two SDK-reserved slots
   remain NULL.
@@ -341,10 +352,16 @@ extended. The base table also translates DXGI priority/residency queries to
 batched WDDM callbacks. Residency aggregation returns the exact legacy Direct3D success
 status (`S_OK`, `S_RESIDENT_IN_SHARED_MEMORY`, or `S_NOT_RESIDENT`) required
 by the DXGI DDI while also filling every per-resource status. DXGI
-Offer/Reclaim validates each driver resource, translates it
-to its VidMm allocation and calls the matching WDDM 1.2 allocation callback;
-Reclaim forwards the optional per-resource discarded-content results without
-inventing an asynchronous fence that the legacy DXGI ABI cannot return.
+Offer/Reclaim validates each driver resource and translates it to its VidMm
+allocation. WDDM 2.0 uses the legacy allocation callbacks. WDDM 2.1
+`OfferResources1`/`ReclaimResources1` use Offer2/Reclaim3, preserve the
+decommit flag and the full reclaim-result enum. Because the DXGI 1.5 reclaim
+DDI has no paging-fence output, the frontend consumes the Reclaim3 fence before
+returning: the winsys first checks the CPU-visible paging-fence mapping and
+uses the existing kernel fence wait only when needed. This is a cold reclaim
+path and never spins or enters draw/submit hot paths. A null DXGI results array
+uses bounded internal scratch storage while satisfying Reclaim3's required
+output-array ABI.
 `TrimResidencySet` releases only zero-reference renderer-internal BO cache
 entries: periodic requests use cache generations to drop allocations not
 referenced since the previous request, restart advances that baseline, and
@@ -385,32 +402,45 @@ D3D12-through-D3D11 or DXVK interop is part of this path. Triton remains in the
 DX9/DX10/DX11 slots during bring-up and the native DLL occupies only the
 D3D12 `KMTUMDVERSION` slot.
 
+WDDM 2.1 present batching adds `PFND3DDDI_SYNCTOKEN` entrypoints to the
+D3D10/11 device table and `PFND3DDDI_SYNCTOKENCB` callbacks to
+`D3DDDI_DEVICECALLBACKS`. The pinned `d3d12umddi.h` core and DXGI tables do
+not expose D3D12 Acquire/ReleaseResource entrypoints, so the D3D12 adapter
+must not manufacture them or reinterpret a D3D10/11 table. The callback
+layout and 24-byte `D3DDDICB_SYNCTOKEN` width are compile-time asserted for
+the WDDM 2.1 build. Functional sync-token forwarding in the separately owned
+legacy Triton D3D11 frontend remains a package-level compatibility gate; it
+does not alter the native D3D12 ABI or command ordering.
+
 ## 7. Compileable delivery gates
 
 | gate | success criterion | state |
 |---|---|---|
 | A. adapter | ARM64 DLL loads, `OpenAdapter12` validates Apple identity, returns exact adapter table/version/caps | implemented, including conservative texture-layout discovery, and statically/host tested |
-| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; runtime error callback used on void-call failure | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/loader-probe tested; command-list runtime table handles are retained/rebound; DXGI is gate G |
+| B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; runtime error callback used on void-call failure | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
 | C. heaps/resources | allocation-size checks, committed/placed resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, GPUVA, map, private open ABI and allocation/subresource queries; foreign-UMD resource metadata pending |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, execute aggregation and placement-fence GPU signal/ordered wait implemented; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including discard remapping, optional discard output and CPU-only core objects; device removal and pressure validation pending |
-| G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI table, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
-| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 builds `0010`/`0011` implemented: 91-slot table, pipeline libraries, DXIL import and SM 6.0 caps are statically/host tested; coordinated WDDM 2.1 KMD model and hardware conformance remain pending |
-| I. packaging | register native ARM64 D3D12 slot alongside D3D11, then make it default after hardware probe | conflict-free stage tool implements the fourth D3D12 slot; signed rev-236 r6 package is self-contained and passes Aurora's INF, ARM64 PE/import/export, clean WinPE load, manifest and catalog-digest verifier; target install pending exclusive hardware access |
+| G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI 1.4 and WDDM 2.1 22-slot DXGI 1.5 tables, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
+| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`, the 91-slot table, pipeline libraries, DXIL import and SM 6.0 caps are exposed only by the WDDM 2.1 build; the isolated 0x6003/0x2100 KMD interface, allocation-property DDI and dual UMD layouts compile and pass host ABI tests; Windows runtime/hardware conformance remains pending |
+| I. packaging | register native ARM64 D3D12 slot alongside D3D11, then make it default after hardware probe | the isolated WDDM 2.1 worktree atomically copies/registers the self-contained native ARM64 DLL at D3D12 index 3, requires it during packaging/catalog generation, and enforces DriverStore paths, `FeatureScore = D1`, and exact `21.17.240.0` INF/SYS/UMD PE versions; source/package gates pass, but no current package was signed, cataloged, installed or clean-loaded in this host-only pass |
 
 ### Recorded gates before a production claim
 
 - No hardware command has been sent from this branch while the shared Windows
   target is under concurrent bring-up. `d12_umd_runtime_probe.exe` is the first
   authorized runtime/GPU validation and must be run only by the hardware owner.
-- `0003` remains the current WDDM 2.0-compatible hardware baseline. Release 1
-  `0010`/`0011` has complete UMD tables and caps, but its DXIL/SM6/PSO-library
-  selection must be validated with a coordinated WDDM 2.1 KMD target. A higher
-  WDDM number by itself does not implement the mandatory KMD contracts.
-- Tiled/sparse resources, unsupported ExecuteIndirect mutable-state forms and
-  foreign-UMD shared-
-  resource metadata are not advertised as complete. Baseline `0003` PSO
+- `0003` remains the WDDM 2.0-compatible hardware baseline. Release 1
+  `0010`/`0011` now has matching UMD tables/caps and an isolated WDDM 2.1 KMD
+  source/package target, but that pair still requires Windows runtime and
+  hardware validation. A higher WDDM number by itself does not prove the
+  mandatory KMD contracts.
+- Tier-1 tiled/sparse resources are implemented across reserved resources,
+  mip packing, `UpdateTileMappings`, `CopyTileMappings` and `CopyTiles` using
+  the shared GPUVA/paging backend. Unsupported ExecuteIndirect mutable-state
+  forms and foreign-UMD shared-resource metadata are not advertised as
+  complete. Baseline `0003` PSO
   object serialization, Release 1 indexed pipeline libraries and native AGX
   shader-disassembly XML are implemented. Persistent library blobs currently
   warm the existing compiler/cache on first load instead of embedding portable
@@ -419,6 +449,16 @@ D3D12 `KMTUMDVERSION` slot.
 - Real DXGI windowed/fullscreen presentation, residency pressure, TDR/device
   removal, ETW/GPUView traces and application benchmarks remain mandatory
   before performance or production-readiness claims.
+- Before any Windows test, the isolated `codex/wddm21-dxil` worktree must be
+  rebased or merged onto the active branch's newer hardware-verified KMD
+  paging/coherency work. This branch intentionally changes only the frontend-
+  required WDDM 2.1 interface/capability/private-contract and packaging
+  surfaces; it does not copy or modify the protected paging, submit or
+  completion implementations.
+- The legacy Triton wrapper currently builds and its PE version validates, but
+  its complete aggregate build is blocked locally by the absent external
+  renamed-DXVK `BUILD-MANIFEST.txt`. This is a source-input/package assembly
+  prerequisite, not a native D3D12 compile failure.
 
 ## 8. Reproduction
 
@@ -426,8 +466,17 @@ From the Mesa worktree root:
 
 ```sh
 src/asahi/d3d12/umd/run-host-tests.sh
-src/asahi/d3d12/umd/build-windows-arm64.sh
-src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
+D12_UMD_WDDM_TARGET=20 D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm20 \
+  src/asahi/d3d12/umd/build-windows-arm64.sh
+D12_UMD_WDDM_TARGET=21 D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm21 \
+  src/asahi/d3d12/umd/build-windows-arm64.sh
+D12_UMD_WDDM_TARGET=20 \
+  D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared \
+  src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
+D12_UMD_WDDM_TARGET=21 \
+  D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared-wddm21 \
+  AGX_WDDM_CONTRACT_CORE=../AuroraSilicon-wddm21/drivers/AppleAgxWddm/core \
+  src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
 ```
 
 The standalone UMD and Aurora-owned source use `-Wall -Wextra -Werror` plus
@@ -438,8 +487,15 @@ project warning policy. The WDK staging directory is a system include path
 because Microsoft's published C headers intentionally use MSVC extensions.
 `check_pe.py` audits PE machine type, exact exports and every imported DLL,
 rejecting non-system dependencies such as MinGW `libwinpthread-1.dll`.
+It also rejects a missing or mismatched fixed/string file version and original
+filename, closing the WDDM 2.1 INF/SYS/UMD version-consistency requirement at
+build time rather than deferring it to HLK.
+The isolated Aurora package builder repeats the ARM64/exact-export/system-only
+import audit on the supplied UMD before signing, and the signed-package
+verifier repeats it on the exact cataloged bytes. A developer-only MinGW
+runtime sidecar therefore cannot re-enter through package substitution.
 
-`tools/run-d12-ddiprobe-qemu.sh` boots a networkless ARM64 WinPE image. It
+`tools/run-d12-ddiprobe-qemu.sh` is a networkless ARM64 WinPE harness. It
 first clean-loads and unloads the full renderer DLL, then loads the
 callback-only DLL and executes the ABI probe. This catches constructor and
 dependency failures in an environment without build-runner DLLs before any
@@ -448,17 +504,21 @@ among other table checks it proves the exact identity-rotation direction,
 fixed runtime handles, mapped-resource rejection, presentation-blit flag
 validation and empty-list semantics on Windows ARM64. Load failures include
 the numeric `GetLastError` value and `FormatMessageW` text.
+The harness was not executed in this workspace because its pinned custom QEMU,
+firmware and WinPE inputs are absent. The probe binaries compile for ARM64;
+static PE auditing is the clean-environment dependency evidence available in
+this host-only pass.
 
 The standalone build also emits Windows ARM64 loader, KMD-callback, queue,
 runtime-transport and installed-D3D12-runtime probes. The transport probe covers allocation, residency,
 paging, GPU-VA map/update, full-width context-token mapping, submit, monitored
 fence and escape fields. The full build produces both frontend DLLs from the
 same renderer archive and audits `d3d12agx_umd.dll` for the exact
-`OpenAdapter12` export set and a Windows-system-only import closure. The r5
-package is withdrawn because its UMD imported `libwinpthread-1.dll`; r6 links
-the runtime path self-contained, is catalog-signed after the final DLL is
-embedded-signed, and is the first package eligible for SSH-only target loader
-probing.
+`OpenAdapter12` export set and a Windows-system-only import closure. This
+closes the earlier `libwinpthread-1.dll` packaging failure without adding an
+unsigned sidecar. A future installable package must embed-sign the final DLL,
+regenerate/sign its catalog and pass the WinPE clean-load probe; none of those
+state-changing or Windows-execution steps was performed here.
 
 `packaging/stage_package.py` adds the full-renderer DLL to a throwaway
 AppleAgxWddm package stage, patches only D3D12 registration index 3, updates

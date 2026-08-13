@@ -58,6 +58,16 @@ extern "C" {
  * pages. Keep that distinction at the D3DKMT boundary. */
 #define AGX_D3DKMT_RESERVATION_GRANULARITY UINT64_C(0x10000)
 
+/* Mesa-internal drm_asahi_submit marker mirrored without importing Mesa's
+ * agx_device.h into this portable core. */
+#define AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE UINT32_C(0x80000000)
+
+/* Translate the frontend marker to the v3 KMD-private flags.  The D3DKMT
+ * winsys always supplies a complete read set; write completeness is opt-in
+ * only after SET_*_ATTACHMENTS have been serialised. */
+int agx_d3dkmt_submit_private_flags(uint32_t submit_flags,
+                                    uint32_t *private_flags);
+
 /*
  * Runtime policy: contract answers that may legitimately differ per adapter or
  * per contract revision, kept out of the call sites so reconciling them is a
@@ -214,6 +224,7 @@ bool agx_d3dkmt_pool_release_record(
 #define AGX_D3DKMT_BO_WRITEBACK (1u << 3)
 #define AGX_D3DKMT_BO_SHAREABLE (1u << 4)
 #define AGX_D3DKMT_BO_READONLY  (1u << 5)
+#define AGX_D3DKMT_BO_PRIMARY   (1u << 7)
 
 /* A drm_asahi_gem_bind_op with the GEM handle already resolved to D3DKMT. */
 struct agx_d3dkmt_bind {
@@ -448,6 +459,11 @@ int agx_d3dkmt_parse_identity(const void *blob, uint32_t blob_size,
  */
 uint32_t agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags);
 
+/* CPU-authored executable storage is persistent-mapped on Windows. Give it
+ * a cacheable mapping so the explicit cache-ownership handoff can publish
+ * the written bytes before the GPU executes them. */
+uint32_t agx_d3dkmt_cpu_visible_flags(uint32_t agx_bo_flags);
+
 /* enum agx_bo_flags -> D3DKMT_CREATEALLOCATIONFLAGS. */
 uint32_t agx_d3dkmt_create_flags(uint32_t agx_bo_flags);
 
@@ -461,6 +477,13 @@ uint32_t agx_d3dkmt_create_flags_external(
  * shareability remains encoded in agxw_alloc_private for the miniport.
  */
 uint32_t agx_d3dkmt_create_flags_runtime_resource(uint32_t agx_bo_flags);
+
+/* Insert a user GPU range into a sorted, overlap-free vector, coalescing both
+ * overlap and adjacency. This is shared by the Windows winsys and host ABI
+ * tests so the KMD's bounded submit-v3 read-set cannot overflow silently. */
+int agx_d3dkmt_read_range_add(struct agxw_submit_read_range *ranges,
+                              uint32_t *count, uint32_t capacity,
+                              uint64_t gpu_va, uint64_t length);
 
 #ifdef __cplusplus
 }

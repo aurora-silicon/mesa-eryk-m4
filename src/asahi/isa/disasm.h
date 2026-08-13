@@ -12,7 +12,7 @@ signed agx2_disassemble_instr(BITSET_WORD *code, FILE *fp, unsigned offset,
 static inline bool
 agx2_disassemble(uint8_t *code, size_t max_len, FILE *fp)
 {
-   int i = 0;
+   size_t i = 0;
    bool errors = false;
 
    while (i < max_len) {

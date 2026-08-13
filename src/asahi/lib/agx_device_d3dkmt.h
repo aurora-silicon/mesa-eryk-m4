@@ -97,6 +97,16 @@ void agx_d3dkmt_close_device(struct agx_device *dev);
  * and for matching against a D3D adapter. */
 struct agx_kmt_luid agx_d3dkmt_device_luid(const struct agx_device *dev);
 
+/* Return the device-lifetime paging queue created by the D3DKMT winsys. The
+ * native D3D12 DDI uses this exact WDDM object for ReclaimAllocations3; zero
+ * means the device is not a live D3DKMT device. */
+agx_kmt_handle agx_d3dkmt_device_paging_queue(const struct agx_device *dev);
+
+/* Wait until the device paging queue reaches `value`.  The D3DKMT winsys
+ * checks the CPU-visible paging-fence mapping first and enters the kernel
+ * only when the requested value has not completed yet. */
+bool agx_d3dkmt_device_wait_paging(struct agx_device *dev, uint64_t value);
+
 /* Resource-backed external memory. `handle` is an owning NT HANDLE for
  * OPAQUE_WIN32 and the zero-extended, non-owning hGlobalShare identifier for
  * OPAQUE_WIN32_KMT. Import never closes either kind. Export returns a fresh

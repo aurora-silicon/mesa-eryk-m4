@@ -281,8 +281,8 @@ print_size(FILE *fp, size_t size_B)
 static void
 print_stat(FILE *fp, struct label_stat *stat)
 {
-   const char *BOLD = "\e[1m";
-   const char *RESET = "\e[0m";
+   const char *BOLD = "\033[1m";
+   const char *RESET = "\033[0m";
 
    fprintf(fp, "%s%s%s: ", BOLD, stat->label, RESET);
    print_size(fp, stat->alloc_B);

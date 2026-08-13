@@ -15,6 +15,9 @@
 #define D12_UMD_STATUS_NO_MEMORY         ((agx_kmt_status)0xc0000017u)
 #define D12_UMD_STATUS_NOT_SUPPORTED     ((agx_kmt_status)0xc00000bbu)
 
+_Static_assert(sizeof(SIZE_T) == sizeof(uint64_t),
+               "native ARM64 cache ranges are 64-bit");
+
 static agx_kmt_status
 d12_umd_status(HRESULT result)
 {
@@ -216,6 +219,25 @@ d12_umd_unlock(void *userdata, const struct agx_kmt_unlock2 *arguments)
    };
    return d12_umd_status(transport->callbacks->pfnUnlock2Cb(
       transport->runtime_device.handle, &unlock));
+}
+
+static agx_kmt_status
+d12_umd_invalidate_cache(
+   void *userdata, const struct agx_kmt_invalidatecache *arguments)
+{
+   struct d12_umd_agx_transport *transport = userdata;
+   D3DDDICB_INVALIDATECACHE invalidate;
+
+   if (!arguments || !arguments->hAllocation || !arguments->Length)
+      return D12_UMD_STATUS_INVALID_PARAMETER;
+
+   invalidate = (D3DDDICB_INVALIDATECACHE){
+      .hAllocation = arguments->hAllocation,
+      .Offset = (SIZE_T)arguments->Offset,
+      .Length = (SIZE_T)arguments->Length,
+   };
+   return d12_umd_status(transport->callbacks->pfnInvalidateCacheCb(
+      transport->runtime_device.handle, &invalidate));
 }
 
 static agx_kmt_status
@@ -731,6 +753,7 @@ static const struct agx_d3dkmt_runtime_ops d12_umd_agx_ops = {
    .DestroyAllocation2 = d12_umd_deallocate,
    .Lock2 = d12_umd_lock,
    .Unlock2 = d12_umd_unlock,
+   .InvalidateCache = d12_umd_invalidate_cache,
    .MakeResident = d12_umd_make_resident,
    .Evict = d12_umd_evict,
    .CreatePagingQueue = d12_umd_create_paging_queue,
@@ -764,7 +787,8 @@ d12_umd_agx_transport_init(struct d12_umd_agx_transport *transport,
    if (!transport || !runtime_adapter.handle || !runtime_device.handle ||
        !callbacks || !callbacks->pfnAllocateCb ||
        !callbacks->pfnDeallocate2Cb || !callbacks->pfnLock2Cb ||
-       !callbacks->pfnUnlock2Cb || !callbacks->pfnMakeResidentCb ||
+       !callbacks->pfnUnlock2Cb || !callbacks->pfnInvalidateCacheCb ||
+       !callbacks->pfnMakeResidentCb ||
        !callbacks->pfnEvictCb || !callbacks->pfnCreatePagingQueueCb ||
        !callbacks->pfnDestroyPagingQueueCb ||
        !callbacks->pfnReserveGpuVirtualAddressCb ||

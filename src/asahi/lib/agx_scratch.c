@@ -120,7 +120,8 @@ agx_scratch_realloc(struct agx_scratch *scratch)
    scratch->header = hdr;
 
    uint64_t blocklist_gpu = scratch->buf->va->addr + blocklist_off;
-   struct agx_helper_block *blocklist_cpu = map + blocklist_off;
+   struct agx_helper_block *blocklist_cpu =
+      (struct agx_helper_block *)((uint8_t *)map + blocklist_off);
 
 #ifdef SCRATCH_DEBUG
    scratch->blocklist = blocklist_cpu;
@@ -160,7 +161,7 @@ agx_scratch_realloc(struct agx_scratch *scratch)
          uint32_t base = blocks_gpu >> AGX_ADDR_SHIFT;
          uint32_t stride = block_size_bytes >> AGX_ADDR_SHIFT;
          blocklist_cpu[sg].blocks[0] = mask | base;
-         for (int block = 1; block <= 3; block++) {
+         for (unsigned block = 1; block <= 3; block++) {
             if (block_count >= (block + 1))
                blocklist_cpu[sg].blocks[block] = 1 | (base + block * stride);
             else
@@ -175,6 +176,7 @@ agx_scratch_realloc(struct agx_scratch *scratch)
    }
    scratch->max_core_id = core_id;
    assert(num_cores == scratch->num_cores);
+   (void)num_cores;
 
    if (scratch->dev->debug & AGX_DBG_SCRATCH)
       fprintf(stderr, "New Scratch @ 0x%" PRIx64 " (size: 0x%zx)\n",
@@ -218,7 +220,7 @@ agx_scratch_debug_pre(struct agx_scratch *scratch)
    if (!scratch->buf)
       return;
 
-   for (int core = 0; core < scratch->max_core_id; core++) {
+   for (unsigned core = 0; core < scratch->max_core_id; core++) {
       assert(!scratch->header->cores[core].alloc_cur);
       scratch->header->cores[core].alloc_max = 0;
       scratch->header->cores[core].alloc_failed = 0;
@@ -235,8 +237,8 @@ agx_scratch_debug_post(struct agx_scratch *scratch)
 
    fprintf(stderr, "Scratch @ 0x%" PRIx64 "\n", scratch->buf->va->addr);
 
-   for (int core = 0; core < scratch->max_core_id; core++) {
-      fprintf(stderr, "Core %3d: max %d, failed %d, counts:", core,
+   for (unsigned core = 0; core < scratch->max_core_id; core++) {
+      fprintf(stderr, "Core %3u: max %d, failed %d, counts:", core,
               scratch->header->cores[core].alloc_max,
               scratch->header->cores[core].alloc_failed);
 

@@ -300,26 +300,54 @@ d12_umd_copy_resource(D3D12DDI_HCOMMANDLIST list_handle,
 
 static void APIENTRY
 d12_umd_copy_tiles(
-   D3D12DDI_HCOMMANDLIST list_handle, D3D12DDI_HRESOURCE resource,
+   D3D12DDI_HCOMMANDLIST list_handle, D3D12DDI_HRESOURCE resource_handle,
    const D3D12DDI_TILED_RESOURCE_COORDINATE *region_start,
    const D3D12DDI_TILE_REGION_SIZE *region_size,
-   D3D12DDI_HRESOURCE buffer, UINT64 buffer_offset,
+   D3D12DDI_HRESOURCE buffer_handle, UINT64 buffer_offset,
    D3D12DDI_TILE_COPY_FLAGS flags)
 {
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
+   struct d12_umd_resource *resource;
+   struct d12_umd_resource *buffer;
+   const UINT allowed = D3D12DDI_TILE_COPY_FLAG_NO_HAZARD |
+                        D3D12DDI_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE |
+                        D3D12DDI_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER;
 
-   (void)resource;
-   (void)region_start;
-   (void)region_size;
-   (void)buffer;
-   (void)buffer_offset;
-   (void)flags;
+   if (!d12_umd_command_list_ready(list) || !region_start || !region_size ||
+       ((UINT)flags & ~allowed) ||
+       ((flags &
+         D3D12DDI_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE) &&
+        (flags &
+         D3D12DDI_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER)) ||
+       !list->device->renderer_ops->copy_tiles) {
+      d12_umd_resource_command_error(list ? list->device : NULL,
+                                     E_INVALIDARG);
+      return;
+   }
+   resource = d12_umd_command_resource(list->device, resource_handle, false);
+   buffer = d12_umd_command_resource(list->device, buffer_handle, false);
+   if (resource == (void *)(uintptr_t)1 ||
+       buffer == (void *)(uintptr_t)1 || !resource->reserved ||
+       buffer->reserved || buffer->desc.ResourceType != D3D12DDI_RT_BUFFER) {
+      d12_umd_resource_command_error(list->device, E_INVALIDARG);
+      return;
+   }
 
-   /* TiledResourcesTier is zero. The runtime must not issue this DDI, but a
-    * stale or malformed caller must observe a device error rather than a
-    * successful-looking no-op that loses an application copy. */
-   d12_umd_resource_command_error(list ? list->device : NULL, E_NOTIMPL);
+   const struct d12_frontend_tiled_resource_coordinate start = {
+      region_start->X, region_start->Y, region_start->Z,
+      region_start->Subresource,
+   };
+   const struct d12_frontend_tile_region_size size = {
+      region_size->NumTiles, region_size->UseBox ? 1u : 0u,
+      region_size->Width,
+      region_size->Height, region_size->Depth,
+   };
+   HRESULT result = list->device->renderer_ops->copy_tiles(
+      list->backend, resource->backend, &start, &size, buffer->backend,
+      buffer_offset, (uint32_t)flags);
+   if (FAILED(result))
+      d12_umd_resource_command_error(list->device, result);
 }
 
 static bool

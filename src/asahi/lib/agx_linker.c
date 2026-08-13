@@ -149,7 +149,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
          continue;
 
       size_t sz = part->info.main_size;
-      memcpy(linked_map + offset, part->binary + part->info.main_offset, sz);
+      memcpy(linked_map + offset,
+             (const uint8_t *)part->binary + part->info.main_offset, sz);
       offset += sz;
    }
 
@@ -181,6 +182,12 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    assert(offset == size);
+
+   if (agx_bo_sync_for_device(linked->bo, 0, size)) {
+      agx_bo_unreference(dev, linked->bo);
+      linked->bo = NULL;
+      return;
+   }
 
    agx_pack(&linked->shader, USC_SHADER, cfg) {
       cfg.code = agx_usc_addr(dev, linked->bo->va->addr);

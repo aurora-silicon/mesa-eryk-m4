@@ -202,6 +202,20 @@ d12_device_runtime_trim_memory(struct d12_device *device, bool periodic,
    return S_OK;
 }
 
+uint32_t
+d12_device_runtime_paging_queue(struct d12_device *device)
+{
+   return device ? agx_d3dkmt_device_paging_queue(&device->dev) : 0;
+}
+
+HRESULT
+d12_device_runtime_wait_paging(struct d12_device *device, uint64_t value)
+{
+   if (!device)
+      return E_INVALIDARG;
+   return agx_d3dkmt_device_wait_paging(&device->dev, value) ? S_OK : E_FAIL;
+}
+
 struct d12_runtime_rotation_entry {
    struct d12_resource *resource;
    struct agx_bo *bo;
@@ -453,6 +467,128 @@ d12_device_runtime_command_queue_execute(void *queue, uint32_t count,
    if (translated != local)
       free(translated);
    return S_OK;
+}
+
+HRESULT
+d12_device_runtime_command_queue_update_tile_mappings(
+   void *queue, void *resource, uint32_t region_count,
+   const struct d12_frontend_tiled_resource_coordinate *region_starts,
+   const struct d12_frontend_tile_region_size *region_sizes, void *heap,
+   uint32_t range_count, const uint32_t *range_flags,
+   const uint32_t *heap_start_offsets, const uint32_t *range_tile_counts,
+   uint32_t flags)
+{
+   D3D12_TILED_RESOURCE_COORDINATE local_starts[16];
+   D3D12_TILE_REGION_SIZE local_sizes[16];
+   D3D12_TILE_RANGE_FLAGS local_range_flags[16];
+   D3D12_TILED_RESOURCE_COORDINATE *starts = local_starts;
+   D3D12_TILE_REGION_SIZE *sizes = local_sizes;
+   D3D12_TILE_RANGE_FLAGS *translated_flags = local_range_flags;
+   HRESULT result;
+
+   if (!queue || !resource ||
+       (flags & ~D12_FRONTEND_TILE_MAPPING_NO_HAZARD) ||
+       (region_count && !region_starts))
+      return E_INVALIDARG;
+   if (region_count > ARRAY_SIZE(local_starts)) {
+      starts = calloc(region_count, sizeof(*starts));
+      if (!starts)
+         return E_OUTOFMEMORY;
+      if (region_sizes) {
+         sizes = calloc(region_count, sizeof(*sizes));
+         if (!sizes) {
+            free(starts);
+            return E_OUTOFMEMORY;
+         }
+      }
+   }
+   if (range_count > ARRAY_SIZE(local_range_flags) && range_flags) {
+      translated_flags = calloc(range_count, sizeof(*translated_flags));
+      if (!translated_flags) {
+         if (starts != local_starts)
+            free(starts);
+         if (sizes != local_sizes)
+            free(sizes);
+         return E_OUTOFMEMORY;
+      }
+   }
+
+   for (uint32_t i = 0; i < region_count; ++i) {
+      starts[i] = (D3D12_TILED_RESOURCE_COORDINATE){
+         .X = region_starts[i].x,
+         .Y = region_starts[i].y,
+         .Z = region_starts[i].z,
+         .Subresource = region_starts[i].subresource,
+      };
+      if (region_sizes) {
+         sizes[i] = (D3D12_TILE_REGION_SIZE){
+            .NumTiles = region_sizes[i].num_tiles,
+            .UseBox = region_sizes[i].use_box,
+            .Width = region_sizes[i].width,
+            .Height = region_sizes[i].height,
+            .Depth = region_sizes[i].depth,
+         };
+      }
+   }
+   for (uint32_t i = 0; range_flags && i < range_count; ++i) {
+      if (range_flags[i] != D12_FRONTEND_TILE_RANGE_NONE &&
+          range_flags[i] != D12_FRONTEND_TILE_RANGE_NULL &&
+          range_flags[i] != D12_FRONTEND_TILE_RANGE_SKIP &&
+          range_flags[i] != D12_FRONTEND_TILE_RANGE_REUSE_SINGLE_TILE) {
+         result = E_INVALIDARG;
+         goto out;
+      }
+      translated_flags[i] = (D3D12_TILE_RANGE_FLAGS)range_flags[i];
+   }
+
+   result = d12_queue_update_tile_mappings(
+      d12_queue_from_iface((ID3D12CommandQueue *)queue),
+      d12_resource_from_iface((ID3D12Resource *)resource), region_count,
+      starts, region_sizes ? sizes : NULL,
+      heap ? d12_memheap_from_iface((ID3D12Heap *)heap) : NULL, range_count,
+      range_flags ? translated_flags : NULL, heap_start_offsets,
+      range_tile_counts, (D3D12_TILE_MAPPING_FLAGS)flags);
+
+out:
+   if (starts != local_starts)
+      free(starts);
+   if (sizes != local_sizes)
+      free(sizes);
+   if (translated_flags != local_range_flags)
+      free(translated_flags);
+   return result;
+}
+
+HRESULT
+d12_device_runtime_command_queue_copy_tile_mappings(
+   void *queue, void *destination_resource,
+   const struct d12_frontend_tiled_resource_coordinate *destination_start,
+   void *source_resource,
+   const struct d12_frontend_tiled_resource_coordinate *source_start,
+   const struct d12_frontend_tile_region_size *region_size, uint32_t flags)
+{
+   if (!queue || !destination_resource || !destination_start ||
+       !source_resource || !source_start || !region_size ||
+       (flags & ~D12_FRONTEND_TILE_MAPPING_NO_HAZARD))
+      return E_INVALIDARG;
+   const D3D12_TILED_RESOURCE_COORDINATE destination = {
+      destination_start->x, destination_start->y, destination_start->z,
+      destination_start->subresource,
+   };
+   const D3D12_TILED_RESOURCE_COORDINATE source = {
+      source_start->x, source_start->y, source_start->z,
+      source_start->subresource,
+   };
+   const D3D12_TILE_REGION_SIZE size = {
+      region_size->num_tiles, region_size->use_box, region_size->width,
+      region_size->height, region_size->depth,
+   };
+   return d12_queue_copy_tile_mappings(
+      d12_queue_from_iface((ID3D12CommandQueue *)queue),
+      d12_resource_from_iface((ID3D12Resource *)destination_resource),
+      &destination,
+      d12_resource_from_iface((ID3D12Resource *)source_resource), &source,
+      &size, (D3D12_TILE_MAPPING_FLAGS)flags);
 }
 
 HRESULT
@@ -962,6 +1098,39 @@ d12_device_runtime_command_list_copy_resource(void *list, void *destination,
    if (list && destination && source)
       ID3D12GraphicsCommandList_CopyResource(
          (ID3D12GraphicsCommandList *)list, destination, source);
+}
+
+HRESULT
+d12_device_runtime_command_list_copy_tiles(
+   void *list, void *resource,
+   const struct d12_frontend_tiled_resource_coordinate *region_start,
+   const struct d12_frontend_tile_region_size *region_size, void *buffer,
+   uint64_t buffer_offset, uint32_t flags)
+{
+   if (!list || !resource || !region_start || !region_size || !buffer ||
+       (flags & ~(D12_FRONTEND_TILE_COPY_NO_HAZARD |
+                  D12_FRONTEND_TILE_COPY_LINEAR_TO_TILED |
+                  D12_FRONTEND_TILE_COPY_TILED_TO_LINEAR)) ||
+       ((flags & D12_FRONTEND_TILE_COPY_LINEAR_TO_TILED) &&
+        (flags & D12_FRONTEND_TILE_COPY_TILED_TO_LINEAR)))
+      return E_INVALIDARG;
+   const D3D12_TILED_RESOURCE_COORDINATE start = {
+      region_start->x, region_start->y, region_start->z,
+      region_start->subresource,
+   };
+   const D3D12_TILE_REGION_SIZE size = {
+      region_size->num_tiles, region_size->use_box, region_size->width,
+      region_size->height, region_size->depth,
+   };
+   ID3D12GraphicsCommandList_CopyTiles(
+      (ID3D12GraphicsCommandList *)list, resource, &start, &size, buffer,
+      buffer_offset, (D3D12_TILE_COPY_FLAGS)flags);
+
+   struct d12_cmd_list *native =
+      d12_cmd_list_from_iface((ID3D12GraphicsCommandList6 *)list);
+   return native && native->state == D12_LIST_ERROR
+             ? (native->record_error ? native->record_error : E_FAIL)
+             : S_OK;
 }
 
 static bool
@@ -1927,7 +2096,7 @@ d12_device_runtime_heap_create(
    D3D12_HEAP_DESC heap_desc;
    struct agx_bo *bo;
    ID3D12Heap *heap = NULL;
-   const enum agx_bo_flags bo_flags =
+   enum agx_bo_flags bo_flags =
       AGX_BO_WRITEBACK | AGX_BO_ZERO_ON_REUSE | AGX_BO_SHAREABLE;
    HRESULT result;
 
@@ -1936,6 +2105,17 @@ d12_device_runtime_heap_create(
       return E_INVALIDARG;
    *out_heap = NULL;
    memset(out_allocation, 0, sizeof(*out_allocation));
+
+   /* AppleAgxWddm contract v3 identifies desktop primaries explicitly and
+    * requires them to be uncached, CPU-accessible and shareable. Keep that
+    * allocation policy in the shared winsys marker rather than deriving it
+    * later from display geometry. */
+   if (desc->flags & D12_FRONTEND_HEAP_PRIMARY) {
+      bo_flags = (enum agx_bo_flags)
+         ((uint32_t)bo_flags & ~(uint32_t)AGX_BO_WRITEBACK);
+      bo_flags = (enum agx_bo_flags)
+         ((uint32_t)bo_flags | (uint32_t)AGX_BO_PRIMARY);
+   }
 
    bo = agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
       &device->dev, heap_desc.SizeInBytes, (unsigned)heap_desc.Alignment,
@@ -1979,6 +2159,8 @@ d12_device_runtime_heap_open(
       bo_flags |= AGX_BO_WRITEBACK;
    if (allocation_flags & AGXW_ALLOC_SHAREABLE)
       bo_flags |= AGX_BO_SHAREABLE;
+   if (allocation_flags & AGXW_ALLOC_PRIMARY)
+      bo_flags |= AGX_BO_PRIMARY;
 
    bo = agx_d3dkmt_bo_open_runtime_resource(
       &device->dev, heap_desc.SizeInBytes, (unsigned)heap_desc.Alignment,
@@ -2040,6 +2222,37 @@ d12_device_runtime_resource_create_placed(
       &IID_ID3D12Resource, out_resource);
 }
 
+HRESULT
+d12_device_runtime_resource_create_reserved(
+   struct d12_device *device, const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   D3D12_RESOURCE_DESC resource_desc;
+   D3D12_CLEAR_VALUE translated_clear;
+   D3D12_CLEAR_VALUE *clear = NULL;
+
+   if (!device || !out_resource ||
+       !d12_device_runtime_resource_desc(desc, &resource_desc))
+      return E_INVALIDARG;
+   *out_resource = NULL;
+   if (clear_value) {
+      translated_clear.Format = (DXGI_FORMAT)clear_value->format;
+      if (desc->flags & D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL) {
+         translated_clear.DepthStencil.Depth =
+            clear_value->depth_stencil.depth;
+         translated_clear.DepthStencil.Stencil =
+            clear_value->depth_stencil.stencil;
+      } else {
+         memcpy(translated_clear.Color, clear_value->color,
+                sizeof(translated_clear.Color));
+      }
+      clear = &translated_clear;
+   }
+   return d12_resource_create_reserved(
+      device, &resource_desc, (D3D12_RESOURCE_STATES)desc->initial_state,
+      clear, &IID_ID3D12Resource, out_resource);
+}
+
 void
 d12_device_runtime_resource_destroy(void *resource)
 {
@@ -2052,6 +2265,23 @@ d12_device_runtime_resource_gpu_virtual_address(void *resource)
 {
    struct d12_resource *res = d12_resource_from_iface(resource);
    return res ? res->addr : 0;
+}
+
+HRESULT
+d12_device_runtime_resource_mip_packing(void *resource,
+                                        uint32_t *packed_mips,
+                                        uint32_t *packed_tiles)
+{
+   struct d12_resource *res = d12_resource_from_iface(resource);
+   if (packed_mips)
+      *packed_mips = 0;
+   if (packed_tiles)
+      *packed_tiles = 0;
+   if (!res || !res->reserved || !packed_mips || !packed_tiles)
+      return E_INVALIDARG;
+   *packed_mips = res->sparse_packed_mips.NumPackedMips;
+   *packed_tiles = res->sparse_packed_mips.NumTilesForPackedMips;
+   return S_OK;
 }
 
 HRESULT
@@ -2091,13 +2321,18 @@ d12_device_runtime_multisample_quality_levels(
 {
    uint64_t support;
 
-   /* Bit zero is D3D12's tiled-resource query mode, deliberately disabled
-    * until sparse page-table mappings are owned by dxgkrnl end to end. */
-   if (!device || flags || !sample_count || format == DXGI_FORMAT_UNKNOWN)
+   if (!device ||
+       (flags & ~D12_FRONTEND_MULTISAMPLE_QUALITY_TILED_RESOURCE) ||
+       !sample_count || format == DXGI_FORMAT_UNKNOWN)
       return 0;
    support = d12_format_frontend_support((DXGI_FORMAT)format);
    if (!support)
       return 0;
+   if (flags & D12_FRONTEND_MULTISAMPLE_QUALITY_TILED_RESOURCE)
+      return sample_count == 1 &&
+                    (support & D12_FRONTEND_FORMAT_TEXTURE_2D)
+                ? 1
+                : 0;
    if (sample_count == 1)
       return 1;
    if (sample_count != 2 && sample_count != 4)

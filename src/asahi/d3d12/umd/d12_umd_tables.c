@@ -159,8 +159,11 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
 
    switch (table_type) {
    case D3D12DDI_TABLE_TYPE_DEVICE_CORE:
-      if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003) &&
-          table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010))
+      if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)
+#if D12_UMD_TARGETS_WDDM21
+          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010)
+#endif
+      )
          return E_INVALIDARG;
       {
          D3D12DDI_DEVICE_FUNCS_CORE_0003 baseline;

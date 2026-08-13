@@ -16,6 +16,8 @@
  * emits this exact dialect.
  */
 
+#define MESA_LOG_TAG "d3d12agx"
+
 #include "d12_dxil.h"
 #include "poly/nir/poly_nir.h"
 
@@ -26,7 +28,6 @@
 #include "nir.h"
 #include "nir_builder.h"
 
-#define MESA_LOG_TAG "d3d12agx"
 #include "util/log.h"
 
 /* dx.op opcodes (subset), from Mesa's enum dxil_intr */
@@ -5846,13 +5847,14 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
          uint32_t cur = ctx.ptr_pointee[ptr_id];
          bool ok = true;
 
-         for (unsigned i = 1; i < inst->num_ops && ok; i++) {
+         for (unsigned gep_index = 1;
+              gep_index < inst->num_ops && ok; gep_index++) {
             /* Index 1 strides over the whole pointee; later indices step
              * into it.
              */
             uint32_t stride, walk_align, next = cur;
 
-            if (i == 1) {
+            if (gep_index == 1) {
                ok = type_size_align(mod, cur, &stride, &walk_align);
             } else {
                const struct d12_type *t = &mod->types[cur];
@@ -5864,7 +5866,7 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                   /* Struct indices must be constant in LLVM. */
                   uint64_t member;
                   uint32_t moff;
-                  if (!const_uint(&ctx, inst->ops[i], &member) ||
+                  if (!const_uint(&ctx, inst->ops[gep_index], &member) ||
                       !struct_member_offset(mod, t, (unsigned)member, &moff,
                                             &next)) {
                      ok = false;
@@ -5882,10 +5884,10 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
                break;
 
             uint64_t const_idx;
-            if (const_uint(&ctx, inst->ops[i], &const_idx)) {
+            if (const_uint(&ctx, inst->ops[gep_index], &const_idx)) {
                base += (uint32_t)const_idx * stride;
             } else {
-               nir_def *idx = get_def(&ctx, inst->ops[i]);
+               nir_def *idx = get_def(&ctx, inst->ops[gep_index]);
                if (!idx) {
                   ok = false;
                   break;

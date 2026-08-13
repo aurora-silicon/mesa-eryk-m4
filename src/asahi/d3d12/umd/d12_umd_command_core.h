@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "../d12_frontend.h"
+
 /* Stable numeric values from the pinned WDK 26100.6584 DDI 0003 header.
  * The Windows-facing translation unit asserts that these still match the WDK.
  * Keeping the mapping free of Windows headers makes its full matrix host-testable.
@@ -34,3 +36,7 @@ bool d12_umd_command_type_from_ddi(
    enum d12_umd_renderer_command_type *renderer_type);
 
 bool d12_umd_command_list_flags_valid(uint32_t flags, bool release1);
+
+bool d12_umd_command_signature_desc_valid(
+   const struct d12_frontend_command_signature_desc *desc,
+   const struct d12_frontend_root_signature_desc *root_signature);

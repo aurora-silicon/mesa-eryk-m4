@@ -24,10 +24,10 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 static int failures = 0;
 
@@ -177,13 +177,10 @@ main(int argc, char **argv)
    ID3D12CommandQueue_ExecuteCommandLists(queue, 1, lists);
    ID3D12CommandQueue_Signal(queue, fence, 1);
 
-   struct timespec t0, t1;
-   clock_gettime(CLOCK_MONOTONIC, &t0);
+   const ULONGLONG wait_start_ms = GetTickCount64();
    hr = ID3D12Fence_SetEventOnCompletion(fence, 1, NULL);
-   clock_gettime(CLOCK_MONOTONIC, &t1);
-   printf("       fence wait blocked for %.3f ms\n",
-          (t1.tv_sec - t0.tv_sec) * 1e3 +
-             (t1.tv_nsec - t0.tv_nsec) / 1e6);
+   printf("       fence wait blocked for %llu ms\n",
+          (unsigned long long)(GetTickCount64() - wait_start_ms));
    CHECK(hr == S_OK && ID3D12Fence_GetCompletedValue(fence) >= 1,
          "GPU dispatch complete (fence reached 1)");
 
@@ -192,8 +189,7 @@ main(int argc, char **argv)
     */
    if (map[0] != 7) {
       for (int spin = 0; spin < 100 && map[0] != 7; spin++) {
-         struct timespec ts = {.tv_nsec = 1000000};
-         nanosleep(&ts, NULL);
+         Sleep(1);
       }
       printf("       NOTE: value after re-read spin: %u (fence returned "
              "before the write was visible)\n",

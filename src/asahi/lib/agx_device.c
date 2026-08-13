@@ -78,6 +78,17 @@ agx_drm_bo_munmap(struct agx_device *dev, struct agx_bo *bo)
    munmap(bo->_map, bo->size);
 }
 
+int
+agx_drm_bo_sync_for_device(struct agx_device *dev, struct agx_bo *bo,
+                           size_t offset, size_t size)
+{
+   (void)dev;
+   (void)bo;
+   (void)offset;
+   (void)size;
+   return 0;
+}
+
 /*
  * honeykrisp-h1-execution.md SS1/SS2.1: Linux body for the `bo_free` op
  * (the DRM_IOCTL_GEM_CLOSE tail of the former inline agx_bo_free()).
@@ -532,6 +543,7 @@ const agx_device_ops_t agx_device_drm_ops = {
    .bo_unbind_object = agx_bo_unbind_object,
    .simple_ioctl = asahi_simple_ioctl,
    .bo_munmap = agx_drm_bo_munmap,
+   .bo_sync_for_device = agx_drm_bo_sync_for_device,
    .bo_free = agx_drm_bo_close,
 };
 #else /* !HAVE_LIBDRM */

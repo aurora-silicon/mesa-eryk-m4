@@ -5,7 +5,7 @@
  * Native D3D12 WDDM UMD adapter discovery and version/caps negotiation.
  */
 
-#define D3D_UMD_INTERFACE_VERSION 0x5002
+#include "d12_umd_wddm.h"
 #include <windows.h>
 #include <d3d12umddi.h>
 
@@ -262,6 +262,9 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_0011_SHADER_MODELS: {
+#if !D12_UMD_TARGETS_WDDM21
+      return E_NOTIMPL;
+#else
       static const D3D12DDI_SHADER_MODEL models[] = {
          D3D12DDI_SHADER_MODEL_6_0_RELEASE_0011,
          D3D12DDI_SHADER_MODEL_5_1_RELEASE_0011,
@@ -282,6 +285,7 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
          return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
       memcpy(data->pShaderModelsSupported, models, sizeof(models));
       return S_OK;
+#endif
    }
 
    default:

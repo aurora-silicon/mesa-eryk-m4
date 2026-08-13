@@ -12,7 +12,8 @@ agx_d3dkmt_runtime_ops_complete(const struct agx_d3dkmt_runtime_ops *ops)
           ops->QueryResourceInfoFromNtHandle && ops->ShareObjects &&
           ops->OpenResource && ops->OpenResourceFromNtHandle &&
           ops->DestroyAllocation2 && ops->Lock2 && ops->Unlock2 &&
-          ops->MakeResident && ops->Evict && ops->CreatePagingQueue &&
+          ops->InvalidateCache && ops->MakeResident && ops->Evict &&
+          ops->CreatePagingQueue &&
           ops->DestroyPagingQueue && ops->ReserveGpuVirtualAddress &&
           ops->MapGpuVirtualAddress && ops->UpdateGpuVirtualAddress &&
           ops->FreeGpuVirtualAddress && ops->CreateContextVirtual &&

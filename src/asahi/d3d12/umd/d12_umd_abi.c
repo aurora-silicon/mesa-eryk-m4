@@ -4,12 +4,15 @@
  */
 
 #include "d12_umd_abi.h"
+#include "d12_umd_wddm.h"
 
 #include <string.h>
 
 static const uint64_t d12_umd_versions[] = {
+#if D12_UMD_TARGETS_WDDM21
    D12_UMD_DDI_SUPPORTED_0011,
    D12_UMD_DDI_SUPPORTED_0010,
+#endif
    D12_UMD_DDI_SUPPORTED_0003,
 };
 
@@ -59,8 +62,12 @@ d12_umd_version_supported(uint32_t interface_version,
                           uint32_t build_version)
 {
    return (interface_version == D12_UMD_DDI_INTERFACE_0003 &&
-           build_version == D12_UMD_DDI_BUILD_0003) ||
+           build_version == D12_UMD_DDI_BUILD_0003)
+#if D12_UMD_TARGETS_WDDM21
+          ||
           (interface_version == D12_UMD_DDI_INTERFACE_R1 &&
            (build_version == D12_UMD_DDI_BUILD_0010 ||
-            build_version == D12_UMD_DDI_BUILD_0011));
+            build_version == D12_UMD_DDI_BUILD_0011))
+#endif
+      ;
 }

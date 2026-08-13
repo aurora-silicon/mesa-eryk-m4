@@ -101,6 +101,38 @@ libagx_unroll_restart(global struct poly_heap *heap, uint64_t index_buffer,
                        flatshade_first, mode, scratch);
 }
 
+/* D3D12 ExecuteIndirect can replace the index view as GPU data immediately
+ * before an indexed draw. Parse the view without a CPU readback and unroll
+ * restart into a canonical U32 heap allocation, so every later geometry
+ * stage has a fixed index width regardless of the selected R16/R32 view. */
+KERNEL(1024)
+libagx_d3d12_unroll_restart_ibv(
+   global struct poly_heap *heap, constant uint32_t *view,
+   constant uint32_t *in_draw, global uint32_t *out_draw,
+   uint64_t null_address, uint32_t format_r16_uint,
+   uint32_t format_r32_uint, uint32_t restart_index,
+   uint32_t flatshade_first, uint32_t mode__11)
+{
+   uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint32_t size_B = view[2];
+   uint32_t format = view[3];
+   bool valid = address && size_B &&
+                (format == format_r16_uint || format == format_r32_uint);
+   uint32_t input_index_size_B =
+      format == format_r32_uint ? 4 : 2;
+   enum mesa_prim mode = poly_uncompact_prim(mode__11);
+
+   if (!valid) {
+      address = null_address;
+      size_B = 0;
+   }
+
+   POLY_DECL_UNROLL_RESTART_SCRATCH(scratch, 1024);
+   poly_unroll_restart_sizes(
+      out_draw, heap, in_draw, address, size_B / input_index_size_B,
+      input_index_size_B, 4, restart_index, flatshade_first, mode, scratch);
+}
+
 KERNEL(1)
 libagx_gs_setup_indirect(
    uint64_t index_buffer, constant uint *draw,
@@ -116,6 +148,37 @@ libagx_gs_setup_indirect(
    poly_gs_setup_indirect(index_buffer, draw, vp, p, heap,
                           vs_outputs, index_size_B, index_buffer_range_el, prim,
                           is_prefix_summing, max_indices, shape);
+}
+
+/* Geometry's software input assembler needs the dynamic D3D12 index view
+ * before it allocates and dispatches its VS/GS work. Keep the view and draw
+ * record GPU-ordered and patch Poly's parameter blocks in one setup kernel. */
+KERNEL(1)
+libagx_d3d12_gs_setup_indirect_ibv(
+   constant uint32_t *view, constant uint32_t *draw,
+   global struct poly_vertex_params *vp,
+   global struct poly_geometry_params *p, global struct poly_heap *heap,
+   uint64_t vs_outputs, uint64_t null_address,
+   uint32_t format_r16_uint, uint32_t format_r32_uint,
+   uint32_t prim, int is_prefix_summing, uint32_t max_indices,
+   enum poly_gs_shape shape)
+{
+   uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint32_t size_B = view[2];
+   uint32_t format = view[3];
+   bool valid = address && size_B &&
+                (format == format_r16_uint || format == format_r32_uint);
+   uint32_t index_size_B = format == format_r32_uint ? 4 : 2;
+
+   if (!valid) {
+      address = null_address;
+      size_B = 0;
+   }
+
+   vp->index_size_B = index_size_B;
+   poly_gs_setup_indirect(
+      address, draw, vp, p, heap, vs_outputs, index_size_B,
+      size_B / index_size_B, prim, is_prefix_summing, max_indices, shape);
 }
 
 KERNEL(1024)

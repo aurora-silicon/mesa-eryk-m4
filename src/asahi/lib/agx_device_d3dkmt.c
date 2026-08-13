@@ -57,6 +57,7 @@ static_assert(AGX_D3DKMT_BO_EXEC == AGX_BO_EXEC, "BO_EXEC");
 static_assert(AGX_D3DKMT_BO_WRITEBACK == AGX_BO_WRITEBACK, "BO_WRITEBACK");
 static_assert(AGX_D3DKMT_BO_SHAREABLE == AGX_BO_SHAREABLE, "BO_SHAREABLE");
 static_assert(AGX_D3DKMT_BO_READONLY == AGX_BO_READONLY, "BO_READONLY");
+static_assert(AGX_D3DKMT_BO_PRIMARY == AGX_BO_PRIMARY, "BO_PRIMARY");
 static_assert(AGX_D3DKMT_PAGE_SIZE == AIL_PAGESIZE, "page size");
 static_assert(AGXW_PARAMS_GLOBAL_SIZE == sizeof(struct drm_asahi_params_global),
               "GET_PARAMS escape payload size");
@@ -866,6 +867,8 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 
    /* executable implies low va */
    assert(!(flags & AGX_BO_EXEC) || (flags & AGX_BO_LOW_VA));
+   flags = (enum agx_bo_flags)
+      agx_d3dkmt_cpu_visible_flags((uint32_t)flags);
 
    struct agx_d3dkmt_allocation_record record;
    enum agx_d3dkmt_external_memory_type external_type =
@@ -918,6 +921,8 @@ agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
 
    size = ALIGN_POT(size, AIL_PAGESIZE);
    align = MAX2(align, AIL_PAGESIZE);
+   flags = (enum agx_bo_flags)
+      agx_d3dkmt_cpu_visible_flags((uint32_t)flags);
    if (!d3dkmt_create_allocation(
           ws, size, flags, AGX_D3DKMT_EXTERNAL_MEMORY_NONE,
           runtime_resource, NULL, 0, resource_driver_data,
@@ -1506,6 +1511,8 @@ agx_d3dkmt_bo_create_external_with_runtime_data(
    size = ALIGN_POT(size, AIL_PAGESIZE);
    align = MAX2(align, AIL_PAGESIZE);
    flags |= AGX_BO_SHARED | AGX_BO_SHAREABLE;
+   flags = (enum agx_bo_flags)
+      agx_d3dkmt_cpu_visible_flags((uint32_t)flags);
 
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    struct agx_d3dkmt_allocation_record record;
@@ -1977,6 +1984,35 @@ d3dkmt_bo_munmap(struct agx_device *dev, struct agx_bo *bo)
    bo->_map = NULL;
 }
 
+static int
+d3dkmt_bo_sync_for_device(struct agx_device *dev, struct agx_bo *bo,
+                          size_t offset, size_t size)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+
+   if (!bo || bo->dev != dev || !bo->uapi_handle || offset > bo->size ||
+       size > bo->size - offset) {
+      errno = EINVAL;
+      return -1;
+   }
+   if (!size)
+      return 0;
+
+   const struct agx_kmt_invalidatecache invalidate = {
+      .hDevice = ws->device,
+      .hAllocation = bo->uapi_handle,
+      .Offset = offset,
+      .Length = size,
+   };
+   agx_kmt_status status =
+      AGX_D3DKMT_CALL(ws, InvalidateCache, &invalidate);
+   if (!AGX_KMT_SUCCESS(status)) {
+      agx_d3dkmt_mark_device_lost(ws, NULL);
+      return agx_d3dkmt_fail(status);
+   }
+   return 0;
+}
+
 /* -------------------------------------------------------------------------
  * GET_PARAMS.
  *
@@ -2152,6 +2188,53 @@ staging_for(struct agx_device *dev, struct agx_d3dkmt_ctx *ctx, uint32_t size)
    return bo;
 }
 
+/* Publish a conservative superset of all CPU-writable storage the submitted
+ * command stream may read. Whole mapped/shareable BOs keep the declaration
+ * independent of shader reflection and cover command/control streams,
+ * executables, descriptors, vertex/index/uniform/texture/indirect inputs and
+ * cross-API shared storage. The KMD canonical vector is bounded, so overflow
+ * fails before SubmitCommand rather than dropping coherency information. */
+static int
+d3dkmt_build_read_set(struct agx_device *dev, struct agx_bo *staging,
+                      struct agxw_submit_read_range *ranges,
+                      uint32_t *range_count)
+{
+   uint32_t count = 0;
+   uint64_t staging_va = staging->va->addr;
+
+   if (staging->flags & AGX_BO_LOW_VA)
+      staging_va += dev->shader_base;
+   if (agx_d3dkmt_read_range_add(
+          ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
+          staging_va, staging->size) != AGX_D3DKMT_OK)
+      return -1;
+
+   simple_mtx_lock(&dev->bo_map_lock);
+   for (uint32_t handle = 0; handle < dev->max_handle; ++handle) {
+      struct agx_bo *bo = agx_lookup_bo(dev, handle);
+      uint64_t gpu_va;
+
+      if (p_atomic_read(&bo->refcnt) <= 0 || !bo->va || !bo->size ||
+          (!bo->_map &&
+           !(bo->flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))))
+         continue;
+
+      gpu_va = bo->va->addr;
+      if (bo->flags & AGX_BO_LOW_VA)
+         gpu_va += dev->shader_base;
+      if (agx_d3dkmt_read_range_add(
+             ranges, &count, AGXW_MAX_READ_RANGES_PER_SUBMIT,
+             gpu_va, bo->size) != AGX_D3DKMT_OK) {
+         simple_mtx_unlock(&dev->bo_map_lock);
+         errno = ENOSPC;
+         return -1;
+      }
+   }
+   simple_mtx_unlock(&dev->bo_map_lock);
+   *range_count = count;
+   return 0;
+}
+
 /*
  * DRM_IOCTL_ASAHI_SUBMIT carries in-syncs, the command stream and out-syncs in
  * ONE ioctl. Under the contract that becomes:
@@ -2189,12 +2272,15 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    uint64_t *wait_values = NULL;
    agx_kmt_handle *signals = NULL;
    uint64_t *signal_values = NULL;
+   struct agxw_submit_private_v3 *priv = NULL;
+   uint32_t priv_size = 0;
    int ret = -1;
 
    (void)virt; /* no vdrm concept here, same as the Linux drm backend */
 
    const uint32_t n_in = submit->in_sync_count;
    const uint32_t n_out = submit->out_sync_count;
+   uint32_t private_flags = 0;
 
    /* +1 for the winsys's own staging-retire fence. */
    if ((uint64_t)n_in + n_out + 1 > AGXW_MAX_SYNCS_PER_SUBMIT ||
@@ -2203,13 +2289,11 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
       return -1;
    }
 
-   struct agxw_submit_private priv = {
-      .version = AGXW_SUBMIT_PRIVATE_VERSION,
-      .struct_size = sizeof(priv),
-      .in_sync_count = 0,
-      .out_sync_count = 0,
-   };
-   if (agxw_submit_private_validate(&priv, sizeof(priv)) != 0) {
+   static_assert(AGX_SUBMIT_WRITE_SET_COMPLETE ==
+                    AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE,
+                 "portable submit-marker mirror");
+   if (agx_d3dkmt_submit_private_flags(submit->flags, &private_flags) !=
+       AGX_D3DKMT_OK) {
       errno = EINVAL;
       return -1;
    }
@@ -2268,6 +2352,37 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    memcpy(map, &dma, sizeof(dma));
    memcpy(map + sizeof(dma), (const void *)(uintptr_t)submit->cmdbuf,
           submit->cmdbuf_size);
+
+   const uint32_t dma_bytes =
+      (uint32_t)sizeof(struct agxw_dma_header) + submit->cmdbuf_size;
+   if (agx_bo_sync_for_device(staging, 0, dma_bytes))
+      goto out;
+
+   const size_t priv_capacity =
+      sizeof(*priv) + AGXW_MAX_READ_RANGES_PER_SUBMIT *
+                         sizeof(struct agxw_submit_read_range);
+   priv = calloc(1, priv_capacity);
+   if (!priv) {
+      errno = ENOMEM;
+      goto out;
+   }
+   struct agxw_submit_read_range *read_ranges =
+      (struct agxw_submit_read_range *)(priv + 1);
+   if (d3dkmt_build_read_set(dev, staging, read_ranges,
+                             &priv->read_range_count))
+      goto out;
+
+   priv->base = (struct agxw_submit_private){
+      .version = AGXW_SUBMIT_PRIVATE_VERSION,
+      .struct_size = sizeof(*priv),
+      .flags = private_flags,
+   };
+   priv_size = (uint32_t)sizeof(*priv) +
+               priv->read_range_count * (uint32_t)sizeof(*read_ranges);
+   if (agxw_submit_private_validate(&priv->base, priv_size) != 0) {
+      errno = EINVAL;
+      goto out;
+   }
 
    /* Resolve every syncobj handle before the first D3DKMT call. */
    uint32_t n_sig = 0;
@@ -2334,8 +2449,8 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
       .Commands = staging->va->addr,
       .CommandLength =
          (uint32_t)sizeof(struct agxw_dma_header) + submit->cmdbuf_size,
-      .pPrivateDriverData = &priv,
-      .PrivateDriverDataSize = sizeof(priv),
+      .pPrivateDriverData = priv,
+      .PrivateDriverDataSize = priv_size,
       .BroadcastContextCount = 1,
       .BroadcastContext = {ctx->hContext},
    };
@@ -2378,6 +2493,7 @@ out:
    free(wait_values);
    free(signals);
    free(signal_values);
+   free(priv);
    return ret;
 }
 
@@ -2826,6 +2942,7 @@ const agx_device_ops_t agx_device_d3dkmt_ops = {
    .bo_unbind_object = d3dkmt_bo_unbind_object,
    .simple_ioctl = d3dkmt_simple_ioctl,
    .bo_munmap = d3dkmt_bo_munmap,
+   .bo_sync_for_device = d3dkmt_bo_sync_for_device,
    .bo_free = d3dkmt_bo_free,
    .va_init = d3dkmt_process_va_init,
    .va_alloc = d3dkmt_process_va_alloc,
@@ -3031,6 +3148,7 @@ agx_d3dkmt_open_device(struct agx_device *dev, const struct agx_kmt_luid *luid)
    dev->hdev = ws;
    dev->fd = -1;
    dev->is_virtio = false;
+   dev->write_set_contract = true;
    dev->ops = agx_device_d3dkmt_ops;
    return true; /* caller then runs agx_open_device() */
 
@@ -3109,6 +3227,7 @@ agx_d3dkmt_open_runtime_device(
    dev->hdev = ws;
    dev->fd = -1;
    dev->is_virtio = false;
+   dev->write_set_contract = true;
    dev->ops = agx_device_d3dkmt_ops;
    return true;
 
@@ -3261,4 +3380,26 @@ agx_d3dkmt_device_luid(const struct agx_device *dev)
       (const struct agx_d3dkmt_winsys *)dev->hdev;
 
    return ws ? ws->luid : (struct agx_kmt_luid){0, 0};
+}
+
+agx_kmt_handle
+agx_d3dkmt_device_paging_queue(const struct agx_device *dev)
+{
+   const struct agx_d3dkmt_winsys *ws;
+
+   if (!dev || dev->ops.submit != agx_device_d3dkmt_ops.submit)
+      return 0;
+   ws = (const struct agx_d3dkmt_winsys *)dev->hdev;
+   return ws ? ws->paging_queue : 0;
+}
+
+bool
+agx_d3dkmt_device_wait_paging(struct agx_device *dev, uint64_t value)
+{
+   struct agx_d3dkmt_winsys *ws;
+
+   if (!dev || dev->ops.submit != agx_device_d3dkmt_ops.submit)
+      return false;
+   ws = agx_d3dkmt_ws(dev);
+   return ws && ws->paging_queue && agx_d3dkmt_wait_paging(ws, value) == 0;
 }

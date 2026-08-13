@@ -204,6 +204,20 @@ test_runtime_resource_identity_rotation(void)
    agx_d3dkmt_pool_finish(&pool);
 }
 
+static void
+test_cpu_visible_executable_flags(void)
+{
+   CHECK_EQ(agx_d3dkmt_cpu_visible_flags(0), 0);
+   CHECK_EQ(agx_d3dkmt_cpu_visible_flags(AGX_D3DKMT_BO_WRITEBACK),
+            AGX_D3DKMT_BO_WRITEBACK);
+   CHECK_EQ(agx_d3dkmt_cpu_visible_flags(AGX_D3DKMT_BO_EXEC),
+            AGX_D3DKMT_BO_EXEC | AGX_D3DKMT_BO_WRITEBACK);
+   CHECK_EQ(agx_d3dkmt_cpu_visible_flags(AGX_D3DKMT_BO_EXEC |
+                                         AGX_D3DKMT_BO_LOW_VA),
+            AGX_D3DKMT_BO_EXEC | AGX_D3DKMT_BO_LOW_VA |
+               AGX_D3DKMT_BO_WRITEBACK);
+}
+
 /* ------------------------------------------------------------------------ */
 static void
 test_bind_plain(void)
@@ -939,6 +953,50 @@ test_alloc_flags(void)
     * AGX BOs must be 16 KiB physically chunked. Never request it. */
    CHECK(!(agx_d3dkmt_create_flags(0xFFFFFFFFu) &
            AGX_KMT_CREATEALLOC_EXISTINGSYSMEM));
+
+   CHECK_EQ(agx_d3dkmt_agxw_alloc_flags(AGX_D3DKMT_BO_PRIMARY),
+            AGXW_ALLOC_SHAREABLE | AGXW_ALLOC_PRIMARY);
+}
+
+static void
+test_read_range_canonicalization(void)
+{
+   struct agxw_submit_read_range ranges[4] = {0};
+   uint32_t count = 0;
+
+   CHECK_EQ(agx_d3dkmt_read_range_add(
+               ranges, &count, 4, UINT64_C(0x1500040000), UINT64_C(0x4000)),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(agx_d3dkmt_read_range_add(
+               ranges, &count, 4, UINT64_C(0x1500000000), UINT64_C(0x4000)),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(count, 2);
+   CHECK_EQ(ranges[0].gpu_va, UINT64_C(0x1500000000));
+
+   /* Adjacent executable-pool slices coalesce into one native range. */
+   CHECK_EQ(agx_d3dkmt_read_range_add(
+               ranges, &count, 4, UINT64_C(0x1500004000), UINT64_C(0x3c000)),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(count, 1);
+   CHECK_EQ(ranges[0].length, UINT64_C(0x44000));
+
+   CHECK(agx_d3dkmt_read_range_add(ranges, &count, 4, UINT64_MAX - 1, 4) !=
+         AGX_D3DKMT_OK);
+   CHECK(agx_d3dkmt_read_range_add(
+            ranges, &count, 4, UINT64_C(0x1500000001), UINT64_C(0x4000)) !=
+         AGX_D3DKMT_OK);
+
+   count = 0;
+   for (uint32_t i = 0; i < 4; ++i) {
+      CHECK_EQ(agx_d3dkmt_read_range_add(
+                  ranges, &count, 4,
+                  UINT64_C(0x1600000000) + (uint64_t)i * UINT64_C(0x8000),
+                  UINT64_C(0x4000)),
+               AGX_D3DKMT_OK);
+   }
+   CHECK_EQ(agx_d3dkmt_read_range_add(
+               ranges, &count, 4, UINT64_C(0x1700000000), UINT64_C(0x4000)),
+            AGX_D3DKMT_ERR_NOSPACE);
 }
 
 static void
@@ -958,21 +1016,43 @@ test_contract_blobs_we_emit(void)
                                           0x100000000ull),
             0);
 
-   struct agxw_submit_private submit = {
-      .version = AGXW_SUBMIT_PRIVATE_VERSION,
-      .struct_size = sizeof(struct agxw_submit_private),
-      /* D3DKMT handles belong to dxgkrnl's namespace. They are never
-       * embedded in KMD private data; GPU signals are separate KMT packets. */
-      .in_sync_count = 0,
-      .out_sync_count = 0,
+   struct {
+      struct agxw_submit_private_v3 header;
+      struct agxw_submit_read_range ranges[1];
+   } submit = {
+      .header = {
+         .base = {
+            .version = AGXW_SUBMIT_PRIVATE_VERSION,
+            .struct_size = sizeof(struct agxw_submit_private_v3),
+            .flags = AGXW_SUBMIT_READ_SET_COMPLETE,
+         },
+         .read_range_count = 1,
+      },
+      .ranges = {{UINT64_C(0x1500000000), UINT64_C(0x4000)}},
    };
-   CHECK_EQ(agxw_submit_private_validate(&submit, sizeof(submit)), 0);
+   CHECK_EQ(agxw_submit_private_validate(&submit.header.base, sizeof(submit)),
+            0);
+
+   uint32_t private_flags = 0;
+   CHECK_EQ(agx_d3dkmt_submit_private_flags(0, &private_flags),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(private_flags, AGXW_SUBMIT_READ_SET_COMPLETE);
+   CHECK_EQ(agx_d3dkmt_submit_private_flags(
+               AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE, &private_flags),
+            AGX_D3DKMT_OK);
+   CHECK_EQ(private_flags, AGXW_SUBMIT_READ_SET_COMPLETE |
+                              AGXW_SUBMIT_WRITE_SET_COMPLETE);
+   CHECK_EQ(agx_d3dkmt_submit_private_flags(1, &private_flags),
+            AGX_D3DKMT_ERR_INVAL);
+   CHECK_EQ(agx_d3dkmt_submit_private_flags(0, NULL),
+            AGX_D3DKMT_ERR_INVAL);
 
    /* A non-zero in_sync_count is rejected: AppleAgxGpu's submit path refuses
     * it (submit.c:629-630) and this front end inherits the gap, so input
     * dependencies go through WaitForSynchronizationObjectFromGpu instead. */
-   submit.in_sync_count = 1;
-   CHECK(agxw_submit_private_validate(&submit, sizeof(submit)) != 0);
+   submit.header.base.in_sync_count = 1;
+   CHECK(agxw_submit_private_validate(&submit.header.base, sizeof(submit)) !=
+         0);
 
    struct {
       struct agxw_escape_header hdr;
@@ -1011,6 +1091,7 @@ main(void)
 {
    test_handle_pool_is_dense();
    test_runtime_resource_identity_rotation();
+   test_cpu_visible_executable_flags();
    test_bind_plain();
    test_bind_unbind();
    test_bind_alignment_is_rejected();
@@ -1026,6 +1107,7 @@ main(void)
    test_first_signaled();
    test_identity_parsing();
    test_alloc_flags();
+   test_read_range_canonicalization();
    test_contract_blobs_we_emit();
 
    if (failures) {

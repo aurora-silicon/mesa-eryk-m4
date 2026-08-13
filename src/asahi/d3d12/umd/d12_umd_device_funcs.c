@@ -162,6 +162,8 @@ d12_umd_translate_format_support(uint64_t support)
                       D3D12DDI_FORMAT_SUPPORT_UAV_READS);
    D12_MAP_DDI_FORMAT(D12_FRONTEND_FORMAT_DISPLAY,
                       D3D12DDI_FORMAT_SUPPORT_DISPLAY);
+   if (support & D12_FRONTEND_FORMAT_TEXTURE_2D)
+      result |= D3D12DDI_FORMAT_SUPPORT_TILED;
 #undef D12_MAP_DDI_FORMAT
    return result;
 }
@@ -208,10 +210,6 @@ d12_umd_check_multisample_quality_levels(
       d12_umd_set_device_error(device, E_INVALIDARG);
       return;
    }
-   /* Sparse/tiled resources are not advertised. */
-   if (flags & D3D12DDI_MULTISAMPLE_QUALITY_LEVEL_FLAG_TILED_RESOURCE)
-      return;
-
    if (device->backend && device->renderer_ops &&
        device->renderer_ops->multisample_quality_levels) {
       *quality_levels = device->renderer_ops->multisample_quality_levels(
@@ -221,6 +219,12 @@ d12_umd_check_multisample_quality_levels(
    if (!sample_count || format == DXGI_FORMAT_UNKNOWN)
       return;
    support = d12_umd_standalone_format_support(format);
+   if (flags & D3D12DDI_MULTISAMPLE_QUALITY_LEVEL_FLAG_TILED_RESOURCE) {
+      if (sample_count == 1 &&
+          (support & D12_FRONTEND_FORMAT_TEXTURE_2D))
+         *quality_levels = 1;
+      return;
+   }
    if (sample_count == 1 && support)
       *quality_levels = 1;
    else if ((sample_count == 2 || sample_count == 4) &&
@@ -244,8 +248,16 @@ d12_umd_get_mip_packing(D3D12DDI_HDEVICE handle,
       *packed_tiles = 0;
    if (!device || !packed_mips || !packed_tiles || !resource ||
        resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-       resource->device != device)
+       resource->device != device || !resource->reserved ||
+       !resource->backend || !device->renderer_ops ||
+       !device->renderer_ops->resource_mip_packing) {
       d12_umd_set_device_error(device, E_INVALIDARG);
+      return;
+   }
+   HRESULT result = device->renderer_ops->resource_mip_packing(
+      resource->backend, packed_mips, packed_tiles);
+   if (FAILED(result))
+      d12_umd_set_device_error(device, result);
 }
 
 static HRESULT
@@ -494,19 +506,100 @@ d12_umd_update_tile_mappings(
    const UINT *heap_start_offsets, const UINT *range_tile_counts,
    D3D12DDI_TILE_MAPPING_FLAGS flags)
 {
-   (void)resource;
-   (void)region_count;
-   (void)region_start_coordinates;
-   (void)region_sizes;
-   (void)heap;
-   (void)range_count;
-   (void)range_flags;
-   (void)heap_start_offsets;
-   (void)range_tile_counts;
-   (void)flags;
+   struct d12_umd_command_queue *queue = queue_handle.pDrvPrivate;
+   struct d12_umd_resource *tiled = resource.pDrvPrivate;
+   struct d12_umd_heap *backing = heap.pDrvPrivate;
+   struct d12_frontend_tiled_resource_coordinate local_starts[16];
+   struct d12_frontend_tile_region_size local_sizes[16];
+   uint32_t local_range_flags[16];
+   struct d12_frontend_tiled_resource_coordinate *starts = local_starts;
+   struct d12_frontend_tile_region_size *sizes = local_sizes;
+   uint32_t *translated_range_flags = local_range_flags;
+   HRESULT result = E_INVALIDARG;
 
-   d12_umd_set_device_error(d12_umd_tiled_queue_device(queue_handle),
-                            E_NOTIMPL);
+   if (!queue || queue->signature != D12_UMD_COMMAND_QUEUE_SIGNATURE ||
+       !queue->device || !queue->backend || !tiled ||
+       tiled->signature != D12_UMD_RESOURCE_SIGNATURE ||
+       tiled->device != queue->device || !tiled->reserved ||
+       !tiled->backend || (region_count && !region_start_coordinates) ||
+       ((UINT)flags & ~(UINT)D3D12DDI_TILE_MAPPING_FLAG_NO_HAZARD) ||
+       (backing &&
+        (backing->signature != D12_UMD_HEAP_SIGNATURE ||
+         backing->device != queue->device || !backing->backend)) ||
+       !queue->device->renderer_ops ||
+       !queue->device->renderer_ops->update_tile_mappings)
+      goto out;
+
+   if (region_count > ARRAYSIZE(local_starts)) {
+      if ((SIZE_T)region_count > SIZE_MAX / sizeof(*starts)) {
+         result = E_OUTOFMEMORY;
+         goto out;
+      }
+      starts = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                         (SIZE_T)region_count * sizeof(*starts));
+      if (!starts) {
+         result = E_OUTOFMEMORY;
+         goto out;
+      }
+      if (region_sizes) {
+         sizes = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                           (SIZE_T)region_count * sizeof(*sizes));
+         if (!sizes) {
+            result = E_OUTOFMEMORY;
+            goto out;
+         }
+      }
+   }
+   if (range_flags && range_count > ARRAYSIZE(local_range_flags)) {
+      if ((SIZE_T)range_count > SIZE_MAX / sizeof(*translated_range_flags)) {
+         result = E_OUTOFMEMORY;
+         goto out;
+      }
+      translated_range_flags = HeapAlloc(
+         GetProcessHeap(), HEAP_ZERO_MEMORY,
+         (SIZE_T)range_count * sizeof(*translated_range_flags));
+      if (!translated_range_flags) {
+         result = E_OUTOFMEMORY;
+         goto out;
+      }
+   }
+
+   for (UINT i = 0; i < region_count; ++i) {
+      starts[i] = (struct d12_frontend_tiled_resource_coordinate){
+         .x = region_start_coordinates[i].X,
+         .y = region_start_coordinates[i].Y,
+         .z = region_start_coordinates[i].Z,
+         .subresource = region_start_coordinates[i].Subresource,
+      };
+      if (region_sizes) {
+         sizes[i] = (struct d12_frontend_tile_region_size){
+            .num_tiles = region_sizes[i].NumTiles,
+            .use_box = region_sizes[i].UseBox ? 1u : 0u,
+            .width = region_sizes[i].Width,
+            .height = region_sizes[i].Height,
+            .depth = region_sizes[i].Depth,
+         };
+      }
+   }
+   for (UINT i = 0; range_flags && i < range_count; ++i)
+      translated_range_flags[i] = (uint32_t)range_flags[i];
+
+   result = queue->device->renderer_ops->update_tile_mappings(
+      queue->backend, tiled->backend, region_count, starts,
+      region_sizes ? sizes : NULL, backing ? backing->backend : NULL,
+      range_count, range_flags ? translated_range_flags : NULL,
+      heap_start_offsets, range_tile_counts, (uint32_t)flags);
+
+out:
+   if (starts != local_starts)
+      HeapFree(GetProcessHeap(), 0, starts);
+   if (sizes != local_sizes)
+      HeapFree(GetProcessHeap(), 0, sizes);
+   if (translated_range_flags != local_range_flags)
+      HeapFree(GetProcessHeap(), 0, translated_range_flags);
+   if (FAILED(result))
+      d12_umd_set_device_error(d12_umd_tiled_queue_device(queue_handle),
+                               result);
 }
 
 static void APIENTRY
@@ -519,15 +612,46 @@ d12_umd_copy_tile_mappings(
    const D3D12DDI_TILE_REGION_SIZE *region_size,
    D3D12DDI_TILE_MAPPING_FLAGS flags)
 {
-   (void)destination_resource;
-   (void)destination_coordinate;
-   (void)source_resource;
-   (void)source_coordinate;
-   (void)region_size;
-   (void)flags;
+   struct d12_umd_command_queue *queue = queue_handle.pDrvPrivate;
+   struct d12_umd_resource *destination =
+      destination_resource.pDrvPrivate;
+   struct d12_umd_resource *source = source_resource.pDrvPrivate;
+   HRESULT result = E_INVALIDARG;
 
-   d12_umd_set_device_error(d12_umd_tiled_queue_device(queue_handle),
-                            E_NOTIMPL);
+   if (!queue || queue->signature != D12_UMD_COMMAND_QUEUE_SIGNATURE ||
+       !queue->device || !queue->backend || !destination || !source ||
+       destination->signature != D12_UMD_RESOURCE_SIGNATURE ||
+       source->signature != D12_UMD_RESOURCE_SIGNATURE ||
+       destination->device != queue->device ||
+       source->device != queue->device || !destination->reserved ||
+       !source->reserved || !destination->backend || !source->backend ||
+       !destination_coordinate || !source_coordinate || !region_size ||
+       ((UINT)flags & ~(UINT)D3D12DDI_TILE_MAPPING_FLAG_NO_HAZARD) ||
+       !queue->device->renderer_ops ||
+       !queue->device->renderer_ops->copy_tile_mappings)
+      goto out;
+
+   const struct d12_frontend_tiled_resource_coordinate destination_start = {
+      destination_coordinate->X, destination_coordinate->Y,
+      destination_coordinate->Z, destination_coordinate->Subresource,
+   };
+   const struct d12_frontend_tiled_resource_coordinate source_start = {
+      source_coordinate->X, source_coordinate->Y, source_coordinate->Z,
+      source_coordinate->Subresource,
+   };
+   const struct d12_frontend_tile_region_size size = {
+      region_size->NumTiles, region_size->UseBox ? 1u : 0u,
+      region_size->Width,
+      region_size->Height, region_size->Depth,
+   };
+   result = queue->device->renderer_ops->copy_tile_mappings(
+      queue->backend, destination->backend, &destination_start,
+      source->backend, &source_start, &size, (uint32_t)flags);
+
+out:
+   if (FAILED(result))
+      d12_umd_set_device_error(d12_umd_tiled_queue_device(queue_handle),
+                               result);
 }
 
 static bool
@@ -676,6 +800,9 @@ static uint32_t
 d12_umd_heap_allocation_flags(
    const D3D12DDIARG_CREATEHEAP_0001 *arguments)
 {
+   if (arguments->Flags & D3D12DDI_HEAP_FLAG_PRIMARY)
+      return AGXW_ALLOC_SHAREABLE | AGXW_ALLOC_PRIMARY;
+
    uint32_t flags = AGXW_ALLOC_VM_PRIVATE;
    if (arguments->CPUPageProperty == D3D12DDI_CPU_PAGE_PROPERTY_WRITE_BACK)
       flags |= AGXW_ALLOC_WRITEBACK;
@@ -692,14 +819,16 @@ d12_umd_calc_private_heap_resource_sizes(
 {
    D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes = {0};
 
-   if (!d12_umd_device_from_handle(handle) || !heap_arguments ||
-       !d12_umd_heap_arguments_valid(heap_arguments) ||
+   if (!d12_umd_device_from_handle(handle) ||
+       (!heap_arguments && !resource_arguments) ||
+       (heap_arguments && !d12_umd_heap_arguments_valid(heap_arguments)) ||
        (resource_arguments &&
-        (!d12_umd_resource_arguments_valid(resource_arguments) ||
-         resource_arguments->Width > heap_arguments->ByteSize)))
+        !d12_umd_resource_arguments_valid(resource_arguments)) ||
+       (heap_arguments && resource_arguments &&
+        resource_arguments->Width > heap_arguments->ByteSize))
       return sizes;
 
-   sizes.Heap = sizeof(struct d12_umd_heap);
+   sizes.Heap = heap_arguments ? sizeof(struct d12_umd_heap) : 0;
    sizes.Resource = resource_arguments ? sizeof(struct d12_umd_resource) : 0;
    return sizes;
 }
@@ -726,8 +855,55 @@ d12_umd_create_heap_resource(
    uint64_t alignment;
    HRESULT result;
 
-   if (!device || !heap_arguments || !heap ||
-       !runtime_resource.handle ||
+   if (!device)
+      return E_INVALIDARG;
+
+   /* A resource description without heap arguments is CreateReservedResource
+    * in the baseline DDI.  It owns sparse VA metadata but no runtime/KMD
+    * allocation, so the heap and runtime-resource handles are deliberately
+    * ignored and no private allocation blob is produced. */
+   if (!heap_arguments) {
+      if (!resource_arguments || !resource || heap ||
+          !d12_umd_resource_arguments_valid(resource_arguments) ||
+          !device->renderer_ops || !device->backend ||
+          !device->renderer_ops->create_reserved_resource)
+         return E_INVALIDARG;
+
+      memset(resource, 0, sizeof(*resource));
+      frontend_resource = d12_umd_frontend_resource_desc(resource_arguments);
+      if (clear_value) {
+         frontend_clear.format = (uint32_t)clear_value->Format;
+         if (resource_arguments->Flags &
+             D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL) {
+            frontend_clear.depth_stencil.depth =
+               clear_value->DepthStencil.Depth;
+            frontend_clear.depth_stencil.stencil =
+               clear_value->DepthStencil.Stencil;
+         } else {
+            memcpy(frontend_clear.color, clear_value->Color,
+                   sizeof(frontend_clear.color));
+         }
+         translated_clear = &frontend_clear;
+      }
+      result = device->renderer_ops->create_reserved_resource(
+         device->backend, &frontend_resource, translated_clear,
+         &resource->backend);
+      if (FAILED(result)) {
+         SecureZeroMemory(resource, sizeof(*resource));
+         return result;
+      }
+      resource->signature = D12_UMD_RESOURCE_SIGNATURE;
+      resource->device = device;
+      resource->reserved = true;
+      resource->desc = *resource_arguments;
+      if (resource_arguments->pRowMajorLayout) {
+         resource->row_major = *resource_arguments->pRowMajorLayout;
+         resource->desc.pRowMajorLayout = &resource->row_major;
+      }
+      return S_OK;
+   }
+
+   if (!heap || !runtime_resource.handle ||
        !d12_umd_heap_arguments_valid(heap_arguments) ||
        (resource_arguments &&
         (!resource || !d12_umd_resource_arguments_valid(resource_arguments) ||
@@ -859,12 +1035,13 @@ d12_umd_open_allocation_valid(
       return false;
    memcpy(allocation_private, allocation->pPrivateDriverData,
           sizeof(*allocation_private));
-   if (allocation_private->version != AGXW_ALLOC_PRIVATE_VERSION ||
-       allocation_private->struct_size != sizeof(*allocation_private) ||
+   if (agxw_alloc_private_validate(allocation_private,
+                                   sizeof(*allocation_private)) != 0 ||
        !allocation_private->size ||
        allocation_private->size != private_data->heap.size ||
-       allocation_private->flags & ~(uint32_t)AGXW_ALLOC_FLAGS_ALL ||
        allocation_private->reserved ||
+       !!(allocation_private->flags & AGXW_ALLOC_PRIMARY) !=
+          !!(private_data->heap.flags & D12_FRONTEND_HEAP_PRIMARY) ||
        (allocation_private->align_log2 &&
         (allocation_private->align_log2 < AGXW_PAGE_BITS ||
          allocation_private->align_log2 > AGXW_WDDM_LARGE_PAGE_BITS)))
@@ -1318,13 +1495,13 @@ d12_umd_check_resource_virtual_address(D3D12DDI_HDEVICE handle,
 
    if (!device || !resource ||
        resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-       resource->device != device || !resource->heap)
+       resource->device != device)
       return 0;
    if (resource->backend && device->renderer_ops &&
        device->renderer_ops->resource_gpu_virtual_address)
       return device->renderer_ops->resource_gpu_virtual_address(
          resource->backend);
-   return resource->heap->allocation.gpu_virtual_address;
+   return resource->heap ? resource->heap->allocation.gpu_virtual_address : 0;
 }
 
 static void APIENTRY
@@ -1562,6 +1739,47 @@ struct d12_umd_residency_translation {
    UINT stack_object_indices[16];
 };
 
+#if D12_UMD_TARGETS_WDDM21
+static D3DKMT_HANDLE
+d12_umd_residency_paging_queue(
+   struct d12_umd_device *device,
+   D3D12DDI_HRTPAGINGQUEUE runtime_paging_queue,
+   bool *queue_lock_held)
+{
+   struct d12_umd_command_queue *queue;
+   D3DKMT_HANDLE paging_queue;
+
+   if (!device || !queue_lock_held)
+      return 0;
+   *queue_lock_held = false;
+   if (device->backend && device->renderer_ops &&
+       device->renderer_ops->paging_queue) {
+      return device->renderer_ops->paging_queue(device->backend);
+   }
+
+   AcquireSRWLockShared(&device->queue_lock);
+   for (queue = device->queues; queue; queue = queue->next) {
+      if (queue->runtime.runtime_queue.handle ==
+             runtime_paging_queue.handle &&
+          queue->runtime.paging_queue) {
+         paging_queue = queue->runtime.paging_queue;
+         *queue_lock_held = true;
+         return paging_queue;
+      }
+   }
+   ReleaseSRWLockShared(&device->queue_lock);
+   return 0;
+}
+
+static void
+d12_umd_residency_release_queue_lock(struct d12_umd_device *device,
+                                     bool queue_lock_held)
+{
+   if (device && queue_lock_held)
+      ReleaseSRWLockShared(&device->queue_lock);
+}
+#endif
+
 static void
 d12_umd_residency_translation_cleanup(
    struct d12_umd_residency_translation *translation)
@@ -1706,7 +1924,6 @@ d12_umd_offer_resources(D3D12DDI_HDEVICE handle,
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_residency_translation translation;
-   D3D12DDICB_OFFERALLOCATIONS offer;
    HRESULT result;
 
    if (!device || !arguments ||
@@ -1720,18 +1937,36 @@ d12_umd_offer_resources(D3D12DDI_HDEVICE handle,
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
+#if D12_UMD_TARGETS_WDDM21
+   if (!device->kernel_callbacks.pfnOfferAllocations2Cb) {
+      d12_umd_residency_translation_cleanup(&translation);
+      return E_INVALIDARG;
+   }
+   {
+      const D3DDDICB_OFFERALLOCATIONS2 offer = {
+         .HandleList = translation.allocations,
+         .NumAllocations = translation.allocation_count,
+         .Priority = arguments->Priority,
+         .Flags = {.Value = 0},
+      };
+      result = device->kernel_callbacks.pfnOfferAllocations2Cb(
+         device->runtime_device.handle, &offer);
+   }
+#else
    if (!device->core_callbacks.pfnOfferAllocationsCb) {
       d12_umd_residency_translation_cleanup(&translation);
       return E_INVALIDARG;
    }
-
-   offer = (D3D12DDICB_OFFERALLOCATIONS){
+   {
+      const D3D12DDICB_OFFERALLOCATIONS offer = {
       .NumAllocations = translation.allocation_count,
       .HandleList = translation.allocations,
       .Priority = arguments->Priority,
-   };
-   result = device->core_callbacks.pfnOfferAllocationsCb(
-      device->runtime_device, &offer);
+      };
+      result = device->core_callbacks.pfnOfferAllocationsCb(
+         device->runtime_device, &offer);
+   }
+#endif
    d12_umd_residency_translation_cleanup(&translation);
    return result;
 }
@@ -1742,9 +1977,17 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_residency_translation translation;
+#if D12_UMD_TARGETS_WDDM21
+   D3DDDICB_RECLAIMALLOCATIONS3 reclaim;
+   D3DDDI_RECLAIM_RESULT stack_results[16];
+   D3DDDI_RECLAIM_RESULT *allocation_results = stack_results;
+   D3DKMT_HANDLE paging_queue;
+   bool queue_lock_held;
+#else
    D3D12DDICB_RECLAIMALLOCATIONS2 reclaim;
    BOOL stack_discarded[16];
    BOOL *allocation_discarded = stack_discarded;
+#endif
    HRESULT result;
 
    if (!device || !arguments || arguments->NumAdapters != 1 ||
@@ -1767,6 +2010,48 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
       d12_umd_residency_translation_cleanup(&translation);
       return S_OK;
    }
+#if D12_UMD_TARGETS_WDDM21
+   if (!device->kernel_callbacks.pfnReclaimAllocations3Cb) {
+      d12_umd_residency_translation_cleanup(&translation);
+      return E_INVALIDARG;
+   }
+   paging_queue = d12_umd_residency_paging_queue(
+      device, arguments->pRTPagingQueue[0], &queue_lock_held);
+   if (!paging_queue) {
+      d12_umd_residency_translation_cleanup(&translation);
+      return E_INVALIDARG;
+   }
+   memset(stack_results, 0, sizeof(stack_results));
+   if (translation.allocation_count > ARRAYSIZE(stack_results)) {
+      allocation_results = HeapAlloc(
+         GetProcessHeap(), HEAP_ZERO_MEMORY,
+         (size_t)translation.allocation_count * sizeof(*allocation_results));
+      if (!allocation_results) {
+         d12_umd_residency_release_queue_lock(device, queue_lock_held);
+         d12_umd_residency_translation_cleanup(&translation);
+         return E_OUTOFMEMORY;
+      }
+   }
+   reclaim = (D3DDDICB_RECLAIMALLOCATIONS3){
+      .PagingQueue = paging_queue,
+      .NumAllocations = translation.allocation_count,
+      .HandleList = translation.allocations,
+      .pResults = allocation_results,
+   };
+   result = device->kernel_callbacks.pfnReclaimAllocations3Cb(
+      device->runtime_device.handle, &reclaim);
+   d12_umd_residency_release_queue_lock(device, queue_lock_held);
+   if (SUCCEEDED(result) && reclaim.PagingFenceValue) {
+      arguments->pPagingFenceValue[0] = reclaim.PagingFenceValue;
+      arguments->WaitMask = 1;
+   }
+   for (UINT index = 0; index < translation.allocation_count; ++index) {
+      arguments->pDiscarded[translation.object_indices[index]] =
+         allocation_results[index] != D3DDDI_RECLAIM_RESULT_OK;
+   }
+   if (allocation_results != stack_results)
+      HeapFree(GetProcessHeap(), 0, allocation_results);
+#else
    if (!device->core_callbacks.pfnReclaimAllocations2Cb) {
       d12_umd_residency_translation_cleanup(&translation);
       return E_INVALIDARG;
@@ -1799,6 +2084,7 @@ d12_umd_reclaim_resources(D3D12DDI_HDEVICE handle,
          allocation_discarded[index];
    if (allocation_discarded != stack_discarded)
       HeapFree(GetProcessHeap(), 0, allocation_discarded);
+#endif
    d12_umd_residency_translation_cleanup(&translation);
    return result;
 }

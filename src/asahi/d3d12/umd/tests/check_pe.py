@@ -11,6 +11,7 @@ the ABI alongside architecture and exports.
 """
 
 import argparse
+import struct
 import subprocess
 import sys
 
@@ -85,9 +86,61 @@ def validate_contract(headers: str, exports: str, imports: str) -> list[str]:
     return errors
 
 
+def validate_version_resource(
+    image: bytes, expected_version: str, expected_filename: str
+) -> list[str]:
+    """Validate fixed and localized fields in a PE VERSIONINFO resource."""
+    errors = []
+    try:
+        major, minor, patch, build = (
+            int(component) for component in expected_version.split(".")
+        )
+    except (TypeError, ValueError):
+        return [f"invalid expected version: {expected_version!r}"]
+
+    components = (major, minor, patch, build)
+    if any(component < 0 or component > 0xFFFF for component in components):
+        return [
+            f"expected version component is outside UINT16: {expected_version}"
+        ]
+
+    signature = struct.pack("<I", 0xFEEF04BD)
+    expected_ms = (major << 16) | minor
+    expected_ls = (patch << 16) | build
+    fixed_match = False
+    start = 0
+    while True:
+        offset = image.find(signature, start)
+        if offset < 0:
+            break
+        if offset + 16 <= len(image):
+            _, _, file_ms, file_ls = struct.unpack_from("<IIII", image, offset)
+            if file_ms == expected_ms and file_ls == expected_ls:
+                fixed_match = True
+                break
+        start = offset + 1
+    if not fixed_match:
+        errors.append(
+            f"missing VS_FIXEDFILEINFO FILEVERSION {expected_version}"
+        )
+
+    for field, value in (
+        ("FileVersion", expected_version),
+        ("ProductVersion", expected_version),
+        ("OriginalFilename", expected_filename),
+    ):
+        field_bytes = field.encode("utf-16-le")
+        value_bytes = value.encode("utf-16-le")
+        if field_bytes not in image or value_bytes not in image:
+            errors.append(f"missing VERSIONINFO {field}={value!r}")
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--readobj", required=True)
+    parser.add_argument("--version", required=True)
+    parser.add_argument("--filename", required=True)
     parser.add_argument("dll")
     args = parser.parse_args()
 
@@ -96,13 +149,18 @@ def main() -> int:
     imports = tool_output(args.readobj, "--coff-imports", args.dll)
 
     errors = validate_contract(headers, exports, imports)
+    with open(args.dll, "rb") as image_file:
+        errors += validate_version_resource(
+            image_file.read(), args.version, args.filename
+        )
     if errors:
         for error in errors:
             print(error, file=sys.stderr)
         return 1
 
     print(
-        "check_pe.py: PASS (ARM64, OpenAdapter12 only, system imports only)"
+        "check_pe.py: PASS (ARM64, OpenAdapter12 only, system imports only, "
+        f"VERSIONINFO {args.version})"
     )
     return 0
 

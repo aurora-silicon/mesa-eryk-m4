@@ -274,7 +274,112 @@ d12_list_release_segment_scratch(struct d12_cmd_list *list)
          agx_bo_unreference(&list->device->dev, *bos[j]);
          *bos[j] = NULL;
       }
+
+      for (unsigned pipe = 0; pipe < D12_WRITE_PIPE_COUNT; pipe++) {
+         struct d12_write_tracker *tracker = &seg->writes[pipe];
+         if (tracker->initialized)
+            util_dynarray_fini(&tracker->refs);
+         memset(tracker, 0, sizeof(*tracker));
+      }
    }
+}
+
+static struct d12_write_tracker *
+d12_segment_write_tracker(struct d12_segment *seg,
+                          enum d12_write_pipe pipe)
+{
+   assert(pipe < D12_WRITE_PIPE_COUNT);
+   struct d12_write_tracker *tracker = &seg->writes[pipe];
+   if (!tracker->initialized) {
+      util_dynarray_init(&tracker->refs, NULL);
+      tracker->initialized = true;
+   }
+   return tracker;
+}
+
+static void
+d12_segment_track_write_range(struct d12_segment *seg,
+                              enum d12_write_pipe pipe,
+                              uint64_t address, uint64_t size)
+{
+   struct d12_write_tracker *tracker =
+      d12_segment_write_tracker(seg, pipe);
+
+   if (!address || (size && address > UINT64_MAX - size)) {
+      tracker->incomplete = true;
+      return;
+   }
+
+   util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
+      if (ref->kind == D12_WRITE_REF_RANGE &&
+          ref->range.address == address && ref->range.size == size)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_write_ref,
+      ((struct d12_write_ref){
+         .kind = D12_WRITE_REF_RANGE,
+         .range = {.address = address, .size = size},
+      }));
+}
+
+static void
+d12_segment_track_write_descriptor(struct d12_segment *seg,
+                                   enum d12_write_pipe pipe,
+                                   const struct d12_descriptor *descriptor)
+{
+   if (!descriptor)
+      return;
+
+   struct d12_write_tracker *tracker =
+      d12_segment_write_tracker(seg, pipe);
+   util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
+      if (ref->kind == D12_WRITE_REF_DESCRIPTOR &&
+          ref->descriptor == descriptor)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_write_ref,
+      ((struct d12_write_ref){
+         .kind = D12_WRITE_REF_DESCRIPTOR,
+         .descriptor = descriptor,
+      }));
+}
+
+static void
+d12_segment_track_write_heap(struct d12_segment *seg,
+                             enum d12_write_pipe pipe,
+                             const struct d12_descriptor_heap *heap,
+                             uint32_t first)
+{
+   struct d12_write_tracker *tracker =
+      d12_segment_write_tracker(seg, pipe);
+   if (!heap || first >= heap->desc.NumDescriptors) {
+      tracker->incomplete = true;
+      return;
+   }
+
+   util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
+      if (ref->kind == D12_WRITE_REF_HEAP && ref->heap.heap == heap &&
+          ref->heap.first == first)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_write_ref,
+      ((struct d12_write_ref){
+         .kind = D12_WRITE_REF_HEAP,
+         .heap = {.heap = heap, .first = first},
+      }));
+}
+
+static void
+d12_segment_mark_write_set_incomplete(struct d12_segment *seg,
+                                      enum d12_write_pipe pipe)
+{
+   d12_segment_write_tracker(seg, pipe)->incomplete = true;
 }
 
 static void
@@ -659,6 +764,37 @@ d12_list_get_cdm(struct d12_cmd_list *list)
    return seg;
 }
 
+/* All D3D12 libagx argument blocks begin with a GPU pointer.  For copy,
+ * fill, resolve, immediate-write and indirect-patch programs it is the
+ * destination; for the poly/tess helpers it is an internal parameter block.
+ * Treating the latter as writable is a valid conservative superset and
+ * normally coalesces into the command-list stream BO at submit time. */
+static void
+d12_segment_track_precompiled_write(struct d12_segment *seg,
+                                    enum libagx_program idx,
+                                    const void *args, size_t args_size)
+{
+   if (args_size >= sizeof(uint64_t)) {
+      uint64_t first;
+      memcpy(&first, args, sizeof(first));
+      if (first)
+         d12_segment_track_write_range(seg, D12_WRITE_COMPUTE, first, 0);
+   }
+
+   /* These query helpers put their destination after one or two read-only
+    * pointers instead of in the common first slot. */
+   if (idx == LIBAGX_COPY_QUERY_GL &&
+       args_size == sizeof(struct libagx_copy_query_gl_args)) {
+      const struct libagx_copy_query_gl_args *query = args;
+      d12_segment_track_write_range(seg, D12_WRITE_COMPUTE, query->dest, 0);
+   } else if (idx == LIBAGX_QUERY_DELTA &&
+              args_size == sizeof(struct libagx_query_delta_args)) {
+      const struct libagx_query_delta_args *query = args;
+      d12_segment_track_write_range(seg, D12_WRITE_COMPUTE, query->result,
+                                    sizeof(uint64_t));
+   }
+}
+
 /*
  * Dispatch a precompiled libagx kernel, exactly as hk_dispatch_precomp does.
  */
@@ -734,6 +870,7 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
                                     prog->b.workgroup, prog->b.launch, usc);
    *cur = (uint8_t *)agx_cdm_barrier((uint32_t *)*cur, device->dev.chip);
    seg->dispatches++;
+   d12_segment_track_precompiled_write(seg, idx, args, args_size);
 }
 
 static void
@@ -789,13 +926,34 @@ d12_list_apply_predication(struct d12_cmd_list *list, uint64_t input,
 struct d12_indirect_root_patch {
    uint64_t in;
    uint64_t draw_count;
+   uint64_t previous_tables;
    uint64_t sparse_ranges;
    uint64_t sparse_ro_offset;
+   uint32_t previous_table_count;
    uint32_t sparse_range_count;
    uint32_t command_index;
    uint32_t slot;
    bool publish_unbounded;
    bool read_only;
+};
+
+static bool
+d12_indirect_root_has_uav(const struct d12_indirect_root_patch *patches,
+                          unsigned patch_count)
+{
+   for (unsigned i = 0; i < patch_count; i++) {
+      if (!patches[i].read_only)
+         return true;
+   }
+   return false;
+}
+
+struct d12_indirect_vb_patch {
+   uint64_t in;
+   uint64_t draw_count;
+   uint64_t previous_params;
+   uint32_t command_index;
+   uint32_t slot;
 };
 
 /* Emit execution-time argument patches immediately before their consumer.
@@ -806,7 +964,10 @@ static bool
 d12_list_dispatch_indirect_patches(
    struct d12_cmd_list *list,
    const struct libagx_d3d12_indirect_patch_args *patches,
-   unsigned patch_count, const struct d12_indirect_root_patch *root_patches,
+   unsigned patch_count,
+   const struct libagx_d3d12_indirect_constant_args *constant_patches,
+   unsigned constant_patch_count,
+   const struct d12_indirect_root_patch *root_patches,
    unsigned root_patch_count, uint64_t tables_gpu, uint32_t table_count,
    bool pre_gfx)
 {
@@ -814,6 +975,14 @@ d12_list_dispatch_indirect_patches(
       d12_list_dispatch_precomp_to(list, LIBAGX_D3D12_INDIRECT_PATCH,
                                    &patches[i], sizeof(patches[i]), agx_1d(1),
                                    pre_gfx);
+      if (list->state != D12_LIST_RECORDING)
+         return false;
+   }
+
+   for (unsigned i = 0; i < constant_patch_count; ++i) {
+      d12_list_dispatch_precomp_to(
+         list, LIBAGX_D3D12_INDIRECT_CONSTANT, &constant_patches[i],
+         sizeof(constant_patches[i]), agx_1d(1), pre_gfx);
       if (list->state != D12_LIST_RECORDING)
          return false;
    }
@@ -833,13 +1002,33 @@ d12_list_dispatch_indirect_patches(
          return false;
       }
 
+      if (patch->previous_tables &&
+          patch->slot >= patch->previous_table_count) {
+         mesa_loge("ExecuteIndirect: previous root slot %u exceeds table "
+                   "size %u", patch->slot, patch->previous_table_count);
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+
+      uint64_t null_address = d12_list_null_buffer(list);
+      if (!null_address)
+         return false;
+
       const struct libagx_d3d12_indirect_root_args args = {
          .out_address = tables_gpu + patch->slot * sizeof(uint64_t),
          .out_bufinfo = tables_gpu +
                         (2 * table_count + patch->slot) * sizeof(uint64_t),
          .in = patch->in,
          .draw_count = patch->draw_count,
+         .previous_address = patch->previous_tables
+            ? patch->previous_tables + patch->slot * sizeof(uint64_t) : 0,
+         .previous_bufinfo = patch->previous_tables
+            ? patch->previous_tables +
+                 (2 * patch->previous_table_count + patch->slot) *
+                    sizeof(uint64_t)
+            : 0,
          .sparse_ranges = patch->sparse_ranges,
+         .null_address = null_address,
          .sparse_ro_offset = patch->sparse_ro_offset,
          .sparse_range_count = patch->sparse_range_count,
          .command_index = patch->command_index,
@@ -1783,7 +1972,7 @@ d12_native_texture_format(const struct d12_descriptor *d)
    return res->layout.format;
 }
 
-static bool
+bool
 d12_descriptor_resource_span(const struct d12_descriptor *d, uint64_t *base,
                              uint64_t *size)
 {
@@ -2567,11 +2756,12 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
        bound_heap->pbe_bo) {
       uint64_t base = bound_heap->bo->va->addr;
       uint64_t textures = bound_heap->texture_bo->va->addr;
-      uint64_t pbes = bound_heap->pbe_bo->va->addr;
+      uint64_t pbe_heap_base = bound_heap->pbe_bo->va->addr;
       *out_heap = d12_list_upload(list, &base, sizeof(base), 8);
       *out_heap_textures =
          d12_list_upload(list, &textures, sizeof(textures), 8);
-      *out_heap_pbes = d12_list_upload(list, &pbes, sizeof(pbes), 8);
+      *out_heap_pbes =
+         d12_list_upload(list, &pbe_heap_base, sizeof(pbe_heap_base), 8);
       if (!*out_heap || !*out_heap_textures || !*out_heap_pbes)
          return false;
 
@@ -2733,6 +2923,107 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    cache->tables = tables_gpu;
    cache->table_count = root_count;
    return true;
+}
+
+enum d12_write_visibility_group {
+   D12_WRITE_VIS_COMPUTE,
+   D12_WRITE_VIS_GRAPHICS_VERTEX,
+   D12_WRITE_VIS_GRAPHICS_FRAGMENT,
+};
+
+static bool
+d12_write_visibility_matches(uint32_t visibility,
+                             enum d12_write_visibility_group group)
+{
+   if (group == D12_WRITE_VIS_COMPUTE ||
+       visibility == D3D12_SHADER_VISIBILITY_ALL)
+      return true;
+
+   if (group == D12_WRITE_VIS_GRAPHICS_FRAGMENT)
+      return visibility == D3D12_SHADER_VISIBILITY_PIXEL;
+
+   return visibility != D3D12_SHADER_VISIBILITY_PIXEL;
+}
+
+/* Record every UAV allocation a shader in this hardware pipe may write.
+ * Root-signature entries are deliberately conservative: the compiler may
+ * prove an entry dead, but publishing one extra owning allocation is valid
+ * while omitting one used by dynamic flow violates Aurora's v3 writeback
+ * contract. */
+static void
+d12_segment_track_bound_uavs(struct d12_cmd_list *list,
+                             struct d12_segment *seg,
+                             bool compute_bindings,
+                             enum d12_write_visibility_group visibility,
+                             enum d12_write_pipe pipe)
+{
+   const struct d12_root_signature *rs =
+      compute_bindings ? list->compute_rs : list->graphics_rs;
+   const struct d12_descriptor *table =
+      compute_bindings ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor *const *sources =
+      compute_bindings ? list->compute_root_source
+                       : list->graphics_root_source;
+   const struct d12_descriptor_heap *heap =
+      list->resource_descriptor_heap;
+
+   if (!rs)
+      return;
+
+   /* Shader Model 6.6 ResourceDescriptorHeap indexing does not name a root
+    * range.  The current coherent heap contents are therefore the smallest
+    * host-derivable conservative set. */
+   if ((rs->layout.flags &
+        D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED) &&
+       heap && heap->desc.NumDescriptors) {
+      d12_segment_track_write_heap(seg, pipe, heap, 0);
+   }
+
+   for (unsigned i = 0; i < rs->map.count; i++) {
+      if (rs->map.entries[i].klass != D12_RES_UAV ||
+          !d12_write_visibility_matches(rs->map.entries[i].visibility,
+                                        visibility))
+         continue;
+
+      const unsigned slot = rs->map.entries[i].slot;
+      if (slot >= D12_MAX_RESOURCE_BINDINGS) {
+         d12_segment_write_tracker(seg, pipe)->incomplete = true;
+         continue;
+      }
+
+      if (rs->map.entries[i].unbounded) {
+         if (!heap || !heap->bo || !table[slot].address ||
+             table[slot].address < heap->bo->va->addr) {
+            d12_segment_write_tracker(seg, pipe)->incomplete = true;
+            continue;
+         }
+
+         uint64_t byte_offset =
+            table[slot].address - heap->bo->va->addr;
+         if (byte_offset % sizeof(struct d12_descriptor) ||
+             byte_offset / sizeof(struct d12_descriptor) >=
+                heap->desc.NumDescriptors) {
+            d12_segment_write_tracker(seg, pipe)->incomplete = true;
+            continue;
+         }
+
+         d12_segment_track_write_heap(
+            seg, pipe, heap,
+            (uint32_t)(byte_offset / sizeof(struct d12_descriptor)));
+         continue;
+      }
+
+      if (sources[slot]) {
+         d12_segment_track_write_descriptor(seg, pipe,
+                                            sources[slot]);
+      } else if (table[slot].kind == D12_DESC_UAV &&
+                 table[slot].address) {
+         /* Root UAV descriptors have no resource object or declared length.
+          * Queue packing resolves the address to its owning allocation. */
+         d12_segment_track_write_range(seg, pipe,
+                                       table[slot].address, 0);
+      }
+   }
 }
 
 static enum agx_texture_dimension
@@ -3131,8 +3422,8 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          return false;
       }
 
-      const uint8_t *src = agx_bo_map(source->bo) + source->offset_B +
-                           fixup->source_offset_B;
+      const uint8_t *src = (const uint8_t *)agx_bo_map(source->bo) +
+                           source->offset_B + fixup->source_offset_B;
       uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
       memcpy(dst, src, fixup->size_B);
 
@@ -3169,15 +3460,15 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          return false;
       }
 
-      const uint8_t *count_cpu = agx_bo_map(count->bo) + count->offset_B +
-                                 fixup->count_offset_B;
+      const uint8_t *count_cpu = (const uint8_t *)agx_bo_map(count->bo) +
+                                 count->offset_B + fixup->count_offset_B;
       uint32_t command_count;
       memcpy(&command_count, count_cpu, sizeof(command_count));
 
       uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
       if (fixup->command_index < command_count) {
-         const uint8_t *src = agx_bo_map(source->bo) + source->offset_B +
-                              fixup->source_offset_B;
+         const uint8_t *src = (const uint8_t *)agx_bo_map(source->bo) +
+                              source->offset_B + fixup->source_offset_B;
          memcpy(dst, src, fixup->size_B);
       } else {
          memset(dst, 0, fixup->size_B);
@@ -3760,8 +4051,12 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                       unsigned z, uint64_t indirect_args,
                       const struct libagx_d3d12_indirect_patch_args *patches,
                       unsigned patch_count,
+                      const struct libagx_d3d12_indirect_constant_args
+                         *constant_patches,
+                      unsigned constant_patch_count,
                       const struct d12_indirect_root_patch *root_patches,
-                      unsigned root_patch_count)
+                      unsigned root_patch_count, uint64_t *out_tables,
+                      uint32_t *out_table_count)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -3788,13 +4083,63 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
       return;
 
    if (!d12_list_dispatch_indirect_patches(
-          list, patches, patch_count, root_patches, root_patch_count,
-          tables_gpu, table_count, false))
+          list, patches, patch_count, constant_patches, constant_patch_count,
+          root_patches, root_patch_count, tables_gpu, table_count, false))
       return;
+   if (out_tables)
+      *out_tables = tables_gpu;
+   if (out_table_count)
+      *out_table_count = table_count;
+
+   struct agx_workgroup wg = agx_workgroup(pso->info.workgroup_size[0],
+                                           pso->info.workgroup_size[1],
+                                           pso->info.workgroup_size[2]);
+
+   /* Predication and ExecuteIndirect both turn Dispatch into a GPU-resident
+    * argument record. Keep that record in D3D12's group-count units until
+    * predication is resolved, then convert it to the global-thread counts
+    * consumed by AGX indirect CDM launches. */
+   if (list->predicate_gpu) {
+      if (!indirect_args) {
+         const D3D12_DISPATCH_ARGUMENTS args = {
+            .ThreadGroupCountX = x,
+            .ThreadGroupCountY = y,
+            .ThreadGroupCountZ = z,
+         };
+         indirect_args = d12_list_upload(list, &args, sizeof(args), 4);
+      }
+
+      indirect_args =
+         d12_list_apply_predication(list, indirect_args, 3, false);
+      if (!indirect_args)
+         return;
+   }
+
+   if (indirect_args && (wg.x != 1 || wg.y != 1 || wg.z != 1)) {
+      uint64_t scaled_args = d12_list_upload_zero(
+         list, sizeof(D3D12_DISPATCH_ARGUMENTS), 4);
+      if (!scaled_args)
+         return;
+
+      const struct libagx_d3d12_indirect_dispatch_args args = {
+         .out = scaled_args,
+         .in = indirect_args,
+         .workgroup_x = wg.x,
+         .workgroup_y = wg.y,
+         .workgroup_z = wg.z,
+      };
+      d12_list_dispatch_precomp_to(
+         list, LIBAGX_D3D12_INDIRECT_DISPATCH, &args, sizeof(args),
+         agx_1d(1), false);
+      if (list->state != D12_LIST_RECORDING)
+         return;
+
+      indirect_args = scaled_args;
+   }
 
    /* A patch dispatch can roll the CDM segment at its dispatch limit. Bind
-    * terminal-dispatch state only after the patches so it lands on the
-    * segment which actually consumes the root table. */
+    * terminal-dispatch state only after all argument transforms so it lands
+    * on the segment which actually consumes the root table. */
    struct d12_segment *seg = d12_list_get_cdm(list);
    if (!seg)
       return;
@@ -3805,6 +4150,19 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 
    if (!d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, &pso->info))
       return;
+
+   d12_segment_track_bound_uavs(list, seg, true, D12_WRITE_VIS_COMPUTE,
+                                D12_WRITE_COMPUTE);
+   /* ExecuteIndirect root UAV values are read by the GPU from the argument
+    * buffer immediately before the consumer.  The buffer may itself have
+    * been generated by prior GPU work, so a CPU snapshot cannot prove the
+    * destination allocation.  Keep all host-derivable UAV ranges as cache
+    * hints, but deliberately withhold Aurora's complete-write declaration.
+    * Direct-backed allocations remain legal; a live fallback-shadow leaf is
+    * rejected by the KMD before firmware visibility, exactly as contract v3
+    * requires. */
+   if (d12_indirect_root_has_uav(root_patches, root_patch_count))
+      d12_segment_mark_write_set_incomplete(seg, D12_WRITE_COMPUTE);
 
    uint8_t *usc_cpu = NULL;
    uint32_t usc = d12_list_build_compute_usc(
@@ -3846,39 +4204,12 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    struct agx_cdm_launch_word_0_packed launch =
       d12_compute_launch_word(&pso->info);
 
-   struct agx_workgroup wg = agx_workgroup(pso->info.workgroup_size[0],
-                                           pso->info.workgroup_size[1],
-                                           pso->info.workgroup_size[2]);
-
-   const bool predicated_direct = list->predicate_gpu && !indirect_args;
-   if (list->predicate_gpu) {
-      if (!indirect_args) {
-         const D3D12_DISPATCH_ARGUMENTS args = {
-            .ThreadGroupCountX = x * wg.x,
-            .ThreadGroupCountY = y * wg.y,
-            .ThreadGroupCountZ = z * wg.z,
-         };
-         indirect_args = d12_list_upload(list, &args, sizeof(args), 4);
-      }
-
-      indirect_args =
-         d12_list_apply_predication(list, indirect_args, 3, false);
-      if (!indirect_args)
-         return;
-   }
-
    /* D3D12 Dispatch counts thread GROUPS; AGX launches want global threads.
-    * A native indirect pointer is therefore directly compatible only for a
-    * 1x1x1 workgroup. Larger workgroups need a GPU-side argument rewrite.
+    * GPU-resident records were scaled above; direct dispatches can be scaled
+    * while encoding the launch without allocating an intermediate record.
     */
    struct agx_grid grid;
    if (indirect_args) {
-      if (!predicated_direct && (wg.x != 1 || wg.y != 1 || wg.z != 1)) {
-         mesa_loge("ExecuteIndirect: dispatch workgroup %ux%ux%u needs an "
-                   "argument rewrite", wg.x, wg.y, wg.z);
-         list->state = D12_LIST_ERROR;
-         return;
-      }
       grid = agx_grid_indirect(indirect_args);
    } else {
       grid = agx_3d(x * wg.x, y * wg.y, z * wg.z);
@@ -4313,6 +4644,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
                     unsigned vertex_count, unsigned instance_count,
                     bool indexed, unsigned first_index,
                     const struct agx_draw *upstream_draw,
+                    uint64_t indirect_ibv,
                     bool upstream_restart_unrolled,
                     uint64_t root_gpu, uint64_t textures_gpu,
                     uint64_t pbes_gpu,
@@ -4333,6 +4665,8 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     */
    const bool indirect =
       upstream_draw && agx_is_indirect(upstream_draw->b);
+   const bool dynamic_ibv =
+      indirect && indexed && indirect_ibv && !upstream_restart_unrolled;
    const uint64_t sw_outputs =
       pso->has_tess ? pso->sw_tes_outputs : pso->sw_vs_outputs;
    const enum mesa_prim input_prim =
@@ -4354,7 +4688,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
     * restart/tessellation setup kernel has run, but the index width is static
     * draw state and is consumed later by the software VS.  Poly's generic
     * helper intentionally leaves that field to the driver. */
-   if (indirect && upstream_draw->indexed)
+   if (indirect && upstream_draw->indexed && !dynamic_ibv)
       vp.index_size_B = agx_index_size_to_B(upstream_draw->index_size);
 
    if (!indirect && indexed) {
@@ -4612,7 +4946,7 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
          upstream_draw->b.ptr &&
          d12_list_stream_contains(list, vp_gpu, sizeof(vp)) &&
          d12_list_stream_contains(list, gp_gpu, sizeof(gp)) &&
-         (!upstream_draw->indexed ||
+         (!upstream_draw->indexed || dynamic_ibv ||
           (upstream_draw->index_buffer &&
            upstream_draw->index_buffer_range_B));
 
@@ -4687,29 +5021,50 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
 
    if (indirect) {
       list->uses_heap = true;
-      struct libagx_gs_setup_indirect_args args = {
-         .index_buffer = upstream_draw->indexed
-                            ? upstream_draw->index_buffer
-                            : list->device->null_va,
-         .draw = upstream_draw->b.ptr,
-         .vp = vp_gpu,
-         .p = gp_gpu,
-         .heap = list->device->heap_desc_va,
-         .vs_outputs = sw_outputs,
-         .index_size_B = upstream_draw->indexed
-                            ? agx_index_size_to_B(upstream_draw->index_size)
-                            : 0,
-         .index_buffer_range_el = upstream_draw->indexed
-            ? upstream_draw->index_buffer_range_B /
-                 agx_index_size_to_B(upstream_draw->index_size)
-            : 0,
-         .prim = input_prim,
-         .is_prefix_summing = pso->gs_info.prefix_sum,
-         .max_indices = pso->gs_info.max_indices,
-         .shape = pso->gs_info.shape,
-      };
-      d12_list_dispatch_precomp_to(list, LIBAGX_GS_SETUP_INDIRECT, &args,
-                                   sizeof(args), agx_1d(1), true);
+      if (dynamic_ibv) {
+         const struct libagx_d3d12_gs_setup_indirect_ibv_args args = {
+            .view = indirect_ibv,
+            .draw = upstream_draw->b.ptr,
+            .vp = vp_gpu,
+            .p = gp_gpu,
+            .heap = list->device->heap_desc_va,
+            .vs_outputs = sw_outputs,
+            .null_address = list->device->null_va,
+            .format_r16_uint = DXGI_FORMAT_R16_UINT,
+            .format_r32_uint = DXGI_FORMAT_R32_UINT,
+            .prim = input_prim,
+            .is_prefix_summing = pso->gs_info.prefix_sum,
+            .max_indices = pso->gs_info.max_indices,
+            .shape = pso->gs_info.shape,
+         };
+         d12_list_dispatch_precomp_to(
+            list, LIBAGX_D3D12_GS_SETUP_INDIRECT_IBV, &args, sizeof(args),
+            agx_1d(1), true);
+      } else {
+         const struct libagx_gs_setup_indirect_args args = {
+            .index_buffer = upstream_draw->indexed
+                               ? upstream_draw->index_buffer
+                               : list->device->null_va,
+            .draw = upstream_draw->b.ptr,
+            .vp = vp_gpu,
+            .p = gp_gpu,
+            .heap = list->device->heap_desc_va,
+            .vs_outputs = sw_outputs,
+            .index_size_B = upstream_draw->indexed
+                               ? agx_index_size_to_B(upstream_draw->index_size)
+                               : 0,
+            .index_buffer_range_el = upstream_draw->indexed
+               ? upstream_draw->index_buffer_range_B /
+                    agx_index_size_to_B(upstream_draw->index_size)
+               : 0,
+            .prim = input_prim,
+            .is_prefix_summing = pso->gs_info.prefix_sum,
+            .max_indices = pso->gs_info.max_indices,
+            .shape = pso->gs_info.shape,
+         };
+         d12_list_dispatch_precomp_to(list, LIBAGX_GS_SETUP_INDIRECT, &args,
+                                      sizeof(args), agx_1d(1), true);
+      }
       if (list->state != D12_LIST_RECORDING)
          return false;
 
@@ -4817,8 +5172,11 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
  */
 static uint64_t
 d12_list_upload_vb_params(struct d12_cmd_list *list,
-                          struct d12_pipeline_state *pso)
+                          struct d12_pipeline_state *pso,
+                          uint64_t *out_params_gpu)
 {
+   if (out_params_gpu)
+      *out_params_gpu = 0;
    if (!pso->nr_vb_attribs)
       return 0;
 
@@ -4862,15 +5220,81 @@ d12_list_upload_vb_params(struct d12_cmd_list *list,
    uint64_t vbp_gpu = d12_list_upload(list, &vbp, sizeof(vbp), 8);
    if (!vbp_gpu)
       return D12_VB_PARAMS_FAILED;
+   if (out_params_gpu)
+      *out_params_gpu = vbp_gpu;
 
    uint64_t ptr = d12_list_upload(list, &vbp_gpu, sizeof(vbp_gpu), 8);
    return ptr ? ptr : D12_VB_PARAMS_FAILED;
 }
 
 static bool
+d12_list_dispatch_indirect_vb_patches(
+   struct d12_cmd_list *list, const struct d12_pipeline_state *pso,
+   const struct d12_indirect_vb_patch *patches, unsigned patch_count,
+   uint64_t params_gpu)
+{
+   if (!patch_count || !pso->nr_vb_attribs)
+      return true;
+   if (!params_gpu) {
+      mesa_loge("ExecuteIndirect: no vertex parameter block for VBV patch");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   for (unsigned patch_index = 0; patch_index < patch_count; ++patch_index) {
+      const struct d12_indirect_vb_patch *patch = &patches[patch_index];
+      for (unsigned attribute = 0; attribute < pso->nr_vb_attribs;
+           ++attribute) {
+         const struct d12_vb_attrib *a = &pso->vb_attribs[attribute];
+         if (!a->live || a->slot != patch->slot)
+            continue;
+
+         const struct libagx_d3d12_indirect_vbv_args args = {
+            .out_base = params_gpu + offsetof(struct d12_vb_params, base) +
+                        attribute * sizeof(uint64_t),
+            .out_clamp = params_gpu + offsetof(struct d12_vb_params, clamp) +
+                         attribute * sizeof(uint32_t),
+            .out_stride = params_gpu +
+                          offsetof(struct d12_vb_params, stride_el) +
+                          attribute * sizeof(uint32_t),
+            .in = patch->in,
+            .draw_count = patch->draw_count,
+            .previous_base = patch->previous_params
+               ? patch->previous_params +
+                    offsetof(struct d12_vb_params, base) +
+                    attribute * sizeof(uint64_t)
+               : 0,
+            .previous_clamp = patch->previous_params
+               ? patch->previous_params +
+                    offsetof(struct d12_vb_params, clamp) +
+                    attribute * sizeof(uint32_t)
+               : 0,
+            .previous_stride = patch->previous_params
+               ? patch->previous_params +
+                    offsetof(struct d12_vb_params, stride_el) +
+                    attribute * sizeof(uint32_t)
+               : 0,
+            .command_index = patch->command_index,
+            .offset_B = a->offset_B,
+            .element_size_B = util_format_get_blocksize(a->format),
+            .interchange_align = a->interchange_align,
+         };
+         d12_list_dispatch_precomp_to(
+            list, LIBAGX_D3D12_INDIRECT_VBV, &args, sizeof(args), agx_1d(1),
+            true);
+         if (list->state != D12_LIST_RECORDING)
+            return false;
+      }
+   }
+
+   return true;
+}
+
+static bool
 d12_list_tess_prerast(struct d12_cmd_list *list,
                       struct d12_pipeline_state *pso, unsigned vertex_count,
-                      unsigned instance_count, uint64_t root_gpu,
+                      unsigned instance_count, bool indexed,
+                      unsigned first_index, uint64_t root_gpu,
                       uint64_t textures_gpu, uint64_t pbes_gpu,
                       uint64_t draw_gpu,
                       struct agx_draw *out_draw,
@@ -4898,9 +5322,13 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    unsigned in_patches = vertex_count / input_patch_size;
    unsigned unrolled = in_patches * instance_count;
    if (!unrolled) {
-      mesa_loge("tessellation draw covers no whole patches");
-      list->state = D12_LIST_ERROR;
-      return false;
+      /* A partial patch or zero instances is an empty draw, not a command-list
+       * error. Publish a safe zero-count raster descriptor and skip every
+       * software tessellation stage. */
+      *out_draw = agx_draw_indexed(
+         0, 0, 0, 0, 0, list->device->null_va, 4,
+         AGX_INDEX_SIZE_U32, false);
+      return true;
    }
 
    const uint32_t wg_size[3] = {64, 1, 1};
@@ -4918,9 +5346,27 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
    if (!vp.output_buffer)
       return false;
 
-   /* Never null: the software input assembly materialises this pointer
-    * even on the non-indexed path it does not take. */
-   vp.index_buffer = vp.output_buffer;
+   if (indexed) {
+      enum agx_index_size index_size = list->ib.addr
+                                          ? list->ib.index_size
+                                          : AGX_INDEX_SIZE_U16;
+      unsigned index_size_B = agx_index_size_to_B(index_size);
+      unsigned range_el = list->ib.size_B / index_size_B;
+
+      vp.index_size_B = index_size_B;
+      if (list->ib.addr && first_index < range_el) {
+         vp.index_buffer = list->ib.addr +
+                           (uint64_t)first_index * index_size_B;
+         vp.index_buffer_range_el = range_el - first_index;
+      } else {
+         vp.index_buffer = list->device->null_va;
+         vp.index_buffer_range_el = 0;
+      }
+   } else {
+      /* Never null: software input assembly materialises this pointer even
+       * on the non-indexed path it does not take. */
+      vp.index_buffer = vp.output_buffer;
+   }
 
    /* One blob for the tessellator's scratch, carved by offset the way hk
     * does it. out_draws is the 5-word indexed draw the GPU fills in.
@@ -5395,6 +5841,7 @@ d12_list_unroll_gs_restart(struct d12_cmd_list *list,
                            const struct d12_pipeline_state *pso,
                            enum mesa_prim topology,
                            const struct agx_draw *input,
+                           uint64_t indirect_ibv,
                            struct agx_draw *output)
 {
    assert(input->indexed && input->restart && agx_is_indirect(input->b));
@@ -5408,6 +5855,34 @@ d12_list_unroll_gs_restart(struct d12_cmd_list *list,
       pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
          ? UINT16_MAX
          : UINT32_MAX;
+
+   if (indirect_ibv) {
+      const struct libagx_d3d12_unroll_restart_ibv_args args = {
+         .heap = list->device->heap_desc_va,
+         .view = indirect_ibv,
+         .in_draw = input->b.ptr,
+         .out_draw = out_draw,
+         .null_address = list->device->null_va,
+         .format_r16_uint = DXGI_FORMAT_R16_UINT,
+         .format_r32_uint = DXGI_FORMAT_R32_UINT,
+         .restart_index = restart_index,
+         .flatshade_first = true,
+      };
+
+      list->uses_heap = true;
+      d12_list_dispatch_precomp_to(
+         list,
+         LIBAGX_D3D12_UNROLL_RESTART_IBV(poly_compact_prim(topology)),
+         &args, sizeof(args), agx_1d(1024), true);
+      if (list->state != D12_LIST_RECORDING)
+         return false;
+
+      *output = agx_draw_indexed_indirect(
+         out_draw, list->device->heap_bo->va->addr,
+         list->device->heap_bo->size, AGX_INDEX_SIZE_U32, false);
+      return true;
+   }
+
    struct libagx_unroll_restart_args args = {
       .heap = list->device->heap_desc_va,
       .index_buffer = input->index_buffer,
@@ -5555,8 +6030,15 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
               uint64_t indirect_args,
               const struct libagx_d3d12_indirect_patch_args *indirect_patches,
               unsigned indirect_patch_count,
+              const struct libagx_d3d12_indirect_constant_args
+                 *indirect_constant_patches,
+              unsigned indirect_constant_patch_count,
               const struct d12_indirect_root_patch *indirect_root_patches,
-              unsigned indirect_root_patch_count)
+              unsigned indirect_root_patch_count,
+              const struct d12_indirect_vb_patch *indirect_vb_patches,
+              unsigned indirect_vb_patch_count, uint64_t indirect_ibv,
+              uint64_t *out_tables, uint32_t *out_table_count,
+              uint64_t *out_vb_params)
 {
    struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
@@ -5658,10 +6140,16 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * which consumes them. */
    if (!d12_list_dispatch_indirect_patches(
           list, indirect_patches, indirect_patch_count,
+          indirect_constant_patches, indirect_constant_patch_count,
           indirect_root_patches, indirect_root_patch_count, tables_gpu,
           table_count, true))
       return;
-   if (indirect_patch_count || indirect_root_patch_count)
+   if (out_tables)
+      *out_tables = tables_gpu;
+   if (out_table_count)
+      *out_table_count = table_count;
+   if (indirect_patch_count || indirect_constant_patch_count ||
+       indirect_root_patch_count)
       seg = &list->segments[list->segment_count - 1];
 
    /* SM 6.8 draw parameters. agx_usc_uniform fills registers FROM memory.
@@ -5735,9 +6223,19 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * tessellation probe does not -- g7 derives its geometry from
     * SV_VertexID and so never fetches an attribute at all.
     */
-   uint64_t vb_params_gpu = d12_list_upload_vb_params(list, pso);
+   uint64_t vb_params_data_gpu = 0;
+   uint64_t vb_params_gpu =
+      d12_list_upload_vb_params(list, pso, &vb_params_data_gpu);
    if (vb_params_gpu == D12_VB_PARAMS_FAILED)
       return;
+   if (!d12_list_dispatch_indirect_vb_patches(
+          list, pso, indirect_vb_patches, indirect_vb_patch_count,
+          vb_params_data_gpu))
+      return;
+   if (out_vb_params)
+      *out_vb_params = vb_params_data_gpu;
+   if (indirect_vb_patch_count)
+      seg = &list->segments[list->segment_count - 1];
    poly_u.vb_params = vb_params_gpu;
 
    const struct d12_gfx_stage *vstage = &pso->vs;
@@ -5773,8 +6271,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       draw_set = true;
    } else if (pso->has_tess) {
       if (!d12_list_tess_prerast(list, pso, vertex_count, instance_count,
-                                 root_gpu, textures_gpu, pbes_gpu, draw_gpu,
-                                 &draw,
+                                 indexed, first_index, root_gpu, textures_gpu,
+                                 pbes_gpu, draw_gpu, &draw,
                                  &poly_u))
          return;
 
@@ -5825,7 +6323,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       if (api_restart) {
          struct agx_draw restart_input = gs_upstream;
          if (!d12_list_unroll_gs_restart(list, pso, list->topology,
-                                         &restart_input, &gs_upstream))
+                                         &restart_input, indirect_ibv,
+                                         &gs_upstream))
             return;
          gs_restart_unrolled = true;
       }
@@ -5839,7 +6338,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
 
       if (!d12_list_gs_prerast(list, pso, vertex_count, instance_count,
                                indexed, first_index,
-                               gs_input, gs_restart_unrolled,
+                               gs_input, indirect_ibv,
+                               gs_restart_unrolled,
                                root_gpu, textures_gpu, pbes_gpu, draw_gpu,
                                &vertex_count, &instance_count, &draw,
                                &poly_u))
@@ -6410,6 +6910,103 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       }
    }
 
+   if (indexed && indirect_ibv && !pso->has_gs) {
+      if (!indirect_args) {
+         mesa_loge("ExecuteIndirect: indirect IBV has no terminal draw");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const uint64_t vdm_gpu = list->stream_bo->va->addr +
+         (uint64_t)(out - d12_list_stream_map(list));
+      const struct libagx_d3d12_indirect_indexed_draw_args args = {
+         .out = vdm_gpu,
+         .command = indirect_args,
+         .view = indirect_ibv,
+         .null_address = device->null_va,
+         .format_r16_uint = DXGI_FORMAT_R16_UINT,
+         .format_r32_uint = DXGI_FORMAT_R32_UINT,
+         .restart = restart,
+         .topology = d12_agx_primitive(topology),
+      };
+      d12_list_dispatch_precomp_to(
+         list, LIBAGX_D3D12_INDIRECT_INDEXED_DRAW, &args, sizeof(args),
+         agx_1d(1), true);
+      if (list->state != D12_LIST_RECORDING)
+         return;
+      seg = &list->segments[list->segment_count - 1];
+
+      /* Reserve the exact direct-indexed command width and initialize it to
+       * a safe no-op. The pre-graphics kernel overwrites these words after
+       * the application's IBV/draw records are execution-visible. */
+      draw = agx_draw_indexed(0, 0, 0, 0, 0, device->null_va, 4,
+                              AGX_INDEX_SIZE_U16, restart);
+   }
+
+   /* Ordinary graphics UAV writes are split by firmware pipe.  ALL-visible
+    * bindings are conservatively present in both sets.  Software geometry,
+    * tessellation and mesh stages additionally execute in the pre-graphics
+    * CDM segment and therefore need a compute ownership record as well. */
+   d12_segment_track_bound_uavs(
+      list, seg, false, D12_WRITE_VIS_GRAPHICS_VERTEX, D12_WRITE_VERTEX);
+   d12_segment_track_bound_uavs(
+      list, seg, false, D12_WRITE_VIS_GRAPHICS_FRAGMENT,
+      D12_WRITE_FRAGMENT);
+
+   if (d12_indirect_root_has_uav(indirect_root_patches,
+                                 indirect_root_patch_count)) {
+      /* Shader visibility could place this root UAV in either graphics pipe.
+       * Conservatively withhold completeness for both; software geometry,
+       * tessellation and mesh may also consume it from the pre-graphics CDM
+       * stream below. */
+      d12_segment_mark_write_set_incomplete(seg, D12_WRITE_VERTEX);
+      d12_segment_mark_write_set_incomplete(seg, D12_WRITE_FRAGMENT);
+      if (list->pregfx_open) {
+         struct d12_segment *pregfx = &list->segments[list->pregfx_seg];
+         d12_segment_mark_write_set_incomplete(pregfx,
+                                               D12_WRITE_COMPUTE);
+      }
+   }
+
+   if (list->active_occlusion_queries) {
+      d12_segment_track_write_range(
+         seg, D12_WRITE_FRAGMENT, device->oclqry_bo->va->addr,
+         device->oclqry_bo->size);
+   }
+
+   if (list->pregfx_open) {
+      struct d12_segment *pregfx = &list->segments[list->pregfx_seg];
+      d12_segment_track_bound_uavs(
+         list, pregfx, false, D12_WRITE_VIS_GRAPHICS_VERTEX,
+         D12_WRITE_COMPUTE);
+
+      /* Poly stream output writes the data buffer, its filled-size counter,
+       * and any active SO statistics result from the pre-graphics compute
+       * stream. */
+      for (unsigned stream = 0; stream < ARRAY_SIZE(list->so); stream++) {
+         const D3D12_STREAM_OUTPUT_BUFFER_VIEW *view = &list->so[stream];
+         if (view->BufferLocation && view->SizeInBytes) {
+            d12_segment_track_write_range(
+               pregfx, D12_WRITE_COMPUTE, view->BufferLocation,
+               view->SizeInBytes);
+            d12_segment_track_write_range(
+               pregfx, D12_WRITE_COMPUTE,
+               view->BufferFilledSizeLocation, sizeof(uint32_t));
+         }
+
+         if (list->active_so_stats_heap[stream]) {
+            struct d12_query_heap *heap =
+               list->active_so_stats_heap[stream];
+            d12_segment_track_write_range(
+               pregfx, D12_WRITE_COMPUTE,
+               heap->bo->va->addr +
+                  (uint64_t)list->active_so_stats_index[stream] *
+                     heap->stride,
+               heap->stride);
+         }
+      }
+   }
+
    out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
                                  d12_agx_primitive(topology));
 
@@ -6436,7 +7033,8 @@ d12_list_DispatchMesh(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y,
       return;
    }
 
-   d12_list_draw(list, x, y, z, 0, false, 0, 0, NULL, 0, NULL, 0);
+   d12_list_draw(list, x, y, z, 0, false, 0, 0, NULL, 0, NULL, 0, NULL, 0,
+                 NULL, 0, 0, NULL, NULL, NULL);
 }
 
 static void STDMETHODCALLTYPE
@@ -6469,8 +7067,8 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
    }
 
    d12_list_draw(list, vertex_count_per_instance, instance_count,
-                 start_vertex, start_instance, false, 0, 0, NULL, 0, NULL,
-                 0);
+                 start_vertex, start_instance, false, 0, 0, NULL, 0, NULL, 0,
+                 NULL, 0, NULL, 0, 0, NULL, NULL, NULL);
 }
 
 static void STDMETHODCALLTYPE
@@ -6513,7 +7111,7 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
 
    d12_list_draw(list, index_count_per_instance, instance_count,
                  (unsigned)base_vertex, start_instance, true, start_index, 0,
-                 NULL, 0, NULL, 0);
+                 NULL, 0, NULL, 0, NULL, 0, NULL, 0, 0, NULL, NULL, NULL);
 }
 
 static uint64_t
@@ -6525,6 +7123,10 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
                              UINT root_param_index,
                              D3D12_GPU_VIRTUAL_ADDRESS address,
                              D3D12_ROOT_PARAMETER_TYPE expected);
+static unsigned
+d12_list_root_descriptor_slot(struct d12_cmd_list *list, bool compute,
+                              UINT root_param_index,
+                              D3D12_ROOT_PARAMETER_TYPE expected);
 
 static bool
 d12_indirect_argument_layout(const D3D12_INDIRECT_ARGUMENT_DESC *argument,
@@ -6554,6 +7156,12 @@ d12_indirect_argument_layout(const D3D12_INDIRECT_ARGUMENT_DESC *argument,
    case D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
    case D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW:
       *size = sizeof(uint64_t);
+      return true;
+   case D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW:
+      *size = sizeof(D3D12_VERTEX_BUFFER_VIEW);
+      return true;
+   case D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW:
+      *size = sizeof(D3D12_INDEX_BUFFER_VIEW);
       return true;
    default:
       return false;
@@ -6620,7 +7228,7 @@ d12_list_upload_sparse_ranges(struct d12_cmd_list *list, uint32_t *out_count)
 }
 
 static bool
-d12_list_reset_indirect_root_state(
+d12_list_reset_indirect_state(
    struct d12_cmd_list *list, bool compute,
    const struct d12_command_signature *signature)
 {
@@ -6658,6 +7266,20 @@ d12_list_reset_indirect_root_state(
                 argument->UnorderedAccessView.RootParameterIndex, 0,
                 D3D12_ROOT_PARAMETER_TYPE_UAV) == ~0u)
             return false;
+         break;
+      case D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW: {
+         UINT slot = argument->VertexBuffer.Slot;
+         if (slot >= D12_MAX_VB_SLOTS) {
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
+         memset(&list->vb[slot], 0, sizeof(list->vb[slot]));
+         break;
+      }
+      case D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW:
+         list->ib.addr = 0;
+         list->ib.size_B = 0;
+         list->ib.index_size = AGX_INDEX_SIZE_U16;
          break;
       default:
          break;
@@ -6714,6 +7336,17 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   /* The D3D12 indirect-drawing contract permits ExecuteIndirect in bundles
+    * only for a single terminal operation and a CPU-specified count. Root or
+    * IA mutations and a GPU count buffer require a direct/compute list. */
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE &&
+       (count_buffer || signature->desc.NumArgumentDescs != 1)) {
+      mesa_loge("ExecuteIndirect: bundle signature changes state or uses a "
+                "count buffer");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    UINT terminal_index = signature->desc.NumArgumentDescs - 1;
    D3D12_INDIRECT_ARGUMENT_TYPE type =
       signature->arguments[terminal_index].Type;
@@ -6739,14 +7372,9 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   if (indexed && !list->ib.addr) {
-      mesa_loge("ExecuteIndirect: indexed draw has no index buffer");
-      list->state = D12_LIST_ERROR;
-      return;
-   }
-
    size_t terminal_offset = 0;
    bool needs_sparse_ranges = false;
+   bool has_indirect_ibv = false;
    for (UINT i = 0; i < terminal_index; i++) {
       const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[i];
       size_t argument_size;
@@ -6762,6 +7390,20 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       needs_sparse_ranges |=
          arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW ||
          arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW;
+      has_indirect_ibv |=
+         arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+   }
+
+   if (dispatch && has_indirect_ibv) {
+      mesa_loge("ExecuteIndirect: compute signature contains IA state");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   if (indexed && !has_indirect_ibv && !list->ib.addr) {
+      mesa_loge("ExecuteIndirect: indexed draw has no index buffer");
+      list->state = D12_LIST_ERROR;
+      return;
    }
 
    if (terminal_size > SIZE_MAX - terminal_offset) {
@@ -6796,14 +7438,24 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
    if (needs_sparse_ranges && sparse_range_count && !sparse_ranges)
       return;
 
+   uint64_t previous_tables = 0;
+   uint64_t previous_vb_params = 0;
+   uint32_t previous_table_count = 0;
+
    for (UINT i = 0; i < max_command_count; i++) {
       uint64_t command_offset = argument_buffer_offset + (uint64_t)i * stride;
       size_t running_offset = 0;
       struct libagx_d3d12_indirect_patch_args
-         patches[2 * D12_MAX_ROOT_PARAMS + 1];
+         patches[D12_MAX_ROOT_PARAMS + 1];
+      struct libagx_d3d12_indirect_constant_args
+         constant_patches[D12_MAX_ROOT_PARAMS];
       struct d12_indirect_root_patch root_patches[D12_MAX_ROOT_PARAMS];
+      struct d12_indirect_vb_patch vb_patches[D12_MAX_ROOT_PARAMS];
       unsigned patch_count = 0;
+      unsigned constant_patch_count = 0;
       unsigned root_patch_count = 0;
+      unsigned vb_patch_count = 0;
+      uint64_t indirect_ibv = 0;
 
       for (UINT j = 0; j < terminal_index; j++) {
          const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[j];
@@ -6846,33 +7498,27 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                 list->state != D12_LIST_RECORDING)
                return;
 
-            /* Preserve root-constant words not named by this argument from
-             * the preceding execution-time state, not its recording-time CPU
-             * shadow. This matters when an earlier GPU command produced the
-             * prior indirect record. */
-            if (previous) {
-               patches[patch_count++] =
-                  (struct libagx_d3d12_indirect_patch_args){
-                     .out = destination,
-                     .in = previous,
-                     .draw_count = 0,
-                     .command_index = 0,
-                     .size_B = ALIGN_POT(
-                        (size_t)root_param->num_constants * sizeof(uint32_t),
-                        16),
-                  };
-            }
-            patches[patch_count++] =
-               (struct libagx_d3d12_indirect_patch_args){
-                  .out = destination +
-                     (uint64_t)arg->Constant.DestOffsetIn32BitValues * 4,
+            constant_patches[constant_patch_count++] =
+               (struct libagx_d3d12_indirect_constant_args){
+                  .out = destination,
+                  .previous = previous,
                   .in = argument_buffer->addr + source_offset,
                   .draw_count = count_buffer
                      ? count_buffer->addr + count_buffer_offset : 0,
                   .command_index = i,
-                  .size_B = size_B,
+                  .total_size_B = (uint32_t)ALIGN_POT(
+                     (size_t)root_param->num_constants * sizeof(uint32_t),
+                     16),
+                  .destination_offset_B =
+                     arg->Constant.DestOffsetIn32BitValues * 4,
+                  .size_B = (uint32_t)size_B,
                };
-         } else {
+         } else if (arg->Type ==
+                       D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW ||
+                    arg->Type ==
+                       D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW ||
+                    arg->Type ==
+                       D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW) {
             UINT root_parameter_index;
             D3D12_ROOT_PARAMETER_TYPE expected;
             bool publish_unbounded = false;
@@ -6903,8 +7549,8 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                return;
             }
 
-            unsigned slot = d12_list_set_root_descriptor(
-               list, dispatch, root_parameter_index, 0, expected);
+            unsigned slot = d12_list_root_descriptor_slot(
+               list, dispatch, root_parameter_index, expected);
             if (slot == ~0u || root_patch_count >= D12_MAX_ROOT_PARAMS)
                return;
             root_patches[root_patch_count++] =
@@ -6912,14 +7558,37 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                   .in = argument_buffer->addr + source_offset,
                   .draw_count = count_buffer
                      ? count_buffer->addr + count_buffer_offset : 0,
+                  .previous_tables = previous_tables,
                   .sparse_ranges = sparse_ranges,
                   .sparse_ro_offset = list->device->dev.sparse_ro_offset,
+                  .previous_table_count = previous_table_count,
                   .sparse_range_count = sparse_range_count,
                   .command_index = i,
                   .slot = slot,
                   .publish_unbounded = publish_unbounded,
                   .read_only = read_only,
                };
+         } else if (arg->Type ==
+                    D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW) {
+            if (arg->VertexBuffer.Slot >= D12_MAX_VB_SLOTS ||
+                vb_patch_count >= D12_MAX_ROOT_PARAMS) {
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+            vb_patches[vb_patch_count++] = (struct d12_indirect_vb_patch){
+               .in = argument_buffer->addr + source_offset,
+               .draw_count = count_buffer
+                  ? count_buffer->addr + count_buffer_offset : 0,
+               .previous_params = previous_vb_params,
+               .command_index = i,
+               .slot = arg->VertexBuffer.Slot,
+            };
+         } else if (arg->Type ==
+                    D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW) {
+            indirect_ibv = argument_buffer->addr + source_offset;
+         } else {
+            list->state = D12_LIST_ERROR;
+            return;
          }
          running_offset += size_B;
       }
@@ -6941,21 +7610,32 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
             };
          args = destination;
       }
-      if (dispatch)
+      uint64_t current_tables = 0;
+      uint64_t current_vb_params = 0;
+      uint32_t current_table_count = 0;
+      if (dispatch) {
          d12_list_dispatch_pso(list, 0, 0, 0, args, patches, patch_count,
-                               root_patches, root_patch_count);
-      else
+                               constant_patches, constant_patch_count,
+                               root_patches, root_patch_count, &current_tables,
+                               &current_table_count);
+      } else {
          d12_list_draw(list, 0, 0, 0, 0, indexed, 0, args, patches,
-                       patch_count, root_patches, root_patch_count);
+                       patch_count, constant_patches, constant_patch_count,
+                       root_patches, root_patch_count, vb_patches,
+                       vb_patch_count, indirect_ibv, &current_tables,
+                       &current_table_count, &current_vb_params);
+      }
       if (list->state != D12_LIST_RECORDING)
          return;
+      previous_tables = current_tables;
+      previous_table_count = current_table_count;
+      previous_vb_params = current_vb_params;
    }
 
-   /* ExecuteIndirect does not leave mutable signature state behind.  The
-    * runtime specifies null VB/IB/root views and zero root constants after
-    * the call; VB/IB signatures remain fail-closed until their GPU patching
-    * path is implemented. */
-   (void)d12_list_reset_indirect_root_state(list, dispatch, signature);
+   /* ExecuteIndirect does not leave mutable signature state behind: IA views
+    * and root views become null, while every root-constant range named by the
+    * signature becomes zero. */
+   (void)d12_list_reset_indirect_state(list, dispatch, signature);
 }
 
 /*
@@ -7132,10 +7812,9 @@ d12_list_SetGraphicsRootSignature(ID3D12GraphicsCommandList6 *iface,
  * silently binds the wrong resource the moment it does not.
  */
 static unsigned
-d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
-                             UINT root_param_index,
-                             D3D12_GPU_VIRTUAL_ADDRESS address,
-                             D3D12_ROOT_PARAMETER_TYPE expected)
+d12_list_root_descriptor_slot(struct d12_cmd_list *list, bool compute,
+                              UINT root_param_index,
+                              D3D12_ROOT_PARAMETER_TYPE expected)
 {
    struct d12_root_signature *rs =
       compute ? list->compute_rs : list->graphics_rs;
@@ -7180,6 +7859,23 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
       return ~0u;
    }
 
+   return slot;
+}
+
+static unsigned
+d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
+                             UINT root_param_index,
+                             D3D12_GPU_VIRTUAL_ADDRESS address,
+                             D3D12_ROOT_PARAMETER_TYPE expected)
+{
+   unsigned slot = d12_list_root_descriptor_slot(
+      list, compute, root_param_index, expected);
+   if (slot == ~0u)
+      return slot;
+
+   struct d12_root_signature *rs =
+      compute ? list->compute_rs : list->graphics_rs;
+   const struct d12_root_param *rp = &rs->layout.params[root_param_index];
    struct d12_descriptor *table =
       compute ? list->compute_root_table : list->graphics_root_table;
    const struct d12_descriptor **sources =
@@ -7823,7 +8519,8 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
 
       d12_list_draw(list, draw->vertex_count, draw->instance_count,
                     draw->first_vertex, draw->first_instance, draw->indexed,
-                    draw->first_index, 0, NULL, 0, NULL, 0);
+                    draw->first_index, 0, NULL, 0, NULL, 0, NULL, 0, NULL, 0,
+                    0, NULL, NULL, NULL);
       if (list->state != D12_LIST_RECORDING)
          return;
    }
@@ -7933,7 +8630,8 @@ d12_list_Dispatch(ID3D12GraphicsCommandList6 *iface, UINT x, UINT y, UINT z)
        z > D3D12_CS_DISPATCH_MAX_THREAD_GROUPS_PER_DIMENSION)
       return;
 
-   d12_list_dispatch_pso(list, x, y, z, 0, NULL, 0, NULL, 0);
+   d12_list_dispatch_pso(list, x, y, z, 0, NULL, 0, NULL, 0, NULL, 0, NULL,
+                         NULL);
 }
 
 static HRESULT STDMETHODCALLTYPE

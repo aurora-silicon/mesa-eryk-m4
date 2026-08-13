@@ -21,8 +21,24 @@ struct d12_umd_renderer_ops {
    void (*destroy_command_queue)(void *queue);
    HRESULT (*execute_command_lists)(void *queue, uint32_t count,
                                     void *const *lists);
+   HRESULT (*update_tile_mappings)(
+      void *queue, void *resource, uint32_t region_count,
+      const struct d12_frontend_tiled_resource_coordinate *region_starts,
+      const struct d12_frontend_tile_region_size *region_sizes, void *heap,
+      uint32_t range_count, const uint32_t *range_flags,
+      const uint32_t *heap_start_offsets, const uint32_t *range_tile_counts,
+      uint32_t flags);
+   HRESULT (*copy_tile_mappings)(
+      void *queue, void *destination_resource,
+      const struct d12_frontend_tiled_resource_coordinate *destination_start,
+      void *source_resource,
+      const struct d12_frontend_tiled_resource_coordinate *source_start,
+      const struct d12_frontend_tile_region_size *region_size,
+      uint32_t flags);
    HRESULT (*trim_memory)(void *device, bool periodic,
                           bool restart_periodic, uint64_t bytes_to_trim);
+   uint32_t (*paging_queue)(void *device);
+   HRESULT (*wait_paging)(void *device, uint64_t value);
    HRESULT (*rotate_resource_identities)(void *device,
                                          void *const *resources,
                                          uint32_t count);
@@ -89,6 +105,11 @@ struct d12_umd_renderer_ops {
                               uint64_t destination_offset, void *source,
                               uint64_t source_offset, uint64_t bytes);
    void (*copy_resource)(void *list, void *destination, void *source);
+   HRESULT (*copy_tiles)(
+      void *list, void *resource,
+      const struct d12_frontend_tiled_resource_coordinate *region_start,
+      const struct d12_frontend_tile_region_size *region_size, void *buffer,
+      uint64_t buffer_offset, uint32_t flags);
    void (*copy_texture_region)(
       void *list,
       const struct d12_frontend_texture_copy_location *destination,
@@ -165,8 +186,14 @@ struct d12_umd_renderer_ops {
       const struct d12_frontend_resource_desc *desc,
       const struct d12_frontend_clear_value *clear_value,
       void **out_resource);
+   HRESULT (*create_reserved_resource)(
+      void *device, const struct d12_frontend_resource_desc *desc,
+      const struct d12_frontend_clear_value *clear_value,
+      void **out_resource);
    void (*destroy_resource)(void *resource);
    uint64_t (*resource_gpu_virtual_address)(void *resource);
+   HRESULT (*resource_mip_packing)(void *resource, uint32_t *packed_mips,
+                                   uint32_t *packed_tiles);
    HRESULT (*get_resource_allocation_info)(
       void *device, const struct d12_frontend_resource_desc *desc,
       uint32_t visible_node_mask,

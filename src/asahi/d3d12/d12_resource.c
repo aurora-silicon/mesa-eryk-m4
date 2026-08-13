@@ -2022,7 +2022,8 @@ d12_resource_create_reserved(struct d12_device *device,
       /* Tier 1 is limited to 2D textures with the undefined 64 KiB swizzle.
        * Standard swizzle and 1D/3D are separate capabilities. */
       if (desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
-          desc->Layout != D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE)
+          desc->Layout != D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE ||
+          desc->SampleDesc.Count != 1 || desc->SampleDesc.Quality != 0)
          return E_INVALIDARG;
 
       const bool depth = d12_format_is_depth_stencil(desc->Format);

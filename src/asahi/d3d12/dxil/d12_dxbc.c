@@ -1912,31 +1912,6 @@ uav_buffer_address(struct d12_dxbc_ctx *ctx,
    return nir_iadd(b, base, nir_u2u64(b, byte));
 }
 
-/*
- * Address of element `index`, byte `offset`, in the statically named buffer
- * bound at `reg`. One indirection through the root table, exactly as the
- * constant-buffer path does.
- */
-static nir_def *
-buffer_address(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
-               nir_def *index, nir_def *offset, unsigned stride)
-{
-   nir_builder *b = &ctx->b;
-
-   unsigned slot = ctx->map
-                      ? d12_binding_map_find(ctx->map,
-                                             uav ? D12_RES_UAV : D12_RES_SRV,
-                                             0, reg)
-                      : reg;
-   if (slot == ~0u) {
-      fail(ctx, "buffer is not bound by the root signature");
-      return nir_imm_int64(b, 0);
-   }
-
-   return buffer_address_slot(ctx, nir_imm_int(b, slot), index, offset,
-                              stride);
-}
-
 static nir_def *
 srv_buffer_address(struct d12_dxbc_ctx *ctx,
                    const struct d12_dxbc_operand *srv, nir_def *index,
@@ -2246,28 +2221,6 @@ uav_counter_address(struct d12_dxbc_ctx *ctx,
       .align_mul = 8);
 }
 
-static nir_def *
-uav_element_in_bounds(struct d12_dxbc_ctx *ctx,
-                      const struct d12_dxbc_operand *uav, nir_def *index)
-{
-   nir_builder *b = &ctx->b;
-   nir_def *descriptor = uav_rooted_descriptor(ctx, uav);
-   if (!descriptor) {
-      nir_def *slot = uav_binding_slot(ctx, uav);
-      return slot ? buffer_element_in_bounds_slot(ctx, slot, index)
-                  : nir_imm_false(b);
-   }
-
-   nir_def *size = nir_load_global(
-      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
-      .align_mul = 4);
-   nir_def *stride = nir_load_global(
-      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
-      .align_mul = 4);
-   nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
-   return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
-}
-
 /* The AGX buffer-image atomic path does not suppress an out-of-range
  * coordinate itself.  For an SM 5.1 unbounded typed UAV, select either its
  * live PBE descriptor or the extra null descriptor at the end of the bound
@@ -2315,24 +2268,6 @@ buffer_element_in_bounds_slot(struct d12_dxbc_ctx *ctx, nir_def *slot,
       .align_mul = 8);
 
    return nir_ult(b, nir_u2u32(b, nir_channel(b, index, 0)), count);
-}
-
-static nir_def *
-buffer_element_in_bounds(struct d12_dxbc_ctx *ctx, uint32_t reg, bool uav,
-                         nir_def *index)
-{
-   nir_builder *b = &ctx->b;
-   unsigned slot = ctx->map
-                      ? d12_binding_map_find(ctx->map,
-                                             uav ? D12_RES_UAV : D12_RES_SRV,
-                                             0, reg)
-                      : reg;
-   if (slot == ~0u) {
-      fail(ctx, "buffer is not bound by the root signature");
-      return nir_imm_false(b);
-   }
-
-   return buffer_element_in_bounds_slot(ctx, nir_imm_int(b, slot), index);
 }
 
 /* Byte extent of the descriptor view selected by a DXBC resource operand.

@@ -6,7 +6,7 @@
  * and offset used by the adapter milestone a build-breaking contract.
  */
 
-#define D3D_UMD_INTERFACE_VERSION 0x5002
+#include "d12_umd_wddm.h"
 #include <windows.h>
 #include <d3d12umddi.h>
 #include <dxgiddi.h>
@@ -39,12 +39,46 @@ _Static_assert(sizeof(D3D12DDIARG_CREATEDEVICE_0003) == 48,
                "CREATEDEVICE_0003 width");
 _Static_assert(sizeof(DXGI_DDI_BASE_ARGS) == 16,
                "DXGI base arguments width");
+#if D12_UMD_TARGETS_WDDM21
+_Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 440,
+               "WDDM 2.1 device callback table width");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
+                        pfnUpdateAllocationPropertyCb) == 400,
+               "WDDM 2.1 update-allocation callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnOfferAllocations2Cb) == 408,
+               "WDDM 2.1 offer callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnReclaimAllocations3Cb) == 416,
+               "WDDM 2.1 reclaim callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnAcquireResourceCb) == 424,
+               "WDDM 2.1 acquire-resource callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnReleaseResourceCb) == 432,
+               "WDDM 2.1 release-resource callback offset");
+_Static_assert(sizeof(D3DDDICB_OFFERALLOCATIONS2) == 32,
+               "WDDM 2.1 offer arguments width");
+_Static_assert(sizeof(D3DDDICB_RECLAIMALLOCATIONS3) == 40,
+               "WDDM 2.1 reclaim arguments width");
+_Static_assert(offsetof(D3DDDICB_RECLAIMALLOCATIONS3, PagingFenceValue) == 32,
+               "WDDM 2.1 reclaim fence offset");
+_Static_assert(sizeof(D3DDDICB_SYNCTOKEN) == 24,
+               "WDDM 2.1 sync-token arguments width");
+_Static_assert(sizeof(DXGI1_5_DDI_BASE_FUNCTIONS) == 176,
+               "WDDM 2.1 DXGI table width");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
+                        pfnOfferResources1) == 72,
+               "WDDM 2.1 DXGI offer slot offset");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
+                        pfnReclaimResources1) == 168,
+               "WDDM 2.1 DXGI reclaim slot offset");
+#else
+_Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 400,
+               "WDDM 2.0 device callback table width");
 _Static_assert(sizeof(DXGI1_4_DDI_BASE_FUNCTIONS) == 168,
                "WDDM 2.0 DXGI table width");
 _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved1) == 104,
                "DXGI reserved slot 1 offset");
 _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved2) == 120,
                "DXGI reserved slot 2 offset");
+#endif
 _Static_assert(offsetof(D3D12DDIARG_CREATEDEVICE_0003, pKTCallbacks) == 16,
                "CREATEDEVICE kernel callbacks offset");
 _Static_assert(offsetof(D3D12DDIARG_CREATEDEVICE_0003, hDrvDevice) == 24,
@@ -178,6 +212,37 @@ _Static_assert(offsetof(D3D12DDIARG_RECLAIMRESOURCES_0001,
                "RECLAIMRESOURCES paging-fence offset");
 _Static_assert(sizeof(D3D12DDI_INDIRECT_ARGUMENT_DESC) == 16,
                "INDIRECT_ARGUMENT_DESC width");
+_Static_assert(D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW == 0 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED == 1 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_DISPATCH == 2 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW == 3 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW == 4 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT == 5 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW == 6 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW == 7 &&
+                  D3D12DDI_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW == 8,
+               "baseline indirect argument encodings");
+_Static_assert(D3D12DDI_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS == 1 &&
+                  D3D12DDI_ROOT_PARAMETER_TYPE_CBV == 2 &&
+                  D3D12DDI_ROOT_PARAMETER_TYPE_SRV == 3 &&
+                  D3D12DDI_ROOT_PARAMETER_TYPE_UAV == 4,
+               "baseline root-parameter encodings");
+_Static_assert(sizeof(D3D12DDI_VERTEX_BUFFER_VIEW) == 16,
+               "indirect vertex-buffer view width");
+_Static_assert(offsetof(D3D12DDI_VERTEX_BUFFER_VIEW, SizeInBytes) == 8,
+               "indirect vertex-buffer size offset");
+_Static_assert(offsetof(D3D12DDI_VERTEX_BUFFER_VIEW, StrideInBytes) == 12,
+               "indirect vertex-buffer stride offset");
+_Static_assert(sizeof(D3D12DDI_INDEX_BUFFER_VIEW) == 16,
+               "indirect index-buffer view width");
+_Static_assert(offsetof(D3D12DDI_INDEX_BUFFER_VIEW, Format) == 12,
+               "indirect index-buffer format offset");
+_Static_assert(sizeof(D3D12DDI_DRAW_ARGUMENTS) == 16,
+               "indirect draw arguments width");
+_Static_assert(sizeof(D3D12DDI_DRAW_INDEXED_ARGUMENTS) == 20,
+               "indirect indexed-draw arguments width");
+_Static_assert(sizeof(D3D12DDI_DISPATCH_ARGUMENTS) == 12,
+               "indirect dispatch arguments width");
 _Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_SIGNATURE_0001) == 32,
                "CREATE_COMMAND_SIGNATURE_0001 width");
 _Static_assert(offsetof(D3D12DDIARG_CREATE_COMMAND_SIGNATURE_0001,
@@ -254,6 +319,38 @@ _Static_assert(sizeof(struct d12_frontend_sampler_desc) == 52,
                "frontend sampler description width");
 _Static_assert(sizeof(struct d12_frontend_stream_output_buffer_view) == 24,
                "frontend stream-output view width");
+_Static_assert(sizeof(D3D12DDI_TILED_RESOURCE_COORDINATE) == 16,
+               "DDI tiled coordinate width");
+_Static_assert(sizeof(struct d12_frontend_tiled_resource_coordinate) == 16,
+               "frontend tiled coordinate width");
+_Static_assert(sizeof(D3D12DDI_TILE_REGION_SIZE) == 16,
+               "DDI tile region width");
+_Static_assert(sizeof(struct d12_frontend_tile_region_size) == 16,
+               "frontend tile region width");
+_Static_assert(offsetof(D3D12DDI_TILE_REGION_SIZE, Height) == 12 &&
+                  offsetof(D3D12DDI_TILE_REGION_SIZE, Depth) == 14,
+               "DDI tile region packed-field offsets");
+_Static_assert(offsetof(struct d12_frontend_tile_region_size, height) == 12 &&
+                  offsetof(struct d12_frontend_tile_region_size, depth) == 14,
+               "frontend tile region packed-field offsets");
+_Static_assert((uint32_t)D3D12DDI_TILE_RANGE_FLAG_NULL ==
+                  (uint32_t)D12_FRONTEND_TILE_RANGE_NULL &&
+                  (uint32_t)D3D12DDI_TILE_RANGE_FLAG_SKIP ==
+                     (uint32_t)D12_FRONTEND_TILE_RANGE_SKIP &&
+                  (uint32_t)D3D12DDI_TILE_RANGE_FLAG_REUSE_SINGLE_TILE ==
+                     (uint32_t)D12_FRONTEND_TILE_RANGE_REUSE_SINGLE_TILE,
+               "tile range flag encodings");
+_Static_assert((uint32_t)D3D12DDI_TILE_MAPPING_FLAG_NO_HAZARD ==
+                  (uint32_t)D12_FRONTEND_TILE_MAPPING_NO_HAZARD,
+               "tile mapping flag encoding");
+_Static_assert(
+   (uint32_t)D3D12DDI_TILE_COPY_FLAG_NO_HAZARD ==
+         (uint32_t)D12_FRONTEND_TILE_COPY_NO_HAZARD &&
+      (uint32_t)D3D12DDI_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE ==
+         (uint32_t)D12_FRONTEND_TILE_COPY_LINEAR_TO_TILED &&
+      (uint32_t)D3D12DDI_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER ==
+         (uint32_t)D12_FRONTEND_TILE_COPY_TILED_TO_LINEAR,
+   "tile copy flag encodings");
 _Static_assert(sizeof(D3D12DDIARG_STREAM_OUTPUT_DECLARATION_ENTRY) == 16,
                "DDI stream-output declaration width");
 _Static_assert(

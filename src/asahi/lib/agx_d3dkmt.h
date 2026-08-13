@@ -297,6 +297,13 @@ struct agx_kmt_unlock2 { /* D3DKMT_UNLOCK2 */
    agx_kmt_handle hAllocation;
 };
 
+struct agx_kmt_invalidatecache { /* D3DKMT_INVALIDATECACHE */
+   agx_kmt_handle hDevice;
+   agx_kmt_handle hAllocation;
+   uint64_t Offset;
+   uint64_t Length;
+};
+
 /* -------------------------------------------------------------------------
  * Residency.
  * ------------------------------------------------------------------------- */
@@ -666,6 +673,8 @@ struct agx_d3dkmt_fns {
       const struct agx_kmt_destroyallocation2 *);
    agx_kmt_status(AGX_KMT_API *Lock2)(struct agx_kmt_lock2 *);
    agx_kmt_status(AGX_KMT_API *Unlock2)(const struct agx_kmt_unlock2 *);
+   agx_kmt_status(AGX_KMT_API *InvalidateCache)(
+      const struct agx_kmt_invalidatecache *);
    agx_kmt_status(AGX_KMT_API *MakeResident)(struct agx_kmt_makeresident *);
    agx_kmt_status(AGX_KMT_API *Evict)(struct agx_kmt_evict *);
 

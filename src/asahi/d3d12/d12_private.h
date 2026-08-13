@@ -48,6 +48,8 @@
 #include "util/u_sync_provider.h"
 #include "c11/threads.h"
 
+struct d12_queue;
+
 /* widl/Windows spells aggregate COM returns as an explicit out pointer,
  * while the same DirectX-Headers interfaces return them by value elsewhere. */
 #ifdef _WIN32
@@ -427,6 +429,19 @@ HRESULT d12_sparse_copy_tile_mappings(
    struct d12_resource *src, const D3D12_TILED_RESOURCE_COORDINATE *src_start,
    const D3D12_TILE_REGION_SIZE *size,
    struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count);
+HRESULT d12_queue_update_tile_mappings(
+   struct d12_queue *queue, struct d12_resource *resource, UINT num_regions,
+   const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, struct d12_heap *heap,
+   UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
+   const UINT *heap_starts, const UINT *range_counts,
+   D3D12_TILE_MAPPING_FLAGS flags);
+HRESULT d12_queue_copy_tile_mappings(
+   struct d12_queue *queue, struct d12_resource *destination,
+   const D3D12_TILED_RESOURCE_COORDINATE *destination_start,
+   struct d12_resource *source,
+   const D3D12_TILED_RESOURCE_COORDINATE *source_start,
+   const D3D12_TILE_REGION_SIZE *size, D3D12_TILE_MAPPING_FLAGS flags);
 HRESULT d12_sparse_collect_tiles(
    const struct d12_resource *res, UINT num_regions,
    const D3D12_TILED_RESOURCE_COORDINATE *starts,
@@ -1119,6 +1134,50 @@ enum d12_segment_type {
    D12_SEG_RENDER,
 };
 
+enum d12_write_pipe {
+   D12_WRITE_VERTEX,
+   D12_WRITE_FRAGMENT,
+   D12_WRITE_COMPUTE,
+   D12_WRITE_PIPE_COUNT,
+};
+
+enum d12_write_ref_kind {
+   /* A fixed GPU range known while recording.  A zero size means the queue
+    * must resolve the address to its complete owning BO before submission
+    * (root UAV descriptors carry an address but no API-visible extent). */
+   D12_WRITE_REF_RANGE,
+   /* A mutable shader-visible descriptor.  D3D12 permits descriptor updates
+    * after Close and before ExecuteCommandLists, so it is evaluated only
+    * after the normal descriptor refresh at submission time. */
+   D12_WRITE_REF_DESCRIPTOR,
+   /* An unbounded range or SM 6.6 directly-indexed resource heap. */
+   D12_WRITE_REF_HEAP,
+};
+
+struct d12_write_ref {
+   enum d12_write_ref_kind kind;
+   union {
+      struct {
+         uint64_t address;
+         uint64_t size;
+      } range;
+      const struct d12_descriptor *descriptor;
+      struct {
+         const struct d12_descriptor_heap *heap;
+         uint32_t first;
+      } heap;
+   };
+};
+
+struct d12_write_tracker {
+   struct util_dynarray refs; /* struct d12_write_ref */
+   bool initialized;
+   /* Set when a legal command can write memory whose owning allocation is
+    * not derivable on the host.  A Windows submit must never publish the
+    * complete-write marker while this is true. */
+   bool incomplete;
+};
+
 struct d12_segment {
    /* Base addresses of the render target SLICES this pass writes. A
     * TEXTURE2DARRAY RTV selects one layer, and layers are contiguous at
@@ -1128,6 +1187,12 @@ struct d12_segment {
    uint64_t rt_address[AGX_MAX_RENDER_TARGETS];
 
    enum d12_segment_type type;
+
+   /* GPU write ownership for the three firmware pipe classes.  Trackers are
+    * dynamic because a command list may contain 2,048 segments; embedding
+    * sixteen attachment records per pipe would add several MiB to every
+    * command-list object even when no UAV is used. */
+   struct d12_write_tracker writes[D12_WRITE_PIPE_COUNT];
 
    /* Control-stream extent within stream_bo (start/end offsets). CDM: the
     * dispatch stream. RENDER: the (empty) VDM stream.
@@ -1710,6 +1775,8 @@ void d12_device_copy_descriptors_simple_runtime(
    D3D12_CPU_DESCRIPTOR_HANDLE source,
    D3D12_DESCRIPTOR_HEAP_TYPE type);
 bool d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list);
+bool d12_descriptor_resource_span(const struct d12_descriptor *descriptor,
+                                  uint64_t *base, uint64_t *size);
 void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
 void d12_refresh_texture_descriptor(struct agx_texture_packed *out,

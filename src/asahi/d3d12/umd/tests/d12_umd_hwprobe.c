@@ -7,7 +7,7 @@
  * normal adapter callback shape, and verifies the AGX identity/caps path.
  */
 
-#define D3D_UMD_INTERFACE_VERSION 0x5002
+#include "d12_umd_wddm.h"
 #include <windows.h>
 #include <d3d12umddi.h>
 
@@ -141,10 +141,16 @@ wmain(int argc, wchar_t **argv)
 
          open_result = functions.pfnGetSupportedVersions(
             arguments.hAdapter, &version_count, versions);
-         if (open_result != S_OK || version_count != ARRAYSIZE(versions) ||
+         if (open_result != S_OK ||
+#if D12_UMD_TARGETS_WDDM21
+             version_count != ARRAYSIZE(versions) ||
              versions[0] != D3D12DDI_SUPPORTED_0011 ||
              versions[1] != D3D12DDI_SUPPORTED_0010 ||
              versions[2] != D3D12DDI_SUPPORTED_0003) {
+#else
+             version_count != 1 ||
+             versions[0] != D3D12DDI_SUPPORTED_0003) {
+#endif
             fprintf(stderr, "FAIL stage=versions index=%lu hr=0x%08" PRIx32
                             "\n",
                     (unsigned long)i, (uint32_t)open_result);

@@ -212,7 +212,13 @@ CHECK_OFF(D3DKMT_LOCK2, agx_kmt_lock2, hAllocation);
 CHECK_OFF(D3DKMT_LOCK2, agx_kmt_lock2, Flags);
 CHECK_OFF(D3DKMT_LOCK2, agx_kmt_lock2, pData);
 CHECK_SIZE(D3DKMT_UNLOCK2, agx_kmt_unlock2);
+CHECK_OFF(D3DKMT_UNLOCK2, agx_kmt_unlock2, hDevice);
 CHECK_OFF(D3DKMT_UNLOCK2, agx_kmt_unlock2, hAllocation);
+CHECK_SIZE(D3DKMT_INVALIDATECACHE, agx_kmt_invalidatecache);
+CHECK_OFF(D3DKMT_INVALIDATECACHE, agx_kmt_invalidatecache, hDevice);
+CHECK_OFF(D3DKMT_INVALIDATECACHE, agx_kmt_invalidatecache, hAllocation);
+CHECK_OFF(D3DKMT_INVALIDATECACHE, agx_kmt_invalidatecache, Offset);
+CHECK_OFF(D3DKMT_INVALIDATECACHE, agx_kmt_invalidatecache, Length);
 
 /* Residency. */
 CHECK_SIZE(D3DDDI_MAKERESIDENT, agx_kmt_makeresident);
@@ -476,6 +482,7 @@ static const struct {
    PFND3DKMT_DESTROYALLOCATION2 h;
    PFND3DKMT_LOCK2 i;
    PFND3DKMT_UNLOCK2 j;
+   PFND3DKMT_INVALIDATECACHE j1;
    PFND3DKMT_MAKERESIDENT k;
    PFND3DKMT_EVICT l;
    PFND3DKMT_CREATEPAGINGQUEUE m;

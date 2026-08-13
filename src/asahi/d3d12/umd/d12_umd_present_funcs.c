@@ -19,6 +19,16 @@
 
 _Static_assert(sizeof(DXGI_DDI_BASE_ARGS) == 2u * sizeof(void *),
                "DXGI base arguments changed width");
+#if D12_UMD_TARGETS_WDDM21
+_Static_assert(sizeof(DXGI1_5_DDI_BASE_FUNCTIONS) == 22u * sizeof(void *),
+               "WDDM 2.1 DXGI table changed width");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS, pfnOfferResources1) ==
+                  9u * sizeof(void *),
+               "WDDM 2.1 DXGI offer slot moved");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS, pfnReclaimResources1) ==
+                  21u * sizeof(void *),
+               "WDDM 2.1 DXGI reclaim slot moved");
+#else
 _Static_assert(sizeof(DXGI1_4_DDI_BASE_FUNCTIONS) == 21u * sizeof(void *),
                "WDDM 2.0 DXGI table changed width");
 _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved1) ==
@@ -27,6 +37,7 @@ _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved1) ==
 _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved2) ==
                   15u * sizeof(void *),
                "DXGI reserved slot 2 moved");
+#endif
 _Static_assert(sizeof(DXGI_DDI_ARG_OFFERRESOURCES) ==
                   2u * sizeof(void *) + 2u * sizeof(UINT),
                "DXGI offer-resources arguments changed width");
@@ -644,6 +655,7 @@ d12_umd_dxgi_blt1(DXGI_DDI_ARG_BLT1 *arguments)
    return d12_umd_dxgi_execute_blt(device, destination, source, &desc);
 }
 
+#if !D12_UMD_TARGETS_WDDM21
 static HRESULT APIENTRY
 d12_umd_dxgi_offer_resources(DXGI_DDI_ARG_OFFERRESOURCES *arguments)
 {
@@ -690,6 +702,59 @@ cleanup:
       HeapFree(GetProcessHeap(), 0, allocations);
    return result;
 }
+#endif
+
+#if D12_UMD_TARGETS_WDDM21
+static HRESULT APIENTRY
+d12_umd_dxgi_offer_resources1(DXGI_DDI_ARG_OFFERRESOURCES1 *arguments)
+{
+   struct d12_umd_device *device;
+   D3DKMT_HANDLE stack_allocations[16];
+   D3DKMT_HANDLE *allocations = stack_allocations;
+   HRESULT result;
+
+   if (!arguments || !(device = d12_umd_dxgi_device(arguments->hDevice)) ||
+       (arguments->Resources && !arguments->pResources) ||
+       (UINT)arguments->Priority > (UINT)D3DDDI_OFFER_PRIORITY_AUTO ||
+       (arguments->Flags.Value & ~1u) != 0u)
+      return E_INVALIDARG;
+   if (!arguments->Resources)
+      return S_OK;
+   if (!device->kernel_callbacks.pfnOfferAllocations2Cb)
+      return E_NOTIMPL;
+   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
+      allocations = HeapAlloc(
+         GetProcessHeap(), 0,
+         (size_t)arguments->Resources * sizeof(*allocations));
+      if (!allocations)
+         return E_OUTOFMEMORY;
+   }
+   for (UINT index = 0; index < arguments->Resources; ++index) {
+      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
+         device, arguments->pResources[index]);
+      if (!resource || resource->reserved || !resource->heap) {
+         result = E_INVALIDARG;
+         goto cleanup;
+      }
+      allocations[index] = resource->heap->allocation.allocation;
+   }
+   {
+      const D3DDDICB_OFFERALLOCATIONS2 offer = {
+         .HandleList = allocations,
+         .NumAllocations = arguments->Resources,
+         .Priority = arguments->Priority,
+         .Flags = arguments->Flags,
+      };
+      result = device->kernel_callbacks.pfnOfferAllocations2Cb(
+         device->runtime_device.handle, &offer);
+   }
+
+cleanup:
+   if (allocations != stack_allocations)
+      HeapFree(GetProcessHeap(), 0, allocations);
+   return result;
+}
+#endif
 
 static HRESULT APIENTRY
 d12_umd_dxgi_reclaim_resources(DXGI_DDI_ARG_RECLAIMRESOURCES *arguments)
@@ -736,6 +801,76 @@ cleanup:
       HeapFree(GetProcessHeap(), 0, allocations);
    return result;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+static HRESULT APIENTRY
+d12_umd_dxgi_reclaim_resources1(DXGI_DDI_ARG_RECLAIMRESOURCES1 *arguments)
+{
+   struct d12_umd_device *device;
+   D3DKMT_HANDLE stack_allocations[16];
+   D3DDDI_RECLAIM_RESULT stack_results[16];
+   D3DKMT_HANDLE *allocations = stack_allocations;
+   D3DDDI_RECLAIM_RESULT *results;
+   D3DKMT_HANDLE paging_queue;
+   HRESULT result;
+
+   if (!arguments || !(device = d12_umd_dxgi_device(arguments->hDevice)) ||
+       (arguments->Resources && !arguments->pResources))
+      return E_INVALIDARG;
+   if (!arguments->Resources)
+      return S_OK;
+   if (!device->kernel_callbacks.pfnReclaimAllocations3Cb ||
+       !device->backend || !device->renderer_ops ||
+       !device->renderer_ops->paging_queue ||
+       !device->renderer_ops->wait_paging ||
+       !(paging_queue = device->renderer_ops->paging_queue(device->backend)))
+      return E_NOTIMPL;
+   results = arguments->pResults ? arguments->pResults : stack_results;
+   if (arguments->Resources > ARRAYSIZE(stack_allocations)) {
+      allocations = HeapAlloc(
+         GetProcessHeap(), 0,
+         (size_t)arguments->Resources * sizeof(*allocations));
+      if (!arguments->pResults)
+         results = HeapAlloc(GetProcessHeap(), 0,
+                             (size_t)arguments->Resources * sizeof(*results));
+      if (!allocations || !results) {
+         HeapFree(GetProcessHeap(), 0, allocations);
+         if (results != arguments->pResults)
+            HeapFree(GetProcessHeap(), 0, results);
+         return E_OUTOFMEMORY;
+      }
+   }
+   for (UINT index = 0; index < arguments->Resources; ++index) {
+      struct d12_umd_resource *resource = d12_umd_dxgi_resource(
+         device, arguments->pResources[index]);
+      if (!resource || resource->reserved || !resource->heap) {
+         result = E_INVALIDARG;
+         goto cleanup;
+      }
+      allocations[index] = resource->heap->allocation.allocation;
+   }
+   {
+      D3DDDICB_RECLAIMALLOCATIONS3 reclaim = {
+         .PagingQueue = paging_queue,
+         .NumAllocations = arguments->Resources,
+         .HandleList = allocations,
+         .pResults = results,
+      };
+      result = device->kernel_callbacks.pfnReclaimAllocations3Cb(
+         device->runtime_device.handle, &reclaim);
+      if (SUCCEEDED(result) && reclaim.PagingFenceValue)
+         result = device->renderer_ops->wait_paging(
+            device->backend, reclaim.PagingFenceValue);
+   }
+
+cleanup:
+   if (allocations != stack_allocations)
+      HeapFree(GetProcessHeap(), 0, allocations);
+   if (results != arguments->pResults && results != stack_results)
+      HeapFree(GetProcessHeap(), 0, results);
+   return result;
+}
+#endif
 
 static HRESULT APIENTRY
 d12_umd_dxgi_get_mpo_caps(DXGI_DDI_ARG_GETMULTIPLANEOVERLAYCAPS *arguments)
@@ -867,11 +1002,19 @@ HRESULT
 d12_umd_fill_dxgi_table(void *table, SIZE_T table_size, UINT table_number)
 {
    DXGI_DDI_BASE_ARGS *arguments = table;
+#if D12_UMD_TARGETS_WDDM21
+   DXGI1_5_DDI_BASE_FUNCTIONS *functions;
+#else
    DXGI1_4_DDI_BASE_FUNCTIONS *functions;
+#endif
 
    if (!arguments || table_size != sizeof(*arguments) || table_number != 0 ||
        !arguments->pDXGIBaseCallbacks ||
+#if D12_UMD_TARGETS_WDDM21
+       !(functions = arguments->pDXGIDDIBaseFunctions6))
+#else
        !(functions = arguments->pDXGIDDIBaseFunctions5))
+#endif
       return E_INVALIDARG;
 
    memset(functions, 0, sizeof(*functions));
@@ -887,7 +1030,11 @@ d12_umd_fill_dxgi_table(void *table, SIZE_T table_size, UINT table_number)
    functions->pfnResolveSharedResource =
       d12_umd_dxgi_resolve_shared_resource;
    functions->pfnBlt1 = d12_umd_dxgi_blt1;
+#if D12_UMD_TARGETS_WDDM21
+   functions->pfnOfferResources1 = d12_umd_dxgi_offer_resources1;
+#else
    functions->pfnOfferResources = d12_umd_dxgi_offer_resources;
+#endif
    functions->pfnReclaimResources = d12_umd_dxgi_reclaim_resources;
    functions->pfnGetMultiplaneOverlayCaps = d12_umd_dxgi_get_mpo_caps;
    functions->pfnGetMultiplaneOverlayGroupCaps =
@@ -900,6 +1047,9 @@ d12_umd_fill_dxgi_table(void *table, SIZE_T table_size, UINT table_number)
    functions->pfnCheckMultiplaneOverlayColorSpaceSupport =
       d12_umd_dxgi_check_mpo_color_space;
    functions->pfnPresentMultiplaneOverlay1 = d12_umd_dxgi_present_mpo1;
+#if D12_UMD_TARGETS_WDDM21
+   functions->pfnReclaimResources1 = d12_umd_dxgi_reclaim_resources1;
+#endif
    return S_OK;
 }
 

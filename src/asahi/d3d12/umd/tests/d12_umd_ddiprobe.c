@@ -7,7 +7,7 @@
  * probe uses the same DLL after INF registration.
  */
 
-#define D3D_UMD_INTERFACE_VERSION 0x5002
+#include "d12_umd_wddm.h"
 #include <windows.h>
 #include <d3d12umddi.h>
 
@@ -56,6 +56,9 @@ static unsigned priority_calls;
 static unsigned residency_query_calls;
 static unsigned dxgi_offer_calls;
 static unsigned dxgi_reclaim_calls;
+#if D12_UMD_TARGETS_WDDM21
+static uint64_t dxgi_paging_wait_value;
+#endif
 static unsigned dxgi_present_calls;
 static unsigned blt_allocator_create_calls;
 static unsigned blt_allocator_reset_calls;
@@ -66,6 +69,9 @@ static unsigned blt_list_close_calls;
 static unsigned blt_list_destroy_calls;
 static unsigned blt_record_calls;
 static unsigned blt_execute_calls;
+static unsigned signature_create_calls;
+static unsigned signature_destroy_calls;
+static uint32_t signature_vertex_slot;
 static HRESULT blt_execute_result = S_OK;
 static D3DDDI_RESIDENCYSTATUS query_residency_status =
    D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
@@ -81,6 +87,185 @@ static struct d12_umd_resource_private saved_resource_private;
 #define TEST_BLT_LIST ((void *)(uintptr_t)0xa400)
 #define TEST_BLT_DESTINATION ((void *)(uintptr_t)0xa500)
 #define TEST_BLT_SOURCE ((void *)(uintptr_t)0xa600)
+#define TEST_SIGNATURE ((void *)(uintptr_t)0xa700)
+#define TEST_TILED_RESOURCE ((void *)(uintptr_t)0xa800)
+#define TEST_TILE_HEAP ((void *)(uintptr_t)0xa900)
+#define TEST_TILE_QUEUE ((void *)(uintptr_t)0xaa00)
+#define TEST_TILE_LIST ((void *)(uintptr_t)0xab00)
+#define TEST_TILE_BUFFER ((void *)(uintptr_t)0xac00)
+#define TEST_TILED_GPU_VA UINT64_C(0x3300000000)
+
+static unsigned sparse_create_calls;
+static unsigned sparse_destroy_calls;
+static unsigned sparse_update_calls;
+static unsigned sparse_copy_mapping_calls;
+static unsigned sparse_copy_tiles_calls;
+
+static HRESULT
+test_sparse_create_reserved(
+   void *device, const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   if (device != TEST_BLT_DEVICE || !desc || clear_value || !out_resource ||
+       desc->dimension != D3D12DDI_RT_TEXTURE2D || desc->width != 1024 ||
+       desc->height != 1024 || desc->mip_levels != 5 ||
+       desc->format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+       desc->layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE)
+      return E_INVALIDARG;
+   ++sparse_create_calls;
+   *out_resource = TEST_TILED_RESOURCE;
+   return S_OK;
+}
+
+static void
+test_sparse_destroy_resource(void *resource)
+{
+   if (resource == TEST_TILED_RESOURCE)
+      ++sparse_destroy_calls;
+}
+
+static uint64_t
+test_sparse_resource_gpu_va(void *resource)
+{
+   return resource == TEST_TILED_RESOURCE ? TEST_TILED_GPU_VA : 0;
+}
+
+static HRESULT
+test_sparse_mip_packing(void *resource, uint32_t *packed_mips,
+                        uint32_t *packed_tiles)
+{
+   if (resource != TEST_TILED_RESOURCE || !packed_mips || !packed_tiles)
+      return E_INVALIDARG;
+   *packed_mips = 3;
+   *packed_tiles = 2;
+   return S_OK;
+}
+
+static HRESULT
+test_sparse_update_tile_mappings(
+   void *queue, void *resource, uint32_t region_count,
+   const struct d12_frontend_tiled_resource_coordinate *region_starts,
+   const struct d12_frontend_tile_region_size *region_sizes, void *heap,
+   uint32_t range_count, const uint32_t *range_flags,
+   const uint32_t *heap_start_offsets, const uint32_t *range_tile_counts,
+   uint32_t flags)
+{
+   if (queue != TEST_TILE_QUEUE || resource != TEST_TILED_RESOURCE ||
+       heap != TEST_TILE_HEAP || region_count != 1 || !region_starts ||
+       !region_sizes || region_starts[0].x != 1 ||
+       region_starts[0].y != 2 || region_starts[0].z != 0 ||
+       region_starts[0].subresource != 0 ||
+       region_sizes[0].num_tiles != 2 || region_sizes[0].use_box != 1 ||
+       region_sizes[0].width != 2 || region_sizes[0].height != 1 ||
+       region_sizes[0].depth != 1 || range_count != 1 || !range_flags ||
+       range_flags[0] != D12_FRONTEND_TILE_RANGE_REUSE_SINGLE_TILE ||
+       !heap_start_offsets || heap_start_offsets[0] != 4 ||
+       !range_tile_counts || range_tile_counts[0] != 2 ||
+       flags != D12_FRONTEND_TILE_MAPPING_NO_HAZARD)
+      return E_INVALIDARG;
+   ++sparse_update_calls;
+   return S_OK;
+}
+
+static HRESULT
+test_sparse_copy_tile_mappings(
+   void *queue, void *destination_resource,
+   const struct d12_frontend_tiled_resource_coordinate *destination_start,
+   void *source_resource,
+   const struct d12_frontend_tiled_resource_coordinate *source_start,
+   const struct d12_frontend_tile_region_size *region_size, uint32_t flags)
+{
+   if (queue != TEST_TILE_QUEUE ||
+       destination_resource != TEST_TILED_RESOURCE ||
+       source_resource != TEST_TILED_RESOURCE || !destination_start ||
+       !source_start || !region_size || destination_start->x != 3 ||
+       destination_start->subresource != 1 || source_start->x != 4 ||
+       source_start->subresource != 2 || region_size->num_tiles != 2 ||
+       region_size->use_box || flags != D12_FRONTEND_TILE_MAPPING_NONE)
+      return E_INVALIDARG;
+   ++sparse_copy_mapping_calls;
+   return S_OK;
+}
+
+static HRESULT
+test_sparse_copy_tiles(
+   void *list, void *resource,
+   const struct d12_frontend_tiled_resource_coordinate *region_start,
+   const struct d12_frontend_tile_region_size *region_size, void *buffer,
+   uint64_t buffer_offset, uint32_t flags)
+{
+   if (list != TEST_TILE_LIST || resource != TEST_TILED_RESOURCE ||
+       buffer != TEST_TILE_BUFFER || !region_start || !region_size ||
+       region_start->x != 5 || region_start->subresource != 3 ||
+       region_size->num_tiles != 1 || region_size->use_box ||
+       buffer_offset != UINT64_C(0x10000) ||
+       flags != D12_FRONTEND_TILE_COPY_LINEAR_TO_TILED)
+      return E_INVALIDARG;
+   ++sparse_copy_tiles_calls;
+   return S_OK;
+}
+
+static const struct d12_umd_renderer_ops test_sparse_renderer_ops = {
+   .update_tile_mappings = test_sparse_update_tile_mappings,
+   .copy_tile_mappings = test_sparse_copy_tile_mappings,
+   .copy_tiles = test_sparse_copy_tiles,
+   .create_reserved_resource = test_sparse_create_reserved,
+   .destroy_resource = test_sparse_destroy_resource,
+   .resource_gpu_virtual_address = test_sparse_resource_gpu_va,
+   .resource_mip_packing = test_sparse_mip_packing,
+};
+
+#if D12_UMD_TARGETS_WDDM21
+static uint32_t
+test_residency_paging_queue(void *device)
+{
+   return device == TEST_BLT_DEVICE ? TEST_PAGING_QUEUE : 0;
+}
+
+static HRESULT
+test_residency_wait_paging(void *device, uint64_t value)
+{
+   if (device != TEST_BLT_DEVICE || !value)
+      return E_INVALIDARG;
+   dxgi_paging_wait_value = value;
+   return S_OK;
+}
+
+static const struct d12_umd_renderer_ops test_residency_renderer_ops = {
+   .paging_queue = test_residency_paging_queue,
+   .wait_paging = test_residency_wait_paging,
+};
+#endif
+
+static HRESULT
+test_create_command_signature(
+   void *device, const struct d12_frontend_command_signature_desc *desc,
+   void **out_signature)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !out_signature ||
+       desc->argument_count != 2 || !desc->arguments ||
+       desc->arguments[0].type !=
+          D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW ||
+       desc->arguments[1].type != D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW)
+      return E_INVALIDARG;
+
+   ++signature_create_calls;
+   signature_vertex_slot = desc->arguments[0].root_parameter_index;
+   *out_signature = TEST_SIGNATURE;
+   return S_OK;
+}
+
+static void
+test_destroy_command_signature(void *signature)
+{
+   if (signature == TEST_SIGNATURE)
+      ++signature_destroy_calls;
+}
+
+static const struct d12_umd_renderer_ops test_signature_renderer_ops = {
+   .create_command_signature = test_create_command_signature,
+   .destroy_command_signature = test_destroy_command_signature,
+};
 
 static HRESULT
 test_blt_create_allocator(void *device,
@@ -263,6 +448,17 @@ unlock_allocation(HANDLE runtime_device, const D3DDDICB_UNLOCK2 *arguments)
    return S_OK;
 }
 
+static HRESULT APIENTRY
+invalidate_allocation(HANDLE runtime_device,
+                      const D3DDDICB_INVALIDATECACHE *arguments)
+{
+   return runtime_device == (HANDLE)(uintptr_t)0x6000 && arguments &&
+                 arguments->hAllocation == TEST_ALLOCATION &&
+                 arguments->Length
+             ? S_OK
+             : E_INVALIDARG;
+}
+
 static void APIENTRY
 set_error(D3D10DDI_HRTDEVICE runtime_device, HRESULT error)
 {
@@ -339,6 +535,47 @@ dxgi_offer_allocations(HANDLE runtime_device,
    ++dxgi_offer_calls;
    return S_OK;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+static HRESULT APIENTRY
+dxgi_offer_allocations2(HANDLE runtime_device,
+                        const D3DDDICB_OFFERALLOCATIONS2 *arguments)
+{
+   if (runtime_device != (HANDLE)(uintptr_t)0x6000 || !arguments ||
+       arguments->pResources || !arguments->HandleList ||
+       !arguments->NumAllocations ||
+       arguments->Priority != D3DDDI_OFFER_PRIORITY_NORMAL ||
+       (arguments->Flags.Value & ~1u) != 0u)
+      return E_INVALIDARG;
+   for (UINT index = 0; index < arguments->NumAllocations; ++index) {
+      if (arguments->HandleList[index] != TEST_ALLOCATION)
+         return E_INVALIDARG;
+   }
+   ++dxgi_offer_calls;
+   return S_OK;
+}
+
+static HRESULT APIENTRY
+dxgi_reclaim_allocations3(HANDLE runtime_device,
+                          D3DDDICB_RECLAIMALLOCATIONS3 *arguments)
+{
+   if (runtime_device != (HANDLE)(uintptr_t)0x6000 || !arguments ||
+       arguments->PagingQueue != TEST_PAGING_QUEUE ||
+       arguments->pResources || !arguments->HandleList ||
+       !arguments->pResults || !arguments->NumAllocations)
+      return E_INVALIDARG;
+   for (UINT index = 0; index < arguments->NumAllocations; ++index) {
+      if (arguments->HandleList[index] != TEST_ALLOCATION)
+         return E_INVALIDARG;
+      arguments->pResults[index] = (index & 1u)
+                                       ? D3DDDI_RECLAIM_RESULT_DISCARDED
+                                       : D3DDDI_RECLAIM_RESULT_OK;
+   }
+   arguments->PagingFenceValue = UINT64_C(13);
+   ++dxgi_reclaim_calls;
+   return S_OK;
+}
+#endif
 
 static HRESULT APIENTRY
 dxgi_reclaim_allocations(
@@ -507,6 +744,45 @@ offer_allocations(D3D12DDI_HRTDEVICE runtime_device,
    ++offer_calls;
    return S_OK;
 }
+
+#if D12_UMD_TARGETS_WDDM21
+static HRESULT APIENTRY
+offer_allocations2(HANDLE runtime_device,
+                   const D3DDDICB_OFFERALLOCATIONS2 *arguments)
+{
+   if (runtime_device != (HANDLE)(uintptr_t)0x6000 || !arguments ||
+       arguments->pResources || !arguments->NumAllocations ||
+       !arguments->HandleList ||
+       arguments->Priority != D3DDDI_OFFER_PRIORITY_NORMAL ||
+       arguments->Flags.Value != 0)
+      return E_INVALIDARG;
+   for (UINT index = 0; index < arguments->NumAllocations; ++index) {
+      if (arguments->HandleList[index] != TEST_ALLOCATION)
+         return E_INVALIDARG;
+   }
+   ++offer_calls;
+   return S_OK;
+}
+
+static HRESULT APIENTRY
+reclaim_allocations3(HANDLE runtime_device,
+                     D3DDDICB_RECLAIMALLOCATIONS3 *arguments)
+{
+   if (runtime_device != (HANDLE)(uintptr_t)0x6000 || !arguments ||
+       arguments->PagingQueue != TEST_PAGING_QUEUE ||
+       !arguments->NumAllocations || !arguments->HandleList ||
+       !arguments->pResults)
+      return E_INVALIDARG;
+   for (UINT index = 0; index < arguments->NumAllocations; ++index) {
+      if (arguments->HandleList[index] != TEST_ALLOCATION)
+         return E_INVALIDARG;
+      arguments->pResults[index] = D3DDDI_RECLAIM_RESULT_DISCARDED;
+   }
+   arguments->PagingFenceValue = UINT64_C(13);
+   ++reclaim_calls;
+   return S_OK;
+}
+#endif
 
 static HRESULT APIENTRY
 reclaim_allocations(D3D12DDI_HRTDEVICE runtime_device,
@@ -691,9 +967,10 @@ wmain(int argc, wchar_t **argv)
    {
       UINT32 count = 0;
       UINT64 versions[3] = {0};
+      const UINT32 expected_count = D12_UMD_TARGETS_WDDM21 ? 3u : 1u;
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, NULL);
-      require_result(result == S_OK && count == 3,
+      require_result(result == S_OK && count == expected_count,
                      "supported-version count query");
 
       count = 0;
@@ -705,10 +982,14 @@ wmain(int argc, wchar_t **argv)
       count = ARRAYSIZE(versions);
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, versions);
-      require_result(result == S_OK && count == ARRAYSIZE(versions) &&
+      require_result(result == S_OK && count == expected_count &&
+#if D12_UMD_TARGETS_WDDM21
                         versions[0] == D3D12DDI_SUPPORTED_0011 &&
                         versions[1] == D3D12DDI_SUPPORTED_0010 &&
                         versions[2] == D3D12DDI_SUPPORTED_0003,
+#else
+                        versions[0] == D3D12DDI_SUPPORTED_0003,
+#endif
                      "supported-version payload");
    }
 
@@ -748,7 +1029,7 @@ wmain(int argc, wchar_t **argv)
       };
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(result == S_OK && data.ResourceBindingTier == 1 &&
-                        data.TiledResourcesTier == 0 &&
+                        data.TiledResourcesTier == 1 &&
                         data.ResourceHeapTier == 1,
                      "D3D12 option caps");
    }
@@ -768,7 +1049,9 @@ wmain(int argc, wchar_t **argv)
 
    {
       UINT count = 0;
+#if D12_UMD_TARGETS_WDDM21
       D3D12DDI_SHADER_MODEL models[2] = {0};
+#endif
       D3D12DDI_D3D12_SHADER_MODELS_DATA_0011 data = {
          .pNumShaderModelsSupported = &count,
       };
@@ -778,6 +1061,7 @@ wmain(int argc, wchar_t **argv)
          .DataSize = sizeof(data),
       };
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+#if D12_UMD_TARGETS_WDDM21
       require_result(result == S_OK && count == 2,
                      "shader-model count query");
       data.pShaderModelsSupported = models;
@@ -788,6 +1072,10 @@ wmain(int argc, wchar_t **argv)
             models[0] == D3D12DDI_SHADER_MODEL_6_0_RELEASE_0011 &&
             models[1] == D3D12DDI_SHADER_MODEL_5_1_RELEASE_0011,
          "shader-model payload");
+#else
+      require_result(result == E_NOTIMPL,
+                     "WDDM 2.0 does not expose DXIL shader-model caps");
+#endif
    }
 
    {
@@ -800,13 +1088,21 @@ wmain(int argc, wchar_t **argv)
       D3D12DDI_DEVICE_FUNCS_CORE_0010 release1_table;
       D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 command_list_table;
       D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 command_queue_table;
+#if D12_UMD_TARGETS_WDDM21
+      DXGI1_5_DDI_BASE_FUNCTIONS dxgi_table;
+#else
       DXGI1_4_DDI_BASE_FUNCTIONS dxgi_table;
+#endif
       DXGI_DDI_BASE_CALLBACKS dxgi_callbacks = {
          .pfnPresentCb = dxgi_present,
       };
       DXGI_DDI_BASE_ARGS dxgi_arguments = {
          .pDXGIBaseCallbacks = &dxgi_callbacks,
+#if D12_UMD_TARGETS_WDDM21
+         .pDXGIDDIBaseFunctions6 = &dxgi_table,
+#else
          .pDXGIDDIBaseFunctions5 = &dxgi_table,
+#endif
       };
       D3DDDI_DEVICECALLBACKS kernel_callbacks;
       D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 core_callbacks;
@@ -826,9 +1122,14 @@ wmain(int argc, wchar_t **argv)
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DEVICE_CORE,
          &release1_table, sizeof(release1_table), 0,
          (D3D12DDI_HRTTABLE){0});
+#if D12_UMD_TARGETS_WDDM21
       require_result(result == S_OK, "fill Release 1 device core table");
       require_pointer_slots(&release1_table, 91, SIZE_MAX, SIZE_MAX,
                             "Release 1 device core table");
+#else
+      require_result(result == E_INVALIDARG,
+                     "WDDM 2.0 rejects the DXIL Release 1 table");
+#endif
 
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D,
@@ -855,9 +1156,15 @@ wmain(int argc, wchar_t **argv)
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DXGI,
          &dxgi_arguments, sizeof(dxgi_arguments), 0,
          (D3D12DDI_HRTTABLE){0});
+#if D12_UMD_TARGETS_WDDM21
+      require_result(result == S_OK, "fill WDDM 2.1 DXGI table");
+      require_pointer_slots(&dxgi_table, 22, 13, 15,
+                            "WDDM 2.1 DXGI table");
+#else
       require_result(result == S_OK, "fill WDDM 2.0 DXGI table");
       require_pointer_slots(&dxgi_table, 21, 13, 15,
                             "WDDM 2.0 DXGI table");
+#endif
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DXGI,
          &dxgi_arguments, sizeof(dxgi_arguments) - 1, 0,
@@ -877,11 +1184,17 @@ wmain(int argc, wchar_t **argv)
       kernel_callbacks.pfnQueryResidencyCb = query_residency;
       kernel_callbacks.pfnOfferAllocationsCb = dxgi_offer_allocations;
       kernel_callbacks.pfnReclaimAllocationsCb = dxgi_reclaim_allocations;
+#if D12_UMD_TARGETS_WDDM21
+      kernel_callbacks.pfnOfferAllocations2Cb = dxgi_offer_allocations2;
+      kernel_callbacks.pfnReclaimAllocations3Cb =
+         dxgi_reclaim_allocations3;
+#endif
       kernel_callbacks.pfnReserveGpuVirtualAddressCb = reserve_gpu_va;
       kernel_callbacks.pfnFreeGpuVirtualAddressCb = free_gpu_va;
       kernel_callbacks.pfnWaitForSynchronizationObjectFromCpuCb = wait_paging;
       kernel_callbacks.pfnLock2Cb = lock_allocation;
       kernel_callbacks.pfnUnlock2Cb = unlock_allocation;
+      kernel_callbacks.pfnInvalidateCacheCb = invalidate_allocation;
       memset(&core_callbacks, 0, sizeof(core_callbacks));
       core_callbacks.pfnSetErrorCb = set_error;
       core_callbacks.pfnSetCommandListDDITableCb =
@@ -911,6 +1224,7 @@ wmain(int argc, wchar_t **argv)
       require_result(result == DXGI_STATUS_NO_REDIRECTION,
                      "CreateDevice explicit-present result");
 
+#if D12_UMD_TARGETS_WDDM21
       {
          const D3D12DDIARG_CREATE_PIPELINE_LIBRARY_0010 library_arguments = {
             0
@@ -946,6 +1260,7 @@ wmain(int argc, wchar_t **argv)
                                                    library_handle);
          HeapFree(GetProcessHeap(), 0, library_handle.pDrvPrivate);
       }
+#endif
 
       {
          UINT node_map[2] = {UINT32_MAX, UINT32_MAX};
@@ -981,6 +1296,7 @@ wmain(int argc, wchar_t **argv)
             (format_support & D3D12DDI_FORMAT_SUPPORT_SHADER_SAMPLE) &&
                (format_support & D3D12DDI_FORMAT_SUPPORT_RENDERTARGET) &&
                (format_support & D3D12DDI_FORMAT_SUPPORT_BLENDABLE) &&
+               (format_support & D3D12DDI_FORMAT_SUPPORT_TILED) &&
                (format_support & D3D12DDI_FORMAT_SUPPORT_DISPLAY),
             "native RGBA8 DDI format support");
          format_support = UINT32_MAX;
@@ -1000,6 +1316,12 @@ wmain(int argc, wchar_t **argv)
             &quality_levels);
          require_result(quality_levels == 0,
                         "sparse MSAA is not advertised");
+         device_table.pfnCheckMultisampleQualityLevels(
+            driver_device, DXGI_FORMAT_R8G8B8A8_UNORM, 1,
+            D3D12DDI_MULTISAMPLE_QUALITY_LEVEL_FLAG_TILED_RESOURCE,
+            &quality_levels);
+         require_result(quality_levels == 1,
+                        "single-sample sparse RGBA8 is advertised");
       }
 
       {
@@ -1322,13 +1644,128 @@ wmain(int argc, wchar_t **argv)
                   driver_device, &mutable_signature) == 0,
                "reject indirect root descriptor type mismatch");
             mutable_arguments[1].ConstantBufferView.RootParameterIndex = 1;
+
+            {
+               D3D12DDI_INDIRECT_ARGUMENT_DESC first =
+                  mutable_arguments[0];
+               D3D12DDI_INDIRECT_ARGUMENT_DESC second =
+                  mutable_arguments[1];
+               mutable_arguments[0] = second;
+               mutable_arguments[1] = first;
+               require_result(
+                  device_table.pfnCalcPrivateCommandSignatureSize(
+                     driver_device, &mutable_signature) == 0,
+                  "require sorted indirect root parameters");
+               mutable_arguments[0] = first;
+               mutable_arguments[1] = second;
+            }
+
             mutable_arguments[1].Type =
-               D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
-            mutable_arguments[1].VertexBuffer.Slot = 0;
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT;
+            mutable_arguments[1].Constant.RootParameterIndex = 0;
+            mutable_arguments[1].Constant.DestOffsetIn32BitValues = 2;
+            mutable_arguments[1].Constant.Num32BitValuesToSet = 1;
             require_result(
                device_table.pfnCalcPrivateCommandSignatureSize(
                   driver_device, &mutable_signature) == 0,
-               "fail closed on unimplemented indirect vertex-buffer view");
+               "reject overlapping indirect root constants");
+            mutable_arguments[1].Constant.DestOffsetIn32BitValues = 3;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) > 0,
+               "accept sorted non-overlapping indirect root constants");
+
+            mutable_arguments[1].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+            mutable_arguments[1].VertexBuffer.Slot = 7;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) > 0,
+               "indirect vertex-buffer view signature");
+            mutable_arguments[2].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+            mutable_arguments[2].VertexBuffer.Slot = 7;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) == 0,
+               "reject duplicate indirect vertex-buffer slot");
+            mutable_arguments[2].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW;
+            mutable_arguments[2].ShaderResourceView.RootParameterIndex = 2;
+            mutable_arguments[1].VertexBuffer.Slot = 16;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) == 0,
+               "reject out-of-range indirect vertex-buffer slot");
+            mutable_arguments[1].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) == 0,
+               "require indexed draw for indirect index-buffer view");
+            mutable_arguments[4].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) > 0,
+               "indirect index-buffer view signature");
+            mutable_arguments[4].Type =
+               D3D12DDI_INDIRECT_ARGUMENT_TYPE_DISPATCH;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) == 0,
+               "reject IA state in indirect dispatch signature");
+         }
+
+         {
+            const D3D12DDI_INDIRECT_ARGUMENT_DESC arguments[] = {
+               {
+                  .Type =
+                     D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW,
+                  .VertexBuffer = {.Slot = 7},
+               },
+               {.Type = D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW},
+            };
+            const D3D12DDIARG_CREATE_COMMAND_SIGNATURE_0001 arguments_desc = {
+               .ByteStride = sizeof(D3D12DDI_VERTEX_BUFFER_VIEW) +
+                             sizeof(D3D12DDI_DRAW_ARGUMENTS),
+               .NumArgumentDescs = ARRAYSIZE(arguments),
+               .pArgumentDescs = arguments,
+               .NodeMask = 1,
+            };
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
+            struct d12_device *saved_backend = private_device->backend;
+            const struct d12_umd_renderer_ops *saved_renderer_ops =
+               private_device->renderer_ops;
+            D3D12DDI_HCOMMANDSIGNATURE translated_signature;
+            SIZE_T translated_size =
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &arguments_desc);
+
+            translated_signature.pDrvPrivate = HeapAlloc(
+               GetProcessHeap(), HEAP_ZERO_MEMORY, translated_size);
+            require_result(translated_signature.pDrvPrivate != NULL,
+                           "allocate translated command signature");
+            signature_create_calls = 0;
+            signature_destroy_calls = 0;
+            signature_vertex_slot = UINT32_MAX;
+            private_device->backend =
+               (struct d12_device *)TEST_BLT_DEVICE;
+            private_device->renderer_ops = &test_signature_renderer_ops;
+            result = device_table.pfnCreateCommandSignature(
+               driver_device, &arguments_desc, translated_signature);
+            require_result(result == S_OK && signature_create_calls == 1 &&
+                              signature_vertex_slot == 7,
+                           "preserve DDI indirect vertex-buffer slot");
+            device_table.pfnDestroyCommandSignature(
+               driver_device, translated_signature);
+            require_result(signature_destroy_calls == 1,
+                           "destroy translated command signature");
+            private_device->renderer_ops = saved_renderer_ops;
+            private_device->backend = saved_backend;
+            HeapFree(GetProcessHeap(), 0,
+                     translated_signature.pDrvPrivate);
          }
       }
 
@@ -1451,21 +1888,166 @@ wmain(int argc, wchar_t **argv)
             D3D12DDI_TILE_MAPPING_FLAG_NONE);
          require_result(set_error_calls == 1 &&
                            set_error_runtime_device_valid &&
-                           last_set_error == E_NOTIMPL,
-                        "Tier-0 UpdateTileMappings fails closed");
+                           last_set_error == E_INVALIDARG,
+                        "invalid Tier-1 UpdateTileMappings fails closed");
          command_queue_table.pfnCopyTileMappings(
             driver_queue, (D3D12DDI_HRESOURCE){0}, NULL,
             (D3D12DDI_HRESOURCE){0}, NULL, NULL,
             D3D12DDI_TILE_MAPPING_FLAG_NONE);
          require_result(set_error_calls == 2 &&
                            set_error_runtime_device_valid &&
-                           last_set_error == E_NOTIMPL,
-                        "Tier-0 CopyTileMappings fails closed");
+                           last_set_error == E_INVALIDARG,
+                        "invalid Tier-1 CopyTileMappings fails closed");
          device_table.pfnDestroyCommandQueue(driver_device, driver_queue);
          require_result(context_destroy_calls == 1 &&
                            paging_destroy_calls == 1 && free_calls == 1,
                         "DestroyCommandQueue callback translation");
          HeapFree(GetProcessHeap(), 0, driver_queue.pDrvPrivate);
+      }
+
+      {
+         struct d12_umd_device *private_device = driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
+         const D3D12DDIARG_CREATERESOURCE_0003 resource_arguments = {
+            .ResourceType = D3D12DDI_RT_TEXTURE2D,
+            .Width = 1024,
+            .Height = 1024,
+            .DepthOrArraySize = 1,
+            .MipLevels = 5,
+            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .SampleDesc = {.Count = 1},
+            .Layout = D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE,
+            .Flags = D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE,
+            .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
+         };
+         D3D12DDI_HEAP_AND_RESOURCE_SIZES sizes;
+         D3D12DDI_HRESOURCE resource_handle;
+         struct d12_umd_command_queue tile_queue = {
+            .signature = D12_UMD_COMMAND_QUEUE_SIGNATURE,
+            .device = private_device,
+            .type = D12_UMD_RENDERER_COMMAND_DIRECT,
+            .backend = TEST_TILE_QUEUE,
+         };
+         struct d12_umd_heap tile_heap = {
+            .signature = D12_UMD_HEAP_SIGNATURE,
+            .device = private_device,
+            .backend = TEST_TILE_HEAP,
+         };
+         D3D12DDI_HCOMMANDQUEUE queue_handle = {
+            .pDrvPrivate = &tile_queue,
+         };
+         D3D12DDI_HHEAP heap_handle = {.pDrvPrivate = &tile_heap};
+         const D3D12DDI_TILED_RESOURCE_COORDINATE update_start = {
+            .X = 1, .Y = 2,
+         };
+         const D3D12DDI_TILE_REGION_SIZE update_size = {
+            .NumTiles = 2, .UseBox = TRUE, .Width = 2,
+            .Height = 1, .Depth = 1,
+         };
+         const D3D12DDI_TILE_RANGE_FLAGS range_flag =
+            D3D12DDI_TILE_RANGE_FLAG_REUSE_SINGLE_TILE;
+         const UINT heap_start = 4;
+         const UINT range_count = 2;
+         const D3D12DDI_TILED_RESOURCE_COORDINATE destination_start = {
+            .X = 3, .Subresource = 1,
+         };
+         const D3D12DDI_TILED_RESOURCE_COORDINATE source_start = {
+            .X = 4, .Subresource = 2,
+         };
+         const D3D12DDI_TILE_REGION_SIZE copy_mapping_size = {
+            .NumTiles = 2,
+         };
+         struct d12_umd_resource buffer_resource = {
+            .signature = D12_UMD_RESOURCE_SIGNATURE,
+            .device = private_device,
+            .backend = TEST_TILE_BUFFER,
+            .desc = {.ResourceType = D3D12DDI_RT_BUFFER},
+         };
+         struct d12_umd_command_list tile_list = {
+            .signature = D12_UMD_COMMAND_LIST_SIGNATURE,
+            .device = private_device,
+            .type = D12_UMD_RENDERER_COMMAND_DIRECT,
+            .backend = TEST_TILE_LIST,
+         };
+         const D3D12DDI_TILED_RESOURCE_COORDINATE copy_start = {
+            .X = 5, .Subresource = 3,
+         };
+         const D3D12DDI_TILE_REGION_SIZE copy_size = {.NumTiles = 1};
+         D3D12DDI_HCOMMANDLIST list_handle = {.pDrvPrivate = &tile_list};
+         D3D12DDI_HRESOURCE buffer_handle = {
+            .pDrvPrivate = &buffer_resource,
+         };
+         UINT packed_mips = 0;
+         UINT packed_tiles = 0;
+
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_sparse_renderer_ops;
+         sparse_create_calls = 0;
+         sparse_destroy_calls = 0;
+         sparse_update_calls = 0;
+         sparse_copy_mapping_calls = 0;
+         sparse_copy_tiles_calls = 0;
+         sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+            driver_device, NULL, &resource_arguments);
+         require_result(sizes.Heap == 0 && sizes.Resource > 0,
+                        "reserved resource has no private heap");
+         resource_handle.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Resource);
+         require_result(resource_handle.pDrvPrivate != NULL,
+                        "allocate reserved resource private storage");
+         result = device_table.pfnCreateHeapAndResource(
+            driver_device, NULL, (D3D12DDI_HHEAP){0},
+            (D3D12DDI_HRTRESOURCE){0}, &resource_arguments, NULL,
+            resource_handle);
+         require_result(
+            result == S_OK && sparse_create_calls == 1 &&
+               ((struct d12_umd_resource *)resource_handle.pDrvPrivate)
+                  ->reserved &&
+               device_table.pfnCheckResourceVirtualAddress(
+                  driver_device, resource_handle) == TEST_TILED_GPU_VA,
+            "create reserved resource without KMD allocation");
+         device_table.pfnGetMipPacking(driver_device, resource_handle,
+                                       &packed_mips, &packed_tiles);
+         require_result(packed_mips == 3 && packed_tiles == 2,
+                        "reserved resource mip packing translation");
+
+         set_error_calls = 0;
+         command_queue_table.pfnUpdateTileMappings(
+            queue_handle, resource_handle, 1, &update_start, &update_size,
+            heap_handle, 1, &range_flag, &heap_start, &range_count,
+            D3D12DDI_TILE_MAPPING_FLAG_NO_HAZARD);
+         command_queue_table.pfnCopyTileMappings(
+            queue_handle, resource_handle, &destination_start,
+            resource_handle, &source_start, &copy_mapping_size,
+            D3D12DDI_TILE_MAPPING_FLAG_NONE);
+         command_list_table.pfnCopyTiles(
+            list_handle, resource_handle, &copy_start, &copy_size,
+            buffer_handle, UINT64_C(0x10000),
+            D3D12DDI_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
+         require_result(set_error_calls == 0 && sparse_update_calls == 1 &&
+                           sparse_copy_mapping_calls == 1 &&
+                           sparse_copy_tiles_calls == 1,
+                        "translate Tier-1 sparse resource operations");
+
+         command_list_table.pfnCopyTiles(
+            list_handle, resource_handle, &copy_start, &copy_size,
+            buffer_handle, UINT64_C(0x10000),
+            D3D12DDI_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE |
+               D3D12DDI_TILE_COPY_FLAG_SWIZZLED_TILED_RESOURCE_TO_LINEAR_BUFFER);
+         require_result(set_error_calls == 1 &&
+                           last_set_error == E_INVALIDARG &&
+                           sparse_copy_tiles_calls == 1,
+                        "reject conflicting tile-copy directions");
+
+         device_table.pfnDestroyHeapAndResource(
+            driver_device, (D3D12DDI_HHEAP){0}, resource_handle);
+         require_result(sparse_destroy_calls == 1,
+                        "destroy reserved resource without heap teardown");
+         HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
       }
 
       {
@@ -1563,11 +2145,18 @@ wmain(int argc, wchar_t **argv)
             {
                DXGI_DDI_HRESOURCE offered_resources[17];
                BOOL discarded[ARRAYSIZE(offered_resources)] = {0};
+#if D12_UMD_TARGETS_WDDM21
+               DXGI_DDI_ARG_OFFERRESOURCES1 offer_arguments = {
+#else
                DXGI_DDI_ARG_OFFERRESOURCES offer_arguments = {
+#endif
                   .hDevice = priority_arguments.hDevice,
                   .pResources = offered_resources,
                   .Resources = ARRAYSIZE(offered_resources),
                   .Priority = D3DDDI_OFFER_PRIORITY_NORMAL,
+#if D12_UMD_TARGETS_WDDM21
+                  .Flags = {.AllowDecommit = 1},
+#endif
                };
                DXGI_DDI_ARG_RECLAIMRESOURCES reclaim_arguments = {
                   .hDevice = priority_arguments.hDevice,
@@ -1579,7 +2168,11 @@ wmain(int argc, wchar_t **argv)
                for (UINT index = 0; index < ARRAYSIZE(offered_resources);
                     ++index)
                   offered_resources[index] = resources[0];
+#if D12_UMD_TARGETS_WDDM21
+               result = dxgi_table.pfnOfferResources1(&offer_arguments);
+#else
                result = dxgi_table.pfnOfferResources(&offer_arguments);
+#endif
                require_result(result == S_OK && dxgi_offer_calls == 1,
                               "DXGI OfferResources allocation batching");
                result = dxgi_table.pfnReclaimResources(&reclaim_arguments);
@@ -1596,15 +2189,76 @@ wmain(int argc, wchar_t **argv)
                require_result(result == S_OK && dxgi_reclaim_calls == 2,
                               "DXGI ReclaimResources optional results");
 
+#if D12_UMD_TARGETS_WDDM21
+               {
+                  struct d12_umd_device *private_device =
+                     driver_device.pDrvPrivate;
+                  D3DDDI_RECLAIM_RESULT reclaim_results[
+                     ARRAYSIZE(offered_resources)] = {0};
+                  DXGI_DDI_ARG_RECLAIMRESOURCES1 reclaim1_arguments = {
+                     .hDevice = priority_arguments.hDevice,
+                     .pResources = offered_resources,
+                     .pResults = reclaim_results,
+                     .Resources = ARRAYSIZE(offered_resources),
+                  };
+                  void *saved_backend = private_device->backend;
+                  const struct d12_umd_renderer_ops *saved_renderer_ops =
+                     private_device->renderer_ops;
+
+                  private_device->backend = TEST_BLT_DEVICE;
+                  private_device->renderer_ops =
+                     &test_residency_renderer_ops;
+                  result = dxgi_table.pfnReclaimResources1(
+                     &reclaim1_arguments);
+                  private_device->backend = saved_backend;
+                  private_device->renderer_ops = saved_renderer_ops;
+                  require_result(result == S_OK && dxgi_reclaim_calls == 3,
+                                 "WDDM 2.1 DXGI ReclaimResources1 callback");
+                  require_result(dxgi_paging_wait_value == UINT64_C(13),
+                                 "WDDM 2.1 DXGI paging-fence wait");
+                  for (UINT index = 0; index < ARRAYSIZE(reclaim_results);
+                       ++index) {
+                     require_result(
+                        reclaim_results[index] ==
+                           ((index & 1u) ? D3DDDI_RECLAIM_RESULT_DISCARDED
+                                         : D3DDDI_RECLAIM_RESULT_OK),
+                        "WDDM 2.1 DXGI reclaim-result mapping");
+                  }
+
+                  reclaim1_arguments.Resources = 1;
+                  reclaim1_arguments.pResults = NULL;
+                  dxgi_paging_wait_value = 0;
+                  private_device->backend = TEST_BLT_DEVICE;
+                  private_device->renderer_ops =
+                     &test_residency_renderer_ops;
+                  result = dxgi_table.pfnReclaimResources1(
+                     &reclaim1_arguments);
+                  private_device->backend = saved_backend;
+                  private_device->renderer_ops = saved_renderer_ops;
+                  require_result(result == S_OK && dxgi_reclaim_calls == 4 &&
+                                    dxgi_paging_wait_value == UINT64_C(13),
+                                 "WDDM 2.1 DXGI reclaim optional results");
+               }
+#endif
+
                offer_arguments.Resources = 0;
                offer_arguments.pResources = NULL;
                reclaim_arguments.Resources = 0;
                reclaim_arguments.pResources = NULL;
+#if D12_UMD_TARGETS_WDDM21
+               result = dxgi_table.pfnOfferResources1(&offer_arguments);
+#else
                result = dxgi_table.pfnOfferResources(&offer_arguments);
+#endif
                require_result(result == S_OK && dxgi_offer_calls == 1,
                               "DXGI empty OfferResources no-op");
                result = dxgi_table.pfnReclaimResources(&reclaim_arguments);
-               require_result(result == S_OK && dxgi_reclaim_calls == 2,
+               require_result(result == S_OK && dxgi_reclaim_calls ==
+#if D12_UMD_TARGETS_WDDM21
+                                 4,
+#else
+                                 2,
+#endif
                               "DXGI empty ReclaimResources no-op");
 
                {
@@ -1626,7 +2280,11 @@ wmain(int argc, wchar_t **argv)
                offer_arguments.Resources = 1;
                offer_arguments.pResources = offered_resources;
                offered_resources[0] = 0;
+#if D12_UMD_TARGETS_WDDM21
+               result = dxgi_table.pfnOfferResources1(&offer_arguments);
+#else
                result = dxgi_table.pfnOfferResources(&offer_arguments);
+#endif
                require_result(result == E_INVALIDARG && dxgi_offer_calls == 1,
                               "reject invalid DXGI offered resource");
                offered_resources[0] = resources[0];
@@ -2033,10 +2691,14 @@ wmain(int argc, wchar_t **argv)
                               driver_device, legacy_resource) ==
                               TEST_ALLOCATION,
                            "resource allocation handle");
+            set_error_calls = 0;
+            last_set_error = S_OK;
             device_table.pfnGetMipPacking(driver_device, resource_handle,
                                           &packed_mips, &packed_tiles);
-            require_result(packed_mips == 0 && packed_tiles == 0,
-                           "no sparse mip packing at tiled tier zero");
+            require_result(set_error_calls == 1 && packed_mips == 0 &&
+                              packed_tiles == 0 &&
+                              last_set_error == E_INVALIDARG,
+                           "ordinary resource rejects sparse mip packing");
          }
 
          {
@@ -2119,6 +2781,8 @@ wmain(int argc, wchar_t **argv)
          }
 
          {
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
             const D3D12DDI_HRTPAGINGQUEUE runtime_paging_queue = {
                .handle = TEST_RT_PAGING_QUEUE,
             };
@@ -2153,6 +2817,15 @@ wmain(int argc, wchar_t **argv)
                .pPagingFenceValue = &paging_fence,
             };
 
+#if D12_UMD_TARGETS_WDDM21
+            private_device->kernel_callbacks.pfnOfferAllocations2Cb =
+               offer_allocations2;
+            private_device->kernel_callbacks.pfnReclaimAllocations3Cb =
+               reclaim_allocations3;
+#else
+            (void)private_device;
+#endif
+
             result = device_table.pfnMakeResident(driver_device,
                                                    &make_arguments);
             require_result(result == E_PENDING && make_resident_calls == 1 &&
@@ -2169,7 +2842,12 @@ wmain(int argc, wchar_t **argv)
             paging_fence = 0;
             result = device_table.pfnReclaimResources(driver_device,
                                                        &reclaim_arguments);
-            require_result(result == E_PENDING && reclaim_calls == 1 &&
+            require_result(
+#if D12_UMD_TARGETS_WDDM21
+                              result == S_OK && reclaim_calls == 1 &&
+#else
+                              result == E_PENDING && reclaim_calls == 1 &&
+#endif
                               discarded && reclaim_arguments.WaitMask == 1 &&
                               paging_fence == UINT64_C(13),
                            "ReclaimResources callback and paging fence");
@@ -2253,7 +2931,12 @@ wmain(int argc, wchar_t **argv)
                paging_fence = 0;
                result = release1_table.pfnReclaimResources(
                   driver_device, &reclaim_arguments);
-               require_result(result == E_PENDING && reclaim_calls == 2 &&
+               require_result(
+#if D12_UMD_TARGETS_WDDM21
+                                 result == S_OK && reclaim_calls == 2 &&
+#else
+                                 result == E_PENDING && reclaim_calls == 2 &&
+#endif
                                  mixed_discarded[0] && !mixed_discarded[1] &&
                                  reclaim_arguments.WaitMask == 1 &&
                                  paging_fence == UINT64_C(13),
@@ -2316,7 +2999,12 @@ wmain(int argc, wchar_t **argv)
                paging_fence = 0;
                result = release1_table.pfnReclaimResources(
                   driver_device, &reclaim_arguments);
-               require_result(result == E_PENDING && reclaim_calls == 3 &&
+               require_result(
+#if D12_UMD_TARGETS_WDDM21
+                                 result == S_OK && reclaim_calls == 3 &&
+#else
+                                 result == E_PENDING && reclaim_calls == 3 &&
+#endif
                                  reclaim_arguments.WaitMask == 1 &&
                                  paging_fence == UINT64_C(13),
                               "large reclaim batch callback translation");
@@ -2378,6 +3066,7 @@ wmain(int argc, wchar_t **argv)
             functions.pfnCalcPrivateDeviceSize(
                open_arguments.hAdapter, &release1_size_arguments);
 
+#if D12_UMD_TARGETS_WDDM21
          require_result(release1_device_size == device_size,
                         "Release 1 private device size");
          driver_device.pDrvPrivate = HeapAlloc(
@@ -2393,6 +3082,10 @@ wmain(int argc, wchar_t **argv)
                         "CreateDevice Release 1 explicit-present result");
          functions.pfnDestroyDevice(driver_device);
          HeapFree(GetProcessHeap(), 0, driver_device.pDrvPrivate);
+#else
+         require_result(release1_device_size == 0,
+                        "WDDM 2.0 rejects Release 1 device creation");
+#endif
       }
    }
 

@@ -29,6 +29,7 @@ libd3d12agx_files = files(
   'd12_queue.c',
   'd12_resource.c',
   'd12_root_sig.c',
+  'd12_write_set_core.c',
   'dxil/d12_dxil_bitstream.c',
   'dxil/d12_dxil_module.c',
   'dxil/d12_dxbc.c',
@@ -36,6 +37,40 @@ libd3d12agx_files = files(
 )
 
 d12_is_windows = host_machine.system() == 'windows'
+d12_core_strict_args = []
+if d12_is_windows
+  d12_core_strict_args = cc.get_supported_arguments(
+    '-Wall',
+    '-Wextra',
+    '-Werror',
+    '-Wpedantic',
+    '-Wshadow',
+    '-Wstrict-prototypes',
+    '-Wmissing-prototypes',
+    '-Wno-unknown-pragmas',
+    '-Wno-ignored-attributes',
+    '-Wno-microsoft-enum-forward-reference',
+    '-Wno-language-extension-token',
+    '-Wno-c23-extensions',
+    # NIR's public helper macros intentionally use GNU statement expressions
+    # and omit variadic arguments.  Generated AGX pack headers also expose
+    # callbacks with unused formal parameters.  Keep the owned D3D12 sources
+    # warning-clean without treating those upstream/generated interfaces as
+    # build failures.
+    '-Wno-gnu-statement-expression-from-macro-expansion',
+    '-Wno-gnu-zero-variadic-macro-arguments',
+    '-Wno-unused-parameter',
+    '-Wno-gnu-empty-struct',
+    '-Wno-zero-length-array',
+    '-Wno-missing-field-initializers',
+    # Common AGX headers intentionally provide static inline helpers that
+    # are not consumed by every translation unit.
+    '-Wno-unused-function',
+    # Public COM vtables are initialized from generated fail-safe defaults and
+    # then override the operations implemented by this frontend.
+    '-Wno-initializer-overrides',
+  )
+endif
 if d12_is_windows
   libd3d12agx_files += files(
     'd12_platform_windows.c',
@@ -69,6 +104,10 @@ libd3d12agx_core = static_library(
     idep_nir,
     idep_mesautil,
     idep_agx_pack,
+    # d12_cmd.c directly includes the generated libagx_shaders.h.  Linkage
+    # against libasahi_lib is not a compile-time dependency, so an empty
+    # parallel build can otherwise compile d12_cmd.c before the header exists.
+    idep_libagx_shaders_h,
     idep_libagx,
     idep_libpoly,
   ],
@@ -76,7 +115,7 @@ libd3d12agx_core = static_library(
     libasahi_lib, libasahi_layout, libasahi_compiler, libagx2_disasm,
     libpoly_nir,
   ],
-  c_args : [no_override_init_args],
+  c_args : [no_override_init_args, d12_core_strict_args],
   gnu_symbol_visibility : 'hidden',
   install : false,
 )
@@ -107,6 +146,7 @@ libd3d12agx = shared_library(
 )
 
 if d12_is_windows
+  d12_windows = import('windows')
   d12_umd_wdk_include = meson.get_external_property(
     'd3d12_umd_wdk_include',
     '',
@@ -117,21 +157,12 @@ if d12_is_windows
   )
 
   if d12_umd_wdk_include != '' and d12_umd_generated_include != ''
-    d12_umd_strict_args = cc.get_supported_arguments(
-      '-Wall',
-      '-Wextra',
-      '-Werror',
-      '-Wpedantic',
+    d12_umd_wddm_version = get_option('asahi-d3d12-wddm-version')
+    d12_umd_interface_version = d12_umd_wddm_version == '2.1' ? '0x6003' : '0x5002'
+    d12_umd_wddm_major = d12_umd_wddm_version == '2.1' ? '21' : '20'
+    d12_umd_strict_args = d12_core_strict_args + cc.get_supported_arguments(
       '-Wconversion',
-      '-Wshadow',
-      '-Wstrict-prototypes',
-      '-Wmissing-prototypes',
       '-Wundef',
-      '-Wno-unknown-pragmas',
-      '-Wno-ignored-attributes',
-      '-Wno-microsoft-enum-forward-reference',
-      '-Wno-language-extension-token',
-      '-Wno-c23-extensions',
     )
     d12_umd_wdk_inc = include_directories(
       d12_umd_wdk_include,
@@ -177,6 +208,7 @@ if d12_is_windows
         d12_umd_strict_args,
         '-UWIN32_LEAN_AND_MEAN',
         '-DNTDDI_VERSION=0x0A000010',
+        '-DD3D_UMD_INTERFACE_VERSION=' + d12_umd_interface_version,
         '-DD12_UMD_WITH_AGX_BACKEND=1',
       ],
       gnu_symbol_visibility : 'hidden',
@@ -185,6 +217,10 @@ if d12_is_windows
 
     libd3d12agx_umd = shared_library(
       'd3d12agx_umd',
+      d12_windows.compile_resources(
+        'umd/d3d12agx_umd.rc',
+        args : ['-DAURORA_WDDM_MAJOR=' + d12_umd_wddm_major],
+      ),
       dependencies : [
         dep_dxheaders_d12,
         d12_platform_deps,

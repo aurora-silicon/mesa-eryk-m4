@@ -16,6 +16,11 @@
 #include "util/timespec.h"
 #include "util/u_printf.h"
 #include "util/vma.h"
+
+/* Internal-only submit marker consumed by the D3DKMT winsys.  It is not a
+ * drm_asahi UAPI flag: native frontends set it only after serialising a
+ * complete per-pipe GPU write set into SET_*_ATTACHMENTS records. */
+#define AGX_SUBMIT_WRITE_SET_COMPLETE (1u << 31)
 #include "agx_bo.h"
 #include "agx_pack.h"
 #include "decode.h"
@@ -131,6 +136,8 @@ typedef struct {
     */
    int (*simple_ioctl)(struct agx_device *dev, unsigned cmd, void *req);
    void (*bo_munmap)(struct agx_device *dev, struct agx_bo *bo);
+   int (*bo_sync_for_device)(struct agx_device *dev, struct agx_bo *bo,
+                             size_t offset, size_t size);
    void (*bo_free)(struct agx_device *dev, uint32_t handle);
 
    /*
@@ -176,6 +183,8 @@ int agx_bind_timestamps(struct agx_device *dev, struct agx_bo *bo,
  */
 int asahi_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req);
 void agx_drm_bo_munmap(struct agx_device *dev, struct agx_bo *bo);
+int agx_drm_bo_sync_for_device(struct agx_device *dev, struct agx_bo *bo,
+                               size_t offset, size_t size);
 void agx_drm_bo_close(struct agx_device *dev, uint32_t handle);
 
 struct agx_device {
@@ -187,6 +196,10 @@ struct agx_device {
    char name[64];
    struct drm_asahi_params_global params;
    bool is_virtio;
+   /* The current Aurora KMD treats attachment records as the authoritative
+    * fragmented-allocation writeback set.  Other winsys backends retain the
+    * upstream optional-hint semantics. */
+   bool write_set_contract;
    agx_device_ops_t ops;
 
    /* vdrm device */
@@ -288,6 +301,14 @@ struct agx_device {
 
    struct u_printf_ctx printf;
 };
+
+static inline int
+agx_bo_sync_for_device(struct agx_bo *bo, size_t offset, size_t size)
+{
+   assert(bo != NULL && bo->dev != NULL);
+   assert(offset <= bo->size && size <= bo->size - offset);
+   return bo->dev->ops.bo_sync_for_device(bo->dev, bo, offset, size);
+}
 
 /*
  * Determine if an address is in the read-only section. See the documentation

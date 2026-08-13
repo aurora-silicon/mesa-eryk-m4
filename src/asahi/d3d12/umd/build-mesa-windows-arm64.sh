@@ -21,6 +21,12 @@ toolchain=${LLVM_MINGW_ROOT:-/Users/dj/Toolchains/llvm-mingw}
 readobj=${LLVM_READOBJ:-/opt/homebrew/opt/llvm/bin/llvm-readobj}
 native_build=${D12_UMD_NATIVE_BUILD:-$repo_root/_build-d3d12-umd-native-tools}
 cross_build=${D12_UMD_MESA_BUILD:-$repo_root/_build-d3d12-umd-mesa-arm64-shared}
+wddm_target=${D12_UMD_WDDM_TARGET:-20}
+case $wddm_target in
+    20) wddm_version=2.0; driver_version=20.17.240.0 ;;
+    21) wddm_version=2.1; driver_version=21.17.240.0 ;;
+    *) print -u2 "D12_UMD_WDDM_TARGET must be 20 or 21"; exit 2 ;;
+esac
 # Meson intentionally rejects absolute include paths that point back inside
 # its source tree.  Keep staged WDK/generated headers in the parent workspace
 # so they are both disposable and unambiguously external inputs.
@@ -124,6 +130,7 @@ cross_args=(
     -Dvulkan-drivers=
     -Dgallium-drivers=
     -Dasahi-d3d12=true
+    -Dasahi-d3d12-wddm-version=$wddm_version
     -Dtools=
     -Dllvm=disabled
     -Dglx=disabled
@@ -157,7 +164,8 @@ meson compile -C "$cross_build" d3d12agx d3d12agx_umd
 
 com_dll=$cross_build/src/asahi/d3d12/d3d12agx.dll
 umd_dll=$cross_build/src/asahi/d3d12/d3d12agx_umd.dll
-python3 "$umd_dir/tests/check_pe.py" --readobj "$readobj" "$umd_dll"
+python3 "$umd_dir/tests/check_pe.py" --readobj "$readobj" \
+    --version "$driver_version" --filename d3d12agx_umd.dll "$umd_dll"
 "$readobj" --file-headers "$com_dll" | grep -q 'IMAGE_FILE_MACHINE_ARM64'
 print "built shared-core COM frontend: $com_dll"
-print "built shared-core WDDM DDI frontend: $umd_dll"
+print "built shared-core WDDM $wddm_version DDI frontend: $umd_dll"

@@ -35,6 +35,21 @@ d12_report_scratch(const char *what, const struct agx_shader_info *info)
                 info->scratch_size, info->preamble_scratch_size);
 }
 
+static bool
+d12_upload_executable(struct agx_bo *bo, const void *binary, size_t size)
+{
+   void *mapping;
+
+   if (!bo || !binary || !size || !(mapping = agx_bo_map(bo)))
+      return false;
+   memcpy(mapping, binary, size);
+
+   /* Lock2 mappings may persist for the PSO lifetime. Establish explicit
+    * CPU-write -> GPU-read ownership after every compiler upload rather than
+    * relying on an eventual unmap or on cache coincidence. */
+   return agx_bo_sync_for_device(bo, 0, size) == 0;
+}
+
 /*
  * Root signature. D3D12 requires the object; our binding model puts
  * resource addresses directly in uniform registers (see d12_dxil.h), so
@@ -1265,14 +1280,15 @@ d12_pipeline_state_create_compute(struct d12_device *device,
               part.info.nr_preamble_gprs, part.info.rodata.size_16);
       if (part.info.has_preamble) {
          fprintf(stderr, "; driver preamble\n");
-         agx2_disassemble(part.binary + part.info.preamble_offset,
+         agx2_disassemble((uint8_t *)part.binary +
+                             part.info.preamble_offset,
                           part.info.main_offset > part.info.preamble_offset
                              ? part.info.main_offset - part.info.preamble_offset
                              : part.info.binary_size - part.info.preamble_offset,
                           stderr);
       }
       fprintf(stderr, "; driver main\n");
-      agx2_disassemble(part.binary + part.info.main_offset,
+      agx2_disassemble((uint8_t *)part.binary + part.info.main_offset,
                        part.info.binary_size - part.info.main_offset, stderr);
    }
 
@@ -1300,7 +1316,13 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       return E_OUTOFMEMORY;
    }
 
-   memcpy(agx_bo_map(pso->code_bo), part.binary, part.info.binary_size);
+   if (!d12_upload_executable(pso->code_bo, part.binary,
+                              part.info.binary_size)) {
+      agx_bo_unreference(&device->dev, pso->code_bo);
+      free(part.binary);
+      free(pso);
+      return E_FAIL;
+   }
 
    pso->iface.lpVtbl = (ID3D12PipelineStateVtbl *)&d12_pso_vtbl;
    pso->refcount = 1;
@@ -1323,12 +1345,13 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    if (getenv("D3D12AGX_DUMP_SHADERS")) {
       if (part.info.has_preamble) {
          fprintf(stderr, "; preamble +0x%x\n", part.info.preamble_offset);
-         agx2_disassemble(part.binary + part.info.preamble_offset,
+         agx2_disassemble((uint8_t *)part.binary +
+                             part.info.preamble_offset,
                           part.info.main_offset - part.info.preamble_offset,
                           stderr);
       }
       fprintf(stderr, "; main +0x%x\n", part.info.main_offset);
-      agx2_disassemble(part.binary + part.info.main_offset,
+      agx2_disassemble((uint8_t *)part.binary + part.info.main_offset,
                        part.info.binary_size - part.info.main_offset, stderr);
    }
 
@@ -2281,12 +2304,13 @@ compile_gfx_stage(struct d12_device *device,
               out->info.has_preamble);
       if (out->info.has_preamble) {
          fprintf(stderr, "; preamble +0x%x\n", out->info.preamble_offset);
-         agx2_disassemble(out->binary + out->info.preamble_offset,
+         agx2_disassemble((uint8_t *)out->binary +
+                             out->info.preamble_offset,
                           out->info.main_offset - out->info.preamble_offset,
                           stderr);
       }
       fprintf(stderr, "; main +0x%x\n", out->info.main_offset);
-      agx2_disassemble(out->binary + out->info.main_offset,
+      agx2_disassemble((uint8_t *)out->binary + out->info.main_offset,
                        out->info.binary_size - out->info.main_offset, stderr);
    }
 
@@ -2347,7 +2371,7 @@ compile_poly_program(struct d12_device *device, nir_shader *nir,
               nir->info.name ? nir->info.name : "program",
               uvs ? " (raster)" : "", out->info.push_count);
       fprintf(stderr, "; main +0x%x\n", out->info.main_offset);
-      agx2_disassemble(out->binary + out->info.main_offset,
+      agx2_disassemble((uint8_t *)out->binary + out->info.main_offset,
                        out->info.binary_size - out->info.main_offset,
                        stderr);
    }
@@ -3345,8 +3369,12 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
          *out = NULL;
          return E_OUTOFMEMORY;
       }
-      memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
-             cs[i].part->info.binary_size);
+      if (!d12_upload_executable(*cs[i].bo, cs[i].part->binary,
+                                 cs[i].part->info.binary_size)) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_FAIL;
+      }
       *cs[i].va = (*cs[i].bo)->va->addr;
       *cs[i].info = cs[i].part->info;
    }
@@ -3390,8 +3418,12 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
          *out = NULL;
          return E_OUTOFMEMORY;
       }
-      memcpy(agx_bo_map(pso->ms_rast.code_bo), rast_part.binary,
-             rast_part.info.binary_size);
+      if (!d12_upload_executable(pso->ms_rast.code_bo, rast_part.binary,
+                                 rast_part.info.binary_size)) {
+         ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+         *out = NULL;
+         return E_FAIL;
+      }
       pso->ms_rast.preamble_va =
          pso->ms_rast.code_bo->va->addr + rast_part.info.preamble_offset;
    }
@@ -3453,8 +3485,12 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
             *out = NULL;
             return E_OUTOFMEMORY;
          }
-         memcpy(agx_bo_map(*acs[i].bo), acs[i].part->binary,
-                acs[i].part->info.binary_size);
+         if (!d12_upload_executable(*acs[i].bo, acs[i].part->binary,
+                                    acs[i].part->info.binary_size)) {
+            ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+            *out = NULL;
+            return E_FAIL;
+         }
          *acs[i].va = (*acs[i].bo)->va->addr;
          *acs[i].info = acs[i].part->info;
       }
@@ -4009,8 +4045,16 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          free(pso);
          return E_OUTOFMEMORY;
       }
-      memcpy(agx_bo_map(pso->vs.code_bo), vs_part.binary,
-             vs_part.info.binary_size);
+      if (!d12_upload_executable(pso->vs.code_bo, vs_part.binary,
+                                 vs_part.info.binary_size)) {
+         agx_bo_unreference(&device->dev, pso->vs.code_bo);
+         pso->vs.code_bo = NULL;
+         free(fs_epilog.binary);
+         free(vs_part.binary);
+         free(fs_part.binary);
+         free(pso);
+         return E_FAIL;
+      }
       pso->vs.preamble_va =
          pso->vs.code_bo->va->addr + vs_part.info.preamble_offset;
    }
@@ -4037,8 +4081,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          free(pso);
          return E_OUTOFMEMORY;
       }
-      memcpy(agx_bo_map(pso->fs.code_bo), fs_part.binary,
-             fs_part.info.binary_size);
+      if (!d12_upload_executable(pso->fs.code_bo, fs_part.binary,
+                                 fs_part.info.binary_size)) {
+         agx_bo_unreference(&device->dev, pso->fs.code_bo);
+         pso->fs.code_bo = NULL;
+         free(vs_part.binary);
+         free(fs_part.binary);
+         free(pso);
+         return E_FAIL;
+      }
       pso->fs.preamble_va =
          pso->fs.code_bo->va->addr + fs_part.info.preamble_offset;
    }
@@ -4098,8 +4149,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             free(pso);
             return E_OUTOFMEMORY;
          }
-         memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
-                cs[i].part->info.binary_size);
+         if (!d12_upload_executable(*cs[i].bo, cs[i].part->binary,
+                                    cs[i].part->info.binary_size)) {
+            for (unsigned j = 0; j <= i; ++j)
+               agx_bo_unreference(&device->dev, *cs[j].bo);
+            free(pso);
+            return E_FAIL;
+         }
          *cs[i].va = (*cs[i].bo)->va->addr;
          *cs[i].info = cs[i].part->info;
       }
@@ -4129,8 +4185,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             free(pso);
             return E_OUTOFMEMORY;
          }
-         memcpy(agx_bo_map(pso->tes.code_bo), tes_part.binary,
-                tes_part.info.binary_size);
+         if (!d12_upload_executable(pso->tes.code_bo, tes_part.binary,
+                                    tes_part.info.binary_size)) {
+            agx_bo_unreference(&device->dev, pso->tes.code_bo);
+            pso->tes.code_bo = NULL;
+            free(pso);
+            return E_FAIL;
+         }
          pso->tes.preamble_va =
             pso->tes.code_bo->va->addr + tes_part.info.preamble_offset;
       }
@@ -4279,8 +4340,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             free(pso);
             return E_OUTOFMEMORY;
          }
-         memcpy(agx_bo_map(*cs[i].bo), cs[i].part->binary,
-                cs[i].part->info.binary_size);
+         if (!d12_upload_executable(*cs[i].bo, cs[i].part->binary,
+                                    cs[i].part->info.binary_size)) {
+            for (unsigned j = 0; j <= i; ++j) {
+               if (*cs[j].bo)
+                  agx_bo_unreference(&device->dev, *cs[j].bo);
+            }
+            free(pso);
+            return E_FAIL;
+         }
          *cs[i].va = (*cs[i].bo)->va->addr;
          *cs[i].info = cs[i].part->info;
       }
@@ -4320,8 +4388,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             free(pso);
             return E_OUTOFMEMORY;
          }
-         memcpy(agx_bo_map(pso->gs_rast.code_bo), gs_rast_part.binary,
-                gs_rast_part.info.binary_size);
+         if (!d12_upload_executable(pso->gs_rast.code_bo,
+                                    gs_rast_part.binary,
+                                    gs_rast_part.info.binary_size)) {
+            agx_bo_unreference(&device->dev, pso->gs_rast.code_bo);
+            pso->gs_rast.code_bo = NULL;
+            free(pso);
+            return E_FAIL;
+         }
          pso->gs_rast.preamble_va = pso->gs_rast.code_bo->va->addr +
                                     gs_rast_part.info.preamble_offset;
       }
@@ -4412,11 +4486,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
 
    if (getenv("D3D12AGX_DUMP_SHADERS")) {
       fprintf(stderr, "; VS main +0x%x\n", vs_part.info.main_offset);
-      agx2_disassemble(vs_part.binary + vs_part.info.main_offset,
+      agx2_disassemble((uint8_t *)vs_part.binary +
+                          vs_part.info.main_offset,
                        vs_part.info.binary_size - vs_part.info.main_offset,
                        stderr);
       fprintf(stderr, "; FS main +0x%x\n", fs_part.info.main_offset);
-      agx2_disassemble(fs_part.binary + fs_part.info.main_offset,
+      agx2_disassemble((uint8_t *)fs_part.binary +
+                          fs_part.info.main_offset,
                        fs_part.info.binary_size - fs_part.info.main_offset,
                        stderr);
    }

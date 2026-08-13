@@ -41,6 +41,10 @@ enum agx_bo_flags {
    /* Fresh kernel allocations are already zeroed. If a BO is recycled from
     * the userspace cache, clear it before returning it to the caller. */
    AGX_BO_ZERO_ON_REUSE = 1 << 6,
+
+   /* WDDM desktop primary. This is an allocation-policy marker consumed by
+    * the D3DKMT winsys and never changes AGX GPU addressing. */
+   AGX_BO_PRIMARY = 1 << 7,
 };
 
 enum agx_va_flags {

@@ -475,6 +475,46 @@ struct d12_frontend_box {
    int32_t back;
 };
 
+/* Sparse/tiled-resource descriptions.  These deliberately mirror the public
+ * D3D12 and WDK DDI scalar encodings without exposing either API's headers at
+ * the frontend seam.  The Windows ABI tests pin every size, offset and flag
+ * value used by the DDI adapter. */
+struct d12_frontend_tiled_resource_coordinate {
+   uint32_t x;
+   uint32_t y;
+   uint32_t z;
+   uint32_t subresource;
+};
+
+struct d12_frontend_tile_region_size {
+   uint32_t num_tiles;
+   uint32_t use_box;
+   uint32_t width;
+   uint16_t height;
+   uint16_t depth;
+};
+
+enum d12_frontend_tile_range_flags {
+   D12_FRONTEND_TILE_RANGE_NONE = 0,
+   D12_FRONTEND_TILE_RANGE_NULL = 1,
+   D12_FRONTEND_TILE_RANGE_SKIP = 2,
+   D12_FRONTEND_TILE_RANGE_REUSE_SINGLE_TILE = 4,
+};
+
+enum d12_frontend_tile_mapping_flags {
+   D12_FRONTEND_TILE_MAPPING_NONE = 0,
+   D12_FRONTEND_TILE_MAPPING_NO_HAZARD = 1,
+};
+
+enum d12_frontend_tile_copy_flags {
+   D12_FRONTEND_TILE_COPY_NONE = 0,
+   D12_FRONTEND_TILE_COPY_NO_HAZARD = 1,
+   D12_FRONTEND_TILE_COPY_LINEAR_TO_TILED = 2,
+   D12_FRONTEND_TILE_COPY_TILED_TO_LINEAR = 4,
+};
+
+#define D12_FRONTEND_MULTISAMPLE_QUALITY_TILED_RESOURCE UINT32_C(1)
+
 enum d12_frontend_resource_barrier_type {
    D12_FRONTEND_BARRIER_TRANSITION,
    D12_FRONTEND_BARRIER_ALIASING,

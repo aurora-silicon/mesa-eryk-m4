@@ -139,6 +139,7 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
    bool is_int = util_format_is_pure_integer(attrib.format);
 
    assert((is_float ^ is_unsigned ^ is_signed ^ is_fixed) && "Invalid format");
+   (void)is_float;
 
    enum pipe_format interchange_format = agx_vbo_internal_format(attrib.format);
    assert(interchange_format != PIPE_FORMAT_NONE);

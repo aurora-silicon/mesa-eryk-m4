@@ -12,6 +12,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_write_set_core.h"
 
 #include "decode.h"
 #include "util/os_time.h"
@@ -65,6 +66,7 @@ struct d12_queue_op {
    size_t payload_size;
    unsigned nr_vdm;
    unsigned nr_cdm;
+   bool write_set_complete;
 
    struct drm_asahi_gem_bind_op *bind_ops;
    uint32_t bind_count;
@@ -343,6 +345,244 @@ d12_queue_op_destroy(struct d12_queue_op *op)
    free(op);
 }
 
+#define D12_SUBMIT_MAX_ATTACHMENTS 16
+
+static bool
+d12_queue_resolve_bo_range(struct agx_device *dev, uint64_t address,
+                           uint64_t *base, uint64_t *size)
+{
+   bool found = false;
+
+   simple_mtx_lock(&dev->bo_map_lock);
+   for (uint32_t handle = 0; handle < dev->max_handle; handle++) {
+      struct agx_bo *bo = agx_lookup_bo(dev, handle);
+      if (!bo->va || !bo->size)
+         continue;
+
+      uint64_t bo_base = bo->va->addr;
+      if (bo->flags & AGX_BO_LOW_VA)
+         bo_base += dev->shader_base;
+      if (address < bo_base || address - bo_base >= bo->size)
+         continue;
+
+      *base = bo_base;
+      *size = bo->size;
+      found = true;
+      break;
+   }
+   simple_mtx_unlock(&dev->bo_map_lock);
+   return found;
+}
+
+static bool
+d12_queue_attachment_add(struct agx_device *dev,
+                         struct d12_write_range *attachments,
+                         unsigned *count, unsigned limit,
+                         uint64_t pointer, uint64_t size)
+{
+   if (!pointer)
+      return true;
+
+   if (!size && !d12_queue_resolve_bo_range(dev, pointer, &pointer, &size))
+      return false;
+   return d12_write_set_add(attachments, count, limit, pointer, size) ==
+          D12_WRITE_SET_OK;
+}
+
+static bool
+d12_queue_attachment_add_descriptor(
+   struct agx_device *dev, struct d12_write_range *attachments,
+   unsigned *count, unsigned limit, const struct d12_descriptor *descriptor)
+{
+   if (!descriptor || descriptor->kind != D12_DESC_UAV)
+      return true;
+
+   uint64_t base = 0, size = 0;
+   if (descriptor->resource) {
+      if (!d12_descriptor_resource_span(descriptor, &base, &size))
+         return false;
+   } else {
+      base = descriptor->address;
+   }
+
+   if (base && !d12_queue_attachment_add(dev, attachments, count, limit,
+                                         base, size))
+      return false;
+   if (descriptor->counter_address &&
+       !d12_queue_attachment_add(dev, attachments, count, limit,
+                                 descriptor->counter_address,
+                                 sizeof(uint32_t)))
+      return false;
+   return true;
+}
+
+static bool
+d12_queue_collect_write_tracker(
+   struct agx_device *dev, const struct d12_write_tracker *tracker,
+   struct d12_write_range *attachments, unsigned *count,
+   unsigned limit, bool *complete)
+{
+   if (tracker->incomplete)
+      *complete = false;
+   if (!tracker->initialized)
+      return true;
+
+   util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
+      switch (ref->kind) {
+      case D12_WRITE_REF_RANGE:
+         if (!d12_queue_attachment_add(
+                dev, attachments, count, limit, ref->range.address,
+                ref->range.size)) {
+            *complete = false;
+            return true;
+         }
+         break;
+      case D12_WRITE_REF_DESCRIPTOR:
+         if (!d12_queue_attachment_add_descriptor(
+                dev, attachments, count, limit, ref->descriptor)) {
+            *complete = false;
+            return true;
+         }
+         break;
+      case D12_WRITE_REF_HEAP: {
+         const struct d12_descriptor_heap *heap = ref->heap.heap;
+         if (!heap || ref->heap.first >= heap->desc.NumDescriptors)
+            return false;
+         for (uint32_t i = ref->heap.first; i < heap->desc.NumDescriptors;
+              i++) {
+            if (!d12_queue_attachment_add_descriptor(
+                   dev, attachments, count, limit, &heap->slots[i])) {
+               *complete = false;
+               return true;
+            }
+         }
+         break;
+      }
+      default:
+         return false;
+      }
+   }
+   return true;
+}
+
+static bool
+d12_queue_emit_write_set(struct d12_device *device,
+                         const struct d12_cmd_list *list,
+                         const struct d12_segment *seg,
+                         enum d12_write_pipe pipe, uint8_t *payload,
+                         size_t *payload_size, bool *complete)
+{
+   struct agx_device *dev = &device->dev;
+   static_assert(sizeof(struct d12_write_range) ==
+                 sizeof(struct drm_asahi_attachment),
+                 "write range UAPI size");
+   static_assert(offsetof(struct d12_write_range, pointer) ==
+                 offsetof(struct drm_asahi_attachment, pointer),
+                 "write range UAPI pointer offset");
+   static_assert(offsetof(struct d12_write_range, size) ==
+                 offsetof(struct drm_asahi_attachment, size),
+                 "write range UAPI size offset");
+
+   struct d12_write_range
+      attachments[D12_SUBMIT_MAX_ATTACHMENTS] = {0};
+   unsigned count = 0;
+   const unsigned limit =
+      MIN2(D12_SUBMIT_MAX_ATTACHMENTS, dev->params.max_attachments);
+   bool pipe_complete = true;
+
+   /* Internal GPU-written state is part of the ownership set too. */
+   if (pipe == D12_WRITE_COMPUTE) {
+      if (!d12_queue_attachment_add(
+             dev, attachments, &count, limit, list->stream_bo->va->addr,
+             list->stream_bo->size))
+         pipe_complete = false;
+      if (seg->scratch_cs_bo &&
+          !d12_queue_attachment_add(
+             dev, attachments, &count, limit,
+             seg->scratch_cs_bo->va->addr, seg->scratch_cs_bo->size))
+         pipe_complete = false;
+      if (list->uses_heap && device->heap_bo &&
+          !d12_queue_attachment_add(
+             dev, attachments, &count, limit, device->heap_bo->va->addr,
+             device->heap_bo->size))
+         pipe_complete = false;
+   } else if (pipe == D12_WRITE_VERTEX) {
+      if (seg->scratch_vs_bo &&
+          !d12_queue_attachment_add(
+             dev, attachments, &count, limit,
+             seg->scratch_vs_bo->va->addr, seg->scratch_vs_bo->size))
+         pipe_complete = false;
+   } else {
+      if (seg->scratch_fs_bo &&
+          !d12_queue_attachment_add(
+             dev, attachments, &count, limit,
+             seg->scratch_fs_bo->va->addr, seg->scratch_fs_bo->size))
+         pipe_complete = false;
+
+      for (unsigned i = 0; i < seg->rt_count; i++) {
+         if (!(seg->rt_write_mask & BITFIELD_BIT(i)) || !seg->rt[i])
+            continue;
+         struct d12_descriptor target = {
+            .resource = seg->rt[i],
+            .kind = D12_DESC_UAV,
+         };
+         if (!d12_queue_attachment_add_descriptor(
+                dev, attachments, &count, limit, &target))
+            pipe_complete = false;
+      }
+
+      if (seg->ds) {
+         const bool depth_store =
+            seg->depth_cleared ||
+            !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_DEPTH);
+         const bool stencil_store =
+            seg->ds->stencil_bo &&
+            (seg->stencil_cleared ||
+             !(seg->dsv_flags & D3D12_DSV_FLAG_READ_ONLY_STENCIL));
+         struct d12_descriptor target = {
+            .resource = seg->ds,
+            .kind = D12_DESC_UAV,
+         };
+         if (depth_store &&
+             !d12_queue_attachment_add_descriptor(
+                dev, attachments, &count, limit, &target))
+            pipe_complete = false;
+         if (stencil_store) {
+            target.texture_plane = 1;
+            if (!d12_queue_attachment_add_descriptor(
+                   dev, attachments, &count, limit, &target))
+               pipe_complete = false;
+         }
+      }
+   }
+
+   if (!d12_queue_collect_write_tracker(
+          dev, &seg->writes[pipe], attachments, &count, limit,
+          &pipe_complete))
+      return false;
+   *complete &= pipe_complete;
+   if (!count)
+      return true;
+
+   const enum drm_asahi_cmd_type type =
+      pipe == D12_WRITE_VERTEX ? DRM_ASAHI_SET_VERTEX_ATTACHMENTS
+      : pipe == D12_WRITE_FRAGMENT
+         ? DRM_ASAHI_SET_FRAGMENT_ATTACHMENTS
+         : DRM_ASAHI_SET_COMPUTE_ATTACHMENTS;
+   const struct drm_asahi_cmd_header header = {
+      .cmd_type = type,
+      .size = count * sizeof(attachments[0]),
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+   memcpy(payload + *payload_size, &header, sizeof(header));
+   *payload_size += sizeof(header);
+   memcpy(payload + *payload_size, attachments,
+          count * sizeof(attachments[0]));
+   *payload_size += count * sizeof(attachments[0]);
+   return true;
+}
+
 static void
 d12_queue_op_capture_bos(struct d12_queue_op *op,
                          struct d12_cmd_list *list)
@@ -426,6 +666,9 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       },
    };
    struct drm_asahi_submit submit = {
+      .flags = dev->write_set_contract && op->write_set_complete
+                  ? AGX_SUBMIT_WRITE_SET_COMPLETE
+                  : 0,
       .queue_id = queue->agx_queue_id,
       .in_sync_count = 1,
       .out_sync_count = 1,
@@ -454,14 +697,35 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       uint32_t base_offs = offs;
       unsigned vdm_count = 0, cdm_count = 0;
 
-      for (unsigned i = 0; i < count; i++) {
+      unsigned hardware_count = 0;
+      struct drm_asahi_cmd_header *first_hardware = NULL;
+      while (hardware_count < count) {
          struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + offs);
          offs += sizeof(*cmd) + cmd->size;
 
-         if (cmd->cmd_type == DRM_ASAHI_CMD_RENDER)
+         if (cmd->cmd_type == DRM_ASAHI_SET_VERTEX_ATTACHMENTS ||
+             cmd->cmd_type == DRM_ASAHI_SET_FRAGMENT_ATTACHMENTS ||
+             cmd->cmd_type == DRM_ASAHI_SET_COMPUTE_ATTACHMENTS) {
+            if (cmd->vdm_barrier != DRM_ASAHI_BARRIER_NONE ||
+                cmd->cdm_barrier != DRM_ASAHI_BARRIER_NONE) {
+               ret = -EINVAL;
+               break;
+            }
+            continue;
+         }
+
+         if (!first_hardware)
+            first_hardware = cmd;
+         hardware_count++;
+
+         if (cmd->cmd_type == DRM_ASAHI_CMD_RENDER) {
             vdm_count++;
-         else
+         } else if (cmd->cmd_type == DRM_ASAHI_CMD_COMPUTE) {
             cdm_count++;
+         } else {
+            ret = -EINVAL;
+            break;
+         }
 
          if (cmd->vdm_barrier != DRM_ASAHI_BARRIER_NONE) {
             assert(cmd->vdm_barrier >= submitted_vdm);
@@ -472,19 +736,22 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
             cmd->cdm_barrier -= submitted_cdm;
          }
       }
+      if (ret)
+         break;
 
       /* If the final slice starts with work from only one engine, make it
        * wait for both engines from the preceding ioctl before it publishes
        * the command-list completion point. */
       if (last && !first) {
-         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + base_offs);
-         if (cmd->vdm_barrier == DRM_ASAHI_BARRIER_NONE)
-            cmd->vdm_barrier = 0;
-         if (cmd->cdm_barrier == DRM_ASAHI_BARRIER_NONE)
-            cmd->cdm_barrier = 0;
+         assert(first_hardware != NULL);
+         if (first_hardware->vdm_barrier == DRM_ASAHI_BARRIER_NONE)
+            first_hardware->vdm_barrier = 0;
+         if (first_hardware->cdm_barrier == DRM_ASAHI_BARRIER_NONE)
+            first_hardware->cdm_barrier = 0;
       }
 
       struct drm_asahi_submit slice = {
+         .flags = submit.flags,
          .queue_id = submit.queue_id,
          .in_sync_count = first ? submit.in_sync_count : 0,
          .out_sync_count = last ? submit.out_sync_count : 0,
@@ -758,7 +1025,9 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
        * kernel command-count limit while preserving these global barriers. */
       size_t max_payload =
          list->segment_count *
-         (sizeof(struct drm_asahi_cmd_header) +
+         (3 * sizeof(struct drm_asahi_cmd_header) +
+          2 * D12_SUBMIT_MAX_ATTACHMENTS *
+             sizeof(struct drm_asahi_attachment) +
           MAX2(sizeof(struct drm_asahi_cmd_compute),
                sizeof(struct drm_asahi_cmd_render)));
       uint8_t *payload = malloc(max_payload);
@@ -769,6 +1038,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
 
       size_t payload_size = 0;
       unsigned nr_vdm = 0, nr_cdm = 0;
+      bool write_set_complete = true;
+      bool payload_valid = true;
 
       for (unsigned s = 0; s < list->segment_count; s++) {
          const struct d12_segment *seg = &list->segments[s];
@@ -781,6 +1052,25 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
 
          if (compute && seg->dispatches == 0)
             continue;
+
+         if (compute) {
+            if (!d12_queue_emit_write_set(
+               device, list, seg, D12_WRITE_COMPUTE, payload,
+               &payload_size, &write_set_complete)) {
+               payload_valid = false;
+               break;
+            }
+         } else {
+            if (!d12_queue_emit_write_set(
+               device, list, seg, D12_WRITE_VERTEX, payload,
+               &payload_size, &write_set_complete) ||
+                !d12_queue_emit_write_set(
+                  device, list, seg, D12_WRITE_FRAGMENT, payload,
+                  &payload_size, &write_set_complete)) {
+               payload_valid = false;
+               break;
+            }
+         }
 
          struct drm_asahi_cmd_header header =
             agx_cmd_header(compute, nr_vdm, nr_cdm);
@@ -814,6 +1104,15 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          }
       }
 
+      if (!payload_valid) {
+         mesa_loge("ExecuteCommandLists: invalid GPU write tracker; device "
+                   "removed before submission");
+         free(payload);
+         device->removed = true;
+         device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         break;
+      }
+
       if (!payload_size) {
          free(payload);
          continue;
@@ -832,6 +1131,11 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       op->payload_size = payload_size;
       op->nr_vdm = nr_vdm;
       op->nr_cdm = nr_cdm;
+      op->write_set_complete = write_set_complete;
+      if (!write_set_complete && getenv("D3D12AGX_DUMP_WRITE_SET")) {
+         mesa_logw("ExecuteCommandLists: submitting conservative attachment "
+                   "hints without the Aurora complete-write declaration");
+      }
 
       d12_queue_op_capture_bos(op, list);
 
@@ -923,6 +1227,37 @@ d12_queue_bind_sparse_sync(struct d12_queue *queue,
    return result == 0;
 }
 
+HRESULT
+d12_queue_update_tile_mappings(
+   struct d12_queue *queue, struct d12_resource *res,
+   UINT num_regions, const D3D12_TILED_RESOURCE_COORDINATE *starts,
+   const D3D12_TILE_REGION_SIZE *sizes, struct d12_heap *heap,
+   UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
+   const UINT *heap_starts, const UINT *range_counts,
+   D3D12_TILE_MAPPING_FLAGS flags)
+{
+   if (!queue || !res || (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
+      return E_INVALIDARG;
+   if (res->device != queue->device ||
+       (heap && heap->device != queue->device))
+      return E_INVALIDARG;
+
+   struct drm_asahi_gem_bind_op *ops = NULL;
+   uint32_t count = 0;
+   HRESULT hr = d12_sparse_update_tile_mappings(
+      res, num_regions, starts, sizes, heap, num_ranges, range_flags,
+      heap_starts, range_counts, &ops, &count);
+   if (FAILED(hr))
+      return hr;
+
+   if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
+      queue->device->removed = true;
+      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return queue->device->removed_reason;
+   }
+   return S_OK;
+}
+
 static void STDMETHODCALLTYPE
 d12_queue_UpdateTileMappings(
    ID3D12CommandQueue *iface, ID3D12Resource *resource_iface,
@@ -932,34 +1267,44 @@ d12_queue_UpdateTileMappings(
    const UINT *heap_starts, const UINT *range_counts,
    D3D12_TILE_MAPPING_FLAGS flags)
 {
-   struct d12_queue *queue = d12_queue_from_iface(iface);
-   if (!resource_iface || (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
-      return;
+   HRESULT hr = d12_queue_update_tile_mappings(
+      d12_queue_from_iface(iface),
+      resource_iface ? d12_resource_from_iface(resource_iface) : NULL,
+      num_regions, starts, sizes,
+      heap_iface ? d12_memheap_from_iface(heap_iface) : NULL, num_ranges,
+      range_flags, heap_starts, range_counts, flags);
+   if (FAILED(hr))
+      mesa_loge("UpdateTileMappings: invalid mapping description (%#x)",
+                (unsigned)hr);
+}
 
-   struct d12_resource *res = d12_resource_from_iface(resource_iface);
-   struct d12_heap *heap =
-      heap_iface ? d12_memheap_from_iface(heap_iface) : NULL;
-   if (res->device != queue->device ||
-       (heap && heap->device != queue->device)) {
-      mesa_loge("UpdateTileMappings: cross-device object");
-      return;
-   }
+HRESULT
+d12_queue_copy_tile_mappings(
+   struct d12_queue *queue, struct d12_resource *dst,
+   const D3D12_TILED_RESOURCE_COORDINATE *dst_start,
+   struct d12_resource *src,
+   const D3D12_TILED_RESOURCE_COORDINATE *src_start,
+   const D3D12_TILE_REGION_SIZE *size, D3D12_TILE_MAPPING_FLAGS flags)
+{
+   if (!queue || !dst || !src ||
+       (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
+      return E_INVALIDARG;
+   if (dst->device != queue->device || src->device != queue->device)
+      return E_INVALIDARG;
 
    struct drm_asahi_gem_bind_op *ops = NULL;
    uint32_t count = 0;
-   HRESULT hr = d12_sparse_update_tile_mappings(
-      res, num_regions, starts, sizes, heap, num_ranges, range_flags,
-      heap_starts, range_counts, &ops, &count);
-   if (FAILED(hr)) {
-      mesa_loge("UpdateTileMappings: invalid mapping description (%#x)",
-                (unsigned)hr);
-      return;
-   }
+   HRESULT hr = d12_sparse_copy_tile_mappings(
+      dst, dst_start, src, src_start, size, &ops, &count);
+   if (FAILED(hr))
+      return hr;
 
    if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
       queue->device->removed = true;
       queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return queue->device->removed_reason;
    }
+   return S_OK;
 }
 
 static void STDMETHODCALLTYPE
@@ -970,32 +1315,14 @@ d12_queue_CopyTileMappings(
    const D3D12_TILED_RESOURCE_COORDINATE *src_start,
    const D3D12_TILE_REGION_SIZE *size, D3D12_TILE_MAPPING_FLAGS flags)
 {
-   struct d12_queue *queue = d12_queue_from_iface(iface);
-   if (!dst_iface || !src_iface ||
-       (flags & ~D3D12_TILE_MAPPING_FLAG_NO_HAZARD))
-      return;
-
-   struct d12_resource *dst = d12_resource_from_iface(dst_iface);
-   struct d12_resource *src = d12_resource_from_iface(src_iface);
-   if (dst->device != queue->device || src->device != queue->device) {
-      mesa_loge("CopyTileMappings: cross-device resource");
-      return;
-   }
-
-   struct drm_asahi_gem_bind_op *ops = NULL;
-   uint32_t count = 0;
-   HRESULT hr = d12_sparse_copy_tile_mappings(
-      dst, dst_start, src, src_start, size, &ops, &count);
-   if (FAILED(hr)) {
+   HRESULT hr = d12_queue_copy_tile_mappings(
+      d12_queue_from_iface(iface),
+      dst_iface ? d12_resource_from_iface(dst_iface) : NULL, dst_start,
+      src_iface ? d12_resource_from_iface(src_iface) : NULL, src_start,
+      size, flags);
+   if (FAILED(hr))
       mesa_loge("CopyTileMappings: invalid mapping description (%#x)",
                 (unsigned)hr);
-      return;
-   }
-
-   if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
-      queue->device->removed = true;
-      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
-   }
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -1096,6 +1423,8 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
       return DXGI_ERROR_DEVICE_REMOVED;
    if (fence->count != 1)
       return E_NOTIMPL;
+   if (!queue->device->dev.params.max_attachments)
+      return E_FAIL;
 
    dev = &queue->device->dev;
    program = agx_get_precompiled(&queue->device->bg_eot,
@@ -1152,7 +1481,8 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
    op->placement_fence = fence;
    op->value = value;
    op->submit_device = queue->device;
-   op->payload_size = sizeof(struct drm_asahi_cmd_header) +
+   op->payload_size = 2 * sizeof(struct drm_asahi_cmd_header) +
+                      sizeof(struct drm_asahi_attachment) +
                       sizeof(struct drm_asahi_cmd_compute);
    op->payload = calloc(1, op->payload_size);
    if (!op->payload) {
@@ -1161,15 +1491,34 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
       agx_bo_unreference(dev, usc);
       return E_OUTOFMEMORY;
    }
+   const struct drm_asahi_cmd_header attachment_header = {
+      .cmd_type = DRM_ASAHI_SET_COMPUTE_ATTACHMENTS,
+      .size = sizeof(struct drm_asahi_attachment),
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+   const struct drm_asahi_attachment attachment = {
+      .pointer = fence->entries[0].current_gpu_address,
+      .size = sizeof(uint64_t),
+   };
    const struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
    const struct drm_asahi_cmd_compute command = {
       .cdm_ctrl_stream_base = stream->va->addr,
       .cdm_ctrl_stream_end = stream->va->addr + control_size,
    };
-   memcpy(op->payload, &header, sizeof(header));
-   memcpy((uint8_t *)op->payload + sizeof(header), &command,
+   size_t payload_offset = 0;
+   memcpy((uint8_t *)op->payload + payload_offset, &attachment_header,
+          sizeof(attachment_header));
+   payload_offset += sizeof(attachment_header);
+   memcpy((uint8_t *)op->payload + payload_offset, &attachment,
+          sizeof(attachment));
+   payload_offset += sizeof(attachment);
+   memcpy((uint8_t *)op->payload + payload_offset, &header, sizeof(header));
+   payload_offset += sizeof(header);
+   memcpy((uint8_t *)op->payload + payload_offset, &command,
           sizeof(command));
    op->nr_cdm = 1;
+   op->write_set_complete = true;
    util_dynarray_init(&op->bos, NULL);
    op->bos_initialized = true;
    util_dynarray_append_typed(&op->bos, struct agx_bo *, stream);

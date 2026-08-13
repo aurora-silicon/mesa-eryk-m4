@@ -62,6 +62,7 @@ agx_d3dkmt_load(struct agx_d3dkmt_fns *fns)
    LOAD(DestroyAllocation2, "D3DKMTDestroyAllocation2");
    LOAD(Lock2, "D3DKMTLock2");
    LOAD(Unlock2, "D3DKMTUnlock2");
+   LOAD(InvalidateCache, "D3DKMTInvalidateCache");
    LOAD(MakeResident, "D3DKMTMakeResident");
    LOAD(Evict, "D3DKMTEvict");
 

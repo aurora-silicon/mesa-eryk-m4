@@ -18,12 +18,21 @@ sdk_include=$sdk_root/Include/10.0.26100.0
 toolchain=${LLVM_MINGW_ROOT:-/Users/dj/Toolchains/llvm-mingw}
 cc=${CC:-$toolchain/bin/aarch64-w64-mingw32-clang}
 readobj=${LLVM_READOBJ:-/opt/homebrew/opt/llvm/bin/llvm-readobj}
+windres=${WINDRES:-$toolchain/bin/aarch64-w64-mingw32-windres}
 out=${D12_UMD_BUILD_OUT:-$repo_root/_build-d3d12-umd-arm64}
 staged=$out/winddk
+wddm_target=${D12_UMD_WDDM_TARGET:-20}
 
-for required in "$cc" "$readobj" \
+case $wddm_target in
+    20) umd_interface=0x5002; driver_version=20.17.240.0 ;;
+    21) umd_interface=0x6003; driver_version=21.17.240.0 ;;
+    *) print -u2 "D12_UMD_WDDM_TARGET must be 20 or 21"; exit 2 ;;
+esac
+
+for required in "$cc" "$readobj" "$windres" \
     "$wdk_include/um/d3d12umddi.h" \
-    "$contract_dir/agxw_contract.h"; do
+    "$contract_dir/agxw_contract.h" \
+    "$contract_dir/agxw_contract.c"; do
     [[ -e $required ]] || { print -u2 "missing dependency: $required"; exit 2; }
 done
 
@@ -62,6 +71,7 @@ cflags=(
     -Wno-language-extension-token
     -D_WIN32_WINNT=0x0A00
     -DNTDDI_VERSION=0x0A000010
+    -DD3D_UMD_INTERFACE_VERSION=$umd_interface
     # WDK headers are MSVC-oriented and are treated as system headers so
     # strict diagnostics remain fatal for Aurora source, not Microsoft's C
     # extensions (zero-length arrays and UINT32-valued enumerators).
@@ -74,6 +84,7 @@ cflags=(
 )
 
 sources=(
+    "$contract_dir/agxw_contract.c"
     "$d12_dir/d12_core_caps.c"
     "$d12_dir/d12_dxbc_wrap.c"
     "$d12_dir/d12_present_blt_math.c"
@@ -102,6 +113,11 @@ for source in "$sources[@]"; do
     "$cc" "$cflags[@]" -c "$source" -o "$object"
     objects+=("$object")
 done
+
+"$windres" --define="AURORA_WDDM_MAJOR=${driver_version%%.*}" \
+    --input-format=rc --output-format=coff \
+    "$umd_dir/d3d12agx_umd.rc" "$out/obj/d3d12agx_umd_version.o"
+objects+=("$out/obj/d3d12agx_umd_version.o")
 
 "$cc" "$cflags[@]" -c "$umd_dir/tests/d12_umd_winabi_tests.c" \
     -o "$out/obj/d12_umd_winabi_tests.o"
@@ -142,6 +158,7 @@ done
     -o "$out/d12_umd_agx_transport_probe.exe" -lkernel32
 
 python3 "$umd_dir/tests/check_pe.py" --readobj "$readobj" \
+    --version "$driver_version" --filename d3d12agx_umd.dll \
     "$out/d3d12agx_umd.dll"
 
-print "built $out/d3d12agx_umd.dll"
+print "built $out/d3d12agx_umd.dll (WDDM $wddm_target UMD ABI $umd_interface)"

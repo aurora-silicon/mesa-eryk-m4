@@ -59,6 +59,46 @@ d12_umd_query_type_matches(D3D12DDI_QUERY_HEAP_TYPE heap_type,
    }
 }
 
+static void
+d12_umd_translate_indirect_arguments(
+   const D3D12DDI_INDIRECT_ARGUMENT_DESC *source, UINT count,
+   struct d12_frontend_indirect_argument_desc *translated)
+{
+   for (UINT index = 0; index < count; ++index) {
+      translated[index] = (struct d12_frontend_indirect_argument_desc){
+         .type = (uint32_t)source[index].Type,
+      };
+      switch (source[index].Type) {
+      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT:
+         translated[index].root_parameter_index =
+            source[index].Constant.RootParameterIndex;
+         translated[index].destination_offset =
+            source[index].Constant.DestOffsetIn32BitValues;
+         translated[index].value_count =
+            source[index].Constant.Num32BitValuesToSet;
+         break;
+      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW:
+         translated[index].root_parameter_index =
+            source[index].ConstantBufferView.RootParameterIndex;
+         break;
+      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
+         translated[index].root_parameter_index =
+            source[index].ShaderResourceView.RootParameterIndex;
+         break;
+      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW:
+         translated[index].root_parameter_index =
+            source[index].UnorderedAccessView.RootParameterIndex;
+         break;
+      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW:
+         translated[index].root_parameter_index =
+            source[index].VertexBuffer.Slot;
+         break;
+      default:
+         break;
+      }
+   }
+}
+
 static bool
 d12_umd_command_signature_arguments_valid(
    struct d12_umd_device *device,
@@ -66,12 +106,12 @@ d12_umd_command_signature_arguments_valid(
    struct d12_umd_root_signature **out_root_signature)
 {
    struct d12_umd_root_signature *root_signature = NULL;
-   SIZE_T packed_size = 0;
-   bool changes_root_arguments = false;
+   struct d12_frontend_indirect_argument_desc translated[65];
+   struct d12_frontend_command_signature_desc desc;
 
    if (!device || !arguments || !arguments->NumArgumentDescs ||
-       arguments->NumArgumentDescs > 65 || !arguments->pArgumentDescs ||
-       arguments->NodeMask > 1)
+       arguments->NumArgumentDescs > ARRAYSIZE(translated) ||
+       !arguments->pArgumentDescs)
       return false;
    if (arguments->hRootSignature.pDrvPrivate) {
       root_signature =
@@ -81,94 +121,17 @@ d12_umd_command_signature_arguments_valid(
          return false;
    }
 
-   for (UINT index = 0; index < arguments->NumArgumentDescs; ++index) {
-      const D3D12DDI_INDIRECT_ARGUMENT_DESC *desc =
-         &arguments->pArgumentDescs[index];
-      SIZE_T element_size;
-      bool terminal = false;
-
-      switch (desc->Type) {
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW:
-         element_size = sizeof(D3D12DDI_DRAW_ARGUMENTS);
-         terminal = true;
-         break;
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED:
-         element_size = sizeof(D3D12DDI_DRAW_INDEXED_ARGUMENTS);
-         terminal = true;
-         break;
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_DISPATCH:
-         element_size = sizeof(D3D12DDI_DISPATCH_ARGUMENTS);
-         terminal = true;
-         break;
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT:
-         if (!root_signature || !desc->Constant.Num32BitValuesToSet ||
-             desc->Constant.RootParameterIndex >=
-                root_signature->desc.num_parameters ||
-             desc->Constant.Num32BitValuesToSet >
-                (SIZE_MAX - packed_size) / sizeof(uint32_t))
-            return false;
-         {
-            const struct d12_frontend_root_parameter *parameter =
-               &root_signature
-                   ->desc.parameters[desc->Constant.RootParameterIndex];
-            if (parameter->parameter_type !=
-                   D3D12DDI_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS ||
-                desc->Constant.DestOffsetIn32BitValues >
-                   parameter->constants.num_32bit_values ||
-                desc->Constant.Num32BitValuesToSet >
-                   parameter->constants.num_32bit_values -
-                      desc->Constant.DestOffsetIn32BitValues)
-               return false;
-         }
-         element_size = (SIZE_T)desc->Constant.Num32BitValuesToSet *
-                        sizeof(uint32_t);
-         changes_root_arguments = true;
-         break;
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW:
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
-      case D3D12DDI_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW: {
-         UINT root_parameter_index;
-         D3D12DDI_ROOT_PARAMETER_TYPE expected;
-         if (desc->Type ==
-             D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW) {
-            root_parameter_index =
-               desc->ConstantBufferView.RootParameterIndex;
-            expected = D3D12DDI_ROOT_PARAMETER_TYPE_CBV;
-         } else if (desc->Type ==
-                    D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW) {
-            root_parameter_index =
-               desc->ShaderResourceView.RootParameterIndex;
-            expected = D3D12DDI_ROOT_PARAMETER_TYPE_SRV;
-         } else {
-            root_parameter_index =
-               desc->UnorderedAccessView.RootParameterIndex;
-            expected = D3D12DDI_ROOT_PARAMETER_TYPE_UAV;
-         }
-         if (!root_signature ||
-             root_parameter_index >= root_signature->desc.num_parameters ||
-             root_signature->desc.parameters[root_parameter_index]
-                   .parameter_type != (uint32_t)expected)
-            return false;
-         element_size = sizeof(uint64_t);
-         changes_root_arguments = true;
-         break;
-      }
-      default:
-         return false;
-      }
-      if (terminal && index + 1 != arguments->NumArgumentDescs)
-         return false;
-      if (element_size > SIZE_MAX - packed_size)
-         return false;
-      packed_size += element_size;
-   }
-   D3D12DDI_INDIRECT_ARGUMENT_TYPE terminal_type =
-      arguments->pArgumentDescs[arguments->NumArgumentDescs - 1].Type;
-   if ((terminal_type != D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW &&
-        terminal_type != D3D12DDI_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED &&
-        terminal_type != D3D12DDI_INDIRECT_ARGUMENT_TYPE_DISPATCH) ||
-       ((root_signature != NULL) != changes_root_arguments) ||
-       arguments->ByteStride < packed_size || (arguments->ByteStride & 3))
+   d12_umd_translate_indirect_arguments(
+      arguments->pArgumentDescs, arguments->NumArgumentDescs, translated);
+   desc = (struct d12_frontend_command_signature_desc){
+      .byte_stride = arguments->ByteStride,
+      .argument_count = arguments->NumArgumentDescs,
+      .arguments = translated,
+      .root_signature = root_signature ? root_signature->backend : NULL,
+      .node_mask = arguments->NodeMask,
+   };
+   if (!d12_umd_command_signature_desc_valid(
+          &desc, root_signature ? &root_signature->desc : NULL))
       return false;
    if (out_root_signature)
       *out_root_signature = root_signature;
@@ -267,33 +230,8 @@ d12_umd_create_command_signature(
        !device->renderer_ops->create_command_signature)
       return E_NOTIMPL;
 
-   for (UINT index = 0; index < arguments->NumArgumentDescs; ++index) {
-      const D3D12DDI_INDIRECT_ARGUMENT_DESC *source =
-         &arguments->pArgumentDescs[index];
-      translated[index] = (struct d12_frontend_indirect_argument_desc){
-         .type = (uint32_t)source->Type,
-      };
-      if (source->Type == D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT) {
-         translated[index].root_parameter_index =
-            source->Constant.RootParameterIndex;
-         translated[index].destination_offset =
-            source->Constant.DestOffsetIn32BitValues;
-         translated[index].value_count =
-            source->Constant.Num32BitValuesToSet;
-      } else if (source->Type ==
-                 D3D12DDI_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW) {
-         translated[index].root_parameter_index =
-            source->ConstantBufferView.RootParameterIndex;
-      } else if (source->Type ==
-                 D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW) {
-         translated[index].root_parameter_index =
-            source->ShaderResourceView.RootParameterIndex;
-      } else if (source->Type ==
-                 D3D12DDI_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW) {
-         translated[index].root_parameter_index =
-            source->UnorderedAccessView.RootParameterIndex;
-      }
-   }
+   d12_umd_translate_indirect_arguments(
+      arguments->pArgumentDescs, arguments->NumArgumentDescs, translated);
    desc = (struct d12_frontend_command_signature_desc){
       .byte_stride = arguments->ByteStride,
       .argument_count = arguments->NumArgumentDescs,

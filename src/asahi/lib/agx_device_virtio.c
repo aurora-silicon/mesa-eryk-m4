@@ -294,6 +294,7 @@ const agx_device_ops_t agx_virtio_device_ops = {
     */
    .simple_ioctl = asahi_simple_ioctl,
    .bo_munmap = agx_drm_bo_munmap,
+   .bo_sync_for_device = agx_drm_bo_sync_for_device,
    .bo_free = agx_drm_bo_close,
 };
 

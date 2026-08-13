@@ -43,6 +43,8 @@ struct agx_d3dkmt_runtime_ops {
                            struct agx_kmt_lock2 *arguments);
    agx_kmt_status (*Unlock2)(void *userdata,
                              const struct agx_kmt_unlock2 *arguments);
+   agx_kmt_status (*InvalidateCache)(
+      void *userdata, const struct agx_kmt_invalidatecache *arguments);
    agx_kmt_status (*MakeResident)(void *userdata,
                                   struct agx_kmt_makeresident *arguments);
    agx_kmt_status (*Evict)(void *userdata,

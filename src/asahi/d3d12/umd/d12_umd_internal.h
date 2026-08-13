@@ -5,7 +5,7 @@
 
 #pragma once
 
-#define D3D_UMD_INTERFACE_VERSION 0x5002
+#include "d12_umd_wddm.h"
 #include <windows.h>
 #include <d3d12umddi.h>
 #include <dxgiddi.h>
@@ -189,6 +189,7 @@ struct d12_umd_resource {
    struct d12_umd_device *device;
    struct d12_umd_heap *heap;
    void *backend;
+   bool reserved;
    D3D12DDIARG_CREATERESOURCE_0003 desc;
    D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT row_major;
 };

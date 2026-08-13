@@ -162,16 +162,17 @@ poly_setup_unroll_for_draw(global struct poly_heap *heap,
 }
 
 static inline void
-poly_unroll_restart(global uint32_t *out_draw,
-                    global struct poly_heap *heap,
-                    constant uint *in_draw,
-                    uint64_t index_buffer,
-                    uint32_t index_buffer_range_el,
-                    uint32_t index_size_B,
-                    uint32_t restart_index,
-                    uint32_t flatshade_first,
-                    enum mesa_prim mode,
-                    local void *scratch)
+poly_unroll_restart_sizes(global uint32_t *out_draw,
+                          global struct poly_heap *heap,
+                          constant uint *in_draw,
+                          uint64_t index_buffer,
+                          uint32_t index_buffer_range_el,
+                          uint32_t input_index_size_B,
+                          uint32_t output_index_size_B,
+                          uint32_t restart_index,
+                          uint32_t flatshade_first,
+                          enum mesa_prim mode,
+                          local void *scratch)
 {
    uint tid = cl_local_id.x;
    uint count = in_draw[0];
@@ -179,7 +180,8 @@ poly_unroll_restart(global uint32_t *out_draw,
    uintptr_t out_ptr;
    if (tid == 0) {
       out_ptr = (uintptr_t)poly_setup_unroll_for_draw(heap, in_draw, out_draw,
-                                                      mode, index_size_B);
+                                                      mode,
+                                                      output_index_size_B);
       if (get_num_sub_groups() > 1)
          *(uintptr_t *)scratch = out_ptr;
    }
@@ -192,7 +194,7 @@ poly_unroll_restart(global uint32_t *out_draw,
    }
 
    uintptr_t in_ptr = (uintptr_t)(poly_index_buffer(
-      index_buffer, index_buffer_range_el, in_draw[2], index_size_B));
+      index_buffer, index_buffer_range_el, in_draw[2], input_index_size_B));
 
    uint out_prims = 0;
    uint needle = 0;
@@ -204,7 +206,8 @@ poly_unroll_restart(global uint32_t *out_draw,
          uint idx = next_restart + tid;
          bool restart =
             idx >= count || poly_load_index(in_ptr, index_buffer_range_el, idx,
-                                            index_size_B) == restart_index;
+                                            input_index_size_B) ==
+                              restart_index;
 
          uint next_offs = poly_work_group_first_true(restart, scratch);
 
@@ -225,9 +228,9 @@ poly_unroll_restart(global uint32_t *out_draw,
 
             uint x = ((out_prims_base + i) * per_prim) + vtx;
             uint y = poly_load_index(in_ptr, index_buffer_range_el, offset,
-                                     index_size_B);
+                                     input_index_size_B);
 
-            poly_store_index(out_ptr, index_size_B, x, y);
+            poly_store_index(out_ptr, output_index_size_B, x, y);
          }
       }
 
@@ -237,6 +240,24 @@ poly_unroll_restart(global uint32_t *out_draw,
 
    if (tid == 0)
       out_draw[0] = out_prims * per_prim;
+}
+
+static inline void
+poly_unroll_restart(global uint32_t *out_draw,
+                    global struct poly_heap *heap,
+                    constant uint *in_draw,
+                    uint64_t index_buffer,
+                    uint32_t index_buffer_range_el,
+                    uint32_t index_size_B,
+                    uint32_t restart_index,
+                    uint32_t flatshade_first,
+                    enum mesa_prim mode,
+                    local void *scratch)
+{
+   poly_unroll_restart_sizes(
+      out_draw, heap, in_draw, index_buffer, index_buffer_range_el,
+      index_size_B, index_size_B, restart_index, flatshade_first, mode,
+      scratch);
 }
 
 static inline uint32_t

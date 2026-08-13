@@ -886,3 +886,11 @@ option(
   value : false,
   description : 'Build the experimental native Direct3D 12 driver for Apple AGX (d3d12agx)'
 )
+
+option(
+  'asahi-d3d12-wddm-version',
+  type : 'combo',
+  value : '2.0',
+  choices : ['2.0', '2.1'],
+  description : 'Select the pinned WDDM UMD ABI for the native AGX D3D12 frontend'
+)

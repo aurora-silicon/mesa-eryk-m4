@@ -40,6 +40,7 @@ enum callback_bit {
    CALLBACK_SYNC = 1u << 6,
    CALLBACK_ESCAPE = 1u << 7,
    CALLBACK_DEALLOCATE = 1u << 8,
+   CALLBACK_INVALIDATE = 1u << 9,
 };
 
 static void
@@ -92,6 +93,18 @@ static HRESULT APIENTRY
 unlock_cb(HANDLE device, const D3DDDICB_UNLOCK2 *arguments)
 {
    return device == TEST_DEVICE && arguments ? S_OK : E_INVALIDARG;
+}
+
+static HRESULT APIENTRY
+invalidate_cache_cb(HANDLE device,
+                    const D3DDDICB_INVALIDATECACHE *arguments)
+{
+   if (device != TEST_DEVICE || !arguments ||
+       arguments->hAllocation != TEST_ALLOCATION ||
+       arguments->Offset != 64 || arguments->Length != 128)
+      return E_INVALIDARG;
+   callback_mask |= CALLBACK_INVALIDATE;
+   return S_OK;
 }
 
 static HRESULT APIENTRY
@@ -292,6 +305,7 @@ main(void)
       .pfnDestroyPagingQueueCb = destroy_paging_cb,
       .pfnLock2Cb = lock_cb,
       .pfnUnlock2Cb = unlock_cb,
+      .pfnInvalidateCacheCb = invalidate_cache_cb,
       .pfnReserveGpuVirtualAddressCb = reserve_cb,
       .pfnMapGpuVirtualAddressCb = map_cb,
       .pfnFreeGpuVirtualAddressCb = free_va_cb,
@@ -374,6 +388,17 @@ main(void)
                      map.PagingFenceValue == 5,
                   "GPU VA map translation");
    {
+      const struct agx_kmt_invalidatecache invalidate = {
+         .hDevice = 1,
+         .hAllocation = TEST_ALLOCATION,
+         .Offset = 64,
+         .Length = 128,
+      };
+      require_result(ops->InvalidateCache(runtime.transport.userdata,
+                                           &invalidate) == 0,
+                     "cache ownership translation");
+   }
+   {
       const agx_kmt_handle allocation_handle = TEST_ALLOCATION;
       struct agx_kmt_makeresident resident = {
          .NumAllocations = 1,
@@ -447,7 +472,7 @@ main(void)
                      "context token destruction");
    }
 
-   require_result(callback_mask == UINT32_C(0x1ff),
+   require_result(callback_mask == UINT32_C(0x3ff),
                   "all callback families");
    d12_umd_agx_transport_finish(&transport);
    puts("d12_umd_agx_transport_probe: PASS");

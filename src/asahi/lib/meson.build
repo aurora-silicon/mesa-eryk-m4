@@ -24,6 +24,32 @@ libasahi_lib_files = files(
 
 asahi_lib_is_windows = host_machine.system() == 'windows'
 asahi_lib_has_virtio = not asahi_lib_is_windows and with_vdrm
+asahi_d3d12_strict_args = []
+if asahi_lib_is_windows and with_asahi_d3d12
+  asahi_d3d12_strict_args = cc.get_supported_arguments(
+    '-Wall',
+    '-Wextra',
+    '-Werror',
+    '-Wpedantic',
+    '-Wshadow',
+    '-Wstrict-prototypes',
+    '-Wmissing-prototypes',
+    '-Wno-unknown-pragmas',
+    '-Wno-ignored-attributes',
+    '-Wno-microsoft-enum-forward-reference',
+    '-Wno-language-extension-token',
+    '-Wno-c23-extensions',
+    # These diagnostics originate in NIR macros and generated AGX pack
+    # interfaces included by the winsys, rather than in the winsys itself.
+    '-Wno-gnu-statement-expression-from-macro-expansion',
+    '-Wno-gnu-zero-variadic-macro-arguments',
+    '-Wno-unused-parameter',
+    '-Wno-gnu-empty-struct',
+    '-Wno-zero-length-array',
+    '-Wno-missing-field-initializers',
+    '-Wno-unused-function',
+  )
+endif
 
 if asahi_lib_is_windows
   libasahi_lib_files += files(
@@ -113,7 +139,11 @@ libasahi_lib = static_library(
   'asahi_lib',
   [libasahi_lib_files, libagx_shaders, agx_pack, sha1_h],
   include_directories : libasahi_lib_includes,
-  c_args : [no_override_init_args, '-Wno-c2x-extensions'],
+  c_args : [
+    no_override_init_args,
+    '-Wno-c2x-extensions',
+    asahi_d3d12_strict_args,
+  ],
   gnu_symbol_visibility : 'hidden',
   link_with: libasahi_lib_links,
   dependencies: libasahi_lib_deps,

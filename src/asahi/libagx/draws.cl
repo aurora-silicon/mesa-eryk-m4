@@ -46,6 +46,29 @@ libagx_d3d12_indirect_patch(global uint8_t *out, constant uint8_t *in,
       out[i] = enabled ? in[i] : 0;
 }
 
+/* Root constants inherit values from the preceding executed command.  The
+ * destination is seeded with that state before this kernel runs, so a record
+ * rejected by the count buffer must leave it untouched rather than zero it. */
+KERNEL(1)
+libagx_d3d12_indirect_constant(global uint8_t *out,
+                               constant uint8_t *previous,
+                               constant uint8_t *in,
+                               constant uint32_t *draw_count,
+                               uint32_t command_index, uint32_t total_size_B,
+                               uint32_t destination_offset_B,
+                               uint32_t size_B)
+{
+   if (previous) {
+      for (uint i = 0; i < total_size_B; ++i)
+         out[i] = previous[i];
+   }
+
+   if (!draw_count || command_index < *draw_count) {
+      for (uint i = 0; i < size_B; ++i)
+         out[destination_offset_B + i] = in[i];
+   }
+}
+
 /*
  * Patch one root CBV/SRV/UAV address into the compact D3D12 root table.
  *
@@ -65,7 +88,10 @@ libagx_d3d12_indirect_root(global uint64_t *out_address,
                            global uint64_t *out_bufinfo,
                            constant uint32_t *in,
                            constant uint32_t *draw_count,
+                           constant uint64_t *previous_address,
+                           constant uint64_t *previous_bufinfo,
                            constant uint64_t *sparse_ranges,
+                           uint64_t null_address,
                            uint64_t sparse_ro_offset,
                            uint32_t sparse_range_count,
                            uint32_t command_index,
@@ -73,7 +99,15 @@ libagx_d3d12_indirect_root(global uint64_t *out_address,
                            uint32_t translate_read)
 {
    bool enabled = !draw_count || command_index < *draw_count;
-   uint64_t address = enabled ? ((uint64_t)in[1] << 32) | in[0] : 0;
+   uint64_t original_address = *out_address;
+   uint64_t original_bufinfo = *out_bufinfo;
+   if (!enabled) {
+      *out_address = previous_address ? *previous_address : original_address;
+      *out_bufinfo = previous_bufinfo ? *previous_bufinfo : original_bufinfo;
+      return;
+   }
+
+   uint64_t address = ((uint64_t)in[1] << 32) | in[0];
 
    if (address && translate_read) {
       for (uint32_t i = 0; i < sparse_range_count; ++i) {
@@ -86,11 +120,99 @@ libagx_d3d12_indirect_root(global uint64_t *out_address,
       }
    }
 
-   uint64_t null_address = *out_address;
-   uint64_t metadata = *out_bufinfo & 0xffff000000000000ul;
+   uint64_t metadata = original_bufinfo & 0xffff000000000000ul;
    *out_address = address ? address : null_address;
    *out_bufinfo = metadata |
                   ((address && publish_unbounded) ? UINT32_MAX : 0);
+}
+
+/* Patch one PSO attribute fed by an indirect vertex-buffer view.  Each
+ * attribute gets its own compact output triple because D3D12 supplies one
+ * view per IA slot while AGX folds the input-layout byte offset into a
+ * per-attribute base. */
+KERNEL(1)
+libagx_d3d12_indirect_vbv(global uint64_t *out_base,
+                          global uint32_t *out_clamp,
+                          global uint32_t *out_stride,
+                          constant uint32_t *in,
+                          constant uint32_t *draw_count,
+                          constant uint64_t *previous_base,
+                          constant uint32_t *previous_clamp,
+                          constant uint32_t *previous_stride,
+                          uint32_t command_index, uint32_t offset_B,
+                          uint32_t element_size_B,
+                          uint32_t interchange_align)
+{
+   bool enabled = !draw_count || command_index < *draw_count;
+   if (!enabled) {
+      if (previous_base)
+         *out_base = *previous_base;
+      if (previous_clamp)
+         *out_clamp = *previous_clamp;
+      if (previous_stride)
+         *out_stride = *previous_stride;
+      return;
+   }
+
+   uint64_t address = ((uint64_t)in[1] << 32) | in[0];
+   uint32_t size_B = in[2];
+   uint32_t stride_B = in[3];
+   uint32_t required_B = offset_B + element_size_B;
+
+   if (address && required_B >= offset_B && size_B >= required_B) {
+      *out_base = address + offset_B;
+      *out_clamp = stride_B ? (size_B - required_B) / stride_B : UINT32_MAX;
+   } else {
+      *out_base = AGX_ZERO_PAGE_ADDRESS;
+      *out_clamp = 0;
+   }
+   *out_stride = interchange_align ? stride_B / interchange_align : 0;
+}
+
+/* An indirect IBV makes the VDM's index address, range and element width GPU
+ * data as well as the draw counts.  Generate the final direct VDM draw words
+ * in the pre-graphics stream after both records are visible, avoiding any CPU
+ * readback or command-list resubmission fixup. */
+KERNEL(1)
+libagx_d3d12_indirect_indexed_draw(
+   global uint32_t *out, constant VkDrawIndexedIndirectCommand *command,
+   constant uint32_t *view, uint64_t null_address,
+   uint32_t format_r16_uint, uint32_t format_r32_uint,
+   uint32_t restart, enum agx_primitive topology)
+{
+   VkDrawIndexedIndirectCommand cmd = *command;
+   uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint32_t size_B = view[2];
+   uint32_t format = view[3];
+   bool valid = address && size_B &&
+                (format == format_r16_uint || format == format_r32_uint);
+   enum agx_index_size index_size =
+      format == format_r32_uint ? AGX_INDEX_SIZE_U32 : AGX_INDEX_SIZE_U16;
+
+   if (!valid) {
+      address = null_address;
+      size_B = 4;
+      cmd.indexCount = 0;
+   }
+
+   struct agx_draw draw = agx_draw_indexed(
+      cmd.indexCount, cmd.instanceCount, cmd.firstIndex, cmd.vertexOffset,
+      cmd.firstInstance, address, size_B, index_size, restart);
+   agx_vdm_draw(out, 0, draw, topology);
+}
+
+/* D3D12 indirect dispatch records contain workGROUP counts while AGX's
+ * indirect CDM mode consumes global thread counts. Perform the three bounded
+ * multiplies on the GPU so records written earlier in the list remain fully
+ * ordered and never require CPU mapping. */
+KERNEL(1)
+libagx_d3d12_indirect_dispatch(global uint32_t *out,
+                               constant uint32_t *in, uint32_t workgroup_x,
+                               uint32_t workgroup_y, uint32_t workgroup_z)
+{
+   out[0] = in[0] * workgroup_x;
+   out[1] = in[1] * workgroup_y;
+   out[2] = in[2] * workgroup_z;
 }
 
 /*

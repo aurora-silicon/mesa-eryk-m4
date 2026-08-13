@@ -13,6 +13,77 @@
 #include <stdlib.h>
 #include <string.h>
 
+int
+agx_d3dkmt_submit_private_flags(uint32_t submit_flags,
+                                uint32_t *private_flags)
+{
+   if (private_flags == NULL ||
+       (submit_flags & ~AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE) != 0)
+      return AGX_D3DKMT_ERR_INVAL;
+
+   *private_flags = AGXW_SUBMIT_READ_SET_COMPLETE |
+      ((submit_flags & AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE)
+          ? AGXW_SUBMIT_WRITE_SET_COMPLETE
+          : 0);
+   return AGX_D3DKMT_OK;
+}
+
+int
+agx_d3dkmt_read_range_add(struct agxw_submit_read_range *ranges,
+                          uint32_t *count, uint32_t capacity,
+                          uint64_t gpu_va, uint64_t length)
+{
+   uint64_t new_end;
+   uint32_t first = 0;
+
+   if (ranges == NULL || count == NULL || *count > capacity || length == 0 ||
+       gpu_va > UINT64_MAX - length ||
+       !agxw_va_range_is_user(gpu_va, length))
+      return AGX_D3DKMT_ERR_INVAL;
+   new_end = gpu_va + length;
+
+   while (first < *count) {
+      uint64_t end = ranges[first].gpu_va + ranges[first].length;
+      if (end >= gpu_va)
+         break;
+      first++;
+   }
+
+   if (first == *count || new_end < ranges[first].gpu_va) {
+      if (*count == capacity)
+         return AGX_D3DKMT_ERR_NOSPACE;
+      memmove(&ranges[first + 1], &ranges[first],
+              (size_t)(*count - first) * sizeof(*ranges));
+      ranges[first] = (struct agxw_submit_read_range){gpu_va, length};
+      (*count)++;
+      return AGX_D3DKMT_OK;
+   }
+
+   uint64_t merged_start =
+      gpu_va < ranges[first].gpu_va ? gpu_va : ranges[first].gpu_va;
+   uint64_t first_end = ranges[first].gpu_va + ranges[first].length;
+   uint64_t merged_end = new_end > first_end ? new_end : first_end;
+   uint32_t last = first + 1;
+
+   while (last < *count && ranges[last].gpu_va <= merged_end) {
+      uint64_t end = ranges[last].gpu_va + ranges[last].length;
+      if (end > merged_end)
+         merged_end = end;
+      last++;
+   }
+
+   ranges[first] = (struct agxw_submit_read_range){
+      .gpu_va = merged_start,
+      .length = merged_end - merged_start,
+   };
+   if (last > first + 1) {
+      memmove(&ranges[first + 1], &ranges[last],
+              (size_t)(*count - last) * sizeof(*ranges));
+      *count -= last - (first + 1);
+   }
+   return AGX_D3DKMT_OK;
+}
+
 /* -------------------------------------------------------------------------
  * Handle pool.
  * ------------------------------------------------------------------------- */
@@ -732,6 +803,9 @@ agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags)
 {
    uint32_t flags = 0;
 
+   if (agx_bo_flags & AGX_D3DKMT_BO_PRIMARY)
+      return AGXW_ALLOC_SHAREABLE | AGXW_ALLOC_PRIMARY;
+
    if (agx_bo_flags & AGX_D3DKMT_BO_WRITEBACK)
       flags |= AGXW_ALLOC_WRITEBACK;
 
@@ -743,6 +817,15 @@ agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags)
       flags |= AGXW_ALLOC_VM_PRIVATE;
 
    return flags;
+}
+
+uint32_t
+agx_d3dkmt_cpu_visible_flags(uint32_t agx_bo_flags)
+{
+   if (agx_bo_flags & AGX_D3DKMT_BO_EXEC)
+      agx_bo_flags |= AGX_D3DKMT_BO_WRITEBACK;
+
+   return agx_bo_flags;
 }
 
 uint32_t

@@ -27,6 +27,19 @@ HRESULT d12_device_runtime_command_queue_create(
 void d12_device_runtime_command_queue_destroy(void *queue);
 HRESULT d12_device_runtime_command_queue_execute(
    void *queue, uint32_t count, void *const *lists);
+HRESULT d12_device_runtime_command_queue_update_tile_mappings(
+   void *queue, void *resource, uint32_t region_count,
+   const struct d12_frontend_tiled_resource_coordinate *region_starts,
+   const struct d12_frontend_tile_region_size *region_sizes, void *heap,
+   uint32_t range_count, const uint32_t *range_flags,
+   const uint32_t *heap_start_offsets, const uint32_t *range_tile_counts,
+   uint32_t flags);
+HRESULT d12_device_runtime_command_queue_copy_tile_mappings(
+   void *queue, void *destination_resource,
+   const struct d12_frontend_tiled_resource_coordinate *destination_start,
+   void *source_resource,
+   const struct d12_frontend_tiled_resource_coordinate *source_start,
+   const struct d12_frontend_tile_region_size *region_size, uint32_t flags);
 HRESULT d12_device_runtime_fence_create(
    struct d12_device *device, uint32_t count,
    const struct d12_frontend_fence_placement *placements,
@@ -50,6 +63,9 @@ HRESULT d12_device_runtime_trim_memory(struct d12_device *device,
                                        bool periodic,
                                        bool restart_periodic,
                                        uint64_t bytes_to_trim);
+uint32_t d12_device_runtime_paging_queue(struct d12_device *device);
+HRESULT d12_device_runtime_wait_paging(struct d12_device *device,
+                                       uint64_t value);
 HRESULT d12_device_runtime_rotate_resource_identities(
    struct d12_device *device, void *const *resources, uint32_t count);
 
@@ -115,6 +131,11 @@ void d12_device_runtime_command_list_copy_buffer_region(
    uint64_t source_offset, uint64_t bytes);
 void d12_device_runtime_command_list_copy_resource(
    void *list, void *destination, void *source);
+HRESULT d12_device_runtime_command_list_copy_tiles(
+   void *list, void *resource,
+   const struct d12_frontend_tiled_resource_coordinate *region_start,
+   const struct d12_frontend_tile_region_size *region_size, void *buffer,
+   uint64_t buffer_offset, uint32_t flags);
 void d12_device_runtime_command_list_copy_texture_region(
    void *list,
    const struct d12_frontend_texture_copy_location *destination,
@@ -194,8 +215,15 @@ HRESULT d12_device_runtime_resource_create_placed(
    const struct d12_frontend_resource_desc *desc,
    const struct d12_frontend_clear_value *clear_value,
    void **out_resource);
+HRESULT d12_device_runtime_resource_create_reserved(
+   struct d12_device *device,
+   const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value,
+   void **out_resource);
 void d12_device_runtime_resource_destroy(void *resource);
 uint64_t d12_device_runtime_resource_gpu_virtual_address(void *resource);
+HRESULT d12_device_runtime_resource_mip_packing(
+   void *resource, uint32_t *packed_mips, uint32_t *packed_tiles);
 HRESULT d12_device_runtime_resource_allocation_info(
    struct d12_device *device,
    const struct d12_frontend_resource_desc *desc,

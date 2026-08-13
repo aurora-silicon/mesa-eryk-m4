@@ -1587,19 +1587,18 @@ d12_device_CreateRootSignature(ID3D12Device2 *iface, UINT node_mask,
  * the vkd3d test binary is built with (_agxtest/gen/vkd3d_d3d12.h defines
  * it) and which matches what MSVC does on Windows for a struct this size.
  *
- * DirectX-Headers, which this driver compiles against, declares the
- * non-_WIN32 branch as returning by value, so writing the obvious C
- * function produces a vtable slot the caller cannot use: the caller reads
- * the return value as a pointer and dereferences it. With SizeInBytes = 0
- * in x0 that is a null dereference, which is exactly how
+ * The Windows branch of DirectX-Headers declares this explicit return
+ * pointer ABI.  Accidentally compiling against its non-Windows branch
+ * instead makes the caller read the by-value result as a pointer and
+ * dereference it. With SizeInBytes = 0 in x0 that is a null dereference,
+ * which is exactly how
  * test_resource_allocation_info crashed -- inside the TEST, one instruction
  * after the call (`ldp x3, x21, [x0]`), which is why it looked like a test
  * bug rather than ours.
  *
  * Only GetResourceAllocationInfo and GetCustomHeapProperties take this
  * form among the methods we implement; GetDesc and the descriptor-handle
- * getters really are by-value, which is why they have always worked. The
- * slot is assigned with a cast because the header's prototype disagrees.
+ * getters really are by-value, which is why they have always worked.
  */
 static D3D12_RESOURCE_ALLOCATION_INFO *STDMETHODCALLTYPE
 d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
@@ -2535,6 +2534,8 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
       return E_INVALIDARG;
 
    bool saw_terminal = false;
+   D3D12_INDIRECT_ARGUMENT_TYPE terminal_type =
+      (D3D12_INDIRECT_ARGUMENT_TYPE)~0u;
    for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
       D3D12_INDIRECT_ARGUMENT_TYPE type = desc->pArgumentDescs[i].Type;
       bool terminal = type == D3D12_INDIRECT_ARGUMENT_TYPE_DRAW ||
@@ -2544,6 +2545,7 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
          if (saw_terminal || i + 1 != desc->NumArgumentDescs)
             return E_INVALIDARG;
          saw_terminal = true;
+         terminal_type = type;
       }
    }
 
@@ -2552,6 +2554,12 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
 
    size_t packed_size = 0;
    bool changes_root_arguments = false;
+   bool has_root_reference = false;
+   bool last_root_was_constant = false;
+   bool has_index_buffer = false;
+   UINT last_root_parameter = 0;
+   UINT last_constant_end = 0;
+   UINT vertex_buffer_mask = 0;
    for (UINT i = 0; i < desc->NumArgumentDescs; i++) {
       const D3D12_INDIRECT_ARGUMENT_DESC *argument =
          &desc->pArgumentDescs[i];
@@ -2583,6 +2591,21 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
          if (argument->Constant.Num32BitValuesToSet >
              (SIZE_MAX - packed_size) / 4)
             return E_INVALIDARG;
+
+         UINT root_parameter = argument->Constant.RootParameterIndex;
+         UINT constant_start =
+            argument->Constant.DestOffsetIn32BitValues;
+         if ((has_root_reference && root_parameter < last_root_parameter) ||
+             (has_root_reference && root_parameter == last_root_parameter &&
+              (!last_root_was_constant ||
+               constant_start < last_constant_end)))
+            return E_INVALIDARG;
+
+         has_root_reference = true;
+         last_root_was_constant = true;
+         last_root_parameter = root_parameter;
+         last_constant_end =
+            constant_start + argument->Constant.Num32BitValuesToSet;
          packed_size +=
             (size_t)argument->Constant.Num32BitValuesToSet * 4;
          changes_root_arguments = true;
@@ -2610,18 +2633,42 @@ d12_device_CreateCommandSignature(ID3D12Device2 *iface,
              rs->layout.params[root_parameter_index].type != expected ||
              packed_size > SIZE_MAX - sizeof(uint64_t))
             return E_INVALIDARG;
+         if (has_root_reference &&
+             root_parameter_index <= last_root_parameter)
+            return E_INVALIDARG;
+         has_root_reference = true;
+         last_root_was_constant = false;
+         last_root_parameter = root_parameter_index;
          packed_size += sizeof(uint64_t);
          changes_root_arguments = true;
       } else if (type == D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW ||
                  type == D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW) {
-         /* These two state records need execution-time GPU patching of the
-          * AGX vertex-fetch and index parameters. Keep creation fail-closed
-          * until that path is present; root descriptors above are native. */
-         return E_NOTIMPL;
+         if (type == D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW) {
+            UINT slot = argument->VertexBuffer.Slot;
+            if (slot >= D12_MAX_VB_SLOTS ||
+                (vertex_buffer_mask & BITFIELD_BIT(slot)) ||
+                packed_size >
+                   SIZE_MAX - sizeof(D3D12_VERTEX_BUFFER_VIEW))
+               return E_INVALIDARG;
+            vertex_buffer_mask |= BITFIELD_BIT(slot);
+            packed_size += sizeof(D3D12_VERTEX_BUFFER_VIEW);
+         } else {
+            if (has_index_buffer ||
+                packed_size > SIZE_MAX - sizeof(D3D12_INDEX_BUFFER_VIEW))
+               return E_INVALIDARG;
+            has_index_buffer = true;
+            packed_size += sizeof(D3D12_INDEX_BUFFER_VIEW);
+         }
       } else {
          return E_INVALIDARG;
       }
    }
+
+   if ((terminal_type == D3D12_INDIRECT_ARGUMENT_TYPE_DISPATCH &&
+        (vertex_buffer_mask || has_index_buffer)) ||
+       (has_index_buffer &&
+        terminal_type != D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED))
+      return E_INVALIDARG;
 
    /* Microsoft requires a root signature exactly when the command signature
     * mutates root arguments. A terminal-only or IA-only signature supplies
@@ -4489,7 +4536,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreatePlacedResource = d12_device_CreatePlacedResource,
    .CreateReservedResource = d12_device_CreateReservedResource,
    .GetResourceTiling = d12_device_GetResourceTiling,
-   .GetResourceAllocationInfo = (void *)d12_device_GetResourceAllocationInfo,
+   .GetResourceAllocationInfo = d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
    .CreateSampler = d12_device_CreateSampler,

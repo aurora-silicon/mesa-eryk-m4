@@ -4,6 +4,7 @@
  */
 
 #include "../d12_umd_abi.h"
+#include "../d12_umd_wddm.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -65,20 +66,28 @@ main(void)
    assert(d12_umd_validate_identity(&input, sizeof(input), &output) ==
           D12_UMD_IDENTITY_RESERVED);
 
-   assert(d12_umd_supported_version_count() == 3);
+   assert(d12_umd_supported_version_count() ==
+          (D12_UMD_TARGETS_WDDM21 ? 3u : 1u));
    assert(d12_umd_supported_versions() != NULL);
+#if D12_UMD_TARGETS_WDDM21
    assert(d12_umd_supported_versions()[0] ==
           D12_UMD_DDI_SUPPORTED_0011);
    assert(d12_umd_supported_versions()[1] ==
           D12_UMD_DDI_SUPPORTED_0010);
    assert(d12_umd_supported_versions()[2] ==
           D12_UMD_DDI_SUPPORTED_0003);
+#else
+   assert(d12_umd_supported_versions()[0] ==
+          D12_UMD_DDI_SUPPORTED_0003);
+#endif
    assert(d12_umd_version_supported(D12_UMD_DDI_INTERFACE_0003,
                                     D12_UMD_DDI_BUILD_0003));
    assert(d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R1,
-                                    D12_UMD_DDI_BUILD_0010));
+                                    D12_UMD_DDI_BUILD_0010) ==
+          (bool)D12_UMD_TARGETS_WDDM21);
    assert(d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R1,
-                                    D12_UMD_DDI_BUILD_0011));
+                                    D12_UMD_DDI_BUILD_0011) ==
+          (bool)D12_UMD_TARGETS_WDDM21);
    assert(!d12_umd_version_supported(D12_UMD_DDI_INTERFACE_R1, 2));
 
    puts("d12_umd_abi_tests: PASS");

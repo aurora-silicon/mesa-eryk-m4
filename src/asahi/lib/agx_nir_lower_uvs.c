@@ -101,10 +101,10 @@ lower(nir_builder *b, nir_intrinsic_instr *intr, void *data)
       unsigned c = 4 * (sem.location - VARYING_SLOT_CLIP_DIST0) + component;
 
       if (c < b->shader->info.clip_distance_array_size) {
-         nir_def *index = nir_iadd_imm(
+         nir_def *clip_index = nir_iadd_imm(
             b, nir_imul_imm(b, nir_u2u16(b, offset), 4), clip_base + c);
 
-         nir_store_uvs_agx(b, value, index);
+         nir_store_uvs_agx(b, value, clip_index);
       }
    }
 

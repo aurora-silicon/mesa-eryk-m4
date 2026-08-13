@@ -19,11 +19,19 @@ common=(
     -Wall -Wextra -Werror -Wpedantic
 )
 
-"$cc" "$common[@]" \
-    -I"$contract_dir" -I"$umd_dir" \
-    "$umd_dir/d12_umd_abi.c" "$umd_dir/tests/d12_umd_abi_tests.c" \
-    -o "$out/d12_umd_abi_tests"
-"$out/d12_umd_abi_tests"
+for target in 20 21; do
+    if [[ $target == 20 ]]; then
+        interface=0x5002
+    else
+        interface=0x6003
+    fi
+    "$cc" "$common[@]" \
+        -DD3D_UMD_INTERFACE_VERSION=$interface \
+        -I"$contract_dir" -I"$umd_dir" \
+        "$umd_dir/d12_umd_abi.c" "$umd_dir/tests/d12_umd_abi_tests.c" \
+        -o "$out/d12_umd_abi_tests_wddm$target"
+    "$out/d12_umd_abi_tests_wddm$target"
+done
 
 "$cc" "$common[@]" \
     "$d12_dir/d12_core_caps.c" "$d12_dir/tests/d12_core_caps_tests.c" \
@@ -35,6 +43,12 @@ common=(
     "$d12_dir/tests/d12_present_blt_math_tests.c" \
     -o "$out/d12_present_blt_math_tests"
 "$out/d12_present_blt_math_tests"
+
+"$cc" "$common[@]" \
+    "$d12_dir/d12_write_set_core.c" \
+    "$d12_dir/tests/d12_write_set_core_tests.c" \
+    -o "$out/d12_write_set_core_tests"
+"$out/d12_write_set_core_tests"
 
 "$cc" "$common[@]" \
     "$umd_dir/d12_umd_command_core.c" \

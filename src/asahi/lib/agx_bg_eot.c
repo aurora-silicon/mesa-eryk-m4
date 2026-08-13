@@ -205,7 +205,7 @@ agx_get_bg_eot_shader(struct agx_bg_eot_cache *cache,
    return ret;
 }
 
-DERIVE_HASH_TABLE(agx_bg_eot_key);
+DERIVE_HASH_TABLE(agx_bg_eot_key)
 
 void
 agx_bg_eot_init(struct agx_bg_eot_cache *cache, struct agx_device *dev)

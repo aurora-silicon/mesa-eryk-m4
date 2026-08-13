@@ -65,12 +65,51 @@ d12_umd_backend_execute_command_lists(void *queue, uint32_t count,
 }
 
 static HRESULT
+d12_umd_backend_update_tile_mappings(
+   void *queue, void *resource, uint32_t region_count,
+   const struct d12_frontend_tiled_resource_coordinate *region_starts,
+   const struct d12_frontend_tile_region_size *region_sizes, void *heap,
+   uint32_t range_count, const uint32_t *range_flags,
+   const uint32_t *heap_start_offsets, const uint32_t *range_tile_counts,
+   uint32_t flags)
+{
+   return d12_device_runtime_command_queue_update_tile_mappings(
+      queue, resource, region_count, region_starts, region_sizes, heap,
+      range_count, range_flags, heap_start_offsets, range_tile_counts, flags);
+}
+
+static HRESULT
+d12_umd_backend_copy_tile_mappings(
+   void *queue, void *destination_resource,
+   const struct d12_frontend_tiled_resource_coordinate *destination_start,
+   void *source_resource,
+   const struct d12_frontend_tiled_resource_coordinate *source_start,
+   const struct d12_frontend_tile_region_size *region_size, uint32_t flags)
+{
+   return d12_device_runtime_command_queue_copy_tile_mappings(
+      queue, destination_resource, destination_start, source_resource,
+      source_start, region_size, flags);
+}
+
+static HRESULT
 d12_umd_backend_trim_memory(void *device, bool periodic,
                             bool restart_periodic, uint64_t bytes_to_trim)
 {
    return d12_device_runtime_trim_memory(
       (struct d12_device *)device, periodic, restart_periodic,
       bytes_to_trim);
+}
+
+static uint32_t
+d12_umd_backend_paging_queue(void *device)
+{
+   return d12_device_runtime_paging_queue((struct d12_device *)device);
+}
+
+static HRESULT
+d12_umd_backend_wait_paging(void *device, uint64_t value)
+{
+   return d12_device_runtime_wait_paging((struct d12_device *)device, value);
 }
 
 static HRESULT
@@ -327,6 +366,18 @@ d12_umd_backend_copy_resource(void *list, void *destination, void *source)
    d12_device_runtime_command_list_copy_resource(list, destination, source);
 }
 
+static HRESULT
+d12_umd_backend_copy_tiles(
+   void *list, void *resource,
+   const struct d12_frontend_tiled_resource_coordinate *region_start,
+   const struct d12_frontend_tile_region_size *region_size, void *buffer,
+   uint64_t buffer_offset, uint32_t flags)
+{
+   return d12_device_runtime_command_list_copy_tiles(
+      list, resource, region_start, region_size, buffer, buffer_offset,
+      flags);
+}
+
 static void
 d12_umd_backend_copy_texture_region(
    void *list,
@@ -538,6 +589,15 @@ d12_umd_backend_create_placed_resource(
       out_resource);
 }
 
+static HRESULT
+d12_umd_backend_create_reserved_resource(
+   void *backend, const struct d12_frontend_resource_desc *desc,
+   const struct d12_frontend_clear_value *clear_value, void **out_resource)
+{
+   return d12_device_runtime_resource_create_reserved(
+      (struct d12_device *)backend, desc, clear_value, out_resource);
+}
+
 static void
 d12_umd_backend_destroy_resource(void *resource)
 {
@@ -548,6 +608,14 @@ static uint64_t
 d12_umd_backend_resource_gpu_virtual_address(void *resource)
 {
    return d12_device_runtime_resource_gpu_virtual_address(resource);
+}
+
+static HRESULT
+d12_umd_backend_resource_mip_packing(void *resource, uint32_t *packed_mips,
+                                     uint32_t *packed_tiles)
+{
+   return d12_device_runtime_resource_mip_packing(resource, packed_mips,
+                                                  packed_tiles);
 }
 
 static HRESULT
@@ -731,7 +799,11 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .create_command_queue = d12_umd_backend_create_command_queue,
    .destroy_command_queue = d12_umd_backend_destroy_command_queue,
    .execute_command_lists = d12_umd_backend_execute_command_lists,
+   .update_tile_mappings = d12_umd_backend_update_tile_mappings,
+   .copy_tile_mappings = d12_umd_backend_copy_tile_mappings,
    .trim_memory = d12_umd_backend_trim_memory,
+   .paging_queue = d12_umd_backend_paging_queue,
+   .wait_paging = d12_umd_backend_wait_paging,
    .rotate_resource_identities =
       d12_umd_backend_rotate_resource_identities,
    .create_fence = d12_umd_backend_create_fence,
@@ -768,6 +840,7 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .resource_barriers = d12_umd_backend_resource_barriers,
    .copy_buffer_region = d12_umd_backend_copy_buffer_region,
    .copy_resource = d12_umd_backend_copy_resource,
+   .copy_tiles = d12_umd_backend_copy_tiles,
    .copy_texture_region = d12_umd_backend_copy_texture_region,
    .resolve_subresource = d12_umd_backend_resolve_subresource,
    .present_blt = d12_umd_backend_present_blt,
@@ -794,9 +867,11 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .open_heap = d12_umd_backend_open_heap,
    .destroy_heap = d12_umd_backend_destroy_heap,
    .create_placed_resource = d12_umd_backend_create_placed_resource,
+   .create_reserved_resource = d12_umd_backend_create_reserved_resource,
    .destroy_resource = d12_umd_backend_destroy_resource,
    .resource_gpu_virtual_address =
       d12_umd_backend_resource_gpu_virtual_address,
+   .resource_mip_packing = d12_umd_backend_resource_mip_packing,
    .get_resource_allocation_info =
       d12_umd_backend_get_resource_allocation_info,
    .format_support = d12_umd_backend_format_support,
