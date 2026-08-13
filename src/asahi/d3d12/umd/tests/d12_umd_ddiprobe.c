@@ -1721,6 +1721,28 @@ wmain(int argc, wchar_t **argv)
                (format_support & D3D12DDI_FORMAT_SUPPORT_TILED) &&
                (format_support & D3D12DDI_FORMAT_SUPPORT_DISPLAY),
             "native RGBA8 DDI format support");
+         {
+            const DXGI_FORMAT display_formats[] = {
+               DXGI_FORMAT_R16G16B16A16_FLOAT,
+               DXGI_FORMAT_R10G10B10A2_UNORM,
+               DXGI_FORMAT_R8G8B8A8_UNORM,
+               DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+               DXGI_FORMAT_B5G6R5_UNORM,
+               DXGI_FORMAT_B5G5R5A1_UNORM,
+               DXGI_FORMAT_B8G8R8A8_UNORM,
+               DXGI_FORMAT_B8G8R8X8_UNORM,
+               DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+            };
+            for (UINT index = 0; index < ARRAYSIZE(display_formats);
+                 ++index) {
+               format_support = 0;
+               device_table.pfnCheckFormatSupport(
+                  driver_device, display_formats[index], &format_support);
+               require_result(
+                  !!(format_support & D3D12DDI_FORMAT_SUPPORT_DISPLAY),
+                  "all native display formats reach the DDI table");
+            }
+         }
          format_support = 0;
          device_table.pfnCheckFormatSupport(
             driver_device, DXGI_FORMAT_R32_UINT, &format_support);

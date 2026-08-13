@@ -12,6 +12,7 @@
 #include "d12_umd_internal.h"
 #include "d12_umd_residency.h"
 #include "d12_umd_resource_private.h"
+#include "../d12_present_format_core.h"
 #include "../d12_resolve_core.h"
 
 #include <stdbool.h>
@@ -100,40 +101,54 @@ d12_umd_standalone_format_support(DXGI_FORMAT format)
                                : 0;
    const uint64_t blendable_color =
       color | D12_FRONTEND_FORMAT_BLENDABLE | resolve;
+   uint64_t support;
 
    switch (format) {
    case DXGI_FORMAT_R8G8B8A8_UNORM:
-      return blendable_color | D12_FRONTEND_FORMAT_DISPLAY;
+      support = blendable_color;
+      break;
    case DXGI_FORMAT_B8G8R8A8_UNORM:
    case DXGI_FORMAT_B8G8R8X8_UNORM:
-      return texture | D12_FRONTEND_FORMAT_RENDER_TARGET |
-             D12_FRONTEND_FORMAT_BLENDABLE |
-             resolve |
-             D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
-             D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD |
-             D12_FRONTEND_FORMAT_DISPLAY;
+      support = texture | D12_FRONTEND_FORMAT_RENDER_TARGET |
+                D12_FRONTEND_FORMAT_BLENDABLE | resolve |
+                D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
+                D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD;
+      break;
    case DXGI_FORMAT_R32_FLOAT:
-      return blendable_color;
+      support = blendable_color;
+      break;
    case DXGI_FORMAT_R32_SINT:
-      return color;
+      support = color;
+      break;
    case DXGI_FORMAT_R32_UINT:
    case DXGI_FORMAT_R16_UINT:
-      return color | resolve | D12_FRONTEND_FORMAT_INDEX_BUFFER;
+      support = color | resolve | D12_FRONTEND_FORMAT_INDEX_BUFFER;
+      break;
    case DXGI_FORMAT_D32_FLOAT:
    case DXGI_FORMAT_D16_UNORM:
-      return D12_FRONTEND_FORMAT_TEXTURE_1D |
-             D12_FRONTEND_FORMAT_TEXTURE_2D |
-             D12_FRONTEND_FORMAT_TEXTURE_CUBE |
-             D12_FRONTEND_FORMAT_SHADER_LOAD |
-             D12_FRONTEND_FORMAT_SHADER_SAMPLE |
-             D12_FRONTEND_FORMAT_SHADER_SAMPLE_COMPARISON |
-             D12_FRONTEND_FORMAT_SHADER_GATHER_COMPARISON |
-             D12_FRONTEND_FORMAT_MIP |
-             D12_FRONTEND_FORMAT_DEPTH_STENCIL |
-             D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD;
+      support = D12_FRONTEND_FORMAT_TEXTURE_1D |
+                D12_FRONTEND_FORMAT_TEXTURE_2D |
+                D12_FRONTEND_FORMAT_TEXTURE_CUBE |
+                D12_FRONTEND_FORMAT_SHADER_LOAD |
+                D12_FRONTEND_FORMAT_SHADER_SAMPLE |
+                D12_FRONTEND_FORMAT_SHADER_SAMPLE_COMPARISON |
+                D12_FRONTEND_FORMAT_SHADER_GATHER_COMPARISON |
+                D12_FRONTEND_FORMAT_MIP |
+                D12_FRONTEND_FORMAT_DEPTH_STENCIL |
+                D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD;
+      break;
    default:
-      return format == DXGI_FORMAT_UNKNOWN ? D12_FRONTEND_FORMAT_BUFFER : 0;
+      support = format == DXGI_FORMAT_UNKNOWN ? D12_FRONTEND_FORMAT_BUFFER
+                                               : 0;
+      break;
    }
+
+   /* The callback-only DLL has no Mesa format database, but its DDI table
+    * must still expose the same display-format ABI as the full renderer so
+    * clean-environment probes cannot validate a narrower contract. */
+   if (d12_present_format_core_supported((uint32_t)format))
+      support |= D12_FRONTEND_FORMAT_DISPLAY;
+   return support;
 }
 
 static UINT
