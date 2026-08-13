@@ -776,8 +776,7 @@ d12_queue_release_signal_slot(struct d12_queue *queue,
    mtx_unlock(&queue->lock);
    if (!released) {
       mesa_loge("command queue signal-slot accounting failure");
-      queue->device->removed = true;
-      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
    }
 }
 
@@ -895,8 +894,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    uint64_t in = d12_queue_timeline_marker(&queue->timeline);
    if (in == UINT64_MAX) {
       mesa_loge("command queue timeline exhausted");
-      device->removed = true;
-      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
       return false;
    }
    uint64_t out = in + 1;
@@ -942,8 +940,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    if (op->read_set_complete) {
       if (op->exact_read_bo_count > ARRAY_SIZE(exact_read_ranges)) {
          mesa_loge("command queue exact read set exceeds inline capacity");
-         device->removed = true;
-         device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
          return false;
       }
 
@@ -951,8 +948,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
          const struct agx_bo *bo = op->exact_read_bos[i];
          if (!bo || !bo->va || !bo->size) {
             mesa_loge("command queue exact read set contains invalid BO");
-            device->removed = true;
-            device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+            d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
             return false;
          }
          exact_read_ranges[exact_read_range_count++] =
@@ -1056,8 +1052,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    if (ret) {
       mesa_loge("DRM_IOCTL_ASAHI_SUBMIT failed: %d -- device marked removed",
                 ret);
-      device->removed = true;
-      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
       return false;
    }
 
@@ -1071,8 +1066,7 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    if (!timeline_committed ||
        committed_in != in || committed_out != out) {
       mesa_loge("command queue timeline accounting failure");
-      device->removed = true;
-      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
       return false;
    }
    op->retire_value = out;
@@ -1108,8 +1102,7 @@ d12_queue_wait_timeline(struct d12_queue *queue, uint64_t point)
       DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
    if (ret) {
       mesa_loge("queue GPU completion wait failed: %d", ret);
-      queue->device->removed = true;
-      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
       return false;
    }
 
@@ -1227,8 +1220,8 @@ d12_queue_retire_worker(void *data)
          mtx_unlock(&queue->lock);
          if (!retired) {
             mesa_loge("command queue retirement accounting failure");
-            queue->device->removed = true;
-            queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+            d12_device_mark_removed(queue->device,
+                                    DXGI_ERROR_DEVICE_REMOVED);
          } else if (op->type == D12_QUEUE_OP_SIGNAL) {
             if (getenv("D3D12AGX_DUMP_SYNC")) {
                mesa_logi("SYNC Signal retire: queue %p fence %p value %llu "
@@ -1318,8 +1311,8 @@ d12_queue_worker(void *data)
                          : -EIO;
          if (result) {
             mesa_loge("sparse VM_BIND batch failed: %d", result);
-            queue->device->removed = true;
-            queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+            d12_device_mark_removed(queue->device,
+                                    DXGI_ERROR_DEVICE_REMOVED);
          }
 
          mtx_lock(&op->completion->lock);
@@ -1416,8 +1409,7 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
           */
          mesa_loge("ExecuteCommandLists: list %u not closed; device removed",
                    i);
-         queue->device->removed = true;
-         queue->device->removed_reason = DXGI_ERROR_INVALID_CALL;
+         d12_device_mark_removed(queue->device, DXGI_ERROR_INVALID_CALL);
          continue;
       }
 
@@ -1528,8 +1520,7 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
          mesa_loge("ExecuteCommandLists: invalid GPU write tracker; device "
                    "removed before submission");
          free(payload);
-         device->removed = true;
-         device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
          break;
       }
 
@@ -1671,9 +1662,8 @@ d12_queue_update_tile_mappings(
       return hr;
 
    if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
-      queue->device->removed = true;
-      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
-      return queue->device->removed_reason;
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
+      return d12_device_removed_reason(queue->device);
    }
    return S_OK;
 }
@@ -1720,9 +1710,8 @@ d12_queue_copy_tile_mappings(
       return hr;
 
    if (!d12_queue_bind_sparse_sync(queue, ops, count)) {
-      queue->device->removed = true;
-      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
-      return queue->device->removed_reason;
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
+      return d12_device_removed_reason(queue->device);
    }
    return S_OK;
 }
@@ -1754,7 +1743,7 @@ d12_queue_Signal(ID3D12CommandQueue *iface, ID3D12Fence *fence_iface,
       return E_INVALIDARG;
    struct d12_fence *fence = d12_fence_from_iface(fence_iface);
 
-   if (queue->device->removed)
+   if (d12_device_is_removed(queue->device))
       return DXGI_ERROR_DEVICE_REMOVED;
    if (fence->device != queue->device)
       return E_INVALIDARG;
@@ -1828,7 +1817,7 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
 
    if (!queue || !fence || fence->device != queue->device)
       return E_INVALIDARG;
-   if (queue->device->removed)
+   if (d12_device_is_removed(queue->device))
       return DXGI_ERROR_DEVICE_REMOVED;
    if (fence->count != 1)
       return E_NOTIMPL;
@@ -1863,7 +1852,7 @@ d12_queue_wait_placement_fence(struct d12_queue *queue,
 
    if (!queue || !fence || fence->device != queue->device)
       return E_INVALIDARG;
-   if (queue->device->removed)
+   if (d12_device_is_removed(queue->device))
       return DXGI_ERROR_DEVICE_REMOVED;
    op = calloc(1, sizeof(*op));
    if (!op)

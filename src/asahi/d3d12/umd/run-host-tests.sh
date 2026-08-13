@@ -39,6 +39,14 @@ done
 "$out/d12_core_caps_tests"
 
 "$cc" "$common[@]" \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    "$d12_dir/d12_device_removal_core.c" \
+    "$d12_dir/tests/d12_device_removal_core_tests.c" \
+    -pthread \
+    -o "$out/d12_device_removal_core_tests"
+"$out/d12_device_removal_core_tests"
+
+"$cc" "$common[@]" \
     "$d12_dir/d12_present_blt_math.c" \
     "$d12_dir/tests/d12_present_blt_math_tests.c" \
     -o "$out/d12_present_blt_math_tests"

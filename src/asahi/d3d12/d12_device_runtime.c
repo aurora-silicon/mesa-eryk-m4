@@ -188,6 +188,15 @@ d12_device_destroy_d3dkmt_runtime(struct d12_device *device)
    free(device);
 }
 
+bool
+d12_device_runtime_set_removal_callback(
+   struct d12_device *device, d12_device_removal_callback callback,
+   void *userdata)
+{
+   return device && d12_device_removal_set_callback(
+                       &device->removal, callback, userdata);
+}
+
 HRESULT
 d12_device_runtime_trim_memory(struct d12_device *device, bool periodic,
                                bool restart_periodic,

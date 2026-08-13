@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include "d12_frontend.h"
+#include "d12_device_removal_core.h"
 #include "d12_queue_timeline_core.h"
 
 #include "agx_bg_eot.h"
@@ -293,21 +294,36 @@ struct d12_device {
    void *dbg_tcs_buf;
    unsigned dbg_tcs_buf_n;
 
-   /* Set when a submission fails. D3D12 models this as device removal, and
-    * without it a later Signal would advance a fence past work that never
-    * ran, making every result downstream a lie.
-    */
-   bool removed;
-
-   /*
-    * WHY the device was removed. D3D12 distinguishes causes:
+   /* A one-shot failure transition. D3D12 distinguishes causes:
     * DXGI_ERROR_INVALID_CALL for an application error such as submitting a
     * command list still in the recording state, DXGI_ERROR_DEVICE_REMOVED
-    * for a failure below us. GetDeviceRemovedReason returns this, and it is
-    * the only signal an application gets about which of the two happened.
+    * for a failure below us. The COM frontend reads it through
+    * GetDeviceRemovedReason; the WDDM frontend registers a callback that
+    * immediately publishes the same transition to the D3D12 core layer.
     */
-   HRESULT removed_reason;
+   struct d12_device_removal_state removal;
 };
+
+static inline bool
+d12_device_is_removed(const struct d12_device *device)
+{
+   return device && d12_device_removal_reason(&device->removal) != 0;
+}
+
+static inline HRESULT
+d12_device_removed_reason(const struct d12_device *device)
+{
+   const int32_t reason =
+      device ? d12_device_removal_reason(&device->removal) : 0;
+   return reason ? (HRESULT)reason : S_OK;
+}
+
+static inline bool
+d12_device_mark_removed(struct d12_device *device, HRESULT reason)
+{
+   return device && d12_device_removal_report(
+                       &device->removal, (int32_t)reason);
+}
 
 /* Committed resource: one agx_bo. UMA means every heap type is the same
  * memory; Map is just the BO's CPU mapping. Buffers are flat; textures

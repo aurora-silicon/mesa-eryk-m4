@@ -150,7 +150,7 @@ d12_device_CreateCommandQueue(ID3D12Device2 *iface,
    struct d12_device *device = d12_device_from_iface(iface);
 
    /* Nothing may be created on a removed device. */
-   if (device->removed)
+   if (d12_device_is_removed(device))
       return DXGI_ERROR_DEVICE_REMOVED;
 
    return d12_queue_create(device, desc, riid, out);
@@ -4236,14 +4236,10 @@ d12_device_GetDeviceRemovedReason(ID3D12Device2 *iface)
 {
    struct d12_device *device = d12_device_from_iface(iface);
 
-   if (!device->removed)
-      return S_OK;
-
    /* The recorded cause, not a blanket DEVICE_REMOVED: an application that
     * submitted a recording command list needs to see INVALID_CALL to know
     * the fault was its own. */
-   return device->removed_reason ? device->removed_reason
-                                 : DXGI_ERROR_DEVICE_REMOVED;
+   return d12_device_removed_reason(device);
 }
 
 static D12_AGGREGATE_RETURN(LUID) STDMETHODCALLTYPE
@@ -4544,6 +4540,7 @@ HRESULT
 d12_device_backend_init(struct d12_device *device,
                         D3D_FEATURE_LEVEL feature_level)
 {
+   d12_device_removal_state_init(&device->removal);
    agx_bg_eot_init(&device->bg_eot, &device->dev);
    if (!device->bg_eot.ht)
       return E_FAIL;

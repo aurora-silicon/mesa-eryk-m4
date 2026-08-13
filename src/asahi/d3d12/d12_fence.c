@@ -307,8 +307,8 @@ d12_fence_signal_value(struct d12_fence *fence, uint64_t value)
       uint64_t point = value;
       if (fence->device->sync->timeline_signal(
              fence->device->sync, &handle, &point, 1)) {
-         fence->device->removed = true;
-         fence->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         d12_device_mark_removed(fence->device,
+                                 DXGI_ERROR_DEVICE_REMOVED);
          return DXGI_ERROR_DEVICE_REMOVED;
       }
    }

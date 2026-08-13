@@ -13,6 +13,18 @@
 #include "../d12_device_runtime.h"
 #include "d12_umd_internal.h"
 
+static void
+d12_umd_backend_report_device_removed(void *userdata, int32_t reason)
+{
+   struct d12_umd_device *device = userdata;
+
+   (void)reason;
+   /* The shared renderer retains the public DXGI reason for the COM
+    * frontend. The WDDM core-layer callback contract accepts the DDI device-
+    * removed code for an asynchronous hardware/submit failure. */
+   d12_umd_report_device_error(device, D3DDDIERR_DEVICEREMOVED);
+}
+
 static bool
 d12_umd_backend_command_type(
    enum d12_umd_renderer_command_type renderer_type,
@@ -951,11 +963,20 @@ d12_umd_backend_create(struct d12_umd_device *device,
       &runtime_device, &device->backend, &shader_base);
    if (FAILED(result))
       goto fail_transport;
+   if (!d12_device_runtime_set_removal_callback(
+          device->backend, d12_umd_backend_report_device_removed, device)) {
+      result = E_FAIL;
+      goto fail_backend;
+   }
 
    device->usc_base = shader_base;
    device->usc_size = UINT64_C(0x100000000);
    device->renderer_ops = &d12_umd_backend_renderer_ops;
    return S_OK;
+
+fail_backend:
+   d12_device_destroy_d3dkmt_runtime(device->backend);
+   device->backend = NULL;
 
 fail_transport:
    d12_umd_agx_transport_finish(&device->agx_transport);

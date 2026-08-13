@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "asahi/lib/agx_d3dkmt_runtime.h"
+#include "d12_device_removal_core.h"
 #include "d12_frontend.h"
 
 struct d12_device;
@@ -59,6 +60,9 @@ HRESULT d12_device_create_d3dkmt_runtime(
    const struct agx_d3dkmt_runtime_device *runtime_device,
    struct d12_device **out_device, uint64_t *out_shader_base);
 void d12_device_destroy_d3dkmt_runtime(struct d12_device *device);
+bool d12_device_runtime_set_removal_callback(
+   struct d12_device *device, d12_device_removal_callback callback,
+   void *userdata);
 HRESULT d12_device_runtime_trim_memory(struct d12_device *device,
                                        bool periodic,
                                        bool restart_periodic,
