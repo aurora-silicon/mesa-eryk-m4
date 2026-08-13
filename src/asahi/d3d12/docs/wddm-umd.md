@@ -238,6 +238,10 @@ signature comparison, pipeline-library keys and cached compute PSOs remain
 pointer-free and deterministic. The command recorder resolves the same flat
 records without a per-bind allocation. Both the portable cache test and the
 ARM64 callback probe pin acceptance of a seventeen-range table.
+Static-sampler validation and serialization use the renderer's 256-record
+binding capacity as well, rather than the former 64-record frontend ceiling;
+the host cache test and callback probe cover a 65-sampler signature with
+stage-disjoint visibility.
 
 Release 1 implements the distinct indexed pipeline-library ABI. The runtime's
 `PipelineIndex` is stored in a sorted lookup table containing the same

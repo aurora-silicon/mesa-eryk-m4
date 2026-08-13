@@ -1733,6 +1733,37 @@ wmain(int argc, wchar_t **argv)
             root_arguments.pRootSignature = &root_desc;
          }
 
+         {
+            D3D12DDI_STATIC_SAMPLER samplers[65] = {0};
+            for (UINT index = 0; index < ARRAYSIZE(samplers); ++index) {
+               samplers[index] = (D3D12DDI_STATIC_SAMPLER){
+                  .Filter = D3D12DDI_FILTER_MIN_MAG_MIP_POINT,
+                  .AddressU = D3D12DDI_TEXTURE_ADDRESS_MODE_WRAP,
+                  .AddressV = D3D12DDI_TEXTURE_ADDRESS_MODE_WRAP,
+                  .AddressW = D3D12DDI_TEXTURE_ADDRESS_MODE_WRAP,
+                  .MaxAnisotropy = 1,
+                  .ComparisonFunc = D3D12DDI_COMPARISON_FUNC_ALWAYS,
+                  .BorderColor =
+                     D3D12DDI_STATIC_BORDER_COLOR_TRANSPARENT_BLACK,
+                  .MaxLOD = 16.0f,
+                  .ShaderRegister = index & 15u,
+                  .RegisterSpace = index >> 4,
+                  .ShaderVisibility =
+                     (D3D12DDI_SHADER_VISIBILITY)(1u + index % 5u),
+               };
+            }
+            const D3D12DDI_ROOT_SIGNATURE sampler_desc = {
+               .NumStaticSamplers = ARRAYSIZE(samplers),
+               .pStaticSamplers = samplers,
+            };
+            root_arguments.pRootSignature = &sampler_desc;
+            require_result(
+               device_table.pfnCalcPrivateRootSignatureSize(
+                  driver_device, &root_arguments) == root_signature_size,
+               "stage-disjoint root signatures may exceed 64 samplers");
+            root_arguments.pRootSignature = &root_desc;
+         }
+
          driver_root_signature.pDrvPrivate =
             HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
                       root_signature_size);

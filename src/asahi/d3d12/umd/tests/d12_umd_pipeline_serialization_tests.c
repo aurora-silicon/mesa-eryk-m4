@@ -335,6 +335,47 @@ test_wide_descriptor_table_round_trip(void)
    free(blob);
 }
 
+static void
+test_stage_disjoint_static_samplers(void)
+{
+   enum { sampler_count = 65 };
+   static const uint8_t shader[] = {5, 6, 7, 8};
+   struct d12_frontend_static_sampler samplers[sampler_count];
+   memset(samplers, 0, sizeof(samplers));
+   for (uint32_t index = 0; index < sampler_count; ++index) {
+      samplers[index] = (struct d12_frontend_static_sampler){
+         .address_u = 1,
+         .address_v = 1,
+         .address_w = 1,
+         .max_anisotropy = 1,
+         .comparison_func = 8,
+         .max_lod = 16.0f,
+         .shader_register = index & 15u,
+         .register_space = index >> 4,
+         .shader_visibility = 1u + index % 5u,
+      };
+   }
+
+   const struct d12_frontend_root_signature_desc root = {
+      .num_static_samplers = sampler_count,
+      .static_samplers = samplers,
+   };
+   const struct d12_frontend_compute_pipeline_desc source = {
+      .shader = {.data = shader, .size = sizeof(shader)},
+      .root_signature = (void *)(uintptr_t)1,
+   };
+   struct d12_umd_serialized_pipeline decoded;
+   void *blob = NULL;
+   size_t size = 0;
+
+   assert(d12_umd_pipeline_serialize_compute(&source, &root, &blob, &size));
+   assert(d12_umd_pipeline_deserialize(blob, size, &decoded));
+   assert(decoded.root_signature.num_static_samplers == sampler_count);
+   assert(decoded.root_signature.static_samplers[64].register_space == 4);
+   d12_umd_serialized_pipeline_cleanup(&decoded);
+   free(blob);
+}
+
 int
 main(void)
 {
@@ -342,6 +383,7 @@ main(void)
    test_graphics_round_trip();
    test_root_presence_validation();
    test_wide_descriptor_table_round_trip();
+   test_stage_disjoint_static_samplers();
    puts("d12_umd_pipeline_serialization_tests: PASS");
    return 0;
 }
