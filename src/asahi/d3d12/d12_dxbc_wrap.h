@@ -13,6 +13,7 @@
 #include <stdint.h>
 
 #define D12_FRONTEND_MAX_SIGNATURE_ENTRIES 256u
+#define D12_FRONTEND_MAX_SIGNATURE_STREAMS 4u
 #define D12_FRONTEND_MAX_SHADER_TOKENS (4u * 1024u * 1024u)
 #define D12_FRONTEND_MAX_SHADER_BYTES (64u * 1024u * 1024u)
 
@@ -20,6 +21,7 @@ struct d12_frontend_signature_entry {
    uint32_t system_value;
    uint32_t register_index;
    uint32_t mask;
+   uint32_t stream;
    uint32_t component_type;
    uint32_t min_precision;
 };

@@ -299,7 +299,8 @@ d12_umd_shader_root_valid(struct d12_umd_device *device,
 
 static bool
 d12_umd_translate_signature(
-   const D3D12DDIARG_SIGNATURE_ENTRY *source, UINT count,
+   const void *source, UINT count,
+   bool has_stream,
    struct d12_frontend_signature_entry *destination,
    struct d12_frontend_signature *translated)
 {
@@ -308,24 +309,33 @@ d12_umd_translate_signature(
       return false;
 
    for (UINT index = 0; index < count; ++index) {
-      if ((uint32_t)source[index].SystemValue > 22 ||
-          source[index].Register >= D12_FRONTEND_MAX_SIGNATURE_ENTRIES ||
-          source[index].Mask == 0 || source[index].Mask > 0xf ||
-          (uint32_t)source[index].RegisterComponentType > 3 ||
-          ((uint32_t)source[index].MinPrecision != 0 &&
-           (uint32_t)source[index].MinPrecision != 1 &&
-           (uint32_t)source[index].MinPrecision != 2 &&
-           (uint32_t)source[index].MinPrecision != 4 &&
-           (uint32_t)source[index].MinPrecision != 5))
+      D3D12DDIARG_SIGNATURE_ENTRY_0012 entry;
+      memcpy(&entry,
+             (const uint8_t *)source + (size_t)index * sizeof(entry),
+             sizeof(entry));
+
+      if ((uint32_t)entry.SystemValue > 22 ||
+          entry.Register >= D12_FRONTEND_MAX_SIGNATURE_ENTRIES ||
+          entry.Mask == 0 || entry.Mask > 0xf ||
+          (uint32_t)entry.RegisterComponentType > 3 ||
+          ((uint32_t)entry.MinPrecision != 0 &&
+           (uint32_t)entry.MinPrecision != 1 &&
+           (uint32_t)entry.MinPrecision != 2 &&
+           (uint32_t)entry.MinPrecision != 4 &&
+           (uint32_t)entry.MinPrecision != 5))
+         return false;
+
+      const uint32_t stream = has_stream ? entry.Stream : 0;
+      if (stream >= D12_FRONTEND_MAX_SIGNATURE_STREAMS)
          return false;
 
       destination[index] = (struct d12_frontend_signature_entry){
-         .system_value = (uint32_t)source[index].SystemValue,
-         .register_index = source[index].Register,
-         .mask = source[index].Mask,
-         .component_type =
-            (uint32_t)source[index].RegisterComponentType,
-         .min_precision = (uint32_t)source[index].MinPrecision,
+         .system_value = (uint32_t)entry.SystemValue,
+         .register_index = entry.Register,
+         .mask = entry.Mask,
+         .stream = stream,
+         .component_type = (uint32_t)entry.RegisterComponentType,
+         .min_precision = (uint32_t)entry.MinPrecision,
       };
    }
    translated->count = count;
@@ -334,7 +344,16 @@ d12_umd_translate_signature(
 }
 
 static bool
+d12_umd_device_has_signature_streams(const struct d12_umd_device *device)
+{
+   return device &&
+          device->interface_version == D3D12DDI_INTERFACE_VERSION_R1 &&
+          device->runtime_version >= D3D12DDI_BUILD_VERSION_0012;
+}
+
+static bool
 d12_umd_translate_stage_signatures(
+   const struct d12_umd_device *device,
    const D3D12DDIARG_STAGE_IO_SIGNATURES *source,
    struct d12_frontend_shader_signatures *translated,
    struct d12_frontend_signature_entry *input,
@@ -343,12 +362,14 @@ d12_umd_translate_stage_signatures(
    memset(translated, 0, sizeof(*translated));
    if (!source)
       return true;
+   const bool has_stream = d12_umd_device_has_signature_streams(device);
    return d12_umd_translate_signature(
              source->pInputSignatureDeprecated,
-             source->NumInputSignatureEntries, input, &translated->input) &&
+             source->NumInputSignatureEntries, has_stream, input,
+             &translated->input) &&
           d12_umd_translate_signature(
              source->pOutputSignatureDeprecated,
-             source->NumOutputSignatureEntries, output,
+             source->NumOutputSignatureEntries, has_stream, output,
              &translated->output);
 }
 
@@ -412,8 +433,9 @@ d12_umd_translate_stream_output(
       }
 
       for (uint32_t entry = 0; entry < output_signature->count; ++entry) {
-         if (output_signature->entries[entry].register_index ==
-             source->RegisterIndex) {
+         if (output_signature->entries[entry].stream == source->Stream &&
+             output_signature->entries[entry].register_index ==
+                source->RegisterIndex) {
             signature = &output_signature->entries[entry];
             break;
          }
@@ -438,6 +460,7 @@ d12_umd_translate_stream_output(
 
 static bool
 d12_umd_translate_tessellation_signatures(
+   const struct d12_umd_device *device,
    const D3D12DDIARG_TESSELLATION_IO_SIGNATURES *source,
    struct d12_frontend_shader_signatures *translated,
    struct d12_frontend_signature_entry *input,
@@ -447,16 +470,18 @@ d12_umd_translate_tessellation_signatures(
    memset(translated, 0, sizeof(*translated));
    if (!source)
       return true;
+   const bool has_stream = d12_umd_device_has_signature_streams(device);
    return d12_umd_translate_signature(
              source->pInputSignatureDeprecated,
-             source->NumInputSignatureEntries, input, &translated->input) &&
+             source->NumInputSignatureEntries, has_stream, input,
+             &translated->input) &&
           d12_umd_translate_signature(
              source->pOutputSignatureDeprecated,
-             source->NumOutputSignatureEntries, output,
+             source->NumOutputSignatureEntries, has_stream, output,
              &translated->output) &&
           d12_umd_translate_signature(
              source->pPatchConstantSignatureDeprecated,
-             source->NumPatchConstantSignatureEntries, patch,
+             source->NumPatchConstantSignatureEntries, has_stream, patch,
              &translated->patch);
 }
 
@@ -476,7 +501,7 @@ d12_umd_calc_private_shader_size(
    return device && d12_dxbc_shader_valid(tokens, UINT32_MAX, NULL) &&
                  d12_umd_shader_root_valid(device, root_signature) &&
                  d12_umd_translate_stage_signatures(
-                    signatures, &translated, input, output)
+                    device, signatures, &translated, input, output)
              ? sizeof(struct d12_umd_shader)
              : 0;
 }
@@ -505,7 +530,8 @@ d12_umd_calc_private_geometry_shader_with_stream_output_size(
                  d12_umd_shader_root_valid(device,
                                            arguments->hRootSignature) &&
                  d12_umd_translate_stage_signatures(
-                    signatures, &translated_signatures, input, output) &&
+                    device, signatures, &translated_signatures, input,
+                    output) &&
                  d12_umd_translate_stream_output(
                     arguments, &translated_signatures.output, translated_so)
              ? sizeof(struct d12_umd_shader)
@@ -530,7 +556,7 @@ d12_umd_calc_private_tessellation_shader_size(
    return device && d12_dxbc_shader_valid(tokens, UINT32_MAX, NULL) &&
                  d12_umd_shader_root_valid(device, root_signature) &&
                  d12_umd_translate_tessellation_signatures(
-                    signatures, &translated, input, output, patch)
+                    device, signatures, &translated, input, output, patch)
              ? sizeof(struct d12_umd_shader)
              : 0;
 }
@@ -555,8 +581,8 @@ d12_umd_create_shader(
        flags != D3D12DDI_CREATE_SHADER_FLAG_NONE ||
        !d12_dxbc_shader_valid(tokens, (uint32_t)stage, NULL) ||
        !d12_umd_shader_root_valid(device, root_signature) ||
-       !d12_umd_translate_stage_signatures(signatures, &translated, input,
-                                           output)) {
+       !d12_umd_translate_stage_signatures(device, signatures, &translated,
+                                           input, output)) {
       d12_umd_pipeline_set_error(device, E_INVALIDARG);
       return;
    }
@@ -612,7 +638,7 @@ d12_umd_create_geometry_shader_with_stream_output(
        !d12_umd_calc_private_geometry_shader_with_stream_output_size(
           handle, arguments, signatures) ||
        !d12_umd_translate_stage_signatures(
-          signatures, &translated_signatures, input, output)) {
+          device, signatures, &translated_signatures, input, output)) {
       d12_umd_pipeline_set_error(device, E_INVALIDARG);
       return;
    }
@@ -685,7 +711,7 @@ d12_umd_create_tessellation_shader(
        !d12_dxbc_shader_valid(tokens, (uint32_t)stage, NULL) ||
        !d12_umd_shader_root_valid(device, root_signature) ||
        !d12_umd_translate_tessellation_signatures(
-          signatures, &translated, input, output, patch)) {
+          device, signatures, &translated, input, output, patch)) {
       d12_umd_pipeline_set_error(device, E_INVALIDARG);
       return;
    }

@@ -35,6 +35,7 @@ main(int argc, char **argv)
       {.system_value = 0,
        .register_index = 3,
        .mask = 3,
+       .stream = 2,
        .component_type = 3,
        .min_precision = 1},
    };
@@ -59,6 +60,8 @@ main(int argc, char **argv)
    assert(input_offset < size && !memcmp(container + input_offset, "ISG1", 4));
    const uint8_t *input_payload = container + input_offset + 8;
    assert(load_u32(input_payload) == 2);
+   assert(load_u32(input_payload + 8) == 0);
+   assert(load_u32(input_payload + 8 + 32) == 2);
    const uint32_t first_name = load_u32(input_payload + 8 + 4);
    const uint32_t second_name = load_u32(input_payload + 8 + 32 + 4);
    assert(!strcmp((const char *)input_payload + first_name, "SV_Position"));
@@ -168,6 +171,10 @@ main(int argc, char **argv)
       const struct d12_frontend_shader_signatures invalid_signatures = {
          .input = {.count = 1, .entries = &invalid},
       };
+      assert(!d12_dxbc_wrap_tokens(tokens, &invalid_signatures,
+                                   (void **)&container, &size));
+      invalid = input[0];
+      invalid.stream = D12_FRONTEND_MAX_SIGNATURE_STREAMS;
       assert(!d12_dxbc_wrap_tokens(tokens, &invalid_signatures,
                                    (void **)&container, &size));
    }

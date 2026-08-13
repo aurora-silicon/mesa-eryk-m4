@@ -16,6 +16,7 @@
 #include "../d12_umd_pipeline_serialization.h"
 #include "../d12_umd_present_funcs.h"
 #include "../d12_umd_resource_private.h"
+#include "../../d12_dxbc_wrap.h"
 #include "../../d12_frontend.h"
 
 #include <stdio.h>
@@ -1489,6 +1490,30 @@ wmain(int argc, wchar_t **argv)
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(result == E_INVALIDARG,
                      "reject wrong shader cap width");
+
+      {
+         D3D12DDI_SHADER_CAPS_0012 expanded;
+         memset(&expanded, 0xcc, sizeof(expanded));
+         query.pData = &expanded;
+         query.DataSize = sizeof(expanded);
+         result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+#if D12_UMD_TARGETS_WDDM21
+         require_result(result == S_OK &&
+                           expanded.MinPrecision ==
+                              D3D12DDI_SHADER_MIN_PRECISION_NONE &&
+                           !expanded.Doubles &&
+                           !expanded.ShaderSpecifiedStencilRef &&
+                           !expanded.TypedUAVLoadAdditionalFormats &&
+                           !expanded.ROVs && !expanded.WaveOps &&
+                           expanded.WaveLaneCountMin == 0 &&
+                           expanded.WaveLaneCountMax == 0 &&
+                           expanded.TotalLaneCount == 0,
+                        "Release 1 build 2 shader caps");
+#else
+         require_result(result == E_INVALIDARG,
+                        "reject unadvertised expanded shader caps");
+#endif
+      }
    }
 
    {
@@ -2139,26 +2164,45 @@ wmain(int argc, wchar_t **argv)
                3,
                UINT32_C(1) << 24,
             };
+#if D12_UMD_TARGETS_WDDM21
+            D3D12DDIARG_SIGNATURE_ENTRY_0012 output_signature = {
+#else
             D3D12DDIARG_SIGNATURE_ENTRY output_signature = {
+#endif
                .SystemValue = D3D10_SB_NAME_UNDEFINED,
                .Register = 0,
                .Mask = 0xf,
+#if D12_UMD_TARGETS_WDDM21
+               .Stream = 1,
+#endif
                .RegisterComponentType =
                   D3D10_SB_REGISTER_COMPONENT_FLOAT32,
             };
             const D3D12DDIARG_STAGE_IO_SIGNATURES signatures = {
+#if D12_UMD_TARGETS_WDDM21
+               .pOutputSignature = &output_signature,
+#else
                .pOutputSignatureDeprecated = &output_signature,
+#endif
                .NumOutputSignatureEntries = 1,
             };
-            const D3D12DDIARG_STREAM_OUTPUT_DECLARATION_ENTRY declarations[] = {
+            D3D12DDIARG_STREAM_OUTPUT_DECLARATION_ENTRY declarations[] = {
                {
+#if D12_UMD_TARGETS_WDDM21
+                  .Stream = 1,
+#else
                   .Stream = 0,
+#endif
                   .OutputSlot = 0,
                   .RegisterIndex = UINT32_MAX,
                   .RegisterMask = 0xf,
                },
                {
+#if D12_UMD_TARGETS_WDDM21
+                  .Stream = 1,
+#else
                   .Stream = 0,
+#endif
                   .OutputSlot = 0,
                   .RegisterIndex = 0,
                   .RegisterMask = 0x3,
@@ -2190,6 +2234,37 @@ wmain(int argc, wchar_t **argv)
                driver_device, &stream_output_arguments,
                stream_output_shader, &signatures,
                D3D12DDI_CREATE_SHADER_FLAG_NONE);
+            {
+               const struct d12_umd_shader *private_shader =
+                  stream_output_shader.pDrvPrivate;
+               require_result(
+                  private_shader->signature == D12_UMD_SHADER_SIGNATURE &&
+                     private_shader->so_declaration_count ==
+                        ARRAYSIZE(declarations) &&
+#if D12_UMD_TARGETS_WDDM21
+                     private_shader->so_declarations[1].stream == 1,
+#else
+                     private_shader->so_declarations[1].stream == 0,
+#endif
+                  "translate geometry output signature stream");
+            }
+#if D12_UMD_TARGETS_WDDM21
+            declarations[1].Stream = 0;
+            require_result(
+               device_table.pfnCalcPrivateGeometryShaderWithStreamOutput(
+                  driver_device, &stream_output_arguments,
+                  &signatures) == 0,
+               "reject stream-output declaration from another "
+               "signature stream");
+            declarations[1].Stream = 1;
+            output_signature.Stream = D12_FRONTEND_MAX_SIGNATURE_STREAMS;
+            require_result(
+               device_table.pfnCalcPrivateGeometryShaderWithStreamOutput(
+                  driver_device, &stream_output_arguments,
+                  &signatures) == 0,
+               "reject out-of-range geometry signature stream");
+            output_signature.Stream = 1;
+#endif
             device_table.pfnDestroyShader(driver_device,
                                           stream_output_shader);
             HeapFree(GetProcessHeap(), 0,

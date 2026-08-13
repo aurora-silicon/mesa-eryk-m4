@@ -278,6 +278,22 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_SHADER: {
+#if D12_UMD_TARGETS_WDDM21
+      if (arguments->DataSize == sizeof(D3D12DDI_SHADER_CAPS_0012)) {
+         const D3D12DDI_SHADER_CAPS_0012 data = {
+            .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
+            .Doubles = FALSE,
+            .ShaderSpecifiedStencilRef = FALSE,
+            .TypedUAVLoadAdditionalFormats = FALSE,
+            .ROVs = FALSE,
+            .WaveOps = FALSE,
+            .WaveLaneCountMin = 0,
+            .WaveLaneCountMax = 0,
+            .TotalLaneCount = 0,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
       const D3D12DDI_SHADER_CAPS_0003 data = {
          .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
          .Doubles = FALSE,

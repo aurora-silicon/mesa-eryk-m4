@@ -92,6 +92,7 @@ d12_signature_valid(const struct d12_frontend_signature *signature)
          &signature->entries[index];
       if (entry->system_value > 22 || entry->register_index >= 256 ||
           entry->mask == 0 || entry->mask > 0xf ||
+          entry->stream >= D12_FRONTEND_MAX_SIGNATURE_STREAMS ||
           entry->component_type > 3 ||
           (entry->min_precision != 0 && entry->min_precision != 1 &&
            entry->min_precision != 2 && entry->min_precision != 4 &&
@@ -265,9 +266,9 @@ d12_write_signature_chunk(
       uint8_t *record =
          payload + 8u + (size_t)index * D12_DXBC_SIGNATURE_RECORD_SIZE;
 
-      /* SG1 starts with a stream index. DDI 0003 has no stream field, so
-       * every entry belongs to stream zero. */
-      d12_store_u32(record, 0);
+      /* SG1 starts with the geometry-output stream index.  Baseline DDI
+       * callers translate the missing field to stream zero. */
+      d12_store_u32(record, entry->stream);
       d12_store_u32(record + 4, (uint32_t)name_offset);
       /* The DDI supplies registers rather than application semantic names.
        * Use the register as the stable semantic index for generic linkage. */

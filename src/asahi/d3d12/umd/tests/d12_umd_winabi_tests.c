@@ -13,6 +13,7 @@
 
 #include "../d12_umd_abi.h"
 #include "../d12_umd_resource_private.h"
+#include "../../d12_dxbc_wrap.h"
 #include "../../d12_frontend.h"
 
 #include <stddef.h>
@@ -353,6 +354,14 @@ _Static_assert(
    "tile copy flag encodings");
 _Static_assert(sizeof(D3D12DDIARG_STREAM_OUTPUT_DECLARATION_ENTRY) == 16,
                "DDI stream-output declaration width");
+_Static_assert(sizeof(D3D12DDIARG_SIGNATURE_ENTRY) == 20,
+               "baseline DDI signature entry width");
+_Static_assert(sizeof(D3D12DDIARG_SIGNATURE_ENTRY_0012) == 20,
+               "Release 1 build 2 DDI signature entry width");
+_Static_assert(offsetof(D3D12DDIARG_SIGNATURE_ENTRY_0012, Stream) == 9,
+               "Release 1 build 2 signature stream offset");
+_Static_assert(sizeof(struct d12_frontend_signature_entry) == 24,
+               "frontend signature entry width");
 _Static_assert(
    sizeof(D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT) == 48,
    "DDI geometry shader with stream-output width");
@@ -374,6 +383,8 @@ _Static_assert(sizeof(D3D12DDI_GPUVA_CAPS_0004) == 4,
                "GPUVA cap width");
 _Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0003) == 20,
                "shader cap width");
+_Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0012) == 36,
+               "Release 1 build 2 shader cap width");
 _Static_assert(sizeof(D3D12DDI_ROW_MAJOR_LAYOUT_CAPS) == 20,
                "row-major layout cap width");
 _Static_assert(sizeof(D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT) == 8,
