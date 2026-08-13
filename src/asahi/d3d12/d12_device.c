@@ -792,11 +792,13 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*sm))
          return E_INVALIDARG;
 
-      /* Our DXIL front end targets SM 6.0. The query clamps DOWN to what
-       * the driver supports, per the D3D12 contract.
-       */
-      if (sm->HighestShaderModel > D3D_SHADER_MODEL_6_0)
-         sm->HighestShaderModel = D3D_SHADER_MODEL_6_0;
+      /* The DXIL front end and AGX compiler preserve native 16-bit SM 6.2
+       * arithmetic. The query clamps DOWN to the shared renderer policy,
+       * per the D3D12 contract. */
+      const D3D_SHADER_MODEL maximum =
+         (D3D_SHADER_MODEL)caps->max_shader_model;
+      if (sm->HighestShaderModel > maximum)
+         sm->HighestShaderModel = maximum;
       return S_OK;
    }
 

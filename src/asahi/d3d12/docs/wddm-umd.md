@@ -108,7 +108,7 @@ official DDI pages are:
 | Release 1 Shader Model target | interface `0x000c000a`, build `1` | `D3D12DDI_SUPPORTED_0011`, encoded as `0x000c000a00010000`; reports released SM 6.0 and SM 5.1. |
 | Release 1 root-signature 1.1 target | interface `0x000c000a`, build `3` | `D3D12DDI_SUPPORTED_0013`, encoded as `0x000c000a00030000`; the exact 92-slot table implements root-signature 1.1 and debug allocation/GPUVA association. |
 | Release 3 immediate-write target | interface `0x000c001e`, build `2` | `D3D12DDI_SUPPORTED_0032`, encoded as `0x000c001e00020000`; the exact 92-slot device and 57-slot 3D command-list tables add the Release 2/3 allocation, queue, PSO/shader, barrier, resolve, present, copy-timestamp and immediate-write contracts. |
-| Release 4 native-16 target | interface `0x000c0028`, build `2` | `D3D12DDI_SUPPORTED_0042`, encoded as `0x000c002800020000`; the exact 96-slot device and 58-slot command-list tables replace allocators with command pools/recorders, use PSO `0033`/command-list `0040` signatures and expose the shared core's native 16-bit shader capability. |
+| Release 4 native-16 target | interface `0x000c0028`, build `2` | `D3D12DDI_SUPPORTED_0042`, encoded as `0x000c002800020000`; the exact 96-slot device and 58-slot command-list tables replace allocators with command pools/recorders, use PSO `0033`/command-list `0040` signatures and expose the shared core's released SM 6.2/native 16-bit shader capability. |
 | Latest revision in pinned header | interface R8 `0x000c0050`, build `110` | `D3D12DDI_SUPPORTED_0110`, encoded as `0x000c0050006e0000`. It is a header ceiling, not an implemented claim. |
 
 The D3D12 core DDI revision and WDDM/DXGK interface are separate negotiations.
@@ -129,7 +129,10 @@ reason. The host-only WDDM 2.4.2 build advertises only `0042`, then baseline
 ownership, DDI `0041` memory/options caps and shader caps `0042`. View
 instancing, barycentrics, 64-bit operations and serialization tiers remain
 false/tier zero, and a nonzero view-instancing PSO is rejected before backend
-allocation. This split
+allocation. Its shader-model list adds released SM 6.2 and SM 6.1 ahead of
+the inherited SM 6.0/5.1 entries; lower WDDM targets remain capped at SM 6.0
+because the corresponding released DDI spellings do not exist before `0042`.
+This split
 is required because Microsoft classifies DXIL, SM 6.0 and PSO libraries as
 WDDM 2.1 features. The 2.1 KMD branch reports `0x2100`, registers a real
 `DxgkDdiValidateUpdateAllocationProperty` policy, uses DriverStore paths and
@@ -307,7 +310,7 @@ subsequent hits. No renderer subsystem or machine pointer is serialized.
 Shader creation accepts both the self-sized SM4/SM5 tokenized program format
 and complete DXBC containers carrying DXIL. Both paths are structurally
 validated before allocation or compiler entry; container chunk bounds and
-shader kind are checked, and a real SM 6.0 compute fixture is exercised by the
+shader kind are checked, and a structurally valid SM 6.2 compute fixture is exercised by the
 host suite. DXIL containers pass unchanged into the existing DXIL-to-NIR/AGX
 compiler, while token streams receive the minimal signature chunks required by
 the shared DXBC compiler.
@@ -343,7 +346,17 @@ forwards that absolute address unchanged; only packed AGX USC pointers subtract
 `shader_base`. Host tests specifically prove that a second base addition can
 remain contract-valid while naming unrelated main-heap storage.
 The pre-device texture-layout query reports zero private layouts/swizzles and
-advertises the precise row-major layout subset accepted by the shared AGX
+answers both the legacy cap and the nondeprecated Release-2
+`D3D12DDICAPS_TYPE_0022_TEXTURE_LAYOUT` spelling. The latter returns the exact
+`D3D12DDI_TEXTURE_LAYOUT_CAPS_0026` payload: row-major textures are supported,
+while 64 KiB standard swizzle, indexable/private layouts and private swizzle
+patterns remain false or zero. Release-3/4 negotiation also returns explicit
+zero/false payloads for CPU page-table false positives, UMD global-real-time
+queue priority, protected resource sessions and compute-only-adapter status.
+This keeps optional paths disabled through their defined cap contracts instead
+of depending on an `E_NOTIMPL` fallback; the graphics pipeline remains visible.
+The texture-layout query advertises the precise row-major layout subset
+accepted by the shared AGX
 renderer: cross-adapter 2D textures with one mip, one array layer and one
 sample, no depth/stencil or unordered-access use, uncompressed elements no
 larger than 16 bytes, a 512-byte base alignment, and a 256-byte row-pitch
@@ -736,7 +749,7 @@ does not alter the native D3D12 ABI or command ordering.
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, allocation-deduplicated mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including aliased discard fan-out, optional discard output and CPU-only core objects; asynchronous renderer failures now atomically retain the first cause and notify the D3D12 runtime exactly once, while real device-removal and pressure validation remain pending |
 | G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI 1.4 and WDDM 2.1 22-slot DXGI 1.5 tables, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
-| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`/`0013` is exposed by the installable WDDM 2.1 build. Host-only WDDM 2.3 exposes `0032` with exact 92/57-slot tables, allocation-info 0022, queue 0023, PSO/shader 0021/0026, ranged barriers, region resolve, present 0028, copy timestamps and immediate writes. Host-only WDDM 2.4.2 exposes `0042` with exact 96/58-slot tables, query-adapter-info2, command pools/recorders, PSO 0033, DDI 0041 caps and native 16-bit ops. Unsupported atomic copy, depth bounds, programmable sample positions, protected sessions, view instancing and later options fail closed and their caps remain false. Same-width intermediate revisions are omitted to keep callback typing unambiguous; Windows runtime/hardware conformance remains pending. |
+| H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`/`0013` is exposed by the installable WDDM 2.1 build. Host-only WDDM 2.3 exposes `0032` with exact 92/57-slot tables, allocation-info 0022, queue 0023, PSO/shader 0021/0026, ranged barriers, region resolve, present 0028, copy timestamps and immediate writes. Host-only WDDM 2.4.2 exposes `0042` with exact 96/58-slot tables, query-adapter-info2, command pools/recorders, PSO 0033, DDI 0041 caps, released SM 6.2 and native 16-bit ops. Unsupported atomic copy, depth bounds, programmable sample positions, protected sessions, view instancing and later options fail closed and their caps remain false. Same-width intermediate revisions are omitted to keep callback typing unambiguous; Windows runtime/hardware conformance remains pending. |
 | I. packaging | register native ARM64 D3D12 slot alongside D3D11, then make it default after hardware probe | the isolated WDDM 2.1 worktree atomically copies/registers the self-contained native ARM64 DLL at D3D12 index 3, requires it during packaging/catalog generation, and enforces DriverStore paths, `FeatureScore = D1`, and exact `21.17.240.0` INF/SYS/UMD PE versions; source/package gates pass, but no current package was signed, cataloged, installed or clean-loaded in this host-only pass |
 
 ### Recorded gates before a production claim

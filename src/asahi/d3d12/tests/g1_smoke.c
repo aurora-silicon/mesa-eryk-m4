@@ -154,8 +154,8 @@ main(void)
       };
       hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_SHADER_MODEL,
                                             &sm, sizeof(sm));
-      CHECK(hr == S_OK && sm.HighestShaderModel == D3D_SHADER_MODEL_6_0,
-            "SHADER_MODEL query clamps to the 6_0 we actually compile");
+      CHECK(hr == S_OK && sm.HighestShaderModel == D3D_SHADER_MODEL_6_2,
+            "SHADER_MODEL query clamps to native-16 DXIL 6_2");
 
       D3D12_FEATURE_DATA_D3D12_OPTIONS opts = {0};
       hr = ID3D12Device_CheckFeatureSupport(dev, D3D12_FEATURE_D3D12_OPTIONS,

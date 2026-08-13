@@ -11,7 +11,7 @@
  */
 static const struct d12_core_caps d12_agx_caps = {
    .max_feature_level = D12_CORE_FEATURE_LEVEL_11_0,
-   .max_shader_model = D12_CORE_SHADER_MODEL_6_0,
+   .max_shader_model = D12_CORE_SHADER_MODEL_6_2,
    .node_count = 1,
    .resource_binding_tier = 1,
    .tiled_resources_tier = 1,

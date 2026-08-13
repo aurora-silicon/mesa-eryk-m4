@@ -20,7 +20,7 @@ main(void)
 
    assert(caps != NULL);
    assert(caps->max_feature_level == D12_CORE_FEATURE_LEVEL_11_0);
-   assert(caps->max_shader_model == D12_CORE_SHADER_MODEL_6_0);
+   assert(caps->max_shader_model == D12_CORE_SHADER_MODEL_6_2);
    assert(caps->node_count == 1);
    assert(caps->tiled_resources_tier == 1);
    assert(caps->uma);

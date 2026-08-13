@@ -90,11 +90,13 @@ main(int argc, char **argv)
    free(container);
 
    {
-      /* A minimal, structurally valid DXIL container. Program kind 5 is
-       * compute, encoded in the high half of the DXIL program version. */
+      /* A minimal, structurally valid Shader Model 6.2 DXIL container.
+       * Program kind 5 is compute, encoded in the high half of the DXIL
+       * program version; the low half is the 0x62 shader-model token. */
       uint32_t dxil[] = {
          UINT32_C(0x43425844), 0, 0, 0, 0, 1, 48, 1, 36,
-         UINT32_C(0x4c495844), 4, UINT32_C(5) << 16,
+         UINT32_C(0x4c495844), 4,
+         (UINT32_C(5) << 16) | UINT32_C(0x62),
       };
       uint8_t *imported = NULL;
       size_t imported_size = 0;

@@ -144,6 +144,8 @@ _Static_assert(sizeof(D3D12DDI_MEMORY_ARCHITECTURE_CAPS_0041) == 20,
                "DDI 0041 memory-architecture caps width");
 _Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0042) == 44,
                "DDI 0042 shader caps width");
+_Static_assert(D3D12DDI_SHADER_MODEL_6_2_RELEASE_0042 == UINT32_C(0x00060025),
+               "DDI 0042 Shader Model 6.2 value");
 _Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_POOL_0040) == 4,
                "DDI 0040 command-pool arguments width");
 _Static_assert(sizeof(D3D12DDIARG_CREATE_COMMAND_RECORDER_0040) == 8,

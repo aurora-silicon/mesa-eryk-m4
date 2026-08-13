@@ -1477,6 +1477,122 @@ wmain(int argc, wchar_t **argv)
       }
    }
 
+#if D12_UMD_TARGETS_WDDM23
+   {
+      D3D12DDI_TEXTURE_LAYOUT_CAPS_0026 data;
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0022_TEXTURE_LAYOUT,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      UINT layout_index = 0;
+
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        data.DeviceDependentLayoutCount == 0 &&
+                        data.DeviceDependentSwizzleCount == 0 &&
+                        !data.Supports64KStandardSwizzle &&
+                        data.SupportsRowMajorTexture &&
+                        !data.IndexableSwizzlePatterns,
+                     "DDI 0026 texture-layout caps");
+      query.pInfo = &layout_index;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject DDI 0022 device-layout query with zero layouts");
+      query.pInfo = NULL;
+      --query.DataSize;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject wrong DDI 0026 texture-layout cap width");
+   }
+
+   {
+      UINT node = 0;
+      D3D12DDI_COMMAND_QUEUE_FLAGS flags =
+         (D3D12DDI_COMMAND_QUEUE_FLAGS)UINT32_MAX;
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0022_CPU_PAGE_TABLE_FALSE_POSITIVES,
+         .pInfo = &node,
+         .pData = &flags,
+         .DataSize = sizeof(flags),
+      };
+
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        flags == D3D12DDI_COMMAND_QUEUE_FLAG_NONE,
+                     "no CPU page-table false-positive queues");
+      node = 1;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject CPU page-table cap for unsupported node");
+   }
+
+   {
+      D3D12DDICAPS_UMD_BASED_COMMAND_QUEUE_PRIORITY_DATA_0023 data;
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0023_UMD_BASED_COMMAND_QUEUE_PRIORITY,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK &&
+            data.SupportedQueueFlagsForGlobalRealtimeQueues ==
+               D3D12DDI_COMMAND_QUEUE_FLAG_NONE,
+         "global real-time command queues remain unadvertised");
+      --query.DataSize;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject wrong UMD queue-priority cap width");
+   }
+
+   {
+      D3D12DDI_PROTECTED_RESOURCE_SESSION_SUPPORT_DATA_0030 data = {
+         .NodeIndex = 0,
+         .Support =
+            D3D12DDI_PROTECTED_RESOURCE_SESSION_SUPPORT_FLAG_0030_SUPPORTED,
+      };
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0030_PROTECTED_RESOURCE_SESSION_SUPPORT,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK && data.NodeIndex == 0 &&
+            data.Support ==
+               D3D12DDI_PROTECTED_RESOURCE_SESSION_SUPPORT_FLAG_0030_NONE,
+         "protected resource sessions remain unadvertised");
+      data.NodeIndex = 1;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject protected-session cap for unsupported node");
+   }
+#endif
+
+#if D12_UMD_TARGETS_WDDM24
+   {
+      BOOL compute_only = TRUE;
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0033_ADAPTER_COMPUTE_ONLY,
+         .pData = &compute_only,
+         .DataSize = sizeof(compute_only),
+      };
+
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK && !compute_only,
+                     "AGX adapter exposes the graphics pipeline");
+      --query.DataSize;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == E_INVALIDARG,
+                     "reject wrong compute-only cap width");
+   }
+#endif
+
    {
       UINT32 count = 0;
       UINT64 versions[4] = {0};
@@ -1741,7 +1857,11 @@ wmain(int argc, wchar_t **argv)
    {
       UINT count = 0;
 #if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM24
+      D3D12DDI_SHADER_MODEL models[4] = {0};
+#else
       D3D12DDI_SHADER_MODEL models[2] = {0};
+#endif
 #endif
       D3D12DDI_D3D12_SHADER_MODELS_DATA_0011 data = {
          .pNumShaderModelsSupported = &count,
@@ -1753,15 +1873,29 @@ wmain(int argc, wchar_t **argv)
       };
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
 #if D12_UMD_TARGETS_WDDM21
-      require_result(result == S_OK && count == 2,
+      require_result(result == S_OK &&
+#if D12_UMD_TARGETS_WDDM24
+                        count == 4,
+#else
+                        count == 2,
+#endif
                      "shader-model count query");
       data.pShaderModelsSupported = models;
       count = ARRAYSIZE(models);
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(
-         result == S_OK && count == 2 &&
+         result == S_OK &&
+#if D12_UMD_TARGETS_WDDM24
+            count == 4 &&
+            models[0] == D3D12DDI_SHADER_MODEL_6_2_RELEASE_0042 &&
+            models[1] == D3D12DDI_SHADER_MODEL_6_1_RELEASE_0033 &&
+            models[2] == D3D12DDI_SHADER_MODEL_6_0_RELEASE_0011 &&
+            models[3] == D3D12DDI_SHADER_MODEL_5_1_RELEASE_0011,
+#else
+            count == 2 &&
             models[0] == D3D12DDI_SHADER_MODEL_6_0_RELEASE_0011 &&
             models[1] == D3D12DDI_SHADER_MODEL_5_1_RELEASE_0011,
+#endif
          "shader-model payload");
 #else
       require_result(result == E_NOTIMPL,
