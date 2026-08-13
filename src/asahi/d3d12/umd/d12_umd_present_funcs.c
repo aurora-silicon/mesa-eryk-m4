@@ -39,6 +39,12 @@ _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved2) ==
                   15u * sizeof(void *),
                "DXGI reserved slot 2 moved");
 #endif
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(offsetof(D3D12DDI_PRESENT_0028,
+                        SyncIntervalOverrideValid) ==
+                  sizeof(D3D12DDI_PRESENT_0003),
+               "DDI 0028 present extension prefix changed");
+#endif
 _Static_assert(sizeof(DXGI_DDI_ARG_OFFERRESOURCES) ==
                   2u * sizeof(void *) + 2u * sizeof(UINT),
                "DXGI offer-resources arguments changed width");
@@ -1166,6 +1172,25 @@ d12_umd_present(D3D12DDI_HCOMMANDLIST list_handle,
    present->BackBufferMultiplicity = 1;
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static void APIENTRY
+d12_umd_present_0028(D3D12DDI_HCOMMANDLIST list_handle,
+                     D3D12DDI_HCOMMANDQUEUE queue_handle,
+                     const D3D12DDIARG_PRESENT_0001 *arguments,
+                     D3D12DDI_PRESENT_0028 *present)
+{
+   D3D12DDI_PRESENT_0003 baseline;
+
+   if (!present)
+      return;
+   memset(present, 0, sizeof(*present));
+   memset(&baseline, 0, sizeof(baseline));
+   d12_umd_present(list_handle, queue_handle, arguments, &baseline);
+   memcpy(present, &baseline, sizeof(baseline));
+   present->SyncIntervalOverrideValid = FALSE;
+}
+#endif
+
 void
 d12_umd_install_present_device_functions(
    D3D12DDI_DEVICE_FUNCS_CORE_0003 *table)
@@ -1180,3 +1205,12 @@ d12_umd_install_present_command_list_functions(
 {
    table->pfnPresent = d12_umd_present;
 }
+
+#if D12_UMD_TARGETS_WDDM23
+void
+d12_umd_install_present_command_list_functions_0032(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table)
+{
+   table->pfnPresent = d12_umd_present_0028;
+}
+#endif

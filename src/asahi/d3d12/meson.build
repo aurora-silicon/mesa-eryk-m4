@@ -164,8 +164,16 @@ if d12_is_windows
 
   if d12_umd_wdk_include != '' and d12_umd_generated_include != ''
     d12_umd_wddm_version = get_option('asahi-d3d12-wddm-version')
-    d12_umd_interface_version = d12_umd_wddm_version == '2.1' ? '0x6003' : '0x5002'
-    d12_umd_wddm_major = d12_umd_wddm_version == '2.1' ? '21' : '20'
+    if d12_umd_wddm_version == '2.3'
+      d12_umd_interface_version = '0x8001'
+      d12_umd_wddm_major = '23'
+    elif d12_umd_wddm_version == '2.1'
+      d12_umd_interface_version = '0x6003'
+      d12_umd_wddm_major = '21'
+    else
+      d12_umd_interface_version = '0x5002'
+      d12_umd_wddm_major = '20'
+    endif
     d12_umd_strict_args = d12_core_strict_args + cc.get_supported_arguments(
       '-Wconversion',
       '-Wundef',

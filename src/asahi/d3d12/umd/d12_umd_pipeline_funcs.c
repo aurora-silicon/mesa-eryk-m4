@@ -1699,6 +1699,189 @@ d12_umd_create_pipeline_state_0010(
                   : d12_umd_create_pipeline_state(handle, &baseline);
 }
 
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(offsetof(D3D12DDI_DEPTH_STENCIL_DESC_0025,
+                        DepthBoundsTestEnable) ==
+                  sizeof(D3D12DDI_DEPTH_STENCIL_DESC_0010),
+               "DDI 0025 depth/stencil prefix changed");
+_Static_assert(offsetof(D3D12DDIARG_CREATE_SHADER_0026,
+                        ShaderCodeHash) ==
+                  sizeof(D3D12DDIARG_CREATE_SHADER_0010),
+               "DDI 0026 shader prefix changed");
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_depth_stencil_state_size_0025(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDI_DEPTH_STENCIL_DESC_0025 *desc)
+{
+   D3D12DDI_DEPTH_STENCIL_DESC_0010 release1;
+
+   if (!desc || desc->DepthBoundsTestEnable)
+      return 0;
+   memcpy(&release1, desc, sizeof(release1));
+   return d12_umd_calc_private_depth_stencil_state_size_0010(handle,
+                                                              &release1);
+}
+
+static void APIENTRY
+d12_umd_create_depth_stencil_state_0025(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDI_DEPTH_STENCIL_DESC_0025 *desc,
+   D3D12DDI_HDEPTHSTENCILSTATE state)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDI_DEPTH_STENCIL_DESC_0010 release1;
+
+   if (!desc || desc->DepthBoundsTestEnable) {
+      d12_umd_pipeline_set_error(device, E_INVALIDARG);
+      return;
+   }
+   memcpy(&release1, desc, sizeof(release1));
+   d12_umd_create_depth_stencil_state_0010(handle, &release1, state);
+}
+
+static void
+d12_umd_shader_0026_to_0010(
+   const D3D12DDIARG_CREATE_SHADER_0026 *source,
+   D3D12DDIARG_CREATE_SHADER_0010 *destination)
+{
+   memcpy(destination, source, sizeof(*destination));
+}
+
+static SIZE_T
+d12_umd_calc_private_shader_size_0026_stage(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_SHADER_0026 *arguments, bool tessellation)
+{
+   D3D12DDIARG_CREATE_SHADER_0010 release1;
+
+   if (!arguments)
+      return 0;
+   d12_umd_shader_0026_to_0010(arguments, &release1);
+   return d12_umd_calc_private_shader_size_0010_stage(
+      handle, &release1, tessellation);
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_shader_size_0026(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_SHADER_0026 *arguments)
+{
+   return d12_umd_calc_private_shader_size_0026_stage(handle, arguments,
+                                                       false);
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_tessellation_shader_size_0026(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_SHADER_0026 *arguments)
+{
+   return d12_umd_calc_private_shader_size_0026_stage(handle, arguments,
+                                                       true);
+}
+
+static void
+d12_umd_create_shader_0026_stage(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_SHADER_0026 *arguments,
+   D3D12DDI_HSHADER shader, enum d12_frontend_shader_stage stage,
+   bool tessellation)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDIARG_CREATE_SHADER_0010 release1;
+
+   if (!arguments) {
+      d12_umd_pipeline_set_error(device, E_INVALIDARG);
+      return;
+   }
+   d12_umd_shader_0026_to_0010(arguments, &release1);
+   d12_umd_create_shader_0010_stage(handle, &release1, shader, stage,
+                                     tessellation);
+}
+
+#define D12_UMD_DEFINE_R3_SHADER_CREATE(name, stage, tessellation)           \
+   static void APIENTRY name(                                                \
+      D3D12DDI_HDEVICE handle,                                               \
+      const D3D12DDIARG_CREATE_SHADER_0026 *arguments,                       \
+      D3D12DDI_HSHADER shader)                                               \
+   {                                                                          \
+      d12_umd_create_shader_0026_stage(handle, arguments, shader, stage,      \
+                                        tessellation);                        \
+   }
+
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_vertex_shader_0026,
+                                D12_FRONTEND_SHADER_VERTEX, false)
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_pixel_shader_0026,
+                                D12_FRONTEND_SHADER_PIXEL, false)
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_geometry_shader_0026,
+                                D12_FRONTEND_SHADER_GEOMETRY, false)
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_compute_shader_0026,
+                                D12_FRONTEND_SHADER_COMPUTE, false)
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_hull_shader_0026,
+                                D12_FRONTEND_SHADER_HULL, true)
+D12_UMD_DEFINE_R3_SHADER_CREATE(d12_umd_create_domain_shader_0026,
+                                D12_FRONTEND_SHADER_DOMAIN, true)
+
+static bool
+d12_umd_translate_geometry_shader_with_stream_output_0026(
+   const D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0026 *source,
+   D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0010 *destination)
+{
+   if (!source || !destination)
+      return false;
+   memset(destination, 0, sizeof(*destination));
+   d12_umd_shader_0026_to_0010(&source->CreateShader,
+                                &destination->CreateShader);
+   destination->pOutputStreamDecl = source->pOutputStreamDecl;
+   destination->NumEntries = source->NumEntries;
+   destination->BufferStridesInBytes = source->BufferStridesInBytes;
+   destination->NumStrides = source->NumStrides;
+   destination->RasterizedStream = source->RasterizedStream;
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_geometry_shader_with_stream_output_size_0026(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0026 *arguments)
+{
+   D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0010 release1;
+   return d12_umd_translate_geometry_shader_with_stream_output_0026(
+             arguments, &release1)
+             ? d12_umd_calc_private_geometry_shader_with_stream_output_size_0010(
+                  handle, &release1)
+             : 0;
+}
+
+static void APIENTRY
+d12_umd_create_geometry_shader_with_stream_output_0026(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0026 *arguments,
+   D3D12DDI_HSHADER shader)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDIARG_CREATE_GEOMETRY_SHADER_WITH_STREAM_OUTPUT_0010 release1;
+   if (!d12_umd_translate_geometry_shader_with_stream_output_0026(
+          arguments, &release1)) {
+      d12_umd_pipeline_set_error(device, E_INVALIDARG);
+      return;
+   }
+   d12_umd_create_geometry_shader_with_stream_output_0010(
+      handle, &release1, shader);
+}
+
+static HRESULT APIENTRY
+d12_umd_create_pipeline_state_0021(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0010 *arguments,
+   D3D12DDI_HPIPELINESTATE output,
+   D3D12DDI_HRTPIPELINESTATE runtime_pipeline)
+{
+   (void)runtime_pipeline;
+   return d12_umd_create_pipeline_state_0010(handle, arguments, output);
+}
+#endif
+
 static SIZE_T APIENTRY
 d12_umd_calc_private_pipeline_library_size_0010(
    D3D12DDI_HDEVICE handle,
@@ -1956,6 +2139,32 @@ d12_umd_install_pipeline_device_functions_0010(
       d12_umd_calc_serialized_library_size_0010;
    table->pfnSerializeLibrary = d12_umd_serialize_library_0010;
 }
+
+#if D12_UMD_TARGETS_WDDM23
+void
+d12_umd_install_pipeline_device_functions_0030(
+   D3D12DDI_DEVICE_FUNCS_CORE_0030 *table)
+{
+   table->pfnCalcPrivateDepthStencilStateSize =
+      d12_umd_calc_private_depth_stencil_state_size_0025;
+   table->pfnCreateDepthStencilState =
+      d12_umd_create_depth_stencil_state_0025;
+   table->pfnCalcPrivateShaderSize = d12_umd_calc_private_shader_size_0026;
+   table->pfnCreateVertexShader = d12_umd_create_vertex_shader_0026;
+   table->pfnCreatePixelShader = d12_umd_create_pixel_shader_0026;
+   table->pfnCreateGeometryShader = d12_umd_create_geometry_shader_0026;
+   table->pfnCreateComputeShader = d12_umd_create_compute_shader_0026;
+   table->pfnCalcPrivateGeometryShaderWithStreamOutput =
+      d12_umd_calc_private_geometry_shader_with_stream_output_size_0026;
+   table->pfnCreateGeometryShaderWithStreamOutput =
+      d12_umd_create_geometry_shader_with_stream_output_0026;
+   table->pfnCalcPrivateTessellationShaderSize =
+      d12_umd_calc_private_tessellation_shader_size_0026;
+   table->pfnCreateHullShader = d12_umd_create_hull_shader_0026;
+   table->pfnCreateDomainShader = d12_umd_create_domain_shader_0026;
+   table->pfnCreatePipelineState = d12_umd_create_pipeline_state_0021;
+}
+#endif
 
 void
 d12_umd_install_pipeline_command_list_functions(

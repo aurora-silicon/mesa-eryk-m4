@@ -1221,6 +1221,86 @@ d12_device_runtime_command_list_resolve_subresource(
 }
 
 HRESULT
+d12_device_runtime_command_list_resolve_subresource_region(
+   void *list, void *destination, uint32_t destination_subresource,
+   uint32_t destination_x, uint32_t destination_y, void *source,
+   uint32_t source_subresource, const struct d12_frontend_rect *source_rect,
+   uint32_t format, uint32_t resolve_mode)
+{
+   D3D12_RECT translated_rect;
+   struct d12_cmd_list *native;
+
+   if (!list || !destination || !source)
+      return E_INVALIDARG;
+   if (source_rect) {
+      translated_rect = (D3D12_RECT){
+         .left = source_rect->left,
+         .top = source_rect->top,
+         .right = source_rect->right,
+         .bottom = source_rect->bottom,
+      };
+   }
+   ID3D12GraphicsCommandList1_ResolveSubresourceRegion(
+      (ID3D12GraphicsCommandList1 *)list, destination,
+      destination_subresource, destination_x, destination_y, source,
+      source_subresource, source_rect ? &translated_rect : NULL,
+      (DXGI_FORMAT)format, (D3D12_RESOLVE_MODE)resolve_mode);
+
+   native = d12_cmd_list_from_iface((ID3D12GraphicsCommandList6 *)list);
+   return native && native->state == D12_LIST_ERROR
+             ? (native->record_error ? native->record_error : E_FAIL)
+             : S_OK;
+}
+
+HRESULT
+d12_device_runtime_command_list_write_buffer_immediate(
+   void *list, uint32_t count,
+   const struct d12_frontend_write_buffer_immediate_parameter *parameters,
+   const uint32_t *modes)
+{
+   D3D12_WRITEBUFFERIMMEDIATE_PARAMETER local_parameters[32];
+   D3D12_WRITEBUFFERIMMEDIATE_MODE local_modes[32];
+   D3D12_WRITEBUFFERIMMEDIATE_PARAMETER *translated_parameters =
+      local_parameters;
+   D3D12_WRITEBUFFERIMMEDIATE_MODE *translated_modes = local_modes;
+   struct d12_cmd_list *native;
+
+   if (!list || (count && !parameters))
+      return E_INVALIDARG;
+   if (count > ARRAY_SIZE(local_parameters)) {
+      translated_parameters =
+         calloc(count, sizeof(*translated_parameters));
+      translated_modes = calloc(count, sizeof(*translated_modes));
+      if (!translated_parameters || !translated_modes) {
+         free(translated_parameters);
+         free(translated_modes);
+         return E_OUTOFMEMORY;
+      }
+   }
+   for (uint32_t index = 0; index < count; ++index) {
+      translated_parameters[index] = (D3D12_WRITEBUFFERIMMEDIATE_PARAMETER){
+         .Dest = parameters[index].destination,
+         .Value = parameters[index].value,
+      };
+      translated_modes[index] = modes
+         ? (D3D12_WRITEBUFFERIMMEDIATE_MODE)modes[index]
+         : D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
+   }
+   ID3D12GraphicsCommandList2_WriteBufferImmediate(
+      (ID3D12GraphicsCommandList2 *)list, count, translated_parameters,
+      modes ? translated_modes : NULL);
+   if (translated_parameters != local_parameters) {
+      free(translated_parameters);
+      free(translated_modes);
+   }
+
+   native = d12_cmd_list_from_iface((ID3D12GraphicsCommandList6 *)list);
+   return native && native->state == D12_LIST_ERROR
+             ? (native->record_error ? native->record_error : E_FAIL)
+             : S_OK;
+}
+
+HRESULT
 d12_device_runtime_command_list_present_blt(
    void *list, void *destination, void *source,
    const struct d12_frontend_present_blt_desc *desc)

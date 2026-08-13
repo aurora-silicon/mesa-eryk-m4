@@ -19,11 +19,13 @@ common=(
     -Wall -Wextra -Werror -Wpedantic
 )
 
-for target in 20 21; do
+for target in 20 21 23; do
     if [[ $target == 20 ]]; then
         interface=0x5002
-    else
+    elif [[ $target == 21 ]]; then
         interface=0x6003
+    else
+        interface=0x8001
     fi
     "$cc" "$common[@]" \
         -DD3D_UMD_INTERFACE_VERSION=$interface \

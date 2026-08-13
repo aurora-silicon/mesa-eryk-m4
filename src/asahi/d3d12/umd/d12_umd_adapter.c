@@ -30,6 +30,14 @@ _Static_assert(D3D12DDI_SUPPORTED_0010 == D12_UMD_DDI_SUPPORTED_0010,
                "pinned WDK D3D12 DDI 0010 value changed");
 _Static_assert(D3D12DDI_SUPPORTED_0011 == D12_UMD_DDI_SUPPORTED_0011,
                "pinned WDK D3D12 DDI 0011 value changed");
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(D3D12DDI_SUPPORTED_0032 == D12_UMD_DDI_SUPPORTED_0032,
+               "pinned WDK D3D12 DDI 0032 value changed");
+_Static_assert(offsetof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0022,
+                        pfnAllocateCb) ==
+                  sizeof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0003),
+               "DDI 0022 core-callback prefix changed");
+#endif
 
 struct d12_umd_adapter {
    D3D12DDI_HRTADAPTER runtime_adapter;
@@ -85,15 +93,23 @@ d12_umd_create_device(D3D12DDI_HADAPTER handle,
                       const D3D12DDIARG_CREATEDEVICE_0003 *arguments)
 {
    struct d12_umd_adapter *adapter = d12_umd_adapter_from_handle(handle);
+   const D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 *core_callbacks;
    struct d12_umd_device *device;
    HRESULT result;
 
-   if (!adapter || !arguments ||
-       !arguments->hDrvDevice.pDrvPrivate || !arguments->pKTCallbacks ||
-       !arguments->p12UMCallbacks ||
-       !arguments->p12UMCallbacks->pfnSetErrorCb ||
-       !arguments->p12UMCallbacks->pfnSetCommandListErrorCb ||
-       !arguments->p12UMCallbacks->pfnSetCommandListDDITableCb)
+   if (!adapter || !arguments || !arguments->hDrvDevice.pDrvPrivate ||
+       !arguments->pKTCallbacks)
+      return E_INVALIDARG;
+#if D12_UMD_TARGETS_WDDM23
+   core_callbacks =
+      (const D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 *)
+         arguments->p12UMCallbacks_0022;
+#else
+   core_callbacks = arguments->p12UMCallbacks;
+#endif
+   if (!core_callbacks || !core_callbacks->pfnSetErrorCb ||
+       !core_callbacks->pfnSetCommandListErrorCb ||
+       !core_callbacks->pfnSetCommandListDDITableCb)
       return E_INVALIDARG;
    if (!d12_umd_version_supported(arguments->Interface,
                                   arguments->Version))
@@ -110,7 +126,8 @@ d12_umd_create_device(D3D12DDI_HADAPTER handle,
       &adapter->command_list_3d_runtime_table;
    device->dxgi_callbacks = &adapter->dxgi_callbacks;
    device->kernel_callbacks = *arguments->pKTCallbacks;
-   device->core_callbacks = *arguments->p12UMCallbacks;
+   memcpy(&device->core_callbacks, core_callbacks,
+          sizeof(device->core_callbacks));
    InitializeSRWLock(&device->queue_lock);
    InitializeSRWLock(&device->heap_lock);
    InitializeSRWLock(&device->heap_storage_lock);
@@ -174,6 +191,21 @@ d12_umd_validate_node_cap(const D3D12DDIARG_GETCAPS *arguments)
    return S_OK;
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static D3D12DDI_COMMAND_QUEUE_FLAGS
+d12_umd_immediate_write_queue_flags(uint32_t support)
+{
+   UINT flags = 0;
+   if (support & D12_CORE_COMMAND_LIST_SUPPORT_DIRECT)
+      flags |= D3D12DDI_COMMAND_QUEUE_FLAG_3D;
+   if (support & D12_CORE_COMMAND_LIST_SUPPORT_COMPUTE)
+      flags |= D3D12DDI_COMMAND_QUEUE_FLAG_COMPUTE;
+   if (support & D12_CORE_COMMAND_LIST_SUPPORT_COPY)
+      flags |= D3D12DDI_COMMAND_QUEUE_FLAG_COPY;
+   return (D3D12DDI_COMMAND_QUEUE_FLAGS)flags;
+}
+#endif
+
 static HRESULT APIENTRY
 d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                  const D3D12DDIARG_GETCAPS *arguments)
@@ -187,6 +219,19 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    case D3D12DDICAPS_TYPE_TEXTURE_LAYOUT:
       if (arguments->pInfo)
          return E_INVALIDARG;
+#if D12_UMD_TARGETS_WDDM23
+      if (arguments->DataSize ==
+          sizeof(D3D12DDI_TEXTURE_LAYOUT_CAPS_0026)) {
+         const D3D12DDI_TEXTURE_LAYOUT_CAPS_0026 data = {
+            .DeviceDependentLayoutCount = 0,
+            .DeviceDependentSwizzleCount = 0,
+            .Supports64KStandardSwizzle = FALSE,
+            .SupportsRowMajorTexture = TRUE,
+            .IndexableSwizzlePatterns = FALSE,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
       if (arguments->DataSize == sizeof(D3D12DDI_TEXTURE_LAYOUT_CAPS)) {
          const D3D12DDI_TEXTURE_LAYOUT_CAPS data = {
             .DeviceDependentLayoutCount = 0,
@@ -245,6 +290,35 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_D3D12_OPTIONS: {
+#if D12_UMD_TARGETS_WDDM23
+      if (arguments->DataSize ==
+          sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0032)) {
+         const D3D12DDI_D3D12_OPTIONS_DATA_0032 data = {
+            .ResourceBindingTier =
+               (D3D12DDI_RESOURCE_BINDING_TIER)caps->resource_binding_tier,
+            .ConservativeRasterizationTier =
+               D3D12DDI_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED,
+            .TiledResourcesTier =
+               (D3D12DDI_TILED_RESOURCES_TIER)caps->tiled_resources_tier,
+            .CrossNodeSharingTier =
+               D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
+            .VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation =
+               FALSE,
+            .OutputMergerLogicOp = FALSE,
+            .ResourceHeapTier =
+               (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
+            .DepthBoundsTestSupported = FALSE,
+            .ProgrammableSamplePositionsTier =
+               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+            .CopyQueueTimestampQueriesSupported =
+               caps->copy_queue_timestamp_queries,
+            .WriteBufferImmediateQueueFlags =
+               d12_umd_immediate_write_queue_flags(
+                  caps->write_buffer_immediate_support_flags),
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
       const D3D12DDI_D3D12_OPTIONS_DATA_0003 data = {
          .ResourceBindingTier =
             (D3D12DDI_RESOURCE_BINDING_TIER)caps->resource_binding_tier,

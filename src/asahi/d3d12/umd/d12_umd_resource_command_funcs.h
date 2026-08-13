@@ -41,3 +41,7 @@ bool d12_umd_resource_subresource_extent(
 
 void d12_umd_install_resource_command_list_functions(
    D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 *table);
+#if D12_UMD_TARGETS_WDDM23
+void d12_umd_install_resource_command_list_functions_0032(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table);
+#endif

@@ -146,6 +146,34 @@ _Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0013,
                   91u * sizeof(void *),
                "DDI 0013 debug-allocation table offset changed");
 #endif
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0030) ==
+                  92u * sizeof(void *),
+               "WDK 26100 DDI 0030 device table width changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0030,
+                        pfnCalcPrivateCommandQueueSize) ==
+                  26u * sizeof(void *),
+               "DDI 0030 command-queue table offset changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0030,
+                        pfnCheckResourceAllocationInfo) ==
+                  75u * sizeof(void *),
+               "DDI 0030 allocation-info table offset changed");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0030,
+                        pfnGetDebugAllocationInfo) ==
+                  91u * sizeof(void *),
+               "DDI 0030 debug-allocation table offset changed");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032) ==
+                  57u * sizeof(void *),
+               "WDK 26100 DDI 0032 command-list table width changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032,
+                        pfnAtomicCopyBufferRegion) ==
+                  51u * sizeof(void *),
+               "DDI 0032 command-list extension offset changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032,
+                        pfnWriteBufferImmediate) ==
+                  56u * sizeof(void *),
+               "DDI 0032 immediate-write offset changed");
+#endif
 _Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0010,
                         pfnCalcPrivatePipelineLibrarySize) ==
                   85u * sizeof(void *),
@@ -173,7 +201,9 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
    switch (table_type) {
    case D3D12DDI_TABLE_TYPE_DEVICE_CORE:
       if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)
-#if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM23
+          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0030)
+#elif D12_UMD_TARGETS_WDDM21
           && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0010) &&
           table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0013)
 #endif
@@ -211,7 +241,15 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
             d12_umd_install_pipeline_device_functions_0010(&release1);
             if (table_size == sizeof(release1)) {
                memcpy(table, &release1, sizeof(release1));
-#if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM23
+            } else {
+               D3D12DDI_DEVICE_FUNCS_CORE_0030 *release3 = table;
+               memcpy(release3, &release1, sizeof(release1));
+               d12_umd_install_state_device_functions_0013(
+                  (D3D12DDI_DEVICE_FUNCS_CORE_0013 *)release3);
+               d12_umd_install_device_core_functions_0030(release3);
+               d12_umd_install_pipeline_device_functions_0030(release3);
+#elif D12_UMD_TARGETS_WDDM21
             } else {
                D3D12DDI_DEVICE_FUNCS_CORE_0013 *release1_root11 = table;
                memcpy(release1_root11, &release1, sizeof(release1));
@@ -223,17 +261,34 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
       }
       return S_OK;
    case D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D:
-      if (table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0003))
+      if (table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0003)
+#if D12_UMD_TARGETS_WDDM23
+          && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)
+#endif
+      )
          return E_INVALIDARG;
-      memset(table, 0, table_size);
-      d12_umd_fill_command_list_traps(table);
-      d12_umd_install_command_list_functions(table);
-      d12_umd_install_state_command_list_functions(table);
-      d12_umd_install_pipeline_command_list_functions(table);
-      d12_umd_install_descriptor_command_list_functions(table);
-      d12_umd_install_query_command_list_functions(table);
-      d12_umd_install_resource_command_list_functions(table);
-      d12_umd_install_present_command_list_functions(table);
+      {
+         D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 baseline;
+         memset(&baseline, 0, sizeof(baseline));
+         d12_umd_fill_command_list_traps(&baseline);
+         d12_umd_install_command_list_functions(&baseline);
+         d12_umd_install_state_command_list_functions(&baseline);
+         d12_umd_install_pipeline_command_list_functions(&baseline);
+         d12_umd_install_descriptor_command_list_functions(&baseline);
+         d12_umd_install_query_command_list_functions(&baseline);
+         d12_umd_install_resource_command_list_functions(&baseline);
+         d12_umd_install_present_command_list_functions(&baseline);
+         memset(table, 0, table_size);
+         memcpy(table, &baseline, sizeof(baseline));
+#if D12_UMD_TARGETS_WDDM23
+         if (table_size == sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)) {
+            D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *release3 = table;
+            d12_umd_install_command_list_functions_0032(release3);
+            d12_umd_install_resource_command_list_functions_0032(release3);
+            d12_umd_install_present_command_list_functions_0032(release3);
+         }
+#endif
+      }
       return S_OK;
    case D3D12DDI_TABLE_TYPE_COMMAND_QUEUE_3D:
       if (table_size != sizeof(D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001))

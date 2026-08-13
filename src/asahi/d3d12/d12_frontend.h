@@ -483,6 +483,17 @@ struct d12_frontend_box {
    int32_t back;
 };
 
+struct d12_frontend_write_buffer_immediate_parameter {
+   uint64_t destination;
+   uint32_t value;
+};
+
+enum d12_frontend_write_buffer_immediate_mode {
+   D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT = 0,
+   D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_MARKER_IN = 1,
+   D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_MARKER_OUT = 2,
+};
+
 /* Sparse/tiled-resource descriptions.  These deliberately mirror the public
  * D3D12 and WDK DDI scalar encodings without exposing either API's headers at
  * the frontend seam.  The Windows ABI tests pin every size, offset and flag

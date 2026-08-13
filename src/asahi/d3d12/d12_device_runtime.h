@@ -149,6 +149,15 @@ void d12_device_runtime_command_list_copy_texture_region(
 void d12_device_runtime_command_list_resolve_subresource(
    void *list, void *destination, uint32_t destination_subresource,
    void *source, uint32_t source_subresource, uint32_t format);
+HRESULT d12_device_runtime_command_list_resolve_subresource_region(
+   void *list, void *destination, uint32_t destination_subresource,
+   uint32_t destination_x, uint32_t destination_y, void *source,
+   uint32_t source_subresource, const struct d12_frontend_rect *source_rect,
+   uint32_t format, uint32_t resolve_mode);
+HRESULT d12_device_runtime_command_list_write_buffer_immediate(
+   void *list, uint32_t count,
+   const struct d12_frontend_write_buffer_immediate_parameter *parameters,
+   const uint32_t *modes);
 HRESULT d12_device_runtime_command_list_present_blt(
    void *list, void *destination, void *source,
    const struct d12_frontend_present_blt_desc *desc);

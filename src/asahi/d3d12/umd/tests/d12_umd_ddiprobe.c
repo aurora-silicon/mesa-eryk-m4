@@ -23,6 +23,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if D12_UMD_TARGETS_WDDM23
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0030 d12_test_extended_device_table;
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0030 d12_test_root_device_table;
+typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 d12_test_command_list_table;
+typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0022 d12_test_core_callbacks;
+typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014
+   d12_test_debug_kmt_allocation_info;
+#else
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0010 d12_test_extended_device_table;
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0013 d12_test_root_device_table;
+typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 d12_test_command_list_table;
+typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 d12_test_core_callbacks;
+typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012
+   d12_test_debug_kmt_allocation_info;
+#endif
+
 #define TEST_RT_QUEUE ((HANDLE)(uintptr_t)0x7000)
 #define TEST_CONTEXT ((HANDLE)(uintptr_t)0x7100)
 #define TEST_PAGING_QUEUE ((D3DKMT_HANDLE)0x7200)
@@ -88,6 +104,11 @@ static uint32_t expected_root_descriptor_flags;
 static unsigned rtv_create_calls;
 static void *rtv_resource;
 static uint64_t rtv_destination;
+#if D12_UMD_TARGETS_WDDM23
+static unsigned revision_immediate_write_calls;
+static unsigned revision_ranged_barrier_calls;
+static unsigned revision_resolve_region_calls;
+#endif
 static struct d12_frontend_rtv_desc rtv_desc;
 static unsigned dsv_create_calls;
 static void *dsv_resource;
@@ -551,6 +572,64 @@ static const struct d12_umd_renderer_ops test_root11_renderer_ops = {
    .create_root_signature = test_create_root_signature,
    .destroy_root_signature = test_destroy_root_signature,
 };
+
+#if D12_UMD_TARGETS_WDDM23
+static HRESULT
+test_revision_write_buffer_immediate(
+   void *list, uint32_t count,
+   const struct d12_frontend_write_buffer_immediate_parameter *parameters,
+   const uint32_t *modes)
+{
+   if (list != (void *)(uintptr_t)1 || count != 2 || !parameters || !modes ||
+       parameters[0].destination != UINT64_C(0x2000000040) ||
+       parameters[0].value != UINT32_C(0x12345678) ||
+       parameters[1].destination != UINT64_C(0x2000000080) ||
+       parameters[1].value != UINT32_C(0xabcdef01) ||
+       modes[0] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT ||
+       modes[1] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_MARKER_OUT)
+      return E_INVALIDARG;
+   ++revision_immediate_write_calls;
+   return S_OK;
+}
+
+static void
+test_revision_resource_barriers(
+   void *list, uint32_t count,
+   const struct d12_frontend_resource_barrier *barriers)
+{
+   if (list == (void *)(uintptr_t)1 && count == 1 && barriers &&
+       barriers[0].type == D12_FRONTEND_BARRIER_UAV &&
+       barriers[0].flags == 0 && !barriers[0].uav.resource)
+      ++revision_ranged_barrier_calls;
+}
+
+static HRESULT
+test_revision_resolve_subresource_region(
+   void *list, void *destination, uint32_t destination_subresource,
+   uint32_t destination_x, uint32_t destination_y, void *source,
+   uint32_t source_subresource, const struct d12_frontend_rect *source_rect,
+   uint32_t format, uint32_t resolve_mode)
+{
+   if (list != (void *)(uintptr_t)1 ||
+       destination != TEST_BLT_DESTINATION || source != TEST_BLT_SOURCE ||
+       destination_subresource != 1 || destination_x != 4 ||
+       destination_y != 8 || source_subresource != 2 || !source_rect ||
+       source_rect->left != 1 || source_rect->top != 2 ||
+       source_rect->right != 9 || source_rect->bottom != 10 ||
+       format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+       resolve_mode != D3D12DDI_RESOLVE_MODE_AVERAGE)
+      return E_INVALIDARG;
+   ++revision_resolve_region_calls;
+   return S_OK;
+}
+
+static const struct d12_umd_renderer_ops test_revision_renderer_ops = {
+   .resource_barriers = test_revision_resource_barriers,
+   .resolve_subresource_region =
+      test_revision_resolve_subresource_region,
+   .write_buffer_immediate = test_revision_write_buffer_immediate,
+};
+#endif
 
 static void
 test_create_render_target_view(
@@ -1363,7 +1442,8 @@ wmain(int argc, wchar_t **argv)
    {
       UINT32 count = 0;
       UINT64 versions[4] = {0};
-      const UINT32 expected_count = D12_UMD_TARGETS_WDDM21 ? 4u : 1u;
+      const UINT32 expected_count = D12_UMD_TARGETS_WDDM23 ? 2u :
+         (D12_UMD_TARGETS_WDDM21 ? 4u : 1u);
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, NULL);
       require_result(result == S_OK && count == expected_count,
@@ -1379,7 +1459,10 @@ wmain(int argc, wchar_t **argv)
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, versions);
       require_result(result == S_OK && count == expected_count &&
-#if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM23
+                        versions[0] == D3D12DDI_SUPPORTED_0032 &&
+                        versions[1] == D3D12DDI_SUPPORTED_0003,
+#elif D12_UMD_TARGETS_WDDM21
                         versions[0] == D3D12DDI_SUPPORTED_0013 &&
                         versions[1] == D3D12DDI_SUPPORTED_0011 &&
                         versions[2] == D3D12DDI_SUPPORTED_0010 &&
@@ -1430,6 +1513,31 @@ wmain(int argc, wchar_t **argv)
                         data.ResourceHeapTier == 1,
                      "D3D12 option caps");
    }
+
+#if D12_UMD_TARGETS_WDDM23
+   {
+      D3D12DDI_D3D12_OPTIONS_DATA_0032 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_D3D12_OPTIONS,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK && data.ResourceBindingTier == 1 &&
+            data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            !data.DepthBoundsTestSupported &&
+            data.ProgrammableSamplePositionsTier ==
+               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED &&
+            data.CopyQueueTimestampQueriesSupported &&
+            data.WriteBufferImmediateQueueFlags ==
+               (D3D12DDI_COMMAND_QUEUE_FLAG_3D |
+                D3D12DDI_COMMAND_QUEUE_FLAG_COMPUTE |
+                D3D12DDI_COMMAND_QUEUE_FLAG_COPY),
+         "DDI 0032 cumulative option caps");
+   }
+#endif
 
    {
       D3D12DDI_3DPIPELINELEVEL data = 0;
@@ -1554,11 +1662,11 @@ wmain(int argc, wchar_t **argv)
          .Flags = D3D12DDI_CREATE_DEVICE_FLAG_NONE,
       };
       D3D12DDI_DEVICE_FUNCS_CORE_0003 device_table;
-      D3D12DDI_DEVICE_FUNCS_CORE_0010 release1_table;
+      d12_test_extended_device_table release1_table;
 #if D12_UMD_TARGETS_WDDM21
-      D3D12DDI_DEVICE_FUNCS_CORE_0013 root11_table;
+      d12_test_root_device_table root11_table;
 #endif
-      D3D12DDI_COMMAND_LIST_FUNCS_3D_0003 command_list_table;
+      d12_test_command_list_table command_list_table;
       D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 command_queue_table;
 #if D12_UMD_TARGETS_WDDM21
       DXGI1_5_DDI_BASE_FUNCTIONS dxgi_table;
@@ -1577,7 +1685,7 @@ wmain(int argc, wchar_t **argv)
 #endif
       };
       D3DDDI_DEVICECALLBACKS kernel_callbacks;
-      D3D12DDI_CORELAYER_DEVICECALLBACKS_0003 core_callbacks;
+      d12_test_core_callbacks core_callbacks;
       D3D12DDIARG_CREATEDEVICE_0003 create_arguments;
       D3D12DDI_HDEVICE driver_device;
       SIZE_T device_size = functions.pfnCalcPrivateDeviceSize(
@@ -1595,9 +1703,11 @@ wmain(int argc, wchar_t **argv)
          &release1_table, sizeof(release1_table), 0,
          (D3D12DDI_HRTTABLE){0});
 #if D12_UMD_TARGETS_WDDM21
-      require_result(result == S_OK, "fill Release 1 device core table");
-      require_pointer_slots(&release1_table, 91, SIZE_MAX, SIZE_MAX,
-                            "Release 1 device core table");
+      require_result(result == S_OK, "fill extended device core table");
+      require_pointer_slots(&release1_table,
+                            D12_UMD_TARGETS_WDDM23 ? 92 : 91,
+                            SIZE_MAX, SIZE_MAX,
+                            "extended device core table");
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DEVICE_CORE,
          &root11_table, sizeof(root11_table), 0,
@@ -1616,7 +1726,9 @@ wmain(int argc, wchar_t **argv)
          &command_list_table, sizeof(command_list_table), 0,
          (D3D12DDI_HRTTABLE){.handle = TEST_RT_COMMAND_LIST_TABLE});
       require_result(result == S_OK, "fill command-list table");
-      require_pointer_slots(&command_list_table, 51, SIZE_MAX, SIZE_MAX,
+      require_pointer_slots(&command_list_table,
+                            D12_UMD_TARGETS_WDDM23 ? 57 : 51,
+                            SIZE_MAX, SIZE_MAX,
                             "command-list table");
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D,
@@ -1698,8 +1810,12 @@ wmain(int argc, wchar_t **argv)
          .Version = D3D12DDI_BUILD_VERSION,
          .pKTCallbacks = &kernel_callbacks,
          .hDrvDevice = driver_device,
-         .p12UMCallbacks = &core_callbacks,
       };
+#if D12_UMD_TARGETS_WDDM23
+      create_arguments.p12UMCallbacks_0022 = &core_callbacks;
+#else
+      create_arguments.p12UMCallbacks = &core_callbacks;
+#endif
       core_callbacks.pfnSetCommandListErrorCb = NULL;
       result = functions.pfnCreateDevice(open_arguments.hAdapter,
                                          &create_arguments);
@@ -1744,6 +1860,73 @@ wmain(int argc, wchar_t **argv)
                last_set_command_list_error == E_NOTIMPL &&
                set_error_calls == 0,
             "missing recorder operation remains command-list scoped");
+
+#if D12_UMD_TARGETS_WDDM23
+         {
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
+            const struct d12_umd_renderer_ops *saved_renderer_ops =
+               private_device->renderer_ops;
+            struct d12_umd_resource destination_resource = {
+               .signature = D12_UMD_RESOURCE_SIGNATURE,
+               .device = private_device,
+               .backend = TEST_BLT_DESTINATION,
+            };
+            struct d12_umd_resource source_resource = {
+               .signature = D12_UMD_RESOURCE_SIGNATURE,
+               .device = private_device,
+               .backend = TEST_BLT_SOURCE,
+            };
+            D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032 parameters[2] = {
+               {.Dst = UINT64_C(0x2000000040), .Value = UINT32_C(0x12345678)},
+               {.Dst = UINT64_C(0x2000000080), .Value = UINT32_C(0xabcdef01)},
+            };
+            D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_0032 modes[2] = {
+               D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_DEFAULT,
+               D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT,
+            };
+            D3D12DDIARG_RESOURCE_BARRIER_0022 ranged_barrier = {
+               .Type = D3D12DDI_RESOURCE_BARRIER_TYPE_0022_RANGED,
+               .Flags = D3D12DDI_RESOURCE_BARRIER_FLAG_0022_ALIASING,
+               .Ranged = {
+                  .hResource = {0},
+                  .Subresource = 0,
+                  .Range = {.Begin = 64, .End = 128},
+               },
+            };
+            D3D12DDI_RECT source_rect = {1, 2, 9, 10};
+
+            private_device->renderer_ops = &test_revision_renderer_ops;
+            revision_immediate_write_calls = 0;
+            revision_ranged_barrier_calls = 0;
+            revision_resolve_region_calls = 0;
+            set_command_list_error_calls = 0;
+            command_list_table.pfnWriteBufferImmediate(
+               fake_handle, ARRAYSIZE(parameters), parameters, modes);
+            command_list_table.pfnResourceBarrier(fake_handle, 1,
+                                                   &ranged_barrier);
+            command_list_table.pfnResourceResolveSubresourceRegion(
+               fake_handle,
+               (D3D12DDI_HRESOURCE){.pDrvPrivate = &destination_resource},
+               1, 4, 8,
+               (D3D12DDI_HRESOURCE){.pDrvPrivate = &source_resource},
+               2, &source_rect, DXGI_FORMAT_R8G8B8A8_UNORM,
+               D3D12DDI_RESOLVE_MODE_AVERAGE);
+            require_result(
+               revision_immediate_write_calls == 1 &&
+                  revision_ranged_barrier_calls == 1 &&
+                  revision_resolve_region_calls == 1 &&
+                  set_command_list_error_calls == 0,
+               "DDI 0032 command translation");
+            command_list_table.pfnAtomicCopyBufferRegion(
+               fake_handle, (D3D12DDIARG_BUFFER_PLACEMENT){0},
+               (D3D12DDIARG_BUFFER_PLACEMENT){0}, 4);
+            require_result(set_command_list_error_calls == 1 &&
+                              last_set_command_list_error == E_NOTIMPL,
+                           "unadvertised atomic copy fails explicitly");
+            private_device->renderer_ops = saved_renderer_ops;
+         }
+#endif
       }
 
 #if D12_UMD_TARGETS_WDDM21
@@ -3137,7 +3320,7 @@ wmain(int argc, wchar_t **argv)
                .Type = D3D12DDI_HT_0012_RESOURCE,
             };
             D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 va_info;
-            D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+            d12_test_debug_kmt_allocation_info kmt_info;
             UINT va_count = 1;
             UINT kmt_count = 1;
 
@@ -3484,7 +3667,7 @@ wmain(int argc, wchar_t **argv)
                .Type = D3D12DDI_HT_HEAP,
             };
             D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 va_info;
-            D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+            d12_test_debug_kmt_allocation_info kmt_info;
             UINT va_count = 0;
             UINT kmt_count = 0;
 
@@ -4674,7 +4857,7 @@ wmain(int argc, wchar_t **argv)
                {
                   D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012
                      va_info;
-                  D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0012 kmt_info;
+                  d12_test_debug_kmt_allocation_info kmt_info;
                   UINT va_count = 1;
                   UINT kmt_count = 1;
 

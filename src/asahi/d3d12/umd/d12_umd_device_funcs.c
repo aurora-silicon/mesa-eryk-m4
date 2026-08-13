@@ -605,6 +605,55 @@ d12_umd_create_command_queue(
    return result;
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static bool
+d12_umd_translate_command_queue_0023(
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0023 *source,
+   D3D12DDI_HCOMMANDQUEUE driver_queue,
+   D3D12DDI_HRTCOMMANDQUEUE runtime_queue,
+   D3D12DDIARG_CREATECOMMANDQUEUE_0001 *destination)
+{
+   if (!source || !destination ||
+       source->QueueCreationFlags !=
+          D3D12DDI_COMMAND_QUEUE_CREATION_FLAG_NONE)
+      return false;
+   *destination = (D3D12DDIARG_CREATECOMMANDQUEUE_0001){
+      .hDrvCommandQueue = driver_queue,
+      .hRTCommandQueue = runtime_queue,
+      .QueueFlags = source->QueueFlags,
+      .NodeMask = source->NodeMask,
+   };
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_command_queue_size_0023(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0023 *arguments)
+{
+   D3D12DDIARG_CREATECOMMANDQUEUE_0001 baseline;
+   return d12_umd_translate_command_queue_0023(
+             arguments, (D3D12DDI_HCOMMANDQUEUE){0},
+             (D3D12DDI_HRTCOMMANDQUEUE){0}, &baseline)
+             ? d12_umd_calc_private_command_queue_size(handle, &baseline)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_command_queue_0023(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0023 *arguments,
+   D3D12DDI_HCOMMANDQUEUE driver_queue,
+   D3D12DDI_HRTCOMMANDQUEUE runtime_queue)
+{
+   D3D12DDIARG_CREATECOMMANDQUEUE_0001 baseline;
+   if (!d12_umd_translate_command_queue_0023(
+          arguments, driver_queue, runtime_queue, &baseline))
+      return E_INVALIDARG;
+   return d12_umd_create_command_queue(handle, &baseline);
+}
+#endif
+
 static void APIENTRY
 d12_umd_destroy_command_queue(D3D12DDI_HDEVICE handle,
                               D3D12DDI_HCOMMANDQUEUE queue_handle)
@@ -1931,6 +1980,38 @@ fail:
    return result;
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static D3D12DDI_HEAP_AND_RESOURCE_SIZES APIENTRY
+d12_umd_calc_private_heap_resource_sizes_0030(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATEHEAP_0001 *heap_arguments,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session)
+{
+   if (protected_session.pDrvPrivate)
+      return (D3D12DDI_HEAP_AND_RESOURCE_SIZES){0};
+   return d12_umd_calc_private_heap_resource_sizes(
+      handle, heap_arguments, resource_arguments);
+}
+
+static HRESULT APIENTRY
+d12_umd_create_heap_resource_0030(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATEHEAP_0001 *heap_arguments,
+   D3D12DDI_HHEAP heap, D3D12DDI_HRTRESOURCE runtime_resource,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments,
+   const D3D12DDI_CLEAR_VALUES *clear_value,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session,
+   D3D12DDI_HRESOURCE resource)
+{
+   if (protected_session.pDrvPrivate)
+      return E_NOTIMPL;
+   return d12_umd_create_heap_resource(
+      handle, heap_arguments, heap, runtime_resource, resource_arguments,
+      clear_value, resource);
+}
+#endif
+
 static void APIENTRY
 d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
                               D3D12DDI_HHEAP heap_handle,
@@ -2224,6 +2305,29 @@ d12_umd_check_resource_virtual_address(D3D12DDI_HDEVICE handle,
    return resource->allocation.gpu_virtual_address + resource->heap_offset;
 }
 
+static HRESULT
+d12_umd_query_resource_allocation_info(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments,
+   D3D12DDI_RESOURCE_OPTIMIZATION_FLAGS optimization_flags,
+   UINT64 alignment_restriction, UINT visible_node_mask,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO *info)
+{
+   const UINT supported_optimization_flags =
+      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_SHADER_RESOURCE |
+      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_UNORDERED_ACCESS |
+      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_PRIMARY |
+      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_DETERMINISTIC;
+   if (info)
+      memset(info, 0, sizeof(*info));
+   if (!device || !resource_arguments || !info ||
+       ((UINT)optimization_flags & ~supported_optimization_flags))
+      return E_INVALIDARG;
+   return d12_umd_resource_allocation_info(
+      device, resource_arguments, alignment_restriction, visible_node_mask,
+      true, info);
+}
+
 static void APIENTRY
 d12_umd_check_resource_allocation_info(
    D3D12DDI_HDEVICE handle,
@@ -2233,22 +2337,9 @@ d12_umd_check_resource_allocation_info(
    D3D12DDI_RESOURCE_ALLOCATION_INFO *info)
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
-   HRESULT result;
-
-   const UINT supported_optimization_flags =
-      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_SHADER_RESOURCE |
-      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_UNORDERED_ACCESS |
-      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_PRIMARY |
-      D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_DETERMINISTIC;
-   if (info)
-      memset(info, 0, sizeof(*info));
-   if ((UINT)optimization_flags & ~supported_optimization_flags) {
-      d12_umd_set_device_error(device, E_INVALIDARG);
-      return;
-   }
-   result = d12_umd_resource_allocation_info(
-      device, resource_arguments, alignment_restriction, visible_node_mask,
-      true, info);
+   HRESULT result = d12_umd_query_resource_allocation_info(
+      device, resource_arguments, optimization_flags, alignment_restriction,
+      visible_node_mask, info);
    if (FAILED(result))
       d12_umd_set_device_error(device, result);
 }
@@ -2300,12 +2391,11 @@ fail:
    d12_umd_set_device_error(device, result);
 }
 
-static void APIENTRY
-d12_umd_check_existing_resource_allocation_info(
-   D3D12DDI_HDEVICE handle, D3D12DDI_HRESOURCE resource_handle,
+static HRESULT
+d12_umd_query_existing_resource_allocation_info(
+   struct d12_umd_device *device, D3D12DDI_HRESOURCE resource_handle,
    D3D12DDI_RESOURCE_ALLOCATION_INFO *info, D3DKMT_HANDLE *allocation)
 {
-   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_resource *resource = resource_handle.pDrvPrivate;
    HRESULT result;
 
@@ -2315,10 +2405,8 @@ d12_umd_check_existing_resource_allocation_info(
       *allocation = 0;
    if (!device || !resource || !info || !allocation ||
        resource->signature != D12_UMD_RESOURCE_SIGNATURE ||
-       resource->device != device || !resource->allocation.allocation) {
-      d12_umd_set_device_error(device, E_INVALIDARG);
-      return;
-   }
+       resource->device != device || !resource->allocation.allocation)
+      return E_INVALIDARG;
 
    result = d12_umd_resource_allocation_info(
       device, &resource->desc, 0, 1, false, info);
@@ -2326,11 +2414,107 @@ d12_umd_check_existing_resource_allocation_info(
        info->ResourceDataSize >
           resource->allocation.size - resource->heap_offset) {
       memset(info, 0, sizeof(*info));
-      d12_umd_set_device_error(device, FAILED(result) ? result : E_FAIL);
-      return;
+      return FAILED(result) ? result : E_FAIL;
    }
    *allocation = resource->allocation.allocation;
+   return S_OK;
 }
+
+static void APIENTRY
+d12_umd_check_existing_resource_allocation_info(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HRESOURCE resource_handle,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO *info, D3DKMT_HANDLE *allocation)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   const HRESULT result = d12_umd_query_existing_resource_allocation_info(
+      device, resource_handle, info, allocation);
+   if (FAILED(result))
+      d12_umd_set_device_error(device, result);
+}
+
+#if D12_UMD_TARGETS_WDDM23
+static bool
+d12_umd_translate_allocation_info_0022(
+   const D3D12DDI_RESOURCE_ALLOCATION_INFO *source,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 *destination)
+{
+   if (!source || !destination ||
+       source->ResourceDataAlignment > UINT32_MAX ||
+       source->AdditionalDataHeaderAlignment1 > UINT32_MAX ||
+       source->AdditionalDataAlignment > UINT32_MAX)
+      return false;
+   memset(destination, 0, sizeof(*destination));
+   destination->ResourceDataSize = source->ResourceDataSize;
+   destination->AdditionalDataHeaderSize = source->AdditionalDataHeaderSize;
+   destination->AdditionalDataSize = source->AdditionalDataSize;
+   destination->ResourceDataAlignment =
+      (UINT32)source->ResourceDataAlignment;
+   destination->AdditionalDataHeaderAlignment =
+      source->AdditionalDataHeaderAlignment1;
+   destination->AdditionalDataAlignment =
+      (UINT32)source->AdditionalDataAlignment;
+   destination->Layout = source->Layout;
+   destination->MipLevelSwizzleTransition[0] =
+      source->MipLevelSwizzleTransition;
+   memcpy(&destination->MipLevelSwizzleTransition[1],
+          source->AdditionalMipLevelSwizzleTransitionsArray,
+          sizeof(source->AdditionalMipLevelSwizzleTransitionsArray));
+   return true;
+}
+
+static void APIENTRY
+d12_umd_check_resource_allocation_info_0022(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments,
+   D3D12DDI_RESOURCE_OPTIMIZATION_FLAGS optimization_flags,
+   UINT32 alignment_restriction, UINT visible_node_mask,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 *info)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDI_RESOURCE_ALLOCATION_INFO baseline;
+   HRESULT result;
+
+   if (!info)
+      return;
+   memset(&baseline, 0, sizeof(baseline));
+   memset(info, 0, sizeof(*info));
+   result = d12_umd_query_resource_allocation_info(
+      device, resource_arguments, optimization_flags,
+      alignment_restriction, visible_node_mask, &baseline);
+   if (SUCCEEDED(result) &&
+       !d12_umd_translate_allocation_info_0022(&baseline, info))
+      result = E_FAIL;
+   if (FAILED(result)) {
+      memset(info, 0, sizeof(*info));
+      d12_umd_set_device_error(device, result);
+   }
+}
+
+static void APIENTRY
+d12_umd_check_existing_resource_allocation_info_0022(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HRESOURCE resource,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 *info)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDI_RESOURCE_ALLOCATION_INFO baseline;
+   D3DKMT_HANDLE allocation = 0;
+   HRESULT result;
+
+   if (!info)
+      return;
+   memset(&baseline, 0, sizeof(baseline));
+   memset(info, 0, sizeof(*info));
+   result = d12_umd_query_existing_resource_allocation_info(
+      device, resource, &baseline, &allocation);
+   if (SUCCEEDED(result) &&
+       !d12_umd_translate_allocation_info_0022(&baseline, info))
+      result = E_FAIL;
+   if (FAILED(result)) {
+      memset(info, 0, sizeof(*info));
+      d12_umd_set_device_error(device, result);
+   }
+}
+#endif
 
 static D3DKMT_HANDLE APIENTRY
 d12_umd_check_resource_allocation_handle(
@@ -2529,6 +2713,67 @@ d12_umd_get_debug_allocation_info_0012(
       }
    }
 }
+
+#if D12_UMD_TARGETS_WDDM23
+static void APIENTRY
+d12_umd_get_debug_allocation_info_0014(
+   D3D12DDI_HDEVICE handle, D3D12DDI_HANDLE_AND_TYPE object,
+   UINT *virtual_address_count,
+   D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012 *virtual_addresses,
+   UINT *kmt_count,
+   D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014 *kmt_allocations)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   const UINT virtual_address_capacity =
+      virtual_address_count ? *virtual_address_count : 0;
+   const UINT kmt_capacity = kmt_count ? *kmt_count : 0;
+   D3DKMT_HANDLE allocation = 0;
+   uint64_t start = 0;
+   uint64_t size = 0;
+   uint64_t allocation_offset = 0;
+
+   if (!virtual_address_count || !kmt_count)
+      return;
+   *virtual_address_count = 0;
+   *kmt_count = 0;
+   if (!d12_umd_debug_object_info(device, &object, &allocation, &start,
+                                  &size)) {
+      d12_umd_set_device_error(device, E_INVALIDARG);
+      return;
+   }
+   if (object.Type == D3D12DDI_HT_0012_RESOURCE) {
+      const struct d12_umd_resource *resource = object.Handle;
+      allocation_offset = resource->heap_offset;
+   }
+   if ((start && size && start > UINT64_MAX - size) ||
+       (allocation_offset && size > UINT64_MAX - allocation_offset)) {
+      d12_umd_set_device_error(device, E_FAIL);
+      return;
+   }
+   if (allocation) {
+      *kmt_count = 1;
+      if (kmt_allocations && kmt_capacity) {
+         kmt_allocations[0] = (D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014){
+            .PhysicalAdapterIndex = 0,
+            .hAllocation = allocation,
+            .Offset = allocation_offset,
+            .Size = size,
+         };
+      }
+   }
+   if (start && size) {
+      *virtual_address_count = 1;
+      if (virtual_addresses && virtual_address_capacity) {
+         virtual_addresses[0] =
+            (D3D12DDI_DEBUG_VIRTUAL_ADDRESS_ALLOCATION_INFO_0012){
+               .PhysicalAdapterIndex = 0,
+               .StartAddress = start,
+               .EndAddress = start + size,
+            };
+      }
+   }
+}
+#endif
 #endif
 
 #if D12_UMD_TARGETS_WDDM21
@@ -2911,6 +3156,26 @@ d12_umd_install_device_core_functions_0013(
 {
    table->pfnGetDebugAllocationInfo =
       d12_umd_get_debug_allocation_info_0012;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM23
+void
+d12_umd_install_device_core_functions_0030(
+   D3D12DDI_DEVICE_FUNCS_CORE_0030 *table)
+{
+   table->pfnCalcPrivateCommandQueueSize =
+      d12_umd_calc_private_command_queue_size_0023;
+   table->pfnCreateCommandQueue = d12_umd_create_command_queue_0023;
+   table->pfnCalcPrivateHeapAndResourceSizes =
+      d12_umd_calc_private_heap_resource_sizes_0030;
+   table->pfnCreateHeapAndResource = d12_umd_create_heap_resource_0030;
+   table->pfnCheckResourceAllocationInfo =
+      d12_umd_check_resource_allocation_info_0022;
+   table->pfnCheckExistingResourceAllocationInfo =
+      d12_umd_check_existing_resource_allocation_info_0022;
+   table->pfnGetDebugAllocationInfo =
+      d12_umd_get_debug_allocation_info_0014;
 }
 #endif
 

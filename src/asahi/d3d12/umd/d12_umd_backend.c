@@ -414,6 +414,29 @@ d12_umd_backend_resolve_subresource(
 }
 
 static HRESULT
+d12_umd_backend_resolve_subresource_region(
+   void *list, void *destination, uint32_t destination_subresource,
+   uint32_t destination_x, uint32_t destination_y, void *source,
+   uint32_t source_subresource, const struct d12_frontend_rect *source_rect,
+   uint32_t format, uint32_t resolve_mode)
+{
+   return d12_device_runtime_command_list_resolve_subresource_region(
+      list, destination, destination_subresource, destination_x,
+      destination_y, source, source_subresource, source_rect, format,
+      resolve_mode);
+}
+
+static HRESULT
+d12_umd_backend_write_buffer_immediate(
+   void *list, uint32_t count,
+   const struct d12_frontend_write_buffer_immediate_parameter *parameters,
+   const uint32_t *modes)
+{
+   return d12_device_runtime_command_list_write_buffer_immediate(
+      list, count, parameters, modes);
+}
+
+static HRESULT
 d12_umd_backend_present_blt(
    void *list, void *destination, void *source,
    const struct d12_frontend_present_blt_desc *desc)
@@ -875,6 +898,9 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .copy_tiles = d12_umd_backend_copy_tiles,
    .copy_texture_region = d12_umd_backend_copy_texture_region,
    .resolve_subresource = d12_umd_backend_resolve_subresource,
+   .resolve_subresource_region =
+      d12_umd_backend_resolve_subresource_region,
+   .write_buffer_immediate = d12_umd_backend_write_buffer_immediate,
    .present_blt = d12_umd_backend_present_blt,
    .clear_render_target = d12_umd_backend_clear_render_target,
    .clear_depth_stencil = d12_umd_backend_clear_depth_stencil,

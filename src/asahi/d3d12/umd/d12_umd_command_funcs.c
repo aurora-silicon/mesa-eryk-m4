@@ -551,6 +551,117 @@ d12_umd_set_stencil_ref(D3D12DDI_HCOMMANDLIST list_handle, UINT reference)
    list->device->renderer_ops->set_stencil_ref(list->backend, reference);
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static void APIENTRY
+d12_umd_atomic_copy_buffer_region_unsupported(
+   D3D12DDI_HCOMMANDLIST list_handle,
+   D3D12DDIARG_BUFFER_PLACEMENT destination,
+   D3D12DDIARG_BUFFER_PLACEMENT source, UINT64 bytes)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   (void)destination;
+   (void)source;
+   (void)bytes;
+   d12_umd_command_list_set_error(list, E_NOTIMPL);
+}
+
+static void APIENTRY
+d12_umd_depth_bounds_unsupported(D3D12DDI_HCOMMANDLIST list_handle,
+                                 FLOAT minimum, FLOAT maximum)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   (void)minimum;
+   (void)maximum;
+   d12_umd_command_list_set_error(list, E_NOTIMPL);
+}
+
+static void APIENTRY
+d12_umd_sample_positions_unsupported(
+   D3D12DDI_HCOMMANDLIST list_handle, UINT samples_per_pixel,
+   UINT pixels, D3D12DDI_SAMPLE_POSITION *positions)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   (void)samples_per_pixel;
+   (void)pixels;
+   (void)positions;
+   d12_umd_command_list_set_error(list, E_NOTIMPL);
+}
+
+static void APIENTRY
+d12_umd_protected_session_unsupported(
+   D3D12DDI_HCOMMANDLIST list_handle,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 session)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   (void)session;
+   d12_umd_command_list_set_error(list, E_NOTIMPL);
+}
+
+static void APIENTRY
+d12_umd_write_buffer_immediate(
+   D3D12DDI_HCOMMANDLIST list_handle, UINT count,
+   const D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032 *parameters,
+   const D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_0032 *modes)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   struct d12_frontend_write_buffer_immediate_parameter local_parameters[32];
+   struct d12_frontend_write_buffer_immediate_parameter *translated =
+      local_parameters;
+   uint32_t local_modes[32];
+   uint32_t *translated_modes = local_modes;
+   HRESULT result;
+
+   if (!list || !list->device || !list->backend ||
+       !list->device->renderer_ops ||
+       !list->device->renderer_ops->write_buffer_immediate ||
+       (count && !parameters)) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+   if (count > ARRAYSIZE(local_parameters)) {
+      if ((SIZE_T)count > SIZE_MAX / sizeof(*translated)) {
+         d12_umd_command_list_set_error(list, E_OUTOFMEMORY);
+         return;
+      }
+      translated = HeapAlloc(GetProcessHeap(), 0,
+                             (SIZE_T)count * sizeof(*translated));
+      translated_modes = HeapAlloc(GetProcessHeap(), 0,
+                                   (SIZE_T)count * sizeof(*translated_modes));
+      if (!translated || !translated_modes) {
+         if (translated)
+            HeapFree(GetProcessHeap(), 0, translated);
+         if (translated_modes)
+            HeapFree(GetProcessHeap(), 0, translated_modes);
+         d12_umd_command_list_set_error(list, E_OUTOFMEMORY);
+         return;
+      }
+   }
+   for (UINT index = 0; index < count; ++index) {
+      translated[index] =
+         (struct d12_frontend_write_buffer_immediate_parameter){
+            .destination = parameters[index].Dst,
+            .value = parameters[index].Value,
+         };
+      translated_modes[index] = modes
+         ? (uint32_t)modes[index]
+         : D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT;
+   }
+   result = list->device->renderer_ops->write_buffer_immediate(
+      list->backend, count, translated, modes ? translated_modes : NULL);
+   if (translated != local_parameters) {
+      HeapFree(GetProcessHeap(), 0, translated);
+      HeapFree(GetProcessHeap(), 0, translated_modes);
+   }
+   if (FAILED(result))
+      d12_umd_command_list_set_error(list, result);
+}
+#endif
+
 void
 d12_umd_install_command_device_functions(
    D3D12DDI_DEVICE_FUNCS_CORE_0003 *table)
@@ -584,3 +695,18 @@ d12_umd_install_command_list_functions(
    table->pfnOmSetBlendFactor = d12_umd_set_blend_factor;
    table->pfnOmSetStencilRef = d12_umd_set_stencil_ref;
 }
+
+#if D12_UMD_TARGETS_WDDM23
+void
+d12_umd_install_command_list_functions_0032(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table)
+{
+   table->pfnAtomicCopyBufferRegion =
+      d12_umd_atomic_copy_buffer_region_unsupported;
+   table->pfnOMSetDepthBounds = d12_umd_depth_bounds_unsupported;
+   table->pfnSetSamplePositions = d12_umd_sample_positions_unsupported;
+   table->pfnSetProtectedResourceSession =
+      d12_umd_protected_session_unsupported;
+   table->pfnWriteBufferImmediate = d12_umd_write_buffer_immediate;
+}
+#endif

@@ -14,7 +14,9 @@ TABLES = {
     "D3D12DDI_DEVICE_FUNCS_CORE_0003": 89,
     "D3D12DDI_DEVICE_FUNCS_CORE_0010": 91,
     "D3D12DDI_DEVICE_FUNCS_CORE_0013": 92,
+    "D3D12DDI_DEVICE_FUNCS_CORE_0030": 92,
     "D3D12DDI_COMMAND_LIST_FUNCS_3D_0003": 51,
+    "D3D12DDI_COMMAND_LIST_FUNCS_3D_0032": 57,
     "D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001": 7,
 }
 FIELD = re.compile(r"\b(?:PFN[A-Z0-9_]+|void\*)\s+(pfn[A-Za-z0-9_]+)\s*;")
@@ -68,6 +70,12 @@ def installed_fields(source_dir: Path) -> dict[str, set[str]]:
     )
     installed["D3D12DDI_DEVICE_FUNCS_CORE_0013"].update(
         installed["D3D12DDI_DEVICE_FUNCS_CORE_0010"]
+    )
+    installed["D3D12DDI_DEVICE_FUNCS_CORE_0030"].update(
+        installed["D3D12DDI_DEVICE_FUNCS_CORE_0010"]
+    )
+    installed["D3D12DDI_COMMAND_LIST_FUNCS_3D_0032"].update(
+        installed["D3D12DDI_COMMAND_LIST_FUNCS_3D_0003"]
     )
     return installed
 

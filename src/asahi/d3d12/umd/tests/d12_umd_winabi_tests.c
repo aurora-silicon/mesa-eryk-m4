@@ -40,7 +40,15 @@ _Static_assert(sizeof(D3D12DDIARG_CREATEDEVICE_0003) == 48,
                "CREATEDEVICE_0003 width");
 _Static_assert(sizeof(DXGI_DDI_BASE_ARGS) == 16,
                "DXGI base arguments width");
-#if D12_UMD_TARGETS_WDDM21
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 496,
+               "WDDM 2.3 device callback table width");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS, pfnCreateHwContextCb) == 440,
+               "WDDM 2.3 create-hardware-context callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
+                        pfnSubmitSignalSyncObjectsToHwQueueCb) == 488,
+               "WDDM 2.3 hardware-queue callback tail offset");
+#elif D12_UMD_TARGETS_WDDM21
 _Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 440,
                "WDDM 2.1 device callback table width");
 _Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
@@ -62,14 +70,6 @@ _Static_assert(offsetof(D3DDDICB_RECLAIMALLOCATIONS3, PagingFenceValue) == 32,
                "WDDM 2.1 reclaim fence offset");
 _Static_assert(sizeof(D3DDDICB_SYNCTOKEN) == 24,
                "WDDM 2.1 sync-token arguments width");
-_Static_assert(sizeof(DXGI1_5_DDI_BASE_FUNCTIONS) == 176,
-               "WDDM 2.1 DXGI table width");
-_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
-                        pfnOfferResources1) == 72,
-               "WDDM 2.1 DXGI offer slot offset");
-_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
-                        pfnReclaimResources1) == 168,
-               "WDDM 2.1 DXGI reclaim slot offset");
 #else
 _Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 400,
                "WDDM 2.0 device callback table width");
@@ -80,6 +80,16 @@ _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved1) == 104,
 _Static_assert(offsetof(DXGI1_4_DDI_BASE_FUNCTIONS, pfnReserved2) == 120,
                "DXGI reserved slot 2 offset");
 #endif
+#if D12_UMD_TARGETS_WDDM21
+_Static_assert(sizeof(DXGI1_5_DDI_BASE_FUNCTIONS) == 176,
+               "WDDM 2.1+ DXGI table width");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
+                        pfnOfferResources1) == 72,
+               "WDDM 2.1+ DXGI offer slot offset");
+_Static_assert(offsetof(DXGI1_5_DDI_BASE_FUNCTIONS,
+                        pfnReclaimResources1) == 168,
+               "WDDM 2.1+ DXGI reclaim slot offset");
+#endif
 _Static_assert(offsetof(D3D12DDIARG_CREATEDEVICE_0003, pKTCallbacks) == 16,
                "CREATEDEVICE kernel callbacks offset");
 _Static_assert(offsetof(D3D12DDIARG_CREATEDEVICE_0003, hDrvDevice) == 24,
@@ -88,6 +98,25 @@ _Static_assert(offsetof(D3D12DDIARG_CREATEDEVICE_0003, p12UMCallbacks) == 32,
                "CREATEDEVICE core callbacks offset");
 _Static_assert(sizeof(D3D12DDI_TABLE_REQUEST) == 8,
                "optional table request width");
+#if D12_UMD_TARGETS_WDDM23
+_Static_assert(sizeof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0003) == 96,
+               "baseline core callback width");
+_Static_assert(sizeof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0022) == 112,
+               "DDI 0022 core callback width");
+_Static_assert(offsetof(D3D12DDI_CORELAYER_DEVICECALLBACKS_0022,
+                        pfnAllocateCb) == 96,
+               "DDI 0022 allocation callback offset");
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0030) == 736,
+               "DDI 0030 device table width");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032) == 456,
+               "DDI 0032 command-list table width");
+_Static_assert(sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0032) == 44,
+               "DDI 0032 options width");
+_Static_assert(sizeof(D3D12DDI_RESOURCE_ALLOCATION_INFO_0022) == 48,
+               "DDI 0022 resource allocation info width");
+_Static_assert(sizeof(D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032) == 16,
+               "DDI 0032 immediate-write parameter width");
+#endif
 _Static_assert(sizeof(D3D12DDIARG_CREATECOMMANDALLOCATOR) == 16,
                "CREATECOMMANDALLOCATOR width");
 _Static_assert(offsetof(D3D12DDIARG_CREATECOMMANDALLOCATOR,

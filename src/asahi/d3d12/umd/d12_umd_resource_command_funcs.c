@@ -794,6 +794,150 @@ invalid:
    d12_umd_resource_command_error(list, E_INVALIDARG);
 }
 
+#if D12_UMD_TARGETS_WDDM23
+static void APIENTRY
+d12_umd_resource_barriers_0022(
+   D3D12DDI_HCOMMANDLIST list_handle, UINT count,
+   const D3D12DDIARG_RESOURCE_BARRIER_0022 *barriers)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   struct d12_frontend_resource_barrier local[16];
+   struct d12_frontend_resource_barrier *translated = local;
+
+   if (!d12_umd_command_list_ready(list) || (count && !barriers) ||
+       !list->device->renderer_ops->resource_barriers) {
+      d12_umd_resource_command_error(list, E_INVALIDARG);
+      return;
+   }
+   if (count > ARRAYSIZE(local)) {
+      if ((SIZE_T)count > SIZE_MAX / sizeof(*translated)) {
+         d12_umd_resource_command_error(list, E_OUTOFMEMORY);
+         return;
+      }
+      translated = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                             (SIZE_T)count * sizeof(*translated));
+      if (!translated) {
+         d12_umd_resource_command_error(list, E_OUTOFMEMORY);
+         return;
+      }
+   }
+   for (UINT index = 0; index < count; ++index) {
+      struct d12_umd_resource *resource;
+      const uint32_t flags = (uint32_t)barriers[index].Flags;
+      if (flags & ~(uint32_t)(D3D12DDI_RESOURCE_BARRIER_FLAG_BEGIN_ONLY |
+                              D3D12DDI_RESOURCE_BARRIER_FLAG_END_ONLY |
+                              D3D12DDI_RESOURCE_BARRIER_FLAG_0022_ATOMIC_COPY |
+                              D3D12DDI_RESOURCE_BARRIER_FLAG_0022_ALIASING))
+         goto invalid;
+      translated[index].flags =
+         flags & (uint32_t)(D3D12DDI_RESOURCE_BARRIER_FLAG_BEGIN_ONLY |
+                            D3D12DDI_RESOURCE_BARRIER_FLAG_END_ONLY);
+      switch (barriers[index].Type) {
+      case D3D12DDI_RESOURCE_BARRIER_TYPE_TRANSITION:
+         resource = d12_umd_command_resource(
+            list->device, barriers[index].Transition.hResource, false);
+         if (resource == (void *)(uintptr_t)1)
+            goto invalid;
+         translated[index].type = D12_FRONTEND_BARRIER_TRANSITION;
+         translated[index].transition.resource = resource->backend;
+         translated[index].transition.subresource =
+            barriers[index].Transition.Subresource;
+         translated[index].transition.state_before =
+            (uint32_t)barriers[index].Transition.StateBefore;
+         translated[index].transition.state_after =
+            (uint32_t)barriers[index].Transition.StateAfter;
+         break;
+      case D3D12DDI_RESOURCE_BARRIER_TYPE_UAV:
+         resource = d12_umd_command_resource(
+            list->device, barriers[index].UAV.hResource, true);
+         if (resource == (void *)(uintptr_t)1)
+            goto invalid;
+         translated[index].type = D12_FRONTEND_BARRIER_UAV;
+         translated[index].uav.resource =
+            resource ? resource->backend : NULL;
+         break;
+      case D3D12DDI_RESOURCE_BARRIER_TYPE_0022_RANGED:
+         if (barriers[index].Ranged.Range.End <
+             barriers[index].Ranged.Range.Begin)
+            goto invalid;
+         resource = d12_umd_command_resource(
+            list->device, barriers[index].Ranged.hResource, true);
+         if (resource == (void *)(uintptr_t)1)
+            goto invalid;
+         /* AGX command segments execute in order and end with a cache
+          * barrier. A full-resource UAV barrier is therefore a conservative
+          * lowering of the DDI's narrower flush/invalidate range. */
+         translated[index].type = D12_FRONTEND_BARRIER_UAV;
+         translated[index].uav.resource =
+            resource ? resource->backend : NULL;
+         break;
+      case D3D12DDI_RESOURCE_BARRIER_TYPE_ALIASING:
+      default:
+         goto invalid;
+      }
+   }
+   list->device->renderer_ops->resource_barriers(
+      list->backend, count, translated);
+   if (translated != local)
+      HeapFree(GetProcessHeap(), 0, translated);
+   return;
+
+invalid:
+   if (translated != local)
+      HeapFree(GetProcessHeap(), 0, translated);
+   d12_umd_resource_command_error(list, E_INVALIDARG);
+}
+
+static void APIENTRY
+d12_umd_resolve_subresource_region_0027(
+   D3D12DDI_HCOMMANDLIST list_handle,
+   D3D12DDI_HRESOURCE destination_handle, UINT destination_subresource,
+   UINT destination_x, UINT destination_y,
+   D3D12DDI_HRESOURCE source_handle, UINT source_subresource,
+   D3D12DDI_RECT *source_rect, DXGI_FORMAT format,
+   D3D12DDI_RESOLVE_MODE resolve_mode)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+   struct d12_umd_resource *destination;
+   struct d12_umd_resource *source;
+   struct d12_frontend_rect translated_rect;
+   HRESULT result;
+
+   if (!d12_umd_command_list_ready(list) ||
+       !list->device->renderer_ops->resolve_subresource_region) {
+      d12_umd_resource_command_error(list, E_INVALIDARG);
+      return;
+   }
+   destination = d12_umd_command_resource(list->device, destination_handle,
+                                           false);
+   source = d12_umd_command_resource(list->device, source_handle, false);
+   if (destination == (void *)(uintptr_t)1 ||
+       source == (void *)(uintptr_t)1 ||
+       (source_rect && (source_rect->right < source_rect->left ||
+                        source_rect->bottom < source_rect->top))) {
+      d12_umd_resource_command_error(list, E_INVALIDARG);
+      return;
+   }
+   if (source_rect) {
+      translated_rect = (struct d12_frontend_rect){
+         .left = source_rect->left,
+         .top = source_rect->top,
+         .right = source_rect->right,
+         .bottom = source_rect->bottom,
+      };
+   }
+   result = list->device->renderer_ops->resolve_subresource_region(
+      list->backend, destination->backend, destination_subresource,
+      destination_x, destination_y, source->backend, source_subresource,
+      source_rect ? &translated_rect : NULL, (uint32_t)format,
+      (uint32_t)resolve_mode);
+   if (FAILED(result))
+      d12_umd_resource_command_error(list, result);
+}
+#endif
+
 static bool
 d12_umd_clear_arguments_valid(struct d12_umd_command_list *list,
                               uint64_t descriptor, UINT count,
@@ -923,3 +1067,14 @@ d12_umd_install_resource_command_list_functions(
    table->pfnClearUnorderedAccessViewUint = d12_umd_clear_uav_uint;
    table->pfnClearUnorderedAccessViewFloat = d12_umd_clear_uav_float;
 }
+
+#if D12_UMD_TARGETS_WDDM23
+void
+d12_umd_install_resource_command_list_functions_0032(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table)
+{
+   table->pfnResourceBarrier = d12_umd_resource_barriers_0022;
+   table->pfnResourceResolveSubresourceRegion =
+      d12_umd_resolve_subresource_region_0027;
+}
+#endif
