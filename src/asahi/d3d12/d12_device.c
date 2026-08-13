@@ -833,9 +833,15 @@ d12_root_layout_equal(const struct d12_root_layout *a,
                       const struct d12_root_layout *b)
 {
    if (a->num_params != b->num_params ||
+       a->num_ranges != b->num_ranges ||
        a->num_static_samplers != b->num_static_samplers ||
        a->flags != b->flags ||
        memcmp(a->params, b->params, sizeof(a->params)))
+      return false;
+
+   if (a->num_ranges &&
+       memcmp(a->ranges, b->ranges,
+              a->num_ranges * sizeof(*a->ranges)))
       return false;
 
    return !a->num_static_samplers ||
@@ -944,6 +950,11 @@ d12_library_key_add_root(struct d12_pipeline_library_key *key,
                        sizeof(layout->num_params));
    d12_library_key_add(key, layout->params,
                        layout->num_params * sizeof(layout->params[0]));
+   d12_library_key_add(key, &layout->num_ranges,
+                       sizeof(layout->num_ranges));
+   if (layout->num_ranges)
+      d12_library_key_add(key, layout->ranges,
+                          layout->num_ranges * sizeof(layout->ranges[0]));
    d12_library_key_add(key, &layout->num_static_samplers,
                        sizeof(layout->num_static_samplers));
    if (layout->num_static_samplers)
@@ -1087,13 +1098,15 @@ d12_device_CreateComputePipelineState(
       uint32_t version;
       uint32_t shader_size;
       uint32_t num_params;
+      uint32_t num_ranges;
       uint32_t num_static_samplers;
       uint32_t flags;
    } header = {
       .magic = {'D', '1', '2', 'A', 'G', 'X', 'C', 'S'},
-      .version = 1,
+      .version = 2,
       .shader_size = desc->CS.BytecodeLength,
       .num_params = layout->num_params,
+      .num_ranges = layout->num_ranges,
       .num_static_samplers = layout->num_static_samplers,
       .flags = layout->flags,
    };
@@ -1105,16 +1118,17 @@ d12_device_CreateComputePipelineState(
    }
 
    size_t params_size = layout->num_params * sizeof(layout->params[0]);
+   size_t ranges_size = layout->num_ranges * sizeof(layout->ranges[0]);
    size_t samplers_size =
       layout->num_static_samplers * sizeof(layout->static_samplers[0]);
    if (desc->CS.BytecodeLength >
-       SIZE_MAX - sizeof(header) - params_size - samplers_size) {
+       SIZE_MAX - sizeof(header) - params_size - ranges_size - samplers_size) {
       d12_root_layout_cleanup(&embedded_layout);
       return E_OUTOFMEMORY;
    }
 
    size_t cache_size = sizeof(header) + desc->CS.BytecodeLength +
-                       params_size + samplers_size;
+                       params_size + ranges_size + samplers_size;
    uint8_t *cache = malloc(cache_size);
    if (!cache) {
       d12_root_layout_cleanup(&embedded_layout);
@@ -1128,6 +1142,10 @@ d12_device_CreateComputePipelineState(
    cursor += desc->CS.BytecodeLength;
    memcpy(cursor, layout->params, params_size);
    cursor += params_size;
+   if (ranges_size) {
+      memcpy(cursor, layout->ranges, ranges_size);
+      cursor += ranges_size;
+   }
    if (samplers_size)
       memcpy(cursor, layout->static_samplers, samplers_size);
 

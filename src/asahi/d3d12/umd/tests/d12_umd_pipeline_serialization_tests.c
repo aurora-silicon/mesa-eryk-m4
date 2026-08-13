@@ -288,12 +288,60 @@ test_root_presence_validation(void)
    free(blob);
 }
 
+static void
+test_wide_descriptor_table_round_trip(void)
+{
+   enum { range_count = 17 };
+   static const uint8_t shader[] = {1, 2, 3, 4};
+   struct d12_frontend_descriptor_range ranges[range_count];
+   memset(ranges, 0, sizeof(ranges));
+   for (uint32_t index = 0; index < range_count; ++index) {
+      ranges[index] = (struct d12_frontend_descriptor_range){
+         .range_type = 2,
+         .num_descriptors = 1,
+         .base_shader_register = index,
+         .register_space = 3,
+         .offset_in_descriptors = index,
+      };
+   }
+
+   const struct d12_frontend_root_parameter parameter = {
+      .parameter_type = 0,
+      .shader_visibility = 0,
+      .table = {
+         .num_ranges = range_count,
+         .ranges = ranges,
+      },
+   };
+   const struct d12_frontend_root_signature_desc root = {
+      .num_parameters = 1,
+      .parameters = &parameter,
+   };
+   const struct d12_frontend_compute_pipeline_desc source = {
+      .shader = {.data = shader, .size = sizeof(shader)},
+      .root_signature = (void *)(uintptr_t)1,
+   };
+   struct d12_umd_serialized_pipeline decoded;
+   void *blob = NULL;
+   size_t size = 0;
+
+   assert(d12_umd_pipeline_serialize_compute(&source, &root, &blob, &size));
+   assert(d12_umd_pipeline_deserialize(blob, size, &decoded));
+   assert(decoded.root_signature.parameters[0].table.num_ranges ==
+          range_count);
+   assert(decoded.root_signature.parameters[0].table.ranges[16]
+             .base_shader_register == 16);
+   d12_umd_serialized_pipeline_cleanup(&decoded);
+   free(blob);
+}
+
 int
 main(void)
 {
    test_compute_round_trip();
    test_graphics_round_trip();
    test_root_presence_validation();
+   test_wide_descriptor_table_round_trip();
    puts("d12_umd_pipeline_serialization_tests: PASS");
    return 0;
 }

@@ -1701,6 +1701,38 @@ wmain(int argc, wchar_t **argv)
 
          require_result(root_signature_size > 0,
                         "private root-signature size");
+
+         {
+            D3D12DDI_DESCRIPTOR_RANGE ranges[17] = {0};
+            for (UINT index = 0; index < ARRAYSIZE(ranges); ++index) {
+               ranges[index] = (D3D12DDI_DESCRIPTOR_RANGE){
+                  .RangeType = D3D12DDI_DESCRIPTOR_RANGE_TYPE_CBV,
+                  .NumDescriptors = 1,
+                  .BaseShaderRegister = index,
+                  .RegisterSpace = 2,
+                  .OffsetInDescriptorsFromTableStart = index,
+               };
+            }
+            const D3D12DDI_ROOT_PARAMETER parameter = {
+               .ParameterType = D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE,
+               .DescriptorTable = {
+                  .NumDescriptorRanges = ARRAYSIZE(ranges),
+                  .pDescriptorRanges = ranges,
+               },
+               .ShaderVisibility = D3D12DDI_SHADER_VISIBILITY_ALL,
+            };
+            const D3D12DDI_ROOT_SIGNATURE wide_desc = {
+               .NumParameters = 1,
+               .pRootParameters = &parameter,
+            };
+            root_arguments.pRootSignature = &wide_desc;
+            require_result(
+               device_table.pfnCalcPrivateRootSignatureSize(
+                  driver_device, &root_arguments) == root_signature_size,
+               "descriptor tables may contain more than sixteen ranges");
+            root_arguments.pRootSignature = &root_desc;
+         }
+
          driver_root_signature.pDrvPrivate =
             HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
                       root_signature_size);

@@ -11,7 +11,6 @@
 
 #define D12_UMD_SERIALIZED_MAX_ROOT_PARAMETERS 64u
 #define D12_UMD_SERIALIZED_MAX_ROOT_RANGES 1024u
-#define D12_UMD_SERIALIZED_MAX_RANGES_PER_TABLE 16u
 #define D12_UMD_SERIALIZED_MAX_STATIC_SAMPLERS 64u
 #define D12_UMD_SERIALIZED_MAX_ROOT_DWORDS 64u
 #define D12_UMD_SERIALIZED_ROOT_FLAGS_MASK 0x7fu
@@ -288,9 +287,7 @@ d12_umd_root_counts(const struct d12_frontend_root_signature_desc *root,
           parameter->shader_visibility > 5u)
          return false;
       if (parameter->parameter_type == 0u) {
-         if (parameter->table.num_ranges >
-                D12_UMD_SERIALIZED_MAX_RANGES_PER_TABLE ||
-             (parameter->table.num_ranges && !parameter->table.ranges) ||
+         if ((parameter->table.num_ranges && !parameter->table.ranges) ||
              dword_count == D12_UMD_SERIALIZED_MAX_ROOT_DWORDS)
             return false;
          if (parameter->table.num_ranges >
@@ -617,8 +614,6 @@ d12_umd_serialized_root_valid(
          return false;
       if (parameter->parameter_type == 0u) {
          if (parameter->range_start != next_range ||
-             parameter->range_count >
-                D12_UMD_SERIALIZED_MAX_RANGES_PER_TABLE ||
              parameter->range_count >
                 header->root_range_count - next_range ||
              dword_count == D12_UMD_SERIALIZED_MAX_ROOT_DWORDS)

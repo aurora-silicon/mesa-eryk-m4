@@ -7959,17 +7959,19 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
    if (!rp->num_ranges)
       return;
 
-   unsigned table_class = d12_descriptor_range_class(rp->ranges[0].type);
+   const struct d12_root_range *ranges =
+      d12_root_param_ranges(&rs->layout, rp);
+   unsigned table_class = d12_descriptor_range_class(ranges[0].type);
    if (table_class >= D12_RES_CLASS_COUNT) {
       mesa_loge("descriptor table has unknown range type %u",
-                rp->ranges[0].type);
+                ranges[0].type);
       list->state = D12_LIST_ERROR;
       return;
    }
 
    bool table_is_sampler = table_class == D12_RES_SAMPLER;
    for (unsigned r = 1; r < rp->num_ranges; r++) {
-      unsigned klass = d12_descriptor_range_class(rp->ranges[r].type);
+      unsigned klass = d12_descriptor_range_class(ranges[r].type);
       if (klass >= D12_RES_CLASS_COUNT ||
           (klass == D12_RES_SAMPLER) != table_is_sampler) {
          mesa_loge("descriptor table mixes incompatible heap types");
@@ -8010,7 +8012,7 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
    unsigned root_range_base =
       d12_root_param_range_base(&rs->layout, root_param_index);
    for (unsigned r = 0; r < rp->num_ranges; r++) {
-      const struct d12_root_range *range = &rp->ranges[r];
+      const struct d12_root_range *range = &ranges[r];
       unsigned root_range = root_range_base + r;
 
       unsigned offset = range->offset_in_descriptors;

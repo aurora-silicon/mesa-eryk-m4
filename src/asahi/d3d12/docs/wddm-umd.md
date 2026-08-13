@@ -229,6 +229,16 @@ frontend state and shader containers, so deserialization re-enters the existing
 AGX compiler/cache path. Embedding a portable compiled-code cache record is a
 future latency optimization, not a separate renderer or ABI requirement.
 
+Descriptor tables are not subject to the former sixteen-range implementation
+ceiling. The DDI validates and deep-copies as many as 1024 aggregate ranges per
+root signature, and the shared renderer parses those records into one flat,
+layout-owned allocation rather than embedding a fixed array in every root
+parameter. Parameter records carry stable range offsets, so embedded-root-
+signature comparison, pipeline-library keys and cached compute PSOs remain
+pointer-free and deterministic. The command recorder resolves the same flat
+records without a per-bind allocation. Both the portable cache test and the
+ARM64 callback probe pin acceptance of a seventeen-range table.
+
 Release 1 implements the distinct indexed pipeline-library ABI. The runtime's
 `PipelineIndex` is stored in a sorted lookup table containing the same
 canonical pointer-free PSO snapshots. Library blobs have deterministic

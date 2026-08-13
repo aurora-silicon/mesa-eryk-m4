@@ -704,7 +704,42 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
       return false;
    }
 
+   uint32_t total_ranges = 0;
+
+   /* Descriptor ranges live in one flat allocation owned by the layout.
+    * Count and bounds-check every table before allocating so a malformed
+    * container cannot leave a partially constructed ownership graph. */
+   for (uint32_t i = 0; i < nparams; i++) {
+      const uint8_t *rec = rs + params_off + i * D12_RS_PARAM_SIZE;
+      if (r_u32(rec + 0) != D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+         continue;
+
+      uint32_t payload = r_u32(rec + 8);
+      if ((size_t)payload + D12_RS_TABLE_SIZE > rs_size)
+         goto truncated;
+
+      uint32_t nranges = r_u32(rs + payload);
+      uint32_t ranges_off = r_u32(rs + payload + 4);
+      if (nranges > D12_MAX_ROOT_RANGES - total_ranges) {
+         mesa_loge("root signature has more than %u descriptor ranges",
+                   D12_MAX_ROOT_RANGES);
+         return false;
+      }
+      if (!d12_rs_span(rs_size, ranges_off, nranges, range_size))
+         goto truncated;
+      total_ranges += nranges;
+   }
+
+   if (total_ranges) {
+      out->ranges = calloc(total_ranges, sizeof(*out->ranges));
+      if (!out->ranges) {
+         mesa_loge("out of memory parsing root-signature ranges");
+         return false;
+      }
+   }
+   out->num_ranges = total_ranges;
    out->num_params = nparams;
+   uint32_t next_range = 0;
 
    for (uint32_t i = 0; i < nparams; i++) {
       const uint8_t *rec = rs + params_off + i * D12_RS_PARAM_SIZE;
@@ -722,18 +757,16 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
          uint32_t nranges = r_u32(rs + payload);
          uint32_t ranges_off = r_u32(rs + payload + 4);
 
-         if (nranges > D12_MAX_ROOT_RANGES) {
-            mesa_loge("descriptor table has %u ranges, limit is %u", nranges,
-                      D12_MAX_ROOT_RANGES);
-            return false;
-         }
-         if ((size_t)ranges_off + (size_t)nranges * range_size > rs_size)
+         if (!d12_rs_span(rs_size, ranges_off, nranges, range_size))
             goto truncated;
 
+         rp->first_range = next_range;
          rp->num_ranges = nranges;
+         struct d12_root_range *param_ranges =
+            nranges ? &out->ranges[next_range] : NULL;
          for (uint32_t r = 0; r < nranges; r++) {
             const uint8_t *rr = rs + ranges_off + r * range_size;
-            struct d12_root_range *out_range = &rp->ranges[r];
+            struct d12_root_range *out_range = &param_ranges[r];
 
             out_range->type = r_u32(rr + 0);
             out_range->num_descriptors = r_u32(rr + 4);
@@ -743,6 +776,7 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
             out_range->offset_in_descriptors =
                r_u32(rr + (version == 1 ? 16 : 20));
          }
+         next_range += nranges;
 
          /*
           * A descriptor table is bound to ONE heap, and D3D12 has two heap
@@ -760,7 +794,8 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
             bool has_sampler = false, has_other = false;
 
             for (uint32_t r = 0; r < nranges; r++) {
-               if (rp->ranges[r].type == D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
+               if (param_ranges[r].type ==
+                   D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER)
                   has_sampler = true;
                else
                   has_other = true;
@@ -769,7 +804,7 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
             if (has_sampler && has_other) {
                mesa_loge("descriptor table mixes sampler and non-sampler "
                          "ranges; no single heap can satisfy it");
-               return false;
+               goto invalid;
             }
          }
          break;
@@ -794,7 +829,7 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
 
       default:
          mesa_loge("root parameter %u has unknown type %u", i, rp->type);
-         return false;
+         goto invalid;
       }
    }
 
@@ -802,7 +837,7 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
       out->static_samplers = calloc(nsamplers, sizeof(*out->static_samplers));
       if (!out->static_samplers) {
          mesa_loge("out of memory parsing root-signature static samplers");
-         return false;
+         goto invalid;
       }
 
       for (uint32_t i = 0; i < nsamplers; i++) {
@@ -832,15 +867,17 @@ d12_root_signature_parse(const void *blob, size_t blob_size,
 
 truncated:
    mesa_loge("root signature parameter payload runs past the blob");
+invalid:
+   d12_root_layout_cleanup(out);
    return false;
 }
 
 void
 d12_root_layout_cleanup(struct d12_root_layout *layout)
 {
+   free(layout->ranges);
    free(layout->static_samplers);
-   layout->static_samplers = NULL;
-   layout->num_static_samplers = 0;
+   memset(layout, 0, sizeof(*layout));
 }
 
 /* The public deserializer interfaces expose pointers whose lifetime is tied
@@ -1638,9 +1675,11 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
             rp->visibility);
          break;
 
-      case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
+      case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE: {
+         const struct d12_root_range *ranges =
+            d12_root_param_ranges(layout, rp);
          for (uint32_t r = 0; r < rp->num_ranges; r++) {
-            const struct d12_root_range *range = &rp->ranges[r];
+            const struct d12_root_range *range = &ranges[r];
             unsigned klass = d12_descriptor_range_class(range->type);
             unsigned this_range = root_range++;
             if (klass >= D12_RES_CLASS_COUNT)
@@ -1666,6 +1705,7 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
             }
          }
          break;
+      }
 
       default:
          break;

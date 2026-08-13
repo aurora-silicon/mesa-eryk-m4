@@ -16,7 +16,7 @@
 #include <string.h>
 
 #define D12_UMD_MAX_ROOT_PARAMETERS 64u
-#define D12_UMD_MAX_ROOT_RANGES 16u
+#define D12_UMD_MAX_ROOT_RANGES 1024u
 #define D12_UMD_MAX_STATIC_SAMPLERS 64u
 #define D12_UMD_MAX_ROOT_DWORDS 64u
 #define D12_UMD_ROOT_SIGNATURE_FLAGS_1_0_MASK 0x7fu
@@ -79,12 +79,10 @@ d12_umd_root_signature_arguments_valid(
 
       switch (parameter->ParameterType) {
       case D3D12DDI_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
-         if (parameter->DescriptorTable.NumDescriptorRanges >
-                D12_UMD_MAX_ROOT_RANGES ||
-             (parameter->DescriptorTable.NumDescriptorRanges &&
+         if ((parameter->DescriptorTable.NumDescriptorRanges &&
               !parameter->DescriptorTable.pDescriptorRanges) ||
-             range_count > UINT32_MAX -
-                              parameter->DescriptorTable.NumDescriptorRanges)
+             parameter->DescriptorTable.NumDescriptorRanges >
+                D12_UMD_MAX_ROOT_RANGES - range_count)
             return false;
          for (UINT range_index = 0;
               range_index < parameter->DescriptorTable.NumDescriptorRanges;

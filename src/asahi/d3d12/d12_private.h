@@ -775,7 +775,13 @@ HRESULT d12_query_heap_create_flags(struct d12_device *device,
  * they are the same number, which holds only by coincidence.
  */
 #define D12_MAX_ROOT_PARAMS 64
-#define D12_MAX_ROOT_RANGES 16
+/* Bound aggregate parser storage, not the number of ranges in one table.
+ * Descriptor-table records cost one root DWORD regardless of their range
+ * count, so imposing a small per-table ceiling rejects otherwise legal root
+ * signatures.  1024 matches the pointer-free UMD pipeline-cache format and
+ * keeps malformed shader containers from requesting unbounded allocations.
+ */
+#define D12_MAX_ROOT_RANGES 1024
 
 struct d12_root_range {
    D3D12_DESCRIPTOR_RANGE_TYPE type;
@@ -795,17 +801,26 @@ struct d12_root_param {
    uint32_t num_constants;
 
    /* Descriptor tables */
-   struct d12_root_range ranges[D12_MAX_ROOT_RANGES];
+   uint32_t first_range;
    uint32_t num_ranges;
 };
 
 struct d12_root_layout {
    struct d12_root_param params[D12_MAX_ROOT_PARAMS];
    uint32_t num_params;
+   struct d12_root_range *ranges;
+   uint32_t num_ranges;
    D3D12_STATIC_SAMPLER_DESC1 *static_samplers;
    uint32_t num_static_samplers;
    uint32_t flags;
 };
+
+static inline const struct d12_root_range *
+d12_root_param_ranges(const struct d12_root_layout *layout,
+                      const struct d12_root_param *param)
+{
+   return param->num_ranges ? &layout->ranges[param->first_range] : NULL;
+}
 
 static inline unsigned
 d12_root_param_range_base(const struct d12_root_layout *layout,
