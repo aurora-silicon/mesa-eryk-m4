@@ -126,6 +126,7 @@ objects+=("$out/obj/d3d12agx_umd_version.o")
     "$umd_dir/d3d12agx_umd.def" -Wl,--kill-at -lkernel32
 
 "$cc" "$cflags[@]" \
+    "$contract_dir/agxw_contract.c" \
     "$umd_dir/d12_umd_resource_private.c" \
     "$umd_dir/d12_umd_pipeline_serialization.c" \
     "$umd_dir/tests/d12_umd_ddiprobe.c" \
@@ -142,11 +143,12 @@ objects+=("$out/obj/d3d12agx_umd_version.o")
     -ld3d12 -ldxgi -ldxguid -luuid -lgdi32 -lole32 -lkernel32
 
 "$cc" "$cflags[@]" \
-    "$umd_dir/d12_umd_kmt.c" "$umd_dir/tests/d12_umd_kmtprobe.c" \
+    "$contract_dir/agxw_contract.c" "$umd_dir/d12_umd_kmt.c" \
+    "$umd_dir/tests/d12_umd_kmtprobe.c" \
     -o "$out/d12_umd_kmtprobe.exe" -lkernel32
 
 "$cc" "$cflags[@]" \
-    "$umd_dir/d12_umd_kmt.c" \
+    "$contract_dir/agxw_contract.c" "$umd_dir/d12_umd_kmt.c" \
     "$umd_dir/d12_umd_queue_runtime.c" \
     "$umd_dir/tests/d12_umd_queueprobe.c" \
     -o "$out/d12_umd_queueprobe.exe" -lkernel32

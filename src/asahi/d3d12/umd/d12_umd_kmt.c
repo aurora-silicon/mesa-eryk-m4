@@ -43,6 +43,7 @@ d12_umd_kmt_init(struct d12_umd_kmt *kmt, HANDLE runtime_device,
 HRESULT
 d12_umd_kmt_allocate(struct d12_umd_kmt *kmt, HANDLE runtime_resource,
                      uint64_t size, uint64_t alignment, uint32_t agxw_flags,
+                     uint64_t standard_descriptor,
                      const void *resource_private_data,
                      uint32_t resource_private_data_size,
                      struct d12_umd_allocation *allocation)
@@ -69,7 +70,10 @@ d12_umd_kmt_allocate(struct d12_umd_kmt *kmt, HANDLE runtime_resource,
       .size = size,
       .flags = agxw_flags,
       .align_log2 = d12_umd_log2_u64(alignment),
+      .reserved = standard_descriptor,
    };
+   if (agxw_alloc_private_validate(&private_data, sizeof(private_data)) != 0)
+      return E_INVALIDARG;
    allocation_info = (D3DDDI_ALLOCATIONINFO2){
       .pPrivateDriverData = &private_data,
       .PrivateDriverDataSize = sizeof(private_data),

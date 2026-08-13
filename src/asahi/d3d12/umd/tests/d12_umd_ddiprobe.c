@@ -2738,6 +2738,61 @@ wmain(int argc, wchar_t **argv)
             HeapFree(GetProcessHeap(), 0, opened_resource.pDrvPrivate);
             HeapFree(GetProcessHeap(), 0, opened_heap.pDrvPrivate);
          }
+         {
+            struct agxw_resource_private foreign_resource_private = {
+               .version = AGXW_RESOURCE_PRIVATE_VERSION,
+               .struct_size = sizeof(foreign_resource_private),
+               .allocation_count = AGXW_MAX_ALLOCATIONS_PER_RESOURCE,
+            };
+            struct agxw_alloc_private foreign_allocation_private = {
+               .version = AGXW_ALLOC_PRIVATE_VERSION,
+               .struct_size = sizeof(foreign_allocation_private),
+               .size = sizeof(mapped_heap),
+               .flags = AGXW_ALLOC_SHAREABLE | AGXW_ALLOC_WRITEBACK,
+               .align_log2 = 16,
+            };
+            D3DDDI_OPENALLOCATIONINFO foreign_allocation = {
+               .hAllocation = TEST_ALLOCATION,
+               .pPrivateDriverData = &foreign_allocation_private,
+               .PrivateDriverDataSize = sizeof(foreign_allocation_private),
+            };
+            D3D12DDIARG_OPENHEAP_0003 foreign_arguments = {
+               .NumAllocations = 1,
+               .pOpenAllocationInfo = &foreign_allocation,
+               .hKMResource = {.handle = TEST_KM_RESOURCE},
+               .pPrivateDriverData = &foreign_resource_private,
+               .PrivateDriverDataSize = sizeof(foreign_resource_private),
+               .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
+            };
+            D3D12DDI_HEAP_AND_RESOURCE_SIZES foreign_sizes;
+            D3D12DDI_HHEAP foreign_heap;
+            D3D12DDI_HRESOURCE foreign_resource;
+
+            require_result(agxw_standard_desc_pack(
+                              128, 128, (uint32_t)D3DDDIFMT_A8B8G8R8,
+                              &foreign_allocation_private.reserved) == 0,
+                           "foreign D3D11 standard descriptor fixture");
+            foreign_sizes =
+               device_table.pfnCalcPrivateOpenedHeapAndResourceSizes(
+                  driver_device, &foreign_arguments);
+            require_result(foreign_sizes.Heap > 0 &&
+                              foreign_sizes.Resource > 0,
+                           "foreign D3D11 opened resource sizes");
+            foreign_heap.pDrvPrivate = HeapAlloc(
+               GetProcessHeap(), HEAP_ZERO_MEMORY, foreign_sizes.Heap);
+            foreign_resource.pDrvPrivate = HeapAlloc(
+               GetProcessHeap(), HEAP_ZERO_MEMORY, foreign_sizes.Resource);
+            require_result(foreign_heap.pDrvPrivate &&
+                              foreign_resource.pDrvPrivate,
+                           "allocate foreign opened resource storage");
+            result = device_table.pfnOpenHeapAndResource(
+               driver_device, &foreign_arguments, foreign_heap,
+               runtime_resource, foreign_resource);
+            require_result(result == E_NOTIMPL,
+                           "standalone foreign open reaches renderer seam");
+            HeapFree(GetProcessHeap(), 0, foreign_resource.pDrvPrivate);
+            HeapFree(GetProcessHeap(), 0, foreign_heap.pDrvPrivate);
+         }
          result = device_table.pfnMapHeap(driver_device, heap_handle, &mapping);
          require_result(result == S_OK && mapping == mapped_heap &&
                            lock_calls == 1,

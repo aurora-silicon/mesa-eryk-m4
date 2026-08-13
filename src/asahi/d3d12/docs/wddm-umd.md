@@ -259,9 +259,12 @@ Created resources carry a versioned 176-byte resource-private blob. Its first
 preserves heap, canonical resource, clear-value and row-major-layout metadata.
 `CalcPrivateOpenedHeapAndResourceSizes` and `OpenHeapAndResource` validate the
 KMD allocation blob and reconstruct a renderer heap/resource around handles
-opened by dxgkrnl. Opening arbitrary metadata emitted by a different D3D11 or
-D3D12 UMD is not yet supported; native D3D12 cross-process open is supported,
-while cross-UMD DXGI sharing remains a recorded compatibility gate.
+opened by dxgkrnl. Compatible single-subresource BGRA/RGBA color surfaces also
+carry Aurora's existing `agxw_standard_desc` in the allocation blob. This lets
+the D3D12 frontend strictly reconstruct resources emitted by the Triton D3D11
+UMD's unchanged 16-byte resource contract, and lets Triton recognize matching
+D3D12 allocations, without adding a KMD ABI or private side channel. Richer
+foreign metadata remains rejected instead of being guessed.
 
 ## 5. Queues, fences, residency and submission
 
@@ -438,9 +441,11 @@ does not alter the native D3D12 ABI or command ordering.
   mandatory KMD contracts.
 - Tier-1 tiled/sparse resources are implemented across reserved resources,
   mip packing, `UpdateTileMappings`, `CopyTileMappings` and `CopyTiles` using
-  the shared GPUVA/paging backend. Unsupported ExecuteIndirect mutable-state
-  forms and foreign-UMD shared-resource metadata are not advertised as
-  complete. Baseline `0003` PSO
+  the shared GPUVA/paging backend. Baseline `ExecuteIndirect` argument forms
+  include draw, indexed draw, dispatch, root constants/views and vertex/index
+  buffer views; tessellation-indirect remains restricted. Compatible Triton
+  D3D11 standard color surfaces now interoperate through the pinned allocation
+  descriptor, while arbitrary foreign metadata remains rejected. Baseline `0003` PSO
   object serialization, Release 1 indexed pipeline libraries and native AGX
   shader-disassembly XML are implemented. Persistent library blobs currently
   warm the existing compiler/cache on first load instead of embedding portable

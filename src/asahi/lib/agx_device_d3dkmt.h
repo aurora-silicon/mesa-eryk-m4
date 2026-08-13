@@ -128,6 +128,7 @@ struct agx_bo *agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
    struct agx_device *dev, size_t size, unsigned align,
    enum agx_bo_flags flags, void *runtime_resource,
    const void *resource_driver_data, uint32_t resource_driver_data_size,
+   uint64_t standard_descriptor,
    const char *label);
 
 /* Adopt the allocation handles which dxgkrnl supplied to the D3D12

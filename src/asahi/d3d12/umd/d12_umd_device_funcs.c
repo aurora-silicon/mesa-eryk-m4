@@ -853,6 +853,7 @@ d12_umd_create_heap_resource(
    struct d12_frontend_heap_allocation frontend_allocation;
    const struct d12_frontend_clear_value *translated_clear = NULL;
    uint64_t alignment;
+   uint64_t standard_descriptor = 0;
    HRESULT result;
 
    if (!device)
@@ -943,12 +944,16 @@ d12_umd_create_heap_resource(
              : 0,
           &private_data))
       return E_INVALIDARG;
+   if (resource_arguments)
+      (void)d12_umd_resource_private_standard_desc_pack(
+         &frontend_resource, &standard_descriptor);
 
    if (device->renderer_ops && device->backend &&
        device->renderer_ops->create_heap) {
       result = device->renderer_ops->create_heap(
          device->backend, &frontend_heap, runtime_resource.handle,
-         &private_data, sizeof(private_data), &heap->backend,
+         &private_data, sizeof(private_data), standard_descriptor,
+         &heap->backend,
          &frontend_allocation);
       if (FAILED(result))
          return result;
@@ -965,7 +970,7 @@ d12_umd_create_heap_resource(
       result = d12_umd_kmt_allocate(
          &device->kmt, runtime_resource.handle, heap_arguments->ByteSize,
          alignment, d12_umd_heap_allocation_flags(heap_arguments),
-         &private_data, sizeof(private_data),
+         standard_descriptor, &private_data, sizeof(private_data),
          &heap->allocation);
       if (FAILED(result))
          return result;
@@ -1018,14 +1023,13 @@ d12_umd_create_heap_resource(
 }
 
 static bool
-d12_umd_open_allocation_valid(
+d12_umd_open_allocation_read(
    const D3D12DDIARG_OPENHEAP_0003 *arguments,
-   const struct d12_umd_resource_private *private_data,
    struct agxw_alloc_private *allocation_private)
 {
    const D3DDDI_OPENALLOCATIONINFO *allocation;
 
-   if (!arguments || !private_data || !allocation_private ||
+   if (!arguments || !allocation_private ||
        arguments->NumAllocations != AGXW_MAX_ALLOCATIONS_PER_RESOURCE ||
        !arguments->pOpenAllocationInfo || !arguments->hKMResource.handle)
       return false;
@@ -1038,15 +1042,45 @@ d12_umd_open_allocation_valid(
    if (agxw_alloc_private_validate(allocation_private,
                                    sizeof(*allocation_private)) != 0 ||
        !allocation_private->size ||
-       allocation_private->size != private_data->heap.size ||
-       allocation_private->reserved ||
-       !!(allocation_private->flags & AGXW_ALLOC_PRIMARY) !=
-          !!(private_data->heap.flags & D12_FRONTEND_HEAP_PRIMARY) ||
        (allocation_private->align_log2 &&
         (allocation_private->align_log2 < AGXW_PAGE_BITS ||
          allocation_private->align_log2 > AGXW_WDDM_LARGE_PAGE_BITS)))
       return false;
    return true;
+}
+
+static bool
+d12_umd_open_private_data(
+   const D3D12DDIARG_OPENHEAP_0003 *arguments,
+   struct d12_umd_resource_private *private_data,
+   struct agxw_alloc_private *allocation_private)
+{
+   uint64_t standard_descriptor = 0;
+
+   if (!arguments || !private_data ||
+       !d12_umd_open_allocation_read(arguments, allocation_private))
+      return false;
+
+   if (d12_umd_resource_private_parse(arguments->pPrivateDriverData,
+                                      arguments->PrivateDriverDataSize,
+                                      private_data)) {
+      if (allocation_private->size != private_data->heap.size ||
+          !!(allocation_private->flags & AGXW_ALLOC_PRIMARY) !=
+             !!(private_data->heap.flags & D12_FRONTEND_HEAP_PRIMARY))
+         return false;
+      if (allocation_private->reserved &&
+          (!(private_data->flags &
+             D12_UMD_RESOURCE_PRIVATE_HAS_RESOURCE) ||
+           !d12_umd_resource_private_standard_desc_pack(
+              &private_data->resource, &standard_descriptor) ||
+           standard_descriptor != allocation_private->reserved))
+         return false;
+      return true;
+   }
+
+   return d12_umd_resource_private_parse_foreign(
+      arguments->pPrivateDriverData, arguments->PrivateDriverDataSize,
+      allocation_private, private_data);
 }
 
 static D3D12DDI_HEAP_AND_RESOURCE_SIZES APIENTRY
@@ -1059,11 +1093,8 @@ d12_umd_calc_private_opened_heap_resource_sizes(
    struct agxw_alloc_private allocation_private;
 
    if (!d12_umd_device_from_handle(handle) || !arguments ||
-       !d12_umd_resource_private_parse(arguments->pPrivateDriverData,
-                                       arguments->PrivateDriverDataSize,
-                                       &private_data) ||
-       !d12_umd_open_allocation_valid(arguments, &private_data,
-                                      &allocation_private))
+       !d12_umd_open_private_data(arguments, &private_data,
+                                  &allocation_private))
       return sizes;
    sizes.Heap = sizeof(struct d12_umd_heap);
    sizes.Resource =
@@ -1137,21 +1168,16 @@ d12_umd_open_heap_resource(
    struct d12_frontend_heap_allocation frontend_allocation;
    struct d12_frontend_resource_desc opened_resource;
    const struct d12_frontend_clear_value *clear_value = NULL;
-   const bool has_resource =
-      arguments && arguments->pPrivateDriverData &&
-      d12_umd_resource_private_parse(arguments->pPrivateDriverData,
-                                     arguments->PrivateDriverDataSize,
-                                     &private_data) &&
-      (private_data.flags & D12_UMD_RESOURCE_PRIVATE_HAS_RESOURCE);
+   bool has_resource;
    HRESULT result;
 
    if (!device || !arguments || !heap || !runtime_resource.handle ||
-       (has_resource && !resource) || (!has_resource && resource) ||
-       !d12_umd_resource_private_parse(arguments->pPrivateDriverData,
-                                       arguments->PrivateDriverDataSize,
-                                       &private_data) ||
-       !d12_umd_open_allocation_valid(arguments, &private_data,
-                                      &allocation_private))
+       !d12_umd_open_private_data(arguments, &private_data,
+                                  &allocation_private))
+      return E_INVALIDARG;
+   has_resource = !!(private_data.flags &
+                     D12_UMD_RESOURCE_PRIVATE_HAS_RESOURCE);
+   if ((has_resource && !resource) || (!has_resource && resource))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
        !device->renderer_ops->open_heap)

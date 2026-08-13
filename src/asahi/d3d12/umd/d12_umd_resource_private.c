@@ -7,6 +7,21 @@
 
 #include <string.h>
 
+/* D3DDDIFORMAT values used by Aurora's D3D11 standard allocations.  Keep
+ * these wire values local to the shared blob translator so its host tests do
+ * not need to include the Windows-only D3D headers. */
+#define D12_UMD_D3DDDIFMT_A8R8G8B8 21u
+#define D12_UMD_D3DDDIFMT_X8R8G8B8 22u
+#define D12_UMD_D3DDDIFMT_A8B8G8R8 32u
+
+/* DXGI_FORMAT values corresponding to the formats above. */
+#define D12_UMD_DXGI_FORMAT_R8G8B8A8_UNORM 28u
+#define D12_UMD_DXGI_FORMAT_R8G8B8A8_UNORM_SRGB 29u
+#define D12_UMD_DXGI_FORMAT_B8G8R8A8_UNORM 87u
+#define D12_UMD_DXGI_FORMAT_B8G8R8X8_UNORM 88u
+#define D12_UMD_DXGI_FORMAT_B8G8R8A8_UNORM_SRGB 91u
+#define D12_UMD_DXGI_FORMAT_B8G8R8X8_UNORM_SRGB 93u
+
 _Static_assert(offsetof(struct d12_umd_resource_private, kmd) == 0,
                "KMD resource-private prefix must remain first");
 _Static_assert(sizeof(struct agxw_resource_private) == 16,
@@ -169,4 +184,147 @@ d12_umd_resource_private_parse(const void *blob, uint32_t blob_size,
       return false;
    *data = parsed;
    return true;
+}
+
+static bool
+d12_umd_resource_private_dxgi_to_d3d(uint32_t dxgi_format,
+                                     uint32_t *d3d_format)
+{
+   if (!d3d_format)
+      return false;
+   switch (dxgi_format) {
+   case D12_UMD_DXGI_FORMAT_B8G8R8A8_UNORM:
+   case D12_UMD_DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+      *d3d_format = D12_UMD_D3DDDIFMT_A8R8G8B8;
+      return true;
+   case D12_UMD_DXGI_FORMAT_B8G8R8X8_UNORM:
+   case D12_UMD_DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+      *d3d_format = D12_UMD_D3DDDIFMT_X8R8G8B8;
+      return true;
+   case D12_UMD_DXGI_FORMAT_R8G8B8A8_UNORM:
+   case D12_UMD_DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+      *d3d_format = D12_UMD_D3DDDIFMT_A8B8G8R8;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_umd_resource_private_d3d_to_dxgi(uint32_t d3d_format,
+                                     uint32_t *dxgi_format)
+{
+   if (!dxgi_format)
+      return false;
+   switch (d3d_format) {
+   case D12_UMD_D3DDDIFMT_A8R8G8B8:
+      *dxgi_format = D12_UMD_DXGI_FORMAT_B8G8R8A8_UNORM;
+      return true;
+   case D12_UMD_D3DDDIFMT_X8R8G8B8:
+      *dxgi_format = D12_UMD_DXGI_FORMAT_B8G8R8X8_UNORM;
+      return true;
+   case D12_UMD_D3DDDIFMT_A8B8G8R8:
+      *dxgi_format = D12_UMD_DXGI_FORMAT_R8G8B8A8_UNORM;
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+d12_umd_resource_private_standard_desc_pack(
+   const struct d12_frontend_resource_desc *resource,
+   uint64_t *out_descriptor)
+{
+   uint32_t d3d_format;
+
+   if (!resource || !out_descriptor || resource->dimension != 3 ||
+       !resource->width || resource->width > UINT32_MAX ||
+       !resource->height || resource->depth_or_array_size != 1 ||
+       resource->mip_levels != 1 || resource->sample_count != 1 ||
+       resource->sample_quality != 0 ||
+       (resource->flags & D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL) ||
+       !d12_umd_resource_private_dxgi_to_d3d(resource->format, &d3d_format))
+      return false;
+
+   return agxw_standard_desc_pack((uint32_t)resource->width,
+                                  resource->height, d3d_format,
+                                  out_descriptor) == 0;
+}
+
+bool
+d12_umd_resource_private_parse_foreign(
+   const void *blob, uint32_t blob_size,
+   const struct agxw_alloc_private *allocation,
+   struct d12_umd_resource_private *data)
+{
+   struct agxw_resource_private resource_private;
+   uint32_t width, height, d3d_format, dxgi_format;
+   uint64_t minimum_size;
+
+   if (!blob || !allocation || !data ||
+       blob_size != sizeof(resource_private) ||
+       agxw_alloc_private_validate(allocation, sizeof(*allocation)) != 0 ||
+       !(allocation->flags & AGXW_ALLOC_SHAREABLE) ||
+       (allocation->flags & (AGXW_ALLOC_VM_PRIVATE | AGXW_ALLOC_NO_CPU_MAP)) ||
+       (allocation->align_log2 &&
+        allocation->align_log2 > AGXW_WDDM_LARGE_PAGE_BITS) ||
+       !allocation->reserved ||
+       agxw_standard_desc_unpack(allocation->reserved, &width, &height,
+                                 &d3d_format) != 0 ||
+       !d12_umd_resource_private_d3d_to_dxgi(d3d_format, &dxgi_format))
+      return false;
+
+   memcpy(&resource_private, blob, sizeof(resource_private));
+   if (agxw_resource_private_validate(&resource_private, blob_size) != 0 ||
+       resource_private.allocation_count !=
+          AGXW_MAX_ALLOCATIONS_PER_RESOURCE)
+      return false;
+
+   /* All formats represented by the cross-UMD standard descriptor are four
+    * bytes per texel.  Prove that the KMD allocation can contain the visible
+    * image before constructing renderer objects around foreign handles. */
+   minimum_size = (uint64_t)width * (uint64_t)height;
+   if (minimum_size > UINT64_MAX / UINT64_C(4) ||
+       minimum_size * UINT64_C(4) > allocation->size)
+      return false;
+
+   memset(data, 0, sizeof(*data));
+   data->kmd = resource_private;
+   data->magic = D12_UMD_RESOURCE_PRIVATE_MAGIC;
+   data->version = D12_UMD_RESOURCE_PRIVATE_VERSION;
+   data->struct_size = sizeof(*data);
+   data->flags = D12_UMD_RESOURCE_PRIVATE_HAS_RESOURCE;
+   data->heap = (struct d12_frontend_heap_desc){
+      .size = allocation->size,
+      .alignment = allocation->align_log2
+                      ? UINT64_C(1) << allocation->align_log2
+                      : AGXW_PAGE_SIZE,
+      .memory_pool = D12_FRONTEND_MEMORY_POOL_L0,
+      .cpu_page_property =
+         allocation->flags & AGXW_ALLOC_WRITEBACK
+            ? D12_FRONTEND_CPU_PAGE_WRITE_BACK
+            : D12_FRONTEND_CPU_PAGE_WRITE_COMBINE,
+      .flags = D12_FRONTEND_HEAP_ALLOW_NON_RT_DS_TEXTURES |
+               D12_FRONTEND_HEAP_ALLOW_RT_DS_TEXTURES |
+               (allocation->flags & AGXW_ALLOC_PRIMARY
+                   ? D12_FRONTEND_HEAP_PRIMARY
+                   : 0),
+      .creation_node_mask = 1,
+      .visible_node_mask = 1,
+   };
+   data->resource = (struct d12_frontend_resource_desc){
+      .dimension = 3,
+      .width = width,
+      .height = height,
+      .depth_or_array_size = 1,
+      .mip_levels = 1,
+      .format = dxgi_format,
+      .sample_count = 1,
+      .layout = 0,
+      .flags = D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET |
+               D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE,
+   };
+   return d12_umd_resource_private_heap_valid(&data->heap) &&
+          d12_umd_resource_private_resource_valid(&data->resource);
 }

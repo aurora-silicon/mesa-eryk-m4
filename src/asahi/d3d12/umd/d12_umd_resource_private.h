@@ -47,3 +47,18 @@ bool d12_umd_resource_private_pack(
 bool d12_umd_resource_private_parse(
    const void *blob, uint32_t blob_size,
    struct d12_umd_resource_private *data);
+
+/*
+ * Translate the compact standard-allocation metadata shared with Aurora's
+ * D3D11 UMD.  This deliberately recognizes only the single-subresource 2D
+ * color surfaces described by agxw_alloc_private::reserved; native D3D12
+ * resources continue to use the lossless 176-byte blob above.
+ */
+bool d12_umd_resource_private_standard_desc_pack(
+   const struct d12_frontend_resource_desc *resource,
+   uint64_t *out_descriptor);
+
+bool d12_umd_resource_private_parse_foreign(
+   const void *blob, uint32_t blob_size,
+   const struct agxw_alloc_private *allocation,
+   struct d12_umd_resource_private *data);

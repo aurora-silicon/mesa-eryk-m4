@@ -173,7 +173,8 @@ struct d12_umd_renderer_ops {
    HRESULT (*create_heap)(
       void *device, const struct d12_frontend_heap_desc *desc,
       void *runtime_resource, const void *resource_driver_data,
-      uint32_t resource_driver_data_size, void **out_heap,
+      uint32_t resource_driver_data_size, uint64_t standard_descriptor,
+      void **out_heap,
       struct d12_frontend_heap_allocation *out_allocation);
    HRESULT (*open_heap)(
       void *device, const struct d12_frontend_heap_desc *desc,

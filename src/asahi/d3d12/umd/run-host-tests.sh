@@ -73,6 +73,7 @@ done
 
 "$cc" "$common[@]" \
     -I"$contract_dir" -I"$d12_dir" -I"$umd_dir" \
+    "$contract_dir/agxw_contract.c" \
     "$umd_dir/d12_umd_resource_private.c" \
     "$umd_dir/tests/d12_umd_resource_private_tests.c" \
     -o "$out/d12_umd_resource_private_tests"

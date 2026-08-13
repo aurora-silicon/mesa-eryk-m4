@@ -31,6 +31,7 @@ static unsigned reserve_calls;
 static unsigned free_va_calls;
 static unsigned wait_cpu_calls;
 static volatile uint64_t paging_fence_value;
+static uint64_t expected_standard_descriptor;
 
 static HRESULT APIENTRY
 allocate_callback(HANDLE device, D3DDDICB_ALLOCATE *arguments)
@@ -50,7 +51,8 @@ allocate_callback(HANDLE device, D3DDDICB_ALLOCATE *arguments)
        private_data->struct_size != AGXW_ALLOC_PRIVATE_SIZE ||
        private_data->size != UINT64_C(0x5000) ||
        private_data->flags != (AGXW_ALLOC_WRITEBACK | AGXW_ALLOC_SHAREABLE) ||
-       private_data->align_log2 != 16 || private_data->reserved != 0)
+       private_data->align_log2 != 16 ||
+       private_data->reserved != expected_standard_descriptor)
       return E_INVALIDARG;
 
    arguments->hKMResource = TEST_KM_RESOURCE;
@@ -176,9 +178,13 @@ main(void)
 
    result = d12_umd_kmt_init(&kmt, TEST_DEVICE, &callbacks);
    require_result(result == S_OK, "kmt init");
+   require_result(agxw_standard_desc_pack(1920, 1080, 21,
+                                          &expected_standard_descriptor) == 0,
+                  "standard descriptor fixture");
    result = d12_umd_kmt_allocate(
       &kmt, TEST_RESOURCE, UINT64_C(0x5000), UINT64_C(0x10000),
-      AGXW_ALLOC_WRITEBACK | AGXW_ALLOC_SHAREABLE, NULL, 0, &allocation);
+      AGXW_ALLOC_WRITEBACK | AGXW_ALLOC_SHAREABLE,
+      expected_standard_descriptor, NULL, 0, &allocation);
    require_result(result == S_OK && allocate_calls == 1,
                   "allocation callback result");
    require_result(allocation.allocation == TEST_ALLOCATION &&
@@ -194,13 +200,13 @@ main(void)
                      allocation.gpu_virtual_address == 0 && allocation.size == 0,
                   "deallocation clears state");
 
-   result = d12_umd_kmt_allocate(&kmt, TEST_RESOURCE, 1, 3, 0, NULL, 0,
+   result = d12_umd_kmt_allocate(&kmt, TEST_RESOURCE, 1, 3, 0, 0, NULL, 0,
                                  &allocation);
    require_result(result == E_INVALIDARG && allocate_calls == 1,
                   "reject non-power-of-two alignment before callback");
    result = d12_umd_kmt_allocate(&kmt, TEST_RESOURCE, 1, AGXW_PAGE_SIZE,
                                  AGXW_ALLOC_FLAG_RETIRED_TIMESTAMP,
-                                 NULL, 0, &allocation);
+                                 0, NULL, 0, &allocation);
    require_result(result == E_INVALIDARG && allocate_calls == 1,
                   "reject retired allocation flag before callback");
 

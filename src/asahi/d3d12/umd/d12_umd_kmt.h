@@ -33,6 +33,7 @@ HRESULT d12_umd_kmt_init(struct d12_umd_kmt *kmt, HANDLE runtime_device,
 HRESULT d12_umd_kmt_allocate(struct d12_umd_kmt *kmt,
                              HANDLE runtime_resource, uint64_t size,
                              uint64_t alignment, uint32_t agxw_flags,
+                             uint64_t standard_descriptor,
                              const void *resource_private_data,
                              uint32_t resource_private_data_size,
                              struct d12_umd_allocation *allocation);

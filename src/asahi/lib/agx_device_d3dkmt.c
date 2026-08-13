@@ -701,6 +701,7 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
                          uint32_t runtime_data_size,
                          const void *resource_driver_data,
                          uint32_t resource_driver_data_size,
+                         uint64_t standard_descriptor,
                          struct agx_d3dkmt_allocation_record *record)
 {
    /*
@@ -715,9 +716,14 @@ d3dkmt_create_allocation(struct agx_d3dkmt_winsys *ws, uint64_t size,
       .size = size,
       .flags = agx_d3dkmt_agxw_alloc_flags((uint32_t)flags),
       .align_log2 = AGXW_PAGE_BITS,
+      .reserved = standard_descriptor,
    };
    static_assert(sizeof(priv) == AGXW_ALLOC_PRIVATE_SIZE,
                  "allocation private data width");
+   if (agxw_alloc_private_validate(&priv, sizeof(priv)) != 0) {
+      errno = EINVAL;
+      return false;
+   }
 
    struct agx_kmt_allocationinfo2 info = {
       .pPrivateDriverData = &priv,
@@ -876,7 +882,7 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
          ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
          : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
    if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL, NULL,
-                                 0, NULL, 0, &record)) {
+                                 0, NULL, 0, 0, &record)) {
       fprintf(stderr, "D3DKMTCreateAllocation2 failed\n");
       return NULL;
    }
@@ -893,7 +899,7 @@ agx_d3dkmt_bo_create_runtime_resource(struct agx_device *dev, size_t size,
                                       const char *label)
 {
    return agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
-      dev, size, align, flags, runtime_resource, NULL, 0, label);
+      dev, size, align, flags, runtime_resource, NULL, 0, 0, label);
 }
 
 struct agx_bo *
@@ -901,6 +907,7 @@ agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
    struct agx_device *dev, size_t size, unsigned align,
    enum agx_bo_flags flags, void *runtime_resource,
    const void *resource_driver_data, uint32_t resource_driver_data_size,
+   uint64_t standard_descriptor,
    const char *label)
 {
    struct agx_d3dkmt_winsys *ws;
@@ -909,7 +916,9 @@ agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
 
    if (!dev || !dev->hdev || !runtime_resource || !size ||
        size > SIZE_MAX - (AIL_PAGESIZE - 1) ||
-       (resource_driver_data_size && !resource_driver_data)) {
+       (resource_driver_data_size && !resource_driver_data) ||
+       (standard_descriptor &&
+        agxw_standard_desc_unpack(standard_descriptor, NULL, NULL, NULL) != 0)) {
       errno = EINVAL;
       return NULL;
    }
@@ -926,7 +935,7 @@ agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
    if (!d3dkmt_create_allocation(
           ws, size, flags, AGX_D3DKMT_EXTERNAL_MEMORY_NONE,
           runtime_resource, NULL, 0, resource_driver_data,
-          resource_driver_data_size, &record))
+          resource_driver_data_size, standard_descriptor, &record))
       return NULL;
 
    bo = d3dkmt_adopt_allocation(dev, size, align, flags, &record, true);
@@ -1328,7 +1337,7 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
       if (!d3dkmt_create_allocation(
              ws, desc[i].size, flags,
              AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32, NULL, NULL, 0,
-             NULL, 0, &records[i]))
+             NULL, 0, 0, &records[i]))
          goto fail;
       created++;
 
@@ -1409,7 +1418,7 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
       struct agx_d3dkmt_allocation_record record;
       if (!d3dkmt_create_allocation(
              ws, aligned_size, flags, AGX_D3DKMT_EXTERNAL_MEMORY_NONE, NULL,
-             NULL, 0, NULL, 0, &record))
+             NULL, 0, NULL, 0, 0, &record))
          return NULL;
 
       struct agx_bo *bo = d3dkmt_adopt_allocation(
@@ -1518,7 +1527,7 @@ agx_d3dkmt_bo_create_external_with_runtime_data(
    struct agx_d3dkmt_allocation_record record;
    if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL,
                                  runtime_data, runtime_data_size, NULL, 0,
-                                 &record))
+                                 0, &record))
       return NULL;
 
    struct agx_bo *bo =

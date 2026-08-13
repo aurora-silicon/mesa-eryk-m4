@@ -2090,7 +2090,8 @@ HRESULT
 d12_device_runtime_heap_create(
    struct d12_device *device, const struct d12_frontend_heap_desc *desc,
    void *runtime_resource, const void *resource_driver_data,
-   uint32_t resource_driver_data_size, void **out_heap,
+   uint32_t resource_driver_data_size, uint64_t standard_descriptor,
+   void **out_heap,
    struct d12_frontend_heap_allocation *out_allocation)
 {
    D3D12_HEAP_DESC heap_desc;
@@ -2120,7 +2121,8 @@ d12_device_runtime_heap_create(
    bo = agx_d3dkmt_bo_create_runtime_resource_with_driver_data(
       &device->dev, heap_desc.SizeInBytes, (unsigned)heap_desc.Alignment,
       bo_flags, runtime_resource, resource_driver_data,
-      resource_driver_data_size, "D3D12 runtime heap");
+      resource_driver_data_size, standard_descriptor,
+      "D3D12 runtime heap");
    if (!bo)
       return E_OUTOFMEMORY;
 
