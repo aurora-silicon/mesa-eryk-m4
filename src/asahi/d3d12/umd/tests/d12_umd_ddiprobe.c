@@ -109,6 +109,8 @@ static unsigned reused_create_calls;
 static unsigned reused_destroy_calls;
 static bool reused_create_null;
 static bool reused_expect_row_major;
+static bool reused_allocation_info_fail;
+static uint64_t reused_allocation_info_size = UINT64_C(0x10000);
 
 static HRESULT
 test_sparse_create_reserved(
@@ -246,8 +248,10 @@ test_reused_resource_allocation_info(
              desc->format != DXGI_FORMAT_UNKNOWN || desc->row_pitch ||
              desc->slice_pitch))
       return E_INVALIDARG;
+   if (reused_allocation_info_fail)
+      return E_FAIL;
    *info = (struct d12_frontend_resource_allocation_info){
-      .size = UINT64_C(0x10000),
+      .size = reused_allocation_info_size,
       .alignment = UINT64_C(0x10000),
       .layout = D3D12DDI_TL_ROW_MAJOR,
    };
@@ -2454,6 +2458,28 @@ wmain(int argc, wchar_t **argv)
 
          require_result(sizes.Heap > 0 && sizes.Resource > 0,
                         "private heap/resource sizes");
+         {
+            struct d12_umd_device *private_device =
+               driver_device.pDrvPrivate;
+            void *saved_backend = private_device->backend;
+            const struct d12_umd_renderer_ops *saved_renderer_ops =
+               private_device->renderer_ops;
+            D3D12DDI_HEAP_AND_RESOURCE_SIZES rejected_sizes;
+
+            reused_allocation_info_size = sizeof(mapped_heap) +
+                                          UINT64_C(0x10000);
+            private_device->backend = TEST_BLT_DEVICE;
+            private_device->renderer_ops = &test_reused_renderer_ops;
+            rejected_sizes =
+               device_table.pfnCalcPrivateHeapAndResourceSizes(
+                  driver_device, &heap_arguments, &resource_arguments);
+            require_result(!rejected_sizes.Heap &&
+                              !rejected_sizes.Resource,
+                           "reject heap smaller than reflected resource");
+            reused_allocation_info_size = UINT64_C(0x10000);
+            private_device->backend = saved_backend;
+            private_device->renderer_ops = saved_renderer_ops;
+         }
          heap_handle.pDrvPrivate =
             HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Heap);
          resource_handle.pDrvPrivate =
@@ -3069,6 +3095,49 @@ wmain(int argc, wchar_t **argv)
                   existing_info.ResourceDataAlignment == UINT64_C(0x10000) &&
                   existing_allocation == TEST_ALLOCATION,
                "existing resource allocation ABI");
+            {
+               struct d12_umd_device *private_device =
+                  driver_device.pDrvPrivate;
+               void *saved_backend = private_device->backend;
+               const struct d12_umd_renderer_ops *saved_renderer_ops =
+                  private_device->renderer_ops;
+
+               private_device->backend = TEST_BLT_DEVICE;
+               private_device->renderer_ops = &test_reused_renderer_ops;
+               reused_allocation_info_fail = true;
+               memset(&existing_info, 0xcc, sizeof(existing_info));
+               existing_allocation = TEST_ALLOCATION;
+               set_error_calls = 0;
+               last_set_error = S_OK;
+               device_table.pfnCheckExistingResourceAllocationInfo(
+                  driver_device, resource_handle, &existing_info,
+                  &existing_allocation);
+               require_result(
+                  set_error_calls == 1 && last_set_error == E_FAIL &&
+                     existing_info.ResourceDataSize == 0 &&
+                     existing_allocation == 0,
+                  "existing allocation query failure is transactional");
+
+               reused_allocation_info_fail = false;
+               reused_allocation_info_size =
+                  sizeof(mapped_heap) + UINT64_C(0x10000);
+               memset(&existing_info, 0xcc, sizeof(existing_info));
+               existing_allocation = TEST_ALLOCATION;
+               set_error_calls = 0;
+               last_set_error = S_OK;
+               device_table.pfnCheckExistingResourceAllocationInfo(
+                  driver_device, resource_handle, &existing_info,
+                  &existing_allocation);
+               require_result(
+                  set_error_calls == 1 && last_set_error == E_FAIL &&
+                     existing_info.ResourceDataSize == 0 &&
+                     existing_allocation == 0,
+                  "reject reflected resource larger than its allocation");
+
+               reused_allocation_info_size = UINT64_C(0x10000);
+               private_device->backend = saved_backend;
+               private_device->renderer_ops = saved_renderer_ops;
+            }
             legacy_resource.pDrvPrivate = resource_handle.pDrvPrivate;
             require_result(device_table.pfnCheckResourceAllocationHandle(
                               driver_device, legacy_resource) ==

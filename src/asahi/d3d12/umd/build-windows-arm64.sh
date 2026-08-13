@@ -21,7 +21,7 @@ readobj=${LLVM_READOBJ:-/opt/homebrew/opt/llvm/bin/llvm-readobj}
 windres=${WINDRES:-$toolchain/bin/aarch64-w64-mingw32-windres}
 out=${D12_UMD_BUILD_OUT:-$repo_root/_build-d3d12-umd-arm64}
 staged=$out/winddk
-wddm_target=${D12_UMD_WDDM_TARGET:-20}
+wddm_target=${D12_UMD_WDDM_TARGET:-21}
 
 case $wddm_target in
     20) umd_interface=0x5002; driver_version=20.17.240.0 ;;

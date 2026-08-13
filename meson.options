@@ -890,7 +890,7 @@ option(
 option(
   'asahi-d3d12-wddm-version',
   type : 'combo',
-  value : '2.0',
+  value : '2.1',
   choices : ['2.0', '2.1'],
-  description : 'Select the pinned WDDM UMD ABI for the native AGX D3D12 frontend'
+  description : 'Select the pinned WDDM UMD ABI for the native AGX D3D12 frontend (2.1 is required for DXIL/SM6)'
 )

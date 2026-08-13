@@ -95,7 +95,7 @@ official DDI pages are:
 |---|---:|---|
 | AppleAgxWddm DXGK KMD interface | default `0x5023`; isolated branch `0x6003` | The shipping/dev KMD remains WDDM 2.0. `codex/wddm21-dxil` in the separate `AuroraSilicon-wddm21` worktree pins the WDK 26100.6584 WDDM 2.1 interface and is not merged into dev. |
 | KMD capability result | default `DXGKDDI_WDDMv2`; isolated `DXGKDDI_WDDMv2_1` (`0x2100`) | Both retain GPU MMU, GPUVA, one node and coherent UMA. The 2.1 branch also registers allocation-property validation and packages the native D3D12 UMD. |
-| UMD callback-layout define | `0x5002` or `0x6003` | Meson `-Dasahi-d3d12-wddm-version=2.0|2.1` and standalone `D12_UMD_WDDM_TARGET=20|21` select exact callback/DXGI layouts. 2.0 remains the default. |
+| UMD callback-layout define | `0x5002` or `0x6003` | Meson `-Dasahi-d3d12-wddm-version=2.0|2.1` and standalone `D12_UMD_WDDM_TARGET=20|21` select exact callback/DXGI layouts. 2.1 is the default required for DXIL/SM 6; 2.0 remains an explicit compatibility target. |
 | First complete D3D12 DDI target | interface `0x000c0002`, build `8` | `D3D12DDI_SUPPORTED_0003`, encoded as `0x000c000200080000`. |
 | Release 1 pipeline-library target | interface `0x000c000a`, build `0` | `D3D12DDI_SUPPORTED_0010`, encoded as `0x000c000a00000000`; the 91-slot core table and all six library DDIs are implemented. |
 | Release 1 Shader Model target | interface `0x000c000a`, build `1` | `D3D12DDI_SUPPORTED_0011`, encoded as `0x000c000a00010000`; reports released SM 6.0 and SM 5.1. |
@@ -253,11 +253,18 @@ and returns that concrete token; later creation rejects an unresolved token or
 the unadvertised standard swizzle. Allocation reflection and construction now
 call the same AIL layout calculation for linear, GPU-tiled, twiddled,
 depth/stencil and explicit-pitch resources, so the heap size cannot drift from
-the resource subsequently placed in it.
+the resource subsequently placed in it. Committed heap/resource validation
+also compares the reflected byte size, alignment and heap category before any
+KMD allocation. Existing-resource reflection publishes its allocation handle
+only after the renderer query succeeds and proves the resource range is
+contained by that allocation.
 
 Heap/resource creation is attached to the real renderer object graph. A DDI
 heap is one runtime-owned `agx_bo` and one shared `d12_heap`; placed buffers and
 textures use the existing `d12_resource` and `ail` layout implementation. The
+renderer seam is transactional: a failed or malformed heap/open/resource
+result destroys every backend object already returned, clears the runtime's
+private storage, and never links a half-created heap into the device. The
 frontend supports descriptor heaps and SRV/UAV/RTV/DSV/CBV/sampler creation,
 mapping, GPU virtual addresses, exact allocation-handle queries, subresource
 layout queries and the D3D12 MakeResident/Evict callback model.

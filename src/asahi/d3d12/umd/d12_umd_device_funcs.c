@@ -847,6 +847,103 @@ d12_umd_frontend_resource_desc(
    };
 }
 
+static HRESULT
+d12_umd_resource_allocation_info(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments,
+   uint64_t alignment_restriction, uint32_t visible_node_mask,
+   bool resolve_undefined_layout, D3D12DDI_RESOURCE_ALLOCATION_INFO *info)
+{
+   D3D12DDIARG_CREATERESOURCE_0003 resolved_arguments;
+   struct d12_frontend_resource_desc frontend;
+   struct d12_frontend_resource_allocation_info allocation_info;
+   HRESULT result;
+
+   if (!device || !resource_arguments || !info ||
+       (alignment_restriction &&
+        !d12_umd_is_power_of_two(alignment_restriction)) ||
+       (visible_node_mask != 0 && visible_node_mask != 1))
+      return E_INVALIDARG;
+
+   if (resolve_undefined_layout) {
+      if (!d12_umd_resolve_resource_arguments(resource_arguments,
+                                               &resolved_arguments))
+         return E_INVALIDARG;
+   } else {
+      if (!d12_umd_resource_arguments_valid(resource_arguments))
+         return E_INVALIDARG;
+      resolved_arguments = *resource_arguments;
+   }
+
+   if (device->renderer_ops && device->backend &&
+       device->renderer_ops->get_resource_allocation_info) {
+      frontend = d12_umd_frontend_resource_desc(&resolved_arguments);
+      frontend.alignment = alignment_restriction;
+      memset(&allocation_info, 0, sizeof(allocation_info));
+      result = device->renderer_ops->get_resource_allocation_info(
+         device->backend, &frontend, visible_node_mask, &allocation_info);
+      if (FAILED(result))
+         return result;
+      if (!allocation_info.size || !allocation_info.alignment ||
+          !d12_umd_is_power_of_two(allocation_info.alignment) ||
+          allocation_info.layout != (uint32_t)resolved_arguments.Layout)
+         return E_FAIL;
+
+      *info = (D3D12DDI_RESOURCE_ALLOCATION_INFO){
+         .ResourceDataSize = allocation_info.size,
+         .ResourceDataAlignment = allocation_info.alignment,
+         .AdditionalDataHeaderAlignment = 1,
+         .AdditionalDataAlignment = 1,
+         .Layout = (D3D12DDI_TEXTURE_LAYOUT)allocation_info.layout,
+      };
+      return S_OK;
+   }
+
+   /* The callback-only build has no renderer and exists to validate the DDI
+    * ABI.  Its deterministic fallback is exact for buffers; production Mesa
+    * builds always take the shared AGX layout path above for textures. */
+   *info = (D3D12DDI_RESOURCE_ALLOCATION_INFO){
+      .ResourceDataSize = resolved_arguments.Width,
+      .ResourceDataAlignment = D12_UMD_DEFAULT_PLACEMENT_ALIGNMENT,
+      .AdditionalDataHeaderAlignment = 1,
+      .AdditionalDataAlignment = 1,
+      .Layout = resolved_arguments.Layout,
+   };
+   return S_OK;
+}
+
+static bool
+d12_umd_heap_resource_compatible(
+   struct d12_umd_device *device,
+   const D3D12DDIARG_CREATEHEAP_0001 *heap_arguments,
+   const D3D12DDIARG_CREATERESOURCE_0003 *resource_arguments)
+{
+   D3D12DDI_RESOURCE_ALLOCATION_INFO info;
+   const uint64_t heap_alignment =
+      heap_arguments->Alignment ? heap_arguments->Alignment
+                                : D12_UMD_DEFAULT_PLACEMENT_ALIGNMENT;
+   D3D12DDI_HEAP_FLAGS required_category;
+
+   if (resource_arguments->ResourceType == D3D12DDI_RT_BUFFER) {
+      required_category = D3D12DDI_HEAP_FLAG_BUFFERS;
+   } else if (resource_arguments->Flags &
+              (D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET |
+               D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL)) {
+      required_category = D3D12DDI_HEAP_FLAG_RT_DS_TEXTURES;
+   } else {
+      required_category = D3D12DDI_HEAP_FLAG_NON_RT_DS_TEXTURES;
+   }
+
+   if (!(heap_arguments->Flags & required_category) ||
+       FAILED(d12_umd_resource_allocation_info(
+          device, resource_arguments, 0, heap_arguments->VisibleNodeMask,
+          false, &info)))
+      return false;
+
+   return info.ResourceDataSize <= heap_arguments->ByteSize &&
+          info.ResourceDataAlignment <= heap_alignment;
+}
+
 struct d12_umd_reused_resource_info {
    struct d12_umd_resource *source;
    uint64_t source_offset;
@@ -944,7 +1041,8 @@ d12_umd_calc_private_heap_resource_sizes(
          FAILED(d12_umd_reused_resource_info(
             device, resource_arguments, &reuse_info)))) ||
        (heap_arguments && resource_arguments &&
-        resource_arguments->Width > heap_arguments->ByteSize))
+        !d12_umd_heap_resource_compatible(
+           device, heap_arguments, resource_arguments)))
       return sizes;
 
    sizes.Heap = heap_arguments ? sizeof(struct d12_umd_heap) : 0;
@@ -1059,7 +1157,8 @@ d12_umd_create_heap_resource(
        !d12_umd_heap_arguments_valid(heap_arguments) ||
        (resource_arguments &&
         (!resource || !d12_umd_resource_arguments_valid(resource_arguments) ||
-         resource_arguments->Width > heap_arguments->ByteSize)))
+         !d12_umd_heap_resource_compatible(
+            device, heap_arguments, resource_arguments))))
       return E_INVALIDARG;
 
    memset(heap, 0, sizeof(*heap));
@@ -1094,13 +1193,31 @@ d12_umd_create_heap_resource(
 
    if (device->renderer_ops && device->backend &&
        device->renderer_ops->create_heap) {
+      if (!device->renderer_ops->destroy_heap ||
+          (resource_arguments &&
+           (!device->renderer_ops->create_placed_resource ||
+            !device->renderer_ops->destroy_resource)))
+         return E_NOTIMPL;
       result = device->renderer_ops->create_heap(
          device->backend, &frontend_heap, runtime_resource.handle,
          &private_data, sizeof(private_data), standard_descriptor,
          &heap->backend,
          &frontend_allocation);
-      if (FAILED(result))
+      if (FAILED(result)) {
+         if (heap->backend)
+            device->renderer_ops->destroy_heap(heap->backend);
+         SecureZeroMemory(heap, sizeof(*heap));
          return result;
+      }
+      if (!heap->backend || !frontend_allocation.allocation ||
+          !frontend_allocation.resource ||
+          !frontend_allocation.gpu_virtual_address ||
+          frontend_allocation.size < heap_arguments->ByteSize) {
+         if (heap->backend)
+            device->renderer_ops->destroy_heap(heap->backend);
+         SecureZeroMemory(heap, sizeof(*heap));
+         return E_FAIL;
+      }
       heap->allocation = (struct d12_umd_allocation){
          .allocation = frontend_allocation.allocation,
          .resource = frontend_allocation.resource,
@@ -1137,6 +1254,8 @@ d12_umd_create_heap_resource(
          result = device->renderer_ops->create_placed_resource(
             device->backend, heap->backend, 0, &frontend_resource,
             translated_clear, &resource->backend);
+         if (SUCCEEDED(result) && !resource->backend)
+            result = E_FAIL;
          if (FAILED(result)) {
             AcquireSRWLockExclusive(&device->heap_lock);
             if (device->heaps == heap) {
@@ -1149,7 +1268,10 @@ d12_umd_create_heap_resource(
                   previous->next = heap->next;
             }
             ReleaseSRWLockExclusive(&device->heap_lock);
+            if (resource->backend)
+               device->renderer_ops->destroy_resource(resource->backend);
             device->renderer_ops->destroy_heap(heap->backend);
+            SecureZeroMemory(resource, sizeof(*resource));
             SecureZeroMemory(heap, sizeof(*heap));
             return result;
          }
@@ -1326,7 +1448,11 @@ d12_umd_open_heap_resource(
    if ((has_resource && !resource) || (!has_resource && resource))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->open_heap)
+       !device->renderer_ops->open_heap ||
+       !device->renderer_ops->destroy_heap ||
+       (has_resource &&
+        (!device->renderer_ops->create_placed_resource ||
+         !device->renderer_ops->destroy_resource)))
       return E_NOTIMPL;
 
    memset(heap, 0, sizeof(*heap));
@@ -1337,8 +1463,19 @@ d12_umd_open_heap_resource(
       arguments->pOpenAllocationInfo[0].hAllocation,
       arguments->hKMResource.handle, allocation_private.flags,
       &heap->backend, &frontend_allocation);
-   if (FAILED(result))
+   if (FAILED(result)) {
+      if (heap->backend)
+         device->renderer_ops->destroy_heap(heap->backend);
+      SecureZeroMemory(heap, sizeof(*heap));
       return result;
+   }
+   if (!heap->backend || !frontend_allocation.allocation ||
+       !frontend_allocation.resource ||
+       !frontend_allocation.gpu_virtual_address ||
+       frontend_allocation.size < private_data.heap.size) {
+      result = E_FAIL;
+      goto fail;
+   }
 
    heap->signature = D12_UMD_HEAP_SIGNATURE;
    heap->device = device;
@@ -1366,6 +1503,8 @@ d12_umd_open_heap_resource(
       result = device->renderer_ops->create_placed_resource(
          device->backend, heap->backend, 0, &opened_resource,
          clear_value, &resource->backend);
+      if (SUCCEEDED(result) && !resource->backend)
+         result = E_FAIL;
       if (FAILED(result))
          goto fail;
 
@@ -1691,9 +1830,6 @@ d12_umd_check_resource_allocation_info(
    D3D12DDI_RESOURCE_ALLOCATION_INFO *info)
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
-   D3D12DDIARG_CREATERESOURCE_0003 resolved_arguments;
-   struct d12_frontend_resource_desc frontend;
-   struct d12_frontend_resource_allocation_info allocation_info;
    HRESULT result;
 
    const UINT supported_optimization_flags =
@@ -1707,41 +1843,11 @@ d12_umd_check_resource_allocation_info(
       d12_umd_set_device_error(device, E_INVALIDARG);
       return;
    }
-   if (!device || !resource_arguments || !info ||
-       !d12_umd_resolve_resource_arguments(resource_arguments,
-                                           &resolved_arguments) ||
-       (visible_node_mask != 0 && visible_node_mask != 1)) {
-      d12_umd_set_device_error(device, E_INVALIDARG);
-      return;
-   }
-
-   if (device->renderer_ops && device->backend &&
-       device->renderer_ops->get_resource_allocation_info) {
-      frontend = d12_umd_frontend_resource_desc(&resolved_arguments);
-      frontend.alignment = alignment_restriction;
-      result = device->renderer_ops->get_resource_allocation_info(
-         device->backend, &frontend, visible_node_mask, &allocation_info);
-      if (FAILED(result)) {
-         d12_umd_set_device_error(device, result);
-         return;
-      }
-      *info = (D3D12DDI_RESOURCE_ALLOCATION_INFO){
-         .ResourceDataSize = allocation_info.size,
-         .ResourceDataAlignment = allocation_info.alignment,
-         .AdditionalDataHeaderAlignment = 1,
-         .AdditionalDataAlignment = 1,
-         .Layout = (D3D12DDI_TEXTURE_LAYOUT)allocation_info.layout,
-      };
-      return;
-   }
-
-   *info = (D3D12DDI_RESOURCE_ALLOCATION_INFO){
-      .ResourceDataSize = resolved_arguments.Width,
-      .ResourceDataAlignment = D12_UMD_DEFAULT_PLACEMENT_ALIGNMENT,
-      .AdditionalDataHeaderAlignment = 1,
-      .AdditionalDataAlignment = 1,
-      .Layout = resolved_arguments.Layout,
-   };
+   result = d12_umd_resource_allocation_info(
+      device, resource_arguments, alignment_restriction, visible_node_mask,
+      true, info);
+   if (FAILED(result))
+      d12_umd_set_device_error(device, result);
 }
 
 static void APIENTRY
@@ -1798,6 +1904,7 @@ d12_umd_check_existing_resource_allocation_info(
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_resource *resource = resource_handle.pDrvPrivate;
+   HRESULT result;
 
    if (info)
       memset(info, 0, sizeof(*info));
@@ -1810,9 +1917,15 @@ d12_umd_check_existing_resource_allocation_info(
       return;
    }
 
-   d12_umd_check_resource_allocation_info(
-      handle, &resource->desc, D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_NONE, 0,
-      1, info);
+   result = d12_umd_resource_allocation_info(
+      device, &resource->desc, 0, 1, false, info);
+   if (FAILED(result) || resource->heap_offset > resource->allocation.size ||
+       info->ResourceDataSize >
+          resource->allocation.size - resource->heap_offset) {
+      memset(info, 0, sizeof(*info));
+      d12_umd_set_device_error(device, FAILED(result) ? result : E_FAIL);
+      return;
+   }
    *allocation = resource->allocation.allocation;
 }
 

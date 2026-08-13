@@ -21,7 +21,7 @@ toolchain=${LLVM_MINGW_ROOT:-/Users/dj/Toolchains/llvm-mingw}
 readobj=${LLVM_READOBJ:-/opt/homebrew/opt/llvm/bin/llvm-readobj}
 native_build=${D12_UMD_NATIVE_BUILD:-$repo_root/_build-d3d12-umd-native-tools}
 cross_build=${D12_UMD_MESA_BUILD:-$repo_root/_build-d3d12-umd-mesa-arm64-shared}
-wddm_target=${D12_UMD_WDDM_TARGET:-20}
+wddm_target=${D12_UMD_WDDM_TARGET:-21}
 case $wddm_target in
     20) wddm_version=2.0; driver_version=20.17.240.0 ;;
     21) wddm_version=2.1; driver_version=21.17.240.0 ;;
