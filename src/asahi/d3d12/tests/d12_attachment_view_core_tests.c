@@ -39,6 +39,19 @@ main(void)
    assert(view.width == 256 && view.height == 64);
    assert(view.first_layer == 1 && view.layer_count == 3);
 
+   request = (struct d12_attachment_view_request){
+      .width = 512,
+      .height = 1,
+      .levels = 10,
+      .layers = 4,
+      .mip = 4,
+      .first_layer = 1,
+      .layer_count = 2,
+   };
+   assert(d12_attachment_view_resolve(&request, &view));
+   assert(view.width == 32 && view.height == 1);
+   assert(view.first_layer == 1 && view.layer_count == 2);
+
    request.layer_count = 4;
    assert(!d12_attachment_view_resolve(&request, &view));
    request.layer_count = 0;

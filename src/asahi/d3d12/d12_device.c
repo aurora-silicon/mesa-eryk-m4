@@ -2909,9 +2909,15 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
+   const bool is_1d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+   const bool is_2d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D;
    const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
-   if (samples != 1 && samples != 2 && samples != 4) {
-      mesa_loge("CreateDepthStencilView: invalid sample count %u", samples);
+   if ((!is_1d && !is_2d) || (is_1d && samples != 1) ||
+       (is_2d && samples != 1 && samples != 2 && samples != 4)) {
+      mesa_loge("CreateDepthStencilView: dimension %d/sample count %u is "
+                "unsupported", (int)res->desc.Dimension, samples);
       slot->resource = NULL;
       return;
    }
@@ -2923,14 +2929,33 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
       return;
    }
 
-   const uint32_t resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
    uint32_t first_layer = 0;
    uint32_t mip_level = 0;
    /* A NULL descriptor requests the default view over every array slice. */
-   uint32_t view_layers = desc ? 1 : resource_layers;
+   uint32_t view_layers =
+      desc ? 1 : MAX2(res->desc.DepthOrArraySize, 1);
    if (desc) {
-      if (samples > 1) {
-         if (desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2DMS) {
+      if (is_1d) {
+         if (desc->ViewDimension == D3D12_DSV_DIMENSION_TEXTURE1D) {
+            mip_level = desc->Texture1D.MipSlice;
+         } else if (desc->ViewDimension ==
+                    D3D12_DSV_DIMENSION_TEXTURE1DARRAY) {
+            first_layer = desc->Texture1DArray.FirstArraySlice;
+            view_layers = desc->Texture1DArray.ArraySize;
+            mip_level = desc->Texture1DArray.MipSlice;
+         } else {
+            mesa_loge("CreateDepthStencilView: view dimension %d does not "
+                      "match 1D resource", (int)desc->ViewDimension);
+            slot->resource = NULL;
+            return;
+         }
+      } else if (samples > 1) {
+         if (desc->ViewDimension ==
+             D3D12_DSV_DIMENSION_TEXTURE2DMSARRAY) {
+            first_layer = desc->Texture2DMSArray.FirstArraySlice;
+            view_layers = desc->Texture2DMSArray.ArraySize;
+         } else if (desc->ViewDimension !=
+                    D3D12_DSV_DIMENSION_TEXTURE2DMS) {
             mesa_loge("CreateDepthStencilView: view dimension %d does not "
                       "match %u-sample resource",
                       (int)desc->ViewDimension, samples);
@@ -2942,32 +2967,35 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
          first_layer = desc->Texture2DArray.FirstArraySlice;
          view_layers = desc->Texture2DArray.ArraySize;
          mip_level = desc->Texture2DArray.MipSlice;
-         if (view_layers == UINT32_MAX)
-            view_layers = resource_layers - MIN2(first_layer,
-                                                  resource_layers);
-
-         if (mip_level >= res->layout.levels ||
-             first_layer >= resource_layers || !view_layers ||
-             view_layers > resource_layers - first_layer) {
-            mesa_loge("CreateDepthStencilView: array range %u+%u/%u mip %u "
-                      "out of range", first_layer, view_layers,
-                      resource_layers, desc->Texture2DArray.MipSlice);
-            slot->resource = NULL;
-            return;
-         }
       } else if (desc->ViewDimension != D3D12_DSV_DIMENSION_TEXTURE2D) {
          mesa_loge("CreateDepthStencilView: view dimension %d does not match "
                    "single-sample resource", (int)desc->ViewDimension);
          slot->resource = NULL;
          return;
-      } else if ((mip_level = desc->Texture2D.MipSlice) >=
-                 res->layout.levels) {
-         mesa_loge("CreateDepthStencilView: mip slice %u out of range",
-                   mip_level);
-         slot->resource = NULL;
-         return;
+      } else {
+         mip_level = desc->Texture2D.MipSlice;
       }
    }
+
+   struct d12_attachment_view view;
+   const struct d12_attachment_view_request request = {
+      .width = res->layout.width_px,
+      .height = res->layout.height_px,
+      .levels = res->layout.levels,
+      .layers = res->layout.depth_px,
+      .mip = mip_level,
+      .first_layer = first_layer,
+      .layer_count = view_layers,
+   };
+   if (!d12_attachment_view_resolve(&request, &view)) {
+      mesa_loge("CreateDepthStencilView: layer range %u+%u at mip %u is out "
+                "of range", first_layer, view_layers, mip_level);
+      slot->resource = NULL;
+      return;
+   }
+   first_layer = view.first_layer;
+   mip_level = view.mip;
+   view_layers = view.layer_count;
 
    const D3D12_DSV_FLAGS flags = desc ? desc->Flags : D3D12_DSV_FLAG_NONE;
    const D3D12_DSV_FLAGS valid = D3D12_DSV_FLAG_READ_ONLY_DEPTH |

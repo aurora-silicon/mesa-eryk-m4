@@ -329,6 +329,13 @@ loads, PBE stores and partial clears all consume that resolved view, so legal
 zero.  Nonzero RTV plane slices fail closed because the currently advertised
 renderable format set has no planar render-target representation.
 
+Depth/stencil allocation and view creation use the same attachment-range seam.
+The renderer now accepts legal single-sampled 1D depth/stencil resources and
+1D/1D-array DSVs, and preserves 2D multisample-array DSV slice ranges instead
+of rejecting the DDI's array spelling.  ZLS load/store, mip dimensions,
+layered clears and submission attachment tracking remain the existing shared
+AGX paths; no parallel DDI-only depth implementation was introduced.
+
 Resource-only creation implements both reserved resources and the baseline
 `ReuseBufferGPUVA` capture path. For capture, the frontend validates the source
 as a same-device, backed, non-reserved buffer; checks the requested resource's

@@ -1311,7 +1311,8 @@ d12_resource_compute_texture_layout(
    memset(stencil_layout, 0, sizeof(*stencil_layout));
    *is_depth_stencil = false;
 
-   if (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+   if ((desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
+        desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) &&
        d12_format_is_depth_stencil(desc->Format)) {
       enum pipe_format z = d12_format_depth_plane(desc->Format);
       enum pipe_format s = d12_format_stencil_plane(desc->Format);
@@ -1322,6 +1323,8 @@ d12_resource_compute_texture_layout(
       const unsigned levels = desc->MipLevels ? desc->MipLevels : full_levels;
 
       if (z == PIPE_FORMAT_NONE ||
+          (desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+           (desc->Height != 1 || samples != 1)) ||
           (samples != 1 && samples != 2 && samples != 4) || !desc->Width ||
           !desc->Height) {
          mesa_loge("D3D12 texture layout: depth/stencil shape unsupported "

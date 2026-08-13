@@ -84,6 +84,10 @@ static unsigned rtv_create_calls;
 static void *rtv_resource;
 static uint64_t rtv_destination;
 static struct d12_frontend_rtv_desc rtv_desc;
+static unsigned dsv_create_calls;
+static void *dsv_resource;
+static uint64_t dsv_destination;
+static struct d12_frontend_dsv_desc dsv_desc;
 static HRESULT blt_execute_result = S_OK;
 static D3DDDI_RESIDENCYSTATUS query_residency_status =
    D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
@@ -493,8 +497,22 @@ test_create_render_target_view(
    rtv_desc = *desc;
 }
 
+static void
+test_create_depth_stencil_view(
+   void *device, void *resource, const struct d12_frontend_dsv_desc *desc,
+   uint64_t destination)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !destination)
+      return;
+   ++dsv_create_calls;
+   dsv_resource = resource;
+   dsv_destination = destination;
+   dsv_desc = *desc;
+}
+
 static const struct d12_umd_renderer_ops test_descriptor_renderer_ops = {
    .create_render_target_view = test_create_render_target_view,
+   .create_depth_stencil_view = test_create_depth_stencil_view,
 };
 
 static HRESULT
@@ -2029,6 +2047,37 @@ wmain(int argc, wchar_t **argv)
                rtv_desc.texture.first_slice == 1 &&
                rtv_desc.texture.array_size == UINT32_MAX,
             "translate 3D RTV mip and W-slice range");
+
+         {
+            const D3D12DDIARG_CREATE_DEPTH_STENCIL_VIEW dsv_arguments = {
+               .hDrvResource = {.pDrvPrivate = &resource},
+               .Format = DXGI_FORMAT_D16_UNORM,
+               .ResourceDimension = D3D12DDI_RD_TEXTURE1D,
+               .Flags = D3D12DDI_CREATE_DSV_FLAG_READ_ONLY_DEPTH,
+               .Tex1D = {
+                  .MipSlice = 5,
+                  .FirstArraySlice = 3,
+                  .ArraySize = 4,
+               },
+            };
+            dsv_create_calls = 0;
+            dsv_resource = NULL;
+            dsv_destination = 0;
+            memset(&dsv_desc, 0, sizeof(dsv_desc));
+            device_table.pfnCreateDepthStencilView(
+               driver_device, &dsv_arguments, destination);
+            require_result(
+               dsv_create_calls == 1 &&
+                  dsv_resource == TEST_TILED_RESOURCE &&
+                  dsv_destination == destination.ptr &&
+                  dsv_desc.format == DXGI_FORMAT_D16_UNORM &&
+                  dsv_desc.dimension == D3D12DDI_RD_TEXTURE1D &&
+                  dsv_desc.flags ==
+                     D3D12DDI_CREATE_DSV_FLAG_READ_ONLY_DEPTH &&
+                  dsv_desc.mip_slice == 5 && dsv_desc.first_slice == 3 &&
+                  dsv_desc.array_size == 4,
+               "translate 1D array DSV mip and layer range");
+         }
 
          private_device->renderer_ops = saved_renderer_ops;
          private_device->backend = saved_backend;
