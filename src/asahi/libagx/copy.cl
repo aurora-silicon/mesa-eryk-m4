@@ -301,6 +301,7 @@ libagx_present_load_pixel(global uint8_t *address, uint format)
              255.0f;
    }
    if (format == LIBAGX_PRESENT_FORMAT_BGRA8 ||
+       format == LIBAGX_PRESENT_FORMAT_BGRA8_SRGB ||
        format == LIBAGX_PRESENT_FORMAT_BGRX8) {
       return (float4)((float)address[2], (float)address[1],
                       (float)address[0],
@@ -357,6 +358,7 @@ libagx_present_store_pixel(global uint8_t *address, uint format,
       return;
    }
    if (format == LIBAGX_PRESENT_FORMAT_BGRA8 ||
+       format == LIBAGX_PRESENT_FORMAT_BGRA8_SRGB ||
        format == LIBAGX_PRESENT_FORMAT_BGRX8) {
       address[0] = (uint8_t)libagx_present_quantize(value.z, 255u);
       address[1] = (uint8_t)libagx_present_quantize(value.y, 255u);
@@ -882,13 +884,8 @@ libagx_present_blt(global uint8_t *dest, global uint8_t *src,
    float x_weight = source_x - (float)x0;
    float y_weight = source_y - (float)y0;
 
-   uint src_float = src_format == LIBAGX_PRESENT_FORMAT_RGBA16_FLOAT;
-   uint dest_float = dest_format == LIBAGX_PRESENT_FORMAT_RGBA16_FLOAT;
-   uint srgb_roundtrip =
-      src_format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB &&
-      dest_format == LIBAGX_PRESENT_FORMAT_RGBA8_SRGB;
-   uint decode_gamma = (!src_float && dest_float) || srgb_roundtrip;
-   uint encode_gamma = (src_float && !dest_float) || srgb_roundtrip;
+   uint decode_gamma = LIBAGX_PRESENT_FORMAT_IS_SRGB(src_format);
+   uint encode_gamma = LIBAGX_PRESENT_FORMAT_IS_SRGB(dest_format);
 
    float4 c00 = libagx_present_sample(
       src, x0, y0, src_pitch_B, src_stride_el, src_tile_width_el,

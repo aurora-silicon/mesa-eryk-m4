@@ -10,6 +10,7 @@
 #include "d12_umd_resource_command_funcs.h"
 
 #include "d12_umd_internal.h"
+#include "../d12_present_format_core.h"
 #include "../d12_present_blt_math.h"
 
 #include <stdbool.h>
@@ -37,19 +38,7 @@ _Static_assert((UINT)DXGI_DDI_MODE_ROTATION_UNSPECIFIED ==
 static bool
 d12_umd_blt_display_format(DXGI_FORMAT format)
 {
-   switch (format) {
-   case DXGI_FORMAT_B5G6R5_UNORM:
-   case DXGI_FORMAT_B5G5R5A1_UNORM:
-   case DXGI_FORMAT_B8G8R8A8_UNORM:
-   case DXGI_FORMAT_B8G8R8X8_UNORM:
-   case DXGI_FORMAT_R16G16B16A16_FLOAT:
-   case DXGI_FORMAT_R10G10B10A2_UNORM:
-   case DXGI_FORMAT_R8G8B8A8_UNORM:
-   case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-      return true;
-   default:
-      return false;
-   }
+   return d12_present_format_core_supported((uint32_t)format);
 }
 
 static void

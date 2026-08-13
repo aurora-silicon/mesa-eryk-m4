@@ -15,6 +15,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_present_format_core.h"
 #include "d12_resolve_core.h"
 
 #include "layout.h"
@@ -160,6 +161,29 @@ D12_RESOLVE_FORMAT_ABI(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
 D12_RESOLVE_FORMAT_ABI(DXGI_FORMAT_B8G8R8X8_TYPELESS,
                        D12_RESOLVE_CORE_FORMAT_B8G8R8X8_TYPELESS);
 #undef D12_RESOLVE_FORMAT_ABI
+
+#define D12_PRESENT_FORMAT_ABI(dxgi, core)                                 \
+   _Static_assert((int)(dxgi) == (int)(core),                              \
+                  "DXGI/core presentation format ABI drift")
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_R16G16B16A16_FLOAT,
+                       D12_PRESENT_CORE_FORMAT_R16G16B16A16_FLOAT);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_R10G10B10A2_UNORM,
+                       D12_PRESENT_CORE_FORMAT_R10G10B10A2_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_R8G8B8A8_UNORM,
+                       D12_PRESENT_CORE_FORMAT_R8G8B8A8_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+                       D12_PRESENT_CORE_FORMAT_R8G8B8A8_UNORM_SRGB);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_B5G6R5_UNORM,
+                       D12_PRESENT_CORE_FORMAT_B5G6R5_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_B5G5R5A1_UNORM,
+                       D12_PRESENT_CORE_FORMAT_B5G5R5A1_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_B8G8R8A8_UNORM,
+                       D12_PRESENT_CORE_FORMAT_B8G8R8A8_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_B8G8R8X8_UNORM,
+                       D12_PRESENT_CORE_FORMAT_B8G8R8X8_UNORM);
+D12_PRESENT_FORMAT_ABI(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+                       D12_PRESENT_CORE_FORMAT_B8G8R8A8_UNORM_SRGB);
+#undef D12_PRESENT_FORMAT_ABI
 
 struct d12_format_entry {
    DXGI_FORMAT dxgi;
@@ -464,25 +488,6 @@ d12_format_is_typeless(DXGI_FORMAT format)
    }
 }
 
-static bool
-d12_format_is_displayable(DXGI_FORMAT format)
-{
-   switch (format) {
-   case DXGI_FORMAT_R8G8B8A8_UNORM:
-   case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-   case DXGI_FORMAT_B8G8R8A8_UNORM:
-   case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
-   case DXGI_FORMAT_B8G8R8X8_UNORM:
-   case DXGI_FORMAT_B5G6R5_UNORM:
-   case DXGI_FORMAT_B5G5R5A1_UNORM:
-   case DXGI_FORMAT_R10G10B10A2_UNORM:
-   case DXGI_FORMAT_R16G16B16A16_FLOAT:
-      return true;
-   default:
-      return false;
-   }
-}
-
 uint64_t
 d12_format_frontend_support(DXGI_FORMAT format)
 {
@@ -548,7 +553,7 @@ d12_format_frontend_support(DXGI_FORMAT format)
          support |= D12_FRONTEND_FORMAT_BLENDABLE;
    }
 
-   if (d12_format_is_displayable(format))
+   if (d12_present_format_core_supported((uint32_t)format))
       support |= D12_FRONTEND_FORMAT_DISPLAY;
 
    return support;

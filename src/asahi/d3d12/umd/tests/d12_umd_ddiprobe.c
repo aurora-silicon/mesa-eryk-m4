@@ -3536,6 +3536,13 @@ wmain(int argc, wchar_t **argv)
                   require_result(result == DXGI_DDI_ERR_UNSUPPORTED,
                                  "DXGI conversion reaches renderer gate");
 
+                  rotate_resources[1].desc.Format =
+                     DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
+                  result = dxgi_table.pfnBlt1(&blt1);
+                  require_result(
+                     result == DXGI_DDI_ERR_UNSUPPORTED,
+                     "DXGI BGRA8 sRGB conversion reaches renderer gate");
+
                   blt1.Flags.Value = UINT32_C(0x80000000);
                   result = dxgi_table.pfnBlt1(&blt1);
                   require_result(result == E_INVALIDARG,

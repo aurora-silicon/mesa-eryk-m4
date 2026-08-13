@@ -59,6 +59,12 @@ done
 "$out/d12_present_blt_math_tests"
 
 "$cc" "$common[@]" \
+    "$d12_dir/d12_present_format_core.c" \
+    "$d12_dir/tests/d12_present_format_core_tests.c" \
+    -o "$out/d12_present_format_core_tests"
+"$out/d12_present_format_core_tests"
+
+"$cc" "$common[@]" \
     "$d12_dir/d12_query_core.c" \
     "$d12_dir/tests/d12_query_core_tests.c" \
     -o "$out/d12_query_core_tests"

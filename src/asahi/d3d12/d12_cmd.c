@@ -13,6 +13,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_present_format_core.h"
 #include "d12_query_core.h"
 #include "d12_resolve_core.h"
 
@@ -9484,31 +9485,6 @@ d12_copy_surface_from_texture(struct d12_copy_surface *surface,
    return d12_copy_surface_check_storage(surface, name);
 }
 
-static uint32_t
-d12_present_blt_format(DXGI_FORMAT format)
-{
-   switch (format) {
-   case DXGI_FORMAT_R8G8B8A8_UNORM:
-      return LIBAGX_PRESENT_FORMAT_RGBA8;
-   case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-      return LIBAGX_PRESENT_FORMAT_RGBA8_SRGB;
-   case DXGI_FORMAT_B8G8R8A8_UNORM:
-      return LIBAGX_PRESENT_FORMAT_BGRA8;
-   case DXGI_FORMAT_B8G8R8X8_UNORM:
-      return LIBAGX_PRESENT_FORMAT_BGRX8;
-   case DXGI_FORMAT_R10G10B10A2_UNORM:
-      return LIBAGX_PRESENT_FORMAT_RGB10A2;
-   case DXGI_FORMAT_R16G16B16A16_FLOAT:
-      return LIBAGX_PRESENT_FORMAT_RGBA16_FLOAT;
-   case DXGI_FORMAT_B5G6R5_UNORM:
-      return LIBAGX_PRESENT_FORMAT_BGR565;
-   case DXGI_FORMAT_B5G5R5A1_UNORM:
-      return LIBAGX_PRESENT_FORMAT_BGRA5551;
-   default:
-      return LIBAGX_PRESENT_FORMAT_INVALID;
-   }
-}
-
 HRESULT
 d12_cmd_present_blt(
    struct d12_cmd_list *list, struct d12_resource *destination,
@@ -9547,20 +9523,18 @@ d12_cmd_present_blt(
        desc->source_bottom > s.height_px)
       return E_INVALIDARG;
 
-   const uint32_t destination_format =
-      d12_present_blt_format(destination->desc.Format);
-   const uint32_t source_format = d12_present_blt_format(source->desc.Format);
-   const uint32_t destination_pixel_size =
-      util_format_get_blocksize(d.format);
-   const uint32_t source_pixel_size = util_format_get_blocksize(s.format);
+   struct d12_present_format_info destination_format;
+   struct d12_present_format_info source_format;
    const uint32_t width =
       desc->destination_right - desc->destination_left;
    const uint32_t height =
       desc->destination_bottom - desc->destination_top;
-   if (!destination_format || !source_format || !destination_pixel_size ||
-       !source_pixel_size ||
-       d.blocksize_B != destination_pixel_size ||
-       s.blocksize_B != source_pixel_size * s.sample_count ||
+   if (!d12_present_format_core_get((uint32_t)destination->desc.Format,
+                                    &destination_format) ||
+       !d12_present_format_core_get((uint32_t)source->desc.Format,
+                                    &source_format) ||
+       d.blocksize_B != destination_format.pixel_size_B ||
+       s.blocksize_B != source_format.pixel_size_B * s.sample_count ||
        (uint64_t)width * height > UINT32_MAX)
       return E_NOTIMPL;
 
@@ -9583,13 +9557,13 @@ d12_cmd_present_blt(
       .dest_tile_height_el = d.tile_height_el,
       .src_tile_width_el = s.tile_width_el,
       .src_tile_height_el = s.tile_height_el,
-      .dest_pixel_size_B = destination_pixel_size,
-      .src_pixel_size_B = source_pixel_size,
+      .dest_pixel_size_B = destination_format.pixel_size_B,
+      .src_pixel_size_B = source_format.pixel_size_B,
       .source_sample_count = s.sample_count,
       .dest_tiled = d.tiled,
       .src_tiled = s.tiled,
-      .dest_format = destination_format,
-      .src_format = source_format,
+      .dest_format = destination_format.shader_format,
+      .src_format = source_format.shader_format,
       .rotation = desc->rotation,
    };
 

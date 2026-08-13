@@ -12,7 +12,7 @@ one renderer core shared with the existing public COM frontend.
 ## 1. Complete source inventory and ownership
 
 The inventoried COM/core baseline was 48,249 lines before this frontend. The
-current shared tree is 72,808 lines across C/header sources, excluding tests
+current shared tree is 72,877 lines across C/header sources, excluding tests
 and documentation. Its renderer is split by object kind even though the
 original public entry surface is COM.
 
@@ -28,6 +28,7 @@ original public entry surface is COM.
 | `d12_fence.c` | timeline fence state, waits, events and sharing | Reuse timeline policy; bind it to WDDM monitored-fence callbacks. |
 | `d12_query.c`, `d12_query_core.c` | query heaps, type matching and queue-family policy | Reuse native heap/timestamp storage behind DDI private handles; the portable policy core keeps COM and DDI query ABIs aligned. |
 | `d12_resolve_core.c` | typed resolve format, numeric class, mode and resource-family policy | Shared by format-cap queries and the COM/DDI command recorder; portable tests pin all 52 accepted DXGI spellings and reject typed/typeless mismatches. |
+| `d12_present_blt_math.c`, `d12_present_format_core.c` | frontend-neutral blit geometry and display-format/color-space policy | Shared by DXGI validation, format caps and the native AGX recorder; portable tests pin rotation/scaling and every advertised display format. |
 | `d12_root_sig.c` | RTS0 parsing/serialization and binding assignment | Pure reusable core except COM blob/deserializer wrappers. |
 | `d12_format.c` | DXGI-to-pipe/AGX format support | Reuse directly for `pfnCheckFormatSupport`, resources, views and presentation. |
 | `dxil/d12_dxil_*` | DXBC container and DXIL bitstream/module parsing, DXIL-to-NIR | Reuse without a DDI fork. |
@@ -624,6 +625,12 @@ bilinear sampling, preserves sRGB transfer semantics, and covers the common
 8/10/16-bit and packed 5:6:5/5:5:5:1 swap-chain formats. Compound operations
 such as resolve plus conversion plus scaling remain one pass; missing required
 DXGI `Stretch`/`Convert` flags and reserved bits fail before recording.
+A single frontend-neutral display-format table drives resource capability
+advertising, DXGI blit validation and the native recorder's shader-format and
+element-width selection. It includes both RGBA8 and BGRA8 sRGB encodings, and
+the AGX kernel decodes or encodes gamma only when the corresponding source or
+destination view is explicitly sRGB; ordinary UNORM-to-float conversion stays
+linear.
 Each direct queue owns one serialized internal presentation recorder: its
 allocator and list are created lazily, reset after each successful submit and
 discarded on any record/close/execute failure. Steady-state composition blits
