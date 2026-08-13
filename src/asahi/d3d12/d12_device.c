@@ -3601,7 +3601,6 @@ d12_device_CreateUnorderedAccessView(
        res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
        res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
       const unsigned samples = MAX2(res->desc.SampleDesc.Count, 1);
-      const uint32_t resource_levels = MAX2(res->desc.MipLevels, 1);
       uint32_t level = 0, first_layer = 0, layers = 1;
       const bool is_3d =
          res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
@@ -3629,9 +3628,19 @@ d12_device_CreateUnorderedAccessView(
          layers = desc->Texture1DArray.ArraySize;
       } else if (!is_1d && !is_3d &&
                  dimension == D3D12_UAV_DIMENSION_TEXTURE2D) {
+         if (desc->Texture2D.PlaneSlice != 0) {
+            mesa_loge("CreateUnorderedAccessView: plane slice %u "
+                      "unsupported", desc->Texture2D.PlaneSlice);
+            return;
+         }
          level = desc->Texture2D.MipSlice;
       } else if (!is_1d && !is_3d &&
                  dimension == D3D12_UAV_DIMENSION_TEXTURE2DARRAY) {
+         if (desc->Texture2DArray.PlaneSlice != 0) {
+            mesa_loge("CreateUnorderedAccessView: plane slice %u "
+                      "unsupported", desc->Texture2DArray.PlaneSlice);
+            return;
+         }
          level = desc->Texture2DArray.MipSlice;
          first_layer = desc->Texture2DArray.FirstArraySlice;
          layers = desc->Texture2DArray.ArraySize;
@@ -3645,18 +3654,26 @@ d12_device_CreateUnorderedAccessView(
          return;
       }
 
-      const uint32_t resource_layers =
-         is_3d ? MAX2(res->desc.DepthOrArraySize >> MIN2(level, 31), 1)
-               : MAX2(res->desc.DepthOrArraySize, 1);
-      if (layers == UINT32_MAX)
-         layers = resource_layers - MIN2(first_layer, resource_layers);
-      if (level >= resource_levels || first_layer >= resource_layers ||
-          !layers || layers > resource_layers - first_layer) {
-         mesa_loge("CreateUnorderedAccessView: texture range level %u/%u "
-                   "layers %u+%u/%u is out of range", level,
-                   resource_levels, first_layer, layers, resource_layers);
+      struct d12_attachment_view view;
+      const struct d12_attachment_view_request request = {
+         .width = res->layout.width_px,
+         .height = res->layout.height_px,
+         .levels = res->layout.levels,
+         .layers = res->layout.depth_px,
+         .mip = level,
+         .first_layer = first_layer,
+         .layer_count = layers,
+         .mipmapped_layers = is_3d,
+      };
+      if (!d12_attachment_view_resolve(&request, &view)) {
+         mesa_loge("CreateUnorderedAccessView: texture range level %u "
+                   "layers %u+%u is out of range", level, first_layer,
+                   layers);
          return;
       }
+      level = view.mip;
+      first_layer = view.first_layer;
+      layers = view.layer_count;
 
       DXGI_FORMAT view_format =
          desc && desc->Format != DXGI_FORMAT_UNKNOWN ? desc->Format

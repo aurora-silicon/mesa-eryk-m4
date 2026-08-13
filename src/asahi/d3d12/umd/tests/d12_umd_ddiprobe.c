@@ -88,6 +88,10 @@ static unsigned dsv_create_calls;
 static void *dsv_resource;
 static uint64_t dsv_destination;
 static struct d12_frontend_dsv_desc dsv_desc;
+static unsigned uav_create_calls;
+static void *uav_resource;
+static uint64_t uav_destination;
+static struct d12_frontend_uav_desc uav_desc;
 static HRESULT blt_execute_result = S_OK;
 static D3DDDI_RESIDENCYSTATUS query_residency_status =
    D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
@@ -510,9 +514,24 @@ test_create_depth_stencil_view(
    dsv_desc = *desc;
 }
 
+static void
+test_create_unordered_access_view(
+   void *device, void *resource, void *counter_resource,
+   const struct d12_frontend_uav_desc *desc, uint64_t destination)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !destination ||
+       counter_resource)
+      return;
+   ++uav_create_calls;
+   uav_resource = resource;
+   uav_destination = destination;
+   uav_desc = *desc;
+}
+
 static const struct d12_umd_renderer_ops test_descriptor_renderer_ops = {
    .create_render_target_view = test_create_render_target_view,
    .create_depth_stencil_view = test_create_depth_stencil_view,
+   .create_unordered_access_view = test_create_unordered_access_view,
 };
 
 static HRESULT
@@ -2077,6 +2096,36 @@ wmain(int argc, wchar_t **argv)
                   dsv_desc.mip_slice == 5 && dsv_desc.first_slice == 3 &&
                   dsv_desc.array_size == 4,
                "translate 1D array DSV mip and layer range");
+         }
+
+         {
+            const D3D12DDIARG_CREATE_UNORDERED_ACCESS_VIEW_0002
+               uav_arguments = {
+                  .hDrvResource = {.pDrvPrivate = &resource},
+                  .Format = DXGI_FORMAT_R32_UINT,
+                  .ResourceDimension = D3D12DDI_RD_TEXTURE3D,
+                  .Tex3D = {
+                     .MipSlice = 4,
+                     .FirstW = 2,
+                     .WSize = 5,
+                  },
+               };
+            uav_create_calls = 0;
+            uav_resource = NULL;
+            uav_destination = 0;
+            memset(&uav_desc, 0, sizeof(uav_desc));
+            device_table.pfnCreateUnorderedAccessView(
+               driver_device, &uav_arguments, destination);
+            require_result(
+               uav_create_calls == 1 &&
+                  uav_resource == TEST_TILED_RESOURCE &&
+                  uav_destination == destination.ptr &&
+                  uav_desc.format == DXGI_FORMAT_R32_UINT &&
+                  uav_desc.dimension == D3D12DDI_RD_TEXTURE3D &&
+                  uav_desc.texture.mip_slice == 4 &&
+                  uav_desc.texture.first_slice == 2 &&
+                  uav_desc.texture.array_size == 5,
+               "translate 3D UAV mip and W-slice range");
          }
 
          private_device->renderer_ops = saved_renderer_ops;

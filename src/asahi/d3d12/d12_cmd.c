@@ -10758,31 +10758,52 @@ d12_list_clear_uav_texture(struct d12_cmd_list *list,
    struct d12_resource *res =
       resource ? d12_resource_from_iface(resource) : NULL;
 
+   const bool is_3d =
+      res && res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
    if (!view || !res || view->kind != D12_DESC_UAV ||
        view->resource != res ||
-       res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE1D &&
+        res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+        !is_3d) ||
        (num_rects && !rects)) {
       mesa_loge("ClearUnorderedAccessView: invalid texture UAV");
       list->state = D12_LIST_ERROR;
       return;
    }
 
-   const unsigned mips = MAX2(res->desc.MipLevels, 1);
-   const unsigned resource_layers = MAX2(res->desc.DepthOrArraySize, 1);
+   const unsigned mips = res->layout.levels;
    const uint64_t layer_stride = res->layout.layer_stride_B;
-   if (view->address < res->addr || !layer_stride ||
-       (view->address - res->addr) % layer_stride) {
+   const unsigned level = view->texture_level;
+   if (view->address < res->addr || !layer_stride || level >= mips) {
       mesa_loge("ClearUnorderedAccessView: invalid texture layer address");
       list->state = D12_LIST_ERROR;
       return;
    }
 
-   const uint64_t first_layer64 =
-      (view->address - res->addr) / layer_stride;
+   uint64_t view_offset_B = view->address - res->addr;
+   if (is_3d) {
+      const uint64_t level_offset_B =
+         ail_get_level_offset_B(&res->layout, level);
+      if (view_offset_B < level_offset_B) {
+         mesa_loge("ClearUnorderedAccessView: invalid 3D mip address");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      view_offset_B -= level_offset_B;
+   }
+   if (view_offset_B % layer_stride) {
+      mesa_loge("ClearUnorderedAccessView: misaligned texture layer address");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
+   const uint64_t first_layer64 = view_offset_B / layer_stride;
+   const unsigned resource_layers =
+      is_3d ? u_minify(res->layout.depth_px, level)
+            : res->layout.depth_px;
    const unsigned layers = MAX2(view->texture_layers, 1);
-   const unsigned level = view->texture_level;
    if (first_layer64 >= resource_layers ||
-       layers > resource_layers - first_layer64 || level >= mips) {
+       layers > resource_layers - first_layer64) {
       mesa_loge("ClearUnorderedAccessView: texture range is out of bounds");
       list->state = D12_LIST_ERROR;
       return;
@@ -10804,11 +10825,24 @@ d12_list_clear_uav_texture(struct d12_cmd_list *list,
       return;
 
    for (unsigned layer = 0; layer < layers; layer++) {
-      const unsigned subresource =
-         level + ((unsigned)first_layer64 + layer) * mips;
+      const unsigned subresource = is_3d
+         ? level
+         : level + ((unsigned)first_layer64 + layer) * mips;
       struct d12_copy_surface surface;
       if (!d12_copy_surface_from_texture(
-             &surface, res, subresource, "UAV-clear destination") ||
+             &surface, res, subresource, "UAV-clear destination")) {
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      if (is_3d) {
+         const uint64_t slice = first_layer64 + layer;
+         surface.base += slice * layer_stride;
+         surface.storage_offset_B += slice * layer_stride;
+         surface.depth_px = 1;
+         surface.size_B = ail_get_level_size_B(&res->layout, level);
+      }
+      if (!d12_copy_surface_check_storage(&surface,
+                                          "UAV-clear destination") ||
           surface.sample_count != 1 ||
           surface.blocksize_B != packed_size_B ||
           surface.block_width_px != 1 || surface.block_height_px != 1) {
@@ -10869,7 +10903,7 @@ d12_list_clear_uav(struct d12_cmd_list *list,
    struct d12_resource *res =
       resource ? d12_resource_from_iface(resource) : NULL;
 
-   if (res && res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+   if (res && res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
       d12_list_clear_uav_texture(list, gpu_handle, cpu_handle, resource,
                                  packed, packed_size_B, num_rects, rects);
    } else {

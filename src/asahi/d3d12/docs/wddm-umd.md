@@ -336,6 +336,14 @@ of rejecting the DDI's array spelling.  ZLS load/store, mip dimensions,
 layered clears and submission attachment tracking remain the existing shared
 AGX paths; no parallel DDI-only depth implementation was introduced.
 
+Typed UAV clear routing also follows the descriptor's actual texture
+dimension.  The shared image-fill path now clears selected mips and layer
+ranges for 1D and 2D UAVs, and selected mip/W-slice ranges for 3D UAVs; 3D
+view-local addresses are decoded back into the owning miptree before each
+bounded slice fill.  UAV creation reuses the common attachment-range validator
+and rejects unrepresented nonzero plane slices instead of silently clearing a
+different plane.  Buffer UAVs retain their dedicated linear fill path.
+
 Resource-only creation implements both reserved resources and the baseline
 `ReuseBufferGPUVA` capture path. For capture, the frontend validates the source
 as a same-device, backed, non-reserved buffer; checks the requested resource's
