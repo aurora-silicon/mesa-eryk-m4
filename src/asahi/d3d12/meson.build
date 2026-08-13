@@ -164,7 +164,10 @@ if d12_is_windows
 
   if d12_umd_wdk_include != '' and d12_umd_generated_include != ''
     d12_umd_wddm_version = get_option('asahi-d3d12-wddm-version')
-    if d12_umd_wddm_version == '2.4'
+    if d12_umd_wddm_version == '3.1'
+      d12_umd_interface_version = '0x10000'
+      d12_umd_wddm_major = '31'
+    elif d12_umd_wddm_version == '2.4'
       d12_umd_interface_version = '0x9001'
       d12_umd_wddm_major = '24'
     elif d12_umd_wddm_version == '2.3'
@@ -210,6 +213,7 @@ if d12_is_windows
         'umd/d12_umd_query_funcs.c',
         'umd/d12_umd_resource_command_funcs.c',
         'umd/d12_umd_present_funcs.c',
+        'umd/d12_umd_unsupported_funcs.c',
         'umd/d12_umd_tables.c',
         'umd/d12_umd_adapter.c',
       ),

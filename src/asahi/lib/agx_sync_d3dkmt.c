@@ -18,9 +18,10 @@
  *     no kernel support.
  *
  *  2. TIMEOUTS. drmSyncobjWait takes an absolute CLOCK_MONOTONIC deadline;
- *     D3DKMTWaitForSynchronizationObjectFromCpu takes no timeout at all. The
- *     conversion is agx_d3dkmt_timeout_to_ms() and the wait is expressed as
- *     "arm an event, wait on the event".
+ *     D3DKMTWaitForSynchronizationObjectFromCpu takes no timeout and exposes
+ *     no cancellation for its asynchronous event form. Infinite waits use
+ *     the synchronous NULL-event form. Finite waits poll the CPU-visible
+ *     fence storage, so no event can outlive or alias a caller.
  *
  *  3. TRANSFER. drmSyncobjTransfer makes dst[dst_point] depend on
  *     src[src_point]. WDDM has no CPU-side equivalent, but it has an exact
@@ -355,7 +356,7 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
    struct agx_d3dkmt_winsys *ws = ws_of(p);
    agx_kmt_handle *kmt = NULL;
    uint64_t *values = NULL;
-   HANDLE async_event = NULL;
+   const volatile uint64_t **current = NULL;
    int ret = -1;
 
    if (num_handles == 0)
@@ -363,7 +364,8 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
 
    kmt = malloc((size_t)num_handles * sizeof(*kmt));
    values = malloc((size_t)num_handles * sizeof(*values));
-   if (kmt == NULL || values == NULL) {
+   current = malloc((size_t)num_handles * sizeof(*current));
+   if (kmt == NULL || values == NULL || current == NULL) {
       errno = ENOMEM;
       goto out;
    }
@@ -384,6 +386,7 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
       }
       kmt[i] = s->kmt;
       values[i] = points ? points[i] : agx_d3dkmt_binary_wait_value(s);
+      current[i] = s->cpu_va;
    }
    simple_mtx_unlock(&ws->lock);
 
@@ -392,18 +395,24 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
     * monitored fence has no "not yet submitted" state, only a value that has
     * or has not been reached. DRM's flag exists because a syncobj can hold a
     * NULL fence; a monitored fence cannot.
-    */
+   */
+   const bool wait_any = !(flags & DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL);
    uint32_t ms = agx_d3dkmt_timeout_to_ms(timeout_nsec, now_nsec());
+   enum agx_d3dkmt_cpu_wait_state state = agx_d3dkmt_cpu_wait_probe(
+      current, values, num_handles, wait_any, first_signaled);
+   if (state == AGX_D3DKMT_CPU_WAIT_SATISFIED) {
+      MemoryBarrier();
+      ret = 0;
+      goto out;
+   }
+   if (state == AGX_D3DKMT_CPU_WAIT_INVALID) {
+      errno = EIO;
+      goto out;
+   }
    if (ms != AGX_D3DKMT_INFINITE) {
-      /* A finite D3DKMT wait is armed asynchronously. Use one event per
-       * invocation: shared-fence event waiters can run concurrently, and a
-       * device-global resettable event would let one waiter consume another
-       * waiter's signal (or receive a late signal after a timeout). */
-      async_event = CreateEventW(NULL, FALSE, FALSE, NULL);
-      if (!async_event) {
-         errno = GetLastError() == ERROR_NOT_ENOUGH_MEMORY ? ENOMEM : EIO;
-         goto out;
-      }
+      ret = agx_d3dkmt_poll_cpu_fences(current, values, num_handles,
+                                       wait_any, ms, first_signaled);
+      goto out;
    }
 
    struct agx_kmt_waitsyncfromcpu wait = {
@@ -411,10 +420,8 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
       .ObjectCount = num_handles,
       .ObjectHandleArray = kmt,
       .FenceValueArray = values,
-      .hAsyncEvent = async_event,
-      .Flags = (flags & DRM_SYNCOBJ_WAIT_FLAGS_WAIT_ALL)
-                  ? 0
-                  : AGX_KMT_WAITCPU_WAITANY,
+      .hAsyncEvent = NULL,
+      .Flags = wait_any ? AGX_KMT_WAITCPU_WAITANY : 0,
    };
 
    agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromCpu, &wait);
@@ -423,60 +430,20 @@ d3dkmt_wait_common(struct util_sync_provider *p, uint32_t *handles,
       goto out;
    }
 
-   DWORD r = async_event ? WaitForSingleObject(async_event, ms)
-                         : WAIT_OBJECT_0;
-   if (r == WAIT_TIMEOUT) {
-      errno = ETIME;
-      ret = -1;
-      goto out;
-   }
-   if (r != WAIT_OBJECT_0) {
+   MemoryBarrier();
+   state = agx_d3dkmt_cpu_wait_probe(current, values, num_handles, wait_any,
+                                     first_signaled);
+   if (state != AGX_D3DKMT_CPU_WAIT_SATISFIED) {
       errno = EIO;
-      ret = -1;
       goto out;
-   }
-
-   /*
-    * D3DKMT reports only that the wait was satisfied, never by which object.
-    * Recover DRM's first_signaled by re-reading the fence values, which is
-    * free when the miniport provides CPU-visible fence storage (Q5).
-    */
-   if (first_signaled != NULL) {
-      simple_mtx_lock(&ws->lock);
-      for (unsigned i = 0; i < num_handles; ++i) {
-         struct agx_d3dkmt_sync *s =
-            agx_d3dkmt_sync_table_get(&ws->syncs, handles[i]);
-         values[i] = s ? agx_d3dkmt_sync_current(s) : 0;
-      }
-      simple_mtx_unlock(&ws->lock);
-
-      uint64_t *wanted = malloc((size_t)num_handles * sizeof(*wanted));
-      if (wanted != NULL) {
-         simple_mtx_lock(&ws->lock);
-         for (unsigned i = 0; i < num_handles; ++i) {
-            struct agx_d3dkmt_sync *s =
-               agx_d3dkmt_sync_table_get(&ws->syncs, handles[i]);
-            wanted[i] = points ? points[i]
-                               : (s ? agx_d3dkmt_binary_wait_value(s) : 0);
-         }
-         simple_mtx_unlock(&ws->lock);
-
-         uint32_t idx =
-            agx_d3dkmt_first_signaled(values, wanted, num_handles);
-         *first_signaled = idx == UINT32_MAX ? 0 : idx;
-         free(wanted);
-      } else {
-         *first_signaled = 0;
-      }
    }
 
    ret = 0;
 
 out:
-   if (async_event)
-      CloseHandle(async_event);
    free(kmt);
    free(values);
+   free(current);
    return ret;
 }
 

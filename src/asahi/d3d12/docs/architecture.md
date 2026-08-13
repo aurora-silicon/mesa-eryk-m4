@@ -4,10 +4,11 @@
 
 ```
    application / game / conformance suite
-        │  D3D12 COM ABI (ID3D12Device, ID3D12GraphicsCommandList, …)
-        │  headers: microsoft/DirectX-Headers (MIT) + winadapter.h
+        │
+        ├─ public D3D12 COM ABI (developer/testing frontend)
+        └─ Windows D3D12 runtime → WDDM 3.1 DDI 0099 (system frontend)
         ▼
-   d3d12agx.dll (Windows) / libd3d12agx.so (Linux)
+   d3d12agx.dll / libd3d12agx.so    d3d12agx_umd.dll (OpenAdapter12)
         │                                           ← src/asahi/d3d12/
         │        reuses, unmodified where possible:
         ├─ src/asahi/lib      agx_device / agx_bo / VA / submit
@@ -48,17 +49,18 @@ guessing at register semantics.
   D3D processes through NT handles.
 - **Queues:** DIRECT/COMPUTE/COPY all target asahi submit queues; the
   hardware distinction that matters is render vs compute encoders.
-- **Presentation stays outside this API driver.** On Windows, the Triton
-  D3D11 UMD remains the WDDM/DXGI desktop and presentation driver. Native
-  D3D12 applications hand it the same D3DKMT resource and monitored fence,
-  so presentation does not require a second allocation or a blit.
+- **Both Windows frontends coexist.** Triton remains the D3D11 UMD. Native
+  D3D12 is registered independently through `OpenAdapter12`; its DXGI DDI
+  table and Present 0051 path use the same runtime-owned KMD allocations,
+  contexts and monitored fences. The public COM DLL remains useful for direct
+  testing, but is not interposed under the system D3D12 runtime.
 
 ## Windows process boundary and zero-copy handoff
 
-`d3d12agx.dll` is an application-facing native D3D12 implementation. It is
-not a WDDM D3D12 UMD/DDI and does not replace the D3D11 display stack. Apps
-opt in through the normal D3D12 API; device creation and command submission
-then go straight to AGX through the D3DKMT platform backend.
+`d3d12agx.dll` is the application-facing COM implementation.
+`d3d12agx_umd.dll` is the native Windows UMD DDI implementation. They link
+the same `libd3d12agx_core`; only discovery, lifetime ownership, callback
+tables and error reporting differ. Neither replaces Triton's D3D11 API slot.
 
 The bridge to DXGI/D3D11 consists of standard shared-object operations:
 

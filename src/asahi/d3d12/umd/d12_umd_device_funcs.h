@@ -21,6 +21,10 @@ void d12_umd_install_device_core_functions_0013(
 void d12_umd_install_device_core_functions_0030(
    D3D12DDI_DEVICE_FUNCS_CORE_0030 *table);
 #endif
+#if D12_UMD_TARGETS_WDDM31
+void d12_umd_install_device_core_functions_0099(
+   D3D12DDI_DEVICE_FUNCS_CORE_0099 *table);
+#endif
 void d12_umd_install_command_queue_functions(
    D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 *table);
 

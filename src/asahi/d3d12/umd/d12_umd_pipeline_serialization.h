@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define D12_UMD_PIPELINE_SERIALIZATION_VERSION 2u
+#define D12_UMD_PIPELINE_SERIALIZATION_VERSION 3u
 
 enum d12_umd_serialized_pipeline_kind {
    D12_UMD_SERIALIZED_PIPELINE_COMPUTE = 1,

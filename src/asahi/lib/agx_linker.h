@@ -45,7 +45,7 @@ struct agx_linked_shader {
    struct agx_fragment_control_packed fragment_control;
 };
 
-void agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
+bool agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
                    bool fragment, struct agx_shader_part *main,
                    struct agx_shader_part *prolog,
                    struct agx_shader_part *epilog, unsigned nr_samples_shaded);

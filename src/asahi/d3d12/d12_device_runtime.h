@@ -115,7 +115,14 @@ void d12_device_runtime_command_list_set_scissors(
 void d12_device_runtime_command_list_set_blend_factor(
    void *list, const float factor[4]);
 void d12_device_runtime_command_list_set_stencil_ref(void *list,
-                                                     uint32_t reference);
+                                                      uint32_t reference);
+void d12_device_runtime_command_list_set_front_and_back_stencil_ref(
+   void *list, uint32_t front_reference, uint32_t back_reference);
+void d12_device_runtime_command_list_set_depth_bias(
+   void *list, float depth_bias, float depth_bias_clamp,
+   float slope_scaled_depth_bias);
+void d12_device_runtime_command_list_set_index_buffer_strip_cut(
+   void *list, uint32_t strip_cut);
 void d12_device_runtime_command_list_set_vertex_buffers(
    void *list, uint32_t start_slot, uint32_t count,
    const struct d12_frontend_vertex_buffer_view *views);

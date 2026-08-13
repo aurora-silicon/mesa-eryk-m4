@@ -19,6 +19,9 @@
 #include "agx_d3dkmt_core.h"
 
 #include <inttypes.h>
+#include <pthread.h>
+#include <sched.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -807,6 +810,122 @@ test_first_signaled(void)
    CHECK_EQ(agx_d3dkmt_first_signaled(all_short, all_want, 2), UINT32_MAX);
 }
 
+static void
+test_cpu_wait_probe(void)
+{
+   volatile uint64_t fence[3] = {4, 9, 2};
+   const volatile uint64_t *current[3] = {&fence[0], &fence[1], &fence[2]};
+   const uint64_t wanted[3] = {5, 9, 3};
+   uint32_t first = UINT32_MAX;
+
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(current, wanted, 3, true, &first),
+            AGX_D3DKMT_CPU_WAIT_SATISFIED);
+   CHECK_EQ(first, 1);
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(current, wanted, 3, false, &first),
+            AGX_D3DKMT_CPU_WAIT_PENDING);
+
+   fence[0] = 5;
+   fence[2] = 3;
+   first = UINT32_MAX;
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(current, wanted, 3, false, &first),
+            AGX_D3DKMT_CPU_WAIT_SATISFIED);
+   CHECK_EQ(first, 0);
+
+   const volatile uint64_t *missing[1] = {NULL};
+   const volatile uint64_t *missing_after_pending[2] = {&fence[0], NULL};
+   const uint64_t one[1] = {1};
+   const uint64_t two[2] = {UINT64_MAX, 1};
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(NULL, one, 1, true, NULL),
+            AGX_D3DKMT_CPU_WAIT_INVALID);
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(missing, one, 1, true, NULL),
+            AGX_D3DKMT_CPU_WAIT_INVALID);
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(missing_after_pending, two, 2, false,
+                                      NULL),
+            AGX_D3DKMT_CPU_WAIT_INVALID);
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(current, NULL, 1, true, NULL),
+            AGX_D3DKMT_CPU_WAIT_INVALID);
+   CHECK_EQ(agx_d3dkmt_cpu_wait_probe(current, wanted, 0, true, NULL),
+            AGX_D3DKMT_CPU_WAIT_INVALID);
+}
+
+struct cpu_wait_worker {
+   atomic_bool *start;
+   bool failed;
+   unsigned seed;
+};
+
+static void *
+cpu_wait_worker(void *data)
+{
+   struct cpu_wait_worker *worker = data;
+   while (!atomic_load_explicit(worker->start, memory_order_acquire))
+      sched_yield();
+
+   for (unsigned iteration = 0; iteration < 20000; ++iteration) {
+      volatile uint64_t fence[3] = {
+         worker->seed + iteration,
+         worker->seed + iteration + 2,
+         worker->seed + iteration + 1,
+      };
+      const volatile uint64_t *current[3] = {
+         &fence[0], &fence[1], &fence[2],
+      };
+      const uint64_t wanted[3] = {
+         worker->seed + iteration + 1,
+         worker->seed + iteration + 2,
+         worker->seed + iteration + 2,
+      };
+      uint32_t first = UINT32_MAX;
+
+      if (agx_d3dkmt_cpu_wait_probe(current, wanted, 3, true, &first) !=
+             AGX_D3DKMT_CPU_WAIT_SATISFIED ||
+          first != 1 ||
+          agx_d3dkmt_cpu_wait_probe(current, wanted, 3, false, NULL) !=
+             AGX_D3DKMT_CPU_WAIT_PENDING) {
+         worker->failed = true;
+         return NULL;
+      }
+
+      fence[0] = wanted[0];
+      fence[2] = wanted[2];
+      if (agx_d3dkmt_cpu_wait_probe(current, wanted, 3, false, &first) !=
+             AGX_D3DKMT_CPU_WAIT_SATISFIED ||
+          first != 0) {
+         worker->failed = true;
+         return NULL;
+      }
+   }
+
+   return NULL;
+}
+
+static void
+test_cpu_wait_probe_is_reentrant(void)
+{
+   enum { THREAD_COUNT = 8 };
+   pthread_t threads[THREAD_COUNT];
+   struct cpu_wait_worker workers[THREAD_COUNT];
+   atomic_bool start = ATOMIC_VAR_INIT(false);
+   unsigned created = 0;
+
+   for (unsigned i = 0; i < THREAD_COUNT; ++i) {
+      workers[i] = (struct cpu_wait_worker){
+         .start = &start,
+         .seed = i * 100000,
+      };
+      if (pthread_create(&threads[i], NULL, cpu_wait_worker, &workers[i]) != 0)
+         break;
+      created++;
+   }
+
+   CHECK_EQ(created, THREAD_COUNT);
+   atomic_store_explicit(&start, true, memory_order_release);
+   for (unsigned i = 0; i < created; ++i) {
+      CHECK_EQ(pthread_join(threads[i], NULL), 0);
+      CHECK(!workers[i].failed);
+   }
+}
+
 /* ------------------------------------------------------------------------ */
 static void
 test_identity_parsing(void)
@@ -1258,6 +1377,8 @@ main(void)
    test_sync_current_takes_the_max();
    test_timeout_conversion();
    test_first_signaled();
+   test_cpu_wait_probe();
+   test_cpu_wait_probe_is_reentrant();
    test_identity_parsing();
    test_alloc_flags();
    test_bo_read_ranges_are_absolute();

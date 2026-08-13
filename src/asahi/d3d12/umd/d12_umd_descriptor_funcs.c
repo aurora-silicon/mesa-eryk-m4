@@ -534,6 +534,50 @@ d12_umd_create_sampler(D3D12DDI_HDEVICE handle,
       device->backend, &desc, destination.ptr);
 }
 
+#if D12_UMD_TARGETS_WDDM31
+static void APIENTRY
+d12_umd_create_sampler_0096(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_SAMPLER_0096 *arguments,
+   D3D12DDI_CPU_DESCRIPTOR_HANDLE destination)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_frontend_sampler_desc desc;
+   const D3D12DDI_SAMPLER_DESC_0096 *source;
+   const uint32_t supported_flags =
+      (uint32_t)D3D12DDI_SAMPLER_FLAG_UINT_BORDER_COLOR |
+      (uint32_t)D3D12DDI_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
+
+   if (!d12_umd_descriptor_backend_ready(device) || !arguments ||
+       !arguments->pSamplerDesc || !destination.ptr ||
+       !device->renderer_ops->create_sampler) {
+      d12_umd_descriptor_error(device, E_INVALIDARG);
+      return;
+   }
+   source = arguments->pSamplerDesc;
+   if ((uint32_t)source->Flags & ~supported_flags) {
+      d12_umd_descriptor_error(device, E_INVALIDARG);
+      return;
+   }
+   desc = (struct d12_frontend_sampler_desc){
+      .filter = (uint32_t)source->Filter,
+      .address_u = (uint32_t)source->AddressU,
+      .address_v = (uint32_t)source->AddressV,
+      .address_w = (uint32_t)source->AddressW,
+      .mip_lod_bias = source->MipLODBias,
+      .max_anisotropy = source->MaxAnisotropy,
+      .comparison_func = (uint32_t)source->ComparisonFunc,
+      .min_lod = source->MinLOD,
+      .max_lod = source->MaxLOD,
+      .flags = (uint32_t)source->Flags,
+   };
+   memcpy(desc.border_color, source->UintBorderColor,
+          sizeof(desc.border_color));
+   device->renderer_ops->create_sampler(
+      device->backend, &desc, destination.ptr);
+}
+#endif
+
 static void APIENTRY
 d12_umd_copy_descriptors_simple(
    D3D12DDI_HDEVICE handle, UINT count,
@@ -629,6 +673,15 @@ d12_umd_install_descriptor_device_functions(
    table->pfnCopyDescriptors = d12_umd_copy_descriptors;
    table->pfnCopyDescriptorsSimple = d12_umd_copy_descriptors_simple;
 }
+
+#if D12_UMD_TARGETS_WDDM31
+void
+d12_umd_install_descriptor_device_functions_0099(
+   D3D12DDI_DEVICE_FUNCS_CORE_0099 *table)
+{
+   table->pfnCreateSampler = d12_umd_create_sampler_0096;
+}
+#endif
 
 void
 d12_umd_install_descriptor_command_list_functions(

@@ -438,6 +438,14 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->depth_bias = 0.0f;
    list->depth_bias_clamp = 0.0f;
    list->slope_scaled_depth_bias = 0.0f;
+   list->strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+   if (list->pso && !list->pso->is_compute) {
+      list->depth_bias = list->pso->raster.depth_bias;
+      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
+      list->slope_scaled_depth_bias =
+         list->pso->raster.slope_scaled_depth_bias;
+      list->strip_cut = list->pso->strip_cut;
+   }
    for (unsigned i = 0; i < 4; i++)
       list->blend_factor[i] = 1.0f;
    list->compute_rs = NULL;
@@ -463,6 +471,10 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->blend_upload_valid = false;
    list->blend_upload_gpu = 0;
    list->bundle_pso_set = false;
+   memset(&list->bundle_dynamic_state, 0,
+          sizeof(list->bundle_dynamic_state));
+   list->bundle_depth_bias_set = false;
+   list->bundle_strip_cut_set = false;
    list->bundle_graphics_rs_set = false;
    list->bundle_topology_set = false;
 
@@ -1323,7 +1335,8 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
    }
 
    agx_usc_pack(&b, SHADER, cfg) {
-      cfg.code = agx_usc_addr(&device->dev, shader->ptr);
+      cfg.code = agx_usc_addr(&device->dev,
+                              shader->ptr + shader->info.main_offset);
       cfg.unk_2 = 0;
    }
 
@@ -4550,13 +4563,17 @@ static void
 d12_ppp_push_stencil(struct agx_ppp_update *ppp,
                      const struct d12_stencil_face *face,
                      const struct d12_depth_stencil_state *ds, bool enabled,
-                     bool read_only)
+                     bool read_only, bool back_face)
 {
    agx_ppp_push(ppp, FRAGMENT_STENCIL, cfg) {
       if (enabled) {
          cfg.compare = face->compare;
-         cfg.read_mask = ds->stencil_read_mask;
-         cfg.write_mask = read_only ? 0 : ds->stencil_write_mask;
+         cfg.read_mask = back_face ? ds->back_stencil_read_mask
+                                   : ds->front_stencil_read_mask;
+         cfg.write_mask = read_only
+                            ? 0
+                            : back_face ? ds->back_stencil_write_mask
+                                        : ds->front_stencil_write_mask;
          cfg.depth_pass = face->pass;
          cfg.depth_fail = face->depth_fail;
          cfg.stencil_fail = face->stencil_fail;
@@ -4606,6 +4623,8 @@ d12_agx_primitive(enum mesa_prim prim)
       return AGX_PRIMITIVE_LINE_STRIP;
    case MESA_PRIM_TRIANGLE_STRIP:
       return AGX_PRIMITIVE_TRIANGLE_STRIP;
+   case MESA_PRIM_TRIANGLE_FAN:
+      return AGX_PRIMITIVE_TRIANGLE_FAN;
    default:
       return AGX_PRIMITIVE_TRIANGLES;
    }
@@ -5831,15 +5850,25 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
    return true;
 }
 
+static D3D12_INDEX_BUFFER_STRIP_CUT_VALUE
+d12_effective_strip_cut(const struct d12_cmd_list *list,
+                        const struct d12_pipeline_state *pso)
+{
+   return pso->raster.dynamic_strip_cut ? list->strip_cut : pso->strip_cut;
+}
+
 static bool
-d12_strip_cut_enabled(const struct d12_pipeline_state *pso,
+d12_strip_cut_enabled(const struct d12_cmd_list *list,
+                      const struct d12_pipeline_state *pso,
                       enum mesa_prim topology)
 {
    if (topology != MESA_PRIM_LINE_STRIP &&
-       topology != MESA_PRIM_TRIANGLE_STRIP)
+       topology != MESA_PRIM_TRIANGLE_STRIP &&
+       topology != MESA_PRIM_TRIANGLE_FAN)
       return false;
 
-   return pso->strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+   return d12_effective_strip_cut(list, pso) !=
+          D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
 }
 
 /*
@@ -5869,7 +5898,8 @@ d12_list_unroll_gs_restart(struct d12_cmd_list *list,
       return false;
 
    uint32_t restart_index =
-      pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
+      d12_effective_strip_cut(list, pso) ==
+            D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
          ? UINT16_MAX
          : UINT32_MAX;
 
@@ -6209,7 +6239,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     */
    enum mesa_prim topology = list->topology;
    const bool api_restart =
-      indexed && d12_strip_cut_enabled(pso, list->topology);
+      indexed && d12_strip_cut_enabled(list, pso, list->topology);
    struct d12_dispatch_uniforms poly_u = {
       .heap = heap_gpu,
       .heap_textures = heap_textures_gpu,
@@ -6509,7 +6539,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * look like a restart and dropped the first stream-output vertex. */
       uint32_t restart_index = draw_set
          ? BITFIELD_MASK(8 * agx_index_size_to_B(draw.index_size))
-         : pso->strip_cut == D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
+         : d12_effective_strip_cut(list, pso) ==
+                 D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF
               ? UINT16_MAX
               : UINT32_MAX;
 
@@ -6781,14 +6812,16 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          agx_merge(face_2, pso->fs.frag_face, FRAGMENT_FACE_2);
          agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
 
-         d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test, s_read_only);
+         d12_ppp_push_stencil(&ppp, &ds->front, ds, s_test, s_read_only,
+                              false);
 
          /* Back face: same depth state, its own stencil ops. */
          agx_ppp_push_merged(&ppp, FRAGMENT_FACE, cfg, face) {
             cfg.stencil_reference = list->stencil_ref_back;
          }
          agx_ppp_push_packed(&ppp, &face_2, FRAGMENT_FACE_2);
-         d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only);
+         d12_ppp_push_stencil(&ppp, &ds->back, ds, s_test, s_read_only,
+                              true);
 
          /* Output select is the MERGE of the vertex side (which says the
           * position is written) and the fragment side. Pushing only the
@@ -7077,6 +7110,13 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
          .pso_set = list->bundle_pso_set,
          .graphics_rs_set = list->bundle_graphics_rs_set,
          .topology_set = list->bundle_topology_set,
+         .dynamic_state = list->bundle_dynamic_state,
+         .depth_bias_set = list->bundle_depth_bias_set,
+         .strip_cut_set = list->bundle_strip_cut_set,
+         .depth_bias = list->depth_bias,
+         .depth_bias_clamp = list->depth_bias_clamp,
+         .slope_scaled_depth_bias = list->slope_scaled_depth_bias,
+         .strip_cut = list->strip_cut,
       };
       util_dynarray_append_typed(&list->bundle_draws,
                                  struct d12_bundle_draw, draw);
@@ -7114,6 +7154,13 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
          .pso_set = list->bundle_pso_set,
          .graphics_rs_set = list->bundle_graphics_rs_set,
          .topology_set = list->bundle_topology_set,
+         .dynamic_state = list->bundle_dynamic_state,
+         .depth_bias_set = list->bundle_depth_bias_set,
+         .strip_cut_set = list->bundle_strip_cut_set,
+         .depth_bias = list->depth_bias,
+         .depth_bias_clamp = list->depth_bias_clamp,
+         .slope_scaled_depth_bias = list->slope_scaled_depth_bias,
+         .strip_cut = list->strip_cut,
       };
       util_dynarray_append_typed(&list->bundle_draws,
                                  struct d12_bundle_draw, draw);
@@ -7759,6 +7806,9 @@ d12_list_IASetPrimitiveTopology(ID3D12GraphicsCommandList6 *iface,
       break;
    case D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
       list->topology = MESA_PRIM_TRIANGLE_STRIP;
+      break;
+   case D3D_PRIMITIVE_TOPOLOGY_TRIANGLEFAN:
+      list->topology = MESA_PRIM_TRIANGLE_FAN;
       break;
    default:
       /* Patch lists encode their control-point count in the topology
@@ -8499,8 +8549,20 @@ d12_list_SetPipelineState(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->pso = pso ? d12_pipeline_state_from_iface(pso) : NULL;
-   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+   if (list->pso && !list->pso->is_compute) {
+      list->depth_bias = list->pso->raster.depth_bias;
+      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
+      list->slope_scaled_depth_bias =
+         list->pso->raster.slope_scaled_depth_bias;
+      list->strip_cut = list->pso->strip_cut;
+   }
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE) {
       list->bundle_pso_set = true;
+      if (list->pso && !list->pso->is_compute) {
+         list->bundle_depth_bias_set = true;
+         list->bundle_strip_cut_set = true;
+      }
+   }
 }
 
 static void STDMETHODCALLTYPE
@@ -8535,6 +8597,16 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
       list->patch_control_points = draw->patch_control_points;
       if (draw->graphics_rs_set)
          list->graphics_rs = draw->graphics_rs;
+      d12_bundle_dynamic_state_apply(
+         &draw->dynamic_state, &list->stencil_ref_front,
+         &list->stencil_ref_back, list->blend_factor);
+      if (draw->depth_bias_set) {
+         list->depth_bias = draw->depth_bias;
+         list->depth_bias_clamp = draw->depth_bias_clamp;
+         list->slope_scaled_depth_bias = draw->slope_scaled_depth_bias;
+      }
+      if (draw->strip_cut_set)
+         list->strip_cut = draw->strip_cut;
 
       d12_list_draw(list, draw->vertex_count, draw->instance_count,
                     draw->first_vertex, draw->first_instance, draw->indexed,
@@ -8555,6 +8627,16 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
       list->topology = bundle->topology;
       list->patch_control_points = bundle->patch_control_points;
    }
+   d12_bundle_dynamic_state_apply(
+      &bundle->bundle_dynamic_state, &list->stencil_ref_front,
+      &list->stencil_ref_back, list->blend_factor);
+   if (bundle->bundle_depth_bias_set) {
+      list->depth_bias = bundle->depth_bias;
+      list->depth_bias_clamp = bundle->depth_bias_clamp;
+      list->slope_scaled_depth_bias = bundle->slope_scaled_depth_bias;
+   }
+   if (bundle->bundle_strip_cut_set)
+      list->strip_cut = bundle->strip_cut;
 }
 
 /* Clear API state without rewinding the command stream. Commands recorded
@@ -8605,6 +8687,14 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
    list->depth_bias = 0.0f;
    list->depth_bias_clamp = 0.0f;
    list->slope_scaled_depth_bias = 0.0f;
+   list->strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
+   if (list->pso && !list->pso->is_compute) {
+      list->depth_bias = list->pso->raster.depth_bias;
+      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
+      list->slope_scaled_depth_bias =
+         list->pso->raster.slope_scaled_depth_bias;
+      list->strip_cut = list->pso->strip_cut;
+   }
    for (unsigned i = 0; i < 4; i++)
       list->blend_factor[i] = 1.0f;
 }
@@ -8921,8 +9011,8 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    /* Reset starts a fresh recording, so the previous error is gone. */
    list->had_error = false;
    list->record_error = S_OK;
-   if (initial_state)
-      list->pso = d12_pipeline_state_from_iface(initial_state);
+   list->pso = initial_state ? d12_pipeline_state_from_iface(initial_state)
+                             : NULL;
 
    /*
     * If this recording has already been submitted, the GPU may still be
@@ -11243,6 +11333,9 @@ d12_list_OMSetStencilRef(ID3D12GraphicsCommandList6 *iface, UINT ref)
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->stencil_ref_front = (uint8_t)ref;
    list->stencil_ref_back = (uint8_t)ref;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      d12_bundle_dynamic_state_set_stencil(&list->bundle_dynamic_state,
+                                           (uint8_t)ref, (uint8_t)ref);
 }
 
 static void STDMETHODCALLTYPE
@@ -11264,6 +11357,9 @@ d12_list_OMSetFrontAndBackStencilRef(ID3D12GraphicsCommandList9 *iface,
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->stencil_ref_front = (uint8_t)front;
    list->stencil_ref_back = (uint8_t)back;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      d12_bundle_dynamic_state_set_stencil(&list->bundle_dynamic_state,
+                                           (uint8_t)front, (uint8_t)back);
 }
 
 static void STDMETHODCALLTYPE
@@ -11274,6 +11370,8 @@ d12_list_RSSetDepthBias(ID3D12GraphicsCommandList9 *iface, FLOAT depth_bias,
    list->depth_bias = depth_bias;
    list->depth_bias_clamp = clamp;
    list->slope_scaled_depth_bias = slope;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      list->bundle_depth_bias_set = true;
 }
 
 static void STDMETHODCALLTYPE
@@ -11282,10 +11380,18 @@ d12_list_IASetIndexBufferStripCutValue(
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
-   (void)strip_cut;
-   mesa_loge("dynamic index-buffer strip cut is unsupported");
-   list->state = D12_LIST_ERROR;
-   list->record_error = E_NOTIMPL;
+   if (strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED &&
+       strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFF &&
+       strip_cut != D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF) {
+      mesa_loge("IASetIndexBufferStripCutValue: invalid value %u",
+                (unsigned)strip_cut);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+   list->strip_cut = strip_cut;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      list->bundle_strip_cut_set = true;
 }
 
 static void STDMETHODCALLTYPE
@@ -11296,6 +11402,9 @@ d12_list_OMSetBlendFactor(ID3D12GraphicsCommandList6 *iface,
    static const float one[4] = {1.0f, 1.0f, 1.0f, 1.0f};
    memcpy(list->blend_factor, factor ? factor : one,
           sizeof(list->blend_factor));
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+      d12_bundle_dynamic_state_set_blend(&list->bundle_dynamic_state,
+                                         list->blend_factor);
 }
 
 static void STDMETHODCALLTYPE

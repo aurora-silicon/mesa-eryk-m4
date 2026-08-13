@@ -939,6 +939,74 @@ d12_umd_set_stencil_ref(D3D12DDI_HCOMMANDLIST list_handle, UINT reference)
    list->device->renderer_ops->set_stencil_ref(list->backend, reference);
 }
 
+#if D12_UMD_TARGETS_WDDM31
+static void APIENTRY
+d12_umd_set_front_and_back_stencil_ref_0095(
+   D3D12DDI_HCOMMANDLIST list_handle, UINT front_reference,
+   UINT back_reference)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_front_and_back_stencil_ref) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
+   list->device->renderer_ops->set_front_and_back_stencil_ref(
+      list->backend, front_reference, back_reference);
+}
+
+static void APIENTRY
+d12_umd_set_depth_bias_0099(D3D12DDI_HCOMMANDLIST list_handle,
+                            FLOAT depth_bias, FLOAT depth_bias_clamp,
+                            FLOAT slope_scaled_depth_bias)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+
+   if (!list || !list->device || !list->backend) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_depth_bias) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
+   list->device->renderer_ops->set_depth_bias(
+      list->backend, depth_bias, depth_bias_clamp,
+      slope_scaled_depth_bias);
+}
+
+static void APIENTRY
+d12_umd_set_index_buffer_strip_cut_value_0099(
+   D3D12DDI_HCOMMANDLIST list_handle,
+   D3D12DDI_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+
+   if (!list || !list->device || !list->backend ||
+       (uint32_t)strip_cut >
+          D3D12DDI_INDEX_BUFFER_STRIP_CUT_VALUE_0xFFFFFFFF) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+   if (!list->device->renderer_ops ||
+       !list->device->renderer_ops->set_index_buffer_strip_cut) {
+      d12_umd_command_list_set_error(list, E_NOTIMPL);
+      return;
+   }
+   list->device->renderer_ops->set_index_buffer_strip_cut(
+      list->backend, (uint32_t)strip_cut);
+}
+#endif
+
 #if D12_UMD_TARGETS_WDDM23
 static void APIENTRY
 d12_umd_atomic_copy_buffer_region_unsupported(
@@ -1078,6 +1146,19 @@ d12_umd_install_command_list_functions_0040(
    table->pfnResetCommandList = d12_umd_reset_command_list_0040;
    table->pfnSetViewInstanceMask =
       d12_umd_set_view_instance_mask_unsupported;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+void
+d12_umd_install_command_list_functions_0099(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 *table)
+{
+   table->pfnOmSetFrontAndBackStencilRef =
+      d12_umd_set_front_and_back_stencil_ref_0095;
+   table->pfnRSSetDepthBias = d12_umd_set_depth_bias_0099;
+   table->pfnIASetIndexBufferStripCutValue =
+      d12_umd_set_index_buffer_strip_cut_value_0099;
 }
 #endif
 

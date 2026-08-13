@@ -947,7 +947,31 @@ hk_upload_shader(struct hk_device *dev, struct hk_shader *shader)
 
       shader->bo = agx_bo_create(&dev->dev, size, 0,
                                  AGX_BO_EXEC | AGX_BO_LOW_VA, "Preamble");
-      memcpy(agx_bo_map(shader->bo), shader->b.binary, size);
+      if (!shader->bo) {
+         fprintf(stderr,
+                 "hk_upload_shader: executable preamble allocation failed "
+                 "(%zu bytes, stage %u)\n",
+                 size, (unsigned)shader->info.stage);
+         return;
+      }
+
+      void *map = agx_bo_map(shader->bo);
+      if (!map) {
+         fprintf(stderr,
+                 "hk_upload_shader: executable preamble mapping failed "
+                 "(%zu bytes, stage %u)\n",
+                 size, (unsigned)shader->info.stage);
+         agx_bo_unreference(&dev->dev, shader->bo);
+         shader->bo = NULL;
+         return;
+      }
+
+      memcpy(map, shader->b.binary, size);
+      if (agx_bo_sync_for_device(shader->bo, 0, size)) {
+         agx_bo_unreference(&dev->dev, shader->bo);
+         shader->bo = NULL;
+         return;
+      }
       shader->preamble_addr =
          shader->bo->va->addr + shader->b.info.preamble_offset;
    }
@@ -1817,8 +1841,11 @@ hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
              unsigned nr_samples_shaded)
 {
    struct hk_linked_shader *s = rzalloc(NULL, struct hk_linked_shader);
-   agx_fast_link(&s->b, &dev->dev, fragment, &main->b, prolog, epilog,
-                 nr_samples_shaded);
+   if (!agx_fast_link(&s->b, &dev->dev, fragment, &main->b, prolog, epilog,
+                      nr_samples_shaded)) {
+      ralloc_free(s);
+      return NULL;
+   }
 
    if (fragment) {
       unsigned samplers = main->b.info.sampler_state_count;

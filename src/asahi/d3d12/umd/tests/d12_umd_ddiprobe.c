@@ -23,7 +23,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if D12_UMD_TARGETS_WDDM24
+#if D12_UMD_TARGETS_WDDM31
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0099 d12_test_extended_device_table;
+typedef D3D12DDI_DEVICE_FUNCS_CORE_0099 d12_test_root_device_table;
+typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 d12_test_command_list_table;
+typedef D3D12DDI_CORELAYER_DEVICECALLBACKS_0022 d12_test_core_callbacks;
+typedef D3D12DDI_DEBUG_KMT_ALLOCATION_INFO_0014
+   d12_test_debug_kmt_allocation_info;
+#define D12_TEST_PRIMARY_INTERFACE D3D12DDI_INTERFACE_VERSION_R8
+#define D12_TEST_PRIMARY_BUILD D3D12DDI_BUILD_VERSION_0099
+#elif D12_UMD_TARGETS_WDDM24
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0040 d12_test_extended_device_table;
 typedef D3D12DDI_DEVICE_FUNCS_CORE_0040 d12_test_root_device_table;
 typedef D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 d12_test_command_list_table;
@@ -174,6 +183,7 @@ static unsigned sparse_destroy_calls;
 static unsigned sparse_update_calls;
 static unsigned sparse_copy_mapping_calls;
 static unsigned sparse_copy_tiles_calls;
+static uint32_t sparse_expected_initial_state;
 static unsigned reused_create_calls;
 static unsigned reused_destroy_calls;
 static bool reused_create_null;
@@ -279,6 +289,7 @@ test_sparse_validate_reserved(
 {
    if (!desc || desc->dimension != D3D12DDI_RT_TEXTURE2D ||
        desc->layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE ||
+       desc->initial_state != sparse_expected_initial_state ||
        desc->sample_count != 1 || desc->sample_quality ||
        (desc->depth_or_array_size > 1 && desc->mip_levels > 1))
       return E_INVALIDARG;
@@ -294,7 +305,8 @@ test_sparse_create_reserved(
        desc->dimension != D3D12DDI_RT_TEXTURE2D || desc->width != 1024 ||
        desc->height != 1024 || desc->mip_levels != 5 ||
        desc->format != DXGI_FORMAT_R8G8B8A8_UNORM ||
-       desc->layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE)
+       desc->layout != D3D12DDI_TL_64KB_TILE_UNDEFINED_SWIZZLE ||
+       desc->initial_state != sparse_expected_initial_state)
       return E_INVALIDARG;
    ++sparse_create_calls;
    *out_resource = TEST_TILED_RESOURCE;
@@ -332,7 +344,8 @@ test_sparse_resource_allocation_info(
    struct d12_frontend_resource_allocation_info *info)
 {
    if (device != TEST_BLT_DEVICE || !desc || !info ||
-       visible_node_mask != 1)
+       visible_node_mask != 1 ||
+       desc->initial_state != sparse_expected_initial_state)
       return E_INVALIDARG;
 
    *info = (struct d12_frontend_resource_allocation_info){
@@ -1267,6 +1280,8 @@ reclaim_allocations(D3D12DDI_HRTDEVICE runtime_device,
    return E_PENDING;
 }
 
+static void require_result(int condition, const char *message);
+
 static void
 require_pointer_slots(const void *table, size_t count, size_t unused_a,
                       size_t unused_b, const char *message)
@@ -1282,6 +1297,52 @@ require_pointer_slots(const void *table, size_t count, size_t unused_a,
       }
    }
 }
+
+#if D12_UMD_TARGETS_WDDM31
+static void
+require_release8_device_table(
+   const D3D12DDI_DEVICE_FUNCS_CORE_0099 *table,
+   const char *message)
+{
+   /* Release 4 is the inherited, fully populated prefix.  Release 8 then
+    * changes several signatures inside that prefix and appends independently
+    * advertised feature entrypoints.  Validate every changed required slot;
+    * the strict compiler build proves each installer's PFN type as well. */
+   require_pointer_slots(table, 96, SIZE_MAX, SIZE_MAX, message);
+   require_result(table->pfnCalcPrivateCommandQueueSize != NULL &&
+                     table->pfnCreateCommandQueue != NULL &&
+                     table->pfnCalcPrivateHeapAndResourceSizes != NULL &&
+                     table->pfnCreateHeapAndResource != NULL &&
+                     table->pfnCalcPrivateOpenedHeapAndResourceSizes != NULL &&
+                     table->pfnOpenHeapAndResource != NULL &&
+                     table->pfnCheckResourceAllocationInfo != NULL &&
+                     table->pfnCalcPrivateDepthStencilStateSize != NULL &&
+                     table->pfnCreateDepthStencilState != NULL &&
+                     table->pfnCalcPrivateRasterizerStateSize != NULL &&
+                     table->pfnCreateRasterizerState != NULL &&
+                     table->pfnCalcPrivatePipelineStateSize != NULL &&
+                     table->pfnCreatePipelineState != NULL &&
+                     table->pfnCreateSampler != NULL,
+                  "Release 8 required device callbacks");
+   require_pointer_slots(table, 122, SIZE_MAX, SIZE_MAX,
+                         "Release 8 complete device table");
+}
+
+static void
+require_release8_command_table(
+   const D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 *table,
+   const char *message)
+{
+   require_pointer_slots(table, 58, SIZE_MAX, SIZE_MAX, message);
+   require_result(table->pfnPresent != NULL &&
+                     table->pfnOmSetFrontAndBackStencilRef != NULL &&
+                     table->pfnRSSetDepthBias != NULL &&
+                     table->pfnIASetIndexBufferStripCutValue != NULL,
+                  "Release 8 required command-list callbacks");
+   require_pointer_slots(table, 73, SIZE_MAX, SIZE_MAX,
+                         "Release 8 complete command-list table");
+}
+#endif
 
 static void
 require_result(int condition, const char *message)
@@ -1393,6 +1454,38 @@ wmain(int argc, wchar_t **argv)
                   "GetOptionalDDITables slot");
    require_result(functions.pfnFillDDITable != NULL, "FillDDITable slot");
    require_result(functions.pfnDestroyDevice != NULL, "DestroyDevice slot");
+
+   {
+      UINT32 optional_count = 0;
+      result = functions.pfnGetOptionalDDITables(
+         open_arguments.hAdapter, &optional_count, NULL);
+#if D12_UMD_TARGETS_WDDM31
+      require_result(result == S_OK && optional_count == 1,
+                     "Release 8 optional-table count");
+      {
+         D3D12DDI_TABLE_REQUEST request = {0};
+         optional_count = 0;
+         result = functions.pfnGetOptionalDDITables(
+            open_arguments.hAdapter, &optional_count, &request);
+         require_result(
+            result == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER) &&
+               optional_count == 1,
+            "Release 8 optional-table short buffer");
+         optional_count = 1;
+         result = functions.pfnGetOptionalDDITables(
+            open_arguments.hAdapter, &optional_count, &request);
+         require_result(
+            result == S_OK && optional_count == 1 &&
+               request.tableType ==
+                  D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES &&
+               request.numTables == 1,
+            "Release 8 optional extended-feature table request");
+      }
+#else
+      require_result(result == S_OK && optional_count == 0,
+                     "no optional tables before Release 8");
+#endif
+   }
 
    {
       D3D12DDI_TEXTURE_LAYOUT_CAPS_0001 data;
@@ -1593,12 +1686,160 @@ wmain(int argc, wchar_t **argv)
    }
 #endif
 
+#if D12_UMD_TARGETS_WDDM31
+   {
+      D3D12DDICAPS_HARDWARE_SCHEDULING_CAPS_0050 scheduling = {
+         .ComputeQueuesPer3DQueue = UINT_MAX,
+      };
+      BOOL parallel = TRUE;
+      BOOL batched_markers = TRUE;
+      D3D12DDICAPS_SAMPLER_FEEDBACK_CAPS_0073 sampler_feedback = {
+         .Desc = {
+            .Type = D3D12DDI_SHADING_RATE_COMBINER_0073_MINLOD,
+            .LODRegion = {.Width = 4, .Height = 4},
+         },
+         .TargetedResource = {
+            .Width = 1024,
+            .Height = 1024,
+            .DepthOrArraySize = 1,
+            .MipLevels = 1,
+         },
+         .FeedbackMapSize = {.Width = UINT64_MAX, .Height = UINT64_MAX},
+      };
+      const struct {
+         D3D12DDICAPS_TYPE type;
+         void *data;
+         UINT size;
+      } queries[] = {
+         {D3D12DDICAPS_TYPE_0050_HARDWARE_SCHEDULING_CAPS,
+          &scheduling, sizeof(scheduling)},
+         {D3D12DDICAPS_TYPE_EXECUTECOMMANDLISTS_PARALLELISM,
+          &parallel, sizeof(parallel)},
+         {D3D12DDICAPS_TYPE_0073_SUPPORT_BATCHED_MARKERS,
+          &batched_markers, sizeof(batched_markers)},
+         {D3D12DDICAPS_TYPE_SAMPLER_FEEDBACK_0073,
+          &sampler_feedback, sizeof(sampler_feedback)},
+      };
+
+      for (UINT index = 0; index < ARRAYSIZE(queries); ++index) {
+         D3D12DDIARG_GETCAPS query = {
+            .Type = queries[index].type,
+            .pData = queries[index].data,
+            .DataSize = queries[index].size,
+         };
+         result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+         require_result(result == S_OK,
+                        "Release 8 scheduling/marker cap query");
+         --query.DataSize;
+         result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+         require_result(result == E_INVALIDARG,
+                        "reject wrong Release 8 scheduling/marker cap width");
+      }
+      require_result(
+         scheduling.ComputeQueuesPer3DQueue == 0 && !parallel &&
+            !batched_markers && sampler_feedback.FeedbackMapSize.Width == 0 &&
+            sampler_feedback.FeedbackMapSize.Height == 0,
+         "Release 8 scheduling/marker features remain unadvertised");
+   }
+
+   {
+      D3D12DDI_D3D12_OPTIONS_DATA_0089 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_D3D12_OPTIONS,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK && data.ResourceBindingTier == 1 &&
+            data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            data.CopyQueueTimestampQueriesSupported &&
+            !data.EnhancedBarriersSupported &&
+            data.RaytracingTier == D3D12DDI_RAYTRACING_TIER_NOT_SUPPORTED &&
+            data.VariableShadingRateTier ==
+               D3D12DDI_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED &&
+            data.MeshShaderTier == D3D12DDI_MESH_SHADER_TIER_NOT_SUPPORTED &&
+            data.SamplerFeedbackTier ==
+               D3D12DDI_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED &&
+            !data.BackgroundProcessingSupported &&
+            !data.DriverManagedShaderCachePresent,
+         "DDI 0089 cumulative option caps");
+   }
+
+   {
+      D3D12DDI_3DPIPELINESUPPORT1_DATA_0081 data = {
+         .HighestRuntimeSupportedFeatureLevel =
+            D3D12DDI_3DPIPELINELEVEL_12_1,
+      };
+      D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_0081_3DPIPELINESUPPORT1,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        data.MaximumDriverSupportedFeatureLevel ==
+                           D3D12DDI_3DPIPELINELEVEL_11_0,
+                     "Release 8 pipeline cap clamps runtime maximum");
+      data.HighestRuntimeSupportedFeatureLevel =
+         D3D12DDI_3DPIPELINELEVEL_1_0_CORE;
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(result == S_OK &&
+                        data.MaximumDriverSupportedFeatureLevel ==
+                           D3D12DDI_3DPIPELINELEVEL_1_0_CORE,
+                     "Release 8 pipeline cap preserves lower runtime max");
+   }
+
+   {
+      D3D12DDI_OPTIONS_DATA_0090 options90;
+      D3D12DDI_OPTIONS_DATA_0091 options91;
+      D3D12DDI_OPTIONS_DATA_0093 options93;
+      D3D12DDI_OPTIONS_DATA_0098 options98;
+      const struct {
+         D3D12DDICAPS_TYPE type;
+         void *data;
+         UINT size;
+      } queries[] = {
+         {D3D12DDICAPS_TYPE_OPTIONS_0090, &options90, sizeof(options90)},
+         {D3D12DDICAPS_TYPE_OPTIONS_0091, &options91, sizeof(options91)},
+         {D3D12DDICAPS_TYPE_OPTIONS_0093, &options93, sizeof(options93)},
+         {D3D12DDICAPS_TYPE_OPTIONS_0098, &options98, sizeof(options98)},
+      };
+
+      memset(&options90, 0xcc, sizeof(options90));
+      memset(&options91, 0xcc, sizeof(options91));
+      memset(&options93, 0xcc, sizeof(options93));
+      memset(&options98, 0xcc, sizeof(options98));
+      for (UINT index = 0; index < ARRAYSIZE(queries); ++index) {
+         const D3D12DDIARG_GETCAPS query = {
+            .Type = queries[index].type,
+            .pData = queries[index].data,
+            .DataSize = queries[index].size,
+         };
+         result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+         require_result(result == S_OK,
+                        "Release 8 incremental option cap query");
+      }
+      require_result(!options90.RelaxedFormatCastingSupported &&
+                        !options91.UnrestrictedBufferTextureCopyPitchSupported &&
+                        !options91.UnrestrictedVertexElementAlignmentSupported &&
+                        !options91.InvertedViewportHeightFlipsYSupported &&
+                        !options91.InvertedViewportDepthFlipsZSupported &&
+                        !options93.AdvancedTextureOpsSupported &&
+                        !options93.WriteableMSAATexturesSupported &&
+                        options98.L1MemoryFullyCpuAccessible,
+                     "Release 8 incremental option cap values");
+   }
+#endif
+
    {
       UINT32 count = 0;
       UINT64 versions[4] = {0};
-      const UINT32 expected_count = D12_UMD_TARGETS_WDDM24 ? 2u :
-         (D12_UMD_TARGETS_WDDM23_EXACT ? 2u :
-            (D12_UMD_TARGETS_WDDM21_EXACT ? 4u : 1u));
+      const UINT32 expected_count = D12_UMD_TARGETS_WDDM31 ? 2u :
+         (D12_UMD_TARGETS_WDDM24_EXACT ? 2u :
+            (D12_UMD_TARGETS_WDDM23_EXACT ? 2u :
+               (D12_UMD_TARGETS_WDDM21_EXACT ? 4u : 1u)));
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, NULL);
       require_result(result == S_OK && count == expected_count,
@@ -1614,7 +1855,10 @@ wmain(int argc, wchar_t **argv)
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, versions);
       require_result(result == S_OK && count == expected_count &&
-#if D12_UMD_TARGETS_WDDM24
+#if D12_UMD_TARGETS_WDDM31
+                        versions[0] == D3D12DDI_SUPPORTED_0099 &&
+                        versions[1] == D3D12DDI_SUPPORTED_0003,
+#elif D12_UMD_TARGETS_WDDM24_EXACT
                         versions[0] == D3D12DDI_SUPPORTED_0042 &&
                         versions[1] == D3D12DDI_SUPPORTED_0003,
 #elif D12_UMD_TARGETS_WDDM23_EXACT
@@ -1666,6 +1910,31 @@ wmain(int argc, wchar_t **argv)
             data.ResourceSerializationTier ==
                D3D12DDI_RESOURCE_SERIALIZATION_TIER_0041_0,
          "DDI 0041 memory architecture caps");
+   }
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+   {
+      D3D12DDI_SHADER_CAPS_0084 data;
+      const D3D12DDIARG_GETCAPS query = {
+         .Type = D3D12DDICAPS_TYPE_SHADER,
+         .pData = &data,
+         .DataSize = sizeof(data),
+      };
+      memset(&data, 0xcc, sizeof(data));
+      result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
+      require_result(
+         result == S_OK &&
+            data.MinPrecision == D3D12DDI_SHADER_MIN_PRECISION_NONE &&
+            !data.DoubleOps && !data.ShaderSpecifiedStencilRef &&
+            !data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
+            !data.WaveOps && !data.Int64Ops && data.Native16BitOps &&
+            !data.AtomicInt64OnTypedResource &&
+            !data.AtomicInt64OnGroupShared &&
+            !data.DerivativesInMeshAndAmplificationShaders &&
+            data.WaveMMATier == D3D12DDI_WAVE_MMA_TIER_NOT_SUPPORTED &&
+            !data.AtomicInt64OnDescriptorHeapResource,
+         "DDI 0084 shader caps");
    }
 #endif
 
@@ -1916,6 +2185,9 @@ wmain(int argc, wchar_t **argv)
 #endif
       d12_test_command_list_table command_list_table;
       D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001 command_queue_table;
+#if D12_UMD_TARGETS_WDDM31
+      D3D12DDI_EXTENDED_FEATURES_FUNCS_0096 extended_features_table;
+#endif
 #if D12_UMD_TARGETS_WDDM21
       DXGI1_5_DDI_BASE_FUNCTIONS dxgi_table;
 #else
@@ -1952,21 +2224,31 @@ wmain(int argc, wchar_t **argv)
          (D3D12DDI_HRTTABLE){0});
 #if D12_UMD_TARGETS_WDDM21
       require_result(result == S_OK, "fill extended device core table");
+#if D12_UMD_TARGETS_WDDM31
+      require_release8_device_table(&release1_table,
+                                    "Release 8 device core table");
+#else
       require_pointer_slots(&release1_table,
                             D12_UMD_TARGETS_WDDM24 ? 96 :
                                (D12_UMD_TARGETS_WDDM23_EXACT ? 92 : 91),
                             SIZE_MAX, SIZE_MAX,
                             "extended device core table");
+#endif
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DEVICE_CORE,
          &root11_table, sizeof(root11_table), 0,
          (D3D12DDI_HRTTABLE){0});
       require_result(result == S_OK,
                      "fill root-signature 1.1 device core table");
+#if D12_UMD_TARGETS_WDDM31
+      require_release8_device_table(&root11_table,
+                                    "Release 8 root device core table");
+#else
       require_pointer_slots(&root11_table,
                             D12_UMD_TARGETS_WDDM24 ? 96 : 92,
                             SIZE_MAX, SIZE_MAX,
                             "root-signature 1.1 device core table");
+#endif
 #if D12_UMD_TARGETS_WDDM24
       {
          D3D12DDI_DEVICE_FUNCS_CORE_0030 release3_device_table;
@@ -1997,11 +2279,16 @@ wmain(int argc, wchar_t **argv)
          &command_list_table, sizeof(command_list_table), 0,
          (D3D12DDI_HRTTABLE){.handle = TEST_RT_COMMAND_LIST_TABLE});
       require_result(result == S_OK, "fill command-list table");
+#if D12_UMD_TARGETS_WDDM31
+      require_release8_command_table(&command_list_table,
+                                     "Release 8 command-list table");
+#else
       require_pointer_slots(&command_list_table,
                             D12_UMD_TARGETS_WDDM24 ? 58 :
                                (D12_UMD_TARGETS_WDDM23_EXACT ? 57 : 51),
                             SIZE_MAX, SIZE_MAX,
                             "command-list table");
+#endif
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_COMMAND_LIST_3D,
          &command_list_table, sizeof(command_list_table), 0,
@@ -2016,6 +2303,31 @@ wmain(int argc, wchar_t **argv)
       require_result(result == S_OK, "fill command-queue table");
       require_pointer_slots(&command_queue_table, 7, 1, 2,
                             "command-queue table");
+#if D12_UMD_TARGETS_WDDM31
+      result = functions.pfnFillDDITable(
+         open_arguments.hAdapter,
+         D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES,
+         &extended_features_table, sizeof(extended_features_table), 0,
+         (D3D12DDI_HRTTABLE){0});
+      require_result(result == S_OK,
+                     "fill Release 8 extended-feature table");
+      require_pointer_slots(&extended_features_table, 4, SIZE_MAX, SIZE_MAX,
+                            "Release 8 extended-feature table");
+      result = functions.pfnFillDDITable(
+         open_arguments.hAdapter,
+         D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES,
+         &extended_features_table, sizeof(extended_features_table) - 1, 0,
+         (D3D12DDI_HRTTABLE){0});
+      require_result(result == E_INVALIDARG,
+                     "reject wrong extended-feature table width");
+      result = functions.pfnFillDDITable(
+         open_arguments.hAdapter,
+         D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES,
+         &extended_features_table, sizeof(extended_features_table), 1,
+         (D3D12DDI_HRTTABLE){0});
+      require_result(result == E_INVALIDARG,
+                     "reject unsupported extended-feature table number");
+#endif
       result = functions.pfnFillDDITable(
          open_arguments.hAdapter, D3D12DDI_TABLE_TYPE_DXGI,
          &dxgi_arguments, sizeof(dxgi_arguments), 0,
@@ -2098,6 +2410,50 @@ wmain(int argc, wchar_t **argv)
                                          &create_arguments);
       require_result(result == DXGI_STATUS_NO_REDIRECTION,
                      "CreateDevice explicit-present result");
+
+#if D12_UMD_TARGETS_WDDM31
+      {
+         UINT meta_command_count = UINT_MAX;
+         result = release1_table.pfnEnumerateMetaCommands(
+            driver_device, &meta_command_count, NULL);
+         require_result(result == S_OK && meta_command_count == 0,
+                        "unadvertised meta-command enumeration is empty");
+         result = release1_table.pfnEnumerateMetaCommands(
+            driver_device, NULL, NULL);
+         require_result(result == E_INVALIDARG,
+                        "meta-command enumeration requires count output");
+      }
+
+      {
+         UINT32 feature_count = UINT_MAX;
+         UINT32 version_count = UINT_MAX;
+         result = extended_features_table.pfnGetSupportedExtendedFeatures(
+            driver_device, D3D12DDI_FEATURE_0084_STATE_OBJECTS_EXPERIMENT,
+            &feature_count, NULL);
+         require_result(result == S_OK && feature_count == 0,
+                        "extended-feature enumeration is empty");
+         result = extended_features_table.pfnGetSupportedExtendedFeatures(
+            driver_device, D3D12DDI_FEATURE_0084_STATE_OBJECTS_EXPERIMENT,
+            NULL, NULL);
+         require_result(result == E_INVALIDARG,
+                        "extended-feature enumeration requires count");
+         result =
+            extended_features_table.pfnGetSupportedExtendedFeatureVersions(
+               driver_device, D3D12DDI_FEATURE_0020_VIDEO,
+               &version_count, NULL);
+         require_result(result == S_OK && version_count == 0,
+                        "extended-feature version enumeration is empty");
+         result = extended_features_table.pfnEnableExtendedFeature(
+            driver_device, D3D12DDI_FEATURE_0020_VIDEO, 0);
+         require_result(result == E_NOTIMPL,
+                        "unadvertised extended feature fails closed");
+         result = extended_features_table.pfnSetExtendedFeatureCallbacks(
+            driver_device,
+            D3D12DDI_TABLE_TYPE_0084_STATE_OBJECTS_EXPERIMENT, NULL, 0);
+         require_result(result == E_NOTIMPL,
+                        "unadvertised extended callbacks fail closed");
+      }
+#endif
 
 #if D12_UMD_TARGETS_WDDM24
       {
@@ -2284,7 +2640,11 @@ wmain(int argc, wchar_t **argv)
 
       {
          D3D12DDI_VIEW_INSTANCE_LOCATION location = {0};
+#if D12_UMD_TARGETS_WDDM31
+         D3D12DDIARG_CREATE_PIPELINE_STATE_0099 pipeline_arguments = {
+#else
          D3D12DDIARG_CREATE_PIPELINE_STATE_0033 pipeline_arguments = {
+#endif
             .ViewInstancingDesc = {
                .ViewInstanceCount = 1,
                .pViewInstanceLocations = &location,
@@ -3705,6 +4065,227 @@ wmain(int argc, wchar_t **argv)
          sparse_update_calls = 0;
          sparse_copy_mapping_calls = 0;
          sparse_copy_tiles_calls = 0;
+
+#if D12_UMD_TARGETS_WDDM31
+         {
+            const D3D12DDI_RESOURCE_STATES generic_read =
+               (D3D12DDI_RESOURCE_STATES)(
+                  D3D12DDI_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
+                  D3D12DDI_RESOURCE_STATE_INDEX_BUFFER |
+                  D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                  D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+                  D3D12DDI_RESOURCE_STATE_INDIRECT_ARGUMENT |
+                  D3D12DDI_RESOURCE_STATE_COPY_SOURCE);
+            const D3D12DDI_RESOURCE_STATES shader_resource =
+               (D3D12DDI_RESOURCE_STATES)(
+                  D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+                  D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            const struct {
+               D3D12DDI_BARRIER_LAYOUT layout;
+               D3D12DDI_RESOURCE_STATES state;
+            } accepted_layouts[] = {
+               {D3D12DDI_BARRIER_LAYOUT_COMMON,
+                D3D12DDI_RESOURCE_STATE_COMMON},
+               {D3D12DDI_BARRIER_LAYOUT_GENERIC_READ, generic_read},
+               {D3D12DDI_BARRIER_LAYOUT_RENDER_TARGET,
+                D3D12DDI_RESOURCE_STATE_RENDER_TARGET},
+               {D3D12DDI_BARRIER_LAYOUT_UNORDERED_ACCESS,
+                D3D12DDI_RESOURCE_STATE_UNORDERED_ACCESS},
+               {D3D12DDI_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE,
+                D3D12DDI_RESOURCE_STATE_DEPTH_WRITE},
+               {D3D12DDI_BARRIER_LAYOUT_DEPTH_STENCIL_READ,
+                D3D12DDI_RESOURCE_STATE_DEPTH_READ},
+               {D3D12DDI_BARRIER_LAYOUT_SHADER_RESOURCE, shader_resource},
+               {D3D12DDI_BARRIER_LAYOUT_COPY_SOURCE,
+                D3D12DDI_RESOURCE_STATE_COPY_SOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_COPY_DEST,
+                D3D12DDI_RESOURCE_STATE_COPY_DEST},
+               {D3D12DDI_BARRIER_LAYOUT_RESOLVE_SOURCE,
+                D3D12DDI_RESOURCE_STATE_RESOLVE_SOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_RESOLVE_DEST,
+                D3D12DDI_RESOURCE_STATE_RESOLVE_DEST},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON,
+                D3D12DDI_RESOURCE_STATE_COMMON},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ,
+                generic_read},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS,
+                D3D12DDI_RESOURCE_STATE_UNORDERED_ACCESS},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE,
+                shader_resource},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE,
+                D3D12DDI_RESOURCE_STATE_COPY_SOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST,
+                D3D12DDI_RESOURCE_STATE_COPY_DEST},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON,
+                D3D12DDI_RESOURCE_STATE_COMMON},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ,
+                generic_read},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS,
+                D3D12DDI_RESOURCE_STATE_UNORDERED_ACCESS},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE,
+                D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE,
+                D3D12DDI_RESOURCE_STATE_COPY_SOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST,
+                D3D12DDI_RESOURCE_STATE_COPY_DEST},
+               {D3D12DDI_BARRIER_LAYOUT_LEGACY_DIRECT_QUEUE_GENERIC_READ_COMPUTE_QUEUE_ACCESSIBLE,
+                generic_read},
+               {D3D12DDI_BARRIER_LAYOUT_LEGACY_COPY_SOURCE,
+                D3D12DDI_RESOURCE_STATE_COPY_SOURCE},
+               {D3D12DDI_BARRIER_LAYOUT_LEGACY_COPY_DEST,
+                D3D12DDI_RESOURCE_STATE_COPY_DEST},
+               {D3D12DDI_BARRIER_LAYOUT_LEGACY_SHADER_RESOURCE,
+                shader_resource},
+               {D3D12DDI_BARRIER_LAYOUT_LEGACY_PIXEL_SHADER_RESOURCE,
+                D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE},
+            };
+            static const D3D12DDI_BARRIER_LAYOUT rejected_layouts[] = {
+               D3D12DDI_BARRIER_LAYOUT_UNDEFINED,
+               D3D12DDI_BARRIER_LAYOUT_SHADING_RATE_SOURCE,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_DECODE_READ,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_DECODE_WRITE,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_PROCESS_READ,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_PROCESS_WRITE,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_ENCODE_READ,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_ENCODE_WRITE,
+               D3D12DDI_BARRIER_LAYOUT_VIDEO_QUEUE_COMMON,
+            };
+            D3D12DDIARG_CREATERESOURCE_0088 release8_resource = {
+               .ResourceType = resource_arguments.ResourceType,
+               .Width = resource_arguments.Width,
+               .Height = resource_arguments.Height,
+               .DepthOrArraySize = resource_arguments.DepthOrArraySize,
+               .MipLevels = resource_arguments.MipLevels,
+               .Format = resource_arguments.Format,
+               .SampleDesc = resource_arguments.SampleDesc,
+               .Layout = resource_arguments.Layout,
+               .Flags = resource_arguments.Flags,
+            };
+
+            for (UINT index = 0; index < ARRAYSIZE(accepted_layouts);
+                 ++index) {
+               release8_resource.InitialBarrierLayout =
+                  accepted_layouts[index].layout;
+               sparse_expected_initial_state = accepted_layouts[index].state;
+               const D3D12DDI_HEAP_AND_RESOURCE_SIZES release8_sizes =
+                  release1_table.pfnCalcPrivateHeapAndResourceSizes(
+                     driver_device, NULL, &release8_resource,
+                     (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0});
+               require_result(!release8_sizes.Heap &&
+                                 release8_sizes.Resource > 0,
+                              "accept representable DDI 0088 layout");
+            }
+
+            /* Exercise the creation callback too, and prove the translated
+             * state crosses the DDI-to-renderer seam rather than only making
+             * the size query succeed. */
+            release8_resource.InitialBarrierLayout =
+               D3D12DDI_BARRIER_LAYOUT_COPY_DEST;
+            sparse_expected_initial_state =
+               D3D12DDI_RESOURCE_STATE_COPY_DEST;
+            {
+               D3D12DDI_HEAP_AND_RESOURCE_SIZES release8_sizes =
+                  release1_table.pfnCalcPrivateHeapAndResourceSizes(
+                     driver_device, NULL, &release8_resource,
+                     (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0});
+               D3D12DDI_HRESOURCE release8_handle = {
+                  .pDrvPrivate = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
+                                           release8_sizes.Resource),
+               };
+               require_result(release8_handle.pDrvPrivate != NULL,
+                              "allocate DDI 0088 resource private storage");
+               sparse_create_calls = 0;
+               result = release1_table.pfnCreateHeapAndResource(
+                  driver_device, NULL, (D3D12DDI_HHEAP){0},
+                  (D3D12DDI_HRTRESOURCE){0}, &release8_resource, NULL,
+                  (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0},
+                  release8_handle);
+               require_result(result == S_OK && sparse_create_calls == 1,
+                              "preserve DDI 0088 state during creation");
+               release1_table.pfnDestroyHeapAndResource(
+                  driver_device, (D3D12DDI_HHEAP){0}, release8_handle);
+               HeapFree(GetProcessHeap(), 0, release8_handle.pDrvPrivate);
+               sparse_create_calls = 0;
+            }
+
+            for (UINT index = 0; index < ARRAYSIZE(rejected_layouts);
+                 ++index) {
+               release8_resource.InitialBarrierLayout =
+                  rejected_layouts[index];
+               const D3D12DDI_HEAP_AND_RESOURCE_SIZES release8_sizes =
+                  release1_table.pfnCalcPrivateHeapAndResourceSizes(
+                     driver_device, NULL, &release8_resource,
+                     (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0});
+               require_result(!release8_sizes.Heap &&
+                                 !release8_sizes.Resource,
+                              "reject unrepresentable DDI 0088 layout");
+            }
+
+            release8_resource = (D3D12DDIARG_CREATERESOURCE_0088){
+               .ResourceType = D3D12DDI_RT_BUFFER,
+               .Width = UINT64_C(0x20000),
+               .Height = 1,
+               .DepthOrArraySize = 1,
+               .MipLevels = 1,
+               .Format = DXGI_FORMAT_UNKNOWN,
+               .SampleDesc = {.Count = 1},
+               .Layout = D3D12DDI_TL_ROW_MAJOR,
+               .InitialBarrierLayout = D3D12DDI_BARRIER_LAYOUT_UNDEFINED,
+            };
+            sparse_expected_initial_state = D3D12DDI_RESOURCE_STATE_COMMON;
+            {
+               const D3D12DDI_HEAP_AND_RESOURCE_SIZES release8_sizes =
+                  release1_table.pfnCalcPrivateHeapAndResourceSizes(
+                     driver_device, NULL, &release8_resource,
+                     (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0});
+               require_result(!release8_sizes.Heap &&
+                                 release8_sizes.Resource > 0,
+                              "DDI 0088 buffer requires UNDEFINED layout");
+            }
+            {
+               D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 release8_info;
+               memset(&release8_info, 0xcc, sizeof(release8_info));
+               set_error_calls = 0;
+               release1_table.pfnCheckResourceAllocationInfo(
+                  driver_device, &release8_resource,
+                  D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_NONE, 0, 1,
+                  &release8_info);
+               require_result(set_error_calls == 0 &&
+                                 release8_info.ResourceDataSize ==
+                                    release8_resource.Width &&
+                                 release8_info.ResourceDataAlignment ==
+                                    UINT64_C(0x10000) &&
+                                 release8_info.Layout ==
+                                    D3D12DDI_TL_ROW_MAJOR,
+                              "reflect DDI 0088 buffer allocation info");
+            }
+            release8_resource.InitialBarrierLayout =
+               D3D12DDI_BARRIER_LAYOUT_COMMON;
+            {
+               const D3D12DDI_HEAP_AND_RESOURCE_SIZES release8_sizes =
+                  release1_table.pfnCalcPrivateHeapAndResourceSizes(
+                     driver_device, NULL, &release8_resource,
+                     (D3D12DDI_HPROTECTEDRESOURCESESSION_0030){0});
+               require_result(!release8_sizes.Heap &&
+                                 !release8_sizes.Resource,
+                              "reject DDI 0088 buffer with texture layout");
+            }
+            {
+               D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 release8_info;
+               memset(&release8_info, 0xcc, sizeof(release8_info));
+               set_error_calls = 0;
+               release1_table.pfnCheckResourceAllocationInfo(
+                  driver_device, &release8_resource,
+                  D3D12DDI_RESOURCE_OPTIMIZATION_FLAG_NONE, 0, 1,
+                  &release8_info);
+               require_result(set_error_calls == 1 &&
+                                 last_set_error == E_NOTIMPL &&
+                                 release8_info.ResourceDataSize == 0,
+                              "reject DDI 0088 buffer allocation info with "
+                              "texture layout");
+            }
+         }
+#endif
 
          {
             D3D12DDIARG_CREATERESOURCE_0003 invalid = resource_arguments;

@@ -63,8 +63,8 @@ struct d12_umd_pipeline_blob_header {
    uint32_t sample_mask;
    uint32_t blend[82];
    uint32_t rasterizer[12];
-   uint32_t depth_stencil[16];
-   uint32_t reserved[1];
+   uint32_t depth_stencil[18];
+   uint32_t pipeline_flags;
 };
 
 _Static_assert(sizeof(struct d12_umd_serialized_root_parameter) == 28,
@@ -101,7 +101,7 @@ _Static_assert(sizeof(struct d12_frontend_input_element) == 24,
                "serialized input element width changed");
 _Static_assert(sizeof(struct d12_frontend_stream_output_declaration) == 24,
                "serialized stream-output declaration width changed");
-_Static_assert(sizeof(struct d12_umd_pipeline_blob_header) == 616,
+_Static_assert(sizeof(struct d12_umd_pipeline_blob_header) == 624,
                "serialized pipeline header width changed");
 
 static bool
@@ -242,7 +242,7 @@ d12_umd_unpack_rasterizer(
 
 static void
 d12_umd_pack_depth_stencil(
-   uint32_t destination[16],
+   uint32_t destination[18],
    const struct d12_frontend_depth_stencil_desc *source)
 {
    destination[0] = source->depth_enable;
@@ -251,16 +251,18 @@ d12_umd_pack_depth_stencil(
    destination[3] = source->stencil_enable;
    destination[4] = source->front_enable;
    destination[5] = source->back_enable;
-   destination[6] = source->stencil_read_mask;
-   destination[7] = source->stencil_write_mask;
-   destination[8] = source->front_face.stencil_fail_op;
-   destination[9] = source->front_face.stencil_depth_fail_op;
-   destination[10] = source->front_face.stencil_pass_op;
-   destination[11] = source->front_face.stencil_func;
-   destination[12] = source->back_face.stencil_fail_op;
-   destination[13] = source->back_face.stencil_depth_fail_op;
-   destination[14] = source->back_face.stencil_pass_op;
-   destination[15] = source->back_face.stencil_func;
+   destination[6] = source->front_face_stencil_read_mask;
+   destination[7] = source->front_face_stencil_write_mask;
+   destination[8] = source->back_face_stencil_read_mask;
+   destination[9] = source->back_face_stencil_write_mask;
+   destination[10] = source->front_face.stencil_fail_op;
+   destination[11] = source->front_face.stencil_depth_fail_op;
+   destination[12] = source->front_face.stencil_pass_op;
+   destination[13] = source->front_face.stencil_func;
+   destination[14] = source->back_face.stencil_fail_op;
+   destination[15] = source->back_face.stencil_depth_fail_op;
+   destination[16] = source->back_face.stencil_pass_op;
+   destination[17] = source->back_face.stencil_func;
 }
 
 static void
@@ -275,16 +277,22 @@ d12_umd_unpack_depth_stencil(
    destination->stencil_enable = source->depth_stencil[3];
    destination->front_enable = source->depth_stencil[4];
    destination->back_enable = source->depth_stencil[5];
-   destination->stencil_read_mask = (uint8_t)source->depth_stencil[6];
-   destination->stencil_write_mask = (uint8_t)source->depth_stencil[7];
-   destination->front_face.stencil_fail_op = source->depth_stencil[8];
-   destination->front_face.stencil_depth_fail_op = source->depth_stencil[9];
-   destination->front_face.stencil_pass_op = source->depth_stencil[10];
-   destination->front_face.stencil_func = source->depth_stencil[11];
-   destination->back_face.stencil_fail_op = source->depth_stencil[12];
-   destination->back_face.stencil_depth_fail_op = source->depth_stencil[13];
-   destination->back_face.stencil_pass_op = source->depth_stencil[14];
-   destination->back_face.stencil_func = source->depth_stencil[15];
+   destination->front_face_stencil_read_mask =
+      (uint8_t)source->depth_stencil[6];
+   destination->front_face_stencil_write_mask =
+      (uint8_t)source->depth_stencil[7];
+   destination->back_face_stencil_read_mask =
+      (uint8_t)source->depth_stencil[8];
+   destination->back_face_stencil_write_mask =
+      (uint8_t)source->depth_stencil[9];
+   destination->front_face.stencil_fail_op = source->depth_stencil[10];
+   destination->front_face.stencil_depth_fail_op = source->depth_stencil[11];
+   destination->front_face.stencil_pass_op = source->depth_stencil[12];
+   destination->front_face.stencil_func = source->depth_stencil[13];
+   destination->back_face.stencil_fail_op = source->depth_stencil[14];
+   destination->back_face.stencil_depth_fail_op = source->depth_stencil[15];
+   destination->back_face.stencil_pass_op = source->depth_stencil[16];
+   destination->back_face.stencil_func = source->depth_stencil[17];
 }
 
 static bool
@@ -509,6 +517,7 @@ d12_umd_pipeline_serialize(
       header.sample_count = graphics->sample_count;
       header.sample_quality = graphics->sample_quality;
       header.sample_mask = graphics->sample_mask;
+      header.pipeline_flags = graphics->pipeline_flags;
       d12_umd_pack_blend(header.blend, &graphics->blend);
       d12_umd_pack_rasterizer(header.rasterizer, &graphics->rasterizer);
       d12_umd_pack_depth_stencil(header.depth_stencil,
@@ -709,6 +718,9 @@ d12_umd_serialized_graphics_valid(
         header->sample_count != 4u) ||
        header->sample_quality != 0u ||
        header->index_buffer_strip_cut_value > 2u ||
+       (header->pipeline_flags &
+        ~((uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_DEPTH_BIAS |
+          (uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_INDEX_BUFFER_STRIP_CUT)) ||
        header->primitive_topology_type < 1u ||
        header->primitive_topology_type > 5u ||
        (header->shader_sizes[3] == 0) != (header->shader_sizes[4] == 0) ||
@@ -774,7 +786,6 @@ d12_umd_pipeline_serialization_valid(const void *blob, size_t size)
           D12_FRONTEND_MAX_STREAM_OUTPUT_DECLARATIONS ||
        header->so_stride_count > D12_FRONTEND_MAX_STREAM_OUTPUT_BUFFERS ||
        header->num_render_targets > D12_FRONTEND_MAX_RENDER_TARGETS ||
-       header->reserved[0] != 0 ||
        !d12_umd_pipeline_blob_size(header, &expected_size) ||
        expected_size != size)
       return false;
@@ -973,6 +984,7 @@ d12_umd_pipeline_deserialize(
       out_pipeline->graphics.sample_count = header->sample_count;
       out_pipeline->graphics.sample_quality = header->sample_quality;
       out_pipeline->graphics.sample_mask = header->sample_mask;
+      out_pipeline->graphics.pipeline_flags = header->pipeline_flags;
       d12_umd_unpack_blend(&out_pipeline->graphics.blend, header->blend);
       d12_umd_unpack_rasterizer(&out_pipeline->graphics.rasterizer,
                                 header->rasterizer);

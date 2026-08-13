@@ -16,28 +16,45 @@ TABLES = (
         "D12_UMD_DEVICE_CORE_ENTRY_COUNT",
         "d12_umd_fill_device_core_traps",
         "device",
+        None,
     ),
     (
         "D3D12DDI_COMMAND_LIST_FUNCS_3D_0003",
         "D12_UMD_COMMAND_LIST_ENTRY_COUNT",
         "d12_umd_fill_command_list_traps",
         "command_list",
+        None,
     ),
     (
         "D3D12DDI_COMMAND_QUEUE_FUNCS_CORE_0001",
         "D12_UMD_COMMAND_QUEUE_ENTRY_COUNT",
         "d12_umd_fill_command_queue_traps",
         "command_queue",
+        None,
+    ),
+    (
+        "D3D12DDI_DEVICE_FUNCS_CORE_0099",
+        "D12_UMD_DEVICE_CORE_ENTRY_COUNT_0099",
+        "d12_umd_fill_device_core_traps_0099",
+        "device",
+        "D12_UMD_TARGETS_WDDM31",
+    ),
+    (
+        "D3D12DDI_COMMAND_LIST_FUNCS_3D_0099",
+        "D12_UMD_COMMAND_LIST_ENTRY_COUNT_0099",
+        "d12_umd_fill_command_list_traps_0099",
+        "command_list",
+        "D12_UMD_TARGETS_WDDM31",
     ),
 )
 
 FIELD = re.compile(r"^\s*(PFN[A-Z0-9_]+|void\*)\s+(pfn[A-Za-z0-9_]+)\s*;", re.M)
 TYPEDEF = re.compile(
     r"typedef\s+(?:_Check_return_\s+)?"
-    r"(?P<return>VOID|void|HRESULT|SIZE_T|UINT|BOOL|"
+    r"(?P<return>VOID|void\s*\*|void|HRESULT|SIZE_T|UINT|BOOL|"
     r"D3D12DDI_CPU_DESCRIPTOR_HANDLE|D3D12DDI_GPU_DESCRIPTOR_HANDLE|"
     r"D3D12DDI_HEAP_AND_RESOURCE_SIZES|D3D12DDI_GPU_VIRTUAL_ADDRESS|"
-    r"D3DKMT_HANDLE)\s*"
+    r"D3DKMT_HANDLE|D3D12DDI_DRIVER_MATCHING_IDENTIFIER_STATUS)\s*"
     r"\(\s*APIENTRY(?:\s+CALLBACK)?\s*\*\s*(?P<name>PFN[A-Z0-9_]+)\s*\)",
     re.M,
 )
@@ -54,6 +71,9 @@ TRAPS = {
         "D3D12DDI_HEAP_AND_RESOURCE_SIZES": "d12_umd_trap_heap_resource_sizes",
         "D3D12DDI_GPU_VIRTUAL_ADDRESS": "d12_umd_trap_gpu_virtual_address",
         "D3DKMT_HANDLE": "d12_umd_trap_kmt_handle",
+        "void*": "d12_umd_trap_pointer",
+        "D3D12DDI_DRIVER_MATCHING_IDENTIFIER_STATUS":
+            "d12_umd_trap_matching_identifier",
     },
     "command_list": {
         "VOID": "d12_umd_command_list_trap_void",
@@ -90,8 +110,10 @@ def generate(header: Path) -> str:
         "#endif",
     ]
 
-    for struct, count_macro, filler, family in TABLES:
+    for struct, count_macro, filler, family, guard in TABLES:
         fields = extract_struct(text, struct)
+        if guard:
+            out.extend(("", f"#if {guard}"))
         out.extend(("", f"#define {count_macro} {len(fields)}u", "", "static void"))
         out.append(f"{filler}({struct} *table)")
         out.append("{")
@@ -112,6 +134,8 @@ def generate(header: Path) -> str:
                 trap = "d12_umd_trap_destroy_void"
             out.append(f"   table->{field} = ({pfn}){trap};")
         out.append("}")
+        if guard:
+            out.append("#endif")
 
     out.extend(
         (

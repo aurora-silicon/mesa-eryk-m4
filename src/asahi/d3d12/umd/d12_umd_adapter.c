@@ -44,6 +44,17 @@ _Static_assert(D3D12DDI_SUPPORTED_0042 == D12_UMD_DDI_SUPPORTED_0042,
 _Static_assert(D3D12DDI_SHADER_MODEL_6_2_RELEASE_0042 == UINT32_C(0x00060025),
                "pinned WDK Shader Model 6.2 value changed");
 #endif
+#if D12_UMD_TARGETS_WDDM31
+_Static_assert(D3D12DDI_SUPPORTED_0099 == D12_UMD_DDI_SUPPORTED_0099,
+               "pinned WDK D3D12 DDI 0099 value changed");
+_Static_assert((uint32_t)D3D12DDI_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS ==
+                  (uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_DEPTH_BIAS,
+               "DDI and frontend dynamic-depth-bias flags diverged");
+_Static_assert(
+   (uint32_t)D3D12DDI_PIPELINE_STATE_FLAG_DYNAMIC_INDEX_BUFFER_STRIP_CUT ==
+      (uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_INDEX_BUFFER_STRIP_CUT,
+               "DDI and frontend dynamic-strip-cut flags diverged");
+#endif
 
 struct d12_umd_adapter {
    D3D12DDI_HRTADAPTER runtime_adapter;
@@ -329,6 +340,41 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_D3D12_OPTIONS: {
+#if D12_UMD_TARGETS_WDDM31
+      if (arguments->DataSize ==
+          sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0089)) {
+         const D3D12DDI_D3D12_OPTIONS_DATA_0089 data = {
+            .ResourceBindingTier =
+               (D3D12DDI_RESOURCE_BINDING_TIER)caps->resource_binding_tier,
+            .ConservativeRasterizationTier =
+               D3D12DDI_CONSERVATIVE_RASTERIZATION_TIER_NOT_SUPPORTED,
+            .TiledResourcesTier =
+               (D3D12DDI_TILED_RESOURCES_TIER)caps->tiled_resources_tier,
+            .CrossNodeSharingTier =
+               D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
+            .ResourceHeapTier =
+               (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
+            .ProgrammableSamplePositionsTier =
+               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+            .CopyQueueTimestampQueriesSupported =
+               caps->copy_queue_timestamp_queries,
+            .WriteBufferImmediateQueueFlags =
+               d12_umd_immediate_write_queue_flags(
+                  caps->write_buffer_immediate_support_flags),
+            .ViewInstancingTier =
+               D3D12DDI_VIEW_INSTANCING_TIER_NOT_SUPPORTED,
+            .RenderPassTier = D3D12DDI_RENDER_PASS_TIER_NOT_SUPPORTED,
+            .RaytracingTier = D3D12DDI_RAYTRACING_TIER_NOT_SUPPORTED,
+            .VariableShadingRateTier =
+               D3D12DDI_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED,
+            .MeshShaderTier = D3D12DDI_MESH_SHADER_TIER_NOT_SUPPORTED,
+            .SamplerFeedbackTier =
+               D3D12DDI_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED,
+            .EnhancedBarriersSupported = FALSE,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
 #if D12_UMD_TARGETS_WDDM24
       if (arguments->DataSize ==
           sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0041)) {
@@ -415,6 +461,78 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
       return d12_umd_copy_cap(arguments, &data, sizeof(data));
    }
 
+#if D12_UMD_TARGETS_WDDM31
+   case D3D12DDICAPS_TYPE_0050_HARDWARE_SCHEDULING_CAPS: {
+      const D3D12DDICAPS_HARDWARE_SCHEDULING_CAPS_0050 data = {
+         .ComputeQueuesPer3DQueue = 0,
+      };
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+
+   case D3D12DDICAPS_TYPE_EXECUTECOMMANDLISTS_PARALLELISM:
+   case D3D12DDICAPS_TYPE_0073_SUPPORT_BATCHED_MARKERS: {
+      const BOOL data = FALSE;
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+
+   case D3D12DDICAPS_TYPE_SAMPLER_FEEDBACK_0073: {
+      D3D12DDICAPS_SAMPLER_FEEDBACK_CAPS_0073 *data = arguments->pData;
+      if (arguments->pInfo || !data || arguments->DataSize != sizeof(*data))
+         return E_INVALIDARG;
+      data->FeedbackMapSize.Width = 0;
+      data->FeedbackMapSize.Height = 0;
+      return S_OK;
+   }
+
+   case D3D12DDICAPS_TYPE_0081_3DPIPELINESUPPORT1: {
+      D3D12DDI_3DPIPELINESUPPORT1_DATA_0081 *data = arguments->pData;
+      if (arguments->pInfo || !data || arguments->DataSize != sizeof(*data))
+         return E_INVALIDARG;
+      data->MaximumDriverSupportedFeatureLevel =
+         data->HighestRuntimeSupportedFeatureLevel <
+               D3D12DDI_3DPIPELINELEVEL_11_0
+            ? data->HighestRuntimeSupportedFeatureLevel
+            : D3D12DDI_3DPIPELINELEVEL_11_0;
+      return S_OK;
+   }
+
+   case D3D12DDICAPS_TYPE_OPTIONS_0090: {
+      const D3D12DDI_OPTIONS_DATA_0090 data = {
+         .RelaxedFormatCastingSupported = FALSE,
+      };
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+
+   case D3D12DDICAPS_TYPE_OPTIONS_0091: {
+      const D3D12DDI_OPTIONS_DATA_0091 data = {0};
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+
+   case D3D12DDICAPS_TYPE_OPTIONS_0093: {
+      const D3D12DDI_OPTIONS_DATA_0093 data = {0};
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+
+   case D3D12DDICAPS_TYPE_OPTIONS_0098: {
+      const D3D12DDI_OPTIONS_DATA_0098 data = {
+         .L1MemoryFullyCpuAccessible = caps->uma,
+      };
+      if (arguments->pInfo)
+         return E_INVALIDARG;
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
+#endif
+
    case D3D12DDICAPS_TYPE_GPUVA_CAPS: {
       const D3D12DDI_GPUVA_CAPS_0004 data = {
          .MaxGPUVirtualAddressBitsPerResource = 40,
@@ -465,6 +583,16 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
 #endif
 
    case D3D12DDICAPS_TYPE_SHADER: {
+#if D12_UMD_TARGETS_WDDM31
+      if (arguments->DataSize == sizeof(D3D12DDI_SHADER_CAPS_0084)) {
+         const D3D12DDI_SHADER_CAPS_0084 data = {
+            .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
+            .Native16BitOps = caps->native_16bit_shader_ops,
+            .WaveMMATier = D3D12DDI_WAVE_MMA_TIER_NOT_SUPPORTED,
+         };
+         return d12_umd_copy_cap(arguments, &data, sizeof(data));
+      }
+#endif
 #if D12_UMD_TARGETS_WDDM24
       if (arguments->DataSize == sizeof(D3D12DDI_SHADER_CAPS_0042)) {
          const D3D12DDI_SHADER_CAPS_0042 data = {
@@ -557,8 +685,23 @@ d12_umd_get_optional_ddi_tables(D3D12DDI_HADAPTER handle, UINT32 *entries,
    if (!d12_umd_adapter_from_handle(handle) || !entries)
       return E_INVALIDARG;
 
+#if D12_UMD_TARGETS_WDDM31
+   if (requests && *entries < 1) {
+      *entries = 1;
+      return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
+   }
+
+   *entries = 1;
+   if (requests) {
+      requests[0] = (D3D12DDI_TABLE_REQUEST){
+         .tableType = D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES,
+         .numTables = 1,
+      };
+   }
+#else
    (void)requests;
    *entries = 0;
+#endif
    return S_OK;
 }
 

@@ -295,6 +295,22 @@ d12_umd_backend_set_topology(void *list, uint32_t topology)
 }
 
 static void
+d12_umd_backend_set_depth_bias(void *list, float depth_bias,
+                               float depth_bias_clamp,
+                               float slope_scaled_depth_bias)
+{
+   d12_device_runtime_command_list_set_depth_bias(
+      list, depth_bias, depth_bias_clamp, slope_scaled_depth_bias);
+}
+
+static void
+d12_umd_backend_set_index_buffer_strip_cut(void *list, uint32_t strip_cut)
+{
+   d12_device_runtime_command_list_set_index_buffer_strip_cut(list,
+                                                              strip_cut);
+}
+
+static void
 d12_umd_backend_set_viewports(void *list, uint32_t count,
                               const float (*viewports)[6])
 {
@@ -318,6 +334,15 @@ static void
 d12_umd_backend_set_stencil_ref(void *list, uint32_t reference)
 {
    d12_device_runtime_command_list_set_stencil_ref(list, reference);
+}
+
+static void
+d12_umd_backend_set_front_and_back_stencil_ref(void *list,
+                                                uint32_t front_reference,
+                                                uint32_t back_reference)
+{
+   d12_device_runtime_command_list_set_front_and_back_stencil_ref(
+      list, front_reference, back_reference);
 }
 
 static void
@@ -883,10 +908,15 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .draw_indexed_instanced = d12_umd_backend_draw_indexed_instanced,
    .dispatch = d12_umd_backend_dispatch,
    .set_topology = d12_umd_backend_set_topology,
+   .set_depth_bias = d12_umd_backend_set_depth_bias,
+   .set_index_buffer_strip_cut =
+      d12_umd_backend_set_index_buffer_strip_cut,
    .set_viewports = d12_umd_backend_set_viewports,
    .set_scissors = d12_umd_backend_set_scissors,
    .set_blend_factor = d12_umd_backend_set_blend_factor,
    .set_stencil_ref = d12_umd_backend_set_stencil_ref,
+   .set_front_and_back_stencil_ref =
+      d12_umd_backend_set_front_and_back_stencil_ref,
    .set_vertex_buffers = d12_umd_backend_set_vertex_buffers,
    .set_index_buffer = d12_umd_backend_set_index_buffer,
    .set_stream_output_targets =

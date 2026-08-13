@@ -19,15 +19,17 @@ common=(
     -Wall -Wextra -Werror -Wpedantic
 )
 
-for target in 20 21 23 24; do
+for target in 20 21 23 24 31; do
     if [[ $target == 20 ]]; then
         interface=0x5002
     elif [[ $target == 21 ]]; then
         interface=0x6003
     elif [[ $target == 23 ]]; then
         interface=0x8001
-    else
+    elif [[ $target == 24 ]]; then
         interface=0x9001
+    else
+        interface=0x10000
     fi
     "$cc" "$common[@]" \
         -DD3D_UMD_INTERFACE_VERSION=$interface \
@@ -42,6 +44,11 @@ done
     "$d12_dir/tests/d12_attachment_view_core_tests.c" \
     -o "$out/d12_attachment_view_core_tests"
 "$out/d12_attachment_view_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_bundle_state_core_tests.c" \
+    -o "$out/d12_bundle_state_core_tests"
+"$out/d12_bundle_state_core_tests"
 
 "$cc" "$common[@]" \
     "$d12_dir/d12_core_caps.c" "$d12_dir/tests/d12_core_caps_tests.c" \
@@ -140,6 +147,15 @@ done
     "$repo_root/src/asahi/lib/agx_d3dkmt_core_tests.c" \
     -o "$out/agx_d3dkmt_core_tests"
 "$out/agx_d3dkmt_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    -I"$repo_root/src/asahi/lib" \
+    "$repo_root/src/asahi/lib/agx_chip.c" \
+    "$repo_root/src/asahi/lib/tests/test-chip.c" \
+    -o "$out/agx_chip_tests"
+"$out/agx_chip_tests"
 
 "$cc" "$common[@]" \
     "$d12_dir/d12_dxbc_wrap.c" "$d12_dir/tests/d12_dxbc_wrap_tests.c" \

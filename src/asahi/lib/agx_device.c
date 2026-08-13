@@ -668,12 +668,34 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    params_size = dev->ops.get_params(dev, &dev->params, sizeof(dev->params));
    if (params_size <= 0) {
-      assert(0);
+      fprintf(stderr, "Failed to query AGX device parameters: %m\n");
       return false;
    }
-   assert(params_size >= sizeof(dev->params));
+   if ((size_t)params_size < sizeof(dev->params)) {
+      fprintf(stderr,
+              "AGX parameter reply is too short (%zd, expected at least %zu)\n",
+              params_size, sizeof(dev->params));
+      return false;
+   }
 
-   assert(dev->params.gpu_generation >= 13);
+   dev->chip = agx_chip_from_params(&dev->params);
+   if (dev->chip == AGX_CHIP_UNKNOWN) {
+      fprintf(stderr,
+              "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
+              "clusters)\n",
+              dev->params.gpu_generation, dev->params.gpu_variant,
+              dev->params.num_clusters_total);
+
+#ifdef HAVE_LIBDRM
+      if (dev->is_virtio) {
+         vdrm_device_close(dev->vdrm);
+         dev->vdrm = NULL;
+      }
+#endif
+
+      return false;
+   }
+
    const char *variant = " Unknown";
    switch (dev->params.gpu_variant) {
    case 'G':
@@ -729,20 +751,6 @@ agx_open_device(void *memctx, struct agx_device *dev)
    assert(dev->shader_base >= dev->params.vm_start);
    assert(user_start < dev->params.vm_end);
 
-   dev->agxdecode = agxdecode_new_context(dev->shader_base);
-
-   agx_init_timestamps(dev);
-
-   util_sparse_array_init(&dev->bo_map, sizeof(struct agx_bo), 512);
-   simple_mtx_init(&dev->bo_map_lock, mtx_plain);
-
-   simple_mtx_init(&dev->bo_cache.lock, mtx_plain);
-   list_inithead(&dev->bo_cache.lru);
-   dev->bo_cache.trim_generation = 1;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
-      list_inithead(&dev->bo_cache.buckets[i]);
-
    // Put the kernel heap at the top of the address space.
    // Give it 32GB of address space, should be more than enough for any
    // reasonable use case.
@@ -757,9 +765,22 @@ agx_open_device(void *memctx, struct agx_device *dev)
    int ret = dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_VM_CREATE, &vm_create);
    if (ret) {
       fprintf(stderr, "DRM_IOCTL_ASAHI_VM_CREATE failed: %m\n");
-      assert(0);
       return false;
    }
+
+   dev->agxdecode = agxdecode_new_context(dev->shader_base);
+
+   agx_init_timestamps(dev);
+
+   util_sparse_array_init(&dev->bo_map, sizeof(struct agx_bo), 512);
+   simple_mtx_init(&dev->bo_map_lock, mtx_plain);
+
+   simple_mtx_init(&dev->bo_cache.lock, mtx_plain);
+   list_inithead(&dev->bo_cache.lru);
+   dev->bo_cache.trim_generation = 1;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
+      list_inithead(&dev->bo_cache.buckets[i]);
 
    /* Round the user VA window to powers-of-two... */
    user_start = util_next_power_of_two64(user_start);
@@ -797,17 +818,6 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->libagx_programs = libagx_g13x;
    } else {
       dev->libagx_programs = libagx_g13g;
-   }
-
-   if (dev->params.gpu_generation >= 14 && dev->params.num_clusters_total > 1) {
-      dev->chip = AGX_CHIP_G14X;
-   } else if (dev->params.gpu_generation >= 14) {
-      dev->chip = AGX_CHIP_G14G;
-   } else if (dev->params.gpu_generation >= 13 &&
-              dev->params.num_clusters_total > 1) {
-      dev->chip = AGX_CHIP_G13X;
-   } else {
-      dev->chip = AGX_CHIP_G13G;
    }
 
    /* Bind read-only zero page at 2^32. This is in our reservation, and can be

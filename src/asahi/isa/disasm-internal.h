@@ -181,10 +181,13 @@ print_modifier(struct disasm_ctx *ctx, const char *display, unsigned value)
 
 static signed
 _disassemble_instr(BITSET_WORD *code, FILE *fp, struct disasm_spec *specs,
-                   unsigned nr_specs, unsigned offset, bool verbose)
+                   unsigned nr_specs, size_t available, unsigned offset,
+                   bool verbose)
 {
-   BITSET_WORD tmp[4];
-   memcpy(tmp, code, sizeof(tmp));
+   BITSET_WORD tmp[4] = {0};
+   size_t copy_size = MIN2(available, sizeof(tmp));
+
+   memcpy(tmp, code, copy_size);
    struct disasm_spec *spec = NULL;
    unsigned n = 0;
    bool match = false;
@@ -197,6 +200,11 @@ _disassemble_instr(BITSET_WORD *code, FILE *fp, struct disasm_spec *specs,
       if (BITSET_TEST(tmp, spec->length_bit)) {
          n = spec->length_long;
       }
+
+      /* Zero-padded lookahead is decoder-private. Never accept an encoding
+       * whose declared length extends beyond the caller's real byte range. */
+      if (n > available)
+         continue;
 
       match = true;
       for (unsigned i = 0; i < ARRAY_SIZE(tmp); ++i) {

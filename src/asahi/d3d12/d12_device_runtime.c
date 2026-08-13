@@ -896,6 +896,31 @@ d12_device_runtime_command_list_set_topology(void *list, uint32_t topology)
 }
 
 void
+d12_device_runtime_command_list_set_depth_bias(
+   void *list, float depth_bias, float depth_bias_clamp,
+   float slope_scaled_depth_bias)
+{
+   if (!list)
+      return;
+
+   ID3D12GraphicsCommandList9_RSSetDepthBias(
+      (ID3D12GraphicsCommandList9 *)list, depth_bias, depth_bias_clamp,
+      slope_scaled_depth_bias);
+}
+
+void
+d12_device_runtime_command_list_set_index_buffer_strip_cut(
+   void *list, uint32_t strip_cut)
+{
+   if (!list)
+      return;
+
+   ID3D12GraphicsCommandList9_IASetIndexBufferStripCutValue(
+      (ID3D12GraphicsCommandList9 *)list,
+      (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)strip_cut);
+}
+
+void
 d12_device_runtime_command_list_set_viewports(
    void *list, uint32_t count, const float (*viewports)[6])
 {
@@ -953,6 +978,16 @@ d12_device_runtime_command_list_set_stencil_ref(void *list,
    if (list)
       ID3D12GraphicsCommandList_OMSetStencilRef(
          (ID3D12GraphicsCommandList *)list, reference);
+}
+
+void
+d12_device_runtime_command_list_set_front_and_back_stencil_ref(
+   void *list, uint32_t front_reference, uint32_t back_reference)
+{
+   if (list)
+      ID3D12GraphicsCommandList9_OMSetFrontAndBackStencilRef(
+         (ID3D12GraphicsCommandList9 *)list, front_reference,
+         back_reference);
 }
 
 void
@@ -1771,8 +1806,10 @@ d12_device_runtime_pipeline_state_create_graphics(
       .DepthFunc =
          (D3D12_COMPARISON_FUNC)frontend->depth_stencil.depth_func,
       .StencilEnable = frontend->depth_stencil.stencil_enable != 0,
-      .StencilReadMask = frontend->depth_stencil.stencil_read_mask,
-      .StencilWriteMask = frontend->depth_stencil.stencil_write_mask,
+      .StencilReadMask =
+         frontend->depth_stencil.front_face_stencil_read_mask,
+      .StencilWriteMask =
+         frontend->depth_stencil.front_face_stencil_write_mask,
       .FrontFace = d12_device_runtime_depth_stencil_op(
          &frontend->depth_stencil.front_face),
       .BackFace = d12_device_runtime_depth_stencil_op(
@@ -1797,12 +1834,21 @@ d12_device_runtime_pipeline_state_create_graphics(
       frontend->domain_shader.data, frontend->domain_shader.size, rt_format,
       frontend->num_render_targets, rtv_formats, frontend->sample_count,
       frontend->sample_mask, &depth_stencil,
-      (DXGI_FORMAT)frontend->dsv_format, &rasterizer, &blend, &input_layout,
+      (DXGI_FORMAT)frontend->dsv_format, &rasterizer,
+      frontend->rasterizer.depth_bias,
+      frontend->depth_stencil.front_enable != 0,
+      frontend->depth_stencil.back_enable != 0,
+      frontend->depth_stencil.front_face_stencil_read_mask,
+      frontend->depth_stencil.front_face_stencil_write_mask,
+      frontend->depth_stencil.back_face_stencil_read_mask,
+      frontend->depth_stencil.back_face_stencil_write_mask,
+      &blend, &input_layout,
       frontend->stream_output.declaration_count ? &stream_output : NULL,
       (D3D12_PRIMITIVE_TOPOLOGY_TYPE)frontend->primitive_topology_type,
       (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)
          frontend->index_buffer_strip_cut_value,
-      D3D12_PIPELINE_STATE_FLAG_NONE, map, &IID_ID3D12PipelineState,
+      (D3D12_PIPELINE_STATE_FLAGS)frontend->pipeline_flags, map,
+      &IID_ID3D12PipelineState,
       out_pipeline_state);
 }
 
@@ -2976,11 +3022,12 @@ d12_device_runtime_create_sampler(
    struct d12_device *device,
    const struct d12_frontend_sampler_desc *desc, uint64_t destination)
 {
-   D3D12_SAMPLER_DESC translated;
+   D3D12_SAMPLER_DESC2 translated;
+   struct d12_descriptor *slot;
 
    if (!device || !desc || !destination)
       return;
-   translated = (D3D12_SAMPLER_DESC){
+   translated = (D3D12_SAMPLER_DESC2){
       .Filter = (D3D12_FILTER)desc->filter,
       .AddressU = (D3D12_TEXTURE_ADDRESS_MODE)desc->address_u,
       .AddressV = (D3D12_TEXTURE_ADDRESS_MODE)desc->address_v,
@@ -2990,12 +3037,13 @@ d12_device_runtime_create_sampler(
       .ComparisonFunc = (D3D12_COMPARISON_FUNC)desc->comparison_func,
       .MinLOD = desc->min_lod,
       .MaxLOD = desc->max_lod,
+      .Flags = (D3D12_SAMPLER_FLAGS)desc->flags,
    };
-   memcpy(translated.BorderColor, desc->border_color,
-          sizeof(translated.BorderColor));
-   d12_device_create_sampler_runtime(
-      device, &translated,
-      (D3D12_CPU_DESCRIPTOR_HANDLE){.ptr = (SIZE_T)destination});
+   memcpy(translated.UintBorderColor, desc->border_color,
+          sizeof(translated.UintBorderColor));
+   slot = (struct d12_descriptor *)(uintptr_t)destination;
+   d12_pack_sampler_descriptor(slot, &translated);
+   d12_descriptor_heap_update_slot(device, slot);
 }
 
 void

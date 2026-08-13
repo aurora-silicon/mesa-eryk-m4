@@ -40,7 +40,151 @@ _Static_assert(sizeof(D3D12DDIARG_CREATEDEVICE_0003) == 48,
                "CREATEDEVICE_0003 width");
 _Static_assert(sizeof(DXGI_DDI_BASE_ARGS) == 16,
                "DXGI base arguments width");
-#if D12_UMD_TARGETS_WDDM24
+#if D12_UMD_TARGETS_WDDM31
+#define D12_UMD_ASSERT_PFN(table_type, field, pfn_type)                    \
+   _Static_assert(_Generic(((table_type *)0)->field, pfn_type: 1,         \
+                           default: 0),                                  \
+                  #table_type "." #field " PFN changed")
+
+_Static_assert(sizeof(D3DDDI_ADAPTERCALLBACKS) == 24,
+               "WDDM 3.1 adapter callback table width");
+_Static_assert(offsetof(D3DDDI_ADAPTERCALLBACKS,
+                        pfnQueryAdapterInfoCb2) == 16,
+               "WDDM 3.1 query-adapter-info2 callback offset");
+_Static_assert(sizeof(D3DDDICB_QUERYADAPTERINFO2) == 24,
+               "WDDM 3.1 query-adapter-info2 arguments width");
+_Static_assert(sizeof(D3DDDI_DEVICECALLBACKS) == 520,
+               "WDDM 3.1 device callback table width");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
+                        pfnSubmitPresentToHwQueueCb) == 504,
+               "WDDM 3.1 present callback offset");
+_Static_assert(offsetof(D3DDDI_DEVICECALLBACKS,
+                        pfnSubmitHistorySequenceCb) == 512,
+               "WDDM 3.1 history callback tail offset");
+_Static_assert(D3D12DDI_SUPPORTED_0099 == D12_UMD_DDI_SUPPORTED_0099,
+               "Release 8 build 99 encoding");
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0099) == 976,
+               "Release 8 device table width");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099) == 584,
+               "Release 8 command-list table width");
+_Static_assert(D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES == 27,
+               "Release 8 extended-feature table type");
+_Static_assert(sizeof(D3D12DDI_EXTENDED_FEATURES_FUNCS_0096) == 32,
+               "Release 8 extended-feature table width");
+_Static_assert(sizeof(D3D12DDICAPS_HARDWARE_SCHEDULING_CAPS_0050) == 4,
+               "DDI 0050 hardware-scheduling cap width");
+_Static_assert(sizeof(D3D12DDICAPS_SAMPLER_FEEDBACK_CAPS_0073) == 56,
+               "DDI 0073 sampler-feedback cap width");
+_Static_assert(sizeof(D3D12DDIARG_CREATERESOURCE_0088) == 96,
+               "DDI 0088 resource descriptor width");
+_Static_assert(offsetof(D3D12DDIARG_CREATERESOURCE_0088,
+                        InitialBarrierLayout) == 60,
+               "DDI 0088 initial layout offset");
+_Static_assert(offsetof(D3D12DDIARG_CREATERESOURCE_0088,
+                        pCastableFormats) == 88,
+               "DDI 0088 castable-format tail offset");
+_Static_assert(sizeof(D3D12DDI_DEPTH_STENCIL_DESC_0095) == 88,
+               "DDI 0095 depth/stencil descriptor width");
+_Static_assert(offsetof(D3D12DDI_DEPTH_STENCIL_DESC_0095,
+                        BackFaceStencilReadMask) == 84,
+               "DDI 0095 independent back mask offset");
+_Static_assert(sizeof(D3D12DDI_RASTERIZER_DESC_0099) == 64,
+               "DDI 0099 float-depth-bias rasterizer width");
+_Static_assert(offsetof(D3D12DDI_RASTERIZER_DESC_0099, DepthBias) == 12,
+               "DDI 0099 float depth-bias offset");
+_Static_assert(sizeof(D3D12DDIARG_CREATE_PIPELINE_STATE_0099) == 224,
+               "DDI 0099 pipeline descriptor width");
+_Static_assert(offsetof(D3D12DDIARG_CREATE_PIPELINE_STATE_0099, Flags) ==
+                  216,
+               "DDI 0099 dynamic-state flags offset");
+_Static_assert(sizeof(D3D12DDI_SAMPLER_DESC_0096) == 56,
+               "DDI 0096 sampler descriptor width");
+_Static_assert(offsetof(D3D12DDI_SAMPLER_DESC_0096, Flags) == 52,
+               "DDI 0096 sampler flags offset");
+_Static_assert(sizeof(D3D12DDI_PRESENT_0051) == 536,
+               "DDI 0051 present payload width");
+_Static_assert(sizeof(D3D12DDI_PRESENT_CONTEXTS_0051) == 528,
+               "DDI 0051 present context width");
+_Static_assert(sizeof(D3D12DDI_PRESENT_HWQUEUES_0051) == 528,
+               "DDI 0051 present hardware-queue width");
+_Static_assert(sizeof(D3D12DDI_D3D12_OPTIONS_DATA_0089) == 124,
+               "DDI 0089 cumulative options width");
+_Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0084) == 64,
+               "DDI 0084 shader caps width");
+_Static_assert(sizeof(D3D12DDI_3DPIPELINESUPPORT1_DATA_0081) == 8,
+               "DDI 0081 pipeline cap width");
+_Static_assert(sizeof(D3D12DDI_OPTIONS_DATA_0090) == 4 &&
+                  sizeof(D3D12DDI_OPTIONS_DATA_0091) == 16 &&
+                  sizeof(D3D12DDI_OPTIONS_DATA_0093) == 8 &&
+                  sizeof(D3D12DDI_OPTIONS_DATA_0098) == 4,
+               "Release 8 incremental option widths");
+
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivateCommandQueueSize,
+                   PFND3D12DDI_CALCPRIVATECOMMANDQUEUESIZE_0050);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCreateCommandQueue,
+                   PFND3D12DDI_CREATECOMMANDQUEUE_0050);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivateHeapAndResourceSizes,
+                   PFND3D12DDI_CALCPRIVATEHEAPANDRESOURCESIZES_0088);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCreateHeapAndResource,
+                   PFND3D12DDI_CREATEHEAPANDRESOURCE_0088);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivateOpenedHeapAndResourceSizes,
+                   PFND3D12DDI_CALCPRIVATEOPENEDHEAPANDRESOURCESIZES_0043);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnOpenHeapAndResource,
+                   PFND3D12DDI_OPENHEAPANDRESOURCE_0043);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCheckResourceAllocationInfo,
+                   PFND3D12DDI_CHECKRESOURCEALLOCATIONINFO_0088);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivateDepthStencilStateSize,
+                   PFND3D12DDI_CALCPRIVATEDEPTHSTENCILSTATESIZE_0095);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCreateDepthStencilState,
+                   PFND3D12DDI_CREATEDEPTHSTENCILSTATE_0095);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivateRasterizerStateSize,
+                   PFND3D12DDI_CALCPRIVATERASTERIZERSTATESIZE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCreateRasterizerState,
+                   PFND3D12DDI_CREATERASTERIZERSTATE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCalcPrivatePipelineStateSize,
+                   PFND3D12DDI_CALC_PRIVATE_PIPELINE_STATE_SIZE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                   pfnCreatePipelineState,
+                   PFND3D12DDI_CREATE_PIPELINE_STATE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_DEVICE_FUNCS_CORE_0099, pfnCreateSampler,
+                   PFND3D12DDI_CREATE_SAMPLER_0096);
+D12_UMD_ASSERT_PFN(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099, pfnPresent,
+                   PFND3D12DDI_PRESENT_0051);
+D12_UMD_ASSERT_PFN(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099,
+                   pfnOmSetFrontAndBackStencilRef,
+                   PFND3D12DDI_OM_SETFRONTANDBACKSTENCILREF_0095);
+D12_UMD_ASSERT_PFN(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099,
+                   pfnRSSetDepthBias,
+                   PFND3D12DDI_SET_DEPTH_BIAS_STATE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099,
+                   pfnIASetIndexBufferStripCutValue,
+                   PFND3D12DDI_SET_INDEX_BUFFER_STRIP_CUT_VALUE_0099);
+D12_UMD_ASSERT_PFN(D3D12DDI_EXTENDED_FEATURES_FUNCS_0096,
+                   pfnGetSupportedExtendedFeatures,
+                   PFND3D12DDI_GET_SUPPORTED_EXTENDED_FEATURES_0096);
+D12_UMD_ASSERT_PFN(D3D12DDI_EXTENDED_FEATURES_FUNCS_0096,
+                   pfnGetSupportedExtendedFeatureVersions,
+                   PFND3D12DDI_GET_SUPPORTED_EXTENDED_FEATURE_VERSIONS_0020);
+D12_UMD_ASSERT_PFN(D3D12DDI_EXTENDED_FEATURES_FUNCS_0096,
+                   pfnEnableExtendedFeature,
+                   PFND3D12DDI_ENABLE_EXTENDED_FEATURE_0020);
+D12_UMD_ASSERT_PFN(D3D12DDI_EXTENDED_FEATURES_FUNCS_0096,
+                   pfnSetExtendedFeatureCallbacks,
+                   PFND3D12DDI_SET_EXTENDED_FEATURE_CALLBACKS_0021);
+#undef D12_UMD_ASSERT_PFN
+#elif D12_UMD_TARGETS_WDDM24
 _Static_assert(sizeof(D3DDDI_ADAPTERCALLBACKS) == 24,
                "WDDM 2.4 adapter callback table width");
 _Static_assert(offsetof(D3DDDI_ADAPTERCALLBACKS,
@@ -385,7 +529,7 @@ _Static_assert(sizeof(struct d12_frontend_rtv_desc) == 24,
                "frontend RTV description width");
 _Static_assert(sizeof(struct d12_frontend_dsv_desc) == 24,
                "frontend DSV description width");
-_Static_assert(sizeof(struct d12_frontend_sampler_desc) == 52,
+_Static_assert(sizeof(struct d12_frontend_sampler_desc) == 56,
                "frontend sampler description width");
 _Static_assert(sizeof(struct d12_frontend_stream_output_buffer_view) == 24,
                "frontend stream-output view width");

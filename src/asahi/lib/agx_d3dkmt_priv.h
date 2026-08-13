@@ -155,13 +155,17 @@ agx_d3dkmt_ws(struct agx_device *dev)
    return (struct agx_d3dkmt_winsys *)dev->hdev;
 }
 
-/*
- * Block until `fence` reaches `value`, or `timeout_ms` elapses. Returns 0 on
- * success, -ETIME on timeout, -EIO on failure. A finite wait owns a fresh
- * event, so concurrent waits and a late signal after timeout cannot alias.
- */
+/* Infinite waits use D3DKMT's synchronous form. Finite waits poll the
+ * CPU-visible monitored-fence mapping because the asynchronous event form
+ * has no documented cancellation operation. */
 int agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
-                          uint64_t value, uint32_t timeout_ms);
+                          const volatile uint64_t *fence_cpu, uint64_t value,
+                          uint32_t timeout_ms);
+
+int agx_d3dkmt_poll_cpu_fences(
+   const volatile uint64_t *const *current, const uint64_t *wanted,
+   uint32_t count, bool wait_any, uint32_t timeout_ms,
+   uint32_t *first_signaled);
 
 /* Wait for a paging-queue operation identified by `value` to complete. */
 int agx_d3dkmt_wait_paging(struct agx_d3dkmt_winsys *ws, uint64_t value);

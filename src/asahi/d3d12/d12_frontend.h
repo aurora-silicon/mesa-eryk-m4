@@ -138,8 +138,10 @@ struct d12_frontend_depth_stencil_desc {
    uint32_t stencil_enable;
    uint32_t front_enable;
    uint32_t back_enable;
-   uint8_t stencil_read_mask;
-   uint8_t stencil_write_mask;
+   uint8_t front_face_stencil_read_mask;
+   uint8_t front_face_stencil_write_mask;
+   uint8_t back_face_stencil_read_mask;
+   uint8_t back_face_stencil_write_mask;
    struct d12_frontend_depth_stencil_op front_face;
    struct d12_frontend_depth_stencil_op back_face;
 };
@@ -148,7 +150,7 @@ struct d12_frontend_rasterizer_desc {
    uint32_t fill_mode;
    uint32_t cull_mode;
    uint32_t front_counter_clockwise;
-   int32_t depth_bias;
+   float depth_bias;
    float depth_bias_clamp;
    float slope_scaled_depth_bias;
    uint32_t depth_clip_enable;
@@ -209,6 +211,12 @@ struct d12_frontend_graphics_pipeline_desc {
    uint32_t dsv_format;
    uint32_t sample_count;
    uint32_t sample_quality;
+   uint32_t pipeline_flags;
+};
+
+enum d12_frontend_pipeline_flags {
+   D12_FRONTEND_PIPELINE_DYNAMIC_DEPTH_BIAS = 0x4,
+   D12_FRONTEND_PIPELINE_DYNAMIC_INDEX_BUFFER_STRIP_CUT = 0x8,
 };
 
 enum d12_frontend_cpu_page_property {
@@ -427,9 +435,10 @@ struct d12_frontend_sampler_desc {
    float mip_lod_bias;
    uint32_t max_anisotropy;
    uint32_t comparison_func;
-   float border_color[4];
+   uint32_t border_color[4];
    float min_lod;
    float max_lod;
+   uint32_t flags;
 };
 
 #define D12_FRONTEND_MAX_VERTEX_BUFFERS 32u

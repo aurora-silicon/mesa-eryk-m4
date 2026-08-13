@@ -215,8 +215,12 @@ test_graphics_round_trip(void)
    source.depth_stencil.depth_write_mask = 1;
    source.depth_stencil.depth_func = 4;
    source.depth_stencil.stencil_enable = 1;
-   source.depth_stencil.stencil_read_mask = 0x7f;
-   source.depth_stencil.stencil_write_mask = 0x3f;
+   source.depth_stencil.front_enable = 0;
+   source.depth_stencil.back_enable = 1;
+   source.depth_stencil.front_face_stencil_read_mask = 0x7f;
+   source.depth_stencil.front_face_stencil_write_mask = 0x3f;
+   source.depth_stencil.back_face_stencil_read_mask = 0x5f;
+   source.depth_stencil.back_face_stencil_write_mask = 0x1f;
    source.depth_stencil.front_face.stencil_pass_op = 6;
    source.depth_stencil.back_face.stencil_fail_op = 2;
    source.depth_stencil.back_face.stencil_depth_fail_op = 3;
@@ -235,6 +239,8 @@ test_graphics_round_trip(void)
    };
    source.index_buffer_strip_cut_value = 2;
    source.primitive_topology_type = 3;
+   source.pipeline_flags = D12_FRONTEND_PIPELINE_DYNAMIC_DEPTH_BIAS |
+                           D12_FRONTEND_PIPELINE_DYNAMIC_INDEX_BUFFER_STRIP_CUT;
    source.num_render_targets = 2;
    source.rtv_formats[0] = 28;
    source.rtv_formats[1] = 87;
@@ -255,6 +261,9 @@ test_graphics_round_trip(void)
    assert(decoded.graphics.blend.render_targets[0].write_mask == 0xb);
    assert(decoded.graphics.rasterizer.depth_bias == -7);
    assert(decoded.graphics.rasterizer.depth_bias_clamp == 1.5f);
+   assert(decoded.graphics.pipeline_flags == source.pipeline_flags);
+   assert(decoded.graphics.depth_stencil.front_enable == 0);
+   assert(decoded.graphics.depth_stencil.back_enable == 1);
    assert(decoded.graphics.depth_stencil.front_face.stencil_pass_op == 6);
    assert(decoded.graphics.depth_stencil.back_face.stencil_fail_op == 2);
    assert(decoded.graphics.depth_stencil.back_face.stencil_depth_fail_op == 3);

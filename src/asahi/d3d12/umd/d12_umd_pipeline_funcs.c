@@ -215,8 +215,10 @@ d12_umd_create_depth_stencil_state(
       .stencil_enable = desc->StencilEnable ? 1u : 0u,
       .front_enable = desc->FrontEnable ? 1u : 0u,
       .back_enable = desc->BackEnable ? 1u : 0u,
-      .stencil_read_mask = desc->StencilReadMask,
-      .stencil_write_mask = desc->StencilWriteMask,
+      .front_face_stencil_read_mask = desc->StencilReadMask,
+      .front_face_stencil_write_mask = desc->StencilWriteMask,
+      .back_face_stencil_read_mask = desc->StencilReadMask,
+      .back_face_stencil_write_mask = desc->StencilWriteMask,
       .front_face = d12_umd_translate_depth_stencil_op(&desc->FrontFace),
       .back_face = d12_umd_translate_depth_stencil_op(&desc->BackFace),
    };
@@ -261,7 +263,7 @@ d12_umd_create_rasterizer_state(D3D12DDI_HDEVICE handle,
       .fill_mode = (uint32_t)desc->FillMode,
       .cull_mode = (uint32_t)desc->CullMode,
       .front_counter_clockwise = desc->FrontCounterClockwise ? 1u : 0u,
-      .depth_bias = desc->DepthBias,
+      .depth_bias = (float)desc->DepthBias,
       .depth_bias_clamp = desc->DepthBiasClamp,
       .slope_scaled_depth_bias = desc->SlopeScaledDepthBias,
       .depth_clip_enable = desc->DepthClipEnable ? 1u : 0u,
@@ -874,10 +876,11 @@ d12_umd_pipeline_shader_bytecode(struct d12_umd_shader *shader)
    };
 }
 
-static HRESULT APIENTRY
-d12_umd_create_pipeline_state(
+static HRESULT
+d12_umd_create_pipeline_state_with_flags(
    D3D12DDI_HDEVICE handle,
-   const D3D12DDIARG_CREATE_PIPELINE_STATE_0001 *arguments)
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0001 *arguments,
+   uint32_t pipeline_flags)
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_pipeline_state *pipeline_state;
@@ -897,6 +900,8 @@ d12_umd_create_pipeline_state(
    memset(pipeline_state, 0, sizeof(*pipeline_state));
    compute = d12_umd_pipeline_shader(device, arguments->hComputeShader,
                                      D12_FRONTEND_SHADER_COMPUTE);
+   if (compute && pipeline_flags)
+      return E_INVALIDARG;
    root_signature =
       d12_umd_root_signature_from_handle(arguments->hRootSignature);
    if (compute) {
@@ -967,6 +972,7 @@ d12_umd_create_pipeline_state(
          .dsv_format = (uint32_t)arguments->DSVFormat,
          .sample_count = arguments->SampleDesc.Count,
          .sample_quality = arguments->SampleDesc.Quality,
+         .pipeline_flags = pipeline_flags,
       };
       for (UINT index = 0; index < D12_FRONTEND_MAX_RENDER_TARGETS; ++index)
          desc.rtv_formats[index] = (uint32_t)arguments->RTVFormats[index];
@@ -992,6 +998,14 @@ d12_umd_create_pipeline_state(
    pipeline_state->serialization = serialization;
    pipeline_state->serialization_size = serialization_size;
    return S_OK;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_pipeline_state(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0001 *arguments)
+{
+   return d12_umd_create_pipeline_state_with_flags(handle, arguments, 0);
 }
 
 static void APIENTRY
@@ -1676,11 +1690,11 @@ d12_umd_pipeline_library_load(
    return S_OK;
 }
 
-static HRESULT APIENTRY
-d12_umd_create_pipeline_state_0010(
+static HRESULT
+d12_umd_create_pipeline_state_0010_with_flags(
    D3D12DDI_HDEVICE handle,
    const D3D12DDIARG_CREATE_PIPELINE_STATE_0010 *arguments,
-   D3D12DDI_HPIPELINESTATE output)
+   D3D12DDI_HPIPELINESTATE output, uint32_t pipeline_flags)
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_pipeline_library *library;
@@ -1696,7 +1710,18 @@ d12_umd_create_pipeline_state_0010(
    return library ? d12_umd_pipeline_library_load(
                        handle, library,
                        arguments->LibraryReference.PipelineIndex, output)
-                  : d12_umd_create_pipeline_state(handle, &baseline);
+                  : d12_umd_create_pipeline_state_with_flags(
+                       handle, &baseline, pipeline_flags);
+}
+
+static HRESULT APIENTRY
+d12_umd_create_pipeline_state_0010(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0010 *arguments,
+   D3D12DDI_HPIPELINESTATE output)
+{
+   return d12_umd_create_pipeline_state_0010_with_flags(
+      handle, arguments, output, 0);
 }
 
 #if D12_UMD_TARGETS_WDDM23
@@ -1928,6 +1953,185 @@ d12_umd_create_pipeline_state_0033(
       return E_INVALIDARG;
    return d12_umd_create_pipeline_state_0021(
       handle, &release1, output, runtime_pipeline);
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+static bool
+d12_umd_depth_stencil_state_arguments_valid_0095(
+   struct d12_umd_device *device,
+   const D3D12DDI_DEPTH_STENCIL_DESC_0095 *desc)
+{
+   return device && desc && !desc->DepthBoundsTestEnable &&
+          d12_umd_pipeline_library_reference_valid(device,
+                                                    desc->LibraryReference);
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_depth_stencil_state_size_0095(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDI_DEPTH_STENCIL_DESC_0095 *desc)
+{
+   return d12_umd_depth_stencil_state_arguments_valid_0095(
+             d12_umd_device_from_handle(handle), desc)
+             ? sizeof(struct d12_umd_depth_stencil_state)
+             : 0;
+}
+
+static void APIENTRY
+d12_umd_create_depth_stencil_state_0095(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDI_DEPTH_STENCIL_DESC_0095 *desc,
+   D3D12DDI_HDEPTHSTENCILSTATE state_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_depth_stencil_state *state = state_handle.pDrvPrivate;
+
+   if (!state ||
+       !d12_umd_depth_stencil_state_arguments_valid_0095(device, desc)) {
+      d12_umd_pipeline_set_error(device, E_INVALIDARG);
+      return;
+   }
+
+   memset(state, 0, sizeof(*state));
+   state->signature = D12_UMD_DEPTH_STENCIL_STATE_SIGNATURE;
+   state->device = device;
+   state->desc = (struct d12_frontend_depth_stencil_desc){
+      .depth_enable = desc->DepthEnable ? 1u : 0u,
+      .depth_write_mask = (uint32_t)desc->DepthWriteMask,
+      .depth_func = (uint32_t)desc->DepthFunc,
+      .stencil_enable = desc->StencilEnable ? 1u : 0u,
+      .front_enable = desc->FrontEnable ? 1u : 0u,
+      .back_enable = desc->BackEnable ? 1u : 0u,
+      .front_face_stencil_read_mask = desc->FrontFaceStencilReadMask,
+      .front_face_stencil_write_mask = desc->FrontFaceStencilWriteMask,
+      .back_face_stencil_read_mask = desc->BackFaceStencilReadMask,
+      .back_face_stencil_write_mask = desc->BackFaceStencilWriteMask,
+      .front_face = d12_umd_translate_depth_stencil_op(&desc->FrontFace),
+      .back_face = d12_umd_translate_depth_stencil_op(&desc->BackFace),
+   };
+}
+
+static bool
+d12_umd_rasterizer_state_arguments_valid_0099(
+   struct d12_umd_device *device,
+   const D3D12DDI_RASTERIZER_DESC_0099 *desc)
+{
+   return device && desc &&
+          d12_umd_pipeline_library_reference_valid(device,
+                                                    desc->LibraryReference);
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_rasterizer_state_size_0099(
+   D3D12DDI_HDEVICE handle, const D3D12DDI_RASTERIZER_DESC_0099 *desc)
+{
+   return d12_umd_rasterizer_state_arguments_valid_0099(
+             d12_umd_device_from_handle(handle), desc)
+             ? sizeof(struct d12_umd_rasterizer_state)
+             : 0;
+}
+
+static void APIENTRY
+d12_umd_create_rasterizer_state_0099(
+   D3D12DDI_HDEVICE handle, const D3D12DDI_RASTERIZER_DESC_0099 *desc,
+   D3D12DDI_HRASTERIZERSTATE state_handle)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   struct d12_umd_rasterizer_state *state = state_handle.pDrvPrivate;
+
+   if (!state || !d12_umd_rasterizer_state_arguments_valid_0099(device,
+                                                                 desc)) {
+      d12_umd_pipeline_set_error(device, E_INVALIDARG);
+      return;
+   }
+
+   memset(state, 0, sizeof(*state));
+   state->signature = D12_UMD_RASTERIZER_STATE_SIGNATURE;
+   state->device = device;
+   state->desc = (struct d12_frontend_rasterizer_desc){
+      .fill_mode = (uint32_t)desc->FillMode,
+      .cull_mode = (uint32_t)desc->CullMode,
+      .front_counter_clockwise = desc->FrontCounterClockwise ? 1u : 0u,
+      .depth_bias = desc->DepthBias,
+      .depth_bias_clamp = desc->DepthBiasClamp,
+      .slope_scaled_depth_bias = desc->SlopeScaledDepthBias,
+      .depth_clip_enable = desc->DepthClipEnable ? 1u : 0u,
+      .scissor_enable = desc->ScissorEnable ? 1u : 0u,
+      .multisample_enable = desc->MultisampleEnable ? 1u : 0u,
+      .antialiased_line_enable = desc->AntialiasedLineEnable ? 1u : 0u,
+      .forced_sample_count = desc->ForcedSampleCount,
+      .conservative_rasterization_mode =
+         (uint32_t)desc->ConservativeRasterizationMode,
+   };
+}
+
+_Static_assert(offsetof(D3D12DDIARG_CREATE_PIPELINE_STATE_0099,
+                        ViewInstancingDesc) ==
+                  sizeof(D3D12DDIARG_CREATE_PIPELINE_STATE_0010),
+               "DDI 0099 pipeline-state R1 prefix changed");
+_Static_assert(offsetof(D3D12DDIARG_CREATE_PIPELINE_STATE_0099,
+                        hMeshShader) ==
+                  sizeof(D3D12DDIARG_CREATE_PIPELINE_STATE_0033),
+               "DDI 0099 pipeline-state view-instancing prefix changed");
+
+static bool
+d12_umd_translate_pipeline_state_0099(
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0099 *source,
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 *destination,
+   uint32_t *pipeline_flags)
+{
+   const uint32_t flags = source ? (uint32_t)source->Flags : 0;
+   const uint32_t supported_flags =
+      (uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_DEPTH_BIAS |
+      (uint32_t)D12_FRONTEND_PIPELINE_DYNAMIC_INDEX_BUFFER_STRIP_CUT;
+
+   if (!source || !destination || !pipeline_flags ||
+       source->ViewInstancingDesc.ViewInstanceCount != 0 ||
+       source->ViewInstancingDesc.Flags !=
+          D3D12DDI_VIEW_INSTANCING_FLAG_NONE ||
+       source->hMeshShader.pDrvPrivate ||
+       source->hAmplificationShader.pDrvPrivate ||
+       (flags & ~supported_flags) ||
+       (source->hComputeShader.pDrvPrivate && flags))
+      return false;
+
+   memcpy(destination, source, sizeof(*destination));
+   *pipeline_flags = flags;
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_pipeline_state_size_0099(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0099 *arguments)
+{
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 release1;
+   uint32_t pipeline_flags;
+
+   return d12_umd_translate_pipeline_state_0099(
+             arguments, &release1, &pipeline_flags)
+             ? d12_umd_calc_private_pipeline_state_size_0010(handle,
+                                                              &release1)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_pipeline_state_0099(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATE_PIPELINE_STATE_0099 *arguments,
+   D3D12DDI_HPIPELINESTATE output,
+   D3D12DDI_HRTPIPELINESTATE runtime_pipeline)
+{
+   D3D12DDIARG_CREATE_PIPELINE_STATE_0010 release1;
+   uint32_t pipeline_flags;
+   (void)runtime_pipeline;
+
+   if (!d12_umd_translate_pipeline_state_0099(
+          arguments, &release1, &pipeline_flags))
+      return E_INVALIDARG;
+   return d12_umd_create_pipeline_state_0010_with_flags(
+      handle, &release1, output, pipeline_flags);
 }
 #endif
 
@@ -2223,6 +2427,24 @@ d12_umd_install_pipeline_device_functions_0040(
    table->pfnCalcPrivatePipelineStateSize =
       d12_umd_calc_private_pipeline_state_size_0033;
    table->pfnCreatePipelineState = d12_umd_create_pipeline_state_0033;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+void
+d12_umd_install_pipeline_device_functions_0099(
+   D3D12DDI_DEVICE_FUNCS_CORE_0099 *table)
+{
+   table->pfnCalcPrivateDepthStencilStateSize =
+      d12_umd_calc_private_depth_stencil_state_size_0095;
+   table->pfnCreateDepthStencilState =
+      d12_umd_create_depth_stencil_state_0095;
+   table->pfnCalcPrivateRasterizerStateSize =
+      d12_umd_calc_private_rasterizer_state_size_0099;
+   table->pfnCreateRasterizerState = d12_umd_create_rasterizer_state_0099;
+   table->pfnCalcPrivatePipelineStateSize =
+      d12_umd_calc_private_pipeline_state_size_0099;
+   table->pfnCreatePipelineState = d12_umd_create_pipeline_state_0099;
 }
 #endif
 

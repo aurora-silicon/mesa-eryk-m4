@@ -1446,7 +1446,12 @@ d12_device_CreatePipelineState(ID3D12Device2 *iface,
          st.have_rt_formats ? st.rt_formats.NumRenderTargets : 0,
          st.rt_formats.RTFormats, nr_samples, sample_mask, st.ds_state,
          dsv_format,
-         st.raster,
+         st.raster, st.raster ? (float)st.raster->DepthBias : 0.0f,
+         true, true,
+         st.ds_state ? st.ds_state->StencilReadMask : UINT8_MAX,
+         st.ds_state ? st.ds_state->StencilWriteMask : UINT8_MAX,
+         st.ds_state ? st.ds_state->StencilReadMask : UINT8_MAX,
+         st.ds_state ? st.ds_state->StencilWriteMask : UINT8_MAX,
          st.blend, st.input_layout, st.stream_output, st.primitive_topology,
          st.strip_cut, st.flags, map, riid, out);
    }
@@ -1566,7 +1571,13 @@ d12_device_CreateGraphicsPipelineState(
       desc->DS.pShaderBytecode, desc->DS.BytecodeLength, rt_format,
       desc->NumRenderTargets, desc->RTVFormats, desc->SampleDesc.Count,
       desc->SampleMask, &desc->DepthStencilState,
-      dsv_format, &desc->RasterizerState, &desc->BlendState,
+      dsv_format, &desc->RasterizerState,
+      (float)desc->RasterizerState.DepthBias,
+      true, true,
+      desc->DepthStencilState.StencilReadMask,
+      desc->DepthStencilState.StencilWriteMask,
+      desc->DepthStencilState.StencilReadMask,
+      desc->DepthStencilState.StencilWriteMask, &desc->BlendState,
       &desc->InputLayout, &desc->StreamOutput, desc->PrimitiveTopologyType,
       desc->IBStripCutValue, desc->Flags, map, riid, out);
    if (SUCCEEDED(hr) && out && *out) {

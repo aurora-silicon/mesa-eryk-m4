@@ -431,6 +431,20 @@ uint32_t agx_d3dkmt_timeout_to_ms(int64_t abs_timeout_nsec, int64_t now_nsec);
 uint32_t agx_d3dkmt_first_signaled(const uint64_t *current,
                                    const uint64_t *wanted, uint32_t count);
 
+enum agx_d3dkmt_cpu_wait_state {
+   AGX_D3DKMT_CPU_WAIT_INVALID = -1,
+   AGX_D3DKMT_CPU_WAIT_PENDING = 0,
+   AGX_D3DKMT_CPU_WAIT_SATISFIED = 1,
+};
+
+/* Probe the actual CPU-visible monitored-fence storage. D3DKMT's
+ * asynchronous event wait has no cancellation operation, so finite waits
+ * use this stateless predicate rather than leaving a kernel signal armed
+ * against an event handle after the caller times out. */
+enum agx_d3dkmt_cpu_wait_state agx_d3dkmt_cpu_wait_probe(
+   const volatile uint64_t *const *current, const uint64_t *wanted,
+   uint32_t count, bool wait_any, uint32_t *first_signaled);
+
 /* -------------------------------------------------------------------------
  * Contract blob helpers.
  * ------------------------------------------------------------------------- */

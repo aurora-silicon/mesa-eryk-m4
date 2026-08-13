@@ -4,6 +4,7 @@
  */
 
 #include "agx_linker.h"
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "util/ralloc.h"
@@ -79,7 +80,7 @@ static const uint8_t sample_loop_footer[] = {
 #define SAMPLE_LOOP_FOOTER_COUNT_SHIFT (4)
 /* clang-format on */
 
-void
+bool
 agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               bool fragment, struct agx_shader_part *main,
               struct agx_shader_part *prolog, struct agx_shader_part *epilog,
@@ -123,7 +124,25 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    linked->bo = agx_bo_create(dev, size, 0, AGX_BO_EXEC | AGX_BO_LOW_VA,
                               "Linked executable");
    linked->size = size;
+   if (!linked->bo) {
+      fprintf(stderr,
+              "agx_fast_link: executable low-VA allocation of %zu bytes "
+              "failed (shader base 0x%" PRIx64 ")\n",
+              size, dev->shader_base);
+      return false;
+   }
+
    uint8_t *linked_map = agx_bo_map(linked->bo);
+   if (!linked_map) {
+      fprintf(stderr,
+              "agx_fast_link: executable BO mapping failed (size %zu, "
+              "VA 0x%" PRIx64 ", handle %u)\n",
+              size, linked->bo->va ? linked->bo->va->addr : 0,
+              (unsigned)linked->bo->handle);
+      agx_bo_unreference(dev, linked->bo);
+      linked->bo = NULL;
+      return false;
+   }
 
    size_t offset = 0;
 
@@ -186,7 +205,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    if (agx_bo_sync_for_device(linked->bo, 0, size)) {
       agx_bo_unreference(dev, linked->bo);
       linked->bo = NULL;
-      return;
+      return false;
    }
 
    agx_pack(&linked->shader, USC_SHADER, cfg) {
@@ -261,4 +280,6 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
          cfg.frag_coord_z = linked->cf.reads_z;
       }
    }
+
+   return true;
 }

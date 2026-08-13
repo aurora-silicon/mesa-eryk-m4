@@ -45,6 +45,24 @@ _Static_assert(offsetof(D3D12DDI_PRESENT_0028,
                   sizeof(D3D12DDI_PRESENT_0003),
                "DDI 0028 present extension prefix changed");
 #endif
+#if D12_UMD_TARGETS_WDDM31
+_Static_assert(
+   offsetof(D3D12DDI_PRESENT_0051, BroadcastDstAllocation) ==
+      sizeof(((D3D12DDI_PRESENT_0051 *)0)->BroadcastSrcAllocation),
+   "DDI 0051 destination-allocation array moved");
+_Static_assert(
+   offsetof(D3D12DDI_PRESENT_0051, AddedGpuWork) ==
+      sizeof(((D3D12DDI_PRESENT_0051 *)0)->BroadcastSrcAllocation) +
+         sizeof(((D3D12DDI_PRESENT_0051 *)0)->BroadcastDstAllocation),
+   "DDI 0051 present flags moved");
+_Static_assert(
+   offsetof(D3D12DDI_PRESENT_CONTEXTS_0051, BroadcastContext) ==
+      2u * sizeof(void *),
+   "DDI 0051 software-scheduling context array moved");
+_Static_assert(
+   offsetof(D3D12DDI_PRESENT_HWQUEUES_0051, hHwQueues) == sizeof(void *),
+   "DDI 0051 hardware-scheduling queue array moved");
+#endif
 _Static_assert(sizeof(DXGI_DDI_ARG_OFFERRESOURCES) ==
                   2u * sizeof(void *) + 2u * sizeof(UINT),
                "DXGI offer-resources arguments changed width");
@@ -1191,6 +1209,57 @@ d12_umd_present_0028(D3D12DDI_HCOMMANDLIST list_handle,
 }
 #endif
 
+#if D12_UMD_TARGETS_WDDM31
+static void APIENTRY
+d12_umd_present_0051(D3D12DDI_HCOMMANDLIST list_handle,
+                     D3D12DDI_HCOMMANDQUEUE queue_handle,
+                     const D3D12DDIARG_PRESENT_0001 *arguments,
+                     D3D12DDI_PRESENT_0051 *present,
+                     D3D12DDI_PRESENT_CONTEXTS_0051 *contexts,
+                     D3D12DDI_PRESENT_HWQUEUES_0051 *hardware_queues)
+{
+   D3D12DDI_PRESENT_0003 baseline;
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+
+   if (present)
+      memset(present, 0, sizeof(*present));
+   if (contexts)
+      memset(contexts, 0, sizeof(*contexts));
+   if (hardware_queues)
+      memset(hardware_queues, 0, sizeof(*hardware_queues));
+
+   /* DDI 0051 splits software-scheduled contexts from hardware-scheduled
+    * queues. Aurora currently creates a WDDM context, not an HW queue, so a
+    * contexts output is required and the optional HW-queue output remains
+    * empty. Do not advertise hardware scheduling merely because the runtime
+    * supplied storage for both alternatives. */
+   if (!present || !contexts) {
+      d12_umd_report_command_list_error(list, E_INVALIDARG);
+      return;
+   }
+
+   memset(&baseline, 0, sizeof(baseline));
+   d12_umd_present(list_handle, queue_handle, arguments, &baseline);
+
+   present->BroadcastSrcAllocation[0] = baseline.hSrcAllocation;
+   present->BroadcastDstAllocation[0] = baseline.hDstAllocation;
+   for (UINT i = 0; i < baseline.BroadcastContextCount; ++i) {
+      present->BroadcastSrcAllocation[i + 1] =
+         baseline.BroadcastSrcAllocation[i];
+      present->BroadcastDstAllocation[i + 1] =
+         baseline.BroadcastDstAllocation[i];
+      contexts->BroadcastContext[i] = baseline.BroadcastContext[i];
+   }
+   present->AddedGpuWork = baseline.AddedGpuWork;
+   present->BackBufferMultiplicity = baseline.BackBufferMultiplicity;
+   present->SyncIntervalOverrideValid = FALSE;
+
+   contexts->hContext = baseline.hContext;
+   contexts->BroadcastContextCount = baseline.BroadcastContextCount;
+}
+#endif
+
 void
 d12_umd_install_present_device_functions(
    D3D12DDI_DEVICE_FUNCS_CORE_0003 *table)
@@ -1212,5 +1281,14 @@ d12_umd_install_present_command_list_functions_0032(
    D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table)
 {
    table->pfnPresent = d12_umd_present_0028;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+void
+d12_umd_install_present_command_list_functions_0099(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 *table)
+{
+   table->pfnPresent = d12_umd_present_0051;
 }
 #endif

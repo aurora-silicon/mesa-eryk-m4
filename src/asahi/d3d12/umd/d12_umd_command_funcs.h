@@ -23,3 +23,8 @@ void d12_umd_install_command_device_functions_0040(
 void d12_umd_install_command_list_functions_0040(
    D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 *table);
 #endif
+
+#if D12_UMD_TARGETS_WDDM31
+void d12_umd_install_command_list_functions_0099(
+   D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 *table);
+#endif

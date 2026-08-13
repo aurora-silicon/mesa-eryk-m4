@@ -274,11 +274,9 @@ queue_submit_single(struct hk_device *dev, struct drm_asahi_submit *submit,
    if (dev->dev.is_virtio)
       u_rwlock_rdunlock(&dev->external_bos.lock);
 
-   /* XXX: don't trap */
-   if (ret) {
-      fprintf(stderr, "DRM_IOCTL_ASAHI_SUBMIT failed: %m\n");
-      assert(0);
-   }
+   if (ret)
+      return vk_device_set_lost(&dev->vk,
+                                "DRM_IOCTL_ASAHI_SUBMIT failed: %m");
 
    return VK_SUCCESS;
 }

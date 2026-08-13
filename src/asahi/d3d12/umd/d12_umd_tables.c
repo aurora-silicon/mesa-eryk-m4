@@ -18,6 +18,7 @@
 #include "d12_umd_query_funcs.h"
 #include "d12_umd_resource_command_funcs.h"
 #include "d12_umd_state_funcs.h"
+#include "d12_umd_unsupported_funcs.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -107,10 +108,27 @@ d12_umd_trap_kmt_handle(D3D12DDI_HDEVICE handle)
    return 0;
 }
 
+#if D12_UMD_TARGETS_WDDM31
+static void *APIENTRY
+d12_umd_trap_pointer(D3D12DDI_HDEVICE handle)
+{
+   (void)handle;
+   return NULL;
+}
+
+static D3D12DDI_DRIVER_MATCHING_IDENTIFIER_STATUS APIENTRY
+d12_umd_trap_matching_identifier(D3D12DDI_HDEVICE handle)
+{
+   d12_umd_report_unimplemented(handle);
+   return D3D12DDI_DRIVER_MATCHING_IDENTIFIER_INCOMPATIBLE_TYPE;
+}
+#endif
+
 static void APIENTRY
 d12_umd_command_list_trap_void(D3D12DDI_HCOMMANDLIST handle)
 {
-   (void)handle;
+   d12_umd_report_command_list_error(
+      d12_umd_command_list_from_handle(handle), E_NOTIMPL);
 }
 
 static void APIENTRY
@@ -198,6 +216,29 @@ _Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040,
                   57u * sizeof(void *),
                "DDI 0040 view-instance-mask offset changed");
 #endif
+#if D12_UMD_TARGETS_WDDM31
+_Static_assert(D12_UMD_DEVICE_CORE_ENTRY_COUNT_0099 == 122,
+               "WDK 26100 DDI 0099 device table width changed");
+_Static_assert(D12_UMD_COMMAND_LIST_ENTRY_COUNT_0099 == 73,
+               "WDK 26100 DDI 0099 command-list table width changed");
+_Static_assert(sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0099) ==
+                  D12_UMD_DEVICE_CORE_ENTRY_COUNT_0099 * sizeof(void *),
+               "DDI 0099 device table contains non-pointer fields");
+_Static_assert(sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099) ==
+                  D12_UMD_COMMAND_LIST_ENTRY_COUNT_0099 * sizeof(void *),
+               "DDI 0099 command-list table contains non-pointer fields");
+_Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0099,
+                        pfnCalcPrivateSchedulingGroupSize) ==
+                  96u * sizeof(void *),
+               "DDI 0099 device extension offset changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099,
+                        pfnInitializeMetaCommand) ==
+                  58u * sizeof(void *),
+               "DDI 0099 command-list extension offset changed");
+_Static_assert(offsetof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099,
+                        pfnRSSetDepthBias) == 71u * sizeof(void *),
+               "DDI 0099 dynamic-depth-bias offset changed");
+#endif
 _Static_assert(offsetof(D3D12DDI_DEVICE_FUNCS_CORE_0010,
                         pfnCalcPrivatePipelineLibrarySize) ==
                   85u * sizeof(void *),
@@ -227,6 +268,9 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
       if (table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0003)
 #if D12_UMD_TARGETS_WDDM24
           && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0040)
+#if D12_UMD_TARGETS_WDDM31
+          && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0099)
+#endif
 #elif D12_UMD_TARGETS_WDDM23_EXACT
           && table_size != sizeof(D3D12DDI_DEVICE_FUNCS_CORE_0030)
 #elif D12_UMD_TARGETS_WDDM21_EXACT
@@ -270,7 +314,7 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
 #if D12_UMD_TARGETS_WDDM24
             } else {
                D3D12DDI_DEVICE_FUNCS_CORE_0030 release3;
-               D3D12DDI_DEVICE_FUNCS_CORE_0040 *release4 = table;
+               D3D12DDI_DEVICE_FUNCS_CORE_0040 release4;
 
                memset(&release3, 0, sizeof(release3));
                memcpy(&release3, &release1, sizeof(release1));
@@ -278,9 +322,26 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
                   (D3D12DDI_DEVICE_FUNCS_CORE_0013 *)&release3);
                d12_umd_install_device_core_functions_0030(&release3);
                d12_umd_install_pipeline_device_functions_0030(&release3);
-               memcpy(release4, &release3, sizeof(release3));
-               d12_umd_install_command_device_functions_0040(release4);
-               d12_umd_install_pipeline_device_functions_0040(release4);
+               memset(&release4, 0, sizeof(release4));
+               memcpy(&release4, &release3, sizeof(release3));
+               d12_umd_install_command_device_functions_0040(&release4);
+               d12_umd_install_pipeline_device_functions_0040(&release4);
+#if D12_UMD_TARGETS_WDDM31
+               if (table_size == sizeof(release4)) {
+                  memcpy(table, &release4, sizeof(release4));
+               } else {
+                  D3D12DDI_DEVICE_FUNCS_CORE_0099 *release8 = table;
+                  d12_umd_fill_device_core_traps_0099(release8);
+                  memcpy(release8, &release4, sizeof(release4));
+                  d12_umd_install_unsupported_device_functions_0099(
+                     release8);
+                  d12_umd_install_device_core_functions_0099(release8);
+                  d12_umd_install_descriptor_device_functions_0099(release8);
+                  d12_umd_install_pipeline_device_functions_0099(release8);
+               }
+#else
+               memcpy(table, &release4, sizeof(release4));
+#endif
 #elif D12_UMD_TARGETS_WDDM23_EXACT
             } else {
                D3D12DDI_DEVICE_FUNCS_CORE_0030 *release3 = table;
@@ -304,6 +365,9 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
       if (table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0003)
 #if D12_UMD_TARGETS_WDDM24
           && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040)
+#if D12_UMD_TARGETS_WDDM31
+          && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0099)
+#endif
 #elif D12_UMD_TARGETS_WDDM23_EXACT
           && table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)
 #endif
@@ -323,17 +387,33 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
          memset(table, 0, table_size);
          memcpy(table, &baseline, sizeof(baseline));
 #if D12_UMD_TARGETS_WDDM24
-         if (table_size == sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0040)) {
+         if (table_size != sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0003)) {
             D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 release3;
-            D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 *release4 = table;
+            D3D12DDI_COMMAND_LIST_FUNCS_3D_0040 release4;
 
             memset(&release3, 0, sizeof(release3));
             memcpy(&release3, &baseline, sizeof(baseline));
             d12_umd_install_command_list_functions_0032(&release3);
             d12_umd_install_resource_command_list_functions_0032(&release3);
             d12_umd_install_present_command_list_functions_0032(&release3);
-            memcpy(release4, &release3, sizeof(release3));
-            d12_umd_install_command_list_functions_0040(release4);
+            memset(&release4, 0, sizeof(release4));
+            memcpy(&release4, &release3, sizeof(release3));
+            d12_umd_install_command_list_functions_0040(&release4);
+#if D12_UMD_TARGETS_WDDM31
+            if (table_size == sizeof(release4)) {
+               memcpy(table, &release4, sizeof(release4));
+            } else {
+               D3D12DDI_COMMAND_LIST_FUNCS_3D_0099 *release8 = table;
+               d12_umd_fill_command_list_traps_0099(release8);
+               memcpy(release8, &release4, sizeof(release4));
+               d12_umd_install_unsupported_command_list_functions_0099(
+                  release8);
+               d12_umd_install_present_command_list_functions_0099(release8);
+               d12_umd_install_command_list_functions_0099(release8);
+            }
+#else
+            memcpy(table, &release4, sizeof(release4));
+#endif
          }
 #elif D12_UMD_TARGETS_WDDM23_EXACT
          if (table_size == sizeof(D3D12DDI_COMMAND_LIST_FUNCS_3D_0032)) {
@@ -352,6 +432,11 @@ d12_umd_fill_baseline_table(D3D12DDI_TABLE_TYPE table_type, void *table,
       d12_umd_fill_command_queue_traps(table);
       d12_umd_install_command_queue_functions(table);
       return S_OK;
+#if D12_UMD_TARGETS_WDDM31
+   case D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES:
+      return d12_umd_fill_unsupported_extended_features_table_0096(
+         table, table_size, table_number);
+#endif
    default:
       return E_NOTIMPL;
    }

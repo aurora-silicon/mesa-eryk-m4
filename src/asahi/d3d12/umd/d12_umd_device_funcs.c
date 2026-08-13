@@ -654,6 +654,49 @@ d12_umd_create_command_queue_0023(
 }
 #endif
 
+#if D12_UMD_TARGETS_WDDM31
+static bool
+d12_umd_translate_command_queue_0050(
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0050 *source,
+   D3D12DDIARG_CREATECOMMANDQUEUE_0023 *destination)
+{
+   if (!source || !destination || source->SchedulingGroup.pDrvPrivate)
+      return false;
+   *destination = (D3D12DDIARG_CREATECOMMANDQUEUE_0023){
+      .QueueFlags = source->QueueFlags,
+      .NodeMask = source->NodeMask,
+      .QueueCreationFlags = source->QueueCreationFlags,
+   };
+   return true;
+}
+
+static SIZE_T APIENTRY
+d12_umd_calc_private_command_queue_size_0050(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0050 *arguments)
+{
+   D3D12DDIARG_CREATECOMMANDQUEUE_0023 release2;
+   return d12_umd_translate_command_queue_0050(arguments, &release2)
+             ? d12_umd_calc_private_command_queue_size_0023(handle,
+                                                             &release2)
+             : 0;
+}
+
+static HRESULT APIENTRY
+d12_umd_create_command_queue_0050(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATECOMMANDQUEUE_0050 *arguments,
+   D3D12DDI_HCOMMANDQUEUE driver_queue,
+   D3D12DDI_HRTCOMMANDQUEUE runtime_queue)
+{
+   D3D12DDIARG_CREATECOMMANDQUEUE_0023 release2;
+   if (!d12_umd_translate_command_queue_0050(arguments, &release2))
+      return E_INVALIDARG;
+   return d12_umd_create_command_queue_0023(
+      handle, &release2, driver_queue, runtime_queue);
+}
+#endif
+
 static void APIENTRY
 d12_umd_destroy_command_queue(D3D12DDI_HDEVICE handle,
                               D3D12DDI_HCOMMANDQUEUE queue_handle)
@@ -2012,6 +2055,207 @@ d12_umd_create_heap_resource_0030(
 }
 #endif
 
+#if D12_UMD_TARGETS_WDDM31
+static bool
+d12_umd_legacy_state_from_barrier_layout_0088(
+   D3D12DDI_BARRIER_LAYOUT layout, D3D12DDI_RESOURCE_STATES *state)
+{
+   const D3D12DDI_RESOURCE_STATES generic_read =
+      (D3D12DDI_RESOURCE_STATES)(
+         D3D12DDI_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER |
+         D3D12DDI_RESOURCE_STATE_INDEX_BUFFER |
+         D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+         D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
+         D3D12DDI_RESOURCE_STATE_INDIRECT_ARGUMENT |
+         D3D12DDI_RESOURCE_STATE_COPY_SOURCE);
+   const D3D12DDI_RESOURCE_STATES shader_resource =
+      (D3D12DDI_RESOURCE_STATES)(
+         D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE |
+         D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+   if (!state)
+      return false;
+
+   /* DDI 0088 replaces InitialResourceState with InitialBarrierLayout even
+    * when enhanced barriers are not advertised. Preserve every layout with
+    * an exact legacy-state representation. Video, VRS and UNDEFINED layouts
+    * carry semantics this backend does not expose and must fail closed. */
+   switch (layout) {
+   case D3D12DDI_BARRIER_LAYOUT_COMMON:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COMMON:
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COMMON:
+      *state = D3D12DDI_RESOURCE_STATE_COMMON;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_GENERIC_READ:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_GENERIC_READ:
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_GENERIC_READ:
+   case D3D12DDI_BARRIER_LAYOUT_LEGACY_DIRECT_QUEUE_GENERIC_READ_COMPUTE_QUEUE_ACCESSIBLE:
+      *state = generic_read;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_RENDER_TARGET:
+      *state = D3D12DDI_RESOURCE_STATE_RENDER_TARGET;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_UNORDERED_ACCESS:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_UNORDERED_ACCESS:
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_UNORDERED_ACCESS:
+      *state = D3D12DDI_RESOURCE_STATE_UNORDERED_ACCESS;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_DEPTH_STENCIL_WRITE:
+      *state = D3D12DDI_RESOURCE_STATE_DEPTH_WRITE;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_DEPTH_STENCIL_READ:
+      *state = D3D12DDI_RESOURCE_STATE_DEPTH_READ;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_SHADER_RESOURCE:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_SHADER_RESOURCE:
+   case D3D12DDI_BARRIER_LAYOUT_LEGACY_SHADER_RESOURCE:
+      *state = shader_resource;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_SHADER_RESOURCE:
+      *state = D3D12DDI_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_LEGACY_PIXEL_SHADER_RESOURCE:
+      *state = D3D12DDI_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_COPY_SOURCE:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_SOURCE:
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_SOURCE:
+   case D3D12DDI_BARRIER_LAYOUT_LEGACY_COPY_SOURCE:
+      *state = D3D12DDI_RESOURCE_STATE_COPY_SOURCE;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_COPY_DEST:
+   case D3D12DDI_BARRIER_LAYOUT_DIRECT_QUEUE_COPY_DEST:
+   case D3D12DDI_BARRIER_LAYOUT_COMPUTE_QUEUE_COPY_DEST:
+   case D3D12DDI_BARRIER_LAYOUT_LEGACY_COPY_DEST:
+      *state = D3D12DDI_RESOURCE_STATE_COPY_DEST;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_RESOLVE_SOURCE:
+      *state = D3D12DDI_RESOURCE_STATE_RESOLVE_SOURCE;
+      return true;
+   case D3D12DDI_BARRIER_LAYOUT_RESOLVE_DEST:
+      *state = D3D12DDI_RESOURCE_STATE_RESOLVE_DEST;
+      return true;
+   default:
+      *state = D3D12DDI_RESOURCE_STATE_COMMON;
+      return false;
+   }
+}
+
+static bool
+d12_umd_translate_create_resource_0088(
+   const D3D12DDIARG_CREATERESOURCE_0088 *source,
+   D3D12DDIARG_CREATERESOURCE_0003 *destination)
+{
+   D3D12DDI_RESOURCE_STATES initial_state;
+
+   if (!source || !destination ||
+       source->SamplerFeedbackMipRegion.Width ||
+       source->SamplerFeedbackMipRegion.Height ||
+       source->SamplerFeedbackMipRegion.Depth ||
+       source->NumCastableFormats)
+      return false;
+
+   /* Enhanced-barrier resource creation deliberately gives buffers no
+    * layout: Microsoft's DDI contract requires UNDEFINED and specifies that
+    * ordinary buffers are treated as legacy COMMON.  Texture UNDEFINED is
+    * not an initialized layout and remains invalid. */
+   if (source->ResourceType == D3D12DDI_RT_BUFFER) {
+      if (source->InitialBarrierLayout != D3D12DDI_BARRIER_LAYOUT_UNDEFINED)
+         return false;
+      initial_state = D3D12DDI_RESOURCE_STATE_COMMON;
+   } else if (!d12_umd_legacy_state_from_barrier_layout_0088(
+                 source->InitialBarrierLayout, &initial_state)) {
+      return false;
+   }
+
+   *destination = (D3D12DDIARG_CREATERESOURCE_0003){
+      .ReuseBufferGPUVA = source->ReuseBufferGPUVA,
+      .ResourceType = source->ResourceType,
+      .Width = source->Width,
+      .Height = source->Height,
+      .DepthOrArraySize = source->DepthOrArraySize,
+      .MipLevels = source->MipLevels,
+      .Format = source->Format,
+      .SampleDesc = source->SampleDesc,
+      .Layout = source->Layout,
+      .Flags = source->Flags,
+      .InitialResourceState = initial_state,
+      .pRowMajorLayout = source->pRowMajorLayout,
+   };
+   return true;
+}
+
+static D3D12DDI_HEAP_AND_RESOURCE_SIZES APIENTRY
+d12_umd_calc_private_heap_resource_sizes_0088(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATEHEAP_0001 *heap_arguments,
+   const D3D12DDIARG_CREATERESOURCE_0088 *resource_arguments,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session)
+{
+   D3D12DDIARG_CREATERESOURCE_0003 translated_resource;
+
+   if (protected_session.pDrvPrivate ||
+       (resource_arguments &&
+        !d12_umd_translate_create_resource_0088(
+           resource_arguments, &translated_resource)))
+      return (D3D12DDI_HEAP_AND_RESOURCE_SIZES){0};
+
+   return d12_umd_calc_private_heap_resource_sizes(
+      handle, heap_arguments,
+      resource_arguments ? &translated_resource : NULL);
+}
+
+static HRESULT APIENTRY
+d12_umd_create_heap_resource_0088(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATEHEAP_0001 *heap_arguments,
+   D3D12DDI_HHEAP heap, D3D12DDI_HRTRESOURCE runtime_resource,
+   const D3D12DDIARG_CREATERESOURCE_0088 *resource_arguments,
+   const D3D12DDI_CLEAR_VALUES *clear_value,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session,
+   D3D12DDI_HRESOURCE resource)
+{
+   D3D12DDIARG_CREATERESOURCE_0003 translated_resource;
+
+   if (protected_session.pDrvPrivate)
+      return E_NOTIMPL;
+   if (resource_arguments &&
+       !d12_umd_translate_create_resource_0088(
+          resource_arguments, &translated_resource))
+      return E_NOTIMPL;
+
+   return d12_umd_create_heap_resource(
+      handle, heap_arguments, heap, runtime_resource,
+      resource_arguments ? &translated_resource : NULL, clear_value,
+      resource);
+}
+
+static D3D12DDI_HEAP_AND_RESOURCE_SIZES APIENTRY
+d12_umd_calc_private_opened_heap_resource_sizes_0043(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_OPENHEAP_0003 *arguments,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session)
+{
+   if (protected_session.pDrvPrivate)
+      return (D3D12DDI_HEAP_AND_RESOURCE_SIZES){0};
+   return d12_umd_calc_private_opened_heap_resource_sizes(handle, arguments);
+}
+
+static HRESULT APIENTRY
+d12_umd_open_heap_resource_0043(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_OPENHEAP_0003 *arguments,
+   D3D12DDI_HHEAP heap, D3D12DDI_HRTRESOURCE runtime_resource,
+   D3D12DDI_HPROTECTEDRESOURCESESSION_0030 protected_session,
+   D3D12DDI_HRESOURCE resource)
+{
+   if (protected_session.pDrvPrivate)
+      return E_NOTIMPL;
+   return d12_umd_open_heap_resource(
+      handle, arguments, heap, runtime_resource, resource);
+}
+#endif
+
 static void APIENTRY
 d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
                               D3D12DDI_HHEAP heap_handle,
@@ -2513,6 +2757,36 @@ d12_umd_check_existing_resource_allocation_info_0022(
       memset(info, 0, sizeof(*info));
       d12_umd_set_device_error(device, result);
    }
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+static void APIENTRY
+d12_umd_check_resource_allocation_info_0088(
+   D3D12DDI_HDEVICE handle,
+   const D3D12DDIARG_CREATERESOURCE_0088 *resource_arguments,
+   D3D12DDI_RESOURCE_OPTIMIZATION_FLAGS optimization_flags,
+   UINT32 alignment_restriction, UINT visible_node_mask,
+   D3D12DDI_RESOURCE_ALLOCATION_INFO_0022 *info)
+{
+   struct d12_umd_device *device = d12_umd_device_from_handle(handle);
+   D3D12DDIARG_CREATERESOURCE_0003 translated_resource;
+
+   if (!info)
+      return;
+   memset(info, 0, sizeof(*info));
+   if (!resource_arguments) {
+      d12_umd_set_device_error(device, E_INVALIDARG);
+      return;
+   }
+   if (!d12_umd_translate_create_resource_0088(
+          resource_arguments, &translated_resource)) {
+      d12_umd_set_device_error(device, E_NOTIMPL);
+      return;
+   }
+   d12_umd_check_resource_allocation_info_0022(
+      handle, &translated_resource, optimization_flags,
+      alignment_restriction, visible_node_mask, info);
 }
 #endif
 
@@ -3188,6 +3462,25 @@ d12_umd_install_device_core_functions_0030(
       d12_umd_check_existing_resource_allocation_info_0022;
    table->pfnGetDebugAllocationInfo =
       d12_umd_get_debug_allocation_info_0014;
+}
+#endif
+
+#if D12_UMD_TARGETS_WDDM31
+void
+d12_umd_install_device_core_functions_0099(
+   D3D12DDI_DEVICE_FUNCS_CORE_0099 *table)
+{
+   table->pfnCalcPrivateCommandQueueSize =
+      d12_umd_calc_private_command_queue_size_0050;
+   table->pfnCreateCommandQueue = d12_umd_create_command_queue_0050;
+   table->pfnCalcPrivateHeapAndResourceSizes =
+      d12_umd_calc_private_heap_resource_sizes_0088;
+   table->pfnCreateHeapAndResource = d12_umd_create_heap_resource_0088;
+   table->pfnCalcPrivateOpenedHeapAndResourceSizes =
+      d12_umd_calc_private_opened_heap_resource_sizes_0043;
+   table->pfnOpenHeapAndResource = d12_umd_open_heap_resource_0043;
+   table->pfnCheckResourceAllocationInfo =
+      d12_umd_check_resource_allocation_info_0088;
 }
 #endif
 

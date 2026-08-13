@@ -28,7 +28,8 @@ case $wddm_target in
     21) umd_interface=0x6003; driver_version=21.17.240.0 ;;
     23) umd_interface=0x8001; driver_version=23.17.240.0 ;;
     24) umd_interface=0x9001; driver_version=24.17.240.0 ;;
-    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, 23, or 24"; exit 2 ;;
+    31) umd_interface=0x10000; driver_version=31.17.240.0 ;;
+    *) print -u2 "D12_UMD_WDDM_TARGET must be 20, 21, 23, 24, or 31"; exit 2 ;;
 esac
 
 for required in "$cc" "$readobj" "$windres" \
@@ -115,6 +116,7 @@ sources=(
     "$umd_dir/d12_umd_query_funcs.c"
     "$umd_dir/d12_umd_resource_command_funcs.c"
     "$umd_dir/d12_umd_present_funcs.c"
+    "$umd_dir/d12_umd_unsupported_funcs.c"
     "$umd_dir/d12_umd_tables.c"
     "$umd_dir/d12_umd_adapter.c"
 )

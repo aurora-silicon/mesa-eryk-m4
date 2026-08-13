@@ -331,6 +331,13 @@ hk_MapMemory2KHR(VkDevice device, const VkMemoryMapInfoKHR *pMemoryMapInfo,
    }
 
    mem->map = agx_bo_map_placed(mem->bo, fixed_addr);
+   if (mem->map == NULL) {
+      *ppData = NULL;
+      return vk_errorf(dev, VK_ERROR_MEMORY_MAP_FAILED,
+                       "failed to map memory BO handle %u",
+                       mem->bo->uapi_handle);
+   }
+
    assert(!fixed_addr || mem->map == fixed_addr);
    *ppData = mem->map + offset;
 

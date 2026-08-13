@@ -621,40 +621,57 @@ d12_pso_AddRef(ID3D12PipelineState *iface)
 }
 
 static void
-d12_pso_destroy(struct d12_pipeline_state *pso)
+d12_pso_release_bos(struct d12_device *device,
+                    struct d12_pipeline_state *pso)
 {
    if (pso->code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->code_bo);
+      agx_bo_unreference(&device->dev, pso->code_bo);
+   if (pso->vs.linked.bo)
+      agx_bo_unreference(&device->dev, pso->vs.linked.bo);
    if (pso->vs.code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->vs.code_bo);
+      agx_bo_unreference(&device->dev, pso->vs.code_bo);
+   if (pso->fs.linked.bo)
+      agx_bo_unreference(&device->dev, pso->fs.linked.bo);
    if (pso->fs.code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->fs.code_bo);
+      agx_bo_unreference(&device->dev, pso->fs.code_bo);
    if (pso->sw_vs_bo)
-      agx_bo_unreference(&pso->device->dev, pso->sw_vs_bo);
+      agx_bo_unreference(&device->dev, pso->sw_vs_bo);
    if (pso->sw_tes_bo)
-      agx_bo_unreference(&pso->device->dev, pso->sw_tes_bo);
+      agx_bo_unreference(&device->dev, pso->sw_tes_bo);
    if (pso->gs_count_bo)
-      agx_bo_unreference(&pso->device->dev, pso->gs_count_bo);
+      agx_bo_unreference(&device->dev, pso->gs_count_bo);
    if (pso->gs_pre_bo)
-      agx_bo_unreference(&pso->device->dev, pso->gs_pre_bo);
+      agx_bo_unreference(&device->dev, pso->gs_pre_bo);
    if (pso->gs_main_bo)
-      agx_bo_unreference(&pso->device->dev, pso->gs_main_bo);
+      agx_bo_unreference(&device->dev, pso->gs_main_bo);
+   if (pso->gs_rast.linked.bo)
+      agx_bo_unreference(&device->dev, pso->gs_rast.linked.bo);
    if (pso->gs_rast.code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->gs_rast.code_bo);
+      agx_bo_unreference(&device->dev, pso->gs_rast.code_bo);
    if (pso->tcs_bo)
-      agx_bo_unreference(&pso->device->dev, pso->tcs_bo);
+      agx_bo_unreference(&device->dev, pso->tcs_bo);
+   if (pso->tes.linked.bo)
+      agx_bo_unreference(&device->dev, pso->tes.linked.bo);
    if (pso->tes.code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->tes.code_bo);
+      agx_bo_unreference(&device->dev, pso->tes.code_bo);
    if (pso->ms_bo)
-      agx_bo_unreference(&pso->device->dev, pso->ms_bo);
+      agx_bo_unreference(&device->dev, pso->ms_bo);
    if (pso->ms_setup_bo)
-      agx_bo_unreference(&pso->device->dev, pso->ms_setup_bo);
+      agx_bo_unreference(&device->dev, pso->ms_setup_bo);
+   if (pso->ms_rast.linked.bo)
+      agx_bo_unreference(&device->dev, pso->ms_rast.linked.bo);
    if (pso->ms_rast.code_bo)
-      agx_bo_unreference(&pso->device->dev, pso->ms_rast.code_bo);
+      agx_bo_unreference(&device->dev, pso->ms_rast.code_bo);
    if (pso->as_bo)
-      agx_bo_unreference(&pso->device->dev, pso->as_bo);
+      agx_bo_unreference(&device->dev, pso->as_bo);
    if (pso->as_setup_bo)
-      agx_bo_unreference(&pso->device->dev, pso->as_setup_bo);
+      agx_bo_unreference(&device->dev, pso->as_setup_bo);
+}
+
+static void
+d12_pso_destroy(struct d12_pipeline_state *pso)
+{
+   d12_pso_release_bos(pso->device, pso);
    free(pso->cached_blob);
    d12_private_data_store_destroy(&pso->private_data);
    if (pso->device_ref_active)
@@ -3311,7 +3328,13 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
    HRESULT hr = d12_pipeline_state_create_graphics(
       device, ms_dxil, ms_size, ps_dxil, ps_size, NULL, 0, NULL, 0, NULL, 0,
       rt_format, nr_rt, rt_formats, nr_samples, sample_mask, ds_desc,
-      dsv_format, rs_desc, blend_desc, NULL, NULL,
+      dsv_format, rs_desc, rs_desc ? (float)rs_desc->DepthBias : 0.0f,
+      true, true,
+      ds_desc ? ds_desc->StencilReadMask : UINT8_MAX,
+      ds_desc ? ds_desc->StencilWriteMask : UINT8_MAX,
+      ds_desc ? ds_desc->StencilReadMask : UINT8_MAX,
+      ds_desc ? ds_desc->StencilWriteMask : UINT8_MAX,
+      blend_desc, NULL, NULL,
       D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED,
       D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED,
       D3D12_PIPELINE_STATE_FLAG_NONE, map, riid, out);
@@ -3402,9 +3425,14 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
    agx_compile_shader_nir(pb.shader, &pbk, &prolog);
    ralloc_free(pb.shader);
 
-   agx_fast_link(&pso->ms_rast.linked, &device->dev, false, &rast_part,
-                 &prolog, NULL, 0);
+   bool linked = agx_fast_link(&pso->ms_rast.linked, &device->dev, false,
+                               &rast_part, &prolog, NULL, 0);
    free(prolog.binary);
+   if (!linked) {
+      ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
+      *out = NULL;
+      return E_OUTOFMEMORY;
+   }
    pso->ms_rast.info = rast_part.info;
    agx_assign_uvs(&pso->ms_varyings, &pso->ms_uvs, 0, 0);
 
@@ -3533,6 +3561,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    const D3D12_DEPTH_STENCIL_DESC *ds_desc,
                                    DXGI_FORMAT dsv_format,
                                    const D3D12_RASTERIZER_DESC *rs_desc,
+                                   float rasterizer_depth_bias,
+                                   bool front_stencil_enable,
+                                   bool back_stencil_enable,
+                                   uint8_t front_stencil_read_mask,
+                                   uint8_t front_stencil_write_mask,
+                                   uint8_t back_stencil_read_mask,
+                                   uint8_t back_stencil_write_mask,
                                    const D3D12_BLEND_DESC *blend_desc,
                                    const D3D12_INPUT_LAYOUT_DESC *input_layout,
                                    const D3D12_STREAM_OUTPUT_DESC *so_desc,
@@ -3593,8 +3628,10 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     */
    pso->ds.dsv_format = dsv_format;
    pso->ds.depth_func = AGX_ZS_FUNC_ALWAYS;
-   pso->ds.stencil_read_mask = 0xFF;
-   pso->ds.stencil_write_mask = 0xFF;
+   pso->ds.front_stencil_read_mask = 0xFF;
+   pso->ds.front_stencil_write_mask = 0xFF;
+   pso->ds.back_stencil_read_mask = 0xFF;
+   pso->ds.back_stencil_write_mask = 0xFF;
 
    /* Stencil-disabled defaults: pass everything, change nothing. Zeroes
     * would mean NEVER/KEEP-on-fail, which rejects fragments silently.
@@ -3615,12 +3652,27 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       if (ds_desc->DepthEnable)
          pso->ds.depth_func = d12_translate_compare(ds_desc->DepthFunc);
 
-      pso->ds.stencil_test = ds_desc->StencilEnable;
+      pso->ds.stencil_test =
+         ds_desc->StencilEnable &&
+         (front_stencil_enable || back_stencil_enable);
       if (ds_desc->StencilEnable) {
-         pso->ds.stencil_read_mask = ds_desc->StencilReadMask;
-         pso->ds.stencil_write_mask = ds_desc->StencilWriteMask;
-         d12_translate_stencil_face(&pso->ds.front, &ds_desc->FrontFace);
-         d12_translate_stencil_face(&pso->ds.back, &ds_desc->BackFace);
+         if (front_stencil_enable) {
+            pso->ds.front_stencil_read_mask = front_stencil_read_mask;
+            pso->ds.front_stencil_write_mask = front_stencil_write_mask;
+            d12_translate_stencil_face(&pso->ds.front,
+                                       &ds_desc->FrontFace);
+         } else {
+            pso->ds.front_stencil_read_mask = 0;
+            pso->ds.front_stencil_write_mask = 0;
+         }
+         if (back_stencil_enable) {
+            pso->ds.back_stencil_read_mask = back_stencil_read_mask;
+            pso->ds.back_stencil_write_mask = back_stencil_write_mask;
+            d12_translate_stencil_face(&pso->ds.back, &ds_desc->BackFace);
+         } else {
+            pso->ds.back_stencil_read_mask = 0;
+            pso->ds.back_stencil_write_mask = 0;
+         }
       }
    }
 
@@ -3633,12 +3685,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    pso->raster.depth_clip = true;
    pso->raster.dynamic_depth_bias =
       flags & D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
+   pso->raster.dynamic_strip_cut =
+      flags & D3D12_PIPELINE_STATE_FLAG_DYNAMIC_INDEX_BUFFER_STRIP_CUT;
    if (rs_desc) {
       pso->raster.front_face_ccw = rs_desc->FrontCounterClockwise;
       pso->raster.cull_front = rs_desc->CullMode == D3D12_CULL_MODE_FRONT;
       pso->raster.cull_back = rs_desc->CullMode == D3D12_CULL_MODE_BACK;
       pso->raster.depth_clip = rs_desc->DepthClipEnable;
-      pso->raster.depth_bias = rs_desc->DepthBias;
+      pso->raster.depth_bias = rasterizer_depth_bias;
       pso->raster.depth_bias_clamp = rs_desc->DepthBiasClamp;
       pso->raster.slope_scaled_depth_bias =
          rs_desc->SlopeScaledDepthBias;
@@ -4016,9 +4070,16 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
    ralloc_free(pb.shader);
 
    /* Link: this uploads executable memory and bakes the USC/PPP words. */
-   agx_fast_link(&pso->vs.linked, &device->dev, false, &vs_part, &prolog, NULL,
-                 0);
+   bool vs_linked = agx_fast_link(&pso->vs.linked, &device->dev, false,
+                                  &vs_part, &prolog, NULL, 0);
    free(prolog.binary);
+   if (!vs_linked) {
+      free(fs_epilog.binary);
+      free(vs_part.binary);
+      free(fs_part.binary);
+      free(pso);
+      return E_OUTOFMEMORY;
+   }
 
    /*
     * THE PREAMBLE RULE, which the ordinary vertex shader had never needed
@@ -4039,6 +4100,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          agx_bo_create(&device->dev, vs_part.info.binary_size, 0,
                        AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 vs preamble");
       if (!pso->vs.code_bo) {
+         d12_pso_release_bos(device, pso);
          free(fs_epilog.binary);
          free(vs_part.binary);
          free(fs_part.binary);
@@ -4049,6 +4111,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                  vs_part.info.binary_size)) {
          agx_bo_unreference(&device->dev, pso->vs.code_bo);
          pso->vs.code_bo = NULL;
+         d12_pso_release_bos(device, pso);
          free(fs_epilog.binary);
          free(vs_part.binary);
          free(fs_part.binary);
@@ -4058,12 +4121,20 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->vs.preamble_va =
          pso->vs.code_bo->va->addr + vs_part.info.preamble_offset;
    }
-   agx_fast_link(&pso->fs.linked, &device->dev, true, &fs_part,
-                 fs_prolog.binary ? &fs_prolog : NULL,
-                 use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL,
-                 use_fs_epilog ? 1 : 0);
+   bool fs_linked = agx_fast_link(
+      &pso->fs.linked, &device->dev, true, &fs_part,
+      fs_prolog.binary ? &fs_prolog : NULL,
+      use_fs_epilog && fs_epilog.binary ? &fs_epilog : NULL,
+      use_fs_epilog ? 1 : 0);
    free(fs_prolog.binary);
    free(fs_epilog.binary);
+   if (!fs_linked) {
+      d12_pso_release_bos(device, pso);
+      free(vs_part.binary);
+      free(fs_part.binary);
+      free(pso);
+      return E_OUTOFMEMORY;
+   }
 
    /* Texture promotion gives the fragment shader a preamble that copies
     * the descriptor reached through D12_UNIFORM_TEXTURES into hardware
@@ -4076,6 +4147,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          agx_bo_create(&device->dev, fs_part.info.binary_size, 0,
                        AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 fs preamble");
       if (!pso->fs.code_bo) {
+         d12_pso_release_bos(device, pso);
          free(vs_part.binary);
          free(fs_part.binary);
          free(pso);
@@ -4085,6 +4157,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                  fs_part.info.binary_size)) {
          agx_bo_unreference(&device->dev, pso->fs.code_bo);
          pso->fs.code_bo = NULL;
+         d12_pso_release_bos(device, pso);
          free(vs_part.binary);
          free(fs_part.binary);
          free(pso);
@@ -4122,6 +4195,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
           !compile_tcs_stage(device, map, hs_dxil, hs_size, pso, &tcs_part) ||
           !compile_tes_stage(device, map, ds_dxil, ds_size, pso, &pso->tes_uvs,
                              &tes_part)) {
+         d12_pso_release_bos(device, pso);
          free(pso);
          return E_INVALIDARG;
       }
@@ -4144,15 +4218,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    0, AGX_BO_EXEC | AGX_BO_LOW_VA,
                                    cs[i].name);
          if (!*cs[i].bo) {
-            for (unsigned j = 0; j < i; j++)
-               agx_bo_unreference(&device->dev, *cs[j].bo);
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_OUTOFMEMORY;
          }
          if (!d12_upload_executable(*cs[i].bo, cs[i].part->binary,
                                     cs[i].part->info.binary_size)) {
-            for (unsigned j = 0; j <= i; ++j)
-               agx_bo_unreference(&device->dev, *cs[j].bo);
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_FAIL;
          }
@@ -4168,9 +4240,14 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_compile_shader_nir(tb.shader, &prolog_backend_key, &tes_prolog);
       ralloc_free(tb.shader);
 
-      agx_fast_link(&pso->tes.linked, &device->dev, false, &tes_part,
-                    &tes_prolog, NULL, 0);
+      bool tes_linked = agx_fast_link(&pso->tes.linked, &device->dev, false,
+                                      &tes_part, &tes_prolog, NULL, 0);
       free(tes_prolog.binary);
+      if (!tes_linked) {
+         d12_pso_release_bos(device, pso);
+         free(pso);
+         return E_OUTOFMEMORY;
+      }
       pso->tes.info = tes_part.info;
       agx_assign_uvs(&pso->tes_varyings, &pso->tes_uvs, 0, 0);
 
@@ -4182,6 +4259,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             agx_bo_create(&device->dev, tes_part.info.binary_size, 0,
                           AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 domain");
          if (!pso->tes.code_bo) {
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_OUTOFMEMORY;
          }
@@ -4189,6 +4267,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                     tes_part.info.binary_size)) {
             agx_bo_unreference(&device->dev, pso->tes.code_bo);
             pso->tes.code_bo = NULL;
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_FAIL;
          }
@@ -4241,6 +4320,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
          if (!valid || !xfb) {
             mesa_loge("graphics PSO: invalid stream-output declaration or "
                       "unmatched output semantic");
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_INVALIDARG;
          }
@@ -4292,6 +4372,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       ralloc_free(xfb);
 
       if (!compiled) {
+         d12_pso_release_bos(device, pso);
          free(pso);
          return E_INVALIDARG;
       }
@@ -4332,20 +4413,13 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                    0, AGX_BO_EXEC | AGX_BO_LOW_VA,
                                    cs[i].name);
          if (!*cs[i].bo) {
-            /* Unwind whatever the earlier iteration already took. */
-            for (unsigned j = 0; j < i; j++) {
-               if (*cs[j].bo)
-                  agx_bo_unreference(&device->dev, *cs[j].bo);
-            }
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_OUTOFMEMORY;
          }
          if (!d12_upload_executable(*cs[i].bo, cs[i].part->binary,
                                     cs[i].part->info.binary_size)) {
-            for (unsigned j = 0; j <= i; ++j) {
-               if (*cs[j].bo)
-                  agx_bo_unreference(&device->dev, *cs[j].bo);
-            }
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_FAIL;
          }
@@ -4369,9 +4443,15 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       agx_compile_shader_nir(rb.shader, &prolog_backend_key, &rast_prolog);
       ralloc_free(rb.shader);
 
-      agx_fast_link(&pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
-                    &rast_prolog, NULL, 0);
+      bool gs_rast_linked = agx_fast_link(
+         &pso->gs_rast.linked, &device->dev, false, &gs_rast_part,
+         &rast_prolog, NULL, 0);
       free(rast_prolog.binary);
+      if (!gs_rast_linked) {
+         d12_pso_release_bos(device, pso);
+         free(pso);
+         return E_OUTOFMEMORY;
+      }
 
       /* Keep the compiled part so its PREAMBLE has an address. The linker
        * copies main/prolog/epilog into linked.bo and leaves the preamble
@@ -4385,6 +4465,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
             agx_bo_create(&device->dev, gs_rast_part.info.binary_size, 0,
                           AGX_BO_EXEC | AGX_BO_LOW_VA, "d3d12 gs rast");
          if (!pso->gs_rast.code_bo) {
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_OUTOFMEMORY;
          }
@@ -4393,6 +4474,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
                                     gs_rast_part.info.binary_size)) {
             agx_bo_unreference(&device->dev, pso->gs_rast.code_bo);
             pso->gs_rast.code_bo = NULL;
+            d12_pso_release_bos(device, pso);
             free(pso);
             return E_FAIL;
          }

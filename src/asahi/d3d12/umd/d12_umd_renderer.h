@@ -90,6 +90,13 @@ struct d12_umd_renderer_ops {
                         const int32_t (*rects)[4]);
    void (*set_blend_factor)(void *list, const float factor[4]);
    void (*set_stencil_ref)(void *list, uint32_t reference);
+   void (*set_front_and_back_stencil_ref)(void *list,
+                                          uint32_t front_reference,
+                                          uint32_t back_reference);
+   void (*set_depth_bias)(void *list, float depth_bias,
+                          float depth_bias_clamp,
+                          float slope_scaled_depth_bias);
+   void (*set_index_buffer_strip_cut)(void *list, uint32_t strip_cut);
    void (*set_vertex_buffers)(
       void *list, uint32_t start_slot, uint32_t count,
       const struct d12_frontend_vertex_buffer_view *views);

@@ -3507,8 +3507,28 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    bool selftest = false;
 #endif
 
+#ifdef _WIN32
+   /* Windows' null device is NUL; /dev/null may fail to open and feeding a
+    * NULL FILE to the disassembler would turn a debug self-test into an
+    * access violation during shader compilation. */
+   if (selftest) {
+      FILE *probe = fopen("NUL", "w");
+      if (!probe) {
+         fprintf(stderr, "agx_compile: unable to open NUL; skipping "
+                         "disassembler self-test\n");
+         selftest = false;
+      } else {
+         fclose(probe);
+      }
+   }
+#endif
+
    if (dump_shaders || selftest) {
+#ifdef _WIN32
+      FILE *fp = selftest ? fopen("NUL", "w") : stdout;
+#else
       FILE *fp = selftest ? fopen("/dev/null", "w") : stdout;
+#endif
       bool errors =
          agx2_disassemble(binary->data + offset, binary->size - offset, fp);
 

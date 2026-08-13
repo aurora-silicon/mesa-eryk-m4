@@ -545,53 +545,83 @@ agx_d3dkmt_fail(agx_kmt_status st)
 }
 
 int
-agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
-                      uint64_t value, uint32_t timeout_ms)
+agx_d3dkmt_poll_cpu_fences(const volatile uint64_t *const *current,
+                           const uint64_t *wanted, uint32_t count,
+                           bool wait_any, uint32_t timeout_ms,
+                           uint32_t *first_signaled)
 {
-   const agx_kmt_handle handles[1] = {fence};
-   const uint64_t values[1] = {value};
-   HANDLE async_event = NULL;
+   if (timeout_ms == AGX_D3DKMT_INFINITE) {
+      errno = EINVAL;
+      return -1;
+   }
 
-   if (timeout_ms != AGX_D3DKMT_INFINITE) {
-      async_event = CreateEventW(NULL, FALSE, FALSE, NULL);
-      if (async_event == NULL) {
+   ULONGLONG start = GetTickCount64();
+   for (;;) {
+      enum agx_d3dkmt_cpu_wait_state state = agx_d3dkmt_cpu_wait_probe(
+         current, wanted, count, wait_any, first_signaled);
+      if (state == AGX_D3DKMT_CPU_WAIT_SATISFIED) {
+         MemoryBarrier();
+         return 0;
+      }
+      if (state == AGX_D3DKMT_CPU_WAIT_INVALID) {
          errno = EIO;
          return -1;
       }
+
+      if (GetTickCount64() - start >= timeout_ms) {
+         errno = ETIME;
+         return -1;
+      }
+
+      if (!SwitchToThread())
+         Sleep(1);
    }
+}
+
+int
+agx_d3dkmt_wait_fence(struct agx_d3dkmt_winsys *ws, agx_kmt_handle fence,
+                      const volatile uint64_t *fence_cpu, uint64_t value,
+                      uint32_t timeout_ms)
+{
+   const agx_kmt_handle handles[1] = {fence};
+   const uint64_t values[1] = {value};
+   const volatile uint64_t *current[1] = {fence_cpu};
+
+   enum agx_d3dkmt_cpu_wait_state state =
+      agx_d3dkmt_cpu_wait_probe(current, values, 1, true, NULL);
+   if (state == AGX_D3DKMT_CPU_WAIT_SATISFIED) {
+      MemoryBarrier();
+      return 0;
+   }
+   if (state == AGX_D3DKMT_CPU_WAIT_INVALID) {
+      errno = EIO;
+      return -1;
+   }
+
+   if (timeout_ms != AGX_D3DKMT_INFINITE)
+      return agx_d3dkmt_poll_cpu_fences(current, values, 1, true, timeout_ms,
+                                        NULL);
 
    struct agx_kmt_waitsyncfromcpu wait = {
       .hDevice = ws->device,
       .ObjectCount = 1,
       .ObjectHandleArray = handles,
       .FenceValueArray = values,
-      .hAsyncEvent = async_event,
+      .hAsyncEvent = NULL,
    };
 
-   /*
-    * D3DKMTWaitForSynchronizationObjectFromCpu has no timeout parameter at
-    * all: with hAsyncEvent NULL it blocks until satisfied, and with an event
-    * it returns immediately and signals the event later. DRM's absolute
-    * deadline therefore becomes "arm a private event, then wait on it".
-    */
-   agx_kmt_status st = AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromCpu, &wait);
-   if (!AGX_KMT_SUCCESS(st)) {
-      if (async_event != NULL)
-         CloseHandle(async_event);
+   /* The NULL-event form is synchronous and per-call. The event form is not
+    * used because dxgkrnl exposes no cancellation operation for a finite
+    * caller-side timeout. */
+   agx_kmt_status st =
+      AGX_D3DKMT_CALL(ws, WaitForSynchronizationObjectFromCpu, &wait);
+   if (!AGX_KMT_SUCCESS(st))
       return agx_d3dkmt_fail(st);
-   }
 
-   if (async_event == NULL)
+   MemoryBarrier();
+   if (agx_d3dkmt_cpu_wait_probe(current, values, 1, true, NULL) ==
+       AGX_D3DKMT_CPU_WAIT_SATISFIED)
       return 0;
-
-   DWORD r = WaitForSingleObject(async_event, timeout_ms);
-   CloseHandle(async_event);
-   if (r == WAIT_OBJECT_0)
-      return 0;
-   if (r == WAIT_TIMEOUT) {
-      errno = ETIME;
-      return -1;
-   }
 
    errno = EIO;
    return -1;
@@ -608,7 +638,8 @@ agx_d3dkmt_wait_paging(struct agx_d3dkmt_winsys *ws, uint64_t value)
    if (ws->paging_fence_cpu != NULL && *ws->paging_fence_cpu >= value)
       return 0;
 
-   return agx_d3dkmt_wait_fence(ws, ws->paging_fence, value,
+   return agx_d3dkmt_wait_fence(ws, ws->paging_fence, ws->paging_fence_cpu,
+                                value,
                                 AGX_D3DKMT_INFINITE);
 }
 
@@ -1950,7 +1981,8 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
       d3dkmt_log("update-gpuva wait begin fence=0x%08x value=%llu",
                  (unsigned)ws->va_fence,
                  (unsigned long long)completion_value);
-      ret = agx_d3dkmt_wait_fence(ws, ws->va_fence, completion_value, 10000u);
+      ret = agx_d3dkmt_wait_fence(ws, ws->va_fence, ws->va_fence_cpu,
+                                  completion_value, 10000u);
       d3dkmt_log("update-gpuva wait end result=%d errno=%d cpu-value=%llu",
                  ret, errno,
                  (unsigned long long)(ws->va_fence_cpu
@@ -2204,7 +2236,8 @@ staging_for(struct agx_device *dev, struct agx_d3dkmt_ctx *ctx, uint32_t size)
 
    if (bo != NULL && bo->size < size) {
       /* Wait for the slot to retire before recycling its memory. */
-      if (agx_d3dkmt_wait_fence(ws, ctx->fence, ctx->staging_retire[slot],
+      if (agx_d3dkmt_wait_fence(ws, ctx->fence, ctx->fence_cpu,
+                                ctx->staging_retire[slot],
                                 AGX_D3DKMT_INFINITE))
          return NULL;
       agx_bo_unreference(dev, bo);
@@ -2220,7 +2253,8 @@ staging_for(struct agx_device *dev, struct agx_d3dkmt_ctx *ctx, uint32_t size)
       ctx->staging[slot] = bo;
       ctx->staging_retire[slot] = 0;
    } else if (ctx->staging_retire[slot] != 0) {
-      if (agx_d3dkmt_wait_fence(ws, ctx->fence, ctx->staging_retire[slot],
+      if (agx_d3dkmt_wait_fence(ws, ctx->fence, ctx->fence_cpu,
+                                ctx->staging_retire[slot],
                                 AGX_D3DKMT_INFINITE))
          return NULL;
    }

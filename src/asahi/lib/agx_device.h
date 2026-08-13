@@ -22,6 +22,7 @@
  * complete per-pipe GPU write set into SET_*_ATTACHMENTS records. */
 #define AGX_SUBMIT_WRITE_SET_COMPLETE (1u << 31)
 #include "agx_bo.h"
+#include "agx_chip.h"
 #include "agx_pack.h"
 #include "agx_submit_virt.h"
 #include "decode.h"

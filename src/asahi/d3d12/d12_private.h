@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include "d12_frontend.h"
+#include "d12_bundle_state_core.h"
 #include "d12_device_removal_core.h"
 #include "d12_queue_timeline_core.h"
 
@@ -738,6 +739,13 @@ struct d12_bundle_draw {
    bool pso_set;
    bool graphics_rs_set;
    bool topology_set;
+   struct d12_bundle_dynamic_state dynamic_state;
+   bool depth_bias_set;
+   bool strip_cut_set;
+   float depth_bias;
+   float depth_bias_clamp;
+   float slope_scaled_depth_bias;
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
 };
 
 /*
@@ -919,7 +927,8 @@ struct d12_depth_stencil_state {
    enum agx_zs_func depth_func;
 
    bool stencil_test;
-   uint8_t stencil_read_mask, stencil_write_mask;
+   uint8_t front_stencil_read_mask, front_stencil_write_mask;
+   uint8_t back_stencil_read_mask, back_stencil_write_mask;
    struct d12_stencil_face front, back;
 
    DXGI_FORMAT dsv_format; /* DSVFormat from the PSO desc */
@@ -934,6 +943,7 @@ struct d12_raster_state {
    bool depth_clip;
    bool smooth_line;
    bool dynamic_depth_bias;
+   bool dynamic_strip_cut;
    float depth_bias;
    float depth_bias_clamp;
    float slope_scaled_depth_bias;
@@ -1552,6 +1562,7 @@ struct d12_cmd_list {
    bool bundle_pso_set;
    bool bundle_graphics_rs_set;
    bool bundle_topology_set;
+   struct d12_bundle_dynamic_state bundle_dynamic_state;
 
    /* SetDescriptorHeaps state.  GPU descriptor handles remain CPU pointers
     * for application arithmetic, so the bound object is also how an
@@ -1606,9 +1617,20 @@ struct d12_cmd_list {
    float depth_bias_clamp;
    float slope_scaled_depth_bias;
 
+   /* IASetIndexBufferStripCutValue state. Static PSOs use their creation
+    * value; a PSO carrying the dynamic flag consumes this command-list value.
+    */
+   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
+
    /* OMSetBlendFactor. AGX fragment uniforms 4..11 are the four 32-bit
     * constants; D3D12 resets them to one with command-list state. */
    float blend_factor[4];
+
+   /* Bundle state is inherited unless the bundle records one of these
+    * setters (including SetPipelineState, which restores PSO initial state).
+    */
+   bool bundle_depth_bias_set;
+   bool bundle_strip_cut_set;
 };
 
 static inline struct d12_resource *
@@ -1891,7 +1913,10 @@ HRESULT d12_pipeline_state_create_graphics(
    enum pipe_format rt_format, unsigned nr_rt, const DXGI_FORMAT *rt_formats,
    unsigned nr_samples, UINT sample_mask,
    const D3D12_DEPTH_STENCIL_DESC *ds_desc, DXGI_FORMAT dsv_format,
-   const D3D12_RASTERIZER_DESC *rs_desc,
+   const D3D12_RASTERIZER_DESC *rs_desc, float rasterizer_depth_bias,
+   bool front_stencil_enable, bool back_stencil_enable,
+   uint8_t front_stencil_read_mask, uint8_t front_stencil_write_mask,
+   uint8_t back_stencil_read_mask, uint8_t back_stencil_write_mask,
    const D3D12_BLEND_DESC *blend_desc,
    const D3D12_INPUT_LAYOUT_DESC *input_layout,
    const D3D12_STREAM_OUTPUT_DESC *so_desc,

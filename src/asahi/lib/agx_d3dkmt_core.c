@@ -874,6 +874,38 @@ agx_d3dkmt_first_signaled(const uint64_t *current, const uint64_t *wanted,
    return UINT32_MAX;
 }
 
+enum agx_d3dkmt_cpu_wait_state
+agx_d3dkmt_cpu_wait_probe(const volatile uint64_t *const *current,
+                          const uint64_t *wanted, uint32_t count,
+                          bool wait_any, uint32_t *first_signaled)
+{
+   if (current == NULL || wanted == NULL || count == 0)
+      return AGX_D3DKMT_CPU_WAIT_INVALID;
+
+   for (uint32_t i = 0; i < count; ++i) {
+      if (current[i] == NULL)
+         return AGX_D3DKMT_CPU_WAIT_INVALID;
+   }
+
+   uint32_t first = UINT32_MAX;
+   for (uint32_t i = 0; i < count; ++i) {
+      if (*current[i] >= wanted[i]) {
+         if (first == UINT32_MAX)
+            first = i;
+      } else if (!wait_any) {
+         return AGX_D3DKMT_CPU_WAIT_PENDING;
+      }
+   }
+
+   if (first == UINT32_MAX)
+      return AGX_D3DKMT_CPU_WAIT_PENDING;
+
+   if (first_signaled != NULL)
+      *first_signaled = wait_any ? first : 0;
+
+   return AGX_D3DKMT_CPU_WAIT_SATISFIED;
+}
+
 /* -------------------------------------------------------------------------
  * Contract blob helpers.
  * ------------------------------------------------------------------------- */
