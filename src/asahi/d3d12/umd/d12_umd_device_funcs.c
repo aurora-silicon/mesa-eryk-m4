@@ -354,13 +354,9 @@ d12_umd_create_command_queue(
       } else {
          result = device->renderer_ops->create_command_queue(
             device->backend, type, &queue->backend);
-         if (FAILED(result) || !queue->backend) {
-            if (queue->backend)
-               device->renderer_ops->destroy_command_queue(queue->backend);
-            queue->backend = NULL;
-            if (SUCCEEDED(result))
-               result = E_FAIL;
-         }
+         result = d12_umd_renderer_object_result(
+            result, &queue->backend,
+            device->renderer_ops->destroy_command_queue);
       }
    } else {
       result = d12_umd_queue_runtime_create(
@@ -1119,6 +1115,10 @@ d12_umd_create_heap_resource(
 
       if (resource_arguments->ReuseBufferGPUVA.BaseAddress.UMD.hResource
              .pDrvPrivate) {
+         if (!device->renderer_ops->create_reused_resource ||
+             !device->renderer_ops->destroy_resource ||
+             !device->renderer_ops->resource_gpu_virtual_address)
+            return E_NOTIMPL;
          result = d12_umd_reused_resource_info(
             device, resource_arguments, &reuse_info);
          if (FAILED(result))
@@ -1127,25 +1127,28 @@ d12_umd_create_heap_resource(
             device->backend, reuse_info.source->backend,
             reuse_info.source_offset, &frontend_resource, translated_clear,
             &resource->backend);
+         result = d12_umd_renderer_object_result(
+            result, &resource->backend,
+            device->renderer_ops->destroy_resource);
          if (SUCCEEDED(result) &&
-             (!resource->backend ||
-              device->renderer_ops->resource_gpu_virtual_address(
-                 resource->backend) != reuse_info.gpu_virtual_address)) {
-            if (resource->backend &&
-                device->renderer_ops->destroy_resource)
-               device->renderer_ops->destroy_resource(resource->backend);
+             device->renderer_ops->resource_gpu_virtual_address(
+                resource->backend) != reuse_info.gpu_virtual_address) {
+            device->renderer_ops->destroy_resource(resource->backend);
             resource->backend = NULL;
             result = E_FAIL;
          }
       } else {
-         if (!device->renderer_ops->create_reserved_resource)
+         if (!device->renderer_ops->create_reserved_resource ||
+             !device->renderer_ops->destroy_resource ||
+             !device->renderer_ops->resource_gpu_virtual_address)
             return E_NOTIMPL;
          result = device->renderer_ops->create_reserved_resource(
             device->backend, &frontend_resource, translated_clear,
             &resource->backend);
+         result = d12_umd_renderer_object_result(
+            result, &resource->backend,
+            device->renderer_ops->destroy_resource);
       }
-      if (SUCCEEDED(result) && !resource->backend)
-         result = E_FAIL;
       if (FAILED(result)) {
          SecureZeroMemory(resource, sizeof(*resource));
          return result;
@@ -1205,9 +1208,10 @@ d12_umd_create_heap_resource(
       (void)d12_umd_resource_private_standard_desc_pack(
          &frontend_resource, &standard_descriptor);
 
-   if (device->renderer_ops && device->backend &&
-       device->renderer_ops->create_heap) {
-      if (!device->renderer_ops->destroy_heap ||
+   if (device->backend) {
+      if (!device->renderer_ops ||
+          !device->renderer_ops->create_heap ||
+          !device->renderer_ops->destroy_heap ||
           (resource_arguments &&
            (!device->renderer_ops->create_placed_resource ||
             !device->renderer_ops->destroy_resource)))
@@ -1217,14 +1221,13 @@ d12_umd_create_heap_resource(
          &private_data, sizeof(private_data), standard_descriptor,
          &heap->backend,
          &frontend_allocation);
+      result = d12_umd_renderer_object_result(
+         result, &heap->backend, device->renderer_ops->destroy_heap);
       if (FAILED(result)) {
-         if (heap->backend)
-            device->renderer_ops->destroy_heap(heap->backend);
          SecureZeroMemory(heap, sizeof(*heap));
          return result;
       }
-      if (!heap->backend || !frontend_allocation.allocation ||
-          !frontend_allocation.resource ||
+      if (!frontend_allocation.allocation || !frontend_allocation.resource ||
           !frontend_allocation.gpu_virtual_address ||
           frontend_allocation.size < heap_arguments->ByteSize) {
          if (heap->backend)
@@ -1268,8 +1271,9 @@ d12_umd_create_heap_resource(
          result = device->renderer_ops->create_placed_resource(
             device->backend, heap->backend, 0, &frontend_resource,
             translated_clear, &resource->backend);
-         if (SUCCEEDED(result) && !resource->backend)
-            result = E_FAIL;
+         result = d12_umd_renderer_object_result(
+            result, &resource->backend,
+            device->renderer_ops->destroy_resource);
          if (FAILED(result)) {
             AcquireSRWLockExclusive(&device->heap_lock);
             if (device->heaps == heap) {
@@ -1477,14 +1481,13 @@ d12_umd_open_heap_resource(
       arguments->pOpenAllocationInfo[0].hAllocation,
       arguments->hKMResource.handle, allocation_private.flags,
       &heap->backend, &frontend_allocation);
+   result = d12_umd_renderer_object_result(
+      result, &heap->backend, device->renderer_ops->destroy_heap);
    if (FAILED(result)) {
-      if (heap->backend)
-         device->renderer_ops->destroy_heap(heap->backend);
       SecureZeroMemory(heap, sizeof(*heap));
       return result;
    }
-   if (!heap->backend || !frontend_allocation.allocation ||
-       !frontend_allocation.resource ||
+   if (!frontend_allocation.allocation || !frontend_allocation.resource ||
        !frontend_allocation.gpu_virtual_address ||
        frontend_allocation.size < private_data.heap.size) {
       result = E_FAIL;
@@ -1517,8 +1520,9 @@ d12_umd_open_heap_resource(
       result = device->renderer_ops->create_placed_resource(
          device->backend, heap->backend, 0, &opened_resource,
          clear_value, &resource->backend);
-      if (SUCCEEDED(result) && !resource->backend)
-         result = E_FAIL;
+      result = d12_umd_renderer_object_result(
+         result, &resource->backend,
+         device->renderer_ops->destroy_resource);
       if (FAILED(result))
          goto fail;
 
@@ -1723,12 +1727,9 @@ d12_umd_create_fence(D3D12DDI_HDEVICE handle, D3D12DDI_HFENCE fence_handle,
    result = device->renderer_ops->create_fence(
       device->backend, fence->count, &fence->entries[0].placement,
       &fence->backend);
-   if (FAILED(result) || !fence->backend) {
-      if (fence->backend)
-         device->renderer_ops->destroy_fence(fence->backend);
-      fence->backend = NULL;
-      if (SUCCEEDED(result))
-         result = E_FAIL;
+   result = d12_umd_renderer_object_result(
+      result, &fence->backend, device->renderer_ops->destroy_fence);
+   if (FAILED(result)) {
       (void)d12_umd_heap_release_mapping(fence->entries[0].current_heap);
       goto fail;
    }

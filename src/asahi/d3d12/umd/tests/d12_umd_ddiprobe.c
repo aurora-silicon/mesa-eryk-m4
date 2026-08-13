@@ -102,6 +102,11 @@ static struct d12_umd_resource_private saved_resource_private;
 #define TEST_TRANSACTION_QUEUE ((void *)(uintptr_t)0xb100)
 #define TEST_TRANSACTION_FENCE ((void *)(uintptr_t)0xb200)
 
+static HRESULT blt_allocator_create_result = S_OK;
+static HRESULT blt_list_create_result = S_OK;
+static void *blt_allocator_output = TEST_BLT_ALLOCATOR;
+static void *blt_list_output = TEST_BLT_LIST;
+
 static unsigned sparse_create_calls;
 static unsigned sparse_destroy_calls;
 static unsigned sparse_update_calls;
@@ -112,6 +117,7 @@ static unsigned reused_destroy_calls;
 static bool reused_create_null;
 static bool reused_expect_row_major;
 static bool reused_allocation_info_fail;
+static HRESULT reused_create_result = S_OK;
 static uint64_t reused_allocation_info_size = UINT64_C(0x10000);
 static unsigned transaction_queue_create_calls;
 static unsigned transaction_queue_destroy_calls;
@@ -346,7 +352,7 @@ test_create_reused_resource(
       return E_INVALIDARG;
    ++reused_create_calls;
    *out_resource = reused_create_null ? NULL : TEST_REUSED_RESOURCE;
-   return S_OK;
+   return reused_create_result;
 }
 
 static uint64_t
@@ -432,8 +438,8 @@ test_blt_create_allocator(void *device,
        type != D12_UMD_RENDERER_COMMAND_DIRECT || !out_allocator)
       return E_INVALIDARG;
    ++blt_allocator_create_calls;
-   *out_allocator = TEST_BLT_ALLOCATOR;
-   return S_OK;
+   *out_allocator = blt_allocator_output;
+   return blt_allocator_create_result;
 }
 
 static HRESULT
@@ -462,8 +468,8 @@ test_blt_create_list(void *device,
        allocator != TEST_BLT_ALLOCATOR || !out_list)
       return E_INVALIDARG;
    ++blt_list_create_calls;
-   *out_list = TEST_BLT_LIST;
-   return S_OK;
+   *out_list = blt_list_output;
+   return blt_list_create_result;
 }
 
 static HRESULT
@@ -2497,6 +2503,23 @@ wmain(int argc, wchar_t **argv)
          HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
          reused_create_null = false;
 
+         reused_create_result = E_FAIL;
+         resource_handle.pDrvPrivate = HeapAlloc(
+            GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Resource);
+         require_result(resource_handle.pDrvPrivate != NULL,
+                        "allocate rollback capture resource storage");
+         result = device_table.pfnCreateHeapAndResource(
+            driver_device, NULL, (D3D12DDI_HHEAP){0},
+            (D3D12DDI_HRTRESOURCE){0}, &reused_arguments, NULL,
+            resource_handle);
+         require_result(
+            result == E_FAIL && reused_destroy_calls == 2 &&
+               !((struct d12_umd_resource *)resource_handle.pDrvPrivate)
+                   ->signature,
+            "rollback capture resource returned with failure");
+         HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
+         reused_create_result = S_OK;
+
          {
             const D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT row_major = {
                .RowPitch = 256,
@@ -2536,7 +2559,7 @@ wmain(int argc, wchar_t **argv)
                "preserve runtime row-major layout through capture seam");
             device_table.pfnDestroyHeapAndResource(
                driver_device, (D3D12DDI_HHEAP){0}, resource_handle);
-            require_result(reused_destroy_calls == 2,
+            require_result(reused_destroy_calls == 3,
                            "destroy row-major capture resource");
             HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
             reused_expect_row_major = false;
@@ -3057,6 +3080,10 @@ wmain(int argc, wchar_t **argv)
                      blt_record_calls = 0;
                      blt_execute_calls = 0;
                      blt_execute_result = S_OK;
+                     blt_allocator_create_result = S_OK;
+                     blt_list_create_result = S_OK;
+                     blt_allocator_output = TEST_BLT_ALLOCATOR;
+                     blt_list_output = TEST_BLT_LIST;
                      private_device->backend = TEST_BLT_DEVICE;
                      private_device->renderer_ops = &test_blt_renderer_ops;
                      private_device->queues = &blt_queue;
@@ -3099,7 +3126,57 @@ wmain(int argc, wchar_t **argv)
                            !blt_queue.dxgi_blt_list,
                         "DXGI blit failure discards recorder cache");
 
+                     blt_allocator_create_result = E_FAIL;
+                     result = dxgi_table.pfnBlt1(&blt1);
+                     require_result(
+                        result == E_FAIL &&
+                           blt_allocator_create_calls == 2 &&
+                           blt_allocator_destroy_calls == 2 &&
+                           blt_list_create_calls == 1 &&
+                           blt_list_destroy_calls == 1 &&
+                           !blt_queue.dxgi_blt_allocator &&
+                           !blt_queue.dxgi_blt_list,
+                        "rollback DXGI allocator returned with failure");
+
+                     blt_allocator_create_result = S_OK;
+                     blt_allocator_output = NULL;
+                     result = dxgi_table.pfnBlt1(&blt1);
+                     require_result(
+                        result == E_FAIL &&
+                           blt_allocator_create_calls == 3 &&
+                           blt_allocator_destroy_calls == 2 &&
+                           !blt_queue.dxgi_blt_allocator &&
+                           !blt_queue.dxgi_blt_list,
+                        "reject DXGI allocator success without object");
+
+                     blt_allocator_output = TEST_BLT_ALLOCATOR;
+                     blt_list_create_result = E_FAIL;
+                     result = dxgi_table.pfnBlt1(&blt1);
+                     require_result(
+                        result == E_FAIL &&
+                           blt_allocator_create_calls == 4 &&
+                           blt_allocator_destroy_calls == 3 &&
+                           blt_list_create_calls == 2 &&
+                           blt_list_destroy_calls == 2 &&
+                           !blt_queue.dxgi_blt_allocator &&
+                           !blt_queue.dxgi_blt_list,
+                        "rollback DXGI list returned with failure");
+
+                     blt_list_create_result = S_OK;
+                     blt_list_output = NULL;
+                     result = dxgi_table.pfnBlt1(&blt1);
+                     require_result(
+                        result == E_FAIL &&
+                           blt_allocator_create_calls == 5 &&
+                           blt_allocator_destroy_calls == 4 &&
+                           blt_list_create_calls == 3 &&
+                           blt_list_destroy_calls == 2 &&
+                           !blt_queue.dxgi_blt_allocator &&
+                           !blt_queue.dxgi_blt_list,
+                        "reject DXGI list success without object");
+
                      blt_execute_result = S_OK;
+                     blt_list_output = TEST_BLT_LIST;
                      rotate_resources[0].backend = NULL;
                      rotate_resources[1].backend = NULL;
                      private_device->queues = saved_queues;

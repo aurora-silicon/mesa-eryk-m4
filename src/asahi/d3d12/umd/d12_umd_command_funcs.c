@@ -82,7 +82,8 @@ d12_umd_create_command_allocator(
        !d12_umd_command_type(arguments->Type, arguments->QueueFlags, &type))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_command_allocator)
+       !device->renderer_ops->create_command_allocator ||
+       !device->renderer_ops->destroy_command_allocator)
       return E_NOTIMPL;
 
    allocator = (struct d12_umd_command_allocator *)
@@ -90,10 +91,11 @@ d12_umd_create_command_allocator(
    memset(allocator, 0, sizeof(*allocator));
    result = device->renderer_ops->create_command_allocator(
       device->backend, type, &allocator->backend);
+   result = d12_umd_renderer_object_result(
+      result, &allocator->backend,
+      device->renderer_ops->destroy_command_allocator);
    if (FAILED(result))
       return result;
-   if (!allocator->backend)
-      return E_FAIL;
 
    allocator->signature = D12_UMD_COMMAND_ALLOCATOR_SIGNATURE;
    allocator->device = device;
@@ -206,10 +208,10 @@ d12_umd_create_command_list(
    memset(list, 0, sizeof(*list));
    result = device->renderer_ops->create_command_list(
       device->backend, type, allocator->backend, &list->backend);
+   result = d12_umd_renderer_object_result(
+      result, &list->backend, device->renderer_ops->destroy_command_list);
    if (FAILED(result))
       return result;
-   if (!list->backend)
-      return E_FAIL;
 
    list->signature = D12_UMD_COMMAND_LIST_SIGNATURE;
    list->device = device;

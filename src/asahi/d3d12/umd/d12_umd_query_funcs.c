@@ -162,17 +162,18 @@ d12_umd_create_query_heap(
    if (!device || !heap || !d12_umd_query_heap_arguments_valid(arguments))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_query_heap)
+       !device->renderer_ops->create_query_heap ||
+       !device->renderer_ops->destroy_query_heap)
       return E_NOTIMPL;
 
    memset(heap, 0, sizeof(*heap));
    result = device->renderer_ops->create_query_heap(
       device->backend, (uint32_t)arguments->Type, arguments->Count,
       arguments->NodeMask, &heap->backend);
+   result = d12_umd_renderer_object_result(
+      result, &heap->backend, device->renderer_ops->destroy_query_heap);
    if (FAILED(result))
       return result;
-   if (!heap->backend)
-      return E_FAIL;
 
    heap->signature = D12_UMD_QUERY_HEAP_SIGNATURE;
    heap->device = device;
@@ -227,7 +228,8 @@ d12_umd_create_command_signature(
                        device, arguments, &root_signature))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_command_signature)
+       !device->renderer_ops->create_command_signature ||
+       !device->renderer_ops->destroy_command_signature)
       return E_NOTIMPL;
 
    d12_umd_translate_indirect_arguments(
@@ -242,10 +244,11 @@ d12_umd_create_command_signature(
    memset(signature, 0, sizeof(*signature));
    result = device->renderer_ops->create_command_signature(
       device->backend, &desc, &signature->backend);
+   result = d12_umd_renderer_object_result(
+      result, &signature->backend,
+      device->renderer_ops->destroy_command_signature);
    if (FAILED(result))
       return result;
-   if (!signature->backend)
-      return E_FAIL;
    signature->signature = D12_UMD_COMMAND_SIGNATURE_SIGNATURE;
    signature->device = device;
    return S_OK;

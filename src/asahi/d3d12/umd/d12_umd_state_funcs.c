@@ -167,7 +167,8 @@ d12_umd_create_root_signature(
        !d12_umd_root_signature_arguments_valid(arguments, &range_count))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_root_signature)
+       !device->renderer_ops->create_root_signature ||
+       !device->renderer_ops->destroy_root_signature)
       return E_NOTIMPL;
 
    desc = arguments->pRootSignature;
@@ -271,12 +272,11 @@ d12_umd_create_root_signature(
    memset(root_signature, 0, sizeof(*root_signature));
    result = device->renderer_ops->create_root_signature(
       device->backend, &translated, &root_signature->backend);
+   result = d12_umd_renderer_object_result(
+      result, &root_signature->backend,
+      device->renderer_ops->destroy_root_signature);
    if (FAILED(result))
       goto out;
-   if (!root_signature->backend) {
-      result = E_FAIL;
-      goto out;
-   }
 
    root_signature->signature = D12_UMD_ROOT_SIGNATURE_SIGNATURE;
    root_signature->device = device;

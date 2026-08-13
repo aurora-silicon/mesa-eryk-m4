@@ -80,13 +80,19 @@ d12_umd_create_descriptor_heap(
    if (!device || !heap || !d12_umd_descriptor_heap_desc_valid(desc))
       return E_INVALIDARG;
    if (!device->backend || !device->renderer_ops ||
-       !device->renderer_ops->create_descriptor_heap)
+       !device->renderer_ops->create_descriptor_heap ||
+       !device->renderer_ops->destroy_descriptor_heap ||
+       !device->renderer_ops->descriptor_heap_cpu_start ||
+       !device->renderer_ops->descriptor_heap_gpu_start)
       return E_NOTIMPL;
 
    memset(heap, 0, sizeof(*heap));
    frontend = d12_umd_frontend_descriptor_heap_desc(desc);
    result = device->renderer_ops->create_descriptor_heap(
       device->backend, &frontend, &heap->backend);
+   result = d12_umd_renderer_object_result(
+      result, &heap->backend,
+      device->renderer_ops->destroy_descriptor_heap);
    if (FAILED(result))
       return result;
 

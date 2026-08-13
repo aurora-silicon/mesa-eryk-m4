@@ -190,6 +190,13 @@ For every DDI-created object, Windows follows a size-then-create contract:
 No DDI object may use COM reference counting as its authoritative lifetime.
 Shared renderer payloads may remain internally reference counted where command
 lists or queues hold them, but the DDI wrapper has a single runtime owner.
+Every opaque renderer factory is paired with its destroy operation before it
+is called. A failure carrying a partially-created object is rolled back,
+success carrying no object is rejected, and the wrapper signature is written
+only after construction and all object-specific validation succeed. This rule
+applies uniformly to queues/fences, allocators/lists, descriptor/query heaps,
+root signatures, PSOs, command signatures and resource objects, including the
+queue-local DXGI blit recorder cache.
 
 Pipeline state also implements the baseline serialized-object lifetime. A
 created compute or graphics PSO retains a deterministic, versioned,

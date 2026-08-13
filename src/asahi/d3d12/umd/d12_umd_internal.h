@@ -37,6 +37,26 @@
 
 struct d12_device;
 
+/* Renderer factories follow COM-style HRESULT rules but return opaque objects
+ * into runtime-owned DDI storage. Treat every factory as a transaction: a
+ * failure may still carry an object that must be destroyed, while success
+ * without an object is never publishable to the D3D12 runtime. Callers must
+ * verify that the matching destroy callback exists before invoking create. */
+static inline HRESULT
+d12_umd_renderer_object_result(HRESULT result, void **object,
+                               void (*destroy)(void *))
+{
+   if (!object || !destroy)
+      return E_INVALIDARG;
+   if (FAILED(result) || !*object) {
+      if (*object)
+         destroy(*object);
+      *object = NULL;
+      return FAILED(result) ? result : E_FAIL;
+   }
+   return S_OK;
+}
+
 /* Derived from agx_device.c's fixed compiler-visible VA layout: printf lives
  * at 2^36 and the 4 GiB USC heap is the next 4 GiB-aligned range. */
 #define D12_UMD_USC_BASE UINT64_C(0x1100000000)

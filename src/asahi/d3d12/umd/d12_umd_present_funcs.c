@@ -547,11 +547,17 @@ d12_umd_dxgi_execute_blt(struct d12_umd_device *device,
       result = device->renderer_ops->create_command_allocator(
          device->backend, D12_UMD_RENDERER_COMMAND_DIRECT,
          &queue->dxgi_blt_allocator);
+      result = d12_umd_renderer_object_result(
+         result, &queue->dxgi_blt_allocator,
+         device->renderer_ops->destroy_command_allocator);
       if (FAILED(result))
-         goto cleanup_queue;
+         goto discard_queue;
       result = device->renderer_ops->create_command_list(
          device->backend, D12_UMD_RENDERER_COMMAND_DIRECT,
          queue->dxgi_blt_allocator, &queue->dxgi_blt_list);
+      result = d12_umd_renderer_object_result(
+         result, &queue->dxgi_blt_list,
+         device->renderer_ops->destroy_command_list);
    } else {
       result = device->renderer_ops->reset_command_allocator(
          queue->dxgi_blt_allocator);

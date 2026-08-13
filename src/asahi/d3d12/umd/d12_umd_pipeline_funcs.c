@@ -863,7 +863,8 @@ d12_umd_create_pipeline_state(
 
    if (!d12_umd_pipeline_arguments_valid(device, arguments, true))
       return E_INVALIDARG;
-   if (!device->backend || !device->renderer_ops)
+   if (!device->backend || !device->renderer_ops ||
+       !device->renderer_ops->destroy_pipeline_state)
       return E_NOTIMPL;
 
    pipeline_state = arguments->hDrvPipelineState.pDrvPrivate;
@@ -953,13 +954,12 @@ d12_umd_create_pipeline_state(
          device->backend, &desc, &pipeline_state->backend);
    }
 
+   result = d12_umd_renderer_object_result(
+      result, &pipeline_state->backend,
+      device->renderer_ops->destroy_pipeline_state);
    if (FAILED(result)) {
       free(serialization);
       return result;
-   }
-   if (!pipeline_state->backend) {
-      free(serialization);
-      return E_FAIL;
    }
    pipeline_state->signature = D12_UMD_PIPELINE_STATE_SIGNATURE;
    pipeline_state->device = device;
@@ -1116,7 +1116,8 @@ d12_umd_create_deserialized_object(D3D12DDI_HDEVICE handle,
        !blob_size || !pipeline ||
        !d12_umd_pipeline_deserialize(blob, blob_size, &decoded))
       return E_INVALIDARG;
-   if (!device->backend || !device->renderer_ops) {
+   if (!device->backend || !device->renderer_ops ||
+       !device->renderer_ops->destroy_pipeline_state) {
       d12_umd_serialized_pipeline_cleanup(&decoded);
       return E_NOTIMPL;
    }
@@ -1135,12 +1136,11 @@ d12_umd_create_deserialized_object(D3D12DDI_HDEVICE handle,
       }
       result = device->renderer_ops->create_root_signature(
          device->backend, &decoded.root_signature, &root_signature);
+      result = d12_umd_renderer_object_result(
+         result, &root_signature,
+         device->renderer_ops->destroy_root_signature);
       if (FAILED(result))
          goto out;
-      if (!root_signature) {
-         result = E_FAIL;
-         goto out;
-      }
    }
 
    if (decoded.kind == D12_UMD_SERIALIZED_PIPELINE_COMPUTE) {
@@ -1160,12 +1160,10 @@ d12_umd_create_deserialized_object(D3D12DDI_HDEVICE handle,
       result = device->renderer_ops->create_graphics_pipeline_state(
          device->backend, &decoded.graphics, &backend);
    }
+   result = d12_umd_renderer_object_result(
+      result, &backend, device->renderer_ops->destroy_pipeline_state);
    if (FAILED(result))
       goto out;
-   if (!backend) {
-      result = E_FAIL;
-      goto out;
-   }
 
    memset(pipeline, 0, sizeof(*pipeline));
    pipeline->signature = D12_UMD_PIPELINE_STATE_SIGNATURE;
