@@ -80,6 +80,10 @@ static unsigned blt_execute_calls;
 static unsigned signature_create_calls;
 static unsigned signature_destroy_calls;
 static uint32_t signature_vertex_slot;
+static unsigned rtv_create_calls;
+static void *rtv_resource;
+static uint64_t rtv_destination;
+static struct d12_frontend_rtv_desc rtv_desc;
 static HRESULT blt_execute_result = S_OK;
 static D3DDDI_RESIDENCYSTATUS query_residency_status =
    D3DDDI_RESIDENCYSTATUS_RESIDENTINSHAREDMEMORY;
@@ -474,6 +478,23 @@ test_destroy_command_signature(void *signature)
 static const struct d12_umd_renderer_ops test_signature_renderer_ops = {
    .create_command_signature = test_create_command_signature,
    .destroy_command_signature = test_destroy_command_signature,
+};
+
+static void
+test_create_render_target_view(
+   void *device, void *resource, const struct d12_frontend_rtv_desc *desc,
+   uint64_t destination)
+{
+   if (device != TEST_BLT_DEVICE || !desc || !destination)
+      return;
+   ++rtv_create_calls;
+   rtv_resource = resource;
+   rtv_destination = destination;
+   rtv_desc = *desc;
+}
+
+static const struct d12_umd_renderer_ops test_descriptor_renderer_ops = {
+   .create_render_target_view = test_create_render_target_view,
 };
 
 static HRESULT
@@ -1930,6 +1951,87 @@ wmain(int argc, wchar_t **argv)
          require_result(device_table.pfnCalcPrivateDescriptorHeapSize(
                            driver_device, &descriptor_arguments) == 0,
                         "reject shader-visible RTV heap");
+      }
+
+      {
+         struct d12_umd_device *private_device = driver_device.pDrvPrivate;
+         struct d12_device *saved_backend = private_device->backend;
+         const struct d12_umd_renderer_ops *saved_renderer_ops =
+            private_device->renderer_ops;
+         struct d12_umd_resource resource = {
+            .signature = D12_UMD_RESOURCE_SIGNATURE,
+            .device = private_device,
+            .backend = TEST_TILED_RESOURCE,
+         };
+         D3D12DDIARG_CREATE_RENDER_TARGET_VIEW_0002 arguments = {
+            .hDrvResource = {.pDrvPrivate = &resource},
+            .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+            .ResourceDimension = D3D12DDI_RD_TEXTURE1D,
+            .Tex1D = {
+               .MipSlice = 4,
+               .FirstArraySlice = 2,
+               .ArraySize = 6,
+            },
+         };
+         const D3D12DDI_CPU_DESCRIPTOR_HANDLE destination = {
+            .ptr = (SIZE_T)(void *)mapped_heap,
+         };
+
+         private_device->backend = (struct d12_device *)TEST_BLT_DEVICE;
+         private_device->renderer_ops = &test_descriptor_renderer_ops;
+         rtv_create_calls = 0;
+         rtv_resource = NULL;
+         rtv_destination = 0;
+         memset(&rtv_desc, 0, sizeof(rtv_desc));
+
+         device_table.pfnCreateRenderTargetView(
+            driver_device, &arguments, destination);
+         require_result(
+            rtv_create_calls == 1 && rtv_resource == TEST_TILED_RESOURCE &&
+               rtv_destination == destination.ptr &&
+               rtv_desc.format == DXGI_FORMAT_R8G8B8A8_UNORM &&
+               rtv_desc.dimension == D3D12DDI_RD_TEXTURE1D &&
+               rtv_desc.texture.mip_slice == 4 &&
+               rtv_desc.texture.first_slice == 2 &&
+               rtv_desc.texture.array_size == 6,
+            "translate 1D array RTV mip and layer range");
+
+         arguments.ResourceDimension = D3D12DDI_RD_TEXTURE2D;
+         arguments.Tex2D = (D3D12DDIARG_TEX2D_RENDER_TARGET_VIEW_0002){
+            .MipSlice = 3,
+            .FirstArraySlice = 5,
+            .ArraySize = 7,
+            .PlaneSlice = 0,
+         };
+         device_table.pfnCreateRenderTargetView(
+            driver_device, &arguments, destination);
+         require_result(
+            rtv_create_calls == 2 &&
+               rtv_desc.dimension == D3D12DDI_RD_TEXTURE2D &&
+               rtv_desc.texture.mip_slice == 3 &&
+               rtv_desc.texture.first_slice == 5 &&
+               rtv_desc.texture.array_size == 7 &&
+               rtv_desc.texture.plane_slice == 0,
+            "translate 2D array RTV mip and layer range");
+
+         arguments.ResourceDimension = D3D12DDI_RD_TEXTURE3D;
+         arguments.Tex3D = (D3D12DDIARG_TEX3D_RENDER_TARGET_VIEW){
+            .MipSlice = 2,
+            .FirstW = 1,
+            .WSize = UINT32_MAX,
+         };
+         device_table.pfnCreateRenderTargetView(
+            driver_device, &arguments, destination);
+         require_result(
+            rtv_create_calls == 3 &&
+               rtv_desc.dimension == D3D12DDI_RD_TEXTURE3D &&
+               rtv_desc.texture.mip_slice == 2 &&
+               rtv_desc.texture.first_slice == 1 &&
+               rtv_desc.texture.array_size == UINT32_MAX,
+            "translate 3D RTV mip and W-slice range");
+
+         private_device->renderer_ops = saved_renderer_ops;
+         private_device->backend = saved_backend;
       }
 
       {

@@ -7,6 +7,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_attachment_view_core.h"
 #include "d12_core_caps.h"
 
 #include <math.h>
@@ -2737,12 +2738,16 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     * mismatch sent a debugging session after a format table that was
     * already correct.
     */
+   const bool is_1d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
+   const bool is_2d =
+      res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D;
    const bool is_3d =
       res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
 
-   if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D && !is_3d) {
-      mesa_loge("CreateRenderTargetView: dimension %d unsupported (need 2D or "
-                "3D), format %d", (int)res->desc.Dimension,
+   if (!is_1d && !is_2d && !is_3d) {
+      mesa_loge("CreateRenderTargetView: dimension %d unsupported (need 1D, "
+                "2D or 3D), format %d", (int)res->desc.Dimension,
                 (int)view_format);
       slot->resource = NULL;
       return;
@@ -2756,8 +2761,8 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
    }
 
    const unsigned samples = res->desc.SampleDesc.Count;
-   if ((is_3d && samples != 1) ||
-       (!is_3d && samples != 1 && samples != 2 && samples != 4)) {
+   if (((is_1d || is_3d) && samples != 1) ||
+       (is_2d && samples != 1 && samples != 2 && samples != 4)) {
       mesa_loge("CreateRenderTargetView: %u samples unsupported", samples);
       slot->resource = NULL;
       return;
@@ -2770,7 +2775,8 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     * view dimension made every array test fail at the view even once the
     * resource itself was legal.
     */
-   uint64_t slice_offset_B = 0;
+   uint32_t first_layer = 0;
+   uint32_t view_level = 0;
    uint32_t view_layers = MAX2(res->desc.DepthOrArraySize, 1);
 
    if (desc) {
@@ -2782,87 +2788,87 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
             return;
          }
 
-         uint32_t first = desc->Texture3D.FirstWSlice;
-         uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
-         uint32_t count = desc->Texture3D.WSize;
-
-         if (count == UINT32_MAX)
-            count = layers - MIN2(first, layers);
-
-         /* The render-segment layout currently describes mip zero. Keep the
-          * newly enabled 3D path deliberately bounded to that proven layout;
-          * other mips need their own width, height, and layer-stride state. */
-         if (desc->Texture3D.MipSlice != 0 || first >= layers || !count ||
-             count > layers - first) {
-            mesa_loge("CreateRenderTargetView: 3D W range %u+%u/%u mip %u "
-                      "out of range", first, count, layers,
-                      desc->Texture3D.MipSlice);
+         view_level = desc->Texture3D.MipSlice;
+         first_layer = desc->Texture3D.FirstWSlice;
+         view_layers = desc->Texture3D.WSize;
+      } else if (is_1d) {
+         if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE1D) {
+            view_level = desc->Texture1D.MipSlice;
+            view_layers = 1;
+         } else if (desc->ViewDimension ==
+                    D3D12_RTV_DIMENSION_TEXTURE1DARRAY) {
+            view_level = desc->Texture1DArray.MipSlice;
+            first_layer = desc->Texture1DArray.FirstArraySlice;
+            view_layers = desc->Texture1DArray.ArraySize;
+         } else {
+            mesa_loge("CreateRenderTargetView: 1D view dimension %d "
+                      "unsupported", (int)desc->ViewDimension);
             slot->resource = NULL;
             return;
          }
-
-         slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
-         view_layers = count;
       } else if (samples > 1) {
          /* MSAA resources are necessarily single-level, but may expose a
           * bounded array-slice range just like ordinary 2D arrays. */
          if (desc->ViewDimension ==
              D3D12_RTV_DIMENSION_TEXTURE2DMSARRAY) {
-            uint32_t first = desc->Texture2DMSArray.FirstArraySlice;
-            uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
-            uint32_t count = desc->Texture2DMSArray.ArraySize;
-            if (count == UINT32_MAX)
-               count = layers - MIN2(first, layers);
-            if (first >= layers || !count || count > layers - first) {
-               mesa_loge("CreateRenderTargetView: MSAA array range "
-                         "%u+%u/%u out of range", first, count, layers);
-               slot->resource = NULL;
-               return;
-            }
-            slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
-            view_layers = count;
+            first_layer = desc->Texture2DMSArray.FirstArraySlice;
+            view_layers = desc->Texture2DMSArray.ArraySize;
          } else if (desc->ViewDimension !=
                     D3D12_RTV_DIMENSION_TEXTURE2DMS) {
             mesa_loge("CreateRenderTargetView: multisample view dimension %d "
                       "unsupported", (int)desc->ViewDimension);
             slot->resource = NULL;
             return;
+         } else {
+            view_layers = 1;
          }
       } else if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DARRAY) {
-         uint32_t first = desc->Texture2DArray.FirstArraySlice;
-         uint32_t layers = MAX2(res->desc.DepthOrArraySize, 1);
-         uint32_t count = desc->Texture2DArray.ArraySize;
-
-         if (count == UINT32_MAX)
-            count = layers - MIN2(first, layers);
-
-         if (desc->Texture2DArray.MipSlice != 0 || first >= layers ||
-             !count || count > layers - first) {
-            mesa_loge("CreateRenderTargetView: array range %u+%u/%u mip %u "
-                      "out of range", first, count, layers,
-                      desc->Texture2DArray.MipSlice);
+         if (desc->Texture2DArray.PlaneSlice != 0) {
+            mesa_loge("CreateRenderTargetView: plane slice %u unsupported",
+                      desc->Texture2DArray.PlaneSlice);
             slot->resource = NULL;
             return;
          }
-
-         slice_offset_B = (uint64_t)first * res->layout.layer_stride_B;
-         view_layers = count;
+         view_level = desc->Texture2DArray.MipSlice;
+         first_layer = desc->Texture2DArray.FirstArraySlice;
+         view_layers = desc->Texture2DArray.ArraySize;
       } else if (desc->ViewDimension != D3D12_RTV_DIMENSION_TEXTURE2D) {
          mesa_loge("CreateRenderTargetView: view dimension %d unsupported",
                    (int)desc->ViewDimension);
          slot->resource = NULL;
          return;
-      } else if (desc->Texture2D.MipSlice != 0) {
-         mesa_loge("CreateRenderTargetView: mip slice %u unsupported",
-                   desc->Texture2D.MipSlice);
-         slot->resource = NULL;
-         return;
-      }
-
-      if (desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2D ||
-          desc->ViewDimension == D3D12_RTV_DIMENSION_TEXTURE2DMS)
+      } else {
+         if (desc->Texture2D.PlaneSlice != 0) {
+            mesa_loge("CreateRenderTargetView: plane slice %u unsupported",
+                      desc->Texture2D.PlaneSlice);
+            slot->resource = NULL;
+            return;
+         }
+         view_level = desc->Texture2D.MipSlice;
          view_layers = 1;
+      }
    }
+
+   struct d12_attachment_view view;
+   const struct d12_attachment_view_request request = {
+      .width = res->layout.width_px,
+      .height = res->layout.height_px,
+      .levels = res->layout.levels,
+      .layers = res->layout.depth_px,
+      .mip = view_level,
+      .first_layer = first_layer,
+      .layer_count = view_layers,
+      .mipmapped_layers = is_3d,
+   };
+   if (!d12_attachment_view_resolve(&request, &view)) {
+      mesa_loge("CreateRenderTargetView: layer range %u+%u at mip %u is out "
+                "of range", first_layer, view_layers, view_level);
+      slot->resource = NULL;
+      return;
+   }
+   first_layer = view.first_layer;
+   view_level = view.mip;
+   view_layers = view.layer_count;
 
    slot->resource = res;
    /* The interpretation the shader and the clear path must both use --
@@ -2871,10 +2877,15 @@ d12_device_CreateRenderTargetView(ID3D12Device2 *iface,
     */
    slot->format = view_format;
    slot->kind = D12_DESC_RTV;
-   slot->address = res->addr + slice_offset_B;
-   /* RTV descriptors are never shader-visible. Reuse the buffer-size field
-    * for the number of consecutive array layers selected by the view. */
-   slot->size_B = view_layers;
+   /* Keep the attachment at the first selected layer's miptree base. The AGX
+    * texture/PBE descriptors carry view_level explicitly; pre-offsetting both
+    * the address and the level would apply the mip offset twice. */
+   slot->address = res->addr +
+                   (uint64_t)first_layer * res->layout.layer_stride_B;
+   /* RTV descriptors are CPU-only. Reuse their texture metadata words for
+    * the selected layer count and mip without growing the descriptor ABI. */
+   slot->texture_layers = view_layers;
+   slot->texture_level = view_level;
 }
 
 static void STDMETHODCALLTYPE

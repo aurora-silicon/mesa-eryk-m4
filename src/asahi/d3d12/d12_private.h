@@ -1234,10 +1234,10 @@ struct d12_write_tracker {
 };
 
 struct d12_segment {
-   /* Base addresses of the render target SLICES this pass writes. A
-    * TEXTURE2DARRAY RTV selects one layer, and layers are contiguous at
+   /* Base addresses of the render target SLICES this pass writes. Array and
+    * 3D RTVs may select a bounded layer range; layers are contiguous at
     * layer_stride_B, so the view carries an offset the resource does not.
-    * Using rt->bo->va->addr here would write every array slice to layer 0.
+    * Using rt->bo->va->addr here would write every such view to layer 0.
     */
    uint64_t rt_address[AGX_MAX_RENDER_TARGETS];
 
@@ -1281,6 +1281,7 @@ struct d12_segment {
    struct agx_tilebuffer_layout tib;
    struct d12_resource *rt[AGX_MAX_RENDER_TARGETS];
    enum pipe_format rt_view_format[AGX_MAX_RENDER_TARGETS];
+   uint8_t rt_level[AGX_MAX_RENDER_TARGETS];
    uint8_t rt_count;
    uint8_t rt_write_mask;
    bool merge_unused_rts;

@@ -12,12 +12,13 @@ one renderer core shared with the existing public COM frontend.
 ## 1. Complete source inventory and ownership
 
 The inventoried COM/core baseline was 48,249 lines before this frontend. The
-current shared tree is 62,835 lines across C/header sources, excluding tests
+current shared tree is 71,865 lines across C/header sources, excluding tests
 and documentation. Its renderer is split by object kind even though the
 original public entry surface is COM.
 
 | source | current responsibility | WDDM reuse/seam |
 |---|---|---|
+| `d12_attachment_view_core.c` | frontend-neutral attachment mip/layer resolution and bounds | Used by shared view creation and a portable host unit test, keeping DDI and COM attachment semantics identical. |
 | `d12_device.c` | COM device, feature queries, view creation, device-wide AGX allocations | `d12_device_backend_init/cleanup` now initialize the AGX compiler/render payload independently of platform discovery; both frontends can use it. |
 | `d12_cmd.c` | command allocator/list state, draw/dispatch/copy/barrier lowering, USC/PPP/VDM/CDM encoding | Reuse the recorder and encoding directly; DDI command-list methods translate DDI descriptors/handles into these calls. |
 | `d12_pipeline.c` | graphics/compute/mesh PSO parsing, shader compilation, linking and caches | Reuse directly. DDI runtime-owned private PSO memory stores a core PSO pointer until allocation is made intrusive. |
@@ -318,6 +319,15 @@ permitting padding or truncation beyond the real backing allocation. The
 frontend supports descriptor heaps and SRV/UAV/RTV/DSV/CBV/sampler creation,
 mapping, GPU virtual addresses, exact allocation-handle queries, subresource
 layout queries and the D3D12 MakeResident/Evict callback model.
+
+RTV translation retains the selected mip and the complete array/W-slice range
+from the DDI descriptor through the shared renderer.  A frontend-neutral,
+host-tested range resolver validates ordinary array layers and the mip-reduced
+depth of 3D images.  Render-segment compatibility, dimensions, AGX background
+loads, PBE stores and partial clears all consume that resolved view, so legal
+1D attachments and nonzero-mip 2D/3D attachments no longer collapse to level
+zero.  Nonzero RTV plane slices fail closed because the currently advertised
+renderable format set has no planar render-target representation.
 
 Resource-only creation implements both reserved resources and the baseline
 `ReuseBufferGPUVA` capture path. For capture, the frontend validates the source

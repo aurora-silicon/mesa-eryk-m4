@@ -16,6 +16,7 @@ if not dep_dxheaders_d12.found()
 endif
 
 libd3d12agx_files = files(
+  'd12_attachment_view_core.c',
   'd12_core_caps.c',
   'd12_dxbc_wrap.c',
   'd12_cmd.c',

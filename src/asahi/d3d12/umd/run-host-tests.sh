@@ -34,6 +34,12 @@ for target in 20 21; do
 done
 
 "$cc" "$common[@]" \
+    "$d12_dir/d12_attachment_view_core.c" \
+    "$d12_dir/tests/d12_attachment_view_core_tests.c" \
+    -o "$out/d12_attachment_view_core_tests"
+"$out/d12_attachment_view_core_tests"
+
+"$cc" "$common[@]" \
     "$d12_dir/d12_core_caps.c" "$d12_dir/tests/d12_core_caps_tests.c" \
     -o "$out/d12_core_caps_tests"
 "$out/d12_core_caps_tests"

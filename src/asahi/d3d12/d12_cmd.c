@@ -1046,8 +1046,8 @@ d12_list_dispatch_indirect_patches(
 
 /*
  * Build the USC words for a background (clear) or end-of-tile (store)
- * program targeting one RGBA8 linear render target. Mirrors
- * hk_build_bg_eot for the single-RT, non-layered, single-sampled case.
+ * program targeting the render segment's selected subresources. Mirrors
+ * hk_build_bg_eot for the bounded RT/layer/sample subset used here.
  */
 static uint32_t
 d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
@@ -1074,6 +1074,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
       enum agx_bg_eot_op op = ops[rt_index];
       struct d12_resource *rt = seg->rt[rt_index];
       uint64_t rt_address = seg->rt_address[rt_index];
+      unsigned rt_level = seg->rt_level[rt_index];
       enum pipe_format type_format = seg->rt_view_format[rt_index];
       key.op[rt_index] = op;
 
@@ -1170,8 +1171,8 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             cfg.address = rt_address;
             cfg.width = rt->layout.width_px;
             cfg.height = rt->layout.height_px;
-            cfg.first_level = 0;
-            cfg.last_level = 0;
+            cfg.first_level = rt_level;
+            cfg.last_level = rt_level;
             cfg.unk_mipmapped = rt->layout.levels > 1;
 
             if (samples > 1)
@@ -1213,7 +1214,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
       } else if (op == AGX_EOT_STORE) {
 
          /* EOT uses the view's channel interpretation but the resource's actual
-          * memory layout. This is the single-layer, level-0 subset of
+          * memory layout. This is the bounded attachment subset of
           * hk_image_view.c::pack_pbe.
           */
          struct agx_pbe_packed desc;
@@ -1265,7 +1266,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             cfg.buffer = rt_address;
             cfg.width = rt->layout.width_px;
             cfg.height = rt->layout.height_px;
-            cfg.level = 0;
+            cfg.level = rt_level;
             cfg.levels = rt->layout.levels;
             cfg.unk_mipmapped = rt->layout.levels > 1;
             if (samples > 1)
@@ -1371,6 +1372,7 @@ d12_segment_matches_bindings(const struct d12_cmd_list *list,
       if (rtv->resource &&
           (seg->rt_address[i] != rtv->address ||
            seg->rt_view_format[i] != d12_format_to_pipe(rtv->format) ||
+           seg->rt_level[i] != rtv->texture_level ||
            seg->layers != MAX2(rtv->size_B, 1)))
          return false;
    }
@@ -1507,12 +1509,17 @@ d12_list_begin_render(struct d12_cmd_list *list,
       bound_rt_mask |= BITFIELD_BIT(i);
       seg->rt_address[i] = rtv->address ? rtv->address : rtv->resource->addr;
       seg->rt_view_format[i] = view_pf;
+      seg->rt_level[i] = (uint8_t)rtv->texture_level;
 
       if (getenv("D3D12AGX_VALIDATE_MRT")) {
          const uint64_t bo_start = rtv->resource->bo->va->addr;
          const uint64_t bo_end = bo_start + rtv->resource->bo->size;
          const uint64_t span =
-            (uint64_t)rtv->resource->layout.layer_stride_B * layers;
+            (uint64_t)rtv->resource->layout.layer_stride_B * (layers - 1) +
+            ail_get_level_offset_B(&rtv->resource->layout,
+                                   rtv->texture_level) +
+            ail_get_level_size_B(&rtv->resource->layout,
+                                 rtv->texture_level);
          if (seg->rt_address[i] < bo_start || seg->rt_address[i] >= bo_end ||
              span > bo_end - seg->rt_address[i]) {
             mesa_loge("MRT validate: RT%u address 0x%llx span 0x%llx is "
@@ -1533,12 +1540,18 @@ d12_list_begin_render(struct d12_cmd_list *list,
       rt_samples = samples;
       seg->layers = layers;
       if (!bound_rts) {
-         seg->width_px = rtv->resource->layout.width_px;
-         seg->height_px = rtv->resource->layout.height_px;
+         seg->width_px = u_minify(rtv->resource->layout.width_px,
+                                  rtv->texture_level);
+         seg->height_px = u_minify(rtv->resource->layout.height_px,
+                                   rtv->texture_level);
       } else {
-         seg->width_px = MIN2(seg->width_px, rtv->resource->layout.width_px);
+         seg->width_px =
+            MIN2(seg->width_px,
+                 u_minify(rtv->resource->layout.width_px,
+                           rtv->texture_level));
          seg->height_px = MIN2(seg->height_px,
-                               rtv->resource->layout.height_px);
+                               u_minify(rtv->resource->layout.height_px,
+                                         rtv->texture_level));
       }
       bound_rts++;
    }
@@ -10159,31 +10172,66 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
    if (num_rects != 0) {
       struct d12_resource *res = rtv->resource;
       struct d12_copy_surface surface;
-      if (!d12_copy_surface_from_texture(&surface, res, 0,
-                                         "partial-clear destination")) {
-         list->state = D12_LIST_ERROR;
-         return;
-      }
-
-      if (rtv->address < res->addr) {
+      if (rtv->address < res->addr || !res->layout.layer_stride_B) {
          mesa_loge("ClearRenderTargetView: RTV address precedes its resource");
          list->state = D12_LIST_ERROR;
          return;
       }
 
       const uint64_t view_offset_B = rtv->address - res->addr;
-      if (view_offset_B > res->layout.size_B ||
-          surface.size_B > res->layout.size_B - view_offset_B) {
-         mesa_loge("ClearRenderTargetView: RTV slice exceeds its resource");
+      if (view_offset_B % res->layout.layer_stride_B) {
+         mesa_loge("ClearRenderTargetView: RTV layer address is misaligned");
          list->state = D12_LIST_ERROR;
          return;
       }
-      surface.base = rtv->address;
-      surface.storage_offset_B = res->offset_B + view_offset_B;
+
+      const unsigned level = rtv->texture_level;
+      const uint64_t first_layer64 =
+         view_offset_B / res->layout.layer_stride_B;
+      if (level >= res->layout.levels) {
+         mesa_loge("ClearRenderTargetView: RTV mip is out of range");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      const unsigned resource_layers =
+         res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D
+            ? u_minify(res->layout.depth_px, level)
+            : res->layout.depth_px;
+      const unsigned view_layers = MAX2(rtv->texture_layers, 1);
+      if (first_layer64 >= resource_layers ||
+          view_layers > resource_layers - first_layer64) {
+         mesa_loge("ClearRenderTargetView: RTV subresource is out of range");
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      const unsigned first_layer = (unsigned)first_layer64;
+      unsigned subresource = level;
+      if (res->desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+         subresource += first_layer * res->layout.levels;
+      if (!d12_copy_surface_from_texture(&surface, res, subresource,
+                                         "partial-clear destination")) {
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+      if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+         surface.base +=
+            (uint64_t)first_layer * res->layout.layer_stride_B;
+         surface.storage_offset_B +=
+            (uint64_t)first_layer * res->layout.layer_stride_B;
+         surface.depth_px = view_layers;
+         surface.size_B =
+            (uint64_t)(view_layers - 1) * res->layout.layer_stride_B +
+            ail_get_level_size_B(&res->layout, level);
+      }
       if (!d12_copy_surface_check_storage(&surface,
                                           "partial-clear destination")) {
          list->state = D12_LIST_ERROR;
          return;
+      }
+      if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
+         surface.depth_px = 1;
+         surface.size_B = ail_get_level_size_B(&res->layout, level);
       }
 
       enum pipe_format format = d12_format_to_pipe(rtv->format);
@@ -10222,38 +10270,51 @@ d12_list_ClearRenderTargetView(ID3D12GraphicsCommandList6 *iface,
       if (!value)
          return;
 
-      for (unsigned i = 0; i < num_rects; ++i) {
-         const int64_t left = MAX2((int64_t)rects[i].left, 0);
-         const int64_t top = MAX2((int64_t)rects[i].top, 0);
-         const int64_t right =
-            MIN2((int64_t)rects[i].right, (int64_t)surface.width_px);
-         const int64_t bottom =
-            MIN2((int64_t)rects[i].bottom, (int64_t)surface.height_px);
-
-         if (right <= left || bottom <= top)
-            continue;
-
-         const uint32_t width = right - left;
-         const uint32_t height = bottom - top;
-         struct libagx_fill_image_args args = {
-            .dest = surface.base,
-            .value = value,
-            .width_el = width,
-            .height_el = height,
-            .dest_x_el = left,
-            .dest_y_el = top,
-            .dest_pitch_B = surface.pitch_B,
-            .dest_stride_el = surface.stride_el,
-            .dest_tile_width_el = surface.tile_width_el,
-            .dest_tile_height_el = surface.tile_height_el,
-            .blocksize_B = surface.blocksize_B,
-            .dest_tiled = surface.tiled,
-         };
-         d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args,
-                                   sizeof(args),
-                                   agx_1d((uint64_t)width * height));
-         if (list->state == D12_LIST_ERROR)
+      for (unsigned layer = 0; layer < view_layers; ++layer) {
+         struct d12_copy_surface layer_surface = surface;
+         layer_surface.base +=
+            (uint64_t)layer * res->layout.layer_stride_B;
+         layer_surface.storage_offset_B +=
+            (uint64_t)layer * res->layout.layer_stride_B;
+         if (!d12_copy_surface_check_storage(&layer_surface,
+                                             "partial-clear destination")) {
+            list->state = D12_LIST_ERROR;
             return;
+         }
+
+         for (unsigned i = 0; i < num_rects; ++i) {
+            const int64_t left = MAX2((int64_t)rects[i].left, 0);
+            const int64_t top = MAX2((int64_t)rects[i].top, 0);
+            const int64_t right = MIN2((int64_t)rects[i].right,
+                                       (int64_t)layer_surface.width_px);
+            const int64_t bottom = MIN2((int64_t)rects[i].bottom,
+                                        (int64_t)layer_surface.height_px);
+
+            if (right <= left || bottom <= top)
+               continue;
+
+            const uint32_t width = right - left;
+            const uint32_t height = bottom - top;
+            struct libagx_fill_image_args args = {
+               .dest = layer_surface.base,
+               .value = value,
+               .width_el = width,
+               .height_el = height,
+               .dest_x_el = left,
+               .dest_y_el = top,
+               .dest_pitch_B = layer_surface.pitch_B,
+               .dest_stride_el = layer_surface.stride_el,
+               .dest_tile_width_el = layer_surface.tile_width_el,
+               .dest_tile_height_el = layer_surface.tile_height_el,
+               .blocksize_B = layer_surface.blocksize_B,
+               .dest_tiled = layer_surface.tiled,
+            };
+            d12_list_dispatch_precomp(list, LIBAGX_FILL_IMAGE, &args,
+                                      sizeof(args),
+                                      agx_1d((uint64_t)width * height));
+            if (list->state == D12_LIST_ERROR)
+               return;
+         }
       }
       return;
    }
