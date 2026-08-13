@@ -188,7 +188,9 @@ main(int argc, char **argv)
    if (!root_sig)
       return 1;
 
-   /* THE INPUT LAYOUT. nir_to_dxil names generic vertex inputs
+   /* THE INPUT LAYOUT. Slot 31 proves that the API's 32 binding slots are
+    * distinct from AGX's 16-live-attribute limit. nir_to_dxil names generic
+    * vertex inputs
     * TEXCOORD<driver_location>, so these semantic names are what vb_vs
     * actually declares -- they are not a stylistic choice.
     */
@@ -196,13 +198,13 @@ main(int argc, char **argv)
       {.SemanticName = "TEXCOORD",
        .SemanticIndex = 0,
        .Format = DXGI_FORMAT_R32G32_FLOAT,
-       .InputSlot = 0,
+       .InputSlot = 31,
        .AlignedByteOffset = 0,
        .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA},
       {.SemanticName = "TEXCOORD",
        .SemanticIndex = 1,
        .Format = DXGI_FORMAT_R32G32B32A32_FLOAT,
-       .InputSlot = 0,
+       .InputSlot = 31,
        .AlignedByteOffset = 8,
        .InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA},
    };
@@ -396,7 +398,7 @@ main(int argc, char **argv)
    ID3D12GraphicsCommandList_ClearRenderTargetView(list, rtv1, clear, 0, NULL);
    ID3D12GraphicsCommandList_OMSetRenderTargets(list, 1, &rtv1, FALSE, NULL);
    ID3D12GraphicsCommandList_SetPipelineState(list, subject_pso);
-   ID3D12GraphicsCommandList_IASetVertexBuffers(list, 0, 1, &vbv);
+   ID3D12GraphicsCommandList_IASetVertexBuffers(list, 31, 1, &vbv);
    ID3D12GraphicsCommandList_DrawInstanced(list, 3, 1, 0, 0);
 
    for (int i = 0; i < 2; i++) {

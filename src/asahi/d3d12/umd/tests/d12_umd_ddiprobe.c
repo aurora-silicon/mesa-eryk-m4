@@ -1692,7 +1692,12 @@ wmain(int argc, wchar_t **argv)
             mutable_arguments[2].Type =
                D3D12DDI_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW;
             mutable_arguments[2].ShaderResourceView.RootParameterIndex = 2;
-            mutable_arguments[1].VertexBuffer.Slot = 16;
+            mutable_arguments[1].VertexBuffer.Slot = 31;
+            require_result(
+               device_table.pfnCalcPrivateCommandSignatureSize(
+                  driver_device, &mutable_signature) > 0,
+               "accept highest indirect vertex-buffer slot");
+            mutable_arguments[1].VertexBuffer.Slot = 32;
             require_result(
                device_table.pfnCalcPrivateCommandSignatureSize(
                   driver_device, &mutable_signature) == 0,

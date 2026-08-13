@@ -168,7 +168,7 @@ d12_umd_command_signature_desc_valid(
       }
       case D12_INDIRECT_VERTEX_BUFFER_VIEW: {
          uint32_t slot = argument->root_parameter_index;
-         if (slot >= 16 ||
+         if (slot >= D12_FRONTEND_MAX_VERTEX_BUFFERS ||
              (vertex_buffer_mask & (UINT32_C(1) << slot)))
             return false;
          vertex_buffer_mask |= UINT32_C(1) << slot;

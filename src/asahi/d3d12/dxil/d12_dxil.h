@@ -908,7 +908,11 @@ struct nir_shader;
  *             multiplies it by the element index directly
  */
 #define D12_MAX_VB_ATTRIBS          16
-#define D12_MAX_VB_SLOTS            16
+/* D3D12 exposes 32 independently bindable vertex-buffer slots. AGX still
+ * consumes at most 16 live attributes, but those attributes may reference
+ * any of the API slots, so the command-list binding state must not collapse
+ * the two distinct limits. */
+#define D12_MAX_VB_SLOTS            32
 #define D12_VB_OFF_BASE             0
 #define D12_VB_OFF_CLAMP            (8 * D12_MAX_VB_ATTRIBS)
 #define D12_VB_OFF_STRIDE                                                    \

@@ -61,7 +61,7 @@ test_command_signatures(void)
    assert(!d12_umd_command_signature_desc_valid(&desc, &root));
    arguments[1].root_parameter_index = 1;
 
-   arguments[4].root_parameter_index = 16;
+   arguments[4].root_parameter_index = 32;
    assert(!d12_umd_command_signature_desc_valid(&desc, &root));
    arguments[4].root_parameter_index = 7;
 
@@ -122,6 +122,19 @@ test_command_signatures(void)
       };
       assert(!d12_umd_command_signature_desc_valid(&duplicate_vb_desc,
                                                     NULL));
+
+      struct d12_frontend_indirect_argument_desc high_vb[] = {
+         {.type = 3, .root_parameter_index = 31},
+         {.type = 0},
+      };
+      const struct d12_frontend_command_signature_desc high_vb_desc = {
+         .byte_stride = 32,
+         .argument_count = 2,
+         .arguments = high_vb,
+      };
+      assert(d12_umd_command_signature_desc_valid(&high_vb_desc, NULL));
+      high_vb[0].root_parameter_index = 32;
+      assert(!d12_umd_command_signature_desc_valid(&high_vb_desc, NULL));
    }
 }
 
