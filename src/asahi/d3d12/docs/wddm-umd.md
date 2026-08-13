@@ -264,7 +264,10 @@ heap is one runtime-owned `agx_bo` and one shared `d12_heap`; placed buffers and
 textures use the existing `d12_resource` and `ail` layout implementation. The
 renderer seam is transactional: a failed or malformed heap/open/resource
 result destroys every backend object already returned, clears the runtime's
-private storage, and never links a half-created heap into the device. The
+private storage, and never links a half-created heap into the device. Newly
+created and opened heaps both read their allocation and KMD-resource handles
+from the locked winsys identity record, so reflection, DXGI identity rotation
+and destruction operate on the same dxgkrnl objects. The
 frontend supports descriptor heaps and SRV/UAV/RTV/DSV/CBV/sampler creation,
 mapping, GPU virtual addresses, exact allocation-handle queries, subresource
 layout queries and the D3D12 MakeResident/Evict callback model.

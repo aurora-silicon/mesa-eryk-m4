@@ -2127,10 +2127,19 @@ d12_device_runtime_heap_create(
    result = d12_heap_create_from_bo(device, &heap_desc, bo,
                                     &IID_ID3D12Heap, (void **)&heap);
    if (SUCCEEDED(result)) {
-      out_allocation->allocation = bo->uapi_handle;
-      out_allocation->gpu_virtual_address = bo->va ? bo->va->addr : 0;
-      out_allocation->size = bo->size;
-      *out_heap = heap;
+      uint32_t allocation;
+      uint32_t resource;
+      if (!agx_d3dkmt_bo_runtime_identity(&device->dev, bo, &allocation,
+                                          &resource)) {
+         ID3D12Heap_Release(heap);
+         result = E_FAIL;
+      } else {
+         out_allocation->allocation = allocation;
+         out_allocation->resource = resource;
+         out_allocation->gpu_virtual_address = bo->va ? bo->va->addr : 0;
+         out_allocation->size = bo->size;
+         *out_heap = heap;
+      }
    }
    agx_bo_unreference(&device->dev, bo);
    return result;

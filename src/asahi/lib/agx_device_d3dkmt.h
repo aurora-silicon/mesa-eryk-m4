@@ -140,6 +140,15 @@ struct agx_bo *agx_d3dkmt_bo_open_runtime_resource(
    enum agx_bo_flags flags, void *runtime_resource,
    uint32_t allocation, uint32_t resource, const char *label);
 
+/* Read the dxgkrnl allocation/resource identity owned by a runtime-resource
+ * BO. Both handles are required by D3D12's existing-resource reflection and
+ * must come from the same locked winsys record as lifetime/identity rotation.
+ */
+bool agx_d3dkmt_bo_runtime_identity(struct agx_device *dev,
+                                    struct agx_bo *bo,
+                                    uint32_t *allocation,
+                                    uint32_t *resource);
+
 /* Rotate live DXGI runtime-resource identities without moving the BO
  * objects or their pointer-sized runtime lifetime tokens.  Kernel allocation
  * handles, KMD resource handles, GPU-VA objects, mappings and writer state

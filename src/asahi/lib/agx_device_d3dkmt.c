@@ -1670,6 +1670,24 @@ d3dkmt_bo_record(struct agx_device *dev, struct agx_bo *bo,
    return true;
 }
 
+bool
+agx_d3dkmt_bo_runtime_identity(struct agx_device *dev, struct agx_bo *bo,
+                               uint32_t *allocation, uint32_t *resource)
+{
+   struct agx_d3dkmt_allocation_record record;
+
+   if (!allocation || !resource || !d3dkmt_bo_record(dev, bo, &record) ||
+       !record.allocation || !record.resource || !record.runtime_resource ||
+       record.external_type != AGX_D3DKMT_EXTERNAL_MEMORY_NONE) {
+      errno = EINVAL;
+      return false;
+   }
+
+   *allocation = record.allocation;
+   *resource = record.resource;
+   return true;
+}
+
 int
 agx_d3dkmt_bo_make_resident(struct agx_device *dev, struct agx_bo *bo)
 {
