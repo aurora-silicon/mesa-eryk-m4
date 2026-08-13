@@ -2218,7 +2218,8 @@ d12_device_runtime_resource_create_placed(
    }
    return d12_resource_create_placed(
       device, d12_memheap_from_iface((ID3D12Heap *)heap), offset,
-      &resource_desc, (D3D12_RESOURCE_STATES)desc->initial_state, clear,
+      &resource_desc, desc->row_pitch, desc->slice_pitch,
+      (D3D12_RESOURCE_STATES)desc->initial_state, clear,
       &IID_ID3D12Resource, out_resource);
 }
 
@@ -2252,7 +2253,8 @@ d12_device_runtime_resource_create_reused(
       clear = &translated_clear;
    }
    return d12_resource_create_reused(
-      device, source, source_offset, &resource_desc,
+      device, source, source_offset, &resource_desc, desc->row_pitch,
+      desc->slice_pitch,
       (D3D12_RESOURCE_STATES)desc->initial_state, clear,
       &IID_ID3D12Resource, out_resource);
 }
@@ -2266,7 +2268,8 @@ d12_device_runtime_resource_create_reserved(
    D3D12_CLEAR_VALUE translated_clear;
    D3D12_CLEAR_VALUE *clear = NULL;
 
-   if (!device || !out_resource ||
+   if (!device || !out_resource || !desc || desc->row_pitch ||
+       desc->slice_pitch ||
        !d12_device_runtime_resource_desc(desc, &resource_desc))
       return E_INVALIDARG;
    *out_resource = NULL;
@@ -2327,14 +2330,27 @@ d12_device_runtime_resource_allocation_info(
 {
    D3D12_RESOURCE_DESC resource_desc;
    D3D12_RESOURCE_ALLOCATION_INFO native;
+   uint64_t explicit_row_major_size = 0;
 
    if (!device || !info || visible_node_mask > 1 ||
        !d12_device_runtime_resource_desc(desc, &resource_desc))
+      return E_INVALIDARG;
+   if (!d12_resource_explicit_row_major_size(
+          &resource_desc, desc->row_pitch, desc->slice_pitch,
+          &explicit_row_major_size))
       return E_INVALIDARG;
    d12_device_get_resource_allocation_info_runtime(
       device, visible_node_mask, &resource_desc, &native);
    if (native.SizeInBytes == UINT64_MAX)
       return E_INVALIDARG;
+   if (explicit_row_major_size) {
+      if (!native.Alignment ||
+          explicit_row_major_size > UINT64_MAX - (native.Alignment - 1))
+         return E_INVALIDARG;
+      native.SizeInBytes =
+         (explicit_row_major_size + native.Alignment - 1) &
+         ~(native.Alignment - 1);
+   }
    *info = (struct d12_frontend_resource_allocation_info){
       .size = native.SizeInBytes,
       .alignment = native.Alignment,

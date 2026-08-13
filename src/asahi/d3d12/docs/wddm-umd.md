@@ -87,6 +87,7 @@ official DDI pages are:
 - <https://learn.microsoft.com/windows-hardware/drivers/ddi/d3d12umddi/nc-d3d12umddi-pfnd3d12ddi_fillddittable>
 - <https://learn.microsoft.com/windows-hardware/drivers/ddi/d3dkmthk/nf-d3dkmthk-d3dkmtenumadapters2>
 - <https://microsoft.github.io/DirectX-Specs/d3d/ResourceHeaps.html>
+- <https://github.com/microsoft/graphics-driver-samples/blob/master/compute-only-sample/cosumd12/CosUmd12Adapter.cpp>
 
 ### Version matrix
 
@@ -236,10 +237,15 @@ reservation granularity remain separate, as already encoded and host-tested
 in `agx_d3dkmt_core`.  Resource layout selection remains `ail`; WDDM supplies
 allocation ownership and residency, not a new texture layout implementation.
 The pre-device texture-layout query reports zero private layouts/swizzles and
-does not advertise row-major textures. Buffers retain their required row-major
-layout. Row-major textures remain gated until the frontend descriptor seam
-preserves the runtime's explicit row and depth pitches instead of silently
-recomputing them.
+advertises the precise row-major layout subset accepted by the shared AGX
+renderer: cross-adapter 2D textures with one mip, one array layer and one
+sample, no depth/stencil or unordered-access use, uncompressed elements no
+larger than 16 bytes, a 512-byte base alignment, and a 256-byte row-pitch
+alignment. Buffers retain their required row-major layout. The DDI seam
+preserves the runtime's exact row and slice pitches in the frontend descriptor,
+the versioned open-resource blob and the shared renderer layout. It rejects
+pitch overflow, a non-tight slice pitch and any shape or flag outside that
+advertised subset instead of silently recomputing a different layout.
 
 Heap/resource creation is attached to the real renderer object graph. A DDI
 heap is one runtime-owned `agx_bo` and one shared `d12_heap`; placed buffers and
@@ -435,7 +441,7 @@ does not alter the native D3D12 ABI or command ordering.
 |---|---|---|
 | A. adapter | ARM64 DLL loads, `OpenAdapter12` validates Apple identity, returns exact adapter table/version/caps | implemented, including conservative texture-layout discovery, and statically/host tested |
 | B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; runtime error callback used on void-call failure | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
-| C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; unsupported foreign metadata fails closed |
+| C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; unsupported foreign metadata fails closed |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
 | E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, execute aggregation and placement-fence GPU signal/ordered wait implemented; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including discard remapping, optional discard output and CPU-only core objects; device removal and pressure validation pending |

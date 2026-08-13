@@ -108,6 +108,7 @@ static unsigned sparse_copy_tiles_calls;
 static unsigned reused_create_calls;
 static unsigned reused_destroy_calls;
 static bool reused_create_null;
+static bool reused_expect_row_major;
 
 static HRESULT
 test_sparse_create_reserved(
@@ -230,11 +231,20 @@ test_reused_resource_allocation_info(
    struct d12_frontend_resource_allocation_info *info)
 {
    if (device != TEST_BLT_DEVICE || !desc || !info ||
-       visible_node_mask != 1 || desc->dimension != D3D12DDI_RT_BUFFER ||
-       desc->width != UINT64_C(0x10000) || desc->height != 1 ||
-       desc->depth_or_array_size != 1 || desc->mip_levels != 1 ||
-       desc->format != DXGI_FORMAT_UNKNOWN || desc->sample_count != 1 ||
-       desc->layout != D3D12DDI_TL_ROW_MAJOR)
+       visible_node_mask != 1 || desc->depth_or_array_size != 1 ||
+       desc->mip_levels != 1 ||
+       desc->sample_count != 1 || desc->layout != D3D12DDI_TL_ROW_MAJOR)
+      return E_INVALIDARG;
+   if (reused_expect_row_major
+          ? (desc->dimension != D3D12DDI_RT_TEXTURE2D ||
+             desc->width != 64 || desc->height != 4 ||
+             desc->format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+             desc->row_pitch != 256 || desc->slice_pitch != 1024 ||
+             !(desc->flags & D12_FRONTEND_RESOURCE_ALLOW_CROSS_ADAPTER))
+          : (desc->dimension != D3D12DDI_RT_BUFFER ||
+             desc->width != UINT64_C(0x10000) || desc->height != 1 ||
+             desc->format != DXGI_FORMAT_UNKNOWN || desc->row_pitch ||
+             desc->slice_pitch))
       return E_INVALIDARG;
    *info = (struct d12_frontend_resource_allocation_info){
       .size = UINT64_C(0x10000),
@@ -252,8 +262,14 @@ test_create_reused_resource(
 {
    if (device != TEST_BLT_DEVICE || source_resource != TEST_REUSE_SOURCE ||
        source_offset != UINT64_C(0x10000) || !desc || clear_value ||
-       !out_resource || desc->dimension != D3D12DDI_RT_BUFFER ||
-       desc->width != UINT64_C(0x10000))
+       !out_resource ||
+       (reused_expect_row_major
+           ? (desc->dimension != D3D12DDI_RT_TEXTURE2D ||
+              desc->width != 64 || desc->row_pitch != 256 ||
+              desc->slice_pitch != 1024)
+           : (desc->dimension != D3D12DDI_RT_BUFFER ||
+              desc->width != UINT64_C(0x10000) || desc->row_pitch ||
+              desc->slice_pitch)))
       return E_INVALIDARG;
    ++reused_create_calls;
    *out_resource = reused_create_null ? NULL : TEST_REUSED_RESOURCE;
@@ -1006,8 +1022,8 @@ wmain(int argc, wchar_t **argv)
                         data.DeviceDependentLayoutCount == 0 &&
                         data.DeviceDependentSwizzleCount == 0 &&
                         !data.Supports64KStandardSwizzle &&
-                        !data.SupportsRowMajorTexture,
-                     "conservative texture-layout caps");
+                        data.SupportsRowMajorTexture,
+                     "row-major texture-layout caps");
       query.pInfo = &data.DeviceDependentLayoutCount;
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(result == E_INVALIDARG,
@@ -1032,6 +1048,48 @@ wmain(int argc, wchar_t **argv)
                            legacy_data.DeviceDependentSwizzleCount == 0 &&
                            !legacy_data.Supports64KStandardSwizzle,
                         "legacy texture-layout cap width");
+      }
+
+      {
+         UINT info[2] = {
+            D3D12DDI_TL_ROW_MAJOR,
+            D3D12DDI_FUNCUNIT_COMBINED,
+         };
+         D3D12DDI_ROW_MAJOR_LAYOUT_CAPS row_major;
+         D3D12DDIARG_GETCAPS row_major_query = {
+            .Type = D3D12DDICAPS_TYPE_TEXTURE_LAYOUT_SETS,
+            .pInfo = info,
+            .pData = &row_major,
+            .DataSize = sizeof(row_major),
+         };
+
+         memset(&row_major, 0xcc, sizeof(row_major));
+         result = functions.pfnGetCaps(open_arguments.hAdapter,
+                                       &row_major_query);
+         require_result(
+            result == S_OK && row_major.SubCaps[0].MaxElementSize == 16 &&
+               row_major.SubCaps[0].BaseOffsetAlignment == 512 &&
+               row_major.SubCaps[0].PitchAlignment == 256 &&
+               row_major.SubCaps[0].DepthPitchAlignment == 256 &&
+               !row_major.SubCaps[1].MaxElementSize &&
+               row_major.Flags == D3D12DDI_ROW_MAJOR_LAYOUT_FLAG_NONE,
+            "row-major combined-unit layout set");
+         info[1] = D3D12DDI_FUNCUNIT_COPY_DST;
+         result = functions.pfnGetCaps(open_arguments.hAdapter,
+                                       &row_major_query);
+         require_result(result == S_OK,
+                        "row-major copy-unit layout set");
+         info[0] = D3D12DDI_TL_UNDEFINED;
+         result = functions.pfnGetCaps(open_arguments.hAdapter,
+                                       &row_major_query);
+         require_result(result == E_NOTIMPL,
+                        "reject unknown texture-layout set");
+         info[0] = D3D12DDI_TL_ROW_MAJOR;
+         --row_major_query.DataSize;
+         result = functions.pfnGetCaps(open_arguments.hAdapter,
+                                       &row_major_query);
+         require_result(result == E_INVALIDARG,
+                        "reject wrong row-major-layout cap width");
       }
    }
 
@@ -2202,7 +2260,7 @@ wmain(int argc, wchar_t **argv)
                .Layout = D3D12DDI_TL_ROW_MAJOR,
             },
          };
-         D3D12DDIARG_CREATERESOURCE_0003 reused_arguments = {
+         const D3D12DDIARG_CREATERESOURCE_0003 buffer_reused_arguments = {
             .ReuseBufferGPUVA.BaseAddress.UMD = {
                .hResource = {.pDrvPrivate = &source_resource},
                .Offset = UINT64_C(0x10000),
@@ -2217,6 +2275,8 @@ wmain(int argc, wchar_t **argv)
             .Layout = D3D12DDI_TL_ROW_MAJOR,
             .InitialResourceState = D3D12DDI_RESOURCE_STATE_COMMON,
          };
+         D3D12DDIARG_CREATERESOURCE_0003 reused_arguments =
+            buffer_reused_arguments;
          const D3D12DDIARG_CREATEHEAP_0001 invalid_heap_arguments = {
             .ByteSize = UINT64_C(0x80000),
             .Alignment = UINT64_C(0x10000),
@@ -2286,6 +2346,52 @@ wmain(int argc, wchar_t **argv)
             "reject renderer success without capture resource object");
          HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
          reused_create_null = false;
+
+         {
+            const D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT row_major = {
+               .RowPitch = 256,
+               .SlicePitch = 1024,
+            };
+
+            reused_arguments = buffer_reused_arguments;
+            reused_arguments.ResourceType = D3D12DDI_RT_TEXTURE2D;
+            reused_arguments.Width = 64;
+            reused_arguments.Height = 4;
+            reused_arguments.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            reused_arguments.Flags =
+               D3D12DDI_RESOURCE_FLAG_0003_CROSS_ADAPTER |
+               D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE;
+            reused_arguments.pRowMajorLayout = &row_major;
+            reused_expect_row_major = true;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, NULL, &reused_arguments);
+            require_result(sizes.Heap == 0 && sizes.Resource > 0,
+                           "row-major capture resource private size");
+            resource_handle.pDrvPrivate = HeapAlloc(
+               GetProcessHeap(), HEAP_ZERO_MEMORY, sizes.Resource);
+            require_result(resource_handle.pDrvPrivate != NULL,
+                           "allocate row-major capture resource storage");
+            result = device_table.pfnCreateHeapAndResource(
+               driver_device, NULL, (D3D12DDI_HHEAP){0},
+               (D3D12DDI_HRTRESOURCE){0}, &reused_arguments, NULL,
+               resource_handle);
+            reused_resource = resource_handle.pDrvPrivate;
+            require_result(
+               result == S_OK && reused_resource->desc.pRowMajorLayout ==
+                                    &reused_resource->row_major &&
+                  reused_resource->row_major.RowPitch == 256 &&
+                  reused_resource->row_major.SlicePitch == 1024 &&
+                  reused_resource->allocation.allocation ==
+                     TEST_REUSE_ALLOCATION,
+               "preserve runtime row-major layout through capture seam");
+            device_table.pfnDestroyHeapAndResource(
+               driver_device, (D3D12DDI_HHEAP){0}, resource_handle);
+            require_result(reused_destroy_calls == 2,
+                           "destroy row-major capture resource");
+            HeapFree(GetProcessHeap(), 0, resource_handle.pDrvPrivate);
+            reused_expect_row_major = false;
+            reused_arguments = buffer_reused_arguments;
+         }
 
          reused_arguments.ReuseBufferGPUVA.BaseAddress.UMD.Offset = 1;
          sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(

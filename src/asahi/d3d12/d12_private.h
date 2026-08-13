@@ -413,6 +413,8 @@ void d12_device_get_resource_allocation_info_runtime(
 HRESULT d12_resource_create_placed(struct d12_device *device,
                                    struct d12_heap *heap, uint64_t offset_B,
                                    const D3D12_RESOURCE_DESC *desc,
+                                   uint32_t row_pitch_B,
+                                   uint32_t slice_pitch_B,
                                    D3D12_RESOURCE_STATES initial_state,
                                    const D3D12_CLEAR_VALUE *clear_value,
                                    REFIID riid, void **out);
@@ -420,6 +422,8 @@ HRESULT d12_resource_create_reused(struct d12_device *device,
                                    struct d12_resource *source,
                                    uint64_t source_offset_B,
                                    const D3D12_RESOURCE_DESC *desc,
+                                   uint32_t row_pitch_B,
+                                   uint32_t slice_pitch_B,
                                    D3D12_RESOURCE_STATES initial_state,
                                    const D3D12_CLEAR_VALUE *clear_value,
                                    REFIID riid, void **out);
@@ -428,6 +432,9 @@ HRESULT d12_resource_create_reserved(struct d12_device *device,
                                      D3D12_RESOURCE_STATES initial_state,
                                      const D3D12_CLEAR_VALUE *clear_value,
                                      REFIID riid, void **out);
+bool d12_resource_explicit_row_major_size(
+   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   uint32_t slice_pitch_B, uint64_t *size_B);
 HRESULT d12_sparse_update_tile_mappings(
    struct d12_resource *res, UINT num_regions,
    const D3D12_TILED_RESOURCE_COORDINATE *starts,

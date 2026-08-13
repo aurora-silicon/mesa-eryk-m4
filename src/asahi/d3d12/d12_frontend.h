@@ -258,6 +258,10 @@ struct d12_frontend_resource_desc {
    uint32_t layout;
    uint32_t flags;
    uint32_t initial_state;
+   /* Non-zero only when the D3D12 DDI runtime fixes a row-major texture
+    * layout. Slice pitch is the tight row_pitch * physical height value. */
+   uint32_t row_pitch;
+   uint32_t slice_pitch;
 };
 
 struct d12_frontend_clear_value {

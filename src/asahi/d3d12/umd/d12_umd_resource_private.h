@@ -16,7 +16,7 @@
 #include <stdint.h>
 
 #define D12_UMD_RESOURCE_PRIVATE_MAGIC UINT32_C(0x52583241) /* 'A2XR' */
-#define D12_UMD_RESOURCE_PRIVATE_VERSION 1u
+#define D12_UMD_RESOURCE_PRIVATE_VERSION 2u
 
 enum d12_umd_resource_private_flags {
    D12_UMD_RESOURCE_PRIVATE_HAS_RESOURCE = 1u << 0,
@@ -33,16 +33,14 @@ struct d12_umd_resource_private {
    struct d12_frontend_heap_desc heap;
    struct d12_frontend_resource_desc resource;
    struct d12_frontend_clear_value clear_value;
-   uint32_t row_pitch;
-   uint32_t slice_pitch;
    uint64_t reserved[2];
 };
 
 bool d12_umd_resource_private_pack(
    const struct d12_frontend_heap_desc *heap,
    const struct d12_frontend_resource_desc *resource,
-   const struct d12_frontend_clear_value *clear_value, uint32_t row_pitch,
-   uint32_t slice_pitch, struct d12_umd_resource_private *data);
+   const struct d12_frontend_clear_value *clear_value,
+   struct d12_umd_resource_private *data);
 
 bool d12_umd_resource_private_parse(
    const void *blob, uint32_t blob_size,

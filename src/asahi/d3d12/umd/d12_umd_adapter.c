@@ -193,11 +193,31 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
             .DeviceDependentLayoutCount = 0,
             .DeviceDependentSwizzleCount = 0,
             .Supports64KStandardSwizzle = FALSE,
-            .SupportsRowMajorTexture = FALSE,
+            .SupportsRowMajorTexture = TRUE,
          };
          return d12_umd_copy_cap(arguments, &data, sizeof(data));
       }
       return E_INVALIDARG;
+
+   case D3D12DDICAPS_TYPE_TEXTURE_LAYOUT_SETS: {
+      const UINT *info = arguments->pInfo;
+      if (!info || info[0] != D3D12DDI_TL_ROW_MAJOR ||
+          info[1] > D3D12DDI_FUNCUNIT_COPY_DST)
+         return E_NOTIMPL;
+      const D3D12DDI_ROW_MAJOR_LAYOUT_CAPS data = {
+         .SubCaps = {
+            {
+               .MaxElementSize = 16,
+               .BaseOffsetAlignment = 512,
+               .PitchAlignment = 256,
+               .DepthPitchAlignment = 256,
+            },
+            {0},
+         },
+         .Flags = D3D12DDI_ROW_MAJOR_LAYOUT_FLAG_NONE,
+      };
+      return d12_umd_copy_cap(arguments, &data, sizeof(data));
+   }
 
    case D3D12DDICAPS_TYPE_MEMORY_ARCHITECTURE: {
       D3D12DDI_MEMORY_ARCHITECTURE_CAPS data = {

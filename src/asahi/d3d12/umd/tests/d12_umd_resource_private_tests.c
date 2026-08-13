@@ -38,7 +38,10 @@ main(void)
       .sample_count = 1,
       .layout = 1,
       .flags = D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE |
-               D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET,
+               D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET |
+               D12_FRONTEND_RESOURCE_ALLOW_CROSS_ADAPTER,
+      .row_pitch = 4096,
+      .slice_pitch = UINT32_C(0x400000),
    };
    const struct d12_frontend_clear_value clear = {
       .format = 28,
@@ -80,12 +83,12 @@ main(void)
    }
 
    CHECK(sizeof(packed) == 176);
-   CHECK(d12_umd_resource_private_pack(&heap, &resource, &clear, 4096,
-                                       0x400000, &packed));
+   CHECK(d12_umd_resource_private_pack(&heap, &resource, &clear, &packed));
    CHECK(packed.kmd.struct_size == sizeof(struct agxw_resource_private));
    CHECK(d12_umd_resource_private_parse(&packed, sizeof(packed), &parsed));
    CHECK(parsed.heap.size == heap.size && parsed.resource.width == 1024);
-   CHECK(parsed.row_pitch == 4096 && parsed.slice_pitch == 0x400000);
+   CHECK(parsed.resource.row_pitch == 4096 &&
+         parsed.resource.slice_pitch == UINT32_C(0x400000));
 
    packed.magic ^= 1;
    CHECK(!d12_umd_resource_private_parse(&packed, sizeof(packed), &parsed));
@@ -110,8 +113,15 @@ main(void)
          .flags = AGXW_ALLOC_SHAREABLE | AGXW_ALLOC_WRITEBACK,
          .align_log2 = AGXW_WDDM_LARGE_PAGE_BITS,
       };
+      struct d12_frontend_resource_desc standard_resource = resource;
+
+      standard_resource.layout = 0;
+      standard_resource.row_pitch = 0;
+      standard_resource.slice_pitch = 0;
 
       CHECK(d12_umd_resource_private_standard_desc_pack(
+         &standard_resource, &standard_descriptor));
+      CHECK(!d12_umd_resource_private_standard_desc_pack(
          &resource, &standard_descriptor));
       CHECK(agxw_standard_desc_unpack(standard_descriptor, &width, &height,
                                       &d3d_format) == 0);
@@ -161,26 +171,48 @@ main(void)
       struct d12_frontend_heap_desc invalid_heap = heap;
       invalid_heap.alignment = UINT64_C(0x18000);
       CHECK(!d12_umd_resource_private_pack(
-         &invalid_heap, &resource, &clear, 4096, 0x400000, &packed));
+         &invalid_heap, &resource, &clear, &packed));
       invalid_heap = heap;
       invalid_heap.flags = D12_FRONTEND_HEAP_PRIMARY;
       CHECK(!d12_umd_resource_private_pack(
-         &invalid_heap, &resource, &clear, 4096, 0x400000, &packed));
+         &invalid_heap, &resource, &clear, &packed));
    }
 
    {
       struct d12_frontend_resource_desc invalid_resource = resource;
       invalid_resource.sample_count = 3;
       CHECK(!d12_umd_resource_private_pack(
-         &heap, &invalid_resource, &clear, 4096, 0x400000, &packed));
+         &heap, &invalid_resource, &clear, &packed));
       invalid_resource = resource;
       invalid_resource.layout = 2;
       CHECK(!d12_umd_resource_private_pack(
-         &heap, &invalid_resource, &clear, 4096, 0x400000, &packed));
+         &heap, &invalid_resource, &clear, &packed));
       invalid_resource = resource;
       invalid_resource.flags |= D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL;
       CHECK(!d12_umd_resource_private_pack(
-         &heap, &invalid_resource, &clear, 4096, 0x400000, &packed));
+         &heap, &invalid_resource, &clear, &packed));
+      invalid_resource = resource;
+      invalid_resource.row_pitch = 255;
+      CHECK(!d12_umd_resource_private_pack(
+         &heap, &invalid_resource, &clear, &packed));
+      invalid_resource = resource;
+      invalid_resource.slice_pitch--;
+      CHECK(!d12_umd_resource_private_pack(
+         &heap, &invalid_resource, &clear, &packed));
+      invalid_resource = resource;
+      invalid_resource.flags &= ~D12_FRONTEND_RESOURCE_ALLOW_CROSS_ADAPTER;
+      CHECK(!d12_umd_resource_private_pack(
+         &heap, &invalid_resource, &clear, &packed));
+      invalid_resource = resource;
+      invalid_resource.row_pitch = 0;
+      CHECK(!d12_umd_resource_private_pack(
+         &heap, &invalid_resource, &clear, &packed));
+      invalid_resource = resource;
+      invalid_resource.height = UINT32_C(16777216);
+      invalid_resource.row_pitch = 256;
+      invalid_resource.slice_pitch = UINT32_MAX;
+      CHECK(!d12_umd_resource_private_pack(
+         &heap, &invalid_resource, &clear, &packed));
    }
 
    puts("d12_umd_resource_private_tests: PASS");

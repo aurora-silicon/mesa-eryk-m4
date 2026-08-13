@@ -1842,7 +1842,7 @@ d12_device_CreatePlacedResource(ID3D12Device2 *iface, ID3D12Heap *heap_iface,
     * barriers to honour, and UMA gives no separate layouts to move
     * between. The optimized clear value is a hint we do not need. */
    return d12_resource_create_placed(device, d12_memheap_from_iface(heap_iface),
-                                     heap_offset, desc, initial_state,
+                                     heap_offset, desc, 0, 0, initial_state,
                                      optimized_clear, riid, out);
 }
 

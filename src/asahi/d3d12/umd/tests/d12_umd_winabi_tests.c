@@ -299,7 +299,7 @@ _Static_assert(offsetof(D3D12DDI_PRESENT_0003, AddedGpuWork) == 1048,
                "PRESENT AddedGpuWork offset");
 _Static_assert(sizeof(struct d12_frontend_heap_desc) == 40,
                "frontend heap description width");
-_Static_assert(sizeof(struct d12_frontend_resource_desc) == 56,
+_Static_assert(sizeof(struct d12_frontend_resource_desc) == 64,
                "frontend resource description width");
 _Static_assert(sizeof(struct d12_frontend_clear_value) == 20,
                "frontend clear value width");
@@ -374,6 +374,10 @@ _Static_assert(sizeof(D3D12DDI_GPUVA_CAPS_0004) == 4,
                "GPUVA cap width");
 _Static_assert(sizeof(D3D12DDI_SHADER_CAPS_0003) == 20,
                "shader cap width");
+_Static_assert(sizeof(D3D12DDI_ROW_MAJOR_LAYOUT_CAPS) == 20,
+               "row-major layout cap width");
+_Static_assert(sizeof(D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT) == 8,
+               "row-major resource layout width");
 /* The WDK spells D3D12_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT as a static const
  * UINT rather than a C integer constant expression, so pin our side here and
  * compare both spellings in the executable callback probe. */

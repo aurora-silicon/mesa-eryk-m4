@@ -719,6 +719,18 @@ d12_umd_resource_arguments_valid(
         arguments->Layout != D3D12DDI_TL_ROW_MAJOR))
       return false;
 
+   if (arguments->pRowMajorLayout) {
+      const UINT row_pitch = arguments->pRowMajorLayout->RowPitch;
+      const UINT slice_pitch = arguments->pRowMajorLayout->SlicePitch;
+      if (arguments->ResourceType != D3D12DDI_RT_TEXTURE2D ||
+          arguments->MipLevels != 1 || arguments->DepthOrArraySize != 1 ||
+          arguments->SampleDesc.Count != 1 || !row_pitch || !slice_pitch ||
+          (row_pitch & UINT32_C(0xff)) ||
+          arguments->Height > UINT32_MAX / row_pitch ||
+          slice_pitch != row_pitch * arguments->Height)
+         return false;
+   }
+
    if (arguments->ResourceType == D3D12DDI_RT_BUFFER)
       return arguments->Height == 1 && arguments->DepthOrArraySize == 1 &&
              arguments->MipLevels == 1 &&
@@ -726,6 +738,16 @@ d12_umd_resource_arguments_valid(
              arguments->SampleDesc.Count == 1 &&
              arguments->SampleDesc.Quality == 0 &&
              arguments->Layout == D3D12DDI_TL_ROW_MAJOR;
+
+   if (arguments->Layout == D3D12DDI_TL_ROW_MAJOR &&
+       (arguments->ResourceType != D3D12DDI_RT_TEXTURE2D ||
+        arguments->MipLevels != 1 || arguments->DepthOrArraySize != 1 ||
+        arguments->SampleDesc.Count != 1 ||
+        !(arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_CROSS_ADAPTER) ||
+        (arguments->Flags &
+         (D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL |
+          D3D12DDI_RESOURCE_FLAG_0022_UNORDERED_ACCESS))))
+      return false;
 
    if (arguments->Format == DXGI_FORMAT_UNKNOWN)
       return false;
@@ -793,6 +815,12 @@ d12_umd_frontend_resource_desc(
       .layout = (uint32_t)arguments->Layout,
       .flags = flags,
       .initial_state = (uint32_t)arguments->InitialResourceState,
+      .row_pitch = arguments->pRowMajorLayout
+                      ? arguments->pRowMajorLayout->RowPitch
+                      : 0,
+      .slice_pitch = arguments->pRowMajorLayout
+                        ? arguments->pRowMajorLayout->SlicePitch
+                        : 0,
    };
 }
 
@@ -1035,14 +1063,7 @@ d12_umd_create_heap_resource(
    }
    if (!d12_umd_resource_private_pack(
           &frontend_heap, resource_arguments ? &frontend_resource : NULL,
-          translated_clear,
-          resource_arguments && resource_arguments->pRowMajorLayout
-             ? resource_arguments->pRowMajorLayout->RowPitch
-             : 0,
-          resource_arguments && resource_arguments->pRowMajorLayout
-             ? resource_arguments->pRowMajorLayout->SlicePitch
-             : 0,
-          &private_data))
+          translated_clear, &private_data))
       return E_INVALIDARG;
    if (resource_arguments)
       (void)d12_umd_resource_private_standard_desc_pack(
@@ -1230,8 +1251,8 @@ d12_umd_opened_resource_desc(
       flags |= D3D12DDI_RESOURCE_FLAG_0022_UNORDERED_ACCESS;
 
    *row_major = (D3D12DDIARG_ROW_MAJOR_RESOURCE_LAYOUT){
-      .RowPitch = private_data->row_pitch,
-      .SlicePitch = private_data->slice_pitch,
+      .RowPitch = frontend->row_pitch,
+      .SlicePitch = frontend->slice_pitch,
    };
    return (D3D12DDIARG_CREATERESOURCE_0003){
       .ResourceType = (D3D12DDI_RESOURCE_TYPE)frontend->dimension,

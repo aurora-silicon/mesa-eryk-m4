@@ -129,6 +129,20 @@ d12_umd_resource_private_resource_valid(
       return false;
    if (resource->dimension == 4 && resource->sample_count != 1)
       return false;
+   if (resource->row_pitch || resource->slice_pitch) {
+      if (resource->dimension != 3 || resource->layout != 1 ||
+          resource->mip_levels != 1 || resource->depth_or_array_size != 1 ||
+          resource->sample_count != 1 || !resource->row_pitch ||
+          !resource->slice_pitch ||
+          !(resource->flags & D12_FRONTEND_RESOURCE_ALLOW_CROSS_ADAPTER) ||
+          (resource->flags &
+           (D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL |
+            D12_FRONTEND_RESOURCE_ALLOW_UNORDERED_ACCESS)) ||
+          (resource->row_pitch & UINT32_C(0xff)) ||
+          resource->height > UINT32_MAX / resource->row_pitch ||
+          resource->slice_pitch != resource->row_pitch * resource->height)
+         return false;
+   }
    return true;
 }
 
@@ -136,8 +150,8 @@ bool
 d12_umd_resource_private_pack(
    const struct d12_frontend_heap_desc *heap,
    const struct d12_frontend_resource_desc *resource,
-   const struct d12_frontend_clear_value *clear_value, uint32_t row_pitch,
-   uint32_t slice_pitch, struct d12_umd_resource_private *data)
+   const struct d12_frontend_clear_value *clear_value,
+   struct d12_umd_resource_private *data)
 {
    if (!data || !d12_umd_resource_private_heap_valid(heap) ||
        (resource && !d12_umd_resource_private_resource_valid(resource)) ||
@@ -146,8 +160,9 @@ d12_umd_resource_private_pack(
          !(resource->flags &
            (D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET |
             D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL)))) ||
-       ((row_pitch || slice_pitch) &&
-        (!resource || resource->layout != 1 || !row_pitch)))
+       (resource && (resource->row_pitch || resource->slice_pitch) &&
+        (resource->layout != 1 || !resource->row_pitch ||
+         !resource->slice_pitch)))
       return false;
 
    memset(data, 0, sizeof(*data));
@@ -168,10 +183,8 @@ d12_umd_resource_private_pack(
       data->flags |= D12_UMD_RESOURCE_PRIVATE_HAS_CLEAR_VALUE;
       data->clear_value = *clear_value;
    }
-   if (row_pitch || slice_pitch) {
+   if (resource && (resource->row_pitch || resource->slice_pitch)) {
       data->flags |= D12_UMD_RESOURCE_PRIVATE_HAS_ROW_MAJOR_LAYOUT;
-      data->row_pitch = row_pitch;
-      data->slice_pitch = slice_pitch;
    }
    return true;
 }
@@ -211,10 +224,11 @@ d12_umd_resource_private_parse(const void *blob, uint32_t blob_size,
           D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL)))
       return false;
    if ((parsed.flags & D12_UMD_RESOURCE_PRIVATE_HAS_ROW_MAJOR_LAYOUT) &&
-       (parsed.resource.layout != 1 || !parsed.row_pitch))
+       (parsed.resource.layout != 1 || !parsed.resource.row_pitch ||
+        !parsed.resource.slice_pitch))
       return false;
    if (!(parsed.flags & D12_UMD_RESOURCE_PRIVATE_HAS_ROW_MAJOR_LAYOUT) &&
-       (parsed.row_pitch || parsed.slice_pitch))
+       (parsed.resource.row_pitch || parsed.resource.slice_pitch))
       return false;
    *data = parsed;
    return true;
@@ -276,7 +290,8 @@ d12_umd_resource_private_standard_desc_pack(
        !resource->width || resource->width > UINT32_MAX ||
        !resource->height || resource->depth_or_array_size != 1 ||
        resource->mip_levels != 1 || resource->sample_count != 1 ||
-       resource->sample_quality != 0 ||
+       resource->sample_quality != 0 || resource->layout != 0 ||
+       resource->row_pitch || resource->slice_pitch ||
        (resource->flags & D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL) ||
        !d12_umd_resource_private_dxgi_to_d3d(resource->format, &d3d_format))
       return false;

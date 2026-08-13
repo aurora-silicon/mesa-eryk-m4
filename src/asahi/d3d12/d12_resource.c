@@ -1228,12 +1228,52 @@ d12_resource_iface_is_ours(ID3D12Resource *iface)
    return iface && iface->lpVtbl == &d12_resource_vtbl;
 }
 
+bool
+d12_resource_explicit_row_major_size(
+   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   uint32_t slice_pitch_B, uint64_t *size_B)
+{
+   enum pipe_format pipe;
+   uint64_t minimum_pitch_B;
+
+   if (size_B)
+      *size_B = 0;
+   if (!row_pitch_B && !slice_pitch_B)
+      return true;
+   if (!desc || !row_pitch_B || !slice_pitch_B ||
+       desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+       desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR ||
+       desc->Width > UINT32_MAX || !desc->Height ||
+       desc->DepthOrArraySize != 1 || desc->MipLevels != 1 ||
+       desc->SampleDesc.Count != 1 || desc->SampleDesc.Quality ||
+       !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER) ||
+       (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL |
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
+       (row_pitch_B & 255u) || desc->Height > UINT32_MAX / row_pitch_B ||
+       slice_pitch_B != row_pitch_B * desc->Height ||
+       d12_format_is_depth_stencil(desc->Format))
+      return false;
+
+   pipe = d12_format_to_pipe(desc->Format);
+   if (pipe == PIPE_FORMAT_NONE || util_format_get_blockwidth(pipe) != 1 ||
+       util_format_get_blockheight(pipe) != 1 ||
+       util_format_get_blocksize(pipe) > 16)
+      return false;
+   minimum_pitch_B = util_format_get_stride(pipe, (uint32_t)desc->Width);
+   if (row_pitch_B < minimum_pitch_B)
+      return false;
+   if (size_B)
+      *size_B = slice_pitch_B;
+   return true;
+}
+
 static HRESULT
 d12_resource_create(struct d12_device *device,
                     const D3D12_HEAP_PROPERTIES *heap_props,
                     D3D12_HEAP_FLAGS heap_flags,
                     const D3D12_RESOURCE_DESC *desc, struct d12_heap *heap,
-                    uint64_t heap_offset_B, bool reserved,
+                    uint64_t heap_offset_B, uint32_t row_pitch_B,
+                    uint32_t slice_pitch_B, bool reserved,
                     struct agx_bo *imported_bo, REFIID riid, void **out)
 {
    if (!out)
@@ -1248,7 +1288,13 @@ d12_resource_create(struct d12_device *device,
    const bool shared = heap_flags & D3D12_HEAP_FLAG_SHARED;
    const bool d3d11_interop_layout =
       shared && desc->Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+      desc->Layout != D3D12_TEXTURE_LAYOUT_ROW_MAJOR &&
       (desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS);
+   uint64_t explicit_row_major_size_B = 0;
+
+   if (!d12_resource_explicit_row_major_size(
+          desc, row_pitch_B, slice_pitch_B, &explicit_row_major_size_B))
+      return E_INVALIDARG;
 
    if (desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (desc->Width == 0)
@@ -1441,11 +1487,17 @@ d12_resource_create(struct d12_device *device,
           * to follow the tiling decision above. */
          .linear_stride_B =
             !reserved && linear_ok
-               ? align((uint32_t)desc->Width *
-                          d12_format_bytes_per_pixel(desc->Format), 64)
+               ? (row_pitch_B
+                     ? row_pitch_B
+                     : align((uint32_t)desc->Width *
+                                d12_format_bytes_per_pixel(desc->Format),
+                             64))
                : 0,
       };
       ail_make_miptree(&layout);
+      if (explicit_row_major_size_B &&
+          layout.size_B != explicit_row_major_size_B)
+         return E_INVALIDARG;
       size_B = layout.size_B;
    } else {
       mesa_loge("CreateCommittedResource: dimension %d unsupported",
@@ -1829,9 +1881,17 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
       if (desc->MipLevels != 1 || desc->DepthOrArraySize != 1 ||
           desc->Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
           !(desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_CROSS_ADAPTER) ||
+          (desc->Flags & (D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL |
+                          D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
           heap_props->Type != D3D12_HEAP_TYPE_CUSTOM ||
           heap_props->CPUPageProperty !=
              D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
+         return E_INVALIDARG;
+      enum pipe_format row_major_pipe = d12_format_to_pipe(desc->Format);
+      if (row_major_pipe == PIPE_FORMAT_NONE ||
+          util_format_get_blockwidth(row_major_pipe) != 1 ||
+          util_format_get_blockheight(row_major_pipe) != 1 ||
+          util_format_get_blocksize(row_major_pipe) > 16)
          return E_INVALIDARG;
    }
 
@@ -1939,13 +1999,14 @@ d12_resource_create_committed(struct d12_device *device,
       return valid;
 
    return d12_resource_create(device, heap_props, heap_flags, desc, NULL, 0,
-                              false, NULL, riid, out);
+                              0, 0, false, NULL, riid, out);
 }
 
 HRESULT
 d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
                            uint64_t offset_B,
                            const D3D12_RESOURCE_DESC *desc,
+                           uint32_t row_pitch_B, uint32_t slice_pitch_B,
                            D3D12_RESOURCE_STATES initial_state,
                            const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
                            void **out)
@@ -1979,8 +2040,9 @@ d12_resource_create_placed(struct d12_device *device, struct d12_heap *heap,
       return valid;
 
    return d12_resource_create(device, &heap->desc.Properties,
-                              heap->desc.Flags, desc, heap, offset_B, false,
-                              NULL, riid, out);
+                              heap->desc.Flags, desc, heap, offset_B,
+                              row_pitch_B, slice_pitch_B, false, NULL, riid,
+                              out);
 }
 
 HRESULT
@@ -1988,12 +2050,14 @@ d12_resource_create_reused(struct d12_device *device,
                            struct d12_resource *source,
                            uint64_t source_offset_B,
                            const D3D12_RESOURCE_DESC *desc,
+                           uint32_t row_pitch_B, uint32_t slice_pitch_B,
                            D3D12_RESOURCE_STATES initial_state,
                            const D3D12_CLEAR_VALUE *clear_value, REFIID riid,
                            void **out)
 {
    struct d12_heap captured_heap = {0};
    D3D12_RESOURCE_ALLOCATION_INFO allocation_info;
+   uint64_t explicit_row_major_size_B = 0;
    uint64_t absolute_offset;
 
    if (!device || !source || source->device != device || !desc ||
@@ -2005,6 +2069,18 @@ d12_resource_create_reused(struct d12_device *device,
 
    d12_device_get_resource_allocation_info_runtime(device, 1, desc,
                                                     &allocation_info);
+   if (!d12_resource_explicit_row_major_size(
+          desc, row_pitch_B, slice_pitch_B, &explicit_row_major_size_B))
+      return E_INVALIDARG;
+   if (explicit_row_major_size_B) {
+      if (!allocation_info.Alignment ||
+          explicit_row_major_size_B >
+             UINT64_MAX - (allocation_info.Alignment - 1))
+         return E_INVALIDARG;
+      allocation_info.SizeInBytes =
+         (explicit_row_major_size_B + allocation_info.Alignment - 1) &
+         ~(allocation_info.Alignment - 1);
+   }
    if (allocation_info.SizeInBytes == UINT64_MAX ||
        allocation_info.SizeInBytes >
           source->desc.Width - source_offset_B)
@@ -2027,8 +2103,8 @@ d12_resource_create_reused(struct d12_device *device,
     * exactly models the DDI's capture-GPUVA lifetime without retaining the
     * public heap COM object. */
    return d12_resource_create_placed(device, &captured_heap, absolute_offset,
-                                     desc, initial_state, clear_value, riid,
-                                     out);
+                                     desc, row_pitch_B, slice_pitch_B,
+                                     initial_state, clear_value, riid, out);
 }
 
 HRESULT
@@ -2106,7 +2182,7 @@ d12_resource_create_reserved(struct d12_device *device,
    }
 
    return d12_resource_create(device, &props, D3D12_HEAP_FLAG_NONE, desc,
-                              NULL, 0, true, NULL, riid, out);
+                              NULL, 0, 0, 0, true, NULL, riid, out);
 }
 
 HRESULT
@@ -2203,8 +2279,8 @@ d12_resource_open_shared_handle(struct d12_device *device, HANDLE handle,
                                    D3D12_RESOURCE_STATE_COMMON, NULL);
    if (SUCCEEDED(hr)) {
       hr = d12_resource_create(device, &heap_props,
-                               D3D12_HEAP_FLAG_SHARED, &desc, NULL, 0, false,
-                               bo, riid, out);
+                               D3D12_HEAP_FLAG_SHARED, &desc, NULL, 0, 0, 0,
+                               false, bo, riid, out);
    }
 
    /* The constructor takes its own BO reference only after it has validated
