@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include "d12_frontend.h"
+#include "d12_queue_timeline_core.h"
 
 #include "agx_bg_eot.h"
 #include "agx_compile.h"
@@ -1660,15 +1661,21 @@ struct d12_queue {
     * Wait/Signal operations are ordered by the worker below because Linux
     * syncobjs cannot natively represent wait-before-signal. */
    uint32_t syncobj;
-   uint64_t timeline_value;
+   struct d12_queue_timeline_state timeline;
 
    mtx_t lock;
    cnd_t work_available;
+   cnd_t retire_available;
    thrd_t worker;
+   thrd_t retire_worker;
    struct d12_queue_op *op_head;
    struct d12_queue_op *op_tail;
+   struct d12_queue_op *retire_head;
+   struct d12_queue_op *retire_tail;
    uint32_t stop;
+   uint32_t retire_stop;
    bool worker_started;
+   bool retire_worker_started;
 };
 
 struct d12_command_signature {

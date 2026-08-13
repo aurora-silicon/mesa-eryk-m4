@@ -1,0 +1,39 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Platform-neutral command-queue timeline accounting.  The renderer uses
+ * this state machine to submit work ahead while retaining its storage until
+ * the corresponding hardware timeline point completes.
+ */
+
+#ifndef D12_QUEUE_TIMELINE_CORE_H
+#define D12_QUEUE_TIMELINE_CORE_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+struct d12_queue_timeline_state {
+   uint64_t submitted;
+   uint64_t retired;
+};
+
+void d12_queue_timeline_init(struct d12_queue_timeline_state *state);
+
+bool d12_queue_timeline_next_submit(struct d12_queue_timeline_state *state,
+                                    uint64_t *in_point,
+                                    uint64_t *out_point);
+
+uint64_t
+d12_queue_timeline_marker(const struct d12_queue_timeline_state *state);
+
+bool d12_queue_timeline_retire(struct d12_queue_timeline_state *state,
+                               uint64_t point);
+
+uint64_t
+d12_queue_timeline_inflight(const struct d12_queue_timeline_state *state);
+
+bool d12_queue_timeline_has_capacity(
+   const struct d12_queue_timeline_state *state, uint64_t max_inflight);
+
+#endif

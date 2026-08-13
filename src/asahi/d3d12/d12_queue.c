@@ -6,9 +6,12 @@
  * not support wait-before-signal: Honeykrisp therefore routes Vulkan submits
  * through Mesa's threaded-submit layer until every dependency is pending.
  * D3D12 needs the same property, plus non-monotonic fence values, so each
- * queue has a small ordered worker.  Wait, submit and Signal calls enqueue
- * immediately; the worker resolves waits, completes AGX work, and then
- * publishes fence signals in API order.
+ * queue has a small ordered submit worker.  Wait, submit and Signal calls
+ * enqueue immediately; that worker resolves dependencies and feeds AGX in
+ * API order.  A separate retirement worker waits for hardware timeline
+ * points, publishes fence signals, and releases command storage.  Keeping
+ * completion off the submit path is what allows multiple command lists and
+ * frames to remain in flight.
  */
 
 #include "d12_private.h"
@@ -33,6 +36,10 @@ enum d12_queue_op_type {
    D12_QUEUE_OP_SPARSE_BIND,
 };
 
+/* Bound retained command storage without collapsing normal frame
+ * pipelining.  This is a high-water mark, not a hardware queue depth. */
+#define D12_QUEUE_MAX_INFLIGHT_SUBMITS 64
+
 struct d12_sparse_completion {
    mtx_t lock;
    cnd_t event;
@@ -48,6 +55,7 @@ struct d12_queue_op {
    struct d12_placement_fence *placement_fence;
    uint64_t value;
    struct d12_fence_ticket ticket;
+   uint64_t retire_value;
 
    struct d12_cmd_list *list;
    struct d12_device *submit_device;
@@ -118,6 +126,7 @@ d12_queue_Release(ID3D12CommandQueue *iface)
       d12_queue_stop_worker(queue);
       queue->device->sync->destroy(queue->device->sync, queue->syncobj);
       agx_destroy_command_queue(&queue->device->dev, queue->agx_queue_id);
+      cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
       mtx_destroy(&queue->lock);
       d12_private_data_store_destroy(&queue->private_data);
@@ -631,6 +640,20 @@ d12_queue_enqueue_locked(struct d12_queue *queue, struct d12_queue_op *op)
    return true;
 }
 
+static void
+d12_queue_retire_enqueue(struct d12_queue *queue, struct d12_queue_op *op)
+{
+   op->next = NULL;
+   mtx_lock(&queue->lock);
+   if (queue->retire_tail)
+      queue->retire_tail->next = op;
+   else
+      queue->retire_head = op;
+   queue->retire_tail = op;
+   cnd_signal(&queue->retire_available);
+   mtx_unlock(&queue->lock);
+}
+
 static bool
 d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
 {
@@ -650,7 +673,13 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       agxdecode_next_frame();
    }
 
-   uint64_t in = queue->timeline_value;
+   uint64_t in = d12_queue_timeline_marker(&queue->timeline);
+   if (in == UINT64_MAX) {
+      mesa_loge("command queue timeline exhausted");
+      device->removed = true;
+      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return false;
+   }
    uint64_t out = in + 1;
 
    struct drm_asahi_sync syncs[2] = {
@@ -780,7 +809,21 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       return false;
    }
 
-   queue->timeline_value = out;
+   uint64_t committed_in;
+   uint64_t committed_out;
+   mtx_lock(&queue->lock);
+   const bool timeline_committed =
+      d12_queue_timeline_next_submit(&queue->timeline, &committed_in,
+                                     &committed_out);
+   mtx_unlock(&queue->lock);
+   if (!timeline_committed ||
+       committed_in != in || committed_out != out) {
+      mesa_loge("command queue timeline accounting failure");
+      device->removed = true;
+      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      return false;
+   }
+   op->retire_value = out;
    if (getenv("D3D12AGX_DUMP_SYNC")) {
       mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
                 "list %p stream_bo 0x%llx",
@@ -791,24 +834,47 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
                    util_dynarray_begin(&op->bos))->va->addr);
    }
 
-   /* Serial completion is intentional.  It is the correctness-first D3D12
-    * analogue of Mesa's threaded-submit dependency resolution: later Wait,
-    * submit and Signal operations are not processed until this work really
-    * completed, so cross-queue fence visibility and resource ordering are
-    * exact even though Linux syncobjs cannot model D3D12 fence rewinds. */
-   ret = device->sync->timeline_wait(
-      device->sync, &queue->syncobj, &out, 1, INT64_MAX,
+   return true;
+}
+
+static bool
+d12_queue_wait_timeline(struct d12_queue *queue, uint64_t point)
+{
+   if (point == 0)
+      return true;
+
+   int ret = queue->device->sync->timeline_wait(
+      queue->device->sync, &queue->syncobj, &point, 1, INT64_MAX,
       DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT, NULL);
    if (ret) {
       mesa_loge("queue GPU completion wait failed: %d", ret);
-      device->removed = true;
-      device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+      queue->device->removed = true;
+      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
       return false;
    }
 
-   /* Preserve the existing opt-in geometry/tessellation diagnostics.  The
-    * worker has just waited for this exact submission, so these pointers are
-    * read while the recording and its stream BO are still retained. */
+   return true;
+}
+
+static bool
+d12_queue_wait_submit_capacity(struct d12_queue *queue)
+{
+   mtx_lock(&queue->lock);
+   while (!d12_queue_timeline_has_capacity(
+             &queue->timeline, D12_QUEUE_MAX_INFLIGHT_SUBMITS) &&
+          !p_atomic_read(&queue->stop)) {
+      cnd_wait(&queue->retire_available, &queue->lock);
+   }
+   const bool available = !p_atomic_read(&queue->stop);
+   mtx_unlock(&queue->lock);
+   return available;
+}
+
+/* Run opt-in readback diagnostics only after the retirement worker has
+ * observed completion of the exact submission whose storage it still owns. */
+static void
+d12_queue_dump_completion(struct d12_device *device)
+{
    if (device->dbg_gs_vb) {
       const float *f = (const float *)device->dbg_gs_vb;
       const uint32_t *u = (const uint32_t *)device->dbg_gs_vb;
@@ -867,8 +933,59 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
       }
       device->dbg_tess_draw = NULL;
    }
+}
 
-   return true;
+static int
+d12_queue_retire_worker(void *data)
+{
+   struct d12_queue *queue = data;
+
+   for (;;) {
+      mtx_lock(&queue->lock);
+      while (!queue->retire_head && !p_atomic_read(&queue->retire_stop))
+         cnd_wait(&queue->retire_available, &queue->lock);
+
+      if (!queue->retire_head && p_atomic_read(&queue->retire_stop)) {
+         mtx_unlock(&queue->lock);
+         break;
+      }
+
+      struct d12_queue_op *op = queue->retire_head;
+      queue->retire_head = op->next;
+      if (!queue->retire_head)
+         queue->retire_tail = NULL;
+      op->next = NULL;
+      mtx_unlock(&queue->lock);
+
+      const bool completed = d12_queue_wait_timeline(queue,
+                                                      op->retire_value);
+      if (completed) {
+         mtx_lock(&queue->lock);
+         const bool retired =
+            d12_queue_timeline_retire(&queue->timeline, op->retire_value);
+         cnd_broadcast(&queue->retire_available);
+         mtx_unlock(&queue->lock);
+         if (!retired) {
+            mesa_loge("command queue retirement accounting failure");
+            queue->device->removed = true;
+            queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+         } else if (op->type == D12_QUEUE_OP_SIGNAL) {
+            if (getenv("D3D12AGX_DUMP_SYNC")) {
+               mesa_logi("SYNC Signal retire: queue %p fence %p value %llu "
+                         "point %llu", (void *)queue, (void *)op->fence,
+                         (unsigned long long)op->value,
+                         (unsigned long long)op->retire_value);
+            }
+            d12_fence_signal_value(op->fence, op->value);
+         } else if (op->type == D12_QUEUE_OP_SUBMIT) {
+            d12_queue_dump_completion(queue->device);
+         }
+      }
+
+      d12_queue_op_destroy(op);
+   }
+
+   return 0;
 }
 
 static int
@@ -890,7 +1007,10 @@ d12_queue_worker(void *data)
       queue->op_head = op->next;
       if (!queue->op_head)
          queue->op_tail = NULL;
+      op->next = NULL;
       mtx_unlock(&queue->lock);
+
+      bool retire = false;
 
       switch (op->type) {
       case D12_QUEUE_OP_WAIT:
@@ -901,14 +1021,16 @@ d12_queue_worker(void *data)
          d12_fence_ticket_wait(&op->ticket, &queue->stop);
          break;
       case D12_QUEUE_OP_SUBMIT:
-         d12_queue_process_submit(queue, op);
+         retire = d12_queue_wait_submit_capacity(queue) &&
+                  d12_queue_process_submit(queue, op);
          break;
       case D12_QUEUE_OP_SIGNAL:
          if (getenv("D3D12AGX_DUMP_SYNC"))
-            mesa_logi("SYNC Signal worker: queue %p fence %p value %llu",
+            mesa_logi("SYNC Signal schedule: queue %p fence %p value %llu",
                       (void *)queue, (void *)op->fence,
                       (unsigned long long)op->value);
-         d12_fence_signal_value(op->fence, op->value);
+         op->retire_value = d12_queue_timeline_marker(&queue->timeline);
+         retire = true;
          break;
       case D12_QUEUE_OP_PLACEMENT_WAIT:
          if (getenv("D3D12AGX_DUMP_SYNC"))
@@ -919,8 +1041,12 @@ d12_queue_worker(void *data)
                                         &queue->stop);
          break;
       case D12_QUEUE_OP_SPARSE_BIND: {
-         int result = queue->device->dev.ops.bo_bind(
-            &queue->device->dev, op->bind_ops, op->bind_count);
+         uint64_t point = d12_queue_timeline_marker(&queue->timeline);
+         int result = d12_queue_wait_timeline(queue, point)
+                         ? queue->device->dev.ops.bo_bind(
+                              &queue->device->dev, op->bind_ops,
+                              op->bind_count)
+                         : -EIO;
          if (result) {
             mesa_loge("sparse VM_BIND batch failed: %d", result);
             queue->device->removed = true;
@@ -936,7 +1062,10 @@ d12_queue_worker(void *data)
       }
       }
 
-      d12_queue_op_destroy(op);
+      if (retire)
+         d12_queue_retire_enqueue(queue, op);
+      else
+         d12_queue_op_destroy(op);
    }
 
    return 0;
@@ -945,15 +1074,29 @@ d12_queue_worker(void *data)
 static void
 d12_queue_stop_worker(struct d12_queue *queue)
 {
-   if (!queue->worker_started)
+   if (!queue->worker_started && !queue->retire_worker_started)
       return;
 
-   p_atomic_set(&queue->stop, 1);
-   mtx_lock(&queue->lock);
-   cnd_broadcast(&queue->work_available);
-   mtx_unlock(&queue->lock);
-   thrd_join(queue->worker, NULL);
-   queue->worker_started = false;
+   if (queue->worker_started) {
+      p_atomic_set(&queue->stop, 1);
+      mtx_lock(&queue->lock);
+      cnd_broadcast(&queue->work_available);
+      cnd_broadcast(&queue->retire_available);
+      mtx_unlock(&queue->lock);
+      thrd_join(queue->worker, NULL);
+      queue->worker_started = false;
+   }
+
+   /* No producer remains.  Drain every successfully submitted operation
+    * before the sync object, AGX queue, or retained BOs can be destroyed. */
+   if (queue->retire_worker_started) {
+      p_atomic_set(&queue->retire_stop, 1);
+      mtx_lock(&queue->lock);
+      cnd_broadcast(&queue->retire_available);
+      mtx_unlock(&queue->lock);
+      thrd_join(queue->retire_worker, NULL);
+      queue->retire_worker_started = false;
+   }
 
    struct d12_queue_op *op = queue->op_head;
    while (op) {
@@ -962,6 +1105,14 @@ d12_queue_stop_worker(struct d12_queue *queue)
       op = next;
    }
    queue->op_head = queue->op_tail = NULL;
+
+   op = queue->retire_head;
+   while (op) {
+      struct d12_queue_op *next = op->next;
+      d12_queue_op_destroy(op);
+      op = next;
+   }
+   queue->retire_head = queue->retire_tail = NULL;
 }
 
 static void STDMETHODCALLTYPE
@@ -1707,7 +1858,7 @@ d12_queue_create(struct d12_device *device,
    if (!queue->desc.NodeMask)
       queue->desc.NodeMask = 1;
 
-   queue->timeline_value = 0;
+   d12_queue_timeline_init(&queue->timeline);
    if (mtx_init(&queue->lock, mtx_plain) != thrd_success) {
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -1721,13 +1872,42 @@ d12_queue_create(struct d12_device *device,
       free(queue);
       return E_FAIL;
    }
+   if (cnd_init(&queue->retire_available) != thrd_success) {
+      cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->lock);
+      device->sync->destroy(device->sync, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
    d12_private_data_store_init(&queue->private_data,
                                (IUnknown *)&queue->iface);
    d12_device_add_ref(device);
 
-   if (thrd_create(&queue->worker, d12_queue_worker, queue) != thrd_success) {
+   if (thrd_create(&queue->retire_worker, d12_queue_retire_worker, queue) !=
+       thrd_success) {
       d12_device_release(device);
       d12_private_data_store_destroy(&queue->private_data);
+      cnd_destroy(&queue->retire_available);
+      cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->lock);
+      device->sync->destroy(device->sync, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
+   queue->retire_worker_started = true;
+
+   if (thrd_create(&queue->worker, d12_queue_worker, queue) != thrd_success) {
+      p_atomic_set(&queue->retire_stop, 1);
+      mtx_lock(&queue->lock);
+      cnd_signal(&queue->retire_available);
+      mtx_unlock(&queue->lock);
+      thrd_join(queue->retire_worker, NULL);
+      queue->retire_worker_started = false;
+      d12_device_release(device);
+      d12_private_data_store_destroy(&queue->private_data);
+      cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);

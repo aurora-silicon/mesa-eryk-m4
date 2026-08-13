@@ -51,6 +51,12 @@ done
 "$out/d12_write_set_core_tests"
 
 "$cc" "$common[@]" \
+    "$d12_dir/d12_queue_timeline_core.c" \
+    "$d12_dir/tests/d12_queue_timeline_core_tests.c" \
+    -o "$out/d12_queue_timeline_core_tests"
+"$out/d12_queue_timeline_core_tests"
+
+"$cc" "$common[@]" \
     "$umd_dir/d12_umd_command_core.c" \
     "$umd_dir/tests/d12_umd_command_core_tests.c" \
     -o "$out/d12_umd_command_core_tests"
