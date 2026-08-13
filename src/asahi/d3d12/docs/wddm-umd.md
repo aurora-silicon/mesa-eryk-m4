@@ -354,6 +354,12 @@ the required completion ordering. A 64-submit high-water mark bounds retained
 recording storage and applies backpressure only when the GPU falls that far
 behind. Sparse GPU-VA updates explicitly drain the preceding point before
 changing mappings; they do not rely on incidental per-submit serialization.
+Each queue also prebuilds a 64-slot native AGX placement-fence signal arena:
+the control stream and USC binding words are generated once, Signal patches
+only one 16-byte address/value argument and uses an inline submit payload, and
+the slot returns to the bitmap only after its timeline point retires. This
+removes two WDDM BO allocations, two maps and repeated command encoding from
+every DDI fence Signal while preserving a real ordered GPU write.
 MakeResident/Evict and Offer/Reclaim forward runtime-owned allocation handles
 through the core callback ABI. The translator accepts the complete baseline
 set of pageable D3D12 object kinds. Heaps/resources contribute their actual
@@ -401,6 +407,10 @@ The existing direct-D3DKMT winsys remains valid for the public COM DLL only.
   D3D12 fence values. Deterministic host tests cover monotonic submit points,
   same-point Signal markers, ordered retirement, overflow rejection and the
   bounded in-flight policy.
+- Placement-fence Signal performs no BO allocation or shader/control-stream
+  construction after queue creation. Its fixed 16 KiB stream and USC arenas
+  use 64 independently retired slots; host tests exhaust, release and reuse
+  the bitmap and prove every control/data/USC range remains in bounds.
 - Version/capability exposure is correctness-gated. Performance claims require
   ETW/GPUView traces, residency-pressure tests and application benchmarks on
   the Windows target.
@@ -505,7 +515,7 @@ does not alter the native D3D12 ABI or command ordering.
 | B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; runtime error callback used on void-call failure | `0003` 89-slot and Release 1 91-slot device tables plus shared 51/7 command tables implemented and statically/host tested; command-list runtime table handles are retained/rebound; the ARM64 Windows callback probe is compiled but was not executed in this host-only pass; DXGI is gate G |
 | C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; unsupported foreign metadata fails closed |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, shaders/root signatures including GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
-| E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage and placement-fence GPU signal/ordered wait implemented and host-build tested; hardware DDI validation pending |
+| E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, allocation-deduplicated mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including aliased discard fan-out, optional discard output and CPU-only core objects; device removal and pressure validation pending |
 | G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI 1.4 and WDDM 2.1 22-slot DXGI 1.5 tables, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
 | H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | Release 1 `0010`/`0011`, the 91-slot table, pipeline libraries, DXIL import and SM 6.0 caps are exposed only by the WDDM 2.1 build; the isolated 0x6003/0x2100 KMD interface, allocation-property DDI and dual UMD layouts compile and pass host ABI tests; Windows runtime/hardware conformance remains pending |

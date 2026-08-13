@@ -18,6 +18,13 @@ struct d12_queue_timeline_state {
    uint64_t retired;
 };
 
+#define D12_QUEUE_MAX_INFLIGHT_SUBMITS 64u
+#define D12_QUEUE_SIGNAL_SLOT_COUNT 64u
+#define D12_QUEUE_SIGNAL_STREAM_STRIDE 256u
+#define D12_QUEUE_SIGNAL_DATA_OFFSET 192u
+#define D12_QUEUE_SIGNAL_USC_STRIDE 192u
+#define D12_QUEUE_SIGNAL_ARENA_SIZE 16384u
+
 void d12_queue_timeline_init(struct d12_queue_timeline_state *state);
 
 bool d12_queue_timeline_next_submit(struct d12_queue_timeline_state *state,
@@ -35,5 +42,15 @@ d12_queue_timeline_inflight(const struct d12_queue_timeline_state *state);
 
 bool d12_queue_timeline_has_capacity(
    const struct d12_queue_timeline_state *state, uint64_t max_inflight);
+
+bool d12_queue_signal_slot_layout(uint32_t slot, uint32_t control_size,
+                                  uint32_t usc_size,
+                                  uint32_t *control_offset,
+                                  uint32_t *data_offset,
+                                  uint32_t *usc_offset);
+
+int d12_queue_signal_slot_acquire(uint64_t *used_slots);
+
+bool d12_queue_signal_slot_release(uint64_t *used_slots, uint32_t slot);
 
 #endif

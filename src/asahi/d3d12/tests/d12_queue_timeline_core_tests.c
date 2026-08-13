@@ -91,12 +91,52 @@ test_invalid_transitions(void)
    assert(!d12_queue_timeline_has_capacity(&state, 0));
 }
 
+static void
+test_signal_arena_layout_and_slots(void)
+{
+   uint64_t slots = 0;
+   uint32_t control;
+   uint32_t data;
+   uint32_t usc;
+
+   for (uint32_t slot = 0; slot < D12_QUEUE_SIGNAL_SLOT_COUNT; ++slot) {
+      assert(d12_queue_signal_slot_layout(slot, 128, 146, &control, &data,
+                                          &usc));
+      assert(control == slot * D12_QUEUE_SIGNAL_STREAM_STRIDE);
+      assert(data == control + D12_QUEUE_SIGNAL_DATA_OFFSET);
+      assert(usc == slot * D12_QUEUE_SIGNAL_USC_STRIDE);
+      assert(data + 16 <= D12_QUEUE_SIGNAL_ARENA_SIZE);
+      assert(usc + 146 <= D12_QUEUE_SIGNAL_ARENA_SIZE);
+      assert(d12_queue_signal_slot_acquire(&slots) == (int)slot);
+   }
+   assert(slots == UINT64_MAX);
+   assert(d12_queue_signal_slot_acquire(&slots) == -1);
+
+   assert(d12_queue_signal_slot_release(&slots, 17));
+   assert(!d12_queue_signal_slot_release(&slots, 17));
+   assert(d12_queue_signal_slot_acquire(&slots) == 17);
+   assert(!d12_queue_signal_slot_release(&slots,
+                                         D12_QUEUE_SIGNAL_SLOT_COUNT));
+   assert(!d12_queue_signal_slot_release(NULL, 0));
+   assert(d12_queue_signal_slot_acquire(NULL) == -1);
+
+   assert(!d12_queue_signal_slot_layout(D12_QUEUE_SIGNAL_SLOT_COUNT, 1, 1,
+                                        &control, &data, &usc));
+   assert(!d12_queue_signal_slot_layout(0, D12_QUEUE_SIGNAL_DATA_OFFSET + 1,
+                                        1, &control, &data, &usc));
+   assert(!d12_queue_signal_slot_layout(0, 1,
+                                        D12_QUEUE_SIGNAL_USC_STRIDE + 1,
+                                        &control, &data, &usc));
+   assert(!d12_queue_signal_slot_layout(0, 1, 1, NULL, &data, &usc));
+}
+
 int
 main(void)
 {
    test_submission_pipeline();
    test_markers_do_not_serialize_submission();
    test_invalid_transitions();
+   test_signal_arena_layout_and_slots();
    puts("d12 queue timeline core tests: pass");
    return 0;
 }

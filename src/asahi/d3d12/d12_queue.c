@@ -24,6 +24,7 @@
 #include "drm-uapi/drm.h"
 
 #include "agx_helpers.h"
+#include "agx_usc.h"
 #include "util/u_math.h"
 
 #include <time.h>
@@ -32,13 +33,10 @@ enum d12_queue_op_type {
    D12_QUEUE_OP_WAIT,
    D12_QUEUE_OP_SUBMIT,
    D12_QUEUE_OP_SIGNAL,
+   D12_QUEUE_OP_PLACEMENT_SIGNAL,
    D12_QUEUE_OP_PLACEMENT_WAIT,
    D12_QUEUE_OP_SPARSE_BIND,
 };
-
-/* Bound retained command storage without collapsing normal frame
- * pipelining.  This is a high-water mark, not a hardware queue depth. */
-#define D12_QUEUE_MAX_INFLIGHT_SUBMITS 64
 
 struct d12_sparse_completion {
    mtx_t lock;
@@ -75,6 +73,11 @@ struct d12_queue_op {
    unsigned nr_vdm;
    unsigned nr_cdm;
    bool write_set_complete;
+   bool signal_slot_valid;
+   uint32_t signal_slot;
+   uint8_t inline_payload[2 * sizeof(struct drm_asahi_cmd_header) +
+                          sizeof(struct drm_asahi_attachment) +
+                          sizeof(struct drm_asahi_cmd_compute)];
 
    struct drm_asahi_gem_bind_op *bind_ops;
    uint32_t bind_count;
@@ -82,6 +85,7 @@ struct d12_queue_op {
 };
 
 static void d12_queue_stop_worker(struct d12_queue *queue);
+static void d12_queue_signal_arena_cleanup(struct d12_queue *queue);
 
 static HRESULT STDMETHODCALLTYPE
 d12_queue_QueryInterface(ID3D12CommandQueue *iface, REFIID riid, void **out)
@@ -124,6 +128,7 @@ d12_queue_Release(ID3D12CommandQueue *iface)
 
    if (refs == 0) {
       d12_queue_stop_worker(queue);
+      d12_queue_signal_arena_cleanup(queue);
       queue->device->sync->destroy(queue->device->sync, queue->syncobj);
       agx_destroy_command_queue(&queue->device->dev, queue->agx_queue_id);
       cnd_destroy(&queue->retire_available);
@@ -350,7 +355,8 @@ d12_queue_op_destroy(struct d12_queue_op *op)
    if (op->list)
       ID3D12GraphicsCommandList_Release(&op->list->iface);
    free(op->bind_ops);
-   free(op->payload);
+   if (op->payload && op->payload != op->inline_payload)
+      free(op->payload);
    free(op);
 }
 
@@ -654,6 +660,204 @@ d12_queue_retire_enqueue(struct d12_queue *queue, struct d12_queue_op *op)
    mtx_unlock(&queue->lock);
 }
 
+static HRESULT
+d12_queue_signal_arena_init(struct d12_queue *queue)
+{
+   struct agx_device *dev = &queue->device->dev;
+   struct agx_precompiled_shader *program =
+      agx_get_precompiled(&queue->device->bg_eot, LIBAGX_WRITE_U64);
+   struct agx_bo *stream = NULL;
+   struct agx_bo *usc = NULL;
+   uint8_t *stream_map;
+   uint8_t *usc_map;
+   uint32_t common_control_size = 0;
+   const uint32_t usc_size = agx_usc_size(15);
+
+   if (!program || !dev->params.max_attachments)
+      return E_FAIL;
+
+   stream = agx_bo_create(dev, D12_QUEUE_SIGNAL_ARENA_SIZE, 0,
+                          AGX_BO_WRITEBACK,
+                          "d3d12 ddi fence signal stream arena");
+   usc = agx_bo_create(dev, D12_QUEUE_SIGNAL_ARENA_SIZE, 0,
+                       AGX_BO_LOW_VA | AGX_BO_WRITEBACK,
+                       "d3d12 ddi fence signal usc arena");
+   if (!stream || !usc) {
+      agx_bo_unreference(dev, stream);
+      agx_bo_unreference(dev, usc);
+      return E_OUTOFMEMORY;
+   }
+
+   stream_map = agx_bo_map(stream);
+   usc_map = agx_bo_map(usc);
+   if (!stream_map || !usc_map)
+      goto fail;
+   memset(stream_map, 0, stream->size);
+   memset(usc_map, 0, usc->size);
+
+   for (uint32_t slot = 0; slot < D12_QUEUE_SIGNAL_SLOT_COUNT; ++slot) {
+      uint32_t control_offset;
+      uint32_t data_offset;
+      uint32_t usc_offset;
+      /* The pack helpers have no output-size parameter.  Encode into a
+       * generously sized scratch page first, then reject anything that does
+       * not fit before copying into the tightly packed arena slot. */
+      uint32_t control_words[4096 / sizeof(uint32_t)] = {0};
+
+      if (!d12_queue_signal_slot_layout(slot, 0, usc_size,
+                                        &control_offset, &data_offset,
+                                        &usc_offset))
+         goto fail;
+
+      agx_usc_words_precomp((uint32_t *)(usc_map + usc_offset), &program->b,
+                            stream->va->addr + data_offset,
+                            sizeof(struct libagx_write_u64_args));
+      uint8_t *control = (uint8_t *)agx_cdm_launch(
+         control_words, dev->chip, agx_1d(1), program->b.workgroup,
+         program->b.launch,
+         agx_usc_addr(dev, usc->va->addr + usc_offset));
+      control = (uint8_t *)agx_cdm_barrier((uint32_t *)control, dev->chip);
+      const uint32_t control_size =
+         (uint32_t)(control - (uint8_t *)control_words);
+      if (!d12_queue_signal_slot_layout(slot, control_size, usc_size,
+                                        &control_offset, &data_offset,
+                                        &usc_offset) ||
+          (common_control_size && common_control_size != control_size))
+         goto fail;
+      common_control_size = control_size;
+      memcpy(stream_map + control_offset, control_words, control_size);
+   }
+
+   if (!common_control_size)
+      goto fail;
+   queue->signal_stream_bo = stream;
+   queue->signal_usc_bo = usc;
+   queue->signal_control_size = common_control_size;
+   return S_OK;
+
+fail:
+   agx_bo_unreference(dev, stream);
+   agx_bo_unreference(dev, usc);
+   return E_FAIL;
+}
+
+static void
+d12_queue_signal_arena_cleanup(struct d12_queue *queue)
+{
+   struct agx_device *dev = &queue->device->dev;
+
+   agx_bo_unreference(dev, queue->signal_stream_bo);
+   agx_bo_unreference(dev, queue->signal_usc_bo);
+   queue->signal_stream_bo = NULL;
+   queue->signal_usc_bo = NULL;
+   queue->signal_control_size = 0;
+   queue->signal_slots = 0;
+}
+
+static void
+d12_queue_release_signal_slot(struct d12_queue *queue,
+                              struct d12_queue_op *op)
+{
+   if (!op->signal_slot_valid)
+      return;
+
+   mtx_lock(&queue->lock);
+   const bool released =
+      d12_queue_signal_slot_release(&queue->signal_slots, op->signal_slot);
+   op->signal_slot_valid = false;
+   cnd_broadcast(&queue->retire_available);
+   mtx_unlock(&queue->lock);
+   if (!released) {
+      mesa_loge("command queue signal-slot accounting failure");
+      queue->device->removed = true;
+      queue->device->removed_reason = DXGI_ERROR_DEVICE_REMOVED;
+   }
+}
+
+static bool
+d12_queue_prepare_placement_signal(struct d12_queue *queue,
+                                   struct d12_queue_op *op)
+{
+   struct d12_placement_fence *fence = op->placement_fence;
+   uint32_t control_offset;
+   uint32_t data_offset;
+   uint32_t usc_offset;
+   int slot;
+
+   if (!fence || fence->count != 1 || !queue->signal_stream_bo ||
+       !queue->signal_usc_bo)
+      return false;
+
+   mtx_lock(&queue->lock);
+   while ((slot = d12_queue_signal_slot_acquire(&queue->signal_slots)) < 0 &&
+          !p_atomic_read(&queue->stop)) {
+      cnd_wait(&queue->retire_available, &queue->lock);
+   }
+   mtx_unlock(&queue->lock);
+   if (slot < 0)
+      return false;
+
+   op->signal_slot = (uint32_t)slot;
+   op->signal_slot_valid = true;
+   if (!d12_queue_signal_slot_layout(
+          op->signal_slot, queue->signal_control_size, agx_usc_size(15),
+          &control_offset, &data_offset, &usc_offset)) {
+      d12_queue_release_signal_slot(queue, op);
+      return false;
+   }
+   (void)usc_offset;
+
+   const struct libagx_write_u64_args shader_args = {
+      .address = fence->entries[0].current_gpu_address,
+      .value = op->value,
+   };
+   memcpy((uint8_t *)agx_bo_map(queue->signal_stream_bo) + data_offset,
+          &shader_args, sizeof(shader_args));
+
+   op->submit_device = queue->device;
+   op->payload_size = 2 * sizeof(struct drm_asahi_cmd_header) +
+                      sizeof(struct drm_asahi_attachment) +
+                      sizeof(struct drm_asahi_cmd_compute);
+   if (op->payload_size > sizeof(op->inline_payload)) {
+      d12_queue_release_signal_slot(queue, op);
+      return false;
+   }
+   op->payload = op->inline_payload;
+   memset(op->payload, 0, op->payload_size);
+
+   const struct drm_asahi_cmd_header attachment_header = {
+      .cmd_type = DRM_ASAHI_SET_COMPUTE_ATTACHMENTS,
+      .size = sizeof(struct drm_asahi_attachment),
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+   const struct drm_asahi_attachment attachment = {
+      .pointer = fence->entries[0].current_gpu_address,
+      .size = sizeof(uint64_t),
+   };
+   const struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
+   const struct drm_asahi_cmd_compute command = {
+      .cdm_ctrl_stream_base =
+         queue->signal_stream_bo->va->addr + control_offset,
+      .cdm_ctrl_stream_end = queue->signal_stream_bo->va->addr +
+                             control_offset + queue->signal_control_size,
+   };
+   size_t payload_offset = 0;
+   memcpy((uint8_t *)op->payload + payload_offset, &attachment_header,
+          sizeof(attachment_header));
+   payload_offset += sizeof(attachment_header);
+   memcpy((uint8_t *)op->payload + payload_offset, &attachment,
+          sizeof(attachment));
+   payload_offset += sizeof(attachment);
+   memcpy((uint8_t *)op->payload + payload_offset, &header, sizeof(header));
+   payload_offset += sizeof(header);
+   memcpy((uint8_t *)op->payload + payload_offset, &command,
+          sizeof(command));
+   op->nr_cdm = 1;
+   op->write_set_complete = true;
+   return true;
+}
+
 static bool
 d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
 {
@@ -825,13 +1029,21 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    }
    op->retire_value = out;
    if (getenv("D3D12AGX_DUMP_SYNC")) {
+      uint64_t stream_address = 0;
+      if (op->bos_initialized && util_dynarray_num_elements(
+                                    &op->bos, struct agx_bo *) > 0) {
+         stream_address = (*(struct agx_bo **)
+                              util_dynarray_begin(&op->bos))->va->addr;
+      } else if (op->signal_slot_valid && queue->signal_stream_bo) {
+         stream_address = queue->signal_stream_bo->va->addr +
+                          op->signal_slot *
+                             D12_QUEUE_SIGNAL_STREAM_STRIDE;
+      }
       mesa_logi("SYNC submit: queue %p agxq %u  in=%llu out=%llu  "
                 "list %p stream_bo 0x%llx",
                 (void *)queue, queue->agx_queue_id,
                 (unsigned long long)in, (unsigned long long)out,
-                (void *)op->list,
-                (unsigned long long)(*(struct agx_bo **)
-                   util_dynarray_begin(&op->bos))->va->addr);
+                (void *)op->list, (unsigned long long)stream_address);
    }
 
    return true;
@@ -982,6 +1194,8 @@ d12_queue_retire_worker(void *data)
          }
       }
 
+      if (op->type == D12_QUEUE_OP_PLACEMENT_SIGNAL)
+         d12_queue_release_signal_slot(queue, op);
       d12_queue_op_destroy(op);
    }
 
@@ -1023,6 +1237,13 @@ d12_queue_worker(void *data)
       case D12_QUEUE_OP_SUBMIT:
          retire = d12_queue_wait_submit_capacity(queue) &&
                   d12_queue_process_submit(queue, op);
+         break;
+      case D12_QUEUE_OP_PLACEMENT_SIGNAL:
+         retire = d12_queue_wait_submit_capacity(queue) &&
+                  d12_queue_prepare_placement_signal(queue, op) &&
+                  d12_queue_process_submit(queue, op);
+         if (!retire)
+            d12_queue_release_signal_slot(queue, op);
          break;
       case D12_QUEUE_OP_SIGNAL:
          if (getenv("D3D12AGX_DUMP_SYNC"))
@@ -1556,17 +1777,6 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
                                  uint64_t value)
 {
    struct d12_queue_op *op;
-   struct agx_device *dev;
-   struct agx_precompiled_shader *program;
-   struct agx_bo *stream = NULL;
-   struct agx_bo *usc = NULL;
-   struct libagx_write_u64_args shader_args;
-   uint8_t *stream_map;
-   uint8_t *control;
-   uint32_t *usc_map;
-   uint32_t usc_offset = 0;
-   size_t control_size;
-   const size_t data_offset = 4096;
 
    if (!queue || !fence || fence->device != queue->device)
       return E_INVALIDARG;
@@ -1574,106 +1784,15 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
       return DXGI_ERROR_DEVICE_REMOVED;
    if (fence->count != 1)
       return E_NOTIMPL;
-   if (!queue->device->dev.params.max_attachments)
+   if (!queue->signal_stream_bo || !queue->signal_usc_bo)
       return E_FAIL;
-
-   dev = &queue->device->dev;
-   program = agx_get_precompiled(&queue->device->bg_eot,
-                                 LIBAGX_WRITE_U64);
-   if (!program)
-      return E_FAIL;
-   stream = agx_bo_create(dev, AIL_PAGESIZE, 0, AGX_BO_WRITEBACK,
-                          "d3d12 ddi fence signal stream");
-   usc = agx_bo_create(dev, AIL_PAGESIZE, 0,
-                       AGX_BO_LOW_VA | AGX_BO_WRITEBACK,
-                       "d3d12 ddi fence signal usc");
-   if (!stream || !usc) {
-      if (stream)
-         agx_bo_unreference(dev, stream);
-      if (usc)
-         agx_bo_unreference(dev, usc);
-      return E_OUTOFMEMORY;
-   }
-
-   stream_map = agx_bo_map(stream);
-   usc_map = agx_bo_map(usc);
-   if (!stream_map || !usc_map) {
-      agx_bo_unreference(dev, stream);
-      agx_bo_unreference(dev, usc);
-      return E_OUTOFMEMORY;
-   }
-   shader_args = (struct libagx_write_u64_args){
-      .address = fence->entries[0].current_gpu_address,
-      .value = value,
-   };
-   memcpy(stream_map + data_offset, &shader_args, sizeof(shader_args));
-   agx_usc_words_precomp(usc_map, &program->b,
-                         stream->va->addr + data_offset,
-                         sizeof(shader_args));
-   control = stream_map;
-   control = (uint8_t *)agx_cdm_launch(
-      (uint32_t *)control, dev->chip, agx_1d(1), program->b.workgroup,
-      program->b.launch, agx_usc_addr(dev, usc->va->addr + usc_offset));
-   control = (uint8_t *)agx_cdm_barrier((uint32_t *)control, dev->chip);
-   control_size = (size_t)(control - stream_map);
-   if (!control_size || control_size > data_offset) {
-      agx_bo_unreference(dev, stream);
-      agx_bo_unreference(dev, usc);
-      return E_FAIL;
-   }
 
    op = calloc(1, sizeof(*op));
-   if (!op) {
-      agx_bo_unreference(dev, stream);
-      agx_bo_unreference(dev, usc);
+   if (!op)
       return E_OUTOFMEMORY;
-   }
-   op->type = D12_QUEUE_OP_SUBMIT;
+   op->type = D12_QUEUE_OP_PLACEMENT_SIGNAL;
    op->placement_fence = fence;
    op->value = value;
-   op->submit_device = queue->device;
-   op->payload_size = 2 * sizeof(struct drm_asahi_cmd_header) +
-                      sizeof(struct drm_asahi_attachment) +
-                      sizeof(struct drm_asahi_cmd_compute);
-   op->payload = calloc(1, op->payload_size);
-   if (!op->payload) {
-      free(op);
-      agx_bo_unreference(dev, stream);
-      agx_bo_unreference(dev, usc);
-      return E_OUTOFMEMORY;
-   }
-   const struct drm_asahi_cmd_header attachment_header = {
-      .cmd_type = DRM_ASAHI_SET_COMPUTE_ATTACHMENTS,
-      .size = sizeof(struct drm_asahi_attachment),
-      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
-      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
-   };
-   const struct drm_asahi_attachment attachment = {
-      .pointer = fence->entries[0].current_gpu_address,
-      .size = sizeof(uint64_t),
-   };
-   const struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
-   const struct drm_asahi_cmd_compute command = {
-      .cdm_ctrl_stream_base = stream->va->addr,
-      .cdm_ctrl_stream_end = stream->va->addr + control_size,
-   };
-   size_t payload_offset = 0;
-   memcpy((uint8_t *)op->payload + payload_offset, &attachment_header,
-          sizeof(attachment_header));
-   payload_offset += sizeof(attachment_header);
-   memcpy((uint8_t *)op->payload + payload_offset, &attachment,
-          sizeof(attachment));
-   payload_offset += sizeof(attachment);
-   memcpy((uint8_t *)op->payload + payload_offset, &header, sizeof(header));
-   payload_offset += sizeof(header);
-   memcpy((uint8_t *)op->payload + payload_offset, &command,
-          sizeof(command));
-   op->nr_cdm = 1;
-   op->write_set_complete = true;
-   util_dynarray_init(&op->bos, NULL);
-   op->bos_initialized = true;
-   util_dynarray_append_typed(&op->bos, struct agx_bo *, stream);
-   util_dynarray_append_typed(&op->bos, struct agx_bo *, usc);
    d12_placement_fence_ref(fence);
 
    mtx_lock(&queue->lock);
@@ -1884,8 +2003,22 @@ d12_queue_create(struct d12_device *device,
                                (IUnknown *)&queue->iface);
    d12_device_add_ref(device);
 
+   HRESULT signal_arena_result = d12_queue_signal_arena_init(queue);
+   if (FAILED(signal_arena_result)) {
+      d12_device_release(device);
+      d12_private_data_store_destroy(&queue->private_data);
+      cnd_destroy(&queue->retire_available);
+      cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->lock);
+      device->sync->destroy(device->sync, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return signal_arena_result;
+   }
+
    if (thrd_create(&queue->retire_worker, d12_queue_retire_worker, queue) !=
        thrd_success) {
+      d12_queue_signal_arena_cleanup(queue);
       d12_device_release(device);
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->retire_available);
@@ -1905,6 +2038,7 @@ d12_queue_create(struct d12_device *device,
       mtx_unlock(&queue->lock);
       thrd_join(queue->retire_worker, NULL);
       queue->retire_worker_started = false;
+      d12_queue_signal_arena_cleanup(queue);
       d12_device_release(device);
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->retire_available);
