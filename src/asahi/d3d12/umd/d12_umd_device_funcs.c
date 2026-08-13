@@ -266,6 +266,8 @@ d12_umd_heap_retain_mapping(struct d12_umd_heap *heap, void **mapping)
    struct d12_umd_device *device;
    HRESULT result = S_OK;
 
+   if (mapping)
+      *mapping = NULL;
    if (!heap || heap->signature != D12_UMD_HEAP_SIGNATURE || !mapping ||
        heap->cpu_page_property == D3D12DDI_CPU_PAGE_PROPERTY_NOT_AVAILABLE)
       return E_INVALIDARG;
@@ -1618,6 +1620,9 @@ d12_umd_map_heap(D3D12DDI_HDEVICE handle, D3D12DDI_HHEAP heap_handle,
 {
    struct d12_umd_device *device = d12_umd_device_from_handle(handle);
    struct d12_umd_heap *heap = (struct d12_umd_heap *)heap_handle.pDrvPrivate;
+
+   if (mapping)
+      *mapping = NULL;
    if (!device || !heap || heap->signature != D12_UMD_HEAP_SIGNATURE ||
        heap->device != device || !mapping ||
        heap->cpu_page_property == D3D12DDI_CPU_PAGE_PROPERTY_NOT_AVAILABLE)

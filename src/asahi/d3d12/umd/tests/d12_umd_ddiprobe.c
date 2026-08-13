@@ -3520,6 +3520,27 @@ wmain(int argc, wchar_t **argv)
             HeapFree(GetProcessHeap(), 0, foreign_resource.pDrvPrivate);
             HeapFree(GetProcessHeap(), 0, foreign_heap.pDrvPrivate);
          }
+         mapping = (void *)(uintptr_t)UINTPTR_MAX;
+         result = device_table.pfnMapHeap(
+            driver_device, (D3D12DDI_HHEAP){0}, &mapping);
+         require_result(result == E_INVALIDARG && mapping == NULL,
+                        "MapHeap clears output for invalid heap");
+
+         {
+            struct d12_umd_heap *private_heap = heap_handle.pDrvPrivate;
+
+            private_heap->mapping = mapped_heap;
+            private_heap->map_count = UINT32_MAX;
+            mapping = (void *)(uintptr_t)UINTPTR_MAX;
+            result = device_table.pfnMapHeap(driver_device, heap_handle,
+                                             &mapping);
+            require_result(result == E_FAIL && mapping == NULL,
+                           "MapHeap clears output on retain overflow");
+            private_heap->mapping = NULL;
+            private_heap->map_count = 0;
+         }
+
+         mapping = NULL;
          result = device_table.pfnMapHeap(driver_device, heap_handle, &mapping);
          require_result(result == S_OK && mapping == mapped_heap &&
                            lock_calls == 1,
