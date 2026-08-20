@@ -1840,6 +1840,20 @@ agx_fminmax_to(agx_builder *b, agx_index dst, agx_index s0, agx_index s1,
    return agx_fcmpsel_to(b, dst, s0, s1, s0, s1, fcond);
 }
 
+/* Half-precision ALU instructions cannot encode 32-bit register sources.
+ * Convert them explicitly. Immediate and null sources have no size bit. */
+static agx_index
+agx_coerce_f16_src(agx_builder *b, agx_index src)
+{
+   if (src.size == AGX_SIZE_16 || src.type == AGX_INDEX_IMMEDIATE ||
+       src.type == AGX_INDEX_NULL)
+      return src;
+
+   agx_index tmp = agx_temp(b->shader, AGX_SIZE_16);
+   agx_fmov_to(b, tmp, src);
+   return tmp;
+}
+
 static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
@@ -1896,19 +1910,23 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 
    case nir_op_fadd:
       if (instr->def.bit_size == 16)
-         return agx_hadd_to(b, dst, s0, s1);
+         return agx_hadd_to(b, dst, agx_coerce_f16_src(b, s0),
+                            agx_coerce_f16_src(b, s1));
       else
          return agx_fadd_to(b, dst, s0, s1);
 
    case nir_op_fmul:
       if (instr->def.bit_size == 16)
-         return agx_hmul_to(b, dst, s0, s1);
+         return agx_hmul_to(b, dst, agx_coerce_f16_src(b, s0),
+                            agx_coerce_f16_src(b, s1));
       else
          return agx_fmul_to(b, dst, s0, s1);
 
    case nir_op_ffma:
       if (instr->def.bit_size == 16)
-         return agx_hfma_to(b, dst, s0, s1, s2);
+         return agx_hfma_to(b, dst, agx_coerce_f16_src(b, s0),
+                            agx_coerce_f16_src(b, s1),
+                            agx_coerce_f16_src(b, s2));
       else
          return agx_ffma_to(b, dst, s0, s1, s2);
 

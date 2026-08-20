@@ -917,7 +917,7 @@ d3dkmt_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 
    struct agx_d3dkmt_allocation_record record;
    enum agx_d3dkmt_external_memory_type external_type =
-      (flags & (AGX_BO_SHARED | AGX_BO_SHAREABLE))
+      (flags & AGX_BO_SHAREABLE)
          ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
          : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
    if (!d3dkmt_create_allocation(ws, size, flags, external_type, NULL, NULL,
@@ -1982,7 +1982,7 @@ d3dkmt_bo_bind(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
                  (unsigned)ws->va_fence,
                  (unsigned long long)completion_value);
       ret = agx_d3dkmt_wait_fence(ws, ws->va_fence, ws->va_fence_cpu,
-                                  completion_value, 10000u);
+                                  completion_value, AGX_D3DKMT_INFINITE);
       d3dkmt_log("update-gpuva wait end result=%d errno=%d cpu-value=%llu",
                  ret, errno,
                  (unsigned long long)(ws->va_fence_cpu
@@ -2001,6 +2001,142 @@ out:
       free(binds);
    if (uops != stack_ops)
       free(uops);
+   return ret;
+}
+
+/*
+ * Queue-relative sparse binding for D3D12.  Unlike the generic DRM-shaped
+ * bo_bind hook, this deliberately does not wait on the CPU.  Microsoft's
+ * tiled-resource contract gives UpdateGpuVirtualAddress a rendering context
+ * and monitored fence: VidMm waits for FenceValue on the context's dedicated
+ * paging context, applies the mappings, then signals FenceValue + 1.  The
+ * caller reserves that next point in its queue timeline, so later rendering
+ * waits in the scheduler instead of stalling the DDI thread.
+ */
+static int
+d3dkmt_bo_bind_timeline(struct agx_device *dev, uint32_t queue_id,
+                        uint32_t syncobj, uint64_t wait_value,
+                        struct drm_asahi_gem_bind_op *ops, uint32_t count)
+{
+   struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
+   struct agx_d3dkmt_bind stack_binds[8];
+   struct agx_kmt_updategpuva_op stack_ops[16];
+   struct agx_d3dkmt_bind *binds = stack_binds;
+   struct agx_kmt_updategpuva_op *uops = stack_ops;
+   struct agx_d3dkmt_ctx *ctx = NULL;
+   uint32_t nops = 0;
+   bool context_claimed = false;
+   int ret = -1;
+
+   if (!queue_id || !syncobj || wait_value == UINT64_MAX ||
+       (count && !ops)) {
+      errno = EINVAL;
+      return -1;
+   }
+   if (!count)
+      return 0;
+
+   if (count > ARRAY_SIZE(stack_binds)) {
+      binds = malloc((size_t)count * sizeof(*binds));
+      if (!binds) {
+         errno = ENOMEM;
+         return -1;
+      }
+   }
+
+   simple_mtx_lock(&ws->lock);
+   for (uint32_t i = 0; i < count; ++i) {
+      binds[i] = (struct agx_d3dkmt_bind){
+         .flags = ops[i].flags,
+         .kmt_handle = ops[i].handle,
+         .offset = ops[i].offset,
+         .range = ops[i].range,
+         .addr = ops[i].addr,
+      };
+   }
+   simple_mtx_unlock(&ws->lock);
+
+   if (agx_d3dkmt_translate_binds(binds, count, &ws->policy, NULL, 0,
+                                  &nops) != AGX_D3DKMT_OK) {
+      errno = EINVAL;
+      goto out;
+   }
+   if (nops > ARRAY_SIZE(stack_ops)) {
+      uops = malloc((size_t)nops * sizeof(*uops));
+      if (!uops) {
+         errno = ENOMEM;
+         goto out;
+      }
+   }
+   if (agx_d3dkmt_translate_binds(binds, count, &ws->policy, uops, nops,
+                                  &nops) != AGX_D3DKMT_OK) {
+      errno = EINVAL;
+      goto out;
+   }
+
+   simple_mtx_lock(&ws->lock);
+   ctx = ctx_get(ws, queue_id);
+   struct agx_d3dkmt_sync *fence =
+      agx_d3dkmt_sync_table_get(&ws->syncs, syncobj);
+   if (ws->device_lost || !ctx || ctx->submit_failed ||
+       ctx->completion_unknown || ctx->submit_refs != 0 || !fence ||
+       !fence->kmt) {
+      const bool lost = ws->device_lost || (ctx && ctx->submit_failed);
+      const bool busy = ctx && ctx->submit_refs != 0;
+      simple_mtx_unlock(&ws->lock);
+      if (lost)
+         errno = EIO;
+      else if (busy)
+         errno = EBUSY;
+      else
+         errno = EINVAL;
+      goto out;
+   }
+   ctx->submit_refs = 1;
+   ws->active_submits++;
+   context_claimed = true;
+
+   struct agx_kmt_updategpuva update = {
+      .hDevice = ws->device,
+      .hContext = ctx->hContext,
+      .hFenceObject = fence->kmt,
+      .NumOperations = nops,
+      .Operations = uops,
+      .FenceValue = wait_value,
+      /* DoNotWait must remain clear: VidMm waits for this queue point before
+       * changing its page tables, then signals wait_value + 1. */
+      .Flags = 0,
+   };
+   agx_kmt_status status =
+      AGX_D3DKMT_CALL(ws, UpdateGpuVirtualAddress, &update);
+   if (AGX_KMT_SUCCESS(status)) {
+      const uint64_t completion_value = wait_value + 1;
+      if (completion_value > fence->last_request)
+         fence->last_request = completion_value;
+      ret = 0;
+   }
+   simple_mtx_unlock(&ws->lock);
+
+   if (!AGX_KMT_SUCCESS(status)) {
+      ret = agx_d3dkmt_fail(status);
+      agx_d3dkmt_mark_device_lost(ws, ctx);
+   } else {
+      agx_bo_read_set_changed(dev);
+   }
+
+out:
+   if (context_claimed) {
+      simple_mtx_lock(&ws->lock);
+      assert(ctx != NULL && ctx->submit_refs == 1 &&
+             ws->active_submits > 0);
+      ctx->submit_refs = 0;
+      ws->active_submits--;
+      simple_mtx_unlock(&ws->lock);
+   }
+   if (uops != stack_ops)
+      free(uops);
+   if (binds != stack_binds)
+      free(binds);
    return ret;
 }
 
@@ -2485,21 +2621,36 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    const struct drm_asahi_sync *syncs =
       (const struct drm_asahi_sync *)(uintptr_t)submit->syncs;
-   agx_kmt_handle *waits = NULL;
-   uint64_t *wait_values = NULL;
-   agx_kmt_handle *signals = NULL;
-   uint64_t *signal_values = NULL;
-   struct agxw_submit_private_v3 *priv = NULL;
+   agx_kmt_handle waits[AGXW_MAX_SYNCS_PER_SUBMIT];
+   uint64_t wait_values[AGXW_MAX_SYNCS_PER_SUBMIT];
+   agx_kmt_handle signals[AGXW_MAX_SYNCS_PER_SUBMIT];
+   uint64_t signal_values[AGXW_MAX_SYNCS_PER_SUBMIT];
+   union {
+      struct agxw_submit_private_v4 alignment;
+      uint8_t bytes[sizeof(struct agxw_submit_private_v4) +
+                    AGXW_MAX_READ_RANGES_PER_SUBMIT *
+                       sizeof(struct agxw_submit_read_range) +
+                    AGXW_MAX_FENCE_DEPENDENCIES_PER_SUBMIT *
+                       sizeof(struct agxw_submit_fence_dependency)];
+   } private_storage;
+   struct agxw_submit_private *priv =
+      (struct agxw_submit_private *)private_storage.bytes;
    uint32_t priv_size = 0;
    int ret = -1;
 
    const uint32_t n_in = submit->in_sync_count;
    const uint32_t n_out = submit->out_sync_count;
+   const uint32_t fence_dependency_count =
+      virt ? virt->fence_dependency_count : 0;
+   const bool use_fence_dependencies = fence_dependency_count != 0;
    uint32_t private_flags = 0;
 
    /* +1 for the winsys's own staging-retire fence. */
    if ((uint64_t)n_in + n_out + 1 > AGXW_MAX_SYNCS_PER_SUBMIT ||
-       submit->cmdbuf_size > AGXW_MAX_CMDBUF_BYTES) {
+       submit->cmdbuf_size > AGXW_MAX_CMDBUF_BYTES ||
+       fence_dependency_count > AGXW_MAX_FENCE_DEPENDENCIES_PER_SUBMIT ||
+       (fence_dependency_count &&
+        (!virt || !virt->fence_dependencies))) {
       errno = EINVAL;
       return -1;
    }
@@ -2529,18 +2680,6 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    ws->active_submits++;
    const unsigned staging_slot = ctx->staging_slot;
    simple_mtx_unlock(&ws->lock);
-
-   signals = malloc((size_t)(n_out + 1) * sizeof(*signals));
-   signal_values = malloc((size_t)(n_out + 1) * sizeof(*signal_values));
-   if (n_in > 0) {
-      waits = malloc((size_t)n_in * sizeof(*waits));
-      wait_values = malloc((size_t)n_in * sizeof(*wait_values));
-   }
-   if (signals == NULL || signal_values == NULL ||
-       (n_in > 0 && (waits == NULL || wait_values == NULL))) {
-      errno = ENOMEM;
-      goto out;
-   }
 
    /* The DMA buffer: header + verbatim AGX command stream, in a BO this
     * winsys owns and has already mapped to GPU VA. */
@@ -2573,28 +2712,34 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    if (agx_bo_sync_for_device(staging, 0, dma_bytes))
       goto out;
 
+   const size_t priv_header_size =
+      use_fence_dependencies ? sizeof(struct agxw_submit_private_v4)
+                             : sizeof(struct agxw_submit_private_v3);
    const size_t priv_capacity =
-      sizeof(*priv) + AGXW_MAX_READ_RANGES_PER_SUBMIT *
-                         sizeof(struct agxw_submit_read_range);
-   priv = calloc(1, priv_capacity);
-   if (!priv) {
-      errno = ENOMEM;
-      goto out;
-   }
+      priv_header_size + AGXW_MAX_READ_RANGES_PER_SUBMIT *
+                            sizeof(struct agxw_submit_read_range) +
+      (size_t)fence_dependency_count *
+         sizeof(struct agxw_submit_fence_dependency);
+   memset(priv, 0, priv_capacity);
    struct agxw_submit_read_range *read_ranges =
-      (struct agxw_submit_read_range *)(priv + 1);
+      (struct agxw_submit_read_range *)((uint8_t *)priv + priv_header_size);
+   uint32_t read_range_count = 0;
    if (d3dkmt_build_read_set(dev, staging, virt, read_ranges,
-                             &priv->read_range_count))
+                             &read_range_count))
       goto out;
 
-   priv->base = (struct agxw_submit_private){
-      .version = AGXW_SUBMIT_PRIVATE_VERSION,
-      .struct_size = sizeof(*priv),
-      .flags = private_flags,
-   };
-   priv_size = (uint32_t)sizeof(*priv) +
-               priv->read_range_count * (uint32_t)sizeof(*read_ranges);
-   if (agxw_submit_private_validate(&priv->base, priv_size) != 0) {
+   static_assert(AGX_SUBMIT_FENCE_WAIT == AGXW_SUBMIT_FENCE_WAIT,
+                 "placement-fence wait flag mirror");
+   static_assert(AGX_SUBMIT_FENCE_SIGNAL == AGXW_SUBMIT_FENCE_SIGNAL,
+                 "placement-fence signal flag mirror");
+   static_assert(AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE ==
+                    AGXW_SUBMIT_FENCE_BOTTOM_OF_PIPE,
+                 "placement-fence scope flag mirror");
+   if (agx_d3dkmt_submit_private_pack(
+          private_flags, read_ranges, read_range_count,
+          use_fence_dependencies ? virt->fence_dependencies : NULL,
+          fence_dependency_count, priv, (uint32_t)priv_capacity,
+          &priv_size) != AGX_D3DKMT_OK) {
       errno = EINVAL;
       goto out;
    }
@@ -2704,11 +2849,6 @@ out:
    ctx->submit_refs = 0;
    ws->active_submits--;
    simple_mtx_unlock(&ws->lock);
-   free(waits);
-   free(wait_values);
-   free(signals);
-   free(signal_values);
-   free(priv);
    return ret;
 }
 
@@ -3150,6 +3290,7 @@ d3dkmt_simple_ioctl(struct agx_device *dev, unsigned cmd, void *req)
 const agx_device_ops_t agx_device_d3dkmt_ops = {
    .bo_alloc = d3dkmt_bo_alloc,
    .bo_bind = d3dkmt_bo_bind,
+   .bo_bind_timeline = d3dkmt_bo_bind_timeline,
    .bo_mmap = d3dkmt_bo_mmap,
    .get_params = d3dkmt_get_params,
    .submit = d3dkmt_submit,
@@ -3195,9 +3336,10 @@ query_identity(const struct agx_d3dkmt_fns *fns, agx_kmt_handle adapter,
 
    agx_kmt_status status = fns->QueryAdapterInfo(&query);
    d3dkmt_log("identity adapter=0x%08x status=0x%08x magic=0x%08x "
-              "version=%u size=%u contract=%u params=%u",
+              "version=%u size=%u contract=%u params=%u submit-max=%u",
               (unsigned)adapter, (unsigned)status, blob.magic, blob.version,
-              blob.struct_size, blob.contract_version, blob.params_blob_size);
+              blob.struct_size, blob.contract_version, blob.params_blob_size,
+              blob.submit_private_max_version);
    if (!AGX_KMT_SUCCESS(status))
       return false;
 

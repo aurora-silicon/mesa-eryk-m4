@@ -95,6 +95,8 @@ struct agx_submit_virt {
    uint32_t flags;
    uint32_t read_range_count;
    const struct agx_submit_read_range *read_ranges;
+   uint32_t fence_dependency_count;
+   const struct agx_submit_fence_dependency *fence_dependencies;
 };
 
 typedef struct {
@@ -102,6 +104,17 @@ typedef struct {
                               enum agx_bo_flags flags);
    int (*bo_bind)(struct agx_device *dev, struct drm_asahi_gem_bind_op *ops,
                   uint32_t count);
+   /*
+    * Optional WDDM queue interlock for tiled-resource page-table updates.
+    * The update waits until `syncobj` reaches `wait_value`, then the paging
+    * context publishes `wait_value + 1` to that same monitored fence.  This
+    * is the D3DKMTUpdateGpuVirtualAddress ordering model; DRM backends leave
+    * the hook NULL and retain their synchronous VM_BIND path.
+    */
+   int (*bo_bind_timeline)(struct agx_device *dev, uint32_t queue_id,
+                           uint32_t syncobj, uint64_t wait_value,
+                           struct drm_asahi_gem_bind_op *ops,
+                           uint32_t count);
    void (*bo_mmap)(struct agx_device *dev, struct agx_bo *bo, void *fixed_addr);
    ssize_t (*get_params)(struct agx_device *dev, void *buf, size_t size);
    int (*submit)(struct agx_device *dev, struct drm_asahi_submit *submit,

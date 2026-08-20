@@ -24,6 +24,7 @@ valid_identity(void)
       .contract_version = AGXW_CONTRACT_VERSION,
       .features = UINT64_C(0x12345678),
       .params_blob_size = AGXW_PARAMS_GLOBAL_SIZE,
+      .submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4,
    };
 }
 
@@ -62,9 +63,13 @@ main(void)
    assert(d12_umd_validate_identity(&input, sizeof(input), &output) ==
           D12_UMD_IDENTITY_PARAMS_SIZE);
    input = valid_identity();
-   input.reserved = 1;
+   input.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V3;
    assert(d12_umd_validate_identity(&input, sizeof(input), &output) ==
-          D12_UMD_IDENTITY_RESERVED);
+          D12_UMD_IDENTITY_SUBMIT_VERSION);
+   input = valid_identity();
+   input.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4 + 1;
+   assert(d12_umd_validate_identity(&input, sizeof(input), &output) ==
+          D12_UMD_IDENTITY_OK);
 
    assert(d12_umd_supported_version_count() ==
           (D12_UMD_TARGETS_WDDM31 ? 2u :

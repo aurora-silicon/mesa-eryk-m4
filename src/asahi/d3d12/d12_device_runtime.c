@@ -439,8 +439,8 @@ d12_device_runtime_command_queue_create(
       .Flags = D3D12_COMMAND_QUEUE_FLAG_NONE,
       .NodeMask = 1,
    };
-   return d12_queue_create(device, &desc, &IID_ID3D12CommandQueue,
-                           out_queue);
+   return d12_queue_create_ddi(device, &desc, &IID_ID3D12CommandQueue,
+                               out_queue);
 }
 
 void
@@ -476,7 +476,9 @@ d12_device_runtime_command_queue_execute(void *queue, uint32_t count,
       (ID3D12CommandQueue *)queue, count, translated);
    if (translated != local)
       free(translated);
-   return S_OK;
+   struct d12_queue *native =
+      d12_queue_from_iface((ID3D12CommandQueue *)queue);
+   return d12_device_removed_reason(native->device);
 }
 
 HRESULT
@@ -709,7 +711,7 @@ d12_device_runtime_command_list_create(
 
    return d12_cmd_list_create(device, type,
                               d12_cmd_allocator_from_iface(allocator_iface),
-                              &IID_ID3D12GraphicsCommandList, out_list);
+                              NULL, &IID_ID3D12GraphicsCommandList, out_list);
 }
 
 HRESULT
@@ -1080,51 +1082,57 @@ d12_device_runtime_command_list_resource_barriers(
    const struct d12_frontend_resource_barrier *barriers)
 {
    D3D12_RESOURCE_BARRIER local[16];
-   D3D12_RESOURCE_BARRIER *translated = local;
 
    if (!list || (count && !barriers))
       return;
-   if (count > ARRAY_SIZE(local)) {
-      translated = calloc(count, sizeof(*translated));
-      if (!translated)
-         return;
-   }
+
    for (uint32_t index = 0; index < count; ++index) {
-      translated[index].Type = (D3D12_RESOURCE_BARRIER_TYPE)barriers[index].type;
-      translated[index].Flags =
-         (D3D12_RESOURCE_BARRIER_FLAGS)barriers[index].flags;
-      switch (barriers[index].type) {
-      case D12_FRONTEND_BARRIER_TRANSITION:
-         translated[index].Transition = (D3D12_RESOURCE_TRANSITION_BARRIER){
-            .pResource = barriers[index].transition.resource,
-            .Subresource = barriers[index].transition.subresource,
-            .StateBefore = (D3D12_RESOURCE_STATES)
-               barriers[index].transition.state_before,
-            .StateAfter = (D3D12_RESOURCE_STATES)
-               barriers[index].transition.state_after,
-         };
-         break;
-      case D12_FRONTEND_BARRIER_ALIASING:
-         translated[index].Aliasing = (D3D12_RESOURCE_ALIASING_BARRIER){
-            .pResourceBefore = barriers[index].aliasing.resource_before,
-            .pResourceAfter = barriers[index].aliasing.resource_after,
-         };
-         break;
-      case D12_FRONTEND_BARRIER_UAV:
-         translated[index].UAV = (D3D12_RESOURCE_UAV_BARRIER){
-            .pResource = barriers[index].uav.resource,
-         };
-         break;
-      default:
-         if (translated != local)
-            free(translated);
+      if (barriers[index].type != D12_FRONTEND_BARRIER_TRANSITION &&
+          barriers[index].type != D12_FRONTEND_BARRIER_ALIASING &&
+          barriers[index].type != D12_FRONTEND_BARRIER_UAV)
          return;
-      }
    }
-   ID3D12GraphicsCommandList_ResourceBarrier(
-      (ID3D12GraphicsCommandList *)list, count, translated);
-   if (translated != local)
-      free(translated);
+
+   for (uint32_t offset = 0; offset < count;) {
+      const uint32_t chunk = MIN2(count - offset, ARRAY_SIZE(local));
+
+      for (uint32_t index = 0; index < chunk; ++index) {
+         const struct d12_frontend_resource_barrier *source =
+            &barriers[offset + index];
+
+         local[index].Type = (D3D12_RESOURCE_BARRIER_TYPE)source->type;
+         local[index].Flags = (D3D12_RESOURCE_BARRIER_FLAGS)source->flags;
+         switch (source->type) {
+         case D12_FRONTEND_BARRIER_TRANSITION:
+            local[index].Transition = (D3D12_RESOURCE_TRANSITION_BARRIER){
+               .pResource = source->transition.resource,
+               .Subresource = source->transition.subresource,
+               .StateBefore =
+                  (D3D12_RESOURCE_STATES)source->transition.state_before,
+               .StateAfter =
+                  (D3D12_RESOURCE_STATES)source->transition.state_after,
+            };
+            break;
+         case D12_FRONTEND_BARRIER_ALIASING:
+            local[index].Aliasing = (D3D12_RESOURCE_ALIASING_BARRIER){
+               .pResourceBefore = source->aliasing.resource_before,
+               .pResourceAfter = source->aliasing.resource_after,
+            };
+            break;
+         case D12_FRONTEND_BARRIER_UAV:
+            local[index].UAV = (D3D12_RESOURCE_UAV_BARRIER){
+               .pResource = source->uav.resource,
+            };
+            break;
+         default:
+            return;
+         }
+      }
+
+      ID3D12GraphicsCommandList_ResourceBarrier(
+         (ID3D12GraphicsCommandList *)list, chunk, local);
+      offset += chunk;
+   }
 }
 
 void
@@ -1295,41 +1303,35 @@ d12_device_runtime_command_list_write_buffer_immediate(
 {
    D3D12_WRITEBUFFERIMMEDIATE_PARAMETER local_parameters[32];
    D3D12_WRITEBUFFERIMMEDIATE_MODE local_modes[32];
-   D3D12_WRITEBUFFERIMMEDIATE_PARAMETER *translated_parameters =
-      local_parameters;
-   D3D12_WRITEBUFFERIMMEDIATE_MODE *translated_modes = local_modes;
    struct d12_cmd_list *native;
 
    if (!list || (count && !parameters))
       return E_INVALIDARG;
-   if (count > ARRAY_SIZE(local_parameters)) {
-      translated_parameters =
-         calloc(count, sizeof(*translated_parameters));
-      translated_modes = calloc(count, sizeof(*translated_modes));
-      if (!translated_parameters || !translated_modes) {
-         free(translated_parameters);
-         free(translated_modes);
-         return E_OUTOFMEMORY;
-      }
-   }
-   for (uint32_t index = 0; index < count; ++index) {
-      translated_parameters[index] = (D3D12_WRITEBUFFERIMMEDIATE_PARAMETER){
-         .Dest = parameters[index].destination,
-         .Value = parameters[index].value,
-      };
-      translated_modes[index] = modes
-         ? (D3D12_WRITEBUFFERIMMEDIATE_MODE)modes[index]
-         : D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
-   }
-   ID3D12GraphicsCommandList2_WriteBufferImmediate(
-      (ID3D12GraphicsCommandList2 *)list, count, translated_parameters,
-      modes ? translated_modes : NULL);
-   if (translated_parameters != local_parameters) {
-      free(translated_parameters);
-      free(translated_modes);
-   }
 
    native = d12_cmd_list_from_iface((ID3D12GraphicsCommandList6 *)list);
+   for (uint32_t offset = 0; offset < count;) {
+      const uint32_t chunk = MIN2(count - offset,
+                                  ARRAY_SIZE(local_parameters));
+
+      for (uint32_t index = 0; index < chunk; ++index) {
+         local_parameters[index] =
+            (D3D12_WRITEBUFFERIMMEDIATE_PARAMETER){
+               .Dest = parameters[offset + index].destination,
+               .Value = parameters[offset + index].value,
+            };
+         local_modes[index] = modes
+            ? (D3D12_WRITEBUFFERIMMEDIATE_MODE)modes[offset + index]
+            : D3D12_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
+      }
+
+      ID3D12GraphicsCommandList2_WriteBufferImmediate(
+         (ID3D12GraphicsCommandList2 *)list, chunk, local_parameters,
+         modes ? local_modes : NULL);
+      if (native && native->state == D12_LIST_ERROR)
+         return native->record_error ? native->record_error : E_FAIL;
+      offset += chunk;
+   }
+
    return native && native->state == D12_LIST_ERROR
              ? (native->record_error ? native->record_error : E_FAIL)
              : S_OK;

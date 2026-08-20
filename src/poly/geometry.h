@@ -9,6 +9,7 @@
 
 #include "util/bitscan.h"
 #include "util/u_math.h"
+#include "poly/poly_heap_math.h"
 
 #ifdef __OPENCL_VERSION__
 #include "compiler/libcl/libcl_vk.h"
@@ -125,7 +126,7 @@ poly_heap_alloc_offs(global struct poly_heap *heap, uint size_B)
       atomic_fetch_add((volatile atomic_uint *)(&heap->bottom), size_B);
 
    /* Use printf+abort because assert is stripped from release builds. */
-   if (heap->bottom >= heap->size) {
+   if (!poly_heap_allocation_fits(offs, size_B, heap->size)) {
       printf(
          "FATAL: GPU heap overflow, allocating size %u, at offset %u, heap size %u!",
          size_B, offs, heap->size);

@@ -942,6 +942,7 @@ test_identity_parsing(void)
       .gpu_revision = AGXW_J414S_GPU_REVISION,
       .contract_version = AGXW_CONTRACT_VERSION,
       .params_blob_size = AGXW_PARAMS_GLOBAL_SIZE,
+      .submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4,
    };
 
    CHECK_EQ(agx_d3dkmt_parse_identity(&id, sizeof(id), &policy, &out),
@@ -980,6 +981,17 @@ test_identity_parsing(void)
    CHECK_EQ(agx_d3dkmt_parse_identity(&bad, sizeof(bad), &policy, &out),
             AGX_D3DKMT_ERR_INVAL);
 
+   bad = id;
+   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V2;
+   CHECK_EQ(agx_d3dkmt_parse_identity(&bad, sizeof(bad), &policy, &out),
+            AGX_D3DKMT_ERR_INVAL);
+
+   /* Newer KMDs retain the append-only lower submit versions. */
+   bad = id;
+   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4 + 1;
+   CHECK_EQ(agx_d3dkmt_parse_identity(&bad, sizeof(bad), &policy, &out),
+            AGX_D3DKMT_OK);
+
    /* Width is asserted, never inferred. */
    CHECK_EQ(agx_d3dkmt_parse_identity(&id, sizeof(id) - 1, &policy, &out),
             AGX_D3DKMT_ERR_INVAL);
@@ -1012,8 +1024,10 @@ test_alloc_flags(void)
 
    /* Shareable and VM-private are mutually exclusive by contract. */
    uint32_t shared = agx_d3dkmt_agxw_alloc_flags(AGX_D3DKMT_BO_SHARED);
-   CHECK(shared & AGXW_ALLOC_SHAREABLE);
-   CHECK(!(shared & AGXW_ALLOC_VM_PRIVATE));
+   CHECK(shared & AGXW_ALLOC_VM_PRIVATE);
+   CHECK(!(shared & AGXW_ALLOC_SHAREABLE));
+   CHECK(!(agx_d3dkmt_create_flags(AGX_D3DKMT_BO_SHARED) &
+           AGX_KMT_CREATEALLOC_CREATERESOURCE));
 
    uint32_t shareable = agx_d3dkmt_agxw_alloc_flags(AGX_D3DKMT_BO_SHAREABLE);
    CHECK(shareable & AGXW_ALLOC_SHAREABLE);
@@ -1041,7 +1055,7 @@ test_alloc_flags(void)
    CHECK_EQ(sizeof(alloc), AGXW_ALLOC_PRIVATE_SIZE);
 
    /* D3DKMT-side creation flags. */
-   uint32_t cf = agx_d3dkmt_create_flags(AGX_D3DKMT_BO_SHARED);
+   uint32_t cf = agx_d3dkmt_create_flags(AGX_D3DKMT_BO_SHAREABLE);
    CHECK(cf & AGX_KMT_CREATEALLOC_CREATERESOURCE);
    CHECK(cf & AGX_KMT_CREATEALLOC_CREATESHARED);
    /* NT-handle sharing, not the legacy global handle: a global shared handle
@@ -1317,6 +1331,78 @@ test_contract_blobs_we_emit(void)
    CHECK_EQ(agx_d3dkmt_submit_private_flags(1, &private_flags),
             AGX_D3DKMT_ERR_INVAL);
    CHECK_EQ(agx_d3dkmt_submit_private_flags(0, NULL),
+            AGX_D3DKMT_ERR_INVAL);
+
+   uint8_t packed[sizeof(struct agxw_submit_private_v4) +
+                  2 * sizeof(struct agxw_submit_read_range) +
+                  2 * sizeof(struct agxw_submit_fence_dependency)] = {0};
+   const struct agxw_submit_read_range packed_ranges[] = {
+      {UINT64_C(0x1100000000), UINT64_C(0x4000)},
+      {UINT64_C(0x1500000000), UINT64_C(0x8000)},
+   };
+   const struct agx_submit_fence_dependency packed_dependencies[] = {
+      {
+         .current_gpu_va = UINT64_C(0x1501000000),
+         .monitored_gpu_va = UINT64_C(0x1501000008),
+         .value = 41,
+         .flags = AGX_SUBMIT_FENCE_WAIT,
+      },
+      {
+         .current_gpu_va = UINT64_C(0x1502000000),
+         .monitored_gpu_va = UINT64_C(0x1502000008),
+         .value = 42,
+         .flags = AGX_SUBMIT_FENCE_SIGNAL |
+                  AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE,
+      },
+   };
+   uint32_t packed_size = 0;
+   CHECK_EQ(agx_d3dkmt_submit_private_pack(
+               AGXW_SUBMIT_READ_SET_COMPLETE, packed_ranges, 2, NULL, 0,
+               packed, sizeof(packed), &packed_size),
+            AGX_D3DKMT_OK);
+   const struct agxw_submit_private_v3 *packed_v3 = (const void *)packed;
+   CHECK_EQ(packed_v3->base.version, AGXW_SUBMIT_PRIVATE_VERSION_V3);
+   CHECK_EQ(packed_v3->base.struct_size,
+            sizeof(struct agxw_submit_private_v3));
+   CHECK_EQ(packed_v3->read_range_count, 2);
+   CHECK_EQ(packed_size, sizeof(struct agxw_submit_private_v3) +
+                            sizeof(packed_ranges));
+   CHECK_EQ(agxw_submit_private_validate(&packed_v3->base, packed_size), 0);
+
+   memset(packed, 0, sizeof(packed));
+   CHECK_EQ(agx_d3dkmt_submit_private_pack(
+               AGXW_SUBMIT_READ_SET_COMPLETE |
+                  AGXW_SUBMIT_WRITE_SET_COMPLETE,
+               packed_ranges, 2, packed_dependencies, 2, packed,
+               sizeof(packed), &packed_size),
+            AGX_D3DKMT_OK);
+   const struct agxw_submit_private_v4 *packed_v4 = (const void *)packed;
+   CHECK_EQ(packed_v4->base.version, AGXW_SUBMIT_PRIVATE_VERSION_V4);
+   CHECK_EQ(packed_v4->base.struct_size,
+            sizeof(struct agxw_submit_private_v4));
+   CHECK_EQ(packed_v4->read_range_count, 2);
+   CHECK_EQ(packed_v4->fence_dependency_count, 2);
+   const struct agxw_submit_fence_dependency *wire_dependencies =
+      agxw_submit_private_fence_dependencies(&packed_v4->base);
+   CHECK(wire_dependencies != NULL);
+   CHECK_EQ(wire_dependencies[0].current_gpu_va,
+            packed_dependencies[0].current_gpu_va);
+   CHECK_EQ(wire_dependencies[0].value, 41);
+   CHECK_EQ(wire_dependencies[0].flags, AGXW_SUBMIT_FENCE_WAIT);
+   CHECK_EQ(wire_dependencies[1].monitored_gpu_va,
+            packed_dependencies[1].monitored_gpu_va);
+   CHECK_EQ(wire_dependencies[1].flags,
+            AGXW_SUBMIT_FENCE_SIGNAL |
+               AGXW_SUBMIT_FENCE_BOTTOM_OF_PIPE);
+   CHECK_EQ(agxw_submit_private_validate(&packed_v4->base, packed_size), 0);
+   CHECK_EQ(agx_d3dkmt_submit_private_pack(
+               AGXW_SUBMIT_READ_SET_COMPLETE, packed_ranges, 2,
+               packed_dependencies, 2, packed, packed_size - 1,
+               &packed_size),
+            AGX_D3DKMT_ERR_NOSPACE);
+   CHECK_EQ(agx_d3dkmt_submit_private_pack(
+               AGXW_SUBMIT_READ_SET_COMPLETE, packed_ranges, 2, NULL, 1,
+               packed, sizeof(packed), &packed_size),
             AGX_D3DKMT_ERR_INVAL);
 
    /* A non-zero in_sync_count is rejected: AppleAgxGpu's submit path refuses

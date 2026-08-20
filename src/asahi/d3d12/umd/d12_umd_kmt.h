@@ -42,17 +42,6 @@ HRESULT d12_umd_kmt_deallocate(struct d12_umd_kmt *kmt,
                                HANDLE runtime_resource,
                                struct d12_umd_allocation *allocation);
 
-/*
- * Submit an already-populated AGX DMA allocation.  The allocation must begin
- * with struct agxw_dma_header followed by cmdbuf_size bytes of native AGX
- * commands.  Synchronization is deliberately expressed with the WDDM fence
- * callbacks rather than embedded KMD-private handles.
- */
-HRESULT d12_umd_kmt_submit_dma(struct d12_umd_kmt *kmt, HANDLE context,
-                               D3DGPU_VIRTUAL_ADDRESS commands,
-                               uint32_t cmdbuf_size,
-                               D3DKMT_HANDLE result_allocation);
-
 HRESULT d12_umd_kmt_reserve_gpu_va(
    struct d12_umd_kmt *kmt, D3DKMT_HANDLE paging_queue,
    D3DKMT_HANDLE paging_fence, const volatile uint64_t *paging_fence_cpu,

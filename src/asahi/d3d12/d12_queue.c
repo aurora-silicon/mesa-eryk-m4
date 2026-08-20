@@ -34,6 +34,7 @@ enum d12_queue_op_type {
    D12_QUEUE_OP_SUBMIT,
    D12_QUEUE_OP_SIGNAL,
    D12_QUEUE_OP_PLACEMENT_SIGNAL,
+   D12_QUEUE_OP_PLACEMENT_BARRIER,
    D12_QUEUE_OP_PLACEMENT_WAIT,
    D12_QUEUE_OP_SPARSE_BIND,
 };
@@ -51,6 +52,9 @@ struct d12_queue_op {
 
    struct d12_fence *fence;
    struct d12_placement_fence *placement_fence;
+   uint32_t placement_wait_count;
+   struct d12_queue_placement_wait
+      placement_waits[D12_QUEUE_MAX_PLACEMENT_DEPENDENCIES];
    uint64_t value;
    struct d12_fence_ticket ticket;
    uint64_t retire_value;
@@ -136,6 +140,7 @@ d12_queue_Release(ID3D12CommandQueue *iface)
       agx_destroy_command_queue(&queue->device->dev, queue->agx_queue_id);
       cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       d12_private_data_store_destroy(&queue->private_data);
       d12_device_release(queue->device);
@@ -350,6 +355,10 @@ d12_queue_op_destroy(struct d12_queue_op *op)
       d12_fence_internal_unref(op->fence);
    if (op->placement_fence)
       d12_placement_fence_unref(op->placement_fence);
+   for (uint32_t index = 0; index < op->placement_wait_count; ++index) {
+      if (op->placement_waits[index].fence)
+         d12_placement_fence_unref(op->placement_waits[index].fence);
+   }
    if (op->type == D12_QUEUE_OP_SUBMIT && op->bos_initialized) {
       util_dynarray_foreach(&op->bos, struct agx_bo *, bo)
          agx_bo_unreference(&op->submit_device->dev, *bo);
@@ -671,6 +680,7 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
       agx_get_precompiled(&queue->device->bg_eot, LIBAGX_WRITE_U64);
    struct agx_bo *stream = NULL;
    struct agx_bo *usc = NULL;
+   struct agx_bo *scratch = NULL;
    uint8_t *stream_map;
    uint8_t *usc_map;
    uint32_t common_control_size = 0;
@@ -685,15 +695,18 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
    usc = agx_bo_create(dev, D12_QUEUE_SIGNAL_ARENA_SIZE, 0,
                        AGX_BO_LOW_VA | AGX_BO_WRITEBACK,
                        "d3d12 ddi fence signal usc arena");
-   if (!stream || !usc) {
+   scratch = agx_bo_create(dev, AIL_PAGESIZE, 0, AGX_BO_WRITEBACK,
+                           "d3d12 ddi queue dependency scratch");
+   if (!stream || !usc || !scratch) {
       agx_bo_unreference(dev, stream);
       agx_bo_unreference(dev, usc);
+      agx_bo_unreference(dev, scratch);
       return E_OUTOFMEMORY;
    }
 
    stream_map = agx_bo_map(stream);
    usc_map = agx_bo_map(usc);
-   if (!stream_map || !usc_map)
+   if (!stream_map || !usc_map || !agx_bo_map(scratch))
       goto fail;
    memset(stream_map, 0, stream->size);
    memset(usc_map, 0, usc->size);
@@ -735,6 +748,7 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
       goto fail;
    queue->signal_stream_bo = stream;
    queue->signal_usc_bo = usc;
+   queue->dependency_scratch_bo = scratch;
    agx_bo_reference(program->bo);
    queue->signal_program_bo = program->bo;
    queue->signal_control_size = common_control_size;
@@ -743,6 +757,7 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
 fail:
    agx_bo_unreference(dev, stream);
    agx_bo_unreference(dev, usc);
+   agx_bo_unreference(dev, scratch);
    return E_FAIL;
 }
 
@@ -754,9 +769,11 @@ d12_queue_signal_arena_cleanup(struct d12_queue *queue)
    agx_bo_unreference(dev, queue->signal_stream_bo);
    agx_bo_unreference(dev, queue->signal_usc_bo);
    agx_bo_unreference(dev, queue->signal_program_bo);
+   agx_bo_unreference(dev, queue->dependency_scratch_bo);
    queue->signal_stream_bo = NULL;
    queue->signal_usc_bo = NULL;
    queue->signal_program_bo = NULL;
+   queue->dependency_scratch_bo = NULL;
    queue->signal_control_size = 0;
    queue->signal_slots = 0;
 }
@@ -781,16 +798,16 @@ d12_queue_release_signal_slot(struct d12_queue *queue,
 }
 
 static bool
-d12_queue_prepare_placement_signal(struct d12_queue *queue,
-                                   struct d12_queue_op *op)
+d12_queue_prepare_internal_write(struct d12_queue *queue,
+                                 struct d12_queue_op *op,
+                                 uint64_t destination, uint64_t value)
 {
-   struct d12_placement_fence *fence = op->placement_fence;
    uint32_t control_offset;
    uint32_t data_offset;
    uint32_t usc_offset;
    int slot;
 
-   if (!fence || fence->count != 1 || !queue->signal_stream_bo ||
+   if (!destination || !queue->signal_stream_bo ||
        !queue->signal_usc_bo || !queue->signal_program_bo)
       return false;
 
@@ -814,8 +831,8 @@ d12_queue_prepare_placement_signal(struct d12_queue *queue,
    (void)usc_offset;
 
    const struct libagx_write_u64_args shader_args = {
-      .address = fence->entries[0].current_gpu_address,
-      .value = op->value,
+      .address = destination,
+      .value = value,
    };
    memcpy((uint8_t *)agx_bo_map(queue->signal_stream_bo) + data_offset,
           &shader_args, sizeof(shader_args));
@@ -838,7 +855,7 @@ d12_queue_prepare_placement_signal(struct d12_queue *queue,
       .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
    };
    const struct drm_asahi_attachment attachment = {
-      .pointer = fence->entries[0].current_gpu_address,
+      .pointer = destination,
       .size = sizeof(uint64_t),
    };
    const struct drm_asahi_cmd_header header = agx_cmd_header(true, 0, 0);
@@ -869,6 +886,46 @@ d12_queue_prepare_placement_signal(struct d12_queue *queue,
    op->exact_read_bos[0] = queue->signal_stream_bo;
    op->exact_read_bos[1] = queue->signal_usc_bo;
    op->exact_read_bos[2] = queue->signal_program_bo;
+   return true;
+}
+
+static bool
+d12_queue_prepare_placement_signal(struct d12_queue *queue,
+                                   struct d12_queue_op *op)
+{
+   const struct d12_placement_fence *fence = op->placement_fence;
+
+   return fence && fence->count == 1 &&
+          d12_queue_prepare_internal_write(
+             queue, op, fence->entries[0].current_gpu_address, op->value);
+}
+
+static bool
+d12_queue_prepare_placement_barrier(struct d12_queue *queue,
+                                    struct d12_queue_op *op)
+{
+   return queue->dependency_scratch_bo &&
+          d12_queue_prepare_internal_write(
+             queue, op, queue->dependency_scratch_bo->va->addr,
+             d12_queue_timeline_marker(&queue->timeline));
+}
+
+static bool
+d12_queue_take_pending_placement_waits(struct d12_queue *queue,
+                                       struct d12_queue_op *op)
+{
+   if (!queue || !op ||
+       queue->pending_placement_wait_count >
+          ARRAY_SIZE(op->placement_waits))
+      return false;
+
+   op->placement_wait_count = queue->pending_placement_wait_count;
+   memcpy(op->placement_waits, queue->pending_placement_waits,
+          (size_t)op->placement_wait_count * sizeof(op->placement_waits[0]));
+   memset(queue->pending_placement_waits, 0,
+          (size_t)queue->pending_placement_wait_count *
+             sizeof(queue->pending_placement_waits[0]));
+   queue->pending_placement_wait_count = 0;
    return true;
 }
 
@@ -936,6 +993,10 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
    int ret = 0;
    struct agx_submit_read_range exact_read_ranges[3];
    uint32_t exact_read_range_count = 0;
+   struct agx_submit_fence_dependency
+      placement_dependencies[D12_QUEUE_MAX_PLACEMENT_DEPENDENCIES];
+   uint32_t placement_wait_count = 0;
+   bool placement_signal_described = false;
 
    if (op->read_set_complete) {
       if (op->exact_read_bo_count > ARRAY_SIZE(exact_read_ranges)) {
@@ -957,6 +1018,41 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
                .length = bo->size,
             };
       }
+   }
+
+   for (uint32_t i = 0; i < op->placement_wait_count; ++i) {
+      const struct d12_placement_fence *fence =
+         op->placement_waits[i].fence;
+      if (!fence || fence->count != 1 ||
+          placement_wait_count >= ARRAY_SIZE(placement_dependencies)) {
+         mesa_loge("command queue placement wait set is invalid");
+         d12_device_mark_removed(device, DXGI_ERROR_INVALID_CALL);
+         return false;
+      }
+      const struct d12_placement_fence_entry *entry = &fence->entries[0];
+      placement_dependencies[placement_wait_count++] =
+         (struct agx_submit_fence_dependency){
+            .current_gpu_va = entry->current_gpu_address,
+            .monitored_gpu_va = entry->monitored_gpu_address,
+            .value = op->placement_waits[i].value,
+            .flags = AGX_SUBMIT_FENCE_WAIT |
+                     (entry->flags ? AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE : 0),
+         };
+   }
+   if (op->type == D12_QUEUE_OP_PLACEMENT_SIGNAL &&
+       op->placement_fence && op->placement_fence->count == 1 &&
+       placement_wait_count < ARRAY_SIZE(placement_dependencies)) {
+      const struct d12_placement_fence_entry *entry =
+         &op->placement_fence->entries[0];
+      placement_dependencies[placement_wait_count] =
+         (struct agx_submit_fence_dependency){
+            .current_gpu_va = entry->current_gpu_address,
+            .monitored_gpu_va = entry->monitored_gpu_address,
+            .value = op->value,
+            .flags = AGX_SUBMIT_FENCE_SIGNAL |
+                     (entry->flags ? AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE : 0),
+         };
+      placement_signal_described = true;
    }
 
    while (commands_remaining) {
@@ -1040,6 +1136,14 @@ d12_queue_process_submit(struct d12_queue *queue, struct d12_queue_op *op)
                      : 0,
          .read_range_count = exact_read_range_count,
          .read_ranges = exact_read_ranges,
+         .fence_dependency_count =
+            (first ? placement_wait_count : 0) +
+            (last && placement_signal_described ? 1 : 0),
+         .fence_dependencies =
+            first ? placement_dependencies
+                  : (last && placement_signal_described
+                        ? &placement_dependencies[placement_wait_count]
+                        : NULL),
       };
       ret = dev->ops.submit(dev, &slice, &virt);
       if (ret)
@@ -1235,7 +1339,8 @@ d12_queue_retire_worker(void *data)
          }
       }
 
-      if (op->type == D12_QUEUE_OP_PLACEMENT_SIGNAL)
+      if (op->type == D12_QUEUE_OP_PLACEMENT_SIGNAL ||
+          op->type == D12_QUEUE_OP_PLACEMENT_BARRIER)
          d12_queue_release_signal_slot(queue, op);
       d12_queue_op_destroy(op);
    }
@@ -1286,6 +1391,13 @@ d12_queue_worker(void *data)
          if (!retire)
             d12_queue_release_signal_slot(queue, op);
          break;
+      case D12_QUEUE_OP_PLACEMENT_BARRIER:
+         retire = d12_queue_wait_submit_capacity(queue) &&
+                  d12_queue_prepare_placement_barrier(queue, op) &&
+                  d12_queue_process_submit(queue, op);
+         if (!retire)
+            d12_queue_release_signal_slot(queue, op);
+         break;
       case D12_QUEUE_OP_SIGNAL:
          if (getenv("D3D12AGX_DUMP_SYNC"))
             mesa_logi("SYNC Signal schedule: queue %p fence %p value %llu",
@@ -1303,6 +1415,8 @@ d12_queue_worker(void *data)
                                         &queue->stop);
          break;
       case D12_QUEUE_OP_SPARSE_BIND: {
+         if (queue->ddi_immediate_submit)
+            mtx_lock(&queue->ddi_submit_lock);
          uint64_t point = d12_queue_timeline_marker(&queue->timeline);
          int result = d12_queue_wait_timeline(queue, point)
                          ? queue->device->dev.ops.bo_bind(
@@ -1314,6 +1428,8 @@ d12_queue_worker(void *data)
             d12_device_mark_removed(queue->device,
                                     DXGI_ERROR_DEVICE_REMOVED);
          }
+         if (queue->ddi_immediate_submit)
+            mtx_unlock(&queue->ddi_submit_lock);
 
          mtx_lock(&op->completion->lock);
          op->completion->result = result;
@@ -1375,6 +1491,74 @@ d12_queue_stop_worker(struct d12_queue *queue)
       op = next;
    }
    queue->retire_head = queue->retire_tail = NULL;
+
+   mtx_lock(&queue->ddi_submit_lock);
+   for (uint32_t index = 0;
+        index < queue->pending_placement_wait_count; ++index) {
+      if (queue->pending_placement_waits[index].fence)
+         d12_placement_fence_unref(
+            queue->pending_placement_waits[index].fence);
+   }
+   memset(queue->pending_placement_waits, 0,
+          sizeof(queue->pending_placement_waits));
+   queue->pending_placement_wait_count = 0;
+   mtx_unlock(&queue->ddi_submit_lock);
+}
+
+/* queue->ddi_submit_lock is held by the caller.  Successful submissions are
+ * transferred to the retirement worker; failure consumes the operation and
+ * poisons the device so no later queue callback can overtake it. */
+static bool
+d12_queue_submit_ddi_op_locked(struct d12_queue *queue,
+                               struct d12_queue_op *op,
+                               bool take_pending_waits)
+{
+   if (!queue || !op)
+      return false;
+
+   if (take_pending_waits &&
+       !d12_queue_take_pending_placement_waits(queue, op))
+      goto fail;
+
+   if (!d12_queue_wait_submit_capacity(queue) ||
+       !d12_queue_process_submit(queue, op))
+      goto fail;
+
+   d12_queue_retire_enqueue(queue, op);
+   return true;
+
+fail:
+   d12_queue_release_signal_slot(queue, op);
+   d12_queue_op_destroy(op);
+   if (!d12_device_is_removed(queue->device))
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
+   return false;
+}
+
+/* Materialize a group of raw D3D12 fence waits into the WDDM context before
+ * accepting more waits or a queue-side page-table update.  The tiny AGX store
+ * exists only to give SubmitCommandCb a normal DMA packet; KMD v4 holds it in
+ * the per-context FIFO until every placement is ready. */
+static bool
+d12_queue_flush_pending_placement_waits_locked(struct d12_queue *queue)
+{
+   if (!queue->pending_placement_wait_count)
+      return true;
+
+   struct d12_queue_op *op = calloc(1, sizeof(*op));
+   if (!op) {
+      d12_device_mark_removed(queue->device, E_OUTOFMEMORY);
+      return false;
+   }
+   op->type = D12_QUEUE_OP_PLACEMENT_BARRIER;
+   if (!d12_queue_take_pending_placement_waits(queue, op) ||
+       !d12_queue_prepare_placement_barrier(queue, op)) {
+      d12_queue_release_signal_slot(queue, op);
+      d12_queue_op_destroy(op);
+      d12_device_mark_removed(queue->device, DXGI_ERROR_DEVICE_REMOVED);
+      return false;
+   }
+   return d12_queue_submit_ddi_op_locked(queue, op, false);
 }
 
 static void STDMETHODCALLTYPE
@@ -1384,6 +1568,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
    struct d12_queue *queue = d12_queue_from_iface(iface);
    struct d12_device *device = queue->device;
 
+   if (queue->ddi_immediate_submit)
+      mtx_lock(&queue->ddi_submit_lock);
    mtx_lock(&queue->lock);
 
    for (UINT i = 0; i < count; i++) {
@@ -1445,6 +1631,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       uint8_t *payload = malloc(max_payload);
       if (!payload) {
          mesa_loge("ExecuteCommandLists: out of memory");
+         if (queue->ddi_immediate_submit)
+            d12_device_mark_removed(device, E_OUTOFMEMORY);
          break;
       }
 
@@ -1533,6 +1721,8 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
       if (!op) {
          mesa_loge("ExecuteCommandLists: out of memory queuing list %u", i);
          free(payload);
+         if (queue->ddi_immediate_submit)
+            d12_device_mark_removed(device, E_OUTOFMEMORY);
          break;
       }
 
@@ -1555,13 +1745,34 @@ d12_queue_ExecuteCommandLists(ID3D12CommandQueue *iface, UINT count,
        * keep the list alive until the worker observes GPU completion. */
       ID3D12GraphicsCommandList_AddRef(&list->iface);
       list->submitted = true;
-      if (!d12_queue_enqueue_locked(queue, op)) {
+      if (queue->ddi_immediate_submit) {
+         if (!d12_queue_take_pending_placement_waits(queue, op)) {
+            d12_queue_op_destroy(op);
+            d12_device_mark_removed(device, DXGI_ERROR_INVALID_CALL);
+            break;
+         }
+         mtx_unlock(&queue->lock);
+         const bool retire = d12_queue_wait_submit_capacity(queue) &&
+                             d12_queue_process_submit(queue, op);
+         if (retire) {
+            d12_queue_retire_enqueue(queue, op);
+         } else {
+            d12_queue_op_destroy(op);
+            if (!d12_device_is_removed(device))
+               d12_device_mark_removed(device, DXGI_ERROR_DEVICE_REMOVED);
+         }
+         mtx_lock(&queue->lock);
+         if (!retire)
+            break;
+      } else if (!d12_queue_enqueue_locked(queue, op)) {
          d12_queue_op_destroy(op);
          break;
       }
    }
 
    mtx_unlock(&queue->lock);
+   if (queue->ddi_immediate_submit)
+      mtx_unlock(&queue->ddi_submit_lock);
 }
 
 static void STDMETHODCALLTYPE
@@ -1592,6 +1803,57 @@ d12_queue_bind_sparse_sync(struct d12_queue *queue,
    if (!bind_count) {
       free(bind_ops);
       return true;
+   }
+
+   if (queue->ddi_immediate_submit) {
+      struct d12_queue_op *op = calloc(1, sizeof(*op));
+      bool success = false;
+
+      if (!op) {
+         free(bind_ops);
+         d12_device_mark_removed(queue->device, E_OUTOFMEMORY);
+         return false;
+      }
+      op->type = D12_QUEUE_OP_SPARSE_BIND;
+      op->bind_ops = bind_ops;
+      op->bind_count = bind_count;
+
+      mtx_lock(&queue->ddi_submit_lock);
+      if (!d12_queue_flush_pending_placement_waits_locked(queue) ||
+          !d12_queue_wait_submit_capacity(queue) ||
+          !queue->device->dev.ops.bo_bind_timeline)
+         goto ddi_out;
+
+      uint64_t in = d12_queue_timeline_marker(&queue->timeline);
+      if (in == UINT64_MAX ||
+          queue->device->dev.ops.bo_bind_timeline(
+             &queue->device->dev, queue->agx_queue_id, queue->syncobj, in,
+             bind_ops, bind_count))
+         goto ddi_out;
+
+      uint64_t committed_in;
+      uint64_t committed_out;
+      mtx_lock(&queue->lock);
+      const bool committed = d12_queue_timeline_next_submit(
+         &queue->timeline, &committed_in, &committed_out);
+      mtx_unlock(&queue->lock);
+      if (!committed || committed_in != in || committed_out != in + 1)
+         goto ddi_out;
+
+      free(op->bind_ops);
+      op->bind_ops = NULL;
+      op->retire_value = committed_out;
+      d12_queue_retire_enqueue(queue, op);
+      op = NULL;
+      success = true;
+
+ddi_out:
+      if (!success && !d12_device_is_removed(queue->device))
+         d12_device_mark_removed(queue->device,
+                                 DXGI_ERROR_DEVICE_REMOVED);
+      mtx_unlock(&queue->ddi_submit_lock);
+      d12_queue_op_destroy(op);
+      return success;
    }
 
    struct d12_sparse_completion completion = {0};
@@ -1833,6 +2095,40 @@ d12_queue_signal_placement_fence(struct d12_queue *queue,
    op->value = value;
    d12_placement_fence_ref(fence);
 
+   if (queue->ddi_immediate_submit) {
+      bool retire;
+
+      mtx_lock(&queue->ddi_submit_lock);
+      /* Keep the KMD v4 vector exact: a signal record must never be dropped
+       * merely because the wait prefix filled the packet. */
+      if (queue->pending_placement_wait_count ==
+             ARRAY_SIZE(queue->pending_placement_waits) &&
+          !d12_queue_flush_pending_placement_waits_locked(queue)) {
+         mtx_unlock(&queue->ddi_submit_lock);
+         d12_queue_op_destroy(op);
+         return d12_device_removed_reason(queue->device);
+      }
+      if (!d12_queue_take_pending_placement_waits(queue, op)) {
+         mtx_unlock(&queue->ddi_submit_lock);
+         d12_queue_op_destroy(op);
+         return E_INVALIDARG;
+      }
+      retire = d12_queue_wait_submit_capacity(queue) &&
+               d12_queue_prepare_placement_signal(queue, op) &&
+               d12_queue_process_submit(queue, op);
+      if (retire) {
+         d12_queue_retire_enqueue(queue, op);
+      } else {
+         d12_queue_release_signal_slot(queue, op);
+         d12_queue_op_destroy(op);
+         if (!d12_device_is_removed(queue->device))
+            d12_device_mark_removed(queue->device,
+                                    DXGI_ERROR_DEVICE_REMOVED);
+      }
+      mtx_unlock(&queue->ddi_submit_lock);
+      return retire ? S_OK : d12_device_removed_reason(queue->device);
+   }
+
    mtx_lock(&queue->lock);
    const bool queued = d12_queue_enqueue_locked(queue, op);
    mtx_unlock(&queue->lock);
@@ -1854,6 +2150,43 @@ d12_queue_wait_placement_fence(struct d12_queue *queue,
       return E_INVALIDARG;
    if (d12_device_is_removed(queue->device))
       return DXGI_ERROR_DEVICE_REMOVED;
+   if (fence->count != 1)
+      return E_NOTIMPL;
+
+   if (queue->ddi_immediate_submit) {
+      const uint64_t current = fence->entries[0].current_gpu_address;
+      const uint64_t monitored = fence->entries[0].monitored_gpu_address;
+
+      mtx_lock(&queue->ddi_submit_lock);
+      for (uint32_t index = 0;
+           index < queue->pending_placement_wait_count; ++index) {
+         struct d12_queue_placement_wait *pending =
+            &queue->pending_placement_waits[index];
+         const struct d12_placement_fence_entry *entry =
+            &pending->fence->entries[0];
+         if (entry->current_gpu_address == current &&
+             entry->monitored_gpu_address == monitored) {
+            if (value > pending->value)
+               pending->value = value;
+            mtx_unlock(&queue->ddi_submit_lock);
+            return S_OK;
+         }
+      }
+      if (queue->pending_placement_wait_count >=
+          ARRAY_SIZE(queue->pending_placement_waits)) {
+         if (!d12_queue_flush_pending_placement_waits_locked(queue)) {
+            mtx_unlock(&queue->ddi_submit_lock);
+            return d12_device_removed_reason(queue->device);
+         }
+      }
+      d12_placement_fence_ref(fence);
+      queue->pending_placement_waits[
+         queue->pending_placement_wait_count++] =
+         (struct d12_queue_placement_wait){fence, value};
+      mtx_unlock(&queue->ddi_submit_lock);
+      return S_OK;
+   }
+
    op = calloc(1, sizeof(*op));
    if (!op)
       return E_OUTOFMEMORY;
@@ -1943,10 +2276,10 @@ static const ID3D12CommandQueueVtbl d12_queue_vtbl = {
    .CopyTileMappings = d12_queue_CopyTileMappings,
 };
 
-HRESULT
-d12_queue_create(struct d12_device *device,
-                 const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
-                 void **out)
+static HRESULT
+d12_queue_create_internal(struct d12_device *device,
+                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
+                          bool ddi_immediate_submit, void **out)
 {
    if (!out)
       return E_POINTER;
@@ -2016,13 +2349,22 @@ d12_queue_create(struct d12_device *device,
       queue->desc.NodeMask = 1;
 
    d12_queue_timeline_init(&queue->timeline);
+   queue->ddi_immediate_submit = ddi_immediate_submit;
    if (mtx_init(&queue->lock, mtx_plain) != thrd_success) {
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
       free(queue);
       return E_FAIL;
    }
+   if (mtx_init(&queue->ddi_submit_lock, mtx_plain) != thrd_success) {
+      mtx_destroy(&queue->lock);
+      device->sync->destroy(device->sync, queue->syncobj);
+      agx_destroy_command_queue(dev, queue->agx_queue_id);
+      free(queue);
+      return E_FAIL;
+   }
    if (cnd_init(&queue->work_available) != thrd_success) {
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -2031,6 +2373,7 @@ d12_queue_create(struct d12_device *device,
    }
    if (cnd_init(&queue->retire_available) != thrd_success) {
       cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -2047,6 +2390,7 @@ d12_queue_create(struct d12_device *device,
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -2061,6 +2405,7 @@ d12_queue_create(struct d12_device *device,
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -2081,6 +2426,7 @@ d12_queue_create(struct d12_device *device,
       d12_private_data_store_destroy(&queue->private_data);
       cnd_destroy(&queue->retire_available);
       cnd_destroy(&queue->work_available);
+      mtx_destroy(&queue->ddi_submit_lock);
       mtx_destroy(&queue->lock);
       device->sync->destroy(device->sync, queue->syncobj);
       agx_destroy_command_queue(dev, queue->agx_queue_id);
@@ -2092,4 +2438,20 @@ d12_queue_create(struct d12_device *device,
    HRESULT hr = d12_queue_QueryInterface(&queue->iface, riid, out);
    d12_queue_Release(&queue->iface);
    return hr;
+}
+
+HRESULT
+d12_queue_create(struct d12_device *device,
+                 const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
+                 void **out)
+{
+   return d12_queue_create_internal(device, desc, riid, false, out);
+}
+
+HRESULT
+d12_queue_create_ddi(struct d12_device *device,
+                     const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
+                     void **out)
+{
+   return d12_queue_create_internal(device, desc, riid, true, out);
 }

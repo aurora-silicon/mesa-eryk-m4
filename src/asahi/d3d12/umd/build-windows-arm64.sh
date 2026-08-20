@@ -10,7 +10,28 @@ umd_dir=${0:A:h}
 d12_dir=${umd_dir:h}
 repo_root=${umd_dir:h:h:h:h}
 asahi_workspace=${AURORA_ASAHI_WORKSPACE:-/Users/dj/Developer/Asahi/windows-on-apple-silicon}
-contract_dir=${AGX_WDDM_CONTRACT_CORE:-${repo_root:h}/AuroraSilicon/drivers/AppleAgxWddm/core}
+main_contract=${repo_root:h}/AuroraSilicon/drivers/AppleAgxWddm/core
+paired_contract=${repo_root:h}/AuroraSilicon-d3d12-fence-dependency/drivers/AppleAgxWddm/core
+contract_compatible() {
+    [[ -f $1/agxw_contract.h ]] &&
+        grep -Eq '^#define[[:space:]]+AGXW_CONTRACT_VERSION[[:space:]]+([3-9]|[1-9][0-9]+)u' "$1/agxw_contract.h" &&
+        grep -q 'submit_private_max_version' "$1/agxw_contract.h" &&
+        grep -q 'AGXW_SUBMIT_PRIVATE_VERSION_V4' "$1/agxw_contract.h"
+}
+if [[ -n ${AGX_WDDM_CONTRACT_CORE:-} ]]; then
+    contract_dir=$AGX_WDDM_CONTRACT_CORE
+elif contract_compatible "$main_contract"; then
+    contract_dir=$main_contract
+elif contract_compatible "$paired_contract"; then
+    contract_dir=$paired_contract
+else
+    contract_dir=$main_contract
+fi
+if ! contract_compatible "$contract_dir"; then
+    print -u2 "AGX WDDM contract v3 with submit-private v4 is required: $contract_dir"
+    print -u2 "set AGX_WDDM_CONTRACT_CORE to the paired KMD core directory"
+    exit 2
+fi
 wdk_root=${WDK_ROOT:-$asahi_workspace/build/deps/wdk-arm64-26100.6584/package/c}
 sdk_root=${SDK_ROOT:-$asahi_workspace/build/deps/windows-sdk-cpp-26100.6584/package/c}
 wdk_include=$wdk_root/Include/10.0.26100.0

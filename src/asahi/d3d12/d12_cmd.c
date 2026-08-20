@@ -16,6 +16,7 @@
 #include "d12_present_format_core.h"
 #include "d12_query_core.h"
 #include "d12_resolve_core.h"
+#include "d12_texture_copy_math.h"
 
 #include "agx_helpers.h"
 #include "agx_nir_texture.h"
@@ -386,6 +387,93 @@ d12_segment_mark_write_set_incomplete(struct d12_segment *seg,
    d12_segment_write_tracker(seg, pipe)->incomplete = true;
 }
 
+static struct d12_dynamic_state_values
+d12_list_dynamic_state(const struct d12_cmd_list *list)
+{
+   struct d12_dynamic_state_values state = {
+      .stencil_ref_front = list->stencil_ref_front,
+      .stencil_ref_back = list->stencil_ref_back,
+      .depth_bias = list->depth_bias,
+      .depth_bias_clamp = list->depth_bias_clamp,
+      .slope_scaled_depth_bias = list->slope_scaled_depth_bias,
+      .strip_cut = (uint32_t)list->strip_cut,
+   };
+   memcpy(state.blend_factor, list->blend_factor,
+          sizeof(state.blend_factor));
+   return state;
+}
+
+static void
+d12_list_set_dynamic_state(struct d12_cmd_list *list,
+                           const struct d12_dynamic_state_values *state)
+{
+   list->stencil_ref_front = state->stencil_ref_front;
+   list->stencil_ref_back = state->stencil_ref_back;
+   memcpy(list->blend_factor, state->blend_factor,
+          sizeof(list->blend_factor));
+   list->depth_bias = state->depth_bias;
+   list->depth_bias_clamp = state->depth_bias_clamp;
+   list->slope_scaled_depth_bias = state->slope_scaled_depth_bias;
+   list->strip_cut = (D3D12_INDEX_BUFFER_STRIP_CUT_VALUE)state->strip_cut;
+}
+
+static void
+d12_list_apply_bundle_dynamic_state(
+   struct d12_cmd_list *list,
+   const struct d12_bundle_dynamic_state *bundle_state)
+{
+   struct d12_dynamic_state_values state = d12_list_dynamic_state(list);
+   d12_bundle_dynamic_state_apply(bundle_state, &state);
+   d12_list_set_dynamic_state(list, &state);
+}
+
+/* Reset the API-visible state, without rewinding command storage or removing
+ * commands already recorded. This is shared by command-list Reset and
+ * ClearState so neither path can leak bindings from a previous recording. */
+static void
+d12_list_reset_api_state(struct d12_cmd_list *list)
+{
+   const bool has_graphics_pso = list->pso && !list->pso->is_compute;
+   const struct d12_dynamic_state_values dynamic = d12_dynamic_state_reset(
+      has_graphics_pso,
+      has_graphics_pso ? list->pso->raster.depth_bias : 0.0f,
+      has_graphics_pso ? list->pso->raster.depth_bias_clamp : 0.0f,
+      has_graphics_pso ? list->pso->raster.slope_scaled_depth_bias : 0.0f,
+      has_graphics_pso ? (uint32_t)list->pso->strip_cut : 0);
+
+   list->topology = MESA_PRIM_UNKNOWN;
+   list->patch_control_points = 0;
+   list->predicate_gpu = 0;
+   list->predicate_op = D3D12_PREDICATION_OP_EQUAL_ZERO;
+   memset(list->so, 0, sizeof(list->so));
+
+   list->resource_descriptor_heap = NULL;
+   list->sampler_descriptor_heap = NULL;
+   list->compute_rs = NULL;
+   list->graphics_rs = NULL;
+   memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
+   memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
+   memset(list->compute_root_source, 0, sizeof(list->compute_root_source));
+   memset(list->graphics_root_source, 0,
+          sizeof(list->graphics_root_source));
+   memset(list->compute_sampler_table, 0,
+          sizeof(list->compute_sampler_table));
+   memset(list->graphics_sampler_table, 0,
+          sizeof(list->graphics_sampler_table));
+
+   memset(list->vb, 0, sizeof(list->vb));
+   memset(&list->ib, 0, sizeof(list->ib));
+   memset(list->viewports, 0, sizeof(list->viewports));
+   memset(list->scissors, 0, sizeof(list->scissors));
+   list->viewport_count = 0;
+   list->scissor_count = 0;
+   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
+   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
+   list->bound_rtv_count = 0;
+   list->has_bound_dsv = false;
+   d12_list_set_dynamic_state(list, &dynamic);
+}
+
 static void
 d12_list_begin_recording(struct d12_cmd_list *list)
 {
@@ -398,15 +486,7 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->render_open = false;
    list->pregfx_open = false;
    list->pregfx_cur = NULL;
-   /* D3D12 has no default topology, but a list that draws without setting
-    * one used to get triangles implicitly; keep that rather than making
-    * every existing draw path set it.
-    */
-   list->topology = MESA_PRIM_TRIANGLES;
-   list->patch_control_points = 0;
-   list->predicate_gpu = 0;
-   list->predicate_op = D3D12_PREDICATION_OP_EQUAL_ZERO;
-   memset(list->so, 0, sizeof(list->so));
+   d12_list_reset_api_state(list);
 
    list->uses_heap = false;
    list->active_occlusion_queries = 0;
@@ -426,39 +506,6 @@ d12_list_begin_recording(struct d12_cmd_list *list)
 
    list->state = D12_LIST_RECORDING;
 
-   /* Bindings do not survive a reset: a stale render target or depth buffer
-    * here would let the next recording draw into last frame's texture.
-    */
-   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
-   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
-   list->bound_rtv_count = 0;
-   list->has_bound_dsv = false;
-   list->stencil_ref_front = 0;
-   list->stencil_ref_back = 0;
-   list->depth_bias = 0.0f;
-   list->depth_bias_clamp = 0.0f;
-   list->slope_scaled_depth_bias = 0.0f;
-   list->strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
-   if (list->pso && !list->pso->is_compute) {
-      list->depth_bias = list->pso->raster.depth_bias;
-      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
-      list->slope_scaled_depth_bias =
-         list->pso->raster.slope_scaled_depth_bias;
-      list->strip_cut = list->pso->strip_cut;
-   }
-   for (unsigned i = 0; i < 4; i++)
-      list->blend_factor[i] = 1.0f;
-   list->compute_rs = NULL;
-   list->graphics_rs = NULL;
-   memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
-   memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
-   memset(list->compute_root_source, 0, sizeof(list->compute_root_source));
-   memset(list->graphics_root_source, 0,
-          sizeof(list->graphics_root_source));
-   memset(list->compute_sampler_table, 0,
-          sizeof(list->compute_sampler_table));
-   memset(list->graphics_sampler_table, 0,
-          sizeof(list->graphics_sampler_table));
    util_dynarray_clear(&list->descriptor_fixups);
    util_dynarray_clear(&list->indirect_constant_fixups);
    util_dynarray_clear(&list->indirect_argument_fixups);
@@ -470,11 +517,15 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->direct_draw_params_gpu = 0;
    list->blend_upload_valid = false;
    list->blend_upload_gpu = 0;
-   list->bundle_pso_set = false;
    memset(&list->bundle_dynamic_state, 0,
           sizeof(list->bundle_dynamic_state));
-   list->bundle_depth_bias_set = false;
-   list->bundle_strip_cut_set = false;
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE && list->pso &&
+       !list->pso->is_compute) {
+      const struct d12_dynamic_state_values dynamic =
+         d12_list_dynamic_state(list);
+      d12_bundle_dynamic_state_set_pipeline(&list->bundle_dynamic_state,
+                                            &dynamic);
+   }
    list->bundle_graphics_rs_set = false;
    list->bundle_topology_set = false;
 
@@ -1653,12 +1704,19 @@ d12_list_begin_render(struct d12_cmd_list *list,
    }
 
    if (!seg->width_px) {
-      seg->width_px = list->has_viewport
-                         ? MAX2((unsigned)ceilf(list->viewport.Width), 1)
-                         : 1;
-      seg->height_px = list->has_viewport
-                          ? MAX2((unsigned)ceilf(list->viewport.Height), 1)
-                          : 1;
+      uint32_t viewport_width;
+      uint32_t viewport_height;
+
+      if (!d12_viewport_render_extent(
+             list->viewport_count, list->viewports,
+             &viewport_width, &viewport_height)) {
+         mesa_loge("render pass has invalid attachment-less viewport state");
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+
+      seg->width_px = (uint16_t)viewport_width;
+      seg->height_px = (uint16_t)viewport_height;
    }
 
    if (pso) {
@@ -1717,13 +1775,6 @@ d12_list_begin_render(struct d12_cmd_list *list,
       seg->tib = agx_build_tilebuffer_layout(formats, rtv_count, rt_samples,
                                              seg->layers > 1);
    }
-
-   seg->scissor_base = d12_list_upload_zero(
-      list, D12_MAX_SCISSORS * AGX_SCISSOR_LENGTH, 64);
-   seg->depth_bias_base = d12_list_upload_zero(
-      list, D12_MAX_SCISSORS * AGX_DEPTH_BIAS_LENGTH, 64);
-   if (!seg->scissor_base || !seg->depth_bias_base)
-      return NULL;
 
    enum agx_bg_eot_op main_bg[AGX_MAX_RENDER_TARGETS] = {0};
    enum agx_bg_eot_op main_eot[AGX_MAX_RENDER_TARGETS] = {0};
@@ -4094,11 +4145,9 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (list->state != D12_LIST_RECORDING)
       return;
 
-   if (!pso || !pso->is_compute) {
-      mesa_loge("Dispatch without a compute pipeline state");
-      list->state = D12_LIST_ERROR;
+   if (!d12_command_has_compute_pipeline(pso != NULL,
+                                         pso ? pso->is_compute : false))
       return;
-   }
 
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
    uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
@@ -4437,7 +4486,8 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
 }
 
 /*
- * Add a hardware scissor entry for this draw and return its index.
+ * Add one contiguous hardware scissor sequence for this draw and return its
+ * base index.
  *
  * These are not only the XY bounds. Each entry also carries the depth CLIP
  * range, and the hardware consults it for every fragment: with no array
@@ -4445,26 +4495,68 @@ d12_gfx_stage_usc(struct d12_cmd_list *list, const struct d12_gfx_stage *st,
  * every fragment with a nonzero window Z is discarded. That failure looks
  * exactly like a broken depth test, which is how it was found.
  *
- * Entries are deduplicated against the previous one, so a pass that never
- * changes viewport or scissor uses a single entry regardless of draw count.
+ * A sequence is deduplicated against the previous sequence, so repeated draws
+ * with unchanged viewport and scissor arrays do not consume more storage.
  */
-static unsigned
-d12_list_push_scissor(struct d12_cmd_list *list, struct d12_segment *seg,
-                      unsigned x0, unsigned y0, unsigned x1, unsigned y1)
+static bool
+d12_segment_ensure_viewport_arrays(struct d12_cmd_list *list,
+                                   struct d12_segment *seg)
 {
-   struct agx_scissor_packed packed;
+   struct d12_viewport_storage_plan plan;
 
-   agx_pack(&packed, SCISSOR, cfg) {
-      cfg.min_x = x0;
-      cfg.min_y = y0;
-      cfg.max_x = x1;
-      cfg.max_y = y1;
+   if (seg->scissor_base && seg->depth_bias_base)
+      return true;
+   if (seg->scissor_base || seg->depth_bias_base) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   if (!d12_viewport_plan_storage(
+          true, D12_SCISSORS_PER_SEGMENT, AGX_SCISSOR_LENGTH,
+          D12_DEPTH_BIASES_PER_SEGMENT, AGX_DEPTH_BIAS_LENGTH, &plan) ||
+       plan.scissor_bytes > SIZE_MAX || plan.depth_bias_bytes > SIZE_MAX) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
 
-      /* D3D12 clips against 0 <= z <= w in clip space, which is the whole
-       * window depth range. MinDepth/MaxDepth are a mapping, not a clip.
-       */
-      cfg.min_z = 0.0f;
-      cfg.max_z = 1.0f;
+   const uint64_t scissor_base = d12_list_upload_zero(
+      list, (size_t)plan.scissor_bytes, 64);
+   const uint64_t depth_bias_base = d12_list_upload_zero(
+      list, (size_t)plan.depth_bias_bytes, 64);
+   if (!scissor_base || !depth_bias_base)
+      return false;
+
+   seg->scissor_base = scissor_base;
+   seg->depth_bias_base = depth_bias_base;
+   return true;
+}
+
+static unsigned
+d12_list_push_scissors(
+   struct d12_cmd_list *list, struct d12_segment *seg, unsigned count,
+   const struct d12_viewport_hw_state states[D12_VIEWPORT_STATE_MAX])
+{
+   struct agx_scissor_packed
+      packed[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+
+   if (!count || count > ARRAY_SIZE(packed)) {
+      list->state = D12_LIST_ERROR;
+      return ~0u;
+   }
+   if (!d12_segment_ensure_viewport_arrays(list, seg))
+      return ~0u;
+
+   for (unsigned i = 0; i < count; ++i) {
+      agx_pack(&packed[i], SCISSOR, cfg) {
+         cfg.min_x = states[i].clip[0];
+         cfg.min_y = states[i].clip[1];
+         cfg.max_x = states[i].clip[2];
+         cfg.max_y = states[i].clip[3];
+
+         /* D3D12 clips against 0 <= z <= w in clip space. MinDepth and
+          * MaxDepth define the viewport mapping, not the clip range. */
+         cfg.min_z = 0.0f;
+         cfg.max_z = 1.0f;
+      }
    }
 
    uint8_t *array = d12_list_data_cpu(list, seg->scissor_base);
@@ -4474,21 +4566,24 @@ d12_list_push_scissor(struct d12_cmd_list *list, struct d12_segment *seg,
       return ~0u;
    }
 
-   if (seg->scissor_count) {
-      uint8_t *prev = array + (seg->scissor_count - 1) * AGX_SCISSOR_LENGTH;
-      if (!memcmp(prev, &packed, AGX_SCISSOR_LENGTH))
-         return seg->scissor_count - 1;
+   const size_t bytes = count * AGX_SCISSOR_LENGTH;
+   if (seg->scissor_count >= count) {
+      unsigned previous = seg->scissor_count - count;
+      uint8_t *prev = array + previous * AGX_SCISSOR_LENGTH;
+      if (!memcmp(prev, packed, bytes))
+         return previous;
    }
 
-   if (seg->scissor_count >= D12_MAX_SCISSORS) {
+   if (count > D12_SCISSORS_PER_SEGMENT - seg->scissor_count) {
       mesa_loge("render pass exceeded %u distinct scissor/viewport states",
-                D12_MAX_SCISSORS);
+                D12_SCISSORS_PER_SEGMENT);
       list->state = D12_LIST_ERROR;
       return ~0u;
    }
 
-   unsigned index = seg->scissor_count++;
-   memcpy(array + index * AGX_SCISSOR_LENGTH, &packed, AGX_SCISSOR_LENGTH);
+   unsigned index = seg->scissor_count;
+   seg->scissor_count += count;
+   memcpy(array + index * AGX_SCISSOR_LENGTH, packed, bytes);
    return index;
 }
 
@@ -4540,9 +4635,9 @@ d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
          return seg->depth_bias_count - 1;
    }
 
-   if (seg->depth_bias_count >= D12_MAX_SCISSORS) {
+   if (seg->depth_bias_count >= D12_DEPTH_BIASES_PER_SEGMENT) {
       mesa_loge("render pass exceeded %u distinct depth-bias states",
-                D12_MAX_SCISSORS);
+                D12_DEPTH_BIASES_PER_SEGMENT);
       list->state = D12_LIST_ERROR;
       return ~0u;
    }
@@ -6096,14 +6191,14 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    /* Native D3D12 ignores a draw recorded before any PSO is bound.  This is
     * not a command-list recording error; later complete draws still execute.
     */
-   if (!pso)
+   if (!d12_command_has_graphics_pipeline(pso != NULL,
+                                          pso ? pso->is_compute : false))
       return;
 
-   if (pso->is_compute) {
-      mesa_loge("Draw without a graphics pipeline state");
-      list->state = D12_LIST_ERROR;
+   /* Reset/ClearState and bundle entry deliberately leave IA topology
+    * undefined. Undefined draw output must not silently become triangles. */
+   if (list->topology == MESA_PRIM_UNKNOWN)
       return;
-   }
 
    if (list->active_pipeline_stats_heap && vertex_count && instance_count) {
       uint64_t vertices = (uint64_t)vertex_count * instance_count;
@@ -6165,6 +6260,27 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    }
 
    struct d12_segment *seg = &list->segments[list->segment_count - 1];
+
+   /* Scissor and depth-bias bases are per render command. End the current
+    * pass before either 16-bit hardware array can run out of reserved
+    * command-list storage. The next pass loads the attachments and keeps
+    * application-visible rendering continuous. */
+   const unsigned required_scissors = MAX2((unsigned)list->viewport_count, 1);
+   if (required_scissors >
+          D12_SCISSORS_PER_SEGMENT - seg->scissor_count ||
+       seg->depth_bias_count >= D12_DEPTH_BIASES_PER_SEGMENT) {
+      d12_list_close_cdm(list);
+      const unsigned rtv_count =
+         pso->has_pixel_shader ? list->bound_rtv_count : 0;
+      const struct d12_descriptor *rtvs =
+         rtv_count ? list->bound_rtv : NULL;
+      const struct d12_descriptor *dsv =
+         list->has_bound_dsv ? &list->bound_dsv : NULL;
+      seg = d12_list_begin_render(list, rtvs, rtv_count, dsv, pso,
+                                  AGX_BG_LOAD, NULL, false);
+      if (!seg)
+         return;
+   }
 
    /* Root table, exactly as the dispatch path builds it -- from the
     * GRAPHICS bindings, which D3D12 keeps separate from the compute ones.
@@ -6576,42 +6692,20 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * hardware scissor with the viewport, truncating each edge to the
        * integer pixel boundary before applying the API scissor.
        */
-      float vp_x = 0.0f, vp_y = 0.0f;
-      float vp_w = seg->width_px, vp_h = seg->height_px;
-      float vp_zmin = 0.0f, vp_zmax = 1.0f;
-
-      if (list->has_viewport) {
-         vp_x = list->viewport.TopLeftX;
-         vp_y = list->viewport.TopLeftY;
-         vp_w = list->viewport.Width;
-         vp_h = list->viewport.Height;
-         vp_zmin = list->viewport.MinDepth;
-         vp_zmax = list->viewport.MaxDepth;
+      struct d12_viewport_hw_state states[D12_VIEWPORT_STATE_MAX];
+      const unsigned viewport_count = d12_viewport_build_hw_state(
+         list->viewport_count, list->viewports, list->scissor_count,
+         list->scissors, seg->width_px, seg->height_px, states);
+      if (!viewport_count) {
+         list->state = D12_LIST_ERROR;
+         return;
       }
 
-      unsigned clip_x0 = (unsigned)CLAMP(MIN2(vp_x, vp_x + vp_w), 0.0f,
-                                          (float)seg->width_px);
-      unsigned clip_y0 = (unsigned)CLAMP(MIN2(vp_y, vp_y + vp_h), 0.0f,
-                                          (float)seg->height_px);
-      unsigned clip_x1 = (unsigned)CLAMP(MAX2(vp_x, vp_x + vp_w), 0.0f,
-                                          (float)seg->width_px);
-      unsigned clip_y1 = (unsigned)CLAMP(MAX2(vp_y, vp_y + vp_h), 0.0f,
-                                          (float)seg->height_px);
-
-      if (list->has_scissor) {
-         clip_x0 = MAX2(clip_x0, (unsigned)MAX2(list->scissor.left, 0));
-         clip_y0 = MAX2(clip_y0, (unsigned)MAX2(list->scissor.top, 0));
-         clip_x1 = MIN2(clip_x1, (unsigned)MAX2(list->scissor.right, 0));
-         clip_y1 = MIN2(clip_y1, (unsigned)MAX2(list->scissor.bottom, 0));
-      }
-
-      /* Pack a hardware scissor entry. REGION_CLIP below is a coarse tile
-       * bound; THIS is the exact one, and it also carries the depth clip
-       * range, which is why a pass has to have it even when the
-       * application never called RSSetScissorRects.
+      /* REGION_CLIP below is a coarse tile bound. The hardware scissor array
+       * carries exact bounds and depth clipping for every viewport.
        */
-      unsigned scissor_index = d12_list_push_scissor(
-         list, seg, clip_x0, clip_y0, clip_x1, clip_y1);
+      unsigned scissor_index =
+         d12_list_push_scissors(list, seg, viewport_count, states);
       if (scissor_index == ~0u)
          return;
 
@@ -6619,22 +6713,18 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       if (depth_bias_index == ~0u)
          return;
 
-      const uint16_t clip[4] = {clip_x0, clip_y0, clip_x1, clip_y1};
-      const float transform[6] = {
-         vp_x + 0.5f * vp_w,
-         vp_y + 0.5f * vp_h,
-         vp_zmin,
-         0.5f * vp_w,
-         /* D3D12's +y points up, opposite Vulkan's framebuffer convention. */
-         -0.5f * vp_h,
-         vp_zmax - vp_zmin,
-      };
-      const bool unchanged =
+      bool unchanged =
          seg->viewport_ppp_valid &&
+         seg->viewport_count == viewport_count &&
          seg->viewport_scissor_index == scissor_index &&
-         seg->viewport_depth_bias_index == depth_bias_index &&
-         memcmp(seg->viewport_clip, clip, sizeof(clip)) == 0 &&
-         memcmp(seg->viewport_transform, transform, sizeof(transform)) == 0;
+         seg->viewport_depth_bias_index == depth_bias_index;
+      for (unsigned i = 0; unchanged && i < viewport_count; ++i) {
+         unchanged =
+            memcmp(seg->viewport_clip[i], states[i].clip,
+                   sizeof(states[i].clip)) == 0 &&
+            memcmp(seg->viewport_transform[i], states[i].transform,
+                   sizeof(states[i].transform)) == 0;
+      }
 
       /* PPP state persists in a render stream. Emit this complete group only
        * when one of its inputs changes; fragment-only updates below do not
@@ -6644,7 +6734,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             .depth_bias_scissor = true,
             .region_clip = true,
             .viewport = true,
-            .viewport_count = 1,
+            .viewport_count = viewport_count,
          };
 
          size_t size = agx_ppp_update_size(&present);
@@ -6661,33 +6751,42 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             cfg.depth_bias = depth_bias_index;
          }
 
-         agx_ppp_push(&ppp, REGION_CLIP, cfg) {
-            cfg.enable = true;
-            cfg.min_x = clip_x0 / 32;
-            cfg.min_y = clip_y0 / 32;
-            cfg.max_x = DIV_ROUND_UP(MAX2(clip_x1, 1), 32);
-            cfg.max_y = DIV_ROUND_UP(MAX2(clip_y1, 1), 32);
+         for (unsigned i = 0; i < viewport_count; ++i) {
+            agx_ppp_push(&ppp, REGION_CLIP, cfg) {
+               cfg.enable = true;
+               cfg.min_x = states[i].clip[0] / 32;
+               cfg.min_y = states[i].clip[1] / 32;
+               cfg.max_x =
+                  DIV_ROUND_UP(MAX2(states[i].clip[2], 1), 32);
+               cfg.max_y =
+                  DIV_ROUND_UP(MAX2(states[i].clip[3], 1), 32);
+            }
          }
 
          agx_ppp_push(&ppp, VIEWPORT_CONTROL, cfg);
 
-         agx_ppp_push(&ppp, VIEWPORT, cfg) {
-            cfg.translate_x = transform[0];
-            cfg.translate_y = transform[1];
-            cfg.translate_z = transform[2];
-
-            cfg.scale_x = transform[3];
-
-            cfg.scale_y = transform[4];
-            cfg.scale_z = transform[5];
+         for (unsigned i = 0; i < viewport_count; ++i) {
+            agx_ppp_push(&ppp, VIEWPORT, cfg) {
+               cfg.translate_x = states[i].transform[0];
+               cfg.translate_y = states[i].transform[1];
+               cfg.translate_z = states[i].transform[2];
+               cfg.scale_x = states[i].transform[3];
+               cfg.scale_y = states[i].transform[4];
+               cfg.scale_z = states[i].transform[5];
+            }
          }
 
          agx_ppp_fini(&out, &ppp);
          seg->viewport_ppp_valid = true;
-         seg->viewport_scissor_index = scissor_index;
-         seg->viewport_depth_bias_index = depth_bias_index;
-         memcpy(seg->viewport_clip, clip, sizeof(clip));
-         memcpy(seg->viewport_transform, transform, sizeof(transform));
+         seg->viewport_count = (uint8_t)viewport_count;
+         seg->viewport_scissor_index = (uint16_t)scissor_index;
+         seg->viewport_depth_bias_index = (uint16_t)depth_bias_index;
+         for (unsigned i = 0; i < viewport_count; ++i) {
+            memcpy(seg->viewport_clip[i], states[i].clip,
+                   sizeof(states[i].clip));
+            memcpy(seg->viewport_transform[i], states[i].transform,
+                   sizeof(states[i].transform));
+         }
       }
    }
 
@@ -7107,16 +7206,9 @@ d12_list_DrawInstanced(ID3D12GraphicsCommandList6 *iface,
          .graphics_rs = list->graphics_rs,
          .topology = list->topology,
          .patch_control_points = list->patch_control_points,
-         .pso_set = list->bundle_pso_set,
          .graphics_rs_set = list->bundle_graphics_rs_set,
          .topology_set = list->bundle_topology_set,
          .dynamic_state = list->bundle_dynamic_state,
-         .depth_bias_set = list->bundle_depth_bias_set,
-         .strip_cut_set = list->bundle_strip_cut_set,
-         .depth_bias = list->depth_bias,
-         .depth_bias_clamp = list->depth_bias_clamp,
-         .slope_scaled_depth_bias = list->slope_scaled_depth_bias,
-         .strip_cut = list->strip_cut,
       };
       util_dynarray_append_typed(&list->bundle_draws,
                                  struct d12_bundle_draw, draw);
@@ -7151,16 +7243,9 @@ d12_list_DrawIndexedInstanced(ID3D12GraphicsCommandList6 *iface,
          .graphics_rs = list->graphics_rs,
          .topology = list->topology,
          .patch_control_points = list->patch_control_points,
-         .pso_set = list->bundle_pso_set,
          .graphics_rs_set = list->bundle_graphics_rs_set,
          .topology_set = list->bundle_topology_set,
          .dynamic_state = list->bundle_dynamic_state,
-         .depth_bias_set = list->bundle_depth_bias_set,
-         .strip_cut_set = list->bundle_strip_cut_set,
-         .depth_bias = list->depth_bias,
-         .depth_bias_clamp = list->depth_bias_clamp,
-         .slope_scaled_depth_bias = list->slope_scaled_depth_bias,
-         .strip_cut = list->strip_cut,
       };
       util_dynarray_append_typed(&list->bundle_draws,
                                  struct d12_bundle_draw, draw);
@@ -7233,15 +7318,13 @@ d12_indirect_argument_layout(const D3D12_INDIRECT_ARGUMENT_DESC *argument,
 }
 
 /* Snapshot the active reserved-buffer ranges for the execution-time root-VA
- * translation kernel.  The common case stays on the stack; unusually large
- * registries pay one bounded allocation only when an indirect CBV/SRV needs
- * the read-only sparse alias. */
+ * translation kernel directly into command-list storage. */
 static uint64_t
 d12_list_upload_sparse_ranges(struct d12_cmd_list *list, uint32_t *out_count)
 {
-   uint64_t stack_ranges[32];
-   uint64_t *ranges = stack_ranges;
    uint32_t count = 0;
+   uint64_t gpu = 0;
+   uint64_t *ranges = NULL;
 
    *out_count = 0;
    simple_mtx_lock(&list->device->sparse_resource_lock);
@@ -7255,18 +7338,19 @@ d12_list_upload_sparse_ranges(struct d12_cmd_list *list, uint32_t *out_count)
       ++count;
    }
 
-   if (count > ARRAY_SIZE(stack_ranges) / 2) {
+   if (count) {
       if ((size_t)count > SIZE_MAX / (2 * sizeof(uint64_t))) {
          simple_mtx_unlock(&list->device->sparse_resource_lock);
          list->state = D12_LIST_ERROR;
          return 0;
       }
-      ranges = malloc((size_t)count * 2 * sizeof(uint64_t));
-      if (!ranges) {
+      gpu = d12_list_upload_zero(
+         list, (size_t)count * 2 * sizeof(uint64_t), 8);
+      if (!gpu) {
          simple_mtx_unlock(&list->device->sparse_resource_lock);
-         list->state = D12_LIST_ERROR;
          return 0;
       }
+      ranges = (uint64_t *)d12_list_data_cpu(list, gpu);
    }
 
    uint32_t index = 0;
@@ -7277,15 +7361,6 @@ d12_list_upload_sparse_ranges(struct d12_cmd_list *list, uint32_t *out_count)
       ++index;
    }
    simple_mtx_unlock(&list->device->sparse_resource_lock);
-
-   uint64_t gpu = count ? d12_list_upload(
-                             list, ranges,
-                             (size_t)count * 2 * sizeof(uint64_t), 8)
-                        : 0;
-   if (ranges != stack_ranges)
-      free(ranges);
-   if (count && !gpu)
-      return 0;
 
    *out_count = count;
    return gpu;
@@ -7836,10 +7911,22 @@ d12_list_RSSetViewports(ID3D12GraphicsCommandList6 *iface, UINT count,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   if (count >= 1 && viewports) {
-      list->viewport = viewports[0];
-      list->has_viewport = true;
+   if (count > ARRAY_SIZE(list->viewports) || (count && !viewports)) {
+      list->state = D12_LIST_ERROR;
+      return;
    }
+
+   for (UINT i = 0; i < count; ++i) {
+      list->viewports[i] = (struct d12_viewport_desc){
+         .x = viewports[i].TopLeftX,
+         .y = viewports[i].TopLeftY,
+         .width = viewports[i].Width,
+         .height = viewports[i].Height,
+         .min_depth = viewports[i].MinDepth,
+         .max_depth = viewports[i].MaxDepth,
+      };
+   }
+   list->viewport_count = (uint8_t)count;
 }
 
 static void STDMETHODCALLTYPE
@@ -7848,15 +7935,20 @@ d12_list_RSSetScissorRects(ID3D12GraphicsCommandList6 *iface, UINT count,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
-   if (count > 1)
-      mesa_logw("RSSetScissorRects: only the first rect is applied");
-
-   if (count >= 1 && rects) {
-      list->scissor = rects[0];
-      list->has_scissor = true;
-   } else {
-      list->has_scissor = false;
+   if (count > ARRAY_SIZE(list->scissors) || (count && !rects)) {
+      list->state = D12_LIST_ERROR;
+      return;
    }
+
+   for (UINT i = 0; i < count; ++i) {
+      list->scissors[i] = (struct d12_scissor_desc){
+         .left = rects[i].left,
+         .top = rects[i].top,
+         .right = rects[i].right,
+         .bottom = rects[i].bottom,
+      };
+   }
+   list->scissor_count = (uint8_t)count;
 }
 
 static void STDMETHODCALLTYPE
@@ -8407,9 +8499,12 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
     * leave the tail of the last vector reading past the allocation. */
    size_t size = ALIGN_POT((size_t)total * 4, 16);
 
-   uint32_t *staging = calloc(1, size);
-   if (!staging)
+   uint64_t gpu = d12_list_upload_zero(list, size, 16);
+   if (!gpu) {
+      list->state = D12_LIST_ERROR;
       return 0;
+   }
+   uint32_t *staging = (uint32_t *)d12_list_data_cpu(list, gpu);
 
    /* Preserve what a previous call to this same parameter wrote. */
    if (table[slot].kind == D12_DESC_CBV && table[slot].address) {
@@ -8419,14 +8514,6 @@ d12_list_set_root_constants(struct d12_cmd_list *list, bool compute,
    }
 
    memcpy(staging + offset_in_values, data, (size_t)num_values * 4);
-
-   uint64_t gpu = d12_list_upload(list, staging, size, 16);
-   free(staging);
-
-   if (!gpu) {
-      list->state = D12_LIST_ERROR;
-      return 0;
-   }
 
    memset(&table[slot], 0, sizeof(table[slot]));
    sources[slot] = NULL;
@@ -8550,18 +8637,17 @@ d12_list_SetPipelineState(ID3D12GraphicsCommandList6 *iface,
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
    list->pso = pso ? d12_pipeline_state_from_iface(pso) : NULL;
    if (list->pso && !list->pso->is_compute) {
-      list->depth_bias = list->pso->raster.depth_bias;
-      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
-      list->slope_scaled_depth_bias =
+      struct d12_dynamic_state_values dynamic = d12_list_dynamic_state(list);
+      dynamic.depth_bias = list->pso->raster.depth_bias;
+      dynamic.depth_bias_clamp = list->pso->raster.depth_bias_clamp;
+      dynamic.slope_scaled_depth_bias =
          list->pso->raster.slope_scaled_depth_bias;
-      list->strip_cut = list->pso->strip_cut;
-   }
-   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE) {
-      list->bundle_pso_set = true;
-      if (list->pso && !list->pso->is_compute) {
-         list->bundle_depth_bias_set = true;
-         list->bundle_strip_cut_set = true;
-      }
+      dynamic.strip_cut = (uint32_t)list->pso->strip_cut;
+      d12_list_set_dynamic_state(list, &dynamic);
+
+      if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
+         d12_bundle_dynamic_state_set_pipeline(
+            &list->bundle_dynamic_state, &dynamic);
    }
 }
 
@@ -8589,7 +8675,7 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
        * caller.  A draw missing either has undefined output, so leave it as
        * a no-op instead of silently borrowing the direct-list value.
        */
-      if (!draw->pso_set || !draw->pso || !draw->topology_set)
+      if (!draw->pso || !draw->topology_set)
          continue;
 
       list->pso = draw->pso;
@@ -8597,16 +8683,7 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
       list->patch_control_points = draw->patch_control_points;
       if (draw->graphics_rs_set)
          list->graphics_rs = draw->graphics_rs;
-      d12_bundle_dynamic_state_apply(
-         &draw->dynamic_state, &list->stencil_ref_front,
-         &list->stencil_ref_back, list->blend_factor);
-      if (draw->depth_bias_set) {
-         list->depth_bias = draw->depth_bias;
-         list->depth_bias_clamp = draw->depth_bias_clamp;
-         list->slope_scaled_depth_bias = draw->slope_scaled_depth_bias;
-      }
-      if (draw->strip_cut_set)
-         list->strip_cut = draw->strip_cut;
+      d12_list_apply_bundle_dynamic_state(list, &draw->dynamic_state);
 
       d12_list_draw(list, draw->vertex_count, draw->instance_count,
                     draw->first_vertex, draw->first_instance, draw->indexed,
@@ -8619,24 +8696,16 @@ d12_list_ExecuteBundle(ID3D12GraphicsCommandList6 *iface,
    /* All state explicitly set in a bundle is inherited back into the direct
     * command list, including a bundle that records no draw.
     */
-   if (bundle->bundle_pso_set)
-      list->pso = bundle->pso;
+   /* Pipeline state is not inherited into a bundle, but the bundle's final
+    * PSO (including its creation/reset PSO) is returned to the caller. */
+   list->pso = bundle->pso;
    if (bundle->bundle_graphics_rs_set)
       list->graphics_rs = bundle->graphics_rs;
    if (bundle->bundle_topology_set) {
       list->topology = bundle->topology;
       list->patch_control_points = bundle->patch_control_points;
    }
-   d12_bundle_dynamic_state_apply(
-      &bundle->bundle_dynamic_state, &list->stencil_ref_front,
-      &list->stencil_ref_back, list->blend_factor);
-   if (bundle->bundle_depth_bias_set) {
-      list->depth_bias = bundle->depth_bias;
-      list->depth_bias_clamp = bundle->depth_bias_clamp;
-      list->slope_scaled_depth_bias = bundle->slope_scaled_depth_bias;
-   }
-   if (bundle->bundle_strip_cut_set)
-      list->strip_cut = bundle->strip_cut;
+   d12_list_apply_bundle_dynamic_state(list, &bundle->bundle_dynamic_state);
 }
 
 /* Clear API state without rewinding the command stream. Commands recorded
@@ -8649,54 +8718,31 @@ d12_list_ClearState(ID3D12GraphicsCommandList6 *iface,
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
 
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE ||
+       list->type == D3D12_COMMAND_LIST_TYPE_COPY) {
+      mesa_loge("ClearState is invalid for command list type %u",
+                (unsigned)list->type);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_FAIL;
+      return;
+   }
+
    /* Render-target bindings are part of the cleared state. Finish an open
-    * hardware render segment so a later draw cannot inherit its target.
+    * hardware segment so later work cannot inherit targets or a bindless
+    * sampler heap from the pre-clear command stream.
     */
-   if (list->render_open)
+   if (list->cdm_open || list->render_open)
       d12_list_close_cdm(list);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
 
    list->pso = initial_state ? d12_pipeline_state_from_iface(initial_state)
                              : NULL;
-   list->compute_rs = NULL;
-   list->graphics_rs = NULL;
-   memset(list->compute_root_table, 0, sizeof(list->compute_root_table));
-   memset(list->graphics_root_table, 0, sizeof(list->graphics_root_table));
-   memset(list->compute_root_source, 0, sizeof(list->compute_root_source));
-   memset(list->graphics_root_source, 0,
-          sizeof(list->graphics_root_source));
-   memset(list->compute_sampler_table, 0,
-          sizeof(list->compute_sampler_table));
-   memset(list->graphics_sampler_table, 0,
-          sizeof(list->graphics_sampler_table));
-
-   memset(list->vb, 0, sizeof(list->vb));
-   memset(&list->ib, 0, sizeof(list->ib));
-   list->topology = MESA_PRIM_TRIANGLES;
-   list->patch_control_points = 0;
-
-   memset(&list->viewport, 0, sizeof(list->viewport));
-   memset(&list->scissor, 0, sizeof(list->scissor));
-   list->has_viewport = false;
-   list->has_scissor = false;
-   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
-   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
-   list->bound_rtv_count = 0;
-   list->has_bound_dsv = false;
-   list->stencil_ref_front = 0;
-   list->stencil_ref_back = 0;
-   list->depth_bias = 0.0f;
-   list->depth_bias_clamp = 0.0f;
-   list->slope_scaled_depth_bias = 0.0f;
-   list->strip_cut = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
-   if (list->pso && !list->pso->is_compute) {
-      list->depth_bias = list->pso->raster.depth_bias;
-      list->depth_bias_clamp = list->pso->raster.depth_bias_clamp;
-      list->slope_scaled_depth_bias =
-         list->pso->raster.slope_scaled_depth_bias;
-      list->strip_cut = list->pso->strip_cut;
-   }
-   for (unsigned i = 0; i < 4; i++)
-      list->blend_factor[i] = 1.0f;
+   d12_list_reset_api_state(list);
 }
 
 static void STDMETHODCALLTYPE
@@ -8990,6 +9036,15 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
                ID3D12PipelineState *initial_state)
 {
    struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   int32_t failed_close_result;
+
+   /* A recording failure reported by Close permanently poisons this command
+    * list. Microsoft requires every later Reset to return that same error. */
+   if (d12_command_list_failed_close_reset(
+          list->state == D12_LIST_CLOSED, list->had_error,
+          (int32_t)list->record_error, (int32_t)E_FAIL,
+          &failed_close_result))
+      return (HRESULT)failed_close_result;
 
    if (!allocator)
       return E_INVALIDARG;
@@ -9008,12 +9063,6 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
    if (new_allocator->recording_lists)
       return E_INVALIDARG;
 
-   /* Reset starts a fresh recording, so the previous error is gone. */
-   list->had_error = false;
-   list->record_error = S_OK;
-   list->pso = initial_state ? d12_pipeline_state_from_iface(initial_state)
-                             : NULL;
-
    /*
     * If this recording has already been submitted, the GPU may still be
     * reading its control stream, its USC words and its uploaded data --
@@ -9031,6 +9080,10 @@ d12_list_Reset(ID3D12GraphicsCommandList6 *iface,
     */
    if (list->submitted && !d12_list_take_fresh_storage(list))
       return E_OUTOFMEMORY;
+
+   list->record_error = S_OK;
+   list->pso = initial_state ? d12_pipeline_state_from_iface(initial_state)
+                             : NULL;
 
    /* Re-entering the recording state re-registers with the allocator. */
    if (list->state != D12_LIST_RECORDING) {
@@ -9750,20 +9803,6 @@ d12_copy_surface_from_location(struct d12_copy_surface *surface,
    return false;
 }
 
-static bool
-d12_copy_element_coord(uint32_t px, uint32_t block_px, uint32_t *el,
-                       const char *name)
-{
-   if (px % block_px) {
-      mesa_loge("CopyTextureRegion: %s coordinate %u is not block aligned",
-                name, px);
-      return false;
-   }
-
-   *el = px / block_px;
-   return true;
-}
-
 static void
 d12_copy_texture_region(struct d12_cmd_list *list,
                         const D3D12_TEXTURE_COPY_LOCATION *dst,
@@ -9776,11 +9815,6 @@ d12_copy_texture_region(struct d12_cmd_list *list,
       list->state = D12_LIST_ERROR;
       return;
    }
-
-   if (src_box && (src_box->left >= src_box->right ||
-                   src_box->top >= src_box->bottom ||
-                   src_box->front >= src_box->back))
-      return;
 
    struct d12_copy_surface d, s;
    if (!d12_copy_surface_from_location(&d, dst, "destination") ||
@@ -9803,59 +9837,75 @@ d12_copy_texture_region(struct d12_cmd_list *list,
       return;
    }
 
-   const uint32_t src_left = src_box ? src_box->left : 0;
-   const uint32_t src_top = src_box ? src_box->top : 0;
-   const uint32_t src_front = src_box ? src_box->front : 0;
-   const uint32_t src_right = src_box ? src_box->right : s.width_px;
-   const uint32_t src_bottom = src_box ? src_box->bottom : s.height_px;
-   const uint32_t src_back = src_box ? src_box->back : s.depth_px;
-   uint32_t src_x_el, src_y_el, dst_x_el, dst_y_el;
-
-   if (!d12_copy_element_coord(src_left, s.block_width_px, &src_x_el,
-                               "source x") ||
-       !d12_copy_element_coord(src_top, s.block_height_px, &src_y_el,
-                               "source y") ||
-       !d12_copy_element_coord(dst_x, d.block_width_px, &dst_x_el,
-                               "destination x") ||
-       !d12_copy_element_coord(dst_y, d.block_height_px, &dst_y_el,
-                               "destination y")) {
-      list->state = D12_LIST_ERROR;
+   const struct d12_texture_copy_surface_geometry destination_geometry = {
+      .width_px = d.width_px,
+      .height_px = d.height_px,
+      .depth_px = d.depth_px,
+      .width_el = d.width_el,
+      .height_el = d.height_el,
+      .block_width_px = d.block_width_px,
+      .block_height_px = d.block_height_px,
+   };
+   const struct d12_texture_copy_surface_geometry source_geometry = {
+      .width_px = s.width_px,
+      .height_px = s.height_px,
+      .depth_px = s.depth_px,
+      .width_el = s.width_el,
+      .height_el = s.height_el,
+      .block_width_px = s.block_width_px,
+      .block_height_px = s.block_height_px,
+   };
+   const struct d12_texture_copy_region_geometry region_geometry = {
+      .destination_x_px = dst_x,
+      .destination_y_px = dst_y,
+      .destination_z_px = dst_z,
+      .has_source_box = src_box != NULL,
+      .source_left_px = src_box ? src_box->left : 0,
+      .source_top_px = src_box ? src_box->top : 0,
+      .source_front_px = src_box ? src_box->front : 0,
+      .source_right_px = src_box ? src_box->right : 0,
+      .source_bottom_px = src_box ? src_box->bottom : 0,
+      .source_back_px = src_box ? src_box->back : 0,
+   };
+   struct d12_texture_copy_plan plan;
+   const enum d12_texture_copy_plan_status status =
+      d12_texture_copy_plan_region(&destination_geometry, &source_geometry,
+                                   &region_geometry, &plan);
+   if (status == D12_TEXTURE_COPY_PLAN_EMPTY)
       return;
-   }
-
-   const uint32_t src_right_el =
-      DIV_ROUND_UP(src_right, s.block_width_px);
-   const uint32_t src_bottom_el =
-      DIV_ROUND_UP(src_bottom, s.block_height_px);
-   if (src_right_el <= src_x_el || src_bottom_el <= src_y_el)
-      return;
-
-   const uint32_t width_el = src_right_el - src_x_el;
-   const uint32_t height_el = src_bottom_el - src_y_el;
-   const uint32_t depth_px = src_back - src_front;
-   if (src_right_el > s.width_el || src_bottom_el > s.height_el ||
-       src_back > s.depth_px || dst_z > d.depth_px ||
-       depth_px > d.depth_px - dst_z ||
-       width_el > d.width_el - MIN2(d.width_el, dst_x_el) ||
-       height_el > d.height_el - MIN2(d.height_el, dst_y_el)) {
-      mesa_loge("CopyTextureRegion: element rectangle is out of bounds "
-                "(src %u,%u,%u..%u,%u,%u of %ux%ux%u; "
-                "dst %u,%u,%u + %ux%ux%u of %ux%ux%u)",
-                src_x_el, src_y_el, src_front, src_right_el, src_bottom_el,
-                src_back, s.width_el, s.height_el, s.depth_px, dst_x_el,
-                dst_y_el, dst_z, width_el, height_el, depth_px, d.width_el,
-                d.height_el, d.depth_px);
+   if (status != D12_TEXTURE_COPY_PLAN_OK) {
+      const char *reason = "invalid geometry";
+      switch (status) {
+      case D12_TEXTURE_COPY_PLAN_SOURCE_X_UNALIGNED:
+         reason = "source x is not block aligned";
+         break;
+      case D12_TEXTURE_COPY_PLAN_SOURCE_Y_UNALIGNED:
+         reason = "source y is not block aligned";
+         break;
+      case D12_TEXTURE_COPY_PLAN_DESTINATION_X_UNALIGNED:
+         reason = "destination x is not block aligned";
+         break;
+      case D12_TEXTURE_COPY_PLAN_DESTINATION_Y_UNALIGNED:
+         reason = "destination y is not block aligned";
+         break;
+      case D12_TEXTURE_COPY_PLAN_OUT_OF_BOUNDS:
+         reason = "copy region is out of bounds";
+         break;
+      default:
+         break;
+      }
+      mesa_loge("CopyTextureRegion: %s", reason);
       list->state = D12_LIST_ERROR;
       return;
    }
 
    struct libagx_copy_image_args args = {
-      .width_el = width_el,
-      .height_el = height_el,
-      .dest_x_el = dst_x_el,
-      .dest_y_el = dst_y_el,
-      .src_x_el = src_x_el,
-      .src_y_el = src_y_el,
+      .width_el = plan.width_el,
+      .height_el = plan.height_el,
+      .dest_x_el = plan.destination_x_el,
+      .dest_y_el = plan.destination_y_el,
+      .src_x_el = plan.source_x_el,
+      .src_y_el = plan.source_y_el,
       .dest_pitch_B = d.pitch_B,
       .src_pitch_B = s.pitch_B,
       .dest_stride_el = d.stride_el,
@@ -9873,11 +9923,14 @@ d12_copy_texture_region(struct d12_cmd_list *list,
     * stack of equally-strided twiddled slices, so preserve that kernel and
     * advance only the validated source/destination bases for each Z slice.
     */
-   for (uint32_t z = 0; z < depth_px; ++z) {
-      args.dest = d.base + (uint64_t)(dst_z + z) * d.slice_stride_B;
-      args.src = s.base + (uint64_t)(src_front + z) * s.slice_stride_B;
+   for (uint32_t z = 0; z < plan.depth_px; ++z) {
+      args.dest = d.base +
+                  (uint64_t)(plan.destination_z_px + z) * d.slice_stride_B;
+      args.src = s.base +
+                 (uint64_t)(plan.source_front_px + z) * s.slice_stride_B;
       d12_list_dispatch_precomp(list, LIBAGX_COPY_IMAGE, &args, sizeof(args),
-                                agx_1d((uint64_t)width_el * height_el));
+                                agx_1d((uint64_t)plan.width_el *
+                                       plan.height_el));
       if (list->state == D12_LIST_ERROR)
          return;
    }
@@ -11371,7 +11424,8 @@ d12_list_RSSetDepthBias(ID3D12GraphicsCommandList9 *iface, FLOAT depth_bias,
    list->depth_bias_clamp = clamp;
    list->slope_scaled_depth_bias = slope;
    if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
-      list->bundle_depth_bias_set = true;
+      d12_bundle_dynamic_state_set_depth_bias(
+         &list->bundle_dynamic_state, depth_bias, clamp, slope);
 }
 
 static void STDMETHODCALLTYPE
@@ -11391,7 +11445,8 @@ d12_list_IASetIndexBufferStripCutValue(
    }
    list->strip_cut = strip_cut;
    if (list->type == D3D12_COMMAND_LIST_TYPE_BUNDLE)
-      list->bundle_strip_cut_set = true;
+      d12_bundle_dynamic_state_set_strip_cut(
+         &list->bundle_dynamic_state, (uint32_t)strip_cut);
 }
 
 static void STDMETHODCALLTYPE
@@ -11605,7 +11660,8 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
 
 HRESULT
 d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
-                    struct d12_cmd_allocator *allocator, REFIID riid,
+                    struct d12_cmd_allocator *allocator,
+                    struct d12_pipeline_state *initial_state, REFIID riid,
                     void **out)
 {
    if (!out)
@@ -11648,6 +11704,7 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->device = device;
    list->type = type;
    list->allocator = allocator;
+   list->pso = initial_state;
    d12_private_data_store_init(&list->private_data, (IUnknown *)&list->iface);
    util_dynarray_init(&list->descriptor_fixups, NULL);
    util_dynarray_init(&list->indirect_constant_fixups, NULL);

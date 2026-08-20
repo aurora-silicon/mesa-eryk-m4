@@ -936,7 +936,9 @@ agx_pack_instr(struct util_dynarray *emission, struct util_dynarray *fixups,
       uint64_t raw =
          agx_opcodes_info[I->op].encoding.exact | (I->imm << 8) |
          (I->scoreboard << 16) | ((uint64_t)T << 26) |
-         ((I->src[1].type == AGX_INDEX_IMMEDIATE) ? (1ul << 58) : 0) |
+         ((I->src[1].type == AGX_INDEX_IMMEDIATE)
+             ? (UINT64_C(1) << 58)
+             : 0) |
          ((uint64_t)U << 59);
 
       memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);

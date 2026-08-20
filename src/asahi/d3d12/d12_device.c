@@ -207,15 +207,10 @@ d12_device_CreateCommandList(ID3D12Device2 *iface, UINT node_mask,
     * d12_list_Reset already honours its own initial_state argument, so the
     * two entry points now agree.
     */
-   HRESULT hr = d12_cmd_list_create(device, type,
-                                    d12_allocator, riid, out);
-
-   if (SUCCEEDED(hr) && initial_state && out && *out) {
-      struct d12_cmd_list *list = (struct d12_cmd_list *)*out;
-      list->pso = d12_pipeline_state_from_iface(initial_state);
-   }
-
-   return hr;
+   return d12_cmd_list_create(
+      device, type, d12_allocator,
+      initial_state ? d12_pipeline_state_from_iface(initial_state) : NULL,
+      riid, out);
 }
 
 static HRESULT STDMETHODCALLTYPE
@@ -237,12 +232,9 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
          (D3D12_RESOURCE_BINDING_TIER)caps->resource_binding_tier;
       opts->TiledResourcesTier =
          (D3D12_TILED_RESOURCES_TIER)caps->tiled_resources_tier;
-      /* TIER_2 means any resource type in any heap. The hardware would
-       * allow it (UMA), but CreateHeap and CreatePlacedResource do not
-       * exist, so claiming it would be a capability we cannot honour.
-       */
       opts->ResourceHeapTier =
          (D3D12_RESOURCE_HEAP_TIER)caps->resource_heap_tier;
+      opts->OutputMergerLogicOp = caps->output_merger_logic_op;
       return S_OK;
    }
 
@@ -358,6 +350,8 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*opts))
          return E_INVALIDARG;
       memset(opts, 0, sizeof(*opts));
+      opts->TextureCopyBetweenDimensionsSupported =
+         caps->texture_copy_between_dimensions;
       return S_OK;
    }
 
@@ -532,10 +526,10 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*va))
          return E_INVALIDARG;
 
-      /* AGX addresses are 64-bit; agx_bo VAs come out of a 40-bit space,
-       * and a resource cannot exceed what one allocation can cover. */
-      va->MaxGPUVirtualAddressBitsPerResource = 40;
-      va->MaxGPUVirtualAddressBitsPerProcess = 40;
+      va->MaxGPUVirtualAddressBitsPerResource =
+         d12_core_get_caps()->gpu_virtual_address_bits;
+      va->MaxGPUVirtualAddressBitsPerProcess =
+         d12_core_get_caps()->gpu_virtual_address_bits;
       return S_OK;
    }
 
@@ -766,9 +760,9 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (arch->NodeIndex != 0)
          return E_INVALIDARG;
 
-      arch->TileBasedRenderer = TRUE;
-      arch->UMA = TRUE;
-      arch->CacheCoherentUMA = TRUE;
+      arch->TileBasedRenderer = caps->tile_based_deferred_renderer;
+      arch->UMA = caps->uma;
+      arch->CacheCoherentUMA = caps->cache_coherent_uma;
       return S_OK;
    }
 
@@ -779,11 +773,10 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (arch->NodeIndex != 0)
          return E_INVALIDARG;
 
-      arch->TileBasedRenderer = TRUE;
-      arch->UMA = TRUE;
-      arch->CacheCoherentUMA = TRUE;
-      /* The GPU sits behind its own MMU (GPU VM / DART). */
-      arch->IsolatedMMU = TRUE;
+      arch->TileBasedRenderer = caps->tile_based_deferred_renderer;
+      arch->UMA = caps->uma;
+      arch->CacheCoherentUMA = caps->cache_coherent_uma;
+      arch->IsolatedMMU = caps->isolated_mmu;
       return S_OK;
    }
 

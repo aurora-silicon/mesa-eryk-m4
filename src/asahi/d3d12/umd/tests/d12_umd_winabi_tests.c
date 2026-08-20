@@ -609,6 +609,9 @@ _Static_assert(D12_FRONTEND_MAX_VERTEX_BUFFERS == 32,
                "frontend vertex-buffer slot count");
 _Static_assert(sizeof(struct agxw_adapter_identity) == 48,
                "KMD identity width");
+_Static_assert(offsetof(struct agxw_adapter_identity,
+                        submit_private_max_version) == 44,
+               "KMD submit-private capability offset");
 _Static_assert(D3D12DDI_SUPPORTED_0003 == D12_UMD_DDI_SUPPORTED_0003,
                "supported DDI encoding");
 _Static_assert(D3D12DDI_SUPPORTED_0010 == D12_UMD_DDI_SUPPORTED_0010,

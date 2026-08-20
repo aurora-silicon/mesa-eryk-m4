@@ -25,8 +25,10 @@
 
 #include "d12_frontend.h"
 #include "d12_bundle_state_core.h"
+#include "d12_command_validation_core.h"
 #include "d12_device_removal_core.h"
 #include "d12_queue_timeline_core.h"
+#include "d12_viewport_math.h"
 
 #include "agx_bg_eot.h"
 #include "agx_compile.h"
@@ -736,16 +738,9 @@ struct d12_bundle_draw {
    struct d12_root_signature *graphics_rs;
    enum mesa_prim topology;
    unsigned patch_control_points;
-   bool pso_set;
    bool graphics_rs_set;
    bool topology_set;
    struct d12_bundle_dynamic_state dynamic_state;
-   bool depth_bias_set;
-   bool strip_cut_set;
-   float depth_bias;
-   float depth_bias_clamp;
-   float slope_scaled_depth_bias;
-   D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
 };
 
 /*
@@ -1331,13 +1326,19 @@ struct d12_segment {
     * state is persistent, so repeating an identical update on every draw is
     * pure command/data growth. */
    bool viewport_ppp_valid;
-   uint8_t viewport_scissor_index;
-   uint8_t viewport_depth_bias_index;
-   uint16_t viewport_clip[4];
-   float viewport_transform[6];
+   uint8_t viewport_count;
+   uint16_t viewport_scissor_index;
+   uint16_t viewport_depth_bias_index;
+   uint16_t
+   viewport_clip[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE][4];
+   float viewport_transform
+      [D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE][6];
 };
 
-#define D12_MAX_SCISSORS 256
+/* Per-render-pass array chunks. Recording rolls to a load-preserving pass
+ * before either fills, which bounds storage without limiting command lists. */
+#define D12_SCISSORS_PER_SEGMENT 256
+#define D12_DEPTH_BIASES_PER_SEGMENT 64
 
 /* A command list may legally contain a large sequence of independent render
  * passes.  Exhaustive descriptor tests use one clear-only pass per array
@@ -1559,7 +1560,6 @@ struct d12_cmd_list {
    /* Explicit state written while recording a bundle.  The final values are
     * inherited back into its caller even when the bundle contains no draw.
     */
-   bool bundle_pso_set;
    bool bundle_graphics_rs_set;
    bool bundle_topology_set;
    struct d12_bundle_dynamic_state bundle_dynamic_state;
@@ -1590,10 +1590,10 @@ struct d12_cmd_list {
    struct d12_root_signature *compute_rs;
    struct d12_root_signature *graphics_rs;
    /* Rasterizer state, actually consumed by the draw path. */
-   D3D12_VIEWPORT viewport;
-   bool has_viewport;
-   D3D12_RECT scissor;
-   bool has_scissor;
+   struct d12_viewport_desc viewports[D12_VIEWPORT_STATE_MAX];
+   uint8_t viewport_count;
+   struct d12_scissor_desc scissors[D12_VIEWPORT_STATE_MAX];
+   uint8_t scissor_count;
 
    /* OM bindings are descriptor snapshots, not just resource pointers: RTV
     * array slices share a resource but have different addresses, and typeless
@@ -1623,14 +1623,8 @@ struct d12_cmd_list {
    D3D12_INDEX_BUFFER_STRIP_CUT_VALUE strip_cut;
 
    /* OMSetBlendFactor. AGX fragment uniforms 4..11 are the four 32-bit
-    * constants; D3D12 resets them to one with command-list state. */
+    * constants. Reset/ClearState use zero; OMSetBlendFactor(NULL) uses one. */
    float blend_factor[4];
-
-   /* Bundle state is inherited unless the bundle records one of these
-    * setters (including SetPipelineState, which restores PSO initial state).
-    */
-   bool bundle_depth_bias_set;
-   bool bundle_strip_cut_set;
 };
 
 static inline struct d12_resource *
@@ -1703,6 +1697,13 @@ struct d12_placement_fence {
 
 struct d12_queue_op;
 
+#define D12_QUEUE_MAX_PLACEMENT_DEPENDENCIES 64
+
+struct d12_queue_placement_wait {
+   struct d12_placement_fence *fence;
+   uint64_t value;
+};
+
 struct d12_queue {
    ID3D12CommandQueue iface; /* must be first */
    uint32_t refcount;
@@ -1721,6 +1722,10 @@ struct d12_queue {
    struct d12_queue_timeline_state timeline;
 
    mtx_t lock;
+   /* DDI callbacks submit on the entering runtime thread. This lock keeps
+    * concurrent callbacks in queue order without involving the COM submit
+    * worker. */
+   mtx_t ddi_submit_lock;
    cnd_t work_available;
    cnd_t retire_available;
    thrd_t worker;
@@ -1732,10 +1737,15 @@ struct d12_queue {
    struct agx_bo *signal_stream_bo;
    struct agx_bo *signal_usc_bo;
    struct agx_bo *signal_program_bo;
+   struct agx_bo *dependency_scratch_bo;
    uint32_t signal_control_size;
    uint64_t signal_slots;
    uint32_t stop;
    uint32_t retire_stop;
+   uint32_t pending_placement_wait_count;
+   struct d12_queue_placement_wait
+      pending_placement_waits[D12_QUEUE_MAX_PLACEMENT_DEPENDENCIES];
+   bool ddi_immediate_submit;
    bool worker_started;
    bool retire_worker_started;
 };
@@ -1808,6 +1818,9 @@ HRESULT d12_queue_wait_placement_fence(
 HRESULT d12_queue_create(struct d12_device *device,
                          const D3D12_COMMAND_QUEUE_DESC *desc, REFIID riid,
                          void **out);
+HRESULT d12_queue_create_ddi(struct d12_device *device,
+                             const D3D12_COMMAND_QUEUE_DESC *desc,
+                             REFIID riid, void **out);
 HRESULT d12_resource_create_committed(struct d12_device *device,
                                       const D3D12_HEAP_PROPERTIES *heap_props,
                                       D3D12_HEAP_FLAGS heap_flags,
@@ -1820,8 +1833,9 @@ HRESULT d12_cmd_allocator_create(struct d12_device *device,
                                  void **out);
 HRESULT d12_cmd_list_create(struct d12_device *device,
                             D3D12_COMMAND_LIST_TYPE type,
-                            struct d12_cmd_allocator *allocator, REFIID riid,
-                            void **out);
+                            struct d12_cmd_allocator *allocator,
+                            struct d12_pipeline_state *initial_state,
+                            REFIID riid, void **out);
 HRESULT d12_cmd_present_blt(
    struct d12_cmd_list *list, struct d12_resource *destination,
    struct d12_resource *source,

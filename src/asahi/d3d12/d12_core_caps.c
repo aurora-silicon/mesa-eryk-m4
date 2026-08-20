@@ -16,14 +16,17 @@ static const struct d12_core_caps d12_agx_caps = {
    .resource_binding_tier = 1,
    .tiled_resources_tier = 1,
    .resource_heap_tier = 1,
+   .gpu_virtual_address_bits = 39,
    .uma = true,
-   .cache_coherent_uma = true,
+   .cache_coherent_uma = false,
    .isolated_mmu = true,
    .tile_based_deferred_renderer = true,
    .native_16bit_shader_ops = true,
    .predication = true,
    .hardware_copy = false,
    .copy_queue_timestamp_queries = true,
+   .texture_copy_between_dimensions = true,
+   .output_merger_logic_op = true,
    .write_buffer_immediate_support_flags =
       D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |
       D12_CORE_COMMAND_LIST_SUPPORT_COMPUTE |

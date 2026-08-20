@@ -16,9 +16,6 @@
 #define TEST_ALLOCATION ((D3DKMT_HANDLE)0x3456)
 #define TEST_KM_RESOURCE ((D3DKMT_HANDLE)0x4567)
 #define TEST_GPU_VA UINT64_C(0x123400000)
-#define TEST_CONTEXT ((HANDLE)(uintptr_t)0x3000)
-#define TEST_COMMANDS UINT64_C(0x567800000)
-#define TEST_RESULT_ALLOCATION ((D3DKMT_HANDLE)0x5678)
 #define TEST_PAGING_QUEUE ((D3DKMT_HANDLE)0x6789)
 #define TEST_PAGING_FENCE ((D3DKMT_HANDLE)0x789a)
 #define TEST_USC_BASE UINT64_C(0x1100000000)
@@ -26,7 +23,6 @@
 
 static unsigned allocate_calls;
 static unsigned deallocate_calls;
-static unsigned submit_calls;
 static unsigned reserve_calls;
 static unsigned free_va_calls;
 static unsigned wait_cpu_calls;
@@ -71,34 +67,6 @@ deallocate_callback(HANDLE device, const D3DDDICB_DEALLOCATE2 *arguments)
       return E_INVALIDARG;
 
    ++deallocate_calls;
-   return S_OK;
-}
-
-static HRESULT APIENTRY
-submit_callback(HANDLE device, const D3DDDICB_SUBMITCOMMAND *arguments)
-{
-   const struct agxw_submit_private *private_data;
-
-   if (device != TEST_DEVICE || !arguments ||
-       arguments->Commands != TEST_COMMANDS ||
-       arguments->CommandLength !=
-          sizeof(struct agxw_dma_header) + UINT32_C(0x4000) ||
-       arguments->Flags.Value != 0 || arguments->BroadcastContextCount != 1 ||
-       arguments->BroadcastContext[0] != TEST_CONTEXT ||
-       arguments->NumPrimaries != 0 || arguments->MarkerLogType != 0 ||
-       arguments->pPrivateDriverData == NULL ||
-       arguments->PrivateDriverDataSize != sizeof(struct agxw_submit_private))
-      return E_INVALIDARG;
-
-   private_data = arguments->pPrivateDriverData;
-   if (private_data->version != AGXW_SUBMIT_PRIVATE_VERSION ||
-       private_data->struct_size != sizeof(struct agxw_submit_private) ||
-       private_data->in_sync_count != 0 || private_data->out_sync_count != 0 ||
-       private_data->result_allocation != TEST_RESULT_ALLOCATION ||
-       private_data->flags != 0)
-      return E_INVALIDARG;
-
-   ++submit_calls;
    return S_OK;
 }
 
@@ -171,7 +139,6 @@ main(void)
    memset(&callbacks, 0, sizeof(callbacks));
    callbacks.pfnAllocateCb = allocate_callback;
    callbacks.pfnDeallocate2Cb = deallocate_callback;
-   callbacks.pfnSubmitCommandCb = submit_callback;
    callbacks.pfnReserveGpuVirtualAddressCb = reserve_gpu_va_callback;
    callbacks.pfnFreeGpuVirtualAddressCb = free_gpu_va_callback;
    callbacks.pfnWaitForSynchronizationObjectFromCpuCb = wait_cpu_callback;
@@ -209,15 +176,6 @@ main(void)
                                  0, NULL, 0, &allocation);
    require_result(result == E_INVALIDARG && allocate_calls == 1,
                   "reject retired allocation flag before callback");
-
-   result = d12_umd_kmt_submit_dma(&kmt, TEST_CONTEXT, TEST_COMMANDS,
-                                   UINT32_C(0x4000), TEST_RESULT_ALLOCATION);
-   require_result(result == S_OK && submit_calls == 1,
-                  "submit callback bytes");
-   result = d12_umd_kmt_submit_dma(&kmt, TEST_CONTEXT, TEST_COMMANDS,
-                                   AGXW_MAX_CMDBUF_BYTES + UINT32_C(1), 0);
-   require_result(result == E_INVALIDARG && submit_calls == 1,
-                  "reject oversized command buffer before callback");
 
    result = d12_umd_kmt_reserve_gpu_va(
       &kmt, TEST_PAGING_QUEUE, TEST_PAGING_FENCE, &paging_fence_value,

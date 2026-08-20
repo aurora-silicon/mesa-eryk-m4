@@ -101,7 +101,7 @@ official DDI pages are:
 | layer | pinned/implemented value | meaning |
 |---|---:|---|
 | AppleAgxWddm DXGK KMD interface | default `0x5023`; isolated branch `0x6003` | The shipping/dev KMD remains WDDM 2.0. `codex/wddm21-dxil` in the separate `AuroraSilicon-wddm21` worktree pins the WDK 26100.6584 WDDM 2.1 interface and is not merged into dev. |
-| KMD capability result | default `DXGKDDI_WDDMv2`; isolated `DXGKDDI_WDDMv2_1` (`0x2100`) | Both retain GPU MMU, GPUVA, one node and coherent UMA. The 2.1 branch also registers allocation-property validation and packages the native D3D12 UMD. |
+| KMD capability result | default `DXGKDDI_WDDMv2`; isolated `DXGKDDI_WDDMv2_1` (`0x2100`) | Both retain GPU MMU, GPUVA, one node, non-cache-coherent UMA and a 39-bit AGX GPUVA space. The 2.1 branch also registers allocation-property validation and packages the native D3D12 UMD. |
 | UMD callback-layout define | `0x5002`, `0x6003`, `0x8001`, `0x9001`, or `0x10000` | Meson `-Dasahi-d3d12-wddm-version=2.0|2.1|2.3|2.4|3.1` and standalone `D12_UMD_WDDM_TARGET=20|21|23|24|31` select exact callback/DXGI layouts. 2.1 is the DXIL/SM 6 minimum; 3.1 is the production-target UMD contract and remains host-only until the matching KMD/INF uplift is merged. |
 | First complete D3D12 DDI target | interface `0x000c0002`, build `8` | `D3D12DDI_SUPPORTED_0003`, encoded as `0x000c000200080000`. |
 | Release 1 pipeline-library target | interface `0x000c000a`, build `0` | `D3D12DDI_SUPPORTED_0010`, encoded as `0x000c000a00000000`; the 91-slot core table and all six library DDIs are implemented. |
@@ -141,8 +141,8 @@ ships an atomic native-DX12 registration. Offer2/Reclaim3 and DXGI 1.5 are
 selected only in the matching UMD build. Later DDI values such as `0110`
 remain unlisted until their exact tables and caps are implemented.
 
-The WDDM 3.1 build advertises `0099`, then exact Release 4 and baseline
-compatibility shapes. It exposes the 122/73 tables, DDI 0096 extended-feature
+The WDDM 3.1 build advertises `0099`, then the baseline compatibility shape.
+It exposes the 122/73 tables, DDI 0096 extended-feature
 table 27, modern options/shader caps through `0098`/`0089`/`0084`, per-face
 stencil masks and references, float depth bias, dynamic strip cut, sampler
 descriptor 2, queue 0050 and Present 0051. Enhanced barriers, hardware
@@ -204,7 +204,9 @@ through `pfnSetErrorCb`, while command-recording failures are reported through
 `pfnSetCommandListErrorCb` with the exact `hRTCommandList` supplied by the
 runtime. A malformed command-list callback binding falls back defensively to
 the device channel, but an ordinary list validation or renderer failure never
-poisons or misattributes the whole device.
+poisons or misattributes the whole device. The adapter preserves
+`E_OUTOFMEMORY` and `D3DDDIERR_DEVICEREMOVED`; other recording failures use
+the D3D12 command-list callback's allowed `D3DDDIERR_APPLICATIONERROR` code.
 It first resolves the exact private adapter identity to a KMT LUID. That LUID
 is the stable key used by every Mesa UMD module's process-wide GPU-VA broker;
 the opaque runtime adapter pointer is never used as an address-space identity.
@@ -214,9 +216,10 @@ by Microsoft's contract, and no second graphics device is opened.
 51/57/58/73-slot command-list table, 7-slot command-queue table and, for
 Release 8, the four-slot `D3D12DDI_EXTENDED_FEATURES_FUNCS_0096` table
 from a generator that parses the pinned WDK header. Implemented entries replace
-the generated traps. Remaining void functions report `E_NOTIMPL` through
-`pfnSetErrorCb`; paired destructors are silent because their trapped creators
-allocated nothing. No baseline table has a callable NULL slot (the two WDK
+the generated traps. Remaining void command-list functions report
+`D3DDDIERR_APPLICATIONERROR` through `pfnSetCommandListErrorCb`; paired
+destructors are silent because their trapped creators allocated nothing. No
+baseline table has a callable NULL slot (the two WDK
 queue fields explicitly named `pfnUnused*` remain NULL by contract).
 Every Windows build also parses those exact pinned table definitions and the
 typed installer functions, and fails if the WDK table widths change or any
@@ -350,8 +353,8 @@ of `D3DDDI_DEVICECALLBACKS`.  AGX native 16 KiB pages and the WDDM 64 KiB
 reservation granularity remain separate, as already encoded and host-tested
 in `agx_d3dkmt_core`.  Resource layout selection remains `ail`; WDDM supplies
 allocation ownership and residency, not a new texture layout implementation.
-Mesa VMA addresses are absolute in both the main and USC heaps. The submit-v3
-coherency read set validates low-VA BOs against the declared USC window and
+Mesa VMA addresses are absolute in both the main and USC heaps. The submit
+v3/v4 coherency read set validates low-VA BOs against the declared USC window and
 forwards that absolute address unchanged; only packed AGX USC pointers subtract
 `shader_base`. Host tests specifically prove that a second base addition can
 remain contract-valid while naming unrelated main-heap storage.
@@ -520,9 +523,12 @@ the compiler-visible 4 GiB USC range at the renderer-selected address, waits
 the paging fence when necessary and creates internal VA/submission contexts
 through the kernel callback table. DDI queues wrap the shared renderer queue,
 and `ExecuteCommandLists` aggregates and submits the renderer's native AGX
-command segments through the callback-backed winsys. `d12_umd_kmt_submit_dma`
-marshals the existing `agxw_dma_header`/`agxw_submit_private` contract into
-`pfnSubmitCommandCb`; no side-channel escape or private IOCTL was added.
+command segments through the callback-backed winsys. The shared D3DKMT winsys
+publishes the version 3 `agxw_submit_private` record for ordinary work and the
+version 4 record when a DDI placement fence is involved. Both carry the
+complete canonical CPU-read range set through `pfnSubmitCommandCb`. Version 4
+adds a bounded pointer-free WAIT/SIGNAL vector. No side-channel escape or
+private IOCTL was added.
 
 The callback transport implements WDDM monitored-fence synchronization and
 the existing AGX timeline policy. Resolving a DDI fence placement creates a
@@ -533,8 +539,9 @@ asynchronous renderer fence reference releases it. `DestroyFence` can
 therefore precede retirement of an already-queued Signal or Wait, and
 `DestroyHeapAndResource` defers unlock and deallocation until that work drops
 the last placement reference. Queue Signal emits an ordered AGX compute write
-to the retained placement, and queue Wait observes its coherent value before
-later work. DXGI identity rotation takes the same storage lock, rejects live
+to the retained placement. Queue Wait passes the retained GPU placements to
+the paired KMD rather than reading or polling them in user mode. DXGI identity
+rotation takes the same storage lock, rejects live
 placement/CPU mappings transactionally, and updates both public and retained
 allocation identities while locked. A portable state-machine unit test covers
 retain, destroy-before-release, finalization, invalid release and overflow;
@@ -551,8 +558,8 @@ rather than misclassifying asynchronous renderer ownership. The portable
 lifetime test covers exact-count abandonment and the ARM64 callback probe
 constructs a live mapped heap to verify that device teardown unlocks and
 deallocates it before runtime-private device memory is cleared.
-The shared renderer queue uses separate ordered submission and retirement
-workers. The submit worker feeds successive command lists to the same AGX
+The public COM renderer queue uses separate ordered submission and retirement
+workers. Its submit worker feeds successive command lists to the same AGX
 timeline without waiting for each list to finish. The retirement worker waits
 the associated WDDM monitored-fence point, then publishes public fence signals
 and releases the exact command-list/BO snapshot retained by that submission.
@@ -562,6 +569,33 @@ the required completion ordering. A 64-submit high-water mark bounds retained
 recording storage and applies backpressure only when the GPU falls that far
 behind. Sparse GPU-VA updates explicitly drain the preceding point before
 changing mappings; they do not rely on incidental per-submit serialization.
+
+The DDI queue uses a different submission mode. `ExecuteCommandLists` packs
+the native AGX work and calls `pfnSubmitCommandCb` on the entering runtime
+thread. Fence Signal does the same with the prebuilt GPU-store command. Fence
+Wait records the runtime's CurrentValue and MonitoredValue placements without
+polling or blocking the caller. The next submit carries those WAIT records in
+the v4 private blob. A full vector is materialized as a tiny dependency packet
+before accepting more waits, so the per-packet ABI bound does not become a
+per-queue semantic limit. AppleAgxWddm accepts an unsatisfied wait, retains the
+bounded blob in the WDDM context's FIFO, and publishes its DMA only after the
+placement reaches the requested value. A PASSIVE completion pump handles GPU
+signals and a 2-ms work-only fallback detects CPU signals. Retirement remains
+asynchronous in the UMD. This preserves legal wait-before-future-signal chains
+and meets the same-thread submit callback rule without changing the COM path.
+
+DDI tiled-resource updates use the WDDM interlock defined for
+`D3DKMTUpdateGpuVirtualAddress`, not the renderer's synchronous DRM-shaped
+`VM_BIND` compatibility hook. Pending placement waits are first materialized
+on the entering queue thread. The update then names that queue's real render
+context and internal monitored fence at point N; VidMm runs the dedicated
+paging context after N and signals N+1. `DoNotWait` is deliberately clear;
+setting it would discard the required wait on N. The UMD reserves N+1 in the
+same queue timeline, so a later AGX submit waits in Dxgkrnl while the
+tile-mapping DDI returns without a CPU fence wait. Update and copy mapping
+calls therefore remain ordered with Wait, Execute and Signal without a side
+channel or a second private queue.
+
 Submit, retirement, sparse-bind, timeline and CPU-fence failures publish one
 atomic device-removal transition in the shared renderer. The public COM
 frontend retains the first exact DXGI reason for `GetDeviceRemovedReason`;
@@ -756,7 +790,7 @@ does not alter the native D3D12 ABI or command ordering.
 | B. device/core tables | `CreateDevice` succeeds only with complete versioned device, command-list and queue tables; void-call failures use the correctly scoped runtime error callback | Exact `0003`, Release 1, Release 3, Release 4 and Release 8 `0099` shapes are implemented and statically/host tested. Release 8 fills all 122 device and 73 command-list slots plus extended-feature table 27; every changed prefix callback has its pinned PFN type. Runtime pools/recorders map onto the shared AGX allocator/list core without steady-state object churn. The ARM64 Windows callback probe is compiled but was not executed in this host-only pass. |
 | C. heaps/resources | allocation-size checks, committed/placed/reserved/capture-GPUVA resources, mapping and descriptor heaps use runtime/KMD callbacks and `agxw_alloc_private` | implemented for native buffers/textures, descriptor/view creation, exact aligned `ReuseBufferGPUVA` placement without a new KMD allocation, explicit-pitch cross-adapter row-major textures, GPUVA, map, private/standard foreign-open ABI and allocation/subresource queries; Tier-1 reserved-resource sizing and creation share the renderer's exact shape/packed-tail validator, and unsupported foreign metadata fails closed |
 | D. PSO/command lists | DDI descriptors translate to the existing root-signature, DXIL, PSO and command recorder core; draw/dispatch/copy tests execute | graphics/compute PSO, deterministic serialization/deserialization, root-signature 1.0/1.1 with exact volatility semantics, shaders including Release-1 stream-aware GS-with-stream-output and passthrough SO, draw/dispatch, bundles, state, barriers, copies, clears, discard hints, resolve, identity blits, queries/predication, stream-output targets and proven ExecuteIndirect forms translated to shared renderer; hardware DDI validation pending |
-| E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined execute aggregation, separate timeline retirement, bounded in-flight storage, prebuilt 64-slot placement-signal arenas and ordered wait implemented and host-build tested; hardware DDI validation pending |
+| E. queues/fences | virtual contexts, submit, monitored fences, GPU/CPU signal/wait | renderer queue binding, pipelined COM aggregation, separate retirement, bounded in-flight storage and placement-fence signaling are host-build tested. The DDI calls SubmitCommand on the entering thread and uses the paired AppleAgxWddm v4 placement-wait vector for nonblocking wait-before-signal ordering. Wire packing, KMD validation/FIFO pumping and the caller-thread source path have host gates; Windows runtime/hardware validation remains pending. |
 | F. residency/paging | paging queue, make-resident/evict/offer/reclaim and device-removed paths | paging queue/GPUVA, allocation-deduplicated mixed pageable-object core residency, DXGI batched Offer/Reclaim and generation/budget-bounded renderer cache trim implemented and ABI-probed, including aliased discard fan-out, optional discard output and CPU-only core objects; asynchronous renderer failures now atomically retain the first cause and notify the D3D12 runtime exactly once, while real device-removal and pressure validation remain pending |
 | G. presentation | DXGI table, back-buffer present, windowed and fullscreen swap-chain probes | exact WDDM 2.0 21-slot DXGI 1.4 and WDDM 2.1 22-slot DXGI 1.5 tables, core Present, single- and multi-surface Present1 translation, flip callback, priority, residency, synchronous DXGI Offer/Reclaim, kernel-identity rotation with descriptor repatching, direct-queue exact copy/resolve, and one-pass native AGX stretch/rotation/format-conversion blits implemented; MPO and mode-setting fail closed; real swap-chain hardware validation pending |
 | H. revision/feature growth | advertise later DDI revisions and FL/SM/options only after version-specific tables and conformance tests pass | WDDM 3.1 exposes build `0099` with exact resource 0088/open 0043, queue 0050, Present 0051, sampler 0096, state 0095/0099 and modern caps. Unsupported cap-gated features have non-NULL, exactly typed fail-closed entries and false/tier-zero caps. Older WDDM 2.0/2.1/2.3/2.4 targets remain compileable. Windows runtime/hardware conformance remains pending. |
@@ -767,6 +801,11 @@ does not alter the native D3D12 ABI or command ordering.
 - No hardware command has been sent from this branch while the shared Windows
   target is under concurrent bring-up. `d12_umd_runtime_probe.exe` is the first
   authorized runtime/GPU validation and must be run only by the hardware owner.
+- Merge the AppleAgxWddm `codex/d3d12-fence-dependency` patch before packaging
+  this UMD. Contract v3 publishes `submit_private_max_version = 4` in the
+  fixed-width adapter identity, so pairing this UMD with a
+  submit-private-v3-only KMD fails closed during `OpenAdapter12`, before
+  device creation or submission.
 - `0003` remains the WDDM 2.0-compatible hardware baseline. Release 1
   `0010`/`0011`/`0013` now has matching UMD tables/caps and an isolated WDDM 2.1 KMD
   source/package target, but that pair still requires Windows runtime and
@@ -797,12 +836,12 @@ does not alter the native D3D12 ABI or command ordering.
 - Real DXGI windowed/fullscreen presentation, residency pressure, TDR/device
   removal, ETW/GPUView traces and application benchmarks remain mandatory
   before performance or production-readiness claims.
-- Before any Windows test, the isolated `codex/wddm21-dxil` worktree must be
-  rebased or merged onto the active branch's newer hardware-verified KMD
-  paging/coherency work. This branch intentionally changes only the frontend-
-  required WDDM 2.1 interface/capability/private-contract and packaging
-  surfaces; it does not copy or modify the protected paging, submit or
-  completion implementations.
+- The paired KMD change lives on isolated branch
+  `codex/d3d12-fence-dependency`, based on a source snapshot of the current
+  hardware-verified AppleAgxWddm tree. Its version-4 SubmitCommandVirtual
+  extension and D3D12 UMD must merge together; the ordinary Honeykrisp path
+  remains version 3. No hardware execution was performed in this host-side
+  milestone.
 - The legacy Triton wrapper currently builds and its PE version validates, but
   its complete aggregate build is blocked locally by the absent external
   renamed-DXVK `BUILD-MANIFEST.txt`. This is a source-input/package assembly
@@ -813,24 +852,24 @@ does not alter the native D3D12 ABI or command ordering.
 From the Mesa worktree root:
 
 ```sh
+export AGX_WDDM_CONTRACT_CORE=../AuroraSilicon-d3d12-fence-dependency/drivers/AppleAgxWddm/core
 src/asahi/d3d12/umd/run-host-tests.sh
-D12_UMD_WDDM_TARGET=20 D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm20 \
-  src/asahi/d3d12/umd/build-windows-arm64.sh
-D12_UMD_WDDM_TARGET=21 D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm21 \
-  src/asahi/d3d12/umd/build-windows-arm64.sh
-D12_UMD_WDDM_TARGET=23 D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm23 \
-  src/asahi/d3d12/umd/build-windows-arm64.sh
-D12_UMD_WDDM_TARGET=20 \
-  D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared \
-  src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
+for target in 20 21 23 24 31; do
+  D12_UMD_WDDM_TARGET=$target \
+    D12_UMD_BUILD_OUT=_build-d3d12-umd-arm64-wddm$target \
+    src/asahi/d3d12/umd/build-windows-arm64.sh
+done
 D12_UMD_WDDM_TARGET=21 \
   D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared-wddm21 \
-  AGX_WDDM_CONTRACT_CORE=../AuroraSilicon-wddm21/drivers/AppleAgxWddm/core \
   src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
-D12_UMD_WDDM_TARGET=23 \
-  D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared-wddm23 \
+D12_UMD_WDDM_TARGET=31 \
+  D12_UMD_MESA_BUILD=_build-d3d12-umd-mesa-arm64-shared-wddm31 \
   src/asahi/d3d12/umd/build-mesa-windows-arm64.sh
 ```
+
+When `AGX_WDDM_CONTRACT_CORE` is omitted, these scripts use a compatible main
+Aurora tree first and then the paired isolated KMD worktree. They reject a
+pre-v3 or submit-private-v3-only header before compiling.
 
 The standalone UMD and Aurora-owned source use `-Wall -Wextra -Werror` plus
 conversion, shadow, prototype, undef and pedantic diagnostics. The full Mesa

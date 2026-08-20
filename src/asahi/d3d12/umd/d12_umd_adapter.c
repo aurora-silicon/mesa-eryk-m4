@@ -77,15 +77,18 @@ d12_umd_get_supported_versions(D3D12DDI_HADAPTER handle, UINT32 *entries,
                                UINT64 *versions)
 {
    const size_t count = d12_umd_supported_version_count();
+   UINT32 supplied;
 
    if (!d12_umd_adapter_from_handle(handle) || !entries ||
        count > UINT32_MAX)
       return E_INVALIDARG;
 
-   if (versions && *entries < (UINT32)count)
+   supplied = *entries;
+   *entries = (UINT32)count;
+
+   if (versions && supplied < (UINT32)count)
       return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
 
-   *entries = (UINT32)count;
    if (versions)
       memcpy(versions, d12_umd_supported_versions(), count * sizeof(*versions));
 
@@ -352,6 +355,7 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                (D3D12DDI_TILED_RESOURCES_TIER)caps->tiled_resources_tier,
             .CrossNodeSharingTier =
                D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
+            .OutputMergerLogicOp = caps->output_merger_logic_op,
             .ResourceHeapTier =
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .ProgrammableSamplePositionsTier =
@@ -389,7 +393,7 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
             .VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation =
                FALSE,
-            .OutputMergerLogicOp = FALSE,
+            .OutputMergerLogicOp = caps->output_merger_logic_op,
             .ResourceHeapTier =
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .DepthBoundsTestSupported = FALSE,
@@ -423,7 +427,7 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
             .VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation =
                FALSE,
-            .OutputMergerLogicOp = FALSE,
+            .OutputMergerLogicOp = caps->output_merger_logic_op,
             .ResourceHeapTier =
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .DepthBoundsTestSupported = FALSE,
@@ -448,7 +452,7 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
          .CrossNodeSharingTier = D3D12DDI_CROSS_NODE_SHARING_TIER_NOT_SUPPORTED,
          .VPAndRTArrayIndexFromAnyShaderFeedingRasterizerSupportedWithoutGSEmulation =
             FALSE,
-         .OutputMergerLogicOp = FALSE,
+         .OutputMergerLogicOp = caps->output_merger_logic_op,
          .ResourceHeapTier =
             (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
       };
@@ -510,6 +514,11 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
    }
 
    case D3D12DDICAPS_TYPE_OPTIONS_0091: {
+      /* The pinned 26100 DDI structure has exactly these four fields.  In
+       * particular, the public Options13
+       * TextureCopyBetweenDimensionsSupported value is not a fifth DDI cap;
+       * Release 8 retains pfnCopyTextureRegion_0003 and the renderer fulfils
+       * that revision's cross-dimension behavior directly. */
       const D3D12DDI_OPTIONS_DATA_0091 data = {0};
       if (arguments->pInfo)
          return E_INVALIDARG;
@@ -535,7 +544,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
 
    case D3D12DDICAPS_TYPE_GPUVA_CAPS: {
       const D3D12DDI_GPUVA_CAPS_0004 data = {
-         .MaxGPUVirtualAddressBitsPerResource = 40,
+         .MaxGPUVirtualAddressBitsPerResource =
+            caps->gpu_virtual_address_bits,
       };
       HRESULT result = d12_umd_validate_node_cap(arguments);
       return FAILED(result) ? result

@@ -11,6 +11,7 @@
 
 #include "d12_umd_command_core.h"
 #include "d12_umd_internal.h"
+#include "../d12_viewport_math.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -285,6 +286,12 @@ d12_umd_destroy_command_list(D3D12DDI_HDEVICE handle,
    if (list->backend && device->renderer_ops &&
        device->renderer_ops->destroy_command_list)
       device->renderer_ops->destroy_command_list(list->backend);
+   if (list->resource_barrier_scratch)
+      HeapFree(GetProcessHeap(), 0, list->resource_barrier_scratch);
+   if (list->write_parameter_scratch)
+      HeapFree(GetProcessHeap(), 0, list->write_parameter_scratch);
+   if (list->write_mode_scratch)
+      HeapFree(GetProcessHeap(), 0, list->write_mode_scratch);
    SecureZeroMemory(list, sizeof(*list));
 }
 
@@ -865,12 +872,24 @@ d12_umd_set_viewports(D3D12DDI_HCOMMANDLIST list_handle, UINT count,
    }
 
    for (UINT index = 0; index < count; ++index) {
-      translated[index][0] = viewports[index].TopLeftX;
-      translated[index][1] = viewports[index].TopLeftY;
-      translated[index][2] = viewports[index].Width;
-      translated[index][3] = viewports[index].Height;
-      translated[index][4] = viewports[index].MinDepth;
-      translated[index][5] = viewports[index].MaxDepth;
+      const struct d12_viewport_desc viewport = {
+         .x = viewports[index].TopLeftX,
+         .y = viewports[index].TopLeftY,
+         .width = viewports[index].Width,
+         .height = viewports[index].Height,
+         .min_depth = viewports[index].MinDepth,
+         .max_depth = viewports[index].MaxDepth,
+      };
+      if (!d12_viewport_desc_valid(&viewport)) {
+         d12_umd_command_list_set_error(list, E_INVALIDARG);
+         return;
+      }
+      translated[index][0] = viewport.x;
+      translated[index][1] = viewport.y;
+      translated[index][2] = viewport.width;
+      translated[index][3] = viewport.height;
+      translated[index][4] = viewport.min_depth;
+      translated[index][5] = viewport.max_depth;
    }
    list->device->renderer_ops->set_viewports(list->backend, count,
                                               translated);
@@ -1084,15 +1103,14 @@ d12_umd_write_buffer_immediate(
          d12_umd_command_list_set_error(list, E_OUTOFMEMORY);
          return;
       }
-      translated = HeapAlloc(GetProcessHeap(), 0,
-                             (SIZE_T)count * sizeof(*translated));
-      translated_modes = HeapAlloc(GetProcessHeap(), 0,
-                                   (SIZE_T)count * sizeof(*translated_modes));
+      translated = d12_umd_command_list_reserve_scratch(
+         &list->write_parameter_scratch,
+         &list->write_parameter_scratch_size,
+         (SIZE_T)count * sizeof(*translated));
+      translated_modes = d12_umd_command_list_reserve_scratch(
+         &list->write_mode_scratch, &list->write_mode_scratch_size,
+         (SIZE_T)count * sizeof(*translated_modes));
       if (!translated || !translated_modes) {
-         if (translated)
-            HeapFree(GetProcessHeap(), 0, translated);
-         if (translated_modes)
-            HeapFree(GetProcessHeap(), 0, translated_modes);
          d12_umd_command_list_set_error(list, E_OUTOFMEMORY);
          return;
       }
@@ -1109,10 +1127,6 @@ d12_umd_write_buffer_immediate(
    }
    result = list->device->renderer_ops->write_buffer_immediate(
       list->backend, count, translated, modes ? translated_modes : NULL);
-   if (translated != local_parameters) {
-      HeapFree(GetProcessHeap(), 0, translated);
-      HeapFree(GetProcessHeap(), 0, translated_modes);
-   }
    if (FAILED(result))
       d12_umd_command_list_set_error(list, result);
 }

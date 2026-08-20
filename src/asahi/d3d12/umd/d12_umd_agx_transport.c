@@ -14,6 +14,7 @@
 #define D12_UMD_STATUS_INVALID_PARAMETER ((agx_kmt_status)0xc000000du)
 #define D12_UMD_STATUS_NO_MEMORY         ((agx_kmt_status)0xc0000017u)
 #define D12_UMD_STATUS_NOT_SUPPORTED     ((agx_kmt_status)0xc00000bbu)
+#define D12_UMD_STATUS_PENDING           ((agx_kmt_status)0x00000103u)
 
 _Static_assert(sizeof(SIZE_T) == sizeof(uint64_t),
                "native ARM64 cache ranges are 64-bit");
@@ -261,6 +262,8 @@ d12_umd_make_resident(void *userdata,
    arguments->NumAllocations = resident.NumAllocations;
    arguments->PagingFenceValue = resident.PagingFenceValue;
    arguments->NumBytesToTrim = resident.NumBytesToTrim;
+   if (result == E_PENDING)
+      return D12_UMD_STATUS_PENDING;
    return d12_umd_status(result);
 }
 

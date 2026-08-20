@@ -406,9 +406,9 @@ main(void)
       };
       require_result(ops->MakeResident(runtime.transport.userdata,
                                        &resident) ==
-                        (agx_kmt_status)E_PENDING &&
+                        (agx_kmt_status)UINT32_C(0x00000103) &&
                         resident.PagingFenceValue == 9,
-                     "residency translation");
+                     "pending residency and paging fence translation");
    }
    require_result(ops->CreateContextVirtual(runtime.transport.userdata,
                                             &context) == 0 &&

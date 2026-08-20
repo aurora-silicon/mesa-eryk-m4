@@ -29,6 +29,81 @@ agx_d3dkmt_submit_private_flags(uint32_t submit_flags,
 }
 
 int
+agx_d3dkmt_submit_private_pack(
+   uint32_t private_flags,
+   const struct agxw_submit_read_range *read_ranges,
+   uint32_t read_range_count,
+   const struct agx_submit_fence_dependency *dependencies,
+   uint32_t dependency_count, void *blob, uint32_t blob_capacity,
+   uint32_t *out_size)
+{
+   const bool use_v4 = dependency_count != 0;
+   const uint32_t header_size =
+      use_v4 ? (uint32_t)sizeof(struct agxw_submit_private_v4)
+             : (uint32_t)sizeof(struct agxw_submit_private_v3);
+   uint64_t required = header_size;
+   struct agxw_submit_private *base = blob;
+   struct agxw_submit_read_range *destination_ranges;
+
+   if (out_size == NULL || blob == NULL ||
+       read_range_count > AGXW_MAX_READ_RANGES_PER_SUBMIT ||
+       dependency_count > AGXW_MAX_FENCE_DEPENDENCIES_PER_SUBMIT ||
+       (read_range_count != 0 && read_ranges == NULL) ||
+       (dependency_count != 0 && dependencies == NULL) ||
+       (private_flags & ~AGXW_SUBMIT_FLAGS_ALL) != 0 ||
+       (private_flags & AGXW_SUBMIT_READ_SET_COMPLETE) == 0)
+      return AGX_D3DKMT_ERR_INVAL;
+
+   required += (uint64_t)read_range_count * sizeof(*read_ranges);
+   required += (uint64_t)dependency_count *
+               sizeof(struct agxw_submit_fence_dependency);
+   if (required > blob_capacity || required > UINT32_MAX)
+      return AGX_D3DKMT_ERR_NOSPACE;
+
+   memset(blob, 0, header_size);
+   *base = (struct agxw_submit_private){
+      .version = use_v4 ? AGXW_SUBMIT_PRIVATE_VERSION_V4
+                        : AGXW_SUBMIT_PRIVATE_VERSION_V3,
+      .struct_size = header_size,
+      .flags = private_flags,
+   };
+   destination_ranges = (struct agxw_submit_read_range *)
+      ((uint8_t *)blob + header_size);
+   if (read_range_count != 0) {
+      memmove(destination_ranges, read_ranges,
+              (size_t)read_range_count * sizeof(*read_ranges));
+   }
+
+   if (use_v4) {
+      struct agxw_submit_private_v4 *v4 = blob;
+      struct agxw_submit_fence_dependency *destination_dependencies =
+         (struct agxw_submit_fence_dependency *)(destination_ranges +
+                                                  read_range_count);
+
+      v4->read_range_count = read_range_count;
+      v4->fence_dependency_count = dependency_count;
+      for (uint32_t index = 0; index < dependency_count; ++index) {
+         destination_dependencies[index] =
+            (struct agxw_submit_fence_dependency){
+               .current_gpu_va = dependencies[index].current_gpu_va,
+               .monitored_gpu_va = dependencies[index].monitored_gpu_va,
+               .value = dependencies[index].value,
+               .flags = dependencies[index].flags,
+               .reserved = dependencies[index].reserved,
+            };
+      }
+   } else {
+      ((struct agxw_submit_private_v3 *)blob)->read_range_count =
+         read_range_count;
+   }
+
+   *out_size = (uint32_t)required;
+   return agxw_submit_private_validate(base, *out_size) == 0
+             ? AGX_D3DKMT_OK
+             : AGX_D3DKMT_ERR_INVAL;
+}
+
+int
 agx_d3dkmt_bo_read_range(const struct agx_d3dkmt_policy *policy,
                          bool low_va, uint64_t allocated_va,
                          uint64_t length,
@@ -940,6 +1015,8 @@ agx_d3dkmt_parse_identity(const void *blob, uint32_t blob_size,
       return AGX_D3DKMT_ERR_INVAL;
    if (id.params_blob_size != AGXW_PARAMS_GLOBAL_SIZE)
       return AGX_D3DKMT_ERR_INVAL;
+   if (id.submit_private_max_version < AGXW_SUBMIT_PRIVATE_VERSION_V3)
+      return AGX_D3DKMT_ERR_INVAL;
 
    *policy = agx_d3dkmt_policy_default();
    *out = id;
@@ -959,7 +1036,7 @@ agx_d3dkmt_agxw_alloc_flags(uint32_t agx_bo_flags)
 
    /* Mutually exclusive by contract: an allocation is either private to this
     * device's VM or shareable, never both (agxw_contract.h:139-143). */
-   if (agx_bo_flags & (AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE))
+   if (agx_bo_flags & AGX_D3DKMT_BO_SHAREABLE)
       flags |= AGXW_ALLOC_SHAREABLE;
    else
       flags |= AGXW_ALLOC_VM_PRIVATE;
@@ -980,7 +1057,7 @@ uint32_t
 agx_d3dkmt_create_flags(uint32_t agx_bo_flags)
 {
    enum agx_d3dkmt_external_memory_type type =
-      (agx_bo_flags & (AGX_D3DKMT_BO_SHARED | AGX_D3DKMT_BO_SHAREABLE))
+      (agx_bo_flags & AGX_D3DKMT_BO_SHAREABLE)
          ? AGX_D3DKMT_EXTERNAL_MEMORY_OPAQUE_WIN32
          : AGX_D3DKMT_EXTERNAL_MEMORY_NONE;
    return agx_d3dkmt_create_flags_external(agx_bo_flags, type);

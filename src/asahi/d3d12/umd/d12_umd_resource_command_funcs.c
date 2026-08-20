@@ -729,12 +729,15 @@ d12_umd_resource_barriers(
          d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
-      translated = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
-                             (SIZE_T)count * sizeof(*translated));
+      translated = d12_umd_command_list_reserve_scratch(
+         &list->resource_barrier_scratch,
+         &list->resource_barrier_scratch_size,
+         (SIZE_T)count * sizeof(*translated));
       if (!translated) {
          d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
+      memset(translated, 0, (SIZE_T)count * sizeof(*translated));
    }
    for (UINT index = 0; index < count; ++index) {
       struct d12_umd_resource *first;
@@ -784,13 +787,9 @@ d12_umd_resource_barriers(
    }
    list->device->renderer_ops->resource_barriers(
       list->backend, count, translated);
-   if (translated != local)
-      HeapFree(GetProcessHeap(), 0, translated);
    return;
 
 invalid:
-   if (translated != local)
-      HeapFree(GetProcessHeap(), 0, translated);
    d12_umd_resource_command_error(list, E_INVALIDARG);
 }
 
@@ -815,12 +814,15 @@ d12_umd_resource_barriers_0022(
          d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
-      translated = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY,
-                             (SIZE_T)count * sizeof(*translated));
+      translated = d12_umd_command_list_reserve_scratch(
+         &list->resource_barrier_scratch,
+         &list->resource_barrier_scratch_size,
+         (SIZE_T)count * sizeof(*translated));
       if (!translated) {
          d12_umd_resource_command_error(list, E_OUTOFMEMORY);
          return;
       }
+      memset(translated, 0, (SIZE_T)count * sizeof(*translated));
    }
    for (UINT index = 0; index < count; ++index) {
       struct d12_umd_resource *resource;
@@ -879,13 +881,9 @@ d12_umd_resource_barriers_0022(
    }
    list->device->renderer_ops->resource_barriers(
       list->backend, count, translated);
-   if (translated != local)
-      HeapFree(GetProcessHeap(), 0, translated);
    return;
 
 invalid:
-   if (translated != local)
-      HeapFree(GetProcessHeap(), 0, translated);
    d12_umd_resource_command_error(list, E_INVALIDARG);
 }
 

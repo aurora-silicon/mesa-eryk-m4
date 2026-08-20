@@ -136,7 +136,35 @@ struct d12_umd_command_list {
    uint64_t id;
    uint32_t slot;
    void *backend;
+   void *resource_barrier_scratch;
+   SIZE_T resource_barrier_scratch_size;
+   void *write_parameter_scratch;
+   SIZE_T write_parameter_scratch_size;
+   void *write_mode_scratch;
+   SIZE_T write_mode_scratch_size;
 };
+
+static inline void *
+d12_umd_command_list_reserve_scratch(void **storage, SIZE_T *capacity,
+                                     SIZE_T required)
+{
+   void *replacement;
+
+   if (!storage || !capacity || !required)
+      return NULL;
+   if (*storage && *capacity >= required)
+      return *storage;
+
+   replacement = *storage
+      ? HeapReAlloc(GetProcessHeap(), 0, *storage, required)
+      : HeapAlloc(GetProcessHeap(), 0, required);
+   if (!replacement)
+      return NULL;
+
+   *storage = replacement;
+   *capacity = required;
+   return replacement;
+}
 
 /* The D3D12 core layer has separate failure domains for device work and
  * command-list recording.  A recording error must carry the exact runtime
@@ -155,11 +183,23 @@ d12_umd_report_command_list_error(struct d12_umd_command_list *list,
                                   HRESULT result)
 {
    struct d12_umd_device *device = list ? list->device : NULL;
+   HRESULT command_list_result;
+
+   switch (result) {
+   case E_OUTOFMEMORY:
+   case D3DDDIERR_DEVICEREMOVED:
+   case D3DDDIERR_APPLICATIONERROR:
+      command_list_result = result;
+      break;
+   default:
+      command_list_result = D3DDDIERR_APPLICATIONERROR;
+      break;
+   }
 
    if (device && list->runtime_list.handle &&
        device->core_callbacks.pfnSetCommandListErrorCb) {
       device->core_callbacks.pfnSetCommandListErrorCb(list->runtime_list,
-                                                       result);
+                                                       command_list_result);
       return;
    }
 

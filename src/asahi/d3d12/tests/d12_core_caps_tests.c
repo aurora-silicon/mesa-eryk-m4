@@ -23,11 +23,15 @@ main(void)
    assert(caps->max_shader_model == D12_CORE_SHADER_MODEL_6_2);
    assert(caps->node_count == 1);
    assert(caps->tiled_resources_tier == 1);
+   assert(caps->gpu_virtual_address_bits == 39);
    assert(caps->uma);
+   assert(!caps->cache_coherent_uma);
    assert(caps->tile_based_deferred_renderer);
    assert(caps->predication);
    assert(!caps->hardware_copy);
    assert(caps->copy_queue_timestamp_queries);
+   assert(caps->texture_copy_between_dimensions);
+   assert(caps->output_merger_logic_op);
    assert(caps->write_buffer_immediate_support_flags ==
           (D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |
            D12_CORE_COMMAND_LIST_SUPPORT_COMPUTE |

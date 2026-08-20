@@ -57,8 +57,9 @@ main(void)
           "IsolatedMMU=%d\n",
           arch.UMA, arch.CacheCoherentUMA, arch.TileBasedRenderer,
           arch.IsolatedMMU);
-   CHECK(arch.UMA && arch.CacheCoherentUMA && arch.TileBasedRenderer,
-         "reports tile-based cache-coherent UMA");
+   CHECK(arch.UMA && !arch.CacheCoherentUMA && arch.TileBasedRenderer &&
+            arch.IsolatedMMU,
+         "reports tile-based non-coherent UMA behind an isolated MMU");
 
    D3D_FEATURE_LEVEL levels_wanted[] = {
       D3D_FEATURE_LEVEL_9_1,

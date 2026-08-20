@@ -32,6 +32,7 @@ struct d12_core_caps {
    uint32_t resource_binding_tier;
    uint32_t tiled_resources_tier;
    uint32_t resource_heap_tier;
+   uint32_t gpu_virtual_address_bits;
    bool uma;
    bool cache_coherent_uma;
    bool isolated_mmu;
@@ -40,6 +41,8 @@ struct d12_core_caps {
    bool predication;
    bool hardware_copy;
    bool copy_queue_timestamp_queries;
+   bool texture_copy_between_dimensions;
+   bool output_merger_logic_op;
    uint32_t write_buffer_immediate_support_flags;
 };
 

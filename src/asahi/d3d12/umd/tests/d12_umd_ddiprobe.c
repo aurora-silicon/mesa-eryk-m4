@@ -606,14 +606,28 @@ test_revision_write_buffer_immediate(
    const struct d12_frontend_write_buffer_immediate_parameter *parameters,
    const uint32_t *modes)
 {
-   if (list != (void *)(uintptr_t)1 || count != 2 || !parameters || !modes ||
-       parameters[0].destination != UINT64_C(0x2000000040) ||
-       parameters[0].value != UINT32_C(0x12345678) ||
-       parameters[1].destination != UINT64_C(0x2000000080) ||
-       parameters[1].value != UINT32_C(0xabcdef01) ||
-       modes[0] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT ||
-       modes[1] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_MARKER_OUT)
+   if (list != (void *)(uintptr_t)1 || !parameters || !modes)
       return E_INVALIDARG;
+
+   if (count == 2) {
+      if (parameters[0].destination != UINT64_C(0x2000000040) ||
+          parameters[0].value != UINT32_C(0x12345678) ||
+          parameters[1].destination != UINT64_C(0x2000000080) ||
+          parameters[1].value != UINT32_C(0xabcdef01) ||
+          modes[0] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT ||
+          modes[1] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_MARKER_OUT)
+         return E_INVALIDARG;
+   } else if (count == 33) {
+      for (uint32_t index = 0; index < count; ++index) {
+         if (parameters[index].destination != UINT64_C(0x3000000000) +
+                                                index * sizeof(uint32_t) ||
+             parameters[index].value != index ||
+             modes[index] != D12_FRONTEND_WRITE_BUFFER_IMMEDIATE_DEFAULT)
+            return E_INVALIDARG;
+      }
+   } else {
+      return E_INVALIDARG;
+   }
    ++revision_immediate_write_calls;
    return S_OK;
 }
@@ -623,10 +637,14 @@ test_revision_resource_barriers(
    void *list, uint32_t count,
    const struct d12_frontend_resource_barrier *barriers)
 {
-   if (list == (void *)(uintptr_t)1 && count == 1 && barriers &&
-       barriers[0].type == D12_FRONTEND_BARRIER_UAV &&
-       barriers[0].flags == 0 && !barriers[0].uav.resource)
-      ++revision_ranged_barrier_calls;
+   if (list != (void *)(uintptr_t)1 || !count || !barriers)
+      return;
+   for (uint32_t index = 0; index < count; ++index) {
+      if (barriers[index].type != D12_FRONTEND_BARRIER_UAV ||
+          barriers[index].flags != 0 || barriers[index].uav.resource)
+         return;
+   }
+   ++revision_ranged_barrier_calls;
 }
 
 static HRESULT
@@ -1392,6 +1410,7 @@ wmain(int argc, wchar_t **argv)
       .gpu_revision = UINT32_C(0x10),
       .contract_version = AGXW_CONTRACT_VERSION,
       .params_blob_size = AGXW_PARAMS_GLOBAL_SIZE,
+      .submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4,
    };
    const D3DDDI_ADAPTERCALLBACKS callbacks = {
 #if D12_UMD_TARGETS_WDDM24
@@ -1754,6 +1773,7 @@ wmain(int argc, wchar_t **argv)
       require_result(
          result == S_OK && data.ResourceBindingTier == 1 &&
             data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            data.OutputMergerLogicOp &&
             data.CopyQueueTimestampQueriesSupported &&
             !data.EnhancedBarriersSupported &&
             data.RaytracingTier == D3D12DDI_RAYTRACING_TIER_NOT_SUPPORTED &&
@@ -1848,7 +1868,8 @@ wmain(int argc, wchar_t **argv)
       count = 0;
       result = functions.pfnGetSupportedVersions(open_arguments.hAdapter,
                                                   &count, versions);
-      require_result(result == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER),
+      require_result(result == HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER) &&
+                        count == expected_count,
                      "supported-version short buffer");
 
       count = ARRAYSIZE(versions);
@@ -1885,8 +1906,8 @@ wmain(int argc, wchar_t **argv)
          .DataSize = sizeof(data),
       };
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
-      require_result(result == S_OK && data.UMA && data.IOCoherent &&
-                        data.CacheCoherent,
+      require_result(result == S_OK && data.UMA && !data.IOCoherent &&
+                        !data.CacheCoherent,
                      "memory architecture caps");
    }
 
@@ -1903,8 +1924,8 @@ wmain(int argc, wchar_t **argv)
       memset(&data, 0xcc, sizeof(data));
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(
-         result == S_OK && data.UMA && data.IOCoherent &&
-            data.CacheCoherent &&
+         result == S_OK && data.UMA && !data.IOCoherent &&
+            !data.CacheCoherent &&
             data.HeapSerializationTier ==
                D3D12DDI_HEAP_SERIALIZATION_TIER_0041_0 &&
             data.ResourceSerializationTier ==
@@ -1960,7 +1981,8 @@ wmain(int argc, wchar_t **argv)
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(result == S_OK && data.ResourceBindingTier == 1 &&
                         data.TiledResourcesTier == 1 &&
-                        data.ResourceHeapTier == 1,
+                        data.ResourceHeapTier == 1 &&
+                        data.OutputMergerLogicOp,
                      "D3D12 option caps");
    }
 
@@ -1977,6 +1999,7 @@ wmain(int argc, wchar_t **argv)
       require_result(
          result == S_OK && data.ResourceBindingTier == 1 &&
             data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            data.OutputMergerLogicOp &&
             !data.DepthBoundsTestSupported &&
             data.ProgrammableSamplePositionsTier ==
                D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED &&
@@ -2002,6 +2025,7 @@ wmain(int argc, wchar_t **argv)
       require_result(
          result == S_OK && data.ResourceBindingTier == 1 &&
             data.TiledResourcesTier == 1 && data.ResourceHeapTier == 1 &&
+            data.OutputMergerLogicOp &&
             data.CopyQueueTimestampQueriesSupported &&
             data.WriteBufferImmediateQueueFlags ==
                (D3D12DDI_COMMAND_QUEUE_FLAG_3D |
@@ -2040,7 +2064,7 @@ wmain(int argc, wchar_t **argv)
       };
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
       require_result(result == S_OK &&
-                        data.MaxGPUVirtualAddressBitsPerResource == 40,
+                        data.MaxGPUVirtualAddressBitsPerResource == 39,
                      "GPU virtual-address cap");
 
       node = 1;
@@ -2622,7 +2646,8 @@ wmain(int argc, wchar_t **argv)
          set_command_list_error_calls = 0;
          command_list_table.pfnSetViewInstanceMask(list, 1);
          require_result(set_command_list_error_calls == 1 &&
-                           last_set_command_list_error == E_NOTIMPL,
+                           last_set_command_list_error ==
+                              D3DDDIERR_APPLICATIONERROR,
                         "unsupported view-instance mask fails explicitly");
 
          release1_table.pfnDestroyCommandList(driver_device, list);
@@ -2687,14 +2712,35 @@ wmain(int argc, wchar_t **argv)
          require_result(
             set_command_list_error_calls == 1 &&
                set_error_runtime_command_list_valid &&
-               last_set_command_list_error == E_INVALIDARG &&
+               last_set_command_list_error ==
+                  D3DDDIERR_APPLICATIONERROR &&
                set_error_calls == 0,
             "recording validation uses command-list error callback");
 
+         {
+            const D3D12DDI_VIEWPORT invalid_viewport = {
+               .TopLeftX = 0.0f,
+               .TopLeftY = 0.0f,
+               .Width = -1.0f,
+               .Height = 1.0f,
+               .MinDepth = 0.0f,
+               .MaxDepth = 1.0f,
+            };
+            command_list_table.pfnRsSetViewports(fake_handle, 1,
+                                                  &invalid_viewport);
+            require_result(
+               set_command_list_error_calls == 2 &&
+                  last_set_command_list_error ==
+                     D3DDDIERR_APPLICATIONERROR &&
+                  set_error_calls == 0,
+               "invalid viewport remains command-list scoped");
+         }
+
          command_list_table.pfnDispatch(fake_handle, 1, 1, 1);
          require_result(
-            set_command_list_error_calls == 2 &&
-               last_set_command_list_error == E_NOTIMPL &&
+            set_command_list_error_calls == 3 &&
+               last_set_command_list_error ==
+                  D3DDDIERR_APPLICATIONERROR &&
                set_error_calls == 0,
             "missing recorder operation remains command-list scoped");
 
@@ -2755,12 +2801,68 @@ wmain(int argc, wchar_t **argv)
                   revision_resolve_region_calls == 1 &&
                   set_command_list_error_calls == 0,
                "DDI 0032 command translation");
+            {
+               D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032
+                  warm_parameters[33];
+               D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_0032 warm_modes[33];
+               D3D12DDIARG_RESOURCE_BARRIER_0022 warm_barriers[17];
+
+               for (UINT index = 0; index < ARRAYSIZE(warm_parameters);
+                    ++index) {
+                  warm_parameters[index] =
+                     (D3D12DDI_WRITEBUFFERIMMEDIATE_PARAMETER_0032){
+                        .Dst = UINT64_C(0x3000000000) +
+                               index * sizeof(uint32_t),
+                        .Value = index,
+                     };
+                  warm_modes[index] =
+                     D3D12DDI_WRITEBUFFERIMMEDIATE_MODE_DEFAULT;
+               }
+               for (UINT index = 0; index < ARRAYSIZE(warm_barriers);
+                    ++index) {
+                  warm_barriers[index] =
+                     (D3D12DDIARG_RESOURCE_BARRIER_0022){
+                        .Type = D3D12DDI_RESOURCE_BARRIER_TYPE_UAV,
+                     };
+               }
+
+               command_list_table.pfnWriteBufferImmediate(
+                  fake_handle, ARRAYSIZE(warm_parameters), warm_parameters,
+                  warm_modes);
+               command_list_table.pfnResourceBarrier(
+                  fake_handle, ARRAYSIZE(warm_barriers), warm_barriers);
+               void *parameter_scratch = fake_list.write_parameter_scratch;
+               void *mode_scratch = fake_list.write_mode_scratch;
+               void *barrier_scratch = fake_list.resource_barrier_scratch;
+
+               command_list_table.pfnWriteBufferImmediate(
+                  fake_handle, ARRAYSIZE(warm_parameters), warm_parameters,
+                  warm_modes);
+               command_list_table.pfnResourceBarrier(
+                  fake_handle, ARRAYSIZE(warm_barriers), warm_barriers);
+               require_result(
+                  revision_immediate_write_calls == 3 &&
+                     revision_ranged_barrier_calls == 3 &&
+                     parameter_scratch == fake_list.write_parameter_scratch &&
+                     mode_scratch == fake_list.write_mode_scratch &&
+                     barrier_scratch == fake_list.resource_barrier_scratch &&
+                     parameter_scratch && mode_scratch && barrier_scratch,
+                  "warm command recording reuses translation storage");
+            }
             command_list_table.pfnAtomicCopyBufferRegion(
                fake_handle, (D3D12DDIARG_BUFFER_PLACEMENT){0},
                (D3D12DDIARG_BUFFER_PLACEMENT){0}, 4);
             require_result(set_command_list_error_calls == 1 &&
-                              last_set_command_list_error == E_NOTIMPL,
+                              last_set_command_list_error ==
+                                 D3DDDIERR_APPLICATIONERROR,
                            "unadvertised atomic copy fails explicitly");
+            HeapFree(GetProcessHeap(), 0,
+                     fake_list.resource_barrier_scratch);
+            HeapFree(GetProcessHeap(), 0, fake_list.write_parameter_scratch);
+            HeapFree(GetProcessHeap(), 0, fake_list.write_mode_scratch);
+            fake_list.resource_barrier_scratch = NULL;
+            fake_list.write_parameter_scratch = NULL;
+            fake_list.write_mode_scratch = NULL;
             private_device->renderer_ops = saved_renderer_ops;
          }
 #endif

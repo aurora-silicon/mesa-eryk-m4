@@ -19,7 +19,25 @@
 #define AGX_SUBMIT_VIRT_READ_SET_COMPLETE UINT32_C(0x00000001)
 #define AGX_SUBMIT_VIRT_VALID_FLAGS AGX_SUBMIT_VIRT_READ_SET_COMPLETE
 
+#define AGX_SUBMIT_FENCE_WAIT           UINT32_C(0x00000001)
+#define AGX_SUBMIT_FENCE_SIGNAL         UINT32_C(0x00000002)
+#define AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE UINT32_C(0x00000004)
+#define AGX_SUBMIT_FENCE_FLAGS_ALL                                         \
+   (AGX_SUBMIT_FENCE_WAIT | AGX_SUBMIT_FENCE_SIGNAL |                     \
+    AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE)
+
 struct agx_submit_read_range {
    uint64_t gpu_va;
    uint64_t length;
+};
+
+/* D3D12 runtime-owned placement fences do not have D3DKMT sync handles.
+ * The Windows winsys serializes this pointer-free description into the
+ * AppleAgxWddm v4 submit-private record. Other winsys backends ignore it. */
+struct agx_submit_fence_dependency {
+   uint64_t current_gpu_va;
+   uint64_t monitored_gpu_va;
+   uint64_t value;
+   uint32_t flags;
+   uint32_t reserved;
 };

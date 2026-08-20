@@ -45,8 +45,8 @@ d12_umd_validate_identity(const void *blob, size_t blob_size,
       return D12_UMD_IDENTITY_CONTRACT;
    if (parsed.params_blob_size != AGXW_PARAMS_GLOBAL_SIZE)
       return D12_UMD_IDENTITY_PARAMS_SIZE;
-   if (parsed.reserved)
-      return D12_UMD_IDENTITY_RESERVED;
+   if (parsed.submit_private_max_version < AGXW_SUBMIT_PRIVATE_VERSION_V4)
+      return D12_UMD_IDENTITY_SUBMIT_VERSION;
 
    *identity = parsed;
    return D12_UMD_IDENTITY_OK;

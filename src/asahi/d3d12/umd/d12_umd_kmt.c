@@ -128,38 +128,6 @@ d12_umd_kmt_deallocate(struct d12_umd_kmt *kmt, HANDLE runtime_resource,
 }
 
 HRESULT
-d12_umd_kmt_submit_dma(struct d12_umd_kmt *kmt, HANDLE context,
-                       D3DGPU_VIRTUAL_ADDRESS commands, uint32_t cmdbuf_size,
-                       D3DKMT_HANDLE result_allocation)
-{
-   struct agxw_submit_private private_data;
-   D3DDDICB_SUBMITCOMMAND arguments;
-
-   if (!kmt || !kmt->callbacks || !kmt->callbacks->pfnSubmitCommandCb ||
-       !context || !commands || !cmdbuf_size ||
-       cmdbuf_size > AGXW_MAX_CMDBUF_BYTES)
-      return E_INVALIDARG;
-
-   private_data = (struct agxw_submit_private){
-      .version = AGXW_SUBMIT_PRIVATE_VERSION,
-      .struct_size = sizeof(private_data),
-      .in_sync_count = 0,
-      .out_sync_count = 0,
-      .result_allocation = result_allocation,
-   };
-   arguments = (D3DDDICB_SUBMITCOMMAND){
-      .Commands = commands,
-      .CommandLength = (UINT)(sizeof(struct agxw_dma_header) + cmdbuf_size),
-      .BroadcastContextCount = 1,
-      .BroadcastContext = {context},
-      .pPrivateDriverData = &private_data,
-      .PrivateDriverDataSize = sizeof(private_data),
-   };
-
-   return kmt->callbacks->pfnSubmitCommandCb(kmt->runtime_device, &arguments);
-}
-
-HRESULT
 d12_umd_kmt_free_gpu_va(struct d12_umd_kmt *kmt,
                         D3DGPU_VIRTUAL_ADDRESS base, uint64_t size)
 {

@@ -63,11 +63,22 @@ extern "C" {
  * agx_device.h into this portable core. */
 #define AGX_D3DKMT_SUBMIT_WRITE_SET_COMPLETE UINT32_C(0x80000000)
 
-/* Translate the frontend marker to the v3 KMD-private flags.  The D3DKMT
+/* Translate the frontend marker to the v3/v4 KMD-private flags. The D3DKMT
  * winsys always supplies a complete read set; write completeness is opt-in
  * only after SET_*_ATTACHMENTS have been serialised. */
 int agx_d3dkmt_submit_private_flags(uint32_t submit_flags,
                                     uint32_t *private_flags);
+
+/* Serialize the exact AppleAgxWddm v3/v4 submit-private blob. The v3 form is
+ * selected when dependency_count is zero; any placement-fence record selects
+ * v4. out_size receives the byte-exact header and trailing-vector size. */
+int agx_d3dkmt_submit_private_pack(
+   uint32_t private_flags,
+   const struct agxw_submit_read_range *read_ranges,
+   uint32_t read_range_count,
+   const struct agx_submit_fence_dependency *dependencies,
+   uint32_t dependency_count, void *blob, uint32_t blob_capacity,
+   uint32_t *out_size);
 
 /*
  * Runtime policy: contract answers that may legitimately differ per adapter or
