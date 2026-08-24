@@ -21,7 +21,18 @@ struct disasm_ctx {
 static inline uint64_t
 bits(BITSET_WORD *word, unsigned start, unsigned size, unsigned shift)
 {
-   return ((uint64_t)__bitset_extract(word, start, size)) << shift;
+   /* A single field range can be wider than a BITSET_WORD -- AGX3 carries
+    * 48-bit addresses and immediates in one contiguous range -- so extract in
+    * <=32-bit chunks. __bitset_extract asserts on count > BITSET_WORDBITS, so
+    * a 42- or 47-bit AGX3 field would otherwise abort the disassembler on real
+    * shader code. */
+   uint64_t v = 0;
+   for (unsigned got = 0; got < size;) {
+      unsigned chunk = MIN2(size - got, 32u);
+      v |= ((uint64_t)__bitset_extract(word, start + got, chunk)) << got;
+      got += chunk;
+   }
+   return v << shift;
 }
 
 typedef void (*disasm_instr)(struct disasm_ctx *ctx, BITSET_WORD *code);

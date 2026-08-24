@@ -12,6 +12,8 @@
 #include "asahi/isa/disasm.h"
 #include "util/bitset.h"
 
+#include "agx3_corpus_lengths.h"
+
 typedef signed (*disassemble_instr_fn)(BITSET_WORD *, FILE *, unsigned,
                                        size_t, bool);
 
@@ -44,6 +46,51 @@ check(disassemble_instr_fn disassemble, const char *variant,
 
    free(output);
    return pass;
+}
+
+
+/*
+ * The handful of hand-picked cases above prove specific mnemonics decode.  The
+ * real foundation claim is broader: the generated in-tree disassembler must
+ * length *every* instruction of real M4/M5 shader code exactly as Apple's own
+ * encoder tables do, and must never abort doing it (an AGX3 field range can be
+ * 47 bits wide, which asserted before the chunked bits() helper landed).  This
+ * replays a pinned corpus slice with the exact expected segmentation.
+ */
+static unsigned
+run_corpus_lengths(void)
+{
+   FILE *sink = fopen("/dev/null", "w");
+   if (sink == NULL)
+      sink = stderr;
+
+   unsigned failures = 0;
+   for (size_t i = 0; i < agx3_corpus_length_case_count; ++i) {
+      const struct agx3_corpus_length_case *c = &agx3_corpus_length_cases[i];
+      BITSET_WORD words[BITSET_WORDS(192)] = {0};
+      memcpy(words, c->bytes, sizeof(c->bytes));
+
+      signed ret = c->variant == 0
+         ? agx3b_disassemble_instr(words, sink, 0, sizeof(c->bytes), false)
+         : agx3c_disassemble_instr(words, sink, 0, sizeof(c->bytes), false);
+      unsigned got = ret < 0 ? (unsigned)-ret : (unsigned)ret;
+
+      if (got != (unsigned)c->expected_len) {
+         if (failures < 8)
+            fprintf(stderr,
+                    "corpus case %zu (agx3%c): expected length %d, got %d\n",
+                    i, c->variant == 0 ? 'b' : 'c', c->expected_len, ret);
+         failures++;
+      }
+   }
+
+   if (sink != stderr)
+      fclose(sink);
+
+   printf("AGX3 corpus length agreement: %zu/%zu instructions\n",
+          agx3_corpus_length_case_count - failures,
+          agx3_corpus_length_case_count);
+   return failures;
 }
 
 int
@@ -105,5 +152,7 @@ main(void)
                       "update_node\n");
 
    printf("AGX3 proven-subset disassembly: %u/12 passed\n", 12 - failures);
+
+   failures += run_corpus_lengths();
    return failures ? 1 : 0;
 }
