@@ -23,6 +23,7 @@ extern "C" {
 #define AGX3_FMUL_F32_REG_REG_LENGTH 6
 #define AGX3_FMUL_F32_REG_REG_LONG_LENGTH 14
 #define AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH 16
+#define AGX3_FMIN_F32_REG_REG_MAX_LENGTH 14
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -74,6 +75,11 @@ struct agx3_encoded_fmul_f32_reg_reg_long {
 
 struct agx3_encoded_fma_f32_reg_reg_reg {
    uint8_t bytes[AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_fmin_f32_reg_reg {
+   uint8_t bytes[AGX3_FMIN_F32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -331,6 +337,29 @@ bool agx3_unpack_fma_f32_reg_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *mul0, uint16_t *mul1, uint16_t *addend,
    uint8_t *length);
+
+/*
+ * Encode/decode the exact register-register f32 minimum selection emitted by
+ * the pinned Apple compiler.  P2f_min correlates the result and both inputs;
+ * the L_fmin ladder independently reproduces the same fixed selection on
+ * G15G/S/D, G16P/G/S, G17P, G17G and G17S.  Apple's implementation ties each
+ * input into both the comparison and selection operands.  This API keeps
+ * those duplicated physical fields coherent.  The form is six bytes on
+ * AGX3b (`fsel.ep7`) and fourteen on AGX3c (`fseli32.ep4`).
+ *
+ * Operands are restricted to even half-register indices in 0..126 because
+ * direct fmin artifacts do not exercise register bit 7.  Other comparison
+ * predicates, fmax, generic select, modifiers, alternate context selections,
+ * unprobed registers, and scheduling/lowering policy remain outside this
+ * exact API and fail closed.  In particular, this codec does not independently
+ * claim IEEE NaN or signed-zero policy beyond the witnessed compiler form.
+ */
+bool agx3_pack_fmin_f32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_fmin_f32_reg_reg *out);
+bool agx3_unpack_fmin_f32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
 /*
  * Encode/decode the source-grounded three-register u32 `bit_and` form.
