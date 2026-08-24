@@ -43,6 +43,7 @@
 #define D12_RAYTRACING_CORE_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asahi/compiler/agx3_pack.h"
@@ -720,6 +721,48 @@ d12_rt_agx3_canonical_update_node_valid(enum d12_rt_agx3_encoding encoding,
    default:
       return false;
    }
+}
+
+/* One proved Apple Gen1 hardware triangle leaf, transposed into per-vertex
+ * coordinates for DXR consumers.  The complete ID words remain visible so
+ * the still-unnamed high two bits are never silently discarded. */
+struct d12_rt_agx_bvh_gen1_hw_triangle_leaf {
+   float vertex[4][3];
+   uint32_t geometry_word;
+   uint32_t primitive_word[2];
+   uint32_t geometry_id;
+   uint32_t primitive_id[2];
+};
+
+static inline bool
+d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+   const void *packed_leaf, size_t available,
+   struct d12_rt_agx_bvh_gen1_hw_triangle_leaf *leaf)
+{
+   if (!leaf)
+      return false;
+
+   memset(leaf, 0, sizeof(*leaf));
+
+   struct agx_rt_bvh_gen1_hw_triangle_leaf decoded;
+   if (!agx_rt_bvh_gen1_hw_triangle_leaf_unpack(packed_leaf, available,
+                                                &decoded))
+      return false;
+
+   for (unsigned vertex = 0; vertex < 4; ++vertex) {
+      for (unsigned axis = 0; axis < 3; ++axis)
+         leaf->vertex[vertex][axis] = decoded.coordinate[axis][vertex];
+   }
+
+   leaf->geometry_word = decoded.geometry_word;
+   leaf->primitive_word[0] = decoded.primitive_word[0];
+   leaf->primitive_word[1] = decoded.primitive_word[1];
+   leaf->geometry_id = agx_rt_bvh_gen1_hw_triangle_geometry_id(&decoded);
+   leaf->primitive_id[0] =
+      agx_rt_bvh_gen1_hw_triangle_primitive_id(&decoded, 0);
+   leaf->primitive_id[1] =
+      agx_rt_bvh_gen1_hw_triangle_primitive_id(&decoded, 1);
+   return true;
 }
 
 /*

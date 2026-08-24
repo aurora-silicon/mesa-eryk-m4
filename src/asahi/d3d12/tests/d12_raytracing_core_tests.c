@@ -905,6 +905,91 @@ pack_gen1_quantized_bounds(unsigned child)
    return word;
 }
 
+static uint32_t
+rt_float_bits(float value)
+{
+   uint32_t bits;
+   memcpy(&bits, &value, sizeof(bits));
+   return bits;
+}
+
+static void
+test_agx_gen1_hw_triangle_leaf(void)
+{
+   static const uint8_t captured[AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE] = {
+      0x50, 0x00, 0x00, 0x00, 0x9c, 0x54, 0xce, 0xbe,
+      0x08, 0xec, 0xd2, 0xbd, 0x9c, 0x54, 0xce, 0xbe,
+      0x9c, 0x54, 0xce, 0xbe, 0x05, 0xc0, 0x7d, 0xbf,
+      0x05, 0xc0, 0x7d, 0xbf, 0x38, 0xf3, 0x30, 0xbf,
+      0x38, 0xf3, 0x30, 0xbf, 0x33, 0x33, 0xb3, 0x3e,
+      0x33, 0x33, 0xb3, 0x3e, 0x66, 0x66, 0xe6, 0x3e,
+      0x66, 0x66, 0xe6, 0x3e, 0x00, 0x00, 0x00, 0x00,
+      0x07, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
+   };
+   static const uint32_t expected_vertex_bits[4][3] = {
+      {0xbece549c, 0xbf7dc005, 0x3eb33333},
+      {0xbdd2ec08, 0xbf7dc005, 0x3eb33333},
+      {0xbece549c, 0xbf30f338, 0x3ee66666},
+      {0xbece549c, 0xbf30f338, 0x3ee66666},
+   };
+
+   struct d12_rt_agx_bvh_gen1_hw_triangle_leaf leaf;
+   require(d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              captured, sizeof(captured), &leaf),
+           "DXR decodes the captured Gen1 hardware triangle leaf");
+   for (unsigned vertex = 0; vertex < 4; ++vertex) {
+      for (unsigned axis = 0; axis < 3; ++axis) {
+         require(rt_float_bits(leaf.vertex[vertex][axis]) ==
+                    expected_vertex_bits[vertex][axis],
+                 "DXR receives every triangle vertex coordinate exactly");
+      }
+   }
+   require(leaf.geometry_word == 0 && leaf.geometry_id == 0 &&
+              leaf.primitive_word[0] == 7 &&
+              leaf.primitive_word[1] == 7 && leaf.primitive_id[0] == 7 &&
+              leaf.primitive_id[1] == 7,
+           "DXR receives the captured raw and low-30-bit triangle IDs");
+
+   uint8_t flagged[sizeof(captured)];
+   memcpy(flagged, captured, sizeof(flagged));
+   flagged[55] = 0xc0;
+   flagged[59] = 0x80;
+   flagged[63] = 0x40;
+   require(d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              flagged, sizeof(flagged), &leaf),
+           "DXR preserves a triangle leaf with unknown high ID bits");
+   require(leaf.geometry_word == UINT32_C(0xc0000000) &&
+              leaf.primitive_word[0] == UINT32_C(0x80000007) &&
+              leaf.primitive_word[1] == UINT32_C(0x40000007) &&
+              leaf.geometry_id == 0 && leaf.primitive_id[0] == 7 &&
+              leaf.primitive_id[1] == 7,
+           "DXR separates raw triangle ID words from their proved low bits");
+
+   const struct d12_rt_agx_bvh_gen1_hw_triangle_leaf zero = {0};
+   memset(&leaf, 0xa5, sizeof(leaf));
+   require(!d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              captured, sizeof(captured) - 1, &leaf),
+           "DXR rejects a truncated Gen1 hardware triangle leaf");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a truncated DXR triangle leaf leaves no stale data");
+
+   uint8_t wrong_marker[sizeof(captured)];
+   memcpy(wrong_marker, captured, sizeof(wrong_marker));
+   wrong_marker[0] ^= 1;
+   memset(&leaf, 0xa5, sizeof(leaf));
+   require(!d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              wrong_marker, sizeof(wrong_marker), &leaf),
+           "DXR rejects a wrong Gen1 hardware triangle marker");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a wrong DXR triangle marker leaves no stale data");
+   require(!d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              NULL, sizeof(captured), &leaf),
+           "DXR rejects a missing Gen1 hardware triangle leaf");
+   require(!d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
+              captured, sizeof(captured), NULL),
+           "DXR rejects a missing triangle-leaf destination");
+}
+
 static void
 test_agx_gen1_child_layout(void)
 {
@@ -1089,6 +1174,7 @@ main(void)
    test_agx3_update_node_expansion();
    test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();
+   test_agx_gen1_hw_triangle_leaf();
    test_agx_gen1_child_layout();
    test_agx_gen5_child_layout();
 

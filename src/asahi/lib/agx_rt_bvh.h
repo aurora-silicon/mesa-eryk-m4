@@ -30,13 +30,18 @@
 #define AGX_RT_BVH_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define AGX_RT_BVH_GEN1_HEADER_SIZE 64u
+#define AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE 64u
+#define AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_MARKER 0x50u
+#define AGX_RT_BVH_GEN1_HW_TRIANGLE_ID_MASK 0x3fffffffu
 #define AGX_RT_BVH_GEN5_HEADER_SIZE 64u
 #define AGX_RT_BVH_GEN5_INVALID_QTB_COUNT 4u
 
@@ -48,6 +53,36 @@ struct agx_rt_bvh_gen5_header {
    uint64_t words[8];
 };
 
+struct agx_rt_bvh_gen1_hw_triangle_leaf {
+   /* Four-lane structure-of-arrays vertex payload: X, Y, then Z.  An
+    * unpaired triangle duplicates its third vertex in lane three. */
+   float coordinate[3][4];
+
+   /* The low 30 bits are IDs.  Preserve the complete words because the two
+    * high bits have not yet been assigned safe public names. */
+   uint32_t geometry_word;
+   uint32_t primitive_word[2];
+};
+
+#ifdef __cplusplus
+static_assert(sizeof(float) == sizeof(uint32_t),
+              "RIA triangle leaves require 32-bit float");
+#else
+_Static_assert(sizeof(float) == sizeof(uint32_t),
+               "RIA triangle leaves require 32-bit float");
+#endif
+
+static inline uint32_t
+agx_rt_bvh_load_le32(const uint8_t *src)
+{
+   uint32_t value = 0;
+
+   for (unsigned i = 0; i < 4; ++i)
+      value |= (uint32_t)src[i] << (i * 8);
+
+   return value;
+}
+
 static inline uint64_t
 agx_rt_bvh_load_le64(const uint8_t *src)
 {
@@ -57,6 +92,58 @@ agx_rt_bvh_load_le64(const uint8_t *src)
       value |= (uint64_t)src[i] << (i * 8);
 
    return value;
+}
+
+/* Decode the exact 64-byte hardware triangle leaf used by the real Gen1 BVH
+ * capture.  This helper models no other leaf type and accepts no alternate
+ * marker.  `available` makes mapped-buffer truncation an explicit failure. */
+static inline bool
+agx_rt_bvh_gen1_hw_triangle_leaf_unpack(
+   const void *packed, size_t available,
+   struct agx_rt_bvh_gen1_hw_triangle_leaf *leaf)
+{
+   if (!leaf)
+      return false;
+
+   memset(leaf, 0, sizeof(*leaf));
+
+   if (!packed || available < AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE)
+      return false;
+
+   const uint8_t *bytes = (const uint8_t *)packed;
+   if (agx_rt_bvh_load_le32(bytes) !=
+       AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_MARKER)
+      return false;
+
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      for (unsigned lane = 0; lane < 4; ++lane) {
+         const uint32_t bits =
+            agx_rt_bvh_load_le32(bytes + 4 + 4 * (axis * 4 + lane));
+         memcpy(&leaf->coordinate[axis][lane], &bits, sizeof(bits));
+      }
+   }
+
+   leaf->geometry_word = agx_rt_bvh_load_le32(bytes + 52);
+   leaf->primitive_word[0] = agx_rt_bvh_load_le32(bytes + 56);
+   leaf->primitive_word[1] = agx_rt_bvh_load_le32(bytes + 60);
+   return true;
+}
+
+static inline uint32_t
+agx_rt_bvh_gen1_hw_triangle_geometry_id(
+   const struct agx_rt_bvh_gen1_hw_triangle_leaf *leaf)
+{
+   return leaf ? leaf->geometry_word & AGX_RT_BVH_GEN1_HW_TRIANGLE_ID_MASK : 0;
+}
+
+static inline uint32_t
+agx_rt_bvh_gen1_hw_triangle_primitive_id(
+   const struct agx_rt_bvh_gen1_hw_triangle_leaf *leaf, unsigned triangle)
+{
+   return leaf && triangle < 2
+             ? leaf->primitive_word[triangle] &
+                  AGX_RT_BVH_GEN1_HW_TRIANGLE_ID_MASK
+             : 0;
 }
 
 /* Unpack explicitly instead of casting mapped GPU memory. */

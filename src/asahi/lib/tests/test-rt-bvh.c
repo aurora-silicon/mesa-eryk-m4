@@ -245,6 +245,113 @@ test_gen1_quantized_bounds(void)
            "a missing Gen1 bounds destination is refused");
 }
 
+static uint32_t
+float_bits(float value)
+{
+   uint32_t bits;
+   memcpy(&bits, &value, sizeof(bits));
+   return bits;
+}
+
+static void
+test_gen1_hw_triangle_leaf(void)
+{
+   /* Slot 14 from the pinned public-Metal M5 Pro version-3 capture.  The
+    * end-to-end walker identifies this as geometry 0, primitive 7 and matches
+    * all four SoA lanes against the probe's source vertices. */
+   static const uint8_t captured[AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE] = {
+      0x50, 0x00, 0x00, 0x00, 0x9c, 0x54, 0xce, 0xbe,
+      0x08, 0xec, 0xd2, 0xbd, 0x9c, 0x54, 0xce, 0xbe,
+      0x9c, 0x54, 0xce, 0xbe, 0x05, 0xc0, 0x7d, 0xbf,
+      0x05, 0xc0, 0x7d, 0xbf, 0x38, 0xf3, 0x30, 0xbf,
+      0x38, 0xf3, 0x30, 0xbf, 0x33, 0x33, 0xb3, 0x3e,
+      0x33, 0x33, 0xb3, 0x3e, 0x66, 0x66, 0xe6, 0x3e,
+      0x66, 0x66, 0xe6, 0x3e, 0x00, 0x00, 0x00, 0x00,
+      0x07, 0x00, 0x00, 0x00, 0x07, 0x00, 0x00, 0x00,
+   };
+   static const uint32_t expected_coordinate_bits[3][4] = {
+      {0xbece549c, 0xbdd2ec08, 0xbece549c, 0xbece549c},
+      {0xbf7dc005, 0xbf7dc005, 0xbf30f338, 0xbf30f338},
+      {0x3eb33333, 0x3eb33333, 0x3ee66666, 0x3ee66666},
+   };
+
+   uint8_t unaligned[AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE + 1];
+   memcpy(unaligned + 1, captured, sizeof(captured));
+
+   struct agx_rt_bvh_gen1_hw_triangle_leaf leaf;
+   require(agx_rt_bvh_gen1_hw_triangle_leaf_unpack(
+              unaligned + 1, sizeof(captured), &leaf),
+           "an unaligned real Gen1 hardware triangle leaf decodes");
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      for (unsigned lane = 0; lane < 4; ++lane) {
+         require(float_bits(leaf.coordinate[axis][lane]) ==
+                    expected_coordinate_bits[axis][lane],
+                 "every captured triangle coordinate bit round-trips");
+      }
+   }
+   require(leaf.geometry_word == 0 && leaf.primitive_word[0] == 7 &&
+              leaf.primitive_word[1] == 7,
+           "the captured triangle leaf preserves all three raw ID words");
+   require(agx_rt_bvh_gen1_hw_triangle_geometry_id(&leaf) == 0 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 0) == 7 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 1) == 7,
+           "the captured triangle leaf exposes its exact low-30-bit IDs");
+
+   uint8_t flagged[sizeof(captured)];
+   memcpy(flagged, captured, sizeof(flagged));
+   flagged[55] = 0xc0;
+   flagged[59] = 0x80;
+   flagged[63] = 0x40;
+   require(agx_rt_bvh_gen1_hw_triangle_leaf_unpack(flagged, sizeof(flagged),
+                                                   &leaf),
+           "unknown high ID bits do not invalidate a triangle leaf");
+   require(leaf.geometry_word == UINT32_C(0xc0000000) &&
+              leaf.primitive_word[0] == UINT32_C(0x80000007) &&
+              leaf.primitive_word[1] == UINT32_C(0x40000007),
+           "unknown high ID bits remain available to future decoders");
+   require(agx_rt_bvh_gen1_hw_triangle_geometry_id(&leaf) == 0 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 0) == 7 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 1) == 7,
+           "unknown high ID bits cannot contaminate decoded IDs");
+
+   const struct agx_rt_bvh_gen1_hw_triangle_leaf zero = {0};
+   for (size_t available = 0;
+        available < AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE; ++available) {
+      memset(&leaf, 0xa5, sizeof(leaf));
+      require(!agx_rt_bvh_gen1_hw_triangle_leaf_unpack(captured, available,
+                                                       &leaf),
+              "every truncated hardware triangle leaf is rejected");
+      require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+              "a truncated triangle leaf leaves no stale output");
+   }
+
+   for (unsigned bit = 0; bit < 32; ++bit) {
+      uint8_t malformed[sizeof(captured)];
+      memcpy(malformed, captured, sizeof(malformed));
+      malformed[bit / 8] ^= 1u << (bit % 8);
+      memset(&leaf, 0xa5, sizeof(leaf));
+      require(!agx_rt_bvh_gen1_hw_triangle_leaf_unpack(
+                 malformed, sizeof(malformed), &leaf),
+              "every changed triangle-leaf marker bit is rejected");
+      require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+              "a wrong triangle marker leaves no stale output");
+   }
+
+   memset(&leaf, 0xa5, sizeof(leaf));
+   require(!agx_rt_bvh_gen1_hw_triangle_leaf_unpack(NULL, sizeof(captured),
+                                                    &leaf),
+           "a missing triangle leaf is rejected");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a missing triangle leaf leaves no stale output");
+   require(!agx_rt_bvh_gen1_hw_triangle_leaf_unpack(captured,
+                                                    sizeof(captured), NULL),
+           "a missing triangle-leaf destination is rejected");
+   require(agx_rt_bvh_gen1_hw_triangle_geometry_id(NULL) == 0 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(NULL, 0) == 0 &&
+              agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 2) == 0,
+           "missing and out-of-range triangle ID queries fail closed");
+}
+
 static void
 test_gen1_randomized_assembly_equivalence(void)
 {
@@ -568,6 +675,7 @@ main(void)
    test_gen1_unpack_and_control();
    test_gen1_leaf_layout();
    test_gen1_quantized_bounds();
+   test_gen1_hw_triangle_leaf();
    test_gen1_randomized_assembly_equivalence();
    test_unpack_and_signed_child_space();
    test_leaf_and_inner_counts();
