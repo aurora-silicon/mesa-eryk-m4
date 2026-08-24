@@ -23,6 +23,8 @@ libasahi_lib_files = files(
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
+  'agx_vdm_decode_core.c',
+  'agx_vdm_decode_core.h',
   'agx_vdm_index_list_core.c',
   'agx_vdm_index_list_core.h',
   'agx_vdm_ppp_state_core.c',
@@ -166,6 +168,24 @@ libasahi_lib = static_library(
 )
 
 if with_tests
+  test(
+    'asahi-vdm-decode-core',
+    executable(
+      'asahi-vdm-decode-core',
+      files(
+        'agx_vdm_decode_core.c',
+        'agx_vdm_index_list_core.c',
+        'agx_vdm_ppp_state_core.c',
+        'agx_vdm_state_core.c',
+        'agx_vdm_state_update_core.c',
+        'agx_vdm_stream_link_core.c',
+        'tests/test-vdm-decode-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'asahi-agx3-cdm-decode-core',
     executable(

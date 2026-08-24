@@ -151,8 +151,8 @@ words, and the trailing vertex word are preserved losslessly as raw payloads
 because their complete semantics remain ungrounded. Direct G15G/G15X,
 G16G/G16X, G17P, and G17G/G17X plugin claims cover the same eleven rows;
 G16P and G17A fail closed. All 224 record bits are classified and round-trip,
-but indirect/ICB draws, PPP state, Ioto USC stream, live emission, and
-submission remain incomplete.
+but indirect/ICB draws, PPP payload semantics, Ioto USC stream, live emission,
+and submission remain incomplete.
 
 The shared VDM and D3D12 cores additionally pack and decode the exact eight-
 byte PPP State Update header on the same eleven directly pinned identities.
@@ -177,6 +177,15 @@ carries target bits 0--31. The recovered emitter genuinely remains 40-bit
 through HAL300 and imposes no extra target alignment. The returning/call bit,
 stream return and terminate records, allocation, live linking, and submission
 remain closed.
+
+A strict shared VDM record-at-a-time decoder and D3D12 bridge now classify all
+five grounded record families from a potentially longer stream: PPP State
+Update, full State Update, direct non-indexed and indexed Index List, and
+direct Stream Link. Record length is derived from both the exact header and
+the target's G15/HAL200 versus HAL300 form. Types 1/5/6/7, truncated or
+reserved-bit-mutated records, unsupported identities, and wrong-generation
+lengths fail with a cleared result. The decoder does not inspect PPP payloads,
+follow links, read GPU memory, emit commands, or submit work.
 
 ## Mesa API and kernel relationship
 
@@ -464,6 +473,7 @@ The current in-tree anchors are:
   [`agx3_cdm_decode_core.h`](../../src/asahi/lib/agx3_cdm_decode_core.h),
   [`agx_vdm_state_core.h`](../../src/asahi/lib/agx_vdm_state_core.h),
   [`agx_vdm_state_update_core.h`](../../src/asahi/lib/agx_vdm_state_update_core.h),
+  [`agx_vdm_decode_core.h`](../../src/asahi/lib/agx_vdm_decode_core.h),
   [`agx_vdm_ppp_state_core.h`](../../src/asahi/lib/agx_vdm_ppp_state_core.h),
   [`agx_vdm_index_list_core.h`](../../src/asahi/lib/agx_vdm_index_list_core.h),
   [`agx_vdm_stream_link_core.h`](../../src/asahi/lib/agx_vdm_stream_link_core.h),

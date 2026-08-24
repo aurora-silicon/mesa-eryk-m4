@@ -1,0 +1,64 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Strict record-at-a-time decoder for the grounded AGX3 VDM subset.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "agx_chip.h"
+#include "agx_vdm_index_list_core.h"
+#include "agx_vdm_state_update_core.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum agx_vdm_record_kind {
+   AGX_VDM_RECORD_UNKNOWN = 0,
+   AGX_VDM_RECORD_PPP_STATE_UPDATE,
+   AGX_VDM_RECORD_STATE_UPDATE,
+   AGX_VDM_RECORD_INDEX_LIST_NONINDEXED,
+   AGX_VDM_RECORD_INDEX_LIST_INDEXED,
+   AGX_VDM_RECORD_STREAM_LINK,
+};
+
+struct agx_vdm_decoded_record {
+   enum agx_vdm_record_kind kind;
+   uint8_t length;
+   enum agx_chip chip;
+   union {
+      struct {
+         uint64_t pointer;
+         uint32_t size_words;
+      } ppp_state_update;
+      struct agx_vdm_state_update_info state_update;
+      struct agx_vdm_index_list_direct_nonindexed_info index_list_nonindexed;
+      struct agx_vdm_index_list_direct_indexed_info index_list_indexed;
+      struct {
+         uint64_t target;
+      } stream_link;
+   } data;
+};
+
+/*
+ * Decode one exact record from the beginning of a larger VDM stream.
+ * `available` may include following records; `length` reports only the bytes
+ * consumed by the first record. Unknown block types, unsupported identities,
+ * malformed headers, reserved-bit mutations, and truncation fail with a
+ * cleared result.
+ *
+ * This deliberately does not infer ordering, follow links, inspect a PPP
+ * payload, read GPU memory, submit work, or admit an AGX3 device.
+ */
+bool agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
+                        struct agx_vdm_decoded_record *record);
+
+#ifdef __cplusplus
+}
+#endif
