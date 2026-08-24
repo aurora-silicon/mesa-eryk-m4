@@ -43,8 +43,13 @@ marketing name in the measured corpus.
 | G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300 / SKSM |
 | G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300 / SKSM |
 
-The AGX3 pack subset currently covers only individually grounded instructions;
-it is not a general shader encoder. In particular, the generated AGX3
+The AGX3 pack subset currently covers only individually grounded instructions:
+`ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
+enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
+`iadd` (AGX3b `iadd`, AGX3c `iadd32`). The integer-add form has exhaustive
+operand/immediate and every-bit rejection tests plus exact G15/G16/G17 corpus
+replay; G15G stall placement remains a separate unsolved scheduler rule. This
+is not a general shader encoder. In particular, the generated AGX3
 disassemblers and hardware-RT detection do not make AGX3 code generation or
 device open supported.
 

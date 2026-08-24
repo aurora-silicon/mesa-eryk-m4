@@ -136,6 +136,122 @@ agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding, const uint8_t *bytes,
 }
 
 bool
+agx3_pack_iadd_u32_imm8(enum agx_isa_encoding encoding, uint16_t dest,
+                        uint16_t src, uint8_t imm,
+                        struct agx3_encoded_iadd_u32_imm8 *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || (dest & 1) != 0 ||
+       (src & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* This encoding point has 96 addressable 32-bit registers. */
+      if (dest >= 192 || src >= 192)
+         return false;
+
+      const uint8_t canonical[] = {
+         0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x00, 0x88, 0x11, 0x04,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2 is deposited contiguously for this AGX3b encoding point. */
+      out->bytes[3] = dest;
+
+      /* f31: s[1:5] -> b6[3:7], s[6:7] -> b7[0:1]. */
+      out->bytes[6] |= (src & 0x3e) << 2;
+      out->bytes[7] |= src >> 6;
+
+      /* f15: i[0:6] -> b5[1:7], i[7] -> b6[0]. */
+      out->bytes[5] |= (imm & 0x7f) << 1;
+      out->bytes[6] |= imm >> 7;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   if (dest >= 256 || src >= 256)
+      return false;
+
+   const uint8_t canonical[] = {
+      0x27, 0x04, 0x04, 0x1a, 0x25, 0x00,
+      0xa3, 0x02, 0x20, 0x80, 0x01, 0x00,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2: d[1,4] -> b0[4,7], d[2:3,5] -> b7[3:5], d[6:7] -> b2[7,3]. */
+   out->bytes[0] |= ((dest >> 1) & 0x1) << 4;
+   out->bytes[0] |= ((dest >> 4) & 0x1) << 7;
+   out->bytes[7] |= ((dest >> 2) & 0x3) << 3;
+   out->bytes[7] |= ((dest >> 5) & 0x1) << 5;
+   out->bytes[2] |= ((dest >> 6) & 0x1) << 7;
+   out->bytes[2] |= ((dest >> 7) & 0x1) << 3;
+
+   /* f31: s[1] -> b8[7], s[2:7] -> b9[0:5]. */
+   out->bytes[8] |= ((src >> 1) & 0x1) << 7;
+   out->bytes[9] |= (src >> 2) & 0x3f;
+
+   /* f15: i[0:1], i[2:4], i[5], i[6:7] are scattered over four bytes. */
+   out->bytes[1] |= imm & 0x3;
+   out->bytes[3] |= (imm & 0x1c) << 3;
+   out->bytes[5] |= (imm & 0x20) << 2;
+   out->bytes[8] |= imm >> 6;
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_iadd_u32_imm8(enum agx_isa_encoding encoding,
+                          const uint8_t *bytes, size_t available,
+                          uint16_t *dest, uint16_t *src, uint8_t *imm,
+                          uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src == NULL || imm == NULL || length == NULL)
+      return false;
+
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 10 : 12;
+   if (available < expected_length)
+      return false;
+
+   uint16_t decoded_dest, decoded_src;
+   uint8_t decoded_imm;
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = bytes[3];
+      decoded_src = ((bytes[6] >> 2) & 0x3e) |
+                    ((bytes[7] & 0x3) << 6);
+      decoded_imm = ((bytes[5] >> 1) & 0x7f) | ((bytes[6] & 0x1) << 7);
+   } else {
+      decoded_dest = (((bytes[0] >> 4) & 0x1) << 1) |
+                     (((bytes[7] >> 3) & 0x3) << 2) |
+                     (((bytes[0] >> 7) & 0x1) << 4) |
+                     (((bytes[7] >> 5) & 0x1) << 5) |
+                     (((bytes[2] >> 7) & 0x1) << 6) |
+                     (((bytes[2] >> 3) & 0x1) << 7);
+      decoded_src = (((bytes[8] >> 7) & 0x1) << 1) |
+                    ((bytes[9] & 0x3f) << 2);
+      decoded_imm = (bytes[1] & 0x3) | (((bytes[3] >> 5) & 0x7) << 2) |
+                    (((bytes[5] >> 7) & 0x1) << 5) |
+                    ((bytes[8] & 0x3) << 6);
+   }
+
+   struct agx3_encoded_iadd_u32_imm8 canonical;
+   if (!agx3_pack_iadd_u32_imm8(encoding, decoded_dest, decoded_src,
+                                decoded_imm, &canonical) ||
+       canonical.length != expected_length ||
+       memcmp(bytes, canonical.bytes, expected_length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *imm = decoded_imm;
+   *length = expected_length;
+   return true;
+}
+
+bool
 agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)

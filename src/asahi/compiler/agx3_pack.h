@@ -17,6 +17,7 @@ extern "C" {
 
 /* Largest ldimm instruction emitted by the currently proven AGX3 subset. */
 #define AGX3_LDIMM_MAX_LENGTH 8
+#define AGX3_IADD_U32_IMM8_MAX_LENGTH 12
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -25,6 +26,11 @@ extern "C" {
 
 struct agx3_encoded_ldimm {
    uint8_t bytes[AGX3_LDIMM_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_iadd_u32_imm8 {
+   uint8_t bytes[AGX3_IADD_U32_IMM8_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -76,6 +82,30 @@ bool agx3_pack_ldimm_u32(enum agx_isa_encoding encoding, uint16_t dest,
 bool agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding,
                            const uint8_t *bytes, size_t available,
                            uint16_t *dest, uint32_t *imm, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded register-plus-inline-u8 form of 32-bit
+ * integer add.  `dest` and `src` are 16-bit half-register indices, so both
+ * must be even.  Apple's encoder tables limit this encoding point to r0..r95
+ * on AGX3b (half-registers 0..190) and r0..r127 on AGX3c (0..254).
+ *
+ * The anonymous Apple fields were attached to their semantics by the pinned
+ * add-immediate and register-pressure probes: f2 is the destination, f31 the
+ * register source, and f15 the complete 8-bit immediate.  The same form has
+ * 224 exact G15/G16 corpus witnesses and 218 exact G17 witnesses.  Cross-target
+ * compiler replay is byte-identical within {G15*, G16*, G17P} and within
+ * {G17G, G17S}; the two encodings are 10 and 12 bytes respectively.
+ *
+ * This function does not schedule G15G.  Its required standalone nop/stall
+ * words remain a separate scheduling pass and are never folded into iadd.
+ */
+bool agx3_pack_iadd_u32_imm8(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src, uint8_t imm,
+   struct agx3_encoded_iadd_u32_imm8 *out);
+bool agx3_unpack_iadd_u32_imm8(enum agx_isa_encoding encoding,
+                               const uint8_t *bytes, size_t available,
+                               uint16_t *dest, uint16_t *src, uint8_t *imm,
+                               uint8_t *length);
 
 /*
  * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is
