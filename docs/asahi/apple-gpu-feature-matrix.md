@@ -405,7 +405,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `f3d9e6faa385`
+The power/recovery and submission ledger through Linux commit `730da8b57201`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -439,16 +439,30 @@ shift 40 with mask `0x7f`. Every pinned G15--G17 host routes the kick through
 RTBuddy's asynchronous-note sender to endpoint `0x21` at object offset
 `0x130`, not the distinct ordinary-message endpoint `0x20` at `0x128`; the
 vtable slots and opaque send arguments are target-validated too. The same
-hosts now have an exact pure data-master ring model: ring object offsets
-`+0x08` and `+0x18` select shared control and the entries backing pointer,
-read/write indices live at control `+0x00`/`+0x20`, entries have 24-byte
-stride, and the 256-index ring reserves one slot. Publication records the
-slot, command encode, `dmb ish`, write-index reread, eight-bit increment/wrap,
-and write-index store in that order; cold initialization creates 12 controls
-on G15/G16 and 24 on G17. Backing cacheability, firmware consumer ownership,
-the dual-stack selector, acknowledgment, teardown, and the complete
-notification lifetime remain closed, so this is a bounded submission
-preflight rather than an executable DRM submission path.
+hosts now have an exact pure data-master ring model, including the materially
+different backing layouts. G15G uses shared entry/control batches owned at
+firmware offsets `+0x310/+0x548`; G15S/C/D allocate both entries and indices
+from Fender ScratchRAM; G16G uses ScratchRAM indices but shared entries owned
+at `+0x318`; G16S/C and G17P/S/C use shared batches at `+0x350/+0x588`; and
+G17G uses shared batches at `+0x358/+0x590`. Shared entries are twelve
+`0x1800`-byte slices with raw caching option 1, while shared controls are
+twelve `0x30`-byte slices with raw option 0; both use the proved false outer
+allocation argument and release then zero their owner slot. Their per-ring CPU
+and firmware pointers occupy object `+0x18/+0x20` for entries and
+`+0x08/+0x10` for controls, with read/CFI/write indices at control
+`+0x00/+0x10/+0x20`. Scratch-backed rings instead carry the scratch object at
+`+0x28`, CPU pointers at `+0x30/+0x38/+0x40`, and firmware pointers at
+`+0x48/+0x50/+0x58`; their exact mapping values prove inhibit-cache mappings
+and an additional read-only bit for read/CFI cells. Host read/CFI setters trap
+on that layout and the write setter stores under the ScratchRAM lock. Every
+layout retains 24-byte entries and a 256-index ring with one reserved slot.
+Publication records slot selection, command encode, `dmb ish`, write-index
+reread, eight-bit increment/wrap, and write-index store in that order; cold
+initialization creates 12 rings on G15/G16 and 24 on G17. The stripped names
+of raw shared-data caching options, firmware consumer ownership, the dual-stack
+selector, acknowledgment, and the complete notification lifetime remain
+closed, so this is a bounded submission preflight rather than an executable
+DRM submission path.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
