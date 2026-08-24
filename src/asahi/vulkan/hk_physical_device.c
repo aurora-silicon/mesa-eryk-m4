@@ -43,6 +43,29 @@ hk_get_vk_version()
    return VK_MAKE_VERSION(1, 4, VK_HEADER_VERSION);
 }
 
+/* Vulkan cache and opaque-layout UUIDs must not alias across Apple GPU
+ * contracts.  In particular, G15+ changes the ISA, command streams and
+ * descriptor layouts independently, while G17 splits AGX3b/AGX3c and
+ * HAL200/HAL300 by variant.  Hash explicit scalars instead of a C struct so
+ * padding and host ABI cannot enter the persistent identity. */
+static void
+hk_hash_device_generation_contract(blake3_hasher *ctx,
+                                   const struct agx_device *dev)
+{
+   const uint32_t values[] = {
+      dev->params.gpu_generation,
+      (uint8_t)dev->params.gpu_variant,
+      dev->params.gpu_revision,
+      dev->chip,
+      agx_chip_isa_encoding(dev->chip),
+      agx_chip_command_stream_generation(dev->chip),
+      agx_chip_descriptor_generation(dev->chip),
+      agx_chip_sampler_generation(dev->chip),
+   };
+
+   _mesa_blake3_update(ctx, values, sizeof(values));
+}
+
 static void
 hk_get_device_extensions(const struct hk_instance *instance,
                          struct vk_device_extension_table *ext)
@@ -1096,6 +1119,7 @@ hk_get_device_properties(const struct agx_device *dev,
       /* Make sure we don't match with other vendors */
       const char *driver = "honeykrisp-v1";
       _mesa_blake3_update(&blake3_ctx, driver, strlen(driver));
+      hk_hash_device_generation_contract(&blake3_ctx, dev);
       _mesa_blake3_final(&blake3_ctx, blake3);
 
       memcpy(properties->optimalTilingLayoutUUID, blake3, VK_UUID_SIZE);
@@ -1112,6 +1136,7 @@ hk_physical_device_init_pipeline_cache(struct hk_physical_device *pdev)
 
    _mesa_blake3_update(&blake3_ctx, instance->driver_build_sha,
                      sizeof(instance->driver_build_sha));
+   hk_hash_device_generation_contract(&blake3_ctx, &pdev->dev);
 
    const uint64_t compiler_flags = hk_physical_device_compiler_flags(pdev);
    _mesa_blake3_update(&blake3_ctx, &compiler_flags, sizeof(compiler_flags));
