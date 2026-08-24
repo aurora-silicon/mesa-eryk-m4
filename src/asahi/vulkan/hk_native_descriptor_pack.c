@@ -10,6 +10,29 @@
 #include <string.h>
 
 bool
+hk_translate_native_texture_sample_count(unsigned generation, unsigned samples,
+                                         enum agx_sample_count *out)
+{
+   if (!out || samples == 1 ||
+       !hk_native_texture_sample_count_representable(generation, samples))
+      return false;
+
+   switch (samples) {
+   case 2:
+      *out = AGX_SAMPLE_COUNT_2;
+      return true;
+   case 4:
+      *out = AGX_SAMPLE_COUNT_4;
+      return true;
+   case 8:
+      *out = AGX_SAMPLE_COUNT_8;
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
 hk_pack_native_texture(unsigned generation,
                        struct hk_native_texture_descriptor *out,
                        const struct AGX_TEXTURE *legacy)

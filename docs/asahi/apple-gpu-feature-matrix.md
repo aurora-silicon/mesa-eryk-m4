@@ -89,6 +89,15 @@ including a byte-exact M5 live descriptor. Writable-image and EOT use stays
 **FC** because libagx still decodes the AGX2-only software-addressing sideband;
 the matrix's PBE gate refers to that complete execution contract.
 
+Honeykrisp's native sampled-texture helper also represents the recovered Gen10
+2x/4x/8x sample-count field, including the exact M5 8x value in bits 58:59.
+This is **RE/IV** descriptor coverage, not Vulkan 8x MSAA support: the live M5
+corpus proves creation, layout, and descriptor bytes but contains no executed
+sampling command, while the recovered raster/PBE path remains capped at 4x.
+Public 8x exposure therefore stays **FC**. D3D12 likewise keeps 8x quality
+levels at zero because its resource contract has no sampled-only multisample
+usage that would avoid promising an unproven 8x render/depth path.
+
 AIL also carries tested M5 allocation-policy primitives for the measured
 2 KiB small-array compression-metadata granule, 16 KiB large-array granule,
 unpadded single-layer rule, and 16x8 metadata tiles at 16 B/px. Gallium,

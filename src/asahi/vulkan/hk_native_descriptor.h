@@ -129,6 +129,30 @@ hk_native_texture_supported(unsigned generation, bool multisampled,
    return buffer_tail_offset == 0;
 }
 
+/* Return whether the sampled-texture descriptor has a recovered representation
+ * for a sample count.  This is not a Vulkan capability predicate: the live
+ * G17S corpus proves Gen10 creation/layout and descriptor bits but contains no
+ * executed sampling command, so public 8x exposure remains gated.
+ */
+static inline bool
+hk_native_texture_sample_count_representable(unsigned generation,
+                                             unsigned samples)
+{
+   if (samples == 1)
+      return hk_texture_descriptor_size(generation) != 0;
+
+   if (hk_descriptor_generation_is_agx2(generation))
+      return samples == 2 || samples == 4;
+
+   if (generation == 9)
+      return false;
+
+   if (generation == 10)
+      return samples == 2 || samples == 4 || samples == 8;
+
+   return false;
+}
+
 /* Gen9/10 PBE words are structurally recovered, but Honeykrisp still relies
  * on AGX2 software-image sideband fields which have no proven AGX3 decode.
  */
