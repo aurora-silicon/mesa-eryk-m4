@@ -91,7 +91,7 @@ static inline bool
 d12_rt_shader_table_valid(const struct d12_rt_shader_table *table,
                           enum d12_rt_table_kind kind)
 {
-   if (!table)
+   if (!table || kind > D12_RT_TABLE_STRIDED)
       return false;
 
    /* An absent table is legal: a pipeline with no miss shaders binds none. */
@@ -111,31 +111,84 @@ d12_rt_shader_table_valid(const struct d12_rt_shader_table *table,
       return false;
 
    if (kind == D12_RT_TABLE_RAY_GENERATION) {
-      /* One record: a stride would have nothing to stride over. */
-      return table->stride_bytes == 0;
+      /* One record: a stride would have nothing to stride over.  The API
+       * bounds the ray-generation range to the maximum record size. */
+      return table->stride_bytes == 0 &&
+             table->size_bytes <= D12_RT_MAX_SHADER_RECORD_STRIDE;
    }
 
+   /* DXR deliberately permits a zero stride. Every index then selects the
+    * same first record; this is useful when a whole table shares one shader
+    * and one set of local root arguments. */
    if (!table->stride_bytes)
-      return false;
+      return true;
    if (table->stride_bytes % D12_RT_SHADER_RECORD_BYTE_ALIGNMENT)
       return false;
    if (table->stride_bytes > D12_RT_MAX_SHADER_RECORD_STRIDE)
       return false;
    if (table->stride_bytes < D12_RT_SHADER_IDENTIFIER_SIZE)
       return false;
-   /* The table must contain whole records. A partial trailing record would
-    * be indexable by a shader whose index the driver cannot bound. */
-   return table->size_bytes % table->stride_bytes == 0;
+   return true;
 }
 
-/* Records addressable in a strided table. Zero for the single-record
- * ray-generation table, whose index is always implicitly zero. */
+/* Number of minimum-sized records whose identifiers fit in a table.  With a
+ * zero stride every logical index aliases the same one physical record, so
+ * this reports one rather than attempting to describe the unbounded alias. */
 static inline uint64_t
 d12_rt_shader_table_records(const struct d12_rt_shader_table *table)
 {
-   if (!table || !table->stride_bytes || !table->size_bytes)
+   if (!d12_rt_shader_table_valid(table, D12_RT_TABLE_STRIDED) ||
+       !table->start_address ||
+       table->size_bytes < D12_RT_SHADER_IDENTIFIER_SIZE)
       return 0;
-   return table->size_bytes / table->stride_bytes;
+   if (!table->stride_bytes)
+      return 1;
+   return 1 + ((table->size_bytes - D12_RT_SHADER_IDENTIFIER_SIZE) /
+               table->stride_bytes);
+}
+
+/* Resolve an indexed record without permitting integer wrap or a record to
+ * extend beyond SizeInBytes.  The caller supplies the actual record size,
+ * including its local root arguments; unlike a coarse table validator this
+ * makes the last partially occupied stride checkable exactly. */
+static inline bool
+d12_rt_shader_record_address(const struct d12_rt_shader_table *table,
+                             enum d12_rt_table_kind kind, uint64_t index,
+                             uint64_t record_size, uint64_t *address)
+{
+   if (!address || !d12_rt_shader_table_valid(table, kind) ||
+       !table->start_address ||
+       record_size < D12_RT_SHADER_IDENTIFIER_SIZE ||
+       record_size > D12_RT_MAX_SHADER_RECORD_STRIDE)
+      return false;
+
+   if (kind == D12_RT_TABLE_RAY_GENERATION) {
+      if (index || record_size > table->size_bytes)
+         return false;
+      *address = table->start_address;
+      return true;
+   }
+
+   if (record_size > table->size_bytes)
+      return false;
+
+   if (!table->stride_bytes) {
+      *address = table->start_address;
+      return true;
+   }
+
+   /* The stride has to hold the largest shader record in the table. */
+   if (record_size > table->stride_bytes ||
+       index > UINT64_MAX / table->stride_bytes)
+      return false;
+
+   const uint64_t offset = index * table->stride_bytes;
+   if (offset > table->size_bytes - record_size ||
+       table->start_address > UINT64_MAX - offset)
+      return false;
+
+   *address = table->start_address + offset;
+   return true;
 }
 
 struct d12_rt_dispatch_rays {
@@ -161,15 +214,18 @@ d12_rt_dispatch_valid(const struct d12_rt_dispatch_rays *dispatch)
    if (!dispatch)
       return false;
 
-   /* A zero-sized dispatch is legal and does nothing. */
-   if (!dispatch->width || !dispatch->height || !dispatch->depth) {
-      return !dispatch->width && !dispatch->height && !dispatch->depth;
-   }
+   /* If any dimension is zero, the dispatch is a legal no-op and accesses no
+    * shader record. The other dimensions and table ranges are immaterial. */
+   if (!dispatch->width || !dispatch->height || !dispatch->depth)
+      return true;
 
-   const uint64_t threads = (uint64_t)dispatch->width *
-                            (uint64_t)dispatch->height *
-                            (uint64_t)dispatch->depth;
-   if (threads > D12_RT_MAX_RAYGEN_THREADS)
+   /* Check the product against the API limit without overflowing uint64_t:
+    * three UINT dimensions can have a 96-bit mathematical product. */
+   uint64_t threads = dispatch->width;
+   if (threads > D12_RT_MAX_RAYGEN_THREADS / dispatch->height)
+      return false;
+   threads *= dispatch->height;
+   if (threads > D12_RT_MAX_RAYGEN_THREADS / dispatch->depth)
       return false;
 
    /* Rays have to come from somewhere. */

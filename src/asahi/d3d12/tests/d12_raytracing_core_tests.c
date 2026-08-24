@@ -74,7 +74,7 @@ test_shader_table_rules(void)
    require(d12_rt_shader_table_valid(&good, D12_RT_TABLE_STRIDED),
            "an aligned table of whole records is legal");
    require(d12_rt_shader_table_records(&good) == 2,
-           "record count is size divided by stride");
+           "two minimum-sized records are addressable");
 
    /* Alignment. */
    require(!d12_rt_shader_table_valid(tbl(0x40020, 128, 64),
@@ -92,15 +92,15 @@ test_shader_table_rules(void)
                                       D12_RT_TABLE_RAY_GENERATION),
            "a ray-generation record smaller than an identifier is refused");
 
-   /* Whole records only: a partial trailing record would be indexable. */
-   require(!d12_rt_shader_table_valid(tbl(0x40000, 160, 64),
-                                      D12_RT_TABLE_STRIDED),
-           "a table with a partial trailing record is refused");
-
    require(!d12_rt_shader_table_valid(
               tbl(0x40000, 8192, D12_RT_MAX_SHADER_RECORD_STRIDE + 32),
               D12_RT_TABLE_STRIDED),
            "a stride beyond the API maximum is refused");
+
+   require(!d12_rt_shader_table_valid(
+              tbl(0x40000, D12_RT_MAX_SHADER_RECORD_STRIDE + 1, 0),
+              D12_RT_TABLE_RAY_GENERATION),
+           "a ray-generation record beyond the API maximum is refused");
 
    /* The ray-generation table is one record and cannot carry a stride. */
    require(!d12_rt_shader_table_valid(tbl(0x40000, 64, 32),
@@ -109,13 +109,24 @@ test_shader_table_rules(void)
    require(d12_rt_shader_table_valid(tbl(0x40000, 64, 0),
                                      D12_RT_TABLE_RAY_GENERATION),
            "a ray-generation record without a stride is legal");
-   require(d12_rt_shader_table_records(tbl(0x40000, 64, 0)) == 0,
-           "a strideless record reports no addressable count");
+   require(d12_rt_shader_table_records(tbl(0x40000, 64, 0)) == 1,
+           "a strideless table reports its one physical record");
 
-   /* A strided table needs a stride. */
-   require(!d12_rt_shader_table_valid(tbl(0x40000, 64, 0),
-                                      D12_RT_TABLE_STRIDED),
-           "a strided table without a stride is refused");
+   /* A zero stride is explicitly legal and makes every logical index alias
+    * the first physical record. */
+   require(d12_rt_shader_table_valid(tbl(0x40000, 64, 0),
+                                     D12_RT_TABLE_STRIDED),
+           "a zero-stride shader table is legal");
+
+   /* SizeInBytes is a range, not a record count. A final minimum-sized
+    * record may occupy only part of the last stride. */
+   require(d12_rt_shader_table_valid(tbl(0x40000, 96, 64),
+                                     D12_RT_TABLE_STRIDED),
+           "a table range need not be a multiple of its stride");
+   require(d12_rt_shader_table_records(tbl(0x40000, 96, 64)) == 2,
+           "the final identifier-sized record is counted");
+   require(d12_rt_shader_table_records(tbl(0x40000, 96, 48)) == 0,
+           "a malformed table has no safely addressable records");
 
    /* Address-space overflow. */
    require(!d12_rt_shader_table_valid(tbl(UINT64_MAX - 32, 128, 64),
@@ -124,6 +135,69 @@ test_shader_table_rules(void)
 
    require(!d12_rt_shader_table_valid(NULL, D12_RT_TABLE_STRIDED),
            "a null table is refused");
+   require(!d12_rt_shader_table_valid(
+              &good, (enum d12_rt_table_kind)99),
+           "an unknown table kind is refused");
+}
+
+static void
+test_shader_record_addresses(void)
+{
+   const struct d12_rt_shader_table table = strided(0x40000, 160, 64);
+   uint64_t address = 0;
+
+   require(d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 0,
+                                        64, &address) &&
+              address == 0x40000,
+           "the first full record resolves");
+   require(d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 1,
+                                        64, &address) &&
+              address == 0x40040,
+           "a middle full record resolves");
+   require(d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 2,
+                                        32, &address) &&
+              address == 0x40080,
+           "a final identifier-only record resolves inside the range");
+   require(!d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 2,
+                                         64, &address),
+           "a final record extending beyond the range is refused");
+   require(!d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 1,
+                                         96, &address),
+           "a record larger than its stride is refused");
+
+   const struct d12_rt_shader_table alias = strided(0x50000, 64, 0);
+   require(d12_rt_shader_record_address(&alias, D12_RT_TABLE_STRIDED,
+                                        UINT64_MAX, 64, &address) &&
+              address == 0x50000,
+           "all indices of a zero-stride table resolve to one record");
+
+   const struct d12_rt_shader_table raygen = strided(0x60000, 48, 0);
+   require(d12_rt_shader_record_address(&raygen,
+                                        D12_RT_TABLE_RAY_GENERATION, 0, 48,
+                                        &address) &&
+              address == 0x60000,
+           "the sole ray-generation record resolves");
+   require(!d12_rt_shader_record_address(&raygen,
+                                         D12_RT_TABLE_RAY_GENERATION, 1, 48,
+                                         &address),
+           "a ray-generation record cannot be indexed past zero");
+   require(!d12_rt_shader_record_address(&raygen,
+                                         D12_RT_TABLE_RAY_GENERATION, 0, 64,
+                                         &address),
+           "a ray-generation record cannot exceed its range");
+
+   require(!d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 0,
+                                         16, &address),
+           "a record smaller than an identifier is refused");
+   require(!d12_rt_shader_record_address(&table, D12_RT_TABLE_STRIDED, 0,
+                                         64, NULL),
+           "resolving without an output address is refused");
+
+   const struct d12_rt_shader_table wrapping =
+      strided(UINT64_MAX - 63, 64, 0);
+   require(!d12_rt_shader_record_address(&wrapping, D12_RT_TABLE_STRIDED, 0,
+                                         64, &address),
+           "a table range that wraps cannot resolve a record");
 }
 
 static void
@@ -145,16 +219,20 @@ test_dispatch_rules(void)
    require(!d12_rt_dispatch_valid(&no_raygen),
            "a dispatch with no ray-generation record is refused");
 
-   /* Zero is legal only if it is zero in every dimension: a zero-area
-    * dispatch is a no-op, a partially zero one is a mistake. */
+   /* Any zero dimension makes the dispatch a no-op. */
    struct d12_rt_dispatch_rays empty = dispatch;
    empty.width = empty.height = empty.depth = 0;
    require(d12_rt_dispatch_valid(&empty), "a fully zero dispatch is legal");
 
    struct d12_rt_dispatch_rays partial = dispatch;
    partial.height = 0;
-   require(!d12_rt_dispatch_valid(&partial),
-           "a dispatch zero in only one dimension is refused");
+   require(d12_rt_dispatch_valid(&partial),
+           "any zero dispatch dimension makes a legal no-op");
+
+   partial.ray_generation = (struct d12_rt_shader_table){0};
+   partial.miss = strided(UINT64_MAX - 32, 128, 64);
+   require(d12_rt_dispatch_valid(&partial),
+           "a no-op dispatch does not access or require shader tables");
 
    /* The thread limit is a product, so three individually legal dimensions
     * can still exceed it. */
@@ -164,6 +242,10 @@ test_dispatch_rules(void)
    huge.depth = 2;
    require(!d12_rt_dispatch_valid(&huge),
            "a dispatch whose thread product exceeds the maximum is refused");
+
+   huge.width = huge.height = huge.depth = UINT32_MAX;
+   require(!d12_rt_dispatch_valid(&huge),
+           "a 96-bit dimension product is refused without wrapping");
 
    struct d12_rt_dispatch_rays at_limit = dispatch;
    at_limit.width = D12_RT_MAX_RAYGEN_THREADS;
@@ -408,6 +490,7 @@ main(void)
 {
    test_api_constants();
    test_shader_table_rules();
+   test_shader_record_addresses();
    test_dispatch_rules();
    test_build_flags();
    test_prebuild_and_allocation();
