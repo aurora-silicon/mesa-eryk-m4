@@ -47,10 +47,10 @@ The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
 `iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`),
-and canonical three-register u32 `bit_and`. The arithmetic and bitwise forms
-have exhaustive operand and every-bit rejection tests plus exact G15/G16/G17
-corpus replay; G15G stall placement remains a separate unsolved scheduler
-rule. This is not a general shader encoder. In particular,
+and canonical three-register u32 `bit_and` and `bit_or`. The arithmetic and
+bitwise forms have exhaustive operand and every-bit rejection tests plus exact
+G15/G16/G17 corpus replay; G15G stall placement remains a separate unsolved
+scheduler rule. This is not a general shader encoder. In particular,
 the generated AGX3
 disassemblers and hardware-RT detection do not make AGX3 code generation or
 device open supported.
@@ -112,7 +112,7 @@ command-list reset now restores the specified `{1,1,1,1}` default. This is
 AGX3 execution or DXR capability gate.
 
 The D3D12 compiler side has an **IV** fail-closed bridge for canonical
-three-register u32 `iadd` and `iand` into the shared AGX3b/AGX3c packer. It
+three-register u32 `iadd`, `iand`, and `ior` into the shared AGX3b/AGX3c packer. It
 replays the exact encoding witnesses but does not admit an AGX3 device:
 general instruction selection, scheduling, linking, and submission are still
 missing.
@@ -165,7 +165,7 @@ The current in-tree anchors are:
   alpha-factor mapping, inversion, default-state, and capability contracts.
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
-  D3D scalar `iadd`/`iand` mapping into exact AGX3b/AGX3c encodings.
+  D3D scalar `iadd`/`iand`/`ior` mapping into exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, and bounded BVH helpers.

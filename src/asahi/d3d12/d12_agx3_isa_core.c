@@ -42,6 +42,17 @@ d12_agx3_encode_binary_alu(
       return true;
    }
 
+   case D12_AGX3_BINARY_ALU_IOR_U32: {
+      struct agx3_encoded_bit_or_u32_reg_reg encoded;
+      if (!agx3_pack_bit_or_u32_reg_reg(encoding, dest, src0, src1,
+                                        &encoded))
+         return false;
+
+      memcpy(out->bytes, encoded.bytes, encoded.length);
+      out->length = encoded.length;
+      return true;
+   }
+
    default:
       return false;
    }
