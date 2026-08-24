@@ -127,6 +127,18 @@ done
 "$out/test_agx3_mem_core"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_falu_mod_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-falu-mod-core.c" \
+    -o "$out/test_agx3_falu_mod_core"
+"$out/test_agx3_falu_mod_core"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
     "$repo_root/src/asahi/lib/agx_vdm_state_core.c" \
     "$d12_dir/d12_agx3_vdm_core.c" \
