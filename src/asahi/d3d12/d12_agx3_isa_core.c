@@ -42,6 +42,9 @@ _Static_assert(AGX3_I32_TO_F32_REG_MAX_LENGTH ==
 _Static_assert(AGX3_U32_TO_F32_REG_MAX_LENGTH ==
                   D12_AGX3_U32_TO_F32_REG_MAX_LENGTH,
                "D3D AGX3 u32-to-f32 storage must match the canonical form");
+_Static_assert(AGX3_F32_TO_INT_RTZ_REG_LENGTH ==
+                  D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH,
+               "D3D AGX3 f32-to-int storage must match the canonical form");
 _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
                "D3D AGX3 yield storage must match the canonical form");
 _Static_assert(AGX3_END_LENGTH ==
@@ -881,6 +884,99 @@ d12_agx3_decode_u32_to_f32_reg(
           &decoded_src, &decoded_length) ||
        decoded_length != expected_length)
       return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   return true;
+}
+
+static bool
+d12_agx3_f32_to_int_rtz_mode_to_shared(
+   enum d12_agx3_f32_to_int_rtz_mode mode,
+   enum agx3_f32_to_int_rtz_mode *shared)
+{
+   switch (mode) {
+   case D12_AGX3_F32_TO_I32_RTZ:
+      *shared = AGX3_F32_TO_I32_RTZ;
+      return true;
+   case D12_AGX3_F32_TO_U32_RTZ:
+      *shared = AGX3_F32_TO_U32_RTZ;
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+d12_agx3_encode_f32_to_int_rtz_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   enum d12_agx3_f32_to_int_rtz_mode mode, uint16_t dest, uint16_t src,
+   struct d12_agx3_f32_to_int_rtz_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding target_encoding;
+   enum agx3_f32_to_int_rtz_mode shared_mode;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding ||
+       !d12_agx3_f32_to_int_rtz_mode_to_shared(mode, &shared_mode))
+      return false;
+
+   struct agx3_encoded_f32_to_int_rtz_reg encoded;
+   if (!agx3_pack_f32_to_int_rtz_reg(
+          encoding, shared_mode, dest, src, &encoded) ||
+       encoded.length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_f32_to_int_rtz_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size,
+   enum d12_agx3_f32_to_int_rtz_mode *mode, uint16_t *dest, uint16_t *src)
+{
+   if (mode)
+      *mode = D12_AGX3_F32_TO_I32_RTZ;
+   if (dest)
+      *dest = 0;
+   if (src)
+      *src = 0;
+
+   if (!instruction || !mode || !dest || !src ||
+       instruction_size != D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH)
+      return false;
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   enum agx3_f32_to_int_rtz_mode shared_mode;
+   uint16_t decoded_dest = 0, decoded_src = 0;
+   uint8_t decoded_length = 0;
+   if (!agx3_unpack_f32_to_int_rtz_reg(
+          encoding, instruction, instruction_size, &shared_mode,
+          &decoded_dest, &decoded_src, &decoded_length) ||
+       decoded_length != D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH)
+      return false;
+
+   switch (shared_mode) {
+   case AGX3_F32_TO_I32_RTZ:
+      *mode = D12_AGX3_F32_TO_I32_RTZ;
+      break;
+   case AGX3_F32_TO_U32_RTZ:
+      *mode = D12_AGX3_F32_TO_U32_RTZ;
+      break;
+   default:
+      return false;
+   }
 
    *dest = decoded_dest;
    *src = decoded_src;

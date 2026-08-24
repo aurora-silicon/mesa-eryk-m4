@@ -27,6 +27,7 @@ extern "C" {
 #define AGX3_FMAX_F32_REG_REG_MAX_LENGTH 14
 #define AGX3_I32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_U32_TO_F32_REG_MAX_LENGTH 10
+#define AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -98,6 +99,16 @@ struct agx3_encoded_i32_to_f32_reg {
 
 struct agx3_encoded_u32_to_f32_reg {
    uint8_t bytes[AGX3_U32_TO_F32_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+enum agx3_f32_to_int_rtz_mode {
+   AGX3_F32_TO_I32_RTZ = 0,
+   AGX3_F32_TO_U32_RTZ = 1,
+};
+
+struct agx3_encoded_f32_to_int_rtz_reg {
+   uint8_t bytes[AGX3_F32_TO_INT_RTZ_REG_LENGTH];
    uint8_t length;
 };
 
@@ -445,6 +456,31 @@ bool agx3_pack_u32_to_f32_reg(
 bool agx3_unpack_u32_to_f32_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the exact scalar f32-to-i32/u32 language-cast selections
+ * emitted for the pinned fptosi/fptoui sources.  Both are ten-byte
+ * flt2int.ep0 forms on AGX3b and AGX3c.  Direct f2i/f2u plus independent PC
+ * probes reproduce the fixed signed/unsigned selectors on G15G/S/D,
+ * G16P/G/S, G17P, and G17G/S.  P2f_ldexp and the compiler's division
+ * expansions independently correlate f2 with the integer destination and
+ * f16 with the float source across both table variants.
+ *
+ * The source casts establish round-toward-zero behavior for in-range values;
+ * PC_f2ir emits a separate f32rint before the same signed cast.  Other
+ * rounding selections, saturation, NaN/out-of-range behavior, source reuse/
+ * kill variants, alternate contexts, high registers, and lowering policy are
+ * not exposed.  Operands are even half-register indices in 0..126.  Chip
+ * gates belong to the caller.
+ */
+bool agx3_pack_f32_to_int_rtz_reg(
+   enum agx_isa_encoding encoding, enum agx3_f32_to_int_rtz_mode mode,
+   uint16_t dest, uint16_t src,
+   struct agx3_encoded_f32_to_int_rtz_reg *out);
+bool agx3_unpack_f32_to_int_rtz_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   enum agx3_f32_to_int_rtz_mode *mode, uint16_t *dest, uint16_t *src,
+   uint8_t *length);
 
 /*
  * Encode/decode the source-grounded three-register u32 `bit_and` form.

@@ -2379,6 +2379,263 @@ test_u32_to_f32_reg_rejection(void)
       &src, &length));
 }
 
+struct f32_to_int_rtz_reg_vector {
+   enum agx3_f32_to_int_rtz_mode mode;
+   uint16_t dest;
+   uint16_t src;
+   const char *agx3b;
+   const char *agx3c;
+};
+
+/* Zero rows are exact f2i/f2u and PC compiler witnesses.  The remaining rows
+ * are strict Apple-table compositions of those same RTZ selections. */
+static const struct f32_to_int_rtz_reg_vector f32_to_int_rtz_reg_vectors[] = {
+   {AGX3_F32_TO_I32_RTZ, 0,   0,
+    "270756000200b4480300", "2f00001a2200ae027001"},
+   {AGX3_F32_TO_I32_RTZ, 2,   0,
+    "270756020200b4480300", "3f00001a2200ae027001"},
+   {AGX3_F32_TO_I32_RTZ, 0,   2,
+    "270756000204b4480300", "2f02001a2200ae027001"},
+   {AGX3_F32_TO_I32_RTZ, 4,   10,
+    "270756040214b4480300", "2f02005a2200ae0a7001"},
+   {AGX3_F32_TO_I32_RTZ, 126, 126,
+    "2707567e02fcb4480300", "bf0280fa2280ae3a7101"},
+   {AGX3_F32_TO_U32_RTZ, 0,   0,
+    "270756000200b4080200", "2f00001a2200ae02b003"},
+   {AGX3_F32_TO_U32_RTZ, 2,   0,
+    "270756020200b4080200", "3f00001a2200ae02b003"},
+   {AGX3_F32_TO_U32_RTZ, 0,   2,
+    "270756000204b4080200", "2f02001a2200ae02b003"},
+   {AGX3_F32_TO_U32_RTZ, 4,   10,
+    "270756040214b4080200", "2f02005a2200ae0ab003"},
+   {AGX3_F32_TO_U32_RTZ, 126, 126,
+    "2707567e02fcb4080200", "bf0280fa2280ae3ab103"},
+};
+
+static void
+test_f32_to_int_rtz_reg(void)
+{
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B, AGX_ISA_ENCODING_AGX3C,
+   };
+   const enum agx3_f32_to_int_rtz_mode modes[] = {
+      AGX3_F32_TO_I32_RTZ, AGX3_F32_TO_U32_RTZ,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      for (unsigned i = 0;
+           i < sizeof(f32_to_int_rtz_reg_vectors) /
+                  sizeof(f32_to_int_rtz_reg_vectors[0]);
+           ++i) {
+         const struct f32_to_int_rtz_reg_vector *v =
+            &f32_to_int_rtz_reg_vectors[i];
+         const char *expected_text = e == 0 ? v->agx3b : v->agx3c;
+         uint8_t expected[AGX3_F32_TO_INT_RTZ_REG_LENGTH] = {0};
+         const unsigned expected_length =
+            parse_hex(expected_text, expected, sizeof(expected));
+         struct agx3_encoded_f32_to_int_rtz_reg packed, repacked;
+
+         CHECK(agx3_pack_f32_to_int_rtz_reg(
+            encodings[e], v->mode, v->dest, v->src, &packed));
+         CHECK(packed.length == AGX3_F32_TO_INT_RTZ_REG_LENGTH);
+         CHECK(packed.length == expected_length);
+         CHECK(memcmp(packed.bytes, expected, expected_length) == 0);
+
+         enum agx3_f32_to_int_rtz_mode mode = (enum agx3_f32_to_int_rtz_mode)99;
+         uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+         uint8_t length = 0;
+         CHECK(agx3_unpack_f32_to_int_rtz_reg(
+            encodings[e], expected, expected_length, &mode, &dest, &src,
+            &length));
+         CHECK(mode == v->mode);
+         CHECK(dest == v->dest);
+         CHECK(src == v->src);
+         CHECK(length == expected_length);
+         CHECK(agx3_pack_f32_to_int_rtz_reg(
+            encodings[e], mode, dest, src, &repacked));
+         CHECK(memcmp(repacked.bytes, expected, length) == 0);
+      }
+
+      for (unsigned m = 0; m < 2; ++m) {
+         for (uint16_t dest_in = 0; dest_in < 128; dest_in += 2) {
+            for (uint16_t src_in = 0; src_in < 128; src_in += 2) {
+               struct agx3_encoded_f32_to_int_rtz_reg packed, repacked;
+               enum agx3_f32_to_int_rtz_mode mode;
+               uint16_t dest, src;
+               uint8_t length;
+               CHECK(agx3_pack_f32_to_int_rtz_reg(
+                  encodings[e], modes[m], dest_in, src_in, &packed));
+               CHECK(agx3_unpack_f32_to_int_rtz_reg(
+                  encodings[e], packed.bytes, packed.length, &mode, &dest,
+                  &src, &length));
+               CHECK(mode == modes[m]);
+               CHECK(dest == dest_in);
+               CHECK(src == src_in);
+               CHECK(length == packed.length);
+               CHECK(agx3_pack_f32_to_int_rtz_reg(
+                  encodings[e], mode, dest, src, &repacked));
+               CHECK(memcmp(repacked.bytes, packed.bytes, length) == 0);
+            }
+         }
+      }
+   }
+}
+
+static void
+test_f32_to_int_rtz_reg_rejection(void)
+{
+   static const uint8_t masks[][AGX3_F32_TO_INT_RTZ_REG_LENGTH] = {
+      {0x00, 0x00, 0x00, 0x7e, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00},
+      {0x90, 0x02, 0x80, 0xe0, 0x00, 0x80, 0x00, 0x38, 0x01, 0x00},
+   };
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B, AGX_ISA_ENCODING_AGX3C,
+   };
+   const enum agx3_f32_to_int_rtz_mode modes[] = {
+      AGX3_F32_TO_I32_RTZ, AGX3_F32_TO_U32_RTZ,
+   };
+   const uint16_t states[][2] = {{0, 0}, {126, 126}};
+
+   for (unsigned e = 0; e < 2; ++e) {
+      for (unsigned m = 0; m < 2; ++m) {
+         for (unsigned state = 0; state < 2; ++state) {
+            struct agx3_encoded_f32_to_int_rtz_reg packed, repacked;
+            CHECK(agx3_pack_f32_to_int_rtz_reg(
+               encodings[e], modes[m], states[state][0], states[state][1],
+               &packed));
+            for (unsigned bit = 0; bit < packed.length * 8; ++bit) {
+               uint8_t malformed[AGX3_F32_TO_INT_RTZ_REG_LENGTH] = {0};
+               memcpy(malformed, packed.bytes, packed.length);
+               malformed[bit / 8] ^= 1u << (bit % 8);
+               enum agx3_f32_to_int_rtz_mode mode;
+               uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+               uint8_t length = 0;
+               const bool accepted = agx3_unpack_f32_to_int_rtz_reg(
+                  encodings[e], malformed, packed.length, &mode, &dest, &src,
+                  &length);
+               const bool is_operand =
+                  (masks[e][bit / 8] & (1u << (bit % 8))) != 0;
+               CHECK(accepted == is_operand);
+               if (accepted) {
+                  CHECK(mode == modes[m]);
+                  CHECK(agx3_pack_f32_to_int_rtz_reg(
+                     encodings[e], mode, dest, src, &repacked));
+                  CHECK(repacked.length == length);
+                  CHECK(memcmp(repacked.bytes, malformed, length) == 0);
+               }
+            }
+         }
+      }
+   }
+
+   struct agx3_encoded_f32_to_int_rtz_reg packed_b, packed_c;
+   CHECK(agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, AGX3_F32_TO_I32_RTZ, 0, 0, &packed_b));
+   CHECK(agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, AGX3_F32_TO_U32_RTZ, 0, 0, &packed_c));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX2, AGX3_F32_TO_I32_RTZ, 0, 0, &packed_b));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_UNKNOWN, AGX3_F32_TO_U32_RTZ, 0, 0, &packed_b));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      (enum agx_isa_encoding)99, AGX3_F32_TO_I32_RTZ, 0, 0, &packed_b));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, (enum agx3_f32_to_int_rtz_mode)-1, 0, 0,
+      &packed_b));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, (enum agx3_f32_to_int_rtz_mode)2, 0, 0,
+      &packed_c));
+   CHECK(!agx3_pack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, AGX3_F32_TO_I32_RTZ, 0, 0, NULL));
+
+   const uint16_t invalid_values[] = {1, 127, 128, 255, 256};
+   for (unsigned value = 0;
+        value < sizeof(invalid_values) / sizeof(invalid_values[0]); ++value) {
+      for (unsigned m = 0; m < 2; ++m) {
+         CHECK(!agx3_pack_f32_to_int_rtz_reg(
+            AGX_ISA_ENCODING_AGX3B, modes[m], invalid_values[value], 0,
+            &packed_b));
+         CHECK(!agx3_pack_f32_to_int_rtz_reg(
+            AGX_ISA_ENCODING_AGX3C, modes[m], 0, invalid_values[value],
+            &packed_c));
+      }
+   }
+
+   enum agx3_f32_to_int_rtz_mode mode;
+   uint16_t dest, src;
+   uint8_t length;
+   for (size_t available = 0; available < packed_b.length; ++available)
+      CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+         AGX_ISA_ENCODING_AGX3B, packed_b.bytes, available, &mode, &dest, &src,
+         &length));
+   for (size_t available = 0; available < packed_c.length; ++available)
+      CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+         AGX_ISA_ENCODING_AGX3C, packed_c.bytes, available, &mode, &dest, &src,
+         &length));
+
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX2, packed_b.bytes, packed_b.length, &mode, &dest,
+      &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, NULL, packed_c.length, &mode, &dest, &src,
+      &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, NULL, &dest,
+      &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &mode, NULL,
+      &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &mode, &dest,
+      NULL, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &mode, &dest,
+      &src, NULL));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_c.bytes, packed_c.length, &mode, &dest,
+      &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_b.bytes, packed_b.length, &mode, &dest,
+      &src, &length));
+
+   static const uint8_t signed_source_reuse_b[] = {
+      0x27, 0x07, 0x54, 0x00, 0x02, 0x00, 0xb4, 0x48, 0x03, 0x00,
+   };
+   static const uint8_t signed_source_reuse_c[] = {
+      0x27, 0x00, 0x00, 0x1a, 0x22, 0x00, 0xae, 0x02, 0x70, 0x01,
+   };
+   static const uint8_t unsigned_division_b[] = {
+      0x27, 0x07, 0x54, 0x0e, 0x03, 0x2c, 0x96, 0x08, 0x02, 0x00,
+   };
+   static const uint8_t unsigned_division_c[] = {
+      0x37, 0x02, 0x00, 0xba, 0x2a, 0x00, 0xae, 0x1a, 0x90, 0x03,
+   };
+   static const uint8_t i32_to_f32_b[] = {
+      0xa7, 0x07, 0x56, 0x00, 0x02, 0x00, 0xac, 0x60,
+   };
+   static const uint8_t i32_to_f32_c[] = {
+      0x2f, 0x00, 0x00, 0x02, 0x22, 0x80, 0xaf, 0x02, 0x68, 0x00,
+   };
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, signed_source_reuse_b,
+      sizeof(signed_source_reuse_b), &mode, &dest, &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, signed_source_reuse_c,
+      sizeof(signed_source_reuse_c), &mode, &dest, &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, unsigned_division_b,
+      sizeof(unsigned_division_b), &mode, &dest, &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, unsigned_division_c,
+      sizeof(unsigned_division_c), &mode, &dest, &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3B, i32_to_f32_b, sizeof(i32_to_f32_b), &mode,
+      &dest, &src, &length));
+   CHECK(!agx3_unpack_f32_to_int_rtz_reg(
+      AGX_ISA_ENCODING_AGX3C, i32_to_f32_c, sizeof(i32_to_f32_c), &mode,
+      &dest, &src, &length));
+}
+
 struct bit_and_reg_reg_vector {
    uint16_t dest;
    uint16_t src0;
@@ -5158,6 +5415,8 @@ main(void)
    test_i32_to_f32_reg_rejection();
    test_u32_to_f32_reg();
    test_u32_to_f32_reg_rejection();
+   test_f32_to_int_rtz_reg();
+   test_f32_to_int_rtz_reg_rejection();
    test_bit_and_u32_reg_reg();
    test_bit_and_u32_reg_reg_rejection();
    test_bit_or_u32_reg_reg();
