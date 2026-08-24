@@ -111,6 +111,12 @@ command-list reset now restores the specified `{1,1,1,1}` default. This is
 **RS** on admitted G13/G14 and **IV** on driver-gated G15-G17; it changes no
 AGX3 execution or DXR capability gate.
 
+The D3D12 compiler side has an **IV** fail-closed bridge for canonical
+three-register u32 `iadd` and `iand` into the shared AGX3b/AGX3c packer. It
+replays the exact encoding witnesses but does not admit an AGX3 device:
+general instruction selection, scheduling, linking, and submission are still
+missing.
+
 Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
@@ -157,6 +163,9 @@ The current in-tree anchors are:
 - [`d12_blend_core.h`](../../src/asahi/d3d12/d12_blend_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_blend_core_tests.c): Options13
   alpha-factor mapping, inversion, default-state, and capability contracts.
+- [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
+  [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
+  D3D scalar `iadd`/`iand` mapping into exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, and bounded BVH helpers.
