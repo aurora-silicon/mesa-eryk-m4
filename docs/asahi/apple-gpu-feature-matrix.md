@@ -256,13 +256,13 @@ feature exposure.
 | G15D | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G16P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL routed; submission unknown; no runtime bring-up |
 | G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/classic, recovery, kick route, and ring-publication preflight; no runtime bring-up |
-| G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — dual submission, recovery, kick route, SKSM fields, and ring-publication preflight; selector unknown |
-| G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — dual submission, recovery, kick route, SKSM fields, and ring-publication preflight; selector unknown |
-| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — dual/HAL200 power, kick/SKSM, and ring-publication preflight; selector unknown |
+| G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channel classes, recovery, kick/ring preflight; firmware ACK unknown |
+| G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channel classes, recovery, kick/ring preflight; firmware ACK unknown |
+| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
-| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300/SKSM power/boot, kick/SKSM, and ring-publication models; ownership closed |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300/SKSM PM/PIO/idle, kick/SKSM, and ring-publication models; ownership closed |
-| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300/SKSM boot, kick/SKSM, and ring-publication models; ownership closed |
+| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, kick/ring models; firmware ACK unknown |
+| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models; firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
 identities. The D3D12 driver and WDDM UMD continue to report
@@ -451,7 +451,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `067b08f012b9`
+The power/recovery and submission ledger through Linux commit `7231e03aae92`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -505,8 +505,8 @@ layout retains 24-byte entries and a 256-index ring with one reserved slot.
 Publication records slot selection, command encode, `dmb ish`, write-index
 reread, eight-bit increment/wrap, and write-index store in that order; cold
 initialization creates 12 rings on G15/G16 and 24 on G17. The stripped names
-of raw shared-data caching options, firmware consumer ownership, the dual-stack
-selector, acknowledgment, and the complete notification lifetime remain
+of raw shared-data caching options, firmware consumer ownership,
+acknowledgment, and the complete notification lifetime remain
 closed, so this is a bounded submission preflight rather than an executable
 DRM submission path.
 The classic firmware-facing table is now pinned independently on the same
@@ -524,9 +524,16 @@ bases, and per-priority object stride are respectively `0x800`,
 CFI to write before publishing the table, while the ScratchRAM layouts on
 G15S/C/D and G16G perform no host read/CFI stores through their trapping
 setters. The model computes class/priority routes without reading or modifying
-shared state. The firmware writer that advances/acknowledges the read index and
-the runtime selector between classic and SKSM submission remain unproved and
-explicitly false, so this still does not enable executable submission.
+shared state. The firmware writer that advances/acknowledges the read index
+remains unproved and explicitly false. The host channel factories do, however,
+close the former classic-versus-SKSM selection unknown: G16S/C and G17P
+directly allocate the G16 SKSM CL/3D/TA subclasses, while G17G and G17S/C
+directly allocate their exact `AGX::PI_300::G::A0` and
+`AGX::PI_300::X::A0` SKSM subclasses. All twelve pinned factory methods are
+branch-free and use object sizes `0x1d0/0x1d8/0x1e0` for CL/3D/TA. G17A
+remains ungrounded. Without the normal firmware acknowledgment writer and
+complete completion lifetime, this still does not enable executable
+submission.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
