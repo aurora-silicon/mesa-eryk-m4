@@ -2782,6 +2782,70 @@ test_update_node(void)
 }
 
 static void
+test_update_bvh_fixed_witness(void)
+{
+   static const uint8_t expected[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH] = {
+      /* barrier */
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00,
+      /* update_bvh */
+      0x27, 0x00, 0x21, 0x00, 0x22, 0x80, 0xac, 0x42,
+   };
+   struct agx3_encoded_update_bvh_fixed_witness packed;
+   uint8_t length = 0;
+
+   CHECK(agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3C,
+                                             &packed));
+   CHECK(packed.length == sizeof(expected));
+   CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+   CHECK(agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, expected, sizeof(expected), &length));
+   CHECK(length == sizeof(expected));
+
+   /* Every bit in this fixed witness is canonical. */
+   for (unsigned bit = 0; bit < sizeof(expected) * 8; ++bit) {
+      uint8_t malformed[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
+      memcpy(malformed, expected, sizeof(malformed));
+      malformed[bit / 8] ^= 1u << (bit % 8);
+      CHECK(!agx3_unpack_update_bvh_fixed_witness(
+         AGX_ISA_ENCODING_AGX3C, malformed, sizeof(malformed), &length));
+   }
+
+   /* All 0..13 byte truncations reject. */
+   for (size_t available = 0; available < sizeof(expected); ++available) {
+      CHECK(!agx3_unpack_update_bvh_fixed_witness(
+         AGX_ISA_ENCODING_AGX3C, expected, available, &length));
+   }
+
+   /* Like the other packers, decode consumes its exact prefix and reports the
+    * expansion length without rejecting unrelated following bytes. */
+   uint8_t appended[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH + 1];
+   memcpy(appended, expected, sizeof(expected));
+   appended[sizeof(expected)] = 0xff;
+   length = 0;
+   CHECK(agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, appended, sizeof(appended), &length));
+   CHECK(length == sizeof(expected));
+
+   CHECK(!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX2,
+                                              &packed));
+   CHECK(!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3B,
+                                              &packed));
+   CHECK(!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_UNKNOWN,
+                                              &packed));
+   CHECK(!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3C, NULL));
+   CHECK(!agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX2, expected, sizeof(expected), &length));
+   CHECK(!agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX3B, expected, sizeof(expected), &length));
+   CHECK(!agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_UNKNOWN, expected, sizeof(expected), &length));
+   CHECK(!agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, NULL, sizeof(expected), &length));
+   CHECK(!agx3_unpack_update_bvh_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, expected, sizeof(expected), NULL));
+}
+
+static void
 test_enable_all_threads(void)
 {
    static const uint8_t expected_b[] = {
@@ -2886,6 +2950,7 @@ main(void)
    test_end();
    test_enable_all_threads();
    test_update_node();
+   test_update_bvh_fixed_witness();
 
    printf("agx3 proven-subset pack: %u checks, %u failures\n", checks,
           failures);

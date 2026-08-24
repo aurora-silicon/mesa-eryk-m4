@@ -1734,3 +1734,41 @@ agx3_unpack_update_node(enum agx_isa_encoding encoding, const uint8_t *bytes,
    *length = canonical_length;
    return true;
 }
+
+static const uint8_t
+   update_bvh_fixed_witness_agx3c[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH] = {
+      /* barrier */
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00,
+      /* update_bvh */
+      0x27, 0x00, 0x21, 0x00, 0x22, 0x80, 0xac, 0x42,
+   };
+
+bool
+agx3_pack_update_bvh_fixed_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_update_bvh_fixed_witness *out)
+{
+   if (encoding != AGX_ISA_ENCODING_AGX3C || out == NULL)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, update_bvh_fixed_witness_agx3c,
+          sizeof(update_bvh_fixed_witness_agx3c));
+   out->length = sizeof(update_bvh_fixed_witness_agx3c);
+   return true;
+}
+
+bool
+agx3_unpack_update_bvh_fixed_witness(enum agx_isa_encoding encoding,
+                                     const uint8_t *bytes, size_t available,
+                                     uint8_t *length)
+{
+   if (encoding != AGX_ISA_ENCODING_AGX3C || bytes == NULL || length == NULL ||
+       available < sizeof(update_bvh_fixed_witness_agx3c) ||
+       memcmp(bytes, update_bvh_fixed_witness_agx3c,
+              sizeof(update_bvh_fixed_witness_agx3c)) != 0)
+      return false;
+
+   *length = sizeof(update_bvh_fixed_witness_agx3c);
+   return true;
+}

@@ -31,6 +31,7 @@ extern "C" {
 #define AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH 14
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH 14
 #define AGX3_END_LENGTH 4
 #define AGX3_ENABLE_ALL_THREADS_MAX_LENGTH 8
 #define AGX3_UPDATE_NODE_MAX_LENGTH 14
@@ -107,6 +108,11 @@ struct agx3_encoded_nop {
 
 struct agx3_encoded_threadgroup_barrier {
    uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_update_bvh_fixed_witness {
+   uint8_t bytes[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
    uint8_t length;
 };
 
@@ -478,6 +484,27 @@ bool agx3_pack_update_node(enum agx_isa_encoding encoding,
 bool agx3_unpack_update_node(enum agx_isa_encoding encoding,
                              const uint8_t *bytes, size_t available,
                              uint8_t *length);
+
+/*
+ * Encode/decode only the exact G17S/AGX3c compiler witness for the
+ * llvm.agx3.update.bvh expansion: a six-byte barrier followed by the eight-byte
+ * update_bvh operation.  An n=0..4 occurrence-count isolate reproduces this
+ * complete fourteen-byte sequence exactly n times.  The three n=1->2 through
+ * n=3->4 steps are clean insertions after the operand setup paid by n=1.
+ *
+ * The intrinsic takes arguments, but those arguments have not been correlated
+ * to machine fields.  The fixed-witness name is intentional: this is not a
+ * general operand encoder and makes no claim about traversal or update
+ * semantics.  This encoding-level API accepts the AGX3c tag but does not admit
+ * a device target: AGX3b is rejected, G17G/G17C remain unproven, and every
+ * noncanonical bit remains unsupported.
+ */
+bool agx3_pack_update_bvh_fixed_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_update_bvh_fixed_witness *out);
+bool agx3_unpack_update_bvh_fixed_witness(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint8_t *length);
 
 #ifdef __cplusplus
 }
