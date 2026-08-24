@@ -47,6 +47,7 @@ The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
 `iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`),
+canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
 `bit_not` (`inv`). The arithmetic and bitwise forms have exhaustive operand and
 every-bit rejection tests plus exact G15/G16/G17 corpus replay; G15G stall
@@ -73,10 +74,10 @@ device open supported.
 | G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/submission routed plus recovery-word validator; no runtime bring-up |
 | G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission routed; no runtime bring-up |
 | G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission routed; no runtime bring-up |
-| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL/dual submission plus recovery-word validator; no runtime bring-up |
+| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL/dual submission, recovery validator, and opaque HAL200 PM block; no runtime bring-up |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
-| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM plus bounded boot and recovery models; preflight closed |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — named PIO prefixes, six-op pre-idle model, and Fender idle poll validated; refuses before hardware ownership |
+| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM, opaque HAL300 PM block, and bounded boot/recovery models; preflight closed |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300 PM block, named PIO prefixes, six-op pre-idle model, and Fender idle poll validated; refuses before hardware ownership |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM plus bounded boot models; preflight closed |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -122,9 +123,9 @@ command-list reset now restores the specified `{1,1,1,1}` default. This is
 AGX3 execution or DXR capability gate.
 
 The D3D12 compiler side has an **IV** fail-closed bridge for canonical
-three-register u32 `iadd`, `iand`, `ior`, and `ixor`, plus unary u32 `inot`, into
-the shared AGX3b/AGX3c packer. It replays the exact encoding witnesses but does
-not admit an AGX3 device:
+three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
+`inot`, into the shared AGX3b/AGX3c packer. It replays the exact encoding
+witnesses but does not admit an AGX3 device:
 general instruction selection, scheduling, linking, and submission are still
 missing.
 
@@ -132,13 +133,16 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `f1319e73aed3` additionally
+The power/recovery ledger through Linux commit `cb17a42a901c` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
 state/synchronization model, and the Fender idle-poll predicate. It does not
 perform MMIO or firmware writes: the first two types' physical mappings,
 opaque helper ownership, and G17G/G17P firmware parity remain fail-closed.
+It also records the exact opaque six-u64 PM blocks for pinned G17P/HAL200 and
+G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
+G17A/G17C.
 
 ## Evidence and update policy
 

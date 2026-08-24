@@ -23,6 +23,7 @@ extern "C" {
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_NOT_U32_REG_MAX_LENGTH 10
+#define AGX3_ISUB_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -61,6 +62,11 @@ struct agx3_encoded_bit_xor_u32_reg_reg {
 
 struct agx3_encoded_bit_not_u32_reg {
    uint8_t bytes[AGX3_BIT_NOT_U32_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_isub_u32_reg_reg {
+   uint8_t bytes[AGX3_ISUB_U32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -242,6 +248,26 @@ bool agx3_pack_bit_not_u32_reg(
 bool agx3_unpack_bit_not_u32_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded three-register u32 subtraction form,
+ * named `isub` on AGX3b and `isub32` on AGX3c by Apple's tables.  The
+ * forced-live two-load/three-store replay independently correlates f2 with
+ * destination r3, f16 with minuend r2, and f31 with subtrahend r0 on every
+ * available G15/G16/G17 compiler target.  Q_isub_n1..n4 independently
+ * reproduces the operation on G15G, G16G, and G17S.
+ *
+ * All arguments are even half-register indices.  Apple's AGX3b encoding
+ * point is limited to r0..r95; AGX3c is bounded here to the modeled
+ * r0..r127 file, excluding its unprobed ninth register bits.  Other anonymous
+ * selections and G15G's standalone scheduling nops remain unsupported.
+ */
+bool agx3_pack_isub_u32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_isub_u32_reg_reg *out);
+bool agx3_unpack_isub_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
 /*
  * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is
