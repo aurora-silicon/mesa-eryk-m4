@@ -60,16 +60,16 @@ main(void)
       {"G13 (M1/M2 class)", 7, 24, 64, 48},
       {"G14 (M2 class)", 8, 24, 64, 48},
       {"G15G (M3)", 9, 32, 72, 64},
-      {"G15S (A17 Pro)", 9, 32, 72, 64},
-      {"G15C/G15D (M3 Pro/Max)", 9, 32, 72, 64},
-      {"G16P (A18)", 9, 32, 72, 64},
+      {"G15S (M3 Pro)", 9, 32, 72, 64},
+      {"G15C/G15D (M3 Max/Ultra)", 9, 32, 72, 64},
+      {"G16P (phone mapping ungrounded)", 9, 32, 72, 64},
       {"G16G (M4)", 9, 32, 72, 64},
-      {"G16S (A18 Pro)", 9, 32, 72, 64},
-      {"G16C (M4 Pro/Max)", 9, 32, 72, 64},
-      {"G17P/G17A", 9, 32, 72, 64},
+      {"G16S (M4 Pro)", 9, 32, 72, 64},
+      {"G16C (M4 Max)", 9, 32, 72, 64},
+      {"G17P (A18 Pro) / G17A", 9, 32, 72, 64},
       {"G17G (M5)", 10, 32, 72, 64},
-      {"G17S", 10, 32, 72, 64},
-      {"G17C (M5 Pro/Max)", 10, 32, 72, 64},
+      {"G17S (M5 Pro)", 10, 32, 72, 64},
+      {"G17C (M5 Max)", 10, 32, 72, 64},
    };
 
    for (unsigned i = 0; i < sizeof(matrix) / sizeof(matrix[0]); ++i) {
@@ -169,6 +169,66 @@ main(void)
    assert(!hk_pack_native_texture(10, &native_packed, &semantic));
    for (unsigned i = 0; i < sizeof(native_packed); ++i)
       assert(((const uint8_t *)&native_packed)[i] == 0);
+
+   struct AGX_PBE pbe = {
+      AGX_PBE_header,
+      .dimension = AGX_TEXTURE_DIMENSION_2D,
+      .layout = AGX_LAYOUT_GPU,
+      .channels = AGX_CHANNELS_R8G8B8A8,
+      .type = AGX_TEXTURE_TYPE_UNORM,
+      .swizzle_r = AGX_CHANNEL_R,
+      .swizzle_g = AGX_CHANNEL_G,
+      .swizzle_b = AGX_CHANNEL_B,
+      .swizzle_a = AGX_CHANNEL_A,
+      .width = 256,
+      .height = 128,
+      .buffer = 0x80000,
+      .compressed = true,
+      .extended = true,
+      .acceleration_buffer = 0xa0000,
+   };
+   struct hk_native_pbe_descriptor native_pbe;
+
+   struct agx_pbe_packed legacy_pbe;
+   AGX_PBE_pack(legacy_pbe.opaque, &pbe);
+   assert(hk_pack_native_pbe(8, &native_pbe, &pbe));
+   assert(memcmp(&legacy_pbe, &native_pbe, sizeof(legacy_pbe)) == 0);
+   for (unsigned i = sizeof(legacy_pbe); i < sizeof(native_pbe); ++i)
+      assert(((const uint8_t *)&native_pbe)[i] == 0);
+
+   /* This is the paired live AGXG17XFamilyTexture PBE word.  Packing the
+    * hardware descriptor does not open Honeykrisp's software-addressing gate.
+    */
+   static const uint8_t m5_pbe[32] = {
+      0x22, 0x0a, 0xe4, 0xff, 0x80, 0x3f, 0x00, 0x20,
+      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x80,
+      0x00, 0xa0, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   pbe.buffer = 0x10000080000ull;
+   pbe.acceleration_buffer = 0x100000a0000ull;
+   assert(hk_pack_native_pbe(10, &native_pbe, &pbe));
+   assert(memcmp(&native_pbe, m5_pbe, sizeof(m5_pbe)) == 0);
+   assert(!hk_native_pbe_supported(10));
+
+   struct AGX_PBE_GEN9 unpacked9 = {0};
+   pbe.width = 16384;
+   pbe.height = 0x2345;
+   pbe.level = 3;
+   pbe.levels = 7;
+   pbe.unk_52 = true;
+   assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
+   assert(AGX_PBE_GEN9_unpack(NULL, (const uint8_t *)native_pbe.opaque,
+                              &unpacked9));
+   assert(unpacked9.width == pbe.width && unpacked9.height == pbe.height);
+   assert(unpacked9.level == 3 && unpacked9.levels == 7);
+   assert(unpacked9.unk_mipmapped && unpacked9.extended && unpacked9.unk_52);
+
+   memset(&native_pbe, 0xff, sizeof(native_pbe));
+   pbe.buffer |= 1;
+   assert(!hk_pack_native_pbe(9, &native_pbe, &pbe));
+   assert(memcmp(&native_pbe, &(struct hk_native_pbe_descriptor){0},
+                 sizeof(native_pbe)) == 0);
 
    puts("honeykrisp native descriptor geometry/policy: passed");
    return 0;

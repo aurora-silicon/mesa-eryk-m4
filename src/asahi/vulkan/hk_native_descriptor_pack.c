@@ -137,6 +137,97 @@ hk_pack_native_texture(unsigned generation,
 }
 
 bool
+hk_pack_native_pbe(unsigned generation,
+                   struct hk_native_pbe_descriptor *out,
+                   const struct AGX_PBE *legacy)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!legacy || !hk_pbe_descriptor_size(generation))
+      return false;
+
+   if (hk_descriptor_generation_is_agx2(generation)) {
+      AGX_PBE_pack(out->opaque, legacy);
+      return true;
+   }
+
+   if (!hk_descriptor_generation_is_agx3(generation) ||
+       (legacy->buffer & 0xf) || legacy->buffer >> 48 ||
+       (legacy->compressed &&
+        ((legacy->acceleration_buffer & 0xf) ||
+         legacy->acceleration_buffer >> 48)))
+      return false;
+
+   const bool linear = legacy->layout == AGX_LAYOUT_LINEAR;
+   const bool has_levels = !linear &&
+                           (legacy->level != 0 || legacy->levels > 1);
+   const bool extended = legacy->extended || has_levels;
+
+#define HK_INIT_AGX3_PBE(cfg_)                                                \
+   do {                                                                        \
+      (cfg_).dimension = legacy->dimension;                                    \
+      (cfg_).layout = legacy->layout;                                          \
+      (cfg_).channels = legacy->channels;                                      \
+      (cfg_).type = legacy->type;                                              \
+      (cfg_).swizzle_r = legacy->swizzle_r;                                    \
+      (cfg_).swizzle_g = legacy->swizzle_g;                                    \
+      (cfg_).swizzle_b = legacy->swizzle_b;                                    \
+      (cfg_).swizzle_a = legacy->swizzle_a;                                    \
+      (cfg_).width = legacy->width;                                            \
+      (cfg_).height = legacy->height;                                          \
+      (cfg_).samples = legacy->samples;                                        \
+      (cfg_).unk_mipmapped = legacy->unk_mipmapped || has_levels;              \
+      (cfg_).compressed = legacy->compressed;                                  \
+      (cfg_).image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL;        \
+      (cfg_).image_mode = legacy->mode;                                        \
+      (cfg_).buffer = legacy->buffer;                                          \
+      (cfg_).stride = linear ? legacy->stride : 0;                             \
+      (cfg_).layers = linear ? 1 : legacy->layers;                             \
+      (cfg_).page_aligned_layers = legacy->page_aligned_layers;                \
+      (cfg_).gamma = legacy->srgb;                                             \
+      (cfg_).extended = extended;                                              \
+      (cfg_).acceleration_buffer =                                             \
+         legacy->compressed && legacy->extended                                \
+            ? legacy->acceleration_buffer : 0;                                 \
+      (cfg_).depth_linear = linear && legacy->extended                         \
+                               ? legacy->depth_linear : 1;                     \
+      (cfg_).layer_stride_linear = linear && legacy->extended                  \
+                                      ? legacy->layer_stride_linear : 0;       \
+      (cfg_).level = linear ? 0 : legacy->level;                               \
+      (cfg_).levels = linear ? 1 : legacy->levels;                             \
+   } while (0)
+
+   if (generation == 9) {
+      if (!legacy->width || legacy->width > 16384 || !legacy->height ||
+          legacy->height > 16384)
+         return false;
+
+      struct AGX_PBE_GEN9 cfg = {AGX_PBE_GEN9_header};
+      HK_INIT_AGX3_PBE(cfg);
+      cfg.unk_52 = legacy->unk_52;
+      AGX_PBE_GEN9_pack(out->opaque, &cfg);
+      return true;
+   }
+
+   if (generation == 10) {
+      if (!legacy->width || legacy->width > 32768 || !legacy->height ||
+          legacy->height > 32768)
+         return false;
+
+      struct AGX_PBE_GEN10 cfg = {AGX_PBE_GEN10_header};
+      HK_INIT_AGX3_PBE(cfg);
+      cfg.unk_54 = legacy->unk_52;
+      AGX_PBE_GEN10_pack(out->opaque, &cfg);
+      return true;
+   }
+
+#undef HK_INIT_AGX3_PBE
+   return false;
+}
+
+bool
 hk_set_null_native_texture(unsigned generation,
                            struct hk_native_texture_descriptor *out)
 {

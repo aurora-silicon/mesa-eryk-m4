@@ -76,6 +76,11 @@ identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
+Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
+including a byte-exact M5 live descriptor. Writable-image and EOT use stays
+**FC** because libagx still decodes the AGX2-only software-addressing sideband;
+the matrix's PBE gate refers to that complete execution contract.
+
 Across the table, the public D3D12 command-list path implements
 `DiscardResource`: it is **RS** on admitted G13/G14 devices and **IV** on the
 driver-gated G15-G17 identities. Accepted calls conservatively retain resource
@@ -109,7 +114,8 @@ The current in-tree anchors are:
 - [`hk_native_descriptor.h`](../../src/asahi/vulkan/hk_native_descriptor.h),
   its [packing helper](../../src/asahi/vulkan/hk_native_descriptor_pack.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-descriptor.c):
-  generation-sized Honeykrisp image records and fail-closed AGX3 policy.
+  generation-sized Honeykrisp image records, native Gen9/10 PBE hardware
+  words, and the fail-closed AGX3 software-sideband policy.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact

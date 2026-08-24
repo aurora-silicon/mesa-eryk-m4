@@ -20,6 +20,15 @@ bool hk_pack_native_texture(unsigned generation,
                             struct hk_native_texture_descriptor *out,
                             const struct AGX_TEXTURE *legacy);
 
+/* Pack only the native hardware PBE word.  Gen9/10 callers must still keep
+ * writable-image execution gated until libagx's generation-specific software
+ * addressing sideband is recovered; a correct hardware word is necessary but
+ * not sufficient for that path.
+ */
+bool hk_pack_native_pbe(unsigned generation,
+                        struct hk_native_pbe_descriptor *out,
+                        const struct AGX_PBE *legacy);
+
 bool hk_set_null_native_texture(unsigned generation,
                                 struct hk_native_texture_descriptor *out);
 
