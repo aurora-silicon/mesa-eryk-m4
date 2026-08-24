@@ -57,13 +57,15 @@ canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
 subset also covers u32 logical variable shift-right (`srl`, Mesa `lsr`) and
 the low-u32 register multiply selected by an implicit-zero addend in AGX3b
 `imadd` and AGX3c `imadd32`, plus the byte-distinct four-register low-u32
-multiply-add selection with a real register addend. The arithmetic, bitwise,
-shift, multiply, and multiply-add forms have exhaustive operand and every-bit
-rejection tests plus exact G15/G16/G17 corpus replay; the separate shift-count
-mask and G15G stall placement remain an unsolved scheduler rule. This is not a
-general shader encoder. In particular, the generated AGX3 disassemblers and
-hardware-RT detection do not make AGX3 code generation or device open
-supported.
+multiply-add selection with a real register addend. It also packs the exact
+six-byte canonical f32 `add` emitted by the native compiler, restricted to
+even half-register indices 0--254 on the nine witnessed AGX3b/AGX3c targets.
+The arithmetic, bitwise, shift, multiply, multiply-add, and float-add forms
+have exhaustive operand and every-bit rejection tests plus exact G15/G16/G17
+corpus replay; the separate shift-count mask and G15G stall placement remain
+an unsolved scheduler rule. This is not a general shader encoder. In
+particular, the generated AGX3 disassemblers and hardware-RT detection do not
+make AGX3 code generation or device open supported.
 
 The `yield` form is grounded by controlled source ladders and independent
 runtime-value probes on G15G/G15S/G15D, G16P/G16G/G16S, G17P, and G17G/G17S.
@@ -216,8 +218,12 @@ runtime decoder independently consumes those same forms. Gen10 removes
 `getExtraTextureMetadata`: all ordinary and atomic image payloads were zero in
 a broad 963-line M5 Pro capture, while a 4,096-texel buffer produced low word
 `0x1000`. Mode 2's direct i64 at texture+0x288, construction of a nonzero
-companion slot, and executed G15/G16 nonzero atomic payloads remain **FC**, so
-Honeykrisp still has no safe total packer and does not expose writes or atomics.
+companion slot, and executed G15/G16 nonzero atomic payloads remain **FC**. A
+shared, tested 8-byte side-entry helper now packs and decodes the proven
+subset: Gen9/Gen10 buffers, zero-valued ordinary Gen10 images, and the bounded
+Gen9 atomic formula. It rejects mode 2, unknown cases, misalignment, and
+overflow, so Honeykrisp still has no safe total packer and does not expose
+writes or atomics.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in
@@ -267,8 +273,8 @@ three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
 `inot`, register-register `ishl`, and signed register-register `iashr`, into the
 shared AGX3b/AGX3c packer. It also maps unsigned register-register `ilshr` and
 the canonical low-u32 `imul` and four-register `imadd` selections, plus the
-no-kill, scheduler-neutral i16-register `yield` form on exactly the nine
-compiler-witnessed targets. The
+canonical compact f32 `add` and the no-kill, scheduler-neutral i16-register
+`yield` form on exactly the nine compiler-witnessed targets. The
 multiply bridges accept only the byte-distinct implicit-zero and real-register
 addend forms on the nine compiler-witnessed targets; alternate low selections,
 high products, G17C, and other unwitnessed target selections remain closed.
@@ -282,7 +288,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `0ab30095f3bb` additionally
+The power/recovery ledger through Linux commit `1fd3ed26d2e9` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -305,6 +311,13 @@ and slot `0x24` at `0x2100d40000`; every mapping is `0x4000` bytes. Its complete
 installs that absolute binding and reasserts the ADT-derived slot-0 address.
 Linux ownership, scheduler slow-path semantics, and executable programming
 remain fail-closed.
+The pinned G17P/G17G/G17S host-management routes also disprove treating the
+firmware's type-`0xb` callback completion as the host type-7 IOP-status power
+ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
+stores remote state and wakes the distinct management-endpoint field at
+`+0x108`. Because the firmware loads the callback destination from an object
+field whose endpoint identity is still unproven, the end-to-end linkage and
+all executable recovery/power gates remain **FC**.
 It also records the exact opaque six-u64 PM blocks for pinned G17P/HAL200 and
 G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
@@ -332,6 +345,10 @@ The current in-tree anchors are:
   [`AGX3c.xml`](../../src/asahi/isa/AGX3c.xml), and
   [`test-agx3-pack.c`](../../src/asahi/compiler/test/test-agx3-pack.c): AGX3
   decode tables and the bounded pack subset.
+- [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
+  and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
+  exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,
+  fail-closed packing subset.
 - [`d12_native_descriptor_core.h`](../../src/asahi/d3d12/d12_native_descriptor_core.h)
   and its
   [host tests](../../src/asahi/d3d12/tests/d12_native_descriptor_core_tests.c):
@@ -361,8 +378,8 @@ The current in-tree anchors are:
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
   D3D scalar `iadd`, `isub`, `iand`, `ior`, `ixor`, `inot`, `ishl`, `iashr`,
-  `ilshr`, `imul`, and four-register `imadd` mapping into exact AGX3b/AGX3c
-  encodings.
+  `ilshr`, `imul`, four-register `imadd`, and compact f32 `add` mapping into
+  exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
