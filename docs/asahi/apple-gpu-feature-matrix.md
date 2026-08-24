@@ -217,6 +217,14 @@ five record kinds and the fail-closed identity/length boundary. This does not
 connect the records to `hk_cmd_buffer`, change AGX3 device admission, or expose
 any Vulkan feature.
 
+Honeykrisp also validates the bounded viewport-only PPP payload through the
+same shared target-aware decoder on those eleven identities. Its bridge checks
+all 1--16 viewport counts, exact shared-byte round trips, the genuine
+one-viewport cross-generation identity, larger cross-generation rejection, and
+malformed identity/length/header boundaries. It likewise remains disconnected
+from `hk_cmd_buffer`, live PPP allocation/emission, device admission, and Vulkan
+feature exposure.
+
 ## Mesa API and kernel relationship
 
 | Mesa identity | Gallium / OpenGL | Honeykrisp / Vulkan | D3D12 AGX / WDDM UMD | DXR | Linux DRM relationship |
@@ -553,6 +561,11 @@ The current in-tree anchors are:
 - [`hk_agx3_vdm_decode.h`](../../src/asahi/vulkan/hk_agx3_vdm_decode.h) and its
   [focused test](../../src/asahi/vulkan/tests/test-hk-agx3-vdm-decode.c):
   Honeykrisp's fail-closed bridge to the shared grounded VDM record decoder.
+- [`hk_agx3_ppp_viewport_payload.h`](../../src/asahi/vulkan/hk_agx3_ppp_viewport_payload.h)
+  and its
+  [focused test](../../src/asahi/vulkan/tests/test-hk-agx3-ppp-viewport-payload.c):
+  Honeykrisp's validation-only bridge to the shared bounded PPP viewport
+  decoder.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact
