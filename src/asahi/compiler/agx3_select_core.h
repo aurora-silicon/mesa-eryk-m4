@@ -46,6 +46,7 @@ enum agx3_sel_op {
    AGX3_SEL_OP_IADD,      /* IR iadd (u32), shift == 0 */
    AGX3_SEL_OP_IMAD,      /* IR imad (u32), shift == 0 */
    AGX3_SEL_OP_ASR,       /* IR asr (i32) */
+   AGX3_SEL_OP_BITOP,     /* IR bitop; truth_table selects and/or/xor/inv */
 };
 
 /* A normalized source operand. `reg` is a 16-bit half-register index, the same
@@ -70,9 +71,19 @@ struct agx3_sel_instr {
    uint8_t dest_size; /* AGX size */
    struct agx3_sel_src src[3];
    uint32_t imm;      /* mov_imm immediate */
+   uint32_t truth_table; /* bitop 4-bit truth table (UTIL_LUT2 convention) */
    uint8_t shift;     /* iadd / imad shift; milestone one requires 0 */
    bool saturate;
 };
+
+/* bitop truth tables, computed the same way Mesa does (UTIL_LUT2 with a=0xAA,
+ * b=0xCC, masked to the low nibble). Milestone one encodes exactly these four;
+ * every other truth table -- nand, nor, xnor, and-not, or-not -- fails closed
+ * because Apple's inverting/complement bitops are not yet mapped. */
+#define AGX3_SEL_TT_AND 0x8u
+#define AGX3_SEL_TT_OR  0xEu
+#define AGX3_SEL_TT_XOR 0x6u
+#define AGX3_SEL_TT_NOT 0x5u /* ~a, independent of b */
 
 /* AGX size code for a 32-bit value; the only width milestone one accepts. */
 #define AGX3_SEL_SIZE_32 1u

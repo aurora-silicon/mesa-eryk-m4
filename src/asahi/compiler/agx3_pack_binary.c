@@ -51,6 +51,8 @@ agx3_map_opcode(unsigned op)
       return AGX3_SEL_OP_IMAD;
    case AGX_OPCODE_ASR:
       return AGX3_SEL_OP_ASR;
+   case AGX_OPCODE_BITOP:
+      return AGX3_SEL_OP_BITOP;
    default:
       return AGX3_SEL_OP_UNSUPPORTED;
    }
@@ -81,6 +83,7 @@ agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
    S->saturate = I->saturate;
    S->shift = I->shift;
    S->imm = (uint32_t)I->imm;
+   S->truth_table = I->truth_table;
 
    if (I->nr_dests >= 1 && I->dest[0].type != AGX_INDEX_NULL) {
       S->has_dest = true;

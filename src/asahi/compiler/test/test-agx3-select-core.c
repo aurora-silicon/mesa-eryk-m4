@@ -152,6 +152,38 @@ test_matches_hand_packers(void)
                I.src[2] = reg32(cc);
                expect_bytes(enc, &I, imad.bytes, imad.length);
             }
+
+            /* bitop and/or/xor by truth table, byte-exact against the bitwise
+             * packers. */
+            struct agx3_encoded_bit_and_u32_reg_reg band;
+            if (agx3_pack_bit_and_u32_reg_reg(enc, d, a, bb, &band)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, d, a, bb);
+               I.truth_table = AGX3_SEL_TT_AND;
+               expect_bytes(enc, &I, band.bytes, band.length);
+            }
+            struct agx3_encoded_bit_or_u32_reg_reg bor;
+            if (agx3_pack_bit_or_u32_reg_reg(enc, d, a, bb, &bor)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, d, a, bb);
+               I.truth_table = AGX3_SEL_TT_OR;
+               expect_bytes(enc, &I, bor.bytes, bor.length);
+            }
+            struct agx3_encoded_bit_xor_u32_reg_reg bxor;
+            if (agx3_pack_bit_xor_u32_reg_reg(enc, d, a, bb, &bxor)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, d, a, bb);
+               I.truth_table = AGX3_SEL_TT_XOR;
+               expect_bytes(enc, &I, bxor.bytes, bxor.length);
+            }
+            /* NOT is unary; the second source is ignored, and its truth table
+             * depends only on the first operand. */
+            struct agx3_encoded_bit_not_u32_reg bnot;
+            if (agx3_pack_bit_not_u32_reg(enc, d, a, &bnot)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, d, a, bb);
+               I.truth_table = AGX3_SEL_TT_NOT;
+               expect_bytes(enc, &I, bnot.bytes, bnot.length);
+               /* Even with a non-register second source it still encodes. */
+               I.src[1].is_reg = false;
+               expect_bytes(enc, &I, bnot.bytes, bnot.length);
+            }
          }
       }
    }
@@ -211,6 +243,15 @@ test_fails_closed(void)
    {
       struct agx3_sel_instr I = binop(AGX3_SEL_OP_IADD, 0, 2, 4);
       I.shift = 1;
+      expect_refused(enc, &I);
+   }
+
+   /* An unmapped bitop truth table (nand = 0x7) fails closed. */
+   {
+      struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, 0, 2, 4);
+      I.truth_table = 0x7; /* nand */
+      expect_refused(enc, &I);
+      I.truth_table = 0xA; /* move-as-bitop, not mapped */
       expect_refused(enc, &I);
    }
 
