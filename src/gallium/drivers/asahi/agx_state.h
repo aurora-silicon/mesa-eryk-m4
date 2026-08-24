@@ -33,6 +33,7 @@
 #include "util/u_range.h"
 #include "agx_bg_eot.h"
 #include "agx_helpers.h"
+#include "agx_native_descriptor.h"
 #include "agx_nir_texture.h"
 
 #ifdef __GLIBC__
@@ -858,7 +859,7 @@ struct agx_sampler_view {
    enum pipe_format format;
 
    /* Prepared descriptor */
-   struct agx_texture_packed desc;
+   struct agx_gallium_texture_descriptor desc;
 };
 
 struct agx_screen {
@@ -1006,7 +1007,8 @@ void agx_set_ssbo_uniforms(struct agx_batch *batch, mesa_shader_stage stage);
 bool agx_nir_lower_point_size(nir_shader *nir, bool insert_write);
 
 bool agx_nir_lower_sysvals(nir_shader *shader, mesa_shader_stage desc_stage,
-                           bool lower_draw_params);
+                           bool lower_draw_params,
+                           unsigned texture_descriptor_size);
 
 bool agx_nir_layout_uniforms(nir_shader *shader,
                              struct agx_compiled_shader *compiled,

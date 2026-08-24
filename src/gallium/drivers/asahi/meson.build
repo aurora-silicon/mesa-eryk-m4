@@ -11,11 +11,28 @@ files_asahi = files(
   'agx_nir_lower_sysvals.c',
   'agx_nir_lower_bindings.c',
   'agx_nir_lower_point_size.c',
+  'agx_native_descriptor.c',
   'agx_query.c',
   'agx_state.c',
   'agx_streamout.c',
   'agx_uniforms.c',
 )
+
+if with_tests
+  test(
+    'asahi-native-descriptor',
+    executable(
+      'asahi-native-descriptor',
+      files(
+        'agx_native_descriptor.c',
+        'tests/test-agx-native-descriptor.c',
+      ),
+      include_directories : [inc_src, inc_asahi],
+      dependencies : [idep_agx_pack, idep_mesautil],
+    ),
+    suite : ['asahi'],
+  )
+endif
 
 libasahi = static_library(
   'asahi',

@@ -635,7 +635,23 @@ target_is_cube(enum pipe_texture_target target)
 }
 
 static void
-agx_pack_texture(void *out, struct agx_resource *rsrc,
+agx_native_descriptor_rejected(struct agx_device *dev, const char *operation)
+{
+   mesa_loge("asahi: %s has no proven native descriptor encoding on %s",
+             operation, agx_chip_name(dev->chip));
+
+   /* Every recognised AGX3 identity remains behind the device-open gate.  If
+    * this fires, stop before constructing or submitting a command stream; a
+    * zero descriptor is not a valid substitute for rejected hardware state.
+    */
+   assert(!agx_chip_driver_supported(dev->chip));
+   UNREACHABLE("native descriptor encoding rejected");
+}
+
+static bool
+agx_pack_texture(enum agx_descriptor_generation descriptor_generation,
+                 struct agx_gallium_texture_descriptor *out,
+                 struct agx_resource *rsrc,
                  enum pipe_format format /* override */,
                  const struct pipe_sampler_view *state)
 {
@@ -672,8 +688,12 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
    unsigned first_layer =
       (state->target == PIPE_BUFFER) ? 0 : state->u.tex.first_layer;
 
-   /* Pack the descriptor into GPU memory */
-   agx_pack(out, TEXTURE, cfg) {
+   /* First construct generation-independent semantics.  The native packer
+    * selects Gen7/8, Gen9, or Gen10 without allowing a legacy C type to choose
+    * the heap stride.
+    */
+   struct AGX_TEXTURE cfg = {AGX_TEXTURE_header};
+   {
       cfg.dimension = agx_translate_tex_dim(state->target,
                                             util_res_sample_count(&rsrc->base));
       cfg.layout = agx_translate_layout(rsrc->layout.tiling);
@@ -754,6 +774,8 @@ agx_pack_texture(void *out, struct agx_resource *rsrc,
          cfg.page_aligned_layers = rsrc->layout.page_aligned_layers;
       }
    }
+
+   return agx_gallium_pack_native_texture(descriptor_generation, out, &cfg);
 }
 
 static struct pipe_sampler_view *
@@ -1127,11 +1149,26 @@ target_is_array(enum pipe_texture_target target)
    }
 }
 
-static void
-agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
+static bool
+agx_batch_upload_pbe(struct agx_batch *batch,
+                     struct agx_gallium_pbe_descriptor *out,
                      struct pipe_image_view *view, bool block_access,
                      bool arrays_as_2d, bool force_2d_array, bool emrt)
 {
+   struct agx_device *dev = agx_device(batch->ctx->base.screen);
+   const enum agx_descriptor_generation descriptor_generation =
+      agx_gallium_descriptor_generation(dev->chip);
+   const unsigned descriptor_size =
+      agx_gallium_pbe_descriptor_size(descriptor_generation);
+
+   if (!descriptor_size)
+      return false;
+
+   if (!agx_gallium_native_pbe_supported(descriptor_generation)) {
+      memset(out, 0, descriptor_size);
+      return false;
+   }
+
    struct agx_resource *tex = agx_resource(view->resource);
    const struct util_format_description *desc =
       util_format_description(view->format);
@@ -1155,7 +1192,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
    unsigned level = is_buffer ? 0 : view->u.tex.level;
    unsigned layer = is_buffer ? 0 : view->u.tex.first_layer;
 
-   agx_pack(out, PBE, cfg) {
+   struct agx_pbe_packed legacy;
+   agx_pack(&legacy, PBE, cfg) {
       cfg.dimension =
          agx_translate_tex_dim(target, util_res_sample_count(&tex->base));
       cfg.layout = agx_translate_layout(tex->layout.tiling);
@@ -1281,6 +1319,8 @@ agx_batch_upload_pbe(struct agx_batch *batch, struct agx_pbe_packed *out,
          }
       }
    };
+
+   return agx_gallium_pack_native_pbe(descriptor_generation, out, &legacy);
 }
 
 /* Likewise constant buffers, textures, and samplers are handled in a common
@@ -1490,7 +1530,15 @@ agx_compile_nir(struct agx_device *dev, nir_shader *nir,
    if (internal_kernel) {
       key.reserved_preamble = 8;
    } else if (!secondary) {
-      NIR_PASS(_, nir, agx_nir_lower_sysvals, stage, true);
+      const enum agx_descriptor_generation descriptor_generation =
+         agx_gallium_descriptor_generation(dev->chip);
+      const unsigned texture_descriptor_size =
+         agx_gallium_texture_descriptor_size(descriptor_generation);
+      if (!texture_descriptor_size)
+         agx_native_descriptor_rejected(dev, "shader descriptor geometry");
+
+      NIR_PASS(_, nir, agx_nir_lower_sysvals, stage, true,
+               texture_descriptor_size);
       NIR_PASS(_, nir, agx_nir_layout_uniforms, compiled,
                &key.reserved_preamble);
    }
@@ -2684,13 +2732,32 @@ agx_nr_tex_descriptors(struct agx_batch *batch, struct agx_compiled_shader *cs)
  * For spilled render targets, upload a texture/PBE pair for each surface to
  * allow loading/storing to the render target from the shader.
  */
-static void
-agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
-                                  struct agx_batch *batch)
+static struct agx_gallium_texture_descriptor *
+agx_texture_descriptor_at(void *base, unsigned stride, unsigned index)
 {
+   return (struct agx_gallium_texture_descriptor *)((uint8_t *)base +
+                                                     (stride * index));
+}
+
+static struct agx_gallium_pbe_descriptor *
+agx_pbe_descriptor_at(void *base, unsigned stride, unsigned index)
+{
+   return (struct agx_gallium_pbe_descriptor *)((uint8_t *)base +
+                                                 (stride * index));
+}
+
+static void
+agx_upload_spilled_rt_descriptors(void *out, struct agx_batch *batch,
+                                  enum agx_descriptor_generation generation)
+{
+   struct agx_device *dev = agx_device(batch->ctx->base.screen);
+   const unsigned stride = agx_gallium_texture_descriptor_size(generation);
+
    for (unsigned rt = 0; rt < batch->key.nr_cbufs; ++rt) {
-      struct agx_texture_packed *texture = out + (2 * rt);
-      struct agx_pbe_packed *pbe = (struct agx_pbe_packed *)(texture + 1);
+      struct agx_gallium_texture_descriptor *texture =
+         agx_texture_descriptor_at(out, stride, 2 * rt);
+      struct agx_gallium_pbe_descriptor *pbe =
+         agx_pbe_descriptor_at(out, stride, (2 * rt) + 1);
 
       const struct pipe_surface *surf = &batch->key.cbufs[rt];
       if (!surf->texture)
@@ -2701,8 +2768,12 @@ agx_upload_spilled_rt_descriptors(struct agx_texture_packed *out,
       struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
       sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
 
-      agx_pack_texture(texture, rsrc, surf->format, &sampler_view);
-      agx_batch_upload_pbe(batch, pbe, &view, false, false, true, true);
+      if (!agx_pack_texture(generation, texture, rsrc, surf->format,
+                            &sampler_view))
+         agx_native_descriptor_rejected(dev, "spilled-RT texture");
+
+      if (!agx_batch_upload_pbe(batch, pbe, &view, false, false, true, true))
+         agx_native_descriptor_rejected(dev, "spilled-RT PBE");
    }
 }
 
@@ -2725,16 +2796,26 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
    unsigned nr_tex_descriptors = agx_nr_tex_descriptors(batch, cs);
    unsigned nr_images = cs->so->info.nr_bindful_images;
 
-   struct agx_ptr T_tex = agx_pool_alloc_aligned(
-      &batch->pool, AGX_TEXTURE_LENGTH * nr_tex_descriptors, 64);
+   struct agx_device *dev = agx_device(ctx->base.screen);
+   const enum agx_descriptor_generation descriptor_generation =
+      agx_gallium_descriptor_generation(dev->chip);
+   const unsigned descriptor_size =
+      agx_gallium_texture_descriptor_size(descriptor_generation);
+   if (!descriptor_size)
+      agx_native_descriptor_rejected(dev, "texture heap geometry");
 
-   struct agx_texture_packed *textures = T_tex.cpu;
+   struct agx_ptr T_tex = agx_pool_alloc_aligned(
+      &batch->pool, descriptor_size * nr_tex_descriptors, 64);
 
    for (unsigned i = 0; i < MIN2(nr_textures, nr_active_textures); ++i) {
       struct agx_sampler_view *tex = ctx->stage[stage].textures[i];
+      struct agx_gallium_texture_descriptor *texture =
+         agx_texture_descriptor_at(T_tex.cpu, descriptor_size, i);
 
       if (tex == NULL) {
-         agx_set_null_texture(&textures[i]);
+         if (!agx_gallium_set_null_native_texture(descriptor_generation,
+                                                   texture))
+            agx_native_descriptor_rejected(dev, "null texture");
          continue;
       }
 
@@ -2744,24 +2825,34 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
       /* Re-emit state because the layout might have changed from under us.
        * TODO: optimize this somehow?
        */
-      agx_pack_texture(&tex->desc, rsrc, tex->format, &tex->base);
+      if (!agx_pack_texture(descriptor_generation, &tex->desc, rsrc,
+                            tex->format, &tex->base))
+         agx_native_descriptor_rejected(dev, "sampled texture");
 
-      textures[i] = tex->desc;
+      memcpy(texture, &tex->desc, descriptor_size);
    }
 
-   for (unsigned i = nr_active_textures; i < nr_textures; ++i)
-      agx_set_null_texture(&textures[i]);
+   for (unsigned i = nr_active_textures; i < nr_textures; ++i) {
+      if (!agx_gallium_set_null_native_texture(
+             descriptor_generation,
+             agx_texture_descriptor_at(T_tex.cpu, descriptor_size, i)))
+         agx_native_descriptor_rejected(dev, "null texture");
+   }
 
    for (unsigned i = 0; i < nr_images; ++i) {
       /* Image descriptors come in pairs after the textures */
-      struct agx_texture_packed *texture =
-         ((struct agx_texture_packed *)T_tex.cpu) + nr_textures + (2 * i);
-
-      struct agx_pbe_packed *pbe = (struct agx_pbe_packed *)(texture + 1);
+      const unsigned image = nr_textures + (2 * i);
+      struct agx_gallium_texture_descriptor *texture =
+         agx_texture_descriptor_at(T_tex.cpu, descriptor_size, image);
+      struct agx_gallium_pbe_descriptor *pbe =
+         agx_pbe_descriptor_at(T_tex.cpu, descriptor_size, image + 1);
 
       if (!(ctx->stage[stage].image_mask & BITFIELD_BIT(i))) {
-         agx_set_null_texture(texture);
-         agx_set_null_pbe(pbe);
+         if (!agx_gallium_set_null_native_texture(descriptor_generation,
+                                                   texture))
+            agx_native_descriptor_rejected(dev, "null storage texture");
+         if (!agx_gallium_set_null_native_pbe(descriptor_generation, pbe))
+            agx_native_descriptor_rejected(dev, "null storage PBE");
          continue;
       }
 
@@ -2780,19 +2871,23 @@ agx_upload_textures(struct agx_batch *batch, struct agx_compiled_shader *cs,
           (sampler_view.target == PIPE_TEXTURE_3D && internal))
          sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
 
-      agx_pack_texture(texture, agx_resource(view->resource), view->format,
-                       &sampler_view);
-      agx_batch_upload_pbe(batch, pbe, view, false, false, false, false);
+      if (!agx_pack_texture(descriptor_generation, texture,
+                            agx_resource(view->resource), view->format,
+                            &sampler_view))
+         agx_native_descriptor_rejected(dev, "storage texture");
+
+      if (!agx_batch_upload_pbe(batch, pbe, view, false, false, false, false))
+         agx_native_descriptor_rejected(dev, "storage PBE");
    }
 
    if (stage == MESA_SHADER_FRAGMENT &&
        agx_tilebuffer_spills(&batch->tilebuffer_layout)) {
 
-      struct agx_texture_packed *out =
-         ((struct agx_texture_packed *)T_tex.cpu) +
-         agx_nr_tex_descriptors_without_spilled_rts(cs);
+      void *out =
+         (uint8_t *)T_tex.cpu +
+         (descriptor_size * agx_nr_tex_descriptors_without_spilled_rts(cs));
 
-      agx_upload_spilled_rt_descriptors(out, batch);
+      agx_upload_spilled_rt_descriptors(out, batch, descriptor_generation);
    }
 
    batch->texture_count[stage] = nr_tex_descriptors;
@@ -3071,6 +3166,13 @@ struct asahi_bg_eot
 agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
 {
    struct agx_context *ctx = batch->ctx;
+   struct agx_device *dev = agx_device(ctx->base.screen);
+   const enum agx_descriptor_generation descriptor_generation =
+      agx_gallium_descriptor_generation(dev->chip);
+   const unsigned descriptor_size =
+      agx_gallium_texture_descriptor_size(descriptor_generation);
+   if (!descriptor_size)
+      agx_native_descriptor_rejected(dev, "background heap geometry");
 
    /* Construct the key */
    struct agx_bg_eot_key key = {.tib = batch->tilebuffer_layout};
@@ -3133,14 +3235,16 @@ agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
             continue;
 
          struct agx_ptr texture =
-            agx_pool_alloc_aligned(&batch->pool, AGX_TEXTURE_LENGTH, 64);
+            agx_pool_alloc_aligned(&batch->pool, descriptor_size, 64);
          const struct pipe_surface *surf = &batch->key.cbufs[rt];
          assert(surf->texture != NULL && "cannot load nonexistent attachment");
 
          struct agx_resource *rsrc = agx_resource(surf->texture);
          struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
 
-         agx_pack_texture(texture.cpu, rsrc, surf->format, &sampler_view);
+         if (!agx_pack_texture(descriptor_generation, texture.cpu, rsrc,
+                               surf->format, &sampler_view))
+            agx_native_descriptor_rejected(dev, "background texture");
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             /* Shifted to match eMRT indexing, could be optimized */
@@ -3158,14 +3262,15 @@ agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
          struct pipe_image_view view =
             image_view_for_surface(&batch->key.cbufs[rt]);
          struct agx_ptr pbe =
-            agx_pool_alloc_aligned(&batch->pool, AGX_PBE_LENGTH, 256);
+            agx_pool_alloc_aligned(&batch->pool, descriptor_size, 256);
 
          /* The tilebuffer is already in sRGB space if needed. Do not convert */
          view.format = util_format_linear(view.format);
 
          bool no_compress = batch->feedback & (PIPE_CLEAR_COLOR0 << rt);
-         agx_batch_upload_pbe(batch, pbe.cpu, &view, true, true, false,
-                              no_compress);
+         if (!agx_batch_upload_pbe(batch, pbe.cpu, &view, true, true, false,
+                                   no_compress))
+            agx_native_descriptor_rejected(dev, "end-of-tile PBE");
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
@@ -3182,8 +3287,9 @@ agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
        * spilled render targets.
        */
       struct agx_ptr descs = agx_pool_alloc_aligned(
-         &batch->pool, AGX_TEXTURE_LENGTH * 2 * batch->key.nr_cbufs, 64);
-      agx_upload_spilled_rt_descriptors(descs.cpu, batch);
+         &batch->pool, descriptor_size * 2 * batch->key.nr_cbufs, 64);
+      agx_upload_spilled_rt_descriptors(descs.cpu, batch,
+                                        descriptor_generation);
 
       agx_usc_pack(&b, TEXTURE, cfg) {
          cfg.start = 0;
@@ -3228,8 +3334,10 @@ agx_build_bg_eot(struct agx_batch *batch, bool store, bool partial_render)
 
    /* Get the shader */
    key.reserved_preamble = uniforms;
-   struct agx_device *dev = agx_device(ctx->base.screen);
    struct agx_bg_eot_shader *shader = agx_get_bg_eot_shader(&ctx->bg_eot, &key);
+   if (!shader)
+      agx_native_descriptor_rejected(dev, "background shader");
+
    agx_batch_add_bo(batch, shader->bo);
    assert(shader->info.rodata.size_16 == 0);
 
@@ -5505,8 +5613,18 @@ agx_decompress_inplace(struct agx_batch *batch, struct pipe_surface *surf,
    struct agx_resource *rsrc = agx_resource(surf->texture);
    struct ail_layout *layout = &rsrc->layout;
    unsigned level = surf->level;
+   const enum agx_descriptor_generation descriptor_generation =
+      agx_gallium_descriptor_generation(dev->chip);
 
    perf_debug(dev, "Decompressing in-place due to: %s", reason);
+
+   /* libagx_decompress_images is a byte-exact AGX2 24+24 ABI.  A native
+    * AGX3 version needs a 32+32 argument block and matching precompiled shader;
+    * do not dispatch the legacy kernel against a wider descriptor generation.
+    */
+   if (!agx_gallium_descriptor_generation_is_agx2(descriptor_generation)) {
+      agx_native_descriptor_rejected(dev, "decompression descriptor block");
+   }
 
    if (!batch->cdm.bo)
       batch->cdm = agx_encoder_allocate(batch, dev);
@@ -5518,9 +5636,16 @@ agx_decompress_inplace(struct agx_batch *batch, struct pipe_surface *surf,
    struct pipe_sampler_view sampler_view = sampler_view_for_surface(surf);
    sampler_view.target = PIPE_TEXTURE_2D_ARRAY;
    struct pipe_image_view view = image_view_for_surface(surf);
-   agx_pack_texture(&img->compressed, rsrc, surf->format, &sampler_view);
-   agx_batch_upload_pbe(batch, &img->uncompressed, &view, false, true, true,
-                        true);
+   struct agx_gallium_texture_descriptor native_texture;
+   struct agx_gallium_pbe_descriptor native_pbe;
+   if (!agx_pack_texture(descriptor_generation, &native_texture, rsrc,
+                         surf->format, &sampler_view))
+      agx_native_descriptor_rejected(dev, "decompression texture");
+   if (!agx_batch_upload_pbe(batch, &native_pbe, &view, false, true, true,
+                             true))
+      agx_native_descriptor_rejected(dev, "decompression PBE");
+   memcpy(&img->compressed, &native_texture, AGX_TEXTURE_LENGTH);
+   memcpy(&img->uncompressed, &native_pbe, AGX_PBE_LENGTH);
 
    struct agx_grid grid = agx_3d(ail_metadata_width_tl(layout, level) * 32,
                                  ail_metadata_height_tl(layout, level),

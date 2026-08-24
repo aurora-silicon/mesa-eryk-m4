@@ -23,12 +23,32 @@ lower_tex_handle_to_u0(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    if (intr->intrinsic != nir_intrinsic_load_texture_handle_agx)
       return false;
 
+   const unsigned descriptor_size = *(const unsigned *)data;
+   assert(descriptor_size == 24 || descriptor_size == 32);
+
    b->cursor = nir_instr_remove(&intr->instr);
    nir_def_rewrite_uses(
       &intr->def, nir_bindless_image_agx(
-                     b, nir_imul_imm(b, intr->src[0].ssa, 24), .desc_set = 0));
+                     b, nir_imul_imm(b, intr->src[0].ssa, descriptor_size),
+                     .desc_set = 0));
 
    return true;
+}
+
+static unsigned
+agx_bg_eot_texture_descriptor_size(const struct agx_device *dev)
+{
+   switch (agx_chip_descriptor_generation(dev->chip)) {
+   case AGX_DESCRIPTOR_GENERATION_7:
+   case AGX_DESCRIPTOR_GENERATION_8:
+      return 24;
+   case AGX_DESCRIPTOR_GENERATION_9:
+   case AGX_DESCRIPTOR_GENERATION_10:
+      return 32;
+   case AGX_DESCRIPTOR_GENERATION_UNKNOWN:
+   default:
+      return 0;
+   }
 }
 
 static struct agx_bg_eot_shader *
@@ -39,6 +59,15 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
    agx_nir_lower_texture(shader);
    agx_preprocess_nir(shader);
    if (tib) {
+      unsigned descriptor_size =
+         agx_bg_eot_texture_descriptor_size(cache->dev);
+
+      if (!descriptor_size) {
+         mesa_loge("asahi: background shader has no proven native descriptor geometry");
+         ralloc_free(shader);
+         return NULL;
+      }
+
       unsigned bindless_base = 0;
       NIR_PASS(_, shader, agx_nir_lower_tilebuffer, tib, NULL, &bindless_base,
                NULL, NULL);
@@ -46,7 +75,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
       NIR_PASS(_, shader, agx_nir_lower_multisampled_image_store);
       NIR_PASS(_, shader, agx_nir_lower_texture);
       NIR_PASS(_, shader, nir_shader_intrinsics_pass, lower_tex_handle_to_u0,
-               nir_metadata_control_flow, NULL);
+               nir_metadata_control_flow, &descriptor_size);
    }
 
    struct agx_bg_eot_shader *res = rzalloc(cache->ht, struct agx_bg_eot_shader);
@@ -199,6 +228,9 @@ agx_get_bg_eot_shader(struct agx_bg_eot_cache *cache,
 
    if (!ret)
       ret = agx_build_background_shader(cache, key);
+
+   if (!ret)
+      return NULL;
 
    ret->key = *key;
    _mesa_hash_table_insert(cache->ht, &ret->key, ret);

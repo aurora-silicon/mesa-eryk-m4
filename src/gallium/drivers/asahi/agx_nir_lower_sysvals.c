@@ -16,8 +16,6 @@
 #include "nir_intrinsics_indices.h"
 #include "shader_enums.h"
 
-#define AGX_TEXTURE_DESC_STRIDE 24
-
 /*
  * Lower all system values to uniform loads. This pass tries to compact ranges
  * of contiguous uploaded uniforms to reduce the draw-time overhead of uploading
@@ -117,10 +115,12 @@ load_ubo(nir_builder *b, nir_intrinsic_instr *intr, void *bases)
 }
 
 static nir_def *
-load_texture_handle(nir_builder *b, nir_intrinsic_instr *intr, void *base)
+load_texture_handle(nir_builder *b, nir_intrinsic_instr *intr, void *base,
+                    unsigned texture_descriptor_size)
 {
    nir_def *offs_B =
-      nir_imul_imm(b, nir_u2u32(b, intr->src[0].ssa), AGX_TEXTURE_DESC_STRIDE);
+      nir_imul_imm(b, nir_u2u32(b, intr->src[0].ssa),
+                   texture_descriptor_size);
 
    nir_load_sysval_agx(b, 1, 64, .desc_set = stage_table(b),
                        .binding = (uintptr_t)base, .flags = ~0);
@@ -136,7 +136,7 @@ load_provoking_vtx(nir_builder *b)
 
 static nir_def *
 lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
-                bool lower_draw_params)
+                bool lower_draw_params, unsigned texture_descriptor_size)
 {
    struct agx_draw_uniforms *u = NULL;
    struct agx_stage_uniforms *s = NULL;
@@ -145,7 +145,8 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
    case nir_intrinsic_load_ubo:
       return load_ubo(b, intr, s->ubo_base);
    case nir_intrinsic_load_texture_handle_agx:
-      return load_texture_handle(b, intr, &s->texture_base);
+      return load_texture_handle(b, intr, &s->texture_base,
+                                 texture_descriptor_size);
    case nir_intrinsic_load_sampler_handle_agx:
       return load_sysval_indirect(b, 1, 16, stage_table(b), &s->sampler_handle,
                                   intr->src[0].ssa);
@@ -237,10 +238,15 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *intr,
 }
 
 /* Step 1. Lower NIR sysvals */
+struct lower_sysvals_config {
+   bool lower_draw_params;
+   unsigned texture_descriptor_size;
+};
+
 static bool
 lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
 {
-   bool *lower_draw_params = data;
+   const struct lower_sysvals_config *config = data;
    b->cursor = nir_before_instr(instr);
    nir_def *old;
    nir_def *replacement = NULL;
@@ -248,7 +254,8 @@ lower_sysvals(nir_builder *b, nir_instr *instr, void *data)
    if (instr->type == nir_instr_type_intrinsic) {
       nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
       old = &intr->def;
-      replacement = lower_intrinsic(b, intr, *lower_draw_params);
+      replacement = lower_intrinsic(b, intr, config->lower_draw_params,
+                                    config->texture_descriptor_size);
    } else if (instr->type == nir_instr_type_tex) {
       nir_tex_instr *tex = nir_instr_as_tex(instr);
       old = &tex->def;
@@ -486,16 +493,25 @@ lay_out_uniforms(struct agx_compiled_shader *shader, struct state *state)
 
 bool
 agx_nir_lower_sysvals(nir_shader *shader, mesa_shader_stage desc_stage,
-                      bool lower_draw_params)
+                      bool lower_draw_params,
+                      unsigned texture_descriptor_size)
 {
+   assert(texture_descriptor_size == AGX_GALLIUM_DESCRIPTOR_AGX2_SIZE ||
+          texture_descriptor_size == AGX_GALLIUM_DESCRIPTOR_AGX3_SIZE);
+
    /* override stage for the duration on the pass. XXX: should refactor, but
     * it's annoying!
     */
    mesa_shader_stage phys_stage = shader->info.stage;
    shader->info.stage = desc_stage;
 
+   struct lower_sysvals_config config = {
+      .lower_draw_params = lower_draw_params,
+      .texture_descriptor_size = texture_descriptor_size,
+   };
+
    bool progress = nir_shader_instructions_pass(
-      shader, lower_sysvals, nir_metadata_control_flow, &lower_draw_params);
+      shader, lower_sysvals, nir_metadata_control_flow, &config);
 
    shader->info.stage = phys_stage;
    return progress;
