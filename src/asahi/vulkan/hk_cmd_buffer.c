@@ -25,6 +25,7 @@
 #include "hk_shader.h"
 
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/lib/agx_vdm_stream_link_core.h"
 #include "asahi/lib/agx_vdm_stream_terminate_core.h"
 #include "libagx_dgc.h"
 #include "pool.h"
@@ -254,6 +255,50 @@ hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data, uint32_t size,
 
    memcpy(T.cpu, data, size);
    return T.gpu;
+}
+
+void *
+hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
+                           uint64_t target, bool vdm)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return agx_cs_jump(current, target, vdm);
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300:
+      if (vdm) {
+         struct agx_vdm_stream_link_core link;
+         if (agx_vdm_stream_link_core_pack(dev->dev.chip, target, &link)) {
+            memcpy(current, link.bytes, link.length);
+            return (uint8_t *)current + link.length;
+         }
+      } else {
+         const struct agx3_cdm_stream_link_info info = {
+            .chip = dev->dev.chip,
+            .target = target,
+            .with_return = false,
+         };
+         uint8_t link[AGX3_CDM_STREAM_LINK_SIZE];
+         if (agx3_cdm_stream_link_pack(&info, link)) {
+            memcpy(current, link, sizeof(link));
+            return (uint8_t *)current + sizeof(link);
+         }
+      }
+      break;
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded %s stream link for %s", vdm ? "VDM" : "CDM",
+             agx_chip_name(dev->dev.chip));
+   vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   return current;
 }
 
 void *
@@ -943,14 +988,16 @@ hk_ensure_cs_has_space(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    size_t size = 65536;
    struct agx_ptr T = hk_pool_alloc(cmd, size, 256);
 
-   /* Jump from the old control stream to the new control stream */
-   agx_cs_jump(cs->current, T.gpu, vdm);
+   /* Jump from the old control stream to the new control stream. */
+   void *link_end =
+      hk_cmd_buffer_emit_cs_jump(cmd, cs->current, T.gpu, vdm);
+   const bool linked = link_end != cs->current;
 
    /* Swap out the control stream */
    cs->current = T.cpu;
    cs->end = cs->current + size;
    cs->chunk = T;
-   cs->stream_linked = true;
+   cs->stream_linked |= linked;
 }
 
 static void

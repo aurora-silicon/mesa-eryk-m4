@@ -162,9 +162,14 @@ CDM terminator for ordinary and pre-graphics compute segments instead of
 unconditionally appending the AGX2 token. Honeykrisp likewise selects it after
 CDM merging. Unsupported command generations and the ungrounded G16P/G17A
 paths set a list/command-buffer error. These remain **RE/IV** pieces rather
-than a complete CDM/VDM/Ioto stream: launch, links, barriers, executable
-shader payloads, queue submission, device admission, and API capability are
-still independently gated, so the command/submission cells remain **RE**.
+than a complete CDM/VDM/Ioto stream. Honeykrisp chunk growth now also selects
+the exact target-aware direct VDM link on all eleven grounded identities and
+the narrower CDM link on the seven directly witnessed G15X/G16X/G17X
+identities; compute-stream merging uses the same path. An ungrounded base or
+phone CDM link fails the command buffer instead of emitting an AGX2 record.
+Launch, barriers, the remaining link lifecycle, executable shader payloads,
+queue submission, device admission, and API capability are still
+independently gated, so the command/submission cells remain **RE**.
 
 A strict shared record-at-a-time decoder and D3D12 entry point now classify
 that grounded CDM subset inside a longer byte stream. They distinguish launch,

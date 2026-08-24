@@ -417,6 +417,9 @@ struct hk_cs {
    uint32_t restart_index;
 };
 
+void *hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
+                                 uint64_t target, bool vdm);
+
 /*
  * Helper to merge two compute control streams, concatenating the second control
  * stream to the first one. Must sync with hk_cs.
@@ -428,9 +431,11 @@ hk_cs_merge_cdm(struct hk_cs *a, const struct hk_cs *b)
    assert(a->cmd == b->cmd);
    assert(!a->timestamp.end.handle);
 
-   agx_cdm_jump(a->current, b->addr);
+   void *link_end =
+      hk_cmd_buffer_emit_cs_jump(a->cmd, a->current, b->addr, false);
+   const bool linked = link_end != a->current;
    a->current = b->current;
-   a->stream_linked = true;
+   a->stream_linked |= linked || b->stream_linked;
 
    a->uses_sampler_heap |= b->uses_sampler_heap;
    a->scratch.cs.main |= b->scratch.cs.main;
