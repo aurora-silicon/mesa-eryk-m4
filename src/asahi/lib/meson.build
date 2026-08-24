@@ -21,6 +21,8 @@ libasahi_lib_files = files(
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
+  'agx_vdm_index_list_core.c',
+  'agx_vdm_index_list_core.h',
   'agx_vdm_state_core.c',
   'agx_vdm_state_core.h',
   'agx_va.c',
@@ -176,6 +178,19 @@ if with_tests
         'tests/test-texture-side-entry.c',
       ),
       include_directories : [inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-index-list-core',
+    executable(
+      'asahi-vdm-index-list-core',
+      files(
+        'agx_vdm_index_list_core.c',
+        'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
     ),
     suite : ['asahi'],
   )
