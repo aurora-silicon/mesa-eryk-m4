@@ -26,6 +26,7 @@
 
 #include "agx_compiler.h"
 #include "agx3_select_core.h"
+#include "agx3_falu_mod_core.h"
 
 #include <string.h>
 
@@ -247,6 +248,72 @@ agx3_emit(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return true;
 }
 
+/* A source usable by the modifier long forms: a plain 32-bit register. */
+static bool
+agx3_mod_src_ok(agx_index s)
+{
+   return agx3_src_is_register(s) && !s.memory && s.size == AGX_SIZE_32 &&
+          (s.value & 1) == 0 && s.value < 256;
+}
+
+/*
+ * Route a modifier-carrying float add/mul/fma through the long-form modifier
+ * encoder. Returns 1 if it emitted the instruction, 0 if this is not a
+ * modifier-bearing float op (the caller should use the ordinary path), or -1
+ * if it is one but out of the grounded domain (fail the shader).
+ */
+static int
+agx3_try_float_modifier(struct util_dynarray *emission,
+                        enum agx_isa_encoding enc, const agx_instr *I)
+{
+   const bool is_add = I->op == AGX_OPCODE_FADD;
+   const bool is_mul = I->op == AGX_OPCODE_FMUL;
+   const bool is_fma = I->op == AGX_OPCODE_FFMA;
+   if (!is_add && !is_mul && !is_fma)
+      return 0;
+
+   bool has_mod = I->saturate;
+   for (unsigned s = 0; s < I->nr_srcs; ++s)
+      has_mod |= I->src[s].abs || I->src[s].neg;
+   if (!has_mod)
+      return 0; /* the compact no-modifier packer handles it */
+
+   const unsigned want = is_fma ? 3 : 2;
+   if (I->nr_dests < 1 || I->dest[0].type == AGX_INDEX_NULL ||
+       I->dest[0].size != AGX_SIZE_32 || (I->dest[0].value & 1) != 0 ||
+       I->dest[0].value >= 256 || I->nr_srcs != want)
+      return -1;
+   for (unsigned s = 0; s < want; ++s)
+      if (!agx3_mod_src_ok(I->src[s]))
+         return -1;
+
+   struct agx3_falu_mods m = {
+      .src0_abs = I->src[0].abs, .src0_neg = I->src[0].neg,
+      .src1_abs = I->src[1].abs, .src1_neg = I->src[1].neg,
+      .saturate = I->saturate,
+   };
+
+   uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH];
+   uint8_t len = 0;
+   bool ok;
+   const uint16_t d = I->dest[0].value, s0 = I->src[0].value,
+                  s1 = I->src[1].value;
+   if (is_add)
+      ok = agx3_falu_add_mod(enc, d, s0, s1, &m, bytes, &len);
+   else if (is_mul)
+      ok = agx3_falu_mul_mod(enc, d, s0, s1, &m, bytes, &len);
+   else {
+      m.addend_abs = I->src[2].abs;
+      m.addend_neg = I->src[2].neg;
+      ok = agx3_falu_fma_mod(enc, d, s0, s1, I->src[2].value, &m, bytes, &len);
+   }
+   if (!ok)
+      return -1;
+
+   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+   return 1;
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
@@ -264,6 +331,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * below, matching the corpus (one end per region). */
          if (I->op == AGX_OPCODE_STOP)
             continue;
+
+         const int mod = agx3_try_float_modifier(emission, enc, I);
+         if (mod == 1)
+            continue;
+         if (mod < 0)
+            return false;
 
          struct agx3_sel_instr S;
          if (!agx3_translate_instr(I, &S) || !agx3_emit(emission, enc, &S))
