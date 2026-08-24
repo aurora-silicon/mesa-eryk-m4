@@ -15,6 +15,7 @@
 #include "d12_private.h"
 #include "d12_buffer_view_core.h"
 #include "d12_command_validation_core.h"
+#include "d12_discard_core.h"
 #include "d12_present_format_core.h"
 #include "d12_query_core.h"
 #include "d12_resolve_core.h"
@@ -11989,6 +11990,101 @@ d12_list_CopyTiles(ID3D12GraphicsCommandList6 *iface,
 }
 
 static void STDMETHODCALLTYPE
+d12_list_DiscardResource(ID3D12GraphicsCommandList6 *iface,
+                         ID3D12Resource *resource_iface,
+                         const D3D12_DISCARD_REGION *region)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   if (!resource_iface) {
+      mesa_loge("DiscardResource: resource is NULL");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   struct d12_resource *resource = d12_resource_from_iface(resource_iface);
+   enum d12_discard_dimension dimension;
+   switch (resource->desc.Dimension) {
+   case D3D12_RESOURCE_DIMENSION_BUFFER:
+      dimension = D12_DISCARD_DIMENSION_BUFFER;
+      break;
+   case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+      dimension = D12_DISCARD_DIMENSION_TEXTURE1D;
+      break;
+   case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+      dimension = D12_DISCARD_DIMENSION_TEXTURE2D;
+      break;
+   case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+      dimension = D12_DISCARD_DIMENSION_TEXTURE3D;
+      break;
+   default:
+      mesa_loge("DiscardResource: invalid resource dimension");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   const struct d12_discard_resource_info info = {
+      .dimension = dimension,
+      .width = resource->desc.Width,
+      .height = resource->desc.Height,
+      .mip_levels = resource->desc.MipLevels,
+      .array_size = resource->desc.DepthOrArraySize,
+      .plane_count = resource->stencil_bo ? 2 : 1,
+      .allow_unordered_access =
+         resource->desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+   };
+   struct d12_discard_region_info region_info;
+   const struct d12_discard_region_info *region_info_ptr = NULL;
+   if (region) {
+      region_info = (struct d12_discard_region_info){
+         .rectangle_count = region->NumRects,
+         .rectangles_present = region->pRects != NULL,
+         .first_subresource = region->FirstSubresource,
+         .subresource_count = region->NumSubresources,
+      };
+      region_info_ptr = &region_info;
+   }
+
+   if (resource->device != list->device) {
+      mesa_loge("DiscardResource: resource belongs to another device");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   const enum d12_discard_validation_result result = d12_discard_validate(
+      list->type == D3D12_COMMAND_LIST_TYPE_DIRECT,
+      list->type == D3D12_COMMAND_LIST_TYPE_COMPUTE, &info, region_info_ptr);
+   if (result != D12_DISCARD_VALID) {
+      mesa_loge("DiscardResource: %s",
+                result == D12_DISCARD_UNSUPPORTED_COMMAND_LIST
+                   ? "command-list type is unsupported"
+                   : "invalid resource or region");
+      list->state = D12_LIST_ERROR;
+      list->record_error = result == D12_DISCARD_UNSUPPORTED_COMMAND_LIST
+                              ? E_NOTIMPL
+                              : E_INVALIDARG;
+      return;
+   }
+
+   /* Discard makes contents undefined; it does not require them to change.
+    * Keeping the allocation and its metadata is therefore the conservative
+    * implementation until AGX render-pass load elimination consumes this
+    * hint. No stream address is recorded, so retaining the resource here is
+    * unnecessary.
+    *
+    * Direct3D also requires RT/DS/UAV resources to be in the corresponding
+    * legacy resource state. This command core does not track legacy states;
+    * that API precondition remains the application's responsibility and is
+    * diagnosed by the D3D12 debug layer when enabled. */
+}
+
+static void STDMETHODCALLTYPE
 d12_list_ResourceBarrier(ID3D12GraphicsCommandList6 *iface, UINT num_barriers,
                          const D3D12_RESOURCE_BARRIER *barriers)
 {
@@ -13266,6 +13362,7 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
    .ClearDepthStencilView = d12_list_ClearDepthStencilView,
    .ClearUnorderedAccessViewUint = d12_list_ClearUnorderedAccessViewUint,
    .ClearUnorderedAccessViewFloat = d12_list_ClearUnorderedAccessViewFloat,
+   .DiscardResource = d12_list_DiscardResource,
    .ClearState = d12_list_ClearState,
    .SetPipelineState = d12_list_SetPipelineState,
    .SetComputeRootSignature = d12_list_SetComputeRootSignature,

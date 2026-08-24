@@ -76,6 +76,14 @@ identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
+Across the table, the public D3D12 command-list path implements
+`DiscardResource`: it is **RS** on admitted G13/G14 devices and **IV** on the
+driver-gated G15-G17 identities. Accepted calls conservatively retain resource
+contents and metadata, which is valid for a discard hint; no new AGX encoding
+or capability gate is implied. Legacy RT/DS/UAV state preconditions remain an
+application/debug-layer contract because this command core does not track
+legacy resource states.
+
 Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
@@ -114,6 +122,9 @@ The current in-tree anchors are:
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, and bounded BVH helpers.
+- [`d12_discard_core.h`](../../src/asahi/d3d12/d12_discard_core.h) and its
+  [host tests](../../src/asahi/d3d12/tests/d12_discard_core_tests.c): public
+  `DiscardResource` list/region validation and the conservative no-op contract.
 
 Any feature commit that changes an identity, generation axis, runtime gate, or
 API capability must update this matrix in the same change. Promote a status

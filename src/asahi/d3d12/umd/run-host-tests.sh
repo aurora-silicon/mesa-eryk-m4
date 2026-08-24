@@ -107,6 +107,11 @@ done
 "$out/d12_command_validation_core_tests"
 
 "$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_discard_core_tests.c" \
+    -o "$out/d12_discard_core_tests"
+"$out/d12_discard_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
     "$d12_dir/tests/d12_native_descriptor_core_tests.c" \
     -o "$out/d12_native_descriptor_core_tests"
 "$out/d12_native_descriptor_core_tests"
