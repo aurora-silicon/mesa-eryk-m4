@@ -1,0 +1,76 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Strict record-at-a-time decoder for the grounded AGX3 CDM subset.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "agx_chip.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+enum agx3_cdm_record_kind {
+   AGX3_CDM_RECORD_UNKNOWN = 0,
+   AGX3_CDM_RECORD_LAUNCH,
+   AGX3_CDM_RECORD_STREAM_LINK,
+   AGX3_CDM_RECORD_LINK_PADDING,
+   AGX3_CDM_RECORD_BARRIER,
+   AGX3_CDM_RECORD_SUBSTREAM_BARRIER,
+   AGX3_CDM_RECORD_SECONDARY_BARRIER,
+   AGX3_CDM_RECORD_STREAM_TERMINATE,
+};
+
+struct agx3_cdm_decoded_record {
+   enum agx3_cdm_record_kind kind;
+   uint8_t length;
+   enum agx_chip chip;
+   union {
+      struct {
+         uint32_t word0_payload;
+         uint32_t word1_payload;
+         uint64_t pipeline;
+         uint32_t opaque_word3;
+         uint32_t global_size[3];
+         uint32_t local_size[3];
+      } launch;
+      struct {
+         uint64_t target;
+         bool with_return;
+      } stream_link;
+      struct {
+         uint8_t count;
+      } link_padding;
+      struct {
+         uint8_t flags;
+      } barrier;
+      struct {
+         uint8_t flags;
+         uint8_t substream;
+      } substream_barrier;
+   } data;
+};
+
+/*
+ * Decode one exact record from the beginning of a larger command stream.
+ * `available` may include following records; `length` reports only the bytes
+ * consumed by the first record.  Unknown block types, unsupported identities,
+ * reserved-bit mutations, and truncated records fail with a cleared result.
+ *
+ * This deliberately does not infer ordering, follow links, read GPU memory,
+ * submit work, or admit an AGX3 device.
+ */
+bool agx3_cdm_decode_one(enum agx_chip chip, const void *bytes,
+                         size_t available,
+                         struct agx3_cdm_decoded_record *record);
+
+#ifdef __cplusplus
+}
+#endif

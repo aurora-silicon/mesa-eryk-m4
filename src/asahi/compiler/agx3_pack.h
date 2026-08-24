@@ -22,6 +22,7 @@ extern "C" {
 #define AGX3_FADD_F32_REG_REG_LENGTH 6
 #define AGX3_FMUL_F32_REG_REG_LENGTH 6
 #define AGX3_FMUL_F32_REG_REG_LONG_LENGTH 14
+#define AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH 16
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -68,6 +69,11 @@ struct agx3_encoded_fmul_f32_reg_reg {
 
 struct agx3_encoded_fmul_f32_reg_reg_long {
    uint8_t bytes[AGX3_FMUL_F32_REG_REG_LONG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_fma_f32_reg_reg_reg {
+   uint8_t bytes[AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -300,6 +306,31 @@ bool agx3_pack_fmul_f32_reg_reg_long(
 bool agx3_unpack_fmul_f32_reg_reg_long(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the exact four-register f32 fused multiply-add selection
+ * emitted by the pinned Apple compiler corpus.  P3f_fma correlates f2 with
+ * the result, f35/f18 with the two multiplicands, and f52 with the addend on
+ * G15G, G16G and G17S.  The independent L_ffma ladder reproduces the same
+ * anonymous/context selection byte-for-byte on G15G/S/D, G16P/G/S, G17P,
+ * G17G and G17S.  It is eight bytes on AGX3b and sixteen on AGX3c.
+ *
+ * The two multiplicand fields are kept in physical order even though the
+ * mathematical product is commutative.  Every operand is restricted to an
+ * even half-register index in 0..126 because no direct f32fma artifact
+ * exercises register bit 7.  Modifier-bearing selections, unfused-mad
+ * semantics, unprobed high register bits, and G15G's standalone scheduling
+ * instructions remain outside this exact API and fail closed.  Chip gates
+ * belong to the caller.
+ */
+bool agx3_pack_fma_f32_reg_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t mul0,
+   uint16_t mul1, uint16_t addend,
+   struct agx3_encoded_fma_f32_reg_reg_reg *out);
+bool agx3_unpack_fma_f32_reg_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *mul0, uint16_t *mul1, uint16_t *addend,
+   uint8_t *length);
 
 /*
  * Encode/decode the source-grounded three-register u32 `bit_and` form.

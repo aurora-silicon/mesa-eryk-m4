@@ -61,6 +61,14 @@ main(void)
                    sizeof(launch.global_size)) == 0);
       CHECK(memcmp(decoded.local_size, launch.local_size,
                    sizeof(launch.local_size)) == 0);
+
+      struct agx3_cdm_decoded_record record;
+      CHECK(d12_agx3_decode_cdm_record(launch.chip, encoded.bytes,
+                                       encoded.length, &record));
+      CHECK(record.kind == AGX3_CDM_RECORD_LAUNCH);
+      CHECK(record.length == encoded.length);
+      CHECK(record.chip == launch.chip);
+      CHECK(record.data.launch.pipeline == launch.pipeline);
       CHECK(!d12_agx3_decode_cdm_launch(
          launch.chip, encoded.bytes, encoded.length - 1, &decoded));
       CHECK(decoded.pipeline == 0);

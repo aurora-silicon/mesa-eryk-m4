@@ -8,6 +8,7 @@
 #pragma once
 
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/lib/agx3_cdm_decode_core.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -42,6 +43,16 @@ struct d12_agx3_cdm_stream_terminate_encoding {
    uint8_t bytes[AGX3_CDM_STREAM_TERMINATE_SIZE];
    uint8_t length;
 };
+
+/* Strictly classify one record from a potentially longer AGX3 CDM stream.
+ * This is the shared Mesa decoder; it does not follow links or submit work. */
+static inline bool
+d12_agx3_decode_cdm_record(enum agx_chip chip, const void *command,
+                           uint32_t available,
+                           struct agx3_cdm_decoded_record *record)
+{
+   return agx3_cdm_decode_one(chip, command, available, record);
+}
 
 /* Host representation only.  These helpers do not emit a live command list,
  * bind a queue, submit work, open an AGX3 device, or expose a D3D feature. */

@@ -1,0 +1,104 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_vdm_ppp_state_core.h"
+
+#include <string.h>
+
+static void
+agx_vdm_ppp_state_store_le32(uint8_t *dst, uint32_t value)
+{
+   dst[0] = (uint8_t)value;
+   dst[1] = (uint8_t)(value >> 8);
+   dst[2] = (uint8_t)(value >> 16);
+   dst[3] = (uint8_t)(value >> 24);
+}
+
+static uint32_t
+agx_vdm_ppp_state_load_le32(const uint8_t *src)
+{
+   return (uint32_t)src[0] | ((uint32_t)src[1] << 8) |
+          ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
+}
+
+bool
+agx_vdm_ppp_state_core_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+
+   case AGX_CHIP_G13G:
+   case AGX_CHIP_G13X:
+   case AGX_CHIP_G14G:
+   case AGX_CHIP_G14X:
+   case AGX_CHIP_G15P:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G17A:
+   case AGX_CHIP_UNKNOWN:
+   default:
+      return false;
+   }
+}
+
+bool
+agx_vdm_ppp_state_core_pack(enum agx_chip chip, uint64_t pointer,
+                            uint32_t size_words,
+                            struct agx_vdm_ppp_state_core *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!out || !agx_vdm_ppp_state_core_supported(chip) ||
+       pointer >= (UINT64_C(1) << 40) || (pointer & UINT64_C(3)) != 0 ||
+       size_words > AGX_VDM_PPP_STATE_CORE_MAX_SIZE_WORDS)
+      return false;
+
+   const uint32_t word0 = (uint32_t)(pointer >> 32) | (size_words << 8);
+   const uint32_t word1 = (uint32_t)pointer;
+
+   agx_vdm_ppp_state_store_le32(&out->bytes[0], word0);
+   agx_vdm_ppp_state_store_le32(&out->bytes[4], word1);
+   out->length = AGX_VDM_PPP_STATE_CORE_LENGTH;
+   return true;
+}
+
+bool
+agx_vdm_ppp_state_core_unpack(enum agx_chip chip, const void *bytes,
+                              size_t size, uint64_t *pointer,
+                              uint32_t *size_words)
+{
+   if (pointer)
+      *pointer = 0;
+   if (size_words)
+      *size_words = 0;
+
+   if (!bytes || !pointer || !size_words ||
+       size != AGX_VDM_PPP_STATE_CORE_LENGTH ||
+       !agx_vdm_ppp_state_core_supported(chip))
+      return false;
+
+   const uint8_t *raw = bytes;
+   const uint32_t word0 = agx_vdm_ppp_state_load_le32(&raw[0]);
+   const uint32_t word1 = agx_vdm_ppp_state_load_le32(&raw[4]);
+
+   if ((word0 & AGX_VDM_PPP_STATE_CORE_RESERVED_MASK) != 0 ||
+       (word1 & UINT32_C(3)) != 0)
+      return false;
+
+   *pointer = ((uint64_t)(word0 & UINT32_C(0xff)) << 32) | word1;
+   *size_words = (word0 >> 8) & AGX_VDM_PPP_STATE_CORE_MAX_SIZE_WORDS;
+   return true;
+}

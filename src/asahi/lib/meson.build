@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: MIT
 
 libasahi_lib_files = files(
+  'agx3_cdm_decode_core.c',
+  'agx3_cdm_decode_core.h',
   'agx_bo.c',
   'agx_border.c',
   'agx_chip.c',
@@ -23,6 +25,8 @@ libasahi_lib_files = files(
   'agx_texture_side_entry.h',
   'agx_vdm_index_list_core.c',
   'agx_vdm_index_list_core.h',
+  'agx_vdm_ppp_state_core.c',
+  'agx_vdm_ppp_state_core.h',
   'agx_vdm_stream_link_core.c',
   'agx_vdm_stream_link_core.h',
   'agx_vdm_state_core.c',
@@ -163,6 +167,20 @@ libasahi_lib = static_library(
 
 if with_tests
   test(
+    'asahi-agx3-cdm-decode-core',
+    executable(
+      'asahi-agx3-cdm-decode-core',
+      files(
+        'agx3_cdm_decode_core.c',
+        'tests/test-agx3-cdm-decode-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      dependencies : [idep_agx_pack, idep_mesautil],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'asahi_feature_matrix',
     prog_python,
     args : [
@@ -193,6 +211,19 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-ppp-state-core',
+    executable(
+      'asahi-vdm-ppp-state-core',
+      files(
+        'agx_vdm_ppp_state_core.c',
+        'tests/test-vdm-ppp-state-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

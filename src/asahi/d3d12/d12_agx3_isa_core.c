@@ -105,6 +105,31 @@ d12_agx3_fmul_long_compiler_target_encoding(
    }
 }
 
+static bool
+d12_agx3_fma_compiler_target_encoding(enum agx_chip chip,
+                                      enum agx_isa_encoding *encoding)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+      *encoding = AGX_ISA_ENCODING_AGX3B;
+      return true;
+
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      *encoding = AGX_ISA_ENCODING_AGX3C;
+      return true;
+
+   default:
+      return false;
+   }
+}
+
 bool
 d12_agx3_encode_binary_alu(
    enum agx_isa_encoding encoding, enum d12_agx3_binary_alu_op op,
@@ -476,6 +501,76 @@ d12_agx3_decode_fmul_f32_reg_reg_long(
    *dest = decoded_dest;
    *src0 = decoded_src0;
    *src1 = decoded_src1;
+   return true;
+}
+
+bool
+d12_agx3_encode_fma_f32_reg_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t mul0, uint16_t mul1, uint16_t addend,
+   struct d12_agx3_fma_f32_reg_reg_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_fma_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   struct agx3_encoded_fma_f32_reg_reg_reg encoded;
+   if (!agx3_pack_fma_f32_reg_reg_reg(
+          encoding, dest, mul0, mul1, addend, &encoded) ||
+       encoded.length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_fma_f32_reg_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *mul0, uint16_t *mul1, uint16_t *addend)
+{
+   if (dest)
+      *dest = 0;
+   if (mul0)
+      *mul0 = 0;
+   if (mul1)
+      *mul1 = 0;
+   if (addend)
+      *addend = 0;
+
+   const uint32_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 8 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 16 : 0;
+   if (!instruction || !dest || !mul0 || !mul1 || !addend ||
+       expected_length == 0 || instruction_size != expected_length)
+      return false;
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_fma_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   uint16_t decoded_dest = 0, decoded_mul0 = 0, decoded_mul1 = 0;
+   uint16_t decoded_addend = 0;
+   uint8_t decoded_length = 0;
+   if (!agx3_unpack_fma_f32_reg_reg_reg(
+          encoding, instruction, instruction_size, &decoded_dest,
+          &decoded_mul0, &decoded_mul1, &decoded_addend, &decoded_length) ||
+       decoded_length != expected_length)
+      return false;
+
+   *dest = decoded_dest;
+   *mul0 = decoded_mul0;
+   *mul1 = decoded_mul1;
+   *addend = decoded_addend;
    return true;
 }
 
