@@ -883,12 +883,108 @@ test_agx3_update_bvh_fixed_witness(void)
 }
 
 static void
-pack_gen5_header(const uint64_t words[8], uint8_t packed[64])
+pack_bvh_header(const uint64_t words[8], uint8_t packed[64])
 {
    for (unsigned word = 0; word < 8; ++word) {
       for (unsigned byte = 0; byte < 8; ++byte)
          packed[(word * 8) + byte] = (uint8_t)(words[word] >> (byte * 8));
    }
+}
+
+static uint64_t
+pack_gen1_quantized_bounds(unsigned child)
+{
+   static const unsigned shifts[6] = {57, 50, 43, 36, 29, 22};
+   uint64_t word = 0;
+
+   for (unsigned component = 0; component < 6; ++component) {
+      const uint64_t value = (child * 11u + component * 7u) & 0x7fu;
+      word |= value << shifts[component];
+   }
+
+   return word;
+}
+
+static void
+test_agx_gen1_child_layout(void)
+{
+   /* Two inner children followed by three leaf boxes.  Their decoded leaf
+    * ends are 9, 17 and 4, giving 17 leaves and three six-leaf slots. */
+   uint64_t words[8] = {
+      UINT64_C(6) << 1,
+      0,
+      UINT64_C(5) << 16,
+      (UINT64_C(15) << 16) | (UINT64_C(2) << 20),
+      0,
+      0,
+      100,
+      (UINT64_C(26) << 8) | ((UINT64_C(3) << 3) | 2),
+   };
+
+   for (unsigned child = 0; child < 8; ++child)
+      words[child] |= pack_gen1_quantized_bounds(child);
+
+   uint8_t packed[AGX_RT_BVH_GEN1_HEADER_SIZE];
+   pack_bvh_header(words, packed);
+
+   struct d12_rt_agx_bvh_gen1_child_layout layout;
+   require(d12_rt_agx_bvh_gen1_decode_child_layout(packed, &layout),
+           "a proved AGX Gen1 child layout decodes for DXR");
+   require(layout.child_space_slot == 100 &&
+              layout.inner_child_offset == 103 &&
+              layout.inner_child_count == 2 && layout.leaf_box_count == 3,
+           "DXR receives the exact Gen1 child-space and branch layout");
+   require(layout.leaf_count == 17 && layout.leaf_storage_slots == 3 &&
+              layout.leaf_slot_capacity == 6 && layout.leaf_type == 26,
+           "DXR receives the exact Gen1 leaf layout");
+
+   for (unsigned child = 0; child < 8; ++child) {
+      for (unsigned component = 0; component < 6; ++component) {
+         require(layout.quantized_bounds[child][component] ==
+                    ((child * 11u + component * 7u) & 0x7fu),
+                 "DXR preserves every Gen1 quantized component");
+      }
+   }
+
+   /* Indexed mode counts boxes rather than taking their maximum end. */
+   words[0] |= 1;
+   pack_bvh_header(words, packed);
+   require(d12_rt_agx_bvh_gen1_decode_child_layout(packed, &layout),
+           "a Gen1 indexed-leaf layout decodes for DXR");
+   require(layout.leaf_count == 3 && layout.leaf_storage_slots == 1 &&
+              layout.inner_child_offset == 101,
+           "DXR applies the exact Gen1 indexed-leaf sizing rule");
+
+   /* The two endpoint controls are special encodings, not ordinary counts. */
+   words[0] &= ~UINT64_C(1);
+   words[7] = (words[7] & ~UINT64_C(0x3f));
+   pack_bvh_header(words, packed);
+   require(d12_rt_agx_bvh_gen1_decode_child_layout(packed, &layout) &&
+              layout.inner_child_count == 8 && layout.leaf_box_count == 0 &&
+              layout.leaf_count == 0 && layout.inner_child_offset == 100,
+           "DXR decodes the Gen1 all-inner endpoint");
+
+   words[7] = (words[7] & ~UINT64_C(0x3f)) | UINT64_C(0x3f);
+   pack_bvh_header(words, packed);
+   require(d12_rt_agx_bvh_gen1_decode_child_layout(packed, &layout) &&
+              layout.inner_child_count == 0 && layout.leaf_box_count == 8,
+           "DXR decodes the Gen1 all-leaf endpoint");
+
+   require(!d12_rt_agx_bvh_gen1_decode_child_layout(NULL, &layout),
+           "DXR refuses a missing Gen1 header");
+   require(!d12_rt_agx_bvh_gen1_decode_child_layout(packed, NULL),
+           "DXR refuses a missing Gen1 layout destination");
+
+   /* Ordinary count fields may encode more than eight total children. */
+   words[7] = (words[7] & ~UINT64_C(0x3f)) |
+              ((UINT64_C(6) << 3) | UINT64_C(7));
+   pack_bvh_header(words, packed);
+   memset(&layout, 0xa5, sizeof(layout));
+   require(!d12_rt_agx_bvh_gen1_decode_child_layout(packed, &layout),
+           "DXR rejects an overfull Gen1 branching layout");
+   const struct d12_rt_agx_bvh_gen1_child_layout zero = {0};
+   require(memcmp(&layout, &zero, sizeof(layout)) == 0,
+           "a rejected Gen1 layout leaves no stale addressing data");
 }
 
 static void
@@ -903,7 +999,7 @@ test_agx_gen5_child_layout(void)
       UINT64_C(0x00390064), UINT64_C(0x00000000),
    };
    uint8_t packed[AGX_RT_BVH_GEN5_HEADER_SIZE];
-   pack_gen5_header(words, packed);
+   pack_bvh_header(words, packed);
 
    struct d12_rt_agx_bvh_gen5_child_layout layout;
    require(d12_rt_agx_bvh_gen5_decode_child_layout(packed, &layout),
@@ -929,7 +1025,7 @@ test_agx_gen5_child_layout(void)
     * five while the header still owns six leaves, so Apple's accessor returns
     * its sentinel 4.  The DXR wrapper must not expose that as a fourth QTB. */
    words[6] = UINT64_C(0x00290064);
-   pack_gen5_header(words, packed);
+   pack_bvh_header(words, packed);
    memset(&layout, 0xa5, sizeof(layout));
    require(!d12_rt_agx_bvh_gen5_decode_child_layout(packed, &layout),
            "DXR fails closed on Apple's invalid-QTB sentinel");
@@ -950,6 +1046,7 @@ main(void)
    test_agx3_update_node_expansion();
    test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();
+   test_agx_gen1_child_layout();
    test_agx_gen5_child_layout();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);

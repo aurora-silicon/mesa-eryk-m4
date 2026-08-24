@@ -20,8 +20,9 @@
  *   - On G17 (M5), traversal prototypes and intrinsic tables are grounded,
  *     but the instruction semantics are not yet complete enough to emit a
  *     hardware traversal shader.
- *   - The RIA Gen5 BVH8 child-section addressing is now solved exactly and
- *     exposed below.  The public builder capture taken on an M5 Pro emitted a
+ *   - The RIA Gen1 BVH8 branching/leaf layout and quantized child fields, and
+ *     the Gen5 child-section addressing, are now solved exactly and exposed
+ *     below.  The public builder capture taken on an M5 Pro emitted a
  *     version-3/Gen1 blob, not a Gen5 blob; the Gen5 QTB/VRB compressed
  *     payload layouts and a live version-5 builder capture remain separate
  *     traversal work.
@@ -31,7 +32,8 @@
  * when one does -- hardware traversal on a later part, or a compute-shader
  * traversal over a BVH of our own design, which the API permits because an
  * acceleration structure is opaque to the application -- the host half and
- * the proved Gen5 child-layout decoder are already written and covered.
+ * the proved Gen1 and Gen5 child-layout decoders are already written and
+ * covered.
  *
  * Keep this free of Windows headers and Mesa runtime state.  The shared AGX
  * packer and BVH helpers included here are standard-C-only contracts.
@@ -718,6 +720,73 @@ d12_rt_agx3_canonical_update_node_valid(enum d12_rt_agx3_encoding encoding,
    default:
       return false;
    }
+}
+
+/*
+ * Decoded Apple RIA Gen1 child layout.
+ *
+ * BVH versions 1 through 4 select this format.  That version is a property of
+ * the blob, not the executing chip: Apple's public builder emitted a
+ * version-3/Gen1 blob on M5 Pro.  Callers must therefore dispatch on the
+ * parsed BVH version rather than attempting to infer this format from an AGX
+ * chip ID.
+ *
+ * The six quantized components retain their hardware order.  Their geometric
+ * axis/min/max names remain deliberately unspecified until independently
+ * correlated.
+ */
+struct d12_rt_agx_bvh_gen1_child_layout {
+   uint32_t child_space_slot;
+   uint32_t inner_child_offset;
+   uint32_t inner_child_count;
+   uint32_t leaf_box_count;
+   uint32_t leaf_count;
+   uint32_t leaf_storage_slots;
+   uint32_t leaf_slot_capacity;
+   uint32_t leaf_type;
+   uint32_t quantized_bounds[8][6];
+};
+
+static inline bool
+d12_rt_agx_bvh_gen1_decode_child_layout(
+   const void *packed_header,
+   struct d12_rt_agx_bvh_gen1_child_layout *layout)
+{
+   struct agx_rt_bvh_gen1_header header;
+
+   if (!layout)
+      return false;
+
+   *layout = (struct d12_rt_agx_bvh_gen1_child_layout){0};
+
+   if (!agx_rt_bvh_gen1_header_unpack(packed_header, &header) ||
+       !agx_rt_bvh_gen1_branching_layout_valid(&header))
+      return false;
+
+   layout->child_space_slot = agx_rt_bvh_gen1_child_space_slot(&header);
+   layout->inner_child_offset = agx_rt_bvh_gen1_inner_child_offset(&header);
+   layout->inner_child_count = agx_rt_bvh_gen1_inner_child_count(&header);
+   layout->leaf_box_count = agx_rt_bvh_gen1_leaf_box_count(&header);
+   layout->leaf_count = agx_rt_bvh_gen1_leaf_count(&header);
+   layout->leaf_storage_slots =
+      agx_rt_bvh_gen1_leaf_storage_slots(&header);
+   layout->leaf_slot_capacity =
+      agx_rt_bvh_gen1_leaf_slot_capacity(&header);
+   layout->leaf_type = agx_rt_bvh_gen1_leaf_type(&header);
+
+   for (unsigned child = 0; child < 8; ++child) {
+      struct agx_rt_bvh_gen1_quantized_bounds bounds;
+      if (!agx_rt_bvh_gen1_quantized_child_bounds(&header, child, &bounds)) {
+         *layout = (struct d12_rt_agx_bvh_gen1_child_layout){0};
+         return false;
+      }
+
+      for (unsigned component = 0; component < 6; ++component)
+         layout->quantized_bounds[child][component] =
+            bounds.component[component];
+   }
+
+   return true;
 }
 
 /*
