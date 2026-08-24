@@ -24,6 +24,8 @@
 #include "hk_physical_device.h"
 #include "hk_shader.h"
 
+#include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/lib/agx_vdm_stream_terminate_core.h"
 #include "libagx_dgc.h"
 #include "pool.h"
 #include "shader_enums.h"
@@ -254,6 +256,68 @@ hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data, uint32_t size,
    return T.gpu;
 }
 
+void *
+hk_cmd_buffer_emit_cdm_terminate(struct hk_cmd_buffer *cmd, void *current)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return agx_cdm_terminate(current);
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      uint8_t terminate[AGX3_CDM_STREAM_TERMINATE_SIZE];
+      if (agx3_cdm_stream_terminate_pack(dev->dev.chip, terminate)) {
+         memcpy(current, terminate, sizeof(terminate));
+         return (uint8_t *)current + sizeof(terminate);
+      }
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded CDM stream terminator for %s",
+             agx_chip_name(dev->dev.chip));
+   vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   return current;
+}
+
+void *
+hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd, void *current)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return agx_vdm_terminate(current);
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct agx_vdm_stream_terminate_core terminate;
+      if (agx_vdm_stream_terminate_core_pack(dev->dev.chip, &terminate)) {
+         memcpy(current, terminate.bytes, terminate.length);
+         return (uint8_t *)current + terminate.length;
+      }
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded VDM stream terminator for %s",
+             agx_chip_name(dev->dev.chip));
+   vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   return current;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 hk_BeginCommandBuffer(VkCommandBuffer commandBuffer,
                       const VkCommandBufferBeginInfo *pBeginInfo)
@@ -317,7 +381,7 @@ hk_EndCommandBuffer(VkCommandBuffer commandBuffer)
     */
    list_for_each_entry(struct hk_cs, cs, &cmd->control_streams, node) {
       if (cs->type == HK_CS_CDM) {
-         cs->current = agx_cdm_terminate(cs->current);
+         cs->current = hk_cmd_buffer_emit_cdm_terminate(cmd, cs->current);
       }
    }
 

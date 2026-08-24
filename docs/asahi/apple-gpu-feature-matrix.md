@@ -157,10 +157,14 @@ fixed `0x60000502` secondary barrier. The exact four-byte type-5 link-padding
 token exposes only its proved three-bit count, while type 6 is recognized but
 stays semantically closed. The exact eight-byte stream terminator is common to
 all eleven launch-grounded identities. The D3D12 host core maps and strictly
-validates these records. These are
-**RE/IV** record packers, not a complete CDM/VDM/Ioto stream, live emission,
-queue submission, device admission, or API capability; the command/submission
-cells therefore remain **RE**.
+validates these records. Command-list close now selects the exact target-aware
+CDM terminator for ordinary and pre-graphics compute segments instead of
+unconditionally appending the AGX2 token. Honeykrisp likewise selects it after
+CDM merging. Unsupported command generations and the ungrounded G16P/G17A
+paths set a list/command-buffer error. These remain **RE/IV** pieces rather
+than a complete CDM/VDM/Ioto stream: launch, links, barriers, executable
+shader payloads, queue submission, device admission, and API capability are
+still independently gated, so the command/submission cells remain **RE**.
 
 A strict shared record-at-a-time decoder and D3D12 entry point now classify
 that grounded CDM subset inside a longer byte stream. They distinguish launch,
@@ -246,8 +250,11 @@ constant pair `{0, 0xc0000000}` at context `+0x7500`, and
 `emitEndCommandStream` copies the second word from `+0x7504`; HAL300 uses the
 corresponding `+0x74f0/+0x74f4` offsets with the same bytes. Type-7 Stream
 Return `0xe0000000` remains rejected because the plugin sweep found no aligned
-emitter evidence. Allocation, live termination emission, and submission remain
-closed.
+emitter evidence. The D3D12 render-segment close and Honeykrisp graphics close
+paths now select this exact target-aware terminator instead of the AGX2 token
+on the eleven grounded identities. Unsupported identities fail the owning list
+or command buffer. The rest of live VDM emission, allocation, stream-link
+lifecycle, submission, and device admission remain closed.
 
 Honeykrisp now consumes that same target-aware decoder through a Vulkan-side
 validation bridge on the eleven pinned identities. Its focused tests replay all
@@ -283,7 +290,7 @@ feature exposure.
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, kick/ring models; normal ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion, and kick/ring models; classic ACK unknown |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models; firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -569,8 +576,15 @@ each read index with a 32-bit load/add-one/mask-`0xff`/store sequence up to
 `dsb sy`, runs the recovery body, stores 0, and executes a second `dsb sy`.
 This path is explicitly recovery/discard rather than normal consumption and
 is rejected for G17P/G/C and every earlier target. A separate G17S SKSM
-completion consumer, plus device-control and timestamp consumers, do not own
-the classic four-priority submission ring; normal acknowledgment therefore
+completion consumer is now modeled independently: the host provides four
+`0x20`-byte descriptors and the firmware visits records 1, 3, and 0, consuming
+`0x40`-byte entries after decoding the low 32-bit producer status and count.
+It performs the exact cache-maintenance, validation, handler, and modulo read
+advance sequence before publishing the processed count to selector-specific
+MMIO at `0x21190`, `0x211a0`, and `0x21188`. The pinned path has no direct
+barrier, release store, or atomic before those publications. This consumer,
+plus the still-unmodeled device-control and timestamp consumers, does not own
+the classic four-priority submission ring; classic acknowledgment therefore
 remains unproved and executable submission remains disabled.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power

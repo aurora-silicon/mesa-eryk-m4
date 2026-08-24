@@ -24,8 +24,9 @@ struct d12_agx3_vdm_stream_terminate {
 };
 
 /*
- * Research/validation bridge for only the exact four-byte AGX3 VDM Stream
- * Terminate.  Type-7 Stream Return, command allocation, live emission,
+ * Exact four-byte AGX3 VDM Stream Terminate bridge.  The command-list close
+ * path selects this record for the directly grounded G15/HAL200/HAL300
+ * identities.  Type-7 Stream Return, the rest of live AGX3 command emission,
  * submission, device admission, and D3D12 capabilities remain closed.
  */
 bool

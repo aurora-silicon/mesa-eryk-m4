@@ -684,6 +684,11 @@ hk_cs_destroy(struct hk_cs *cs)
 
 void hk_dispatch_imm_writes(struct hk_cmd_buffer *cmd, struct hk_cs *cs);
 
+void *hk_cmd_buffer_emit_cdm_terminate(struct hk_cmd_buffer *cmd,
+                                       void *current);
+void *hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd,
+                                       void *current);
+
 static void
 hk_cmd_buffer_end_compute_internal(struct hk_cmd_buffer *cmd,
                                    struct hk_cs **ptr)
@@ -729,7 +734,7 @@ hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
          hk_pool_upload(cmd, cs->depth_bias.data, cs->depth_bias.size, 64);
 
       /* TODO: maybe free scissor/depth_bias now? */
-      cs->current = agx_vdm_terminate(cs->current);
+      cs->current = hk_cmd_buffer_emit_vdm_terminate(cmd, cs->current);
    }
 
    cmd->current_cs.gfx = NULL;

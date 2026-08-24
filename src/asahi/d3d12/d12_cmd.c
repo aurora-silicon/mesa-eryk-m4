@@ -14,6 +14,8 @@
 
 #include "d12_private.h"
 #include "d12_buffer_view_core.h"
+#include "d12_agx3_cmdstream_core.h"
+#include "d12_agx3_vdm_stream_terminate_core.h"
 #include "d12_command_validation_core.h"
 #include "d12_discard_core.h"
 #include "d12_present_format_core.h"
@@ -948,14 +950,79 @@ d12_list_check_stream_space(struct d12_cmd_list *list)
 
 static void d12_list_close_pregfx(struct d12_cmd_list *list);
 
+static bool
+d12_list_emit_cdm_terminate(struct d12_cmd_list *list)
+{
+   switch (agx_chip_command_stream_generation(list->device->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      list->stream_cur =
+         (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
+      return true;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct d12_agx3_cdm_stream_terminate_encoding terminate;
+      if (!d12_agx3_encode_cdm_stream_terminate(list->device->dev.chip,
+                                                &terminate))
+         break;
+
+      memcpy(list->stream_cur, terminate.bytes, terminate.length);
+      list->stream_cur += terminate.length;
+      return true;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded CDM stream terminator for %s",
+             agx_chip_name(list->device->dev.chip));
+   list->state = D12_LIST_ERROR;
+   return false;
+}
+
+static bool
+d12_list_emit_vdm_terminate(struct d12_cmd_list *list)
+{
+   switch (agx_chip_command_stream_generation(list->device->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      list->stream_cur =
+         (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
+      return true;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct d12_agx3_vdm_stream_terminate terminate;
+      if (!d12_agx3_encode_vdm_stream_terminate(list->device->dev.chip,
+                                                &terminate))
+         break;
+
+      memcpy(list->stream_cur, terminate.bytes, terminate.length);
+      list->stream_cur += terminate.length;
+      return true;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded VDM stream terminator for %s",
+             agx_chip_name(list->device->dev.chip));
+   list->state = D12_LIST_ERROR;
+   return false;
+}
+
 /* Close whichever segment is open, terminating its control stream. */
 static void
 d12_list_close_cdm(struct d12_cmd_list *list)
 {
    if (list->cdm_open) {
       struct d12_segment *seg = &list->segments[list->segment_count - 1];
-      list->stream_cur =
-         (uint8_t *)agx_cdm_terminate((uint32_t *)list->stream_cur);
+      d12_list_emit_cdm_terminate(list);
       seg->stream_end = list->stream_cur - d12_list_stream_map(list);
       list->cdm_open = false;
    }
@@ -967,8 +1034,7 @@ d12_list_close_cdm(struct d12_cmd_list *list)
       d12_list_close_pregfx(list);
 
       struct d12_segment *seg = &list->segments[list->segment_count - 1];
-      list->stream_cur =
-         (uint8_t *)agx_vdm_terminate((uint32_t *)list->stream_cur);
+      d12_list_emit_vdm_terminate(list);
       seg->stream_end = list->stream_cur - d12_list_stream_map(list);
       list->render_open = false;
    }
@@ -995,8 +1061,11 @@ d12_list_close_pregfx(struct d12_cmd_list *list)
       return;
 
    struct d12_segment *seg = &list->segments[list->pregfx_seg];
-   uint8_t *end = (uint8_t *)agx_cdm_terminate((uint32_t *)list->pregfx_cur);
-   seg->stream_end = end - d12_list_stream_map(list);
+   uint8_t *saved_stream_cur = list->stream_cur;
+   list->stream_cur = list->pregfx_cur;
+   d12_list_emit_cdm_terminate(list);
+   seg->stream_end = list->stream_cur - d12_list_stream_map(list);
+   list->stream_cur = saved_stream_cur;
    list->pregfx_open = false;
    list->pregfx_cur = NULL;
 }
