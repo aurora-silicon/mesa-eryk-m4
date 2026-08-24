@@ -215,11 +215,11 @@ stream return and terminate records, allocation, live linking, and submission
 remain closed.
 
 A strict shared VDM record-at-a-time decoder and D3D12 bridge now classify all
-six grounded record families from a potentially longer stream: PPP State
+seven grounded record families from a potentially longer stream: PPP State
 Update, the canonical memory barrier, full State Update, direct non-indexed
-and indexed Index List, and direct Stream Link. Record length is derived from
-both the exact header and the target's G15/HAL200 versus HAL300 form. Types
-5/6/7, truncated or
+and indexed Index List, direct Stream Link, and Stream Terminate. Record
+length is derived from both the exact header and the target's G15/HAL200
+versus HAL300 form. Types 5/7, truncated or
 reserved-bit-mutated records, unsupported identities, and wrong-generation
 lengths fail with a cleared result. The decoder does not inspect PPP payloads,
 follow links, read GPU memory, emit commands, or submit work.
@@ -229,12 +229,21 @@ decoded as the four-byte little-endian word `0x21000960` on those eleven
 identities. The aggregate G15X emitter can OR bits 2--4 when a separate
 `hasMultipleAGCs` property is true, producing `0x2100097c`, but no per-chip
 value for that property is pinned; the alternate form therefore remains
-rejected on every identity. VDM stream return and terminate also remain closed
-because the inspected paths provide no direct exact emitter bytes.
+rejected on every identity.
+
+The exact type-6 VDM Stream Terminate is independently packed and decoded as
+the four-byte little-endian word `0xc0000000` on those same eleven identities.
+Every pinned G15 through G17P render-context constructor stores the identical
+constant pair `{0, 0xc0000000}` at context `+0x7500`, and
+`emitEndCommandStream` copies the second word from `+0x7504`; HAL300 uses the
+corresponding `+0x74f0/+0x74f4` offsets with the same bytes. Type-7 Stream
+Return `0xe0000000` remains rejected because the plugin sweep found no aligned
+emitter evidence. Allocation, live termination emission, and submission remain
+closed.
 
 Honeykrisp now consumes that same target-aware decoder through a Vulkan-side
 validation bridge on the eleven pinned identities. Its focused tests replay all
-six record kinds and the fail-closed identity/length boundary. This does not
+seven record kinds and the fail-closed identity/length boundary. This does not
 connect the records to `hk_cmd_buffer`, change AGX3 device admission, or expose
 any Vulkan feature.
 
@@ -582,6 +591,7 @@ The current in-tree anchors are:
   [`agx_vdm_state_update_core.h`](../../src/asahi/lib/agx_vdm_state_update_core.h),
   [`agx_vdm_decode_core.h`](../../src/asahi/lib/agx_vdm_decode_core.h),
   [`agx_vdm_barrier_core.h`](../../src/asahi/lib/agx_vdm_barrier_core.h),
+  [`agx_vdm_stream_terminate_core.h`](../../src/asahi/lib/agx_vdm_stream_terminate_core.h),
   [`agx_vdm_ppp_state_core.h`](../../src/asahi/lib/agx_vdm_ppp_state_core.h),
   [`agx_ppp_viewport_payload_core.h`](../../src/asahi/lib/agx_ppp_viewport_payload_core.h),
   [`agx_vdm_index_list_core.h`](../../src/asahi/lib/agx_vdm_index_list_core.h),
@@ -590,7 +600,8 @@ The current in-tree anchors are:
   launch/link/padding/barrier/terminate, the exact eight-byte PPP State Update
   header, its bounded viewport-only pointed payload, the complete raw-preserving
   28-byte VDM State Update, direct VDM index-list representations, and direct
-  40-bit VDM Stream Link, without live emission or submission.
+  40-bit VDM Stream Link plus the fixed Stream Terminate, without live emission
+  or submission.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,

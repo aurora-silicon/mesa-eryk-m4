@@ -8,6 +8,7 @@
 #include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_ppp_state_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
+#include "asahi/lib/agx_vdm_stream_terminate_core.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -138,6 +139,17 @@ test_all_record_kinds(void)
       CHECK(record.length == link.length);
       CHECK(record.chip == chip);
       CHECK(record.data.stream_link.target == UINT64_C(0xcd12345678) + t);
+
+      struct agx_vdm_stream_terminate_core terminate;
+      CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
+      uint8_t terminate_stream[AGX_VDM_STREAM_TERMINATE_CORE_LENGTH + 4];
+      memcpy(terminate_stream, terminate.bytes, terminate.length);
+      memset(terminate_stream + terminate.length, 0xa5, 4);
+      CHECK(d12_agx3_decode_vdm_record(chip, terminate_stream,
+                                       sizeof(terminate_stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_STREAM_TERMINATE);
+      CHECK(record.length == terminate.length);
+      CHECK(record.chip == chip);
    }
 
    return 0;
@@ -171,12 +183,14 @@ test_rejection(void)
       CHECK(record_is_cleared(&record));
    }
 
-   const uint8_t unknown[4] = {0, 0, 0, 0xe0};
+   const uint8_t ungrounded_return[4] = {0, 0, 0, 0xe0};
    struct agx_vdm_decoded_record record;
-   memset(&record, 0xff, sizeof(record));
-   CHECK(!d12_agx3_decode_vdm_record(AGX_CHIP_G17S, unknown, sizeof(unknown),
-                                     &record));
-   CHECK(record_is_cleared(&record));
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      memset(&record, 0xff, sizeof(record));
+      CHECK(!d12_agx3_decode_vdm_record(targets[t], ungrounded_return,
+                                        sizeof(ungrounded_return), &record));
+      CHECK(record_is_cleared(&record));
+   }
 
    const uint8_t aggregate_multi_agc[AGX_VDM_BARRIER_CORE_LENGTH] = {
       0x7c,

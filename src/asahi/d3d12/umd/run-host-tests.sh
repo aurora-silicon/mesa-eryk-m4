@@ -100,6 +100,7 @@ done
     "$repo_root/src/asahi/lib/agx_vdm_state_update_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_index_list_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_stream_link_core.c" \
+    "$repo_root/src/asahi/lib/agx_vdm_stream_terminate_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_decode_core.c" \
     "$d12_dir/d12_agx3_vdm_decode_core.c" \
     "$d12_dir/tests/d12_agx3_vdm_decode_core_tests.c" \
@@ -137,6 +138,14 @@ done
     "$d12_dir/tests/d12_agx3_vdm_stream_link_core_tests.c" \
     -o "$out/d12_agx3_vdm_stream_link_core_tests"
 "$out/d12_agx3_vdm_stream_link_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
+    "$repo_root/src/asahi/lib/agx_vdm_stream_terminate_core.c" \
+    "$d12_dir/d12_agx3_vdm_stream_terminate_core.c" \
+    "$d12_dir/tests/d12_agx3_vdm_stream_terminate_core_tests.c" \
+    -o "$out/d12_agx3_vdm_stream_terminate_core_tests"
+"$out/d12_agx3_vdm_stream_terminate_core_tests"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
@@ -360,6 +369,7 @@ done
     "$repo_root/src/asahi/lib/agx_vdm_state_update_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_index_list_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_stream_link_core.c" \
+    "$repo_root/src/asahi/lib/agx_vdm_stream_terminate_core.c" \
     "$repo_root/src/asahi/lib/agx_vdm_decode_core.c" \
     "$repo_root/src/asahi/lib/tests/test-vdm-decode-core.c" \
     -o "$out/agx_vdm_decode_core_tests"
@@ -392,6 +402,13 @@ done
     "$repo_root/src/asahi/lib/tests/test-vdm-stream-link-core.c" \
     -o "$out/agx_vdm_stream_link_core_tests"
 "$out/agx_vdm_stream_link_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_vdm_stream_terminate_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-vdm-stream-terminate-core.c" \
+    -o "$out/agx_vdm_stream_terminate_core_tests"
+"$out/agx_vdm_stream_terminate_core_tests"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \

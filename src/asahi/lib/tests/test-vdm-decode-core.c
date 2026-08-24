@@ -7,6 +7,7 @@
 #include "asahi/lib/agx_vdm_decode_core.h"
 #include "asahi/lib/agx_vdm_ppp_state_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
+#include "asahi/lib/agx_vdm_stream_terminate_core.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -262,6 +263,29 @@ test_stream_link(void)
 }
 
 static int
+test_stream_terminate(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      const enum agx_chip chip = supported_targets[t];
+      struct agx_vdm_stream_terminate_core packed;
+      CHECK(agx_vdm_stream_terminate_core_pack(chip, &packed));
+
+      uint8_t stream[AGX_VDM_STREAM_TERMINATE_CORE_LENGTH + 4];
+      memcpy(stream, packed.bytes, packed.length);
+      memset(stream + packed.length, 0x5a, 4);
+
+      struct agx_vdm_decoded_record record;
+      CHECK(agx_vdm_decode_one(chip, stream, sizeof(stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_STREAM_TERMINATE);
+      CHECK(record.length == packed.length);
+      CHECK(record.chip == chip);
+   }
+
+   return 0;
+}
+
+static int
 test_rejection(void)
 {
    const enum agx_chip chip = AGX_CHIP_G17S;
@@ -271,6 +295,7 @@ test_rejection(void)
    struct agx_vdm_index_list_direct_nonindexed nonindexed;
    struct agx_vdm_index_list_direct_indexed indexed;
    struct agx_vdm_stream_link_core link;
+   struct agx_vdm_stream_terminate_core terminate;
    const struct agx_vdm_state_update_info state_info = {
       .pipeline = UINT64_C(0x123456780),
    };
@@ -297,14 +322,19 @@ test_rejection(void)
                                                    &nonindexed));
    CHECK(agx_vdm_index_list_direct_indexed_pack(chip, &indexed_info, &indexed));
    CHECK(agx_vdm_stream_link_core_pack(chip, UINT64_C(0x123456789), &link));
+   CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
 
    const struct {
       const uint8_t *bytes;
       size_t length;
    } records[] = {
-      {ppp.bytes, ppp.length},         {barrier.bytes, barrier.length},
-      {state.bytes, state.length},     {nonindexed.bytes, nonindexed.length},
-      {indexed.bytes, indexed.length}, {link.bytes, link.length},
+      {ppp.bytes, ppp.length},
+      {barrier.bytes, barrier.length},
+      {state.bytes, state.length},
+      {nonindexed.bytes, nonindexed.length},
+      {indexed.bytes, indexed.length},
+      {link.bytes, link.length},
+      {terminate.bytes, terminate.length},
    };
 
    for (unsigned r = 0; r < sizeof(records) / sizeof(records[0]); ++r) {
@@ -320,7 +350,7 @@ test_rejection(void)
    }
 
    for (uint32_t type = 1; type < 8; ++type) {
-      if (type == 1 || type == 2 || type == 3 || type == 4)
+      if (type == 1 || type == 2 || type == 3 || type == 4 || type == 6)
          continue;
       const uint8_t word[4] = {0, 0, 0, (uint8_t)(type << 5)};
       CHECK(check_rejected(chip, word, sizeof(word)) == 0);
@@ -353,6 +383,19 @@ test_rejection(void)
    malformed_link[2] = 1;
    CHECK(check_rejected(chip, malformed_link, sizeof(malformed_link)) == 0);
 
+   static const uint8_t
+      ungrounded_return[AGX_VDM_STREAM_TERMINATE_CORE_LENGTH] = {
+         0x00,
+         0x00,
+         0x00,
+         0xe0,
+      };
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      CHECK(check_rejected(supported_targets[t], ungrounded_return,
+                           sizeof(ungrounded_return)) == 0);
+   }
+
    struct agx_vdm_decoded_record record;
    CHECK(!agx_vdm_decode_one(chip, ppp.bytes, ppp.length, NULL));
    CHECK(!agx_vdm_decode_one(chip, NULL, ppp.length, &record));
@@ -367,6 +410,7 @@ main(void)
    CHECK(test_state_update() == 0);
    CHECK(test_index_lists() == 0);
    CHECK(test_stream_link() == 0);
+   CHECK(test_stream_terminate() == 0);
    CHECK(test_rejection() == 0);
 
    printf("agx_vdm_decode_core: %u checks passed\n", checks);

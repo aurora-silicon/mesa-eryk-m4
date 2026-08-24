@@ -27,6 +27,7 @@ enum agx_vdm_record_kind {
    AGX_VDM_RECORD_INDEX_LIST_NONINDEXED,
    AGX_VDM_RECORD_INDEX_LIST_INDEXED,
    AGX_VDM_RECORD_STREAM_LINK,
+   AGX_VDM_RECORD_STREAM_TERMINATE,
 };
 
 struct agx_vdm_decoded_record {
