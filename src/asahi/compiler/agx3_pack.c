@@ -585,6 +585,114 @@ agx3_unpack_bit_or_u32_reg_reg(
 }
 
 bool
+agx3_pack_bit_xor_u32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_bit_xor_u32_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 256 ||
+       src0 >= 256 || src1 >= 256 || (dest & 1) != 0 || (src0 & 1) != 0 ||
+       (src1 & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Exact canonical fields from the seven-target Apple compiler replay. */
+      const uint8_t canonical[AGX3_BIT_XOR_U32_REG_REG_LENGTH] = {
+         0x0b, 0x01, 0x0e, 0x01, 0x02, 0x08, 0x00, 0x80, 0x00, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2: d[1:4] -> b0[4:7], d[5:6] -> b2[6:7], d[7] -> b5[4]. */
+      out->bytes[0] |= (dest & 0x1e) << 3;
+      out->bytes[2] |= (dest & 0x60) << 1;
+      out->bytes[5] |= (dest & 0x80) >> 3;
+
+      /* f16: s0[1:6] -> b1[1:6], s0[7] -> b5[0]. */
+      out->bytes[1] |= src0 & 0x7e;
+      out->bytes[5] |= src0 >> 7;
+
+      /* f30: s1[1:6] -> b3[1:6], s1[7] -> b5[2]. */
+      out->bytes[3] |= src1 & 0x7e;
+      out->bytes[5] |= (src1 & 0x80) >> 5;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   /* Exact canonical fields from the G17G/G17S Apple compiler replay. */
+   const uint8_t canonical[AGX3_BIT_XOR_U32_REG_REG_LENGTH] = {
+      0x2b, 0x00, 0x06, 0x80, 0x32, 0x38, 0xa0, 0x02, 0x04, 0x80,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2 uses the bounded eight-bit AGX3c destination scatter. */
+   out->bytes[0] |= ((dest >> 1) & 0x1) << 4;
+   out->bytes[0] |= ((dest >> 4) & 0x1) << 7;
+   out->bytes[7] |= ((dest >> 2) & 0x3) << 3;
+   out->bytes[7] |= ((dest >> 5) & 0x1) << 5;
+   out->bytes[2] |= ((dest >> 6) & 0x1) << 7;
+   out->bytes[2] |= ((dest >> 7) & 0x1) << 3;
+
+   /* f16 has generation-C-specific fragments in b1, b3, and b5. */
+   out->bytes[1] |= src0 & 0x2;
+   out->bytes[5] |= (src0 & 0x0c) << 4;
+   out->bytes[3] |= (src0 & 0x10) >> 3;
+   out->bytes[3] |= (src0 & 0xe0) >> 2;
+
+   /* f30: s1[1] -> b8[7], s1[2:7] -> b9[0:5]. */
+   out->bytes[8] |= ((src1 >> 1) & 0x1) << 7;
+   out->bytes[9] |= (src1 >> 2) & 0x3f;
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_bit_xor_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src0 == NULL || src1 == NULL || length == NULL ||
+       available < AGX3_BIT_XOR_U32_REG_REG_LENGTH)
+      return false;
+
+   uint16_t decoded_dest, decoded_src0, decoded_src1;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                     ((bytes[2] >> 1) & 0x60) |
+                     ((bytes[5] & 0x10) << 3);
+      decoded_src0 = (bytes[1] & 0x7e) | ((bytes[5] & 0x1) << 7);
+      decoded_src1 = (bytes[3] & 0x7e) | ((bytes[5] & 0x4) << 5);
+   } else {
+      decoded_dest = (((bytes[0] >> 4) & 0x1) << 1) |
+                     (((bytes[7] >> 3) & 0x3) << 2) |
+                     (((bytes[0] >> 7) & 0x1) << 4) |
+                     (((bytes[7] >> 5) & 0x1) << 5) |
+                     (((bytes[2] >> 7) & 0x1) << 6) |
+                     (((bytes[2] >> 3) & 0x1) << 7);
+      decoded_src0 = (bytes[1] & 0x2) |
+                     (((bytes[5] >> 6) & 0x3) << 2) |
+                     (((bytes[3] >> 1) & 0x1) << 4) |
+                     (((bytes[3] >> 3) & 0x7) << 5);
+      decoded_src1 = (((bytes[8] >> 7) & 0x1) << 1) |
+                     ((bytes[9] & 0x3f) << 2);
+   }
+
+   struct agx3_encoded_bit_xor_u32_reg_reg canonical;
+   if (!agx3_pack_bit_xor_u32_reg_reg(encoding, decoded_dest, decoded_src0,
+                                      decoded_src1, &canonical) ||
+       canonical.length != AGX3_BIT_XOR_U32_REG_REG_LENGTH ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src0 = decoded_src0;
+   *src1 = decoded_src1;
+   *length = canonical.length;
+   return true;
+}
+
+bool
 agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)

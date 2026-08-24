@@ -57,6 +57,12 @@ main(void)
    static const uint8_t ior_c[] = {
       0x2b, 0x00, 0x07, 0x80, 0x32, 0x38, 0xa0, 0x02, 0x84, 0x80,
    };
+   static const uint8_t ixor_b[] = {
+      0x0b, 0x01, 0x0e, 0x03, 0x02, 0x08, 0x00, 0x80, 0x00, 0x00,
+   };
+   static const uint8_t ixor_c[] = {
+      0x2b, 0x00, 0x06, 0x80, 0x32, 0x38, 0xa0, 0x02, 0x84, 0x80,
+   };
 
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
                         D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0, iadd_b,
@@ -76,6 +82,12 @@ main(void)
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3C,
                         D12_AGX3_BINARY_ALU_IOR_U32, 0, 0, 2, ior_c,
                         sizeof(ior_c)) == 0);
+   CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
+                        D12_AGX3_BINARY_ALU_IXOR_U32, 0, 0, 2, ixor_b,
+                        sizeof(ixor_b)) == 0);
+   CHECK(check_encoding(AGX_ISA_ENCODING_AGX3C,
+                        D12_AGX3_BINARY_ALU_IXOR_U32, 0, 0, 2, ixor_c,
+                        sizeof(ixor_c)) == 0);
 
    struct d12_agx3_binary_alu_encoding encoded = {
       .bytes = {0xff},
@@ -102,6 +114,9 @@ main(void)
                                      &encoded));
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_IOR_U32, 0, 257, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_IXOR_U32, 0, 0, 257,
                                      &encoded));
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0,

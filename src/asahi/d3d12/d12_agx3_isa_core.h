@@ -23,6 +23,7 @@ enum d12_agx3_binary_alu_op {
    D12_AGX3_BINARY_ALU_IADD_U32 = 0,
    D12_AGX3_BINARY_ALU_IAND_U32 = 1,
    D12_AGX3_BINARY_ALU_IOR_U32 = 2,
+   D12_AGX3_BINARY_ALU_IXOR_U32 = 3,
 };
 
 struct d12_agx3_binary_alu_encoding {

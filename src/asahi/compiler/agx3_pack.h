@@ -21,6 +21,7 @@ extern "C" {
 #define AGX3_IADD_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
+#define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -49,6 +50,11 @@ struct agx3_encoded_bit_and_u32_reg_reg {
 
 struct agx3_encoded_bit_or_u32_reg_reg {
    uint8_t bytes[AGX3_BIT_OR_U32_REG_REG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_bit_xor_u32_reg_reg {
+   uint8_t bytes[AGX3_BIT_XOR_U32_REG_REG_LENGTH];
    uint8_t length;
 };
 
@@ -188,6 +194,27 @@ bool agx3_pack_bit_or_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_bit_or_u32_reg_reg *out);
 bool agx3_unpack_bit_or_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded three-register u32 `bit_xor` form.
+ * P2i_xor's two preceding lddev destinations correlate f2 with the result,
+ * f16 with one input, and f30 with the other on both Apple table variants.
+ * Q_ixor_n1..n4 independently reproduce the encoding point on G15G, G16G,
+ * and G17S.
+ *
+ * Registers use even half-register indices.  AGX3b's table covers the whole
+ * modeled r0..r127 file.  AGX3c contains an unprobed ninth register bit, so
+ * this API deliberately keeps all three operands in r0..r127.  Only the exact
+ * anonymous-field selection from the nine-target volatile-load-and-gid replay
+ * is accepted; other anonymous-field selections and G15G's standalone
+ * scheduling nops remain outside this packer.
+ */
+bool agx3_pack_bit_xor_u32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_bit_xor_u32_reg_reg *out);
+bool agx3_unpack_bit_xor_u32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
