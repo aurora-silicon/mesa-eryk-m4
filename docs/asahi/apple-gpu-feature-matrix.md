@@ -187,6 +187,12 @@ reserved-bit-mutated records, unsupported identities, and wrong-generation
 lengths fail with a cleared result. The decoder does not inspect PPP payloads,
 follow links, read GPU memory, emit commands, or submit work.
 
+Honeykrisp now consumes that same target-aware decoder through a Vulkan-side
+validation bridge on the eleven pinned identities. Its focused tests replay all
+five record kinds and the fail-closed identity/length boundary. This does not
+connect the records to `hk_cmd_buffer`, change AGX3 device admission, or expose
+any Vulkan feature.
+
 ## Mesa API and kernel relationship
 
 | Mesa identity | Gallium / OpenGL | Honeykrisp / Vulkan | D3D12 AGX / WDDM UMD | DXR | Linux DRM relationship |
@@ -496,6 +502,9 @@ The current in-tree anchors are:
   generation-sized Honeykrisp image records, Gen9/10 sampled-texture selectors,
   native Gen9/10 PBE hardware words, and the fail-closed AGX3 software-sideband
   policy.
+- [`hk_agx3_vdm_decode.h`](../../src/asahi/vulkan/hk_agx3_vdm_decode.h) and its
+  [focused test](../../src/asahi/vulkan/tests/test-hk-agx3-vdm-decode.c):
+  Honeykrisp's fail-closed bridge to the shared grounded VDM record decoder.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact

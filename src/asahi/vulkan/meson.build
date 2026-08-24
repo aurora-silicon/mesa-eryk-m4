@@ -26,6 +26,8 @@ hk_files = files(
   'hk_event.c',
   'hk_event.h',
   'hk_format.c',
+  'hk_agx3_vdm_decode.c',
+  'hk_agx3_vdm_decode.h',
   'hk_image.c',
   'hk_image.h',
   'hk_image_view.c',
@@ -55,6 +57,22 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_agx3_vdm_decode',
+    executable(
+      'hk_agx3_vdm_decode_test',
+      files('tests/test-hk-agx3-vdm-decode.c',
+            'hk_agx3_vdm_decode.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      link_with : [libasahi_lib],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
   test(
     'hk_native_descriptor',
     executable(
