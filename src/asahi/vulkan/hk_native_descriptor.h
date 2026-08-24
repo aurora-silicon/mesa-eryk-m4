@@ -108,10 +108,10 @@ hk_storage_image_descriptor_layout(unsigned generation)
    };
 }
 
-/* The Gen9 multisample selector has not been identified.  AGX3 buffer
- * descriptors likewise have no recovered equivalent for AGX2's software tail
- * offset.  Both cases must remain unavailable rather than aliasing unknown
- * bits in a native descriptor.
+/* AGX3 buffer descriptors have no recovered equivalent for AGX2's software
+ * tail offset.  Keep those unavailable rather than aliasing unknown bits in a
+ * native descriptor.  Multisample descriptor representation is recovered on
+ * both AGX3 generations; this is not by itself an execution/capability gate.
  */
 static inline bool
 hk_native_texture_supported(unsigned generation, bool multisampled,
@@ -121,9 +121,6 @@ hk_native_texture_supported(unsigned generation, bool multisampled,
       return true;
 
    if (!hk_descriptor_generation_is_agx3(generation))
-      return false;
-
-   if (generation == 9 && multisampled)
       return false;
 
    return buffer_tail_offset == 0;
@@ -144,10 +141,7 @@ hk_native_texture_sample_count_representable(unsigned generation,
    if (hk_descriptor_generation_is_agx2(generation))
       return samples == 2 || samples == 4;
 
-   if (generation == 9)
-      return false;
-
-   if (generation == 10)
+   if (generation == 9 || generation == 10)
       return samples == 2 || samples == 4 || samples == 8;
 
    return false;

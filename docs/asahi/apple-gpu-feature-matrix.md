@@ -110,6 +110,13 @@ keeps 8x quality levels at zero because its resource contract has no
 sampled-only multisample usage that would avoid promising an unproven 8x
 render/depth path.
 
+Honeykrisp additionally represents the independently extracted Gen9
+sampled-texture selector for G15/G16/G17P in word-0 bits 56:57. Four separate
+G15/HAL200 image-read encoders map numeric 2x/4x/8x counts to selectors 0/1/2;
+this is distinct from the Gen9 PBE state record. It remains **RE/IV**
+descriptor-only coverage: public Vulkan sample counts, executed sampling,
+raster/PBE support, command submission, and device admission do not change.
+
 AIL also carries tested M5 allocation-policy primitives for the measured
 2 KiB small-array compression-metadata granule, 16 KiB large-array granule,
 unpadded single-layer rule, and 16x8 metadata tiles at 16 B/px. Gallium,
@@ -184,8 +191,9 @@ The current in-tree anchors are:
 - [`hk_native_descriptor.h`](../../src/asahi/vulkan/hk_native_descriptor.h),
   its [packing helper](../../src/asahi/vulkan/hk_native_descriptor_pack.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-descriptor.c):
-  generation-sized Honeykrisp image records, native Gen9/10 PBE hardware
-  words, and the fail-closed AGX3 software-sideband policy.
+  generation-sized Honeykrisp image records, Gen9/10 sampled-texture selectors,
+  native Gen9/10 PBE hardware words, and the fail-closed AGX3 software-sideband
+  policy.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact

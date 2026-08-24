@@ -104,14 +104,17 @@ main(void)
           legacy.border);
 
    assert(hk_native_texture_supported(7, true, 12));
-   assert(!hk_native_texture_supported(9, true, 0));
+   assert(hk_native_texture_supported(9, true, 0));
    assert(hk_native_texture_supported(9, false, 0));
    assert(!hk_native_texture_supported(9, false, 4));
    assert(hk_native_texture_supported(10, true, 0));
    assert(!hk_native_texture_supported(10, false, 12));
    assert(hk_native_texture_sample_count_representable(7, 2));
    assert(hk_native_texture_sample_count_representable(8, 4));
-   assert(!hk_native_texture_sample_count_representable(9, 2));
+   assert(hk_native_texture_sample_count_representable(9, 2));
+   assert(hk_native_texture_sample_count_representable(9, 4));
+   assert(hk_native_texture_sample_count_representable(9, 8));
+   assert(!hk_native_texture_sample_count_representable(9, 16));
    assert(hk_native_texture_sample_count_representable(10, 8));
    assert(!hk_native_texture_sample_count_representable(10, 16));
    assert(!hk_native_texture_sample_count_representable(0, 1));
@@ -166,21 +169,46 @@ main(void)
    assert(memcmp(&native_packed, m5_texture, sizeof(m5_texture)) == 0);
 
    enum agx_sample_count samples;
+   assert(hk_translate_native_texture_sample_count(9, 2, &samples));
+   assert(samples == AGX_SAMPLE_COUNT_2);
+   assert(hk_translate_native_texture_sample_count(9, 4, &samples));
+   assert(samples == AGX_SAMPLE_COUNT_4);
+   assert(hk_translate_native_texture_sample_count(9, 8, &samples));
+   assert(samples == AGX_SAMPLE_COUNT_8);
    assert(hk_translate_native_texture_sample_count(10, 8, &samples));
    assert(samples == AGX_SAMPLE_COUNT_8);
-   assert(!hk_translate_native_texture_sample_count(9, 8, &samples));
    assert(!hk_translate_native_texture_sample_count(10, 1, &samples));
 
    semantic.dimension = AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+   static const struct {
+      enum agx_sample_count samples;
+      unsigned selector;
+   } gen9_msaa[] = {
+      {AGX_SAMPLE_COUNT_2, 0},
+      {AGX_SAMPLE_COUNT_4, 1},
+      {AGX_SAMPLE_COUNT_8, 2},
+   };
+   for (unsigned i = 0; i < sizeof(gen9_msaa) / sizeof(gen9_msaa[0]); ++i) {
+      semantic.samples = gen9_msaa[i].samples;
+      assert(hk_pack_native_texture(9, &native_packed, &semantic));
+
+      uint64_t gen9_msaa_word0;
+      memcpy(&gen9_msaa_word0, native_packed.opaque,
+             sizeof(gen9_msaa_word0));
+      assert(((gen9_msaa_word0 >> 56) & 3) == gen9_msaa[i].selector);
+   }
+
+   memset(&native_packed, 0xff, sizeof(native_packed));
+   semantic.samples = (enum agx_sample_count)3;
+   assert(!hk_pack_native_texture(9, &native_packed, &semantic));
+   assert(memcmp(&native_packed, &(struct hk_native_texture_descriptor){0},
+                 sizeof(native_packed)) == 0);
+
    semantic.samples = AGX_SAMPLE_COUNT_8;
    assert(hk_pack_native_texture(10, &native_packed, &semantic));
    uint64_t m5_msaa_word0;
    memcpy(&m5_msaa_word0, native_packed.opaque, sizeof(m5_msaa_word0));
    assert(((m5_msaa_word0 >> 58) & 3) == AGX_SAMPLE_COUNT_8);
-
-   assert(!hk_pack_native_texture(9, &native_packed, &semantic));
-   for (unsigned i = 0; i < sizeof(native_packed); ++i)
-      assert(((const uint8_t *)&native_packed)[i] == 0);
 
    semantic.dimension = AGX_TEXTURE_DIMENSION_2D;
    semantic.buffer_offset_sw = 1;
