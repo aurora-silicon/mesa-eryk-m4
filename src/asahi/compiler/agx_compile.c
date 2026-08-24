@@ -3468,7 +3468,11 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
        !impl->function->is_preamble && !ctx->key->secondary)
       agx_set_st_vary_final(ctx);
 
-   agx_insert_waits(ctx);
+   /* AGX3 has no scoreboard `wait`; dependency fences ride on the terminal
+    * `end`, and every real kernel ends with mask 0. Wait insertion is
+    * therefore an AGX2-only pass. */
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
+      agx_insert_waits(ctx);
    agx_opt_empty_else(ctx);
    agx_opt_break_if(ctx);
    agx_opt_jmp_none(ctx);
@@ -3497,7 +3501,16 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    }
 
    unsigned offset = agx_pad_binary(binary, AGX_CODE_ALIGN);
-   agx_pack_binary(ctx, binary);
+   if (ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX2) {
+      agx_pack_binary(ctx, binary);
+   } else {
+      /* AGX3 (M3/M4/M5). Device open still refuses these parts
+       * (agx_chip_codegen_supported), so this runs only when a caller builds an
+       * AGX3 device key deliberately. agx3_pack_binary fails the shader -- never
+       * aborts -- on any ungrounded op; a false return leaves a partial binary
+       * the caller must discard. */
+      (void)agx3_pack_binary(ctx, binary);
+   }
 
    unsigned nr_gprs = ctx->max_reg + 1;
 
@@ -3548,7 +3561,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    }
 #endif
 
-   if (dump_shaders || selftest) {
+   if ((dump_shaders || selftest) &&
+       ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX2) {
 #ifdef _WIN32
       FILE *fp = selftest ? fopen("NUL", "w") : stdout;
 #else
