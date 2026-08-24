@@ -18,6 +18,7 @@ extern "C" {
 
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
+#define D12_AGX3_FADD_F32_REG_REG_LENGTH 6
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 
@@ -80,6 +81,11 @@ struct d12_agx3_ternary_alu_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_fadd_f32_reg_reg_encoding {
+   uint8_t bytes[D12_AGX3_FADD_F32_REG_REG_LENGTH];
+   uint8_t length;
+};
+
 struct d12_agx3_yield_i16_reg_encoding {
    uint8_t bytes[D12_AGX3_YIELD_I16_REG_LENGTH];
    uint8_t length;
@@ -131,6 +137,27 @@ bool d12_agx3_encode_integer_multiply_add(
    enum d12_agx3_integer_multiply_add_selection selection, uint16_t dest,
    uint16_t mul0, uint16_t mul1, uint16_t addend,
    struct d12_agx3_ternary_alu_encoding *out);
+
+/*
+ * Encode/decode only the shared packer's exact compact register-register f32
+ * add on the nine Apple compiler targets that produced operand-correlated
+ * witnesses.  `encoding` must match `chip`: AGX3b is accepted only for
+ * G15G/S/D, G16P/G/S and G17P; AGX3c only for G17G/S.  All operands are even
+ * half-register indices in 0..254, and their physical source-field order is
+ * preserved even though floating-point addition is commutative.
+ *
+ * This is a strict ISA representation only.  It neither accepts a canonical
+ * prefix with trailing bytes nor enables DXIL lowering, scheduling, command
+ * submission, device admission, runtime use, or any D3D12 feature.
+ */
+bool d12_agx3_encode_fadd_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src0, uint16_t src1,
+   struct d12_agx3_fadd_f32_reg_reg_encoding *out);
+bool d12_agx3_decode_fadd_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1);
 
 /*
  * Encode/decode only the canonical no-kill i16-register `yield` form on the

@@ -219,6 +219,335 @@ static const struct integer_target integer_targets[] = {
 };
 
 static bool
+fadd_encoding_is_cleared(
+   const struct d12_agx3_fadd_f32_reg_reg_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+
+   for (unsigned i = 0; i < D12_AGX3_FADD_F32_REG_REG_LENGTH; ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+
+   return true;
+}
+
+static int
+check_fadd_rejected_and_cleared(enum agx_chip chip,
+                                enum agx_isa_encoding encoding,
+                                uint16_t dest, uint16_t src0, uint16_t src1)
+{
+   struct d12_agx3_fadd_f32_reg_reg_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+
+   CHECK(!d12_agx3_encode_fadd_f32_reg_reg(
+      chip, encoding, dest, src0, src1, &encoded));
+   CHECK(fadd_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_fadd_decode_rejected_and_cleared(enum agx_chip chip,
+                                       enum agx_isa_encoding encoding,
+                                       const void *instruction,
+                                       uint32_t instruction_size)
+{
+   uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fadd_f32_reg_reg(
+      chip, encoding, instruction, instruction_size, &dest, &src0, &src1));
+   CHECK(dest == 0);
+   CHECK(src0 == 0);
+   CHECK(src1 == 0);
+   return 0;
+}
+
+static int
+check_fadd_exact_witnesses(void)
+{
+   static const struct {
+      uint16_t dest;
+      uint16_t src0;
+      uint16_t src1;
+      uint8_t bytes[D12_AGX3_FADD_F32_REG_REG_LENGTH];
+   } vectors[] = {
+      {4, 2, 0, {0x29, 0x01, 0x04, 0x03, 0x00, 0x20}},
+      {16, 10, 2, {0x89, 0x03, 0x04, 0x0b, 0x00, 0x20}},
+      {128, 126, 124, {0x09, 0x7d, 0x04, 0x7f, 0x00, 0x30}},
+      {132, 130, 128, {0x29, 0x01, 0x04, 0x03, 0x00, 0x35}},
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+
+      for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+         struct agx3_encoded_fadd_f32_reg_reg shared;
+         struct d12_agx3_fadd_f32_reg_reg_encoding encoded;
+         uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+
+         CHECK(agx3_pack_fadd_f32_reg_reg(
+            target->encoding, vectors[v].dest, vectors[v].src0,
+            vectors[v].src1, &shared));
+         CHECK(shared.length == sizeof(vectors[v].bytes));
+         CHECK(memcmp(shared.bytes, vectors[v].bytes,
+                      sizeof(vectors[v].bytes)) == 0);
+         CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+            target->chip, target->encoding, vectors[v].dest, vectors[v].src0,
+            vectors[v].src1, &encoded));
+         CHECK(encoded.length == sizeof(vectors[v].bytes));
+         CHECK(memcmp(encoded.bytes, vectors[v].bytes,
+                      sizeof(vectors[v].bytes)) == 0);
+         CHECK(d12_agx3_decode_fadd_f32_reg_reg(
+            target->chip, target->encoding, encoded.bytes, encoded.length,
+            &dest, &src0, &src1));
+         CHECK(dest == vectors[v].dest);
+         CHECK(src0 == vectors[v].src0);
+         CHECK(src1 == vectors[v].src1);
+      }
+   }
+
+   /* The bridge preserves physical source fields; it does not canonicalize
+    * commutative source order. */
+   struct d12_agx3_fadd_f32_reg_reg_encoding forward, reversed;
+   CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 16, 10, 2, &forward));
+   CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 16, 2, 10, &reversed));
+   CHECK(memcmp(forward.bytes, reversed.bytes, forward.length) != 0);
+
+   uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+   CHECK(d12_agx3_decode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, reversed.bytes, reversed.length,
+      &dest, &src0, &src1));
+   CHECK(dest == 16);
+   CHECK(src0 == 2);
+   CHECK(src1 == 10);
+   return 0;
+}
+
+static int
+check_fadd_register_domain(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+
+      for (uint16_t value = 0; value < 256; value += 2) {
+         const uint16_t operands[][3] = {
+            {value, 0, 0}, {0, value, 0}, {0, 0, value},
+         };
+
+         for (unsigned operand = 0; operand < 3; ++operand) {
+            struct agx3_encoded_fadd_f32_reg_reg shared;
+            struct d12_agx3_fadd_f32_reg_reg_encoding encoded;
+            uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+
+            CHECK(agx3_pack_fadd_f32_reg_reg(
+               target->encoding, operands[operand][0], operands[operand][1],
+               operands[operand][2], &shared));
+            CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+               target->chip, target->encoding, operands[operand][0],
+               operands[operand][1], operands[operand][2], &encoded));
+            CHECK(encoded.length == shared.length);
+            CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+            CHECK(d12_agx3_decode_fadd_f32_reg_reg(
+               target->chip, target->encoding, encoded.bytes, encoded.length,
+               &dest, &src0, &src1));
+            CHECK(dest == operands[operand][0]);
+            CHECK(src0 == operands[operand][1]);
+            CHECK(src1 == operands[operand][2]);
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_fadd_canonical_bit_domain(void)
+{
+   static const uint8_t operand_mask[D12_AGX3_FADD_F32_REG_REG_LENGTH] = {
+      0xf0, 0x7e, 0xc0, 0x7e, 0x00, 0x15,
+   };
+   static const struct integer_target representatives[] = {
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const uint16_t states[][3] = {
+      {0, 0, 0}, {254, 254, 254},
+   };
+
+   for (unsigned r = 0;
+        r < sizeof(representatives) / sizeof(representatives[0]); ++r) {
+      for (unsigned state = 0; state < 2; ++state) {
+         struct d12_agx3_fadd_f32_reg_reg_encoding canonical;
+         CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+            representatives[r].chip, representatives[r].encoding,
+            states[state][0], states[state][1], states[state][2],
+            &canonical));
+
+         for (unsigned bit = 0; bit < canonical.length * 8; ++bit) {
+            uint8_t mutated[D12_AGX3_FADD_F32_REG_REG_LENGTH];
+            memcpy(mutated, canonical.bytes, sizeof(mutated));
+            mutated[bit / 8] ^= 1u << (bit % 8);
+
+            uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+            const bool accepted = d12_agx3_decode_fadd_f32_reg_reg(
+               representatives[r].chip, representatives[r].encoding,
+               mutated, sizeof(mutated), &dest, &src0, &src1);
+            const bool is_operand =
+               (operand_mask[bit / 8] & (1u << (bit % 8))) != 0;
+            CHECK(accepted == is_operand);
+
+            if (accepted) {
+               struct d12_agx3_fadd_f32_reg_reg_encoding repacked;
+               CHECK(d12_agx3_encode_fadd_f32_reg_reg(
+                  representatives[r].chip, representatives[r].encoding,
+                  dest, src0, src1, &repacked));
+               CHECK(memcmp(repacked.bytes, mutated, sizeof(mutated)) == 0);
+            } else {
+               CHECK(dest == 0);
+               CHECK(src0 == 0);
+               CHECK(src1 == 0);
+            }
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_fadd_rejection(void)
+{
+   static const enum agx_isa_encoding all_encodings[] = {
+      AGX_ISA_ENCODING_AGX2,
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+      AGX_ISA_ENCODING_UNKNOWN,
+      (enum agx_isa_encoding)99,
+   };
+   static const enum agx_chip unsupported_targets[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
+      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   static const uint8_t canonical[D12_AGX3_FADD_F32_REG_REG_LENGTH] = {
+      0x09, 0x01, 0x04, 0x01, 0x00, 0x20,
+   };
+
+   /* Every supported chip rejects the other table and all non-AGX3 values. */
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         if (all_encodings[e] == target->encoding)
+            continue;
+
+         CHECK(check_fadd_rejected_and_cleared(
+                  target->chip, all_encodings[e], 0, 0, 0) == 0);
+         CHECK(check_fadd_decode_rejected_and_cleared(
+                  target->chip, all_encodings[e], canonical,
+                  sizeof(canonical)) == 0);
+      }
+   }
+
+   /* Unsupported chips remain rejected regardless of the requested table. */
+   for (unsigned t = 0;
+        t < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
+        ++t) {
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         CHECK(check_fadd_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], 0, 0, 0) == 0);
+         CHECK(check_fadd_decode_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], canonical,
+                  sizeof(canonical)) == 0);
+      }
+   }
+
+   static const struct integer_target representatives[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   for (unsigned r = 0;
+        r < sizeof(representatives) / sizeof(representatives[0]); ++r) {
+      for (unsigned operand = 0; operand < 3; ++operand) {
+         uint16_t odd[3] = {0};
+         odd[operand] = 1;
+         CHECK(check_fadd_rejected_and_cleared(
+                  representatives[r].chip, representatives[r].encoding,
+                  odd[0], odd[1], odd[2]) == 0);
+
+         odd[operand] = 255;
+         CHECK(check_fadd_rejected_and_cleared(
+                  representatives[r].chip, representatives[r].encoding,
+                  odd[0], odd[1], odd[2]) == 0);
+
+         uint16_t oob[3] = {0};
+         oob[operand] = 256;
+         CHECK(check_fadd_rejected_and_cleared(
+                  representatives[r].chip, representatives[r].encoding,
+                  oob[0], oob[1], oob[2]) == 0);
+      }
+   }
+
+   for (uint32_t size = 0; size < sizeof(canonical); ++size) {
+      CHECK(check_fadd_decode_rejected_and_cleared(
+               AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, canonical, size) == 0);
+      CHECK(check_fadd_decode_rejected_and_cleared(
+               AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical, size) == 0);
+   }
+
+   uint8_t appended[D12_AGX3_FADD_F32_REG_REG_LENGTH + 1];
+   memcpy(appended, canonical, sizeof(canonical));
+   appended[sizeof(canonical)] = 0xff;
+   CHECK(check_fadd_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, appended,
+            sizeof(appended)) == 0);
+
+   static const uint8_t unsupported_forms[][D12_AGX3_FADD_F32_REG_REG_LENGTH] = {
+      {0x89, 0x03, 0x04, 0x0b, 0x00, 0xc0}, /* wait/context selection */
+      {0x19, 0x03, 0x0c, 0x01, 0x00, 0x20}, /* alternate f32add */
+      {0x09, 0x05, 0x1d, 0x01, 0x00, 0xc0}, /* f32mul */
+   };
+   for (unsigned i = 0;
+        i < sizeof(unsupported_forms) / sizeof(unsupported_forms[0]); ++i) {
+      CHECK(check_fadd_decode_rejected_and_cleared(
+               AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B,
+               unsupported_forms[i], sizeof(unsupported_forms[i])) == 0);
+      CHECK(check_fadd_decode_rejected_and_cleared(
+               AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C,
+               unsupported_forms[i], sizeof(unsupported_forms[i])) == 0);
+   }
+
+   CHECK(!d12_agx3_encode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 0, 0, 0, NULL));
+   CHECK(check_fadd_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, NULL,
+            sizeof(canonical)) == 0);
+
+   uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      NULL, &src0, &src1));
+   CHECK(src0 == 0 && src1 == 0);
+   dest = src0 = src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      &dest, NULL, &src1));
+   CHECK(dest == 0 && src1 == 0);
+   dest = src0 = src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fadd_f32_reg_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      &dest, &src0, NULL));
+   CHECK(dest == 0 && src0 == 0);
+   return 0;
+}
+
+static bool
 yield_encoding_is_cleared(
    const struct d12_agx3_yield_i16_reg_encoding *encoded)
 {
@@ -1257,6 +1586,11 @@ main(void)
    static const uint8_t inot_c[] = {
       0x3b, 0x00, 0x06, 0x1a, 0x29, 0x08, 0xa8, 0x0a,
    };
+
+   CHECK(check_fadd_exact_witnesses() == 0);
+   CHECK(check_fadd_register_domain() == 0);
+   CHECK(check_fadd_canonical_bit_domain() == 0);
+   CHECK(check_fadd_rejection() == 0);
 
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
                         D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0, iadd_b,
