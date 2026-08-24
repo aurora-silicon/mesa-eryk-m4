@@ -12,8 +12,6 @@ agx_chip_from_params(const struct drm_asahi_params_global *params)
        params->num_clusters_total > DRM_ASAHI_MAX_CLUSTERS)
       return AGX_CHIP_UNKNOWN;
 
-   const bool multi_cluster = params->num_clusters_total > 1;
-
    /* These are command-stream architecture identities, not an ordering.
     *
     * Generations 15 and up are recognised so an unsupported part is refused
@@ -21,22 +19,54 @@ agx_chip_from_params(const struct drm_asahi_params_global *params)
     * that the reason -- no AGX3 code generator -- is the reason reported.
     * agx_chip_codegen_supported is what decides whether the driver proceeds.
     *
-    * Apple ships one AGX2 part in the G15 generation (the A16 phone SoC,
-    * g15p in its toolchain naming). It is not in any Mac, so this kernel
-    * interface never enumerates it and generation 15 here always means an
-    * AGX3 M3.
+    * The variant character is load-bearing. Cluster count cannot distinguish
+    * G17P (A18 Pro, AGX3b) from G17G (M5, AGX3c), and G15P is an AGX2 part in
+    * the same numeric generation as AGX3 M3. The kernel already publishes the
+    * exact P/G/S/C/D/A character, so use it directly.
     */
    switch (params->gpu_generation) {
    case 13:
-      return multi_cluster ? AGX_CHIP_G13X : AGX_CHIP_G13G;
+      switch (params->gpu_variant) {
+      case 'G': return AGX_CHIP_G13G;
+      case 'S':
+      case 'C':
+      case 'D': return AGX_CHIP_G13X;
+      default: return AGX_CHIP_UNKNOWN;
+      }
    case 14:
-      return multi_cluster ? AGX_CHIP_G14X : AGX_CHIP_G14G;
+      switch (params->gpu_variant) {
+      case 'G': return AGX_CHIP_G14G;
+      case 'S':
+      case 'C':
+      case 'D': return AGX_CHIP_G14X;
+      default: return AGX_CHIP_UNKNOWN;
+      }
    case 15:
-      return multi_cluster ? AGX_CHIP_G15X : AGX_CHIP_G15G;
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G15P;
+      case 'G': return AGX_CHIP_G15G;
+      case 'S': return AGX_CHIP_G15S;
+      case 'C': return AGX_CHIP_G15C;
+      case 'D': return AGX_CHIP_G15D;
+      default: return AGX_CHIP_UNKNOWN;
+      }
    case 16:
-      return multi_cluster ? AGX_CHIP_G16X : AGX_CHIP_G16G;
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G16P;
+      case 'G': return AGX_CHIP_G16G;
+      case 'S': return AGX_CHIP_G16S;
+      case 'C': return AGX_CHIP_G16C;
+      default: return AGX_CHIP_UNKNOWN;
+      }
    case 17:
-      return multi_cluster ? AGX_CHIP_G17X : AGX_CHIP_G17G;
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G17P;
+      case 'A': return AGX_CHIP_G17A;
+      case 'G': return AGX_CHIP_G17G;
+      case 'S': return AGX_CHIP_G17S;
+      case 'C': return AGX_CHIP_G17C;
+      default: return AGX_CHIP_UNKNOWN;
+      }
    default:
       return AGX_CHIP_UNKNOWN;
    }
@@ -50,14 +80,22 @@ agx_chip_isa(enum agx_chip chip)
    case AGX_CHIP_G13X:
    case AGX_CHIP_G14G:
    case AGX_CHIP_G14X:
+   case AGX_CHIP_G15P:
       return AGX_ISA_AGX2;
 
    case AGX_CHIP_G15G:
-   case AGX_CHIP_G15X:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
    case AGX_CHIP_G16G:
-   case AGX_CHIP_G16X:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17A:
    case AGX_CHIP_G17G:
-   case AGX_CHIP_G17X:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       return AGX_ISA_AGX3;
 
    case AGX_CHIP_UNKNOWN:
@@ -74,31 +112,34 @@ agx_chip_isa_encoding(enum agx_chip chip)
     * 100% under exactly one of these and essentially 0% under the other, so
     * this is a measurement rather than a reading of the naming scheme.
     *
-    * The kernel's generation-and-variant scheme and Apple's toolchain family
-    * names line up directly once you have the kernel's core-name table:
-    * gpu_gen and gpu_var are a string split of kAGXGPUCoreName[core], so
-    * kernel "G17S" is Apple's g17s. Every G15 and G16 variant is on the
-    * variant-0 table and every G17 Mac variant is on variant 1, so collapsing
-    * Apple's per-die variants into this enum's G/X pair loses nothing here.
-    *
-    * G17P is variant 0 despite being generation 17, but it is a phone part
-    * that this kernel interface never enumerates. See agx_chip_from_params.
+    * gpu_gen and gpu_var are a string split of the kernel core-name table, so
+    * they map directly. P/A are not Mac performance tiers: G15P is AGX2 and
+    * G17P/G17A remain on the AGX3b/HAL200 side while the G17 Mac parts use
+    * AGX3c/HAL300.
     */
    switch (chip) {
    case AGX_CHIP_G13G:
    case AGX_CHIP_G13X:
    case AGX_CHIP_G14G:
    case AGX_CHIP_G14X:
+   case AGX_CHIP_G15P:
       return AGX_ISA_ENCODING_AGX2;
 
    case AGX_CHIP_G15G:
-   case AGX_CHIP_G15X:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
    case AGX_CHIP_G16G:
-   case AGX_CHIP_G16X:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17A:
       return AGX_ISA_ENCODING_AGX3B;
 
    case AGX_CHIP_G17G:
-   case AGX_CHIP_G17X:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       return AGX_ISA_ENCODING_AGX3C;
 
    case AGX_CHIP_UNKNOWN:
@@ -132,7 +173,8 @@ bool
 agx_chip_needs_scheduling_stalls(enum agx_chip chip)
 {
    /* The M3 base part alone. Not a property of its encoding: G15G shares the
-    * agx3b table with G15X, G16G and G16X, none of which pad. */
+    * agx3b table with G15S/C/D, every G16 part, and G17P/A, none of which
+    * pad. */
    return chip == AGX_CHIP_G15G;
 }
 
@@ -144,12 +186,20 @@ agx_chip_name(enum agx_chip chip)
    case AGX_CHIP_G13X: return "G13X";
    case AGX_CHIP_G14G: return "G14G";
    case AGX_CHIP_G14X: return "G14X";
+   case AGX_CHIP_G15P: return "G15P";
    case AGX_CHIP_G15G: return "G15G";
-   case AGX_CHIP_G15X: return "G15X";
+   case AGX_CHIP_G15S: return "G15S";
+   case AGX_CHIP_G15C: return "G15C";
+   case AGX_CHIP_G15D: return "G15D";
+   case AGX_CHIP_G16P: return "G16P";
    case AGX_CHIP_G16G: return "G16G";
-   case AGX_CHIP_G16X: return "G16X";
+   case AGX_CHIP_G16S: return "G16S";
+   case AGX_CHIP_G16C: return "G16C";
+   case AGX_CHIP_G17P: return "G17P";
+   case AGX_CHIP_G17A: return "G17A";
    case AGX_CHIP_G17G: return "G17G";
-   case AGX_CHIP_G17X: return "G17X";
+   case AGX_CHIP_G17S: return "G17S";
+   case AGX_CHIP_G17C: return "G17C";
    case AGX_CHIP_UNKNOWN:
    default: return "unknown";
    }

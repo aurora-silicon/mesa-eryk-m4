@@ -42,14 +42,27 @@ enum agx_chip {
    AGX_CHIP_G14G,
    AGX_CHIP_G14X,
 
-   /* AGX3. Recognised so they can be refused accurately; no code generator
-    * exists for any of them. */
+   /* G15P is the A16 phone part and still executes AGX2. The Mac G15 parts
+    * execute AGX3b; G15G additionally needs explicit scheduling nops. */
+   AGX_CHIP_G15P,
    AGX_CHIP_G15G,
-   AGX_CHIP_G15X,
+   AGX_CHIP_G15S,
+   AGX_CHIP_G15C,
+   AGX_CHIP_G15D,
+
+   /* Every G16 part executes AGX3b. */
+   AGX_CHIP_G16P,
    AGX_CHIP_G16G,
-   AGX_CHIP_G16X,
+   AGX_CHIP_G16S,
+   AGX_CHIP_G16C,
+
+   /* G17P/G17A remain on the HAL200/AGX3b side of the boundary. The M5
+    * G/S/C parts use AGX3c. */
+   AGX_CHIP_G17P,
+   AGX_CHIP_G17A,
    AGX_CHIP_G17G,
-   AGX_CHIP_G17X,
+   AGX_CHIP_G17S,
+   AGX_CHIP_G17C,
 
    AGX_CHIP_UNKNOWN,
 };
