@@ -39,6 +39,42 @@ check_encoding(enum agx_isa_encoding encoding,
 }
 
 static int
+check_ternary_encoding(enum agx_isa_encoding encoding,
+                       enum d12_agx3_ternary_alu_op op, uint16_t dest,
+                       uint16_t src0, uint16_t src1, uint16_t src2,
+                       const uint8_t *expected, uint8_t length)
+{
+   struct d12_agx3_ternary_alu_encoding encoded;
+   CHECK(d12_agx3_encode_ternary_alu(encoding, op, dest, src0, src1, src2,
+                                     &encoded));
+   CHECK(encoded.length == length);
+   CHECK(memcmp(encoded.bytes, expected, length) == 0);
+
+   for (uint8_t i = length; i < D12_AGX3_TERNARY_ALU_MAX_LENGTH; ++i)
+      CHECK(encoded.bytes[i] == 0);
+
+   return 0;
+}
+
+static int
+check_target_imadd_encoding(enum agx_chip chip, uint16_t dest, uint16_t mul0,
+                            uint16_t mul1, uint16_t addend,
+                            const uint8_t *expected, uint8_t length)
+{
+   struct d12_agx3_ternary_alu_encoding encoded;
+   CHECK(d12_agx3_encode_integer_multiply_add(
+      chip, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32, dest, mul0, mul1, addend,
+      &encoded));
+   CHECK(encoded.length == length);
+   CHECK(memcmp(encoded.bytes, expected, length) == 0);
+
+   for (uint8_t i = length; i < D12_AGX3_TERNARY_ALU_MAX_LENGTH; ++i)
+      CHECK(encoded.bytes[i] == 0);
+
+   return 0;
+}
+
+static int
 check_ishl_register_domain(void)
 {
    static const enum agx_isa_encoding encodings[] = {
@@ -165,12 +201,12 @@ check_ilshr_register_domain(void)
    return 0;
 }
 
-struct imul_target {
+struct integer_target {
    enum agx_chip chip;
    enum agx_isa_encoding encoding;
 };
 
-static const struct imul_target imul_targets[] = {
+static const struct integer_target integer_targets[] = {
    {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
@@ -185,9 +221,9 @@ static const struct imul_target imul_targets[] = {
 static int
 check_imul_register_domain(void)
 {
-   for (unsigned t = 0; t < sizeof(imul_targets) / sizeof(imul_targets[0]);
-        ++t) {
-      const struct imul_target *target = &imul_targets[t];
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
       const uint16_t register_limit =
          target->encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
 
@@ -239,7 +275,7 @@ check_imul_canonical_bit_domain(void)
       /* AGX3c: bounded eight-bit forms of the same three fields. */
       {0x90, 0x02, 0x88, 0xe0, 0, 0x80, 0, 0x38, 0x83, 0x3f, 0, 0, 0, 0},
    };
-   static const struct imul_target representatives[] = {
+   static const struct integer_target representatives[] = {
       {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
    };
@@ -269,6 +305,182 @@ check_imul_canonical_bit_domain(void)
    return 0;
 }
 
+static int
+check_imadd_register_domain(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      const uint16_t register_limit =
+         target->encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+
+      /* Exhaust every modeled even half-register independently as the
+       * destination, both multipliers, and the real addend on all nine
+       * compiler-witnessed G15--G17 targets. */
+      for (uint16_t value = 0; value < register_limit; value += 2) {
+         const uint16_t operands[][4] = {
+            {value, 0, 0, 0},
+            {0, value, 0, 0},
+            {0, 0, value, 0},
+            {0, 0, 0, value},
+         };
+
+         for (unsigned operand = 0; operand < 4; ++operand) {
+            struct agx3_encoded_imadd_u32_reg_reg_reg expected;
+            struct d12_agx3_ternary_alu_encoding encoded;
+            uint16_t dest = UINT16_MAX, mul0 = UINT16_MAX;
+            uint16_t mul1 = UINT16_MAX, addend = UINT16_MAX;
+            uint8_t length = 0;
+
+            CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+               target->encoding, operands[operand][0], operands[operand][1],
+               operands[operand][2], operands[operand][3], &expected));
+            CHECK(d12_agx3_encode_integer_multiply_add(
+               target->chip, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32,
+               operands[operand][0], operands[operand][1],
+               operands[operand][2], operands[operand][3], &encoded));
+            CHECK(encoded.length == expected.length);
+            CHECK(memcmp(encoded.bytes, expected.bytes,
+                         D12_AGX3_TERNARY_ALU_MAX_LENGTH) == 0);
+            CHECK(agx3_unpack_imadd_u32_reg_reg_reg(
+               target->encoding, encoded.bytes, encoded.length, &dest, &mul0,
+               &mul1, &addend, &length));
+            CHECK(dest == operands[operand][0]);
+            CHECK(mul0 == operands[operand][1]);
+            CHECK(mul1 == operands[operand][2]);
+            CHECK(addend == operands[operand][3]);
+            CHECK(length == encoded.length);
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_imadd_canonical_bit_domain(void)
+{
+   static const uint8_t operand_masks[][D12_AGX3_TERNARY_ALU_MAX_LENGTH] = {
+      /* AGX3b: even f2/f16/f31/f46 half-register bits. */
+      {0, 0, 0, 0xfe, 0, 0xfc, 0xf9, 0xf3, 0x07, 0, 0, 0, 0, 0},
+      /* AGX3c: bounded eight-bit forms of all four fields. */
+      {0x90, 0x02, 0x88, 0xe0, 0, 0x80, 0, 0x38, 0x93, 0x3f, 0x01, 0,
+       0xae, 0},
+   };
+   static const struct integer_target representatives[] = {
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+
+   for (unsigned t = 0; t < 2; ++t) {
+      struct d12_agx3_ternary_alu_encoding encoded;
+      CHECK(d12_agx3_encode_integer_multiply_add(
+         representatives[t].chip, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32,
+         0, 0, 0, 0, &encoded));
+
+      /* Every fixed bit is rejected when corrupted. Operand-bit flips are
+       * alternate canonical register choices and must re-pack identically. */
+      for (unsigned bit = 0; bit < encoded.length * 8; ++bit) {
+         uint8_t corrupted[D12_AGX3_TERNARY_ALU_MAX_LENGTH] = {0};
+         memcpy(corrupted, encoded.bytes, encoded.length);
+         corrupted[bit / 8] ^= 1u << (bit % 8);
+
+         uint16_t dest, mul0, mul1, addend;
+         uint8_t length;
+         const bool accepted = agx3_unpack_imadd_u32_reg_reg_reg(
+            representatives[t].encoding, corrupted, encoded.length, &dest,
+            &mul0, &mul1, &addend, &length);
+         const bool is_operand =
+            (operand_masks[t][bit / 8] & (1u << (bit % 8))) != 0;
+         CHECK(accepted == is_operand);
+
+         if (accepted) {
+            struct agx3_encoded_imadd_u32_reg_reg_reg repacked;
+            CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+               representatives[t].encoding, dest, mul0, mul1, addend,
+               &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, corrupted, length) == 0);
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_imadd_related_forms_rejected(void)
+{
+   static const uint8_t implicit_imul_b[] = {
+      0x9f, 0x00, 0x56, 0x00, 0x02, 0x00,
+      0x00, 0x00, 0xd0, 0x20, 0x0a, 0x00,
+   };
+   static const uint8_t alternate_p3_b[] = {
+      0x9f, 0x00, 0x56, 0x00, 0x02, 0x08,
+      0x00, 0x40, 0xd0, 0x2f, 0x2a, 0x00,
+   };
+   static const uint8_t alternate_q_b[] = {
+      0x9f, 0x00, 0x56, 0x00, 0x02, 0x08,
+      0x00, 0x10, 0xd0, 0x2f, 0x2a, 0x00,
+   };
+   static const uint8_t high_i32_b[] = {
+      0x9f, 0x00, 0x56, 0x00, 0x03, 0x00,
+      0x08, 0x00, 0xe0, 0x26, 0x1e, 0x00,
+   };
+   static const uint8_t high_u32_b[] = {
+      0x9f, 0x00, 0x56, 0x00, 0x03, 0x00,
+      0x08, 0x00, 0xe0, 0x26, 0x0a, 0x00,
+   };
+   static const uint8_t implicit_imul_c[] = {
+      0x2f, 0x00, 0x04, 0x1a, 0x21, 0x00, 0xa1,
+      0x02, 0x08, 0x80, 0x00, 0x00, 0x01, 0x02,
+   };
+   static const uint8_t alternate_p3_c[] = {
+      0x2f, 0x00, 0x04, 0x3a, 0x21, 0x00, 0xa1,
+      0x02, 0x28, 0x80, 0xe0, 0x00, 0x08, 0x00,
+   };
+   static const uint8_t alternate_q_c[] = {
+      0x2f, 0x00, 0x04, 0x3a, 0x21, 0x00, 0xa1,
+      0x02, 0x28, 0x80, 0xe0, 0x00, 0x02, 0x00,
+   };
+   /* High-half forms are shorter and padded only to exercise canonical
+    * rejection at the imadd decoder's required input size. */
+   static const uint8_t high_i32_c[D12_AGX3_TERNARY_ALU_MAX_LENGTH] = {
+      0x2f, 0x00, 0x04, 0x02, 0x29, 0x08,
+      0xa9, 0x02, 0xa8, 0x80, 0x20, 0xb0,
+   };
+   static const uint8_t high_u32_c[D12_AGX3_TERNARY_ALU_MAX_LENGTH] = {
+      0x2f, 0x00, 0x04, 0x02, 0x29, 0x00,
+      0xa9, 0x02, 0xa8, 0x80, 0x20, 0x30,
+   };
+   static const struct {
+      enum agx_isa_encoding encoding;
+      const uint8_t *bytes;
+      size_t length;
+   } related[] = {
+      {AGX_ISA_ENCODING_AGX3B, implicit_imul_b, sizeof(implicit_imul_b)},
+      {AGX_ISA_ENCODING_AGX3B, alternate_p3_b, sizeof(alternate_p3_b)},
+      {AGX_ISA_ENCODING_AGX3B, alternate_q_b, sizeof(alternate_q_b)},
+      {AGX_ISA_ENCODING_AGX3B, high_i32_b, sizeof(high_i32_b)},
+      {AGX_ISA_ENCODING_AGX3B, high_u32_b, sizeof(high_u32_b)},
+      {AGX_ISA_ENCODING_AGX3C, implicit_imul_c, sizeof(implicit_imul_c)},
+      {AGX_ISA_ENCODING_AGX3C, alternate_p3_c, sizeof(alternate_p3_c)},
+      {AGX_ISA_ENCODING_AGX3C, alternate_q_c, sizeof(alternate_q_c)},
+      {AGX_ISA_ENCODING_AGX3C, high_i32_c, sizeof(high_i32_c)},
+      {AGX_ISA_ENCODING_AGX3C, high_u32_c, sizeof(high_u32_c)},
+   };
+
+   for (unsigned i = 0; i < sizeof(related) / sizeof(related[0]); ++i) {
+      uint16_t dest, mul0, mul1, addend;
+      uint8_t length;
+      CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+         related[i].encoding, related[i].bytes, related[i].length, &dest,
+         &mul0, &mul1, &addend, &length));
+   }
+
+   return 0;
+}
+
 static bool
 binary_encoding_is_cleared(
    const struct d12_agx3_binary_alu_encoding *encoded)
@@ -277,6 +489,21 @@ binary_encoding_is_cleared(
       return false;
 
    for (unsigned i = 0; i < D12_AGX3_BINARY_ALU_MAX_LENGTH; ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+
+   return true;
+}
+
+static bool
+ternary_encoding_is_cleared(
+   const struct d12_agx3_ternary_alu_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+
+   for (unsigned i = 0; i < D12_AGX3_TERNARY_ALU_MAX_LENGTH; ++i) {
       if (encoded->bytes[i] != 0)
          return false;
    }
@@ -310,6 +537,36 @@ check_imul_rejected_and_cleared(
    CHECK(!d12_agx3_encode_integer_multiply(chip, selection, dest, src0, src1,
                                            &encoded));
    CHECK(binary_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_ternary_rejected_and_cleared(enum agx_isa_encoding encoding,
+                                   enum d12_agx3_ternary_alu_op op,
+                                   uint16_t dest, uint16_t src0,
+                                   uint16_t src1, uint16_t src2)
+{
+   struct d12_agx3_ternary_alu_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+
+   CHECK(!d12_agx3_encode_ternary_alu(encoding, op, dest, src0, src1, src2,
+                                      &encoded));
+   CHECK(ternary_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_imadd_rejected_and_cleared(
+   enum agx_chip chip,
+   enum d12_agx3_integer_multiply_add_selection selection, uint16_t dest,
+   uint16_t mul0, uint16_t mul1, uint16_t addend)
+{
+   struct d12_agx3_ternary_alu_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+
+   CHECK(!d12_agx3_encode_integer_multiply_add(
+      chip, selection, dest, mul0, mul1, addend, &encoded));
+   CHECK(ternary_encoding_is_cleared(&encoded));
    return 0;
 }
 
@@ -378,6 +635,14 @@ main(void)
       0x3f, 0x00, 0x04, 0x1a, 0x21, 0x00, 0xa1,
       0x0a, 0x08, 0x81, 0x00, 0x00, 0x01, 0x02,
    };
+   static const uint8_t imadd_b[] = {
+      0x9f, 0x00, 0x56, 0x0a, 0x02, 0x08,
+      0x18, 0x00, 0xd0, 0x21, 0x2a, 0x00,
+   };
+   static const uint8_t imadd_c[] = {
+      0x3f, 0x00, 0x04, 0x3a, 0x21, 0x00, 0xa1,
+      0x12, 0x88, 0x81, 0x40, 0x00, 0x00, 0x00,
+   };
    static const uint8_t inot_b[] = {
       0x3b, 0x01, 0x26, 0x00, 0x01, 0x08, 0x00, 0x80, 0x00, 0x00,
    };
@@ -444,6 +709,19 @@ main(void)
                         sizeof(imul_c)) == 0);
    CHECK(check_imul_register_domain() == 0);
    CHECK(check_imul_canonical_bit_domain() == 0);
+   CHECK(check_ternary_encoding(
+            AGX_ISA_ENCODING_AGX3B, D12_AGX3_TERNARY_ALU_IMADD_U32,
+            10, 4, 6, 0, imadd_b, sizeof(imadd_b)) == 0);
+   CHECK(check_ternary_encoding(
+            AGX_ISA_ENCODING_AGX3C, D12_AGX3_TERNARY_ALU_IMADD_U32,
+            10, 4, 6, 0, imadd_c, sizeof(imadd_c)) == 0);
+   CHECK(check_target_imadd_encoding(AGX_CHIP_G15S, 10, 4, 6, 0, imadd_b,
+                                     sizeof(imadd_b)) == 0);
+   CHECK(check_target_imadd_encoding(AGX_CHIP_G17S, 10, 4, 6, 0, imadd_c,
+                                     sizeof(imadd_c)) == 0);
+   CHECK(check_imadd_register_domain() == 0);
+   CHECK(check_imadd_canonical_bit_domain() == 0);
+   CHECK(check_imadd_related_forms_rejected() == 0);
 
    struct d12_agx3_unary_alu_encoding unary;
    CHECK(d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3B,
@@ -680,17 +958,17 @@ main(void)
                                      D12_AGX3_BINARY_ALU_IMUL_U32,
                                      0, 0, 0, NULL));
 
-   static const enum agx_chip unsupported_imul_targets[] = {
+   static const enum agx_chip unsupported_integer_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
       AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
       AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
    };
    for (unsigned i = 0;
-        i < sizeof(unsupported_imul_targets) /
-               sizeof(unsupported_imul_targets[0]);
+        i < sizeof(unsupported_integer_targets) /
+               sizeof(unsupported_integer_targets[0]);
         ++i) {
       CHECK(check_imul_rejected_and_cleared(
-               unsupported_imul_targets[i],
+               unsupported_integer_targets[i],
                D12_AGX3_INTEGER_MULTIPLY_LOW_U32, 0, 0, 0) == 0);
    }
 
@@ -725,6 +1003,88 @@ main(void)
    CHECK(!d12_agx3_encode_integer_multiply(
       AGX_CHIP_G17S, D12_AGX3_INTEGER_MULTIPLY_LOW_U32,
       0, 0, 0, NULL));
+
+   CHECK(check_ternary_rejected_and_cleared(
+            AGX_ISA_ENCODING_AGX2, D12_AGX3_TERNARY_ALU_IMADD_U32,
+            0, 0, 0, 0) == 0);
+   CHECK(check_ternary_rejected_and_cleared(
+            AGX_ISA_ENCODING_UNKNOWN, D12_AGX3_TERNARY_ALU_IMADD_U32,
+            0, 0, 0, 0) == 0);
+   CHECK(check_ternary_rejected_and_cleared(
+            AGX_ISA_ENCODING_AGX3C, (enum d12_agx3_ternary_alu_op)99,
+            0, 0, 0, 0) == 0);
+
+   static const enum agx_isa_encoding imadd_encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+   for (unsigned e = 0; e < 2; ++e) {
+      const uint16_t limit = e == 0 ? 192 : 256;
+      for (unsigned operand = 0; operand < 4; ++operand) {
+         uint16_t odd[4] = {0};
+         odd[operand] = 1;
+         CHECK(check_ternary_rejected_and_cleared(
+                  imadd_encodings[e], D12_AGX3_TERNARY_ALU_IMADD_U32,
+                  odd[0], odd[1], odd[2], odd[3]) == 0);
+
+         uint16_t oob[4] = {0};
+         oob[operand] = limit;
+         CHECK(check_ternary_rejected_and_cleared(
+                  imadd_encodings[e], D12_AGX3_TERNARY_ALU_IMADD_U32,
+                  oob[0], oob[1], oob[2], oob[3]) == 0);
+      }
+   }
+   CHECK(!d12_agx3_encode_ternary_alu(
+      AGX_ISA_ENCODING_AGX3C, D12_AGX3_TERNARY_ALU_IMADD_U32,
+      0, 0, 0, 0, NULL));
+
+   for (unsigned i = 0;
+        i < sizeof(unsupported_integer_targets) /
+               sizeof(unsupported_integer_targets[0]);
+        ++i) {
+      CHECK(check_imadd_rejected_and_cleared(
+               unsupported_integer_targets[i],
+               D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32, 0, 0, 0, 0) == 0);
+   }
+
+   static const enum d12_agx3_integer_multiply_add_selection
+      unsupported_imadd_selections[] = {
+         D12_AGX3_INTEGER_MULTIPLY_ADD_IMPLICIT_ZERO_IMUL,
+         D12_AGX3_INTEGER_MULTIPLY_ADD_ALTERNATE_P3_LOW_U32,
+         D12_AGX3_INTEGER_MULTIPLY_ADD_ALTERNATE_Q_LOW_U32,
+         D12_AGX3_INTEGER_MULTIPLY_ADD_HIGH_I32,
+         D12_AGX3_INTEGER_MULTIPLY_ADD_HIGH_U32,
+         (enum d12_agx3_integer_multiply_add_selection)99,
+      };
+   for (unsigned i = 0;
+        i < sizeof(unsupported_imadd_selections) /
+               sizeof(unsupported_imadd_selections[0]);
+        ++i) {
+      CHECK(check_imadd_rejected_and_cleared(
+               AGX_CHIP_G17S, unsupported_imadd_selections[i],
+               0, 0, 0, 0) == 0);
+   }
+
+   for (unsigned t = 0; t < 2; ++t) {
+      const enum agx_chip chip = t == 0 ? AGX_CHIP_G15G : AGX_CHIP_G17S;
+      const uint16_t limit = t == 0 ? 192 : 256;
+      for (unsigned operand = 0; operand < 4; ++operand) {
+         uint16_t odd[4] = {0};
+         odd[operand] = 1;
+         CHECK(check_imadd_rejected_and_cleared(
+                  chip, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32,
+                  odd[0], odd[1], odd[2], odd[3]) == 0);
+
+         uint16_t oob[4] = {0};
+         oob[operand] = limit;
+         CHECK(check_imadd_rejected_and_cleared(
+                  chip, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32,
+                  oob[0], oob[1], oob[2], oob[3]) == 0);
+      }
+   }
+   CHECK(!d12_agx3_encode_integer_multiply_add(
+      AGX_CHIP_G17S, D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32,
+      0, 0, 0, 0, NULL));
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0,
                                      NULL));

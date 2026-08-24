@@ -17,6 +17,7 @@ extern "C" {
 #endif
 
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
+#define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -44,6 +45,20 @@ enum d12_agx3_integer_multiply_selection {
    D12_AGX3_INTEGER_MULTIPLY_HIGH_U32 = 3,
 };
 
+/* These selections are validation inputs, not claims of encoded support. */
+enum d12_agx3_integer_multiply_add_selection {
+   D12_AGX3_INTEGER_MULTIPLY_ADD_LOW_U32 = 0,
+   D12_AGX3_INTEGER_MULTIPLY_ADD_IMPLICIT_ZERO_IMUL = 1,
+   D12_AGX3_INTEGER_MULTIPLY_ADD_ALTERNATE_P3_LOW_U32 = 2,
+   D12_AGX3_INTEGER_MULTIPLY_ADD_ALTERNATE_Q_LOW_U32 = 3,
+   D12_AGX3_INTEGER_MULTIPLY_ADD_HIGH_I32 = 4,
+   D12_AGX3_INTEGER_MULTIPLY_ADD_HIGH_U32 = 5,
+};
+
+enum d12_agx3_ternary_alu_op {
+   D12_AGX3_TERNARY_ALU_IMADD_U32 = 0,
+};
+
 enum d12_agx3_unary_alu_op {
    D12_AGX3_UNARY_ALU_INOT_U32 = 0,
 };
@@ -55,6 +70,11 @@ struct d12_agx3_binary_alu_encoding {
 
 struct d12_agx3_unary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_ternary_alu_encoding {
+   uint8_t bytes[D12_AGX3_TERNARY_ALU_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -85,6 +105,26 @@ bool d12_agx3_encode_integer_multiply(
    enum agx_chip chip, enum d12_agx3_integer_multiply_selection selection,
    uint16_t dest, uint16_t src0, uint16_t src1,
    struct d12_agx3_binary_alu_encoding *out);
+
+/*
+ * Encode the proved real-register-addend, low-u32 multiply-add selection.
+ * Signed and unsigned low products are identical modulo 2^32.  The separate
+ * implicit-zero multiply, alternate low selections, and high-half forms are
+ * deliberately represented only as rejected selections.  The target gate is
+ * the same compiler-witness allowlist as d12_agx3_encode_integer_multiply;
+ * this does not enable live NIR/DXIL lowering or any AGX3 runtime path.
+ */
+bool d12_agx3_encode_integer_multiply_add(
+   enum agx_chip chip,
+   enum d12_agx3_integer_multiply_add_selection selection, uint16_t dest,
+   uint16_t mul0, uint16_t mul1, uint16_t addend,
+   struct d12_agx3_ternary_alu_encoding *out);
+
+/* Encoding-level form used by the target-aware lowering contract above. */
+bool d12_agx3_encode_ternary_alu(
+   enum agx_isa_encoding encoding, enum d12_agx3_ternary_alu_op op,
+   uint16_t dest, uint16_t src0, uint16_t src1, uint16_t src2,
+   struct d12_agx3_ternary_alu_encoding *out);
 
 /* Same bounded contract as the binary bridge, for one-register semantics. */
 bool d12_agx3_encode_unary_alu(
