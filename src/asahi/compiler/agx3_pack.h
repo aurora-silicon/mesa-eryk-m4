@@ -27,6 +27,7 @@ extern "C" {
 #define AGX3_SLL_U32_REG_REG_MAX_LENGTH 14
 #define AGX3_ASR_I32_REG_REG_MAX_LENGTH 12
 #define AGX3_LSR_U32_REG_REG_MAX_LENGTH 14
+#define AGX3_IMUL_U32_REG_REG_MAX_LENGTH 14
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -85,6 +86,11 @@ struct agx3_encoded_asr_i32_reg_reg {
 
 struct agx3_encoded_lsr_u32_reg_reg {
    uint8_t bytes[AGX3_LSR_U32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_imul_u32_reg_reg {
+   uint8_t bytes[AGX3_IMUL_U32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -347,6 +353,30 @@ bool agx3_pack_lsr_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_lsr_u32_reg_reg *out);
 bool agx3_unpack_lsr_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded three-register low-u32 multiply form.
+ * Apple's tables name the containing operation `imadd` on AGX3b and
+ * `imadd32` on AGX3c; this API accepts only the compiler's implicit-zero
+ * addend selection, which is exactly a 32-bit multiply.  The forced-live
+ * three-store replay independently correlates f2 with destination r3, f16
+ * with one source r0, and f31 with the other source r2 on every available
+ * G15/G16/G17 compiler target.  P2i_mul/P2u_mul and the Q_imul/L_imul
+ * ladders independently reproduce this low-product operation across
+ * generations.
+ *
+ * All arguments are even half-register indices.  Apple's AGX3b encoding
+ * point is limited to r0..r95; AGX3c is bounded here to modeled r0..r127,
+ * excluding its unprobed ninth register bits.  Other addend and anonymous
+ * selections, signed/unsigned high multiply, and G15G's standalone scheduling
+ * nops remain unsupported.
+ */
+bool agx3_pack_imul_u32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_imul_u32_reg_reg *out);
+bool agx3_unpack_imul_u32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 

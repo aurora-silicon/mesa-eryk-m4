@@ -28,6 +28,20 @@ enum d12_agx3_binary_alu_op {
    D12_AGX3_BINARY_ALU_ISHL_U32 = 5,
    D12_AGX3_BINARY_ALU_IASHR_I32 = 6,
    D12_AGX3_BINARY_ALU_ILSHR_U32 = 7,
+   D12_AGX3_BINARY_ALU_IMUL_U32 = 8,
+};
+
+/*
+ * Selection presented to the target-aware integer-multiply bridge.  Only the
+ * low-u32 product is encoded.  Naming the rejected selections here lets a
+ * lowering caller fail closed instead of accidentally treating an addend or
+ * high product as the canonical three-register multiply.
+ */
+enum d12_agx3_integer_multiply_selection {
+   D12_AGX3_INTEGER_MULTIPLY_LOW_U32 = 0,
+   D12_AGX3_INTEGER_MULTIPLY_WITH_ADDEND_U32 = 1,
+   D12_AGX3_INTEGER_MULTIPLY_HIGH_I32 = 2,
+   D12_AGX3_INTEGER_MULTIPLY_HIGH_U32 = 3,
 };
 
 enum d12_agx3_unary_alu_op {
@@ -51,10 +65,24 @@ struct d12_agx3_unary_alu_encoding {
  * compilation, scheduling, command submission, or device admission exists.
  * ISHL, IASHR and ILSHR map only the proved register-register `sll`, `sra`
  * and `srl` instructions; they do not emit or claim the separate shift-count
- * masking seen in compiler output.
+ * masking seen in compiler output. IMUL maps only the implicit-zero-addend
+ * low-u32 product selected by the shared packer, not integer add or high
+ * multiply forms.
  */
 bool d12_agx3_encode_binary_alu(
    enum agx_isa_encoding encoding, enum d12_agx3_binary_alu_op op,
+   uint16_t dest, uint16_t src0, uint16_t src1,
+   struct d12_agx3_binary_alu_encoding *out);
+
+/*
+ * Encode the canonical integer multiply for an independently witnessed Apple
+ * compiler target.  The allowlist is intentionally narrower than the set of
+ * chips sharing an encoding: G17C, for example, is AGX3c but has no compiler
+ * witness in the source corpus and remains rejected.  This is still only an
+ * ISA/lowering building block and does not admit any AGX3 device.
+ */
+bool d12_agx3_encode_integer_multiply(
+   enum agx_chip chip, enum d12_agx3_integer_multiply_selection selection,
    uint16_t dest, uint16_t src0, uint16_t src1,
    struct d12_agx3_binary_alu_encoding *out);
 
