@@ -425,9 +425,12 @@ d12_umd_unsupported_barrier(
 }
 
 static void APIENTRY
-d12_umd_unsupported_alpha_blend_factor(
+d12_umd_unused_alpha_blend_factor(
    D3D12DDI_HCOMMANDLIST command_list, FLOAT alpha_blend_factor)
 {
+   /* This slot was retained for ABI compatibility but declared unused by
+    * the final DDI 0092 contract. Component A is supplied through the normal
+    * OMSetBlendFactor path instead. */
    (void)command_list;
    (void)alpha_blend_factor;
 }
@@ -555,7 +558,7 @@ d12_umd_install_unsupported_command_list_functions_0099(
    table->pfnDispatchMesh = d12_umd_unsupported_dispatch_mesh;
    table->pfnBarrier = d12_umd_unsupported_barrier;
    table->pfnOmSetAlphaBlendFactor =
-      d12_umd_unsupported_alpha_blend_factor;
+      d12_umd_unused_alpha_blend_factor;
 }
 
 HRESULT

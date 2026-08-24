@@ -371,6 +371,7 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       memset(opts, 0, sizeof(*opts));
       opts->TextureCopyBetweenDimensionsSupported =
          caps->texture_copy_between_dimensions;
+      opts->AlphaBlendFactorSupported = caps->alpha_blend_factor;
       return S_OK;
    }
 

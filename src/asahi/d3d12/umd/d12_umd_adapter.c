@@ -568,7 +568,12 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
        * particular, the public Options13
        * TextureCopyBetweenDimensionsSupported value is not a fifth DDI cap;
        * Release 8 retains pfnCopyTextureRegion_0003 and the renderer fulfils
-       * that revision's cross-dimension behavior directly. */
+       * that revision's cross-dimension behavior directly.
+       *
+       * Alpha blend factor is likewise not a member of this cap structure:
+       * DDI 0092 and newer imply it. Blend enums 20/21 pass unchanged to the
+       * shared renderer, whose epilog consumes OMSetBlendFactor component A.
+       */
       const D3D12DDI_OPTIONS_DATA_0091 data = {0};
       if (arguments->pInfo)
          return E_INVALIDARG;

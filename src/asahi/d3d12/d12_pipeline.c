@@ -11,6 +11,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_blend_core.h"
 
 #include "agx_linker.h"
 
@@ -3301,6 +3302,11 @@ d12_translate_stencil_face(struct d12_stencil_face *out,
 static bool
 d12_translate_blend_factor(D3D12_BLEND in, enum pipe_blendfactor *out)
 {
+   static_assert(D3D12_BLEND_ALPHA_FACTOR == D12_CORE_BLEND_ALPHA_FACTOR &&
+                    D3D12_BLEND_INV_ALPHA_FACTOR ==
+                       D12_CORE_BLEND_INV_ALPHA_FACTOR,
+                 "public and portable alpha blend factors must match");
+
    switch (in) {
    case D3D12_BLEND_ZERO:             *out = PIPE_BLENDFACTOR_ZERO; break;
    case D3D12_BLEND_ONE:              *out = PIPE_BLENDFACTOR_ONE; break;
@@ -3319,8 +3325,15 @@ d12_translate_blend_factor(D3D12_BLEND in, enum pipe_blendfactor *out)
    case D3D12_BLEND_INV_SRC1_COLOR:   *out = PIPE_BLENDFACTOR_INV_SRC1_COLOR; break;
    case D3D12_BLEND_SRC1_ALPHA:       *out = PIPE_BLENDFACTOR_SRC1_ALPHA; break;
    case D3D12_BLEND_INV_SRC1_ALPHA:   *out = PIPE_BLENDFACTOR_INV_SRC1_ALPHA; break;
-   case D3D12_BLEND_ALPHA_FACTOR:     *out = PIPE_BLENDFACTOR_CONST_ALPHA; break;
-   case D3D12_BLEND_INV_ALPHA_FACTOR: *out = PIPE_BLENDFACTOR_INV_CONST_ALPHA; break;
+   case D3D12_BLEND_ALPHA_FACTOR:
+   case D3D12_BLEND_INV_ALPHA_FACTOR: {
+      const enum d12_alpha_blend_factor_kind alpha =
+         d12_alpha_blend_factor_classify((uint32_t)in);
+      *out = alpha == D12_ALPHA_BLEND_FACTOR_CONSTANT
+                ? PIPE_BLENDFACTOR_CONST_ALPHA
+                : PIPE_BLENDFACTOR_INV_CONST_ALPHA;
+      break;
+   }
    default:
       return false;
    }

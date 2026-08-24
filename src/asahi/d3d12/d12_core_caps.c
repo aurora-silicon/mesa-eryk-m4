@@ -155,6 +155,9 @@ static const struct d12_core_caps d12_agx_caps = {
    .hardware_copy = false,
    .copy_queue_timestamp_queries = true,
    .texture_copy_between_dimensions = true,
+   /* The fragment epilog lowers CONST_ALPHA/INV_CONST_ALPHA against the A
+    * component of the four-float blend constant uploaded for every draw. */
+   .alpha_blend_factor = true,
    .output_merger_logic_op = true,
    .write_buffer_immediate_support_flags =
       D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |

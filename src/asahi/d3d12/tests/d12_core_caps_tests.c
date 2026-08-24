@@ -48,6 +48,7 @@ main(void)
    assert(!caps->hardware_copy);
    assert(caps->copy_queue_timestamp_queries);
    assert(caps->texture_copy_between_dimensions);
+   assert(caps->alpha_blend_factor);
    assert(caps->output_merger_logic_op);
    assert(caps->write_buffer_immediate_support_flags ==
           (D12_CORE_COMMAND_LIST_SUPPORT_DIRECT |

@@ -71,15 +71,16 @@ main(void)
    d12_bundle_dynamic_state_apply(&state, &inherited);
    assert(inherited.depth_bias == -1.25f && inherited.strip_cut == 1);
 
-   /* Reset/ClearState use empty non-PSO state, not OMSetBlendFactor(NULL)'s
-    * {1,1,1,1}. A graphics PSO contributes only its dynamic PSO defaults. */
+   /* Reset/ClearState restore the D3D12 blend-factor default. In particular,
+    * Options13's ALPHA_FACTOR consumes component A and requires 1.0f here. A
+    * graphics PSO contributes only its other dynamic PSO defaults. */
    const struct d12_dynamic_state_values empty =
       d12_dynamic_state_reset(false, 99.0f, 99.0f, 99.0f, 2);
    assert(empty.stencil_ref_front == 0 && empty.stencil_ref_back == 0);
-   assert(empty.blend_factor[0] == 0.0f && empty.blend_factor[3] == 0.0f);
+   assert(empty.blend_factor[0] == 1.0f && empty.blend_factor[3] == 1.0f);
    assert(empty.depth_bias == 0.0f && empty.strip_cut == 0);
    assert(pso.stencil_ref_front == 0 && pso.stencil_ref_back == 0);
-   assert(pso.blend_factor[0] == 0.0f && pso.blend_factor[3] == 0.0f);
+   assert(pso.blend_factor[0] == 1.0f && pso.blend_factor[3] == 1.0f);
 
    int32_t reset_result = 123;
    const int32_t invalid_argument = INT32_C(-2147024809);

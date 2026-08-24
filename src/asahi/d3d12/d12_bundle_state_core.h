@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "d12_blend_core.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -40,7 +42,14 @@ d12_dynamic_state_reset(bool has_graphics_pso, float pso_depth_bias,
                         float pso_slope_scaled_depth_bias,
                         uint32_t pso_strip_cut)
 {
-   struct d12_dynamic_state_values state = {0};
+   struct d12_dynamic_state_values state = {
+      .blend_factor = {
+         D12_CORE_DEFAULT_BLEND_FACTOR,
+         D12_CORE_DEFAULT_BLEND_FACTOR,
+         D12_CORE_DEFAULT_BLEND_FACTOR,
+         D12_CORE_DEFAULT_BLEND_FACTOR,
+      },
+   };
 
    if (has_graphics_pso) {
       state.depth_bias = pso_depth_bias;

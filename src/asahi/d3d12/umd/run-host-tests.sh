@@ -71,6 +71,11 @@ done
 "$out/d12_buffer_view_core_tests"
 
 "$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_blend_core_tests.c" \
+    -o "$out/d12_blend_core_tests"
+"$out/d12_blend_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
     -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/compiler" \
     "$d12_dir/tests/d12_binding_map_tests.c" \
     -o "$out/d12_binding_map_tests"

@@ -75,6 +75,9 @@ struct d12_core_caps {
    bool hardware_copy;
    bool copy_queue_timestamp_queries;
    bool texture_copy_between_dimensions;
+   /* D3D12_BLEND_ALPHA_FACTOR and its inverse consume component A from the
+    * four-component OMSetBlendFactor state. */
+   bool alpha_blend_factor;
    bool output_merger_logic_op;
    uint32_t write_buffer_immediate_support_flags;
 };
