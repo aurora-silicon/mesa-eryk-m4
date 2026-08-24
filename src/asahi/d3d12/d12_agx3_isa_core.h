@@ -23,6 +23,7 @@ extern "C" {
 #define D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH 14
 #define D12_AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH 16
 #define D12_AGX3_FMIN_F32_REG_REG_MAX_LENGTH 14
+#define D12_AGX3_FMAX_F32_REG_REG_MAX_LENGTH 14
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 
@@ -107,6 +108,11 @@ struct d12_agx3_fma_f32_reg_reg_reg_encoding {
 
 struct d12_agx3_fmin_f32_reg_reg_encoding {
    uint8_t bytes[D12_AGX3_FMIN_F32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_fmax_f32_reg_reg_encoding {
+   uint8_t bytes[D12_AGX3_FMAX_F32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -266,6 +272,28 @@ bool d12_agx3_encode_fmin_f32_reg_reg(
    uint16_t src0, uint16_t src1,
    struct d12_agx3_fmin_f32_reg_reg_encoding *out);
 bool d12_agx3_decode_fmin_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1);
+
+/*
+ * Encode/decode the exact f32-maximum compiler selection on its nine direct
+ * witness targets.  G15G/S/D, G16P/G/S and G17P use the six-byte AGX3b form;
+ * G17G/S use the fourteen-byte AGX3c form.  `encoding` must match `chip`, and
+ * all operands are even half-register indices in 0..126.  The AGX3c bridge
+ * also enforces equality of the duplicated comparison and selection sources.
+ *
+ * This exact representation rejects other predicates, fmin/generic select,
+ * modifiers, trailing bytes, C-suffixed identities without direct artifacts,
+ * and unproven registers.  It does not independently define DXIL NaN or
+ * signed-zero policy and does not enable lowering, scheduling, runtime use,
+ * device admission, command submission, or a D3D12 feature.
+ */
+bool d12_agx3_encode_fmax_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src0, uint16_t src1,
+   struct d12_agx3_fmax_f32_reg_reg_encoding *out);
+bool d12_agx3_decode_fmax_f32_reg_reg(
    enum agx_chip chip, enum agx_isa_encoding encoding,
    const void *instruction, uint32_t instruction_size, uint16_t *dest,
    uint16_t *src0, uint16_t *src1);

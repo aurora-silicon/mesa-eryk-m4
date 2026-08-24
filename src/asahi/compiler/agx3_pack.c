@@ -819,6 +819,120 @@ agx3_unpack_fmin_f32_reg_reg(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_fmax_f32_reg_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                           uint16_t src0, uint16_t src1,
+                           struct agx3_encoded_fmax_f32_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 128 ||
+       src0 >= 128 || src1 >= 128 || (dest & 1) != 0 || (src0 & 1) != 0 ||
+       (src1 & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Exact fsel.ep7 P2/L f32-maximum anonymous/context selection. */
+      const uint8_t canonical[] = {
+         0x02, 0x01, 0x1e, 0x01, 0x00, 0xc0,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f3: d[1:4] -> b0[4:7], d[5:6] -> b2[6:7]. */
+      out->bytes[0] |= (dest & 0x1e) << 3;
+      out->bytes[2] |= (dest & 0x60) << 1;
+
+      /* The tied f35/f69 and f52/f86 pairs share these deposits. */
+      out->bytes[1] |= src0 & 0x7e;
+      out->bytes[3] |= src1 & 0x7e;
+
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   /* Exact fseli32.ep4 P2/L f32-maximum anonymous/context selection. */
+   const uint8_t canonical[] = {
+      0x22, 0x00, 0x07, 0x0a, 0x23, 0x00, 0xa0,
+      0x02, 0x14, 0x00, 0xa1, 0x64, 0x00, 0x40,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2: d1 -> b0[4], d2..3 -> b7[3:4], d4 -> b0[7],
+    *     d5 -> b7[5], d6 -> b2[7]. */
+   out->bytes[0] |= (dest & 0x02) << 3;
+   out->bytes[7] |= (dest & 0x0c) << 1;
+   out->bytes[0] |= (dest & 0x10) << 3;
+   out->bytes[7] |= dest & 0x20;
+   out->bytes[2] |= (dest & 0x40) << 1;
+
+   /* Tied comparison/select source0 fields f16/f50. */
+   out->bytes[1] |= src0 & 0x02;
+   out->bytes[3] |= (src0 & 0x1c) << 3;
+   out->bytes[5] |= (src0 & 0x20) << 2;
+   out->bytes[8] |= (src0 & 0x04) >> 1;
+   out->bytes[8] |= src0 & 0x20;
+   out->bytes[8] |= (src0 & 0x40) >> 6;
+   out->bytes[12] |= src0 & 0x5a;
+
+   /* Tied comparison/select source1 fields f33/f64. */
+   out->bytes[3] |= (src1 & 0x02) >> 1;
+   out->bytes[8] |= (src1 & 0x02) << 6;
+   out->bytes[9] |= (src1 & 0x7c) >> 2;
+   out->bytes[12] |= (src1 & 0x04) << 3;
+   out->bytes[12] |= (src1 & 0x08) >> 1;
+   out->bytes[13] |= (src1 & 0x10) >> 4;
+   out->bytes[13] |= (src1 & 0x60) >> 3;
+
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_fmax_f32_reg_reg(enum agx_isa_encoding encoding,
+                             const uint8_t *bytes, size_t available,
+                             uint16_t *dest, uint16_t *src0, uint16_t *src1,
+                             uint8_t *length)
+{
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 6 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 14 : 0;
+   if (expected_length == 0 || bytes == NULL || dest == NULL || src0 == NULL ||
+       src1 == NULL || length == NULL || available < expected_length)
+      return false;
+
+   uint16_t decoded_dest, decoded_src0, decoded_src1;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                     ((bytes[2] >> 1) & 0x60);
+      decoded_src0 = bytes[1] & 0x7e;
+      decoded_src1 = bytes[3] & 0x7e;
+   } else {
+      decoded_dest = ((bytes[0] >> 3) & 0x02) |
+                     ((bytes[7] >> 1) & 0x0c) |
+                     ((bytes[0] >> 3) & 0x10) | (bytes[7] & 0x20) |
+                     ((bytes[2] >> 1) & 0x40);
+      decoded_src0 = (bytes[1] & 0x02) |
+                     ((bytes[3] >> 3) & 0x1c) |
+                     ((bytes[5] >> 2) & 0x20) |
+                     ((bytes[8] << 1) & 0x04) | (bytes[8] & 0x20) |
+                     ((bytes[8] << 6) & 0x40);
+      decoded_src1 = ((bytes[3] << 1) & 0x02) |
+                     ((bytes[9] << 2) & 0x7c);
+   }
+
+   struct agx3_encoded_fmax_f32_reg_reg canonical;
+   if (!agx3_pack_fmax_f32_reg_reg(
+          encoding, decoded_dest, decoded_src0, decoded_src1, &canonical) ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src0 = decoded_src0;
+   *src1 = decoded_src1;
+   *length = canonical.length;
+   return true;
+}
+
+bool
 agx3_pack_bit_and_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_bit_and_u32_reg_reg *out)
