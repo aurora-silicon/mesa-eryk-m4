@@ -48,6 +48,9 @@ struct ail_layout {
    /** Number of samples per pixel. 1 if multisampling is disabled. */
    uint8_t sample_count_sa;
 
+   /** Hardware-family allocation policy; zero preserves the legacy ABI. */
+   enum ail_layout_policy policy;
+
    /** Number of miplevels. 1 if no mipmapping is used. */
    uint8_t levels;
 
@@ -297,7 +300,12 @@ ail_metadata_width_tl(struct ail_layout *layout, unsigned level)
 {
    unsigned px = u_minify(layout->width_px, level);
    uint32_t sa = ail_effective_width_sa(px, layout->sample_count_sa);
-   return DIV_ROUND_UP(sa, 16);
+   const struct ail_tile tile =
+      layout->policy == AIL_LAYOUT_POLICY_M5 && !layout->mipmapped_z
+         ? ail_m5_compression_tile_size(
+              util_format_get_blocksize(layout->format))
+         : (struct ail_tile){16, 16};
+   return DIV_ROUND_UP(sa, tile.width_el);
 }
 
 static inline unsigned
@@ -305,7 +313,12 @@ ail_metadata_height_tl(struct ail_layout *layout, unsigned level)
 {
    unsigned px = u_minify(layout->height_px, level);
    uint32_t sa = ail_effective_height_sa(px, layout->sample_count_sa);
-   return DIV_ROUND_UP(sa, 16);
+   const struct ail_tile tile =
+      layout->policy == AIL_LAYOUT_POLICY_M5 && !layout->mipmapped_z
+         ? ail_m5_compression_tile_size(
+              util_format_get_blocksize(layout->format))
+         : (struct ail_tile){16, 16};
+   return DIV_ROUND_UP(sa, tile.height_el);
 }
 
 /*

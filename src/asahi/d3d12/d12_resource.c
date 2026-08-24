@@ -1456,8 +1456,9 @@ d12_resource_explicit_row_major_size(
 static HRESULT
 d12_resource_compute_texture_layout(
    const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
-   uint32_t slice_pitch_B, bool reserved, struct ail_layout *layout,
-   struct ail_layout *stencil_layout, bool *is_depth_stencil)
+   uint32_t slice_pitch_B, bool reserved, enum ail_layout_policy policy,
+   struct ail_layout *layout, struct ail_layout *stencil_layout,
+   bool *is_depth_stencil)
 {
    uint64_t explicit_row_major_size_B = 0;
    const bool interop_layout =
@@ -1528,6 +1529,7 @@ d12_resource_compute_texture_layout(
 
       *is_depth_stencil = true;
       *layout = (struct ail_layout){
+         .policy = policy,
          .width_px = (uint32_t)desc->Width,
          .height_px = desc->Height,
          .depth_px = MAX2(desc->DepthOrArraySize, 1),
@@ -1542,6 +1544,7 @@ d12_resource_compute_texture_layout(
 
       if (s != PIPE_FORMAT_NONE) {
          *stencil_layout = (struct ail_layout){
+            .policy = policy,
             .width_px = (uint32_t)desc->Width,
             .height_px = desc->Height,
             .depth_px = MAX2(desc->DepthOrArraySize, 1),
@@ -1618,6 +1621,7 @@ d12_resource_compute_texture_layout(
    }
 
    *layout = (struct ail_layout){
+      .policy = policy,
       .width_px = (uint32_t)desc->Width,
       .height_px = desc->Height,
       .depth_px = MAX2(desc->DepthOrArraySize, 1),
@@ -1642,7 +1646,8 @@ d12_resource_compute_texture_layout(
 
 HRESULT
 d12_resource_get_allocation_size(
-   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   struct d12_device *device, const D3D12_RESOURCE_DESC *desc,
+   uint32_t row_pitch_B,
    uint32_t slice_pitch_B, bool reserved, uint64_t *size_B)
 {
    struct ail_layout layout;
@@ -1650,7 +1655,7 @@ d12_resource_get_allocation_size(
    bool is_depth_stencil;
    HRESULT result;
 
-   if (!desc || !size_B ||
+   if (!device || !desc || !size_B ||
        ((row_pitch_B || slice_pitch_B) &&
         desc->Dimension == D3D12_RESOURCE_DIMENSION_BUFFER))
       return E_INVALIDARG;
@@ -1669,8 +1674,11 @@ d12_resource_get_allocation_size(
       return S_OK;
    }
 
+   const enum ail_layout_policy policy =
+      ail_layout_policy_for_descriptor_generation(
+         agx_chip_descriptor_generation(device->dev.chip));
    result = d12_resource_compute_texture_layout(
-      desc, row_pitch_B, slice_pitch_B, reserved, &layout,
+      desc, row_pitch_B, slice_pitch_B, reserved, policy, &layout,
       &stencil_layout, &is_depth_stencil);
    if (FAILED(result))
       return result;
@@ -1705,8 +1713,11 @@ d12_resource_create(struct d12_device *device,
          return E_INVALIDARG;
       size_B = desc->Width;
    } else {
+      const enum ail_layout_policy policy =
+         ail_layout_policy_for_descriptor_generation(
+            agx_chip_descriptor_generation(device->dev.chip));
       HRESULT layout_result = d12_resource_compute_texture_layout(
-         desc, row_pitch_B, slice_pitch_B, reserved, &layout,
+         desc, row_pitch_B, slice_pitch_B, reserved, policy, &layout,
          &stencil_layout, &is_depth_stencil);
       if (FAILED(layout_result))
          return layout_result;

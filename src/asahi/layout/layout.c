@@ -168,27 +168,37 @@ ail_initialize_gpu_tiled(struct ail_layout *layout)
    unsigned tail_offset_B = layout->level_offsets_B[layout->mip_tail_first_lod];
    layout->mip_tail_stride = align(offset_B - tail_offset_B, AIL_PAGESIZE);
 
-   /* Align layer size if we have mipmaps and one miptree is larger than one
-    * page */
-   layout->page_aligned_layers = layout->levels != 1 && offset_B > AIL_PAGESIZE;
+   if (layout->policy == AIL_LAYOUT_POLICY_M5 && !layout->mipmapped_z) {
+      /* Live M5 allocation corpus: single layers are never padded; small
+       * arrays use a 2 KiB granule only when compression metadata exists;
+       * arrays larger than one GPU page keep the 16 KiB granule. Shader-write
+       * usage by itself does not force page alignment on this family. */
+      layout->layer_stride_B =
+         ail_m5_layer_stride_B(offset_B, layout->depth_px, layout->compressed);
+      layout->page_aligned_layers =
+         layout->depth_px > 1 && offset_B > AIL_PAGESIZE;
+   } else {
+      /* Align layer size if we have mipmaps and one miptree is larger than one
+       * page */
+      layout->page_aligned_layers =
+         layout->levels != 1 && offset_B > AIL_PAGESIZE;
 
-   /* Single-layer images are not padded unless they are Z/S */
-   bool zs = util_format_is_depth_or_stencil(layout->format);
-   if (layout->depth_px == 1 && !zs)
-      layout->page_aligned_layers = false;
+      /* Single-layer images are not padded unless they are Z/S */
+      bool zs = util_format_is_depth_or_stencil(layout->format);
+      if (layout->depth_px == 1 && !zs)
+         layout->page_aligned_layers = false;
 
-   /* For writable images, we require page-aligned layers. This appears to be
-    * required for PBE stores, including block stores for colour rendering.
-    * Likewise, we specify the ZLS layer stride in pages, so we need
-    * page-aligned layers for renderable depth/stencil targets.
-    */
-   layout->page_aligned_layers |= layout->writeable_image;
-   layout->page_aligned_layers |= layout->renderable && layout->depth_px > 1;
+      /* For writable images, we require page-aligned layers. This appears to
+       * be required for PBE stores, including block stores for colour
+       * rendering. Likewise, ZLS layer strides are specified in pages. */
+      layout->page_aligned_layers |= layout->writeable_image;
+      layout->page_aligned_layers |= layout->renderable && layout->depth_px > 1;
 
-   if (layout->page_aligned_layers)
-      layout->layer_stride_B = ALIGN_POT(offset_B, AIL_PAGESIZE);
-   else
-      layout->layer_stride_B = offset_B;
+      if (layout->page_aligned_layers)
+         layout->layer_stride_B = ALIGN_POT(offset_B, AIL_PAGESIZE);
+      else
+         layout->layer_stride_B = offset_B;
+   }
 
    layout->size_B = (uint64_t)layout->layer_stride_B * layout->depth_px;
 }
@@ -262,8 +272,13 @@ ail_initialize_compression(struct ail_layout *layout)
 
    layout->metadata_offset_B = layout->size_B;
 
-   width_sa = ALIGN_POT(width_sa, 16);
-   height_sa = ALIGN_POT(height_sa, 16);
+   const struct ail_tile metadata_tile =
+      layout->policy == AIL_LAYOUT_POLICY_M5 && !layout->mipmapped_z
+         ? ail_m5_compression_tile_size(util_format_get_blocksize(layout->format))
+         : (struct ail_tile){16, 16};
+
+   width_sa = ALIGN_POT(width_sa, metadata_tile.width_el);
+   height_sa = ALIGN_POT(height_sa, metadata_tile.height_el);
 
    unsigned compbuf_B = 0;
 
@@ -273,12 +288,14 @@ ail_initialize_compression(struct ail_layout *layout)
 
       layout->level_offsets_compressed_B[l] = compbuf_B;
 
-      /* The metadata buffer contains 8 bytes per 16x16 compression tile.
-       * Addressing is fully twiddled, so both width and height are padded to
-       * powers-of-two.
+      /* The metadata buffer contains 8 bytes per compression tile. M5 uses
+       * 16x8 for 16 B/px and 16x16 otherwise; legacy layouts use 16x16.
+       * Addressing is fully twiddled, so both axes are padded to powers-of-two.
        */
-      unsigned w_tl = DIV_ROUND_UP(util_next_power_of_two(width_sa), 16);
-      unsigned h_tl = DIV_ROUND_UP(util_next_power_of_two(height_sa), 16);
+      unsigned w_tl = DIV_ROUND_UP(util_next_power_of_two(width_sa),
+                                   metadata_tile.width_el);
+      unsigned h_tl = DIV_ROUND_UP(util_next_power_of_two(height_sa),
+                                   metadata_tile.height_el);
       unsigned B_per_tl_2 = 8;
 
       compbuf_B += ALIGN_POT(w_tl * h_tl * B_per_tl_2, AIL_CACHELINE);

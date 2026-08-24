@@ -1810,6 +1810,7 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
                                      UINT visible_mask, UINT count,
                                      const D3D12_RESOURCE_DESC *descs)
 {
+   struct d12_device *device = d12_device_from_iface(iface);
    D3D12_RESOURCE_ALLOCATION_INFO info = {0, 0};
 
    /*
@@ -1903,7 +1904,7 @@ d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
                                     : d12_format_to_pipe(d->Format);
          if (pipe == PIPE_FORMAT_NONE ||
              FAILED(d12_resource_get_allocation_size(
-                d, 0, 0, false, &size))) {
+                device, d, 0, 0, false, &size))) {
             /* A refusal still has to report a LEGAL alignment: the caller
              * feeds it straight into align(), which asserts on zero. The
              * test checks `Alignment >= D3D12_DEFAULT_RESOURCE_PLACEMENT_

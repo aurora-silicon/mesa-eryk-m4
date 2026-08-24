@@ -470,7 +470,8 @@ bool d12_resource_explicit_row_major_size(
    const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
    uint32_t slice_pitch_B, uint64_t *size_B);
 HRESULT d12_resource_get_allocation_size(
-   const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
+   struct d12_device *device, const D3D12_RESOURCE_DESC *desc,
+   uint32_t row_pitch_B,
    uint32_t slice_pitch_B, bool reserved, uint64_t *size_B);
 struct d12_sparse_map_update {
    uint64_t read_address;

@@ -883,6 +883,8 @@ hk_image_init(struct hk_device *dev, struct hk_image *image,
          hk_map_compression(dev, pCreateInfo, plane, image->vk.drm_format_mod);
 
       image->planes[plane].layout = (struct ail_layout){
+         .policy = ail_layout_policy_for_descriptor_generation(
+            agx_chip_descriptor_generation(dev->dev.chip)),
          .tiling = hk_map_tiling(dev, pCreateInfo, image->vk.drm_format_mod),
          .compressed = compressed,
          .mipmapped_z = pCreateInfo->imageType == VK_IMAGE_TYPE_3D,

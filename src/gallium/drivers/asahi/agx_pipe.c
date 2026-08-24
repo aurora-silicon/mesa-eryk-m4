@@ -137,6 +137,8 @@ agx_resource_setup(struct agx_device *dev, struct agx_resource *nresource)
    struct pipe_resource *templ = &nresource->base;
 
    nresource->layout = (struct ail_layout){
+      .policy = ail_layout_policy_for_descriptor_generation(
+         agx_chip_descriptor_generation(dev->chip)),
       .tiling = ail_drm_modifier_to_tiling(nresource->modifier),
       .compressed = ail_is_drm_modifier_compressed(nresource->modifier),
       .mipmapped_z = templ->target == PIPE_TEXTURE_3D,

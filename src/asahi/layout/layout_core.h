@@ -20,6 +20,21 @@ struct ail_tile {
    unsigned width_el, height_el;
 };
 
+/* Resource-allocation policy, kept independent of the shader ISA. */
+enum ail_layout_policy {
+   /* Existing AIL policy used by runtime-supported AGX2 and ungrounded parts. */
+   AIL_LAYOUT_POLICY_LEGACY = 0,
+   /* Live-measured G17G/S/C (M5 family) allocation policy. */
+   AIL_LAYOUT_POLICY_M5,
+};
+
+static inline enum ail_layout_policy
+ail_layout_policy_for_descriptor_generation(unsigned descriptor_generation)
+{
+   return descriptor_generation == 10 ? AIL_LAYOUT_POLICY_M5
+                                      : AIL_LAYOUT_POLICY_LEGACY;
+}
+
 static inline unsigned
 ail_effective_width_sa(unsigned width_px, unsigned sample_count_sa)
 {

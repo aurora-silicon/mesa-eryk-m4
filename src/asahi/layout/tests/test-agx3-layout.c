@@ -25,6 +25,15 @@ static unsigned checks;
 int
 main(void)
 {
+   CHECK_EQ(ail_layout_policy_for_descriptor_generation(0),
+            AIL_LAYOUT_POLICY_LEGACY);
+   CHECK_EQ(ail_layout_policy_for_descriptor_generation(7),
+            AIL_LAYOUT_POLICY_LEGACY);
+   CHECK_EQ(ail_layout_policy_for_descriptor_generation(9),
+            AIL_LAYOUT_POLICY_LEGACY);
+   CHECK_EQ(ail_layout_policy_for_descriptor_generation(10),
+            AIL_LAYOUT_POLICY_M5);
+
    CHECK_EQ(ail_effective_width_sa(37, 1), 37);
    CHECK_EQ(ail_effective_height_sa(19, 1), 19);
    CHECK_EQ(ail_effective_width_sa(37, 2), 37);

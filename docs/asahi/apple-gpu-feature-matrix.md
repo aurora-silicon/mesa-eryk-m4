@@ -89,10 +89,11 @@ the matrix's PBE gate refers to that complete execution contract.
 
 AIL also carries tested M5 allocation-policy primitives for the measured
 2 KiB small-array compression-metadata granule, 16 KiB large-array granule,
-unpadded single-layer rule, and 16x8 metadata tiles at 16 B/px. They are not
-yet selected by `ail_make_miptree`: the frontend layout-generation axis is
-still missing, and the M5 measurements are deliberately not inferred for
-M3/M4 or applied to runtime-supported AGX2 devices.
+unpadded single-layer rule, and 16x8 metadata tiles at 16 B/px. Gallium,
+Honeykrisp, and D3D12 sizing/creation select this policy only for descriptor
+generation 10 (G17G/S/C); 3D allocation keeps the existing policy because the
+live corpus grounds 2D images. The M5 measurements are deliberately not
+inferred for M3/M4 or applied to runtime-supported AGX2 devices.
 
 Across the table, the public D3D12 command-list path implements
 `DiscardResource`: it is **RS** on admitted G13/G14 devices and **IV** on the
@@ -101,6 +102,13 @@ contents and metadata, which is valid for a discard hint; no new AGX encoding
 or capability gate is implied. Legacy RT/DS/UAV state preconditions remain an
 application/debug-layer contract because this command core does not track
 legacy resource states.
+
+The admitted AGX2 D3D12 path also reports Options13
+`AlphaBlendFactorSupported`: blend modes 20/21 map to constant alpha and its
+inverse, the fragment epilog consumes component A of `OMSetBlendFactor`, and
+command-list reset now restores the specified `{1,1,1,1}` default. This is
+**RS** on admitted G13/G14 and **IV** on driver-gated G15-G17; it changes no
+AGX3 execution or DXR capability gate.
 
 Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
@@ -140,8 +148,11 @@ The current in-tree anchors are:
   paths.
 - [`layout_core.h`](../../src/asahi/layout/layout_core.h) and
   [`test-agx3-layout.c`](../../src/asahi/layout/tests/test-agx3-layout.c): M5
-  MSAA and bounded allocation-policy primitives kept separate from the legacy
-  runtime layout until generation selection is plumbed.
+  MSAA and bounded allocation-policy primitives with a generation-10-only
+  selector.
+- [`d12_blend_core.h`](../../src/asahi/d3d12/d12_blend_core.h) and its
+  [host tests](../../src/asahi/d3d12/tests/d12_blend_core_tests.c): Options13
+  alpha-factor mapping, inversion, default-state, and capability contracts.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, and bounded BVH helpers.
