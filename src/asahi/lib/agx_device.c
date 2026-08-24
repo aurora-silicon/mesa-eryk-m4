@@ -681,27 +681,34 @@ agx_open_device(void *memctx, struct agx_device *dev)
    dev->chip = agx_chip_from_params(&dev->params);
 
    /*
-    * Gate on whether a code generator exists, not on whether the part was
-    * recognised. Those became different questions at M3: G15 and above are
-    * recognised so they can be refused by name, but they execute AGX3 and
-    * this driver only has an AGX2 packing table. Testing for UNKNOWN here
-    * would let a recognised AGX3 part through to be handed AGX2
-    * instructions, which is the one outcome worse than refusing it.
+    * Recognition, shader codegen, descriptors and the command stream are
+    * independently versioned. A part is usable only once every required axis
+    * is implemented; otherwise a newly-recognised chip can silently reach an
+    * encoder from the wrong generation.
     */
-   if (!agx_chip_codegen_supported(dev->chip)) {
+   if (!agx_chip_driver_supported(dev->chip)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
                  "clusters)\n",
                  dev->params.gpu_generation, dev->params.gpu_variant,
                  dev->params.num_clusters_total);
-      } else {
+      } else if (!agx_chip_codegen_supported(dev->chip)) {
          fprintf(stderr,
                  "Apple %s executes the %s instruction set, which this "
                  "driver has no code generator for (variant 0x%x, %u "
                  "clusters)\n",
                  agx_chip_name(dev->chip),
                  agx_isa_name(agx_chip_isa(dev->chip)),
+                 dev->params.gpu_variant,
+                 dev->params.num_clusters_total);
+      } else {
+         fprintf(stderr,
+                 "Apple %s uses the %s command stream, which this driver "
+                 "does not implement (variant 0x%x, %u clusters)\n",
+                 agx_chip_name(dev->chip),
+                 agx_command_stream_generation_name(
+                    agx_chip_command_stream_generation(dev->chip)),
                  dev->params.gpu_variant,
                  dev->params.num_clusters_total);
       }

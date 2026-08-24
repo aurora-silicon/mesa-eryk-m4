@@ -100,6 +100,42 @@ enum agx_isa_encoding {
    AGX_ISA_ENCODING_AGX3C,
    AGX_ISA_ENCODING_UNKNOWN,
 };
+
+/* Apple's independently-versioned command-stream/HAL axis. */
+enum agx_command_stream_generation {
+   AGX_CS_GENERATION_AGX2,
+   AGX_CS_GENERATION_G15,
+   AGX_CS_GENERATION_HAL200,
+   AGX_CS_GENERATION_HAL300,
+   AGX_CS_GENERATION_UNKNOWN,
+};
+
+/* PBE/texture descriptor encoder generation. The descriptor grows from 24 to
+ * 32 bytes at Gen9 and is laid out again at Gen10. */
+enum agx_descriptor_generation {
+   AGX_DESCRIPTOR_GENERATION_UNKNOWN = 0,
+   AGX_DESCRIPTOR_GENERATION_7 = 7,
+   AGX_DESCRIPTOR_GENERATION_8 = 8,
+   AGX_DESCRIPTOR_GENERATION_9 = 9,
+   AGX_DESCRIPTOR_GENERATION_10 = 10,
+};
+
+/* Samplers keep the Gen4 class through M4, but HAL200 moves fields within the
+ * word. Gen5 adds reduction mode and a wider LOD clamp on M5. */
+enum agx_sampler_generation {
+   AGX_SAMPLER_GENERATION_GEN4,
+   AGX_SAMPLER_GENERATION_GEN4_HAL200,
+   AGX_SAMPLER_GENERATION_GEN5,
+   AGX_SAMPLER_GENERATION_UNKNOWN,
+};
+
+/* M4 Pro/Max and A18 Pro carry both queueing paths; M5 is SKSM-only. */
+enum agx_submission_model {
+   AGX_SUBMISSION_MODEL_CLASSIC,
+   AGX_SUBMISSION_MODEL_DUAL,
+   AGX_SUBMISSION_MODEL_SKSM,
+   AGX_SUBMISSION_MODEL_UNKNOWN,
+};
 #ifndef __OPENCL_VERSION__
 
 #include <stdbool.h>
@@ -126,6 +162,18 @@ enum agx_isa agx_chip_isa(enum agx_chip chip);
  * enum; UNKNOWN only for AGX_CHIP_UNKNOWN. */
 enum agx_isa_encoding agx_chip_isa_encoding(enum agx_chip chip);
 
+enum agx_command_stream_generation
+agx_chip_command_stream_generation(enum agx_chip chip);
+
+enum agx_descriptor_generation
+agx_chip_descriptor_generation(enum agx_chip chip);
+
+enum agx_sampler_generation
+agx_chip_sampler_generation(enum agx_chip chip);
+
+enum agx_submission_model
+agx_chip_submission_model(enum agx_chip chip);
+
 /*
  * Whether this driver can generate code for a chip.
  *
@@ -133,6 +181,11 @@ enum agx_isa_encoding agx_chip_isa_encoding(enum agx_chip chip);
  * table for its encoding. This is the gate a device open must use.
  */
 bool agx_chip_codegen_supported(enum agx_chip chip);
+
+/* Whether every currently-required userspace axis is implemented. This is the
+ * device-open gate; recognising a chip or having its ISA packer is not enough.
+ */
+bool agx_chip_driver_supported(enum agx_chip chip);
 
 /*
  * Hardware ray tracing.
@@ -168,6 +221,9 @@ const char *agx_isa_name(enum agx_isa isa);
 /* Stable name for the encoding, matching its XML table, e.g. "agx3b". Never
  * NULL. */
 const char *agx_isa_encoding_name(enum agx_isa_encoding encoding);
+
+const char *agx_command_stream_generation_name(
+   enum agx_command_stream_generation generation);
 
 #ifdef __cplusplus
 }

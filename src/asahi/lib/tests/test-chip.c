@@ -145,6 +145,81 @@ test_variant_is_load_bearing(void)
 }
 
 static void
+test_independent_generation_axes(void)
+{
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G13G),
+            AGX_CS_GENERATION_AGX2);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G13G),
+            AGX_DESCRIPTOR_GENERATION_7);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G14X),
+            AGX_DESCRIPTOR_GENERATION_8);
+   CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G14X),
+            AGX_SAMPLER_GENERATION_GEN4);
+
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G15G),
+            AGX_CS_GENERATION_G15);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G15D),
+            AGX_DESCRIPTOR_GENERATION_9);
+   CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G15D),
+            AGX_SAMPLER_GENERATION_GEN4);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G15D),
+            AGX_SUBMISSION_MODEL_CLASSIC);
+
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G16G),
+            AGX_CS_GENERATION_HAL200);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G16S),
+            AGX_DESCRIPTOR_GENERATION_9);
+   CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G16S),
+            AGX_SAMPLER_GENERATION_GEN4_HAL200);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G16G),
+            AGX_SUBMISSION_MODEL_CLASSIC);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G16S),
+            AGX_SUBMISSION_MODEL_DUAL);
+
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G17P),
+            AGX_CS_GENERATION_HAL200);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G17P),
+            AGX_DESCRIPTOR_GENERATION_9);
+   CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G17P),
+            AGX_SAMPLER_GENERATION_GEN4_HAL200);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17P),
+            AGX_SUBMISSION_MODEL_DUAL);
+
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G17G),
+            AGX_CS_GENERATION_HAL300);
+   CHECK_EQ(agx_chip_descriptor_generation(AGX_CHIP_G17S),
+            AGX_DESCRIPTOR_GENERATION_10);
+   CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G17C),
+            AGX_SAMPLER_GENERATION_GEN5);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17G),
+            AGX_SUBMISSION_MODEL_SKSM);
+
+   /* These phone identities are useful for selecting the ISA, but the Mac
+    * driver corpus did not contain enough evidence to select every other
+    * driver axis. They must therefore remain fail-closed. */
+   CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G15P),
+            AGX_CS_GENERATION_UNKNOWN);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G16P),
+            AGX_SUBMISSION_MODEL_UNKNOWN);
+   CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17A),
+            AGX_SUBMISSION_MODEL_UNKNOWN);
+
+   CHECK(agx_chip_driver_supported(AGX_CHIP_G13G));
+   CHECK(agx_chip_driver_supported(AGX_CHIP_G14X));
+   CHECK(agx_chip_codegen_supported(AGX_CHIP_G15P));
+   CHECK(!agx_chip_driver_supported(AGX_CHIP_G15P));
+   CHECK(!agx_chip_driver_supported(AGX_CHIP_G15G));
+   CHECK(!agx_chip_driver_supported(AGX_CHIP_G17S));
+
+   CHECK(strcmp(agx_command_stream_generation_name(
+                   AGX_CS_GENERATION_HAL200),
+                "HAL200") == 0);
+   CHECK(strcmp(agx_command_stream_generation_name(
+                   AGX_CS_GENERATION_HAL300),
+                "HAL300") == 0);
+}
+
+static void
 test_invalid_identity(void)
 {
    CHECK_EQ(chip_for(12, 'G', 1), AGX_CHIP_UNKNOWN);
@@ -193,6 +268,7 @@ main(void)
 {
    test_recovered_table();
    test_variant_is_load_bearing();
+   test_independent_generation_axes();
    test_invalid_identity();
    test_classification_invariants();
 
