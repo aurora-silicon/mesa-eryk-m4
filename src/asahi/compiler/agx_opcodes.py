@@ -11,7 +11,7 @@ VARIABLE = ~0
 
 class Opcode(object):
    def __init__(self, name, dests, srcs, imms, is_float, can_eliminate,
-                can_reorder, schedule_class, encoding):
+                can_reorder, schedule_class, encoding, agx3_mnemonic):
       self.name = name
       self.dests = dests if dests != VARIABLE else 0
       self.srcs = srcs if srcs != VARIABLE else 0
@@ -23,6 +23,7 @@ class Opcode(object):
       self.can_reorder = can_reorder
       self.schedule_class = schedule_class
       self.encoding = encoding
+      self.agx3_mnemonic = agx3_mnemonic
 
 class Immediate(object):
    def __init__(self, name, ctype):
@@ -45,11 +46,12 @@ class Encoding(object):
          assert(length_long == length_short + (4 if length_short > 8 else 2))
 
 def op(name, encoding, dests = 1, srcs = 0, imms = [], is_float = False,
-        can_eliminate = True, can_reorder = True, schedule_class = "none"):
+        can_eliminate = True, can_reorder = True, schedule_class = "none",
+        agx3_mnemonic = None):
    encoding = Encoding(encoding) if encoding is not None else None
 
    opcodes[name] = Opcode(name, dests, srcs, imms, is_float, can_eliminate,
-                          can_reorder, schedule_class,  encoding)
+                          can_reorder, schedule_class, encoding, agx3_mnemonic)
 
 def immediate(name, ctype = "uint32_t"):
    imm = Immediate(name, ctype)
@@ -220,7 +222,12 @@ op("fmul", encoding = (0x1A, 4, 6), srcs = 2, is_float = True)
 op("hadd", encoding = (0x26, 4, 6), srcs = 2, is_float = True)
 op("hfma", encoding = (0x36, 6, 8), srcs = 3, is_float = True)
 op("hmul", encoding = (0x16, 4, 6), srcs = 2, is_float = True)
-op("mov_imm", encoding = (0x62, 6, 8), imms = [IMM])
+# Apple's AGX3 backend calls the same semantic operation `ldimm`.  This is the
+# first source-grounded AGX2 IR -> AGX3 mnemonic mapping: the native immediate
+# field reproduces all 14 probe constants exactly on G15, G16 and G17, while
+# the destination field follows the register-pressure ladder in 16-bit units.
+op("mov_imm", encoding = (0x62, 6, 8), imms = [IMM],
+   agx3_mnemonic = "ldimm")
 op("iadd", encoding = (0x0E, 8, _), srcs = 2, imms = [SHIFT])
 op("imad", encoding = (0x1E, 8, _), srcs = 3, imms = [SHIFT])
 op("bfi", encoding = (0x2E, 8, _), srcs = 3, imms = [BFI_MASK])

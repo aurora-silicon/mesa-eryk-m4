@@ -22,7 +22,8 @@ const struct agx_opcode_info agx_opcodes_info[AGX_NUM_OPCODES] = {
       imms = ["0"]
 %>
    [AGX_OPCODE_${opcode.upper()}] = {
-      "${opcode}", ${op.srcs}, ${op.dests}, ${" | ".join(imms)},
+      "${opcode}", ${f'"{op.agx3_mnemonic}"' if op.agx3_mnemonic else 'NULL'},
+      ${op.srcs}, ${op.dests}, ${" | ".join(imms)},
       ${make_encoding(op.encoding)},
       AGX_SCHEDULE_CLASS_${op.schedule_class.upper()},
       ${int(op.is_float)},

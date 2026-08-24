@@ -48,6 +48,19 @@ if with_tests
     args : files('test/cases.txt'),
   )
 
+  test(
+    'agx3_ldimm_disasm',
+    executable(
+      'agx3_ldimm_disasm_test',
+      files('test/test-agx3-disassembler.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+      link_with : [libagx3b_disasm, libagx3c_disasm],
+    ),
+    suite : ['asahi'],
+  )
+
  test(
     'agx2_python_disasm',
     prog_python,

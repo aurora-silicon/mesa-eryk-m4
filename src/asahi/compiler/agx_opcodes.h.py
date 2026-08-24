@@ -7,6 +7,7 @@ template = """/*
 #define _AGX_OPCODES_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "util/macros.h"
 
@@ -68,6 +69,8 @@ struct agx_encoding {
 
 struct agx_opcode_info {
    const char *name;
+   /* Native AGX3 mnemonic when semantically proven; NULL stays fail-closed. */
+   const char *agx3_mnemonic;
    unsigned nr_srcs;
    unsigned nr_dests;
    uint64_t immediates;

@@ -25,6 +25,7 @@ libasahi_agx_files = files(
   'agx_lower_spill.c',
   'agx_lower_uniform_sources.c',
   'agx_pack.c',
+  'agx3_pack.c',
   'agx_performance.c',
   'agx_print.c',
   'agx_pressure_schedule.c',
@@ -100,6 +101,25 @@ libasahi_compiler = static_library(
 )
 
 if with_tests
+  test(
+    'agx3_pack',
+    executable(
+      'agx3_pack_test',
+      files('test/test-agx3-pack.c', 'agx3_pack.c'),
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_opcode_mapping',
+    prog_python,
+    args : files('test/test-agx3-opcodes.py'),
+    suite : ['asahi'],
+  )
+
   test(
     'agx_tests',
     executable(
