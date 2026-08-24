@@ -53,9 +53,21 @@ agx3_map_opcode(unsigned op)
       return AGX3_SEL_OP_ASR;
    case AGX_OPCODE_BITOP:
       return AGX3_SEL_OP_BITOP;
+   case AGX_OPCODE_BFI:
+      return AGX3_SEL_OP_SLL;
+   case AGX_OPCODE_BFEIL:
+      return AGX3_SEL_OP_LSR;
    default:
       return AGX3_SEL_OP_UNSUPPORTED;
    }
+}
+
+/* A source that is the immediate constant zero -- how Mesa spells the base of a
+ * bitfield insert that is really a shift. */
+static bool
+agx3_src_is_zero_imm(agx_index s)
+{
+   return s.type == AGX_INDEX_IMMEDIATE && s.value == 0;
 }
 
 /* A source the no-modifier packers can consume is a plain register: not an
@@ -98,6 +110,21 @@ agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
       S->src[i].abs = I->src[i].abs;
       S->src[i].neg = I->src[i].neg;
       S->src[i].is_reg = agx3_src_is_register(I->src[i]);
+   }
+
+   /* NIR ishl/ushr arrive as a bitfield insert/extract with a zero base and a
+    * zero insert mask: bfi(zero, value, amount) and bfeil(zero, value,
+    * amount). That exact shape is a shift; anything else with these opcodes is
+    * a genuine bitfield op with no grounded AGX3 mapping, so refuse it. Rewrite
+    * the shift into the core's two-source (value, amount) form. */
+   if (S->op == AGX3_SEL_OP_SLL || S->op == AGX3_SEL_OP_LSR) {
+      if (I->nr_srcs != 3 || !agx3_src_is_zero_imm(I->src[0]) || I->imm != 0)
+         return false;
+
+      S->src[0] = S->src[1]; /* value  */
+      S->src[1] = S->src[2]; /* amount */
+      S->nr_srcs = 2;
+      S->src[2] = (struct agx3_sel_src){0};
    }
 
    return true;

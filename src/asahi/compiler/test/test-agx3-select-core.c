@@ -137,6 +137,18 @@ test_matches_hand_packers(void)
                expect_bytes(enc, &I, asr.bytes, asr.length);
             }
 
+            struct agx3_encoded_sll_u32_reg_reg sll;
+            if (agx3_pack_sll_u32_reg_reg(enc, d, a, bb, &sll)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_SLL, d, a, bb);
+               expect_bytes(enc, &I, sll.bytes, sll.length);
+            }
+
+            struct agx3_encoded_lsr_u32_reg_reg lsr;
+            if (agx3_pack_lsr_u32_reg_reg(enc, d, a, bb, &lsr)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_LSR, d, a, bb);
+               expect_bytes(enc, &I, lsr.bytes, lsr.length);
+            }
+
             struct agx3_encoded_fma_f32_reg_reg_reg fma;
             if (agx3_pack_fma_f32_reg_reg_reg(enc, d, a, bb, cc, &fma)) {
                struct agx3_sel_instr I = binop(AGX3_SEL_OP_FFMA, d, a, bb);

@@ -45,8 +45,10 @@ enum agx3_sel_op {
    AGX3_SEL_OP_FFMA,      /* IR ffma (f32) */
    AGX3_SEL_OP_IADD,      /* IR iadd (u32), shift == 0 */
    AGX3_SEL_OP_IMAD,      /* IR imad (u32), shift == 0 */
-   AGX3_SEL_OP_ASR,       /* IR asr (i32) */
+   AGX3_SEL_OP_ASR,       /* IR asr (i32) -- arithmetic shift right */
    AGX3_SEL_OP_BITOP,     /* IR bitop; truth_table selects and/or/xor/inv */
+   AGX3_SEL_OP_SLL,       /* logical shift left  (src0 << src1), from bfi */
+   AGX3_SEL_OP_LSR,       /* logical shift right (src0 >> src1), from bfeil */
 };
 
 /* A normalized source operand. `reg` is a 16-bit half-register index, the same
