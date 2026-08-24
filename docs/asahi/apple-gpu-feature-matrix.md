@@ -303,7 +303,7 @@ feature exposure.
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion, and kick/ring models; classic ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion/host-event consumers, and kick/ring models; classic ACK unknown |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models; firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -599,8 +599,16 @@ advance sequence before publishing the processed count to selector-specific
 MMIO at `0x21190`, `0x211a0`, and `0x21188`. The pinned path has no direct
 barrier, release store, or atomic before those publications. This consumer,
 plus the still-unmodeled device-control and timestamp consumers, does not own
-the classic four-priority submission ring; classic acknowledgment therefore
-remains unproved and executable submission remains disabled.
+the classic four-priority submission ring. The distinct G17S host
+firmware-event consumer is now modeled from its raw interrupt entry point:
+interrupts 0 and 4 converge on clear-outstanding and ring drain, then consume
+GFX followed by GFX1 through validator objects at `+0x7e0/+0xa20`. Each
+`0x48`-byte entry is copied as eighteen words, checked against a 64-bit event
+type mask, advanced modulo capacity, and followed by the exact `dmb ish`
+before shared-read publication. The firmware producer ordering and any causal
+link from SKSM processed-count MMIO to these interrupts remain explicitly
+unproved. Classic acknowledgment therefore remains unproved and executable
+submission remains disabled.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
@@ -646,14 +654,17 @@ The current in-tree anchors are:
   [`agx_vdm_stream_terminate_core.h`](../../src/asahi/lib/agx_vdm_stream_terminate_core.h),
   [`agx_vdm_ppp_state_core.h`](../../src/asahi/lib/agx_vdm_ppp_state_core.h),
   [`agx_ppp_viewport_payload_core.h`](../../src/asahi/lib/agx_ppp_viewport_payload_core.h),
+  [`agx_ppp_w_clamp_cull2_core.h`](../../src/asahi/lib/agx_ppp_w_clamp_cull2_core.h),
   [`agx_vdm_index_list_core.h`](../../src/asahi/lib/agx_vdm_index_list_core.h),
   [`agx_vdm_stream_link_core.h`](../../src/asahi/lib/agx_vdm_stream_link_core.h),
   and their focused tests: exact target-gated AGX3 CDM
   launch/link/padding/barrier/terminate, the exact eight-byte PPP State Update
-  header, its bounded viewport-only pointed payload, the complete raw-preserving
-  28-byte VDM State Update, direct VDM index-list representations, and direct
-  40-bit VDM Stream Link plus the fixed Stream Terminate, without live emission
-  or submission.
+  header, its bounded viewport-only and W-clamp/Cull-2 pointed payloads, the
+  complete raw-preserving 28-byte VDM State Update, direct VDM index-list
+  representations, and direct 40-bit VDM Stream Link plus the fixed Stream
+  Terminate. Honeykrisp now selects the directly grounded links and both
+  front ends select the fixed terminators; the other records, queue submission,
+  and device admission remain gated.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,
@@ -667,6 +678,10 @@ The current in-tree anchors are:
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_ppp_viewport_payload_core_tests.c):
   the D3D12 validation bridge for the same exact viewport-only PPP envelope,
   without live viewport lowering or command emission.
+- [`d12_agx3_ppp_w_clamp_cull2_core.h`](../../src/asahi/d3d12/d12_agx3_ppp_w_clamp_cull2_core.h)
+  and its focused host tests: the strict D3D12 encode/decode bridge for the
+  exact twelve-byte target-aware W-clamp/Cull-2 payload, without live state
+  lowering or emission.
 - [`hk_native_descriptor.h`](../../src/asahi/vulkan/hk_native_descriptor.h),
   its [packing helper](../../src/asahi/vulkan/hk_native_descriptor_pack.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-descriptor.c):
@@ -681,6 +696,9 @@ The current in-tree anchors are:
   [focused test](../../src/asahi/vulkan/tests/test-hk-agx3-ppp-viewport-payload.c):
   Honeykrisp's validation-only bridge to the shared bounded PPP viewport
   decoder.
+- [`hk_agx3_ppp_w_clamp_cull2.h`](../../src/asahi/vulkan/hk_agx3_ppp_w_clamp_cull2.h)
+  and its focused test: Honeykrisp's strict validation bridge for the same
+  exact W-clamp/Cull-2 payload.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact
