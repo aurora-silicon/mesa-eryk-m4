@@ -373,10 +373,9 @@ d12_device_runtime_rotate_resource_identities(
 
    for (struct d12_descriptor_heap *heap = device->descriptor_heaps; heap;
         heap = heap->registry_next) {
-      struct agx_texture_packed *textures =
+      uint8_t *textures =
          heap->texture_bo ? agx_bo_map(heap->texture_bo) : NULL;
-      struct agx_pbe_packed *pbes =
-         heap->pbe_bo ? agx_bo_map(heap->pbe_bo) : NULL;
+      uint8_t *pbes = heap->pbe_bo ? agx_bo_map(heap->pbe_bo) : NULL;
 
       for (UINT index = 0; index < heap->desc.NumDescriptors; ++index) {
          struct d12_descriptor *slot = &heap->slots[index];
@@ -404,9 +403,11 @@ d12_device_runtime_rotate_resource_identities(
          if (!changed)
             continue;
          if (textures)
-            d12_refresh_texture_descriptor(&textures[index], slot);
+            d12_refresh_texture_descriptor(
+               device, textures + index * heap->texture_stride_B, slot);
          if (pbes)
-            d12_refresh_pbe_descriptor(&pbes[index], slot);
+            d12_refresh_pbe_descriptor(
+               device, pbes + index * heap->pbe_stride_B, slot);
       }
    }
    __sync_synchronize();

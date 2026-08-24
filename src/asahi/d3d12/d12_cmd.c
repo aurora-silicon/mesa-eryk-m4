@@ -2328,9 +2328,208 @@ d12_list_begin_render(struct d12_cmd_list *list,
    return seg;
    }
 
-void
-d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
-                           const struct d12_descriptor *d)
+static bool
+d12_pack_texture_generation(enum agx_descriptor_generation generation,
+                            void *out, const struct AGX_TEXTURE *legacy)
+{
+   if (!out || !legacy)
+      return false;
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      AGX_TEXTURE_pack(out, legacy);
+      return true;
+   }
+
+   const bool has_levels = legacy->first_level || legacy->last_level ||
+                           legacy->unk_mipmapped;
+   const bool extended = legacy->extended || has_levels;
+   if (legacy->address >> 48 ||
+       (legacy->compressed && legacy->acceleration_buffer >> 48))
+      return false;
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_9) {
+      /* The G15/HAL200 multisample selector has not been named in the
+       * recovered texture layout. Keep multisampled Gen9 SRVs null instead
+       * of copying AGX2's bit into an unrelated field. */
+      if (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED ||
+          legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED)
+         return false;
+
+      struct AGX_TEXTURE_GEN9 cfg = {
+         .dimension = legacy->dimension,
+         .layout = legacy->layout,
+         .channels = legacy->channels,
+         .type = legacy->type,
+         .swizzle_r = legacy->swizzle_r,
+         .swizzle_g = legacy->swizzle_g,
+         .swizzle_b = legacy->swizzle_b,
+         .swizzle_a = legacy->swizzle_a,
+         .width = legacy->width,
+         .height = legacy->height,
+         .has_levels = has_levels,
+         /* RE proves mode/compression moved together to word 0[60:63]. */
+         .state_control = legacy->mode | (legacy->compression << 2),
+         .address = legacy->address,
+         .srgb = legacy->srgb,
+         .srgb_2_channel = legacy->srgb_2_channel,
+         .stride = legacy->layout == AGX_LAYOUT_LINEAR ? legacy->stride : 0,
+         .depth = legacy->layout == AGX_LAYOUT_LINEAR ? 1 : legacy->depth,
+         .page_aligned_layers = legacy->page_aligned_layers,
+         .extended = extended,
+         .acceleration_buffer =
+            legacy->compressed && legacy->extended
+               ? legacy->acceleration_buffer : 0,
+         .depth_linear = legacy->layout == AGX_LAYOUT_LINEAR &&
+                         legacy->extended ? legacy->depth_linear : 1,
+         .layer_stride_linear = legacy->layout == AGX_LAYOUT_LINEAR &&
+                                legacy->extended
+                                   ? legacy->layer_stride_linear : 0,
+         .first_level = legacy->first_level,
+         .last_level = legacy->last_level,
+      };
+      if (!cfg.width || cfg.width > 16384 || !cfg.height ||
+          cfg.height > 16384)
+         return false;
+      memset(out, 0, AGX_TEXTURE_GEN9_LENGTH);
+      AGX_TEXTURE_GEN9_pack(out, &cfg);
+      return true;
+   }
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_10) {
+      struct AGX_TEXTURE_GEN10 cfg = {
+         .dimension = legacy->dimension,
+         .layout = legacy->layout,
+         .channels = legacy->channels,
+         .type = legacy->type,
+         .swizzle_r = legacy->swizzle_r,
+         .swizzle_g = legacy->swizzle_g,
+         .swizzle_b = legacy->swizzle_b,
+         .swizzle_a = legacy->swizzle_a,
+         .width = legacy->width,
+         .height = legacy->height,
+         .samples = legacy->samples,
+         .unk_mipmapped = legacy->unk_mipmapped,
+         .compressed = legacy->compressed,
+         .image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL,
+         .image_mode = legacy->mode,
+         .address = legacy->address,
+         .srgb = legacy->srgb,
+         .srgb_2_channel = legacy->srgb_2_channel,
+         .stride = legacy->layout == AGX_LAYOUT_LINEAR ? legacy->stride : 0,
+         .depth = legacy->layout == AGX_LAYOUT_LINEAR ? 1 : legacy->depth,
+         .page_aligned_layers = legacy->page_aligned_layers,
+         .extended = extended,
+         .acceleration_buffer =
+            legacy->compressed && legacy->extended
+               ? legacy->acceleration_buffer : 0,
+         .depth_linear = legacy->layout == AGX_LAYOUT_LINEAR &&
+                         legacy->extended ? legacy->depth_linear : 1,
+         .layer_stride_linear = legacy->layout == AGX_LAYOUT_LINEAR &&
+                                legacy->extended
+                                   ? legacy->layer_stride_linear : 0,
+         .first_level = legacy->first_level,
+         .last_level = legacy->last_level,
+      };
+      if (!cfg.width || cfg.width > 32768 || !cfg.height ||
+          cfg.height > 32768)
+         return false;
+      memset(out, 0, AGX_TEXTURE_GEN10_LENGTH);
+      AGX_TEXTURE_GEN10_pack(out, &cfg);
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+d12_pack_pbe_generation(enum agx_descriptor_generation generation, void *out,
+                        const struct AGX_PBE *legacy)
+{
+   if (!out || !legacy)
+      return false;
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      AGX_PBE_pack(out, legacy);
+      return true;
+   }
+
+   if (legacy->buffer >> 48 ||
+       (legacy->compressed && legacy->acceleration_buffer >> 48))
+      return false;
+
+#define D12_INIT_AGX3_PBE(cfg_)                                                \
+   do {                                                                        \
+      (cfg_).dimension = legacy->dimension;                                    \
+      (cfg_).layout = legacy->layout;                                          \
+      (cfg_).channels = legacy->channels;                                      \
+      (cfg_).type = legacy->type;                                              \
+      (cfg_).swizzle_r = legacy->swizzle_r;                                    \
+      (cfg_).swizzle_g = legacy->swizzle_g;                                    \
+      (cfg_).swizzle_b = legacy->swizzle_b;                                    \
+      (cfg_).swizzle_a = legacy->swizzle_a;                                    \
+      (cfg_).width = legacy->width;                                            \
+      (cfg_).height = legacy->height;                                          \
+      (cfg_).samples = legacy->samples;                                        \
+      (cfg_).unk_mipmapped = legacy->unk_mipmapped;                            \
+      (cfg_).compressed = legacy->compressed;                                  \
+      (cfg_).image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL;        \
+      (cfg_).image_mode = legacy->mode;                                        \
+      (cfg_).buffer = legacy->buffer;                                          \
+      (cfg_).stride = legacy->layout == AGX_LAYOUT_LINEAR                      \
+                         ? legacy->stride : 0;                                 \
+      (cfg_).layers = legacy->layout == AGX_LAYOUT_LINEAR                     \
+                         ? 1 : legacy->layers;                                 \
+      (cfg_).page_aligned_layers = legacy->page_aligned_layers;                \
+      (cfg_).gamma = legacy->srgb;                                             \
+      (cfg_).extended = legacy->extended ||                                   \
+         (legacy->layout != AGX_LAYOUT_LINEAR &&                              \
+          (legacy->level || legacy->levels > 1));                             \
+      (cfg_).acceleration_buffer =                                             \
+         legacy->compressed && legacy->extended                               \
+            ? legacy->acceleration_buffer : 0;                                \
+      (cfg_).depth_linear = legacy->layout == AGX_LAYOUT_LINEAR &&             \
+                            legacy->extended ? legacy->depth_linear : 1;       \
+      (cfg_).layer_stride_linear =                                             \
+         legacy->layout == AGX_LAYOUT_LINEAR && legacy->extended               \
+            ? legacy->layer_stride_linear : 0;                                \
+      (cfg_).level = legacy->layout == AGX_LAYOUT_LINEAR ? 0 : legacy->level;  \
+      (cfg_).levels = legacy->layout == AGX_LAYOUT_LINEAR                      \
+                         ? 1 : legacy->levels;                                 \
+   } while (0)
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_9) {
+      struct AGX_PBE_GEN9 cfg = {0};
+      D12_INIT_AGX3_PBE(cfg);
+      cfg.unk_52 = legacy->unk_52;
+      if (!cfg.width || cfg.width > 16384 || !cfg.height ||
+          cfg.height > 16384)
+         return false;
+      memset(out, 0, AGX_PBE_GEN9_LENGTH);
+      AGX_PBE_GEN9_pack(out, &cfg);
+      return true;
+   }
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_10) {
+      struct AGX_PBE_GEN10 cfg = {0};
+      D12_INIT_AGX3_PBE(cfg);
+      cfg.unk_54 = legacy->unk_52;
+      if (!cfg.width || cfg.width > 32768 || !cfg.height ||
+          cfg.height > 32768)
+         return false;
+      memset(out, 0, AGX_PBE_GEN10_LENGTH);
+      AGX_PBE_GEN10_pack(out, &cfg);
+      return true;
+   }
+
+#undef D12_INIT_AGX3_PBE
+   return false;
+}
+
+static void
+d12_refresh_pbe_descriptor_agx2(struct agx_pbe_packed *out,
+                                const struct d12_descriptor *d)
 {
    agx_set_null_pbe(out);
 
@@ -2449,6 +2648,84 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
          cfg.layer_stride_sw = layout->layer_stride_B;
       }
    }
+}
+
+bool
+d12_refresh_pbe_descriptor(struct d12_device *device, void *out,
+                           const struct d12_descriptor *d)
+{
+   if (!device || !out || !d)
+      return false;
+
+   const enum agx_descriptor_generation generation =
+      agx_chip_descriptor_generation(device->dev.chip);
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      d12_refresh_pbe_descriptor_agx2(out, d);
+      return true;
+   }
+
+   struct d12_descriptor shadow = *d;
+   if (generation == AGX_DESCRIPTOR_GENERATION_9 ||
+       generation == AGX_DESCRIPTOR_GENERATION_10) {
+      /* The legacy state builder is retained as the single semantic source,
+       * but its packer has only a 36-bit shifted address field. Feed it the
+       * low 40 address bits, then restore the proven 44-bit Gen9/10 address
+       * below before the generation packer runs. */
+      shadow.address &= (UINT64_C(1) << 40) - 1;
+   }
+
+   struct agx_pbe_packed legacy;
+   d12_refresh_pbe_descriptor_agx2(&legacy, &shadow);
+   struct agx_pbe_packed null_legacy;
+   agx_set_null_pbe(&null_legacy);
+   struct AGX_PBE unpacked = {0};
+   if (!AGX_PBE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
+      return false;
+
+   if ((generation == AGX_DESCRIPTOR_GENERATION_9 ||
+       generation == AGX_DESCRIPTOR_GENERATION_10) &&
+       d->kind == D12_DESC_UAV && d->resource &&
+       memcmp(&legacy, &null_legacy, sizeof(legacy)) != 0) {
+      if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+          (d->address & 0xf)) {
+         d12_set_null_pbe_descriptor(device, out);
+         return false;
+      }
+      unpacked.buffer = d->address & ~UINT64_C(0xf);
+   }
+
+   if (d12_pack_pbe_generation(generation, out, &unpacked))
+      return true;
+
+   /* Descriptor writes cannot report an HRESULT. Replace an unrepresentable
+    * state with the generation's robust null before reporting failure to
+    * command recording/refresh callers, so no stale native state survives. */
+   d12_set_null_pbe_descriptor(device, out);
+   return false;
+}
+
+bool
+d12_set_null_pbe_descriptor(struct d12_device *device, void *out)
+{
+   if (!device || !out)
+      return false;
+
+   const enum agx_descriptor_generation generation =
+      agx_chip_descriptor_generation(device->dev.chip);
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      agx_set_null_pbe(out);
+      return true;
+   }
+
+   struct agx_pbe_packed legacy;
+   agx_set_null_pbe(&legacy);
+   struct AGX_PBE unpacked = {0};
+   if (!AGX_PBE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
+      return false;
+
+   return d12_pack_pbe_generation(generation, out, &unpacked);
 }
 
 /*
@@ -2578,6 +2855,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                          uint64_t *out_tables, uint32_t *out_table_count)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
+   const enum agx_descriptor_generation descriptor_generation =
+      agx_chip_descriptor_generation(list->device->dev.chip);
+   struct d12_native_descriptor_layout native_layout;
+   if (!d12_native_descriptor_layout((uint32_t)descriptor_generation,
+                                     &native_layout)) {
+      mesa_loge("binding upload: descriptor generation %u has no proven "
+                "native heap layout", (unsigned)descriptor_generation);
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
    const struct d12_descriptor *raw_table =
       compute ? list->compute_root_table : list->graphics_root_table;
    struct d12_descriptor effective_table[D12_MAX_RESOURCE_BINDINGS];
@@ -2595,6 +2882,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    const struct d12_root_signature *rs =
       compute ? list->compute_rs : list->graphics_rs;
    struct d12_descriptor_heap *bound_heap = list->resource_descriptor_heap;
+   if (bound_heap &&
+       (bound_heap->texture_stride_B != native_layout.texture_stride_B ||
+        bound_heap->pbe_stride_B != native_layout.pbe_stride_B)) {
+      mesa_loge("binding upload: bound native descriptor heap layout does "
+                "not match the device generation");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
 
    struct d12_binding_upload_cache *cache =
       &list->binding_upload_cache[compute ? 1 : 0];
@@ -2843,7 +3138,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    for (unsigned r = 0; r < dynamic_range_count; r++) {
       addrs[D12_ROOT_RESOURCE_BASE + dynamic_ranges[r].base_slot] =
-         (uint64_t)dynamic_ranges[r].native_base * D12_TEXTURE_DESC_SIZE;
+         (uint64_t)dynamic_ranges[r].native_base *
+         native_layout.texture_stride_B;
    }
 
    /* The shader ABI names the three planes through pointers in the root
@@ -2926,7 +3222,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    uint64_t heap_pbe_null_offset =
       bound_heap && bound_heap->pbe_bo
-         ? (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE
+         ? (uint64_t)bound_heap->desc.NumDescriptors *
+              bound_heap->pbe_stride_B
          : 0;
    uint64_t header[] = {
       tables_gpu,
@@ -2951,17 +3248,16 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
     * root parameters undefined-but-safe instead of making an omitted uniform
     * read as VA 0 and wedging the GPU.
     */
-   static_assert(AGX_TEXTURE_LENGTH == D12_TEXTURE_DESC_SIZE,
-                 "the front end's descriptor stride must match hardware");
-   static_assert(AGX_PBE_LENGTH == D12_PBE_DESC_SIZE,
-                 "the PBE descriptor stride must match hardware");
-
-   uint64_t heap_gpu = d12_list_upload_zero(
-      list, (size_t)native_desc_count * AGX_TEXTURE_LENGTH, 64);
+   size_t heap_size;
+   if (!d12_native_descriptor_span(native_layout.texture_stride_B,
+                                   native_desc_count, 0, &heap_size)) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   uint64_t heap_gpu = d12_list_upload_zero(list, heap_size, 64);
    if (!heap_gpu)
       return false;
 
-   size_t heap_size = (size_t)native_desc_count * AGX_TEXTURE_LENGTH;
    if (validate && (!d12_list_stream_contains(list, heap_gpu, heap_size) ||
                     (heap_gpu & 63))) {
       mesa_loge("binding validation: texture heap 0x%llx+%zu is outside "
@@ -2971,11 +3267,15 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       return false;
    }
 
-   struct agx_texture_packed *descs =
-      (struct agx_texture_packed *)d12_list_data_cpu(list, heap_gpu);
+   uint8_t *descs = d12_list_data_cpu(list, heap_gpu);
 
-   for (unsigned i = 0; i < native_desc_count; i++)
-      agx_set_null_texture(&descs[i]);
+   for (unsigned i = 0; i < native_desc_count; i++) {
+      if (!d12_set_null_texture_descriptor(
+             list->device, descs + (size_t)i * native_layout.texture_stride_B)) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
 
    for (unsigned i = 0; i < last_texture; i++) {
       if (table[i].kind != D12_DESC_SRV && table[i].kind != D12_DESC_UAV)
@@ -2986,7 +3286,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          continue;
 
       if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
-         d12_refresh_texture_descriptor(&descs[i], &table[i]);
+         if (!d12_refresh_texture_descriptor(
+                list->device,
+                descs + (size_t)i * native_layout.texture_stride_B,
+                &table[i])) {
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
          continue;
       }
 
@@ -3087,7 +3393,26 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       const bool sparse =
          d12_sparse_texture_map_address(&table[i], &sparse_address);
 
-      agx_pack(&descs[i], TEXTURE, cfg) {
+      if (descriptor_generation == AGX_DESCRIPTOR_GENERATION_9 ||
+          descriptor_generation == AGX_DESCRIPTOR_GENERATION_10) {
+         if (!d12_refresh_texture_descriptor(
+                list->device,
+                descs + (size_t)i * native_layout.texture_stride_B,
+                &table[i])) {
+            mesa_loge("binding upload: texture slot %u uses fields not "
+                      "proven for descriptor generation %u", i,
+                      (unsigned)descriptor_generation);
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
+         continue;
+      }
+
+      struct agx_texture_packed *native =
+         (struct agx_texture_packed *)(descs +
+            (size_t)i * native_layout.texture_stride_B);
+
+      agx_pack(native, TEXTURE, cfg) {
          cfg.dimension = dimension;
          cfg.layout = agx_translate_layout(layout->tiling);
          cfg.channels = ail_pixel_format[pf].channels;
@@ -3156,7 +3481,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                return false;
             }
          }
-         d12_refresh_texture_descriptor(&descs[base + i], &effective);
+         if (!d12_refresh_texture_descriptor(
+                list->device,
+                descs + (size_t)(base + i) *
+                   native_layout.texture_stride_B,
+                &effective)) {
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
       }
 
       if (validate || getenv("D3D12AGX_DUMP_TEX")) {
@@ -3166,7 +3498,8 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                    dynamic_ranges[r].shape, dynamic_ranges[r].first,
                    dynamic_ranges[r].count, dynamic_ranges[r].native_base,
                    dynamic_ranges[r].count,
-                   dynamic_ranges[r].native_base * D12_TEXTURE_DESC_SIZE);
+                   dynamic_ranges[r].native_base *
+                      native_layout.texture_stride_B);
          const struct d12_descriptor *first_desc =
             &bound_heap->slots[dynamic_ranges[r].first];
          const struct d12_descriptor *last_desc =
@@ -3180,12 +3513,17 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
-   uint64_t pbe_heap_gpu = d12_list_upload_zero(
-      list, (size_t)native_desc_count * AGX_PBE_LENGTH, 64);
+   size_t pbe_heap_size;
+   if (!d12_native_descriptor_span(native_layout.pbe_stride_B,
+                                   native_desc_count, 0, &pbe_heap_size)) {
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+   uint64_t pbe_heap_gpu =
+      d12_list_upload_zero(list, pbe_heap_size, 64);
    if (!pbe_heap_gpu)
       return false;
 
-   size_t pbe_heap_size = (size_t)native_desc_count * AGX_PBE_LENGTH;
    if (validate &&
        (!d12_list_stream_contains(list, pbe_heap_gpu, pbe_heap_size) ||
         (pbe_heap_gpu & 63))) {
@@ -3196,10 +3534,14 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       return false;
    }
 
-   struct agx_pbe_packed *pbes =
-      (struct agx_pbe_packed *)d12_list_data_cpu(list, pbe_heap_gpu);
-   for (unsigned i = 0; i < native_desc_count; i++)
-      agx_set_null_pbe(&pbes[i]);
+   uint8_t *pbes = d12_list_data_cpu(list, pbe_heap_gpu);
+   for (unsigned i = 0; i < native_desc_count; i++) {
+      if (!d12_set_null_pbe_descriptor(
+             list->device, pbes + (size_t)i * native_layout.pbe_stride_B)) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
+   }
    for (unsigned i = 0; i < last_texture; i++) {
       if (validate && table[i].kind == D12_DESC_UAV && table[i].resource &&
           (table[i].resource->desc.Dimension ==
@@ -3213,12 +3555,18 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          list->state = D12_LIST_ERROR;
          return false;
       }
-      d12_refresh_pbe_descriptor(&pbes[i], &table[i]);
+      if (!d12_refresh_pbe_descriptor(
+             list->device, pbes + (size_t)i * native_layout.pbe_stride_B,
+             &table[i])) {
+         list->state = D12_LIST_ERROR;
+         return false;
+      }
 
       if (getenv("D3D12AGX_DUMP_TEX")) {
-         const uint8_t *raw = (const uint8_t *)&pbes[i];
+         const uint8_t *raw =
+            pbes + (size_t)i * native_layout.pbe_stride_B;
          fprintf(stderr, "pbe[%u]:", i);
-         for (unsigned b = 0; b < AGX_PBE_LENGTH; b++)
+         for (unsigned b = 0; b < native_layout.pbe_stride_B; b++)
             fprintf(stderr, " %02x", raw[b]);
          fprintf(stderr, "\n");
       }
@@ -3230,7 +3578,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       for (unsigned i = 0; i < dynamic_ranges[r].count; i++) {
          struct d12_descriptor effective = bound_heap->slots[first + i];
          d12_apply_texture_shape(&effective, dynamic_ranges[r].shape);
-         d12_refresh_pbe_descriptor(&pbes[base + i], &effective);
+         if (!d12_refresh_pbe_descriptor(
+                list->device,
+                pbes + (size_t)(base + i) * native_layout.pbe_stride_B,
+                &effective)) {
+            list->state = D12_LIST_ERROR;
+            return false;
+         }
       }
    }
 
@@ -3245,9 +3599,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
                  res ? (unsigned)res->desc.Dimension : 0,
                  (unsigned long long)table[i].address, table[i].size_B,
                  table[i].stride_B, (unsigned)table[i].format);
-         const uint8_t *d = (const uint8_t *)&descs[i];
+         const uint8_t *d =
+            descs + (size_t)i * native_layout.texture_stride_B;
          fprintf(stderr, "  desc:");
-         for (unsigned b = 0; b < AGX_TEXTURE_LENGTH; b++)
+         for (unsigned b = 0; b < native_layout.texture_stride_B; b++)
             fprintf(stderr, " %02x", d[b]);
          fprintf(stderr, "\n");
       }
@@ -3260,8 +3615,9 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
    /* Heap-rooted and SM 6.6 handles address the application's coherent
     * 40-byte descriptor array, while AGX texture/image instructions require
-    * parallel 24-byte native arrays. Publish one home cell for each base;
-    * shader lowering derives the same global heap index for all three. */
+    * parallel generation-sized native arrays. Publish one home cell for each
+    * base; shader lowering derives the same global heap index for all three.
+    */
    if (bound_heap && bound_heap->bo && bound_heap->texture_bo &&
        bound_heap->pbe_bo) {
       uint64_t base = bound_heap->bo->va->addr;
@@ -3276,17 +3632,20 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
 
       if (validate) {
-         struct agx_pbe_packed expected_null;
-         agx_set_null_pbe(&expected_null);
+         uint8_t expected_null[32];
+         const bool expected_valid = d12_set_null_pbe_descriptor(
+            list->device, expected_null);
          const uint64_t null_offset =
-            (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE;
+            (uint64_t)bound_heap->desc.NumDescriptors *
+            bound_heap->pbe_stride_B;
          const uint8_t *pbe_map = agx_bo_map(bound_heap->pbe_bo);
          const bool null_valid =
-            pbe_map != NULL &&
+            expected_valid && pbe_map != NULL &&
             null_offset <= bound_heap->pbe_bo->size &&
-            D12_PBE_DESC_SIZE <= bound_heap->pbe_bo->size - null_offset &&
+            bound_heap->pbe_stride_B <=
+               bound_heap->pbe_bo->size - null_offset &&
             memcmp(pbe_map + null_offset, &expected_null,
-                   sizeof(expected_null)) == 0;
+                   bound_heap->pbe_stride_B) == 0;
          mesa_logi("binding validation: bindless heap slots=0x%llx "
                    "textures=0x%llx pbes=0x%llx count=%u "
                    "null-pbe-offset=0x%llx valid=%u",
@@ -3792,9 +4151,9 @@ d12_descriptor_sparse_residency_address(const struct d12_descriptor *d)
  * it only for finite shader-visible table slots whose CPU descriptor changed
  * after Close.
  */
-void
-d12_refresh_texture_descriptor(struct agx_texture_packed *out,
-                               const struct d12_descriptor *d)
+static void
+d12_refresh_texture_descriptor_agx2(struct agx_texture_packed *out,
+                                    const struct d12_descriptor *d)
 {
    agx_set_null_texture(out);
 
@@ -3969,9 +4328,109 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
 }
 
 bool
+d12_refresh_texture_descriptor(struct d12_device *device, void *out,
+                               const struct d12_descriptor *d)
+{
+   if (!device || !out || !d)
+      return false;
+
+   const enum agx_descriptor_generation generation =
+      agx_chip_descriptor_generation(device->dev.chip);
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      d12_refresh_texture_descriptor_agx2(out, d);
+      return true;
+   }
+
+   struct d12_descriptor shadow = *d;
+   struct d12_resource shadow_resource;
+   if (generation == AGX_DESCRIPTOR_GENERATION_9 ||
+       generation == AGX_DESCRIPTOR_GENERATION_10)
+      shadow.address &= (UINT64_C(1) << 40) - 1;
+   if ((generation == AGX_DESCRIPTOR_GENERATION_9 ||
+        generation == AGX_DESCRIPTOR_GENERATION_10) &&
+       d->resource && d->resource->reserved &&
+       d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      shadow_resource = *d->resource;
+      shadow_resource.reserved = false;
+      shadow.resource = &shadow_resource;
+   }
+
+   struct agx_texture_packed legacy;
+   d12_refresh_texture_descriptor_agx2(&legacy, &shadow);
+   struct agx_texture_packed null_legacy;
+   agx_set_null_texture(&null_legacy);
+   struct AGX_TEXTURE unpacked = {0};
+   if (!AGX_TEXTURE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
+      return false;
+
+   if ((generation == AGX_DESCRIPTOR_GENERATION_9 ||
+       generation == AGX_DESCRIPTOR_GENERATION_10) &&
+       (d->kind == D12_DESC_SRV || d->kind == D12_DESC_UAV) && d->resource &&
+       memcmp(&legacy, &null_legacy, sizeof(legacy)) != 0) {
+      if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+         uint64_t read_address = d->address;
+         if (d->resource->reserved &&
+             !agx_addr_is_ro(&device->dev, read_address))
+            read_address += device->dev.sparse_ro_offset;
+         /* AGX2 stores a sub-16-byte typed-buffer offset in software
+          * sideband. No equivalent Gen9/10 field is proven yet. */
+         if (read_address & 0xf) {
+            d12_set_null_texture_descriptor(device, out);
+            return false;
+         }
+         unpacked.address = read_address & ~UINT64_C(0xf);
+      } else {
+         uint64_t sparse_address;
+         if (d12_sparse_texture_map_address(d, &sparse_address)) {
+            unpacked.mode = AGX_IMAGE_MODE_SPARSE;
+            unpacked.address = sparse_address;
+         } else {
+            unpacked.address = d->address;
+         }
+      }
+   }
+
+   if (d12_pack_texture_generation(generation, out, &unpacked))
+      return true;
+
+   d12_set_null_texture_descriptor(device, out);
+   return false;
+}
+
+bool
+d12_set_null_texture_descriptor(struct d12_device *device, void *out)
+{
+   if (!device || !out)
+      return false;
+
+   const enum agx_descriptor_generation generation =
+      agx_chip_descriptor_generation(device->dev.chip);
+   if (generation == AGX_DESCRIPTOR_GENERATION_7 ||
+       generation == AGX_DESCRIPTOR_GENERATION_8) {
+      agx_set_null_texture(out);
+      return true;
+   }
+
+   struct agx_texture_packed legacy;
+   agx_set_null_texture(&legacy);
+   struct AGX_TEXTURE unpacked = {0};
+   if (!AGX_TEXTURE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
+      return false;
+
+   return d12_pack_texture_generation(generation, out, &unpacked);
+}
+
+bool
 d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
 {
    bool validate = getenv("D3D12AGX_VALIDATE_BINDINGS") != NULL;
+   struct d12_native_descriptor_layout native_layout;
+   if (!list ||
+       !d12_native_descriptor_layout(
+          (uint32_t)agx_chip_descriptor_generation(list->device->dev.chip),
+          &native_layout))
+      return false;
 
    util_dynarray_foreach (&list->descriptor_fixups,
                           struct d12_descriptor_fixup, fixup) {
@@ -4000,16 +4459,17 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
       }
 
       if (fixup->native_only) {
-         struct agx_texture_packed *texture =
-            (struct agx_texture_packed *)d12_list_data_cpu(
-               list, fixup->textures_gpu + (uint64_t)slot * AGX_TEXTURE_LENGTH);
-         struct agx_pbe_packed *pbe =
-            (struct agx_pbe_packed *)d12_list_data_cpu(
-               list, fixup->pbes_gpu + (uint64_t)slot * AGX_PBE_LENGTH);
+         void *texture = d12_list_data_cpu(
+            list, fixup->textures_gpu +
+                     (uint64_t)slot * native_layout.texture_stride_B);
+         void *pbe = d12_list_data_cpu(
+            list, fixup->pbes_gpu +
+                     (uint64_t)slot * native_layout.pbe_stride_B);
          if (!texture || !pbe)
             return false;
-         d12_refresh_texture_descriptor(texture, d);
-         d12_refresh_pbe_descriptor(pbe, d);
+         if (!d12_refresh_texture_descriptor(list->device, texture, d) ||
+             !d12_refresh_pbe_descriptor(list->device, pbe, d))
+            return false;
          continue;
       }
 
@@ -4029,21 +4489,23 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          d12_descriptor_sparse_residency_address(d);
 
       if (fixup->textures_gpu) {
-         struct agx_texture_packed *texture =
-            (struct agx_texture_packed *)d12_list_data_cpu(
-               list, fixup->textures_gpu + slot * AGX_TEXTURE_LENGTH);
+         void *texture = d12_list_data_cpu(
+            list, fixup->textures_gpu +
+                     (uint64_t)slot * native_layout.texture_stride_B);
          if (!texture)
             return false;
-         d12_refresh_texture_descriptor(texture, d);
+         if (!d12_refresh_texture_descriptor(list->device, texture, d))
+            return false;
       }
 
       if (fixup->pbes_gpu) {
-         struct agx_pbe_packed *pbe =
-            (struct agx_pbe_packed *)d12_list_data_cpu(
-               list, fixup->pbes_gpu + slot * AGX_PBE_LENGTH);
+         void *pbe = d12_list_data_cpu(
+            list, fixup->pbes_gpu +
+                     (uint64_t)slot * native_layout.pbe_stride_B);
          if (!pbe)
             return false;
-         d12_refresh_pbe_descriptor(pbe, d);
+         if (!d12_refresh_pbe_descriptor(list->device, pbe, d))
+            return false;
       }
 
       if (getenv("D3D12AGX_DUMP_DESCRIPTOR_FIXUPS"))
@@ -9098,13 +9560,14 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
             size_t scan = MIN2(remaining, scan_limit);
             unsigned populated = 0, mapped = 0, counter_ptrs = 0;
             unsigned invalid = 0, invalid_native_null = 0;
-            struct agx_texture_packed null_texture;
-            struct agx_pbe_packed null_pbe;
-            agx_set_null_texture(&null_texture);
-            agx_set_null_pbe(&null_pbe);
-            const struct agx_texture_packed *native_textures =
+            uint8_t null_texture[32], null_pbe[32];
+            const bool null_texture_valid =
+               d12_set_null_texture_descriptor(list->device, null_texture);
+            const bool null_pbe_valid =
+               d12_set_null_pbe_descriptor(list->device, null_pbe);
+            const uint8_t *native_textures =
                heap->texture_bo ? agx_bo_map(heap->texture_bo) : NULL;
-            const struct agx_pbe_packed *native_pbes =
+            const uint8_t *native_pbes =
                heap->pbe_bo ? agx_bo_map(heap->pbe_bo) : NULL;
 
             for (size_t i = 0; i < scan; i++) {
@@ -9125,11 +9588,13 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
                   invalid++;
 
                if (!d->resource &&
-                   (!native_textures || !native_pbes ||
-                    memcmp(&native_textures[first + i], &null_texture,
-                           sizeof(null_texture)) != 0 ||
-                    memcmp(&native_pbes[first + i], &null_pbe,
-                           sizeof(null_pbe)) != 0))
+                   (!null_texture_valid || !null_pbe_valid ||
+                    !native_textures || !native_pbes ||
+                    memcmp(native_textures +
+                              (first + i) * heap->texture_stride_B,
+                           null_texture, heap->texture_stride_B) != 0 ||
+                    memcmp(native_pbes + (first + i) * heap->pbe_stride_B,
+                           null_pbe, heap->pbe_stride_B) != 0))
                   invalid_native_null++;
 
                if (d->resource && d->resource->bo) {

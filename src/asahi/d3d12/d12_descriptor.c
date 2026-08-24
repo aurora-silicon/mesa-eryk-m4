@@ -182,14 +182,16 @@ d12_descriptor_heap_update_slot(struct d12_device *device,
             *word &= ~mask;
       }
       if (heap->texture_bo) {
-         struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
+         uint8_t *textures = agx_bo_map(heap->texture_bo);
          if (textures)
-            d12_refresh_texture_descriptor(&textures[index], slot);
+            d12_refresh_texture_descriptor(
+               device, textures + index * heap->texture_stride_B, slot);
       }
       if (heap->pbe_bo) {
-         struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
+         uint8_t *pbes = agx_bo_map(heap->pbe_bo);
          if (pbes)
-            d12_refresh_pbe_descriptor(&pbes[index], slot);
+            d12_refresh_pbe_descriptor(
+               device, pbes + index * heap->pbe_stride_B, slot);
       }
       if (heap->residency_bo) {
          uint64_t *residency = agx_bo_map(heap->residency_bo);
@@ -337,6 +339,21 @@ d12_descriptor_heap_create(struct d12_device *device,
 
    if (shader_visible &&
        desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+      struct d12_native_descriptor_layout layout;
+      const enum agx_descriptor_generation generation =
+         agx_chip_descriptor_generation(device->dev.chip);
+      if (!d12_native_descriptor_layout((uint32_t)generation, &layout)) {
+         mesa_loge("CreateDescriptorHeap: descriptor generation %u has no "
+                   "proven native heap layout", (unsigned)generation);
+         free(heap);
+         return E_FAIL;
+      }
+      heap->texture_stride_B = layout.texture_stride_B;
+      heap->pbe_stride_B = layout.pbe_stride_B;
+   }
+
+   if (shader_visible &&
+       desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
       const size_t word_count = DIV_ROUND_UP(desc->NumDescriptors, 64);
       if (word_count > UINT32_MAX ||
           word_count > SIZE_MAX / sizeof(uint64_t)) {
@@ -359,14 +376,22 @@ d12_descriptor_heap_create(struct d12_device *device,
          heap->slots = agx_bo_map(heap->bo);
 
       if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
-         size_t texture_size =
-            (size_t)desc->NumDescriptors * AGX_TEXTURE_LENGTH;
+         size_t texture_size, pbe_size;
          /* One extra permanently-null PBE slot is the robust sink for
           * dynamically indexed typed-buffer atomics. Unlike texture fetch,
           * AGX buffer image atomics do not suppress coordinates beyond the
           * descriptor's element count. */
-         size_t pbe_size =
-            ((size_t)desc->NumDescriptors + 1) * AGX_PBE_LENGTH;
+         if (!d12_native_descriptor_span(
+                heap->texture_stride_B, desc->NumDescriptors, 0,
+                &texture_size) ||
+             !d12_native_descriptor_span(
+                heap->pbe_stride_B, desc->NumDescriptors, 1, &pbe_size)) {
+            if (heap->bo)
+               agx_bo_unreference(&device->dev, heap->bo);
+            free(heap->live_resource_words);
+            free(heap);
+            return E_OUTOFMEMORY;
+         }
          heap->texture_bo =
             agx_bo_create(&device->dev, texture_size, 0, AGX_BO_WRITEBACK,
                           "d3d12 bindless texture descriptors");
@@ -418,13 +443,17 @@ d12_descriptor_heap_create(struct d12_device *device,
     * map exactly like a failed allocation and fail heap creation. */
    bool native_mapped = true;
    if (heap->texture_bo && heap->pbe_bo) {
-      struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
-      struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
+      uint8_t *textures = agx_bo_map(heap->texture_bo);
+      uint8_t *pbes = agx_bo_map(heap->pbe_bo);
       if (textures && pbes) {
          for (uint64_t i = 0; i <= desc->NumDescriptors; i++) {
-            if (i < desc->NumDescriptors)
-               agx_set_null_texture(&textures[i]);
-            agx_set_null_pbe(&pbes[i]);
+            if (i < desc->NumDescriptors &&
+                !d12_set_null_texture_descriptor(
+                   device, textures + i * heap->texture_stride_B))
+               native_mapped = false;
+            if (!d12_set_null_pbe_descriptor(
+                   device, pbes + i * heap->pbe_stride_B))
+               native_mapped = false;
          }
       } else {
          native_mapped = false;

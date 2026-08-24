@@ -29,6 +29,7 @@
 #include "d12_bundle_state_core.h"
 #include "d12_command_validation_core.h"
 #include "d12_device_removal_core.h"
+#include "d12_native_descriptor_core.h"
 #include "d12_queue_timeline_core.h"
 #include "d12_sparse_residency_core.h"
 #include "d12_render_pass_core.h"
@@ -722,6 +723,8 @@ struct d12_descriptor_heap {
     * hardware sampler table named by drm_asahi_cmd_*::sampler_heap. */
    struct agx_bo *texture_bo;
    struct agx_bo *pbe_bo;
+   uint8_t texture_stride_B;
+   uint8_t pbe_stride_B;
    /* One 64-bit sparse residency-map pointer per logical resource
     * descriptor. Zero keeps dense resources on the no-load fast path. */
    struct agx_bo *residency_bo;
@@ -2087,9 +2090,11 @@ bool d12_cmd_list_set_sample_positions(
 void d12_pack_sampler_descriptor(struct d12_device *device,
                                  struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
-void d12_refresh_texture_descriptor(struct agx_texture_packed *out,
+bool d12_set_null_texture_descriptor(struct d12_device *device, void *out);
+bool d12_set_null_pbe_descriptor(struct d12_device *device, void *out);
+bool d12_refresh_texture_descriptor(struct d12_device *device, void *out,
                                     const struct d12_descriptor *d);
-void d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
+bool d12_refresh_pbe_descriptor(struct d12_device *device, void *out,
                                 const struct d12_descriptor *d);
 /* DXGI format support (d12_format.c) */
 enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
