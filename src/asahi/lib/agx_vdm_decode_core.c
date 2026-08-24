@@ -9,6 +9,7 @@
 #include "agx_vdm_ppp_state_core.h"
 #include "agx_vdm_stream_link_core.h"
 #include "agx_vdm_stream_terminate_core.h"
+#include "agx_vdm_tessellate_core.h"
 
 #include <string.h>
 
@@ -120,6 +121,18 @@ agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
       return true;
    }
 
+   case 5:
+      if (available < AGX_VDM_TESSELLATE_DIRECT_LENGTH ||
+          !agx_vdm_tessellate_direct_unpack(
+             chip, bytes, AGX_VDM_TESSELLATE_DIRECT_LENGTH,
+             &record->data.tessellate_direct))
+         return false;
+
+      record->kind = AGX_VDM_RECORD_TESSELLATE_DIRECT;
+      record->length = AGX_VDM_TESSELLATE_DIRECT_LENGTH;
+      record->chip = chip;
+      return true;
+
    case 6:
       if (available < AGX_VDM_STREAM_TERMINATE_CORE_LENGTH ||
           !agx_vdm_stream_terminate_core_unpack(
@@ -131,7 +144,6 @@ agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
       record->chip = chip;
       return true;
 
-   case 5:
    case 7:
    default:
       return false;

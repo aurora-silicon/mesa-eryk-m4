@@ -39,6 +39,8 @@ libasahi_lib_files = files(
   'agx_vdm_stream_link_core.h',
   'agx_vdm_stream_terminate_core.c',
   'agx_vdm_stream_terminate_core.h',
+  'agx_vdm_tessellate_core.c',
+  'agx_vdm_tessellate_core.h',
   'agx_vdm_state_core.c',
   'agx_vdm_state_core.h',
   'agx_vdm_state_update_core.c',
@@ -189,6 +191,7 @@ if with_tests
         'agx_vdm_state_update_core.c',
         'agx_vdm_stream_link_core.c',
         'agx_vdm_stream_terminate_core.c',
+        'agx_vdm_tessellate_core.c',
         'tests/test-vdm-decode-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
@@ -319,6 +322,19 @@ if with_tests
       files(
         'agx_vdm_stream_terminate_core.c',
         'tests/test-vdm-stream-terminate-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-tessellate-core',
+    executable(
+      'asahi-vdm-tessellate-core',
+      files(
+        'agx_vdm_tessellate_core.c',
+        'tests/test-vdm-tessellate-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

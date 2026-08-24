@@ -14,6 +14,7 @@
 #include "agx_chip.h"
 #include "agx_vdm_index_list_core.h"
 #include "agx_vdm_state_update_core.h"
+#include "agx_vdm_tessellate_core.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,7 @@ enum agx_vdm_record_kind {
    AGX_VDM_RECORD_INDEX_LIST_INDEXED,
    AGX_VDM_RECORD_STREAM_LINK,
    AGX_VDM_RECORD_STREAM_TERMINATE,
+   AGX_VDM_RECORD_TESSELLATE_DIRECT,
 };
 
 struct agx_vdm_decoded_record {
@@ -42,6 +44,7 @@ struct agx_vdm_decoded_record {
       struct agx_vdm_state_update_info state_update;
       struct agx_vdm_index_list_direct_nonindexed_info index_list_nonindexed;
       struct agx_vdm_index_list_direct_indexed_info index_list_indexed;
+      struct agx_vdm_tessellate_direct_info tessellate_direct;
       struct {
          uint64_t target;
       } stream_link;

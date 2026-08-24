@@ -263,6 +263,48 @@ test_stream_link(void)
 }
 
 static int
+test_tessellate_direct(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      const enum agx_chip chip = supported_targets[t];
+      const struct agx_vdm_tessellate_direct_info info = {
+         .factor_buffer = UINT64_C(0xab1234567800) + t,
+         .patch_count = UINT32_C(0x10203040) + t,
+         .instance_count = UINT32_C(0x50607080) - t,
+         .base_patch = UINT32_C(0x90a0b0c0) ^ t,
+         .base_instance = UINT32_C(0xd0e0f001) + t,
+         .instance_stride_word = UINT32_C(0x70000) + t,
+         .factor_buffer_size_minus_one = UINT32_C(0xfedcba98) - t,
+      };
+      struct agx_vdm_tessellate_direct packed;
+      CHECK(agx_vdm_tessellate_direct_pack(chip, &info, &packed));
+
+      uint8_t stream[AGX_VDM_TESSELLATE_DIRECT_LENGTH + 8];
+      memcpy(stream, packed.bytes, packed.length);
+      memset(stream + packed.length, 0x5a, 8);
+
+      struct agx_vdm_decoded_record record;
+      CHECK(agx_vdm_decode_one(chip, stream, sizeof(stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_TESSELLATE_DIRECT);
+      CHECK(record.length == packed.length);
+      CHECK(record.chip == chip);
+      CHECK(record.data.tessellate_direct.factor_buffer == info.factor_buffer);
+      CHECK(record.data.tessellate_direct.patch_count == info.patch_count);
+      CHECK(record.data.tessellate_direct.instance_count ==
+            info.instance_count);
+      CHECK(record.data.tessellate_direct.base_patch == info.base_patch);
+      CHECK(record.data.tessellate_direct.base_instance == info.base_instance);
+      CHECK(record.data.tessellate_direct.instance_stride_word ==
+            info.instance_stride_word);
+      CHECK(record.data.tessellate_direct.factor_buffer_size_minus_one ==
+            info.factor_buffer_size_minus_one);
+   }
+
+   return 0;
+}
+
+static int
 test_stream_terminate(void)
 {
    for (unsigned t = 0;
@@ -295,6 +337,7 @@ test_rejection(void)
    struct agx_vdm_index_list_direct_nonindexed nonindexed;
    struct agx_vdm_index_list_direct_indexed indexed;
    struct agx_vdm_stream_link_core link;
+   struct agx_vdm_tessellate_direct tessellate;
    struct agx_vdm_stream_terminate_core terminate;
    const struct agx_vdm_state_update_info state_info = {
       .pipeline = UINT64_C(0x123456780),
@@ -314,6 +357,15 @@ test_rejection(void)
       .start = 2,
       .index_buffer_size_word = 9,
    };
+   const struct agx_vdm_tessellate_direct_info tessellate_info = {
+      .factor_buffer = UINT64_C(0x123456780),
+      .patch_count = 7,
+      .instance_count = 1,
+      .base_patch = 2,
+      .base_instance = 3,
+      .instance_stride_word = 4,
+      .factor_buffer_size_minus_one = 8,
+   };
 
    CHECK(agx_vdm_ppp_state_core_pack(chip, UINT64_C(0x123456780), 7, &ppp));
    CHECK(agx_vdm_barrier_core_pack(chip, &barrier));
@@ -322,6 +374,7 @@ test_rejection(void)
                                                    &nonindexed));
    CHECK(agx_vdm_index_list_direct_indexed_pack(chip, &indexed_info, &indexed));
    CHECK(agx_vdm_stream_link_core_pack(chip, UINT64_C(0x123456789), &link));
+   CHECK(agx_vdm_tessellate_direct_pack(chip, &tessellate_info, &tessellate));
    CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
 
    const struct {
@@ -334,6 +387,7 @@ test_rejection(void)
       {nonindexed.bytes, nonindexed.length},
       {indexed.bytes, indexed.length},
       {link.bytes, link.length},
+      {tessellate.bytes, tessellate.length},
       {terminate.bytes, terminate.length},
    };
 
@@ -350,7 +404,8 @@ test_rejection(void)
    }
 
    for (uint32_t type = 1; type < 8; ++type) {
-      if (type == 1 || type == 2 || type == 3 || type == 4 || type == 6)
+      if (type == 1 || type == 2 || type == 3 || type == 4 || type == 5 ||
+          type == 6)
          continue;
       const uint8_t word[4] = {0, 0, 0, (uint8_t)(type << 5)};
       CHECK(check_rejected(chip, word, sizeof(word)) == 0);
@@ -410,6 +465,7 @@ main(void)
    CHECK(test_state_update() == 0);
    CHECK(test_index_lists() == 0);
    CHECK(test_stream_link() == 0);
+   CHECK(test_tessellate_direct() == 0);
    CHECK(test_stream_terminate() == 0);
    CHECK(test_rejection() == 0);
 

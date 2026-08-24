@@ -27,6 +27,7 @@ libd3d12agx_files = files(
   'd12_agx3_vdm_ppp_state_core.c',
   'd12_agx3_vdm_stream_link_core.c',
   'd12_agx3_vdm_stream_terminate_core.c',
+  'd12_agx3_vdm_tessellate_core.c',
   'd12_agx3_vdm_state_update_core.c',
   'd12_attachment_view_core.c',
   'd12_core_caps.c',

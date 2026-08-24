@@ -132,6 +132,33 @@ test_honeykrisp_bridge(void)
       CHECK(record.chip == chip);
       CHECK(record.data.stream_link.target == UINT64_C(0xce12345678) + t);
 
+      const struct agx_vdm_tessellate_direct_info tessellate_info = {
+         .factor_buffer = UINT64_C(0xac1234567800) + t,
+         .patch_count = UINT32_C(0x10203040) + t,
+         .instance_count = UINT32_C(0x50607080) - t,
+         .base_patch = UINT32_C(0x90a0b0c0) ^ t,
+         .base_instance = UINT32_C(0xd0e0f001) + t,
+         .instance_stride_word = UINT32_C(0x70000) + t,
+         .factor_buffer_size_minus_one = UINT32_C(0xfedcba98) - t,
+      };
+      struct agx_vdm_tessellate_direct tessellate;
+      CHECK(agx_vdm_tessellate_direct_pack(chip, &tessellate_info,
+                                            &tessellate));
+      uint8_t tessellate_stream[AGX_VDM_TESSELLATE_DIRECT_LENGTH + 4];
+      memcpy(tessellate_stream, tessellate.bytes, tessellate.length);
+      memset(tessellate_stream + tessellate.length, 0xa5, 4);
+      CHECK(hk_agx3_decode_vdm_record(chip, tessellate_stream,
+                                      sizeof(tessellate_stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_TESSELLATE_DIRECT);
+      CHECK(record.length == tessellate.length);
+      CHECK(record.chip == chip);
+      CHECK(record.data.tessellate_direct.factor_buffer ==
+            tessellate_info.factor_buffer);
+      CHECK(record.data.tessellate_direct.patch_count ==
+            tessellate_info.patch_count);
+      CHECK(record.data.tessellate_direct.instance_count ==
+            tessellate_info.instance_count);
+
       struct agx_vdm_stream_terminate_core terminate;
       CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
       uint8_t terminate_stream[AGX_VDM_STREAM_TERMINATE_CORE_LENGTH + 4];
@@ -182,6 +209,66 @@ test_rejection(void)
       CHECK(!hk_agx3_decode_vdm_record(targets[t], ungrounded_return,
                                        sizeof(ungrounded_return), &record));
       CHECK(record_is_cleared(&record));
+   }
+
+   const struct agx_vdm_tessellate_direct_info tessellate_info = {
+      .factor_buffer = UINT64_C(0xab1234567890),
+      .patch_count = UINT32_C(0x10203040),
+      .instance_count = UINT32_C(0x50607080),
+      .base_patch = UINT32_C(0x90a0b0c0),
+      .base_instance = UINT32_C(0xd0e0f001),
+      .instance_stride_word = UINT32_C(0x71234),
+      .factor_buffer_size_minus_one = UINT32_C(0xfedcba98),
+   };
+   struct agx_vdm_tessellate_direct tessellate;
+   CHECK(agx_vdm_tessellate_direct_pack(AGX_CHIP_G15G, &tessellate_info,
+                                         &tessellate));
+
+   for (size_t available = 0; available < tessellate.length; ++available) {
+      memset(&record, 0xff, sizeof(record));
+      CHECK(!hk_agx3_decode_vdm_record(AGX_CHIP_G17S, tessellate.bytes,
+                                       available, &record));
+      CHECK(record_is_cleared(&record));
+   }
+
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_G17C; ++chip) {
+      bool supported = false;
+      for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t)
+         supported |= chip == targets[t];
+      if (supported)
+         continue;
+
+      memset(&record, 0xff, sizeof(record));
+      CHECK(!hk_agx3_decode_vdm_record(chip, tessellate.bytes,
+                                       tessellate.length, &record));
+      CHECK(record_is_cleared(&record));
+   }
+
+   /* All three pinned families use the same bytes; cross-family decoding is
+    * valid but cannot classify the originating generation. */
+   CHECK(hk_agx3_decode_vdm_record(AGX_CHIP_G17S, tessellate.bytes,
+                                   tessellate.length, &record));
+   CHECK(record.kind == AGX_VDM_RECORD_TESSELLATE_DIRECT);
+   CHECK(record.data.tessellate_direct.factor_buffer ==
+         tessellate_info.factor_buffer);
+
+   for (unsigned bit = 0; bit < tessellate.length * 8u; ++bit) {
+      uint8_t changed[AGX_VDM_TESSELLATE_DIRECT_LENGTH];
+      struct agx_vdm_tessellate_direct_info shared;
+      memcpy(changed, tessellate.bytes, tessellate.length);
+      changed[bit / 8] ^= (uint8_t)(1u << (bit % 8));
+      const bool shared_accepts = agx_vdm_tessellate_direct_unpack(
+         AGX_CHIP_G17S, changed, sizeof(changed), &shared);
+      memset(&record, 0xff, sizeof(record));
+      CHECK(hk_agx3_decode_vdm_record(AGX_CHIP_G17S, changed, sizeof(changed),
+                                      &record) == shared_accepts);
+      if (shared_accepts) {
+         CHECK(record.kind == AGX_VDM_RECORD_TESSELLATE_DIRECT);
+         CHECK(memcmp(&record.data.tessellate_direct, &shared,
+                      sizeof(shared)) == 0);
+      } else {
+         CHECK(record_is_cleared(&record));
+      }
    }
 
    const uint8_t aggregate_multi_agc[AGX_VDM_BARRIER_CORE_LENGTH] = {

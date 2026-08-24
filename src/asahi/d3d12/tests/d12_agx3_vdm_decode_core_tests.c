@@ -140,6 +140,33 @@ test_all_record_kinds(void)
       CHECK(record.chip == chip);
       CHECK(record.data.stream_link.target == UINT64_C(0xcd12345678) + t);
 
+      const struct agx_vdm_tessellate_direct_info tessellate_info = {
+         .factor_buffer = UINT64_C(0xab1234567800) + t,
+         .patch_count = UINT32_C(0x10203040) + t,
+         .instance_count = UINT32_C(0x50607080) - t,
+         .base_patch = UINT32_C(0x90a0b0c0) ^ t,
+         .base_instance = UINT32_C(0xd0e0f001) + t,
+         .instance_stride_word = UINT32_C(0x70000) + t,
+         .factor_buffer_size_minus_one = UINT32_C(0xfedcba98) - t,
+      };
+      struct agx_vdm_tessellate_direct tessellate;
+      CHECK(agx_vdm_tessellate_direct_pack(chip, &tessellate_info,
+                                            &tessellate));
+      uint8_t tessellate_stream[AGX_VDM_TESSELLATE_DIRECT_LENGTH + 4];
+      memcpy(tessellate_stream, tessellate.bytes, tessellate.length);
+      memset(tessellate_stream + tessellate.length, 0xa5, 4);
+      CHECK(d12_agx3_decode_vdm_record(
+         chip, tessellate_stream, sizeof(tessellate_stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_TESSELLATE_DIRECT);
+      CHECK(record.length == tessellate.length);
+      CHECK(record.chip == chip);
+      CHECK(record.data.tessellate_direct.factor_buffer ==
+            tessellate_info.factor_buffer);
+      CHECK(record.data.tessellate_direct.patch_count ==
+            tessellate_info.patch_count);
+      CHECK(record.data.tessellate_direct.instance_count ==
+            tessellate_info.instance_count);
+
       struct agx_vdm_stream_terminate_core terminate;
       CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
       uint8_t terminate_stream[AGX_VDM_STREAM_TERMINATE_CORE_LENGTH + 4];
