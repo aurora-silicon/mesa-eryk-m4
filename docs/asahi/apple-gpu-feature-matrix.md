@@ -275,7 +275,7 @@ feature exposure.
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, kick/ring models; firmware ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, kick/ring models; normal ACK unknown |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models; firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -466,7 +466,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `7231e03aae92`
+The power/recovery and submission ledger through Linux commit `86f49e9f927c`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -549,6 +549,19 @@ branch-free and use object sizes `0x1d0/0x1d8/0x1e0` for CL/3D/TA. G17A
 remains ungrounded. Without the normal firmware acknowledgment writer and
 complete completion lifetime, this still does not enable executable
 submission.
+The sole pinned true firmware bundle additionally grounds a G17S-only
+recovery drain/discard handler at GFX text `+0x2649c`. It traverses four
+priority groups in TA/3D/compute order, uses the exact `0x20` descriptor
+records below runtime `+0x20` with `0x60` priority stride, initializes each CFI
+pointer from its write-index snapshot, expects entry types 0/1/2, and advances
+each read index with a 32-bit load/add-one/mask-`0xff`/store sequence up to
+`0x14` times per data master. Direct status handling stores 1, executes
+`dsb sy`, runs the recovery body, stores 0, and executes a second `dsb sy`.
+This path is explicitly recovery/discard rather than normal consumption and
+is rejected for G17P/G/C and every earlier target. A separate G17S SKSM
+completion consumer, plus device-control and timestamp consumers, do not own
+the classic four-priority submission ring; normal acknowledgment therefore
+remains unproved and executable submission remains disabled.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
