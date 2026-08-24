@@ -5,6 +5,148 @@
 # Reproducibly cross-build both native AGX D3D12 frontends against the one
 # renderer-core archive: the public COM DLL and the WDDM UMD DDI DLL.
 
+# Meson snapshots cross-file properties in coredata.dat.  Reconfiguring after
+# regenerating the cross-file therefore does not guarantee that a relocated
+# external contract include is adopted.  Keep these helpers sourceable so the
+# preservation behavior can be tested without requiring a WDK/toolchain.
+d12_umd_build_uses_contract() {
+    local build_dir=$1
+    local contract_dir=$2
+    local compile_commands=$build_dir/compile_commands.json
+
+    [[ -f $compile_commands ]] || return 2
+    python3 - "$compile_commands" "$contract_dir" <<'PY'
+import json
+import shlex
+import sys
+from pathlib import Path
+
+commands_path = Path(sys.argv[1])
+expected = Path(sys.argv[2]).resolve()
+
+try:
+    commands = json.loads(commands_path.read_text(encoding="utf-8"))
+except (OSError, ValueError) as error:
+    print(f"cannot inspect Meson compile database {commands_path}: {error}",
+          file=sys.stderr)
+    raise SystemExit(2)
+
+if not isinstance(commands, list):
+    print(f"invalid compile database root in {commands_path}", file=sys.stderr)
+    raise SystemExit(2)
+
+d12_command_seen = False
+include_seen = False
+for entry in commands:
+    if not isinstance(entry, dict):
+        print(f"invalid compile command entry in {commands_path}",
+              file=sys.stderr)
+        raise SystemExit(2)
+
+    source = entry.get("file")
+    if not isinstance(source, str):
+        print(f"compile command without a source in {commands_path}",
+              file=sys.stderr)
+        raise SystemExit(2)
+    if "src/asahi/d3d12/" not in source.replace("\\", "/"):
+        continue
+    d12_command_seen = True
+
+    arguments = entry.get("arguments")
+    if arguments is None:
+        try:
+            arguments = shlex.split(entry["command"])
+        except (KeyError, TypeError, ValueError) as error:
+            print(f"invalid compile command in {commands_path}: {error}",
+                  file=sys.stderr)
+            raise SystemExit(2)
+    if not isinstance(arguments, list) or not all(
+            isinstance(argument, str) for argument in arguments):
+        print(f"invalid argument list in {commands_path}", file=sys.stderr)
+        raise SystemExit(2)
+
+    index = 0
+    while index < len(arguments):
+        argument = arguments[index]
+        include = None
+        if argument in ("-I", "-isystem"):
+            index += 1
+            if index >= len(arguments):
+                print(f"incomplete include argument in {commands_path}",
+                      file=sys.stderr)
+                raise SystemExit(2)
+            include = arguments[index]
+        elif argument.startswith("-I") and len(argument) > 2:
+            include = argument[2:]
+        elif argument.startswith("-isystem") and len(argument) > 8:
+            include = argument[8:]
+
+        if include is not None:
+            if not include:
+                print(f"empty include argument in {commands_path}",
+                      file=sys.stderr)
+                raise SystemExit(2)
+            include_seen = True
+            if Path(include).resolve() == expected:
+                raise SystemExit(0)
+        index += 1
+
+if not d12_command_seen or not include_seen:
+    print(f"no inspectable D3D12 compile command in {commands_path}",
+          file=sys.stderr)
+    raise SystemExit(2)
+
+raise SystemExit(1)
+PY
+}
+
+d12_umd_refresh_cross_build_contract() {
+    local build_dir=${1%/}
+    local contract_dir=$2
+    local source_dir=${3:-}
+    local inspect_status
+    local preserved
+    local ordinal=1
+
+    [[ -n $build_dir && $build_dir != / ]] || {
+        print -u2 "refusing unsafe D3D12 UMD build directory: $1"
+        return 2
+    }
+    if [[ -n $source_dir && ${build_dir:A} == ${source_dir:A} ]]; then
+        print -u2 "refusing to rehome the D3D12 UMD source directory: $build_dir"
+        return 2
+    fi
+    [[ -f $build_dir/build.ninja ]] || return 0
+    [[ -f $build_dir/meson-private/coredata.dat ]] || {
+        print -u2 "refusing to rehome an unrecognized build directory: $build_dir"
+        return 2
+    }
+
+    if d12_umd_build_uses_contract "$build_dir" "$contract_dir"; then
+        return 0
+    else
+        inspect_status=$?
+    fi
+    if (( inspect_status != 1 )); then
+        print -u2 "cannot verify the configured AGX WDDM contract in $build_dir"
+        return $inspect_status
+    fi
+
+    preserved=$build_dir.contract-path-stale
+    while [[ -e $preserved || -L $preserved ]]; do
+        preserved=$build_dir.contract-path-stale.$ordinal
+        ordinal=$((ordinal + 1))
+    done
+
+    print -u2 "AGX WDDM contract path changed; preserving the stale Meson build at:"
+    print -u2 "  $preserved"
+    mv "$build_dir" "$preserved"
+}
+
+if [[ ${ZSH_EVAL_CONTEXT:-} == *:file ]]; then
+    return 0
+fi
+
 set -euo pipefail
 
 umd_dir=${0:A:h}
@@ -113,6 +255,13 @@ python3 "$umd_dir/tools/generate-windows-cross-file.py" \
     --contract "$contract_dir" \
     --wdk "$staged_wdk" \
     --generated "$generated"
+
+# Cross-file properties are immutable enough in Meson's persisted core data
+# that --reconfigure may retain an old external-property include.  Preserve a
+# stale generated build under a sibling name, then let the normal setup path
+# create a fresh build at the caller-requested location.
+d12_umd_refresh_cross_build_contract "$cross_build" "$contract_dir" \
+    "$repo_root"
 
 native_mesa_clc=$native_build/src/compiler/clc/mesa_clc
 native_vtn_bindgen=$native_build/src/compiler/spirv/vtn_bindgen2
