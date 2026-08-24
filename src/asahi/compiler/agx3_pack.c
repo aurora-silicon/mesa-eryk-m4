@@ -136,6 +136,69 @@ agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding, const uint8_t *bytes,
 }
 
 bool
+agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
+{
+   if (!is_agx3_encoding(encoding) || out == NULL)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   out->bytes[0] = 0x06;
+   out->length = AGX3_NOP_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_nop(enum agx_isa_encoding encoding, const uint8_t *bytes,
+                size_t available, uint8_t *length)
+{
+   static const uint8_t canonical[AGX3_NOP_LENGTH] = {0x06, 0x00};
+
+   if (!is_agx3_encoding(encoding) || bytes == NULL || length == NULL ||
+       available < AGX3_NOP_LENGTH ||
+       memcmp(bytes, canonical, sizeof(canonical)) != 0)
+      return false;
+
+   *length = AGX3_NOP_LENGTH;
+   return true;
+}
+
+bool
+agx3_pack_threadgroup_barrier(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_threadgroup_barrier *out)
+{
+   if (encoding != AGX_ISA_ENCODING_AGX3C || out == NULL)
+      return false;
+
+   static const uint8_t canonical[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+      0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
+   };
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical, sizeof(canonical));
+   out->length = AGX3_THREADGROUP_BARRIER_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
+                                const uint8_t *bytes, size_t available,
+                                uint8_t *length)
+{
+   static const uint8_t canonical[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+      0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
+   };
+
+   if (encoding != AGX_ISA_ENCODING_AGX3C || bytes == NULL ||
+       length == NULL || available < AGX3_THREADGROUP_BARRIER_LENGTH ||
+       memcmp(bytes, canonical, sizeof(canonical)) != 0)
+      return false;
+
+   *length = AGX3_THREADGROUP_BARRIER_LENGTH;
+   return true;
+}
+
+bool
 agx3_pack_end(enum agx_isa_encoding encoding, struct agx3_encoded_end *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)

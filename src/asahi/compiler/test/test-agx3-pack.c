@@ -175,6 +175,90 @@ test_boundaries_and_rejection(void)
 }
 
 static void
+test_nop(void)
+{
+   static const uint8_t expected[AGX3_NOP_LENGTH] = {0x06, 0x00};
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      struct agx3_encoded_nop packed;
+      CHECK(agx3_pack_nop(encodings[e], &packed));
+      CHECK(packed.length == AGX3_NOP_LENGTH);
+      CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+
+      uint8_t length = 0;
+      CHECK(agx3_unpack_nop(encodings[e], expected, sizeof(expected),
+                            &length));
+      CHECK(length == AGX3_NOP_LENGTH);
+
+      for (unsigned bit = 0; bit < AGX3_NOP_LENGTH * 8; ++bit) {
+         uint8_t malformed[AGX3_NOP_LENGTH];
+         memcpy(malformed, expected, sizeof(malformed));
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_nop(encodings[e], malformed, sizeof(malformed),
+                                &length));
+      }
+   }
+
+   struct agx3_encoded_nop packed;
+   uint8_t length = 0;
+   CHECK(!agx3_pack_nop(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_nop(AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_nop(AGX_ISA_ENCODING_AGX3B, NULL));
+   CHECK(!agx3_unpack_nop(AGX_ISA_ENCODING_AGX2, expected,
+                          sizeof(expected), &length));
+   CHECK(!agx3_unpack_nop(AGX_ISA_ENCODING_AGX3C, expected,
+                          AGX3_NOP_LENGTH - 1, &length));
+   CHECK(!agx3_unpack_nop(AGX_ISA_ENCODING_AGX3C, NULL, sizeof(expected),
+                          &length));
+   CHECK(!agx3_unpack_nop(AGX_ISA_ENCODING_AGX3C, expected,
+                          sizeof(expected), NULL));
+}
+
+static void
+test_threadgroup_barrier(void)
+{
+   static const uint8_t expected[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+      0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
+   };
+   struct agx3_encoded_threadgroup_barrier packed;
+   uint8_t length = 0;
+
+   CHECK(agx3_pack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3C, &packed));
+   CHECK(packed.length == AGX3_THREADGROUP_BARRIER_LENGTH);
+   CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+   CHECK(agx3_unpack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3C, expected,
+                                         sizeof(expected), &length));
+   CHECK(length == AGX3_THREADGROUP_BARRIER_LENGTH);
+
+   for (unsigned bit = 0; bit < AGX3_THREADGROUP_BARRIER_LENGTH * 8; ++bit) {
+      uint8_t malformed[AGX3_THREADGROUP_BARRIER_LENGTH];
+      memcpy(malformed, expected, sizeof(malformed));
+      malformed[bit / 8] ^= 1u << (bit % 8);
+      CHECK(!agx3_unpack_threadgroup_barrier(
+         AGX_ISA_ENCODING_AGX3C, malformed, sizeof(malformed), &length));
+   }
+
+   /* AGX3b has a distinct, still-unresolved field layout. */
+   CHECK(!agx3_pack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3B, &packed));
+   CHECK(!agx3_unpack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3B, expected,
+                                          sizeof(expected), &length));
+   CHECK(!agx3_pack_threadgroup_barrier(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_threadgroup_barrier(AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3C, NULL));
+   CHECK(!agx3_unpack_threadgroup_barrier(
+      AGX_ISA_ENCODING_AGX3C, expected,
+      AGX3_THREADGROUP_BARRIER_LENGTH - 1, &length));
+   CHECK(!agx3_unpack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3C, NULL,
+                                          sizeof(expected), &length));
+   CHECK(!agx3_unpack_threadgroup_barrier(AGX_ISA_ENCODING_AGX3C, expected,
+                                          sizeof(expected), NULL));
+}
+
+static void
 test_end(void)
 {
    static const uint8_t expected[AGX3_END_LENGTH] = {0x0e, 0x00, 0x00, 0x00};
@@ -286,6 +370,8 @@ main(void)
 {
    test_vectors();
    test_boundaries_and_rejection();
+   test_nop();
+   test_threadgroup_barrier();
    test_end();
    test_update_node();
 

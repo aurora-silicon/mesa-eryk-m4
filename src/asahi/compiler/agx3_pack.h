@@ -17,11 +17,23 @@ extern "C" {
 
 /* Largest ldimm instruction emitted by the currently proven AGX3 subset. */
 #define AGX3_LDIMM_MAX_LENGTH 8
+#define AGX3_NOP_LENGTH 2
+#define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
 #define AGX3_UPDATE_NODE_MAX_LENGTH 14
 
 struct agx3_encoded_ldimm {
    uint8_t bytes[AGX3_LDIMM_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_nop {
+   uint8_t bytes[AGX3_NOP_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_threadgroup_barrier {
+   uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
    uint8_t length;
 };
 
@@ -58,6 +70,31 @@ bool agx3_pack_ldimm_u32(enum agx_isa_encoding encoding, uint16_t dest,
 bool agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding,
                            const uint8_t *bytes, size_t available,
                            uint16_t *dest, uint32_t *imm, uint8_t *length);
+
+/*
+ * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is
+ * common to AGX3b and AGX3c in Apple's independently extracted encoder tables;
+ * it is also present throughout the hash-pinned G17 compute corpus.  Only this
+ * field-free form is accepted -- scoreboard-bearing extended nop forms remain
+ * outside the proven subset.
+ */
+bool agx3_pack_nop(enum agx_isa_encoding encoding,
+                   struct agx3_encoded_nop *out);
+bool agx3_unpack_nop(enum agx_isa_encoding encoding, const uint8_t *bytes,
+                     size_t available, uint8_t *length);
+
+/*
+ * Encode/decode the fixed workgroup barrier emitted for air.wg.barrier on the
+ * G17/AGX3c corpus.  Thirteen independently shaped kernels contain these exact
+ * bytes.  The AGX3b barrier fields have not yet been isolated, so M3/M4/A18 Pro
+ * intentionally fail closed here rather than receiving a guessed G17 opcode.
+ */
+bool agx3_pack_threadgroup_barrier(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_threadgroup_barrier *out);
+bool agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
+                                     const uint8_t *bytes, size_t available,
+                                     uint8_t *length);
 
 /*
  * Encode/decode the canonical unconditional shader terminator.  The exact
