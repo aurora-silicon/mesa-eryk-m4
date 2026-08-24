@@ -85,10 +85,37 @@ enum d12_frontend_shader_stage {
    D12_FRONTEND_SHADER_HULL = 3,
    D12_FRONTEND_SHADER_DOMAIN = 4,
    D12_FRONTEND_SHADER_COMPUTE = 5,
+   /* Mesh and amplification carry DXIL like every other stage; the numbering
+    * continues the DXBC program-type space the importer validates against. */
+   D12_FRONTEND_SHADER_MESH = 13,
+   D12_FRONTEND_SHADER_AMPLIFICATION = 14,
 };
 
 #define D12_FRONTEND_MAX_INPUT_ELEMENTS 32u
 #define D12_FRONTEND_MAX_RENDER_TARGETS 8u
+
+
+/*
+ * Render-pass attachment access, in the numeric spelling both the DDI and the
+ * public API use (see d12_render_pass_core.h). Carrying the raw values keeps
+ * this frontend-neutral: the renderer translates them once, in one place.
+ */
+struct d12_frontend_render_pass_rt {
+   uint64_t cpu_descriptor;
+   uint32_t beginning_access;
+   uint32_t ending_access;
+   float clear_color[4];
+};
+
+struct d12_frontend_render_pass_ds {
+   uint64_t cpu_descriptor;
+   uint32_t depth_beginning_access;
+   uint32_t depth_ending_access;
+   uint32_t stencil_beginning_access;
+   uint32_t stencil_ending_access;
+   float clear_depth;
+   uint32_t clear_stencil;
+};
 
 struct d12_frontend_input_element {
    uint32_t input_slot;
@@ -197,6 +224,12 @@ struct d12_frontend_graphics_pipeline_desc {
    struct d12_frontend_shader_bytecode geometry_shader;
    struct d12_frontend_shader_bytecode hull_shader;
    struct d12_frontend_shader_bytecode domain_shader;
+   /* A mesh pipeline replaces the input assembler and the vertex stage: the
+    * mesh shader runs as compute and a generated rasterization program feeds
+    * the hardware vertex stage from its output. An amplification shader, when
+    * present, dispatches the mesh shader. */
+   struct d12_frontend_shader_bytecode mesh_shader;
+   struct d12_frontend_shader_bytecode amplification_shader;
    void *root_signature;
    struct d12_frontend_blend_desc blend;
    uint32_t sample_mask;

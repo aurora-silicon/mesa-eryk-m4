@@ -169,6 +169,7 @@ main(int argc, char **argv)
    if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
       fprintf(stderr, "MODULE PARSE FAILED: %s\n",
               mod.error ? mod.error : "unknown");
+      d12_dxil_module_finish(&mod);
       return 1;
    }
 

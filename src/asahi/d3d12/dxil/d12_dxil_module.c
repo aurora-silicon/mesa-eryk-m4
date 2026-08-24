@@ -913,6 +913,7 @@ d12_dxil_module_finish(struct d12_module *mod)
       free(c);
       c = next;
    }
+   free(mod->resources);
    memset(mod, 0, sizeof(*mod));
 }
 
@@ -1117,8 +1118,6 @@ parse_resource_list(struct d12_module *mod, uint64_t list_id, unsigned klass)
    for (unsigned i = 0; i < list->node.num_ops; i++) {
       if (list->node.op_is_null[i])
          continue;
-      if (mod->num_resources >= D12_MAX_MODULE_RESOURCES)
-         return;
 
       uint64_t rec_id = list->node.ops[i];
       if (rec_id >= mod->num_metadata)
@@ -1127,6 +1126,34 @@ parse_resource_list(struct d12_module *mod, uint64_t list_id, unsigned klass)
       const struct d12_metadata *rec = &mod->metadata[rec_id];
       if (rec->kind != D12_MD_NODE || rec->node.num_ops < 6)
          continue;
+
+      if (mod->num_resources == mod->resource_capacity) {
+         if (mod->resource_capacity >= D12_MAX_METADATA) {
+            fail(mod, "too many DXIL resource declarations");
+            return;
+         }
+
+         unsigned capacity = mod->resource_capacity
+                                ? mod->resource_capacity * 2
+                                : 32;
+         capacity = MIN2(capacity, D12_MAX_METADATA);
+         if (capacity < mod->resource_capacity ||
+             (size_t)capacity >
+                SIZE_MAX / sizeof(struct d12_resource_binding)) {
+            fail(mod, "DXIL resource declaration size overflow");
+            return;
+         }
+
+         void *resources = realloc(
+            mod->resources,
+            (size_t)capacity * sizeof(struct d12_resource_binding));
+         if (!resources) {
+            fail(mod, "out of memory growing DXIL resource declarations");
+            return;
+         }
+         mod->resources = resources;
+         mod->resource_capacity = capacity;
+      }
 
       struct d12_resource_binding *rb = &mod->resources[mod->num_resources];
       memset(rb, 0, sizeof(*rb));
@@ -1209,6 +1236,8 @@ parse_resources(struct d12_module *mod)
       if (root->node.op_is_null[klass])
          continue;
       parse_resource_list(mod, root->node.ops[klass], klass);
+      if (mod->error)
+         return;
    }
 }
 

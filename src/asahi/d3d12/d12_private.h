@@ -20,6 +20,8 @@
 #include <wsl/winadapter.h>
 #include <directx/d3d12.h>
 
+#include "d12_sampler_reduction_core.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -28,6 +30,10 @@
 #include "d12_command_validation_core.h"
 #include "d12_device_removal_core.h"
 #include "d12_queue_timeline_core.h"
+#include "d12_sparse_residency_core.h"
+#include "d12_render_pass_core.h"
+#include "d12_sample_position_core.h"
+#include "d12_raytracing_core.h"
 #include "d12_viewport_math.h"
 
 #include "agx_bg_eot.h"
@@ -349,6 +355,11 @@ struct d12_resource {
     * are updated. */
    bool reserved;
    struct agx_va *va;
+   /* Reserved textures use an AGX hardware sparse table. Reserved buffers
+    * use one 32-bit residency word per D3D12 64 KiB tile, consumed by the
+    * DXIL status lowering. Both are coherent, queue-ordered GPU metadata. */
+   struct agx_bo *sparse_map;
+   uint64_t sparse_map_size_B;
    uint64_t sparse_size_B;
    uint32_t sparse_tile_count;
    uint32_t sparse_mip_count;
@@ -460,18 +471,30 @@ bool d12_resource_explicit_row_major_size(
 HRESULT d12_resource_get_allocation_size(
    const D3D12_RESOURCE_DESC *desc, uint32_t row_pitch_B,
    uint32_t slice_pitch_B, bool reserved, uint64_t *size_B);
+struct d12_sparse_map_update {
+   uint64_t read_address;
+   uint32_t index_el;
+   bool enabled;
+};
 HRESULT d12_sparse_update_tile_mappings(
    struct d12_resource *res, UINT num_regions,
    const D3D12_TILED_RESOURCE_COORDINATE *starts,
    const D3D12_TILE_REGION_SIZE *sizes, struct d12_heap *heap,
    UINT num_ranges, const D3D12_TILE_RANGE_FLAGS *range_flags,
    const UINT *heap_starts, const UINT *range_counts,
-   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count);
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count,
+   struct d12_sparse_map_update **out_map_updates,
+   uint32_t *out_map_count);
 HRESULT d12_sparse_copy_tile_mappings(
    struct d12_resource *dst, const D3D12_TILED_RESOURCE_COORDINATE *dst_start,
    struct d12_resource *src, const D3D12_TILED_RESOURCE_COORDINATE *src_start,
    const D3D12_TILE_REGION_SIZE *size,
-   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count);
+   struct drm_asahi_gem_bind_op **out_ops, uint32_t *out_count,
+   struct d12_sparse_map_update **out_map_updates,
+   uint32_t *out_map_count);
+bool d12_sparse_commit_map_updates(
+   struct d12_resource *res,
+   const struct d12_sparse_map_update *updates, uint32_t update_count);
 HRESULT d12_queue_update_tile_mappings(
    struct d12_queue *queue, struct d12_resource *resource, UINT num_regions,
    const D3D12_TILED_RESOURCE_COORDINATE *starts,
@@ -491,6 +514,13 @@ HRESULT d12_sparse_collect_tiles(
    const D3D12_TILE_REGION_SIZE *sizes, uint32_t **out_tiles,
    uint32_t *out_count);
 uint64_t d12_sparse_read_address(struct d12_device *device, uint64_t address);
+struct d12_resource *d12_sparse_buffer_for_address(
+   struct d12_device *device, uint64_t address);
+uint64_t d12_sparse_buffer_residency_address(
+   const struct d12_resource *res, uint64_t view_address);
+struct d12_descriptor;
+uint64_t d12_descriptor_sparse_residency_address(
+   const struct d12_descriptor *descriptor);
 struct d12_sparse_tile_copy_info {
    bool standard;
    uint32_t subresource;
@@ -557,6 +587,13 @@ struct d12_descriptor {
             struct {
                uint32_t size_B;
                uint32_t stride_B;
+            };
+
+            /* Buffer SRV/UAV metadata mirrors the API instead of storing a
+             * truncated byte extent.  Shaders reconstruct size in 64 bits. */
+            struct {
+               uint32_t buffer_count;
+               uint32_t buffer_stride_B;
             };
 
             /* Texture views do not publish buffer metadata. Reuse those
@@ -626,6 +663,19 @@ struct d12_descriptor {
 #define D12_CUSTOM_BORDER_W         BITFIELD_BIT(4)
 #define D12_SAMPLER_MIP_POINT       BITFIELD_BIT(5)
 
+/*
+ * D3D12 filter reduction modes.  AGX has no reduction field in its packed
+ * sampler (cmdbuf.xml "Sampler" is fully accounted for: LODs, anisotropy,
+ * min/mag/mip filters, wrap, compare, border), so a MINIMUM/MAXIMUM filter is
+ * reduced in the shader over the same texel set the standard filter would
+ * weight.  Only a footprint wider than one texel needs that work, so these
+ * bits are set only when the reduction is actually observable.
+ */
+#define D12_SAMPLER_REDUCTION_MIN   BITFIELD_BIT(6)
+#define D12_SAMPLER_REDUCTION_MAX   BITFIELD_BIT(7)
+#define D12_SAMPLER_REDUCTION_MASK \
+   (D12_SAMPLER_REDUCTION_MIN | D12_SAMPLER_REDUCTION_MAX)
+
 struct d12_custom_border_entry {
    uint32_t flags;
    float lod_bias;
@@ -638,9 +688,10 @@ static_assert(sizeof(struct d12_descriptor) == 40,
 static_assert(offsetof(struct d12_descriptor, address) == 0 &&
                  offsetof(struct d12_descriptor, counter_address) == 8,
               "shader-visible ABI");
-static_assert(offsetof(struct d12_descriptor, size_B) == D12_DESC_SIZE_OFFSET &&
-                 offsetof(struct d12_descriptor, stride_B) ==
-                    D12_DESC_STRIDE_OFFSET,
+static_assert(offsetof(struct d12_descriptor, buffer_count) ==
+                    D12_DESC_BUFFER_COUNT_OFFSET &&
+                 offsetof(struct d12_descriptor, buffer_stride_B) ==
+                    D12_DESC_BUFFER_STRIDE_OFFSET,
               "shader-visible buffer metadata ABI");
 static_assert(offsetof(struct d12_descriptor, sampler_kind) ==
                  offsetof(struct d12_descriptor, kind),
@@ -670,8 +721,21 @@ struct d12_descriptor_heap {
     * hardware sampler table named by drm_asahi_cmd_*::sampler_heap. */
    struct agx_bo *texture_bo;
    struct agx_bo *pbe_bo;
+   /* One 64-bit sparse residency-map pointer per logical resource
+    * descriptor. Zero keeps dense resources on the no-load fast path. */
+   struct agx_bo *residency_bo;
    struct agx_bo *sampler_bo;
    uint32_t sampler_unique_count;
+
+   /* Exact WDDM read-set construction must inspect descriptors which can be
+    * reached through an unbounded table or SM 6.6 heap handle. A maximum
+    * resource heap contains one million slots, so walking every slot on
+    * every ExecuteCommandLists call is not viable. Maintain a compact CPU
+    * occupancy bitmap as descriptors are written and visit only live slots.
+    * descriptor_heap_lock protects this bitmap and the matching slot reads.
+    */
+   uint64_t *live_resource_words;
+   uint32_t live_resource_word_count;
 
    struct d12_descriptor_heap *registry_next;
 };
@@ -884,7 +948,9 @@ bool d12_root_signature_has_rts0(const void *blob, size_t blob_size);
 void d12_root_layout_cleanup(struct d12_root_layout *layout);
 unsigned d12_root_param_class(const struct d12_root_param *rp);
 unsigned d12_descriptor_range_class(D3D12_DESCRIPTOR_RANGE_TYPE type);
-void d12_root_layout_build_map(const struct d12_root_layout *layout,
+/* False when the signature declares more distinct bindings than the dense
+ * slot table can name; the map is then incomplete and must not be used. */
+bool d12_root_layout_build_map(const struct d12_root_layout *layout,
                                struct d12_binding_map *out);
 ID3DBlob *d12_blob_create(const void *data, size_t size);
 
@@ -937,6 +1003,12 @@ struct d12_raster_state {
    bool front_face_ccw;
    bool depth_clip;
    bool smooth_line;
+   enum agx_polygon_mode polygon_mode;
+   /* D3D12_RASTERIZER_DESC::ForcedSampleCount. 0 means the attachments pick
+    * the rasterization sample count; non-zero forces it for target-independent
+    * rasterization, which D3D12 only permits with no depth-stencil and
+    * single-sample (or absent) render targets. */
+   uint32_t forced_sample_count;
    bool dynamic_depth_bias;
    bool dynamic_strip_cut;
    float depth_bias;
@@ -1212,6 +1284,9 @@ enum d12_write_ref_kind {
    D12_WRITE_REF_DESCRIPTOR,
    /* An unbounded range or SM 6.6 directly-indexed resource heap. */
    D12_WRITE_REF_HEAP,
+   /* A reserved UAV resolves at Execute time to the backing allocations of
+    * its then-current tile mapping. */
+   D12_WRITE_REF_RESOURCE,
 };
 
 struct d12_write_ref {
@@ -1222,9 +1297,13 @@ struct d12_write_ref {
          uint64_t size;
       } range;
       const struct d12_descriptor *descriptor;
+      struct d12_resource *resource;
       struct {
          const struct d12_descriptor_heap *heap;
          uint32_t first;
+         /* Descriptors covered from `first`, or 0 for "to the end of the
+          * heap".  See struct d12_read_ref. */
+         uint32_t count;
       } heap;
    };
 };
@@ -1235,6 +1314,56 @@ struct d12_write_tracker {
    /* Set when a legal command can write memory whose owning allocation is
     * not derivable on the host.  A Windows submit must never publish the
     * complete-write marker while this is true. */
+   bool incomplete;
+};
+
+enum d12_read_ref_kind {
+   /* Immutable BOs are retained by the command list until Execute captures
+    * them into the queue operation. */
+   D12_READ_REF_BO,
+   /* Root descriptors and other address-only commands are resolved to their
+    * owning BO at ExecuteCommandLists. A zero length means the whole BO. */
+   D12_READ_REF_RANGE,
+   /* Mutable shader-visible descriptors are evaluated after the normal
+    * pre-submit descriptor refresh. */
+   D12_READ_REF_DESCRIPTOR,
+   /* Unbounded/directly-indexed heaps require both their native backing BOs
+    * and every live resource descriptor from first onward. */
+   D12_READ_REF_HEAP,
+   /* A reserved resource resolves at Execute time to its sparse page table
+    * and the then-current backing allocations. */
+   D12_READ_REF_RESOURCE,
+};
+
+struct d12_read_ref {
+   enum d12_read_ref_kind kind;
+   union {
+      struct agx_bo *bo;
+      struct {
+         uint64_t address;
+         uint64_t size;
+      } range;
+      const struct d12_descriptor *descriptor;
+      struct d12_resource *resource;
+      struct {
+         const struct d12_descriptor_heap *heap;
+         uint32_t first;
+         /* Descriptors covered from `first`, or 0 for "to the end of the
+          * heap".  A root range the signature sized explicitly ends there;
+          * declaring the whole tail of a million-slot heap would put every
+          * later populated descriptor's allocation into the submission's
+          * read set. */
+         uint32_t count;
+         bool resources;
+      } heap;
+   };
+};
+
+struct d12_read_tracker {
+   struct util_dynarray refs; /* struct d12_read_ref */
+   bool initialized;
+   /* Any legal command whose referenced allocation cannot be derived on the
+    * host forces the conservative winsys scan for the entire submission. */
    bool incomplete;
 };
 
@@ -1312,6 +1441,30 @@ struct d12_segment {
    bool depth_cleared, stencil_cleared;
    uint32_t isp_bgobjdepth; /* clear value in the depth plane's encoding */
    uint8_t stencil_clear;
+
+   /*
+    * Render-pass tile traffic. Outside a render pass the driver has to infer
+    * load and store intent from clear tracking and assume every attachment
+    * must be both seeded from memory and written back. Inside one the
+    * application states it per attachment, which is where a tiler stops
+    * paying for traffic nobody asked for.
+    *
+    * `render_pass` selects between the two: when false the plans are unset
+    * and every path behaves exactly as it did before.
+    */
+   /* PPP_MULTISAMPLECTL for this render, or zero for the standard pattern.
+    * Snapshotted per segment because the positions are fixed for a whole
+    * hardware render and the application may change them between passes. */
+   uint32_t sample_positions;
+
+   bool render_pass;
+   struct d12_render_pass_plan rt_plan[AGX_MAX_RENDER_TARGETS];
+   /* Per-attachment clear values. A render pass may clear each target to a
+    * different value in one pass, which the single colour a legacy
+    * ClearRenderTargetView carries cannot express. */
+   float rt_clear[AGX_MAX_RENDER_TARGETS][4];
+   struct d12_render_pass_plan depth_plan;
+   struct d12_render_pass_plan stencil_plan;
 
    /* Hardware scissor array (ISP_SCISSOR_BASE). Each draw indexes one
     * entry. This is not optional state: alongside the XY bounds each entry
@@ -1399,6 +1552,11 @@ struct d12_cmd_list {
 
    struct agx_bo *stream_bo; /* control streams (bottom-up) + data (top-down) */
    struct agx_bo *usc_bo;    /* USC words, AGX_BO_LOW_VA */
+
+   /* Complete GPU allocation ownership for the recorded command stream.
+    * Unlike write attachments this spans the whole command list, because the
+    * KMD consumes one canonical read vector for each sliced submission. */
+   struct d12_read_tracker reads;
 
    uint8_t *stream_cur;   /* next control word write */
    size_t data_floor;     /* offset of lowest data byte (bumps down) */
@@ -1542,6 +1700,15 @@ struct d12_cmd_list {
    struct util_dynarray indirect_argument_fixups;
    struct util_dynarray bundle_draws;
 
+   /* ExecuteIndirect reads GPU-produced root/VBV/IBV addresses. A fixed view
+    * cell lives in this recording's stream BO; immediately before submission
+    * it points at a dense, base-sorted snapshot of all live reserved buffers.
+    * The queue operation retains the snapshot BO with the stream. */
+   uint64_t sparse_registry_view_gpu;
+   struct agx_bo *sparse_registry_bo;
+   uint32_t sparse_registry_capacity;
+   bool uses_sparse_registry;
+
    /* Immutable recording-time uploads are shared until their complete key
     * changes.  Exhaustive PSO-mix tests revisit the same 512 pipelines
     * hundreds of times; rebuilding 6 KiB root planes and USC programs per
@@ -1603,6 +1770,22 @@ struct d12_cmd_list {
    struct d12_descriptor bound_dsv;
    uint8_t bound_rtv_count;
    bool has_bound_dsv;
+
+   /* Render-pass tile traffic for the attachments bound above. Carried on
+    * the list because the pass is declared before the first draw opens a
+    * hardware segment; d12_list_begin_render copies it across. */
+   /* Programmable sample positions. Unset means the standard pattern for the
+    * render target's sample count. */
+   bool sample_positions_set;
+   uint32_t sample_positions;
+
+   bool render_pass_active;
+   struct d12_render_pass_plan render_pass_rt_plan[AGX_MAX_RENDER_TARGETS];
+   float render_pass_rt_clear[AGX_MAX_RENDER_TARGETS][4];
+   struct d12_render_pass_plan render_pass_depth_plan;
+   struct d12_render_pass_plan render_pass_stencil_plan;
+   float render_pass_depth_clear;
+   uint8_t render_pass_stencil_clear;
 
    /* OMSetStencilRef/OMSetFrontAndBackStencilRef. Separate from the PSO
     * because D3D12 makes the reference values dynamic state while the ops
@@ -1879,8 +2062,27 @@ void d12_device_copy_descriptors_simple_runtime(
    D3D12_CPU_DESCRIPTOR_HANDLE source,
    D3D12_DESCRIPTOR_HEAP_TYPE type);
 bool d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list);
+bool d12_cmd_list_refresh_sparse_registry(struct d12_cmd_list *list);
 bool d12_descriptor_resource_span(const struct d12_descriptor *descriptor,
                                   uint64_t *base, uint64_t *size);
+/* Render passes. The bindings are recorded exactly as OMSetRenderTargets
+ * records them; only the per-attachment tile traffic differs. */
+bool d12_cmd_list_begin_render_pass(
+   struct d12_cmd_list *list, unsigned rt_count,
+   const struct d12_rtv *const *rtvs,
+   const struct d12_render_pass_plan *rt_plans,
+   const float (*rt_clears)[4], const struct d12_rtv *dsv,
+   const struct d12_render_pass_plan *depth_plan,
+   const struct d12_render_pass_plan *stencil_plan, float depth_clear,
+   uint8_t stencil_clear);
+bool d12_cmd_list_end_render_pass(struct d12_cmd_list *list);
+
+/* Programmable sample positions, tier 1: one pattern for the whole render
+ * target. A zero count and zero pixels restores the standard pattern. */
+bool d12_cmd_list_set_sample_positions(
+   struct d12_cmd_list *list, uint32_t samples_per_pixel,
+   uint32_t pixel_count, const struct d12_sample_position *positions);
+
 void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
 void d12_refresh_texture_descriptor(struct agx_texture_packed *out,
@@ -1892,6 +2094,9 @@ enum pipe_format d12_format_to_pipe(DXGI_FORMAT format);
 bool d12_format_is_renderable(DXGI_FORMAT format);
 unsigned d12_format_bytes_per_pixel(DXGI_FORMAT format);
 uint64_t d12_format_frontend_support(DXGI_FORMAT format);
+/* False when a format D3D12 requires a typed UAV load for does not report
+ * one; `missing` then names the first such format. */
+bool d12_format_typed_uav_load_complete(bool additional, DXGI_FORMAT *missing);
 
 /* Depth/stencil formats. AGX keeps stencil in a separate plane from depth,
  * so these are asked for independently rather than as one pipe format.

@@ -260,7 +260,7 @@ agx_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 
    simple_mtx_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
-   dev->max_handle = MAX2(dev->max_handle, handle);
+   agx_include_bo_handle(dev, handle);
    simple_mtx_unlock(&dev->bo_map_lock);
 
    /* Fresh handle */
@@ -339,7 +339,7 @@ agx_bo_import(struct agx_device *dev, int fd)
    }
 
    bo = agx_lookup_bo(dev, gem_handle);
-   dev->max_handle = MAX2(dev->max_handle, gem_handle);
+   agx_include_bo_handle(dev, gem_handle);
 
    if (!bo->size) {
       bo->dev = dev;
@@ -679,12 +679,32 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    dev->chip = agx_chip_from_params(&dev->params);
-   if (dev->chip == AGX_CHIP_UNKNOWN) {
-      fprintf(stderr,
-              "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
-              "clusters)\n",
-              dev->params.gpu_generation, dev->params.gpu_variant,
-              dev->params.num_clusters_total);
+
+   /*
+    * Gate on whether a code generator exists, not on whether the part was
+    * recognised. Those became different questions at M3: G15 and above are
+    * recognised so they can be refused by name, but they execute AGX3 and
+    * this driver only has an AGX2 packing table. Testing for UNKNOWN here
+    * would let a recognised AGX3 part through to be handed AGX2
+    * instructions, which is the one outcome worse than refusing it.
+    */
+   if (!agx_chip_codegen_supported(dev->chip)) {
+      if (dev->chip == AGX_CHIP_UNKNOWN) {
+         fprintf(stderr,
+                 "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
+                 "clusters)\n",
+                 dev->params.gpu_generation, dev->params.gpu_variant,
+                 dev->params.num_clusters_total);
+      } else {
+         fprintf(stderr,
+                 "Apple %s executes the %s instruction set, which this "
+                 "driver has no code generator for (variant 0x%x, %u "
+                 "clusters)\n",
+                 agx_chip_name(dev->chip),
+                 agx_isa_name(agx_chip_isa(dev->chip)),
+                 dev->params.gpu_variant,
+                 dev->params.num_clusters_total);
+      }
 
 #ifdef HAVE_LIBDRM
       if (dev->is_virtio) {
@@ -1117,6 +1137,7 @@ agx_gather_device_key(struct agx_device *dev)
                    dev->params.num_dies > 1;
 
    return (struct agx_device_key){
+      .encoding = agx_chip_isa_encoding(dev->chip),
       .needs_g13x_coherency = u_tristate_make(g13x_coh),
       .soft_fault = agx_has_soft_fault(dev),
    };

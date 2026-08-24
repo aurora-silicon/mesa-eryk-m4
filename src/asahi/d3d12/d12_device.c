@@ -8,6 +8,7 @@
 
 #include "d12_private.h"
 #include "d12_attachment_view_core.h"
+#include "d12_buffer_view_core.h"
 #include "d12_core_caps.h"
 #include "d12_query_core.h"
 
@@ -235,6 +236,8 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       opts->ResourceHeapTier =
          (D3D12_RESOURCE_HEAP_TIER)caps->resource_heap_tier;
       opts->OutputMergerLogicOp = caps->output_merger_logic_op;
+      opts->TypedUAVLoadAdditionalFormats =
+         caps->typed_uav_load_additional_formats;
       return S_OK;
    }
 
@@ -248,6 +251,11 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*opts))
          return E_INVALIDARG;
       memset(opts, 0, sizeof(*opts));
+      opts->WaveOps = caps->wave_ops;
+      opts->WaveLaneCountMin = caps->wave_lane_count_min;
+      opts->WaveLaneCountMax = caps->wave_lane_count_max;
+      opts->TotalLaneCount = caps->total_lane_count;
+      opts->Int64ShaderOps = caps->int64_shader_ops;
       return S_OK;
    }
 
@@ -266,17 +274,26 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       return S_OK;                                                           \
    }
 
-   D12_ZERO_OPTIONS(2)
    D12_ZERO_OPTIONS(6)
    D12_ZERO_OPTIONS(8)
    D12_ZERO_OPTIONS(10)
-   D12_ZERO_OPTIONS(14)
-   D12_ZERO_OPTIONS(15)
-   D12_ZERO_OPTIONS(17)
-   D12_ZERO_OPTIONS(18)
    D12_ZERO_OPTIONS(20)
 
 #undef D12_ZERO_OPTIONS
+
+   case D3D12_FEATURE_D3D12_OPTIONS2: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS2 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /* DepthBoundsTestSupported stays FALSE: AGX has no depth bounds test
+       * and Honeykrisp reports none either. */
+      opts->ProgrammableSamplePositionsTier =
+         (D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER)
+            caps->programmable_sample_positions_tier;
+      return S_OK;
+   }
 
    case D3D12_FEATURE_D3D12_OPTIONS3: {
       D3D12_FEATURE_DATA_D3D12_OPTIONS3 *opts = data;
@@ -324,7 +341,8 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
       if (data_size != sizeof(*opts))
          return E_INVALIDARG;
       memset(opts, 0, sizeof(*opts));
-      opts->MeshShaderTier = D3D12_MESH_SHADER_TIER_NOT_SUPPORTED;
+      opts->MeshShaderTier =
+         (D3D12_MESH_SHADER_TIER)caps->mesh_shader_tier;
       opts->SamplerFeedbackTier = D3D12_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED;
       return S_OK;
    }
@@ -362,6 +380,61 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
 
       memset(opts, 0, sizeof(*opts));
       opts->DynamicDepthBiasSupported = TRUE;
+      opts->GPUUploadHeapSupported = caps->gpu_upload_heap;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS14: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS14 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /* AdvancedTextureOpsSupported needs sampler feedback's companion
+       * operations, which AGX has no equivalent for.
+       * WriteableMSAATexturesSupported needs a TEXTURE2DMS unordered-access
+       * view, which CreateUnorderedAccessView does not build; the shader-side
+       * lowering exists but the descriptor side does not. */
+      opts->IndependentFrontAndBackStencilRefMaskSupported =
+         caps->independent_front_and_back_stencil;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS15: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS15 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      opts->TriangleFanSupported = caps->triangle_fan;
+      opts->DynamicIndexBufferStripCutSupported =
+         caps->dynamic_index_buffer_strip_cut;
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS17: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS17 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      opts->NonNormalizedCoordinateSamplersSupported =
+         caps->non_normalized_coordinate_samplers;
+      /* ManualWriteTrackingResourceSupported is a WriteWatch contract this
+       * driver does not implement. */
+      return S_OK;
+   }
+
+   case D3D12_FEATURE_D3D12_OPTIONS18: {
+      D3D12_FEATURE_DATA_D3D12_OPTIONS18 *opts = data;
+      if (data_size != sizeof(*opts))
+         return E_INVALIDARG;
+
+      memset(opts, 0, sizeof(*opts));
+      /* The render-pass implementation honours the declared per-attachment
+       * access types rather than emulating them, so its results are the
+       * results the application asked for. */
+      opts->RenderPassesValid = caps->render_passes_tier != 0;
       return S_OK;
    }
 
@@ -380,6 +453,11 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
        */
       memset(opts, 0, sizeof(*opts));
       opts->PointSamplingAddressesNeverRoundUp = TRUE;
+      /* Target-independent rasterization: with nothing attached the render
+       * command's sample count is purely the rasterization rate, so every
+       * count AGX can rasterize is available. */
+      opts->SupportedSampleCountsWithNoOutputs =
+         (1u << 0) | (1u << 1) | (1u << 3);
       return S_OK;
    }
 
@@ -736,6 +814,24 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
    }
 
    case D3D12_FEATURE_D3D12_OPTIONS5: {
+      /* d12_raytracing_core.h reproduces these so it can stay free of
+       * Windows headers. Pin them to the real values here. */
+      static_assert(D12_RT_SHADER_IDENTIFIER_SIZE ==
+                          D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES &&
+                       D12_RT_SHADER_RECORD_BYTE_ALIGNMENT ==
+                          D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT &&
+                       D12_RT_SHADER_TABLE_BYTE_ALIGNMENT ==
+                          D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT &&
+                       D12_RT_MAX_SHADER_RECORD_STRIDE ==
+                          D3D12_RAYTRACING_MAX_SHADER_RECORD_STRIDE &&
+                       D12_RT_AS_BYTE_ALIGNMENT ==
+                          D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT &&
+                       D12_RT_MAX_ATTRIBUTE_SIZE ==
+                          D3D12_RAYTRACING_MAX_ATTRIBUTE_SIZE_IN_BYTES &&
+                       D12_RT_MAX_DECLARABLE_RECURSION ==
+                          D3D12_RAYTRACING_MAX_DECLARABLE_TRACE_RECURSION_DEPTH,
+                    "DXR host ABI constants");
+
       D3D12_FEATURE_DATA_D3D12_OPTIONS5 *opts = data;
       if (data_size != sizeof(*opts))
          return E_INVALIDARG;
@@ -747,8 +843,20 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
        * correct answer only while no acceleration structure can exist --
        * and this is what guarantees that.
        */
+      /*
+       * Ray tracing is not supported and will report so until a traversal
+       * path exists. The host-side half of DXR -- shader tables, shader
+       * identifiers, DispatchRays bounds, acceleration-structure sizing --
+       * is implemented and tested in d12_raytracing_core.h, because none of
+       * it depends on how rays are traced. What is missing is tracing them:
+       * Apple hardware ray tracing starts at G15 (M3), this driver runs on
+       * G13/G14 (M1/M2) which has none, Mesa supports no G15/G16 part, and
+       * on G17 (M5) the traversal core of the ISA is 96.8% ungrounded so no
+       * traversal code can be emitted.
+       */
       opts->RaytracingTier = D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
-      opts->RenderPassesTier = D3D12_RENDER_PASS_TIER_0;
+      opts->RenderPassesTier =
+         (D3D12_RENDER_PASS_TIER)caps->render_passes_tier;
       opts->SRVOnlyTiledResourceTier3 = FALSE;
       return S_OK;
    }
@@ -913,7 +1021,10 @@ d12_embedded_pso_binding_map(const D3D12_SHADER_BYTECODE *const *stages,
    }
 
    if (found) {
-      d12_root_layout_build_map(owned_layout, owned_map);
+      if (!d12_root_layout_build_map(owned_layout, owned_map)) {
+         d12_root_layout_cleanup(owned_layout);
+         return E_INVALIDARG;
+      }
       *out_map = owned_map;
    } else {
       *out_map = d12_pso_binding_map(NULL);
@@ -1645,6 +1756,52 @@ d12_device_CreateRootSignature(ID3D12Device2 *iface, UINT node_mask,
  * form among the methods we implement; GetDesc and the descriptor-handle
  * getters really are by-value, which is why they have always worked.
  */
+/*
+ * Resolve an abstract heap type into the concrete properties this adapter
+ * would use for it.  Every answer here is a UMA answer: there is one memory
+ * pool, so the pool preference is always L0 and the only thing that varies is
+ * how the CPU sees the memory.
+ *
+ * GPU_UPLOAD is write-combined because that is what it is for -- the CPU
+ * streams into it and never reads back, and write-combining is what makes
+ * those writes cheap.  UPLOAD is write-combined for the same reason;
+ * READBACK is write-back because the CPU reads it.
+ */
+static D12_AGGREGATE_RETURN(D3D12_HEAP_PROPERTIES) STDMETHODCALLTYPE
+d12_device_GetCustomHeapProperties(ID3D12Device2 *iface
+                                      D12_AGGREGATE_OUT(D3D12_HEAP_PROPERTIES),
+                                   UINT node_mask, D3D12_HEAP_TYPE heap_type)
+{
+   D3D12_HEAP_PROPERTIES props = {
+      .Type = D3D12_HEAP_TYPE_CUSTOM,
+      .MemoryPoolPreference = D3D12_MEMORY_POOL_L0,
+      .CreationNodeMask = node_mask ? node_mask : 1,
+      .VisibleNodeMask = node_mask ? node_mask : 1,
+   };
+
+   (void)iface;
+
+   switch (heap_type) {
+   case D3D12_HEAP_TYPE_DEFAULT:
+      props.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_NOT_AVAILABLE;
+      break;
+   case D3D12_HEAP_TYPE_UPLOAD:
+   case D3D12_HEAP_TYPE_GPU_UPLOAD:
+      props.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_COMBINE;
+      break;
+   case D3D12_HEAP_TYPE_READBACK:
+      props.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+      break;
+   default:
+      /* CUSTOM has no abstract properties to resolve, and an unknown type
+       * has none either. D3D12 answers both with a zeroed structure. */
+      props = (D3D12_HEAP_PROPERTIES){0};
+      break;
+   }
+
+   D12_RETURN_AGGREGATE(props);
+}
+
 static D3D12_RESOURCE_ALLOCATION_INFO *STDMETHODCALLTYPE
 d12_device_GetResourceAllocationInfo(ID3D12Device2 *iface,
                                      D3D12_RESOURCE_ALLOCATION_INFO *ret,
@@ -2935,6 +3092,16 @@ d12_device_CreateDepthStencilView(ID3D12Device2 *iface,
 
    struct d12_resource *res = d12_resource_from_iface(resource);
 
+   /* Fixed-function ZLS uses one address for both loads and stores. Sparse
+    * holes use distinct zero-read and discard-write aliases, so a reserved
+    * depth resource cannot satisfy D3D12 null-tile semantics through ZLS. */
+   if (res->reserved) {
+      mesa_loge("CreateDepthStencilView: reserved depth resources are "
+                "unsupported");
+      slot->resource = NULL;
+      return;
+   }
+
    const bool is_1d =
       res->desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE1D;
    const bool is_2d =
@@ -3176,6 +3343,18 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
    }
 
    const bool comparison = D3D12_DECODE_IS_COMPARISON_FILTER(desc->Filter);
+   /*
+    * MINIMUM/MAXIMUM filtering has no AGX hardware equivalent and is reduced
+    * in the shader; see d12_sampler_reduction_core.h for which filters
+    * actually need that and d12_nir_lower_sampler_reduction for the lowering.
+    * Forcing nearest mip filtering here is what lets the shader's single 2x2
+    * gather land on the level the hardware selected.
+    */
+   const struct d12_sampler_reduction_policy reduction_policy =
+      d12_sampler_reduction_for_filter((uint32_t)desc->Filter);
+   const bool reduces =
+      reduction_policy.reduction != D12_SAMPLER_REDUCE_NONE;
+
    agx_pack(&slot->sampler, SAMPLER, cfg) {
       cfg.minimum_lod = desc->MinLOD;
       cfg.maximum_lod = desc->MaxLOD;
@@ -3187,7 +3366,8 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
                       D3D12_FILTER_TYPE_LINEAR
                       ? AGX_FILTER_LINEAR
                       : AGX_FILTER_NEAREST;
-      cfg.mip_filter = D3D12_DECODE_MIP_FILTER(desc->Filter) ==
+      cfg.mip_filter = !reduction_policy.force_mip_nearest &&
+                       D3D12_DECODE_MIP_FILTER(desc->Filter) ==
                           D3D12_FILTER_TYPE_LINEAR
                           ? AGX_MIP_FILTER_LINEAR
                           : AGX_MIP_FILTER_NEAREST;
@@ -3207,8 +3387,15 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
    slot->sampler_lod_bias = desc->MipLODBias;
    slot->sampler_flags = desc->Flags;
    slot->sampler_reserved = d12_sampler_custom_border_flags(desc);
-   if (D3D12_DECODE_MIP_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT)
+   if (D3D12_DECODE_MIP_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT ||
+       reduction_policy.force_mip_nearest)
       slot->sampler_reserved |= D12_SAMPLER_MIP_POINT;
+   if (reduces) {
+      slot->sampler_reserved |=
+         reduction_policy.reduction == D12_SAMPLER_REDUCE_MINIMUM
+            ? D12_SAMPLER_REDUCTION_MIN
+            : D12_SAMPLER_REDUCTION_MAX;
+   }
    slot->sampler_kind = D12_DESC_SAMPLER;
 }
 
@@ -3260,10 +3447,24 @@ d12_fill_buffer_descriptor(struct d12_descriptor *slot,
       return false;
    }
 
-   uint64_t offset = first_element * (uint64_t)MAX2(stride_B, 1);
-   uint64_t span = (uint64_t)num_elements * MAX2(stride_B, 1);
+   if (!d12_buffer_view_element_count_valid(num_elements)) {
+      mesa_loge("%s: NumElements exceeds the D3D12 buffer-view limit", what);
+      slot->kind = D12_DESC_NONE;
+      slot->resource = NULL;
+      return false;
+   }
 
-   if (offset > res->desc.Width || span > res->desc.Width - offset) {
+   stride_B = MAX2(stride_B, 1);
+   if (stride_B > UINT16_MAX) {
+      mesa_loge("%s: buffer stride exceeds root metadata ABI", what);
+      slot->kind = D12_DESC_NONE;
+      slot->resource = NULL;
+      return false;
+   }
+
+   uint64_t offset;
+   if (!d12_buffer_view_range(res->desc.Width, first_element, num_elements,
+                              stride_B, &offset, NULL)) {
       mesa_loge("%s: view spans past the end of the resource", what);
       slot->kind = D12_DESC_NONE;
       slot->resource = NULL;
@@ -3272,8 +3473,8 @@ d12_fill_buffer_descriptor(struct d12_descriptor *slot,
 
    slot->resource = res;
    slot->address = res->addr + offset;
-   slot->size_B = (uint32_t)span;
-   slot->stride_B = stride_B;
+   slot->buffer_count = num_elements;
+   slot->buffer_stride_B = stride_B;
    return true;
 }
 
@@ -3556,8 +3757,13 @@ d12_device_CreateShaderResourceView(ID3D12Device2 *iface,
    }
 
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;
-   uint32_t count = desc ? desc->Buffer.NumElements
-                         : (uint32_t)(res->desc.Width / 4);
+   uint64_t default_count = res->desc.Width / 4;
+   if (!desc && default_count > UINT32_MAX) {
+      mesa_loge("CreateShaderResourceView: default buffer view has too many "
+                "elements");
+      return;
+   }
+   uint32_t count = desc ? desc->Buffer.NumElements : (uint32_t)default_count;
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
    /* A raw (ByteAddressBuffer) view addresses 4-byte words. */
@@ -3755,21 +3961,14 @@ d12_device_CreateUnorderedAccessView(
       return;
    }
 
-   /* A UAV counter is a separate allocation the shader reaches through
-    * bufferUpdateCounter. Its address rides in the descriptor
-    * (counter_address, part of the shader-visible ABI) and in the root
-    * table's second array; the CounterOffsetInBytes applies on top of
-    * the counter resource's base, per the D3D12 spec.
-    */
-   if (counter) {
-      struct d12_resource *cres = d12_resource_from_iface(counter);
-      uint64_t off = desc ? desc->Buffer.CounterOffsetInBytes : 0;
-      slot->counter_address = cres->addr + off;
-   }
-
    uint64_t first = desc ? desc->Buffer.FirstElement : 0;
-   uint32_t count = desc ? desc->Buffer.NumElements
-                         : (uint32_t)(res->desc.Width / 4);
+   uint64_t default_count = res->desc.Width / 4;
+   if (!desc && default_count > UINT32_MAX) {
+      mesa_loge("CreateUnorderedAccessView: default buffer view has too many "
+                "elements");
+      return;
+   }
+   uint32_t count = desc ? desc->Buffer.NumElements : (uint32_t)default_count;
    uint32_t stride = desc ? desc->Buffer.StructureByteStride : 4;
 
    if (desc && (desc->Buffer.Flags & D3D12_BUFFER_UAV_FLAG_RAW)) {
@@ -3784,6 +3983,25 @@ d12_device_CreateUnorderedAccessView(
    }
    if (!stride)
       stride = 4;
+
+   /* A UAV counter is a separate dense buffer allocation reached through
+    * bufferUpdateCounter. Reserved counters need residency-gated atomic RMW
+    * semantics; until that sideband exists, reject them instead of letting
+    * unmapped counters share the writable sparse scratch page. */
+   if (counter) {
+      struct d12_resource *cres = d12_resource_from_iface(counter);
+      const uint64_t off = desc ? desc->Buffer.CounterOffsetInBytes : 0;
+      if (!desc || !desc->Buffer.StructureByteStride ||
+          cres->device != device || cres->reserved || !cres->bo ||
+          cres->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+          (off % D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT) != 0 ||
+          off > cres->desc.Width ||
+          sizeof(uint32_t) > cres->desc.Width - off) {
+         mesa_loge("CreateUnorderedAccessView: invalid or sparse UAV counter");
+         return;
+      }
+      slot->counter_address = cres->addr + off;
+   }
 
    if (d12_fill_buffer_descriptor(slot, res, first, count, stride,
                                   "CreateUnorderedAccessView")) {
@@ -3826,9 +4044,14 @@ d12_device_CreateConstantBufferView(
       return;
    }
 
-   /* A CBV names a GPU address directly rather than a resource. */
+   /* A CBV names a GPU address directly, but retain a reserved-buffer owner
+    * when one exists. The read-only sparse alias supplies D3D12's zero-fill
+    * behavior for unmapped tiles, while the resource pointer publishes its
+    * residency map and current backing allocations to the exact read set. */
    slot->kind = D12_DESC_CBV;
-   slot->address = desc->BufferLocation;
+   slot->resource =
+      d12_sparse_buffer_for_address(device, desc->BufferLocation);
+   slot->address = d12_sparse_read_address(device, desc->BufferLocation);
    slot->size_B = desc->SizeInBytes;
    d12_descriptor_heap_update_slot(device, slot);
 }
@@ -4427,6 +4650,9 @@ d12_device15_ResolveQueryData(ID3D12Device15 *iface,
       return E_INVALIDARG;
 
    const uint8_t *src = agx_bo_map(heap->bo);
+   if (!src)
+      return E_OUTOFMEMORY;
+
    uint8_t *dst = resolved;
    for (UINT i = 0; i < count; i++) {
       const uint8_t *value = src + (size_t)(start + i) * heap->stride;
@@ -4589,6 +4815,7 @@ static const ID3D12Device2Vtbl d12_device_vtbl = {
    .CreatePlacedResource = d12_device_CreatePlacedResource,
    .CreateReservedResource = d12_device_CreateReservedResource,
    .GetResourceTiling = d12_device_GetResourceTiling,
+   .GetCustomHeapProperties = d12_device_GetCustomHeapProperties,
    .GetResourceAllocationInfo = d12_device_GetResourceAllocationInfo,
    .CreateRenderTargetView = d12_device_CreateRenderTargetView,
    .CreateDepthStencilView = d12_device_CreateDepthStencilView,
@@ -4650,8 +4877,14 @@ d12_device_backend_init(struct d12_device *device,
    if (!device->rodata_bo)
       goto fail_oclqry;
 
-   agx_pack_txf_sampler(
-      (struct agx_sampler_packed *)agx_bo_map(device->rodata_bo));
+   /* Lock2 can refuse an allocation dxgkrnl just handed us.  Everything below
+    * writes through this mapping, so treat a failed map as a failed device
+    * rather than faulting during device creation. */
+   uint8_t *rodata = agx_bo_map(device->rodata_bo);
+   if (!rodata)
+      goto fail_rodata;
+
+   agx_pack_txf_sampler((struct agx_sampler_packed *)rodata);
    agx_pack(&device->dev.txf_sampler, USC_SAMPLER, cfg) {
       cfg.start = 0;
       cfg.count = 1;
@@ -4666,7 +4899,6 @@ d12_device_backend_init(struct d12_device *device,
 
    const size_t heap_off = ALIGN_POT(AGX_SAMPLER_LENGTH, 16);
    const size_t null_off = heap_off + sizeof(struct poly_heap);
-   uint8_t *rodata = agx_bo_map(device->rodata_bo);
    device->heap_desc_va = device->rodata_bo->va->addr + heap_off;
    device->null_va = device->rodata_bo->va->addr + null_off;
    memset(rodata + null_off, 0, D12_NULL_REGION_SIZE);
@@ -4676,6 +4908,19 @@ d12_device_backend_init(struct d12_device *device,
       .bottom = 0,
       .size = (uint32_t)device->heap_bo->size,
    };
+
+   /* The advertised typed-UAV-load promise is checked against the table that
+    * answers CheckFormatSupport, once, where a mismatch is still attributable
+    * to the driver rather than to an application reading zeroes. */
+   {
+      DXGI_FORMAT missing = DXGI_FORMAT_UNKNOWN;
+      if (!d12_format_typed_uav_load_complete(
+             d12_core_get_caps()->typed_uav_load_additional_formats,
+             &missing)) {
+         mesa_loge("capability policy advertises typed UAV loads that DXGI "
+                   "format %u does not report", (unsigned)missing);
+      }
+   }
 
    simple_mtx_init(&device->scratch_lock, mtx_plain);
    simple_mtx_init(&device->descriptor_heap_lock, mtx_plain);

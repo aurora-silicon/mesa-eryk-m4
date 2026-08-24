@@ -77,3 +77,24 @@ d12_write_set_add(struct d12_write_range *ranges, unsigned *count,
    };
    return D12_WRITE_SET_OK;
 }
+
+enum d12_write_set_result
+d12_write_set_add_allocation(struct d12_write_range *ranges, unsigned *count,
+                             unsigned capacity, uint64_t allocation_va,
+                             uint64_t allocation_size, uint64_t offset,
+                             uint64_t size)
+{
+   if (!allocation_va || !allocation_size || !size ||
+       offset >= allocation_size || size > allocation_size - offset ||
+       allocation_va > UINT64_MAX - offset)
+      return D12_WRITE_SET_INVALID;
+
+   enum d12_write_set_result result =
+      d12_write_set_add(ranges, count, capacity, allocation_va + offset,
+                        size);
+   if (result != D12_WRITE_SET_NOSPACE)
+      return result;
+
+   return d12_write_set_add(ranges, count, capacity, allocation_va,
+                            allocation_size);
+}

@@ -854,7 +854,7 @@ d3dkmt_adopt_allocation(struct agx_device *dev, size_t size, size_t align,
 
    simple_mtx_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
-   dev->max_handle = MAX2(dev->max_handle, handle);
+   agx_include_bo_handle(dev, handle);
    simple_mtx_unlock(&dev->bo_map_lock);
 
    assert(!memcmp(bo, &((struct agx_bo){}), sizeof(*bo)));
@@ -2628,7 +2628,7 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
    union {
       struct agxw_submit_private_v4 alignment;
       uint8_t bytes[sizeof(struct agxw_submit_private_v4) +
-                    AGXW_MAX_READ_RANGES_PER_SUBMIT *
+                    2 * AGXW_MAX_READ_RANGES_PER_SUBMIT *
                        sizeof(struct agxw_submit_read_range) +
                     AGXW_MAX_FENCE_DEPENDENCIES_PER_SUBMIT *
                        sizeof(struct agxw_submit_fence_dependency)];
@@ -2714,10 +2714,12 @@ d3dkmt_submit(struct agx_device *dev, struct drm_asahi_submit *submit,
 
    const size_t priv_header_size =
       use_fence_dependencies ? sizeof(struct agxw_submit_private_v4)
-                             : sizeof(struct agxw_submit_private_v3);
+                             : sizeof(struct agxw_submit_private_v5);
    const size_t priv_capacity =
-      priv_header_size + AGXW_MAX_READ_RANGES_PER_SUBMIT *
-                            sizeof(struct agxw_submit_read_range) +
+      priv_header_size +
+      (use_fence_dependencies ? 1u : 2u) *
+         AGXW_MAX_READ_RANGES_PER_SUBMIT *
+         sizeof(struct agxw_submit_read_range) +
       (size_t)fence_dependency_count *
          sizeof(struct agxw_submit_fence_dependency);
    memset(priv, 0, priv_capacity);

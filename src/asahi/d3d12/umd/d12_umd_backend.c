@@ -371,6 +371,32 @@ d12_umd_backend_set_stream_output_targets(
 }
 
 static void
+d12_umd_backend_begin_render_pass(
+   void *list, uint32_t count,
+   const struct d12_frontend_render_pass_rt *render_targets,
+   const struct d12_frontend_render_pass_ds *depth_stencil)
+{
+   d12_device_runtime_command_list_begin_render_pass(list, count,
+                                                     render_targets,
+                                                     depth_stencil);
+}
+
+static void
+d12_umd_backend_end_render_pass(void *list)
+{
+   d12_device_runtime_command_list_end_render_pass(list);
+}
+
+static void
+d12_umd_backend_set_sample_positions(void *list, uint32_t samples_per_pixel,
+                                     uint32_t pixel_count,
+                                     const int8_t *positions)
+{
+   d12_device_runtime_command_list_set_sample_positions(
+      list, samples_per_pixel, pixel_count, positions);
+}
+
+static void
 d12_umd_backend_set_render_targets(void *list, uint32_t count,
                                    const uint64_t *render_targets,
                                    bool contiguous,
@@ -921,6 +947,9 @@ static const struct d12_umd_renderer_ops d12_umd_backend_renderer_ops = {
    .set_index_buffer = d12_umd_backend_set_index_buffer,
    .set_stream_output_targets =
       d12_umd_backend_set_stream_output_targets,
+   .begin_render_pass = d12_umd_backend_begin_render_pass,
+   .end_render_pass = d12_umd_backend_end_render_pass,
+   .set_sample_positions = d12_umd_backend_set_sample_positions,
    .set_render_targets = d12_umd_backend_set_render_targets,
    .resource_barriers = d12_umd_backend_resource_barriers,
    .copy_buffer_region = d12_umd_backend_copy_buffer_region,

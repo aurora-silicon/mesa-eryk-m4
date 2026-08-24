@@ -6,6 +6,7 @@
 #pragma once
 
 #include "compiler/nir/nir.h"
+#include "asahi/lib/agx_chip.h"
 #include "util/shader_stats.h"
 #include "util/u_dynarray.h"
 #include "util/u_tristate.h"
@@ -259,6 +260,19 @@ struct agx_fs_shader_key {
 };
 
 struct agx_device_key {
+   /*
+    * Binary encoding of the instruction set to emit.
+    *
+    * Every part this compiler supports is AGX2, so the packer accepts only
+    * that and asserts on anything else. Carrying it explicitly is what makes
+    * a future AGX3 table a dispatch rather than a rewrite, and it means a
+    * caller that reaches the compiler with an unsupported part is caught in
+    * the compiler instead of producing an instruction stream for the wrong
+    * hardware. See agx_chip.h for why the encoding, rather than the chip, is
+    * the thing that decides.
+    */
+   enum agx_isa_encoding encoding;
+
    /* Does the target GPU need explicit cluster coherency for atomics?
     * Only used on G13X.
     */

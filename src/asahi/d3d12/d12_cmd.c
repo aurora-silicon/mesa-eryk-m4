@@ -13,9 +13,12 @@
  */
 
 #include "d12_private.h"
+#include "d12_buffer_view_core.h"
+#include "d12_command_validation_core.h"
 #include "d12_present_format_core.h"
 #include "d12_query_core.h"
 #include "d12_resolve_core.h"
+#include "d12_sparse_residency_core.h"
 #include "d12_texture_copy_math.h"
 
 #include "agx_helpers.h"
@@ -354,10 +357,34 @@ d12_segment_track_write_descriptor(struct d12_segment *seg,
 }
 
 static void
+d12_segment_track_write_resource(struct d12_segment *seg,
+                                 enum d12_write_pipe pipe,
+                                 struct d12_resource *resource)
+{
+   if (!resource)
+      return;
+
+   struct d12_write_tracker *tracker =
+      d12_segment_write_tracker(seg, pipe);
+   util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
+      if (ref->kind == D12_WRITE_REF_RESOURCE &&
+          ref->resource == resource)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_write_ref,
+      ((struct d12_write_ref){
+         .kind = D12_WRITE_REF_RESOURCE,
+         .resource = resource,
+      }));
+}
+
+static void
 d12_segment_track_write_heap(struct d12_segment *seg,
                              enum d12_write_pipe pipe,
                              const struct d12_descriptor_heap *heap,
-                             uint32_t first)
+                             uint32_t first, uint32_t count)
 {
    struct d12_write_tracker *tracker =
       d12_segment_write_tracker(seg, pipe);
@@ -366,9 +393,15 @@ d12_segment_track_write_heap(struct d12_segment *seg,
       return;
    }
 
+   /* Clamp rather than refuse: a sized range that runs past the bound heap
+    * is the application's problem, and the descriptors that do exist are
+    * still exactly the ones this submission can write. */
+   if (count > heap->desc.NumDescriptors - first)
+      count = heap->desc.NumDescriptors - first;
+
    util_dynarray_foreach(&tracker->refs, struct d12_write_ref, ref) {
       if (ref->kind == D12_WRITE_REF_HEAP && ref->heap.heap == heap &&
-          ref->heap.first == first)
+          ref->heap.first == first && ref->heap.count == count)
          return;
    }
 
@@ -376,7 +409,7 @@ d12_segment_track_write_heap(struct d12_segment *seg,
       &tracker->refs, struct d12_write_ref,
       ((struct d12_write_ref){
          .kind = D12_WRITE_REF_HEAP,
-         .heap = {.heap = heap, .first = first},
+         .heap = {.heap = heap, .first = first, .count = count},
       }));
 }
 
@@ -385,6 +418,223 @@ d12_segment_mark_write_set_incomplete(struct d12_segment *seg,
                                       enum d12_write_pipe pipe)
 {
    d12_segment_write_tracker(seg, pipe)->incomplete = true;
+}
+
+static struct d12_read_tracker *
+d12_list_read_tracker(struct d12_cmd_list *list)
+{
+   struct d12_read_tracker *tracker = &list->reads;
+   if (!tracker->initialized) {
+      util_dynarray_init(&tracker->refs, NULL);
+      tracker->initialized = true;
+   }
+   return tracker;
+}
+
+static void
+d12_list_track_read_bo(struct d12_cmd_list *list, struct agx_bo *bo)
+{
+   if (!bo || !bo->va || !bo->size) {
+      d12_list_read_tracker(list)->incomplete = true;
+      return;
+   }
+
+   struct d12_read_tracker *tracker = d12_list_read_tracker(list);
+   util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+      if (ref->kind == D12_READ_REF_BO && ref->bo == bo)
+         return;
+   }
+
+   agx_bo_reference(bo);
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_read_ref,
+      ((struct d12_read_ref){.kind = D12_READ_REF_BO, .bo = bo}));
+}
+
+static void
+d12_list_track_read_range(struct d12_cmd_list *list, uint64_t address,
+                          uint64_t size)
+{
+   struct d12_read_tracker *tracker = d12_list_read_tracker(list);
+   if (!address || (size && address > UINT64_MAX - size)) {
+      tracker->incomplete = true;
+      return;
+   }
+
+   util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+      if (ref->kind == D12_READ_REF_RANGE &&
+          ref->range.address == address && ref->range.size == size)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_read_ref,
+      ((struct d12_read_ref){
+         .kind = D12_READ_REF_RANGE,
+         .range = {.address = address, .size = size},
+      }));
+}
+
+static void
+d12_list_track_read_descriptor(struct d12_cmd_list *list,
+                               const struct d12_descriptor *descriptor)
+{
+   if (!descriptor)
+      return;
+
+   struct d12_read_tracker *tracker = d12_list_read_tracker(list);
+   util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+      if (ref->kind == D12_READ_REF_DESCRIPTOR &&
+          ref->descriptor == descriptor)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_read_ref,
+      ((struct d12_read_ref){
+         .kind = D12_READ_REF_DESCRIPTOR,
+         .descriptor = descriptor,
+      }));
+}
+
+static void
+d12_list_track_read_heap(struct d12_cmd_list *list,
+                         const struct d12_descriptor_heap *heap,
+                         uint32_t first, uint32_t count, bool resources)
+{
+   struct d12_read_tracker *tracker = d12_list_read_tracker(list);
+   if (!heap || first >= heap->desc.NumDescriptors) {
+      tracker->incomplete = true;
+      return;
+   }
+
+   /* Clamp rather than refuse; see d12_segment_track_write_heap. */
+   if (count > heap->desc.NumDescriptors - first)
+      count = heap->desc.NumDescriptors - first;
+
+   util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+      if (ref->kind == D12_READ_REF_HEAP && ref->heap.heap == heap &&
+          ref->heap.first == first && ref->heap.count == count &&
+          ref->heap.resources == resources)
+         return;
+   }
+
+   util_dynarray_append_typed(
+      &tracker->refs, struct d12_read_ref,
+      ((struct d12_read_ref){
+         .kind = D12_READ_REF_HEAP,
+         .heap = {.heap = heap,
+                  .first = first,
+                  .count = count,
+                  .resources = resources},
+      }));
+}
+
+static void
+d12_list_track_read_resource(struct d12_cmd_list *list,
+                             struct d12_resource *resource)
+{
+   if (!resource)
+      return;
+
+   if (resource->reserved) {
+      struct d12_read_tracker *tracker = d12_list_read_tracker(list);
+      util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+         if (ref->kind == D12_READ_REF_RESOURCE &&
+             ref->resource == resource)
+            return;
+      }
+      util_dynarray_append_typed(
+         &tracker->refs, struct d12_read_ref,
+         ((struct d12_read_ref){
+            .kind = D12_READ_REF_RESOURCE,
+            .resource = resource,
+         }));
+      return;
+   }
+
+   if (!resource->bo) {
+      d12_list_read_tracker(list)->incomplete = true;
+      return;
+   }
+
+   d12_list_track_read_bo(list, resource->bo);
+   if (resource->stencil_bo)
+      d12_list_track_read_bo(list, resource->stencil_bo);
+}
+
+static void
+d12_list_mark_read_set_incomplete(struct d12_cmd_list *list)
+{
+   d12_list_read_tracker(list)->incomplete = true;
+}
+
+static void
+d12_list_read_tracker_reset(struct d12_cmd_list *list)
+{
+   struct d12_read_tracker *tracker = &list->reads;
+   if (tracker->initialized) {
+      util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+         if (ref->kind == D12_READ_REF_BO && ref->bo)
+            agx_bo_unreference(&list->device->dev, ref->bo);
+      }
+      util_dynarray_fini(&tracker->refs);
+   }
+
+   memset(tracker, 0, sizeof(*tracker));
+   util_dynarray_init(&tracker->refs, NULL);
+   tracker->initialized = true;
+}
+
+static void
+d12_list_read_tracker_fini(struct d12_cmd_list *list)
+{
+   struct d12_read_tracker *tracker = &list->reads;
+   if (!tracker->initialized)
+      return;
+
+   util_dynarray_foreach(&tracker->refs, struct d12_read_ref, ref) {
+      if (ref->kind == D12_READ_REF_BO && ref->bo)
+         agx_bo_unreference(&list->device->dev, ref->bo);
+   }
+   util_dynarray_fini(&tracker->refs);
+   memset(tracker, 0, sizeof(*tracker));
+}
+
+static void
+d12_list_track_pso_reads(struct d12_cmd_list *list,
+                         const struct d12_pipeline_state *pso)
+{
+   if (!pso)
+      return;
+
+   struct agx_bo *const bos[] = {
+      pso->code_bo,
+      pso->vs.linked.bo,
+      pso->vs.code_bo,
+      pso->fs.linked.bo,
+      pso->fs.code_bo,
+      pso->sw_vs_bo,
+      pso->sw_tes_bo,
+      pso->gs_count_bo,
+      pso->gs_pre_bo,
+      pso->gs_main_bo,
+      pso->gs_rast.linked.bo,
+      pso->gs_rast.code_bo,
+      pso->tcs_bo,
+      pso->tes.linked.bo,
+      pso->tes.code_bo,
+      pso->ms_bo,
+      pso->ms_setup_bo,
+      pso->ms_rast.linked.bo,
+      pso->ms_rast.code_bo,
+      pso->as_bo,
+      pso->as_setup_bo,
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(bos); ++i) {
+      if (bos[i])
+         d12_list_track_read_bo(list, bos[i]);
+   }
 }
 
 static struct d12_dynamic_state_values
@@ -478,6 +728,7 @@ static void
 d12_list_begin_recording(struct d12_cmd_list *list)
 {
    d12_list_release_segment_scratch(list);
+   d12_list_read_tracker_reset(list);
    list->stream_cur = d12_list_stream_map(list);
    list->data_floor = list->stream_bo->size;
    list->usc_offset = 0;
@@ -535,6 +786,8 @@ d12_list_begin_recording(struct d12_cmd_list *list)
    list->null_buffer = 0;
    list->discard_buffer = 0;
    list->null_counters = 0;
+   list->sparse_registry_view_gpu = 0;
+   list->uses_sparse_registry = false;
 }
 
 /* Upload a data blob into the top of the stream BO; returns its GPU VA. */
@@ -862,6 +1115,138 @@ d12_segment_track_precompiled_write(struct d12_segment *seg,
    }
 }
 
+/* Decode the stable pointer fields of libagx kernels used for ordinary
+ * copies, clears, resolves, queries and predication. These programs are
+ * common enough that forcing the whole-live-BO fallback for every invocation
+ * would erase the read-set optimization on copy queues and clear-heavy
+ * frames. Programs with GPU-generated or evolving pointer ABIs deliberately
+ * return false and retain the conservative path. */
+static bool
+d12_list_track_precompiled_reads(struct d12_cmd_list *list,
+                                 enum libagx_program idx, const void *args,
+                                 size_t args_size)
+{
+#define D12_PRECOMP_ARGS(type)                                                \
+   const struct type *a = args;                                               \
+   if (args_size != sizeof(*a))                                               \
+      return false
+#define D12_TRACK_ADDRESS(field)                                              \
+   do {                                                                       \
+      if (a->field)                                                           \
+         d12_list_track_read_range(list, a->field, 0);                        \
+   } while (0)
+
+   switch (idx) {
+   case LIBAGX_COPY_UCHAR: {
+      D12_PRECOMP_ARGS(libagx_copy_uchar_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_WRITE_U32: {
+      D12_PRECOMP_ARGS(libagx_write_u32_args);
+      if (a->address)
+         d12_list_track_read_range(list, a->address, sizeof(uint32_t));
+      return true;
+   }
+   case LIBAGX_FILL: {
+      D12_PRECOMP_ARGS(libagx_fill_args);
+      D12_TRACK_ADDRESS(address);
+      return true;
+   }
+   case LIBAGX_FILL_IMAGE: {
+      D12_PRECOMP_ARGS(libagx_fill_image_args);
+      D12_TRACK_ADDRESS(dest);
+      return true;
+   }
+   case LIBAGX_COPY_IMAGE: {
+      D12_PRECOMP_ARGS(libagx_copy_image_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_PRESENT_BLT: {
+      D12_PRECOMP_ARGS(libagx_present_blt_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_COPY_QUERY_GL: {
+      D12_PRECOMP_ARGS(libagx_copy_query_gl_args);
+      D12_TRACK_ADDRESS(query);
+      D12_TRACK_ADDRESS(dest);
+      return true;
+   }
+   case LIBAGX_QUERY_DELTA: {
+      D12_PRECOMP_ARGS(libagx_query_delta_args);
+      D12_TRACK_ADDRESS(counter);
+      D12_TRACK_ADDRESS(start);
+      D12_TRACK_ADDRESS(result);
+      return true;
+   }
+   case LIBAGX_D3D12_PREDICATE: {
+      D12_PRECOMP_ARGS(libagx_d3d12_predicate_args);
+      D12_TRACK_ADDRESS(out);
+      D12_TRACK_ADDRESS(in);
+      D12_TRACK_ADDRESS(predicate);
+      return true;
+   }
+   case LIBAGX_D3D12_INDIRECT_PATCH: {
+      D12_PRECOMP_ARGS(libagx_d3d12_indirect_patch_args);
+      D12_TRACK_ADDRESS(out);
+      D12_TRACK_ADDRESS(in);
+      D12_TRACK_ADDRESS(draw_count);
+      return true;
+   }
+   case LIBAGX_D3D12_INDIRECT_CONSTANT: {
+      D12_PRECOMP_ARGS(libagx_d3d12_indirect_constant_args);
+      D12_TRACK_ADDRESS(out);
+      D12_TRACK_ADDRESS(previous);
+      D12_TRACK_ADDRESS(in);
+      D12_TRACK_ADDRESS(draw_count);
+      return true;
+   }
+   case LIBAGX_D3D12_INDIRECT_DISPATCH: {
+      D12_PRECOMP_ARGS(libagx_d3d12_indirect_dispatch_args);
+      D12_TRACK_ADDRESS(out);
+      D12_TRACK_ADDRESS(in);
+      return true;
+   }
+   case LIBAGX_RESOLVE_FLOAT32_MIN:
+   case LIBAGX_RESOLVE_FLOAT32_AVERAGE:
+   case LIBAGX_RESOLVE_UNORM8X4:
+   case LIBAGX_RESOLVE_FLOAT32X4: {
+      D12_PRECOMP_ARGS(libagx_resolve_unorm8x4_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_RESOLVE_UNORM8X4_TYPED: {
+      D12_PRECOMP_ARGS(libagx_resolve_unorm8x4_typed_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_RESOLVE_SCALAR_EXTREMA: {
+      D12_PRECOMP_ARGS(libagx_resolve_scalar_extrema_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   case LIBAGX_RESOLVE_TYPED: {
+      D12_PRECOMP_ARGS(libagx_resolve_typed_args);
+      D12_TRACK_ADDRESS(dest);
+      D12_TRACK_ADDRESS(src);
+      return true;
+   }
+   default:
+      return false;
+   }
+
+#undef D12_TRACK_ADDRESS
+#undef D12_PRECOMP_ARGS
+}
+
 /*
  * Dispatch a precompiled libagx kernel, exactly as hk_dispatch_precomp does.
  */
@@ -901,6 +1286,11 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
       list->state = D12_LIST_ERROR;
       return;
    }
+
+   d12_list_track_read_bo(list, prog->bo);
+
+   if (!d12_list_track_precompiled_reads(list, idx, args, args_size))
+      d12_list_mark_read_set_incomplete(list);
 
    uint64_t data_gpu = d12_list_upload(list, args, args_size, 4);
    if (!data_gpu)
@@ -994,10 +1384,8 @@ struct d12_indirect_root_patch {
    uint64_t in;
    uint64_t draw_count;
    uint64_t previous_tables;
-   uint64_t sparse_ranges;
    uint64_t sparse_ro_offset;
    uint32_t previous_table_count;
-   uint32_t sparse_range_count;
    uint32_t command_index;
    uint32_t slot;
    bool publish_unbounded;
@@ -1085,6 +1473,8 @@ d12_list_dispatch_indirect_patches(
          .out_address = tables_gpu + patch->slot * sizeof(uint64_t),
          .out_bufinfo = tables_gpu +
                         (2 * table_count + patch->slot) * sizeof(uint64_t),
+         .out_residency = tables_gpu +
+                          (3 * table_count + patch->slot) * sizeof(uint64_t),
          .in = patch->in,
          .draw_count = patch->draw_count,
          .previous_address = patch->previous_tables
@@ -1094,10 +1484,14 @@ d12_list_dispatch_indirect_patches(
                  (2 * patch->previous_table_count + patch->slot) *
                     sizeof(uint64_t)
             : 0,
-         .sparse_ranges = patch->sparse_ranges,
+         .previous_residency = patch->previous_tables
+            ? patch->previous_tables +
+                 (3 * patch->previous_table_count + patch->slot) *
+                    sizeof(uint64_t)
+            : 0,
+         .sparse_registry = list->sparse_registry_view_gpu,
          .null_address = null_address,
          .sparse_ro_offset = patch->sparse_ro_offset,
-         .sparse_range_count = patch->sparse_range_count,
          .command_index = patch->command_index,
          .publish_unbounded = patch->publish_unbounded,
          .translate_read = patch->read_only,
@@ -1118,7 +1512,7 @@ d12_list_dispatch_indirect_patches(
  */
 static uint32_t
 d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
-                     const float color[4],
+                     const float legacy_color[4],
                      const enum agx_bg_eot_op ops[AGX_MAX_RENDER_TARGETS],
                      const struct agx_tilebuffer_layout *tib,
                      struct agx_counts_packed *out_counts)
@@ -1193,6 +1587,17 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             int32_t i[4];
          } cv;
 
+         /* A render pass clears each attachment to its own value; every
+          * other path clears one target at a time and carries one colour. */
+         const float *color = seg->render_pass ? seg->rt_clear[rt_index]
+                                               : legacy_color;
+         if (!color) {
+            mesa_loge("background clear requested for RT%u with no clear "
+                      "value", rt_index);
+            list->state = D12_LIST_ERROR;
+            return 0;
+         }
+
          if (util_format_is_pure_uint(cf)) {
             for (unsigned c = 0; c < 4; c++)
                cv.u[c] = (uint32_t)color[c];
@@ -1235,7 +1640,8 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
             cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
             cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
-            cfg.address = rt_address;
+            cfg.address =
+               d12_sparse_read_address(list->device, rt_address);
             cfg.width = rt->layout.width_px;
             cfg.height = rt->layout.height_px;
             cfg.first_level = rt_level;
@@ -1384,6 +1790,7 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
       list->state = D12_LIST_ERROR;
       return 0;
    }
+   d12_list_track_read_bo(list, shader->bo);
 
    agx_usc_pack(&b, SHADER, cfg) {
       cfg.code = agx_usc_addr(&device->dev,
@@ -1531,6 +1938,30 @@ d12_list_begin_render(struct d12_cmd_list *list,
    seg->process_empty_tiles = process_empty_tiles;
    seg->layers = 1;
 
+   /* Sample positions are fixed for a whole hardware render, so snapshot
+    * them when the segment opens rather than reading them at submit. */
+   seg->sample_positions =
+      list->sample_positions_set ? list->sample_positions : 0;
+
+   /* A declared render pass states its tile traffic per attachment. Carry it
+    * from the list, where BeginRenderPass recorded it before any draw
+    * existed to open this segment. */
+   if (list->render_pass_active) {
+      seg->render_pass = true;
+      memcpy(seg->rt_plan, list->render_pass_rt_plan,
+             sizeof(seg->rt_plan));
+      memcpy(seg->rt_clear, list->render_pass_rt_clear,
+             sizeof(seg->rt_clear));
+      seg->depth_plan = list->render_pass_depth_plan;
+      seg->stencil_plan = list->render_pass_stencil_plan;
+      if (seg->depth_plan.load == D12_RP_LOAD_CLEAR)
+         seg->depth_cleared = true;
+      if (seg->stencil_plan.load == D12_RP_LOAD_CLEAR) {
+         seg->stencil_cleared = true;
+         seg->stencil_clear = list->render_pass_stencil_clear;
+      }
+   }
+
    seg->rt_count = rtv_count;
    unsigned bound_rts = 0;
    uint8_t bound_rt_mask = 0;
@@ -1574,14 +2005,20 @@ d12_list_begin_render(struct d12_cmd_list *list,
       }
 
       seg->rt[i] = rtv->resource;
+      d12_list_track_read_resource(list, rtv->resource);
       bound_rt_mask |= BITFIELD_BIT(i);
       seg->rt_address[i] = rtv->address ? rtv->address : rtv->resource->addr;
       seg->rt_view_format[i] = view_pf;
       seg->rt_level[i] = (uint8_t)rtv->texture_level;
 
       if (getenv("D3D12AGX_VALIDATE_MRT")) {
-         const uint64_t bo_start = rtv->resource->bo->va->addr;
-         const uint64_t bo_end = bo_start + rtv->resource->bo->size;
+         const uint64_t bo_start = rtv->resource->reserved
+                                      ? rtv->resource->addr
+                                      : rtv->resource->bo->va->addr;
+         const uint64_t bo_size = rtv->resource->reserved
+                                     ? rtv->resource->sparse_size_B
+                                     : rtv->resource->bo->size;
+         const uint64_t bo_end = bo_start + bo_size;
          const uint64_t span =
             (uint64_t)rtv->resource->layout.layer_stride_B * (layers - 1) +
             ail_get_level_offset_B(&rtv->resource->layout,
@@ -1626,10 +2063,21 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
    if (dsv) {
       seg->ds = dsv->resource;
+      d12_list_track_read_resource(list, dsv->resource);
       seg->ds_address = dsv->address;
       seg->stencil_address = dsv->counter_address;
       seg->ds_level = dsv->texture_plane;
       seg->dsv_flags = dsv->dsv_flags;
+
+      /* The hardware seeds each tile's depth from ISP_BGOBJDEPTH in the
+       * depth plane's own encoding, so a pass-declared clear can only be
+       * encoded once the attachment's format is known. */
+      if (seg->render_pass && seg->depth_plan.load == D12_RP_LOAD_CLEAR) {
+         seg->isp_bgobjdepth =
+            dsv->resource->layout.format == PIPE_FORMAT_Z16_UNORM
+               ? _mesa_float_to_unorm(list->render_pass_depth_clear, 16)
+               : fui(list->render_pass_depth_clear);
+      }
       const unsigned ds_layers = MAX2(dsv->size_B, 1);
       const unsigned ds_samples =
          MAX2(dsv->resource->layout.sample_count_sa, 1);
@@ -1648,8 +2096,13 @@ d12_list_begin_render(struct d12_cmd_list *list,
       if (!bound_rts)
          seg->layers = ds_layers;
 
-      const uint64_t z_start = dsv->resource->bo->va->addr;
-      const uint64_t z_end = z_start + dsv->resource->bo->size;
+      const uint64_t z_start = dsv->resource->reserved
+                                  ? dsv->resource->addr
+                                  : dsv->resource->bo->va->addr;
+      const uint64_t z_size = dsv->resource->reserved
+                                 ? dsv->resource->sparse_size_B
+                                 : dsv->resource->bo->size;
+      const uint64_t z_end = z_start + z_size;
       const uint64_t z_span =
          (uint64_t)dsv->resource->layout.layer_stride_B * (ds_layers - 1) +
          ail_get_level_size_B(&dsv->resource->layout, seg->ds_level);
@@ -1719,6 +2172,17 @@ d12_list_begin_render(struct d12_cmd_list *list,
       seg->height_px = (uint16_t)viewport_height;
    }
 
+   /* Target-independent rasterization: with nothing attached, the render
+    * command's sample count is purely the rasterization rate, so a forced
+    * count is exactly expressible there.  d12_raster_rasterization_samples
+    * keeps the attachment's own count whenever anything is attached, which
+    * is the only shape AGX can encode. */
+   if (pso && pso->raster.forced_sample_count) {
+      rt_samples = d12_raster_rasterization_samples(
+         pso->raster.forced_sample_count, rt_samples,
+         bound_rts != 0 || dsv != NULL);
+   }
+
    if (pso) {
       const enum pipe_format uniform_bound_format =
          d12_segment_uniform_rt_format(seg);
@@ -1785,8 +2249,33 @@ d12_list_begin_render(struct d12_cmd_list *list,
          continue;
       if (!(seg->rt_write_mask & BITFIELD_BIT(i)))
          continue;
-      main_bg[i] = bg_op;
-      main_eot[i] = AGX_EOT_STORE;
+
+      /* A render pass states the tile traffic per attachment; outside one
+       * the caller's single bg_op applies to all of them and every
+       * attachment is written back. */
+      const struct d12_render_pass_plan plan =
+         seg->render_pass ? seg->rt_plan[i]
+                          : d12_render_pass_plan_legacy(bg_op ==
+                                                        AGX_BG_CLEAR);
+
+      switch (plan.load) {
+      case D12_RP_LOAD_CLEAR:
+         main_bg[i] = AGX_BG_CLEAR;
+         break;
+      case D12_RP_LOAD_PRESERVE:
+         main_bg[i] = AGX_BG_LOAD;
+         break;
+      case D12_RP_LOAD_NONE:
+         main_bg[i] = AGX_BG_EOT_NONE;
+         break;
+      }
+      main_eot[i] = plan.store == D12_RP_STORE_PRESERVE ? AGX_EOT_STORE
+                                                        : AGX_BG_EOT_NONE;
+
+      /* The partial pair is not the application's to choose. A tile that
+       * spills mid-pass is stored and reloaded purely to free tile memory,
+       * so both halves must move it whatever the pass asked for at its
+       * boundaries -- otherwise the spill loses the work already done. */
       partial_bg[i] = AGX_BG_LOAD;
       partial_eot[i] = AGX_EOT_STORE;
    }
@@ -1839,31 +2328,6 @@ d12_list_begin_render(struct d12_cmd_list *list,
    return seg;
    }
 
-static bool
-d12_buffer_tail_descriptor(const struct d12_descriptor *d,
-                           struct d12_descriptor *tail)
-{
-   if (!d || !d->resource ||
-       d->resource->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
-       d->buffer_kind != D12_BUFFER_VIEW_TYPED || !d->stride_B)
-      return false;
-
-   uint64_t elements = d->size_B / d->stride_B;
-   if (elements <= AGX_TEXTURE_BUFFER_MAX_SIZE)
-      return false;
-
-   uint64_t tail_elements = elements - AGX_TEXTURE_BUFFER_MAX_SIZE;
-   if (tail_elements > AGX_TEXTURE_BUFFER_MAX_SIZE ||
-       tail_elements * d->stride_B > UINT32_MAX)
-      return false;
-
-   *tail = *d;
-   tail->address +=
-      (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE * d->stride_B;
-   tail->size_B = tail_elements * d->stride_B;
-   return true;
-}
-
 void
 d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
                            const struct d12_descriptor *d)
@@ -1872,19 +2336,6 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
 
    if (d->kind != D12_DESC_UAV || !d->resource)
       return;
-
-   struct d12_descriptor chunk;
-   if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
-       d->buffer_kind == D12_BUFFER_VIEW_TYPED) {
-      unsigned stride = d->stride_B;
-      uint64_t elements = stride ? d->size_B / stride : 0;
-      if (!stride || !elements)
-         return;
-      chunk = *d;
-      chunk.size_B = MIN2(elements,
-                          (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE) * stride;
-      d = &chunk;
-   }
 
    struct d12_resource *res = d->resource;
    enum pipe_format pf = d12_format_to_pipe(d->format);
@@ -1899,7 +2350,7 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
 
    if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
       if (d->buffer_kind != D12_BUFFER_VIEW_TYPED || !blocksize ||
-          !d->size_B)
+          !d->buffer_count)
          return;
 
       uint64_t base = d->address & ~0xfull;
@@ -1907,7 +2358,7 @@ d12_refresh_pbe_descriptor(struct agx_pbe_packed *out,
       if (tail_B % blocksize)
          return;
 
-      unsigned elements = d->size_B / blocksize;
+      unsigned elements = d->buffer_count;
       agx_pack(out, PBE, cfg) {
          cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
          cfg.layout = AGX_LAYOUT_LINEAR;
@@ -2053,6 +2504,10 @@ d12_native_texture_format(const struct d12_descriptor *d)
    return res->layout.format;
 }
 
+static bool
+d12_sparse_texture_map_address(const struct d12_descriptor *d,
+                               uint64_t *address);
+
 bool
 d12_descriptor_resource_span(const struct d12_descriptor *d, uint64_t *base,
                              uint64_t *size)
@@ -2065,8 +2520,9 @@ d12_descriptor_resource_span(const struct d12_descriptor *d, uint64_t *base,
       if (d->texture_plane == 1)
          return false;
       *base = res->addr +
-              (d->kind == D12_DESC_SRV ? res->device->dev.sparse_ro_offset
-                                       : 0);
+              ((d->kind == D12_DESC_SRV || d->kind == D12_DESC_CBV)
+                  ? res->device->dev.sparse_ro_offset
+                  : 0);
       *size = res->sparse_size_B;
       return true;
    }
@@ -2272,7 +2728,7 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       }
    }
 
-   size_t native_desc_count = 2 * (size_t)last_texture;
+   size_t native_desc_count = last_texture;
    if (dynamic_native_count > SIZE_MAX - native_desc_count) {
       list->state = D12_LIST_ERROR;
       return false;
@@ -2291,10 +2747,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    *out_heap_pbes = 0;
    *out_heap_samplers = 0;
 
-   /* Three arrays back to back: resource base addresses, UAV counter
-    * addresses for bufferUpdateCounter, then buffer-view counts for
-    * GetDimensions/BUFINFO. A small header below points to each plane so
-    * shaders never need a global-load immediate beyond the AGX encoding.
+   /* Four arrays back to back: resource base addresses, UAV counters,
+    * BUFINFO, then sparse residency map pointers. A small header
+    * below points to each plane so shaders never need a global-load immediate
+    * beyond the AGX encoding.
     */
    /* An UNBOUND slot is address 0, and a shader that reads one dereferences
     * it -- which the GPU reports as
@@ -2316,29 +2772,32 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       addrs[i] = table[i].address;
       addrs[D12_ROOT_COUNTER_BASE + i] = table[i].counter_address;
       addrs[D12_ROOT_BUFINFO_BASE + i] = 0;
+      addrs[D12_ROOT_RESIDENCY_BASE + i] =
+         d12_descriptor_sparse_residency_address(&table[i]);
 
       if (table[i].resource &&
           table[i].resource->desc.Dimension ==
              D3D12_RESOURCE_DIMENSION_BUFFER &&
           (table[i].kind == D12_DESC_SRV ||
            table[i].kind == D12_DESC_UAV)) {
-         switch (table[i].buffer_kind) {
-         case D12_BUFFER_VIEW_RAW:
-            addrs[D12_ROOT_BUFINFO_BASE + i] = table[i].size_B;
-            break;
-         case D12_BUFFER_VIEW_TYPED:
-         case D12_BUFFER_VIEW_STRUCTURED:
-            if (table[i].stride_B)
-               addrs[D12_ROOT_BUFINFO_BASE + i] =
-                  table[i].size_B / table[i].stride_B;
-            break;
-         default:
-            break;
+         if (!sources[i]) {
+            /* A bare root SRV/UAV has no declared view extent. The resource
+             * pointer exists only to publish sparse residency metadata. */
+            addrs[D12_ROOT_BUFINFO_BASE + i] = UINT32_MAX;
+         } else {
+            switch (table[i].buffer_kind) {
+            case D12_BUFFER_VIEW_RAW:
+            case D12_BUFFER_VIEW_TYPED:
+            case D12_BUFFER_VIEW_STRUCTURED:
+               addrs[D12_ROOT_BUFINFO_BASE + i] = table[i].buffer_count;
+               break;
+            default:
+               break;
+            }
+            if (table[i].buffer_kind != D12_BUFFER_VIEW_NONE)
+               addrs[D12_ROOT_BUFINFO_BASE + i] |=
+                  (uint64_t)table[i].buffer_stride_B << 32;
          }
-         if (table[i].buffer_kind == D12_BUFFER_VIEW_STRUCTURED ||
-             table[i].buffer_kind == D12_BUFFER_VIEW_TYPED)
-            addrs[D12_ROOT_BUFINFO_BASE + i] |=
-               (uint64_t)table[i].stride_B << 32;
       } else if (table[i].resource && table[i].kind == D12_DESC_SRV &&
                  (table[i].resource->desc.Dimension ==
                      D3D12_RESOURCE_DIMENSION_TEXTURE1D ||
@@ -2366,12 +2825,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
           */
          addrs[D12_ROOT_BUFINFO_BASE + i] = UINT32_MAX;
       }
-
-      /* The upper half of BUFINFO's metadata word publishes the compact
-       * native heap's head count. Large typed views use it to select the
-       * same slot in the immediately following tail heap. */
-      addrs[D12_ROOT_BUFINFO_BASE + i] |=
-         (uint64_t)last_texture << 48;
 
       if (!addrs[i]) {
          if (!null_buf && !(null_buf = d12_list_null_buffer(list)))
@@ -2412,9 +2865,11 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
           root_count * sizeof(uint64_t));
    memcpy(compact + 2 * root_count, addrs + D12_ROOT_BUFINFO_BASE,
           root_count * sizeof(uint64_t));
+   memcpy(compact + 3 * root_count, addrs + D12_ROOT_RESIDENCY_BASE,
+          root_count * sizeof(uint64_t));
 
    uint64_t tables_gpu = d12_list_upload(
-      list, compact, 3 * root_count * sizeof(uint64_t), 8);
+      list, compact, 4 * root_count * sizeof(uint64_t), 8);
    if (!tables_gpu)
       return false;
    if (out_tables)
@@ -2433,6 +2888,10 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
       tables_gpu + 2 * root_count * sizeof(uint64_t),
       null_buf,
       discard_buf,
+      tables_gpu + 3 * root_count * sizeof(uint64_t),
+      bound_heap && bound_heap->residency_bo
+         ? bound_heap->residency_bo->va->addr : 0,
+      list->device->dev.sparse_ro_offset,
    };
    static_assert(sizeof(metadata_header) == D12_ROOT_METADATA_HEADER_SIZE,
                  "root metadata header ABI mismatch");
@@ -2497,9 +2956,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
    static_assert(AGX_PBE_LENGTH == D12_PBE_DESC_SIZE,
                  "the PBE descriptor stride must match hardware");
 
-   /* A finite typed-buffer view may span two native AGX descriptor windows.
-    * Slots [0, last_texture) are heads and the following equally sized
-    * compact range contains their tails. */
    uint64_t heap_gpu = d12_list_upload_zero(
       list, (size_t)native_desc_count * AGX_TEXTURE_LENGTH, 64);
    if (!heap_gpu)
@@ -2531,37 +2987,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
 
       if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
          d12_refresh_texture_descriptor(&descs[i], &table[i]);
-         struct d12_descriptor tail;
-         if (d12_buffer_tail_descriptor(&table[i], &tail)) {
-            uint64_t bo_base, bo_size;
-            if (!d12_descriptor_resource_span(&table[i], &bo_base,
-                                              &bo_size)) {
-               list->state = D12_LIST_ERROR;
-               return false;
-            }
-            uint64_t bo_end = bo_base + bo_size;
-            uint64_t tail_end = tail.address + tail.size_B;
-            if (tail.address < bo_base || tail_end < tail.address ||
-                tail_end > bo_end) {
-               mesa_loge("binding validation: large typed-buffer tail slot "
-                         "%u spans outside its resource BO", i);
-               list->state = D12_LIST_ERROR;
-               return false;
-            }
-            if (validate)
-               mesa_logi("binding validation: large typed-buffer slot %u "
-                         "head=0x%llx+%u tail=0x%llx+%u bo=0x%llx..0x%llx "
-                         "valid=1", i,
-                         (unsigned long long)table[i].address,
-                         MIN2(table[i].size_B,
-                              AGX_TEXTURE_BUFFER_MAX_SIZE *
-                                 table[i].stride_B),
-                         (unsigned long long)tail.address, tail.size_B,
-                         (unsigned long long)bo_base,
-                         (unsigned long long)bo_end);
-            d12_refresh_texture_descriptor(
-               &descs[last_texture + i], &tail);
-         }
          continue;
       }
 
@@ -2658,6 +3083,9 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
          dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
          dimension == AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
+      uint64_t sparse_address = 0;
+      const bool sparse =
+         d12_sparse_texture_map_address(&table[i], &sparse_address);
 
       agx_pack(&descs[i], TEXTURE, cfg) {
          cfg.dimension = dimension;
@@ -2671,7 +3099,12 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          cfg.swizzle_b = agx_channel_from_pipe(swizzle[2]);
          cfg.swizzle_a = agx_channel_from_pipe(swizzle[3]);
 
-         cfg.address = table[i].address;
+         if (sparse) {
+            cfg.mode = AGX_IMAGE_MODE_SPARSE;
+            cfg.address = sparse_address;
+         } else {
+            cfg.address = table[i].address;
+         }
          cfg.width = layout->width_px;
          cfg.height = layout->height_px;
          cfg.first_level = level;
@@ -2781,10 +3214,6 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          return false;
       }
       d12_refresh_pbe_descriptor(&pbes[i], &table[i]);
-      struct d12_descriptor tail;
-      if (d12_buffer_tail_descriptor(&table[i], &tail))
-         d12_refresh_pbe_descriptor(
-            &pbes[last_texture + i], &tail);
 
       if (getenv("D3D12AGX_DUMP_TEX")) {
          const uint8_t *raw = (const uint8_t *)&pbes[i];
@@ -2851,11 +3280,13 @@ d12_list_upload_bindings(struct d12_cmd_list *list, bool compute,
          agx_set_null_pbe(&expected_null);
          const uint64_t null_offset =
             (uint64_t)bound_heap->desc.NumDescriptors * D12_PBE_DESC_SIZE;
+         const uint8_t *pbe_map = agx_bo_map(bound_heap->pbe_bo);
          const bool null_valid =
+            pbe_map != NULL &&
             null_offset <= bound_heap->pbe_bo->size &&
             D12_PBE_DESC_SIZE <= bound_heap->pbe_bo->size - null_offset &&
-            memcmp((uint8_t *)agx_bo_map(bound_heap->pbe_bo) + null_offset,
-                   &expected_null, sizeof(expected_null)) == 0;
+            memcmp(pbe_map + null_offset, &expected_null,
+                   sizeof(expected_null)) == 0;
          mesa_logi("binding validation: bindless heap slots=0x%llx "
                    "textures=0x%llx pbes=0x%llx count=%u "
                    "null-pbe-offset=0x%llx valid=%u",
@@ -3057,7 +3488,7 @@ d12_segment_track_bound_uavs(struct d12_cmd_list *list,
    if ((rs->layout.flags &
         D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED) &&
        heap && heap->desc.NumDescriptors) {
-      d12_segment_track_write_heap(seg, pipe, heap, 0);
+      d12_segment_track_write_heap(seg, pipe, heap, 0, 0);
    }
 
    for (unsigned i = 0; i < rs->map.count; i++) {
@@ -3090,7 +3521,8 @@ d12_segment_track_bound_uavs(struct d12_cmd_list *list,
 
          d12_segment_track_write_heap(
             seg, pipe, heap,
-            (uint32_t)(byte_offset / sizeof(struct d12_descriptor)));
+            (uint32_t)(byte_offset / sizeof(struct d12_descriptor)),
+            rs->map.entries[i].range_count);
          continue;
       }
 
@@ -3099,10 +3531,124 @@ d12_segment_track_bound_uavs(struct d12_cmd_list *list,
                                             sources[slot]);
       } else if (table[slot].kind == D12_DESC_UAV &&
                  table[slot].address) {
-         /* Root UAV descriptors have no resource object or declared length.
-          * Queue packing resolves the address to its owning allocation. */
-         d12_segment_track_write_range(seg, pipe,
-                                       table[slot].address, 0);
+         if (table[slot].resource) {
+            d12_segment_track_write_resource(seg, pipe,
+                                             table[slot].resource);
+         } else {
+            /* A dense root UAV has no declared length. Queue packing resolves
+             * the address to its complete owning allocation. */
+            d12_segment_track_write_range(seg, pipe,
+                                          table[slot].address, 0);
+         }
+      }
+   }
+}
+
+/* Record every resource a shader in one visibility group may reference.
+ * Mutable descriptor slots are intentionally retained by address and read at
+ * ExecuteCommandLists, after the command-list descriptor refresh. This is the
+ * point at which D3D12 freezes descriptor contents for the submission. */
+static void
+d12_list_track_bound_reads(struct d12_cmd_list *list, bool compute_bindings,
+                           enum d12_write_visibility_group visibility)
+{
+   const struct d12_root_signature *rs =
+      compute_bindings ? list->compute_rs : list->graphics_rs;
+   const struct d12_descriptor *table =
+      compute_bindings ? list->compute_root_table : list->graphics_root_table;
+   const struct d12_descriptor *samplers =
+      compute_bindings ? list->compute_sampler_table
+                       : list->graphics_sampler_table;
+   const struct d12_descriptor *const *sources =
+      compute_bindings ? list->compute_root_source
+                       : list->graphics_root_source;
+
+   if (!rs)
+      return;
+
+   if (rs->layout.flags &
+       D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED) {
+      if (list->resource_descriptor_heap &&
+          list->resource_descriptor_heap->desc.NumDescriptors)
+         d12_list_track_read_heap(list, list->resource_descriptor_heap, 0,
+                                  0, true);
+      else
+         d12_list_mark_read_set_incomplete(list);
+   }
+
+   if (rs->layout.flags &
+       D3D12_ROOT_SIGNATURE_FLAG_SAMPLER_HEAP_DIRECTLY_INDEXED) {
+      if (list->sampler_descriptor_heap &&
+          list->sampler_descriptor_heap->desc.NumDescriptors)
+         d12_list_track_read_heap(list, list->sampler_descriptor_heap, 0,
+                                  0, false);
+      else
+         d12_list_mark_read_set_incomplete(list);
+   }
+
+   for (unsigned i = 0; i < rs->map.count; ++i) {
+      const unsigned klass = rs->map.entries[i].klass;
+      if (!d12_write_visibility_matches(rs->map.entries[i].visibility,
+                                        visibility))
+         continue;
+
+      const unsigned slot = rs->map.entries[i].slot;
+      if (slot >= D12_MAX_RESOURCE_BINDINGS) {
+         d12_list_mark_read_set_incomplete(list);
+         continue;
+      }
+
+      if (klass == D12_RES_SAMPLER) {
+         if (rs->map.entries[i].unbounded) {
+            const struct d12_descriptor_heap *heap =
+               list->sampler_descriptor_heap;
+            const uint64_t first = samplers[slot].address;
+            if (!heap || first >= heap->desc.NumDescriptors)
+               d12_list_mark_read_set_incomplete(list);
+            else
+               d12_list_track_read_heap(list, heap, (uint32_t)first,
+                                        rs->map.entries[i].range_count,
+                                        false);
+         }
+         continue;
+      }
+
+      if (klass >= D12_RES_CLASS_COUNT) {
+         d12_list_mark_read_set_incomplete(list);
+         continue;
+      }
+
+      if (rs->map.entries[i].unbounded) {
+         const struct d12_descriptor_heap *heap =
+            list->resource_descriptor_heap;
+         if (!heap || !heap->bo || !table[slot].address ||
+             table[slot].address < heap->bo->va->addr) {
+            d12_list_mark_read_set_incomplete(list);
+            continue;
+         }
+
+         const uint64_t byte_offset =
+            table[slot].address - heap->bo->va->addr;
+         if (byte_offset % sizeof(struct d12_descriptor) ||
+             byte_offset / sizeof(struct d12_descriptor) >=
+                heap->desc.NumDescriptors) {
+            d12_list_mark_read_set_incomplete(list);
+            continue;
+         }
+
+         d12_list_track_read_heap(
+            list, heap,
+            (uint32_t)(byte_offset / sizeof(struct d12_descriptor)),
+            rs->map.entries[i].range_count, true);
+      } else if (sources[slot]) {
+         d12_list_track_read_descriptor(list, sources[slot]);
+      } else if (table[slot].resource) {
+         d12_list_track_read_resource(list, table[slot].resource);
+      } else if (table[slot].address) {
+         /* Root CBV/SRV/UAV descriptors carry an address but no resource
+          * object or trustworthy shader-access length. Resolve the owner at
+          * Execute and publish its complete allocation. */
+         d12_list_track_read_range(list, table[slot].address, 0);
       }
    }
 }
@@ -3162,20 +3708,16 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
       uint64_t count = 0;
       switch (d->buffer_kind) {
       case D12_BUFFER_VIEW_RAW:
-         count = d->size_B;
-         break;
       case D12_BUFFER_VIEW_TYPED:
       case D12_BUFFER_VIEW_STRUCTURED:
-         if (d->stride_B)
-            count = d->size_B / d->stride_B;
+         count = d->buffer_count;
          break;
       default:
          break;
       }
 
-      if (d->buffer_kind == D12_BUFFER_VIEW_STRUCTURED ||
-          d->buffer_kind == D12_BUFFER_VIEW_TYPED)
-         count |= (uint64_t)d->stride_B << 32;
+      if (d->buffer_kind != D12_BUFFER_VIEW_NONE)
+         count |= (uint64_t)d->buffer_stride_B << 32;
       return count;
    }
 
@@ -3195,6 +3737,56 @@ d12_descriptor_bufinfo(const struct d12_descriptor *d)
    return 0;
 }
 
+static bool
+d12_sparse_texture_map_address(const struct d12_descriptor *d,
+                               uint64_t *address)
+{
+   struct d12_resource *res = d ? d->resource : NULL;
+   if (!address || !res || !res->reserved || !res->sparse_map ||
+       !res->sparse_map->va || d->texture_plane != 0 ||
+       !res->layout.layer_stride_B)
+      return false;
+
+   const uint64_t alias_offset =
+      d->kind == D12_DESC_SRV ? res->device->dev.sparse_ro_offset : 0;
+   if (res->addr > UINT64_MAX - alias_offset)
+      return false;
+   const uint64_t base = res->addr + alias_offset;
+   if (d->address < base)
+      return false;
+
+   const uint64_t layer_offset_B = d->address - base;
+   if ((layer_offset_B % res->layout.layer_stride_B) != 0)
+      return false;
+
+   uint32_t index_el;
+   if (!d12_sparse_residency_index(
+          layer_offset_B, res->layout.layer_stride_B,
+          res->layout.depth_px, res->layout.sparse_folios_per_layer,
+          res->layout.sparse_table_size_B, &index_el))
+      return false;
+
+   const uint64_t byte_offset =
+      (uint64_t)index_el * D12_AGX_SPARSE_ELEMENT_SIZE_B;
+   if (res->sparse_map->va->addr > UINT64_MAX - byte_offset)
+      return false;
+   *address = res->sparse_map->va->addr + byte_offset;
+   return true;
+}
+
+uint64_t
+d12_descriptor_sparse_residency_address(const struct d12_descriptor *d)
+{
+   if (!d || !d->resource)
+      return 0;
+
+   if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+      return d12_sparse_buffer_residency_address(d->resource, d->address);
+
+   uint64_t address = 0;
+   return d12_sparse_texture_map_address(d, &address) ? address : 0;
+}
+
 /* Recreate one API SRV/UAV's AGX descriptor in already-allocated command-list
  * storage.  This is the same packing performed while recording; Execute uses
  * it only for finite shader-visible table slots whose CPU descriptor changed
@@ -3208,19 +3800,6 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
 
    if ((d->kind != D12_DESC_SRV && d->kind != D12_DESC_UAV) || !d->resource)
       return;
-
-   struct d12_descriptor chunk;
-   if (d->resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
-       d->buffer_kind == D12_BUFFER_VIEW_TYPED) {
-      unsigned stride = d->stride_B;
-      uint64_t elements = stride ? d->size_B / stride : 0;
-      if (!stride || !elements)
-         return;
-      chunk = *d;
-      chunk.size_B = MIN2(elements,
-                          (uint64_t)AGX_TEXTURE_BUFFER_MAX_SIZE) * stride;
-      d = &chunk;
-   }
 
    struct d12_resource *res = d->resource;
    if (res->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
@@ -3236,9 +3815,13 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       const struct util_format_description *fdesc =
          util_format_description(pf);
       unsigned blocksize = util_format_get_blocksize(pf);
-      unsigned elements = d->size_B / blocksize;
-      uint64_t base = d->address & ~0xfull;
-      unsigned tail_B = d->address & 0xf;
+      unsigned elements = d->buffer_count;
+      uint64_t read_address = d->address;
+      if (res->reserved &&
+          !agx_addr_is_ro(&res->device->dev, read_address))
+         read_address += res->device->dev.sparse_ro_offset;
+      uint64_t base = read_address & ~0xfull;
+      unsigned tail_B = read_address & 0xf;
       if (!elements || tail_B % blocksize)
          return;
 
@@ -3340,6 +3923,8 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY ||
       dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED ||
       dimension == AGX_TEXTURE_DIMENSION_CUBE_ARRAY;
+   uint64_t sparse_address = 0;
+   const bool sparse = d12_sparse_texture_map_address(d, &sparse_address);
 
    agx_pack(out, TEXTURE, cfg) {
       cfg.dimension = dimension;
@@ -3351,7 +3936,12 @@ d12_refresh_texture_descriptor(struct agx_texture_packed *out,
       cfg.swizzle_g = agx_channel_from_pipe(swizzle[1]);
       cfg.swizzle_b = agx_channel_from_pipe(swizzle[2]);
       cfg.swizzle_a = agx_channel_from_pipe(swizzle[3]);
-      cfg.address = d->address;
+      if (sparse) {
+         cfg.mode = AGX_IMAGE_MODE_SPARSE;
+         cfg.address = sparse_address;
+      } else {
+         cfg.address = d->address;
+      }
       cfg.width = rebased_3d_uav
                      ? u_minify(layout->width_px, source_level)
                      : layout->width_px;
@@ -3433,46 +4023,27 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          d->counter_address
             ? d->counter_address
             : list->null_counters + slot * sizeof(uint32_t);
-      uint64_t heap_layout =
-         tables[2 * fixup->table_count + slot] & 0xffff000000000000ull;
-      unsigned last_texture = heap_layout >> 48;
-      if (!last_texture)
-         return false;
       tables[2 * fixup->table_count + slot] =
-         d12_descriptor_bufinfo(d) | heap_layout;
+         d12_descriptor_bufinfo(d);
+      tables[3 * fixup->table_count + slot] =
+         d12_descriptor_sparse_residency_address(d);
 
       if (fixup->textures_gpu) {
          struct agx_texture_packed *texture =
             (struct agx_texture_packed *)d12_list_data_cpu(
                list, fixup->textures_gpu + slot * AGX_TEXTURE_LENGTH);
-         struct agx_texture_packed *texture_tail =
-            (struct agx_texture_packed *)d12_list_data_cpu(
-               list, fixup->textures_gpu +
-                        (last_texture + slot) * AGX_TEXTURE_LENGTH);
-         if (!texture || !texture_tail)
+         if (!texture)
             return false;
          d12_refresh_texture_descriptor(texture, d);
-         agx_set_null_texture(texture_tail);
-         struct d12_descriptor tail;
-         if (d12_buffer_tail_descriptor(d, &tail))
-            d12_refresh_texture_descriptor(texture_tail, &tail);
       }
 
       if (fixup->pbes_gpu) {
          struct agx_pbe_packed *pbe =
             (struct agx_pbe_packed *)d12_list_data_cpu(
                list, fixup->pbes_gpu + slot * AGX_PBE_LENGTH);
-         struct agx_pbe_packed *pbe_tail =
-            (struct agx_pbe_packed *)d12_list_data_cpu(
-               list, fixup->pbes_gpu +
-                        (last_texture + slot) * AGX_PBE_LENGTH);
-         if (!pbe || !pbe_tail)
+         if (!pbe)
             return false;
          d12_refresh_pbe_descriptor(pbe, d);
-         agx_set_null_pbe(pbe_tail);
-         struct d12_descriptor tail;
-         if (d12_buffer_tail_descriptor(d, &tail))
-            d12_refresh_pbe_descriptor(pbe_tail, &tail);
       }
 
       if (getenv("D3D12AGX_DUMP_DESCRIPTOR_FIXUPS"))
@@ -3503,8 +4074,14 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          return false;
       }
 
-      const uint8_t *src = (const uint8_t *)agx_bo_map(source->bo) +
-                           source->offset_B + fixup->source_offset_B;
+      const uint8_t *source_map = agx_bo_map(source->bo);
+      if (!source_map) {
+         mesa_loge("indirect constant refresh cannot map source storage");
+         return false;
+      }
+
+      const uint8_t *src =
+         source_map + source->offset_B + fixup->source_offset_B;
       uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
       memcpy(dst, src, fixup->size_B);
 
@@ -3541,15 +4118,22 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
          return false;
       }
 
-      const uint8_t *count_cpu = (const uint8_t *)agx_bo_map(count->bo) +
-                                 count->offset_B + fixup->count_offset_B;
+      const uint8_t *count_map = agx_bo_map(count->bo);
+      const uint8_t *source_map = agx_bo_map(source->bo);
+      if (!count_map || !source_map) {
+         mesa_loge("indirect argument refresh cannot map source storage");
+         return false;
+      }
+
+      const uint8_t *count_cpu =
+         count_map + count->offset_B + fixup->count_offset_B;
       uint32_t command_count;
       memcpy(&command_count, count_cpu, sizeof(command_count));
 
       uint8_t *dst = d12_list_data_cpu(list, fixup->destination_gpu);
       if (fixup->command_index < command_count) {
-         const uint8_t *src = (const uint8_t *)agx_bo_map(source->bo) +
-                              source->offset_B + fixup->source_offset_B;
+         const uint8_t *src =
+            source_map + source->offset_B + fixup->source_offset_B;
          memcpy(dst, src, fixup->size_B);
       } else {
          memset(dst, 0, fixup->size_B);
@@ -3569,6 +4153,138 @@ d12_cmd_list_refresh_descriptors(struct d12_cmd_list *list)
     */
    __sync_synchronize();
    return true;
+}
+
+static int
+d12_sparse_registry_record_compare(const void *a, const void *b)
+{
+   const struct d12_sparse_registry_record *ra = a;
+   const struct d12_sparse_registry_record *rb = b;
+   return ra->base < rb->base ? -1 : ra->base > rb->base;
+}
+
+static bool
+d12_sparse_registry_grow_capacity(uint32_t count, uint32_t *capacity)
+{
+   if (!count || !capacity)
+      return false;
+
+   uint32_t grown = 16;
+   while (grown < count) {
+      if (grown > UINT32_MAX / 2) {
+         grown = UINT32_MAX;
+         break;
+      }
+      grown *= 2;
+   }
+
+   *capacity = grown;
+   return grown >= count;
+}
+
+bool
+d12_cmd_list_refresh_sparse_registry(struct d12_cmd_list *list)
+{
+   if (!list || !list->uses_sparse_registry)
+      return true;
+
+   struct d12_sparse_registry_view *view =
+      (struct d12_sparse_registry_view *)d12_list_data_cpu(
+         list, list->sparse_registry_view_gpu);
+   if (!view)
+      return false;
+
+   struct d12_device *device = list->device;
+   for (;;) {
+      struct d12_sparse_registry_record *records =
+         list->sparse_registry_bo ? agx_bo_map(list->sparse_registry_bo)
+                                  : NULL;
+      uint64_t live = 0;
+
+      simple_mtx_lock(&device->sparse_resource_lock);
+      list_for_each_entry(struct d12_resource, resource,
+                          &device->sparse_resources, sparse_link) {
+         if (resource->reserved &&
+             resource->desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+            ++live;
+      }
+
+      if (live > UINT32_MAX ||
+          (live && (!records || live > list->sparse_registry_capacity))) {
+         simple_mtx_unlock(&device->sparse_resource_lock);
+
+         if (live > UINT32_MAX)
+            return false;
+
+         uint32_t capacity;
+         uint64_t size_B;
+         if (!d12_sparse_registry_grow_capacity((uint32_t)live, &capacity) ||
+             !d12_sparse_registry_allocation_size(capacity, AIL_PAGESIZE,
+                                                  &size_B) ||
+             size_B > SIZE_MAX)
+            return false;
+
+         struct agx_bo *bo = agx_bo_create(
+            &device->dev, (size_t)size_B, AIL_PAGESIZE, AGX_BO_WRITEBACK,
+            "d3d12 ExecuteIndirect sparse registry");
+         if (!bo || !agx_bo_map(bo)) {
+            if (bo)
+               agx_bo_unreference(&device->dev, bo);
+            return false;
+         }
+
+         struct agx_bo *old = list->sparse_registry_bo;
+         list->sparse_registry_bo = bo;
+         list->sparse_registry_capacity = capacity;
+         if (old)
+            agx_bo_unreference(&device->dev, old);
+         continue;
+      }
+
+      uint32_t count = 0;
+      list_for_each_entry(struct d12_resource, resource,
+                          &device->sparse_resources, sparse_link) {
+         if (!resource->reserved ||
+             resource->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER)
+            continue;
+
+         if (!resource->addr || !resource->sparse_size_B ||
+             resource->addr > UINT64_MAX - resource->sparse_size_B ||
+             !resource->sparse_map || !resource->sparse_map->va) {
+            simple_mtx_unlock(&device->sparse_resource_lock);
+            return false;
+         }
+
+         records[count++] = (struct d12_sparse_registry_record){
+            .base = resource->addr,
+            .size = resource->sparse_size_B,
+            .residency = resource->sparse_map->va->addr,
+         };
+      }
+      simple_mtx_unlock(&device->sparse_resource_lock);
+
+      if (count > 1)
+         qsort(records, count, sizeof(*records),
+               d12_sparse_registry_record_compare);
+
+      uint64_t previous_end = 0;
+      for (uint32_t i = 0; i < count; ++i) {
+         if (i && records[i].base < previous_end)
+            return false;
+         previous_end = records[i].base + records[i].size;
+      }
+
+      *view = (struct d12_sparse_registry_view){
+         .records = count ? list->sparse_registry_bo->va->addr : 0,
+         .count = count,
+         .capacity = list->sparse_registry_capacity,
+      };
+
+      /* Publish snapshot contents before the fixed stream view which names
+       * them, then before the queue ioctl exposes either allocation. */
+      __sync_synchronize();
+      return true;
+   }
 }
 
 /*
@@ -4107,6 +4823,8 @@ d12_segment_bind_sampler_heap(struct d12_cmd_list *list,
       return false;
    }
 
+   d12_list_track_read_heap(list, heap, 0, 0, false);
+
    uint64_t address = heap->sampler_bo->va->addr;
    if (seg->sampler_heap &&
        (seg->sampler_heap != address ||
@@ -4148,6 +4866,11 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!d12_command_has_compute_pipeline(pso != NULL,
                                          pso ? pso->is_compute : false))
       return;
+
+   d12_list_track_pso_reads(list, pso);
+   d12_list_track_bound_reads(list, true, D12_WRITE_VIS_COMPUTE);
+   if (root_patch_count)
+      d12_list_mark_read_set_incomplete(list);
 
    uint64_t root_gpu = 0, textures_gpu = 0, pbes_gpu = 0;
    uint64_t heap_gpu = 0, heap_textures_gpu = 0, heap_pbes_gpu = 0;
@@ -5160,7 +5883,9 @@ d12_list_gs_prerast(struct d12_cmd_list *list, struct d12_pipeline_state *pso,
             .p = gp_gpu,
             .heap = list->device->heap_desc_va,
             .vs_outputs = sw_outputs,
+            .sparse_registry = list->sparse_registry_view_gpu,
             .null_address = list->device->null_va,
+            .sparse_ro_offset = list->device->dev.sparse_ro_offset,
             .format_r16_uint = DXGI_FORMAT_R16_UINT,
             .format_r32_uint = DXGI_FORMAT_R32_UINT,
             .prim = input_prim,
@@ -5405,6 +6130,8 @@ d12_list_dispatch_indirect_vb_patches(
                     offsetof(struct d12_vb_params, stride_el) +
                     attribute * sizeof(uint32_t)
                : 0,
+            .sparse_registry = list->sparse_registry_view_gpu,
+            .sparse_ro_offset = list->device->dev.sparse_ro_offset,
             .command_index = patch->command_index,
             .offset_B = a->offset_B,
             .element_size_B = util_format_get_blocksize(a->format),
@@ -6004,7 +6731,9 @@ d12_list_unroll_gs_restart(struct d12_cmd_list *list,
          .view = indirect_ibv,
          .in_draw = input->b.ptr,
          .out_draw = out_draw,
+         .sparse_registry = list->sparse_registry_view_gpu,
          .null_address = list->device->null_va,
+         .sparse_ro_offset = list->device->dev.sparse_ro_offset,
          .format_r16_uint = DXGI_FORMAT_R16_UINT,
          .format_r32_uint = DXGI_FORMAT_R32_UINT,
          .restart_index = restart_index,
@@ -6199,6 +6928,62 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
     * undefined. Undefined draw output must not silently become triangles. */
    if (list->topology == MESA_PRIM_UNKNOWN)
       return;
+
+   d12_list_track_pso_reads(list, pso);
+   d12_list_track_bound_reads(list, false,
+                              D12_WRITE_VIS_GRAPHICS_VERTEX);
+   d12_list_track_bound_reads(list, false,
+                              D12_WRITE_VIS_GRAPHICS_FRAGMENT);
+
+   for (unsigned slot = 0; slot < ARRAY_SIZE(list->vb); ++slot) {
+      if (list->vb[slot].addr && list->vb[slot].size_B) {
+         struct d12_resource *resource =
+            d12_sparse_buffer_for_address(list->device,
+                                          list->vb[slot].addr);
+         if (resource)
+            d12_list_track_read_resource(list, resource);
+         else
+            d12_list_track_read_range(list, list->vb[slot].addr,
+                                      list->vb[slot].size_B);
+      }
+   }
+   if (indexed && list->ib.addr && list->ib.size_B) {
+      struct d12_resource *resource =
+         d12_sparse_buffer_for_address(list->device, list->ib.addr);
+      if (resource)
+         d12_list_track_read_resource(list, resource);
+      else
+         d12_list_track_read_range(list, list->ib.addr, list->ib.size_B);
+   }
+
+   for (unsigned stream = 0; stream < ARRAY_SIZE(list->so); ++stream) {
+      const D3D12_STREAM_OUTPUT_BUFFER_VIEW *view = &list->so[stream];
+      if (view->BufferLocation && view->SizeInBytes) {
+         struct d12_resource *resource = d12_sparse_buffer_for_address(
+            list->device, view->BufferLocation);
+         if (resource)
+            d12_list_track_read_resource(list, resource);
+         else
+            d12_list_track_read_range(list, view->BufferLocation,
+                                      view->SizeInBytes);
+      }
+      if (view->BufferFilledSizeLocation) {
+         struct d12_resource *resource = d12_sparse_buffer_for_address(
+            list->device, view->BufferFilledSizeLocation);
+         if (resource)
+            d12_list_track_read_resource(list, resource);
+         else
+            d12_list_track_read_range(list,
+                                      view->BufferFilledSizeLocation,
+                                      sizeof(uint32_t));
+      }
+   }
+
+   /* GPU-late root/VB/IB records may name allocations which did not exist in
+    * command-list state at record time. Their argument buffers are tracked,
+    * but their transitive resource set cannot be proven on the host. */
+   if (indirect_root_patch_count || indirect_vb_patch_count || indirect_ibv)
+      d12_list_mark_read_set_incomplete(list);
 
    if (list->active_pipeline_stats_heap && vertex_count && instance_count) {
       uint64_t vertices = (uint64_t)vertex_count * instance_count;
@@ -6895,7 +7680,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          agx_pack(&face, FRAGMENT_FACE, cfg) {
             cfg.line_width =
                agx_pack_line_width(pso->raster.smooth_line ? 2.0f : 1.0f);
-            cfg.polygon_mode = AGX_POLYGON_MODE_FILL;
+            cfg.polygon_mode = pso->raster.polygon_mode;
             cfg.disable_depth_write = !z_write;
             cfg.depth_function = z_test ? ds->depth_func : AGX_ZS_FUNC_ALWAYS;
          }
@@ -7072,7 +7857,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
          .out = vdm_gpu,
          .command = indirect_args,
          .view = indirect_ibv,
+         .sparse_registry = list->sparse_registry_view_gpu,
          .null_address = device->null_va,
+         .sparse_ro_offset = device->dev.sparse_ro_offset,
          .format_r16_uint = DXGI_FORMAT_R16_UINT,
          .format_r32_uint = DXGI_FORMAT_R32_UINT,
          .restart = restart,
@@ -7135,12 +7922,25 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       for (unsigned stream = 0; stream < ARRAY_SIZE(list->so); stream++) {
          const D3D12_STREAM_OUTPUT_BUFFER_VIEW *view = &list->so[stream];
          if (view->BufferLocation && view->SizeInBytes) {
-            d12_segment_track_write_range(
-               pregfx, D12_WRITE_COMPUTE, view->BufferLocation,
-               view->SizeInBytes);
-            d12_segment_track_write_range(
-               pregfx, D12_WRITE_COMPUTE,
-               view->BufferFilledSizeLocation, sizeof(uint32_t));
+            struct d12_resource *resource = d12_sparse_buffer_for_address(
+               list->device, view->BufferLocation);
+            if (resource)
+               d12_segment_track_write_resource(
+                  pregfx, D12_WRITE_COMPUTE, resource);
+            else
+               d12_segment_track_write_range(
+                  pregfx, D12_WRITE_COMPUTE, view->BufferLocation,
+                  view->SizeInBytes);
+
+            resource = d12_sparse_buffer_for_address(
+               list->device, view->BufferFilledSizeLocation);
+            if (resource)
+               d12_segment_track_write_resource(
+                  pregfx, D12_WRITE_COMPUTE, resource);
+            else
+               d12_segment_track_write_range(
+                  pregfx, D12_WRITE_COMPUTE,
+                  view->BufferFilledSizeLocation, sizeof(uint32_t));
          }
 
          if (list->active_so_stats_heap[stream]) {
@@ -7317,53 +8117,20 @@ d12_indirect_argument_layout(const D3D12_INDIRECT_ARGUMENT_DESC *argument,
    }
 }
 
-/* Snapshot the active reserved-buffer ranges for the execution-time root-VA
- * translation kernel directly into command-list storage. */
-static uint64_t
-d12_list_upload_sparse_ranges(struct d12_cmd_list *list, uint32_t *out_count)
+static bool
+d12_indirect_argument_has_gpu_address(
+   const D3D12_INDIRECT_ARGUMENT_DESC *argument)
 {
-   uint32_t count = 0;
-   uint64_t gpu = 0;
-   uint64_t *ranges = NULL;
-
-   *out_count = 0;
-   simple_mtx_lock(&list->device->sparse_resource_lock);
-   list_for_each_entry(struct d12_resource, resource,
-                       &list->device->sparse_resources, sparse_link) {
-      if (count == UINT32_MAX) {
-         simple_mtx_unlock(&list->device->sparse_resource_lock);
-         list->state = D12_LIST_ERROR;
-         return 0;
-      }
-      ++count;
+   switch (argument->Type) {
+   case D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW:
+   case D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW:
+   case D3D12_INDIRECT_ARGUMENT_TYPE_UNORDERED_ACCESS_VIEW:
+   case D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW:
+   case D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW:
+      return true;
+   default:
+      return false;
    }
-
-   if (count) {
-      if ((size_t)count > SIZE_MAX / (2 * sizeof(uint64_t))) {
-         simple_mtx_unlock(&list->device->sparse_resource_lock);
-         list->state = D12_LIST_ERROR;
-         return 0;
-      }
-      gpu = d12_list_upload_zero(
-         list, (size_t)count * 2 * sizeof(uint64_t), 8);
-      if (!gpu) {
-         simple_mtx_unlock(&list->device->sparse_resource_lock);
-         return 0;
-      }
-      ranges = (uint64_t *)d12_list_data_cpu(list, gpu);
-   }
-
-   uint32_t index = 0;
-   list_for_each_entry(struct d12_resource, resource,
-                       &list->device->sparse_resources, sparse_link) {
-      ranges[2 * index] = resource->addr;
-      ranges[2 * index + 1] = resource->sparse_size_B;
-      ++index;
-   }
-   simple_mtx_unlock(&list->device->sparse_resource_lock);
-
-   *out_count = count;
-   return gpu;
 }
 
 static bool
@@ -7512,8 +8279,8 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
    }
 
    size_t terminal_offset = 0;
-   bool needs_sparse_ranges = false;
    bool has_indirect_ibv = false;
+   bool has_gpu_addresses = false;
    for (UINT i = 0; i < terminal_index; i++) {
       const D3D12_INDIRECT_ARGUMENT_DESC *arg = &signature->arguments[i];
       size_t argument_size;
@@ -7526,11 +8293,9 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
          return;
       }
       terminal_offset += argument_size;
-      needs_sparse_ranges |=
-         arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW ||
-         arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_SHADER_RESOURCE_VIEW;
       has_indirect_ibv |=
          arg->Type == D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+      has_gpu_addresses |= d12_indirect_argument_has_gpu_address(arg);
    }
 
    if (dispatch && has_indirect_ibv) {
@@ -7569,13 +8334,24 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   uint32_t sparse_range_count = 0;
-   uint64_t sparse_ranges =
-      needs_sparse_ranges
-         ? d12_list_upload_sparse_ranges(list, &sparse_range_count)
-         : 0;
-   if (needs_sparse_ranges && sparse_range_count && !sparse_ranges)
-      return;
+   d12_list_track_read_resource(list, argument_buffer);
+   d12_list_track_read_resource(list, count_buffer);
+   if (has_gpu_addresses) {
+      if (!list->sparse_registry_view_gpu) {
+         list->sparse_registry_view_gpu = d12_list_upload_zero(
+            list, sizeof(struct d12_sparse_registry_view), 8);
+         if (!list->sparse_registry_view_gpu)
+            return;
+      }
+      list->uses_sparse_registry = true;
+      d12_list_mark_read_set_incomplete(list);
+   }
+
+   const uint64_t argument_read_base =
+      d12_sparse_read_address(list->device, argument_buffer->addr);
+   const uint64_t count_read_base = count_buffer
+      ? d12_sparse_read_address(list->device, count_buffer->addr)
+      : 0;
 
    uint64_t previous_tables = 0;
    uint64_t previous_vb_params = 0;
@@ -7641,9 +8417,9 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                (struct libagx_d3d12_indirect_constant_args){
                   .out = destination,
                   .previous = previous,
-                  .in = argument_buffer->addr + source_offset,
+                  .in = argument_read_base + source_offset,
                   .draw_count = count_buffer
-                     ? count_buffer->addr + count_buffer_offset : 0,
+                     ? count_read_base + count_buffer_offset : 0,
                   .command_index = i,
                   .total_size_B = (uint32_t)ALIGN_POT(
                      (size_t)root_param->num_constants * sizeof(uint32_t),
@@ -7694,14 +8470,12 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                return;
             root_patches[root_patch_count++] =
                (struct d12_indirect_root_patch){
-                  .in = argument_buffer->addr + source_offset,
+                  .in = argument_read_base + source_offset,
                   .draw_count = count_buffer
-                     ? count_buffer->addr + count_buffer_offset : 0,
+                     ? count_read_base + count_buffer_offset : 0,
                   .previous_tables = previous_tables,
-                  .sparse_ranges = sparse_ranges,
                   .sparse_ro_offset = list->device->dev.sparse_ro_offset,
                   .previous_table_count = previous_table_count,
-                  .sparse_range_count = sparse_range_count,
                   .command_index = i,
                   .slot = slot,
                   .publish_unbounded = publish_unbounded,
@@ -7715,16 +8489,16 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
                return;
             }
             vb_patches[vb_patch_count++] = (struct d12_indirect_vb_patch){
-               .in = argument_buffer->addr + source_offset,
+               .in = argument_read_base + source_offset,
                .draw_count = count_buffer
-                  ? count_buffer->addr + count_buffer_offset : 0,
+                  ? count_read_base + count_buffer_offset : 0,
                .previous_params = previous_vb_params,
                .command_index = i,
                .slot = arg->VertexBuffer.Slot,
             };
          } else if (arg->Type ==
                     D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW) {
-            indirect_ibv = argument_buffer->addr + source_offset;
+            indirect_ibv = argument_read_base + source_offset;
          } else {
             list->state = D12_LIST_ERROR;
             return;
@@ -7732,7 +8506,7 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
          running_offset += size_B;
       }
 
-      uint64_t args = argument_buffer->addr + command_offset + terminal_offset;
+      uint64_t args = argument_read_base + command_offset + terminal_offset;
       if (count_buffer) {
          uint64_t destination =
             d12_list_upload_zero(list, terminal_size, 4);
@@ -7742,8 +8516,8 @@ d12_list_ExecuteIndirect(ID3D12GraphicsCommandList6 *iface,
          patches[patch_count++] =
             (struct libagx_d3d12_indirect_patch_args){
                .out = destination,
-               .in = argument_buffer->addr + command_offset + terminal_offset,
-               .draw_count = count_buffer->addr + count_buffer_offset,
+               .in = argument_read_base + command_offset + terminal_offset,
+               .draw_count = count_read_base + count_buffer_offset,
                .command_index = i,
                .size_B = terminal_size,
             };
@@ -7804,7 +8578,8 @@ d12_list_IASetVertexBuffers(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
          continue;
       }
 
-      list->vb[slot].addr = views[i].BufferLocation;
+      list->vb[slot].addr =
+         d12_sparse_read_address(list->device, views[i].BufferLocation);
       list->vb[slot].size_B = views[i].SizeInBytes;
       list->vb[slot].stride_B = views[i].StrideInBytes;
    }
@@ -7848,7 +8623,8 @@ d12_list_IASetIndexBuffer(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
-   list->ib.addr = view->BufferLocation;
+   list->ib.addr =
+      d12_sparse_read_address(list->device, view->BufferLocation);
    list->ib.size_B = view->SizeInBytes;
 }
 
@@ -8046,6 +8822,8 @@ d12_list_set_root_descriptor(struct d12_cmd_list *list, bool compute,
    memset(&table[slot], 0, sizeof(table[slot]));
    sources[slot] = NULL;
    table[slot].address = address;
+   table[slot].resource =
+      d12_sparse_buffer_for_address(list->device, address);
    table[slot].kind = rp->type == D3D12_ROOT_PARAMETER_TYPE_SRV
                          ? D12_DESC_SRV
                          : (rp->type == D3D12_ROOT_PARAMETER_TYPE_UAV
@@ -8228,7 +9006,14 @@ d12_list_set_root_table(struct d12_cmd_list *list, bool compute,
 
             if (getenv("D3D12AGX_VALIDATE_BINDINGS")) {
                size_t remaining = heap->desc.NumDescriptors - first;
-               size_t scan = remaining;
+               /* Only a genuinely unbounded range owns the tail of the heap.
+                * A sized range ends, and demanding that every later sampler
+                * slot be populated would fail a legal signature.  This
+                * mirrors the resource-range validator below. */
+               size_t scan_limit = range->num_descriptors == UINT32_MAX
+                                      ? remaining
+                                      : range->num_descriptors;
+               size_t scan = MIN2(remaining, scan_limit);
                unsigned populated = 0;
                unsigned invalid_native = 0;
                for (size_t i = 0; i < scan; i++) {
@@ -8853,11 +9638,14 @@ d12_list_Release(ID3D12GraphicsCommandList6 *iface)
 
       /* Submitted queue operations own the exact BOs they reference. */
       d12_list_release_segment_scratch(list);
+      d12_list_read_tracker_fini(list);
 
       if (list->stream_bo)
          agx_bo_unreference(&list->device->dev, list->stream_bo);
       if (list->usc_bo)
          agx_bo_unreference(&list->device->dev, list->usc_bo);
+      if (list->sparse_registry_bo)
+         agx_bo_unreference(&list->device->dev, list->sparse_registry_bo);
       d12_private_data_store_destroy(&list->private_data);
       util_dynarray_fini(&list->descriptor_fixups);
       util_dynarray_fini(&list->indirect_constant_fixups);
@@ -9010,7 +9798,10 @@ d12_list_take_fresh_storage(struct d12_cmd_list *list)
       agx_bo_create(&device->dev, usc_size, 0,
                     AGX_BO_LOW_VA | AGX_BO_WRITEBACK, "d3d12 cmdlist usc");
 
-   if (!stream || !usc) {
+   /* Same admission rule as creation: the recording path maps this storage
+    * without a null check, so a refused Lock2 must fail Reset here rather
+    * than fault inside the application's next recording call. */
+   if (!stream || !usc || !agx_bo_map(stream) || !agx_bo_map(usc)) {
       if (stream)
          agx_bo_unreference(&device->dev, stream);
       if (usc)
@@ -9023,9 +9814,13 @@ d12_list_take_fresh_storage(struct d12_cmd_list *list)
    d12_list_release_segment_scratch(list);
    agx_bo_unreference(&device->dev, list->stream_bo);
    agx_bo_unreference(&device->dev, list->usc_bo);
+   if (list->sparse_registry_bo)
+      agx_bo_unreference(&device->dev, list->sparse_registry_bo);
 
    list->stream_bo = stream;
    list->usc_bo = usc;
+   list->sparse_registry_bo = NULL;
+   list->sparse_registry_capacity = 0;
    list->submitted = false;
    return true;
 }
@@ -9167,8 +9962,11 @@ d12_list_SetPredication(ID3D12GraphicsCommandList6 *iface,
    if (!snapshot)
       return;
 
-   d12_list_copy_gpu_bytes(list, snapshot,
-                           buffer->addr + aligned_buffer_offset,
+   d12_list_track_read_resource(list, buffer);
+
+   const uint64_t source = d12_sparse_read_address(
+      list->device, buffer->addr + aligned_buffer_offset);
+   d12_list_copy_gpu_bytes(list, snapshot, source,
                            sizeof(uint64_t));
    if (list->state != D12_LIST_RECORDING)
       return;
@@ -9179,7 +9977,7 @@ d12_list_SetPredication(ID3D12GraphicsCommandList6 *iface,
    if (getenv("D3D12AGX_DUMP_PREDICATION"))
       mesa_logi("SetPredication snapshot: source=0x%llx latch=0x%llx "
                 "skip_if_nonzero=%u",
-                (unsigned long long)(buffer->addr + aligned_buffer_offset),
+                (unsigned long long)source,
                 (unsigned long long)snapshot,
                 operation == D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
 }
@@ -9197,6 +9995,8 @@ d12_list_BeginQuery(ID3D12GraphicsCommandList6 *iface,
 
    if (!d12_list_validate_query(list, heap, type, index))
       return;
+
+   d12_list_track_read_bo(list, heap->bo);
 
    if (heap->desc.Type == D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS) {
       if (list->active_pipeline_stats_heap) {
@@ -9268,6 +10068,8 @@ d12_list_EndQuery(ID3D12GraphicsCommandList6 *iface,
 
    if (!d12_list_validate_query(list, heap, type, index))
       return;
+
+   d12_list_track_read_bo(list, heap->bo);
 
    uint64_t result = heap->bo->va->addr + (uint64_t)index * heap->stride;
 
@@ -9364,6 +10166,9 @@ d12_list_ResolveQueryData(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   d12_list_track_read_bo(list, heap->bo);
+   d12_list_track_read_resource(list, dst);
+
    uint64_t src = heap->bo->va->addr +
                   (uint64_t)first_query * heap->stride;
    uint64_t out = dst->addr + destination_offset;
@@ -9412,9 +10217,13 @@ d12_list_CopyBufferRegion(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   d12_list_track_read_resource(list, dstr);
+   d12_list_track_read_resource(list, srcr);
+
    struct libagx_copy_uchar_args args = {
       .dest = dstr->addr + dst_offset,
-      .src = srcr->addr + src_offset,
+      .src = d12_sparse_read_address(list->device,
+                                     srcr->addr + src_offset),
    };
 
    d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args, sizeof(args),
@@ -9456,6 +10265,8 @@ d12_list_WriteBufferImmediate(
          list->state = D12_LIST_ERROR;
          return;
       }
+
+      d12_list_track_read_range(list, params[i].Dest, sizeof(uint32_t));
 
       /* Marker modes differ only in observability to profiling tools. The
        * memory operation is still the same ordered 32-bit write. */
@@ -9681,6 +10492,9 @@ d12_cmd_present_blt(
        (uint64_t)width * height > UINT32_MAX)
       return E_NOTIMPL;
 
+   d12_list_track_read_resource(list, destination);
+   d12_list_track_read_resource(list, source);
+
    struct libagx_present_blt_args args = {
       .dest = d.base,
       .src = s.base,
@@ -9822,6 +10636,16 @@ d12_copy_texture_region(struct d12_cmd_list *list,
       list->state = D12_LIST_ERROR;
       return;
    }
+
+   d12_list_track_read_resource(
+      list, d12_resource_from_iface(dst->pResource));
+   d12_list_track_read_resource(
+      list, d12_resource_from_iface(src->pResource));
+
+   /* Source reads use the reserved resource's zero-filled alias. The
+    * destination retains its writable primary VA so unmapped writes are
+    * discarded into the sink page. */
+   s.base = d12_sparse_read_address(list->device, s.base);
 
    if (d.blocksize_B != s.blocksize_B) {
       mesa_loge("CopyTextureRegion: source/destination elements are %u/%u "
@@ -10045,6 +10869,11 @@ d12_resolve(struct d12_cmd_list *list, ID3D12Resource *dst,
    const unsigned height_px = bottom - top;
    if (!width_px || !height_px)
       return;
+
+   d12_list_track_read_resource(list, dstr);
+   d12_list_track_read_resource(list, srcr);
+
+   s.base = d12_sparse_read_address(list->device, s.base);
 
    struct libagx_resolve_unorm8x4_args args = {
       .dest = d.base,
@@ -10568,6 +11397,9 @@ d12_list_CopyTiles(ID3D12GraphicsCommandList6 *iface,
       return;
    }
 
+   d12_list_track_read_resource(list, tiled);
+   d12_list_track_read_resource(list, buffer);
+
    enum pipe_format format = d12_format_to_pipe(tiled->desc.Format);
    for (uint32_t i = 0; i < tile_count; i++) {
       struct d12_sparse_tile_copy_info info;
@@ -10595,7 +11427,10 @@ d12_list_CopyTiles(ID3D12GraphicsCommandList6 *iface,
          uint64_t bytes = MIN2(tile_B, remaining);
          struct libagx_copy_uchar_args args = {
             .dest = to_buffer ? linear : tiled->addr + info.offset_B,
-            .src = to_buffer ? tiled->addr + info.offset_B : linear,
+            .src = to_buffer
+                      ? d12_sparse_read_address(
+                           list->device, tiled->addr + info.offset_B)
+                      : linear,
          };
          d12_list_dispatch_precomp(list, LIBAGX_COPY_UCHAR, &args,
                                    sizeof(args), agx_1d(bytes));
@@ -10842,18 +11677,20 @@ d12_list_clear_uav_buffer(struct d12_cmd_list *list,
       return;
    }
 
+   const uint64_t view_size_B = d12_buffer_view_size_B(
+      view->buffer_count, view->buffer_stride_B);
    if (!packed_size_B || packed_size_B > 16 ||
-       view->address % packed_size_B || view->size_B % packed_size_B) {
+       view->address % packed_size_B || view_size_B % packed_size_B) {
       mesa_loge("ClearUnorderedAccessView: buffer view has invalid element "
                 "alignment");
       list->state = D12_LIST_ERROR;
       return;
    }
 
-   if (!view->size_B)
+   if (!view->buffer_count)
       return;
 
-   const uint32_t view_elements = view->size_B / packed_size_B;
+   const uint32_t view_elements = view->buffer_count;
    uint64_t value = 0;
    if (packed_size_B != sizeof(uint32_t)) {
       value = d12_list_upload(list, packed, packed_size_B, 16);
@@ -11071,6 +11908,8 @@ d12_list_clear_uav(struct d12_cmd_list *list,
    struct d12_resource *res =
       resource ? d12_resource_from_iface(resource) : NULL;
 
+   d12_list_track_read_resource(list, res);
+
    if (res && res->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
       d12_list_clear_uav_texture(list, gpu_handle, cpu_handle, resource,
                                  packed, packed_size_B, num_rects, rects);
@@ -11172,6 +12011,7 @@ d12_list_attach_ds(struct d12_cmd_list *list,
    seg->height_px = MIN2(seg->height_px, height);
 
    seg->ds = ds;
+   d12_list_track_read_resource(list, ds);
    seg->ds_address = dsv->address;
    seg->stencil_address = dsv->counter_address;
    seg->ds_level = level;
@@ -11294,8 +12134,9 @@ d12_list_ClearDepthStencilView(ID3D12GraphicsCommandList6 *iface,
          for (unsigned layer = 0; layer < MAX2(dsv->size_B, 1); ++layer) {
             surface.base = dsv->address +
                (uint64_t)layer * ds->layout.layer_stride_B;
-            surface.storage_offset_B =
-               surface.base - surface.bo->va->addr;
+            surface.storage_offset_B = surface.reserved
+               ? surface.base - ds->addr
+               : surface.base - surface.bo->va->addr;
             if (!d12_copy_surface_check_storage(&surface,
                                                 "partial depth clear") ||
                 !d12_list_clear_surface_rects(list, &surface, &packed,
@@ -11525,6 +12366,175 @@ d12_list_OMSetRenderTargets(ID3D12GraphicsCommandList6 *iface, UINT num_rtvs,
       d12_list_close_cdm(list);
 }
 
+/*
+ * Programmable sample positions.
+ *
+ * AGX already takes the pattern as data in PPP_MULTISAMPLECTL; the driver was
+ * writing a fixed default into it. The register scope is one whole render,
+ * which is exactly tier 1: one pattern for every pixel in the render target.
+ */
+bool
+d12_cmd_list_set_sample_positions(struct d12_cmd_list *list,
+                                  uint32_t samples_per_pixel,
+                                  uint32_t pixel_count,
+                                  const struct d12_sample_position *positions)
+{
+   uint32_t packed = 0;
+
+   if (!list || list->state != D12_LIST_RECORDING)
+      return false;
+
+   /* The positions apply to a whole hardware render, so a change has to
+    * start a new one rather than reinterpret work already recorded. */
+   d12_list_close_cdm(list);
+
+   /* Zero of both is D3D12's spelling for "back to the standard pattern". */
+   if (!samples_per_pixel && !pixel_count) {
+      list->sample_positions_set = false;
+      list->sample_positions = 0;
+      return true;
+   }
+
+   if (!d12_sample_positions_tier1_request_valid(samples_per_pixel,
+                                                 pixel_count, 0) ||
+       !positions ||
+       !d12_sample_positions_pack(samples_per_pixel, positions, &packed)) {
+      mesa_loge("SetSamplePositions: %u samples across %u pixels is not a "
+                "pattern this adapter can program",
+                samples_per_pixel, pixel_count);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return false;
+   }
+
+   list->sample_positions = packed;
+   list->sample_positions_set = true;
+   return true;
+}
+
+/*
+ * Render passes.
+ *
+ * OMSetRenderTargets binds attachments and says nothing about what happens
+ * to them at the edges of the work, so the driver has to assume the worst:
+ * seed every tile from memory on entry and write every tile back on exit.
+ * On a tile-based deferred renderer that assumption is the expensive part.
+ * A render pass replaces it with the application's own statement per
+ * attachment, which is why DISCARD is not a hint here -- it removes a
+ * memory round trip for the whole render target.
+ *
+ * The bindings are recorded exactly as OMSetRenderTargets records them so
+ * every draw path downstream is unchanged; only the tile traffic differs.
+ */
+bool
+d12_cmd_list_begin_render_pass(
+   struct d12_cmd_list *list, unsigned rt_count,
+   const struct d12_rtv *const *rtvs,
+   const struct d12_render_pass_plan *rt_plans,
+   const float (*rt_clears)[4], const struct d12_rtv *dsv,
+   const struct d12_render_pass_plan *depth_plan,
+   const struct d12_render_pass_plan *stencil_plan, float depth_clear,
+   uint8_t stencil_clear)
+{
+   if (!list || list->state != D12_LIST_RECORDING)
+      return false;
+
+   if (list->render_pass_active) {
+      mesa_loge("BeginRenderPass inside an open render pass");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return false;
+   }
+
+   if (rt_count > AGX_MAX_RENDER_TARGETS ||
+       (rt_count && (!rtvs || !rt_plans || !rt_clears)) ||
+       (dsv && (!depth_plan || !stencil_plan))) {
+      mesa_loge("BeginRenderPass: invalid attachment description");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return false;
+   }
+
+   /* Whatever was bound before is not part of this pass. */
+   d12_list_close_cdm(list);
+   memset(list->bound_rtv, 0, sizeof(list->bound_rtv));
+   list->bound_rtv_count = 0;
+   memset(&list->bound_dsv, 0, sizeof(list->bound_dsv));
+   list->has_bound_dsv = false;
+   memset(list->render_pass_rt_plan, 0, sizeof(list->render_pass_rt_plan));
+   memset(list->render_pass_rt_clear, 0, sizeof(list->render_pass_rt_clear));
+
+   for (unsigned i = 0; i < rt_count; i++) {
+      const struct d12_rtv *rtv = rtvs[i];
+
+      /* A NO_ACCESS attachment is declared but untouched. It still occupies
+       * its slot so later slots keep their register numbers. */
+      if (rt_plans[i].no_access)
+         continue;
+
+      if (!rtv || !rtv->resource || rtv->kind != D12_DESC_RTV) {
+         mesa_loge("BeginRenderPass: attachment %u is not a render-target "
+                   "view", i);
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         return false;
+      }
+
+      list->bound_rtv[i] = *rtv;
+      list->render_pass_rt_plan[i] = rt_plans[i];
+      memcpy(list->render_pass_rt_clear[i], rt_clears[i],
+             sizeof(list->render_pass_rt_clear[i]));
+   }
+   list->bound_rtv_count = (uint8_t)rt_count;
+
+   if (dsv && !(depth_plan->no_access && stencil_plan->no_access)) {
+      if (!dsv->resource || dsv->kind != D12_DESC_DSV) {
+         mesa_loge("BeginRenderPass: depth-stencil handle is not a "
+                   "depth/stencil view");
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         return false;
+      }
+      list->bound_dsv = *dsv;
+      list->has_bound_dsv = true;
+      list->render_pass_depth_plan = *depth_plan;
+      list->render_pass_stencil_plan = *stencil_plan;
+   } else {
+      list->render_pass_depth_plan = (struct d12_render_pass_plan){0};
+      list->render_pass_stencil_plan = (struct d12_render_pass_plan){0};
+   }
+
+   list->render_pass_depth_clear = depth_clear;
+   list->render_pass_stencil_clear = stencil_clear;
+   list->render_pass_active = true;
+   return true;
+}
+
+bool
+d12_cmd_list_end_render_pass(struct d12_cmd_list *list)
+{
+   if (!list || list->state != D12_LIST_RECORDING)
+      return false;
+
+   if (!list->render_pass_active) {
+      mesa_loge("EndRenderPass without an open render pass");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return false;
+   }
+
+   /* Close the hardware render here rather than at the next binding change:
+    * the end-of-tile programs the pass asked for are only correct for the
+    * work inside it. */
+   d12_list_close_cdm(list);
+   list->render_pass_active = false;
+   memset(list->render_pass_rt_plan, 0, sizeof(list->render_pass_rt_plan));
+   memset(list->render_pass_rt_clear, 0, sizeof(list->render_pass_rt_clear));
+   list->render_pass_depth_plan = (struct d12_render_pass_plan){0};
+   list->render_pass_stencil_plan = (struct d12_render_pass_plan){0};
+   return true;
+}
+
 static void STDMETHODCALLTYPE
 d12_list_SOSetTargets(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
                       UINT num_views,
@@ -11545,11 +12555,16 @@ d12_list_SOSetTargets(ID3D12GraphicsCommandList6 *iface, UINT start_slot,
    for (unsigned i = 0; i < num_views; i++) {
       D3D12_STREAM_OUTPUT_BUFFER_VIEW view = views ? views[i] :
                                                     (D3D12_STREAM_OUTPUT_BUFFER_VIEW){0};
-      if ((view.BufferLocation || view.SizeInBytes ||
-           view.BufferFilledSizeLocation) &&
-          (!view.BufferLocation || !view.SizeInBytes ||
-           !view.BufferFilledSizeLocation || view.SizeInBytes > UINT32_MAX)) {
-         mesa_loge("SOSetTargets: incomplete or oversized buffer view %u", i);
+      if (!view.SizeInBytes) {
+         list->so[start_slot + i] =
+            (D3D12_STREAM_OUTPUT_BUFFER_VIEW){0};
+         continue;
+      }
+      if (!d12_stream_output_view_valid(
+             view.BufferLocation, view.SizeInBytes,
+             view.BufferFilledSizeLocation)) {
+         mesa_loge("SOSetTargets: incomplete, misaligned, or oversized "
+                   "buffer view %u", i);
          list->state = D12_LIST_ERROR;
          return;
       }
@@ -11580,6 +12595,165 @@ static_assert(offsetof(ID3D12GraphicsCommandList9Vtbl, Barrier) ==
 static_assert(sizeof(struct d12_list9_vtbl) ==
                  sizeof(ID3D12GraphicsCommandList9Vtbl),
               "private list-9 vtable must match the public ABI");
+
+/* The public API spells the access types with its own enumeration; the
+ * numeric values are the same as the DDI's, which the render-pass core is
+ * written against and its host tests pin. */
+static_assert((uint32_t)D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD ==
+                    D12_RP_BEGIN_DISCARD &&
+                 (uint32_t)D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE ==
+                    D12_RP_BEGIN_PRESERVE &&
+                 (uint32_t)D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR ==
+                    D12_RP_BEGIN_CLEAR &&
+                 (uint32_t)D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_NO_ACCESS ==
+                    D12_RP_BEGIN_NO_ACCESS,
+              "render-pass beginning access ABI");
+static_assert((uint32_t)D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_DISCARD ==
+                    D12_RP_END_DISCARD &&
+                 (uint32_t)D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE ==
+                    D12_RP_END_PRESERVE &&
+                 (uint32_t)D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_RESOLVE ==
+                    D12_RP_END_RESOLVE &&
+                 (uint32_t)D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_NO_ACCESS ==
+                    D12_RP_END_NO_ACCESS,
+              "render-pass ending access ABI");
+
+static void STDMETHODCALLTYPE
+d12_list_SetSamplePositions(ID3D12GraphicsCommandList6 *iface,
+                            UINT samples_per_pixel, UINT pixels,
+                            D3D12_SAMPLE_POSITION *positions)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   struct d12_sample_position local[D12_SAMPLE_POSITION_MAX_SAMPLES];
+   const uint32_t count = MIN2(samples_per_pixel,
+                               D12_SAMPLE_POSITION_MAX_SAMPLES);
+
+   static_assert(sizeof(D3D12_SAMPLE_POSITION) ==
+                    sizeof(struct d12_sample_position),
+                 "sample position ABI");
+
+   for (uint32_t i = 0; i < count && positions; ++i) {
+      local[i].x = positions[i].X;
+      local[i].y = positions[i].Y;
+   }
+
+   (void)d12_cmd_list_set_sample_positions(
+      list, samples_per_pixel, pixels,
+      positions && samples_per_pixel <= D12_SAMPLE_POSITION_MAX_SAMPLES
+         ? local
+         : NULL);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_BeginRenderPass(
+   ID3D12GraphicsCommandList6 *iface, UINT rt_count,
+   const D3D12_RENDER_PASS_RENDER_TARGET_DESC *rts,
+   const D3D12_RENDER_PASS_DEPTH_STENCIL_DESC *ds,
+   D3D12_RENDER_PASS_FLAGS flags)
+{
+   struct d12_cmd_list *list = d12_cmd_list_from_iface(iface);
+   const struct d12_rtv *rtvs[AGX_MAX_RENDER_TARGETS] = {0};
+   struct d12_render_pass_plan plans[AGX_MAX_RENDER_TARGETS] = {0};
+   float clears[AGX_MAX_RENDER_TARGETS][4] = {{0}};
+   struct d12_render_pass_plan depth_plan = {0}, stencil_plan = {0};
+   float depth_clear = 0.0f;
+   uint8_t stencil_clear = 0;
+
+   if (list->state != D12_LIST_RECORDING)
+      return;
+
+   /* SUSPENDING/RESUMING split one logical pass across command lists. The
+    * access types already say PRESERVE at the seam, so the tile traffic is
+    * correct without recognising the flags; nothing here keeps a tile
+    * resident across a submit boundary anyway. UAV writes need no special
+    * handling because a fragment shader writes them exactly as it does
+    * outside a pass. */
+   (void)flags;
+
+   if (rt_count > AGX_MAX_RENDER_TARGETS || (rt_count && !rts)) {
+      mesa_loge("BeginRenderPass: invalid render-target count %u", rt_count);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_INVALIDARG;
+      return;
+   }
+
+   for (unsigned i = 0; i < rt_count; i++) {
+      if (!d12_render_pass_plan_for(
+             (uint32_t)rts[i].BeginningAccess.Type,
+             (uint32_t)rts[i].EndingAccess.Type, &plans[i])) {
+         mesa_loge("BeginRenderPass: render target %u has an unsupported "
+                   "access pair (%d, %d)", i,
+                   (int)rts[i].BeginningAccess.Type,
+                   (int)rts[i].EndingAccess.Type);
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         return;
+      }
+
+      rtvs[i] = (const struct d12_rtv *)rts[i].cpuDescriptor.ptr;
+      if (plans[i].load == D12_RP_LOAD_CLEAR) {
+         memcpy(clears[i], rts[i].BeginningAccess.Clear.ClearValue.Color,
+                sizeof(clears[i]));
+      }
+   }
+
+   if (ds) {
+      if (!d12_render_pass_plan_for(
+             (uint32_t)ds->DepthBeginningAccess.Type,
+             (uint32_t)ds->DepthEndingAccess.Type, &depth_plan) ||
+          !d12_render_pass_plan_for(
+             (uint32_t)ds->StencilBeginningAccess.Type,
+             (uint32_t)ds->StencilEndingAccess.Type, &stencil_plan)) {
+         mesa_loge("BeginRenderPass: depth-stencil has an unsupported "
+                   "access pair");
+         list->state = D12_LIST_ERROR;
+         list->record_error = E_INVALIDARG;
+         return;
+      }
+
+      if (depth_plan.load == D12_RP_LOAD_CLEAR) {
+         depth_clear =
+            ds->DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth;
+      }
+      if (stencil_plan.load == D12_RP_LOAD_CLEAR) {
+         stencil_clear = (uint8_t)ds->StencilBeginningAccess.Clear.ClearValue
+                            .DepthStencil.Stencil;
+      }
+   }
+
+   /* A resolving attachment must still be resolved when the pass ends. That
+    * is a second pass over the surface, which this driver does not yet
+    * emit -- refusing is the only answer that does not silently drop the
+    * application's resolve. */
+   for (unsigned i = 0; i < rt_count; i++) {
+      if (!plans[i].resolve)
+         continue;
+      mesa_loge("BeginRenderPass: ENDING_ACCESS_RESOLVE on render target %u "
+                "is unsupported", i);
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_NOTIMPL;
+      return;
+   }
+   if (depth_plan.resolve || stencil_plan.resolve) {
+      mesa_loge("BeginRenderPass: depth-stencil ENDING_ACCESS_RESOLVE is "
+                "unsupported");
+      list->state = D12_LIST_ERROR;
+      list->record_error = E_NOTIMPL;
+      return;
+   }
+
+   (void)d12_cmd_list_begin_render_pass(
+      list, rt_count, rtvs, plans, clears,
+      ds ? (const struct d12_rtv *)ds->cpuDescriptor.ptr : NULL,
+      ds ? &depth_plan : NULL, ds ? &stencil_plan : NULL, depth_clear,
+      stencil_clear);
+}
+
+static void STDMETHODCALLTYPE
+d12_list_EndRenderPass(ID3D12GraphicsCommandList6 *iface)
+{
+   (void)d12_cmd_list_end_render_pass(d12_cmd_list_from_iface(iface));
+}
 
 static const struct d12_list9_vtbl d12_list_vtbl = {
    .v6 = {
@@ -11650,6 +12824,9 @@ static const struct d12_list9_vtbl d12_list_vtbl = {
    .EndQuery = d12_list_EndQuery,
    .ResolveQueryData = d12_list_ResolveQueryData,
    .DispatchMesh = d12_list_DispatchMesh,
+   .SetSamplePositions = d12_list_SetSamplePositions,
+   .BeginRenderPass = d12_list_BeginRenderPass,
+   .EndRenderPass = d12_list_EndRenderPass,
    /* Everything unset is NULL: loud crash over silent lie. */
    },
    .Barrier = d12_list_Barrier,
@@ -11689,7 +12866,11 @@ d12_cmd_list_create(struct d12_device *device, D3D12_COMMAND_LIST_TYPE type,
    list->usc_bo = agx_bo_create(&device->dev, D12_USC_BO_SIZE, 0,
                                 AGX_BO_LOW_VA | AGX_BO_WRITEBACK,
                                 "d3d12 cmdlist usc");
-   if (!list->stream_bo || !list->usc_bo) {
+   /* Every later use of this storage dereferences agx_bo_map() without a
+    * check, which is only safe because a failed Lock2 fails construction
+    * here.  Keep the map in the same admission test as the allocation. */
+   if (!list->stream_bo || !list->usc_bo || !agx_bo_map(list->stream_bo) ||
+       !agx_bo_map(list->usc_bo)) {
       if (list->stream_bo)
          agx_bo_unreference(&device->dev, list->stream_bo);
       if (list->usc_bo)

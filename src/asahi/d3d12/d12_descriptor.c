@@ -68,12 +68,15 @@ d12_heap_Release(ID3D12DescriptorHeap *iface)
          agx_bo_unreference(&heap->device->dev, heap->texture_bo);
       if (heap->pbe_bo)
          agx_bo_unreference(&heap->device->dev, heap->pbe_bo);
+      if (heap->residency_bo)
+         agx_bo_unreference(&heap->device->dev, heap->residency_bo);
       if (heap->sampler_bo)
          agx_bo_unreference(&heap->device->dev, heap->sampler_bo);
       if (heap->bo)
          agx_bo_unreference(&heap->device->dev, heap->bo);
       else
          free(heap->slots);
+      free(heap->live_resource_words);
       d12_private_data_store_destroy(&heap->private_data);
       d12_device_release(heap->device);
       free(heap);
@@ -88,7 +91,13 @@ d12_descriptor_heap_rebuild_samplers(struct d12_descriptor_heap *heap)
    if (!heap->sampler_bo)
       return;
 
+   /* Lock2 can refuse after device loss, and this runs on every descriptor
+    * update.  A driver must skip the native rebuild, not fault in the
+    * application that wrote the descriptor. */
    struct agx_sampler_packed *native = agx_bo_map(heap->sampler_bo);
+   if (!native)
+      return;
+
    uint16_t hash_table[2048];
    uint32_t unique = 0;
    bool overflow = false;
@@ -152,13 +161,34 @@ d12_descriptor_heap_update_slot(struct d12_device *device,
          continue;
 
       size_t index = (ptr - start) / sizeof(*slot);
+      if (heap->live_resource_words) {
+         const uint64_t mask = UINT64_C(1) << (index & 63);
+         uint64_t *word = &heap->live_resource_words[index >> 6];
+         const bool live =
+            slot->kind != D12_DESC_NONE && slot->kind != D12_DESC_SAMPLER &&
+            (slot->resource || slot->counter_address ||
+             (slot->address && slot->address != device->null_va));
+         if (live)
+            *word |= mask;
+         else
+            *word &= ~mask;
+      }
       if (heap->texture_bo) {
          struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
-         d12_refresh_texture_descriptor(&textures[index], slot);
+         if (textures)
+            d12_refresh_texture_descriptor(&textures[index], slot);
       }
       if (heap->pbe_bo) {
          struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
-         d12_refresh_pbe_descriptor(&pbes[index], slot);
+         if (pbes)
+            d12_refresh_pbe_descriptor(&pbes[index], slot);
+      }
+      if (heap->residency_bo) {
+         uint64_t *residency = agx_bo_map(heap->residency_bo);
+         if (residency) {
+            residency[index] =
+               d12_descriptor_sparse_residency_address(slot);
+         }
       }
       if (heap->sampler_bo) {
          /* The shader-visible D3D12 limit is 2,048, while one AGX command
@@ -297,6 +327,22 @@ d12_descriptor_heap_create(struct d12_device *device,
    bool shader_visible =
       desc->Flags & D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
+   if (shader_visible &&
+       desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) {
+      const size_t word_count = DIV_ROUND_UP(desc->NumDescriptors, 64);
+      if (word_count > UINT32_MAX ||
+          word_count > SIZE_MAX / sizeof(uint64_t)) {
+         free(heap);
+         return E_OUTOFMEMORY;
+      }
+      heap->live_resource_words = calloc(word_count, sizeof(uint64_t));
+      if (!heap->live_resource_words) {
+         free(heap);
+         return E_OUTOFMEMORY;
+      }
+      heap->live_resource_word_count = (uint32_t)word_count;
+   }
+
    if (shader_visible) {
       heap->bo = agx_bo_create(&device->dev, slots_size, 0,
                                AGX_BO_WRITEBACK,
@@ -319,6 +365,10 @@ d12_descriptor_heap_create(struct d12_device *device,
          heap->pbe_bo =
             agx_bo_create(&device->dev, pbe_size, 0, AGX_BO_WRITEBACK,
                           "d3d12 bindless PBE descriptors");
+         heap->residency_bo = agx_bo_create(
+            &device->dev,
+            (size_t)desc->NumDescriptors * sizeof(uint64_t), 0,
+            AGX_BO_WRITEBACK, "d3d12 bindless sparse residency");
       } else if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
          size_t sampler_size =
             (size_t)MIN2(desc->NumDescriptors, 1024) * AGX_SAMPLER_LENGTH;
@@ -352,38 +402,63 @@ d12_descriptor_heap_create(struct d12_device *device,
       }
    }
 
+   /* A BO whose Lock2 fails is unusable: every later native descriptor
+    * write would dereference NULL inside the application.  Treat a failed
+    * map exactly like a failed allocation and fail heap creation. */
+   bool native_mapped = true;
    if (heap->texture_bo && heap->pbe_bo) {
       struct agx_texture_packed *textures = agx_bo_map(heap->texture_bo);
       struct agx_pbe_packed *pbes = agx_bo_map(heap->pbe_bo);
-      for (uint64_t i = 0; i <= desc->NumDescriptors; i++) {
-         if (i < desc->NumDescriptors)
-            agx_set_null_texture(&textures[i]);
-         agx_set_null_pbe(&pbes[i]);
+      if (textures && pbes) {
+         for (uint64_t i = 0; i <= desc->NumDescriptors; i++) {
+            if (i < desc->NumDescriptors)
+               agx_set_null_texture(&textures[i]);
+            agx_set_null_pbe(&pbes[i]);
+         }
+      } else {
+         native_mapped = false;
+      }
+   }
+   if (heap->residency_bo) {
+      uint64_t *residency = agx_bo_map(heap->residency_bo);
+      if (residency) {
+         memset(residency, 0,
+                (size_t)desc->NumDescriptors * sizeof(uint64_t));
+      } else {
+         native_mapped = false;
       }
    }
    if (heap->sampler_bo) {
       struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
-      for (UINT i = 0; i < MIN2(desc->NumDescriptors, 1024); i++)
-         agx_pack_txf_sampler(&samplers[i]);
+      if (samplers) {
+         for (UINT i = 0; i < MIN2(desc->NumDescriptors, 1024); i++)
+            agx_pack_txf_sampler(&samplers[i]);
+      } else {
+         native_mapped = false;
+      }
    }
 
-   bool native_ok = !shader_visible ||
-      (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
-          ? heap->texture_bo && heap->pbe_bo
-          : desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
-               ? heap->sampler_bo != NULL
-               : true);
+   bool native_ok = native_mapped &&
+      (!shader_visible ||
+       (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+           ? heap->texture_bo && heap->pbe_bo && heap->residency_bo
+           : desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER
+                ? heap->sampler_bo != NULL
+                : true));
    if (!heap->slots || !native_ok) {
       if (heap->texture_bo)
          agx_bo_unreference(&device->dev, heap->texture_bo);
       if (heap->pbe_bo)
          agx_bo_unreference(&device->dev, heap->pbe_bo);
+      if (heap->residency_bo)
+         agx_bo_unreference(&device->dev, heap->residency_bo);
       if (heap->sampler_bo)
          agx_bo_unreference(&device->dev, heap->sampler_bo);
       if (heap->bo)
          agx_bo_unreference(&device->dev, heap->bo);
       else
          free(heap->slots);
+      free(heap->live_resource_words);
       free(heap);
       return E_OUTOFMEMORY;
    }

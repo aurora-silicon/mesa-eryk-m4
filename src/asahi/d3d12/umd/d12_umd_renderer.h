@@ -105,6 +105,19 @@ struct d12_umd_renderer_ops {
    void (*set_stream_output_targets)(
       void *list, uint32_t start_slot, uint32_t count,
       const struct d12_frontend_stream_output_buffer_view *views);
+   /* Render passes. Declaring tile traffic per attachment is what lets a
+    * tiler skip the load or the store an OMSetRenderTargets binding always
+    * has to assume. */
+   void (*begin_render_pass)(
+      void *list, uint32_t count,
+      const struct d12_frontend_render_pass_rt *render_targets,
+      const struct d12_frontend_render_pass_ds *depth_stencil);
+   void (*end_render_pass)(void *list);
+   /* Programmable sample positions, tier 1. A zero count and zero pixels
+    * restores the standard pattern. */
+   void (*set_sample_positions)(void *list, uint32_t samples_per_pixel,
+                                uint32_t pixel_count,
+                                const int8_t *positions);
    void (*set_render_targets)(void *list, uint32_t count,
                               const uint64_t *render_targets,
                               bool contiguous, const uint64_t *depth_stencil);

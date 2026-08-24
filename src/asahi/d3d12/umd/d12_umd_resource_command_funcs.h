@@ -45,3 +45,7 @@ void d12_umd_install_resource_command_list_functions(
 void d12_umd_install_resource_command_list_functions_0032(
    D3D12DDI_COMMAND_LIST_FUNCS_3D_0032 *table);
 #endif
+
+/* Optional D3D12DDI_TABLE_TYPE_0043_RENDER_PASS table, in either the 0043
+ * or the 0053 revision as selected by the table size. */
+HRESULT d12_umd_fill_render_pass_table(void *table, SIZE_T table_size);

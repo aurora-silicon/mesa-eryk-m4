@@ -47,7 +47,7 @@ execute = function(
 )
 for token in (
     "queue->ddi_immediate_submit",
-    "mtx_lock(&queue->ddi_submit_lock)",
+    "d12_sync_lock(&queue->ddi_submit_lock)",
     "d12_queue_take_pending_placement_waits(queue, op)",
     "mtx_unlock(&queue->lock)",
     "d12_queue_process_submit(queue, op)",
@@ -116,19 +116,24 @@ assert "DoNotWait must remain clear" in timeline_bind
 
 sparse = function(
     queue,
-    "d12_queue_bind_sparse_sync(",
+    "d12_queue_bind_sparse_ordered(",
     "d12_queue_update_tile_mappings(",
 )
 for token in (
     "d12_queue_flush_pending_placement_waits_locked(queue)",
+    "d12_queue_wait_timeline(queue, in)",
+    "d12_sparse_commit_map_updates(resource, map_updates,",
     "queue->device->dev.ops.bo_bind_timeline(",
     "d12_queue_timeline_next_submit(",
     "d12_queue_retire_enqueue(queue, op)",
 ):
     assert token in sparse, f"DDI sparse queue interlock omits {token}"
-assert "d12_queue_wait_timeline(queue" not in sparse.split(
-    "struct d12_sparse_completion", 1
-)[0]
+assert sparse.index("d12_queue_wait_timeline(queue, in)") < sparse.index(
+    "d12_sparse_commit_map_updates(resource, map_updates,"
+)
+assert sparse.index(
+    "d12_sparse_commit_map_updates(resource, map_updates,"
+) < sparse.index("queue->device->dev.ops.bo_bind_timeline(")
 for token in (
     "AGXW_SUBMIT_PRIVATE_VERSION_V4",
     "struct agxw_submit_fence_dependency",
@@ -146,5 +151,5 @@ assert "CreateThread" not in callback and "QueueUserWorkItem" not in callback
 
 print(
     "ddi-submit-thread: PASS "
-    "(caller thread + batched v4 waits + ordered queue-relative UpdateGpuVA)"
+    "(caller thread + batched v4 waits + ordered sparse table/UpdateGpuVA)"
 )

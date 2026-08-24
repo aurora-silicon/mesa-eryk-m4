@@ -493,8 +493,6 @@ enum d12_resource_class {
    D12_RES_CLASS_COUNT = 4,
 };
 
-#define D12_MAX_MODULE_RESOURCES 32
-
 /*
  * DXIL ResourceKind (subset). The shape decides how a buffer access is
  * addressed, and it is NOT recoverable from which dx.op was called: SM 6.0
@@ -661,8 +659,13 @@ struct d12_module {
    uint32_t gs_instance_count;
 
    /* Declared resources, from dx.resources */
-   struct d12_resource_binding resources[D12_MAX_MODULE_RESOURCES];
+   /* Resource records are heap-backed. Legal shaders can declare far more
+    * than the old fixed 32-record array, and this module is stack-allocated
+    * on Windows shader compilation paths. Keep the stack footprint fixed and
+    * grow only to the parser's bounded metadata count. */
+   struct d12_resource_binding *resources;
    unsigned num_resources;
+   unsigned resource_capacity;
 
    const char *error;
 };
@@ -744,8 +747,11 @@ struct nir_shader;
 #define D12_UNIFORM_HEAP_REGS       4
 #define D12_HEAP_DESC_SIZE          40
 #define D12_DESC_COUNTER_OFFSET     8
-#define D12_DESC_SIZE_OFFSET        24
-#define D12_DESC_STRIDE_OFFSET      28
+#define D12_DESC_BUFFER_COUNT_OFFSET  24
+#define D12_DESC_BUFFER_STRIDE_OFFSET 28
+#define D12_DESC_TEXTURE_METADATA0_OFFSET 24
+#define D12_DESC_TEXTURE_METADATA1_OFFSET 28
+#define D12_SPARSE_BUFFER_TILE_SIZE 65536u
 
 /* Writable image operations do not consume AGX TEXTURE descriptors.  Stores
  * and atomics take a PBE descriptor with a different binary layout, so they
@@ -771,20 +777,20 @@ struct nir_shader;
 #define D12_UNIFORM_CUSTOM_BORDER_REGS 4
 
 /*
- * The root binding upload contains three resource-metadata arrays back to
- * back plus an optional sampler-index plane. The root uniform points at a
- * three-pointer header: resource plane, metadata header, sampler plane. The
- * metadata header contains the counter and BUFINFO pointers plus robust-null
- * addresses. Loading pointers first avoids AGX's global-load immediate limit.
+ * The root binding upload contains resource, counter, BUFINFO and sparse
+ * buffer residency arrays back to back plus an optional sampler-index plane.
+ * The metadata header also publishes the coherent bindless residency array.
+ * Loading pointers first avoids AGX's global-load immediate limit.
  */
 #define D12_ROOT_RESOURCE_BASE      0
 #define D12_ROOT_COUNTER_BASE       D12_MAX_RESOURCE_BINDINGS
 #define D12_ROOT_BUFINFO_BASE       (2 * D12_MAX_RESOURCE_BINDINGS)
-#define D12_ROOT_SAMPLER_BASE       (3 * D12_MAX_RESOURCE_BINDINGS)
-#define D12_ROOT_TABLE_ENTRIES      (3 * D12_MAX_RESOURCE_BINDINGS)
+#define D12_ROOT_RESIDENCY_BASE     (3 * D12_MAX_RESOURCE_BINDINGS)
+#define D12_ROOT_SAMPLER_BASE       (4 * D12_MAX_RESOURCE_BINDINGS)
+#define D12_ROOT_TABLE_ENTRIES      (4 * D12_MAX_RESOURCE_BINDINGS)
 
 #define D12_ROOT_HEADER_SIZE          32
-#define D12_ROOT_METADATA_HEADER_SIZE 32
+#define D12_ROOT_METADATA_HEADER_SIZE 56
 
 /*
  * SM 6.8 extended command info: StartVertexLocation then
@@ -976,15 +982,25 @@ struct d12_binding_map {
        * record. Disjoint stages may legally reuse the same class/space/reg
        * and therefore need distinct runtime slots. */
       uint32_t visibility;
-      /* This entry names the lower bound of an unbounded descriptor range.
+      /* This entry names the lower bound of a rooted descriptor range.
        * The slot contains a GPU pointer to descriptor-array element zero;
        * shader indexing happens in that array rather than across root slots.
        */
       bool unbounded;
+      /* Descriptor count of a rooted range, or 0 when the API range really
+       * is unbounded.  A range the root signature sized explicitly is rooted
+       * for slot economy, not because it extends forever: without its extent
+       * a lookup for a register PAST its end resolves to this base and reads
+       * the wrong descriptor out of the heap.
+       */
+      uint32_t range_count;
    } entries[D12_MAX_RESOURCE_BINDINGS];
    unsigned count;
    unsigned resource_count;
    unsigned sampler_count;
+   /* Set when a binding could not be assigned a dense slot.  The map is then
+    * incomplete and must not be used to compile or bind a pipeline. */
+   bool overflow;
    /* UINT32_MAX for bind-time/root-range lookup, otherwise the stage whose
     * shader is being translated. */
    uint32_t visibility_filter;
@@ -1084,8 +1100,13 @@ d12_binding_map_add_range_visible(struct d12_binding_map *map, unsigned klass,
       }
    }
 
-   if (map->count >= D12_MAX_RESOURCE_BINDINGS)
+   if (map->count >= D12_MAX_RESOURCE_BINDINGS) {
+      /* Dropping the binding silently makes the shader fail later with
+       * "the root signature does not bind this resource", which names the
+       * wrong party.  Record the real cause so the caller can report it. */
+      map->overflow = true;
       return ~0u;
+   }
 
    unsigned entry = map->count++;
    unsigned slot = klass == D12_RES_SAMPLER ? map->sampler_count++
@@ -1097,6 +1118,7 @@ d12_binding_map_add_range_visible(struct d12_binding_map *map, unsigned klass,
    map->entries[entry].root_range = root_range;
    map->entries[entry].visibility = visibility;
    map->entries[entry].unbounded = false;
+   map->entries[entry].range_count = 0;
    return slot;
 }
 
@@ -1117,8 +1139,30 @@ d12_binding_map_add_unbounded(struct d12_binding_map *map, unsigned klass,
    unsigned slot = d12_binding_map_add_range(map, klass, space, reg,
                                              root_range);
    unsigned entry = d12_binding_map_find_entry(map, klass, space, reg);
-   if (entry != ~0u)
+   if (entry != ~0u) {
       map->entries[entry].unbounded = true;
+      map->entries[entry].range_count = 0;
+   }
+   return slot;
+}
+
+/* range_count is the API range's descriptor count, or 0 when the range is
+ * genuinely unbounded. */
+static inline unsigned
+d12_binding_map_add_rooted_visible(
+   struct d12_binding_map *map, unsigned klass, unsigned space, unsigned reg,
+   unsigned root_range, uint32_t visibility, uint32_t range_count)
+{
+   unsigned slot = d12_binding_map_add_range_visible(
+      map, klass, space, reg, root_range, visibility);
+   for (unsigned i = 0; i < map->count; i++) {
+      if (map->entries[i].root_range == root_range &&
+          map->entries[i].reg == reg) {
+         map->entries[i].unbounded = true;
+         map->entries[i].range_count = range_count;
+         break;
+      }
+   }
    return slot;
 }
 
@@ -1127,16 +1171,55 @@ d12_binding_map_add_unbounded_visible(
    struct d12_binding_map *map, unsigned klass, unsigned space, unsigned reg,
    unsigned root_range, uint32_t visibility)
 {
-   unsigned slot = d12_binding_map_add_range_visible(
-      map, klass, space, reg, root_range, visibility);
+   return d12_binding_map_add_rooted_visible(map, klass, space, reg,
+                                             root_range, visibility, 0);
+}
+
+/*
+ * Resolve a shader register to the rooted descriptor-array base that
+ * actually contains it.
+ *
+ * An API range has one map entry at its lower bound, while the shader may
+ * split that same heap into several declared ranges beginning at t4, t32 and
+ * so on, so exact register lookup cannot answer whether a register lives in
+ * a rooted array.  Take the nearest visible rooted base at or below the
+ * register -- but only if the register is genuinely inside it.  A range the
+ * root signature sized explicitly ends, and a register past its end belongs
+ * to some other root parameter; resolving it here would silently read the
+ * wrong descriptor out of the heap.
+ */
+static inline bool
+d12_binding_map_rooted_base(const struct d12_binding_map *map, unsigned klass,
+                            unsigned space, unsigned reg, unsigned *out_slot,
+                            unsigned *out_reg)
+{
+   bool found = false;
+   unsigned best_reg = 0;
+
    for (unsigned i = 0; i < map->count; i++) {
-      if (map->entries[i].root_range == root_range &&
-          map->entries[i].reg == reg) {
-         map->entries[i].unbounded = true;
-         break;
+      if (map->entries[i].klass != klass ||
+          map->entries[i].space != space || !map->entries[i].unbounded ||
+          map->entries[i].reg > reg ||
+          (map->visibility_filter != UINT32_MAX &&
+           map->entries[i].visibility != 0 &&
+           map->entries[i].visibility != map->visibility_filter))
+         continue;
+
+      /* A sized range covers [reg, reg + range_count). Zero means the API
+       * range is unbounded and every higher register is inside it. */
+      if (map->entries[i].range_count &&
+          reg - map->entries[i].reg >= map->entries[i].range_count)
+         continue;
+
+      if (!found || map->entries[i].reg > best_reg) {
+         found = true;
+         best_reg = map->entries[i].reg;
+         *out_slot = map->entries[i].slot;
+         *out_reg = map->entries[i].reg;
       }
    }
-   return slot;
+
+   return found;
 }
 
 /* Shader-derived maps have no API range topology. */

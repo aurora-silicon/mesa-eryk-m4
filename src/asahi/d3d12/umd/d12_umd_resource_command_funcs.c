@@ -10,6 +10,7 @@
 #include "d12_umd_resource_command_funcs.h"
 
 #include "d12_umd_internal.h"
+#include "../d12_command_validation_core.h"
 #include "../d12_present_format_core.h"
 #include "../d12_present_blt_math.h"
 
@@ -146,13 +147,11 @@ d12_umd_set_stream_output_targets(
       return;
    }
    for (UINT index = 0; views && index < count; ++index) {
-      const bool empty = !views[index].BufferLocation &&
-                         !views[index].SizeInBytes &&
-                         !views[index].BufferFilledSizeLocation;
-      if (!empty &&
-          (!views[index].BufferLocation || !views[index].SizeInBytes ||
-           !views[index].BufferFilledSizeLocation ||
-           views[index].SizeInBytes > UINT32_MAX)) {
+      if (!views[index].SizeInBytes)
+         continue;
+      if (!d12_stream_output_view_valid(
+             views[index].BufferLocation, views[index].SizeInBytes,
+             views[index].BufferFilledSizeLocation)) {
          d12_umd_resource_command_error(list, E_INVALIDARG);
          return;
       }
@@ -190,6 +189,123 @@ d12_umd_discard_resource(
     * make old contents inaccessible, so retaining the allocation is the
     * correct conservative implementation until tile-pass load elimination is
     * taught to consume discard regions. */
+}
+
+/*
+ * Render passes. The 0043 and 0053 DDI revisions differ only in the access
+ * enumerations above 3, which translate identically (see
+ * d12_render_pass_core.h), and in the descriptor structure layout. Both are
+ * reduced to the frontend-neutral description here so the renderer sees one
+ * shape.
+ */
+#define D12_UMD_DEFINE_BEGIN_RENDER_PASS(suffix, rt_type, ds_type,          \
+                                         flags_type)                        \
+   static void APIENTRY d12_umd_begin_render_pass##suffix(                  \
+      D3D12DDI_HCOMMANDLIST list_handle, UINT count,                        \
+      const rt_type *render_targets, const ds_type *depth_stencil,          \
+      flags_type flags)                                                     \
+   {                                                                        \
+      struct d12_umd_command_list *list =                                   \
+         d12_umd_command_list_from_handle(list_handle);                     \
+      struct d12_frontend_render_pass_rt rts[D12_FRONTEND_MAX_RENDER_TARGETS]; \
+      struct d12_frontend_render_pass_ds ds;                                \
+                                                                            \
+      /* SUSPENDING/RESUMING and ALLOW_UAV_WRITES need no handling: the      \
+       * access types already state the tile traffic at the seam, and a      \
+       * fragment shader writes a UAV inside a pass exactly as it does       \
+       * outside one. */                                                     \
+      (void)flags;                                                          \
+                                                                            \
+      if (!d12_umd_command_list_ready(list) ||                              \
+          !list->device->renderer_ops->begin_render_pass ||                 \
+          count > D12_FRONTEND_MAX_RENDER_TARGETS ||                        \
+          (count && !render_targets)) {                                     \
+         d12_umd_resource_command_error(list, E_INVALIDARG);                \
+         return;                                                            \
+      }                                                                     \
+                                                                            \
+      memset(rts, 0, sizeof(rts));                                          \
+      for (UINT i = 0; i < count; ++i) {                                    \
+         rts[i].cpu_descriptor = render_targets[i].cpuDescriptor.ptr;       \
+         rts[i].beginning_access =                                          \
+            (uint32_t)render_targets[i].BeginningAccess.Type;               \
+         rts[i].ending_access =                                             \
+            (uint32_t)render_targets[i].EndingAccess.Type;                  \
+         memcpy(rts[i].clear_color,                                         \
+                render_targets[i].BeginningAccess.Clear.ClearValue.Color,   \
+                sizeof(rts[i].clear_color));                                \
+      }                                                                     \
+                                                                            \
+      if (depth_stencil) {                                                  \
+         memset(&ds, 0, sizeof(ds));                                        \
+         ds.cpu_descriptor = depth_stencil->cpuDescriptor.ptr;              \
+         ds.depth_beginning_access =                                        \
+            (uint32_t)depth_stencil->DepthBeginningAccess.Type;             \
+         ds.depth_ending_access =                                           \
+            (uint32_t)depth_stencil->DepthEndingAccess.Type;                \
+         ds.stencil_beginning_access =                                      \
+            (uint32_t)depth_stencil->StencilBeginningAccess.Type;           \
+         ds.stencil_ending_access =                                         \
+            (uint32_t)depth_stencil->StencilEndingAccess.Type;              \
+         ds.clear_depth = depth_stencil->DepthBeginningAccess.Clear         \
+                             .ClearValue.DepthStencil.Depth;                \
+         ds.clear_stencil = depth_stencil->StencilBeginningAccess.Clear     \
+                               .ClearValue.DepthStencil.Stencil;            \
+      }                                                                     \
+                                                                            \
+      list->device->renderer_ops->begin_render_pass(                        \
+         list->backend, count, rts, depth_stencil ? &ds : NULL);            \
+   }
+
+D12_UMD_DEFINE_BEGIN_RENDER_PASS(_0043,
+                                 D3D12DDIARG_RENDER_PASS_RENDER_TARGET_DESC,
+                                 D3D12DDIARG_RENDER_PASS_DEPTH_STENCIL_DESC,
+                                 D3D12DDIARG_RENDER_PASS_UAV_ACCESS_FLAGS)
+D12_UMD_DEFINE_BEGIN_RENDER_PASS(
+   _0053, D3D12DDIARG_RENDER_PASS_RENDER_TARGET_DESC_0053,
+   D3D12DDIARG_RENDER_PASS_DEPTH_STENCIL_DESC_0053,
+   D3D12DDIARG_RENDER_PASS_FLAGS_0053)
+
+#undef D12_UMD_DEFINE_BEGIN_RENDER_PASS
+
+static void APIENTRY
+d12_umd_end_render_pass(D3D12DDI_HCOMMANDLIST list_handle)
+{
+   struct d12_umd_command_list *list =
+      d12_umd_command_list_from_handle(list_handle);
+
+   if (!d12_umd_command_list_ready(list) ||
+       !list->device->renderer_ops->end_render_pass) {
+      d12_umd_resource_command_error(list, E_INVALIDARG);
+      return;
+   }
+   list->device->renderer_ops->end_render_pass(list->backend);
+}
+
+HRESULT
+d12_umd_fill_render_pass_table(void *table, SIZE_T table_size)
+{
+   /* The runtime picks the revision by table size. Both are two entries
+    * wide, so the size is what distinguishes them; refuse anything else
+    * rather than writing function pointers into a shape we do not know. */
+   if (!table)
+      return E_INVALIDARG;
+
+   if (table_size == sizeof(D3D12DDI_RENDER_PASS_FUNCS_0053)) {
+      D3D12DDI_RENDER_PASS_FUNCS_0053 *funcs = table;
+      funcs->pfnBeginRenderPass = d12_umd_begin_render_pass_0053;
+      funcs->pfnEndRenderPass = d12_umd_end_render_pass;
+      return S_OK;
+   }
+
+   if (table_size == sizeof(D3D12DDI_RENDER_PASS_FUNCS_0043)) {
+      D3D12DDI_RENDER_PASS_FUNCS_0043 *funcs = table;
+      funcs->pfnBeginRenderPass = d12_umd_begin_render_pass_0043;
+      funcs->pfnEndRenderPass = d12_umd_end_render_pass;
+      return S_OK;
+   }
+
+   return E_INVALIDARG;
 }
 
 static void APIENTRY

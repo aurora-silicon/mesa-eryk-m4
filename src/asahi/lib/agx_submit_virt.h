@@ -19,6 +19,11 @@
 #define AGX_SUBMIT_VIRT_READ_SET_COMPLETE UINT32_C(0x00000001)
 #define AGX_SUBMIT_VIRT_VALID_FLAGS AGX_SUBMIT_VIRT_READ_SET_COMPLETE
 
+/* AppleAgxWddm contract v3+ bounds the canonical retained/read vector at
+ * this width.  Frontends keep the same bound without including a KMD header,
+ * so Linux and portable host builds retain one platform-neutral ABI. */
+#define AGX_SUBMIT_MAX_READ_RANGES 256u
+
 #define AGX_SUBMIT_FENCE_WAIT           UINT32_C(0x00000001)
 #define AGX_SUBMIT_FENCE_SIGNAL         UINT32_C(0x00000002)
 #define AGX_SUBMIT_FENCE_BOTTOM_OF_PIPE UINT32_C(0x00000004)

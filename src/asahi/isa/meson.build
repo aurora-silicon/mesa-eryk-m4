@@ -2,22 +2,36 @@
 # Copyright 2020-2021 Collabora
 # SPDX-License-Identifier: MIT
 
-agx2_disasm_c = custom_target(
-  input : ['gen-disasm.py', 'AGX2.xml'],
-  output : 'agx2_disasm.c',
-  command : [prog_python, '@INPUT@'],
-  capture : true,
-  depend_files : files('isa.py'),
-)
+# One decoder per instruction encoding: AGX2 for G13/G14, and the two AGX3
+# tables -- agx3b for G15/G16/G17P, agx3c for G17. Each generates its own
+# decode tables under its own symbol prefix, taken from the XML basename.
+agx_isa_xml = ['AGX2', 'AGX3b', 'AGX3c']
+agx_disasm_libs = []
 
-libagx2_disasm = static_library(
-  'agx2_disasm',
-  agx2_disasm_c,
-  include_directories : [inc_include, inc_src],
-  c_args : [no_override_init_args],
-  gnu_symbol_visibility : 'hidden',
-  build_by_default : true,
-)
+foreach isa : agx_isa_xml
+  isa_lc = isa.to_lower()
+
+  disasm_c = custom_target(
+    input : ['gen-disasm.py', isa + '.xml'],
+    output : isa_lc + '_disasm.c',
+    command : [prog_python, '@INPUT@'],
+    capture : true,
+    depend_files : files('isa.py'),
+  )
+
+  agx_disasm_libs += static_library(
+    isa_lc + '_disasm',
+    disasm_c,
+    include_directories : [inc_include, inc_src],
+    c_args : [no_override_init_args],
+    gnu_symbol_visibility : 'hidden',
+    build_by_default : true,
+  )
+endforeach
+
+libagx2_disasm = agx_disasm_libs[0]
+libagx3b_disasm = agx_disasm_libs[1]
+libagx3c_disasm = agx_disasm_libs[2]
 
 if with_tests
   test(

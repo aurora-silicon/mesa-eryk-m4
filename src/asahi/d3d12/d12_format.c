@@ -15,6 +15,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_format_caps_core.h"
 #include "d12_present_format_core.h"
 #include "d12_resolve_core.h"
 
@@ -557,4 +558,45 @@ d12_format_frontend_support(DXGI_FORMAT format)
       support |= D12_FRONTEND_FORMAT_DISPLAY;
 
    return support;
+}
+
+/*
+ * TypedUAVLoadAdditionalFormats is a promise about a specific published list,
+ * not a general statement about the format table.  Check the promise against
+ * the table that actually answers CheckFormatSupport, so a mapping regression
+ * shows up as a named format here instead of as an application reading zeroes
+ * out of a UAV the driver said it could load.
+ */
+bool
+d12_format_typed_uav_load_complete(bool additional, DXGI_FORMAT *missing)
+{
+   static const DXGI_FORMAT required[] = {
+#define D12_FORMAT_REQUIRED(name, value) (DXGI_FORMAT)(value),
+      D12_FORMAT_CORE_TYPED_UAV_LOAD_BASELINE_LIST(D12_FORMAT_REQUIRED)
+      D12_FORMAT_CORE_TYPED_UAV_LOAD_ADDITIONAL_LIST(D12_FORMAT_REQUIRED)
+#undef D12_FORMAT_REQUIRED
+   };
+   static_assert(ARRAY_SIZE(required) ==
+                    D12_FORMAT_CORE_TYPED_UAV_LOAD_BASELINE_COUNT +
+                       D12_FORMAT_CORE_TYPED_UAV_LOAD_ADDITIONAL_COUNT,
+                 "typed UAV load list width");
+
+   if (missing)
+      *missing = DXGI_FORMAT_UNKNOWN;
+
+   for (unsigned i = 0; i < ARRAY_SIZE(required); i++) {
+      if (!d12_format_core_requires_typed_uav_load((uint32_t)required[i],
+                                                   additional))
+         continue;
+
+      const uint64_t support = d12_format_frontend_support(required[i]);
+      if (support & D12_FRONTEND_FORMAT_UAV_TYPED_LOAD)
+         continue;
+
+      if (missing)
+         *missing = required[i];
+      return false;
+   }
+
+   return true;
 }

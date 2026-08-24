@@ -91,6 +91,7 @@ enum d12_dxop {
    D12_DXOP_WAVE_READ_LANE_AT = 117,
    D12_DXOP_WAVE_READ_LANE_FIRST = 118,
    D12_DXOP_WAVE_ALL_OP = 119,
+   D12_DXOP_WAVE_ACTIVE_BIT = 120,
    D12_DXOP_WAVE_PREFIX_OP = 121,
    D12_DXOP_WAVE_IS_FIRST_LANE = 110,
    D12_DXOP_CREATE_HANDLE_FOR_LIB = 160,
@@ -352,38 +353,16 @@ static nir_def *get_def(struct trans_ctx *ctx, uint32_t value_index);
 static bool const_uint(struct trans_ctx *ctx, uint32_t value_index,
                        uint64_t *out);
 
-/* An API unbounded range has one map entry at its lower bound, while DXIL
- * may split that same heap into several declared ranges beginning at u4,
- * u32, and so on.  Exact register lookup therefore cannot answer whether a
- * shader range lives in the heap.  Find the nearest visible unbounded base
- * at or below the shader register and return both its root slot and register
- * bias for descriptor-array indexing. */
+/* Shared with the DXBC translator: resolve a shader register to the rooted
+ * descriptor-array base that actually contains it, honouring the extent of a
+ * range the root signature sized explicitly. */
 static bool
 unbounded_root_for_register(const struct d12_binding_map *map,
                             unsigned klass, unsigned space, unsigned reg,
                             unsigned *out_slot, unsigned *out_reg)
 {
-   bool found = false;
-   unsigned best_reg = 0;
-
-   for (unsigned i = 0; i < map->count; i++) {
-      if (map->entries[i].klass != klass ||
-          map->entries[i].space != space || !map->entries[i].unbounded ||
-          map->entries[i].reg > reg ||
-          (map->visibility_filter != UINT32_MAX &&
-           map->entries[i].visibility != 0 &&
-           map->entries[i].visibility != map->visibility_filter))
-         continue;
-
-      if (!found || map->entries[i].reg > best_reg) {
-         found = true;
-         best_reg = map->entries[i].reg;
-         *out_slot = map->entries[i].slot;
-         *out_reg = map->entries[i].reg;
-      }
-   }
-
-   return found;
+   return d12_binding_map_rooted_base(map, klass, space, reg, out_slot,
+                                      out_reg);
 }
 
 /* Return the number of consecutive descriptors in the finite API root range
@@ -535,7 +514,7 @@ translate_branch(struct trans_ctx *ctx, const struct d12_function *func,
  */
 static bool
 decode_res_bind(struct trans_ctx *ctx, uint32_t value_id, unsigned *lower,
-                unsigned *space, unsigned *klass)
+                unsigned *upper, unsigned *space, unsigned *klass)
 {
    const struct d12_module *mod = ctx->mod;
 
@@ -559,6 +538,7 @@ decode_res_bind(struct trans_ctx *ctx, uint32_t value_id, unsigned *lower,
     */
    if (agg->is_null) {
       *lower = 0;
+      *upper = 0;
       *space = 0;
       *klass = D12_RES_SRV;
       return true;
@@ -585,6 +565,7 @@ decode_res_bind(struct trans_ctx *ctx, uint32_t value_id, unsigned *lower,
    }
 
    *lower = out[0];
+   *upper = out[1];
    *space = out[2];
    *klass = out[3];
    return true;
@@ -650,13 +631,11 @@ resource_slot_for_global(struct trans_ctx *ctx, uint32_t value_id)
 /*
  * Resolve a DXIL resource reference to a root-table slot.
  *
- * `klass` and `range_id` name an entry in dx.resources; `index` selects a
- * register within that entry's range. DXC emits `index` as the ABSOLUTE
- * shader register, so for the common single-register resource it already
- * equals lowerBound -- but an array declared at t4[8] and indexed at
- * element 2 gives index = 6, not 2. Clamping to the declared range catches
- * a resource reference that does not correspond to anything declared,
- * which would otherwise silently read slot garbage.
+ * `klass` and `range_id` name an entry in dx.resources; `index` is relative
+ * to that entry's lower bound, as required by the DXIL createHandle contract.
+ * An array declared at t4[8] and indexed at element 2 therefore names t6.
+ * Bounds checking catches a resource reference that does not correspond to
+ * anything declared, which would otherwise silently read slot garbage.
  */
 static bool
 resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
@@ -671,15 +650,15 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
 
       unsigned count = d12_range_count(rb);
 
-      /* Accept either reading of `index`: absolute when it already lands
-       * inside the declared range, relative otherwise.
-       */
-      unsigned reg = index;
-      if (!count) {
-         if (reg < rb->lower_bound)
-            reg = rb->lower_bound + index;
-      } else if (reg < rb->lower_bound || reg >= rb->lower_bound + count) {
-         reg = rb->lower_bound + index;
+      if (index > UINT32_MAX - rb->lower_bound) {
+         trans_fail(ctx, "resource range index overflows its register");
+         return false;
+      }
+      unsigned reg = rb->lower_bound + index;
+
+      if (count && index >= count) {
+         trans_fail(ctx, "resource index is outside its declared range");
+         return false;
       }
 
       /* An UNBOUNDED range has one mapped slot at its lower bound and
@@ -687,7 +666,7 @@ resolve_binding_slot(struct trans_ctx *ctx, unsigned klass,
        * dynamic path does -- a constant index is just the degenerate
        * dynamic one.
        */
-      if (!count && reg > rb->lower_bound) {
+      if (!count && index) {
          unsigned base = d12_binding_map_find(ctx->map, klass, rb->space,
                                               rb->lower_bound);
          if (base != ~0u) {
@@ -1167,6 +1146,16 @@ def_result(struct trans_ctx *ctx, const struct d12_inst *inst, nir_def *def)
       ctx->defs[inst->result_value] = def;
 }
 
+/* AGX returns its hardware sparse residency code beside the texel. Convert
+ * that target-specific code to DXIL's status convention: all bits set means
+ * fully mapped and zero means at least one accessed texel was nonresident. */
+static nir_def *
+dxil_sparse_feedback_status(nir_builder *b, nir_def *code)
+{
+   nir_def *resident = nir_is_sparse_texels_resident(b, 1, code);
+   return nir_bcsel(b, resident, nir_imm_int(b, ~0u), nir_imm_int(b, 0));
+}
+
 /*
  * A resolved resource handle. `slot` is the index def -- a root-table
  * slot for range handles, a raw heap index for SM 6.6 heap handles --
@@ -1269,6 +1258,9 @@ enum d12_root_plane {
    D12_ROOT_PLANE_SAMPLER,
    D12_ROOT_PLANE_ZERO,
    D12_ROOT_PLANE_DISCARD,
+   D12_ROOT_PLANE_RESIDENCY,
+   D12_ROOT_PLANE_HEAP_RESIDENCY,
+   D12_ROOT_PLANE_SPARSE_RO_OFFSET,
    D12_ROOT_PLANE_HEAP_PBE_NULL,
 };
 
@@ -1287,6 +1279,17 @@ root_plane(struct trans_ctx *ctx, enum d12_root_plane plane)
       return nir_channel(b, header, 3);
 
    nir_def *metadata = nir_channel(b, header, 1);
+   if (plane == D12_ROOT_PLANE_RESIDENCY ||
+       plane == D12_ROOT_PLANE_HEAP_RESIDENCY ||
+       plane == D12_ROOT_PLANE_SPARSE_RO_OFFSET) {
+      const unsigned offset =
+         plane == D12_ROOT_PLANE_RESIDENCY      ? 32
+         : plane == D12_ROOT_PLANE_HEAP_RESIDENCY ? 40
+                                                  : 48;
+      return nir_load_global(b, 1, 64,
+                             nir_iadd_imm(b, metadata, offset),
+                             .align_mul = 8);
+   }
    nir_def *metadata_header =
       nir_load_global(b, 4, 64, metadata, .align_mul = 8);
    unsigned channel = plane == D12_ROOT_PLANE_COUNTER ? 0
@@ -1380,31 +1383,6 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h);
  * the byte offset preserves the bindless-image intrinsic as the handle's
  * direct producer, as required by the AGX backend. */
 static nir_def *
-native_typed_atomic_handle(struct trans_ctx *ctx, const struct handle_ref *h,
-                           nir_def *element)
-{
-   nir_builder *b = ctx->b;
-   if (!h->rooted_heap)
-      return native_image_handle(ctx, h, true);
-
-   nir_def *descriptor = descriptor_address(ctx, h);
-   nir_def *size = resource_view_size_bytes(ctx, h);
-   nir_def *stride = nir_load_global(
-      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
-      .align_mul = 4);
-   nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
-   nir_def *valid = nir_ult(b, element, count);
-   nir_def *live_offset = nir_imul_imm(
-      b, native_heap_index(ctx, h), D12_PBE_DESC_SIZE);
-   nir_def *null_offset =
-      nir_u2u32(b, root_plane(ctx, D12_ROOT_PLANE_HEAP_PBE_NULL));
-
-   return nir_bindless_image_agx(
-      b, nir_bcsel(b, valid, live_offset, null_offset),
-      .desc_set = D12_UNIFORM_HEAP_PBES);
-}
-
-static nir_def *
 native_sampler_index(struct trans_ctx *ctx, const struct handle_ref *h)
 {
    nir_builder *b = ctx->b;
@@ -1431,8 +1409,7 @@ native_sampler_handle(struct trans_ctx *ctx, const struct handle_ref *h)
 }
 
 static nir_def *
-resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
-                 nir_def *coord0, nir_def *coord1)
+resource_base_address(struct trans_ctx *ctx, const struct handle_ref *h)
 {
    nir_builder *b = ctx->b;
 
@@ -1443,18 +1420,25 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
     * uniforms after preprocessing; the slot may be a runtime value, and
     * constant folding collapses the multiply for the constant case.
     */
-   nir_def *base;
    if (h->heap) {
-      base = nir_load_global(b, 1, 64, descriptor_address(ctx, h),
+      return nir_load_global(b, 1, 64, descriptor_address(ctx, h),
                              .align_mul = 8);
-   } else {
-      nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
-      base = nir_load_global(
-         b, 1, 64,
-         nir_iadd(b, resource_table,
-                  nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
-         .align_mul = 8);
    }
+
+   nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
+   return nir_load_global(
+      b, 1, 64,
+      nir_iadd(b, resource_table,
+               nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
+      .align_mul = 8);
+}
+
+static nir_def *
+resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
+                 nir_def *coord0, nir_def *coord1)
+{
+   nir_builder *b = ctx->b;
+   nir_def *base = resource_base_address(ctx, h);
 
    const uint32_t kind = h->kind;
    const uint32_t stride = h->stride;
@@ -1477,46 +1461,38 @@ resource_address(struct trans_ctx *ctx, const struct handle_ref *h,
                          "stride");
          return nir_imm_int64(b, 0);
       }
-      offset = nir_iadd(b, nir_imul_imm(b, coord0, stride), coord1);
+      offset = nir_iadd(
+         b, nir_imul_imm(b, nir_u2u64(b, coord0), stride),
+         nir_u2u64(b, coord1));
    } else {
-      offset = coord0;
+      offset = nir_u2u64(b, coord0);
    }
 
-   return nir_iadd(b, base, nir_u2u64(b, offset));
+   return nir_iadd(b, base, offset);
 }
 
-/*
- * Structured-buffer robustness is defined against the VIEW, not the backing
- * allocation.  Descriptor upload places NumElements in the low word of the
- * BUFINFO plane, so fixed root-table handles can discard an out-of-view store
- * before it reaches global memory.  The byte offset inside an in-range
- * structure remains unchecked: D3D12 leaves that case undefined, while the
- * element-index check is the required robust boundary.
- *
- * SM 6.6 heap handles do not pass through the root BUFINFO plane.  Leave those
- * unchanged until the descriptor-heap metadata path grows the equivalent
- * runtime query; applying a root-table slot to a heap index would read
- * unrelated metadata and be less safe than the status quo.
- */
 /* The shader declaration decides address arithmetic, but robustness is
  * defined by the descriptor VIEW actually bound at execution.  A raw shader
  * may legally alias a structured descriptor (and vice versa), so looking at
  * h->kind here silently turns a small view into its whole backing BO.
  *
- * Finite root tables publish {count-or-bytes, descriptor stride} in BUFINFO.
- * Shader-visible heap handles can read the same byte extent directly from
- * the GPU descriptor ABI. */
-static nir_def *
-resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
+ * Buffer descriptors and finite root tables publish {NumElements, stride}.
+ * A zero stride is reserved for bare root descriptors, whose first word is
+ * already a byte extent. */
+static void
+resource_view_info(struct trans_ctx *ctx, const struct handle_ref *h,
+                   nir_def **count_or_bytes, nir_def **stride_B)
 {
    nir_builder *b = ctx->b;
 
-   nir_def *size;
    if (h->heap) {
       nir_def *descriptor = descriptor_address(ctx, h);
-      size = nir_load_global(
-         b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
-         .align_mul = 4);
+      nir_def *info = nir_load_global(
+         b, 2, 32,
+         nir_iadd_imm(b, descriptor, D12_DESC_BUFFER_COUNT_OFFSET),
+         .align_mul = 8);
+      *count_or_bytes = nir_channel(b, info, 0);
+      *stride_B = nir_channel(b, info, 1);
    } else {
       nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
       nir_def *info = nir_load_global(
@@ -1524,20 +1500,187 @@ resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
          nir_iadd(b, bufinfo_table,
                   nir_imul_imm(b, nir_u2u64(b, h->slot), 8)),
          .align_mul = 8);
-      nir_def *count_or_bytes = nir_channel(b, info, 0);
-      nir_def *descriptor_stride =
+      *count_or_bytes = nir_channel(b, info, 0);
+      *stride_B =
          nir_iand_imm(b, nir_channel(b, info, 1), 0xffff);
-
-      size = nir_bcsel(b, nir_ine_imm(b, descriptor_stride, 0),
-                       nir_imul(b, count_or_bytes, descriptor_stride),
-                       count_or_bytes);
    }
 
    /* The slot for an invalid finite-table index is deliberately clamped to
     * a mapped descriptor so merely reading its metadata is safe.  A zero
     * size then redirects every raw/structured load or store to the command
     * list's mapped zero/sink buffers. */
-   return h->valid ? nir_bcsel(b, h->valid, size, nir_imm_int(b, 0)) : size;
+   if (h->valid)
+      *count_or_bytes =
+         nir_bcsel(b, h->valid, *count_or_bytes, nir_imm_int(b, 0));
+}
+
+static nir_def *
+resource_view_count_or_bytes(struct trans_ctx *ctx,
+                             const struct handle_ref *h)
+{
+   nir_def *count_or_bytes, *stride_B;
+   resource_view_info(ctx, h, &count_or_bytes, &stride_B);
+   return count_or_bytes;
+}
+
+static nir_def *
+resource_view_size_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   nir_def *count_or_bytes, *stride_B;
+   resource_view_info(ctx, h, &count_or_bytes, &stride_B);
+   nir_def *count64 = nir_u2u64(b, count_or_bytes);
+
+   return nir_bcsel(b, nir_ine_imm(b, stride_B, 0),
+                    nir_imul(b, count64, nir_u2u64(b, stride_B)), count64);
+}
+
+static nir_def *
+resource_view_stride_bytes(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_def *count_or_bytes, *stride_B;
+   resource_view_info(ctx, h, &count_or_bytes, &stride_B);
+   return stride_B;
+}
+
+/* Reserved buffers carry one coherent 32-bit residency word per D3D12
+ * 64 KiB tile. The descriptor/root plane stores a pointer prebiased to the
+ * tile containing the view's first byte. Dense resources publish zero and
+ * avoid the per-tile residency-word reads; dead DXIL status results let NIR
+ * remove the metadata path entirely for ordinary SRV loads. */
+static nir_def *
+buffer_residency_pointer(struct trans_ctx *ctx, const struct handle_ref *h)
+{
+   nir_builder *b = ctx->b;
+   nir_def *table;
+   nir_def *index;
+
+   if (h->heap) {
+      table = root_plane(ctx, D12_ROOT_PLANE_HEAP_RESIDENCY);
+      index = native_heap_index(ctx, h);
+   } else {
+      table = root_plane(ctx, D12_ROOT_PLANE_RESIDENCY);
+      index = nir_u2u32(b, h->slot);
+   }
+
+   nir_def *has_table = nir_ine_imm(b, table, 0);
+   nir_def *safe_index =
+      nir_bcsel(b, has_table, index, nir_imm_int(b, 0));
+   nir_def *safe_table = nir_bcsel(
+      b, has_table, table, root_plane(ctx, D12_ROOT_PLANE_ZERO));
+   nir_def *pointer = nir_load_global(
+      b, 1, 64,
+      nir_iadd(b, safe_table,
+               nir_imul_imm(b, nir_u2u64(b, safe_index), 8)),
+      .align_mul = 8);
+   return nir_bcsel(b, has_table, pointer, nir_imm_int64(b, 0));
+}
+
+static nir_def *
+resource_base_address_read(struct trans_ctx *ctx, nir_def *base,
+                           nir_def *map)
+{
+   nir_builder *b = ctx->b;
+   nir_def *ro_offset = root_plane(ctx, D12_ROOT_PLANE_SPARSE_RO_OFFSET);
+   return nir_bcsel(b, nir_ine_imm(b, map, 0), nir_ior(b, base, ro_offset),
+                    base);
+}
+
+static nir_def *
+buffer_residency_status(struct trans_ctx *ctx, const struct handle_ref *h,
+                        nir_def *map, nir_def *base, nir_def *byte_offset,
+                        nir_def *access_size_B, nir_def *element_valid)
+{
+   nir_builder *b = ctx->b;
+   nir_def *size_B = resource_view_size_bytes(ctx, h);
+   nir_def *offset = nir_u2u64(b, byte_offset);
+   nir_def *view_size = nir_u2u64(b, size_B);
+   nir_def *last_requested = nir_uadd_sat(
+      b, offset,
+      nir_u2u64(b, nir_iadd_imm(b, nir_umax_imm(b, access_size_B, 1), -1)));
+   nir_def *valid = nir_iand(b, nir_ult(b, offset, view_size),
+                            nir_ult(b, last_requested, view_size));
+   if (element_valid)
+      valid = nir_iand(b, valid, element_valid);
+   nir_def *has_map = nir_ine_imm(b, map, 0);
+   nir_def *needs_map = nir_iand(b, valid, has_map);
+
+   nir_def *phase = nir_u2u64(
+      b, nir_iand_imm(b, nir_u2u32(b, base),
+                      D12_SPARSE_BUFFER_TILE_SIZE - 1));
+   nir_def *first_tile =
+      nir_ushr_imm(b, nir_iadd(b, phase, offset), 16);
+   nir_def *last_tile =
+      nir_ushr_imm(b, nir_iadd(b, phase, last_requested), 16);
+   first_tile = nir_bcsel(b, needs_map, first_tile, nir_imm_int64(b, 0));
+   last_tile = nir_bcsel(b, needs_map, last_tile, nir_imm_int64(b, 0));
+
+   nir_def *safe_map = nir_bcsel(
+      b, needs_map, map, root_plane(ctx, D12_ROOT_PLANE_ZERO));
+   nir_def *first_word = nir_load_global(
+      b, 1, 32,
+      nir_iadd(b, safe_map, nir_imul_imm(b, first_tile, 4)),
+      .align_mul = 4);
+   nir_def *last_word = nir_load_global(
+      b, 1, 32,
+      nir_iadd(b, safe_map, nir_imul_imm(b, last_tile, 4)),
+      .align_mul = 4);
+   nir_def *mapped = nir_iand(b, nir_ine_imm(b, first_word, 0),
+                              nir_ine_imm(b, last_word, 0));
+   nir_def *resident =
+      nir_iand(b, valid, nir_ior(b, nir_inot(b, has_map), mapped));
+   return nir_bcsel(b, resident, nir_imm_int(b, ~0u), nir_imm_int(b, 0));
+}
+
+/* Select a real buffer address only when the complete atomic operand is
+ * inside its view and, for a reserved buffer, every touched tile is mapped.
+ * Invalid operations still execute against the command-list sink so LLVM
+ * CFG translation stays structured; the caller selects their return to zero.
+ */
+static nir_def *
+buffer_atomic_address(struct trans_ctx *ctx, const struct handle_ref *h,
+                      nir_def *coord0, nir_def *coord1, unsigned bits,
+                      nir_def **out_accessible)
+{
+   nir_builder *b = ctx->b;
+   nir_def *base = resource_base_address(ctx, h);
+   nir_def *size = resource_view_size_bytes(ctx, h);
+   nir_def *element_valid = NULL;
+   nir_def *offset;
+
+   if (h->kind == D12_RES_KIND_TYPED_BUFFER) {
+      nir_def *stride =
+         nir_umax_imm(b, resource_view_stride_bytes(ctx, h), 1);
+      offset = nir_imul(b, nir_u2u64(b, coord0), nir_u2u64(b, stride));
+   } else if (h->kind == D12_RES_KIND_STRUCTURED_BUFFER) {
+      if (!h->stride) {
+         trans_fail(ctx, "structured buffer atomic has zero stride");
+         *out_accessible = nir_imm_false(b);
+         return root_plane(ctx, D12_ROOT_PLANE_DISCARD);
+      }
+      offset = nir_iadd(
+         b, nir_imul_imm(b, nir_u2u64(b, coord0), h->stride),
+         nir_u2u64(b, coord1));
+      element_valid =
+         nir_ult(b, coord0, resource_view_count_or_bytes(ctx, h));
+   } else {
+      offset = nir_u2u64(b, coord0);
+   }
+
+   nir_def *last = nir_uadd_sat(b, offset, nir_imm_int64(b, bits / 8 - 1));
+   nir_def *in_bounds = nir_ult(b, last, nir_u2u64(b, size));
+   if (element_valid)
+      in_bounds = nir_iand(b, in_bounds, element_valid);
+
+   nir_def *residency = buffer_residency_pointer(ctx, h);
+   nir_def *status = buffer_residency_status(
+      ctx, h, residency, base, offset, nir_imm_int(b, bits / 8),
+      element_valid);
+   nir_def *accessible =
+      nir_iand(b, in_bounds, nir_ine_imm(b, status, 0));
+   *out_accessible = accessible;
+   return nir_bcsel(b, accessible, nir_iadd(b, base, offset),
+                    root_plane(ctx, D12_ROOT_PLANE_DISCARD));
 }
 
 /* Raw D3D buffer robustness is component-granular: a vec4 load straddling the
@@ -1564,14 +1707,20 @@ robust_load_buffer_vec4(struct trans_ctx *ctx, nir_def *address,
     * this add after extending to u64 incorrectly turned a wrapped address
     * near UINT32_MAX into a robust OOB read. */
    nir_def *offset32 = nir_u2u32(b, byte_offset);
-   nir_def *base = nir_isub(b, address, nir_u2u64(b, offset32));
+   nir_def *offset = element_valid ? nir_u2u64(b, byte_offset)
+                                   : nir_u2u64(b, offset32);
+   nir_def *base = nir_isub(b, address, offset);
    nir_def *size64 = nir_u2u64(b, size_bytes);
    nir_def *zero = root_plane(ctx, D12_ROOT_PLANE_ZERO);
 
    for (unsigned c = 0; c < 4; c++) {
-      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
-      nir_def *component_offset = nir_u2u64(b, component_offset32);
-      nir_def *in_bounds = nir_ult(b, component_offset, size64);
+      nir_def *component_offset =
+         element_valid
+            ? nir_iadd_imm(b, offset, c * bytes)
+            : nir_u2u64(b, nir_iadd_imm(b, offset32, c * bytes));
+      nir_def *component_last = nir_uadd_sat(
+         b, component_offset, nir_imm_int64(b, bytes - 1));
+      nir_def *in_bounds = nir_ult(b, component_last, size64);
       if (element_valid)
          in_bounds = nir_iand(b, in_bounds, element_valid);
       nir_def *safe = nir_bcsel(
@@ -1592,14 +1741,20 @@ robust_store_buffer_masked(struct trans_ctx *ctx, nir_def *address,
    nir_builder *b = ctx->b;
    unsigned bytes = values[0]->bit_size / 8;
    nir_def *offset32 = nir_u2u32(b, byte_offset);
-   nir_def *base = nir_isub(b, address, nir_u2u64(b, offset32));
+   nir_def *offset = element_valid ? nir_u2u64(b, byte_offset)
+                                   : nir_u2u64(b, offset32);
+   nir_def *base = nir_isub(b, address, offset);
    nir_def *size64 = nir_u2u64(b, size_bytes);
    nir_def *discard = root_plane(ctx, D12_ROOT_PLANE_DISCARD);
 
    for (unsigned c = 0; c < components; c++) {
-      nir_def *component_offset32 = nir_iadd_imm(b, offset32, c * bytes);
-      nir_def *component_offset = nir_u2u64(b, component_offset32);
-      nir_def *in_bounds = nir_ult(b, component_offset, size64);
+      nir_def *component_offset =
+         element_valid
+            ? nir_iadd_imm(b, offset, c * bytes)
+            : nir_u2u64(b, nir_iadd_imm(b, offset32, c * bytes));
+      nir_def *component_last = nir_uadd_sat(
+         b, component_offset, nir_imm_int64(b, bytes - 1));
+      nir_def *in_bounds = nir_ult(b, component_last, size64);
       if (element_valid)
          in_bounds = nir_iand(b, in_bounds, element_valid);
       nir_def *safe = nir_bcsel(
@@ -3102,19 +3257,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             return false;
 
          nir_def *index32 = nir_u2u32(b, idx);
-         unsigned lower = rooted_heap ? rooted_reg : rb->lower_bound;
-         nir_def *slot_def = nir_iadd_imm(b, index32, -(int)lower);
+         nir_def *slot_def = index32;
 
-         if (!rooted_heap) {
+         if (rooted_heap) {
+            slot_def = nir_iadd_imm(
+               b, slot_def, rb->lower_bound - rooted_reg);
+         } else {
             slot_def = nir_iadd_imm(b, slot_def, base_slot);
 
             if (!count && !native_segment) {
-               nir_def *at_or_above =
-                  nir_uge(b, index32, nir_imm_int(b, rb->lower_bound));
-               nir_def *below_end = nir_ult(
-                  b, index32,
-                  nir_imm_int(b, rb->lower_bound + finite_count));
-               nir_def *valid = nir_iand(b, at_or_above, below_end);
+               nir_def *valid =
+                  nir_ult(b, index32, nir_imm_int(b, finite_count));
                slot_def = nir_bcsel(b, valid, slot_def,
                                     nir_imm_int(b, base_slot));
                ctx->handle_valid[inst->result_value] = valid;
@@ -3145,16 +3298,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                 &base_slot, &rooted_reg))
             continue;
 
-         unsigned reg = (unsigned)index;
-         if (reg < rb->lower_bound)
-            reg = rb->lower_bound + (unsigned)index;
-
          unsigned count = d12_range_count(rb);
-         if (count &&
-             ((uint64_t)reg >= (uint64_t)rb->lower_bound + count)) {
+         if (index > UINT32_MAX - rb->lower_bound ||
+             (count && index >= count)) {
             trans_fail(ctx, "resource index is outside its declared range");
             return false;
          }
+         unsigned reg = rb->lower_bound + (unsigned)index;
 
          ctx->handle_base[inst->result_value] = base_slot;
          ctx->handle_heap[inst->result_value] = 3;
@@ -3217,31 +3367,24 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return false;
       }
 
-      bool typed_buffer = h.kind == D12_RES_KIND_TYPED_BUFFER;
-      bool image = typed_buffer || h.kind == D12_RES_KIND_TEXTURE_2D ||
+      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       if (image) {
          nir_def *zero = nir_imm_int(b, 0);
-         nir_def *handle =
-            typed_buffer
-               ? native_typed_atomic_handle(ctx, &h, get_def(ctx, p[2]))
-               : native_image_handle(ctx, &h, true);
+         nir_def *handle = native_image_handle(ctx, &h, true);
          nir_def *coord =
-            typed_buffer
-               ? nir_vec4(b, get_def(ctx, p[2]), zero, zero, zero)
-               : nir_vec4(b, get_def(ctx, p[2]), get_def(ctx, p[3]),
-                          h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
-                             ? get_def(ctx, p[4])
-                             : zero,
-                          zero);
+            nir_vec4(b, get_def(ctx, p[2]), get_def(ctx, p[3]),
+                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                        ? get_def(ctx, p[4])
+                        : zero,
+                     zero);
 
          def_result(
             ctx, inst,
             nir_bindless_image_atomic(
                b, 32, handle, coord, zero, get_def(ctx, p[5]),
                .atomic_op = op,
-               .image_dim = typed_buffer ? GLSL_SAMPLER_DIM_BUF
-                                         : GLSL_SAMPLER_DIM_2D,
+               .image_dim = GLSL_SAMPLER_DIM_2D,
                .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
                .format = op == nir_atomic_op_imin ||
                                 op == nir_atomic_op_imax
@@ -3251,12 +3394,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          return true;
       }
 
-      nir_def *addr = resource_address(ctx, &h,
-                                       get_def(ctx, p[2]),
-                                       get_def(ctx, p[3]));
+      nir_def *accessible;
+      nir_def *addr = buffer_atomic_address(
+         ctx, &h, get_def(ctx, p[2]), get_def(ctx, p[3]), 32,
+         &accessible);
+      nir_def *result = nir_global_atomic(
+         b, 32, addr, get_def(ctx, p[5]), .atomic_op = op);
       def_result(ctx, inst,
-                 nir_global_atomic(b, 32, addr, get_def(ctx, p[5]),
-                                   .atomic_op = op));
+                 nir_bcsel(b, accessible, result, nir_imm_int(b, 0)));
       return true;
    }
 
@@ -3280,8 +3425,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (bits != 32 && bits != 64)
          bits = 32;
 
-      bool typed_buffer = h.kind == D12_RES_KIND_TYPED_BUFFER;
-      bool image = typed_buffer || h.kind == D12_RES_KIND_TEXTURE_2D ||
+      bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
       if (image) {
          if (bits != 32) {
@@ -3290,38 +3434,35 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          }
 
          nir_def *zero = nir_imm_int(b, 0);
-         nir_def *handle =
-            typed_buffer
-               ? native_typed_atomic_handle(ctx, &h, get_def(ctx, p[1]))
-               : native_image_handle(ctx, &h, true);
+         nir_def *handle = native_image_handle(ctx, &h, true);
          nir_def *coord =
-            typed_buffer
-               ? nir_vec4(b, get_def(ctx, p[1]), zero, zero, zero)
-               : nir_vec4(b, get_def(ctx, p[1]), get_def(ctx, p[2]),
-                          h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
-                             ? get_def(ctx, p[3])
-                             : zero,
-                          zero);
+            nir_vec4(b, get_def(ctx, p[1]), get_def(ctx, p[2]),
+                     h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY
+                        ? get_def(ctx, p[3])
+                        : zero,
+                     zero);
 
          def_result(
             ctx, inst,
             nir_bindless_image_atomic_swap(
                b, 32, handle, coord, zero, get_def(ctx, p[4]),
                get_def(ctx, p[5]), .atomic_op = nir_atomic_op_cmpxchg,
-               .image_dim = typed_buffer ? GLSL_SAMPLER_DIM_BUF
-                                         : GLSL_SAMPLER_DIM_2D,
+               .image_dim = GLSL_SAMPLER_DIM_2D,
                .image_array = h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY,
                .format = PIPE_FORMAT_R32_UINT, .access = 0));
          return true;
       }
 
-      nir_def *addr = resource_address(ctx, &h,
-                                       get_def(ctx, p[1]),
-                                       get_def(ctx, p[2]));
+      nir_def *accessible;
+      nir_def *addr = buffer_atomic_address(
+         ctx, &h, get_def(ctx, p[1]), get_def(ctx, p[2]), bits,
+         &accessible);
+      nir_def *result = nir_global_atomic_swap(
+         b, bits, addr, get_def(ctx, p[4]), get_def(ctx, p[5]),
+         .atomic_op = nir_atomic_op_cmpxchg);
       def_result(ctx, inst,
-                 nir_global_atomic_swap(b, bits, addr, get_def(ctx, p[4]),
-                                        get_def(ctx, p[5]),
-                                        .atomic_op = nir_atomic_op_cmpxchg));
+                 nir_bcsel(b, accessible, result,
+                           nir_imm_intN_t(b, 0, bits)));
       return true;
    }
 
@@ -3526,17 +3667,21 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
 #undef TAILD
-      nir_def_init(&tex->instr, &tex->def, 4, 32);
+      /* The resource descriptor decides whether memory is actually sparse,
+       * but DXIL handles are late-bound. Always request the hardware feedback
+       * lane: dense descriptors report resident, while AGX sparse descriptors
+       * report each sampled page exactly. */
+      tex->is_sparse = true;
+      nir_def_init(&tex->instr, &tex->def,
+                   nir_tex_instr_dest_size(tex), 32);
       nir_builder_instr_insert(b, &tex->instr);
 
-      /* The sparse-feedback variants return {vec4, status}; index 4 is
-       * the residency status, constant-mapped since nothing bindable is
-       * sparse (same rule as buffer loads).
-       */
+      /* DXIL sample/gather results are {vec4, status}. AGX places its sparse
+       * residency code after the four data components. */
       nir_def *with_status[5] = {
          nir_channel(b, &tex->def, 0), nir_channel(b, &tex->def, 1),
          nir_channel(b, &tex->def, 2), nir_channel(b, &tex->def, 3),
-         nir_imm_int(b, ~0u),
+         dxil_sparse_feedback_status(b, nir_channel(b, &tex->def, 4)),
       };
       def_result(ctx, inst, nir_vec(b, with_status, 5));
       return true;
@@ -3589,12 +3734,10 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
    }
 
    case D12_DXOP_CHECK_ACCESS_FULLY_MAPPED:
-      /* (status) -> bool-as-i32. The status channel our buffer loads
-       * return is already "fully mapped" (nothing bindable is sparse),
-       * so this is the identity on it.
-       */
+      /* (status) -> bool. DXIL defines zero as not fully mapped and the
+       * texture/buffer paths above use all bits set for fully mapped. */
       NEED(1);
-      def_result(ctx, inst, get_def(ctx, p[0]));
+      def_result(ctx, inst, nir_ine_imm(b, get_def(ctx, p[0]), 0));
       return true;
 
    case D12_DXOP_GET_DIMENSIONS: {
@@ -3624,47 +3767,23 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       bool is_array = th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY ||
                       th.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
 
-      /* Fixed-range buffer views carry their exact view count in the root
-       * table. This works for raw/structured/UAV views as well as typed
-       * SRVs and does not pretend they are AGX texture descriptors.
-       */
-      if (is_buf && !th.heap) {
-         nir_def *bufinfo_table = root_plane(ctx, D12_ROOT_PLANE_BUFINFO);
-         nir_def *info = nir_load_global(
-            b, 2, 32,
-            nir_iadd(b, bufinfo_table,
-                     nir_imul_imm(b, nir_u2u64(b, th.slot), 8)),
-            .align_mul = 8);
-         nir_def *count = nir_channel(b, info, 0);
-         nir_def *stride =
-            nir_iand_imm(b, nir_channel(b, info, 1), 0xffff);
+      /* Both finite root tables and shader-visible heaps expose the same
+       * count/stride metadata. ByteAddressBuffer reports its byte size;
+       * structured and typed buffers report NumElements. */
+      if (is_buf) {
+         nir_def *count, *stride;
+         resource_view_info(ctx, &th, &count, &stride);
+         nir_def *dimension =
+            th.kind == D12_RES_KIND_RAW_BUFFER
+               ? nir_bcsel(b, nir_ine_imm(b, stride, 0),
+                           nir_imul(b, count, stride), count)
+               : count;
          def_result(
             ctx, inst,
             th.kind == D12_RES_KIND_STRUCTURED_BUFFER
                ? nir_vec4(b, count, stride, nir_imm_int(b, 0),
                           nir_imm_int(b, 1))
-               : nir_vec4(b, count, nir_imm_int(b, 1),
-                          nir_imm_int(b, 1), nir_imm_int(b, 1)));
-         return true;
-      }
-
-      if (is_buf && th.heap) {
-         nir_def *descriptor = descriptor_address(ctx, &th);
-         nir_def *size = nir_load_global(
-            b, 1, 32,
-            nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
-            .align_mul = 4);
-         nir_def *stride = nir_load_global(
-            b, 1, 32,
-            nir_iadd_imm(b, descriptor, D12_DESC_STRIDE_OFFSET),
-            .align_mul = 4);
-         nir_def *count = nir_udiv(b, size, nir_umax_imm(b, stride, 1));
-         def_result(
-            ctx, inst,
-            th.kind == D12_RES_KIND_STRUCTURED_BUFFER
-               ? nir_vec4(b, count, stride, nir_imm_int(b, 0),
-                          nir_imm_int(b, 1))
-               : nir_vec4(b, count, nir_imm_int(b, 1),
+               : nir_vec4(b, dimension, nir_imm_int(b, 1),
                           nir_imm_int(b, 1), nir_imm_int(b, 1)));
          return true;
       }
@@ -3922,17 +4041,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (lod)
          tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_lod, lod);
 
-      nir_def_init(&tex->instr, &tex->def, 4, 32);
+      tex->is_sparse = true;
+      nir_def_init(&tex->instr, &tex->def,
+                   nir_tex_instr_dest_size(tex), 32);
       nir_builder_instr_insert(b, &tex->instr);
 
-      /* The sparse-feedback variants return {vec4, status}; index 4 is
-       * the residency status, constant-mapped since nothing bindable is
-       * sparse (same rule as buffer loads).
-       */
+      /* TextureLoad returns the same hardware sparse feedback lane as sample
+       * and gather. Dense image descriptors still report fully mapped. */
       nir_def *with_status[5] = {
          nir_channel(b, &tex->def, 0), nir_channel(b, &tex->def, 1),
          nir_channel(b, &tex->def, 2), nir_channel(b, &tex->def, 3),
-         nir_imm_int(b, ~0u),
+         dxil_sparse_feedback_status(b, nir_channel(b, &tex->def, 4)),
       };
       def_result(ctx, inst, nir_vec(b, with_status, 5));
       return true;
@@ -4444,7 +4563,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
    case D12_DXOP_WAVE_ACTIVE_ALL_EQUAL:
       NEED(1);
-      def_result(ctx, inst, nir_vote_ieq(b, 1, get_def(ctx, p[0])));
+      if (p[0] >= ctx->mod->num_values) {
+         trans_fail(ctx, "wave all-equal operand is out of range");
+         return false;
+      }
+      def_result(ctx, inst,
+                 type_is_float(ctx->mod, ctx->mod->values[p[0]].type)
+                    ? nir_vote_feq(b, 1, get_def(ctx, p[0]))
+                    : nir_vote_ieq(b, 1, get_def(ctx, p[0])));
       return true;
 
    case D12_DXOP_WAVE_READ_LANE_FIRST:
@@ -4458,6 +4584,32 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                  nir_read_invocation(b, get_def(ctx, p[0]),
                                      get_def(ctx, p[1])));
       return true;
+
+   case D12_DXOP_WAVE_ACTIVE_BIT: {
+      /* DXIL WaveBitOpKind is And=0, Or=1, Xor=2. All three map directly
+       * to NIR subgroup reductions and preserve the operand's integer width.
+       */
+      NEED(2);
+      uint64_t dx_op = 0;
+      if (!const_uint(ctx, p[1], &dx_op)) {
+         trans_fail(ctx, "non-constant wave bit operation");
+         return false;
+      }
+
+      nir_op op;
+      switch (dx_op) {
+      case 0: op = nir_op_iand; break;
+      case 1: op = nir_op_ior; break;
+      case 2: op = nir_op_ixor; break;
+      default:
+         trans_fail(ctx, "unhandled wave bit operation kind");
+         return false;
+      }
+
+      def_result(ctx, inst,
+                 nir_reduce(b, get_def(ctx, p[0]), .reduction_op = op));
+      return true;
+   }
 
    case D12_DXOP_WAVE_ALL_OP:
    case D12_DXOP_WAVE_PREFIX_OP: {
@@ -4577,43 +4729,70 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * resourceClass }; the class must come from it, because the
        * register alone does not identify a resource -- t2 and u2 are
        * different bindings with the same number.
-       */
+      */
       NEED(2);
-      uint64_t index = 0;
-      if (!const_uint(ctx, p[1], &index)) {
-         trans_fail(ctx, "dynamic resource binding index unsupported");
+      unsigned klass, lower, upper, space;
+      if (!decode_res_bind(ctx, p[0], &lower, &upper, &space, &klass))
          return false;
-      }
-
-      unsigned klass, lower, space;
-      if (!decode_res_bind(ctx, p[0], &lower, &space, &klass))
-         return false;
-
-      /* `index` is the absolute shader register. */
-      unsigned reg = (unsigned)index;
-      if (reg < lower)
-         reg = lower + (unsigned)index;
 
       if (klass >= D12_RES_CLASS_COUNT) {
          trans_fail(ctx, "ResBind names an unknown resource class");
          return false;
       }
 
-      unsigned slot = d12_binding_map_find(ctx->map, klass, space, reg);
-      if (slot == ~0u) {
+      unsigned base_slot = ~0u;
+      unsigned rooted_reg = 0;
+      const bool rooted_heap = unbounded_root_for_register(
+         ctx->map, klass, space, lower, &base_slot, &rooted_reg);
+      if (!rooted_heap)
+         base_slot = d12_binding_map_find(ctx->map, klass, space, lower);
+      if (base_slot == ~0u) {
          trans_fail(ctx, "shader uses a resource the root signature does "
                          "not bind");
          return false;
       }
 
-      if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
-         fprintf(stderr,
-                 "binding: fromBinding class %u lower %u index %llu -> "
-                 "register %u space %u, slot %u\n",
-                 klass, lower, (unsigned long long)index, reg, space, slot);
+      nir_def *index_value = get_def(ctx, p[1]);
+      if (!index_value)
+         return false;
+      nir_def *index = nir_u2u32(b, index_value);
+
+      /* DXIL defines this as an index into ResBind's range. Rooted ranges
+       * may begin inside a larger API descriptor table, so add that static
+       * register bias before indexing the heap-relative handle. */
+      nir_def *slot = index;
+      if (rooted_heap)
+         slot = nir_iadd_imm(b, slot, lower - rooted_reg);
+
+      if (!rooted_heap) {
+         uint64_t declared_count =
+            upper >= lower ? (uint64_t)upper - lower + 1 : 0;
+         if (!declared_count ||
+             declared_count > D12_MAX_RESOURCE_BINDINGS ||
+             finite_root_range_count(ctx->map, klass, space, lower,
+                                     base_slot) < declared_count) {
+            trans_fail(ctx, "dynamic resource binding crosses root "
+                            "descriptor ranges");
+            return false;
+         }
+         slot = nir_iadd_imm(b, slot, base_slot);
       }
 
-      def_result(ctx, inst, nir_imm_int(b, slot));
+      if (inst->result_value < ctx->mod->num_values) {
+         ctx->handle_base[inst->result_value] = base_slot;
+         if (rooted_heap)
+            ctx->handle_heap[inst->result_value] = 3;
+      }
+
+      if (getenv("D3D12AGX_DEBUG_BINDINGS")) {
+         fprintf(stderr,
+                 "binding: fromBinding class %u range %u..%u space %u, "
+                 "base slot %u%s\n",
+                 klass, lower, upper, space, base_slot,
+                 rooted_heap ? " heap-rooted" : "");
+      }
+
+      def_result(ctx, inst, slot);
       return true;
    }
 
@@ -4738,14 +4917,17 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
                                        get_def(ctx, p[2]));
       nir_def *byte_offset =
          h.kind == D12_RES_KIND_STRUCTURED_BUFFER
-            ? nir_iadd(b, nir_imul_imm(b, get_def(ctx, p[1]), h.stride),
-                       get_def(ctx, p[2]))
+            ? nir_iadd(
+                 b,
+                 nir_imul_imm(b, nir_u2u64(b, get_def(ctx, p[1])),
+                              h.stride),
+                 nir_u2u64(b, get_def(ctx, p[2])))
             : get_def(ctx, p[1]);
       nir_def *size_bytes = resource_view_size_bytes(ctx, &h);
       nir_def *element_valid =
          h.kind == D12_RES_KIND_STRUCTURED_BUFFER
             ? nir_ult(b, get_def(ctx, p[1]),
-                      nir_udiv_imm(b, size_bytes, h.stride))
+                      resource_view_count_or_bytes(ctx, &h))
             : NULL;
 
       /* Contiguous low components only; DXIL emits the common case. */
@@ -4780,6 +4962,12 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
        * models texel buffers (hk_buffer_view.c).
        */
       nir_def *data;
+      nir_def *byte_offset;
+      nir_def *status_byte_offset;
+      nir_def *access_size_B;
+      nir_def *element_valid = NULL;
+      nir_def *residency = buffer_residency_pointer(ctx, &h);
+      nir_def *buffer_base = resource_base_address(ctx, &h);
       unsigned bits = 32;
       if (inst->result_type < ctx->mod->num_types) {
          const struct d12_type *rt = &ctx->mod->types[inst->result_type];
@@ -4792,6 +4980,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       if (opcode == D12_DXOP_BUFFER_LOAD &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         nir_def *stride = resource_view_stride_bytes(ctx, &h);
+         byte_offset = nir_imul(b, get_def(ctx, p[1]),
+                                nir_umax_imm(b, stride, 1));
+         status_byte_offset = nir_imul(
+            b, nir_u2u64(b, get_def(ctx, p[1])),
+            nir_u2u64(b, nir_umax_imm(b, stride, 1)));
+         access_size_B = nir_umax_imm(b, stride, 1);
          nir_def *tex_handle = native_image_handle(ctx, &h, false);
 
          nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
@@ -4808,34 +5003,50 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
          nir_builder_instr_insert(b, &tex->instr);
          data = &tex->def;
       } else {
-         nir_def *addr = resource_address(ctx, &h,
-                                          get_def(ctx, p[1]),
-                                          get_def(ctx, p[2]));
-         nir_def *byte_offset =
+         byte_offset =
             h.kind == D12_RES_KIND_STRUCTURED_BUFFER
-               ? nir_iadd(b, nir_imul_imm(b, get_def(ctx, p[1]), h.stride),
-                          get_def(ctx, p[2]))
+               ? nir_iadd(
+                    b,
+                    nir_imul_imm(b, nir_u2u64(b, get_def(ctx, p[1])),
+                                 h.stride),
+                    nir_u2u64(b, get_def(ctx, p[2])))
                : get_def(ctx, p[1]);
+         status_byte_offset = nir_u2u64(b, byte_offset);
+         nir_def *addr = nir_iadd(
+            b, resource_base_address_read(ctx, buffer_base, residency),
+            nir_u2u64(b, byte_offset));
          nir_def *size_bytes = resource_view_size_bytes(ctx, &h);
-         nir_def *element_valid =
+         element_valid =
             h.kind == D12_RES_KIND_STRUCTURED_BUFFER
                ? nir_ult(b, get_def(ctx, p[1]),
-                         nir_udiv_imm(b, size_bytes, h.stride))
+                         resource_view_count_or_bytes(ctx, &h))
                : NULL;
          data = robust_load_buffer_vec4(
             ctx, addr, byte_offset, size_bytes, element_valid, bits);
+         unsigned first_component = 0;
+         unsigned component_count = 4;
+         if (opcode == D12_DXOP_RAW_BUFFER_LOAD && np > 3) {
+            uint64_t mask = 0xf;
+            if (const_uint(ctx, p[3], &mask) && (mask & 0xf)) {
+               unsigned first = ffs((unsigned)mask & 0xf) - 1;
+               unsigned last = util_last_bit((unsigned)mask & 0xf);
+               first_component = first;
+               component_count = last - first;
+            }
+         }
+         status_byte_offset = nir_iadd_imm(
+            b, status_byte_offset, first_component * (bits / 8));
+         access_size_B =
+            nir_imm_int(b, component_count * (bits / 8));
       }
 
-      /* DXIL buffer loads return {vec4, i32 status}; extractvalue picks
-       * lanes, and index 4 is the tiled-resource residency status
-       * (CheckAccessFullyMapped). Nothing we bind is sparse, so an
-       * access that executes is by definition fully mapped: the status
-       * is the constant "mapped", not a placeholder.
-       */
+      nir_def *status = buffer_residency_status(
+         ctx, &h, residency, buffer_base, status_byte_offset, access_size_B,
+         element_valid);
       nir_def *mapped[5] = {
          nir_channel(b, data, 0), nir_channel(b, data, 1),
          nir_channel(b, data, 2), nir_channel(b, data, 3),
-         nir_imm_intN_t(b, ~0u, data->bit_size),
+         nir_u2uN(b, status, data->bit_size),
       };
       def_result(ctx, inst, nir_vec(b, mapped, 5));
       return true;
@@ -6265,8 +6476,10 @@ d12_dxil_signature(const void *dxil, size_t size_B,
       return 0;
 
    struct d12_module mod;
-   if (!d12_dxil_module_parse(&mod, bc, bc_size))
+   if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
+      d12_dxil_module_finish(&mod);
       return 0;
+   }
 
    const struct d12_sig_element *sig =
       kind == D12_SIGNATURE_INPUT  ? mod.input_sig

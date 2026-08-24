@@ -524,7 +524,11 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
       return d12_dxbc_is_dxbc_shader(blob, blob_size) ? E_FAIL : E_INVALIDARG;
    }
 
-   d12_root_layout_build_map(&rs->layout, &rs->map);
+   if (!d12_root_layout_build_map(&rs->layout, &rs->map)) {
+      d12_root_layout_cleanup(&rs->layout);
+      free(rs);
+      return E_INVALIDARG;
+   }
 
    if (rs->layout.num_static_samplers) {
       rs->static_samplers = calloc(rs->layout.num_static_samplers,
@@ -853,7 +857,8 @@ d12_custom_border_apply_heap_swizzle(nir_builder *b, nir_tex_instr *tex,
       b, nir_load_descriptor_heap_agx(b),
       nir_imul_imm(b, slot, D12_HEAP_DESC_SIZE));
    nir_def *mapping = nir_load_global_constant(
-      b, 1, 32, nir_iadd_imm(b, descriptor, D12_DESC_SIZE_OFFSET),
+      b, 1, 32,
+      nir_iadd_imm(b, descriptor, D12_DESC_TEXTURE_METADATA0_OFFSET),
       .align_mul = 4);
 
    nir_def *zero = nir_alu_type_get_base_type(type) == nir_type_float
@@ -1091,6 +1096,190 @@ d12_nir_lower_sampler_lod_bias(nir_shader *nir)
                               nir_metadata_none, NULL);
 }
 
+/*
+ * D3D12 MINIMUM/MAXIMUM filters replace the filter's weighted average with a
+ * reduction over the same texel set.  AGX has no reduction mode -- its packed
+ * sampler is fully accounted for by LODs, anisotropy, min/mag/mip filters,
+ * wrap, compare and border -- so the reduction is performed in the shader,
+ * exactly as Honeykrisp already does for custom border colours.
+ *
+ * The texel set of a linear 2D filter is the gather footprint, so one tg4 per
+ * requested component yields it directly and a componentwise fmin/fmax over
+ * the four lanes is the reduction.  d12_pack_sampler_descriptor forces such a
+ * sampler to nearest mip filtering, so the level the gather lands on is the
+ * level the hardware selected.
+ *
+ * The reduction bits are per descriptor, so the branch below is dynamically
+ * uniform for every invocation that shares a sampler, and it is absent
+ * entirely from shaders whose samplers never reduce.
+ */
+static bool
+d12_reduction_gatherable(const nir_tex_instr *tex)
+{
+   switch (tex->sampler_dim) {
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_CUBE:
+      return true;
+   default:
+      /* 1D and 3D reduce over 2 and 8 texels respectively, neither of which
+       * tg4 expresses.  Reproducing them from texel fetches would have to
+       * reimplement wrap and border selection, where a mistake is worse than
+       * the standard filter this leaves in place. */
+      return false;
+   }
+}
+
+static nir_def *
+d12_reduction_gather(nir_builder *b, const nir_tex_instr *tex,
+                     unsigned component)
+{
+   unsigned num_srcs = 0;
+
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_coord:
+      case nir_tex_src_offset:
+      case nir_tex_src_texture_handle:
+      case nir_tex_src_sampler_handle:
+      case nir_tex_src_texture_offset:
+      case nir_tex_src_sampler_offset:
+      case nir_tex_src_texture_deref:
+      case nir_tex_src_sampler_deref:
+         num_srcs++;
+         break;
+      default:
+         break;
+      }
+   }
+
+   nir_tex_instr *gather = nir_tex_instr_create(b->shader, num_srcs);
+   gather->op = nir_texop_tg4;
+   gather->component = component;
+   gather->sampler_dim = tex->sampler_dim;
+   gather->is_array = tex->is_array;
+   gather->dest_type = tex->dest_type;
+   gather->texture_index = tex->texture_index;
+   gather->sampler_index = tex->sampler_index;
+   gather->can_speculate = tex->can_speculate;
+   gather->backend_flags = tex->backend_flags;
+
+   unsigned slot = 0;
+   for (unsigned i = 0; i < tex->num_srcs; i++) {
+      switch (tex->src[i].src_type) {
+      case nir_tex_src_coord:
+      case nir_tex_src_offset:
+      case nir_tex_src_texture_handle:
+      case nir_tex_src_sampler_handle:
+      case nir_tex_src_texture_offset:
+      case nir_tex_src_sampler_offset:
+      case nir_tex_src_texture_deref:
+      case nir_tex_src_sampler_deref:
+         gather->src[slot].src_type = tex->src[i].src_type;
+         gather->src[slot].src = nir_src_for_ssa(tex->src[i].src.ssa);
+         slot++;
+         break;
+      default:
+         break;
+      }
+   }
+
+   nir_def_init(&gather->instr, &gather->def, 4,
+                nir_alu_type_get_type_size(tex->dest_type));
+   nir_builder_instr_insert(b, &gather->instr);
+   return &gather->def;
+}
+
+static bool
+d12_lower_sampler_reduction(nir_builder *b, nir_tex_instr *tex,
+                            UNUSED void *data)
+{
+   if (!nir_tex_instr_need_sampler(tex) || nir_tex_instr_is_query(tex) ||
+       tex->is_shadow || tex->op == nir_texop_tg4 ||
+       tex->op == nir_texop_txf || tex->op == nir_texop_txf_ms ||
+       !d12_reduction_gatherable(tex))
+      return false;
+
+   /* Reduction is defined over filterable, i.e. floating-point, texels. */
+   if (nir_alu_type_get_base_type(tex->dest_type) != nir_type_float)
+      return false;
+
+   /* A sparse tex publishes its residency code in the last channel. Reduce
+    * only the colour channels and keep the hardware's own status word. */
+   const unsigned components =
+      tex->def.num_components - (tex->is_sparse ? 1 : 0);
+   if (!components || components > 4)
+      return false;
+
+   b->cursor = nir_after_instr(&tex->instr);
+
+   /* Resolve the per-sampler metadata first: a sampler this pass cannot
+    * address leaves the instruction untouched rather than a dead clone. */
+   bool bindless;
+   nir_def *entry;
+   if (!d12_sampler_sideband_entry(b, tex, &bindless, &entry))
+      return false;
+
+   /* Keep an independent copy of the hardware sample so replacing tex->def
+    * does not make the phi self-referential. */
+   nir_instr *clone = nir_instr_clone(b->shader, &tex->instr);
+   nir_builder_instr_insert(b, clone);
+   nir_def *sampled = &nir_instr_as_tex(clone)->def;
+
+   nir_def *flags = nir_load_global_constant(
+      b, 1, 32,
+      nir_iadd_imm(b, entry,
+                   bindless ? offsetof(struct d12_descriptor, sampler_reserved)
+                            : offsetof(struct d12_custom_border_entry, flags)),
+      .align_mul = 4);
+
+   nir_def *reduces =
+      nir_ine_imm(b, nir_iand_imm(b, flags, D12_SAMPLER_REDUCTION_MASK), 0);
+   nir_def *is_min =
+      nir_ine_imm(b, nir_iand_imm(b, flags, D12_SAMPLER_REDUCTION_MIN), 0);
+
+   nir_push_if(b, reduces);
+   nir_def *reduced;
+   {
+      nir_def *channels[5];
+
+      for (unsigned c = 0; c < components; c++) {
+         nir_def *texels = d12_reduction_gather(b, tex, c);
+         nir_def *lo = nir_fmin(b, nir_channel(b, texels, 0),
+                                nir_channel(b, texels, 1));
+         nir_def *hi = nir_fmin(b, nir_channel(b, texels, 2),
+                                nir_channel(b, texels, 3));
+         nir_def *minimum = nir_fmin(b, lo, hi);
+
+         nir_def *lo_max = nir_fmax(b, nir_channel(b, texels, 0),
+                                    nir_channel(b, texels, 1));
+         nir_def *hi_max = nir_fmax(b, nir_channel(b, texels, 2),
+                                    nir_channel(b, texels, 3));
+         nir_def *maximum = nir_fmax(b, lo_max, hi_max);
+
+         channels[c] = nir_bcsel(b, is_min, minimum, maximum);
+      }
+
+      /* The gathers cover the same footprint as the sample they replace, so
+       * the sample's own residency code still describes this access. */
+      if (tex->is_sparse)
+         channels[components] = nir_channel(b, sampled, components);
+
+      reduced = nir_vec(b, channels, tex->def.num_components);
+   }
+   nir_pop_if(b, NULL);
+
+   nir_def *result = nir_if_phi(b, reduced, sampled);
+   nir_def_replace(&tex->def, result);
+   return true;
+}
+
+static bool
+d12_nir_lower_sampler_reduction(nir_shader *nir)
+{
+   return nir_shader_tex_pass(nir, d12_lower_sampler_reduction,
+                              nir_metadata_none, NULL);
+}
+
 static bool
 d12_lower_bindless_sampler_map(nir_builder *b, nir_intrinsic_instr *intr,
                                UNUSED void *data)
@@ -1205,6 +1394,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
       if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
          mesa_loge("CreateComputePipelineState: DXIL parse failed: %s",
                    mod.error ? mod.error : "unknown");
+         d12_dxil_module_finish(&mod);
          return E_INVALIDARG;
       }
 
@@ -1226,6 +1416,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_sampler_reduction);
    NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
@@ -1439,6 +1630,7 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
    if (!d12_dxil_module_parse(&mod, bc, bc_size)) {
       mesa_loge("graphics PSO: DXIL parse failed: %s",
                 mod.error ? mod.error : "unknown");
+      d12_dxil_module_finish(&mod);
       return NULL;
    }
 
@@ -2127,6 +2319,7 @@ compile_gfx_stage(struct d12_device *device,
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
    NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_sampler_reduction);
    NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
    unsigned runtime_samplers = d12_nir_sampler_state_count(nir, map);
@@ -3683,6 +3876,7 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
     */
    pso->raster.front_face_ccw = false;
    pso->raster.depth_clip = true;
+   pso->raster.polygon_mode = AGX_POLYGON_MODE_FILL;
    pso->raster.dynamic_depth_bias =
       flags & D3D12_PIPELINE_STATE_FLAG_DYNAMIC_DEPTH_BIAS;
    pso->raster.dynamic_strip_cut =
@@ -3703,8 +3897,31 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       pso->raster.smooth_line =
          rs_desc->AntialiasedLineEnable && !rs_desc->MultisampleEnable;
 
-      if (rs_desc->FillMode == D3D12_FILL_MODE_WIREFRAME)
-         mesa_logw("CreateGraphicsPipelineState: wireframe fill ignored");
+      static_assert(D3D12_FILL_MODE_WIREFRAME ==
+                       D12_CORE_FILL_MODE_WIREFRAME &&
+                    D3D12_FILL_MODE_SOLID == D12_CORE_FILL_MODE_SOLID,
+                    "D3D12 fill-mode values");
+      static_assert(AGX_POLYGON_MODE_LINE == D12_CORE_POLYGON_MODE_LINE &&
+                    AGX_POLYGON_MODE_FILL == D12_CORE_POLYGON_MODE_FILL,
+                    "AGX polygon-mode values");
+      uint32_t polygon_mode;
+      if (!d12_raster_polygon_mode(rs_desc->FillMode, &polygon_mode)) {
+         free(pso);
+         return E_INVALIDARG;
+      }
+      pso->raster.polygon_mode = (enum agx_polygon_mode)polygon_mode;
+
+      /* Target-independent rasterization. Reject a count the hardware cannot
+       * rasterize instead of quietly rasterizing at a different one: a shader
+       * reading SV_Coverage would then see a mask of the wrong width. */
+      if (!d12_raster_forced_sample_count_supported(
+             rs_desc->ForcedSampleCount)) {
+         mesa_loge("ForcedSampleCount %u is not supported; AGX rasterizes at "
+                   "1, 2 or 4 samples", rs_desc->ForcedSampleCount);
+         free(pso);
+         return E_INVALIDARG;
+      }
+      pso->raster.forced_sample_count = rs_desc->ForcedSampleCount;
    }
 
    /* The tilebuffer sample stride is part of the hardware ABI, so use the

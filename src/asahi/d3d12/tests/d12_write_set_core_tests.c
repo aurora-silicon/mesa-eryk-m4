@@ -84,6 +84,38 @@ main(void)
                   "merge succeeds at capacity");
    require_range(full, 0, 0x1000, 0x1100, "capacity merge union bytes");
 
+   struct d12_write_range allocation_fragments[3] = {
+      {.pointer = 0x10000, .size = 0x1000},
+      {.pointer = 0x14000, .size = 0x1000},
+      {.pointer = 0x30000, .size = 0x1000},
+   };
+   unsigned allocation_fragment_count = 3;
+   require_result(d12_write_set_add_allocation(
+                     allocation_fragments, &allocation_fragment_count, 3,
+                     0x10000, 0x10000, 0x8000, 0x1000) ==
+                     D12_WRITE_SET_OK &&
+                     allocation_fragment_count == 2,
+                  "full vector widens one fragmented write allocation");
+   require_range(allocation_fragments, 0, 0x10000, 0x10000,
+                 "widened write allocation replaces tile fragments");
+   require_range(allocation_fragments, 1, 0x30000, 0x1000,
+                 "write widening preserves unrelated allocation");
+
+   struct d12_write_range no_room[2] = {
+      {.pointer = 0x30000, .size = 0x1000},
+      {.pointer = 0x50000, .size = 0x1000},
+   };
+   unsigned no_room_count = 2;
+   require_result(d12_write_set_add_allocation(
+                     no_room, &no_room_count, 2, 0x10000, 0x10000,
+                     0x8000, 0x1000) == D12_WRITE_SET_NOSPACE &&
+                     no_room_count == 2,
+                  "new write allocation fails when widening cannot fit");
+   require_result(d12_write_set_add_allocation(
+                     no_room, &no_room_count, 2, 0x10000, 0x10000,
+                     0x10000, 1) == D12_WRITE_SET_INVALID,
+                  "write allocation offset at end is rejected");
+
    unsigned invalid_count = 0;
    require_result(d12_write_set_add(NULL, &invalid_count, 1, 1, 1) ==
                      D12_WRITE_SET_INVALID,

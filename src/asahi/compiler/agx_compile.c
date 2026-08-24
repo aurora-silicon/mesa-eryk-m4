@@ -1781,17 +1781,24 @@ static agx_instr *
 agx_emit_imadshl_agx(agx_builder *b, nir_alu_instr *alu, agx_index dst,
                      agx_index s0, agx_index s1, agx_index s2, agx_index s3)
 {
-   /* If the shift is not constant, use a variable shift. This should never
-    * happen in practice but we don't want to constrain the NIR.
+   /* The immediate iadd/imad encoding accepts only shifts 0..4.  NIR normally
+    * guarantees that domain, but this backend is also a process boundary for
+    * arbitrary DXIL- and SPIR-V-derived shaders.  Keep every out-of-domain
+    * value on the general shift path instead of letting the packer's
+    * always-live domain check take down a release process.
     */
    unsigned shift;
-   if (!nir_src_is_const(alu->src[3].src)) {
+   bool constant_shift = nir_src_is_const(alu->src[3].src);
+
+   if (constant_shift)
+      shift = nir_alu_src_as_uint(alu->src[3]);
+
+   if (!constant_shift || shift > 4) {
       s2 = agx_bfi(b, agx_immediate(0), s2, s3, 0);
       shift = 0;
-   } else {
-      shift = nir_alu_src_as_uint(alu->src[3]);
    }
 
+   /* Only the immediate-encoding path reaches this assertion. */
    assert(shift <= 4 && "domain restriction on the input NIR");
 
    /* Emit iadd if possible, else imad */

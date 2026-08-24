@@ -20,6 +20,47 @@
 #include "d12_umd_internal.h"
 #include "d12_umd_device_funcs.h"
 #include "d12_umd_present_funcs.h"
+#include "d12_umd_resource_command_funcs.h"
+
+/*
+ * The command-list table only gained pfnSetSamplePositions in DDI 0032, so a
+ * WDDM 2.0 or 2.1 target has no way for the runtime to deliver the call --
+ * whatever the shared policy says the hardware can do. Report what this
+ * build can actually receive rather than a capability the ABI cannot carry.
+ */
+/*
+ * Mesh shaders are implemented in the renderer and reachable through the
+ * public COM frontend, but not yet through this DDI.
+ *
+ * The blocker is structural rather than missing capability: this adapter
+ * canonicalises every pipeline-creation revision down to
+ * D3D12DDIARG_CREATE_PIPELINE_STATE_0001, which predates mesh shaders and so
+ * has nowhere to carry hMeshShader/hAmplificationShader. Servicing them means
+ * moving the canonical form forward to 0075 -- worth doing, but it is not a
+ * capability question, and advertising the tier before then would promise a
+ * pipeline this table cannot construct.
+ */
+#define D12_UMD_MESH_SHADER_TIER 0u
+
+#if D12_UMD_TARGETS_WDDM23
+#define D12_UMD_PROGRAMMABLE_SAMPLE_POSITIONS_TIER                          \
+   (d12_core_get_caps()->programmable_sample_positions_tier)
+#else
+#define D12_UMD_PROGRAMMABLE_SAMPLE_POSITIONS_TIER 0u
+#endif
+
+/* The shared policy speaks D3D_FEATURE_LEVEL; the DDI speaks its own small
+ * enumeration. Pin the translation to the WDK's actual values so a header
+ * revision cannot silently change what this adapter advertises. */
+_Static_assert(D12_CORE_PIPELINE_LEVEL_11_0 ==
+                  D3D12DDI_3DPIPELINELEVEL_11_0 &&
+               D12_CORE_PIPELINE_LEVEL_11_1 ==
+                  D3D12DDI_3DPIPELINELEVEL_11_1 &&
+               D12_CORE_PIPELINE_LEVEL_12_0 ==
+                  D3D12DDI_3DPIPELINELEVEL_12_0 &&
+               D12_CORE_PIPELINE_LEVEL_12_1 ==
+                  D3D12DDI_3DPIPELINELEVEL_12_1,
+               "DDI 3D pipeline level values");
 #include "d12_umd_tables.h"
 
 #include <string.h>
@@ -359,7 +400,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
             .ResourceHeapTier =
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .ProgrammableSamplePositionsTier =
-               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+               (D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER)
+                  D12_UMD_PROGRAMMABLE_SAMPLE_POSITIONS_TIER,
             .CopyQueueTimestampQueriesSupported =
                caps->copy_queue_timestamp_queries,
             .WriteBufferImmediateQueueFlags =
@@ -367,11 +409,14 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                   caps->write_buffer_immediate_support_flags),
             .ViewInstancingTier =
                D3D12DDI_VIEW_INSTANCING_TIER_NOT_SUPPORTED,
-            .RenderPassTier = D3D12DDI_RENDER_PASS_TIER_NOT_SUPPORTED,
+            .RenderPassTier = (D3D12DDI_RENDER_PASS_TIER)
+               caps->render_passes_tier,
             .RaytracingTier = D3D12DDI_RAYTRACING_TIER_NOT_SUPPORTED,
             .VariableShadingRateTier =
                D3D12DDI_VARIABLE_SHADING_RATE_TIER_NOT_SUPPORTED,
-            .MeshShaderTier = D3D12DDI_MESH_SHADER_TIER_NOT_SUPPORTED,
+            .MeshShaderTier =
+               (D3D12DDI_MESH_SHADER_TIER)
+                  D12_UMD_MESH_SHADER_TIER,
             .SamplerFeedbackTier =
                D3D12DDI_SAMPLER_FEEDBACK_TIER_NOT_SUPPORTED,
             .EnhancedBarriersSupported = FALSE,
@@ -398,7 +443,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .DepthBoundsTestSupported = FALSE,
             .ProgrammableSamplePositionsTier =
-               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+               (D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER)
+                  D12_UMD_PROGRAMMABLE_SAMPLE_POSITIONS_TIER,
             .CopyQueueTimestampQueriesSupported =
                caps->copy_queue_timestamp_queries,
             .WriteBufferImmediateQueueFlags =
@@ -432,7 +478,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
                (D3D12DDI_RESOURCE_HEAP_TIER)caps->resource_heap_tier,
             .DepthBoundsTestSupported = FALSE,
             .ProgrammableSamplePositionsTier =
-               D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER_NOT_SUPPORTED,
+               (D3D12DDI_PROGRAMMABLE_SAMPLE_POSITIONS_TIER)
+                  D12_UMD_PROGRAMMABLE_SAMPLE_POSITIONS_TIER,
             .CopyQueueTimestampQueriesSupported =
                caps->copy_queue_timestamp_queries,
             .WriteBufferImmediateQueueFlags =
@@ -461,7 +508,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
 
    case D3D12DDICAPS_TYPE_3DPIPELINESUPPORT: {
       const D3D12DDI_3DPIPELINELEVEL data =
-         D3D12DDI_3DPIPELINELEVEL_11_0;
+         (D3D12DDI_3DPIPELINELEVEL)d12_core_pipeline_level(
+            d12_core_get_caps()->max_feature_level);
       return d12_umd_copy_cap(arguments, &data, sizeof(data));
    }
 
@@ -496,11 +544,13 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
       D3D12DDI_3DPIPELINESUPPORT1_DATA_0081 *data = arguments->pData;
       if (arguments->pInfo || !data || arguments->DataSize != sizeof(*data))
          return E_INVALIDARG;
+      const D3D12DDI_3DPIPELINELEVEL supported =
+         (D3D12DDI_3DPIPELINELEVEL)d12_core_pipeline_level(
+            d12_core_get_caps()->max_feature_level);
       data->MaximumDriverSupportedFeatureLevel =
-         data->HighestRuntimeSupportedFeatureLevel <
-               D3D12DDI_3DPIPELINELEVEL_11_0
+         data->HighestRuntimeSupportedFeatureLevel < supported
             ? data->HighestRuntimeSupportedFeatureLevel
-            : D3D12DDI_3DPIPELINELEVEL_11_0;
+            : supported;
       return S_OK;
    }
 
@@ -598,6 +648,12 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
          const D3D12DDI_SHADER_CAPS_0084 data = {
             .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
             .Native16BitOps = caps->native_16bit_shader_ops,
+            .TypedUAVLoadAdditionalFormats =
+               caps->typed_uav_load_additional_formats,
+            .WaveOps = caps->wave_ops,
+            .WaveLaneCountMin = caps->wave_lane_count_min,
+            .WaveLaneCountMax = caps->wave_lane_count_max,
+            .TotalLaneCount = caps->total_lane_count,
             .WaveMMATier = D3D12DDI_WAVE_MMA_TIER_NOT_SUPPORTED,
          };
          return d12_umd_copy_cap(arguments, &data, sizeof(data));
@@ -609,12 +665,13 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
             .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
             .DoubleOps = FALSE,
             .ShaderSpecifiedStencilRef = FALSE,
-            .TypedUAVLoadAdditionalFormats = FALSE,
+            .TypedUAVLoadAdditionalFormats =
+               caps->typed_uav_load_additional_formats,
             .ROVs = FALSE,
-            .WaveOps = FALSE,
-            .WaveLaneCountMin = 0,
-            .WaveLaneCountMax = 0,
-            .TotalLaneCount = 0,
+            .WaveOps = caps->wave_ops,
+            .WaveLaneCountMin = caps->wave_lane_count_min,
+            .WaveLaneCountMax = caps->wave_lane_count_max,
+            .TotalLaneCount = caps->total_lane_count,
             .Int64Ops = FALSE,
             .Native16BitOps = caps->native_16bit_shader_ops,
          };
@@ -627,12 +684,13 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
             .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
             .Doubles = FALSE,
             .ShaderSpecifiedStencilRef = FALSE,
-            .TypedUAVLoadAdditionalFormats = FALSE,
+            .TypedUAVLoadAdditionalFormats =
+               caps->typed_uav_load_additional_formats,
             .ROVs = FALSE,
-            .WaveOps = FALSE,
-            .WaveLaneCountMin = 0,
-            .WaveLaneCountMax = 0,
-            .TotalLaneCount = 0,
+            .WaveOps = caps->wave_ops,
+            .WaveLaneCountMin = caps->wave_lane_count_min,
+            .WaveLaneCountMax = caps->wave_lane_count_max,
+            .TotalLaneCount = caps->total_lane_count,
          };
          return d12_umd_copy_cap(arguments, &data, sizeof(data));
       }
@@ -641,7 +699,8 @@ d12_umd_get_caps(D3D12DDI_HADAPTER handle,
          .MinPrecision = D3D12DDI_SHADER_MIN_PRECISION_NONE,
          .Doubles = FALSE,
          .ShaderSpecifiedStencilRef = FALSE,
-         .TypedUAVLoadAdditionalFormats = FALSE,
+         .TypedUAVLoadAdditionalFormats =
+            caps->typed_uav_load_additional_formats,
          .ROVs = FALSE,
       };
       return d12_umd_copy_cap(arguments, &data, sizeof(data));
@@ -695,23 +754,40 @@ d12_umd_get_optional_ddi_tables(D3D12DDI_HADAPTER handle, UINT32 *entries,
    if (!d12_umd_adapter_from_handle(handle) || !entries)
       return E_INVALIDARG;
 
+   /* Render passes are the one D3D12 feature a tile-based deferred renderer
+    * is structurally better at than the immediate-mode hardware the API was
+    * designed around: the per-attachment access types say directly whether a
+    * tile has to be seeded from memory and whether it has to be written back.
+    * Without the table the runtime emulates passes on top of
+    * OMSetRenderTargets, and the driver must assume both. */
+   const D3D12DDI_TABLE_REQUEST render_pass_request = {
+      .tableType = D3D12DDI_TABLE_TYPE_0043_RENDER_PASS,
+      .numTables = 1,
+   };
+
 #if D12_UMD_TARGETS_WDDM31
-   if (requests && *entries < 1) {
-      *entries = 1;
+   const UINT32 required = 2;
+#else
+   const UINT32 required = 1;
+#endif
+
+   if (requests && *entries < required) {
+      *entries = required;
       return HRESULT_FROM_WIN32(ERROR_INSUFFICIENT_BUFFER);
    }
 
-   *entries = 1;
+   *entries = required;
    if (requests) {
-      requests[0] = (D3D12DDI_TABLE_REQUEST){
+      UINT32 index = 0;
+      requests[index++] = render_pass_request;
+#if D12_UMD_TARGETS_WDDM31
+      requests[index++] = (D3D12DDI_TABLE_REQUEST){
          .tableType = D3D12DDI_TABLE_TYPE_0096_EXTENDED_FEATURES,
          .numTables = 1,
       };
-   }
-#else
-   (void)requests;
-   *entries = 0;
 #endif
+      (void)index;
+   }
    return S_OK;
 }
 
@@ -741,6 +817,9 @@ d12_umd_fill_ddi_table(D3D12DDI_HADAPTER handle,
       }
       return result;
    }
+
+   if (table_type == D3D12DDI_TABLE_TYPE_0043_RENDER_PASS)
+      return d12_umd_fill_render_pass_table(table, table_size);
 
    result = d12_umd_fill_baseline_table(table_type, table, table_size,
                                         table_number);

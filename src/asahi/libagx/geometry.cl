@@ -5,6 +5,7 @@
  */
 
 #include "compiler/libcl/libcl_vk.h"
+#include "d3d12_sparse.h"
 #include "poly/cl/restart.h"
 #include "poly/geometry.h"
 #include "poly/prim.h"
@@ -109,11 +110,16 @@ KERNEL(1024)
 libagx_d3d12_unroll_restart_ibv(
    global struct poly_heap *heap, constant uint32_t *view,
    constant uint32_t *in_draw, global uint32_t *out_draw,
-   uint64_t null_address, uint32_t format_r16_uint,
+   constant struct libagx_d3d12_sparse_registry_view *sparse_registry,
+   uint64_t null_address,
+   uint64_t sparse_ro_offset, uint32_t format_r16_uint,
    uint32_t format_r32_uint, uint32_t restart_index,
    uint32_t flatshade_first, uint32_t mode__11)
 {
    uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint64_t ignored_residency;
+   address = libagx_d3d12_sparse_read_address(
+      address, sparse_registry, sparse_ro_offset, &ignored_residency);
    uint32_t size_B = view[2];
    uint32_t format = view[3];
    bool valid = address && size_B &&
@@ -158,12 +164,17 @@ libagx_d3d12_gs_setup_indirect_ibv(
    constant uint32_t *view, constant uint32_t *draw,
    global struct poly_vertex_params *vp,
    global struct poly_geometry_params *p, global struct poly_heap *heap,
-   uint64_t vs_outputs, uint64_t null_address,
+   uint64_t vs_outputs,
+   constant struct libagx_d3d12_sparse_registry_view *sparse_registry,
+   uint64_t null_address, uint64_t sparse_ro_offset,
    uint32_t format_r16_uint, uint32_t format_r32_uint,
    uint32_t prim, int is_prefix_summing, uint32_t max_indices,
    enum poly_gs_shape shape)
 {
    uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint64_t ignored_residency;
+   address = libagx_d3d12_sparse_read_address(
+      address, sparse_registry, sparse_ro_offset, &ignored_residency);
    uint32_t size_B = view[2];
    uint32_t format = view[3];
    bool valid = address && size_B &&

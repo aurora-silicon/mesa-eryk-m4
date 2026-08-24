@@ -131,6 +131,14 @@ void d12_device_runtime_command_list_set_index_buffer(
 void d12_device_runtime_command_list_set_stream_output_targets(
    void *list, uint32_t start_slot, uint32_t count,
    const struct d12_frontend_stream_output_buffer_view *views);
+void d12_device_runtime_command_list_begin_render_pass(
+   void *list, uint32_t count,
+   const struct d12_frontend_render_pass_rt *render_targets,
+   const struct d12_frontend_render_pass_ds *depth_stencil);
+void d12_device_runtime_command_list_end_render_pass(void *list);
+void d12_device_runtime_command_list_set_sample_positions(
+   void *list, uint32_t samples_per_pixel, uint32_t pixel_count,
+   const int8_t *positions);
 void d12_device_runtime_command_list_set_render_targets(
    void *list, uint32_t count, const uint64_t *render_targets,
    bool contiguous, const uint64_t *depth_stencil);

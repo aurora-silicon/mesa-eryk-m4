@@ -6,6 +6,7 @@
 #include "compiler/libcl/libcl_vk.h"
 #include "poly/geometry.h"
 #include "agx_pack.h"
+#include "d3d12_sparse.h"
 #include "libagx_dgc.h"
 
 /*
@@ -86,14 +87,17 @@ libagx_d3d12_indirect_constant(global uint8_t *out,
 KERNEL(1)
 libagx_d3d12_indirect_root(global uint64_t *out_address,
                            global uint64_t *out_bufinfo,
+                           global uint64_t *out_residency,
                            constant uint32_t *in,
                            constant uint32_t *draw_count,
                            constant uint64_t *previous_address,
                            constant uint64_t *previous_bufinfo,
-                           constant uint64_t *sparse_ranges,
+                           constant uint64_t *previous_residency,
+                           constant struct
+                              libagx_d3d12_sparse_registry_view
+                                 *sparse_registry,
                            uint64_t null_address,
                            uint64_t sparse_ro_offset,
-                           uint32_t sparse_range_count,
                            uint32_t command_index,
                            uint32_t publish_unbounded,
                            uint32_t translate_read)
@@ -101,29 +105,28 @@ libagx_d3d12_indirect_root(global uint64_t *out_address,
    bool enabled = !draw_count || command_index < *draw_count;
    uint64_t original_address = *out_address;
    uint64_t original_bufinfo = *out_bufinfo;
+   uint64_t original_residency = *out_residency;
    if (!enabled) {
       *out_address = previous_address ? *previous_address : original_address;
       *out_bufinfo = previous_bufinfo ? *previous_bufinfo : original_bufinfo;
+      *out_residency = previous_residency ? *previous_residency
+                                          : original_residency;
       return;
    }
 
    uint64_t address = ((uint64_t)in[1] << 32) | in[0];
+   uint64_t residency = 0;
 
-   if (address && translate_read) {
-      for (uint32_t i = 0; i < sparse_range_count; ++i) {
-         uint64_t base = sparse_ranges[2 * i];
-         uint64_t size = sparse_ranges[2 * i + 1];
-         if (address >= base && address - base < size) {
-            address += sparse_ro_offset;
-            break;
-         }
-      }
-   }
+   uint64_t translated = libagx_d3d12_sparse_read_address(
+      address, sparse_registry, sparse_ro_offset, &residency);
+   if (translate_read)
+      address = translated;
 
    uint64_t metadata = original_bufinfo & 0xffff000000000000ul;
    *out_address = address ? address : null_address;
    *out_bufinfo = metadata |
                   ((address && publish_unbounded) ? UINT32_MAX : 0);
+   *out_residency = residency;
 }
 
 /* Patch one PSO attribute fed by an indirect vertex-buffer view.  Each
@@ -139,6 +142,10 @@ libagx_d3d12_indirect_vbv(global uint64_t *out_base,
                           constant uint64_t *previous_base,
                           constant uint32_t *previous_clamp,
                           constant uint32_t *previous_stride,
+                          constant struct
+                             libagx_d3d12_sparse_registry_view
+                                *sparse_registry,
+                          uint64_t sparse_ro_offset,
                           uint32_t command_index, uint32_t offset_B,
                           uint32_t element_size_B,
                           uint32_t interchange_align)
@@ -155,6 +162,9 @@ libagx_d3d12_indirect_vbv(global uint64_t *out_base,
    }
 
    uint64_t address = ((uint64_t)in[1] << 32) | in[0];
+   uint64_t ignored_residency;
+   address = libagx_d3d12_sparse_read_address(
+      address, sparse_registry, sparse_ro_offset, &ignored_residency);
    uint32_t size_B = in[2];
    uint32_t stride_B = in[3];
    uint32_t required_B = offset_B + element_size_B;
@@ -176,12 +186,17 @@ libagx_d3d12_indirect_vbv(global uint64_t *out_base,
 KERNEL(1)
 libagx_d3d12_indirect_indexed_draw(
    global uint32_t *out, constant VkDrawIndexedIndirectCommand *command,
-   constant uint32_t *view, uint64_t null_address,
+   constant uint32_t *view,
+   constant struct libagx_d3d12_sparse_registry_view *sparse_registry,
+   uint64_t null_address, uint64_t sparse_ro_offset,
    uint32_t format_r16_uint, uint32_t format_r32_uint,
    uint32_t restart, enum agx_primitive topology)
 {
    VkDrawIndexedIndirectCommand cmd = *command;
    uint64_t address = ((uint64_t)view[1] << 32) | view[0];
+   uint64_t ignored_residency;
+   address = libagx_d3d12_sparse_read_address(
+      address, sparse_registry, sparse_ro_offset, &ignored_residency);
    uint32_t size_B = view[2];
    uint32_t format = view[3];
    bool valid = address && size_B &&

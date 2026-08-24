@@ -942,7 +942,7 @@ test_identity_parsing(void)
       .gpu_revision = AGXW_J414S_GPU_REVISION,
       .contract_version = AGXW_CONTRACT_VERSION,
       .params_blob_size = AGXW_PARAMS_GLOBAL_SIZE,
-      .submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4,
+      .submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V5,
    };
 
    CHECK_EQ(agx_d3dkmt_parse_identity(&id, sizeof(id), &policy, &out),
@@ -982,13 +982,13 @@ test_identity_parsing(void)
             AGX_D3DKMT_ERR_INVAL);
 
    bad = id;
-   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V2;
+   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4;
    CHECK_EQ(agx_d3dkmt_parse_identity(&bad, sizeof(bad), &policy, &out),
             AGX_D3DKMT_ERR_INVAL);
 
    /* Newer KMDs retain the append-only lower submit versions. */
    bad = id;
-   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V4 + 1;
+   bad.submit_private_max_version = AGXW_SUBMIT_PRIVATE_VERSION_V5 + 1;
    CHECK_EQ(agx_d3dkmt_parse_identity(&bad, sizeof(bad), &policy, &out),
             AGX_D3DKMT_OK);
 
@@ -1308,7 +1308,10 @@ test_contract_blobs_we_emit(void)
    } submit = {
       .header = {
          .base = {
-            .version = AGXW_SUBMIT_PRIVATE_VERSION,
+            /* The object under test is the stable v3 prefix. Do not use the
+             * moving latest-version alias when a newer KMD adds another
+             * header shape. */
+            .version = AGXW_SUBMIT_PRIVATE_VERSION_V3,
             .struct_size = sizeof(struct agxw_submit_private_v3),
             .flags = AGXW_SUBMIT_READ_SET_COMPLETE,
          },
@@ -1360,14 +1363,28 @@ test_contract_blobs_we_emit(void)
                AGXW_SUBMIT_READ_SET_COMPLETE, packed_ranges, 2, NULL, 0,
                packed, sizeof(packed), &packed_size),
             AGX_D3DKMT_OK);
-   const struct agxw_submit_private_v3 *packed_v3 = (const void *)packed;
-   CHECK_EQ(packed_v3->base.version, AGXW_SUBMIT_PRIVATE_VERSION_V3);
-   CHECK_EQ(packed_v3->base.struct_size,
-            sizeof(struct agxw_submit_private_v3));
-   CHECK_EQ(packed_v3->read_range_count, 2);
-   CHECK_EQ(packed_size, sizeof(struct agxw_submit_private_v3) +
-                            sizeof(packed_ranges));
-   CHECK_EQ(agxw_submit_private_validate(&packed_v3->base, packed_size), 0);
+   const struct agxw_submit_private_v5 *packed_v5 = (const void *)packed;
+   CHECK_EQ(packed_v5->base.version, AGXW_SUBMIT_PRIVATE_VERSION_V5);
+   CHECK_EQ(packed_v5->base.struct_size,
+            sizeof(struct agxw_submit_private_v5));
+   CHECK_EQ(packed_v5->base.flags,
+            AGXW_SUBMIT_READ_SET_COMPLETE |
+               AGXW_SUBMIT_CLEAN_SET_COMPLETE);
+   CHECK_EQ(packed_v5->read_range_count, 2);
+   CHECK_EQ(packed_v5->clean_range_count, 2);
+   CHECK_EQ(packed_size, sizeof(struct agxw_submit_private_v5) +
+                            2 * sizeof(packed_ranges));
+   const struct agxw_submit_read_range *wire_read_ranges =
+      agxw_submit_private_read_ranges(&packed_v5->base);
+   const struct agxw_submit_read_range *wire_clean_ranges =
+      agxw_submit_private_clean_ranges(&packed_v5->base);
+   CHECK(wire_read_ranges != NULL);
+   CHECK(wire_clean_ranges != NULL);
+   CHECK_EQ(wire_clean_ranges[0].gpu_va, wire_read_ranges[0].gpu_va);
+   CHECK_EQ(wire_clean_ranges[0].length, wire_read_ranges[0].length);
+   CHECK_EQ(wire_clean_ranges[1].gpu_va, wire_read_ranges[1].gpu_va);
+   CHECK_EQ(wire_clean_ranges[1].length, wire_read_ranges[1].length);
+   CHECK_EQ(agxw_submit_private_validate(&packed_v5->base, packed_size), 0);
 
    memset(packed, 0, sizeof(packed));
    CHECK_EQ(agx_d3dkmt_submit_private_pack(

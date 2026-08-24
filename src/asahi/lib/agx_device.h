@@ -276,6 +276,7 @@ struct agx_device {
     */
    simple_mtx_t bo_map_lock;
    struct util_sparse_array bo_map;
+   /* Exclusive upper bound for every loop over bo_map. */
    uint32_t max_handle;
 
    /* D3DKMT's conservative CPU-read set is cached by this epoch. It changes
@@ -401,6 +402,16 @@ static inline struct agx_bo *
 agx_lookup_bo(struct agx_device *dev, uint32_t handle)
 {
    return util_sparse_array_get(&dev->bo_map, handle);
+}
+
+static inline void
+agx_include_bo_handle(struct agx_device *dev, uint32_t handle)
+{
+   /* All backends reserve an all-ones handle as allocation failure. */
+   assert(handle != UINT32_MAX);
+   const uint32_t exclusive = handle + 1;
+   if (exclusive > dev->max_handle)
+      dev->max_handle = exclusive;
 }
 
 uint32_t agx_create_command_queue(struct agx_device *dev,

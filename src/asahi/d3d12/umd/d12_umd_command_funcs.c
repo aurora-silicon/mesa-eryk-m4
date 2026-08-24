@@ -9,9 +9,12 @@
 
 #include "d12_umd_command_funcs.h"
 
+#include "d12_umd_sync.h"
+
 #include "d12_umd_command_core.h"
 #include "d12_umd_internal.h"
 #include "../d12_viewport_math.h"
+#include "../d12_sample_position_core.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -432,7 +435,7 @@ d12_umd_reset_command_pool_0040(
       d12_umd_command_set_error(device, E_INVALIDARG);
       return;
    }
-   AcquireSRWLockExclusive(&pool->lock);
+   d12_umd_sync_acquire_exclusive(&pool->lock);
    for (UINT index = 0; index < D12_UMD_RENDERER_COMMAND_TYPE_COUNT;
         ++index) {
       if (pool->backends[index])
@@ -624,7 +627,7 @@ d12_umd_command_pool_allocator(
        !device->renderer_ops->destroy_command_allocator)
       return E_NOTIMPL;
 
-   AcquireSRWLockShared(&pool->lock);
+   d12_umd_sync_acquire_shared(&pool->lock);
    backend = pool->backends[type];
    ReleaseSRWLockShared(&pool->lock);
    if (backend) {
@@ -632,7 +635,7 @@ d12_umd_command_pool_allocator(
       return S_OK;
    }
 
-   AcquireSRWLockExclusive(&pool->lock);
+   d12_umd_sync_acquire_exclusive(&pool->lock);
    backend = pool->backends[type];
    if (backend) {
       ReleaseSRWLockExclusive(&pool->lock);
@@ -1053,16 +1056,32 @@ d12_umd_depth_bounds_unsupported(D3D12DDI_HCOMMANDLIST list_handle,
 }
 
 static void APIENTRY
-d12_umd_sample_positions_unsupported(
-   D3D12DDI_HCOMMANDLIST list_handle, UINT samples_per_pixel,
-   UINT pixels, D3D12DDI_SAMPLE_POSITION *positions)
+d12_umd_set_sample_positions(D3D12DDI_HCOMMANDLIST list_handle,
+                             UINT samples_per_pixel, UINT pixels,
+                             D3D12DDI_SAMPLE_POSITION *positions)
 {
    struct d12_umd_command_list *list =
       d12_umd_command_list_from_handle(list_handle);
-   (void)samples_per_pixel;
-   (void)pixels;
-   (void)positions;
-   d12_umd_command_list_set_error(list, E_NOTIMPL);
+   int8_t flat[2 * D12_SAMPLE_POSITION_MAX_SAMPLES];
+   const UINT count = samples_per_pixel <= D12_SAMPLE_POSITION_MAX_SAMPLES
+                         ? samples_per_pixel
+                         : 0;
+
+   if (!list || !list->device || !list->backend ||
+       !list->device->renderer_ops ||
+       !list->device->renderer_ops->set_sample_positions) {
+      d12_umd_command_list_set_error(list, E_INVALIDARG);
+      return;
+   }
+
+   for (UINT i = 0; i < count && positions; ++i) {
+      flat[2 * i] = positions[i].X;
+      flat[2 * i + 1] = positions[i].Y;
+   }
+
+   list->device->renderer_ops->set_sample_positions(
+      list->backend, samples_per_pixel, pixels,
+      (count && positions) ? flat : NULL);
 }
 
 static void APIENTRY
@@ -1218,7 +1237,7 @@ d12_umd_install_command_list_functions_0032(
    table->pfnAtomicCopyBufferRegion =
       d12_umd_atomic_copy_buffer_region_unsupported;
    table->pfnOMSetDepthBounds = d12_umd_depth_bounds_unsupported;
-   table->pfnSetSamplePositions = d12_umd_sample_positions_unsupported;
+   table->pfnSetSamplePositions = d12_umd_set_sample_positions;
    table->pfnSetProtectedResourceSession =
       d12_umd_protected_session_unsupported;
    table->pfnWriteBufferImmediate = d12_umd_write_buffer_immediate;

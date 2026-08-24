@@ -1644,9 +1644,10 @@ d12_blob_create(const void *data, size_t size)
  * buffer at their register, so they need somewhere for their address to go
  * once the values are uploaded at draw time.
  */
-void
-d12_root_layout_build_map(const struct d12_root_layout *layout,
-                          struct d12_binding_map *out)
+static bool
+d12_root_layout_build_map_rooting_at(const struct d12_root_layout *layout,
+                                     struct d12_binding_map *out,
+                                     uint32_t rooting_threshold)
 {
    memset(out, 0, sizeof(*out));
    out->visibility_filter = UINT32_MAX;
@@ -1689,12 +1690,20 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
              * the GPU address of its first descriptor. The shader indexes
              * the coherent descriptor heap from there; enumerating 64K or
              * UINT_MAX registers into a 256-slot root table is the category
-             * error that previously made these signatures unusable. */
+             * error that previously made these signatures unusable.
+             *
+             * Carry the sized range's extent. A range the signature sized
+             * explicitly ends, and a shader register past its end belongs to
+             * a different root parameter -- resolving it against this base
+             * would read an unrelated descriptor out of the heap. */
             if (range->num_descriptors == UINT32_MAX ||
-                range->num_descriptors >= D12_MAX_RESOURCE_BINDINGS) {
-               d12_binding_map_add_unbounded_visible(
+                range->num_descriptors >= rooting_threshold) {
+               d12_binding_map_add_rooted_visible(
                   out, klass, range->space, range->base_register,
-                  this_range, rp->visibility);
+                  this_range, rp->visibility,
+                  range->num_descriptors == UINT32_MAX
+                     ? 0u
+                     : range->num_descriptors);
                continue;
             }
 
@@ -1721,4 +1730,47 @@ d12_root_layout_build_map(const struct d12_root_layout *layout,
          out, D12_RES_SAMPLER, s->RegisterSpace, s->ShaderRegister,
          root_range++, s->ShaderVisibility);
    }
+
+   return !out->overflow;
+}
+
+bool
+d12_root_layout_build_map(const struct d12_root_layout *layout,
+                          struct d12_binding_map *out)
+{
+   /*
+    * A descriptor-table range is normally expanded one dense slot per
+    * register, because a dense slot is what lets the shader address the
+    * binding directly.  Only a range too large for the table at all is
+    * rooted: its slot holds the GPU address of descriptor zero and the
+    * shader indexes the heap from there.
+    *
+    * That default is the fast path and stays untouched.  But a signature
+    * whose sized ranges simply do not fit is still legal D3D12, and
+    * refusing it is worse than paying one indirection for its largest
+    * ranges.  Retry with progressively more aggressive rooting, and only
+    * report failure when even one slot per range does not fit.  Whichever
+    * map results is the single assignment both the shader translation and
+    * the runtime bind read, so the two cannot disagree.
+    */
+   static const uint32_t thresholds[] = {
+      D12_MAX_RESOURCE_BINDINGS, 64, 16, 4, 1,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(thresholds); i++) {
+      if (d12_root_layout_build_map_rooting_at(layout, out, thresholds[i]))
+         return true;
+   }
+
+   /* An overflowing map names fewer bindings than the signature declares.
+    * Say so here: the alternative is a shader translation that blames the
+    * root signature for not binding a resource the map simply could not
+    * hold. */
+   mesa_loge("root signature needs more than %u dense binding slots even "
+             "with every descriptor range rooted; %u root parameters and "
+             "%u static samplers did not fit",
+             (unsigned)D12_MAX_RESOURCE_BINDINGS,
+             (unsigned)layout->num_params,
+             (unsigned)layout->num_static_samplers);
+   return false;
 }

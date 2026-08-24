@@ -9,9 +9,13 @@
 
 #include "d12_umd_device_funcs.h"
 
+#include "d12_umd_sync.h"
+
 #include "d12_umd_internal.h"
+#include "../d12_command_validation_core.h"
 #include "d12_umd_residency.h"
 #include "d12_umd_resource_private.h"
+#include "../d12_format_caps_core.h"
 #include "../d12_present_format_core.h"
 #include "../d12_resolve_core.h"
 
@@ -19,6 +23,13 @@
 #include <string.h>
 
 #define D12_UMD_DEFAULT_PLACEMENT_ALIGNMENT UINT64_C(0x10000)
+
+#define D12_LOGIC_OP_FORMAT_ABI(name, value)                               \
+   _Static_assert((uint32_t)DXGI_FORMAT_##name ==                           \
+                     (uint32_t)D12_FORMAT_CORE_##name,                      \
+                  "DXGI/core logic-op format ABI drift");
+D12_FORMAT_CORE_LOGIC_OP_LIST(D12_LOGIC_OP_FORMAT_ABI)
+#undef D12_LOGIC_OP_FORMAT_ABI
 
 static bool
 d12_umd_queue_arguments_valid(
@@ -104,6 +115,24 @@ d12_umd_standalone_format_support(DXGI_FORMAT format)
    uint64_t support;
 
    switch (format) {
+   /* Microsoft defines these 15 formats as one all-or-nothing typed-UAV-load
+    * group. The renderer format table supports the same set; keep the
+    * callback-only ABI probe build in lockstep with it. */
+   case DXGI_FORMAT_R32G32B32A32_FLOAT:
+   case DXGI_FORMAT_R32G32B32A32_UINT:
+   case DXGI_FORMAT_R32G32B32A32_SINT:
+   case DXGI_FORMAT_R16G16B16A16_FLOAT:
+   case DXGI_FORMAT_R16G16B16A16_UINT:
+   case DXGI_FORMAT_R16G16B16A16_SINT:
+   case DXGI_FORMAT_R8G8B8A8_UINT:
+   case DXGI_FORMAT_R8G8B8A8_SINT:
+   case DXGI_FORMAT_R16_FLOAT:
+   case DXGI_FORMAT_R16_SINT:
+   case DXGI_FORMAT_R8_UNORM:
+   case DXGI_FORMAT_R8_UINT:
+   case DXGI_FORMAT_R8_SINT:
+      support = color;
+      break;
    case DXGI_FORMAT_R8G8B8A8_UNORM:
       support = blendable_color;
       break;
@@ -152,7 +181,7 @@ d12_umd_standalone_format_support(DXGI_FORMAT format)
 }
 
 static UINT
-d12_umd_translate_format_support(uint64_t support)
+d12_umd_translate_format_support(DXGI_FORMAT format, uint64_t support)
 {
    UINT result = 0;
 
@@ -185,6 +214,8 @@ d12_umd_translate_format_support(uint64_t support)
                       D3D12DDI_FORMAT_SUPPORT_DISPLAY);
    if (support & D12_FRONTEND_FORMAT_TEXTURE_2D)
       result |= D3D12DDI_FORMAT_SUPPORT_TILED;
+   if (d12_format_core_supports_output_merger_logic_op((uint32_t)format))
+      result |= D3D12DDI_FORMAT_SUPPORT_OUTPUT_MERGER_LOGIC_OP;
 #undef D12_MAP_DDI_FORMAT
    return result;
 }
@@ -206,7 +237,7 @@ d12_umd_check_format_support(D3D12DDI_HDEVICE handle, DXGI_FORMAT format,
                 ? device->renderer_ops->format_support(device->backend,
                                                        (uint32_t)format)
                 : d12_umd_standalone_format_support(format);
-   *out_support = d12_umd_translate_format_support(support);
+   *out_support = d12_umd_translate_format_support(format, support);
    if (!*out_support &&
        format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
       *out_support = D3D12DDI_FORMAT_SUPPORT_NOT_SUPPORTED;
@@ -248,7 +279,7 @@ d12_umd_check_multisample_quality_levels(
    }
    if (sample_count == 1 && support)
       *quality_levels = 1;
-   else if ((sample_count == 2 || sample_count == 4) &&
+   else if (sample_count != 1 && d12_sample_count_supported(sample_count) &&
             (support &
              (D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
               D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD)))
@@ -304,7 +335,7 @@ d12_umd_heap_storage_create(struct d12_umd_heap *heap)
    storage->cpu_page_property = heap->cpu_page_property;
    InitializeSRWLock(&storage->lock);
 
-   AcquireSRWLockExclusive(&heap->device->heap_storage_lock);
+   d12_umd_sync_acquire_exclusive(&heap->device->heap_storage_lock);
    if (InterlockedCompareExchange(&heap->device->destroying, 0, 0)) {
       ReleaseSRWLockExclusive(&heap->device->heap_storage_lock);
       SecureZeroMemory(storage, sizeof(*storage));
@@ -328,7 +359,7 @@ d12_umd_heap_storage_finalize(struct d12_umd_heap_storage *storage)
    if (!storage || !(device = storage->device))
       return E_INVALIDARG;
 
-   AcquireSRWLockExclusive(&device->heap_storage_lock);
+   d12_umd_sync_acquire_exclusive(&device->heap_storage_lock);
    {
       struct d12_umd_heap_storage **link = &device->heap_storages;
       while (*link && *link != storage)
@@ -366,7 +397,7 @@ d12_umd_heap_storage_request_destroy(struct d12_umd_heap_storage *storage)
 
    if (!storage)
       return E_INVALIDARG;
-   AcquireSRWLockExclusive(&storage->lock);
+   d12_umd_sync_acquire_exclusive(&storage->lock);
    lifetime_result = d12_umd_lifetime_request_destroy(&storage->lifetime);
    ReleaseSRWLockExclusive(&storage->lock);
    if (lifetime_result == D12_UMD_LIFETIME_INVALID)
@@ -384,7 +415,7 @@ d12_umd_heap_storage_ensure_destroy_requested(
 
    if (!storage)
       return E_INVALIDARG;
-   AcquireSRWLockShared(&storage->lock);
+   d12_umd_sync_acquire_shared(&storage->lock);
    already_requested = storage->lifetime.destroy_requested;
    ReleaseSRWLockShared(&storage->lock);
    return already_requested ? S_OK
@@ -409,7 +440,7 @@ d12_umd_heap_storage_retain_mapping(struct d12_umd_heap_storage *storage,
    if (!device)
       return E_INVALIDARG;
 
-   AcquireSRWLockExclusive(&storage->lock);
+   d12_umd_sync_acquire_exclusive(&storage->lock);
    lifetime_result = d12_umd_lifetime_retain(&storage->lifetime);
    if (lifetime_result == D12_UMD_LIFETIME_INVALID) {
       result = E_INVALIDARG;
@@ -446,7 +477,7 @@ d12_umd_heap_storage_release_mapping_kind(
    if (!storage || !storage->device)
       return E_INVALIDARG;
    device = storage->device;
-   AcquireSRWLockExclusive(&storage->lock);
+   d12_umd_sync_acquire_exclusive(&storage->lock);
    if ((fence_retain && !storage->fence_retain_count) ||
        (!fence_retain && !storage->map_retain_count)) {
       ReleaseSRWLockExclusive(&storage->lock);
@@ -563,7 +594,7 @@ d12_umd_create_command_queue(
    InitializeSRWLock(&queue->dxgi_blt_lock);
    type = d12_umd_queue_renderer_type(arguments->QueueFlags);
 
-   AcquireSRWLockExclusive(&device->queue_lock);
+   d12_umd_sync_acquire_exclusive(&device->queue_lock);
    reserve_usc = !device->backend && device->queue_count == 0;
    if (device->backend) {
       if (!device->renderer_ops ||
@@ -710,7 +741,7 @@ d12_umd_destroy_command_queue(D3D12DDI_HDEVICE handle,
        queue->device != device)
       return;
 
-   AcquireSRWLockExclusive(&device->queue_lock);
+   d12_umd_sync_acquire_exclusive(&device->queue_lock);
    if (device->renderer_ops) {
       if (queue->dxgi_blt_list &&
           device->renderer_ops->destroy_command_list)
@@ -775,7 +806,7 @@ d12_umd_prepare_device_destroy(struct d12_umd_device *device)
    for (;;) {
       struct d12_umd_command_queue *queue;
 
-      AcquireSRWLockShared(&device->queue_lock);
+      d12_umd_sync_acquire_shared(&device->queue_lock);
       queue = device->queues;
       ReleaseSRWLockShared(&device->queue_lock);
       if (!queue)
@@ -788,11 +819,11 @@ d12_umd_prepare_device_destroy(struct d12_umd_device *device)
    /* Runtime heap blocks cease to be addressable after DestroyDevice.  The
     * driver-owned storage registry remains authoritative even for heaps
     * whose DDI private block was destroyed while a fence was queued. */
-   AcquireSRWLockExclusive(&device->heap_lock);
+   d12_umd_sync_acquire_exclusive(&device->heap_lock);
    device->heaps = NULL;
    ReleaseSRWLockExclusive(&device->heap_lock);
 
-   AcquireSRWLockShared(&device->heap_storage_lock);
+   d12_umd_sync_acquire_shared(&device->heap_storage_lock);
    storage = device->heap_storages;
    ReleaseSRWLockShared(&device->heap_storage_lock);
    while (storage) {
@@ -809,14 +840,14 @@ d12_umd_prepare_device_destroy(struct d12_umd_device *device)
     * be forced: seeing one after all queues were joined is an internal
     * ownership violation and must fail the teardown audit rather than hide
     * a possible use-after-free. */
-   AcquireSRWLockShared(&device->heap_storage_lock);
+   d12_umd_sync_acquire_shared(&device->heap_storage_lock);
    storage = device->heap_storages;
    ReleaseSRWLockShared(&device->heap_storage_lock);
    while (storage) {
       struct d12_umd_heap_storage *next = storage->next;
       bool finalize = false;
 
-      AcquireSRWLockExclusive(&storage->lock);
+      d12_umd_sync_acquire_exclusive(&storage->lock);
       if (storage->fence_retain_count ||
           storage->lifetime.retain_count != storage->map_retain_count) {
          if (SUCCEEDED(result))
@@ -843,7 +874,7 @@ d12_umd_prepare_device_destroy(struct d12_umd_device *device)
       storage = next;
    }
 
-   AcquireSRWLockShared(&device->heap_storage_lock);
+   d12_umd_sync_acquire_shared(&device->heap_storage_lock);
    if (device->heap_storages || device->heap_storage_count) {
       if (SUCCEEDED(result))
          result = E_UNEXPECTED;
@@ -1715,7 +1746,7 @@ d12_umd_create_heap_resource(
       return result;
    }
 
-   AcquireSRWLockExclusive(&device->heap_lock);
+   d12_umd_sync_acquire_exclusive(&device->heap_lock);
    heap->next = device->heaps;
    device->heaps = heap;
    ReleaseSRWLockExclusive(&device->heap_lock);
@@ -1730,7 +1761,7 @@ d12_umd_create_heap_resource(
             result, &resource->backend,
             device->renderer_ops->destroy_resource);
          if (FAILED(result)) {
-            AcquireSRWLockExclusive(&device->heap_lock);
+            d12_umd_sync_acquire_exclusive(&device->heap_lock);
             if (device->heaps == heap) {
                device->heaps = heap->next;
             } else {
@@ -2003,7 +2034,7 @@ d12_umd_open_heap_resource(
          resource->desc.pRowMajorLayout = &resource->row_major;
    }
 
-   AcquireSRWLockExclusive(&device->heap_lock);
+   d12_umd_sync_acquire_exclusive(&device->heap_lock);
    heap->next = device->heaps;
    device->heaps = heap;
    ReleaseSRWLockExclusive(&device->heap_lock);
@@ -2282,7 +2313,7 @@ d12_umd_destroy_heap_resource(D3D12DDI_HDEVICE handle,
       return;
    storage = heap->storage;
 
-   AcquireSRWLockExclusive(&device->heap_lock);
+   d12_umd_sync_acquire_exclusive(&device->heap_lock);
    if (device->heaps == heap) {
       device->heaps = heap->next;
    } else {
@@ -2345,7 +2376,7 @@ d12_umd_resolve_fence_address(struct d12_umd_device *device,
        !cpu_address || !retained_storage)
       return E_INVALIDARG;
 
-   AcquireSRWLockShared(&device->heap_lock);
+   d12_umd_sync_acquire_shared(&device->heap_lock);
    for (heap = device->heaps; heap; heap = heap->next) {
       const uint64_t base = heap->allocation.gpu_virtual_address;
       const uint64_t offset = address - base;
@@ -3080,7 +3111,7 @@ d12_umd_residency_paging_queue(
       return device->renderer_ops->paging_queue(device->backend);
    }
 
-   AcquireSRWLockShared(&device->queue_lock);
+   d12_umd_sync_acquire_shared(&device->queue_lock);
    for (queue = device->queues; queue; queue = queue->next) {
       if (queue->runtime.runtime_queue.handle ==
              runtime_paging_queue.handle &&

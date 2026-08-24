@@ -8,6 +8,8 @@
 
 #include "d12_umd_agx_transport.h"
 
+#include "d12_umd_sync.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,7 +35,7 @@ d12_umd_agx_transport_context_handle(
    if (!token || token > D12_UMD_AGX_CONTEXT_CAPACITY)
       return NULL;
 
-   AcquireSRWLockShared(&transport->context_lock);
+   d12_umd_sync_acquire_shared(&transport->context_lock);
    context = transport->contexts[token - 1u].runtime_context;
    ReleaseSRWLockShared(&transport->context_lock);
    return context;
@@ -47,7 +49,7 @@ d12_umd_context_insert(struct d12_umd_agx_transport *transport,
                        HANDLE runtime_context)
 {
    agx_kmt_handle token = 0;
-   AcquireSRWLockExclusive(&transport->context_lock);
+   d12_umd_sync_acquire_exclusive(&transport->context_lock);
    for (uint32_t index = 0; index < D12_UMD_AGX_CONTEXT_CAPACITY; ++index) {
       if (!transport->contexts[index].runtime_context) {
          transport->contexts[index].runtime_context = runtime_context;
@@ -66,7 +68,7 @@ d12_umd_context_remove(struct d12_umd_agx_transport *transport,
    if (!token || token > D12_UMD_AGX_CONTEXT_CAPACITY)
       return;
 
-   AcquireSRWLockExclusive(&transport->context_lock);
+   d12_umd_sync_acquire_exclusive(&transport->context_lock);
    if (transport->contexts[token - 1u].runtime_context == expected)
       transport->contexts[token - 1u].runtime_context = NULL;
    ReleaseSRWLockExclusive(&transport->context_lock);

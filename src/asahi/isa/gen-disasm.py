@@ -6,7 +6,7 @@
 
 from mako.template import Template
 from mako import exceptions
-from isa import isa
+from isa import isa, isa_prefix
 
 # XXX: deduplicate
 def to_alphanum(name):
@@ -150,19 +150,19 @@ print_${instr.name}(struct disasm_ctx *ctx, BITSET_WORD *r)
 
 % endif
 % endfor
-struct disasm_spec decodings[] = {
+static struct disasm_spec decodings[] = {
 % for k, instr in isa.instrs.items():
     { "${instr.display if instr_is_trivial(instr) else f'{instr.display:<8}'}", ${'NULL' if instr_is_trivial(instr) else f'print_{instr.name}'}, ${instr.length_bit}, ${instr.length[0]}, ${instr.length[-1]}, ${chunk(instr.exact.mask)}, ${chunk(instr.exact.value)}, ${chunk(instr.mask())} },
 % endfor
 };
 
 signed
-agx2_disassemble_instr(BITSET_WORD *code, FILE *fp, unsigned offset, size_t available, bool verbose)
+${isa_prefix}_disassemble_instr(BITSET_WORD *code, FILE *fp, unsigned offset, size_t available, bool verbose)
 {
   return _disassemble_instr(code, fp, decodings, ARRAY_SIZE(decodings), available, offset, verbose);
 }"""
 
 try:
-    print(Template(template).render(isa = isa, safe_name = safe_name, chunk = chunk, instr_is_trivial = instr_is_trivial, extract_bits = extract_bits))
+    print(Template(template).render(isa = isa, isa_prefix = isa_prefix, safe_name = safe_name, chunk = chunk, instr_is_trivial = instr_is_trivial, extract_bits = extract_bits))
 except:
     print(exceptions.text_error_template().render())

@@ -37,7 +37,6 @@ def main() -> int:
         (runtime, "d12_device_runtime_command_list_resource_barriers"),
         (runtime, "d12_device_runtime_command_list_write_buffer_immediate"),
         (command, "d12_list_set_root_constants"),
-        (command, "d12_list_upload_sparse_ranges"),
     ):
         body = function_body(path, name)
         match = forbidden.search(body)
@@ -61,6 +60,20 @@ def main() -> int:
             failures.append(
                 f"{command}:d12_segment_ensure_viewport_arrays lacks {token}"
             )
+
+    execute_indirect = function_body(command, "d12_list_ExecuteIndirect")
+    if "agx_bo_create(" in execute_indirect:
+        failures.append(
+            f"{command}:d12_list_ExecuteIndirect allocates a BO while recording"
+        )
+
+    sparse_refresh = function_body(
+        command, "d12_cmd_list_refresh_sparse_registry"
+    )
+    if "agx_bo_create(" not in sparse_refresh:
+        failures.append(
+            f"{command}:sparse registry growth is not deferred to submission"
+        )
 
     if failures:
         print("check_warm_recording.py: FAIL", file=sys.stderr)

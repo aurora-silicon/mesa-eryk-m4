@@ -39,6 +39,12 @@ enum d12_write_set_result
 d12_write_set_add(struct d12_write_range *ranges, unsigned *count,
                   unsigned capacity, uint64_t pointer, uint64_t size);
 
+enum d12_write_set_result
+d12_write_set_add_allocation(struct d12_write_range *ranges, unsigned *count,
+                             unsigned capacity, uint64_t allocation_va,
+                             uint64_t allocation_size, uint64_t offset,
+                             uint64_t size);
+
 #ifdef __cplusplus
 }
 #endif

@@ -8,25 +8,24 @@ umd_dir=${0:A:h}
 d12_dir=${umd_dir:h}
 repo_root=${umd_dir:h:h:h:h}
 main_contract=${repo_root:h}/AuroraSilicon/drivers/AppleAgxWddm/core
-paired_contract=${repo_root:h}/AuroraSilicon-d3d12-fence-dependency/drivers/AppleAgxWddm/core
 contract_compatible() {
     [[ -f $1/agxw_contract.h ]] &&
         grep -Eq '^#define[[:space:]]+AGXW_CONTRACT_VERSION[[:space:]]+([3-9]|[1-9][0-9]+)u' "$1/agxw_contract.h" &&
         grep -q 'submit_private_max_version' "$1/agxw_contract.h" &&
-        grep -q 'AGXW_SUBMIT_PRIVATE_VERSION_V4' "$1/agxw_contract.h"
+        grep -q 'AGXW_SUBMIT_PRIVATE_VERSION_V4' "$1/agxw_contract.h" &&
+        grep -q 'AGXW_SUBMIT_PRIVATE_VERSION_V5' "$1/agxw_contract.h" &&
+        grep -q 'AGXW_SUBMIT_CLEAN_SET_COMPLETE' "$1/agxw_contract.h"
 }
 if [[ -n ${AGX_WDDM_CONTRACT_CORE:-} ]]; then
     contract_dir=$AGX_WDDM_CONTRACT_CORE
 elif contract_compatible "$main_contract"; then
     contract_dir=$main_contract
-elif contract_compatible "$paired_contract"; then
-    contract_dir=$paired_contract
 else
     contract_dir=$main_contract
 fi
 if ! contract_compatible "$contract_dir"; then
-    print -u2 "AGX WDDM contract v3 with submit-private v4 is required: $contract_dir"
-    print -u2 "set AGX_WDDM_CONTRACT_CORE to the paired KMD core directory"
+    print -u2 "latest merged AGX WDDM contract (v4 placement + v5 clean sets) is required: $contract_dir"
+    print -u2 "set AGX_WDDM_CONTRACT_CORE to the latest AppleAgxWddm core directory"
     exit 2
 fi
 out=${D12_UMD_HOST_TEST_OUT:-$repo_root/_build-d3d12-umd-host}
@@ -67,9 +66,40 @@ done
 "$out/d12_attachment_view_core_tests"
 
 "$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_buffer_view_core_tests.c" \
+    -o "$out/d12_buffer_view_core_tests"
+"$out/d12_buffer_view_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/compiler" \
+    "$d12_dir/tests/d12_binding_map_tests.c" \
+    -o "$out/d12_binding_map_tests"
+"$out/d12_binding_map_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
     "$d12_dir/tests/d12_bundle_state_core_tests.c" \
     -o "$out/d12_bundle_state_core_tests"
 "$out/d12_bundle_state_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_sampler_reduction_core_tests.c" \
+    -o "$out/d12_sampler_reduction_core_tests"
+"$out/d12_sampler_reduction_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_render_pass_core_tests.c" \
+    -o "$out/d12_render_pass_core_tests"
+"$out/d12_render_pass_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_sample_position_core_tests.c" \
+    -o "$out/d12_sample_position_core_tests"
+"$out/d12_sample_position_core_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_raytracing_core_tests.c" \
+    -o "$out/d12_raytracing_core_tests"
+"$out/d12_raytracing_core_tests"
 
 "$cc" "$common[@]" -I"$d12_dir" \
     "$d12_dir/tests/d12_command_validation_core_tests.c" \
@@ -80,6 +110,11 @@ done
     "$d12_dir/d12_core_caps.c" "$d12_dir/tests/d12_core_caps_tests.c" \
     -o "$out/d12_core_caps_tests"
 "$out/d12_core_caps_tests"
+
+"$cc" "$common[@]" -I"$d12_dir" \
+    "$d12_dir/tests/d12_format_caps_core_tests.c" \
+    -o "$out/d12_format_caps_core_tests"
+"$out/d12_format_caps_core_tests"
 
 "$cc" "$common[@]" \
     -I"$repo_root/src" -I"$repo_root/include" \
@@ -129,6 +164,18 @@ done
     "$repo_root/src/poly/tests/poly_heap_math_tests.c" \
     -o "$out/poly_heap_math_tests"
 "$out/poly_heap_math_tests"
+
+"$cc" "$common[@]" \
+    "$d12_dir/d12_read_set_core.c" \
+    "$d12_dir/tests/d12_read_set_core_tests.c" \
+    -o "$out/d12_read_set_core_tests"
+"$out/d12_read_set_core_tests"
+
+"$cc" "$common[@]" \
+    "$d12_dir/d12_sparse_residency_core.c" \
+    "$d12_dir/tests/d12_sparse_residency_core_tests.c" \
+    -o "$out/d12_sparse_residency_core_tests"
+"$out/d12_sparse_residency_core_tests"
 
 "$cc" "$common[@]" \
     "$d12_dir/d12_write_set_core.c" \
@@ -206,6 +253,16 @@ done
 "$out/d12_dxbc_wrap_tests" "$d12_dir/tests/shaders/cs.dxil"
 
 python3 "$umd_dir/tests/check_warm_recording.py"
+python3 "$umd_dir/tests/check_raster_state.py"
+python3 "$umd_dir/tests/check_wave_ops.py"
+python3 "$umd_dir/tests/check_exact_read_set.py"
+python3 "$umd_dir/tests/check_sparse_residency.py"
+python3 "$umd_dir/tests/check_resource_binding.py"
+python3 "$umd_dir/tests/check_sampler_reduction.py"
+python3 "$umd_dir/tests/check_feature_level_12.py"
+python3 "$umd_dir/tests/check_tiler_features.py"
+python3 "$umd_dir/tests/check_large_buffer_views.py"
+python3 "$umd_dir/tests/check_dxbc_buffer_view_bounds.py"
 python3 "$umd_dir/tests/check_ddi_submit_thread.py"
 python3 "$umd_dir/packaging/test_stage_package.py"
 python3 "$umd_dir/tests/test_check_pe.py"

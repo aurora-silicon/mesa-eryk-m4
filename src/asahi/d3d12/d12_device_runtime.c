@@ -1057,6 +1057,87 @@ d12_device_runtime_command_list_set_stream_output_targets(
 }
 
 void
+d12_device_runtime_command_list_set_sample_positions(
+   void *list, uint32_t samples_per_pixel, uint32_t pixel_count,
+   const int8_t *positions)
+{
+   D3D12_SAMPLE_POSITION local[D12_SAMPLE_POSITION_MAX_SAMPLES];
+   const uint32_t count = samples_per_pixel <= ARRAY_SIZE(local)
+                             ? samples_per_pixel
+                             : 0;
+
+   if (!list)
+      return;
+
+   for (uint32_t i = 0; i < count && positions; ++i) {
+      local[i].X = positions[2 * i];
+      local[i].Y = positions[2 * i + 1];
+   }
+
+   ID3D12GraphicsCommandList1_SetSamplePositions(
+      (ID3D12GraphicsCommandList1 *)list, samples_per_pixel, pixel_count,
+      (count && positions) ? local : NULL);
+}
+
+void
+d12_device_runtime_command_list_begin_render_pass(
+   void *list, uint32_t count,
+   const struct d12_frontend_render_pass_rt *render_targets,
+   const struct d12_frontend_render_pass_ds *depth_stencil)
+{
+   D3D12_RENDER_PASS_RENDER_TARGET_DESC rts[D12_FRONTEND_MAX_RENDER_TARGETS];
+   D3D12_RENDER_PASS_DEPTH_STENCIL_DESC ds;
+
+   if (!list || count > ARRAY_SIZE(rts) || (count && !render_targets))
+      return;
+
+   memset(rts, 0, sizeof(rts));
+   for (uint32_t i = 0; i < count; ++i) {
+      rts[i].cpuDescriptor.ptr = (SIZE_T)render_targets[i].cpu_descriptor;
+      rts[i].BeginningAccess.Type =
+         (D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE)
+            render_targets[i].beginning_access;
+      rts[i].EndingAccess.Type = (D3D12_RENDER_PASS_ENDING_ACCESS_TYPE)
+                                    render_targets[i].ending_access;
+      memcpy(rts[i].BeginningAccess.Clear.ClearValue.Color,
+             render_targets[i].clear_color,
+             sizeof(rts[i].BeginningAccess.Clear.ClearValue.Color));
+   }
+
+   if (depth_stencil) {
+      memset(&ds, 0, sizeof(ds));
+      ds.cpuDescriptor.ptr = (SIZE_T)depth_stencil->cpu_descriptor;
+      ds.DepthBeginningAccess.Type =
+         (D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE)
+            depth_stencil->depth_beginning_access;
+      ds.DepthEndingAccess.Type = (D3D12_RENDER_PASS_ENDING_ACCESS_TYPE)
+                                     depth_stencil->depth_ending_access;
+      ds.StencilBeginningAccess.Type =
+         (D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE)
+            depth_stencil->stencil_beginning_access;
+      ds.StencilEndingAccess.Type = (D3D12_RENDER_PASS_ENDING_ACCESS_TYPE)
+                                       depth_stencil->stencil_ending_access;
+      ds.DepthBeginningAccess.Clear.ClearValue.DepthStencil.Depth =
+         depth_stencil->clear_depth;
+      ds.StencilBeginningAccess.Clear.ClearValue.DepthStencil.Stencil =
+         (UINT8)depth_stencil->clear_stencil;
+   }
+
+   ID3D12GraphicsCommandList4_BeginRenderPass(
+      (ID3D12GraphicsCommandList4 *)list, count, count ? rts : NULL,
+      depth_stencil ? &ds : NULL, D3D12_RENDER_PASS_FLAG_NONE);
+}
+
+void
+d12_device_runtime_command_list_end_render_pass(void *list)
+{
+   if (!list)
+      return;
+   ID3D12GraphicsCommandList4_EndRenderPass(
+      (ID3D12GraphicsCommandList4 *)list);
+}
+
+void
 d12_device_runtime_command_list_set_render_targets(
    void *list, uint32_t count, const uint64_t *render_targets,
    bool contiguous, const uint64_t *depth_stencil)
@@ -2554,7 +2635,10 @@ d12_device_runtime_multisample_quality_levels(
                 : 0;
    if (sample_count == 1)
       return 1;
-   if (sample_count != 2 && sample_count != 4)
+   /* One definition of what AGX can rasterize, shared with the layout
+    * admission test: an 8x query is answered with zero, which is the D3D12
+    * way to say the hardware does not offer it. */
+   if (!d12_sample_count_supported(sample_count))
       return 0;
    return support & (D12_FRONTEND_FORMAT_MULTISAMPLE_RENDER_TARGET |
                      D12_FRONTEND_FORMAT_MULTISAMPLE_LOAD)

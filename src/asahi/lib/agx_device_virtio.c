@@ -97,7 +97,7 @@ agx_virtio_bo_alloc(struct agx_device *dev, size_t size, size_t align,
 
    simple_mtx_lock(&dev->bo_map_lock);
    bo = agx_lookup_bo(dev, handle);
-   dev->max_handle = MAX2(dev->max_handle, handle);
+   agx_include_bo_handle(dev, handle);
    simple_mtx_unlock(&dev->bo_map_lock);
 
    /* Fresh handle */

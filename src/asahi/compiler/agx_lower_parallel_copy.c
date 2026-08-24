@@ -189,9 +189,19 @@ agx_emit_parallel_copies_for_class(agx_builder *b, struct agx_copy *copies,
    copies = copies2;
    num_copies = num_copies2;
 
-   /* Set up the bookkeeping */
-   struct copy_ctx _ctx = {.entry_count = num_copies};
-   struct copy_ctx *ctx = &_ctx;
+   /* Set up the bookkeeping.  copy_ctx carries three AGX_NUM_MODELED_REGS
+    * (2048) entry arrays -- roughly 72 KiB -- and this runs on whatever
+    * thread the application called into the driver on.  A 1 MiB default
+    * Windows thread stack does not have that to spare underneath the rest of
+    * the compiler, so keep it on the heap.
+    */
+   struct copy_ctx *ctx = calloc(1, sizeof(*ctx));
+   if (ctx == NULL) {
+      free(copies2);
+      UNREACHABLE("failed to allocate parallel-copy context");
+   }
+
+   ctx->entry_count = num_copies;
 
    memset(ctx->physreg_dest, 0, sizeof(ctx->physreg_dest));
    memset(ctx->physreg_use_count, 0, sizeof(ctx->physreg_use_count));
@@ -387,6 +397,7 @@ agx_emit_parallel_copies_for_class(agx_builder *b, struct agx_copy *copies,
       entry->done = true;
    }
 
+   free(ctx);
    free(copies2);
 }
 

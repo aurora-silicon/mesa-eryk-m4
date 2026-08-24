@@ -185,7 +185,16 @@ d12_query_heap_create_flags(struct d12_device *device,
       free(heap);
       return E_OUTOFMEMORY;
    }
-   memset(agx_bo_map(heap->bo), 0, allocation_size);
+
+   /* Lock2 can refuse an allocation dxgkrnl just handed us -- memset through
+    * the NULL result would fault inside the application. */
+   void *mapping = agx_bo_map(heap->bo);
+   if (!mapping) {
+      agx_bo_unreference(&device->dev, heap->bo);
+      free(heap);
+      return E_OUTOFMEMORY;
+   }
+   memset(mapping, 0, allocation_size);
 
    heap->device = device;
    d12_private_data_store_init(&heap->private_data, (IUnknown *)&heap->iface);

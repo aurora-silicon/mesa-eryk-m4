@@ -1948,8 +1948,10 @@ wmain(int argc, wchar_t **argv)
          result == S_OK &&
             data.MinPrecision == D3D12DDI_SHADER_MIN_PRECISION_NONE &&
             !data.DoubleOps && !data.ShaderSpecifiedStencilRef &&
-            !data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
-            !data.WaveOps && !data.Int64Ops && data.Native16BitOps &&
+            data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
+            data.WaveOps && data.WaveLaneCountMin == 32 &&
+            data.WaveLaneCountMax == 32 && data.TotalLaneCount == 32 &&
+            !data.Int64Ops && data.Native16BitOps &&
             !data.AtomicInt64OnTypedResource &&
             !data.AtomicInt64OnGroupShared &&
             !data.DerivativesInMeshAndAmplificationShaders &&
@@ -2092,8 +2094,8 @@ wmain(int argc, wchar_t **argv)
                            D3D12DDI_SHADER_MIN_PRECISION_NONE &&
                         !data.Doubles &&
                         !data.ShaderSpecifiedStencilRef &&
-                        !data.TypedUAVLoadAdditionalFormats && !data.ROVs,
-                     "conservative shader caps");
+                        data.TypedUAVLoadAdditionalFormats && !data.ROVs,
+                     "typed-UAV shader caps");
 
       --query.DataSize;
       result = functions.pfnGetCaps(open_arguments.hAdapter, &query);
@@ -2112,11 +2114,11 @@ wmain(int argc, wchar_t **argv)
                               D3D12DDI_SHADER_MIN_PRECISION_NONE &&
                            !expanded.Doubles &&
                            !expanded.ShaderSpecifiedStencilRef &&
-                           !expanded.TypedUAVLoadAdditionalFormats &&
-                           !expanded.ROVs && !expanded.WaveOps &&
-                           expanded.WaveLaneCountMin == 0 &&
-                           expanded.WaveLaneCountMax == 0 &&
-                           expanded.TotalLaneCount == 0,
+                           expanded.TypedUAVLoadAdditionalFormats &&
+                           !expanded.ROVs && expanded.WaveOps &&
+                           expanded.WaveLaneCountMin == 32 &&
+                           expanded.WaveLaneCountMax == 32 &&
+                           expanded.TotalLaneCount == 32,
                         "Release 1 build 2 shader caps");
 #else
          require_result(result == E_INVALIDARG,
@@ -2139,9 +2141,9 @@ wmain(int argc, wchar_t **argv)
          result == S_OK &&
             data.MinPrecision == D3D12DDI_SHADER_MIN_PRECISION_NONE &&
             !data.DoubleOps && !data.ShaderSpecifiedStencilRef &&
-            !data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
-            !data.WaveOps && data.WaveLaneCountMin == 0 &&
-            data.WaveLaneCountMax == 0 && data.TotalLaneCount == 0 &&
+            data.TypedUAVLoadAdditionalFormats && !data.ROVs &&
+            data.WaveOps && data.WaveLaneCountMin == 32 &&
+            data.WaveLaneCountMax == 32 && data.TotalLaneCount == 32 &&
             !data.Int64Ops && data.Native16BitOps,
          "DDI 0042 native 16-bit shader caps");
    }
@@ -2944,6 +2946,38 @@ wmain(int argc, wchar_t **argv)
                (format_support & D3D12DDI_FORMAT_SUPPORT_DISPLAY),
             "native RGBA8 DDI format support");
          {
+            const DXGI_FORMAT typed_uav_required[] = {
+               DXGI_FORMAT_R32_FLOAT,
+               DXGI_FORMAT_R32_UINT,
+               DXGI_FORMAT_R32_SINT,
+               DXGI_FORMAT_R32G32B32A32_FLOAT,
+               DXGI_FORMAT_R32G32B32A32_UINT,
+               DXGI_FORMAT_R32G32B32A32_SINT,
+               DXGI_FORMAT_R16G16B16A16_FLOAT,
+               DXGI_FORMAT_R16G16B16A16_UINT,
+               DXGI_FORMAT_R16G16B16A16_SINT,
+               DXGI_FORMAT_R8G8B8A8_UNORM,
+               DXGI_FORMAT_R8G8B8A8_UINT,
+               DXGI_FORMAT_R8G8B8A8_SINT,
+               DXGI_FORMAT_R16_FLOAT,
+               DXGI_FORMAT_R16_UINT,
+               DXGI_FORMAT_R16_SINT,
+               DXGI_FORMAT_R8_UNORM,
+               DXGI_FORMAT_R8_UINT,
+               DXGI_FORMAT_R8_SINT,
+            };
+            for (UINT index = 0; index < ARRAYSIZE(typed_uav_required);
+                 ++index) {
+               format_support = 0;
+               device_table.pfnCheckFormatSupport(
+                  driver_device, typed_uav_required[index], &format_support);
+               require_result(
+                  (format_support & D3D12DDI_FORMAT_SUPPORT_UAV_READS) &&
+                     (format_support & D3D12DDI_FORMAT_SUPPORT_UAV_WRITES),
+                  "mandatory FL12 typed UAV format is readable and writable");
+            }
+         }
+         {
             const DXGI_FORMAT display_formats[] = {
                DXGI_FORMAT_R16G16B16A16_FLOAT,
                DXGI_FORMAT_R10G10B10A2_UNORM,
@@ -2972,6 +3006,40 @@ wmain(int argc, wchar_t **argv)
             (format_support & D3D12DDI_FORMAT_SUPPORT_RENDERTARGET) &&
                !(format_support & D3D12DDI_FORMAT_SUPPORT_BLENDABLE),
             "integer render targets are not advertised as blendable");
+         {
+            const DXGI_FORMAT logic_op_required[] = {
+               DXGI_FORMAT_R32G32B32A32_UINT,
+               DXGI_FORMAT_R32G32B32_UINT,
+               DXGI_FORMAT_R16G16B16A16_UINT,
+               DXGI_FORMAT_R32G32_UINT,
+               DXGI_FORMAT_R10G10B10A2_UINT,
+               DXGI_FORMAT_R8G8B8A8_UINT,
+               DXGI_FORMAT_R16G16_UINT,
+               DXGI_FORMAT_R32_UINT,
+               DXGI_FORMAT_R8G8_UINT,
+               DXGI_FORMAT_R16_UINT,
+               DXGI_FORMAT_R8_UINT,
+            };
+
+            for (UINT index = 0; index < ARRAYSIZE(logic_op_required);
+                 ++index) {
+               format_support = 0;
+               device_table.pfnCheckFormatSupport(
+                  driver_device, logic_op_required[index], &format_support);
+               require_result(
+                  !!(format_support &
+                     D3D12DDI_FORMAT_SUPPORT_OUTPUT_MERGER_LOGIC_OP),
+                  "mandatory FL12 UINT format supports logic operations");
+            }
+
+            format_support = 0;
+            device_table.pfnCheckFormatSupport(
+               driver_device, DXGI_FORMAT_R8G8B8A8_UNORM, &format_support);
+            require_result(
+               !(format_support &
+                 D3D12DDI_FORMAT_SUPPORT_OUTPUT_MERGER_LOGIC_OP),
+               "logic-op format support is restricted to required UINTs");
+         }
          format_support = UINT32_MAX;
          device_table.pfnCheckFormatSupport(
             driver_device, (DXGI_FORMAT)UINT32_MAX, &format_support);

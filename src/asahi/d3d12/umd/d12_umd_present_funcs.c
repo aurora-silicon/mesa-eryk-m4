@@ -12,6 +12,8 @@
 
 #include "d12_umd_present_funcs.h"
 
+#include "d12_umd_sync.h"
+
 #include "d12_umd_internal.h"
 #include "d12_umd_residency.h"
 #include "d12_umd_resource_command_funcs.h"
@@ -270,7 +272,7 @@ d12_umd_dxgi_present(DXGI_DDI_ARG_PRESENT *arguments)
    if (!callbacks || !callbacks->pfnPresentCb)
       return E_NOTIMPL;
 
-   AcquireSRWLockShared(&device->queue_lock);
+   d12_umd_sync_acquire_shared(&device->queue_lock);
    for (queue = device->queues; queue; queue = queue->next) {
       if (queue->type == D12_UMD_RENDERER_COMMAND_DIRECT)
          break;
@@ -469,8 +471,8 @@ d12_umd_dxgi_rotate_resource_identities(
       }
    }
 
-   AcquireSRWLockExclusive(&device->rotation_lock);
-   AcquireSRWLockShared(&device->heap_lock);
+   d12_umd_sync_acquire_exclusive(&device->rotation_lock);
+   d12_umd_sync_acquire_shared(&device->heap_lock);
    for (UINT i = 0; i < arguments->Resources; ++i) {
       resources[i] = d12_umd_dxgi_resource(device,
                                            arguments->pResources[i]);
@@ -513,7 +515,7 @@ d12_umd_dxgi_rotate_resource_identities(
     * Serialize against every heap map and retain the locks until the AGX BO,
     * descriptors and frontend allocation handles all agree. */
    for (UINT i = 0; i < arguments->Resources; ++i) {
-      AcquireSRWLockExclusive(&heaps[i]->storage->lock);
+      d12_umd_sync_acquire_exclusive(&heaps[i]->storage->lock);
       ++locks_held;
       if (heaps[i]->storage->lifetime.retain_count ||
           heaps[i]->storage->mapping ||
@@ -597,7 +599,7 @@ d12_umd_dxgi_execute_blt(struct d12_umd_device *device,
     * the operation is ordered with the subsequent Present callback on that
     * same WDDM context. The per-queue lock serializes the internal recorder,
     * allowing the steady-state path to reset it without allocator/list churn. */
-   AcquireSRWLockShared(&device->queue_lock);
+   d12_umd_sync_acquire_shared(&device->queue_lock);
    for (queue = device->queues; queue; queue = queue->next) {
       if (queue->type == D12_UMD_RENDERER_COMMAND_DIRECT && queue->backend)
          break;
@@ -605,7 +607,7 @@ d12_umd_dxgi_execute_blt(struct d12_umd_device *device,
    if (!queue)
       goto cleanup;
 
-   AcquireSRWLockExclusive(&queue->dxgi_blt_lock);
+   d12_umd_sync_acquire_exclusive(&queue->dxgi_blt_lock);
    if (!queue->dxgi_blt_allocator) {
       result = device->renderer_ops->create_command_allocator(
          device->backend, D12_UMD_RENDERER_COMMAND_DIRECT,

@@ -40,7 +40,7 @@ agx_d3dkmt_submit_private_pack(
    const bool use_v4 = dependency_count != 0;
    const uint32_t header_size =
       use_v4 ? (uint32_t)sizeof(struct agxw_submit_private_v4)
-             : (uint32_t)sizeof(struct agxw_submit_private_v3);
+             : (uint32_t)sizeof(struct agxw_submit_private_v5);
    uint64_t required = header_size;
    struct agxw_submit_private *base = blob;
    struct agxw_submit_read_range *destination_ranges;
@@ -55,6 +55,8 @@ agx_d3dkmt_submit_private_pack(
       return AGX_D3DKMT_ERR_INVAL;
 
    required += (uint64_t)read_range_count * sizeof(*read_ranges);
+   if (!use_v4)
+      required += (uint64_t)read_range_count * sizeof(*read_ranges);
    required += (uint64_t)dependency_count *
                sizeof(struct agxw_submit_fence_dependency);
    if (required > blob_capacity || required > UINT32_MAX)
@@ -63,9 +65,10 @@ agx_d3dkmt_submit_private_pack(
    memset(blob, 0, header_size);
    *base = (struct agxw_submit_private){
       .version = use_v4 ? AGXW_SUBMIT_PRIVATE_VERSION_V4
-                        : AGXW_SUBMIT_PRIVATE_VERSION_V3,
+                        : AGXW_SUBMIT_PRIVATE_VERSION_V5,
       .struct_size = header_size,
-      .flags = private_flags,
+      .flags = private_flags |
+               (use_v4 ? 0 : AGXW_SUBMIT_CLEAN_SET_COMPLETE),
    };
    destination_ranges = (struct agxw_submit_read_range *)
       ((uint8_t *)blob + header_size);
@@ -93,8 +96,16 @@ agx_d3dkmt_submit_private_pack(
             };
       }
    } else {
-      ((struct agxw_submit_private_v3 *)blob)->read_range_count =
-         read_range_count;
+      struct agxw_submit_private_v5 *v5 = blob;
+      struct agxw_submit_read_range *destination_clean_ranges =
+         destination_ranges + read_range_count;
+
+      v5->read_range_count = read_range_count;
+      v5->clean_range_count = read_range_count;
+      if (read_range_count != 0) {
+         memmove(destination_clean_ranges, read_ranges,
+                 (size_t)read_range_count * sizeof(*read_ranges));
+      }
    }
 
    *out_size = (uint32_t)required;
@@ -1015,7 +1026,7 @@ agx_d3dkmt_parse_identity(const void *blob, uint32_t blob_size,
       return AGX_D3DKMT_ERR_INVAL;
    if (id.params_blob_size != AGXW_PARAMS_GLOBAL_SIZE)
       return AGX_D3DKMT_ERR_INVAL;
-   if (id.submit_private_max_version < AGXW_SUBMIT_PRIVATE_VERSION_V3)
+   if (id.submit_private_max_version < AGXW_SUBMIT_PRIVATE_VERSION_V5)
       return AGX_D3DKMT_ERR_INVAL;
 
    *policy = agx_d3dkmt_policy_default();

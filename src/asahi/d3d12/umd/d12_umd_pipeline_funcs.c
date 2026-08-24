@@ -10,6 +10,8 @@
 
 #include "d12_umd_pipeline_funcs.h"
 
+#include "d12_umd_sync.h"
+
 #include "../d12_dxbc_wrap.h"
 #include "d12_umd_internal.h"
 #include "d12_umd_pipeline_serialization.h"
@@ -1588,7 +1590,7 @@ d12_umd_pipeline_library_contains(
    struct d12_umd_pipeline_library *library, uint32_t index)
 {
    bool found;
-   AcquireSRWLockShared(&library->lock);
+   d12_umd_sync_acquire_shared(&library->lock);
    found = d12_umd_pipeline_library_find_const(&library->core, index) != NULL;
    ReleaseSRWLockShared(&library->lock);
    return found;
@@ -1638,7 +1640,7 @@ d12_umd_pipeline_library_load(
        !device->renderer_ops->destroy_pipeline_state)
       return E_INVALIDARG;
 
-   AcquireSRWLockShared(&library->lock);
+   d12_umd_sync_acquire_shared(&library->lock);
    entry = d12_umd_pipeline_library_find(&library->core, index);
    if (!entry) {
       ReleaseSRWLockShared(&library->lock);
@@ -1670,7 +1672,7 @@ d12_umd_pipeline_library_load(
    if (FAILED(result))
       return result;
 
-   AcquireSRWLockExclusive(&library->lock);
+   d12_umd_sync_acquire_exclusive(&library->lock);
    entry = d12_umd_pipeline_library_find(&library->core, index);
    if (!entry) {
       ReleaseSRWLockExclusive(&library->lock);
@@ -2198,7 +2200,7 @@ d12_umd_destroy_pipeline_library_0010(
 
    if (!device || !library || library->device != device)
       return;
-   AcquireSRWLockExclusive(&library->lock);
+   d12_umd_sync_acquire_exclusive(&library->lock);
    if (device->renderer_ops &&
        device->renderer_ops->destroy_pipeline_state) {
       for (uint32_t index = 0; index < library->core.count; ++index) {
@@ -2233,7 +2235,7 @@ d12_umd_add_pipeline_state_to_library_0010(
        !device->renderer_ops->retain_pipeline_state)
       return E_INVALIDARG;
 
-   AcquireSRWLockExclusive(&library->lock);
+   d12_umd_sync_acquire_exclusive(&library->lock);
    result = d12_umd_pipeline_library_add(
       &library->core, pipeline_index, pipeline->serialization,
       pipeline->serialization_size, &entry);
@@ -2256,7 +2258,7 @@ d12_umd_calc_serialized_library_size_0010(
 
    if (!device || !library || library->device != device)
       return 0;
-   AcquireSRWLockShared(&library->lock);
+   d12_umd_sync_acquire_shared(&library->lock);
    if (!d12_umd_pipeline_library_serialized_size(&library->core, &size))
       size = 0;
    ReleaseSRWLockShared(&library->lock);
@@ -2276,7 +2278,7 @@ d12_umd_serialize_library_0010(
 
    if (!device || !library || library->device != device || !blob)
       return E_INVALIDARG;
-   AcquireSRWLockShared(&library->lock);
+   d12_umd_sync_acquire_shared(&library->lock);
    if (!d12_umd_pipeline_library_serialized_size(&library->core, &size))
       result = D12_UMD_PIPELINE_LIBRARY_INVALID;
    else
