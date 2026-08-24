@@ -119,9 +119,10 @@ agx_gallium_storage_descriptor_layout(
    };
 }
 
-/* Gen9's multisample selector is not yet identified.  AGX3 buffer texture
- * descriptors also lack the recovered equivalent of AGX2's software tail
- * offset.  Never encode either case using legacy bit positions.
+/* AGX3 buffer descriptors have no recovered equivalent for AGX2's software
+ * tail offset.  Keep those unavailable rather than aliasing unknown bits in a
+ * native descriptor.  Multisample descriptor representation is recovered on
+ * both AGX3 generations; this is not by itself an execution/capability gate.
  */
 static inline bool
 agx_gallium_native_texture_supported(
@@ -132,9 +133,6 @@ agx_gallium_native_texture_supported(
       return true;
 
    if (!agx_gallium_descriptor_generation_is_agx3(generation))
-      return false;
-
-   if (generation == AGX_DESCRIPTOR_GENERATION_9 && multisampled)
       return false;
 
    return buffer_tail_offset == 0;
@@ -155,10 +153,8 @@ agx_gallium_native_texture_sample_count_representable(
    if (agx_gallium_descriptor_generation_is_agx2(generation))
       return samples == 2 || samples == 4;
 
-   if (generation == AGX_DESCRIPTOR_GENERATION_9)
-      return false;
-
-   if (generation == AGX_DESCRIPTOR_GENERATION_10)
+   if (generation == AGX_DESCRIPTOR_GENERATION_9 ||
+       generation == AGX_DESCRIPTOR_GENERATION_10)
       return samples == 2 || samples == 4 || samples == 8;
 
    return false;

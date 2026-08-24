@@ -347,6 +347,7 @@
     <field name="Swizzle A" size="3" start="25" type="Channel"/>
     <field name="Width" size="14" start="28" type="uint" modifier="minus(1)"/>
     <field name="Height" size="14" start="42" type="uint" modifier="minus(1)"/>
+    <field name="Samples" size="2" start="56" type="Sample Count"/>
     <field name="Has levels" size="1" start="58" type="bool"/>
     <field name="State control" size="4" start="60" type="hex"/>
     <field name="Address" size="44" start="64" type="address" modifier="shr(4)"/>

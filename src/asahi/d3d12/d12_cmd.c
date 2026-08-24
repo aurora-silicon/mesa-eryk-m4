@@ -2331,7 +2331,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
 
 static bool
 d12_pack_texture_generation(enum agx_descriptor_generation generation,
-                            void *out, const struct AGX_TEXTURE *legacy)
+                            void *out, const struct AGX_TEXTURE *legacy,
+                            unsigned semantic_sample_count)
 {
    if (!out || !legacy)
       return false;
@@ -2350,12 +2351,18 @@ d12_pack_texture_generation(enum agx_descriptor_generation generation,
       return false;
 
    if (generation == AGX_DESCRIPTOR_GENERATION_9) {
-      /* The G15/HAL200 multisample selector has not been named in the
-       * recovered texture layout. Keep multisampled Gen9 SRVs null instead
-       * of copying AGX2's bit into an unrelated field. */
-      if (legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED ||
-          legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED)
+      const bool multisampled =
+         legacy->dimension == AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED ||
+         legacy->dimension == AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED;
+      uint64_t sample_field;
+      if (!d12_native_texture_gen9_sample_field(
+             multisampled, semantic_sample_count, legacy->samples,
+             &sample_field))
          return false;
+
+      const unsigned sample_selector =
+         (sample_field >> D12_NATIVE_TEXTURE_GEN9_SAMPLES_SHIFT) &
+         D12_NATIVE_TEXTURE_GEN9_SAMPLES_MASK;
 
       struct AGX_TEXTURE_GEN9 cfg = {
          .dimension = legacy->dimension,
@@ -2368,6 +2375,7 @@ d12_pack_texture_generation(enum agx_descriptor_generation generation,
          .swizzle_a = legacy->swizzle_a,
          .width = legacy->width,
          .height = legacy->height,
+         .samples = sample_selector,
          .has_levels = has_levels,
          /* RE proves mode/compression moved together to word 0[60:63]. */
          .state_control = legacy->mode | (legacy->compression << 2),
@@ -4367,6 +4375,17 @@ d12_refresh_texture_descriptor(struct d12_device *device, void *out,
    if (!AGX_TEXTURE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
       return false;
 
+   const struct ail_layout *semantic_layout = NULL;
+   if (d->resource) {
+      semantic_layout =
+         d->texture_plane == 1 &&
+               d->resource->desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER
+            ? &d->resource->stencil_layout
+            : &d->resource->layout;
+   }
+   const unsigned semantic_sample_count =
+      semantic_layout ? MAX2(semantic_layout->sample_count_sa, 1) : 1;
+
    if ((generation == AGX_DESCRIPTOR_GENERATION_9 ||
        generation == AGX_DESCRIPTOR_GENERATION_10) &&
        (d->kind == D12_DESC_SRV || d->kind == D12_DESC_UAV) && d->resource &&
@@ -4394,7 +4413,8 @@ d12_refresh_texture_descriptor(struct d12_device *device, void *out,
       }
    }
 
-   if (d12_pack_texture_generation(generation, out, &unpacked))
+   if (d12_pack_texture_generation(generation, out, &unpacked,
+                                   semantic_sample_count))
       return true;
 
    d12_set_null_texture_descriptor(device, out);
@@ -4421,7 +4441,7 @@ d12_set_null_texture_descriptor(struct d12_device *device, void *out)
    if (!AGX_TEXTURE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
       return false;
 
-   return d12_pack_texture_generation(generation, out, &unpacked);
+   return d12_pack_texture_generation(generation, out, &unpacked, 1);
 }
 
 bool

@@ -36,6 +36,32 @@ main(void)
    CHECK(!d12_native_descriptor_layout(11, &layout));
    CHECK(!d12_native_descriptor_layout(9, NULL));
 
+   uint64_t sample_field = UINT64_MAX;
+   CHECK(d12_native_texture_gen9_sample_field(false, 1, 0, &sample_field));
+   CHECK(sample_field == 0);
+   CHECK(d12_native_texture_gen9_sample_field(true, 2, 0, &sample_field));
+   CHECK(sample_field == UINT64_C(0x0) << 56);
+   CHECK(d12_native_texture_gen9_sample_field(true, 4, 1, &sample_field));
+   CHECK(sample_field == UINT64_C(0x1) << 56);
+   CHECK(d12_native_texture_gen9_sample_field(true, 8, 2, &sample_field));
+   CHECK(sample_field == UINT64_C(0x2) << 56);
+
+   /* There is no one-sample encoding. Non-MS selectors, selector 3 and
+    * non-canonical counts must remain fail-closed. */
+   CHECK(!d12_native_texture_gen9_sample_field(true, 1, 0, &sample_field));
+   CHECK(sample_field == 0);
+   CHECK(!d12_native_texture_gen9_sample_field(false, 2, 0, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(false, 1, 1, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(false, 1, 2, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 2, 3, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 4, 0, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 8, 1, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 16, 3, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 3, 0, &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, UINT32_MAX, 0,
+                                                &sample_field));
+   CHECK(!d12_native_texture_gen9_sample_field(true, 2, 0, NULL));
+
    CHECK(d12_native_pbe_software_addressing_supported(
       D12_NATIVE_DESCRIPTOR_GEN7));
    CHECK(d12_native_pbe_software_addressing_supported(

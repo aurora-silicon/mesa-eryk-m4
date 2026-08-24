@@ -86,7 +86,7 @@ test_feature_gates(void)
       AGX_DESCRIPTOR_GENERATION_8, true, 99));
    CHECK(agx_gallium_native_texture_supported(
       AGX_DESCRIPTOR_GENERATION_9, false, 0));
-   CHECK(!agx_gallium_native_texture_supported(
+   CHECK(agx_gallium_native_texture_supported(
       AGX_DESCRIPTOR_GENERATION_9, true, 0));
    CHECK(!agx_gallium_native_texture_supported(
       AGX_DESCRIPTOR_GENERATION_9, false, 1));
@@ -101,8 +101,14 @@ test_feature_gates(void)
       AGX_DESCRIPTOR_GENERATION_7, 2));
    CHECK(agx_gallium_native_texture_sample_count_representable(
       AGX_DESCRIPTOR_GENERATION_8, 4));
-   CHECK(!agx_gallium_native_texture_sample_count_representable(
+   CHECK(agx_gallium_native_texture_sample_count_representable(
       AGX_DESCRIPTOR_GENERATION_9, 2));
+   CHECK(agx_gallium_native_texture_sample_count_representable(
+      AGX_DESCRIPTOR_GENERATION_9, 4));
+   CHECK(agx_gallium_native_texture_sample_count_representable(
+      AGX_DESCRIPTOR_GENERATION_9, 8));
+   CHECK(!agx_gallium_native_texture_sample_count_representable(
+      AGX_DESCRIPTOR_GENERATION_9, 16));
    CHECK(agx_gallium_native_texture_sample_count_representable(
       AGX_DESCRIPTOR_GENERATION_10, 8));
    CHECK(!agx_gallium_native_texture_sample_count_representable(
@@ -215,10 +221,44 @@ test_native_packers(void)
 
    struct AGX_TEXTURE unsupported = semantic;
    unsupported.dimension = AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+   static const struct {
+      enum agx_sample_count samples;
+      unsigned selector;
+   } gen9_msaa[] = {
+      {AGX_SAMPLE_COUNT_2, 0},
+      {AGX_SAMPLE_COUNT_4, 1},
+      {AGX_SAMPLE_COUNT_8, 2},
+   };
+
+   for (unsigned i = 0; i < sizeof(gen9_msaa) / sizeof(gen9_msaa[0]); ++i) {
+      unsupported.samples = gen9_msaa[i].samples;
+      CHECK(agx_gallium_pack_native_texture(
+         AGX_DESCRIPTOR_GENERATION_9, &native, &unsupported));
+
+      uint64_t gen9_msaa_word0;
+      memcpy(&gen9_msaa_word0, native.opaque, sizeof(gen9_msaa_word0));
+      CHECK(((gen9_msaa_word0 >> 56) & 3) == gen9_msaa[i].selector);
+
+      struct AGX_TEXTURE_GEN9 unpacked = {0};
+      CHECK(AGX_TEXTURE_GEN9_unpack(NULL, (const uint8_t *)native.opaque,
+                                    &unpacked));
+      CHECK(unpacked.samples == gen9_msaa[i].samples);
+   }
+
+   unsupported.samples = (enum agx_sample_count)3;
    memset(&native, 0xff, sizeof(native));
    CHECK(!agx_gallium_pack_native_texture(
       AGX_DESCRIPTOR_GENERATION_9, &native, &unsupported));
-   CHECK(native.opaque[0] == 0 && native.opaque[7] == 0);
+   CHECK(memcmp(&native, &(struct agx_gallium_texture_descriptor){0},
+                sizeof(native)) == 0);
+
+   unsupported = semantic;
+   unsupported.samples = AGX_SAMPLE_COUNT_4;
+   memset(&native, 0xff, sizeof(native));
+   CHECK(!agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_9, &native, &unsupported));
+   CHECK(memcmp(&native, &(struct agx_gallium_texture_descriptor){0},
+                sizeof(native)) == 0);
 
    unsupported = semantic;
    unsupported.dimension = AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
@@ -234,6 +274,14 @@ test_native_packers(void)
    CHECK(!agx_gallium_pack_native_texture(
       AGX_DESCRIPTOR_GENERATION_10, &native, &unsupported));
    CHECK(native.opaque[0] == 0 && native.opaque[7] == 0);
+
+   unsupported = semantic;
+   unsupported.samples = AGX_SAMPLE_COUNT_8;
+   memset(&native, 0xff, sizeof(native));
+   CHECK(!agx_gallium_pack_native_texture(
+      AGX_DESCRIPTOR_GENERATION_10, &native, &unsupported));
+   CHECK(memcmp(&native, &(struct agx_gallium_texture_descriptor){0},
+                sizeof(native)) == 0);
 
    unsupported = semantic;
    unsupported.buffer_offset_sw = 1;

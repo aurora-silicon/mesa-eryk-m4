@@ -18,6 +18,9 @@
 #define D12_NATIVE_DESCRIPTOR_GEN9  9u
 #define D12_NATIVE_DESCRIPTOR_GEN10 10u
 
+#define D12_NATIVE_TEXTURE_GEN9_SAMPLES_SHIFT 56u
+#define D12_NATIVE_TEXTURE_GEN9_SAMPLES_MASK  UINT64_C(0x3)
+
 struct d12_native_descriptor_layout {
    uint8_t texture_stride_B;
    uint8_t pbe_stride_B;
@@ -45,6 +48,50 @@ d12_native_descriptor_layout(uint32_t generation,
       *out = (struct d12_native_descriptor_layout){0, 0};
       return false;
    }
+}
+
+/* TextureGen4::encodeImageReadState() in the independently extracted G15G,
+ * G15X, G16G and G16X Apple drivers encodes ((sample_count >> 2) & 3) at
+ * word 0 bits 56:57.  The field has meaning only for the two multisampled
+ * texture dimensions; a non-MS texture has no one-sample selector.
+ *
+ * Keep this helper about native descriptor representation, not D3D12 feature
+ * support.  Resource creation, rasterization and public quality-level gates
+ * remain separately limited to the sample counts proven executable there.
+ */
+static inline bool
+d12_native_texture_gen9_sample_field(bool multisampled,
+                                     uint32_t sample_count,
+                                     uint32_t encoded_selector,
+                                     uint64_t *word0_field)
+{
+   if (!word0_field)
+      return false;
+
+   *word0_field = 0;
+   if (!multisampled)
+      return sample_count == 1 && encoded_selector == 0;
+
+   uint64_t selector;
+   switch (sample_count) {
+   case 2:
+      selector = 0;
+      break;
+   case 4:
+      selector = 1;
+      break;
+   case 8:
+      selector = 2;
+      break;
+   default:
+      return false;
+   }
+
+   if (encoded_selector != selector)
+      return false;
+
+   *word0_field = selector << D12_NATIVE_TEXTURE_GEN9_SAMPLES_SHIFT;
+   return true;
 }
 
 /* The current AGX lowering computes addresses for image atomics,

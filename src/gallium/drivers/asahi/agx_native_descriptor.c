@@ -56,6 +56,12 @@ agx_gallium_pack_native_texture(
       if (!agx_gallium_native_texture_sample_count_representable(
              generation, samples))
          return false;
+   } else if (semantic->samples != AGX_SAMPLE_COUNT_2) {
+      /* Sample Count has no 1x value, so zero/2x is the inert default for a
+       * non-multisampled dimension.  Do not silently accept other selectors
+       * where the hardware field has no defined meaning.
+       */
+      return false;
    }
 
    const bool has_levels = semantic->first_level || semantic->last_level ||
@@ -84,6 +90,7 @@ agx_gallium_pack_native_texture(
          .swizzle_a = semantic->swizzle_a,
          .width = semantic->width,
          .height = semantic->height,
+         .samples = semantic->samples,
          .has_levels = has_levels,
          .state_control = semantic->mode | (semantic->compression << 2),
          .address = semantic->address,

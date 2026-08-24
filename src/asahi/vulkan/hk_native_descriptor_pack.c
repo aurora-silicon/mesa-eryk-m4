@@ -57,8 +57,9 @@ hk_pack_native_texture(unsigned generation,
    /* The Apple Gen9/10 encoders accept the three recovered two-bit selector
     * values only.  Reject malformed semantic input instead of truncating it.
     */
-   if (multisampled &&
-       (unsigned)legacy->samples > (unsigned)AGX_SAMPLE_COUNT_8)
+   if ((multisampled &&
+        (unsigned)legacy->samples > (unsigned)AGX_SAMPLE_COUNT_8) ||
+       (!multisampled && legacy->samples != AGX_SAMPLE_COUNT_2))
       return false;
 
    const bool has_levels =
@@ -86,6 +87,7 @@ hk_pack_native_texture(unsigned generation,
          .swizzle_a = legacy->swizzle_a,
          .width = legacy->width,
          .height = legacy->height,
+         .samples = legacy->samples,
          .has_levels = has_levels,
          .state_control = legacy->mode | (legacy->compression << 2),
          .address = legacy->address,
@@ -112,20 +114,6 @@ hk_pack_native_texture(unsigned generation,
       };
 
       AGX_TEXTURE_GEN9_pack(out->opaque, &cfg);
-
-      if (multisampled) {
-         /* In four independently extracted G15/G16 encoders,
-          * TextureGen4::encodeImageReadState takes bits 2:3 of the numeric
-          * sample count and writes them to word0 bits 56:57.  For 2x/4x/8x
-          * this is exactly AGX_SAMPLE_COUNT_2/4/8 (0/1/2).
-          */
-         uint64_t word0;
-         memcpy(&word0, out->opaque, sizeof(word0));
-         word0 &= ~(UINT64_C(3) << 56);
-         word0 |= (uint64_t)legacy->samples << 56;
-         memcpy(out->opaque, &word0, sizeof(word0));
-      }
-
       return true;
    }
 
