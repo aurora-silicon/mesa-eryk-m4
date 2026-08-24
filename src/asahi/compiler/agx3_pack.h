@@ -20,6 +20,7 @@ extern "C" {
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
+#define AGX3_ENABLE_ALL_THREADS_MAX_LENGTH 8
 #define AGX3_UPDATE_NODE_MAX_LENGTH 14
 
 struct agx3_encoded_ldimm {
@@ -39,6 +40,11 @@ struct agx3_encoded_threadgroup_barrier {
 
 struct agx3_encoded_end {
    uint8_t bytes[AGX3_END_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_enable_all_threads {
+   uint8_t bytes[AGX3_ENABLE_ALL_THREADS_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -109,6 +115,21 @@ bool agx3_pack_end(enum agx_isa_encoding encoding,
                    struct agx3_encoded_end *out);
 bool agx3_unpack_end(enum agx_isa_encoding encoding, const uint8_t *bytes,
                      size_t available, uint8_t *length);
+
+/*
+ * Encode/decode the exact canonical zero-argument
+ * llvm.agx3.enable.all.threads machine instruction.  Five-target n=0..4
+ * ladders establish a six-byte AGX3b form on G15G/G15S/G16G/G17P and an
+ * eight-byte AGX3c form on G17S.  The first instruction in a run has a distinct
+ * zero-wait scheduler field; this bounded API deliberately accepts only the
+ * repeated canonical form until scheduler placement is modeled by codegen.
+ */
+bool agx3_pack_enable_all_threads(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_enable_all_threads *out);
+bool agx3_unpack_enable_all_threads(enum agx_isa_encoding encoding,
+                                    const uint8_t *bytes, size_t available,
+                                    uint8_t *length);
 
 /*
  * Encode/decode the fixed, zero-argument llvm.agx3.update.node intrinsic

@@ -238,6 +238,66 @@ agx3_unpack_end(enum agx_isa_encoding encoding, const uint8_t *bytes,
    return true;
 }
 
+static const uint8_t enable_all_threads_agx3b[] = {
+   0x6f, 0x23, 0x54, 0x00, 0x00, 0x12,
+};
+
+static const uint8_t enable_all_threads_agx3c[] = {
+   0x07, 0x07, 0x05, 0x44, 0x03, 0x00, 0x0b, 0x00,
+};
+
+static const uint8_t *
+enable_all_threads_encoding(enum agx_isa_encoding encoding, size_t *length)
+{
+   switch (encoding) {
+   case AGX_ISA_ENCODING_AGX3B:
+      *length = sizeof(enable_all_threads_agx3b);
+      return enable_all_threads_agx3b;
+   case AGX_ISA_ENCODING_AGX3C:
+      *length = sizeof(enable_all_threads_agx3c);
+      return enable_all_threads_agx3c;
+   default:
+      *length = 0;
+      return NULL;
+   }
+}
+
+bool
+agx3_pack_enable_all_threads(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_enable_all_threads *out)
+{
+   size_t length = 0;
+   const uint8_t *canonical =
+      enable_all_threads_encoding(encoding, &length);
+
+   if (canonical == NULL || out == NULL)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical, length);
+   out->length = length;
+   return true;
+}
+
+bool
+agx3_unpack_enable_all_threads(enum agx_isa_encoding encoding,
+                               const uint8_t *bytes, size_t available,
+                               uint8_t *length)
+{
+   size_t canonical_length = 0;
+   const uint8_t *canonical =
+      enable_all_threads_encoding(encoding, &canonical_length);
+
+   if (canonical == NULL || bytes == NULL || length == NULL ||
+       available < canonical_length ||
+       memcmp(bytes, canonical, canonical_length) != 0)
+      return false;
+
+   *length = canonical_length;
+   return true;
+}
+
 static const uint8_t update_node_agx3b[] = {
    0x07, 0x04, 0x54, 0x08, 0x09, 0x00, 0xdf, 0x05, 0x54, 0x00,
 };

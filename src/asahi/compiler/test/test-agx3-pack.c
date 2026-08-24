@@ -375,6 +375,77 @@ test_update_node(void)
                                   sizeof(expected_c), NULL));
 }
 
+static void
+test_enable_all_threads(void)
+{
+   static const uint8_t expected_b[] = {
+      0x6f, 0x23, 0x54, 0x00, 0x00, 0x12,
+   };
+   static const uint8_t expected_c[] = {
+      0x07, 0x07, 0x05, 0x44, 0x03, 0x00, 0x0b, 0x00,
+   };
+   static const uint8_t first_b[] = {
+      0x6f, 0x03, 0x54, 0x00, 0x00, 0x12,
+   };
+   static const uint8_t first_c[] = {
+      0x07, 0x07, 0x05, 0x04, 0x03, 0x00, 0x0b, 0x00,
+   };
+   const struct {
+      enum agx_isa_encoding encoding;
+      const uint8_t *expected;
+      size_t length;
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B, expected_b, sizeof(expected_b)},
+      {AGX_ISA_ENCODING_AGX3C, expected_c, sizeof(expected_c)},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_enable_all_threads packed;
+      CHECK(agx3_pack_enable_all_threads(vectors[v].encoding, &packed));
+      CHECK(packed.length == vectors[v].length);
+      CHECK(memcmp(packed.bytes, vectors[v].expected, vectors[v].length) == 0);
+
+      uint8_t length = 0;
+      CHECK(agx3_unpack_enable_all_threads(
+         vectors[v].encoding, vectors[v].expected, vectors[v].length,
+         &length));
+      CHECK(length == vectors[v].length);
+
+      /* Every bit outside the exact evidence-backed form fails closed. */
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t malformed[AGX3_ENABLE_ALL_THREADS_MAX_LENGTH] = {0};
+         memcpy(malformed, vectors[v].expected, vectors[v].length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_enable_all_threads(
+            vectors[v].encoding, malformed, vectors[v].length, &length));
+      }
+   }
+
+   struct agx3_encoded_enable_all_threads packed;
+   uint8_t length = 0;
+   CHECK(!agx3_pack_enable_all_threads(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_enable_all_threads(AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_enable_all_threads(AGX_ISA_ENCODING_AGX3B, NULL));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3B, expected_b,
+                                         sizeof(expected_b) - 1, &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3C, expected_c,
+                                         sizeof(expected_c) - 1, &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX2, expected_b,
+                                         sizeof(expected_b), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3B, expected_c,
+                                         sizeof(expected_c), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3C, expected_b,
+                                         sizeof(expected_b), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3B, first_b,
+                                         sizeof(first_b), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3C, first_c,
+                                         sizeof(first_c), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3C, NULL,
+                                         sizeof(expected_c), &length));
+   CHECK(!agx3_unpack_enable_all_threads(AGX_ISA_ENCODING_AGX3C, expected_c,
+                                         sizeof(expected_c), NULL));
+}
+
 int
 main(void)
 {
@@ -383,6 +454,7 @@ main(void)
    test_nop();
    test_threadgroup_barrier();
    test_end();
+   test_enable_all_threads();
    test_update_node();
 
    printf("agx3 proven-subset pack: %u checks, %u failures\n", checks,
