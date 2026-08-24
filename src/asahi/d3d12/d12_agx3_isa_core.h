@@ -26,7 +26,16 @@ enum d12_agx3_binary_alu_op {
    D12_AGX3_BINARY_ALU_IXOR_U32 = 3,
 };
 
+enum d12_agx3_unary_alu_op {
+   D12_AGX3_UNARY_ALU_INOT_U32 = 0,
+};
+
 struct d12_agx3_binary_alu_encoding {
+   uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_unary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
    uint8_t length;
 };
@@ -41,6 +50,11 @@ bool d12_agx3_encode_binary_alu(
    enum agx_isa_encoding encoding, enum d12_agx3_binary_alu_op op,
    uint16_t dest, uint16_t src0, uint16_t src1,
    struct d12_agx3_binary_alu_encoding *out);
+
+/* Same bounded contract as the binary bridge, for one-register semantics. */
+bool d12_agx3_encode_unary_alu(
+   enum agx_isa_encoding encoding, enum d12_agx3_unary_alu_op op,
+   uint16_t dest, uint16_t src, struct d12_agx3_unary_alu_encoding *out);
 
 #ifdef __cplusplus
 }

@@ -47,10 +47,10 @@ The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
 `iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`),
-and canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`. The
-arithmetic and bitwise forms have exhaustive operand and every-bit rejection
-tests plus exact G15/G16/G17 corpus replay; G15G stall placement remains a
-separate unsolved
+canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
+`bit_not` (`inv`). The arithmetic and bitwise forms have exhaustive operand and
+every-bit rejection tests plus exact G15/G16/G17 corpus replay; G15G stall
+placement remains a separate unsolved
 scheduler rule. This is not a general shader encoder. In particular,
 the generated AGX3
 disassemblers and hardware-RT detection do not make AGX3 code generation or
@@ -113,9 +113,9 @@ command-list reset now restores the specified `{1,1,1,1}` default. This is
 AGX3 execution or DXR capability gate.
 
 The D3D12 compiler side has an **IV** fail-closed bridge for canonical
-three-register u32 `iadd`, `iand`, `ior`, and `ixor` into the shared AGX3b/AGX3c
-packer. It replays the exact encoding witnesses but does not admit an AGX3
-device:
+three-register u32 `iadd`, `iand`, `ior`, and `ixor`, plus unary u32 `inot`, into
+the shared AGX3b/AGX3c packer. It replays the exact encoding witnesses but does
+not admit an AGX3 device:
 general instruction selection, scheduling, linking, and submission are still
 missing.
 

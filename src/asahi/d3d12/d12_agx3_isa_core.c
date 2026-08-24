@@ -68,3 +68,29 @@ d12_agx3_encode_binary_alu(
       return false;
    }
 }
+
+bool
+d12_agx3_encode_unary_alu(
+   enum agx_isa_encoding encoding, enum d12_agx3_unary_alu_op op,
+   uint16_t dest, uint16_t src, struct d12_agx3_unary_alu_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   switch (op) {
+   case D12_AGX3_UNARY_ALU_INOT_U32: {
+      struct agx3_encoded_bit_not_u32_reg encoded;
+      if (!agx3_pack_bit_not_u32_reg(encoding, dest, src, &encoded))
+         return false;
+
+      memcpy(out->bytes, encoded.bytes, encoded.length);
+      out->length = encoded.length;
+      return true;
+   }
+
+   default:
+      return false;
+   }
+}

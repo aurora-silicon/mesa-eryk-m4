@@ -63,6 +63,12 @@ main(void)
    static const uint8_t ixor_c[] = {
       0x2b, 0x00, 0x06, 0x80, 0x32, 0x38, 0xa0, 0x02, 0x84, 0x80,
    };
+   static const uint8_t inot_b[] = {
+      0x3b, 0x01, 0x26, 0x00, 0x01, 0x08, 0x00, 0x80, 0x00, 0x00,
+   };
+   static const uint8_t inot_c[] = {
+      0x3b, 0x00, 0x06, 0x1a, 0x29, 0x08, 0xa8, 0x0a,
+   };
 
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
                         D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0, iadd_b,
@@ -88,6 +94,20 @@ main(void)
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3C,
                         D12_AGX3_BINARY_ALU_IXOR_U32, 0, 0, 2, ixor_c,
                         sizeof(ixor_c)) == 0);
+
+   struct d12_agx3_unary_alu_encoding unary;
+   CHECK(d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3B,
+                                   D12_AGX3_UNARY_ALU_INOT_U32, 6, 0,
+                                   &unary));
+   CHECK(unary.length == sizeof(inot_b));
+   CHECK(memcmp(unary.bytes, inot_b, sizeof(inot_b)) == 0);
+   CHECK(unary.bytes[10] == 0 && unary.bytes[11] == 0);
+   CHECK(d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3C,
+                                   D12_AGX3_UNARY_ALU_INOT_U32, 6, 0,
+                                   &unary));
+   CHECK(unary.length == sizeof(inot_c));
+   CHECK(memcmp(unary.bytes, inot_c, sizeof(inot_c)) == 0);
+   CHECK(unary.bytes[8] == 0 && unary.bytes[11] == 0);
 
    struct d12_agx3_binary_alu_encoding encoded = {
       .bytes = {0xff},
@@ -121,6 +141,22 @@ main(void)
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0,
                                      NULL));
+   CHECK(!d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX2,
+                                    D12_AGX3_UNARY_ALU_INOT_U32, 0, 0,
+                                    &unary));
+   CHECK(unary.length == 0 && unary.bytes[0] == 0);
+   CHECK(!d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3C,
+                                    (enum d12_agx3_unary_alu_op)99, 0, 0,
+                                    &unary));
+   CHECK(!d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3B,
+                                    D12_AGX3_UNARY_ALU_INOT_U32, 1, 0,
+                                    &unary));
+   CHECK(!d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3C,
+                                    D12_AGX3_UNARY_ALU_INOT_U32, 0, 256,
+                                    &unary));
+   CHECK(!d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3C,
+                                    D12_AGX3_UNARY_ALU_INOT_U32, 0, 0,
+                                    NULL));
 
    printf("d12 AGX3 ISA core: %u checks passed\n", checks);
    return 0;

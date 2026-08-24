@@ -693,6 +693,105 @@ agx3_unpack_bit_xor_u32_reg_reg(
 }
 
 bool
+agx3_pack_bit_not_u32_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                          uint16_t src,
+                          struct agx3_encoded_bit_not_u32_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 256 ||
+       src >= 256 || (dest & 1) != 0 || (src & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Exact canonical fields from the seven-target forced-live replay. */
+      const uint8_t canonical[AGX3_BIT_NOT_U32_REG_MAX_LENGTH] = {
+         0x0b, 0x01, 0x26, 0x00, 0x01, 0x08, 0x00, 0x80, 0x00, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2: d[1:4] -> b0[4:7], d[5:6] -> b2[6:7], d[7] -> b5[4]. */
+      out->bytes[0] |= (dest & 0x1e) << 3;
+      out->bytes[2] |= (dest & 0x60) << 1;
+      out->bytes[5] |= (dest & 0x80) >> 3;
+
+      /* f16: s[1:6] -> b1[1:6], s[7] -> b5[0]. */
+      out->bytes[1] |= src & 0x7e;
+      out->bytes[5] |= src >> 7;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   /* Exact canonical fields from the G17G/G17S forced-live replay. */
+   const uint8_t canonical[] = {
+      0x2b, 0x00, 0x06, 0x1a, 0x29, 0x08, 0xa8, 0x02,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2 uses the bounded eight-bit AGX3c destination scatter. */
+   out->bytes[0] |= ((dest >> 1) & 0x1) << 4;
+   out->bytes[0] |= ((dest >> 4) & 0x1) << 7;
+   out->bytes[7] |= ((dest >> 2) & 0x3) << 3;
+   out->bytes[7] |= ((dest >> 5) & 0x1) << 5;
+   out->bytes[2] |= ((dest >> 6) & 0x1) << 7;
+   out->bytes[2] |= ((dest >> 7) & 0x1) << 3;
+
+   /* f16: s[1] in b1, s[2:4] in b3, s[5] in b5, s[6:7] in b6. */
+   out->bytes[1] |= src & 0x2;
+   out->bytes[3] |= (src & 0x1c) << 3;
+   out->bytes[5] |= (src & 0x20) << 2;
+   out->bytes[6] |= (src & 0xc0) >> 6;
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_bit_not_u32_reg(enum agx_isa_encoding encoding,
+                            const uint8_t *bytes, size_t available,
+                            uint16_t *dest, uint16_t *src, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src == NULL || length == NULL)
+      return false;
+
+   const uint8_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 10 : 8;
+   if (available < expected_length)
+      return false;
+
+   uint16_t decoded_dest, decoded_src;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                     ((bytes[2] >> 1) & 0x60) |
+                     ((bytes[5] & 0x10) << 3);
+      decoded_src = (bytes[1] & 0x7e) | ((bytes[5] & 0x1) << 7);
+   } else {
+      decoded_dest = (((bytes[0] >> 4) & 0x1) << 1) |
+                     (((bytes[7] >> 3) & 0x3) << 2) |
+                     (((bytes[0] >> 7) & 0x1) << 4) |
+                     (((bytes[7] >> 5) & 0x1) << 5) |
+                     (((bytes[2] >> 7) & 0x1) << 6) |
+                     (((bytes[2] >> 3) & 0x1) << 7);
+      decoded_src = (bytes[1] & 0x2) |
+                    ((bytes[3] & 0xe0) >> 3) |
+                    ((bytes[5] & 0x80) >> 2) |
+                    ((bytes[6] & 0x3) << 6);
+   }
+
+   struct agx3_encoded_bit_not_u32_reg canonical;
+   if (!agx3_pack_bit_not_u32_reg(encoding, decoded_dest, decoded_src,
+                                  &canonical) ||
+       canonical.length != expected_length ||
+       memcmp(bytes, canonical.bytes, expected_length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *length = expected_length;
+   return true;
+}
+
+bool
 agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)
