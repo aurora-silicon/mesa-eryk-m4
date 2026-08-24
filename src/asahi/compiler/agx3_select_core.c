@@ -43,6 +43,8 @@ agx3_select_op_supported(enum agx3_sel_op op)
    case AGX3_SEL_OP_F_TO_U32:
    case AGX3_SEL_OP_I32_TO_F:
    case AGX3_SEL_OP_U32_TO_F:
+   case AGX3_SEL_OP_ISUB:
+   case AGX3_SEL_OP_IMUL:
       return true;
    default:
       return false;
@@ -175,6 +177,32 @@ agx3_select_encode(enum agx_isa_encoding encoding,
          return false;
       if (!agx3_pack_asr_i32_reg_reg(encoding, I->dest, I->src[0].reg,
                                      I->src[1].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_ISUB: {
+      struct agx3_encoded_isub_u32_reg_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 2 ||
+          !src_is_plain_reg32(&I->src[0]) || !src_is_plain_reg32(&I->src[1]))
+         return false;
+      if (!agx3_pack_isub_u32_reg_reg(encoding, I->dest, I->src[0].reg,
+                                      I->src[1].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_IMUL: {
+      struct agx3_encoded_imul_u32_reg_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 2 ||
+          !src_is_plain_reg32(&I->src[0]) || !src_is_plain_reg32(&I->src[1]))
+         return false;
+      if (!agx3_pack_imul_u32_reg_reg(encoding, I->dest, I->src[0].reg,
+                                      I->src[1].reg, &e))
          return false;
       memcpy(out, e.bytes, e.length);
       *len = e.length;

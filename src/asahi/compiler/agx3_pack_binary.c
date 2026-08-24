@@ -170,6 +170,25 @@ agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
       S->src[2] = (struct agx3_sel_src){0};
    }
 
+   /* NIR isub is iadd(a, -b): an iadd whose second source is negated and whose
+    * first is not. Map it to the grounded isub and drop the neg. A negate
+    * (iadd(0, -a)) has an immediate-zero first source and is left unmapped. */
+   if (S->op == AGX3_SEL_OP_IADD && I->nr_srcs == 2 && I->src[1].neg &&
+       !I->src[0].neg && agx3_src_is_register(I->src[0]) &&
+       agx3_src_is_register(I->src[1]) && I->shift == 0) {
+      S->op = AGX3_SEL_OP_ISUB;
+      S->src[1].neg = false;
+   }
+
+   /* NIR imul is imad(a, b, 0): a multiply-add with a zero addend. Map it to
+    * the grounded imul. */
+   if (S->op == AGX3_SEL_OP_IMAD && I->nr_srcs == 3 &&
+       agx3_src_is_zero_imm(I->src[2]) && I->shift == 0) {
+      S->op = AGX3_SEL_OP_IMUL;
+      S->nr_srcs = 2;
+      S->src[2] = (struct agx3_sel_src){0};
+   }
+
    return true;
 }
 
