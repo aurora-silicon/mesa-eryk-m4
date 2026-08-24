@@ -431,7 +431,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `730da8b57201`
+The power/recovery and submission ledger through Linux commit `067b08f012b9`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -489,6 +489,24 @@ of raw shared-data caching options, firmware consumer ownership, the dual-stack
 selector, acknowledgment, and the complete notification lifetime remain
 closed, so this is a bounded submission preflight rather than an executable
 DRM submission path.
+The classic firmware-facing table is now pinned independently on the same
+eleven identities. It contains twelve `0x20`-byte descriptors in
+priority-major order across four priorities and TA/3D/compute ordinals 0/1/2;
+each descriptor carries read, CFI, write, and entries firmware pointers at
+`+0x00/+0x08/+0x10/+0x18`. The table CPU-pointer field, TA/3D/compute ring
+bases, and per-priority object stride are respectively `0x800`,
+`0x368/0x408/0x4a8`, `0x28` on G15G; `0xbc0`,
+`0x368/0x548/0x728`, `0x78` on G15S/C/D; `0xbc8`,
+`0x370/0x550/0x730`, `0x78` on G16G; `0x840`,
+`0x3a8/0x448/0x4e8`, `0x28` on G16S/C; `0xa80`,
+`0x3a8/0x448/0x4e8`, `0x28` on G17P/S/C; and `0xa88`,
+`0x3b0/0x450/0x4f0`, `0x28` on G17G. Shared-control layouts mirror read and
+CFI to write before publishing the table, while the ScratchRAM layouts on
+G15S/C/D and G16G perform no host read/CFI stores through their trapping
+setters. The model computes class/priority routes without reading or modifying
+shared state. The firmware writer that advances/acknowledges the read index and
+the runtime selector between classic and SKSM submission remain unproved and
+explicitly false, so this still does not enable executable submission.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
