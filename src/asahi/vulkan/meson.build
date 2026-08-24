@@ -28,6 +28,8 @@ hk_files = files(
   'hk_format.c',
   'hk_agx3_ppp_viewport_payload.c',
   'hk_agx3_ppp_viewport_payload.h',
+  'hk_agx3_ppp_w_clamp_cull2.c',
+  'hk_agx3_ppp_w_clamp_cull2.h',
   'hk_agx3_vdm_decode.c',
   'hk_agx3_vdm_decode.h',
   'hk_image.c',
@@ -65,6 +67,22 @@ if with_tests
       'hk_agx3_ppp_viewport_payload_test',
       files('tests/test-hk-agx3-ppp-viewport-payload.c',
             'hk_agx3_ppp_viewport_payload.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      link_with : [libasahi_lib],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+  test(
+    'hk_agx3_ppp_w_clamp_cull2',
+    executable(
+      'hk_agx3_ppp_w_clamp_cull2_test',
+      files('tests/test-hk-agx3-ppp-w-clamp-cull2.c',
+            'hk_agx3_ppp_w_clamp_cull2.c'),
       include_directories : [
         include_directories('.'), inc_include, inc_src, inc_asahi,
       ],

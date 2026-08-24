@@ -22,6 +22,8 @@ libasahi_lib_files = files(
   'agx_ppp.h',
   'agx_ppp_viewport_payload_core.c',
   'agx_ppp_viewport_payload_core.h',
+  'agx_ppp_w_clamp_cull2_core.c',
+  'agx_ppp_w_clamp_cull2_core.h',
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
@@ -265,6 +267,19 @@ if with_tests
       files(
         'agx_ppp_viewport_payload_core.c',
         'tests/test-ppp-viewport-payload-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-w-clamp-cull2-core',
+    executable(
+      'asahi-ppp-w-clamp-cull2-core',
+      files(
+        'agx_ppp_w_clamp_cull2_core.c',
+        'tests/test-ppp-w-clamp-cull2-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

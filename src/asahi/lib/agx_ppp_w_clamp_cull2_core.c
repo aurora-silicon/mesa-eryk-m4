@@ -1,0 +1,101 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_ppp_w_clamp_cull2_core.h"
+
+#include <string.h>
+
+static void
+agx_ppp_w_clamp_cull2_store_le32(uint8_t *dst, uint32_t value)
+{
+   dst[0] = (uint8_t)value;
+   dst[1] = (uint8_t)(value >> 8);
+   dst[2] = (uint8_t)(value >> 16);
+   dst[3] = (uint8_t)(value >> 24);
+}
+
+static uint32_t
+agx_ppp_w_clamp_cull2_load_le32(const uint8_t *src)
+{
+   return (uint32_t)src[0] | ((uint32_t)src[1] << 8) |
+          ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
+}
+
+static bool
+agx_ppp_w_clamp_cull2_header(enum agx_chip chip, uint32_t *header)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+      *header = AGX_PPP_W_CLAMP_CULL2_GEN6_HEADER;
+      return true;
+
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      *header = AGX_PPP_W_CLAMP_CULL2_GEN7_HEADER;
+      return true;
+
+   default:
+      *header = 0;
+      return false;
+   }
+}
+
+bool
+agx_ppp_w_clamp_cull2_core_supported(enum agx_chip chip)
+{
+   uint32_t header;
+   return agx_ppp_w_clamp_cull2_header(chip, &header);
+}
+
+bool
+agx_ppp_w_clamp_cull2_core_pack(
+   enum agx_chip chip, const struct agx_ppp_w_clamp_cull2_fields *fields,
+   struct agx_ppp_w_clamp_cull2_core *out)
+{
+   uint32_t header = 0;
+
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!out || !fields || !agx_ppp_w_clamp_cull2_header(chip, &header))
+      return false;
+
+   agx_ppp_w_clamp_cull2_store_le32(&out->bytes[0], header);
+   agx_ppp_w_clamp_cull2_store_le32(&out->bytes[4], fields->w_clamp_raw);
+   agx_ppp_w_clamp_cull2_store_le32(&out->bytes[8], fields->cull2_raw);
+   out->length = AGX_PPP_W_CLAMP_CULL2_CORE_LENGTH;
+   return true;
+}
+
+bool
+agx_ppp_w_clamp_cull2_core_unpack(
+   enum agx_chip chip, const void *bytes, size_t size,
+   struct agx_ppp_w_clamp_cull2_fields *fields)
+{
+   uint32_t expected_header = 0;
+
+   if (fields)
+      memset(fields, 0, sizeof(*fields));
+
+   if (!bytes || !fields || size != AGX_PPP_W_CLAMP_CULL2_CORE_LENGTH ||
+       !agx_ppp_w_clamp_cull2_header(chip, &expected_header))
+      return false;
+
+   const uint8_t *raw = bytes;
+   if (agx_ppp_w_clamp_cull2_load_le32(raw) != expected_header)
+      return false;
+
+   fields->w_clamp_raw = agx_ppp_w_clamp_cull2_load_le32(&raw[4]);
+   fields->cull2_raw = agx_ppp_w_clamp_cull2_load_le32(&raw[8]);
+   return true;
+}
