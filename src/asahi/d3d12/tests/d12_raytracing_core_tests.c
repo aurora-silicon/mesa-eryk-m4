@@ -946,6 +946,16 @@ test_agx_gen1_child_layout(void)
       }
    }
 
+   for (uint32_t version = 1; version <= 4; ++version) {
+      struct d12_rt_agx_bvh_child_layout dispatched;
+      require(d12_rt_agx_bvh_decode_child_layout(version, packed,
+                                                  &dispatched),
+              "DXR dispatches every BVH version 1-4 to Gen1");
+      require(dispatched.format == D12_RT_AGX_BVH_NODE_FORMAT_GEN1 &&
+                 memcmp(&dispatched.layout.gen1, &layout, sizeof(layout)) == 0,
+              "version-based Gen1 dispatch preserves the decoded layout");
+   }
+
    /* Indexed mode counts boxes rather than taking their maximum end. */
    words[0] |= 1;
    pack_bvh_header(words, packed);
@@ -1016,6 +1026,27 @@ test_agx_gen5_child_layout(void)
               layout.child_leaves_offset_bytes == 7224,
            "DXR receives all five exact child-section offsets");
 
+   struct d12_rt_agx_bvh_child_layout dispatched;
+   require(d12_rt_agx_bvh_decode_child_layout(5, packed, &dispatched),
+           "DXR dispatches BVH version 5 to Gen5");
+   require(dispatched.format == D12_RT_AGX_BVH_NODE_FORMAT_GEN5 &&
+              memcmp(&dispatched.layout.gen5, &layout, sizeof(layout)) == 0,
+           "version-based Gen5 dispatch preserves the decoded layout");
+
+   static const uint32_t invalid_versions[] = {0, 6, UINT32_MAX};
+   for (unsigned i = 0;
+        i < sizeof(invalid_versions) / sizeof(invalid_versions[0]); ++i) {
+      memset(&dispatched, 0xa5, sizeof(dispatched));
+      require(!d12_rt_agx_bvh_decode_child_layout(
+                 invalid_versions[i], packed, &dispatched),
+              "DXR rejects an unknown BVH node version");
+      const struct d12_rt_agx_bvh_child_layout zero_dispatch = {0};
+      require(memcmp(&dispatched, &zero_dispatch, sizeof(dispatched)) == 0,
+              "an unknown BVH version leaves no stale layout data");
+   }
+   require(!d12_rt_agx_bvh_decode_child_layout(5, packed, NULL),
+           "DXR refuses a missing versioned layout destination");
+
    memset(&layout, 0xa5, sizeof(layout));
    require(!d12_rt_agx_bvh_gen5_decode_child_layout(NULL, &layout),
            "DXR refuses a missing Gen5 header");
@@ -1035,6 +1066,12 @@ test_agx_gen5_child_layout(void)
            "DXR fails closed on Apple's invalid-QTB sentinel");
    require(memcmp(&layout, &zero, sizeof(layout)) == 0,
            "an invalid Gen5 QTB layout leaves no stale addressing data");
+   memset(&dispatched, 0xa5, sizeof(dispatched));
+   require(!d12_rt_agx_bvh_decode_child_layout(5, packed, &dispatched),
+           "version-based DXR dispatch propagates an invalid Gen5 layout");
+   const struct d12_rt_agx_bvh_child_layout zero_dispatch = {0};
+   require(memcmp(&dispatched, &zero_dispatch, sizeof(dispatched)) == 0,
+           "failed version-based dispatch leaves no stale layout data");
 }
 
 int

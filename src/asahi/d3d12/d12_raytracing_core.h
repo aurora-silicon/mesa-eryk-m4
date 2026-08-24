@@ -849,6 +849,58 @@ d12_rt_agx_bvh_gen5_decode_child_layout(
    return true;
 }
 
+/* RIA node format is selected by the acceleration-structure blob version,
+ * independently of the GPU that consumes it. */
+enum d12_rt_agx_bvh_node_format {
+   D12_RT_AGX_BVH_NODE_FORMAT_INVALID = 0,
+   D12_RT_AGX_BVH_NODE_FORMAT_GEN1 = 1,
+   D12_RT_AGX_BVH_NODE_FORMAT_GEN5 = 5,
+};
+
+struct d12_rt_agx_bvh_child_layout {
+   enum d12_rt_agx_bvh_node_format format;
+   union {
+      struct d12_rt_agx_bvh_gen1_child_layout gen1;
+      struct d12_rt_agx_bvh_gen5_child_layout gen5;
+   } layout;
+};
+
+/* Decode one node after the caller has parsed the containing blob's version.
+ * Versions 1..4 share Gen1 nodes; version 5 selects Gen5.  No chip-ID fallback
+ * exists, so a future or corrupt version cannot silently choose a layout. */
+static inline bool
+d12_rt_agx_bvh_decode_child_layout(
+   uint32_t bvh_version, const void *packed_header,
+   struct d12_rt_agx_bvh_child_layout *layout)
+{
+   if (!layout)
+      return false;
+
+   *layout = (struct d12_rt_agx_bvh_child_layout){0};
+
+   if (bvh_version >= 1 && bvh_version <= 4) {
+      struct d12_rt_agx_bvh_gen1_child_layout decoded;
+      if (!d12_rt_agx_bvh_gen1_decode_child_layout(packed_header, &decoded))
+         return false;
+
+      layout->format = D12_RT_AGX_BVH_NODE_FORMAT_GEN1;
+      layout->layout.gen1 = decoded;
+      return true;
+   }
+
+   if (bvh_version == 5) {
+      struct d12_rt_agx_bvh_gen5_child_layout decoded;
+      if (!d12_rt_agx_bvh_gen5_decode_child_layout(packed_header, &decoded))
+         return false;
+
+      layout->format = D12_RT_AGX_BVH_NODE_FORMAT_GEN5;
+      layout->layout.gen5 = decoded;
+      return true;
+   }
+
+   return false;
+}
+
 #ifdef __cplusplus
 }
 #endif
