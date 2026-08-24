@@ -28,6 +28,8 @@ extern "C" {
 #define D12_AGX3_U32_TO_F32_REG_MAX_LENGTH 10
 #define D12_AGX3_F32_RINT_REG_LENGTH 10
 #define D12_AGX3_F32_RCP_REG_LENGTH 10
+#define D12_AGX3_F32_RSQRT_REG_LENGTH 10
+#define D12_AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH 14
 #define D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
@@ -79,6 +81,11 @@ enum d12_agx3_unary_alu_op {
 enum d12_agx3_f32_to_int_rtz_mode {
    D12_AGX3_F32_TO_I32_RTZ = 0,
    D12_AGX3_F32_TO_U32_RTZ = 1,
+};
+
+enum d12_agx3_i32_compare_predicate {
+   D12_AGX3_I32_COMPARE_EQ = 0,
+   D12_AGX3_I32_COMPARE_SLT = 1,
 };
 
 struct d12_agx3_binary_alu_encoding {
@@ -143,6 +150,16 @@ struct d12_agx3_f32_rint_reg_encoding {
 
 struct d12_agx3_f32_rcp_reg_encoding {
    uint8_t bytes[D12_AGX3_F32_RCP_REG_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_f32_rsqrt_reg_encoding {
+   uint8_t bytes[D12_AGX3_F32_RSQRT_REG_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_i32_compare_select_imm_5_7_reg_reg_encoding {
+   uint8_t bytes[D12_AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -412,6 +429,51 @@ bool d12_agx3_decode_f32_rcp_reg(
    enum agx_chip chip, enum agx_isa_encoding encoding,
    const void *instruction, uint32_t instruction_size, uint16_t *dest,
    uint16_t *src);
+
+/*
+ * Encode/decode only the directly witnessed scalar f32 reciprocal-square-root
+ * selection.  G15G/S/D, G16P/G/S and G17P use AGX3b; G17G/S use AGX3c.
+ * Both operands are even half-register indices in 0..126, and `encoding`
+ * must match `chip`.
+ *
+ * The exact direct last-use/dependency context is fixed.  Live-source and
+ * alternate dependency contexts, reciprocal and other special functions,
+ * accuracy/refinement policy, modifiers, trailing bytes, high registers, and
+ * unwitnessed C/A identities fail closed.  This does not enable DXIL
+ * lowering, scheduling, runtime use, submission, device admission, or a
+ * D3D12 capability.
+ */
+bool d12_agx3_encode_f32_rsqrt_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src, struct d12_agx3_f32_rsqrt_reg_encoding *out);
+bool d12_agx3_decode_f32_rsqrt_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src);
+
+/*
+ * Encode/decode only the directly witnessed fused i32 compare and fixed
+ * immediate select `(src0 OP src1) ? 5 : 7`.  OP is limited to equality or
+ * signed less-than.  G15G/S/D, G16P/G/S and G17P use AGX3b; G17G/S use
+ * AGX3c.  All operands are even half-register indices in 0..126, and
+ * `encoding` must match the directly witnessed chip identity.
+ *
+ * Other predicates, arbitrary immediate/register-selected values, alternate
+ * contexts, trailing bytes, high registers and C/A identities without direct
+ * artifacts fail closed.  This representation does not enable DXIL lowering,
+ * control-flow formation, scheduling, runtime use, submission, admission, or
+ * a D3D12 capability.
+ */
+bool d12_agx3_encode_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   enum d12_agx3_i32_compare_predicate predicate, uint16_t dest,
+   uint16_t src0, uint16_t src1,
+   struct d12_agx3_i32_compare_select_imm_5_7_reg_reg_encoding *out);
+bool d12_agx3_decode_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size,
+   enum d12_agx3_i32_compare_predicate *predicate, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1);
 
 /*
  * Encode/decode only the exact target-gated f32-to-i32/u32 RTZ language-cast

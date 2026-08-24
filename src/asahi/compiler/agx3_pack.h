@@ -29,6 +29,8 @@ extern "C" {
 #define AGX3_U32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_F32_RINT_REG_LENGTH 10
 #define AGX3_F32_RCP_REG_LENGTH 10
+#define AGX3_F32_RSQRT_REG_LENGTH 10
+#define AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH 14
 #define AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
@@ -111,6 +113,21 @@ struct agx3_encoded_f32_rint_reg {
 
 struct agx3_encoded_f32_rcp_reg {
    uint8_t bytes[AGX3_F32_RCP_REG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_f32_rsqrt_reg {
+   uint8_t bytes[AGX3_F32_RSQRT_REG_LENGTH];
+   uint8_t length;
+};
+
+enum agx3_i32_compare_predicate {
+   AGX3_I32_COMPARE_EQ = 0,
+   AGX3_I32_COMPARE_SLT = 1,
+};
+
+struct agx3_encoded_i32_compare_select_imm_5_7_reg_reg {
+   uint8_t bytes[AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -513,6 +530,50 @@ bool agx3_pack_f32_rcp_reg(
 bool agx3_unpack_f32_rcp_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the exact ten-byte scalar f32 reciprocal-square-root selected
+ * by the pinned rsqrt source on G15G/S/D, G16P/G/S, G17P, and G17G/S.  A
+ * fresh nine-target direct replay is byte-identical to the pinned frsqrt
+ * corpus.  Q_rsqrt_dataflow keeps its input live after the operation and the
+ * Q_rsqrt_live8 last-use ladder independently identifies f2 as destination
+ * and f18 as source.  Apple's composer reproduces all 4,096 even-register
+ * pairs from those fixed fields on each table variant.
+ *
+ * Only the fixed direct last-use/dependency context is exposed.  Live-source
+ * or alternate dependency contexts, reciprocal and other special functions,
+ * accuracy/refinement policy, modifiers, high registers, scheduling, and
+ * lowering remain closed.  Operands are even half-register indices in
+ * 0..126.  Chip gates belong to the caller.
+ */
+bool agx3_pack_f32_rsqrt_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
+   struct agx3_encoded_f32_rsqrt_reg *out);
+bool agx3_unpack_f32_rsqrt_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the exact fused i32 compare and immediate select emitted by
+ * `(a OP b) ? 5 : 7` on the nine directly witnessed compiler identities.
+ * Only integer equality and signed less-than are exposed.  Independent live
+ * and dual-compare kernels correlate the destination and both compare-source
+ * fields, and Apple's composer reproduces every even d/a/b combination in
+ * 0..126 for both predicates on each table variant.
+ *
+ * The fixed select literals are part of this API's name and encoding.  Other
+ * predicates, arbitrary immediate or register-selected results, alternate
+ * dependency contexts, high registers, scheduling, control-flow lowering,
+ * and runtime use remain closed.  Chip gates belong to the caller.
+ */
+bool agx3_pack_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_isa_encoding encoding, enum agx3_i32_compare_predicate predicate,
+   uint16_t dest, uint16_t src0, uint16_t src1,
+   struct agx3_encoded_i32_compare_select_imm_5_7_reg_reg *out);
+bool agx3_unpack_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   enum agx3_i32_compare_predicate *predicate, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1, uint8_t *length);
 
 /*
  * Encode/decode the exact scalar f32-to-i32/u32 language-cast selections

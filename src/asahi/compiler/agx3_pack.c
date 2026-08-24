@@ -1276,6 +1276,214 @@ agx3_unpack_f32_rcp_reg(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_f32_rsqrt_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                        uint16_t src,
+                        struct agx3_encoded_f32_rsqrt_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 128 ||
+       src >= 128 || (dest & 1) != 0 || (src & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      static const uint8_t canonical[] = {
+         0xaf, 0x01, 0x56, 0x00, 0x02, 0x00, 0xb0, 0x40, 0x00, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      out->bytes[3] |= dest;
+      out->bytes[5] |= (src & 0x7e) << 1;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   static const uint8_t canonical[] = {
+      0x2f, 0x00, 0x04, 0x18, 0x22, 0x20, 0xa3, 0x02, 0x30, 0x00,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   out->bytes[0] |= (dest & 0x02) << 3;
+   out->bytes[7] |= (dest & 0x0c) << 1;
+   out->bytes[0] |= (dest & 0x10) << 3;
+   out->bytes[7] |= dest & 0x20;
+   out->bytes[2] |= (dest & 0x40) << 1;
+
+   out->bytes[1] |= src & 0x02;
+   out->bytes[3] |= (src & 0x1c) << 3;
+   out->bytes[5] |= (src & 0x20) << 2;
+   out->bytes[8] |= (src & 0x40) >> 6;
+
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_f32_rsqrt_reg(enum agx_isa_encoding encoding,
+                          const uint8_t *bytes, size_t available,
+                          uint16_t *dest, uint16_t *src, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src == NULL || length == NULL || available < AGX3_F32_RSQRT_REG_LENGTH)
+      return false;
+
+   uint16_t decoded_dest, decoded_src;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = bytes[3] & 0x7e;
+      decoded_src = (bytes[5] >> 1) & 0x7e;
+   } else {
+      decoded_dest = ((bytes[0] >> 3) & 0x02) |
+                     ((bytes[7] >> 1) & 0x0c) |
+                     ((bytes[0] >> 3) & 0x10) | (bytes[7] & 0x20) |
+                     ((bytes[2] >> 1) & 0x40);
+      decoded_src = (bytes[1] & 0x02) |
+                    ((bytes[3] >> 3) & 0x1c) |
+                    ((bytes[5] >> 2) & 0x20) |
+                    ((bytes[8] << 6) & 0x40);
+   }
+
+   struct agx3_encoded_f32_rsqrt_reg canonical;
+   if (!agx3_pack_f32_rsqrt_reg(
+          encoding, decoded_dest, decoded_src, &canonical) ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *length = canonical.length;
+   return true;
+}
+
+bool
+agx3_pack_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_isa_encoding encoding, enum agx3_i32_compare_predicate predicate,
+   uint16_t dest, uint16_t src0, uint16_t src1,
+   struct agx3_encoded_i32_compare_select_imm_5_7_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) ||
+       (predicate != AGX3_I32_COMPARE_EQ &&
+        predicate != AGX3_I32_COMPARE_SLT) ||
+       dest >= 128 || src0 >= 128 || src1 >= 128 || (dest & 1) != 0 ||
+       (src0 & 1) != 0 || (src1 & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      static const uint8_t canonical_eq[] = {
+         0x02, 0x01, 0x1f, 0x01, 0x26, 0x85, 0x07, 0xc0, 0x20, 0x87,
+      };
+      static const uint8_t canonical_slt[] = {
+         0x02, 0x01, 0x1f, 0x01, 0x22, 0x85, 0x07, 0xc0, 0x20, 0x87,
+      };
+      const uint8_t *canonical = predicate == AGX3_I32_COMPARE_EQ
+                                    ? canonical_eq
+                                    : canonical_slt;
+      memcpy(out->bytes, canonical, sizeof(canonical_eq));
+
+      /* Apple f3: d1..4 -> b0[4:7], d5..6 -> b2[6:7]. */
+      out->bytes[0] |= (dest & 0x1e) << 3;
+      out->bytes[2] |= (dest & 0x60) << 1;
+
+      /* Apple f35 and f50 are contiguous even-register fields. */
+      out->bytes[1] |= src0 & 0x7e;
+      out->bytes[3] |= src1 & 0x7e;
+      out->length = sizeof(canonical_eq);
+      return true;
+   }
+
+   static const uint8_t canonical_eq[] = {
+      0x22, 0x00, 0x07, 0x0b, 0x27, 0x00, 0xac,
+      0x02, 0x02, 0x80, 0x64, 0x0c, 0x21, 0x10,
+   };
+   static const uint8_t canonical_slt[] = {
+      0x22, 0x00, 0x47, 0x0b, 0x27, 0x00, 0xac,
+      0x02, 0x02, 0x80, 0x64, 0x0c, 0x21, 0x10,
+   };
+   const uint8_t *canonical = predicate == AGX3_I32_COMPARE_EQ
+                                 ? canonical_eq
+                                 : canonical_slt;
+   memcpy(out->bytes, canonical, sizeof(canonical_eq));
+
+   /* Apple f2: d1 -> b0[4], d2..3 -> b7[3:4], d4 -> b0[7],
+    * d5 -> b7[5], d6 -> b2[7]. */
+   out->bytes[0] |= (dest & 0x02) << 3;
+   out->bytes[7] |= (dest & 0x0c) << 1;
+   out->bytes[0] |= (dest & 0x10) << 3;
+   out->bytes[7] |= dest & 0x20;
+   out->bytes[2] |= (dest & 0x40) << 1;
+
+   /* Apple f16: s0[1] -> b1[1], s0[2:4] -> b3[5:7],
+    * s0[5] -> b5[7], s0[6] -> b6[0]. */
+   out->bytes[1] |= src0 & 0x02;
+   out->bytes[3] |= (src0 & 0x1c) << 3;
+   out->bytes[5] |= (src0 & 0x20) << 2;
+   out->bytes[6] |= (src0 & 0x40) >> 6;
+
+   /* Apple f31: s1[1] -> b8[7], s1[2:6] -> b9[0:4]. */
+   out->bytes[8] |= (src1 & 0x02) << 6;
+   out->bytes[9] |= (src1 & 0x7c) >> 2;
+   out->length = sizeof(canonical_eq);
+   return true;
+}
+
+bool
+agx3_unpack_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   enum agx3_i32_compare_predicate *predicate, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1, uint8_t *length)
+{
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 10 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 14 : 0;
+   if (expected_length == 0 || bytes == NULL || predicate == NULL ||
+       dest == NULL || src0 == NULL || src1 == NULL || length == NULL ||
+       available < expected_length)
+      return false;
+
+   uint16_t decoded_dest, decoded_src0, decoded_src1;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                     ((bytes[2] >> 1) & 0x60);
+      decoded_src0 = bytes[1] & 0x7e;
+      decoded_src1 = bytes[3] & 0x7e;
+   } else {
+      decoded_dest = ((bytes[0] >> 3) & 0x02) |
+                     ((bytes[7] >> 1) & 0x0c) |
+                     ((bytes[0] >> 3) & 0x10) | (bytes[7] & 0x20) |
+                     ((bytes[2] >> 1) & 0x40);
+      decoded_src0 = (bytes[1] & 0x02) |
+                     ((bytes[3] >> 3) & 0x1c) |
+                     ((bytes[5] >> 2) & 0x20) |
+                     ((bytes[6] << 6) & 0x40);
+      decoded_src1 = ((bytes[8] >> 6) & 0x02) |
+                     ((bytes[9] << 2) & 0x7c);
+   }
+
+   static const enum agx3_i32_compare_predicate predicates[] = {
+      AGX3_I32_COMPARE_EQ,
+      AGX3_I32_COMPARE_SLT,
+   };
+   for (unsigned i = 0; i < sizeof(predicates) / sizeof(predicates[0]); ++i) {
+      struct agx3_encoded_i32_compare_select_imm_5_7_reg_reg canonical;
+      if (agx3_pack_i32_compare_select_imm_5_7_reg_reg(
+             encoding, predicates[i], decoded_dest, decoded_src0,
+             decoded_src1, &canonical) &&
+          canonical.length == expected_length &&
+          memcmp(bytes, canonical.bytes, expected_length) == 0) {
+         *predicate = predicates[i];
+         *dest = decoded_dest;
+         *src0 = decoded_src0;
+         *src1 = decoded_src1;
+         *length = expected_length;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+bool
 agx3_pack_f32_to_int_rtz_reg(
    enum agx_isa_encoding encoding, enum agx3_f32_to_int_rtz_mode mode,
    uint16_t dest, uint16_t src,

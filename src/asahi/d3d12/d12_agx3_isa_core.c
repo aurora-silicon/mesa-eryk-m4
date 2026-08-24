@@ -46,6 +46,11 @@ _Static_assert(AGX3_F32_RINT_REG_LENGTH == D12_AGX3_F32_RINT_REG_LENGTH,
                "D3D AGX3 f32-rint storage must match the canonical form");
 _Static_assert(AGX3_F32_RCP_REG_LENGTH == D12_AGX3_F32_RCP_REG_LENGTH,
                "D3D AGX3 f32-rcp storage must match the canonical form");
+_Static_assert(AGX3_F32_RSQRT_REG_LENGTH == D12_AGX3_F32_RSQRT_REG_LENGTH,
+               "D3D AGX3 f32-rsqrt storage must match the canonical form");
+_Static_assert(AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH ==
+                  D12_AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH,
+               "D3D AGX3 i32 compare/select storage must match canonical form");
 _Static_assert(AGX3_F32_TO_INT_RTZ_REG_LENGTH ==
                   D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH,
                "D3D AGX3 f32-to-int storage must match the canonical form");
@@ -1007,6 +1012,166 @@ d12_agx3_decode_f32_rcp_reg(
 
    *dest = decoded_dest;
    *src = decoded_src;
+   return true;
+}
+
+bool
+d12_agx3_encode_f32_rsqrt_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src, struct d12_agx3_f32_rsqrt_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   struct agx3_encoded_f32_rsqrt_reg encoded;
+   if (!agx3_pack_f32_rsqrt_reg(encoding, dest, src, &encoded) ||
+       encoded.length != sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_f32_rsqrt_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src)
+{
+   if (dest)
+      *dest = 0;
+   if (src)
+      *src = 0;
+
+   if (!instruction || !dest || !src ||
+       instruction_size != D12_AGX3_F32_RSQRT_REG_LENGTH)
+      return false;
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   uint16_t decoded_dest = 0, decoded_src = 0;
+   uint8_t decoded_length = 0;
+   if (!agx3_unpack_f32_rsqrt_reg(
+          encoding, instruction, instruction_size, &decoded_dest,
+          &decoded_src, &decoded_length) ||
+       decoded_length != D12_AGX3_F32_RSQRT_REG_LENGTH)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   return true;
+}
+
+static bool
+d12_agx3_i32_compare_predicate_to_shared(
+   enum d12_agx3_i32_compare_predicate predicate,
+   enum agx3_i32_compare_predicate *shared)
+{
+   switch (predicate) {
+   case D12_AGX3_I32_COMPARE_EQ:
+      *shared = AGX3_I32_COMPARE_EQ;
+      return true;
+   case D12_AGX3_I32_COMPARE_SLT:
+      *shared = AGX3_I32_COMPARE_SLT;
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+d12_agx3_encode_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   enum d12_agx3_i32_compare_predicate predicate, uint16_t dest,
+   uint16_t src0, uint16_t src1,
+   struct d12_agx3_i32_compare_select_imm_5_7_reg_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding target_encoding;
+   enum agx3_i32_compare_predicate shared_predicate;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding ||
+       !d12_agx3_i32_compare_predicate_to_shared(predicate,
+                                                  &shared_predicate))
+      return false;
+
+   struct agx3_encoded_i32_compare_select_imm_5_7_reg_reg encoded;
+   if (!agx3_pack_i32_compare_select_imm_5_7_reg_reg(
+          encoding, shared_predicate, dest, src0, src1, &encoded) ||
+       encoded.length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_i32_compare_select_imm_5_7_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size,
+   enum d12_agx3_i32_compare_predicate *predicate, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1)
+{
+   if (predicate)
+      *predicate = D12_AGX3_I32_COMPARE_EQ;
+   if (dest)
+      *dest = 0;
+   if (src0)
+      *src0 = 0;
+   if (src1)
+      *src1 = 0;
+
+   const uint32_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 10 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 14 : 0;
+   if (!instruction || !predicate || !dest || !src0 || !src1 ||
+       expected_length == 0 || instruction_size != expected_length)
+      return false;
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   enum agx3_i32_compare_predicate shared_predicate;
+   uint16_t decoded_dest = 0, decoded_src0 = 0, decoded_src1 = 0;
+   uint8_t decoded_length = 0;
+   if (!agx3_unpack_i32_compare_select_imm_5_7_reg_reg(
+          encoding, instruction, instruction_size, &shared_predicate,
+          &decoded_dest, &decoded_src0, &decoded_src1, &decoded_length) ||
+       decoded_length != expected_length)
+      return false;
+
+   switch (shared_predicate) {
+   case AGX3_I32_COMPARE_EQ:
+      *predicate = D12_AGX3_I32_COMPARE_EQ;
+      break;
+   case AGX3_I32_COMPARE_SLT:
+      *predicate = D12_AGX3_I32_COMPARE_SLT;
+      break;
+   default:
+      return false;
+   }
+
+   *dest = decoded_dest;
+   *src0 = decoded_src0;
+   *src1 = decoded_src1;
    return true;
 }
 
