@@ -1051,6 +1051,207 @@ test_fmul_f32_reg_reg_rejection(void)
    }
 }
 
+struct fmul_f32_reg_reg_long_vector {
+   uint16_t dest;
+   uint16_t src0;
+   uint16_t src1;
+   const char *expected;
+};
+
+/*
+ * (0,0,2) is the exact final G17G/G17S L-ladder witness and (0,0,4) is
+ * G17S's exact operand-correlated P2f_mul witness.  The remaining rows were
+ * independently composed and decoded by the pinned AGX3c table from that
+ * exact anonymous/context selection.
+ */
+static const struct fmul_f32_reg_reg_long_vector
+   fmul_f32_reg_reg_long_vectors[] = {
+      {0,   0,   0,   "290005102280a0021c0020000010"},
+      {0,   0,   2,   "290205102280a0021c0020000010"},
+      {0,   0,   4,   "290005302280a0021c0020000010"},
+      {2,   0,   2,   "390205102280a0021c0020000010"},
+      {16,  10,  2,   "a90205102280a0029c0220000010"},
+      {126, 126, 126, "b90285f02280a03a9d1f20000210"},
+   };
+
+static void
+test_fmul_f32_reg_reg_long(void)
+{
+   for (unsigned i = 0;
+        i < sizeof(fmul_f32_reg_reg_long_vectors) /
+               sizeof(fmul_f32_reg_reg_long_vectors[0]);
+        ++i) {
+      const struct fmul_f32_reg_reg_long_vector *v =
+         &fmul_f32_reg_reg_long_vectors[i];
+      uint8_t expected[AGX3_FMUL_F32_REG_REG_LONG_LENGTH] = {0};
+      const unsigned expected_length =
+         parse_hex(v->expected, expected, sizeof(expected));
+      struct agx3_encoded_fmul_f32_reg_reg_long packed, repacked;
+
+      CHECK(agx3_pack_fmul_f32_reg_reg_long(
+         AGX_ISA_ENCODING_AGX3C, v->dest, v->src0, v->src1, &packed));
+      CHECK(packed.length == expected_length);
+      CHECK(memcmp(packed.bytes, expected, expected_length) == 0);
+
+      uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+      uint8_t length = 0;
+      CHECK(agx3_unpack_fmul_f32_reg_reg_long(
+         AGX_ISA_ENCODING_AGX3C, expected, expected_length, &dest, &src0,
+         &src1, &length));
+      CHECK(dest == v->dest);
+      CHECK(src0 == v->src0);
+      CHECK(src1 == v->src1);
+      CHECK(length == expected_length);
+      CHECK(agx3_pack_fmul_f32_reg_reg_long(
+         AGX_ISA_ENCODING_AGX3C, dest, src0, src1, &repacked));
+      CHECK(repacked.length == length);
+      CHECK(memcmp(repacked.bytes, expected, length) == 0);
+   }
+
+   for (uint16_t value = 0; value < 128; value += 2) {
+      const uint16_t operands[][3] = {
+         {value, 0, 0}, {0, value, 0}, {0, 0, value},
+      };
+
+      for (unsigned operand = 0; operand < 3; ++operand) {
+         struct agx3_encoded_fmul_f32_reg_reg_long packed, repacked;
+         uint16_t dest, src0, src1;
+         uint8_t length;
+         CHECK(agx3_pack_fmul_f32_reg_reg_long(
+            AGX_ISA_ENCODING_AGX3C, operands[operand][0],
+            operands[operand][1], operands[operand][2], &packed));
+         CHECK(agx3_unpack_fmul_f32_reg_reg_long(
+            AGX_ISA_ENCODING_AGX3C, packed.bytes, packed.length, &dest,
+            &src0, &src1, &length));
+         CHECK(dest == operands[operand][0]);
+         CHECK(src0 == operands[operand][1]);
+         CHECK(src1 == operands[operand][2]);
+         CHECK(agx3_pack_fmul_f32_reg_reg_long(
+            AGX_ISA_ENCODING_AGX3C, dest, src0, src1, &repacked));
+         CHECK(repacked.length == length);
+         CHECK(memcmp(repacked.bytes, packed.bytes, length) == 0);
+      }
+   }
+}
+
+static void
+test_fmul_f32_reg_reg_long_rejection(void)
+{
+   static const uint8_t operand_mask[AGX3_FMUL_F32_REG_REG_LONG_LENGTH] = {
+      0x90, 0x02, 0x80, 0xe0, 0x00, 0x00, 0x00,
+      0x38, 0x81, 0x1f, 0x00, 0x00, 0x02, 0x00,
+   };
+   const uint16_t operand_states[][3] = {
+      {0, 0, 0}, {126, 126, 126},
+   };
+
+   for (unsigned state = 0; state < 2; ++state) {
+      struct agx3_encoded_fmul_f32_reg_reg_long packed, repacked;
+      CHECK(agx3_pack_fmul_f32_reg_reg_long(
+         AGX_ISA_ENCODING_AGX3C, operand_states[state][0],
+         operand_states[state][1], operand_states[state][2], &packed));
+
+      for (unsigned bit = 0; bit < packed.length * 8; ++bit) {
+         uint8_t malformed[AGX3_FMUL_F32_REG_REG_LONG_LENGTH];
+         memcpy(malformed, packed.bytes, sizeof(malformed));
+         malformed[bit / 8] ^= 1u << (bit % 8);
+
+         uint16_t dest, src0, src1;
+         uint8_t length;
+         const bool accepted = agx3_unpack_fmul_f32_reg_reg_long(
+            AGX_ISA_ENCODING_AGX3C, malformed, sizeof(malformed), &dest,
+            &src0, &src1, &length);
+         const bool is_operand =
+            (operand_mask[bit / 8] & (1u << (bit % 8))) != 0;
+         CHECK(accepted == is_operand);
+
+         if (accepted) {
+            CHECK(agx3_pack_fmul_f32_reg_reg_long(
+               AGX_ISA_ENCODING_AGX3C, dest, src0, src1, &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, malformed, length) == 0);
+         }
+      }
+   }
+
+   struct agx3_encoded_fmul_f32_reg_reg_long packed;
+   CHECK(agx3_pack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, 0, 0, 2, &packed));
+   CHECK(!agx3_pack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX2, 0, 0, 2, &packed));
+   CHECK(!agx3_pack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3B, 0, 0, 2, &packed));
+   CHECK(!agx3_pack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_UNKNOWN, 0, 0, 2, &packed));
+   CHECK(!agx3_pack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, 0, 0, 2, NULL));
+
+   const uint16_t invalid_values[] = {1, 127, 128, 255, 256};
+   for (unsigned value = 0;
+        value < sizeof(invalid_values) / sizeof(invalid_values[0]); ++value) {
+      for (unsigned operand = 0; operand < 3; ++operand) {
+         uint16_t args[3] = {0};
+         args[operand] = invalid_values[value];
+         CHECK(!agx3_pack_fmul_f32_reg_reg_long(
+            AGX_ISA_ENCODING_AGX3C, args[0], args[1], args[2], &packed));
+      }
+   }
+
+   uint16_t dest, src0, src1;
+   uint8_t length;
+   for (size_t available = 0; available < packed.length; ++available) {
+      CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+         AGX_ISA_ENCODING_AGX3C, packed.bytes, available, &dest, &src0,
+         &src1, &length));
+   }
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX2, packed.bytes, packed.length, &dest, &src0,
+      &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3B, packed.bytes, packed.length, &dest, &src0,
+      &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_UNKNOWN, packed.bytes, packed.length, &dest, &src0,
+      &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, NULL, packed.length, &dest, &src0, &src1,
+      &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, packed.bytes, packed.length, NULL, &src0,
+      &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, packed.bytes, packed.length, &dest, NULL,
+      &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, packed.bytes, packed.length, &dest, &src0,
+      NULL, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, packed.bytes, packed.length, &dest, &src0,
+      &src1, NULL));
+
+   uint8_t appended[AGX3_FMUL_F32_REG_REG_LONG_LENGTH + 1];
+   memcpy(appended, packed.bytes, packed.length);
+   appended[packed.length] = 0xff;
+   CHECK(agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, appended, sizeof(appended), &dest, &src0,
+      &src1, &length));
+   CHECK(length == AGX3_FMUL_F32_REG_REG_LONG_LENGTH);
+
+   static const uint8_t alternate_context[] = {
+      0x39, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
+      0x02, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x10,
+   };
+   static const uint8_t compact[] = {
+      0x09, 0x03, 0x1d, 0x01, 0x00, 0x20,
+   };
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, alternate_context, sizeof(alternate_context),
+      &dest, &src0, &src1, &length));
+   CHECK(!agx3_unpack_fmul_f32_reg_reg_long(
+      AGX_ISA_ENCODING_AGX3C, compact, sizeof(compact), &dest, &src0, &src1,
+      &length));
+}
+
 struct bit_and_reg_reg_vector {
    uint16_t dest;
    uint16_t src0;
@@ -3818,6 +4019,8 @@ main(void)
    test_fadd_f32_reg_reg_rejection();
    test_fmul_f32_reg_reg();
    test_fmul_f32_reg_reg_rejection();
+   test_fmul_f32_reg_reg_long();
+   test_fmul_f32_reg_reg_long_rejection();
    test_bit_and_u32_reg_reg();
    test_bit_and_u32_reg_reg_rejection();
    test_bit_or_u32_reg_reg();

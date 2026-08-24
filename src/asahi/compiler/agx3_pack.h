@@ -21,6 +21,7 @@ extern "C" {
 #define AGX3_IADD_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_FADD_F32_REG_REG_LENGTH 6
 #define AGX3_FMUL_F32_REG_REG_LENGTH 6
+#define AGX3_FMUL_F32_REG_REG_LONG_LENGTH 14
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -62,6 +63,11 @@ struct agx3_encoded_fadd_f32_reg_reg {
 
 struct agx3_encoded_fmul_f32_reg_reg {
    uint8_t bytes[AGX3_FMUL_F32_REG_REG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_fmul_f32_reg_reg_long {
+   uint8_t bytes[AGX3_FMUL_F32_REG_REG_LONG_LENGTH];
    uint8_t length;
 };
 
@@ -270,6 +276,28 @@ bool agx3_pack_fmul_f32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_fmul_f32_reg_reg *out);
 bool agx3_unpack_fmul_f32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the exact fourteen-byte AGX3c register-register f32 multiply
+ * selection witnessed byte-for-byte on G17G and G17S.  Their L_fmul ladders
+ * are identical and directly exercise the destination field.  G17S's P2f_mul
+ * specimen independently correlates f2 with the result, f35 with `src0`, and
+ * f18 with `src1`; Apple's pinned AGX3c table supplies the exact deposits for
+ * those same fields at encoding point 3.
+ *
+ * Operands are conservatively restricted to even half-register indices in
+ * 0..126 because the direct target artifacts do not exercise register bit 7.
+ * Only the fixed anonymous/context selection from the final L operation and
+ * P2f_mul is accepted.  The alternate repeated-L selection, compact form,
+ * other modifiers, and all non-AGX3c encodings fail closed.  Chip-level gates
+ * remain the caller's responsibility.
+ */
+bool agx3_pack_fmul_f32_reg_reg_long(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_fmul_f32_reg_reg_long *out);
+bool agx3_unpack_fmul_f32_reg_reg_long(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 

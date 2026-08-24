@@ -39,8 +39,8 @@ marketing name in the measured corpus.
 | G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
 | G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM state/direct draw packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset; long f32mul form only RE-grounded | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact + long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
 | G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
@@ -63,8 +63,10 @@ even half-register indices 0--254 on the nine witnessed AGX3b/AGX3c targets.
 A distinct compact f32 register multiply is implemented for the exact AGX3b
 selection witnessed on G15G/S/D, G16P/G/S, and G17P and the distinct AGX3c
 selection witnessed on G17S, conservatively exposing even half-registers
-0--126. G17G's witnessed 14-byte multiply, register bit 7, alternate context
-selections, modifiers, and every unwitnessed identity remain closed.
+0--126. The distinct 14-byte AGX3c selection is separately implemented on
+its directly witnessed G17G and G17S identities over the same conservative
+register domain. Register bit 7, alternate context selections, modifiers, and
+every unwitnessed identity remain closed.
 The arithmetic, bitwise, shift, multiply, multiply-add, and float-add forms
 have exhaustive operand and every-bit rejection tests plus exact G15/G16/G17
 corpus replay; the separate shift-count mask and G15G stall placement remain
@@ -329,11 +331,14 @@ three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
 `inot`, register-register `ishl`, and signed register-register `iashr`, into the
 shared AGX3b/AGX3c packer. It also maps unsigned register-register `ilshr` and
 the canonical low-u32 `imul` and four-register `imadd` selections, plus the
-canonical compact f32 `add` and the no-kill, scheduler-neutral i16-register
-`yield` form on exactly the nine compiler-witnessed targets. The
+canonical compact f32 `add`, target-gated compact and long f32 `multiply`, and
+the no-kill, scheduler-neutral i16-register `yield` form. The
 multiply bridges accept only the byte-distinct implicit-zero and real-register
 addend forms on the nine compiler-witnessed targets; alternate low selections,
 high products, G17C, and other unwitnessed target selections remain closed.
+Compact f32 multiply is gated to the eight directly witnessed identities and
+the long AGX3c selection to G17G/G17S; both restrict operands to even
+half-registers 0--126 and reject alternate anonymous/context selections.
 The shift bridge represents only the grounded `sll`, `sra`, and `srl`
 operations and does not emit or claim the compiler-observed count mask. These
 bridges replay the exact encoding witnesses but do not admit an AGX3 device:
@@ -344,7 +349,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `c9c22d7f9497` additionally
+The power/recovery ledger through Linux commit `dc4de3b20b2f` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -373,10 +378,14 @@ is the fixed tag, bits 48--53 carry the six-bit message type, and bits 2--4
 carry the three-bit kick index. G15/G16 always route to `GFX`; G17 routes
 message type 7 to `GFX1` and all other proved types to `GFX`. Independently
 pinned G16S/C and G17P/G/S/C hosts also agree on the SKSM queue-ID field at
-shift 40 with mask `0x7f`. The destination endpoint, queue-memory ownership,
-publication ordering, dual-stack selector, and complete notification lifetime
-remain closed, so this is a bounded submission preflight rather than an
-executable DRM submission path.
+shift 40 with mask `0x7f`. Every pinned G15--G17 host routes the kick through
+RTBuddy's asynchronous-note sender to endpoint `0x21` at object offset
+`0x130`, not the distinct ordinary-message endpoint `0x20` at `0x128`; the
+vtable slots and opaque send arguments are target-validated too. Queue-memory
+ownership, publication/cache ordering, the dual-stack selector,
+acknowledgment, teardown, and the complete notification lifetime remain
+closed, so this is a bounded submission preflight rather than an executable
+DRM submission path.
 The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
@@ -454,8 +463,8 @@ The current in-tree anchors are:
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
   D3D scalar `iadd`, `isub`, `iand`, `ior`, `ixor`, `inot`, `ishl`, `iashr`,
-  `ilshr`, `imul`, four-register `imadd`, and compact f32 `add` mapping into
-  exact AGX3b/AGX3c encodings.
+  `ilshr`, `imul`, four-register `imadd`, compact f32 `add`, and compact/long
+  f32 `multiply` mapping into exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact

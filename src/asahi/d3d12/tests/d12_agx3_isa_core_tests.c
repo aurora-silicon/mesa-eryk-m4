@@ -229,6 +229,11 @@ static const struct integer_target fmul_targets[] = {
    {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
 };
 
+static const struct integer_target fmul_long_targets[] = {
+   {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
+   {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+};
+
 static bool
 fadd_encoding_is_cleared(
    const struct d12_agx3_fadd_f32_reg_reg_encoding *encoded)
@@ -887,6 +892,312 @@ check_fmul_rejection(void)
    CHECK(!d12_agx3_decode_fmul_f32_reg_reg(
       AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical_c,
       sizeof(canonical_c), &dest, &src0, NULL));
+   CHECK(dest == 0 && src0 == 0);
+   return 0;
+}
+
+static bool
+fmul_long_encoding_is_cleared(
+   const struct d12_agx3_fmul_f32_reg_reg_long_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+
+   for (unsigned i = 0; i < D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH; ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+
+   return true;
+}
+
+static int
+check_fmul_long_rejected_and_cleared(enum agx_chip chip,
+                                     enum agx_isa_encoding encoding,
+                                     uint16_t dest, uint16_t src0,
+                                     uint16_t src1)
+{
+   struct d12_agx3_fmul_f32_reg_reg_long_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+   CHECK(!d12_agx3_encode_fmul_f32_reg_reg_long(
+      chip, encoding, dest, src0, src1, &encoded));
+   CHECK(fmul_long_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_fmul_long_decode_rejected_and_cleared(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size)
+{
+   uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fmul_f32_reg_reg_long(
+      chip, encoding, instruction, instruction_size, &dest, &src0, &src1));
+   CHECK(dest == 0);
+   CHECK(src0 == 0);
+   CHECK(src1 == 0);
+   return 0;
+}
+
+static int
+check_fmul_long_exact_witnesses(void)
+{
+   static const struct {
+      uint16_t dest;
+      uint16_t src0;
+      uint16_t src1;
+      uint8_t bytes[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH];
+   } vectors[] = {
+      {0, 0, 2,
+       {0x29, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
+        0x02, 0x1c, 0x00, 0x20, 0x00, 0x00, 0x10}},
+      {0, 0, 4,
+       {0x29, 0x00, 0x05, 0x30, 0x22, 0x80, 0xa0,
+        0x02, 0x1c, 0x00, 0x20, 0x00, 0x00, 0x10}},
+      {16, 10, 2,
+       {0xa9, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
+        0x02, 0x9c, 0x02, 0x20, 0x00, 0x00, 0x10}},
+      {126, 126, 126,
+       {0xb9, 0x02, 0x85, 0xf0, 0x22, 0x80, 0xa0,
+        0x3a, 0x9d, 0x1f, 0x20, 0x00, 0x02, 0x10}},
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(fmul_long_targets) / sizeof(fmul_long_targets[0]); ++t) {
+      const struct integer_target *target = &fmul_long_targets[t];
+
+      for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+         struct agx3_encoded_fmul_f32_reg_reg_long shared;
+         struct d12_agx3_fmul_f32_reg_reg_long_encoding encoded;
+         uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+
+         CHECK(agx3_pack_fmul_f32_reg_reg_long(
+            target->encoding, vectors[v].dest, vectors[v].src0,
+            vectors[v].src1, &shared));
+         CHECK(shared.length == sizeof(vectors[v].bytes));
+         CHECK(memcmp(shared.bytes, vectors[v].bytes,
+                      sizeof(vectors[v].bytes)) == 0);
+         CHECK(d12_agx3_encode_fmul_f32_reg_reg_long(
+            target->chip, target->encoding, vectors[v].dest, vectors[v].src0,
+            vectors[v].src1, &encoded));
+         CHECK(encoded.length == shared.length);
+         CHECK(memcmp(encoded.bytes, vectors[v].bytes,
+                      sizeof(vectors[v].bytes)) == 0);
+         CHECK(d12_agx3_decode_fmul_f32_reg_reg_long(
+            target->chip, target->encoding, encoded.bytes, encoded.length,
+            &dest, &src0, &src1));
+         CHECK(dest == vectors[v].dest);
+         CHECK(src0 == vectors[v].src0);
+         CHECK(src1 == vectors[v].src1);
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_fmul_long_register_domain(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(fmul_long_targets) / sizeof(fmul_long_targets[0]); ++t) {
+      const struct integer_target *target = &fmul_long_targets[t];
+
+      for (uint16_t value = 0; value < 128; value += 2) {
+         const uint16_t operands[][3] = {
+            {value, 0, 0}, {0, value, 0}, {0, 0, value},
+         };
+
+         for (unsigned operand = 0; operand < 3; ++operand) {
+            struct agx3_encoded_fmul_f32_reg_reg_long shared;
+            struct d12_agx3_fmul_f32_reg_reg_long_encoding encoded;
+            uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+
+            CHECK(agx3_pack_fmul_f32_reg_reg_long(
+               target->encoding, operands[operand][0], operands[operand][1],
+               operands[operand][2], &shared));
+            CHECK(d12_agx3_encode_fmul_f32_reg_reg_long(
+               target->chip, target->encoding, operands[operand][0],
+               operands[operand][1], operands[operand][2], &encoded));
+            CHECK(encoded.length == shared.length);
+            CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+            CHECK(d12_agx3_decode_fmul_f32_reg_reg_long(
+               target->chip, target->encoding, encoded.bytes, encoded.length,
+               &dest, &src0, &src1));
+            CHECK(dest == operands[operand][0]);
+            CHECK(src0 == operands[operand][1]);
+            CHECK(src1 == operands[operand][2]);
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_fmul_long_canonical_bit_domain(void)
+{
+   static const uint8_t operand_mask[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH] = {
+      0x90, 0x02, 0x80, 0xe0, 0x00, 0x00, 0x00,
+      0x38, 0x81, 0x1f, 0x00, 0x00, 0x02, 0x00,
+   };
+   static const uint16_t states[][3] = {
+      {0, 0, 0}, {126, 126, 126},
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(fmul_long_targets) / sizeof(fmul_long_targets[0]); ++t) {
+      for (unsigned state = 0; state < 2; ++state) {
+         struct d12_agx3_fmul_f32_reg_reg_long_encoding canonical;
+         CHECK(d12_agx3_encode_fmul_f32_reg_reg_long(
+            fmul_long_targets[t].chip, fmul_long_targets[t].encoding,
+            states[state][0], states[state][1], states[state][2],
+            &canonical));
+
+         for (unsigned bit = 0; bit < canonical.length * 8; ++bit) {
+            uint8_t mutated[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH];
+            memcpy(mutated, canonical.bytes, sizeof(mutated));
+            mutated[bit / 8] ^= 1u << (bit % 8);
+
+            uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+            const bool accepted = d12_agx3_decode_fmul_f32_reg_reg_long(
+               fmul_long_targets[t].chip, fmul_long_targets[t].encoding,
+               mutated, sizeof(mutated), &dest, &src0, &src1);
+            const bool is_operand =
+               (operand_mask[bit / 8] & (1u << (bit % 8))) != 0;
+            CHECK(accepted == is_operand);
+
+            if (accepted) {
+               struct d12_agx3_fmul_f32_reg_reg_long_encoding repacked;
+               CHECK(d12_agx3_encode_fmul_f32_reg_reg_long(
+                  fmul_long_targets[t].chip, fmul_long_targets[t].encoding,
+                  dest, src0, src1, &repacked));
+               CHECK(memcmp(repacked.bytes, mutated, sizeof(mutated)) == 0);
+            } else {
+               CHECK(dest == 0);
+               CHECK(src0 == 0);
+               CHECK(src1 == 0);
+            }
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_fmul_long_rejection(void)
+{
+   static const enum agx_isa_encoding all_encodings[] = {
+      AGX_ISA_ENCODING_AGX2,
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+      AGX_ISA_ENCODING_UNKNOWN,
+      (enum agx_isa_encoding)99,
+   };
+   static const enum agx_chip unsupported_targets[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C,
+      AGX_CHIP_G15D, AGX_CHIP_G16P, AGX_CHIP_G16G, AGX_CHIP_G16S,
+      AGX_CHIP_G16C, AGX_CHIP_G17P, AGX_CHIP_G17A, AGX_CHIP_G17C,
+      AGX_CHIP_UNKNOWN,
+   };
+   static const uint8_t canonical[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH] = {
+      0x29, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
+      0x02, 0x1c, 0x00, 0x20, 0x00, 0x00, 0x10,
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(fmul_long_targets) / sizeof(fmul_long_targets[0]); ++t) {
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         if (all_encodings[e] == AGX_ISA_ENCODING_AGX3C)
+            continue;
+         CHECK(check_fmul_long_rejected_and_cleared(
+                  fmul_long_targets[t].chip, all_encodings[e], 0, 0, 2) == 0);
+         CHECK(check_fmul_long_decode_rejected_and_cleared(
+                  fmul_long_targets[t].chip, all_encodings[e], canonical,
+                  sizeof(canonical)) == 0);
+      }
+   }
+
+   for (unsigned t = 0;
+        t < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
+        ++t) {
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         CHECK(check_fmul_long_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], 0, 0, 2) == 0);
+         CHECK(check_fmul_long_decode_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], canonical,
+                  sizeof(canonical)) == 0);
+      }
+   }
+
+   const uint16_t invalid_values[] = {1, 127, 128, 255, 256};
+   for (unsigned t = 0;
+        t < sizeof(fmul_long_targets) / sizeof(fmul_long_targets[0]); ++t) {
+      for (unsigned value = 0;
+           value < sizeof(invalid_values) / sizeof(invalid_values[0]);
+           ++value) {
+         for (unsigned operand = 0; operand < 3; ++operand) {
+            uint16_t args[3] = {0};
+            args[operand] = invalid_values[value];
+            CHECK(check_fmul_long_rejected_and_cleared(
+                     fmul_long_targets[t].chip,
+                     fmul_long_targets[t].encoding, args[0], args[1],
+                     args[2]) == 0);
+         }
+      }
+   }
+
+   for (uint32_t size = 0; size < sizeof(canonical); ++size) {
+      CHECK(check_fmul_long_decode_rejected_and_cleared(
+               AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, canonical, size) == 0);
+      CHECK(check_fmul_long_decode_rejected_and_cleared(
+               AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical, size) == 0);
+   }
+
+   uint8_t appended[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH + 1];
+   memcpy(appended, canonical, sizeof(canonical));
+   appended[sizeof(canonical)] = 0xff;
+   CHECK(check_fmul_long_decode_rejected_and_cleared(
+            AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, appended,
+            sizeof(appended)) == 0);
+
+   static const uint8_t alternate_context[] = {
+      0x39, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
+      0x02, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x10,
+   };
+   static const uint8_t compact[] = {
+      0x09, 0x03, 0x1d, 0x01, 0x00, 0x20,
+   };
+   CHECK(check_fmul_long_decode_rejected_and_cleared(
+            AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, alternate_context,
+            sizeof(alternate_context)) == 0);
+   CHECK(check_fmul_long_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, compact,
+            sizeof(compact)) == 0);
+
+   CHECK(!d12_agx3_encode_fmul_f32_reg_reg_long(
+      AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, 0, 0, 2, NULL));
+   CHECK(check_fmul_long_decode_rejected_and_cleared(
+            AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, NULL,
+            sizeof(canonical)) == 0);
+
+   uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fmul_f32_reg_reg_long(
+      AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      NULL, &src0, &src1));
+   CHECK(src0 == 0 && src1 == 0);
+   dest = src0 = src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fmul_f32_reg_reg_long(
+      AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      &dest, NULL, &src1));
+   CHECK(dest == 0 && src1 == 0);
+   dest = src0 = src1 = UINT16_MAX;
+   CHECK(!d12_agx3_decode_fmul_f32_reg_reg_long(
+      AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, canonical, sizeof(canonical),
+      &dest, &src0, NULL));
    CHECK(dest == 0 && src0 == 0);
    return 0;
 }
@@ -1939,6 +2250,10 @@ main(void)
    CHECK(check_fmul_register_domain() == 0);
    CHECK(check_fmul_canonical_bit_domain() == 0);
    CHECK(check_fmul_rejection() == 0);
+   CHECK(check_fmul_long_exact_witnesses() == 0);
+   CHECK(check_fmul_long_register_domain() == 0);
+   CHECK(check_fmul_long_canonical_bit_domain() == 0);
+   CHECK(check_fmul_long_rejection() == 0);
 
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
                         D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0, iadd_b,
