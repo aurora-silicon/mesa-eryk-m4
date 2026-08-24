@@ -74,6 +74,19 @@ closed. G15P fails native instruction selection, while G15C/G16C/G17A/G17C
 remain unwitnessed; the packer therefore establishes an exact instruction
 encoding only, not lowering, scheduling, submission, or device admission.
 
+The shared packer also models the exact terminal `end` carrier for literal
+`llvm.agx3.wait.fence` dependencies. Consecutive waits form an idempotent,
+order-independent bit set: AGX3b carries slots 0--5 in `end` bits 10--15,
+while AGX3c additionally carries slots 6--7 in bits 17--18. Exhaustive native
+compiler replay covers all 64 AGX3b and 256 AGX3c masks, with independent
+Apple-table differential agreement; the AGX3b bits corresponding to slots 6
+and 7 are table gaps and compiler-rejected. The proved target set is the same
+seven AGX3b and two AGX3c identities as canonical `yield`. A wait placed before
+a store or `yield` is consumed by that nonterminal carrier instead, so this
+helper deliberately exposes only `end`-attached masks and does not claim a
+standalone wait instruction, arbitrary scheduling mutation, memory ordering,
+lowering, execution, submission, or device admission.
+
 ## Mesa API and kernel relationship
 
 | Mesa identity | Gallium / OpenGL | Honeykrisp / Vulkan | D3D12 AGX / WDDM UMD | DXR | Linux DRM relationship |

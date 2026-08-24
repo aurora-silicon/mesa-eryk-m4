@@ -482,13 +482,36 @@ bool agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
  * Encode/decode the canonical unconditional shader terminator.  The exact
  * bytes 0e000000 terminate every decoded code region in the hash-pinned
  * G15/G16/G17 corpus.  Apple's tables expose additional anonymous end fields;
- * those noncanonical forms are deliberately rejected until their effects are
- * independently established.
+ * those noncanonical forms are deliberately rejected here.  The separately
+ * proven wait-fence attachment fields are available only through the narrowly
+ * named API below.
  */
 bool agx3_pack_end(enum agx_isa_encoding encoding,
                    struct agx3_encoded_end *out);
 bool agx3_unpack_end(enum agx_isa_encoding encoding, const uint8_t *bytes,
                      size_t available, uint8_t *length);
+
+/*
+ * Encode/decode a canonical terminal `end` carrying the observed one-shot
+ * wait-fence attachment set.  Apple's compiler accepts only literal slots
+ * 0..5 on the pinned AGX3b targets and slots 0..7 on G17G/G17S (AGX3c).
+ * Consecutive waits before `end` accumulate as an idempotent, order-independent
+ * bit set.  Exhaustive compiler replays cover all 64 AGX3b and 256 AGX3c sets,
+ * and Apple's independently extracted `end` tables reproduce every byte.
+ *
+ * This API models only the dependency bits already consumed by a terminal
+ * `end`.  It is not a standalone `wait.fence` instruction, does not attach a
+ * wait to an arbitrary following instruction, and establishes no broader
+ * scheduling, memory-ordering, lowering, or submission semantics.  AGX3b
+ * slots 6 and 7 are table gaps and compiler-rejected, so masks containing
+ * either bit fail closed.  All other `end` fields remain canonical zero.
+ */
+bool agx3_pack_end_with_wait_fence_mask(
+   enum agx_isa_encoding encoding, uint8_t wait_fence_mask,
+   struct agx3_encoded_end *out);
+bool agx3_unpack_end_with_wait_fence_mask(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint8_t *wait_fence_mask, uint8_t *length);
 
 /*
  * Encode/decode the exact canonical zero-argument

@@ -2906,6 +2906,144 @@ test_end(void)
 }
 
 static void
+test_end_with_wait_fence_mask(void)
+{
+   static const struct {
+      enum agx_isa_encoding encoding;
+      uint8_t mask;
+      uint8_t expected[AGX3_END_LENGTH];
+   } witnesses[] = {
+      {AGX_ISA_ENCODING_AGX3B, 0x00, {0x0e, 0x00, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, 0x01, {0x0e, 0x04, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, 0x20, {0x0e, 0x80, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, 0x3f, {0x0e, 0xfc, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, 0x40, {0x0e, 0x00, 0x02, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, 0x80, {0x0e, 0x00, 0x04, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, 0xff, {0x0e, 0xfc, 0x06, 0x00}},
+   };
+
+   for (unsigned v = 0; v < sizeof(witnesses) / sizeof(witnesses[0]); ++v) {
+      struct agx3_encoded_end packed;
+      uint8_t mask = 0, length = 0;
+      CHECK(agx3_pack_end_with_wait_fence_mask(
+         witnesses[v].encoding, witnesses[v].mask, &packed));
+      CHECK(packed.length == AGX3_END_LENGTH);
+      CHECK(memcmp(packed.bytes, witnesses[v].expected,
+                   AGX3_END_LENGTH) == 0);
+      CHECK(agx3_unpack_end_with_wait_fence_mask(
+         witnesses[v].encoding, witnesses[v].expected,
+         AGX3_END_LENGTH, &mask, &length));
+      CHECK(mask == witnesses[v].mask);
+      CHECK(length == AGX3_END_LENGTH);
+   }
+
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      const unsigned mask_count = e == 0 ? 64 : 256;
+      const uint32_t mutable_bits =
+         e == 0 ? 0x0000fc00u : 0x0006fc00u;
+
+      for (unsigned expected_mask = 0; expected_mask < mask_count;
+           ++expected_mask) {
+         struct agx3_encoded_end packed;
+         CHECK(agx3_pack_end_with_wait_fence_mask(
+            encodings[e], expected_mask, &packed));
+         CHECK(packed.length == AGX3_END_LENGTH);
+         CHECK(packed.bytes[0] == 0x0e);
+         CHECK(packed.bytes[1] == ((expected_mask & 0x3f) << 2));
+         CHECK(packed.bytes[2] == (((expected_mask >> 6) & 0x03) << 1));
+         CHECK(packed.bytes[3] == 0x00);
+
+         uint8_t decoded_mask = 0, length = 0;
+         CHECK(agx3_unpack_end_with_wait_fence_mask(
+            encodings[e], packed.bytes, packed.length,
+            &decoded_mask, &length));
+         CHECK(decoded_mask == expected_mask);
+         CHECK(length == AGX3_END_LENGTH);
+
+         uint8_t appended[AGX3_END_LENGTH + 2];
+         memcpy(appended, packed.bytes, AGX3_END_LENGTH);
+         appended[AGX3_END_LENGTH] = 0xff;
+         appended[AGX3_END_LENGTH + 1] = 0xa5;
+         CHECK(agx3_unpack_end_with_wait_fence_mask(
+            encodings[e], appended, sizeof(appended),
+            &decoded_mask, &length));
+         CHECK(decoded_mask == expected_mask);
+         CHECK(length == AGX3_END_LENGTH);
+
+         /* Modeled dependency bits move to another canonical mask.  Every
+          * other single-bit corruption must fail closed. */
+         for (unsigned bit = 0; bit < AGX3_END_LENGTH * 8; ++bit) {
+            uint8_t mutated[AGX3_END_LENGTH];
+            memcpy(mutated, packed.bytes, sizeof(mutated));
+            mutated[bit / 8] ^= 1u << (bit % 8);
+
+            const bool modeled = mutable_bits & (1u << bit);
+            const bool accepted = agx3_unpack_end_with_wait_fence_mask(
+               encodings[e], mutated, sizeof(mutated),
+               &decoded_mask, &length);
+            CHECK(accepted == modeled);
+            if (modeled) {
+               const unsigned slot = bit <= 15 ? bit - 10 : bit - 11;
+               CHECK(decoded_mask == (expected_mask ^ (1u << slot)));
+               CHECK(length == AGX3_END_LENGTH);
+            }
+         }
+      }
+   }
+
+   struct agx3_encoded_end packed;
+   uint8_t mask = 0, length = 0;
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3B, 0x40, &packed));
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3B, 0x80, &packed));
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3B, 0xc0, &packed));
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX2, 0, &packed));
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_UNKNOWN, 0, &packed));
+   CHECK(!agx3_pack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3C, 0, NULL));
+
+   static const uint8_t high_slots[] = {0x0e, 0x00, 0x06, 0x00};
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3B, high_slots, sizeof(high_slots),
+      &mask, &length));
+   CHECK(agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3C, high_slots, sizeof(high_slots),
+      &mask, &length));
+   CHECK(mask == 0xc0);
+
+   for (size_t available = 0; available < AGX3_END_LENGTH; ++available) {
+      CHECK(!agx3_unpack_end_with_wait_fence_mask(
+         AGX_ISA_ENCODING_AGX3C, high_slots, available,
+         &mask, &length));
+   }
+
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX2, high_slots, sizeof(high_slots),
+      &mask, &length));
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_UNKNOWN, high_slots, sizeof(high_slots),
+      &mask, &length));
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3C, NULL, sizeof(high_slots),
+      &mask, &length));
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3C, high_slots, sizeof(high_slots),
+      NULL, &length));
+   CHECK(!agx3_unpack_end_with_wait_fence_mask(
+      AGX_ISA_ENCODING_AGX3C, high_slots, sizeof(high_slots),
+      &mask, NULL));
+}
+
+static void
 test_update_node(void)
 {
    static const uint8_t expected_b[] = {
@@ -3226,6 +3364,7 @@ main(void)
    test_nop();
    test_threadgroup_barrier();
    test_end();
+   test_end_with_wait_fence_mask();
    test_enable_all_threads();
    test_update_node();
    test_continue_ray_fixed_first_site_witness();

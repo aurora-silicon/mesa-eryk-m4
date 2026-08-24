@@ -1672,6 +1672,47 @@ agx3_unpack_end(enum agx_isa_encoding encoding, const uint8_t *bytes,
    return true;
 }
 
+bool
+agx3_pack_end_with_wait_fence_mask(enum agx_isa_encoding encoding,
+                                   uint8_t wait_fence_mask,
+                                   struct agx3_encoded_end *out)
+{
+   if (!is_agx3_encoding(encoding) || out == NULL ||
+       (encoding == AGX_ISA_ENCODING_AGX3B && (wait_fence_mask & 0xc0)))
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   out->bytes[0] = 0x0e;
+   out->bytes[1] = (wait_fence_mask & 0x3f) << 2;
+   out->bytes[2] = ((wait_fence_mask >> 6) & 0x03) << 1;
+   out->length = AGX3_END_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_end_with_wait_fence_mask(enum agx_isa_encoding encoding,
+                                     const uint8_t *bytes, size_t available,
+                                     uint8_t *wait_fence_mask,
+                                     uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL ||
+       wait_fence_mask == NULL || length == NULL ||
+       available < AGX3_END_LENGTH)
+      return false;
+
+   const uint8_t decoded_mask =
+      ((bytes[1] >> 2) & 0x3f) | ((bytes[2] & 0x06) << 5);
+   struct agx3_encoded_end canonical;
+   if (!agx3_pack_end_with_wait_fence_mask(encoding, decoded_mask,
+                                           &canonical) ||
+       memcmp(bytes, canonical.bytes, AGX3_END_LENGTH) != 0)
+      return false;
+
+   *wait_fence_mask = decoded_mask;
+   *length = AGX3_END_LENGTH;
+   return true;
+}
+
 static const uint8_t enable_all_threads_agx3b[] = {
    0x6f, 0x23, 0x54, 0x00, 0x00, 0x12,
 };
