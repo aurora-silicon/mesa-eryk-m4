@@ -7,9 +7,11 @@
 
 #pragma once
 
+#ifndef __OPENCL_VERSION__
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#endif
 
 #include "agx_chip.h"
 
@@ -59,6 +61,118 @@ struct agx_vdm_index_list_direct_indexed {
    uint8_t bytes[AGX_VDM_INDEX_LIST_DIRECT_INDEXED_MAX_LENGTH];
    uint8_t length;
 };
+
+/*
+ * Native command recording and the GPU-side DGC kernels must construct the
+ * same words.  Keep the endian-neutral word representation inline so both
+ * address spaces share the exact target gate and field layout; the host
+ * wrappers below only serialize/deserialize those words.
+ */
+struct agx_vdm_index_list_direct_words {
+   uint32_t words[AGX_VDM_INDEX_LIST_DIRECT_INDEXED_MAX_LENGTH / 4];
+   uint8_t count;
+};
+
+static inline bool
+agx_vdm_index_list_direct_target_supported_inline(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+agx_vdm_index_list_direct_is_hal300_inline(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+          chip == AGX_CHIP_G17C;
+}
+
+static inline bool
+agx_vdm_index_list_direct_primitive_supported_inline(uint8_t primitive)
+{
+   switch (primitive) {
+   case 0:
+   case 1:
+   case 3:
+   case 5:
+   case 6:
+   case 9:
+   case 11:
+   case 13:
+   case 14:
+   case 15:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+agx_vdm_index_list_direct_pack_words(
+   enum agx_chip chip, uint8_t primitive, bool indexed, bool restart_enable,
+   uint8_t index_size, uint64_t index_buffer, uint32_t count,
+   uint32_t instances, uint32_t start, uint32_t index_buffer_size_word,
+   struct agx_vdm_index_list_direct_words *out)
+{
+   if (!out)
+      return false;
+
+   for (unsigned i = 0; i < AGX_VDM_INDEX_LIST_DIRECT_INDEXED_MAX_LENGTH / 4;
+        ++i)
+      out->words[i] = 0;
+   out->count = 0;
+
+   if (!agx_vdm_index_list_direct_target_supported_inline(chip) ||
+       !agx_vdm_index_list_direct_primitive_supported_inline(primitive) ||
+       instances == 0 ||
+       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
+                     index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U32) ||
+                    index_buffer >= ((uint64_t)1 << 48))))
+      return false;
+
+   const bool hal300 = agx_vdm_index_list_direct_is_hal300_inline(chip);
+   if (!indexed) {
+      out->words[0] =
+         (hal300 ? 0x69c40000u : 0x61c40000u) | ((uint32_t)primitive << 8);
+      out->words[1] = count;
+      out->words[2] = instances;
+      out->words[3] = start;
+      if (hal300)
+         out->words[4] = 7;
+      out->count = hal300 ? 5 : 4;
+      return true;
+   }
+
+   out->words[0] = (hal300 ? 0x69f00000u : 0x61f00000u) |
+                   (uint32_t)((index_buffer >> 32) & (uint64_t)0xff) |
+                   ((uint32_t)primitive << 8) | ((uint32_t)index_size << 17) |
+                   (restart_enable ? 1u << 16 : 0);
+   out->words[1] = (uint32_t)index_buffer;
+   out->words[2] = count;
+   out->words[3] = instances;
+   out->words[4] = start;
+   unsigned cursor = 5;
+   if (hal300)
+      out->words[cursor++] = 7;
+   out->words[cursor++] = index_buffer_size_word;
+   out->words[cursor++] = (uint32_t)((index_buffer >> 40) & (uint64_t)0xff);
+   out->count = (uint8_t)cursor;
+   return true;
+}
 
 /*
  * These helpers cover only the exact direct Index List records recovered from

@@ -8565,8 +8565,16 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       }
    }
 
+   const enum agx_primitive agx_topology = d12_agx_primitive(topology);
+   if (!agx_vdm_draw_supported(device->dev.chip, draw, agx_topology)) {
+      mesa_loge(
+         "Draw form is not grounded for the selected AGX command stream");
+      list->state = D12_LIST_ERROR;
+      return;
+   }
+
    out = (uint8_t *)agx_vdm_draw((uint32_t *)out, device->dev.chip, draw,
-                                 d12_agx_primitive(topology));
+                                 agx_topology);
 
    list->stream_cur = out;
    seg->has_draws = true;

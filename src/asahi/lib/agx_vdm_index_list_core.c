@@ -7,12 +7,6 @@
 
 #include <string.h>
 
-#define AGX_VDM_INDEX_LIST_NONINDEXED_G15_HEADER UINT32_C(0x61c40000)
-#define AGX_VDM_INDEX_LIST_NONINDEXED_HAL300_HEADER UINT32_C(0x69c40000)
-#define AGX_VDM_INDEX_LIST_INDEXED_G15_FIXED UINT32_C(0x61f00000)
-#define AGX_VDM_INDEX_LIST_INDEXED_HAL300_FIXED UINT32_C(0x69f00000)
-#define AGX_VDM_INDEX_LIST_HAL300_OPAQUE_WORD UINT32_C(7)
-
 static void
 agx_vdm_index_list_store_le32(uint8_t *dst, uint32_t value)
 {
@@ -32,28 +26,13 @@ agx_vdm_index_list_load_le32(const uint8_t *src)
 static bool
 agx_vdm_index_list_direct_is_hal300(enum agx_chip chip)
 {
-   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
-          chip == AGX_CHIP_G17C;
+   return agx_vdm_index_list_direct_is_hal300_inline(chip);
 }
 
 static bool
 agx_vdm_index_list_primitive_supported(uint8_t primitive)
 {
-   switch (primitive) {
-   case 0:
-   case 1:
-   case 3:
-   case 5:
-   case 6:
-   case 9:
-   case 11:
-   case 13:
-   case 14:
-   case 15:
-      return true;
-   default:
-      return false;
-   }
+   return agx_vdm_index_list_direct_primitive_supported_inline(primitive);
 }
 
 static bool
@@ -67,31 +46,7 @@ agx_vdm_index_list_index_size_supported(
 bool
 agx_vdm_index_list_direct_target_supported(enum agx_chip chip)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G15S:
-   case AGX_CHIP_G15C:
-   case AGX_CHIP_G15D:
-   case AGX_CHIP_G16G:
-   case AGX_CHIP_G16S:
-   case AGX_CHIP_G16C:
-   case AGX_CHIP_G17P:
-   case AGX_CHIP_G17G:
-   case AGX_CHIP_G17S:
-   case AGX_CHIP_G17C:
-      return true;
-
-   case AGX_CHIP_G13G:
-   case AGX_CHIP_G13X:
-   case AGX_CHIP_G14G:
-   case AGX_CHIP_G14X:
-   case AGX_CHIP_G15P:
-   case AGX_CHIP_G16P:
-   case AGX_CHIP_G17A:
-   case AGX_CHIP_UNKNOWN:
-   default:
-      return false;
-   }
+   return agx_vdm_index_list_direct_target_supported_inline(chip);
 }
 
 bool
@@ -103,29 +58,18 @@ agx_vdm_index_list_direct_nonindexed_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!out || !info || !agx_vdm_index_list_direct_target_supported(chip) ||
-       !agx_vdm_index_list_primitive_supported(info->primitive) ||
-       info->instances == 0)
+   if (!out || !info)
       return false;
 
-   const bool hal300 = agx_vdm_index_list_direct_is_hal300(chip);
-   const uint32_t header =
-      (hal300 ? AGX_VDM_INDEX_LIST_NONINDEXED_HAL300_HEADER
-              : AGX_VDM_INDEX_LIST_NONINDEXED_G15_HEADER) |
-      ((uint32_t)info->primitive << 8);
+   struct agx_vdm_index_list_direct_words words;
+   if (!agx_vdm_index_list_direct_pack_words(
+          chip, info->primitive, false, false, 0, 0, info->count,
+          info->instances, info->start, 0, &words))
+      return false;
 
-   agx_vdm_index_list_store_le32(&out->bytes[0], header);
-   agx_vdm_index_list_store_le32(&out->bytes[4], info->count);
-   agx_vdm_index_list_store_le32(&out->bytes[8], info->instances);
-   agx_vdm_index_list_store_le32(&out->bytes[12], info->start);
-
-   if (hal300) {
-      agx_vdm_index_list_store_le32(&out->bytes[16],
-                                    AGX_VDM_INDEX_LIST_HAL300_OPAQUE_WORD);
-      out->length = 20;
-   } else {
-      out->length = 16;
-   }
+   for (unsigned i = 0; i < words.count; ++i)
+      agx_vdm_index_list_store_le32(&out->bytes[i * 4], words.words[i]);
+   out->length = words.count * 4;
 
    return true;
 }
@@ -149,15 +93,13 @@ agx_vdm_index_list_direct_nonindexed_unpack(
    const uint8_t *raw = bytes;
    const uint32_t header = agx_vdm_index_list_load_le32(&raw[0]);
    const uint32_t expected_header =
-      hal300 ? AGX_VDM_INDEX_LIST_NONINDEXED_HAL300_HEADER
-             : AGX_VDM_INDEX_LIST_NONINDEXED_G15_HEADER;
+      hal300 ? UINT32_C(0x69c40000) : UINT32_C(0x61c40000);
    const uint8_t primitive = (uint8_t)(header >> 8);
 
    if ((header & UINT32_C(0xffff00ff)) != expected_header ||
        !agx_vdm_index_list_primitive_supported(primitive) ||
        agx_vdm_index_list_load_le32(&raw[8]) == 0 ||
-       (hal300 && agx_vdm_index_list_load_le32(&raw[16]) !=
-                     AGX_VDM_INDEX_LIST_HAL300_OPAQUE_WORD))
+       (hal300 && agx_vdm_index_list_load_le32(&raw[16]) != UINT32_C(7)))
       return false;
 
    info->primitive = primitive;
@@ -176,43 +118,19 @@ agx_vdm_index_list_direct_indexed_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!out || !info || !agx_vdm_index_list_direct_target_supported(chip) ||
-       !agx_vdm_index_list_primitive_supported(info->primitive) ||
-       !agx_vdm_index_list_index_size_supported(info->index_size) ||
-       info->index_buffer >= (UINT64_C(1) << 48) || info->instances == 0)
+   if (!out || !info)
       return false;
 
-   const bool hal300 = agx_vdm_index_list_direct_is_hal300(chip);
-   uint32_t header =
-      (hal300 ? AGX_VDM_INDEX_LIST_INDEXED_HAL300_FIXED
-              : AGX_VDM_INDEX_LIST_INDEXED_G15_FIXED) |
-      (uint32_t)((info->index_buffer >> 32) & UINT64_C(0xff)) |
-      ((uint32_t)info->primitive << 8) |
-      ((uint32_t)info->index_size << 17);
-   if (info->restart_enable)
-      header |= UINT32_C(1) << 16;
+   struct agx_vdm_index_list_direct_words words;
+   if (!agx_vdm_index_list_direct_pack_words(
+          chip, info->primitive, true, info->restart_enable,
+          (uint8_t)info->index_size, info->index_buffer, info->count,
+          info->instances, info->start, info->index_buffer_size_word, &words))
+      return false;
 
-   agx_vdm_index_list_store_le32(&out->bytes[0], header);
-   agx_vdm_index_list_store_le32(&out->bytes[4],
-                                 (uint32_t)info->index_buffer);
-   agx_vdm_index_list_store_le32(&out->bytes[8], info->count);
-   agx_vdm_index_list_store_le32(&out->bytes[12], info->instances);
-   agx_vdm_index_list_store_le32(&out->bytes[16], info->start);
-
-   unsigned cursor = 20;
-   if (hal300) {
-      agx_vdm_index_list_store_le32(&out->bytes[cursor],
-                                    AGX_VDM_INDEX_LIST_HAL300_OPAQUE_WORD);
-      cursor += 4;
-   }
-
-   agx_vdm_index_list_store_le32(&out->bytes[cursor],
-                                 info->index_buffer_size_word);
-   cursor += 4;
-   agx_vdm_index_list_store_le32(
-      &out->bytes[cursor], (uint32_t)((info->index_buffer >> 40) & 0xff));
-   cursor += 4;
-   out->length = (uint8_t)cursor;
+   for (unsigned i = 0; i < words.count; ++i)
+      agx_vdm_index_list_store_le32(&out->bytes[i * 4], words.words[i]);
+   out->length = words.count * 4;
    return true;
 }
 
@@ -235,8 +153,7 @@ agx_vdm_index_list_direct_indexed_unpack(
    const uint8_t *raw = bytes;
    const uint32_t header = agx_vdm_index_list_load_le32(&raw[0]);
    const uint32_t expected_fixed =
-      hal300 ? AGX_VDM_INDEX_LIST_INDEXED_HAL300_FIXED
-             : AGX_VDM_INDEX_LIST_INDEXED_G15_FIXED;
+      hal300 ? UINT32_C(0x69f00000) : UINT32_C(0x61f00000);
    const uint8_t primitive = (uint8_t)(header >> 8);
    const enum agx_vdm_index_list_index_size index_size =
       (enum agx_vdm_index_list_index_size)((header >> 17) & 0x7);
@@ -249,8 +166,8 @@ agx_vdm_index_list_direct_indexed_unpack(
        !agx_vdm_index_list_primitive_supported(primitive) ||
        !agx_vdm_index_list_index_size_supported(index_size) ||
        agx_vdm_index_list_load_le32(&raw[12]) == 0 || high_word > 0xff ||
-       (hal300 && agx_vdm_index_list_load_le32(&raw[opaque_offset]) !=
-                     AGX_VDM_INDEX_LIST_HAL300_OPAQUE_WORD))
+       (hal300 &&
+        agx_vdm_index_list_load_le32(&raw[opaque_offset]) != UINT32_C(7)))
       return false;
 
    info->primitive = primitive;

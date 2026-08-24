@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "agx_pack.h"
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/libagx/libagx_dgc.h"
+#include "agx_pack.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -275,6 +276,85 @@ test_agx3_cdm_launch(void)
                                    &decoded),
             false);
    CHECK_EQ(decoded.pipeline, 0);
+}
+
+static void
+test_agx3_live_vdm_direct_draw(void)
+{
+   static const uint8_t nonindexed_g15[] = {
+      0x00, 0x06, 0xc4, 0x61, 0x44, 0x33, 0x22, 0x11,
+      0x02, 0x00, 0x00, 0x00, 0xdd, 0xcc, 0xbb, 0xaa,
+   };
+   static const uint8_t nonindexed_hal300[] = {
+      0x00, 0x06, 0xc4, 0x69, 0x44, 0x33, 0x22, 0x11, 0x02, 0x00,
+      0x00, 0x00, 0xdd, 0xcc, 0xbb, 0xaa, 0x07, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t indexed_g15[] = {
+      0x34, 0x09, 0xf5, 0x61, 0xbc, 0x9a, 0x78, 0x56, 0x04, 0x03,
+      0x02, 0x01, 0x03, 0x00, 0x00, 0x00, 0xf9, 0xff, 0xff, 0xff,
+      0x40, 0x30, 0x20, 0x10, 0x12, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t indexed_hal300[] = {
+      0x34, 0x09, 0xf5, 0x69, 0xbc, 0x9a, 0x78, 0x56, 0x04, 0x03, 0x02,
+      0x01, 0x03, 0x00, 0x00, 0x00, 0xf9, 0xff, 0xff, 0xff, 0x07, 0x00,
+      0x00, 0x00, 0x40, 0x30, 0x20, 0x10, 0x12, 0x00, 0x00, 0x00,
+   };
+   const enum agx_chip chips[] = {AGX_CHIP_G15G, AGX_CHIP_G17S};
+
+   for (unsigned i = 0; i < 2; ++i) {
+      const bool hal300 = chips[i] == AGX_CHIP_G17S;
+      uint32_t packed[8] = {0};
+      const struct agx_draw nonindexed = {
+         .b = agx_3d(UINT32_C(0x11223344), 2, 1),
+         .start = UINT32_C(0xaabbccdd),
+      };
+      CHECK_EQ(
+         agx_vdm_draw_supported(chips[i], nonindexed, (enum agx_primitive)6),
+         true);
+      CHECK_EQ(agx_vdm_draw_size(chips[i], nonindexed), hal300 ? 20 : 16);
+      uint32_t *end =
+         agx_vdm_draw(packed, chips[i], nonindexed, (enum agx_primitive)6);
+      CHECK_EQ((uintptr_t)end - (uintptr_t)packed, hal300 ? 20 : 16);
+      ++checks;
+      if (memcmp(packed, hal300 ? nonindexed_hal300 : nonindexed_g15,
+                 hal300 ? sizeof(nonindexed_hal300) : sizeof(nonindexed_g15))) {
+         fprintf(stderr, "AGX3 live nonindexed VDM mismatch\n");
+         exit(1);
+      }
+
+      memset(packed, 0, sizeof(packed));
+      const struct agx_draw indexed =
+         agx_draw_indexed(UINT32_C(0x01020304), 3, 0, UINT32_C(0xfffffff9), 0,
+                          UINT64_C(0x123456789abc), UINT32_C(0x4080c100),
+                          AGX_INDEX_SIZE_U32, true);
+      CHECK_EQ(agx_vdm_draw_supported(chips[i], indexed, (enum agx_primitive)9),
+               true);
+      CHECK_EQ(agx_vdm_draw_size(chips[i], indexed), hal300 ? 32 : 28);
+      end = agx_vdm_draw(packed, chips[i], indexed, (enum agx_primitive)9);
+      CHECK_EQ((uintptr_t)end - (uintptr_t)packed, hal300 ? 32 : 28);
+      ++checks;
+      if (memcmp(packed, hal300 ? indexed_hal300 : indexed_g15,
+                 hal300 ? sizeof(indexed_hal300) : sizeof(indexed_g15))) {
+         fprintf(stderr, "AGX3 live indexed VDM mismatch\n");
+         exit(1);
+      }
+   }
+
+   struct agx_draw rejected = {
+      .b = agx_3d(1, 1, 1),
+   };
+   CHECK_EQ(
+      agx_vdm_draw_supported(AGX_CHIP_G16P, rejected, (enum agx_primitive)6),
+      false);
+   rejected.b = agx_grid_indirect(UINT64_C(0x1000));
+   CHECK_EQ(
+      agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
+      false);
+   rejected = agx_draw_indexed(1, 1, 0, 0, 0, UINT64_C(0x1000), 4,
+                               AGX_INDEX_SIZE_U8, false);
+   CHECK_EQ(
+      agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
+      false);
 }
 
 static void
@@ -671,6 +751,7 @@ main(void)
    test_generation_boundaries();
    test_sampler_generations();
    test_agx3_cdm_launch();
+   test_agx3_live_vdm_direct_draw();
    test_agx3_cdm_stream_link();
    test_agx3_cdm_link_padding();
    test_agx3_cdm_barrier();

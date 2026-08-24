@@ -3632,6 +3632,11 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       }
 
       enum agx_primitive topology = cmd->state.gfx.topology;
+      if (!agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
       if (needs_idx_robust) {
          assert(!geom && !tess && !adj);
          perf_debug(cmd, "lowering robust index buffer");
@@ -3639,6 +3644,10 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
          cs->current = out;
 
          draw = hk_draw_as_indexed_indirect(cmd, draw);
+         if (!agx_vdm_draw_supported(dev->dev.chip, draw, topology)) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
 
          size_t size_B = libagx_draw_robust_index_vdm_size();
          uint64_t target = hk_cs_alloc_for_indirect(cs, size_B);
