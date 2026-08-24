@@ -222,8 +222,10 @@ companion slot, and executed G15/G16 nonzero atomic payloads remain **FC**. A
 shared, tested 8-byte side-entry helper now packs and decodes the proven
 subset: Gen9/Gen10 buffers, zero-valued ordinary Gen10 images, and the bounded
 Gen9 atomic formula. It rejects mode 2, unknown cases, misalignment, and
-overflow, so Honeykrisp still has no safe total packer and does not expose
-writes or atomics.
+overflow. The D3D12 descriptor core maps that same subset and records the
+Gen9/Gen10 8-byte side stride, but does not allocate or bind a side heap while
+its command-stream pointer channel remains unknown. Honeykrisp still has no
+safe total packer and neither API driver exposes writes or atomics.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in

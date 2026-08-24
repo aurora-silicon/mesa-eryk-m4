@@ -13,6 +13,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../lib/agx_texture_side_entry.h"
+
 #define D12_NATIVE_DESCRIPTOR_GEN7  7u
 #define D12_NATIVE_DESCRIPTOR_GEN8  8u
 #define D12_NATIVE_DESCRIPTOR_GEN9  9u
@@ -24,6 +26,10 @@
 struct d12_native_descriptor_layout {
    uint8_t texture_stride_B;
    uint8_t pbe_stride_B;
+   /* Gen9/10 expose a same-index 8-byte software side entry.  This records
+    * heap geometry only; D3D command submission has no proven side-heap
+    * pointer channel yet and therefore does not allocate or bind one. */
+   uint8_t texture_side_stride_B;
 };
 
 /* Layout recognition is not a device-support gate. In particular, Gen9/10
@@ -38,16 +44,102 @@ d12_native_descriptor_layout(uint32_t generation,
    switch (generation) {
    case D12_NATIVE_DESCRIPTOR_GEN7:
    case D12_NATIVE_DESCRIPTOR_GEN8:
-      *out = (struct d12_native_descriptor_layout){24, 24};
+      *out = (struct d12_native_descriptor_layout){24, 24, 0};
       return true;
    case D12_NATIVE_DESCRIPTOR_GEN9:
    case D12_NATIVE_DESCRIPTOR_GEN10:
-      *out = (struct d12_native_descriptor_layout){32, 32};
+      *out = (struct d12_native_descriptor_layout){32, 32,
+                                                   AGX_TEXTURE_SIDE_ENTRY_SIZE};
       return true;
    default:
-      *out = (struct d12_native_descriptor_layout){0, 0};
+      *out = (struct d12_native_descriptor_layout){0, 0, 0};
       return false;
    }
+}
+
+struct d12_native_texture_side_entry_info {
+   uint32_t descriptor_generation;
+   enum agx_texture_side_entry_form form;
+   enum agx_texture_side_entry_kind kind;
+   uint32_t auxiliary_heap_index;
+
+   union {
+      uint64_t buffer_width_texels;
+      struct agx_texture_side_entry_gen9_atomic_info gen9_atomic;
+   } value;
+};
+
+struct d12_native_texture_side_entry_decoded {
+   uint32_t payload;
+   uint32_t auxiliary_heap_index;
+};
+
+/* Map the bounded shared Apple side-entry ABI into the D3D descriptor core.
+ * This is representation validation only: the unresolved side-heap pointer,
+ * mode-2 direct value, nonzero companion construction, shader lowering and
+ * command submission remain fail-closed. */
+static inline bool
+d12_native_texture_side_entry_pack(
+   const struct d12_native_texture_side_entry_info *info, uint64_t *packed)
+{
+   if (!packed)
+      return false;
+
+   *packed = 0;
+   if (!info)
+      return false;
+
+   uint32_t generation;
+   switch (info->descriptor_generation) {
+   case D12_NATIVE_DESCRIPTOR_GEN9:
+      generation = AGX_TEXTURE_SIDE_ENTRY_GENERATION_9;
+      break;
+   case D12_NATIVE_DESCRIPTOR_GEN10:
+      generation = AGX_TEXTURE_SIDE_ENTRY_GENERATION_10;
+      break;
+   default:
+      return false;
+   }
+
+   struct agx_texture_side_entry_info shared = {
+      .generation = generation,
+      .form = info->form,
+      .kind = info->kind,
+      .auxiliary_heap_index = info->auxiliary_heap_index,
+   };
+
+   switch (info->kind) {
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_BUFFER:
+      shared.value.buffer_width_texels = info->value.buffer_width_texels;
+      break;
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_GEN9_ATOMIC_IMAGE:
+      shared.value.gen9_atomic = info->value.gen9_atomic;
+      break;
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_ORDINARY_IMAGE:
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_UNKNOWN:
+   default:
+      break;
+   }
+
+   return agx_texture_side_entry_pack(&shared, packed);
+}
+
+static inline bool
+d12_native_texture_side_entry_decode(
+   uint64_t packed, struct d12_native_texture_side_entry_decoded *decoded)
+{
+   if (!decoded)
+      return false;
+
+   struct agx_texture_side_entry_decoded shared;
+   if (!agx_texture_side_entry_decode(packed, &shared)) {
+      *decoded = (struct d12_native_texture_side_entry_decoded){0, 0};
+      return false;
+   }
+
+   decoded->payload = shared.payload;
+   decoded->auxiliary_heap_index = shared.auxiliary_heap_index;
+   return true;
 }
 
 /* TextureGen4::encodeImageReadState() in the independently extracted G15G,
