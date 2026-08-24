@@ -26,6 +26,7 @@ enum d12_agx3_binary_alu_op {
    D12_AGX3_BINARY_ALU_IXOR_U32 = 3,
    D12_AGX3_BINARY_ALU_ISUB_U32 = 4,
    D12_AGX3_BINARY_ALU_ISHL_U32 = 5,
+   D12_AGX3_BINARY_ALU_IASHR_I32 = 6,
 };
 
 enum d12_agx3_unary_alu_op {
@@ -47,8 +48,9 @@ struct d12_agx3_unary_alu_encoding {
  * are Mesa half-register indices, so 32-bit operands must be even. This is a
  * compiler building block only: success does not imply that AGX3 pipeline
  * compilation, scheduling, command submission, or device admission exists.
- * ISHL maps only the proved register-register `sll` instruction; it does not
- * emit or claim the separate shift-count masking seen in compiler output.
+ * ISHL and IASHR map only the proved register-register `sll` and `sra`
+ * instructions; they do not emit or claim the separate shift-count masking
+ * seen in compiler output.
  */
 bool d12_agx3_encode_binary_alu(
    enum agx_isa_encoding encoding, enum d12_agx3_binary_alu_op op,

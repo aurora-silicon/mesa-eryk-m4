@@ -25,6 +25,7 @@ extern "C" {
 #define AGX3_BIT_NOT_U32_REG_MAX_LENGTH 10
 #define AGX3_ISUB_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_SLL_U32_REG_REG_MAX_LENGTH 14
+#define AGX3_ASR_I32_REG_REG_MAX_LENGTH 12
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -73,6 +74,11 @@ struct agx3_encoded_isub_u32_reg_reg {
 
 struct agx3_encoded_sll_u32_reg_reg {
    uint8_t bytes[AGX3_SLL_U32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_asr_i32_reg_reg {
+   uint8_t bytes[AGX3_ASR_I32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -293,6 +299,27 @@ bool agx3_pack_sll_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_sll_u32_reg_reg *out);
 bool agx3_unpack_sll_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded three-register i32 arithmetic variable
+ * shift-right form, named `sra` by Apple's tables and `asr` by Mesa.  The
+ * forced-live four-store replay independently correlates f2 with destination
+ * r3, f16 with signed value r5, and f31 with masked shift count r0 on every
+ * available G15/G16/G17 compiler target.  P2i_shr and Q_ishr_n1..n4
+ * independently reproduce the arithmetic operation on G15G, G16G, and G17S.
+ *
+ * All arguments are even half-register indices.  Apple's AGX3b encoding
+ * point is limited to r0..r95; AGX3c is bounded here to modeled r0..r127,
+ * excluding its unprobed ninth register bits.  This packs only `sra`, not the
+ * separate count-masking operation.  Other anonymous selections and G15G's
+ * standalone scheduling nops remain unsupported.
+ */
+bool agx3_pack_asr_i32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_asr_i32_reg_reg *out);
+bool agx3_unpack_asr_i32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
