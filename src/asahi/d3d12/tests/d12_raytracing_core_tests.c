@@ -1016,8 +1016,12 @@ test_agx_gen5_child_layout(void)
               layout.child_leaves_offset_bytes == 7224,
            "DXR receives all five exact child-section offsets");
 
+   memset(&layout, 0xa5, sizeof(layout));
    require(!d12_rt_agx_bvh_gen5_decode_child_layout(NULL, &layout),
            "DXR refuses a missing Gen5 header");
+   const struct d12_rt_agx_bvh_gen5_child_layout zero = {0};
+   require(memcmp(&layout, &zero, sizeof(layout)) == 0,
+           "a missing Gen5 header leaves no stale addressing data");
    require(!d12_rt_agx_bvh_gen5_decode_child_layout(packed, NULL),
            "DXR refuses a missing Gen5 layout destination");
 
@@ -1029,6 +1033,8 @@ test_agx_gen5_child_layout(void)
    memset(&layout, 0xa5, sizeof(layout));
    require(!d12_rt_agx_bvh_gen5_decode_child_layout(packed, &layout),
            "DXR fails closed on Apple's invalid-QTB sentinel");
+   require(memcmp(&layout, &zero, sizeof(layout)) == 0,
+           "an invalid Gen5 QTB layout leaves no stale addressing data");
 }
 
 int

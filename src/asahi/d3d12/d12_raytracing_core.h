@@ -821,8 +821,12 @@ d12_rt_agx_bvh_gen5_decode_child_layout(
 {
    struct agx_rt_bvh_gen5_header header;
 
-   if (!layout ||
-       !agx_rt_bvh_gen5_header_unpack(packed_header, &header) ||
+   if (!layout)
+      return false;
+
+   *layout = (struct d12_rt_agx_bvh_gen5_child_layout){0};
+
+   if (!agx_rt_bvh_gen5_header_unpack(packed_header, &header) ||
        !agx_rt_bvh_gen5_qtb_layout_valid(&header))
       return false;
 
