@@ -4,6 +4,7 @@
  */
 
 #include "agx_pack.h"
+#include "asahi/genxml/agx3_cmdstream.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -179,6 +180,172 @@ test_sampler_generations(void)
    CHECK_EQ((word64(packed_gen5, 0) >> 43) & 0x7ff, 0x3ff);
 }
 
+static void
+test_agx3_cdm_launch(void)
+{
+   const enum agx_chip grounded[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   const uint8_t expected[AGX3_CDM_LAUNCH_SIZE] = {
+      0x67, 0x45, 0x23, 0x01, 0xde, 0xbc, 0x0a, 0x01,
+      0x23, 0x01, 0xef, 0x8d, 0xef, 0xbe, 0xad, 0xde,
+      0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
+      0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x10, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+   };
+
+   struct agx3_cdm_launch_info input = {
+      .word0_payload = 0x01234567,
+      .word1_payload = 0x000abcde,
+      .pipeline = UINT64_C(0x1237bc048c0),
+      .opaque_word3 = 0xdeadbeef,
+      .global_size = {3, 5, 7},
+      .local_size = {8, 16, 32},
+   };
+
+   for (unsigned i = 0; i < sizeof(grounded) / sizeof(grounded[0]); ++i) {
+      uint8_t packed[AGX3_CDM_LAUNCH_SIZE];
+      input.chip = grounded[i];
+      CHECK_EQ(agx3_cdm_launch_target_grounded(input.chip), true);
+      CHECK_EQ(agx3_cdm_launch_pack(&input, packed), true);
+      ++checks;
+      if (memcmp(packed, expected, sizeof(expected))) {
+         fprintf(stderr, "AGX3 CDM launch mismatch for chip %u\n", input.chip);
+         for (unsigned b = 0; b < sizeof(packed); ++b)
+            fprintf(stderr, "%02x%s", packed[b],
+                    b + 1 == sizeof(packed) ? "\n" : " ");
+         exit(1);
+      }
+
+      struct agx3_cdm_launch_info decoded;
+      CHECK_EQ(agx3_cdm_launch_unpack(input.chip, packed, sizeof(packed),
+                                      &decoded),
+               true);
+      CHECK_EQ(decoded.chip, input.chip);
+      CHECK_EQ(decoded.word0_payload, input.word0_payload);
+      CHECK_EQ(decoded.word1_payload, input.word1_payload);
+      CHECK_EQ(decoded.pipeline, input.pipeline);
+      CHECK_EQ(decoded.opaque_word3, input.opaque_word3);
+      for (unsigned axis = 0; axis < 3; ++axis) {
+         CHECK_EQ(decoded.global_size[axis], input.global_size[axis]);
+         CHECK_EQ(decoded.local_size[axis], input.local_size[axis]);
+      }
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G15P, AGX_CHIP_G16P, AGX_CHIP_G17A,
+      AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      uint8_t packed[AGX3_CDM_LAUNCH_SIZE];
+      input.chip = rejected[i];
+      CHECK_EQ(agx3_cdm_launch_target_grounded(input.chip), false);
+      CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+      for (unsigned b = 0; b < sizeof(packed); ++b)
+         CHECK_EQ(packed[b], 0);
+   }
+
+   uint8_t packed[AGX3_CDM_LAUNCH_SIZE];
+   input.chip = AGX_CHIP_G17S;
+   input.pipeline |= 1;
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+   input.pipeline &= ~UINT64_C(0x3f);
+   input.pipeline = UINT64_C(1) << 48;
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+   input.pipeline = UINT64_C(0x1237bc048c0);
+   input.word0_payload = UINT32_C(1) << 29;
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+   input.word0_payload = 0x01234567;
+   input.word1_payload = UINT32_C(1) << 22;
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+   input.word1_payload = 0x000abcde;
+   input.local_size[2] = 0x800;
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), false);
+   input.local_size[2] = 32;
+   CHECK_EQ(agx3_cdm_launch_pack(NULL, packed), false);
+   CHECK_EQ(agx3_cdm_launch_pack(&input, NULL), false);
+
+   CHECK_EQ(agx3_cdm_launch_pack(&input, packed), true);
+   struct agx3_cdm_launch_info decoded;
+   CHECK_EQ(agx3_cdm_launch_unpack(input.chip, packed, 39, &decoded), false);
+   packed[3] |= 0x20;
+   CHECK_EQ(agx3_cdm_launch_unpack(input.chip, packed, sizeof(packed),
+                                   &decoded),
+            false);
+   CHECK_EQ(decoded.pipeline, 0);
+}
+
+static void
+test_agx3_cdm_stream_link(void)
+{
+   const enum agx_chip grounded[] = {
+      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16S,
+      AGX_CHIP_G16C, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   const uint8_t expected[AGX3_CDM_STREAM_LINK_SIZE] = {
+      0xbc, 0x9a, 0x00, 0x30, 0x78, 0x56, 0x34, 0x12,
+   };
+   struct agx3_cdm_stream_link_info input = {
+      .target = UINT64_C(0x9abc12345678),
+      .with_return = true,
+   };
+
+   for (unsigned i = 0; i < sizeof(grounded) / sizeof(grounded[0]); ++i) {
+      uint8_t packed[AGX3_CDM_STREAM_LINK_SIZE];
+      input.chip = grounded[i];
+      CHECK_EQ(agx3_cdm_stream_link_target_grounded(input.chip), true);
+      CHECK_EQ(agx3_cdm_stream_link_pack(&input, packed), true);
+      ++checks;
+      if (memcmp(packed, expected, sizeof(expected))) {
+         fprintf(stderr, "AGX3 CDM link mismatch for chip %u\n", input.chip);
+         for (unsigned b = 0; b < sizeof(packed); ++b)
+            fprintf(stderr, "%02x%s", packed[b],
+                    b + 1 == sizeof(packed) ? "\n" : " ");
+         exit(1);
+      }
+
+      struct agx3_cdm_stream_link_info decoded;
+      CHECK_EQ(agx3_cdm_stream_link_unpack(input.chip, packed, sizeof(packed),
+                                           &decoded),
+               true);
+      CHECK_EQ(decoded.target, input.target);
+      CHECK_EQ(decoded.with_return, input.with_return);
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G16G, AGX_CHIP_G16P, AGX_CHIP_G17P,
+      AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      uint8_t packed[AGX3_CDM_STREAM_LINK_SIZE];
+      input.chip = rejected[i];
+      CHECK_EQ(agx3_cdm_stream_link_target_grounded(input.chip), false);
+      CHECK_EQ(agx3_cdm_stream_link_pack(&input, packed), false);
+      for (unsigned b = 0; b < sizeof(packed); ++b)
+         CHECK_EQ(packed[b], 0);
+   }
+
+   uint8_t packed[AGX3_CDM_STREAM_LINK_SIZE];
+   input.chip = AGX_CHIP_G17S;
+   input.target = UINT64_C(1) << 48;
+   CHECK_EQ(agx3_cdm_stream_link_pack(&input, packed), false);
+   input.target = UINT64_C(0x9abc12345678);
+   CHECK_EQ(agx3_cdm_stream_link_pack(NULL, packed), false);
+   CHECK_EQ(agx3_cdm_stream_link_pack(&input, NULL), false);
+
+   CHECK_EQ(agx3_cdm_stream_link_pack(&input, packed), true);
+   struct agx3_cdm_stream_link_info decoded;
+   CHECK_EQ(agx3_cdm_stream_link_unpack(input.chip, packed, 7, &decoded),
+            false);
+   packed[2] = 1;
+   CHECK_EQ(agx3_cdm_stream_link_unpack(input.chip, packed, sizeof(packed),
+                                        &decoded),
+            false);
+   CHECK_EQ(decoded.target, 0);
+}
+
 int
 main(void)
 {
@@ -192,6 +359,8 @@ main(void)
    test_m5_live_descriptors();
    test_generation_boundaries();
    test_sampler_generations();
+   test_agx3_cdm_launch();
+   test_agx3_cdm_stream_link();
 
    printf("agx3 packing: all %u checks passed\n", checks);
    return 0;

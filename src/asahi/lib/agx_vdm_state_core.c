@@ -1,0 +1,101 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_vdm_state_core.h"
+
+#include <string.h>
+
+static void
+agx_vdm_store_le32(uint8_t *dst, uint32_t value)
+{
+   dst[0] = (uint8_t)value;
+   dst[1] = (uint8_t)(value >> 8);
+   dst[2] = (uint8_t)(value >> 16);
+   dst[3] = (uint8_t)(value >> 24);
+}
+
+static uint32_t
+agx_vdm_load_le32(const uint8_t *src)
+{
+   return (uint32_t)src[0] | ((uint32_t)src[1] << 8) |
+          ((uint32_t)src[2] << 16) | ((uint32_t)src[3] << 24);
+}
+
+bool
+agx_vdm_state_vertex_pipeline_pair_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+
+   case AGX_CHIP_G13G:
+   case AGX_CHIP_G13X:
+   case AGX_CHIP_G14G:
+   case AGX_CHIP_G14X:
+   case AGX_CHIP_G15P:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G17A:
+   case AGX_CHIP_UNKNOWN:
+   default:
+      return false;
+   }
+}
+
+bool
+agx_vdm_state_vertex_pipeline_pair_pack(
+   enum agx_chip chip, uint64_t pipeline, uint32_t raw_template,
+   struct agx_vdm_state_vertex_pipeline_pair *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!out || !agx_vdm_state_vertex_pipeline_pair_supported(chip) ||
+       (pipeline & UINT64_C(0x3f)) != 0 || pipeline >= (UINT64_C(1) << 48) ||
+       (raw_template & ~AGX_VDM_STATE_VERTEX_PIPELINE_TEMPLATE_MASK) != 0)
+      return false;
+
+   const uint32_t word0 =
+      raw_template | (uint32_t)(((pipeline >> 38) & UINT64_C(0x3ff)) << 22);
+   const uint32_t word1 = (uint32_t)(pipeline >> 6);
+
+   agx_vdm_store_le32(&out->bytes[0], word0);
+   agx_vdm_store_le32(&out->bytes[4], word1);
+   out->length = AGX_VDM_STATE_VERTEX_PIPELINE_PAIR_LENGTH;
+   return true;
+}
+
+bool
+agx_vdm_state_vertex_pipeline_pair_unpack(
+   enum agx_chip chip, const void *bytes, size_t size, uint64_t *pipeline,
+   uint32_t *raw_template)
+{
+   if (pipeline)
+      *pipeline = 0;
+   if (raw_template)
+      *raw_template = 0;
+
+   if (!bytes || !pipeline || !raw_template ||
+       size != AGX_VDM_STATE_VERTEX_PIPELINE_PAIR_LENGTH ||
+       !agx_vdm_state_vertex_pipeline_pair_supported(chip))
+      return false;
+
+   const uint8_t *raw = bytes;
+   const uint32_t word0 = agx_vdm_load_le32(&raw[0]);
+   const uint32_t word1 = agx_vdm_load_le32(&raw[4]);
+
+   *pipeline = ((uint64_t)(word0 >> 22) << 38) | ((uint64_t)word1 << 6);
+   *raw_template = word0 & AGX_VDM_STATE_VERTEX_PIPELINE_TEMPLATE_MASK;
+   return true;
+}

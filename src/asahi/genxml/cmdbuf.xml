@@ -1212,6 +1212,19 @@
     <field name="Pipeline" size="26" start="6" type="address" modifier="shr(6)"/>
   </struct>
 
+  <!-- G15/HAL200/HAL300 launch header.  The pipeline VA is 48-bit and
+       64-byte aligned: bits 47:38 occupy word 1 bits 31:22 and bits 37:6
+       occupy all of word 2.  The remaining template fields are preserved
+       without assigning semantics that the recovered corpus does not prove. -->
+  <struct name="CDM Launch AGX3" size="16">
+    <field name="Word 0 payload" size="29" start="0:0" type="hex"/>
+    <field name="Block Type" size="3" start="0:29" type="CDM Block Type" exact="Launch"/>
+    <field name="Word 1 payload" size="22" start="1:0" type="hex"/>
+    <field name="Pipeline hi" size="10" start="1:22" type="hex"/>
+    <field name="Pipeline lo" size="32" start="2:0" type="hex"/>
+    <field name="Opaque word 3" size="32" start="3:0" type="hex"/>
+  </struct>
+
   <struct name="CDM Unk G14X" size="8">
     <field name="Unknown 30" size="1" start="1:30" type="bool" exact="true"/>
   </struct>
@@ -1263,6 +1276,14 @@
 
   <struct name="CDM Stream Link" size="8">
     <field name="Target hi" size="8" start="0" type="hex"/>
+    <field name="With return" size="1" start="28" type="bool"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" exact="Stream Link"/>
+    <field name="Target lo" size="32" start="32" type="hex"/>
+  </struct>
+
+  <!-- AGX3 widens the CDM link target from 40 to 48 bits. -->
+  <struct name="CDM Stream Link AGX3" size="8">
+    <field name="Target hi" size="16" start="0" type="hex"/>
     <field name="With return" size="1" start="28" type="bool"/>
     <field name="Block Type" size="3" start="29" type="CDM Block Type" exact="Stream Link"/>
     <field name="Target lo" size="32" start="32" type="hex"/>

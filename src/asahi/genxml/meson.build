@@ -9,9 +9,20 @@ agx_pack = custom_target(
 )
 
 idep_agx_pack = declare_dependency(
-  sources : [agx_pack],
+  sources : [agx_pack, files('agx3_cmdstream.h')],
   dependencies : dep_valgrind,
   include_directories : include_directories('.'),
 )
 
-
+if with_tests
+  test(
+    'asahi-agx3-packing',
+    executable(
+      'asahi-agx3-packing',
+      files('tests/test-agx3-packing.c'),
+      include_directories : [inc_src],
+      dependencies : [idep_agx_pack, idep_mesautil],
+    ),
+    suite : ['asahi'],
+  )
+endif

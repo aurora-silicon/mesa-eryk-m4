@@ -29,19 +29,19 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15 / classic |
-| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15 / classic |
-| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15 / classic |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15 / classic |
+| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch + VDM ptr packed |
+| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
+| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
 | G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200 / classic |
-| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200 / classic + SKSM |
-| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200 / classic + SKSM |
-| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200 / classic + SKSM |
+| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch + VDM ptr packed |
+| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link + VDM ptr packed |
+| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link + VDM ptr packed |
+| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch + VDM ptr packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300 / SKSM |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300 / SKSM |
-| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300 / SKSM |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch + VDM ptr packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link + VDM ptr packed |
+| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link + VDM ptr packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
@@ -97,6 +97,29 @@ low-six-slot bytes are genuinely shared between AGX3b and AGX3c, so their
 generation cannot be inferred from those four bytes alone. This remains an
 **IV/RE** host encoding bridge, not D3D/DXIL lowering, scheduling, memory-order
 policy, execution, device admission, or a capability claim.
+
+The generated command-stream packer and a strict shared wrapper now encode
+and decode the exact 40-byte AGX3 CDM launch. Its 48-bit, 64-byte-aligned
+pipeline pointer is split between word 1 bits 31:22 and all of word 2; both
+still-opaque template payloads are preserved, and global/local dimensions are
+bounded exactly. Directly pinned launch emitters cover G15G/G15X, G16G/G16X,
+G17P, and G17G/G17X, which map to the eleven per-chip rows marked above.
+G16P and G17A remain rejected. A separate exact eight-byte CDM link widens the
+target from 40 to 48 bits and is gated more narrowly to the directly pinned
+G15X/G16X/G17X aggregate identities; base/phone link forms are not inferred.
+The D3D12 host core maps and strictly validates both records. These are
+**RE/IV** record packers, not a complete CDM/VDM/Ioto stream, live emission,
+queue submission, device admission, or API capability; the command/submission
+cells therefore remain **RE**.
+
+The shared VDM core and D3D12 bridge also pack and decode the exact widened
+two-word vertex-pipeline field embedded in an AGX3 VDM State update. The raw
+22-bit state-template payload is preserved without invented semantics, while
+the 48-bit, 64-byte-aligned pipeline address is split identically to CDM.
+Direct G15G/G15X, G16G/G16X, G17P, and G17G/G17X plugin claims cover the same
+eleven rows; G16P and G17A fail closed. All 64 represented bits round-trip,
+but the surrounding VDM State record, draws, PPP state, Ioto USC stream, live
+emission, and submission remain incomplete.
 
 ## Mesa API and kernel relationship
 
@@ -294,7 +317,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `1fd3ed26d2e9` additionally
+The power/recovery ledger through Linux commit `f9fa9e4dd4a0` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -321,9 +344,11 @@ The pinned G17P/G17G/G17S host-management routes also disprove treating the
 firmware's type-`0xb` callback completion as the host type-7 IOP-status power
 ACK. Type 7 reaches `_handlePowerAck` and wakes `RTBuddy + 0x158`; type `0xb`
 stores remote state and wakes the distinct management-endpoint field at
-`+0x108`. Because the firmware loads the callback destination from an object
-field whose endpoint identity is still unproven, the end-to-end linkage and
-all executable recovery/power gates remain **FC**.
+`+0x108`. The callback constructor's exact dataflow now proves that object
+field carries explicit management endpoint 0 through allocation,
+registration, handler context, and completion. This closes the endpoint
+linkage unknown, while the remaining executable recovery/power sequence gates
+stay **FC**.
 It also records the exact opaque six-u64 PM blocks for pinned G17P/HAL200 and
 G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
@@ -351,6 +376,10 @@ The current in-tree anchors are:
   [`AGX3c.xml`](../../src/asahi/isa/AGX3c.xml), and
   [`test-agx3-pack.c`](../../src/asahi/compiler/test/test-agx3-pack.c): AGX3
   decode tables and the bounded pack subset.
+- [`agx3_cmdstream.h`](../../src/asahi/genxml/agx3_cmdstream.h),
+  [`agx_vdm_state_core.h`](../../src/asahi/lib/agx_vdm_state_core.h), and their
+  focused tests: exact target-gated AGX3 CDM launch/link and widened VDM
+  vertex-pipeline representations, without live emission or submission.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,
