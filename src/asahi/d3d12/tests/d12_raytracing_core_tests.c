@@ -481,6 +481,107 @@ test_agx3_canonical_update_node(void)
 }
 
 static void
+test_agx3_update_node_expansion(void)
+{
+   static const uint8_t agx3b[] = {
+      0x07, 0x04, 0x54, 0x08, 0x09, 0x00, 0xdf, 0x05, 0x54, 0x00,
+   };
+   static const uint8_t agx3c[] = {
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00, 0x27,
+      0x00, 0x01, 0x00, 0x22, 0x00, 0xad, 0x02,
+   };
+   const struct {
+      enum d12_rt_agx3_encoding encoding;
+      const uint8_t *expected;
+      uint32_t length;
+   } vectors[] = {
+      {D12_RT_AGX3_ENCODING_B, agx3b, sizeof(agx3b)},
+      {D12_RT_AGX3_ENCODING_C, agx3c, sizeof(agx3c)},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct d12_rt_agx3_update_node_expansion generated;
+      memset(&generated, 0xff, sizeof(generated));
+      require(d12_rt_agx3_update_node_expansion_generate(
+                 vectors[v].encoding, &generated),
+              "DXR generates a complete canonical update_node expansion");
+      require(generated.length == vectors[v].length,
+              "DXR receives the exact update_node expansion length");
+      require(memcmp(generated.bytes, vectors[v].expected,
+                     vectors[v].length) == 0,
+              "DXR receives the exact barrier-plus-update_node bytes");
+      for (unsigned i = vectors[v].length; i < sizeof(generated.bytes); ++i)
+         require(generated.bytes[i] == 0,
+                 "DXR zeroes unused update_node expansion storage");
+
+      require(d12_rt_agx3_update_node_expansion_valid(
+                 vectors[v].encoding, vectors[v].expected,
+                 vectors[v].length),
+              "DXR accepts the exact complete update_node expansion");
+
+      /* Both the barrier and trailing operation are fixed.  No unknown bit
+       * or operand-bearing update form may pass this validator. */
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t malformed[AGX3_UPDATE_NODE_MAX_LENGTH] = {0};
+         memcpy(malformed, vectors[v].expected, vectors[v].length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         require(!d12_rt_agx3_update_node_expansion_valid(
+                    vectors[v].encoding, malformed, vectors[v].length),
+                 "DXR refuses every changed update_node expansion bit");
+      }
+
+      for (uint32_t length = 0; length < vectors[v].length; ++length) {
+         require(!d12_rt_agx3_update_node_expansion_valid(
+                    vectors[v].encoding, vectors[v].expected, length),
+                 "DXR refuses every truncated update_node expansion");
+      }
+
+      uint8_t missing_barrier[AGX3_UPDATE_NODE_MAX_LENGTH] = {0};
+      memcpy(missing_barrier, vectors[v].expected + 6,
+             vectors[v].length - 6);
+      require(!d12_rt_agx3_update_node_expansion_valid(
+                 vectors[v].encoding, missing_barrier, vectors[v].length),
+              "DXR refuses a full-sized expansion with its barrier missing");
+      require(!d12_rt_agx3_update_node_expansion_valid(
+                 vectors[v].encoding, vectors[v].expected + 6,
+                 vectors[v].length - 6),
+              "DXR refuses the canonical trailing operation by itself");
+
+      uint8_t oversized[AGX3_UPDATE_NODE_MAX_LENGTH + 1] = {0};
+      memcpy(oversized, vectors[v].expected, vectors[v].length);
+      require(!d12_rt_agx3_update_node_expansion_valid(
+                 vectors[v].encoding, oversized, vectors[v].length + 1),
+              "DXR refuses trailing bytes after a complete expansion");
+   }
+
+   require(!d12_rt_agx3_update_node_expansion_valid(
+              D12_RT_AGX3_ENCODING_B, agx3c, sizeof(agx3c)) &&
+              !d12_rt_agx3_update_node_expansion_valid(
+                 D12_RT_AGX3_ENCODING_C, agx3b, sizeof(agx3b)),
+           "DXR refuses cross-generation update_node expansions");
+
+   struct d12_rt_agx3_update_node_expansion rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   require(!d12_rt_agx3_update_node_expansion_generate(
+              (enum d12_rt_agx3_encoding)99, &rejected),
+           "DXR refuses to generate an unknown update_node expansion");
+   require(rejected.length == 0,
+           "a rejected update_node generation clears its length");
+   for (unsigned i = 0; i < sizeof(rejected.bytes); ++i)
+      require(rejected.bytes[i] == 0,
+              "a rejected update_node generation clears all output bytes");
+   require(!d12_rt_agx3_update_node_expansion_generate(
+              D12_RT_AGX3_ENCODING_B, NULL),
+           "DXR refuses a missing update_node generation destination");
+   require(!d12_rt_agx3_update_node_expansion_valid(
+              (enum d12_rt_agx3_encoding)99, agx3b, sizeof(agx3b)),
+           "DXR refuses an unknown update_node expansion encoding");
+   require(!d12_rt_agx3_update_node_expansion_valid(
+              D12_RT_AGX3_ENCODING_B, NULL, sizeof(agx3b)),
+           "DXR refuses a missing update_node expansion");
+}
+
+static void
 pack_gen5_header(const uint64_t words[8], uint8_t packed[64])
 {
    for (unsigned word = 0; word < 8; ++word) {
@@ -545,6 +646,7 @@ main(void)
    test_shader_identifiers();
    test_records_and_config();
    test_agx3_canonical_update_node();
+   test_agx3_update_node_expansion();
    test_agx_gen5_child_layout();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);

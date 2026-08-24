@@ -110,7 +110,9 @@ done
     -o "$out/d12_sample_position_core_tests"
 "$out/d12_sample_position_core_tests"
 
-"$cc" "$common[@]" -I"$d12_dir" \
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
+    "$repo_root/src/asahi/compiler/agx3_pack.c" \
     "$d12_dir/tests/d12_raytracing_core_tests.c" \
     -o "$out/d12_raytracing_core_tests"
 "$out/d12_raytracing_core_tests"

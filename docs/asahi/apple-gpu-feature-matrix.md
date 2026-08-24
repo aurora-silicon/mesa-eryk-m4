@@ -88,11 +88,12 @@ identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
-The D3D12 RT core recognizes the byte-exact, fixed zero-argument `update_node`
-operation for AGX3b and AGX3c. This is **RE/IV** encoding validation only: it
-does not provide the preceding generation-specific barrier, BVH-update
-semantics, operand-bearing RT instructions, traversal, lowering, submission,
-or device admission, so DXR remains Tier 0.
+The D3D12 RT core generates and validates the byte-exact, fixed zero-argument
+`update_node` expansion for AGX3b and AGX3c through Mesa's shared packer,
+including the generation-specific six-byte barrier and trailing operation.
+This is **RE/IV** encoding validation only: it does not establish barrier or
+BVH-update semantics, operand-bearing RT instructions, traversal, lowering,
+submission, or device admission, so DXR remains Tier 0.
 
 Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
 including a byte-exact M5 live descriptor. Writable-image and EOT use stays
@@ -208,7 +209,8 @@ The current in-tree anchors are:
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
-  validation of the fixed AGX3b/AGX3c `update_node` opcode.
+  generation/validation of the fixed AGX3b/AGX3c barrier-plus-`update_node`
+  expansion.
 - [`d12_discard_core.h`](../../src/asahi/d3d12/d12_discard_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_discard_core_tests.c): public
   `DiscardResource` list/region validation and the conservative no-op contract.

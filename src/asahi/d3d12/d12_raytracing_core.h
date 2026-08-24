@@ -33,8 +33,8 @@
  * acceleration structure is opaque to the application -- the host half and
  * the proved Gen5 child-layout decoder are already written and covered.
  *
- * Keep this free of Windows and Mesa runtime headers.  The shared AGX BVH
- * helper included here is itself standard-C-only.
+ * Keep this free of Windows headers and Mesa runtime state.  The shared AGX
+ * packer and BVH helpers included here are standard-C-only contracts.
  */
 
 #ifndef D12_RAYTRACING_CORE_H
@@ -43,6 +43,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "asahi/compiler/agx3_pack.h"
 #include "../lib/agx_rt_bvh.h"
 
 #ifdef __cplusplus
@@ -434,24 +435,107 @@ d12_rt_tlas_counts_valid(uint64_t instance_count)
    return instance_count <= D12_RT_MAX_INSTANCES_PER_TLAS;
 }
 
+/* AGX3 encoding variants used by the bounded RT representations below. */
+enum d12_rt_agx3_encoding {
+   D12_RT_AGX3_ENCODING_B = 0,
+   D12_RT_AGX3_ENCODING_C,
+};
+
+struct d12_rt_agx3_update_node_expansion {
+   uint8_t bytes[AGX3_UPDATE_NODE_MAX_LENGTH];
+   uint8_t length;
+};
+
+static inline enum agx_isa_encoding
+d12_rt_agx3_shared_encoding(enum d12_rt_agx3_encoding encoding)
+{
+   switch (encoding) {
+   case D12_RT_AGX3_ENCODING_B:
+      return AGX_ISA_ENCODING_AGX3B;
+   case D12_RT_AGX3_ENCODING_C:
+      return AGX_ISA_ENCODING_AGX3C;
+   default:
+      return AGX_ISA_ENCODING_UNKNOWN;
+   }
+}
+
 /*
- * Exact AGX3 encoding check for the fixed, zero-argument update_node
- * operation.
+ * Generate the complete canonical llvm.agx3.update.node expansion through
+ * the shared compiler packer: the generation-specific six-byte barrier and
+ * the fixed update_node operation that follows it.  This is an exact byte
+ * representation only, not RT lowering or permission to submit it.
+ */
+static inline bool
+d12_rt_agx3_update_node_expansion_generate(
+   enum d12_rt_agx3_encoding encoding,
+   struct d12_rt_agx3_update_node_expansion *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_update_node_expansion){0};
+
+   struct agx3_encoded_update_node shared;
+   if (!agx3_pack_update_node(d12_rt_agx3_shared_encoding(encoding),
+                              &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/*
+ * Validate one complete expansion against both sides of the shared contract.
+ * Exact size is required because agx3_unpack_update_node() deliberately
+ * accepts a larger containing buffer.  Repacking and byte comparison also
+ * ensures this DXR-facing representation cannot drift from compiler output.
+ */
+static inline bool
+d12_rt_agx3_update_node_expansion_valid(
+   enum d12_rt_agx3_encoding encoding, const void *instructions,
+   uint32_t instruction_size)
+{
+   if (!instructions)
+      return false;
+
+   const enum agx_isa_encoding shared_encoding =
+      d12_rt_agx3_shared_encoding(encoding);
+   struct agx3_encoded_update_node packed;
+   uint8_t unpacked_length = 0;
+
+   if (!agx3_pack_update_node(shared_encoding, &packed) ||
+       instruction_size != packed.length ||
+       !agx3_unpack_update_node(shared_encoding, instructions,
+                                instruction_size, &unpacked_length) ||
+       unpacked_length != packed.length)
+      return false;
+
+   const uint8_t *code = instructions;
+   for (uint8_t i = 0; i < packed.length; ++i) {
+      if (code[i] != packed.bytes[i])
+         return false;
+   }
+
+   return true;
+}
+
+/*
+ * Exact AGX3 encoding check for the trailing, fixed zero-argument update_node
+ * operation by itself.
  *
  * The AGX3b and AGX3c decoder tables specify every bit of this one operation,
  * and the captured disassembler corpus carries the same byte strings.  That
  * makes exact recognition safe even though the operand-bearing RT intrinsics
  * still have unnamed fields and predicates and must not be emitted.
  *
- * This validates one instruction only.  It neither validates nor supplies
- * the generation-specific barrier that precedes it, and it says nothing about
- * BVH update semantics, traversal, shader lowering or command submission.
+ * Unlike d12_rt_agx3_update_node_expansion_valid(), this validates one
+ * instruction only and does not require the generation-specific barrier.
+ * Neither helper claims BVH update semantics, traversal, shader lowering or
+ * command submission.
  */
-enum d12_rt_agx3_encoding {
-   D12_RT_AGX3_ENCODING_B = 0,
-   D12_RT_AGX3_ENCODING_C,
-};
-
 static inline bool
 d12_rt_agx3_canonical_update_node_valid(enum d12_rt_agx3_encoding encoding,
                                         const void *instruction,
