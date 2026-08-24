@@ -939,12 +939,6 @@ static_assert(offsetof(struct d12_vb_params, clamp) == D12_VB_OFF_CLAMP,
 static_assert(offsetof(struct d12_vb_params, stride_el) == D12_VB_OFF_STRIDE,
               "stride offset must match D12_VB_OFF_STRIDE");
 
-/* One hardware texture descriptor. Spelled out rather than including
- * genxml from the front end; asserted against the real value where the
- * descriptors are packed.
- */
-#define D12_TEXTURE_DESC_SIZE       24
-#define D12_PBE_DESC_SIZE           24
 #define D12_SAMPLER_DESC_SIZE       8
 
 /*
@@ -1260,6 +1254,7 @@ d12_range_count(const struct d12_resource_binding *rb)
 struct nir_shader *d12_dxil_to_nir(const struct d12_module *mod,
                                    mesa_shader_stage stage,
                                    const struct d12_binding_map *map,
+                                   uint32_t descriptor_generation,
                                    const char **error);
 
 /*
@@ -1294,6 +1289,7 @@ bool d12_dxbc_container_stage(const void *data, size_t size_B,
 struct nir_shader *d12_dxbc_to_nir(const void *data, size_t size_B,
                                    mesa_shader_stage stage,
                                    const struct d12_binding_map *map,
+                                   uint32_t descriptor_generation,
                                    uint8_t *texture_shapes, const char **error);
 
 /*

@@ -19,6 +19,7 @@
 #define MESA_LOG_TAG "d3d12agx"
 
 #include "d12_dxil.h"
+#include "../d12_native_descriptor_core.h"
 #include "poly/nir/poly_nir.h"
 
 #include <stdlib.h>
@@ -279,6 +280,12 @@ struct trans_ctx {
     * signature, so a register space costs nothing unless it is used.
     */
    const struct d12_binding_map *map;
+
+   /* Native heap geometry is part of the compiled shader ABI.  Keep the
+    * generation as well as both strides so unsupported software descriptor
+    * decodes can fail independently of ordinary hardware image access. */
+   uint32_t descriptor_generation;
+   struct d12_native_descriptor_layout native_layout;
 
    /* Per binding slot, from dx.resources: the structured element stride
     * (zero for raw and typed buffers) and the resource shape, which is
@@ -1328,8 +1335,8 @@ descriptor_address(struct trans_ctx *ctx, const struct handle_ref *h)
  * SM 6.6 handles already carry that index. A root-range handle is relative
  * to the descriptor-array base stored in its root slot, so recover the
  * absolute index from the address and the globally bound 40-byte heap base.
- * The parallel AGX texture/PBE arrays use this same index at a 24-byte
- * hardware stride. */
+ * The parallel AGX texture/PBE arrays use this same index at the selected
+ * descriptor generation's native stride. */
 static nir_def *
 native_heap_index(struct trans_ctx *ctx, const struct handle_ref *h)
 {
@@ -1348,7 +1355,8 @@ native_image_handle(struct trans_ctx *ctx, const struct handle_ref *h,
                     bool writable)
 {
    nir_builder *b = ctx->b;
-   const unsigned stride = writable ? D12_PBE_DESC_SIZE : D12_TEXTURE_DESC_SIZE;
+   const unsigned stride = writable ? ctx->native_layout.pbe_stride_B
+                                    : ctx->native_layout.texture_stride_B;
 
    if (h->native_segment) {
       nir_def *resource_table = root_plane(ctx, D12_ROOT_PLANE_RESOURCE);
@@ -3369,6 +3377,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
+      if (!d12_native_pbe_software_addressing_supported(
+             ctx->descriptor_generation) &&
+          d12_texture_shape_from_kind(h.kind) != D12_TEXTURE_SHAPE_NONE) {
+         trans_fail(ctx, "texture atomics require unproven AGX3 PBE "
+                         "software addressing");
+         return false;
+      }
       if (image) {
          nir_def *zero = nir_imm_int(b, 0);
          nir_def *handle = native_image_handle(ctx, &h, true);
@@ -3427,6 +3442,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       bool image = h.kind == D12_RES_KIND_TEXTURE_2D ||
                    h.kind == D12_RES_KIND_TEXTURE_2D_ARRAY;
+      if (!d12_native_pbe_software_addressing_supported(
+             ctx->descriptor_generation) &&
+          d12_texture_shape_from_kind(h.kind) != D12_TEXTURE_SHAPE_NONE) {
+         trans_fail(ctx, "texture atomics require unproven AGX3 PBE "
+                         "software addressing");
+         return false;
+      }
       if (image) {
          if (bits != 32) {
             trans_fail(ctx, "64-bit texture atomics unsupported");
@@ -3915,6 +3937,14 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       if (!handle_info(ctx, p[0], &th))
          return false;
 
+      bool ms = opcode == D12_DXOP_TEXTURE_STORE_SAMPLE;
+      if (ms && !d12_native_pbe_software_addressing_supported(
+                   ctx->descriptor_generation)) {
+         trans_fail(ctx, "multisampled image stores require unproven AGX3 "
+                         "PBE software addressing");
+         return false;
+      }
+
       bool one_d = th.kind == D12_RES_KIND_TEXTURE_1D ||
                    th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY;
       bool array = th.kind == D12_RES_KIND_TEXTURE_1D_ARRAY ||
@@ -3935,7 +3965,6 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
             vals[i] = nir_imm_int(b, 0);
       }
 
-      bool ms = opcode == D12_DXOP_TEXTURE_STORE_SAMPLE;
       nir_def *sample = nir_imm_int(b, 0);
       if (ms && np >= 10) {
          nir_def *si_def = get_def(ctx, p[9]);
@@ -4313,7 +4342,7 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       }
 
       nir_def *tex_handle = nir_bindless_image_agx(
-         b, nir_imul_imm(b, h.slot, D12_TEXTURE_DESC_SIZE),
+         b, nir_imul_imm(b, h.slot, ctx->native_layout.texture_stride_B),
          .desc_set = D12_UNIFORM_TEXTURES);
       nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
       query->op = nir_texop_texture_samples;
@@ -4491,7 +4520,8 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
       tex->src[si++] = nir_tex_src_for_ssa(
          nir_tex_src_texture_handle,
          nir_bindless_image_agx(
-            b, nir_imul_imm(b, th.slot, D12_TEXTURE_DESC_SIZE),
+            b, nir_imul_imm(b, th.slot,
+                            ctx->native_layout.texture_stride_B),
             .desc_set = D12_UNIFORM_TEXTURES));
       if (const_samp) {
          tex->sampler_index = nir_src_as_uint(nir_src_for_ssa(sh.slot));
@@ -4889,6 +4919,13 @@ translate_dxop(struct trans_ctx *ctx, const struct d12_inst *inst,
 
       if (opcode == D12_DXOP_BUFFER_STORE &&
           h.kind == D12_RES_KIND_TYPED_BUFFER) {
+         if (!d12_native_pbe_software_addressing_supported(
+                ctx->descriptor_generation)) {
+            trans_fail(ctx, "typed-buffer stores require unproven AGX3 PBE "
+                            "software addressing");
+            return false;
+         }
+
          /* Format conversion on write: an image store with buffer
           * dimension, mirroring the typed-load path above. Runtime
           * needs a writable (PBE) descriptor, same caveat as
@@ -5383,8 +5420,15 @@ call_dxop_opcode(struct trans_ctx *ctx, const struct d12_inst *inst,
 
 nir_shader *
 d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
-                const struct d12_binding_map *map, const char **error)
+                const struct d12_binding_map *map,
+                uint32_t descriptor_generation, const char **error)
 {
+   struct d12_native_descriptor_layout native_layout;
+   if (!d12_native_descriptor_layout(descriptor_generation, &native_layout)) {
+      *error = "unsupported native descriptor generation";
+      return NULL;
+   }
+
    /* The entry point is the module's single function definition --
     * EXCEPT in a hull shader, which has two: the per-control-point entry
     * and a patch constant function that writes SV_TessFactor. Skip the
@@ -5488,6 +5532,8 @@ d12_dxil_to_nir(const struct d12_module *mod, mesa_shader_stage stage,
    struct trans_ctx ctx = {
       .mod = mod,
       .map = map,
+      .descriptor_generation = descriptor_generation,
+      .native_layout = native_layout,
       .func = entry,
       .b = &b,
       .num_defs = mod->num_values,

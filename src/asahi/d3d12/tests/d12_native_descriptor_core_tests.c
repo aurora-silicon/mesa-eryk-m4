@@ -36,6 +36,17 @@ main(void)
    CHECK(!d12_native_descriptor_layout(11, &layout));
    CHECK(!d12_native_descriptor_layout(9, NULL));
 
+   CHECK(d12_native_pbe_software_addressing_supported(
+      D12_NATIVE_DESCRIPTOR_GEN7));
+   CHECK(d12_native_pbe_software_addressing_supported(
+      D12_NATIVE_DESCRIPTOR_GEN8));
+   CHECK(!d12_native_pbe_software_addressing_supported(
+      D12_NATIVE_DESCRIPTOR_GEN9));
+   CHECK(!d12_native_pbe_software_addressing_supported(
+      D12_NATIVE_DESCRIPTOR_GEN10));
+   CHECK(!d12_native_pbe_software_addressing_supported(0));
+   CHECK(!d12_native_pbe_software_addressing_supported(11));
+
    CHECK(d12_native_descriptor_span(24, 7, 0, &value) && value == 168);
    CHECK(d12_native_descriptor_span(32, 7, 1, &value) && value == 256);
    CHECK(d12_native_descriptor_offset(24, 17, &value) && value == 408);

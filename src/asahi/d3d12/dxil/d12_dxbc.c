@@ -44,6 +44,7 @@
  */
 
 #include "d12_dxil.h"
+#include "../d12_native_descriptor_core.h"
 
 #include "agx_compile.h"
 #include "agx_nir_texture.h"
@@ -430,6 +431,8 @@ struct d12_dxbc_cf {
 struct d12_dxbc_ctx {
    char errbuf[64];
    const struct d12_binding_map *map;
+   uint32_t descriptor_generation;
+   struct d12_native_descriptor_layout native_layout;
 
    struct d12_dxbc_sig_elem in_sig[D12_DXBC_MAX_SIG];
    unsigned num_in_sig;
@@ -2058,7 +2061,7 @@ resource_texture_offset(struct d12_dxbc_ctx *ctx,
       return NULL;
 
    if (operand->num_indices != 2)
-      return nir_imul_imm(b, slot, D12_TEXTURE_DESC_SIZE);
+      return nir_imul_imm(b, slot, ctx->native_layout.texture_stride_B);
 
    const struct d12_dxbc_binding_range *range = &ranges[operand->index[0]];
    unsigned first_slot =
@@ -2076,7 +2079,8 @@ resource_texture_offset(struct d12_dxbc_ctx *ctx,
       .align_mul = 8);
    nir_def *relative = nir_iadd_imm(b, slot, -(int64_t)first_slot);
    return nir_iadd(b, nir_u2u32(b, base),
-                   nir_imul_imm(b, relative, D12_TEXTURE_DESC_SIZE));
+                   nir_imul_imm(b, relative,
+                                ctx->native_layout.texture_stride_B));
 }
 
 static nir_def *
@@ -2135,7 +2139,7 @@ uav_image_handle(struct d12_dxbc_ctx *ctx,
    if (descriptor) {
       nir_def *index = rooted_native_index(ctx, descriptor);
       return nir_bindless_image_agx(
-         b, nir_imul_imm(b, index, D12_PBE_DESC_SIZE),
+         b, nir_imul_imm(b, index, ctx->native_layout.pbe_stride_B),
          .desc_set = D12_UNIFORM_HEAP_PBES);
    }
 
@@ -2206,7 +2210,8 @@ uav_rooted_typed_atomic_handle(struct d12_dxbc_ctx *ctx,
    nir_def *valid = nir_ult(
       b, nir_u2u32(b, nir_channel(b, element, 0)), count);
    nir_def *live_offset = nir_imul_imm(
-      b, rooted_native_index(ctx, descriptor), D12_PBE_DESC_SIZE);
+      b, rooted_native_index(ctx, descriptor),
+      ctx->native_layout.pbe_stride_B);
 
    return nir_bindless_image_agx(
       b, nir_bcsel(b, valid, live_offset,
@@ -3886,7 +3891,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if (descriptor) {
             nir_def *index = rooted_native_index(ctx, descriptor);
             handle = nir_bindless_image_agx(
-               b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+               b, nir_imul_imm(b, index,
+                               ctx->native_layout.texture_stride_B),
                .desc_set = D12_UNIFORM_HEAP_TEXTURES);
          } else {
             nir_def *offset = uav ? uav_texture_offset(ctx, res)
@@ -4376,7 +4382,7 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   rooted_native_index(ctx, descriptor);
                handle = nir_bindless_image_agx(
                   b, nir_imul_imm(b, native_slot,
-                                  D12_TEXTURE_DESC_SIZE),
+                                  ctx->native_layout.texture_stride_B),
                   .desc_set = D12_UNIFORM_HEAP_TEXTURES);
             } else {
                nir_def *offset = uav_texture_offset(ctx, resource);
@@ -4436,7 +4442,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             }
 
             nir_def *handle = nir_bindless_image_agx(
-               b, nir_imul_imm(b, native_slot, D12_TEXTURE_DESC_SIZE),
+               b, nir_imul_imm(b, native_slot,
+                               ctx->native_layout.texture_stride_B),
                .desc_set = desc_set);
             nir_tex_instr *tex = nir_tex_instr_create(b->shader, 2);
             tex->op = nir_texop_txf;
@@ -4538,6 +4545,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
 
          nir_def *element_or_byte = nir_channel(b, SRC(1), 0);
          if (typed) {
+            if (!d12_native_pbe_software_addressing_supported(
+                   ctx->descriptor_generation)) {
+               fail(ctx, "typed-buffer stores require unproven AGX3 PBE "
+                         "software addressing");
+               return;
+            }
+
             nir_def *count = buffer_view_count_or_bytes(ctx, &o[0]);
             if (ctx->error)
                return;
@@ -4547,14 +4561,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             if (descriptor) {
                nir_def *native_slot = rooted_native_index(ctx, descriptor);
                handle = nir_bindless_image_agx(
-                  b, nir_imul_imm(b, native_slot, D12_PBE_DESC_SIZE),
+                  b, nir_imul_imm(b, native_slot,
+                                  ctx->native_layout.pbe_stride_B),
                   .desc_set = D12_UNIFORM_HEAP_PBES);
             } else {
                nir_def *slot = uav_binding_slot(ctx, &o[0]);
                if (!slot)
                   return;
                handle = nir_bindless_image_agx(
-                  b, nir_imul_imm(b, slot, D12_PBE_DESC_SIZE),
+                  b, nir_imul_imm(b, slot,
+                                  ctx->native_layout.pbe_stride_B),
                   .desc_set = D12_UNIFORM_PBES);
             }
 
@@ -4624,6 +4640,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                        ctx->uav_dim[reg] !=
                           D12_DXBC_RESOURCE_DIMENSION_BUFFER);
          if (image) {
+            if (!d12_native_pbe_software_addressing_supported(
+                   ctx->descriptor_generation)) {
+               fail(ctx, "image atomics require unproven AGX3 PBE software "
+                         "addressing");
+               return;
+            }
+
             bool is_array;
             enum glsl_sampler_dim image_dim;
             nir_def *handle;
@@ -4735,6 +4758,13 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                        ctx->uav_dim[reg] !=
                           D12_DXBC_RESOURCE_DIMENSION_BUFFER);
          if (image) {
+            if (!d12_native_pbe_software_addressing_supported(
+                   ctx->descriptor_generation)) {
+               fail(ctx, "image atomics require unproven AGX3 PBE software "
+                         "addressing");
+               return;
+            }
+
             bool is_array;
             enum glsl_sampler_dim image_dim;
             nir_def *handle;
@@ -4886,7 +4916,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
             if (descriptor) {
                nir_def *index = rooted_native_index(ctx, descriptor);
                handle = nir_bindless_image_agx(
-                  b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+                  b, nir_imul_imm(b, index,
+                                  ctx->native_layout.texture_stride_B),
                   .desc_set = D12_UNIFORM_HEAP_TEXTURES);
             } else {
                unsigned slot =
@@ -4899,7 +4930,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
                   return;
                }
                handle = nir_bindless_image_agx(
-                  b, nir_imm_int(b, slot * D12_TEXTURE_DESC_SIZE),
+                  b, nir_imm_int(b,
+                                 slot * ctx->native_layout.texture_stride_B),
                   .desc_set = D12_UNIFORM_TEXTURES);
             }
 
@@ -4945,7 +4977,8 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          }
 
          nir_def *tex_handle = nir_bindless_image_agx(
-            b, nir_imm_int(b, tslot * D12_TEXTURE_DESC_SIZE),
+            b, nir_imm_int(b,
+                           tslot * ctx->native_layout.texture_stride_B),
             .desc_set = D12_UNIFORM_TEXTURES);
          nir_tex_instr *query = nir_tex_instr_create(b->shader, 1);
          query->op = nir_texop_texture_samples;
@@ -5181,12 +5214,15 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
          if (rooted_texture) {
             nir_def *index = rooted_native_index(ctx, rooted_texture);
             tex_handle = nir_bindless_image_agx(
-               b, nir_imul_imm(b, index, D12_TEXTURE_DESC_SIZE),
+               b, nir_imul_imm(b, index,
+                               ctx->native_layout.texture_stride_B),
                .desc_set = D12_UNIFORM_HEAP_TEXTURES);
          } else {
             nir_def *native_slot = texture_slot;
             nir_def *native_offset =
-               is_buffer ? nir_imul_imm(b, native_slot, D12_TEXTURE_DESC_SIZE)
+               is_buffer ? nir_imul_imm(
+                              b, native_slot,
+                              ctx->native_layout.texture_stride_B)
                          : srv_texture_offset(ctx, tex_operand);
             if (!native_offset)
                return;
@@ -5572,9 +5608,16 @@ translate_tokens(struct d12_dxbc_ctx *ctx)
  */
 nir_shader *
 d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
-                const struct d12_binding_map *map, uint8_t *texture_shapes,
+                const struct d12_binding_map *map,
+                uint32_t descriptor_generation, uint8_t *texture_shapes,
                 const char **error)
 {
+   struct d12_native_descriptor_layout native_layout;
+   if (!d12_native_descriptor_layout(descriptor_generation, &native_layout)) {
+      *error = "unsupported native descriptor generation";
+      return NULL;
+   }
+
    const uint8_t *chunk;
    size_t chunk_size;
    uint32_t version = 0;
@@ -5588,6 +5631,8 @@ d12_dxbc_to_nir(const void *data, size_t size_B, mesa_shader_stage stage,
    memset(&ctx, 0, sizeof(ctx));
 
    ctx.map = map;
+   ctx.descriptor_generation = descriptor_generation;
+   ctx.native_layout = native_layout;
    ctx.b = nir_builder_init_simple_shader(stage, &agx_nir_options, "dxbc");
 
    /* Geometry instance count defaults to one when DCL_GS_INSTANCE_COUNT is

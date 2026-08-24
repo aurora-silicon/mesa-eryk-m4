@@ -47,6 +47,19 @@ d12_native_descriptor_layout(uint32_t generation,
    }
 }
 
+/* The current AGX lowering computes addresses for image atomics,
+ * multisampled image stores, and typed-buffer image stores by reading fields
+ * from the PBE descriptor in software.  Those helpers describe the Gen7/8
+ * layout only.  A generation-sized heap offset is not sufficient to make
+ * that software decode valid for Gen9/10, whose sideband layout remains
+ * unproven. */
+static inline bool
+d12_native_pbe_software_addressing_supported(uint32_t generation)
+{
+   return generation == D12_NATIVE_DESCRIPTOR_GEN7 ||
+          generation == D12_NATIVE_DESCRIPTOR_GEN8;
+}
+
 static inline bool
 d12_native_descriptor_span(uint8_t stride_B, size_t count,
                            size_t extra_elements, size_t *size_B)

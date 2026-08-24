@@ -8,6 +8,7 @@
  */
 
 #include "d12_dxil.h"
+#include "../d12_native_descriptor_core.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -146,7 +147,8 @@ main(int argc, char **argv)
          struct d12_binding_map dmap;
          memset(&dmap, 0, sizeof(dmap));
          nir_shader *dn =
-            d12_dxbc_to_nir(data, size, st, &dmap, NULL, &dxbc_err);
+            d12_dxbc_to_nir(data, size, st, &dmap,
+                            D12_NATIVE_DESCRIPTOR_GEN7, NULL, &dxbc_err);
          if (!dn) {
             printf("DXBC->NIR FAILED: %s\n", dxbc_err);
             return 1;
@@ -220,7 +222,8 @@ main(int argc, char **argv)
    struct d12_binding_map map;
    d12_binding_map_from_module(&mod, &map);
 
-   nir_shader *nir = d12_dxil_to_nir(&mod, stage, &map, &error);
+   nir_shader *nir =
+      d12_dxil_to_nir(&mod, stage, &map, D12_NATIVE_DESCRIPTOR_GEN7, &error);
    if (!nir) {
       fprintf(stderr, "DXIL->NIR failed: %s\n", error);
       d12_dxil_module_finish(&mod);

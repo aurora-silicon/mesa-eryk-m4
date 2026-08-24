@@ -831,7 +831,8 @@ d12_nir_sampler_state_count(nir_shader *nir,
  * does not claim or perturb the still-unimplemented linear case. */
 static nir_def *
 d12_custom_border_apply_heap_swizzle(nir_builder *b, nir_tex_instr *tex,
-                                     nir_def *border, nir_alu_type type)
+                                     nir_def *border, nir_alu_type type,
+                                     unsigned texture_stride_B)
 {
    int handle_src =
       nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
@@ -847,12 +848,12 @@ d12_custom_border_apply_heap_swizzle(nir_builder *b, nir_tex_instr *tex,
        nir_intrinsic_desc_set(handle) != D12_UNIFORM_HEAP_TEXTURES)
       return border;
 
-   /* The native texture heap uses 24-byte AGX descriptors, while the
+   /* The native heap uses the descriptor generation's stride, while the
     * parallel D3D heap retains each SRV's 40-byte API descriptor. Recover
     * the common heap index from the bindless texture byte offset. */
    nir_def *slot =
       nir_udiv_imm(b, nir_u2u64(b, handle->src[0].ssa),
-                   D12_TEXTURE_DESC_SIZE);
+                   texture_stride_B);
    nir_def *descriptor = nir_iadd(
       b, nir_load_descriptor_heap_agx(b),
       nir_imul_imm(b, slot, D12_HEAP_DESC_SIZE));
@@ -921,8 +922,10 @@ d12_sampler_sideband_entry(nir_builder *b, nir_tex_instr *tex, bool *bindless,
 
 static bool
 d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
-                              UNUSED void *data)
+                              void *data)
 {
+   const struct d12_native_descriptor_layout *native_layout = data;
+
    if (!nir_tex_instr_need_sampler(tex) || tex->is_shadow ||
        nir_tex_instr_src_index(tex, nir_tex_src_offset) >= 0 ||
        tex->op == nir_texop_tg4)
@@ -989,7 +992,8 @@ d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
 
    nir_alu_type type = nir_alu_type_get_base_type(tex->dest_type);
    border = nir_convert_to_bit_size(b, border, type, tex->def.bit_size);
-   border = d12_custom_border_apply_heap_swizzle(b, tex, border, type);
+   border = d12_custom_border_apply_heap_swizzle(
+      b, tex, border, type, native_layout->texture_stride_B);
    if (tex->def.num_components < 4)
       border = nir_trim_vector(b, border, tex->def.num_components);
 
@@ -999,10 +1003,11 @@ d12_lower_custom_point_border(nir_builder *b, nir_tex_instr *tex,
 }
 
 static bool
-d12_nir_lower_custom_point_borders(nir_shader *nir)
+d12_nir_lower_custom_point_borders(
+   nir_shader *nir, const struct d12_native_descriptor_layout *native_layout)
 {
    return nir_shader_tex_pass(nir, d12_lower_custom_point_border,
-                              nir_metadata_none, NULL);
+                              nir_metadata_none, (void *)native_layout);
 }
 
 /* AGX2 and G15's Gen4 sampler keep LOD bias outside the packed word. D3D12
@@ -1342,6 +1347,15 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    if (!dxil || !dxil_size)
       return E_INVALIDARG;
 
+   const uint32_t descriptor_generation =
+      (uint32_t)agx_chip_descriptor_generation(device->dev.chip);
+   struct d12_native_descriptor_layout native_layout;
+   if (!d12_native_descriptor_layout(descriptor_generation, &native_layout)) {
+      mesa_loge("CreateComputePipelineState: unsupported native descriptor "
+                "generation %u", descriptor_generation);
+      return E_NOTIMPL;
+   }
+
    uint8_t texture_shapes[D12_MAX_RESOURCE_BINDINGS] = {0};
 
    struct d12_binding_map filtered_map;
@@ -1375,8 +1389,9 @@ d12_pipeline_state_create_compute(struct d12_device *device,
        * the graphics path. */
       if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
          const char *dxbc_error = "unknown";
-         dxbc_nir = d12_dxbc_to_nir(dxil, dxil_size, MESA_SHADER_COMPUTE, map,
-                                    texture_shapes, &dxbc_error);
+         dxbc_nir = d12_dxbc_to_nir(
+            dxil, dxil_size, MESA_SHADER_COMPUTE, map,
+            descriptor_generation, texture_shapes, &dxbc_error);
          if (!dxbc_nir) {
             mesa_loge("CreateComputePipelineState: DXBC->NIR failed: %s",
                       dxbc_error);
@@ -1407,7 +1422,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
          return E_INVALIDARG;
       }
 
-      nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, map, &error);
+      nir = d12_dxil_to_nir(&mod, MESA_SHADER_COMPUTE, map,
+                            descriptor_generation, &error);
       d12_dxil_module_finish(&mod);
    }
 
@@ -1417,7 +1433,7 @@ d12_pipeline_state_create_compute(struct d12_device *device,
    }
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
-   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders, &native_layout);
    NIR_PASS(_, nir, d12_nir_lower_sampler_reduction);
    NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
@@ -1585,7 +1601,8 @@ d12_pipeline_state_create_compute(struct d12_device *device,
  * come after it.
  */
 static nir_shader *
-dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
+dxil_to_nir_stage(const struct d12_binding_map *map,
+                  uint32_t descriptor_generation, const void *dxil,
                   size_t dxil_size, mesa_shader_stage stage)
 {
    struct d12_binding_map filtered_map;
@@ -1618,7 +1635,8 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
       if (d12_dxbc_is_dxbc_shader(dxil, dxil_size)) {
          const char *dxbc_error = "unknown";
          nir_shader *nir =
-            d12_dxbc_to_nir(dxil, dxil_size, stage, map, NULL, &dxbc_error);
+            d12_dxbc_to_nir(dxil, dxil_size, stage, map,
+                            descriptor_generation, NULL, &dxbc_error);
          if (!nir)
             mesa_loge("graphics PSO: DXBC->NIR failed: %s", dxbc_error);
          return nir;
@@ -1637,7 +1655,8 @@ dxil_to_nir_stage(const struct d12_binding_map *map, const void *dxil,
    }
 
    const char *error = NULL;
-   nir_shader *nir = d12_dxil_to_nir(&mod, stage, map, &error);
+   nir_shader *nir = d12_dxil_to_nir(&mod, stage, map,
+                                     descriptor_generation, &error);
    d12_dxil_module_finish(&mod);
 
    if (!nir)
@@ -2266,6 +2285,15 @@ compile_gfx_stage(struct d12_device *device,
                   uint8_t *cull_distance_size,
                   struct agx_shader_part *out)
 {
+   const uint32_t descriptor_generation =
+      (uint32_t)agx_chip_descriptor_generation(device->dev.chip);
+   struct d12_native_descriptor_layout native_layout;
+   if (!d12_native_descriptor_layout(descriptor_generation, &native_layout)) {
+      mesa_loge("graphics shader: unsupported native descriptor generation "
+                "%u", descriptor_generation);
+      return false;
+   }
+
    nir_shader *nir;
    if (!dxil && stage == MESA_SHADER_FRAGMENT) {
       /* D3D12 permits a null pixel shader, notably for depth-only draws.
@@ -2276,7 +2304,8 @@ compile_gfx_stage(struct d12_device *device,
          MESA_SHADER_FRAGMENT, &agx_nir_options, "d12 empty fragment shader");
       nir = b.shader;
    } else {
-      nir = dxil_to_nir_stage(map, dxil, dxil_size, stage);
+      nir = dxil_to_nir_stage(map, descriptor_generation, dxil, dxil_size,
+                              stage);
    }
    if (!nir)
       return false;
@@ -2320,7 +2349,7 @@ compile_gfx_stage(struct d12_device *device,
    }
 
    NIR_PASS(_, nir, d12_nir_lower_sampler_lod_bias);
-   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders);
+   NIR_PASS(_, nir, d12_nir_lower_custom_point_borders, &native_layout);
    NIR_PASS(_, nir, d12_nir_lower_sampler_reduction);
    NIR_PASS(_, nir, d12_nir_lower_bindless_sampler_map);
 
@@ -2930,7 +2959,9 @@ compile_gs_stage(struct d12_device *device, const struct d12_binding_map *map,
                  struct agx_shader_part *rast_out)
 {
    nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_GEOMETRY);
+      dxil_to_nir_stage(
+         map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+         dxil, dxil_size, MESA_SHADER_GEOMETRY);
    if (!nir)
       return false;
 
@@ -3004,7 +3035,9 @@ compile_tcs_stage(struct d12_device *device, const struct d12_binding_map *map,
                   struct agx_shader_part *out)
 {
    nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_CTRL);
+      dxil_to_nir_stage(
+         map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+         dxil, dxil_size, MESA_SHADER_TESS_CTRL);
    if (!nir)
       return false;
 
@@ -3049,7 +3082,9 @@ compile_tes_stage(struct d12_device *device, const struct d12_binding_map *map,
                   struct agx_shader_part *out)
 {
    nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_EVAL);
+      dxil_to_nir_stage(
+         map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+         dxil, dxil_size, MESA_SHADER_TESS_EVAL);
    if (!nir)
       return false;
 
@@ -3082,7 +3117,9 @@ compile_sw_tes_stage(struct d12_device *device,
                      uint8_t *out_cull_size, bool export_patch_id)
 {
    nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_TESS_EVAL);
+      dxil_to_nir_stage(
+         map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+         dxil, dxil_size, MESA_SHADER_TESS_EVAL);
    if (!nir)
       return false;
 
@@ -3123,7 +3160,9 @@ compile_sw_vs_stage(struct d12_device *device,
                     uint8_t *out_clip_size, uint8_t *out_cull_size)
 {
    nir_shader *nir =
-      dxil_to_nir_stage(map, dxil, dxil_size, MESA_SHADER_VERTEX);
+      dxil_to_nir_stage(
+         map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+         dxil, dxil_size, MESA_SHADER_VERTEX);
    if (!nir)
       return false;
 
@@ -3541,8 +3580,9 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
 
    /* The mesh shader itself, as compute. */
    struct agx_shader_part ms_part;
-   nir_shader *ms = dxil_to_nir_stage(map, ms_dxil, ms_size,
-                                      MESA_SHADER_COMPUTE);
+   nir_shader *ms = dxil_to_nir_stage(
+      map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+      ms_dxil, ms_size, MESA_SHADER_COMPUTE);
    if (!ms) {
       ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
       *out = NULL;
@@ -3666,7 +3706,9 @@ d12_pipeline_state_create_mesh(struct d12_device *device, const void *ms_dxil,
    /* The amplification shader, if there is one. */
    if (as_dxil && as_size) {
       nir_shader *as =
-         dxil_to_nir_stage(map, as_dxil, as_size, MESA_SHADER_COMPUTE);
+         dxil_to_nir_stage(
+            map, (uint32_t)agx_chip_descriptor_generation(device->dev.chip),
+            as_dxil, as_size, MESA_SHADER_COMPUTE);
       if (!as) {
          ID3D12PipelineState_Release((ID3D12PipelineState *)*out);
          *out = NULL;
