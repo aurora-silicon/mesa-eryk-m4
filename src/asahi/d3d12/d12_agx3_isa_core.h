@@ -26,6 +26,7 @@ extern "C" {
 #define D12_AGX3_FMAX_F32_REG_REG_MAX_LENGTH 14
 #define D12_AGX3_I32_TO_F32_REG_MAX_LENGTH 10
 #define D12_AGX3_U32_TO_F32_REG_MAX_LENGTH 10
+#define D12_AGX3_F32_RINT_REG_LENGTH 10
 #define D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
@@ -131,6 +132,11 @@ struct d12_agx3_i32_to_f32_reg_encoding {
 
 struct d12_agx3_u32_to_f32_reg_encoding {
    uint8_t bytes[D12_AGX3_U32_TO_F32_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_f32_rint_reg_encoding {
+   uint8_t bytes[D12_AGX3_F32_RINT_REG_LENGTH];
    uint8_t length;
 };
 
@@ -357,6 +363,26 @@ bool d12_agx3_encode_u32_to_f32_reg(
    enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
    uint16_t src, struct d12_agx3_u32_to_f32_reg_encoding *out);
 bool d12_agx3_decode_u32_to_f32_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src);
+
+/*
+ * Encode/decode only the exact target-gated Metal `rint` selection observed
+ * immediately before PC_f2ir's signed conversion.  G15G/S/D, G16P/G/S and
+ * G17P use AGX3b; G17G/S use AGX3c.  Both operands are even half-register
+ * indices in 0..126 and `encoding` must match the directly witnessed chip.
+ *
+ * Other rounding selectors, exceptional-value/tie policy, saturation,
+ * modifiers, alternate scheduler/last-use contexts, trailing bytes, and
+ * unwitnessed C/A targets fail closed.  This bridge does not enable DXIL
+ * lowering, scheduling, runtime use, submission, device admission, or any
+ * D3D12 capability.
+ */
+bool d12_agx3_encode_f32_rint_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src, struct d12_agx3_f32_rint_reg_encoding *out);
+bool d12_agx3_decode_f32_rint_reg(
    enum agx_chip chip, enum agx_isa_encoding encoding,
    const void *instruction, uint32_t instruction_size, uint16_t *dest,
    uint16_t *src);

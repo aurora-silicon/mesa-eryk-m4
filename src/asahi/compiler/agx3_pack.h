@@ -27,6 +27,7 @@ extern "C" {
 #define AGX3_FMAX_F32_REG_REG_MAX_LENGTH 14
 #define AGX3_I32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_U32_TO_F32_REG_MAX_LENGTH 10
+#define AGX3_F32_RINT_REG_LENGTH 10
 #define AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
@@ -99,6 +100,11 @@ struct agx3_encoded_i32_to_f32_reg {
 
 struct agx3_encoded_u32_to_f32_reg {
    uint8_t bytes[AGX3_U32_TO_F32_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_f32_rint_reg {
+   uint8_t bytes[AGX3_F32_RINT_REG_LENGTH];
    uint8_t length;
 };
 
@@ -454,6 +460,28 @@ bool agx3_pack_u32_to_f32_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
    struct agx3_encoded_u32_to_f32_reg *out);
 bool agx3_unpack_u32_to_f32_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the exact ten-byte `f32rint` selection immediately preceding
+ * the signed conversion in PC_f2ir.  A nine-identity Q_rint_pc replay
+ * reproduces the AGX3b/AGX3c bytes, Q_rint_convert_kill reproduces the same
+ * fixed context with nonzero registers, and Q_rint_convert_dataflow keeps the
+ * input live to independently correlate f2 with the result and f18 with the
+ * source.  Apple's composer reproduces all 4,096 even-register pairs from
+ * those fixed fields on each table variant.
+ *
+ * Direct rint/trunc/ceil/floor sources distinguish selector f43 values
+ * 0/1/2/3 respectively; this API exposes only the rint selection.  It does
+ * not claim tie, exceptional-value, saturation, modifier, alternate-context,
+ * scheduling, or lowering semantics.  Operands are even half-register
+ * indices in 0..126.  Chip gates belong to the caller.
+ */
+bool agx3_pack_f32_rint_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
+   struct agx3_encoded_f32_rint_reg *out);
+bool agx3_unpack_f32_rint_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src, uint8_t *length);
 

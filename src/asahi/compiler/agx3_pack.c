@@ -1115,6 +1115,89 @@ agx3_unpack_u32_to_f32_reg(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_f32_rint_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                       uint16_t src, struct agx3_encoded_f32_rint_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 128 ||
+       src >= 128 || (dest & 1) != 0 || (src & 1) != 0)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      static const uint8_t canonical[] = {
+         0x2f, 0x00, 0x56, 0x00, 0x03, 0x00, 0xb0, 0x40, 0x00, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* Apple f2 is contiguous at b3; f18 occupies b5[2:7]. */
+      out->bytes[3] |= dest;
+      out->bytes[5] |= (src & 0x7e) << 1;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   static const uint8_t canonical[] = {
+      0x2f, 0x00, 0x04, 0x18, 0x2a, 0x20, 0xa0, 0x02, 0x30, 0x00,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2: d1 -> b0[4], d2..3 -> b7[3:4], d4 -> b0[7],
+    *     d5 -> b7[5], d6 -> b2[7]. */
+   out->bytes[0] |= (dest & 0x02) << 3;
+   out->bytes[7] |= (dest & 0x0c) << 1;
+   out->bytes[0] |= (dest & 0x10) << 3;
+   out->bytes[7] |= dest & 0x20;
+   out->bytes[2] |= (dest & 0x40) << 1;
+
+   /* f18: s1 -> b1[1], s2..4 -> b3[5:7], s5 -> b5[7],
+    *      s6 -> b8[0]. */
+   out->bytes[1] |= src & 0x02;
+   out->bytes[3] |= (src & 0x1c) << 3;
+   out->bytes[5] |= (src & 0x20) << 2;
+   out->bytes[8] |= (src & 0x40) >> 6;
+
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_f32_rint_reg(enum agx_isa_encoding encoding,
+                         const uint8_t *bytes, size_t available,
+                         uint16_t *dest, uint16_t *src, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src == NULL || length == NULL || available < AGX3_F32_RINT_REG_LENGTH)
+      return false;
+
+   uint16_t decoded_dest, decoded_src;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = bytes[3] & 0x7e;
+      decoded_src = (bytes[5] >> 1) & 0x7e;
+   } else {
+      decoded_dest = ((bytes[0] >> 3) & 0x02) |
+                     ((bytes[7] >> 1) & 0x0c) |
+                     ((bytes[0] >> 3) & 0x10) | (bytes[7] & 0x20) |
+                     ((bytes[2] >> 1) & 0x40);
+      decoded_src = (bytes[1] & 0x02) |
+                    ((bytes[3] >> 3) & 0x1c) |
+                    ((bytes[5] >> 2) & 0x20) |
+                    ((bytes[8] << 6) & 0x40);
+   }
+
+   struct agx3_encoded_f32_rint_reg canonical;
+   if (!agx3_pack_f32_rint_reg(
+          encoding, decoded_dest, decoded_src, &canonical) ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *length = canonical.length;
+   return true;
+}
+
+bool
 agx3_pack_f32_to_int_rtz_reg(
    enum agx_isa_encoding encoding, enum agx3_f32_to_int_rtz_mode mode,
    uint16_t dest, uint16_t src,

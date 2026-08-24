@@ -29,18 +29,18 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
 | G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
+| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
 | G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul/f32fma/f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact/long f32mul, f32fma, f32min/f32max, i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul/f32fma/f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact/long f32mul, f32fma, f32min/f32max/f32rint(PC), i32/u32-to-f32, f32-to-i32/u32 RTZ | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
 | G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/draw/link packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
@@ -93,15 +93,23 @@ round-toward-zero language-cast selections are separately packed and decoded
 as ten-byte `flt2int` forms on all nine identities. The direct fptosi/fptoui
 seeds and independent PC probes pin their byte-distinct signedness selectors.
 `P2f_ldexp` and the compiler's division expansions correlate the destination
-and source fields on both table variants. The explicit-rounding probe emits a
-separate `f32rint` before the same signed cast, so other rounding modes are not
-inferred. All four conversions expose only even half-registers 0--126.
+and source fields on both table variants. The exact ten-byte `f32rint`
+selection emitted immediately before PC_f2ir's signed cast is separately
+packed and decoded on those same nine identities. A nine-target PC replay and
+an independent nonzero-register last-use probe pin that fixed context, while
+live-source producer/consumer probes and exhaustive Apple-table composition
+correlate both operands over even half-registers 0--126. Direct
+`rint`/`trunc`/`ceil`/`floor` sources distinguish their selector values, but
+only the observed `rint` selection is exposed. Other rounding selectors,
+tie/exceptional-value semantics, and alternate scheduler/last-use contexts
+remain rejected. All five forms expose only even half-registers 0--126.
 Saturation, NaN/out-of-range behavior, source-reuse/kill variants, alternate
 contexts, modifiers, high registers, and conversion lowering policy remain
 closed.
-The arithmetic, bitwise, shift, multiply, multiply-add, float-add, and four
-conversion forms have exhaustive operand and every-bit rejection tests plus
-exact G15/G16/G17 corpus replay; the separate shift-count mask and G15G stall
+The arithmetic, bitwise, shift, multiply, multiply-add, float-add, and five
+conversion/rounding forms have exhaustive operand and every-bit rejection
+tests plus exact G15/G16/G17 corpus replay; the separate shift-count mask and
+G15G stall
 placement remain an unsolved scheduler rule. This is not a general shader
 encoder. In particular, the generated AGX3 disassemblers and hardware-RT
 detection do not make AGX3 code generation or device open supported.
@@ -464,9 +472,11 @@ maps the exact signed i32-to-f32 register conversion on the same nine target
 identities and conservative even 0--126 domain, plus the byte-distinct unsigned
 u32-to-f32 selection on that exact target set and domain. It additionally maps
 the exact f32-to-i32 and f32-to-u32 RTZ selections on those nine identities and
-the same register domain. Other rounding modes, saturation, NaN/out-of-range
-behavior, alternate source selections, high registers, and conversion lowering
-policy remain closed. The
+the same register domain, plus the exact PC_f2ir-context `f32rint` selection.
+That bridge admits only its directly observed round-to-integral selector and
+fixed scheduler/last-use context. Other rounding modes, saturation,
+NaN/out-of-range or tie behavior, alternate source/context selections, high
+registers, and conversion lowering policy remain closed. The
 multiply bridges accept only the byte-distinct implicit-zero and real-register
 addend forms on the nine compiler-witnessed targets; alternate low selections,
 high products, G17C, and other unwitnessed target selections remain closed.
@@ -693,7 +703,8 @@ The current in-tree anchors are:
   `ilshr`, `imul`, four-register `imadd`, compact f32 `add`, compact/long f32
   `multiply`, four-register f32 fused multiply-add, and register-register f32
   minimum/maximum plus signed/unsigned integer-to-f32 and f32-to-signed/unsigned
-  integer RTZ mappings into exact AGX3b/AGX3c encodings.
+  integer RTZ mappings, and the PC_f2ir-context `f32rint` selection into exact
+  AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
