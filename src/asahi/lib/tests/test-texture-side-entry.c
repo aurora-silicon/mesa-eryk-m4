@@ -120,6 +120,51 @@ test_gen10_ordinary_image(void)
 }
 
 static void
+test_direct_sparse_residency(void)
+{
+   const uint32_t generations[] = {
+      AGX_TEXTURE_SIDE_ENTRY_GENERATION_9,
+      AGX_TEXTURE_SIDE_ENTRY_GENERATION_10,
+   };
+
+   for (unsigned i = 0; i < sizeof(generations) / sizeof(generations[0]); ++i) {
+      struct agx_texture_side_entry_info info =
+         make_info(generations[i],
+                   AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY);
+      uint64_t packed = 0;
+
+      info.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT;
+      info.auxiliary_heap_index = 0;
+      info.value.sparse_residency.width_tiles = 1;
+      info.value.sparse_residency.height_tiles = 1;
+      CHECK(agx_texture_side_entry_pack(&info, &packed));
+      CHECK(packed == UINT64_C(0x3f8000003f800000));
+
+      info.value.sparse_residency.width_tiles = 3;
+      info.value.sparse_residency.height_tiles = 5;
+      CHECK(agx_texture_side_entry_pack(&info, &packed));
+      CHECK(packed == UINT64_C(0x40a0000040400000));
+
+      info.value.sparse_residency.width_tiles = UINT64_C(0x1000000);
+      info.value.sparse_residency.height_tiles = UINT64_C(0x1000000);
+      CHECK(agx_texture_side_entry_pack(&info, &packed));
+      CHECK(packed == UINT64_C(0x4b8000004b800000));
+
+      info.value.sparse_residency.width_tiles = 0;
+      CHECK_PACK_FAIL(&info);
+      info.value.sparse_residency.width_tiles = 1;
+      info.value.sparse_residency.height_tiles = 0;
+      CHECK_PACK_FAIL(&info);
+      info.value.sparse_residency.height_tiles = UINT64_C(0x1000001);
+      CHECK_PACK_FAIL(&info);
+
+      info.value.sparse_residency.height_tiles = 1;
+      info.auxiliary_heap_index = 1;
+      CHECK_PACK_FAIL(&info);
+   }
+}
+
+static void
 test_simple_gen9_atomic_payloads(void)
 {
    struct agx_texture_side_entry_gen9_atomic_info atomic = {
@@ -281,7 +326,7 @@ test_semantic_validation(void)
    info = make_info(AGX_TEXTURE_SIDE_ENTRY_GENERATION_10,
                     AGX_TEXTURE_SIDE_ENTRY_KIND_BUFFER);
    info.value.buffer_width_texels = 1;
-   info.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT_UNRESOLVED;
+   info.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT;
    CHECK_PACK_FAIL(&info);
    info.form = (enum agx_texture_side_entry_form)1;
    CHECK_PACK_FAIL(&info);
@@ -290,6 +335,19 @@ test_semantic_validation(void)
    info.kind = AGX_TEXTURE_SIDE_ENTRY_KIND_UNKNOWN;
    CHECK_PACK_FAIL(&info);
    info.kind = (enum agx_texture_side_entry_kind)99;
+   CHECK_PACK_FAIL(&info);
+
+   info = make_info(AGX_TEXTURE_SIDE_ENTRY_GENERATION_10,
+                    AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY);
+   info.auxiliary_heap_index = 0;
+   info.value.sparse_residency.width_tiles = 1;
+   info.value.sparse_residency.height_tiles = 1;
+   CHECK_PACK_FAIL(&info);
+
+   info.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT;
+   info.generation = 8;
+   CHECK_PACK_FAIL(&info);
+   info.generation = 11;
    CHECK_PACK_FAIL(&info);
 
    packed = UINT64_MAX;
@@ -304,6 +362,7 @@ main(void)
    test_raw_geometry();
    test_buffer_entries();
    test_gen10_ordinary_image();
+   test_direct_sparse_residency();
    test_simple_gen9_atomic_payloads();
    test_complex_gen9_atomic_payloads();
    test_atomic_validation();

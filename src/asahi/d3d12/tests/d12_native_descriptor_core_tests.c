@@ -87,9 +87,39 @@ main(void)
    CHECK(side_word == 0);
    side.form = AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL;
 
+   side.descriptor_generation = D12_NATIVE_DESCRIPTOR_GEN10;
+   side.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT;
+   side.kind = AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY;
+   side.auxiliary_heap_index = 0;
+   side.value.sparse_residency.width_tiles = 3;
+   side.value.sparse_residency.height_tiles = 5;
+   CHECK(d12_native_texture_side_entry_pack(&side, &side_word));
+   CHECK(side_word == UINT64_C(0x40a0000040400000));
+
+   side.descriptor_generation = D12_NATIVE_DESCRIPTOR_GEN9;
+   side.value.sparse_residency.width_tiles = UINT64_C(0x1000000);
+   side.value.sparse_residency.height_tiles = 1;
+   CHECK(d12_native_texture_side_entry_pack(&side, &side_word));
+   CHECK(side_word == UINT64_C(0x3f8000004b800000));
+
+   side.value.sparse_residency.width_tiles = UINT64_C(0x1000001);
+   CHECK(!d12_native_texture_side_entry_pack(&side, &side_word));
+   CHECK(side_word == 0);
+   side.value.sparse_residency.width_tiles = 1;
+   side.auxiliary_heap_index = 1;
+   CHECK(!d12_native_texture_side_entry_pack(&side, &side_word));
+   CHECK(side_word == 0);
+   side.auxiliary_heap_index = 0;
+   side.form = AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL;
+   CHECK(!d12_native_texture_side_entry_pack(&side, &side_word));
+   CHECK(side_word == 0);
+   side.form = AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT;
+
    for (uint32_t generation = 0; generation < 12; ++generation) {
       side.descriptor_generation = generation;
       side.kind = AGX_TEXTURE_SIDE_ENTRY_KIND_BUFFER;
+      side.form = AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL;
+      side.auxiliary_heap_index = 3;
       side.value.buffer_width_texels = 1;
       const bool supported = generation == D12_NATIVE_DESCRIPTOR_GEN9 ||
                              generation == D12_NATIVE_DESCRIPTOR_GEN10;

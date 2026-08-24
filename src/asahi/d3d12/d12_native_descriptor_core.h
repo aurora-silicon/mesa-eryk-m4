@@ -66,6 +66,7 @@ struct d12_native_texture_side_entry_info {
    union {
       uint64_t buffer_width_texels;
       struct agx_texture_side_entry_gen9_atomic_info gen9_atomic;
+      struct agx_texture_side_entry_sparse_residency_info sparse_residency;
    } value;
 };
 
@@ -114,6 +115,9 @@ d12_native_texture_side_entry_pack(
       break;
    case AGX_TEXTURE_SIDE_ENTRY_KIND_GEN9_ATOMIC_IMAGE:
       shared.value.gen9_atomic = info->value.gen9_atomic;
+      break;
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY:
+      shared.value.sparse_residency = info->value.sparse_residency;
       break;
    case AGX_TEXTURE_SIDE_ENTRY_KIND_ORDINARY_IMAGE:
    case AGX_TEXTURE_SIDE_ENTRY_KIND_UNKNOWN:

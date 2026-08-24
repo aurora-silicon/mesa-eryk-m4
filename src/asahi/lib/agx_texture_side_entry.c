@@ -7,6 +7,9 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <string.h>
+
+#define AGX_TEXTURE_SIDE_ENTRY_MAX_EXACT_BINARY32_INTEGER UINT64_C(0x1000000)
 
 static bool
 agx_texture_side_entry_generation_valid(uint32_t generation)
@@ -165,6 +168,29 @@ agx_texture_side_entry_pack_gen9_atomic_payload(
    return true;
 }
 
+static bool
+agx_texture_side_entry_pack_sparse_residency(
+   const struct agx_texture_side_entry_sparse_residency_info *info,
+   uint64_t *packed)
+{
+   if (!info || !packed || info->width_tiles == 0 || info->height_tiles == 0 ||
+       info->width_tiles > AGX_TEXTURE_SIDE_ENTRY_MAX_EXACT_BINARY32_INTEGER ||
+       info->height_tiles > AGX_TEXTURE_SIDE_ENTRY_MAX_EXACT_BINARY32_INTEGER)
+      return false;
+
+   const float width = (float)info->width_tiles;
+   const float height = (float)info->height_tiles;
+   uint32_t width_bits;
+   uint32_t height_bits;
+
+   _Static_assert(sizeof(width) == sizeof(width_bits), "binary32 is required");
+   memcpy(&width_bits, &width, sizeof(width_bits));
+   memcpy(&height_bits, &height, sizeof(height_bits));
+
+   *packed = (uint64_t)width_bits | ((uint64_t)height_bits << 32);
+   return true;
+}
+
 bool
 agx_texture_side_entry_pack(const struct agx_texture_side_entry_info *info,
                             uint64_t *packed)
@@ -173,8 +199,20 @@ agx_texture_side_entry_pack(const struct agx_texture_side_entry_info *info,
       return false;
 
    *packed = 0;
-   if (!info || !agx_texture_side_entry_generation_valid(info->generation) ||
-       info->form != AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL)
+   if (!info || !agx_texture_side_entry_generation_valid(info->generation))
+      return false;
+
+   if (info->form == AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT) {
+      if (info->kind !=
+             AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY ||
+          info->auxiliary_heap_index != 0)
+         return false;
+
+      return agx_texture_side_entry_pack_sparse_residency(
+         &info->value.sparse_residency, packed);
+   }
+
+   if (info->form != AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL)
       return false;
 
    uint32_t payload = 0;
@@ -198,6 +236,9 @@ agx_texture_side_entry_pack(const struct agx_texture_side_entry_info *info,
              &info->value.gen9_atomic, &payload))
          return false;
       break;
+
+   case AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY:
+      return false;
 
    case AGX_TEXTURE_SIDE_ENTRY_KIND_UNKNOWN:
    default:

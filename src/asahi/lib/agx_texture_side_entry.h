@@ -5,12 +5,11 @@
  * Recovered Apple texture-heap side-entry ABI.
  *
  * Each texture-heap slot has an eight-byte side entry alongside its read and
- * write descriptors.  Compiler-generated shaders consume the low 32-bit
- * payload.  The high 32 bits name an auxiliary/companion texture-heap slot.
+ * write descriptors.  Normal entries contain a low 32-bit payload and a high
+ * 32-bit auxiliary/companion texture-heap slot.  Direct sparse-residency
+ * entries instead contain two IEEE-754 binary32 tile dimensions.
  *
- * This interface deliberately models only independently recovered forms.  In
- * particular, Apple's texture mode 2 takes an opaque 64-bit value from a
- * different object field and is always rejected here.
+ * This interface deliberately models only independently recovered forms.
  */
 
 #ifndef AGX_TEXTURE_SIDE_ENTRY_H
@@ -27,7 +26,10 @@ extern "C" {
 
 enum agx_texture_side_entry_form {
    AGX_TEXTURE_SIDE_ENTRY_FORM_NORMAL = 0,
-   AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT_UNRESOLVED = 2,
+   AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT = 2,
+   /* Compatibility spelling retained for callers that still reject mode 2. */
+   AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT_UNRESOLVED =
+      AGX_TEXTURE_SIDE_ENTRY_FORM_DIRECT,
 };
 
 enum agx_texture_side_entry_kind {
@@ -35,6 +37,7 @@ enum agx_texture_side_entry_kind {
    AGX_TEXTURE_SIDE_ENTRY_KIND_BUFFER = 1,
    AGX_TEXTURE_SIDE_ENTRY_KIND_ORDINARY_IMAGE = 2,
    AGX_TEXTURE_SIDE_ENTRY_KIND_GEN9_ATOMIC_IMAGE = 3,
+   AGX_TEXTURE_SIDE_ENTRY_KIND_TIER1_SPARSE_RESIDENCY = 4,
 };
 
 /* Numeric values match the recovered descriptor-generation axis. */
@@ -79,6 +82,20 @@ struct agx_texture_side_entry_gen9_atomic_info {
    uint32_t format_element_bytes;
 };
 
+/*
+ * Mode 2 is produced only for Apple's tier-1 sparse-residency texture.  The
+ * producer stores two positive integral binary32 values at texture +0x288:
+ * ordinary images use (1, 1), while texture buffers use the number of sparse
+ * tiles needed along each axis.  A normal parent entry names this separate
+ * mode-2 heap slot through its high auxiliary index; the mode-2 entry's own
+ * high half is the height value, not another heap index.  Restrict the
+ * recovered interface to values exactly representable as binary32 integers.
+ */
+struct agx_texture_side_entry_sparse_residency_info {
+   uint64_t width_tiles;
+   uint64_t height_tiles;
+};
+
 struct agx_texture_side_entry_info {
    uint32_t generation;
    enum agx_texture_side_entry_form form;
@@ -88,10 +105,11 @@ struct agx_texture_side_entry_info {
    union {
       uint64_t buffer_width_texels;
       struct agx_texture_side_entry_gen9_atomic_info gen9_atomic;
+      struct agx_texture_side_entry_sparse_residency_info sparse_residency;
    } value;
 };
 
-/* Raw, lossless low-payload/high-auxiliary composition and decode. */
+/* Raw, lossless normal-form low-payload/high-auxiliary composition/decode. */
 bool agx_texture_side_entry_compose(uint32_t payload,
                                     uint32_t auxiliary_heap_index,
                                     uint64_t *packed);

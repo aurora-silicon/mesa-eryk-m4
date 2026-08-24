@@ -217,15 +217,19 @@ array form, `0xae99` sentinel branch, and 16 KiB page-aligned branch; the G17
 runtime decoder independently consumes those same forms. Gen10 removes
 `getExtraTextureMetadata`: all ordinary and atomic image payloads were zero in
 a broad 963-line M5 Pro capture, while a 4,096-texel buffer produced low word
-`0x1000`. Mode 2's direct i64 at texture+0x288, construction of a nonzero
-companion slot, and executed G15/G16 nonzero atomic payloads remain **FC**. A
-shared, tested 8-byte side-entry helper now packs and decodes the proven
-subset: Gen9/Gen10 buffers, zero-valued ordinary Gen10 images, and the bounded
-Gen9 atomic formula. It rejects mode 2, unknown cases, misalignment, and
-overflow. The D3D12 descriptor core maps that same subset and records the
-Gen9/Gen10 8-byte side stride, but does not allocate or bind a side heap while
-its command-stream pointer channel remains unknown. Honeykrisp still has no
-safe total packer and neither API driver exposes writes or atomics.
+`0x1000`. Mode 2 is now correlated to the tier-1 sparse-residency companion
+texture. Its direct i64 stores binary32 `(width_tiles, height_tiles)` from
+texture+0x288/+0x28c rather than a payload/auxiliary pair; the normal parent's
+high word names that companion's same-index heap slot. The producer, paired
+heap-index allocation, clone path, and destruction lifetime are pinned on
+G15G, G16G, G17P, G17G, and G17X plugin classes. A shared, tested 8-byte
+side-entry helper packs and decodes the proven normal subset plus exact,
+positive integral mode-2 tile counts through 2^24, rejecting wrong forms,
+unknown cases, and overflow. The D3D12 descriptor core maps that same subset
+and records the Gen9/Gen10 8-byte side stride, but does not allocate or bind a
+side heap while its command-stream pointer channel remains unknown. Executed
+G15/G16 nonzero atomic payloads and live side-heap submission remain **FC**;
+Honeykrisp and D3D12 therefore still expose neither image writes nor atomics.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in
