@@ -1286,6 +1286,105 @@ test_agx_gen5_child_layout(void)
            "failed version-based dispatch leaves no stale layout data");
 }
 
+
+static void
+put_u32_le(uint8_t *b, uint32_t off, uint32_t v)
+{
+   b[off + 0] = (uint8_t)v; b[off + 1] = (uint8_t)(v >> 8);
+   b[off + 2] = (uint8_t)(v >> 16); b[off + 3] = (uint8_t)(v >> 24);
+}
+
+static void
+put_f32_le(uint8_t *b, uint32_t off, float v)
+{
+   uint32_t bits;
+   memcpy(&bits, &v, sizeof(bits));
+   put_u32_le(b, off, bits);
+}
+
+static void
+test_hit_result_decode(void)
+{
+   /* The struct layout is fixed: pinned offsets 0..56, then the two 4x3
+    * transforms.  Assert the constants are internally consistent first. */
+   require(D12_RT_HIT_OFF_T == 4, "t offset");
+   require(D12_RT_HIT_OFF_WORLD_TO_OBJECT ==
+              D12_RT_HIT_OFF_OBJECT_TO_WORLD + D12_RT_TRANSFORM_FLOATS * 4u,
+           "world-to-object follows object-to-world by one 4x3");
+   require(D12_RT_HIT_RESULT_SIZE ==
+              D12_RT_HIT_OFF_WORLD_TO_OBJECT + D12_RT_TRANSFORM_FLOATS * 4u,
+           "result size ends the second transform");
+
+   uint8_t raw[D12_RT_HIT_RESULT_SIZE];
+   memset(raw, 0, sizeof(raw));
+   put_u32_le(raw, D12_RT_HIT_OFF_TYPE, 1);
+   put_f32_le(raw, D12_RT_HIT_OFF_T, 12.5f);
+   put_u32_le(raw, D12_RT_HIT_OFF_PRIMITIVE_ID, 7);
+   put_u32_le(raw, D12_RT_HIT_OFF_GEOMETRY_ID, 3);
+   put_u32_le(raw, D12_RT_HIT_OFF_PRIMITIVE_DATA, 0xdeadbeefu);
+   put_u32_le(raw, D12_RT_HIT_OFF_PRIMITIVE_DATA + 4u, 0x0000cafeu);
+   put_u32_le(raw, D12_RT_HIT_OFF_INSTANCE_ID, 42);
+   put_u32_le(raw, D12_RT_HIT_OFF_USER_INSTANCE_ID, 99);
+   raw[D12_RT_HIT_OFF_INSTANCE_COUNT] = 2;
+   put_f32_le(raw, D12_RT_HIT_OFF_BARYCENTRICS, 0.25f);
+   put_f32_le(raw, D12_RT_HIT_OFF_BARYCENTRICS + 4u, 0.5f);
+   raw[D12_RT_HIT_OFF_FRONT_FACE] = 1;
+   put_f32_le(raw, D12_RT_HIT_OFF_CURVE_PARAM, 0.75f);
+   put_u32_le(raw, D12_RT_HIT_OFF_INTERSECTION_FN_ID, 5);
+   for (uint32_t i = 0; i < D12_RT_TRANSFORM_FLOATS; ++i) {
+      put_f32_le(raw, D12_RT_HIT_OFF_OBJECT_TO_WORLD + i * 4u, (float)i);
+      put_f32_le(raw, D12_RT_HIT_OFF_WORLD_TO_OBJECT + i * 4u, (float)(100 + i));
+   }
+
+   struct d12_rt_hit_result hit;
+   require(d12_rt_hit_result_decode(raw, sizeof(raw), &hit),
+           "full result decodes");
+   require(hit.intersection_type == 1, "type");
+   require(hit.t == 12.5f, "t");
+   require(hit.primitive_id == 7, "primitive id");
+   require(hit.geometry_id == 3, "geometry id");
+   require(hit.primitive_data == UINT64_C(0x0000cafedeadbeef),
+           "primitive data is a 64-bit LE pointer");
+   require(hit.instance_id == 42, "instance id");
+   require(hit.user_instance_id == 99, "user instance id");
+   require(hit.instance_count == 2, "instance count");
+   require(hit.barycentrics[0] == 0.25f && hit.barycentrics[1] == 0.5f,
+           "barycentrics");
+   require(hit.front_face == 1, "front face");
+   require(hit.curve_param == 0.75f, "curve param");
+   require(hit.intersection_function_id == 5, "intersection fn id");
+   require(hit.object_to_world[0] == 0.0f && hit.object_to_world[11] == 11.0f,
+           "object-to-world transform");
+   require(hit.world_to_object[0] == 100.0f &&
+              hit.world_to_object[11] == 111.0f,
+           "world-to-object transform");
+
+   /* A short buffer (RayQuery reading only the scalar prefix) must decode the
+    * scalars and leave the transforms zero, not read out of bounds. */
+   struct d12_rt_hit_result prefix;
+   require(d12_rt_hit_result_decode(raw, D12_RT_HIT_OFF_INTERSECTION_FN_ID + 4u,
+                                    &prefix),
+           "scalar-prefix decode");
+   require(prefix.t == 12.5f, "prefix t");
+   require(prefix.object_to_world[0] == 0.0f, "prefix leaves transform zero");
+
+   require(!d12_rt_hit_result_decode(raw, 8, &hit), "too-short buffer refused");
+   require(!d12_rt_hit_result_decode(NULL, sizeof(raw), &hit), "null refused");
+
+   /* TLAS instance leaf: the +12 object-to-world transform drives descent. */
+   require(D12_RT_INSTANCE_LEAF_SIZE == 124, "instance leaf size");
+   uint8_t leaf[D12_RT_INSTANCE_LEAF_SIZE];
+   memset(leaf, 0, sizeof(leaf));
+   for (uint32_t i = 0; i < D12_RT_TRANSFORM_FLOATS; ++i)
+      put_f32_le(leaf, D12_RT_INSTANCE_LEAF_OFF_OBJECT_TO_WORLD + i * 4u,
+                 (float)(i * 2));
+   float xform[12];
+   require(d12_rt_instance_leaf_object_to_world(leaf, sizeof(leaf), xform),
+           "instance transform reads");
+   require(xform[0] == 0.0f && xform[11] == 22.0f, "instance transform values");
+   require(D12_RT_RAY_QUERY_STATE_SIZE == 168, "ray query state size");
+}
+
 int
 main(void)
 {
@@ -1305,6 +1404,7 @@ main(void)
    test_agx_gen1_hw_aabb_leaf();
    test_agx_gen1_child_layout();
    test_agx_gen5_child_layout();
+   test_hit_result_decode();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);
    return 0;

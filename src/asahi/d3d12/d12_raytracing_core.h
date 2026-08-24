@@ -996,6 +996,158 @@ d12_rt_agx_bvh_decode_child_layout(
    return false;
 }
 
+/*
+ * SOFTWARE-VISIBLE TRAVERSAL RESULT (grade A, both AGX3 encodings)
+ *
+ * Once traversal exists, the shader reads the hit back from one SCS scratch
+ * segment that `agx.intersect.ray.result` unpacks into Apple's own
+ * `IntersectRayResult` struct.  Those byte offsets are grade A from the RIA3
+ * runtime IR (research/gpu/GPU_AGX3_RT_TRAVERSAL_SEMANTICS_2026-08-24.md S4.3),
+ * and the public accessor family (`get_distance`, `get_primitive_id`, ...) maps
+ * 1:1 onto the DXR/HLSL RayQuery / hit-attribute getters.  This is the
+ * result-decode half of a ray_query path; it does not by itself trace a ray.
+ *
+ * Offsets 0..56 are pinned explicitly in the IR.  The two 4x3 transforms follow
+ * the trailing i32 at the standard LLVM struct offsets (+60 and +108); they are
+ * marked as struct-layout-derived rather than separately cited.
+ *
+ * Fields are little-endian, matching Apple Silicon and the ARM64 host.  The SCS
+ * scratch *input* layout (origin/dir/tmin/tmax placement) is a separate, still
+ * UNKNOWN, hardware-register-defined concern (S8) and is deliberately absent.
+ */
+#define D12_RT_HIT_OFF_TYPE               0u  /* i32 intersection type/status */
+#define D12_RT_HIT_OFF_T                  4u  /* f32 ray distance             */
+#define D12_RT_HIT_OFF_PRIMITIVE_ID       8u  /* i32                          */
+#define D12_RT_HIT_OFF_GEOMETRY_ID        12u /* i32                          */
+#define D12_RT_HIT_OFF_PRIMITIVE_DATA     16u /* addrspace(1) ptr, 8 bytes    */
+#define D12_RT_HIT_OFF_INSTANCE_ID        24u /* i32 (bottom-level)           */
+#define D12_RT_HIT_OFF_USER_INSTANCE_ID   28u /* i32 (InstanceID())           */
+#define D12_RT_HIT_OFF_INSTANCE_COUNT     32u /* i8  levels hit               */
+#define D12_RT_HIT_OFF_BARYCENTRICS       40u /* 2 x f32                      */
+#define D12_RT_HIT_OFF_FRONT_FACE         48u /* i8                           */
+#define D12_RT_HIT_OFF_CURVE_PARAM        52u /* f32 curve param / ray tmin   */
+#define D12_RT_HIT_OFF_INTERSECTION_FN_ID 56u /* i32                          */
+#define D12_RT_HIT_OFF_OBJECT_TO_WORLD    60u /* 4x3 f32, struct-derived      */
+#define D12_RT_HIT_OFF_WORLD_TO_OBJECT    108u /* 4x3 f32, struct-derived     */
+#define D12_RT_HIT_RESULT_SIZE            156u /* end of world-to-object 4x3  */
+#define D12_RT_TRANSFORM_FLOATS           12u  /* 4 rows x 3 columns          */
+
+/* DXR RayQuery / DXR 1.1 inline state: a 168-byte query object holding the
+ * software traversal stack for the proceed()/commit() loop (S4.4).  Grade A for
+ * the size; the internal field layout is grade B and is not exposed. */
+#define D12_RT_RAY_QUERY_STATE_SIZE       168u
+
+/* TLAS instance leaf (grade A byte offsets from the RIA3 module's TBAA
+ * metadata, S4.5).  The object-to-world transform at +12 is what drives
+ * multi-level TLAS->BLAS descent. */
+#define D12_RT_INSTANCE_LEAF_OFF_HEADER          0u   /* 4 x i32 header words   */
+#define D12_RT_INSTANCE_LEAF_OFF_OBJECT_TO_WORLD 12u  /* 4x3 f32, 48 bytes      */
+#define D12_RT_INSTANCE_LEAF_OFF_AABB            60u  /* 6 x f32 min/max, 24 B  */
+#define D12_RT_INSTANCE_LEAF_OFF_IDS             84u  /* 6 x i32                */
+#define D12_RT_INSTANCE_LEAF_OFF_INSTANCE_FLAGS  108u /* 4 x i32 id/user/mask/fl*/
+#define D12_RT_INSTANCE_LEAF_SIZE                124u
+
+static inline uint32_t
+d12_rt_read_u32_le(const void *base, uint32_t offset)
+{
+   const uint8_t *p = (const uint8_t *)base + offset;
+   return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
+          ((uint32_t)p[3] << 24);
+}
+
+static inline float
+d12_rt_read_f32_le(const void *base, uint32_t offset)
+{
+   uint32_t bits = d12_rt_read_u32_le(base, offset);
+   float value;
+   memcpy(&value, &bits, sizeof(value));
+   return value;
+}
+
+static inline uint64_t
+d12_rt_read_u64_le(const void *base, uint32_t offset)
+{
+   return (uint64_t)d12_rt_read_u32_le(base, offset) |
+          ((uint64_t)d12_rt_read_u32_le(base, offset + 4) << 32);
+}
+
+/* The DXR-visible attributes of one hit, read out of a raw result buffer at the
+ * grade-A offsets above.  A decoder, not a tracer. */
+struct d12_rt_hit_result {
+   uint32_t intersection_type;
+   float    t;
+   uint32_t primitive_id;
+   uint32_t geometry_id;
+   uint64_t primitive_data;
+   uint32_t instance_id;
+   uint32_t user_instance_id;
+   uint8_t  instance_count;
+   float    barycentrics[2];
+   uint8_t  front_face;
+   float    curve_param;
+   uint32_t intersection_function_id;
+   float    object_to_world[D12_RT_TRANSFORM_FLOATS];
+   float    world_to_object[D12_RT_TRANSFORM_FLOATS];
+};
+
+static inline void
+d12_rt_read_transform(const void *base, uint32_t offset, float out[12])
+{
+   for (uint32_t i = 0; i < D12_RT_TRANSFORM_FLOATS; ++i)
+      out[i] = d12_rt_read_f32_le(base, offset + i * 4u);
+}
+
+/* Decode a raw IntersectRayResult buffer.  `available` must cover the struct;
+ * callers that only read a prefix (e.g. RayQuery without transforms) pass the
+ * prefix length and the transform fields stay zero. */
+static inline bool
+d12_rt_hit_result_decode(const void *raw, size_t available,
+                         struct d12_rt_hit_result *out)
+{
+   if (!raw || !out || available < D12_RT_HIT_OFF_INTERSECTION_FN_ID + 4u)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   out->intersection_type = d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_TYPE);
+   out->t = d12_rt_read_f32_le(raw, D12_RT_HIT_OFF_T);
+   out->primitive_id = d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_PRIMITIVE_ID);
+   out->geometry_id = d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_GEOMETRY_ID);
+   out->primitive_data = d12_rt_read_u64_le(raw, D12_RT_HIT_OFF_PRIMITIVE_DATA);
+   out->instance_id = d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_INSTANCE_ID);
+   out->user_instance_id =
+      d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_USER_INSTANCE_ID);
+   out->instance_count =
+      ((const uint8_t *)raw)[D12_RT_HIT_OFF_INSTANCE_COUNT];
+   out->barycentrics[0] = d12_rt_read_f32_le(raw, D12_RT_HIT_OFF_BARYCENTRICS);
+   out->barycentrics[1] =
+      d12_rt_read_f32_le(raw, D12_RT_HIT_OFF_BARYCENTRICS + 4u);
+   out->front_face = ((const uint8_t *)raw)[D12_RT_HIT_OFF_FRONT_FACE];
+   out->curve_param = d12_rt_read_f32_le(raw, D12_RT_HIT_OFF_CURVE_PARAM);
+   out->intersection_function_id =
+      d12_rt_read_u32_le(raw, D12_RT_HIT_OFF_INTERSECTION_FN_ID);
+
+   if (available >= D12_RT_HIT_RESULT_SIZE) {
+      d12_rt_read_transform(raw, D12_RT_HIT_OFF_OBJECT_TO_WORLD,
+                            out->object_to_world);
+      d12_rt_read_transform(raw, D12_RT_HIT_OFF_WORLD_TO_OBJECT,
+                            out->world_to_object);
+   }
+   return true;
+}
+
+/* Read the object-to-world transform of a TLAS instance leaf -- the +12
+ * transform that drives multi-level descent. */
+static inline bool
+d12_rt_instance_leaf_object_to_world(const void *raw, size_t available,
+                                     float out[12])
+{
+   if (!raw || !out || available < D12_RT_INSTANCE_LEAF_OFF_AABB)
+      return false;
+
+   d12_rt_read_transform(raw, D12_RT_INSTANCE_LEAF_OFF_OBJECT_TO_WORLD, out);
+   return true;
+}
+
 #ifdef __cplusplus
 }
 #endif
