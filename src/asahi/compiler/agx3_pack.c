@@ -369,6 +369,75 @@ agx3_unpack_iadd_u32_reg_reg(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_fadd_f32_reg_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                           uint16_t src0, uint16_t src1,
+                           struct agx3_encoded_fadd_f32_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 256 ||
+       src0 >= 256 || src1 >= 256 || (dest & 1) != 0 || (src0 & 1) != 0 ||
+       (src1 & 1) != 0)
+      return false;
+
+   /*
+    * Exact common compact selection from the G15G/G16G/G17S delayed-use
+    * replay.  Apple fields f2/f35/f18 are destination/source0/source1.
+    * Anonymous context fields remain fixed rather than being named here.
+    */
+   const uint8_t canonical[AGX3_FADD_F32_REG_REG_LENGTH] = {
+      0x09, 0x01, 0x04, 0x01, 0x00, 0x20,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2: d[1:4] -> b0[4:7], d[5:6] -> b2[6:7], d[7] -> b5[4]. */
+   out->bytes[0] |= (dest & 0x1e) << 3;
+   out->bytes[2] |= (dest & 0x60) << 1;
+   out->bytes[5] |= (dest & 0x80) >> 3;
+
+   /* f35: s0[1:6] -> b3[1:6], s0[7] -> b5[2]. */
+   out->bytes[3] |= src0 & 0x7e;
+   out->bytes[5] |= (src0 & 0x80) >> 5;
+
+   /* f18: s1[1:6] -> b1[1:6], s1[7] -> b5[0]. */
+   out->bytes[1] |= src1 & 0x7e;
+   out->bytes[5] |= (src1 & 0x80) >> 7;
+
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_fadd_f32_reg_reg(enum agx_isa_encoding encoding,
+                             const uint8_t *bytes, size_t available,
+                             uint16_t *dest, uint16_t *src0, uint16_t *src1,
+                             uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src0 == NULL || src1 == NULL || length == NULL ||
+       available < AGX3_FADD_F32_REG_REG_LENGTH)
+      return false;
+
+   const uint16_t decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                                 ((bytes[2] >> 1) & 0x60) |
+                                 ((bytes[5] << 3) & 0x80);
+   const uint16_t decoded_src0 = (bytes[3] & 0x7e) |
+                                 ((bytes[5] << 5) & 0x80);
+   const uint16_t decoded_src1 = (bytes[1] & 0x7e) |
+                                 ((bytes[5] << 7) & 0x80);
+
+   struct agx3_encoded_fadd_f32_reg_reg canonical;
+   if (!agx3_pack_fadd_f32_reg_reg(encoding, decoded_dest, decoded_src0,
+                                   decoded_src1, &canonical) ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src0 = decoded_src0;
+   *src1 = decoded_src1;
+   *length = canonical.length;
+   return true;
+}
+
+bool
 agx3_pack_bit_and_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_bit_and_u32_reg_reg *out)

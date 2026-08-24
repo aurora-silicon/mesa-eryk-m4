@@ -19,6 +19,7 @@ extern "C" {
 #define AGX3_LDIMM_MAX_LENGTH 8
 #define AGX3_IADD_U32_IMM8_MAX_LENGTH 12
 #define AGX3_IADD_U32_REG_REG_MAX_LENGTH 12
+#define AGX3_FADD_F32_REG_REG_LENGTH 6
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -50,6 +51,11 @@ struct agx3_encoded_iadd_u32_imm8 {
 
 struct agx3_encoded_iadd_u32_reg_reg {
    uint8_t bytes[AGX3_IADD_U32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_fadd_f32_reg_reg {
+   uint8_t bytes[AGX3_FADD_F32_REG_REG_LENGTH];
    uint8_t length;
 };
 
@@ -212,6 +218,28 @@ bool agx3_pack_iadd_u32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_iadd_u32_reg_reg *out);
 bool agx3_unpack_iadd_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the exact compact register-register f32 add selection common
+ * to Apple's AGX3b and AGX3c tables.  A forced-live eight-load replay
+ * independently correlates f2 with the result, f35 with `src0`, and f18 with
+ * `src1` across G15G/S/D, G16P/G/S, G17P, and G17G/S.  Independent delayed-
+ * use captures emit this six-byte selection on G15G, G16G, and G17S; high-
+ * pressure G16G/G17S captures reproduce it while exercising register bit 7.
+ *
+ * All operands are even half-register indices in Mesa's modeled r0..r127
+ * file.  This packer preserves the two physical source fields even though
+ * fadd is commutative.  It accepts only the exact anonymous-field selection
+ * in those compact captures.  Modifier-bearing, kill, wait/scheduler-extended
+ * and twelve-byte forms, AGX3c's unprobed ninth register bits, and G15G's
+ * standalone scheduling nops remain outside this API and fail closed.
+ */
+bool agx3_pack_fadd_f32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_fadd_f32_reg_reg *out);
+bool agx3_unpack_fadd_f32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
