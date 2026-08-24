@@ -1043,6 +1043,12 @@ void agx_opt_break_if(agx_context *ctx);
 void agx_opt_jmp_none(agx_context *ctx);
 void agx_pack_binary(agx_context *ctx, struct util_dynarray *emission);
 
+/* AGX3 (M3/M4/M5) binary emission. Returns false -- failing the shader,
+ * never aborting -- on any op or operand outside the grounded subset.
+ * The AGX2 path above is unaffected; callers select on the device
+ * encoding. */
+bool agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission);
+
 #ifndef NDEBUG
 void agx_validate(agx_context *ctx, const char *after_str);
 void agx_validate_ra(agx_context *ctx);

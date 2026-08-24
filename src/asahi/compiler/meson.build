@@ -26,6 +26,8 @@ libasahi_agx_files = files(
   'agx_lower_uniform_sources.c',
   'agx_pack.c',
   'agx3_pack.c',
+  'agx3_select_core.c',
+  'agx3_pack_binary.c',
   'agx_performance.c',
   'agx_print.c',
   'agx_pressure_schedule.c',

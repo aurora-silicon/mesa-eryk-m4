@@ -85,6 +85,15 @@ done
 "$out/d12_agx3_isa_core_tests"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_pack.c" \
+    "$repo_root/src/asahi/compiler/agx3_select_core.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-select-core.c" \
+    -o "$out/test_agx3_select_core"
+"$out/test_agx3_select_core"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
     "$repo_root/src/asahi/lib/agx_vdm_state_core.c" \
     "$d12_dir/d12_agx3_vdm_core.c" \
