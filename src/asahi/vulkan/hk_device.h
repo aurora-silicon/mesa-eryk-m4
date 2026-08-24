@@ -21,6 +21,7 @@
 #include "hk_private.h"
 
 #include "hk_descriptor_table.h"
+#include "hk_native_sampler.h"
 #include "hk_queue.h"
 #include "vk_device.h"
 #include "vk_meta.h"
@@ -128,7 +129,7 @@ VkResult hk_device_init_meta(struct hk_device *dev);
 void hk_device_finish_meta(struct hk_device *dev);
 
 VkResult hk_sampler_heap_add(struct hk_device *dev,
-                             struct agx_sampler_packed desc,
+                             const struct hk_native_sampler_descriptor *desc,
                              struct hk_rc_sampler **out);
 
 void hk_sampler_heap_remove(struct hk_device *dev, struct hk_rc_sampler *rc);

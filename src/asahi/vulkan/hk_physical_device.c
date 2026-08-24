@@ -62,6 +62,7 @@ hk_hash_device_generation_contract(blake3_hasher *ctx,
       agx_chip_command_stream_generation(dev->chip),
       agx_chip_descriptor_generation(dev->chip),
       agx_chip_sampler_generation(dev->chip),
+      agx_chip_sampler_heap_element_size(dev->chip),
    };
 
    _mesa_blake3_update(ctx, values, sizeof(values));

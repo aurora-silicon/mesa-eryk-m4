@@ -37,6 +37,8 @@ hk_files = files(
   'hk_native_descriptor.h',
   'hk_native_descriptor_pack.c',
   'hk_native_descriptor_pack.h',
+  'hk_native_sampler.c',
+  'hk_native_sampler.h',
   'hk_physical_device.c',
   'hk_physical_device.h',
   'hk_private.h',
@@ -63,6 +65,21 @@ if with_tests
         include_directories('.'), inc_include, inc_src, inc_asahi,
       ],
       dependencies : [idep_agx_pack, idep_mesautil],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+  test(
+    'hk_native_sampler',
+    executable(
+      'hk_native_sampler_test',
+      files('tests/test-hk-native-sampler.c', 'hk_native_sampler.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      link_with : [libasahi_lib],
       c_args : [c_msvc_compat_args],
       gnu_symbol_visibility : 'hidden',
     ),

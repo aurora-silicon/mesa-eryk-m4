@@ -13,6 +13,7 @@
 #include "hk_descriptor_table.h"
 #include "hk_entrypoints.h"
 #include "hk_instance.h"
+#include "hk_native_sampler.h"
 #include "hk_physical_device.h"
 #include "hk_shader.h"
 
@@ -57,8 +58,15 @@ static const struct debug_named_value hk_perf_options[] = {
 static VkResult
 hk_upload_rodata(struct hk_device *dev)
 {
+   const unsigned sampler_size =
+      agx_chip_sampler_heap_element_size(dev->dev.chip);
+   if (!sampler_size)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+   const size_t rodata_size =
+      align(sampler_size, sizeof(uint64_t)) + sizeof(struct poly_heap);
    dev->rodata.bo =
-      agx_bo_create(&dev->dev, AGX_SAMPLER_LENGTH, 0, 0, "Read only data");
+      agx_bo_create(&dev->dev, rodata_size, 0, 0, "Read only data");
 
    if (!dev->rodata.bo)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -73,8 +81,13 @@ hk_upload_rodata(struct hk_device *dev)
       cfg.buffer = dev->rodata.bo->va->addr + offs;
    }
 
-   agx_pack_txf_sampler((struct agx_sampler_packed *)(map + offs));
-   offs += AGX_SAMPLER_LENGTH;
+   struct hk_native_sampler_descriptor txf;
+   if (!hk_pack_native_txf_sampler(dev->dev.chip, &txf)) {
+      agx_bo_unreference(&dev->dev, dev->rodata.bo);
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+   }
+   memcpy(map + offs, &txf, sampler_size);
+   offs += sampler_size;
 
    /* The heap descriptor isn't strictly readonly data, but we only have a
     * single instance of it device-wide and -- after initializing at heap
@@ -147,12 +160,19 @@ DERIVE_HASH_TABLE(agx_sampler_packed);
 static VkResult
 hk_init_sampler_heap(struct hk_device *dev, struct hk_sampler_heap *h)
 {
+   const unsigned sampler_size =
+      agx_chip_sampler_heap_element_size(dev->dev.chip);
+   if (!sampler_size ||
+       agx_chip_sampler_generation(dev->dev.chip) ==
+          AGX_SAMPLER_GENERATION_UNKNOWN)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
    h->ht = agx_sampler_packed_table_create(NULL);
    if (!h->ht)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult result =
-      hk_descriptor_table_init(dev, &h->table, AGX_SAMPLER_LENGTH, 1024, 1024);
+      hk_descriptor_table_init(dev, &h->table, sampler_size, 1024, 1024);
 
    if (result != VK_SUCCESS) {
       ralloc_free(h->ht);
@@ -173,10 +193,23 @@ hk_destroy_sampler_heap(struct hk_device *dev, struct hk_sampler_heap *h)
 
 static VkResult
 hk_sampler_heap_add_locked(struct hk_device *dev, struct hk_sampler_heap *h,
-                           struct agx_sampler_packed desc,
+                           const struct hk_native_sampler_descriptor *desc,
                            struct hk_rc_sampler **out)
 {
-   struct hash_entry *ent = _mesa_hash_table_search(h->ht, &desc);
+   /* Only the first eight bytes carry recovered sampler state.  The sparse
+    * tail is required to be zero, so the packed word is a complete dedup key;
+    * assert that invariant before an upload can silently alias future data. */
+   const uint8_t *bytes = (const uint8_t *)desc;
+   for (unsigned i = sizeof(struct agx_sampler_packed);
+        i < h->table.desc_size; ++i) {
+      assert(bytes[i] == 0);
+      if (bytes[i] != 0)
+         return VK_ERROR_FEATURE_NOT_PRESENT;
+   }
+
+   struct agx_sampler_packed key;
+   memcpy(&key, desc, sizeof(key));
+   struct hash_entry *ent = _mesa_hash_table_search(h->ht, &key);
    if (ent != NULL) {
       *out = ent->data;
 
@@ -192,14 +225,14 @@ hk_sampler_heap_add_locked(struct hk_device *dev, struct hk_sampler_heap *h,
 
    uint32_t index;
    VkResult result =
-      hk_descriptor_table_add(dev, &h->table, &desc, sizeof(desc), &index);
+      hk_descriptor_table_add(dev, &h->table, desc, h->table.desc_size, &index);
    if (result != VK_SUCCESS) {
       ralloc_free(rc);
       return result;
    }
 
    *rc = (struct hk_rc_sampler){
-      .key = desc,
+      .key = key,
       .refcount = 1,
       .index = index,
    };
@@ -211,7 +244,8 @@ hk_sampler_heap_add_locked(struct hk_device *dev, struct hk_sampler_heap *h,
 }
 
 VkResult
-hk_sampler_heap_add(struct hk_device *dev, struct agx_sampler_packed desc,
+hk_sampler_heap_add(struct hk_device *dev,
+                    const struct hk_native_sampler_descriptor *desc,
                     struct hk_rc_sampler **out)
 {
    struct hk_sampler_heap *h = &dev->samplers;
