@@ -25,6 +25,7 @@ extern "C" {
 #define AGX3_FMA_F32_REG_REG_REG_MAX_LENGTH 16
 #define AGX3_FMIN_F32_REG_REG_MAX_LENGTH 14
 #define AGX3_FMAX_F32_REG_REG_MAX_LENGTH 14
+#define AGX3_I32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -86,6 +87,11 @@ struct agx3_encoded_fmin_f32_reg_reg {
 
 struct agx3_encoded_fmax_f32_reg_reg {
    uint8_t bytes[AGX3_FMAX_F32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_i32_to_f32_reg {
+   uint8_t bytes[AGX3_I32_TO_F32_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -389,6 +395,28 @@ bool agx3_pack_fmax_f32_reg_reg(
 bool agx3_unpack_fmax_f32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the exact signed-i32-to-f32 register conversion emitted by
+ * the pinned Apple compiler.  The L_i2f ladder reproduces this anonymous-
+ * field selection byte-for-byte on G15G/S/D, G16P/G/S, G17P, G17G and G17S.
+ * In the independent typical_kernel captures, an integer select writes f18's
+ * register and the immediately following f32 add consumes f2's result, which
+ * correlates f18 with the signed-i32 source and f2 with the f32 destination on
+ * both AGX3b and AGX3c.  The form is eight bytes on AGX3b and ten on AGX3c.
+ *
+ * Operands are restricted to even half-register indices in 0..126 because
+ * direct conversion artifacts do not exercise register bit 7.  Unsigned
+ * conversion, float-to-integer conversion, alternate source selections,
+ * modifiers, unprobed registers, and scheduling/lowering/runtime policy are
+ * outside this exact API and fail closed.  Chip gates belong to the caller.
+ */
+bool agx3_pack_i32_to_f32_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
+   struct agx3_encoded_i32_to_f32_reg *out);
+bool agx3_unpack_i32_to_f32_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *length);
 
 /*
  * Encode/decode the source-grounded three-register u32 `bit_and` form.

@@ -1958,6 +1958,219 @@ test_fmax_f32_reg_reg_rejection(void)
       &length));
 }
 
+struct i32_to_f32_reg_vector {
+   uint16_t dest;
+   uint16_t src;
+   const char *agx3b;
+   const char *agx3c;
+};
+
+/* The zero row is the exact nine-target L/PC compiler witness.  Remaining
+ * rows are strict Apple-table compositions of the same encoding point and
+ * exercise every exposed fragment without admitting the unprobed high bit. */
+static const struct i32_to_f32_reg_vector i32_to_f32_reg_vectors[] = {
+   {0,   0,   "a70756000200ac60", "2f0000022280af026800"},
+   {2,   0,   "a70756020200ac60", "3f0000022280af026800"},
+   {0,   2,   "a70756000204ac60", "2f0200022280af026800"},
+   {4,   10,  "a70756040214ac60", "2f0200222280af0a6800"},
+   {12,  4,   "a707560c0208ac60", "2f0000122280af1a6800"},
+   {126, 126, "a707567e02fcac60", "bf0280f22280af3a6900"},
+};
+
+static void
+test_i32_to_f32_reg(void)
+{
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B, AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      for (unsigned i = 0;
+           i < sizeof(i32_to_f32_reg_vectors) /
+                  sizeof(i32_to_f32_reg_vectors[0]);
+           ++i) {
+         const struct i32_to_f32_reg_vector *v = &i32_to_f32_reg_vectors[i];
+         const char *expected_text = e == 0 ? v->agx3b : v->agx3c;
+         uint8_t expected[AGX3_I32_TO_F32_REG_MAX_LENGTH] = {0};
+         const unsigned expected_length =
+            parse_hex(expected_text, expected, sizeof(expected));
+         struct agx3_encoded_i32_to_f32_reg packed, repacked;
+
+         CHECK(agx3_pack_i32_to_f32_reg(
+            encodings[e], v->dest, v->src, &packed));
+         CHECK(packed.length == expected_length);
+         CHECK(memcmp(packed.bytes, expected, expected_length) == 0);
+
+         uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+         uint8_t length = 0;
+         CHECK(agx3_unpack_i32_to_f32_reg(
+            encodings[e], expected, expected_length, &dest, &src, &length));
+         CHECK(dest == v->dest);
+         CHECK(src == v->src);
+         CHECK(length == expected_length);
+         CHECK(agx3_pack_i32_to_f32_reg(
+            encodings[e], dest, src, &repacked));
+         CHECK(repacked.length == length);
+         CHECK(memcmp(repacked.bytes, expected, length) == 0);
+      }
+
+      for (uint16_t value = 0; value < 128; value += 2) {
+         const uint16_t operands[][2] = {{value, 0}, {0, value}};
+         for (unsigned operand = 0; operand < 2; ++operand) {
+            struct agx3_encoded_i32_to_f32_reg packed, repacked;
+            uint16_t dest, src;
+            uint8_t length;
+            CHECK(agx3_pack_i32_to_f32_reg(
+               encodings[e], operands[operand][0], operands[operand][1],
+               &packed));
+            CHECK(agx3_unpack_i32_to_f32_reg(
+               encodings[e], packed.bytes, packed.length, &dest, &src,
+               &length));
+            CHECK(dest == operands[operand][0]);
+            CHECK(src == operands[operand][1]);
+            CHECK(agx3_pack_i32_to_f32_reg(
+               encodings[e], dest, src, &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, packed.bytes, length) == 0);
+         }
+      }
+   }
+}
+
+static void
+test_i32_to_f32_reg_rejection(void)
+{
+   static const uint8_t masks[][AGX3_I32_TO_F32_REG_MAX_LENGTH] = {
+      {0x00, 0x00, 0x00, 0x7e, 0x00, 0xfc, 0x00, 0x00},
+      {0x90, 0x02, 0x80, 0xf0, 0x00, 0x00, 0x00, 0x38, 0x01, 0x00},
+   };
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B, AGX_ISA_ENCODING_AGX3C,
+   };
+   const uint16_t states[][2] = {{0, 0}, {126, 126}};
+
+   for (unsigned e = 0; e < 2; ++e) {
+      for (unsigned state = 0; state < 2; ++state) {
+         struct agx3_encoded_i32_to_f32_reg packed, repacked;
+         CHECK(agx3_pack_i32_to_f32_reg(
+            encodings[e], states[state][0], states[state][1], &packed));
+
+         for (unsigned bit = 0; bit < packed.length * 8; ++bit) {
+            uint8_t malformed[AGX3_I32_TO_F32_REG_MAX_LENGTH] = {0};
+            memcpy(malformed, packed.bytes, packed.length);
+            malformed[bit / 8] ^= 1u << (bit % 8);
+
+            uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+            uint8_t length = 0;
+            const bool accepted = agx3_unpack_i32_to_f32_reg(
+               encodings[e], malformed, packed.length, &dest, &src, &length);
+            const bool is_operand =
+               (masks[e][bit / 8] & (1u << (bit % 8))) != 0;
+            CHECK(accepted == is_operand);
+            if (accepted) {
+               CHECK(agx3_pack_i32_to_f32_reg(
+                  encodings[e], dest, src, &repacked));
+               CHECK(repacked.length == length);
+               CHECK(memcmp(repacked.bytes, malformed, length) == 0);
+            }
+         }
+      }
+   }
+
+   struct agx3_encoded_i32_to_f32_reg packed_b, packed_c;
+   CHECK(agx3_pack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, 0, 0, &packed_b));
+   CHECK(agx3_pack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, 0, 0, &packed_c));
+   CHECK(!agx3_pack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX2, 0, 0, &packed_b));
+   CHECK(!agx3_pack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_UNKNOWN, 0, 0, &packed_b));
+   CHECK(!agx3_pack_i32_to_f32_reg(
+      (enum agx_isa_encoding)99, 0, 0, &packed_b));
+   CHECK(!agx3_pack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, 0, 0, NULL));
+
+   const uint16_t invalid_values[] = {1, 127, 128, 255, 256};
+   for (unsigned value = 0;
+        value < sizeof(invalid_values) / sizeof(invalid_values[0]); ++value) {
+      CHECK(!agx3_pack_i32_to_f32_reg(
+         AGX_ISA_ENCODING_AGX3B, invalid_values[value], 0, &packed_b));
+      CHECK(!agx3_pack_i32_to_f32_reg(
+         AGX_ISA_ENCODING_AGX3C, 0, invalid_values[value], &packed_c));
+   }
+
+   uint16_t dest, src;
+   uint8_t length;
+   for (size_t available = 0; available < packed_b.length; ++available)
+      CHECK(!agx3_unpack_i32_to_f32_reg(
+         AGX_ISA_ENCODING_AGX3B, packed_b.bytes, available, &dest, &src,
+         &length));
+   for (size_t available = 0; available < packed_c.length; ++available)
+      CHECK(!agx3_unpack_i32_to_f32_reg(
+         AGX_ISA_ENCODING_AGX3C, packed_c.bytes, available, &dest, &src,
+         &length));
+
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX2, packed_b.bytes, packed_b.length, &dest, &src,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, NULL, packed_c.length, &dest, &src, &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, NULL, &src,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, NULL,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, &src,
+      NULL));
+
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_c.bytes, packed_c.length, &dest, &src,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_b.bytes, packed_b.length, &dest, &src,
+      &length));
+
+   static const uint8_t unsigned_b[] = {
+      0xa7, 0x07, 0x56, 0x00, 0x02, 0x00, 0xac, 0x20,
+   };
+   static const uint8_t unsigned_c[] = {
+      0x2f, 0x00, 0x00, 0x02, 0x22, 0x80, 0xaf, 0x02, 0x28, 0x00,
+   };
+   static const uint8_t alternate_unsigned_b[] = {
+      0xa7, 0x07, 0x54, 0x08, 0x00, 0x00, 0xac, 0x20,
+   };
+   static const uint8_t alternate_unsigned_c[] = {
+      0x27, 0x00, 0x00, 0x02, 0x22, 0x80, 0xaf, 0x12, 0xa8, 0x00,
+   };
+   static const uint8_t f32_to_i32_b[] = {
+      0x27, 0x07, 0x56, 0x00, 0x02, 0x00, 0xb4, 0x48, 0x03, 0x00,
+   };
+   static const uint8_t f32_to_i32_c[] = {
+      0x2f, 0x00, 0x00, 0x1a, 0x22, 0x00, 0xae, 0x02, 0x70, 0x01,
+   };
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, unsigned_b, sizeof(unsigned_b), &dest, &src,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, unsigned_c, sizeof(unsigned_c), &dest, &src,
+      &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, alternate_unsigned_b,
+      sizeof(alternate_unsigned_b), &dest, &src, &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, alternate_unsigned_c,
+      sizeof(alternate_unsigned_c), &dest, &src, &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3B, f32_to_i32_b, sizeof(f32_to_i32_b), &dest,
+      &src, &length));
+   CHECK(!agx3_unpack_i32_to_f32_reg(
+      AGX_ISA_ENCODING_AGX3C, f32_to_i32_c, sizeof(f32_to_i32_c), &dest,
+      &src, &length));
+}
+
 struct bit_and_reg_reg_vector {
    uint16_t dest;
    uint16_t src0;
@@ -4733,6 +4946,8 @@ main(void)
    test_fmin_f32_reg_reg_rejection();
    test_fmax_f32_reg_reg();
    test_fmax_f32_reg_reg_rejection();
+   test_i32_to_f32_reg();
+   test_i32_to_f32_reg_rejection();
    test_bit_and_u32_reg_reg();
    test_bit_and_u32_reg_reg_rejection();
    test_bit_or_u32_reg_reg();
