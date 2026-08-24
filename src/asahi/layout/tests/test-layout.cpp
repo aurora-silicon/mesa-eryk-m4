@@ -6,6 +6,20 @@
 #include <gtest/gtest.h>
 #include "layout.h"
 
+TEST(Layout, M5EightSampleGeometry)
+{
+   EXPECT_EQ(ail_effective_width_sa(37, 8), 74u);
+   EXPECT_EQ(ail_effective_height_sa(19, 8), 76u);
+
+   struct ail_tile rgba16f = ail_get_max_tile_size(128);
+   EXPECT_EQ(rgba16f.width_el, 16u);
+   EXPECT_EQ(rgba16f.height_el, 8u);
+
+   struct ail_tile rgba32f = ail_get_max_tile_size(256);
+   EXPECT_EQ(rgba32f.width_el, 8u);
+   EXPECT_EQ(rgba32f.height_el, 8u);
+}
+
 TEST(Cubemap, Nonmipmapped)
 {
    struct ail_layout layout = {

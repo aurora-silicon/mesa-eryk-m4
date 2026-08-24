@@ -56,28 +56,109 @@ d12_raster_polygon_mode(uint32_t fill_mode, uint32_t *polygon_mode)
  */
 #define D12_CORE_MAX_FORCED_SAMPLE_COUNT UINT32_C(4)
 
+/* Independently-versioned AGX hardware axes used by the portable validation
+ * policy. The values intentionally match agx_chip.h so an integrated driver
+ * can pass them directly; this header remains free of Mesa and DRM types. */
+#define D12_AGX_CS_GENERATION_AGX2   0u
+#define D12_AGX_CS_GENERATION_G15    1u
+#define D12_AGX_CS_GENERATION_HAL200 2u
+#define D12_AGX_CS_GENERATION_HAL300 3u
+
+#define D12_AGX_DESCRIPTOR_GENERATION_7  7u
+#define D12_AGX_DESCRIPTOR_GENERATION_8  8u
+#define D12_AGX_DESCRIPTOR_GENERATION_9  9u
+#define D12_AGX_DESCRIPTOR_GENERATION_10 10u
+
 /*
  * Sample counts this driver can rasterize and lay out.
  *
- * The limit is the driver's, not the descriptor's. The hardware sample-count
- * field is two bits holding log2(count)-1, so it encodes 8x perfectly well;
- * an M5 reports supportsTextureSampleCount(8) == 1. What stops 8x here is
- * everything downstream: AGX2 -- the only instruction set and descriptor
- * generation this driver targets -- advertises 1/2/4 through Honeykrisp,
- * agx_translate_sample_count encodes only 2 and 4, AIL models no footprint
- * wider than 4x (ail_effective_width_sa doubles only at 4), and
- * ail_get_max_tile_size aborts outright on the 128-byte block an 8x
- * 16-byte-per-pixel image would need.
+ * The limit is the raster command path, not descriptor storage or allocation.
+ * DescriptorGen10 spells 8x and AIL now models the live-measured M5 2x4
+ * footprint, including the 128/256-byte blocks needed by wide formats.
+ * HAL300's Gen7 PPP utile_config and the measured raster capability remain
+ * capped at 4x, however, and the currently runnable AGX2 path likewise
+ * advertises only 1/2/4 through Honeykrisp.
  *
  * So the D3D12 answer stays a zero from CheckFeatureSupport, and refusing
  * here is what keeps an 8x request an E_NOTIMPL instead of an UNREACHABLE
- * inside the caller's process. Raising it is a real possibility on a part
- * this driver does not yet support, not a hardware impossibility.
+ * inside the caller's process. An M5 8x allocation may be representable
+ * without being a legal 8x render target; keep those capabilities separate.
  */
 static inline bool
 d12_sample_count_supported(uint32_t sample_count)
 {
    return sample_count == 1 || sample_count == 2 || sample_count == 4;
+}
+
+/* A resource being representable is not the same as it being rasterizable.
+ *
+ * M5/DescriptorGen10 has a proven 8x footprint and two-bit sample-count
+ * field, and Apple's allocation oracle accepted every row in the dedicated
+ * 8x sweep. M4 and A18 Pro are DescriptorGen9: the field could spell 8, but
+ * those plugins do not instantiate the 8x lossless compressor, so accepting
+ * it there would infer capability from field width alone. */
+static inline bool
+d12_resource_sample_count_representable(uint32_t descriptor_generation,
+                                        uint32_t sample_count)
+{
+   if (sample_count == 1 || sample_count == 2 || sample_count == 4)
+      return descriptor_generation >= D12_AGX_DESCRIPTOR_GENERATION_7 &&
+             descriptor_generation <= D12_AGX_DESCRIPTOR_GENERATION_10;
+
+   return descriptor_generation == D12_AGX_DESCRIPTOR_GENERATION_10 &&
+          sample_count == 8;
+}
+
+/* The HAL300 render-state encoder still builds utile_config with only the
+ * 2x and 4x selectors, and the A-grade Gen7 PPP sweep reports max samples=4.
+ * Therefore an M5 8x resource may be represented/sampled, but must not be
+ * advertised as an 8x render target or used for ForcedSampleCount. */
+static inline bool
+d12_raster_sample_count_supported(uint32_t command_stream_generation,
+                                  uint32_t sample_count)
+{
+   const bool known_generation =
+      command_stream_generation <= D12_AGX_CS_GENERATION_HAL300;
+   return known_generation && d12_sample_count_supported(sample_count);
+}
+
+/* Native depth bounds first appears in HAL300's PPPEncoderGen7. The feature
+ * may be advertised only after the command writer can emit its three-word
+ * PPP block and the associated two-float array. */
+static inline bool
+d12_native_depth_bounds_present(uint32_t command_stream_generation)
+{
+   return command_stream_generation == D12_AGX_CS_GENERATION_HAL300;
+}
+
+static inline bool
+d12_depth_bounds_driver_supported(uint32_t command_stream_generation,
+                                  bool gen7_ppp_encoder_complete)
+{
+   return d12_native_depth_bounds_present(command_stream_generation) &&
+          gen7_ppp_encoder_complete;
+}
+
+struct d12_depth_bounds {
+   float minimum;
+   float maximum;
+};
+
+/* Match Apple's HAL300 setter: clamp min upward at zero and max downward at
+ * one, then clamp min down to max.
+ * Keeping this portable lets the COM and WDDM frontends share the exact
+ * dynamic-state semantics once the Gen7 PPP writer is connected. */
+static inline struct d12_depth_bounds
+d12_depth_bounds_canonicalize(float minimum, float maximum)
+{
+   if (minimum < 0.0f)
+      minimum = 0.0f;
+   if (maximum > 1.0f)
+      maximum = 1.0f;
+   if (minimum > maximum)
+      minimum = maximum;
+
+   return (struct d12_depth_bounds){minimum, maximum};
 }
 
 static inline bool

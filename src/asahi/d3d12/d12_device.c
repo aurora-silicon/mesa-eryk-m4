@@ -287,8 +287,9 @@ d12_device_CheckFeatureSupport(ID3D12Device2 *iface, D3D12_FEATURE feature,
          return E_INVALIDARG;
 
       memset(opts, 0, sizeof(*opts));
-      /* DepthBoundsTestSupported stays FALSE: AGX has no depth bounds test
-       * and Honeykrisp reports none either. */
+      /* DepthBoundsTestSupported stays FALSE. HAL300 has native depth-bounds
+       * state, but its Gen7 PPP selector/block writer is not connected; the
+       * runnable AGX2 path has no such state and Honeykrisp reports none. */
       opts->ProgrammableSamplePositionsTier =
          (D3D12_PROGRAMMABLE_SAMPLE_POSITIONS_TIER)
             caps->programmable_sample_positions_tier;
@@ -3344,9 +3345,11 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
 
    const bool comparison = D3D12_DECODE_IS_COMPARISON_FILTER(desc->Filter);
    /*
-    * MINIMUM/MAXIMUM filtering has no AGX hardware equivalent and is reduced
-    * in the shader; see d12_sampler_reduction_core.h for which filters
-    * actually need that and d12_nir_lower_sampler_reduction for the lowering.
+    * The currently runnable AGX2 sampler has no MINIMUM/MAXIMUM field, so it
+    * is reduced in the shader; see d12_sampler_reduction_core.h for which
+    * filters actually need that and d12_nir_lower_sampler_reduction for the
+    * lowering. SamplerGen5 can perform the all-linear subset natively, but is
+    * not selected until the HAL300 descriptor/runtime path is connected.
     * Forcing nearest mip filtering here is what lets the shader's single 2x2
     * gather land on the level the hardware selected.
     */

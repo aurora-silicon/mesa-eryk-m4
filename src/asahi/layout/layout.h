@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "layout_core.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "util/format/u_format.h"
 #include "util/macros.h"
@@ -35,17 +36,6 @@ enum ail_tiling {
     * Fully twiddled.
     */
    AIL_TILING_TWIDDLED,
-};
-
-/*
- * Represents the dimensions of a single tile. Used to describe tiled layouts.
- * Width and height are in units of elements, not pixels, to model compressed
- * textures corrects.
- *
- * Invariant: width_el and height_el are powers of two.
- */
-struct ail_tile {
-   unsigned width_el, height_el;
 };
 
 /*
@@ -303,18 +293,6 @@ ail_get_twiddled_block_B(const struct ail_layout *layout, unsigned level,
 }
 
 static inline unsigned
-ail_effective_width_sa(unsigned width_px, unsigned sample_count_sa)
-{
-   return width_px * (sample_count_sa == 4 ? 2 : 1);
-}
-
-static inline unsigned
-ail_effective_height_sa(unsigned height_px, unsigned sample_count_sa)
-{
-   return height_px * (sample_count_sa >= 2 ? 2 : 1);
-}
-
-static inline unsigned
 ail_metadata_width_tl(struct ail_layout *layout, unsigned level)
 {
    unsigned px = u_minify(layout->width_px, level);
@@ -373,8 +351,6 @@ ail_is_level_twiddled_uncompressed(const struct ail_layout *layout,
       return layout->tiling != AIL_TILING_LINEAR;
    }
 }
-
-struct ail_tile ail_get_max_tile_size(unsigned blocksize_B);
 
 void ail_make_miptree(struct ail_layout *layout);
 
@@ -444,7 +420,8 @@ static inline bool
 ail_can_compress(enum pipe_format format, unsigned w_px, unsigned h_px,
                  unsigned sample_count_sa)
 {
-   assert(sample_count_sa == 1 || sample_count_sa == 2 || sample_count_sa == 4);
+   assert(sample_count_sa == 1 || sample_count_sa == 2 ||
+          sample_count_sa == 4 || sample_count_sa == 8);
 
    /* We compress via the PBE, so we can only compress PBE-writeable formats. */
    if (ail_pixel_format[format].renderable == PIPE_FORMAT_NONE &&

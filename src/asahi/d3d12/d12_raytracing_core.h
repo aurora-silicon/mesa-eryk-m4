@@ -15,23 +15,26 @@
  *
  *   - Apple hardware ray tracing begins at G15 (M3).  G13/G14 (M1/M2), which
  *     is what this driver runs on today, have no ray-tracing hardware at all.
- *   - G15 and G16 are not supported by Mesa in any form yet.
- *   - On G17 (M5), where the hardware exists and has been studied, the
- *     traversal core of the instruction set is 96.8% ungrounded: instruction
- *     boundaries in the ~988-byte inlined intersect block have not been
- *     solved, so no traversal code can be emitted.  See
- *     research/gpu/GPU_AGX3_RT_ISA_2026-07-23.md.
- *   - Apple's BVH8 acceleration-structure format is likewise undocumented;
- *     only its builder kernel names are known.
+ *   - G15/G16 identity and ISA discovery have begun, but their execution and
+ *     command-stream paths are not available yet.
+ *   - On G17 (M5), traversal prototypes and intrinsic tables are grounded,
+ *     but the instruction semantics are not yet complete enough to emit a
+ *     hardware traversal shader.
+ *   - The RIA Gen5 BVH8 child-section addressing is now solved exactly and
+ *     exposed below.  The public builder capture taken on an M5 Pro emitted a
+ *     version-3/Gen1 blob, not a Gen5 blob; the Gen5 QTB/VRB compressed
+ *     payload layouts and a live version-5 builder capture remain separate
+ *     traversal work.
  *
  * So the driver reports D3D12_RAYTRACING_TIER_NOT_SUPPORTED and will keep
  * reporting it until a traversal path exists.  What this file buys is that
  * when one does -- hardware traversal on a later part, or a compute-shader
  * traversal over a BVH of our own design, which the API permits because an
- * acceleration structure is opaque to the application -- the host half is
- * already written and covered.
+ * acceleration structure is opaque to the application -- the host half and
+ * the proved Gen5 child-layout decoder are already written and covered.
  *
- * Keep this free of Windows and Mesa headers.
+ * Keep this free of Windows and Mesa runtime headers.  The shared AGX BVH
+ * helper included here is itself standard-C-only.
  */
 
 #ifndef D12_RAYTRACING_CORE_H
@@ -39,6 +42,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "../lib/agx_rt_bvh.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -371,6 +376,62 @@ static inline bool
 d12_rt_tlas_counts_valid(uint64_t instance_count)
 {
    return instance_count <= D12_RT_MAX_INSTANCES_PER_TLAS;
+}
+
+/*
+ * Decoded Apple RIA Gen5 child layout.
+ *
+ * The offsets are signed because the hardware field is a signed 32-bit
+ * 64-byte-slot index.  Consumers must add them to the acceleration-structure
+ * base with bounds checks appropriate to the mapped allocation.
+ *
+ * This wrapper is deliberately fail-closed: Apple's getQtbCount() returns 4
+ * when the three QTB occupancies disagree with the leaf count.  Four is a
+ * sentinel, not an addressable fourth QTB, so malformed headers never escape
+ * through this DXR-facing interface.
+ */
+struct d12_rt_agx_bvh_gen5_child_layout {
+   int32_t child_space_slot;
+   uint32_t leaf_count;
+   uint32_t inner_slots;
+   uint32_t qtb_count;
+   uint32_t vrb_size_bytes;
+   int64_t child_qtbs_offset_bytes;
+   int64_t child_hw_leaves_offset_bytes;
+   int64_t vrbs_offset_bytes;
+   int64_t lhb_offset_bytes;
+   int64_t child_leaves_offset_bytes;
+};
+
+static inline bool
+d12_rt_agx_bvh_gen5_decode_child_layout(
+   const void *packed_header,
+   struct d12_rt_agx_bvh_gen5_child_layout *layout)
+{
+   struct agx_rt_bvh_gen5_header header;
+
+   if (!layout ||
+       !agx_rt_bvh_gen5_header_unpack(packed_header, &header) ||
+       !agx_rt_bvh_gen5_qtb_layout_valid(&header))
+      return false;
+
+   *layout = (struct d12_rt_agx_bvh_gen5_child_layout){
+      .child_space_slot = agx_rt_bvh_gen5_child_space_slot(&header),
+      .leaf_count = agx_rt_bvh_gen5_leaf_count(&header),
+      .inner_slots = agx_rt_bvh_gen5_inner_slots(&header),
+      .qtb_count = agx_rt_bvh_gen5_qtb_count(&header),
+      .vrb_size_bytes = agx_rt_bvh_gen5_vrb_size_bytes(&header),
+      .child_qtbs_offset_bytes =
+         agx_rt_bvh_gen5_offset_child_qtbs_bytes(&header),
+      .child_hw_leaves_offset_bytes =
+         agx_rt_bvh_gen5_offset_child_hw_leaves_bytes(&header),
+      .vrbs_offset_bytes = agx_rt_bvh_gen5_offset_vrbs_bytes(&header),
+      .lhb_offset_bytes = agx_rt_bvh_gen5_offset_lhb_bytes(&header),
+      .child_leaves_offset_bytes =
+         agx_rt_bvh_gen5_offset_child_leaves_bytes(&header),
+   };
+
+   return true;
 }
 
 #ifdef __cplusplus

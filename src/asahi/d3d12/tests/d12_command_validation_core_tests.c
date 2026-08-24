@@ -80,6 +80,40 @@ main(void)
    assert(!d12_sample_count_supported(16));
    assert(!d12_sample_count_supported(UINT32_MAX));
 
+   /* Descriptor capability and render capability are different on M5.
+    * DescriptorGen10 has a live-measured 8x resource layout, while HAL300's
+    * render utile_config remains limited to 4x. A18 Pro is Gen9/HAL200. */
+   assert(d12_resource_sample_count_representable(
+      D12_AGX_DESCRIPTOR_GENERATION_9, 4));
+   assert(!d12_resource_sample_count_representable(
+      D12_AGX_DESCRIPTOR_GENERATION_9, 8));
+   assert(d12_resource_sample_count_representable(
+      D12_AGX_DESCRIPTOR_GENERATION_10, 8));
+   assert(!d12_resource_sample_count_representable(
+      D12_AGX_DESCRIPTOR_GENERATION_10, 16));
+   assert(!d12_resource_sample_count_representable(0, 4));
+   assert(d12_raster_sample_count_supported(D12_AGX_CS_GENERATION_HAL200, 4));
+   assert(d12_raster_sample_count_supported(D12_AGX_CS_GENERATION_HAL300, 4));
+   assert(!d12_raster_sample_count_supported(D12_AGX_CS_GENERATION_HAL300, 8));
+   assert(!d12_raster_sample_count_supported(
+      D12_AGX_CS_GENERATION_HAL300 + 1, 4));
+
+   assert(!d12_native_depth_bounds_present(D12_AGX_CS_GENERATION_AGX2));
+   assert(!d12_native_depth_bounds_present(D12_AGX_CS_GENERATION_G15));
+   assert(!d12_native_depth_bounds_present(D12_AGX_CS_GENERATION_HAL200));
+   assert(d12_native_depth_bounds_present(D12_AGX_CS_GENERATION_HAL300));
+   assert(!d12_depth_bounds_driver_supported(
+      D12_AGX_CS_GENERATION_HAL300, false));
+   assert(d12_depth_bounds_driver_supported(
+      D12_AGX_CS_GENERATION_HAL300, true));
+
+   struct d12_depth_bounds bounds = d12_depth_bounds_canonicalize(-0.5f, 2.0f);
+   assert(bounds.minimum == 0.0f && bounds.maximum == 1.0f);
+   bounds = d12_depth_bounds_canonicalize(0.75f, 0.25f);
+   assert(bounds.minimum == 0.25f && bounds.maximum == 0.25f);
+   bounds = d12_depth_bounds_canonicalize(0.2f, 0.8f);
+   assert(bounds.minimum == 0.2f && bounds.maximum == 0.8f);
+
    puts("d12_command_validation_core_tests: PASS");
    return 0;
 }

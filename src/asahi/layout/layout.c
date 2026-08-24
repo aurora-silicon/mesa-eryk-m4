@@ -29,27 +29,6 @@ ail_initialize_linear(struct ail_layout *layout)
 }
 
 /*
- * Get the maximum tile size possible for a given block size. This satisfy
- * width * height * blocksize = 16384 = page size, so each tile is one page.
- */
-struct ail_tile
-ail_get_max_tile_size(unsigned blocksize_B)
-{
-   /* clang-format off */
-   switch (blocksize_B) {
-   case  1: return (struct ail_tile) { 128, 128 };
-   case  2: return (struct ail_tile) { 128,  64 };
-   case  4: return (struct ail_tile) {  64,  64 };
-   case  8: return (struct ail_tile) {  64,  32 };
-   case 16: return (struct ail_tile) {  32,  32 };
-   case 32: return (struct ail_tile) {  32,  16 };
-   case 64: return (struct ail_tile) {  16,  16 };
-   default: UNREACHABLE("Invalid blocksize");
-   }
-   /* clang-format on */
-}
-
-/*
  * Calculate the number of bytes in a block. This must take both block
  * dimensions and multisampling into account.
  */

@@ -1098,10 +1098,11 @@ d12_nir_lower_sampler_lod_bias(nir_shader *nir)
 
 /*
  * D3D12 MINIMUM/MAXIMUM filters replace the filter's weighted average with a
- * reduction over the same texel set.  AGX has no reduction mode -- its packed
- * sampler is fully accounted for by LODs, anisotropy, min/mag/mip filters,
- * wrap, compare and border -- so the reduction is performed in the shader,
- * exactly as Honeykrisp already does for custom border colours.
+ * reduction over the same texel set. The runnable AGX2 packed sampler has no
+ * reduction mode, so the reduction is performed in the shader, exactly as
+ * Honeykrisp already does for custom border colours. SamplerGen5 can execute
+ * the all-linear/anisotropic subset natively once the HAL300 descriptor path
+ * is selected; mixed nearest/linear filters still require this fallback.
  *
  * The texel set of a linear 2D filter is the gather footprint, so one tg4 per
  * requested component yields it directly and a componentwise fmin/fmax over

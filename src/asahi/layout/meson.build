@@ -4,6 +4,7 @@
 libasahi_layout_files = files(
   'formats.c',
   'layout.c',
+  'layout_core.c',
   'tiling.cc',
 )
 

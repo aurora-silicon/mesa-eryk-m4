@@ -137,7 +137,7 @@ class Field(object):
             type = 'uint64_t'
         elif self.type == 'bool':
             type = 'bool'
-        elif self.type in ['float', 'half', 'lod']:
+        elif self.type in ['float', 'half', 'lod', 'lod15']:
             type = 'float'
         elif self.type in ['uint', 'hex'] and self.end - self.start > 32:
             type = 'uint64_t'
@@ -339,6 +339,9 @@ class Group(object):
                 elif field.type == "lod":
                     assert(end - start + 1 == 10)
                     s = "__gen_pack_lod(%s, %d, %d)" % (value, start, end)
+                elif field.type == "lod15":
+                    assert(end - start + 1 == 10)
+                    s = "__gen_pack_lod15(%s, %d, %d)" % (value, start, end)
                 else:
                     s = f"#error unhandled field {contributor.path}, type {field.type}"
 
@@ -411,6 +414,8 @@ class Group(object):
                 convert = "__gen_unpack_half"
             elif field.type == "lod":
                 convert = "__gen_unpack_lod"
+            elif field.type == "lod15":
+                convert = "__gen_unpack_lod"
             else:
                 s = f"/* unhandled field {field.name}, type {field.type} */\n"
 
@@ -478,7 +483,7 @@ class Group(object):
                 print(f'   fprintf(fp, "%*s{name}: %d\\n", indent, "", {val});')
             elif field.type == "bool":
                 print(f'   fprintf(fp, "%*s{name}: %s\\n", indent, "", {val} ? "true" : "false");')
-            elif field.type in ["float", "lod", "half"]:
+            elif field.type in ["float", "lod", "lod15", "half"]:
                 print(f'   fprintf(fp, "%*s{name}: %f\\n", indent, "", {val});')
             elif field.type in ["uint", "hex"] and (field.end - field.start) >= 32:
                 print(f'   fprintf(fp, "%*s{name}: 0x%" PRIx64 "\\n", indent, "", {val});')

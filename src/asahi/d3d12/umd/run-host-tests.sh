@@ -248,6 +248,31 @@ done
 "$out/agx_chip_tests"
 
 "$cc" "$common[@]" \
+    "$repo_root/src/asahi/lib/tests/test-rt-bvh.c" \
+    -o "$out/agx_rt_bvh_tests"
+"$out/agx_rt_bvh_tests"
+
+python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
+    "$repo_root/src/asahi/genxml/cmdbuf.xml" \
+    "$repo_root/src/asahi/genxml/agx_pack_header.h" \
+    > "$out/agx_pack.h"
+"$cc" "$common[@]" \
+    -Wno-c23-extensions -Wno-unused-parameter \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/genxml/tests/test-agx3-packing.c" \
+    -o "$out/agx3_packing_tests"
+"$out/agx3_packing_tests"
+
+"$cc" "$common[@]" \
+    -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/layout" \
+    "$repo_root/src/asahi/layout/layout_core.c" \
+    "$repo_root/src/asahi/layout/tests/test-agx3-layout.c" \
+    -o "$out/agx3_layout_tests"
+"$out/agx3_layout_tests"
+
+"$cc" "$common[@]" \
     "$d12_dir/d12_dxbc_wrap.c" "$d12_dir/tests/d12_dxbc_wrap_tests.c" \
     -o "$out/d12_dxbc_wrap_tests"
 "$out/d12_dxbc_wrap_tests" "$d12_dir/tests/shaders/cs.dxil"

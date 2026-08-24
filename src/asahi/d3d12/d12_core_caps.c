@@ -20,10 +20,10 @@ static const struct d12_core_caps d12_agx_caps = {
     *
     * One inherited requirement is not met: Direct3D 11-class hardware is
     * expected to rasterize 8x MSAA and this driver offers at most 4x. That
-    * is a limit of the driver and of the parts it supports rather than of
-    * Apple hardware in general -- the descriptor's sample-count field is two
-    * bits and an M5 reports 8x -- but AGX2 is what this driver targets,
-    * Honeykrisp advertises 1/2/4 there, and AIL models no wider footprint.
+    * is a limit of the command path rather than descriptor representability:
+    * DescriptorGen10 and AIL model the live-measured M5 8x allocation, but
+    * HAL300's Gen7 PPP raster state is still proven only through 4x. AGX2 is
+    * what this driver can currently execute and Honeykrisp advertises 1/2/4.
     * The gap was equally real while this said 11_0, so it is not a
     * consequence of the level claimed. CheckFeatureSupport reports zero
     * quality levels for 8x, which is the discoverable, truthful answer an

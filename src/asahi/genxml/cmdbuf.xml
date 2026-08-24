@@ -204,6 +204,15 @@
   <enum name="Sample Count">
     <value name="2" value="0"/>
     <value name="4" value="1"/>
+    <value name="8" value="2"/>
+  </enum>
+
+  <!-- SamplerGen5 / HAL300.  Values are proven by the G17X sampler
+       constructor and the public Metal reduction-mode enumeration. -->
+  <enum name="Sampler reduction mode">
+    <value name="Weighted average" value="0"/>
+    <value name="Minimum" value="1"/>
+    <value name="Maximum" value="2"/>
   </enum>
 
   <enum name="Image Mode">
@@ -324,6 +333,139 @@
     <field name="Buffer offset (sw)" size="32" start="160" type="uint"/>
   </struct>
 
+  <!-- G15/G16/G17P texture heap element. Only fields grounded by the
+       cross-generation encoder diff are named; the two word-3 selectors are
+       deliberately left semantically unknown. -->
+  <struct name="Texture Gen9" size="32">
+    <field name="Dimension" size="4" start="0" type="Texture dimension"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
+    <field name="Swizzle R" size="3" start="16" type="Channel"/>
+    <field name="Swizzle G" size="3" start="19" type="Channel"/>
+    <field name="Swizzle B" size="3" start="22" type="Channel"/>
+    <field name="Swizzle A" size="3" start="25" type="Channel"/>
+    <field name="Width" size="14" start="28" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="14" start="42" type="uint" modifier="minus(1)"/>
+    <field name="Has levels" size="1" start="58" type="bool"/>
+    <field name="State control" size="4" start="60" type="hex"/>
+    <field name="Address" size="44" start="64" type="address" modifier="shr(4)"/>
+    <field name="sRGB" size="1" start="108" type="bool"/>
+    <field name="sRGB 2-channel" size="1" start="109" type="bool"/>
+    <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>
+    <field name="Depth" size="14" start="110" type="uint" modifier="minus(1)"/>
+    <field name="Page-aligned layers" size="1" start="126" type="bool"/>
+    <field name="Extended" size="1" start="127" type="bool"/>
+    <field name="Acceleration buffer" size="44" start="128" type="address" modifier="shr(4)"/>
+    <field name="Depth (linear)" size="11" start="128" type="uint" modifier="minus(1)"/>
+    <field name="Layer stride (linear)" size="27" start="139" type="uint" modifier="shr(7)"/>
+    <field name="First level" size="4" start="172" type="uint"/>
+    <field name="Last level" size="4" start="176" type="uint"/>
+    <field name="Unk word 3 bits 0-1" size="2" start="192" type="hex"/>
+    <field name="Unk word 3 bits 8-10" size="3" start="200" type="hex"/>
+  </struct>
+
+  <!-- HAL300 / M5 live-measured texture heap element. -->
+  <struct name="Texture Gen10" size="32">
+    <field name="Dimension" size="4" start="0" type="Texture dimension"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
+    <field name="Swizzle R" size="3" start="16" type="Channel"/>
+    <field name="Swizzle G" size="3" start="19" type="Channel"/>
+    <field name="Swizzle B" size="3" start="22" type="Channel"/>
+    <field name="Swizzle A" size="3" start="25" type="Channel"/>
+    <field name="Width" size="15" start="28" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="15" start="43" type="uint" modifier="minus(1)"/>
+    <field name="Samples" size="2" start="58" type="Sample Count"/>
+    <field name="Unk mipmapped" size="1" start="60" type="bool"/>
+    <field name="Compressed" size="1" start="61" type="bool"/>
+    <field name="Image mode enable" size="1" start="62" type="bool"/>
+    <field name="Image mode" size="2" start="64" type="Image Mode"/>
+    <field name="Address" size="44" start="64" type="address" modifier="shr(4)"/>
+    <field name="sRGB" size="1" start="108" type="bool"/>
+    <field name="sRGB 2-channel" size="1" start="109" type="bool"/>
+    <field name="Stride" size="18" start="110" type="hex" modifier="shr(4)"/>
+    <field name="Depth" size="14" start="110" type="uint" modifier="minus(1)"/>
+    <field name="Page-aligned layers" size="1" start="126" type="bool"/>
+    <field name="Extended" size="1" start="127" type="bool"/>
+    <field name="Acceleration buffer" size="44" start="128" type="address" modifier="shr(4)"/>
+    <field name="Depth (linear)" size="11" start="128" type="uint" modifier="minus(1)"/>
+    <field name="Layer stride (linear)" size="28" start="139" type="uint" modifier="shr(7)"/>
+    <field name="First level" size="4" start="172" type="uint"/>
+    <field name="Last level" size="4" start="176" type="uint"/>
+    <field name="Unk word 3 bits 0-1" size="2" start="192" type="hex"/>
+    <field name="Unk word 3 bits 8-10" size="3" start="200" type="hex"/>
+  </struct>
+
+  <!-- PBEStateEncoderGen9, byte-identical on G15 and HAL200. -->
+  <struct name="PBE Gen9" size="32">
+    <field name="Dimension" size="4" start="0" type="Texture dimension"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
+    <field name="Swizzle R" size="2" start="16" type="Channel"/>
+    <field name="Swizzle G" size="2" start="18" type="Channel"/>
+    <field name="Swizzle B" size="2" start="20" type="Channel"/>
+    <field name="Swizzle A" size="2" start="22" type="Channel"/>
+    <field name="Width" size="14" start="24" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="14" start="38" type="uint" modifier="minus(1)"/>
+    <field name="Unk 52" size="1" start="52" type="bool"/>
+    <field name="Unk linear" size="1" start="53" type="bool"/>
+    <field name="Rotation" size="2" start="54" type="hex"/>
+    <field name="Samples" size="2" start="56" type="Sample Count"/>
+    <field name="Unk mipmapped" size="1" start="58" type="bool"/>
+    <field name="Compressed" size="1" start="59" type="bool"/>
+    <field name="Image mode enable" size="1" start="60" type="bool"/>
+    <field name="Image mode" size="2" start="61" type="Image Mode"/>
+    <field name="Buffer" size="44" start="64" type="address" modifier="shr(4)"/>
+    <field name="Stride" size="21" start="104" type="hex"/>
+    <field name="Layers" size="16" start="108" type="uint" modifier="minus(1)"/>
+    <field name="Page-aligned layers" size="1" start="124" type="bool"/>
+    <field name="Gamma" size="2" start="125" type="hex"/>
+    <field name="Extended" size="1" start="127" type="bool"/>
+    <field name="Acceleration buffer" size="44" start="128" type="address" modifier="shr(4)"/>
+    <field name="Depth (linear)" size="11" start="128" type="uint" modifier="minus(1)"/>
+    <field name="Layer stride (linear)" size="27" start="139" type="uint" modifier="shr(7)"/>
+    <field name="Level" size="4" start="172" type="uint"/>
+    <field name="Levels" size="4" start="176" type="uint" modifier="minus(1)"/>
+    <field name="Reserved word 3" size="64" start="192" type="hex" exact="0"/>
+  </struct>
+
+  <!-- PBEStateEncoderGen10 on HAL300 / M5. -->
+  <struct name="PBE Gen10" size="32">
+    <field name="Dimension" size="4" start="0" type="Texture dimension"/>
+    <field name="Layout" size="2" start="4" type="Layout"/>
+    <field name="Channels" size="7" start="6" type="Channels"/>
+    <field name="Type" size="3" start="13" type="Texture Type"/>
+    <field name="Swizzle R" size="2" start="16" type="Channel"/>
+    <field name="Swizzle G" size="2" start="18" type="Channel"/>
+    <field name="Swizzle B" size="2" start="20" type="Channel"/>
+    <field name="Swizzle A" size="2" start="22" type="Channel"/>
+    <field name="Width" size="15" start="24" type="uint" modifier="minus(1)"/>
+    <field name="Height" size="15" start="39" type="uint" modifier="minus(1)"/>
+    <field name="Unk 54" size="1" start="54" type="bool"/>
+    <field name="Unk linear" size="1" start="55" type="bool"/>
+    <field name="Rotation" size="2" start="56" type="hex"/>
+    <field name="Samples" size="2" start="58" type="Sample Count"/>
+    <field name="Unk mipmapped" size="1" start="60" type="bool"/>
+    <field name="Compressed" size="1" start="61" type="bool"/>
+    <field name="Image mode enable" size="1" start="62" type="bool"/>
+    <field name="Image mode" size="2" start="64" type="Image Mode"/>
+    <field name="Buffer" size="44" start="64" type="address" modifier="shr(4)"/>
+    <field name="Stride" size="21" start="104" type="hex"/>
+    <field name="Layers" size="16" start="108" type="uint" modifier="minus(1)"/>
+    <field name="Page-aligned layers" size="1" start="124" type="bool"/>
+    <field name="Gamma" size="2" start="125" type="hex"/>
+    <field name="Extended" size="1" start="127" type="bool"/>
+    <field name="Acceleration buffer" size="44" start="128" type="address" modifier="shr(4)"/>
+    <field name="Depth (linear)" size="11" start="128" type="uint" modifier="minus(1)"/>
+    <field name="Layer stride (linear)" size="28" start="139" type="uint" modifier="shr(7)"/>
+    <field name="Level" size="4" start="172" type="uint"/>
+    <field name="Levels" size="4" start="176" type="uint" modifier="minus(1)"/>
+    <field name="Reserved word 3" size="64" start="192" type="hex" exact="0"/>
+  </struct>
+
   <enum name="Wrap">
     <value name="Clamp to edge" value="0"/>
     <value name="Repeat" value="1"/>
@@ -367,6 +509,43 @@
     <field name="Compare enable" size="1" start="42" type="bool"/>
     <field name="Border colour" size="2" start="55" type="Border colour"/>
     <field name="Seamful cube maps" size="1" start="57" type="bool"/>
+  </struct>
+
+  <struct name="Sampler HAL200" size="8">
+    <field name="Minimum LOD" size="10" start="0" type="lod"/>
+    <field name="Maximum LOD" size="10" start="10" type="lod"/>
+    <field name="Maximum anisotropy" size="3" start="20" type="uint" modifier="log2"/>
+    <field name="Magnify" size="2" start="23" type="Filter"/>
+    <field name="Minify" size="2" start="25" type="Filter"/>
+    <field name="Mip filter" size="2" start="27" type="Mip filter"/>
+    <field name="Wrap S" size="3" start="29" type="Wrap"/>
+    <field name="Wrap T" size="3" start="32" type="Wrap"/>
+    <field name="Wrap R" size="3" start="35" type="Wrap"/>
+    <field name="Pixel coordinates" size="1" start="38" type="bool"/>
+    <field name="Compare func" size="3" start="39" type="Compare func"/>
+    <field name="Compare enable" size="1" start="42" type="bool"/>
+    <field name="LOD bias" size="11" start="43" type="int"/>
+    <field name="Border colour" size="2" start="61" type="Border colour"/>
+    <field name="Seamful cube maps" size="1" start="63" type="bool"/>
+  </struct>
+
+  <struct name="Sampler Gen5" size="8">
+    <field name="Minimum LOD" size="10" start="0" type="lod15"/>
+    <field name="Maximum LOD" size="10" start="10" type="lod15"/>
+    <field name="Maximum anisotropy" size="3" start="20" type="uint" modifier="log2"/>
+    <field name="Magnify" size="2" start="23" type="Filter"/>
+    <field name="Minify" size="2" start="25" type="Filter"/>
+    <field name="Mip filter" size="2" start="27" type="Mip filter"/>
+    <field name="Wrap S" size="3" start="29" type="Wrap"/>
+    <field name="Wrap T" size="3" start="32" type="Wrap"/>
+    <field name="Wrap R" size="3" start="35" type="Wrap"/>
+    <field name="Pixel coordinates" size="1" start="38" type="bool"/>
+    <field name="Compare func" size="3" start="39" type="Compare func"/>
+    <field name="Reduction mode" size="2" start="39" type="Sampler reduction mode"/>
+    <field name="Compare mode" size="1" start="42" type="bool"/>
+    <field name="LOD bias" size="11" start="43" type="int"/>
+    <field name="Border colour" size="2" start="61" type="Border colour"/>
+    <field name="Seamful cube maps" size="1" start="63" type="bool"/>
   </struct>
 
   <struct name="Border" size="16">

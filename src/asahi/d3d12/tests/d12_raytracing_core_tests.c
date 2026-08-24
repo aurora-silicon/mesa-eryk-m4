@@ -350,6 +350,59 @@ test_records_and_config(void)
            "too many instances is refused");
 }
 
+static void
+pack_gen5_header(const uint64_t words[8], uint8_t packed[64])
+{
+   for (unsigned word = 0; word < 8; ++word) {
+      for (unsigned byte = 0; byte < 8; ++byte)
+         packed[(word * 8) + byte] = (uint8_t)(words[word] >> (byte * 8));
+   }
+}
+
+static void
+test_agx_gen5_child_layout(void)
+{
+   /* Configuration 4; six leaves, four inner slots, three QTBs and 352
+    * bytes of VRBs.  The encoded child-space slot is 100. */
+   uint64_t words[8] = {
+      UINT64_C(0x0011001c), UINT64_C(0x000b0000),
+      UINT64_C(0x00020000), UINT64_C(0x00010000),
+      UINT64_C(0x00170000), UINT64_C(0x00080000),
+      UINT64_C(0x00390064), UINT64_C(0x00000000),
+   };
+   uint8_t packed[AGX_RT_BVH_GEN5_HEADER_SIZE];
+   pack_gen5_header(words, packed);
+
+   struct d12_rt_agx_bvh_gen5_child_layout layout;
+   require(d12_rt_agx_bvh_gen5_decode_child_layout(packed, &layout),
+           "a proved AGX Gen5 child layout decodes for DXR");
+   require(layout.child_space_slot == 100 && layout.leaf_count == 6 &&
+              layout.inner_slots == 4 && layout.qtb_count == 3,
+           "DXR receives the exact child, leaf, inner and QTB counts");
+   require(layout.vrb_size_bytes == 352,
+           "DXR receives the exact configuration-4 VRB extent");
+   require(layout.child_qtbs_offset_bytes == 6656 &&
+              layout.child_hw_leaves_offset_bytes == 6656 &&
+              layout.vrbs_offset_bytes == 6848 &&
+              layout.lhb_offset_bytes == 7200 &&
+              layout.child_leaves_offset_bytes == 7224,
+           "DXR receives all five exact child-section offsets");
+
+   require(!d12_rt_agx_bvh_gen5_decode_child_layout(NULL, &layout),
+           "DXR refuses a missing Gen5 header");
+   require(!d12_rt_agx_bvh_gen5_decode_child_layout(packed, NULL),
+           "DXR refuses a missing Gen5 layout destination");
+
+   /* Change C from three occupied leaves to two.  The occupancy sum is now
+    * five while the header still owns six leaves, so Apple's accessor returns
+    * its sentinel 4.  The DXR wrapper must not expose that as a fourth QTB. */
+   words[6] = UINT64_C(0x00290064);
+   pack_gen5_header(words, packed);
+   memset(&layout, 0xa5, sizeof(layout));
+   require(!d12_rt_agx_bvh_gen5_decode_child_layout(packed, &layout),
+           "DXR fails closed on Apple's invalid-QTB sentinel");
+}
+
 int
 main(void)
 {
@@ -360,6 +413,7 @@ main(void)
    test_prebuild_and_allocation();
    test_shader_identifiers();
    test_records_and_config();
+   test_agx_gen5_child_layout();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);
    return 0;

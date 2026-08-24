@@ -47,6 +47,14 @@ __gen_pack_lod(float f, uint32_t start, uint32_t end)
    return util_bitpack_uint(fixed, start, end);
 }
 
+/* HAL300 raises the sampler maximum LOD clamp from 14.0 to 15.0. */
+static inline uint32_t
+__gen_pack_lod15(float f, uint32_t start, uint32_t end)
+{
+   uint32_t fixed = CLAMP(f * (1 << 6), 0 /* 0.0 */, 0x3c0 /* 15.0 */);
+   return util_bitpack_uint(fixed, start, end);
+}
+
 static inline float
 __gen_unpack_lod(CONST uint32_t *restrict cl, uint32_t start, uint32_t end)
 {

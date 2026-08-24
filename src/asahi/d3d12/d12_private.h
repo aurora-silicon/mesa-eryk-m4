@@ -664,12 +664,13 @@ struct d12_descriptor {
 #define D12_SAMPLER_MIP_POINT       BITFIELD_BIT(5)
 
 /*
- * D3D12 filter reduction modes.  AGX has no reduction field in its packed
- * sampler (cmdbuf.xml "Sampler" is fully accounted for: LODs, anisotropy,
- * min/mag/mip filters, wrap, compare, border), so a MINIMUM/MAXIMUM filter is
- * reduced in the shader over the same texel set the standard filter would
- * weight.  Only a footprint wider than one texel needs that work, so these
- * bits are set only when the reduction is actually observable.
+ * D3D12 filter reduction modes. The runnable AGX2 packed sampler has no
+ * reduction field, so a MINIMUM/MAXIMUM filter is reduced in the shader over
+ * the same texel set the standard filter would weight. SamplerGen5 adds a
+ * native reduction field for M5's all-linear/anisotropic subset; these flags
+ * remain the portable fallback for AGX2 and mixed filters. Only a footprint
+ * wider than one texel needs the shader work, so these bits are set only when
+ * the reduction is actually observable.
  */
 #define D12_SAMPLER_REDUCTION_MIN   BITFIELD_BIT(6)
 #define D12_SAMPLER_REDUCTION_MAX   BITFIELD_BIT(7)

@@ -43,6 +43,19 @@ enum d12_sampler_reduction {
    D12_SAMPLER_REDUCE_MAXIMUM,
 };
 
+/* HAL300 / M5 SamplerGen5 reduction-mode values.
+ *
+ * These are no longer inferred from field width. Apple's Gen5 constructor
+ * copies descriptor values 1 and 2 directly to the two-bit field at 39:40,
+ * and the macOS 26 Metal SDK names those values Minimum and Maximum. Value
+ * zero is weighted-average filtering. A18 Pro remains on the HAL200 sampler
+ * and therefore does not have this field. */
+enum d12_sampler_gen5_reduction_mode {
+   D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE = 0,
+   D12_SAMPLER_GEN5_REDUCTION_MINIMUM = 1,
+   D12_SAMPLER_GEN5_REDUCTION_MAXIMUM = 2,
+};
+
 struct d12_sampler_reduction_policy {
    /* The reduction the shader must perform, or NONE to leave the hardware
     * sample alone. */
@@ -53,6 +66,11 @@ struct d12_sampler_reduction_policy {
     * to be the level the hardware chose; a fractional level would reduce over
     * a footprint that no filter ever selected. */
    bool force_mip_nearest;
+
+   /* Non-zero only when SamplerGen5 can perform the complete D3D12
+    * reduction. The descriptor packer writes this value to bits 39:40 and
+    * leaves bit 42 in reduction-mode selection. */
+   enum d12_sampler_gen5_reduction_mode native_gen5_mode;
 };
 
 static inline uint32_t
@@ -99,6 +117,7 @@ d12_sampler_reduction_for_filter(uint32_t filter)
    struct d12_sampler_reduction_policy policy = {
       .reduction = D12_SAMPLER_REDUCE_NONE,
       .force_mip_nearest = false,
+      .native_gen5_mode = D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE,
    };
 
    const uint32_t reduction = d12_filter_reduction(filter);
@@ -117,6 +136,40 @@ d12_sampler_reduction_for_filter(uint32_t filter)
                          ? D12_SAMPLER_REDUCE_MINIMUM
                          : D12_SAMPLER_REDUCE_MAXIMUM;
    policy.force_mip_nearest = true;
+   return policy;
+}
+
+/*
+ * M5 can execute MINIMUM/MAXIMUM in SamplerGen5, but Metal's public contract
+ * says that reductionMode is ignored if min, mag, or mip is nearest. D3D12
+ * exposes mixed filter spellings, so only the all-linear (including the
+ * anisotropic spelling) subset maps completely to hardware. Mixed filters
+ * retain the shader policy above; silently selecting native mode for them
+ * would produce a weighted average for one of the two LOD regimes.
+ */
+static inline struct d12_sampler_reduction_policy
+d12_sampler_reduction_for_filter_gen5(uint32_t filter)
+{
+   struct d12_sampler_reduction_policy policy =
+      d12_sampler_reduction_for_filter(filter);
+
+   if (policy.reduction == D12_SAMPLER_REDUCE_NONE)
+      return policy;
+
+   const bool all_linear =
+      d12_filter_is_anisotropic(filter) ||
+      (d12_filter_min(filter) == D12_FILTER_TYPE_LINEAR &&
+       d12_filter_mag(filter) == D12_FILTER_TYPE_LINEAR &&
+       d12_filter_mip(filter) == D12_FILTER_TYPE_LINEAR);
+   if (!all_linear)
+      return policy;
+
+   policy.native_gen5_mode =
+      policy.reduction == D12_SAMPLER_REDUCE_MINIMUM
+         ? D12_SAMPLER_GEN5_REDUCTION_MINIMUM
+         : D12_SAMPLER_GEN5_REDUCTION_MAXIMUM;
+   policy.reduction = D12_SAMPLER_REDUCE_NONE;
+   policy.force_mip_nearest = false;
    return policy;
 }
 

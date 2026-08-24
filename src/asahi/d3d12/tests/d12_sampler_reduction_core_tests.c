@@ -146,6 +146,54 @@ test_wide_footprints_reduce(void)
    }
 }
 
+static void
+test_gen5_native_reduction_boundary(void)
+{
+   struct d12_sampler_reduction_policy policy =
+      d12_sampler_reduction_for_filter_gen5(
+         D3D12_FILTER_MINIMUM_MIN_MAG_MIP_LINEAR);
+   require(policy.reduction == D12_SAMPLER_REDUCE_NONE,
+           "Gen5 all-linear minimum needs no shader reduction");
+   require(!policy.force_mip_nearest,
+           "Gen5 native reduction preserves trilinear filtering");
+   require(policy.native_gen5_mode == D12_SAMPLER_GEN5_REDUCTION_MINIMUM,
+           "Gen5 minimum is hardware mode 1");
+
+   policy = d12_sampler_reduction_for_filter_gen5(
+      D3D12_FILTER_MAXIMUM_ANISOTROPIC);
+   require(policy.reduction == D12_SAMPLER_REDUCE_NONE,
+           "Gen5 anisotropic maximum needs no shader reduction");
+   require(policy.native_gen5_mode == D12_SAMPLER_GEN5_REDUCTION_MAXIMUM,
+           "Gen5 maximum is hardware mode 2");
+
+   /* Public Metal semantics explicitly ignore reduction mode when any one
+    * of min/mag/mip is nearest, so D3D12's mixed spelling must stay on the
+    * shader path even on M5. */
+   policy = d12_sampler_reduction_for_filter_gen5(
+      D3D12_FILTER_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT);
+   require(policy.reduction == D12_SAMPLER_REDUCE_MAXIMUM,
+           "Gen5 mixed maximum remains shader-reduced");
+   require(policy.force_mip_nearest,
+           "Gen5 mixed reduction retains the fallback's single LOD");
+   require(policy.native_gen5_mode ==
+              D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE,
+           "Gen5 mixed filter does not claim a native mode");
+
+   policy = d12_sampler_reduction_for_filter_gen5(
+      D3D12_FILTER_MINIMUM_MIN_MAG_MIP_POINT);
+   require(policy.reduction == D12_SAMPLER_REDUCE_NONE &&
+              policy.native_gen5_mode ==
+                 D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE,
+           "point reduction stays the identity on Gen5");
+
+   policy = d12_sampler_reduction_for_filter_gen5(
+      D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR);
+   require(policy.reduction == D12_SAMPLER_REDUCE_NONE &&
+              policy.native_gen5_mode ==
+                 D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE,
+           "comparison mode is never mistaken for Gen5 min/max");
+}
+
 /* Reduction must be decided by the reduction field alone, never inferred from
  * a filter value that happens to share bits. */
 static void
@@ -194,6 +242,7 @@ main(void)
    test_standard_and_comparison_never_reduce();
    test_point_reduction_is_the_identity();
    test_wide_footprints_reduce();
+   test_gen5_native_reduction_boundary();
    test_every_encodable_filter();
 
    printf("d12_sampler_reduction_core_tests: PASS (%u checks)\n", checks);
