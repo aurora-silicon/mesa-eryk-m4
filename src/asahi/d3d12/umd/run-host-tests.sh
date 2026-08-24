@@ -103,6 +103,18 @@ done
 "$out/test_agx3_compose_corpus"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_cf_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-cf-core.c" \
+    -o "$out/test_agx3_cf_core"
+"$out/test_agx3_cf_core"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
     "$repo_root/src/asahi/lib/agx_vdm_state_core.c" \
     "$d12_dir/d12_agx3_vdm_core.c" \
