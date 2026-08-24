@@ -346,6 +346,153 @@ test_agx3_cdm_stream_link(void)
    CHECK_EQ(decoded.target, 0);
 }
 
+static void
+test_agx3_cdm_barrier(void)
+{
+   const enum agx_chip pre_gen7[] = {
+      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16G,
+      AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+   };
+   const uint8_t expected0[AGX3_CDM_BARRIER_SIZE] = {0x60, 0x01, 0x00, 0x60};
+   const uint8_t expected5[AGX3_CDM_BARRIER_SIZE] = {0x60, 0x15, 0x00, 0x60};
+
+   for (unsigned i = 0; i < sizeof(pre_gen7) / sizeof(pre_gen7[0]); ++i) {
+      for (unsigned selection = 0; selection < 2; ++selection) {
+         struct agx3_cdm_barrier_info info = {
+            .chip = pre_gen7[i],
+            .flags = selection ? 5 : 0,
+         };
+         uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+         struct agx3_cdm_barrier_info decoded;
+         CHECK_EQ(agx3_cdm_barrier_pack(&info, packed), true);
+         ++checks;
+         if (memcmp(packed, selection ? expected5 : expected0,
+                    sizeof(packed))) {
+            fprintf(stderr, "AGX3 CDM pre-Gen7 barrier mismatch\n");
+            exit(1);
+         }
+         CHECK_EQ(agx3_cdm_barrier_unpack(info.chip, packed, sizeof(packed),
+                                          &decoded),
+                  true);
+         CHECK_EQ(decoded.chip, info.chip);
+         CHECK_EQ(decoded.flags, info.flags);
+      }
+
+      for (uint8_t flags = 0; flags < 16; ++flags) {
+         if (flags == 0 || flags == 5)
+            continue;
+         struct agx3_cdm_barrier_info rejected = {
+            .chip = pre_gen7[i],
+            .flags = flags,
+         };
+         uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+         CHECK_EQ(agx3_cdm_barrier_pack(&rejected, packed), false);
+         CHECK_EQ(agx3_cmdstream_load_le32(packed), 0);
+      }
+   }
+
+   const enum agx_chip gen7[] = {
+      AGX_CHIP_G17G,
+      AGX_CHIP_G17S,
+      AGX_CHIP_G17C,
+   };
+   for (unsigned i = 0; i < sizeof(gen7) / sizeof(gen7[0]); ++i) {
+      for (uint8_t flags = 0; flags < 16; ++flags) {
+         struct agx3_cdm_barrier_info info = {
+            .chip = gen7[i],
+            .flags = flags,
+         };
+         uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+         struct agx3_cdm_barrier_info decoded;
+         CHECK_EQ(agx3_cdm_barrier_pack(&info, packed), true);
+         CHECK_EQ(agx3_cmdstream_load_le32(packed),
+                  agx3_cdm_barrier_word(flags));
+         CHECK_EQ(agx3_cdm_barrier_unpack(info.chip, packed, sizeof(packed),
+                                          &decoded),
+                  true);
+         CHECK_EQ(decoded.flags, flags);
+      }
+   }
+
+   const enum agx_chip unsupported[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G15P, AGX_CHIP_G15G, AGX_CHIP_G16P,
+      AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(unsupported) / sizeof(unsupported[0]); ++i) {
+      struct agx3_cdm_barrier_info info = {
+         .chip = unsupported[i],
+         .flags = 0,
+      };
+      uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+      CHECK_EQ(agx3_cdm_barrier_target_grounded(info.chip), false);
+      CHECK_EQ(agx3_cdm_barrier_pack(&info, packed), false);
+      CHECK_EQ(agx3_cmdstream_load_le32(packed), 0);
+   }
+
+   uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+   struct agx3_cdm_barrier_info info = {
+      .chip = AGX_CHIP_G17S,
+      .flags = 0,
+   };
+   CHECK_EQ(agx3_cdm_barrier_pack(&info, packed), true);
+   struct agx3_cdm_barrier_info decoded;
+   CHECK_EQ(agx3_cdm_barrier_unpack(info.chip, packed, 3, &decoded), false);
+   packed[0] |= 1;
+   CHECK_EQ(agx3_cdm_barrier_unpack(info.chip, packed, sizeof(packed),
+                                    &decoded),
+            false);
+   CHECK_EQ(decoded.flags, 0);
+   CHECK_EQ(agx3_cdm_barrier_pack(NULL, packed), false);
+   CHECK_EQ(agx3_cdm_barrier_pack(&info, NULL), false);
+}
+
+static void
+test_agx3_cdm_stream_terminate(void)
+{
+   const enum agx_chip grounded[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   const uint8_t expected[AGX3_CDM_STREAM_TERMINATE_SIZE] = {
+      0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00,
+   };
+
+   for (unsigned i = 0; i < sizeof(grounded) / sizeof(grounded[0]); ++i) {
+      uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE];
+      CHECK_EQ(agx3_cdm_stream_terminate_pack(grounded[i], packed), true);
+      ++checks;
+      if (memcmp(packed, expected, sizeof(expected))) {
+         fprintf(stderr, "AGX3 CDM terminate mismatch\n");
+         exit(1);
+      }
+      CHECK_EQ(agx3_cdm_stream_terminate_validate(
+                  grounded[i], packed, sizeof(packed)),
+               true);
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G15P, AGX_CHIP_G16P, AGX_CHIP_G17A,
+      AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE];
+      CHECK_EQ(agx3_cdm_stream_terminate_pack(rejected[i], packed), false);
+      for (unsigned b = 0; b < sizeof(packed); ++b)
+         CHECK_EQ(packed[b], 0);
+   }
+
+   uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE];
+   CHECK_EQ(agx3_cdm_stream_terminate_pack(AGX_CHIP_G17S, packed), true);
+   CHECK_EQ(agx3_cdm_stream_terminate_validate(AGX_CHIP_G17S, packed, 7),
+            false);
+   packed[4] = 1;
+   CHECK_EQ(agx3_cdm_stream_terminate_validate(
+               AGX_CHIP_G17S, packed, sizeof(packed)),
+            false);
+   CHECK_EQ(agx3_cdm_stream_terminate_pack(AGX_CHIP_G17S, NULL), false);
+}
+
 int
 main(void)
 {
@@ -361,6 +508,8 @@ main(void)
    test_sampler_generations();
    test_agx3_cdm_launch();
    test_agx3_cdm_stream_link();
+   test_agx3_cdm_barrier();
+   test_agx3_cdm_stream_terminate();
 
    printf("agx3 packing: all %u checks passed\n", checks);
    return 0;

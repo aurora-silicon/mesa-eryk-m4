@@ -29,19 +29,19 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch + VDM ptr packed |
-| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
-| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link + VDM ptr packed |
+| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/terminate + VDM ptr packed |
+| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/barrier/terminate + VDM ptr packed |
+| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/barrier/terminate + VDM ptr packed |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/barrier/terminate + VDM ptr packed |
 | G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch + VDM ptr packed |
-| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link + VDM ptr packed |
-| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link + VDM ptr packed |
-| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch + VDM ptr packed |
+| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/barrier/terminate + VDM ptr packed |
+| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/barrier/terminate + VDM ptr packed |
+| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/barrier/terminate + VDM ptr packed |
+| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/barrier/terminate + VDM ptr packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch + VDM ptr packed |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link + VDM ptr packed |
-| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link + VDM ptr packed |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/barrier/terminate + VDM ptr packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/barrier/terminate + VDM ptr packed |
+| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/barrier/terminate + VDM ptr packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
@@ -107,7 +107,13 @@ G17P, and G17G/G17X, which map to the eleven per-chip rows marked above.
 G16P and G17A remain rejected. A separate exact eight-byte CDM link widens the
 target from 40 to 48 bits and is gated more narrowly to the directly pinned
 G15X/G16X/G17X aggregate identities; base/phone link forms are not inferred.
-The D3D12 host core maps and strictly validates both records. These are
+The exact four-byte barrier is independently pinned for G15X, G16G/G16X,
+G17P, and G17G/G17X. Pre-Gen7 inspection proves only the canonical flag sets
+`0` and `0b0101`; the G17 Gen7 emitter proves all sixteen mappings from input
+flag bits 0--3 to output bits 12, 11, 10, and 1. G15G, G16P, and G17A remain
+closed for this record. The exact eight-byte stream terminator is common to
+all eleven launch-grounded identities. The D3D12 host core maps and strictly
+validates all four records. These are
 **RE/IV** record packers, not a complete CDM/VDM/Ioto stream, live emission,
 queue submission, device admission, or API capability; the command/submission
 cells therefore remain **RE**.
@@ -378,8 +384,9 @@ The current in-tree anchors are:
   decode tables and the bounded pack subset.
 - [`agx3_cmdstream.h`](../../src/asahi/genxml/agx3_cmdstream.h),
   [`agx_vdm_state_core.h`](../../src/asahi/lib/agx_vdm_state_core.h), and their
-  focused tests: exact target-gated AGX3 CDM launch/link and widened VDM
-  vertex-pipeline representations, without live emission or submission.
+  focused tests: exact target-gated AGX3 CDM launch/link/barrier/terminate and
+  widened VDM vertex-pipeline representations, without live emission or
+  submission.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,

@@ -21,6 +21,8 @@
 
 #define AGX3_CDM_LAUNCH_SIZE 40u
 #define AGX3_CDM_STREAM_LINK_SIZE 8u
+#define AGX3_CDM_BARRIER_SIZE 4u
+#define AGX3_CDM_STREAM_TERMINATE_SIZE 8u
 
 struct agx3_cdm_launch_info {
    enum agx_chip chip;
@@ -36,6 +38,13 @@ struct agx3_cdm_stream_link_info {
    enum agx_chip chip;
    uint64_t target;
    bool with_return;
+};
+
+struct agx3_cdm_barrier_info {
+   enum agx_chip chip;
+   /* G17 Gen7 drives bits 12, 11, 10 and 1 from flags 0..3.  Earlier
+    * inspected emitters expose only canonical flag sets 0 and 0b0101. */
+   uint8_t flags;
 };
 
 static inline void
@@ -224,4 +233,126 @@ agx3_cdm_stream_link_unpack(
                   agx3_cmdstream_load_le32(bytes + 4);
    info->with_return = (word0 >> 28) & 1;
    return true;
+}
+
+/* Exact four-byte barrier emitters are pinned in G15X, G16G/G16X, G17P,
+ * G17G and G17X.  G15G, G16P and G17A remain unwitnessed here. */
+static inline bool
+agx3_cdm_barrier_target_grounded(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+agx3_cdm_barrier_flags_grounded(enum agx_chip chip, uint8_t flags)
+{
+   if (!agx3_cdm_barrier_target_grounded(chip) || flags > 0xf)
+      return false;
+
+   switch (chip) {
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return flags == 0 || flags == 0x5;
+   }
+}
+
+static inline uint32_t
+agx3_cdm_barrier_word(uint8_t flags)
+{
+   return UINT32_C(0x60000160) |
+          ((uint32_t)(flags & 0x1) << 12) |
+          ((uint32_t)(flags & 0x2) << 10) |
+          ((uint32_t)(flags & 0x4) << 8) |
+          ((uint32_t)(flags & 0x8) >> 2);
+}
+
+static inline bool
+agx3_cdm_barrier_pack(const struct agx3_cdm_barrier_info *info,
+                      uint8_t packed[AGX3_CDM_BARRIER_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_BARRIER_SIZE);
+   if (!info || !agx3_cdm_barrier_flags_grounded(info->chip, info->flags))
+      return false;
+
+   agx3_cmdstream_store_le32(packed, agx3_cdm_barrier_word(info->flags));
+   return true;
+}
+
+static inline bool
+agx3_cdm_barrier_unpack(enum agx_chip chip, const void *packed,
+                        size_t available, struct agx3_cdm_barrier_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   if (!packed || available < AGX3_CDM_BARRIER_SIZE ||
+       !agx3_cdm_barrier_target_grounded(chip))
+      return false;
+
+   const uint32_t word = agx3_cmdstream_load_le32((const uint8_t *)packed);
+   const uint32_t optional_mask = UINT32_C(0x00001c02);
+   if ((word & ~optional_mask) != UINT32_C(0x60000160))
+      return false;
+
+   const uint8_t flags = (uint8_t)(((word >> 12) & 0x1) |
+                                   ((word >> 10) & 0x2) |
+                                   ((word >> 8) & 0x4) |
+                                   ((word << 2) & 0x8));
+   if (!agx3_cdm_barrier_flags_grounded(chip, flags))
+      return false;
+
+   info->chip = chip;
+   info->flags = flags;
+   return true;
+}
+
+/* The exact eight-byte terminate slot is byte-identical in every inspected
+ * AGX3 launch class. */
+static inline bool
+agx3_cdm_stream_terminate_pack(
+   enum agx_chip chip, uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_STREAM_TERMINATE_SIZE);
+   if (!agx3_cdm_launch_target_grounded(chip))
+      return false;
+
+   agx3_cmdstream_store_le32(packed, UINT32_C(0x40000000));
+   return true;
+}
+
+static inline bool
+agx3_cdm_stream_terminate_validate(enum agx_chip chip, const void *packed,
+                                   size_t available)
+{
+   if (!packed || available < AGX3_CDM_STREAM_TERMINATE_SIZE ||
+       !agx3_cdm_launch_target_grounded(chip))
+      return false;
+
+   const uint8_t *bytes = (const uint8_t *)packed;
+   return agx3_cmdstream_load_le32(bytes) == UINT32_C(0x40000000) &&
+          agx3_cmdstream_load_le32(bytes + 4) == 0;
 }

@@ -132,6 +132,74 @@ main(void)
    }
    CHECK(!d12_agx3_encode_cdm_stream_link(&link, NULL));
 
+   const enum agx_chip barrier_targets[] = {
+      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16G,
+      AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P, AGX_CHIP_G17G,
+      AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   for (unsigned i = 0;
+        i < sizeof(barrier_targets) / sizeof(barrier_targets[0]); ++i) {
+      const bool gen7 = barrier_targets[i] == AGX_CHIP_G17G ||
+                        barrier_targets[i] == AGX_CHIP_G17S ||
+                        barrier_targets[i] == AGX_CHIP_G17C;
+      const uint8_t end = gen7 ? 16 : 6;
+      for (uint8_t flags = 0; flags < end; ++flags) {
+         if (!gen7 && flags != 0 && flags != 5)
+            continue;
+         struct agx3_cdm_barrier_info barrier = {
+            .chip = barrier_targets[i],
+            .flags = flags,
+         };
+         struct d12_agx3_cdm_barrier_encoding encoded;
+         struct agx3_cdm_barrier_info decoded;
+         CHECK(d12_agx3_encode_cdm_barrier(&barrier, &encoded));
+         CHECK(encoded.length == AGX3_CDM_BARRIER_SIZE);
+         CHECK(agx3_cmdstream_load_le32(encoded.bytes) ==
+               agx3_cdm_barrier_word(flags));
+         CHECK(d12_agx3_decode_cdm_barrier(
+            barrier.chip, encoded.bytes, encoded.length, &decoded));
+         CHECK(decoded.flags == flags);
+         CHECK(!d12_agx3_decode_cdm_barrier(
+            barrier.chip, encoded.bytes, encoded.length + 1, &decoded));
+         CHECK(decoded.flags == 0);
+      }
+   }
+
+   struct agx3_cdm_barrier_info rejected_barrier = {
+      .chip = AGX_CHIP_G15G,
+      .flags = 0,
+   };
+   struct d12_agx3_cdm_barrier_encoding barrier_encoding;
+   memset(&barrier_encoding, 0xff, sizeof(barrier_encoding));
+   CHECK(!d12_agx3_encode_cdm_barrier(&rejected_barrier,
+                                      &barrier_encoding));
+   CHECK(barrier_encoding.length == 0);
+   for (unsigned b = 0; b < sizeof(barrier_encoding.bytes); ++b)
+      CHECK(barrier_encoding.bytes[b] == 0);
+   CHECK(!d12_agx3_encode_cdm_barrier(&rejected_barrier, NULL));
+
+   for (unsigned i = 0;
+        i < sizeof(launch_targets) / sizeof(launch_targets[0]); ++i) {
+      struct d12_agx3_cdm_stream_terminate_encoding encoded;
+      CHECK(d12_agx3_encode_cdm_stream_terminate(launch_targets[i],
+                                                 &encoded));
+      CHECK(encoded.length == AGX3_CDM_STREAM_TERMINATE_SIZE);
+      CHECK(agx3_cmdstream_load_le32(encoded.bytes) == UINT32_C(0x40000000));
+      CHECK(agx3_cmdstream_load_le32(encoded.bytes + 4) == 0);
+      CHECK(d12_agx3_validate_cdm_stream_terminate(
+         launch_targets[i], encoded.bytes, encoded.length));
+      CHECK(!d12_agx3_validate_cdm_stream_terminate(
+         launch_targets[i], encoded.bytes, encoded.length + 1));
+   }
+
+   struct d12_agx3_cdm_stream_terminate_encoding terminate;
+   memset(&terminate, 0xff, sizeof(terminate));
+   CHECK(!d12_agx3_encode_cdm_stream_terminate(AGX_CHIP_G16P, &terminate));
+   CHECK(terminate.length == 0);
+   for (unsigned b = 0; b < sizeof(terminate.bytes); ++b)
+      CHECK(terminate.bytes[b] == 0);
+   CHECK(!d12_agx3_encode_cdm_stream_terminate(AGX_CHIP_G17S, NULL));
+
    printf("d12 AGX3 command stream: %u checks passed\n", checks);
    return 0;
 }
