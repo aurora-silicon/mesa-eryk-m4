@@ -90,6 +90,7 @@ struct agx3_sel_instr {
 #define AGX3_SEL_TT_OR  0xEu
 #define AGX3_SEL_TT_XOR 0x6u
 #define AGX3_SEL_TT_NOT 0x5u /* ~a, independent of b */
+#define AGX3_SEL_TT_MOV 0xAu /* a, independent of b -- register move */
 
 /* AGX size code for a 32-bit value; the only width milestone one accepts. */
 #define AGX3_SEL_SIZE_32 1u

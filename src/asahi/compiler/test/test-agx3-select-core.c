@@ -234,6 +234,13 @@ test_matches_hand_packers(void)
                I.src[1].is_reg = false;
                expect_bytes(enc, &I, bnot.bytes, bnot.length);
             }
+            /* A move lowers to iadd d, s, #0. */
+            struct agx3_encoded_iadd_u32_imm8 mov;
+            if (agx3_pack_iadd_u32_imm8(enc, d, a, 0, &mov)) {
+               struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, d, a, bb);
+               I.truth_table = AGX3_SEL_TT_MOV;
+               expect_bytes(enc, &I, mov.bytes, mov.length);
+            }
          }
       }
    }
@@ -296,12 +303,13 @@ test_fails_closed(void)
       expect_refused(enc, &I);
    }
 
-   /* An unmapped bitop truth table (nand = 0x7) fails closed. */
+   /* An unmapped bitop truth table (nand = 0x7) fails closed; the identity
+    * (0xA) is a move and is accepted, tested positively in the sweep. */
    {
       struct agx3_sel_instr I = binop(AGX3_SEL_OP_BITOP, 0, 2, 4);
       I.truth_table = 0x7; /* nand */
       expect_refused(enc, &I);
-      I.truth_table = 0xA; /* move-as-bitop, not mapped */
+      I.truth_table = 0x1; /* nor */
       expect_refused(enc, &I);
    }
 
