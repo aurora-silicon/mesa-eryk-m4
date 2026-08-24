@@ -446,6 +446,11 @@ struct d12_rt_agx3_update_node_expansion {
    uint8_t length;
 };
 
+struct d12_rt_agx3_continue_ray_fixed_first_site_witness {
+   uint8_t bytes[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+   uint8_t length;
+};
+
 struct d12_rt_agx3_update_bvh_fixed_witness {
    uint8_t bytes[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
    uint8_t length;
@@ -519,6 +524,92 @@ d12_rt_agx3_update_node_expansion_valid(
       return false;
 
    const uint8_t *code = instructions;
+   for (uint8_t i = 0; i < packed.length; ++i) {
+      if (code[i] != packed.bytes[i])
+         return false;
+   }
+
+   return true;
+}
+
+/*
+ * Map only the exact targets on which Apple's compiler reproduced the fixed
+ * first continue_ray site.  Several other chips share these ISA encodings,
+ * so using agx_chip_isa_encoding() directly would silently over-admit them.
+ */
+static inline enum agx_isa_encoding
+d12_rt_agx3_continue_ray_fixed_first_site_witness_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+      return AGX_ISA_ENCODING_AGX3B;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return AGX_ISA_ENCODING_AGX3C;
+   default:
+      return AGX_ISA_ENCODING_UNKNOWN;
+   }
+}
+
+/*
+ * Represent only the fixed first hardware instruction witnessed inside the
+ * compiler's much larger continue_ray expansion.  The intrinsic operands and
+ * anonymous hardware fields are deliberately absent: this is not traversal
+ * lowering and grants no permission to schedule or submit the bytes.
+ */
+static inline bool
+d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+   enum agx_chip chip,
+   struct d12_rt_agx3_continue_ray_fixed_first_site_witness *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_continue_ray_fixed_first_site_witness){0};
+
+   const enum agx_isa_encoding encoding =
+      d12_rt_agx3_continue_ray_fixed_first_site_witness_encoding(chip);
+   struct agx3_encoded_continue_ray_fixed_first_site_witness shared;
+
+   if (!agx3_pack_continue_ray_fixed_first_site_witness(encoding, &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/* Require one exact fixed first-site witness.  The shared unpacker accepts a
+ * canonical prefix in a larger stream, so this DXR-facing boundary checks the
+ * complete size before unpacking and comparing with a fresh shared pack. */
+static inline bool
+d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size)
+{
+   if (!instruction)
+      return false;
+
+   const enum agx_isa_encoding encoding =
+      d12_rt_agx3_continue_ray_fixed_first_site_witness_encoding(chip);
+   struct agx3_encoded_continue_ray_fixed_first_site_witness packed;
+   uint8_t unpacked_length = 0;
+
+   if (!agx3_pack_continue_ray_fixed_first_site_witness(encoding, &packed) ||
+       instruction_size != packed.length ||
+       !agx3_unpack_continue_ray_fixed_first_site_witness(
+          encoding, instruction, instruction_size, &unpacked_length) ||
+       unpacked_length != packed.length)
+      return false;
+
+   const uint8_t *code = instruction;
    for (uint8_t i = 0; i < packed.length; ++i) {
       if (code[i] != packed.bytes[i])
          return false;

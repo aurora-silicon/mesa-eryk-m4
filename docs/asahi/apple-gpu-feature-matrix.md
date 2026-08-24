@@ -122,10 +122,22 @@ prefix; it exposes neither intrinsic operands nor compiler allocation/finality
 fields. No traversal lowering rule, device admission, or API capability is
 claimed.
 
+The D3D12 RT core consumes that same fixed witness only on the compiler-proven
+target set: AGX3b G15G/G15S/G15D/G16P/G16G/G16S/G17P and AGX3c G17G/G17S.
+It rejects both encoding forms on every other identity, including the
+same-encoding G15C/G16C/G17A/G17C cases, and still exposes no traversal,
+acceleration-structure execution, device admission, or DXR tier.
+
 Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
 including a byte-exact M5 live descriptor. Writable-image and EOT use stays
-**FC** because libagx still decodes the AGX2-only software-addressing sideband;
-the matrix's PBE gate refers to that complete execution contract.
+**FC** because libagx still decodes the AGX2-only software-addressing sideband.
+Native width/level, Gen9 address, and sample-selector fields are grounded, but
+no native equivalents are identified for aligned-MSAA width, mip offset, tile
+dimensions, layer stride, or sub-16-byte buffer offset; Gen10 address bits
+also overlap conditional image/page fields, and live YUV descriptors use the
+otherwise-unexplained fourth word. The retained corpus submits no texture
+atomic or multisampled-store workload, so the matrix's PBE gate refers to that
+complete execution contract rather than descriptor construction alone.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in

@@ -581,6 +581,186 @@ test_agx3_update_node_expansion(void)
            "DXR refuses a missing update_node expansion");
 }
 
+static bool
+continue_ray_target_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+test_agx3_continue_ray_fixed_first_site_witness(void)
+{
+   static const uint8_t expected_b[] = {
+      0x5f, 0x11, 0x54, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t expected_c[] = {
+      0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02,
+   };
+   static const uint8_t second_site_b[] = {
+      0x5f, 0x11, 0x54, 0x02, 0x00, 0x00,
+   };
+   static const uint8_t second_site_c[] = {
+      0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x42,
+   };
+   const struct {
+      enum agx_isa_encoding encoding;
+      enum agx_chip representative;
+      const uint8_t *expected;
+      const uint8_t *second_site;
+      uint32_t length;
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B, AGX_CHIP_G15G, expected_b, second_site_b,
+       sizeof(expected_b)},
+      {AGX_ISA_ENCODING_AGX3C, AGX_CHIP_G17G, expected_c, second_site_c,
+       sizeof(expected_c)},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_continue_ray_fixed_first_site_witness shared;
+      uint8_t shared_length = 0;
+      require(agx3_pack_continue_ray_fixed_first_site_witness(
+                 vectors[v].encoding, &shared),
+              "the shared packer provides a continue_ray first-site witness");
+      require(agx3_unpack_continue_ray_fixed_first_site_witness(
+                 vectors[v].encoding, shared.bytes, shared.length,
+                 &shared_length),
+              "the shared unpacker accepts its continue_ray first-site bytes");
+      require(shared_length == vectors[v].length &&
+                 shared.length == vectors[v].length &&
+                 memcmp(shared.bytes, vectors[v].expected,
+                        vectors[v].length) == 0,
+              "the shared continue_ray contract agrees with the pinned bytes");
+
+      struct d12_rt_agx3_continue_ray_fixed_first_site_witness generated;
+      memset(&generated, 0xff, sizeof(generated));
+      require(d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+                 vectors[v].representative, &generated),
+              "DXR generates a compiler-witnessed continue_ray first site");
+      require(generated.length == vectors[v].length &&
+                 memcmp(generated.bytes, vectors[v].expected,
+                        vectors[v].length) == 0 &&
+                 memcmp(generated.bytes, shared.bytes,
+                        vectors[v].length) == 0,
+              "DXR and the shared packer agree on continue_ray first-site bytes");
+      for (unsigned i = vectors[v].length; i < sizeof(generated.bytes); ++i)
+         require(generated.bytes[i] == 0,
+                 "DXR zeroes unused continue_ray witness storage");
+      require(d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                 vectors[v].representative, generated.bytes,
+                 generated.length),
+              "DXR validates the exact continue_ray first-site witness");
+
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t malformed[
+            AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+         memcpy(malformed, vectors[v].expected, vectors[v].length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                    vectors[v].representative, malformed,
+                    vectors[v].length),
+                 "DXR refuses every changed continue_ray first-site bit");
+      }
+
+      for (uint32_t length = 0; length < vectors[v].length; ++length) {
+         require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                    vectors[v].representative, vectors[v].expected, length),
+                 "DXR refuses every truncated continue_ray first-site witness");
+      }
+
+      uint8_t appended[
+         AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH + 1];
+      memcpy(appended, vectors[v].expected, vectors[v].length);
+      appended[vectors[v].length] = 0xff;
+      require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                 vectors[v].representative, appended,
+                 vectors[v].length + 1),
+              "DXR refuses bytes trailing the continue_ray first-site witness");
+      require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                 vectors[v].representative, vectors[v].second_site,
+                 vectors[v].length),
+              "DXR refuses the compiler's second continue_ray site");
+   }
+
+   require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+              AGX_CHIP_G15G, expected_c, sizeof(expected_c)) &&
+              !d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                 AGX_CHIP_G17G, expected_b, sizeof(expected_b)),
+           "DXR refuses cross-generation continue_ray first-site witnesses");
+
+   /* Every compiler-witnessed target receives its generation's exact bytes. */
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      struct d12_rt_agx3_continue_ray_fixed_first_site_witness generated;
+      memset(&generated, 0xff, sizeof(generated));
+
+      if (continue_ray_target_supported(chip)) {
+         const enum agx_isa_encoding encoding =
+            d12_rt_agx3_continue_ray_fixed_first_site_witness_encoding(chip);
+         const uint8_t *expected = encoding == AGX_ISA_ENCODING_AGX3B
+                                      ? expected_b
+                                      : expected_c;
+         const uint32_t length = encoding == AGX_ISA_ENCODING_AGX3B
+                                    ? sizeof(expected_b)
+                                    : sizeof(expected_c);
+         require(d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+                    chip, &generated),
+                 "DXR admits every compiler-witnessed continue_ray target");
+         require(generated.length == length &&
+                    memcmp(generated.bytes, expected, length) == 0 &&
+                    d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                       chip, generated.bytes, generated.length),
+                 "every admitted continue_ray target uses its exact encoding");
+      } else {
+         require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+                    chip, &generated),
+                 "DXR refuses every unwitnessed continue_ray target");
+         require(generated.length == 0,
+                 "a rejected continue_ray target clears the output length");
+         for (unsigned i = 0; i < sizeof(generated.bytes); ++i)
+            require(generated.bytes[i] == 0,
+                    "a rejected continue_ray target clears every output byte");
+         require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                    chip, expected_b, sizeof(expected_b)) &&
+                    !d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+                       chip, expected_c, sizeof(expected_c)),
+                 "DXR rejects both continue_ray encodings on unwitnessed targets");
+      }
+   }
+
+   struct d12_rt_agx3_continue_ray_fixed_first_site_witness rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+              (enum agx_chip)99, &rejected),
+           "DXR refuses an invalid continue_ray generation target");
+   require(rejected.length == 0,
+           "an invalid continue_ray target clears the output length");
+   for (unsigned i = 0; i < sizeof(rejected.bytes); ++i)
+      require(rejected.bytes[i] == 0,
+              "an invalid continue_ray target clears every output byte");
+   require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+              (enum agx_chip)99, expected_c, sizeof(expected_c)),
+           "DXR refuses an invalid continue_ray validation target");
+   require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_generate(
+              AGX_CHIP_G17S, NULL),
+           "DXR refuses a missing continue_ray generation destination");
+   require(!d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
+              AGX_CHIP_G17S, NULL, sizeof(expected_c)),
+           "DXR refuses a missing continue_ray first-site witness");
+}
+
 static void
 test_agx3_update_bvh_fixed_witness(void)
 {
@@ -768,6 +948,7 @@ main(void)
    test_records_and_config();
    test_agx3_canonical_update_node();
    test_agx3_update_node_expansion();
+   test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();
    test_agx_gen5_child_layout();
 
