@@ -412,8 +412,12 @@ op("block_image_store", (0xB1, 10, _), dests = 0, srcs = 4,
    imms = [FORMAT, DIM, EXPLICIT_COORDS], can_eliminate = False, schedule_class = "store")
 
 # Barriers
+# Apple's AGX3 backend calls the same field-free semantic operation `barrier`.
+# Exact occurrence ladders ground both the six-byte AGX3b and AGX3c encodings;
+# scheduling/packing still stays in the bounded AGX3 packer.
 op("threadgroup_barrier", (0x0068, 2, _), dests = 0, srcs = 0,
-   can_eliminate = False, schedule_class = "barrier")
+   can_eliminate = False, schedule_class = "barrier",
+   agx3_mnemonic = "barrier")
 
 def memory_barrier(name, a, b, c):
     op(name, (0xF5 | (a << 10) | (b << 8) | (c << 12), 2, _), dests = 0, srcs = 0,
