@@ -171,6 +171,11 @@ agx_chip_descriptor_generation(enum agx_chip chip);
 enum agx_sampler_generation
 agx_chip_sampler_generation(enum agx_chip chip);
 
+/* Native sampler heap element size. The packed state word remains eight
+ * bytes, but G15 and later place it at offset zero of a 32-byte sparse heap
+ * element. Zero means the heap ABI is not proven for this identity. */
+unsigned agx_chip_sampler_heap_element_size(enum agx_chip chip);
+
 enum agx_submission_model
 agx_chip_submission_model(enum agx_chip chip);
 

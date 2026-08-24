@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Static integration gate for D3D12 MINIMUM/MAXIMUM filter reduction.
 
-AGX has no hardware reduction mode, so a MINIMUM/MAXIMUM sampler is reduced in
-the shader.  Silently dropping the reduction returns a filtered average where
-the API promised an extremum, which no test of the standard filter can catch --
-these assertions keep the pieces of that path wired together.
+AGX2 and mixed filters use shader reduction. SamplerGen5 performs the proven
+all-linear/anisotropic subset natively. Silently dropping either path returns a
+filtered average where the API promised an extremum, which no test of the
+standard filter can catch -- these assertions keep both pieces wired together.
 """
 
 from pathlib import Path
@@ -16,6 +16,7 @@ device = (d12 / "d12_device.c").read_text()
 pipeline = (d12 / "d12_pipeline.c").read_text()
 core = (d12 / "d12_sampler_reduction_core.h").read_text()
 command = (d12 / "d12_cmd.c").read_text()
+descriptor = (d12 / "d12_descriptor.c").read_text()
 
 
 def body(text: str, name: str) -> str:
@@ -53,7 +54,10 @@ for token in (
 pack = body(device, "d12_pack_sampler_descriptor(")
 for token in (
     "d12_sampler_reduction_for_filter((uint32_t)desc->Filter)",
+    "d12_sampler_reduction_for_filter_gen5((uint32_t)desc->Filter)",
     "reduction_policy.force_mip_nearest",
+    "reduction_policy.native_gen5_mode",
+    "SAMPLER_GEN5",
     "D12_SAMPLER_REDUCTION_MIN",
     "D12_SAMPLER_REDUCTION_MAX",
 ):
@@ -61,7 +65,18 @@ for token in (
 
 # A reducing sampler must select a single mip level, or the gather footprint
 # and the hardware's own level selection disagree.
-assert "cfg.mip_filter = !reduction_policy.force_mip_nearest &&" in pack
+assert "const enum agx_mip_filter mip_filter" in pack
+assert "cfg.lod_bias = desc->MipLODBias;" in pack
+assert "sampler_generation == AGX_SAMPLER_GENERATION_GEN4 ? desc->MipLODBias" in pack
+
+# G15+ keeps the eight-byte packed word at offset zero of a 32-byte sparse
+# heap element. Both shader-visible and directly uploaded sampler files must
+# use the generation-selected stride; compacting them at eight-byte spacing
+# makes every index after zero name the wrong state.
+for text in (descriptor, command):
+    assert "agx_chip_sampler_heap_element_size" in text
+assert "memset(element, 0, stride);" in descriptor
+assert "state_size = count * stride;" in command
 
 lower = body(pipeline, "d12_lower_sampler_reduction(")
 for token in (

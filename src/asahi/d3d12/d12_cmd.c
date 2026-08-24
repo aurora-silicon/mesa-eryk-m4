@@ -4387,8 +4387,10 @@ d12_list_bound_sampler(struct d12_cmd_list *list, bool compute_bindings,
    return chosen;
 }
 
-/* Upload sampler state which is not present in the compact AGX descriptor:
- * arbitrary point-border colours and D3D's floating-point LOD bias. */
+/* Upload sampler state which is not present in the selected AGX descriptor:
+ * arbitrary point-border colours, plus D3D's floating-point LOD bias on the
+ * AGX2/G15 Gen4 layout. HAL200/Gen5 publish a zero sideband bias because the
+ * signed 5:6 value is already in the hardware word. */
 static bool
 d12_list_upload_custom_borders(struct d12_cmd_list *list,
                                const struct agx_shader_info *info,
@@ -4541,9 +4543,19 @@ d12_list_push_samplers(struct d12_cmd_list *list,
       return false;
    }
 
-   struct agx_sampler_packed states[17];
+   const unsigned stride =
+      agx_chip_sampler_heap_element_size(list->device->dev.chip);
+   if (!stride) {
+      mesa_loge("sampler heap ABI is unknown for this AGX identity");
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   uint32_t states[17 * (32 / sizeof(uint32_t))] = {0};
    for (unsigned i = 0; i < count; i++)
-      agx_pack_txf_sampler(&states[i]);
+      agx_pack_txf_sampler(
+         (struct agx_sampler_packed *)((uint8_t *)states +
+                                       ((size_t)i * stride)));
 
    for (unsigned hw = 1; hw < count; hw++) {
       unsigned logical = hw - 1;
@@ -4552,7 +4564,8 @@ d12_list_push_samplers(struct d12_cmd_list *list,
          list, compute_bindings, visibility, logical, &visible_slot);
 
       if (chosen) {
-         states[hw] = chosen->sampler;
+         memcpy((uint8_t *)states + ((size_t)hw * stride), &chosen->sampler,
+                sizeof(chosen->sampler));
       } else if (validate && visible_slot) {
          mesa_loge("binding validation: sampler s%u has no visible static "
                    "or dynamic descriptor for stage %u", logical,
@@ -4562,8 +4575,8 @@ d12_list_push_samplers(struct d12_cmd_list *list,
       }
    }
 
-   size_t state_size = count * sizeof(states[0]);
-   uint64_t gpu = d12_list_upload(list, states, state_size, 8);
+   size_t state_size = count * stride;
+   uint64_t gpu = d12_list_upload(list, states, state_size, stride);
    if (!gpu)
       return false;
 

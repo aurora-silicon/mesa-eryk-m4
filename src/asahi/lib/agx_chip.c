@@ -255,6 +255,22 @@ agx_chip_sampler_generation(enum agx_chip chip)
    }
 }
 
+unsigned
+agx_chip_sampler_heap_element_size(enum agx_chip chip)
+{
+   switch (agx_chip_command_stream_generation(chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return 8;
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300:
+      return 32;
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      return 0;
+   }
+}
+
 enum agx_submission_model
 agx_chip_submission_model(enum agx_chip chip)
 {

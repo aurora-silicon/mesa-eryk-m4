@@ -3328,10 +3328,11 @@ d12_sampler_custom_border_flags(const D3D12_SAMPLER_DESC2 *desc)
 }
 
 void
-d12_pack_sampler_descriptor(struct d12_descriptor *slot,
+d12_pack_sampler_descriptor(struct d12_device *device,
+                            struct d12_descriptor *slot,
                             const D3D12_SAMPLER_DESC2 *desc)
 {
-   if (!slot || !desc)
+   if (!device || !slot || !desc)
       return;
 
    memset(slot, 0, sizeof(*slot));
@@ -3348,46 +3349,121 @@ d12_pack_sampler_descriptor(struct d12_descriptor *slot,
     * The currently runnable AGX2 sampler has no MINIMUM/MAXIMUM field, so it
     * is reduced in the shader; see d12_sampler_reduction_core.h for which
     * filters actually need that and d12_nir_lower_sampler_reduction for the
-    * lowering. SamplerGen5 can perform the all-linear subset natively, but is
-    * not selected until the HAL300 descriptor/runtime path is connected.
-    * Forcing nearest mip filtering here is what lets the shader's single 2x2
-    * gather land on the level the hardware selected.
+    * lowering. SamplerGen5 performs the all-linear subset natively; mixed
+    * filters stay on the same shader fallback. Forcing nearest mip filtering
+    * here is what lets that fallback's single 2x2 gather land on the level
+    * the hardware selected.
     */
+   const enum agx_sampler_generation sampler_generation =
+      agx_chip_sampler_generation(device->dev.chip);
    const struct d12_sampler_reduction_policy reduction_policy =
-      d12_sampler_reduction_for_filter((uint32_t)desc->Filter);
+      sampler_generation == AGX_SAMPLER_GENERATION_GEN5
+         ? d12_sampler_reduction_for_filter_gen5((uint32_t)desc->Filter)
+         : d12_sampler_reduction_for_filter((uint32_t)desc->Filter);
    const bool reduces =
       reduction_policy.reduction != D12_SAMPLER_REDUCE_NONE;
 
-   agx_pack(&slot->sampler, SAMPLER, cfg) {
-      cfg.minimum_lod = desc->MinLOD;
-      cfg.maximum_lod = desc->MaxLOD;
-      cfg.magnify = D3D12_DECODE_MAG_FILTER(desc->Filter) ==
-                       D3D12_FILTER_TYPE_LINEAR
-                       ? AGX_FILTER_LINEAR
-                       : AGX_FILTER_NEAREST;
-      cfg.minify = D3D12_DECODE_MIN_FILTER(desc->Filter) ==
-                      D3D12_FILTER_TYPE_LINEAR
-                      ? AGX_FILTER_LINEAR
-                      : AGX_FILTER_NEAREST;
-      cfg.mip_filter = !reduction_policy.force_mip_nearest &&
-                       D3D12_DECODE_MIP_FILTER(desc->Filter) ==
-                          D3D12_FILTER_TYPE_LINEAR
-                          ? AGX_MIP_FILTER_LINEAR
-                          : AGX_MIP_FILTER_NEAREST;
-      cfg.wrap_s = d12_sampler_wrap(desc->AddressU);
-      cfg.wrap_t = d12_sampler_wrap(desc->AddressV);
-      cfg.wrap_r = d12_sampler_wrap(desc->AddressW);
-      cfg.pixel_coordinates =
-         desc->Flags & D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
-      cfg.maximum_anisotropy = anisotropy;
-      cfg.border_colour = d12_sampler_border(desc);
-      cfg.compare_enable = comparison;
-      cfg.compare_func = d12_sampler_compare(desc->ComparisonFunc);
+   const enum agx_filter magnify =
+      D3D12_DECODE_MAG_FILTER(desc->Filter) == D3D12_FILTER_TYPE_LINEAR
+         ? AGX_FILTER_LINEAR
+         : AGX_FILTER_NEAREST;
+   const enum agx_filter minify =
+      D3D12_DECODE_MIN_FILTER(desc->Filter) == D3D12_FILTER_TYPE_LINEAR
+         ? AGX_FILTER_LINEAR
+         : AGX_FILTER_NEAREST;
+   const enum agx_mip_filter mip_filter =
+      !reduction_policy.force_mip_nearest &&
+            D3D12_DECODE_MIP_FILTER(desc->Filter) == D3D12_FILTER_TYPE_LINEAR
+         ? AGX_MIP_FILTER_LINEAR
+         : AGX_MIP_FILTER_NEAREST;
+   const enum agx_wrap wrap_s = d12_sampler_wrap(desc->AddressU);
+   const enum agx_wrap wrap_t = d12_sampler_wrap(desc->AddressV);
+   const enum agx_wrap wrap_r = d12_sampler_wrap(desc->AddressW);
+   const enum agx_border_colour border = d12_sampler_border(desc);
+   const enum agx_compare_func compare_func =
+      d12_sampler_compare(desc->ComparisonFunc);
+   const bool pixel_coordinates =
+      desc->Flags & D3D12_SAMPLER_FLAG_NON_NORMALIZED_COORDINATES;
+
+   switch (sampler_generation) {
+   case AGX_SAMPLER_GENERATION_GEN4_HAL200:
+      agx_pack(&slot->sampler, SAMPLER_HAL200, cfg) {
+         cfg.minimum_lod = desc->MinLOD;
+         cfg.maximum_lod = desc->MaxLOD;
+         cfg.maximum_anisotropy = anisotropy;
+         cfg.magnify = magnify;
+         cfg.minify = minify;
+         cfg.mip_filter = mip_filter;
+         cfg.wrap_s = wrap_s;
+         cfg.wrap_t = wrap_t;
+         cfg.wrap_r = wrap_r;
+         cfg.pixel_coordinates = pixel_coordinates;
+         cfg.compare_func = compare_func;
+         cfg.compare_enable = comparison;
+         cfg.lod_bias = desc->MipLODBias;
+         cfg.border_colour = border;
+      }
+      break;
+
+   case AGX_SAMPLER_GENERATION_GEN5:
+      agx_pack(&slot->sampler, SAMPLER_GEN5, cfg) {
+         cfg.minimum_lod = desc->MinLOD;
+         cfg.maximum_lod = desc->MaxLOD;
+         cfg.maximum_anisotropy = anisotropy;
+         cfg.magnify = magnify;
+         cfg.minify = minify;
+         cfg.mip_filter = mip_filter;
+         cfg.wrap_s = wrap_s;
+         cfg.wrap_t = wrap_t;
+         cfg.wrap_r = wrap_r;
+         cfg.pixel_coordinates = pixel_coordinates;
+         cfg.lod_bias = desc->MipLODBias;
+         cfg.border_colour = border;
+
+         if (reduction_policy.native_gen5_mode !=
+             D12_SAMPLER_GEN5_REDUCTION_WEIGHTED_AVERAGE) {
+            cfg.reduction_mode =
+               (enum agx_sampler_reduction_mode)
+                  reduction_policy.native_gen5_mode;
+         } else {
+            /* On Gen5 bit 42 selects compare-function interpretation of
+             * bits 39:41. It is set even for a non-comparison sample. */
+            cfg.compare_mode = true;
+            cfg.compare_func = compare_func;
+         }
+      }
+      break;
+
+   case AGX_SAMPLER_GENERATION_GEN4:
+      agx_pack(&slot->sampler, SAMPLER, cfg) {
+         cfg.minimum_lod = desc->MinLOD;
+         cfg.maximum_lod = desc->MaxLOD;
+         cfg.maximum_anisotropy = anisotropy;
+         cfg.magnify = magnify;
+         cfg.minify = minify;
+         cfg.mip_filter = mip_filter;
+         cfg.wrap_s = wrap_s;
+         cfg.wrap_t = wrap_t;
+         cfg.wrap_r = wrap_r;
+         cfg.pixel_coordinates = pixel_coordinates;
+         cfg.compare_func = compare_func;
+         cfg.compare_enable = comparison;
+         cfg.border_colour = border;
+      }
+      break;
+
+   case AGX_SAMPLER_GENERATION_UNKNOWN:
+   default:
+      /* Device open rejects unknown sampler ABIs. Leave a null state for
+       * defensive callers that reached this helper without a live device. */
+      break;
    }
 
    memcpy(slot->sampler_border, desc->FloatBorderColor,
           sizeof(slot->sampler_border));
-   slot->sampler_lod_bias = desc->MipLODBias;
+   slot->sampler_lod_bias =
+      sampler_generation == AGX_SAMPLER_GENERATION_GEN4 ? desc->MipLODBias
+                                                       : 0.0f;
    slot->sampler_flags = desc->Flags;
    slot->sampler_reserved = d12_sampler_custom_border_flags(desc);
    if (D3D12_DECODE_MIP_FILTER(desc->Filter) == D3D12_FILTER_TYPE_POINT ||
@@ -3426,7 +3502,7 @@ d12_device_CreateSampler(ID3D12Device2 *iface,
    };
    memcpy(desc2.FloatBorderColor, desc->BorderColor,
           sizeof(desc2.FloatBorderColor));
-   d12_pack_sampler_descriptor(slot, &desc2);
+   d12_pack_sampler_descriptor(device, slot, &desc2);
    d12_descriptor_heap_update_slot(device, slot);
 }
 

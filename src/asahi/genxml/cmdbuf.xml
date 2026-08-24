@@ -524,7 +524,7 @@
     <field name="Pixel coordinates" size="1" start="38" type="bool"/>
     <field name="Compare func" size="3" start="39" type="Compare func"/>
     <field name="Compare enable" size="1" start="42" type="bool"/>
-    <field name="LOD bias" size="11" start="43" type="int"/>
+    <field name="LOD bias" size="11" start="43" type="slod"/>
     <field name="Border colour" size="2" start="61" type="Border colour"/>
     <field name="Seamful cube maps" size="1" start="63" type="bool"/>
   </struct>
@@ -543,7 +543,7 @@
     <field name="Compare func" size="3" start="39" type="Compare func"/>
     <field name="Reduction mode" size="2" start="39" type="Sampler reduction mode"/>
     <field name="Compare mode" size="1" start="42" type="bool"/>
-    <field name="LOD bias" size="11" start="43" type="int"/>
+    <field name="LOD bias" size="11" start="43" type="slod"/>
     <field name="Border colour" size="2" start="61" type="Border colour"/>
     <field name="Seamful cube maps" size="1" start="63" type="bool"/>
   </struct>

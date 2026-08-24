@@ -434,7 +434,7 @@ d12_root_sig_Release(ID3D12RootSignature *iface)
 }
 
 static void
-d12_pack_static_sampler(struct d12_descriptor *out,
+d12_pack_static_sampler(struct d12_device *device, struct d12_descriptor *out,
                         const D3D12_STATIC_SAMPLER_DESC1 *in)
 {
    D3D12_SAMPLER_DESC2 desc = {
@@ -472,7 +472,7 @@ d12_pack_static_sampler(struct d12_descriptor *out,
             desc.FloatBorderColor[c] = 1.0f;
    }
 
-   d12_pack_sampler_descriptor(out, &desc);
+   d12_pack_sampler_descriptor(device, out, &desc);
 }
 
 D12_DEFINE_PRIVATE_DATA_METHODS(d12_root_sig, ID3D12RootSignature,
@@ -551,7 +551,7 @@ d12_root_signature_create(struct d12_device *device, const void *blob,
             free(rs);
             return E_INVALIDARG;
          }
-         d12_pack_static_sampler(&rs->static_samplers[i], s);
+         d12_pack_static_sampler(device, &rs->static_samplers[i], s);
       }
    }
 
@@ -1005,10 +1005,11 @@ d12_nir_lower_custom_point_borders(nir_shader *nir)
                               nir_metadata_none, NULL);
 }
 
-/* AGX keeps sampler LOD bias outside its packed sampler descriptor. D3D12
- * stores it in the sampler and applies it to implicit, biased, explicit-LOD,
- * and gradient sampling alike, so recover it from the same per-stage side
- * table used for arbitrary border colours before lowering texture ops. */
+/* AGX2 and G15's Gen4 sampler keep LOD bias outside the packed word. D3D12
+ * applies it to implicit, biased, explicit-LOD, and gradient sampling alike,
+ * so recover it from the same per-stage side table used for arbitrary border
+ * colours before lowering texture ops. HAL200/Gen5 pack the bias natively and
+ * publish zero in this side-table field, making the shared lowering a no-op. */
 static bool
 d12_lower_sampler_lod_bias(nir_builder *b, nir_tex_instr *tex,
                            UNUSED void *data)
@@ -1100,9 +1101,9 @@ d12_nir_lower_sampler_lod_bias(nir_shader *nir)
  * D3D12 MINIMUM/MAXIMUM filters replace the filter's weighted average with a
  * reduction over the same texel set. The runnable AGX2 packed sampler has no
  * reduction mode, so the reduction is performed in the shader, exactly as
- * Honeykrisp already does for custom border colours. SamplerGen5 can execute
- * the all-linear/anisotropic subset natively once the HAL300 descriptor path
- * is selected; mixed nearest/linear filters still require this fallback.
+ * Honeykrisp already does for custom border colours. SamplerGen5 executes the
+ * all-linear/anisotropic subset natively; mixed nearest/linear filters still
+ * require this fallback.
  *
  * The texel set of a linear 2D filter is the gather footprint, so one tg4 per
  * requested component yields it directly and a componentwise fmin/fmax over

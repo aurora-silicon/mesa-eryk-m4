@@ -140,13 +140,13 @@ test_sampler_generations(void)
    uint32_t packed_gen5[AGX_SAMPLER_GEN5_LENGTH / 4] = {0};
 
    hal200.maximum_lod = 100.0f;
-   hal200.lod_bias = -65;
+   hal200.lod_bias = -1.015625f;
    hal200.border_colour = AGX_BORDER_COLOUR_OPAQUE_WHITE;
    hal200.seamful_cube_maps = true;
    AGX_SAMPLER_HAL200_pack(packed_hal200, &hal200);
 
    gen5.maximum_lod = 100.0f;
-   gen5.lod_bias = -65;
+   gen5.lod_bias = -1.015625f;
    gen5.reduction_mode = AGX_SAMPLER_REDUCTION_MODE_MINIMUM;
    gen5.border_colour = AGX_BORDER_COLOUR_OPAQUE_WHITE;
    gen5.seamful_cube_maps = true;
@@ -167,9 +167,16 @@ test_sampler_generations(void)
 
    memset(packed_gen5, 0, sizeof(packed_gen5));
    gen5.reduction_mode = AGX_SAMPLER_REDUCTION_MODE_MAXIMUM;
+   gen5.lod_bias = -100.0f;
    AGX_SAMPLER_GEN5_pack(packed_gen5, &gen5);
    CHECK_EQ((word64(packed_gen5, 0) >> 39) & 3,
             AGX_SAMPLER_REDUCTION_MODE_MAXIMUM);
+   CHECK_EQ((word64(packed_gen5, 0) >> 43) & 0x7ff, 0x400);
+
+   memset(packed_gen5, 0, sizeof(packed_gen5));
+   gen5.lod_bias = 100.0f;
+   AGX_SAMPLER_GEN5_pack(packed_gen5, &gen5);
+   CHECK_EQ((word64(packed_gen5, 0) >> 43) & 0x7ff, 0x3ff);
 }
 
 int

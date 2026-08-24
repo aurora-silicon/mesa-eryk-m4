@@ -3128,7 +3128,7 @@ d12_device_runtime_create_sampler(
    memcpy(translated.UintBorderColor, desc->border_color,
           sizeof(translated.UintBorderColor));
    slot = (struct d12_descriptor *)(uintptr_t)destination;
-   d12_pack_sampler_descriptor(slot, &translated);
+   d12_pack_sampler_descriptor(device, slot, &translated);
    d12_descriptor_heap_update_slot(device, slot);
 }
 

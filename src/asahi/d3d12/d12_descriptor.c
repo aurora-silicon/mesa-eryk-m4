@@ -94,8 +94,13 @@ d12_descriptor_heap_rebuild_samplers(struct d12_descriptor_heap *heap)
    /* Lock2 can refuse after device loss, and this runs on every descriptor
     * update.  A driver must skip the native rebuild, not fault in the
     * application that wrote the descriptor. */
-   struct agx_sampler_packed *native = agx_bo_map(heap->sampler_bo);
+   uint8_t *native = agx_bo_map(heap->sampler_bo);
    if (!native)
+      return;
+
+   const unsigned stride =
+      agx_chip_sampler_heap_element_size(heap->device->dev.chip);
+   if (!stride)
       return;
 
    uint16_t hash_table[2048];
@@ -120,7 +125,8 @@ d12_descriptor_heap_rebuild_samplers(struct d12_descriptor_heap *heap)
       uint32_t index = 0;
       while (hash_table[bucket] != UINT16_MAX) {
          index = hash_table[bucket];
-         if (memcmp(&native[index], &state, sizeof(state)) == 0)
+         if (memcmp(native + ((size_t)index * stride), &state,
+                    sizeof(state)) == 0)
             break;
          bucket = (bucket + 1) & 2047;
       }
@@ -131,7 +137,9 @@ d12_descriptor_heap_rebuild_samplers(struct d12_descriptor_heap *heap)
             index = 0;
          } else {
             index = unique++;
-            native[index] = state;
+            uint8_t *element = native + ((size_t)index * stride);
+            memset(element, 0, stride);
+            memcpy(element, &state, sizeof(state));
             hash_table[bucket] = index;
          }
       }
@@ -370,11 +378,14 @@ d12_descriptor_heap_create(struct d12_device *device,
             (size_t)desc->NumDescriptors * sizeof(uint64_t), 0,
             AGX_BO_WRITEBACK, "d3d12 bindless sparse residency");
       } else if (desc->Type == D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER) {
+         const unsigned sampler_stride =
+            agx_chip_sampler_heap_element_size(device->dev.chip);
          size_t sampler_size =
-            (size_t)MIN2(desc->NumDescriptors, 1024) * AGX_SAMPLER_LENGTH;
-         heap->sampler_bo =
-            agx_bo_create(&device->dev, sampler_size, 0, AGX_BO_WRITEBACK,
-                          "d3d12 bindless sampler descriptors");
+            (size_t)MIN2(desc->NumDescriptors, 1024) * sampler_stride;
+         if (sampler_stride)
+            heap->sampler_bo =
+               agx_bo_create(&device->dev, sampler_size, 0, AGX_BO_WRITEBACK,
+                             "d3d12 bindless sampler descriptors");
       }
    } else {
       heap->slots = calloc(desc->NumDescriptors,
@@ -429,10 +440,15 @@ d12_descriptor_heap_create(struct d12_device *device,
       }
    }
    if (heap->sampler_bo) {
-      struct agx_sampler_packed *samplers = agx_bo_map(heap->sampler_bo);
+      uint8_t *samplers = agx_bo_map(heap->sampler_bo);
+      const unsigned stride =
+         agx_chip_sampler_heap_element_size(device->dev.chip);
       if (samplers) {
-         for (UINT i = 0; i < MIN2(desc->NumDescriptors, 1024); i++)
-            agx_pack_txf_sampler(&samplers[i]);
+         for (UINT i = 0; i < MIN2(desc->NumDescriptors, 1024); i++) {
+            uint8_t *element = samplers + ((size_t)i * stride);
+            memset(element, 0, stride);
+            agx_pack_txf_sampler((struct agx_sampler_packed *)element);
+         }
       } else {
          native_mapped = false;
       }

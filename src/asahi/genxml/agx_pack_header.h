@@ -61,6 +61,15 @@ __gen_unpack_lod(CONST uint32_t *restrict cl, uint32_t start, uint32_t end)
    return ((float)__gen_unpack_uint(cl, start, end)) / (1 << 6);
 }
 
+/* HAL200/300 sampler LOD bias is signed 5:6 fixed point. Apple's packer uses
+ * fcvtzs #6 and clamps the result to the full signed 11-bit range. */
+static inline uint64_t
+__gen_pack_slod(float f, uint32_t start, uint32_t end)
+{
+   int32_t fixed = CLAMP(f * (1 << 6), -1024, 1023);
+   return util_bitpack_sint(fixed, start, end);
+}
+
 static inline uint64_t
 __gen_unpack_sint(CONST uint32_t *restrict cl, uint32_t start, uint32_t end)
 {
@@ -68,6 +77,12 @@ __gen_unpack_sint(CONST uint32_t *restrict cl, uint32_t start, uint32_t end)
    int64_t val = __gen_unpack_uint(cl, start, end);
 
    return util_sign_extend(val, size);
+}
+
+static inline float
+__gen_unpack_slod(CONST uint32_t *restrict cl, uint32_t start, uint32_t end)
+{
+   return ((float)(int64_t)__gen_unpack_sint(cl, start, end)) / (1 << 6);
 }
 
 static inline uint64_t

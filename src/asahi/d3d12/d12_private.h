@@ -2084,7 +2084,8 @@ bool d12_cmd_list_set_sample_positions(
    struct d12_cmd_list *list, uint32_t samples_per_pixel,
    uint32_t pixel_count, const struct d12_sample_position *positions);
 
-void d12_pack_sampler_descriptor(struct d12_descriptor *slot,
+void d12_pack_sampler_descriptor(struct d12_device *device,
+                                 struct d12_descriptor *slot,
                                  const D3D12_SAMPLER_DESC2 *desc);
 void d12_refresh_texture_descriptor(struct agx_texture_packed *out,
                                     const struct d12_descriptor *d);

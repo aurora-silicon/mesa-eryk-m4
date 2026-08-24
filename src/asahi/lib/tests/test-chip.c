@@ -155,6 +155,7 @@ test_independent_generation_axes(void)
             AGX_DESCRIPTOR_GENERATION_8);
    CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G14X),
             AGX_SAMPLER_GENERATION_GEN4);
+   CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G14X), 8);
 
    CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G15G),
             AGX_CS_GENERATION_G15);
@@ -162,6 +163,7 @@ test_independent_generation_axes(void)
             AGX_DESCRIPTOR_GENERATION_9);
    CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G15D),
             AGX_SAMPLER_GENERATION_GEN4);
+   CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G15D), 32);
    CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G15D),
             AGX_SUBMISSION_MODEL_CLASSIC);
 
@@ -182,6 +184,7 @@ test_independent_generation_axes(void)
             AGX_DESCRIPTOR_GENERATION_9);
    CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G17P),
             AGX_SAMPLER_GENERATION_GEN4_HAL200);
+   CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G17P), 32);
    CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17P),
             AGX_SUBMISSION_MODEL_DUAL);
 
@@ -191,6 +194,7 @@ test_independent_generation_axes(void)
             AGX_DESCRIPTOR_GENERATION_10);
    CHECK_EQ(agx_chip_sampler_generation(AGX_CHIP_G17C),
             AGX_SAMPLER_GENERATION_GEN5);
+   CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G17S), 32);
    CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17G),
             AGX_SUBMISSION_MODEL_SKSM);
 
@@ -199,6 +203,7 @@ test_independent_generation_axes(void)
     * driver axis. They must therefore remain fail-closed. */
    CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G15P),
             AGX_CS_GENERATION_UNKNOWN);
+   CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G15P), 0);
    CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G16P),
             AGX_SUBMISSION_MODEL_UNKNOWN);
    CHECK_EQ(agx_chip_submission_model(AGX_CHIP_G17A),
