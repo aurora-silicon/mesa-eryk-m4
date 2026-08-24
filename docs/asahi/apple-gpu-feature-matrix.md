@@ -49,9 +49,10 @@ enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
 `iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`),
 canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
-`bit_not` (`inv`). The arithmetic and bitwise forms have exhaustive operand and
-every-bit rejection tests plus exact G15/G16/G17 corpus replay; G15G stall
-placement remains a separate unsolved
+`bit_not` (`inv`), plus canonical three-register u32 variable shift-left
+(`sll`). The arithmetic, bitwise, and shift forms have exhaustive operand and
+every-bit rejection tests plus exact G15/G16/G17 corpus replay; the separate
+shift-count mask and G15G stall placement remain unsolved
 scheduler rule. This is not a general shader encoder. In particular,
 the generated AGX3
 disassemblers and hardware-RT detection do not make AGX3 code generation or
@@ -130,8 +131,10 @@ AGX3 execution or DXR capability gate.
 
 The D3D12 compiler side has an **IV** fail-closed bridge for canonical
 three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
-`inot`, into the shared AGX3b/AGX3c packer. It replays the exact encoding
-witnesses but does not admit an AGX3 device:
+`inot` and register-register `ishl`, into the shared AGX3b/AGX3c packer. The
+shift bridge represents only the grounded `sll` operation and does not emit or
+claim the compiler-observed count mask. It replays the exact encoding witnesses
+but does not admit an AGX3 device:
 general instruction selection, scheduling, linking, and submission are still
 missing.
 
@@ -190,8 +193,8 @@ The current in-tree anchors are:
   alpha-factor mapping, inversion, default-state, and capability contracts.
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
-  D3D scalar `iadd`/`isub`/`iand`/`ior`/`ixor`/`inot` mapping into exact
-  AGX3b/AGX3c encodings.
+  D3D scalar `iadd`/`isub`/`iand`/`ior`/`ixor`/`inot`/`ishl` mapping into
+  exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact

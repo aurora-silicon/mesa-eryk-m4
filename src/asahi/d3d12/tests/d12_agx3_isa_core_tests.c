@@ -5,6 +5,8 @@
 
 #include "../d12_agx3_isa_core.h"
 
+#include "asahi/compiler/agx3_pack.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -32,6 +34,48 @@ check_encoding(enum agx_isa_encoding encoding,
 
    for (uint8_t i = length; i < D12_AGX3_BINARY_ALU_MAX_LENGTH; ++i)
       CHECK(encoded.bytes[i] == 0);
+
+   return 0;
+}
+
+static int
+check_ishl_register_domain(void)
+{
+   static const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      const uint16_t register_limit = e == 0 ? 192 : 256;
+
+      /* Exercise every modeled even half-register independently in all
+       * three operand positions.  Exact corpus vectors below anchor the
+       * bytes; this loop proves the D3D bridge preserves every packer field. */
+      for (uint16_t value = 0; value < register_limit; value += 2) {
+         const uint16_t operands[][3] = {
+            {value, 0, 0},
+            {0, value, 0},
+            {0, 0, value},
+         };
+
+         for (unsigned operand = 0; operand < 3; ++operand) {
+            struct agx3_encoded_sll_u32_reg_reg expected;
+            struct d12_agx3_binary_alu_encoding encoded;
+
+            CHECK(agx3_pack_sll_u32_reg_reg(
+               encodings[e], operands[operand][0], operands[operand][1],
+               operands[operand][2], &expected));
+            CHECK(d12_agx3_encode_binary_alu(
+               encodings[e], D12_AGX3_BINARY_ALU_ISHL_U32,
+               operands[operand][0], operands[operand][1],
+               operands[operand][2], &encoded));
+            CHECK(encoded.length == expected.length);
+            CHECK(memcmp(encoded.bytes, expected.bytes,
+                         D12_AGX3_BINARY_ALU_MAX_LENGTH) == 0);
+         }
+      }
+   }
 
    return 0;
 }
@@ -70,6 +114,14 @@ main(void)
       0x3f, 0x00, 0x04, 0x3a, 0x21, 0x00,
       0xa2, 0x0a, 0x08, 0x80, 0x01, 0x00,
    };
+   static const uint8_t ishl_b[] = {
+      0x27, 0x10, 0x54, 0x06, 0x02, 0x14,
+      0x00, 0x00, 0xf0, 0x10, 0x05, 0x00,
+   };
+   static const uint8_t ishl_c[] = {
+      0x37, 0x06, 0x00, 0x5a, 0x22, 0x00, 0xa0,
+      0x0a, 0x08, 0x80, 0x00, 0x34, 0x00, 0x00,
+   };
    static const uint8_t inot_b[] = {
       0x3b, 0x01, 0x26, 0x00, 0x01, 0x08, 0x00, 0x80, 0x00, 0x00,
    };
@@ -107,6 +159,13 @@ main(void)
    CHECK(check_encoding(AGX_ISA_ENCODING_AGX3C,
                         D12_AGX3_BINARY_ALU_ISUB_U32, 6, 4, 0, isub_c,
                         sizeof(isub_c)) == 0);
+   CHECK(check_encoding(AGX_ISA_ENCODING_AGX3B,
+                        D12_AGX3_BINARY_ALU_ISHL_U32, 6, 10, 0, ishl_b,
+                        sizeof(ishl_b)) == 0);
+   CHECK(check_encoding(AGX_ISA_ENCODING_AGX3C,
+                        D12_AGX3_BINARY_ALU_ISHL_U32, 6, 10, 0, ishl_c,
+                        sizeof(ishl_c)) == 0);
+   CHECK(check_ishl_register_domain() == 0);
 
    struct d12_agx3_unary_alu_encoding unary;
    CHECK(d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3B,
@@ -157,6 +216,53 @@ main(void)
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_ISUB_U32, 0, 0, 256,
                                      &encoded));
+   memset(&encoded, 0xff, sizeof(encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX2,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 0,
+                                     &encoded));
+   CHECK(encoded.length == 0 && encoded.bytes[0] == 0);
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_UNKNOWN,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 1, 0, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 1, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 1,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 1, 0, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 1, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 1,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 192, 0, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 192, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3B,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 192,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 256, 0, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 256, 0,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 256,
+                                     &encoded));
+   CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
+                                     D12_AGX3_BINARY_ALU_ISHL_U32, 0, 0, 0,
+                                     NULL));
    CHECK(!d12_agx3_encode_binary_alu(AGX_ISA_ENCODING_AGX3C,
                                      D12_AGX3_BINARY_ALU_IADD_U32, 0, 0, 0,
                                      NULL));

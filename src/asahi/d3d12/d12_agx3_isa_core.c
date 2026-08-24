@@ -9,6 +9,10 @@
 
 #include <string.h>
 
+_Static_assert(AGX3_SLL_U32_REG_REG_MAX_LENGTH <=
+                  D12_AGX3_BINARY_ALU_MAX_LENGTH,
+               "D3D AGX3 ALU storage must hold the canonical sll form");
+
 bool
 d12_agx3_encode_binary_alu(
    enum agx_isa_encoding encoding, enum d12_agx3_binary_alu_op op,
@@ -68,6 +72,16 @@ d12_agx3_encode_binary_alu(
       struct agx3_encoded_isub_u32_reg_reg encoded;
       if (!agx3_pack_isub_u32_reg_reg(encoding, dest, src0, src1,
                                       &encoded))
+         return false;
+
+      memcpy(out->bytes, encoded.bytes, encoded.length);
+      out->length = encoded.length;
+      return true;
+   }
+
+   case D12_AGX3_BINARY_ALU_ISHL_U32: {
+      struct agx3_encoded_sll_u32_reg_reg encoded;
+      if (!agx3_pack_sll_u32_reg_reg(encoding, dest, src0, src1, &encoded))
          return false;
 
       memcpy(out->bytes, encoded.bytes, encoded.length);
