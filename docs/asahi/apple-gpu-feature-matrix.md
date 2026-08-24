@@ -29,19 +29,19 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM state/direct draw packed |
-| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
-| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
+| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM state/draw/link packed |
+| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/draw/link packed |
+| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/draw/link packed |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM state/draw/link packed |
 | G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM state/direct draw packed |
-| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
-| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM state/direct draw packed |
-| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM state/direct draw packed |
+| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM state/draw/link packed |
+| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM state/draw/link packed |
+| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM state/draw/link packed |
+| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. compact f32mul | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM state/draw/link packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact + long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
-| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/direct draw packed |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM state/draw/link packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact + long f32mul | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/draw/link packed |
+| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM state/draw/link packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
@@ -149,6 +149,14 @@ buffer split, U16/U32 forms, restart bit, ten directly witnessed primitive
 table values, and the HAL300 header-bit/fixed-word delta. The range word and
 HAL300 word semantics remain deliberately raw, and indirect/ICB records plus
 live draw lowering/emission are still absent.
+
+The exact direct VDM Stream Link is also packed and decoded in the shared and
+D3D12 cores for those eleven targets. It is eight bytes on G15, HAL200, and
+HAL300 alike: word 0 carries block type 4 plus target bits 32--39, and word 1
+carries target bits 0--31. The recovered emitter genuinely remains 40-bit
+through HAL300 and imposes no extra target alignment. The returning/call bit,
+stream return and terminate records, allocation, live linking, and submission
+remain closed.
 
 ## Mesa API and kernel relationship
 
@@ -426,10 +434,11 @@ The current in-tree anchors are:
   [`agx_vdm_state_core.h`](../../src/asahi/lib/agx_vdm_state_core.h),
   [`agx_vdm_state_update_core.h`](../../src/asahi/lib/agx_vdm_state_update_core.h),
   [`agx_vdm_index_list_core.h`](../../src/asahi/lib/agx_vdm_index_list_core.h),
+  [`agx_vdm_stream_link_core.h`](../../src/asahi/lib/agx_vdm_stream_link_core.h),
   and their focused tests: exact target-gated AGX3 CDM
   launch/link/padding/barrier/terminate, the complete raw-preserving 28-byte
-  VDM State Update, and direct VDM index-list representations, without live
-  emission or submission.
+  VDM State Update, direct VDM index-list representations, and direct 40-bit
+  VDM Stream Link, without live emission or submission.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,

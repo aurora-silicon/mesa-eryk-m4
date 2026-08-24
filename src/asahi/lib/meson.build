@@ -23,6 +23,8 @@ libasahi_lib_files = files(
   'agx_texture_side_entry.h',
   'agx_vdm_index_list_core.c',
   'agx_vdm_index_list_core.h',
+  'agx_vdm_stream_link_core.c',
+  'agx_vdm_stream_link_core.h',
   'agx_vdm_state_core.c',
   'agx_vdm_state_core.h',
   'agx_vdm_state_update_core.c',
@@ -191,6 +193,19 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-stream-link-core',
+    executable(
+      'asahi-vdm-stream-link-core',
+      files(
+        'agx_vdm_stream_link_core.c',
+        'tests/test-vdm-stream-link-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),
