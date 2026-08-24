@@ -87,6 +87,15 @@ helper deliberately exposes only `end`-attached masks and does not claim a
 standalone wait instruction, arbitrary scheduling mutation, memory ordering,
 lowering, execution, submission, or device admission.
 
+The D3D12 ISA core now maps that terminal wait mask through the same shared
+packer on exactly the compiler-witnessed targets. It accepts masks 0--0x3f on
+the seven AGX3b identities and 0--0xff on G17G/G17S, rejects every unsupported
+identity and distinguishable wrong form, and clears rejected outputs. The
+low-six-slot bytes are genuinely shared between AGX3b and AGX3c, so their
+generation cannot be inferred from those four bytes alone. This remains an
+**IV/RE** host encoding bridge, not D3D/DXIL lowering, scheduling, memory-order
+policy, execution, device admission, or a capability claim.
+
 ## Mesa API and kernel relationship
 
 | Mesa identity | Gallium / OpenGL | Honeykrisp / Vulkan | D3D12 AGX / WDDM UMD | DXR | Linux DRM relationship |
@@ -96,29 +105,31 @@ lowering, execution, submission, or device admission.
 | G14G | **RS** — AGX2 path | **RS** — AGX2 path | **RS** — AGX2 execution; UMD contracts build-tested | **FC** — no hardware RT; Tier 0 | **RS** — existing `drm/asahi` path |
 | G14X | **RS** — AGX2 path | **RS** — AGX2 path | **RS** — AGX2 execution; UMD contracts build-tested | **FC** — no hardware RT; Tier 0 | **RS** — existing `drm/asahi` path |
 | G15P | **FC** — device axes unknown | **FC** — device axes unknown | **FC** — AGX2 shader code only; device gate closed | **FC** — no hardware RT; Tier 0 | **RE/FC** — identity routed; no runtime bring-up |
-| G15G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
-| G15S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
-| G15C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
-| G15D | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
-| G16P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL routed; submission unknown; no runtime bring-up |
-| G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/submission routed plus recovery-word validator; no runtime bring-up |
-| G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission and recovery-word validator; no runtime bring-up |
-| G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission and recovery-word validator; no runtime bring-up |
-| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL/dual submission, recovery/transition validators, HAL200 PM/CAS helper and physical PIO map; no runtime bring-up |
+| G15G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
+| G15S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
+| G15C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
+| G15D | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT axis, and recovery-word validator; no runtime bring-up |
+| G16P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL routed; submission unknown; no runtime bring-up |
+| G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/submission routed plus recovery-word validator; no runtime bring-up |
+| G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission and recovery-word validator; no runtime bring-up |
+| G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/dual submission and recovery-word validator; no runtime bring-up |
+| G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL/dual submission, recovery/transition validators, HAL200 PM/CAS helper and physical PIO map; no runtime bring-up |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
-| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM, HAL300 PM/CAS helper, transition/poll and physical PIO models, bounded boot/recovery; preflight closed |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300 PM block, direction-correct PIO prefixes, CAS/six-op pre-idle model, Fender idle poll, and physical PIO map validated; refuses before hardware ownership |
-| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM plus bounded boot models; preflight closed |
+| G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1/Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM, HAL300 PM/CAS helper, transition/poll and physical PIO models, bounded boot/recovery; preflight closed |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1/Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300 PM block, direction-correct PIO prefixes, CAS/six-op pre-idle model, Fender idle poll, and physical PIO map validated; refuses before hardware ownership |
+| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1/Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM plus bounded boot models; preflight closed |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
 identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
-The shared RT library now decodes the RIA Gen1 64-byte node header used by BVH
-versions 1--4 on the M3/M4 and A18 Pro paths. It covers the special all-inner
-and all-leaf BVH8 control endpoints, inner-child and leaf-box counts, indexed
-versus extent leaf modes, the 4+2-bit leaf-lane ends, rounded leaf-storage
+The shared RT library and D3D12 host core now decode the RIA Gen1 64-byte node
+header used by BVH versions 1--4 on the M3/M4 and A18 Pro paths. The D3D12
+wrapper dispatches by the blob's version rather than GPU identity because an
+M5 Pro public-builder capture also emitted version 3. It covers the special
+all-inner and all-leaf BVH8 control endpoints, inner-child and leaf-box counts,
+indexed versus extent leaf modes, the 4+2-bit leaf-lane ends, rounded leaf-storage
 extent, child-space and inner-child offsets, leaf type, and all six raw 7-bit
 quantized-bound components for each of eight children. The bounds extractor
 matches Apple's `RIANodeHeaderGen1::getQuantizedChildBounds` over 8,000,000
@@ -179,13 +190,19 @@ complete execution contract rather than descriptor construction alone.
 Apple's recovered texture-atomic emulation archives establish a different
 software ABI, not a native-PBE overlay: G15/G16 share one 288-module LLVM
 bitcode payload, G17 uses a distinct payload, and G17P deliberately selects the
-G16 family. Every module reads exactly three bindless texture-descriptor words
-plus a separate 32-bit `agc.texture_heap.texture_buffer_length` table. The
-descriptor-side base address, first level, generation-specific width/height,
-linear row stride, page-aligned-layers flag, and linear/GPU layout selector are
-grounded. Host construction of the side-table entry, level/layer strides,
-MSAA, compression/extended layouts, and legacy-equivalent buffer offsets remain
-**FC**, so this evidence does not yet unlock Honeykrisp writes or atomics.
+G16/HAL200 family. Every texture-heap slot has same-index 32-byte read and PBE
+descriptors plus one 8-byte side entry. The compiler loads that entry as i64,
+uses its low 32 bits as `agc.texture_heap.texture_buffer_length`, and treats the
+high 32 bits as a companion/auxiliary texture-heap slot. Buffer textures put
+their texel width in the low word. For eligible Gen9 atomic images the low word
+encodes the exact level/plane offset formula, including the split 16-bit 3D or
+array form, `0xae99` sentinel branch, and 16 KiB page-aligned branch; the G17
+runtime decoder independently consumes those same forms. Gen10 removes
+`getExtraTextureMetadata`: all ordinary and atomic image payloads were zero in
+a broad 963-line M5 Pro capture, while a 4,096-texel buffer produced low word
+`0x1000`. Mode 2's direct i64 at texture+0x288, construction of a nonzero
+companion slot, and executed G15/G16 nonzero atomic payloads remain **FC**, so
+Honeykrisp still has no safe total packer and does not expose writes or atomics.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in
