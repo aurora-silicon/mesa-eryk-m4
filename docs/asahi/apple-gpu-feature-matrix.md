@@ -46,10 +46,11 @@ marketing name in the measured corpus.
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, and 32-bit register-plus-u8
-`iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`).
-Both integer-add forms have exhaustive operand and every-bit rejection tests
-plus exact G15/G16/G17 corpus replay; G15G stall placement remains a separate
-unsolved scheduler rule. This is not a general shader encoder. In particular,
+`iadd` plus the canonical three-register form (AGX3b `iadd`, AGX3c `iadd32`),
+and canonical three-register u32 `bit_and`. The arithmetic and bitwise forms
+have exhaustive operand and every-bit rejection tests plus exact G15/G16/G17
+corpus replay; G15G stall placement remains a separate unsolved scheduler
+rule. This is not a general shader encoder. In particular,
 the generated AGX3
 disassemblers and hardware-RT detection do not make AGX3 code generation or
 device open supported.
