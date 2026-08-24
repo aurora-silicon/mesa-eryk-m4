@@ -571,11 +571,145 @@ check_rejections(void)
    return 0;
 }
 
+/* Independent replication of Apple's observed indexed-indirect header
+ * arithmetic, from a different derivation than the packer, as a cross-check. */
+static uint32_t
+apple_indexed_indirect_header(bool hal300, uint8_t prim, bool restart,
+                              enum agx_vdm_index_list_index_size index_size,
+                              uint64_t index_buffer)
+{
+   uint32_t table = (hal300 ? 0x6c220000u : 0x64220000u) |
+                    ((uint32_t)prim << 8);
+   uint32_t apple_index_size = (uint32_t)index_size - 1u; /* U16=1->0,U32=2->1 */
+   uint32_t w11 = (table + (apple_index_size << 17)) & 0xffeeff00u;
+   return (uint32_t)((index_buffer >> 32) & 0xffu) |
+          (restart ? 0x10000u : 0u) | w11 | 0x100000u;
+}
+
+static uint32_t
+load32(const uint8_t *b)
+{
+   return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) |
+          ((uint32_t)b[3] << 24);
+}
+
+static int
+check_indirect(void)
+{
+   const enum agx_vdm_index_list_index_size sizes[] = {
+      AGX_VDM_INDEX_LIST_INDEX_SIZE_U16, AGX_VDM_INDEX_LIST_INDEX_SIZE_U32,
+   };
+
+   for (unsigned c = 0;
+        c < sizeof(supported_chips) / sizeof(supported_chips[0]); ++c) {
+      const enum agx_chip chip = supported_chips[c];
+      const bool hal300 = is_hal300(chip);
+
+      for (unsigned p = 0; p < sizeof(primitives); ++p) {
+         const uint8_t prim = primitives[p];
+         const uint64_t A = 0xAABBCCDDEE00ull + ((uint64_t)prim << 8);
+
+         /* Non-indexed indirect: header, 16-bit addr hi, aligned addr lo,
+          * plus Unk2=7 only on HAL300. */
+         struct agx_vdm_index_list_indirect_nonindexed_info ni = {
+            .primitive = prim, .indirect_buffer = A};
+         struct agx_vdm_index_list_indirect_nonindexed no;
+         CHECK(agx_vdm_index_list_indirect_nonindexed_pack(chip, &ni, &no));
+         CHECK(no.length == (hal300 ? 16 : 12));
+         CHECK(load32(&no.bytes[0]) ==
+               ((hal300 ? 0x6c040000u : 0x64040000u) | ((uint32_t)prim << 8)));
+         CHECK(load32(&no.bytes[4]) == (uint32_t)((A >> 32) & 0xffffu));
+         CHECK(load32(&no.bytes[8]) == ((uint32_t)A & 0xfffffffcu));
+         if (hal300)
+            CHECK(load32(&no.bytes[12]) == 7u);
+         struct agx_vdm_index_list_indirect_nonindexed_info nback;
+         CHECK(agx_vdm_index_list_indirect_nonindexed_unpack(chip, no.bytes,
+                                                             no.length, &nback));
+         CHECK(nback.primitive == prim &&
+               nback.indirect_buffer == (A & ~(uint64_t)3));
+         /* Cross-encoding size must be rejected. */
+         CHECK(!agx_vdm_index_list_indirect_nonindexed_unpack(
+            chip, no.bytes, hal300 ? 12 : 16, &nback));
+
+         for (unsigned z = 0; z < 2; ++z) {
+            const enum agx_vdm_index_list_index_size isz = sizes[z];
+            const uint64_t IB = 0x001144332210ull + ((uint64_t)prim << 32);
+            struct agx_vdm_index_list_indirect_indexed_info ii = {
+               .primitive = prim, .restart_enable = (z == 1),
+               .index_size = isz, .index_buffer = IB, .indirect_buffer = A,
+               .restart_index = (z == 0) ? 0xffffu : 0x12345678u,
+               .index_buffer_size_word = 0x3ffu};
+            struct agx_vdm_index_list_indirect_indexed io;
+            CHECK(agx_vdm_index_list_indirect_indexed_pack(chip, &ii, &io));
+            CHECK(io.length == (hal300 ? 36 : 32));
+            CHECK(load32(&io.bytes[0]) == 0x40000001u);
+            CHECK(load32(&io.bytes[4]) == ii.restart_index);
+            CHECK(load32(&io.bytes[8]) ==
+                  apple_indexed_indirect_header(hal300, prim, ii.restart_enable,
+                                                isz, IB));
+            CHECK(load32(&io.bytes[12]) == (uint32_t)IB);
+            CHECK(load32(&io.bytes[16]) == (uint32_t)((A >> 32) & 0xffffu));
+            CHECK(load32(&io.bytes[20]) == ((uint32_t)A & 0xfffffffcu));
+            const unsigned size_off = hal300 ? 28 : 24;
+            const unsigned high_off = hal300 ? 32 : 28;
+            if (hal300)
+               CHECK(load32(&io.bytes[24]) == 7u);
+            CHECK(load32(&io.bytes[size_off]) == 0x3ffu);
+            CHECK(load32(&io.bytes[high_off]) ==
+                  (uint32_t)((IB >> 40) & 0xffu));
+
+            struct agx_vdm_index_list_indirect_indexed_info iback;
+            CHECK(agx_vdm_index_list_indirect_indexed_unpack(
+               chip, io.bytes, io.length, &iback));
+            CHECK(iback.primitive == prim && iback.index_size == isz &&
+                  iback.restart_enable == (z == 1) &&
+                  iback.restart_index == ii.restart_index &&
+                  iback.index_buffer == IB &&
+                  iback.indirect_buffer == (A & ~(uint64_t)3) &&
+                  iback.index_buffer_size_word == 0x3ffu);
+            /* A flipped fixed bit in the header must be rejected. */
+            struct agx_vdm_index_list_indirect_indexed corrupt = io;
+            corrupt.bytes[11] ^= 0x20; /* header bit 29 (block type) */
+            CHECK(!agx_vdm_index_list_indirect_indexed_unpack(
+               chip, corrupt.bytes, corrupt.length, &iback));
+         }
+      }
+   }
+
+   /* Fail-closed: AGX2 and non-Mac AGX3 identities, bad primitive, misaligned
+    * or out-of-range indirect buffer. */
+   for (unsigned u = 0;
+        u < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]); ++u) {
+      struct agx_vdm_index_list_indirect_nonindexed_info ni = {
+         .primitive = 0, .indirect_buffer = 0x1000};
+      struct agx_vdm_index_list_indirect_nonindexed no;
+      CHECK(!agx_vdm_index_list_indirect_nonindexed_pack(unsupported_chips[u],
+                                                         &ni, &no));
+   }
+   {
+      struct agx_vdm_index_list_indirect_nonindexed no;
+      struct agx_vdm_index_list_indirect_nonindexed_info bad_prim = {
+         .primitive = 2, .indirect_buffer = 0x1000};
+      CHECK(!agx_vdm_index_list_indirect_nonindexed_pack(AGX_CHIP_G16G,
+                                                        &bad_prim, &no));
+      struct agx_vdm_index_list_indirect_nonindexed_info misaligned = {
+         .primitive = 0, .indirect_buffer = 0x1002};
+      CHECK(!agx_vdm_index_list_indirect_nonindexed_pack(AGX_CHIP_G16G,
+                                                        &misaligned, &no));
+      struct agx_vdm_index_list_indirect_nonindexed_info over = {
+         .primitive = 0, .indirect_buffer = (uint64_t)1 << 48};
+      CHECK(!agx_vdm_index_list_indirect_nonindexed_pack(AGX_CHIP_G16G, &over,
+                                                        &no));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
    if (check_exact_witnesses() || check_full_domains() ||
-       check_corruption_classification() || check_rejections())
+       check_corruption_classification() || check_rejections() ||
+       check_indirect())
       return 1;
 
    printf("agx_vdm_index_list_core: %u checks passed\n", checks);

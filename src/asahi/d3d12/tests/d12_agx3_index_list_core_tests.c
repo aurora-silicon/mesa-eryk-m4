@@ -514,11 +514,71 @@ check_corruptions_and_rejections(void)
    return 0;
 }
 
+static int
+check_indirect_bridge(void)
+{
+   const enum d12_agx3_index_size sizes[] = {D12_AGX3_INDEX_SIZE_U16,
+                                             D12_AGX3_INDEX_SIZE_U32};
+
+   for (unsigned i = 0;
+        i < sizeof(supported_chips) / sizeof(supported_chips[0]); ++i) {
+      const enum agx_chip chip = supported_chips[i];
+      const bool hal300 = is_hal300(chip);
+
+      for (unsigned p = 0; p < sizeof(primitives); ++p) {
+         const uint8_t prim = primitives[p];
+         const uint64_t A = 0x554433221100ull + ((uint64_t)prim << 4);
+
+         struct d12_agx3_indirect_nonindexed_index_list_info ni = {
+            .primitive = prim, .indirect_buffer = A};
+         struct d12_agx3_indirect_nonindexed_index_list no;
+         CHECK(d12_agx3_encode_indirect_nonindexed_index_list(chip, &ni, &no));
+         CHECK(no.length == (hal300 ? 16 : 12));
+         struct d12_agx3_indirect_nonindexed_index_list_info nback;
+         CHECK(d12_agx3_decode_indirect_nonindexed_index_list(
+            chip, no.bytes, no.length, &nback));
+         CHECK(nback.primitive == prim &&
+               nback.indirect_buffer == (A & ~(uint64_t)3));
+
+         for (unsigned z = 0; z < 2; ++z) {
+            const uint64_t IB = 0x0011ffee0040ull + ((uint64_t)prim << 32);
+            struct d12_agx3_indirect_indexed_index_list_info ii = {
+               .primitive = prim, .restart_enable = (z == 1),
+               .index_size = sizes[z], .index_buffer = IB, .indirect_buffer = A,
+               .restart_index = (z == 0) ? 0xffffu : 0xcafef00du,
+               .index_buffer_size_word = 0x155u};
+            struct d12_agx3_indirect_indexed_index_list io;
+            CHECK(d12_agx3_encode_indirect_indexed_index_list(chip, &ii, &io));
+            CHECK(io.length == (hal300 ? 36 : 32));
+            struct d12_agx3_indirect_indexed_index_list_info iback;
+            CHECK(d12_agx3_decode_indirect_indexed_index_list(
+               chip, io.bytes, io.length, &iback));
+            CHECK(iback.primitive == prim && iback.index_size == sizes[z] &&
+                  iback.restart_enable == (z == 1) &&
+                  iback.restart_index == ii.restart_index &&
+                  iback.index_buffer == IB &&
+                  iback.indirect_buffer == (A & ~(uint64_t)3) &&
+                  iback.index_buffer_size_word == 0x155u);
+         }
+      }
+   }
+
+   for (unsigned u = 0;
+        u < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]); ++u) {
+      struct d12_agx3_indirect_nonindexed_index_list_info ni = {
+         .primitive = 0, .indirect_buffer = 0x2000};
+      struct d12_agx3_indirect_nonindexed_index_list no;
+      CHECK(!d12_agx3_encode_indirect_nonindexed_index_list(
+         unsupported_chips[u], &ni, &no));
+   }
+   return 0;
+}
+
 int
 main(void)
 {
    if (check_witnesses_and_shared_equality() || check_domains() ||
-       check_corruptions_and_rejections())
+       check_corruptions_and_rejections() || check_indirect_bridge())
       return 1;
 
    printf("d12_agx3_index_list_core: %u checks passed\n", checks);

@@ -22,6 +22,15 @@ extern "C" {
 #define AGX_VDM_INDEX_LIST_DIRECT_NONINDEXED_MAX_LENGTH 20u
 #define AGX_VDM_INDEX_LIST_DIRECT_INDEXED_MAX_LENGTH 32u
 
+/* Indirect draws. The VDM record is CPU-written exactly like a direct draw;
+ * only the count/instances/start live in a GPU-side argument buffer the VDM
+ * dereferences at execution via the Index List "Indirect buffer" pointer.
+ * G15/G16/G17P are 12 B (non-indexed) / 32 B (indexed); HAL300 (M5) appends an
+ * Unk2=7 word to each, making them 16 B / 36 B. AGX2 is not a target here.
+ * Grade A: research/gpu/GPU_AGX3_INDIRECT_DRAW_ICB_2026-08-24.md. */
+#define AGX_VDM_INDEX_LIST_INDIRECT_NONINDEXED_MAX_LENGTH 16u
+#define AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH 36u
+
 enum agx_vdm_index_list_index_size {
    AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 = 1,
    AGX_VDM_INDEX_LIST_INDEX_SIZE_U32 = 2,
@@ -62,6 +71,31 @@ struct agx_vdm_index_list_direct_indexed {
    uint8_t length;
 };
 
+struct agx_vdm_index_list_indirect_nonindexed_info {
+   uint8_t primitive;
+   uint64_t indirect_buffer; /* argument-buffer VA (base + offset) */
+};
+
+struct agx_vdm_index_list_indirect_indexed_info {
+   uint8_t primitive;
+   bool restart_enable;
+   enum agx_vdm_index_list_index_size index_size;
+   uint64_t index_buffer;    /* index-buffer VA */
+   uint64_t indirect_buffer; /* argument-buffer VA */
+   uint32_t restart_index;   /* State Update restart value */
+   uint32_t index_buffer_size_word; /* index-buffer size in dwords, minus 1 */
+};
+
+struct agx_vdm_index_list_indirect_nonindexed {
+   uint8_t bytes[AGX_VDM_INDEX_LIST_INDIRECT_NONINDEXED_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx_vdm_index_list_indirect_indexed {
+   uint8_t bytes[AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Native command recording and the GPU-side DGC kernels must construct the
  * same words.  Keep the endian-neutral word representation inline so both
@@ -70,6 +104,13 @@ struct agx_vdm_index_list_direct_indexed {
  */
 struct agx_vdm_index_list_direct_words {
    uint32_t words[AGX_VDM_INDEX_LIST_DIRECT_INDEXED_MAX_LENGTH / 4];
+   uint8_t count;
+};
+
+/* Indirect records reach 9 words (36 B) on HAL300 indexed draws, one more than
+ * the direct maximum, so they need their own wider carrier. */
+struct agx_vdm_index_list_indirect_words {
+   uint32_t words[AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH / 4];
    uint8_t count;
 };
 
@@ -175,6 +216,79 @@ agx_vdm_index_list_direct_pack_words(
 }
 
 /*
+ * Indirect Index List words, mirroring agx_vdm_index_list_direct_pack_words.
+ * `indirect_buffer` (A) is the argument-buffer VA; for the indexed form,
+ * `index_buffer` (IB) is the index-buffer VA, `restart_index` seeds the
+ * prepended 8-byte State Update, and `index_buffer_size_word` is the
+ * index-buffer size in dwords minus one. The indexed record is laid out with
+ * the State Update first, so word 0 here is 0x40000001.
+ *
+ * The indexed header is byte-identical to Apple's observed
+ *   (table[prim] + (apple_index_size << 17)) & 0xffeeff00 | IB[39:32]
+ *   | (restart ? bit16) | bit20
+ * with table = 0x6422/0x6c22; that reduces to the additive field build below
+ * because the encoded index-size field equals this enum's value (U16=1, U32=2),
+ * exactly as the already-validated direct indexed packer does it.
+ */
+static inline bool
+agx_vdm_index_list_indirect_pack_words(
+   enum agx_chip chip, uint8_t primitive, bool indexed, bool restart_enable,
+   uint8_t index_size, uint64_t index_buffer, uint64_t indirect_buffer,
+   uint32_t restart_index, uint32_t index_buffer_size_word,
+   struct agx_vdm_index_list_indirect_words *out)
+{
+   if (!out)
+      return false;
+
+   for (unsigned i = 0; i < AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH / 4;
+        ++i)
+      out->words[i] = 0;
+   out->count = 0;
+
+   if (!agx_vdm_index_list_direct_target_supported_inline(chip) ||
+       !agx_vdm_index_list_direct_primitive_supported_inline(primitive) ||
+       indirect_buffer >= ((uint64_t)1 << 48) || (indirect_buffer & 3u) != 0 ||
+       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
+                     index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U32) ||
+                    index_buffer >= ((uint64_t)1 << 48))))
+      return false;
+
+   const bool hal300 = agx_vdm_index_list_direct_is_hal300_inline(chip);
+   const uint32_t addr_hi = (uint32_t)((indirect_buffer >> 32) & 0xffffu);
+   const uint32_t addr_lo = (uint32_t)indirect_buffer & 0xfffffffcu;
+
+   if (!indexed) {
+      out->words[0] =
+         (hal300 ? 0x6c040000u : 0x64040000u) | ((uint32_t)primitive << 8);
+      out->words[1] = addr_hi;
+      out->words[2] = addr_lo;
+      if (hal300)
+         out->words[3] = 7u;
+      out->count = hal300 ? 4u : 3u;
+      return true;
+   }
+
+   out->words[0] = 0x40000001u;
+   out->words[1] = restart_index;
+   out->words[2] = (uint32_t)(3u << 29) | (hal300 ? (1u << 27) : 0u) |
+                   (1u << 26) | (1u << 21) | (1u << 20) |
+                   ((uint32_t)(index_size & 7u) << 17) |
+                   (restart_enable ? (1u << 16) : 0u) |
+                   ((uint32_t)primitive << 8) |
+                   (uint32_t)((index_buffer >> 32) & 0xffu);
+   out->words[3] = (uint32_t)index_buffer;
+   out->words[4] = addr_hi;
+   out->words[5] = addr_lo;
+   unsigned cursor = 6;
+   if (hal300)
+      out->words[cursor++] = 7u;
+   out->words[cursor++] = index_buffer_size_word;
+   out->words[cursor++] = (uint32_t)((index_buffer >> 40) & 0xffu);
+   out->count = (uint8_t)cursor;
+   return true;
+}
+
+/*
  * These helpers cover only the exact direct Index List records recovered from
  * Apple's G15, HAL200, and HAL300 VDM encoders.  HAL300 has header bit 27 set
  * and carries an additional opaque word whose only witnessed value is 7.
@@ -208,6 +322,24 @@ bool agx_vdm_index_list_direct_indexed_pack(
 bool agx_vdm_index_list_direct_indexed_unpack(
    enum agx_chip chip, const void *bytes, size_t size,
    struct agx_vdm_index_list_direct_indexed_info *info);
+
+bool agx_vdm_index_list_indirect_nonindexed_pack(
+   enum agx_chip chip,
+   const struct agx_vdm_index_list_indirect_nonindexed_info *info,
+   struct agx_vdm_index_list_indirect_nonindexed *out);
+
+bool agx_vdm_index_list_indirect_nonindexed_unpack(
+   enum agx_chip chip, const void *bytes, size_t size,
+   struct agx_vdm_index_list_indirect_nonindexed_info *info);
+
+bool agx_vdm_index_list_indirect_indexed_pack(
+   enum agx_chip chip,
+   const struct agx_vdm_index_list_indirect_indexed_info *info,
+   struct agx_vdm_index_list_indirect_indexed *out);
+
+bool agx_vdm_index_list_indirect_indexed_unpack(
+   enum agx_chip chip, const void *bytes, size_t size,
+   struct agx_vdm_index_list_indirect_indexed_info *info);
 
 #ifdef __cplusplus
 }

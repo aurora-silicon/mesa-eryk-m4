@@ -18,6 +18,8 @@ extern "C" {
 
 #define D12_AGX3_DIRECT_NONINDEXED_INDEX_LIST_MAX_LENGTH 20u
 #define D12_AGX3_DIRECT_INDEXED_INDEX_LIST_MAX_LENGTH 32u
+#define D12_AGX3_INDIRECT_NONINDEXED_INDEX_LIST_MAX_LENGTH 16u
+#define D12_AGX3_INDIRECT_INDEXED_INDEX_LIST_MAX_LENGTH 36u
 
 enum d12_agx3_index_size {
    D12_AGX3_INDEX_SIZE_U16 = 1,
@@ -52,6 +54,31 @@ struct d12_agx3_direct_indexed_index_list {
    uint8_t length;
 };
 
+struct d12_agx3_indirect_nonindexed_index_list_info {
+   uint8_t primitive;
+   uint64_t indirect_buffer;
+};
+
+struct d12_agx3_indirect_indexed_index_list_info {
+   uint8_t primitive;
+   bool restart_enable;
+   enum d12_agx3_index_size index_size;
+   uint64_t index_buffer;
+   uint64_t indirect_buffer;
+   uint32_t restart_index;
+   uint32_t index_buffer_size_word;
+};
+
+struct d12_agx3_indirect_nonindexed_index_list {
+   uint8_t bytes[D12_AGX3_INDIRECT_NONINDEXED_INDEX_LIST_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_indirect_indexed_index_list {
+   uint8_t bytes[D12_AGX3_INDIRECT_INDEXED_INDEX_LIST_MAX_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Research/validation bridge only.  These functions reuse the shared Mesa
  * packer and decoder but are not called by D3D draw lowering or command
@@ -74,6 +101,24 @@ bool d12_agx3_encode_direct_indexed_index_list(
 bool d12_agx3_decode_direct_indexed_index_list(
    enum agx_chip chip, const void *bytes, uint32_t size,
    struct d12_agx3_direct_indexed_index_list_info *info);
+
+bool d12_agx3_encode_indirect_nonindexed_index_list(
+   enum agx_chip chip,
+   const struct d12_agx3_indirect_nonindexed_index_list_info *info,
+   struct d12_agx3_indirect_nonindexed_index_list *out);
+
+bool d12_agx3_decode_indirect_nonindexed_index_list(
+   enum agx_chip chip, const void *bytes, uint32_t size,
+   struct d12_agx3_indirect_nonindexed_index_list_info *info);
+
+bool d12_agx3_encode_indirect_indexed_index_list(
+   enum agx_chip chip,
+   const struct d12_agx3_indirect_indexed_index_list_info *info,
+   struct d12_agx3_indirect_indexed_index_list *out);
+
+bool d12_agx3_decode_indirect_indexed_index_list(
+   enum agx_chip chip, const void *bytes, uint32_t size,
+   struct d12_agx3_indirect_indexed_index_list_info *info);
 
 #ifdef __cplusplus
 }
