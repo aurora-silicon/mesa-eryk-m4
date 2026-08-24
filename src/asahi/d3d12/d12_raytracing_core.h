@@ -765,6 +765,58 @@ d12_rt_agx_bvh_gen1_decode_hw_triangle_leaf(
    return true;
 }
 
+/* One exact Apple Gen1 hardware AABB leaf.  This is a research/validation
+ * surface only: decoding a captured record does not enable AS building,
+ * traversal, command submission, device admission, or a DXR capability. */
+struct d12_rt_agx_bvh_gen1_hw_aabb_leaf {
+   uint32_t header;
+   uint32_t intersection_function_table_offset;
+   float minimum[3];
+   float maximum[3];
+   uint64_t packed_ids_and_flags;
+   uint32_t geometry_id;
+   uint32_t primitive_id;
+   bool opaque;
+   bool has_primitive_data;
+   uint32_t word36;
+   uint64_t primitive_data_relative_word;
+   int64_t primitive_data_relative;
+};
+
+static inline bool
+d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+   const void *packed_leaf, size_t available,
+   struct d12_rt_agx_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   if (!leaf)
+      return false;
+
+   memset(leaf, 0, sizeof(*leaf));
+
+   struct agx_rt_bvh_gen1_hw_aabb_leaf decoded;
+   if (!agx_rt_bvh_gen1_hw_aabb_leaf_unpack(packed_leaf, available, &decoded))
+      return false;
+
+   leaf->header = decoded.header;
+   leaf->intersection_function_table_offset =
+      agx_rt_bvh_gen1_hw_aabb_intersection_function_table_offset(&decoded);
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      leaf->minimum[axis] = decoded.minimum[axis];
+      leaf->maximum[axis] = decoded.maximum[axis];
+   }
+   leaf->packed_ids_and_flags = decoded.packed_ids_and_flags;
+   leaf->geometry_id = agx_rt_bvh_gen1_hw_aabb_geometry_id(&decoded);
+   leaf->primitive_id = agx_rt_bvh_gen1_hw_aabb_primitive_id(&decoded);
+   leaf->opaque = agx_rt_bvh_gen1_hw_aabb_is_opaque(&decoded);
+   leaf->has_primitive_data =
+      agx_rt_bvh_gen1_hw_aabb_has_primitive_data(&decoded);
+   leaf->word36 = decoded.word36;
+   leaf->primitive_data_relative_word =
+      decoded.primitive_data_relative_word;
+   leaf->primitive_data_relative = decoded.primitive_data_relative;
+   return true;
+}
+
 /*
  * Decoded Apple RIA Gen1 child layout.
  *

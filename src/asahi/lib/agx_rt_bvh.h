@@ -42,6 +42,9 @@ extern "C" {
 #define AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_SIZE 64u
 #define AGX_RT_BVH_GEN1_HW_TRIANGLE_LEAF_MARKER 0x50u
 #define AGX_RT_BVH_GEN1_HW_TRIANGLE_ID_MASK 0x3fffffffu
+#define AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE 48u
+#define AGX_RT_BVH_GEN1_HW_AABB_LEAF_MARKER 0x18u
+#define AGX_RT_BVH_GEN1_HW_AABB_ID_MASK 0x3fffffffu
 #define AGX_RT_BVH_GEN5_HEADER_SIZE 64u
 #define AGX_RT_BVH_GEN5_INVALID_QTB_COUNT 4u
 
@@ -62,6 +65,23 @@ struct agx_rt_bvh_gen1_hw_triangle_leaf {
     * high bits have not yet been assigned safe public names. */
    uint32_t geometry_word;
    uint32_t primitive_word[2];
+};
+
+struct agx_rt_bvh_gen1_hw_aabb_leaf {
+   /* The marker occupies only the low byte.  Public-Metal captures prove the
+    * upper 24 bits are the geometry's intersection-function-table offset. */
+   uint32_t header;
+   float minimum[3];
+   float maximum[3];
+
+   /* Preserve every packed bit.  The low/high 30-bit fields are geometry and
+    * primitive IDs respectively, low-word bit 31 is the opaque flag, and
+    * high-word bit 30 gates the signed relative primitive-data address at
+    * byte 40.  Low-word bit 30 and high-word bit 31 remain unnamed. */
+   uint64_t packed_ids_and_flags;
+   uint32_t word36;
+   uint64_t primitive_data_relative_word;
+   int64_t primitive_data_relative;
 };
 
 #ifdef __cplusplus
@@ -92,6 +112,87 @@ agx_rt_bvh_load_le64(const uint8_t *src)
       value |= (uint64_t)src[i] << (i * 8);
 
    return value;
+}
+
+/* Decode the exact 48-byte hardware AABB leaf emitted by the public Metal
+ * Gen1 builder.  `available` is the remaining mapped-buffer span, so a larger
+ * value is valid; this helper consumes only the first fixed-size record. */
+static inline bool
+agx_rt_bvh_gen1_hw_aabb_leaf_unpack(
+   const void *packed, size_t available,
+   struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   if (!leaf)
+      return false;
+
+   memset(leaf, 0, sizeof(*leaf));
+
+   if (!packed || available < AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE)
+      return false;
+
+   const uint8_t *bytes = (const uint8_t *)packed;
+   leaf->header = agx_rt_bvh_load_le32(bytes);
+   if ((leaf->header & 0xffu) != AGX_RT_BVH_GEN1_HW_AABB_LEAF_MARKER) {
+      memset(leaf, 0, sizeof(*leaf));
+      return false;
+   }
+
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      uint32_t bits = agx_rt_bvh_load_le32(bytes + 4 + axis * 4);
+      memcpy(&leaf->minimum[axis], &bits, sizeof(bits));
+      bits = agx_rt_bvh_load_le32(bytes + 16 + axis * 4);
+      memcpy(&leaf->maximum[axis], &bits, sizeof(bits));
+   }
+
+   leaf->packed_ids_and_flags = agx_rt_bvh_load_le64(bytes + 28);
+   leaf->word36 = agx_rt_bvh_load_le32(bytes + 36);
+   leaf->primitive_data_relative_word = agx_rt_bvh_load_le64(bytes + 40);
+   if (leaf->packed_ids_and_flags & (UINT64_C(1) << 62)) {
+      memcpy(&leaf->primitive_data_relative,
+             &leaf->primitive_data_relative_word,
+             sizeof(leaf->primitive_data_relative_word));
+   }
+
+   return true;
+}
+
+static inline uint32_t
+agx_rt_bvh_gen1_hw_aabb_intersection_function_table_offset(
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   return leaf ? leaf->header >> 8 : 0;
+}
+
+static inline uint32_t
+agx_rt_bvh_gen1_hw_aabb_geometry_id(
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   return leaf ? (uint32_t)leaf->packed_ids_and_flags &
+                    AGX_RT_BVH_GEN1_HW_AABB_ID_MASK
+               : 0;
+}
+
+static inline uint32_t
+agx_rt_bvh_gen1_hw_aabb_primitive_id(
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   return leaf ? (uint32_t)(leaf->packed_ids_and_flags >> 32) &
+                    AGX_RT_BVH_GEN1_HW_AABB_ID_MASK
+               : 0;
+}
+
+static inline bool
+agx_rt_bvh_gen1_hw_aabb_is_opaque(
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   return leaf && (leaf->packed_ids_and_flags & (UINT64_C(1) << 31));
+}
+
+static inline bool
+agx_rt_bvh_gen1_hw_aabb_has_primitive_data(
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf *leaf)
+{
+   return leaf && (leaf->packed_ids_and_flags & (UINT64_C(1) << 62));
 }
 
 /* Decode the exact 64-byte hardware triangle leaf used by the real Gen1 BVH

@@ -58,6 +58,8 @@ test_api_constants(void)
    require(sizeof(struct d12_rt_shader_identifier) ==
               D12_RT_SHADER_IDENTIFIER_SIZE,
            "the identifier structure is exactly the API's 32 bytes");
+   require(AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE == 48,
+           "the research AABB record is exactly 48 bytes");
 }
 
 static void
@@ -991,6 +993,131 @@ test_agx_gen1_hw_triangle_leaf(void)
 }
 
 static void
+test_agx_gen1_hw_aabb_leaf(void)
+{
+   static const uint8_t captured[AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE] = {
+      0x18, 0x00, 0x00, 0x00, 0x3a, 0xbb, 0x52, 0x3f,
+      0x86, 0xd1, 0x15, 0x3f, 0xcd, 0xcc, 0x4c, 0x3d,
+      0xd0, 0x90, 0x9c, 0x3f, 0xec, 0x37, 0x7c, 0x3f,
+      0x67, 0x66, 0xe6, 0x3e, 0x00, 0x00, 0x00, 0x40,
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint32_t expected_minimum_bits[3] = {
+      0x3f52bb3a, 0x3f15d186, 0x3d4ccccd,
+   };
+   static const uint32_t expected_maximum_bits[3] = {
+      0x3f9c90d0, 0x3f7c37ec, 0x3ee66667,
+   };
+
+   uint8_t with_trailing_byte[sizeof(captured) + 1];
+   memcpy(with_trailing_byte, captured, sizeof(captured));
+   with_trailing_byte[sizeof(captured)] = 0xa5;
+
+   struct d12_rt_agx_bvh_gen1_hw_aabb_leaf leaf;
+   require(d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+              with_trailing_byte, sizeof(with_trailing_byte), &leaf),
+           "DXR decodes one fixed AABB from a larger mapped span");
+   require(leaf.header == UINT32_C(0x18) &&
+              leaf.intersection_function_table_offset == 0 &&
+              leaf.packed_ids_and_flags ==
+                 UINT64_C(0x0000000140000000) &&
+              leaf.geometry_id == 0 && leaf.primitive_id == 1 &&
+              !leaf.opaque && !leaf.has_primitive_data &&
+              leaf.word36 == 0 &&
+              leaf.primitive_data_relative_word == 0 &&
+              leaf.primitive_data_relative == 0,
+           "DXR receives the complete captured AABB metadata");
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      require(rt_float_bits(leaf.minimum[axis]) ==
+                    expected_minimum_bits[axis] &&
+                 rt_float_bits(leaf.maximum[axis]) ==
+                    expected_maximum_bits[axis],
+              "DXR receives every captured AABB bound exactly");
+   }
+
+   /* Exact controlled two-geometry capture record: geometry one, primitive
+    * zero, and intersection-function-table offset nine. */
+   uint8_t geometry_one[sizeof(captured)] = {
+      0x18, 0x09, 0x00, 0x00, 0xfa, 0x8f, 0xab, 0x3e,
+      0xb3, 0xa0, 0x76, 0x3f, 0xcd, 0xcc, 0xcc, 0x3d,
+      0x64, 0x2e, 0x3c, 0x3f, 0x8d, 0x83, 0xae, 0x3f,
+      0x00, 0x00, 0x00, 0x3f, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   require(d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+              geometry_one, sizeof(geometry_one), &leaf),
+           "DXR decodes the controlled second-geometry AABB");
+   require(leaf.header == UINT32_C(0x00000918) &&
+              leaf.intersection_function_table_offset == 9 &&
+              leaf.geometry_id == 1 && leaf.primitive_id == 0 &&
+              leaf.word36 == 1 && leaf.primitive_data_relative_word == 0,
+           "DXR preserves the proved table offset and AABB ID meanings");
+
+   uint8_t opaque[sizeof(captured)];
+   memcpy(opaque, captured, sizeof(opaque));
+   opaque[31] = 0xc0;
+   require(d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(opaque, sizeof(opaque),
+                                                   &leaf),
+           "DXR decodes the controlled public-Metal opaque AABB");
+   require(leaf.packed_ids_and_flags == UINT64_C(0x00000001c0000000) &&
+              leaf.opaque && !leaf.has_primitive_data,
+           "DXR maps only the capture-proved opaque bit");
+
+   uint8_t flagged[sizeof(captured)];
+   memcpy(flagged, captured, sizeof(flagged));
+   const uint8_t packed_and_relative[16] = {
+      0x07, 0x00, 0x00, 0xc0, 0x05, 0x00, 0x00, 0xc0,
+      0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe,
+   };
+   memcpy(flagged + 28, packed_and_relative, 8);
+   memcpy(flagged + 40, packed_and_relative + 8, 8);
+   require(d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(flagged, sizeof(flagged),
+                                                   &leaf),
+           "DXR decodes opaque AABB metadata with primitive data");
+   int64_t expected_relative;
+   const uint64_t relative_bits = UINT64_C(0xfedcba9876543210);
+   memcpy(&expected_relative, &relative_bits, sizeof(relative_bits));
+   require(leaf.packed_ids_and_flags == UINT64_C(0xc0000005c0000007) &&
+              leaf.geometry_id == 7 && leaf.primitive_id == 5 &&
+              leaf.opaque && leaf.has_primitive_data &&
+              leaf.word36 == 0 &&
+              leaf.primitive_data_relative_word == relative_bits &&
+              leaf.primitive_data_relative == expected_relative,
+           "DXR separates proved AABB fields from preserved unnamed bits");
+
+   const struct d12_rt_agx_bvh_gen1_hw_aabb_leaf zero = {0};
+   for (size_t available = 0;
+        available < AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE; ++available) {
+      memset(&leaf, 0xa5, sizeof(leaf));
+      require(!d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(captured, available,
+                                                       &leaf),
+              "DXR rejects every truncated Gen1 hardware AABB leaf");
+      require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+              "a truncated DXR AABB leaf leaves no stale data");
+   }
+
+   uint8_t wrong_marker[sizeof(captured)];
+   memcpy(wrong_marker, captured, sizeof(wrong_marker));
+   wrong_marker[0] ^= 1;
+   memset(&leaf, 0xa5, sizeof(leaf));
+   require(!d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+              wrong_marker, sizeof(wrong_marker), &leaf),
+           "DXR rejects a wrong Gen1 hardware AABB marker");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a wrong DXR AABB marker leaves no stale data");
+   require(!d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+              NULL, sizeof(captured), &leaf),
+           "DXR rejects a missing Gen1 hardware AABB leaf");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a missing DXR AABB leaf leaves no stale data");
+   require(!d12_rt_agx_bvh_gen1_decode_hw_aabb_leaf(
+              captured, sizeof(captured), NULL),
+           "DXR rejects a missing AABB-leaf destination");
+}
+
+static void
 test_agx_gen1_child_layout(void)
 {
    /* Two inner children followed by three leaf boxes.  Their decoded leaf
@@ -1175,6 +1302,7 @@ main(void)
    test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();
    test_agx_gen1_hw_triangle_leaf();
+   test_agx_gen1_hw_aabb_leaf();
    test_agx_gen1_child_layout();
    test_agx_gen5_child_layout();
 

@@ -254,6 +254,13 @@ float_bits(float value)
 }
 
 static void
+store_le64(uint8_t *destination, uint64_t value)
+{
+   for (unsigned byte = 0; byte < 8; ++byte)
+      destination[byte] = (uint8_t)(value >> (byte * 8));
+}
+
+static void
 test_gen1_hw_triangle_leaf(void)
 {
    /* Slot 14 from the pinned public-Metal M5 Pro version-3 capture.  The
@@ -350,6 +357,218 @@ test_gen1_hw_triangle_leaf(void)
               agx_rt_bvh_gen1_hw_triangle_primitive_id(NULL, 0) == 0 &&
               agx_rt_bvh_gen1_hw_triangle_primitive_id(&leaf, 2) == 0,
            "missing and out-of-range triangle ID queries fail closed");
+}
+
+static void
+test_gen1_hw_aabb_leaf(void)
+{
+   /* Exact records from the pinned public-Metal M5 Pro captures.  The
+    * one-AABB record equals the second record in the four-AABB capture, but
+    * is retained separately to guard both source vectors. */
+   static const uint8_t single[AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE] = {
+      0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3f,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x33, 0x33, 0xb3, 0x3f, 0xcd, 0xcc, 0xcc, 0x3e,
+      0xcd, 0xcc, 0xcc, 0x3e, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t captured[4][AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE] = {
+      {
+         0x18, 0x00, 0x00, 0x00, 0x3a, 0xbb, 0x52, 0x3f,
+         0x86, 0xd1, 0x15, 0x3f, 0xcd, 0xcc, 0x4c, 0x3d,
+         0xd0, 0x90, 0x9c, 0x3f, 0xec, 0x37, 0x7c, 0x3f,
+         0x67, 0x66, 0xe6, 0x3e, 0x00, 0x00, 0x00, 0x40,
+         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      },
+      {
+         0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3f,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x33, 0x33, 0xb3, 0x3f, 0xcd, 0xcc, 0xcc, 0x3e,
+         0xcd, 0xcc, 0xcc, 0x3e, 0x00, 0x00, 0x00, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x9c, 0x33, 0x9c, 0x33,
+         0x9c, 0x33, 0x9c, 0x33, 0xe7, 0x3d, 0x3e, 0x3c,
+      },
+      {
+         0x18, 0x00, 0x00, 0x00, 0xfa, 0x8f, 0xab, 0x3e,
+         0xb3, 0xa0, 0x76, 0x3f, 0xcd, 0xcc, 0xcc, 0x3d,
+         0x64, 0x2e, 0x3c, 0x3f, 0x8d, 0x83, 0xae, 0x3f,
+         0x00, 0x00, 0x00, 0x3f, 0x00, 0x00, 0x00, 0x00,
+         0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      },
+      {
+         0x18, 0x00, 0x00, 0x00, 0xdc, 0x69, 0x93, 0xbe,
+         0x38, 0x2b, 0x7d, 0x3f, 0x9a, 0x99, 0x19, 0x3e,
+         0xc4, 0x8b, 0xe5, 0x3d, 0xcf, 0xc8, 0xb1, 0x3f,
+         0xcd, 0xcc, 0x0c, 0x3f, 0x00, 0x00, 0x00, 0x00,
+         0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      },
+   };
+   static const uint32_t expected_minimum_bits[4][3] = {
+      {0x3f52bb3a, 0x3f15d186, 0x3d4ccccd},
+      {0x3f800000, 0x00000000, 0x00000000},
+      {0x3eab8ffa, 0x3f76a0b3, 0x3dcccccd},
+      {0xbe9369dc, 0x3f7d2b38, 0x3e19999a},
+   };
+   static const uint32_t expected_maximum_bits[4][3] = {
+      {0x3f9c90d0, 0x3f7c37ec, 0x3ee66667},
+      {0x3fb33333, 0x3ecccccd, 0x3ecccccd},
+      {0x3f3c2e64, 0x3fae838d, 0x3f000000},
+      {0x3de58bc4, 0x3fb1c8cf, 0x3f0ccccd},
+   };
+   static const uint32_t expected_primitive_id[4] = {1, 0, 2, 3};
+   static const uint32_t expected_word36[4] = {
+      0, UINT32_C(0x339c339c), 1, 0,
+   };
+   static const uint64_t expected_tail_word[4] = {
+      0, UINT64_C(0x3c3e3de7339c339c), 0, 0,
+   };
+
+   uint8_t unaligned[AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE + 2] = {0};
+   memcpy(unaligned + 1, single, sizeof(single));
+   unaligned[sizeof(unaligned) - 1] = 0xa5;
+
+   struct agx_rt_bvh_gen1_hw_aabb_leaf leaf;
+   require(agx_rt_bvh_gen1_hw_aabb_leaf_unpack(
+              unaligned + 1, sizeof(unaligned) - 1, &leaf),
+           "an unaligned AABB leaf accepts a larger remaining span");
+   require(leaf.header == AGX_RT_BVH_GEN1_HW_AABB_LEAF_MARKER &&
+              agx_rt_bvh_gen1_hw_aabb_geometry_id(&leaf) == 0 &&
+              agx_rt_bvh_gen1_hw_aabb_primitive_id(&leaf) == 0,
+           "the one-AABB capture decodes its header and IDs");
+
+   for (unsigned record = 0; record < 4; ++record) {
+      require(agx_rt_bvh_gen1_hw_aabb_leaf_unpack(
+                 captured[record], sizeof(captured[record]), &leaf),
+              "every real four-AABB capture record decodes");
+      for (unsigned axis = 0; axis < 3; ++axis) {
+         require(float_bits(leaf.minimum[axis]) ==
+                    expected_minimum_bits[record][axis] &&
+                    float_bits(leaf.maximum[axis]) ==
+                    expected_maximum_bits[record][axis],
+                 "every captured AABB bound preserves its exact f32 bits");
+      }
+      require(agx_rt_bvh_gen1_hw_aabb_geometry_id(&leaf) == 0 &&
+                 agx_rt_bvh_gen1_hw_aabb_primitive_id(&leaf) ==
+                    expected_primitive_id[record],
+              "captured low/high 30-bit fields are geometry/primitive IDs");
+      require(!agx_rt_bvh_gen1_hw_aabb_is_opaque(&leaf) &&
+                 !agx_rt_bvh_gen1_hw_aabb_has_primitive_data(&leaf) &&
+                 leaf.primitive_data_relative == 0,
+              "default captured AABBs have neither optional proved flag");
+      require(leaf.word36 == expected_word36[record] &&
+                 leaf.primitive_data_relative_word ==
+                    expected_tail_word[record],
+              "every still-unassigned captured AABB tail byte is preserved");
+   }
+   require(leaf.packed_ids_and_flags == UINT64_C(0x0000000300000000),
+           "the complete packed ID/flag payload remains visible");
+
+   uint8_t opaque[sizeof(captured[0])];
+   memcpy(opaque, captured[0], sizeof(opaque));
+   opaque[31] = 0xc0;
+   require(agx_rt_bvh_gen1_hw_aabb_leaf_unpack(opaque, sizeof(opaque), &leaf),
+           "the controlled public-Metal opaque AABB record decodes");
+   require(leaf.packed_ids_and_flags == UINT64_C(0x00000001c0000000) &&
+              agx_rt_bvh_gen1_hw_aabb_is_opaque(&leaf),
+           "the controlled opaque capture proves packed low-word bit 31");
+
+   /* Controlled two-geometry capture: geometry one used table offset nine. */
+   uint8_t geometry_one[sizeof(captured[2])];
+   memcpy(geometry_one, captured[2], sizeof(geometry_one));
+   geometry_one[1] = 9;
+   geometry_one[28] = 1;
+   geometry_one[32] = 0;
+   require(agx_rt_bvh_gen1_hw_aabb_leaf_unpack(
+              geometry_one, sizeof(geometry_one), &leaf),
+           "the controlled second-geometry record decodes");
+   require(leaf.header == UINT32_C(0x00000918) &&
+              agx_rt_bvh_gen1_hw_aabb_intersection_function_table_offset(
+                 &leaf) == 9 &&
+              agx_rt_bvh_gen1_hw_aabb_geometry_id(&leaf) == 1 &&
+              agx_rt_bvh_gen1_hw_aabb_primitive_id(&leaf) == 0,
+           "controlled bytes prove table offset and both ID field names");
+
+   /* Exercise all combinations of the four packed bits outside the two
+    * proved 30-bit IDs.  Bit 31 is opaque and bit 62 gates the relative
+    * primitive-data address; bits 30 and 63 remain raw and unnamed. */
+   for (unsigned flags = 0; flags < 16; ++flags) {
+      uint8_t flagged[sizeof(single)];
+      memcpy(flagged, single, sizeof(flagged));
+      const uint64_t raw = UINT64_C(0x0234567801234567) |
+                           ((uint64_t)(flags & 1u) << 30) |
+                           ((uint64_t)(flags & 2u) << 30) |
+                           ((uint64_t)(flags & 4u) << 60) |
+                           ((uint64_t)(flags & 8u) << 60);
+      const uint64_t relative_bits = UINT64_C(0xfedcba9876543210);
+      store_le64(flagged + 28, raw);
+      store_le64(flagged + 40, relative_bits);
+      require(agx_rt_bvh_gen1_hw_aabb_leaf_unpack(flagged, sizeof(flagged),
+                                                   &leaf),
+              "every combination of raw packed AABB flags decodes");
+      require(leaf.packed_ids_and_flags == raw &&
+                 leaf.word36 == 0 &&
+                 leaf.primitive_data_relative_word == relative_bits &&
+                 agx_rt_bvh_gen1_hw_aabb_geometry_id(&leaf) == 0x01234567 &&
+                 agx_rt_bvh_gen1_hw_aabb_primitive_id(&leaf) == 0x02345678,
+              "raw flags cannot contaminate either 30-bit AABB ID");
+      require(agx_rt_bvh_gen1_hw_aabb_is_opaque(&leaf) ==
+                 ((flags & 2u) != 0) &&
+                 agx_rt_bvh_gen1_hw_aabb_has_primitive_data(&leaf) ==
+                    ((flags & 4u) != 0),
+              "only the two proved AABB flags receive semantic names");
+      int64_t expected_relative = 0;
+      if (flags & 4u)
+         memcpy(&expected_relative, &relative_bits, sizeof(relative_bits));
+      require(leaf.primitive_data_relative == expected_relative,
+              "the relative primitive-data value is consumed only when gated");
+   }
+
+   const struct agx_rt_bvh_gen1_hw_aabb_leaf zero = {0};
+   for (size_t available = 0;
+        available < AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE; ++available) {
+      memset(&leaf, 0xa5, sizeof(leaf));
+      require(!agx_rt_bvh_gen1_hw_aabb_leaf_unpack(single, available, &leaf),
+              "every truncated hardware AABB leaf is rejected");
+      require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+              "a truncated AABB leaf leaves no stale output");
+   }
+
+   for (unsigned bit = 0; bit < 32; ++bit) {
+      uint8_t changed_header[sizeof(single)];
+      memcpy(changed_header, single, sizeof(changed_header));
+      changed_header[bit / 8] ^= 1u << (bit % 8);
+      memset(&leaf, 0xa5, sizeof(leaf));
+      const bool valid = agx_rt_bvh_gen1_hw_aabb_leaf_unpack(
+         changed_header, sizeof(changed_header), &leaf);
+      if (bit < 8) {
+         require(!valid, "every changed low-byte AABB marker bit is rejected");
+         require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+                 "a wrong AABB marker leaves no stale output");
+      } else {
+         require(valid, "every upper AABB header bit remains payload");
+         require(leaf.header == (UINT32_C(0x18) | (UINT32_C(1) << bit)),
+                 "upper AABB header payload bits are preserved exactly");
+      }
+   }
+
+   memset(&leaf, 0xa5, sizeof(leaf));
+   require(!agx_rt_bvh_gen1_hw_aabb_leaf_unpack(NULL, sizeof(single), &leaf),
+           "a missing AABB leaf is rejected");
+   require(memcmp(&leaf, &zero, sizeof(leaf)) == 0,
+           "a missing AABB leaf leaves no stale output");
+   require(!agx_rt_bvh_gen1_hw_aabb_leaf_unpack(single, sizeof(single), NULL),
+           "a missing AABB-leaf destination is rejected");
+   require(agx_rt_bvh_gen1_hw_aabb_intersection_function_table_offset(NULL) ==
+              0 &&
+              agx_rt_bvh_gen1_hw_aabb_geometry_id(NULL) == 0 &&
+              agx_rt_bvh_gen1_hw_aabb_primitive_id(NULL) == 0 &&
+              !agx_rt_bvh_gen1_hw_aabb_is_opaque(NULL) &&
+              !agx_rt_bvh_gen1_hw_aabb_has_primitive_data(NULL),
+           "all missing AABB field queries fail closed");
 }
 
 static void
@@ -672,10 +891,13 @@ main(void)
    require(sizeof(struct agx_rt_bvh_gen5_header) ==
               AGX_RT_BVH_GEN5_HEADER_SIZE,
            "a Gen5 node header is exactly 64 bytes");
+   require(AGX_RT_BVH_GEN1_HW_AABB_LEAF_SIZE == 48,
+           "a Gen1 hardware AABB leaf record is exactly 48 bytes");
    test_gen1_unpack_and_control();
    test_gen1_leaf_layout();
    test_gen1_quantized_bounds();
    test_gen1_hw_triangle_leaf();
+   test_gen1_hw_aabb_leaf();
    test_gen1_randomized_assembly_equivalence();
    test_unpack_and_signed_child_space();
    test_leaf_and_inner_counts();
