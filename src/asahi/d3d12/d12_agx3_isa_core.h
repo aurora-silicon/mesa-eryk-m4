@@ -19,6 +19,7 @@ extern "C" {
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_FADD_F32_REG_REG_LENGTH 6
+#define D12_AGX3_FMUL_F32_REG_REG_LENGTH 6
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 
@@ -83,6 +84,11 @@ struct d12_agx3_ternary_alu_encoding {
 
 struct d12_agx3_fadd_f32_reg_reg_encoding {
    uint8_t bytes[D12_AGX3_FADD_F32_REG_REG_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_fmul_f32_reg_reg_encoding {
+   uint8_t bytes[D12_AGX3_FMUL_F32_REG_REG_LENGTH];
    uint8_t length;
 };
 
@@ -155,6 +161,27 @@ bool d12_agx3_encode_fadd_f32_reg_reg(
    uint16_t src0, uint16_t src1,
    struct d12_agx3_fadd_f32_reg_reg_encoding *out);
 bool d12_agx3_decode_fadd_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src0, uint16_t *src1);
+
+/*
+ * Encode/decode only the exact compact register-register f32 multiply form
+ * witnessed by the L/P2 corpus on G15G/S/D, G16P/G/S and G17P (AGX3b), plus
+ * the Q corpus on G17S (AGX3c).  G17G remains rejected because the pinned
+ * corpus witnesses only its longer multiply form.  `encoding` must match the
+ * target, and all operands are even half-register indices in the
+ * conservatively proved 0..126 domain.
+ *
+ * This strict six-byte ISA bridge does not accept trailing bytes and does not
+ * enable DXIL lowering, scheduling, command submission, device admission,
+ * runtime use, or any D3D12 feature.
+ */
+bool d12_agx3_encode_fmul_f32_reg_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src0, uint16_t src1,
+   struct d12_agx3_fmul_f32_reg_reg_encoding *out);
+bool d12_agx3_decode_fmul_f32_reg_reg(
    enum agx_chip chip, enum agx_isa_encoding encoding,
    const void *instruction, uint32_t instruction_size, uint16_t *dest,
    uint16_t *src0, uint16_t *src1);

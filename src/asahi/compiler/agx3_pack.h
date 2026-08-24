@@ -20,6 +20,7 @@ extern "C" {
 #define AGX3_IADD_U32_IMM8_MAX_LENGTH 12
 #define AGX3_IADD_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_FADD_F32_REG_REG_LENGTH 6
+#define AGX3_FMUL_F32_REG_REG_LENGTH 6
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_XOR_U32_REG_REG_LENGTH 10
@@ -56,6 +57,11 @@ struct agx3_encoded_iadd_u32_reg_reg {
 
 struct agx3_encoded_fadd_f32_reg_reg {
    uint8_t bytes[AGX3_FADD_F32_REG_REG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_fmul_f32_reg_reg {
+   uint8_t bytes[AGX3_FMUL_F32_REG_REG_LENGTH];
    uint8_t length;
 };
 
@@ -240,6 +246,30 @@ bool agx3_pack_fadd_f32_reg_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
    uint16_t src1, struct agx3_encoded_fadd_f32_reg_reg *out);
 bool agx3_unpack_fadd_f32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the exact compact register-register f32 multiply selections
+ * emitted by the pinned compiler corpus.  P2f_mul correlates f2 with the
+ * result, f35 with `src0`, and f18 with `src1`; the L_fmul and Q_fmul ladders
+ * independently reproduce the operand fields.  The selected AGX3b form is
+ * the fixed-0xc0 L/P2 selection witnessed across seven targets.  The selected
+ * AGX3c form is G17S's fixed-0x20 delayed-use witness.  Those target gates
+ * belong to the caller because this shared layer receives an encoding
+ * generation rather than a chip.
+ *
+ * Operands are even half-register indices restricted to 0..126.  The compact
+ * corpus does not exercise register bit 7, so it is deliberately not inferred
+ * from the separate compact fadd mapping.  Alternate anonymous/context
+ * selections (including the 0x20-trailer G15G/G16G Q captures), modifier-
+ * bearing and fourteen-byte forms, and G15G's separate scheduling
+ * instructions remain outside this exact API and fail closed.
+ */
+bool agx3_pack_fmul_f32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_fmul_f32_reg_reg *out);
+bool agx3_unpack_fmul_f32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 

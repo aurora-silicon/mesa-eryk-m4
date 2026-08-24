@@ -130,7 +130,7 @@ agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding, const uint8_t *bytes,
    *imm = ((word0 >> 8) & 0x7f) | (((word2 >> 1) & 0xf) << 7) |
           (((word2 >> 10) & 0x3) << 11) | ((word3 & 0xf) << 13) |
           (((word3 >> 4) & 0xff) << 17) |
-          (((word1 >> 9) & 0x7f) << 25);
+          ((uint32_t)((word1 >> 9) & 0x7f) << 25);
    *length = 8;
    return true;
 }
@@ -426,6 +426,75 @@ agx3_unpack_fadd_f32_reg_reg(enum agx_isa_encoding encoding,
 
    struct agx3_encoded_fadd_f32_reg_reg canonical;
    if (!agx3_pack_fadd_f32_reg_reg(encoding, decoded_dest, decoded_src0,
+                                   decoded_src1, &canonical) ||
+       memcmp(bytes, canonical.bytes, canonical.length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src0 = decoded_src0;
+   *src1 = decoded_src1;
+   *length = canonical.length;
+   return true;
+}
+
+bool
+agx3_pack_fmul_f32_reg_reg(enum agx_isa_encoding encoding, uint16_t dest,
+                           uint16_t src0, uint16_t src1,
+                           struct agx3_encoded_fmul_f32_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || dest >= 128 ||
+       src0 >= 128 || src1 >= 128 || (dest & 1) != 0 || (src0 & 1) != 0 ||
+       (src1 & 1) != 0)
+      return false;
+
+   /*
+    * Exact compact selections from the pinned multiply ladders.  Apple
+    * fields f2/f35/f18 are destination/source0/source1.  The selected AGX3b
+    * L/P2 witness and selected G17S AGX3c Q witness differ in their fixed
+    * anonymous/context trailer, so keep those exact selections distinct.
+    */
+   const uint8_t canonical_b[AGX3_FMUL_F32_REG_REG_LENGTH] = {
+      0x09, 0x01, 0x1d, 0x01, 0x00, 0xc0,
+   };
+   const uint8_t canonical_c[AGX3_FMUL_F32_REG_REG_LENGTH] = {
+      0x09, 0x01, 0x1d, 0x01, 0x00, 0x20,
+   };
+   const uint8_t *canonical =
+      encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b : canonical_c;
+   memcpy(out->bytes, canonical, AGX3_FMUL_F32_REG_REG_LENGTH);
+
+   /* f2: d[1:4] -> b0[4:7], d[5:6] -> b2[6:7]. */
+   out->bytes[0] |= (dest & 0x1e) << 3;
+   out->bytes[2] |= (dest & 0x60) << 1;
+
+   /* f35: s0[1:6] -> b3[1:6]. */
+   out->bytes[3] |= src0 & 0x7e;
+
+   /* f18: s1[1:6] -> b1[1:6]. */
+   out->bytes[1] |= src1 & 0x7e;
+
+   out->length = AGX3_FMUL_F32_REG_REG_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_fmul_f32_reg_reg(enum agx_isa_encoding encoding,
+                             const uint8_t *bytes, size_t available,
+                             uint16_t *dest, uint16_t *src0, uint16_t *src1,
+                             uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src0 == NULL || src1 == NULL || length == NULL ||
+       available < AGX3_FMUL_F32_REG_REG_LENGTH)
+      return false;
+
+   const uint16_t decoded_dest = ((bytes[0] >> 3) & 0x1e) |
+                                 ((bytes[2] >> 1) & 0x60);
+   const uint16_t decoded_src0 = bytes[3] & 0x7e;
+   const uint16_t decoded_src1 = bytes[1] & 0x7e;
+
+   struct agx3_encoded_fmul_f32_reg_reg canonical;
+   if (!agx3_pack_fmul_f32_reg_reg(encoding, decoded_dest, decoded_src0,
                                    decoded_src1, &canonical) ||
        memcmp(bytes, canonical.bytes, canonical.length) != 0)
       return false;
