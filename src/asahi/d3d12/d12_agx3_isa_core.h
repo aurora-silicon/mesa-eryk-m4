@@ -19,6 +19,7 @@ extern "C" {
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
+#define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -84,6 +85,11 @@ struct d12_agx3_yield_i16_reg_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_end_with_wait_fence_mask_encoding {
+   uint8_t bytes[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Encode one canonical three-register scalar operation. Register arguments
  * are Mesa half-register indices, so 32-bit operands must be even. This is a
@@ -143,6 +149,24 @@ bool d12_agx3_encode_yield_i16_reg(
 bool d12_agx3_decode_yield_i16_reg(enum agx_chip chip,
                                    const void *instruction,
                                    uint32_t instruction_size, uint16_t *src);
+
+/*
+ * Encode/decode only the dependency mask carried by a canonical terminal
+ * `end` on the exact Apple compiler targets present in the source corpus.
+ * AGX3b exposes slots 0..5 (masks <= 0x3f); AGX3c additionally exposes slots
+ * 6 and 7.  Every other `end` field remains canonical zero.
+ *
+ * This is a research-only representation of an already terminal wait mask.
+ * It is not a standalone wait instruction and does not enable D3D/DXIL
+ * lowering, scheduling or memory-ordering policy, command submission, device
+ * admission, or API capabilities.
+ */
+bool d12_agx3_encode_end_with_wait_fence_mask(
+   enum agx_chip chip, uint8_t wait_fence_mask,
+   struct d12_agx3_end_with_wait_fence_mask_encoding *out);
+bool d12_agx3_decode_end_with_wait_fence_mask(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   uint8_t *wait_fence_mask);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

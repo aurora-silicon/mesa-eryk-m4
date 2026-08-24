@@ -505,6 +505,327 @@ check_yield_rejection_domain(void)
    return 0;
 }
 
+static bool
+end_wait_encoding_is_cleared(
+   const struct d12_agx3_end_with_wait_fence_mask_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+
+   for (unsigned i = 0; i < D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH; ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+
+   return true;
+}
+
+static int
+check_end_wait_rejected_and_cleared(enum agx_chip chip, uint8_t mask)
+{
+   struct d12_agx3_end_with_wait_fence_mask_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+
+   CHECK(!d12_agx3_encode_end_with_wait_fence_mask(chip, mask, &encoded));
+   CHECK(end_wait_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_end_wait_exact_witnesses(void)
+{
+   static const struct {
+      enum agx_chip chip;
+      enum agx_isa_encoding encoding;
+      uint8_t mask;
+      uint8_t bytes[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH];
+   } witnesses[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, 0x00,
+       {0x0e, 0x00, 0x00, 0x00}},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B, 0x01,
+       {0x0e, 0x04, 0x00, 0x00}},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B, 0x20,
+       {0x0e, 0x80, 0x00, 0x00}},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B, 0x3f,
+       {0x0e, 0xfc, 0x00, 0x00}},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, 0x40,
+       {0x0e, 0x00, 0x02, 0x00}},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 0x80,
+       {0x0e, 0x00, 0x04, 0x00}},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 0xff,
+       {0x0e, 0xfc, 0x06, 0x00}},
+   };
+
+   for (unsigned w = 0; w < sizeof(witnesses) / sizeof(witnesses[0]); ++w) {
+      struct agx3_encoded_end shared;
+      struct d12_agx3_end_with_wait_fence_mask_encoding encoded;
+      uint8_t decoded_mask = UINT8_MAX;
+
+      CHECK(agx3_pack_end_with_wait_fence_mask(
+         witnesses[w].encoding, witnesses[w].mask, &shared));
+      CHECK(shared.length == sizeof(witnesses[w].bytes));
+      CHECK(memcmp(shared.bytes, witnesses[w].bytes,
+                   sizeof(witnesses[w].bytes)) == 0);
+      CHECK(d12_agx3_encode_end_with_wait_fence_mask(
+         witnesses[w].chip, witnesses[w].mask, &encoded));
+      CHECK(encoded.length == sizeof(witnesses[w].bytes));
+      CHECK(memcmp(encoded.bytes, witnesses[w].bytes,
+                   sizeof(witnesses[w].bytes)) == 0);
+      CHECK(d12_agx3_decode_end_with_wait_fence_mask(
+         witnesses[w].chip, witnesses[w].bytes, sizeof(witnesses[w].bytes),
+         &decoded_mask));
+      CHECK(decoded_mask == witnesses[w].mask);
+   }
+
+   return 0;
+}
+
+static int
+check_end_wait_mask_domain(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      const unsigned mask_count =
+         target->encoding == AGX_ISA_ENCODING_AGX3B ? 64 : 256;
+
+      for (unsigned expected_mask = 0; expected_mask < mask_count;
+           ++expected_mask) {
+         struct agx3_encoded_end shared;
+         struct d12_agx3_end_with_wait_fence_mask_encoding encoded;
+         uint8_t shared_mask = UINT8_MAX;
+         uint8_t decoded_mask = UINT8_MAX;
+         uint8_t shared_length = 0;
+
+         CHECK(agx3_pack_end_with_wait_fence_mask(
+            target->encoding, expected_mask, &shared));
+         CHECK(d12_agx3_encode_end_with_wait_fence_mask(
+            target->chip, expected_mask, &encoded));
+         CHECK(encoded.length == shared.length);
+         CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+         CHECK(agx3_unpack_end_with_wait_fence_mask(
+            target->encoding, encoded.bytes, encoded.length, &shared_mask,
+            &shared_length));
+         CHECK(shared_mask == expected_mask);
+         CHECK(shared_length == encoded.length);
+         CHECK(d12_agx3_decode_end_with_wait_fence_mask(
+            target->chip, encoded.bytes, encoded.length, &decoded_mask));
+         CHECK(decoded_mask == expected_mask);
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_end_wait_canonical_bit_domain(void)
+{
+   static const struct {
+      enum agx_chip chip;
+      enum agx_isa_encoding encoding;
+      unsigned mask_count;
+      uint32_t mutable_bits;
+   } representatives[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, 64, 0x0000fc00u},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, 256, 0x0006fc00u},
+   };
+
+   for (unsigned r = 0;
+        r < sizeof(representatives) / sizeof(representatives[0]); ++r) {
+      for (unsigned mask = 0; mask < representatives[r].mask_count; ++mask) {
+         struct agx3_encoded_end canonical;
+         CHECK(agx3_pack_end_with_wait_fence_mask(
+            representatives[r].encoding, mask, &canonical));
+
+         for (unsigned bit = 0;
+              bit < D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH * 8; ++bit) {
+            uint8_t mutated[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH];
+            memcpy(mutated, canonical.bytes, sizeof(mutated));
+            mutated[bit / 8] ^= 1u << (bit % 8);
+
+            const bool modeled =
+               (representatives[r].mutable_bits & (1u << bit)) != 0;
+            uint8_t decoded_mask = UINT8_MAX;
+            const bool accepted =
+               d12_agx3_decode_end_with_wait_fence_mask(
+                  representatives[r].chip, mutated, sizeof(mutated),
+                  &decoded_mask);
+            CHECK(accepted == modeled);
+
+            if (accepted) {
+               const unsigned slot = bit <= 15 ? bit - 10 : bit - 11;
+               struct agx3_encoded_end shared;
+               struct d12_agx3_end_with_wait_fence_mask_encoding repacked;
+               uint8_t shared_mask = UINT8_MAX;
+               uint8_t shared_length = 0;
+
+               CHECK(decoded_mask == (mask ^ (1u << slot)));
+               CHECK(agx3_unpack_end_with_wait_fence_mask(
+                  representatives[r].encoding, mutated, sizeof(mutated),
+                  &shared_mask, &shared_length));
+               CHECK(shared_mask == decoded_mask);
+               CHECK(shared_length == sizeof(mutated));
+               CHECK(d12_agx3_encode_end_with_wait_fence_mask(
+                  representatives[r].chip, decoded_mask, &repacked));
+               CHECK(repacked.length == shared_length);
+               CHECK(memcmp(repacked.bytes, mutated, shared_length) == 0);
+               CHECK(agx3_pack_end_with_wait_fence_mask(
+                  representatives[r].encoding, decoded_mask, &shared));
+               CHECK(memcmp(shared.bytes, repacked.bytes, shared.length) ==
+                     0);
+            } else {
+               CHECK(decoded_mask == 0);
+            }
+         }
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_end_wait_rejection_domain(void)
+{
+   struct agx3_encoded_end packed_b, packed_c;
+   CHECK(agx3_pack_end_with_wait_fence_mask(AGX_ISA_ENCODING_AGX3B, 0x3f,
+                                            &packed_b));
+   CHECK(agx3_pack_end_with_wait_fence_mask(AGX_ISA_ENCODING_AGX3C, 0xff,
+                                            &packed_c));
+
+   /* Slots 6 and 7 are compiler-rejected AGX3b table gaps.  Exercise every
+    * raw mask using either bit on all seven independently witnessed targets. */
+   for (unsigned raw_mask = 0x40; raw_mask <= 0xff; ++raw_mask) {
+      uint8_t invalid[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH] = {
+         0x0e,
+         (raw_mask & 0x3f) << 2,
+         ((raw_mask >> 6) & 0x03) << 1,
+         0x00,
+      };
+
+      for (unsigned t = 0;
+           t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+         if (integer_targets[t].encoding != AGX_ISA_ENCODING_AGX3B)
+            continue;
+
+         CHECK(check_end_wait_rejected_and_cleared(
+                  integer_targets[t].chip, raw_mask) == 0);
+         uint8_t decoded_mask = UINT8_MAX;
+         CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+            integer_targets[t].chip, invalid, sizeof(invalid),
+            &decoded_mask));
+         CHECK(decoded_mask == 0);
+      }
+   }
+
+   for (uint32_t size = 0;
+        size < D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH; ++size) {
+      uint8_t decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         AGX_CHIP_G15G, packed_b.bytes, size, &decoded_mask));
+      CHECK(decoded_mask == 0);
+      decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         AGX_CHIP_G17G, packed_c.bytes, size, &decoded_mask));
+      CHECK(decoded_mask == 0);
+   }
+
+   uint8_t appended_b[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH + 1];
+   uint8_t appended_c[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH + 1];
+   memcpy(appended_b, packed_b.bytes, packed_b.length);
+   memcpy(appended_c, packed_c.bytes, packed_c.length);
+   appended_b[packed_b.length] = 0xa5;
+   appended_c[packed_c.length] = 0x5a;
+   uint8_t decoded_mask = UINT8_MAX;
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      AGX_CHIP_G15G, appended_b, sizeof(appended_b), &decoded_mask));
+   CHECK(decoded_mask == 0);
+   decoded_mask = UINT8_MAX;
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      AGX_CHIP_G17G, appended_c, sizeof(appended_c), &decoded_mask));
+   CHECK(decoded_mask == 0);
+
+   static const uint8_t
+      wrong_forms[][D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH] = {
+      {0x0f, 0x00, 0x00, 0x00},
+      {0x0e, 0x01, 0x00, 0x00},
+      {0x0e, 0x00, 0x01, 0x00},
+      {0x0e, 0x00, 0x00, 0x01},
+   };
+   for (unsigned i = 0; i < sizeof(wrong_forms) / sizeof(wrong_forms[0]);
+        ++i) {
+      decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         AGX_CHIP_G15G, wrong_forms[i], sizeof(wrong_forms[i]),
+         &decoded_mask));
+      CHECK(decoded_mask == 0);
+      decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         AGX_CHIP_G17G, wrong_forms[i], sizeof(wrong_forms[i]),
+         &decoded_mask));
+      CHECK(decoded_mask == 0);
+   }
+
+   /* C-only high-slot encodings reject on every B target.  Low-slot bytes
+    * are intentionally identical between generations and valid on C too. */
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      decoded_mask = UINT8_MAX;
+      if (integer_targets[t].encoding == AGX_ISA_ENCODING_AGX3B) {
+         CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+            integer_targets[t].chip, packed_c.bytes, packed_c.length,
+            &decoded_mask));
+         CHECK(decoded_mask == 0);
+      } else {
+         CHECK(d12_agx3_decode_end_with_wait_fence_mask(
+            integer_targets[t].chip, packed_b.bytes, packed_b.length,
+            &decoded_mask));
+         CHECK(decoded_mask == 0x3f);
+      }
+   }
+
+   static const enum agx_chip unsupported_targets[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
+      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0;
+        i < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
+        ++i) {
+      CHECK(check_end_wait_rejected_and_cleared(unsupported_targets[i], 0) ==
+            0);
+      decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         unsupported_targets[i], packed_b.bytes, packed_b.length,
+         &decoded_mask));
+      CHECK(decoded_mask == 0);
+      decoded_mask = UINT8_MAX;
+      CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+         unsupported_targets[i], packed_c.bytes, packed_c.length,
+         &decoded_mask));
+      CHECK(decoded_mask == 0);
+   }
+
+   CHECK(check_end_wait_rejected_and_cleared((enum agx_chip)99, 0) == 0);
+   CHECK(!d12_agx3_encode_end_with_wait_fence_mask(AGX_CHIP_G17G, 0,
+                                                   NULL));
+   decoded_mask = UINT8_MAX;
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      AGX_CHIP_G17G, NULL, packed_c.length, &decoded_mask));
+   CHECK(decoded_mask == 0);
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      AGX_CHIP_G17G, packed_c.bytes, packed_c.length, NULL));
+   decoded_mask = UINT8_MAX;
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      AGX_CHIP_G17G, packed_c.bytes, UINT32_MAX, &decoded_mask));
+   CHECK(decoded_mask == 0);
+   decoded_mask = UINT8_MAX;
+   CHECK(!d12_agx3_decode_end_with_wait_fence_mask(
+      (enum agx_chip)99, packed_c.bytes, packed_c.length, &decoded_mask));
+   CHECK(decoded_mask == 0);
+
+   return 0;
+}
+
 static int
 check_imul_register_domain(void)
 {
@@ -1013,6 +1334,10 @@ main(void)
    CHECK(check_yield_register_domain() == 0);
    CHECK(check_yield_canonical_bit_domain() == 0);
    CHECK(check_yield_rejection_domain() == 0);
+   CHECK(check_end_wait_exact_witnesses() == 0);
+   CHECK(check_end_wait_mask_domain() == 0);
+   CHECK(check_end_wait_canonical_bit_domain() == 0);
+   CHECK(check_end_wait_rejection_domain() == 0);
 
    struct d12_agx3_unary_alu_encoding unary;
    CHECK(d12_agx3_encode_unary_alu(AGX_ISA_ENCODING_AGX3B,

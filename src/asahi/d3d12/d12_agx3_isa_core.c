@@ -26,6 +26,9 @@ _Static_assert(AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH <=
                "D3D AGX3 ALU storage must hold the canonical imadd form");
 _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
                "D3D AGX3 yield storage must match the canonical form");
+_Static_assert(AGX3_END_LENGTH ==
+                  D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH,
+               "D3D AGX3 terminal wait storage must match canonical end");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -289,6 +292,64 @@ d12_agx3_decode_yield_i16_reg(enum agx_chip chip, const void *instruction,
       return false;
 
    *src = decoded_src;
+   return true;
+}
+
+bool
+d12_agx3_encode_end_with_wait_fence_mask(
+   enum agx_chip chip, uint8_t wait_fence_mask,
+   struct d12_agx3_end_with_wait_fence_mask_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   struct agx3_encoded_end encoded;
+   if (!agx3_pack_end_with_wait_fence_mask(encoding, wait_fence_mask,
+                                           &encoded) ||
+       encoded.length != sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_end_with_wait_fence_mask(enum agx_chip chip,
+                                         const void *instruction,
+                                         uint32_t instruction_size,
+                                         uint8_t *wait_fence_mask)
+{
+   if (wait_fence_mask)
+      *wait_fence_mask = 0;
+   if (!instruction || !wait_fence_mask ||
+       instruction_size != D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   uint8_t decoded_mask = 0;
+   uint8_t decoded_length = 0;
+   struct agx3_encoded_end canonical;
+   if (!agx3_unpack_end_with_wait_fence_mask(
+          encoding, instruction, instruction_size, &decoded_mask,
+          &decoded_length) ||
+       decoded_length != D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH ||
+       !agx3_pack_end_with_wait_fence_mask(encoding, decoded_mask,
+                                           &canonical) ||
+       canonical.length != decoded_length ||
+       memcmp(instruction, canonical.bytes, decoded_length) != 0)
+      return false;
+
+   *wait_fence_mask = decoded_mask;
    return true;
 }
 
