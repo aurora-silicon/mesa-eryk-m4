@@ -948,6 +948,47 @@ d12_list_check_stream_space(struct d12_cmd_list *list)
    return true;
 }
 
+/* Emit the conservative post-dispatch cache flush in the command-stream ISA
+ * selected by the physical chip.  CommandEncodingNext emits flags=5 as its
+ * strong form on every grounded G15--G17 identity; using it here preserves
+ * the existing flush-after-every-launch policy without feeding an AGX2 packet
+ * to an AGX3 parser. */
+static bool
+d12_list_emit_cdm_cache_flush(struct d12_cmd_list *list, uint8_t **cursor)
+{
+   switch (agx_chip_command_stream_generation(list->device->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      *cursor = (uint8_t *)agx_cdm_barrier((uint32_t *)*cursor,
+                                           list->device->dev.chip);
+      return true;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      const struct agx3_cdm_barrier_info info = {
+         .chip = list->device->dev.chip,
+         .flags = 0x5,
+      };
+      struct d12_agx3_cdm_barrier_encoding encoded;
+      if (d12_agx3_encode_cdm_barrier(&info, &encoded)) {
+         memcpy(*cursor, encoded.bytes, encoded.length);
+         *cursor += encoded.length;
+         return true;
+      }
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded CDM cache flush for %s",
+             agx_chip_name(list->device->dev.chip));
+   list->state = D12_LIST_ERROR;
+   return false;
+}
+
 static void d12_list_close_pregfx(struct d12_cmd_list *list);
 
 static bool
@@ -1395,7 +1436,8 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
 
    *cur = (uint8_t *)agx_cdm_launch((uint32_t *)*cur, device->dev.chip, grid,
                                     prog->b.workgroup, prog->b.launch, usc);
-   *cur = (uint8_t *)agx_cdm_barrier((uint32_t *)*cur, device->dev.chip);
+   if (!d12_list_emit_cdm_cache_flush(list, cur))
+      return;
    seg->dispatches++;
    d12_segment_track_precompiled_write(seg, idx, args, args_size);
 }
@@ -5589,8 +5631,8 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
 
    list->stream_cur = (uint8_t *)agx_cdm_launch(
       (uint32_t *)list->stream_cur, device->dev.chip, grid, wg, launch, usc);
-   list->stream_cur = (uint8_t *)agx_cdm_barrier(
-      (uint32_t *)list->stream_cur, device->dev.chip);
+   if (!d12_list_emit_cdm_cache_flush(list, &list->stream_cur))
+      return;
    seg->dispatches++;
 }
 
@@ -6043,8 +6085,8 @@ d12_list_dispatch_gs_stage(struct d12_cmd_list *list,
    list->pregfx_cur = (uint8_t *)agx_cdm_launch(
       (uint32_t *)list->pregfx_cur, list->device->dev.chip, grid, wg,
       launch, usc);
-   list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
-      (uint32_t *)list->pregfx_cur, list->device->dev.chip);
+   if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
+      return false;
    seg->dispatches++;
    return true;
 }
@@ -6931,8 +6973,8 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       list->pregfx_cur = (uint8_t *)agx_cdm_launch(
          (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
          stages[i].wg, launch, usc);
-      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
-         (uint32_t *)list->pregfx_cur, device->dev.chip);
+      if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
+         return false;
       seg->dispatches++;
    }
 
@@ -7213,8 +7255,8 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       list->pregfx_cur = (uint8_t *)agx_cdm_launch(
          (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
          stages[i].wg, launch, usc);
-      list->pregfx_cur = (uint8_t *)agx_cdm_barrier(
-         (uint32_t *)list->pregfx_cur, device->dev.chip);
+      if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
+         return false;
       seg->dispatches++;
    }
 

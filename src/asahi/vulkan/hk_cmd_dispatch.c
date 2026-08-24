@@ -20,6 +20,7 @@
 #include "hk_shader.h"
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
+#include "asahi/genxml/agx3_cmdstream.h"
 #include "pool.h"
 
 void
@@ -48,7 +49,45 @@ hk_cdm_cache_flush(struct hk_device *dev, struct hk_cs *cs)
    assert(cs->current + AGX_CDM_BARRIER_LENGTH < cs->end &&
           "caller must ensure space");
 
-   cs->current = agx_cdm_barrier(cs->current, dev->dev.chip);
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      cs->current = agx_cdm_barrier(cs->current, dev->dev.chip);
+      break;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      /* Apple's CommandEncodingNext emitter uses flags=5 for its strong
+       * post-dispatch cache flush on every grounded G15--G17 identity.  Keep
+       * Honeykrisp's deliberately conservative flush-after-every-launch
+       * policy, but encode it in the target command-stream ISA. */
+      const struct agx3_cdm_barrier_info info = {
+         .chip = dev->dev.chip,
+         .flags = 0x5,
+      };
+      uint8_t packed[AGX3_CDM_BARRIER_SIZE];
+      if (!agx3_cdm_barrier_pack(&info, packed)) {
+         mesa_loge("no grounded AGX3 CDM cache flush for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cs->cmd->vk,
+                                     VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
+      memcpy(cs->current, packed, sizeof(packed));
+      cs->current = (uint32_t *)((uint8_t *)cs->current + sizeof(packed));
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      mesa_loge("unknown CDM command-stream generation for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cs->cmd->vk,
+                                  VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
    cs->stats.flushes++;
 }
 

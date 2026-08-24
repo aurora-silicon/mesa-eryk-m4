@@ -15,6 +15,7 @@
  */
 
 #include "d12_private.h"
+#include "d12_agx3_cmdstream_core.h"
 #include "d12_read_set_core.h"
 #include "d12_write_set_core.h"
 
@@ -59,6 +60,34 @@
  */
 #define D12_SYNC_SPINS_BEFORE_SLEEP 64u
 #define D12_SYNC_FALLBACK_NS        1000000L
+
+static uint8_t *
+d12_queue_emit_cdm_cache_flush(struct agx_device *dev, uint8_t *cursor)
+{
+   switch (agx_chip_command_stream_generation(dev->chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return (uint8_t *)agx_cdm_barrier((uint32_t *)cursor, dev->chip);
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      const struct agx3_cdm_barrier_info info = {
+         .chip = dev->chip,
+         .flags = 0x5,
+      };
+      struct d12_agx3_cdm_barrier_encoding encoded;
+      if (!d12_agx3_encode_cdm_barrier(&info, &encoded))
+         return NULL;
+
+      memcpy(cursor, encoded.bytes, encoded.length);
+      return cursor + encoded.length;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      return NULL;
+   }
+}
 
 /* A waiter that is blocking a producer polls at the floor: it is only ever
  * waiting because work is already pending, so the poll is transient and the
@@ -1264,7 +1293,9 @@ d12_queue_signal_arena_init(struct d12_queue *queue)
          control_words, dev->chip, agx_1d(1), program->b.workgroup,
          program->b.launch,
          agx_usc_addr(dev, usc->va->addr + usc_offset));
-      control = (uint8_t *)agx_cdm_barrier((uint32_t *)control, dev->chip);
+      control = d12_queue_emit_cdm_cache_flush(dev, control);
+      if (!control)
+         goto fail;
       const uint32_t control_size =
          (uint32_t)(control - (uint8_t *)control_words);
       if (!d12_queue_signal_slot_layout(slot, control_size, usc_size,
