@@ -28,6 +28,7 @@ extern "C" {
 #define AGX3_I32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_U32_TO_F32_REG_MAX_LENGTH 10
 #define AGX3_F32_RINT_REG_LENGTH 10
+#define AGX3_F32_RCP_REG_LENGTH 10
 #define AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define AGX3_BIT_AND_U32_REG_REG_LENGTH 10
 #define AGX3_BIT_OR_U32_REG_REG_LENGTH 10
@@ -105,6 +106,11 @@ struct agx3_encoded_u32_to_f32_reg {
 
 struct agx3_encoded_f32_rint_reg {
    uint8_t bytes[AGX3_F32_RINT_REG_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_f32_rcp_reg {
+   uint8_t bytes[AGX3_F32_RCP_REG_LENGTH];
    uint8_t length;
 };
 
@@ -482,6 +488,29 @@ bool agx3_pack_f32_rint_reg(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
    struct agx3_encoded_f32_rint_reg *out);
 bool agx3_unpack_f32_rint_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *length);
+
+/*
+ * Encode/decode the exact ten-byte scalar f32 reciprocal selected by the
+ * pinned 1.0f/x source on G15G/S/D, G16P/G/S, G17P, and G17G/S.  A fresh
+ * nine-target direct replay is byte-identical to the pinned frecip corpus.
+ * Q_rcp_dataflow and Q_rcp_live8 keep each input live after the reciprocal,
+ * independently identifying f2 as destination and f18 as source.  The first
+ * nonzero Q_rcp_kill instruction reproduces the direct last-use/dependency
+ * context exactly.  Apple's composer reproduces all 4,096 even-register
+ * pairs from those fixed fields on each table variant.
+ *
+ * Only that fixed context is exposed.  Live-source or alternate dependency
+ * contexts, rsqrt and other special functions, accuracy/refinement policy,
+ * modifiers, high registers, scheduling, and lowering remain closed.
+ * Operands are even half-register indices in 0..126.  Chip gates belong to
+ * the caller.
+ */
+bool agx3_pack_f32_rcp_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src,
+   struct agx3_encoded_f32_rcp_reg *out);
+bool agx3_unpack_f32_rcp_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src, uint8_t *length);
 

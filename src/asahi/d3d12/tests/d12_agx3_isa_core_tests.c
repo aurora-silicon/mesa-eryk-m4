@@ -3156,6 +3156,303 @@ check_f32_rint_rejection(void)
 }
 
 static bool
+f32_rcp_encoding_is_cleared(
+   const struct d12_agx3_f32_rcp_reg_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+   for (unsigned i = 0; i < D12_AGX3_F32_RCP_REG_LENGTH; ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+   return true;
+}
+
+static int
+check_f32_rcp_rejected_and_cleared(enum agx_chip chip,
+                                   enum agx_isa_encoding encoding,
+                                   uint16_t dest, uint16_t src)
+{
+   struct d12_agx3_f32_rcp_reg_encoding encoded;
+   memset(&encoded, 0xff, sizeof(encoded));
+   CHECK(!d12_agx3_encode_f32_rcp_reg(
+      chip, encoding, dest, src, &encoded));
+   CHECK(f32_rcp_encoding_is_cleared(&encoded));
+   return 0;
+}
+
+static int
+check_f32_rcp_decode_rejected_and_cleared(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size)
+{
+   uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+   CHECK(!d12_agx3_decode_f32_rcp_reg(
+      chip, encoding, instruction, instruction_size, &dest, &src));
+   CHECK(dest == 0 && src == 0);
+   return 0;
+}
+
+static int
+check_f32_rcp_exact_witnesses(void)
+{
+   static const struct {
+      uint16_t dest;
+      uint16_t src;
+      uint8_t agx3b[D12_AGX3_F32_RCP_REG_LENGTH];
+      uint8_t agx3c[D12_AGX3_F32_RCP_REG_LENGTH];
+   } vectors[] = {
+      {0, 0,
+       {0xaf, 0x00, 0x56, 0x00, 0x02, 0x00, 0x10, 0x48, 0x20, 0x00},
+       {0x2f, 0x00, 0x04, 0x18, 0x22, 0x20, 0xa1, 0x02, 0x30, 0x00}},
+      {14, 14,
+       {0xaf, 0x00, 0x56, 0x0e, 0x02, 0x1c, 0x10, 0x48, 0x20, 0x00},
+       {0x3f, 0x02, 0x04, 0x78, 0x22, 0x20, 0xa1, 0x1a, 0x30, 0x00}},
+      {2, 4,
+       {0xaf, 0x00, 0x56, 0x02, 0x02, 0x08, 0x10, 0x48, 0x20, 0x00},
+       {0x3f, 0x00, 0x04, 0x38, 0x22, 0x20, 0xa1, 0x02, 0x30, 0x00}},
+      {42, 86,
+       {0xaf, 0x00, 0x56, 0x2a, 0x02, 0xac, 0x10, 0x48, 0x20, 0x00},
+       {0x3f, 0x02, 0x04, 0xb8, 0x22, 0x20, 0xa1, 0x32, 0x31, 0x00}},
+      {126, 126,
+       {0xaf, 0x00, 0x56, 0x7e, 0x02, 0xfc, 0x10, 0x48, 0x20, 0x00},
+       {0xbf, 0x02, 0x84, 0xf8, 0x22, 0xa0, 0xa1, 0x3a, 0x31, 0x00}},
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+         const uint8_t *expected =
+            target->encoding == AGX_ISA_ENCODING_AGX3B ? vectors[v].agx3b
+                                                       : vectors[v].agx3c;
+         struct agx3_encoded_f32_rcp_reg shared;
+         struct d12_agx3_f32_rcp_reg_encoding encoded;
+         uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+
+         CHECK(agx3_pack_f32_rcp_reg(
+            target->encoding, vectors[v].dest, vectors[v].src, &shared));
+         CHECK(shared.length == D12_AGX3_F32_RCP_REG_LENGTH);
+         CHECK(memcmp(shared.bytes, expected, shared.length) == 0);
+         CHECK(d12_agx3_encode_f32_rcp_reg(
+            target->chip, target->encoding, vectors[v].dest, vectors[v].src,
+            &encoded));
+         CHECK(encoded.length == shared.length);
+         CHECK(memcmp(encoded.bytes, expected, encoded.length) == 0);
+         CHECK(d12_agx3_decode_f32_rcp_reg(
+            target->chip, target->encoding, encoded.bytes, encoded.length,
+            &dest, &src));
+         CHECK(dest == vectors[v].dest);
+         CHECK(src == vectors[v].src);
+      }
+   }
+   return 0;
+}
+
+static int
+check_f32_rcp_operand_domain(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      for (uint16_t dest_in = 0; dest_in < 128; dest_in += 2) {
+         for (uint16_t src_in = 0; src_in < 128; src_in += 2) {
+            struct agx3_encoded_f32_rcp_reg shared;
+            struct d12_agx3_f32_rcp_reg_encoding encoded;
+            uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+
+            CHECK(agx3_pack_f32_rcp_reg(
+               target->encoding, dest_in, src_in, &shared));
+            CHECK(d12_agx3_encode_f32_rcp_reg(
+               target->chip, target->encoding, dest_in, src_in, &encoded));
+            CHECK(encoded.length == shared.length);
+            CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+            CHECK(d12_agx3_decode_f32_rcp_reg(
+               target->chip, target->encoding, encoded.bytes, encoded.length,
+               &dest, &src));
+            CHECK(dest == dest_in);
+            CHECK(src == src_in);
+         }
+      }
+   }
+   return 0;
+}
+
+static int
+check_f32_rcp_canonical_bit_domain(void)
+{
+   static const uint8_t masks[][D12_AGX3_F32_RCP_REG_LENGTH] = {
+      {0x00, 0x00, 0x00, 0x7e, 0x00, 0xfc, 0x00, 0x00, 0x00, 0x00},
+      {0x90, 0x02, 0x80, 0xe0, 0x00, 0x80, 0x00, 0x38, 0x01, 0x00},
+   };
+   static const struct integer_target representatives[] = {
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const uint16_t states[][2] = {{0, 0}, {126, 126}};
+
+   for (unsigned r = 0;
+        r < sizeof(representatives) / sizeof(representatives[0]); ++r) {
+      for (unsigned state = 0; state < 2; ++state) {
+         struct d12_agx3_f32_rcp_reg_encoding canonical;
+         CHECK(d12_agx3_encode_f32_rcp_reg(
+            representatives[r].chip, representatives[r].encoding,
+            states[state][0], states[state][1], &canonical));
+         for (unsigned bit = 0; bit < canonical.length * 8; ++bit) {
+            uint8_t mutated[D12_AGX3_F32_RCP_REG_LENGTH] = {0};
+            memcpy(mutated, canonical.bytes, canonical.length);
+            mutated[bit / 8] ^= 1u << (bit % 8);
+            uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+            const bool accepted = d12_agx3_decode_f32_rcp_reg(
+               representatives[r].chip, representatives[r].encoding,
+               mutated, canonical.length, &dest, &src);
+            const bool is_operand =
+               (masks[r][bit / 8] & (1u << (bit % 8))) != 0;
+            CHECK(accepted == is_operand);
+            if (accepted) {
+               struct d12_agx3_f32_rcp_reg_encoding repacked;
+               CHECK(d12_agx3_encode_f32_rcp_reg(
+                  representatives[r].chip, representatives[r].encoding,
+                  dest, src, &repacked));
+               CHECK(memcmp(repacked.bytes, mutated, canonical.length) == 0);
+            } else {
+               CHECK(dest == 0 && src == 0);
+            }
+         }
+      }
+   }
+   return 0;
+}
+
+static int
+check_f32_rcp_rejection(void)
+{
+   static const enum agx_isa_encoding all_encodings[] = {
+      AGX_ISA_ENCODING_AGX2, AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C, AGX_ISA_ENCODING_UNKNOWN,
+      (enum agx_isa_encoding)99,
+   };
+   static const enum agx_chip unsupported_targets[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
+      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   static const uint8_t canonical_b[] = {
+      0xaf, 0x00, 0x56, 0x00, 0x02, 0x00, 0x10, 0x48, 0x20, 0x00,
+   };
+   static const uint8_t canonical_c[] = {
+      0x2f, 0x00, 0x04, 0x18, 0x22, 0x20, 0xa1, 0x02, 0x30, 0x00,
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      const uint8_t *canonical =
+         target->encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b : canonical_c;
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         if (all_encodings[e] == target->encoding)
+            continue;
+         CHECK(check_f32_rcp_rejected_and_cleared(
+                  target->chip, all_encodings[e], 0, 0) == 0);
+         CHECK(check_f32_rcp_decode_rejected_and_cleared(
+                  target->chip, all_encodings[e], canonical,
+                  sizeof(canonical_b)) == 0);
+      }
+   }
+
+   for (unsigned t = 0;
+        t < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
+        ++t) {
+      for (unsigned e = 0; e < sizeof(all_encodings) / sizeof(all_encodings[0]);
+           ++e) {
+         CHECK(check_f32_rcp_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], 0, 0) == 0);
+         CHECK(check_f32_rcp_decode_rejected_and_cleared(
+                  unsupported_targets[t], all_encodings[e], canonical_b,
+                  sizeof(canonical_b)) == 0);
+      }
+   }
+
+   static const struct integer_target representatives[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   const uint16_t invalid_values[] = {1, 127, 128, 255, 256};
+   for (unsigned r = 0;
+        r < sizeof(representatives) / sizeof(representatives[0]); ++r) {
+      for (unsigned value = 0;
+           value < sizeof(invalid_values) / sizeof(invalid_values[0]);
+           ++value) {
+         CHECK(check_f32_rcp_rejected_and_cleared(
+                  representatives[r].chip, representatives[r].encoding,
+                  invalid_values[value], 0) == 0);
+         CHECK(check_f32_rcp_rejected_and_cleared(
+                  representatives[r].chip, representatives[r].encoding, 0,
+                  invalid_values[value]) == 0);
+      }
+   }
+
+   for (uint32_t size = 0; size < sizeof(canonical_b); ++size)
+      CHECK(check_f32_rcp_decode_rejected_and_cleared(
+               AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, canonical_b, size) ==
+            0);
+   uint8_t appended[D12_AGX3_F32_RCP_REG_LENGTH + 1];
+   memcpy(appended, canonical_c, sizeof(canonical_c));
+   appended[sizeof(canonical_c)] = 0xff;
+   CHECK(check_f32_rcp_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, appended,
+            sizeof(appended)) == 0);
+   CHECK(check_f32_rcp_decode_rejected_and_cleared(
+            AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, canonical_c,
+            sizeof(canonical_c)) == 0);
+   CHECK(check_f32_rcp_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical_b,
+            sizeof(canonical_b)) == 0);
+
+   static const uint8_t related_b[][D12_AGX3_F32_RCP_REG_LENGTH] = {
+      {0xaf, 0x00, 0x56, 0x0e, 0x02, 0x18, 0x00, 0x48, 0x20, 0x00},
+      {0xaf, 0x00, 0x56, 0x1e, 0x02, 0x1c, 0x00, 0x48, 0x20, 0x00},
+      {0xaf, 0x10, 0x54, 0x0c, 0x02, 0x18, 0x10, 0x48, 0x20, 0x00},
+      {0xaf, 0x01, 0x56, 0x00, 0x02, 0x00, 0xb0, 0x40, 0x00, 0x00},
+      {0x2f, 0x00, 0x56, 0x00, 0x03, 0x00, 0xb0, 0x40, 0x00, 0x00},
+   };
+   static const uint8_t related_c[][D12_AGX3_F32_RCP_REG_LENGTH] = {
+      {0x3f, 0x00, 0x04, 0x78, 0x22, 0x20, 0xa1, 0x1a, 0x10, 0x00},
+      {0xbf, 0x02, 0x04, 0x78, 0x22, 0x20, 0xa1, 0x1a, 0x10, 0x00},
+      {0x27, 0x04, 0x04, 0x78, 0x22, 0x20, 0xa1, 0x1a, 0x30, 0x00},
+      {0x2f, 0x00, 0x04, 0x18, 0x22, 0x20, 0xa3, 0x02, 0x30, 0x00},
+      {0x2f, 0x00, 0x04, 0x18, 0x2a, 0x20, 0xa0, 0x02, 0x30, 0x00},
+   };
+   for (unsigned i = 0; i < sizeof(related_b) / sizeof(related_b[0]); ++i) {
+      CHECK(check_f32_rcp_decode_rejected_and_cleared(
+               AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, related_b[i],
+               sizeof(related_b[i])) == 0);
+      CHECK(check_f32_rcp_decode_rejected_and_cleared(
+               AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, related_c[i],
+               sizeof(related_c[i])) == 0);
+   }
+
+   CHECK(!d12_agx3_encode_f32_rcp_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 0, 0, NULL));
+   CHECK(check_f32_rcp_decode_rejected_and_cleared(
+            AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, NULL,
+            sizeof(canonical_c)) == 0);
+
+   uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+   CHECK(!d12_agx3_decode_f32_rcp_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical_c,
+      sizeof(canonical_c), NULL, &src));
+   CHECK(src == 0);
+   dest = src = UINT16_MAX;
+   CHECK(!d12_agx3_decode_f32_rcp_reg(
+      AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, canonical_c,
+      sizeof(canonical_c), &dest, NULL));
+   CHECK(dest == 0);
+   return 0;
+}
+
+static bool
 f32_to_int_rtz_encoding_is_cleared(
    const struct d12_agx3_f32_to_int_rtz_reg_encoding *encoded)
 {
@@ -4624,6 +4921,10 @@ main(void)
    CHECK(check_f32_rint_operand_domain() == 0);
    CHECK(check_f32_rint_canonical_bit_domain() == 0);
    CHECK(check_f32_rint_rejection() == 0);
+   CHECK(check_f32_rcp_exact_witnesses() == 0);
+   CHECK(check_f32_rcp_operand_domain() == 0);
+   CHECK(check_f32_rcp_canonical_bit_domain() == 0);
+   CHECK(check_f32_rcp_rejection() == 0);
    CHECK(check_f32_to_int_rtz_exact_witnesses() == 0);
    CHECK(check_f32_to_int_rtz_operand_domain() == 0);
    CHECK(check_f32_to_int_rtz_canonical_bit_domain() == 0);
