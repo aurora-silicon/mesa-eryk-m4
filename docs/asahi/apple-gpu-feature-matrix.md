@@ -207,7 +207,9 @@ The D3D12 compiler side has an **IV** fail-closed bridge for canonical
 three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
 `inot`, register-register `ishl`, and signed register-register `iashr`, into the
 shared AGX3b/AGX3c packer. It also maps unsigned register-register `ilshr` and
-the canonical low-u32 `imul` and four-register `imadd` selections. The
+the canonical low-u32 `imul` and four-register `imadd` selections, plus the
+no-kill, scheduler-neutral i16-register `yield` form on exactly the nine
+compiler-witnessed targets. The
 multiply bridges accept only the byte-distinct implicit-zero and real-register
 addend forms on the nine compiler-witnessed targets; alternate low selections,
 high products, G17C, and other unwitnessed target selections remain closed.

@@ -18,6 +18,7 @@ extern "C" {
 
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
+#define D12_AGX3_YIELD_I16_REG_LENGTH 6
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -78,6 +79,11 @@ struct d12_agx3_ternary_alu_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_yield_i16_reg_encoding {
+   uint8_t bytes[D12_AGX3_YIELD_I16_REG_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Encode one canonical three-register scalar operation. Register arguments
  * are Mesa half-register indices, so 32-bit operands must be even. This is a
@@ -119,6 +125,24 @@ bool d12_agx3_encode_integer_multiply_add(
    enum d12_agx3_integer_multiply_add_selection selection, uint16_t dest,
    uint16_t mul0, uint16_t mul1, uint16_t addend,
    struct d12_agx3_ternary_alu_encoding *out);
+
+/*
+ * Encode/decode only the canonical no-kill i16-register `yield` form on the
+ * exact Apple compiler targets present in the source corpus.  The source is a
+ * 16-bit half-register index; AGX3b accepts 0..191 and AGX3c accepts 0..255.
+ * Alternate operand selections, kill and scheduler/context fields, and the
+ * AGX3c ninth register bit are deliberately absent and fail closed.
+ *
+ * This is a research-only ISA representation.  It does not enable D3D/DXIL
+ * lowering, scheduling, command submission, device admission, API features,
+ * or ray tracing.
+ */
+bool d12_agx3_encode_yield_i16_reg(
+   enum agx_chip chip, uint16_t src,
+   struct d12_agx3_yield_i16_reg_encoding *out);
+bool d12_agx3_decode_yield_i16_reg(enum agx_chip chip,
+                                   const void *instruction,
+                                   uint32_t instruction_size, uint16_t *src);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

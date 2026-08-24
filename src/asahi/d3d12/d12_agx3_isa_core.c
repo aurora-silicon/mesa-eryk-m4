@@ -24,6 +24,8 @@ _Static_assert(AGX3_IMUL_U32_REG_REG_MAX_LENGTH <=
 _Static_assert(AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH <=
                   D12_AGX3_TERNARY_ALU_MAX_LENGTH,
                "D3D AGX3 ALU storage must hold the canonical imadd form");
+_Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
+               "D3D AGX3 yield storage must match the canonical form");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -235,6 +237,59 @@ d12_agx3_encode_integer_multiply_add(
    return d12_agx3_encode_ternary_alu(
       encoding, D12_AGX3_TERNARY_ALU_IMADD_U32, dest, mul0, mul1, addend,
       out);
+}
+
+bool
+d12_agx3_encode_yield_i16_reg(
+   enum agx_chip chip, uint16_t src,
+   struct d12_agx3_yield_i16_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   struct agx3_encoded_yield_i16_reg encoded;
+   if (!agx3_pack_yield_i16_reg(encoding, src, &encoded) ||
+       encoded.length != sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_yield_i16_reg(enum agx_chip chip, const void *instruction,
+                              uint32_t instruction_size, uint16_t *src)
+{
+   if (src)
+      *src = 0;
+   if (!instruction || !src ||
+       instruction_size != D12_AGX3_YIELD_I16_REG_LENGTH)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   uint16_t decoded_src = 0;
+   uint8_t decoded_length = 0;
+   struct agx3_encoded_yield_i16_reg canonical;
+   if (!agx3_unpack_yield_i16_reg(encoding, instruction, instruction_size,
+                                  &decoded_src, &decoded_length) ||
+       decoded_length != D12_AGX3_YIELD_I16_REG_LENGTH ||
+       !agx3_pack_yield_i16_reg(encoding, decoded_src, &canonical) ||
+       canonical.length != decoded_length ||
+       memcmp(instruction, canonical.bytes, decoded_length) != 0)
+      return false;
+
+   *src = decoded_src;
+   return true;
 }
 
 bool
