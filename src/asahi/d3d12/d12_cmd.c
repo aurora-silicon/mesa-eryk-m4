@@ -2472,7 +2472,9 @@ d12_pack_pbe_generation(enum agx_descriptor_generation generation, void *out,
       (cfg_).width = legacy->width;                                            \
       (cfg_).height = legacy->height;                                          \
       (cfg_).samples = legacy->samples;                                        \
-      (cfg_).unk_mipmapped = legacy->unk_mipmapped;                            \
+      (cfg_).unk_mipmapped = legacy->unk_mipmapped ||                          \
+         d12_native_pbe_has_levels(legacy->layout == AGX_LAYOUT_LINEAR,        \
+                                   legacy->level, legacy->levels);             \
       (cfg_).compressed = legacy->compressed;                                  \
       (cfg_).image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL;        \
       (cfg_).image_mode = legacy->mode;                                        \
@@ -2484,8 +2486,8 @@ d12_pack_pbe_generation(enum agx_descriptor_generation generation, void *out,
       (cfg_).page_aligned_layers = legacy->page_aligned_layers;                \
       (cfg_).gamma = legacy->srgb;                                             \
       (cfg_).extended = legacy->extended ||                                   \
-         (legacy->layout != AGX_LAYOUT_LINEAR &&                              \
-          (legacy->level || legacy->levels > 1));                             \
+         d12_native_pbe_has_levels(legacy->layout == AGX_LAYOUT_LINEAR,        \
+                                   legacy->level, legacy->levels);             \
       (cfg_).acceleration_buffer =                                             \
          legacy->compressed && legacy->extended                               \
             ? legacy->acceleration_buffer : 0;                                \

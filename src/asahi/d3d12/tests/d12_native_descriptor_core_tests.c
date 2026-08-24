@@ -45,6 +45,11 @@ main(void)
    CHECK(!d12_native_descriptor_span(32, SIZE_MAX / 32 + 1, 0, &value));
    CHECK(!d12_native_descriptor_span(32, 1, 0, NULL));
 
+   CHECK(!d12_native_pbe_has_levels(false, 0, 1));
+   CHECK(d12_native_pbe_has_levels(false, 1, 1));
+   CHECK(d12_native_pbe_has_levels(false, 0, 2));
+   CHECK(!d12_native_pbe_has_levels(true, 1, 8));
+
    printf("d12 native descriptor core: %u checks passed\n", checks);
    return 0;
 }

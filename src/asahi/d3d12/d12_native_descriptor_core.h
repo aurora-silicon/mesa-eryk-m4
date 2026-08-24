@@ -68,3 +68,12 @@ d12_native_descriptor_offset(uint8_t stride_B, size_t index,
 {
    return d12_native_descriptor_span(stride_B, index, 0, offset_B);
 }
+
+/* Gen9/10 relocated nonlinear PBE mip fields are read only when the
+ * generation's mipmapped gate is asserted.  Linear descriptors do not carry
+ * Level/Levels in this location. */
+static inline bool
+d12_native_pbe_has_levels(bool linear, uint32_t level, uint32_t levels)
+{
+   return !linear && (level != 0 || levels > 1);
+}
