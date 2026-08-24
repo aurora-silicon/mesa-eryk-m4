@@ -1380,6 +1380,141 @@ agx3_unpack_imul_u32_reg_reg(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_imadd_u32_reg_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t mul0,
+   uint16_t mul1, uint16_t addend,
+   struct agx3_encoded_imadd_u32_reg_reg_reg *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || (dest & 1) != 0 ||
+       (mul0 & 1) != 0 || (mul1 & 1) != 0 || (addend & 1) != 0)
+      return false;
+
+   const uint16_t register_limit =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+   if (dest >= register_limit || mul0 >= register_limit ||
+       mul1 >= register_limit || addend >= register_limit)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* Exact real-register addend fields from seven forced-live targets. */
+      const uint8_t canonical[] = {
+         0x9f, 0x00, 0x56, 0x00, 0x02, 0x00,
+         0x00, 0x00, 0xd0, 0x21, 0x2a, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2 is contiguous at b3 for this AGX3b encoding point. */
+      out->bytes[3] = dest;
+
+      /* f16: s0[1:6] -> b5[2:7], s0[7] -> b6[0]. */
+      out->bytes[5] |= (mul0 & 0x7e) << 1;
+      out->bytes[6] |= mul0 >> 7;
+
+      /* f31: s1[1:5] -> b6[3:7], s1[6:7] -> b7[0:1]. */
+      out->bytes[6] |= (mul1 & 0x3e) << 2;
+      out->bytes[7] |= mul1 >> 6;
+
+      /* f46: add[1:4] -> b7[4:7], add[5:7] -> b8[0:2]. */
+      out->bytes[7] |= (addend & 0x1e) << 3;
+      out->bytes[8] |= addend >> 5;
+      out->length = sizeof(canonical);
+      return true;
+   }
+
+   /* Exact real-register addend fields from the G17G/G17S replay. */
+   const uint8_t canonical[] = {
+      0x2f, 0x00, 0x04, 0x1a, 0x21, 0x00, 0xa1,
+      0x02, 0x08, 0x80, 0x40, 0x00, 0x00, 0x00,
+   };
+   memcpy(out->bytes, canonical, sizeof(canonical));
+
+   /* f2: d[1,4] -> b0[4,7], d[2:3,5] -> b7[3:5], d[6:7] -> b2[7,3]. */
+   out->bytes[0] |= ((dest >> 1) & 0x1) << 4;
+   out->bytes[0] |= ((dest >> 4) & 0x1) << 7;
+   out->bytes[7] |= ((dest >> 2) & 0x3) << 3;
+   out->bytes[7] |= ((dest >> 5) & 0x1) << 5;
+   out->bytes[2] |= ((dest >> 6) & 0x1) << 7;
+   out->bytes[2] |= ((dest >> 7) & 0x1) << 3;
+
+   /* f16: s0[1], s0[2:4], s0[5], s0[6:7] use four byte fragments. */
+   out->bytes[1] |= mul0 & 0x2;
+   out->bytes[3] |= (mul0 & 0x1c) << 3;
+   out->bytes[5] |= (mul0 & 0x20) << 2;
+   out->bytes[8] |= (mul0 >> 6) & 0x3;
+
+   /* f31: s1[1] -> b8[7], s1[2:7] -> b9[0:5]. */
+   out->bytes[8] |= ((mul1 >> 1) & 0x1) << 7;
+   out->bytes[9] |= (mul1 >> 2) & 0x3f;
+
+   /* f46: add[1:3,5,7] -> b12; add[4] -> b8; add[6] -> b10. */
+   out->bytes[8] |= addend & 0x10;
+   out->bytes[10] |= (addend >> 6) & 0x1;
+   out->bytes[12] |= addend & 0xae;
+   out->length = sizeof(canonical);
+   return true;
+}
+
+bool
+agx3_unpack_imadd_u32_reg_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *mul0, uint16_t *mul1, uint16_t *addend,
+   uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       mul0 == NULL || mul1 == NULL || addend == NULL || length == NULL)
+      return false;
+
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 12 : 14;
+   if (available < expected_length)
+      return false;
+
+   uint16_t decoded_dest, decoded_mul0, decoded_mul1, decoded_addend;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = bytes[3];
+      decoded_mul0 = ((bytes[5] >> 1) & 0x7e) |
+                     ((bytes[6] & 0x1) << 7);
+      decoded_mul1 = ((bytes[6] >> 2) & 0x3e) |
+                     ((bytes[7] & 0x3) << 6);
+      decoded_addend = ((bytes[7] >> 3) & 0x1e) |
+                       ((bytes[8] & 0x7) << 5);
+   } else {
+      decoded_dest = (((bytes[0] >> 4) & 0x1) << 1) |
+                     (((bytes[7] >> 3) & 0x3) << 2) |
+                     (((bytes[0] >> 7) & 0x1) << 4) |
+                     (((bytes[7] >> 5) & 0x1) << 5) |
+                     (((bytes[2] >> 7) & 0x1) << 6) |
+                     (((bytes[2] >> 3) & 0x1) << 7);
+      decoded_mul0 = (bytes[1] & 0x2) |
+                     (((bytes[3] >> 5) & 0x7) << 2) |
+                     (((bytes[5] >> 7) & 0x1) << 5) |
+                     ((bytes[8] & 0x3) << 6);
+      decoded_mul1 = (((bytes[8] >> 7) & 0x1) << 1) |
+                     ((bytes[9] & 0x3f) << 2);
+      decoded_addend = (bytes[8] & 0x10) |
+                       ((bytes[10] & 0x1) << 6) |
+                       (bytes[12] & 0xae);
+   }
+
+   struct agx3_encoded_imadd_u32_reg_reg_reg canonical;
+   if (!agx3_pack_imadd_u32_reg_reg_reg(
+          encoding, decoded_dest, decoded_mul0, decoded_mul1, decoded_addend,
+          &canonical) ||
+       canonical.length != expected_length ||
+       memcmp(bytes, canonical.bytes, expected_length) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *mul0 = decoded_mul0;
+   *mul1 = decoded_mul1;
+   *addend = decoded_addend;
+   *length = expected_length;
+   return true;
+}
+
+bool
 agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)

@@ -28,6 +28,7 @@ extern "C" {
 #define AGX3_ASR_I32_REG_REG_MAX_LENGTH 12
 #define AGX3_LSR_U32_REG_REG_MAX_LENGTH 14
 #define AGX3_IMUL_U32_REG_REG_MAX_LENGTH 14
+#define AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH 14
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -91,6 +92,11 @@ struct agx3_encoded_lsr_u32_reg_reg {
 
 struct agx3_encoded_imul_u32_reg_reg {
    uint8_t bytes[AGX3_IMUL_U32_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_imadd_u32_reg_reg_reg {
+   uint8_t bytes[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -379,6 +385,31 @@ bool agx3_pack_imul_u32_reg_reg(
 bool agx3_unpack_imul_u32_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded four-register low-u32 multiply-add form,
+ * named `imadd` by Apple's AGX3b table and `imadd32` by AGX3c.  The forced-live
+ * four-store replay independently correlates f2 with destination r5, f16 with
+ * multiplier r2, f31 with multiplier r3, and f46 with real addend register r0
+ * on every available G15/G16/G17 compiler target.  P3i/P3u and Q_i3mad
+ * independently reproduce the same low-product-plus-addend operation.  Signed
+ * and unsigned low forms are bit-identical modulo 2^32.
+ *
+ * All arguments are even half-register indices.  Apple's AGX3b encoding point
+ * is limited to r0..r95; AGX3c is bounded here to modeled r0..r127, excluding
+ * its unprobed ninth register bits.  This real-register-addend selection is
+ * distinct from the implicit-zero imul selection.  Alternate selections,
+ * signed/unsigned high multiply-add, and G15G's standalone scheduling nops
+ * remain unsupported.
+ */
+bool agx3_pack_imadd_u32_reg_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t mul0,
+   uint16_t mul1, uint16_t addend,
+   struct agx3_encoded_imadd_u32_reg_reg_reg *out);
+bool agx3_unpack_imadd_u32_reg_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *mul0, uint16_t *mul1, uint16_t *addend,
+   uint8_t *length);
 
 /*
  * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is

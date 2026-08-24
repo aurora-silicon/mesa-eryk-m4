@@ -2324,6 +2324,262 @@ test_imul_u32_reg_reg_rejection(void)
       &src1, NULL));
 }
 
+struct imadd_reg_reg_reg_vector {
+   uint16_t dest;
+   uint16_t mul0;
+   uint16_t mul1;
+   uint16_t addend;
+   const char *agx3b;
+   const char *agx3c;
+};
+
+/*
+ * The (10,4,6,0) row is the exact forced-live four-store compiler witness.
+ * Every row is independently composed by Apple's table from that
+ * operand-correlated, real-register-addend encoding point.
+ */
+static const struct imadd_reg_reg_reg_vector imadd_reg_reg_reg_vectors[] = {
+   {0, 0, 0, 0,       "9f00560002000000d0212a00",
+                       "2f00041a2100a102088040000000"},
+   {10, 4, 6, 0,      "9f00560a02081800d0212a00",
+                       "3f00043a2100a112888140000000"},
+   {0, 0, 0, 2,       "9f00560002000010d0212a00",
+                       "2f00041a2100a102088040000200"},
+   {2, 2, 2, 2,       "9f00560202040810d0212a00",
+                       "3f02041a2100a102888040000200"},
+   {190, 190, 190, 190, "9f0056be027cf9f2d5212a00",
+                         "bf020cfa2180a13a9aaf4000ae00"},
+   {128, 64, 32, 16,  "9f00568002808080d0212a00",
+                       "2f000c1a2100a102198840000000"},
+   {64, 128, 190, 190, "9f0056400200f9f2d5212a00",
+                        "2f00841a2100a1029aaf4000ae00"},
+   {32, 16, 8, 128,   "9f00562002202000d4212a00",
+                       "2f00049a2100a122088240008000"},
+};
+
+static void
+test_imadd_u32_reg_reg_reg(void)
+{
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      const uint16_t register_limit = e == 0 ? 192 : 256;
+
+      for (unsigned i = 0;
+           i < sizeof(imadd_reg_reg_reg_vectors) /
+                  sizeof(imadd_reg_reg_reg_vectors[0]);
+           ++i) {
+         const struct imadd_reg_reg_reg_vector *v =
+            &imadd_reg_reg_reg_vectors[i];
+         const char *hex = e == 0 ? v->agx3b : v->agx3c;
+         uint8_t expected[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH] = {0};
+         const unsigned expected_length =
+            parse_hex(hex, expected, sizeof(expected));
+         struct agx3_encoded_imadd_u32_reg_reg_reg packed;
+
+         CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+            encodings[e], v->dest, v->mul0, v->mul1, v->addend, &packed));
+         CHECK(packed.length == expected_length);
+         CHECK(memcmp(packed.bytes, expected, expected_length) == 0);
+
+         uint16_t dest = UINT16_MAX, mul0 = UINT16_MAX, mul1 = UINT16_MAX;
+         uint16_t addend = UINT16_MAX;
+         uint8_t length = 0;
+         CHECK(agx3_unpack_imadd_u32_reg_reg_reg(
+            encodings[e], expected, expected_length, &dest, &mul0, &mul1,
+            &addend, &length));
+         CHECK(dest == v->dest);
+         CHECK(mul0 == v->mul0);
+         CHECK(mul1 == v->mul1);
+         CHECK(addend == v->addend);
+         CHECK(length == expected_length);
+      }
+
+      /* Independently exhaust every modeled even half-register operand. */
+      for (uint16_t value = 0; value < register_limit; value += 2) {
+         const uint16_t operands[][4] = {
+            {value, 0, 0, 0}, {0, value, 0, 0},
+            {0, 0, value, 0}, {0, 0, 0, value},
+         };
+         for (unsigned o = 0; o < 4; ++o) {
+            struct agx3_encoded_imadd_u32_reg_reg_reg packed, repacked;
+            uint16_t dest, mul0, mul1, addend;
+            uint8_t length;
+            CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+               encodings[e], operands[o][0], operands[o][1], operands[o][2],
+               operands[o][3], &packed));
+            CHECK(agx3_unpack_imadd_u32_reg_reg_reg(
+               encodings[e], packed.bytes, packed.length, &dest, &mul0,
+               &mul1, &addend, &length));
+            CHECK(dest == operands[o][0]);
+            CHECK(mul0 == operands[o][1]);
+            CHECK(mul1 == operands[o][2]);
+            CHECK(addend == operands[o][3]);
+            CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+               encodings[e], dest, mul0, mul1, addend, &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, packed.bytes, length) == 0);
+         }
+      }
+   }
+}
+
+static void
+test_imadd_u32_reg_reg_reg_rejection(void)
+{
+   static const uint8_t
+      operand_masks[][AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH] = {
+         /* AGX3b: even f2/f16/f31/f46 half-register bits. */
+         {0, 0, 0, 0xfe, 0, 0xfc, 0xf9, 0xf3, 0x07, 0, 0, 0, 0, 0},
+         /* AGX3c: bounded eight-bit forms of all four fields. */
+         {0x90, 0x02, 0x88, 0xe0, 0, 0x80, 0, 0x38, 0x93, 0x3f, 0x01, 0,
+          0xae, 0},
+      };
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      struct agx3_encoded_imadd_u32_reg_reg_reg packed, repacked;
+      CHECK(agx3_pack_imadd_u32_reg_reg_reg(encodings[e], 0, 0, 0, 0,
+                                            &packed));
+
+      /* Flipping every modeled operand bit must round-trip; every other bit
+       * must fail canonical decode rather than selecting an unproven form. */
+      for (unsigned bit = 0; bit < packed.length * 8; ++bit) {
+         uint8_t malformed[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH] = {0};
+         memcpy(malformed, packed.bytes, packed.length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+
+         uint16_t dest, mul0, mul1, addend;
+         uint8_t length;
+         const bool accepted = agx3_unpack_imadd_u32_reg_reg_reg(
+            encodings[e], malformed, packed.length, &dest, &mul0, &mul1,
+            &addend, &length);
+         const bool is_operand =
+            (operand_masks[e][bit / 8] & (1u << (bit % 8))) != 0;
+         CHECK(accepted == is_operand);
+
+         if (accepted) {
+            CHECK(agx3_pack_imadd_u32_reg_reg_reg(
+               encodings[e], dest, mul0, mul1, addend, &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, malformed, length) == 0);
+         }
+      }
+   }
+
+   struct agx3_encoded_imadd_u32_reg_reg_reg packed_b, packed_c;
+   CHECK(agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 0, 0,
+                                         0, &packed_b));
+   CHECK(agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                         0, &packed_c));
+
+   CHECK(!agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX2, 0, 0, 0,
+                                          0, &packed_b));
+   CHECK(!agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_UNKNOWN, 0, 0, 0,
+                                          0, &packed_b));
+
+   /* Every operand independently rejects odd and first-out-of-range values. */
+   for (unsigned e = 0; e < 2; ++e) {
+      const uint16_t limit = e == 0 ? 192 : 256;
+      struct agx3_encoded_imadd_u32_reg_reg_reg *out = e == 0 ? &packed_b
+                                                               : &packed_c;
+      for (unsigned o = 0; o < 4; ++o) {
+         uint16_t odd[4] = {0};
+         odd[o] = 1;
+         CHECK(!agx3_pack_imadd_u32_reg_reg_reg(
+            encodings[e], odd[0], odd[1], odd[2], odd[3], out));
+
+         uint16_t oob[4] = {0};
+         oob[o] = limit;
+         CHECK(!agx3_pack_imadd_u32_reg_reg_reg(
+            encodings[e], oob[0], oob[1], oob[2], oob[3], out));
+      }
+   }
+   CHECK(!agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                          0, NULL));
+
+   CHECK(agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 0, 0,
+                                         0, &packed_b));
+   CHECK(agx3_pack_imadd_u32_reg_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                         0, &packed_c));
+
+   uint16_t dest, mul0, mul1, addend;
+   uint8_t length;
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_b.bytes, packed_b.length - 1, &dest,
+      &mul0, &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length - 1, &dest,
+      &mul0, &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX2, packed_b.bytes, packed_b.length, &dest, &mul0,
+      &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_c.bytes, packed_c.length, &dest, &mul0,
+      &mul1, &addend, &length));
+
+   uint8_t padded_b[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH] = {0};
+   memcpy(padded_b, packed_b.bytes, packed_b.length);
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, padded_b, sizeof(padded_b), &dest, &mul0,
+      &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, NULL, packed_c.length, &dest, &mul0, &mul1,
+      &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, NULL, &mul0,
+      &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, NULL,
+      &mul1, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, &mul0,
+      NULL, &addend, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, &mul0,
+      &mul1, NULL, &length));
+   CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, packed_c.length, &dest, &mul0,
+      &mul1, &addend, NULL));
+
+   /* Reject the separate implicit-zero multiply and all observed alternate or
+    * high-half selections, even where they implement related arithmetic. */
+   static const char *reject_b[] = {
+      "9f00560002000000d0200a00", /* implicit-zero imul */
+      "9f00560002080040d02f2a00", /* alternate P3 low */
+      "9f00560002080010d02f2a00", /* alternate Q low */
+      "9f00560003000800e0261e00", /* signed high */
+      "9f00560003000800e0260a00", /* unsigned high */
+   };
+   static const char *reject_c[] = {
+      "2f00041a2100a102088000000102", /* implicit-zero imul */
+      "2f00043a2100a1022880e0000800", /* alternate P3 low */
+      "2f00043a2100a1022880e0000200", /* alternate Q low */
+      "2f0004022908a902a88020b0",     /* signed high imadd64 */
+      "2f0004022900a902a8802030",     /* unsigned high imadd64 */
+   };
+   for (unsigned e = 0; e < 2; ++e) {
+      const char *const *vectors = e == 0 ? reject_b : reject_c;
+      for (unsigned i = 0; i < 5; ++i) {
+         uint8_t rejected[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH] = {0};
+         const unsigned encoded_length =
+            parse_hex(vectors[i], rejected, sizeof(rejected));
+         const size_t available = e == 1 && encoded_length < 14
+                                     ? sizeof(rejected)
+                                     : encoded_length;
+         CHECK(!agx3_unpack_imadd_u32_reg_reg_reg(
+            encodings[e], rejected, available, &dest, &mul0, &mul1, &addend,
+            &length));
+      }
+   }
+}
+
 static void
 test_nop(void)
 {
@@ -2623,6 +2879,8 @@ main(void)
    test_lsr_u32_reg_reg_rejection();
    test_imul_u32_reg_reg();
    test_imul_u32_reg_reg_rejection();
+   test_imadd_u32_reg_reg_reg();
+   test_imadd_u32_reg_reg_reg_rejection();
    test_nop();
    test_threadgroup_barrier();
    test_end();
