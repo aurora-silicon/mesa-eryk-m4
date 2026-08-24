@@ -134,6 +134,41 @@ agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
       return true;
    }
 
+   /* fmin/fmax lower to fcmpsel(a, b, a, b, cond) -- a compare-select whose two
+    * selected values are the two compared values, tied. cond LTN is a minimum,
+    * GTN a maximum. Any other fcmpsel (a general ?: select) has no grounded
+    * AGX3 mapping and is refused. */
+   if (I->op == AGX_OPCODE_FCMPSEL) {
+      if (I->nr_srcs != 4 || I->invert_cond ||
+          !agx3_src_is_register(I->src[0]) ||
+          !agx3_src_is_register(I->src[1]) ||
+          I->src[0].abs || I->src[0].neg || I->src[1].abs || I->src[1].neg ||
+          I->src[0].value != I->src[2].value ||
+          I->src[1].value != I->src[3].value)
+         return false;
+
+      if (I->fcond == AGX_FCOND_LTN)
+         S->op = AGX3_SEL_OP_FMIN;
+      else if (I->fcond == AGX_FCOND_GTN)
+         S->op = AGX3_SEL_OP_FMAX;
+      else
+         return false;
+
+      if (I->nr_dests >= 1 && I->dest[0].type != AGX_INDEX_NULL) {
+         S->has_dest = true;
+         S->dest = I->dest[0].value;
+         S->dest_size = I->dest[0].size;
+      }
+      S->nr_srcs = 2;
+      S->src[0].reg = I->src[0].value;
+      S->src[0].size = I->src[0].size;
+      S->src[0].is_reg = true;
+      S->src[1].reg = I->src[1].value;
+      S->src[1].size = I->src[1].size;
+      S->src[1].is_reg = true;
+      return true;
+   }
+
    S->op = agx3_map_opcode(I->op);
    if (S->op == AGX3_SEL_OP_UNSUPPORTED)
       return false;

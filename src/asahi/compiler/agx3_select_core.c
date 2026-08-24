@@ -48,6 +48,8 @@ agx3_select_op_supported(enum agx3_sel_op op)
    case AGX3_SEL_OP_F_RCP:
    case AGX3_SEL_OP_F_RSQRT:
    case AGX3_SEL_OP_F_RINT:
+   case AGX3_SEL_OP_FMIN:
+   case AGX3_SEL_OP_FMAX:
       return true;
    default:
       return false;
@@ -273,6 +275,32 @@ agx3_select_encode(enum agx_isa_encoding encoding,
           !src_is_plain_reg32(&I->src[0]))
          return false;
       if (!agx3_pack_u32_to_f32_reg(encoding, I->dest, I->src[0].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_FMIN: {
+      struct agx3_encoded_fmin_f32_reg_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 2 ||
+          !src_is_plain_reg32(&I->src[0]) || !src_is_plain_reg32(&I->src[1]))
+         return false;
+      if (!agx3_pack_fmin_f32_reg_reg(encoding, I->dest, I->src[0].reg,
+                                      I->src[1].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_FMAX: {
+      struct agx3_encoded_fmax_f32_reg_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 2 ||
+          !src_is_plain_reg32(&I->src[0]) || !src_is_plain_reg32(&I->src[1]))
+         return false;
+      if (!agx3_pack_fmax_f32_reg_reg(encoding, I->dest, I->src[0].reg,
+                                      I->src[1].reg, &e))
          return false;
       memcpy(out, e.bytes, e.length);
       *len = e.length;

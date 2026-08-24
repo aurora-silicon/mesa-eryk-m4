@@ -58,6 +58,8 @@ enum agx3_sel_op {
    AGX3_SEL_OP_F_RCP,     /* f32 reciprocal */
    AGX3_SEL_OP_F_RSQRT,   /* f32 reciprocal square root */
    AGX3_SEL_OP_F_RINT,    /* f32 round to nearest even (roundeven) */
+   AGX3_SEL_OP_FMIN,      /* f32 minimum, from the fcmpsel min pattern */
+   AGX3_SEL_OP_FMAX,      /* f32 maximum, from the fcmpsel max pattern */
 };
 
 /* A normalized source operand. `reg` is a 16-bit half-register index, the same
