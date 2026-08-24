@@ -19,6 +19,8 @@ libasahi_lib_files = files(
   'agx_nir_prolog_epilog.c',
   'agx_ppp.h',
   'agx_scratch.c',
+  'agx_texture_side_entry.c',
+  'agx_texture_side_entry.h',
   'agx_va.c',
   'pool.c',
 )
@@ -160,6 +162,19 @@ if with_tests
       meson.project_source_root() / 'src/asahi/lib/agx_chip.h',
       meson.project_source_root() / 'docs/asahi/apple-gpu-feature-matrix.md',
     ],
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-texture-side-entry',
+    executable(
+      'asahi-texture-side-entry',
+      files(
+        'agx_texture_side_entry.c',
+        'tests/test-texture-side-entry.c',
+      ),
+      include_directories : [inc_src, inc_asahi],
+    ),
     suite : ['asahi'],
   )
 
