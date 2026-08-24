@@ -373,6 +373,209 @@ test_iadd_u32_imm8_rejection(void)
       AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 12, &dest, &src, &imm, NULL));
 }
 
+struct iadd_reg_reg_vector {
+   uint16_t dest;
+   uint16_t src0;
+   uint16_t src1;
+   const char *agx3b;
+   const char *agx3c;
+};
+
+/*
+ * The (0,0,2) row is the exact cross-target compiler witness.  Every row is
+ * independently composed by Apple's table from that source-correlated
+ * encoding point; the remaining values exercise every exposed fragment.
+ */
+static const struct iadd_reg_reg_vector iadd_reg_reg_vectors[] = {
+   {0, 0, 0,       "9f015600020000a81305", "2f00041a2100a30228800100"},
+   {0, 0, 2,       "9f015600020008a81305", "2f00041a2100a302a8800100"},
+   {0, 4, 0,       "9f015600020800a81305", "2f00043a2100a30228800100"},
+   {2, 2, 0,       "9f015602020400a81305", "3f02041a2100a30228800100"},
+   {190, 190, 190, "9f0156be027cf9aa1305", "bf020cfa2180a33aaaaf0100"},
+   {128, 64, 32,   "9f015680028080a81305", "2f000c1a2100a30229880100"},
+   {64, 128, 190,  "9f0156400200f9aa1305", "2f00841a2100a302aaaf0100"},
+   {32, 16, 8,     "9f015620022020a81305", "2f00049a2100a32228820100"},
+};
+
+static void
+test_iadd_u32_reg_reg(void)
+{
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      const uint16_t register_limit = e == 0 ? 192 : 256;
+
+      for (unsigned i = 0;
+           i < sizeof(iadd_reg_reg_vectors) /
+                  sizeof(iadd_reg_reg_vectors[0]);
+           ++i) {
+         const struct iadd_reg_reg_vector *v = &iadd_reg_reg_vectors[i];
+         const char *hex = e == 0 ? v->agx3b : v->agx3c;
+         uint8_t expected[AGX3_IADD_U32_REG_REG_MAX_LENGTH] = {0};
+         const unsigned expected_length =
+            parse_hex(hex, expected, sizeof(expected));
+         struct agx3_encoded_iadd_u32_reg_reg packed;
+
+         CHECK(agx3_pack_iadd_u32_reg_reg(
+            encodings[e], v->dest, v->src0, v->src1, &packed));
+         CHECK(packed.length == expected_length);
+         CHECK(memcmp(packed.bytes, expected, expected_length) == 0);
+
+         uint16_t dest = UINT16_MAX, src0 = UINT16_MAX, src1 = UINT16_MAX;
+         uint8_t length = 0;
+         CHECK(agx3_unpack_iadd_u32_reg_reg(
+            encodings[e], expected, expected_length, &dest, &src0, &src1,
+            &length));
+         CHECK(dest == v->dest);
+         CHECK(src0 == v->src0);
+         CHECK(src1 == v->src1);
+         CHECK(length == expected_length);
+      }
+
+      /* Exercise every value in each independently scattered register. */
+      for (uint16_t value = 0; value < register_limit; value += 2) {
+         const uint16_t operands[][3] = {
+            {value, 0, 0}, {0, value, 0}, {0, 0, value},
+         };
+         for (unsigned o = 0; o < 3; ++o) {
+            struct agx3_encoded_iadd_u32_reg_reg packed, repacked;
+            uint16_t dest, src0, src1;
+            uint8_t length;
+            CHECK(agx3_pack_iadd_u32_reg_reg(
+               encodings[e], operands[o][0], operands[o][1], operands[o][2],
+               &packed));
+            CHECK(agx3_unpack_iadd_u32_reg_reg(
+               encodings[e], packed.bytes, packed.length, &dest, &src0,
+               &src1, &length));
+            CHECK(dest == operands[o][0]);
+            CHECK(src0 == operands[o][1]);
+            CHECK(src1 == operands[o][2]);
+            CHECK(agx3_pack_iadd_u32_reg_reg(encodings[e], dest, src0, src1,
+                                             &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, packed.bytes, length) == 0);
+         }
+      }
+   }
+}
+
+static void
+test_iadd_u32_reg_reg_rejection(void)
+{
+   static const uint8_t operand_masks[][AGX3_IADD_U32_REG_REG_MAX_LENGTH] = {
+      /* AGX3b: even f2/f16/f31 half-register bits. */
+      {0, 0, 0, 0xfe, 0, 0xfc, 0xf9, 0x03, 0, 0, 0, 0},
+      /* AGX3c: the bounded eight-bit forms of the same three fields. */
+      {0x90, 0x02, 0x88, 0xe0, 0, 0x80, 0, 0x38, 0x83, 0x3f, 0, 0},
+   };
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      struct agx3_encoded_iadd_u32_reg_reg packed, repacked;
+      CHECK(agx3_pack_iadd_u32_reg_reg(encodings[e], 0, 0, 0, &packed));
+
+      for (unsigned bit = 0; bit < packed.length * 8; ++bit) {
+         uint8_t malformed[AGX3_IADD_U32_REG_REG_MAX_LENGTH] = {0};
+         memcpy(malformed, packed.bytes, packed.length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+
+         uint16_t dest, src0, src1;
+         uint8_t length;
+         const bool accepted = agx3_unpack_iadd_u32_reg_reg(
+            encodings[e], malformed, packed.length, &dest, &src0, &src1,
+            &length);
+         const bool is_operand =
+            (operand_masks[e][bit / 8] & (1u << (bit % 8))) != 0;
+         CHECK(accepted == is_operand);
+
+         if (accepted) {
+            CHECK(agx3_pack_iadd_u32_reg_reg(encodings[e], dest, src0, src1,
+                                             &repacked));
+            CHECK(repacked.length == length);
+            CHECK(memcmp(repacked.bytes, malformed, length) == 0);
+         }
+      }
+   }
+
+   struct agx3_encoded_iadd_u32_reg_reg packed_b, packed_c;
+   CHECK(agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 0, 0,
+                                    &packed_b));
+   CHECK(agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                    &packed_c));
+
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX2, 0, 0, 0,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_UNKNOWN, 0, 0, 0,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 1, 0, 0,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 1, 0,
+                                     &packed_c));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 1,
+                                     &packed_c));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 192, 0, 0,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 192, 0,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 0, 192,
+                                     &packed_b));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 256, 0, 0,
+                                     &packed_c));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 256, 0,
+                                     &packed_c));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 256,
+                                     &packed_c));
+   CHECK(!agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                     NULL));
+
+   /* Invalid packs need not preserve their output, so restore valid inputs. */
+   CHECK(agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3B, 0, 0, 0,
+                                    &packed_b));
+   CHECK(agx3_pack_iadd_u32_reg_reg(AGX_ISA_ENCODING_AGX3C, 0, 0, 0,
+                                    &packed_c));
+
+   uint16_t dest, src0, src1;
+   uint8_t length;
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_b.bytes, 9, &dest, &src0, &src1,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 11, &dest, &src0, &src1,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX2, packed_b.bytes, 10, &dest, &src0, &src1,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3B, packed_c.bytes, 12, &dest, &src0, &src1,
+      &length));
+
+   uint8_t padded_b[AGX3_IADD_U32_REG_REG_MAX_LENGTH] = {0};
+   memcpy(padded_b, packed_b.bytes, packed_b.length);
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, padded_b, sizeof(padded_b), &dest, &src0,
+      &src1, &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, NULL, 12, &dest, &src0, &src1, &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 12, NULL, &src0, &src1,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 12, &dest, NULL, &src1,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 12, &dest, &src0, NULL,
+      &length));
+   CHECK(!agx3_unpack_iadd_u32_reg_reg(
+      AGX_ISA_ENCODING_AGX3C, packed_c.bytes, 12, &dest, &src0, &src1,
+      NULL));
+}
+
 static void
 test_nop(void)
 {
@@ -652,6 +855,8 @@ main(void)
    test_boundaries_and_rejection();
    test_iadd_u32_imm8();
    test_iadd_u32_imm8_rejection();
+   test_iadd_u32_reg_reg();
+   test_iadd_u32_reg_reg_rejection();
    test_nop();
    test_threadgroup_barrier();
    test_end();

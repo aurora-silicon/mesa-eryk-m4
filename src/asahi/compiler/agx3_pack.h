@@ -18,6 +18,7 @@ extern "C" {
 /* Largest ldimm instruction emitted by the currently proven AGX3 subset. */
 #define AGX3_LDIMM_MAX_LENGTH 8
 #define AGX3_IADD_U32_IMM8_MAX_LENGTH 12
+#define AGX3_IADD_U32_REG_REG_MAX_LENGTH 12
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_END_LENGTH 4
@@ -31,6 +32,11 @@ struct agx3_encoded_ldimm {
 
 struct agx3_encoded_iadd_u32_imm8 {
    uint8_t bytes[AGX3_IADD_U32_IMM8_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_iadd_u32_reg_reg {
+   uint8_t bytes[AGX3_IADD_U32_REG_REG_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -106,6 +112,30 @@ bool agx3_unpack_iadd_u32_imm8(enum agx_isa_encoding encoding,
                                const uint8_t *bytes, size_t available,
                                uint16_t *dest, uint16_t *src, uint8_t *imm,
                                uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded three-register form of 32-bit integer
+ * add.  P2i_add identifies f2 as the destination and f16/f31 as its two
+ * register sources: the immediately preceding lddev instructions define the
+ * exact f16/f31 registers consumed by this instruction.  The independent
+ * Q_iadd occurrence ladder reproduces the same form on G15G, G16G and G17S.
+ *
+ * All arguments are half-register indices and must therefore be even.  This
+ * bounded API exposes r0..r95 on AGX3b and r0..r127 on AGX3c.  Apple's AGX3c
+ * table contains a ninth register bit, but Mesa does not model that register
+ * space and the pinned source probes do not exercise it, so it fails closed.
+ * Only the exact anonymous-field selection emitted by the cross-target
+ * volatile-load-plus-gid replay is accepted.  The other anonymous-field
+ * selections visible in P2i_add and Q_iadd remain unsupported until they are
+ * named.  G15G's standalone scheduling nops are deliberately outside this
+ * packer.
+ */
+bool agx3_pack_iadd_u32_reg_reg(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src0,
+   uint16_t src1, struct agx3_encoded_iadd_u32_reg_reg *out);
+bool agx3_unpack_iadd_u32_reg_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src0, uint16_t *src1, uint8_t *length);
 
 /*
  * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is
