@@ -385,8 +385,11 @@ op("iterproj", (0x21, 8, _), srcs = 3, imms = [CHANNELS, INTERPOLATION])
 op("ldcf", (0xA1, 8, _), srcs = 1, imms = [CHANNELS])
 op("st_vary", None, dests = 0, srcs = 2, can_eliminate = False)
 op("no_varyings", (0x80000051, 4, _), dests = 0, can_eliminate = False)
+# Both AGX3 encodings end every hash-pinned shader region with the canonical
+# four-byte `end`.  This maps the compiler's unconditional terminator only;
+# conditional termination remains unmapped.
 op("stop", (0x88, 2, _), dests = 0, can_eliminate = False,
-   schedule_class = "invalid")
+   schedule_class = "invalid", agx3_mnemonic = "end")
 op("trap", (0x08, 2, _), dests = 0, can_eliminate = False,
    schedule_class = "invalid")
 

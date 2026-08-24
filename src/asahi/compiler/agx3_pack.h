@@ -15,11 +15,23 @@
 extern "C" {
 #endif
 
-/* Largest instruction emitted by the currently proven AGX3 subset. */
+/* Largest ldimm instruction emitted by the currently proven AGX3 subset. */
 #define AGX3_LDIMM_MAX_LENGTH 8
+#define AGX3_END_LENGTH 4
+#define AGX3_UPDATE_NODE_MAX_LENGTH 14
 
 struct agx3_encoded_ldimm {
    uint8_t bytes[AGX3_LDIMM_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_end {
+   uint8_t bytes[AGX3_END_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_update_node {
+   uint8_t bytes[AGX3_UPDATE_NODE_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -46,6 +58,32 @@ bool agx3_pack_ldimm_u32(enum agx_isa_encoding encoding, uint16_t dest,
 bool agx3_unpack_ldimm_u32(enum agx_isa_encoding encoding,
                            const uint8_t *bytes, size_t available,
                            uint16_t *dest, uint32_t *imm, uint8_t *length);
+
+/*
+ * Encode/decode the canonical unconditional shader terminator.  The exact
+ * bytes 0e000000 terminate every decoded code region in the hash-pinned
+ * G15/G16/G17 corpus.  Apple's tables expose additional anonymous end fields;
+ * those noncanonical forms are deliberately rejected until their effects are
+ * independently established.
+ */
+bool agx3_pack_end(enum agx_isa_encoding encoding,
+                   struct agx3_encoded_end *out);
+bool agx3_unpack_end(enum agx_isa_encoding encoding, const uint8_t *bytes,
+                     size_t available, uint8_t *length);
+
+/*
+ * Encode/decode the fixed, zero-argument llvm.agx3.update.node intrinsic
+ * expansion.  Apple's compiler emits a canonical barrier followed by the
+ * hardware update_node operation: 6+4 bytes on AGX3b and 6+8 bytes on AGX3c.
+ * Both complete sequences are exact occurrence-count isolates; no
+ * operand-bearing update.bvh form is accepted here.  Every bit is canonical
+ * and a byte sequence from one ISA generation is rejected by the other.
+ */
+bool agx3_pack_update_node(enum agx_isa_encoding encoding,
+                           struct agx3_encoded_update_node *out);
+bool agx3_unpack_update_node(enum agx_isa_encoding encoding,
+                             const uint8_t *bytes, size_t available,
+                             uint8_t *length);
 
 #ifdef __cplusplus
 }

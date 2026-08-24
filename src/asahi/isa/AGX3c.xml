@@ -334,6 +334,10 @@
     <immediate name="f20" bit="18"/>
     <!-- select when: f2eq8 f1eq3 f0bitfield_eq0 -->
   </ins>
+  <!-- Canonical first instruction of llvm.agx3.update.node's expansion. -->
+  <ins name="barrier_update_node" length="6" display="barrier">
+    <exact bit="0:47">000000000000000000000110000000000000100100010111</exact>
+  </ins>
   <ins name="barrier" length="6" display="barrier">
     <exact bit="0:2 16:18 24:27 32:33">000110000111</exact>
     <immediate name="f16" bit="42"/>
@@ -780,6 +784,15 @@
     <immediate name="f76" bit="57:58"/>  <!-- value passes through an encoder LUT [1, 2, 0] -->
     <immediate name="f77" bit="52"/>
     <!-- select when: f24range f39range f54range f60eq38 f10eq1 f26eq0 f41eq0 f56eq0 -->
+  </ins>
+  <!--
+    Canonical unconditional shader terminator.  All bits are fixed at every
+    hash-pinned G17 code-region boundary; retain the anonymous fallback for
+    Apple's unproven nonzero end fields.
+  -->
+  <ins name="end_canonical" length="4" display="end">
+    <exact bit="0:4">01110</exact>
+    <zero bit="5:31"/>
   </ins>
   <ins name="end" length="4" display="end">
     <exact bit="0:4">01110</exact>
@@ -5820,6 +5833,10 @@
     <immediate name="f46" bit="43"/>
     <immediate name="f47" bit="52"/>
     <!-- select when: f1eq193 f30eq0 f28eq3 f44eq0 f0eq2 -->
+  </ins>
+  <!-- Fixed zero-argument update_node operation following the barrier. -->
+  <ins name="update_node_canonical" length="8" display="update_node">
+    <exact bit="0:63">0000001010101101000000000010001000000000000000010000000000100111</exact>
   </ins>
   <ins name="update_node" length="8" display="update_node">
     <exact bit="0:2 16:18 32:33 48:51">110110001111</exact>

@@ -174,12 +174,122 @@ test_boundaries_and_rejection(void)
                                 &dest, &imm, &length));
 }
 
+static void
+test_end(void)
+{
+   static const uint8_t expected[AGX3_END_LENGTH] = {0x0e, 0x00, 0x00, 0x00};
+   const enum agx_isa_encoding encodings[] = {
+      AGX_ISA_ENCODING_AGX3B,
+      AGX_ISA_ENCODING_AGX3C,
+   };
+
+   for (unsigned e = 0; e < 2; ++e) {
+      struct agx3_encoded_end packed;
+      CHECK(agx3_pack_end(encodings[e], &packed));
+      CHECK(packed.length == AGX3_END_LENGTH);
+      CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+
+      uint8_t length = 0;
+      CHECK(agx3_unpack_end(encodings[e], expected, sizeof(expected),
+                            &length));
+      CHECK(length == AGX3_END_LENGTH);
+
+      /* Every noncanonical bit is outside this evidence-backed subset. */
+      for (unsigned bit = 0; bit < 32; ++bit) {
+         uint8_t malformed[AGX3_END_LENGTH];
+         memcpy(malformed, expected, sizeof(malformed));
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_end(encodings[e], malformed, sizeof(malformed),
+                               &length));
+      }
+   }
+
+   struct agx3_encoded_end packed;
+   uint8_t length;
+   CHECK(!agx3_pack_end(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_end(AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_end(AGX_ISA_ENCODING_AGX3B, NULL));
+   CHECK(!agx3_unpack_end(AGX_ISA_ENCODING_AGX2, expected, sizeof(expected),
+                          &length));
+   CHECK(!agx3_unpack_end(AGX_ISA_ENCODING_AGX3C, expected,
+                          AGX3_END_LENGTH - 1, &length));
+   CHECK(!agx3_unpack_end(AGX_ISA_ENCODING_AGX3C, NULL, sizeof(expected),
+                          &length));
+   CHECK(!agx3_unpack_end(AGX_ISA_ENCODING_AGX3C, expected, sizeof(expected),
+                          NULL));
+}
+
+static void
+test_update_node(void)
+{
+   static const uint8_t expected_b[] = {
+      0x07, 0x04, 0x54, 0x08, 0x09, 0x00, 0xdf, 0x05, 0x54, 0x00,
+   };
+   static const uint8_t expected_c[] = {
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00, 0x27,
+      0x00, 0x01, 0x00, 0x22, 0x00, 0xad, 0x02,
+   };
+   const struct {
+      enum agx_isa_encoding encoding;
+      const uint8_t *expected;
+      size_t length;
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B, expected_b, sizeof(expected_b)},
+      {AGX_ISA_ENCODING_AGX3C, expected_c, sizeof(expected_c)},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_update_node packed;
+      CHECK(agx3_pack_update_node(vectors[v].encoding, &packed));
+      CHECK(packed.length == vectors[v].length);
+      CHECK(memcmp(packed.bytes, vectors[v].expected, vectors[v].length) == 0);
+
+      uint8_t length = 0;
+      CHECK(agx3_unpack_update_node(vectors[v].encoding,
+                                    vectors[v].expected, vectors[v].length,
+                                    &length));
+      CHECK(length == vectors[v].length);
+
+      /* No unknown bit or future operand-bearing form is accepted. */
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t malformed[AGX3_UPDATE_NODE_MAX_LENGTH] = {0};
+         memcpy(malformed, vectors[v].expected, vectors[v].length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_update_node(vectors[v].encoding, malformed,
+                                        vectors[v].length, &length));
+      }
+   }
+
+   struct agx3_encoded_update_node packed;
+   uint8_t length = 0;
+   CHECK(!agx3_pack_update_node(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_update_node(AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_update_node(AGX_ISA_ENCODING_AGX3C, NULL));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3B, expected_b,
+                                  sizeof(expected_b) - 1, &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3C, expected_c,
+                                  sizeof(expected_c) - 1, &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX2, expected_c,
+                                  sizeof(expected_c), &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3B, expected_c,
+                                  sizeof(expected_c), &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3C, expected_b,
+                                  sizeof(expected_b), &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3C, NULL,
+                                  sizeof(expected_c), &length));
+   CHECK(!agx3_unpack_update_node(AGX_ISA_ENCODING_AGX3C, expected_c,
+                                  sizeof(expected_c), NULL));
+}
+
 int
 main(void)
 {
    test_vectors();
    test_boundaries_and_rejection();
+   test_end();
+   test_update_node();
 
-   printf("agx3 ldimm pack: %u checks, %u failures\n", checks, failures);
+   printf("agx3 proven-subset pack: %u checks, %u failures\n", checks,
+          failures);
    return failures != 0;
 }

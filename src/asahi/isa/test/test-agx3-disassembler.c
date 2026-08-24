@@ -19,7 +19,7 @@ static bool
 check(disassemble_instr_fn disassemble, const char *variant,
       const uint8_t *code, size_t code_size, const char *expected)
 {
-   BITSET_WORD words[2] = {0};
+   BITSET_WORD words[BITSET_WORDS(128)] = {0};
    char *output = NULL;
    size_t output_size = 0;
 
@@ -57,6 +57,17 @@ main(void)
    static const uint8_t long_r127[] = {
       0xfc, 0xf8, 0xca, 0x12, 0x18, 0x08, 0xa2, 0x01,
    };
+   static const uint8_t end[] = {0x0e, 0x00, 0x00, 0x00};
+   static const uint8_t update_node_barrier_b[] = {
+      0x07, 0x04, 0x54, 0x08, 0x09, 0x00,
+   };
+   static const uint8_t update_node_op_b[] = {0xdf, 0x05, 0x54, 0x00};
+   static const uint8_t update_node_barrier_c[] = {
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00,
+   };
+   static const uint8_t update_node_op_c[] = {
+      0x27, 0x00, 0x01, 0x00, 0x22, 0x00, 0xad, 0x02,
+   };
 
    unsigned failures = 0;
 
@@ -75,6 +86,24 @@ main(void)
    failures += !check(agx3c_disassemble_instr, "AGX3c long r127", long_r127,
                       sizeof(long_r127), "ldimm    r127, 305419896\n");
 
-   printf("AGX3 ldimm disassembly: %u/6 passed\n", 6 - failures);
+   failures += !check(agx3b_disassemble_instr, "AGX3b end", end, sizeof(end),
+                      "end\n");
+   failures += !check(agx3c_disassemble_instr, "AGX3c end", end, sizeof(end),
+                      "end\n");
+
+   failures += !check(agx3b_disassemble_instr, "AGX3b update.node barrier",
+                      update_node_barrier_b, sizeof(update_node_barrier_b),
+                      "barrier\n");
+   failures += !check(agx3b_disassemble_instr, "AGX3b update.node operation",
+                      update_node_op_b, sizeof(update_node_op_b),
+                      "update_node\n");
+   failures += !check(agx3c_disassemble_instr, "AGX3c update.node barrier",
+                      update_node_barrier_c, sizeof(update_node_barrier_c),
+                      "barrier\n");
+   failures += !check(agx3c_disassemble_instr, "AGX3c update.node operation",
+                      update_node_op_c, sizeof(update_node_op_c),
+                      "update_node\n");
+
+   printf("AGX3 proven-subset disassembly: %u/12 passed\n", 12 - failures);
    return failures ? 1 : 0;
 }
