@@ -1,0 +1,75 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * AGX3 device memory encoders (lddev / stdev).
+ *
+ * The address is base64 + (index << shift) + sext16(byte_offset). The base is
+ * never inline: it names a uniform quad or a GPR pair holding the pointer. The
+ * index is an immediate (byte or scaled-element form) or a 32-bit register.
+ * Loads additionally carry a scoreboard slot and a wait mask; stores signal no
+ * slot. Grade A: reproduces Apple's witnessed lddev/stdev bytes exactly via the
+ * composer. Evidence: research/gpu/GPU_AGX3_MEMORY_OPS_2026-08-24.md.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "asahi/lib/agx_chip.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Element width. 64-bit is two 32-bit elements with mask 3; the caller splits
+ * it, so only 8/16/32 appear here. */
+enum agx3_mem_width {
+   AGX3_MEM_W8 = 0,
+   AGX3_MEM_W16 = 1,
+   AGX3_MEM_W32 = 2,
+};
+
+enum agx3_mem_index {
+   AGX3_MEM_IDX_IMM = 0, /* f23 = 1 */
+   AGX3_MEM_IDX_REG = 1, /* f23 = 2 */
+};
+
+#define AGX3_MEM_MAX_LENGTH 16u
+
+struct agx3_mem_desc {
+   uint16_t data;   /* dest (load) / value (store) register, half units */
+   enum agx3_mem_width width;
+   uint8_t mask;    /* 1..15 element enables */
+   uint8_t shift;   /* 0..4 index scale */
+
+   bool base_is_uniform;
+   uint16_t base;   /* uniform half (4-aligned) or GPR half (2-aligned) */
+   bool base_kill;  /* GPR base only */
+
+   enum agx3_mem_index idx_kind;
+   /* Immediate index: either the signed byte offset (byte form) or a scaled
+    * element index (scaled form). */
+   bool idx_scaled;
+   int32_t byte_off;  /* byte form: -32768..32767 */
+   uint32_t elem_idx; /* scaled form: 0..65535 */
+   /* Register index. */
+   uint16_t idx_reg;
+   bool idx_signed;
+   bool idx_kill;
+
+   uint8_t slot;       /* load only: 1..6 (agx3b) / 1..8 (agx3c) */
+   uint16_t wait_mask; /* bit i sets wait slot i */
+};
+
+bool agx3_mem_encode_load(enum agx_isa_encoding enc,
+                          const struct agx3_mem_desc *d,
+                          uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len);
+bool agx3_mem_encode_store(enum agx_isa_encoding enc,
+                           const struct agx3_mem_desc *d,
+                           uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len);
+
+#ifdef __cplusplus
+}
+#endif

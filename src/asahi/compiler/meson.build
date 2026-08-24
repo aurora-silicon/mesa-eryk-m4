@@ -33,6 +33,7 @@ libasahi_agx_files = files(
   'agx3_compose/agx3c_tables.c',
   'agx3_binder.c',
   'agx3_cf_core.c',
+  'agx3_mem_core.c',
   'agx_performance.c',
   'agx_print.c',
   'agx_pressure_schedule.c',
