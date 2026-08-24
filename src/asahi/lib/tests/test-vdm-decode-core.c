@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_decode_core.h"
 #include "asahi/lib/agx_vdm_ppp_state_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
@@ -79,6 +80,29 @@ test_ppp_state_update(void)
          CHECK(record.data.ppp_state_update.pointer == pointer);
          CHECK(record.data.ppp_state_update.size_words == size_words);
       }
+   }
+
+   return 0;
+}
+
+static int
+test_barrier(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      const enum agx_chip chip = supported_targets[t];
+      struct agx_vdm_barrier_core packed;
+      CHECK(agx_vdm_barrier_core_pack(chip, &packed));
+
+      uint8_t stream[AGX_VDM_BARRIER_CORE_LENGTH + 4];
+      memcpy(stream, packed.bytes, packed.length);
+      memset(stream + packed.length, 0x5a, 4);
+
+      struct agx_vdm_decoded_record record;
+      CHECK(agx_vdm_decode_one(chip, stream, sizeof(stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_BARRIER);
+      CHECK(record.length == packed.length);
+      CHECK(record.chip == chip);
    }
 
    return 0;
@@ -242,6 +266,7 @@ test_rejection(void)
 {
    const enum agx_chip chip = AGX_CHIP_G17S;
    struct agx_vdm_ppp_state_core ppp;
+   struct agx_vdm_barrier_core barrier;
    struct agx_vdm_state_update state;
    struct agx_vdm_index_list_direct_nonindexed nonindexed;
    struct agx_vdm_index_list_direct_indexed indexed;
@@ -266,6 +291,7 @@ test_rejection(void)
    };
 
    CHECK(agx_vdm_ppp_state_core_pack(chip, UINT64_C(0x123456780), 7, &ppp));
+   CHECK(agx_vdm_barrier_core_pack(chip, &barrier));
    CHECK(agx_vdm_state_update_pack(chip, &state_info, &state));
    CHECK(agx_vdm_index_list_direct_nonindexed_pack(chip, &nonindexed_info,
                                                    &nonindexed));
@@ -276,11 +302,9 @@ test_rejection(void)
       const uint8_t *bytes;
       size_t length;
    } records[] = {
-      {ppp.bytes, ppp.length},
-      {state.bytes, state.length},
-      {nonindexed.bytes, nonindexed.length},
-      {indexed.bytes, indexed.length},
-      {link.bytes, link.length},
+      {ppp.bytes, ppp.length},         {barrier.bytes, barrier.length},
+      {state.bytes, state.length},     {nonindexed.bytes, nonindexed.length},
+      {indexed.bytes, indexed.length}, {link.bytes, link.length},
    };
 
    for (unsigned r = 0; r < sizeof(records) / sizeof(records[0]); ++r) {
@@ -296,7 +320,7 @@ test_rejection(void)
    }
 
    for (uint32_t type = 1; type < 8; ++type) {
-      if (type == 2 || type == 3 || type == 4)
+      if (type == 1 || type == 2 || type == 3 || type == 4)
          continue;
       const uint8_t word[4] = {0, 0, 0, (uint8_t)(type << 5)};
       CHECK(check_rejected(chip, word, sizeof(word)) == 0);
@@ -306,6 +330,18 @@ test_rejection(void)
    memcpy(malformed_ppp, ppp.bytes, sizeof(malformed_ppp));
    malformed_ppp[2] = 1;
    CHECK(check_rejected(chip, malformed_ppp, sizeof(malformed_ppp)) == 0);
+
+   static const uint8_t aggregate_multi_agc[AGX_VDM_BARRIER_CORE_LENGTH] = {
+      0x7c,
+      0x09,
+      0x00,
+      0x21,
+   };
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      CHECK(check_rejected(supported_targets[t], aggregate_multi_agc,
+                           sizeof(aggregate_multi_agc)) == 0);
+   }
 
    uint8_t malformed_state[AGX_VDM_STATE_UPDATE_LENGTH];
    memcpy(malformed_state, state.bytes, sizeof(malformed_state));
@@ -327,6 +363,7 @@ int
 main(void)
 {
    CHECK(test_ppp_state_update() == 0);
+   CHECK(test_barrier() == 0);
    CHECK(test_state_update() == 0);
    CHECK(test_index_lists() == 0);
    CHECK(test_stream_link() == 0);

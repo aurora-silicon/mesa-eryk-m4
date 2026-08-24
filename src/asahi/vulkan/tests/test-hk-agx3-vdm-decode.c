@@ -5,6 +5,7 @@
 
 #include "hk_agx3_vdm_decode.h"
 
+#include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_ppp_state_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
 
@@ -55,6 +56,17 @@ test_honeykrisp_bridge(void)
       CHECK(record.length == ppp.length);
       CHECK(record.data.ppp_state_update.pointer ==
             UINT64_C(0xee12345000) + t * 4);
+
+      struct agx_vdm_barrier_core barrier;
+      CHECK(agx_vdm_barrier_core_pack(chip, &barrier));
+      uint8_t barrier_stream[AGX_VDM_BARRIER_CORE_LENGTH + 4];
+      memcpy(barrier_stream, barrier.bytes, barrier.length);
+      memset(barrier_stream + barrier.length, 0xa5, 4);
+      CHECK(hk_agx3_decode_vdm_record(chip, barrier_stream,
+                                      sizeof(barrier_stream), &record));
+      CHECK(record.kind == AGX_VDM_RECORD_BARRIER);
+      CHECK(record.length == barrier.length);
+      CHECK(record.chip == chip);
 
       const struct agx_vdm_state_update_info state_info = {
          .raw_vertex_shader_word0 = UINT32_C(0x12345678) + t,
@@ -157,6 +169,19 @@ test_rejection(void)
    CHECK(!hk_agx3_decode_vdm_record(AGX_CHIP_G17S, unknown, sizeof(unknown),
                                     &record));
    CHECK(record_is_cleared(&record));
+
+   const uint8_t aggregate_multi_agc[AGX_VDM_BARRIER_CORE_LENGTH] = {
+      0x7c,
+      0x09,
+      0x00,
+      0x21,
+   };
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      memset(&record, 0xff, sizeof(record));
+      CHECK(!hk_agx3_decode_vdm_record(targets[t], aggregate_multi_agc,
+                                       sizeof(aggregate_multi_agc), &record));
+      CHECK(record_is_cleared(&record));
+   }
    CHECK(
       !hk_agx3_decode_vdm_record(AGX_CHIP_G17S, ppp.bytes, ppp.length, NULL));
    return 0;

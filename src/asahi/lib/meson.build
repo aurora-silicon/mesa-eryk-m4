@@ -25,6 +25,8 @@ libasahi_lib_files = files(
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
+  'agx_vdm_barrier_core.c',
+  'agx_vdm_barrier_core.h',
   'agx_vdm_decode_core.c',
   'agx_vdm_decode_core.h',
   'agx_vdm_index_list_core.c',
@@ -175,6 +177,7 @@ if with_tests
     executable(
       'asahi-vdm-decode-core',
       files(
+        'agx_vdm_barrier_core.c',
         'agx_vdm_decode_core.c',
         'agx_vdm_index_list_core.c',
         'agx_vdm_ppp_state_core.c',
@@ -222,6 +225,19 @@ if with_tests
         'tests/test-texture-side-entry.c',
       ),
       include_directories : [inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-barrier-core',
+    executable(
+      'asahi-vdm-barrier-core',
+      files(
+        'agx_vdm_barrier_core.c',
+        'tests/test-vdm-barrier-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
     ),
     suite : ['asahi'],
   )

@@ -5,6 +5,7 @@
 
 #include "agx_vdm_decode_core.h"
 
+#include "agx_vdm_barrier_core.h"
 #include "agx_vdm_ppp_state_core.h"
 #include "agx_vdm_stream_link_core.h"
 
@@ -53,6 +54,17 @@ agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
       record->data.ppp_state_update.size_words = size_words;
       return true;
    }
+
+   case 1:
+      if (available < AGX_VDM_BARRIER_CORE_LENGTH ||
+          !agx_vdm_barrier_core_unpack(chip, bytes,
+                                       AGX_VDM_BARRIER_CORE_LENGTH))
+         return false;
+
+      record->kind = AGX_VDM_RECORD_BARRIER;
+      record->length = AGX_VDM_BARRIER_CORE_LENGTH;
+      record->chip = chip;
+      return true;
 
    case 2:
       if (available < AGX_VDM_STATE_UPDATE_LENGTH ||
@@ -107,7 +119,6 @@ agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
       return true;
    }
 
-   case 1:
    case 5:
    case 6:
    case 7:
