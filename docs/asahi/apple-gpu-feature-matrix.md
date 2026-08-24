@@ -539,7 +539,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `86f49e9f927c`
+The power/recovery and submission ledger through Linux commit `e303766fd430`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -667,6 +667,18 @@ voltage control, a third domain, and hardware programming remain unresolved.
 It also requires the exact tag, UUID, and SHA-256 jointly for each pinned
 G17S/G17C GFX/GFX1 nested-firmware identity. Other G17 variants, FTAB
 extraction, fixups, loading, and live G17C ownership remain fail-closed.
+The same pinned G17X host and RTBuddy images now ground the firmware-start
+handshake around those identities. The host clears the two role flags and the
+combined byte, starts GFX then GFX1 through the shared `+0x888` role method,
+requires both starts to succeed, and waits for either role callback before
+publishing host-booted state. RTBuddy services `0x20` and `0x21` populate
+objects `+0x128/+0x130`; after both converge they are enabled in that order and
+the host role callback is invoked through authenticated slot `+0xb10`. The
+callback records its role timestamp, wakes the combined event source, builds
+the exact `0x0081`-prefixed message with a 44-bit token, and sends through role
+slot `+0x898`. This is a built diagnostic state model, not a runnable boot
+sequence: loader MMIO/power/cache ordering, interrupt acknowledgment,
+power-callback causality, and the cold-boot-to-submission edge remain closed.
 The recovery-word grammar is now location-scoped too: independently pinned
 G15G/S/C/D and G16G accept only mapped-state offset `0x5190`, G16S/C through
 the G16X driver accept only `0x4ae0`, and pinned G17P/G17G/G17S also accept
