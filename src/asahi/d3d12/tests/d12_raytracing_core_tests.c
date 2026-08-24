@@ -582,6 +582,127 @@ test_agx3_update_node_expansion(void)
 }
 
 static void
+test_agx3_update_bvh_fixed_witness(void)
+{
+   static const uint8_t expected[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH] = {
+      /* barrier */
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00,
+      /* update_bvh */
+      0x27, 0x00, 0x21, 0x00, 0x22, 0x80, 0xac, 0x42,
+   };
+   static const uint8_t update_node_agx3c[AGX3_UPDATE_NODE_MAX_LENGTH] = {
+      0x17, 0x09, 0x00, 0x06, 0x00, 0x00, 0x27,
+      0x00, 0x01, 0x00, 0x22, 0x00, 0xad, 0x02,
+   };
+
+   struct agx3_encoded_update_bvh_fixed_witness shared;
+   uint8_t shared_length = 0;
+   require(agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3C,
+                                               &shared),
+           "the shared packer provides the fixed update_bvh witness");
+   require(agx3_unpack_update_bvh_fixed_witness(
+              AGX_ISA_ENCODING_AGX3C, shared.bytes, shared.length,
+              &shared_length),
+           "the shared unpacker accepts its fixed update_bvh witness");
+   require(shared_length == sizeof(expected) &&
+              shared.length == sizeof(expected) &&
+              memcmp(shared.bytes, expected, sizeof(expected)) == 0,
+           "the shared update_bvh contract agrees with the pinned bytes");
+
+   struct d12_rt_agx3_update_bvh_fixed_witness generated;
+   memset(&generated, 0xff, sizeof(generated));
+   require(d12_rt_agx3_update_bvh_fixed_witness_generate(AGX_CHIP_G17S,
+                                                          &generated),
+           "DXR generates the exact G17S update_bvh fixed witness");
+   require(generated.length == sizeof(expected) &&
+              memcmp(generated.bytes, expected, sizeof(expected)) == 0 &&
+              memcmp(generated.bytes, shared.bytes, sizeof(expected)) == 0,
+           "DXR and the shared packer produce identical update_bvh bytes");
+   require(d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, generated.bytes, generated.length),
+           "DXR validates the complete G17S update_bvh fixed witness");
+
+   /* Every bit in both the barrier and operation is canonical. */
+   for (unsigned bit = 0; bit < sizeof(expected) * 8; ++bit) {
+      uint8_t malformed[sizeof(expected)];
+      memcpy(malformed, expected, sizeof(malformed));
+      malformed[bit / 8] ^= 1u << (bit % 8);
+      require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+                 AGX_CHIP_G17S, malformed, sizeof(malformed)),
+              "DXR refuses every changed update_bvh witness bit");
+   }
+
+   for (uint32_t length = 0; length < sizeof(expected); ++length) {
+      require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+                 AGX_CHIP_G17S, expected, length),
+              "DXR refuses every truncated update_bvh fixed witness");
+   }
+
+   uint8_t appended[sizeof(expected) + 1];
+   memcpy(appended, expected, sizeof(expected));
+   appended[sizeof(expected)] = 0xff;
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, appended, sizeof(appended)),
+           "DXR refuses trailing bytes after the update_bvh witness");
+
+   uint8_t missing_barrier[sizeof(expected)] = {0};
+   memcpy(missing_barrier, expected + 6, sizeof(expected) - 6);
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, missing_barrier, sizeof(missing_barrier)),
+           "DXR refuses a full-sized update_bvh witness without its barrier");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, expected, 6),
+           "DXR refuses the update_bvh barrier by itself");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, expected + 6, sizeof(expected) - 6),
+           "DXR refuses the update_bvh operation by itself");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, update_node_agx3c,
+              sizeof(update_node_agx3c)),
+           "DXR does not confuse update_node with update_bvh");
+
+   /* AGX encoding identity is insufficient: only the compiler-witnessed
+    * G17S target is admitted, including for generation output. */
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      if (chip == AGX_CHIP_G17S)
+         continue;
+
+      memset(&generated, 0xff, sizeof(generated));
+      require(!d12_rt_agx3_update_bvh_fixed_witness_generate(chip,
+                                                              &generated),
+              "DXR refuses every non-G17S update_bvh generation target");
+      require(generated.length == 0,
+              "a rejected update_bvh generation clears its length");
+      for (unsigned i = 0; i < sizeof(generated.bytes); ++i)
+         require(generated.bytes[i] == 0,
+                 "a rejected update_bvh generation clears every byte");
+      require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+                 chip, expected, sizeof(expected)),
+              "DXR refuses the G17S update_bvh bytes on every other target");
+   }
+
+   memset(&generated, 0xff, sizeof(generated));
+   require(!d12_rt_agx3_update_bvh_fixed_witness_generate(
+              (enum agx_chip)99, &generated),
+           "DXR refuses an invalid update_bvh generation target");
+   require(generated.length == 0,
+           "an invalid update_bvh target clears the output length");
+   for (unsigned i = 0; i < sizeof(generated.bytes); ++i)
+      require(generated.bytes[i] == 0,
+              "an invalid update_bvh target clears every output byte");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              (enum agx_chip)99, expected, sizeof(expected)),
+           "DXR refuses an invalid update_bvh validation target");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_generate(AGX_CHIP_G17S,
+                                                           NULL),
+           "DXR refuses a missing update_bvh generation destination");
+   require(!d12_rt_agx3_update_bvh_fixed_witness_valid(
+              AGX_CHIP_G17S, NULL, sizeof(expected)),
+           "DXR refuses a missing update_bvh fixed witness");
+}
+
+static void
 pack_gen5_header(const uint64_t words[8], uint8_t packed[64])
 {
    for (unsigned word = 0; word < 8; ++word) {
@@ -647,6 +768,7 @@ main(void)
    test_records_and_config();
    test_agx3_canonical_update_node();
    test_agx3_update_node_expansion();
+   test_agx3_update_bvh_fixed_witness();
    test_agx_gen5_child_layout();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);

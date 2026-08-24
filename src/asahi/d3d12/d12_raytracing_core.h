@@ -446,6 +446,11 @@ struct d12_rt_agx3_update_node_expansion {
    uint8_t length;
 };
 
+struct d12_rt_agx3_update_bvh_fixed_witness {
+   uint8_t bytes[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
+   uint8_t length;
+};
+
 static inline enum agx_isa_encoding
 d12_rt_agx3_shared_encoding(enum d12_rt_agx3_encoding encoding)
 {
@@ -510,6 +515,71 @@ d12_rt_agx3_update_node_expansion_valid(
        instruction_size != packed.length ||
        !agx3_unpack_update_node(shared_encoding, instructions,
                                 instruction_size, &unpacked_length) ||
+       unpacked_length != packed.length)
+      return false;
+
+   const uint8_t *code = instructions;
+   for (uint8_t i = 0; i < packed.length; ++i) {
+      if (code[i] != packed.bytes[i])
+         return false;
+   }
+
+   return true;
+}
+
+/*
+ * Represent only the exact G17S compiler witness for llvm.agx3.update.bvh.
+ * The intrinsic has operands whose machine fields are not correlated, so this
+ * is deliberately not an operand encoder and grants no permission to lower,
+ * schedule or submit the bytes.  G17G and G17C share the AGX3c encoding but
+ * have no pinned per-chip witness and therefore remain rejected.
+ */
+static inline bool
+d12_rt_agx3_update_bvh_fixed_witness_generate(
+   enum agx_chip chip, struct d12_rt_agx3_update_bvh_fixed_witness *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_update_bvh_fixed_witness){0};
+
+   if (chip != AGX_CHIP_G17S)
+      return false;
+
+   struct agx3_encoded_update_bvh_fixed_witness shared;
+   if (!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3C,
+                                            &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/*
+ * Validate the complete fixed witness against both shared packer directions.
+ * Exact size is required because the shared unpacker accepts a canonical
+ * prefix in a larger instruction buffer.  The chip allowlist is independent
+ * of the encoding so another AGX3c chip cannot be admitted accidentally.
+ */
+static inline bool
+d12_rt_agx3_update_bvh_fixed_witness_valid(
+   enum agx_chip chip, const void *instructions, uint32_t instruction_size)
+{
+   if (chip != AGX_CHIP_G17S || !instructions)
+      return false;
+
+   struct agx3_encoded_update_bvh_fixed_witness packed;
+   uint8_t unpacked_length = 0;
+
+   if (!agx3_pack_update_bvh_fixed_witness(AGX_ISA_ENCODING_AGX3C,
+                                            &packed) ||
+       instruction_size != packed.length ||
+       !agx3_unpack_update_bvh_fixed_witness(
+          AGX_ISA_ENCODING_AGX3C, instructions, instruction_size,
+          &unpacked_length) ||
        unpacked_length != packed.length)
       return false;
 
