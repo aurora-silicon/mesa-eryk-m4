@@ -115,6 +115,20 @@ identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
+The shared RT library now decodes the RIA Gen1 64-byte node header used by BVH
+versions 1--4 on the M3/M4 and A18 Pro paths. It covers the special all-inner
+and all-leaf BVH8 control endpoints, inner-child and leaf-box counts, indexed
+versus extent leaf modes, the 4+2-bit leaf-lane ends, rounded leaf-storage
+extent, child-space and inner-child offsets, leaf type, and all six raw 7-bit
+quantized-bound components for each of eight children. The bounds extractor
+matches Apple's `RIANodeHeaderGen1::getQuantizedChildBounds` over 8,000,000
+randomized headers / 64,000,000 child vectors with zero mismatches; the other
+fields are checked against an independent instruction-order model of Apple's
+Gen1 extraction loop. Geometric component names, node origin/scale semantics,
+leaf-record formats, traversal lowering, building, submission, Vulkan RT
+extensions, and DXR execution remain **FC**. The existing RIA Gen5 decoder
+continues to cover the distinct M5 node-header child layout.
+
 The D3D12 RT core generates and validates the byte-exact, fixed zero-argument
 `update_node` expansion for AGX3b and AGX3c through Mesa's shared packer,
 including the generation-specific six-byte barrier and trailing operation.

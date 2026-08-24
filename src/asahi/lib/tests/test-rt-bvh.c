@@ -31,6 +31,257 @@ set_field(uint64_t *word, unsigned start, unsigned width, uint32_t value)
 }
 
 static void
+set_gen1_control(struct agx_rt_bvh_gen1_header *header, uint32_t control)
+{
+   set_field(&header->words[7], 0, 6, control);
+}
+
+static void
+set_gen1_leaf_lane_end(struct agx_rt_bvh_gen1_header *header, unsigned lane,
+                       uint32_t low, uint32_t high_field)
+{
+   set_field(&header->words[lane], 16, 4, low);
+   set_field(&header->words[lane], 20, 2, high_field);
+}
+
+static void
+set_gen1_child_space_slot(struct agx_rt_bvh_gen1_header *header,
+                          uint32_t slot)
+{
+   set_field(&header->words[5], 0, 16, slot >> 16);
+   set_field(&header->words[6], 0, 16, slot & 0xffffu);
+}
+
+static uint32_t
+reference_gen1_inner_child_count(uint32_t control)
+{
+   uint32_t count = control & 7u;
+
+   if ((control & 0x3fu) == 0x3fu)
+      count = 0;
+   if (((control | (control >> 3)) & 7u) == 0)
+      count = 8;
+
+   return count;
+}
+
+static uint32_t
+reference_gen1_leaf_box_count(uint32_t control)
+{
+   const uint32_t fields_intersection = (control & (control >> 3)) & 7u;
+   return fields_intersection == 7u ? 8u : ((control >> 3) & 7u);
+}
+
+static uint32_t
+reference_gen1_leaf_count(const struct agx_rt_bvh_gen1_header *header)
+{
+   const uint32_t control = (uint32_t)header->words[7] & 0x3fu;
+   const uint32_t leaf_boxes = reference_gen1_leaf_box_count(control);
+
+   if ((((uint32_t)header->words[0]) & 1u) != 0)
+      return leaf_boxes;
+
+   const uint32_t first = reference_gen1_inner_child_count(control);
+   uint32_t maximum = 0;
+
+   for (uint32_t i = 0; i < leaf_boxes && first + i < 8; ++i) {
+      const uint32_t lane = (uint32_t)header->words[first + i];
+      const uint32_t low = (lane >> 16) & 15u;
+      const uint32_t high_field = (lane >> 20) & 3u;
+      const uint32_t end = low + (high_field ? high_field : 4u);
+      if (end > maximum)
+         maximum = end;
+   }
+
+   return maximum;
+}
+
+static uint64_t
+next_random(uint64_t *state)
+{
+   uint64_t value = *state;
+   value ^= value << 13;
+   value ^= value >> 7;
+   value ^= value << 17;
+   *state = value;
+   return value;
+}
+
+static void
+test_gen1_unpack_and_control(void)
+{
+   uint8_t storage[AGX_RT_BVH_GEN1_HEADER_SIZE + 1] = {0};
+   uint8_t *packed = storage + 1;
+   struct agx_rt_bvh_gen1_header header = {0};
+
+   for (unsigned word = 0; word < 8; ++word) {
+      const uint64_t value = UINT64_C(0x1020304050607080) + word;
+      for (unsigned byte = 0; byte < 8; ++byte)
+         packed[(word * 8) + byte] = (uint8_t)(value >> (byte * 8));
+   }
+
+   require(agx_rt_bvh_gen1_header_unpack(packed, &header),
+           "an unaligned little-endian Gen1 header unpacks");
+   for (unsigned word = 0; word < 8; ++word) {
+      require(header.words[word] == UINT64_C(0x1020304050607080) + word,
+              "each Gen1 header word preserves little-endian byte order");
+   }
+   require(!agx_rt_bvh_gen1_header_unpack(NULL, &header),
+           "a null Gen1 packed node is refused");
+   require(!agx_rt_bvh_gen1_header_unpack(packed, NULL),
+           "a null Gen1 unpack destination is refused");
+
+   for (uint32_t control = 0; control < 64; ++control) {
+      set_gen1_control(&header, control);
+      const uint32_t inner = reference_gen1_inner_child_count(control);
+      const uint32_t leaves = reference_gen1_leaf_box_count(control);
+
+      require(agx_rt_bvh_gen1_control(&header) == control,
+              "all six Gen1 control bits round-trip");
+      require(agx_rt_bvh_gen1_inner_child_count(&header) == inner,
+              "the Gen1 inner-child endpoint encoding matches Apple");
+      require(agx_rt_bvh_gen1_leaf_box_count(&header) == leaves,
+              "the Gen1 leaf-box endpoint encoding matches Apple");
+      require(agx_rt_bvh_gen1_branching_layout_valid(&header) ==
+                 (inner + leaves <= 8),
+              "the Gen1 BVH8 branching-factor gate matches Apple");
+   }
+
+   set_gen1_control(&header, 0);
+   require(agx_rt_bvh_gen1_inner_child_count(&header) == 8 &&
+              agx_rt_bvh_gen1_leaf_box_count(&header) == 0,
+           "control zero is the all-inner endpoint");
+   set_gen1_control(&header, 0x3f);
+   require(agx_rt_bvh_gen1_inner_child_count(&header) == 0 &&
+              agx_rt_bvh_gen1_leaf_box_count(&header) == 8,
+           "control 0x3f is the all-leaf endpoint");
+}
+
+static void
+test_gen1_leaf_layout(void)
+{
+   struct agx_rt_bvh_gen1_header header = {0};
+
+   for (unsigned lane = 0; lane < 8; ++lane) {
+      for (uint32_t low = 0; low < 16; ++low) {
+         for (uint32_t high = 0; high < 4; ++high) {
+            set_gen1_leaf_lane_end(&header, lane, low, high);
+            require(agx_rt_bvh_gen1_leaf_lane_end(&header, lane) ==
+                       low + (high ? high : 4u),
+                    "every Gen1 4+2-bit leaf-lane end decodes");
+         }
+      }
+   }
+   require(agx_rt_bvh_gen1_leaf_lane_end(&header, 8) == 0,
+           "an out-of-range Gen1 leaf lane fails closed");
+
+   header = (struct agx_rt_bvh_gen1_header){0};
+   set_gen1_control(&header, (3u << 3) | 2u);
+   set_gen1_leaf_lane_end(&header, 2, 5, 0);  /* 9 */
+   set_gen1_leaf_lane_end(&header, 3, 14, 3); /* 17 */
+   set_gen1_leaf_lane_end(&header, 4, 2, 2);  /* 4 */
+   set_gen1_child_space_slot(&header, UINT32_C(0xabcd1234));
+   set_field(&header.words[0], 1, 4, 6);
+
+   require(agx_rt_bvh_gen1_leaf_count(&header) == 17,
+           "count mode takes the maximum leaf-lane end");
+   require(agx_rt_bvh_gen1_leaf_slot_capacity(&header) == 6,
+           "the Gen1 leaf-slot divisor decodes from w0[1:4]");
+   require(agx_rt_bvh_gen1_child_space_slot(&header) == UINT32_C(0xabcd1234),
+           "the Gen1 child-space slot uses w5-low:w6-low");
+   require(agx_rt_bvh_gen1_leaf_storage_slots(&header) == 3,
+           "the Gen1 leaf extent rounds up to three child-space slots");
+   require(agx_rt_bvh_gen1_inner_child_offset(&header) ==
+              UINT32_C(0xabcd1237),
+           "the Gen1 inner-child offset follows rounded leaf storage");
+
+   set_field(&header.words[0], 0, 1, 1);
+   require(agx_rt_bvh_gen1_uses_indexed_leaf_counts(&header),
+           "w0 bit zero selects indexed Gen1 leaf counts");
+   require(agx_rt_bvh_gen1_leaf_count(&header) == 3,
+           "indexed mode uses the leaf-box count");
+   require(agx_rt_bvh_gen1_leaf_storage_slots(&header) == 1 &&
+              agx_rt_bvh_gen1_inner_child_offset(&header) ==
+                 UINT32_C(0xabcd1235),
+           "indexed leaf storage advances the inner-child offset once");
+
+   set_field(&header.words[0], 1, 4, 0);
+   require(agx_rt_bvh_gen1_leaf_storage_slots(&header) == 0 &&
+              agx_rt_bvh_gen1_inner_child_offset(&header) ==
+                 UINT32_C(0xabcd1234),
+           "a zero Gen1 divisor leaves the child-space base unchanged");
+
+   set_gen1_control(&header, (6u << 3) | 7u);
+   require(!agx_rt_bvh_gen1_branching_layout_valid(&header),
+           "an overfull ordinary Gen1 branch layout is rejected");
+}
+
+static void
+test_gen1_quantized_bounds(void)
+{
+   struct agx_rt_bvh_gen1_header header = {0};
+
+   for (unsigned child = 0; child < 8; ++child) {
+      uint32_t expected[6];
+      for (unsigned component = 0; component < 6; ++component) {
+         expected[component] = (child * 17u + component * 11u) & 0x7fu;
+         const unsigned shift = 57u - component * 7u;
+         set_field(&header.words[child], shift, 7, expected[component]);
+      }
+
+      struct agx_rt_bvh_gen1_quantized_bounds bounds;
+      require(agx_rt_bvh_gen1_quantized_child_bounds(&header, child, &bounds),
+              "each Gen1 child exposes quantized bounds");
+      require(memcmp(bounds.component, expected, sizeof(expected)) == 0,
+              "Gen1 quantized bounds follow Apple's descending bit order");
+   }
+
+   struct agx_rt_bvh_gen1_quantized_bounds bounds;
+   require(!agx_rt_bvh_gen1_quantized_child_bounds(NULL, 0, &bounds),
+           "a missing Gen1 header has no quantized bounds");
+   require(!agx_rt_bvh_gen1_quantized_child_bounds(&header, 8, &bounds),
+           "a ninth Gen1 child has no quantized bounds");
+   require(!agx_rt_bvh_gen1_quantized_child_bounds(&header, 0, NULL),
+           "a missing Gen1 bounds destination is refused");
+}
+
+static void
+test_gen1_randomized_assembly_equivalence(void)
+{
+   uint64_t random = UINT64_C(0xf24c8e91d37ab605);
+
+   for (unsigned iteration = 0; iteration < 1000000; ++iteration) {
+      struct agx_rt_bvh_gen1_header header;
+      for (unsigned word = 0; word < 8; ++word)
+         header.words[word] = next_random(&random);
+
+      const uint32_t control = (uint32_t)header.words[7] & 0x3fu;
+      const uint32_t expected_inner =
+         reference_gen1_inner_child_count(control);
+      const uint32_t expected_boxes = reference_gen1_leaf_box_count(control);
+      const uint32_t expected_leaves = reference_gen1_leaf_count(&header);
+      const uint32_t capacity = ((uint32_t)header.words[0] >> 1) & 15u;
+      const uint32_t expected_storage =
+         capacity ? ((expected_leaves + capacity - 1u) / capacity) &
+                       0x03ffffffu
+                  : 0;
+
+      if (agx_rt_bvh_gen1_inner_child_count(&header) != expected_inner ||
+          agx_rt_bvh_gen1_leaf_box_count(&header) != expected_boxes ||
+          agx_rt_bvh_gen1_leaf_count(&header) != expected_leaves ||
+          agx_rt_bvh_gen1_leaf_storage_slots(&header) != expected_storage ||
+          agx_rt_bvh_gen1_inner_child_offset(&header) !=
+             agx_rt_bvh_gen1_child_space_slot(&header) + expected_storage) {
+         require(false,
+                 "random Gen1 header diverged from the Apple assembly model");
+      }
+   }
+
+   require(true,
+           "one million Gen1 headers match the independent assembly model");
+}
+
+static void
 set_slot(struct agx_rt_bvh_gen5_header *header, unsigned slot,
          uint32_t value)
 {
@@ -308,9 +559,16 @@ test_unknown_bits_do_not_affect_addressing(void)
 int
 main(void)
 {
+   require(sizeof(struct agx_rt_bvh_gen1_header) ==
+              AGX_RT_BVH_GEN1_HEADER_SIZE,
+           "a Gen1 node header is exactly 64 bytes");
    require(sizeof(struct agx_rt_bvh_gen5_header) ==
               AGX_RT_BVH_GEN5_HEADER_SIZE,
            "a Gen5 node header is exactly 64 bytes");
+   test_gen1_unpack_and_control();
+   test_gen1_leaf_layout();
+   test_gen1_quantized_bounds();
+   test_gen1_randomized_assembly_equivalence();
    test_unpack_and_signed_child_space();
    test_leaf_and_inner_counts();
    test_qtb_and_vrb_fields();
