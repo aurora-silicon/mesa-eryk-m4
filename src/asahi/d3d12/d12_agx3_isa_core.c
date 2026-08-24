@@ -39,6 +39,9 @@ _Static_assert(AGX3_FMAX_F32_REG_REG_MAX_LENGTH ==
 _Static_assert(AGX3_I32_TO_F32_REG_MAX_LENGTH ==
                   D12_AGX3_I32_TO_F32_REG_MAX_LENGTH,
                "D3D AGX3 i32-to-f32 storage must match the canonical form");
+_Static_assert(AGX3_U32_TO_F32_REG_MAX_LENGTH ==
+                  D12_AGX3_U32_TO_F32_REG_MAX_LENGTH,
+               "D3D AGX3 u32-to-f32 storage must match the canonical form");
 _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
                "D3D AGX3 yield storage must match the canonical form");
 _Static_assert(AGX3_END_LENGTH ==
@@ -813,6 +816,67 @@ d12_agx3_decode_i32_to_f32_reg(
    uint16_t decoded_dest = 0, decoded_src = 0;
    uint8_t decoded_length = 0;
    if (!agx3_unpack_i32_to_f32_reg(
+          encoding, instruction, instruction_size, &decoded_dest,
+          &decoded_src, &decoded_length) ||
+       decoded_length != expected_length)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   return true;
+}
+
+bool
+d12_agx3_encode_u32_to_f32_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding, uint16_t dest,
+   uint16_t src, struct d12_agx3_u32_to_f32_reg_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   struct agx3_encoded_u32_to_f32_reg encoded;
+   if (!agx3_pack_u32_to_f32_reg(encoding, dest, src, &encoded) ||
+       encoded.length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_u32_to_f32_reg(
+   enum agx_chip chip, enum agx_isa_encoding encoding,
+   const void *instruction, uint32_t instruction_size, uint16_t *dest,
+   uint16_t *src)
+{
+   if (dest)
+      *dest = 0;
+   if (src)
+      *src = 0;
+
+   const uint32_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 8 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 10 : 0;
+   if (!instruction || !dest || !src || expected_length == 0 ||
+       instruction_size != expected_length)
+      return false;
+
+   enum agx_isa_encoding target_encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &target_encoding) ||
+       encoding != target_encoding)
+      return false;
+
+   uint16_t decoded_dest = 0, decoded_src = 0;
+   uint8_t decoded_length = 0;
+   if (!agx3_unpack_u32_to_f32_reg(
           encoding, instruction, instruction_size, &decoded_dest,
           &decoded_src, &decoded_length) ||
        decoded_length != expected_length)
