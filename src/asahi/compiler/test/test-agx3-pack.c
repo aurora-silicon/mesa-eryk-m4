@@ -2782,6 +2782,96 @@ test_update_node(void)
 }
 
 static void
+test_continue_ray_fixed_first_site_witness(void)
+{
+   static const struct {
+      enum agx_isa_encoding encoding;
+      uint8_t expected[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+      uint8_t length;
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B,
+       {0x5f, 0x11, 0x54, 0x00, 0x00, 0x00},
+       6},
+      {AGX_ISA_ENCODING_AGX3C,
+       {0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02},
+       8},
+   };
+   struct agx3_encoded_continue_ray_fixed_first_site_witness packed;
+   uint8_t length = 0;
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      CHECK(agx3_pack_continue_ray_fixed_first_site_witness(
+         vectors[v].encoding, &packed));
+      CHECK(packed.length == vectors[v].length);
+      CHECK(memcmp(packed.bytes, vectors[v].expected, vectors[v].length) ==
+            0);
+      CHECK(agx3_unpack_continue_ray_fixed_first_site_witness(
+         vectors[v].encoding, vectors[v].expected, vectors[v].length,
+         &length));
+      CHECK(length == vectors[v].length);
+
+      /* Exact byte acceptance rejects every one-bit corruption, including
+       * compiler allocation/finality variants whose meanings are unmodeled. */
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t malformed[
+            AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+         memcpy(malformed, vectors[v].expected, vectors[v].length);
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+            vectors[v].encoding, malformed, vectors[v].length, &length));
+      }
+
+      for (size_t available = 0; available < vectors[v].length; ++available) {
+         CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+            vectors[v].encoding, vectors[v].expected, available, &length));
+      }
+
+      /* Decode consumes its exact prefix and leaves following instructions to
+       * the caller, matching the other bounded packers. */
+      uint8_t appended[
+         AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH + 1];
+      memcpy(appended, vectors[v].expected, vectors[v].length);
+      appended[vectors[v].length] = 0xff;
+      CHECK(agx3_unpack_continue_ray_fixed_first_site_witness(
+         vectors[v].encoding, appended, vectors[v].length + 1, &length));
+      CHECK(length == vectors[v].length);
+
+      CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+         vectors[v ^ 1].encoding, vectors[v].expected,
+         sizeof(vectors[v].expected), &length));
+   }
+
+   /* One source intrinsic produces two hardware instructions.  The second is
+    * intentionally outside this first-site-only API. */
+   static const uint8_t second_site_b[] = {
+      0x5f, 0x11, 0x54, 0x02, 0x00, 0x00,
+   };
+   static const uint8_t second_site_c[] = {
+      0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x42,
+   };
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX3B, second_site_b, sizeof(second_site_b), &length));
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX3C, second_site_c, sizeof(second_site_c), &length));
+
+   CHECK(!agx3_pack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_UNKNOWN, &packed));
+   CHECK(!agx3_pack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX3C, NULL));
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX2, vectors[1].expected, vectors[1].length, &length));
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_UNKNOWN, vectors[1].expected, vectors[1].length,
+      &length));
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX3C, NULL, vectors[1].length, &length));
+   CHECK(!agx3_unpack_continue_ray_fixed_first_site_witness(
+      AGX_ISA_ENCODING_AGX3C, vectors[1].expected, vectors[1].length, NULL));
+}
+
+static void
 test_update_bvh_fixed_witness(void)
 {
    static const uint8_t expected[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH] = {
@@ -2950,6 +3040,7 @@ main(void)
    test_end();
    test_enable_all_threads();
    test_update_node();
+   test_continue_ray_fixed_first_site_witness();
    test_update_bvh_fixed_witness();
 
    printf("agx3 proven-subset pack: %u checks, %u failures\n", checks,

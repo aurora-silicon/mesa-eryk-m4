@@ -153,6 +153,17 @@ libasahi_lib = static_library(
 
 if with_tests
   test(
+    'asahi_feature_matrix',
+    prog_python,
+    args : [
+      files('tests/test-feature-matrix.py'),
+      meson.project_source_root() / 'src/asahi/lib/agx_chip.h',
+      meson.project_source_root() / 'docs/asahi/apple-gpu-feature-matrix.md',
+    ],
+    suite : ['asahi'],
+  )
+
+  test(
     'libasahi_tests',
     executable(
       'libasahi_tests',

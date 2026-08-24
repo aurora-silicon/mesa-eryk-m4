@@ -46,8 +46,9 @@ marketing name in the measured corpus.
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, the G17S-only fixed
-`update_bvh` witness, and 32-bit register-plus-u8 `iadd` plus the canonical
-three-register form (AGX3b `iadd`, AGX3c `iadd32`),
+`update_bvh` witness, the fixed first-site hardware `continue_ray` witness, and
+32-bit register-plus-u8 `iadd` plus the canonical three-register form (AGX3b
+`iadd`, AGX3c `iadd32`),
 canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
 `bit_not` (`inv`), plus canonical three-register u32 variable shift-left
@@ -104,6 +105,22 @@ the intrinsic's pointer/index arguments are not correlated to machine fields,
 so the bytes are deliberately disconnected from D3D12 acceleration-structure
 build execution. G17G, G17C, every AGX3b target, traversal/update semantics,
 submission, and DXR capability exposure remain **FC**.
+
+The cross-target `continue_ray` corpus also disproves a one-instruction
+interpretation of the compiler's stable per-call deltas. Every source call
+lowers to two hardware `continue_ray` instructions plus barriers, LDS traffic,
+compares, conditionals, and branches. G17G/G17S use 174-byte non-final and
+166-byte final call blocks; G15S/G15D/G16P/G16G/G16S/G17P use 164/154 bytes,
+while G15G additionally inserts per-call scheduler `nop` runs and uses 188/178
+bytes. A 140-translation matrix varying each of the intrinsic's seven
+arguments produces 280/280 exact Apple-table round trips but no corresponding
+hardware-instruction bit change: the operands are carried by the surrounding
+lowering. G15P fails native selection, while G15C, G16C, G17A, and G17C remain
+unwitnessed. The shared packer therefore represents only the exact first-site
+AGX3b/AGX3c hardware specimens and rejects every second-site or corrupted
+prefix; it exposes neither intrinsic operands nor compiler allocation/finality
+fields. No traversal lowering rule, device admission, or API capability is
+claimed.
 
 Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
 including a byte-exact M5 live descriptor. Writable-image and EOT use stays
@@ -205,6 +222,9 @@ The current in-tree anchors are:
 - [`agx_chip.c`](../../src/asahi/lib/agx_chip.c) and
   [`test-chip.c`](../../src/asahi/lib/tests/test-chip.c): identity, ISA,
   descriptor, sampler, command-stream, submission, RT, and device-open gates.
+- [`test-feature-matrix.py`](../../src/asahi/lib/tests/test-feature-matrix.py):
+  requires both tables above to contain every named `enum agx_chip` identity
+  exactly once, in enum order, with complete and classified capability cells.
 - [`AGX3b.xml`](../../src/asahi/isa/AGX3b.xml),
   [`AGX3c.xml`](../../src/asahi/isa/AGX3c.xml), and
   [`test-agx3-pack.c`](../../src/asahi/compiler/test/test-agx3-pack.c): AGX3
@@ -244,7 +264,7 @@ The current in-tree anchors are:
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
   generation/validation of the fixed AGX3b/AGX3c barrier-plus-`update_node`
-  expansion.
+  expansion and G17S-only fixed `update_bvh` witness.
 - [`d12_discard_core.h`](../../src/asahi/d3d12/d12_discard_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_discard_core_tests.c): public
   `DiscardResource` list/region validation and the conservative no-op contract.

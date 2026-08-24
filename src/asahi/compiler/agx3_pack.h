@@ -31,6 +31,7 @@ extern "C" {
 #define AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH 14
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH 8
 #define AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH 14
 #define AGX3_END_LENGTH 4
 #define AGX3_ENABLE_ALL_THREADS_MAX_LENGTH 8
@@ -108,6 +109,11 @@ struct agx3_encoded_nop {
 
 struct agx3_encoded_threadgroup_barrier {
    uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_continue_ray_fixed_first_site_witness {
+   uint8_t bytes[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -484,6 +490,31 @@ bool agx3_pack_update_node(enum agx_isa_encoding encoding,
 bool agx3_unpack_update_node(enum agx_isa_encoding encoding,
                              const uint8_t *bytes, size_t available,
                              uint8_t *length);
+
+/*
+ * Encode/decode only the exact first hardware `continue_ray` instruction
+ * witnessed inside Apple's compiler lowering.  The pinned compiler emits the
+ * six-byte AGX3b specimen on supported G15/G16/G17P targets and the distinct
+ * eight-byte AGX3c specimen on G17G/G17S.  A forced-live 7-operand matrix
+ * reproduces these same bytes without correlating any intrinsic operand to a
+ * hardware field, so this API deliberately exposes no operands or anonymous
+ * fields.
+ *
+ * The fixed-first-site-witness name is a hard boundary.  This instruction is
+ * only one specimen inside a much larger compiler expansion: it excludes the
+ * preceding barrier, the second `continue_ray`, shared-memory operations,
+ * control flow, and generation-specific scheduling.  It must not be treated
+ * as a standalone traversal operation or used for intrinsic lowering,
+ * scheduling, or submission.  It does not enable codegen, runtime, or a device
+ * target.  Every other instruction prefix, including the compiler's
+ * second-site witness, fails closed.
+ */
+bool agx3_pack_continue_ray_fixed_first_site_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_continue_ray_fixed_first_site_witness *out);
+bool agx3_unpack_continue_ray_fixed_first_site_witness(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint8_t *length);
 
 /*
  * Encode/decode only the exact G17S/AGX3c compiler witness for the

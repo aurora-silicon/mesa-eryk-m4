@@ -273,6 +273,10 @@ done
     -o "$out/agx_chip_tests"
 "$out/agx_chip_tests"
 
+python3 "$repo_root/src/asahi/lib/tests/test-feature-matrix.py" \
+    "$repo_root/src/asahi/lib/agx_chip.h" \
+    "$repo_root/docs/asahi/apple-gpu-feature-matrix.md"
+
 "$cc" "$common[@]" \
     "$repo_root/src/asahi/lib/tests/test-rt-bvh.c" \
     -o "$out/agx_rt_bvh_tests"

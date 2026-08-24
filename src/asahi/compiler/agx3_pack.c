@@ -1735,6 +1735,68 @@ agx3_unpack_update_node(enum agx_isa_encoding encoding, const uint8_t *bytes,
    return true;
 }
 
+static const uint8_t continue_ray_fixed_first_site_witness_agx3b[] = {
+   0x5f, 0x11, 0x54, 0x00, 0x00, 0x00,
+};
+
+static const uint8_t continue_ray_fixed_first_site_witness_agx3c[] = {
+   0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02,
+};
+
+static const uint8_t *
+continue_ray_fixed_first_site_witness_encoding(
+   enum agx_isa_encoding encoding, size_t *length)
+{
+   switch (encoding) {
+   case AGX_ISA_ENCODING_AGX3B:
+      *length = sizeof(continue_ray_fixed_first_site_witness_agx3b);
+      return continue_ray_fixed_first_site_witness_agx3b;
+   case AGX_ISA_ENCODING_AGX3C:
+      *length = sizeof(continue_ray_fixed_first_site_witness_agx3c);
+      return continue_ray_fixed_first_site_witness_agx3c;
+   default:
+      *length = 0;
+      return NULL;
+   }
+}
+
+bool
+agx3_pack_continue_ray_fixed_first_site_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_continue_ray_fixed_first_site_witness *out)
+{
+   size_t length = 0;
+   const uint8_t *canonical =
+      continue_ray_fixed_first_site_witness_encoding(encoding, &length);
+
+   if (canonical == NULL || out == NULL)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical, length);
+   out->length = length;
+   return true;
+}
+
+bool
+agx3_unpack_continue_ray_fixed_first_site_witness(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint8_t *length)
+{
+   size_t canonical_length = 0;
+   const uint8_t *canonical =
+      continue_ray_fixed_first_site_witness_encoding(encoding,
+                                                      &canonical_length);
+
+   if (canonical == NULL || bytes == NULL || length == NULL ||
+       available < canonical_length ||
+       memcmp(bytes, canonical, canonical_length) != 0)
+      return false;
+
+   *length = canonical_length;
+   return true;
+}
+
 static const uint8_t
    update_bvh_fixed_witness_agx3c[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH] = {
       /* barrier */
