@@ -47,7 +47,8 @@ The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, the G17S-only fixed
 `update_bvh` witness, the fixed first-site hardware `continue_ray` witness, and
-32-bit register-plus-u8 `iadd` plus the canonical three-register form (AGX3b
+the canonical no-kill, scheduler-neutral i16-register `yield`, plus 32-bit
+register-plus-u8 `iadd` and the canonical three-register form (AGX3b
 `iadd`, AGX3c `iadd32`),
 canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
@@ -63,6 +64,15 @@ mask and G15G stall placement remain an unsolved scheduler rule. This is not a
 general shader encoder. In particular, the generated AGX3 disassemblers and
 hardware-RT detection do not make AGX3 code generation or device open
 supported.
+
+The `yield` form is grounded by controlled source ladders and independent
+runtime-value probes on G15G/G15S/G15D, G16P/G16G/G16S, G17P, and G17G/G17S.
+It accepts AGX3b half-registers 0--191 and AGX3c half-registers 0--255. Source
+last-use/kill state, surrounding scheduler context, immediate/alternate source
+forms, AGX3c's unprobed ninth register bit, and every unknown field remain
+closed. G15P fails native instruction selection, while G15C/G16C/G17A/G17C
+remain unwitnessed; the packer therefore establishes an exact instruction
+encoding only, not lowering, scheduling, submission, or device admission.
 
 ## Mesa API and kernel relationship
 
@@ -84,7 +94,7 @@ supported.
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL/dual submission, recovery/transition validators, HAL200 PM/CAS helper and physical PIO map; no runtime bring-up |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM, HAL300 PM/CAS helper, transition/poll and physical PIO models, bounded boot/recovery; preflight closed |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300 PM block, direction-correct PIO prefixes, CAS/six-op pre-idle model, and Fender idle poll validated; refuses before hardware ownership |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — HAL300 PM block, direction-correct PIO prefixes, CAS/six-op pre-idle model, Fender idle poll, and physical PIO map validated; refuses before hardware ownership |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL300/SKSM plus bounded boot models; preflight closed |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -138,6 +148,17 @@ also overlap conditional image/page fields, and live YUV descriptors use the
 otherwise-unexplained fourth word. The retained corpus submits no texture
 atomic or multisampled-store workload, so the matrix's PBE gate refers to that
 complete execution contract rather than descriptor construction alone.
+
+Apple's recovered texture-atomic emulation archives establish a different
+software ABI, not a native-PBE overlay: G15/G16 share one 288-module LLVM
+bitcode payload, G17 uses a distinct payload, and G17P deliberately selects the
+G16 family. Every module reads exactly three bindless texture-descriptor words
+plus a separate 32-bit `agc.texture_heap.texture_buffer_length` table. The
+descriptor-side base address, first level, generation-specific width/height,
+linear row stride, page-aligned-layers flag, and linear/GPU layout selector are
+grounded. Host construction of the side-table entry, level/layer strides,
+MSAA, compression/extended layouts, and legacy-equivalent buffer offsets remain
+**FC**, so this evidence does not yet unlock Honeykrisp writes or atomics.
 
 Gallium and Honeykrisp's native sampled-texture helpers also represent the
 recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in
@@ -200,7 +221,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `e26aa45405dc` additionally
+The power/recovery ledger through Linux commit `0ab30095f3bb` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -216,8 +237,13 @@ the two-op prefix is `0x21 -> SLEEP`, while the three-op prefix is
 `0x381014000` and slot `0x24` at `0x370d40000`; every mapped region is
 `0x4000` bytes. Their complete ten-record tables and zeroed configure chains
 prove slot `0x0b` is unbound on both targets. The model performs no MMIO or
-firmware writes: Linux ownership, scheduler slow-path semantics, G17S physical
-slot mappings, and executable programming remain fail-closed.
+firmware writes. The pinned G17S host and J714s ADT additionally ground slot 0
+at `0x280414000`, the target-configure slot `0x0b` override at `0x284258000`,
+and slot `0x24` at `0x2100d40000`; every mapping is `0x4000` bytes. Its complete
+19-record SGX-relative table omits slot `0x0b`, while the target override
+installs that absolute binding and reasserts the ADT-derived slot-0 address.
+Linux ownership, scheduler slow-path semantics, and executable programming
+remain fail-closed.
 It also records the exact opaque six-u64 PM blocks for pinned G17P/HAL200 and
 G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM

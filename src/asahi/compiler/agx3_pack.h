@@ -29,6 +29,7 @@ extern "C" {
 #define AGX3_LSR_U32_REG_REG_MAX_LENGTH 14
 #define AGX3_IMUL_U32_REG_REG_MAX_LENGTH 14
 #define AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH 14
+#define AGX3_YIELD_I16_REG_LENGTH 6
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
 #define AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH 8
@@ -99,6 +100,11 @@ struct agx3_encoded_imul_u32_reg_reg {
 
 struct agx3_encoded_imadd_u32_reg_reg_reg {
    uint8_t bytes[AGX3_IMADD_U32_REG_REG_REG_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_yield_i16_reg {
+   uint8_t bytes[AGX3_YIELD_I16_REG_LENGTH];
    uint8_t length;
 };
 
@@ -422,6 +428,28 @@ bool agx3_unpack_imadd_u32_reg_reg_reg(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint16_t *dest, uint16_t *mul0, uint16_t *mul1, uint16_t *addend,
    uint8_t *length);
+
+/*
+ * Encode/decode the source-grounded i16 register form of `yield`.  Forced-live
+ * n=0..4 ladders correlate Apple's f2 field with the get_sr/iadd producer
+ * half-registers on G15G/S/D, G16G/P/S, G17P, and G17G/S.  Independent value
+ * probes change gid-relative values while holding the source register fixed;
+ * the yield encoding remains unchanged.
+ *
+ * This is deliberately the no-kill, scheduler-neutral form: f11/f13 and all
+ * common scheduler/context fields are zero.  Compiler captures establish f13
+ * as source last-use/kill context and vary f16 with surrounding scheduling,
+ * so neither is exposed here.  Immediate/constant operand selections, kill
+ * variants, scheduler fields, G15G's standalone nops, AGX3c's unprobed ninth
+ * register bit, and every unknown bit fail closed.  AGX3b is table-bounded to
+ * half-registers 0..191; AGX3c is bounded to Mesa's modeled 0..255 file.
+ */
+bool agx3_pack_yield_i16_reg(
+   enum agx_isa_encoding encoding, uint16_t src,
+   struct agx3_encoded_yield_i16_reg *out);
+bool agx3_unpack_yield_i16_reg(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *src, uint8_t *length);
 
 /*
  * Encode/decode the canonical two-byte scheduler nop.  The zero-field form is

@@ -1515,6 +1515,61 @@ agx3_unpack_imadd_u32_reg_reg_reg(
 }
 
 bool
+agx3_pack_yield_i16_reg(enum agx_isa_encoding encoding, uint16_t src,
+                        struct agx3_encoded_yield_i16_reg *out)
+{
+   if (!is_agx3_encoding(encoding) || out == NULL ||
+       src >= (encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256))
+      return false;
+
+   memset(out, 0, sizeof(*out));
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      const uint8_t canonical[AGX3_YIELD_I16_REG_LENGTH] = {
+         0x87, 0x04, 0x54, 0x00, 0x04, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+      out->bytes[3] = src;
+   } else {
+      const uint8_t canonical[AGX3_YIELD_I16_REG_LENGTH] = {
+         0x0f, 0x00, 0x00, 0x02, 0x00, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2[0:6] -> w0[8:14], f2[7] -> w1[4].  The table also
+       * contains f2[8], but that register space is deliberately closed. */
+      out->bytes[1] = src & 0x7f;
+      out->bytes[2] = (src >> 3) & 0x10;
+   }
+
+   out->length = AGX3_YIELD_I16_REG_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_yield_i16_reg(enum agx_isa_encoding encoding,
+                          const uint8_t *bytes, size_t available,
+                          uint16_t *src, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || src == NULL ||
+       length == NULL || available < AGX3_YIELD_I16_REG_LENGTH)
+      return false;
+
+   const uint16_t decoded_src = encoding == AGX_ISA_ENCODING_AGX3B
+                                   ? bytes[3]
+                                   : (bytes[1] & 0x7f) |
+                                        ((bytes[2] & 0x10) << 3);
+   struct agx3_encoded_yield_i16_reg canonical;
+   if (!agx3_pack_yield_i16_reg(encoding, decoded_src, &canonical) ||
+       memcmp(bytes, canonical.bytes, AGX3_YIELD_I16_REG_LENGTH) != 0)
+      return false;
+
+   *src = decoded_src;
+   *length = AGX3_YIELD_I16_REG_LENGTH;
+   return true;
+}
+
+bool
 agx3_pack_nop(enum agx_isa_encoding encoding, struct agx3_encoded_nop *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)
