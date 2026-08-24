@@ -11,6 +11,7 @@
 #include "hk_entrypoints.h"
 #include "hk_physical_device.h"
 #include "hk_sampler.h"
+#include "hk_native_descriptor.h"
 
 #include "vk_pipeline_layout.h"
 
@@ -39,13 +40,16 @@ hk_descriptor_stride_align_for_type(
       /* TODO: How do samplers work? */
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-      *stride = *alignment = sizeof(struct hk_sampled_image_descriptor);
+      *stride = hk_sampled_image_descriptor_layout(
+                   agx_chip_descriptor_generation(pdev->dev.chip)).stride;
+      *alignment = 8;
       break;
 
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-      *stride = sizeof(struct hk_storage_image_descriptor);
+      *stride = hk_storage_image_descriptor_layout(
+                   agx_chip_descriptor_generation(pdev->dev.chip)).stride;
       *alignment = 8;
       break;
 
@@ -66,8 +70,10 @@ hk_descriptor_stride_align_for_type(
 
    case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
       *stride = *alignment = 0;
-      if (type_list == NULL)
-         *stride = *alignment = HK_MAX_DESCRIPTOR_SIZE;
+      if (type_list == NULL) {
+         *stride = HK_MAX_DESCRIPTOR_SIZE;
+         *alignment = 8;
+      }
       for (unsigned i = 0; type_list && i < type_list->descriptorTypeCount;
            i++) {
          /* This shouldn't recurse */
@@ -145,6 +151,8 @@ hk_CreateDescriptorSetLayout(VkDevice device,
       return vk_error(dev, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    layout->binding_count = num_bindings;
+   layout->descriptor_generation =
+      agx_chip_descriptor_generation(pdev->dev.chip);
 
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
       const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[j];
@@ -264,6 +272,7 @@ hk_CreateDescriptorSetLayout(VkDevice device,
 
 #define BLAKE3_UPDATE_VALUE(x)                                                 \
    _mesa_blake3_update(&blake3_ctx, &(x), sizeof(x));
+   BLAKE3_UPDATE_VALUE(layout->descriptor_generation);
    BLAKE3_UPDATE_VALUE(layout->non_variable_descriptor_buffer_size);
    BLAKE3_UPDATE_VALUE(layout->vk.dynamic_descriptor_count);
    BLAKE3_UPDATE_VALUE(layout->binding_count);

@@ -10,6 +10,7 @@
 #include "hk_private.h"
 
 #include "hk_device.h"
+#include "hk_native_descriptor_pack.h"
 #include "vk_descriptor_update_template.h"
 #include "vk_object.h"
 
@@ -18,8 +19,8 @@
 
 struct hk_descriptor_set_layout;
 
-struct hk_sampled_image_descriptor {
-   struct agx_texture_packed tex;
+/* Software tail following a generation-sized native texture descriptor. */
+struct hk_sampled_image_descriptor_sw {
    struct agx_sampler_packed sampler;
    uint16_t sampler_index;
 
@@ -42,15 +43,23 @@ struct hk_sampled_image_descriptor {
    uint32_t border[4];
    uint8_t pad2[4];
 };
-static_assert(sizeof(struct hk_sampled_image_descriptor) == 64,
-              "hk_sampled_image_descriptor has no holes");
+static_assert(sizeof(struct hk_sampled_image_descriptor_sw) ==
+                 HK_SAMPLED_IMAGE_SW_SIZE,
+              "hk_sampled_image_descriptor_sw has no holes");
+
+struct hk_sampled_image_descriptor {
+   struct hk_native_texture_descriptor tex;
+   struct hk_sampled_image_descriptor_sw sw;
+};
+static_assert(sizeof(struct hk_sampled_image_descriptor) == 72,
+              "maximum sampled descriptor has no holes");
 
 struct hk_storage_image_descriptor {
-   struct agx_texture_packed tex;
-   struct agx_pbe_packed pbe;
+   struct hk_native_texture_descriptor tex;
+   struct hk_native_pbe_descriptor pbe;
 };
-static_assert(sizeof(struct hk_storage_image_descriptor) == 48,
-              "hk_storage_image_descriptor has no holes");
+static_assert(sizeof(struct hk_storage_image_descriptor) == 64,
+              "maximum storage descriptor has no holes");
 
 /* This has to match nir_address_format_64bit_bounded_global */
 struct hk_buffer_address {

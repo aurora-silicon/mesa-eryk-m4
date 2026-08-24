@@ -196,9 +196,10 @@ format_for_plane(struct hk_image_view *view, unsigned view_plane)
    return p_format;
 }
 
-static void
-pack_texture(struct hk_image_view *view, unsigned view_plane,
-             enum hk_desc_usage usage, struct agx_texture_packed *out)
+static bool
+pack_texture(struct hk_device *dev, struct hk_image_view *view,
+             unsigned view_plane, enum hk_desc_usage usage,
+             struct hk_native_texture_descriptor *out)
 {
    struct hk_image *image = container_of(view->vk.image, struct hk_image, vk);
    const uint8_t image_plane = view->planes[view_plane].image_plane;
@@ -257,7 +258,8 @@ pack_texture(struct hk_image_view *view, unsigned view_plane,
 
    util_format_compose_swizzles(format_swizzle, view_swizzle, out_swizzle);
 
-   agx_pack(out, TEXTURE, cfg) {
+   struct AGX_TEXTURE cfg = {AGX_TEXTURE_header};
+   {
       cfg.dimension = translate_image_view_type(
          view->vk.view_type, view->vk.image->samples > 1, layers > 1, usage);
       cfg.layout = agx_translate_layout(layout->tiling);
@@ -358,12 +360,22 @@ pack_texture(struct hk_image_view *view, unsigned view_plane,
          cfg.page_aligned_layers = layout->page_aligned_layers;
       }
    }
+
+   return hk_pack_native_texture(
+      agx_chip_descriptor_generation(dev->dev.chip), out, &cfg);
 }
 
-static void
+static bool
 pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
-         enum hk_desc_usage usage, struct agx_pbe_packed *out)
+         enum hk_desc_usage usage, struct hk_native_pbe_descriptor *out)
 {
+   const unsigned generation =
+      agx_chip_descriptor_generation(dev->dev.chip);
+   if (!hk_native_pbe_supported(generation)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
    struct hk_image *image = container_of(view->vk.image, struct hk_image, vk);
    const uint8_t image_plane = view->planes[view_plane].image_plane;
    struct ail_layout *layout = &image->planes[image_plane].layout;
@@ -392,7 +404,8 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
                         ? image->vk.extent.depth
                         : view->vk.layer_count;
 
-   agx_pack(out, PBE, cfg) {
+   struct agx_pbe_packed packed;
+   agx_pack(&packed, PBE, cfg) {
       cfg.dimension =
          translate_image_view_type(view->vk.view_type, msaa, layers > 1, usage);
       cfg.layout = agx_translate_layout(layout->tiling);
@@ -516,6 +529,10 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
          }
       }
    };
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out, &packed, sizeof(packed));
+   return true;
 }
 
 static VkResult
@@ -552,13 +569,21 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
 
    /* Fill in each view plane separately */
    for (unsigned p = 0; p < view->plane_count; p++) {
-      pack_texture(view, p, HK_DESC_USAGE_SAMPLED, &view->planes[p].sampled);
-      pack_texture(view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].ro_storage);
-      pack_texture(view, p, HK_DESC_USAGE_INPUT, &view->planes[p].ia);
-      pack_texture(view, p, HK_DESC_USAGE_EMRT, &view->planes[p].emrt_texture);
-      pack_texture(view, p, HK_DESC_USAGE_BG_EOT, &view->planes[p].background);
-      pack_texture(view, p, HK_DESC_USAGE_LAYERED_BG_EOT,
-                   &view->planes[p].layered_background);
+      const bool textures_valid =
+         pack_texture(dev, view, p, HK_DESC_USAGE_SAMPLED,
+                      &view->planes[p].sampled) &&
+         pack_texture(dev, view, p, HK_DESC_USAGE_STORAGE,
+                      &view->planes[p].ro_storage) &&
+         pack_texture(dev, view, p, HK_DESC_USAGE_INPUT,
+                      &view->planes[p].ia) &&
+         pack_texture(dev, view, p, HK_DESC_USAGE_EMRT,
+                      &view->planes[p].emrt_texture) &&
+         pack_texture(dev, view, p, HK_DESC_USAGE_BG_EOT,
+                      &view->planes[p].background) &&
+         pack_texture(dev, view, p, HK_DESC_USAGE_LAYERED_BG_EOT,
+                      &view->planes[p].layered_background);
+      if (!textures_valid)
+         return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
       pack_pbe(dev, view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].storage);
       pack_pbe(dev, view, p, HK_DESC_USAGE_BG_EOT, &view->planes[p].eot);

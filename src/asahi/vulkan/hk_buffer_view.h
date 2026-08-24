@@ -8,6 +8,7 @@
 
 #include "agx_pack.h"
 #include "hk_private.h"
+#include "hk_native_descriptor_pack.h"
 
 #include "vk_buffer_view.h"
 
@@ -19,8 +20,8 @@ hk_get_buffer_format_features(struct hk_physical_device *pdevice,
 
 struct hk_buffer_view {
    struct vk_buffer_view vk;
-   struct agx_texture_packed tex;
-   struct agx_pbe_packed pbe;
+   struct hk_native_texture_descriptor tex;
+   struct hk_native_pbe_descriptor pbe;
 };
 
 VK_DEFINE_NONDISP_HANDLE_CASTS(hk_buffer_view, vk.base, VkBufferView,

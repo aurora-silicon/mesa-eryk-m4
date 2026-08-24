@@ -9,6 +9,7 @@
 
 #include "agx_pack.h"
 #include "hk_private.h"
+#include "hk_native_descriptor_pack.h"
 #include "vk_image.h"
 
 struct hk_device;
@@ -23,10 +24,10 @@ struct hk_image_view {
    struct {
       uint8_t image_plane;
 
-      struct agx_texture_packed ia, sampled, ro_storage, background,
+      struct hk_native_texture_descriptor ia, sampled, ro_storage, background,
          layered_background, emrt_texture;
 
-      struct agx_pbe_packed storage, eot, layered_eot, emrt_pbe;
+      struct hk_native_pbe_descriptor storage, eot, layered_eot, emrt_pbe;
    } planes[3];
 };
 

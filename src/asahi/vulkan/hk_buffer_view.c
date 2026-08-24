@@ -100,32 +100,44 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
    assert(tail_offset_el * util_format_get_blocksize(format) == tail_offset_B &&
           "must be texel aligned");
 
-   agx_pack(&view->tex, TEXTURE, cfg) {
-      cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
-      cfg.layout = AGX_LAYOUT_LINEAR;
-      cfg.channels = ail_pixel_format[format].channels;
-      cfg.type = ail_pixel_format[format].type;
-      cfg.swizzle_r = agx_channel_from_pipe(format_swizzle[0]);
-      cfg.swizzle_g = agx_channel_from_pipe(format_swizzle[1]);
-      cfg.swizzle_b = agx_channel_from_pipe(format_swizzle[2]);
-      cfg.swizzle_a = agx_channel_from_pipe(format_swizzle[3]);
+   const unsigned generation =
+      agx_chip_descriptor_generation(device->dev.chip);
 
-      cfg.width = AGX_TEXTURE_BUFFER_WIDTH;
-      cfg.height = DIV_ROUND_UP(view->vk.elements, cfg.width);
-      cfg.first_level = cfg.last_level = 0;
+   struct AGX_TEXTURE texture = {AGX_TEXTURE_header};
+   {
+      texture.dimension = AGX_TEXTURE_DIMENSION_2D;
+      texture.layout = AGX_LAYOUT_LINEAR;
+      texture.channels = ail_pixel_format[format].channels;
+      texture.type = ail_pixel_format[format].type;
+      texture.swizzle_r = agx_channel_from_pipe(format_swizzle[0]);
+      texture.swizzle_g = agx_channel_from_pipe(format_swizzle[1]);
+      texture.swizzle_b = agx_channel_from_pipe(format_swizzle[2]);
+      texture.swizzle_a = agx_channel_from_pipe(format_swizzle[3]);
 
-      cfg.address = ro_base;
-      cfg.buffer_size_sw = view->vk.elements;
-      cfg.buffer_offset_sw = tail_offset_el;
+      texture.width = AGX_TEXTURE_BUFFER_WIDTH;
+      texture.height = DIV_ROUND_UP(view->vk.elements, texture.width);
+      texture.first_level = texture.last_level = 0;
 
-      cfg.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
-      cfg.srgb_2_channel = cfg.srgb && util_format_colormask(desc) == 0x3;
+      texture.address = ro_base;
+      texture.buffer_size_sw = view->vk.elements;
+      texture.buffer_offset_sw = tail_offset_el;
 
-      cfg.depth = 1;
-      cfg.stride = (cfg.width * util_format_get_blocksize(format)) - 16;
+      texture.srgb = (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB);
+      texture.srgb_2_channel =
+         texture.srgb && util_format_colormask(desc) == 0x3;
+
+      texture.depth = 1;
+      texture.stride =
+         (texture.width * util_format_get_blocksize(format)) - 16;
+   }
+   if (!hk_pack_native_texture(generation, &view->tex, &texture)) {
+      vk_buffer_view_destroy(&device->vk, pAllocator, &view->vk);
+      return vk_error(device, VK_ERROR_FORMAT_NOT_SUPPORTED);
    }
 
-   agx_pack(&view->pbe, PBE, cfg) {
+   if (hk_native_pbe_supported(generation)) {
+      struct agx_pbe_packed packed;
+      agx_pack(&packed, PBE, cfg) {
       cfg.dimension = AGX_TEXTURE_DIMENSION_2D;
       cfg.layout = AGX_LAYOUT_LINEAR;
       cfg.channels = ail_pixel_format[format].channels;
@@ -154,7 +166,12 @@ hk_CreateBufferView(VkDevice _device, const VkBufferViewCreateInfo *pCreateInfo,
       cfg.stride = (cfg.width * util_format_get_blocksize(format)) - 4;
       cfg.layers = 1;
       cfg.levels = 1;
-   };
+      };
+
+      memcpy(&view->pbe, &packed, sizeof(packed));
+   } else {
+      memset(&view->pbe, 0, sizeof(view->pbe));
+   }
 
    *pBufferView = hk_buffer_view_to_handle(view);
 

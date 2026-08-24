@@ -45,6 +45,12 @@ struct hk_descriptor_set_binding_layout {
 struct hk_descriptor_set_layout {
    struct vk_descriptor_set_layout vk;
 
+   /* Selects both hardware descriptor size and the surrounding Honeykrisp
+    * software descriptor ABI.  This is persistent pipeline-layout state, not
+    * a property that may be inferred from sizeof(agx_texture_packed).
+    */
+   uint8_t descriptor_generation;
+
    /* Size of the descriptor buffer for this descriptor set */
    /* Does not contain the size needed for variable count descriptors */
    uint32_t non_variable_descriptor_buffer_size;

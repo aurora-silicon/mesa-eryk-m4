@@ -11,6 +11,7 @@
 #include "hk_cmd_buffer.h"
 #include "hk_descriptor_set.h"
 #include "hk_descriptor_set_layout.h"
+#include "hk_native_descriptor.h"
 #include "hk_shader.h"
 
 #include "nir.h"
@@ -27,6 +28,7 @@ struct lower_descriptors_ctx {
    bool clamp_desc_array_bounds;
    nir_address_format ubo_addr_format;
    nir_address_format ssbo_addr_format;
+   unsigned descriptor_generation;
 };
 
 static const struct hk_descriptor_set_binding_layout *
@@ -336,15 +338,18 @@ lower_image_intrin(nir_builder *b, nir_intrinsic_instr *intr,
    b->cursor = nir_before_instr(&intr->instr);
 
    /* Reads and queries use the texture descriptor; writes and atomics PBE. */
+   const struct hk_storage_image_descriptor_layout native =
+      hk_storage_image_descriptor_layout(ctx->descriptor_generation);
+   assert(native.stride);
    unsigned offs;
    if (intr->intrinsic != nir_intrinsic_image_deref_load &&
        intr->intrinsic != nir_intrinsic_image_deref_sparse_load &&
        intr->intrinsic != nir_intrinsic_image_deref_size &&
        intr->intrinsic != nir_intrinsic_image_deref_samples) {
 
-      offs = offsetof(struct hk_storage_image_descriptor, pbe);
+      offs = native.pbe;
    } else {
-      offs = offsetof(struct hk_storage_image_descriptor, tex);
+      offs = native.texture;
    }
 
    nir_rewrite_image_intrinsic(intr,
@@ -615,16 +620,17 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    nir_def *plane_ssa = nir_steal_tex_src(tex, nir_tex_src_plane);
    const uint32_t plane =
       plane_ssa ? nir_src_as_uint(nir_src_for_ssa(plane_ssa)) : 0;
-   const uint64_t plane_offset_B =
-      plane * sizeof(struct hk_sampled_image_descriptor);
+   const struct hk_sampled_image_descriptor_layout native =
+      hk_sampled_image_descriptor_layout(ctx->descriptor_generation);
+   assert(native.stride);
+   const uint64_t plane_offset_B = plane * native.stride;
 
    /* LOD bias is passed in the descriptor set, rather than embedded into
     * the sampler descriptor. There's no spot in the hardware descriptor,
     * plus this saves on precious sampler heap spots.
     */
    if (tex->op == nir_texop_lod_bias) {
-      unsigned offs =
-         offsetof(struct hk_sampled_image_descriptor, lod_bias_fp16);
+      unsigned offs = native.lod_bias;
 
       nir_def *bias = load_resource_deref_desc(
          b, 1, 16, nir_src_as_deref(nir_src_for_ssa(sampler)),
@@ -638,10 +644,9 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
       assert(tex->dest_type == nir_type_float16 ||
              tex->dest_type == nir_type_uint16);
 
-      unsigned offs =
-         tex->dest_type == nir_type_float16
-            ? offsetof(struct hk_sampled_image_descriptor, min_lod_fp16)
-            : offsetof(struct hk_sampled_image_descriptor, min_lod_uint16);
+      unsigned offs = tex->dest_type == nir_type_float16
+                         ? native.min_lod
+                         : native.min_lod_uint;
 
       nir_def *min = load_resource_deref_desc(
          b, 1, 16, nir_src_as_deref(nir_src_for_ssa(texture)),
@@ -652,8 +657,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    }
 
    if (tex->op == nir_texop_has_custom_border_color_agx) {
-      unsigned offs = offsetof(struct hk_sampled_image_descriptor,
-                               clamp_0_sampler_index_or_negative);
+      unsigned offs = native.clamp_0_sampler_index;
 
       nir_def *res = load_resource_deref_desc(
          b, 1, 16, nir_src_as_deref(nir_src_for_ssa(sampler)),
@@ -664,7 +668,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    }
 
    if (tex->op == nir_texop_custom_border_color_agx) {
-      unsigned offs = offsetof(struct hk_sampled_image_descriptor, border);
+      unsigned offs = native.border;
 
       nir_def *border = load_resource_deref_desc(
          b, 4, 32, nir_src_as_deref(nir_src_for_ssa(sampler)),
@@ -678,8 +682,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    }
 
    {
-      unsigned offset_B =
-         plane_offset_B + offsetof(struct hk_sampled_image_descriptor, tex);
+      unsigned offset_B = plane_offset_B + native.texture;
 
       nir_def *handle =
          load_image_handle(b, ctx, nir_src_for_ssa(texture), offset_B);
@@ -688,13 +691,11 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
    }
 
    if (sampler != NULL) {
-      unsigned offs =
-         offsetof(struct hk_sampled_image_descriptor, sampler_index);
+      unsigned offs = native.sampler_index;
       bool clamp_to_0 = tex->backend_flags & AGX_TEXTURE_FLAG_CLAMP_TO_0;
 
       if (clamp_to_0) {
-         offs = offsetof(struct hk_sampled_image_descriptor,
-                         clamp_0_sampler_index_or_negative);
+         offs = native.clamp_0_sampler_index;
       }
 
       nir_def *index = load_resource_deref_desc(
@@ -718,8 +719,7 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
          assert(binding_layout->stride > 0);
          nir_def *desc_offs_B = nir_iadd_imm(
             b, nir_amul_imm(b, idx, binding_layout->stride),
-            binding_layout->offset + plane_offset_B +
-               offsetof(struct hk_sampled_image_descriptor, sampler));
+            binding_layout->offset + plane_offset_B + native.sampler);
 
          index =
             nir_bindless_sampler_agx(b, desc_offs_B, index, .desc_set = set);
@@ -925,8 +925,14 @@ hk_nir_lower_descriptors(nir_shader *nir,
 
    assert(set_layout_count <= HK_MAX_SETS);
    for (uint32_t s = 0; s < set_layout_count; s++) {
-      if (set_layouts[s] != NULL)
+      if (set_layouts[s] != NULL) {
          ctx.set_layouts[s] = vk_to_hk_descriptor_set_layout(set_layouts[s]);
+         const unsigned generation =
+            ctx.set_layouts[s]->descriptor_generation;
+         assert(!ctx.descriptor_generation ||
+                ctx.descriptor_generation == generation);
+         ctx.descriptor_generation = generation;
+      }
    }
 
    /* First lower everything but complex SSBOs, then lower complex SSBOs.

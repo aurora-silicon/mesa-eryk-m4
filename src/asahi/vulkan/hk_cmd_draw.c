@@ -355,6 +355,23 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
       }
    }
 
+   const unsigned descriptor_generation =
+      agx_chip_descriptor_generation(dev->dev.chip);
+   if (!hk_native_pbe_supported(descriptor_generation)) {
+      if (needs_textures_for_spilled_rts) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+
+      for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
+         if (key.op[rt] == AGX_EOT_STORE) {
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FEATURE_NOT_PRESENT);
+            return (struct hk_bg_eot){0};
+         }
+      }
+   }
+
    /* Begin building the pipeline */
    size_t usc_size = agx_usc_size(3 + HK_MAX_RTS);
    struct agx_ptr t = hk_pool_usc_alloc(cmd, usc_size, 64);
@@ -374,7 +391,7 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
       if (key.op[rt] == AGX_BG_LOAD) {
          uses_txf = true;
 
-         const struct agx_texture_packed *desc =
+         const struct hk_native_texture_descriptor *desc =
             key.tib.layered ? &iview->planes[0].layered_background
                             : &iview->planes[0].background;
 
@@ -382,7 +399,9 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
             /* Shifted to match eMRT indexing, could be optimized */
             cfg.start = rt * 2;
             cfg.count = 1;
-            cfg.buffer = hk_pool_upload(cmd, desc, sizeof(*desc), 8);
+            cfg.buffer = hk_pool_upload(
+               cmd, desc,
+               hk_texture_descriptor_size(descriptor_generation), 8);
          }
 
          nr_tex = (rt * 2) + 1;
@@ -394,14 +413,15 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
          agx_usc_uniform(&b, 4 + (8 * rt), 8, colour);
          uniforms = MAX2(uniforms, 4 + (8 * rt) + 8);
       } else if (key.op[rt] == AGX_EOT_STORE) {
-         const struct agx_pbe_packed *desc = key.tib.layered
-                                                ? &iview->planes[0].layered_eot
-                                                : &iview->planes[0].eot;
+         const struct hk_native_pbe_descriptor *desc =
+            key.tib.layered ? &iview->planes[0].layered_eot
+                            : &iview->planes[0].eot;
 
          agx_usc_pack(&b, TEXTURE, cfg) {
             cfg.start = rt;
             cfg.count = 1;
-            cfg.buffer = hk_pool_upload(cmd, desc, sizeof(*desc), 8);
+            cfg.buffer = hk_pool_upload(
+               cmd, desc, hk_pbe_descriptor_size(descriptor_generation), 8);
          }
 
          nr_tex = rt + 1;
@@ -538,6 +558,7 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                      const VkRenderingInfo *pRenderingInfo)
 {
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_rendering_state *render = &cmd->state.gfx.render;
 
    memset(render, 0, sizeof(*render));
@@ -623,13 +644,23 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
 
    render->cr.bg.main = hk_build_bg_eot(cmd, pRenderingInfo, false, false,
                                         incomplete_render_area);
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
+
    render->cr.bg.partial =
       hk_build_bg_eot(cmd, pRenderingInfo, false, true, incomplete_render_area);
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
 
    render->cr.eot.main =
       hk_build_bg_eot(cmd, pRenderingInfo, true, false, incomplete_render_area);
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
+
    render->cr.eot.partial =
       hk_build_bg_eot(cmd, pRenderingInfo, true, true, incomplete_render_area);
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
 
    render->cr.isp_bgobjvals = 0x300;
 
@@ -781,6 +812,13 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
     * we're not that clever yet.
     */
    if (agx_tilebuffer_spills(&render->tilebuffer)) {
+      const unsigned descriptor_generation =
+         agx_chip_descriptor_generation(dev->dev.chip);
+      if (!hk_native_pbe_supported(descriptor_generation)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
       perf_debug(cmd, "eMRT render pass");
 
       for (unsigned i = 0; i < render->color_att_count; ++i) {
@@ -803,10 +841,11 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
                unsigned layer = view->vk.base_array_layer;
                uint64_t base = hk_image_base_address(image, image_plane);
 
-               struct libagx_decompress_images imgs = {
-                  .compressed = view->planes[plane].emrt_texture,
-                  .uncompressed = view->planes[plane].emrt_pbe,
-               };
+               struct libagx_decompress_images imgs;
+               memcpy(&imgs.compressed, &view->planes[plane].emrt_texture,
+                      sizeof(imgs.compressed));
+               memcpy(&imgs.uncompressed, &view->planes[plane].emrt_pbe,
+                      sizeof(imgs.uncompressed));
 
                struct agx_grid grid =
                   agx_3d(ail_metadata_width_tl(layout, level) * 32,

@@ -597,13 +597,28 @@ hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
                                struct hk_cmd_buffer *cmd)
 {
    struct hk_rendering_state *render = &cmd->state.gfx.render;
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   const unsigned generation =
+      agx_chip_descriptor_generation(dev->dev.chip);
+
+   /* Spilled render targets interleave a texture with a PBE descriptor.  Do
+    * not construct that table until the AGX3 PBE/software-image ABI is known.
+    */
+   if (!hk_native_pbe_supported(generation)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   const unsigned texture_size = hk_texture_descriptor_size(generation);
+   const unsigned pbe_size = hk_pbe_descriptor_size(generation);
+   const unsigned pair_size = texture_size + pbe_size;
 
    /* Upload texture/PBE descriptors for each render target so we can clear
     * spilled render targets.
     */
    struct agx_ptr descs =
-      hk_pool_alloc(cmd, AGX_TEXTURE_LENGTH * 2 * render->color_att_count, 64);
-   struct agx_texture_packed *desc = descs.cpu;
+      hk_pool_alloc(cmd, pair_size * render->color_att_count, 64);
+   uint8_t *desc = descs.cpu;
    if (!desc)
       return;
 
@@ -614,11 +629,11 @@ hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
          continue;
       }
 
-      memcpy(&desc[(i * 2) + 0], &iview->planes[0].emrt_texture, sizeof(*desc));
-      memcpy(&desc[(i * 2) + 1], &iview->planes[0].emrt_pbe, sizeof(*desc));
+      memcpy(desc + i * pair_size, &iview->planes[0].emrt_texture,
+             texture_size);
+      memcpy(desc + i * pair_size + texture_size,
+             &iview->planes[0].emrt_pbe, pbe_size);
    }
-
-   desc = descs.cpu;
 
    /* Bind the base as u0_u1 for bindless access */
    agx_usc_uniform(b, 0, 4, hk_pool_upload(cmd, &descs.gpu, 8, 8));

@@ -34,6 +34,9 @@ hk_files = files(
   'hk_instance.h',
   'hk_nir_lower_descriptors.c',
   'hk_nir_passthrough_gs.c',
+  'hk_native_descriptor.h',
+  'hk_native_descriptor_pack.c',
+  'hk_native_descriptor_pack.h',
   'hk_physical_device.c',
   'hk_physical_device.h',
   'hk_private.h',
@@ -48,6 +51,24 @@ hk_files = files(
   'hk_wsi.c',
   'hk_wsi.h'
 )
+
+if with_tests
+  test(
+    'hk_native_descriptor',
+    executable(
+      'hk_native_descriptor_test',
+      files('tests/test-hk-native-descriptor.c',
+            'hk_native_descriptor_pack.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+endif
 
 hk_entrypoints = custom_target(
   input : [vk_entrypoints_gen, vk_api_xml],

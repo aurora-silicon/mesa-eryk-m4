@@ -16,6 +16,7 @@
 #include "hk_entrypoints.h"
 #include "hk_image.h"
 #include "hk_instance.h"
+#include "hk_native_descriptor.h"
 #include "hk_private.h"
 #include "hk_shader.h"
 #include "hk_wsi.h"
@@ -677,6 +678,11 @@ hk_get_device_properties(const struct agx_device *dev,
                          const struct hk_instance *instance,
                          struct vk_properties *properties)
 {
+   const unsigned descriptor_generation =
+      agx_chip_descriptor_generation(dev->chip);
+   const bool texel_buffer_single_texel_alignment =
+      hk_descriptor_generation_is_agx2(descriptor_generation);
+
    /* Note: update nir_shader_compiler_options.max_samples when changing this. */
    const VkSampleCountFlagBits sample_counts =
       VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
@@ -929,9 +935,11 @@ hk_get_device_properties(const struct agx_device *dev,
       .integerDotProduct4x8BitPackedSignedAccelerated = false,
       .integerDotProduct4x8BitPackedMixedSignednessAccelerated = false,
       .storageTexelBufferOffsetAlignmentBytes = HK_MIN_TEXEL_BUFFER_ALIGNMENT,
-      .storageTexelBufferOffsetSingleTexelAlignment = true,
+      .storageTexelBufferOffsetSingleTexelAlignment =
+         texel_buffer_single_texel_alignment,
       .uniformTexelBufferOffsetAlignmentBytes = HK_MIN_TEXEL_BUFFER_ALIGNMENT,
-      .uniformTexelBufferOffsetSingleTexelAlignment = true,
+      .uniformTexelBufferOffsetSingleTexelAlignment =
+         texel_buffer_single_texel_alignment,
       .maxBufferSize = HK_MAX_BUFFER_SIZE,
 
       /* Vulkan 1.4 properties */
