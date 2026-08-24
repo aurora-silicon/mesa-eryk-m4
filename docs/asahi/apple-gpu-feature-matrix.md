@@ -29,19 +29,19 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP/state/draw/link packed |
+| G15G | M3 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max; scheduling stalls grounded | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G15S | M3 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G15C | M3 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
 | G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP/state/draw/link packed |
-| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP/state/draw/link packed |
+| G16G | M4 | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G16S | M4 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G16C | M4 Max | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G17P | A18 Pro | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset incl. f32mul/f32fma/f32min/f32max | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/state/draw/link packed |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **RE** — disassembler + tested pack subset | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul/f32fma/f32min/f32max | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP/state/draw/link packed |
-| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact/long f32mul, f32fma, f32min, and f32max | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP/state/draw/link packed |
-| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP/state/draw/link packed |
+| G17G | M5 | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. long f32mul/f32fma/f32min/f32max | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G17S | M5 Pro | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset incl. compact/long f32mul, f32fma, f32min, and f32max | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/state/draw/link packed |
+| G17C | M5 Max | AGX3 / `agx3c` | **RE** — disassembler + tested pack subset | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/state/draw/link packed |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
@@ -166,8 +166,24 @@ The shared VDM and D3D12 cores additionally pack and decode the exact eight-
 byte PPP State Update header on the same eleven directly pinned identities.
 It carries a 40-bit, four-byte-aligned PPP payload pointer and an eight-bit
 payload size in 32-bit words; all sixteen reserved header bits must be zero.
-The pointed-to PPP payload grammar, allocation, live draw emission, and
-submission are still unimplemented, and G16P/G17A remain fail-closed.
+The pointed-to PPP payload grammar beyond the bounded viewport-only subset,
+allocation, live draw emission, and submission are still unimplemented, and
+G16P/G17A remain fail-closed.
+
+The first bounded pointed-to payload subset is now implemented and decoded in
+the shared core and D3D12 bridge: the exact viewport-only envelope produced by
+the seven pinned G15G/G15X, G16G/G16X, G17P, G17G, and G17X emitters. It begins
+with header `0x00000c00` plus `(N - 1)` for 1--16 viewports, stored in bits
+12--15 on G15/G16/G17P and bits 14--17 on G17G/S/C. The body is
+exactly N raw 64-bit region-clip slots, one raw 32-bit viewport-control word,
+and N six-word viewport transforms ordered translate/scale X, Y, and Z, for a
+total of `8 + 32*N` bytes. All body words round-trip losslessly; only the six
+transform positions have directly recovered ordering, while clip/control
+semantics remain deliberately unnamed. A one-viewport payload is genuinely
+byte-identical across the generations because both count fields are zero;
+larger cross-generation forms reject by their exact derived length. Other PPP
+header bits, payload blocks, allocation, VDM pointer following, live viewport
+lowering/emission, and submission remain closed, as do G16P and G17A.
 
 The shared VDM Index List core and D3D12 bridge additionally encode and decode
 the exact direct draw records for those eleven targets. Non-indexed records
@@ -507,13 +523,14 @@ The current in-tree anchors are:
   [`agx_vdm_state_update_core.h`](../../src/asahi/lib/agx_vdm_state_update_core.h),
   [`agx_vdm_decode_core.h`](../../src/asahi/lib/agx_vdm_decode_core.h),
   [`agx_vdm_ppp_state_core.h`](../../src/asahi/lib/agx_vdm_ppp_state_core.h),
+  [`agx_ppp_viewport_payload_core.h`](../../src/asahi/lib/agx_ppp_viewport_payload_core.h),
   [`agx_vdm_index_list_core.h`](../../src/asahi/lib/agx_vdm_index_list_core.h),
   [`agx_vdm_stream_link_core.h`](../../src/asahi/lib/agx_vdm_stream_link_core.h),
   and their focused tests: exact target-gated AGX3 CDM
   launch/link/padding/barrier/terminate, the exact eight-byte PPP State Update
-  header, the complete raw-preserving 28-byte VDM State Update, direct VDM
-  index-list representations, and direct 40-bit VDM Stream Link, without live
-  emission or submission.
+  header, its bounded viewport-only pointed payload, the complete raw-preserving
+  28-byte VDM State Update, direct VDM index-list representations, and direct
+  40-bit VDM Stream Link, without live emission or submission.
 - [`agx_texture_side_entry.h`](../../src/asahi/lib/agx_texture_side_entry.h)
   and its [focused tests](../../src/asahi/lib/tests/test-texture-side-entry.c):
   exact 8-byte Gen9/Gen10 texture-heap side-entry layout and the bounded,
@@ -522,6 +539,11 @@ The current in-tree anchors are:
   and its
   [host tests](../../src/asahi/d3d12/tests/d12_native_descriptor_core_tests.c):
   generation-sized D3D12 heaps and fail-closed software-PBE rules.
+- [`d12_agx3_ppp_viewport_payload_core.h`](../../src/asahi/d3d12/d12_agx3_ppp_viewport_payload_core.h)
+  and its
+  [host tests](../../src/asahi/d3d12/tests/d12_agx3_ppp_viewport_payload_core_tests.c):
+  the D3D12 validation bridge for the same exact viewport-only PPP envelope,
+  without live viewport lowering or command emission.
 - [`hk_native_descriptor.h`](../../src/asahi/vulkan/hk_native_descriptor.h),
   its [packing helper](../../src/asahi/vulkan/hk_native_descriptor_pack.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-descriptor.c):

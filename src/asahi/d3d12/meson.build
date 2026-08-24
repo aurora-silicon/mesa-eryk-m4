@@ -19,6 +19,7 @@ libd3d12agx_files = files(
   'd12_agx3_cmdstream_core.h',
   'd12_agx3_index_list_core.c',
   'd12_agx3_isa_core.c',
+  'd12_agx3_ppp_viewport_payload_core.c',
   'd12_agx3_vdm_core.c',
   'd12_agx3_vdm_decode_core.c',
   'd12_agx3_vdm_ppp_state_core.c',

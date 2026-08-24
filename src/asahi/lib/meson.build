@@ -20,6 +20,8 @@ libasahi_lib_files = files(
   'agx_nir_lower_vbo.c',
   'agx_nir_prolog_epilog.c',
   'agx_ppp.h',
+  'agx_ppp_viewport_payload_core.c',
+  'agx_ppp_viewport_payload_core.h',
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
@@ -231,6 +233,19 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-viewport-payload-core',
+    executable(
+      'asahi-ppp-viewport-payload-core',
+      files(
+        'agx_ppp_viewport_payload_core.c',
+        'tests/test-ppp-viewport-payload-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),
