@@ -103,6 +103,28 @@ test_matches_hand_packers(void)
          expect_bytes(enc, &B, bar.bytes, bar.length);
       }
 
+      /* Unary float funops over the register spread. */
+      for (unsigned r = 0; r < sizeof(regs) / sizeof(regs[0]); ++r) {
+         for (unsigned s = 0; s < sizeof(regs) / sizeof(regs[0]); ++s) {
+            const uint16_t d = regs[r], a = regs[s];
+            struct agx3_encoded_f32_rcp_reg rcp;
+            if (agx3_pack_f32_rcp_reg(enc, d, a, &rcp)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_F_RCP, d, a);
+               expect_bytes(enc, &I, rcp.bytes, rcp.length);
+            }
+            struct agx3_encoded_f32_rsqrt_reg rsq;
+            if (agx3_pack_f32_rsqrt_reg(enc, d, a, &rsq)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_F_RSQRT, d, a);
+               expect_bytes(enc, &I, rsq.bytes, rsq.length);
+            }
+            struct agx3_encoded_f32_rint_reg rint;
+            if (agx3_pack_f32_rint_reg(enc, d, a, &rint)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_F_RINT, d, a);
+               expect_bytes(enc, &I, rint.bytes, rint.length);
+            }
+         }
+      }
+
       /* mov_imm over a spread of dest registers and immediates. */
       static const uint32_t imms[] = {0, 1, 0x1234, 0xdeadbeef, 0xffffffff};
       for (unsigned r = 0; r < sizeof(regs) / sizeof(regs[0]); ++r) {

@@ -57,6 +57,12 @@ agx3_map_opcode(unsigned op)
       return AGX3_SEL_OP_SLL;
    case AGX_OPCODE_BFEIL:
       return AGX3_SEL_OP_LSR;
+   case AGX_OPCODE_RCP:
+      return AGX3_SEL_OP_F_RCP;
+   case AGX_OPCODE_RSQRT:
+      return AGX3_SEL_OP_F_RSQRT;
+   case AGX_OPCODE_ROUNDEVEN:
+      return AGX3_SEL_OP_F_RINT;
    default:
       return AGX3_SEL_OP_UNSUPPORTED;
    }

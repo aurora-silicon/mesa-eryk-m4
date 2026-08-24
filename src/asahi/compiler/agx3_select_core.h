@@ -55,6 +55,9 @@ enum agx3_sel_op {
    AGX3_SEL_OP_U32_TO_F,  /* u32 -> f32, round to nearest even */
    AGX3_SEL_OP_ISUB,      /* u32 subtract, from iadd with a negated source */
    AGX3_SEL_OP_IMUL,      /* u32 multiply, from imad with a zero addend */
+   AGX3_SEL_OP_F_RCP,     /* f32 reciprocal */
+   AGX3_SEL_OP_F_RSQRT,   /* f32 reciprocal square root */
+   AGX3_SEL_OP_F_RINT,    /* f32 round to nearest even (roundeven) */
 };
 
 /* A normalized source operand. `reg` is a 16-bit half-register index, the same
