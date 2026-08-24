@@ -84,10 +84,12 @@ bool agx3_unpack_nop(enum agx_isa_encoding encoding, const uint8_t *bytes,
                      size_t available, uint8_t *length);
 
 /*
- * Encode/decode the fixed workgroup barrier emitted for air.wg.barrier on the
- * G17/AGX3c corpus.  Thirteen independently shaped kernels contain these exact
- * bytes.  The AGX3b barrier fields have not yet been isolated, so M3/M4/A18 Pro
- * intentionally fail closed here rather than receiving a guessed G17 opcode.
+ * Encode/decode the fixed workgroup barrier emitted for air.wg.barrier.
+ * Forced n=0..4 occurrence ladders reproduce the exact six-byte AGX3b form on
+ * G15G/G15S/G16G/G17P and the distinct six-byte AGX3c form on G17S.  Apple's
+ * independently extracted encoder tables identify each sequence as the
+ * field-free `barrier` instruction.  Cross-generation byte strings are
+ * rejected rather than being reinterpreted.
  */
 bool agx3_pack_threadgroup_barrier(
    enum agx_isa_encoding encoding,

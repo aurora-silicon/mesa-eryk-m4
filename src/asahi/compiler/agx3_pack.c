@@ -167,15 +167,21 @@ agx3_pack_threadgroup_barrier(
    enum agx_isa_encoding encoding,
    struct agx3_encoded_threadgroup_barrier *out)
 {
-   if (encoding != AGX_ISA_ENCODING_AGX3C || out == NULL)
-      return false;
-
-   static const uint8_t canonical[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+   static const uint8_t canonical_b[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+      0x07, 0x04, 0x54, 0x61, 0x09, 0x00,
+   };
+   static const uint8_t canonical_c[AGX3_THREADGROUP_BARRIER_LENGTH] = {
       0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
    };
+   const uint8_t *canonical = encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b :
+                              encoding == AGX_ISA_ENCODING_AGX3C ? canonical_c :
+                                                                   NULL;
+
+   if (canonical == NULL || out == NULL)
+      return false;
 
    memset(out, 0, sizeof(*out));
-   memcpy(out->bytes, canonical, sizeof(canonical));
+   memcpy(out->bytes, canonical, AGX3_THREADGROUP_BARRIER_LENGTH);
    out->length = AGX3_THREADGROUP_BARRIER_LENGTH;
    return true;
 }
@@ -185,13 +191,19 @@ agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
                                 const uint8_t *bytes, size_t available,
                                 uint8_t *length)
 {
-   static const uint8_t canonical[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+   static const uint8_t canonical_b[AGX3_THREADGROUP_BARRIER_LENGTH] = {
+      0x07, 0x04, 0x54, 0x61, 0x09, 0x00,
+   };
+   static const uint8_t canonical_c[AGX3_THREADGROUP_BARRIER_LENGTH] = {
       0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
    };
+   const uint8_t *canonical = encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b :
+                              encoding == AGX_ISA_ENCODING_AGX3C ? canonical_c :
+                                                                   NULL;
 
-   if (encoding != AGX_ISA_ENCODING_AGX3C || bytes == NULL ||
-       length == NULL || available < AGX3_THREADGROUP_BARRIER_LENGTH ||
-       memcmp(bytes, canonical, sizeof(canonical)) != 0)
+   if (canonical == NULL || bytes == NULL || length == NULL ||
+       available < AGX3_THREADGROUP_BARRIER_LENGTH ||
+       memcmp(bytes, canonical, AGX3_THREADGROUP_BARRIER_LENGTH) != 0)
       return false;
 
    *length = AGX3_THREADGROUP_BARRIER_LENGTH;
