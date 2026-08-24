@@ -25,6 +25,8 @@ libasahi_lib_files = files(
   'agx_vdm_index_list_core.h',
   'agx_vdm_state_core.c',
   'agx_vdm_state_core.h',
+  'agx_vdm_state_update_core.c',
+  'agx_vdm_state_update_core.h',
   'agx_va.c',
   'pool.c',
 )
@@ -189,6 +191,20 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-state-update-core',
+    executable(
+      'asahi-vdm-state-update-core',
+      files(
+        'agx_vdm_state_core.c',
+        'agx_vdm_state_update_core.c',
+        'tests/test-vdm-state-update-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

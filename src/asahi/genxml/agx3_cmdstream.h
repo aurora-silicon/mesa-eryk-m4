@@ -21,7 +21,9 @@
 
 #define AGX3_CDM_LAUNCH_SIZE 40u
 #define AGX3_CDM_STREAM_LINK_SIZE 8u
+#define AGX3_CDM_LINK_PADDING_SIZE 4u
 #define AGX3_CDM_BARRIER_SIZE 4u
+#define AGX3_CDM_SECONDARY_BARRIER_SIZE 4u
 #define AGX3_CDM_STREAM_TERMINATE_SIZE 8u
 
 struct agx3_cdm_launch_info {
@@ -40,11 +42,24 @@ struct agx3_cdm_stream_link_info {
    bool with_return;
 };
 
+struct agx3_cdm_link_padding_info {
+   enum agx_chip chip;
+   uint8_t count;
+};
+
 struct agx3_cdm_barrier_info {
    enum agx_chip chip;
    /* G17 Gen7 drives bits 12, 11, 10 and 1 from flags 0..3.  Earlier
     * inspected emitters expose only canonical flag sets 0 and 0b0101. */
    uint8_t flags;
+};
+
+struct agx3_cdm_substream_barrier_info {
+   enum agx_chip chip;
+   uint8_t flags;
+   /* Encoded as substream + 1 in bits 21..28.  Keep 255 closed because it
+    * aliases the absent-field representation after the hardware mask. */
+   uint8_t substream;
 };
 
 static inline void
@@ -235,12 +250,60 @@ agx3_cdm_stream_link_unpack(
    return true;
 }
 
-/* Exact four-byte barrier emitters are pinned in G15X, G16G/G16X, G17P,
- * G17G and G17X.  G15G, G16P and G17A remain unwitnessed here. */
+/* The AGX3 ComputeControlFlowEmitterGen1 implementations for the base and
+ * aggregate G15, G16/HAL200, G17P and G17/HAL300 plugin classes all emit the
+ * same four-byte type-5 link-padding token. */
+static inline bool
+agx3_cdm_link_padding_pack(
+   const struct agx3_cdm_link_padding_info *info,
+   uint8_t packed[AGX3_CDM_LINK_PADDING_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_LINK_PADDING_SIZE);
+   if (!info || !agx3_cdm_launch_target_grounded(info->chip) ||
+       info->count > 7)
+      return false;
+
+   struct AGX_CDM_LINK_PADDING_AGX3 padding = {
+      .count = info->count,
+   };
+   uint32_t word = 0;
+   AGX_CDM_LINK_PADDING_AGX3_pack(&word, &padding);
+   agx3_cmdstream_store_le32(packed, word);
+   return true;
+}
+
+static inline bool
+agx3_cdm_link_padding_unpack(
+   enum agx_chip chip, const void *packed, size_t available,
+   struct agx3_cdm_link_padding_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   if (!packed || available < AGX3_CDM_LINK_PADDING_SIZE ||
+       !agx3_cdm_launch_target_grounded(chip))
+      return false;
+
+   const uint32_t word = agx3_cmdstream_load_le32((const uint8_t *)packed);
+   if ((word & ~UINT32_C(0x7)) != UINT32_C(0xa0000000))
+      return false;
+
+   info->chip = chip;
+   info->count = word & 0x7;
+   return true;
+}
+
+/* Exact four-byte barrier emitters are pinned in G15G/G15X, G16G/G16X,
+ * G17P, G17G and G17X.  G16P and G17A remain unwitnessed here. */
 static inline bool
 agx3_cdm_barrier_target_grounded(enum agx_chip chip)
 {
    switch (chip) {
+   case AGX_CHIP_G15G:
    case AGX_CHIP_G15S:
    case AGX_CHIP_G15C:
    case AGX_CHIP_G15D:
@@ -325,6 +388,94 @@ agx3_cdm_barrier_unpack(enum agx_chip chip, const void *packed,
    info->chip = chip;
    info->flags = flags;
    return true;
+}
+
+/* endVirtualSubstream and the Gen7 first-class substream emitter encode the
+ * virtual substream as an eight-bit, one-biased field at bits 21..28. */
+static inline bool
+agx3_cdm_substream_barrier_pack(
+   const struct agx3_cdm_substream_barrier_info *info,
+   uint8_t packed[AGX3_CDM_BARRIER_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_BARRIER_SIZE);
+   if (!info || !agx3_cdm_barrier_flags_grounded(info->chip, info->flags) ||
+       info->substream == UINT8_MAX)
+      return false;
+
+   const uint32_t substream = (uint32_t)(info->substream + 1) << 21;
+   agx3_cmdstream_store_le32(
+      packed, agx3_cdm_barrier_word(info->flags) | substream);
+   return true;
+}
+
+static inline bool
+agx3_cdm_substream_barrier_unpack(
+   enum agx_chip chip, const void *packed, size_t available,
+   struct agx3_cdm_substream_barrier_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   if (!packed || available < AGX3_CDM_BARRIER_SIZE ||
+       !agx3_cdm_barrier_target_grounded(chip))
+      return false;
+
+   const uint32_t word = agx3_cmdstream_load_le32((const uint8_t *)packed);
+   const uint8_t encoded_substream = (word >> 21) & 0xff;
+   const uint32_t optional_mask = UINT32_C(0x1fe01c02);
+   if (encoded_substream == 0 ||
+       (word & ~optional_mask) != UINT32_C(0x60000160))
+      return false;
+
+   const uint8_t flags = (uint8_t)(((word >> 12) & 0x1) |
+                                   ((word >> 10) & 0x2) |
+                                   ((word >> 8) & 0x4) |
+                                   ((word << 2) & 0x8));
+   if (!agx3_cdm_barrier_flags_grounded(chip, flags))
+      return false;
+
+   info->chip = chip;
+   info->flags = flags;
+   info->substream = encoded_substream - 1;
+   return true;
+}
+
+/* Gen7 encodeBarrier optionally appends this fixed second barrier word.  It
+ * is not present in the inspected G15/HAL200 emitters. */
+static inline bool
+agx3_cdm_secondary_barrier_target_grounded(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+          chip == AGX_CHIP_G17C;
+}
+
+static inline bool
+agx3_cdm_secondary_barrier_pack(
+   enum agx_chip chip, uint8_t packed[AGX3_CDM_SECONDARY_BARRIER_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_SECONDARY_BARRIER_SIZE);
+   if (!agx3_cdm_secondary_barrier_target_grounded(chip))
+      return false;
+
+   agx3_cmdstream_store_le32(packed, UINT32_C(0x60000502));
+   return true;
+}
+
+static inline bool
+agx3_cdm_secondary_barrier_validate(enum agx_chip chip, const void *packed,
+                                    size_t available)
+{
+   return packed && available >= AGX3_CDM_SECONDARY_BARRIER_SIZE &&
+          agx3_cdm_secondary_barrier_target_grounded(chip) &&
+          agx3_cmdstream_load_le32((const uint8_t *)packed) ==
+             UINT32_C(0x60000502);
 }
 
 /* The exact eight-byte terminate slot is byte-identical in every inspected

@@ -23,8 +23,18 @@ struct d12_agx3_cdm_stream_link_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_cdm_link_padding_encoding {
+   uint8_t bytes[AGX3_CDM_LINK_PADDING_SIZE];
+   uint8_t length;
+};
+
 struct d12_agx3_cdm_barrier_encoding {
    uint8_t bytes[AGX3_CDM_BARRIER_SIZE];
+   uint8_t length;
+};
+
+struct d12_agx3_cdm_secondary_barrier_encoding {
+   uint8_t bytes[AGX3_CDM_SECONDARY_BARRIER_SIZE];
    uint8_t length;
 };
 
@@ -94,6 +104,35 @@ d12_agx3_decode_cdm_stream_link(
 }
 
 static inline bool
+d12_agx3_encode_cdm_link_padding(
+   const struct agx3_cdm_link_padding_info *info,
+   struct d12_agx3_cdm_link_padding_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!agx3_cdm_link_padding_pack(info, out->bytes))
+      return false;
+
+   out->length = AGX3_CDM_LINK_PADDING_SIZE;
+   return true;
+}
+
+static inline bool
+d12_agx3_decode_cdm_link_padding(
+   enum agx_chip chip, const void *command, uint32_t command_size,
+   struct agx3_cdm_link_padding_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   return command_size == AGX3_CDM_LINK_PADDING_SIZE &&
+          agx3_cdm_link_padding_unpack(chip, command, command_size, info);
+}
+
+static inline bool
 d12_agx3_encode_cdm_barrier(
    const struct agx3_cdm_barrier_info *info,
    struct d12_agx3_cdm_barrier_encoding *out)
@@ -120,6 +159,60 @@ d12_agx3_decode_cdm_barrier(enum agx_chip chip, const void *command,
    memset(info, 0, sizeof(*info));
    return command_size == AGX3_CDM_BARRIER_SIZE &&
           agx3_cdm_barrier_unpack(chip, command, command_size, info);
+}
+
+static inline bool
+d12_agx3_encode_cdm_substream_barrier(
+   const struct agx3_cdm_substream_barrier_info *info,
+   struct d12_agx3_cdm_barrier_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!agx3_cdm_substream_barrier_pack(info, out->bytes))
+      return false;
+
+   out->length = AGX3_CDM_BARRIER_SIZE;
+   return true;
+}
+
+static inline bool
+d12_agx3_decode_cdm_substream_barrier(
+   enum agx_chip chip, const void *command, uint32_t command_size,
+   struct agx3_cdm_substream_barrier_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   return command_size == AGX3_CDM_BARRIER_SIZE &&
+          agx3_cdm_substream_barrier_unpack(chip, command, command_size,
+                                            info);
+}
+
+static inline bool
+d12_agx3_encode_cdm_secondary_barrier(
+   enum agx_chip chip, struct d12_agx3_cdm_secondary_barrier_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!agx3_cdm_secondary_barrier_pack(chip, out->bytes))
+      return false;
+
+   out->length = AGX3_CDM_SECONDARY_BARRIER_SIZE;
+   return true;
+}
+
+static inline bool
+d12_agx3_validate_cdm_secondary_barrier(enum agx_chip chip,
+                                        const void *command,
+                                        uint32_t command_size)
+{
+   return command_size == AGX3_CDM_SECONDARY_BARRIER_SIZE &&
+          agx3_cdm_secondary_barrier_validate(chip, command, command_size);
 }
 
 static inline bool

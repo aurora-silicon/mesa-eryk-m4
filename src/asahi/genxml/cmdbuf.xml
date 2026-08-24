@@ -1182,6 +1182,11 @@
     <value name="Stream Terminate" value="2"/>
     <value name="Barrier" value="3"/>
     <value name="Stream Return" value="4"/>
+    <!-- Values 5 and 6 are emitted by every inspected Apple generation.
+         Only the bounded link-padding use of value 5 is decoded below;
+         value 6 remains semantically unknown. -->
+    <value name="Unknown 5" value="5"/>
+    <value name="Unknown 6" value="6"/>
   </enum>
 
   <enum name="CDM Mode">
@@ -1295,6 +1300,14 @@
 
   <struct name="CDM Stream Return" size="8">
     <field name="Block Type" size="3" start="29" type="CDM Block Type" exact="Stream Return"/>
+  </struct>
+
+  <!-- ComputeControlFlowEmitterGen1::emitLink surrounds a link with this
+       four-byte type-5 token.  The low three bits carry the bounded padding
+       count; all other payload bits are zero in the pinned AGX3 emitters. -->
+  <struct name="CDM Link Padding AGX3" size="4">
+    <field name="Count" size="3" start="0" type="uint"/>
+    <field name="Block Type" size="3" start="29" type="CDM Block Type" exact="Unknown 5"/>
   </struct>
   <!-- CDM commands end -->
 

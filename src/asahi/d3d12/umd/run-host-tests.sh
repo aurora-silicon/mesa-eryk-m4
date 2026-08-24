@@ -94,6 +94,15 @@ done
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
+    "$repo_root/src/asahi/lib/agx_vdm_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_vdm_state_update_core.c" \
+    "$d12_dir/d12_agx3_vdm_state_update_core.c" \
+    "$d12_dir/tests/d12_agx3_vdm_state_update_core_tests.c" \
+    -o "$out/d12_agx3_vdm_state_update_core_tests"
+"$out/d12_agx3_vdm_state_update_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
     "$repo_root/src/asahi/lib/agx_vdm_index_list_core.c" \
     "$d12_dir/d12_agx3_index_list_core.c" \
     "$d12_dir/tests/d12_agx3_index_list_core_tests.c" \
@@ -296,6 +305,14 @@ done
     "$repo_root/src/asahi/lib/tests/test-vdm-state-core.c" \
     -o "$out/agx_vdm_state_core_tests"
 "$out/agx_vdm_state_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_vdm_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_vdm_state_update_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-vdm-state-update-core.c" \
+    -o "$out/agx_vdm_state_update_core_tests"
+"$out/agx_vdm_state_update_core_tests"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \

@@ -132,10 +132,45 @@ main(void)
    }
    CHECK(!d12_agx3_encode_cdm_stream_link(&link, NULL));
 
+   for (unsigned i = 0;
+        i < sizeof(launch_targets) / sizeof(launch_targets[0]); ++i) {
+      for (uint8_t count = 0; count < 8; ++count) {
+         struct agx3_cdm_link_padding_info padding = {
+            .chip = launch_targets[i],
+            .count = count,
+         };
+         struct d12_agx3_cdm_link_padding_encoding encoded;
+         struct agx3_cdm_link_padding_info decoded;
+         CHECK(d12_agx3_encode_cdm_link_padding(&padding, &encoded));
+         CHECK(encoded.length == AGX3_CDM_LINK_PADDING_SIZE);
+         CHECK(agx3_cmdstream_load_le32(encoded.bytes) ==
+               (UINT32_C(0xa0000000) | count));
+         CHECK(d12_agx3_decode_cdm_link_padding(
+            padding.chip, encoded.bytes, encoded.length, &decoded));
+         CHECK(decoded.count == count);
+         CHECK(!d12_agx3_decode_cdm_link_padding(
+            padding.chip, encoded.bytes, encoded.length + 1, &decoded));
+         CHECK(decoded.count == 0);
+      }
+   }
+
+   struct agx3_cdm_link_padding_info rejected_padding = {
+      .chip = AGX_CHIP_G17A,
+      .count = 0,
+   };
+   struct d12_agx3_cdm_link_padding_encoding padding_encoding;
+   memset(&padding_encoding, 0xff, sizeof(padding_encoding));
+   CHECK(!d12_agx3_encode_cdm_link_padding(&rejected_padding,
+                                           &padding_encoding));
+   CHECK(padding_encoding.length == 0);
+   for (unsigned b = 0; b < sizeof(padding_encoding.bytes); ++b)
+      CHECK(padding_encoding.bytes[b] == 0);
+   CHECK(!d12_agx3_encode_cdm_link_padding(&rejected_padding, NULL));
+
    const enum agx_chip barrier_targets[] = {
-      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16G,
-      AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P, AGX_CHIP_G17G,
-      AGX_CHIP_G17S, AGX_CHIP_G17C,
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
    };
    for (unsigned i = 0;
         i < sizeof(barrier_targets) / sizeof(barrier_targets[0]); ++i) {
@@ -166,7 +201,7 @@ main(void)
    }
 
    struct agx3_cdm_barrier_info rejected_barrier = {
-      .chip = AGX_CHIP_G15G,
+      .chip = AGX_CHIP_G17A,
       .flags = 0,
    };
    struct d12_agx3_cdm_barrier_encoding barrier_encoding;
@@ -177,6 +212,75 @@ main(void)
    for (unsigned b = 0; b < sizeof(barrier_encoding.bytes); ++b)
       CHECK(barrier_encoding.bytes[b] == 0);
    CHECK(!d12_agx3_encode_cdm_barrier(&rejected_barrier, NULL));
+
+   for (unsigned i = 0;
+        i < sizeof(barrier_targets) / sizeof(barrier_targets[0]); ++i) {
+      const bool gen7 = barrier_targets[i] == AGX_CHIP_G17G ||
+                        barrier_targets[i] == AGX_CHIP_G17S ||
+                        barrier_targets[i] == AGX_CHIP_G17C;
+      const uint8_t flags[] = {0, 5, 0xf};
+      const uint8_t substreams[] = {0, 1, 0x7f, 0xfe};
+      for (unsigned f = 0; f < sizeof(flags) / sizeof(flags[0]); ++f) {
+         if (!gen7 && flags[f] == 0xf)
+            continue;
+         for (unsigned s = 0;
+              s < sizeof(substreams) / sizeof(substreams[0]); ++s) {
+            struct agx3_cdm_substream_barrier_info barrier = {
+               .chip = barrier_targets[i],
+               .flags = flags[f],
+               .substream = substreams[s],
+            };
+            struct d12_agx3_cdm_barrier_encoding encoded;
+            struct agx3_cdm_substream_barrier_info decoded;
+            CHECK(d12_agx3_encode_cdm_substream_barrier(&barrier, &encoded));
+            CHECK(encoded.length == AGX3_CDM_BARRIER_SIZE);
+            CHECK(d12_agx3_decode_cdm_substream_barrier(
+               barrier.chip, encoded.bytes, encoded.length, &decoded));
+            CHECK(decoded.flags == barrier.flags);
+            CHECK(decoded.substream == barrier.substream);
+            CHECK(!d12_agx3_decode_cdm_substream_barrier(
+               barrier.chip, encoded.bytes, encoded.length + 1, &decoded));
+            CHECK(decoded.substream == 0);
+         }
+      }
+   }
+
+   struct agx3_cdm_substream_barrier_info rejected_substream = {
+      .chip = AGX_CHIP_G17G,
+      .flags = 0,
+      .substream = UINT8_MAX,
+   };
+   memset(&barrier_encoding, 0xff, sizeof(barrier_encoding));
+   CHECK(!d12_agx3_encode_cdm_substream_barrier(&rejected_substream,
+                                                 &barrier_encoding));
+   CHECK(barrier_encoding.length == 0);
+   for (unsigned b = 0; b < sizeof(barrier_encoding.bytes); ++b)
+      CHECK(barrier_encoding.bytes[b] == 0);
+
+   const enum agx_chip secondary_targets[] = {
+      AGX_CHIP_G17G,
+      AGX_CHIP_G17S,
+      AGX_CHIP_G17C,
+   };
+   for (unsigned i = 0;
+        i < sizeof(secondary_targets) / sizeof(secondary_targets[0]); ++i) {
+      struct d12_agx3_cdm_secondary_barrier_encoding encoded;
+      CHECK(d12_agx3_encode_cdm_secondary_barrier(secondary_targets[i],
+                                                   &encoded));
+      CHECK(encoded.length == AGX3_CDM_SECONDARY_BARRIER_SIZE);
+      CHECK(agx3_cmdstream_load_le32(encoded.bytes) == UINT32_C(0x60000502));
+      CHECK(d12_agx3_validate_cdm_secondary_barrier(
+         secondary_targets[i], encoded.bytes, encoded.length));
+      CHECK(!d12_agx3_validate_cdm_secondary_barrier(
+         secondary_targets[i], encoded.bytes, encoded.length + 1));
+   }
+
+   struct d12_agx3_cdm_secondary_barrier_encoding secondary;
+   memset(&secondary, 0xff, sizeof(secondary));
+   CHECK(!d12_agx3_encode_cdm_secondary_barrier(AGX_CHIP_G17P, &secondary));
+   CHECK(secondary.length == 0);
+   for (unsigned b = 0; b < sizeof(secondary.bytes); ++b)
+      CHECK(secondary.bytes[b] == 0);
 
    for (unsigned i = 0;
         i < sizeof(launch_targets) / sizeof(launch_targets[0]); ++i) {
