@@ -109,6 +109,18 @@ d12_resource_sample_count_representable(uint32_t descriptor_generation,
           sample_count == 8;
 }
 
+/* D3D12_RESOURCE_DESC permits a multisampled texture only when it is created
+ * for render-target or depth/stencil use. This is an API contract independent
+ * of the hardware sample-count ceiling; callers must still check whether the
+ * requested count itself is supported. */
+static inline bool
+d12_resource_multisample_flags_valid(uint32_t sample_count,
+                                     bool allow_render_target,
+                                     bool allow_depth_stencil)
+{
+   return sample_count <= 1 || allow_render_target || allow_depth_stencil;
+}
+
 /* The HAL300 render-state encoder still builds utile_config with only the
  * 2x and 4x selectors, and the A-grade Gen7 PPP sweep reports max samples=4.
  * Therefore an M5 8x resource may be represented/sampled, but must not be

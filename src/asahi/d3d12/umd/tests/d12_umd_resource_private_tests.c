@@ -90,6 +90,64 @@ main(void)
    CHECK(parsed.resource.row_pitch == 4096 &&
          parsed.resource.slice_pitch == UINT32_C(0x400000));
 
+   {
+      struct d12_frontend_heap_desc multisample_heap = heap;
+      struct d12_frontend_resource_desc multisample_resource = resource;
+
+      multisample_heap.flags = D12_FRONTEND_HEAP_ALLOW_NON_RT_DS_TEXTURES;
+      multisample_resource.layout = 2;
+      multisample_resource.row_pitch = 0;
+      multisample_resource.slice_pitch = 0;
+
+      /* One-sample shader resources need no output flag. */
+      multisample_resource.flags =
+         D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE;
+      CHECK(d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+      CHECK(d12_umd_resource_private_parse(
+         &packed, sizeof(packed), &parsed));
+      CHECK(parsed.resource.sample_count == 1);
+
+      multisample_heap.flags = D12_FRONTEND_HEAP_ALLOW_RT_DS_TEXTURES;
+      multisample_resource.sample_count = 2;
+      multisample_resource.flags =
+         D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET |
+         D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE;
+      CHECK(d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+      CHECK(d12_umd_resource_private_parse(
+         &packed, sizeof(packed), &parsed));
+      CHECK(parsed.resource.sample_count == 2);
+
+      multisample_resource.sample_count = 4;
+      multisample_resource.flags =
+         D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL |
+         D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE;
+      CHECK(d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+      CHECK(d12_umd_resource_private_parse(
+         &packed, sizeof(packed), &parsed));
+      CHECK(parsed.resource.sample_count == 4);
+
+      multisample_resource.flags =
+         D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE;
+      multisample_resource.sample_count = 2;
+      CHECK(!d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+      multisample_resource.sample_count = 4;
+      CHECK(!d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+
+      /* DescriptorGen10 layout evidence must not widen the current D3D12
+       * UMD contract: private metadata remains 1x/2x/4x only. */
+      multisample_resource.sample_count = 8;
+      multisample_resource.flags =
+         D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET |
+         D12_FRONTEND_RESOURCE_ALLOW_SHADER_RESOURCE;
+      CHECK(!d12_umd_resource_private_pack(
+         &multisample_heap, &multisample_resource, NULL, &packed));
+   }
+
    packed.magic ^= 1;
    CHECK(!d12_umd_resource_private_parse(&packed, sizeof(packed), &parsed));
    packed.magic ^= 1;

@@ -4,6 +4,7 @@
  */
 
 #include "d12_umd_resource_private.h"
+#include "../d12_command_validation_core.h"
 
 #include <string.h>
 
@@ -108,6 +109,10 @@ d12_umd_resource_private_resource_valid(
        !resource->depth_or_array_size || !resource->mip_levels ||
        (resource->sample_count != 1 && resource->sample_count != 2 &&
         resource->sample_count != 4) ||
+       !d12_resource_multisample_flags_valid(
+          resource->sample_count,
+          resource->flags & D12_FRONTEND_RESOURCE_ALLOW_RENDER_TARGET,
+          resource->flags & D12_FRONTEND_RESOURCE_ALLOW_DEPTH_STENCIL) ||
        (resource->sample_count == 1 && resource->sample_quality) ||
        resource->layout > 3 || (resource->flags & ~supported) ||
        (resource->flags & rt_ds) == rt_ds ||

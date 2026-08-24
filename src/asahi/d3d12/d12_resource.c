@@ -2238,6 +2238,16 @@ d12_validate_resource_desc(const D3D12_HEAP_PROPERTIES *heap_props,
    if (desc->SampleDesc.Count == 0)
       return E_INVALIDARG;
 
+   /* D3D12 has no sampled-only MSAA resource shape. A multisampled texture
+    * must carry one of the output flags even when the application ultimately
+    * creates an SRV for it. Keep this API rule separate from AGX's supported
+    * sample-count test so unsupported counts retain their existing refusal. */
+   if (!d12_resource_multisample_flags_valid(
+          desc->SampleDesc.Count,
+          desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+          desc->Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
+      return E_INVALIDARG;
+
    bool is_texture = !is_buffer;
 
    /*

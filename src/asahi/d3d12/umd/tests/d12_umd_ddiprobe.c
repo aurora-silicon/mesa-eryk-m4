@@ -6316,7 +6316,56 @@ wmain(int argc, wchar_t **argv)
          sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
             driver_device, &heap_arguments, &texture_arguments);
          require_result(sizes.Heap > 0 && sizes.Resource > 0,
-                        "resolved texture heap/resource private sizes");
+                        "accept 1x texture without RT/DS flags");
+
+         {
+            D3D12DDIARG_CREATEHEAP_0001 multisample_heap = heap_arguments;
+            D3D12DDIARG_CREATERESOURCE_0003 multisample_texture =
+               texture_arguments;
+
+            multisample_heap.Flags = D3D12DDI_HEAP_FLAG_RT_DS_TEXTURES;
+            multisample_texture.SampleDesc.Count = 2;
+            multisample_texture.Flags =
+               D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET |
+               D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &multisample_heap, &multisample_texture);
+            require_result(sizes.Heap > 0 && sizes.Resource > 0,
+                           "accept 2x render-target resource");
+
+            multisample_texture.SampleDesc.Count = 4;
+            multisample_texture.Format = DXGI_FORMAT_D32_FLOAT;
+            multisample_texture.Flags =
+               D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL |
+               D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &multisample_heap, &multisample_texture);
+            require_result(sizes.Heap > 0 && sizes.Resource > 0,
+                           "accept 4x depth/stencil resource");
+
+            multisample_texture.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+            multisample_texture.Flags =
+               D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE;
+            multisample_texture.SampleDesc.Count = 2;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &heap_arguments, &multisample_texture);
+            require_result(!sizes.Heap && !sizes.Resource,
+                           "reject 2x resource without RT/DS flags");
+            multisample_texture.SampleDesc.Count = 4;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &heap_arguments, &multisample_texture);
+            require_result(!sizes.Heap && !sizes.Resource,
+                           "reject 4x resource without RT/DS flags");
+
+            multisample_texture.SampleDesc.Count = 8;
+            multisample_texture.Flags =
+               D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET |
+               D3D12DDI_RESOURCE_FLAG_0003_SHADER_RESOURCE;
+            sizes = device_table.pfnCalcPrivateHeapAndResourceSizes(
+               driver_device, &multisample_heap, &multisample_texture);
+            require_result(!sizes.Heap && !sizes.Resource,
+                           "keep 8x resource sizing fail-closed");
+         }
 
          texture_arguments.Layout =
             D3D12DDI_TL_64KB_TILE_STANDARD_SWIZZLE;

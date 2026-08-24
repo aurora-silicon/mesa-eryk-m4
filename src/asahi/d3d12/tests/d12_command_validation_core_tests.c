@@ -80,6 +80,17 @@ main(void)
    assert(!d12_sample_count_supported(16));
    assert(!d12_sample_count_supported(UINT32_MAX));
 
+   /* D3D12_RESOURCE_DESC has no flags-none multisample texture shape. The
+    * output flag is required independently of which supported count is used;
+    * one-sample resources remain valid without either output capability. */
+   assert(d12_resource_multisample_flags_valid(1, false, false));
+   assert(d12_resource_multisample_flags_valid(2, true, false));
+   assert(d12_resource_multisample_flags_valid(2, false, true));
+   assert(d12_resource_multisample_flags_valid(4, true, false));
+   assert(d12_resource_multisample_flags_valid(4, false, true));
+   assert(!d12_resource_multisample_flags_valid(2, false, false));
+   assert(!d12_resource_multisample_flags_valid(4, false, false));
+
    /* Descriptor capability and render capability are different on M5.
     * DescriptorGen10 has a live-measured 8x resource layout, while HAL300's
     * render utile_config remains limited to 4x. A18 Pro is Gen9/HAL200. */

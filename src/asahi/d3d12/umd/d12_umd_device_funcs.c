@@ -1154,6 +1154,11 @@ d12_umd_resource_arguments_valid(
 
    if (!arguments || !arguments->Width || !arguments->Height ||
        !arguments->DepthOrArraySize || !arguments->SampleDesc.Count ||
+       !d12_sample_count_supported(arguments->SampleDesc.Count) ||
+       !d12_resource_multisample_flags_valid(
+          arguments->SampleDesc.Count,
+          arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_RENDER_TARGET,
+          arguments->Flags & D3D12DDI_RESOURCE_FLAG_0003_DEPTH_STENCIL) ||
        arguments->ResourceType < D3D12DDI_RT_BUFFER ||
        arguments->ResourceType > D3D12DDI_RT_TEXTURE3D ||
        (arguments->Layout != D3D12DDI_TL_ROW_MAJOR &&
