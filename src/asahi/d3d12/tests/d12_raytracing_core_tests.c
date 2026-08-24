@@ -433,6 +433,54 @@ test_records_and_config(void)
 }
 
 static void
+test_agx3_canonical_update_node(void)
+{
+   static const uint8_t agx3b[] = {0xdf, 0x05, 0x54, 0x00};
+   static const uint8_t agx3c[] = {
+      0x27, 0x00, 0x01, 0x00, 0x22, 0x00, 0xad, 0x02,
+   };
+
+   require(d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_B, agx3b, sizeof(agx3b)),
+           "the exact AGX3b canonical update_node operation is recognised");
+   require(d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_C, agx3c, sizeof(agx3c)),
+           "the exact AGX3c canonical update_node operation is recognised");
+
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_B, agx3c, sizeof(agx3c)) &&
+              !d12_rt_agx3_canonical_update_node_valid(
+                 D12_RT_AGX3_ENCODING_C, agx3b, sizeof(agx3b)),
+           "canonical update_node encodings are not interchangeable");
+
+   uint8_t corrupt_b[sizeof(agx3b)];
+   memcpy(corrupt_b, agx3b, sizeof(corrupt_b));
+   corrupt_b[2] ^= 0x01;
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_B, corrupt_b, sizeof(corrupt_b)),
+           "a changed AGX3b update_node bit is refused");
+
+   uint8_t corrupt_c[sizeof(agx3c)];
+   memcpy(corrupt_c, agx3c, sizeof(corrupt_c));
+   corrupt_c[7] ^= 0x80;
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_C, corrupt_c, sizeof(corrupt_c)),
+           "a changed AGX3c update_node bit is refused");
+
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_B, agx3b, sizeof(agx3b) - 1) &&
+              !d12_rt_agx3_canonical_update_node_valid(
+                 D12_RT_AGX3_ENCODING_C, agx3c, sizeof(agx3c) - 1),
+           "truncated canonical update_node operations are refused");
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              (enum d12_rt_agx3_encoding)99, agx3b, sizeof(agx3b)),
+           "an unknown AGX3 encoding is refused");
+   require(!d12_rt_agx3_canonical_update_node_valid(
+              D12_RT_AGX3_ENCODING_B, NULL, sizeof(agx3b)),
+           "a missing canonical update_node operation is refused");
+}
+
+static void
 pack_gen5_header(const uint64_t words[8], uint8_t packed[64])
 {
    for (unsigned word = 0; word < 8; ++word) {
@@ -496,6 +544,7 @@ main(void)
    test_prebuild_and_allocation();
    test_shader_identifiers();
    test_records_and_config();
+   test_agx3_canonical_update_node();
    test_agx_gen5_child_layout();
 
    printf("d12_raytracing_core_tests: PASS (%u checks)\n", checks);

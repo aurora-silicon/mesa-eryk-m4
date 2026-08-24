@@ -435,6 +435,47 @@ d12_rt_tlas_counts_valid(uint64_t instance_count)
 }
 
 /*
+ * Exact AGX3 encoding check for the fixed, zero-argument update_node
+ * operation.
+ *
+ * The AGX3b and AGX3c decoder tables specify every bit of this one operation,
+ * and the captured disassembler corpus carries the same byte strings.  That
+ * makes exact recognition safe even though the operand-bearing RT intrinsics
+ * still have unnamed fields and predicates and must not be emitted.
+ *
+ * This validates one instruction only.  It neither validates nor supplies
+ * the generation-specific barrier that precedes it, and it says nothing about
+ * BVH update semantics, traversal, shader lowering or command submission.
+ */
+enum d12_rt_agx3_encoding {
+   D12_RT_AGX3_ENCODING_B = 0,
+   D12_RT_AGX3_ENCODING_C,
+};
+
+static inline bool
+d12_rt_agx3_canonical_update_node_valid(enum d12_rt_agx3_encoding encoding,
+                                        const void *instruction,
+                                        uint32_t instruction_size)
+{
+   if (!instruction)
+      return false;
+
+   const uint8_t *code = instruction;
+
+   switch (encoding) {
+   case D12_RT_AGX3_ENCODING_B:
+      return instruction_size == 4 && code[0] == 0xdf && code[1] == 0x05 &&
+             code[2] == 0x54 && code[3] == 0x00;
+   case D12_RT_AGX3_ENCODING_C:
+      return instruction_size == 8 && code[0] == 0x27 && code[1] == 0x00 &&
+             code[2] == 0x01 && code[3] == 0x00 && code[4] == 0x22 &&
+             code[5] == 0x00 && code[6] == 0xad && code[7] == 0x02;
+   default:
+      return false;
+   }
+}
+
+/*
  * Decoded Apple RIA Gen5 child layout.
  *
  * The offsets are signed because the hardware field is a signed 32-bit

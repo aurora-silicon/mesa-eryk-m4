@@ -85,6 +85,12 @@ identities. The D3D12 driver and WDDM UMD continue to report
 `D3D12_RAYTRACING_TIER_NOT_SUPPORTED`; host-side DXR validation and BVH helpers
 must not be read as DXR execution support.
 
+The D3D12 RT core recognizes the byte-exact, fixed zero-argument `update_node`
+operation for AGX3b and AGX3c. This is **RE/IV** encoding validation only: it
+does not provide the preceding generation-specific barrier, BVH-update
+semantics, operand-bearing RT instructions, traversal, lowering, submission,
+or device admission, so DXR remains Tier 0.
+
 Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
 including a byte-exact M5 live descriptor. Writable-image and EOT use stays
 **FC** because libagx still decodes the AGX2-only software-addressing sideband;
@@ -133,7 +139,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `cb17a42a901c` additionally
+The power/recovery ledger through Linux commit `cc7ccc3ae2e1` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -142,7 +148,9 @@ perform MMIO or firmware writes: the first two types' physical mappings,
 opaque helper ownership, and G17G/G17P firmware parity remain fail-closed.
 It also records the exact opaque six-u64 PM blocks for pinned G17P/HAL200 and
 G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
-G17A/G17C.
+G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
+performance tables and their two mirrored firmware properties; rail ownership,
+voltage control, a third domain, and hardware programming remain unresolved.
 
 ## Evidence and update policy
 
@@ -182,10 +190,12 @@ The current in-tree anchors are:
   alpha-factor mapping, inversion, default-state, and capability contracts.
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
-  D3D scalar `iadd`/`iand`/`ior` mapping into exact AGX3b/AGX3c encodings.
+  D3D scalar `iadd`/`isub`/`iand`/`ior`/`ixor`/`inot` mapping into exact
+  AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
-  host contracts, explicit Tier-0 rationale, and bounded BVH helpers.
+  host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
+  validation of the fixed AGX3b/AGX3c `update_node` opcode.
 - [`d12_discard_core.h`](../../src/asahi/d3d12/d12_discard_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_discard_core_tests.c): public
   `DiscardResource` list/region validation and the conservative no-op contract.
