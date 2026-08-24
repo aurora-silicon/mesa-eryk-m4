@@ -140,6 +140,30 @@ agx_gallium_native_texture_supported(
    return buffer_tail_offset == 0;
 }
 
+/* Return whether the native sampled-texture descriptor has a recovered
+ * representation for a numeric sample count. This is not a Gallium/API
+ * capability predicate: the live G17S corpus has descriptor bytes but no
+ * executed 8x sampling command, and the complete AGX3 path remains gated.
+ */
+static inline bool
+agx_gallium_native_texture_sample_count_representable(
+   enum agx_descriptor_generation generation, unsigned samples)
+{
+   if (samples == 1)
+      return agx_gallium_texture_descriptor_size(generation) != 0;
+
+   if (agx_gallium_descriptor_generation_is_agx2(generation))
+      return samples == 2 || samples == 4;
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_9)
+      return false;
+
+   if (generation == AGX_DESCRIPTOR_GENERATION_10)
+      return samples == 2 || samples == 4 || samples == 8;
+
+   return false;
+}
+
 /* The native Gen9/10 PBE words are structurally known, but Gallium's image
  * paths consume AGX2 software sideband state that has not been mapped.  Keep
  * render-target stores and writable images fail-closed until that ABI lands.

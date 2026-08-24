@@ -97,14 +97,15 @@ including a byte-exact M5 live descriptor. Writable-image and EOT use stays
 **FC** because libagx still decodes the AGX2-only software-addressing sideband;
 the matrix's PBE gate refers to that complete execution contract.
 
-Honeykrisp's native sampled-texture helper also represents the recovered Gen10
-2x/4x/8x sample-count field, including the exact M5 8x value in bits 58:59.
-This is **RE/IV** descriptor coverage, not Vulkan 8x MSAA support: the live M5
-corpus proves creation, layout, and descriptor bytes but contains no executed
-sampling command, while the recovered raster/PBE path remains capped at 4x.
-Public 8x exposure therefore stays **FC**. D3D12 likewise keeps 8x quality
-levels at zero because its resource contract has no sampled-only multisample
-usage that would avoid promising an unproven 8x render/depth path.
+Gallium and Honeykrisp's native sampled-texture helpers also represent the
+recovered Gen10 2x/4x/8x sample-count field, including the exact M5 8x value in
+bits 58:59. This is **RE/IV** descriptor coverage, not OpenGL/Vulkan 8x MSAA
+support: the live M5 corpus proves creation, layout, and descriptor bytes but
+contains no executed sampling command, while the recovered raster/PBE path
+remains capped at 4x. Public 8x exposure therefore stays **FC**. D3D12 likewise
+keeps 8x quality levels at zero because its resource contract has no
+sampled-only multisample usage that would avoid promising an unproven 8x
+render/depth path.
 
 AIL also carries tested M5 allocation-policy primitives for the measured
 2 KiB small-array compression-metadata granule, 16 KiB large-array granule,
@@ -142,7 +143,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `cc7ccc3ae2e1` additionally
+The power/recovery ledger through Linux commit `43b837884903` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -154,6 +155,9 @@ G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
 performance tables and their two mirrored firmware properties; rail ownership,
 voltage control, a third domain, and hardware programming remain unresolved.
+It also requires the exact tag, UUID, and SHA-256 jointly for each pinned
+G17S/G17C GFX/GFX1 nested-firmware identity. Other G17 variants, FTAB
+extraction, fixups, loading, and live G17C ownership remain fail-closed.
 
 ## Evidence and update policy
 
@@ -182,8 +186,8 @@ The current in-tree anchors are:
 - [`agx_native_descriptor.h`](../../src/gallium/drivers/asahi/agx_native_descriptor.h),
   its [packer](../../src/gallium/drivers/asahi/agx_native_descriptor.c), and
   [focused test](../../src/gallium/drivers/asahi/tests/test-agx-native-descriptor.c):
-  generation-sized Gallium texture heaps and deliberately closed AGX3 PBE
-  paths.
+  generation-sized Gallium texture heaps, bounded Gen10 sample-count
+  representation, and deliberately closed AGX3 PBE paths.
 - [`layout_core.h`](../../src/asahi/layout/layout_core.h) and
   [`test-agx3-layout.c`](../../src/asahi/layout/tests/test-agx3-layout.c): M5
   MSAA and bounded allocation-policy primitives with a generation-10-only

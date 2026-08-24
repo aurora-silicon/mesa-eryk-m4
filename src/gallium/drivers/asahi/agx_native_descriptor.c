@@ -37,6 +37,27 @@ agx_gallium_pack_native_texture(
           generation, multisampled, semantic->buffer_offset_sw))
       return false;
 
+   if (multisampled) {
+      unsigned samples;
+      switch (semantic->samples) {
+      case AGX_SAMPLE_COUNT_2:
+         samples = 2;
+         break;
+      case AGX_SAMPLE_COUNT_4:
+         samples = 4;
+         break;
+      case AGX_SAMPLE_COUNT_8:
+         samples = 8;
+         break;
+      default:
+         return false;
+      }
+
+      if (!agx_gallium_native_texture_sample_count_representable(
+             generation, samples))
+         return false;
+   }
+
    const bool has_levels = semantic->first_level || semantic->last_level ||
                            semantic->unk_mipmapped;
    const bool extended = semantic->extended || has_levels;
