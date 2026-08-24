@@ -15,6 +15,9 @@ _Static_assert(AGX3_SLL_U32_REG_REG_MAX_LENGTH <=
 _Static_assert(AGX3_ASR_I32_REG_REG_MAX_LENGTH <=
                   D12_AGX3_BINARY_ALU_MAX_LENGTH,
                "D3D AGX3 ALU storage must hold the canonical sra form");
+_Static_assert(AGX3_LSR_U32_REG_REG_MAX_LENGTH <=
+                  D12_AGX3_BINARY_ALU_MAX_LENGTH,
+               "D3D AGX3 ALU storage must hold the canonical srl form");
 
 bool
 d12_agx3_encode_binary_alu(
@@ -95,6 +98,16 @@ d12_agx3_encode_binary_alu(
    case D12_AGX3_BINARY_ALU_IASHR_I32: {
       struct agx3_encoded_asr_i32_reg_reg encoded;
       if (!agx3_pack_asr_i32_reg_reg(encoding, dest, src0, src1, &encoded))
+         return false;
+
+      memcpy(out->bytes, encoded.bytes, encoded.length);
+      out->length = encoded.length;
+      return true;
+   }
+
+   case D12_AGX3_BINARY_ALU_ILSHR_U32: {
+      struct agx3_encoded_lsr_u32_reg_reg encoded;
+      if (!agx3_pack_lsr_u32_reg_reg(encoding, dest, src0, src1, &encoded))
          return false;
 
       memcpy(out->bytes, encoded.bytes, encoded.length);

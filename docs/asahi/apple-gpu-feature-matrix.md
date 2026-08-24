@@ -51,6 +51,7 @@ canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
 `bit_not` (`inv`), plus canonical three-register u32 variable shift-left
 (`sll`) and i32 arithmetic variable shift-right (`sra`, Mesa `asr`). The
+subset also covers u32 logical variable shift-right (`srl`, Mesa `lsr`). The
 arithmetic, bitwise, and shift forms have exhaustive operand and every-bit
 rejection tests plus exact G15/G16/G17 corpus replay; the separate shift-count
 mask and G15G stall placement remain unsolved
@@ -134,9 +135,10 @@ AGX3 execution or DXR capability gate.
 The D3D12 compiler side has an **IV** fail-closed bridge for canonical
 three-register u32 `iadd`, `isub`, `iand`, `ior`, and `ixor`, plus unary u32
 `inot`, register-register `ishl`, and signed register-register `iashr`, into the
-shared AGX3b/AGX3c packer. The shift bridge represents only the grounded `sll`
-and `sra` operations and does not emit or claim the compiler-observed count
-mask. It replays the exact encoding witnesses but does not admit an AGX3 device:
+shared AGX3b/AGX3c packer. It also maps unsigned register-register `ilshr`.
+The shift bridge represents only the grounded `sll`, `sra`, and `srl`
+operations and does not emit or claim the compiler-observed count mask. It
+replays the exact encoding witnesses but does not admit an AGX3 device:
 general instruction selection, scheduling, linking, and submission are still
 missing.
 
@@ -144,7 +146,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery ledger through Linux commit `43b837884903` additionally
+The power/recovery ledger through Linux commit `c11d6008316a` additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
 0x28-byte descriptor indexing, ordered PIO values, the six-operation pre-idle
@@ -159,6 +161,9 @@ voltage control, a third domain, and hardware programming remain unresolved.
 It also requires the exact tag, UUID, and SHA-256 jointly for each pinned
 G17S/G17C GFX/GFX1 nested-firmware identity. Other G17 variants, FTAB
 extraction, fixups, loading, and live G17C ownership remain fail-closed.
+The recovery-word grammar is now location-scoped too: G15G/G16G accept only
+mapped-state offset `0x5190`, while independently pinned G17P/G17G/G17S accept
+only `0x4ae0`. These are pure decoders, not firmware-state mappings or MMIO.
 
 ## Evidence and update policy
 
@@ -198,8 +203,8 @@ The current in-tree anchors are:
   alpha-factor mapping, inversion, default-state, and capability contracts.
 - [`d12_agx3_isa_core.h`](../../src/asahi/d3d12/d12_agx3_isa_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_agx3_isa_core_tests.c): bounded
-  D3D scalar `iadd`/`isub`/`iand`/`ior`/`ixor`/`inot`/`ishl`/`iashr` mapping
-  into exact AGX3b/AGX3c encodings.
+  D3D scalar `iadd`/`isub`/`iand`/`ior`/`ixor`/`inot`/`ishl`/`iashr`/`ilshr`
+  mapping into exact AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
