@@ -158,9 +158,14 @@ policy, execution, device admission, or a capability claim.
 The generated command-stream packer and a strict shared wrapper now encode
 and decode the exact 40-byte AGX3 CDM launch. Its 48-bit, 64-byte-aligned
 pipeline pointer is split between word 1 bits 31:22 and all of word 2; both
-still-opaque template payloads are preserved, and global/local dimensions are
-bounded exactly. Directly pinned launch emitters cover G15G/G15X, G16G/G16X,
-G17P, and G17G/G17X, which map to the eleven per-chip rows marked above.
+finalize-template payloads are preserved, and global/local dimensions are
+bounded exactly. A semantic constructor now implements the two directly
+witnessed thread-count modes, one/two/three-dimensional control words, the
+G15X-only threadgroup control bit, and the emitter's bit-19 clear when both
+higher global axes are smaller than two. Its field builders expose only the
+recovered finalize ranges and reject every reserved-bit mutation. Directly
+pinned launch emitters cover G15G/G15X, G16G/G16X, G17P, and G17G/G17X, which
+map to the eleven per-chip rows marked above.
 G16P and G17A remain rejected. A separate exact eight-byte CDM link widens the
 target from 40 to 48 bits and is gated more narrowly to the directly pinned
 G15X/G16X/G17X aggregate identities; base/phone link forms are not inferred.
@@ -188,7 +193,8 @@ the exact target-aware direct VDM link on all eleven grounded identities and
 the narrower CDM link on the seven directly witnessed G15X/G16X/G17X
 identities; compute-stream merging uses the same path. An ungrounded base or
 phone CDM link fails the command buffer instead of emitting an AGX2 record.
-Launch, the remaining link lifecycle, executable shader payloads,
+Live shader-metadata-to-finalize mapping, the remaining link lifecycle,
+executable shader payloads,
 queue submission, device admission, and API capability are still
 independently gated, so the command/submission cells remain **RE**.
 

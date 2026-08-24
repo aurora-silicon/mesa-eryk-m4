@@ -472,8 +472,10 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
     > "$out/agx_pack.h"
 "$cc" "$common[@]" \
     -Wno-c23-extensions -Wno-unused-parameter \
+    -Wno-gnu-statement-expression-from-macro-expansion -Wno-unused-function \
     -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/genxml/tests/test-agx3-packing.c" \
     -o "$out/agx3_packing_tests"
 "$out/agx3_packing_tests"
@@ -482,6 +484,7 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
     -Wno-c23-extensions -Wno-unused-parameter \
     -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx3_cdm_decode_core.c" \
     "$repo_root/src/asahi/lib/tests/test-agx3-cdm-decode-core.c" \
     -o "$out/agx3_cdm_decode_core_tests"
@@ -491,6 +494,17 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
     -Wno-c23-extensions -Wno-unused-parameter \
     -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx3_cdm_direct_launch_semantic_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx3-cdm-direct-launch-semantic-core.c" \
+    -o "$out/agx3_cdm_direct_launch_semantic_core_tests"
+"$out/agx3_cdm_direct_launch_semantic_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions -Wno-unused-parameter \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx3_cdm_decode_core.c" \
     "$repo_root/src/asahi/d3d12/tests/d12_agx3_cmdstream_core_tests.c" \
     -o "$out/d12_agx3_cmdstream_core_tests"

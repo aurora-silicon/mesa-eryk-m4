@@ -6,6 +6,8 @@
 libasahi_lib_files = files(
   'agx3_cdm_decode_core.c',
   'agx3_cdm_decode_core.h',
+  'agx3_cdm_direct_launch_semantic_core.c',
+  'agx3_cdm_direct_launch_semantic_core.h',
   'agx_bo.c',
   'agx_border.c',
   'agx_chip.c',
@@ -206,6 +208,20 @@ if with_tests
       files(
         'agx3_cdm_decode_core.c',
         'tests/test-agx3-cdm-decode-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      dependencies : [idep_agx_pack, idep_mesautil],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx3-cdm-direct-launch-semantic-core',
+    executable(
+      'asahi-agx3-cdm-direct-launch-semantic-core',
+      files(
+        'agx3_cdm_direct_launch_semantic_core.c',
+        'tests/test-agx3-cdm-direct-launch-semantic-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
       dependencies : [idep_agx_pack, idep_mesautil],
