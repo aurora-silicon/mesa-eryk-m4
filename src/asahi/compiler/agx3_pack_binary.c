@@ -80,10 +80,53 @@ agx3_src_is_register(agx_index s)
           (s.type == AGX_INDEX_REGISTER || s.type == AGX_INDEX_NORMAL);
 }
 
+/* Fill the destination and a single value source into the normalized form,
+ * used by the ops the generic path cannot describe (convert). */
+static void
+agx3_set_dest_and_value(const agx_instr *I, agx_index value,
+                        struct agx3_sel_instr *S)
+{
+   if (I->nr_dests >= 1 && I->dest[0].type != AGX_INDEX_NULL) {
+      S->has_dest = true;
+      S->dest = I->dest[0].value;
+      S->dest_size = I->dest[0].size;
+   }
+   S->nr_srcs = 1;
+   S->src[0].reg = value.value;
+   S->src[0].size = value.size;
+   S->src[0].is_reg = agx3_src_is_register(value);
+}
+
 static bool
 agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
 {
    memset(S, 0, sizeof(*S));
+
+   /* convert carries its direction as an immediate mode in the first source
+    * and its rounding in `round`; the actual value is the second source. Only
+    * the four 32-bit language casts NIR emits (f2i/f2u round-to-zero, i2f/u2f
+    * round-to-nearest-even) are grounded. */
+   if (I->op == AGX_OPCODE_CONVERT) {
+      if (I->nr_srcs != 2 || I->src[0].type != AGX_INDEX_IMMEDIATE)
+         return false;
+
+      const unsigned mode = I->src[0].value;
+      const enum agx_round round = I->round;
+
+      if (mode == AGX_CONVERT_F_TO_S32 && round == AGX_ROUND_RTZ)
+         S->op = AGX3_SEL_OP_F_TO_I32;
+      else if (mode == AGX_CONVERT_F_TO_U32 && round == AGX_ROUND_RTZ)
+         S->op = AGX3_SEL_OP_F_TO_U32;
+      else if (mode == AGX_CONVERT_S32_TO_F && round == AGX_ROUND_RTE)
+         S->op = AGX3_SEL_OP_I32_TO_F;
+      else if (mode == AGX_CONVERT_U32_TO_F && round == AGX_ROUND_RTE)
+         S->op = AGX3_SEL_OP_U32_TO_F;
+      else
+         return false;
+
+      agx3_set_dest_and_value(I, I->src[1], S);
+      return true;
+   }
 
    S->op = agx3_map_opcode(I->op);
    if (S->op == AGX3_SEL_OP_UNSUPPORTED)

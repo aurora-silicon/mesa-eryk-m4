@@ -39,6 +39,10 @@ agx3_select_op_supported(enum agx3_sel_op op)
    case AGX3_SEL_OP_BITOP:
    case AGX3_SEL_OP_SLL:
    case AGX3_SEL_OP_LSR:
+   case AGX3_SEL_OP_F_TO_I32:
+   case AGX3_SEL_OP_F_TO_U32:
+   case AGX3_SEL_OP_I32_TO_F:
+   case AGX3_SEL_OP_U32_TO_F:
       return true;
    default:
       return false;
@@ -197,6 +201,47 @@ agx3_select_encode(enum agx_isa_encoding encoding,
          return false;
       if (!agx3_pack_lsr_u32_reg_reg(encoding, I->dest, I->src[0].reg,
                                      I->src[1].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_F_TO_I32:
+   case AGX3_SEL_OP_F_TO_U32: {
+      struct agx3_encoded_f32_to_int_rtz_reg e;
+      const enum agx3_f32_to_int_rtz_mode mode =
+         (I->op == AGX3_SEL_OP_F_TO_I32) ? AGX3_F32_TO_I32_RTZ
+                                         : AGX3_F32_TO_U32_RTZ;
+      if (!dest_is_reg32(I) || I->nr_srcs != 1 ||
+          !src_is_plain_reg32(&I->src[0]))
+         return false;
+      if (!agx3_pack_f32_to_int_rtz_reg(encoding, mode, I->dest, I->src[0].reg,
+                                        &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_I32_TO_F: {
+      struct agx3_encoded_i32_to_f32_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 1 ||
+          !src_is_plain_reg32(&I->src[0]))
+         return false;
+      if (!agx3_pack_i32_to_f32_reg(encoding, I->dest, I->src[0].reg, &e))
+         return false;
+      memcpy(out, e.bytes, e.length);
+      *len = e.length;
+      return true;
+   }
+
+   case AGX3_SEL_OP_U32_TO_F: {
+      struct agx3_encoded_u32_to_f32_reg e;
+      if (!dest_is_reg32(I) || I->nr_srcs != 1 ||
+          !src_is_plain_reg32(&I->src[0]))
+         return false;
+      if (!agx3_pack_u32_to_f32_reg(encoding, I->dest, I->src[0].reg, &e))
          return false;
       memcpy(out, e.bytes, e.length);
       *len = e.length;

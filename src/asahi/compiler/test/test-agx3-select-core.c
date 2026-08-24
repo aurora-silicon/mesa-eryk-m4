@@ -58,6 +58,19 @@ expect_refused(enum agx_isa_encoding enc, const struct agx3_sel_instr *I)
 }
 
 static struct agx3_sel_instr
+unop(enum agx3_sel_op op, uint16_t d, uint16_t a)
+{
+   struct agx3_sel_instr I = {0};
+   I.op = op;
+   I.has_dest = true;
+   I.dest = d;
+   I.dest_size = AGX3_SEL_SIZE_32;
+   I.nr_srcs = 1;
+   I.src[0] = reg32(a);
+   return I;
+}
+
+static struct agx3_sel_instr
 binop(enum agx3_sel_op op, uint16_t d, uint16_t a, uint16_t bb)
 {
    struct agx3_sel_instr I = {0};
@@ -147,6 +160,31 @@ test_matches_hand_packers(void)
             if (agx3_pack_lsr_u32_reg_reg(enc, d, a, bb, &lsr)) {
                struct agx3_sel_instr I = binop(AGX3_SEL_OP_LSR, d, a, bb);
                expect_bytes(enc, &I, lsr.bytes, lsr.length);
+            }
+
+            /* Unary 32-bit conversions, byte-exact against the convert packers.
+             */
+            struct agx3_encoded_f32_to_int_rtz_reg f2i;
+            if (agx3_pack_f32_to_int_rtz_reg(enc, AGX3_F32_TO_I32_RTZ, d, a,
+                                             &f2i)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_F_TO_I32, d, a);
+               expect_bytes(enc, &I, f2i.bytes, f2i.length);
+            }
+            struct agx3_encoded_f32_to_int_rtz_reg f2u;
+            if (agx3_pack_f32_to_int_rtz_reg(enc, AGX3_F32_TO_U32_RTZ, d, a,
+                                             &f2u)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_F_TO_U32, d, a);
+               expect_bytes(enc, &I, f2u.bytes, f2u.length);
+            }
+            struct agx3_encoded_i32_to_f32_reg i2f;
+            if (agx3_pack_i32_to_f32_reg(enc, d, a, &i2f)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_I32_TO_F, d, a);
+               expect_bytes(enc, &I, i2f.bytes, i2f.length);
+            }
+            struct agx3_encoded_u32_to_f32_reg u2f;
+            if (agx3_pack_u32_to_f32_reg(enc, d, a, &u2f)) {
+               struct agx3_sel_instr I = unop(AGX3_SEL_OP_U32_TO_F, d, a);
+               expect_bytes(enc, &I, u2f.bytes, u2f.length);
             }
 
             struct agx3_encoded_fma_f32_reg_reg_reg fma;
