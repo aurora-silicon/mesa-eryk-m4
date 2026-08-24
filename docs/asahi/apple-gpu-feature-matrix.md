@@ -86,6 +86,13 @@ including a byte-exact M5 live descriptor. Writable-image and EOT use stays
 **FC** because libagx still decodes the AGX2-only software-addressing sideband;
 the matrix's PBE gate refers to that complete execution contract.
 
+AIL also carries tested M5 allocation-policy primitives for the measured
+2 KiB small-array compression-metadata granule, 16 KiB large-array granule,
+unpadded single-layer rule, and 16x8 metadata tiles at 16 B/px. They are not
+yet selected by `ail_make_miptree`: the frontend layout-generation axis is
+still missing, and the M5 measurements are deliberately not inferred for
+M3/M4 or applied to runtime-supported AGX2 devices.
+
 Across the table, the public D3D12 command-list path implements
 `DiscardResource`: it is **RS** on admitted G13/G14 devices and **IV** on the
 driver-gated G15-G17 identities. Accepted calls conservatively retain resource
@@ -130,6 +137,10 @@ The current in-tree anchors are:
   [focused test](../../src/gallium/drivers/asahi/tests/test-agx-native-descriptor.c):
   generation-sized Gallium texture heaps and deliberately closed AGX3 PBE
   paths.
+- [`layout_core.h`](../../src/asahi/layout/layout_core.h) and
+  [`test-agx3-layout.c`](../../src/asahi/layout/tests/test-agx3-layout.c): M5
+  MSAA and bounded allocation-policy primitives kept separate from the legacy
+  runtime layout until generation selection is plumbed.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, and bounded BVH helpers.

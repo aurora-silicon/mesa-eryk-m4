@@ -44,6 +44,28 @@ main(void)
    CHECK_EQ(rgba32f.height_el, 8);
    CHECK_EQ(rgba32f.width_el * rgba32f.height_el * 256, 0x4000);
 
+   /* M3+ single-layer images are never padded merely for their layer stride. */
+   CHECK_EQ(ail_m5_layer_stride_B(0x4200, 1, true), 0x4200);
+
+   /* Small arrays with compression metadata use the measured 2 KiB granule. */
+   CHECK_EQ(ail_m5_layer_stride_B(0x401, 2, true), 0x800);
+   CHECK_EQ(ail_m5_layer_stride_B(0x801, 7, true), 0x1000);
+   CHECK_EQ(ail_m5_layer_stride_B(0x801, 7, false), 0x801);
+
+   /* Large array layers continue to use the 16 KiB page granule. */
+   CHECK_EQ(ail_m5_layer_stride_B(0x4000, 2, true), 0x4000);
+   CHECK_EQ(ail_m5_layer_stride_B(0x4001, 2, false), 0x8000);
+
+   const struct ail_tile metadata_rgba8 =
+      ail_m5_compression_tile_size(4);
+   CHECK_EQ(metadata_rgba8.width_el, 16);
+   CHECK_EQ(metadata_rgba8.height_el, 16);
+
+   const struct ail_tile metadata_rgba32f =
+      ail_m5_compression_tile_size(16);
+   CHECK_EQ(metadata_rgba32f.width_el, 16);
+   CHECK_EQ(metadata_rgba32f.height_el, 8);
+
    printf("agx3 layout: all %u checks passed\n", checks);
    return 0;
 }
