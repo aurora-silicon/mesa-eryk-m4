@@ -215,7 +215,7 @@ check_exact_generation_witnesses(void)
    memset(expected_gen6, 0, sizeof(expected_gen6));
    memset(expected_gen7, 0, sizeof(expected_gen7));
    expected_gen6[1] = 0x1c;
-   expected_gen7[1] = 0x4c;
+   expected_gen7[1] = 0x70;
    for (unsigned i = 4; i < sizeof(expected_gen6); ++i) {
       expected_gen6[i] = (uint8_t)(i - 4);
       expected_gen7[i] = (uint8_t)(i - 4);
@@ -283,14 +283,16 @@ check_generation_boundary(void)
    CHECK(d12_agx3_encode_ppp_viewport_payload(AGX_CHIP_G17S, &fields, &gen7));
    CHECK(gen6.length == 40);
    CHECK(gen7.length == gen6.length);
-   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) == 0);
-   CHECK(d12_agx3_decode_ppp_viewport_payload(AGX_CHIP_G17S, gen6.bytes,
-                                              gen6.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) != 0);
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!d12_agx3_decode_ppp_viewport_payload(AGX_CHIP_G17S, gen6.bytes,
+                                               gen6.length, &decoded));
+   if (check_zero_fields(&decoded))
       return 1;
-   CHECK(d12_agx3_decode_ppp_viewport_payload(AGX_CHIP_G15G, gen7.bytes,
-                                              gen7.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!d12_agx3_decode_ppp_viewport_payload(AGX_CHIP_G15G, gen7.bytes,
+                                               gen7.length, &decoded));
+   if (check_zero_fields(&decoded))
       return 1;
 
    for (unsigned count = 2; count <= 16; ++count) {

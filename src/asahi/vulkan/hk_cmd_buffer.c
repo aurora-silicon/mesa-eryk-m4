@@ -979,7 +979,13 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    agx_ppp_push(&ppp, VARYING_2, cfg);
    /* clang-format on */
 
-   agx_ppp_fini(&map, &ppp);
+   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
+       !agx_ppp_fini(dev->dev.chip, &map, &ppp)) {
+      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
    cs->current = map;
 
    cs->scissor = UTIL_DYNARRAY_INIT;

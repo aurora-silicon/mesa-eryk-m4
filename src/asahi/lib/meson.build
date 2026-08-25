@@ -12,8 +12,14 @@ libasahi_lib_files = files(
   'agx_ioto_core.h',
   'agx_ioto_imageblock_core.c',
   'agx_ioto_imageblock_core.h',
+  'agx_ioto_load_core.c',
+  'agx_ioto_load_core.h',
+  'agx_ioto_preshader_core.c',
+  'agx_ioto_preshader_core.h',
   'agx_ioto_profile_core.c',
   'agx_ioto_profile_core.h',
+  'agx_ioto_program_core.c',
+  'agx_ioto_program_core.h',
   'agx_ioto_state_core.c',
   'agx_ioto_state_core.h',
   'agx_bo.c',
@@ -242,6 +248,51 @@ if with_tests
   )
 
   test(
+    'asahi-agx-ioto-load-core',
+    executable(
+      'asahi-agx-ioto-load-core',
+      files(
+        'agx_ioto_core.c',
+        'agx_ioto_load_core.c',
+        'tests/test-agx-ioto-load-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx-ioto-preshader-core',
+    executable(
+      'asahi-agx-ioto-preshader-core',
+      files(
+        'agx_ioto_core.c',
+        'agx_ioto_preshader_core.c',
+        'tests/test-agx-ioto-preshader-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx-ioto-program-core',
+    executable(
+      'asahi-agx-ioto-program-core',
+      files(
+        'agx_ioto_core.c',
+        'agx_ioto_preshader_core.c',
+        'agx_ioto_profile_core.c',
+        'agx_ioto_state_core.c',
+        'agx_ioto_program_core.c',
+        'tests/test-agx-ioto-program-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'asahi-vdm-decode-core',
     executable(
       'asahi-vdm-decode-core',
@@ -375,6 +426,21 @@ if with_tests
         'tests/test-vdm-ppp-state-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-finalizer',
+    executable(
+      'asahi-ppp-finalizer',
+      files(
+        'agx_chip.c',
+        'agx_vdm_ppp_state_core.c',
+        'tests/test-ppp-fini.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      dependencies : [idep_agx_pack, idep_mesautil],
     ),
     suite : ['asahi'],
   )

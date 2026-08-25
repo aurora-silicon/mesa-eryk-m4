@@ -37,8 +37,9 @@ agx_ppp_viewport_load_le64(const uint8_t *src)
           ((uint64_t)agx_ppp_viewport_load_le32(src + 4) << 32);
 }
 
-static unsigned
-agx_ppp_viewport_count_shift(enum agx_chip chip)
+static bool
+agx_ppp_viewport_header_layout(enum agx_chip chip, uint32_t *base_header,
+                               unsigned *count_shift)
 {
    switch (chip) {
    case AGX_CHIP_G15G:
@@ -49,22 +50,30 @@ agx_ppp_viewport_count_shift(enum agx_chip chip)
    case AGX_CHIP_G16S:
    case AGX_CHIP_G16C:
    case AGX_CHIP_G17P:
-      return 12;
+      *base_header = AGX_PPP_VIEWPORT_PAYLOAD_GEN6_BASE_HEADER;
+      *count_shift = 12;
+      return true;
 
    case AGX_CHIP_G17G:
    case AGX_CHIP_G17S:
    case AGX_CHIP_G17C:
-      return 14;
+      *base_header = AGX_PPP_VIEWPORT_PAYLOAD_GEN7_BASE_HEADER;
+      *count_shift = 14;
+      return true;
 
    default:
-      return 0;
+      *base_header = 0;
+      *count_shift = 0;
+      return false;
    }
 }
 
 bool
 agx_ppp_viewport_payload_core_supported(enum agx_chip chip)
 {
-   return agx_ppp_viewport_count_shift(chip) != 0;
+   uint32_t base_header;
+   unsigned count_shift;
+   return agx_ppp_viewport_header_layout(chip, &base_header, &count_shift);
 }
 
 static size_t
@@ -86,8 +95,12 @@ agx_ppp_viewport_payload_core_pack(
        fields->viewport_count > AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS)
       return false;
 
-   const unsigned shift = agx_ppp_viewport_count_shift(chip);
-   const uint32_t header = AGX_PPP_VIEWPORT_PAYLOAD_BASE_HEADER |
+   uint32_t base_header;
+   unsigned shift;
+   if (!agx_ppp_viewport_header_layout(chip, &base_header, &shift))
+      return false;
+
+   const uint32_t header = base_header |
                            ((uint32_t)(fields->viewport_count - 1) << shift);
    size_t offset = 0;
 
@@ -140,11 +153,15 @@ agx_ppp_viewport_payload_core_unpack(
       return false;
 
    const uint8_t *raw = bytes;
-   const unsigned shift = agx_ppp_viewport_count_shift(chip);
+   uint32_t base_header;
+   unsigned shift;
+   if (!agx_ppp_viewport_header_layout(chip, &base_header, &shift))
+      return false;
+
    const uint32_t count_mask = UINT32_C(0xf) << shift;
    const uint32_t header = agx_ppp_viewport_load_le32(raw);
 
-   if ((header & ~count_mask) != AGX_PPP_VIEWPORT_PAYLOAD_BASE_HEADER)
+   if ((header & ~count_mask) != base_header)
       return false;
 
    const unsigned viewport_count = ((header & count_mask) >> shift) + 1;

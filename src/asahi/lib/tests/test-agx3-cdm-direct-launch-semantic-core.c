@@ -90,8 +90,8 @@ make_info(enum agx_chip chip, enum agx3_cdm_direct_grid_mode mode,
    const struct agx3_cdm_direct_template_fields fields = {
       .word0_bits_3_14 = 0xabc,
       .word1_bits_3_20 = 0x23456,
-      .word0_bits_23_28 = 0x2d,
-      .word0_bit19 = true,
+      .compiler_reply_word0_bit23 = true,
+      .subkernel_x_target_workitems = true,
    };
    if (!agx3_cdm_direct_template_build(&fields, &template_words))
       return (struct agx3_cdm_direct_launch_info){0};
@@ -117,10 +117,10 @@ test_template_contract(void)
    CHECK(template_is_zero(&template_words));
 
    const struct agx3_cdm_direct_template_fields max_fields = {
-      .word0_bits_3_14 = 0xfff,
+      .word0_bits_3_14 = 0xffe,
       .word1_bits_3_20 = 0x3ffff,
-      .word0_bits_23_28 = 0x3f,
-      .word0_bit19 = true,
+      .compiler_reply_word0_bit23 = true,
+      .subkernel_x_target_workitems = true,
    };
    CHECK(agx3_cdm_direct_template_build(&max_fields, &template_words));
    CHECK(template_words.word0 == AGX3_CDM_DIRECT_TEMPLATE_WORD0_MASK);
@@ -130,13 +130,16 @@ test_template_contract(void)
    CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
    CHECK(decoded.word0_bits_3_14 == max_fields.word0_bits_3_14);
    CHECK(decoded.word1_bits_3_20 == max_fields.word1_bits_3_20);
-   CHECK(decoded.word0_bits_23_28 == max_fields.word0_bits_23_28);
-   CHECK(decoded.word0_bit19 == max_fields.word0_bit19);
+   CHECK(decoded.compiler_reply_word0_bit23 ==
+         max_fields.compiler_reply_word0_bit23);
+   CHECK(decoded.subkernel_x_target_workitems ==
+         max_fields.subkernel_x_target_workitems);
 
    const struct agx3_cdm_direct_template_fields invalid_fields[] = {
+      {.word0_bits_3_14 = 1},
+      {.word0_bits_3_14 = 0xfff},
       {.word0_bits_3_14 = 0x1000},
       {.word1_bits_3_20 = 0x40000},
-      {.word0_bits_23_28 = 0x40},
    };
    for (unsigned i = 0; i < ARRAY_SIZE(invalid_fields); ++i) {
       memset(&template_words, 0xa5, sizeof(template_words));
@@ -178,6 +181,66 @@ test_template_contract(void)
    CHECK(!agx3_cdm_direct_template_decode(NULL, &decoded));
    CHECK(fields_are_zero(&decoded));
    CHECK(!agx3_cdm_direct_template_decode(&template_words, NULL));
+
+   const struct agx3_cdm_direct_template_sources source_fields = {
+      .load_shader_word0_source_bytes = 4,
+      .load_shader_word1_source_bytes = 5,
+      .compiler_reply_word0_bit23 = true,
+      .subkernel_x_target_workitems = true,
+   };
+   CHECK(agx3_cdm_direct_template_build_from_sources(&source_fields,
+                                                      &template_words));
+   CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
+   CHECK(decoded.word0_bits_3_14 == 2);
+   CHECK(decoded.word1_bits_3_20 == 2);
+   CHECK(decoded.compiler_reply_word0_bit23);
+   CHECK(decoded.subkernel_x_target_workitems);
+
+   const uint32_t word0_source_boundaries[][2] = {
+      {0, 0}, {1, 2}, {4, 2}, {5, 2}, {8, 2},
+      {9, 4}, {UINT32_C(0x3ff8), 0xffe},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(word0_source_boundaries); ++i) {
+      struct agx3_cdm_direct_template_sources sources = {
+         .load_shader_word0_source_bytes = word0_source_boundaries[i][0],
+      };
+      CHECK(agx3_cdm_direct_template_build_from_sources(&sources,
+                                                         &template_words));
+      CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
+      CHECK(decoded.word0_bits_3_14 == word0_source_boundaries[i][1]);
+   }
+
+   const uint32_t word1_source_boundaries[][2] = {
+      {0, 0}, {1, 1}, {4, 1}, {5, 2},
+      {UINT32_C(0xffffc), 0x3ffff},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(word1_source_boundaries); ++i) {
+      struct agx3_cdm_direct_template_sources sources = {
+         .load_shader_word1_source_bytes = word1_source_boundaries[i][0],
+      };
+      CHECK(agx3_cdm_direct_template_build_from_sources(&sources,
+                                                         &template_words));
+      CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
+      CHECK(decoded.word1_bits_3_20 == word1_source_boundaries[i][1]);
+   }
+
+   const struct agx3_cdm_direct_template_sources invalid_sources[] = {
+      {.load_shader_word0_source_bytes = UINT32_C(0x3ff9)},
+      {.load_shader_word0_source_bytes = UINT32_MAX},
+      {.load_shader_word1_source_bytes = UINT32_C(0xffffd)},
+      {.load_shader_word1_source_bytes = UINT32_MAX},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(invalid_sources); ++i) {
+      memset(&template_words, 0xa5, sizeof(template_words));
+      CHECK(!agx3_cdm_direct_template_build_from_sources(
+         &invalid_sources[i], &template_words));
+      CHECK(template_is_zero(&template_words));
+   }
+   memset(&template_words, 0xa5, sizeof(template_words));
+   CHECK(!agx3_cdm_direct_template_build_from_sources(NULL,
+                                                       &template_words));
+   CHECK(template_is_zero(&template_words));
+   CHECK(!agx3_cdm_direct_template_build_from_sources(&source_fields, NULL));
    return 0;
 }
 
@@ -185,7 +248,7 @@ static int
 test_exact_witness_and_targets(void)
 {
    static const uint8_t expected[AGX3_CDM_DIRECT_LAUNCH_SIZE] = {
-      0xe0, 0x55, 0x88, 0x16, 0xb0, 0xa2, 0x11, 0x12,
+      0xe0, 0x55, 0x88, 0x00, 0xb0, 0xa2, 0x11, 0x12,
       0x6a, 0xe2, 0x59, 0xd1, 0x34, 0x00, 0x00, 0x40,
       0x40, 0x30, 0x20, 0x10, 0x02, 0x00, 0x00, 0x00,
       0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
@@ -196,8 +259,8 @@ test_exact_witness_and_targets(void)
       const enum agx_chip chip = grounded_targets[t];
       CHECK(agx3_cdm_direct_launch_target_grounded(chip));
 
-      for (unsigned mode = AGX3_CDM_DIRECT_GRID_THREADGROUPS;
-           mode <= AGX3_CDM_DIRECT_GRID_THREADS; ++mode) {
+      {
+         const unsigned mode = AGX3_CDM_DIRECT_GRID_THREADGROUPS;
          for (unsigned dimensions = 1; dimensions <= 3; ++dimensions) {
             const struct agx3_cdm_direct_launch_info info =
                make_info(chip, (enum agx3_cdm_direct_grid_mode)mode,
@@ -210,9 +273,7 @@ test_exact_witness_and_targets(void)
                   info.template_words.word1);
             CHECK(agx3_cmdstream_load_le32(packed + 12) ==
                   (expected_dimension_word(dimensions) |
-                   (mode == AGX3_CDM_DIRECT_GRID_THREADGROUPS
-                       ? UINT32_C(1) << 30
-                       : 0)));
+                   (UINT32_C(1) << 30)));
 
             struct agx3_cdm_direct_launch_info decoded;
             CHECK(agx3_cdm_direct_launch_unpack(chip, packed, sizeof(packed),
@@ -235,9 +296,7 @@ test_exact_witness_and_targets(void)
                .word1_payload = info.template_words.word1,
                .pipeline = info.pipeline,
                .opaque_word3 = expected_dimension_word(dimensions) |
-                  (mode == AGX3_CDM_DIRECT_GRID_THREADGROUPS
-                      ? UINT32_C(1) << 30
-                      : 0),
+                               (UINT32_C(1) << 30),
                .global_size = {info.global_size[0], info.global_size[1],
                                info.global_size[2]},
                .local_size = {info.local_size[0], info.local_size[1],
@@ -347,15 +406,9 @@ test_enqueue_adjustment_and_g15x_bit(void)
 
       struct agx3_cdm_direct_launch_info threads =
          make_info(chip, AGX3_CDM_DIRECT_GRID_THREADS, 2);
-      CHECK(agx3_cdm_direct_launch_pack(&threads, packed));
-      agx3_cmdstream_store_le32(
-         packed + 12,
-         agx3_cmdstream_load_le32(packed + 12) | (UINT32_C(1) << 31));
-      struct agx3_cdm_direct_launch_info decoded;
-      memset(&decoded, 0xa5, sizeof(decoded));
-      CHECK(!agx3_cdm_direct_launch_unpack(chip, packed, sizeof(packed),
-                                           &decoded));
-      CHECK(info_is_zero(&decoded));
+      memset(packed, 0xa5, sizeof(packed));
+      CHECK(!agx3_cdm_direct_launch_pack(&threads, packed));
+      CHECK(bytes_are_zero(packed, sizeof(packed)));
    }
    return 0;
 }
@@ -534,19 +587,15 @@ test_record_bit_classification(void)
          agx3_cmdstream_load_le32(mutated + 12) ^ (UINT32_C(1) << bit));
       struct agx3_cdm_direct_launch_info decoded;
       memset(&decoded, 0xa5, sizeof(decoded));
-      const bool allowed = bit == 30;
-      CHECK(agx3_cdm_direct_launch_unpack(base.chip, mutated, sizeof(mutated),
-                                          &decoded) == allowed);
-      if (allowed)
-         CHECK(decoded.grid_mode == AGX3_CDM_DIRECT_GRID_THREADS);
-      else
-         CHECK(info_is_zero(&decoded));
+      CHECK(!agx3_cdm_direct_launch_unpack(base.chip, mutated,
+                                           sizeof(mutated), &decoded));
+      CHECK(info_is_zero(&decoded));
    }
 
    /* 2D and 3D differ by exactly bit 2; this is a canonical reclassification,
     * not malformed data. */
    struct agx3_cdm_direct_launch_info two_d = base;
-   two_d.grid_mode = AGX3_CDM_DIRECT_GRID_THREADS;
+   two_d.grid_mode = AGX3_CDM_DIRECT_GRID_THREADGROUPS;
    two_d.dimensions = 2;
    CHECK(agx3_cdm_direct_launch_pack(&two_d, canonical));
    agx3_cmdstream_store_le32(

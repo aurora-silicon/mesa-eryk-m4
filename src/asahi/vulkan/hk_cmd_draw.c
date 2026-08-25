@@ -2065,6 +2065,7 @@ hk_stencil_test_enabled(struct hk_cmd_buffer *cmd)
 static void
 hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
 
@@ -2192,7 +2193,12 @@ hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       }
    }
 
-   agx_ppp_fini(out, &ppp);
+   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
+       !agx_ppp_fini(dev->dev.chip, out, &ppp)) {
+      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   }
 }
 
 static enum agx_object_type
@@ -2330,6 +2336,7 @@ hk_default_sample_positions(unsigned nr_samples)
 static void
 hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const struct hk_rendering_state *render = &cmd->state.gfx.render;
    struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
 
@@ -2582,7 +2589,12 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       }
    }
 
-   agx_ppp_fini(out, &ppp);
+   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
+       !agx_ppp_fini(dev->dev.chip, out, &ppp)) {
+      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   }
 }
 
 /*
@@ -3199,10 +3211,17 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        IS_DIRTY(RS_DEPTH_CLIP_ENABLE) || IS_DIRTY(RS_DEPTH_CLAMP_ENABLE)) {
 
       hk_flush_vp_state(cmd, cs, &out);
+      if (vk_command_buffer_has_error(&cmd->vk)) {
+         cs->current = out;
+         return;
+      }
    }
 
    hk_flush_ppp_state(cmd, cs, &out);
    cs->current = out;
+
+   if (vk_command_buffer_has_error(&cmd->vk))
+      return;
 
    vk_dynamic_graphics_state_clear_dirty(dyn);
    gfx->shaders_dirty = 0;

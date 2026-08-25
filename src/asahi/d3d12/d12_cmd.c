@@ -15,6 +15,7 @@
 #include "d12_private.h"
 #include "d12_buffer_view_core.h"
 #include "d12_agx3_cmdstream_core.h"
+#include "d12_agx3_vdm_barrier_core.h"
 #include "d12_agx3_vdm_stream_terminate_core.h"
 #include "d12_command_validation_core.h"
 #include "d12_discard_core.h"
@@ -946,6 +947,44 @@ d12_list_check_stream_space(struct d12_cmd_list *list)
       return false;
    }
    return true;
+}
+
+/* Begin a graphics stream with the cache-invalidating barrier selected by
+ * the physical command-stream generation.  The AGX2 packet is intentionally
+ * kept byte-for-byte equivalent to the old direct pack, while AGX3 consumes
+ * the four-byte CommandEncodingNext witness shared with Honeykrisp. */
+static bool
+d12_list_emit_initial_vdm_barrier(struct d12_cmd_list *list)
+{
+   switch (agx_chip_command_stream_generation(list->device->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      agx_pack(list->stream_cur, VDM_BARRIER, cfg) {
+         cfg.usc_cache_inval = true;
+      }
+      list->stream_cur += AGX_VDM_BARRIER_LENGTH;
+      return true;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct d12_agx3_vdm_barrier barrier;
+      if (!d12_agx3_encode_vdm_barrier(list->device->dev.chip, &barrier))
+         break;
+
+      memcpy(list->stream_cur, barrier.bytes, barrier.length);
+      list->stream_cur += barrier.length;
+      return true;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      break;
+   }
+
+   mesa_loge("no grounded initial VDM barrier for %s",
+             agx_chip_name(list->device->dev.chip));
+   list->state = D12_LIST_ERROR;
+   return false;
 }
 
 /* Emit the conservative post-dispatch cache flush in the command-stream ISA
@@ -2408,10 +2447,8 @@ d12_list_begin_render(struct d12_cmd_list *list,
       return NULL;
 
    seg->stream_start = list->stream_cur - d12_list_stream_map(list);
-   agx_pack(list->stream_cur, VDM_BARRIER, cfg) {
-      cfg.usc_cache_inval = true;
-   }
-   list->stream_cur += AGX_VDM_BARRIER_LENGTH;
+   if (!d12_list_emit_initial_vdm_barrier(list))
+      return NULL;
 
    struct AGX_PPP_HEADER present = {
       .w_clamp = true,
@@ -2433,7 +2470,13 @@ d12_list_begin_render(struct d12_cmd_list *list,
    agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
    agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
    agx_ppp_push(&ppp, VARYING_2, cfg);
-   agx_ppp_fini(&list->stream_cur, &ppp);
+   if (!agx_ppp_legacy_payload_supported(list->device->dev.chip) ||
+       !agx_ppp_fini(list->device->dev.chip, &list->stream_cur, &ppp)) {
+      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                agx_chip_name(list->device->dev.chip));
+      list->state = D12_LIST_ERROR;
+      return NULL;
+   }
 
    list->segment_count++;
    list->render_open = true;
@@ -7489,18 +7532,18 @@ d12_fragment_state_cache_lookup(struct d12_cmd_list *list,
    return NULL;
 }
 
-static void
-d12_emit_ppp_state(uint8_t **out, uint64_t gpu, size_t size)
+static bool
+d12_emit_ppp_state(struct d12_cmd_list *list, uint8_t **out, uint64_t gpu,
+                   size_t size)
 {
-   assert(gpu < (1ull << 40));
-   assert((size % 4) == 0 && size / 4 < (1ull << 24));
+   if (agx_ppp_legacy_payload_supported(list->device->dev.chip) &&
+       agx_ppp_emit_state(list->device->dev.chip, out, gpu, size))
+      return true;
 
-   agx_pack(*out, PPP_STATE, cfg) {
-      cfg.pointer_hi = gpu >> 32;
-      cfg.pointer_lo = (uint32_t)gpu;
-      cfg.size_words = size / 4;
-   }
-   *out += AGX_PPP_STATE_LENGTH;
+   mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+             agx_chip_name(list->device->dev.chip));
+   list->state = D12_LIST_ERROR;
+   return false;
 }
 
 static void
@@ -8170,7 +8213,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             }
          }
 
-         agx_ppp_fini(&out, &ppp);
+         if (!agx_ppp_legacy_payload_supported(list->device->dev.chip) ||
+             !agx_ppp_fini(list->device->dev.chip, &out, &ppp)) {
+            mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                      agx_chip_name(list->device->dev.chip));
+            list->state = D12_LIST_ERROR;
+            return;
+         }
          seg->viewport_ppp_valid = true;
          seg->viewport_count = (uint8_t)viewport_count;
          seg->viewport_scissor_index = (uint16_t)scissor_index;
@@ -8221,7 +8270,9 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             : NULL;
 
       if (fragment_cache && fragment_cache->valid) {
-         d12_emit_ppp_state(&out, fragment_cache->gpu, fragment_cache->size);
+         if (!d12_emit_ppp_state(list, &out, fragment_cache->gpu,
+                                 fragment_cache->size))
+            return;
       } else {
 
          /* Field order is fixed by AGX_PPP_HEADER and the pushes below must
@@ -8361,7 +8412,13 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             cfg.count = uvs->size;
          }
 
-         agx_ppp_fini(&out, &ppp);
+         if (!agx_ppp_legacy_payload_supported(list->device->dev.chip) ||
+             !agx_ppp_fini(list->device->dev.chip, &out, &ppp)) {
+            mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                      agx_chip_name(list->device->dev.chip));
+            list->state = D12_LIST_ERROR;
+            return;
+         }
          if (fragment_cache) {
             *fragment_cache = (struct d12_fragment_state_cache_entry){
                .valid = true,

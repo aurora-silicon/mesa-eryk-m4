@@ -7,16 +7,14 @@
 
 #include "asahi/genxml/agx_pack.h"
 #include "agx_bo.h"
+#include "agx_vdm_ppp_state_core.h"
 
 /* Opaque structure representing a PPP update */
 struct agx_ppp_update {
    uint8_t *head;
    uint64_t gpu_base;
    size_t total_size;
-
-#ifndef NDEBUG
    uint8_t *cpu_base;
-#endif
 };
 
 ALWAYS_INLINE static size_t
@@ -109,9 +107,7 @@ agx_new_ppp_update(struct agx_ptr out, size_t size,
       .head = out.cpu,
       .gpu_base = out.gpu,
       .total_size = size,
-#ifndef NDEBUG
       .cpu_base = out.cpu,
-#endif
    };
 
    agx_ppp_push(&ppp, PPP_HEADER, cfg) {
@@ -121,27 +117,96 @@ agx_new_ppp_update(struct agx_ptr out, size_t size,
    return ppp;
 }
 
-static inline void
-agx_ppp_fini(uint8_t **out, struct agx_ppp_update *ppp)
+/*
+ * Emit the VDM PPP State Update selected by the physical command-stream
+ * generation.  The AGX2 path deliberately retains the generated legacy
+ * packer.  Grounded AGX3 identities use the exact shared eight-byte core;
+ * unknown and ungrounded identities fail closed.
+ *
+ * The cursor and pointed-to bytes are unchanged on failure.
+ */
+static inline bool
+agx_ppp_emit_state(enum agx_chip chip, uint8_t **out, uint64_t gpu_base,
+                   size_t size)
 {
-   size_t size = ppp->total_size;
-   assert((size % 4) == 0);
-   size_t size_words = size / 4;
+   if (!out || !*out || (size & 3) != 0 ||
+       gpu_base >= (UINT64_C(1) << 40) || (gpu_base & UINT64_C(3)) != 0)
+      return false;
 
-#ifndef NDEBUG
-   assert(size == (ppp->head - ppp->cpu_base) && "mismatched ppp size");
-#endif
+   const size_t size_words = size / 4;
+   if (size_words > AGX_VDM_PPP_STATE_CORE_MAX_SIZE_WORDS)
+      return false;
 
-   assert(ppp->gpu_base < (1ull << 40));
-   assert(size_words < (1ull << 24));
+   uint8_t staged[AGX_PPP_STATE_LENGTH];
+   switch (agx_chip_command_stream_generation(chip)) {
+   case AGX_CS_GENERATION_AGX2: {
+      struct agx_ppp_state_packed packed;
+      const struct AGX_PPP_STATE cfg = {
+         .pointer_hi = gpu_base >> 32,
+         .pointer_lo = (uint32_t)gpu_base,
+         .size_words = (uint32_t)size_words,
+      };
+      AGX_PPP_STATE_pack(packed.opaque, &cfg);
+      memcpy(staged, &packed, sizeof(staged));
+      break;
+   }
 
-   agx_pack(*out, PPP_STATE, cfg) {
-      cfg.pointer_hi = (ppp->gpu_base >> 32);
-      cfg.pointer_lo = (uint32_t)ppp->gpu_base;
-      cfg.size_words = size_words;
-   };
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct agx_vdm_ppp_state_core packed;
+      if (sizeof(staged) != sizeof(packed.bytes) ||
+          !agx_vdm_ppp_state_core_pack(chip, gpu_base, (uint32_t)size_words,
+                                       &packed))
+         return false;
 
+      memcpy(staged, packed.bytes, sizeof(staged));
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      return false;
+   }
+
+   memcpy(*out, staged, sizeof(staged));
    *out += AGX_PPP_STATE_LENGTH;
+   return true;
+}
+
+/*
+ * Whether payloads built with the legacy AGX_PPP_HEADER/push helpers may be
+ * referenced by a live stream.  The recovered Gen6 G15/HAL200 layouts retain
+ * that ordering.  HAL300 moves header selectors and some blocks, so its exact
+ * outer pointer representation is intentionally not enough to admit a legacy
+ * inner payload.
+ */
+static inline bool
+agx_ppp_legacy_payload_supported(enum agx_chip chip)
+{
+   switch (agx_chip_command_stream_generation(chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      return true;
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+      return agx_vdm_ppp_state_core_supported(chip);
+   case AGX_CS_GENERATION_HAL300:
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      return false;
+   }
+}
+
+/* Finalize one completely populated PPP update and append its state record. */
+static inline bool
+agx_ppp_fini(enum agx_chip chip, uint8_t **out, struct agx_ppp_update *ppp)
+{
+   if (!ppp || !ppp->head || !ppp->cpu_base ||
+       (uintptr_t)ppp->head < (uintptr_t)ppp->cpu_base ||
+       (uintptr_t)ppp->head - (uintptr_t)ppp->cpu_base != ppp->total_size)
+      return false;
+
+   return agx_ppp_emit_state(chip, out, ppp->gpu_base, ppp->total_size);
 }
 
 static void

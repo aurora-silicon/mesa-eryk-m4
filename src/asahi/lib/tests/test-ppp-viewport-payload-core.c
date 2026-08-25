@@ -153,7 +153,7 @@ check_exact_witnesses(void)
    memset(expected_gen6, 0, sizeof(expected_gen6));
    memset(expected_gen7, 0, sizeof(expected_gen7));
    expected_gen6[1] = 0x1c;
-   expected_gen7[1] = 0x4c;
+   expected_gen7[1] = 0x70;
    for (unsigned i = 4; i < sizeof(expected_gen6); ++i) {
       expected_gen6[i] = (uint8_t)(i - 4);
       expected_gen7[i] = (uint8_t)(i - 4);
@@ -187,7 +187,11 @@ check_all_counts_and_targets(void)
 {
    for (unsigned c = 0;
         c < sizeof(supported_chips) / sizeof(supported_chips[0]); ++c) {
-      const unsigned shift = c < 8 ? 12 : 14;
+      const bool gen7 = c >= 8;
+      const unsigned shift = gen7 ? 14 : 12;
+      const uint32_t base_header =
+         gen7 ? AGX_PPP_VIEWPORT_PAYLOAD_GEN7_BASE_HEADER
+              : AGX_PPP_VIEWPORT_PAYLOAD_GEN6_BASE_HEADER;
 
       for (unsigned count = 1; count <= 16; ++count) {
          struct agx_ppp_viewport_payload_fields fields;
@@ -199,7 +203,7 @@ check_all_counts_and_targets(void)
                                                   &encoded));
          CHECK(encoded.length == 8u + (32u * count));
          const uint32_t expected_header =
-            AGX_PPP_VIEWPORT_PAYLOAD_BASE_HEADER | ((count - 1) << shift);
+            base_header | ((count - 1) << shift);
          CHECK(encoded.bytes[0] == (uint8_t)expected_header);
          CHECK(encoded.bytes[1] == (uint8_t)(expected_header >> 8));
          CHECK(encoded.bytes[2] == (uint8_t)(expected_header >> 16));
@@ -261,18 +265,20 @@ check_generation_boundary(void)
    CHECK(agx_ppp_viewport_payload_core_pack(AGX_CHIP_G17S, &fields, &gen7));
    CHECK(gen6.length == AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH);
    CHECK(gen7.length == gen6.length);
-   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) == 0);
-   CHECK(agx_ppp_viewport_payload_core_unpack(AGX_CHIP_G15G, gen7.bytes,
-                                              gen7.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) != 0);
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!agx_ppp_viewport_payload_core_unpack(AGX_CHIP_G15G, gen7.bytes,
+                                               gen7.length, &decoded));
+   if (check_zero_fields(&decoded))
       return 1;
-   CHECK(agx_ppp_viewport_payload_core_unpack(AGX_CHIP_G17S, gen6.bytes,
-                                              gen6.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!agx_ppp_viewport_payload_core_unpack(AGX_CHIP_G17S, gen6.bytes,
+                                               gen6.length, &decoded));
+   if (check_zero_fields(&decoded))
       return 1;
 
-   /* N=1 has a zero count field and is truthfully indistinguishable.  Every
-    * other count is rejected cross-generation by the exact derived length. */
+   /* Every count is generation-specific because Gen7 also moved the two
+    * selector bits surrounding the count field. */
    for (unsigned count = 2; count <= 16; ++count) {
       init_sequence_fields(&fields, count);
       CHECK(agx_ppp_viewport_payload_core_pack(AGX_CHIP_G15G, &fields, &gen6));

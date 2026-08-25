@@ -24,10 +24,10 @@ struct d12_agx3_vdm_barrier {
 };
 
 /*
- * Research/validation bridge for only the canonical four-byte AGX3 VDM
- * memory barrier.  The ungrounded aggregate G15X multiple-AGC form remains
- * closed, as do command allocation, live emission, submission, AGX3 device
- * admission, and D3D12 capabilities.
+ * Bridge for only the canonical four-byte AGX3 VDM memory barrier.  D3D12's
+ * render-stream prologue emits this exact form.  The ungrounded aggregate
+ * G15X multiple-AGC form remains closed, as do AGX3 device admission and
+ * D3D12 capability advertisement.
  */
 bool d12_agx3_encode_vdm_barrier(enum agx_chip chip,
                                  struct d12_agx3_vdm_barrier *out);

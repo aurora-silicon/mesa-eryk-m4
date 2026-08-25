@@ -572,6 +572,24 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
     "$repo_root/src/asahi/genxml/cmdbuf.xml" \
     "$repo_root/src/asahi/genxml/agx_pack_header.h" \
     > "$out/agx_pack.h"
+
+# agx_ppp.h uses the installed-style include path while the older standalone
+# packing tests include the generated header directly.
+mkdir -p "$out/asahi/genxml"
+cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions -Wno-unused-parameter \
+    -Wno-gnu-statement-expression-from-macro-expansion -Wno-unused-function \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_chip.c" \
+    "$repo_root/src/asahi/lib/agx_vdm_ppp_state_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-ppp-fini.c" \
+    -o "$out/agx_ppp_finalizer_tests"
+"$out/agx_ppp_finalizer_tests"
+
 "$cc" "$common[@]" \
     -Wno-c23-extensions -Wno-unused-parameter \
     -Wno-gnu-statement-expression-from-macro-expansion -Wno-unused-function \
@@ -648,6 +666,36 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
 "$cc" "$common[@]" \
     -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_load_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx-ioto-load-core.c" \
+    -o "$out/agx_ioto_load_core_tests"
+"$out/agx_ioto_load_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx-ioto-preshader-core.c" \
+    -o "$out/agx_ioto_preshader_core_tests"
+"$out/agx_ioto_preshader_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_program_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx-ioto-program-core.c" \
+    -o "$out/agx_ioto_program_core_tests"
+"$out/agx_ioto_program_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
     -I"$repo_root/src/asahi/vulkan" \
     "$repo_root/src/asahi/lib/agx_ioto_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
@@ -668,14 +716,41 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
 "$out/hk_agx3_ioto_profile_core_tests"
 
 "$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ioto-preshader-core.c" \
+    -o "$out/hk_agx3_ioto_preshader_core_tests"
+"$out/hk_agx3_ioto_preshader_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_program_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_ioto_program_core.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ioto-program-core.c" \
+    -o "$out/hk_agx3_ioto_program_core_tests"
+"$out/hk_agx3_ioto_program_core_tests"
+
+"$cc" "$common[@]" \
     -Wno-c23-extensions -Wno-unused-parameter \
     -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
     -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx3_cdm_decode_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_program_core.c" \
     "$repo_root/src/asahi/d3d12/tests/d12_agx3_cmdstream_core_tests.c" \
     -o "$out/d12_agx3_cmdstream_core_tests"
 "$out/d12_agx3_cmdstream_core_tests"

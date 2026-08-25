@@ -10,7 +10,9 @@
 #include "asahi/genxml/agx3_cmdstream.h"
 #include "asahi/lib/agx3_cdm_decode_core.h"
 #include "asahi/lib/agx_ioto_core.h"
+#include "asahi/lib/agx_ioto_preshader_core.h"
 #include "asahi/lib/agx_ioto_profile_core.h"
+#include "asahi/lib/agx_ioto_program_core.h"
 #include "asahi/lib/agx_ioto_state_core.h"
 
 #include <stdbool.h>
@@ -55,6 +57,13 @@ struct d12_agx3_ioto_profile_encoding {
 struct d12_agx3_ioto_state_tail_encoding {
    uint8_t bytes[AGX_IOTO_STATE_TAIL_MAX_SIZE];
    uint8_t length;
+};
+
+struct d12_agx3_ioto_preshader_encoding {
+   enum agx_ioto_preshader_mode mode;
+   size_t length;
+   size_t branch_offset;
+   uint8_t bytes[AGX_IOTO_PRESHADER_MAX_SUFFIX_SIZE];
 };
 
 /* Strict D3D12 bridge into the shared, byte-preserving Ioto classifier. */
@@ -161,6 +170,63 @@ d12_agx3_encode_ioto_state_tail_shader(
 
    struct d12_agx3_ioto_state_tail_encoding staged = {
       .length = (uint8_t)packed.length,
+   };
+   memcpy(staged.bytes, packed.bytes, packed.length);
+   *out = staged;
+   return true;
+}
+
+/*
+ * Host-only bridge into the bounded no-PIXREL Ioto program composer.  The
+ * preshader is the sole terminal suffix after body, profile and state tail.
+ * This neither publishes a D3D feature nor admits an AGX3 device.
+ */
+static inline bool
+d12_agx3_encode_ioto_program_no_pixrel(
+   enum agx_chip chip, uint64_t program_va, const void *body, size_t body_size,
+   const struct agx_ioto_state_tail *tail,
+   const struct agx_ioto_profile_control *profile,
+   const struct agx_ioto_preshader_desc *preshader, void *output,
+   size_t capacity, size_t *written)
+{
+   return agx_ioto_program_compose_no_pixrel(
+      chip, program_va, body, body_size, tail, profile, preshader, output,
+      capacity, written);
+}
+
+/* Convenience bridge selecting the four-byte absent suffix. */
+static inline bool
+d12_agx3_encode_ioto_straight_line_program(
+   enum agx_chip chip, uint64_t program_va, const void *body, size_t body_size,
+   const struct agx_ioto_state_tail *tail,
+   const struct agx_ioto_profile_control *profile, void *output,
+   size_t capacity, size_t *written)
+{
+   return agx_ioto_straight_line_program_compose(
+      chip, program_va, body, body_size, tail, profile, output, capacity,
+      written);
+}
+
+/*
+ * Host-only bridge for the suffix appended after LoadShader and PIXREL.
+ * The output and all target admission remain owned by the shared strict core.
+ */
+static inline bool
+d12_agx3_encode_ioto_preshader_suffix(
+   enum agx_chip chip, const struct agx_ioto_preshader_desc *desc,
+   struct d12_agx3_ioto_preshader_encoding *out)
+{
+   if (!out)
+      return false;
+
+   struct agx_ioto_preshader_output packed;
+   if (!agx_ioto_preshader_emit(chip, desc, &packed))
+      return false;
+
+   struct d12_agx3_ioto_preshader_encoding staged = {
+      .mode = packed.mode,
+      .length = packed.length,
+      .branch_offset = packed.branch_offset,
    };
    memcpy(staged.bytes, packed.bytes, packed.length);
    *out = staged;

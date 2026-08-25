@@ -343,6 +343,287 @@ test_ioto_profile(void)
    return 0;
 }
 
+static int
+test_ioto_program_bridge(void)
+{
+   static const enum agx_chip targets[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   static const uint8_t body[] = {0x06, 0x00};
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const bool gpu1 = t >= 8;
+      const struct agx_ioto_state_tail tail = make_ioto_state_tail(
+         gpu1, AGX_IOTO_STATE_TAIL_TYPE1);
+      const struct agx_ioto_profile_control profile = {
+         .chip = targets[t],
+         .payload0 = gpu1 ? UINT16_C(0x9088) : UINT16_C(0x0555),
+         .payload1 = gpu1 ? UINT16_C(0xa800) : 0,
+      };
+      uint8_t shared[64], encoded[64];
+      memset(shared, 0xa5, sizeof(shared));
+      memset(encoded, 0x5a, sizeof(encoded));
+      size_t shared_written = SIZE_MAX, encoded_written = SIZE_MAX;
+
+      CHECK(agx_ioto_straight_line_program_compose(
+         targets[t], UINT64_C(0x100000040), body, sizeof(body), &tail,
+         &profile, shared, sizeof(shared), &shared_written));
+      CHECK(d12_agx3_encode_ioto_straight_line_program(
+         targets[t], UINT64_C(0x100000040), body, sizeof(body), &tail,
+         &profile, encoded, sizeof(encoded), &encoded_written));
+      CHECK(encoded_written == shared_written);
+      CHECK(memcmp(encoded, shared, shared_written) == 0);
+
+      uint8_t packed_profile[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+      struct agx_ioto_state_tail_output packed_tail;
+      CHECK(agx_ioto_profile_control_pack(&profile, packed_profile));
+      CHECK(agx_ioto_state_tail_pack(targets[t], &tail, &packed_tail));
+      const size_t profile_size = agx_ioto_profile_control_size(targets[t]);
+      CHECK(memcmp(encoded, body, sizeof(body)) == 0);
+      CHECK(memcmp(encoded + sizeof(body), packed_profile, profile_size) == 0);
+      CHECK(memcmp(encoded + sizeof(body) + profile_size, packed_tail.bytes,
+                   packed_tail.length) == 0);
+      CHECK(memcmp(encoded + encoded_written - AGX_IOTO_PROGRAM_TERMINATE_SIZE,
+                   "\x0e\x00\x00\x00",
+                   AGX_IOTO_PROGRAM_TERMINATE_SIZE) == 0);
+      CHECK(encoded[encoded_written] == 0x5a);
+   }
+
+   struct agx_ioto_state_tail tail =
+      make_ioto_state_tail(false, AGX_IOTO_STATE_TAIL_TYPE1);
+   const struct agx_ioto_profile_control profile = {.chip = AGX_CHIP_G15G};
+   uint8_t output[64], before[64];
+   memset(output, 0xa5, sizeof(output));
+   memcpy(before, output, sizeof(before));
+   size_t written = 0x1234;
+   CHECK(!d12_agx3_encode_ioto_straight_line_program(
+      AGX_CHIP_G14X, UINT64_C(0x100000040), body, sizeof(body), &tail,
+      &profile, output, sizeof(output), &written));
+   CHECK(written == 0x1234);
+   CHECK(memcmp(output, before, sizeof(output)) == 0);
+   CHECK(!d12_agx3_encode_ioto_straight_line_program(
+      AGX_CHIP_G15G, UINT64_C(0x100000041), body, sizeof(body), &tail,
+      &profile, output, sizeof(output), &written));
+   CHECK(written == 0x1234);
+   CHECK(memcmp(output, before, sizeof(output)) == 0);
+   return 0;
+}
+
+static int
+test_ioto_preshader_bridge(void)
+{
+   static const enum agx_chip targets[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   static const uint8_t inline_code[] = {
+      0x1b, 0x0c, 0x06, 0x00, 0x06, 0x00,
+   };
+   uint8_t external_code[AGX_IOTO_PRESHADER_INLINE_LIMIT + 2] = {0};
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const bool gpu1 = t >= 8;
+      struct agx_ioto_preshader_desc desc = {
+         .code = inline_code,
+         .code_size = sizeof(inline_code),
+         .external_va = UINT64_C(0x123456789abc),
+      };
+      struct agx_ioto_preshader_output shared;
+      struct d12_agx3_ioto_preshader_encoding encoded;
+      CHECK(agx_ioto_preshader_emit(targets[t], &desc, &shared));
+      CHECK(d12_agx3_encode_ioto_preshader_suffix(targets[t], &desc,
+                                                  &encoded));
+      CHECK(encoded.mode == AGX_IOTO_PRESHADER_MODE_INLINE);
+      CHECK(encoded.length == 2);
+      CHECK(encoded.branch_offset == AGX_IOTO_PRESHADER_NO_BRANCH);
+      CHECK(encoded.mode == shared.mode && encoded.length == shared.length);
+      CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+
+      desc.code = external_code;
+      desc.code_size = sizeof(external_code);
+      desc.request_prelude = true;
+      CHECK(agx_ioto_preshader_emit(targets[t], &desc, &shared));
+      CHECK(d12_agx3_encode_ioto_preshader_suffix(targets[t], &desc,
+                                                  &encoded));
+      CHECK(encoded.mode == AGX_IOTO_PRESHADER_MODE_EXTERNAL);
+      CHECK(encoded.length == AGX_IOTO_PRESHADER_PRELUDE_SIZE +
+                                   AGX_IOTO_PRESHADER_BRANCH_SIZE);
+      CHECK(encoded.branch_offset == AGX_IOTO_PRESHADER_PRELUDE_SIZE);
+      CHECK(encoded.bytes[0] == (gpu1 ? 0x04 : 0x0c));
+      CHECK(encoded.bytes[1] == 0x10);
+      CHECK(encoded.mode == shared.mode && encoded.length == shared.length);
+      CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+
+      struct agx_ioto_record branch;
+      size_t consumed;
+      CHECK(d12_agx3_validate_ioto_record(
+         targets[t], gpu1 ? AGX_IOTO_KIND_B_EP1 : AGX_IOTO_KIND_B_EP0,
+         encoded.bytes + encoded.branch_offset,
+         encoded.length - encoded.branch_offset, &branch, &consumed));
+      CHECK(consumed == AGX_IOTO_PRESHADER_BRANCH_SIZE);
+
+      desc.force_external = true;
+      desc.external_va = AGX_IOTO_PRESHADER_NO_VA;
+      CHECK(d12_agx3_encode_ioto_preshader_suffix(targets[t], &desc,
+                                                  &encoded));
+      CHECK(encoded.mode == AGX_IOTO_PRESHADER_MODE_ABSENT);
+      CHECK(encoded.length == AGX_IOTO_PRESHADER_ABSENT_SIZE);
+      CHECK(memcmp(encoded.bytes, "\x0e\x00\x00\x00", 4) == 0);
+   }
+
+   struct agx_ioto_preshader_desc invalid = {
+      .code = external_code,
+      .code_size = sizeof(external_code),
+      .external_va = 1,
+   };
+   struct d12_agx3_ioto_preshader_encoding output, before;
+   memset(&output, 0xa5, sizeof(output));
+   before = output;
+   CHECK(!d12_agx3_encode_ioto_preshader_suffix(AGX_CHIP_G15G, &invalid,
+                                                 &output));
+   CHECK(memcmp(&output, &before, sizeof(output)) == 0);
+   invalid.external_va = 0;
+   CHECK(!d12_agx3_encode_ioto_preshader_suffix(AGX_CHIP_G14X, &invalid,
+                                                 &output));
+   CHECK(memcmp(&output, &before, sizeof(output)) == 0);
+   CHECK(!d12_agx3_encode_ioto_preshader_suffix(AGX_CHIP_G15G, &invalid,
+                                                 NULL));
+   return 0;
+}
+
+static int
+test_ioto_full_program_bridge(void)
+{
+   static const enum agx_chip targets[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   static const uint8_t body[] = {0x06, 0x00};
+   static const uint8_t inline_code[] = {
+      0x1b, 0x0c, 0x06, 0x00, 0x06, 0x00,
+   };
+   uint8_t external_code[AGX_IOTO_PRESHADER_INLINE_LIMIT + 2] = {0};
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const bool gpu1 = t >= 8;
+      const struct agx_ioto_state_tail tail = make_ioto_state_tail(
+         gpu1, AGX_IOTO_STATE_TAIL_TYPE1);
+      const struct agx_ioto_profile_control profile = {
+         .chip = targets[t],
+         .payload0 = gpu1 ? UINT16_C(0x9088) : UINT16_C(0x0555),
+         .payload1 = gpu1 ? UINT16_C(0xa800) : 0,
+      };
+      const struct agx_ioto_preshader_desc preshaders[] = {
+         {
+            .external_va = AGX_IOTO_PRESHADER_NO_VA,
+         },
+         {
+            .code = inline_code,
+            .code_size = sizeof(inline_code),
+            .external_va = UINT64_C(0x123456789abc),
+         },
+         {
+            .code = external_code,
+            .code_size = sizeof(external_code),
+            .external_va = UINT64_C(0x123456789abc),
+            .request_prelude = true,
+         },
+      };
+
+      for (unsigned p = 0; p < sizeof(preshaders) / sizeof(preshaders[0]);
+           ++p) {
+         uint8_t direct[128], encoded[128];
+         memset(direct, 0xa5, sizeof(direct));
+         memset(encoded, 0x5a, sizeof(encoded));
+         size_t direct_written = SIZE_MAX, encoded_written = SIZE_MAX;
+         CHECK(agx_ioto_program_compose_no_pixrel(
+            targets[t], UINT64_C(0x100000040), body, sizeof(body), &tail,
+            &profile, &preshaders[p], direct, sizeof(direct),
+            &direct_written));
+         CHECK(d12_agx3_encode_ioto_program_no_pixrel(
+            targets[t], UINT64_C(0x100000040), body, sizeof(body), &tail,
+            &profile, &preshaders[p], encoded, sizeof(encoded),
+            &encoded_written));
+         CHECK(encoded_written == direct_written);
+         CHECK(memcmp(encoded, direct, direct_written) == 0);
+
+         uint8_t packed_profile[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+         struct agx_ioto_state_tail_output packed_tail;
+         struct agx_ioto_preshader_output packed_suffix;
+         CHECK(agx_ioto_profile_control_pack(&profile, packed_profile));
+         CHECK(agx_ioto_state_tail_pack(targets[t], &tail, &packed_tail));
+         CHECK(agx_ioto_preshader_emit(targets[t], &preshaders[p],
+                                       &packed_suffix));
+
+         const size_t profile_size =
+            agx_ioto_profile_control_size(targets[t]);
+         const size_t profile_offset = sizeof(body);
+         const size_t tail_offset = profile_offset + profile_size;
+         const size_t suffix_offset = tail_offset + packed_tail.length;
+         CHECK(encoded_written == suffix_offset + packed_suffix.length);
+         CHECK(memcmp(encoded, body, sizeof(body)) == 0);
+         CHECK(memcmp(encoded + profile_offset, packed_profile,
+                      profile_size) == 0);
+         CHECK(memcmp(encoded + tail_offset, packed_tail.bytes,
+                      packed_tail.length) == 0);
+         CHECK(memcmp(encoded + suffix_offset, packed_suffix.bytes,
+                      packed_suffix.length) == 0);
+         CHECK(encoded[encoded_written] == 0x5a);
+
+         if (p == 0) {
+            CHECK(packed_suffix.mode == AGX_IOTO_PRESHADER_MODE_ABSENT);
+            CHECK(packed_suffix.length == AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+            CHECK(memcmp(encoded + suffix_offset, "\x0e\x00\x00\x00",
+                         AGX_IOTO_PROGRAM_TERMINATE_SIZE) == 0);
+         } else if (p == 1) {
+            CHECK(packed_suffix.mode == AGX_IOTO_PRESHADER_MODE_INLINE);
+            CHECK(packed_suffix.length == 2);
+            CHECK(memcmp(encoded + suffix_offset, "\x1b\x0c", 2) == 0);
+         } else {
+            CHECK(packed_suffix.mode == AGX_IOTO_PRESHADER_MODE_EXTERNAL);
+            CHECK(packed_suffix.length == AGX_IOTO_PRESHADER_PRELUDE_SIZE +
+                                             AGX_IOTO_PRESHADER_BRANCH_SIZE);
+            CHECK(packed_suffix.branch_offset ==
+                  AGX_IOTO_PRESHADER_PRELUDE_SIZE);
+            CHECK(encoded[suffix_offset] == (gpu1 ? 0x04 : 0x0c));
+            CHECK(encoded[suffix_offset + 1] == 0x10);
+
+            struct agx_ioto_record branch;
+            size_t consumed;
+            CHECK(d12_agx3_validate_ioto_record(
+               targets[t], gpu1 ? AGX_IOTO_KIND_B_EP1 : AGX_IOTO_KIND_B_EP0,
+               encoded + suffix_offset + packed_suffix.branch_offset,
+               encoded_written - suffix_offset - packed_suffix.branch_offset,
+               &branch, &consumed));
+            CHECK(consumed == AGX_IOTO_PRESHADER_BRANCH_SIZE);
+         }
+      }
+   }
+
+   const struct agx_ioto_state_tail tail =
+      make_ioto_state_tail(false, AGX_IOTO_STATE_TAIL_TYPE1);
+   const struct agx_ioto_profile_control profile = {.chip = AGX_CHIP_G15G};
+   const struct agx_ioto_preshader_desc invalid = {
+      .code = external_code,
+      .code_size = sizeof(external_code),
+      .external_va = 1,
+   };
+   uint8_t output[64], before[64];
+   memset(output, 0xa5, sizeof(output));
+   memcpy(before, output, sizeof(before));
+   size_t written = 0x1234;
+   CHECK(!d12_agx3_encode_ioto_program_no_pixrel(
+      AGX_CHIP_G15G, UINT64_C(0x100000040), body, sizeof(body), &tail,
+      &profile, &invalid, output, sizeof(output), &written));
+   CHECK(written == 0x1234);
+   CHECK(memcmp(output, before, sizeof(output)) == 0);
+   return 0;
+}
+
 int
 main(void)
 {
@@ -351,6 +632,12 @@ main(void)
    if (test_ioto_state_tail())
       return 1;
    if (test_ioto_profile())
+      return 1;
+   if (test_ioto_program_bridge())
+      return 1;
+   if (test_ioto_preshader_bridge())
+      return 1;
+   if (test_ioto_full_program_bridge())
       return 1;
 
    const enum agx_chip launch_targets[] = {

@@ -1,0 +1,429 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "../agx_ioto_program_core.h"
+
+#include "../agx_ioto_core.h"
+
+#include <stdio.h>
+#include <string.h>
+
+static uint64_t checks;
+
+#define CHECK(x)                                                               \
+   do {                                                                        \
+      ++checks;                                                                \
+      if (!(x)) {                                                              \
+         fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #x);                \
+         return 1;                                                             \
+      }                                                                        \
+   } while (0)
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+static const enum agx_chip targets[] = {
+   AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+   AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+   AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+};
+
+static bool
+is_gpu1(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+          chip == AGX_CHIP_G17C;
+}
+
+static struct agx_ioto_state_tail
+make_tail(enum agx_chip chip, enum agx_ioto_state_tail_type type)
+{
+   struct agx_ioto_state_tail tail = {.type = type};
+   if (is_gpu1(chip)) {
+      if (type == AGX_IOTO_STATE_TAIL_TYPE0) {
+         tail.speclm.f[0] = 3;
+         tail.speclm.f[1] = 165;
+      }
+      tail.ldshdr.f[5] = 3;
+      tail.ldshdr.f[6] = 107;
+      tail.spectpr.f[0] = 3;
+      tail.spectpr.f[1] = 166;
+   } else {
+      tail.ldshdr.f[23] = 1;
+   }
+   tail.ldshdr.f[0] = UINT64_C(0x123456780);
+   return tail;
+}
+
+static int
+test_exact_order(void)
+{
+   static const uint8_t body[] = {0x06, 0x00};
+
+   for (size_t t = 0; t < ARRAY_SIZE(targets); ++t) {
+      const enum agx_chip chip = targets[t];
+      for (unsigned type = 0; type <= 1; ++type) {
+         const struct agx_ioto_state_tail tail =
+            make_tail(chip, (enum agx_ioto_state_tail_type)type);
+         const struct agx_ioto_profile_control profile = {
+            .chip = chip,
+            .payload0 = is_gpu1(chip) ? UINT16_C(0x8098)
+                                     : UINT16_C(0x0555),
+            .payload1 = is_gpu1(chip) ? UINT16_C(0xa400) : 0,
+         };
+         struct agx_ioto_state_tail_output packed_tail;
+         uint8_t packed_profile[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+         CHECK(agx_ioto_state_tail_pack(chip, &tail, &packed_tail));
+         CHECK(agx_ioto_profile_control_pack(&profile, packed_profile));
+         const size_t profile_size = agx_ioto_profile_control_size(chip);
+         const size_t expected = sizeof(body) + packed_tail.length +
+                                 profile_size +
+                                 AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+
+         uint8_t output[64];
+         memset(output, 0xa5, sizeof(output));
+         size_t written = SIZE_MAX;
+         CHECK(agx_ioto_straight_line_program_compose(
+            chip, UINT64_C(0x100000040), body, sizeof(body), &tail, &profile,
+            output, expected, &written));
+
+         CHECK(written == expected);
+         CHECK(memcmp(output, body, sizeof(body)) == 0);
+         CHECK(memcmp(output + sizeof(body), packed_profile, profile_size) ==
+               0);
+         CHECK(memcmp(output + sizeof(body) + profile_size, packed_tail.bytes,
+                      packed_tail.length) == 0);
+         static const uint8_t terminate[] = {0x0e, 0x00, 0x00, 0x00};
+         CHECK(memcmp(output + expected - sizeof(terminate), terminate,
+                      sizeof(terminate)) == 0);
+         CHECK(output[expected] == 0xa5);
+      }
+   }
+
+   return 0;
+}
+
+static int
+test_terminal_suffix_modes(void)
+{
+   static const uint8_t body[] = {0x06, 0x00};
+   static const uint8_t inline_code[] = {0x1b, 0x0c, 0x06, 0x00};
+   static const uint8_t all_nops[] = {0x06, 0x00, 0x06, 0x00};
+
+   for (size_t t = 0; t < ARRAY_SIZE(targets); ++t) {
+      const enum agx_chip chip = targets[t];
+      const struct agx_ioto_state_tail tail =
+         make_tail(chip, AGX_IOTO_STATE_TAIL_TYPE1);
+      const struct agx_ioto_profile_control profile = {
+         .chip = chip,
+         .payload0 = is_gpu1(chip) ? UINT16_C(0x8098)
+                                  : UINT16_C(0x0555),
+         .payload1 = is_gpu1(chip) ? UINT16_C(0xa400) : 0,
+      };
+      struct agx_ioto_state_tail_output packed_tail;
+      uint8_t packed_profile[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+      CHECK(agx_ioto_state_tail_pack(chip, &tail, &packed_tail));
+      CHECK(agx_ioto_profile_control_pack(&profile, packed_profile));
+      const size_t profile_size = agx_ioto_profile_control_size(chip);
+
+      for (unsigned mode = 0; mode < 3; ++mode) {
+         struct agx_ioto_preshader_desc preshader = {
+            .external_va = AGX_IOTO_PRESHADER_NO_VA,
+         };
+         if (mode == 0) {
+            preshader.code = all_nops;
+            preshader.code_size = sizeof(all_nops);
+         } else if (mode == 1) {
+            preshader.code = inline_code;
+            preshader.code_size = sizeof(inline_code);
+         } else {
+            preshader.force_external = true;
+            preshader.request_prelude = true;
+            preshader.external_va = UINT64_C(0x123456789abc);
+         }
+
+         struct agx_ioto_preshader_output packed_preshader;
+         CHECK(agx_ioto_preshader_emit(chip, &preshader,
+                                       &packed_preshader));
+         CHECK(packed_preshader.mode ==
+               (mode == 0 ? AGX_IOTO_PRESHADER_MODE_ABSENT
+                          : mode == 1 ? AGX_IOTO_PRESHADER_MODE_INLINE
+                                      : AGX_IOTO_PRESHADER_MODE_EXTERNAL));
+
+         const size_t total = sizeof(body) + profile_size +
+                              packed_tail.length + packed_preshader.length;
+         uint8_t output[96];
+         memset(output, 0xa5, sizeof(output));
+         size_t written = SIZE_MAX;
+         CHECK(agx_ioto_program_compose_no_pixrel(
+            chip, UINT64_C(0x100000040), body, sizeof(body), &tail, &profile,
+            &preshader, output, total, &written));
+         CHECK(written == total);
+         CHECK(memcmp(output, body, sizeof(body)) == 0);
+         CHECK(memcmp(output + sizeof(body), packed_profile, profile_size) ==
+               0);
+         CHECK(memcmp(output + sizeof(body) + profile_size, packed_tail.bytes,
+                      packed_tail.length) == 0);
+         const size_t suffix_offset =
+            sizeof(body) + profile_size + packed_tail.length;
+         CHECK(memcmp(output + suffix_offset, packed_preshader.bytes,
+                      packed_preshader.length) == 0);
+         CHECK(output[total] == 0xa5);
+         if (mode != 0) {
+            static const uint8_t absent[] = {0x0e, 0x00, 0x00, 0x00};
+            CHECK(packed_preshader.length < sizeof(absent) ||
+                  memcmp(output + total - sizeof(absent), absent,
+                         sizeof(absent)) != 0);
+         }
+
+         uint8_t failed[96];
+         uint8_t before[sizeof(failed)];
+         memset(failed, 0x5a, sizeof(failed));
+         memcpy(before, failed, sizeof(failed));
+         size_t failed_written = 17;
+         CHECK(!agx_ioto_program_compose_no_pixrel(
+            chip, UINT64_C(0x100000040), body, sizeof(body), &tail, &profile,
+            &preshader, failed, total - 1, &failed_written));
+         CHECK(memcmp(failed, before, sizeof(failed)) == 0);
+         CHECK(failed_written == 17);
+      }
+   }
+
+   return 0;
+}
+
+static int
+expect_failure_unchanged(enum agx_chip chip, uint64_t program_va,
+                         const void *body, size_t body_size,
+                         const struct agx_ioto_state_tail *tail,
+                         const struct agx_ioto_profile_control *profile,
+                         size_t capacity)
+{
+   uint8_t output[96];
+   uint8_t before[sizeof(output)];
+   memset(output, 0x5a, sizeof(output));
+   memcpy(before, output, sizeof(output));
+   size_t written = UINT64_C(0x123456789abcdef0);
+   const size_t written_before = written;
+
+   CHECK(!agx_ioto_straight_line_program_compose(
+      chip, program_va, body, body_size, tail, profile, output, capacity,
+      &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0);
+   CHECK(written == written_before);
+   return 0;
+}
+
+static int
+test_fail_closed(void)
+{
+   const enum agx_chip chip = AGX_CHIP_G15G;
+   struct agx_ioto_state_tail tail =
+      make_tail(chip, AGX_IOTO_STATE_TAIL_TYPE0);
+   struct agx_ioto_profile_control profile = {.chip = chip};
+   static const uint8_t nop[] = {0x06, 0x00};
+   static const uint8_t truncated[] = {0x06};
+   static const uint8_t branch_gpu0[] = {
+      0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_ioto_record decoded;
+   size_t consumed;
+   CHECK(agx_ioto_decode_one(chip, branch_gpu0, sizeof(branch_gpu0), &decoded,
+                             &consumed));
+   CHECK(decoded.kind == AGX_IOTO_KIND_B_EP0 &&
+         consumed == sizeof(branch_gpu0));
+
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000041), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x1000000000000), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(AGX_CHIP_G14X, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), NULL,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), truncated,
+                                  sizeof(truncated), &tail, &profile, 96) ==
+         0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), branch_gpu0,
+                                  sizeof(branch_gpu0), &tail, &profile, 96) ==
+         0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), NULL, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, NULL, 96) == 0);
+
+   profile.chip = AGX_CHIP_G17G;
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   profile.chip = chip;
+   tail.type = (enum agx_ioto_state_tail_type)2;
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+
+   tail = make_tail(chip, AGX_IOTO_STATE_TAIL_TYPE0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile, 1) == 0);
+   struct agx_ioto_state_tail_output packed_tail;
+   CHECK(agx_ioto_state_tail_pack(chip, &tail, &packed_tail));
+   const size_t exact_size = sizeof(nop) + packed_tail.length +
+                             agx_ioto_profile_control_size(chip) +
+                             AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile,
+                                  exact_size - 1) == 0);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop, SIZE_MAX,
+                                  &tail, &profile, 96) == 0);
+
+   profile.payload0 = UINT16_C(0x0800);
+   CHECK(expect_failure_unchanged(chip, UINT64_C(0x100000040), nop,
+                                  sizeof(nop), &tail, &profile, 96) == 0);
+   profile.payload0 = 0;
+
+   uint8_t output[96];
+   size_t written = 7;
+   CHECK(!agx_ioto_straight_line_program_compose(
+      chip, UINT64_C(0x100000040), nop, sizeof(nop), &tail, &profile, NULL,
+      sizeof(output), &written));
+   CHECK(written == 7);
+   CHECK(!agx_ioto_straight_line_program_compose(
+      chip, UINT64_C(0x100000040), nop, sizeof(nop), &tail, &profile, output,
+      sizeof(output), NULL));
+
+   return 0;
+}
+
+static int
+test_rejects_composer_owned_and_pixel_records(void)
+{
+   static const uint8_t state_gpu0[] = {
+      0x77, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t profile_gpu0[] = {0xf7, 0x03, 0x00, 0x00};
+   static const uint8_t pixrel_gpu1[] = {0x07, 0x00, 0x00,
+                                         0x04, 0x00, 0x00};
+   static const uint8_t pixwait_gpu1[] = {0x07, 0x00, 0x00,
+                                          0x05, 0x00, 0x00};
+
+   struct agx_ioto_record decoded;
+   size_t consumed;
+   CHECK(agx_ioto_decode_one(AGX_CHIP_G15G, state_gpu0,
+                             sizeof(state_gpu0), &decoded, &consumed));
+   CHECK(decoded.kind == AGX_IOTO_KIND_LDSHDR_EP0 &&
+         consumed == sizeof(state_gpu0));
+   CHECK(agx_ioto_decode_one(AGX_CHIP_G15G, profile_gpu0,
+                             sizeof(profile_gpu0), &decoded, &consumed));
+   CHECK(decoded.kind == AGX_IOTO_KIND_SETPROFILECTL_EP0 &&
+         consumed == sizeof(profile_gpu0));
+   CHECK(agx_ioto_decode_one(AGX_CHIP_G17G, pixrel_gpu1,
+                             sizeof(pixrel_gpu1), &decoded, &consumed));
+   CHECK(decoded.kind == AGX_IOTO_KIND_PIXREL_EP0 &&
+         consumed == sizeof(pixrel_gpu1));
+   CHECK(agx_ioto_decode_one(AGX_CHIP_G17G, pixwait_gpu1,
+                             sizeof(pixwait_gpu1), &decoded, &consumed));
+   CHECK(decoded.kind == AGX_IOTO_KIND_PIXWAIT_EP0 &&
+         consumed == sizeof(pixwait_gpu1));
+
+   struct agx_ioto_state_tail tail =
+      make_tail(AGX_CHIP_G15G, AGX_IOTO_STATE_TAIL_TYPE0);
+   struct agx_ioto_profile_control profile = {.chip = AGX_CHIP_G15G};
+   CHECK(expect_failure_unchanged(
+            AGX_CHIP_G15G, UINT64_C(0x100000040), state_gpu0,
+            sizeof(state_gpu0), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(
+            AGX_CHIP_G15G, UINT64_C(0x100000040), profile_gpu0,
+            sizeof(profile_gpu0), &tail, &profile, 96) == 0);
+
+   tail = make_tail(AGX_CHIP_G17G, AGX_IOTO_STATE_TAIL_TYPE0);
+   profile.chip = AGX_CHIP_G17G;
+   CHECK(expect_failure_unchanged(
+            AGX_CHIP_G17G, UINT64_C(0x100000040), pixrel_gpu1,
+            sizeof(pixrel_gpu1), &tail, &profile, 96) == 0);
+   CHECK(expect_failure_unchanged(
+            AGX_CHIP_G17G, UINT64_C(0x100000040), pixwait_gpu1,
+            sizeof(pixwait_gpu1), &tail, &profile, 96) == 0);
+
+   return 0;
+}
+
+static int
+test_empty_body_and_alias(void)
+{
+   const enum agx_chip chip = AGX_CHIP_G17G;
+   const struct agx_ioto_state_tail tail =
+      make_tail(chip, AGX_IOTO_STATE_TAIL_TYPE1);
+   const struct agx_ioto_profile_control profile = {.chip = chip};
+
+   uint8_t output[64];
+   memset(output, 0xcc, sizeof(output));
+   size_t written;
+   CHECK(agx_ioto_straight_line_program_compose(
+      chip, UINT64_C(0x100000040), NULL, 0, &tail, &profile, output,
+      sizeof(output), &written));
+   CHECK(written == AGX_IOTO_STATE_TAIL_TYPE1_SIZE +
+                       agx_ioto_profile_control_size(chip) +
+                       AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+
+   uint8_t aliased[64] = {0x06, 0x00};
+   CHECK(agx_ioto_straight_line_program_compose(
+      chip, UINT64_C(0x100000040), aliased, 2, &tail, &profile, aliased,
+      sizeof(aliased), &written));
+   CHECK(aliased[0] == 0x06 && aliased[1] == 0x00);
+
+   static const uint8_t two_nops[] = {0x06, 0x00, 0x06, 0x00};
+   uint8_t overlap[96];
+   memset(overlap, 0xcc, sizeof(overlap));
+   memcpy(overlap, two_nops, sizeof(two_nops));
+   CHECK(agx_ioto_straight_line_program_compose(
+      chip, 0, overlap, sizeof(two_nops), &tail, &profile, overlap + 2,
+      sizeof(overlap) - 2, &written));
+   CHECK(memcmp(overlap + 2, two_nops, sizeof(two_nops)) == 0);
+
+   memset(overlap, 0xcc, sizeof(overlap));
+   memcpy(overlap + 2, two_nops, sizeof(two_nops));
+   CHECK(agx_ioto_straight_line_program_compose(
+      chip, UINT64_C(0xffffffffffc0), overlap + 2, sizeof(two_nops), &tail,
+      &profile, overlap, sizeof(overlap), &written));
+   CHECK(memcmp(overlap, two_nops, sizeof(two_nops)) == 0);
+
+   memset(overlap, 0xcc, sizeof(overlap));
+   memcpy(overlap, two_nops, sizeof(two_nops));
+   static const uint8_t inline_suffix[] = {0x1b, 0x0c, 0x06, 0x00};
+   memcpy(overlap + 4, inline_suffix, sizeof(inline_suffix));
+   const struct agx_ioto_preshader_desc preshader = {
+      .code = overlap + 4,
+      .code_size = sizeof(inline_suffix),
+      .external_va = AGX_IOTO_PRESHADER_NO_VA,
+   };
+   CHECK(agx_ioto_program_compose_no_pixrel(
+      chip, UINT64_C(0x100000040), overlap, sizeof(two_nops), &tail, &profile,
+      &preshader, overlap + 2, sizeof(overlap) - 2, &written));
+   CHECK(memcmp(overlap + 2, two_nops, sizeof(two_nops)) == 0);
+   CHECK(overlap[2 + written - 2] == 0x1b &&
+         overlap[2 + written - 1] == 0x0c);
+
+   uint8_t failed[96];
+   uint8_t before[sizeof(failed)];
+   memset(failed, 0x5a, sizeof(failed));
+   memcpy(before, failed, sizeof(failed));
+   size_t failed_written = 23;
+   CHECK(!agx_ioto_program_compose_no_pixrel(
+      chip, UINT64_C(0x100000040), two_nops, sizeof(two_nops), &tail, &profile,
+      NULL, failed, sizeof(failed), &failed_written));
+   CHECK(memcmp(failed, before, sizeof(failed)) == 0);
+   CHECK(failed_written == 23);
+   return 0;
+}
+
+int
+main(void)
+{
+   CHECK(test_exact_order() == 0);
+   CHECK(test_terminal_suffix_modes() == 0);
+   CHECK(test_fail_closed() == 0);
+   CHECK(test_rejects_composer_owned_and_pixel_records() == 0);
+   CHECK(test_empty_body_and_alias() == 0);
+   printf("agx_ioto_program_core: %llu checks passed\n",
+          (unsigned long long)checks);
+   return 0;
+}

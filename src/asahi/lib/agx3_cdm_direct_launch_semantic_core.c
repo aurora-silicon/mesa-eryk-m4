@@ -28,8 +28,8 @@ agx3_cdm_direct_template_build(
       memset(result, 0, sizeof(*result));
 
    if (!fields || !result || fields->word0_bits_3_14 > 0xfff ||
-       fields->word1_bits_3_20 > 0x3ffff ||
-       fields->word0_bits_23_28 > 0x3f)
+       (fields->word0_bits_3_14 & 1) != 0 ||
+       fields->word1_bits_3_20 > 0x3ffff)
       return false;
 
    /* ComputeProgramVariant::finalize has the same bit construction on the
@@ -37,10 +37,43 @@ agx3_cdm_direct_template_build(
     * object offsets differ, but their recovered values occupy these exact
     * template ranges in both implementations. */
    result->word0 = ((uint32_t)fields->word0_bits_3_14 << 3) |
-                   ((uint32_t)fields->word0_bits_23_28 << 23) |
-                   ((uint32_t)fields->word0_bit19 << 19);
+                   ((uint32_t)fields->compiler_reply_word0_bit23 << 23) |
+                   ((uint32_t)fields->subkernel_x_target_workitems << 19);
    result->word1 = fields->word1_bits_3_20 << 3;
    return true;
+}
+
+bool
+agx3_cdm_direct_template_build_from_sources(
+   const struct agx3_cdm_direct_template_sources *sources,
+   struct agx3_cdm_direct_template *result)
+{
+   if (result)
+      memset(result, 0, sizeof(*result));
+
+   if (!sources || !result)
+      return false;
+
+   /* HAL200 uses state-load fields +0x128/+0x12c and HAL300 uses
+    * +0x158/+0x15c, but both finalize implementations apply these exact
+    * transforms before inserting the values in the launch template. */
+   const uint64_t word1_value =
+      ((uint64_t)sources->load_shader_word1_source_bytes + 3) >> 2;
+   const uint64_t word0_rounded =
+      ((uint64_t)sources->load_shader_word0_source_bytes + 3) >> 2;
+   const uint64_t word0_value = (word0_rounded + 1) & ~UINT64_C(1);
+
+   if (word0_value > 0xfff || word1_value > 0x3ffff)
+      return false;
+
+   const struct agx3_cdm_direct_template_fields fields = {
+      .word0_bits_3_14 = (uint16_t)word0_value,
+      .word1_bits_3_20 = (uint32_t)word1_value,
+      .compiler_reply_word0_bit23 = sources->compiler_reply_word0_bit23,
+      .subkernel_x_target_workitems =
+         sources->subkernel_x_target_workitems,
+   };
+   return agx3_cdm_direct_template_build(&fields, result);
 }
 
 bool
@@ -58,8 +91,10 @@ agx3_cdm_direct_template_decode(
 
    fields->word0_bits_3_14 = (template_words->word0 >> 3) & 0xfff;
    fields->word1_bits_3_20 = (template_words->word1 >> 3) & 0x3ffff;
-   fields->word0_bits_23_28 = (template_words->word0 >> 23) & 0x3f;
-   fields->word0_bit19 = (template_words->word0 >> 19) & 1;
+   fields->compiler_reply_word0_bit23 =
+      (template_words->word0 >> 23) & 1;
+   fields->subkernel_x_target_workitems =
+      (template_words->word0 >> 19) & 1;
    return true;
 }
 
@@ -112,9 +147,9 @@ agx3_cdm_direct_word3_build(enum agx_chip chip,
       }
       break;
    case AGX3_CDM_DIRECT_GRID_THREADS:
-      if (g15x_bit31)
-         return false;
-      break;
+      /* The pinned emitters select a separate 24-byte template for direct
+       * thread dispatch.  It cannot be represented by this 40-byte API. */
+      return false;
    default:
       return false;
    }
@@ -191,10 +226,11 @@ agx3_cdm_direct_launch_unpack(
    if (!agx3_cdm_direct_template_decode(&template_words, &fields))
       return false;
 
-   enum agx3_cdm_direct_grid_mode mode =
-      (raw.opaque_word3 & (UINT32_C(1) << 30))
-         ? AGX3_CDM_DIRECT_GRID_THREADGROUPS
-         : AGX3_CDM_DIRECT_GRID_THREADS;
+   if ((raw.opaque_word3 & (UINT32_C(1) << 30)) == 0)
+      return false;
+
+   const enum agx3_cdm_direct_grid_mode mode =
+      AGX3_CDM_DIRECT_GRID_THREADGROUPS;
    const bool g15x_bit31 = (raw.opaque_word3 >> 31) & 1;
    const uint32_t dimension_word =
       raw.opaque_word3 & ~(UINT32_C(3) << 30);
@@ -219,7 +255,7 @@ agx3_cdm_direct_launch_unpack(
                                     &canonical_word3) ||
        canonical_word3 != raw.opaque_word3 ||
        (raw.global_size[1] < 2 && raw.global_size[2] < 2 &&
-        fields.word0_bit19))
+        fields.subkernel_x_target_workitems))
       return false;
 
    *info = (struct agx3_cdm_direct_launch_info){

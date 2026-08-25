@@ -164,16 +164,17 @@ check_generation_boundaries(void)
    CHECK(agx_ppp_viewport_payload_core_pack(AGX_CHIP_G17S, &fields, &gen7));
    CHECK(gen6.length == AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH);
    CHECK(gen6.length == gen7.length);
-   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) == 0);
+   CHECK(memcmp(gen6.bytes, gen7.bytes, gen6.length) != 0);
 
-   /* Count one encodes zero in both count fields and is indistinguishable. */
-   CHECK(hk_agx3_decode_ppp_viewport_payload(AGX_CHIP_G15G, gen7.bytes,
-                                             gen7.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!hk_agx3_decode_ppp_viewport_payload(AGX_CHIP_G15G, gen7.bytes,
+                                              gen7.length, &decoded));
+   if (check_fields_cleared(&decoded))
       return 1;
-   CHECK(hk_agx3_decode_ppp_viewport_payload(AGX_CHIP_G17S, gen6.bytes,
-                                             gen6.length, &decoded));
-   if (check_fields_equal(&decoded, &fields))
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!hk_agx3_decode_ppp_viewport_payload(AGX_CHIP_G17S, gen6.bytes,
+                                              gen6.length, &decoded));
+   if (check_fields_cleared(&decoded))
       return 1;
 
    for (unsigned count = 2; count <= AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS;

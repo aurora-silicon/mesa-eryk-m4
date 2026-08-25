@@ -26,7 +26,7 @@ extern "C" {
 /* Finalize supplies only these raw, directly recovered template bit ranges.
  * The names deliberately do not assign meanings the pinned emitters do not
  * establish. */
-#define AGX3_CDM_DIRECT_TEMPLATE_WORD0_MASK UINT32_C(0x1f887ff8)
+#define AGX3_CDM_DIRECT_TEMPLATE_WORD0_MASK UINT32_C(0x00887ff0)
 #define AGX3_CDM_DIRECT_TEMPLATE_WORD1_MASK UINT32_C(0x001ffff8)
 
 enum agx3_cdm_direct_grid_mode {
@@ -34,15 +34,27 @@ enum agx3_cdm_direct_grid_mode {
     * counts, and marked word 3 with bit 30. */
    AGX3_CDM_DIRECT_GRID_THREADGROUPS = 0,
 
-   /* The emitter received global thread counts directly. */
+   /* Direct thread dispatch uses a distinct 24-byte record.  This value is
+    * recognized so callers fail closed instead of accidentally emitting the
+    * 40-byte threadgroup form with bit 30 cleared. */
    AGX3_CDM_DIRECT_GRID_THREADS = 1,
 };
 
 struct agx3_cdm_direct_template_fields {
    uint16_t word0_bits_3_14;
    uint32_t word1_bits_3_20;
-   uint8_t word0_bits_23_28;
-   bool word0_bit19;
+   bool compiler_reply_word0_bit23;
+   bool subkernel_x_target_workitems;
+};
+
+/* Inputs to the exact ComputeProgramVariant::finalize transforms.  The two
+ * byte-count meanings in AGC/Mesa shader state are not yet grounded, so their
+ * names intentionally describe only the witnessed LoadShader producers. */
+struct agx3_cdm_direct_template_sources {
+   uint32_t load_shader_word0_source_bytes;
+   uint32_t load_shader_word1_source_bytes;
+   bool compiler_reply_word0_bit23;
+   bool subkernel_x_target_workitems;
 };
 
 struct agx3_cdm_direct_template {
@@ -57,9 +69,10 @@ struct agx3_cdm_direct_launch_info {
    enum agx3_cdm_direct_grid_mode grid_mode;
    uint8_t dimensions;
 
-   /* This separately controlled threadgroup-mode bit is directly witnessed
-    * only in the aggregate G15X emitter, whose concrete identities here are
-    * G15S, G15C and G15D. */
+   /* This separately controlled bit is sourced from an unresolved plugin
+    * global only in the aggregate G15X emitter, whose concrete identities
+    * here are G15S, G15C and G15D.  It is raw research input, not a device or
+    * shader-info mapping. */
    bool g15x_word3_bit31;
 
    uint32_t global_size[3];
@@ -70,6 +83,10 @@ bool agx3_cdm_direct_launch_target_grounded(enum agx_chip chip);
 
 bool agx3_cdm_direct_template_build(
    const struct agx3_cdm_direct_template_fields *fields,
+   struct agx3_cdm_direct_template *result);
+
+bool agx3_cdm_direct_template_build_from_sources(
+   const struct agx3_cdm_direct_template_sources *sources,
    struct agx3_cdm_direct_template *result);
 
 bool agx3_cdm_direct_template_decode(

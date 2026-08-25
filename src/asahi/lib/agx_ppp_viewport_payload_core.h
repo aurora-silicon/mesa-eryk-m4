@@ -20,7 +20,8 @@ extern "C" {
 #define AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS 16u
 #define AGX_PPP_VIEWPORT_PAYLOAD_MIN_LENGTH    40u
 #define AGX_PPP_VIEWPORT_PAYLOAD_MAX_LENGTH    520u
-#define AGX_PPP_VIEWPORT_PAYLOAD_BASE_HEADER   UINT32_C(0x00000c00)
+#define AGX_PPP_VIEWPORT_PAYLOAD_GEN6_BASE_HEADER UINT32_C(0x00000c00)
+#define AGX_PPP_VIEWPORT_PAYLOAD_GEN7_BASE_HEADER UINT32_C(0x00003000)
 
 struct agx_ppp_viewport_transform_raw {
    uint32_t translate_x;
@@ -61,9 +62,9 @@ struct agx_ppp_viewport_payload_core {
  * G15, G16, and G17P PPPEncoderGen6 place viewport_count - 1 in header bits
  * 12..15.  G17G/G17X PPPEncoderGen7 place it in bits 14..17.  All other
  * header bits are fixed to the exact viewport-only form, so mixed or extended
- * PPP updates fail closed.  A one-viewport packet is byte-identical across
- * the generations because both count fields encode zero; no artificial
- * generation marker is invented.
+ * PPP updates fail closed.  The region-clip and viewport selectors themselves
+ * move from bits 10/11 to bits 12/13 at Gen7, so even a one-viewport packet is
+ * generation-specific.
  *
  * The target allowlist contains only identities directly served by the
  * inspected G15G/G15X, G16G/G16X, G17P, and G17G/G17X plugins.  This helper
