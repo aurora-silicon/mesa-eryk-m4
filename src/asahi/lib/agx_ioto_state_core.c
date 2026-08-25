@@ -1,0 +1,435 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_ioto_state_core.h"
+
+#include "agx_ioto_core.h"
+
+#include <string.h>
+
+enum agx_ioto_state_encoding {
+   AGX_IOTO_STATE_ENCODING_GPU0,
+   AGX_IOTO_STATE_ENCODING_GPU1,
+   AGX_IOTO_STATE_ENCODING_UNSUPPORTED,
+};
+
+static const uint8_t agx_ioto_e3[3] = {1, 2, 0};
+static const uint8_t agx_ioto_e4[4] = {2, 0, 1, 3};
+
+#define FM(field) (UINT32_C(1) << (field))
+
+static enum agx_ioto_state_encoding
+agx_ioto_state_target_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+      return AGX_IOTO_STATE_ENCODING_GPU0;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return AGX_IOTO_STATE_ENCODING_GPU1;
+   default:
+      return AGX_IOTO_STATE_ENCODING_UNSUPPORTED;
+   }
+}
+
+static bool
+agx_ioto_state_fields_zero_except(const struct agx_ioto_state *state,
+                                  uint32_t allowed)
+{
+   for (unsigned i = 0; i < AGX_IOTO_STATE_FIELD_COUNT; ++i) {
+      if ((allowed & FM(i)) == 0 && state->f[i] != 0)
+         return false;
+   }
+   return true;
+}
+
+static bool
+agx_ioto_state_fields_at_most(const struct agx_ioto_state *state,
+                              unsigned first, unsigned last, uint64_t maximum)
+{
+   for (unsigned i = first; i <= last; ++i) {
+      if (state->f[i] > maximum)
+         return false;
+   }
+   return true;
+}
+
+static bool
+agx_ioto_state_is_zero(const struct agx_ioto_state *state)
+{
+   return agx_ioto_state_fields_zero_except(state, 0);
+}
+
+static bool
+agx_ioto_state_validate_speclm(enum agx_ioto_state_encoding encoding,
+                               const struct agx_ioto_state *state)
+{
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      const uint32_t allowed =
+         FM(2) | FM(3) | FM(4) | FM(5) | FM(6) | FM(7) | FM(10) |
+         FM(11) | FM(12) | FM(18) | FM(21) | FM(22) | FM(24) | FM(25) |
+         FM(26);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             agx_ioto_state_fields_at_most(state, 2, 7, 1) &&
+             agx_ioto_state_fields_at_most(state, 10, 12, 2) &&
+             state->f[18] <= UINT64_C(0xffff) &&
+             (state->f[18] & UINT64_C(0x3f)) == 0 && state->f[21] <= 3 &&
+             state->f[22] <= UINT64_C(0xf8) &&
+             (state->f[22] & UINT64_C(7)) == 0 && state->f[24] <= 1 &&
+             state->f[25] <= 1 && state->f[26] == 0;
+   }
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU1) {
+      const uint32_t allowed =
+         FM(0) | FM(1) | FM(2) | FM(3) | FM(4) | FM(5) | FM(6) | FM(7) |
+         FM(8) | FM(9) | FM(18) | FM(21) | FM(22) | FM(24) | FM(25) |
+         FM(26);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             state->f[0] == 3 && state->f[1] == 165 &&
+             agx_ioto_state_fields_at_most(state, 2, 9, 1) &&
+             state->f[18] <= UINT64_C(0xffff) && state->f[21] <= 3 &&
+             state->f[22] <= UINT64_C(0xff) && state->f[24] <= 1 &&
+             state->f[25] <= 1 && state->f[26] <= 1;
+   }
+
+   return false;
+}
+
+static bool
+agx_ioto_state_validate_ldshdr(enum agx_ioto_state_encoding encoding,
+                               const struct agx_ioto_state *state)
+{
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      const uint32_t allowed =
+         FM(0) | FM(1) | FM(7) | FM(8) | FM(9) | FM(10) | FM(11) |
+         FM(12) | FM(15) | FM(16) | FM(17) | FM(23) | FM(24);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             state->f[0] <= UINT64_C(0xffffffffffff) &&
+             (state->f[0] & UINT64_C(0x3f)) == 0 && state->f[1] <= 3 &&
+             agx_ioto_state_fields_at_most(state, 7, 12, 1) &&
+             agx_ioto_state_fields_at_most(state, 15, 17, 2) &&
+             state->f[23] == 1 && state->f[24] == 0;
+   }
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU1) {
+      const uint32_t allowed =
+         FM(0) | FM(1) | FM(3) | FM(5) | FM(6) | FM(7) | FM(8) | FM(9) |
+         FM(10) | FM(11) | FM(12) | FM(13) | FM(14) | FM(23) | FM(24);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             state->f[0] <= UINT64_C(0xffffffffffff) &&
+             (state->f[0] & UINT64_C(0x3f)) == 0 && state->f[1] <= 3 &&
+             state->f[3] <= 1 && state->f[5] == 3 && state->f[6] == 107 &&
+             agx_ioto_state_fields_at_most(state, 7, 14, 1) &&
+             state->f[23] <= 1 && state->f[24] <= 1;
+   }
+
+   return false;
+}
+
+static bool
+agx_ioto_state_validate_spectpr(enum agx_ioto_state_encoding encoding,
+                                const struct agx_ioto_state *state)
+{
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      const uint32_t allowed =
+         FM(2) | FM(3) | FM(4) | FM(5) | FM(6) | FM(7) | FM(10) |
+         FM(11) | FM(12) | FM(13) | FM(14) | FM(20) | FM(21) | FM(22) |
+         FM(23);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             agx_ioto_state_fields_at_most(state, 2, 7, 1) &&
+             state->f[10] <= UINT64_C(0x7f) && state->f[11] <= 1 &&
+             agx_ioto_state_fields_at_most(state, 12, 14, 2) &&
+             state->f[20] <= UINT64_C(0xffff) &&
+             state->f[21] <= UINT64_C(0xffff) &&
+             state->f[22] <= UINT64_C(0xffe) &&
+             (state->f[22] & UINT64_C(1)) == 0 && state->f[23] == 0;
+   }
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU1) {
+      const uint32_t allowed =
+         FM(0) | FM(1) | FM(2) | FM(3) | FM(4) | FM(5) | FM(6) | FM(7) |
+         FM(8) | FM(9) | FM(10) | FM(11) | FM(20) | FM(21) | FM(22) |
+         FM(23);
+      return agx_ioto_state_fields_zero_except(state, allowed) &&
+             state->f[0] == 3 && state->f[1] == 166 &&
+             agx_ioto_state_fields_at_most(state, 2, 9, 1) &&
+             state->f[10] <= UINT64_C(0x7f) && state->f[11] <= 1 &&
+             state->f[20] <= UINT64_C(0xffff) &&
+             state->f[21] <= UINT64_C(0xffff) &&
+             state->f[22] <= UINT64_C(0xffe) &&
+             (state->f[22] & UINT64_C(1)) == 0 && state->f[23] <= 1;
+   }
+
+   return false;
+}
+
+static void
+agx_ioto_state_scatter(uint16_t words[5], uint64_t value, unsigned word,
+                       unsigned destination_shift, unsigned width,
+                       unsigned source_shift)
+{
+   const uint64_t mask = (UINT64_C(1) << width) - 1;
+   words[word] |=
+      (uint16_t)(((value >> source_shift) & mask) << destination_shift);
+}
+
+static bool
+agx_ioto_state_encode_speclm(enum agx_ioto_state_encoding encoding,
+                             const struct agx_ioto_state *state,
+                             uint16_t words[5])
+{
+   if (!agx_ioto_state_validate_speclm(encoding, state))
+      return false;
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      words[0] = UINT16_C(0x0077);
+      for (unsigned f = 2; f <= 6; ++f)
+         agx_ioto_state_scatter(words, state->f[f], 0, 9 + f, 1, 0);
+      agx_ioto_state_scatter(words, state->f[7], 1, 0, 1, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[12]], 1, 1, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[11]], 1, 3, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[10]], 1, 5, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e4[state->f[21]], 1, 7, 2, 0);
+      agx_ioto_state_scatter(words, state->f[22], 1, 9, 5, 3);
+      agx_ioto_state_scatter(words, state->f[25], 2, 6, 1, 0);
+      agx_ioto_state_scatter(words, state->f[24], 2, 7, 1, 0);
+      agx_ioto_state_scatter(words, state->f[18], 2, 8, 8, 6);
+      agx_ioto_state_scatter(words, state->f[18], 3, 0, 2, 14);
+      return true;
+   }
+
+   words[0] = UINT16_C(0x0007);
+   words[1] = UINT16_C(0x0c00);
+   agx_ioto_state_scatter(words, state->f[24], 0, 3, 1, 0);
+   agx_ioto_state_scatter(words, state->f[25], 0, 4, 1, 0);
+   agx_ioto_state_scatter(words, state->f[18], 0, 5, 11, 0);
+   agx_ioto_state_scatter(words, state->f[18], 1, 3, 5, 11);
+   for (unsigned f = 2; f <= 7; ++f)
+      agx_ioto_state_scatter(words, state->f[f], 2, 8 + f, 1, 0);
+   agx_ioto_state_scatter(words, state->f[26], 3, 0, 1, 0);
+   agx_ioto_state_scatter(words, state->f[8], 3, 1, 1, 0);
+   agx_ioto_state_scatter(words, state->f[9], 3, 2, 1, 0);
+   agx_ioto_state_scatter(words, state->f[21], 3, 6, 2, 0);
+   agx_ioto_state_scatter(words, state->f[22], 3, 8, 8, 0);
+   return true;
+}
+
+static bool
+agx_ioto_state_encode_ldshdr(enum agx_ioto_state_encoding encoding,
+                             const struct agx_ioto_state *state,
+                             uint16_t words[5])
+{
+   if (!agx_ioto_state_validate_ldshdr(encoding, state))
+      return false;
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      words[0] = UINT16_C(0x0177);
+      for (unsigned f = 7; f <= 11; ++f)
+         agx_ioto_state_scatter(words, state->f[f], 0, 4 + f, 1, 0);
+      agx_ioto_state_scatter(words, state->f[12], 1, 0, 1, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[17]], 1, 1, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[16]], 1, 3, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[15]], 1, 5, 2, 0);
+      agx_ioto_state_scatter(words, state->f[0], 1, 7, 9, 6);
+      agx_ioto_state_scatter(words, state->f[0], 2, 0, 16, 15);
+      agx_ioto_state_scatter(words, state->f[0], 3, 0, 16, 31);
+      agx_ioto_state_scatter(words, state->f[0], 4, 0, 1, 47);
+      agx_ioto_state_scatter(words, agx_ioto_e4[state->f[1]], 4, 1, 2, 0);
+      return true;
+   }
+
+   words[0] = UINT16_C(0x0007);
+   words[1] = UINT16_C(0x0e00);
+   agx_ioto_state_scatter(words, state->f[0], 0, 6, 10, 6);
+   agx_ioto_state_scatter(words, state->f[1], 1, 3, 2, 0);
+   agx_ioto_state_scatter(words, state->f[23], 1, 6, 1, 0);
+   agx_ioto_state_scatter(words, state->f[3], 1, 12, 1, 0);
+   agx_ioto_state_scatter(words, state->f[13], 1, 13, 1, 0);
+   agx_ioto_state_scatter(words, state->f[14], 1, 14, 1, 0);
+   agx_ioto_state_scatter(words, state->f[24], 1, 15, 1, 0);
+   for (unsigned f = 7; f <= 12; ++f)
+      agx_ioto_state_scatter(words, state->f[f], 2, 3 + f, 1, 0);
+   agx_ioto_state_scatter(words, state->f[0], 3, 0, 16, 16);
+   agx_ioto_state_scatter(words, state->f[0], 4, 0, 16, 32);
+   return true;
+}
+
+static bool
+agx_ioto_state_encode_spectpr(enum agx_ioto_state_encoding encoding,
+                              const struct agx_ioto_state *state,
+                              uint16_t words[5])
+{
+   if (!agx_ioto_state_validate_spectpr(encoding, state))
+      return false;
+
+   if (encoding == AGX_IOTO_STATE_ENCODING_GPU0) {
+      words[0] = UINT16_C(0x00f7);
+      for (unsigned f = 2; f <= 6; ++f)
+         agx_ioto_state_scatter(words, state->f[f], 0, 9 + f, 1, 0);
+      agx_ioto_state_scatter(words, state->f[7], 1, 0, 1, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[14]], 1, 1, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[13]], 1, 3, 2, 0);
+      agx_ioto_state_scatter(words, agx_ioto_e3[state->f[12]], 1, 5, 2, 0);
+      agx_ioto_state_scatter(words, state->f[10], 1, 7, 7, 0);
+      agx_ioto_state_scatter(words, state->f[11], 1, 14, 1, 0);
+      agx_ioto_state_scatter(words, state->f[22], 1, 15, 1, 1);
+      agx_ioto_state_scatter(words, state->f[22], 2, 0, 10, 2);
+      agx_ioto_state_scatter(words, state->f[20], 2, 10, 6, 0);
+      agx_ioto_state_scatter(words, state->f[20], 3, 0, 10, 6);
+      agx_ioto_state_scatter(words, state->f[21], 3, 10, 6, 0);
+      agx_ioto_state_scatter(words, state->f[21], 4, 0, 10, 6);
+      return true;
+   }
+
+   words[0] = UINT16_C(0x0007);
+   words[1] = UINT16_C(0x0d00);
+   agx_ioto_state_scatter(words, state->f[10], 0, 3, 2, 0);
+   agx_ioto_state_scatter(words, state->f[22], 0, 5, 11, 1);
+   agx_ioto_state_scatter(words, state->f[10], 1, 3, 5, 2);
+   agx_ioto_state_scatter(words, state->f[11], 1, 12, 1, 0);
+   agx_ioto_state_scatter(words, state->f[8], 1, 13, 1, 0);
+   agx_ioto_state_scatter(words, state->f[9], 1, 14, 1, 0);
+   agx_ioto_state_scatter(words, state->f[23], 1, 15, 1, 0);
+   for (unsigned f = 2; f <= 7; ++f)
+      agx_ioto_state_scatter(words, state->f[f], 2, 8 + f, 1, 0);
+   agx_ioto_state_scatter(words, state->f[20], 3, 0, 16, 0);
+   agx_ioto_state_scatter(words, state->f[21], 4, 0, 16, 0);
+   return true;
+}
+
+typedef bool (*agx_ioto_state_encoder)(enum agx_ioto_state_encoding,
+                                       const struct agx_ioto_state *,
+                                       uint16_t[5]);
+
+static bool
+agx_ioto_state_pack_record(enum agx_chip chip,
+                           const struct agx_ioto_state *state, void *output,
+                           size_t capacity, enum agx_ioto_kind kind,
+                           size_t size, agx_ioto_state_encoder encode)
+{
+   if (!state || !output || capacity < size)
+      return false;
+
+   const enum agx_ioto_state_encoding encoding =
+      agx_ioto_state_target_encoding(chip);
+   if (encoding == AGX_IOTO_STATE_ENCODING_UNSUPPORTED)
+      return false;
+
+   uint16_t words[5] = {0};
+   if (!encode(encoding, state, words))
+      return false;
+
+   uint8_t staged[AGX_IOTO_LDSHDR_SIZE] = {0};
+   for (size_t i = 0; i < size / 2; ++i) {
+      staged[i * 2] = (uint8_t)words[i];
+      staged[i * 2 + 1] = (uint8_t)(words[i] >> 8);
+   }
+
+   struct agx_ioto_record record;
+   size_t consumed = 0;
+   if (!agx_ioto_validate_kind(chip, kind, staged, size, &record, &consumed) ||
+       consumed != size || record.length != size)
+      return false;
+
+   memcpy(output, record.bytes, size);
+   return true;
+}
+
+bool
+agx_ioto_state_pack_speclm(enum agx_chip chip,
+                           const struct agx_ioto_state *state, void *output,
+                           size_t capacity)
+{
+   return agx_ioto_state_pack_record(
+      chip, state, output, capacity, AGX_IOTO_KIND_SPECLM_EP0,
+      AGX_IOTO_SPECLM_SIZE, agx_ioto_state_encode_speclm);
+}
+
+bool
+agx_ioto_state_pack_ldshdr(enum agx_chip chip,
+                           const struct agx_ioto_state *state, void *output,
+                           size_t capacity)
+{
+   return agx_ioto_state_pack_record(
+      chip, state, output, capacity, AGX_IOTO_KIND_LDSHDR_EP0,
+      AGX_IOTO_LDSHDR_SIZE, agx_ioto_state_encode_ldshdr);
+}
+
+bool
+agx_ioto_state_pack_spectpr(enum agx_chip chip,
+                            const struct agx_ioto_state *state, void *output,
+                            size_t capacity)
+{
+   return agx_ioto_state_pack_record(
+      chip, state, output, capacity, AGX_IOTO_KIND_SPECTPR_EP0,
+      AGX_IOTO_SPECTPR_SIZE, agx_ioto_state_encode_spectpr);
+}
+
+bool
+agx_ioto_state_tail_pack(enum agx_chip chip,
+                         const struct agx_ioto_state_tail *tail,
+                         struct agx_ioto_state_tail_output *output)
+{
+   if (!tail || !output)
+      return false;
+
+   struct agx_ioto_state_tail_output staged = {0};
+   size_t offset = 0;
+
+   switch (tail->type) {
+   case AGX_IOTO_STATE_TAIL_TYPE0:
+      if (!agx_ioto_state_pack_speclm(
+             chip, &tail->speclm, staged.bytes + offset,
+             sizeof(staged.bytes) - offset))
+         return false;
+      offset += AGX_IOTO_SPECLM_SIZE;
+      break;
+   case AGX_IOTO_STATE_TAIL_TYPE1:
+      if (!agx_ioto_state_is_zero(&tail->speclm))
+         return false;
+      break;
+   default:
+      return false;
+   }
+
+   if (!agx_ioto_state_pack_ldshdr(chip, &tail->ldshdr,
+                                    staged.bytes + offset,
+                                    sizeof(staged.bytes) - offset))
+      return false;
+   offset += AGX_IOTO_LDSHDR_SIZE;
+
+   if (!agx_ioto_state_pack_spectpr(chip, &tail->spectpr,
+                                    staged.bytes + offset,
+                                    sizeof(staged.bytes) - offset))
+      return false;
+   offset += AGX_IOTO_SPECTPR_SIZE;
+
+   staged.length = offset;
+   *output = staged;
+   return true;
+}
+
+bool
+agx_ioto_state_tail_pack_shader(
+   enum agx_chip chip, const struct agx_ioto_state_tail *tail,
+   uint64_t shader_va, struct agx_ioto_state_tail_output *output)
+{
+   if (!tail || !output || tail->ldshdr.f[0] != 0)
+      return false;
+
+   struct agx_ioto_state_tail staged = *tail;
+   staged.ldshdr.f[0] = shader_va;
+   return agx_ioto_state_tail_pack(chip, &staged, output);
+}
+
+#undef FM

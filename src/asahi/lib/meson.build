@@ -10,8 +10,12 @@ libasahi_lib_files = files(
   'agx3_cdm_direct_launch_semantic_core.h',
   'agx_ioto_core.c',
   'agx_ioto_core.h',
+  'agx_ioto_imageblock_core.c',
+  'agx_ioto_imageblock_core.h',
   'agx_ioto_profile_core.c',
   'agx_ioto_profile_core.h',
+  'agx_ioto_state_core.c',
+  'agx_ioto_state_core.h',
   'agx_bo.c',
   'agx_border.c',
   'agx_chip.c',
@@ -204,6 +208,33 @@ if with_tests
       files(
         'agx_ioto_profile_core.c',
         'tests/test-agx-ioto-profile-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx-ioto-imageblock-core',
+    executable(
+      'asahi-agx-ioto-imageblock-core',
+      files(
+        'agx_ioto_imageblock_core.c',
+        'tests/test-agx-ioto-imageblock-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx-ioto-state-core',
+    executable(
+      'asahi-agx-ioto-state-core',
+      files(
+        'agx_ioto_core.c',
+        'agx_ioto_state_core.c',
+        'tests/test-agx-ioto-state-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

@@ -1,0 +1,88 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Exact anonymous-field packing for the directly recovered AGX3 Ioto
+ * SPECLM/LDSHDR/SPECTPR state tail.
+ *
+ * This is a research/validation surface.  It deliberately assigns no
+ * graphics meaning to the recovered fields, changes no production state
+ * path, and does not admit an AGX3 device.
+ */
+
+#pragma once
+
+#include "agx_chip.h"
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define AGX_IOTO_STATE_FIELD_COUNT 27u
+#define AGX_IOTO_SPECLM_SIZE 8u
+#define AGX_IOTO_LDSHDR_SIZE 10u
+#define AGX_IOTO_SPECTPR_SIZE 10u
+#define AGX_IOTO_STATE_TAIL_TYPE0_SIZE 28u
+#define AGX_IOTO_STATE_TAIL_TYPE1_SIZE 20u
+#define AGX_IOTO_STATE_TAIL_MAX_SIZE AGX_IOTO_STATE_TAIL_TYPE0_SIZE
+
+/* Anonymous logical fields f0 through f26 from Apple's encoder graph. */
+struct agx_ioto_state {
+   uint64_t f[AGX_IOTO_STATE_FIELD_COUNT];
+};
+
+/* Each packer is transactional: output is unchanged on every failure. */
+bool agx_ioto_state_pack_speclm(enum agx_chip chip,
+                                const struct agx_ioto_state *state,
+                                void *output, size_t capacity);
+
+bool agx_ioto_state_pack_ldshdr(enum agx_chip chip,
+                                const struct agx_ioto_state *state,
+                                void *output, size_t capacity);
+
+bool agx_ioto_state_pack_spectpr(enum agx_chip chip,
+                                 const struct agx_ioto_state *state,
+                                 void *output, size_t capacity);
+
+enum agx_ioto_state_tail_type {
+   AGX_IOTO_STATE_TAIL_TYPE0 = 0,
+   AGX_IOTO_STATE_TAIL_TYPE1 = 1,
+};
+
+struct agx_ioto_state_tail {
+   enum agx_ioto_state_tail_type type;
+   struct agx_ioto_state speclm;
+   struct agx_ioto_state ldshdr;
+   struct agx_ioto_state spectpr;
+};
+
+struct agx_ioto_state_tail_output {
+   size_t length;
+   uint8_t bytes[AGX_IOTO_STATE_TAIL_MAX_SIZE];
+};
+
+/*
+ * Type 0 packs SPECLM, LDSHDR, SPECTPR in that order.  Type 1 packs only
+ * LDSHDR and SPECTPR and requires every SPECLM field to be zero.  Other type
+ * values fail.  `output` is unchanged on every failure.
+ */
+bool agx_ioto_state_tail_pack(
+   enum agx_chip chip, const struct agx_ioto_state_tail *tail,
+   struct agx_ioto_state_tail_output *output);
+
+/*
+ * Convenience form for a separately supplied shader VA.  The input LDSHDR
+ * f0 field must be zero; the supplied VA is staged into a private copy and is
+ * then subject to the same 48-bit and 64-byte-alignment validation.
+ */
+bool agx_ioto_state_tail_pack_shader(
+   enum agx_chip chip, const struct agx_ioto_state_tail *tail,
+   uint64_t shader_va, struct agx_ioto_state_tail_output *output);
+
+#ifdef __cplusplus
+}
+#endif

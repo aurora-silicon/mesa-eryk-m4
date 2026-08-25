@@ -11,6 +11,7 @@
 #include "asahi/lib/agx3_cdm_decode_core.h"
 #include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_ioto_profile_core.h"
+#include "asahi/lib/agx_ioto_state_core.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -48,6 +49,11 @@ struct d12_agx3_cdm_stream_terminate_encoding {
 
 struct d12_agx3_ioto_profile_encoding {
    uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+   uint8_t length;
+};
+
+struct d12_agx3_ioto_state_tail_encoding {
+   uint8_t bytes[AGX_IOTO_STATE_TAIL_MAX_SIZE];
    uint8_t length;
 };
 
@@ -116,6 +122,48 @@ d12_agx3_decode_ioto_profile(enum agx_chip chip, const void *command,
 
    *payload0 = profile.payload0;
    *payload1 = profile.payload1;
+   return true;
+}
+
+/* Anonymous-field state-tail validation bridges; no D3D semantics are
+ * assigned here. Both helpers preserve out on failure. */
+static inline bool
+d12_agx3_encode_ioto_state_tail(
+   enum agx_chip chip, const struct agx_ioto_state_tail *tail,
+   struct d12_agx3_ioto_state_tail_encoding *out)
+{
+   if (!out)
+      return false;
+
+   struct agx_ioto_state_tail_output packed;
+   if (!agx_ioto_state_tail_pack(chip, tail, &packed))
+      return false;
+
+   struct d12_agx3_ioto_state_tail_encoding staged = {
+      .length = (uint8_t)packed.length,
+   };
+   memcpy(staged.bytes, packed.bytes, packed.length);
+   *out = staged;
+   return true;
+}
+
+static inline bool
+d12_agx3_encode_ioto_state_tail_shader(
+   enum agx_chip chip, const struct agx_ioto_state_tail *tail,
+   uint64_t shader_va, struct d12_agx3_ioto_state_tail_encoding *out)
+{
+   if (!out)
+      return false;
+
+   struct agx_ioto_state_tail_output packed;
+   if (!agx_ioto_state_tail_pack_shader(chip, tail, shader_va, &packed))
+      return false;
+
+   struct d12_agx3_ioto_state_tail_encoding staged = {
+      .length = (uint8_t)packed.length,
+   };
+   memcpy(staged.bytes, packed.bytes, packed.length);
+   *out = staged;
    return true;
 }
 
