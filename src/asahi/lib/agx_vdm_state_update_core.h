@@ -72,9 +72,12 @@ struct agx_vdm_state_update_template_info {
 
    enum agx_vdm_state_update_template_variant variant;
 
-   /* One-based value loaded from the live device/context.  Values 1..8 are
-    * the bounded domain for which the final word is exactly value - 1. */
-   uint8_t active_selector_value;
+   /* Raw u32 loaded from the live RenderContext before emission.  The pinned
+    * G15X_M1/G16X/G17P/G17G/G17X paths compare it with UINT32_MAX: that
+    * sentinel preserves the template's zero final word, while every other
+    * value emits `(raw_active_context_selector - 1) & 7`.  No narrower
+    * producer domain is assumed here. */
+   uint32_t raw_active_context_selector;
 };
 
 /*

@@ -58,7 +58,7 @@ static const struct agx_vdm_state_update_template_info template_witness_info = {
    .pre_hal300_flag_group_nonzero = true,
    .pre_hal300_flag_bit_4 = true,
    .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_00,
-   .active_selector_value = 5,
+   .raw_active_context_selector = 5,
 };
 
 static const uint8_t pre_hal300_template_witness
@@ -192,9 +192,17 @@ check_template_variants_and_selectors(void)
                                                      0x01};
    static const uint8_t hal300_variant_bits[] = {0x20, 0x00, 0x21, 0x01};
 
+   static const uint32_t raw_context_selectors[] = {
+      UINT32_MAX, 0, 1, 7, 8, 9, UINT32_C(0x12345678), UINT32_MAX - 1,
+   };
+
    for (unsigned variant = 0; variant < 4; ++variant) {
-      for (unsigned active_selector = 1; active_selector <= 8;
-           ++active_selector) {
+      for (unsigned selector_index = 0;
+           selector_index < sizeof(raw_context_selectors) /
+                               sizeof(raw_context_selectors[0]);
+           ++selector_index) {
+         const uint32_t raw_context_selector =
+            raw_context_selectors[selector_index];
          for (unsigned output_selector = 0; output_selector <= UINT8_MAX;
               ++output_selector) {
             struct agx_vdm_state_update_template_info info =
@@ -202,7 +210,7 @@ check_template_variants_and_selectors(void)
             struct agx_vdm_state_update_info raw;
             info.variant =
                (enum agx_vdm_state_update_template_variant)variant;
-            info.active_selector_value = active_selector;
+            info.raw_active_context_selector = raw_context_selector;
             info.raw_vs_output_selector = output_selector;
 
             CHECK(agx_vdm_state_update_template_materialize(
@@ -210,7 +218,10 @@ check_template_variants_and_selectors(void)
             CHECK(raw.raw_vertex_outputs[1] ==
                   (((uint32_t)output_selector << 2) | UINT32_C(0x40) |
                    pre_hal300_variant_bits[variant]));
-            CHECK(raw.raw_vertex_unknown == active_selector - 1);
+            CHECK(raw.raw_vertex_unknown ==
+                  (raw_context_selector == UINT32_MAX
+                      ? 0
+                      : (raw_context_selector - 1) & UINT32_C(0x7)));
 
             info.pre_hal300_flag_group_nonzero = false;
             info.pre_hal300_flag_bit_4 = false;
@@ -219,7 +230,10 @@ check_template_variants_and_selectors(void)
             CHECK(raw.raw_vertex_outputs[1] ==
                   (((uint32_t)output_selector << 2) | UINT32_C(0x40) |
                    hal300_variant_bits[variant]));
-            CHECK(raw.raw_vertex_unknown == active_selector - 1);
+            CHECK(raw.raw_vertex_unknown ==
+                  (raw_context_selector == UINT32_MAX
+                      ? 0
+                      : (raw_context_selector - 1) & UINT32_C(0x7)));
          }
       }
    }
@@ -255,13 +269,13 @@ check_template_ranges_and_rejections(void)
       info.raw_vs_output_count_0 = UINT8_MAX;
       info.raw_vs_output_count_2 = UINT8_MAX;
       info.raw_vs_output_count_1_extra = true;
-      info.active_selector_value = 8;
+      info.raw_active_context_selector = UINT32_MAX;
       CHECK(agx_vdm_state_update_template_materialize(AGX_CHIP_G16C, &info,
                                                        &raw));
       CHECK(raw.raw_vertex_shader_word0 == UINT32_C(0x800fff00));
       CHECK(raw.raw_pipeline_template == UINT32_C(0x001ffff8));
       CHECK(raw.raw_vertex_outputs[0] == UINT32_C(0x00ffffff));
-      CHECK(raw.raw_vertex_unknown == 7);
+      CHECK(raw.raw_vertex_unknown == 0);
    }
 
    {
@@ -293,24 +307,6 @@ check_template_ranges_and_rejections(void)
       CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
                                                         &raw));
       if (check_zero_info(&raw))
-         return 1;
-   }
-
-   for (unsigned active_selector = 0; active_selector <= 9;
-        active_selector += 9) {
-      struct agx_vdm_state_update_template_info info = template_witness_info;
-      struct agx_vdm_state_update_info raw;
-      struct agx_vdm_state_update encoded;
-      info.active_selector_value = active_selector;
-      memset(&raw, 0xa5, sizeof(raw));
-      memset(&encoded, 0xa5, sizeof(encoded));
-      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
-                                                        &raw));
-      if (check_zero_info(&raw))
-         return 1;
-      CHECK(!agx_vdm_state_update_template_pack(AGX_CHIP_G15G, &info,
-                                                 &encoded));
-      if (check_zero_encoding(&encoded))
          return 1;
    }
 

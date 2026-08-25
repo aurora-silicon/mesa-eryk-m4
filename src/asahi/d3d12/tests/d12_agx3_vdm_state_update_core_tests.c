@@ -61,7 +61,7 @@ static const struct d12_agx3_vdm_state_update_template_info
       .pre_hal300_flag_group_nonzero = true,
       .pre_hal300_flag_bit_4 = true,
       .variant = D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_00,
-      .active_selector_value = 5,
+      .raw_active_context_selector = 5,
    };
 
 static const uint8_t pre_hal300_template_witness
@@ -226,7 +226,7 @@ check_template_bridge(void)
             info.pre_hal300_flag_group_nonzero,
          .pre_hal300_flag_bit_4 = info.pre_hal300_flag_bit_4,
          .variant = (enum agx_vdm_state_update_template_variant)info.variant,
-         .active_selector_value = info.active_selector_value,
+         .raw_active_context_selector = info.raw_active_context_selector,
       };
       struct d12_agx3_vdm_state_update encoded;
       struct agx_vdm_state_update shared;
@@ -247,11 +247,23 @@ check_template_bridge(void)
       struct d12_agx3_vdm_state_update_template_info info =
          template_witness_info;
       struct d12_agx3_vdm_state_update encoded;
-      info.active_selector_value = 0;
-      CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, &info,
-                                                        &encoded));
-      if (check_zero_encoding(&encoded))
-         return 1;
+      static const uint32_t raw_context_selectors[] = {
+         UINT32_MAX, 0, 1, 8, 9, UINT32_C(0x12345678), UINT32_MAX - 1,
+      };
+      for (unsigned i = 0;
+           i < sizeof(raw_context_selectors) /
+                  sizeof(raw_context_selectors[0]);
+           ++i) {
+         info.raw_active_context_selector = raw_context_selectors[i];
+         CHECK(d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G,
+                                                          &info, &encoded));
+         const uint8_t expected =
+            raw_context_selectors[i] == UINT32_MAX
+               ? 0
+               : (raw_context_selectors[i] - 1) & UINT32_C(0x7);
+         CHECK(encoded.bytes[24] == expected && encoded.bytes[25] == 0 &&
+               encoded.bytes[26] == 0 && encoded.bytes[27] == 0);
+      }
       info = template_witness_info;
       info.variant = (enum d12_agx3_vdm_state_update_template_variant)4;
       CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, &info,

@@ -97,7 +97,8 @@ test_honeykrisp_bridge(void)
          .pre_hal300_flag_group_nonzero = true,
          .pre_hal300_flag_bit_4 = true,
          .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_10,
-         .active_selector_value = 8,
+         .raw_active_context_selector =
+            (t & 1) ? UINT32_MAX : UINT32_C(8),
       };
       const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
                           chip == AGX_CHIP_G17C;
@@ -120,7 +121,7 @@ test_honeykrisp_bridge(void)
             UINT32_C(0x00344712));
       CHECK(record.data.state_update.raw_vertex_outputs[1] ==
             (hal300 ? UINT32_C(0x0000006d) : UINT32_C(0x0000007d)));
-      CHECK(record.data.state_update.raw_vertex_unknown == 7);
+      CHECK(record.data.state_update.raw_vertex_unknown == ((t & 1) ? 0 : 7));
 
       const struct agx_vdm_index_list_direct_nonindexed_info nonindexed_info = {
          .primitive = 11,

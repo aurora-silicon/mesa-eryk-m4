@@ -118,8 +118,7 @@ agx_vdm_state_update_template_materialize(
        info->raw_state_load_count_12 > UINT16_C(0x0fff) ||
        info->raw_state_load_count_18 > UINT32_C(0x0003ffff) ||
        info->variant < AGX_VDM_STATE_UPDATE_TEMPLATE_00 ||
-       info->variant > AGX_VDM_STATE_UPDATE_TEMPLATE_11 ||
-       info->active_selector_value < 1 || info->active_selector_value > 8)
+       info->variant > AGX_VDM_STATE_UPDATE_TEMPLATE_11)
       return false;
 
    const bool hal300 = agx_vdm_state_update_is_hal300(chip);
@@ -160,7 +159,10 @@ agx_vdm_state_update_template_materialize(
       .pipeline = info->pipeline,
       .raw_pipeline_template = info->raw_state_load_count_18 << 3,
       .raw_vertex_outputs = {vertex_outputs_word0, vertex_outputs_word1},
-      .raw_vertex_unknown = info->active_selector_value - 1,
+      .raw_vertex_unknown =
+         info->raw_active_context_selector == UINT32_MAX
+            ? 0
+            : (info->raw_active_context_selector - 1) & UINT32_C(0x7),
    };
    struct agx_vdm_state_update validation;
 

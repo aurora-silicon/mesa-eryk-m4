@@ -92,7 +92,7 @@ d12_agx3_encode_vdm_state_update_template(
       .pre_hal300_flag_bit_4 = info->pre_hal300_flag_bit_4,
       .variant =
          (enum agx_vdm_state_update_template_variant)info->variant,
-      .active_selector_value = info->active_selector_value,
+      .raw_active_context_selector = info->raw_active_context_selector,
    };
 
    if (!agx_vdm_state_update_template_pack(chip, &shared_info, &shared))

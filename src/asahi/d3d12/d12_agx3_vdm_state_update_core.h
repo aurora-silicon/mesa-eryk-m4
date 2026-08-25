@@ -53,7 +53,9 @@ struct d12_agx3_vdm_state_update_template_info {
    bool pre_hal300_flag_group_nonzero;
    bool pre_hal300_flag_bit_4;
    enum d12_agx3_vdm_state_update_template_variant variant;
-   uint8_t active_selector_value;
+   /* Exact raw RenderContext input.  UINT32_MAX emits zero; all other values
+    * emit `(raw_active_context_selector - 1) & 7`. */
+   uint32_t raw_active_context_selector;
 };
 
 /*
