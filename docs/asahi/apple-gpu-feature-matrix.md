@@ -206,10 +206,12 @@ compare, exec-stack, directional branch, scalar interpolation, coefficient-
 load, and UVS-write building blocks for the nine directly witnessed G15--G17
 compiler targets. It separately target-gates the bounded tile load/store bridge
 to the directly captured G15G, G16G, and G17S encodings. Its exhaustive host
-test checks the AGX3b/AGX3c byte sequences and every rejection path. This
-remains an ISA lowering primitive, not a claim that DXIL structured control
-flow, varying or tile lowering, runtime scheduling, WDDM submission, or a
-D3D12 capability is complete.
+test checks the AGX3b/AGX3c byte sequences and every rejection path.
+Honeykrisp now has an equivalent target-aware bridge for that same witnessed
+single-sample subset: full-component loads with no incoming wait and stores
+with at most one compact dependency wait. Both bridges remain ISA primitives,
+not claims that DXIL or SPIR-V/NIR tile lowering, shader integration, render-
+target/MSAA state, runtime scheduling, submission, or API exposure is complete.
 
 The `yield` form is grounded by controlled source ladders and independent
 runtime-value probes on G15G/G15S/G15D, G16P/G16G/G16S, G17P, and G17G/G17S.
@@ -868,6 +870,11 @@ The current in-tree anchors are:
 - [`hk_agx3_ppp_w_clamp_cull2.h`](../../src/asahi/vulkan/hk_agx3_ppp_w_clamp_cull2.h)
   and its focused test: Honeykrisp's strict validation bridge for the same
   exact W-clamp/Cull-2 payload.
+- [`hk_agx3_tile_core.h`](../../src/asahi/vulkan/hk_agx3_tile_core.h) and its
+  [focused test](../../src/asahi/vulkan/tests/test-hk-agx3-tile-core.c): the
+  bounded G15G/G16G/G17S single-sample Honeykrisp tile load/store bridge, with
+  lowering, shader append, render-target state, submission, and Vulkan
+  exposure kept closed.
 - [`hk_native_sampler.h`](../../src/asahi/vulkan/hk_native_sampler.h), its
   [packing helper](../../src/asahi/vulkan/hk_native_sampler.c), and
   [focused test](../../src/asahi/vulkan/tests/test-hk-native-sampler.c): exact
