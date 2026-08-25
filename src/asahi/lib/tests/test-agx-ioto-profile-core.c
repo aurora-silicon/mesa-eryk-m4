@@ -17,6 +17,18 @@ static unsigned checks;
       }                                                                        \
    } while (0)
 
+static bool
+profile_clear(const struct agx_ioto_profile_control *profile)
+{
+   const uint8_t *bytes = (const uint8_t *)profile;
+   for (size_t i = 0; i < sizeof(*profile); ++i) {
+      if (bytes[i] != 0)
+         return false;
+   }
+
+   return true;
+}
+
 static int
 round_trip(enum agx_chip chip, uint16_t payload0, uint16_t payload1)
 {
@@ -35,8 +47,10 @@ round_trip(enum agx_chip chip, uint16_t payload0, uint16_t payload1)
    CHECK(agx_ioto_profile_control_size(chip) == expected_size);
    CHECK(bytes[0] == (expected_size == 6 ? 0x07 : 0xf7));
    CHECK(bytes[1] == (expected_size == 6 ? 0x00 : 0x03));
-   CHECK(bytes[2] == (uint8_t)payload0);
-   CHECK(bytes[3] == (uint8_t)(payload0 >> 8));
+   const uint16_t encoded_payload0 =
+      payload0 | (expected_size == 6 ? UINT16_C(0x0f00) : 0);
+   CHECK(bytes[2] == (uint8_t)encoded_payload0);
+   CHECK(bytes[3] == (uint8_t)(encoded_payload0 >> 8));
    CHECK(bytes[4] == (expected_size == 6 ? (uint8_t)payload1 : 0));
    CHECK(bytes[5] == (expected_size == 6 ? (uint8_t)(payload1 >> 8) : 0));
 
@@ -68,17 +82,28 @@ main(void)
       const bool hal300 = targets[t] == AGX_CHIP_G17G ||
                           targets[t] == AGX_CHIP_G17S ||
                           targets[t] == AGX_CHIP_G17C;
-      for (unsigned value = 0; value <= UINT16_MAX; ++value) {
-         if (round_trip(targets[t], value, hal300 ? 0xa55a : 0))
-            return 1;
-         if (hal300 && round_trip(targets[t], 0x5aa5, value))
-            return 1;
+      if (hal300) {
+         for (unsigned value0 = 0; value0 < 128; ++value0) {
+            const uint16_t payload0 = (uint16_t)(
+               ((value0 & 0x03) << 3) | ((value0 & 0x04) << 5) |
+               ((value0 & 0x78) << 9));
+            for (unsigned value1 = 0; value1 < 64; ++value1) {
+               if (round_trip(targets[t], payload0,
+                              (uint16_t)(value1 << 10)))
+                  return 1;
+            }
+         }
+      } else {
+         for (unsigned value = 0; value <= 0x07ff; ++value) {
+            if (round_trip(targets[t], value, 0))
+               return 1;
+         }
       }
 
       struct agx_ioto_profile_control input = {
          .chip = targets[t],
-         .payload0 = 0x1234,
-         .payload1 = hal300 ? 0xabcd : 0,
+         .payload0 = hal300 ? 0x9088 : 0x0234,
+         .payload1 = hal300 ? 0xa800 : 0,
       };
       uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
       CHECK(agx_ioto_profile_control_pack(&input, bytes));
@@ -97,9 +122,33 @@ main(void)
          memcpy(mutated, bytes, sizeof(mutated));
          mutated[bit / 8] ^= (uint8_t)(1u << (bit % 8));
          struct agx_ioto_profile_control decoded;
-         size_t consumed;
+         memset(&decoded, 0xff, sizeof(decoded));
+         size_t consumed = 99;
          CHECK(!agx_ioto_profile_control_unpack(targets[t], mutated, size,
                                                 &decoded, &consumed));
+         CHECK(profile_clear(&decoded));
+         CHECK(consumed == 0);
+      }
+
+      for (unsigned bit = 16; bit < size * 8; ++bit) {
+         const unsigned word = bit / 16;
+         const uint16_t bit_mask = UINT16_C(1) << (bit % 16);
+         const uint16_t operand_mask =
+            !hal300 ? UINT16_C(0x07ff)
+                    : (word == 1 ? UINT16_C(0xf098) : UINT16_C(0xfc00));
+         if (bit_mask & operand_mask)
+            continue;
+
+         uint8_t mutated[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+         memcpy(mutated, bytes, sizeof(mutated));
+         mutated[bit / 8] ^= (uint8_t)(1u << (bit % 8));
+         struct agx_ioto_profile_control decoded;
+         memset(&decoded, 0xff, sizeof(decoded));
+         size_t consumed = 99;
+         CHECK(!agx_ioto_profile_control_unpack(targets[t], mutated, size,
+                                                &decoded, &consumed));
+         CHECK(profile_clear(&decoded));
+         CHECK(consumed == 0);
       }
    }
 
@@ -128,6 +177,21 @@ main(void)
    };
    uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
    CHECK(!agx_ioto_profile_control_pack(&classic_bad, bytes));
+   const struct agx_ioto_profile_control classic_reserved = {
+      .chip = AGX_CHIP_G16G,
+      .payload0 = 0x0800,
+   };
+   CHECK(!agx_ioto_profile_control_pack(&classic_reserved, bytes));
+   const struct agx_ioto_profile_control hal300_reserved0 = {
+      .chip = AGX_CHIP_G17S,
+      .payload0 = 0x0001,
+   };
+   CHECK(!agx_ioto_profile_control_pack(&hal300_reserved0, bytes));
+   const struct agx_ioto_profile_control hal300_reserved1 = {
+      .chip = AGX_CHIP_G17S,
+      .payload1 = 0x0001,
+   };
+   CHECK(!agx_ioto_profile_control_pack(&hal300_reserved1, bytes));
    CHECK(!agx_ioto_profile_control_pack(NULL, bytes));
    CHECK(!agx_ioto_profile_control_pack(&classic_bad, NULL));
    CHECK(!agx_ioto_profile_control_unpack(AGX_CHIP_G15G, NULL, 4, NULL, NULL));

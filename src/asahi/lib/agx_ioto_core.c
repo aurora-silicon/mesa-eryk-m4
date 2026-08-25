@@ -1,0 +1,366 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_ioto_core.h"
+
+#include <string.h>
+
+enum agx_ioto_encoding {
+   AGX_IOTO_ENCODING_GPU0,
+   AGX_IOTO_ENCODING_GPU1,
+   AGX_IOTO_ENCODING_UNSUPPORTED,
+};
+
+struct agx_ioto_fixed_word {
+   uint8_t word;
+   uint16_t value;
+   uint16_t mask;
+};
+
+struct agx_ioto_form {
+   enum agx_ioto_kind kind;
+   enum agx_ioto_encoding encoding;
+   uint8_t length;
+   uint8_t fixed_word_count;
+   struct agx_ioto_fixed_word fixed[5];
+};
+
+#define FW(index, val, msk)                                                    \
+   { .word = (index), .value = UINT16_C(val), .mask = UINT16_C(msk) }
+#define FORM1(k, enc, len, a)                                                  \
+   {                                                                           \
+      .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
+      .length = (len), .fixed_word_count = 1, .fixed = {a},                    \
+   }
+#define FORM2(k, enc, len, a, b)                                               \
+   {                                                                           \
+      .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
+      .length = (len), .fixed_word_count = 2, .fixed = {a, b},                 \
+   }
+#define FORM3(k, enc, len, a, b, c)                                            \
+   {                                                                           \
+      .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
+      .length = (len), .fixed_word_count = 3, .fixed = {a, b, c},              \
+   }
+#define FORM4(k, enc, len, a, b, c, d)                                         \
+   {                                                                           \
+      .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
+      .length = (len), .fixed_word_count = 4, .fixed = {a, b, c, d},           \
+   }
+#define FORM5(k, enc, len, a, b, c, d, e)                                      \
+   {                                                                           \
+      .kind = AGX_IOTO_KIND_##k, .encoding = AGX_IOTO_ENCODING_##enc,          \
+      .length = (len), .fixed_word_count = 5, .fixed = {a, b, c, d, e},        \
+   }
+
+/*
+ * Fixed bits and lengths are kept as a literal transcription of the recovered
+ * gpu0/gpu1 encoder graph.  Unlisted bits are opaque and are never rewritten.
+ */
+static const struct agx_ioto_form agx_ioto_forms[] = {
+   FORM1(NOP_EP0, GPU0, 2, FW(0, 0x0006, 0x001f)),
+   FORM2(NOP_EP1, GPU0, 4, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0100, 0x0f00)),
+   FORM2(NOP_EP2, GPU0, 6, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0200, 0x0f00)),
+   FORM2(NOP_EP3, GPU0, 8, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0300, 0x0f00)),
+   FORM2(NOP_EP4, GPU0, 10, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0400, 0x0f00)),
+   FORM2(NOP_EP5, GPU0, 12, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0500, 0x0f00)),
+   FORM2(NOP_EP6, GPU0, 14, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0600, 0x0f00)),
+   FORM2(NOP_EP7, GPU0, 16, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0700, 0x0f00)),
+   FORM2(NOP_EP8, GPU0, 18, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0800, 0x0f00)),
+   FORM2(NOP_EP9, GPU0, 20, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0900, 0x0f00)),
+   FORM1(LDIMM_EP0, GPU0, 2, FW(0, 0x0004, 0x8007)),
+   FORM2(LDIMM_EP1, GPU0, 8, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0002, 0x0003)),
+   FORM2(LDIMM_EP2, GPU0, 10, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0003, 0x0003)),
+   FORM2(COPY_EP0, GPU0, 4, FW(0, 0x0003, 0x0007),
+         FW(1, 0x0001, 0x0007)),
+   FORM3(COPY_EP1, GPU0, 10, FW(0, 0x0003, 0x0007),
+         FW(1, 0x0007, 0x0007), FW(2, 0x0002, 0x0803)),
+   FORM2(RLD_EP1, GPU0, 8, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0001, 0x0003)),
+   FORM1(SPECLM_EP0, GPU0, 8, FW(0, 0x0077, 0x07ff)),
+   FORM1(LDSHDR_EP0, GPU0, 10, FW(0, 0x0177, 0x07ff)),
+   FORM1(SPECTPR_EP0, GPU0, 10, FW(0, 0x00f7, 0x07ff)),
+   FORM1(IADD_EP0, GPU0, 10, FW(0, 0x019f, 0x07ff)),
+   FORM1(B_EP0, GPU0, 10, FW(0, 0x000f, 0x07ff)),
+   FORM1(BL_EP0, GPU0, 10, FW(0, 0x008f, 0x07ff)),
+   FORM1(CNDCALL_EP0, GPU0, 6, FW(0, 0x020f, 0x07ff)),
+   FORM1(CNDRET_EP0, GPU0, 4, FW(0, 0x028f, 0x07ff)),
+   FORM1(SETPROFILECTL_EP0, GPU0, 4, FW(0, 0x03f7, 0x07ff)),
+
+   FORM1(NOP_EP0, GPU1, 2, FW(0, 0x0006, 0x001f)),
+   FORM2(NOP_EP1, GPU1, 4, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0000, 0x0f80)),
+   FORM2(NOP_EP2, GPU1, 6, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0100, 0x0f80)),
+   FORM2(NOP_EP3, GPU1, 8, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0200, 0x0f80)),
+   FORM2(NOP_EP4, GPU1, 10, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0300, 0x0f80)),
+   FORM2(NOP_EP5, GPU1, 12, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0400, 0x0f80)),
+   FORM2(NOP_EP6, GPU1, 14, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0500, 0x0f80)),
+   FORM2(NOP_EP7, GPU1, 16, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0600, 0x0f80)),
+   FORM2(NOP_EP8, GPU1, 18, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0700, 0x0f80)),
+   FORM2(NOP_EP9, GPU1, 20, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0800, 0x0f80)),
+   FORM2(NOP_EP10, GPU1, 22, FW(0, 0x001e, 0x001f),
+         FW(1, 0x0900, 0x0f80)),
+   FORM1(LDIMM_EP0, GPU1, 2, FW(0, 0x0004, 0x800f)),
+   FORM1(LDIMM_EP1, GPU1, 2, FW(0, 0x000c, 0x800f)),
+   FORM2(LDIMM_EP2, GPU1, 8, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0002, 0x0003)),
+   FORM2(LDIMM_EP3, GPU1, 10, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0003, 0x0003)),
+   FORM2(COPY_EP0, GPU1, 4, FW(0, 0x0003, 0x0007),
+         FW(1, 0x0001, 0x0007)),
+   FORM3(COPY_EP1, GPU1, 8, FW(0, 0x0003, 0x0007),
+         FW(1, 0x0007, 0x0007), FW(2, 0x0002, 0x0803)),
+   FORM2(RLD_EP0, GPU1, 4, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0000, 0x0003)),
+   FORM2(RLD_EP1, GPU1, 8, FW(0, 0x8004, 0x8007),
+         FW(1, 0x0001, 0x0003)),
+   FORM3(SPECLM_EP0, GPU1, 8, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0c00, 0x0f07), FW(2, 0x0000, 0x0003)),
+   FORM3(LDSHDR_EP0, GPU1, 10, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0e00, 0x0f07), FW(2, 0x0000, 0x0003)),
+   FORM3(SPECTPR_EP0, GPU1, 10, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0d00, 0x0f07), FW(2, 0x0000, 0x0003)),
+   FORM4(IADD_EP0, GPU1, 12, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0004, 0x0007), FW(2, 0x0001, 0x0003),
+         FW(3, 0x0003, 0x000f)),
+   FORM2(B_EP1_COMPACT, GPU1, 4, FW(0, 0x005e, 0x007f),
+         FW(1, 0x0e10, 0x0f11)),
+   FORM2(B_EP1, GPU1, 10, FW(0, 0x005e, 0x007f),
+         FW(1, 0x0e11, 0x0f11)),
+   FORM2(BL_EP1_COMPACT, GPU1, 4, FW(0, 0x007e, 0x007f),
+         FW(1, 0x0e10, 0x0f11)),
+   FORM2(BL_EP1, GPU1, 10, FW(0, 0x007e, 0x007f),
+         FW(1, 0x0e11, 0x0f11)),
+   FORM4(CNDCALL_EP0, GPU1, 8, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0004, 0x0007), FW(2, 0x0000, 0x0003),
+         FW(3, 0x0004, 0x000f)),
+   FORM4(CNDRET_EP0, GPU1, 8, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0004, 0x0007), FW(2, 0x0000, 0x0003),
+         FW(3, 0x0005, 0x000f)),
+   FORM4(LDDEV_EP0, GPU1, 8, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0003, 0x0007), FW(2, 0x0000, 0x0003),
+         FW(3, 0x0000, 0x8006)),
+   FORM5(LDDEV_EP1, GPU1, 10, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0003, 0x0007), FW(2, 0x0000, 0x0003),
+         FW(3, 0x8000, 0x8006), FW(4, 0x0000, 0x0001)),
+   FORM5(LDDEV_EP2, GPU1, 14, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0003, 0x0007), FW(2, 0x0000, 0x0003),
+         FW(3, 0x8000, 0x8006), FW(4, 0x0001, 0x0001)),
+   FORM4(LDDEV_EP3, GPU1, 10, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0007, 0x0007), FW(3, 0x0000, 0x0003),
+         FW(4, 0x0000, 0x8006)),
+   FORM5(LDDEV_EP4, GPU1, 12, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0007, 0x0007), FW(3, 0x0000, 0x0003),
+         FW(4, 0x8000, 0x8006), FW(5, 0x0000, 0x0001)),
+   FORM5(LDDEV_EP5, GPU1, 16, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0007, 0x0007), FW(3, 0x0000, 0x0003),
+         FW(4, 0x8000, 0x8006), FW(5, 0x0001, 0x0001)),
+   FORM3(PIXREL_EP0, GPU1, 6, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0400, 0x0f07), FW(2, 0x0000, 0x0003)),
+   FORM3(PIXWAIT_EP0, GPU1, 6, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0500, 0x0f07), FW(2, 0x0000, 0x0003)),
+   FORM3(SETPROFILECTL_EP0, GPU1, 6, FW(0, 0x0007, 0x0007),
+         FW(1, 0x0f00, 0x0f07), FW(2, 0x0000, 0x0003)),
+};
+
+#undef FORM5
+#undef FORM4
+#undef FORM3
+#undef FORM2
+#undef FORM1
+#undef FW
+
+static enum agx_ioto_encoding
+agx_ioto_target_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+      return AGX_IOTO_ENCODING_GPU0;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return AGX_IOTO_ENCODING_GPU1;
+   default:
+      return AGX_IOTO_ENCODING_UNSUPPORTED;
+   }
+}
+
+bool
+agx_ioto_target_supported(enum agx_chip chip)
+{
+   return agx_ioto_target_encoding(chip) != AGX_IOTO_ENCODING_UNSUPPORTED;
+}
+
+static const struct agx_ioto_form *
+agx_ioto_find_form(enum agx_ioto_encoding encoding, enum agx_ioto_kind kind)
+{
+   for (size_t i = 0; i < sizeof(agx_ioto_forms) / sizeof(agx_ioto_forms[0]);
+        ++i) {
+      if (agx_ioto_forms[i].encoding == encoding &&
+          agx_ioto_forms[i].kind == kind)
+         return &agx_ioto_forms[i];
+   }
+
+   return NULL;
+}
+
+size_t
+agx_ioto_kind_size(enum agx_chip chip, enum agx_ioto_kind kind)
+{
+   const struct agx_ioto_form *form =
+      agx_ioto_find_form(agx_ioto_target_encoding(chip), kind);
+   return form ? form->length : 0;
+}
+
+static bool
+agx_ioto_prefix_matches(const struct agx_ioto_form *form,
+                        const uint8_t *bytes, size_t available)
+{
+   const size_t visible = available < form->length ? available : form->length;
+
+   for (uint8_t i = 0; i < form->fixed_word_count; ++i) {
+      const struct agx_ioto_fixed_word *fixed = &form->fixed[i];
+      const size_t offset = (size_t)fixed->word * 2;
+      uint16_t known_mask = 0;
+      uint16_t value = 0;
+
+      if (offset < visible) {
+         known_mask |= fixed->mask & UINT16_C(0x00ff);
+         value |= bytes[offset];
+      }
+      if (offset + 1 < visible) {
+         known_mask |= fixed->mask & UINT16_C(0xff00);
+         value |= (uint16_t)bytes[offset + 1] << 8;
+      }
+
+      if (((value ^ fixed->value) & known_mask) != 0)
+         return false;
+   }
+
+   return true;
+}
+
+static void
+agx_ioto_clear_outputs(struct agx_ioto_record *out, size_t *consumed)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+   if (consumed)
+      *consumed = 0;
+}
+
+static void
+agx_ioto_set_output(const struct agx_ioto_form *form, const uint8_t *bytes,
+                    struct agx_ioto_record *out, size_t *consumed)
+{
+   out->kind = form->kind;
+   out->length = form->length;
+   memcpy(out->bytes, bytes, form->length);
+   *consumed = form->length;
+}
+
+bool
+agx_ioto_validate_kind(enum agx_chip chip, enum agx_ioto_kind expected,
+                       const void *stream, size_t available,
+                       struct agx_ioto_record *out, size_t *consumed)
+{
+   agx_ioto_clear_outputs(out, consumed);
+
+   const struct agx_ioto_form *form =
+      agx_ioto_find_form(agx_ioto_target_encoding(chip), expected);
+   if (!form || !stream || !out || !consumed || available < form->length)
+      return false;
+
+   const uint8_t *bytes = stream;
+   if (!agx_ioto_prefix_matches(form, bytes, form->length))
+      return false;
+
+   agx_ioto_set_output(form, bytes, out, consumed);
+   return true;
+}
+
+bool
+agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
+                    struct agx_ioto_record *out, size_t *consumed)
+{
+   agx_ioto_clear_outputs(out, consumed);
+
+   const enum agx_ioto_encoding encoding = agx_ioto_target_encoding(chip);
+   if (encoding == AGX_IOTO_ENCODING_UNSUPPORTED || !stream || !out ||
+       !consumed || available == 0)
+      return false;
+
+   const uint8_t *bytes = stream;
+   const struct agx_ioto_form *match = NULL;
+   bool incomplete_match = false;
+
+   for (size_t i = 0; i < sizeof(agx_ioto_forms) / sizeof(agx_ioto_forms[0]);
+        ++i) {
+      const struct agx_ioto_form *form = &agx_ioto_forms[i];
+      if (form->encoding != encoding ||
+          !agx_ioto_prefix_matches(form, bytes, available))
+         continue;
+
+      if (available < form->length) {
+         incomplete_match = true;
+         continue;
+      }
+
+      if (match)
+         return false;
+      match = form;
+   }
+
+   if (!match || incomplete_match)
+      return false;
+
+   agx_ioto_set_output(match, bytes, out, consumed);
+   return true;
+}
+
+bool
+agx_ioto_record_copy(enum agx_chip chip, const struct agx_ioto_record *record,
+                     void *out, size_t out_size)
+{
+   if (!record || !out || record->kind <= AGX_IOTO_KIND_INVALID ||
+       record->kind >= AGX_IOTO_KIND_COUNT || record->length == 0 ||
+       record->length > AGX_IOTO_MAX_RECORD_SIZE || out_size < record->length)
+      return false;
+
+   const struct agx_ioto_form *form =
+      agx_ioto_find_form(agx_ioto_target_encoding(chip), record->kind);
+   if (!form || form->length != record->length ||
+       !agx_ioto_prefix_matches(form, record->bytes, record->length))
+      return false;
+
+   memcpy(out, record->bytes, record->length);
+   return true;
+}

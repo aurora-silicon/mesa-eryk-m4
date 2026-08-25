@@ -9,6 +9,10 @@
 
 #define AGX_IOTO_PROFILE_CONTROL_CLASSIC_OPCODE UINT16_C(0x03f7)
 #define AGX_IOTO_PROFILE_CONTROL_HAL300_OPCODE  UINT16_C(0x0007)
+#define AGX_IOTO_PROFILE_CONTROL_CLASSIC_PAYLOAD0 UINT16_C(0x07ff)
+#define AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD0  UINT16_C(0xf098)
+#define AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD1  UINT16_C(0xfc00)
+#define AGX_IOTO_PROFILE_CONTROL_HAL300_WORD1_FIXED UINT16_C(0x0f00)
 
 static uint16_t
 load_le16(const uint8_t *bytes)
@@ -68,14 +72,27 @@ agx_ioto_profile_control_pack(const struct agx_ioto_profile_control *profile,
       return false;
 
    memset(out, 0, AGX_IOTO_PROFILE_CONTROL_MAX_SIZE);
-   if (!profile || !agx_ioto_profile_control_supported(profile->chip) ||
-       (!is_hal300(profile->chip) && profile->payload1 != 0))
+   if (!profile || !agx_ioto_profile_control_supported(profile->chip))
       return false;
+
+   if (is_hal300(profile->chip)) {
+      if ((profile->payload0 & ~AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD0) != 0 ||
+          (profile->payload1 & ~AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD1) != 0)
+         return false;
+   } else if ((profile->payload0 &
+               ~AGX_IOTO_PROFILE_CONTROL_CLASSIC_PAYLOAD0) != 0 ||
+              profile->payload1 != 0) {
+      return false;
+   }
 
    store_le16(out, is_hal300(profile->chip)
                       ? AGX_IOTO_PROFILE_CONTROL_HAL300_OPCODE
                       : AGX_IOTO_PROFILE_CONTROL_CLASSIC_OPCODE);
-   store_le16(out + 2, profile->payload0);
+   store_le16(out + 2,
+              profile->payload0 |
+                 (is_hal300(profile->chip)
+                     ? AGX_IOTO_PROFILE_CONTROL_HAL300_WORD1_FIXED
+                     : 0));
    if (is_hal300(profile->chip))
       store_le16(out + 4, profile->payload1);
 
@@ -104,9 +121,23 @@ agx_ioto_profile_control_unpack(enum agx_chip chip, const void *stream,
    if (load_le16(bytes) != opcode)
       return false;
 
+   const uint16_t word1 = load_le16(bytes + 2);
+   const uint16_t word2 = is_hal300(chip) ? load_le16(bytes + 4) : 0;
+   if (is_hal300(chip)) {
+      if ((word1 & ~AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD0) !=
+             AGX_IOTO_PROFILE_CONTROL_HAL300_WORD1_FIXED ||
+          (word2 & ~AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD1) != 0)
+         return false;
+   } else if ((word1 & ~AGX_IOTO_PROFILE_CONTROL_CLASSIC_PAYLOAD0) != 0) {
+      return false;
+   }
+
    profile->chip = chip;
-   profile->payload0 = load_le16(bytes + 2);
-   profile->payload1 = is_hal300(chip) ? load_le16(bytes + 4) : 0;
+   profile->payload0 =
+      word1 & (is_hal300(chip) ? AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD0
+                               : AGX_IOTO_PROFILE_CONTROL_CLASSIC_PAYLOAD0);
+   profile->payload1 =
+      word2 & (is_hal300(chip) ? AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD1 : 0);
    *consumed = size;
    return true;
 }

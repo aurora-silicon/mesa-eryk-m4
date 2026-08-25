@@ -9,6 +9,7 @@
 
 #include "asahi/genxml/agx3_cmdstream.h"
 #include "asahi/lib/agx3_cdm_decode_core.h"
+#include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_ioto_profile_core.h"
 
 #include <stdbool.h>
@@ -49,6 +50,27 @@ struct d12_agx3_ioto_profile_encoding {
    uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
    uint8_t length;
 };
+
+/* Strict D3D12 bridge into the shared, byte-preserving Ioto classifier. */
+static inline bool
+d12_agx3_decode_ioto_record(enum agx_chip chip, const void *command,
+                            size_t available, struct agx_ioto_record *record,
+                            size_t *consumed)
+{
+   return agx_ioto_decode_one(chip, command, available, record, consumed);
+}
+
+/* Expected-kind validation is safe even when two opcode families overlap. */
+static inline bool
+d12_agx3_validate_ioto_record(enum agx_chip chip,
+                              enum agx_ioto_kind expected,
+                              const void *command, size_t available,
+                              struct agx_ioto_record *record,
+                              size_t *consumed)
+{
+   return agx_ioto_validate_kind(chip, expected, command, available, record,
+                                 consumed);
+}
 
 /* Bounded D3D12 bridge for the mandatory AGX3 Ioto profile record. */
 static inline bool

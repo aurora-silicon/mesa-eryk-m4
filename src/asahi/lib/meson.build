@@ -8,6 +8,8 @@ libasahi_lib_files = files(
   'agx3_cdm_decode_core.h',
   'agx3_cdm_direct_launch_semantic_core.c',
   'agx3_cdm_direct_launch_semantic_core.h',
+  'agx_ioto_core.c',
+  'agx_ioto_core.h',
   'agx_ioto_profile_core.c',
   'agx_ioto_profile_core.h',
   'agx_bo.c',
@@ -182,6 +184,19 @@ libasahi_lib = static_library(
 )
 
 if with_tests
+  test(
+    'asahi-agx-ioto-core',
+    executable(
+      'asahi-agx-ioto-core',
+      files(
+        'agx_ioto_core.c',
+        'tests/test-agx-ioto-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'asahi-agx-ioto-profile-core',
     executable(

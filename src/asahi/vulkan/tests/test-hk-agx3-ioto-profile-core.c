@@ -31,20 +31,23 @@ main(void)
                           targets[t] == AGX_CHIP_G17S ||
                           targets[t] == AGX_CHIP_G17C;
       struct hk_agx3_ioto_profile_encoding encoded;
-      CHECK(hk_agx3_ioto_profile_generate(targets[t], 0x1234,
-                                          hal300 ? 0xabcd : 0, &encoded));
+      const uint16_t payload0_in = hal300 ? 0x9088 : 0x0234;
+      const uint16_t payload1_in = hal300 ? 0xa800 : 0;
+      CHECK(hk_agx3_ioto_profile_generate(targets[t], payload0_in, payload1_in,
+                                          &encoded));
       CHECK(encoded.length == (hal300 ? 6 : 4));
       const uint8_t expected[] = {
-         hal300 ? 0x07 : 0xf7, hal300 ? 0x00 : 0x03, 0x34, 0x12,
-         hal300 ? 0xcd : 0x00, hal300 ? 0xab : 0x00,
+         hal300 ? 0x07 : 0xf7, hal300 ? 0x00 : 0x03,
+         hal300 ? 0x88 : 0x34, hal300 ? 0x9f : 0x02,
+         hal300 ? 0x00 : 0x00, hal300 ? 0xa8 : 0x00,
       };
       CHECK(memcmp(encoded.bytes, expected, sizeof(expected)) == 0);
 
       uint16_t payload0, payload1;
       CHECK(hk_agx3_ioto_profile_decode(targets[t], encoded.bytes,
                                         encoded.length, &payload0, &payload1));
-      CHECK(payload0 == 0x1234);
-      CHECK(payload1 == (hal300 ? 0xabcd : 0));
+      CHECK(payload0 == (hal300 ? 0x9088 : 0x0234));
+      CHECK(payload1 == (hal300 ? 0xa800 : 0));
       for (size_t truncated = 0; truncated < encoded.length; ++truncated) {
          CHECK(!hk_agx3_ioto_profile_decode(targets[t], encoded.bytes,
                                             truncated, &payload0, &payload1));
@@ -68,6 +71,7 @@ main(void)
 
    struct hk_agx3_ioto_profile_encoding encoded;
    CHECK(!hk_agx3_ioto_profile_generate(AGX_CHIP_G15G, 0, 1, &encoded));
+   CHECK(!hk_agx3_ioto_profile_generate(AGX_CHIP_G17S, 1, 0, &encoded));
    CHECK(!hk_agx3_ioto_profile_generate(AGX_CHIP_G17S, 0, 0, NULL));
    CHECK(!hk_agx3_ioto_profile_decode(AGX_CHIP_G17S, NULL, 6, NULL, NULL));
 

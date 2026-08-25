@@ -18,8 +18,10 @@ extern "C" {
 #define AGX_IOTO_PROFILE_CONTROL_MAX_SIZE 6
 
 /*
- * Byte-witnessed fields of Ioto SETPROFILECTL_0.  Their meaning is not yet
- * proved, so callers must preserve them as opaque halfwords.
+ * Bounded canonical subset of Ioto SETPROFILECTL_0.  payload0/payload1 hold
+ * already-positioned operand bits, not complete encoded halfwords.  Packing
+ * rejects every bit outside the recovered field scatters instead of emitting
+ * values into fixed or unattributed positions.
  */
 struct agx_ioto_profile_control {
    enum agx_chip chip;

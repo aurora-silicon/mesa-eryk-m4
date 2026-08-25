@@ -18,6 +18,80 @@ static unsigned checks;
    } while (0)
 
 static int
+test_ioto_raw(void)
+{
+   static const uint8_t gpu0_tail[] = {
+      0x77, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x77, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0xf7, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t gpu1_tail[] = {
+      0x07, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00,
+      0x07, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x07, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const enum agx_ioto_kind tail_kinds[] = {
+      AGX_IOTO_KIND_SPECLM_EP0,
+      AGX_IOTO_KIND_LDSHDR_EP0,
+      AGX_IOTO_KIND_SPECTPR_EP0,
+   };
+   static const uint8_t iadd_gpu0[] = {
+      0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x08, 0xa8, 0x10, 0x05,
+   };
+   static const uint8_t iadd_gpu1[] = {
+      0x27, 0x04, 0x04, 0x1a, 0x21, 0x00,
+      0xa3, 0x02, 0x88, 0x80, 0x00, 0x00,
+   };
+
+   const uint8_t *tails[] = {gpu0_tail, gpu1_tail};
+   const enum agx_chip chips[] = {AGX_CHIP_G15G, AGX_CHIP_G17S};
+   const size_t lengths[] = {sizeof(gpu0_tail), sizeof(gpu1_tail)};
+   for (unsigned target = 0; target < 2; ++target) {
+      size_t offset = 0;
+      for (unsigned i = 0; i < 3; ++i) {
+         struct agx_ioto_record record;
+         size_t consumed;
+         CHECK(d12_agx3_validate_ioto_record(
+            chips[target], tail_kinds[i], tails[target] + offset,
+            lengths[target] - offset, &record, &consumed));
+         CHECK(record.kind == tail_kinds[i]);
+         CHECK(consumed == (i == 0 ? 8 : 10));
+         CHECK(memcmp(record.bytes, tails[target] + offset, consumed) == 0);
+         offset += consumed;
+      }
+      CHECK(offset == lengths[target]);
+   }
+
+   const uint8_t *iadds[] = {iadd_gpu0, iadd_gpu1};
+   const size_t iadd_sizes[] = {sizeof(iadd_gpu0), sizeof(iadd_gpu1)};
+   for (unsigned target = 0; target < 2; ++target) {
+      struct agx_ioto_record record;
+      size_t consumed = 99;
+      CHECK(d12_agx3_decode_ioto_record(chips[target], iadds[target],
+                                        iadd_sizes[target], &record,
+                                        &consumed));
+      CHECK(record.kind == AGX_IOTO_KIND_IADD_EP0);
+      CHECK(consumed == iadd_sizes[target]);
+      CHECK(memcmp(record.bytes, iadds[target], consumed) == 0);
+
+      memset(&record, 0xff, sizeof(record));
+      consumed = 99;
+      CHECK(!d12_agx3_validate_ioto_record(
+         chips[target], AGX_IOTO_KIND_IADD_EP0, iadds[target],
+         iadd_sizes[target] - 1, &record, &consumed));
+      CHECK(record.kind == AGX_IOTO_KIND_INVALID);
+      CHECK(record.length == 0 && consumed == 0);
+   }
+
+   struct agx_ioto_record record;
+   size_t consumed = 99;
+   CHECK(!d12_agx3_decode_ioto_record(AGX_CHIP_G14X, iadd_gpu0,
+                                      sizeof(iadd_gpu0), &record, &consumed));
+   CHECK(record.kind == AGX_IOTO_KIND_INVALID && consumed == 0);
+   return 0;
+}
+
+static int
 test_ioto_profile(void)
 {
    const enum agx_chip targets[] = {
@@ -25,17 +99,24 @@ test_ioto_profile(void)
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
       AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
    };
-   const uint16_t values[] = {0, 1, 0x00ff, 0xff00, UINT16_MAX};
+   const uint16_t classic_values[] = {0, 1, 0x00ff, 0x0700, 0x07ff};
+   const uint16_t hal300_values0[] = {0, 0x0008, 0x0010, 0x0080, 0x9088,
+                                     0xf098};
+   const uint16_t hal300_values1[] = {0, 0x0400, 0x5400, 0xa800, 0xfc00, 0};
 
    for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
       const bool hal300 = targets[t] == AGX_CHIP_G17G ||
                           targets[t] == AGX_CHIP_G17S ||
                           targets[t] == AGX_CHIP_G17C;
-      for (unsigned v = 0; v < sizeof(values) / sizeof(values[0]); ++v) {
+      const uint16_t *values = hal300 ? hal300_values0 : classic_values;
+      const unsigned value_count =
+         hal300 ? sizeof(hal300_values0) / sizeof(hal300_values0[0])
+                : sizeof(classic_values) / sizeof(classic_values[0]);
+      for (unsigned v = 0; v < value_count; ++v) {
+         const uint16_t payload1_in = hal300 ? hal300_values1[v] : 0;
          struct d12_agx3_ioto_profile_encoding encoded;
          CHECK(d12_agx3_encode_ioto_profile(
-            targets[t], values[v], hal300 ? (uint16_t)~values[v] : 0,
-            &encoded));
+            targets[t], values[v], payload1_in, &encoded));
          CHECK(encoded.length == (hal300 ? 6 : 4));
          CHECK(encoded.bytes[0] == (hal300 ? 0x07 : 0xf7));
          CHECK(encoded.bytes[1] == (hal300 ? 0x00 : 0x03));
@@ -44,7 +125,7 @@ test_ioto_profile(void)
          CHECK(d12_agx3_decode_ioto_profile(
             targets[t], encoded.bytes, encoded.length, &payload0, &payload1));
          CHECK(payload0 == values[v]);
-         CHECK(payload1 == (hal300 ? (uint16_t)~values[v] : 0));
+         CHECK(payload1 == (hal300 ? hal300_values1[v] : 0));
          CHECK(!d12_agx3_decode_ioto_profile(targets[t], encoded.bytes,
                                              encoded.length + 1, &payload0,
                                              &payload1));
@@ -67,6 +148,7 @@ test_ioto_profile(void)
 
    struct d12_agx3_ioto_profile_encoding encoded;
    CHECK(!d12_agx3_encode_ioto_profile(AGX_CHIP_G16G, 0, 1, &encoded));
+   CHECK(!d12_agx3_encode_ioto_profile(AGX_CHIP_G17S, 1, 0, &encoded));
    CHECK(!d12_agx3_encode_ioto_profile(AGX_CHIP_G16G, 0, 0, NULL));
    CHECK(!d12_agx3_decode_ioto_profile(AGX_CHIP_G16G, NULL, 4, NULL, NULL));
    return 0;
@@ -75,6 +157,8 @@ test_ioto_profile(void)
 int
 main(void)
 {
+   if (test_ioto_raw())
+      return 1;
    if (test_ioto_profile())
       return 1;
 

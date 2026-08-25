@@ -605,6 +605,24 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
 "$cc" "$common[@]" \
     -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx-ioto-core.c" \
+    -o "$out/agx_ioto_core_tests"
+"$out/agx_ioto_core_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_ioto_decode.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ioto-decode.c" \
+    -o "$out/hk_agx3_ioto_decode_tests"
+"$out/hk_agx3_ioto_decode_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
     "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
     "$repo_root/src/asahi/lib/tests/test-agx-ioto-profile-core.c" \
     -o "$out/agx_ioto_profile_core_tests"
@@ -626,6 +644,7 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
     -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx3_cdm_decode_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
     "$repo_root/src/asahi/d3d12/tests/d12_agx3_cmdstream_core_tests.c" \
     -o "$out/d12_agx3_cmdstream_core_tests"
