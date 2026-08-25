@@ -2866,6 +2866,106 @@ agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_pack_simd_broadcast_f32_imm(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src, uint8_t lane,
+   struct agx3_encoded_simd_broadcast_f32_imm *out)
+{
+   if (out == NULL || !is_agx3_encoding(encoding) || (dest & 1) != 0 ||
+       (src & 1) != 0 || (lane != 0 && lane != 3))
+      return false;
+
+   const uint16_t register_limit =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+   if (dest >= register_limit || src >= register_limit)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* simdbcast.ep0, f9=2 f10=2 f23=2 f24=2 f27=1 f37=1 f38=1
+       * f49=1.  The register/lane placements are the grade-A f2/f16/f29
+       * roles separated by SD_dst2 and SB_bcast0/SB_bcast3. */
+      static const uint8_t canonical[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+         0x47, 0x04, 0x56, 0x00, 0x02, 0x00, 0x00, 0x2c, 0x04, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+      out->bytes[3] |= dest;
+      out->bytes[5] |= (src & 0x7f) << 1;
+      out->bytes[6] |= src >> 7;
+      out->bytes[6] |= lane << 1;
+   } else {
+      /* simdbcast.ep0, f9=2 f10=2 f23=2 f24=2 f27=1 f37=1 f38=1
+       * f42=3 f43=154 f51=1. */
+      static const uint8_t canonical[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+         0x2f, 0x00, 0x21, 0x1a, 0x20, 0x00, 0xa8, 0x02, 0x38, 0x00,
+      };
+      memcpy(out->bytes, canonical, sizeof(canonical));
+
+      /* f2 (destination); the unobserved ninth bit is intentionally absent. */
+      out->bytes[0] |= ((dest >> 1) & 0x1) << 4;
+      out->bytes[0] |= ((dest >> 4) & 0x1) << 7;
+      out->bytes[7] |= ((dest >> 2) & 0x3) << 3;
+      out->bytes[7] |= ((dest >> 5) & 0x1) << 5;
+      out->bytes[2] |= ((dest >> 6) & 0x1) << 7;
+      out->bytes[2] |= ((dest >> 7) & 0x1) << 3;
+
+      /* f16 (source); likewise bounded to the witnessed eight-bit domain. */
+      out->bytes[1] |= src & 0x2;
+      out->bytes[3] |= (src & 0x1c) << 3;
+      out->bytes[5] |= (src & 0x20) << 2;
+      out->bytes[8] |= (src >> 6) & 0x3;
+
+      /* f29 immediate lane. */
+      out->bytes[8] |= (lane & 0x3) << 6;
+   }
+
+   out->length = AGX3_SIMD_BROADCAST_F32_IMM_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_simd_broadcast_f32_imm(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *lane, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || dest == NULL ||
+       src == NULL || lane == NULL || length == NULL ||
+       available < AGX3_SIMD_BROADCAST_F32_IMM_LENGTH)
+      return false;
+
+   uint16_t decoded_dest, decoded_src;
+   uint8_t decoded_lane;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded_dest = bytes[3];
+      decoded_src = ((bytes[5] >> 1) & 0x7f) | ((bytes[6] & 0x1) << 7);
+      decoded_lane = (bytes[6] >> 1) & 0x7f;
+   } else {
+      decoded_dest = (((bytes[0] >> 4) & 0x1) << 1) |
+                     (((bytes[7] >> 3) & 0x3) << 2) |
+                     (((bytes[0] >> 7) & 0x1) << 4) |
+                     (((bytes[7] >> 5) & 0x1) << 5) |
+                     (((bytes[2] >> 7) & 0x1) << 6) |
+                     (((bytes[2] >> 3) & 0x1) << 7);
+      decoded_src = (bytes[1] & 0x2) |
+                    (((bytes[3] >> 5) & 0x7) << 2) |
+                    (((bytes[5] >> 7) & 0x1) << 5) |
+                    ((bytes[8] & 0x3) << 6);
+      decoded_lane = ((bytes[8] >> 6) & 0x3) | ((bytes[9] & 0x3f) << 2);
+   }
+
+   struct agx3_encoded_simd_broadcast_f32_imm canonical;
+   if (!agx3_pack_simd_broadcast_f32_imm(
+          encoding, decoded_dest, decoded_src, decoded_lane, &canonical) ||
+       memcmp(bytes, canonical.bytes, AGX3_SIMD_BROADCAST_F32_IMM_LENGTH) != 0)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *lane = decoded_lane;
+   *length = AGX3_SIMD_BROADCAST_F32_IMM_LENGTH;
+   return true;
+}
+
+bool
 agx3_pack_end(enum agx_isa_encoding encoding, struct agx3_encoded_end *out)
 {
    if (!is_agx3_encoding(encoding) || out == NULL)
@@ -3379,6 +3479,78 @@ agx3_unpack_continue_ray_fixed_first_site_witness(
 
    *length = decoded_length;
    return true;
+}
+
+static const uint8_t
+   inc_stk_fixed_witness_agx3b[AGX3_INC_STK_FIXED_WITNESS_LENGTH] = {
+      0x07, 0x00, 0x54, 0x12, 0x80, 0x00, 0x00, 0x00,
+   };
+
+static const uint8_t
+   inc_stk_fixed_witness_agx3c[AGX3_INC_STK_FIXED_WITNESS_LENGTH] = {
+      0x9f, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+
+static const uint8_t *
+inc_stk_fixed_witness_encoding(enum agx_isa_encoding encoding)
+{
+   switch (encoding) {
+   case AGX_ISA_ENCODING_AGX3B:
+      return inc_stk_fixed_witness_agx3b;
+   case AGX_ISA_ENCODING_AGX3C:
+      return inc_stk_fixed_witness_agx3c;
+   default:
+      return NULL;
+   }
+}
+
+bool
+agx3_pack_inc_stk_fixed_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_inc_stk_fixed_witness *out)
+{
+   const uint8_t *witness = inc_stk_fixed_witness_encoding(encoding);
+   if (witness == NULL || out == NULL)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, witness, AGX3_INC_STK_FIXED_WITNESS_LENGTH);
+   out->length = AGX3_INC_STK_FIXED_WITNESS_LENGTH;
+   return true;
+}
+
+bool
+agx3_unpack_inc_stk_fixed_witness(enum agx_isa_encoding encoding,
+                                  const uint8_t *bytes, size_t available,
+                                  uint8_t *length)
+{
+   const uint8_t *witness = inc_stk_fixed_witness_encoding(encoding);
+   if (witness == NULL || bytes == NULL || length == NULL ||
+       available < AGX3_INC_STK_FIXED_WITNESS_LENGTH ||
+       memcmp(bytes, witness, AGX3_INC_STK_FIXED_WITNESS_LENGTH) != 0)
+      return false;
+
+   *length = AGX3_INC_STK_FIXED_WITNESS_LENGTH;
+   return true;
+}
+
+enum agx_isa_encoding
+agx3_inc_stk_witnessed_chip_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+      return AGX_ISA_ENCODING_AGX3B;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return AGX_ISA_ENCODING_AGX3C;
+   default:
+      return AGX_ISA_ENCODING_UNKNOWN;
+   }
 }
 
 static const uint8_t

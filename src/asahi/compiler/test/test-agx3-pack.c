@@ -6380,6 +6380,109 @@ test_continue_ray_fixed_first_site_witness(void)
       AGX_ISA_ENCODING_AGX3C, vectors[1].expected, vectors[1].length, NULL));
 }
 
+static bool
+inc_stk_target_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+test_inc_stk_fixed_witness(void)
+{
+   static const struct {
+      enum agx_isa_encoding encoding;
+      uint8_t expected[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B,
+       {0x07, 0x00, 0x54, 0x12, 0x80, 0x00, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C,
+       {0x9f, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+   };
+   struct agx3_encoded_inc_stk_fixed_witness packed;
+   uint8_t length = 0;
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      CHECK(agx3_pack_inc_stk_fixed_witness(vectors[v].encoding, &packed));
+      CHECK(packed.length == AGX3_INC_STK_FIXED_WITNESS_LENGTH);
+      CHECK(memcmp(packed.bytes, vectors[v].expected,
+                   AGX3_INC_STK_FIXED_WITNESS_LENGTH) == 0);
+      CHECK(agx3_unpack_inc_stk_fixed_witness(
+         vectors[v].encoding, vectors[v].expected, sizeof(vectors[v].expected),
+         &length));
+      CHECK(length == AGX3_INC_STK_FIXED_WITNESS_LENGTH);
+
+      /* There is no differential operand surface: every changed bit is an
+       * unsupported instruction rather than another encodable value. */
+      for (unsigned bit = 0;
+           bit < AGX3_INC_STK_FIXED_WITNESS_LENGTH * 8; ++bit) {
+         uint8_t malformed[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+         memcpy(malformed, vectors[v].expected, sizeof(malformed));
+         malformed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!agx3_unpack_inc_stk_fixed_witness(
+            vectors[v].encoding, malformed, sizeof(malformed), &length));
+      }
+
+      for (size_t available = 0;
+           available < AGX3_INC_STK_FIXED_WITNESS_LENGTH; ++available) {
+         CHECK(!agx3_unpack_inc_stk_fixed_witness(
+            vectors[v].encoding, vectors[v].expected, available, &length));
+      }
+
+      uint8_t appended[AGX3_INC_STK_FIXED_WITNESS_LENGTH + 1];
+      memcpy(appended, vectors[v].expected, sizeof(vectors[v].expected));
+      appended[AGX3_INC_STK_FIXED_WITNESS_LENGTH] = 0xff;
+      CHECK(agx3_unpack_inc_stk_fixed_witness(
+         vectors[v].encoding, appended, sizeof(appended), &length));
+
+      CHECK(!agx3_unpack_inc_stk_fixed_witness(
+         vectors[v ^ 1].encoding, vectors[v].expected,
+         sizeof(vectors[v].expected), &length));
+   }
+
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      const enum agx_isa_encoding encoding =
+         agx3_inc_stk_witnessed_chip_encoding(chip);
+      if (inc_stk_target_supported(chip)) {
+         CHECK(encoding == (chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S
+                               ? AGX_ISA_ENCODING_AGX3C
+                               : AGX_ISA_ENCODING_AGX3B));
+      } else {
+         CHECK(encoding == AGX_ISA_ENCODING_UNKNOWN);
+      }
+   }
+   CHECK(agx3_inc_stk_witnessed_chip_encoding((enum agx_chip)999) ==
+         AGX_ISA_ENCODING_UNKNOWN);
+
+   CHECK(!agx3_pack_inc_stk_fixed_witness(AGX_ISA_ENCODING_AGX2, &packed));
+   CHECK(!agx3_pack_inc_stk_fixed_witness(AGX_ISA_ENCODING_UNKNOWN,
+                                           &packed));
+   CHECK(!agx3_pack_inc_stk_fixed_witness(AGX_ISA_ENCODING_AGX3C, NULL));
+   CHECK(!agx3_unpack_inc_stk_fixed_witness(
+      AGX_ISA_ENCODING_AGX2, vectors[1].expected, sizeof(vectors[1].expected),
+      &length));
+   CHECK(!agx3_unpack_inc_stk_fixed_witness(
+      AGX_ISA_ENCODING_UNKNOWN, vectors[1].expected,
+      sizeof(vectors[1].expected), &length));
+   CHECK(!agx3_unpack_inc_stk_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, NULL, sizeof(vectors[1].expected), &length));
+   CHECK(!agx3_unpack_inc_stk_fixed_witness(
+      AGX_ISA_ENCODING_AGX3C, vectors[1].expected,
+      sizeof(vectors[1].expected), NULL));
+}
+
 static void
 test_update_bvh_fixed_witness(void)
 {
@@ -6515,6 +6618,152 @@ test_enable_all_threads(void)
                                          sizeof(expected_c), NULL));
 }
 
+static void
+test_simd_broadcast_f32_imm(void)
+{
+   static const uint8_t lane0_b[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+      0x47, 0x04, 0x56, 0x00, 0x02, 0x00, 0x00, 0x2c, 0x04, 0x00,
+   };
+   static const uint8_t lane3_b[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+      0x47, 0x04, 0x56, 0x00, 0x02, 0x00, 0x06, 0x2c, 0x04, 0x00,
+   };
+   static const uint8_t lane0_c[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+      0x2f, 0x00, 0x21, 0x1a, 0x20, 0x00, 0xa8, 0x02, 0x38, 0x00,
+   };
+   static const uint8_t lane3_c[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH] = {
+      0x2f, 0x00, 0x21, 0x1a, 0x20, 0x00, 0xa8, 0x02, 0xf8, 0x00,
+   };
+   static const struct {
+      enum agx_isa_encoding encoding;
+      uint16_t register_limit;
+      const uint8_t *lane0;
+      const uint8_t *lane3;
+   } domains[] = {
+      {AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_ISA_ENCODING_AGX3C, 256, lane0_c, lane3_c},
+   };
+
+   for (unsigned d = 0; d < sizeof(domains) / sizeof(domains[0]); ++d) {
+      struct agx3_encoded_simd_broadcast_f32_imm packed;
+      CHECK(agx3_pack_simd_broadcast_f32_imm(domains[d].encoding, 0, 0, 0,
+                                              &packed));
+      CHECK(packed.length == sizeof(packed.bytes));
+      CHECK(memcmp(packed.bytes, domains[d].lane0, sizeof(packed.bytes)) == 0);
+      CHECK(agx3_pack_simd_broadcast_f32_imm(domains[d].encoding, 0, 0, 3,
+                                              &packed));
+      CHECK(memcmp(packed.bytes, domains[d].lane3, sizeof(packed.bytes)) == 0);
+
+      /* Exhaust the complete accepted destination/source/lane product. */
+      static const uint8_t lanes[] = {0, 3};
+      for (uint16_t dest = 0; dest < domains[d].register_limit; dest += 2) {
+         for (uint16_t src = 0; src < domains[d].register_limit; src += 2) {
+            for (unsigned l = 0; l < sizeof(lanes) / sizeof(lanes[0]); ++l) {
+               uint16_t decoded_dest = UINT16_MAX, decoded_src = UINT16_MAX;
+               uint8_t decoded_lane = UINT8_MAX, length = 0;
+               CHECK(agx3_pack_simd_broadcast_f32_imm(
+                  domains[d].encoding, dest, src, lanes[l], &packed));
+               CHECK(packed.length == AGX3_SIMD_BROADCAST_F32_IMM_LENGTH);
+               CHECK(agx3_unpack_simd_broadcast_f32_imm(
+                  domains[d].encoding, packed.bytes, packed.length,
+                  &decoded_dest, &decoded_src, &decoded_lane, &length));
+               CHECK(decoded_dest == dest);
+               CHECK(decoded_src == src);
+               CHECK(decoded_lane == lanes[l]);
+               CHECK(length == packed.length);
+            }
+         }
+      }
+
+      /* Canonical decode is total over every one-bit perturbation: a bit is
+       * either another accepted tuple or is rejected, never normalized. */
+      CHECK(agx3_pack_simd_broadcast_f32_imm(
+         domains[d].encoding, domains[d].register_limit - 2,
+         domains[d].register_limit - 4, 3, &packed));
+      for (unsigned bit = 0; bit < sizeof(packed.bytes) * 8; ++bit) {
+         uint8_t mutated[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH];
+         memcpy(mutated, packed.bytes, sizeof(mutated));
+         mutated[bit / 8] ^= 1u << (bit % 8);
+         uint16_t dest = 0, src = 0;
+         uint8_t lane = 0, length = 0;
+         if (agx3_unpack_simd_broadcast_f32_imm(
+                domains[d].encoding, mutated, sizeof(mutated), &dest, &src,
+                &lane, &length)) {
+            struct agx3_encoded_simd_broadcast_f32_imm repacked;
+            CHECK(agx3_pack_simd_broadcast_f32_imm(
+               domains[d].encoding, dest, src, lane, &repacked));
+            CHECK(memcmp(repacked.bytes, mutated, sizeof(mutated)) == 0);
+         }
+      }
+
+      for (size_t available = 0; available < sizeof(packed.bytes);
+           ++available) {
+         uint16_t dest = 0, src = 0;
+         uint8_t lane = 0, length = 0;
+         CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+            domains[d].encoding, packed.bytes, available, &dest, &src, &lane,
+            &length));
+      }
+
+      uint8_t appended[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH + 1];
+      memcpy(appended, packed.bytes, sizeof(packed.bytes));
+      appended[sizeof(packed.bytes)] = 0xff;
+      uint16_t dest = 0, src = 0;
+      uint8_t lane = 0, length = 0;
+      CHECK(agx3_unpack_simd_broadcast_f32_imm(
+         domains[d].encoding, appended, sizeof(appended), &dest, &src, &lane,
+         &length));
+      CHECK(length == sizeof(packed.bytes));
+   }
+
+   struct agx3_encoded_simd_broadcast_f32_imm packed;
+   static const uint8_t rejected_lanes[] = {1, 2, 4, 31, 255};
+   for (unsigned i = 0; i < sizeof(rejected_lanes); ++i) {
+      CHECK(!agx3_pack_simd_broadcast_f32_imm(
+         AGX_ISA_ENCODING_AGX3B, 0, 0, rejected_lanes[i], &packed));
+   }
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX3B, 1, 0,
+                                            0, &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX3B, 0, 1,
+                                            0, &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX3B, 192, 0,
+                                            0, &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX3C, 256, 0,
+                                            0, &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX2, 0, 0, 0,
+                                            &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_UNKNOWN, 0, 0, 0,
+                                            &packed));
+   CHECK(!agx3_pack_simd_broadcast_f32_imm(AGX_ISA_ENCODING_AGX3B, 0, 0, 0,
+                                            NULL));
+
+   uint16_t dest = 0, src = 0;
+   uint8_t lane = 0, length = 0;
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX2, lane0_b, sizeof(lane0_b), &dest, &src, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3C, lane0_b, sizeof(lane0_b), &dest, &src, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, lane0_c, sizeof(lane0_c), &dest, &src, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, NULL, sizeof(lane0_b), &dest, &src, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, lane0_b, sizeof(lane0_b), NULL, &src, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, lane0_b, sizeof(lane0_b), &dest, NULL, &lane,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, lane0_b, sizeof(lane0_b), &dest, &src, NULL,
+      &length));
+   CHECK(!agx3_unpack_simd_broadcast_f32_imm(
+      AGX_ISA_ENCODING_AGX3B, lane0_b, sizeof(lane0_b), &dest, &src, &lane,
+      NULL));
+}
+
 int
 main(void)
 {
@@ -6574,6 +6823,7 @@ main(void)
    test_yield_i16_reg_rejection();
    test_nop();
    test_threadgroup_barrier();
+   test_simd_broadcast_f32_imm();
    test_end();
    test_end_with_wait_fence_mask();
    test_enable_all_threads();
@@ -6581,6 +6831,7 @@ main(void)
    test_intersect_ray();
    test_continue_ray();
    test_continue_ray_fixed_first_site_witness();
+   test_inc_stk_fixed_witness();
    test_update_bvh_fixed_witness();
 
    printf("agx3 proven-subset pack: %u checks, %u failures\n", checks,

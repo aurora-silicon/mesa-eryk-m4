@@ -60,6 +60,9 @@ _Static_assert(AGX3_F32_TO_INT_RTZ_REG_LENGTH ==
                "D3D AGX3 f32-to-int storage must match the canonical form");
 _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
                "D3D AGX3 yield storage must match the canonical form");
+_Static_assert(AGX3_SIMD_BROADCAST_F32_IMM_LENGTH ==
+                  D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH,
+               "D3D AGX3 wave-lane storage must match the canonical form");
 _Static_assert(AGX3_END_LENGTH ==
                   D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH,
                "D3D AGX3 terminal wait storage must match canonical end");
@@ -104,6 +107,23 @@ d12_agx3_compiler_target_encoding(enum agx_chip chip,
 static bool
 d12_agx3_tile_target_encoding(enum agx_chip chip,
                               enum agx_isa_encoding *encoding)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G16G:
+      *encoding = AGX_ISA_ENCODING_AGX3B;
+      return true;
+   case AGX_CHIP_G17S:
+      *encoding = AGX_ISA_ENCODING_AGX3C;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_subgroup_target_encoding(enum agx_chip chip,
+                                  enum agx_isa_encoding *encoding)
 {
    switch (chip) {
    case AGX_CHIP_G15G:
@@ -1823,6 +1843,59 @@ d12_agx3_decode_yield_i16_reg(enum agx_chip chip, const void *instruction,
       return false;
 
    *src = decoded_src;
+   return true;
+}
+
+bool
+d12_agx3_encode_wave_read_lane_at_f32_imm(
+   enum agx_chip chip, uint16_t dest, uint16_t src, uint8_t lane,
+   struct d12_agx3_wave_read_lane_at_f32_imm_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   struct agx3_encoded_simd_broadcast_f32_imm encoded;
+   if (!d12_agx3_subgroup_target_encoding(chip, &encoding) ||
+       !agx3_pack_simd_broadcast_f32_imm(encoding, dest, src, lane,
+                                         &encoded) ||
+       encoded.length != sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, encoded.bytes, encoded.length);
+   out->length = encoded.length;
+   return true;
+}
+
+bool
+d12_agx3_decode_wave_read_lane_at_f32_imm(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   uint16_t *dest, uint16_t *src, uint8_t *lane)
+{
+   if (dest)
+      *dest = 0;
+   if (src)
+      *src = 0;
+   if (lane)
+      *lane = 0;
+   if (!instruction || !dest || !src || !lane ||
+       instruction_size != D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   uint16_t decoded_dest = 0, decoded_src = 0;
+   uint8_t decoded_lane = 0, decoded_length = 0;
+   if (!d12_agx3_subgroup_target_encoding(chip, &encoding) ||
+       !agx3_unpack_simd_broadcast_f32_imm(
+          encoding, instruction, instruction_size, &decoded_dest,
+          &decoded_src, &decoded_lane, &decoded_length) ||
+       decoded_length != instruction_size)
+      return false;
+
+   *dest = decoded_dest;
+   *src = decoded_src;
+   *lane = decoded_lane;
    return true;
 }
 

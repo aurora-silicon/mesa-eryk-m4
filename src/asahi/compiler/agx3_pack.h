@@ -45,9 +45,11 @@ extern "C" {
 #define AGX3_YIELD_I16_REG_LENGTH 6
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_SIMD_BROADCAST_F32_IMM_LENGTH 10
 #define AGX3_INTERSECT_RAY_MAX_LENGTH 14
 #define AGX3_CONTINUE_RAY_MAX_LENGTH 8
 #define AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH 8
+#define AGX3_INC_STK_FIXED_WITNESS_LENGTH 8
 #define AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH 14
 #define AGX3_END_LENGTH 4
 #define AGX3_ENABLE_ALL_THREADS_MAX_LENGTH 8
@@ -208,6 +210,11 @@ struct agx3_encoded_threadgroup_barrier {
    uint8_t length;
 };
 
+struct agx3_encoded_simd_broadcast_f32_imm {
+   uint8_t bytes[AGX3_SIMD_BROADCAST_F32_IMM_LENGTH];
+   uint8_t length;
+};
+
 struct agx3_encoded_intersect_ray {
    uint8_t bytes[AGX3_INTERSECT_RAY_MAX_LENGTH];
    uint8_t length;
@@ -220,6 +227,11 @@ struct agx3_encoded_continue_ray {
 
 struct agx3_encoded_continue_ray_fixed_first_site_witness {
    uint8_t bytes[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_inc_stk_fixed_witness {
+   uint8_t bytes[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
    uint8_t length;
 };
 
@@ -242,6 +254,26 @@ struct agx3_encoded_update_node {
    uint8_t bytes[AGX3_UPDATE_NODE_MAX_LENGTH];
    uint8_t length;
 };
+
+/*
+ * Encode/decode the exact register-source f32 `simdbcast` immediate-lane
+ * shape recovered from the pinned G15G/G16G/G17S subgroup corpus.  Register
+ * operands are even half-register indices.  AGX3b accepts 0..190 and AGX3c
+ * deliberately stops at 254: the composer's ninth AGX3c register bit is not
+ * exposed because no source-correlated specimen exercises it.
+ *
+ * Only immediate lanes 0 and 3 have direct `simdbcast` witnesses, so every
+ * other immediate, register/uniform lane selection, element width, shuffle
+ * mnemonic and scheduler-marker shape fails closed.  The fixed marker shape
+ * here is the one carried by SB_bcast0/SB_bcast3; callers must not treat this
+ * as subgroup lowering, scheduling, runtime support or feature exposure.
+ */
+bool agx3_pack_simd_broadcast_f32_imm(
+   enum agx_isa_encoding encoding, uint16_t dest, uint16_t src, uint8_t lane,
+   struct agx3_encoded_simd_broadcast_f32_imm *out);
+bool agx3_unpack_simd_broadcast_f32_imm(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint16_t *dest, uint16_t *src, uint8_t *lane, uint8_t *length);
 
 /*
  * Encode the source-grounded 32-bit-register form of AGX3 `ldimm`.
@@ -1023,6 +1055,32 @@ bool agx3_pack_continue_ray_fixed_first_site_witness(
 bool agx3_unpack_continue_ray_fixed_first_site_witness(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint8_t *length);
+
+/*
+ * Encode/decode only the exact eight-byte `incStk` instruction observed once
+ * in each pinned rt_rayquery_committed native binary.  Apple's tables decode
+ * the sole nonzero operand as f24=4, but the corpus contains no value ladder
+ * or direct differential for that field.  It is therefore deliberately not
+ * exposed as an operand and the traversal-stack interpretation of the
+ * mnemonic remains outside this byte-level contract.
+ *
+ * The encoding-level codec contains the exact AGX3b and AGX3c witnesses.
+ * agx3_inc_stk_witnessed_chip_encoding() separately admits only scoped
+ * M3/M4/A18 Pro/M5 identities that reproduce them.  Same-encoding identities
+ * without a scoped corpus, as well as the ungrounded G16P marketing identity,
+ * remain fail-closed at target-facing bridges.  This fixed witness supplies
+ * no surrounding lowering, SCS layout, barriers, scheduling, command
+ * emission, submission, device admission, or API capability.
+ */
+bool agx3_pack_inc_stk_fixed_witness(
+   enum agx_isa_encoding encoding,
+   struct agx3_encoded_inc_stk_fixed_witness *out);
+bool agx3_unpack_inc_stk_fixed_witness(
+   enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
+   uint8_t *length);
+
+enum agx_isa_encoding
+agx3_inc_stk_witnessed_chip_encoding(enum agx_chip chip);
 
 /*
  * Encode/decode only the exact G17S/AGX3c compiler witness for the

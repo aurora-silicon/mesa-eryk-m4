@@ -1040,6 +1040,128 @@ test_agx3_continue_ray_fixed_first_site_witness(void)
            "DXR refuses a missing continue_ray first-site witness");
 }
 
+static bool
+inc_stk_target_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+test_agx3_inc_stk_fixed_witness(void)
+{
+   static const struct {
+      enum agx_chip chip;
+      enum agx_isa_encoding encoding;
+      uint8_t bytes[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+   } vectors[] = {
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B,
+       {0x07, 0x00, 0x54, 0x12, 0x80, 0x00, 0x00, 0x00}},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C,
+       {0x9f, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_inc_stk_fixed_witness shared;
+      uint8_t shared_length = 0;
+      require(agx3_pack_inc_stk_fixed_witness(vectors[v].encoding, &shared) &&
+                 agx3_unpack_inc_stk_fixed_witness(
+                    vectors[v].encoding, shared.bytes, shared.length,
+                    &shared_length) &&
+                 shared_length == sizeof(vectors[v].bytes) &&
+                 memcmp(shared.bytes, vectors[v].bytes,
+                        sizeof(vectors[v].bytes)) == 0,
+              "the shared incStk fixed witness matches the pinned corpus");
+
+      struct d12_rt_agx3_inc_stk_fixed_witness generated;
+      memset(&generated, 0xff, sizeof(generated));
+      require(d12_rt_agx3_inc_stk_fixed_witness_generate(vectors[v].chip,
+                                                          &generated),
+              "DXR generates a target-witnessed fixed incStk instruction");
+      require(generated.length == sizeof(vectors[v].bytes) &&
+                 memcmp(generated.bytes, vectors[v].bytes,
+                        sizeof(vectors[v].bytes)) == 0,
+              "DXR incStk bytes match the pinned native corpus");
+      require(d12_rt_agx3_inc_stk_fixed_witness_valid(
+                 vectors[v].chip, generated.bytes, generated.length),
+              "DXR validates the exact fixed incStk instruction");
+
+      for (unsigned bit = 0; bit < sizeof(vectors[v].bytes) * 8; ++bit) {
+         uint8_t changed[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+         memcpy(changed, vectors[v].bytes, sizeof(changed));
+         changed[bit / 8] ^= 1u << (bit % 8);
+         require(!d12_rt_agx3_inc_stk_fixed_witness_valid(
+                    vectors[v].chip, changed, sizeof(changed)),
+                 "DXR rejects every changed incStk witness bit");
+      }
+
+      for (uint32_t size = 0; size < sizeof(vectors[v].bytes); ++size)
+         require(!d12_rt_agx3_inc_stk_fixed_witness_valid(
+                    vectors[v].chip, vectors[v].bytes, size),
+                 "DXR rejects every truncated incStk fixed witness");
+
+      uint8_t appended[AGX3_INC_STK_FIXED_WITNESS_LENGTH + 1];
+      memcpy(appended, vectors[v].bytes, sizeof(vectors[v].bytes));
+      appended[sizeof(vectors[v].bytes)] = 0;
+      require(!d12_rt_agx3_inc_stk_fixed_witness_valid(
+                 vectors[v].chip, appended, sizeof(appended)),
+              "DXR rejects bytes trailing an incStk fixed witness");
+   }
+
+   require(!d12_rt_agx3_inc_stk_fixed_witness_valid(
+              AGX_CHIP_G16G, vectors[1].bytes, sizeof(vectors[1].bytes)) &&
+              !d12_rt_agx3_inc_stk_fixed_witness_valid(
+                 AGX_CHIP_G17S, vectors[0].bytes, sizeof(vectors[0].bytes)),
+           "DXR rejects cross-generation incStk fixed witnesses");
+
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      struct d12_rt_agx3_inc_stk_fixed_witness generated;
+      memset(&generated, 0xff, sizeof(generated));
+
+      if (inc_stk_target_supported(chip)) {
+         require(d12_rt_agx3_inc_stk_fixed_witness_generate(chip,
+                                                             &generated) &&
+                    d12_rt_agx3_inc_stk_fixed_witness_valid(
+                       chip, generated.bytes, generated.length),
+                 "DXR admits every scoped target with exact incStk bytes");
+      } else {
+         require(!d12_rt_agx3_inc_stk_fixed_witness_generate(chip,
+                                                              &generated),
+                 "DXR rejects every unscoped or unwitnessed incStk target");
+         require(generated.length == 0,
+                 "rejected incStk generation clears its length");
+         for (unsigned i = 0; i < sizeof(generated.bytes); ++i)
+            require(generated.bytes[i] == 0,
+                    "rejected incStk generation clears every output byte");
+      }
+   }
+
+   struct d12_rt_agx3_inc_stk_fixed_witness rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   require(!d12_rt_agx3_inc_stk_fixed_witness_generate((enum agx_chip)999,
+                                                        &rejected),
+           "DXR rejects an invalid incStk target");
+   require(rejected.length == 0,
+           "invalid incStk generation clears its output length");
+   require(!d12_rt_agx3_inc_stk_fixed_witness_generate(AGX_CHIP_G17S, NULL),
+           "DXR rejects a missing incStk generation destination");
+   require(!d12_rt_agx3_inc_stk_fixed_witness_valid(
+              AGX_CHIP_G17S, NULL, AGX3_INC_STK_FIXED_WITNESS_LENGTH),
+           "DXR rejects a missing incStk fixed witness");
+}
+
 static void
 test_agx3_update_bvh_fixed_witness(void)
 {
@@ -1678,6 +1800,7 @@ main(void)
    test_agx3_intersect_ray_instruction();
    test_agx3_continue_ray_instruction();
    test_agx3_continue_ray_fixed_first_site_witness();
+   test_agx3_inc_stk_fixed_witness();
    test_agx3_update_bvh_fixed_witness();
    test_agx_gen1_hw_triangle_leaf();
    test_agx_gen1_hw_aabb_leaf();

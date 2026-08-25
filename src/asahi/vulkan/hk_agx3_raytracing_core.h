@@ -27,6 +27,11 @@ struct hk_agx3_intersect_ray_instruction {
    uint8_t length;
 };
 
+struct hk_agx3_inc_stk_fixed_witness {
+   uint8_t bytes[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Encode/decode the exact M3/M4/A18 Pro/M5 native differential pairs for one
  * hardware `intersect_ray` instruction.  `state_register` is Apple's varying
@@ -61,6 +66,23 @@ bool hk_agx3_continue_ray_instruction_generate(
 bool hk_agx3_continue_ray_instruction_decode(
    enum agx_chip chip, const void *instruction, size_t instruction_size,
    uint16_t *state_register);
+
+/*
+ * Generate/validate only the exact per-encoding `incStk` fixed witness on
+ * scoped chip identities whose native rt_rayquery_committed corpus contains
+ * those bytes.  Apple's table decodes f24=4, but no differential proves an
+ * operand codec, so the field is deliberately absent from this API.
+ *
+ * This bridge does not lower SPIR-V/NIR, establish SCS state or barriers,
+ * append code, submit work, admit a device, or advertise Vulkan ray tracing
+ * or ray-query support.
+ */
+bool hk_agx3_inc_stk_fixed_witness_generate(
+   enum agx_chip chip, struct hk_agx3_inc_stk_fixed_witness *out);
+
+bool hk_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
+                                         const void *instruction,
+                                         size_t instruction_size);
 
 #ifdef __cplusplus
 }

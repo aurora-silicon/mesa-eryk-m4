@@ -114,3 +114,53 @@ hk_agx3_continue_ray_instruction_decode(
    *state_register = decoded;
    return true;
 }
+
+bool
+hk_agx3_inc_stk_fixed_witness_generate(
+   enum agx_chip chip, struct hk_agx3_inc_stk_fixed_witness *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct hk_agx3_inc_stk_fixed_witness){0};
+
+   struct agx3_encoded_inc_stk_fixed_witness shared;
+   if (!agx3_pack_inc_stk_fixed_witness(
+          agx3_inc_stk_witnessed_chip_encoding(chip), &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+bool
+hk_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
+                                    const void *instruction,
+                                    size_t instruction_size)
+{
+   if (!instruction)
+      return false;
+
+   const enum agx_isa_encoding encoding =
+      agx3_inc_stk_witnessed_chip_encoding(chip);
+   struct agx3_encoded_inc_stk_fixed_witness packed;
+   uint8_t unpacked_length = 0;
+
+   if (!agx3_pack_inc_stk_fixed_witness(encoding, &packed) ||
+       instruction_size != packed.length ||
+       !agx3_unpack_inc_stk_fixed_witness(
+          encoding, instruction, instruction_size, &unpacked_length) ||
+       unpacked_length != packed.length)
+      return false;
+
+   const uint8_t *code = instruction;
+   for (uint8_t i = 0; i < packed.length; ++i) {
+      if (code[i] != packed.bytes[i])
+         return false;
+   }
+
+   return true;
+}

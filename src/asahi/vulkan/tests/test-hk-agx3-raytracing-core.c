@@ -262,6 +262,93 @@ main(void)
          AGX_CHIP_G17S, vectors[2].bytes, vectors[2].length, NULL));
    }
 
+   {
+      static const struct {
+         enum agx_chip chip;
+         uint8_t bytes[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+      } vectors[] = {
+         {AGX_CHIP_G16G,
+          {0x07, 0x00, 0x54, 0x12, 0x80, 0x00, 0x00, 0x00}},
+         {AGX_CHIP_G17S,
+          {0x9f, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      };
+
+      for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+         struct hk_agx3_inc_stk_fixed_witness generated;
+         memset(&generated, 0xff, sizeof(generated));
+         CHECK(hk_agx3_inc_stk_fixed_witness_generate(vectors[v].chip,
+                                                       &generated));
+         CHECK(generated.length == sizeof(vectors[v].bytes));
+         CHECK(memcmp(generated.bytes, vectors[v].bytes,
+                      sizeof(vectors[v].bytes)) == 0);
+         CHECK(hk_agx3_inc_stk_fixed_witness_valid(
+            vectors[v].chip, generated.bytes, generated.length));
+
+         for (unsigned bit = 0; bit < sizeof(vectors[v].bytes) * 8; ++bit) {
+            uint8_t changed[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+            memcpy(changed, vectors[v].bytes, sizeof(changed));
+            changed[bit / 8] ^= 1u << (bit % 8);
+            CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+               vectors[v].chip, changed, sizeof(changed)));
+         }
+
+         for (size_t size = 0; size < sizeof(vectors[v].bytes); ++size) {
+            CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+               vectors[v].chip, vectors[v].bytes, size));
+         }
+
+         uint8_t appended[AGX3_INC_STK_FIXED_WITNESS_LENGTH + 1];
+         memcpy(appended, vectors[v].bytes, sizeof(vectors[v].bytes));
+         appended[sizeof(vectors[v].bytes)] = 0;
+         CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+            vectors[v].chip, appended, sizeof(appended)));
+      }
+
+      CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+         AGX_CHIP_G16G, vectors[1].bytes, sizeof(vectors[1].bytes)));
+      CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+         AGX_CHIP_G17S, vectors[0].bytes, sizeof(vectors[0].bytes)));
+
+      static const enum agx_chip inc_stk_supported_chips[] = {
+         AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15D,
+         AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G17P,
+         AGX_CHIP_G17G, AGX_CHIP_G17S,
+      };
+      for (unsigned c = 0;
+           c < sizeof(inc_stk_supported_chips) /
+                  sizeof(inc_stk_supported_chips[0]);
+           ++c) {
+         struct hk_agx3_inc_stk_fixed_witness generated;
+         const enum agx_chip chip = inc_stk_supported_chips[c];
+         CHECK(hk_agx3_inc_stk_fixed_witness_generate(chip, &generated));
+         CHECK(hk_agx3_inc_stk_fixed_witness_valid(
+            chip, generated.bytes, generated.length));
+      }
+
+      static const enum agx_chip inc_stk_rejected_chips[] = {
+         AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+         AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16P, AGX_CHIP_G16C,
+         AGX_CHIP_G17A, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+         (enum agx_chip)999,
+      };
+      for (unsigned c = 0;
+           c < sizeof(inc_stk_rejected_chips) /
+                  sizeof(inc_stk_rejected_chips[0]);
+           ++c) {
+         struct hk_agx3_inc_stk_fixed_witness rejected_inc_stk;
+         memset(&rejected_inc_stk, 0xff, sizeof(rejected_inc_stk));
+         CHECK(!hk_agx3_inc_stk_fixed_witness_generate(
+            inc_stk_rejected_chips[c], &rejected_inc_stk));
+         CHECK(rejected_inc_stk.length == 0);
+         for (unsigned i = 0; i < sizeof(rejected_inc_stk.bytes); ++i)
+            CHECK(rejected_inc_stk.bytes[i] == 0);
+      }
+
+      CHECK(!hk_agx3_inc_stk_fixed_witness_generate(AGX_CHIP_G17S, NULL));
+      CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
+         AGX_CHIP_G17S, NULL, AGX3_INC_STK_FIXED_WITNESS_LENGTH));
+   }
+
    printf("hk_agx3_raytracing_core: PASS (%u checks)\n", checks);
    return 0;
 }

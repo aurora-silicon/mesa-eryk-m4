@@ -5939,6 +5939,146 @@ check_tile_encoding(const struct d12_agx3_tile_encoding *encoded,
 }
 
 static int
+check_wave_read_lane_at_f32_imm_bridge(void)
+{
+   static const uint8_t lane0_b[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH] = {
+      0x47, 0x04, 0x56, 0x00, 0x02, 0x00, 0x00, 0x2c, 0x04, 0x00,
+   };
+   static const uint8_t lane3_b[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH] = {
+      0x47, 0x04, 0x56, 0x00, 0x02, 0x00, 0x06, 0x2c, 0x04, 0x00,
+   };
+   static const uint8_t lane0_c[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH] = {
+      0x2f, 0x00, 0x21, 0x1a, 0x20, 0x00, 0xa8, 0x02, 0x38, 0x00,
+   };
+   static const uint8_t lane3_c[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH] = {
+      0x2f, 0x00, 0x21, 0x1a, 0x20, 0x00, 0xa8, 0x02, 0xf8, 0x00,
+   };
+   static const struct {
+      enum agx_chip chip;
+      enum agx_isa_encoding encoding;
+      uint16_t register_limit;
+      const uint8_t *lane0;
+      const uint8_t *lane3;
+   } targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 256, lane0_c, lane3_c},
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      struct d12_agx3_wave_read_lane_at_f32_imm_encoding encoded;
+      CHECK(d12_agx3_encode_wave_read_lane_at_f32_imm(
+         targets[t].chip, 0, 0, 0, &encoded));
+      CHECK(encoded.length == sizeof(encoded.bytes));
+      CHECK(memcmp(encoded.bytes, targets[t].lane0, sizeof(encoded.bytes)) ==
+            0);
+      CHECK(d12_agx3_encode_wave_read_lane_at_f32_imm(
+         targets[t].chip, 0, 0, 3, &encoded));
+      CHECK(memcmp(encoded.bytes, targets[t].lane3, sizeof(encoded.bytes)) ==
+            0);
+
+      static const uint8_t lanes[] = {0, 3};
+      for (uint16_t dest = 0; dest < targets[t].register_limit; dest += 2) {
+         for (uint16_t src = 0; src < targets[t].register_limit; src += 2) {
+            for (unsigned l = 0; l < sizeof(lanes) / sizeof(lanes[0]); ++l) {
+               struct agx3_encoded_simd_broadcast_f32_imm shared;
+               CHECK(agx3_pack_simd_broadcast_f32_imm(
+                  targets[t].encoding, dest, src, lanes[l], &shared));
+               CHECK(d12_agx3_encode_wave_read_lane_at_f32_imm(
+                  targets[t].chip, dest, src, lanes[l], &encoded));
+               CHECK(encoded.length == shared.length);
+               CHECK(memcmp(encoded.bytes, shared.bytes, shared.length) == 0);
+
+               uint16_t decoded_dest = UINT16_MAX, decoded_src = UINT16_MAX;
+               uint8_t decoded_lane = UINT8_MAX;
+               CHECK(d12_agx3_decode_wave_read_lane_at_f32_imm(
+                  targets[t].chip, encoded.bytes, encoded.length,
+                  &decoded_dest, &decoded_src, &decoded_lane));
+               CHECK(decoded_dest == dest);
+               CHECK(decoded_src == src);
+               CHECK(decoded_lane == lanes[l]);
+            }
+         }
+      }
+
+      CHECK(d12_agx3_encode_wave_read_lane_at_f32_imm(
+         targets[t].chip, targets[t].register_limit - 2,
+         targets[t].register_limit - 4, 3, &encoded));
+      for (unsigned bit = 0; bit < sizeof(encoded.bytes) * 8; ++bit) {
+         uint8_t mutated[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH];
+         memcpy(mutated, encoded.bytes, sizeof(mutated));
+         mutated[bit / 8] ^= 1u << (bit % 8);
+         uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+         uint8_t lane = UINT8_MAX;
+         if (d12_agx3_decode_wave_read_lane_at_f32_imm(
+                targets[t].chip, mutated, sizeof(mutated), &dest, &src,
+                &lane)) {
+            struct d12_agx3_wave_read_lane_at_f32_imm_encoding repacked;
+            CHECK(d12_agx3_encode_wave_read_lane_at_f32_imm(
+               targets[t].chip, dest, src, lane, &repacked));
+            CHECK(memcmp(repacked.bytes, mutated, sizeof(mutated)) == 0);
+         } else {
+            CHECK(dest == 0 && src == 0 && lane == 0);
+         }
+      }
+   }
+
+   static const enum agx_chip rejected_targets[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16P, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   struct d12_agx3_wave_read_lane_at_f32_imm_encoding rejected;
+#define REJECT_WAVE(call)                                                       \
+   do {                                                                         \
+      memset(&rejected, 0xff, sizeof(rejected));                                \
+      CHECK(!(call));                                                           \
+      struct d12_agx3_wave_read_lane_at_f32_imm_encoding zero = {0};            \
+      CHECK(memcmp(&rejected, &zero, sizeof(zero)) == 0);                       \
+   } while (0)
+   for (unsigned i = 0;
+        i < sizeof(rejected_targets) / sizeof(rejected_targets[0]); ++i) {
+      REJECT_WAVE(d12_agx3_encode_wave_read_lane_at_f32_imm(
+         rejected_targets[i], 0, 0, 0, &rejected));
+   }
+   static const uint8_t rejected_lanes[] = {1, 2, 4, 31, 255};
+   for (unsigned i = 0; i < sizeof(rejected_lanes); ++i) {
+      REJECT_WAVE(d12_agx3_encode_wave_read_lane_at_f32_imm(
+         AGX_CHIP_G17S, 0, 0, rejected_lanes[i], &rejected));
+   }
+   REJECT_WAVE(d12_agx3_encode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G15G, 192, 0, 0, &rejected));
+   REJECT_WAVE(d12_agx3_encode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, 256, 0, 0, &rejected));
+   REJECT_WAVE(d12_agx3_encode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, 0, 1, 0, &rejected));
+   CHECK(!d12_agx3_encode_wave_read_lane_at_f32_imm(AGX_CHIP_G17S, 0, 0, 0,
+                                                    NULL));
+#undef REJECT_WAVE
+
+   uint16_t dest = UINT16_MAX, src = UINT16_MAX;
+   uint8_t lane = UINT8_MAX;
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17P, lane0_b, sizeof(lane0_b), &dest, &src, &lane));
+   CHECK(dest == 0 && src == 0 && lane == 0);
+   dest = src = UINT16_MAX;
+   lane = UINT8_MAX;
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, lane0_c, sizeof(lane0_c) - 1, &dest, &src, &lane));
+   CHECK(dest == 0 && src == 0 && lane == 0);
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, NULL, sizeof(lane0_c), &dest, &src, &lane));
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, lane0_c, sizeof(lane0_c), NULL, &src, &lane));
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, lane0_c, sizeof(lane0_c), &dest, NULL, &lane));
+   CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
+      AGX_CHIP_G17S, lane0_c, sizeof(lane0_c), &dest, &src, NULL));
+   return 0;
+}
+
+static int
 check_tile_bridge(void)
 {
    static const struct integer_target targets[] = {
@@ -6178,6 +6318,7 @@ main(void)
    CHECK(check_control_flow_bridge() == 0);
    CHECK(check_varying_bridge() == 0);
    CHECK(check_texture_fetch_bridge() == 0);
+   CHECK(check_wave_read_lane_at_f32_imm_bridge() == 0);
    CHECK(check_tile_bridge() == 0);
 
    static const uint8_t iadd_b[] = {

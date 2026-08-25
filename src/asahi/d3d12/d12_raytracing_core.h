@@ -464,6 +464,11 @@ struct d12_rt_agx3_continue_ray_fixed_first_site_witness {
    uint8_t length;
 };
 
+struct d12_rt_agx3_inc_stk_fixed_witness {
+   uint8_t bytes[AGX3_INC_STK_FIXED_WITNESS_LENGTH];
+   uint8_t length;
+};
+
 struct d12_rt_agx3_update_bvh_fixed_witness {
    uint8_t bytes[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
    uint8_t length;
@@ -750,6 +755,73 @@ d12_rt_agx3_continue_ray_fixed_first_site_witness_valid(
    if (!agx3_pack_continue_ray_fixed_first_site_witness(encoding, &packed) ||
        instruction_size != packed.length ||
        !agx3_unpack_continue_ray_fixed_first_site_witness(
+          encoding, instruction, instruction_size, &unpacked_length) ||
+       unpacked_length != packed.length)
+      return false;
+
+   const uint8_t *code = instruction;
+   for (uint8_t i = 0; i < packed.length; ++i) {
+      if (code[i] != packed.bytes[i])
+         return false;
+   }
+
+   return true;
+}
+
+/*
+ * Map only scoped M3/M4/A18 Pro/M5 identities carrying the exact native
+ * incStk witness.  The fixed bytes expose neither f24 nor a DXR operand: the
+ * corpus has one f24=4 specimen and no differential operand evidence.
+ */
+static inline enum agx_isa_encoding
+d12_rt_agx3_inc_stk_fixed_witness_encoding(enum agx_chip chip)
+{
+   return agx3_inc_stk_witnessed_chip_encoding(chip);
+}
+
+/* Generate the single target-approved fixed witness through the shared
+ * compiler packer.  This is validation plumbing only; it does not provide RT
+ * lowering, SCS state, barriers, scheduling, submission, or a DXR tier. */
+static inline bool
+d12_rt_agx3_inc_stk_fixed_witness_generate(
+   enum agx_chip chip, struct d12_rt_agx3_inc_stk_fixed_witness *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_inc_stk_fixed_witness){0};
+
+   struct agx3_encoded_inc_stk_fixed_witness shared;
+   if (!agx3_pack_inc_stk_fixed_witness(
+          d12_rt_agx3_inc_stk_fixed_witness_encoding(chip), &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/* The shared unpacker accepts a canonical prefix in a larger stream.  This
+ * DXR-facing boundary requires exactly one instruction and rechecks a fresh
+ * shared pack so trailing or target-incompatible bytes remain closed. */
+static inline bool
+d12_rt_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
+                                        const void *instruction,
+                                        uint32_t instruction_size)
+{
+   if (!instruction)
+      return false;
+
+   const enum agx_isa_encoding encoding =
+      d12_rt_agx3_inc_stk_fixed_witness_encoding(chip);
+   struct agx3_encoded_inc_stk_fixed_witness packed;
+   uint8_t unpacked_length = 0;
+
+   if (!agx3_pack_inc_stk_fixed_witness(encoding, &packed) ||
+       instruction_size != packed.length ||
+       !agx3_unpack_inc_stk_fixed_witness(
           encoding, instruction, instruction_size, &unpacked_length) ||
        unpacked_length != packed.length)
       return false;

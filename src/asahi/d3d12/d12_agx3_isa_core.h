@@ -32,6 +32,7 @@ extern "C" {
 #define D12_AGX3_I32_COMPARE_SELECT_IMM_5_7_REG_REG_MAX_LENGTH 14
 #define D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
+#define D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH 10
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 #define D12_AGX3_CF_MAX_LENGTH 14
 #define D12_AGX3_VARY_MAX_LENGTH 10
@@ -258,6 +259,11 @@ struct d12_agx3_f32_to_int_rtz_reg_encoding {
 
 struct d12_agx3_yield_i16_reg_encoding {
    uint8_t bytes[D12_AGX3_YIELD_I16_REG_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_wave_read_lane_at_f32_imm_encoding {
+   uint8_t bytes[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH];
    uint8_t length;
 };
 
@@ -619,6 +625,24 @@ bool d12_agx3_encode_yield_i16_reg(
 bool d12_agx3_decode_yield_i16_reg(enum agx_chip chip,
                                    const void *instruction,
                                    uint32_t instruction_size, uint16_t *src);
+
+/*
+ * Encode/decode the exact Apple `simdbcast` register-source f32 form as the
+ * D3D/DXIL WaveReadLaneAt semantic.  Exposure is limited to the subgroup
+ * corpus's exact G15G, G16G and G17S identities and its directly witnessed
+ * immediate lanes 0 and 3.  Operands are even half-register indices in
+ * 0..190 on AGX3b and 0..254 on AGX3c.
+ *
+ * Dynamic lanes, other immediate lanes, integer/half types, WaveReadLaneFirst,
+ * quad operations, lowering, scheduling, runtime use, device admission and
+ * D3D12 wave-op capability advertisement remain absent.
+ */
+bool d12_agx3_encode_wave_read_lane_at_f32_imm(
+   enum agx_chip chip, uint16_t dest, uint16_t src, uint8_t lane,
+   struct d12_agx3_wave_read_lane_at_f32_imm_encoding *out);
+bool d12_agx3_decode_wave_read_lane_at_f32_imm(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   uint16_t *dest, uint16_t *src, uint8_t *lane);
 
 /*
  * Encode/decode only the dependency mask carried by a canonical terminal
