@@ -271,6 +271,14 @@ done
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_bias_scissor_core.c" \
+    "$d12_dir/d12_agx3_ppp_hal300_depth_bias_scissor_core.c" \
+    "$d12_dir/tests/d12_agx3_ppp_hal300_depth_bias_scissor_core_tests.c" \
+    -o "$out/d12_agx3_ppp_hal300_depth_bias_scissor_core_tests"
+"$out/d12_agx3_ppp_hal300_depth_bias_scissor_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
     "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_stencil_core.c" \
     "$d12_dir/d12_agx3_ppp_hal300_depth_stencil_core.c" \
     "$d12_dir/tests/d12_agx3_ppp_hal300_depth_stencil_core_tests.c" \
@@ -561,6 +569,13 @@ done
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_bias_scissor_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-ppp-hal300-depth-bias-scissor-core.c" \
+    -o "$out/agx_ppp_hal300_depth_bias_scissor_core_tests"
+"$out/agx_ppp_hal300_depth_bias_scissor_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_stencil_core.c" \
     "$repo_root/src/asahi/lib/tests/test-ppp-hal300-depth-stencil-core.c" \
     -o "$out/agx_ppp_hal300_depth_stencil_core_tests"
@@ -687,6 +702,16 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
     "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ioto-decode.c" \
     -o "$out/hk_agx3_ioto_decode_tests"
 "$out/hk_agx3_ioto_decode_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_bias_scissor_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_ppp_hal300_depth_bias_scissor.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ppp-hal300-depth-bias-scissor.c" \
+    -o "$out/hk_agx3_ppp_hal300_depth_bias_scissor_tests"
+"$out/hk_agx3_ppp_hal300_depth_bias_scissor_tests"
 
 "$cc" "$common[@]" \
     -Wno-c23-extensions \

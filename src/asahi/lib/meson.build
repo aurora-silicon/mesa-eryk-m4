@@ -36,6 +36,8 @@ libasahi_lib_files = files(
   'agx_nir_lower_vbo.c',
   'agx_nir_prolog_epilog.c',
   'agx_ppp.h',
+  'agx_ppp_hal300_depth_bias_scissor_core.c',
+  'agx_ppp_hal300_depth_bias_scissor_core.h',
   'agx_ppp_hal300_depth_stencil_core.c',
   'agx_ppp_hal300_depth_stencil_core.h',
   'agx_ppp_viewport_payload_core.c',
@@ -387,6 +389,19 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-hal300-depth-bias-scissor-core',
+    executable(
+      'asahi-ppp-hal300-depth-bias-scissor-core',
+      files(
+        'agx_ppp_hal300_depth_bias_scissor_core.c',
+        'tests/test-ppp-hal300-depth-bias-scissor-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

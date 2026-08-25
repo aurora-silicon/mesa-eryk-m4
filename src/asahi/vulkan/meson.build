@@ -40,6 +40,8 @@ hk_files = files(
   'hk_agx3_tile_core.h',
   'hk_agx3_raytracing_core.c',
   'hk_agx3_raytracing_core.h',
+  'hk_agx3_ppp_hal300_depth_bias_scissor.c',
+  'hk_agx3_ppp_hal300_depth_bias_scissor.h',
   'hk_agx3_ppp_hal300_depth_stencil.c',
   'hk_agx3_ppp_hal300_depth_stencil.h',
   'hk_agx3_ppp_viewport_payload.c',
@@ -190,6 +192,22 @@ if with_tests
       ],
       dependencies : [idep_mesautil],
       link_with : [libasahi_compiler],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+  test(
+    'hk_agx3_ppp_hal300_depth_bias_scissor',
+    executable(
+      'hk_agx3_ppp_hal300_depth_bias_scissor_test',
+      files('tests/test-hk-agx3-ppp-hal300-depth-bias-scissor.c',
+            'hk_agx3_ppp_hal300_depth_bias_scissor.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_agx_pack, idep_mesautil],
+      link_with : [libasahi_lib],
       c_args : [c_msvc_compat_args],
       gnu_symbol_visibility : 'hidden',
     ),
