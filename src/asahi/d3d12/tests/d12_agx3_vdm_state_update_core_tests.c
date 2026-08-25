@@ -48,6 +48,38 @@ static const uint8_t witness[D12_AGX3_VDM_STATE_UPDATE_LENGTH] = {
    0x00, 0xff, 0xee, 0xdd,
 };
 
+static const struct d12_agx3_vdm_state_update_template_info
+   template_witness_info = {
+      .pipeline = UINT64_C(0x123456789a80),
+      .raw_state_load_count_12 = UINT16_C(0x0abc),
+      .raw_state_load_count_18 = UINT32_C(0x00023456),
+      .raw_vs_output_count_0 = UINT8_C(0x12),
+      .raw_vs_output_count_2 = UINT8_C(0x34),
+      .raw_vs_output_count_1_extra = true,
+      .raw_vs_output_selector = UINT8_C(0x03),
+      .raw_vs_output_flag_6 = true,
+      .pre_hal300_flag_group_nonzero = true,
+      .pre_hal300_flag_bit_4 = true,
+      .variant = D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_00,
+      .active_selector_value = 5,
+   };
+
+static const uint8_t pre_hal300_template_witness
+   [D12_AGX3_VDM_STATE_UPDATE_LENGTH] = {
+      0x2e, 0x00, 0x00, 0x40, 0x00, 0xbc, 0x0a, 0x80,
+      0xb0, 0xa2, 0x11, 0x12, 0x6a, 0xe2, 0x59, 0xd1,
+      0x12, 0x47, 0x34, 0x00, 0x7c, 0x00, 0x00, 0x00,
+      0x04, 0x00, 0x00, 0x00,
+   };
+
+static const uint8_t hal300_template_witness
+   [D12_AGX3_VDM_STATE_UPDATE_LENGTH] = {
+      0x2e, 0x00, 0x00, 0x40, 0x00, 0xbc, 0x0a, 0x00,
+      0xb0, 0xa2, 0x11, 0x12, 0x6a, 0xe2, 0x59, 0xd1,
+      0x12, 0x47, 0x34, 0x00, 0x6c, 0x00, 0x00, 0x00,
+      0x04, 0x00, 0x00, 0x00,
+   };
+
 static int
 check_info_equal(const struct d12_agx3_vdm_state_update_info *actual,
                  const struct d12_agx3_vdm_state_update_info *expected)
@@ -167,6 +199,77 @@ check_domains_and_corruptions(void)
 }
 
 static int
+check_template_bridge(void)
+{
+   for (unsigned i = 0; i < sizeof(supported_chips) / sizeof(supported_chips[0]);
+        ++i) {
+      struct d12_agx3_vdm_state_update_template_info info =
+         template_witness_info;
+      const bool hal300 = supported_chips[i] == AGX_CHIP_G17G ||
+                          supported_chips[i] == AGX_CHIP_G17S ||
+                          supported_chips[i] == AGX_CHIP_G17C;
+      if (hal300) {
+         info.pre_hal300_flag_group_nonzero = false;
+         info.pre_hal300_flag_bit_4 = false;
+      }
+
+      const struct agx_vdm_state_update_template_info shared_info = {
+         .pipeline = info.pipeline,
+         .raw_state_load_count_12 = info.raw_state_load_count_12,
+         .raw_state_load_count_18 = info.raw_state_load_count_18,
+         .raw_vs_output_count_0 = info.raw_vs_output_count_0,
+         .raw_vs_output_count_2 = info.raw_vs_output_count_2,
+         .raw_vs_output_count_1_extra = info.raw_vs_output_count_1_extra,
+         .raw_vs_output_selector = info.raw_vs_output_selector,
+         .raw_vs_output_flag_6 = info.raw_vs_output_flag_6,
+         .pre_hal300_flag_group_nonzero =
+            info.pre_hal300_flag_group_nonzero,
+         .pre_hal300_flag_bit_4 = info.pre_hal300_flag_bit_4,
+         .variant = (enum agx_vdm_state_update_template_variant)info.variant,
+         .active_selector_value = info.active_selector_value,
+      };
+      struct d12_agx3_vdm_state_update encoded;
+      struct agx_vdm_state_update shared;
+      CHECK(d12_agx3_encode_vdm_state_update_template(supported_chips[i],
+                                                       &info, &encoded));
+      CHECK(agx_vdm_state_update_template_pack(supported_chips[i],
+                                                &shared_info, &shared));
+      CHECK(encoded.length == D12_AGX3_VDM_STATE_UPDATE_LENGTH);
+      CHECK(encoded.length == shared.length);
+      CHECK(memcmp(encoded.bytes, shared.bytes, sizeof(encoded.bytes)) == 0);
+      CHECK(memcmp(encoded.bytes,
+                   hal300 ? hal300_template_witness
+                          : pre_hal300_template_witness,
+                   sizeof(encoded.bytes)) == 0);
+   }
+
+   {
+      struct d12_agx3_vdm_state_update_template_info info =
+         template_witness_info;
+      struct d12_agx3_vdm_state_update encoded;
+      info.active_selector_value = 0;
+      CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, &info,
+                                                        &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      info = template_witness_info;
+      info.variant = (enum d12_agx3_vdm_state_update_template_variant)4;
+      CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, &info,
+                                                        &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, NULL,
+                                                        &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!d12_agx3_encode_vdm_state_update_template(
+         AGX_CHIP_G15G, &template_witness_info, NULL));
+   }
+
+   return 0;
+}
+
+static int
 check_rejections(void)
 {
    for (unsigned i = 0;
@@ -249,7 +352,8 @@ int
 main(void)
 {
    if (check_targets_and_shared_equality() ||
-       check_domains_and_corruptions() || check_rejections())
+       check_domains_and_corruptions() || check_template_bridge() ||
+       check_rejections())
       return 1;
 
    printf("d12_agx3_vdm_state_update_core: %u checks passed\n", checks);

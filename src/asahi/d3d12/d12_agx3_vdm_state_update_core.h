@@ -31,6 +31,31 @@ struct d12_agx3_vdm_state_update {
    uint8_t length;
 };
 
+enum d12_agx3_vdm_state_update_template_variant {
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_00 = 0,
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_01 = 1,
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_10 = 2,
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_11 = 3,
+};
+
+/* Structural compiler/configuration inputs only.  This mirrors the bounded
+ * shared template materializer without claiming that the existing AGX2 D3D
+ * counts, UVS, or vertex-unknown state has the same encoding. */
+struct d12_agx3_vdm_state_update_template_info {
+   uint64_t pipeline;
+   uint16_t raw_state_load_count_12;
+   uint32_t raw_state_load_count_18;
+   uint8_t raw_vs_output_count_0;
+   uint8_t raw_vs_output_count_2;
+   bool raw_vs_output_count_1_extra;
+   uint8_t raw_vs_output_selector;
+   bool raw_vs_output_flag_6;
+   bool pre_hal300_flag_group_nonzero;
+   bool pre_hal300_flag_bit_4;
+   enum d12_agx3_vdm_state_update_template_variant variant;
+   uint8_t active_selector_value;
+};
+
 /*
  * Research/validation bridge only.  Raw payload words remain unnamed beyond
  * their proven record positions.  These functions are not wired to D3D draw
@@ -39,6 +64,11 @@ struct d12_agx3_vdm_state_update {
  */
 bool d12_agx3_encode_vdm_state_update(
    enum agx_chip chip, const struct d12_agx3_vdm_state_update_info *info,
+   struct d12_agx3_vdm_state_update *out);
+
+bool d12_agx3_encode_vdm_state_update_template(
+   enum agx_chip chip,
+   const struct d12_agx3_vdm_state_update_template_info *info,
    struct d12_agx3_vdm_state_update *out);
 
 bool d12_agx3_decode_vdm_state_update(

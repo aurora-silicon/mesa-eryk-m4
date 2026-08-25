@@ -85,6 +85,43 @@ test_honeykrisp_bridge(void)
       CHECK(record.length == state.length);
       CHECK(record.data.state_update.pipeline == state_info.pipeline);
 
+      struct agx_vdm_state_update_template_info template_info = {
+         .pipeline = UINT64_C(0xac12345680) + t * 64,
+         .raw_state_load_count_12 = UINT16_C(0x0abc),
+         .raw_state_load_count_18 = UINT32_C(0x00023456),
+         .raw_vs_output_count_0 = UINT8_C(0x12),
+         .raw_vs_output_count_2 = UINT8_C(0x34),
+         .raw_vs_output_count_1_extra = true,
+         .raw_vs_output_selector = UINT8_C(0x03),
+         .raw_vs_output_flag_6 = true,
+         .pre_hal300_flag_group_nonzero = true,
+         .pre_hal300_flag_bit_4 = true,
+         .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_10,
+         .active_selector_value = 8,
+      };
+      const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+                          chip == AGX_CHIP_G17C;
+      if (hal300) {
+         template_info.pre_hal300_flag_group_nonzero = false;
+         template_info.pre_hal300_flag_bit_4 = false;
+      }
+
+      struct agx_vdm_state_update template_state;
+      CHECK(hk_agx3_encode_vdm_state_update_template(
+         chip, &template_info, &template_state));
+      CHECK(hk_agx3_decode_vdm_record(chip, template_state.bytes,
+                                      template_state.length, &record));
+      CHECK(record.kind == AGX_VDM_RECORD_STATE_UPDATE);
+      CHECK(record.data.state_update.raw_vertex_shader_word0 ==
+            (hal300 ? UINT32_C(0x000abc00) : UINT32_C(0x800abc00)));
+      CHECK(record.data.state_update.raw_pipeline_template ==
+            UINT32_C(0x0011a2b0));
+      CHECK(record.data.state_update.raw_vertex_outputs[0] ==
+            UINT32_C(0x00344712));
+      CHECK(record.data.state_update.raw_vertex_outputs[1] ==
+            (hal300 ? UINT32_C(0x0000006d) : UINT32_C(0x0000007d)));
+      CHECK(record.data.state_update.raw_vertex_unknown == 7);
+
       const struct agx_vdm_index_list_direct_nonindexed_info nonindexed_info = {
          .primitive = 11,
          .count = UINT32_C(0x56789abc) + t,

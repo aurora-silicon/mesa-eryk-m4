@@ -2,7 +2,8 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * Honeykrisp bridge for strict AGX3 VDM record decoding.
+ * Honeykrisp bridge for bounded AGX3 VDM State Update template packing and
+ * strict VDM record decoding.
  */
 
 #pragma once
@@ -25,6 +26,12 @@ extern "C" {
 bool hk_agx3_decode_vdm_record(enum agx_chip chip, const void *command,
                                size_t available,
                                struct agx_vdm_decoded_record *record);
+
+/* Validation-only structural bridge.  The live Honeykrisp draw path remains
+ * closed until its compiler produces every AGX3 template input directly. */
+bool hk_agx3_encode_vdm_state_update_template(
+   enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
+   struct agx_vdm_state_update *out);
 
 #ifdef __cplusplus
 }

@@ -46,6 +46,36 @@ static const uint8_t witness[AGX_VDM_STATE_UPDATE_LENGTH] = {
    0x00, 0xff, 0xee, 0xdd,
 };
 
+static const struct agx_vdm_state_update_template_info template_witness_info = {
+   .pipeline = UINT64_C(0x123456789a80),
+   .raw_state_load_count_12 = UINT16_C(0x0abc),
+   .raw_state_load_count_18 = UINT32_C(0x00023456),
+   .raw_vs_output_count_0 = UINT8_C(0x12),
+   .raw_vs_output_count_2 = UINT8_C(0x34),
+   .raw_vs_output_count_1_extra = true,
+   .raw_vs_output_selector = UINT8_C(0x03),
+   .raw_vs_output_flag_6 = true,
+   .pre_hal300_flag_group_nonzero = true,
+   .pre_hal300_flag_bit_4 = true,
+   .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_00,
+   .active_selector_value = 5,
+};
+
+static const uint8_t pre_hal300_template_witness
+   [AGX_VDM_STATE_UPDATE_LENGTH] = {
+      0x2e, 0x00, 0x00, 0x40, 0x00, 0xbc, 0x0a, 0x80,
+      0xb0, 0xa2, 0x11, 0x12, 0x6a, 0xe2, 0x59, 0xd1,
+      0x12, 0x47, 0x34, 0x00, 0x7c, 0x00, 0x00, 0x00,
+      0x04, 0x00, 0x00, 0x00,
+   };
+
+static const uint8_t hal300_template_witness[AGX_VDM_STATE_UPDATE_LENGTH] = {
+   0x2e, 0x00, 0x00, 0x40, 0x00, 0xbc, 0x0a, 0x00,
+   0xb0, 0xa2, 0x11, 0x12, 0x6a, 0xe2, 0x59, 0xd1,
+   0x12, 0x47, 0x34, 0x00, 0x6c, 0x00, 0x00, 0x00,
+   0x04, 0x00, 0x00, 0x00,
+};
+
 static int
 check_info_equal(const struct agx_vdm_state_update_info *actual,
                  const struct agx_vdm_state_update_info *expected)
@@ -93,6 +123,259 @@ check_exact_witnesses(void)
                                         sizeof(witness), &decoded));
       if (check_info_equal(&decoded, &witness_info))
          return 1;
+   }
+
+   return 0;
+}
+
+static int
+check_template_witnesses(void)
+{
+   static const enum agx_chip pre_hal300_chips[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+   };
+   static const enum agx_chip hal300_chips[] = {
+      AGX_CHIP_G17G,
+      AGX_CHIP_G17S,
+      AGX_CHIP_G17C,
+   };
+
+   for (unsigned i = 0;
+        i < sizeof(pre_hal300_chips) / sizeof(pre_hal300_chips[0]); ++i) {
+      struct agx_vdm_state_update_info raw;
+      struct agx_vdm_state_update encoded;
+      CHECK(agx_vdm_state_update_template_materialize(
+         pre_hal300_chips[i], &template_witness_info, &raw));
+      CHECK(raw.raw_vertex_shader_word0 == UINT32_C(0x800abc00));
+      CHECK(raw.pipeline == template_witness_info.pipeline);
+      CHECK(raw.raw_pipeline_template == UINT32_C(0x0011a2b0));
+      CHECK(raw.raw_vertex_outputs[0] == UINT32_C(0x00344712));
+      CHECK(raw.raw_vertex_outputs[1] == UINT32_C(0x0000007c));
+      CHECK(raw.raw_vertex_unknown == 4);
+      CHECK(agx_vdm_state_update_template_pack(
+         pre_hal300_chips[i], &template_witness_info, &encoded));
+      CHECK(encoded.length == sizeof(pre_hal300_template_witness));
+      CHECK(memcmp(encoded.bytes, pre_hal300_template_witness,
+                   sizeof(pre_hal300_template_witness)) == 0);
+   }
+
+   struct agx_vdm_state_update_template_info hal300 = template_witness_info;
+   hal300.pre_hal300_flag_group_nonzero = false;
+   hal300.pre_hal300_flag_bit_4 = false;
+   for (unsigned i = 0;
+        i < sizeof(hal300_chips) / sizeof(hal300_chips[0]); ++i) {
+      struct agx_vdm_state_update_info raw;
+      struct agx_vdm_state_update encoded;
+      CHECK(agx_vdm_state_update_template_materialize(hal300_chips[i],
+                                                       &hal300, &raw));
+      CHECK(raw.raw_vertex_shader_word0 == UINT32_C(0x000abc00));
+      CHECK(raw.pipeline == hal300.pipeline);
+      CHECK(raw.raw_pipeline_template == UINT32_C(0x0011a2b0));
+      CHECK(raw.raw_vertex_outputs[0] == UINT32_C(0x00344712));
+      CHECK(raw.raw_vertex_outputs[1] == UINT32_C(0x0000006c));
+      CHECK(raw.raw_vertex_unknown == 4);
+      CHECK(agx_vdm_state_update_template_pack(hal300_chips[i], &hal300,
+                                                &encoded));
+      CHECK(encoded.length == sizeof(hal300_template_witness));
+      CHECK(memcmp(encoded.bytes, hal300_template_witness,
+                   sizeof(hal300_template_witness)) == 0);
+   }
+
+   return 0;
+}
+
+static int
+check_template_variants_and_selectors(void)
+{
+   static const uint8_t pre_hal300_variant_bits[] = {0x30, 0x00, 0x31,
+                                                     0x01};
+   static const uint8_t hal300_variant_bits[] = {0x20, 0x00, 0x21, 0x01};
+
+   for (unsigned variant = 0; variant < 4; ++variant) {
+      for (unsigned active_selector = 1; active_selector <= 8;
+           ++active_selector) {
+         for (unsigned output_selector = 0; output_selector <= UINT8_MAX;
+              ++output_selector) {
+            struct agx_vdm_state_update_template_info info =
+               template_witness_info;
+            struct agx_vdm_state_update_info raw;
+            info.variant =
+               (enum agx_vdm_state_update_template_variant)variant;
+            info.active_selector_value = active_selector;
+            info.raw_vs_output_selector = output_selector;
+
+            CHECK(agx_vdm_state_update_template_materialize(
+               AGX_CHIP_G15G, &info, &raw));
+            CHECK(raw.raw_vertex_outputs[1] ==
+                  (((uint32_t)output_selector << 2) | UINT32_C(0x40) |
+                   pre_hal300_variant_bits[variant]));
+            CHECK(raw.raw_vertex_unknown == active_selector - 1);
+
+            info.pre_hal300_flag_group_nonzero = false;
+            info.pre_hal300_flag_bit_4 = false;
+            CHECK(agx_vdm_state_update_template_materialize(
+               AGX_CHIP_G17G, &info, &raw));
+            CHECK(raw.raw_vertex_outputs[1] ==
+                  (((uint32_t)output_selector << 2) | UINT32_C(0x40) |
+                   hal300_variant_bits[variant]));
+            CHECK(raw.raw_vertex_unknown == active_selector - 1);
+         }
+      }
+   }
+
+   for (unsigned group_nonzero = 0; group_nonzero <= 1; ++group_nonzero) {
+      for (unsigned flag_bit_4 = 0; flag_bit_4 <= 1; ++flag_bit_4) {
+         struct agx_vdm_state_update_template_info info =
+            template_witness_info;
+         struct agx_vdm_state_update_info raw;
+         info.pre_hal300_flag_group_nonzero = group_nonzero;
+         info.pre_hal300_flag_bit_4 = flag_bit_4;
+         CHECK(agx_vdm_state_update_template_materialize(AGX_CHIP_G17P, &info,
+                                                          &raw));
+         const bool bit_31 = !group_nonzero || flag_bit_4;
+         CHECK(raw.raw_vertex_shader_word0 ==
+               (UINT32_C(0x000abc00) |
+                (bit_31 ? UINT32_C(0x80000000) : 0)));
+      }
+   }
+
+   return 0;
+}
+
+static int
+check_template_ranges_and_rejections(void)
+{
+   {
+      struct agx_vdm_state_update_template_info info =
+         template_witness_info;
+      struct agx_vdm_state_update_info raw;
+      info.raw_state_load_count_12 = UINT16_C(0x0fff);
+      info.raw_state_load_count_18 = UINT32_C(0x0003ffff);
+      info.raw_vs_output_count_0 = UINT8_MAX;
+      info.raw_vs_output_count_2 = UINT8_MAX;
+      info.raw_vs_output_count_1_extra = true;
+      info.active_selector_value = 8;
+      CHECK(agx_vdm_state_update_template_materialize(AGX_CHIP_G16C, &info,
+                                                       &raw));
+      CHECK(raw.raw_vertex_shader_word0 == UINT32_C(0x800fff00));
+      CHECK(raw.raw_pipeline_template == UINT32_C(0x001ffff8));
+      CHECK(raw.raw_vertex_outputs[0] == UINT32_C(0x00ffffff));
+      CHECK(raw.raw_vertex_unknown == 7);
+   }
+
+   {
+      struct agx_vdm_state_update_template_info info =
+         template_witness_info;
+      struct agx_vdm_state_update_info raw;
+      info.raw_state_load_count_12 = UINT16_C(0x1000);
+      memset(&raw, 0xa5, sizeof(raw));
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+
+      info = template_witness_info;
+      info.raw_state_load_count_18 = UINT32_C(0x00040000);
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+
+      info = template_witness_info;
+      info.variant = (enum agx_vdm_state_update_template_variant)-1;
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+
+      info.variant = (enum agx_vdm_state_update_template_variant)4;
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+   }
+
+   for (unsigned active_selector = 0; active_selector <= 9;
+        active_selector += 9) {
+      struct agx_vdm_state_update_template_info info = template_witness_info;
+      struct agx_vdm_state_update_info raw;
+      struct agx_vdm_state_update encoded;
+      info.active_selector_value = active_selector;
+      memset(&raw, 0xa5, sizeof(raw));
+      memset(&encoded, 0xa5, sizeof(encoded));
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+      CHECK(!agx_vdm_state_update_template_pack(AGX_CHIP_G15G, &info,
+                                                 &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+   }
+
+   {
+      struct agx_vdm_state_update_template_info info = template_witness_info;
+      struct agx_vdm_state_update_info raw;
+      info.pre_hal300_flag_group_nonzero = true;
+      info.pre_hal300_flag_bit_4 = false;
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G17G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+      info.pre_hal300_flag_group_nonzero = false;
+      info.pre_hal300_flag_bit_4 = true;
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G17G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+   }
+
+   static const uint64_t invalid_pipelines[] = {
+      1, UINT64_C(0x123456789a81), UINT64_C(1) << 48, UINT64_MAX,
+   };
+   for (unsigned i = 0;
+        i < sizeof(invalid_pipelines) / sizeof(invalid_pipelines[0]); ++i) {
+      struct agx_vdm_state_update_template_info info = template_witness_info;
+      struct agx_vdm_state_update_info raw;
+      info.pipeline = invalid_pipelines[i];
+      CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
+                                                        &raw));
+      if (check_zero_info(&raw))
+         return 1;
+   }
+
+   for (unsigned i = 0;
+        i < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]); ++i) {
+      struct agx_vdm_state_update_info raw;
+      struct agx_vdm_state_update encoded;
+      memset(&raw, 0xa5, sizeof(raw));
+      memset(&encoded, 0xa5, sizeof(encoded));
+      CHECK(!agx_vdm_state_update_template_materialize(
+         unsupported_chips[i], &template_witness_info, &raw));
+      if (check_zero_info(&raw))
+         return 1;
+      CHECK(!agx_vdm_state_update_template_pack(
+         unsupported_chips[i], &template_witness_info, &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+   }
+
+   {
+      struct agx_vdm_state_update_info raw;
+      struct agx_vdm_state_update encoded;
+      CHECK(!agx_vdm_state_update_template_materialize(
+         AGX_CHIP_G15G, NULL, &raw));
+      if (check_zero_info(&raw))
+         return 1;
+      CHECK(!agx_vdm_state_update_template_materialize(
+         AGX_CHIP_G15G, &template_witness_info, NULL));
+      CHECK(!agx_vdm_state_update_template_pack(AGX_CHIP_G15G, NULL,
+                                                 &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!agx_vdm_state_update_template_pack(
+         AGX_CHIP_G15G, &template_witness_info, NULL));
    }
 
    return 0;
@@ -277,7 +560,9 @@ check_rejections(void)
 int
 main(void)
 {
-   if (check_exact_witnesses() || check_field_domains() ||
+   if (check_exact_witnesses() || check_template_witnesses() ||
+       check_template_variants_and_selectors() ||
+       check_template_ranges_and_rejections() || check_field_domains() ||
        check_every_bit_classification() || check_rejections())
       return 1;
 

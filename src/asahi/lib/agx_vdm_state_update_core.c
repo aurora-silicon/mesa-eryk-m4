@@ -92,3 +92,97 @@ agx_vdm_state_update_unpack(enum agx_chip chip, const void *bytes, size_t size,
    info->raw_vertex_unknown = agx_vdm_state_update_load_le32(&raw[24]);
    return true;
 }
+
+static bool
+agx_vdm_state_update_is_hal300(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+agx_vdm_state_update_template_materialize(
+   enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
+   struct agx_vdm_state_update_info *raw)
+{
+   if (raw)
+      memset(raw, 0, sizeof(*raw));
+
+   if (!raw || !info || !agx_vdm_state_update_supported(chip) ||
+       info->raw_state_load_count_12 > UINT16_C(0x0fff) ||
+       info->raw_state_load_count_18 > UINT32_C(0x0003ffff) ||
+       info->variant < AGX_VDM_STATE_UPDATE_TEMPLATE_00 ||
+       info->variant > AGX_VDM_STATE_UPDATE_TEMPLATE_11 ||
+       info->active_selector_value < 1 || info->active_selector_value > 8)
+      return false;
+
+   const bool hal300 = agx_vdm_state_update_is_hal300(chip);
+   if (hal300 && (info->pre_hal300_flag_group_nonzero ||
+                  info->pre_hal300_flag_bit_4))
+      return false;
+
+   uint32_t vertex_shader_word0 =
+      (uint32_t)info->raw_state_load_count_12 << 8;
+
+   if (!hal300 && (!info->pre_hal300_flag_group_nonzero ||
+                   info->pre_hal300_flag_bit_4))
+      vertex_shader_word0 |= UINT32_C(1) << 31;
+
+   const uint32_t output_count_1 =
+      ((uint32_t)info->raw_vs_output_count_0 +
+       (uint32_t)info->raw_vs_output_count_2 +
+       (info->raw_vs_output_count_1_extra ? 1u : 0u)) &
+      UINT32_C(0xff);
+
+   const uint32_t vertex_outputs_word0 =
+      (uint32_t)info->raw_vs_output_count_0 | (output_count_1 << 8) |
+      ((uint32_t)info->raw_vs_output_count_2 << 16);
+
+   static const uint8_t pre_hal300_variant_bits[4] = {0x30, 0x00, 0x31,
+                                                      0x01};
+   static const uint8_t hal300_variant_bits[4] = {0x20, 0x00, 0x21, 0x01};
+   const uint8_t *variant_bits =
+      hal300 ? hal300_variant_bits : pre_hal300_variant_bits;
+
+   const uint32_t vertex_outputs_word1 =
+      ((uint32_t)info->raw_vs_output_selector << 2) |
+      (info->raw_vs_output_flag_6 ? UINT32_C(0x40) : 0) |
+      variant_bits[info->variant];
+
+   const struct agx_vdm_state_update_info candidate = {
+      .raw_vertex_shader_word0 = vertex_shader_word0,
+      .pipeline = info->pipeline,
+      .raw_pipeline_template = info->raw_state_load_count_18 << 3,
+      .raw_vertex_outputs = {vertex_outputs_word0, vertex_outputs_word1},
+      .raw_vertex_unknown = info->active_selector_value - 1,
+   };
+   struct agx_vdm_state_update validation;
+
+   /* Reuse the raw packer's address and target validation. */
+   if (!agx_vdm_state_update_pack(chip, &candidate, &validation))
+      return false;
+
+   *raw = candidate;
+   return true;
+}
+
+bool
+agx_vdm_state_update_template_pack(
+   enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
+   struct agx_vdm_state_update *out)
+{
+   struct agx_vdm_state_update_info raw;
+
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   return out &&
+          agx_vdm_state_update_template_materialize(chip, info, &raw) &&
+          agx_vdm_state_update_pack(chip, &raw, out);
+}
