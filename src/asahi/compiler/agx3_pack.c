@@ -3052,6 +3052,152 @@ agx3_unpack_update_node(enum agx_isa_encoding encoding, const uint8_t *bytes,
    return true;
 }
 
+/* Direct differential pairs from agx3_compose_corpus_vectors.c:
+ *
+ * AGX3b cases 561/470 differ only in f5=0/4.
+ * AGX3c cases 1351/1252 differ only in f5=0/8.
+ *
+ * Keep the anonymous, non-f5 fields byte-exact instead of synthesising other
+ * table-valid forms whose scheduling and traversal roles are not grounded.
+ */
+static const uint8_t intersect_ray_canonical_agx3b[] = {
+   0x5f, 0x10, 0x54, 0x00, 0x00, 0x41,
+   0x26, 0x40, 0xc7, 0x50, 0x4c, 0x00,
+};
+
+static const uint8_t intersect_ray_canonical_agx3c[] = {
+   0x27, 0x04, 0x29, 0x01, 0xa2, 0xc1, 0xae,
+   0x02, 0x01, 0x98, 0x27, 0x00, 0x00, 0x20,
+};
+
+static const uint8_t *
+intersect_ray_canonical_encoding(enum agx_isa_encoding encoding,
+                                 size_t *length)
+{
+   switch (encoding) {
+   case AGX_ISA_ENCODING_AGX3B:
+      *length = sizeof(intersect_ray_canonical_agx3b);
+      return intersect_ray_canonical_agx3b;
+   case AGX_ISA_ENCODING_AGX3C:
+      *length = sizeof(intersect_ray_canonical_agx3c);
+      return intersect_ray_canonical_agx3c;
+   default:
+      *length = 0;
+      return NULL;
+   }
+}
+
+static bool
+intersect_ray_state_register_supported(enum agx_isa_encoding encoding,
+                                       uint16_t state_register)
+{
+   return (encoding == AGX_ISA_ENCODING_AGX3B &&
+           (state_register == 0 || state_register == 4)) ||
+          (encoding == AGX_ISA_ENCODING_AGX3C &&
+           (state_register == 0 || state_register == 8));
+}
+
+bool
+agx3_pack_intersect_ray(enum agx_isa_encoding encoding,
+                        uint16_t state_register,
+                        struct agx3_encoded_intersect_ray *out)
+{
+   size_t length = 0;
+   const uint8_t *canonical =
+      intersect_ray_canonical_encoding(encoding, &length);
+
+   if (canonical == NULL || out == NULL ||
+       !intersect_ray_state_register_supported(encoding, state_register))
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical, length);
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* f5[0:7] -> word 1 bits 8:15; f5[8:12] -> word 2 bits 0:4. */
+      out->bytes[3] |= state_register & 0xff;
+      out->bytes[4] |= (state_register >> 8) & 0x1f;
+   } else {
+      /* AGX3c f5[1:12], from Apple's intersect_ray encoder table. */
+      out->bytes[12] |= (state_register & 0x0002) >> 1;
+      out->bytes[12] |= (state_register & 0x0004) << 1;
+      out->bytes[13] |= (state_register & 0x0008) >> 2;
+      out->bytes[13] |= state_register & 0x0010;
+      out->bytes[12] |= (state_register & 0x0020) >> 1;
+      out->bytes[13] |= state_register & 0x0040;
+      out->bytes[12] |= (state_register & 0x0080) >> 1;
+      out->bytes[12] |= (state_register & 0x0100) >> 3;
+      out->bytes[13] |= (state_register & 0x0200) >> 9;
+      out->bytes[13] |= (state_register & 0x0400) >> 8;
+      out->bytes[2] |= (state_register & 0x0800) >> 5;
+      out->bytes[0] |= (state_register & 0x1000) >> 9;
+   }
+
+   out->length = length;
+   return true;
+}
+
+bool
+agx3_unpack_intersect_ray(enum agx_isa_encoding encoding,
+                          const uint8_t *bytes, size_t available,
+                          uint16_t *state_register, uint8_t *length)
+{
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 12 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 14 : 0;
+
+   if (expected_length == 0 || bytes == NULL || state_register == NULL ||
+       length == NULL || available < expected_length)
+      return false;
+
+   uint16_t decoded;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded = bytes[3] | ((uint16_t)(bytes[4] & 0x1f) << 8);
+   } else {
+      decoded = ((uint16_t)(bytes[12] & 0x01) << 1) |
+                ((uint16_t)(bytes[12] & 0x08) >> 1) |
+                ((uint16_t)(bytes[13] & 0x02) << 2) |
+                ((uint16_t)bytes[13] & 0x0010) |
+                ((uint16_t)(bytes[12] & 0x10) << 1) |
+                ((uint16_t)bytes[13] & 0x0040) |
+                ((uint16_t)(bytes[12] & 0x40) << 1) |
+                ((uint16_t)(bytes[12] & 0x20) << 3) |
+                ((uint16_t)(bytes[13] & 0x01) << 9) |
+                ((uint16_t)(bytes[13] & 0x04) << 8) |
+                ((uint16_t)(bytes[2] & 0x40) << 5) |
+                ((uint16_t)(bytes[0] & 0x08) << 9);
+   }
+
+   struct agx3_encoded_intersect_ray canonical;
+   if (!agx3_pack_intersect_ray(encoding, decoded, &canonical) ||
+       canonical.length != expected_length ||
+       memcmp(bytes, canonical.bytes, expected_length) != 0)
+      return false;
+
+   *state_register = decoded;
+   *length = expected_length;
+   return true;
+}
+
+enum agx_isa_encoding
+agx3_intersect_ray_witnessed_chip_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+      return AGX_ISA_ENCODING_AGX3B;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return AGX_ISA_ENCODING_AGX3C;
+   default:
+      return AGX_ISA_ENCODING_UNKNOWN;
+   }
+}
+
 static const uint8_t continue_ray_canonical_agx3b[] = {
    0x5f, 0x11, 0x54, 0x00, 0x00, 0x00,
 };

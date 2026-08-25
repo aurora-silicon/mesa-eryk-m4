@@ -46,9 +46,9 @@ marketing name in the measured corpus.
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, the G17S-only fixed
-`update_bvh` witness, the bounded hardware `continue_ray` f5 codec, and
-the canonical no-kill, scheduler-neutral i16-register `yield`, plus 32-bit
-register-plus-u8 `iadd` and the canonical three-register form (AGX3b
+`update_bvh` witness, the bounded hardware `intersect_ray` and `continue_ray`
+f5 codecs, and the canonical no-kill, scheduler-neutral i16-register `yield`,
+plus 32-bit register-plus-u8 `iadd` and the canonical three-register form (AGX3b
 `iadd`, AGX3c `iadd32`),
 canonical three-register u32 subtraction (AGX3b `isub`, AGX3c `isub32`),
 canonical three-register u32 `bit_and`, `bit_or`, and `bit_xor`, and unary u32
@@ -485,6 +485,19 @@ so the bytes are deliberately disconnected from D3D12 acceleration-structure
 build execution. G17G, G17C, every AGX3b target, traversal/update semantics,
 submission, and DXR capability exposure remain **FC**.
 
+The shared compiler now also packs and strictly decodes one byte-witnessed
+`intersect_ray` differential pair per AGX3 encoding. AGX3b admits only f5
+half-register values `{0,4}` in the canonical 12-byte form; AGX3c admits only
+`{0,8}` in the canonical 14-byte form. Every anonymous non-f5 field is held to
+the captured value and decode succeeds only after exact repack. Cross-target
+corpus matches gate this slice to G15G/G15S/G15D, G16G/G16S, G17P, and
+G17G/G17S; same-encoding G15C/G16C/G17C and the non-target phone identities
+remain closed. Honeykrisp and the D3D12 RT core expose generation/decode
+bridges for those exact bytes, but the likely state/SCS meaning of f5 remains
+an inference. Required scoped barriers, SCS layout, traversal lowering,
+scheduling, command emission, submission, Vulkan RT exposure, and DXR tier
+therefore remain **FC**.
+
 The cross-target `continue_ray` corpus also disproves a one-instruction
 interpretation of the compiler's stable per-call deltas. Every source call
 lowers to two hardware `continue_ray` instructions plus barriers, LDS traffic,
@@ -906,7 +919,8 @@ The current in-tree anchors are:
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact
   generation/validation of the fixed AGX3b/AGX3c barrier-plus-`update_node`
-  expansion and G17S-only fixed `update_bvh` witness.
+  expansion, the bounded `intersect_ray` f5 pair, and the G17S-only fixed
+  `update_bvh` witness.
 - [`d12_discard_core.h`](../../src/asahi/d3d12/d12_discard_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_discard_core_tests.c): public
   `DiscardResource` list/region validation and the conservative no-op contract.

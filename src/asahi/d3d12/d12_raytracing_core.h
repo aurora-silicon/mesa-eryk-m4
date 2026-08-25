@@ -449,6 +449,11 @@ struct d12_rt_agx3_update_node_expansion {
    uint8_t length;
 };
 
+struct d12_rt_agx3_intersect_ray_instruction {
+   uint8_t bytes[AGX3_INTERSECT_RAY_MAX_LENGTH];
+   uint8_t length;
+};
+
 struct d12_rt_agx3_continue_ray_instruction {
    uint8_t bytes[AGX3_CONTINUE_RAY_MAX_LENGTH];
    uint8_t length;
@@ -537,6 +542,79 @@ d12_rt_agx3_update_node_expansion_valid(
          return false;
    }
 
+   return true;
+}
+
+/*
+ * Map only M3/M4/A18 Pro/M5 identities that reproduce both direct native-
+ * corpus intersect_ray pair members.  Sharing an ISA encoding is insufficient
+ * evidence.
+ */
+static inline enum agx_isa_encoding
+d12_rt_agx3_intersect_ray_instruction_encoding(enum agx_chip chip)
+{
+   return agx3_intersect_ray_witnessed_chip_encoding(chip);
+}
+
+/*
+ * Generate one byte-exact member of the bounded intersect_ray differential
+ * pair through Mesa's shared compiler codec.  `state_register` is Apple's f5
+ * half-register field, not a DXR shader operand.  This helper does not provide
+ * the scoped barrier, SCS state, traversal lowering, dispatch, or a DXR tier.
+ */
+static inline bool
+d12_rt_agx3_intersect_ray_instruction_generate(
+   enum agx_chip chip, uint16_t state_register,
+   struct d12_rt_agx3_intersect_ray_instruction *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_intersect_ray_instruction){0};
+
+   struct agx3_encoded_intersect_ray shared;
+   if (!agx3_pack_intersect_ray(
+          d12_rt_agx3_intersect_ray_instruction_encoding(chip),
+          state_register, &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/* Require an exact target-approved instruction and no trailing bytes. */
+static inline bool
+d12_rt_agx3_intersect_ray_instruction_decode(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   uint16_t *state_register)
+{
+   if (!instruction || !state_register)
+      return false;
+
+   *state_register = 0;
+   const enum agx_isa_encoding encoding =
+      d12_rt_agx3_intersect_ray_instruction_encoding(chip);
+   uint16_t decoded = 0;
+   uint8_t decoded_length = 0;
+   struct agx3_encoded_intersect_ray canonical;
+
+   if (!agx3_unpack_intersect_ray(encoding, instruction, instruction_size,
+                                  &decoded, &decoded_length) ||
+       instruction_size != decoded_length ||
+       !agx3_pack_intersect_ray(encoding, decoded, &canonical) ||
+       canonical.length != decoded_length)
+      return false;
+
+   const uint8_t *code = instruction;
+   for (uint8_t i = 0; i < canonical.length; ++i) {
+      if (code[i] != canonical.bytes[i])
+         return false;
+   }
+
+   *state_register = decoded;
    return true;
 }
 

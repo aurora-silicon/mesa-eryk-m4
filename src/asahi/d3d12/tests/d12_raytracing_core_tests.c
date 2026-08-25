@@ -584,6 +584,156 @@ test_agx3_update_node_expansion(void)
 }
 
 static bool
+intersect_ray_target_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static void
+test_agx3_intersect_ray_instruction(void)
+{
+   static const struct {
+      enum agx_chip chip;
+      uint16_t state_register;
+      uint8_t bytes[AGX3_INTERSECT_RAY_MAX_LENGTH];
+      uint8_t length;
+      unsigned varying_bit;
+   } vectors[] = {
+      {AGX_CHIP_G16G, 0,
+       {0x5f, 0x10, 0x54, 0x00, 0x00, 0x41,
+        0x26, 0x40, 0xc7, 0x50, 0x4c, 0x00},
+       12, 26},
+      {AGX_CHIP_G16G, 4,
+       {0x5f, 0x10, 0x54, 0x04, 0x00, 0x41,
+        0x26, 0x40, 0xc7, 0x50, 0x4c, 0x00},
+       12, 26},
+      {AGX_CHIP_G17S, 0,
+       {0x27, 0x04, 0x29, 0x01, 0xa2, 0xc1, 0xae,
+        0x02, 0x01, 0x98, 0x27, 0x00, 0x00, 0x20},
+       14, 105},
+      {AGX_CHIP_G17S, 8,
+       {0x27, 0x04, 0x29, 0x01, 0xa2, 0xc1, 0xae,
+        0x02, 0x01, 0x98, 0x27, 0x00, 0x00, 0x22},
+       14, 105},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct d12_rt_agx3_intersect_ray_instruction generated;
+      memset(&generated, 0xff, sizeof(generated));
+      require(d12_rt_agx3_intersect_ray_instruction_generate(
+                 vectors[v].chip, vectors[v].state_register, &generated),
+              "DXR maps a corpus-witnessed intersect_ray state register");
+      require(generated.length == vectors[v].length &&
+                 memcmp(generated.bytes, vectors[v].bytes,
+                        vectors[v].length) == 0,
+              "DXR intersect_ray bytes match the native differential pair");
+      for (unsigned i = generated.length; i < sizeof(generated.bytes); ++i)
+         require(generated.bytes[i] == 0,
+                 "DXR clears unused intersect_ray instruction storage");
+
+      uint16_t decoded = UINT16_MAX;
+      require(d12_rt_agx3_intersect_ray_instruction_decode(
+                 vectors[v].chip, generated.bytes, generated.length,
+                 &decoded) &&
+                 decoded == vectors[v].state_register,
+              "DXR round-trips the bounded intersect_ray field");
+
+      for (unsigned bit = 0; bit < vectors[v].length * 8; ++bit) {
+         uint8_t changed[AGX3_INTERSECT_RAY_MAX_LENGTH] = {0};
+         memcpy(changed, vectors[v].bytes, vectors[v].length);
+         changed[bit / 8] ^= 1u << (bit % 8);
+         const bool accepted =
+            d12_rt_agx3_intersect_ray_instruction_decode(
+               vectors[v].chip, changed, vectors[v].length, &decoded);
+         require(accepted == (bit == vectors[v].varying_bit),
+                 "DXR accepts only the proved intersect_ray varying bit");
+      }
+
+      for (uint32_t length = 0; length < vectors[v].length; ++length)
+         require(!d12_rt_agx3_intersect_ray_instruction_decode(
+                    vectors[v].chip, vectors[v].bytes, length, &decoded),
+                 "DXR rejects every truncated intersect_ray instruction");
+
+      uint8_t appended[AGX3_INTERSECT_RAY_MAX_LENGTH + 1];
+      memcpy(appended, vectors[v].bytes, vectors[v].length);
+      appended[vectors[v].length] = 0;
+      require(!d12_rt_agx3_intersect_ray_instruction_decode(
+                 vectors[v].chip, appended, vectors[v].length + 1,
+                 &decoded),
+              "DXR rejects bytes trailing intersect_ray");
+   }
+
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      struct d12_rt_agx3_intersect_ray_instruction generated;
+      memset(&generated, 0xff, sizeof(generated));
+      const uint16_t state_register =
+         d12_rt_agx3_intersect_ray_instruction_encoding(chip) ==
+               AGX_ISA_ENCODING_AGX3C
+            ? 8
+            : 4;
+
+      if (intersect_ray_target_supported(chip)) {
+         uint16_t decoded = UINT16_MAX;
+         require(d12_rt_agx3_intersect_ray_instruction_generate(
+                    chip, state_register, &generated) &&
+                    d12_rt_agx3_intersect_ray_instruction_decode(
+                       chip, generated.bytes, generated.length, &decoded) &&
+                    decoded == state_register,
+                 "DXR admits every exact intersect_ray corpus target");
+      } else {
+         require(!d12_rt_agx3_intersect_ray_instruction_generate(
+                    chip, state_register, &generated),
+                 "DXR refuses every unwitnessed intersect_ray target");
+         require(generated.length == 0,
+                 "an unwitnessed intersect_ray target clears output length");
+         for (unsigned i = 0; i < sizeof(generated.bytes); ++i)
+            require(generated.bytes[i] == 0,
+                    "rejected intersect_ray output is fully cleared");
+      }
+   }
+
+   struct d12_rt_agx3_intersect_ray_instruction rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   require(!d12_rt_agx3_intersect_ray_instruction_generate(
+              AGX_CHIP_G16G, 8, &rejected),
+           "DXR rejects an unwitnessed AGX3b intersect_ray register");
+   require(rejected.length == 0,
+           "rejected intersect_ray generation clears its length");
+   memset(&rejected, 0xff, sizeof(rejected));
+   require(!d12_rt_agx3_intersect_ray_instruction_generate(
+              AGX_CHIP_G17S, 4, &rejected),
+           "DXR rejects an unwitnessed AGX3c intersect_ray register");
+
+   uint16_t decoded = 0;
+   require(!d12_rt_agx3_intersect_ray_instruction_decode(
+              AGX_CHIP_G16G, vectors[2].bytes, vectors[2].length, &decoded) &&
+              !d12_rt_agx3_intersect_ray_instruction_decode(
+                 AGX_CHIP_G17S, vectors[0].bytes, vectors[0].length, &decoded),
+           "DXR rejects cross-generation intersect_ray instructions");
+   require(!d12_rt_agx3_intersect_ray_instruction_generate(
+              AGX_CHIP_G17S, 0, NULL),
+           "DXR rejects a missing intersect_ray output");
+   require(!d12_rt_agx3_intersect_ray_instruction_decode(
+              AGX_CHIP_G17S, NULL, vectors[2].length, &decoded) &&
+              !d12_rt_agx3_intersect_ray_instruction_decode(
+                 AGX_CHIP_G17S, vectors[2].bytes, vectors[2].length, NULL),
+           "DXR rejects missing intersect_ray decode arguments");
+}
+
+static bool
 continue_ray_target_supported(enum agx_chip chip)
 {
    switch (chip) {
@@ -1525,6 +1675,7 @@ main(void)
    test_records_and_config();
    test_agx3_canonical_update_node();
    test_agx3_update_node_expansion();
+   test_agx3_intersect_ray_instruction();
    test_agx3_continue_ray_instruction();
    test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();

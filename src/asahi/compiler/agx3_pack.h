@@ -45,6 +45,7 @@ extern "C" {
 #define AGX3_YIELD_I16_REG_LENGTH 6
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_INTERSECT_RAY_MAX_LENGTH 14
 #define AGX3_CONTINUE_RAY_MAX_LENGTH 8
 #define AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH 8
 #define AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH 14
@@ -204,6 +205,11 @@ struct agx3_encoded_nop {
 
 struct agx3_encoded_threadgroup_barrier {
    uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_intersect_ray {
+   uint8_t bytes[AGX3_INTERSECT_RAY_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -932,6 +938,35 @@ bool agx3_pack_update_node(enum agx_isa_encoding encoding,
 bool agx3_unpack_update_node(enum agx_isa_encoding encoding,
                              const uint8_t *bytes, size_t available,
                              uint8_t *length);
+
+/*
+ * Encode/decode the corpus-grounded hardware `intersect_ray` instruction.
+ * Apple's encoder tables identify f5 as a 13-bit half-register field; the
+ * surrounding native stream makes its SCS/ray-state role likely, but that
+ * semantic name remains an inference.  Two direct native-corpus pairs vary
+ * only f5 and establish these exact values and bytes:
+ *
+ *   AGX3b: 0, 4
+ *   AGX3c: 0, 8
+ *
+ * Every other anonymous field is held to the corresponding differential
+ * pair's canonical value.  Values merely spellable by Apple's tables, other
+ * intersect_ray specimens in the corpus, and every unwitnessed target remain
+ * rejected.  This codec does not represent the required scoped barrier, SCS
+ * layout, traversal lowering, scheduling, submission, or an API capability.
+ */
+bool agx3_pack_intersect_ray(enum agx_isa_encoding encoding,
+                             uint16_t state_register,
+                             struct agx3_encoded_intersect_ray *out);
+bool agx3_unpack_intersect_ray(enum agx_isa_encoding encoding,
+                               const uint8_t *bytes, size_t available,
+                               uint16_t *state_register, uint8_t *length);
+
+/* Return an encoding only for the M3/M4/A18 Pro/M5 identities that reproduce
+ * both exact pair members in the pinned cross-target native corpus.
+ * ISA-equivalent identities without those bytes stay fail-closed. */
+enum agx_isa_encoding
+agx3_intersect_ray_witnessed_chip_encoding(enum agx_chip chip);
 
 /*
  * Encode/decode the canonical hardware `continue_ray` instruction with its
