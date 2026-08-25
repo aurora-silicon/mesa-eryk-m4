@@ -686,6 +686,22 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
 "$out/agx3_cdm_direct_launch_semantic_core_tests"
 
 "$cc" "$common[@]" \
+    -Wno-c23-extensions -Wno-unused-parameter \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx3_cdm_direct_launch_semantic_core.c" \
+    "$repo_root/src/asahi/lib/agx3_compute_program_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_program_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-agx3-compute-program-core.c" \
+    -o "$out/agx3_compute_program_core_tests"
+"$out/agx3_compute_program_core_tests"
+
+"$cc" "$common[@]" \
     -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" \
     "$repo_root/src/asahi/lib/agx_ioto_core.c" \
