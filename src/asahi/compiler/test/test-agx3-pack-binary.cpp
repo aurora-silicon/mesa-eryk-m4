@@ -16,6 +16,8 @@
 
 #include "agx3_pack.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_mem_core.h"
+#include "agx3_alu_core.h"
 
 static void
 append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
@@ -129,3 +131,55 @@ TEST_F(AGX3PackBinary, RefusesUnmappedOp)
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
 }
+
+TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
+{
+   /* A load, an add that consumes the load result, and a store. The add must
+    * carry a wait on the load's scoreboard slot; the shim must produce exactly
+    * what the memory + wait-carrying-ALU encoders produce for these operands. */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index base = agx_register(0, AGX_SIZE_64);
+      agx_index idx = agx_register(4, AGX_SIZE_32);
+      agx_index v6 = agx_register(6, AGX_SIZE_32);
+      agx_index v8 = agx_register(8, AGX_SIZE_32);
+
+      agx_device_load_to(b, v6, base, idx, AGX_FORMAT_I32, 1, 2, false);
+      agx_iadd_to(b, v8, v6, v6, 0);
+      agx_device_store(b, v8, base, idx, AGX_FORMAT_I32, 1, 2, false);
+      agx_stop(b);
+      std::vector<uint8_t> got = pack(b);
+
+      /* Independently build the expected stream from the encoders. */
+      struct agx3_mem_desc ld = {};
+      ld.data = 6; ld.width = AGX3_MEM_W32; ld.mask = 1; ld.shift = 2;
+      ld.base_is_uniform = false; ld.base = 0;
+      ld.idx_kind = AGX3_MEM_IDX_REG; ld.idx_reg = 4;
+      ld.slot = 1; ld.wait_mask = 0;
+      uint8_t lb[AGX3_MEM_MAX_LENGTH]; uint8_t ll = 0;
+      ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
+
+      uint8_t ab[AGX3_ALU_MAX_LENGTH]; uint8_t al = 0;
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
+                                   /*wait*/ 0x1, ab, &al));
+
+      struct agx3_mem_desc st = ld;
+      st.data = 8; st.slot = 0; st.wait_mask = 0;
+      uint8_t sb[AGX3_MEM_MAX_LENGTH]; uint8_t sl = 0;
+      ASSERT_TRUE(agx3_mem_encode_store(enc, &st, sb, &sl));
+
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, lb, ll);
+      append(want, ab, al);
+      append(want, sb, sl);
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(got, want);
+   }
+}
+

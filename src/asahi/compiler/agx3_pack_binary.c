@@ -27,6 +27,9 @@
 #include "agx_compiler.h"
 #include "agx3_select_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_mem_core.h"
+#include "agx3_slot_core.h"
+#include "agx3_alu_core.h"
 
 #include <string.h>
 
@@ -314,32 +317,252 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    return 1;
 }
 
+/* An async producer whose result later consumers must wait on. Milestone: the
+ * device load. Textures and atomics join this set as their cores are wired. */
+static bool
+agx3_is_async(const agx_instr *I)
+{
+   return I->op == AGX_OPCODE_DEVICE_LOAD;
+}
+
+/* Append the half-registers an operand occupies (empty for immediates,
+ * uniforms, or null). */
+static unsigned
+agx3_expand_regs(agx_index idx, uint16_t *arr, unsigned n)
+{
+   if (!agx3_src_is_register(idx) || idx.memory)
+      return n;
+   const unsigned halves = agx_size_align_16(idx.size) * agx_channels(idx);
+   for (unsigned i = 0; i < halves && n < AGX3_SLOT_MAX_REGS; ++i)
+      arr[n++] = (uint16_t)(idx.value + i);
+   return n;
+}
+
+static int
+agx3_fmt_to_width(enum agx_format f)
+{
+   switch (f) {
+   case AGX_FORMAT_I8:
+      return AGX3_MEM_W8;
+   case AGX_FORMAT_I16:
+   case AGX_FORMAT_F16:
+      return AGX3_MEM_W16;
+   case AGX_FORMAT_I32:
+      return AGX3_MEM_W32;
+   default:
+      return -1; /* norm/packed formats have no AGX3 device-op witness */
+   }
+}
+
+/* Translate a device_load/device_store into the normalized memory descriptor.
+ * Returns false for any operand shape outside the grounded domain. */
+static bool
+agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
+                   uint16_t wait_mask, struct agx3_mem_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+
+   const int w = agx3_fmt_to_width(I->format);
+   if (w < 0 || I->mask < 1 || I->mask > 15 || I->shift > 4)
+      return false;
+   d->width = (enum agx3_mem_width)w;
+   d->mask = (uint8_t)I->mask;
+   d->shift = (uint8_t)I->shift;
+
+   const agx_index data = is_store ? I->src[0] : I->dest[0];
+   if (!agx3_src_is_register(data) || data.memory || (data.value & 1) != 0 ||
+       data.value >= 256)
+      return false;
+   d->data = data.value;
+
+   const agx_index base = I->src[is_store ? 1 : 0];
+   if (base.type == AGX_INDEX_UNIFORM) {
+      d->base_is_uniform = true;
+      d->base = base.value;
+   } else if (agx3_src_is_register(base) && !base.memory) {
+      d->base_is_uniform = false;
+      d->base = base.value;
+      d->base_kill = base.kill;
+   } else {
+      return false;
+   }
+
+   const agx_index index = I->src[is_store ? 2 : 1];
+   if (index.type == AGX_INDEX_IMMEDIATE) {
+      d->idx_kind = AGX3_MEM_IDX_IMM;
+      const int64_t bytes = (int64_t)index.value << I->shift;
+      if (bytes >= -32768 && bytes <= 32767) {
+         d->idx_scaled = false;
+         d->byte_off = (int32_t)bytes;
+         d->shift = 0;
+      } else if (index.value <= 0xffff) {
+         d->idx_scaled = true;
+         d->elem_idx = index.value;
+      } else {
+         return false; /* needs address-math legalization */
+      }
+   } else if (agx3_src_is_register(index) && !index.memory) {
+      d->idx_kind = AGX3_MEM_IDX_REG;
+      if ((index.value & 1) != 0 || index.value > 191)
+         return false;
+      d->idx_reg = index.value;
+      d->idx_kill = index.kill;
+      d->idx_signed = false;
+   } else {
+      return false;
+   }
+
+   d->slot = slot;
+   d->wait_mask = wait_mask;
+   return true;
+}
+
+/* Map a resolved selection op to the composer ALU op that can carry a wait.
+ * Returns AGX3_ALU_NUM for ops with no wait-carrying form. */
+static enum agx3_alu_op
+agx3_sel_to_alu(const struct agx3_sel_instr *S)
+{
+   switch (S->op) {
+   case AGX3_SEL_OP_MOV_IMM: return AGX3_ALU_LDIMM;
+   case AGX3_SEL_OP_IADD:    return AGX3_ALU_IADD;
+   case AGX3_SEL_OP_ISUB:    return AGX3_ALU_ISUB;
+   case AGX3_SEL_OP_IMAD:    return AGX3_ALU_IMADD;
+   case AGX3_SEL_OP_IMUL:    return AGX3_ALU_IMUL;
+   case AGX3_SEL_OP_FADD:    return AGX3_ALU_FADD;
+   case AGX3_SEL_OP_FMUL:    return AGX3_ALU_FMUL;
+   case AGX3_SEL_OP_FFMA:    return AGX3_ALU_FMA;
+   case AGX3_SEL_OP_ASR:     return AGX3_ALU_ASR;
+   case AGX3_SEL_OP_SLL:     return AGX3_ALU_SLL;
+   case AGX3_SEL_OP_LSR:     return AGX3_ALU_LSR;
+   case AGX3_SEL_OP_F_RCP:   return AGX3_ALU_RCP;
+   case AGX3_SEL_OP_F_RSQRT: return AGX3_ALU_RSQRT;
+   case AGX3_SEL_OP_F_RINT:  return AGX3_ALU_RINT;
+   case AGX3_SEL_OP_I32_TO_F: return AGX3_ALU_I2F;
+   case AGX3_SEL_OP_U32_TO_F: return AGX3_ALU_U2F;
+   case AGX3_SEL_OP_F_TO_I32: return AGX3_ALU_F2I;
+   case AGX3_SEL_OP_BITOP:
+      switch (S->truth_table & 0xfu) {
+      case AGX3_SEL_TT_AND: return AGX3_ALU_BAND;
+      case AGX3_SEL_TT_OR:  return AGX3_ALU_BOR;
+      case AGX3_SEL_TT_XOR: return AGX3_ALU_BXOR;
+      case AGX3_SEL_TT_NOT: return AGX3_ALU_BNOT;
+      default:              return AGX3_ALU_NUM;
+      }
+   default:
+      return AGX3_ALU_NUM; /* F_TO_U32, FMIN/FMAX: no wait-carrying form yet */
+   }
+}
+
+/* Emit one selected ALU instruction, carrying a wait mask when needed. With no
+ * wait it uses the compact hand packer; with a wait it uses the composer form,
+ * which is byte-identical for wait 0. */
+static bool
+agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
+              const struct agx3_sel_instr *S, uint16_t wait_mask)
+{
+   if (wait_mask == 0)
+      return agx3_emit(emission, enc, S);
+
+   const enum agx3_alu_op op = agx3_sel_to_alu(S);
+   if (op == AGX3_ALU_NUM)
+      return false; /* consumer of a load with no wait-carrying encoding */
+
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+   uint8_t len = 0;
+   const uint16_t s0 = S->nr_srcs > 0 ? S->src[0].reg : 0;
+   const uint16_t s1 = S->nr_srcs > 1 ? S->src[1].reg : 0;
+   const uint16_t s2 = S->nr_srcs > 2 ? S->src[2].reg : 0;
+   if (!agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask, bytes,
+                         &len))
+      return false;
+   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+   return true;
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
+   const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
 
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
 
+      /* Slot/wait pre-pass over the block, in the same order (excluding stop)
+       * that the emit walk below uses, so results index by position. */
+      unsigned count = 0;
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op != AGX_OPCODE_STOP)
+            count++;
+      }
+      struct agx3_slot_instr *sl =
+         rzalloc_array(ctx, struct agx3_slot_instr, count ? count : 1);
+      struct agx3_slot_result *res =
+         rzalloc_array(ctx, struct agx3_slot_result, count ? count : 1);
+      if (sl == NULL || res == NULL)
+         return false;
+
+      unsigned k = 0;
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_STOP)
+            continue;
+         struct agx3_slot_instr *e = &sl[k++];
+         e->is_async = agx3_is_async(I);
+         unsigned nd = 0, ns = 0;
+         for (unsigned d = 0; d < I->nr_dests; ++d)
+            nd = agx3_expand_regs(I->dest[d], e->dst, nd);
+         for (unsigned s = 0; s < I->nr_srcs; ++s)
+            ns = agx3_expand_regs(I->src[s], e->src, ns);
+         e->nr_dsts = (uint8_t)nd;
+         e->nr_srcs = (uint8_t)ns;
+      }
+      if (!agx3_slot_assign(sl, count, nslots, res))
+         return false;
+
+      k = 0;
       agx_foreach_instr_in_block(block, I) {
          block->last_offset = emission->size;
 
-         /* stop is the shader terminator; it becomes the single trailing `end`
-          * below, matching the corpus (one end per region). */
          if (I->op == AGX_OPCODE_STOP)
             continue;
 
-         const int mod = agx3_try_float_modifier(emission, enc, I);
-         if (mod == 1)
+         const uint8_t slot = res[k].slot;
+         const uint16_t wait = res[k].wait_mask;
+         k++;
+
+         /* Device memory. */
+         if (I->op == AGX_OPCODE_DEVICE_LOAD ||
+             I->op == AGX_OPCODE_DEVICE_STORE) {
+            const bool is_store = I->op == AGX_OPCODE_DEVICE_STORE;
+            struct agx3_mem_desc d;
+            uint8_t bytes[AGX3_MEM_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_mem(I, is_store, slot, wait, &d))
+               return false;
+            const bool ok = is_store
+                               ? agx3_mem_encode_store(enc, &d, bytes, &len)
+                               : agx3_mem_encode_load(enc, &d, bytes, &len);
+            if (!ok)
+               return false;
+            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             continue;
+         }
+
+         /* Modifier-carrying float ALU (no wait support yet). */
+         const int mod = agx3_try_float_modifier(emission, enc, I);
+         if (mod == 1) {
+            if (wait != 0)
+               return false; /* modifier form cannot carry a wait */
+            continue;
+         }
          if (mod < 0)
             return false;
 
          struct agx3_sel_instr S;
-         if (!agx3_translate_instr(I, &S) || !agx3_emit(emission, enc, &S))
+         if (!agx3_translate_instr(I, &S) || !agx3_emit_alu(emission, enc, &S,
+                                                            wait))
             return false;
       }
    }
