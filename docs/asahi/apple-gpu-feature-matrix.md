@@ -29,24 +29,24 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G15S | M3 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G15C | M3 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G15D | M3 Ultra | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G16S | M4 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G16C | M4 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G17P | A18 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G17G | M5 | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G17S | M5 Pro | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G17C | M5 Max | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G15G | M3 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G15S | M3 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G15C | M3 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G15D | M3 Ultra | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
+| G16G | M4 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G16S | M4 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G16C | M4 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G17P | A18 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
+| G17G | M5 | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G17S | M5 Pro | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G17C | M5 Max | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
 `ldimm.u32`, canonical scheduler `nop`, workgroup barrier, shader `end`, thread
 enable, the zero-argument `update_node` expansion, the G17S-only fixed
-`update_bvh` witness, the fixed first-site hardware `continue_ray` witness, and
+`update_bvh` witness, the bounded hardware `continue_ray` f5 codec, and
 the canonical no-kill, scheduler-neutral i16-register `yield`, plus 32-bit
 register-plus-u8 `iadd` and the canonical three-register form (AGX3b
 `iadd`, AGX3c `iadd32`),
@@ -175,6 +175,23 @@ required by AGX3c and rejects misaligned 32-bit registers and invalid wait bits,
 but tile load/store is not yet wired into production fragment code generation.
 This is compiler and host validation; device admission and fragment execution
 remain closed.
+
+The production packer now also emits the directly witnessed, non-array 2D
+LOD0 texel-fetch selection. The bounded encoder covers 16- or 32-bit four-
+component results, masks 1 and 15, aligned f32 coordinate pairs, immediate
+texture indices 0--15, sampler zero, the six-slot AGX3b/eight-slot AGX3c
+scoreboard domain, zero or one compact dependency wait, coordinate last-use,
+and the observed final-texture marker. It reproduces the exact AGX3b and AGX3c
+witnesses and rejects array, offset, compare, gather, sparse, bindless,
+register-selected texture/sampler, MSAA, alternate LOD, wider mask, and
+noncanonical encodings. Scoreboard state is preserved across linear
+fallthrough blocks; any control-flow boundary after an asynchronous producer
+remains fail-closed until CFG-aware scoreboard merging is grounded. The D3D12
+ISA core maps the same subset only on the nine compiler-witnessed G15--G17
+targets. Final-marker behavior is grounded only for the pinned straight-line
+texture ladders, not path-sensitive control flow. This is compiler and host
+encoding validation, not complete texture lowering, descriptor execution,
+device admission, Vulkan feature exposure, or D3D12 execution support.
 
 The D3D12 AGX3 ISA bridge target-gates the same grounded integer/float
 compare, exec-stack, directional branch, scalar interpolation, coefficient-
@@ -462,16 +479,22 @@ bytes. A 140-translation matrix varying each of the intrinsic's seven
 arguments produces 280/280 exact Apple-table round trips but no corresponding
 hardware-instruction bit change: the operands are carried by the surrounding
 lowering. G15P fails native selection, while G15C, G16C, G17A, and G17C remain
-unwitnessed. The shared packer therefore represents only the exact first-site
-AGX3b/AGX3c hardware specimens and rejects every second-site or corrupted
-prefix; it exposes neither intrinsic operands nor compiler allocation/finality
-fields. No traversal lowering rule, device admission, or API capability is
-claimed.
+unwitnessed. The shared packer now represents the canonical first-site
+AGX3b/AGX3c hardware instruction while varying only its Apple-table f5
+half-register field over values observed in the pinned corpus: AGX3b
+`{0,2,4,6,8,10}` and AGX3c `{0,2,8,10,12,16,18}`. Decode is canonical-
+repack strict, and all other selector, flag, wait, hint, and second-site forms
+remain rejected. The state/SCS meaning of f5 is inferred from surrounding
+lowering; no intrinsic operand, SCS layout, barrier sequence, compiler
+allocation/finality rule, traversal lowering, device admission, or API
+capability is claimed.
 
-The D3D12 RT core consumes that same fixed witness only on the compiler-proven
-target set: AGX3b G15G/G15S/G15D/G16P/G16G/G16S/G17P and AGX3c G17G/G17S.
-It rejects both encoding forms on every other identity, including the
-same-encoding G15C/G16C/G17A/G17C cases, and still exposes no traversal,
+The D3D12 RT core and Honeykrisp validation bridge consume that same bounded
+f5 codec only on the compiler-proven target set: AGX3b
+G15G/G15S/G15D/G16P/G16G/G16S/G17P and AGX3c G17G/G17S. They reject both
+encoding forms on every other identity, including the same-encoding
+G15C/G16C/G17A/G17C cases. The Honeykrisp bridge is not connected to command
+buffers or Vulkan feature exposure, and D3D12 still exposes no traversal,
 acceleration-structure execution, device admission, or DXR tier.
 
 Honeykrisp also has an **IV** native Gen9/Gen10 hardware-PBE word packer,
