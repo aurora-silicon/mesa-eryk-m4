@@ -1,0 +1,27 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * The AGX3 varying encoders must reproduce real Apple f32interp/ldcfr/uvsw
+ * instructions (clean center-location, marker-free forms) from the varyops
+ * corpus.
+ */
+#include "agx3_vary_core.h"
+#include "agx3_vary_core_vectors.c"
+#include <stdio.h>
+#include <string.h>
+int main(void){
+   unsigned pass=0,fail=0;
+   for(size_t i=0;i<vary_vec_count;i++){
+      const struct vary_vec *v=&vary_vecs[i];
+      enum agx_isa_encoding e=v->enc==0?AGX_ISA_ENCODING_AGX3B:AGX_ISA_ENCODING_AGX3C;
+      uint8_t out[AGX3_VARY_MAX_LENGTH]; uint8_t len=0; bool ok;
+      if(!strcmp(v->op,"interp")) ok=agx3_vary_interp(e,v->a,v->b,v->c!=0,out,&len);
+      else if(!strcmp(v->op,"ldcf")) ok=agx3_vary_ldcf(e,v->a,v->b,(uint8_t)v->c,out,&len);
+      else ok=agx3_vary_uvsw(e,v->a,v->b,(uint8_t)v->c,v->d!=0,(uint16_t)v->wait,out,&len);
+      if(!ok||len!=v->nbytes||memcmp(out,v->bytes,v->nbytes)){ if(fail<10) fprintf(stderr,"FAIL %s enc=%d i=%zu\n",v->op,v->enc,i); fail++; }
+      else pass++;
+   }
+   if(fail){ fprintf(stderr,"agx3_vary_core: %u of %zu failed\n",fail,vary_vec_count); return 1; }
+   printf("agx3_vary_core: all %u varying ops reproduced\n",pass); return 0;
+}
