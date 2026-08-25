@@ -40,3 +40,24 @@ TEST_F(LowerPseudo, Not)
 {
    CASE(agx_not_to(b, wx, wy), agx_bitop_to(b, wx, wy, agx_zero(), 0x5));
 }
+
+TEST_F(LowerPseudo, PreservesAgx3ArchitecturalControlFlow)
+{
+   agx_shader_key key = {};
+   key.dev.encoding = AGX_ISA_ENCODING_AGX3B;
+
+   agx_builder *actual = agx_test_builder(mem_ctx);
+   actual->shader->key = &key;
+   agx_begin_cf(actual);
+   agx_break_if_icmp(actual, wx, wy, 1, false, AGX_ICOND_ULT, NULL);
+   agx_break(actual, 1, NULL);
+
+   agx_builder *expected = agx_test_builder(mem_ctx);
+   expected->shader->key = &key;
+   agx_begin_cf(expected);
+   agx_break_if_icmp(expected, wx, wy, 1, false, AGX_ICOND_ULT, NULL);
+   agx_break(expected, 1, NULL);
+
+   agx_lower_pseudo(actual->shader);
+   ASSERT_SHADER_EQUAL(actual->shader, expected->shader);
+}

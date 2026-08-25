@@ -5,6 +5,7 @@
 
 #include "../d12_agx3_isa_core.h"
 
+#include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
 
 #include <stdio.h>
@@ -5492,9 +5493,244 @@ check_imadd_rejected_and_cleared(
    return 0;
 }
 
+static bool
+cf_encoding_is_cleared(const struct d12_agx3_cf_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+   for (unsigned i = 0; i < sizeof(encoded->bytes); ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+   return true;
+}
+
+static int
+check_cf_encoding(const struct d12_agx3_cf_encoding *encoded,
+                  const uint8_t *expected, uint8_t expected_length)
+{
+   CHECK(encoded->length == expected_length);
+   CHECK(memcmp(encoded->bytes, expected, expected_length) == 0);
+   for (unsigned i = expected_length; i < sizeof(encoded->bytes); ++i)
+      CHECK(encoded->bytes[i] == 0);
+   return 0;
+}
+
+static int
+check_control_flow_bridge(void)
+{
+   static const struct {
+      enum d12_agx3_i32_cf_predicate d3d;
+      enum agx3_cf_icond apple;
+   } integer_predicates[] = {
+      {D12_AGX3_I32_CF_EQ, AGX3_CF_ICOND_EQ},
+      {D12_AGX3_I32_CF_ULT, AGX3_CF_ICOND_ULT},
+      {D12_AGX3_I32_CF_UGT, AGX3_CF_ICOND_UGT},
+      {D12_AGX3_I32_CF_SLT, AGX3_CF_ICOND_SLT},
+      {D12_AGX3_I32_CF_SGT, AGX3_CF_ICOND_SGT},
+   };
+   static const struct {
+      enum d12_agx3_f32_cf_predicate d3d;
+      enum agx3_cf_fcond apple;
+      bool or_nan;
+      bool flips_invert;
+   } float_predicates[] = {
+      {D12_AGX3_F32_CF_EQ, AGX3_CF_FCOND_EQ, false, false},
+      {D12_AGX3_F32_CF_LT, AGX3_CF_FCOND_LT, false, false},
+      {D12_AGX3_F32_CF_GT, AGX3_CF_FCOND_GT, false, false},
+      {D12_AGX3_F32_CF_LT_OR_NAN, AGX3_CF_FCOND_LT, true, false},
+      {D12_AGX3_F32_CF_GT_OR_NAN, AGX3_CF_FCOND_GT, true, false},
+      {D12_AGX3_F32_CF_GE, AGX3_CF_FCOND_LT, true, true},
+      {D12_AGX3_F32_CF_LE, AGX3_CF_FCOND_GT, true, true},
+   };
+
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      struct d12_agx3_cf_encoding encoded;
+      uint8_t expected[D12_AGX3_CF_MAX_LENGTH] = {0};
+      uint8_t compare_length = 0, cnd_length = 0;
+
+      for (unsigned p = 0;
+           p < sizeof(integer_predicates) / sizeof(integer_predicates[0]);
+           ++p) {
+         for (unsigned invert = 0; invert < 2; ++invert) {
+            memset(expected, 0, sizeof(expected));
+            CHECK(agx3_cf_icmp_reg(target->encoding,
+                                   integer_predicates[p].apple, 0, 0, 2,
+                                   expected, &compare_length));
+            CHECK(agx3_cf_cndst(target->encoding, 0, invert, 1,
+                                expected + compare_length, &cnd_length));
+            CHECK(d12_agx3_encode_i32_cf(
+               target->chip, D12_AGX3_CF_IF, integer_predicates[p].d3d,
+               invert, 0, false, 2, &encoded));
+            CHECK(check_cf_encoding(&encoded, expected,
+                                    compare_length + cnd_length) == 0);
+         }
+      }
+
+      for (unsigned p = 0;
+           p < sizeof(float_predicates) / sizeof(float_predicates[0]); ++p) {
+         for (unsigned invert = 0; invert < 2; ++invert) {
+            memset(expected, 0, sizeof(expected));
+            CHECK(agx3_cf_fcmp_reg(target->encoding, float_predicates[p].apple,
+                                   float_predicates[p].or_nan, 0, 0, 2,
+                                   expected, &compare_length));
+            CHECK(agx3_cf_cndst(
+               target->encoding, 0,
+               (bool)invert ^ float_predicates[p].flips_invert, 1,
+               expected + compare_length, &cnd_length));
+            CHECK(d12_agx3_encode_f32_cf(
+               target->chip, D12_AGX3_CF_IF, float_predicates[p].d3d, invert,
+               0, 2, &encoded));
+            CHECK(check_cf_encoding(&encoded, expected,
+                                    compare_length + cnd_length) == 0);
+         }
+      }
+
+      /* Register-register if: integer condition and invert route directly to
+       * the compare flag and cndst consumer. */
+      CHECK(agx3_cf_icmp_reg(target->encoding, AGX3_CF_ICOND_ULT, 0, 0, 2,
+                             expected, &compare_length));
+      CHECK(agx3_cf_cndst(target->encoding, 0, true, 1,
+                          expected + compare_length, &cnd_length));
+      CHECK(d12_agx3_encode_i32_cf(
+         target->chip, D12_AGX3_CF_IF, D12_AGX3_I32_CF_ULT, true, 0, false,
+         2, &encoded));
+      CHECK(check_cf_encoding(&encoded, expected,
+                              compare_length + cnd_length) == 0);
+
+      /* Immediate loop/break test: exact imm8 compare followed by cndlt. */
+      memset(expected, 0, sizeof(expected));
+      CHECK(agx3_cf_icmp_imm(target->encoding, AGX3_CF_ICOND_EQ, 0, 4, 7,
+                             expected, &compare_length));
+      CHECK(agx3_cf_cndlt(target->encoding, 0, false,
+                          expected + compare_length, &cnd_length));
+      CHECK(d12_agx3_encode_i32_cf(
+         target->chip, D12_AGX3_CF_LOOP_OR_BREAK_TEST, D12_AGX3_I32_CF_EQ,
+         false, 4, true, 7, &encoded));
+      CHECK(check_cf_encoding(&encoded, expected,
+                              compare_length + cnd_length) == 0);
+
+      /* Ordered >= is invert(less-than-or-NaN), matching Mesa's production
+       * normalization and Apple's witnessed sequence. */
+      memset(expected, 0, sizeof(expected));
+      CHECK(agx3_cf_fcmp_reg(target->encoding, AGX3_CF_FCOND_LT, true, 0, 0,
+                             2, expected, &compare_length));
+      CHECK(agx3_cf_cndst(target->encoding, 0, true, 1,
+                          expected + compare_length, &cnd_length));
+      CHECK(d12_agx3_encode_f32_cf(
+         target->chip, D12_AGX3_CF_IF, D12_AGX3_F32_CF_GE, false, 0, 2,
+         &encoded));
+      CHECK(check_cf_encoding(&encoded, expected,
+                              compare_length + cnd_length) == 0);
+
+      const enum d12_agx3_cf_stack_op stack_ops[] = {
+         D12_AGX3_CF_LOOP_ENTRY,
+         D12_AGX3_CF_ELSE,
+         D12_AGX3_CF_POP_1,
+         D12_AGX3_CF_POP_2,
+      };
+      for (unsigned s = 0; s < sizeof(stack_ops) / sizeof(stack_ops[0]); ++s) {
+         memset(expected, 0, sizeof(expected));
+         uint8_t length = 0;
+         bool ok;
+         switch (stack_ops[s]) {
+         case D12_AGX3_CF_LOOP_ENTRY:
+            ok = agx3_cf_cndst(target->encoding, 6, false, 2, expected,
+                               &length);
+            break;
+         case D12_AGX3_CF_ELSE:
+            ok = agx3_cf_cndef(target->encoding, expected, &length);
+            break;
+         case D12_AGX3_CF_POP_1:
+            ok = agx3_cf_cndend(target->encoding, 1, expected, &length);
+            break;
+         case D12_AGX3_CF_POP_2:
+            ok = agx3_cf_cndend(target->encoding, 2, expected, &length);
+            break;
+         default:
+            ok = false;
+            break;
+         }
+         CHECK(ok);
+         CHECK(d12_agx3_encode_cf_stack(target->chip, stack_ops[s], &encoded));
+         CHECK(check_cf_encoding(&encoded, expected, length) == 0);
+      }
+
+      const struct {
+         enum d12_agx3_cf_branch_op op;
+         int64_t displacement;
+         bool is_bn;
+      } branches[] = {
+         {D12_AGX3_CF_BRANCH_EXEC_NONE, 1208, true},
+         {D12_AGX3_CF_BRANCH_EXEC_ANY, -62, false},
+      };
+      for (unsigned b = 0; b < sizeof(branches) / sizeof(branches[0]); ++b) {
+         memset(expected, 0, sizeof(expected));
+         uint8_t length = 0;
+         CHECK(agx3_cf_branch(target->encoding, branches[b].is_bn, expected,
+                              &length));
+         CHECK(agx3_cf_patch_branch(target->encoding, branches[b].is_bn,
+                                    expected, branches[b].displacement));
+         CHECK(d12_agx3_encode_cf_branch(target->chip, branches[b].op,
+                                         branches[b].displacement, &encoded));
+         CHECK(check_cf_encoding(&encoded, expected, length) == 0);
+      }
+   }
+
+   /* Every rejected call must clear a previously dirty result. */
+   struct d12_agx3_cf_encoding rejected;
+#define REJECT_CF(call)                                                       \
+   do {                                                                        \
+      memset(&rejected, 0xff, sizeof(rejected));                               \
+      CHECK(!(call));                                                          \
+      CHECK(cf_encoding_is_cleared(&rejected));                                \
+   } while (0)
+   REJECT_CF(d12_agx3_encode_i32_cf(
+      AGX_CHIP_G17C, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0, false, 2,
+      &rejected));
+   REJECT_CF(d12_agx3_encode_i32_cf(
+      AGX_CHIP_G17S, D12_AGX3_CF_IF, (enum d12_agx3_i32_cf_predicate)99,
+      false, 0, false, 2, &rejected));
+   REJECT_CF(d12_agx3_encode_i32_cf(
+      AGX_CHIP_G17S, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 1, false, 2,
+      &rejected));
+   REJECT_CF(d12_agx3_encode_i32_cf(
+      AGX_CHIP_G17S, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0, true, 256,
+      &rejected));
+   REJECT_CF(d12_agx3_encode_f32_cf(
+      AGX_CHIP_G15G, (enum d12_agx3_cf_condition_op)99, D12_AGX3_F32_CF_EQ,
+      false, 0, 2, &rejected));
+   REJECT_CF(d12_agx3_encode_f32_cf(
+      AGX_CHIP_G15G, D12_AGX3_CF_IF, D12_AGX3_F32_CF_EQ, false, 0, 128,
+      &rejected));
+   REJECT_CF(d12_agx3_encode_cf_stack(
+      AGX_CHIP_G17S, (enum d12_agx3_cf_stack_op)99, &rejected));
+   REJECT_CF(d12_agx3_encode_cf_branch(
+      AGX_CHIP_G17S, D12_AGX3_CF_BRANCH_EXEC_NONE, -2, &rejected));
+   REJECT_CF(d12_agx3_encode_cf_branch(
+      AGX_CHIP_G17S, D12_AGX3_CF_BRANCH_EXEC_ANY, 2, &rejected));
+   REJECT_CF(d12_agx3_encode_cf_branch(
+      AGX_CHIP_G17S, D12_AGX3_CF_BRANCH_EXEC_NONE, 3, &rejected));
+#undef REJECT_CF
+
+   CHECK(!d12_agx3_encode_i32_cf(
+      AGX_CHIP_G17S, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0, false, 2,
+      NULL));
+   CHECK(!d12_agx3_encode_f32_cf(
+      AGX_CHIP_G17S, D12_AGX3_CF_IF, D12_AGX3_F32_CF_EQ, false, 0, 2, NULL));
+   CHECK(!d12_agx3_encode_cf_stack(AGX_CHIP_G17S, D12_AGX3_CF_ELSE, NULL));
+   CHECK(!d12_agx3_encode_cf_branch(
+      AGX_CHIP_G17S, D12_AGX3_CF_BRANCH_EXEC_NONE, 2, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
+   CHECK(check_control_flow_bridge() == 0);
+
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,
    };

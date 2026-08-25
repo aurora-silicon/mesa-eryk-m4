@@ -16,6 +16,15 @@
 
 static unsigned checks, failures;
 
+#define REJECT(expr)                                                           \
+   do {                                                                        \
+      checks++;                                                                \
+      if ((expr)) {                                                            \
+         fprintf(stderr, "FAIL accepted ungrounded form: %s\n", #expr);        \
+         failures++;                                                           \
+      }                                                                        \
+   } while (0)
+
 static void
 expect(const struct cf_vec *v, const uint8_t *got, uint8_t len, bool ok)
 {
@@ -42,8 +51,8 @@ main(void)
       if (!strcmp(v->kind, "icmp_rr"))
          ok = agx3_cf_icmp_reg(e, v->a0, v->a1, v->a2, v->a3, out, &len);
       else if (!strcmp(v->kind, "icmp_imm"))
-         ok = agx3_cf_icmp_imm(e, v->a0, v->a1, v->a2, (uint8_t)v->a3, out,
-                               &len);
+         ok =
+            agx3_cf_icmp_imm(e, v->a0, v->a1, v->a2, (uint8_t)v->a3, out, &len);
       else if (!strcmp(v->kind, "fcmp_rr"))
          ok = agx3_cf_fcmp_reg(e, v->a0, v->a1, v->a2, v->a3, /*src1*/ 4, out,
                                &len);
@@ -62,6 +71,23 @@ main(void)
               agx3_cf_patch_branch(e, v->a0, out, v->a1);
       }
       expect(v, out, len, ok);
+   }
+
+   /* The public codec is itself fail-closed, not just its production caller:
+    * Apple's integer condition 3 remains unknown, float condition 3 is
+    * represented only through LT+or_nan, and no other raw enum values are
+    * admitted. */
+   {
+      uint8_t out[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      REJECT(agx3_cf_icmp_reg(AGX_ISA_ENCODING_AGX3B, (enum agx3_cf_icond)3, 0,
+                              0, 2, out, &len));
+      REJECT(agx3_cf_icmp_imm(AGX_ISA_ENCODING_AGX3C, (enum agx3_cf_icond)7, 0,
+                              0, 1, out, &len));
+      REJECT(agx3_cf_fcmp_reg(AGX_ISA_ENCODING_AGX3B, (enum agx3_cf_fcond)3,
+                              false, 0, 0, 2, out, &len));
+      REJECT(agx3_cf_fcmp_reg(AGX_ISA_ENCODING_AGX3C, (enum agx3_cf_fcond)7,
+                              false, 0, 0, 2, out, &len));
    }
 
    if (failures) {

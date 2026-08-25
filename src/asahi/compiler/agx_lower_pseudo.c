@@ -73,6 +73,9 @@ swap(agx_builder *b, agx_index x, agx_index y)
 static agx_instr *
 lower(agx_builder *b, agx_instr *I)
 {
+   const bool agx3 = b->shader->key != NULL &&
+                     b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2;
+
    switch (I->op) {
 
    /* Various instructions are implemented as bitwise truth tables */
@@ -107,14 +110,28 @@ lower(agx_builder *b, agx_instr *I)
 
    /* Writes to the nesting counter lowered to the real register */
    case AGX_OPCODE_BEGIN_CF:
+      /* AGX3 has an architectural exec-mask stack and no witnessed r0l
+       * nesting-counter write. Keep the pseudo for its zero-byte AGX3 packer
+       * mapping instead of silently emitting the AGX2 contract. */
+      if (agx3)
+         return NULL;
       return agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), 0);
 
    case AGX_OPCODE_BREAK:
+      /* An unconditional AGX3 break is not grounded. Preserve it so the AGX3
+       * packer rejects the shader; lowering it through r0l would create a
+       * legal-looking instruction stream with the wrong execution model. */
+      if (agx3)
+         return NULL;
       agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), I->nest);
       return agx_pop_exec(b, 0);
 
    case AGX_OPCODE_BREAK_IF_ICMP:
    case AGX_OPCODE_BREAK_IF_FCMP: {
+      /* AGX3 lowers these directly to compare + cndlt, retaining the
+       * condition and avoiding AGX2's r0l/cmpsel fallback. */
+      if (agx3)
+         return NULL;
       if (I->nest == 1)
          return while_for_break_if(b, I);
       else

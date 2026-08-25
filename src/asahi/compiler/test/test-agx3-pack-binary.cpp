@@ -11,13 +11,14 @@
 
 #include "agx_test.h"
 
-#include <gtest/gtest.h>
 #include <vector>
+#include <gtest/gtest.h>
 
-#include "agx3_pack.h"
+#include "agx3_alu_core.h"
+#include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
 #include "agx3_mem_core.h"
-#include "agx3_alu_core.h"
+#include "agx3_pack.h"
 #include "agx3_sr_core.h"
 
 static void
@@ -36,7 +37,10 @@ class AGX3PackBinary : public testing::Test {
       mem_ctx = ralloc_context(NULL);
       memset(&key, 0, sizeof(key));
    }
-   ~AGX3PackBinary() { ralloc_free(mem_ctx); }
+   ~AGX3PackBinary()
+   {
+      ralloc_free(mem_ctx);
+   }
 
    agx_builder *builder(enum agx_isa_encoding enc)
    {
@@ -110,8 +114,8 @@ TEST_F(AGX3PackBinary, FloatModifierRouting)
    m.src0_neg = true;
    uint8_t mod[AGX3_FALU_MOD_MAX_LENGTH];
    uint8_t mlen = 0;
-   ASSERT_TRUE(agx3_falu_add_mod(AGX_ISA_ENCODING_AGX3B, 4, 0, 2, &m, mod,
-                                 &mlen));
+   ASSERT_TRUE(
+      agx3_falu_add_mod(AGX_ISA_ENCODING_AGX3B, 4, 0, 2, &m, mod, &mlen));
    struct agx3_encoded_end en;
    agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &en);
 
@@ -158,26 +162,41 @@ TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
 
       /* Independently build the expected stream from the encoders. */
       struct agx3_sr_desc sr = {};
-      sr.dest = 4; sr.width = AGX3_SR_W32; sr.sr = 23;
-      sr.slot = 1; sr.wait_mask = 0;
-      uint8_t rb[AGX3_SR_MAX_LENGTH]; uint8_t rl = 0;
+      sr.dest = 4;
+      sr.width = AGX3_SR_W32;
+      sr.sr = 23;
+      sr.slot = 1;
+      sr.wait_mask = 0;
+      uint8_t rb[AGX3_SR_MAX_LENGTH];
+      uint8_t rl = 0;
       ASSERT_TRUE(agx3_sr_encode(enc, &sr, rb, &rl));
 
       struct agx3_mem_desc ld = {};
-      ld.data = 6; ld.width = AGX3_MEM_W32; ld.mask = 1; ld.shift = 2;
-      ld.base_is_uniform = false; ld.base = 0;
-      ld.idx_kind = AGX3_MEM_IDX_REG; ld.idx_reg = 4;
-      ld.slot = 2; ld.wait_mask = 0x1;
-      uint8_t lb[AGX3_MEM_MAX_LENGTH]; uint8_t ll = 0;
+      ld.data = 6;
+      ld.width = AGX3_MEM_W32;
+      ld.mask = 1;
+      ld.shift = 2;
+      ld.base_is_uniform = false;
+      ld.base = 0;
+      ld.idx_kind = AGX3_MEM_IDX_REG;
+      ld.idx_reg = 4;
+      ld.slot = 2;
+      ld.wait_mask = 0x1;
+      uint8_t lb[AGX3_MEM_MAX_LENGTH];
+      uint8_t ll = 0;
       ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
 
-      uint8_t ab[AGX3_ALU_MAX_LENGTH]; uint8_t al = 0;
+      uint8_t ab[AGX3_ALU_MAX_LENGTH];
+      uint8_t al = 0;
       ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
                                    /*wait*/ 0x2, ab, &al));
 
       struct agx3_mem_desc st = ld;
-      st.data = 8; st.slot = 0; st.wait_mask = 0;
-      uint8_t sb[AGX3_MEM_MAX_LENGTH]; uint8_t sl = 0;
+      st.data = 8;
+      st.slot = 0;
+      st.wait_mask = 0;
+      uint8_t sb[AGX3_MEM_MAX_LENGTH];
+      uint8_t sl = 0;
       ASSERT_TRUE(agx3_mem_encode_store(enc, &st, sb, &sl));
 
       struct agx3_encoded_end end;
@@ -227,20 +246,31 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
 
       /* Independently build the expected stream from the encoders. */
       struct agx3_mem_desc ld = {};
-      ld.data = 6; ld.width = AGX3_MEM_W32; ld.mask = 1; ld.shift = 2;
-      ld.base_is_uniform = false; ld.base = 0;
-      ld.idx_kind = AGX3_MEM_IDX_REG; ld.idx_reg = 4;
-      ld.slot = 1; ld.wait_mask = 0;
-      uint8_t lb[AGX3_MEM_MAX_LENGTH]; uint8_t ll = 0;
+      ld.data = 6;
+      ld.width = AGX3_MEM_W32;
+      ld.mask = 1;
+      ld.shift = 2;
+      ld.base_is_uniform = false;
+      ld.base = 0;
+      ld.idx_kind = AGX3_MEM_IDX_REG;
+      ld.idx_reg = 4;
+      ld.slot = 1;
+      ld.wait_mask = 0;
+      uint8_t lb[AGX3_MEM_MAX_LENGTH];
+      uint8_t ll = 0;
       ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
 
-      uint8_t ab[AGX3_ALU_MAX_LENGTH]; uint8_t al = 0;
+      uint8_t ab[AGX3_ALU_MAX_LENGTH];
+      uint8_t al = 0;
       ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
                                    /*wait*/ 0x1, ab, &al));
 
       struct agx3_mem_desc st = ld;
-      st.data = 8; st.slot = 0; st.wait_mask = 0;
-      uint8_t sb[AGX3_MEM_MAX_LENGTH]; uint8_t sl = 0;
+      st.data = 8;
+      st.slot = 0;
+      st.wait_mask = 0;
+      uint8_t sb[AGX3_MEM_MAX_LENGTH];
+      uint8_t sl = 0;
       ASSERT_TRUE(agx3_mem_encode_store(enc, &st, sb, &sl));
 
       struct agx3_encoded_end end;
@@ -256,3 +286,229 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
    }
 }
 
+TEST_F(AGX3PackBinary, AllGroundedComparisonRelations)
+{
+   const struct {
+      enum agx_icond mesa;
+      enum agx3_cf_icond apple;
+   } integer_cases[] = {
+      {AGX_ICOND_UEQ, AGX3_CF_ICOND_EQ},
+      {AGX_ICOND_SEQ, AGX3_CF_ICOND_EQ},
+      {AGX_ICOND_ULT, AGX3_CF_ICOND_ULT},
+      {AGX_ICOND_UGT, AGX3_CF_ICOND_UGT},
+      {AGX_ICOND_SLT, AGX3_CF_ICOND_SLT},
+      {AGX_ICOND_SGT, AGX3_CF_ICOND_SGT},
+   };
+   const struct {
+      enum agx_fcond mesa;
+      enum agx3_cf_fcond apple;
+      bool or_nan;
+      bool flips_invert;
+   } float_cases[] = {
+      {AGX_FCOND_EQ, AGX3_CF_FCOND_EQ, false, false},
+      {AGX_FCOND_LT, AGX3_CF_FCOND_LT, false, false},
+      {AGX_FCOND_GT, AGX3_CF_FCOND_GT, false, false},
+      {AGX_FCOND_LTN, AGX3_CF_FCOND_LT, true, false},
+      {AGX_FCOND_GTN, AGX3_CF_FCOND_GT, true, false},
+      {AGX_FCOND_GE, AGX3_CF_FCOND_LT, true, true},
+      {AGX_FCOND_LE, AGX3_CF_FCOND_GT, true, true},
+   };
+
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+
+      for (const auto &test : integer_cases) {
+         for (int invert = 0; invert < 2; ++invert) {
+            agx_builder *b = builder(enc);
+            agx_if_icmp(b, agx_register(0, AGX_SIZE_32),
+                        agx_register(2, AGX_SIZE_32), 1, test.mesa, invert,
+                        NULL);
+            agx_stop(b);
+
+            uint8_t bytes[AGX3_CF_MAX_LENGTH];
+            uint8_t len = 0;
+            std::vector<uint8_t> want;
+            ASSERT_TRUE(agx3_cf_icmp_reg(enc, test.apple, 0, 0, 2, bytes,
+                                         &len));
+            append(want, bytes, len);
+            ASSERT_TRUE(agx3_cf_cndst(enc, 0, invert, 1, bytes, &len));
+            append(want, bytes, len);
+            struct agx3_encoded_end end;
+            ASSERT_TRUE(agx3_pack_end(enc, &end));
+            append(want, end.bytes, end.length);
+            EXPECT_EQ(pack(b), want);
+         }
+      }
+
+      for (const auto &test : float_cases) {
+         for (int invert = 0; invert < 2; ++invert) {
+            agx_builder *b = builder(enc);
+            agx_if_fcmp(b, agx_register(0, AGX_SIZE_32),
+                        agx_register(2, AGX_SIZE_32), 1, test.mesa, invert,
+                        NULL);
+            agx_stop(b);
+
+            uint8_t bytes[AGX3_CF_MAX_LENGTH];
+            uint8_t len = 0;
+            std::vector<uint8_t> want;
+            ASSERT_TRUE(agx3_cf_fcmp_reg(enc, test.apple, test.or_nan, 0, 0,
+                                         2, bytes, &len));
+            append(want, bytes, len);
+            ASSERT_TRUE(agx3_cf_cndst(enc, 0,
+                                      (bool)invert ^ test.flips_invert, 1,
+                                      bytes, &len));
+            append(want, bytes, len);
+            struct agx3_encoded_end end;
+            ASSERT_TRUE(agx3_pack_end(enc, &end));
+            append(want, end.bytes, end.length);
+            EXPECT_EQ(pack(b), want);
+         }
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, StructuredIfAndForwardBranch)
+{
+   /* One fused AGX IR if becomes icmp + cndst. The optional exec-none jump is
+    * a reserved bn patched from its own start to the target block's cndend. */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_block *pop = agx_test_block(b->shader);
+      agx_index a = agx_register(0, AGX_SIZE_32);
+      agx_index c = agx_register(2, AGX_SIZE_32);
+
+      agx_begin_cf(b); /* architectural on AGX3: emits zero bytes */
+      agx_if_icmp(b, a, c, 1, AGX_ICOND_ULT, false, pop);
+      agx_jmp_exec_none(b, pop);
+
+      agx_builder pb = agx_init_builder(b->shader, agx_after_block(pop));
+      agx_pop_exec(&pb, 1);
+      agx_stop(&pb);
+
+      uint8_t bytes[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(
+         agx3_cf_icmp_reg(enc, AGX3_CF_ICOND_ULT, 0, 0, 2, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndst(enc, 0, false, 1, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_branch(enc, true, bytes, &len));
+      ASSERT_EQ(len, AGX3_CF_MAX_LENGTH);
+      ASSERT_TRUE(agx3_cf_patch_branch(enc, true, bytes, 10));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndend(enc, 1, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, NestedLoopEntryBackedgeAndPop)
+{
+   /* Mesa's push_exec(1) + jmp_exec_any + pop_exec(1) loop skeleton maps to
+    * AGX3's TRUE-slot cndst(push=2), backwards b, and cndend(pop=2). */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index a = agx_register(0, AGX_SIZE_32);
+      agx_index c = agx_register(2, AGX_SIZE_32);
+
+      agx_push_exec(b, 1);
+      agx_block *body = agx_test_block(b->shader);
+      agx_builder lb = agx_init_builder(b->shader, agx_after_block(body));
+      agx_while_icmp(&lb, a, c, 1, AGX_ICOND_ULT, false, NULL);
+      agx_jmp_exec_any(&lb, body);
+      agx_pop_exec(&lb, 1);
+      agx_stop(&lb);
+
+      uint8_t bytes[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_cf_cndst(enc, 6, false, 2, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(
+         agx3_cf_icmp_reg(enc, AGX3_CF_ICOND_ULT, 0, 0, 2, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndlt(enc, 0, false, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_branch(enc, false, bytes, &len));
+      ASSERT_EQ(len, AGX3_CF_MAX_LENGTH);
+      ASSERT_TRUE(agx3_cf_patch_branch(enc, false, bytes, -14));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndend(enc, 2, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, FloatRelationAndCanonicalElse)
+{
+   /* Ordered >= is invert(less-than-or-NaN); the inversion belongs to cndst,
+    * not fcmp. Mesa's fixed else_fcmp(0,0,eq) becomes cndef with no compare. */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index a = agx_register(0, AGX_SIZE_32);
+      agx_index c = agx_register(2, AGX_SIZE_32);
+      agx_if_fcmp(b, a, c, 1, AGX_FCOND_GE, false, NULL);
+      agx_else_fcmp(b, agx_zero(), agx_zero(), 1, AGX_FCOND_EQ, false, NULL);
+      agx_pop_exec(b, 1);
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(
+         agx3_cf_fcmp_reg(enc, AGX3_CF_FCOND_LT, true, 0, 0, 2, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndst(enc, 0, true, 1, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndef(enc, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_cf_cndend(enc, 1, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, RefusesMemoryDependentControlFlowAndRollsBack)
+{
+   /* The compare/cnd hazard fields are not grounded yet. A load before a
+    * condition therefore fails the whole pack and leaves no executable-looking
+    * prefix, even when the condition happens to use a different register. */
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index base = agx_register(0, AGX_SIZE_64);
+   agx_index index = agx_register(4, AGX_SIZE_32);
+   agx_index loaded = agx_register(6, AGX_SIZE_32);
+   agx_index cond = agx_register(8, AGX_SIZE_32);
+   agx_device_load_to(b, loaded, base, index, AGX_FORMAT_I32, 1, 2, false);
+   agx_if_icmp(b, cond, agx_immediate(0), 1, AGX_ICOND_UEQ, true, NULL);
+   agx_stop(b);
+
+   EXPECT_TRUE(pack(b, /*expect_ok=*/false).empty());
+}
+
+TEST_F(AGX3PackBinary, RefusesUngroundedUnconditionalBreak)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_break(b, 1, NULL);
+   agx_stop(b);
+   EXPECT_TRUE(pack(b, /*expect_ok=*/false).empty());
+}

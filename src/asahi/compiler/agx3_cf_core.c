@@ -12,10 +12,7 @@
 /* Baselines recovered by decoding Apple's witnessed templates; only the
  * non-zero constant fields need setting (the composer defaults the rest to 0).
  * AGX3c compares, cnd ops and branches carry extra selector constants. */
-#define KV(f, v)                                                               \
-   {                                                                           \
-      (f), (v)                                                                 \
-   }
+#define KV(f, v) {(f), (v)}
 
 static bool
 agx3b(enum agx_isa_encoding enc)
@@ -29,12 +26,27 @@ slot_ok(unsigned slot)
    return slot <= AGX3_CF_MAX_FLAG_SLOT;
 }
 
+static bool
+icond_ok(enum agx3_cf_icond cond)
+{
+   return cond == AGX3_CF_ICOND_ULT || cond == AGX3_CF_ICOND_UGT ||
+          cond == AGX3_CF_ICOND_EQ || cond == AGX3_CF_ICOND_SLT ||
+          cond == AGX3_CF_ICOND_SGT;
+}
+
+static bool
+fcond_ok(enum agx3_cf_fcond cond)
+{
+   return cond == AGX3_CF_FCOND_EQ || cond == AGX3_CF_FCOND_LT ||
+          cond == AGX3_CF_FCOND_GT;
+}
+
 bool
 agx3_cf_icmp_reg(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                  unsigned slot, uint16_t src0, uint16_t src1,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!slot_ok(slot) || src0 >= 128 || src1 >= 128)
+   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= 128 || src1 >= 128)
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(24, 2),
                                           KV(25, 2)};
@@ -51,7 +63,7 @@ agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                  unsigned slot, uint16_t src0, uint8_t imm,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!slot_ok(slot) || src0 >= 128)
+   if (!icond_ok(cond) || !slot_ok(slot) || src0 >= 128)
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(24, 1),
                                           KV(25, 1)};
@@ -68,7 +80,7 @@ agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
                  bool or_nan, unsigned slot, uint16_t src0, uint16_t src1,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   if (!slot_ok(slot) || src0 >= 128 || src1 >= 128)
+   if (!fcond_ok(cond) || !slot_ok(slot) || src0 >= 128 || src1 >= 128)
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(26, 2),
                                           KV(27, 2)};
@@ -90,7 +102,8 @@ agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
 
 bool
 agx3_cf_cndst(enum agx_isa_encoding enc, unsigned slot, bool invert,
-              unsigned push_count, uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+              unsigned push_count, uint8_t out[AGX3_CF_MAX_LENGTH],
+              uint8_t *len)
 {
    if ((slot != 6 && !slot_ok(slot)) || (push_count != 1 && push_count != 2))
       return false;
@@ -134,7 +147,7 @@ agx3_cf_cndend(enum agx_isa_encoding enc, unsigned pop_count,
    if (pop_count != 1 && pop_count != 2)
       return false;
    const struct agx3_field_kv base_b[] = {KV(11, 2), KV(12, 2)};
-   const struct agx3_field_kv base_c[] = {KV(0, 3),  KV(1, 30), KV(14, 2),
+   const struct agx3_field_kv base_c[] = {KV(0, 3), KV(1, 30), KV(14, 2),
                                           KV(15, 2), KV(16, 2)};
    const struct agx3_field_kv ov[] = {KV(10, pop_count)};
    return agx3_bind_compose(enc, "cndend", 0, agx3b(enc) ? base_b : base_c,

@@ -5,6 +5,7 @@
 
 #include "d12_agx3_isa_core.h"
 
+#include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
 
 #include <string.h>
@@ -59,6 +60,10 @@ _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
 _Static_assert(AGX3_END_LENGTH ==
                   D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH,
                "D3D AGX3 terminal wait storage must match canonical end");
+_Static_assert(AGX3_CF_MAX_LENGTH <= D12_AGX3_CF_MAX_LENGTH,
+               "D3D AGX3 control-flow storage must hold one instruction");
+_Static_assert(AGX3_CF_MAX_LENGTH + 4 <= D12_AGX3_CF_MAX_LENGTH,
+               "D3D AGX3 control-flow storage must hold compare plus cnd");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -199,6 +204,249 @@ d12_agx3_fmax_compiler_target_encoding(enum agx_chip chip,
    default:
       return false;
    }
+}
+
+static bool
+d12_agx3_cf_reg32(uint16_t reg)
+{
+   return (reg & 1) == 0 && reg < 128;
+}
+
+static bool
+d12_agx3_map_i32_cf_predicate(enum d12_agx3_i32_cf_predicate predicate,
+                              enum agx3_cf_icond *out)
+{
+   switch (predicate) {
+   case D12_AGX3_I32_CF_EQ:
+      *out = AGX3_CF_ICOND_EQ;
+      return true;
+   case D12_AGX3_I32_CF_ULT:
+      *out = AGX3_CF_ICOND_ULT;
+      return true;
+   case D12_AGX3_I32_CF_UGT:
+      *out = AGX3_CF_ICOND_UGT;
+      return true;
+   case D12_AGX3_I32_CF_SLT:
+      *out = AGX3_CF_ICOND_SLT;
+      return true;
+   case D12_AGX3_I32_CF_SGT:
+      *out = AGX3_CF_ICOND_SGT;
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+d12_agx3_map_f32_cf_predicate(enum d12_agx3_f32_cf_predicate predicate,
+                              enum agx3_cf_fcond *out, bool *or_nan,
+                              bool *invert)
+{
+   *or_nan = false;
+
+   switch (predicate) {
+   case D12_AGX3_F32_CF_EQ:
+      *out = AGX3_CF_FCOND_EQ;
+      return true;
+   case D12_AGX3_F32_CF_LT:
+      *out = AGX3_CF_FCOND_LT;
+      return true;
+   case D12_AGX3_F32_CF_GT:
+      *out = AGX3_CF_FCOND_GT;
+      return true;
+   case D12_AGX3_F32_CF_LT_OR_NAN:
+      *out = AGX3_CF_FCOND_LT;
+      *or_nan = true;
+      return true;
+   case D12_AGX3_F32_CF_GT_OR_NAN:
+      *out = AGX3_CF_FCOND_GT;
+      *or_nan = true;
+      return true;
+   case D12_AGX3_F32_CF_GE:
+      *out = AGX3_CF_FCOND_LT;
+      *or_nan = true;
+      *invert = !*invert;
+      return true;
+   case D12_AGX3_F32_CF_LE:
+      *out = AGX3_CF_FCOND_GT;
+      *or_nan = true;
+      *invert = !*invert;
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+d12_agx3_append_cf(struct d12_agx3_cf_encoding *out, const uint8_t *bytes,
+                   uint8_t length)
+{
+   if (out->length + length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes + out->length, bytes, length);
+   out->length += length;
+   return true;
+}
+
+bool
+d12_agx3_encode_i32_cf(enum agx_chip chip,
+                       enum d12_agx3_cf_condition_op op,
+                       enum d12_agx3_i32_cf_predicate predicate, bool invert,
+                       uint16_t src0, bool src1_is_immediate,
+                       uint16_t src1_or_imm,
+                       struct d12_agx3_cf_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_cf_icond condition;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !d12_agx3_map_i32_cf_predicate(predicate, &condition) ||
+       !d12_agx3_cf_reg32(src0) ||
+       (op != D12_AGX3_CF_IF && op != D12_AGX3_CF_LOOP_OR_BREAK_TEST))
+      return false;
+
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t length = 0;
+   const bool compare_ok =
+      src1_is_immediate
+         ? src1_or_imm <= UINT8_MAX &&
+              agx3_cf_icmp_imm(encoding, condition, 0, src0,
+                               (uint8_t)src1_or_imm, bytes, &length)
+         : d12_agx3_cf_reg32(src1_or_imm) &&
+              agx3_cf_icmp_reg(encoding, condition, 0, src0, src1_or_imm,
+                               bytes, &length);
+   if (!compare_ok || !d12_agx3_append_cf(out, bytes, length))
+      goto fail;
+
+   const bool cnd_ok =
+      op == D12_AGX3_CF_IF
+         ? agx3_cf_cndst(encoding, 0, invert, 1, bytes, &length)
+         : agx3_cf_cndlt(encoding, 0, invert, bytes, &length);
+   if (!cnd_ok || !d12_agx3_append_cf(out, bytes, length))
+      goto fail;
+
+   return true;
+
+fail:
+   memset(out, 0, sizeof(*out));
+   return false;
+}
+
+bool
+d12_agx3_encode_f32_cf(enum agx_chip chip,
+                       enum d12_agx3_cf_condition_op op,
+                       enum d12_agx3_f32_cf_predicate predicate, bool invert,
+                       uint16_t src0, uint16_t src1,
+                       struct d12_agx3_cf_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_cf_fcond condition;
+   bool or_nan;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !d12_agx3_map_f32_cf_predicate(predicate, &condition, &or_nan,
+                                      &invert) ||
+       !d12_agx3_cf_reg32(src0) || !d12_agx3_cf_reg32(src1) ||
+       (op != D12_AGX3_CF_IF && op != D12_AGX3_CF_LOOP_OR_BREAK_TEST))
+      return false;
+
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t length = 0;
+   if (!agx3_cf_fcmp_reg(encoding, condition, or_nan, 0, src0, src1, bytes,
+                         &length) ||
+       !d12_agx3_append_cf(out, bytes, length))
+      goto fail;
+
+   const bool cnd_ok =
+      op == D12_AGX3_CF_IF
+         ? agx3_cf_cndst(encoding, 0, invert, 1, bytes, &length)
+         : agx3_cf_cndlt(encoding, 0, invert, bytes, &length);
+   if (!cnd_ok || !d12_agx3_append_cf(out, bytes, length))
+      goto fail;
+
+   return true;
+
+fail:
+   memset(out, 0, sizeof(*out));
+   return false;
+}
+
+bool
+d12_agx3_encode_cf_stack(enum agx_chip chip, enum d12_agx3_cf_stack_op op,
+                         struct d12_agx3_cf_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t length = 0;
+   bool ok;
+   switch (op) {
+   case D12_AGX3_CF_LOOP_ENTRY:
+      ok = agx3_cf_cndst(encoding, 6, false, 2, bytes, &length);
+      break;
+   case D12_AGX3_CF_ELSE:
+      ok = agx3_cf_cndef(encoding, bytes, &length);
+      break;
+   case D12_AGX3_CF_POP_1:
+      ok = agx3_cf_cndend(encoding, 1, bytes, &length);
+      break;
+   case D12_AGX3_CF_POP_2:
+      ok = agx3_cf_cndend(encoding, 2, bytes, &length);
+      break;
+   default:
+      return false;
+   }
+
+   if (!ok || !d12_agx3_append_cf(out, bytes, length)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+   return true;
+}
+
+bool
+d12_agx3_encode_cf_branch(enum agx_chip chip,
+                          enum d12_agx3_cf_branch_op op,
+                          int64_t byte_displacement,
+                          struct d12_agx3_cf_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       (op != D12_AGX3_CF_BRANCH_EXEC_NONE &&
+        op != D12_AGX3_CF_BRANCH_EXEC_ANY))
+      return false;
+
+   const bool is_bn = op == D12_AGX3_CF_BRANCH_EXEC_NONE;
+   if ((is_bn && byte_displacement <= 0) ||
+       (!is_bn && byte_displacement >= 0))
+      return false;
+
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t length = 0;
+   if (!agx3_cf_branch(encoding, is_bn, bytes, &length) ||
+       !agx3_cf_patch_branch(encoding, is_bn, bytes, byte_displacement) ||
+       !d12_agx3_append_cf(out, bytes, length)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+   return true;
 }
 
 bool

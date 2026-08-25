@@ -79,6 +79,11 @@ done
     -I"$d12_dir" -I"$repo_root/src" \
     -I"$repo_root/include" \
     "$repo_root/src/asahi/compiler/agx3_pack.c" \
+    "$repo_root/src/asahi/compiler/agx3_cf_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
     "$d12_dir/d12_agx3_isa_core.c" \
     "$d12_dir/tests/d12_agx3_isa_core_tests.c" \
     -o "$out/d12_agx3_isa_core_tests"

@@ -16,23 +16,38 @@
  * byte-for-byte in the host suite. This file is the translation and the block
  * walk, nothing more.
  *
- * Milestone one: the grade-A no-modifier 32-bit ALU / move / immediate core,
- * straight-line only (no branches, no memory, no texture). It fails the shader
- * -- never aborts, since this runs inside the UMD -- on any unmapped op or
- * out-of-domain instruction. AGX3's wait model is the fence mask on the
- * terminal `end`, and every real kernel ends with mask 0, so agx_insert_waits
- * does not run for AGX3 and this emits a single canonical `end`.
+ * The production subset includes grounded ALU, device-memory, special-register
+ * and structured-control-flow forms. It fails the shader -- never aborts,
+ * since this runs inside the UMD -- on any unmapped op or out-of-domain
+ * instruction. In particular, a compare after an asynchronous producer is
+ * refused until the compare/cnd hazard fields are grounded; emitting the
+ * witnessed all-clear form there could consume stale data.
  */
 
-#include "agx_compiler.h"
-#include "agx3_select_core.h"
+#include "agx3_alu_core.h"
+#include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
 #include "agx3_mem_core.h"
+#include "agx3_select_core.h"
 #include "agx3_slot_core.h"
-#include "agx3_alu_core.h"
 #include "agx3_sr_core.h"
+#include "agx_compiler.h"
 
 #include <string.h>
+
+struct agx3_branch_fixup {
+   agx_block *block;
+   off_t offset;
+   bool skip_to_end;
+   bool is_bn;
+};
+
+static bool
+agx3_append(struct util_dynarray *emission, const uint8_t *bytes, uint8_t len)
+{
+   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+   return true;
+}
 
 static enum agx3_sel_op
 agx3_map_opcode(unsigned op)
@@ -146,8 +161,8 @@ agx3_translate_instr(const agx_instr *I, struct agx3_sel_instr *S)
    if (I->op == AGX_OPCODE_FCMPSEL) {
       if (I->nr_srcs != 4 || I->invert_cond ||
           !agx3_src_is_register(I->src[0]) ||
-          !agx3_src_is_register(I->src[1]) ||
-          I->src[0].abs || I->src[0].neg || I->src[1].abs || I->src[1].neg ||
+          !agx3_src_is_register(I->src[1]) || I->src[0].abs || I->src[0].neg ||
+          I->src[1].abs || I->src[1].neg ||
           I->src[0].value != I->src[2].value ||
           I->src[1].value != I->src[3].value)
          return false;
@@ -292,8 +307,10 @@ agx3_try_float_modifier(struct util_dynarray *emission,
          return -1;
 
    struct agx3_falu_mods m = {
-      .src0_abs = I->src[0].abs, .src0_neg = I->src[0].neg,
-      .src1_abs = I->src[1].abs, .src1_neg = I->src[1].neg,
+      .src0_abs = I->src[0].abs,
+      .src0_neg = I->src[0].neg,
+      .src1_abs = I->src[1].abs,
+      .src1_neg = I->src[1].neg,
       .saturate = I->saturate,
    };
 
@@ -385,8 +402,7 @@ agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
    enum agx3_sr_width width;
    if (!agx3_map_sr(I->sr, &apple, &width))
       return false;
-   if (width == AGX3_SR_W32 ? dst.size != AGX_SIZE_32
-                            : dst.size != AGX_SIZE_16)
+   if (width == AGX3_SR_W32 ? dst.size != AGX_SIZE_32 : dst.size != AGX_SIZE_16)
       return false;
 
    d->dest = dst.value;
@@ -495,30 +511,52 @@ static enum agx3_alu_op
 agx3_sel_to_alu(const struct agx3_sel_instr *S)
 {
    switch (S->op) {
-   case AGX3_SEL_OP_MOV_IMM: return AGX3_ALU_LDIMM;
-   case AGX3_SEL_OP_IADD:    return AGX3_ALU_IADD;
-   case AGX3_SEL_OP_ISUB:    return AGX3_ALU_ISUB;
-   case AGX3_SEL_OP_IMAD:    return AGX3_ALU_IMADD;
-   case AGX3_SEL_OP_IMUL:    return AGX3_ALU_IMUL;
-   case AGX3_SEL_OP_FADD:    return AGX3_ALU_FADD;
-   case AGX3_SEL_OP_FMUL:    return AGX3_ALU_FMUL;
-   case AGX3_SEL_OP_FFMA:    return AGX3_ALU_FMA;
-   case AGX3_SEL_OP_ASR:     return AGX3_ALU_ASR;
-   case AGX3_SEL_OP_SLL:     return AGX3_ALU_SLL;
-   case AGX3_SEL_OP_LSR:     return AGX3_ALU_LSR;
-   case AGX3_SEL_OP_F_RCP:   return AGX3_ALU_RCP;
-   case AGX3_SEL_OP_F_RSQRT: return AGX3_ALU_RSQRT;
-   case AGX3_SEL_OP_F_RINT:  return AGX3_ALU_RINT;
-   case AGX3_SEL_OP_I32_TO_F: return AGX3_ALU_I2F;
-   case AGX3_SEL_OP_U32_TO_F: return AGX3_ALU_U2F;
-   case AGX3_SEL_OP_F_TO_I32: return AGX3_ALU_F2I;
+   case AGX3_SEL_OP_MOV_IMM:
+      return AGX3_ALU_LDIMM;
+   case AGX3_SEL_OP_IADD:
+      return AGX3_ALU_IADD;
+   case AGX3_SEL_OP_ISUB:
+      return AGX3_ALU_ISUB;
+   case AGX3_SEL_OP_IMAD:
+      return AGX3_ALU_IMADD;
+   case AGX3_SEL_OP_IMUL:
+      return AGX3_ALU_IMUL;
+   case AGX3_SEL_OP_FADD:
+      return AGX3_ALU_FADD;
+   case AGX3_SEL_OP_FMUL:
+      return AGX3_ALU_FMUL;
+   case AGX3_SEL_OP_FFMA:
+      return AGX3_ALU_FMA;
+   case AGX3_SEL_OP_ASR:
+      return AGX3_ALU_ASR;
+   case AGX3_SEL_OP_SLL:
+      return AGX3_ALU_SLL;
+   case AGX3_SEL_OP_LSR:
+      return AGX3_ALU_LSR;
+   case AGX3_SEL_OP_F_RCP:
+      return AGX3_ALU_RCP;
+   case AGX3_SEL_OP_F_RSQRT:
+      return AGX3_ALU_RSQRT;
+   case AGX3_SEL_OP_F_RINT:
+      return AGX3_ALU_RINT;
+   case AGX3_SEL_OP_I32_TO_F:
+      return AGX3_ALU_I2F;
+   case AGX3_SEL_OP_U32_TO_F:
+      return AGX3_ALU_U2F;
+   case AGX3_SEL_OP_F_TO_I32:
+      return AGX3_ALU_F2I;
    case AGX3_SEL_OP_BITOP:
       switch (S->truth_table & 0xfu) {
-      case AGX3_SEL_TT_AND: return AGX3_ALU_BAND;
-      case AGX3_SEL_TT_OR:  return AGX3_ALU_BOR;
-      case AGX3_SEL_TT_XOR: return AGX3_ALU_BXOR;
-      case AGX3_SEL_TT_NOT: return AGX3_ALU_BNOT;
-      default:              return AGX3_ALU_NUM;
+      case AGX3_SEL_TT_AND:
+         return AGX3_ALU_BAND;
+      case AGX3_SEL_TT_OR:
+         return AGX3_ALU_BOR;
+      case AGX3_SEL_TT_XOR:
+         return AGX3_ALU_BXOR;
+      case AGX3_SEL_TT_NOT:
+         return AGX3_ALU_BNOT;
+      default:
+         return AGX3_ALU_NUM;
       }
    default:
       return AGX3_ALU_NUM; /* F_TO_U32, FMIN/FMAX: no wait-carrying form yet */
@@ -551,13 +589,302 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return true;
 }
 
+/* The grounded AGX3 compare forms are 32-bit and address the lower 128
+ * half-registers. Source modifiers and memory/uniform operands select forms
+ * whose routing has not been proved. */
+static bool
+agx3_cf_reg32(agx_index src)
+{
+   return agx3_src_is_register(src) && !src.memory && src.size == AGX_SIZE_32 &&
+          (src.value & 1) == 0 && src.value < 128 && !src.abs && !src.neg;
+}
+
+static bool
+agx3_cf_map_icond(enum agx_icond in, enum agx3_cf_icond *out)
+{
+   switch (in) {
+   case AGX_ICOND_UEQ:
+   case AGX_ICOND_SEQ:
+      *out = AGX3_CF_ICOND_EQ;
+      return true;
+   case AGX_ICOND_ULT:
+      *out = AGX3_CF_ICOND_ULT;
+      return true;
+   case AGX_ICOND_UGT:
+      *out = AGX3_CF_ICOND_UGT;
+      return true;
+   case AGX_ICOND_SLT:
+      *out = AGX3_CF_ICOND_SLT;
+      return true;
+   case AGX_ICOND_SGT:
+      *out = AGX3_CF_ICOND_SGT;
+      return true;
+   }
+
+   return false;
+}
+
+/* Normalize Mesa's seven float relations to AGX3's three base conditions,
+ * or-NaN selector, and the consuming cnd instruction's invert bit. */
+static bool
+agx3_cf_map_fcond(enum agx_fcond in, enum agx3_cf_fcond *out, bool *or_nan,
+                  bool *invert)
+{
+   *or_nan = false;
+
+   switch (in) {
+   case AGX_FCOND_EQ:
+      *out = AGX3_CF_FCOND_EQ;
+      return true;
+   case AGX_FCOND_LT:
+      *out = AGX3_CF_FCOND_LT;
+      return true;
+   case AGX_FCOND_GT:
+      *out = AGX3_CF_FCOND_GT;
+      return true;
+   case AGX_FCOND_LTN:
+      *out = AGX3_CF_FCOND_LT;
+      *or_nan = true;
+      return true;
+   case AGX_FCOND_GTN:
+      *out = AGX3_CF_FCOND_GT;
+      *or_nan = true;
+      return true;
+   case AGX_FCOND_GE:
+      *out = AGX3_CF_FCOND_LT;
+      *or_nan = true;
+      *invert = !*invert;
+      return true;
+   case AGX_FCOND_LE:
+      *out = AGX3_CF_FCOND_GT;
+      *or_nan = true;
+      *invert = !*invert;
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+agx3_cf_is_zero(agx_index src)
+{
+   return src.type == AGX_INDEX_IMMEDIATE && src.value == 0 && !src.abs &&
+          !src.neg;
+}
+
+/* Emit the compare half of a fused AGX IR control-flow instruction. The flag
+ * is consumed by the immediately following cnd instruction, so slot zero can
+ * be reused by every lowered IR instruction without overlapping lifetimes. */
+static bool
+agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                     const agx_instr *I, bool is_float, unsigned flag_slot,
+                     bool *invert)
+{
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t len = 0;
+
+   if (I->nr_srcs != 2 || !agx3_cf_reg32(I->src[0]))
+      return false;
+
+   bool ok;
+   if (is_float) {
+      enum agx3_cf_fcond cond;
+      bool or_nan;
+      if (!agx3_cf_reg32(I->src[1]) ||
+          !agx3_cf_map_fcond(I->fcond, &cond, &or_nan, invert))
+         return false;
+
+      ok = agx3_cf_fcmp_reg(enc, cond, or_nan, flag_slot, I->src[0].value,
+                            I->src[1].value, bytes, &len);
+   } else {
+      enum agx3_cf_icond cond;
+      if (!agx3_cf_map_icond(I->icond, &cond))
+         return false;
+
+      if (I->src[1].type == AGX_INDEX_IMMEDIATE && !I->src[1].abs &&
+          !I->src[1].neg && I->src[1].value <= UINT8_MAX) {
+         ok = agx3_cf_icmp_imm(enc, cond, flag_slot, I->src[0].value,
+                               I->src[1].value, bytes, &len);
+      } else if (agx3_cf_reg32(I->src[1])) {
+         ok = agx3_cf_icmp_reg(enc, cond, flag_slot, I->src[0].value,
+                               I->src[1].value, bytes, &len);
+      } else {
+         return false;
+      }
+   }
+
+   return ok && agx3_append(emission, bytes, len);
+}
+
+static bool
+agx3_emit_cnd(struct util_dynarray *emission, enum agx_isa_encoding enc,
+              unsigned op, unsigned flag_slot, bool invert, unsigned count)
+{
+   uint8_t bytes[AGX3_CF_MAX_LENGTH];
+   uint8_t len = 0;
+   bool ok;
+
+   switch (op) {
+   case AGX_OPCODE_IF_ICMP:
+   case AGX_OPCODE_IF_FCMP:
+      ok = agx3_cf_cndst(enc, flag_slot, invert, count, bytes, &len);
+      break;
+   case AGX_OPCODE_WHILE_ICMP:
+   case AGX_OPCODE_WHILE_FCMP:
+   case AGX_OPCODE_BREAK_IF_ICMP:
+   case AGX_OPCODE_BREAK_IF_FCMP:
+      ok = agx3_cf_cndlt(enc, flag_slot, invert, bytes, &len);
+      break;
+   case AGX_OPCODE_ELSE_ICMP:
+   case AGX_OPCODE_ELSE_FCMP:
+      ok = agx3_cf_cndef(enc, bytes, &len);
+      break;
+   case AGX_OPCODE_POP_EXEC:
+      ok = agx3_cf_cndend(enc, count, bytes, &len);
+      break;
+   default:
+      return false;
+   }
+
+   return ok && agx3_append(emission, bytes, len);
+}
+
+/* Returns 1 when I is a grounded control-flow instruction and was emitted,
+ * zero when it is not control flow, and -1 when it is control flow but falls
+ * outside the grounded domain. */
+static int
+agx3_try_control_flow(struct util_dynarray *emission,
+                      struct util_dynarray *fixups, enum agx_isa_encoding enc,
+                      const agx_instr *I, uint16_t wait_mask, bool async_seen,
+                      bool after_loop_backedge)
+{
+   const bool is_if =
+      I->op == AGX_OPCODE_IF_ICMP || I->op == AGX_OPCODE_IF_FCMP;
+   const bool is_while =
+      I->op == AGX_OPCODE_WHILE_ICMP || I->op == AGX_OPCODE_WHILE_FCMP;
+   const bool is_break_if =
+      I->op == AGX_OPCODE_BREAK_IF_ICMP || I->op == AGX_OPCODE_BREAK_IF_FCMP;
+   const bool is_else =
+      I->op == AGX_OPCODE_ELSE_ICMP || I->op == AGX_OPCODE_ELSE_FCMP;
+
+   if (I->op == AGX_OPCODE_BEGIN_CF)
+      return wait_mask == 0 ? 1 : -1; /* architectural state: zero bytes */
+
+   if (is_if && I->op == AGX_OPCODE_IF_FCMP && I->target == NULL &&
+       I->nest == 1 && I->fcond == AGX_FCOND_EQ && !I->invert_cond &&
+       I->nr_srcs == 2 && agx3_cf_is_zero(I->src[0]) &&
+       agx3_cf_is_zero(I->src[1])) {
+      /* agx_push_exec(1), used before a nested loop, becomes Apple's
+       * unconditional TRUE-slot loop entry and opens two architectural
+       * exec-mask levels. No compare is emitted. */
+      return wait_mask == 0 && agx3_emit_cnd(emission, enc, I->op, 6, false, 2)
+                ? 1
+                : -1;
+   }
+
+   if (is_if || is_while || is_break_if) {
+      /* The all-clear compare/cnd forms are witnessed only for register-ready
+       * inputs. Per-block slot assignment can prove a local wait, while the
+       * conservative async_seen latch catches predecessors. Either condition
+       * keeps memory-dependent control flow fail-closed. */
+      if (wait_mask != 0 || async_seen)
+         return -1;
+      if ((is_if && I->nest != 1) || (is_break_if && I->nest != 1))
+         return -1;
+
+      bool invert = I->invert_cond;
+      const bool is_float = I->op == AGX_OPCODE_IF_FCMP ||
+                            I->op == AGX_OPCODE_WHILE_FCMP ||
+                            I->op == AGX_OPCODE_BREAK_IF_FCMP;
+      if (!agx3_emit_cf_compare(emission, enc, I, is_float, 0, &invert))
+         return -1;
+      if (!agx3_emit_cnd(emission, enc, I->op, 0, invert, is_if ? 1 : 2))
+         return -1;
+      return 1;
+   }
+
+   if (is_else) {
+      /* The only witnessed else is the canonical unconditional
+       * else_fcmp(0, 0, eq, nest=1) emitted by Mesa's structurizer. */
+      if (wait_mask != 0 || I->op != AGX_OPCODE_ELSE_FCMP || I->nest != 1 ||
+          I->fcond != AGX_FCOND_EQ || I->invert_cond || I->nr_srcs != 2 ||
+          !agx3_cf_is_zero(I->src[0]) || !agx3_cf_is_zero(I->src[1]))
+         return -1;
+      return agx3_emit_cnd(emission, enc, I->op, 0, false, 1) ? 1 : -1;
+   }
+
+   if (I->op == AGX_OPCODE_POP_EXEC) {
+      /* Mesa's loop footer is jmp_exec_any + pop_exec(1), while AGX3's loop
+       * entry/test opens two architectural levels and therefore pops two. */
+      const unsigned count = after_loop_backedge ? 2 : I->nest;
+      return wait_mask == 0 &&
+                   agx3_emit_cnd(emission, enc, I->op, 0, false, count)
+                ? 1
+                : -1;
+   }
+
+   if (I->op == AGX_OPCODE_JMP_EXEC_ANY || I->op == AGX_OPCODE_JMP_EXEC_NONE ||
+       I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER) {
+      if (wait_mask != 0 || I->target == NULL)
+         return -1;
+
+      const bool is_bn = I->op != AGX_OPCODE_JMP_EXEC_ANY;
+      struct agx3_branch_fixup fixup = {
+         .block = I->target,
+         .offset = emission->size,
+         .skip_to_end = I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER,
+         .is_bn = is_bn,
+      };
+      util_dynarray_append(fixups, fixup);
+
+      uint8_t bytes[AGX3_CF_MAX_LENGTH];
+      uint8_t len = 0;
+      return agx3_cf_branch(enc, is_bn, bytes, &len) &&
+                   agx3_append(emission, bytes, len)
+                ? 1
+                : -1;
+   }
+
+   /* An unconditional break is deliberately not included: no AGX3 witness
+    * exists, and agx_lower_pseudo preserves it so it reaches this refusal. */
+   if (I->op == AGX_OPCODE_BREAK)
+      return -1;
+
+   return 0;
+}
+
+static bool
+agx3_fixup_branch(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                  struct agx3_branch_fixup fixup)
+{
+   const off_t target =
+      fixup.skip_to_end ? fixup.block->last_offset : fixup.block->offset;
+   const int64_t displacement = (int64_t)target - (int64_t)fixup.offset;
+
+   /* Only Apple's witnessed directions are accepted: bn skips forward and b
+    * is a backwards loop edge. This also rejects zero-displacement branches. */
+   if ((fixup.is_bn && displacement <= 0) ||
+       (!fixup.is_bn && displacement >= 0))
+      return false;
+   if (fixup.offset < 0 ||
+       (uint64_t)fixup.offset + AGX3_CF_MAX_LENGTH > emission->size)
+      return false;
+
+   uint8_t *branch = (uint8_t *)emission->data + fixup.offset;
+   return agx3_cf_patch_branch(enc, fixup.is_bn, branch, displacement);
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
+   const unsigned initial_size = emission->size;
+   struct util_dynarray fixups;
+   bool async_seen = false;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
+   util_dynarray_init(&fixups, ctx);
 
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
@@ -574,7 +901,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       struct agx3_slot_result *res =
          rzalloc_array(ctx, struct agx3_slot_result, count ? count : 1);
       if (sl == NULL || res == NULL)
-         return false;
+         goto fail;
 
       unsigned k = 0;
       agx_foreach_instr_in_block(block, I) {
@@ -591,9 +918,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          e->nr_srcs = (uint8_t)ns;
       }
       if (!agx3_slot_assign(sl, count, nslots, res))
-         return false;
+         goto fail;
 
       k = 0;
+      bool after_loop_backedge = false;
       agx_foreach_instr_in_block(block, I) {
          block->last_offset = emission->size;
 
@@ -604,6 +932,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const uint16_t wait = res[k].wait_mask;
          k++;
 
+         const int cf = agx3_try_control_flow(emission, &fixups, enc, I, wait,
+                                              async_seen, after_loop_backedge);
+         if (cf < 0)
+            goto fail;
+         if (cf > 0) {
+            after_loop_backedge = I->op == AGX_OPCODE_JMP_EXEC_ANY;
+            continue;
+         }
+         after_loop_backedge = false;
+
          /* Special-register read. */
          if (I->op == AGX_OPCODE_GET_SR) {
             struct agx3_sr_desc d;
@@ -611,8 +949,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_sr(I, slot, wait, &d) ||
                 !agx3_sr_encode(enc, &d, bytes, &len))
-               return false;
+               goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            async_seen = true;
             continue;
          }
 
@@ -624,13 +963,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_MEM_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_translate_mem(I, is_store, slot, wait, &d))
-               return false;
+               goto fail;
             const bool ok = is_store
                                ? agx3_mem_encode_store(enc, &d, bytes, &len)
                                : agx3_mem_encode_load(enc, &d, bytes, &len);
             if (!ok)
-               return false;
+               goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            async_seen |= !is_store;
             continue;
          }
 
@@ -638,24 +978,38 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const int mod = agx3_try_float_modifier(emission, enc, I);
          if (mod == 1) {
             if (wait != 0)
-               return false; /* modifier form cannot carry a wait */
+               goto fail; /* modifier form cannot carry a wait */
             continue;
          }
          if (mod < 0)
-            return false;
+            goto fail;
 
          struct agx3_sel_instr S;
-         if (!agx3_translate_instr(I, &S) || !agx3_emit_alu(emission, enc, &S,
-                                                            wait))
-            return false;
+         if (!agx3_translate_instr(I, &S) ||
+             !agx3_emit_alu(emission, enc, &S, wait))
+            goto fail;
       }
+   }
+
+   util_dynarray_foreach(&fixups, struct agx3_branch_fixup, fixup) {
+      if (!agx3_fixup_branch(emission, enc, *fixup))
+         goto fail;
    }
 
    if (!ctx->key->no_stop || ctx->is_preamble) {
       const struct agx3_sel_instr end = {.op = AGX3_SEL_OP_END};
       if (!agx3_emit(emission, enc, &end))
-         return false;
+         goto fail;
    }
 
+   util_dynarray_fini(&fixups);
    return true;
+
+fail:
+   /* Do not leave a valid-looking prefix behind when the surrounding void
+    * compiler entrypoint cannot propagate this boolean yet. The AGX3 device
+    * gate remains closed, and direct callers still receive the failure. */
+   emission->size = initial_size;
+   util_dynarray_fini(&fixups);
+   return false;
 }

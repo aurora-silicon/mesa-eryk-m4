@@ -33,6 +33,7 @@ extern "C" {
 #define D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
+#define D12_AGX3_CF_MAX_LENGTH 14
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -86,6 +87,44 @@ enum d12_agx3_f32_to_int_rtz_mode {
 enum d12_agx3_i32_compare_predicate {
    D12_AGX3_I32_COMPARE_EQ = 0,
    D12_AGX3_I32_COMPARE_SLT = 1,
+};
+
+/* Structured-control-flow predicates expressed in D3D/DXIL semantics. The
+ * bridge maps these to AGX3's flag compare plus cnd consumer; the raw Apple
+ * predicate numbers are not exposed to callers. */
+enum d12_agx3_i32_cf_predicate {
+   D12_AGX3_I32_CF_EQ = 0,
+   D12_AGX3_I32_CF_ULT = 1,
+   D12_AGX3_I32_CF_UGT = 2,
+   D12_AGX3_I32_CF_SLT = 3,
+   D12_AGX3_I32_CF_SGT = 4,
+};
+
+enum d12_agx3_f32_cf_predicate {
+   D12_AGX3_F32_CF_EQ = 0,
+   D12_AGX3_F32_CF_LT = 1,
+   D12_AGX3_F32_CF_GT = 2,
+   D12_AGX3_F32_CF_LT_OR_NAN = 3,
+   D12_AGX3_F32_CF_GT_OR_NAN = 4,
+   D12_AGX3_F32_CF_GE = 5,
+   D12_AGX3_F32_CF_LE = 6,
+};
+
+enum d12_agx3_cf_condition_op {
+   D12_AGX3_CF_IF = 0,
+   D12_AGX3_CF_LOOP_OR_BREAK_TEST = 1,
+};
+
+enum d12_agx3_cf_stack_op {
+   D12_AGX3_CF_LOOP_ENTRY = 0,
+   D12_AGX3_CF_ELSE = 1,
+   D12_AGX3_CF_POP_1 = 2,
+   D12_AGX3_CF_POP_2 = 3,
+};
+
+enum d12_agx3_cf_branch_op {
+   D12_AGX3_CF_BRANCH_EXEC_NONE = 0,
+   D12_AGX3_CF_BRANCH_EXEC_ANY = 1,
 };
 
 struct d12_agx3_binary_alu_encoding {
@@ -175,6 +214,11 @@ struct d12_agx3_yield_i16_reg_encoding {
 
 struct d12_agx3_end_with_wait_fence_mask_encoding {
    uint8_t bytes[D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_cf_encoding {
+   uint8_t bytes[D12_AGX3_CF_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -529,6 +573,42 @@ bool d12_agx3_encode_end_with_wait_fence_mask(
 bool d12_agx3_decode_end_with_wait_fence_mask(
    enum agx_chip chip, const void *instruction, uint32_t instruction_size,
    uint8_t *wait_fence_mask);
+
+/*
+ * Encode the exact register-ready AGX3 structured-control-flow building
+ * blocks on the nine directly witnessed compiler targets. A conditional form
+ * is a compare into flag slot zero followed immediately by cndst (if) or
+ * cndlt (loop/conditional break). Integer src1 may be an imm8; float sources
+ * are registers. Register indices are 32-bit-aligned half-register numbers in
+ * the witnessed 0..126 range. GE/LE are normalized to inverted ordered-or-NaN
+ * tests exactly as Apple's compiler does.
+ *
+ * The stack helper exposes only the unconditional TRUE-slot loop entry,
+ * canonical else, and one/two-level pops. Branch displacements are signed
+ * byte offsets from the branch start: exec-none must be forward and exec-any
+ * must be backward. Unknown predicates/forms, wrong-direction or odd branch
+ * offsets, and unwitnessed chip identities clear the result and fail.
+ *
+ * These are bounded ISA/lowering blocks. They do not implement DXIL control
+ * flow, compare/cnd load-hazard scheduling, submission, device admission, or
+ * a D3D12 capability.
+ */
+bool d12_agx3_encode_i32_cf(
+   enum agx_chip chip, enum d12_agx3_cf_condition_op op,
+   enum d12_agx3_i32_cf_predicate predicate, bool invert, uint16_t src0,
+   bool src1_is_immediate, uint16_t src1_or_imm,
+   struct d12_agx3_cf_encoding *out);
+bool d12_agx3_encode_f32_cf(
+   enum agx_chip chip, enum d12_agx3_cf_condition_op op,
+   enum d12_agx3_f32_cf_predicate predicate, bool invert, uint16_t src0,
+   uint16_t src1, struct d12_agx3_cf_encoding *out);
+bool d12_agx3_encode_cf_stack(enum agx_chip chip,
+                              enum d12_agx3_cf_stack_op op,
+                              struct d12_agx3_cf_encoding *out);
+bool d12_agx3_encode_cf_branch(enum agx_chip chip,
+                               enum d12_agx3_cf_branch_op op,
+                               int64_t byte_displacement,
+                               struct d12_agx3_cf_encoding *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(
