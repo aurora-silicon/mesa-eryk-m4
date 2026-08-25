@@ -34,6 +34,7 @@ libasahi_agx_files = files(
   'agx3_binder.c',
   'agx3_cf_core.c',
   'agx3_mem_core.c',
+  'agx3_tex_core.c',
   'agx3_falu_mod_core.c',
   'agx3_vary_core.c',
   'agx3_tile_core.c',
@@ -131,6 +132,20 @@ if with_tests
     'agx3_opcode_mapping',
     prog_python,
     args : files('test/test-agx3-opcodes.py'),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_tex_core',
+    executable(
+      'agx3_tex_core_test',
+      files('test/test-agx3-tex-core.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+      dependencies : [idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
     suite : ['asahi'],
   )
 

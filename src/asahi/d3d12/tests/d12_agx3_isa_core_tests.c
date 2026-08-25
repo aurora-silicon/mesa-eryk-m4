@@ -5815,11 +5815,123 @@ check_varying_bridge(void)
    return 0;
 }
 
+static bool
+texture_desc_same(const struct d12_agx3_texture_fetch_desc *a,
+                  const struct d12_agx3_texture_fetch_desc *b)
+{
+   return a->dest == b->dest && a->coord == b->coord &&
+          a->width == b->width && a->mask == b->mask &&
+          a->texture == b->texture && a->slot == b->slot &&
+          a->wait_mask == b->wait_mask && a->coord_kill == b->coord_kill &&
+          a->final == b->final;
+}
+
+static int
+check_texture_fetch_bridge(void)
+{
+   static const uint8_t witness_b[] = {
+      0x05, 0x80, 0x0c, 0xb8, 0xb0, 0x00, 0x17,
+      0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+   };
+   static const uint8_t witness_c[] = {0x0f, 0x06, 0x1a, 0x00,
+                                       0x40, 0x80, 0x60, 0x29};
+   const struct d12_agx3_texture_fetch_desc desc = {
+      .width = D12_AGX3_TEXTURE_RESULT_32,
+      .mask = 15,
+      .slot = 1,
+      .wait_mask = 1,
+      .coord_kill = true,
+      .final = true,
+   };
+   static const struct integer_target targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const uint8_t *witness = targets[t].encoding == AGX_ISA_ENCODING_AGX3B
+                                  ? witness_b
+                                  : witness_c;
+      const unsigned length = targets[t].encoding == AGX_ISA_ENCODING_AGX3B
+                                 ? sizeof(witness_b)
+                                 : sizeof(witness_c);
+      struct d12_agx3_texture_fetch_encoding encoded;
+      CHECK(d12_agx3_encode_texture_fetch(targets[t].chip, &desc, &encoded));
+      CHECK(encoded.length == length);
+      CHECK(memcmp(encoded.bytes, witness, length) == 0);
+      for (unsigned i = length; i < sizeof(encoded.bytes); ++i)
+         CHECK(encoded.bytes[i] == 0);
+
+      struct d12_agx3_texture_fetch_desc decoded;
+      CHECK(d12_agx3_decode_texture_fetch(targets[t].chip, witness, length,
+                                          &decoded));
+      CHECK(texture_desc_same(&desc, &decoded));
+   }
+
+   /* Every single-bit perturbation is either a canonical supported descriptor
+    * or is rejected with cleared outputs; no alternate selector slips through. */
+   for (unsigned r = 0; r < 2; ++r) {
+      const enum agx_chip chip = r ? AGX_CHIP_G17S : AGX_CHIP_G15G;
+      struct d12_agx3_texture_fetch_encoding canonical;
+      CHECK(d12_agx3_encode_texture_fetch(chip, &desc, &canonical));
+      for (unsigned bit = 0; bit < canonical.length * 8; ++bit) {
+         uint8_t mutated[D12_AGX3_TEX_MAX_LENGTH] = {0};
+         memcpy(mutated, canonical.bytes, canonical.length);
+         mutated[bit / 8] ^= 1u << (bit % 8);
+         struct d12_agx3_texture_fetch_desc decoded;
+         memset(&decoded, 0xff, sizeof(decoded));
+         if (d12_agx3_decode_texture_fetch(chip, mutated, canonical.length,
+                                           &decoded)) {
+            struct d12_agx3_texture_fetch_encoding repacked;
+            CHECK(d12_agx3_encode_texture_fetch(chip, &decoded, &repacked));
+            CHECK(repacked.length == canonical.length);
+            CHECK(memcmp(repacked.bytes, mutated, canonical.length) == 0);
+         } else {
+            struct d12_agx3_texture_fetch_desc zero = {0};
+            CHECK(memcmp(&decoded, &zero, sizeof(zero)) == 0);
+         }
+      }
+   }
+
+   struct d12_agx3_texture_fetch_encoding rejected;
+   struct d12_agx3_texture_fetch_desc invalid = desc;
+   invalid.texture = 16;
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17S, &invalid, &rejected));
+   CHECK(rejected.length == 0);
+   for (unsigned i = 0; i < sizeof(rejected.bytes); ++i)
+      CHECK(rejected.bytes[i] == 0);
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17C, &desc, &rejected));
+   CHECK(rejected.length == 0 && rejected.bytes[0] == 0);
+   CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17S, &desc, NULL));
+
+   struct d12_agx3_texture_fetch_desc decoded;
+   memset(&decoded, 0xff, sizeof(decoded));
+   CHECK(!d12_agx3_decode_texture_fetch(AGX_CHIP_G17C, witness_c,
+                                        sizeof(witness_c), &decoded));
+   struct d12_agx3_texture_fetch_desc zero = {0};
+   CHECK(memcmp(&decoded, &zero, sizeof(zero)) == 0);
+   CHECK(!d12_agx3_decode_texture_fetch(AGX_CHIP_G17S, witness_c,
+                                        sizeof(witness_c) - 1, &decoded));
+   CHECK(!d12_agx3_decode_texture_fetch(AGX_CHIP_G17S, witness_c,
+                                        sizeof(witness_c), NULL));
+   return 0;
+}
+
 int
 main(void)
 {
    CHECK(check_control_flow_bridge() == 0);
    CHECK(check_varying_bridge() == 0);
+   CHECK(check_texture_fetch_bridge() == 0);
 
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,

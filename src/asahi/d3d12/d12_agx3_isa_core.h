@@ -35,6 +35,7 @@ extern "C" {
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 #define D12_AGX3_CF_MAX_LENGTH 14
 #define D12_AGX3_VARY_MAX_LENGTH 10
+#define D12_AGX3_TEX_MAX_LENGTH 14
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -131,6 +132,23 @@ enum d12_agx3_cf_branch_op {
 enum d12_agx3_vary_location {
    D12_AGX3_VARY_CENTER = 0,
    D12_AGX3_VARY_CENTROID = 1,
+};
+
+enum d12_agx3_texture_result_width {
+   D12_AGX3_TEXTURE_RESULT_16 = 16,
+   D12_AGX3_TEXTURE_RESULT_32 = 32,
+};
+
+struct d12_agx3_texture_fetch_desc {
+   uint16_t dest;
+   uint16_t coord;
+   enum d12_agx3_texture_result_width width;
+   uint8_t mask;
+   uint8_t texture;
+   uint8_t slot;
+   uint16_t wait_mask;
+   bool coord_kill;
+   bool final;
 };
 
 struct d12_agx3_binary_alu_encoding {
@@ -230,6 +248,11 @@ struct d12_agx3_cf_encoding {
 
 struct d12_agx3_vary_encoding {
    uint8_t bytes[D12_AGX3_VARY_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_texture_fetch_encoding {
+   uint8_t bytes[D12_AGX3_TEX_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -640,6 +663,17 @@ bool d12_agx3_encode_vary_uvsw(enum agx_chip chip, uint16_t value,
                                uint16_t uvs_index, uint8_t slot,
                                bool value_kill, uint16_t wait_mask,
                                struct d12_agx3_vary_encoding *out);
+
+/* Target-gated ISA bridge for the directly witnessed Texture2D.Load LOD0
+ * subset: non-array, immediate texture index, sampler zero, no offset,
+ * compare, gather, sparse, bindless, register-selected state or MSAA.  The
+ * descriptor carries only axes whose bit placements are grounded. */
+bool d12_agx3_encode_texture_fetch(
+   enum agx_chip chip, const struct d12_agx3_texture_fetch_desc *desc,
+   struct d12_agx3_texture_fetch_encoding *out);
+bool d12_agx3_decode_texture_fetch(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   struct d12_agx3_texture_fetch_desc *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

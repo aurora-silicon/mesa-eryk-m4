@@ -46,10 +46,10 @@ struct agx3_slot_result {
 };
 
 /*
- * Assign slots and waits for one basic block (or straight-line region). `n` is
- * the instruction count; `nslots` is 6 (agx3b) or 8 (agx3c). Writes one result
- * per instruction. Returns false on a malformed input (too many regs, nslots
- * out of range, null pointers).
+ * Assign slots and waits for one straight-line instruction region, which may
+ * span fallthrough basic blocks. `n` is the instruction count; `nslots` is 6
+ * (agx3b) or 8 (agx3c). Writes one result per instruction. Returns false on a
+ * malformed input (too many regs, nslots out of range, null pointers).
  *
  * Registers are half-register indices; a value that is not currently the live
  * result of an async op contributes no wait. The slot policy is round-robin,

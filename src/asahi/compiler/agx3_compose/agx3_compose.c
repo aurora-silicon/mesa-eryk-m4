@@ -113,9 +113,10 @@ bool agx3_compose(const agx3_table *t, uint32_t form,
    const agx3_form *f = &t->forms[form];
    if (f->size % 2 || f->size / 2 > AGX3_MAX_WORDS) return false;
 
-   static ctx c;               /* 1.4 KB srcmask; single-threaded prototype */
+   /* Composition is used by parallel shader compilers.  Keep all mutable
+    * traversal state on this invocation; the generated tables are immutable. */
+   ctx c = {0};
    ctx *cp = &c;
-   memset(cp, 0, sizeof(*cp));
    cp->t = t;
    cp->fields = fields;
    cp->nwords = f->size / 2;

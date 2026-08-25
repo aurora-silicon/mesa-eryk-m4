@@ -31,6 +31,7 @@
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_tex_core.h"
 #include "agx3_vary_core.h"
 #include "agx_compiler.h"
 
@@ -336,14 +337,12 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    return 1;
 }
 
-/* An async producer whose result later consumers must wait on: the device
- * load, coefficient load, and special-register read. Textures and atomics
- * join this set as their cores are wired. */
+/* An async producer whose result later consumers must wait on. */
 static bool
 agx3_is_async(const agx_instr *I)
 {
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LDCF ||
-          I->op == AGX_OPCODE_GET_SR;
+          I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_TEXTURE_LOAD;
 }
 
 /* Map a Mesa special register to the corpus-witnessed Apple SR number and
@@ -489,6 +488,63 @@ agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
    uint8_t len = 0;
    return agx3_vary_uvsw(enc, I->src[1].value, I->src[0].value, slot,
                          I->src[1].kill, wait_mask, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
+
+static bool
+agx3_tex_plain_reg(agx_index index)
+{
+   return agx3_src_is_register(index) && !index.memory && !index.abs &&
+          !index.neg;
+}
+
+static bool
+agx3_tex_imm(agx_index index, uint16_t value)
+{
+   return index.type == AGX_INDEX_IMMEDIATE && index.value == value &&
+          !index.memory && !index.abs && !index.neg;
+}
+
+/* Translate only the corpus-grounded 2D, non-array, immediate-index texel
+ * fetch at LOD0.  Every other texture axis remains a deliberate refusal. */
+static bool
+agx3_emit_texture_fetch(struct util_dynarray *emission,
+                        enum agx_isa_encoding enc, const agx_instr *I,
+                        uint8_t slot, uint16_t wait_mask, bool final)
+{
+   if (I->nr_dests != 1 || I->nr_srcs != 6 ||
+       !agx3_tex_plain_reg(I->dest[0]) ||
+       (I->dest[0].size != AGX_SIZE_16 &&
+        I->dest[0].size != AGX_SIZE_32) ||
+       agx_channels(I->dest[0]) != 4 || I->dest[0].value >= 128 ||
+       (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
+       !agx3_tex_plain_reg(I->src[0]) ||
+       I->src[0].size != AGX_SIZE_32 || agx_channels(I->src[0]) != 2 ||
+       (I->src[0].value & 3) || I->src[0].value > 60 ||
+       !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
+       I->src[3].type != AGX_INDEX_IMMEDIATE || I->src[3].value > 15 ||
+       I->src[3].memory || I->src[3].abs || I->src[3].neg ||
+       !agx3_tex_imm(I->src[4], 0) ||
+       !agx_is_null(I->src[5]) || I->dim != AGX_DIM_2D ||
+       I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
+       (I->mask != 1 && I->mask != 15) || I->offset || I->shadow ||
+       I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
+      return false;
+
+   const struct agx3_tex_fetch_desc d = {
+      .dest = I->dest[0].value,
+      .coord = I->src[0].value,
+      .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
+      .mask = I->mask,
+      .texture = I->src[3].value,
+      .slot = slot,
+      .wait_mask = wait_mask,
+      .coord_kill = I->src[0].kill,
+      .final = final,
+   };
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_tex_encode_fetch(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
 }
 
@@ -845,6 +901,19 @@ agx3_try_control_flow(struct util_dynarray *emission,
       I->op == AGX_OPCODE_BREAK_IF_ICMP || I->op == AGX_OPCODE_BREAK_IF_FCMP;
    const bool is_else =
       I->op == AGX_OPCODE_ELSE_ICMP || I->op == AGX_OPCODE_ELSE_FCMP;
+   const bool is_jump = I->op == AGX_OPCODE_JMP_EXEC_ANY ||
+                        I->op == AGX_OPCODE_JMP_EXEC_NONE ||
+                        I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER;
+
+   /* Slot assignment is deliberately linear.  Once an async producer has
+    * appeared, accepting any later control-flow boundary would require
+    * predecessor-aware scoreboard state (including loop-carried state), which
+    * is not grounded yet.  Keep those shaders closed instead of letting the
+    * linear pre-pass invent a path-specific wait set. */
+   if (async_seen &&
+       (I->op == AGX_OPCODE_BEGIN_CF || is_if || is_while || is_break_if ||
+        is_else || I->op == AGX_OPCODE_POP_EXEC || is_jump))
+      return -1;
 
    if (I->op == AGX_OPCODE_BEGIN_CF)
       return wait_mask == 0 ? 1 : -1; /* architectural state: zero bytes */
@@ -863,10 +932,9 @@ agx3_try_control_flow(struct util_dynarray *emission,
 
    if (is_if || is_while || is_break_if) {
       /* The all-clear compare/cnd forms are witnessed only for register-ready
-       * inputs. Per-block slot assignment can prove a local wait, while the
-       * conservative async_seen latch catches predecessors. Either condition
-       * keeps memory-dependent control flow fail-closed. */
-      if (wait_mask != 0 || async_seen)
+       * inputs.  A local dependency wait also keeps memory-dependent control
+       * flow fail-closed. */
+      if (wait_mask != 0)
          return -1;
       if ((is_if && I->nest != 1) || (is_break_if && I->nest != 1))
          return -1;
@@ -902,8 +970,7 @@ agx3_try_control_flow(struct util_dynarray *emission,
                 : -1;
    }
 
-   if (I->op == AGX_OPCODE_JMP_EXEC_ANY || I->op == AGX_OPCODE_JMP_EXEC_NONE ||
-       I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER) {
+   if (is_jump) {
       if (wait_mask != 0 || I->target == NULL)
          return -1;
 
@@ -962,29 +1029,35 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    struct util_dynarray fixups;
    bool async_seen = false;
    uint8_t next_uvs_slot = 1;
+   unsigned texture_fetches_left = 0;
+   unsigned count = 0;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
    util_dynarray_init(&fixups, ctx);
 
-   agx_foreach_block(ctx, block) {
-      block->offset = emission->size;
-
-      /* Slot/wait pre-pass over the block, in the same order (excluding stop)
-       * that the emit walk below uses, so results index by position. */
-      unsigned count = 0;
-      agx_foreach_instr_in_block(block, I) {
-         if (I->op != AGX_OPCODE_STOP)
+   agx_foreach_block(ctx, scan_block) {
+      agx_foreach_instr_in_block(scan_block, scan_I) {
+         if (scan_I->op != AGX_OPCODE_STOP)
             count++;
+         if (scan_I->op == AGX_OPCODE_TEXTURE_LOAD)
+            texture_fetches_left++;
       }
-      struct agx3_slot_instr *sl =
-         rzalloc_array(ctx, struct agx3_slot_instr, count ? count : 1);
-      struct agx3_slot_result *res =
-         rzalloc_array(ctx, struct agx3_slot_result, count ? count : 1);
-      if (sl == NULL || res == NULL)
-         goto fail;
+   }
 
-      unsigned k = 0;
-      agx_foreach_instr_in_block(block, I) {
+   /* Assign one scoreboard timeline over the whole linearized shader, rather
+    * than restarting at each basic block.  Fallthrough blocks may consume an
+    * async result from their predecessor.  Control flow after an async op is
+    * rejected below until CFG-aware state merging is grounded. */
+   struct agx3_slot_instr *sl =
+      rzalloc_array(ctx, struct agx3_slot_instr, count ? count : 1);
+   struct agx3_slot_result *res =
+      rzalloc_array(ctx, struct agx3_slot_result, count ? count : 1);
+   if (sl == NULL || res == NULL)
+      goto fail;
+
+   unsigned k = 0;
+   agx_foreach_block(ctx, slot_block) {
+      agx_foreach_instr_in_block(slot_block, I) {
          if (I->op == AGX_OPCODE_STOP)
             continue;
          struct agx3_slot_instr *e = &sl[k++];
@@ -997,10 +1070,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          e->nr_dsts = (uint8_t)nd;
          e->nr_srcs = (uint8_t)ns;
       }
-      if (!agx3_slot_assign(sl, count, nslots, res))
-         goto fail;
+   }
+   assert(k == count);
+   if (!agx3_slot_assign(sl, count, nslots, res))
+      goto fail;
 
-      k = 0;
+   k = 0;
+
+   agx_foreach_block(ctx, block) {
+      block->offset = emission->size;
       bool after_loop_backedge = false;
       agx_foreach_instr_in_block(block, I) {
          block->last_offset = emission->size;
@@ -1039,6 +1117,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, wait))
                goto fail;
             next_uvs_slot = (next_uvs_slot % nslots) + 1;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
+            assert(texture_fetches_left > 0);
+            const bool final = --texture_fetches_left == 0;
+            if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
+               goto fail;
+            async_seen = true;
             continue;
          }
 

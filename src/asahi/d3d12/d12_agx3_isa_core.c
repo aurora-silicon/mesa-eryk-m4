@@ -7,6 +7,7 @@
 
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_tex_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
 
 #include <string.h>
@@ -67,6 +68,8 @@ _Static_assert(AGX3_CF_MAX_LENGTH + 4 <= D12_AGX3_CF_MAX_LENGTH,
                "D3D AGX3 control-flow storage must hold compare plus cnd");
 _Static_assert(AGX3_VARY_MAX_LENGTH == D12_AGX3_VARY_MAX_LENGTH,
                "D3D AGX3 varying storage must match the canonical forms");
+_Static_assert(AGX3_TEX_MAX_LENGTH == D12_AGX3_TEX_MAX_LENGTH,
+               "D3D AGX3 texture storage must match the canonical forms");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -539,6 +542,76 @@ d12_agx3_encode_vary_uvsw(enum agx_chip chip, uint16_t value,
    const bool ok = agx3_vary_uvsw(encoding, value, uvs_index, slot,
                                   value_kill, wait_mask, bytes, &length);
    return d12_agx3_finish_vary(out, ok, bytes, length);
+}
+
+bool
+d12_agx3_encode_texture_fetch(
+   enum agx_chip chip, const struct d12_agx3_texture_fetch_desc *desc,
+   struct d12_agx3_texture_fetch_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!desc || !d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   enum agx3_tex_width width;
+   if (desc->width == D12_AGX3_TEXTURE_RESULT_16)
+      width = AGX3_TEX_W16;
+   else if (desc->width == D12_AGX3_TEXTURE_RESULT_32)
+      width = AGX3_TEX_W32;
+   else
+      return false;
+
+   const struct agx3_tex_fetch_desc d = {
+      .dest = desc->dest,
+      .coord = desc->coord,
+      .width = width,
+      .mask = desc->mask,
+      .texture = desc->texture,
+      .slot = desc->slot,
+      .wait_mask = desc->wait_mask,
+      .coord_kill = desc->coord_kill,
+      .final = desc->final,
+   };
+   uint8_t length = 0;
+   if (!agx3_tex_encode_fetch(encoding, &d, out->bytes, &length) ||
+       length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_decode_texture_fetch(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   struct d12_agx3_texture_fetch_desc *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   struct agx3_tex_fetch_desc d;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !agx3_tex_decode_fetch(encoding, instruction, instruction_size, &d))
+      return false;
+
+   out->dest = d.dest;
+   out->coord = d.coord;
+   out->width = d.width == AGX3_TEX_W16 ? D12_AGX3_TEXTURE_RESULT_16
+                                        : D12_AGX3_TEXTURE_RESULT_32;
+   out->mask = d.mask;
+   out->texture = d.texture;
+   out->slot = d.slot;
+   out->wait_mask = d.wait_mask;
+   out->coord_kill = d.coord_kill;
+   out->final = d.final;
+   return true;
 }
 
 bool

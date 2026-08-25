@@ -20,6 +20,7 @@
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
 #include "agx3_sr_core.h"
+#include "agx3_tex_core.h"
 #include "agx3_vary_core.h"
 
 static void
@@ -136,6 +137,119 @@ TEST_F(AGX3PackBinary, RefusesUnmappedOp)
    agx_iadd_to(b, w0, w0, w2, 3); /* shift != 0 -> out of grounded domain */
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
+}
+
+TEST_F(AGX3PackBinary, TextureFetch2DLod0Immediate)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (int half = 0; half < 2; ++half) {
+         agx_builder *b = builder(enc);
+         agx_index dest = agx_register(0, half ? AGX_SIZE_16 : AGX_SIZE_32);
+         agx_index coord = agx_register(12, AGX_SIZE_32);
+         dest.channels_m1 = 3;
+         coord.channels_m1 = 1;
+
+         agx_instr *I = agx_texture_sample_to(
+            b, dest, coord, agx_immediate(0), agx_immediate(0),
+            agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+            AGX_LOD_MODE_AUTO_LOD, 0, false, false, false, AGX_GATHER_NONE,
+            false);
+         I->op = AGX_OPCODE_TEXTURE_LOAD;
+         I->mask = 15;
+         agx_stop(b);
+
+         struct agx3_tex_fetch_desc d = {};
+         d.dest = 0;
+         d.coord = 12;
+         d.width = half ? AGX3_TEX_W16 : AGX3_TEX_W32;
+         d.mask = 15;
+         d.texture = 0;
+         d.slot = 1;
+         d.final = true;
+         uint8_t tb[AGX3_TEX_MAX_LENGTH];
+         uint8_t tl = 0;
+         ASSERT_TRUE(agx3_tex_encode_fetch(enc, &d, tb, &tl));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+         std::vector<uint8_t> want;
+         append(want, tb, tl);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, TextureFetchRefusesUngroundedAxes)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_index dest = agx_register(0, AGX_SIZE_32);
+   agx_index coord = agx_register(12, AGX_SIZE_32);
+   dest.channels_m1 = 3;
+   coord.channels_m1 = 1;
+   agx_instr *I = agx_texture_sample_to(
+      b, dest, coord, agx_immediate(0), agx_immediate(0),
+      agx_immediate(16), agx_immediate(0), agx_null(), AGX_DIM_2D,
+      AGX_LOD_MODE_AUTO_LOD, 0, false, false, false, AGX_GATHER_NONE, false);
+   I->op = AGX_OPCODE_TEXTURE_LOAD;
+   I->mask = 15;
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
+TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_block *first = agx_start_block(b->shader);
+      agx_index dest = agx_register(0, AGX_SIZE_32);
+      agx_index coord = agx_register(12, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      coord.channels_m1 = 1;
+
+      agx_instr *I = agx_texture_sample_to(
+         b, dest, coord, agx_immediate(0), agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_null(), AGX_DIM_2D, AGX_LOD_MODE_AUTO_LOD, 0,
+         false, false, false, AGX_GATHER_NONE, false);
+      I->op = AGX_OPCODE_TEXTURE_LOAD;
+      I->mask = 15;
+
+      agx_block *second = agx_test_block(b->shader);
+      agx_block_add_successor(first, second);
+      b->cursor = agx_after_block(second);
+      agx_index scalar = dest;
+      scalar.channels_m1 = 0;
+      agx_iadd_to(b, agx_register(8, AGX_SIZE_32), scalar, scalar, 0);
+      agx_stop(b);
+
+      struct agx3_tex_fetch_desc d = {};
+      d.dest = 0;
+      d.coord = 12;
+      d.width = AGX3_TEX_W32;
+      d.mask = 15;
+      d.slot = 1;
+      d.final = true;
+      uint8_t tb[AGX3_TEX_MAX_LENGTH];
+      uint8_t tl = 0;
+      ASSERT_TRUE(agx3_tex_encode_fetch(enc, &d, tb, &tl));
+
+      uint8_t ab[AGX3_ALU_MAX_LENGTH];
+      uint8_t al = 0;
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 0, 0, 0, 0,
+                                   /*wait*/ 0x1, ab, &al));
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, tb, tl);
+      append(want, ab, al);
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
 }
 
 TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
