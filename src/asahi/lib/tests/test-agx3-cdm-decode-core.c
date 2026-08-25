@@ -95,6 +95,143 @@ test_launch_padding_and_terminate(void)
    return 0;
 }
 
+static bool
+indirect_launch_equal(const struct agx3_cdm_indirect_launch_info *a,
+                      const struct agx3_cdm_indirect_launch_info *b)
+{
+   return a->chip == b->chip && a->word0_payload == b->word0_payload &&
+          a->word1_payload == b->word1_payload &&
+          a->pipeline == b->pipeline &&
+          a->opaque_word3 == b->opaque_word3 &&
+          a->indirect_word4_payload == b->indirect_word4_payload &&
+          a->indirect_parameters == b->indirect_parameters;
+}
+
+static int
+test_indirect_launch_codec(void)
+{
+   static const uint8_t witness[AGX3_CDM_INDIRECT_LAUNCH_SIZE] = {
+      0x67, 0x45, 0x23, 0x01, 0xde, 0xbc, 0x0a, 0x01,
+      0x23, 0x01, 0xef, 0x8d, 0xef, 0xbe, 0xad, 0x20,
+      0xcd, 0xab, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+   };
+   const struct agx3_cdm_indirect_launch_info base = {
+      .chip = AGX_CHIP_G17S,
+      .word0_payload = UINT32_C(0x01234567),
+      .word1_payload = UINT32_C(0x000abcde),
+      .pipeline = UINT64_C(0x01237bc048c0),
+      .opaque_word3 = UINT32_C(0x20adbeef),
+      .indirect_word4_payload = UINT16_C(0x9abc),
+      .indirect_parameters = UINT64_C(0xabcd12345678),
+   };
+
+   for (unsigned t = 0; t < sizeof(launch_targets) / sizeof(launch_targets[0]);
+        ++t) {
+      struct agx3_cdm_indirect_launch_info info = base, decoded;
+      uint8_t packed[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+      info.chip = launch_targets[t];
+      CHECK(agx3_cdm_indirect_launch_pack(&info, packed));
+      CHECK(memcmp(packed, witness, sizeof(witness)) == 0);
+      CHECK(agx3_cdm_indirect_launch_unpack(info.chip, packed, sizeof(packed),
+                                            &decoded));
+      CHECK(indirect_launch_equal(&decoded, &info));
+   }
+
+   /* Every bit exposed by the bounded codec survives the six-word form. */
+   for (unsigned bit = 0; bit < 189; ++bit) {
+      struct agx3_cdm_indirect_launch_info info = {
+         .chip = AGX_CHIP_G17G,
+      };
+      if (bit < 29)
+         info.word0_payload = UINT32_C(1) << bit;
+      else if (bit < 51)
+         info.word1_payload = UINT32_C(1) << (bit - 29);
+      else if (bit < 93)
+         info.pipeline = UINT64_C(1) << (bit - 51 + 6);
+      else if (bit < 125)
+         info.opaque_word3 = UINT32_C(1) << (bit - 93);
+      else if (bit < 141)
+         info.indirect_word4_payload = UINT16_C(1) << (bit - 125);
+      else
+         info.indirect_parameters = UINT64_C(1) << (bit - 141);
+
+      uint8_t packed[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+      struct agx3_cdm_indirect_launch_info decoded;
+      CHECK(agx3_cdm_indirect_launch_pack(&info, packed));
+      CHECK(agx3_cdm_indirect_launch_unpack(info.chip, packed, sizeof(packed),
+                                            &decoded));
+      CHECK(indirect_launch_equal(&decoded, &info));
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G14X, AGX_CHIP_G15P, AGX_CHIP_G16P,
+      AGX_CHIP_G17A, AGX_CHIP_UNKNOWN, (enum agx_chip)999,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      struct agx3_cdm_indirect_launch_info info = base, decoded;
+      uint8_t packed[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+      info.chip = rejected[i];
+      memset(packed, 0xa5, sizeof(packed));
+      CHECK(!agx3_cdm_indirect_launch_pack(&info, packed));
+      for (unsigned b = 0; b < sizeof(packed); ++b)
+         CHECK(packed[b] == 0);
+      memset(&decoded, 0xa5, sizeof(decoded));
+      CHECK(!agx3_cdm_indirect_launch_unpack(
+         info.chip, witness, sizeof(witness), &decoded));
+      const struct agx3_cdm_indirect_launch_info zero = {0};
+      CHECK(memcmp(&decoded, &zero, sizeof(zero)) == 0);
+   }
+
+   const struct agx3_cdm_indirect_launch_info invalid[] = {
+      {.chip = AGX_CHIP_G17S,
+       .word0_payload = UINT32_C(1) << 29},
+      {.chip = AGX_CHIP_G17S,
+       .word1_payload = UINT32_C(1) << 22},
+      {.chip = AGX_CHIP_G17S,
+       .pipeline = 1},
+      {.chip = AGX_CHIP_G17S,
+       .pipeline = UINT64_C(1) << 48},
+      {.chip = AGX_CHIP_G17S,
+       .indirect_parameters = UINT64_C(1) << 48},
+   };
+   for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+      uint8_t packed[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+      memset(packed, 0xa5, sizeof(packed));
+      CHECK(!agx3_cdm_indirect_launch_pack(&invalid[i], packed));
+      for (unsigned b = 0; b < sizeof(packed); ++b)
+         CHECK(packed[b] == 0);
+   }
+
+   struct agx3_cdm_indirect_launch_info decoded;
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!agx3_cdm_indirect_launch_unpack(
+      base.chip, witness, sizeof(witness) - 1, &decoded));
+   CHECK(decoded.pipeline == 0);
+   CHECK(!agx3_cdm_indirect_launch_unpack(
+      base.chip, witness, sizeof(witness) + 1, &decoded));
+   CHECK(decoded.pipeline == 0);
+
+   uint8_t malformed[sizeof(witness)];
+   memcpy(malformed, witness, sizeof(malformed));
+   malformed[3] |= 0x20;
+   CHECK(!agx3_cdm_indirect_launch_unpack(
+      base.chip, malformed, sizeof(malformed), &decoded));
+   CHECK(decoded.pipeline == 0);
+   CHECK(!agx3_cdm_indirect_launch_pack(&base, NULL));
+   uint8_t null_input[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+   memset(null_input, 0xa5, sizeof(null_input));
+   CHECK(!agx3_cdm_indirect_launch_pack(NULL, null_input));
+   for (unsigned b = 0; b < sizeof(null_input); ++b)
+      CHECK(null_input[b] == 0);
+   memset(&decoded, 0xa5, sizeof(decoded));
+   CHECK(!agx3_cdm_indirect_launch_unpack(
+      base.chip, NULL, sizeof(witness), &decoded));
+   CHECK(decoded.pipeline == 0);
+   CHECK(!agx3_cdm_indirect_launch_unpack(
+      base.chip, witness, sizeof(witness), NULL));
+   return 0;
+}
+
 static int
 test_links_and_barriers(void)
 {
@@ -276,8 +413,8 @@ test_sequence_and_rejections(void)
 int
 main(void)
 {
-   if (test_launch_padding_and_terminate() || test_links_and_barriers() ||
-       test_sequence_and_rejections())
+   if (test_launch_padding_and_terminate() || test_indirect_launch_codec() ||
+       test_links_and_barriers() || test_sequence_and_rejections())
       return 1;
 
    printf("agx3_cdm_decode_core: %u checks passed\n", checks);

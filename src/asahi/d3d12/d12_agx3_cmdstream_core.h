@@ -24,6 +24,11 @@ struct d12_agx3_cdm_launch_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_cdm_indirect_launch_encoding {
+   uint8_t bytes[AGX3_CDM_INDIRECT_LAUNCH_SIZE];
+   uint8_t length;
+};
+
 struct d12_agx3_cdm_stream_link_encoding {
    uint8_t bytes[AGX3_CDM_STREAM_LINK_SIZE];
    uint8_t length;
@@ -272,6 +277,38 @@ d12_agx3_decode_cdm_launch(enum agx_chip chip, const void *command,
    memset(info, 0, sizeof(*info));
    return command_size == AGX3_CDM_LAUNCH_SIZE &&
           agx3_cdm_launch_unpack(chip, command, command_size, info);
+}
+
+/* Non-live D3D validation wrapper for an explicitly delimited compact
+ * indirect-parameter launch.  It does not infer the 24-byte form from an
+ * arbitrary stream or claim D3D command-recording integration. */
+static inline bool
+d12_agx3_encode_cdm_indirect_launch(
+   const struct agx3_cdm_indirect_launch_info *info,
+   struct d12_agx3_cdm_indirect_launch_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!agx3_cdm_indirect_launch_pack(info, out->bytes))
+      return false;
+
+   out->length = AGX3_CDM_INDIRECT_LAUNCH_SIZE;
+   return true;
+}
+
+static inline bool
+d12_agx3_decode_cdm_indirect_launch(
+   enum agx_chip chip, const void *command, uint32_t command_size,
+   struct agx3_cdm_indirect_launch_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   return command_size == AGX3_CDM_INDIRECT_LAUNCH_SIZE &&
+          agx3_cdm_indirect_launch_unpack(chip, command, command_size, info);
 }
 
 static inline bool

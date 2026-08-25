@@ -20,6 +20,7 @@
 #include <string.h>
 
 #define AGX3_CDM_LAUNCH_SIZE 40u
+#define AGX3_CDM_INDIRECT_LAUNCH_SIZE 24u
 #define AGX3_CDM_STREAM_LINK_SIZE 8u
 #define AGX3_CDM_LINK_PADDING_SIZE 4u
 #define AGX3_CDM_BARRIER_SIZE 4u
@@ -34,6 +35,24 @@ struct agx3_cdm_launch_info {
    uint32_t opaque_word3;
    uint32_t global_size[3];
    uint32_t local_size[3];
+};
+
+/* Exact compact launch carrying a GPU address for indirect parameters.
+ *
+ * The pinned performEnqueueKernel implementations all use the same six-word
+ * store sequence: G15G 0x210f2d4d4, G15X 0x2125b16c8, G16G 0x2147b875c,
+ * G16X 0x2152bd768, G17P 0x216ac876c, G17G 0x215e9e760, and G17X
+ * 0x217626b78.  The upper half of word 4 comes from an adjacent program-
+ * variant template while its lower half carries indirect_parameters[47:32].
+ * Complete semantics of the raw/template words remain intentionally unnamed. */
+struct agx3_cdm_indirect_launch_info {
+   enum agx_chip chip;
+   uint32_t word0_payload;
+   uint32_t word1_payload;
+   uint64_t pipeline;
+   uint32_t opaque_word3;
+   uint16_t indirect_word4_payload;
+   uint64_t indirect_parameters;
 };
 
 struct agx3_cdm_stream_link_info {
@@ -83,6 +102,30 @@ agx3_cmdstream_load_le32(const uint8_t *src)
  * launch emitter was present in the pinned corpus. */
 static inline bool
 agx3_cdm_launch_target_grounded(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+/* Kept separate from the 40-byte direct-launch gate so later evidence for one
+ * record family cannot silently widen the other.  The base and aggregate
+ * G15/G16/G17P/G17 families were all inspected for this compact form. */
+static inline bool
+agx3_cdm_indirect_launch_target_grounded(enum agx_chip chip)
 {
    switch (chip) {
    case AGX_CHIP_G15G:
@@ -197,6 +240,78 @@ agx3_cdm_launch_unpack(enum agx_chip chip, const void *packed, size_t available,
       }
    }
 
+   return true;
+}
+
+/* Pack the exact compact 24-byte indirect-parameter form.  The address field
+ * is serialized as a raw 48-bit value; call-site alignment is not yet named. */
+static inline bool
+agx3_cdm_indirect_launch_pack(
+   const struct agx3_cdm_indirect_launch_info *info,
+   uint8_t packed[AGX3_CDM_INDIRECT_LAUNCH_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_INDIRECT_LAUNCH_SIZE);
+   if (!info || !agx3_cdm_indirect_launch_target_grounded(info->chip) ||
+       info->word0_payload >= (UINT32_C(1) << 29) ||
+       info->word1_payload >= (UINT32_C(1) << 22) ||
+       info->pipeline >= (UINT64_C(1) << 48) ||
+       (info->pipeline & UINT64_C(0x3f)) != 0 ||
+       info->indirect_parameters >= (UINT64_C(1) << 48))
+      return false;
+
+   agx3_cmdstream_store_le32(packed, info->word0_payload);
+   agx3_cmdstream_store_le32(
+      packed + 4,
+      info->word1_payload | (uint32_t)((info->pipeline >> 38) << 22));
+   agx3_cmdstream_store_le32(packed + 8,
+                             (uint32_t)(info->pipeline >> 6));
+   agx3_cmdstream_store_le32(packed + 12, info->opaque_word3);
+   agx3_cmdstream_store_le32(
+      packed + 16, (uint32_t)(info->indirect_parameters >> 32) |
+                      ((uint32_t)info->indirect_word4_payload << 16));
+   agx3_cmdstream_store_le32(packed + 20,
+                             (uint32_t)info->indirect_parameters);
+   return true;
+}
+
+/* Decode an explicitly delimited compact record.  The exact-size requirement
+ * is load-bearing: the generic stream decoder must not guess whether a type-0
+ * prefix belongs to this form or to the separately witnessed 36/40-byte
+ * families. */
+static inline bool
+agx3_cdm_indirect_launch_unpack(
+   enum agx_chip chip, const void *packed, size_t size,
+   struct agx3_cdm_indirect_launch_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   if (!packed || size != AGX3_CDM_INDIRECT_LAUNCH_SIZE ||
+       !agx3_cdm_indirect_launch_target_grounded(chip))
+      return false;
+
+   const uint8_t *bytes = (const uint8_t *)packed;
+   const uint32_t word0 = agx3_cmdstream_load_le32(bytes);
+   const uint32_t word1 = agx3_cmdstream_load_le32(bytes + 4);
+   const uint32_t word4 = agx3_cmdstream_load_le32(bytes + 16);
+   if ((word0 >> 29) != AGX_CDM_BLOCK_TYPE_LAUNCH)
+      return false;
+
+   *info = (struct agx3_cdm_indirect_launch_info){
+      .chip = chip,
+      .word0_payload = word0 & ((UINT32_C(1) << 29) - 1),
+      .word1_payload = word1 & ((UINT32_C(1) << 22) - 1),
+      .pipeline = ((uint64_t)(word1 >> 22) << 38) |
+                  ((uint64_t)agx3_cmdstream_load_le32(bytes + 8) << 6),
+      .opaque_word3 = agx3_cmdstream_load_le32(bytes + 12),
+      .indirect_word4_payload = word4 >> 16,
+      .indirect_parameters = ((uint64_t)(word4 & 0xffff) << 32) |
+                             agx3_cmdstream_load_le32(bytes + 20),
+   };
    return true;
 }
 
