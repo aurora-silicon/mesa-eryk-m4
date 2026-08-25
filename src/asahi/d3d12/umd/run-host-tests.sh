@@ -148,6 +148,13 @@ done
     -o "$out/test_agx3_tile_core"
 "$out/test_agx3_tile_core"
 
+"$cc" "$common[@]" \
+    -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_slot_core.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-slot-core.c" \
+    -o "$out/test_agx3_slot_core"
+"$out/test_agx3_slot_core"
+
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/src" -I"$repo_root/include" \
     -I"$repo_root/src/asahi/compiler" \
