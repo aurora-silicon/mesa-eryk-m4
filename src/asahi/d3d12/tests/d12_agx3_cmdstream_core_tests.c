@@ -784,6 +784,90 @@ main(void)
       &decoded_indirect));
    CHECK(decoded_indirect.pipeline == 0);
 
+   const uint8_t
+      indirect_launch_36_bytes[AGX3_CDM_INDIRECT_LAUNCH_36_SIZE] = {
+         0x67, 0x45, 0x23, 0x01, 0xde, 0xbc, 0x0a, 0x01,
+         0x23, 0x01, 0xef, 0x8d, 0xef, 0xbe, 0xad, 0x20,
+         0xcd, 0xab, 0xbc, 0x9a, 0x78, 0x56, 0x34, 0x12,
+         0x55, 0x01, 0x00, 0x00, 0xaa, 0x03, 0x00, 0x00,
+         0xff, 0x07, 0x00, 0x00,
+      };
+   struct agx3_cdm_indirect_launch_36_info indirect_launch_36 = {
+      .word0_payload = UINT32_C(0x01234567),
+      .word1_payload = UINT32_C(0x000abcde),
+      .pipeline = UINT64_C(0x01237bc048c0),
+      .opaque_word3 = UINT32_C(0x20adbeef),
+      .indirect_word4_payload = UINT16_C(0x9abc),
+      .indirect_parameters = UINT64_C(0xabcd12345678),
+      .trailing_words = {0x155, 0x3aa, 0x7ff},
+   };
+   for (unsigned i = 0;
+        i < sizeof(launch_targets) / sizeof(launch_targets[0]); ++i) {
+      indirect_launch_36.chip = launch_targets[i];
+      struct d12_agx3_cdm_indirect_launch_36_encoding encoded;
+      CHECK(d12_agx3_encode_cdm_indirect_launch_36(&indirect_launch_36,
+                                                   &encoded));
+      CHECK(encoded.length == AGX3_CDM_INDIRECT_LAUNCH_36_SIZE);
+      CHECK(memcmp(encoded.bytes, indirect_launch_36_bytes,
+                   sizeof(indirect_launch_36_bytes)) == 0);
+
+      struct agx3_cdm_indirect_launch_36_info decoded;
+      CHECK(d12_agx3_decode_cdm_indirect_launch_36(
+         indirect_launch_36.chip, encoded.bytes, encoded.length, &decoded));
+      CHECK(decoded.chip == indirect_launch_36.chip);
+      CHECK(decoded.word0_payload == indirect_launch_36.word0_payload);
+      CHECK(decoded.word1_payload == indirect_launch_36.word1_payload);
+      CHECK(decoded.pipeline == indirect_launch_36.pipeline);
+      CHECK(decoded.opaque_word3 == indirect_launch_36.opaque_word3);
+      CHECK(decoded.indirect_word4_payload ==
+            indirect_launch_36.indirect_word4_payload);
+      CHECK(decoded.indirect_parameters ==
+            indirect_launch_36.indirect_parameters);
+      CHECK(memcmp(decoded.trailing_words,
+                   indirect_launch_36.trailing_words,
+                   sizeof(decoded.trailing_words)) == 0);
+      CHECK(!d12_agx3_decode_cdm_indirect_launch_36(
+         indirect_launch_36.chip, encoded.bytes, encoded.length - 1,
+         &decoded));
+      CHECK(decoded.indirect_parameters == 0);
+      CHECK(!d12_agx3_decode_cdm_indirect_launch_36(
+         indirect_launch_36.chip, encoded.bytes, encoded.length + 1,
+         &decoded));
+      CHECK(decoded.indirect_parameters == 0);
+   }
+
+   for (unsigned i = 0;
+        i < sizeof(rejected_launch) / sizeof(rejected_launch[0]); ++i) {
+      struct d12_agx3_cdm_indirect_launch_36_encoding encoded;
+      memset(&encoded, 0xff, sizeof(encoded));
+      indirect_launch_36.chip = rejected_launch[i];
+      CHECK(!d12_agx3_encode_cdm_indirect_launch_36(&indirect_launch_36,
+                                                    &encoded));
+      CHECK(encoded.length == 0);
+      for (unsigned b = 0; b < sizeof(encoded.bytes); ++b)
+         CHECK(encoded.bytes[b] == 0);
+   }
+   CHECK(!d12_agx3_encode_cdm_indirect_launch_36(&indirect_launch_36,
+                                                 NULL));
+   struct agx3_cdm_indirect_launch_36_info decoded_indirect_36;
+   indirect_launch_36.chip = AGX_CHIP_G17P;
+   CHECK(!d12_agx3_decode_cdm_indirect_launch_36(
+      indirect_launch_36.chip, indirect_launch_36_bytes,
+      sizeof(indirect_launch_36_bytes), NULL));
+   memset(&decoded_indirect_36, 0xa5, sizeof(decoded_indirect_36));
+   CHECK(!d12_agx3_decode_cdm_indirect_launch_36(
+      indirect_launch_36.chip, NULL, sizeof(indirect_launch_36_bytes),
+      &decoded_indirect_36));
+   CHECK(decoded_indirect_36.pipeline == 0);
+   uint8_t malformed_indirect_36[sizeof(indirect_launch_36_bytes)];
+   memcpy(malformed_indirect_36, indirect_launch_36_bytes,
+          sizeof(malformed_indirect_36));
+   malformed_indirect_36[34] = 0x08;
+   CHECK(!d12_agx3_decode_cdm_indirect_launch_36(
+      indirect_launch_36.chip, malformed_indirect_36,
+      sizeof(malformed_indirect_36), &decoded_indirect_36));
+   CHECK(decoded_indirect_36.pipeline == 0);
+
    const enum agx_chip link_targets[] = {
       AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16S,
       AGX_CHIP_G16C, AGX_CHIP_G17S, AGX_CHIP_G17C,

@@ -29,6 +29,11 @@ struct d12_agx3_cdm_indirect_launch_encoding {
    uint8_t length;
 };
 
+struct d12_agx3_cdm_indirect_launch_36_encoding {
+   uint8_t bytes[AGX3_CDM_INDIRECT_LAUNCH_36_SIZE];
+   uint8_t length;
+};
+
 struct d12_agx3_cdm_stream_link_encoding {
    uint8_t bytes[AGX3_CDM_STREAM_LINK_SIZE];
    uint8_t length;
@@ -309,6 +314,38 @@ d12_agx3_decode_cdm_indirect_launch(
    memset(info, 0, sizeof(*info));
    return command_size == AGX3_CDM_INDIRECT_LAUNCH_SIZE &&
           agx3_cdm_indirect_launch_unpack(chip, command, command_size, info);
+}
+
+/* Non-live validation wrapper for the independently selected nine-word form.
+ * This does not classify arbitrary type-0 stream prefixes. */
+static inline bool
+d12_agx3_encode_cdm_indirect_launch_36(
+   const struct agx3_cdm_indirect_launch_36_info *info,
+   struct d12_agx3_cdm_indirect_launch_36_encoding *out)
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   if (!agx3_cdm_indirect_launch_36_pack(info, out->bytes))
+      return false;
+
+   out->length = AGX3_CDM_INDIRECT_LAUNCH_36_SIZE;
+   return true;
+}
+
+static inline bool
+d12_agx3_decode_cdm_indirect_launch_36(
+   enum agx_chip chip, const void *command, uint32_t command_size,
+   struct agx3_cdm_indirect_launch_36_info *info)
+{
+   if (!info)
+      return false;
+
+   memset(info, 0, sizeof(*info));
+   return command_size == AGX3_CDM_INDIRECT_LAUNCH_36_SIZE &&
+          agx3_cdm_indirect_launch_36_unpack(chip, command, command_size,
+                                             info);
 }
 
 static inline bool
