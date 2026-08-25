@@ -83,14 +83,13 @@ expected_dimension_word(unsigned dimensions)
 }
 
 static struct agx3_cdm_direct_launch_info
-make_info(enum agx_chip chip, enum agx3_cdm_direct_grid_mode mode,
-          uint8_t dimensions)
+make_info(enum agx_chip chip, uint8_t dimensions)
 {
    struct agx3_cdm_direct_template template_words;
    const struct agx3_cdm_direct_template_fields fields = {
       .word0_bits_3_14 = 0xabc,
       .word1_bits_3_20 = 0x23456,
-      .compiler_reply_word0_bit23 = true,
+      .ray_traversal_depth_nonzero = true,
       .subkernel_x_target_workitems = true,
    };
    if (!agx3_cdm_direct_template_build(&fields, &template_words))
@@ -100,7 +99,6 @@ make_info(enum agx_chip chip, enum agx3_cdm_direct_grid_mode mode,
       .chip = chip,
       .template_words = template_words,
       .pipeline = UINT64_C(0x123456789a80),
-      .grid_mode = mode,
       .dimensions = dimensions,
       .global_size = {UINT32_C(0x10203040), 2, 3},
       .local_size = {1, 32, 0x7ff},
@@ -119,7 +117,7 @@ test_template_contract(void)
    const struct agx3_cdm_direct_template_fields max_fields = {
       .word0_bits_3_14 = 0xffe,
       .word1_bits_3_20 = 0x3ffff,
-      .compiler_reply_word0_bit23 = true,
+      .ray_traversal_depth_nonzero = true,
       .subkernel_x_target_workitems = true,
    };
    CHECK(agx3_cdm_direct_template_build(&max_fields, &template_words));
@@ -130,8 +128,8 @@ test_template_contract(void)
    CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
    CHECK(decoded.word0_bits_3_14 == max_fields.word0_bits_3_14);
    CHECK(decoded.word1_bits_3_20 == max_fields.word1_bits_3_20);
-   CHECK(decoded.compiler_reply_word0_bit23 ==
-         max_fields.compiler_reply_word0_bit23);
+   CHECK(decoded.ray_traversal_depth_nonzero ==
+         max_fields.ray_traversal_depth_nonzero);
    CHECK(decoded.subkernel_x_target_workitems ==
          max_fields.subkernel_x_target_workitems);
 
@@ -185,15 +183,14 @@ test_template_contract(void)
    const struct agx3_cdm_direct_template_sources source_fields = {
       .load_shader_word0_source_bytes = 4,
       .load_shader_word1_source_bytes = 5,
-      .compiler_reply_word0_bit23 = true,
-      .subkernel_x_target_workitems = true,
+      .ray_traversal_depth_nonzero = true,
    };
    CHECK(agx3_cdm_direct_template_build_from_sources(&source_fields,
                                                       &template_words));
    CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
    CHECK(decoded.word0_bits_3_14 == 2);
    CHECK(decoded.word1_bits_3_20 == 2);
-   CHECK(decoded.compiler_reply_word0_bit23);
+   CHECK(decoded.ray_traversal_depth_nonzero);
    CHECK(decoded.subkernel_x_target_workitems);
 
    const uint32_t word0_source_boundaries[][2] = {
@@ -245,6 +242,99 @@ test_template_contract(void)
 }
 
 static int
+test_direct_grid_sources(void)
+{
+   const uint32_t group_counts[3] = {7, 8, 9};
+   const uint32_t local_size[3] = {4, 5, 6};
+   const uint32_t thread_counts[3] = {28, 40, 54};
+   uint32_t resolved[3];
+
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS, group_counts, local_size,
+      resolved));
+   CHECK(memcmp(resolved, thread_counts, sizeof(resolved)) == 0);
+
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, local_size,
+      resolved));
+   CHECK(memcmp(resolved, thread_counts, sizeof(resolved)) == 0);
+
+   /* The API provenance is not encoded: equivalent source grids must produce
+    * byte-identical canonical records. */
+   struct agx3_cdm_direct_launch_info group_info =
+      make_info(AGX_CHIP_G17S, 3);
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS, group_counts, local_size,
+      group_info.global_size));
+   memcpy(group_info.local_size, local_size, sizeof(local_size));
+   struct agx3_cdm_direct_launch_info thread_info = group_info;
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, local_size,
+      thread_info.global_size));
+   uint8_t group_record[AGX3_CDM_DIRECT_LAUNCH_SIZE];
+   uint8_t thread_record[AGX3_CDM_DIRECT_LAUNCH_SIZE];
+   CHECK(agx3_cdm_direct_launch_pack(&group_info, group_record));
+   CHECK(agx3_cdm_direct_launch_pack(&thread_info, thread_record));
+   CHECK(memcmp(group_record, thread_record, sizeof(group_record)) == 0);
+
+   /* Exact input/output aliasing remains transactional. */
+   uint32_t aliased[3] = {7, 8, 9};
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS, aliased, local_size, aliased));
+   CHECK(memcmp(aliased, thread_counts, sizeof(aliased)) == 0);
+   uint32_t aliased_local[3] = {4, 5, 6};
+   CHECK(agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, aliased_local,
+      aliased_local));
+   CHECK(memcmp(aliased_local, thread_counts, sizeof(aliased_local)) == 0);
+
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      uint32_t overflowing_groups[3] = {1, 1, 1};
+      uint32_t overflow_local[3] = {1, 1, 1};
+      overflowing_groups[axis] = UINT32_MAX;
+      overflow_local[axis] = 2;
+      memset(resolved, 0xa5, sizeof(resolved));
+      CHECK(!agx3_cdm_direct_grid_resolve(
+         AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS, overflowing_groups,
+         overflow_local, resolved));
+      CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+
+      uint32_t invalid_local[3] = {1, 1, 1};
+      invalid_local[axis] = 0x800;
+      memset(resolved, 0xa5, sizeof(resolved));
+      CHECK(!agx3_cdm_direct_grid_resolve(
+         AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, invalid_local,
+         resolved));
+      CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+   }
+
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(!agx3_cdm_direct_grid_resolve(
+      (enum agx3_cdm_direct_grid_source)-1, group_counts, local_size,
+      resolved));
+   CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(!agx3_cdm_direct_grid_resolve(
+      (enum agx3_cdm_direct_grid_source)2, group_counts, local_size,
+      resolved));
+   CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(!agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, NULL, local_size, resolved));
+   CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+   memset(resolved, 0xa5, sizeof(resolved));
+   CHECK(!agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, NULL, resolved));
+   CHECK(bytes_are_zero(resolved, sizeof(resolved)));
+   CHECK(!agx3_cdm_direct_grid_resolve(
+      AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS, thread_counts, local_size, NULL));
+   return 0;
+}
+
+static int
 test_exact_witness_and_targets(void)
 {
    static const uint8_t expected[AGX3_CDM_DIRECT_LAUNCH_SIZE] = {
@@ -260,11 +350,9 @@ test_exact_witness_and_targets(void)
       CHECK(agx3_cdm_direct_launch_target_grounded(chip));
 
       {
-         const unsigned mode = AGX3_CDM_DIRECT_GRID_THREADGROUPS;
          for (unsigned dimensions = 1; dimensions <= 3; ++dimensions) {
             const struct agx3_cdm_direct_launch_info info =
-               make_info(chip, (enum agx3_cdm_direct_grid_mode)mode,
-                         dimensions);
+               make_info(chip, dimensions);
             uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE];
             CHECK(agx3_cdm_direct_launch_pack(&info, packed));
             CHECK(agx3_cmdstream_load_le32(packed) ==
@@ -282,9 +370,8 @@ test_exact_witness_and_targets(void)
             CHECK(decoded.template_words.word0 == info.template_words.word0);
             CHECK(decoded.template_words.word1 == info.template_words.word1);
             CHECK(decoded.pipeline == info.pipeline);
-            CHECK(decoded.grid_mode == info.grid_mode);
             CHECK(decoded.dimensions == info.dimensions);
-            CHECK(!decoded.g15x_word3_bit31);
+            CHECK(!decoded.g15x_has_multiple_agcs);
             CHECK(memcmp(decoded.global_size, info.global_size,
                          sizeof(info.global_size)) == 0);
             CHECK(memcmp(decoded.local_size, info.local_size,
@@ -309,7 +396,7 @@ test_exact_witness_and_targets(void)
       }
 
       struct agx3_cdm_direct_launch_info witness =
-         make_info(chip, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 3);
+         make_info(chip, 3);
       uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE];
       CHECK(agx3_cdm_direct_launch_pack(&witness, packed));
       CHECK(memcmp(packed, expected, sizeof(expected)) == 0);
@@ -326,7 +413,7 @@ test_exact_witness_and_targets(void)
    }
 
    const struct agx3_cdm_direct_launch_info witness =
-      make_info(AGX_CHIP_G17S, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 3);
+      make_info(AGX_CHIP_G17S, 3);
    uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE];
    CHECK(agx3_cdm_direct_launch_pack(&witness, packed));
    for (unsigned t = 0; t < ARRAY_SIZE(unsupported_targets); ++t) {
@@ -350,12 +437,12 @@ test_exact_witness_and_targets(void)
 }
 
 static int
-test_enqueue_adjustment_and_g15x_bit(void)
+test_enqueue_adjustment_and_multiple_agcs(void)
 {
    for (uint32_t y = 0; y <= 2; ++y) {
       for (uint32_t z = 0; z <= 2; ++z) {
          struct agx3_cdm_direct_launch_info info =
-            make_info(AGX_CHIP_G17S, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 1);
+            make_info(AGX_CHIP_G17S, 1);
          info.global_size[1] = y;
          info.global_size[2] = z;
          uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE];
@@ -383,8 +470,8 @@ test_enqueue_adjustment_and_g15x_bit(void)
    for (unsigned t = 0; t < ARRAY_SIZE(grounded_targets); ++t) {
       const enum agx_chip chip = grounded_targets[t];
       struct agx3_cdm_direct_launch_info info =
-         make_info(chip, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 2);
-      info.g15x_word3_bit31 = true;
+         make_info(chip, 2);
+      info.g15x_has_multiple_agcs = true;
       uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE];
       memset(packed, 0xa5, sizeof(packed));
       CHECK(agx3_cdm_direct_launch_pack(&info, packed) ==
@@ -394,21 +481,10 @@ test_enqueue_adjustment_and_g15x_bit(void)
          struct agx3_cdm_direct_launch_info decoded;
          CHECK(agx3_cdm_direct_launch_unpack(chip, packed, sizeof(packed),
                                              &decoded));
-         CHECK(decoded.g15x_word3_bit31);
+         CHECK(decoded.g15x_has_multiple_agcs);
       } else {
          CHECK(bytes_are_zero(packed, sizeof(packed)));
       }
-
-      info.grid_mode = AGX3_CDM_DIRECT_GRID_THREADS;
-      memset(packed, 0xa5, sizeof(packed));
-      CHECK(!agx3_cdm_direct_launch_pack(&info, packed));
-      CHECK(bytes_are_zero(packed, sizeof(packed)));
-
-      struct agx3_cdm_direct_launch_info threads =
-         make_info(chip, AGX3_CDM_DIRECT_GRID_THREADS, 2);
-      memset(packed, 0xa5, sizeof(packed));
-      CHECK(!agx3_cdm_direct_launch_pack(&threads, packed));
-      CHECK(bytes_are_zero(packed, sizeof(packed)));
    }
    return 0;
 }
@@ -417,7 +493,7 @@ static int
 test_boundaries_and_failure_clearing(void)
 {
    struct agx3_cdm_direct_launch_info info =
-      make_info(AGX_CHIP_G17S, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 1);
+      make_info(AGX_CHIP_G17S, 1);
    uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE + 1];
 
    info.pipeline = (UINT64_C(1) << 48) - 64;
@@ -479,16 +555,6 @@ test_boundaries_and_failure_clearing(void)
                 sizeof(global_boundaries.global_size)) == 0);
 
    struct agx3_cdm_direct_launch_info invalid = info;
-   invalid.grid_mode = (enum agx3_cdm_direct_grid_mode)-1;
-   memset(packed, 0xa5, AGX3_CDM_DIRECT_LAUNCH_SIZE);
-   CHECK(!agx3_cdm_direct_launch_pack(&invalid, packed));
-   CHECK(bytes_are_zero(packed, AGX3_CDM_DIRECT_LAUNCH_SIZE));
-   invalid.grid_mode = (enum agx3_cdm_direct_grid_mode)2;
-   memset(packed, 0xa5, AGX3_CDM_DIRECT_LAUNCH_SIZE);
-   CHECK(!agx3_cdm_direct_launch_pack(&invalid, packed));
-   CHECK(bytes_are_zero(packed, AGX3_CDM_DIRECT_LAUNCH_SIZE));
-
-   invalid = info;
    invalid.template_words.word0 |= UINT32_C(1);
    memset(packed, 0xa5, AGX3_CDM_DIRECT_LAUNCH_SIZE);
    CHECK(!agx3_cdm_direct_launch_pack(&invalid, packed));
@@ -531,7 +597,7 @@ static int
 test_record_bit_classification(void)
 {
    const struct agx3_cdm_direct_launch_info base =
-      make_info(AGX_CHIP_G17S, AGX3_CDM_DIRECT_GRID_THREADGROUPS, 1);
+      make_info(AGX_CHIP_G17S, 1);
    uint8_t canonical[AGX3_CDM_DIRECT_LAUNCH_SIZE];
    CHECK(agx3_cdm_direct_launch_pack(&base, canonical));
 
@@ -595,7 +661,6 @@ test_record_bit_classification(void)
    /* 2D and 3D differ by exactly bit 2; this is a canonical reclassification,
     * not malformed data. */
    struct agx3_cdm_direct_launch_info two_d = base;
-   two_d.grid_mode = AGX3_CDM_DIRECT_GRID_THREADGROUPS;
    two_d.dimensions = 2;
    CHECK(agx3_cdm_direct_launch_pack(&two_d, canonical));
    agx3_cmdstream_store_le32(
@@ -631,8 +696,9 @@ test_record_bit_classification(void)
 int
 main(void)
 {
-   if (test_template_contract() || test_exact_witness_and_targets() ||
-       test_enqueue_adjustment_and_g15x_bit() ||
+   if (test_template_contract() || test_direct_grid_sources() ||
+       test_exact_witness_and_targets() ||
+       test_enqueue_adjustment_and_multiple_agcs() ||
        test_boundaries_and_failure_clearing() ||
        test_record_bit_classification())
       return 1;

@@ -155,7 +155,8 @@ enum agx_ioto_load_alloc_result {
 
 enum agx_ioto_load_encoding agx_ioto_load_target_encoding(enum agx_chip chip);
 
-/* Remains false until native LDDEV/COPY semantic packers replace callbacks. */
+/* Remains false until every live resource category, loadFrom* form and final
+ * integration order is grounded, even when a narrow native packer is ready. */
 bool agx_ioto_load_production_ready(enum agx_chip chip);
 
 bool agx_ioto_load_core_init(struct agx_ioto_load_core *core,

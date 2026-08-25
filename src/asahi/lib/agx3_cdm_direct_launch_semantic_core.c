@@ -37,7 +37,7 @@ agx3_cdm_direct_template_build(
     * object offsets differ, but their recovered values occupy these exact
     * template ranges in both implementations. */
    result->word0 = ((uint32_t)fields->word0_bits_3_14 << 3) |
-                   ((uint32_t)fields->compiler_reply_word0_bit23 << 23) |
+                   ((uint32_t)fields->ray_traversal_depth_nonzero << 23) |
                    ((uint32_t)fields->subkernel_x_target_workitems << 19);
    result->word1 = fields->word1_bits_3_20 << 3;
    return true;
@@ -69,9 +69,13 @@ agx3_cdm_direct_template_build_from_sources(
    const struct agx3_cdm_direct_template_fields fields = {
       .word0_bits_3_14 = (uint16_t)word0_value,
       .word1_bits_3_20 = (uint32_t)word1_value,
-      .compiler_reply_word0_bit23 = sources->compiler_reply_word0_bit23,
-      .subkernel_x_target_workitems =
-         sources->subkernel_x_target_workitems,
+      .ray_traversal_depth_nonzero = sources->ray_traversal_depth_nonzero,
+
+      /* Every recovered HAL200/HAL300 finalize path initializes
+       * getSubKernelXTargetWorkitems() to one before constructing a direct
+       * template.  performEnqueueKernel may subsequently clear this bit for
+       * a one-dimensional grid. */
+      .subkernel_x_target_workitems = true,
    };
    return agx3_cdm_direct_template_build(&fields, result);
 }
@@ -91,7 +95,7 @@ agx3_cdm_direct_template_decode(
 
    fields->word0_bits_3_14 = (template_words->word0 >> 3) & 0xfff;
    fields->word1_bits_3_20 = (template_words->word1 >> 3) & 0x3ffff;
-   fields->compiler_reply_word0_bit23 =
+   fields->ray_traversal_depth_nonzero =
       (template_words->word0 >> 23) & 1;
    fields->subkernel_x_target_workitems =
       (template_words->word0 >> 19) & 1;
@@ -127,31 +131,73 @@ agx3_cdm_direct_g15x_bit31_allowed(enum agx_chip chip)
           chip == AGX_CHIP_G15D;
 }
 
+bool
+agx3_cdm_direct_grid_resolve(enum agx3_cdm_direct_grid_source source,
+                             const uint32_t input_size[3],
+                             const uint32_t local_size[3],
+                             uint32_t global_size[3])
+{
+   if (!global_size)
+      return false;
+
+   if (!input_size || !local_size) {
+      memset(global_size, 0, 3 * sizeof(*global_size));
+      return false;
+   }
+
+   /* Preserve both inputs before touching output so exact and partial aliasing
+    * remain transactional. */
+   uint32_t input[3], local[3], resolved[3] = {0};
+   memcpy(input, input_size, sizeof(input));
+   memcpy(local, local_size, sizeof(local));
+
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      if (local[axis] > 0x7ff)
+         goto fail;
+
+      switch (source) {
+      case AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS: {
+         const uint64_t product =
+            (uint64_t)input[axis] * local[axis];
+         if (product > UINT32_MAX)
+            goto fail;
+         resolved[axis] = (uint32_t)product;
+         break;
+      }
+      case AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS:
+         resolved[axis] = input[axis];
+         break;
+      default:
+         goto fail;
+      }
+   }
+
+   memcpy(global_size, resolved, sizeof(resolved));
+   return true;
+
+fail:
+   memset(global_size, 0, 3 * sizeof(*global_size));
+   return false;
+}
+
 static bool
-agx3_cdm_direct_word3_build(enum agx_chip chip,
-                            enum agx3_cdm_direct_grid_mode mode,
-                            uint8_t dimensions, bool g15x_bit31,
+agx3_cdm_direct_word3_build(enum agx_chip chip, uint8_t dimensions,
+                            bool g15x_has_multiple_agcs,
                             uint32_t *word3)
 {
    uint32_t value = 0;
    if (!agx3_cdm_direct_dimension_word(dimensions, &value))
       return false;
 
-   switch (mode) {
-   case AGX3_CDM_DIRECT_GRID_THREADGROUPS:
-      value |= UINT32_C(1) << 30;
-      if (g15x_bit31) {
-         if (!agx3_cdm_direct_g15x_bit31_allowed(chip))
-            return false;
-         value |= UINT32_C(1) << 31;
-      }
-      break;
-   case AGX3_CDM_DIRECT_GRID_THREADS:
-      /* The pinned emitters select a separate 24-byte template for direct
-       * thread dispatch.  It cannot be represented by this 40-byte API. */
-      return false;
-   default:
-      return false;
+   /* Both direct-thread and direct-threadgroup entry points set bit 30 and
+    * emit this same 40-byte record.  The 24-byte record selected when the
+    * enqueue call carries an address is an indirect form and is not modeled
+    * by this API. */
+   value |= UINT32_C(1) << 30;
+   if (g15x_has_multiple_agcs) {
+      if (!agx3_cdm_direct_g15x_bit31_allowed(chip))
+         return false;
+      value |= UINT32_C(1) << 31;
    }
 
    *word3 = value;
@@ -175,9 +221,8 @@ agx3_cdm_direct_launch_pack(
       return false;
 
    uint32_t word3 = 0;
-   if (!agx3_cdm_direct_word3_build(info->chip, info->grid_mode,
-                                    info->dimensions,
-                                    info->g15x_word3_bit31, &word3))
+   if (!agx3_cdm_direct_word3_build(info->chip, info->dimensions,
+                                    info->g15x_has_multiple_agcs, &word3))
       return false;
 
    /* performEnqueueKernel clears template bits 17..19 when both higher grid
@@ -229,9 +274,7 @@ agx3_cdm_direct_launch_unpack(
    if ((raw.opaque_word3 & (UINT32_C(1) << 30)) == 0)
       return false;
 
-   const enum agx3_cdm_direct_grid_mode mode =
-      AGX3_CDM_DIRECT_GRID_THREADGROUPS;
-   const bool g15x_bit31 = (raw.opaque_word3 >> 31) & 1;
+   const bool g15x_has_multiple_agcs = (raw.opaque_word3 >> 31) & 1;
    const uint32_t dimension_word =
       raw.opaque_word3 & ~(UINT32_C(3) << 30);
 
@@ -251,7 +294,8 @@ agx3_cdm_direct_launch_unpack(
    }
 
    uint32_t canonical_word3 = 0;
-   if (!agx3_cdm_direct_word3_build(chip, mode, dimensions, g15x_bit31,
+   if (!agx3_cdm_direct_word3_build(chip, dimensions,
+                                    g15x_has_multiple_agcs,
                                     &canonical_word3) ||
        canonical_word3 != raw.opaque_word3 ||
        (raw.global_size[1] < 2 && raw.global_size[2] < 2 &&
@@ -262,9 +306,8 @@ agx3_cdm_direct_launch_unpack(
       .chip = chip,
       .template_words = template_words,
       .pipeline = raw.pipeline,
-      .grid_mode = mode,
       .dimensions = dimensions,
-      .g15x_word3_bit31 = g15x_bit31,
+      .g15x_has_multiple_agcs = g15x_has_multiple_agcs,
       .global_size = {raw.global_size[0], raw.global_size[1],
                       raw.global_size[2]},
       .local_size = {raw.local_size[0], raw.local_size[1],

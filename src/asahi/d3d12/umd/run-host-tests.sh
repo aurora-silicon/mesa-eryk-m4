@@ -150,6 +150,26 @@ done
 "$out/test_agx3_ioto_load_packer"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_ioto_uniform_program.c" \
+    "$repo_root/src/asahi/compiler/agx3_ioto_load_packer.c" \
+    "$repo_root/src/asahi/compiler/agx3_mem_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_load_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_state_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_program_core.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-ioto-uniform-program.c" \
+    -o "$out/test_agx3_ioto_uniform_program"
+"$out/test_agx3_ioto_uniform_program"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/asahi/compiler" \
     "$repo_root/src/asahi/compiler/agx3_vary_core.c" \
     "$repo_root/src/asahi/compiler/agx3_binder.c" \
@@ -248,6 +268,14 @@ done
     "$d12_dir/tests/d12_agx3_ppp_w_clamp_cull2_core_tests.c" \
     -o "$out/d12_agx3_ppp_w_clamp_cull2_core_tests"
 "$out/d12_agx3_ppp_w_clamp_cull2_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_stencil_core.c" \
+    "$d12_dir/d12_agx3_ppp_hal300_depth_stencil_core.c" \
+    "$d12_dir/tests/d12_agx3_ppp_hal300_depth_stencil_core_tests.c" \
+    -o "$out/d12_agx3_ppp_hal300_depth_stencil_core_tests"
+"$out/d12_agx3_ppp_hal300_depth_stencil_core_tests"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$d12_dir" -I"$repo_root/src" -I"$repo_root/include" \
@@ -533,6 +561,13 @@ done
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_stencil_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-ppp-hal300-depth-stencil-core.c" \
+    -o "$out/agx_ppp_hal300_depth_stencil_core_tests"
+"$out/agx_ppp_hal300_depth_stencil_core_tests"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx_vdm_ppp_state_core.c" \
     "$repo_root/src/asahi/lib/tests/test-vdm-ppp-state-core.c" \
     -o "$out/agx_vdm_ppp_state_core_tests"
@@ -652,6 +687,16 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
     "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ioto-decode.c" \
     -o "$out/hk_agx3_ioto_decode_tests"
 "$out/hk_agx3_ioto_decode_tests"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_ppp_hal300_depth_stencil_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_ppp_hal300_depth_stencil.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-ppp-hal300-depth-stencil.c" \
+    -o "$out/hk_agx3_ppp_hal300_depth_stencil_tests"
+"$out/hk_agx3_ppp_hal300_depth_stencil_tests"
 
 "$cc" "$common[@]" \
     -Wno-c23-extensions \
