@@ -25,6 +25,7 @@
 #include "hk_shader.h"
 
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
 #include "asahi/lib/agx_vdm_stream_terminate_core.h"
 #include "libagx_dgc.h"
@@ -905,6 +906,7 @@ hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
 void
 hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_rendering_state *render = &cmd->state.gfx.render;
    uint8_t *map = cs->current;
 
@@ -923,8 +925,36 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
     * with another that caused stale data to be cached and the CPU wrote to it
     * in the meantime.
     */
-   agx_push(map, VDM_BARRIER, cfg) {
-      cfg.usc_cache_inval = true;
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      agx_push(map, VDM_BARRIER, cfg) {
+         cfg.usc_cache_inval = true;
+      }
+      break;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      struct agx_vdm_barrier_core barrier;
+      if (!agx_vdm_barrier_core_pack(dev->dev.chip, &barrier)) {
+         mesa_loge("no grounded AGX3 initial VDM barrier for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk,
+                                     VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
+      memcpy(map, barrier.bytes, barrier.length);
+      map += barrier.length;
+      break;
+   }
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      mesa_loge("unknown VDM command-stream generation for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
    }
 
    struct AGX_PPP_HEADER present = {

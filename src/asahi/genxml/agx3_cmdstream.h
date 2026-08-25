@@ -24,7 +24,7 @@
 #define AGX3_CDM_LINK_PADDING_SIZE 4u
 #define AGX3_CDM_BARRIER_SIZE 4u
 #define AGX3_CDM_SECONDARY_BARRIER_SIZE 4u
-#define AGX3_CDM_STREAM_TERMINATE_SIZE 8u
+#define AGX3_CDM_STREAM_TERMINATE_SIZE 4u
 
 struct agx3_cdm_launch_info {
    enum agx_chip chip;
@@ -478,8 +478,8 @@ agx3_cdm_secondary_barrier_validate(enum agx_chip chip, const void *packed,
              UINT32_C(0x60000502);
 }
 
-/* The exact eight-byte terminate slot is byte-identical in every inspected
- * AGX3 launch class. */
+/* Every inspected classic and CommandEncodingNext encoder advances the CDM
+ * cursor by exactly four bytes and stores this single terminate word. */
 static inline bool
 agx3_cdm_stream_terminate_pack(
    enum agx_chip chip, uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE])
@@ -503,7 +503,6 @@ agx3_cdm_stream_terminate_validate(enum agx_chip chip, const void *packed,
        !agx3_cdm_launch_target_grounded(chip))
       return false;
 
-   const uint8_t *bytes = (const uint8_t *)packed;
-   return agx3_cmdstream_load_le32(bytes) == UINT32_C(0x40000000) &&
-          agx3_cmdstream_load_le32(bytes + 4) == 0;
+   return agx3_cmdstream_load_le32((const uint8_t *)packed) ==
+          UINT32_C(0x40000000);
 }

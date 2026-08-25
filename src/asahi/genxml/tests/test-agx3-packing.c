@@ -426,6 +426,35 @@ test_agx3_live_vdm_draw(void)
 }
 
 static void
+test_agx3_live_vdm_barrier(void)
+{
+   const enum agx_chip grounded[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+
+   for (unsigned i = 0; i < sizeof(grounded) / sizeof(grounded[0]); ++i) {
+      uint32_t packed[2] = {UINT32_C(0xdeadbeef), UINT32_C(0xfeedface)};
+      uint32_t *end = agx_vdm_barrier(packed, grounded[i]);
+      CHECK_EQ((uintptr_t)end - (uintptr_t)packed, sizeof(uint32_t));
+      CHECK_EQ(packed[0], UINT32_C(0x21000960));
+      CHECK_EQ(packed[1], UINT32_C(0xfeedface));
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G16P,
+      AGX_CHIP_G17A,
+      AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      uint32_t packed = UINT32_C(0xdeadbeef);
+      CHECK_EQ(agx_vdm_barrier(&packed, rejected[i]) == &packed, true);
+      CHECK_EQ(packed, UINT32_C(0xdeadbeef));
+   }
+}
+
+static void
 test_agx3_cdm_stream_link(void)
 {
    const enum agx_chip grounded[] = {
@@ -767,7 +796,7 @@ test_agx3_cdm_stream_terminate(void)
       AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
    };
    const uint8_t expected[AGX3_CDM_STREAM_TERMINATE_SIZE] = {
-      0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x40,
    };
 
    for (unsigned i = 0; i < sizeof(grounded) / sizeof(grounded[0]); ++i) {
@@ -796,9 +825,9 @@ test_agx3_cdm_stream_terminate(void)
 
    uint8_t packed[AGX3_CDM_STREAM_TERMINATE_SIZE];
    CHECK_EQ(agx3_cdm_stream_terminate_pack(AGX_CHIP_G17S, packed), true);
-   CHECK_EQ(agx3_cdm_stream_terminate_validate(AGX_CHIP_G17S, packed, 7),
+   CHECK_EQ(agx3_cdm_stream_terminate_validate(AGX_CHIP_G17S, packed, 3),
             false);
-   packed[4] = 1;
+   packed[0] ^= 1;
    CHECK_EQ(agx3_cdm_stream_terminate_validate(
                AGX_CHIP_G17S, packed, sizeof(packed)),
             false);
@@ -820,6 +849,7 @@ main(void)
    test_sampler_generations();
    test_agx3_cdm_launch();
    test_agx3_live_vdm_draw();
+   test_agx3_live_vdm_barrier();
    test_agx3_cdm_stream_link();
    test_agx3_cdm_link_padding();
    test_agx3_cdm_barrier();

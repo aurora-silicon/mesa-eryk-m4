@@ -265,7 +265,7 @@ test_sequence_and_rejections(void)
 
    uint8_t malformed_terminate[AGX3_CDM_STREAM_TERMINATE_SIZE];
    CHECK(agx3_cdm_stream_terminate_pack(AGX_CHIP_G17S, malformed_terminate));
-   malformed_terminate[4] = 1;
+   malformed_terminate[0] ^= 1;
    memset(&decoded, 0xa5, sizeof(decoded));
    CHECK(!agx3_cdm_decode_one(AGX_CHIP_G17S, malformed_terminate,
                               sizeof(malformed_terminate), &decoded));

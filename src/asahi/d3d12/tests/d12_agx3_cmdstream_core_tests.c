@@ -630,7 +630,6 @@ main(void)
                                                  &encoded));
       CHECK(encoded.length == AGX3_CDM_STREAM_TERMINATE_SIZE);
       CHECK(agx3_cmdstream_load_le32(encoded.bytes) == UINT32_C(0x40000000));
-      CHECK(agx3_cmdstream_load_le32(encoded.bytes + 4) == 0);
       CHECK(d12_agx3_validate_cdm_stream_terminate(
          launch_targets[i], encoded.bytes, encoded.length));
       CHECK(!d12_agx3_validate_cdm_stream_terminate(

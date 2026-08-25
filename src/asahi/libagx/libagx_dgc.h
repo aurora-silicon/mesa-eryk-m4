@@ -517,6 +517,35 @@ agx_vdm_draw_size(enum agx_chip chip, struct agx_draw draw)
 static inline GLOBAL uint32_t *
 agx_vdm_barrier(GLOBAL uint32_t *out, enum agx_chip chip)
 {
+   /* CommandEncodingNext emits this exact type-1 memory-barrier word on every
+    * byte-witnessed G15--G17 identity.  Do not feed those chips through the
+    * legacy genxml packet below: that packet is AGX2 and has a different
+    * opcode/field layout.  Keep the unwitnessed G16P/G17A identities closed
+    * instead of guessing from their neighbouring families. */
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      *out++ = 0x21000960u;
+      return out;
+
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G17A:
+   case AGX_CHIP_UNKNOWN:
+      return out;
+
+   default:
+      break;
+   }
+
    agx_push(out, VDM_BARRIER, cfg) {
       cfg.unk_4 = (chip == AGX_CHIP_G13X);
       cfg.unk_5 = true;
