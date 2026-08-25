@@ -15,6 +15,8 @@
 #include "agx_linker.h"
 #include "agx_nir_lower_vbo.h"
 #include "agx_ppp.h"
+#include "agx_ppp_hal300_depth_bias_scissor_core.h"
+#include "agx_ppp_viewport_payload_core.h"
 #include "agx_tilebuffer.h"
 #include "agx_usc.h"
 #include "agx_uvs.h"
@@ -2062,6 +2064,114 @@ hk_stencil_test_enabled(struct hk_cmd_buffer *cmd)
           render->stencil_att.vk_format != VK_FORMAT_UNDEFINED;
 }
 
+static bool
+hk_emit_hal300_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                        enum agx_chip chip, unsigned viewport_count,
+                        unsigned scissor_index, const unsigned minx[],
+                        const unsigned miny[], const unsigned maxx[],
+                        const unsigned maxy[], const VkViewport viewports[],
+                        uint8_t **out)
+{
+   if (!out || !*out || viewport_count == 0 ||
+       viewport_count > AGX_PPP_VIEWPORT_PAYLOAD_MAX_VIEWPORTS ||
+       !agx_ppp_hal300_depth_bias_scissor_core_supported(chip))
+      return false;
+
+   const size_t scissor_offset =
+      (size_t)scissor_index * AGX_PPP_HAL300_SCISSOR_RECORD_LENGTH;
+   const size_t scissor_size =
+      (size_t)viewport_count * AGX_PPP_HAL300_SCISSOR_RECORD_LENGTH;
+   if (scissor_offset > cs->scissor.size ||
+       scissor_size > cs->scissor.size - scissor_offset)
+      return false;
+
+   const uint64_t scissor_base =
+      hk_pool_upload(cmd, (const uint8_t *)cs->scissor.data + scissor_offset,
+                     scissor_size, 64);
+
+   static const uint8_t zero_depth_bias[AGX_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH];
+   const void *depth_bias = zero_depth_bias;
+   if (cs->depth_bias.size >= AGX_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH) {
+      depth_bias = (const uint8_t *)cs->depth_bias.data + cs->depth_bias.size -
+                   AGX_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH;
+   }
+
+   const uint64_t depth_bias_base =
+      hk_pool_upload(cmd, depth_bias,
+                     AGX_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH, 64);
+   if (!scissor_base || !depth_bias_base)
+      return false;
+
+   struct agx_ppp_hal300_depth_bias_scissor_bases bases;
+   const struct agx_ppp_hal300_depth_bias_scissor_bases_fields base_fields = {
+      .depth_bias_base = depth_bias_base,
+      .scissor_base = scissor_base,
+   };
+   if (!agx_ppp_hal300_depth_bias_scissor_bases_pack(chip, &base_fields,
+                                                     &bases))
+      return false;
+
+   struct agx_ppp_viewport_payload_fields viewport_fields = {
+      .viewport_count = viewport_count,
+   };
+
+   for (unsigned i = 0; i < viewport_count; ++i) {
+      uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
+      agx_pack(region_clip, REGION_CLIP, cfg) {
+         cfg.enable = true;
+         cfg.min_x = minx[i] / 32;
+         cfg.min_y = miny[i] / 32;
+         cfg.max_x = DIV_ROUND_UP(MAX2(maxx[i], 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(maxy[i], 1), 32);
+      }
+      memcpy(&viewport_fields.region_clip_raw[i], region_clip,
+             sizeof(region_clip));
+
+      const VkViewport *vp = &viewports[i];
+      viewport_fields.viewports[i] =
+         (struct agx_ppp_viewport_transform_raw){
+            .translate_x = fui(vp->x + 0.5f * vp->width),
+            .scale_x = fui(vp->width * 0.5f),
+            .translate_y = fui(vp->y + 0.5f * vp->height),
+            .scale_y = fui(vp->height * 0.5f),
+            .translate_z = fui(vp->minDepth),
+            .scale_z = fui(vp->maxDepth - vp->minDepth),
+         };
+   }
+
+   uint8_t viewport_control[AGX_VIEWPORT_CONTROL_LENGTH];
+   agx_pack(viewport_control, VIEWPORT_CONTROL, cfg)
+      ;
+   memcpy(&viewport_fields.viewport_control_raw, viewport_control,
+          sizeof(viewport_control));
+
+   struct agx_ppp_viewport_payload_core viewport;
+   if (!agx_ppp_viewport_payload_core_pack(chip, &viewport_fields, &viewport))
+      return false;
+
+   const uint64_t bases_gpu =
+      hk_pool_upload(cmd, bases.bytes, bases.length, AGX_PPP_HEADER_ALIGN);
+   const uint64_t viewport_gpu =
+      hk_pool_upload(cmd, viewport.bytes, viewport.length,
+                     AGX_PPP_HEADER_ALIGN);
+   if (!bases_gpu || !viewport_gpu)
+      return false;
+
+   /* Keep emission transactional: both exact PPP pointers are staged before
+    * the caller's live control-stream cursor is advanced. HAL300's initial
+    * render-state path emits the viewport update before the base update. */
+   uint8_t records[2 * AGX_PPP_STATE_LENGTH];
+   uint8_t *record = records;
+   if (!agx_ppp_emit_state(chip, &record, viewport_gpu, viewport.length) ||
+       !agx_ppp_emit_state(chip, &record, bases_gpu, bases.length) ||
+       record != records + sizeof(records))
+      return false;
+
+   memcpy(*out, records, sizeof(records));
+   *out += sizeof(records);
+   return true;
+}
+
 static void
 hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 {
@@ -2140,6 +2250,17 @@ hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
             cfg.max_z = 1.0;
          }
       }
+   }
+
+   if (agx_chip_command_stream_generation(dev->dev.chip) ==
+       AGX_CS_GENERATION_HAL300) {
+      if (!hk_emit_hal300_vp_state(cmd, cs, dev->dev.chip, count, index, minx,
+                                   miny, maxx, maxy, dyn->vp.viewports, out)) {
+         mesa_loge("no grounded HAL300 viewport/base emitter for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      }
+      return;
    }
 
    /* Upload state */

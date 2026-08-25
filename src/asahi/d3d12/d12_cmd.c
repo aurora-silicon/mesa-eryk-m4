@@ -15,6 +15,8 @@
 #include "d12_private.h"
 #include "d12_buffer_view_core.h"
 #include "d12_agx3_cmdstream_core.h"
+#include "d12_agx3_ppp_hal300_depth_bias_scissor_core.h"
+#include "d12_agx3_ppp_viewport_payload_core.h"
 #include "d12_agx3_vdm_barrier_core.h"
 #include "d12_agx3_vdm_stream_terminate_core.h"
 #include "d12_command_validation_core.h"
@@ -6023,6 +6025,90 @@ d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
    return index;
 }
 
+static bool
+d12_emit_hal300_viewport_ppp(
+   struct d12_cmd_list *list, const struct d12_segment *seg,
+   unsigned viewport_count,
+   const struct d12_viewport_hw_state states[D12_VIEWPORT_STATE_MAX],
+   unsigned scissor_index, unsigned depth_bias_index, uint8_t **out)
+{
+   if (!out || !*out || viewport_count == 0 ||
+       viewport_count > D12_AGX3_PPP_VIEWPORT_MAX_VIEWPORTS ||
+       scissor_index > D12_SCISSORS_PER_SEGMENT - viewport_count ||
+       depth_bias_index >= D12_DEPTH_BIASES_PER_SEGMENT)
+      return false;
+
+   const enum agx_chip chip = list->device->dev.chip;
+   struct d12_agx3_ppp_hal300_depth_bias_scissor_bases bases;
+   const struct d12_agx3_ppp_hal300_depth_bias_scissor_bases_fields
+      base_fields = {
+         .depth_bias_base =
+            seg->depth_bias_base +
+            (uint64_t)depth_bias_index * AGX_DEPTH_BIAS_LENGTH,
+         .scissor_base =
+            seg->scissor_base + (uint64_t)scissor_index * AGX_SCISSOR_LENGTH,
+      };
+   if (!d12_agx3_encode_ppp_hal300_depth_bias_scissor_bases(
+          chip, &base_fields, &bases))
+      return false;
+
+   struct d12_agx3_ppp_viewport_fields viewport_fields = {
+      .viewport_count = viewport_count,
+   };
+   for (unsigned i = 0; i < viewport_count; ++i) {
+      uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
+      agx_pack(region_clip, REGION_CLIP, cfg) {
+         cfg.enable = true;
+         cfg.min_x = states[i].clip[0] / 32;
+         cfg.min_y = states[i].clip[1] / 32;
+         cfg.max_x = DIV_ROUND_UP(MAX2(states[i].clip[2], 1), 32);
+         cfg.max_y = DIV_ROUND_UP(MAX2(states[i].clip[3], 1), 32);
+      }
+      memcpy(&viewport_fields.region_clip_raw[i], region_clip,
+             sizeof(region_clip));
+
+      viewport_fields.viewports[i] =
+         (struct d12_agx3_ppp_viewport_transform_raw){
+            .translate_x = fui(states[i].transform[0]),
+            .scale_x = fui(states[i].transform[3]),
+            .translate_y = fui(states[i].transform[1]),
+            .scale_y = fui(states[i].transform[4]),
+            .translate_z = fui(states[i].transform[2]),
+            .scale_z = fui(states[i].transform[5]),
+         };
+   }
+
+   uint8_t viewport_control[AGX_VIEWPORT_CONTROL_LENGTH];
+   agx_pack(viewport_control, VIEWPORT_CONTROL, cfg)
+      ;
+   memcpy(&viewport_fields.viewport_control_raw, viewport_control,
+          sizeof(viewport_control));
+
+   struct d12_agx3_ppp_viewport_payload viewport;
+   if (!d12_agx3_encode_ppp_viewport_payload(chip, &viewport_fields,
+                                             &viewport))
+      return false;
+
+   const uint64_t bases_gpu = d12_list_upload(
+      list, bases.bytes, bases.length, AGX_PPP_HEADER_ALIGN);
+   const uint64_t viewport_gpu = d12_list_upload(
+      list, viewport.bytes, viewport.length, AGX_PPP_HEADER_ALIGN);
+   if (!bases_gpu || !viewport_gpu)
+      return false;
+
+   uint8_t records[2 * AGX_PPP_STATE_LENGTH];
+   uint8_t *record = records;
+   /* Match HAL300's initial render-state order: viewport, then base update. */
+   if (!agx_ppp_emit_state(chip, &record, viewport_gpu, viewport.length) ||
+       !agx_ppp_emit_state(chip, &record, bases_gpu, bases.length) ||
+       record != records + sizeof(records))
+      return false;
+
+   memcpy(*out, records, sizeof(records));
+   *out += sizeof(records);
+   return true;
+}
+
 /*
  * Push one face's stencil state. When the test is off the slot still has to
  * be written: the hardware keeps this state across the control stream, and
@@ -8167,6 +8253,19 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
        * when one of its inputs changes; fragment-only updates below do not
        * invalidate it. */
       if (!unchanged) {
+         if (agx_chip_command_stream_generation(list->device->dev.chip) ==
+             AGX_CS_GENERATION_HAL300) {
+            if (!d12_emit_hal300_viewport_ppp(
+                   list, seg, viewport_count, states, scissor_index,
+                   depth_bias_index, &out)) {
+               mesa_loge("no grounded HAL300 viewport/base emitter for %s",
+                         agx_chip_name(list->device->dev.chip));
+               list->state = D12_LIST_ERROR;
+               return;
+            }
+            goto viewport_ppp_emitted;
+         }
+
          struct AGX_PPP_HEADER present = {
             .depth_bias_scissor = true,
             .region_clip = true,
@@ -8220,6 +8319,8 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             list->state = D12_LIST_ERROR;
             return;
          }
+
+      viewport_ppp_emitted:
          seg->viewport_ppp_valid = true;
          seg->viewport_count = (uint8_t)viewport_count;
          seg->viewport_scissor_index = (uint16_t)scissor_index;
