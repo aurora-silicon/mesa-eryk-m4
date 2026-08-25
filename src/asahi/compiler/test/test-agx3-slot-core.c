@@ -29,7 +29,7 @@ int main(void)
       CHECK(agx3_slot_assign(p, 4, 6, r));
       CHECK(r[0].slot==1 && r[0].wait_mask==0);
       CHECK(r[1].slot==2 && r[1].wait_mask==0);
-      CHECK(r[2].slot==0 && r[2].wait_mask==0b11);  /* wait slots 1 and 2 */
+      CHECK(r[2].slot==0 && r[2].wait_mask==0x3u);  /* wait slots 1 and 2 */
       CHECK(r[3].slot==0 && r[3].wait_mask==0);      /* add result is sync */
    }
 
@@ -39,7 +39,7 @@ int main(void)
       struct agx3_slot_instr p[] = { ld(0), alu(2,0,0), alu(4,0,0) };
       CHECK(agx3_slot_assign(p, 3, 6, r));
       CHECK(r[0].slot==1);
-      CHECK(r[1].wait_mask==0b1);  /* first consumer waits slot 1 */
+      CHECK(r[1].wait_mask==0x1u);  /* first consumer waits slot 1 */
       CHECK(r[2].wait_mask==0);    /* already satisfied */
    }
 
@@ -69,7 +69,7 @@ int main(void)
       p[7]=st(0);  /* consume the first load, slot 1 */
       CHECK(agx3_slot_assign(p, 8, 6, r));
       CHECK(r[0].slot==1 && r[1].slot==2 && r[5].slot==6 && r[6].slot==1);
-      CHECK(r[7].wait_mask==0b1);
+      CHECK(r[7].wait_mask==0x1u);
    }
 
    /* agx3c has 8 slots. */
