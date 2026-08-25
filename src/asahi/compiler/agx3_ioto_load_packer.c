@@ -18,7 +18,7 @@ gpu1_lddev_kind(uint8_t ep)
 }
 
 static bool
-absolute_load_registers_ok(const struct agx_ioto_inflight_load *load)
+direct_load_registers_ok(const struct agx_ioto_inflight_load *load)
 {
    return load != NULL && load->data.type == 3 && load->data.value == 1 &&
           load->base.type == 4 && load->base.value == 8 &&
@@ -33,7 +33,7 @@ pack_absolute_load(void *context, enum agx_chip chip,
 {
    struct agx3_ioto_load_packer *packer = context;
    if (packer == NULL || record == NULL || signal_slot == NULL ||
-       packer->chip != chip || !absolute_load_registers_ok(load))
+       packer->chip != chip || !direct_load_registers_ok(load))
       return false;
 
    const uint8_t mask = (uint8_t)((1u << load->count_dwords) - 1u);
@@ -139,7 +139,7 @@ pack_absolute_copy(void *context, enum agx_chip chip,
 {
    struct agx3_ioto_load_packer *packer = context;
    if (packer == NULL || record == NULL || packer->chip != chip ||
-       !absolute_load_registers_ok(load) || dword >= load->count_dwords ||
+       !direct_load_registers_ok(load) || dword >= load->count_dwords ||
        lane_code == 0 || lane_code > 3)
       return false;
 
@@ -247,4 +247,42 @@ agx3_ioto_load_absolute_native(struct agx_ioto_load_core *core,
       return false;
    agx3_ioto_load_packer_ops(&packer, &ops);
    return agx_ioto_load_absolute(core, load, &ops, workspace, allocation);
+}
+
+bool
+agx3_ioto_load_from_scs_native(struct agx_ioto_load_core *core,
+                               const struct agx_ioto_load_from_fixed *load,
+                               struct agx_ioto_load_workspace workspace,
+                               struct agx_ioto_load_allocation *allocation)
+{
+   if (core == NULL || (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 &&
+                        !core->gpu0_round_nops))
+      return false;
+
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+   if (!agx3_ioto_load_packer_init(&packer, core->chip))
+      return false;
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   return agx_ioto_load_from_scs(core, load, &ops, workspace, allocation);
+}
+
+bool
+agx3_ioto_load_from_abi_buffer_native(
+   struct agx_ioto_load_core *core, enum agx_ioto_abi_buffer_slot source,
+   const struct agx_ioto_load_from_fixed *load,
+   struct agx_ioto_load_workspace workspace,
+   struct agx_ioto_load_allocation *allocation)
+{
+   if (core == NULL || (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 &&
+                        !core->gpu0_round_nops))
+      return false;
+
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+   if (!agx3_ioto_load_packer_init(&packer, core->chip))
+      return false;
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   return agx_ioto_load_from_abi_buffer(core, source, load, &ops, workspace,
+                                        allocation);
 }

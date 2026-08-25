@@ -175,12 +175,145 @@ test_ldimm_nop(void)
    CHECK(agx_ioto_load_pack_ldimm(AGX_CHIP_G17G, 0, 0x20, bytes, &length));
    CHECK(length == 2 && bytes[0] == 0x04 && bytes[1] == 0x20);
    CHECK(!agx_ioto_load_pack_ldimm(AGX_CHIP_G17G, 1, 0, bytes, &length));
+   static const uint8_t scs_base[] = {
+      0x4c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
+   };
+   CHECK(agx_ioto_load_pack_ldimm(AGX_CHIP_G15G, AGX_IOTO_LOAD_SCS_BASE_HALF,
+                                  AGX_IOTO_LOAD_SCS_BASE, bytes, &length));
+   CHECK(length == sizeof(scs_base) &&
+         memcmp(bytes, scs_base, sizeof(scs_base)) == 0);
+   CHECK(agx_ioto_load_pack_ldimm(AGX_CHIP_G17G, AGX_IOTO_LOAD_SCS_BASE_HALF,
+                                  AGX_IOTO_LOAD_SCS_BASE, bytes, &length));
+   CHECK(length == sizeof(scs_base) &&
+         memcmp(bytes, scs_base, sizeof(scs_base)) == 0);
 
    uint8_t nop[2];
    agx_ioto_load_pack_nop(0x2a, nop);
    CHECK(nop[0] == 0x06 && nop[1] == 0xa8);
    agx_ioto_load_pack_nop(0, nop);
    CHECK(nop[0] == 0x06 && nop[1] == 0x00);
+   return true;
+}
+
+static struct agx_ioto_load_from_fixed
+fixed_load(uint16_t destination)
+{
+   return (struct agx_ioto_load_from_fixed){
+      .native_slot = 7,
+      .count_dwords = 2,
+      .byte_offset = 0x123,
+      .lane_mask = 0xf,
+      .cprog_dest_half = destination,
+   };
+}
+
+static bool
+test_direct_sources(void)
+{
+   static const uint8_t scs_base[] = {
+      0x4c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
+   };
+   static const enum agx_ioto_abi_buffer_slot slots[] = {
+      AGX_IOTO_ABI_BUFFER_SLOT_2,  AGX_IOTO_ABI_BUFFER_SLOT_4,
+      AGX_IOTO_ABI_BUFFER_SLOT_6,  AGX_IOTO_ABI_BUFFER_SLOT_8,
+      AGX_IOTO_ABI_BUFFER_SLOT_50, AGX_IOTO_ABI_BUFFER_SLOT_52,
+      AGX_IOTO_ABI_BUFFER_SLOT_54,
+   };
+   struct emit_context ctx = {0};
+   struct agx_ioto_load_emit_ops emit = ops(&ctx);
+   struct fixture f;
+
+   const enum agx_chip representatives[] = {AGX_CHIP_G15G, AGX_CHIP_G17G};
+   for (size_t i = 0; i < ARRAY_SIZE(representatives); ++i) {
+      CHECK(fixture_init(&f, representatives[i], 0, false, true));
+      struct agx_ioto_load_from_fixed load = fixed_load(40);
+      struct agx_ioto_load_allocation allocation;
+      CHECK(agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                   &allocation));
+      CHECK(allocation.temp_half == 0 && allocation.reserved_dwords == 2);
+      CHECK(f.core.sink.length == sizeof(scs_base) &&
+            memcmp(f.bytes, scs_base, sizeof(scs_base)) == 0);
+      CHECK(f.core.scs_base_loaded && f.core.load_count == 1);
+      CHECK(f.core.loads[0].data.half == 0 &&
+            f.core.loads[0].base.half == AGX_IOTO_LOAD_SCS_BASE_HALF &&
+            f.core.loads[0].base.type == 4 && f.core.loads[0].base.value == 8 &&
+            f.core.loads[0].byte_offset == 0x123 &&
+            f.core.loads[0].native_slot_half == 14 &&
+            f.core.loads[0].lane_mask == 0xf &&
+            f.core.loads[0].cprog_dest_half == 40);
+
+      load.cprog_dest_half = 44;
+      CHECK(agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                   &allocation));
+      CHECK(f.core.sink.length == sizeof(scs_base));
+      CHECK(f.core.loads[1].data.half == 4 &&
+            f.core.loads[1].base.half == AGX_IOTO_LOAD_SCS_BASE_HALF);
+   }
+
+   for (size_t i = 0; i < ARRAY_SIZE(slots); ++i) {
+      CHECK(fixture_init(&f, AGX_CHIP_G17G, 0, false, false));
+      struct agx_ioto_load_from_fixed load = fixed_load(40);
+      struct agx_ioto_load_allocation allocation;
+      CHECK(agx_ioto_load_from_abi_buffer(&f.core, slots[i], &load, &emit,
+                                          workspace(&f), &allocation));
+      CHECK(f.core.sink.length == 0 && f.core.load_count == 1);
+      CHECK(f.core.loads[0].base.half == 2u * (unsigned)slots[i]);
+      CHECK(!f.core.scs_base_loaded && !f.core.scs_base_ever_loaded);
+      CHECK(f.core.abi4_load_pending ==
+            (slots[i] == AGX_IOTO_ABI_BUFFER_SLOT_4));
+   }
+
+   CHECK(fixture_init(&f, AGX_CHIP_G17G, 0, false, false));
+   struct agx_ioto_load_from_fixed load = fixed_load(40);
+   struct agx_ioto_load_allocation allocation = {
+      .temp_half = UINT16_MAX,
+      .reserved_dwords = UINT8_MAX,
+      .fast_path = true,
+   };
+   CHECK(!agx_ioto_load_from_abi_buffer(&f.core,
+                                        (enum agx_ioto_abi_buffer_slot)3, &load,
+                                        &emit, workspace(&f), &allocation));
+   CHECK(f.core.load_count == 0 && f.core.sink.length == 0 &&
+         allocation.temp_half == 0 && allocation.reserved_dwords == 0 &&
+         !allocation.fast_path);
+
+   CHECK(agx_ioto_load_from_abi_buffer(&f.core, AGX_IOTO_ABI_BUFFER_SLOT_4,
+                                       &load, &emit, workspace(&f),
+                                       &allocation));
+   CHECK(f.core.abi4_load_pending && !f.core.scs_base_ever_loaded);
+   load.cprog_dest_half = 44;
+   CHECK(!agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                 &allocation));
+   CHECK(f.core.sink.length == 0 && f.core.load_count == 1 &&
+         f.core.abi4_load_pending);
+   CHECK(agx_ioto_load_finish_round(&f.core, true, &emit, workspace(&f)));
+   CHECK(!f.core.abi4_load_pending);
+   CHECK(agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                &allocation));
+   CHECK(f.core.sink.length >= sizeof(scs_base) && f.core.scs_base_loaded &&
+         f.core.scs_base_ever_loaded);
+   CHECK(!agx_ioto_load_from_abi_buffer(
+      &f.core, AGX_IOTO_ABI_BUFFER_SLOT_4, &load, &emit, workspace(&f),
+      &allocation));
+   CHECK(agx_ioto_load_from_abi_buffer(
+      &f.core, AGX_IOTO_ABI_BUFFER_SLOT_2, &load, &emit, workspace(&f),
+      &allocation));
+
+   const size_t old_loads = f.core.load_count;
+   const uint8_t old_current = f.core.current_gpr_dwords;
+   load.lane_mask = 0x80;
+   CHECK(!agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                 &allocation));
+   CHECK(f.core.load_count == old_loads &&
+         f.core.current_gpr_dwords == old_current);
+
+   CHECK(fixture_init(&f, AGX_CHIP_G17G, 0, false, false));
+   f.core.sink.capacity = sizeof(scs_base) - 1;
+   load = fixed_load(40);
+   CHECK(!agx_ioto_load_from_scs(&f.core, &load, &emit, workspace(&f),
+                                 &allocation));
+   CHECK(f.core.sink.length == 0 && f.core.load_count == 0 &&
+         f.core.current_gpr_dwords == 0 && !f.core.scs_base_loaded);
    return true;
 }
 
@@ -423,7 +556,8 @@ int
 main(void)
 {
    if (!test_targets() || !test_ldimm_nop() || !test_allocator_boundaries() ||
-       !test_fast_path() || !test_cache_and_rollback() || !test_comparator() ||
+       !test_fast_path() || !test_direct_sources() ||
+       !test_cache_and_rollback() || !test_comparator() ||
        !test_two_phase_and_nops() || !test_finish_rollback() ||
        !test_rollover() || !test_cohort_parity())
       return 1;

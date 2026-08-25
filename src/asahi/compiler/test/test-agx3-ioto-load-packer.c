@@ -256,6 +256,112 @@ test_native_rounds(void)
 }
 
 static bool
+test_native_direct_sources(void)
+{
+   static const uint8_t scs_base[] = {
+      0x4c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
+   };
+   static const uint8_t gpu0_scs[] = {
+      0x4c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x67, 0x00,
+      0x54, 0x00, 0x04, 0x00, 0x00, 0x00, 0x19, 0x60, 0x24, 0x40,
+      0x22, 0x00, 0x06, 0x08, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
+      0x7b, 0x00, 0x01, 0x04, 0x8b, 0x02, 0x01, 0x04,
+   };
+   static const uint8_t gpu1_scs[] = {
+      0x4c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00, 0x0f, 0x08,
+      0x03, 0x00, 0xa0, 0x0c, 0x60, 0xa4, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x7b, 0x00, 0x01, 0x44, 0x9b, 0x02, 0x01, 0x04,
+   };
+   static const uint8_t gpu1_abi_slot2[] = {
+      0x0f, 0x04, 0x03, 0x00, 0xa0, 0x0c, 0x60, 0xa4, 0x01, 0x00, 0x00,
+      0x00, 0x00, 0x01, 0x7b, 0x00, 0x01, 0x44, 0x9b, 0x02, 0x01, 0x04,
+   };
+   static const uint8_t gpu1_abi_slot54[] = {
+      0x0f, 0x6c, 0x03, 0x00, 0xa0, 0x0c, 0x60, 0xa4, 0x01, 0x00, 0x00,
+      0x00, 0x00, 0x01, 0x7b, 0x00, 0x01, 0x44, 0x9b, 0x02, 0x01, 0x04,
+   };
+   static const enum agx_ioto_abi_buffer_slot abi_slots[] = {
+      AGX_IOTO_ABI_BUFFER_SLOT_2,  AGX_IOTO_ABI_BUFFER_SLOT_4,
+      AGX_IOTO_ABI_BUFFER_SLOT_6,  AGX_IOTO_ABI_BUFFER_SLOT_8,
+      AGX_IOTO_ABI_BUFFER_SLOT_50, AGX_IOTO_ABI_BUFFER_SLOT_52,
+      AGX_IOTO_ABI_BUFFER_SLOT_54,
+   };
+   const struct agx_ioto_load_from_fixed request = {
+      .native_slot = 7,
+      .count_dwords = 2,
+      .byte_offset = 0x123,
+      .lane_mask = 0xf,
+      .cprog_dest_half = 40,
+   };
+   struct agx_ioto_load_allocation allocation;
+   struct fixture f;
+
+   CHECK(fixture_init(&f, AGX_CHIP_G15G, true));
+   CHECK(agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                        &allocation));
+   CHECK(allocation.temp_half == 0 && f.core.sink.length == sizeof(scs_base));
+   CHECK(memcmp(f.bytes, scs_base, sizeof(scs_base)) == 0);
+   CHECK(f.core.loads[0].base.half == AGX_IOTO_LOAD_SCS_BASE_HALF);
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(f.core.sink.length == sizeof(gpu0_scs));
+   CHECK(memcmp(f.bytes, gpu0_scs, sizeof(gpu0_scs)) == 0);
+   CHECK(f.core.scs_base_loaded);
+   CHECK(agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                        &allocation));
+   CHECK(f.core.sink.length == sizeof(gpu0_scs));
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(f.core.sink.length == sizeof(gpu0_scs) * 2 - sizeof(scs_base));
+   CHECK(memcmp(&f.bytes[sizeof(gpu0_scs)], &gpu0_scs[sizeof(scs_base)],
+                sizeof(gpu0_scs) - sizeof(scs_base)) == 0);
+
+   CHECK(fixture_init(&f, AGX_CHIP_G17G, false));
+   CHECK(agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                        &allocation));
+   CHECK(memcmp(f.bytes, scs_base, sizeof(scs_base)) == 0);
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(f.core.sink.length == sizeof(gpu1_scs));
+   CHECK(memcmp(f.bytes, gpu1_scs, sizeof(gpu1_scs)) == 0);
+
+   for (size_t i = 0; i < ARRAY_SIZE(abi_slots); ++i) {
+      CHECK(fixture_init(&f, AGX_CHIP_G17G, false));
+      CHECK(agx3_ioto_load_from_abi_buffer_native(
+         &f.core, abi_slots[i], &request, workspace(&f), &allocation));
+      CHECK(f.core.loads[0].base.half == 2u * (unsigned)abi_slots[i]);
+      CHECK(!f.core.scs_base_loaded && !f.core.scs_base_ever_loaded);
+      CHECK(f.core.abi4_load_pending ==
+            (abi_slots[i] == AGX_IOTO_ABI_BUFFER_SLOT_4));
+      CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+      CHECK(!f.core.abi4_load_pending);
+      CHECK(f.core.sink.length == sizeof(gpu1_abi_slot2));
+      if (i == 0)
+         CHECK(memcmp(f.bytes, gpu1_abi_slot2, sizeof(gpu1_abi_slot2)) == 0);
+      if (i + 1 == ARRAY_SIZE(abi_slots))
+         CHECK(memcmp(f.bytes, gpu1_abi_slot54, sizeof(gpu1_abi_slot54)) == 0);
+   }
+
+   CHECK(fixture_init(&f, AGX_CHIP_G17G, false));
+   CHECK(agx3_ioto_load_from_abi_buffer_native(
+      &f.core, AGX_IOTO_ABI_BUFFER_SLOT_4, &request, workspace(&f),
+      &allocation));
+   CHECK(!agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                         &allocation));
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                        &allocation));
+   CHECK(!agx3_ioto_load_from_abi_buffer_native(
+      &f.core, AGX_IOTO_ABI_BUFFER_SLOT_4, &request, workspace(&f),
+      &allocation));
+
+   CHECK(fixture_init(&f, AGX_CHIP_G15G, false));
+   CHECK(!agx3_ioto_load_from_scs_native(&f.core, &request, workspace(&f),
+                                         &allocation));
+   CHECK(!agx3_ioto_load_from_abi_buffer_native(
+      &f.core, AGX_IOTO_ABI_BUFFER_SLOT_2, &request, workspace(&f),
+      &allocation));
+   return true;
+}
+
+static bool
 test_mem_form_bounds(void)
 {
    struct agx3_mem_desc desc = {
@@ -284,7 +390,8 @@ int
 main(void)
 {
    if (!test_target_gate() || !test_load_records() || !test_copy_records() ||
-       !test_native_rounds() || !test_mem_form_bounds())
+       !test_native_rounds() || !test_native_direct_sources() ||
+       !test_mem_form_bounds())
       return 1;
    printf("agx3_ioto_load_packer: %u checks passed\n", checks);
    return 0;

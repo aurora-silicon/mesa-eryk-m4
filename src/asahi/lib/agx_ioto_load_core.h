@@ -2,12 +2,14 @@
  * Copyright 2026 Aurora Silicon
  * SPDX-License-Identifier: MIT
  *
- * Bounded host-side model of Apple's AGX3 EslBuilder absolute-load scheduler.
+ * Bounded host-side model of Apple's AGX3 EslBuilder device-load scheduler.
  *
  * This core owns no memory and is deliberately not a production enablement
  * gate.  LDIMM, allocator, cache, ordering, two-phase finish and G15-style
  * NOP padding are encoded here.  The still-anonymous LDDEV/COPY operands are
  * supplied as exact native records by callbacks and validated before append.
+ * The grounded sources are loadAbsolute, SCS, and direct ABI-buffer bases;
+ * indirect/user/gather and texture/sampler/image ownership remain excluded.
  */
 
 #pragma once
@@ -131,12 +133,43 @@ struct agx_ioto_load_core {
    uint8_t current_gpr_dwords;
    bool fast_path_enabled;
    bool gpu0_round_nops;
+   /* Apple's fixed SCS base register (half-register 8) is initialized lazily
+    * and survives finishRound().  ABI buffer slot 4 aliases that register.
+    * The native builder relies on caller ordering for the alias, so the
+    * bounded public model tracks both directions and rejects unsafe mixing. */
+   bool scs_base_loaded;
+   bool scs_base_ever_loaded;
+   bool abi4_load_pending;
 };
 
 struct agx_ioto_load_absolute {
    uint32_t native_slot;
    uint8_t count_dwords;
    uint64_t address;
+   uint8_t lane_mask;
+   uint16_t cprog_dest_half;
+};
+
+#define AGX_IOTO_LOAD_SCS_BASE_HALF 8u
+#define AGX_IOTO_LOAD_SCS_BASE      UINT32_C(0x6000)
+
+/* The only ABI-buffer base selectors admitted by Apple's AGX3
+ * EslBuilder::loadFromABIBuffer switch.  Values are native dword registers;
+ * device loads consume the corresponding value * 2 half-register. */
+enum agx_ioto_abi_buffer_slot {
+   AGX_IOTO_ABI_BUFFER_SLOT_2 = 2,
+   AGX_IOTO_ABI_BUFFER_SLOT_4 = 4,
+   AGX_IOTO_ABI_BUFFER_SLOT_6 = 6,
+   AGX_IOTO_ABI_BUFFER_SLOT_8 = 8,
+   AGX_IOTO_ABI_BUFFER_SLOT_50 = 50,
+   AGX_IOTO_ABI_BUFFER_SLOT_52 = 52,
+   AGX_IOTO_ABI_BUFFER_SLOT_54 = 54,
+};
+
+struct agx_ioto_load_from_fixed {
+   uint32_t native_slot;
+   uint8_t count_dwords;
+   int16_t byte_offset;
    uint8_t lane_mask;
    uint16_t cprog_dest_half;
 };
@@ -206,6 +239,23 @@ bool agx_ioto_load_absolute(struct agx_ioto_load_core *core,
                             const struct agx_ioto_load_emit_ops *ops,
                             struct agx_ioto_load_workspace workspace,
                             struct agx_ioto_load_allocation *allocation);
+
+/* Exact bounded direct-source forms.  loadFromSCS lazily emits
+ * LDIMM r4l, 0x6000; loadFromABIBuffer addresses one of the seven native ABI
+ * base registers above.  Unsafe mixing with aliased ABI slot 4 fails closed.
+ * Neither API changes production readiness. */
+bool agx_ioto_load_from_scs(struct agx_ioto_load_core *core,
+                            const struct agx_ioto_load_from_fixed *load,
+                            const struct agx_ioto_load_emit_ops *ops,
+                            struct agx_ioto_load_workspace workspace,
+                            struct agx_ioto_load_allocation *allocation);
+
+bool agx_ioto_load_from_abi_buffer(struct agx_ioto_load_core *core,
+                                   enum agx_ioto_abi_buffer_slot source,
+                                   const struct agx_ioto_load_from_fixed *load,
+                                   const struct agx_ioto_load_emit_ops *ops,
+                                   struct agx_ioto_load_workspace workspace,
+                                   struct agx_ioto_load_allocation *allocation);
 
 #ifdef __cplusplus
 }
