@@ -32,6 +32,7 @@
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
 #include "agx3_tex_core.h"
+#include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
 #include "agx_compiler.h"
 
@@ -342,7 +343,8 @@ static bool
 agx3_is_async(const agx_instr *I)
 {
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LDCF ||
-          I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_TEXTURE_LOAD;
+          I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_TEXTURE_LOAD ||
+          I->op == AGX_OPCODE_LD_TILE;
 }
 
 /* Map a Mesa special register to the corpus-witnessed Apple SR number and
@@ -546,6 +548,92 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
    uint8_t len = 0;
    return agx3_tex_encode_fetch(enc, &d, bytes, &len) &&
           agx3_append(emission, bytes, len);
+}
+
+static int
+agx3_tile_format_width(enum agx_format format)
+{
+   switch (format) {
+   case AGX_FORMAT_I8:
+   case AGX_FORMAT_U8NORM:
+   case AGX_FORMAT_S8NORM:
+   case AGX_FORMAT_SRGBA8:
+      return AGX3_TILE_W8;
+   case AGX_FORMAT_I16:
+   case AGX_FORMAT_F16:
+   case AGX_FORMAT_U16NORM:
+   case AGX_FORMAT_S16NORM:
+      return AGX3_TILE_W16;
+   case AGX_FORMAT_I32:
+   case AGX_FORMAT_RGB10A2:
+   case AGX_FORMAT_RG11B10F:
+   case AGX_FORMAT_RGB9E5:
+      return AGX3_TILE_W32;
+   default:
+      return -1;
+   }
+}
+
+static bool
+agx3_tile_value_ok(agx_index value, uint8_t mask)
+{
+   if (!agx3_src_is_register(value) || value.memory || value.abs || value.neg ||
+       (value.size != AGX_SIZE_16 && value.size != AGX_SIZE_32) ||
+       (value.value & (agx_size_align_16(value.size) - 1)) ||
+       agx_channels(value) != util_bitcount(mask))
+      return false;
+
+   return value.value + agx_index_size_16(value) <= 256;
+}
+
+static bool
+agx3_tile_zero_sample(agx_index sample)
+{
+   return sample.type == AGX_INDEX_IMMEDIATE && sample.value == 0 &&
+          sample.size == AGX_SIZE_16 && !sample.memory && !sample.abs &&
+          !sample.neg && !sample.cache && !sample.discard && !sample.kill;
+}
+
+/* Bind the directly witnessed single-sample tile subset.  Explicit pixel
+ * coordinates and the per-sample selector remain closed because f44's exact
+ * register/selector meaning is not yet grounded. */
+static bool
+agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
+               const agx_instr *I, uint8_t slot, uint16_t wait_mask,
+               bool first_load, bool last_load)
+{
+   const bool load = I->op == AGX_OPCODE_LD_TILE;
+   if ((!load && I->op != AGX_OPCODE_ST_TILE) ||
+       I->nr_dests != (load ? 1 : 0) || I->nr_srcs != (load ? 2 : 3) ||
+       I->mask < 1 || I->mask > 15 || I->pixel_offset > UINT8_MAX ||
+       I->explicit_coords)
+      return false;
+
+   const agx_index value = load ? I->dest[0] : I->src[0];
+   const agx_index sample = load ? I->src[0] : I->src[1];
+   const agx_index coords = load ? I->src[1] : I->src[2];
+   const int width = agx3_tile_format_width(I->format);
+   if (width < 0 || !agx3_tile_value_ok(value, I->mask) ||
+       !agx3_tile_zero_sample(sample) || !agx_is_null(coords))
+      return false;
+
+   /* AGX3b f13 varies independently in high-register store witnesses.  The
+    * low-register, single-sample subset is the only one with a stable zero
+    * selection that production IR can infer today. */
+   if (!load && enc == AGX_ISA_ENCODING_AGX3B && value.value >= 16)
+      return false;
+
+   uint8_t bytes[AGX3_TILE_MAX_LENGTH];
+   uint8_t length = 0;
+   const bool ok =
+      load ? agx3_tile_load(enc, value.value, (enum agx3_tile_width)width,
+                            slot, I->mask, I->pixel_offset, AGX3_TILE_COV_1X,
+                            wait_mask, first_load, last_load, bytes, &length)
+           : agx3_tile_store(enc, value.value,
+                             (enum agx3_tile_width)width, I->mask,
+                             I->pixel_offset, AGX3_TILE_COV_1X, wait_mask,
+                             bytes, &length);
+   return ok && agx3_append(emission, bytes, length);
 }
 
 /* Append the half-registers an operand occupies (empty for immediates,
@@ -1030,6 +1118,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    bool async_seen = false;
    uint8_t next_uvs_slot = 1;
    unsigned texture_fetches_left = 0;
+   unsigned tile_loads_left = 0;
+   unsigned tile_loads_seen = 0;
    unsigned count = 0;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
@@ -1041,6 +1131,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             count++;
          if (scan_I->op == AGX_OPCODE_TEXTURE_LOAD)
             texture_fetches_left++;
+         if (scan_I->op == AGX_OPCODE_LD_TILE)
+            tile_loads_left++;
       }
    }
 
@@ -1126,6 +1218,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
                goto fail;
             async_seen = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_LD_TILE || I->op == AGX_OPCODE_ST_TILE) {
+            bool first = false, last = false;
+            if (I->op == AGX_OPCODE_LD_TILE) {
+               assert(tile_loads_left > 0);
+               first = tile_loads_seen++ == 0;
+               last = --tile_loads_left == 0;
+            }
+            if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
+               goto fail;
+            async_seen |= I->op == AGX_OPCODE_LD_TILE;
             continue;
          }
 

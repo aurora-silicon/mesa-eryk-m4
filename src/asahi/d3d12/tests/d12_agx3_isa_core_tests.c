@@ -7,6 +7,7 @@
 
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_tile_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
 
 #include <stdio.h>
@@ -5926,12 +5927,258 @@ check_texture_fetch_bridge(void)
    return 0;
 }
 
+static int
+check_tile_encoding(const struct d12_agx3_tile_encoding *encoded,
+                    const uint8_t *expected, uint8_t length)
+{
+   CHECK(encoded->length == length);
+   CHECK(memcmp(encoded->bytes, expected, length) == 0);
+   for (unsigned i = length; i < sizeof(encoded->bytes); ++i)
+      CHECK(encoded->bytes[i] == 0);
+   return 0;
+}
+
+static int
+check_tile_bridge(void)
+{
+   static const struct integer_target targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const uint8_t store_b[] = {
+      0xe7, 0x06, 0x54, 0x00, 0x00, 0x00, 0x01, 0x4e, 0, 0, 0, 0,
+   };
+   static const uint8_t store_c[] = {
+      0x27, 0x01, 0x05, 0x08, 0x21, 0x01, 0xad,
+      0x02, 0x00, 0x00, 0x61, 0x5c, 0x00, 0x00,
+   };
+   static const uint8_t load_b[] = {
+      0x67, 0x0e, 0x54, 0x00, 0x00, 0x00, 0x01, 0xce, 0x02, 0, 0, 0,
+   };
+   static const uint8_t load_c[] = {
+      0x27, 0x01, 0x05, 0x08, 0x01, 0x87, 0xbc,
+      0x02, 0x00, 0x00, 0x40, 0x5c, 0x20, 0x00,
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const struct integer_target *target = &targets[t];
+      const unsigned slots = target->encoding == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
+      const unsigned store_regs =
+         target->encoding == AGX_ISA_ENCODING_AGX3C ? 256 : 16;
+      const unsigned load_regs =
+         target->encoding == AGX_ISA_ENCODING_AGX3C ? 256 : 192;
+      struct d12_agx3_tile_store_desc store = {
+         .width = D12_AGX3_TILE_WIDTH_8,
+         .mask = 15,
+      };
+      struct d12_agx3_tile_load_desc load = {
+         .width = D12_AGX3_TILE_WIDTH_8,
+         .mask = 15,
+         .slot = (uint8_t)slots,
+         .first = true,
+         .last = true,
+      };
+      struct d12_agx3_tile_encoding encoded;
+
+      CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+      CHECK(check_tile_encoding(
+               &encoded, target->encoding == AGX_ISA_ENCODING_AGX3C ? store_c
+                                                                    : store_b,
+               target->encoding == AGX_ISA_ENCODING_AGX3C
+                  ? sizeof(store_c)
+                  : sizeof(store_b)) == 0);
+      CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+      CHECK(check_tile_encoding(
+               &encoded, target->encoding == AGX_ISA_ENCODING_AGX3C ? load_c
+                                                                    : load_b,
+               target->encoding == AGX_ISA_ENCODING_AGX3C ? sizeof(load_c)
+                                                          : sizeof(load_b)) ==
+            0);
+
+      /* Exhaust every accepted value independently along each public axis and
+       * compare the bridge byte-for-byte with the shared tile codec. */
+      for (uint16_t reg = 0; reg < store_regs; ++reg) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         store.data = reg;
+         CHECK(agx3_tile_store(target->encoding, reg, AGX3_TILE_W8, 15, 0,
+                               AGX3_TILE_COV_1X, 0, expected, &length));
+         CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      store.data = 0;
+
+      for (uint16_t reg = 0; reg < load_regs; ++reg) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         load.dest = reg;
+         CHECK(agx3_tile_load(target->encoding, reg, AGX3_TILE_W8, slots, 15,
+                              0, AGX3_TILE_COV_1X, 0, true, true, expected,
+                              &length));
+         CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      load.dest = 0;
+
+      static const struct {
+         enum d12_agx3_tile_width d12;
+         enum agx3_tile_width core;
+      } widths[] = {
+         {D12_AGX3_TILE_WIDTH_8, AGX3_TILE_W8},
+         {D12_AGX3_TILE_WIDTH_16, AGX3_TILE_W16},
+         {D12_AGX3_TILE_WIDTH_32, AGX3_TILE_W32},
+      };
+      for (unsigned w = 0; w < sizeof(widths) / sizeof(widths[0]); ++w) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         store.width = widths[w].d12;
+         CHECK(agx3_tile_store(target->encoding, 0, widths[w].core, 15, 0,
+                               AGX3_TILE_COV_1X, 0, expected, &length));
+         CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+         load.width = widths[w].d12;
+         CHECK(agx3_tile_load(target->encoding, 0, widths[w].core, slots, 15,
+                              0, AGX3_TILE_COV_1X, 0, true, true, expected,
+                              &length));
+         CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      store.width = load.width = D12_AGX3_TILE_WIDTH_8;
+
+      for (unsigned mask = 1; mask <= 15; ++mask) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         store.mask = mask;
+         CHECK(agx3_tile_store(target->encoding, 0, AGX3_TILE_W8, mask, 0,
+                               AGX3_TILE_COV_1X, 0, expected, &length));
+         CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      store.mask = 15;
+
+      for (unsigned offset = 0; offset <= UINT8_MAX; ++offset) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         store.tile_offset = load.tile_offset = offset;
+         CHECK(agx3_tile_store(target->encoding, 0, AGX3_TILE_W8, 15, offset,
+                               AGX3_TILE_COV_1X, 0, expected, &length));
+         CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+         CHECK(agx3_tile_load(target->encoding, 0, AGX3_TILE_W8, slots, 15,
+                              offset, AGX3_TILE_COV_1X, 0, true, true,
+                              expected, &length));
+         CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      store.tile_offset = load.tile_offset = 0;
+
+      for (unsigned wait = 0; wait <= slots; ++wait) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         store.wait_mask = wait == 0 ? 0 : 1u << (wait - 1);
+         CHECK(agx3_tile_store(target->encoding, 0, AGX3_TILE_W8, 15, 0,
+                               AGX3_TILE_COV_1X, store.wait_mask, expected,
+                               &length));
+         CHECK(d12_agx3_encode_tile_store(target->chip, &store, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+      store.wait_mask = 0;
+
+      for (unsigned slot = 1; slot <= slots; ++slot) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         load.slot = slot;
+         CHECK(agx3_tile_load(target->encoding, 0, AGX3_TILE_W8, slot, 15, 0,
+                              AGX3_TILE_COV_1X, 0, true, true, expected,
+                              &length));
+         CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+
+      for (unsigned boundary = 0; boundary < 4; ++boundary) {
+         uint8_t expected[AGX3_TILE_MAX_LENGTH];
+         uint8_t length = 0;
+         load.first = boundary & 1;
+         load.last = boundary & 2;
+         CHECK(agx3_tile_load(target->encoding, 0, AGX3_TILE_W8, load.slot, 15,
+                              0, AGX3_TILE_COV_1X, 0, load.first, load.last,
+                              expected, &length));
+         CHECK(d12_agx3_encode_tile_load(target->chip, &load, &encoded));
+         CHECK(check_tile_encoding(&encoded, expected, length) == 0);
+      }
+   }
+
+   struct d12_agx3_tile_encoding rejected;
+   struct d12_agx3_tile_store_desc store = {
+      .width = D12_AGX3_TILE_WIDTH_8,
+      .mask = 15,
+   };
+   struct d12_agx3_tile_load_desc load = {
+      .width = D12_AGX3_TILE_WIDTH_8,
+      .mask = 15,
+      .slot = 8,
+      .first = true,
+      .last = true,
+   };
+#define REJECT_TILE(call)                                                       \
+   do {                                                                         \
+      memset(&rejected, 0xff, sizeof(rejected));                                \
+      CHECK(!(call));                                                           \
+      struct d12_agx3_tile_encoding zero = {0};                                 \
+      CHECK(memcmp(&rejected, &zero, sizeof(zero)) == 0);                       \
+   } while (0)
+
+   static const enum agx_chip rejected_targets[] = {
+      AGX_CHIP_G15S, AGX_CHIP_G15D, AGX_CHIP_G16P, AGX_CHIP_G16S,
+      AGX_CHIP_G17P, AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0;
+        i < sizeof(rejected_targets) / sizeof(rejected_targets[0]); ++i) {
+      REJECT_TILE(d12_agx3_encode_tile_store(rejected_targets[i], &store,
+                                             &rejected));
+      REJECT_TILE(d12_agx3_encode_tile_load(rejected_targets[i], &load,
+                                            &rejected));
+   }
+
+   store.data = 16;
+   REJECT_TILE(d12_agx3_encode_tile_store(AGX_CHIP_G15G, &store, &rejected));
+   store.data = 0;
+   store.wait_mask = 3;
+   REJECT_TILE(d12_agx3_encode_tile_store(AGX_CHIP_G17S, &store, &rejected));
+   store.wait_mask = 0;
+   store.tile_offset = 256;
+   REJECT_TILE(d12_agx3_encode_tile_store(AGX_CHIP_G17S, &store, &rejected));
+   store.tile_offset = 0;
+   store.width = (enum d12_agx3_tile_width)99;
+   REJECT_TILE(d12_agx3_encode_tile_store(AGX_CHIP_G17S, &store, &rejected));
+
+   load.mask = 1;
+   REJECT_TILE(d12_agx3_encode_tile_load(AGX_CHIP_G17S, &load, &rejected));
+   load.mask = 15;
+   load.slot = 0;
+   REJECT_TILE(d12_agx3_encode_tile_load(AGX_CHIP_G17S, &load, &rejected));
+   load.slot = 9;
+   REJECT_TILE(d12_agx3_encode_tile_load(AGX_CHIP_G17S, &load, &rejected));
+   load.slot = 8;
+   load.tile_offset = 256;
+   REJECT_TILE(d12_agx3_encode_tile_load(AGX_CHIP_G17S, &load, &rejected));
+
+   CHECK(!d12_agx3_encode_tile_store(AGX_CHIP_G17S, &store, NULL));
+   CHECK(!d12_agx3_encode_tile_load(AGX_CHIP_G17S, &load, NULL));
+   REJECT_TILE(d12_agx3_encode_tile_store(AGX_CHIP_G17S, NULL, &rejected));
+   REJECT_TILE(d12_agx3_encode_tile_load(AGX_CHIP_G17S, NULL, &rejected));
+#undef REJECT_TILE
+   return 0;
+}
+
 int
 main(void)
 {
    CHECK(check_control_flow_bridge() == 0);
    CHECK(check_varying_bridge() == 0);
    CHECK(check_texture_fetch_bridge() == 0);
+   CHECK(check_tile_bridge() == 0);
 
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,

@@ -29,18 +29,18 @@ marketing name in the measured corpus.
 | G14G | M2 | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G14X | M2 Pro, Max, Ultra | AGX2 / `agx2` | **RS** — full compiler and decoder | **RS** — Gen8, 24 B | **RS** — Gen4, 8 B | **RS** — AGX2 / classic |
 | G15P | A16 Bionic | AGX2 / `agx2` | **IV/FC** — AGX2 codegen exists; device ABI does not | **FC** — unknown | **FC** — unknown, 0 B | **FC** — unknown / unknown |
-| G15G | M3 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G15G | M3 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch and 1x tile I/O, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G15S | M3 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G15C | M3 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G15D | M3 Ultra | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4, 32 B | **RE** — G15/classic; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G16P | Phone part; marketing mapping ungrounded | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
-| G16G | M4 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G16G | M4 | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch and 1x tile I/O, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/classic; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G16S | M4 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G16C | M4 Max | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/link/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G17P | A18 Pro | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE** — HAL200/dual; CDM launch/pad/barrier/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G17A | A18-class, marketing unknown | AGX3 / `agx3b` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen9, 32 B | **IV** — Gen4 HAL200, 32 B | **RE/FC** — HAL200 / submission unknown |
 | G17G | M5 | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
-| G17S | M5 Pro | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
+| G17S | M5 Pro | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch and 1x tile I/O, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 | G17C | M5 Max | AGX3 / `agx3c` | **IV** — incomplete native backend: ALU, device memory, SR reads, f32 vary/UVS, bounded 2D LOD0 fetch, register-only structured CF, slots/waits; disassembler | **IV** — Gen10, 32 B | **IV** — Gen5, 32 B | **RE** — HAL300/SKSM; CDM launch/link/pad/Gen7 barriers/terminate + VDM PPP hdr/viewport/barrier/state/link packed; direct draw **IV** |
 
 The AGX3 pack subset currently covers only individually grounded instructions:
@@ -170,11 +170,19 @@ encoders reproduce all 970 checked varying corpus instructions plus exact
 AGX3b/AGX3c center, centroid, coefficient-load, and UVS-write witnesses. They
 reject f16 interpolation, dynamic coefficient indices, explicit at-sample
 coordinates, invalid registers, zero/out-of-range slots, and wait bits outside
-the encoding. The adjacent tile codec now allocates the full fourteen bytes
-required by AGX3c and rejects misaligned 32-bit registers and invalid wait bits,
-but tile load/store is not yet wired into production fragment code generation.
-This is compiler and host validation; device admission and fragment execution
-remain closed.
+the encoding. The production packer now also emits the directly witnessed
+single-sample `ld_tile` and `st_tile` subset. Tile loads allocate an asynchronous
+scoreboard slot, and a consuming store receives the dependency wait across
+straight-line fallthrough blocks. The encoder maps Mesa's 8/16/32-bit tile
+formats, checks value width against the component mask, carries the global
+first/last-load markers, allocates the full fourteen bytes required by AGX3c,
+and fails the whole binary on an invalid operand. Exact G15G and G16G AGX3b
+plus G17S AGX3c witnesses are exposed through the D3D12 validation bridge.
+Per-sample/MSAA selection, explicit coordinates, partial-load masks, incoming
+waits on loads, multi-wait stores, AGX3b high-register stores, tile decoding,
+and every unwitnessed target remain closed. This is compiler and host
+validation; device admission, fragment execution, Vulkan lowering, and D3D12
+execution remain closed.
 
 The production packer now also emits the directly witnessed, non-array 2D
 LOD0 texel-fetch selection. The bounded encoder covers 16- or 32-bit four-
@@ -196,10 +204,12 @@ device admission, Vulkan feature exposure, or D3D12 execution support.
 The D3D12 AGX3 ISA bridge target-gates the same grounded integer/float
 compare, exec-stack, directional branch, scalar interpolation, coefficient-
 load, and UVS-write building blocks for the nine directly witnessed G15--G17
-compiler targets. Its exhaustive host test checks the AGX3b/AGX3c byte
-sequences and every rejection path. This remains an ISA lowering primitive,
-not a claim that DXIL structured control flow or varying lowering, runtime
-scheduling, WDDM submission, or a D3D12 capability is complete.
+compiler targets. It separately target-gates the bounded tile load/store bridge
+to the directly captured G15G, G16G, and G17S encodings. Its exhaustive host
+test checks the AGX3b/AGX3c byte sequences and every rejection path. This
+remains an ISA lowering primitive, not a claim that DXIL structured control
+flow, varying or tile lowering, runtime scheduling, WDDM submission, or a
+D3D12 capability is complete.
 
 The `yield` form is grounded by controlled source ladders and independent
 runtime-value probes on G15G/G15S/G15D, G16P/G16G/G16S, G17P, and G17G/G17S.
@@ -405,18 +415,18 @@ feature exposure.
 | G14G | **RS** — AGX2 path | **RS** — AGX2 path | **RS** — AGX2 execution; UMD contracts build-tested | **FC** — no hardware RT; Tier 0 | **RS** — existing `drm/asahi` path |
 | G14X | **RS** — AGX2 path | **RS** — AGX2 path | **RS** — AGX2 execution; UMD contracts build-tested | **FC** — no hardware RT; Tier 0 | **RS** — existing `drm/asahi` path |
 | G15P | **FC** — device axes unknown | **FC** — device axes unknown | **FC** — AGX2 shader code only; device gate closed | **FC** — no hardware RT; Tier 0 | **RE/FC** — identity routed; no runtime bring-up |
-| G15G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
+| G15G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, bounded tile ISA, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G15S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G15C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G15D | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native Gen4 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity, 42-bit UAT, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G16P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL routed; submission unknown; no runtime bring-up |
-| G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/classic, recovery, kick route, and ring-publication preflight; no runtime bring-up |
+| G16G | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, bounded tile ISA, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — identity/HAL/classic, recovery, kick route, and ring-publication preflight; no runtime bring-up |
 | G16S | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channel classes, recovery, kick/ring preflight; firmware ACK unknown |
 | G16C | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channel classes, recovery, kick/ring preflight; firmware ACK unknown |
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion/host-event consumers, kick/ring models, and strict paired `a010` firmware admission; authoritative handoff observation/classic ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, bounded tile ISA, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion/host-event consumers, kick/ring models, and strict loaded paired `a010` admission before SGX MMIO; UAT/start/ACK unknown |
 | G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models, and strict paired `a000` firmware admission; authoritative handoff observation/firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
@@ -623,7 +633,7 @@ Linux DRM development lives outside this Mesa repository in the separate
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
 The power/recovery, submission, and firmware ledger through Linux commit
-`5f60c76a9067`
+`ede4ea7e023d`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -748,17 +758,21 @@ G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
 performance tables and their two mirrored firmware properties; rail ownership,
 voltage control, a third domain, and hardware programming remain unresolved.
-It now admits a G17S or G17C firmware identity only after one atomic call
-validates both exact GFX and GFX1 `rkos/ftab` containers. The parser enforces
+Its offline parser admits a G17S or G17C firmware identity only after one
+atomic call validates both exact GFX and GFX1 `rkos/ftab` containers. The
+parser enforces
 the recovered two-entry geometry, selects only `a010` for G17S or `a000` for
 G17C, and checks each nested Mach-O command layout, entry point, size, UUID,
 and whole-image SHA-256. The resulting opaque token is variant-bound, so role
 swaps, mixed S/C pairs, mutations, and an otherwise-valid pair for the wrong
-GPU cannot clear the identity gate. This authenticates only bytes supplied by
-the caller: the live probe deliberately supplies no token until iBoot or m1n1
-exposes the authoritative handed-off role images. G17G/G17P identities,
-relocations, fixups, mapping/cache ordering, loading, firmware acknowledgment,
-and live G17C ownership therefore remain fail-closed.
+GPU cannot clear the identity gate. m1n1 commit `62dd1dd9` now publishes a
+versioned six-region no-map handoff for the exact measured T6050/J714s G17S
+pair. Linux validates its ordered roles, UUIDs, IOVAs, remaps, sizes, flags,
+and non-overlap, maps only the two `__TEXT` resources, hashes the actual loaded
+bytes, and rejects failure before SGX MMIO is mapped. A successful token clears
+only `FIRMWARE_IDENTITY`; power, UAT, recovery, transport, and submission stay
+closed. G17G/G17P identities, relocations, fixups, complete cache ordering,
+firmware acknowledgment, and live G17C ownership therefore remain fail-closed.
 The same pinned G17X host and RTBuddy images now ground the firmware-start
 handshake around those identities. The host clears the two role flags and the
 combined byte, starts GFX then GFX1 through the shared `+0x888` role method,
@@ -873,8 +887,9 @@ The current in-tree anchors are:
   minimum/maximum plus signed/unsigned integer-to-f32 and f32-to-signed/unsigned
   integer RTZ mappings, the PC_f2ir-context `f32rint` selection, and the fixed-
   context scalar f32 reciprocal, structured comparisons/exec-stack/branches,
-  and scalar varying interpolation/coefficient-load/UVS-write primitives into
-  exact AGX3b/AGX3c encodings.
+  scalar varying interpolation/coefficient-load/UVS-write primitives, and the
+  target-gated G15G/G16G/G17S single-sample tile load/store subset into exact
+  AGX3b/AGX3c encodings.
 - [`d12_raytracing_core.h`](../../src/asahi/d3d12/d12_raytracing_core.h) and its
   [host tests](../../src/asahi/d3d12/tests/d12_raytracing_core_tests.c): DXR
   host contracts, explicit Tier-0 rationale, bounded BVH helpers, and exact

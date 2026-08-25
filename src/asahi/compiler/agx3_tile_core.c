@@ -7,6 +7,8 @@
 
 #include "agx3_binder.h"
 
+#include <string.h>
+
 #define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
 
 static bool
@@ -16,18 +18,26 @@ is_b(enum agx_isa_encoding e)
 }
 
 static bool
+one_or_zero(uint16_t value)
+{
+   return (value & (value - 1)) == 0;
+}
+
+static bool
 common_ok(uint16_t reg, enum agx3_tile_width w, uint8_t mask,
           enum agx3_tile_coverage cov, enum agx_isa_encoding enc,
-          uint16_t wait_mask)
+          uint16_t wait_mask, uint16_t tile_off)
 {
    const unsigned nwait = is_b(enc) ? 6 : 8;
    return (enc == AGX_ISA_ENCODING_AGX3B ||
            enc == AGX_ISA_ENCODING_AGX3C) &&
-          reg < 256 && (w != AGX3_TILE_W32 || (reg & 1) == 0) &&
+          reg < (is_b(enc) ? 192 : 256) &&
+          (w != AGX3_TILE_W32 || (reg & 1) == 0) &&
           (w == AGX3_TILE_W8 || w == AGX3_TILE_W16 || w == AGX3_TILE_W32) &&
-          mask >= 1 && mask <= 15 &&
-          (cov == AGX3_TILE_COV_1X || cov == AGX3_TILE_COV_PER_SAMPLE) &&
-          (wait_mask & ~((1u << nwait) - 1)) == 0;
+          mask >= 1 && mask <= 15 && cov == AGX3_TILE_COV_1X &&
+          tile_off <= UINT8_MAX &&
+          (wait_mask & ~((1u << nwait) - 1)) == 0 &&
+          one_or_zero(wait_mask);
 }
 
 static unsigned
@@ -48,7 +58,12 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
                 uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                 uint8_t *len)
 {
-   if (!common_ok(data, width, chan_mask, cov, enc, wait_mask))
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_TILE_MAX_LENGTH);
+   *len = 0;
+
+   if (!common_ok(data, width, chan_mask, cov, enc, wait_mask, tile_off))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
                                           KV(38, 1), KV(43, 1), KV(52, 1),
@@ -59,23 +74,38 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
    struct agx3_field_kv ov[16];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, data);
+   if (!is_b(enc))
+      ov[n++] = (struct agx3_field_kv)KV(13, 1);
    ov[n++] = (struct agx3_field_kv)KV(10, width);
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
    ov[n++] = (struct agx3_field_kv)KV(51, cov);
    n = wait_overrides(enc, wait_mask, ov, n);
-   return agx3_bind_compose(enc, "lstcol", 0, is_b(enc) ? base_b : base_c,
-                            is_b(enc) ? 8 : 9, ov, n, out, len);
+   if (!agx3_bind_compose(enc, "lstcol", 0, is_b(enc) ? base_b : base_c,
+                          is_b(enc) ? 8 : 9, ov, n, out, len)) {
+      memset(out, 0, AGX3_TILE_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+   return true;
 }
 
 bool
 agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
                enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
                uint16_t tile_off, enum agx3_tile_coverage cov,
-               uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
-               uint8_t *len)
+               uint16_t wait_mask, bool first, bool last,
+               uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len)
 {
-   if (!common_ok(dest, width, chan_mask, cov, enc, wait_mask) || slot < 1 ||
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_TILE_MAX_LENGTH);
+   *len = 0;
+
+   /* The single-sample load corpus never carries an incoming wait, and only a
+    * full-component lldcol was observed. */
+   if (!common_ok(dest, width, chan_mask, cov, enc, wait_mask, tile_off) ||
+       chan_mask != 15 || wait_mask != 0 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
@@ -92,7 +122,15 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
    ov[n++] = (struct agx3_field_kv)KV(51, cov);
-   n = wait_overrides(enc, wait_mask, ov, n);
-   return agx3_bind_compose(enc, "lldcol", 0, is_b(enc) ? base_b : base_c,
-                            is_b(enc) ? 7 : 8, ov, n, out, len);
+   ov[n++] = (struct agx3_field_kv)KV(43, 1);
+   ov[n++] = (struct agx3_field_kv)KV(78, first ? 1 : 0);
+   if (!is_b(enc))
+      ov[n++] = (struct agx3_field_kv)KV(74, last ? 2 : 0);
+   if (!agx3_bind_compose(enc, "lldcol", 0, is_b(enc) ? base_b : base_c,
+                          is_b(enc) ? 7 : 8, ov, n, out, len)) {
+      memset(out, 0, AGX3_TILE_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+   return true;
 }

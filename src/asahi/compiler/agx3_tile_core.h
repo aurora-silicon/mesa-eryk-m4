@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: MIT
  *
  * AGX3 tile / framebuffer encoders: st_tile -> lstcol (fragment color output)
- * and ld_tile -> lldcol (framebuffer fetch). MSAA emits one store per sample.
+ * and ld_tile -> lldcol (framebuffer fetch).  This core intentionally exposes
+ * only the directly witnessed single-sample forms.  The per-sample selector is
+ * not understood well enough to bind Mesa IR yet and therefore fails closed.
  * Composer-driven; reproduces Apple's witnessed bytes. Blend and depth-compare
  * are render state, not ISA. Evidence:
  * research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md.
@@ -28,7 +30,8 @@ enum agx3_tile_width {
    AGX3_TILE_W32 = 2,
 };
 
-/* Coverage selector: 1x (one sample) or per-sample (MSAA). */
+/* PER_SAMPLE is reserved for the grounded field value but is not accepted by
+ * this bounded codec until its sample/mask source semantics are known. */
 enum agx3_tile_coverage {
    AGX3_TILE_COV_1X = 1,
    AGX3_TILE_COV_PER_SAMPLE = 2,
@@ -43,12 +46,14 @@ bool agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
                      uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                      uint8_t *len);
 
-/* Load from the tile buffer into `dest` on scoreboard slot `slot`. */
+/* Load from the tile buffer into `dest` on scoreboard slot `slot`.  `first`
+ * and `last` are the load-sequence boundary markers witnessed in the corpus;
+ * AGX3b encodes only `first`, while AGX3c encodes both. */
 bool agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
                     enum agx3_tile_width width, uint8_t slot, uint8_t chan_mask,
                     uint16_t tile_off, enum agx3_tile_coverage cov,
-                    uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
-                    uint8_t *len);
+                    uint16_t wait_mask, bool first, bool last,
+                    uint8_t out[AGX3_TILE_MAX_LENGTH], uint8_t *len);
 
 #ifdef __cplusplus
 }

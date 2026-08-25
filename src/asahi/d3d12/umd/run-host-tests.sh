@@ -81,6 +81,7 @@ done
     "$repo_root/src/asahi/compiler/agx3_pack.c" \
     "$repo_root/src/asahi/compiler/agx3_cf_core.c" \
     "$repo_root/src/asahi/compiler/agx3_tex_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_tile_core.c" \
     "$repo_root/src/asahi/compiler/agx3_vary_core.c" \
     "$repo_root/src/asahi/compiler/agx3_binder.c" \
     "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \

@@ -8,6 +8,7 @@
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
 #include "asahi/compiler/agx3_tex_core.h"
+#include "asahi/compiler/agx3_tile_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
 
 #include <string.h>
@@ -70,6 +71,8 @@ _Static_assert(AGX3_VARY_MAX_LENGTH == D12_AGX3_VARY_MAX_LENGTH,
                "D3D AGX3 varying storage must match the canonical forms");
 _Static_assert(AGX3_TEX_MAX_LENGTH == D12_AGX3_TEX_MAX_LENGTH,
                "D3D AGX3 texture storage must match the canonical forms");
+_Static_assert(AGX3_TILE_MAX_LENGTH == D12_AGX3_TILE_MAX_LENGTH,
+               "D3D AGX3 tile storage must match the canonical forms");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -93,6 +96,23 @@ d12_agx3_compiler_target_encoding(enum agx_chip chip,
       *encoding = AGX_ISA_ENCODING_AGX3C;
       return true;
 
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_tile_target_encoding(enum agx_chip chip,
+                              enum agx_isa_encoding *encoding)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G16G:
+      *encoding = AGX_ISA_ENCODING_AGX3B;
+      return true;
+   case AGX_CHIP_G17S:
+      *encoding = AGX_ISA_ENCODING_AGX3C;
+      return true;
    default:
       return false;
    }
@@ -611,6 +631,78 @@ d12_agx3_decode_texture_fetch(
    out->wait_mask = d.wait_mask;
    out->coord_kill = d.coord_kill;
    out->final = d.final;
+   return true;
+}
+
+static bool
+d12_agx3_tile_width(enum d12_agx3_tile_width in,
+                    enum agx3_tile_width *out)
+{
+   switch (in) {
+   case D12_AGX3_TILE_WIDTH_8:
+      *out = AGX3_TILE_W8;
+      return true;
+   case D12_AGX3_TILE_WIDTH_16:
+      *out = AGX3_TILE_W16;
+      return true;
+   case D12_AGX3_TILE_WIDTH_32:
+      *out = AGX3_TILE_W32;
+      return true;
+   default:
+      return false;
+   }
+}
+
+bool
+d12_agx3_encode_tile_store(enum agx_chip chip,
+                           const struct d12_agx3_tile_store_desc *desc,
+                           struct d12_agx3_tile_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_tile_width width;
+   uint8_t length = 0;
+   if (!desc || !d12_agx3_tile_target_encoding(chip, &encoding) ||
+       !d12_agx3_tile_width(desc->width, &width) ||
+       (encoding == AGX_ISA_ENCODING_AGX3B && desc->data >= 16) ||
+       !agx3_tile_store(encoding, desc->data, width, desc->mask,
+                        desc->tile_offset, AGX3_TILE_COV_1X, desc->wait_mask,
+                        out->bytes, &length) ||
+       length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_tile_load(enum agx_chip chip,
+                          const struct d12_agx3_tile_load_desc *desc,
+                          struct d12_agx3_tile_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_tile_width width;
+   uint8_t length = 0;
+   if (!desc || !d12_agx3_tile_target_encoding(chip, &encoding) ||
+       !d12_agx3_tile_width(desc->width, &width) ||
+       !agx3_tile_load(encoding, desc->dest, width, desc->slot, desc->mask,
+                       desc->tile_offset, AGX3_TILE_COV_1X, 0, desc->first,
+                       desc->last, out->bytes, &length) ||
+       length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
+   out->length = length;
    return true;
 }
 

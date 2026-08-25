@@ -36,6 +36,7 @@ extern "C" {
 #define D12_AGX3_CF_MAX_LENGTH 14
 #define D12_AGX3_VARY_MAX_LENGTH 10
 #define D12_AGX3_TEX_MAX_LENGTH 14
+#define D12_AGX3_TILE_MAX_LENGTH 14
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -151,6 +152,30 @@ struct d12_agx3_texture_fetch_desc {
    bool final;
 };
 
+enum d12_agx3_tile_width {
+   D12_AGX3_TILE_WIDTH_8 = 8,
+   D12_AGX3_TILE_WIDTH_16 = 16,
+   D12_AGX3_TILE_WIDTH_32 = 32,
+};
+
+struct d12_agx3_tile_store_desc {
+   uint16_t data;
+   enum d12_agx3_tile_width width;
+   uint8_t mask;
+   uint16_t tile_offset;
+   uint16_t wait_mask;
+};
+
+struct d12_agx3_tile_load_desc {
+   uint16_t dest;
+   enum d12_agx3_tile_width width;
+   uint8_t mask;
+   uint16_t tile_offset;
+   uint8_t slot;
+   bool first;
+   bool last;
+};
+
 struct d12_agx3_binary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
    uint8_t length;
@@ -253,6 +278,11 @@ struct d12_agx3_vary_encoding {
 
 struct d12_agx3_texture_fetch_encoding {
    uint8_t bytes[D12_AGX3_TEX_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_tile_encoding {
+   uint8_t bytes[D12_AGX3_TILE_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -674,6 +704,21 @@ bool d12_agx3_encode_texture_fetch(
 bool d12_agx3_decode_texture_fetch(
    enum agx_chip chip, const void *instruction, uint32_t instruction_size,
    struct d12_agx3_texture_fetch_desc *out);
+
+/* Strict ISA bridge for the single-sample tile-buffer subset witnessed on the
+ * tile corpus's exact G15G, G16G and G17S compiler targets.  Stores expose the
+ * grounded value/width/mask/byte-offset and zero-or-one dependency wait axes.
+ * Loads expose the full-mask destination, scoreboard slot and first/last load
+ * markers; their corpus carries no incoming wait.  Per-sample selection,
+ * explicit pixel coordinates, AGX3b's unresolved high-register f13 selection,
+ * other chip identities, lowering, runtime use and capability exposure remain
+ * deliberately absent. */
+bool d12_agx3_encode_tile_store(
+   enum agx_chip chip, const struct d12_agx3_tile_store_desc *desc,
+   struct d12_agx3_tile_encoding *out);
+bool d12_agx3_encode_tile_load(
+   enum agx_chip chip, const struct d12_agx3_tile_load_desc *desc,
+   struct d12_agx3_tile_encoding *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

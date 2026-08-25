@@ -21,6 +21,7 @@
 #include "agx3_pack.h"
 #include "agx3_sr_core.h"
 #include "agx3_tex_core.h"
+#include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
 
 static void
@@ -249,6 +250,150 @@ TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
       append(want, ab, al);
       append(want, end.bytes, end.length);
       EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, TileStoreSingleSampleFormats)
+{
+   const struct {
+      enum agx_format format;
+      enum agx3_tile_width width;
+   } formats[] = {
+      {AGX_FORMAT_I8, AGX3_TILE_W8},
+      {AGX_FORMAT_U8NORM, AGX3_TILE_W8},
+      {AGX_FORMAT_S8NORM, AGX3_TILE_W8},
+      {AGX_FORMAT_SRGBA8, AGX3_TILE_W8},
+      {AGX_FORMAT_I16, AGX3_TILE_W16},
+      {AGX_FORMAT_F16, AGX3_TILE_W16},
+      {AGX_FORMAT_U16NORM, AGX3_TILE_W16},
+      {AGX_FORMAT_S16NORM, AGX3_TILE_W16},
+      {AGX_FORMAT_I32, AGX3_TILE_W32},
+      {AGX_FORMAT_RGB10A2, AGX3_TILE_W32},
+      {AGX_FORMAT_RG11B10F, AGX3_TILE_W32},
+      {AGX_FORMAT_RGB9E5, AGX3_TILE_W32},
+   };
+
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (const auto &f : formats) {
+         agx_builder *b = builder(enc);
+         agx_index value = agx_register(0, AGX_SIZE_32);
+         value.channels_m1 = 3;
+         agx_st_tile(b, value, agx_immediate(0), agx_null(), f.format, 15,
+                     24, false);
+         agx_stop(b);
+
+         uint8_t tile[AGX3_TILE_MAX_LENGTH];
+         uint8_t tile_len = 0;
+         ASSERT_TRUE(agx3_tile_store(enc, 0, f.width, 15, 24,
+                                     AGX3_TILE_COV_1X, 0, tile, &tile_len));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         std::vector<uint8_t> want;
+         append(want, tile, tile_len);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, TileLoadStoreWaitSurvivesFallthroughBlock)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_block *first = agx_start_block(b->shader);
+      agx_index value = agx_register(0, AGX_SIZE_32);
+      value.channels_m1 = 3;
+      agx_ld_tile_to(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32,
+                     15, 16, false);
+
+      agx_block *second = agx_test_block(b->shader);
+      agx_block_add_successor(first, second);
+      b->cursor = agx_after_block(second);
+      value.discard = true; /* nonsemantic post-RA last-use hint */
+      agx_st_tile(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
+                  16, false);
+      agx_stop(b);
+
+      uint8_t tile[AGX3_TILE_MAX_LENGTH];
+      uint8_t tile_len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_tile_load(enc, 0, AGX3_TILE_W32, 1, 15, 16,
+                                 AGX3_TILE_COV_1X, 0, true, true, tile,
+                                 &tile_len));
+      append(want, tile, tile_len);
+      ASSERT_TRUE(agx3_tile_store(enc, 0, AGX3_TILE_W32, 15, 16,
+                                  AGX3_TILE_COV_1X, 1, tile, &tile_len));
+      append(want, tile, tile_len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, TileLoadSequenceBoundaryMarkers)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index a = agx_register(0, AGX_SIZE_32);
+      agx_index c = agx_register(8, AGX_SIZE_32);
+      a.channels_m1 = c.channels_m1 = 3;
+      agx_ld_tile_to(b, a, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
+                     0, false);
+      agx_ld_tile_to(b, c, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
+                     16, false);
+      agx_stop(b);
+
+      uint8_t tile[AGX3_TILE_MAX_LENGTH];
+      uint8_t tile_len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_tile_load(enc, 0, AGX3_TILE_W32, 1, 15, 0,
+                                 AGX3_TILE_COV_1X, 0, true, false, tile,
+                                 &tile_len));
+      append(want, tile, tile_len);
+      ASSERT_TRUE(agx3_tile_load(enc, 8, AGX3_TILE_W32, 2, 15, 16,
+                                 AGX3_TILE_COV_1X, 0, false, true, tile,
+                                 &tile_len));
+      append(want, tile, tile_len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, TileRefusesUngroundedAxes)
+{
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+      agx_index value = agx_register(0, AGX_SIZE_32);
+      value.channels_m1 = 3;
+      agx_st_tile(b, value, agx_register(8, AGX_SIZE_16), agx_null(),
+                  AGX_FORMAT_I32, 15, 0, false);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+      agx_ld_tile_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0),
+                     agx_null(), AGX_FORMAT_I32, 1, 0, false);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index value = agx_register(16, AGX_SIZE_32);
+      value.channels_m1 = 3;
+      agx_st_tile(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
+                  0, false);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty());
    }
 }
 
