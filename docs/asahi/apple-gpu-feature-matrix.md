@@ -399,8 +399,8 @@ feature exposure.
 | G17P | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed G16 SKSM channels, HAL200 power, kick/ring preflight; firmware ACK unknown |
 | G17A | **IV/FC** — native Gen9 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen9 textures + native HAL200 sampler heaps; PBE/commands gated | **IV/FC** — Gen9 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host contracts tested; traversal missing; Tier 0 | **RE/FC** — dual-role/HAL routed; submission unknown; no runtime bring-up |
 | G17G | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 G SKSM channels, power/boot, kick/ring models; firmware ACK unknown |
-| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion/host-event consumers, and kick/ring models; classic ACK unknown |
-| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models; firmware ACK unknown |
+| G17S | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, PM/PIO/idle, recovery drain, SKSM completion/host-event consumers, kick/ring models, and strict paired `a010` firmware admission; authoritative handoff observation/classic ACK unknown |
+| G17C | **IV/FC** — native Gen10 texture heaps/strides; PBE/codegen/commands gated | **IV/FC** — Gen10 textures + native Gen5 sampler heaps; PBE/codegen/commands gated | **IV/FC** — Gen10 heaps, strides, samplers, and host/DDI contracts; no AGX3 execution | **IV/RE** — host + Gen1 BVH/triangle/AABB + Gen5 BVH helpers tested; traversal missing; Tier 0 | **RE/FC** — fixed PI_300 X SKSM channels, boot, kick/ring models, and strict paired `a000` firmware admission; authoritative handoff observation/firmware ACK unknown |
 
 Honeykrisp does not advertise Vulkan ray-tracing extensions for these AGX3
 identities. The D3D12 driver and WDDM UMD continue to report
@@ -599,7 +599,8 @@ Linux DRM development lives outside this Mesa repository in the separate
 `linux-asahi-m3-m5-drm` worktree. Its G15-G17 tables and bounded G17 codecs are
 diagnostic foundations only: initdata, RTKit transport, power sequencing,
 recovery, topology, UAT handoff, and command submission remain runtime gates.
-The power/recovery and submission ledger through Linux commit `e303766fd430`
+The power/recovery, submission, and firmware ledger through Linux commit
+`5f60c76a9067`
 additionally
 validates the exact G17S `GPCAICSWInt`,
 `PushTelemetryDashboardConfigSpace`, and `FenderRegsMCW` PIO identities,
@@ -724,9 +725,17 @@ G17G/G17S HAL300 hosts without assigning field semantics or extrapolating to
 G17A/G17C. For T6050/G17S it validates the measured 14-state core/SRAM
 performance tables and their two mirrored firmware properties; rail ownership,
 voltage control, a third domain, and hardware programming remain unresolved.
-It also requires the exact tag, UUID, and SHA-256 jointly for each pinned
-G17S/G17C GFX/GFX1 nested-firmware identity. Other G17 variants, FTAB
-extraction, fixups, loading, and live G17C ownership remain fail-closed.
+It now admits a G17S or G17C firmware identity only after one atomic call
+validates both exact GFX and GFX1 `rkos/ftab` containers. The parser enforces
+the recovered two-entry geometry, selects only `a010` for G17S or `a000` for
+G17C, and checks each nested Mach-O command layout, entry point, size, UUID,
+and whole-image SHA-256. The resulting opaque token is variant-bound, so role
+swaps, mixed S/C pairs, mutations, and an otherwise-valid pair for the wrong
+GPU cannot clear the identity gate. This authenticates only bytes supplied by
+the caller: the live probe deliberately supplies no token until iBoot or m1n1
+exposes the authoritative handed-off role images. G17G/G17P identities,
+relocations, fixups, mapping/cache ordering, loading, firmware acknowledgment,
+and live G17C ownership therefore remain fail-closed.
 The same pinned G17X host and RTBuddy images now ground the firmware-start
 handshake around those identities. The host clears the two role flags and the
 combined byte, starts GFX then GFX1 through the shared `+0x888` role method,
