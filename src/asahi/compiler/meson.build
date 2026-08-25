@@ -34,6 +34,8 @@ libasahi_agx_files = files(
   'agx3_binder.c',
   'agx3_cf_core.c',
   'agx3_mem_core.c',
+  'agx3_ioto_load_packer.c',
+  'agx3_ioto_load_packer.h',
   'agx3_tex_core.c',
   'agx3_falu_mod_core.c',
   'agx3_vary_core.c',
@@ -145,6 +147,28 @@ if with_tests
       include_directories : [inc_include, inc_src],
       dependencies : [idep_mesautil],
       link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_ioto_load_packer',
+    executable(
+      'agx3_ioto_load_packer_test',
+      files(
+        'agx3_ioto_load_packer.c',
+        'agx3_mem_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        '../lib/agx_ioto_core.c',
+        '../lib/agx_ioto_load_core.c',
+        'test/test-agx3-ioto-load-packer.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
     ),
     suite : ['asahi'],
   )

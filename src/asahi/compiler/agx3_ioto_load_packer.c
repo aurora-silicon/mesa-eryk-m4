@@ -1,0 +1,250 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_ioto_load_packer.h"
+
+#include "agx3_binder.h"
+
+#include <string.h>
+
+#define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
+
+static enum agx_ioto_load_raw_kind
+gpu1_lddev_kind(uint8_t ep)
+{
+   return (enum agx_ioto_load_raw_kind)(AGX_IOTO_LOAD_RAW_LDDEV_EP0 + ep);
+}
+
+static bool
+absolute_load_registers_ok(const struct agx_ioto_inflight_load *load)
+{
+   return load != NULL && load->data.type == 3 && load->data.value == 1 &&
+          load->base.type == 4 && load->base.value == 8 &&
+          load->count_dwords >= 1 && load->count_dwords <= 4;
+}
+
+static bool
+pack_absolute_load(void *context, enum agx_chip chip,
+                   const struct agx_ioto_inflight_load *load,
+                   struct agx_ioto_load_raw_record *record,
+                   uint8_t *signal_slot)
+{
+   struct agx3_ioto_load_packer *packer = context;
+   if (packer == NULL || record == NULL || signal_slot == NULL ||
+       packer->chip != chip || !absolute_load_registers_ok(load))
+      return false;
+
+   const uint8_t mask = (uint8_t)((1u << load->count_dwords) - 1u);
+   const struct agx3_mem_desc desc = {
+      .data = load->data.half,
+      .width = AGX3_MEM_W32,
+      .mask = mask,
+      .base_is_uniform = false,
+      .base = load->base.half,
+      .base_kill = false,
+      .idx_kind = AGX3_MEM_IDX_IMM,
+      .idx_scaled = false,
+      .byte_off = load->byte_offset,
+      .slot = 1,
+      .wait_mask = 0,
+   };
+
+   memset(record, 0, sizeof(*record));
+   uint8_t length = 0;
+   if (packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU0) {
+      if (!agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3B, &desc, 0,
+                                     record->bytes, &length) ||
+          length != AGX_IOTO_LOAD_INLINE_LDDEV14_SIZE)
+         return false;
+      record->kind = AGX_IOTO_GPU0_INLINE_LDDEV14;
+   } else if (packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU1) {
+      /* Apple's generic HAL300 emitter tries 0,1,3,4,2,5.  The fixed
+       * loadAbsolute register forms are in the 0/1/2 family, have no waits,
+       * and therefore select ep0 for an unsigned byte offset <= 255 and ep2
+       * for the remaining signed-16-bit offsets. */
+      const uint8_t ep =
+         load->byte_offset >= 0 && load->byte_offset <= 255 ? 0 : 2;
+      if (!agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3C, &desc, ep,
+                                     record->bytes, &length))
+         return false;
+      record->kind = gpu1_lddev_kind(ep);
+   } else {
+      return false;
+   }
+
+   record->length = length;
+   *signal_slot = 1;
+   return true;
+}
+
+static bool
+add_half(uint16_t base, uint16_t increment, uint16_t *result)
+{
+   if ((unsigned)base + increment > UINT16_MAX)
+      return false;
+   *result = (uint16_t)(base + increment);
+   return true;
+}
+
+static bool
+pack_copy_fields(enum agx_isa_encoding enc, uint16_t destination_half,
+                 uint16_t source_half, int wait_slot,
+                 struct agx_ioto_load_raw_record *record)
+{
+   struct agx3_field_kv baseline[6] = {
+      KV(9, 3),
+      KV(10, 2),
+      KV(23, 2),
+      KV(24, 2),
+   };
+   unsigned nbaseline = 4;
+   if (enc == AGX_ISA_ENCODING_AGX3C) {
+      baseline[nbaseline++] = (struct agx3_field_kv)KV(28, 1);
+      baseline[nbaseline++] = (struct agx3_field_kv)KV(29, 35);
+   }
+
+   struct agx3_field_kv overrides[3] = {
+      KV(3, destination_half),
+      KV(16, source_half),
+   };
+   unsigned noverrides = 2;
+   if (wait_slot >= 0) {
+      if (wait_slot >= (enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6))
+         return false;
+      overrides[noverrides++] = (struct agx3_field_kv)KV(30 + wait_slot, 1);
+   }
+
+   const uint8_t max_ep = 1;
+   for (uint8_t ep = 0; ep <= max_ep; ++ep) {
+      uint8_t length = 0;
+      if (!agx3_bind_compose(enc, "copy", ep, baseline, nbaseline, overrides,
+                             noverrides, record->bytes, &length))
+         continue;
+
+      record->kind =
+         ep == 0 ? AGX_IOTO_LOAD_RAW_COPY_EP0 : AGX_IOTO_LOAD_RAW_COPY_EP1;
+      record->length = length;
+      return true;
+   }
+
+   return false;
+}
+
+static bool
+pack_absolute_copy(void *context, enum agx_chip chip,
+                   const struct agx_ioto_inflight_load *load, uint8_t dword,
+                   uint8_t lane_code, struct agx_ioto_load_raw_record *record)
+{
+   struct agx3_ioto_load_packer *packer = context;
+   if (packer == NULL || record == NULL || packer->chip != chip ||
+       !absolute_load_registers_ok(load) || dword >= load->count_dwords ||
+       lane_code == 0 || lane_code > 3)
+      return false;
+
+   uint16_t destination_half, source_half;
+   const uint16_t destination_stride =
+      packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 ? 2 : 4;
+   if (!add_half(load->native_slot_half, (uint16_t)(destination_stride * dword),
+                 &destination_half) ||
+       !add_half(load->data.half, (uint16_t)(2u * dword), &source_half))
+      return false;
+
+   int wait_slot = -1;
+   enum agx_isa_encoding enc;
+   if (packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU0) {
+      /* The first of Apple's four NOPs drains slot 1 before any GPU0 COPY. */
+      enc = AGX_ISA_ENCODING_AGX3B;
+   } else if (packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU1) {
+      enc = AGX_ISA_ENCODING_AGX3C;
+      if (!packer->copy_wait_emitted) {
+         if (load->signal_slot == 0 || load->signal_slot > 8)
+            return false;
+         wait_slot = load->signal_slot;
+      }
+   } else {
+      return false;
+   }
+
+   memset(record, 0, sizeof(*record));
+   if (!pack_copy_fields(enc, destination_half, source_half, wait_slot, record))
+      return false;
+
+   if (packer->encoding == AGX_IOTO_LOAD_ENCODING_GPU1)
+      packer->copy_wait_emitted = true;
+   return true;
+}
+
+bool
+agx3_ioto_load_packer_init(struct agx3_ioto_load_packer *packer,
+                           enum agx_chip chip)
+{
+   if (packer == NULL)
+      return false;
+   const enum agx_ioto_load_encoding encoding =
+      agx_ioto_load_target_encoding(chip);
+   if (encoding == AGX_IOTO_LOAD_ENCODING_UNSUPPORTED)
+      return false;
+
+   *packer = (struct agx3_ioto_load_packer){
+      .chip = chip,
+      .encoding = encoding,
+   };
+   return true;
+}
+
+bool
+agx3_ioto_load_absolute_packer_ready(enum agx_chip chip)
+{
+   return agx_ioto_load_target_encoding(chip) !=
+          AGX_IOTO_LOAD_ENCODING_UNSUPPORTED;
+}
+
+void
+agx3_ioto_load_packer_ops(struct agx3_ioto_load_packer *packer,
+                          struct agx_ioto_load_emit_ops *ops)
+{
+   if (ops == NULL)
+      return;
+   *ops = (struct agx_ioto_load_emit_ops){
+      .pack_load = pack_absolute_load,
+      .pack_copy = pack_absolute_copy,
+      .context = packer,
+   };
+}
+
+bool
+agx3_ioto_load_finish_round_native(struct agx_ioto_load_core *core,
+                                   bool complete_round,
+                                   struct agx_ioto_load_workspace workspace)
+{
+   if (core == NULL || (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 &&
+                        complete_round && !core->gpu0_round_nops))
+      return false;
+
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+   if (!agx3_ioto_load_packer_init(&packer, core->chip))
+      return false;
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   return agx_ioto_load_finish_round(core, complete_round, &ops, workspace);
+}
+
+bool
+agx3_ioto_load_absolute_native(struct agx_ioto_load_core *core,
+                               const struct agx_ioto_load_absolute *load,
+                               struct agx_ioto_load_workspace workspace,
+                               struct agx_ioto_load_allocation *allocation)
+{
+   if (core == NULL || (core->encoding == AGX_IOTO_LOAD_ENCODING_GPU0 &&
+                        !core->gpu0_round_nops))
+      return false;
+
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+   if (!agx3_ioto_load_packer_init(&packer, core->chip))
+      return false;
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   return agx_ioto_load_absolute(core, load, &ops, workspace, allocation);
+}

@@ -135,6 +135,21 @@ done
 "$out/test_agx3_mem_core"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_ioto_load_packer.c" \
+    "$repo_root/src/asahi/compiler/agx3_mem_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_core.c" \
+    "$repo_root/src/asahi/lib/agx_ioto_load_core.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-ioto-load-packer.c" \
+    -o "$out/test_agx3_ioto_load_packer"
+"$out/test_agx3_ioto_load_packer"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/asahi/compiler" \
     "$repo_root/src/asahi/compiler/agx3_vary_core.c" \
     "$repo_root/src/asahi/compiler/agx3_binder.c" \

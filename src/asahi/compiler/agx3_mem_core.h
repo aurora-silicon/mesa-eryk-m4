@@ -66,6 +66,14 @@ struct agx3_mem_desc {
 bool agx3_mem_encode_load(enum agx_isa_encoding enc,
                           const struct agx3_mem_desc *d,
                           uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len);
+
+/* Encode one exact Apple LDDEV encoding point.  AGX3b exposes only ep0;
+ * AGX3c exposes ep0..ep5.  This is the form-explicit primitive used by
+ * command-stream builders which have already reproduced Apple's canonical
+ * form selection. */
+bool agx3_mem_encode_load_form(enum agx_isa_encoding enc,
+                               const struct agx3_mem_desc *d, uint8_t ep,
+                               uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len);
 bool agx3_mem_encode_store(enum agx_isa_encoding enc,
                            const struct agx3_mem_desc *d,
                            uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len);

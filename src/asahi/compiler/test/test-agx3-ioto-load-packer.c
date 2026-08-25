@@ -1,0 +1,291 @@
+/* Copyright 2026 Aurora Silicon */
+/* SPDX-License-Identifier: MIT */
+
+#include "agx3_ioto_load_packer.h"
+
+#include <stdio.h>
+#include <string.h>
+
+static unsigned checks;
+
+#define CHECK(x)                                                               \
+   do {                                                                        \
+      ++checks;                                                                \
+      if (!(x)) {                                                              \
+         fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #x);                  \
+         return false;                                                         \
+      }                                                                        \
+   } while (0)
+
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
+static const enum agx_chip gpu0_targets[] = {
+   AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+   AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+};
+
+static const enum agx_chip gpu1_targets[] = {
+   AGX_CHIP_G17G,
+   AGX_CHIP_G17S,
+   AGX_CHIP_G17C,
+};
+
+struct fixture {
+   uint8_t bytes[1024];
+   struct agx_ioto_inflight_load loads[16];
+   struct agx_ioto_inflight_load scratch[16];
+   struct agx_ioto_load_cache_entry cache[16];
+   struct agx_ioto_load_core core;
+};
+
+static bool
+fixture_init(struct fixture *f, enum agx_chip chip, bool gpu0_nops)
+{
+   memset(f, 0, sizeof(*f));
+   return agx_ioto_load_core_init(
+      &f->core, chip,
+      (struct agx_ioto_load_sink){f->bytes, sizeof(f->bytes), 0}, f->loads,
+      ARRAY_SIZE(f->loads), f->cache, ARRAY_SIZE(f->cache), 0, false,
+      gpu0_nops);
+}
+
+static struct agx_ioto_load_workspace
+workspace(struct fixture *f)
+{
+   return (struct agx_ioto_load_workspace){f->scratch, ARRAY_SIZE(f->scratch)};
+}
+
+static struct agx_ioto_inflight_load
+absolute_record(int16_t offset)
+{
+   return (struct agx_ioto_inflight_load){
+      .data = {.half = 40, .type = 3, .value = 1},
+      .base = {.half = 44, .type = 4, .value = 8},
+      .byte_offset = offset,
+      .count_dwords = 1,
+      .native_slot_half = 20,
+      .lane_mask = 3,
+      .cprog_dest_half = 40,
+      .signal_slot = 1,
+   };
+}
+
+static bool
+test_target_gate(void)
+{
+   struct agx3_ioto_load_packer packer;
+   for (size_t i = 0; i < ARRAY_SIZE(gpu0_targets); ++i) {
+      CHECK(agx3_ioto_load_absolute_packer_ready(gpu0_targets[i]));
+      CHECK(agx3_ioto_load_packer_init(&packer, gpu0_targets[i]));
+      CHECK(packer.encoding == AGX_IOTO_LOAD_ENCODING_GPU0);
+   }
+   for (size_t i = 0; i < ARRAY_SIZE(gpu1_targets); ++i) {
+      CHECK(agx3_ioto_load_absolute_packer_ready(gpu1_targets[i]));
+      CHECK(agx3_ioto_load_packer_init(&packer, gpu1_targets[i]));
+      CHECK(packer.encoding == AGX_IOTO_LOAD_ENCODING_GPU1);
+   }
+   CHECK(!agx3_ioto_load_absolute_packer_ready(AGX_CHIP_G14G));
+   CHECK(!agx3_ioto_load_absolute_packer_ready(AGX_CHIP_G15P));
+   CHECK(!agx3_ioto_load_packer_init(&packer, AGX_CHIP_UNKNOWN));
+   return true;
+}
+
+static bool
+pack_load(enum agx_chip chip, struct agx_ioto_inflight_load *load,
+          struct agx_ioto_load_raw_record *raw, uint8_t *slot)
+{
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+   if (!agx3_ioto_load_packer_init(&packer, chip))
+      return false;
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   return ops.pack_load(ops.context, chip, load, raw, slot);
+}
+
+static bool
+test_load_records(void)
+{
+   static const uint8_t gpu0_expected[] = {
+      0x67, 0x00, 0x54, 0x28, 0x16, 0x00, 0x00,
+      0x00, 0x11, 0x00, 0x00, 0x40, 0x22, 0x00,
+   };
+   static const uint8_t gpu1_ep0[] = {
+      0x4f, 0x2c, 0x43, 0x00, 0x80, 0x04, 0x00, 0x20,
+   };
+   static const uint8_t gpu1_ep2[] = {
+      0x4f, 0x2c, 0x43, 0x00, 0x80, 0x04, 0x00,
+      0xa0, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01,
+   };
+
+   struct agx_ioto_inflight_load load = absolute_record(0);
+   struct agx_ioto_load_raw_record raw;
+   uint8_t slot = 0;
+   for (size_t i = 0; i < ARRAY_SIZE(gpu0_targets); ++i) {
+      CHECK(pack_load(gpu0_targets[i], &load, &raw, &slot));
+      CHECK(raw.kind == AGX_IOTO_GPU0_INLINE_LDDEV14);
+      CHECK(raw.length == sizeof(gpu0_expected));
+      CHECK(memcmp(raw.bytes, gpu0_expected, sizeof(gpu0_expected)) == 0);
+      CHECK(slot == 1);
+   }
+   for (size_t i = 0; i < ARRAY_SIZE(gpu1_targets); ++i) {
+      CHECK(pack_load(gpu1_targets[i], &load, &raw, &slot));
+      CHECK(raw.kind == AGX_IOTO_LOAD_RAW_LDDEV_EP0);
+      CHECK(raw.length == sizeof(gpu1_ep0));
+      CHECK(memcmp(raw.bytes, gpu1_ep0, sizeof(gpu1_ep0)) == 0);
+   }
+
+   load.byte_offset = 256;
+   CHECK(pack_load(AGX_CHIP_G17G, &load, &raw, &slot));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_LDDEV_EP2);
+   CHECK(raw.length == sizeof(gpu1_ep2));
+   CHECK(memcmp(raw.bytes, gpu1_ep2, sizeof(gpu1_ep2)) == 0);
+
+   load.byte_offset = -1;
+   CHECK(pack_load(AGX_CHIP_G17G, &load, &raw, &slot));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_LDDEV_EP2);
+   load.data.type = 2;
+   CHECK(!pack_load(AGX_CHIP_G17G, &load, &raw, &slot));
+   return true;
+}
+
+static bool
+test_copy_records(void)
+{
+   static const uint8_t gpu0_dword0[] = {0xab, 0x28, 0x01, 0x04};
+   static const uint8_t gpu0_dword1[] = {0xbb, 0x2a, 0x01, 0x04};
+   static const uint8_t gpu1_dword0[] = {0xab, 0x28, 0x01, 0x44};
+   static const uint8_t gpu1_dword1[] = {0xcb, 0x2a, 0x01, 0x04};
+
+   struct agx_ioto_inflight_load load = absolute_record(0);
+   load.count_dwords = 2;
+   struct agx_ioto_load_raw_record raw;
+   struct agx3_ioto_load_packer packer;
+   struct agx_ioto_load_emit_ops ops;
+
+   CHECK(agx3_ioto_load_packer_init(&packer, AGX_CHIP_G15G));
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G15G, &load, 0, 3, &raw));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_COPY_EP0 &&
+         raw.length == sizeof(gpu0_dword0));
+   CHECK(memcmp(raw.bytes, gpu0_dword0, sizeof(gpu0_dword0)) == 0);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G15G, &load, 1, 3, &raw));
+   CHECK(memcmp(raw.bytes, gpu0_dword1, sizeof(gpu0_dword1)) == 0);
+
+   CHECK(agx3_ioto_load_packer_init(&packer, AGX_CHIP_G17G));
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G17G, &load, 0, 3, &raw));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_COPY_EP0 &&
+         raw.length == sizeof(gpu1_dword0));
+   CHECK(memcmp(raw.bytes, gpu1_dword0, sizeof(gpu1_dword0)) == 0);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G17G, &load, 1, 3, &raw));
+   CHECK(memcmp(raw.bytes, gpu1_dword1, sizeof(gpu1_dword1)) == 0);
+   CHECK(!ops.pack_copy(ops.context, AGX_CHIP_G17G, &load, 2, 3, &raw));
+   CHECK(!ops.pack_copy(ops.context, AGX_CHIP_G17G, &load, 0, 0, &raw));
+
+   load.native_slot_half = 150;
+   load.data.half = 190;
+   CHECK(agx3_ioto_load_packer_init(&packer, AGX_CHIP_G15G));
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G15G, &load, 0, 3, &raw));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_COPY_EP1 && raw.length == 10);
+   CHECK(memcmp(raw.bytes,
+                (uint8_t[]){0xbb, 0x3f, 0x07, 0x00, 0x42, 0x11, 0x00, 0x00,
+                            0x00, 0x00},
+                10) == 0);
+
+   CHECK(agx3_ioto_load_packer_init(&packer, AGX_CHIP_G17G));
+   agx3_ioto_load_packer_ops(&packer, &ops);
+   CHECK(ops.pack_copy(ops.context, AGX_CHIP_G17G, &load, 0, 3, &raw));
+   CHECK(raw.kind == AGX_IOTO_LOAD_RAW_COPY_EP1 && raw.length == 8);
+   CHECK(memcmp(raw.bytes,
+                (uint8_t[]){0xb3, 0x0a, 0x0f, 0x7a, 0x32, 0xa0, 0xa5, 0x0a},
+                8) == 0);
+   return true;
+}
+
+static bool
+queue_two_dwords(struct fixture *f)
+{
+   const struct agx_ioto_load_absolute request = {
+      .native_slot = 10,
+      .count_dwords = 2,
+      .address = 0x20,
+      .lane_mask = 0x0f,
+      .cprog_dest_half = 40,
+   };
+   struct agx_ioto_load_allocation allocation;
+   return agx3_ioto_load_absolute_native(&f->core, &request, workspace(f),
+                                         &allocation) &&
+          allocation.temp_half == 0;
+}
+
+static bool
+test_native_rounds(void)
+{
+   static const uint8_t gpu0_tail[] = {
+      0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x19, 0x00,
+      0x00, 0x40, 0x22, 0x00, 0x06, 0x08, 0x06, 0x00, 0x06, 0x00,
+      0x06, 0x00, 0xab, 0x00, 0x01, 0x04, 0xbb, 0x02, 0x01, 0x04,
+   };
+   static const uint8_t gpu1_tail[] = {
+      0x0f, 0x00, 0x03, 0x00, 0xa0, 0x0c, 0x00, 0x20,
+      0xab, 0x00, 0x01, 0x44, 0xcb, 0x02, 0x01, 0x04,
+   };
+
+   struct fixture f;
+   CHECK(fixture_init(&f, AGX_CHIP_G15G, true));
+   CHECK(queue_two_dwords(&f));
+   CHECK(f.core.sink.length == 4);
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(f.core.sink.length == 4 + sizeof(gpu0_tail));
+   CHECK(memcmp(&f.bytes[4], gpu0_tail, sizeof(gpu0_tail)) == 0);
+
+   CHECK(fixture_init(&f, AGX_CHIP_G17G, false));
+   CHECK(queue_two_dwords(&f));
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, false, workspace(&f)));
+   CHECK(f.core.sink.length == 12);
+   CHECK(f.core.loads[0].processed && f.core.loads[0].signal_slot == 1);
+   CHECK(agx3_ioto_load_finish_round_native(&f.core, true, workspace(&f)));
+   CHECK(f.core.sink.length == 4 + sizeof(gpu1_tail));
+   CHECK(memcmp(&f.bytes[4], gpu1_tail, sizeof(gpu1_tail)) == 0);
+   CHECK(f.core.load_count == 0 && f.core.cache_count == 0);
+
+   CHECK(fixture_init(&f, AGX_CHIP_G15G, false));
+   CHECK(!queue_two_dwords(&f));
+   return true;
+}
+
+static bool
+test_mem_form_bounds(void)
+{
+   struct agx3_mem_desc desc = {
+      .data = 40,
+      .width = AGX3_MEM_W32,
+      .mask = 1,
+      .base = 44,
+      .idx_kind = AGX3_MEM_IDX_IMM,
+      .byte_off = 0,
+      .slot = 1,
+   };
+   uint8_t bytes[AGX3_MEM_MAX_LENGTH], length;
+   CHECK(agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3B, &desc, 0, bytes,
+                                   &length));
+   CHECK(!agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3B, &desc, 1, bytes,
+                                    &length));
+   for (uint8_t ep = 0; ep <= 5; ++ep)
+      CHECK(agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3C, &desc, ep, bytes,
+                                      &length));
+   CHECK(!agx3_mem_encode_load_form(AGX_ISA_ENCODING_AGX3C, &desc, 6, bytes,
+                                    &length));
+   return true;
+}
+
+int
+main(void)
+{
+   if (!test_target_gate() || !test_load_records() || !test_copy_records() ||
+       !test_native_rounds() || !test_mem_form_bounds())
+      return 1;
+   printf("agx3_ioto_load_packer: %u checks passed\n", checks);
+   return 0;
+}

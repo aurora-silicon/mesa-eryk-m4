@@ -107,11 +107,13 @@ mem_baseline(enum agx_isa_encoding enc, bool is_load,
 }
 
 bool
-agx3_mem_encode_load(enum agx_isa_encoding enc, const struct agx3_mem_desc *d,
-                     uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len)
+agx3_mem_encode_load_form(enum agx_isa_encoding enc,
+                          const struct agx3_mem_desc *d, uint8_t ep,
+                          uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len)
 {
    if (!common_ok(d) || d->slot < 1 ||
-       d->slot > (enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6))
+       d->slot > (enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6) ||
+       (enc == AGX_ISA_ENCODING_AGX3B ? ep != 0 : ep > 5))
       return false;
 
    struct agx3_field_kv base[6];
@@ -122,7 +124,14 @@ agx3_mem_encode_load(enum agx_isa_encoding enc, const struct agx3_mem_desc *d,
    unsigned n = common_overrides(d, /*off*/ 76, /*shift*/ 75, /*mask*/ 73, ov);
    ov[n++] = (struct agx3_field_kv)KV(12, d->slot);
 
-   return agx3_bind_compose(enc, "lddev", 0, base, nbase, ov, n, out, len);
+   return agx3_bind_compose(enc, "lddev", ep, base, nbase, ov, n, out, len);
+}
+
+bool
+agx3_mem_encode_load(enum agx_isa_encoding enc, const struct agx3_mem_desc *d,
+                     uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_mem_encode_load_form(enc, d, 0, out, len);
 }
 
 bool
