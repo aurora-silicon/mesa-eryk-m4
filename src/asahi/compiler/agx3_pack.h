@@ -45,6 +45,7 @@ extern "C" {
 #define AGX3_YIELD_I16_REG_LENGTH 6
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_CONTINUE_RAY_MAX_LENGTH 8
 #define AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH 8
 #define AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH 14
 #define AGX3_END_LENGTH 4
@@ -203,6 +204,11 @@ struct agx3_encoded_nop {
 
 struct agx3_encoded_threadgroup_barrier {
    uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
+   uint8_t length;
+};
+
+struct agx3_encoded_continue_ray {
+   uint8_t bytes[AGX3_CONTINUE_RAY_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -926,6 +932,37 @@ bool agx3_pack_update_node(enum agx_isa_encoding encoding,
 bool agx3_unpack_update_node(enum agx_isa_encoding encoding,
                              const uint8_t *bytes, size_t available,
                              uint8_t *length);
+
+/*
+ * Encode/decode the canonical hardware `continue_ray` instruction with its
+ * one varying Apple-table field, f5.  The field is a half-register index; its
+ * exact bit placement is established by Apple's AGX3b/AGX3c encoder tables.
+ * Its role as the ray-state/SCS register is an inference from the surrounding
+ * lowering, so callers must not treat this codec as a complete traversal
+ * operation.
+ *
+ * This deliberately accepts only values present in the pinned five-kernel RT
+ * corpus on every compiler target of the corresponding encoding:
+ *
+ *   AGX3b: 0, 2, 4, 6, 8, 10
+ *   AGX3c: 0, 2, 8, 10, 12, 16, 18
+ *
+ * All selector, flag, wait, and hint fields remain at their corpus-canonical
+ * values.  No intrinsic operands, SCS layout, barrier sequence, lowering,
+ * scheduling, submission, or API capability is represented here.
+ */
+bool agx3_pack_continue_ray(enum agx_isa_encoding encoding,
+                            uint16_t state_register,
+                            struct agx3_encoded_continue_ray *out);
+bool agx3_unpack_continue_ray(enum agx_isa_encoding encoding,
+                              const uint8_t *bytes, size_t available,
+                              uint16_t *state_register, uint8_t *length);
+
+/* Return the encoding only for chip identities with a pinned native
+ * `continue_ray` corpus.  Same-encoding but unwitnessed identities remain
+ * rejected so API-facing bridges cannot broaden support accidentally. */
+enum agx_isa_encoding
+agx3_continue_ray_witnessed_chip_encoding(enum agx_chip chip);
 
 /*
  * Encode/decode only the exact first hardware `continue_ray` instruction

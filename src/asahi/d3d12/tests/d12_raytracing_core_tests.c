@@ -603,6 +603,133 @@ continue_ray_target_supported(enum agx_chip chip)
 }
 
 static void
+test_agx3_continue_ray_instruction(void)
+{
+   static const struct {
+      enum agx_chip chip;
+      uint16_t state_register;
+      uint8_t bytes[AGX3_CONTINUE_RAY_MAX_LENGTH];
+      uint8_t length;
+   } vectors[] = {
+      {AGX_CHIP_G15G, 0, {0x5f, 0x11, 0x54, 0x00, 0x00, 0x00}, 6},
+      {AGX_CHIP_G15G, 2, {0x5f, 0x11, 0x54, 0x02, 0x00, 0x00}, 6},
+      {AGX_CHIP_G15G, 4, {0x5f, 0x11, 0x54, 0x04, 0x00, 0x00}, 6},
+      {AGX_CHIP_G15G, 6, {0x5f, 0x11, 0x54, 0x06, 0x00, 0x00}, 6},
+      {AGX_CHIP_G15G, 8, {0x5f, 0x11, 0x54, 0x08, 0x00, 0x00}, 6},
+      {AGX_CHIP_G15G, 10, {0x5f, 0x11, 0x54, 0x0a, 0x00, 0x00}, 6},
+      {AGX_CHIP_G17G, 0,
+       {0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_CHIP_G17G, 2,
+       {0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x42}, 8},
+      {AGX_CHIP_G17G, 8,
+       {0x27, 0x04, 0x09, 0x00, 0x32, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_CHIP_G17G, 10,
+       {0x27, 0x04, 0x09, 0x00, 0x32, 0xc0, 0xaf, 0x42}, 8},
+      {AGX_CHIP_G17G, 12,
+       {0x27, 0x04, 0x09, 0x00, 0x3a, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_CHIP_G17G, 16,
+       {0x27, 0x04, 0x09, 0x00, 0xa2, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_CHIP_G17G, 18,
+       {0x27, 0x04, 0x09, 0x00, 0xa2, 0xc0, 0xaf, 0x42}, 8},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct d12_rt_agx3_continue_ray_instruction generated;
+      memset(&generated, 0xff, sizeof(generated));
+      require(d12_rt_agx3_continue_ray_instruction_generate(
+                 vectors[v].chip, vectors[v].state_register, &generated),
+              "DXR maps a corpus-witnessed continue_ray state register");
+      require(generated.length == vectors[v].length &&
+                 memcmp(generated.bytes, vectors[v].bytes,
+                        vectors[v].length) == 0,
+              "DXR continue_ray bytes match the pinned native corpus");
+      for (unsigned i = generated.length; i < sizeof(generated.bytes); ++i)
+         require(generated.bytes[i] == 0,
+                 "DXR clears unused continue_ray instruction storage");
+
+      uint16_t decoded = UINT16_MAX;
+      require(d12_rt_agx3_continue_ray_instruction_decode(
+                 vectors[v].chip, generated.bytes, generated.length,
+                 &decoded) &&
+                 decoded == vectors[v].state_register,
+              "DXR round-trips a continue_ray state register");
+
+      uint8_t appended[AGX3_CONTINUE_RAY_MAX_LENGTH + 1];
+      memcpy(appended, generated.bytes, generated.length);
+      appended[generated.length] = 0;
+      require(!d12_rt_agx3_continue_ray_instruction_decode(
+                 vectors[v].chip, appended, generated.length + 1, &decoded),
+              "DXR rejects trailing bytes after continue_ray");
+      for (uint32_t length = 0; length < generated.length; ++length)
+         require(!d12_rt_agx3_continue_ray_instruction_decode(
+                    vectors[v].chip, generated.bytes, length, &decoded),
+                 "DXR rejects every truncated continue_ray instruction");
+   }
+
+   static const uint16_t rejected_b[] = {1, 12, 18, 190};
+   static const uint16_t rejected_c[] = {4, 6, 14, 20};
+   struct d12_rt_agx3_continue_ray_instruction rejected;
+   for (unsigned i = 0; i < sizeof(rejected_b) / sizeof(rejected_b[0]); ++i) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      require(!d12_rt_agx3_continue_ray_instruction_generate(
+                 AGX_CHIP_G15G, rejected_b[i], &rejected),
+              "DXR rejects an unwitnessed AGX3b continue_ray register");
+      require(rejected.length == 0,
+              "rejected AGX3b continue_ray generation clears its length");
+   }
+   for (unsigned i = 0; i < sizeof(rejected_c) / sizeof(rejected_c[0]); ++i) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      require(!d12_rt_agx3_continue_ray_instruction_generate(
+                 AGX_CHIP_G17G, rejected_c[i], &rejected),
+              "DXR rejects an unwitnessed AGX3c continue_ray register");
+      require(rejected.length == 0,
+              "rejected AGX3c continue_ray generation clears its length");
+   }
+
+   /* Every pinned compiler target shares its generation's strict contract;
+    * same-encoding identities without a pinned RT corpus remain closed. */
+   for (enum agx_chip chip = AGX_CHIP_G13G; chip <= AGX_CHIP_UNKNOWN;
+        chip = (enum agx_chip)(chip + 1)) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      const enum agx_isa_encoding encoding =
+         d12_rt_agx3_continue_ray_instruction_encoding(chip);
+      const uint16_t state_register =
+         encoding == AGX_ISA_ENCODING_AGX3C ? 18 : 10;
+
+      if (continue_ray_target_supported(chip)) {
+         uint16_t decoded = 0;
+         require(d12_rt_agx3_continue_ray_instruction_generate(
+                    chip, state_register, &rejected) &&
+                    d12_rt_agx3_continue_ray_instruction_decode(
+                       chip, rejected.bytes, rejected.length, &decoded) &&
+                    decoded == state_register,
+                 "DXR admits every compiler-witnessed continue_ray target");
+      } else {
+         require(!d12_rt_agx3_continue_ray_instruction_generate(
+                    chip, state_register, &rejected),
+                 "DXR refuses every unwitnessed continue_ray target");
+         require(rejected.length == 0,
+                 "an unwitnessed continue_ray target clears output length");
+      }
+   }
+
+   uint16_t decoded = 0;
+   require(!d12_rt_agx3_continue_ray_instruction_decode(
+              AGX_CHIP_G17G, vectors[2].bytes, vectors[2].length, &decoded) &&
+              !d12_rt_agx3_continue_ray_instruction_decode(
+                 AGX_CHIP_G15G, vectors[8].bytes, vectors[8].length, &decoded),
+           "DXR rejects cross-generation continue_ray instructions");
+   require(!d12_rt_agx3_continue_ray_instruction_generate(
+              AGX_CHIP_G17G, 0, NULL),
+           "DXR rejects a missing continue_ray output");
+   require(!d12_rt_agx3_continue_ray_instruction_decode(
+              AGX_CHIP_G17G, NULL, vectors[8].length, &decoded) &&
+              !d12_rt_agx3_continue_ray_instruction_decode(
+                 AGX_CHIP_G17G, vectors[8].bytes, vectors[8].length, NULL),
+           "DXR rejects missing continue_ray decode arguments");
+}
+
+static void
 test_agx3_continue_ray_fixed_first_site_witness(void)
 {
    static const uint8_t expected_b[] = {
@@ -1398,6 +1525,7 @@ main(void)
    test_records_and_config();
    test_agx3_canonical_update_node();
    test_agx3_update_node_expansion();
+   test_agx3_continue_ray_instruction();
    test_agx3_continue_ray_fixed_first_site_witness();
    test_agx3_update_bvh_fixed_witness();
    test_agx_gen1_hw_triangle_leaf();

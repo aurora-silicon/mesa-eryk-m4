@@ -449,6 +449,11 @@ struct d12_rt_agx3_update_node_expansion {
    uint8_t length;
 };
 
+struct d12_rt_agx3_continue_ray_instruction {
+   uint8_t bytes[AGX3_CONTINUE_RAY_MAX_LENGTH];
+   uint8_t length;
+};
+
 struct d12_rt_agx3_continue_ray_fixed_first_site_witness {
    uint8_t bytes[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
    uint8_t length;
@@ -541,23 +546,82 @@ d12_rt_agx3_update_node_expansion_valid(
  * so using agx_chip_isa_encoding() directly would silently over-admit them.
  */
 static inline enum agx_isa_encoding
+d12_rt_agx3_continue_ray_instruction_encoding(enum agx_chip chip)
+{
+   return agx3_continue_ray_witnessed_chip_encoding(chip);
+}
+
+static inline enum agx_isa_encoding
 d12_rt_agx3_continue_ray_fixed_first_site_witness_encoding(enum agx_chip chip)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G15S:
-   case AGX_CHIP_G15D:
-   case AGX_CHIP_G16P:
-   case AGX_CHIP_G16G:
-   case AGX_CHIP_G16S:
-   case AGX_CHIP_G17P:
-      return AGX_ISA_ENCODING_AGX3B;
-   case AGX_CHIP_G17G:
-   case AGX_CHIP_G17S:
-      return AGX_ISA_ENCODING_AGX3C;
-   default:
-      return AGX_ISA_ENCODING_UNKNOWN;
+   return d12_rt_agx3_continue_ray_instruction_encoding(chip);
+}
+
+/*
+ * Generate one canonical hardware `continue_ray` instruction through Mesa's
+ * shared codec.  `state_register` is the Apple-table f5 half-register field,
+ * not a DXR shader operand.  Only per-encoding values and chip identities
+ * witnessed in the pinned native corpus are accepted.  This is a bounded
+ * machine-code representation; it does not implement DispatchRays, SCS state,
+ * traversal lowering, scheduling, submission, or a DXR capability.
+ */
+static inline bool
+d12_rt_agx3_continue_ray_instruction_generate(
+   enum agx_chip chip, uint16_t state_register,
+   struct d12_rt_agx3_continue_ray_instruction *out)
+{
+   if (!out)
+      return false;
+
+   *out = (struct d12_rt_agx3_continue_ray_instruction){0};
+
+   struct agx3_encoded_continue_ray shared;
+   if (!agx3_pack_continue_ray(
+          d12_rt_agx3_continue_ray_instruction_encoding(chip),
+          state_register, &shared) ||
+       shared.length > sizeof(out->bytes))
+      return false;
+
+   for (uint8_t i = 0; i < shared.length; ++i)
+      out->bytes[i] = shared.bytes[i];
+   out->length = shared.length;
+   return true;
+}
+
+/* Decode exactly one target-approved canonical instruction.  The shared
+ * unpacker accepts an instruction prefix in a larger stream; this DXR-facing
+ * boundary requires the exact instruction size and re-packs the decoded field
+ * so no anonymous control-field variation can cross the boundary. */
+static inline bool
+d12_rt_agx3_continue_ray_instruction_decode(
+   enum agx_chip chip, const void *instruction, uint32_t instruction_size,
+   uint16_t *state_register)
+{
+   if (!instruction || !state_register)
+      return false;
+
+   *state_register = 0;
+   const enum agx_isa_encoding encoding =
+      d12_rt_agx3_continue_ray_instruction_encoding(chip);
+   uint16_t decoded = 0;
+   uint8_t decoded_length = 0;
+   struct agx3_encoded_continue_ray canonical;
+
+   if (!agx3_unpack_continue_ray(encoding, instruction, instruction_size,
+                                 &decoded, &decoded_length) ||
+       instruction_size != decoded_length ||
+       !agx3_pack_continue_ray(encoding, decoded, &canonical) ||
+       canonical.length != decoded_length)
+      return false;
+
+   const uint8_t *code = instruction;
+   for (uint8_t i = 0; i < canonical.length; ++i) {
+      if (code[i] != canonical.bytes[i])
+         return false;
    }
+
+   *state_register = decoded;
+   return true;
 }
 
 /*

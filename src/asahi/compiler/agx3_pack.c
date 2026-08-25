@@ -3052,28 +3052,151 @@ agx3_unpack_update_node(enum agx_isa_encoding encoding, const uint8_t *bytes,
    return true;
 }
 
-static const uint8_t continue_ray_fixed_first_site_witness_agx3b[] = {
+static const uint8_t continue_ray_canonical_agx3b[] = {
    0x5f, 0x11, 0x54, 0x00, 0x00, 0x00,
 };
 
-static const uint8_t continue_ray_fixed_first_site_witness_agx3c[] = {
+static const uint8_t continue_ray_canonical_agx3c[] = {
    0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02,
 };
 
 static const uint8_t *
-continue_ray_fixed_first_site_witness_encoding(
-   enum agx_isa_encoding encoding, size_t *length)
+continue_ray_canonical_encoding(enum agx_isa_encoding encoding,
+                                size_t *length)
 {
    switch (encoding) {
    case AGX_ISA_ENCODING_AGX3B:
-      *length = sizeof(continue_ray_fixed_first_site_witness_agx3b);
-      return continue_ray_fixed_first_site_witness_agx3b;
+      *length = sizeof(continue_ray_canonical_agx3b);
+      return continue_ray_canonical_agx3b;
    case AGX_ISA_ENCODING_AGX3C:
-      *length = sizeof(continue_ray_fixed_first_site_witness_agx3c);
-      return continue_ray_fixed_first_site_witness_agx3c;
+      *length = sizeof(continue_ray_canonical_agx3c);
+      return continue_ray_canonical_agx3c;
    default:
       *length = 0;
       return NULL;
+   }
+}
+
+static bool
+continue_ray_state_register_supported(enum agx_isa_encoding encoding,
+                                      uint16_t state_register)
+{
+   static const uint16_t agx3b_registers[] = {0, 2, 4, 6, 8, 10};
+   static const uint16_t agx3c_registers[] = {0, 2, 8, 10, 12, 16, 18};
+   const uint16_t *registers;
+   size_t count;
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      registers = agx3b_registers;
+      count = sizeof(agx3b_registers) / sizeof(agx3b_registers[0]);
+   } else if (encoding == AGX_ISA_ENCODING_AGX3C) {
+      registers = agx3c_registers;
+      count = sizeof(agx3c_registers) / sizeof(agx3c_registers[0]);
+   } else {
+      return false;
+   }
+
+   for (size_t i = 0; i < count; ++i) {
+      if (registers[i] == state_register)
+         return true;
+   }
+
+   return false;
+}
+
+bool
+agx3_pack_continue_ray(enum agx_isa_encoding encoding,
+                       uint16_t state_register,
+                       struct agx3_encoded_continue_ray *out)
+{
+   size_t length = 0;
+   const uint8_t *canonical =
+      continue_ray_canonical_encoding(encoding, &length);
+
+   if (canonical == NULL || out == NULL ||
+       !continue_ray_state_register_supported(encoding, state_register))
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical, length);
+
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      /* f5[0:7] -> word 1 bits 8:15; f5[8:12] -> word 2 bits 0:4. */
+      out->bytes[3] |= state_register & 0xff;
+      out->bytes[4] |= (state_register >> 8) & 0x1f;
+   } else {
+      /* AGX3c scatters f5[1:12] across four instruction words. */
+      out->bytes[7] |= (state_register & 0x0002) << 5;
+      out->bytes[4] |= (state_register & 0x000c) << 1;
+      out->bytes[4] |= (state_register & 0x0010) << 3;
+      out->bytes[5] |= (state_register & 0x0060) >> 4;
+      out->bytes[5] |= (state_register & 0x0180) >> 3;
+      out->bytes[2] |= (state_register & 0x0200) >> 2;
+      out->bytes[3] |= (state_register & 0x0400) >> 8;
+      out->bytes[0] |= (state_register & 0x0800) >> 7;
+      out->bytes[0] |= (state_register & 0x1000) >> 9;
+   }
+
+   out->length = length;
+   return true;
+}
+
+bool
+agx3_unpack_continue_ray(enum agx_isa_encoding encoding,
+                         const uint8_t *bytes, size_t available,
+                         uint16_t *state_register, uint8_t *length)
+{
+   const size_t expected_length =
+      encoding == AGX_ISA_ENCODING_AGX3B ? 6 :
+      encoding == AGX_ISA_ENCODING_AGX3C ? 8 : 0;
+
+   if (expected_length == 0 || bytes == NULL || state_register == NULL ||
+       length == NULL || available < expected_length)
+      return false;
+
+   uint16_t decoded;
+   if (encoding == AGX_ISA_ENCODING_AGX3B) {
+      decoded = bytes[3] | ((uint16_t)(bytes[4] & 0x1f) << 8);
+   } else {
+      decoded = ((uint16_t)(bytes[7] >> 5) & 0x0002) |
+                ((uint16_t)(bytes[4] >> 1) & 0x000c) |
+                ((uint16_t)(bytes[4] >> 3) & 0x0010) |
+                ((uint16_t)bytes[5] << 4 & 0x0060) |
+                ((uint16_t)bytes[5] << 3 & 0x0180) |
+                ((uint16_t)bytes[2] << 2 & 0x0200) |
+                ((uint16_t)bytes[3] << 8 & 0x0400) |
+                ((uint16_t)bytes[0] << 7 & 0x0800) |
+                ((uint16_t)bytes[0] << 9 & 0x1000);
+   }
+
+   struct agx3_encoded_continue_ray canonical;
+   if (!agx3_pack_continue_ray(encoding, decoded, &canonical) ||
+       canonical.length != expected_length ||
+       memcmp(bytes, canonical.bytes, expected_length) != 0)
+      return false;
+
+   *state_register = decoded;
+   *length = expected_length;
+   return true;
+}
+
+enum agx_isa_encoding
+agx3_continue_ray_witnessed_chip_encoding(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G17P:
+      return AGX_ISA_ENCODING_AGX3B;
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+      return AGX_ISA_ENCODING_AGX3C;
+   default:
+      return AGX_ISA_ENCODING_UNKNOWN;
    }
 }
 
@@ -3082,16 +3205,16 @@ agx3_pack_continue_ray_fixed_first_site_witness(
    enum agx_isa_encoding encoding,
    struct agx3_encoded_continue_ray_fixed_first_site_witness *out)
 {
-   size_t length = 0;
-   const uint8_t *canonical =
-      continue_ray_fixed_first_site_witness_encoding(encoding, &length);
+   if (out == NULL)
+      return false;
 
-   if (canonical == NULL || out == NULL)
+   struct agx3_encoded_continue_ray canonical;
+   if (!agx3_pack_continue_ray(encoding, 0, &canonical))
       return false;
 
    memset(out, 0, sizeof(*out));
-   memcpy(out->bytes, canonical, length);
-   out->length = length;
+   memcpy(out->bytes, canonical.bytes, canonical.length);
+   out->length = canonical.length;
    return true;
 }
 
@@ -3100,17 +3223,15 @@ agx3_unpack_continue_ray_fixed_first_site_witness(
    enum agx_isa_encoding encoding, const uint8_t *bytes, size_t available,
    uint8_t *length)
 {
-   size_t canonical_length = 0;
-   const uint8_t *canonical =
-      continue_ray_fixed_first_site_witness_encoding(encoding,
-                                                      &canonical_length);
-
-   if (canonical == NULL || bytes == NULL || length == NULL ||
-       available < canonical_length ||
-       memcmp(bytes, canonical, canonical_length) != 0)
+   uint16_t state_register = 0;
+   uint8_t decoded_length = 0;
+   if (length == NULL ||
+       !agx3_unpack_continue_ray(encoding, bytes, available, &state_register,
+                                &decoded_length) ||
+       state_register != 0)
       return false;
 
-   *length = canonical_length;
+   *length = decoded_length;
    return true;
 }
 

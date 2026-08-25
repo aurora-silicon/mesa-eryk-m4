@@ -6025,6 +6025,136 @@ test_update_node(void)
 }
 
 static void
+test_continue_ray(void)
+{
+   static const struct {
+      enum agx_isa_encoding encoding;
+      uint16_t state_register;
+      uint8_t expected[AGX3_CONTINUE_RAY_MAX_LENGTH];
+      uint8_t length;
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B, 0,
+       {0x5f, 0x11, 0x54, 0x00, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3B, 2,
+       {0x5f, 0x11, 0x54, 0x02, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3B, 4,
+       {0x5f, 0x11, 0x54, 0x04, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3B, 6,
+       {0x5f, 0x11, 0x54, 0x06, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3B, 8,
+       {0x5f, 0x11, 0x54, 0x08, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3B, 10,
+       {0x5f, 0x11, 0x54, 0x0a, 0x00, 0x00}, 6},
+      {AGX_ISA_ENCODING_AGX3C, 0,
+       {0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 2,
+       {0x27, 0x04, 0x09, 0x00, 0x22, 0xc0, 0xaf, 0x42}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 8,
+       {0x27, 0x04, 0x09, 0x00, 0x32, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 10,
+       {0x27, 0x04, 0x09, 0x00, 0x32, 0xc0, 0xaf, 0x42}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 12,
+       {0x27, 0x04, 0x09, 0x00, 0x3a, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 16,
+       {0x27, 0x04, 0x09, 0x00, 0xa2, 0xc0, 0xaf, 0x02}, 8},
+      {AGX_ISA_ENCODING_AGX3C, 18,
+       {0x27, 0x04, 0x09, 0x00, 0xa2, 0xc0, 0xaf, 0x42}, 8},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_continue_ray packed;
+      uint16_t state_register = UINT16_MAX;
+      uint8_t length = 0;
+
+      CHECK(agx3_pack_continue_ray(vectors[v].encoding,
+                                   vectors[v].state_register, &packed));
+      CHECK(packed.length == vectors[v].length);
+      CHECK(memcmp(packed.bytes, vectors[v].expected, vectors[v].length) ==
+            0);
+      CHECK(agx3_unpack_continue_ray(vectors[v].encoding,
+                                     vectors[v].expected,
+                                     vectors[v].length, &state_register,
+                                     &length));
+      CHECK(state_register == vectors[v].state_register);
+      CHECK(length == vectors[v].length);
+
+      for (size_t available = 0; available < vectors[v].length; ++available) {
+         CHECK(!agx3_unpack_continue_ray(vectors[v].encoding,
+                                         vectors[v].expected, available,
+                                         &state_register, &length));
+      }
+
+      uint8_t appended[AGX3_CONTINUE_RAY_MAX_LENGTH + 1];
+      memcpy(appended, vectors[v].expected, vectors[v].length);
+      appended[vectors[v].length] = 0xff;
+      CHECK(agx3_unpack_continue_ray(vectors[v].encoding, appended,
+                                     vectors[v].length + 1,
+                                     &state_register, &length));
+      CHECK(state_register == vectors[v].state_register);
+   }
+
+   /* Values that the table could spell but the pinned native corpus does not
+    * contain stay closed independently for the two encodings. */
+   static const uint16_t rejected_b[] = {1, 3, 12, 18, 190, 256, 8190};
+   static const uint16_t rejected_c[] = {1, 4, 6, 14, 20, 254, 8190};
+   struct agx3_encoded_continue_ray packed;
+   for (unsigned i = 0; i < sizeof(rejected_b) / sizeof(rejected_b[0]); ++i)
+      CHECK(!agx3_pack_continue_ray(AGX_ISA_ENCODING_AGX3B, rejected_b[i],
+                                    &packed));
+   for (unsigned i = 0; i < sizeof(rejected_c) / sizeof(rejected_c[0]); ++i)
+      CHECK(!agx3_pack_continue_ray(AGX_ISA_ENCODING_AGX3C, rejected_c[i],
+                                    &packed));
+
+   uint8_t malformed_b[] = {0x5f, 0x91, 0x54, 0x04, 0x00, 0x00};
+   uint8_t malformed_c[] = {0x27, 0x84, 0x09, 0x00,
+                            0x32, 0xc0, 0xaf, 0x02};
+   uint16_t state_register = 0;
+   uint8_t length = 0;
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3B, malformed_b,
+                                   sizeof(malformed_b), &state_register,
+                                   &length));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3C, malformed_c,
+                                   sizeof(malformed_c), &state_register,
+                                   &length));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3B,
+                                   vectors[8].expected, vectors[8].length,
+                                   &state_register, &length));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3C,
+                                   vectors[2].expected, vectors[2].length,
+                                   &state_register, &length));
+   CHECK(!agx3_pack_continue_ray(AGX_ISA_ENCODING_AGX2, 0, &packed));
+   CHECK(!agx3_pack_continue_ray(AGX_ISA_ENCODING_UNKNOWN, 0, &packed));
+   CHECK(!agx3_pack_continue_ray(AGX_ISA_ENCODING_AGX3B, 0, NULL));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3C, NULL, 8,
+                                   &state_register, &length));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3C,
+                                   vectors[8].expected, vectors[8].length,
+                                   NULL, &length));
+   CHECK(!agx3_unpack_continue_ray(AGX_ISA_ENCODING_AGX3C,
+                                   vectors[8].expected, vectors[8].length,
+                                   &state_register, NULL));
+
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G15G) ==
+         AGX_ISA_ENCODING_AGX3B);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G16P) ==
+         AGX_ISA_ENCODING_AGX3B);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G17P) ==
+         AGX_ISA_ENCODING_AGX3B);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G17G) ==
+         AGX_ISA_ENCODING_AGX3C);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G17S) ==
+         AGX_ISA_ENCODING_AGX3C);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G15C) ==
+         AGX_ISA_ENCODING_UNKNOWN);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G16C) ==
+         AGX_ISA_ENCODING_UNKNOWN);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G17A) ==
+         AGX_ISA_ENCODING_UNKNOWN);
+   CHECK(agx3_continue_ray_witnessed_chip_encoding(AGX_CHIP_G17C) ==
+         AGX_ISA_ENCODING_UNKNOWN);
+}
+
+static void
 test_continue_ray_fixed_first_site_witness(void)
 {
    static const struct {
@@ -6312,6 +6442,7 @@ main(void)
    test_end_with_wait_fence_mask();
    test_enable_all_threads();
    test_update_node();
+   test_continue_ray();
    test_continue_ray_fixed_first_site_witness();
    test_update_bvh_fixed_witness();
 
