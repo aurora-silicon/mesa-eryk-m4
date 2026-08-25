@@ -7,6 +7,7 @@
 
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_vary_core.h"
 
 #include <string.h>
 
@@ -64,6 +65,8 @@ _Static_assert(AGX3_CF_MAX_LENGTH <= D12_AGX3_CF_MAX_LENGTH,
                "D3D AGX3 control-flow storage must hold one instruction");
 _Static_assert(AGX3_CF_MAX_LENGTH + 4 <= D12_AGX3_CF_MAX_LENGTH,
                "D3D AGX3 control-flow storage must hold compare plus cnd");
+_Static_assert(AGX3_VARY_MAX_LENGTH == D12_AGX3_VARY_MAX_LENGTH,
+               "D3D AGX3 varying storage must match the canonical forms");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -447,6 +450,95 @@ d12_agx3_encode_cf_branch(enum agx_chip chip,
       return false;
    }
    return true;
+}
+
+static bool
+d12_agx3_finish_vary(struct d12_agx3_vary_encoding *out, bool ok,
+                     const uint8_t bytes[AGX3_VARY_MAX_LENGTH], uint8_t length)
+{
+   if (!ok || length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
+   memcpy(out->bytes, bytes, length);
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_vary_interp(enum agx_chip chip, uint16_t dest,
+                            uint16_t coefficient, bool perspective,
+                            enum d12_agx3_vary_location location,
+                            struct d12_agx3_vary_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_vary_location apple_location;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   switch (location) {
+   case D12_AGX3_VARY_CENTER:
+      apple_location = AGX3_VARY_CENTER;
+      break;
+   case D12_AGX3_VARY_CENTROID:
+      apple_location = AGX3_VARY_CENTROID;
+      break;
+   default:
+      return false;
+   }
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t length = 0;
+   const bool ok = agx3_vary_interp_at(encoding, dest, coefficient,
+                                       perspective, apple_location, bytes,
+                                       &length);
+   return d12_agx3_finish_vary(out, ok, bytes, length);
+}
+
+bool
+d12_agx3_encode_vary_ldcf(enum agx_chip chip, uint16_t dest,
+                          uint16_t coefficient, uint8_t slot,
+                          struct d12_agx3_vary_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t length = 0;
+   const bool ok =
+      agx3_vary_ldcf(encoding, dest, coefficient, slot, bytes, &length);
+   return d12_agx3_finish_vary(out, ok, bytes, length);
+}
+
+bool
+d12_agx3_encode_vary_uvsw(enum agx_chip chip, uint16_t value,
+                          uint16_t uvs_index, uint8_t slot, bool value_kill,
+                          uint16_t wait_mask,
+                          struct d12_agx3_vary_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding))
+      return false;
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t length = 0;
+   const bool ok = agx3_vary_uvsw(encoding, value, uvs_index, slot,
+                                  value_kill, wait_mask, bytes, &length);
+   return d12_agx3_finish_vary(out, ok, bytes, length);
 }
 
 bool

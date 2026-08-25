@@ -22,6 +22,21 @@ int main(void){
       if(!ok||len!=v->nbytes||memcmp(out,v->bytes,v->nbytes)){ if(fail<10) fprintf(stderr,"FAIL %s enc=%d i=%zu\n",v->op,v->enc,i); fail++; }
       else pass++;
    }
+   {
+      static const uint8_t centroid_c[] =
+         {0x27,0x01,0x04,0x0a,0x2a,0x20,0xaa,0x02,0x00,0x80};
+      uint8_t out[AGX3_VARY_MAX_LENGTH]; uint8_t len=0;
+      if(!agx3_vary_interp_at(AGX_ISA_ENCODING_AGX3C,0,1,true,
+                              AGX3_VARY_CENTROID,out,&len) ||
+         len!=sizeof(centroid_c) || memcmp(out,centroid_c,sizeof(centroid_c)))
+         fail++;
+      else pass++;
+
+      if(agx3_vary_interp(AGX_ISA_ENCODING_AGX3B,1,0,false,out,&len)) fail++; else pass++;
+      if(agx3_vary_ldcf(AGX_ISA_ENCODING_AGX3C,0,0,9,out,&len)) fail++; else pass++;
+      if(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B,0,0,0,false,0,out,&len)) fail++; else pass++;
+      if(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B,0,0,1,false,0x40,out,&len)) fail++; else pass++;
+   }
    if(fail){ fprintf(stderr,"agx3_vary_core: %u of %zu failed\n",fail,vary_vec_count); return 1; }
    printf("agx3_vary_core: all %u varying ops reproduced\n",pass); return 0;
 }

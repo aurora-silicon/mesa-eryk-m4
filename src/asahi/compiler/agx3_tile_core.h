@@ -20,7 +20,7 @@
 extern "C" {
 #endif
 
-#define AGX3_TILE_MAX_LENGTH 12u
+#define AGX3_TILE_MAX_LENGTH 14u
 
 enum agx3_tile_width {
    AGX3_TILE_W8 = 0,

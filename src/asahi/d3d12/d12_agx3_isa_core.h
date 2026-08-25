@@ -34,6 +34,7 @@ extern "C" {
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 #define D12_AGX3_CF_MAX_LENGTH 14
+#define D12_AGX3_VARY_MAX_LENGTH 10
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -125,6 +126,11 @@ enum d12_agx3_cf_stack_op {
 enum d12_agx3_cf_branch_op {
    D12_AGX3_CF_BRANCH_EXEC_NONE = 0,
    D12_AGX3_CF_BRANCH_EXEC_ANY = 1,
+};
+
+enum d12_agx3_vary_location {
+   D12_AGX3_VARY_CENTER = 0,
+   D12_AGX3_VARY_CENTROID = 1,
 };
 
 struct d12_agx3_binary_alu_encoding {
@@ -219,6 +225,11 @@ struct d12_agx3_end_with_wait_fence_mask_encoding {
 
 struct d12_agx3_cf_encoding {
    uint8_t bytes[D12_AGX3_CF_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_vary_encoding {
+   uint8_t bytes[D12_AGX3_VARY_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -609,6 +620,26 @@ bool d12_agx3_encode_cf_branch(enum agx_chip chip,
                                enum d12_agx3_cf_branch_op op,
                                int64_t byte_displacement,
                                struct d12_agx3_cf_encoding *out);
+
+/*
+ * Target-gated AGX3 varying building blocks. Interpolation is one scalar
+ * f32interp; when `perspective` is true the caller must lower the surrounding
+ * RHW interpolation, reciprocal, and multiply sequence. Explicit at-sample
+ * coordinates and dynamic coefficient/UVS indices are intentionally absent.
+ * LDCF is an asynchronous coefficient load; UVSW carries its scheduler slot,
+ * value kill, and waits. These do not by themselves expose a D3D12 feature.
+ */
+bool d12_agx3_encode_vary_interp(
+   enum agx_chip chip, uint16_t dest, uint16_t coefficient,
+   bool perspective, enum d12_agx3_vary_location location,
+   struct d12_agx3_vary_encoding *out);
+bool d12_agx3_encode_vary_ldcf(enum agx_chip chip, uint16_t dest,
+                               uint16_t coefficient, uint8_t slot,
+                               struct d12_agx3_vary_encoding *out);
+bool d12_agx3_encode_vary_uvsw(enum agx_chip chip, uint16_t value,
+                               uint16_t uvs_index, uint8_t slot,
+                               bool value_kill, uint16_t wait_mask,
+                               struct d12_agx3_vary_encoding *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

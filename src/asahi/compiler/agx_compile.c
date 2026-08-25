@@ -613,6 +613,49 @@ agx_interp_for_bary(nir_intrinsic_instr *bary, agx_index *sample_index)
    }
 }
 
+/* AGX3 removed AGX2's fused projective iterator. Build Apple's witnessed
+ * scalar software sequence while values are still in SSA so register
+ * allocation can place the temporary RHW, reciprocal, and channels safely.
+ * Dynamic coefficient indices and explicit at-sample coordinates remain on
+ * the legacy IR path so the AGX3 packer rejects them instead of guessing. */
+static bool
+agx_emit_load_vary_agx3(agx_builder *b, agx_index dest, agx_index cf,
+                        agx_index sample_index, unsigned components,
+                        enum agx_interpolation interp, bool perspective)
+{
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2 ||
+       dest.size != AGX_SIZE_32 || cf.type != AGX_INDEX_IMMEDIATE ||
+       sample_index.type != AGX_INDEX_IMMEDIATE || sample_index.value != 0 ||
+       (interp != AGX_INTERPOLATION_CENTER &&
+        interp != AGX_INTERPOLATION_CENTROID))
+      return false;
+
+   agx_index reciprocal_w = agx_null();
+   if (perspective) {
+      agx_index rhw_cf = agx_get_cf(b->shader, VARYING_SLOT_POS, 3);
+      if (rhw_cf.type != AGX_INDEX_IMMEDIATE)
+         return false;
+
+      agx_index rhw = agx_temp(b->shader, AGX_SIZE_32);
+      agx_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp, true);
+      reciprocal_w = agx_rcp(b, rhw);
+   }
+
+   agx_index channels[4];
+   for (unsigned c = 0; c < components; ++c) {
+      agx_index channel_cf = cf;
+      channel_cf.value += c;
+
+      agx_index raw = agx_temp(b->shader, AGX_SIZE_32);
+      agx_interp_agx3_to(b, raw, channel_cf, sample_index, interp,
+                         perspective);
+      channels[c] = perspective ? agx_fmul(b, raw, reciprocal_w) : raw;
+   }
+
+   agx_emit_collect_to(b, dest, components, channels);
+   return true;
+}
+
 static void
 agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
 {
@@ -628,6 +671,12 @@ agx_emit_load_vary(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       nir_intrinsic_interp_mode(bary) != INTERP_MODE_NOPERSPECTIVE;
 
    agx_index I = cf_for_intrinsic(b, instr);
+
+   if (agx_emit_load_vary_agx3(b, dest, I, sample_index, components, interp,
+                               perspective)) {
+      agx_emit_cached_split(b, dest, components);
+      return;
+   }
 
    /* For perspective interpolation, we project (multiply by 1/W) */
    if (perspective) {
@@ -3507,8 +3556,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       /* AGX3 (M3/M4/M5). Device open still refuses these parts
        * (agx_chip_codegen_supported), so this runs only when a caller builds an
        * AGX3 device key deliberately. agx3_pack_binary fails the shader -- never
-       * aborts -- on any ungrounded op; a false return leaves a partial binary
-       * the caller must discard. */
+       * aborts -- on any ungrounded op and rolls the emitted shader prefix back
+       * before returning false. */
       (void)agx3_pack_binary(ctx, binary);
    }
 

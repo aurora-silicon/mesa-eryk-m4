@@ -80,6 +80,7 @@ LOD_MODE = immediate("lod_mode", "enum agx_lod_mode")
 PIXEL_OFFSET = immediate("pixel_offset")
 STACK_SIZE = immediate("stack_size", 'int16_t')
 EXPLICIT_COORDS = immediate("explicit_coords", "bool")
+PERSPECTIVE = immediate("perspective", "bool")
 
 DIM = enum("dim", {
     0: '1d',
@@ -377,6 +378,12 @@ op("convert", (0x3E | L, 6, _), srcs = 2, imms = [ROUND])
 
 # Sources are the coeffient register and the sample index (if applicable)
 op("iter", (0x21, 8, _), srcs = 2, imms = [CHANNELS, INTERPOLATION])
+
+# AGX3's f32interp is a scalar linear iterator. Perspective correction is a
+# software sequence around this operation, so retain the iterator's perspective
+# selector independently instead of pretending AGX2's fused iterproj exists.
+op("interp_agx3", None, srcs = 2,
+   imms = [INTERPOLATION, PERSPECTIVE])
 
 # Sources are the coeffient register for the varying, the coefficient register
 # for W, and the sample index (if applicable)

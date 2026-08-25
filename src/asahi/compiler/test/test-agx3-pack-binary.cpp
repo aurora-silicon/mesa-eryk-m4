@@ -20,6 +20,7 @@
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
 #include "agx3_sr_core.h"
+#include "agx3_vary_core.h"
 
 static void
 append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
@@ -284,6 +285,54 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
 
       EXPECT_EQ(got, want);
    }
+}
+
+TEST_F(AGX3PackBinary, VaryingInterpolationCoefficientAndUvs)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+
+      agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(3),
+                         agx_zero(), AGX_INTERPOLATION_CENTER, false);
+      agx_interp_agx3_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(4),
+                         agx_zero(), AGX_INTERPOLATION_CENTROID, true);
+      agx_ldcf_to(b, agx_register(4, AGX_SIZE_32), agx_immediate(5), 1);
+      agx_instr *store =
+         agx_st_vary(b, agx_immediate(7), agx_register(4, AGX_SIZE_32));
+      store->src[1].kill = true;
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+      uint8_t len = 0;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_vary_interp_at(enc, 0, 3, false, AGX3_VARY_CENTER,
+                                      bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_vary_interp_at(enc, 2, 4, true, AGX3_VARY_CENTROID,
+                                      bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_vary_ldcf(enc, 4, 5, 1, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_vary_uvsw(enc, 4, 7, 1, true, 1, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, RefusesExplicitSampleInterpolation)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(3),
+                      agx_register(2, AGX_SIZE_16), AGX_INTERPOLATION_SAMPLE,
+                      false);
+   agx_stop(b);
+   EXPECT_TRUE(pack(b, /*expect_ok=*/false).empty());
 }
 
 TEST_F(AGX3PackBinary, AllGroundedComparisonRelations)

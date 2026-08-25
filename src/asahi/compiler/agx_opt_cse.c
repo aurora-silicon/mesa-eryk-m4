@@ -82,6 +82,10 @@ instrs_equal(const void *_i1, const void *_i2)
       return false;
    if (i1->shadow != i2->shadow)
       return false;
+   if (i1->interpolation != i2->interpolation)
+      return false;
+   if (i1->perspective != i2->perspective)
+      return false;
    if (i1->shift != i2->shift)
       return false;
    if (i1->saturate != i2->saturate)

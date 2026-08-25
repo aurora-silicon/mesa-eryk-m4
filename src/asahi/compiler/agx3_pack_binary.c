@@ -31,6 +31,7 @@
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_vary_core.h"
 #include "agx_compiler.h"
 
 #include <string.h>
@@ -336,12 +337,13 @@ agx3_try_float_modifier(struct util_dynarray *emission,
 }
 
 /* An async producer whose result later consumers must wait on: the device
- * load and the special-register read. Textures and atomics join this set as
- * their cores are wired. */
+ * load, coefficient load, and special-register read. Textures and atomics
+ * join this set as their cores are wired. */
 static bool
 agx3_is_async(const agx_instr *I)
 {
-   return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_GET_SR;
+   return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LDCF ||
+          I->op == AGX_OPCODE_GET_SR;
 }
 
 /* Map a Mesa special register to the corpus-witnessed Apple SR number and
@@ -411,6 +413,83 @@ agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
+}
+
+static bool
+agx3_map_vary_location(enum agx_interpolation interpolation,
+                        enum agx3_vary_location *location)
+{
+   switch (interpolation) {
+   case AGX_INTERPOLATION_CENTER:
+      *location = AGX3_VARY_CENTER;
+      return true;
+   case AGX_INTERPOLATION_CENTROID:
+      *location = AGX3_VARY_CENTROID;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+agx3_vary_reg32(agx_index index)
+{
+   return agx3_src_is_register(index) && !index.memory &&
+          index.size == AGX_SIZE_32 && (index.value & 1) == 0 &&
+          index.value < 256 && !index.abs && !index.neg;
+}
+
+static bool
+agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                 const agx_instr *I, uint16_t wait_mask)
+{
+   if (wait_mask != 0 || I->nr_dests != 1 || I->nr_srcs != 2 ||
+       !agx3_vary_reg32(I->dest[0]) ||
+       I->src[0].type != AGX_INDEX_IMMEDIATE ||
+       I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0)
+      return false;
+
+   enum agx3_vary_location location;
+   if (!agx3_map_vary_location(I->interpolation, &location))
+      return false;
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_vary_interp_at(enc, I->dest[0].value, I->src[0].value,
+                              I->perspective, location, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
+
+static bool
+agx3_emit_ldcf(struct util_dynarray *emission, enum agx_isa_encoding enc,
+               const agx_instr *I, uint8_t slot, uint16_t wait_mask)
+{
+   if (wait_mask != 0 || I->nr_dests != 1 || I->nr_srcs != 1 ||
+       !agx3_vary_reg32(I->dest[0]) ||
+       I->src[0].type != AGX_INDEX_IMMEDIATE || I->channels != 1)
+      return false;
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_vary_ldcf(enc, I->dest[0].value, I->src[0].value, slot, bytes,
+                         &len) &&
+          agx3_append(emission, bytes, len);
+}
+
+static bool
+agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
+               const agx_instr *I, uint8_t slot, uint16_t wait_mask)
+{
+   if (I->nr_dests != 0 || I->nr_srcs != 2 ||
+       I->src[0].type != AGX_INDEX_IMMEDIATE ||
+       !agx3_vary_reg32(I->src[1]))
+      return false;
+
+   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_vary_uvsw(enc, I->src[1].value, I->src[0].value, slot,
+                         I->src[1].kill, wait_mask, bytes, &len) &&
+          agx3_append(emission, bytes, len);
 }
 
 /* Append the half-registers an operand occupies (empty for immediates,
@@ -882,6 +961,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const unsigned initial_size = emission->size;
    struct util_dynarray fixups;
    bool async_seen = false;
+   uint8_t next_uvs_slot = 1;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
    util_dynarray_init(&fixups, ctx);
@@ -941,6 +1021,26 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
          after_loop_backedge = false;
+
+         if (I->op == AGX_OPCODE_INTERP_AGX3) {
+            if (!agx3_emit_interp(emission, enc, I, wait))
+               goto fail;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_LDCF) {
+            if (!agx3_emit_ldcf(emission, enc, I, slot, wait))
+               goto fail;
+            async_seen = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_ST_VARY) {
+            if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, wait))
+               goto fail;
+            next_uvs_slot = (next_uvs_slot % nslots) + 1;
+            continue;
+         }
 
          /* Special-register read. */
          if (I->op == AGX_OPCODE_GET_SR) {

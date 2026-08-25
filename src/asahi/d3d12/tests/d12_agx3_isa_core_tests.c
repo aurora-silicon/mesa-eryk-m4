@@ -7,6 +7,7 @@
 
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_vary_core.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -5726,10 +5727,99 @@ check_control_flow_bridge(void)
    return 0;
 }
 
+static bool
+vary_encoding_is_cleared(const struct d12_agx3_vary_encoding *encoded)
+{
+   if (encoded->length != 0)
+      return false;
+   for (unsigned i = 0; i < sizeof(encoded->bytes); ++i) {
+      if (encoded->bytes[i] != 0)
+         return false;
+   }
+   return true;
+}
+
+static int
+check_vary_encoding(const struct d12_agx3_vary_encoding *encoded,
+                    const uint8_t *expected, uint8_t expected_length)
+{
+   CHECK(encoded->length == expected_length);
+   CHECK(memcmp(encoded->bytes, expected, expected_length) == 0);
+   for (unsigned i = expected_length; i < sizeof(encoded->bytes); ++i)
+      CHECK(encoded->bytes[i] == 0);
+   return 0;
+}
+
+static int
+check_varying_bridge(void)
+{
+   for (unsigned t = 0;
+        t < sizeof(integer_targets) / sizeof(integer_targets[0]); ++t) {
+      const struct integer_target *target = &integer_targets[t];
+      struct d12_agx3_vary_encoding encoded;
+      uint8_t expected[AGX3_VARY_MAX_LENGTH] = {0};
+      uint8_t length = 0;
+
+      CHECK(agx3_vary_interp_at(target->encoding, 2, 7, false,
+                                AGX3_VARY_CENTER, expected, &length));
+      CHECK(d12_agx3_encode_vary_interp(
+         target->chip, 2, 7, false, D12_AGX3_VARY_CENTER, &encoded));
+      CHECK(check_vary_encoding(&encoded, expected, length) == 0);
+
+      memset(expected, 0, sizeof(expected));
+      CHECK(agx3_vary_interp_at(target->encoding, 4, 8, true,
+                                AGX3_VARY_CENTROID, expected, &length));
+      CHECK(d12_agx3_encode_vary_interp(
+         target->chip, 4, 8, true, D12_AGX3_VARY_CENTROID, &encoded));
+      CHECK(check_vary_encoding(&encoded, expected, length) == 0);
+
+      memset(expected, 0, sizeof(expected));
+      CHECK(agx3_vary_ldcf(target->encoding, 6, 9, 1, expected, &length));
+      CHECK(d12_agx3_encode_vary_ldcf(target->chip, 6, 9, 1, &encoded));
+      CHECK(check_vary_encoding(&encoded, expected, length) == 0);
+
+      memset(expected, 0, sizeof(expected));
+      CHECK(agx3_vary_uvsw(target->encoding, 8, 10, 2, true, 1, expected,
+                           &length));
+      CHECK(d12_agx3_encode_vary_uvsw(target->chip, 8, 10, 2, true, 1,
+                                      &encoded));
+      CHECK(check_vary_encoding(&encoded, expected, length) == 0);
+   }
+
+   struct d12_agx3_vary_encoding rejected;
+#define REJECT_VARY(call)                                                     \
+   do {                                                                        \
+      memset(&rejected, 0xff, sizeof(rejected));                               \
+      CHECK(!(call));                                                          \
+      CHECK(vary_encoding_is_cleared(&rejected));                              \
+   } while (0)
+   REJECT_VARY(d12_agx3_encode_vary_interp(
+      AGX_CHIP_G17C, 0, 0, false, D12_AGX3_VARY_CENTER, &rejected));
+   REJECT_VARY(d12_agx3_encode_vary_interp(
+      AGX_CHIP_G17S, 1, 0, false, D12_AGX3_VARY_CENTER, &rejected));
+   REJECT_VARY(d12_agx3_encode_vary_interp(
+      AGX_CHIP_G17S, 0, 0, false, (enum d12_agx3_vary_location)99,
+      &rejected));
+   REJECT_VARY(
+      d12_agx3_encode_vary_ldcf(AGX_CHIP_G15G, 0, 0, 0, &rejected));
+   REJECT_VARY(d12_agx3_encode_vary_uvsw(AGX_CHIP_G15G, 0, 0, 1, false,
+                                          0x40, &rejected));
+   REJECT_VARY(d12_agx3_encode_vary_uvsw(AGX_CHIP_G17S, 0, 0, 9, false, 0,
+                                          &rejected));
+#undef REJECT_VARY
+
+   CHECK(!d12_agx3_encode_vary_interp(
+      AGX_CHIP_G17S, 0, 0, false, D12_AGX3_VARY_CENTER, NULL));
+   CHECK(!d12_agx3_encode_vary_ldcf(AGX_CHIP_G17S, 0, 0, 1, NULL));
+   CHECK(!d12_agx3_encode_vary_uvsw(AGX_CHIP_G17S, 0, 0, 1, false, 0, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
    CHECK(check_control_flow_bridge() == 0);
+   CHECK(check_varying_bridge() == 0);
 
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,

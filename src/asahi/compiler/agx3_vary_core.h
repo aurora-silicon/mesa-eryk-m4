@@ -11,9 +11,9 @@
  *   ldcf     -> ldcfr     : raw <A,B,C> coefficient load.
  *   st_vary  -> uvsw      : unified-vertex-store write of one 32-bit component.
  *
- * Composer-driven; reproduces Apple's witnessed bytes exactly. The interpolation
- * location defaults to center (the common case); the scheduling/hazard marker
- * fields are emitted zero -- a valid clean form. Evidence:
+ * Composer-driven; reproduces Apple's witnessed bytes exactly. Center and
+ * centroid locations are explicit; the scheduling/hazard marker fields are
+ * emitted zero, which is table-valid but remains unproven on hardware. Evidence:
  * research/gpu/GPU_AGX3_VARYING_OPS_2026-08-24.md.
  */
 
@@ -30,9 +30,20 @@ extern "C" {
 
 #define AGX3_VARY_MAX_LENGTH 10u
 
+enum agx3_vary_location {
+   AGX3_VARY_CENTER = 0,
+   AGX3_VARY_CENTROID = 1,
+};
+
 /* Interpolate coefficient `coef_index` into `dest`. `perspective` selects the
  * perspective-correct linear iterator (the caller pairs it with the software
- * rcp/mul sequence). Center location only for now. */
+ * rcp/mul sequence). */
+bool agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
+                         uint16_t coef_index, bool perspective,
+                         enum agx3_vary_location location,
+                         uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
+/* Backward-compatible center-location wrapper. */
 bool agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest,
                       uint16_t coef_index, bool perspective,
                       uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);

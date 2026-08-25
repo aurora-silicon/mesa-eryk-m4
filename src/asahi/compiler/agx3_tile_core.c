@@ -17,19 +17,25 @@ is_b(enum agx_isa_encoding e)
 
 static bool
 common_ok(uint16_t reg, enum agx3_tile_width w, uint8_t mask,
-          enum agx3_tile_coverage cov)
+          enum agx3_tile_coverage cov, enum agx_isa_encoding enc,
+          uint16_t wait_mask)
 {
-   return reg < 256 && (w == AGX3_TILE_W8 || w == AGX3_TILE_W16 ||
-                        w == AGX3_TILE_W32) &&
+   const unsigned nwait = is_b(enc) ? 6 : 8;
+   return (enc == AGX_ISA_ENCODING_AGX3B ||
+           enc == AGX_ISA_ENCODING_AGX3C) &&
+          reg < 256 && (w != AGX3_TILE_W32 || (reg & 1) == 0) &&
+          (w == AGX3_TILE_W8 || w == AGX3_TILE_W16 || w == AGX3_TILE_W32) &&
           mask >= 1 && mask <= 15 &&
-          (cov == AGX3_TILE_COV_1X || cov == AGX3_TILE_COV_PER_SAMPLE);
+          (cov == AGX3_TILE_COV_1X || cov == AGX3_TILE_COV_PER_SAMPLE) &&
+          (wait_mask & ~((1u << nwait) - 1)) == 0;
 }
 
 static unsigned
-wait_overrides(uint16_t wait_mask, struct agx3_field_kv *ov, unsigned n)
+wait_overrides(enum agx_isa_encoding enc, uint16_t wait_mask,
+               struct agx3_field_kv *ov, unsigned n)
 {
    /* Wait bits are f18..f25 (slots 1..8). */
-   for (unsigned i = 0; i < 8; ++i)
+   for (unsigned i = 0; i < (is_b(enc) ? 6 : 8); ++i)
       if (wait_mask & (1u << i))
          ov[n++] = (struct agx3_field_kv)KV(18 + i, 1);
    return n;
@@ -42,7 +48,7 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
                 uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                 uint8_t *len)
 {
-   if (!common_ok(data, width, chan_mask, cov))
+   if (!common_ok(data, width, chan_mask, cov, enc, wait_mask))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
                                           KV(38, 1), KV(43, 1), KV(52, 1),
@@ -57,7 +63,7 @@ agx3_tile_store(enum agx_isa_encoding enc, uint16_t data,
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
    ov[n++] = (struct agx3_field_kv)KV(51, cov);
-   n = wait_overrides(wait_mask, ov, n);
+   n = wait_overrides(enc, wait_mask, ov, n);
    return agx3_bind_compose(enc, "lstcol", 0, is_b(enc) ? base_b : base_c,
                             is_b(enc) ? 8 : 9, ov, n, out, len);
 }
@@ -69,7 +75,7 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
                uint16_t wait_mask, uint8_t out[AGX3_TILE_MAX_LENGTH],
                uint8_t *len)
 {
-   if (!common_ok(dest, width, chan_mask, cov) || slot < 1 ||
+   if (!common_ok(dest, width, chan_mask, cov, enc, wait_mask) || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),
@@ -86,7 +92,7 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
    ov[n++] = (struct agx3_field_kv)KV(26, chan_mask);
    ov[n++] = (struct agx3_field_kv)KV(57, tile_off);
    ov[n++] = (struct agx3_field_kv)KV(51, cov);
-   n = wait_overrides(wait_mask, ov, n);
+   n = wait_overrides(enc, wait_mask, ov, n);
    return agx3_bind_compose(enc, "lldcol", 0, is_b(enc) ? base_b : base_c,
                             is_b(enc) ? 7 : 8, ov, n, out, len);
 }

@@ -16,30 +16,59 @@ is_b(enum agx_isa_encoding e)
 }
 
 bool
-agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest, uint16_t coef_index,
-                 bool perspective, uint8_t out[AGX3_VARY_MAX_LENGTH],
-                 uint8_t *len)
+agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
+                    uint16_t coef_index, bool perspective,
+                    enum agx3_vary_location location,
+                    uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
-   if (dest >= 256)
+   if ((enc != AGX_ISA_ENCODING_AGX3B &&
+        enc != AGX_ISA_ENCODING_AGX3C) ||
+       (dest & 1) != 0 || dest >= 256 ||
+       (location != AGX3_VARY_CENTER && location != AGX3_VARY_CENTROID))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(25, 6),
                                           KV(26, 2), KV(40, 2)};
    const struct agx3_field_kv base_c[] = {KV(9, 2),  KV(10, 2), KV(25, 6),
                                           KV(26, 2), KV(40, 2), KV(44, 3),
                                           KV(45, 58)};
-   /* Center location: f37=66, f39=7, f41=0 (f32 selector 0). */
-   const struct agx3_field_kv ov[] = {KV(2, dest), KV(22, coef_index),
-                                      KV(11, perspective ? 1 : 0), KV(37, 66),
-                                      KV(39, 7), KV(41, 0), KV(32, 0)};
+   struct agx3_field_kv ov[7];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, dest);
+   ov[n++] = (struct agx3_field_kv)KV(22, coef_index);
+   ov[n++] = (struct agx3_field_kv)KV(11, perspective ? 1 : 0);
+   if (location == AGX3_VARY_CENTER) {
+      ov[n++] = (struct agx3_field_kv)KV(37, 66);
+      ov[n++] = (struct agx3_field_kv)KV(39, 7);
+      ov[n++] = (struct agx3_field_kv)KV(41, 0);
+      ov[n++] = (struct agx3_field_kv)KV(32, 0);
+   } else {
+      /* Centroid and ordinary per-sample interpolation use the same leaf.
+       * Explicit at-sample setup remains outside this codec. */
+      ov[n++] = (struct agx3_field_kv)KV(39, 2);
+      ov[n++] = (struct agx3_field_kv)KV(41, 1);
+      ov[n++] =
+         (struct agx3_field_kv)KV(32, perspective ? 0 : 6);
+   }
    return agx3_bind_compose(enc, "f32interp", 0, is_b(enc) ? base_b : base_c,
-                            is_b(enc) ? 5 : 7, ov, 7, out, len);
+                            is_b(enc) ? 5 : 7, ov, n, out, len);
+}
+
+bool
+agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest,
+                 uint16_t coef_index, bool perspective,
+                 uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_vary_interp_at(enc, dest, coef_index, perspective,
+                              AGX3_VARY_CENTER, out, len);
 }
 
 bool
 agx3_vary_ldcf(enum agx_isa_encoding enc, uint16_t dest, uint16_t coef_index,
                uint8_t slot, uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
-   if (dest >= 256 || slot < 1 ||
+   if ((enc != AGX_ISA_ENCODING_AGX3B &&
+        enc != AGX_ISA_ENCODING_AGX3C) ||
+       (dest & 1) != 0 || dest >= 256 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2), KV(10, 2), KV(23, 1),
@@ -57,7 +86,11 @@ agx3_vary_uvsw(enum agx_isa_encoding enc, uint16_t value, uint16_t uvs_index,
                uint8_t slot, bool value_kill, uint16_t wait_mask,
                uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
-   if (value >= 256)
+   const unsigned nwait = is_b(enc) ? 6 : 8;
+   if ((enc != AGX_ISA_ENCODING_AGX3B &&
+        enc != AGX_ISA_ENCODING_AGX3C) ||
+       (value & 1) != 0 || value >= 256 || slot < 1 || slot > nwait ||
+       (wait_mask & ~((1u << nwait) - 1)) != 0)
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 5), KV(23, 1), KV(24, 1)};
    const struct agx3_field_kv base_c[] = {KV(9, 5),  KV(10, 2), KV(23, 1),
@@ -66,11 +99,9 @@ agx3_vary_uvsw(enum agx_isa_encoding enc, uint16_t value, uint16_t uvs_index,
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(5, value);
    ov[n++] = (struct agx3_field_kv)KV(15, uvs_index);
-   if (slot)
-      ov[n++] = (struct agx3_field_kv)KV(12, slot);
+   ov[n++] = (struct agx3_field_kv)KV(12, slot);
    ov[n++] = (struct agx3_field_kv)KV(13, value_kill ? 1 : 0);
    /* Wait bits f30.. (6 on agx3b, 8 on agx3c). */
-   const unsigned nwait = is_b(enc) ? 6 : 8;
    for (unsigned i = 0; i < nwait; ++i)
       if (wait_mask & (1u << i))
          ov[n++] = (struct agx3_field_kv)KV(30 + i, 1);
