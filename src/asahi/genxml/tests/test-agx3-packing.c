@@ -279,7 +279,7 @@ test_agx3_cdm_launch(void)
 }
 
 static void
-test_agx3_live_vdm_direct_draw(void)
+test_agx3_live_vdm_draw(void)
 {
    static const uint8_t nonindexed_g15[] = {
       0x00, 0x06, 0xc4, 0x61, 0x44, 0x33, 0x22, 0x11,
@@ -299,11 +299,32 @@ test_agx3_live_vdm_direct_draw(void)
       0x01, 0x03, 0x00, 0x00, 0x00, 0xf9, 0xff, 0xff, 0xff, 0x07, 0x00,
       0x00, 0x00, 0x40, 0x30, 0x20, 0x10, 0x12, 0x00, 0x00, 0x00,
    };
+   static const uint8_t indirect_nonindexed_g15[] = {
+      0x00, 0x06, 0x04, 0x64, 0x45, 0x23,
+      0x00, 0x00, 0xc0, 0xab, 0x89, 0x67,
+   };
+   static const uint8_t indirect_nonindexed_hal300[] = {
+      0x00, 0x06, 0x04, 0x6c, 0x45, 0x23, 0x00, 0x00,
+      0xc0, 0xab, 0x89, 0x67, 0x07, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t indirect_indexed_g15[] = {
+      0x01, 0x00, 0x00, 0x40, 0xff, 0xff, 0xff, 0xff,
+      0x34, 0x09, 0x35, 0x64, 0xbc, 0x9a, 0x78, 0x56,
+      0x45, 0x23, 0x00, 0x00, 0xc0, 0xab, 0x89, 0x67,
+      0x3f, 0x30, 0x20, 0x10, 0x12, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t indirect_indexed_hal300[] = {
+      0x01, 0x00, 0x00, 0x40, 0xff, 0xff, 0xff, 0xff,
+      0x34, 0x09, 0x35, 0x6c, 0xbc, 0x9a, 0x78, 0x56,
+      0x45, 0x23, 0x00, 0x00, 0xc0, 0xab, 0x89, 0x67,
+      0x07, 0x00, 0x00, 0x00, 0x3f, 0x30, 0x20, 0x10,
+      0x12, 0x00, 0x00, 0x00,
+   };
    const enum agx_chip chips[] = {AGX_CHIP_G15G, AGX_CHIP_G17S};
 
    for (unsigned i = 0; i < 2; ++i) {
       const bool hal300 = chips[i] == AGX_CHIP_G17S;
-      uint32_t packed[8] = {0};
+      uint32_t packed[9] = {0};
       const struct agx_draw nonindexed = {
          .b = agx_3d(UINT32_C(0x11223344), 2, 1),
          .start = UINT32_C(0xaabbccdd),
@@ -338,6 +359,48 @@ test_agx3_live_vdm_direct_draw(void)
          fprintf(stderr, "AGX3 live indexed VDM mismatch\n");
          exit(1);
       }
+
+      memset(packed, 0, sizeof(packed));
+      const struct agx_draw indirect_nonindexed =
+         agx_draw_indirect(UINT64_C(0x23456789abc0));
+      CHECK_EQ(agx_vdm_draw_supported(chips[i], indirect_nonindexed,
+                                      (enum agx_primitive)6),
+               true);
+      CHECK_EQ(agx_vdm_draw_size(chips[i], indirect_nonindexed),
+               hal300 ? 16 : 12);
+      end = agx_vdm_draw(packed, chips[i], indirect_nonindexed,
+                         (enum agx_primitive)6);
+      CHECK_EQ((uintptr_t)end - (uintptr_t)packed, hal300 ? 16 : 12);
+      ++checks;
+      if (memcmp(packed,
+                 hal300 ? indirect_nonindexed_hal300
+                        : indirect_nonindexed_g15,
+                 hal300 ? sizeof(indirect_nonindexed_hal300)
+                        : sizeof(indirect_nonindexed_g15))) {
+         fprintf(stderr, "AGX3 live indirect nonindexed VDM mismatch\n");
+         exit(1);
+      }
+
+      memset(packed, 0, sizeof(packed));
+      const struct agx_draw indirect_indexed = agx_draw_indexed_indirect(
+         UINT64_C(0x23456789abc0), UINT64_C(0x123456789abc),
+         UINT32_C(0x4080c100), AGX_INDEX_SIZE_U32, true);
+      CHECK_EQ(agx_vdm_draw_supported(chips[i], indirect_indexed,
+                                      (enum agx_primitive)9),
+               true);
+      CHECK_EQ(agx_vdm_draw_size(chips[i], indirect_indexed),
+               hal300 ? 36 : 32);
+      end = agx_vdm_draw(packed, chips[i], indirect_indexed,
+                         (enum agx_primitive)9);
+      CHECK_EQ((uintptr_t)end - (uintptr_t)packed, hal300 ? 36 : 32);
+      ++checks;
+      if (memcmp(packed,
+                 hal300 ? indirect_indexed_hal300 : indirect_indexed_g15,
+                 hal300 ? sizeof(indirect_indexed_hal300)
+                        : sizeof(indirect_indexed_g15))) {
+         fprintf(stderr, "AGX3 live indirect indexed VDM mismatch\n");
+         exit(1);
+      }
    }
 
    struct agx_draw rejected = {
@@ -346,7 +409,12 @@ test_agx3_live_vdm_direct_draw(void)
    CHECK_EQ(
       agx_vdm_draw_supported(AGX_CHIP_G16P, rejected, (enum agx_primitive)6),
       false);
-   rejected.b = agx_grid_indirect(UINT64_C(0x1000));
+   rejected.b = agx_grid_indirect(UINT64_C(0x1002));
+   CHECK_EQ(
+      agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
+      false);
+   rejected = agx_draw_indexed_indirect(
+      UINT64_C(0x1000), UINT64_C(0x2000), 0, AGX_INDEX_SIZE_U32, false);
    CHECK_EQ(
       agx_vdm_draw_supported(AGX_CHIP_G17S, rejected, (enum agx_primitive)6),
       false);
@@ -751,7 +819,7 @@ main(void)
    test_generation_boundaries();
    test_sampler_generations();
    test_agx3_cdm_launch();
-   test_agx3_live_vdm_direct_draw();
+   test_agx3_live_vdm_draw();
    test_agx3_cdm_stream_link();
    test_agx3_cdm_link_padding();
    test_agx3_cdm_barrier();

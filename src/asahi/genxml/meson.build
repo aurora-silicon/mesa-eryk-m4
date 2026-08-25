@@ -20,7 +20,7 @@ if with_tests
     executable(
       'asahi-agx3-packing',
       files('tests/test-agx3-packing.c'),
-      include_directories : [inc_src],
+      include_directories : [inc_src, inc_asahi],
       dependencies : [idep_agx_pack, idep_mesautil],
     ),
     suite : ['asahi'],
