@@ -38,6 +38,7 @@ libasahi_agx_files = files(
   'agx3_vary_core.c',
   'agx3_tile_core.c',
   'agx3_slot_core.c',
+  'agx3_alu_core.c',
   'agx_performance.c',
   'agx_print.c',
   'agx_pressure_schedule.c',
