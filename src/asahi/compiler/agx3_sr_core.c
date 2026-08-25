@@ -1,0 +1,86 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_sr_core.h"
+
+#include "agx3_binder.h"
+
+#define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
+
+/*
+ * Corpus-witnessed (SR number, width) pairs; srops probe session 2026-08-25,
+ * one Apple-compiled kernel per MSL builtin, identical numbers on agx3b and
+ * agx3c. 16-bit: 6 simdgroup_index_in_threadgroup, 7 thread_index_in_simdgroup,
+ * 9/10/11 thread_position_in_threadgroup.xyz, 13 thread_index_in_threadgroup,
+ * 17/18/19 threads_per_threadgroup.xyz, 20/21/22
+ * dispatch_threads_per_threadgroup.xyz, 34/36 (witnessed in Apple device-atomic
+ * kernels, attribution UNKNOWN). 32-bit: 23/24/25 thread_position_in_grid.xyz,
+ * 26/27/28 threadgroup_position_in_grid.xyz.
+ */
+bool
+agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
+{
+   if (width == AGX3_SR_W16) {
+      switch (sr) {
+      case 6: case 7: case 9: case 10: case 11: case 13:
+      case 17: case 18: case 19: case 20: case 21: case 22:
+      case 34: case 36:
+         return true;
+      default:
+         return false;
+      }
+   }
+   if (width == AGX3_SR_W32)
+      return sr >= 23 && sr <= 28;
+   return false;
+}
+
+bool
+agx3_sr_encode(enum agx_isa_encoding enc, const struct agx3_sr_desc *d,
+               uint8_t out[AGX3_SR_MAX_LENGTH], uint8_t *len)
+{
+   if (d == NULL || d->dest >= 256)
+      return false;
+   if (!agx3_sr_witnessed(d->sr, d->width))
+      return false;
+   /* 32-bit reads write a register pair; every witness is 2-aligned. */
+   if (d->width == AGX3_SR_W32 && (d->dest & 1) != 0)
+      return false;
+
+   const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
+   if (d->slot < 1 || d->slot > nslots || (d->wait_mask >> nslots) != 0)
+      return false;
+
+   struct agx3_field_kv base[5];
+   unsigned nbase = 0;
+   base[nbase++] = (struct agx3_field_kv)KV(9, 2);
+   base[nbase++] = (struct agx3_field_kv)KV(38, 1);
+   base[nbase++] = (struct agx3_field_kv)KV(23, 7);
+   if (enc == AGX_ISA_ENCODING_AGX3C) {
+      base[nbase++] = (struct agx3_field_kv)KV(28, 4);
+      base[nbase++] = (struct agx3_field_kv)KV(29, 144);
+   }
+
+   struct agx3_field_kv ov[13];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
+   ov[n++] = (struct agx3_field_kv)KV(10, d->width);
+   ov[n++] = (struct agx3_field_kv)KV(24, d->width);
+   ov[n++] = (struct agx3_field_kv)KV(21, d->sr);
+   ov[n++] = (struct agx3_field_kv)KV(12, d->slot);
+
+   /* Wait mask -> f30+i. */
+   for (unsigned i = 0; i < 8; ++i) {
+      if (d->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(30 + i, 1);
+   }
+
+   /* The compact form's selector requires every wait bit zero and a narrow
+    * destination field; the composer refuses it otherwise and the long form
+    * carries the same operands. */
+   if (agx3_bind_compose(enc, "rld", 0, base, nbase, ov, n, out, len))
+      return true;
+   return agx3_bind_compose(enc, "rld", 1, base, nbase, ov, n, out, len);
+}

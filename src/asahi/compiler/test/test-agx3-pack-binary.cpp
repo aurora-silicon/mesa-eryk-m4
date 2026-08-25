@@ -18,6 +18,7 @@
 #include "agx3_falu_mod_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_alu_core.h"
+#include "agx3_sr_core.h"
 
 static void
 append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
@@ -128,6 +129,78 @@ TEST_F(AGX3PackBinary, RefusesUnmappedOp)
    agx_index w0 = agx_register(0, AGX_SIZE_32);
    agx_index w2 = agx_register(2, AGX_SIZE_32);
    agx_iadd_to(b, w0, w0, w2, 3); /* shift != 0 -> out of grounded domain */
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
+TEST_F(AGX3PackBinary, GetSrIndexedLoadAddStoreCarriesWait)
+{
+   /* The thread-indexed compute shape: read thread_position_in_grid.x, use it
+    * as the index of a load, add, store back through the same index. The SR
+    * read is an async producer: it takes scoreboard slot 1, the load waits on
+    * it (for the index) while signalling slot 2, and the add waits on the
+    * load. The store re-waits nothing -- both slots are already satisfied. */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index base = agx_register(0, AGX_SIZE_64);
+      agx_index gid = agx_register(4, AGX_SIZE_32);
+      agx_index v6 = agx_register(6, AGX_SIZE_32);
+      agx_index v8 = agx_register(8, AGX_SIZE_32);
+
+      agx_get_sr_to(b, gid, AGX_SR_THREAD_POSITION_IN_GRID_X);
+      agx_device_load_to(b, v6, base, gid, AGX_FORMAT_I32, 1, 2, false);
+      agx_iadd_to(b, v8, v6, v6, 0);
+      agx_device_store(b, v8, base, gid, AGX_FORMAT_I32, 1, 2, false);
+      agx_stop(b);
+      std::vector<uint8_t> got = pack(b);
+
+      /* Independently build the expected stream from the encoders. */
+      struct agx3_sr_desc sr = {};
+      sr.dest = 4; sr.width = AGX3_SR_W32; sr.sr = 23;
+      sr.slot = 1; sr.wait_mask = 0;
+      uint8_t rb[AGX3_SR_MAX_LENGTH]; uint8_t rl = 0;
+      ASSERT_TRUE(agx3_sr_encode(enc, &sr, rb, &rl));
+
+      struct agx3_mem_desc ld = {};
+      ld.data = 6; ld.width = AGX3_MEM_W32; ld.mask = 1; ld.shift = 2;
+      ld.base_is_uniform = false; ld.base = 0;
+      ld.idx_kind = AGX3_MEM_IDX_REG; ld.idx_reg = 4;
+      ld.slot = 2; ld.wait_mask = 0x1;
+      uint8_t lb[AGX3_MEM_MAX_LENGTH]; uint8_t ll = 0;
+      ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, lb, &ll));
+
+      uint8_t ab[AGX3_ALU_MAX_LENGTH]; uint8_t al = 0;
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 8, 6, 6, 0, 0,
+                                   /*wait*/ 0x2, ab, &al));
+
+      struct agx3_mem_desc st = ld;
+      st.data = 8; st.slot = 0; st.wait_mask = 0;
+      uint8_t sb[AGX3_MEM_MAX_LENGTH]; uint8_t sl = 0;
+      ASSERT_TRUE(agx3_mem_encode_store(enc, &st, sb, &sl));
+
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, rb, rl);
+      append(want, lb, ll);
+      append(want, ab, al);
+      append(want, sb, sl);
+      append(want, end.bytes, end.length);
+
+      EXPECT_EQ(got, want);
+   }
+}
+
+TEST_F(AGX3PackBinary, RefusesUnwitnessedSr)
+{
+   /* samples_log2 has no corpus witness tying it to an Apple SR number; the
+    * backend must fail the shader, not guess an encoding. */
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index h0 = agx_register(0, AGX_SIZE_16);
+   agx_get_sr_to(b, h0, AGX_SR_SAMPLES_LOG2);
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
 }

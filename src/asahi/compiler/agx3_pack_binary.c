@@ -30,6 +30,7 @@
 #include "agx3_mem_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_alu_core.h"
+#include "agx3_sr_core.h"
 
 #include <string.h>
 
@@ -317,12 +318,83 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    return 1;
 }
 
-/* An async producer whose result later consumers must wait on. Milestone: the
- * device load. Textures and atomics join this set as their cores are wired. */
+/* An async producer whose result later consumers must wait on: the device
+ * load and the special-register read. Textures and atomics join this set as
+ * their cores are wired. */
 static bool
 agx3_is_async(const agx_instr *I)
 {
-   return I->op == AGX_OPCODE_DEVICE_LOAD;
+   return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_GET_SR;
+}
+
+/* Map a Mesa special register to the corpus-witnessed Apple SR number and
+ * destination width. Only registers tied to a source-level builtin by an
+ * isolating probe are mapped; everything else -- including any (SR, width)
+ * combination Apple never emitted -- fails closed so the shader is honestly
+ * rejected, not miscompiled. */
+static bool
+agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
+{
+#define SR(mesa, num, w)                                                       \
+   case mesa:                                                                  \
+      *apple = (num);                                                          \
+      *width = (w);                                                            \
+      return true
+   switch (sr) {
+      SR(AGX_SR_THREADGROUP_POSITION_IN_GRID_X, 26, AGX3_SR_W32);
+      SR(AGX_SR_THREADGROUP_POSITION_IN_GRID_Y, 27, AGX3_SR_W32);
+      SR(AGX_SR_THREADGROUP_POSITION_IN_GRID_Z, 28, AGX3_SR_W32);
+      SR(AGX_SR_THREADS_PER_THREADGROUP_X, 17, AGX3_SR_W16);
+      SR(AGX_SR_THREADS_PER_THREADGROUP_Y, 18, AGX3_SR_W16);
+      SR(AGX_SR_THREADS_PER_THREADGROUP_Z, 19, AGX3_SR_W16);
+      SR(AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_X, 20, AGX3_SR_W16);
+      SR(AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_Y, 21, AGX3_SR_W16);
+      SR(AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_Z, 22, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_POSITION_IN_THREADGROUP_X, 9, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_POSITION_IN_THREADGROUP_Y, 10, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_POSITION_IN_THREADGROUP_Z, 11, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_INDEX_IN_THREADGROUP, 13, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_INDEX_IN_SUBGROUP, 7, AGX3_SR_W16);
+      SR(AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP, 6, AGX3_SR_W16);
+      SR(AGX_SR_THREAD_POSITION_IN_GRID_X, 23, AGX3_SR_W32);
+      SR(AGX_SR_THREAD_POSITION_IN_GRID_Y, 24, AGX3_SR_W32);
+      SR(AGX_SR_THREAD_POSITION_IN_GRID_Z, 25, AGX3_SR_W32);
+   default:
+      return false;
+   }
+#undef SR
+}
+
+/* Translate a get_sr into the normalized SR-read descriptor. The destination
+ * size must match the witnessed width of the register: Apple reads 16-bit SRs
+ * into a half register (consumers or an explicit zero-extend handle the rest),
+ * and no witness reads one at another width. */
+static bool
+agx3_translate_sr(const agx_instr *I, uint8_t slot, uint16_t wait_mask,
+                  struct agx3_sr_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+
+   if (I->nr_dests < 1 || I->dest[0].type == AGX_INDEX_NULL)
+      return false;
+   const agx_index dst = I->dest[0];
+   if (!agx3_src_is_register(dst) || dst.memory || dst.value >= 256)
+      return false;
+
+   uint8_t apple;
+   enum agx3_sr_width width;
+   if (!agx3_map_sr(I->sr, &apple, &width))
+      return false;
+   if (width == AGX3_SR_W32 ? dst.size != AGX_SIZE_32
+                            : dst.size != AGX_SIZE_16)
+      return false;
+
+   d->dest = dst.value;
+   d->width = width;
+   d->sr = apple;
+   d->slot = slot;
+   d->wait_mask = wait_mask;
+   return true;
 }
 
 /* Append the half-registers an operand occupies (empty for immediates,
@@ -531,6 +603,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const uint8_t slot = res[k].slot;
          const uint16_t wait = res[k].wait_mask;
          k++;
+
+         /* Special-register read. */
+         if (I->op == AGX_OPCODE_GET_SR) {
+            struct agx3_sr_desc d;
+            uint8_t bytes[AGX3_SR_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_sr(I, slot, wait, &d) ||
+                !agx3_sr_encode(enc, &d, bytes, &len))
+               return false;
+            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            continue;
+         }
 
          /* Device memory. */
          if (I->op == AGX_OPCODE_DEVICE_LOAD ||
