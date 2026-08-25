@@ -1,0 +1,112 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_ioto_profile_core.h"
+
+#include <string.h>
+
+#define AGX_IOTO_PROFILE_CONTROL_CLASSIC_OPCODE UINT16_C(0x03f7)
+#define AGX_IOTO_PROFILE_CONTROL_HAL300_OPCODE  UINT16_C(0x0007)
+
+static uint16_t
+load_le16(const uint8_t *bytes)
+{
+   return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8);
+}
+
+static void
+store_le16(uint8_t *bytes, uint16_t value)
+{
+   bytes[0] = value;
+   bytes[1] = value >> 8;
+}
+
+static bool
+is_hal300(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+          chip == AGX_CHIP_G17C;
+}
+
+bool
+agx_ioto_profile_control_supported(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+size_t
+agx_ioto_profile_control_size(enum agx_chip chip)
+{
+   if (!agx_ioto_profile_control_supported(chip))
+      return 0;
+
+   return is_hal300(chip) ? 6 : 4;
+}
+
+bool
+agx_ioto_profile_control_pack(const struct agx_ioto_profile_control *profile,
+                              uint8_t out[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE])
+{
+   if (!out)
+      return false;
+
+   memset(out, 0, AGX_IOTO_PROFILE_CONTROL_MAX_SIZE);
+   if (!profile || !agx_ioto_profile_control_supported(profile->chip) ||
+       (!is_hal300(profile->chip) && profile->payload1 != 0))
+      return false;
+
+   store_le16(out, is_hal300(profile->chip)
+                      ? AGX_IOTO_PROFILE_CONTROL_HAL300_OPCODE
+                      : AGX_IOTO_PROFILE_CONTROL_CLASSIC_OPCODE);
+   store_le16(out + 2, profile->payload0);
+   if (is_hal300(profile->chip))
+      store_le16(out + 4, profile->payload1);
+
+   return true;
+}
+
+bool
+agx_ioto_profile_control_unpack(enum agx_chip chip, const void *stream,
+                                size_t available,
+                                struct agx_ioto_profile_control *profile,
+                                size_t *consumed)
+{
+   if (profile)
+      memset(profile, 0, sizeof(*profile));
+   if (consumed)
+      *consumed = 0;
+
+   const size_t size = agx_ioto_profile_control_size(chip);
+   if (!stream || !profile || !consumed || size == 0 || available < size)
+      return false;
+
+   const uint8_t *bytes = stream;
+   const uint16_t opcode = is_hal300(chip)
+                              ? AGX_IOTO_PROFILE_CONTROL_HAL300_OPCODE
+                              : AGX_IOTO_PROFILE_CONTROL_CLASSIC_OPCODE;
+   if (load_le16(bytes) != opcode)
+      return false;
+
+   profile->chip = chip;
+   profile->payload0 = load_le16(bytes + 2);
+   profile->payload1 = is_hal300(chip) ? load_le16(bytes + 4) : 0;
+   *consumed = size;
+   return true;
+}

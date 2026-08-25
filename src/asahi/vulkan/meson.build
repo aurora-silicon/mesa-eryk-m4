@@ -26,6 +26,8 @@ hk_files = files(
   'hk_event.c',
   'hk_event.h',
   'hk_format.c',
+  'hk_agx3_ioto_profile_core.c',
+  'hk_agx3_ioto_profile_core.h',
   'hk_agx3_tile_core.c',
   'hk_agx3_tile_core.h',
   'hk_agx3_raytracing_core.c',
@@ -65,6 +67,23 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_agx3_ioto_profile_core',
+    executable(
+      'hk_agx3_ioto_profile_core_test',
+      files('tests/test-hk-agx3-ioto-profile-core.c',
+            'hk_agx3_ioto_profile_core.c'),
+      include_directories : [
+        include_directories('.'), inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_mesautil],
+      link_with : [libasahi_lib],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'hk_agx3_tile_core',
     executable(

@@ -17,9 +17,67 @@ static unsigned checks;
       }                                                                        \
    } while (0)
 
+static int
+test_ioto_profile(void)
+{
+   const enum agx_chip targets[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   const uint16_t values[] = {0, 1, 0x00ff, 0xff00, UINT16_MAX};
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      const bool hal300 = targets[t] == AGX_CHIP_G17G ||
+                          targets[t] == AGX_CHIP_G17S ||
+                          targets[t] == AGX_CHIP_G17C;
+      for (unsigned v = 0; v < sizeof(values) / sizeof(values[0]); ++v) {
+         struct d12_agx3_ioto_profile_encoding encoded;
+         CHECK(d12_agx3_encode_ioto_profile(
+            targets[t], values[v], hal300 ? (uint16_t)~values[v] : 0,
+            &encoded));
+         CHECK(encoded.length == (hal300 ? 6 : 4));
+         CHECK(encoded.bytes[0] == (hal300 ? 0x07 : 0xf7));
+         CHECK(encoded.bytes[1] == (hal300 ? 0x00 : 0x03));
+
+         uint16_t payload0, payload1;
+         CHECK(d12_agx3_decode_ioto_profile(
+            targets[t], encoded.bytes, encoded.length, &payload0, &payload1));
+         CHECK(payload0 == values[v]);
+         CHECK(payload1 == (hal300 ? (uint16_t)~values[v] : 0));
+         CHECK(!d12_agx3_decode_ioto_profile(targets[t], encoded.bytes,
+                                             encoded.length + 1, &payload0,
+                                             &payload1));
+         CHECK(payload0 == 0 && payload1 == 0);
+      }
+   }
+
+   const enum agx_chip rejected[] = {
+      AGX_CHIP_G13G, AGX_CHIP_G14X, AGX_CHIP_G15P, AGX_CHIP_G16P,
+      AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
+      struct d12_agx3_ioto_profile_encoding encoded;
+      memset(&encoded, 0xff, sizeof(encoded));
+      CHECK(!d12_agx3_encode_ioto_profile(rejected[i], 0, 0, &encoded));
+      CHECK(encoded.length == 0);
+      for (unsigned b = 0; b < sizeof(encoded.bytes); ++b)
+         CHECK(encoded.bytes[b] == 0);
+   }
+
+   struct d12_agx3_ioto_profile_encoding encoded;
+   CHECK(!d12_agx3_encode_ioto_profile(AGX_CHIP_G16G, 0, 1, &encoded));
+   CHECK(!d12_agx3_encode_ioto_profile(AGX_CHIP_G16G, 0, 0, NULL));
+   CHECK(!d12_agx3_decode_ioto_profile(AGX_CHIP_G16G, NULL, 4, NULL, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
+   if (test_ioto_profile())
+      return 1;
+
    const enum agx_chip launch_targets[] = {
       AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
