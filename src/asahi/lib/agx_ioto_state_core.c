@@ -432,4 +432,31 @@ agx_ioto_state_tail_pack_shader(
    return agx_ioto_state_tail_pack(chip, &staged, output);
 }
 
+bool
+agx_ioto_g17s_minimal_compute_tail_build(
+   uint64_t shader_va, struct agx_ioto_state_tail *tail)
+{
+   if (!tail)
+      return false;
+
+   struct agx_ioto_state_tail staged = {
+      .type = AGX_IOTO_STATE_TAIL_TYPE0,
+   };
+   staged.speclm.f[0] = 3;
+   staged.speclm.f[1] = 165;
+   staged.ldshdr.f[0] = shader_va;
+   staged.ldshdr.f[5] = 3;
+   staged.ldshdr.f[6] = 107;
+   staged.ldshdr.f[23] = 1;
+   staged.spectpr.f[0] = 3;
+   staged.spectpr.f[1] = 166;
+
+   struct agx_ioto_state_tail_output packed;
+   if (!agx_ioto_state_tail_pack(AGX_CHIP_G17S, &staged, &packed))
+      return false;
+
+   *tail = staged;
+   return true;
+}
+
 #undef FM

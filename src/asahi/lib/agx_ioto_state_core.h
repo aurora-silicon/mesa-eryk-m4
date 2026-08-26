@@ -83,6 +83,12 @@ bool agx_ioto_state_tail_pack_shader(
    enum agx_chip chip, const struct agx_ioto_state_tail *tail,
    uint64_t shader_va, struct agx_ioto_state_tail_output *output);
 
+/* Exact type-0 state tail from the live G17S minimal root-uniform/no-texture
+ * compute path.  No shader-info counts are inferred into the zero payload
+ * fields.  `tail` is unchanged on failure. */
+bool agx_ioto_g17s_minimal_compute_tail_build(
+   uint64_t shader_va, struct agx_ioto_state_tail *tail);
+
 #ifdef __cplusplus
 }
 #endif

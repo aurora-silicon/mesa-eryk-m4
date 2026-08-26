@@ -717,6 +717,36 @@ test_tail_failures_and_shader_convenience(void)
    return 0;
 }
 
+static int
+test_g17s_minimal_compute_tail(void)
+{
+   static const uint8_t expected[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
+      0x07, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00,
+      0xc7, 0x06, 0x40, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+      0x07, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_ioto_state_tail tail;
+   memset(&tail, 0xa5, sizeof(tail));
+   CHECK(agx_ioto_g17s_minimal_compute_tail_build(
+      UINT64_C(0x100000006c0), &tail));
+
+   struct agx_ioto_state_tail_output packed;
+   CHECK(agx_ioto_state_tail_pack(AGX_CHIP_G17S, &tail, &packed));
+   CHECK(packed.length == sizeof(expected));
+   CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+
+   struct agx_ioto_state_tail before = tail;
+   CHECK(!agx_ioto_g17s_minimal_compute_tail_build(
+      UINT64_C(0x100000006c1), &tail));
+   CHECK(memcmp(&tail, &before, sizeof(tail)) == 0);
+   CHECK(!agx_ioto_g17s_minimal_compute_tail_build(
+      UINT64_C(0x1000000000000), &tail));
+   CHECK(memcmp(&tail, &before, sizeof(tail)) == 0);
+   CHECK(!agx_ioto_g17s_minimal_compute_tail_build(
+      UINT64_C(0x100000006c0), NULL));
+   return 0;
+}
+
 int
 main(void)
 {
@@ -725,6 +755,7 @@ main(void)
    CHECK(test_targets_capacity_and_nulls() == 0);
    CHECK(test_tail_types_order_and_targets() == 0);
    CHECK(test_tail_failures_and_shader_convenience() == 0);
+   CHECK(test_g17s_minimal_compute_tail() == 0);
 
    printf("agx_ioto_state_core: %llu checks passed\n",
           (unsigned long long)checks);
