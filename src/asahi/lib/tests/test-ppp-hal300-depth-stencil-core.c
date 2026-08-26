@@ -123,6 +123,36 @@ check_exact_plugin_witness(void)
 }
 
 static int
+check_exact_initial_render_state_witness(void)
+{
+   /* G17G/G17X encodeAndEmitRenderState assembles this six-word block from
+    * the first 16 bytes of its fixed template and the default stencil pair. */
+   const struct agx_ppp_hal300_depth_stencil_fields fields = {
+      .fragment_control_raw = UINT32_C(0x000007aa),
+      .fragment_front_face_raw = UINT32_C(0xe2e00000),
+      .fragment_back_face_raw = UINT32_C(0xf0c00000),
+      .fragment_front_stencil_raw = UINT32_C(0x00023020),
+      .fragment_back_stencil_raw = UINT32_C(0x0001ffff),
+   };
+   static const uint8_t expected[] = {
+      0x01, 0x00, 0x00, 0x00, 0xaa, 0x07, 0x00, 0x00,
+      0x00, 0x00, 0xe0, 0xe2, 0x00, 0x00, 0xc0, 0xf0,
+      0x20, 0x30, 0x02, 0x00, 0xff, 0xff, 0x01, 0x00,
+   };
+
+   for (unsigned i = 0; i < sizeof(supported_chips) / sizeof(supported_chips[0]);
+        ++i) {
+      struct agx_ppp_hal300_depth_stencil_core encoded;
+      CHECK(agx_ppp_hal300_depth_stencil_core_pack(supported_chips[i], &fields,
+                                                   &encoded));
+      CHECK(encoded.length == sizeof(expected));
+      CHECK(memcmp(encoded.bytes, expected, sizeof(expected)) == 0);
+   }
+
+   return 0;
+}
+
+static int
 check_raw_payload_cross_product(void)
 {
    static const uint32_t patterns[] = {
@@ -311,7 +341,9 @@ check_rejections_and_clearing(void)
 int
 main(void)
 {
-   if (check_exact_plugin_witness() || check_raw_payload_cross_product() ||
+   if (check_exact_plugin_witness() ||
+       check_exact_initial_render_state_witness() ||
+       check_raw_payload_cross_product() ||
        check_every_serialized_bit() || check_rejections_and_clearing())
       return 1;
 

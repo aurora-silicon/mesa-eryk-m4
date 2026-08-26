@@ -16,7 +16,9 @@
 #include "d12_buffer_view_core.h"
 #include "d12_agx3_cmdstream_core.h"
 #include "d12_agx3_ppp_hal300_depth_bias_scissor_core.h"
+#include "d12_agx3_ppp_hal300_depth_stencil_core.h"
 #include "d12_agx3_ppp_viewport_payload_core.h"
+#include "d12_agx3_ppp_w_clamp_cull2_core.h"
 #include "d12_agx3_vdm_barrier_core.h"
 #include "d12_agx3_vdm_stream_terminate_core.h"
 #include "d12_command_validation_core.h"
@@ -2452,32 +2454,84 @@ d12_list_begin_render(struct d12_cmd_list *list,
    if (!d12_list_emit_initial_vdm_barrier(list))
       return NULL;
 
-   struct AGX_PPP_HEADER present = {
-      .w_clamp = true,
-      .occlusion_query_2 = true,
-      .output_unknown = true,
-      .varying_word_2 = true,
-      .viewport_count = 1,
-   };
-   size_t size = agx_ppp_update_size(&present);
-   uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
-   uint8_t *cpu = d12_list_data_cpu(list, gpu);
-   if (!cpu)
-      return NULL;
+   if (agx_chip_command_stream_generation(list->device->dev.chip) ==
+       AGX_CS_GENERATION_HAL300) {
+      struct d12_agx3_ppp_w_clamp_cull2 initial;
+      const struct d12_agx3_ppp_w_clamp_cull2_fields fields = {
+         /* Exact G17G/G17X default: W clamp 0.0, clamp-W enabled. */
+         .w_clamp_raw = 0,
+         .cull2_raw = UINT32_C(0x80),
+      };
+      struct d12_agx3_ppp_hal300_depth_stencil depth_stencil;
+      const struct d12_agx3_ppp_hal300_depth_stencil_fields
+         depth_stencil_fields = {
+            /* Exact G17G/G17X fixed-layout initial render-state witness. */
+            .fragment_control_raw = UINT32_C(0x000007aa),
+            .fragment_front_face_raw = UINT32_C(0xe2e00000),
+            .fragment_back_face_raw = UINT32_C(0xf0c00000),
+            .fragment_front_stencil_raw = UINT32_C(0x00023020),
+            .fragment_back_stencil_raw = UINT32_C(0x0001ffff),
+         };
+      if (!d12_agx3_encode_ppp_hal300_depth_stencil(
+             list->device->dev.chip, &depth_stencil_fields,
+             &depth_stencil) ||
+          !d12_agx3_encode_ppp_w_clamp_cull2(list->device->dev.chip,
+                                              &fields, &initial)) {
+         mesa_loge("no grounded HAL300 initial PPP payload for %s",
+                   agx_chip_name(list->device->dev.chip));
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
 
-   struct agx_ppp_update ppp = agx_new_ppp_update(
-      (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
-   agx_ppp_push(&ppp, W_CLAMP, cfg)
-      cfg.w_clamp = 1e-10;
-   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
-   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
-   agx_ppp_push(&ppp, VARYING_2, cfg);
-   if (!agx_ppp_legacy_payload_supported(list->device->dev.chip) ||
-       !agx_ppp_fini(list->device->dev.chip, &list->stream_cur, &ppp)) {
-      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
-                agx_chip_name(list->device->dev.chip));
-      list->state = D12_LIST_ERROR;
-      return NULL;
+      const uint64_t depth_stencil_gpu = d12_list_upload(
+         list, depth_stencil.bytes, depth_stencil.length,
+         AGX_PPP_HEADER_ALIGN);
+      const uint64_t gpu = d12_list_upload(
+         list, initial.bytes, initial.length, AGX_PPP_HEADER_ALIGN);
+      uint8_t records[2 * AGX_PPP_STATE_LENGTH];
+      uint8_t *record = records;
+      if (!depth_stencil_gpu || !gpu ||
+          !agx_ppp_emit_state(list->device->dev.chip, &record,
+                              depth_stencil_gpu, depth_stencil.length) ||
+          !agx_ppp_emit_state(list->device->dev.chip, &record, gpu,
+                              initial.length) ||
+          record != records + sizeof(records)) {
+         mesa_loge("failed to emit HAL300 initial PPP state for %s",
+                   agx_chip_name(list->device->dev.chip));
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
+
+      memcpy(list->stream_cur, records, sizeof(records));
+      list->stream_cur += sizeof(records);
+   } else {
+      struct AGX_PPP_HEADER present = {
+         .w_clamp = true,
+         .occlusion_query_2 = true,
+         .output_unknown = true,
+         .varying_word_2 = true,
+         .viewport_count = 1,
+      };
+      size_t size = agx_ppp_update_size(&present);
+      uint64_t gpu = d12_list_upload_zero(list, size, AGX_PPP_HEADER_ALIGN);
+      uint8_t *cpu = d12_list_data_cpu(list, gpu);
+      if (!cpu)
+         return NULL;
+
+      struct agx_ppp_update ppp = agx_new_ppp_update(
+         (struct agx_ptr){.cpu = cpu, .gpu = gpu}, size, &present);
+      agx_ppp_push(&ppp, W_CLAMP, cfg)
+         cfg.w_clamp = 1e-10;
+      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+      agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+      agx_ppp_push(&ppp, VARYING_2, cfg);
+      if (!agx_ppp_legacy_payload_supported(list->device->dev.chip) ||
+          !agx_ppp_fini(list->device->dev.chip, &list->stream_cur, &ppp)) {
+         mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                   agx_chip_name(list->device->dev.chip));
+         list->state = D12_LIST_ERROR;
+         return NULL;
+      }
    }
 
    list->segment_count++;

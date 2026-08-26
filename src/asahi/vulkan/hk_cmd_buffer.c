@@ -25,6 +25,8 @@
 #include "hk_shader.h"
 
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "asahi/lib/agx_ppp_hal300_depth_stencil_core.h"
+#include "asahi/lib/agx_ppp_w_clamp_cull2_core.h"
 #include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
 #include "asahi/lib/agx_vdm_stream_terminate_core.h"
@@ -957,34 +959,83 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       return;
    }
 
-   struct AGX_PPP_HEADER present = {
-      .w_clamp = true,
-      .occlusion_query_2 = true,
-      .output_unknown = true,
-      .varying_word_2 = true,
-      .viewport_count = 1, /* irrelevant */
-   };
+   if (agx_chip_command_stream_generation(dev->dev.chip) ==
+       AGX_CS_GENERATION_HAL300) {
+      struct agx_ppp_w_clamp_cull2_core initial;
+      const struct agx_ppp_w_clamp_cull2_fields fields = {
+         /* Exact G17G/G17X default: W clamp 0.0, clamp-W enabled. */
+         .w_clamp_raw = 0,
+         .cull2_raw = UINT32_C(0x80),
+      };
+      struct agx_ppp_hal300_depth_stencil_core depth_stencil;
+      const struct agx_ppp_hal300_depth_stencil_fields depth_stencil_fields = {
+         /* Exact G17G/G17X fixed-layout initial render-state witness. */
+         .fragment_control_raw = UINT32_C(0x000007aa),
+         .fragment_front_face_raw = UINT32_C(0xe2e00000),
+         .fragment_back_face_raw = UINT32_C(0xf0c00000),
+         .fragment_front_stencil_raw = UINT32_C(0x00023020),
+         .fragment_back_stencil_raw = UINT32_C(0x0001ffff),
+      };
+      if (!agx_ppp_hal300_depth_stencil_core_pack(
+             dev->dev.chip, &depth_stencil_fields, &depth_stencil) ||
+          !agx_ppp_w_clamp_cull2_core_pack(dev->dev.chip, &fields,
+                                            &initial)) {
+         mesa_loge("no grounded HAL300 initial PPP payload for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
 
-   size_t size = agx_ppp_update_size(&present);
-   struct agx_ptr T = hk_pool_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
-   if (!T.cpu)
-      return;
+      const uint64_t depth_stencil_gpu = hk_pool_upload(
+         cmd, depth_stencil.bytes, depth_stencil.length,
+         AGX_PPP_HEADER_ALIGN);
+      const uint64_t gpu = hk_pool_upload(
+         cmd, initial.bytes, initial.length, AGX_PPP_HEADER_ALIGN);
+      uint8_t records[2 * AGX_PPP_STATE_LENGTH];
+      uint8_t *record = records;
+      if (!depth_stencil_gpu || !gpu ||
+          !agx_ppp_emit_state(dev->dev.chip, &record, depth_stencil_gpu,
+                              depth_stencil.length) ||
+          !agx_ppp_emit_state(dev->dev.chip, &record, gpu, initial.length) ||
+          record != records + sizeof(records)) {
+         mesa_loge("failed to emit HAL300 initial PPP state for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return;
+      }
 
-   struct agx_ppp_update ppp = agx_new_ppp_update(T, size, &present);
+      memcpy(map, records, sizeof(records));
+      map += sizeof(records);
+   } else {
+      struct AGX_PPP_HEADER present = {
+         .w_clamp = true,
+         .occlusion_query_2 = true,
+         .output_unknown = true,
+         .varying_word_2 = true,
+         .viewport_count = 1, /* irrelevant */
+      };
 
-   /* clang-format off */
-   agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
-   agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
-   agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
-   agx_ppp_push(&ppp, VARYING_2, cfg);
-   /* clang-format on */
+      size_t size = agx_ppp_update_size(&present);
+      struct agx_ptr T = hk_pool_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
+      if (!T.cpu)
+         return;
 
-   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
-       !agx_ppp_fini(dev->dev.chip, &map, &ppp)) {
-      mesa_loge("no grounded legacy PPP payload/finalizer for %s",
-                agx_chip_name(dev->dev.chip));
-      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
-      return;
+      struct agx_ppp_update ppp = agx_new_ppp_update(T, size, &present);
+
+      /* clang-format off */
+      agx_ppp_push(&ppp, W_CLAMP, cfg) cfg.w_clamp = 1e-10;
+      agx_ppp_push(&ppp, FRAGMENT_OCCLUSION_QUERY_2, cfg);
+      agx_ppp_push(&ppp, OUTPUT_UNKNOWN, cfg);
+      agx_ppp_push(&ppp, VARYING_2, cfg);
+      /* clang-format on */
+
+      if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
+          !agx_ppp_fini(dev->dev.chip, &map, &ppp)) {
+         mesa_loge("no grounded legacy PPP payload/finalizer for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
    }
    cs->current = map;
 
