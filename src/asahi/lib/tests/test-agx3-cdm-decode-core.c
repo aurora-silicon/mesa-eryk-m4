@@ -386,8 +386,9 @@ static int
 test_links_and_barriers(void)
 {
    const enum agx_chip link_targets[] = {
-      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16S,
-      AGX_CHIP_G16C, AGX_CHIP_G17S, AGX_CHIP_G17C,
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
    };
    for (unsigned t = 0; t < sizeof(link_targets) / sizeof(link_targets[0]);
         ++t) {

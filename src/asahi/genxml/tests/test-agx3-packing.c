@@ -458,8 +458,9 @@ static void
 test_agx3_cdm_stream_link(void)
 {
    const enum agx_chip grounded[] = {
-      AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D, AGX_CHIP_G16S,
-      AGX_CHIP_G16C, AGX_CHIP_G17S, AGX_CHIP_G17C,
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
    };
    const uint8_t expected[AGX3_CDM_STREAM_LINK_SIZE] = {
       0xbc, 0x9a, 0x00, 0x30, 0x78, 0x56, 0x34, 0x12,
@@ -492,8 +493,7 @@ test_agx3_cdm_stream_link(void)
    }
 
    const enum agx_chip rejected[] = {
-      AGX_CHIP_G15G, AGX_CHIP_G16G, AGX_CHIP_G16P, AGX_CHIP_G17P,
-      AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G16P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
    };
    for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i) {
       uint8_t packed[AGX3_CDM_STREAM_LINK_SIZE];

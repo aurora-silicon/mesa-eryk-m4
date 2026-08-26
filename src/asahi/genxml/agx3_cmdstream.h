@@ -188,17 +188,22 @@ agx3_cdm_indirect_launch_36_target_grounded(enum agx_chip chip)
 }
 
 /* The pinned patchCDMControlStreamAndReset sites prove the 48-bit link form
- * in the aggregate G15X, G16X and G17X plugins.  Keep base/phone identities
- * closed until their exact emitter is independently pinned. */
+ * in every scoped base and aggregate family.  The base paths extract exactly
+ * 16 high address bits before ORing type 1: G15G 0x210f7aaa4,
+ * G16G 0x2147fd6f8, G17P 0x216b0d708 and G17G 0x215ee94ec. */
 static inline bool
 agx3_cdm_stream_link_target_grounded(enum agx_chip chip)
 {
    switch (chip) {
+   case AGX_CHIP_G15G:
    case AGX_CHIP_G15S:
    case AGX_CHIP_G15C:
    case AGX_CHIP_G15D:
+   case AGX_CHIP_G16G:
    case AGX_CHIP_G16S:
    case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17G:
    case AGX_CHIP_G17S:
    case AGX_CHIP_G17C:
       return true;
