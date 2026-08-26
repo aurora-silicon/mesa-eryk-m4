@@ -55,6 +55,13 @@
  * hundreds of thousands of tiny meta dispatches. */
 #define D12_MAX_DISPATCHES_PER_SEGMENT 8192
 
+static bool d12_pack_texture_generation(
+   enum agx_descriptor_generation generation, void *out,
+   const struct AGX_TEXTURE *legacy, unsigned semantic_sample_count);
+static bool d12_pack_pbe_generation(
+   enum agx_descriptor_generation generation, void *out,
+   const struct AGX_PBE *legacy);
+
 /*
  * ID3D12CommandAllocator. The real allocations live on the list for now;
  * the allocator is lifetime bookkeeping to honor the API shape.
@@ -1776,50 +1783,65 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
             type_format != PIPE_FORMAT_NONE ? type_format : rt->layout.format;
          const struct util_format_description *fdesc =
             util_format_description(pf);
-         struct agx_texture_packed desc;
-
-         agx_pack(&desc, TEXTURE, cfg) {
-            const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-            cfg.dimension =
+         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+         struct AGX_TEXTURE semantic = {AGX_TEXTURE_header};
+         {
+            semantic.dimension =
                seg->layers > 1
                   ? (samples > 1
                         ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED
                         : AGX_TEXTURE_DIMENSION_2D_ARRAY)
                   : (samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
                                  : AGX_TEXTURE_DIMENSION_2D);
-            cfg.layout = agx_translate_layout(rt->layout.tiling);
-            cfg.channels = ail_pixel_format[pf].channels;
-            cfg.type = ail_pixel_format[pf].type;
-            cfg.srgb = util_format_is_srgb(pf);
-            cfg.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
-            cfg.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
-            cfg.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
-            cfg.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
-            cfg.address =
+            semantic.layout = agx_translate_layout(rt->layout.tiling);
+            semantic.channels = ail_pixel_format[pf].channels;
+            semantic.type = ail_pixel_format[pf].type;
+            semantic.srgb = util_format_is_srgb(pf);
+            semantic.swizzle_r = agx_channel_from_pipe(fdesc->swizzle[0]);
+            semantic.swizzle_g = agx_channel_from_pipe(fdesc->swizzle[1]);
+            semantic.swizzle_b = agx_channel_from_pipe(fdesc->swizzle[2]);
+            semantic.swizzle_a = agx_channel_from_pipe(fdesc->swizzle[3]);
+            semantic.address =
                d12_sparse_read_address(list->device, rt_address);
-            cfg.width = rt->layout.width_px;
-            cfg.height = rt->layout.height_px;
-            cfg.first_level = rt_level;
-            cfg.last_level = rt_level;
-            cfg.unk_mipmapped = rt->layout.levels > 1;
+            semantic.width = rt->layout.width_px;
+            semantic.height = rt->layout.height_px;
+            semantic.first_level = rt_level;
+            semantic.last_level = rt_level;
+            semantic.unk_mipmapped = rt->layout.levels > 1;
 
             if (samples > 1)
-               cfg.samples = agx_translate_sample_count(samples);
+               semantic.samples = agx_translate_sample_count(samples);
 
             if (rt->layout.tiling == AIL_TILING_LINEAR) {
-               cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 16;
+               semantic.stride =
+                  ail_get_linear_stride_B(&rt->layout, 0) - 16;
                if (seg->layers > 1) {
-                  cfg.depth_linear = seg->layers;
-                  cfg.layer_stride_linear = rt->layout.layer_stride_B - 0x80;
-                  cfg.extended = true;
+                  semantic.depth_linear = seg->layers;
+                  semantic.layer_stride_linear =
+                     rt->layout.layer_stride_B - 0x80;
+                  semantic.extended = true;
                }
             } else {
-               cfg.depth = seg->layers;
-               cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+               semantic.depth = seg->layers;
+               semantic.page_aligned_layers =
+                  rt->layout.page_aligned_layers;
             }
          }
 
-         uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+         struct d12_native_descriptor_layout native_layout;
+         const enum agx_descriptor_generation generation =
+            agx_chip_descriptor_generation(device->dev.chip);
+         uint8_t desc[32];
+         if (!d12_native_descriptor_layout(generation, &native_layout) ||
+             !d12_pack_texture_generation(generation, desc, &semantic,
+                                          samples)) {
+            mesa_loge("background load needs an unproven native texture axis");
+            list->state = D12_LIST_ERROR;
+            return 0;
+         }
+
+         uint64_t desc_ptr = d12_list_upload(
+            list, desc, native_layout.texture_stride_B, 8);
          if (!desc_ptr)
             return 0;
 
@@ -1845,76 +1867,91 @@ d12_build_bg_eot_usc(struct d12_cmd_list *list, const struct d12_segment *seg,
           * memory layout. This is the bounded attachment subset of
           * hk_image_view.c::pack_pbe.
           */
-         struct agx_pbe_packed desc;
-         agx_pack(&desc, PBE, cfg) {
-            const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
-            cfg.dimension =
+         const unsigned samples = MAX2(rt->layout.sample_count_sa, 1);
+         struct AGX_PBE semantic = {AGX_PBE_header};
+         {
+            semantic.dimension =
                seg->layers > 1
                   ? (samples > 1
                         ? AGX_TEXTURE_DIMENSION_2D_ARRAY_MULTISAMPLED
                         : AGX_TEXTURE_DIMENSION_2D_ARRAY)
                   : (samples > 1 ? AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED
                                  : AGX_TEXTURE_DIMENSION_2D);
-            cfg.layout = agx_translate_layout(rt->layout.tiling);
+            semantic.layout = agx_translate_layout(rt->layout.tiling);
             enum pipe_format pf = type_format != PIPE_FORMAT_NONE
                                      ? util_format_linear(type_format)
                                      : rt->layout.format;
             const struct util_format_description *fdesc =
                util_format_description(pf);
 
-            cfg.channels = ail_pixel_format[pf].channels;
-            cfg.type = ail_pixel_format[pf].type;
-            cfg.srgb = util_format_is_srgb(pf);
+            semantic.channels = ail_pixel_format[pf].channels;
+            semantic.type = ail_pixel_format[pf].type;
+            semantic.srgb = util_format_is_srgb(pf);
 
             /* Honour the format's channel order, so BGRA does not come out
              * with red and blue swapped.
              */
-            cfg.swizzle_r = 0;
-            cfg.swizzle_g = 1;
-            cfg.swizzle_b = 2;
-            cfg.swizzle_a = 3;
+            semantic.swizzle_r = 0;
+            semantic.swizzle_g = 1;
+            semantic.swizzle_b = 2;
+            semantic.swizzle_a = 3;
             for (unsigned c = 0; c < fdesc->nr_channels && c < 4; c++) {
                switch (fdesc->swizzle[c]) {
                case PIPE_SWIZZLE_X:
-                  cfg.swizzle_r = c;
+                  semantic.swizzle_r = c;
                   break;
                case PIPE_SWIZZLE_Y:
-                  cfg.swizzle_g = c;
+                  semantic.swizzle_g = c;
                   break;
                case PIPE_SWIZZLE_Z:
-                  cfg.swizzle_b = c;
+                  semantic.swizzle_b = c;
                   break;
                case PIPE_SWIZZLE_W:
-                  cfg.swizzle_a = c;
+                  semantic.swizzle_a = c;
                   break;
                default:
                   break;
                }
             }
-            cfg.buffer = rt_address;
-            cfg.width = rt->layout.width_px;
-            cfg.height = rt->layout.height_px;
-            cfg.level = rt_level;
-            cfg.levels = rt->layout.levels;
-            cfg.unk_mipmapped = rt->layout.levels > 1;
+            semantic.buffer = rt_address;
+            semantic.width = rt->layout.width_px;
+            semantic.height = rt->layout.height_px;
+            semantic.level = rt_level;
+            semantic.levels = rt->layout.levels;
+            semantic.unk_mipmapped = rt->layout.levels > 1;
             if (samples > 1)
-               cfg.samples = agx_translate_sample_count(samples);
+               semantic.samples = agx_translate_sample_count(samples);
             if (rt->layout.tiling == AIL_TILING_LINEAR) {
-               cfg.stride = ail_get_linear_stride_B(&rt->layout, 0) - 4;
+               semantic.stride =
+                  ail_get_linear_stride_B(&rt->layout, 0) - 4;
                if (seg->layers > 1) {
-                  cfg.depth_linear = seg->layers;
-                  cfg.layer_stride_linear = rt->layout.layer_stride_B - 0x80;
-                  cfg.extended = true;
+                  semantic.depth_linear = seg->layers;
+                  semantic.layer_stride_linear =
+                     rt->layout.layer_stride_B - 0x80;
+                  semantic.extended = true;
                } else {
-                  cfg.layers = 1;
+                  semantic.layers = 1;
                }
             } else {
-               cfg.layers = seg->layers;
-               cfg.page_aligned_layers = rt->layout.page_aligned_layers;
+               semantic.layers = seg->layers;
+               semantic.page_aligned_layers =
+                  rt->layout.page_aligned_layers;
             }
          }
 
-         uint64_t desc_ptr = d12_list_upload(list, &desc, sizeof(desc), 8);
+         struct d12_native_descriptor_layout native_layout;
+         const enum agx_descriptor_generation generation =
+            agx_chip_descriptor_generation(device->dev.chip);
+         uint8_t desc[32];
+         if (!d12_native_descriptor_layout(generation, &native_layout) ||
+             !d12_pack_pbe_generation(generation, desc, &semantic)) {
+            mesa_loge("color store needs an unproven native PBE axis");
+            list->state = D12_LIST_ERROR;
+            return 0;
+         }
+
+         uint64_t desc_ptr =
+            d12_list_upload(list, desc, native_layout.pbe_stride_B, 8);
          if (!desc_ptr)
             return 0;
 
@@ -2674,78 +2711,44 @@ d12_pack_pbe_generation(enum agx_descriptor_generation generation, void *out,
       return true;
    }
 
-   if (legacy->buffer >> 48 ||
-       (legacy->compressed && legacy->acceleration_buffer >> 48))
+   if (generation != AGX_DESCRIPTOR_GENERATION_9 &&
+       generation != AGX_DESCRIPTOR_GENERATION_10)
       return false;
 
-#define D12_INIT_AGX3_PBE(cfg_)                                                \
-   do {                                                                        \
-      (cfg_).dimension = legacy->dimension;                                    \
-      (cfg_).layout = legacy->layout;                                          \
-      (cfg_).channels = legacy->channels;                                      \
-      (cfg_).type = legacy->type;                                              \
-      (cfg_).swizzle_r = legacy->swizzle_r;                                    \
-      (cfg_).swizzle_g = legacy->swizzle_g;                                    \
-      (cfg_).swizzle_b = legacy->swizzle_b;                                    \
-      (cfg_).swizzle_a = legacy->swizzle_a;                                    \
-      (cfg_).width = legacy->width;                                            \
-      (cfg_).height = legacy->height;                                          \
-      (cfg_).samples = legacy->samples;                                        \
-      (cfg_).unk_mipmapped = legacy->unk_mipmapped ||                          \
-         d12_native_pbe_has_levels(legacy->layout == AGX_LAYOUT_LINEAR,        \
-                                   legacy->level, legacy->levels);             \
-      (cfg_).compressed = legacy->compressed;                                  \
-      (cfg_).image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL;        \
-      (cfg_).image_mode = legacy->mode;                                        \
-      (cfg_).buffer = legacy->buffer;                                          \
-      (cfg_).stride = legacy->layout == AGX_LAYOUT_LINEAR                      \
-                         ? legacy->stride : 0;                                 \
-      (cfg_).layers = legacy->layout == AGX_LAYOUT_LINEAR                     \
-                         ? 1 : legacy->layers;                                 \
-      (cfg_).page_aligned_layers = legacy->page_aligned_layers;                \
-      (cfg_).gamma = legacy->srgb;                                             \
-      (cfg_).extended = legacy->extended ||                                   \
-         d12_native_pbe_has_levels(legacy->layout == AGX_LAYOUT_LINEAR,        \
-                                   legacy->level, legacy->levels);             \
-      (cfg_).acceleration_buffer =                                             \
-         legacy->compressed && legacy->extended                               \
-            ? legacy->acceleration_buffer : 0;                                \
-      (cfg_).depth_linear = legacy->layout == AGX_LAYOUT_LINEAR &&             \
-                            legacy->extended ? legacy->depth_linear : 1;       \
-      (cfg_).layer_stride_linear =                                             \
-         legacy->layout == AGX_LAYOUT_LINEAR && legacy->extended               \
-            ? legacy->layer_stride_linear : 0;                                \
-      (cfg_).level = legacy->layout == AGX_LAYOUT_LINEAR ? 0 : legacy->level;  \
-      (cfg_).levels = legacy->layout == AGX_LAYOUT_LINEAR                      \
-                         ? 1 : legacy->levels;                                 \
-   } while (0)
+   if (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
+       (legacy->layout != AGX_LAYOUT_TWIDDLED &&
+        legacy->layout != AGX_LAYOUT_GPU) ||
+       legacy->unk_52 || legacy->rotate_90 || legacy->flip_vertical ||
+       legacy->samples != AGX_SAMPLE_COUNT_2 || legacy->unk_mipmapped ||
+       legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
+       legacy->level != 0 || legacy->levels != 1 || legacy->layers != 1 ||
+       legacy->srgb || legacy->extended || legacy->stride ||
+       legacy->acceleration_buffer || legacy->depth_linear != 1 ||
+       legacy->layer_stride_linear || legacy->level_offset_sw ||
+       legacy->aligned_width_msaa_sw || legacy->sample_count_log2_sw ||
+       legacy->tile_width_sw != 1 || legacy->tile_height_sw != 1 ||
+       legacy->layer_stride_sw || legacy->buffer_offset_sw)
+      return false;
 
-   if (generation == AGX_DESCRIPTOR_GENERATION_9) {
-      struct AGX_PBE_GEN9 cfg = {0};
-      D12_INIT_AGX3_PBE(cfg);
-      cfg.unk_52 = legacy->unk_52;
-      if (!cfg.width || cfg.width > 16384 || !cfg.height ||
-          cfg.height > 16384)
-         return false;
-      memset(out, 0, AGX_PBE_GEN9_LENGTH);
-      AGX_PBE_GEN9_pack(out, &cfg);
-      return true;
-   }
+   const struct agx_pbe_agx3_2d_fields fields = {
+      .layout = legacy->layout,
+      .channels = legacy->channels,
+      .type = legacy->type,
+      .swizzle_r = legacy->swizzle_r,
+      .swizzle_g = legacy->swizzle_g,
+      .swizzle_b = legacy->swizzle_b,
+      .swizzle_a = legacy->swizzle_a,
+      .width = legacy->width,
+      .height = legacy->height,
+      .buffer = legacy->buffer,
+      .page_aligned_layers = legacy->page_aligned_layers,
+   };
+   struct agx_pbe_agx3_descriptor packed;
+   if (!d12_native_pbe_agx3_2d_pack(generation, &fields, &packed))
+      return false;
 
-   if (generation == AGX_DESCRIPTOR_GENERATION_10) {
-      struct AGX_PBE_GEN10 cfg = {0};
-      D12_INIT_AGX3_PBE(cfg);
-      cfg.unk_54 = legacy->unk_52;
-      if (!cfg.width || cfg.width > 32768 || !cfg.height ||
-          cfg.height > 32768)
-         return false;
-      memset(out, 0, AGX_PBE_GEN10_LENGTH);
-      AGX_PBE_GEN10_pack(out, &cfg);
-      return true;
-   }
-
-#undef D12_INIT_AGX3_PBE
-   return false;
+   memcpy(out, packed.bytes, sizeof(packed.bytes));
+   return true;
 }
 
 static void
@@ -2904,6 +2907,9 @@ d12_refresh_pbe_descriptor(struct d12_device *device, void *out,
    if (!AGX_PBE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
       return false;
 
+   if (memcmp(&legacy, &null_legacy, sizeof(legacy)) == 0)
+      unpacked.dimension = AGX_TEXTURE_DIMENSION_2D;
+
    if ((generation == AGX_DESCRIPTOR_GENERATION_9 ||
        generation == AGX_DESCRIPTOR_GENERATION_10) &&
        d->kind == D12_DESC_UAV && d->resource &&
@@ -2914,6 +2920,24 @@ d12_refresh_pbe_descriptor(struct d12_device *device, void *out,
          return false;
       }
       unpacked.buffer = d->address & ~UINT64_C(0xf);
+
+      /* AGX_PBE_unpack exposes every interpretation of overlapping Gen7/8
+       * words at once. Only the tiled, single-level interpretation survives
+       * the bounded AGX3 gate. Canonicalize its linear/compression aliases and
+       * Mesa's Gen7/8-only software-addressing sideband. AGX3 lowering gates
+       * every software-sideband consumer above.
+       */
+      unpacked.stride = 0;
+      unpacked.acceleration_buffer = 0;
+      unpacked.depth_linear = 1;
+      unpacked.layer_stride_linear = 0;
+      unpacked.level_offset_sw = 0;
+      unpacked.aligned_width_msaa_sw = 0;
+      unpacked.sample_count_log2_sw = 0;
+      unpacked.tile_width_sw = 1;
+      unpacked.tile_height_sw = 1;
+      unpacked.layer_stride_sw = 0;
+      unpacked.buffer_offset_sw = 0;
    }
 
    if (d12_pack_pbe_generation(generation, out, &unpacked))
@@ -2945,6 +2969,7 @@ d12_set_null_pbe_descriptor(struct d12_device *device, void *out)
    struct AGX_PBE unpacked = {0};
    if (!AGX_PBE_unpack(NULL, (const uint8_t *)&legacy, &unpacked))
       return false;
+   unpacked.dimension = AGX_TEXTURE_DIMENSION_2D;
 
    return d12_pack_pbe_generation(generation, out, &unpacked);
 }

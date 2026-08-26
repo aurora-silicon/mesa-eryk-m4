@@ -6,6 +6,7 @@
 #include "hk_native_descriptor_pack.h"
 
 #include "asahi/lib/agx_abi.h"
+#include "asahi/lib/agx_pbe_agx3_core.h"
 
 #include <string.h>
 
@@ -185,78 +186,49 @@ hk_pack_native_pbe(unsigned generation,
       return true;
    }
 
-   if (!hk_descriptor_generation_is_agx3(generation) ||
-       (legacy->buffer & 0xf) || legacy->buffer >> 48 ||
-       (legacy->compressed &&
-        ((legacy->acceleration_buffer & 0xf) ||
-         legacy->acceleration_buffer >> 48)))
+   if (!hk_descriptor_generation_is_agx3(generation))
       return false;
 
-   const bool linear = legacy->layout == AGX_LAYOUT_LINEAR;
-   const bool has_levels = !linear &&
-                           (legacy->level != 0 || legacy->levels > 1);
-   const bool extended = legacy->extended || has_levels;
+   /* The recovered subset deliberately excludes every field whose Gen9/10
+    * semantic placement is incomplete: linear stride, arrays, mip levels,
+    * compression, sparse mode, gamma and the software-addressing sideband.
+    */
+   if (legacy->dimension != AGX_TEXTURE_DIMENSION_2D ||
+       (legacy->layout != AGX_LAYOUT_TWIDDLED &&
+        legacy->layout != AGX_LAYOUT_GPU) ||
+       legacy->unk_52 || legacy->rotate_90 || legacy->flip_vertical ||
+       legacy->samples != AGX_SAMPLE_COUNT_2 || legacy->unk_mipmapped ||
+       legacy->compressed || legacy->mode != AGX_IMAGE_MODE_NORMAL ||
+       legacy->level != 0 || legacy->levels != 1 || legacy->layers != 1 ||
+       legacy->srgb || legacy->extended ||
+       legacy->stride || legacy->acceleration_buffer ||
+       legacy->depth_linear != 1 || legacy->layer_stride_linear ||
+       legacy->level_offset_sw || legacy->aligned_width_msaa_sw ||
+       legacy->sample_count_log2_sw || legacy->tile_width_sw != 1 ||
+       legacy->tile_height_sw != 1 || legacy->layer_stride_sw ||
+       legacy->buffer_offset_sw)
+      return false;
 
-#define HK_INIT_AGX3_PBE(cfg_)                                                \
-   do {                                                                        \
-      (cfg_).dimension = legacy->dimension;                                    \
-      (cfg_).layout = legacy->layout;                                          \
-      (cfg_).channels = legacy->channels;                                      \
-      (cfg_).type = legacy->type;                                              \
-      (cfg_).swizzle_r = legacy->swizzle_r;                                    \
-      (cfg_).swizzle_g = legacy->swizzle_g;                                    \
-      (cfg_).swizzle_b = legacy->swizzle_b;                                    \
-      (cfg_).swizzle_a = legacy->swizzle_a;                                    \
-      (cfg_).width = legacy->width;                                            \
-      (cfg_).height = legacy->height;                                          \
-      (cfg_).samples = legacy->samples;                                        \
-      (cfg_).unk_mipmapped = legacy->unk_mipmapped || has_levels;              \
-      (cfg_).compressed = legacy->compressed;                                  \
-      (cfg_).image_mode_enable = legacy->mode != AGX_IMAGE_MODE_NORMAL;        \
-      (cfg_).image_mode = legacy->mode;                                        \
-      (cfg_).buffer = legacy->buffer;                                          \
-      (cfg_).stride = linear ? legacy->stride : 0;                             \
-      (cfg_).layers = linear ? 1 : legacy->layers;                             \
-      (cfg_).page_aligned_layers = legacy->page_aligned_layers;                \
-      (cfg_).gamma = legacy->srgb;                                             \
-      (cfg_).extended = extended;                                              \
-      (cfg_).acceleration_buffer =                                             \
-         legacy->compressed && legacy->extended                                \
-            ? legacy->acceleration_buffer : 0;                                 \
-      (cfg_).depth_linear = linear && legacy->extended                         \
-                               ? legacy->depth_linear : 1;                     \
-      (cfg_).layer_stride_linear = linear && legacy->extended                  \
-                                      ? legacy->layer_stride_linear : 0;       \
-      (cfg_).level = linear ? 0 : legacy->level;                               \
-      (cfg_).levels = linear ? 1 : legacy->levels;                             \
-   } while (0)
+   const struct agx_pbe_agx3_2d_fields fields = {
+      .layout = legacy->layout,
+      .channels = legacy->channels,
+      .type = legacy->type,
+      .swizzle_r = legacy->swizzle_r,
+      .swizzle_g = legacy->swizzle_g,
+      .swizzle_b = legacy->swizzle_b,
+      .swizzle_a = legacy->swizzle_a,
+      .width = legacy->width,
+      .height = legacy->height,
+      .buffer = legacy->buffer,
+      .page_aligned_layers = legacy->page_aligned_layers,
+   };
+   struct agx_pbe_agx3_descriptor packed;
+   if (!agx_pbe_agx3_2d_pack(generation, &fields, &packed))
+      return false;
 
-   if (generation == 9) {
-      if (!legacy->width || legacy->width > 16384 || !legacy->height ||
-          legacy->height > 16384)
-         return false;
-
-      struct AGX_PBE_GEN9 cfg = {AGX_PBE_GEN9_header};
-      HK_INIT_AGX3_PBE(cfg);
-      cfg.unk_52 = legacy->unk_52;
-      AGX_PBE_GEN9_pack(out->opaque, &cfg);
-      return true;
-   }
-
-   if (generation == 10) {
-      if (!legacy->width || legacy->width > 32768 || !legacy->height ||
-          legacy->height > 32768)
-         return false;
-
-      struct AGX_PBE_GEN10 cfg = {AGX_PBE_GEN10_header};
-      HK_INIT_AGX3_PBE(cfg);
-      cfg.unk_54 = legacy->unk_52;
-      AGX_PBE_GEN10_pack(out->opaque, &cfg);
-      return true;
-   }
-
-#undef HK_INIT_AGX3_PBE
-   return false;
+   static_assert(sizeof(out->opaque) == sizeof(packed.bytes));
+   memcpy(out->opaque, packed.bytes, sizeof(packed.bytes));
+   return true;
 }
 
 bool
@@ -289,11 +261,12 @@ hk_set_null_native_pbe(unsigned generation,
       return false;
 
    memset(out, 0, sizeof(*out));
-   if (!hk_native_pbe_supported(generation))
+   if (!hk_native_pbe_hardware_supported(generation))
       return false;
 
    const struct AGX_PBE semantic = {
       AGX_PBE_header,
+      .dimension = AGX_TEXTURE_DIMENSION_2D,
       .layout = AGX_LAYOUT_TWIDDLED,
       .channels = AGX_CHANNELS_R8,
       .type = AGX_TEXTURE_TYPE_UNORM,
@@ -303,6 +276,5 @@ hk_set_null_native_pbe(unsigned generation,
       .swizzle_a = AGX_CHANNEL_R,
       .buffer = AGX_SCRATCH_PAGE_ADDRESS,
    };
-   AGX_PBE_pack(out->opaque, &semantic);
-   return true;
+   return hk_pack_native_pbe(generation, out, &semantic);
 }

@@ -1,0 +1,176 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx_pbe_agx3_core.h"
+
+#include <string.h>
+
+#define AGX_PBE_DIMENSION_2D 2u
+#define AGX_PBE_LAYOUT_TWIDDLED 1u
+#define AGX_PBE_LAYOUT_GPU 2u
+
+static void
+store_le64(uint8_t *dst, uint64_t value)
+{
+   for (unsigned i = 0; i < 8; ++i)
+      dst[i] = (uint8_t)(value >> (i * 8));
+}
+
+static uint64_t
+load_le64(const uint8_t *src)
+{
+   uint64_t value = 0;
+   for (unsigned i = 0; i < 8; ++i)
+      value |= (uint64_t)src[i] << (i * 8);
+   return value;
+}
+
+static bool
+channel_is_uncompressed(uint8_t channels)
+{
+   switch (channels) {
+   case 0x00: /* R8 */
+   case 0x09: /* R16 */
+   case 0x0a: /* R8G8 */
+   case 0x0b: /* R5G6B5 */
+   case 0x0c: /* R4G4B4A4 */
+   case 0x0d: /* A1R5G5B5 */
+   case 0x0e: /* R5G5B5A1 */
+   case 0x21: /* R32 */
+   case 0x23: /* R16G16 */
+   case 0x25: /* R11G11B10 */
+   case 0x26: /* R10G10B10A2 */
+   case 0x27: /* R9G9B9E5 */
+   case 0x28: /* R8G8B8A8 */
+   case 0x31: /* R32G32 */
+   case 0x32: /* R16G16B16A16 */
+   case 0x38: /* R32G32B32A32 */
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+generation_geometry(uint32_t generation, unsigned *height_shift,
+                    unsigned *dimension_bits)
+{
+   switch (generation) {
+   case AGX_PBE_AGX3_GENERATION_9:
+      *height_shift = 38;
+      *dimension_bits = 14;
+      return true;
+   case AGX_PBE_AGX3_GENERATION_10:
+      *height_shift = 39;
+      *dimension_bits = 15;
+      return true;
+   default:
+      *height_shift = 0;
+      *dimension_bits = 0;
+      return false;
+   }
+}
+
+static bool
+fields_valid(uint32_t generation,
+             const struct agx_pbe_agx3_2d_fields *fields)
+{
+   unsigned height_shift, dimension_bits;
+   if (!fields ||
+       !generation_geometry(generation, &height_shift, &dimension_bits))
+      return false;
+
+   const uint32_t maximum_dimension = UINT32_C(1) << dimension_bits;
+   return (fields->layout == AGX_PBE_LAYOUT_TWIDDLED ||
+           fields->layout == AGX_PBE_LAYOUT_GPU) &&
+          channel_is_uncompressed(fields->channels) && fields->type <= 5 &&
+          fields->swizzle_r <= 3 && fields->swizzle_g <= 3 &&
+          fields->swizzle_b <= 3 && fields->swizzle_a <= 3 && fields->width &&
+          fields->width <= maximum_dimension && fields->height &&
+          fields->height <= maximum_dimension && fields->buffer &&
+          !(fields->buffer & 0xf) && !(fields->buffer >> 48);
+}
+
+bool
+agx_pbe_agx3_2d_pack(uint32_t generation,
+                     const struct agx_pbe_agx3_2d_fields *fields,
+                     struct agx_pbe_agx3_descriptor *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!out || !fields_valid(generation, fields))
+      return false;
+
+   unsigned height_shift, dimension_bits;
+   if (!generation_geometry(generation, &height_shift, &dimension_bits))
+      return false;
+
+   uint64_t word0 = AGX_PBE_DIMENSION_2D;
+   word0 |= (uint64_t)fields->layout << 4;
+   word0 |= (uint64_t)fields->channels << 6;
+   word0 |= (uint64_t)fields->type << 13;
+   word0 |= (uint64_t)fields->swizzle_r << 16;
+   word0 |= (uint64_t)fields->swizzle_g << 18;
+   word0 |= (uint64_t)fields->swizzle_b << 20;
+   word0 |= (uint64_t)fields->swizzle_a << 22;
+   word0 |= (uint64_t)(fields->width - 1u) << 24;
+   word0 |= (uint64_t)(fields->height - 1u) << height_shift;
+
+   store_le64(&out->bytes[0], word0);
+   store_le64(&out->bytes[8], (fields->buffer >> 4) |
+                                     ((uint64_t)fields->page_aligned_layers
+                                      << 60));
+   out->length = AGX_PBE_AGX3_DESCRIPTOR_LENGTH;
+   return true;
+}
+
+bool
+agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
+                       struct agx_pbe_agx3_2d_fields *fields)
+{
+   if (fields)
+      memset(fields, 0, sizeof(*fields));
+
+   unsigned height_shift, dimension_bits;
+   if (!bytes || !fields || size != AGX_PBE_AGX3_DESCRIPTOR_LENGTH ||
+       !generation_geometry(generation, &height_shift, &dimension_bits))
+      return false;
+
+   const uint8_t *raw = bytes;
+   const uint64_t word0 = load_le64(&raw[0]);
+   const uint64_t word1 = load_le64(&raw[8]);
+   const uint64_t word2 = load_le64(&raw[16]);
+   const uint64_t word3 = load_le64(&raw[24]);
+   const uint64_t word0_mask =
+      generation == AGX_PBE_AGX3_GENERATION_9
+         ? (UINT64_C(1) << 52) - 1
+         : (UINT64_C(1) << 54) - 1;
+
+   const uint64_t word1_mask = ((UINT64_C(1) << 44) - 1) | (UINT64_C(1) << 60);
+   if ((word0 & 0xf) != AGX_PBE_DIMENSION_2D ||
+       (word0 & ~word0_mask) || (word1 & ~word1_mask) || word2 || word3)
+      return false;
+
+   fields->layout = (word0 >> 4) & 0x3;
+   fields->channels = (word0 >> 6) & 0x7f;
+   fields->type = (word0 >> 13) & 0x7;
+   fields->swizzle_r = (word0 >> 16) & 0x3;
+   fields->swizzle_g = (word0 >> 18) & 0x3;
+   fields->swizzle_b = (word0 >> 20) & 0x3;
+   fields->swizzle_a = (word0 >> 22) & 0x3;
+   fields->width = ((word0 >> 24) & ((UINT64_C(1) << dimension_bits) - 1)) + 1;
+   fields->height =
+      ((word0 >> height_shift) & ((UINT64_C(1) << dimension_bits) - 1)) + 1;
+   fields->buffer = (word1 & ((UINT64_C(1) << 44) - 1)) << 4;
+   fields->page_aligned_layers = (word1 >> 60) & 1;
+
+   if (!fields_valid(generation, fields)) {
+      memset(fields, 0, sizeof(*fields));
+      return false;
+   }
+
+   return true;
+}

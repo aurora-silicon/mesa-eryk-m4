@@ -4,6 +4,7 @@
 #include "../d12_native_descriptor_core.h"
 
 #include <stdio.h>
+#include <string.h>
 
 static unsigned checks;
 
@@ -40,6 +41,84 @@ main(void)
          layout.texture_side_stride_B == 0);
    CHECK(!d12_native_descriptor_layout(11, &layout));
    CHECK(!d12_native_descriptor_layout(9, NULL));
+
+   static const uint8_t channels[] = {
+      0x00, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x21,
+      0x23, 0x25, 0x26, 0x27, 0x28, 0x31, 0x32, 0x38,
+   };
+   static const uint8_t expected_gen9[] = {
+      0x22, 0x0a, 0xe4, 0xff, 0xc0, 0x1f, 0x00, 0x00,
+      0xab, 0x89, 0x67, 0x45, 0x23, 0x01, 0x00, 0x10,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t expected_gen10[] = {
+      0x22, 0x0a, 0xe4, 0xff, 0x80, 0x3f, 0x00, 0x00,
+      0xab, 0x89, 0x67, 0x45, 0x23, 0x01, 0x00, 0x10,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_pbe_agx3_2d_fields pbe = {
+      .layout = 2,
+      .channels = 0x28,
+      .swizzle_r = 0,
+      .swizzle_g = 1,
+      .swizzle_b = 2,
+      .swizzle_a = 3,
+      .width = 256,
+      .height = 128,
+      .buffer = UINT64_C(0x0000123456789ab0),
+      .page_aligned_layers = true,
+   };
+   struct agx_pbe_agx3_descriptor native_pbe;
+   CHECK(d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN9, &pbe,
+                                      &native_pbe));
+   CHECK(native_pbe.length == sizeof(expected_gen9));
+   CHECK(memcmp(native_pbe.bytes, expected_gen9, sizeof(expected_gen9)) == 0);
+   CHECK(d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN10, &pbe,
+                                      &native_pbe));
+   CHECK(memcmp(native_pbe.bytes, expected_gen10, sizeof(expected_gen10)) ==
+         0);
+
+   const uint32_t pbe_generations[] = {
+      D12_NATIVE_DESCRIPTOR_GEN9,
+      D12_NATIVE_DESCRIPTOR_GEN10,
+   };
+   for (unsigned g = 0;
+        g < sizeof(pbe_generations) / sizeof(pbe_generations[0]); ++g)
+      for (uint8_t pbe_layout = 1; pbe_layout <= 2; ++pbe_layout)
+         for (unsigned c = 0; c < sizeof(channels) / sizeof(channels[0]); ++c)
+            for (uint8_t type = 0; type <= 5; ++type)
+               for (unsigned swizzle = 0; swizzle < 256; ++swizzle) {
+                  pbe.layout = pbe_layout;
+                  pbe.channels = channels[c];
+                  pbe.type = type;
+                  pbe.swizzle_r = swizzle & 3;
+                  pbe.swizzle_g = (swizzle >> 2) & 3;
+                  pbe.swizzle_b = (swizzle >> 4) & 3;
+                  pbe.swizzle_a = (swizzle >> 6) & 3;
+                  pbe.width = pbe_generations[g] ==
+                                    D12_NATIVE_DESCRIPTOR_GEN9
+                                 ? 16384
+                                 : 32768;
+                  pbe.height = 1;
+                  pbe.page_aligned_layers = (swizzle & 1) != 0;
+                  CHECK(d12_native_pbe_agx3_2d_pack(
+                     pbe_generations[g], &pbe, &native_pbe));
+               }
+
+   memset(&native_pbe, 0xa5, sizeof(native_pbe));
+   CHECK(!d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN8, &pbe,
+                                       &native_pbe));
+   CHECK(memcmp(&native_pbe, &(struct agx_pbe_agx3_descriptor){0},
+                sizeof(native_pbe)) == 0);
+   pbe.layout = 0;
+   CHECK(!d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN9, &pbe,
+                                       &native_pbe));
+   CHECK(!d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN9, NULL,
+                                       &native_pbe));
+   CHECK(!d12_native_pbe_agx3_2d_pack(D12_NATIVE_DESCRIPTOR_GEN9, &pbe,
+                                       NULL));
 
    struct d12_native_texture_side_entry_info side = {
       .descriptor_generation = D12_NATIVE_DESCRIPTOR_GEN9,

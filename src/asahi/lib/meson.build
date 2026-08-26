@@ -46,6 +46,8 @@ libasahi_lib_files = files(
   'agx_ppp_viewport_payload_core.h',
   'agx_ppp_w_clamp_cull2_core.c',
   'agx_ppp_w_clamp_cull2_core.h',
+  'agx_pbe_agx3_core.c',
+  'agx_pbe_agx3_core.h',
   'agx_scratch.c',
   'agx_texture_side_entry.c',
   'agx_texture_side_entry.h',
@@ -411,6 +413,19 @@ if with_tests
       files(
         'agx_vdm_index_list_core.c',
         'tests/test-vdm-index-list-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-pbe-agx3-core',
+    executable(
+      'asahi-pbe-agx3-core',
+      files(
+        'agx_pbe_agx3_core.c',
+        'tests/test-pbe-agx3-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

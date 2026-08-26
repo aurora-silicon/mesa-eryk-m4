@@ -391,10 +391,19 @@ done
 "$out/d12_discard_core_tests"
 
 "$cc" "$common[@]" -I"$d12_dir" \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    "$repo_root/src/asahi/lib/agx_pbe_agx3_core.c" \
     "$repo_root/src/asahi/lib/agx_texture_side_entry.c" \
     "$d12_dir/tests/d12_native_descriptor_core_tests.c" \
     -o "$out/d12_native_descriptor_core_tests"
 "$out/d12_native_descriptor_core_tests"
+
+"$cc" "$common[@]" \
+    -I"$repo_root/include" -I"$repo_root/src" -I"$repo_root/src/asahi" \
+    "$repo_root/src/asahi/lib/agx_pbe_agx3_core.c" \
+    "$repo_root/src/asahi/lib/tests/test-pbe-agx3-core.c" \
+    -o "$out/agx_pbe_agx3_core_tests"
+"$out/agx_pbe_agx3_core_tests"
 
 "$cc" "$common[@]" \
     "$d12_dir/d12_core_caps.c" "$d12_dir/tests/d12_core_caps_tests.c" \
@@ -655,6 +664,17 @@ python3 "$repo_root/src/asahi/genxml/gen_pack.py" \
 # packing tests include the generated header directly.
 mkdir -p "$out/asahi/genxml"
 cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
+
+"$cc" "$common[@]" \
+    -Wno-c23-extensions -Wno-unused-parameter -Wno-initializer-overrides \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx_pbe_agx3_core.c" \
+    "$repo_root/src/asahi/vulkan/hk_native_descriptor_pack.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-native-descriptor.c" \
+    -o "$out/hk_native_descriptor_tests"
+"$out/hk_native_descriptor_tests"
 
 "$cc" "$common[@]" \
     -Wno-c23-extensions -Wno-unused-parameter \

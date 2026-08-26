@@ -282,7 +282,8 @@ if with_tests
     executable(
       'hk_native_descriptor_test',
       files('tests/test-hk-native-descriptor.c',
-            'hk_native_descriptor_pack.c'),
+            'hk_native_descriptor_pack.c',
+            '../lib/agx_pbe_agx3_core.c'),
       include_directories : [
         include_directories('.'), inc_include, inc_src, inc_asahi,
       ],

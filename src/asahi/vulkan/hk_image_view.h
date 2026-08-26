@@ -28,6 +28,8 @@ struct hk_image_view {
          layered_background, emrt_texture;
 
       struct hk_native_pbe_descriptor storage, eot, layered_eot, emrt_pbe;
+      bool storage_pbe_valid, eot_pbe_valid, layered_eot_pbe_valid,
+         emrt_pbe_valid;
    } planes[3];
 };
 

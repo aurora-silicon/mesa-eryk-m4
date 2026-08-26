@@ -713,10 +713,7 @@ hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
    const unsigned generation =
       agx_chip_descriptor_generation(dev->dev.chip);
 
-   /* Spilled render targets interleave a texture with a PBE descriptor.  Do
-    * not construct that table until the AGX3 PBE/software-image ABI is known.
-    */
-   if (!hk_native_pbe_supported(generation)) {
+   if (!hk_native_pbe_hardware_supported(generation)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
@@ -739,6 +736,12 @@ hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
       if (!iview) {
          /* XXX: probably should emit a null descriptor here...? */
          continue;
+      }
+
+      if (!iview->planes[0].emrt_pbe_valid) {
+         vk_command_buffer_set_error(&cmd->vk,
+                                     VK_ERROR_FORMAT_NOT_SUPPORTED);
+         return;
       }
 
       memcpy(desc + i * pair_size, &iview->planes[0].emrt_texture,

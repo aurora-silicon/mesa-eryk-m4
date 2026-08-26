@@ -359,7 +359,7 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
 
    const unsigned descriptor_generation =
       agx_chip_descriptor_generation(dev->dev.chip);
-   if (!hk_native_pbe_supported(descriptor_generation)) {
+   if (!hk_native_pbe_hardware_supported(descriptor_generation)) {
       if (needs_textures_for_spilled_rts) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return (struct hk_bg_eot){0};
@@ -415,6 +415,17 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
          agx_usc_uniform(&b, 4 + (8 * rt), 8, colour);
          uniforms = MAX2(uniforms, 4 + (8 * rt) + 8);
       } else if (key.op[rt] == AGX_EOT_STORE) {
+         const bool valid = key.tib.layered
+                               ? iview->planes[0].layered_eot_pbe_valid
+                               : iview->planes[0].eot_pbe_valid;
+         if (!valid) {
+            mesa_loge("render target %u needs an unproven native PBE axis",
+                      rt);
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FORMAT_NOT_SUPPORTED);
+            return (struct hk_bg_eot){0};
+         }
+
          const struct hk_native_pbe_descriptor *desc =
             key.tib.layered ? &iview->planes[0].layered_eot
                             : &iview->planes[0].eot;
@@ -816,7 +827,7 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    if (agx_tilebuffer_spills(&render->tilebuffer)) {
       const unsigned descriptor_generation =
          agx_chip_descriptor_generation(dev->dev.chip);
-      if (!hk_native_pbe_supported(descriptor_generation)) {
+      if (!hk_native_pbe_hardware_supported(descriptor_generation)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
@@ -826,6 +837,12 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       for (unsigned i = 0; i < render->color_att_count; ++i) {
          struct hk_image_view *view = render->color_att[i].iview;
          if (view) {
+            if (!view->planes[0].emrt_pbe_valid) {
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_FORMAT_NOT_SUPPORTED);
+               return;
+            }
+
             struct hk_image *image =
                container_of(view->vk.image, struct hk_image, vk);
 

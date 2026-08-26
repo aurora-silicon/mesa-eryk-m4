@@ -147,8 +147,16 @@ hk_native_texture_sample_count_representable(unsigned generation,
    return false;
 }
 
-/* Gen9/10 PBE words are structurally recovered, but Honeykrisp still relies
- * on AGX2 software-image sideband fields which have no proven AGX3 decode.
+/* Hardware PBE descriptors have an exact bounded Gen9/10 subset. */
+static inline bool
+hk_native_pbe_hardware_supported(unsigned generation)
+{
+   return hk_pbe_descriptor_size(generation) != 0;
+}
+
+/* Writable-image atomics, MSAA and buffers still rely on the AGX2 software
+ * sideband decode. Keep those execution paths separate from ordinary native
+ * PBE stores.
  */
 static inline bool
 hk_native_pbe_supported(unsigned generation)

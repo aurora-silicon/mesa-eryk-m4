@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../lib/agx_pbe_agx3_core.h"
 #include "../lib/agx_texture_side_entry.h"
 
 #define D12_NATIVE_DESCRIPTOR_GEN7  7u
@@ -31,6 +32,23 @@ struct d12_native_descriptor_layout {
     * pointer channel yet and therefore does not allocate or bind one. */
    uint8_t texture_side_stride_B;
 };
+
+static inline bool
+d12_native_pbe_agx3_2d_pack(
+   uint32_t generation, const struct agx_pbe_agx3_2d_fields *fields,
+   struct agx_pbe_agx3_descriptor *out)
+{
+   if (!out)
+      return false;
+
+   if (generation != D12_NATIVE_DESCRIPTOR_GEN9 &&
+       generation != D12_NATIVE_DESCRIPTOR_GEN10) {
+      *out = (struct agx_pbe_agx3_descriptor){0};
+      return false;
+   }
+
+   return agx_pbe_agx3_2d_pack(generation, fields, out);
+}
 
 /* Layout recognition is not a device-support gate. In particular, Gen9/10
  * command streams and ISA emission remain separately fail-closed. */

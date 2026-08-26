@@ -27,10 +27,8 @@ bool hk_pack_native_texture(unsigned generation,
 bool hk_translate_native_texture_sample_count(
    unsigned generation, unsigned samples, enum agx_sample_count *out);
 
-/* Pack only the native hardware PBE word.  Gen9/10 callers must still keep
- * writable-image execution gated until libagx's generation-specific software
- * addressing sideband is recovered; a correct hardware word is necessary but
- * not sufficient for that path.
+/* Pack the native hardware PBE word. Gen9/10 accept only the exact uncompressed
+ * single-level/single-layer 2D subset; software-addressed axes remain gated.
  */
 bool hk_pack_native_pbe(unsigned generation,
                         struct hk_native_pbe_descriptor *out,
@@ -39,8 +37,6 @@ bool hk_pack_native_pbe(unsigned generation,
 bool hk_set_null_native_texture(unsigned generation,
                                 struct hk_native_texture_descriptor *out);
 
-/* Returns false and writes an all-zero sentinel for AGX3.  Honeykrisp's PBE
- * software sideband/decode is not recovered for Gen9/10 yet.
- */
+/* Construct the generation-native robust null PBE descriptor. */
 bool hk_set_null_native_pbe(unsigned generation,
                             struct hk_native_pbe_descriptor *out);

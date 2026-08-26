@@ -122,6 +122,11 @@ main(void)
    assert(hk_native_pbe_supported(8));
    assert(!hk_native_pbe_supported(9));
    assert(!hk_native_pbe_supported(10));
+   assert(hk_native_pbe_hardware_supported(7));
+   assert(hk_native_pbe_hardware_supported(8));
+   assert(hk_native_pbe_hardware_supported(9));
+   assert(hk_native_pbe_hardware_supported(10));
+   assert(!hk_native_pbe_hardware_supported(0));
 
    struct hk_native_texture_descriptor null9, null10;
    assert(hk_set_null_native_texture(9, &null9));
@@ -262,39 +267,80 @@ main(void)
    for (unsigned i = sizeof(legacy_pbe); i < sizeof(native_pbe); ++i)
       assert(((const uint8_t *)&native_pbe)[i] == 0);
 
-   /* This is the paired live AGXG17XFamilyTexture PBE word.  Packing the
-    * hardware descriptor does not open Honeykrisp's software-addressing gate.
+   /* Honeykrisp's ordinary color-store subset uses the exact shared Gen9/10
+    * word geometry and leaves all unresolved sideband fields zero.
     */
-   static const uint8_t m5_pbe[32] = {
-      0x22, 0x0a, 0xe4, 0xff, 0x80, 0x3f, 0x00, 0x20,
-      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x80,
-      0x00, 0xa0, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
+   static const uint8_t gen9_pbe[32] = {
+      0x22, 0x0a, 0xe4, 0xff, 0xc0, 0x1f, 0x00, 0x00,
+      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x10,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t gen10_pbe[32] = {
+      0x22, 0x0a, 0xe4, 0xff, 0x80, 0x3f, 0x00, 0x00,
+      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x10,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
    pbe.buffer = 0x10000080000ull;
-   pbe.acceleration_buffer = 0x100000a0000ull;
+   pbe.compressed = false;
+   pbe.extended = false;
+   pbe.acceleration_buffer = 0;
+   pbe.page_aligned_layers = true;
+   assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
+   assert(memcmp(&native_pbe, gen9_pbe, sizeof(gen9_pbe)) == 0);
    assert(hk_pack_native_pbe(10, &native_pbe, &pbe));
-   assert(memcmp(&native_pbe, m5_pbe, sizeof(m5_pbe)) == 0);
+   assert(memcmp(&native_pbe, gen10_pbe, sizeof(gen10_pbe)) == 0);
    assert(!hk_native_pbe_supported(10));
 
-   struct AGX_PBE_GEN9 unpacked9 = {0};
-   pbe.width = 16384;
-   pbe.height = 0x2345;
-   pbe.level = 3;
-   pbe.levels = 7;
-   pbe.unk_52 = true;
-   assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
-   assert(AGX_PBE_GEN9_unpack(NULL, (const uint8_t *)native_pbe.opaque,
-                              &unpacked9));
-   assert(unpacked9.width == pbe.width && unpacked9.height == pbe.height);
-   assert(unpacked9.level == 3 && unpacked9.levels == 7);
-   assert(unpacked9.unk_mipmapped && unpacked9.extended && unpacked9.unk_52);
+#define CHECK_PBE_REJECT(statement_)                                           \
+   do {                                                                        \
+      statement_;                                                              \
+      memset(&native_pbe, 0xff, sizeof(native_pbe));                           \
+      assert(!hk_pack_native_pbe(9, &native_pbe, &pbe));                       \
+      assert(memcmp(&native_pbe, &(struct hk_native_pbe_descriptor){0},        \
+                    sizeof(native_pbe)) == 0);                                 \
+   } while (0)
 
-   memset(&native_pbe, 0xff, sizeof(native_pbe));
-   pbe.buffer |= 1;
-   assert(!hk_pack_native_pbe(9, &native_pbe, &pbe));
-   assert(memcmp(&native_pbe, &(struct hk_native_pbe_descriptor){0},
-                 sizeof(native_pbe)) == 0);
+   CHECK_PBE_REJECT(pbe.buffer |= 1);
+   pbe.buffer = 0x10000080000ull;
+   CHECK_PBE_REJECT(pbe.layout = AGX_LAYOUT_LINEAR);
+   pbe.layout = AGX_LAYOUT_GPU;
+   CHECK_PBE_REJECT(pbe.dimension = AGX_TEXTURE_DIMENSION_2D_ARRAY);
+   pbe.dimension = AGX_TEXTURE_DIMENSION_2D;
+   CHECK_PBE_REJECT(pbe.compressed = true);
+   pbe.compressed = false;
+   CHECK_PBE_REJECT(pbe.level = 1);
+   pbe.level = 0;
+   CHECK_PBE_REJECT(pbe.levels = 2);
+   pbe.levels = 1;
+   CHECK_PBE_REJECT(pbe.srgb = true);
+   pbe.srgb = false;
+   CHECK_PBE_REJECT(pbe.mode = AGX_IMAGE_MODE_SPARSE);
+   pbe.mode = AGX_IMAGE_MODE_NORMAL;
+   CHECK_PBE_REJECT(pbe.level_offset_sw = 0x80);
+   pbe.level_offset_sw = 0;
+   CHECK_PBE_REJECT(pbe.aligned_width_msaa_sw = 64);
+   pbe.aligned_width_msaa_sw = 0;
+   CHECK_PBE_REJECT(pbe.sample_count_log2_sw = 1);
+   pbe.sample_count_log2_sw = 0;
+   CHECK_PBE_REJECT(pbe.tile_width_sw = 16);
+   pbe.tile_width_sw = 1;
+   CHECK_PBE_REJECT(pbe.tile_height_sw = 16);
+   pbe.tile_height_sw = 1;
+   CHECK_PBE_REJECT(pbe.layer_stride_sw = 0x80);
+   pbe.layer_stride_sw = 0;
+   CHECK_PBE_REJECT(pbe.buffer_offset_sw = 1);
+
+#undef CHECK_PBE_REJECT
+
+   struct hk_native_pbe_descriptor null_pbe9, null_pbe10;
+   assert(hk_set_null_native_pbe(9, &null_pbe9));
+   assert(hk_set_null_native_pbe(10, &null_pbe10));
+   assert(memcmp(&null_pbe9, &(struct hk_native_pbe_descriptor){0},
+                 sizeof(null_pbe9)) != 0);
+   assert(memcmp(&null_pbe10, &(struct hk_native_pbe_descriptor){0},
+                 sizeof(null_pbe10)) != 0);
 
    puts("honeykrisp native descriptor geometry/policy: passed");
    return 0;

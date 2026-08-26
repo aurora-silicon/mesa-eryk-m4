@@ -371,7 +371,7 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
 {
    const unsigned generation =
       agx_chip_descriptor_generation(dev->dev.chip);
-   if (!hk_native_pbe_supported(generation)) {
+   if (!hk_native_pbe_hardware_supported(generation)) {
       memset(out, 0, sizeof(*out));
       return false;
    }
@@ -404,8 +404,8 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
                         ? image->vk.extent.depth
                         : view->vk.layer_count;
 
-   struct agx_pbe_packed packed;
-   agx_pack(&packed, PBE, cfg) {
+   struct AGX_PBE cfg = {AGX_PBE_header};
+   {
       cfg.dimension =
          translate_image_view_type(view->vk.view_type, msaa, layers > 1, usage);
       cfg.layout = agx_translate_layout(layout->tiling);
@@ -505,7 +505,7 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
       /* When the descriptor isn't extended architecturally, we use
        * the last 8 bytes as a sideband to accelerate image atomics.
        */
-      if (!cfg.extended &&
+      if (hk_native_pbe_supported(generation) && !cfg.extended &&
           (layout->writeable_image || usage == HK_DESC_USAGE_EMRT)) {
 
          if (msaa) {
@@ -528,11 +528,9 @@ pack_pbe(struct hk_device *dev, struct hk_image_view *view, unsigned view_plane,
             cfg.layer_stride_sw = layout->layer_stride_B;
          }
       }
-   };
+   }
 
-   memset(out, 0, sizeof(*out));
-   memcpy(out, &packed, sizeof(packed));
-   return true;
+   return hk_pack_native_pbe(generation, out, &cfg);
 }
 
 static VkResult
@@ -585,11 +583,15 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
       if (!textures_valid)
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-      pack_pbe(dev, view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].storage);
-      pack_pbe(dev, view, p, HK_DESC_USAGE_BG_EOT, &view->planes[p].eot);
-      pack_pbe(dev, view, p, HK_DESC_USAGE_EMRT, &view->planes[p].emrt_pbe);
-      pack_pbe(dev, view, p, HK_DESC_USAGE_LAYERED_BG_EOT,
-               &view->planes[p].layered_eot);
+      view->planes[p].storage_pbe_valid = pack_pbe(
+         dev, view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].storage);
+      view->planes[p].eot_pbe_valid =
+         pack_pbe(dev, view, p, HK_DESC_USAGE_BG_EOT, &view->planes[p].eot);
+      view->planes[p].emrt_pbe_valid = pack_pbe(
+         dev, view, p, HK_DESC_USAGE_EMRT, &view->planes[p].emrt_pbe);
+      view->planes[p].layered_eot_pbe_valid =
+         pack_pbe(dev, view, p, HK_DESC_USAGE_LAYERED_BG_EOT,
+                  &view->planes[p].layered_eot);
    }
 
    return VK_SUCCESS;
