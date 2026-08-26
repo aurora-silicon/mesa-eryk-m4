@@ -6475,6 +6475,144 @@ check_local_tps_bridge(void)
    return 0;
 }
 
+static bool
+static_spill_desc_equal(const struct d12_agx3_static_spill_desc *a,
+                        const struct d12_agx3_static_spill_desc *b)
+{
+   return a->reg == b->reg && a->byte_offset == b->byte_offset &&
+          a->reg_kill == b->reg_kill && a->slot == b->slot &&
+          a->wait_mask == b->wait_mask;
+}
+
+static int
+check_static_spill_bridge(void)
+{
+   static const uint8_t b_copy_w[] = {
+      0x1b, 0x49, 0x0f, 0x00, 0x22, 0x00, 0x00, 0x04, 0x00, 0x00,
+   };
+   static const uint8_t c_copy_w[] = {
+      0x33, 0x00, 0x07, 0x90, 0x26, 0x90, 0xa4, 0x02,
+   };
+   static const uint8_t b_rld_w[] = {
+      0x1c, 0x80, 0x09, 0x01, 0x00, 0x40, 0x00, 0x00,
+   };
+   static const uint8_t c_rld_w[] = {
+      0x24, 0x86, 0xa1, 0x00, 0x26, 0x00, 0xa0, 0x12,
+   };
+   static const uint8_t b_copy_structural[] = {
+      0x4b, 0x0f, 0x8f, 0x00, 0x22, 0x00, 0x00, 0x04, 0x60, 0x00,
+   };
+
+   const struct {
+      enum agx_chip chip;
+      bool load;
+      struct d12_agx3_static_spill_desc desc;
+      const uint8_t *bytes;
+      uint8_t length;
+   } cases[] = {
+      {AGX_CHIP_G15G, false, {72, 4, true, 2, 0}, b_copy_w,
+       sizeof(b_copy_w)},
+      {AGX_CHIP_G17S, false, {72, 4, true, 2, 0}, c_copy_w,
+       sizeof(c_copy_w)},
+      {AGX_CHIP_G16G, true, {2, 0, false, 1, 2}, b_rld_w,
+       sizeof(b_rld_w)},
+      {AGX_CHIP_G17S, true, {72, 4, false, 1, 1}, c_rld_w,
+       sizeof(c_rld_w)},
+   };
+
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      struct d12_agx3_static_spill_encoding encoded;
+      const bool ok =
+         cases[i].load
+            ? d12_agx3_encode_static_spill_load(cases[i].chip,
+                                                 &cases[i].desc, &encoded)
+            : d12_agx3_encode_static_spill_store(cases[i].chip,
+                                                  &cases[i].desc, &encoded);
+      CHECK(ok);
+      CHECK(encoded.length == cases[i].length);
+      CHECK(memcmp(encoded.bytes, cases[i].bytes, cases[i].length) == 0);
+      for (unsigned j = cases[i].length; j < sizeof(encoded.bytes); ++j)
+         CHECK(encoded.bytes[j] == 0);
+
+      struct d12_agx3_static_spill_desc decoded;
+      const bool decode_ok =
+         cases[i].load
+            ? d12_agx3_decode_static_spill_load(
+                 cases[i].chip, cases[i].bytes, cases[i].length, &decoded)
+            : d12_agx3_decode_static_spill_store(
+                 cases[i].chip, cases[i].bytes, cases[i].length, &decoded);
+      CHECK(decode_ok);
+      CHECK(static_spill_desc_equal(&decoded, &cases[i].desc));
+
+      uint8_t unaligned[D12_AGX3_STATIC_SPILL_MAX_LENGTH + 1] = {0};
+      memcpy(&unaligned[1], cases[i].bytes, cases[i].length);
+      CHECK(cases[i].load
+               ? d12_agx3_decode_static_spill_load(
+                    cases[i].chip, &unaligned[1], cases[i].length, &decoded)
+               : d12_agx3_decode_static_spill_store(
+                    cases[i].chip, &unaligned[1], cases[i].length, &decoded));
+   }
+
+   /* Every exact compiler-target identity in the D3D allowlist maps to the
+    * same per-encoding static form; this is an ISA bridge, not chip admission. */
+   for (unsigned i = 0;
+        i < sizeof(integer_targets) / sizeof(integer_targets[0]); ++i) {
+      const bool is_c = integer_targets[i].encoding == AGX_ISA_ENCODING_AGX3C;
+      const uint8_t *expected = is_c ? c_copy_w : b_copy_w;
+      const uint8_t expected_length =
+         is_c ? (uint8_t)sizeof(c_copy_w) : (uint8_t)sizeof(b_copy_w);
+      struct d12_agx3_static_spill_encoding encoded;
+      CHECK(d12_agx3_encode_static_spill_store(
+         integer_targets[i].chip, &cases[0].desc, &encoded));
+      CHECK(encoded.length == expected_length);
+      CHECK(memcmp(encoded.bytes, expected, expected_length) == 0);
+   }
+
+   struct d12_agx3_static_spill_desc desc = cases[0].desc;
+   struct d12_agx3_static_spill_encoding rejected;
+#define REJECT_STATIC_SPILL(call)                                              \
+   do {                                                                        \
+      memset(&rejected, 0xa5, sizeof(rejected));                               \
+      CHECK(!(call));                                                          \
+      const struct d12_agx3_static_spill_encoding zero = {0};                  \
+      CHECK(memcmp(&rejected, &zero, sizeof(rejected)) == 0);                  \
+   } while (0)
+
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
+      AGX_CHIP_G17C, &desc, &rejected));
+   desc.byte_offset = 2;
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
+      AGX_CHIP_G15G, &desc, &rejected));
+   desc = cases[2].desc;
+   desc.reg_kill = true;
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_load(
+      AGX_CHIP_G16G, &desc, &rejected));
+   desc = cases[0].desc;
+   desc.reg = 3;
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
+      AGX_CHIP_G15G, &desc, &rejected));
+   CHECK(!d12_agx3_encode_static_spill_store(AGX_CHIP_G15G, &desc, NULL));
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
+      AGX_CHIP_G15G, NULL, &rejected));
+#undef REJECT_STATIC_SPILL
+
+   struct d12_agx3_static_spill_desc decoded = {1, 2, true, 3, 4};
+   CHECK(!d12_agx3_decode_static_spill_store(
+      AGX_CHIP_G15G, b_copy_w, sizeof(b_copy_w) - 1, &decoded));
+   CHECK(static_spill_desc_equal(
+      &decoded, &(struct d12_agx3_static_spill_desc){0}));
+   CHECK(!d12_agx3_decode_static_spill_store(
+      AGX_CHIP_G17C, b_copy_w, sizeof(b_copy_w), &decoded));
+   CHECK(!d12_agx3_decode_static_spill_store(
+      AGX_CHIP_G15G, b_copy_structural, sizeof(b_copy_structural), &decoded));
+   CHECK(!d12_agx3_decode_static_spill_load(
+      AGX_CHIP_G17S, c_rld_w, sizeof(c_rld_w), NULL));
+   CHECK(!d12_agx3_decode_static_spill_load(
+      AGX_CHIP_G17S, NULL, sizeof(c_rld_w), &decoded));
+
+   return 0;
+}
+
 int
 main(void)
 {
@@ -6484,6 +6622,7 @@ main(void)
    CHECK(check_wave_read_lane_at_f32_imm_bridge() == 0);
    CHECK(check_tile_bridge() == 0);
    CHECK(check_local_tps_bridge() == 0);
+   CHECK(check_static_spill_bridge() == 0);
 
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,

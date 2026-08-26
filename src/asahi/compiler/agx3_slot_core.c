@@ -7,9 +7,6 @@
 
 #include <string.h>
 
-/* Half-register index space: AGX models 256 half-registers. */
-#define AGX3_SLOT_NUM_REGS 256u
-
 bool
 agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
                  unsigned nslots, struct agx3_slot_result *out)
@@ -20,7 +17,7 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
    /* reg_slot[r] = slot (1..nslots) of the async op whose result currently
     * lives in half-register r, or 0 if r was last written by a synchronous op
     * (or never). */
-   uint8_t reg_slot[AGX3_SLOT_NUM_REGS];
+   uint8_t reg_slot[AGX3_SLOT_NUM_TOKENS];
    memset(reg_slot, 0, sizeof(reg_slot));
 
    /* slot_waited[s] = the slot has been synchronised since it was last
@@ -37,7 +34,7 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
       uint16_t wait_mask = 0;
       for (unsigned s = 0; s < I->nr_srcs; ++s) {
          const uint16_t r = I->src[s];
-         if (r >= AGX3_SLOT_NUM_REGS)
+         if (r >= AGX3_SLOT_NUM_TOKENS)
             return false;
          const uint8_t slot = reg_slot[r];
          if (slot != 0 && !slot_waited[slot]) {
@@ -54,14 +51,14 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
          out[i].slot = slot;
          slot_waited[slot] = false; /* freshly outstanding */
          for (unsigned d = 0; d < I->nr_dsts; ++d) {
-            if (I->dst[d] >= AGX3_SLOT_NUM_REGS)
+            if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)
                return false;
             reg_slot[I->dst[d]] = slot;
          }
       } else {
          out[i].slot = 0;
          for (unsigned d = 0; d < I->nr_dsts; ++d) {
-            if (I->dst[d] >= AGX3_SLOT_NUM_REGS)
+            if (I->dst[d] >= AGX3_SLOT_NUM_TOKENS)
                return false;
             reg_slot[I->dst[d]] = 0; /* synchronous result, no wait needed */
          }

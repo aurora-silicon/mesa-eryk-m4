@@ -28,14 +28,23 @@
 extern "C" {
 #endif
 
-/* Up to 16 half-register sources/dests per instruction is far more than any AGX3
- * form uses. */
+/* Normal register dependencies occupy tokens 0..255.  Static Mesa stack
+ * offsets are 16-bit byte immediates; their 32768 addressable half-registers
+ * occupy a separate token range so async copy/rld ordering is exact. */
+#define AGX3_SLOT_GPR_TOKENS 256u
+#define AGX3_SLOT_TPS_TOKEN_BASE AGX3_SLOT_GPR_TOKENS
+#define AGX3_SLOT_TPS_HALF_TOKENS 32768u
+#define AGX3_SLOT_NUM_TOKENS                                             \
+   (AGX3_SLOT_TPS_TOKEN_BASE + AGX3_SLOT_TPS_HALF_TOKENS)
+
+/* Up to 16 half-register or storage-token sources/dests per instruction is far
+ * more than any AGX3 form uses. */
 #define AGX3_SLOT_MAX_REGS 16u
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
-   uint8_t nr_dsts; /* half-register indices this instruction writes */
-   uint8_t nr_srcs; /* half-register indices this instruction reads */
+   uint8_t nr_dsts; /* dependency tokens this instruction writes */
+   uint8_t nr_srcs; /* dependency tokens this instruction reads */
    uint16_t dst[AGX3_SLOT_MAX_REGS];
    uint16_t src[AGX3_SLOT_MAX_REGS];
 };
@@ -51,10 +60,10 @@ struct agx3_slot_result {
  * (agx3b) or 8 (agx3c). Writes one result per instruction. Returns false on a
  * malformed input (too many regs, nslots out of range, null pointers).
  *
- * Registers are half-register indices; a value that is not currently the live
- * result of an async op contributes no wait. The slot policy is round-robin,
- * which the RE showed is always correct (reuse only forces an earlier wait,
- * never misses a hazard).
+ * GPR tokens are half-register indices; static TPS tokens use the disjoint
+ * range above. A value that is not currently the live result of an async op
+ * contributes no wait. The slot policy is round-robin, which the RE showed is
+ * always correct (reuse only forces an earlier wait, never misses a hazard).
  */
 bool agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
                       unsigned nslots, struct agx3_slot_result *out);

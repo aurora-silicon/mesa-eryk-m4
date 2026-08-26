@@ -81,6 +81,67 @@ int main(void)
       CHECK(r[7].slot==8 && r[8].slot==1);  /* wraps at 8 */
    }
 
+   /* Static copy produces a TPS dependency token and a later rld consumes it.
+    * The reload must wait the copy even though the two operations share no
+    * architectural GPR. Its own GPR result then remains async as usual. */
+   {
+      struct agx3_slot_instr copy = {0}, rld = {0}, consume;
+      copy.is_async = true;
+      copy.nr_srcs = 2;
+      copy.src[0] = 8;
+      copy.src[1] = 9;
+      copy.src[copy.nr_srcs++] = AGX3_SLOT_TPS_TOKEN_BASE + 18;
+      copy.src[copy.nr_srcs++] = AGX3_SLOT_TPS_TOKEN_BASE + 19;
+      copy.nr_dsts = 2;
+      copy.dst[0] = AGX3_SLOT_TPS_TOKEN_BASE + 18;
+      copy.dst[1] = AGX3_SLOT_TPS_TOKEN_BASE + 19;
+      rld.is_async = true;
+      rld.nr_srcs = 2;
+      rld.src[0] = AGX3_SLOT_TPS_TOKEN_BASE + 18;
+      rld.src[1] = AGX3_SLOT_TPS_TOKEN_BASE + 19;
+      rld.nr_dsts = 2;
+      rld.dst[0] = 12;
+      rld.dst[1] = 13;
+      rld.dst[rld.nr_dsts++] = AGX3_SLOT_TPS_TOKEN_BASE + 18;
+      rld.dst[rld.nr_dsts++] = AGX3_SLOT_TPS_TOKEN_BASE + 19;
+      consume = alu(16, 12, 12);
+      struct agx3_slot_instr p[] = {copy, rld, consume};
+      CHECK(agx3_slot_assign(p, 3, 6, r));
+      CHECK(r[0].slot == 1 && r[0].wait_mask == 0);
+      CHECK(r[1].slot == 2 && r[1].wait_mask == 1);
+      CHECK(r[2].slot == 0 && r[2].wait_mask == 2);
+   }
+
+   /* A TPS access token is both read and rewritten, serializing WAW as well as
+    * RAW hazards. The second copy waits the first before replacing its slot. */
+   {
+      struct agx3_slot_instr copy1 = {0}, copy2 = {0}, rld = {0};
+      const uint16_t tps = AGX3_SLOT_TPS_TOKEN_BASE + 24;
+      copy1.is_async = copy2.is_async = rld.is_async = true;
+      copy1.nr_srcs = copy1.nr_dsts = 1;
+      copy1.src[0] = copy1.dst[0] = tps;
+      copy2 = copy1;
+      rld.nr_srcs = rld.nr_dsts = 1;
+      rld.src[0] = rld.dst[0] = tps;
+      struct agx3_slot_instr p[] = {copy1, copy2, rld};
+      CHECK(agx3_slot_assign(p, 3, 6, r));
+      CHECK(r[0].slot == 1 && r[0].wait_mask == 0);
+      CHECK(r[1].slot == 2 && r[1].wait_mask == 1);
+      CHECK(r[2].slot == 3 && r[2].wait_mask == 2);
+   }
+
+   /* The top legal Mesa byte-immediate TPS token is modeled distinctly. */
+   {
+      struct agx3_slot_instr p[] = {
+         ld(AGX3_SLOT_TPS_TOKEN_BASE + AGX3_SLOT_TPS_HALF_TOKENS - 1),
+         st(AGX3_SLOT_TPS_TOKEN_BASE + AGX3_SLOT_TPS_HALF_TOKENS - 1),
+      };
+      CHECK(agx3_slot_assign(p, 2, 6, r));
+      CHECK(r[1].wait_mask == 1);
+      p[1].src[0] = AGX3_SLOT_NUM_TOKENS;
+      CHECK(!agx3_slot_assign(p, 2, 6, r));
+   }
+
    /* Malformed inputs. */
    CHECK(!agx3_slot_assign(NULL, 1, 6, r));
    { struct agx3_slot_instr p=ld(0); CHECK(!agx3_slot_assign(&p,1,0,r)); CHECK(!agx3_slot_assign(&p,1,9,r)); }

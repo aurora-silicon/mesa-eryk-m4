@@ -8,6 +8,7 @@
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_local_tps_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_static_spill_core.h"
 #include "asahi/compiler/agx3_tex_core.h"
 #include "asahi/compiler/agx3_tile_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
@@ -79,6 +80,9 @@ _Static_assert(AGX3_TILE_MAX_LENGTH == D12_AGX3_TILE_MAX_LENGTH,
                "D3D AGX3 tile storage must match the canonical forms");
 _Static_assert(AGX3_LOCAL_TPS_MAX_LENGTH == D12_AGX3_LOCAL_TPS_MAX_LENGTH,
                "D3D AGX3 local/TPS storage must match canonical forms");
+_Static_assert(AGX3_STATIC_SPILL_MAX_LENGTH ==
+                  D12_AGX3_STATIC_SPILL_MAX_LENGTH,
+               "D3D AGX3 static-spill storage must match canonical forms");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -896,6 +900,137 @@ d12_agx3_encode_tps_store(enum agx_chip chip,
                           struct d12_agx3_local_tps_encoding *out)
 {
    return d12_agx3_encode_tps(chip, desc, false, out);
+}
+
+static bool
+d12_agx3_static_spill_input(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   bool is_load, enum agx_isa_encoding *encoding, uint32_t *tps_half)
+{
+   if (desc == NULL ||
+       !d12_agx3_compiler_target_encoding(chip, encoding) ||
+       (desc->byte_offset & 3u) != 0 ||
+       desc->byte_offset / 2u > AGX3_STATIC_SPILL_MAX_TPS_HALF ||
+       (is_load && desc->reg_kill))
+      return false;
+
+   *tps_half = desc->byte_offset / 2u;
+   return true;
+}
+
+static bool
+d12_agx3_encode_static_spill(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   bool is_load, struct d12_agx3_static_spill_encoding *out)
+{
+   if (out == NULL)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   uint32_t tps_half;
+   if (!d12_agx3_static_spill_input(chip, desc, is_load, &encoding,
+                                    &tps_half))
+      return false;
+
+   uint8_t length = 0;
+   bool ok;
+   if (is_load) {
+      const struct agx3_static_spill_load_desc d = {
+         .dest = desc->reg,
+         .tps_half = tps_half,
+         .width = AGX3_MEM_W32,
+         .slot = desc->slot,
+         .slot_mirror = desc->slot,
+         .wait_mask = desc->wait_mask,
+      };
+      ok = agx3_static_spill_encode_load(encoding, &d, out->bytes, &length);
+   } else {
+      const struct agx3_static_spill_store_desc d = {
+         .tps_half = tps_half,
+         .src = desc->reg,
+         .width = AGX3_MEM_W32,
+         .src_kill = desc->reg_kill,
+         .slot = desc->slot,
+         .wait_mask = desc->wait_mask,
+      };
+      ok = agx3_static_spill_encode_store(encoding, &d, out->bytes, &length);
+   }
+
+   if (!ok || length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_static_spill_store(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   struct d12_agx3_static_spill_encoding *out)
+{
+   return d12_agx3_encode_static_spill(chip, desc, false, out);
+}
+
+bool
+d12_agx3_encode_static_spill_load(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   struct d12_agx3_static_spill_encoding *out)
+{
+   return d12_agx3_encode_static_spill(chip, desc, true, out);
+}
+
+bool
+d12_agx3_decode_static_spill_store(
+   enum agx_chip chip, const void *instruction, size_t length,
+   struct d12_agx3_static_spill_desc *out)
+{
+   if (out == NULL)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   struct agx3_static_spill_store_desc d;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !agx3_static_spill_decode_store(encoding, instruction, length, &d) ||
+       d.width != AGX3_MEM_W32 || d.structural_flag)
+      return false;
+
+   *out = (struct d12_agx3_static_spill_desc){
+      .reg = d.src,
+      .byte_offset = d.tps_half * 2u,
+      .reg_kill = d.src_kill,
+      .slot = d.slot,
+      .wait_mask = d.wait_mask,
+   };
+   return true;
+}
+
+bool
+d12_agx3_decode_static_spill_load(
+   enum agx_chip chip, const void *instruction, size_t length,
+   struct d12_agx3_static_spill_desc *out)
+{
+   if (out == NULL)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   struct agx3_static_spill_load_desc d;
+   if (!d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !agx3_static_spill_decode_load(encoding, instruction, length, &d) ||
+       d.width != AGX3_MEM_W32 || d.slot_mirror != d.slot ||
+       d.narrow_extend || d.structural_flag)
+      return false;
+
+   *out = (struct d12_agx3_static_spill_desc){
+      .reg = d.dest,
+      .byte_offset = d.tps_half * 2u,
+      .slot = d.slot,
+      .wait_mask = d.wait_mask,
+   };
+   return true;
 }
 
 bool

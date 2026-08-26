@@ -1,0 +1,268 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_static_spill_core.h"
+
+#include <stdio.h>
+#include <string.h>
+
+static unsigned checks;
+static unsigned failures;
+
+#define CHECK(x)                                                               \
+   do {                                                                        \
+      ++checks;                                                                \
+      if (!(x)) {                                                              \
+         fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #x);          \
+         ++failures;                                                           \
+      }                                                                        \
+   } while (0)
+
+static void
+check_store(enum agx_isa_encoding enc,
+            const struct agx3_static_spill_store_desc *d, uint8_t ep,
+            const uint8_t *expected, uint8_t expected_length, bool check_auto)
+{
+   uint8_t encoded[AGX3_STATIC_SPILL_MAX_LENGTH];
+   uint8_t length = 0;
+   CHECK(agx3_static_spill_encode_store_form(enc, d, ep, encoded, &length));
+   CHECK(length == expected_length);
+   CHECK(memcmp(encoded, expected, expected_length) == 0);
+   for (unsigned i = expected_length; i < sizeof(encoded); ++i)
+      CHECK(encoded[i] == 0);
+
+   struct agx3_static_spill_store_desc decoded;
+   CHECK(
+      agx3_static_spill_decode_store(enc, expected, expected_length, &decoded));
+   CHECK(memcmp(&decoded, d, sizeof(decoded)) == 0);
+
+   if (check_auto) {
+      memset(encoded, 0xcc, sizeof(encoded));
+      length = 0xff;
+      CHECK(agx3_static_spill_encode_store(enc, d, encoded, &length));
+      CHECK(length == expected_length);
+      CHECK(memcmp(encoded, expected, expected_length) == 0);
+   }
+}
+
+static void
+check_load(enum agx_isa_encoding enc,
+           const struct agx3_static_spill_load_desc *d, uint8_t ep,
+           const uint8_t *expected, uint8_t expected_length, bool check_auto)
+{
+   uint8_t encoded[AGX3_STATIC_SPILL_MAX_LENGTH];
+   uint8_t length = 0;
+   CHECK(agx3_static_spill_encode_load_form(enc, d, ep, encoded, &length));
+   CHECK(length == expected_length);
+   CHECK(memcmp(encoded, expected, expected_length) == 0);
+   for (unsigned i = expected_length; i < sizeof(encoded); ++i)
+      CHECK(encoded[i] == 0);
+
+   struct agx3_static_spill_load_desc decoded;
+   CHECK(
+      agx3_static_spill_decode_load(enc, expected, expected_length, &decoded));
+   CHECK(memcmp(&decoded, d, sizeof(decoded)) == 0);
+
+   if (check_auto) {
+      memset(encoded, 0xcc, sizeof(encoded));
+      length = 0xff;
+      CHECK(agx3_static_spill_encode_load(enc, d, encoded, &length));
+      CHECK(length == expected_length);
+      CHECK(memcmp(encoded, expected, expected_length) == 0);
+   }
+}
+
+int
+main(void)
+{
+   static const uint8_t b_copy_h[] = {0x03, 0x14, 0x09, 0xc2};
+   const struct agx3_static_spill_store_desc b_copy_h_d = {
+      .tps_half = 0,
+      .src = 20,
+      .width = AGX3_MEM_W16,
+      .src_kill = true,
+      .slot = 1,
+      .wait_mask = 1u << 5,
+   };
+   check_store(AGX_ISA_ENCODING_AGX3B, &b_copy_h_d, 0, b_copy_h,
+               sizeof(b_copy_h), true);
+
+   static const uint8_t b_copy_w[] = {
+      0x1b, 0x49, 0x0f, 0x00, 0x22, 0x00, 0x00, 0x04, 0x00, 0x00,
+   };
+   const struct agx3_static_spill_store_desc b_copy_w_d = {
+      .tps_half = 2,
+      .src = 72,
+      .width = AGX3_MEM_W32,
+      .src_kill = true,
+      .slot = 2,
+   };
+   check_store(AGX_ISA_ENCODING_AGX3B, &b_copy_w_d, 1, b_copy_w,
+               sizeof(b_copy_w), true);
+
+   static const uint8_t b_rld_h[] = {0x24, 0xbf, 0x18, 0xa4};
+   const struct agx3_static_spill_load_desc b_rld_h_d = {
+      .dest = 4,
+      .tps_half = 63,
+      .width = AGX3_MEM_W16,
+      .slot = 6,
+      .slot_mirror = 6,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3B, &b_rld_h_d, 0, b_rld_h, sizeof(b_rld_h),
+              true);
+
+   static const uint8_t b_rld_h_long[] = {
+      0x24, 0xc5, 0x1d, 0xa4, 0x00, 0x20, 0x00, 0x00,
+   };
+   const struct agx3_static_spill_load_desc b_rld_h_long_d = {
+      .dest = 5,
+      .tps_half = 69,
+      .width = AGX3_MEM_W16,
+      .slot = 6,
+      .slot_mirror = 6,
+      .wait_mask = 1,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3B, &b_rld_h_long_d, 1, b_rld_h_long,
+              sizeof(b_rld_h_long), true);
+
+   static const uint8_t b_rld_structural[] = {
+      0x0c, 0x88, 0x09, 0x27, 0x60, 0x00, 0x00, 0x80,
+   };
+   const struct agx3_static_spill_load_desc b_rld_structural_d = {
+      .dest = 0,
+      .tps_half = 8,
+      .width = AGX3_MEM_W32,
+      .slot = 2,
+      .slot_mirror = 0,
+      .wait_mask = 1u << 5,
+      .structural_flag = true,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3B, &b_rld_structural_d, 1, b_rld_structural,
+              sizeof(b_rld_structural), true);
+
+   static const uint8_t c_copy_h[] = {
+      0x2b, 0x00, 0x07, 0x10, 0x26, 0x00, 0xa0, 0x02,
+   };
+   const struct agx3_static_spill_store_desc c_copy_h_d = {
+      .tps_half = 0,
+      .src = 8,
+      .width = AGX3_MEM_W16,
+      .src_kill = true,
+      .slot = 1,
+      .wait_mask = 1u << 7,
+   };
+   check_store(AGX_ISA_ENCODING_AGX3C, &c_copy_h_d, 1, c_copy_h,
+               sizeof(c_copy_h), true);
+
+   static const uint8_t c_copy_w[] = {
+      0x33, 0x00, 0x07, 0x90, 0x26, 0x90, 0xa4, 0x02,
+   };
+   const struct agx3_static_spill_store_desc c_copy_w_d = {
+      .tps_half = 2,
+      .src = 72,
+      .width = AGX3_MEM_W32,
+      .src_kill = true,
+      .slot = 2,
+   };
+   check_store(AGX_ISA_ENCODING_AGX3C, &c_copy_w_d, 1, c_copy_w,
+               sizeof(c_copy_w), true);
+
+   static const uint8_t c_rld_h[] = {
+      0x24, 0x81, 0x21, 0x11, 0x2c, 0x02, 0xa4, 0x0a,
+   };
+   const struct agx3_static_spill_load_desc c_rld_h_d = {
+      .dest = 5,
+      .tps_half = 9,
+      .width = AGX3_MEM_W16,
+      .slot = 3,
+      .slot_mirror = 3,
+      .narrow_extend = true,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3C, &c_rld_h_d, 1, c_rld_h, sizeof(c_rld_h),
+              false);
+
+   static const uint8_t c_rld_h_compact[] = {0x24, 0x88, 0x1c, 0x20};
+   const struct agx3_static_spill_load_desc c_rld_h_compact_d = {
+      .dest = 5,
+      .tps_half = 8,
+      .width = AGX3_MEM_W16,
+      .slot = 2,
+      .slot_mirror = 2,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3C, &c_rld_h_compact_d, 0, c_rld_h_compact,
+              sizeof(c_rld_h_compact), true);
+
+   static const uint8_t c_rld_w[] = {
+      0x24, 0x86, 0xa1, 0x00, 0x26, 0x00, 0xa0, 0x12,
+   };
+   const struct agx3_static_spill_load_desc c_rld_w_d = {
+      .dest = 72,
+      .tps_half = 2,
+      .width = AGX3_MEM_W32,
+      .slot = 1,
+      .slot_mirror = 1,
+      .wait_mask = 1,
+   };
+   check_load(AGX_ISA_ENCODING_AGX3C, &c_rld_w_d, 1, c_rld_w, sizeof(c_rld_w),
+              true);
+
+   /* Fail closed on non-static widths, misaligned 32-bit operands, malformed
+    * target/form/length, and any mutated fixed opcode bit. */
+   uint8_t encoded[AGX3_STATIC_SPILL_MAX_LENGTH];
+   uint8_t length = 0;
+   struct agx3_static_spill_store_desc bad_store = b_copy_w_d;
+   bad_store.width = AGX3_MEM_W8;
+   memset(encoded, 0xcc, sizeof(encoded));
+   length = 0xff;
+   CHECK(!agx3_static_spill_encode_store(AGX_ISA_ENCODING_AGX3B, &bad_store,
+                                         encoded, &length));
+   CHECK(length == 0);
+   for (unsigned i = 0; i < sizeof(encoded); ++i)
+      CHECK(encoded[i] == 0);
+
+   bad_store = b_copy_w_d;
+   bad_store.tps_half = 1;
+   CHECK(!agx3_static_spill_encode_store(AGX_ISA_ENCODING_AGX3B, &bad_store,
+                                         encoded, &length));
+   bad_store = b_copy_w_d;
+   bad_store.slot = 0;
+   CHECK(!agx3_static_spill_encode_store(AGX_ISA_ENCODING_AGX3B, &bad_store,
+                                         encoded, &length));
+   bad_store = b_copy_w_d;
+   bad_store.wait_mask = 1u << 6;
+   CHECK(!agx3_static_spill_encode_store(AGX_ISA_ENCODING_AGX3B, &bad_store,
+                                         encoded, &length));
+
+   struct agx3_static_spill_store_desc decoded_store = b_copy_w_d;
+   CHECK(!agx3_static_spill_decode_store(AGX_ISA_ENCODING_AGX2, b_copy_w,
+                                         sizeof(b_copy_w), &decoded_store));
+   CHECK(memcmp(&decoded_store, &(struct agx3_static_spill_store_desc){0},
+                sizeof(decoded_store)) == 0);
+   CHECK(!agx3_static_spill_decode_store(AGX_ISA_ENCODING_AGX3B, b_copy_w,
+                                         sizeof(b_copy_w) - 1, &decoded_store));
+   uint8_t changed[sizeof(c_rld_w)];
+   memcpy(changed, c_rld_w, sizeof(changed));
+   changed[0] ^= 1;
+   struct agx3_static_spill_load_desc decoded_load;
+   CHECK(!agx3_static_spill_decode_load(AGX_ISA_ENCODING_AGX3C, changed,
+                                        sizeof(changed), &decoded_load));
+   CHECK(!agx3_static_spill_decode_load(AGX_ISA_ENCODING_AGX3C, c_rld_w,
+                                        sizeof(c_rld_w) - 1, &decoded_load));
+   CHECK(!agx3_static_spill_decode_load(AGX_ISA_ENCODING_AGX3C, NULL,
+                                        sizeof(c_rld_w), &decoded_load));
+   CHECK(!agx3_static_spill_decode_load(AGX_ISA_ENCODING_AGX3C, c_rld_w,
+                                        sizeof(c_rld_w), NULL));
+
+   if (failures != 0) {
+      fprintf(stderr, "agx3_static_spill_core: %u/%u checks failed\n", failures,
+              checks);
+      return 1;
+   }
+
+   printf("agx3_static_spill_core: 10 Apple copy/rld vectors and all %u "
+          "checks passed\n",
+          checks);
+   return 0;
+}

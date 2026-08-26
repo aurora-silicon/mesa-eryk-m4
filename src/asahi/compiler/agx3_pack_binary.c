@@ -32,6 +32,7 @@
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_static_spill_core.h"
 #include "agx3_tex_core.h"
 #include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
@@ -345,7 +346,9 @@ agx3_is_async(const agx_instr *I)
 {
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
-          I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE;
+          I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE ||
+          I->op == AGX_OPCODE_STACK_LOAD ||
+          I->op == AGX_OPCODE_STACK_STORE;
 }
 
 /* Map a Mesa special register to the corpus-witnessed Apple SR number and
@@ -797,6 +800,88 @@ agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
    return true;
 }
 
+/* Mesa's scalar 32-bit stack operation is an exact match for Apple's static
+ * copy/rld family: the immediate byte offset names a TPS half-register and the
+ * single data operand names one aligned GPR pair.  Vector masks, 16-bit values,
+ * dynamic offsets and modifiers stay on the existing fail-closed path because
+ * they do not uniquely determine the witnessed structural fields/forms. */
+static bool
+agx3_translate_static_spill(const agx_instr *I, bool is_store, uint8_t slot,
+                            uint16_t wait_mask,
+                            struct agx3_static_spill_store_desc *store,
+                            struct agx3_static_spill_load_desc *load)
+{
+   if (I->op != (is_store ? AGX_OPCODE_STACK_STORE : AGX_OPCODE_STACK_LOAD) ||
+       I->nr_dests != (is_store ? 0 : 1) ||
+       I->nr_srcs != (is_store ? 2 : 1) || I->format != AGX_FORMAT_I32 ||
+       I->mask != 1)
+      return false;
+
+   const agx_index data = is_store ? I->src[0] : I->dest[0];
+   const agx_index offset = I->src[is_store ? 1 : 0];
+   if (!agx3_src_is_register(data) || data.memory || data.abs || data.neg ||
+       data.cache || data.discard || data.size != AGX_SIZE_32 ||
+       agx_channels(data) != 1 || (data.value & 1) || data.value > 254 ||
+       (!is_store && data.kill) || offset.type != AGX_INDEX_IMMEDIATE ||
+       offset.memory || offset.abs || offset.neg || offset.cache ||
+       offset.discard || offset.kill || offset.size != AGX_SIZE_16 ||
+       agx_channels(offset) != 1 || (offset.value & 3))
+      return false;
+
+   const uint32_t tps_half = offset.value >> 1;
+   if (tps_half + 2 > AGX3_SLOT_TPS_HALF_TOKENS)
+      return false;
+
+   if (is_store) {
+      if (store == NULL)
+         return false;
+      *store = (struct agx3_static_spill_store_desc){
+         .tps_half = tps_half,
+         .src = data.value,
+         .width = AGX3_MEM_W32,
+         .src_kill = data.kill,
+         .slot = slot,
+         .wait_mask = wait_mask,
+      };
+   } else {
+      if (load == NULL)
+         return false;
+      *load = (struct agx3_static_spill_load_desc){
+         .dest = data.value,
+         .tps_half = tps_half,
+         .width = AGX3_MEM_W32,
+         .slot = slot,
+         .slot_mirror = slot,
+         .wait_mask = wait_mask,
+      };
+   }
+
+   return true;
+}
+
+static bool
+agx3_append_static_spill_tokens(const agx_instr *I,
+                                struct agx3_slot_instr *slot_instr)
+{
+   const bool is_store = I->op == AGX_OPCODE_STACK_STORE;
+   struct agx3_static_spill_store_desc store;
+   struct agx3_static_spill_load_desc load;
+   if (!agx3_translate_static_spill(I, is_store, 1, 0, &store, &load))
+      return false;
+
+   const uint32_t tps_half = is_store ? store.tps_half : load.tps_half;
+   for (unsigned i = 0; i < 2; ++i) {
+      if (slot_instr->nr_srcs >= AGX3_SLOT_MAX_REGS ||
+          slot_instr->nr_dsts >= AGX3_SLOT_MAX_REGS)
+         return false;
+      const uint16_t token =
+         (uint16_t)(AGX3_SLOT_TPS_TOKEN_BASE + tps_half + i);
+      slot_instr->src[slot_instr->nr_srcs++] = token;
+      slot_instr->dst[slot_instr->nr_dsts++] = token;
+   }
+   return true;
+}
+
 /* Map a resolved selection op to the composer ALU op that can carry a wait.
  * Returns AGX3_ALU_NUM for ops with no wait-carrying form. */
 static enum agx3_alu_op
@@ -1230,6 +1315,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             ns = agx3_expand_regs(I->src[s], e->src, ns);
          e->nr_dsts = (uint8_t)nd;
          e->nr_srcs = (uint8_t)ns;
+         if ((I->op == AGX_OPCODE_STACK_LOAD ||
+              I->op == AGX_OPCODE_STACK_STORE) &&
+             !agx3_append_static_spill_tokens(I, e))
+            goto fail;
       }
    }
    assert(k == count);
@@ -1353,6 +1442,30 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen |= !is_store;
+            continue;
+         }
+
+         /* Static TPS spill/reload. Both copy and rld signal scoreboard slots;
+          * their synthetic TPS dependency tokens make a reload wait the copy
+          * that produced the same stack location. */
+         if (I->op == AGX_OPCODE_STACK_LOAD ||
+             I->op == AGX_OPCODE_STACK_STORE) {
+            const bool is_store = I->op == AGX_OPCODE_STACK_STORE;
+            struct agx3_static_spill_store_desc store;
+            struct agx3_static_spill_load_desc load;
+            uint8_t bytes[AGX3_STATIC_SPILL_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_static_spill(I, is_store, slot, wait, &store,
+                                             &load))
+               goto fail;
+            const bool ok =
+               is_store ? agx3_static_spill_encode_store(enc, &store, bytes,
+                                                          &len)
+                        : agx3_static_spill_encode_load(enc, &load, bytes,
+                                                        &len);
+            if (!ok || !agx3_append(emission, bytes, len))
+               goto fail;
+            async_seen = true;
             continue;
          }
 

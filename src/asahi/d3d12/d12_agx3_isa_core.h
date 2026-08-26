@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asahi/lib/agx_chip.h"
@@ -39,6 +40,7 @@ extern "C" {
 #define D12_AGX3_TEX_MAX_LENGTH 14
 #define D12_AGX3_TILE_MAX_LENGTH 14
 #define D12_AGX3_LOCAL_TPS_MAX_LENGTH 16
+#define D12_AGX3_STATIC_SPILL_MAX_LENGTH 10
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -232,6 +234,17 @@ struct d12_agx3_tps_desc {
    uint16_t wait_mask;
 };
 
+/* Normalized scalar-32 static spill roles. byte_offset is the D3D/DXIL-facing
+ * byte address; the bridge converts it to Apple's TPS half-register index.
+ * reg_kill is valid only for a store source. */
+struct d12_agx3_static_spill_desc {
+   uint16_t reg; /* load destination / store source */
+   uint32_t byte_offset;
+   bool reg_kill;
+   uint8_t slot;
+   uint16_t wait_mask;
+};
+
 struct d12_agx3_binary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
    uint8_t length;
@@ -349,6 +362,11 @@ struct d12_agx3_tile_encoding {
 
 struct d12_agx3_local_tps_encoding {
    uint8_t bytes[D12_AGX3_LOCAL_TPS_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_static_spill_encoding {
+   uint8_t bytes[D12_AGX3_STATIC_SPILL_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -822,6 +840,23 @@ bool d12_agx3_encode_tps_load(
 bool d12_agx3_encode_tps_store(
    enum agx_chip chip, const struct d12_agx3_tps_desc *desc,
    struct d12_agx3_local_tps_encoding *out);
+
+/* Target-gated scalar-32 bridge for Apple's static copy/rld TPS spill forms.
+ * Only roles with exact source-level meaning are exposed. Structural f11 and
+ * f39/f41/f42/f44 stay clear; SCS/RT scratch is not part of this family. These
+ * functions do not enable chip admission, submission, or a WDDM capability. */
+bool d12_agx3_encode_static_spill_store(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   struct d12_agx3_static_spill_encoding *out);
+bool d12_agx3_decode_static_spill_store(
+   enum agx_chip chip, const void *instruction, size_t length,
+   struct d12_agx3_static_spill_desc *out);
+bool d12_agx3_encode_static_spill_load(
+   enum agx_chip chip, const struct d12_agx3_static_spill_desc *desc,
+   struct d12_agx3_static_spill_encoding *out);
+bool d12_agx3_decode_static_spill_load(
+   enum agx_chip chip, const void *instruction, size_t length,
+   struct d12_agx3_static_spill_desc *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

@@ -21,6 +21,7 @@
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
 #include "agx3_sr_core.h"
+#include "agx3_static_spill_core.h"
 #include "agx3_tex_core.h"
 #include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
@@ -100,6 +101,82 @@ TEST_F(AGX3PackBinary, StraightLineALU)
       append(want, en.bytes, en.length);
 
       EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index w0 = agx_register(0, AGX_SIZE_32);
+      agx_index w2 = agx_register(2, AGX_SIZE_32);
+      agx_index w4 = agx_register(4, AGX_SIZE_32);
+
+      agx_stack_store(b, w0, agx_immediate(32), AGX_FORMAT_I32, 1);
+      agx_stack_load_to(b, w2, agx_immediate(32), AGX_FORMAT_I32, 1);
+      agx_iadd_to(b, w4, w2, w2, 0);
+      agx_stop(b);
+
+      std::vector<uint8_t> want;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+      uint8_t length = 0;
+      const struct agx3_static_spill_store_desc store = {
+         .tps_half = 16,
+         .src = 0,
+         .width = AGX3_MEM_W32,
+         .slot = 1,
+      };
+      ASSERT_TRUE(agx3_static_spill_encode_store(enc, &store, bytes, &length));
+      append(want, bytes, length);
+
+      const struct agx3_static_spill_load_desc load = {
+         .dest = 2,
+         .tps_half = 16,
+         .width = AGX3_MEM_W32,
+         .slot = 2,
+         .slot_mirror = 2,
+         .wait_mask = 1,
+      };
+      ASSERT_TRUE(agx3_static_spill_encode_load(enc, &load, bytes, &length));
+      append(want, bytes, length);
+
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 4, 2, 2, 0, 0,
+                                   /* wait reload slot 2 */ 2, bytes, &length));
+      append(want, bytes, length);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, StaticSpillRefusesNonScalarOrNarrowShapes)
+{
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index h0 = agx_register(0, AGX_SIZE_16);
+      agx_stack_store(b, h0, agx_immediate(0), AGX_FORMAT_I16, 1);
+      agx_stop(b);
+      pack(b, /*expect_ok=*/false);
+   }
+
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+      agx_index w0 = agx_register(0, AGX_SIZE_32);
+      w0.channels_m1 = 1;
+      agx_stack_store(b, w0, agx_immediate(0), AGX_FORMAT_I32, 3);
+      agx_stop(b);
+      pack(b, /*expect_ok=*/false);
+   }
+
+   {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+      agx_stack_load_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(2),
+                        AGX_FORMAT_I32, 1);
+      agx_stop(b);
+      pack(b, /*expect_ok=*/false);
    }
 }
 
