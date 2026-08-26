@@ -874,8 +874,10 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
 "$out/hk_agx3_ioto_preshader_core_tests"
 
 "$cc" "$common[@]" \
-    -Wno-c23-extensions \
-    -I"$repo_root/include" -I"$repo_root/src" \
+    -Wno-c23-extensions -Wno-unused-parameter \
+    -DHAVE_PTHREAD -DHAVE_STRUCT_TIMESPEC \
+    -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi" \
     -I"$repo_root/src/asahi/vulkan" \
     "$repo_root/src/asahi/lib/agx3_cdm_direct_launch_semantic_core.c" \
     "$repo_root/src/asahi/lib/agx3_compute_program_core.c" \
