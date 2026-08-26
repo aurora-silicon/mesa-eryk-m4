@@ -884,7 +884,8 @@ static bool
 agx3_atomic_plain_reg(agx_index index, enum agx_size size, unsigned channels)
 {
    return agx3_src_is_register(index) && !index.memory && !index.abs &&
-          !index.neg && !index.cache && !index.discard && index.size == size &&
+          !index.neg && !index.kill && !(index.cache && index.discard) &&
+          index.size == size &&
           agx_channels(index) == channels &&
           (index.value & (agx_size_align_16(size) - 1)) == 0 &&
           index.value + agx_size_align_16(size) * channels <= 256;
@@ -937,7 +938,7 @@ agx3_translate_device_atomic(const agx_instr *I,
    if (!agx3_atomic_plain_reg(value, AGX_SIZE_32, value_channels))
       return false;
    d->value = value.value;
-   d->value_kill = value.kill;
+   d->value_kill = value.discard;
 
    const agx_index result = I->dest[0];
    d->returns_value = !agx_is_null(result);
@@ -952,8 +953,9 @@ agx3_translate_device_atomic(const agx_instr *I,
    }
 
    const agx_index base = I->src[1];
-   if (base.memory || base.abs || base.neg || base.cache || base.discard ||
-       base.kill || base.size != AGX_SIZE_64 || agx_channels(base) != 1) {
+   if (base.memory || base.abs || base.neg || base.kill ||
+       (base.cache && base.discard) || base.size != AGX_SIZE_64 ||
+       agx_channels(base) != 1) {
       return false;
    } else if (base.type == AGX_INDEX_UNIFORM) {
       d->base_kind = AGX3_ATOMIC_BASE_UNIFORM;
@@ -961,17 +963,20 @@ agx3_translate_device_atomic(const agx_instr *I,
    } else if (agx3_src_is_register(base)) {
       d->base_kind = AGX3_ATOMIC_BASE_REGISTER;
       d->base = base.value;
+      /* atomicdev has no base cache/discard field. As on AGX2, silently
+       * dropping these allocator hints is semantics-preserving. */
    } else {
       return false;
    }
 
    const agx_index index = I->src[2];
-   if (index.memory || index.abs || index.neg || index.cache || index.discard ||
-       agx_channels(index) != 1)
+   if (index.memory || index.abs || index.neg || index.kill ||
+       (index.cache && index.discard) || agx_channels(index) != 1)
       return false;
 
    if (index.type == AGX_INDEX_IMMEDIATE) {
-      if (index.kill || index.value > UINT16_MAX)
+      if (index.kill || index.cache || index.discard ||
+          index.value > UINT16_MAX)
          return false;
       const uint64_t byte_offset = (uint64_t)index.value << 2;
       if (byte_offset <= INT16_MAX) {
@@ -983,13 +988,15 @@ agx3_translate_device_atomic(const agx_instr *I,
          d->index_shift = 2;
       }
    } else if (agx3_src_is_register(index) && index.size == AGX_SIZE_32 &&
+              !index.kill && !(index.cache && index.discard) &&
               (index.value & 1) == 0) {
       d->index_kind = AGX3_ATOMIC_INDEX_REGISTER;
       d->index = index.value;
-      d->index_kill = index.kill;
+      d->index_kill = index.discard;
       d->index_shift = 2;
    } else if (index.type == AGX_INDEX_UNIFORM && index.size == AGX_SIZE_32 &&
-              index.value < 512 && !index.kill) {
+              index.value < 512 && !index.kill && !index.cache &&
+              !index.discard) {
       d->index_kind = AGX3_ATOMIC_INDEX_UNIFORM;
       d->index = index.value;
       d->index_shift = 2;
@@ -1032,7 +1039,7 @@ agx3_translate_local_atomic(const agx_instr *I, uint8_t slot,
 
    d->value = I->src[0].value;
    d->result = I->dest[0].value;
-   d->value_kill = I->src[0].kill;
+   d->value_kill = I->src[0].discard;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;

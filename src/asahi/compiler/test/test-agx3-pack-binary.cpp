@@ -173,6 +173,50 @@ TEST_F(AGX3PackBinary, DeviceAtomicFoldsElementOffsetToBytes)
    EXPECT_EQ(pack(b), want);
 }
 
+TEST_F(AGX3PackBinary, DeviceAtomicMapsPostRaDiscardHints)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+
+      agx_index value = agx_register(6, AGX_SIZE_32);
+      value.discard = true;
+      agx_index base = agx_register(8, AGX_SIZE_64);
+      base.discard = true; /* no atomicdev base-hint field: safely omitted */
+      agx_index index = agx_register(12, AGX_SIZE_32);
+      index.discard = true;
+      const agx_index result = agx_register(e ? 4 : 6, AGX_SIZE_32);
+
+      agx_atomic_to(b, result, value, base, index, AGX_ATOMIC_OPC_ADD);
+      agx_stop(b);
+
+      struct agx3_device_atomic_desc d = {
+         .op = AGX3_ATOMIC_ADD,
+         .value = 6,
+         .value_kill = true,
+         .returns_value = true,
+         .result = (uint16_t)(e ? 4 : 6),
+         .slot = 1,
+         .base_kind = AGX3_ATOMIC_BASE_REGISTER,
+         .base = 8,
+         .index_kind = AGX3_ATOMIC_INDEX_REGISTER,
+         .index = 12,
+         .index_kill = true,
+         .index_shift = 2,
+      };
+      uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
+      ASSERT_TRUE(agx3_atomic_encode_device(enc, &d, atomic, &atomic_len));
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, atomic, atomic_len);
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
 TEST_F(AGX3PackBinary, LocalAtomicScalarZeroAddress)
 {
    for (int e = 0; e < 2; ++e) {
