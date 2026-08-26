@@ -100,8 +100,33 @@ hk_dispatch_with_usc_launch(struct hk_device *dev, struct hk_cs *cs,
    hk_ensure_cs_has_space(cs->cmd, cs, 0x2000 /* TODO */);
    cs->stats.cmds++;
 
-   cs->current =
-      agx_cdm_launch(cs->current, dev->dev.chip, grid, wg, launch, usc);
+   switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      cs->current =
+         agx_cdm_launch(cs->current, dev->dev.chip, grid, wg, launch, usc);
+      break;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300:
+      /* `usc` addresses an AGX2 USC block.  AGX3 direct launches instead
+       * require a dispatch-local, 64-byte-aligned Ioto program VA.  Reject
+       * this legacy entry point until the caller supplies that joined object;
+       * never feed an AGX2 launch to CommandEncodingNext. */
+      mesa_loge("legacy USC compute launch rejected for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cs->cmd->vk,
+                                  VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+
+   case AGX_CS_GENERATION_UNKNOWN:
+   default:
+      mesa_loge("unknown compute command-stream generation for %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cs->cmd->vk,
+                                  VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
 
    hk_cdm_cache_flush(dev, cs);
 }

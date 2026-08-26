@@ -1039,6 +1039,28 @@ d12_list_emit_cdm_cache_flush(struct d12_cmd_list *list, uint8_t **cursor)
    return false;
 }
 
+/* The existing launch inputs describe AGX2 USC state.  Keep every caller on
+ * one generation gate so a latent AGX3 device can never receive a legacy CDM
+ * packet while the dispatch-local Ioto program path is being brought up. */
+static bool
+d12_list_emit_legacy_cdm_launch(
+   struct d12_cmd_list *list, uint8_t **cursor, struct agx_grid grid,
+   struct agx_workgroup workgroup,
+   struct agx_cdm_launch_word_0_packed launch, uint32_t usc)
+{
+   if (agx_chip_command_stream_generation(list->device->dev.chip) !=
+       AGX_CS_GENERATION_AGX2) {
+      mesa_loge("legacy USC compute launch rejected for %s",
+                agx_chip_name(list->device->dev.chip));
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   *cursor = (uint8_t *)agx_cdm_launch(
+      (uint32_t *)*cursor, list->device->dev.chip, grid, workgroup, launch, usc);
+   return true;
+}
+
 static void d12_list_close_pregfx(struct d12_cmd_list *list);
 
 static bool
@@ -1484,8 +1506,9 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
       return;
    }
 
-   *cur = (uint8_t *)agx_cdm_launch((uint32_t *)*cur, device->dev.chip, grid,
-                                    prog->b.workgroup, prog->b.launch, usc);
+   if (!d12_list_emit_legacy_cdm_launch(list, cur, grid, prog->b.workgroup,
+                                        prog->b.launch, usc))
+      return;
    if (!d12_list_emit_cdm_cache_flush(list, cur))
       return;
    seg->dispatches++;
@@ -5590,7 +5613,6 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
                       unsigned root_patch_count, uint64_t *out_tables,
                       uint32_t *out_table_count)
 {
-   struct d12_device *device = list->device;
    struct d12_pipeline_state *pso = list->pso;
 
    if (list->state != D12_LIST_RECORDING)
@@ -5753,8 +5775,9 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (!d12_list_check_stream_space(list))
       return;
 
-   list->stream_cur = (uint8_t *)agx_cdm_launch(
-      (uint32_t *)list->stream_cur, device->dev.chip, grid, wg, launch, usc);
+   if (!d12_list_emit_legacy_cdm_launch(list, &list->stream_cur, grid, wg,
+                                        launch, usc))
+      return;
    if (!d12_list_emit_cdm_cache_flush(list, &list->stream_cur))
       return;
    seg->dispatches++;
@@ -6336,9 +6359,9 @@ d12_list_dispatch_gs_stage(struct d12_cmd_list *list,
 
    struct agx_cdm_launch_word_0_packed launch =
       d12_compute_launch_word(info);
-   list->pregfx_cur = (uint8_t *)agx_cdm_launch(
-      (uint32_t *)list->pregfx_cur, list->device->dev.chip, grid, wg,
-      launch, usc);
+   if (!d12_list_emit_legacy_cdm_launch(list, &list->pregfx_cur, grid, wg,
+                                        launch, usc))
+      return false;
    if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
       return false;
    seg->dispatches++;
@@ -7224,9 +7247,10 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
       struct agx_cdm_launch_word_0_packed launch =
          d12_compute_launch_word(stages[i].info);
 
-      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
-         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
-         stages[i].wg, launch, usc);
+      if (!d12_list_emit_legacy_cdm_launch(
+             list, &list->pregfx_cur, stages[i].grid, stages[i].wg, launch,
+             usc))
+         return false;
       if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
          return false;
       seg->dispatches++;
@@ -7506,9 +7530,10 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
       struct agx_cdm_launch_word_0_packed launch =
          d12_compute_launch_word(stages[i].info);
 
-      list->pregfx_cur = (uint8_t *)agx_cdm_launch(
-         (uint32_t *)list->pregfx_cur, device->dev.chip, stages[i].grid,
-         stages[i].wg, launch, usc);
+      if (!d12_list_emit_legacy_cdm_launch(
+             list, &list->pregfx_cur, stages[i].grid, stages[i].wg, launch,
+             usc))
+         return false;
       if (!d12_list_emit_cdm_cache_flush(list, &list->pregfx_cur))
          return false;
       seg->dispatches++;
