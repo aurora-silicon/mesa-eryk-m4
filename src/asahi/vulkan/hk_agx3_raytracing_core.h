@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/lib/agx_rt_result.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,6 +84,15 @@ bool hk_agx3_inc_stk_fixed_witness_generate(
 bool hk_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
                                          const void *instruction,
                                          size_t instruction_size);
+
+/* Decode Apple's exact shared traversal-result and TLAS instance-leaf ABI.
+ * This maps the result side into Honeykrisp without lowering or advertising a
+ * Vulkan ray-tracing capability. */
+bool hk_agx3_rt_hit_result_decode(const void *raw, size_t available,
+                                  struct agx_rt_hit_result *out);
+
+bool hk_agx3_rt_instance_leaf_object_to_world(
+   const void *raw, size_t available, float out[AGX_RT_TRANSFORM_FLOATS]);
 
 #ifdef __cplusplus
 }

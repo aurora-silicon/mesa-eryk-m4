@@ -32,6 +32,23 @@ static const enum agx_chip unsupported_chips[] = {
    AGX_CHIP_G17C, AGX_CHIP_UNKNOWN, (enum agx_chip)999,
 };
 
+static void
+put_u32_le(uint8_t *raw, unsigned offset, uint32_t value)
+{
+   raw[offset + 0] = (uint8_t)value;
+   raw[offset + 1] = (uint8_t)(value >> 8);
+   raw[offset + 2] = (uint8_t)(value >> 16);
+   raw[offset + 3] = (uint8_t)(value >> 24);
+}
+
+static void
+put_f32_le(uint8_t *raw, unsigned offset, float value)
+{
+   uint32_t bits;
+   memcpy(&bits, &value, sizeof(bits));
+   put_u32_le(raw, offset, bits);
+}
+
 int
 main(void)
 {
@@ -347,6 +364,72 @@ main(void)
       CHECK(!hk_agx3_inc_stk_fixed_witness_generate(AGX_CHIP_G17S, NULL));
       CHECK(!hk_agx3_inc_stk_fixed_witness_valid(
          AGX_CHIP_G17S, NULL, AGX3_INC_STK_FIXED_WITNESS_LENGTH));
+   }
+
+   {
+      uint8_t raw[AGX_RT_HIT_RESULT_SIZE] = {0};
+      put_u32_le(raw, AGX_RT_HIT_OFF_TYPE, 1);
+      put_f32_le(raw, AGX_RT_HIT_OFF_T, 12.5f);
+      put_u32_le(raw, AGX_RT_HIT_OFF_PRIMITIVE_ID, 7);
+      put_u32_le(raw, AGX_RT_HIT_OFF_GEOMETRY_ID, 3);
+      put_u32_le(raw, AGX_RT_HIT_OFF_PRIMITIVE_DATA, 0xdeadbeefu);
+      put_u32_le(raw, AGX_RT_HIT_OFF_PRIMITIVE_DATA + 4, 0xcafeu);
+      put_u32_le(raw, AGX_RT_HIT_OFF_INSTANCE_ID, 42);
+      put_u32_le(raw, AGX_RT_HIT_OFF_USER_INSTANCE_ID, 99);
+      raw[AGX_RT_HIT_OFF_INSTANCE_COUNT] = 2;
+      put_f32_le(raw, AGX_RT_HIT_OFF_BARYCENTRICS, 0.25f);
+      put_f32_le(raw, AGX_RT_HIT_OFF_BARYCENTRICS + 4, 0.5f);
+      raw[AGX_RT_HIT_OFF_FRONT_FACE] = 1;
+      put_f32_le(raw, AGX_RT_HIT_OFF_CURVE_PARAM, 0.75f);
+      put_u32_le(raw, AGX_RT_HIT_OFF_INTERSECTION_FN_ID, 5);
+      for (unsigned i = 0; i < AGX_RT_TRANSFORM_FLOATS; ++i) {
+         put_f32_le(raw, AGX_RT_HIT_OFF_OBJECT_TO_WORLD + 4 * i, (float)i);
+         put_f32_le(raw, AGX_RT_HIT_OFF_WORLD_TO_OBJECT + 4 * i,
+                    (float)(100 + i));
+      }
+
+      struct agx_rt_hit_result hit;
+      CHECK(hk_agx3_rt_hit_result_decode(raw, sizeof(raw), &hit));
+      CHECK(hit.intersection_type == 1 && hit.t == 12.5f);
+      CHECK(hit.primitive_id == 7 && hit.geometry_id == 3);
+      CHECK(hit.primitive_data == UINT64_C(0x0000cafedeadbeef));
+      CHECK(hit.instance_id == 42 && hit.user_instance_id == 99);
+      CHECK(hit.instance_count == 2 && hit.front_face == 1);
+      CHECK(hit.barycentrics[0] == 0.25f && hit.barycentrics[1] == 0.5f);
+      CHECK(hit.curve_param == 0.75f && hit.intersection_function_id == 5);
+      for (unsigned i = 0; i < AGX_RT_TRANSFORM_FLOATS; ++i) {
+         CHECK(hit.object_to_world[i] == (float)i);
+         CHECK(hit.world_to_object[i] == (float)(100 + i));
+      }
+
+      struct agx_rt_hit_result prefix;
+      memset(&prefix, 0xa5, sizeof(prefix));
+      CHECK(hk_agx3_rt_hit_result_decode(
+         raw, AGX_RT_HIT_OFF_INTERSECTION_FN_ID + 4, &prefix));
+      for (unsigned i = 0; i < AGX_RT_TRANSFORM_FLOATS; ++i) {
+         CHECK(prefix.object_to_world[i] == 0.0f);
+         CHECK(prefix.world_to_object[i] == 0.0f);
+      }
+      CHECK(!hk_agx3_rt_hit_result_decode(raw, 8, &hit));
+      CHECK(!hk_agx3_rt_hit_result_decode(NULL, sizeof(raw), &hit));
+      CHECK(!hk_agx3_rt_hit_result_decode(raw, sizeof(raw), NULL));
+
+      uint8_t leaf[AGX_RT_INSTANCE_LEAF_SIZE] = {0};
+      for (unsigned i = 0; i < AGX_RT_TRANSFORM_FLOATS; ++i)
+         put_f32_le(leaf, AGX_RT_INSTANCE_LEAF_OFF_OBJECT_TO_WORLD + 4 * i,
+                    (float)(20 + i));
+      float transform[AGX_RT_TRANSFORM_FLOATS];
+      CHECK(hk_agx3_rt_instance_leaf_object_to_world(
+         leaf, AGX_RT_INSTANCE_LEAF_OFF_AABB, transform));
+      for (unsigned i = 0; i < AGX_RT_TRANSFORM_FLOATS; ++i)
+         CHECK(transform[i] == (float)(20 + i));
+      CHECK(!hk_agx3_rt_instance_leaf_object_to_world(
+         leaf, AGX_RT_INSTANCE_LEAF_OFF_AABB - 1, transform));
+      CHECK(!hk_agx3_rt_instance_leaf_object_to_world(NULL, sizeof(leaf),
+                                                       transform));
+      CHECK(!hk_agx3_rt_instance_leaf_object_to_world(
+         leaf, sizeof(leaf), NULL));
+      CHECK(AGX_RT_RAY_QUERY_STATE_SIZE == 168);
    }
 
    printf("hk_agx3_raytracing_core: PASS (%u checks)\n", checks);

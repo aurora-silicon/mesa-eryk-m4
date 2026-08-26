@@ -24,6 +24,7 @@ libasahi_lib_files = files(
   'agx_ioto_program_core.h',
   'agx_ioto_state_core.c',
   'agx_ioto_state_core.h',
+  'agx_rt_result.h',
   'agx_scs_layout.c',
   'agx_scs_layout.h',
   'agx_bo.c',

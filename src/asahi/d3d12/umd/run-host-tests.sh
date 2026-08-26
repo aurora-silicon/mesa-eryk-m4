@@ -393,6 +393,15 @@ done
     -o "$out/d12_raytracing_core_tests"
 "$out/d12_raytracing_core_tests"
 
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/include" -I"$repo_root/src" \
+    -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/compiler/agx3_pack.c" \
+    "$repo_root/src/asahi/vulkan/hk_agx3_raytracing_core.c" \
+    "$repo_root/src/asahi/vulkan/tests/test-hk-agx3-raytracing-core.c" \
+    -o "$out/hk_agx3_raytracing_core_tests"
+"$out/hk_agx3_raytracing_core_tests"
+
 "$cc" "$common[@]" -I"$d12_dir" \
     "$d12_dir/tests/d12_command_validation_core_tests.c" \
     -o "$out/d12_command_validation_core_tests"

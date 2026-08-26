@@ -164,3 +164,17 @@ hk_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
 
    return true;
 }
+
+bool
+hk_agx3_rt_hit_result_decode(const void *raw, size_t available,
+                             struct agx_rt_hit_result *out)
+{
+   return agx_rt_hit_result_decode(raw, available, out);
+}
+
+bool
+hk_agx3_rt_instance_leaf_object_to_world(
+   const void *raw, size_t available, float out[AGX_RT_TRANSFORM_FLOATS])
+{
+   return agx_rt_instance_leaf_object_to_world(raw, available, out);
+}
