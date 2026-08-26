@@ -1501,9 +1501,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    return true;
 
 fail:
-   /* Do not leave a valid-looking prefix behind when the surrounding void
-    * compiler entrypoint cannot propagate this boolean yet. The AGX3 device
-    * gate remains closed, and direct callers still receive the failure. */
+   /* Do not leave a valid-looking prefix behind.  The compiler entrypoint
+    * propagates this failure and clears the shader part transactionally. */
    emission->size = initial_size;
    util_dynarray_fini(&fixups);
    return false;

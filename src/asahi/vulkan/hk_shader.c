@@ -1215,10 +1215,18 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       simple_mtx_lock(lock);
 
    assert(nir->info.io_lowered);
-   agx_compile_shader_nir(nir, &backend_key, &shader->b);
+   const bool compiled =
+      agx_compile_shader_nir(nir, &backend_key, &shader->b);
 
    if (lock)
       simple_mtx_unlock(lock);
+
+   if (!compiled) {
+      ralloc_free(nir);
+      return vk_errorf(dev, VK_ERROR_FEATURE_NOT_PRESENT,
+                       "AGX backend cannot encode shader for %s",
+                       agx_chip_name(dev->dev.chip));
+   }
 
    shader->code_ptr = shader->b.binary;
    shader->code_size = shader->b.info.binary_size;

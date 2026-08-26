@@ -3387,12 +3387,13 @@ agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
       agx_validate(ctx, #pass);                                                \
    } while (0)
 
-static unsigned
+static bool
 agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
                          struct agx_shader_key *key,
                          struct util_dynarray *binary,
-                         struct agx_shader_info *out)
+                         struct agx_shader_info *out, unsigned *offset_out)
 {
+   const unsigned initial_binary_size = binary->size;
    nir_index_blocks(impl);
    nir_index_ssa_defs(impl);
 
@@ -3558,7 +3559,11 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
        * AGX3 device key deliberately. agx3_pack_binary fails the shader -- never
        * aborts -- on any ungrounded op and rolls the emitted shader prefix back
        * before returning false. */
-      (void)agx3_pack_binary(ctx, binary);
+      if (!agx3_pack_binary(ctx, binary)) {
+         binary->size = initial_binary_size;
+         ralloc_free(ctx);
+         return false;
+      }
    }
 
    unsigned nr_gprs = ctx->max_reg + 1;
@@ -3637,8 +3642,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       }
    }
 
+   *offset_out = offset;
    ralloc_free(ctx);
-   return offset;
+   return true;
 }
 
 /*
@@ -3783,7 +3789,7 @@ lower_printf_buffer(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *_)
    return true;
 }
 
-void
+bool
 agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
                        struct agx_shader_part *out)
 {
@@ -3872,8 +3878,13 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    info->local_size = nir->info.shared_size;
 
    nir_foreach_function_with_impl(func, impl, nir) {
-      unsigned offset =
-         agx_compile_function_nir(nir, impl, key, &binary, &out->info);
+      unsigned offset;
+      if (!agx_compile_function_nir(nir, impl, key, &binary, &out->info,
+                                    &offset)) {
+         util_dynarray_fini(&binary);
+         memset(out, 0, sizeof(*out));
+         return false;
+      }
 
       if (func->is_preamble) {
          info->preamble_offset = offset;
@@ -3944,4 +3955,5 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    out->binary = binary.data;
    info->binary_size = binary.size;
+   return true;
 }
