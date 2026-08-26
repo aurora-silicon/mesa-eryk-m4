@@ -92,20 +92,25 @@ d12_agx3_compiler_target_encoding(enum agx_chip chip,
                                   enum agx_isa_encoding *encoding)
 {
    switch (chip) {
-   /* Exact AGX3b Apple compiler targets present in the source corpus. */
+   /* C-tier identities use the same exact Apple compiler target as their
+    * sibling (G15C -> g15d, G16C -> g16s).  G17A remains excluded because
+    * the pinned compiler/runtime corpus has no toolchain family for it. */
    case AGX_CHIP_G15G:
    case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
    case AGX_CHIP_G15D:
    case AGX_CHIP_G16P:
    case AGX_CHIP_G16G:
    case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
    case AGX_CHIP_G17P:
       *encoding = AGX_ISA_ENCODING_AGX3B;
       return true;
 
-   /* Exact AGX3c G17 Apple compiler targets in the source corpus. */
+   /* G17C and G17S share the exact g17s compiler target. */
    case AGX_CHIP_G17G:
    case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       *encoding = AGX_ISA_ENCODING_AGX3C;
       return true;
 
@@ -118,6 +123,9 @@ static bool
 d12_agx3_tile_target_encoding(enum agx_chip chip,
                               enum agx_isa_encoding *encoding)
 {
+   /* Do not infer tile state across identities: the pinned tile corpus has
+    * exact artifacts only for G15G, G16G, and G17S, and AGX3b's high-register
+    * f13 selection is still unresolved. */
    switch (chip) {
    case AGX_CHIP_G15G:
    case AGX_CHIP_G16G:
@@ -135,17 +143,7 @@ static bool
 d12_agx3_subgroup_target_encoding(enum agx_chip chip,
                                   enum agx_isa_encoding *encoding)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G16G:
-      *encoding = AGX_ISA_ENCODING_AGX3B;
-      return true;
-   case AGX_CHIP_G17S:
-      *encoding = AGX_ISA_ENCODING_AGX3C;
-      return true;
-   default:
-      return false;
-   }
+   return d12_agx3_compiler_target_encoding(chip, encoding);
 }
 
 static bool
@@ -257,15 +255,18 @@ d12_agx3_fmul_compiler_target_encoding(enum agx_chip chip,
    switch (chip) {
    case AGX_CHIP_G15G:
    case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
    case AGX_CHIP_G15D:
    case AGX_CHIP_G16P:
    case AGX_CHIP_G16G:
    case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
    case AGX_CHIP_G17P:
       *encoding = AGX_ISA_ENCODING_AGX3B;
       return true;
 
    case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       *encoding = AGX_ISA_ENCODING_AGX3C;
       return true;
 
@@ -281,6 +282,7 @@ d12_agx3_fmul_long_compiler_target_encoding(
    switch (chip) {
    case AGX_CHIP_G17G:
    case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
       *encoding = AGX_ISA_ENCODING_AGX3C;
       return true;
 
@@ -293,75 +295,21 @@ static bool
 d12_agx3_fma_compiler_target_encoding(enum agx_chip chip,
                                       enum agx_isa_encoding *encoding)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G15S:
-   case AGX_CHIP_G15D:
-   case AGX_CHIP_G16P:
-   case AGX_CHIP_G16G:
-   case AGX_CHIP_G16S:
-   case AGX_CHIP_G17P:
-      *encoding = AGX_ISA_ENCODING_AGX3B;
-      return true;
-
-   case AGX_CHIP_G17G:
-   case AGX_CHIP_G17S:
-      *encoding = AGX_ISA_ENCODING_AGX3C;
-      return true;
-
-   default:
-      return false;
-   }
+   return d12_agx3_compiler_target_encoding(chip, encoding);
 }
 
 static bool
 d12_agx3_fmin_compiler_target_encoding(enum agx_chip chip,
                                        enum agx_isa_encoding *encoding)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G15S:
-   case AGX_CHIP_G15D:
-   case AGX_CHIP_G16P:
-   case AGX_CHIP_G16G:
-   case AGX_CHIP_G16S:
-   case AGX_CHIP_G17P:
-      *encoding = AGX_ISA_ENCODING_AGX3B;
-      return true;
-
-   case AGX_CHIP_G17G:
-   case AGX_CHIP_G17S:
-      *encoding = AGX_ISA_ENCODING_AGX3C;
-      return true;
-
-   default:
-      return false;
-   }
+   return d12_agx3_compiler_target_encoding(chip, encoding);
 }
 
 static bool
 d12_agx3_fmax_compiler_target_encoding(enum agx_chip chip,
                                        enum agx_isa_encoding *encoding)
 {
-   switch (chip) {
-   case AGX_CHIP_G15G:
-   case AGX_CHIP_G15S:
-   case AGX_CHIP_G15D:
-   case AGX_CHIP_G16P:
-   case AGX_CHIP_G16G:
-   case AGX_CHIP_G16S:
-   case AGX_CHIP_G17P:
-      *encoding = AGX_ISA_ENCODING_AGX3B;
-      return true;
-
-   case AGX_CHIP_G17G:
-   case AGX_CHIP_G17S:
-      *encoding = AGX_ISA_ENCODING_AGX3C;
-      return true;
-
-   default:
-      return false;
-   }
+   return d12_agx3_compiler_target_encoding(chip, encoding);
 }
 
 static bool

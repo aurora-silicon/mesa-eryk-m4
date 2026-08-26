@@ -213,29 +213,36 @@ struct integer_target {
 static const struct integer_target integer_targets[] = {
    {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+   {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+   {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
    {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
 };
 
 static const struct integer_target fmul_targets[] = {
    {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+   {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+   {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
    {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
 };
 
 static const struct integer_target fmul_long_targets[] = {
    {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
    {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
 };
 
 static bool
@@ -450,8 +457,8 @@ check_fadd_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical[D12_AGX3_FADD_F32_REG_REG_LENGTH] = {
       0x09, 0x01, 0x04, 0x01, 0x00, 0x20,
@@ -768,8 +775,8 @@ check_fmul_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[D12_AGX3_FMUL_F32_REG_REG_LENGTH] = {
       0x09, 0x03, 0x1d, 0x01, 0x00, 0xc0,
@@ -1102,8 +1109,8 @@ check_fmul_long_rejection(void)
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
       AGX_CHIP_G15P, AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C,
       AGX_CHIP_G15D, AGX_CHIP_G16P, AGX_CHIP_G16G, AGX_CHIP_G16S,
-      AGX_CHIP_G16C, AGX_CHIP_G17P, AGX_CHIP_G17A, AGX_CHIP_G17C,
-      AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G16C, AGX_CHIP_G17P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical[D12_AGX3_FMUL_F32_REG_REG_LONG_LENGTH] = {
       0x29, 0x02, 0x05, 0x10, 0x22, 0x80, 0xa0,
@@ -1434,8 +1441,8 @@ check_fma_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0x09, 0x03, 0x1e, 0x01, 0x81, 0x00, 0x02, 0xc0,
@@ -1760,8 +1767,8 @@ check_fmin_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0x02, 0x03, 0x1e, 0x01, 0x01, 0xc0,
@@ -2080,8 +2087,8 @@ check_fmax_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0x02, 0x03, 0x1e, 0x01, 0x00, 0xc0,
@@ -2388,8 +2395,8 @@ check_i32_to_f32_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0xa7, 0x07, 0x56, 0x00, 0x02, 0x00, 0xac, 0x60,
@@ -2712,8 +2719,8 @@ check_u32_to_f32_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0xa7, 0x07, 0x56, 0x00, 0x02, 0x00, 0xac, 0x20,
@@ -3028,8 +3035,8 @@ check_f32_rint_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0x2f, 0x00, 0x56, 0x00, 0x03, 0x00, 0xb0, 0x40, 0x00, 0x00,
@@ -3338,8 +3345,8 @@ check_f32_rcp_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0xaf, 0x00, 0x56, 0x00, 0x02, 0x00, 0x10, 0x48, 0x20, 0x00,
@@ -3635,8 +3642,8 @@ check_f32_rsqrt_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0xaf, 0x01, 0x56, 0x00, 0x02, 0x00, 0xb0, 0x40, 0x00, 0x00,
@@ -3983,8 +3990,8 @@ check_i32_compare_select_imm_5_7_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const uint8_t canonical_b[] = {
       0x02, 0x01, 0x1f, 0x05, 0x26, 0x85, 0x07, 0xc0, 0x20, 0x87,
@@ -4370,8 +4377,8 @@ check_f32_to_int_rtz_rejection(void)
    };
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    static const enum d12_agx3_f32_to_int_rtz_mode modes[] = {
       D12_AGX3_F32_TO_I32_RTZ, D12_AGX3_F32_TO_U32_RTZ,
@@ -4782,8 +4789,8 @@ check_yield_rejection_domain(void)
 
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    for (unsigned i = 0;
         i < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
@@ -5103,8 +5110,8 @@ check_end_wait_rejection_domain(void)
 
    static const enum agx_chip unsupported_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    for (unsigned i = 0;
         i < sizeof(unsupported_targets) / sizeof(unsupported_targets[0]);
@@ -5691,8 +5698,11 @@ check_control_flow_bridge(void)
       CHECK(cf_encoding_is_cleared(&rejected));                                \
    } while (0)
    REJECT_CF(d12_agx3_encode_i32_cf(
-      AGX_CHIP_G17C, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0, false, 2,
+      AGX_CHIP_G17A, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0, false, 2,
       &rejected));
+   REJECT_CF(d12_agx3_encode_i32_cf(
+      (enum agx_chip)0x7fff, D12_AGX3_CF_IF, D12_AGX3_I32_CF_EQ, false, 0,
+      false, 2, &rejected));
    REJECT_CF(d12_agx3_encode_i32_cf(
       AGX_CHIP_G17S, D12_AGX3_CF_IF, (enum d12_agx3_i32_cf_predicate)99,
       false, 0, false, 2, &rejected));
@@ -5796,7 +5806,9 @@ check_varying_bridge(void)
       CHECK(vary_encoding_is_cleared(&rejected));                              \
    } while (0)
    REJECT_VARY(d12_agx3_encode_vary_interp(
-      AGX_CHIP_G17C, 0, 0, false, D12_AGX3_VARY_CENTER, &rejected));
+      AGX_CHIP_G17A, 0, 0, false, D12_AGX3_VARY_CENTER, &rejected));
+   REJECT_VARY(d12_agx3_encode_vary_interp(
+      (enum agx_chip)0x7fff, 0, 0, false, D12_AGX3_VARY_CENTER, &rejected));
    REJECT_VARY(d12_agx3_encode_vary_interp(
       AGX_CHIP_G17S, 1, 0, false, D12_AGX3_VARY_CENTER, &rejected));
    REJECT_VARY(d12_agx3_encode_vary_interp(
@@ -5848,13 +5860,16 @@ check_texture_fetch_bridge(void)
    static const struct integer_target targets[] = {
       {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+      {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
    };
 
    for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
@@ -5911,13 +5926,17 @@ check_texture_fetch_bridge(void)
    for (unsigned i = 0; i < sizeof(rejected.bytes); ++i)
       CHECK(rejected.bytes[i] == 0);
    memset(&rejected, 0xff, sizeof(rejected));
-   CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17C, &desc, &rejected));
+   CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17A, &desc, &rejected));
+   CHECK(rejected.length == 0 && rejected.bytes[0] == 0);
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_texture_fetch((enum agx_chip)0x7fff, &desc,
+                                         &rejected));
    CHECK(rejected.length == 0 && rejected.bytes[0] == 0);
    CHECK(!d12_agx3_encode_texture_fetch(AGX_CHIP_G17S, &desc, NULL));
 
    struct d12_agx3_texture_fetch_desc decoded;
    memset(&decoded, 0xff, sizeof(decoded));
-   CHECK(!d12_agx3_decode_texture_fetch(AGX_CHIP_G17C, witness_c,
+   CHECK(!d12_agx3_decode_texture_fetch(AGX_CHIP_G17A, witness_c,
                                         sizeof(witness_c), &decoded));
    struct d12_agx3_texture_fetch_desc zero = {0};
    CHECK(memcmp(&decoded, &zero, sizeof(zero)) == 0);
@@ -5962,8 +5981,17 @@ check_dynamic_subgroup_shuffle_bridge(void)
 {
    static const struct integer_target targets[] = {
       {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+      {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
    };
    static const uint8_t reg_b[] = {
       0x47, 0x04, 0x54, 0x04, 0x03, 0x00, 0x08, 0x2c, 0x1a, 0x00,
@@ -6074,8 +6102,9 @@ check_dynamic_subgroup_shuffle_bridge(void)
    };
    struct d12_agx3_subgroup_encoding rejected;
    static const enum agx_chip rejected_chips[] = {
-      AGX_CHIP_G15S, AGX_CHIP_G16P, AGX_CHIP_G17P,
-      AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    for (unsigned i = 0; i < sizeof(rejected_chips) / sizeof(rejected_chips[0]);
         ++i) {
@@ -6096,8 +6125,17 @@ check_zero_compare_ballot_bridge(void)
 {
    static const struct integer_target targets[] = {
       {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+      {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
    };
    static const uint8_t int_eq_b[] = {
       0x17, 0x07, 0x54, 0x00, 0x02, 0x08, 0x00, 0xf8, 0xa2, 0x02,
@@ -6184,10 +6222,17 @@ check_zero_compare_ballot_bridge(void)
 
    struct d12_agx3_zero_ballot_desc desc = {0};
    struct d12_agx3_subgroup_encoding rejected;
-   memset(&rejected, 0xff, sizeof(rejected));
-   CHECK(!d12_agx3_encode_zero_compare_ballot(AGX_CHIP_G17P, &desc,
-                                               &rejected));
-   CHECK(subgroup_encoding_is_cleared(&rejected));
+   static const enum agx_chip rejected_chips[] = {
+      AGX_CHIP_G17A,
+      (enum agx_chip)0x7fff,
+   };
+   for (unsigned i = 0; i < sizeof(rejected_chips) / sizeof(rejected_chips[0]);
+        ++i) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      CHECK(!d12_agx3_encode_zero_compare_ballot(rejected_chips[i], &desc,
+                                                  &rejected));
+      CHECK(subgroup_encoding_is_cleared(&rejected));
+   }
    memset(&rejected, 0xff, sizeof(rejected));
    CHECK(!d12_agx3_encode_zero_compare_ballot(AGX_CHIP_G17S, NULL,
                                                &rejected));
@@ -6201,8 +6246,17 @@ check_subgroup_reduce_bridge(void)
 {
    static const struct integer_target targets[] = {
       {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B},
       {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+      {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C},
    };
    static const enum agx3_subgroup_reduce_op shared_ops[] = {
       AGX3_SUBGROUP_REDUCE_AND,  AGX3_SUBGROUP_REDUCE_FADD,
@@ -6311,9 +6365,17 @@ check_subgroup_reduce_bridge(void)
       .op = D12_AGX3_SUBGROUP_REDUCE_IADD_U32,
    };
    struct d12_agx3_subgroup_encoding rejected;
-   memset(&rejected, 0xff, sizeof(rejected));
-   CHECK(!d12_agx3_encode_subgroup_reduce(AGX_CHIP_G17G, &desc, &rejected));
-   CHECK(subgroup_encoding_is_cleared(&rejected));
+   static const enum agx_chip rejected_chips[] = {
+      AGX_CHIP_G17A,
+      (enum agx_chip)0x7fff,
+   };
+   for (unsigned i = 0; i < sizeof(rejected_chips) / sizeof(rejected_chips[0]);
+        ++i) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      CHECK(!d12_agx3_encode_subgroup_reduce(rejected_chips[i], &desc,
+                                              &rejected));
+      CHECK(subgroup_encoding_is_cleared(&rejected));
+   }
    memset(&rejected, 0xff, sizeof(rejected));
    CHECK(!d12_agx3_encode_subgroup_reduce(AGX_CHIP_G17S, NULL, &rejected));
    CHECK(subgroup_encoding_is_cleared(&rejected));
@@ -6344,8 +6406,17 @@ check_wave_read_lane_at_f32_imm_bridge(void)
       const uint8_t *lane3;
    } targets[] = {
       {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G15S, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G15C, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G15D, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G16P, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
       {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G16S, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G16C, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G17P, AGX_ISA_ENCODING_AGX3B, 192, lane0_b, lane3_b},
+      {AGX_CHIP_G17G, AGX_ISA_ENCODING_AGX3C, 256, lane0_c, lane3_c},
       {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C, 256, lane0_c, lane3_c},
+      {AGX_CHIP_G17C, AGX_ISA_ENCODING_AGX3C, 256, lane0_c, lane3_c},
    };
 
    for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
@@ -6408,9 +6479,8 @@ check_wave_read_lane_at_f32_imm_bridge(void)
 
    static const enum agx_chip rejected_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
-      AGX_CHIP_G16P, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
-      AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    struct d12_agx3_wave_read_lane_at_f32_imm_encoding rejected;
 #define REJECT_WAVE(call)                                                       \
@@ -6443,7 +6513,7 @@ check_wave_read_lane_at_f32_imm_bridge(void)
    uint16_t dest = UINT16_MAX, src = UINT16_MAX;
    uint8_t lane = UINT8_MAX;
    CHECK(!d12_agx3_decode_wave_read_lane_at_f32_imm(
-      AGX_CHIP_G17P, lane0_b, sizeof(lane0_b), &dest, &src, &lane));
+      AGX_CHIP_G17A, lane0_b, sizeof(lane0_b), &dest, &src, &lane));
    CHECK(dest == 0 && src == 0 && lane == 0);
    dest = src = UINT16_MAX;
    lane = UINT8_MAX;
@@ -6653,8 +6723,11 @@ check_tile_bridge(void)
    } while (0)
 
    static const enum agx_chip rejected_targets[] = {
-      AGX_CHIP_G15S, AGX_CHIP_G15D, AGX_CHIP_G16P, AGX_CHIP_G16S,
-      AGX_CHIP_G17P, AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+      AGX_CHIP_G15P, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16P, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17A, AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    for (unsigned i = 0;
         i < sizeof(rejected_targets) / sizeof(rejected_targets[0]); ++i) {
@@ -6816,6 +6889,51 @@ check_local_tps_bridge(void)
    CHECK(check_local_tps_encoding(&encoded, g17s_ldtps,
                                   sizeof(g17s_ldtps)) == 0);
 
+   /* Every encoding-scoped identity must select exactly the same ldtg/ldtps
+    * table as its architectural siblings. */
+   const struct d12_agx3_threadgroup_desc cross_local = {
+      .width = D12_AGX3_MEMORY_WIDTH_32,
+      .mask = 1,
+      .index_scale_log2 = 2,
+      .base_kind = D12_AGX3_THREADGROUP_BASE_UNIFORM,
+      .base = 8,
+      .index_is_register = true,
+      .index = 4,
+      .index_kill = true,
+      .slot = 6,
+   };
+   const struct d12_agx3_tps_desc cross_tps = {
+      .width = D12_AGX3_MEMORY_WIDTH_16,
+      .mask = 3,
+      .index_scale_log2 = 2,
+      .byte_offset = 4,
+      .index_kill = true,
+      .frame_region = 1,
+      .slot = 6,
+   };
+   struct d12_agx3_local_tps_encoding local_b, local_c, tps_b, tps_c;
+   CHECK(d12_agx3_encode_threadgroup_load(AGX_CHIP_G15G, &cross_local,
+                                           &local_b));
+   CHECK(d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &cross_local,
+                                           &local_c));
+   CHECK(d12_agx3_encode_tps_load(AGX_CHIP_G15G, &cross_tps, &tps_b));
+   CHECK(d12_agx3_encode_tps_load(AGX_CHIP_G17S, &cross_tps, &tps_c));
+   for (unsigned i = 0;
+        i < sizeof(integer_targets) / sizeof(integer_targets[0]); ++i) {
+      const bool is_c =
+         integer_targets[i].encoding == AGX_ISA_ENCODING_AGX3C;
+      const struct d12_agx3_local_tps_encoding *expected_local =
+         is_c ? &local_c : &local_b;
+      const struct d12_agx3_local_tps_encoding *expected_tps =
+         is_c ? &tps_c : &tps_b;
+      CHECK(d12_agx3_encode_threadgroup_load(
+         integer_targets[i].chip, &cross_local, &encoded));
+      CHECK(memcmp(&encoded, expected_local, sizeof(encoded)) == 0);
+      CHECK(d12_agx3_encode_tps_load(integer_targets[i].chip, &cross_tps,
+                                     &encoded));
+      CHECK(memcmp(&encoded, expected_tps, sizeof(encoded)) == 0);
+   }
+
 #define REJECT_LOCAL_TPS(call)                                                 \
    do {                                                                        \
       memset(&encoded, 0xa5, sizeof(encoded));                                 \
@@ -6825,7 +6943,9 @@ check_local_tps_bridge(void)
    } while (0)
 
    REJECT_LOCAL_TPS(
-      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17C, &local, &encoded));
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17A, &local, &encoded));
+   REJECT_LOCAL_TPS(d12_agx3_encode_threadgroup_load(
+      (enum agx_chip)0x7fff, &local, &encoded));
    local.width = (enum d12_agx3_memory_width)64;
    REJECT_LOCAL_TPS(
       d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local, &encoded));
@@ -6962,7 +7082,9 @@ check_static_spill_bridge(void)
    } while (0)
 
    REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
-      AGX_CHIP_G17C, &desc, &rejected));
+      AGX_CHIP_G17A, &desc, &rejected));
+   REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
+      (enum agx_chip)0x7fff, &desc, &rejected));
    desc.byte_offset = 2;
    REJECT_STATIC_SPILL(d12_agx3_encode_static_spill_store(
       AGX_CHIP_G15G, &desc, &rejected));
@@ -7458,8 +7580,8 @@ main(void)
 
    static const enum agx_chip unsupported_integer_targets[] = {
       AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
-      AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16C, AGX_CHIP_G17A,
-      AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+      AGX_CHIP_G15P, AGX_CHIP_G17A, AGX_CHIP_UNKNOWN,
+      (enum agx_chip)0x7fff,
    };
    for (unsigned i = 0;
         i < sizeof(unsupported_integer_targets) /

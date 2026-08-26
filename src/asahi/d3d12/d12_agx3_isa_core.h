@@ -17,6 +17,12 @@
 extern "C" {
 #endif
 
+/* Encoding-scoped target gates in this bridge cover every M3--M5/A18 Pro
+ * identity whose Apple compiler family is known, plus the existing G16P
+ * target.  G15C/G16C/G17C use the exact g15d/g16s/g17s compiler target shared
+ * with their sibling identity.  G17A remains rejected because no toolchain
+ * family or compiler device class has been recovered for it. */
+
 #define D12_AGX3_BINARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_TERNARY_ALU_MAX_LENGTH 14
 #define D12_AGX3_FADD_F32_REG_REG_LENGTH 6
@@ -471,11 +477,9 @@ bool d12_agx3_encode_binary_alu(
    struct d12_agx3_binary_alu_encoding *out);
 
 /*
- * Encode the canonical integer multiply for an independently witnessed Apple
- * compiler target.  The allowlist is intentionally narrower than the set of
- * chips sharing an encoding: G17C, for example, is AGX3c but has no compiler
- * witness in the source corpus and remains rejected.  This is still only an
- * ISA/lowering building block and does not admit any AGX3 device.
+ * Encode the canonical integer multiply for an encoding-scoped Apple compiler
+ * target described above.  This is still only an ISA/lowering building block
+ * and does not admit any AGX3 device.
  */
 bool d12_agx3_encode_integer_multiply(
    enum agx_chip chip, enum d12_agx3_integer_multiply_selection selection,
@@ -498,11 +502,10 @@ bool d12_agx3_encode_integer_multiply_add(
 
 /*
  * Encode/decode only the shared packer's exact compact register-register f32
- * add on the nine Apple compiler targets that produced operand-correlated
- * witnesses.  `encoding` must match `chip`: AGX3b is accepted only for
- * G15G/S/D, G16P/G/S and G17P; AGX3c only for G17G/S.  All operands are even
- * half-register indices in 0..254, and their physical source-field order is
- * preserved even though floating-point addition is commutative.
+ * add on the encoding-scoped targets described above. `encoding` must match
+ * `chip`. All operands are even half-register indices in 0..254, and their
+ * physical source-field order is preserved even though addition is
+ * commutative.
  *
  * This is a strict ISA representation only.  It neither accepts a canonical
  * prefix with trailing bytes nor enables DXIL lowering, scheduling, command
@@ -519,11 +522,11 @@ bool d12_agx3_decode_fadd_f32_reg_reg(
 
 /*
  * Encode/decode only the exact compact register-register f32 multiply form
- * witnessed by the L/P2 corpus on G15G/S/D, G16P/G/S and G17P (AGX3b), plus
- * the Q corpus on G17S (AGX3c).  G17G remains rejected because the pinned
- * corpus witnesses only its longer multiply form.  `encoding` must match the
- * target, and all operands are even half-register indices in the
- * conservatively proved 0..126 domain.
+ * witnessed by the L/P2 AGX3b corpus and the Q AGX3c corpus, including the
+ * exact compiler-target aliases described above. G17G remains rejected
+ * because the pinned corpus witnesses only its longer multiply form.
+ * `encoding` must match the target, and all operands are even half-register
+ * indices in the conservatively proved 0..126 domain.
  *
  * This strict six-byte ISA bridge does not accept trailing bytes and does not
  * enable DXIL lowering, scheduling, command submission, device admission,
@@ -540,11 +543,10 @@ bool d12_agx3_decode_fmul_f32_reg_reg(
 
 /*
  * Encode/decode the exact fourteen-byte register-register f32 multiply form
- * independently witnessed on G17G and G17S.  The explicit long-form API keeps
- * its fixed anonymous/context selection separate from the compact G17S form.
- * G17C and all C-suffixed G15/G16 identities remain rejected because the
- * pinned corpus contains no direct target artifacts for them.  Operands are
- * even half-register indices in the conservatively proved 0..126 domain.
+ * independently witnessed on G17G and the shared G17S/G17C compiler target.
+ * The explicit long-form API keeps its fixed anonymous/context selection
+ * separate from the compact G17S/G17C form. Operands are even half-register
+ * indices in the conservatively proved 0..126 domain.
  *
  * This is an exact ISA bridge only.  It does not enable DXIL lowering,
  * scheduling, command submission, device admission, runtime use, or any
@@ -561,15 +563,14 @@ bool d12_agx3_decode_fmul_f32_reg_reg_long(
 
 /*
  * Encode/decode the exact four-register f32 fused multiply-add form on the
- * nine targets with direct Apple compiler artifacts: G15G/S/D, G16P/G/S and
- * G17P use the eight-byte AGX3b form; G17G/S use the sixteen-byte AGX3c form.
- * `encoding` must match `chip`.  All operands are even half-register indices
- * in the conservatively proved 0..126 domain, and the two physical multiply
- * inputs are preserved in their encoded order.
+ * encoding-scoped targets described above. AGX3b uses the eight-byte form and
+ * AGX3c uses the sixteen-byte form. `encoding` must match `chip`. All operands
+ * are even half-register indices in the conservatively proved 0..126 domain,
+ * and the physical multiply inputs preserve their encoded order.
  *
  * This strict bridge rejects trailing bytes, anonymous/context alternates,
- * unfused-mad claims, C-suffixed identities without direct target artifacts,
- * and all unsupported registers.  It is an ISA representation only: it does
+ * unfused-mad claims, G17A, and all unsupported registers. It is an ISA
+ * representation only: it does
  * not enable DXIL lowering, contraction policy, scheduling, command
  * submission, device admission, runtime use, or any D3D12 feature.
  */
@@ -583,15 +584,15 @@ bool d12_agx3_decode_fma_f32_reg_reg_reg(
    uint16_t *mul0, uint16_t *mul1, uint16_t *addend);
 
 /*
- * Encode/decode the exact f32-minimum compiler selection on its nine direct
- * witness targets.  G15G/S/D, G16P/G/S and G17P use the six-byte AGX3b form;
- * G17G/S use the fourteen-byte AGX3c form.  `encoding` must match `chip`, and
- * all operands are even half-register indices in 0..126.  The AGX3c bridge
+ * Encode/decode the exact f32-minimum compiler selection on the encoding-
+ * scoped targets described above. AGX3b uses the six-byte form and AGX3c the
+ * fourteen-byte form. `encoding` must match `chip`, and all operands are even
+ * half-register indices in 0..126. The AGX3c bridge
  * also enforces equality of the duplicated comparison and selection sources.
  *
  * This exact representation rejects other predicates, fmax/generic select,
- * modifiers, trailing bytes, C-suffixed identities without direct artifacts,
- * and unproven registers.  It does not independently define DXIL NaN or
+ * modifiers, trailing bytes, G17A, and unproven registers. It does not
+ * independently define DXIL NaN or
  * signed-zero policy and does not enable lowering, scheduling, runtime use,
  * device admission, command submission, or a D3D12 feature.
  */
@@ -605,15 +606,15 @@ bool d12_agx3_decode_fmin_f32_reg_reg(
    uint16_t *src0, uint16_t *src1);
 
 /*
- * Encode/decode the exact f32-maximum compiler selection on its nine direct
- * witness targets.  G15G/S/D, G16P/G/S and G17P use the six-byte AGX3b form;
- * G17G/S use the fourteen-byte AGX3c form.  `encoding` must match `chip`, and
- * all operands are even half-register indices in 0..126.  The AGX3c bridge
+ * Encode/decode the exact f32-maximum compiler selection on the encoding-
+ * scoped targets described above. AGX3b uses the six-byte form and AGX3c the
+ * fourteen-byte form. `encoding` must match `chip`, and all operands are even
+ * half-register indices in 0..126. The AGX3c bridge
  * also enforces equality of the duplicated comparison and selection sources.
  *
  * This exact representation rejects other predicates, fmin/generic select,
- * modifiers, trailing bytes, C-suffixed identities without direct artifacts,
- * and unproven registers.  It does not independently define DXIL NaN or
+ * modifiers, trailing bytes, G17A, and unproven registers. It does not
+ * independently define DXIL NaN or
  * signed-zero policy and does not enable lowering, scheduling, runtime use,
  * device admission, command submission, or a D3D12 feature.
  */
@@ -627,14 +628,14 @@ bool d12_agx3_decode_fmax_f32_reg_reg(
    uint16_t *src0, uint16_t *src1);
 
 /*
- * Encode/decode the exact signed-i32-to-f32 register conversion on its nine
- * direct Apple compiler witness targets.  G15G/S/D, G16P/G/S and G17P use the
- * eight-byte AGX3b form; G17G/S use the ten-byte AGX3c form.  `encoding` must
- * match `chip`, and both operands are even half-register indices in 0..126.
+ * Encode/decode the exact signed-i32-to-f32 register conversion on the
+ * encoding-scoped targets described above. AGX3b uses the eight-byte form and
+ * AGX3c the ten-byte form. `encoding` must match `chip`, and both operands are
+ * even half-register indices in 0..126.
  *
  * This strict ISA bridge rejects unsigned and float-to-integer conversions,
- * alternate source selections, modifiers, trailing bytes, C/A identities
- * without direct artifacts, and unproven registers.  It does not enable DXIL
+ * alternate source selections, modifiers, trailing bytes, G17A, and unproven
+ * registers. It does not enable DXIL
  * lowering, conversion policy, scheduling, command submission, device
  * admission, runtime use, or any D3D12 feature.
  */
@@ -647,14 +648,14 @@ bool d12_agx3_decode_i32_to_f32_reg(
    uint16_t *src);
 
 /*
- * Encode/decode the exact unsigned-u32-to-f32 register conversion on its nine
- * direct Apple compiler witness targets.  G15G/S/D, G16P/G/S and G17P use the
- * eight-byte AGX3b form; G17G/S use the ten-byte AGX3c form.  `encoding` must
- * match `chip`, and both operands are even half-register indices in 0..126.
+ * Encode/decode the exact unsigned-u32-to-f32 register conversion on the
+ * encoding-scoped targets described above. AGX3b uses the eight-byte form and
+ * AGX3c the ten-byte form. `encoding` must match `chip`, and both operands are
+ * even half-register indices in 0..126.
  *
  * This strict ISA bridge rejects the distinct signed and float-to-integer
- * conversions, alternate source selections, modifiers, trailing bytes, C/A
- * identities without direct artifacts, and unproven registers.  It does not
+ * conversions, alternate source selections, modifiers, trailing bytes, G17A,
+ * and unproven registers. It does not
  * enable DXIL lowering, conversion policy, scheduling, command submission,
  * device admission, runtime use, or any D3D12 feature.
  */
@@ -668,13 +669,13 @@ bool d12_agx3_decode_u32_to_f32_reg(
 
 /*
  * Encode/decode only the exact target-gated Metal `rint` selection observed
- * immediately before PC_f2ir's signed conversion.  G15G/S/D, G16P/G/S and
- * G17P use AGX3b; G17G/S use AGX3c.  Both operands are even half-register
- * indices in 0..126 and `encoding` must match the directly witnessed chip.
+ * immediately before PC_f2ir's signed conversion on the encoding-scoped
+ * targets described above. Both operands are even half-register indices in
+ * 0..126 and `encoding` must match the chip.
  *
  * Other rounding selectors, exceptional-value/tie policy, saturation,
  * modifiers, alternate scheduler/last-use contexts, trailing bytes, and
- * unwitnessed C/A targets fail closed.  This bridge does not enable DXIL
+ * G17A and unknown targets fail closed. This bridge does not enable DXIL
  * lowering, scheduling, runtime use, submission, device admission, or any
  * D3D12 capability.
  */
@@ -688,13 +689,14 @@ bool d12_agx3_decode_f32_rint_reg(
 
 /*
  * Encode/decode only the directly witnessed scalar f32 reciprocal selection.
- * G15G/S/D, G16P/G/S and G17P use AGX3b; G17G/S use AGX3c.  Both operands
- * are even half-register indices in 0..126, and `encoding` must match `chip`.
+ * The encoding-scoped targets described above use their AGX3b/AGX3c table.
+ * Both operands are even half-register indices in 0..126, and `encoding`
+ * must match `chip`.
  *
  * The exact direct last-use/dependency context is fixed.  Live-source and
  * alternate dependency contexts, rsqrt and other special functions,
  * accuracy/refinement policy, modifiers, trailing bytes, high registers, and
- * unwitnessed C/A identities fail closed.  This does not enable DXIL
+ * G17A and unknown identities fail closed. This does not enable DXIL
  * lowering, scheduling, runtime use, submission, device admission, or a
  * D3D12 capability.
  */
@@ -708,14 +710,14 @@ bool d12_agx3_decode_f32_rcp_reg(
 
 /*
  * Encode/decode only the directly witnessed scalar f32 reciprocal-square-root
- * selection.  G15G/S/D, G16P/G/S and G17P use AGX3b; G17G/S use AGX3c.
- * Both operands are even half-register indices in 0..126, and `encoding`
- * must match `chip`.
+ * selection. The encoding-scoped targets described above use their AGX3b/
+ * AGX3c table. Both operands are even half-register indices in 0..126, and
+ * `encoding` must match `chip`.
  *
  * The exact direct last-use/dependency context is fixed.  Live-source and
  * alternate dependency contexts, reciprocal and other special functions,
  * accuracy/refinement policy, modifiers, trailing bytes, high registers, and
- * unwitnessed C/A identities fail closed.  This does not enable DXIL
+ * G17A and unknown identities fail closed. This does not enable DXIL
  * lowering, scheduling, runtime use, submission, device admission, or a
  * D3D12 capability.
  */
@@ -730,13 +732,13 @@ bool d12_agx3_decode_f32_rsqrt_reg(
 /*
  * Encode/decode only the directly witnessed fused i32 compare and fixed
  * immediate select `(src0 OP src1) ? 5 : 7`.  OP is limited to equality or
- * signed less-than.  G15G/S/D, G16P/G/S and G17P use AGX3b; G17G/S use
- * AGX3c.  All operands are even half-register indices in 0..126, and
- * `encoding` must match the directly witnessed chip identity.
+ * signed less-than. The encoding-scoped targets described above use their
+ * AGX3b/AGX3c table. All operands are even half-register indices in 0..126,
+ * and `encoding` must match the chip identity.
  *
  * Other predicates, arbitrary immediate/register-selected values, alternate
- * contexts, trailing bytes, high registers and C/A identities without direct
- * artifacts fail closed.  This representation does not enable DXIL lowering,
+ * contexts, trailing bytes, high registers, G17A, and unknown identities fail
+ * closed. This representation does not enable DXIL lowering,
  * control-flow formation, scheduling, runtime use, submission, admission, or
  * a D3D12 capability.
  */
@@ -757,7 +759,7 @@ bool d12_agx3_decode_i32_compare_select_imm_5_7_reg_reg(
  * `encoding` must match the directly witnessed chip identity.
  *
  * The bridge rejects every other rounding/source-reuse/context selection,
- * saturation, trailing bytes, high registers, and unwitnessed C/A targets.
+ * saturation, trailing bytes, high registers, G17A, and unknown targets.
  * NaN/out-of-range policy, DXIL lowering, scheduling, runtime use, submission,
  * device admission, and D3D12 capability exposure remain unimplemented.
  */
@@ -772,7 +774,7 @@ bool d12_agx3_decode_f32_to_int_rtz_reg(
 
 /*
  * Encode/decode only the canonical no-kill i16-register `yield` form on the
- * exact Apple compiler targets present in the source corpus.  The source is a
+ * encoding-scoped Apple compiler targets described above. The source is a
  * 16-bit half-register index; AGX3b accepts 0..191 and AGX3c accepts 0..255.
  * Alternate operand selections, kill and scheduler/context fields, and the
  * AGX3c ninth register bit are deliberately absent and fail closed.
@@ -790,9 +792,9 @@ bool d12_agx3_decode_yield_i16_reg(enum agx_chip chip,
 
 /*
  * Encode/decode the exact Apple `simdbcast` register-source f32 form as the
- * D3D/DXIL WaveReadLaneAt semantic.  Exposure is limited to the subgroup
- * corpus's exact G15G, G16G and G17S identities and its directly witnessed
- * immediate lanes 0 and 3.  Operands are even half-register indices in
+ * D3D/DXIL WaveReadLaneAt semantic. Exposure is limited to the encoding-
+ * scoped identities described above and the directly witnessed immediate
+ * lanes 0 and 3. Operands are even half-register indices in
  * 0..190 on AGX3b and 0..254 on AGX3c.
  *
  * Dynamic lanes, other immediate lanes, integer/half types, WaveReadLaneFirst,
@@ -807,8 +809,9 @@ bool d12_agx3_decode_wave_read_lane_at_f32_imm(
    uint16_t *dest, uint16_t *src, uint8_t *lane);
 
 /* Encode only the exact dynamic-lane, zero-compare and aggregation families
- * recovered on G15G, G16G and G17S. Operands are scalar f32/i32 half-register
- * indices; a uniform lane is an even 0..510 uniform half-register index.
+ * on the encoding-scoped identities described above. Operands are scalar
+ * f32/i32 half-register indices; a uniform lane is an even 0..510 uniform
+ * half-register index.
  * These APIs are a bounded post-lowering ISA bridge only: they do not lower
  * DXIL, schedule dependency markers, expose wave caps, or enable runtime use.
  */
@@ -824,7 +827,7 @@ bool d12_agx3_encode_subgroup_reduce(
 
 /*
  * Encode/decode only the dependency mask carried by a canonical terminal
- * `end` on the exact Apple compiler targets present in the source corpus.
+ * `end` on the encoding-scoped Apple compiler targets described above.
  * AGX3b exposes slots 0..5 (masks <= 0x3f); AGX3c additionally exposes slots
  * 6 and 7.  Every other `end` field remains canonical zero.
  *
@@ -842,7 +845,8 @@ bool d12_agx3_decode_end_with_wait_fence_mask(
 
 /*
  * Encode the exact register-ready AGX3 structured-control-flow building
- * blocks on the nine directly witnessed compiler targets. A conditional form
+ * blocks on the encoding-scoped compiler targets described above. A
+ * conditional form
  * is a compare into flag slot zero followed immediately by cndst (if) or
  * cndlt (loop/conditional break). Integer src1 may be an imm8; float sources
  * are registers. Register indices are 32-bit-aligned half-register numbers in
@@ -853,7 +857,7 @@ bool d12_agx3_decode_end_with_wait_fence_mask(
  * canonical else, and one/two-level pops. Branch displacements are signed
  * byte offsets from the branch start: exec-none must be forward and exec-any
  * must be backward. Unknown predicates/forms, wrong-direction or odd branch
- * offsets, and unwitnessed chip identities clear the result and fail.
+ * offsets, G17A, and unknown chip identities clear the result and fail.
  *
  * These are bounded ISA/lowering blocks. They do not implement DXIL control
  * flow, compare/cnd load-hazard scheduling, submission, device admission, or
