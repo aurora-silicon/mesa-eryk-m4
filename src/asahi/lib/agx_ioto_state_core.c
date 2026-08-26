@@ -459,4 +459,25 @@ agx_ioto_g17s_minimal_compute_tail_build(
    return true;
 }
 
+bool
+agx_ioto_g17p_compute_ldshdr_build(
+   uint64_t shader_va, struct agx_ioto_state *state)
+{
+   if (!state)
+      return false;
+
+   struct agx_ioto_state staged = {0};
+   staged.f[0] = shader_va;
+   staged.f[1] = 3;
+   staged.f[23] = 1;
+
+   uint8_t packed[AGX_IOTO_LDSHDR_SIZE];
+   if (!agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &staged, packed,
+                                   sizeof(packed)))
+      return false;
+
+   *state = staged;
+   return true;
+}
+
 #undef FM

@@ -747,6 +747,35 @@ test_g17s_minimal_compute_tail(void)
    return 0;
 }
 
+static int
+test_g17p_compute_ldshdr(void)
+{
+   static const uint8_t zero_va_expected[AGX_IOTO_LDSHDR_SIZE] = {
+      0x77, 0x01, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00,
+   };
+   struct agx_ioto_state state;
+   memset(&state, 0xa5, sizeof(state));
+   CHECK(agx_ioto_g17p_compute_ldshdr_build(0, &state));
+   uint8_t packed[AGX_IOTO_LDSHDR_SIZE];
+   CHECK(agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &state, packed,
+                                    sizeof(packed)));
+   CHECK(memcmp(packed, zero_va_expected, sizeof(packed)) == 0);
+
+   CHECK(agx_ioto_g17p_compute_ldshdr_build(UINT64_C(0x123456780),
+                                            &state));
+   CHECK(state.f[0] == UINT64_C(0x123456780));
+   CHECK(state.f[1] == 3 && state.f[23] == 1);
+   struct agx_ioto_state before = state;
+   CHECK(!agx_ioto_g17p_compute_ldshdr_build(UINT64_C(0x123456781),
+                                             &state));
+   CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+   CHECK(!agx_ioto_g17p_compute_ldshdr_build(
+      UINT64_C(0x1000000000000), &state));
+   CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+   CHECK(!agx_ioto_g17p_compute_ldshdr_build(0, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
@@ -756,6 +785,7 @@ main(void)
    CHECK(test_tail_types_order_and_targets() == 0);
    CHECK(test_tail_failures_and_shader_convenience() == 0);
    CHECK(test_g17s_minimal_compute_tail() == 0);
+   CHECK(test_g17p_compute_ldshdr() == 0);
 
    printf("agx_ioto_state_core: %llu checks passed\n",
           (unsigned long long)checks);

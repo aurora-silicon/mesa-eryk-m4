@@ -89,6 +89,12 @@ bool agx_ioto_state_tail_pack_shader(
 bool agx_ioto_g17s_minimal_compute_tail_build(
    uint64_t shader_va, struct agx_ioto_state_tail *tail);
 
+/* Exact A18 Pro/G17P LDSHDR constructor defaults plus shader address.  This is
+ * a single-record producer, not a complete G17P state tail: SPECLM/SPECTPR
+ * remain runtime-context dependent.  `state` is unchanged on failure. */
+bool agx_ioto_g17p_compute_ldshdr_build(
+   uint64_t shader_va, struct agx_ioto_state *state);
+
 #ifdef __cplusplus
 }
 #endif
