@@ -144,6 +144,174 @@ static const struct scs_vec vectors[] = {
     {.width = AGX3_MEM_W32, .byte_offset = 0x6000, .value_kill = true},
     {0x27, 0x00, 0x01, 0x22, 0x32, 0x04, 0xa9, 0x02, 0x00, 0x00, 0x01,
      0x00, 0x02, 0x84}, 14},
+
+   /* Controlled uniform-base + register-index probes.  The Apple compiler
+    * placed the uniform pointer in half4 and the index in half0 or half2.
+    */
+   {AGX_ISA_ENCODING_AGX3B, true,
+    {.data = 2,
+     .width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 6,
+     .wait_mask = 1},
+    {0x5f, 0x12, 0x54, 0x02, 0x04, 0x00, 0x20, 0x00, 0x80, 0x1b, 0x00,
+     0x00, 0x42, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false,
+    {.width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0xdf, 0x02, 0x54, 0x00, 0x04, 0x00, 0x20, 0x00, 0x84, 0x05, 0x00,
+     0x40, 0x08, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true,
+    {.data = 2,
+     .width = AGX3_MEM_W16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 6,
+     .wait_mask = 1},
+    {0x5f, 0x12, 0x54, 0x02, 0x04, 0x00, 0x20, 0x00, 0x00, 0x1b, 0x00,
+     0x00, 0x44, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false,
+    {.width = AGX3_MEM_W16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0xdf, 0x02, 0x54, 0x00, 0x04, 0x00, 0x20, 0x00, 0x04, 0x05, 0x00,
+     0x80, 0x08, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true,
+    {.data = 2,
+     .width = AGX3_MEM_W32,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 6,
+     .wait_mask = 1},
+    {0x5f, 0x12, 0x54, 0x02, 0x04, 0x00, 0x20, 0x00, 0x40, 0x1b, 0x00,
+     0x00, 0x46, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false,
+    {.width = AGX3_MEM_W32,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0xdf, 0x02, 0x54, 0x00, 0x04, 0x00, 0x20, 0x00, 0x44, 0x05, 0x00,
+     0xc0, 0x08, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true,
+    {.data = 2,
+     .width = AGX3_MEM_W32,
+     .byte_offset = 16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 6,
+     .wait_mask = 1},
+    {0x5f, 0x12, 0x54, 0x02, 0x04, 0x00, 0x20, 0x00, 0x40, 0x1b, 0x08,
+     0x00, 0x46, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false,
+    {.width = AGX3_MEM_W32,
+     .byte_offset = 16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0xdf, 0x02, 0x54, 0x00, 0x04, 0x00, 0x20, 0x00, 0x44, 0x05, 0x02,
+     0xc0, 0x08, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true,
+    {.width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .index = 2,
+     .uniform_base = 4,
+     .slot = 6,
+     .wait_mask = 1},
+    {0x5f, 0x12, 0x54, 0x00, 0x04, 0x04, 0x20, 0x00, 0x80, 0x1b, 0x00,
+     0x00, 0x42, 0x00}, 14},
+
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.data = 2,
+     .width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 8,
+     .wait_mask = 1,
+     .zero_extend = true,
+     .c_load_marker = true},
+    {0x37, 0x04, 0x01, 0x08, 0x1a, 0x47, 0xa8, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x84, 0x00, 0x00}, 16},
+   {AGX_ISA_ENCODING_AGX3C, false,
+    {.width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0x27, 0x00, 0x01, 0x08, 0x32, 0x40, 0xa9, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x84}, 14},
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.data = 2,
+     .width = AGX3_MEM_W16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 8,
+     .wait_mask = 1,
+     .zero_extend = true,
+     .c_load_marker = true},
+    {0x37, 0x04, 0x01, 0x00, 0x1e, 0x47, 0xa8, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x04, 0x00, 0x00}, 16},
+   {AGX_ISA_ENCODING_AGX3C, false,
+    {.width = AGX3_MEM_W16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0x27, 0x00, 0x01, 0x00, 0x36, 0x40, 0xa9, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x04}, 14},
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.data = 2,
+     .width = AGX3_MEM_W32,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 8,
+     .wait_mask = 1,
+     .c_load_marker = true},
+    {0x37, 0x04, 0x01, 0x02, 0x16, 0x47, 0xa8, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x84, 0x00, 0x00}, 16},
+   {AGX_ISA_ENCODING_AGX3C, false,
+    {.width = AGX3_MEM_W32,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0x27, 0x00, 0x01, 0x02, 0x36, 0x40, 0xa9, 0x02, 0x02, 0x08, 0x00,
+     0x00, 0x01, 0x84}, 14},
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.data = 2,
+     .width = AGX3_MEM_W32,
+     .byte_offset = 16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4,
+     .slot = 8,
+     .wait_mask = 1,
+     .c_load_marker = true},
+    {0x37, 0x04, 0x01, 0x02, 0x16, 0x47, 0xa8, 0x02, 0x12, 0x08, 0x00,
+     0x00, 0x01, 0x84, 0x00, 0x00}, 16},
+   {AGX_ISA_ENCODING_AGX3C, false,
+    {.width = AGX3_MEM_W32,
+     .byte_offset = 16,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 4},
+    {0x27, 0x00, 0x01, 0x02, 0x36, 0x40, 0xa9, 0x02, 0x12, 0x08, 0x00,
+     0x00, 0x01, 0x84}, 14},
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.width = AGX3_MEM_W8,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .index = 2,
+     .uniform_base = 4,
+     .slot = 8,
+     .wait_mask = 1,
+     .c_load_marker = true},
+    {0x27, 0x04, 0x01, 0x08, 0x12, 0x47, 0xa8, 0x02, 0x02, 0x08, 0x20,
+     0x00, 0x01, 0x84, 0x00, 0x00}, 16},
+
+   /* Live traversal compiler corpus: uniform half126, W8, offset 51, index
+    * half0, scoreboard wait on slot 8.
+    */
+   {AGX_ISA_ENCODING_AGX3C, true,
+    {.data = 4,
+     .width = AGX3_MEM_W8,
+     .byte_offset = 51,
+     .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+     .uniform_base = 126,
+     .slot = 8,
+     .wait_mask = 1u << 7},
+    {0x2f, 0x00, 0x01, 0x8c, 0x32, 0xe7, 0xa8, 0x4a, 0x32, 0x38, 0x00,
+     0x00, 0x01, 0x84, 0x00, 0x00}, 16},
 };
 
 static bool
@@ -151,7 +319,10 @@ descs_equal(const struct agx3_scs_desc *a, const struct agx3_scs_desc *b)
 {
    return a->data == b->data && a->width == b->width &&
           a->byte_offset == b->byte_offset && a->slot == b->slot &&
+          a->address_kind == b->address_kind && a->index == b->index &&
+          a->uniform_base == b->uniform_base &&
           a->wait_mask == b->wait_mask && a->value_kill == b->value_kill &&
+          a->zero_extend == b->zero_extend &&
           a->c_load_marker == b->c_load_marker;
 }
 
@@ -189,12 +360,29 @@ test_synthetic_roundtrip(void)
        .wait_mask = (1u << 0) | (1u << 5)},
       {.data = 18, .width = AGX3_MEM_W32, .byte_offset = -8,
        .wait_mask = (1u << 0) | (1u << 7), .value_kill = true},
+      {.data = 10,
+       .width = AGX3_MEM_W16,
+       .byte_offset = -4,
+       .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+       .index = 18,
+       .uniform_base = 126,
+       .slot = 3,
+       .wait_mask = (1u << 0) | (1u << 5)},
+      {.data = 18,
+       .width = AGX3_MEM_W32,
+       .byte_offset = -8,
+       .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+       .index = 300,
+       .uniform_base = 511,
+       .wait_mask = (1u << 0) | (1u << 7)},
    };
    const enum agx_isa_encoding encs[] = {AGX_ISA_ENCODING_AGX3B,
+                                         AGX_ISA_ENCODING_AGX3C,
+                                         AGX_ISA_ENCODING_AGX3B,
                                          AGX_ISA_ENCODING_AGX3C};
-   const bool loads[] = {true, false};
+   const bool loads[] = {true, false, true, false};
 
-   for (unsigned i = 0; i < 2; ++i) {
+   for (unsigned i = 0; i < 4; ++i) {
       uint8_t encoded[AGX3_SCS_MAX_LENGTH];
       uint8_t length = 0;
       CHECK(loads[i] ? agx3_scs_encode_load(encs[i], &descs[i], encoded,
@@ -248,20 +436,61 @@ test_fail_closed(void)
    bad.c_load_marker = true;
    CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3B, &bad, encoded,
                                &length));
+   bad.c_load_marker = false;
+   bad.address_kind = (enum agx3_scs_address_kind)2;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.address_kind = AGX3_SCS_ADDRESS_DIRECT;
+   bad.index = 1;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.index = 0;
+   bad.uniform_base = 1;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED;
+   bad.uniform_base = 512;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.uniform_base = 4;
+   bad.index = 192;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3B, &bad, encoded,
+                               &length));
+   bad.index = 512;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.index = 0;
+   bad.zero_extend = true;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3B, &bad, encoded,
+                               &length));
+   bad.width = AGX3_MEM_W32;
+   CHECK(!agx3_scs_encode_load(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                               &length));
+   bad.zero_extend = false;
+   bad.value_kill = true;
+   bad.slot = 0;
+   CHECK(!agx3_scs_encode_store(AGX_ISA_ENCODING_AGX3C, &bad, encoded,
+                                &length));
 
    static const uint8_t b_ld64[] = {
       0x5f, 0x02, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00, 0x58, 0x02, 0x08,
       0x00, 0x02, 0x00,
    };
-   static const uint8_t c_dynamic_ld[] = {
-      0x2f, 0x00, 0x01, 0x8c, 0x32, 0xe7, 0xa8, 0x4a,
-      0x32, 0x38, 0x00, 0x00, 0x01, 0x84, 0x00, 0x00,
+   static const uint8_t c_register_base_ld[] = {
+      0x87, 0x00, 0x01, 0x02, 0x06, 0x47, 0x88, 0x4a,
+      0x02, 0x08, 0xa0, 0x02, 0x01, 0x84, 0x00, 0x00,
+   };
+   static const uint8_t c_vector_uniform_st[] = {
+      0x37, 0x00, 0x01, 0x86, 0x32, 0xe0, 0xa9,
+      0x5a, 0x12, 0x08, 0x08, 0x40, 0x01, 0x84,
    };
    struct agx3_scs_desc decoded = bad;
    CHECK(!agx3_scs_decode_load(AGX_ISA_ENCODING_AGX3B, b_ld64,
                                sizeof(b_ld64), &decoded));
-   CHECK(!agx3_scs_decode_load(AGX_ISA_ENCODING_AGX3C, c_dynamic_ld,
-                               sizeof(c_dynamic_ld), &decoded));
+   CHECK(!agx3_scs_decode_load(AGX_ISA_ENCODING_AGX3C, c_register_base_ld,
+                               sizeof(c_register_base_ld), &decoded));
+   CHECK(!agx3_scs_decode_store(AGX_ISA_ENCODING_AGX3C, c_vector_uniform_st,
+                                sizeof(c_vector_uniform_st), &decoded));
    CHECK(!agx3_scs_decode_load(AGX_ISA_ENCODING_AGX3C, vectors[6].bytes,
                                vectors[6].length - 1, &decoded));
    CHECK(!agx3_scs_decode_load(AGX_ISA_ENCODING_AGX3C, NULL,

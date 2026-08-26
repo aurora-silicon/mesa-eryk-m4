@@ -31,13 +31,25 @@ desc_ok(enum agx_isa_encoding enc, const struct agx3_scs_desc *d,
         bool is_load)
 {
    const unsigned slots = slot_count(enc);
+   const bool indexed =
+      d != NULL && d->address_kind == AGX3_SCS_ADDRESS_UNIFORM_INDEXED;
    if (d == NULL || slots == 0 || !width_ok(d->width) || d->data >= 256 ||
        d->wait_mask >= (1u << slots) ||
        (is_load && (d->slot < 1 || d->slot > slots)) ||
        (!is_load && d->slot != 0) || (is_load && d->value_kill) ||
+       (!is_load && d->zero_extend) ||
        (!is_load && d->c_load_marker) ||
        (enc != AGX_ISA_ENCODING_AGX3C &&
-        (d->value_kill || d->c_load_marker)))
+        (d->value_kill || d->zero_extend || d->c_load_marker)) ||
+       (d->address_kind != AGX3_SCS_ADDRESS_DIRECT && !indexed) ||
+       (!indexed && (d->index != 0 || d->uniform_base != 0)) ||
+       (indexed &&
+        (d->uniform_base >= 512 ||
+         d->index >=
+            (enc == AGX_ISA_ENCODING_AGX3B ? 192u : 512u) ||
+         d->value_kill)) ||
+       (d->zero_extend &&
+        (!indexed || !is_load || d->width == AGX3_MEM_W32)))
       return false;
 
    const unsigned bytes = 1u << d->width;
@@ -61,10 +73,12 @@ encode(enum agx_isa_encoding enc, const struct agx3_scs_desc *d,
    struct agx3_field_kv base[9];
    unsigned nb = 0;
    base[nb++] = (struct agx3_field_kv)KV(9, 2);
-   base[nb++] = (struct agx3_field_kv)KV(23, 1);
-   base[nb++] = (struct agx3_field_kv)KV(24, 1);
-   base[nb++] = (struct agx3_field_kv)KV(38, 1);
-   base[nb++] = (struct agx3_field_kv)KV(39, 1);
+   const bool indexed =
+      d->address_kind == AGX3_SCS_ADDRESS_UNIFORM_INDEXED;
+   base[nb++] = (struct agx3_field_kv)KV(23, indexed ? 2 : 1);
+   base[nb++] = (struct agx3_field_kv)KV(24, indexed ? 2 : 1);
+   base[nb++] = (struct agx3_field_kv)KV(38, indexed ? 3 : 1);
+   base[nb++] = (struct agx3_field_kv)KV(39, indexed ? 2 : 1);
    base[nb++] = (struct agx3_field_kv)KV(54, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(45, 15);
@@ -78,11 +92,18 @@ encode(enum agx_isa_encoding enc, const struct agx3_scs_desc *d,
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
    ov[n++] = (struct agx3_field_kv)KV(68, 1);
    ov[n++] = (struct agx3_field_kv)KV(71, (uint16_t)d->byte_offset);
+   if (indexed) {
+      ov[n++] = (struct agx3_field_kv)KV(16, d->index);
+      ov[n++] = (struct agx3_field_kv)KV(32, d->uniform_base);
+      ov[n++] = (struct agx3_field_kv)KV(70, d->width);
+   }
    if (is_load) {
       ov[n++] = (struct agx3_field_kv)KV(12, d->slot);
-      if (enc == AGX_ISA_ENCODING_AGX3C)
+      if (enc == AGX_ISA_ENCODING_AGX3C) {
+         ov[n++] = (struct agx3_field_kv)KV(11, d->zero_extend);
          ov[n++] =
             (struct agx3_field_kv)KV(76, d->c_load_marker ? 2 : 0);
+      }
    } else {
       ov[n++] = (struct agx3_field_kv)KV(13, d->value_kill);
    }
@@ -176,6 +197,39 @@ decode_waits(enum agx_isa_encoding enc, const uint8_t *b)
 }
 
 static bool
+decode_address(enum agx_isa_encoding enc, const uint8_t *b,
+               struct agx3_scs_desc *d)
+{
+   const bool indexed =
+      enc == AGX_ISA_ENCODING_AGX3B ? ((word(b, 3) >> 5) & 1u)
+                                    : ((word(b, 4) >> 1) & 1u);
+   if (!indexed) {
+      d->address_kind = AGX3_SCS_ADDRESS_DIRECT;
+      return true;
+   }
+
+   d->address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED;
+   if (enc == AGX_ISA_ENCODING_AGX3B) {
+      const uint16_t w2 = word(b, 2), w3 = word(b, 3);
+      d->uniform_base = w2 & 0x1ffu;
+      d->index = (uint16_t)(((w2 >> 9) & 0x7fu) | ((w3 & 1u) << 7));
+   } else {
+      const uint16_t w0 = word(b, 0), w1 = word(b, 1);
+      const uint16_t w2 = word(b, 2), w3 = word(b, 3);
+      const uint16_t w4 = word(b, 4), w5 = word(b, 5);
+      d->uniform_base =
+         (uint16_t)(((w2 >> 12) & 0xfu) | (((w3 >> 14) & 1u) << 4) |
+                    (((w1 >> 10) & 1u) << 5) |
+                    (((w1 >> 15) & 1u) << 6) |
+                    (((w0 >> 8) & 3u) << 7));
+      d->index =
+         (uint16_t)(((w5 >> 4) & 3u) | (((w5 >> 7) & 0x1fu) << 2) |
+                    (((w5 >> 13) & 1u) << 7) | ((w4 & 1u) << 8));
+   }
+   return true;
+}
+
+static bool
 decode(enum agx_isa_encoding enc, const uint8_t *bytes, size_t length,
        bool is_load, struct agx3_scs_desc *out)
 {
@@ -198,6 +252,9 @@ decode(enum agx_isa_encoding enc, const uint8_t *bytes, size_t length,
    if (!width_ok(d.width))
       return false;
 
+   if (!decode_address(enc, bytes, &d))
+      return false;
+
    d.wait_mask = decode_waits(enc, bytes);
    if (enc == AGX_ISA_ENCODING_AGX3B) {
       const uint16_t offset =
@@ -209,6 +266,7 @@ decode(enum agx_isa_encoding enc, const uint8_t *bytes, size_t length,
       d.byte_offset = (int16_t)decode_c_offset(bytes, is_load);
       d.value_kill = !is_load && (w5 & 1u);
       if (is_load) {
+         d.zero_extend = (w2 >> 3) & 1u;
          const unsigned raw_marker = (w2 >> 5) & 3u;
          if (raw_marker != 0 && raw_marker != 1)
             return false;
