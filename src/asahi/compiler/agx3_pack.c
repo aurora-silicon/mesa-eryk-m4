@@ -2818,25 +2818,88 @@ agx3_unpack_nop(enum agx_isa_encoding encoding, const uint8_t *bytes,
 }
 
 bool
+agx3_pack_scoped_barrier(enum agx_isa_encoding encoding,
+                         enum agx3_barrier_scope scope,
+                         struct agx3_encoded_scoped_barrier *out)
+{
+   static const uint8_t canonical_b[][AGX3_SCOPED_BARRIER_MAX_LENGTH] = {
+      [AGX3_BARRIER_SCOPE_EXECUTION] =
+         {0x07, 0x04, 0x54, 0x41, 0x09, 0x00},
+      [AGX3_BARRIER_SCOPE_THREADGROUP] =
+         {0x07, 0x04, 0x54, 0x61, 0x09, 0x00},
+      [AGX3_BARRIER_SCOPE_DEVICE] =
+         {0x07, 0x04, 0x54, 0x85, 0x08, 0x00},
+      [AGX3_BARRIER_SCOPE_TEXTURE] = {
+         0x07, 0x04, 0x54, 0x51, 0x0e, 0x00,
+         0x07, 0x04, 0x54, 0xd1, 0x0e, 0x00,
+      },
+   };
+   static const uint8_t canonical_c[][AGX3_SCOPED_BARRIER_MAX_LENGTH] = {
+      [AGX3_BARRIER_SCOPE_EXECUTION] =
+         {0x07, 0x51, 0x00, 0x06, 0x00, 0x00},
+      [AGX3_BARRIER_SCOPE_THREADGROUP] =
+         {0x27, 0x51, 0x00, 0x06, 0x00, 0x00},
+      [AGX3_BARRIER_SCOPE_DEVICE] =
+         {0x0f, 0x69, 0x00, 0x06, 0x00, 0x00},
+      [AGX3_BARRIER_SCOPE_TEXTURE] = {
+         0x87, 0x67, 0x00, 0x06, 0x00, 0x00,
+         0x87, 0x5f, 0x00, 0x06, 0x00, 0x00,
+      },
+   };
+   const uint8_t(*canonical)[AGX3_SCOPED_BARRIER_MAX_LENGTH] =
+      encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b :
+      encoding == AGX_ISA_ENCODING_AGX3C ? canonical_c : NULL;
+   const uint8_t length = scope == AGX3_BARRIER_SCOPE_TEXTURE ? 12 : 6;
+
+   if (canonical == NULL || out == NULL ||
+       scope < AGX3_BARRIER_SCOPE_EXECUTION ||
+       scope > AGX3_BARRIER_SCOPE_TEXTURE)
+      return false;
+
+   memset(out, 0, sizeof(*out));
+   memcpy(out->bytes, canonical[scope], length);
+   out->length = length;
+   return true;
+}
+
+bool
+agx3_unpack_scoped_barrier(enum agx_isa_encoding encoding,
+                           const uint8_t *bytes, size_t available,
+                           enum agx3_barrier_scope *scope, uint8_t *length)
+{
+   if (!is_agx3_encoding(encoding) || bytes == NULL || scope == NULL ||
+       length == NULL)
+      return false;
+
+   for (enum agx3_barrier_scope candidate = AGX3_BARRIER_SCOPE_EXECUTION;
+        candidate <= AGX3_BARRIER_SCOPE_TEXTURE; ++candidate) {
+      struct agx3_encoded_scoped_barrier canonical;
+      if (agx3_pack_scoped_barrier(encoding, candidate, &canonical) &&
+          available >= canonical.length &&
+          memcmp(bytes, canonical.bytes, canonical.length) == 0) {
+         *scope = candidate;
+         *length = canonical.length;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+bool
 agx3_pack_threadgroup_barrier(
    enum agx_isa_encoding encoding,
    struct agx3_encoded_threadgroup_barrier *out)
 {
-   static const uint8_t canonical_b[AGX3_THREADGROUP_BARRIER_LENGTH] = {
-      0x07, 0x04, 0x54, 0x61, 0x09, 0x00,
-   };
-   static const uint8_t canonical_c[AGX3_THREADGROUP_BARRIER_LENGTH] = {
-      0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
-   };
-   const uint8_t *canonical = encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b :
-                              encoding == AGX_ISA_ENCODING_AGX3C ? canonical_c :
-                                                                   NULL;
-
-   if (canonical == NULL || out == NULL)
+   if (out == NULL)
       return false;
 
-   memset(out, 0, sizeof(*out));
-   memcpy(out->bytes, canonical, AGX3_THREADGROUP_BARRIER_LENGTH);
+   struct agx3_encoded_scoped_barrier scoped;
+   if (!agx3_pack_scoped_barrier(encoding, AGX3_BARRIER_SCOPE_THREADGROUP,
+                                 &scoped))
+      return false;
+
+   memcpy(out->bytes, scoped.bytes, AGX3_THREADGROUP_BARRIER_LENGTH);
    out->length = AGX3_THREADGROUP_BARRIER_LENGTH;
    return true;
 }
@@ -2846,22 +2909,17 @@ agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
                                 const uint8_t *bytes, size_t available,
                                 uint8_t *length)
 {
-   static const uint8_t canonical_b[AGX3_THREADGROUP_BARRIER_LENGTH] = {
-      0x07, 0x04, 0x54, 0x61, 0x09, 0x00,
-   };
-   static const uint8_t canonical_c[AGX3_THREADGROUP_BARRIER_LENGTH] = {
-      0x27, 0x51, 0x00, 0x06, 0x00, 0x00,
-   };
-   const uint8_t *canonical = encoding == AGX_ISA_ENCODING_AGX3B ? canonical_b :
-                              encoding == AGX_ISA_ENCODING_AGX3C ? canonical_c :
-                                                                   NULL;
-
-   if (canonical == NULL || bytes == NULL || length == NULL ||
-       available < AGX3_THREADGROUP_BARRIER_LENGTH ||
-       memcmp(bytes, canonical, AGX3_THREADGROUP_BARRIER_LENGTH) != 0)
+   if (length == NULL)
       return false;
 
-   *length = AGX3_THREADGROUP_BARRIER_LENGTH;
+   enum agx3_barrier_scope scope;
+   uint8_t scoped_length;
+   if (!agx3_unpack_scoped_barrier(encoding, bytes, available, &scope,
+                                   &scoped_length) ||
+       scope != AGX3_BARRIER_SCOPE_THREADGROUP)
+      return false;
+
+   *length = scoped_length;
    return true;
 }
 

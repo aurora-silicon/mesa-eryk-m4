@@ -22,6 +22,7 @@
 #include "agx_debug.h"
 #include "agx_nir.h"
 #include "agx_opcodes.h"
+#include "agx3_pack.h"
 #include "glsl_types.h"
 #include "nir.h"
 #include "nir_builtin_builder.h"
@@ -1558,6 +1559,44 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    case nir_intrinsic_barrier: {
       assert(!b->shader->is_preamble && "invalid");
 
+      if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+         bool emitted = false;
+
+         if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE) {
+            const nir_variable_mode modes =
+               nir_intrinsic_memory_modes(instr);
+
+            /* The AGX2 cache-operation train collapses on AGX3 into one
+             * exact barrier per semantic memory scope. Keep Apple's observed
+             * device -> texture -> threadgroup ordering. */
+            if (modes & (nir_var_mem_global | nir_var_image)) {
+               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_DEVICE);
+               emitted = true;
+            }
+
+            if (modes & nir_var_image) {
+               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+               emitted = true;
+            }
+
+            if (modes & nir_var_mem_shared) {
+               agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_THREADGROUP);
+               emitted = true;
+            }
+         }
+
+         /* A workgroup execution barrier with no memory scope is the
+          * recovered mem_none form. Scoped memory barriers already carry the
+          * execution rendezvous, as shown by each Metal mem_flags contrast. */
+         if (nir_intrinsic_execution_scope(instr) >= SCOPE_WORKGROUP &&
+             !emitted) {
+            assert(mesa_shader_stage_is_compute(b->shader->nir->info.stage));
+            agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_EXECUTION);
+         }
+
+         return NULL;
+      }
+
       bool needs_image_barriers = false;
 
       if (nir_intrinsic_memory_scope(instr) != SCOPE_NONE) {
@@ -1606,6 +1645,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_fence_pbe_to_tex_agx: {
+      if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         return NULL;
+      }
+
       agx_image_barrier_1(b);
       agx_image_barrier_2(b);
       agx_image_barrier_3(b);
@@ -1614,6 +1658,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_fence_mem_to_tex_agx: {
+      if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_DEVICE);
+         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         return NULL;
+      }
+
       /* Flush out the atomic to main memory... Found experimentally... */
       agx_memory_barrier(b);
       agx_memory_barrier_2(b);
@@ -1630,6 +1680,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_fence_pbe_to_tex_pixel_agx: {
+      if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE);
+         return NULL;
+      }
+
       agx_image_barrier_1(b);
       agx_image_barrier_2(b);
       agx_flush_memory_to_texture(b);
@@ -1639,6 +1694,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
    case nir_intrinsic_fence_helper_exit_agx: {
       assert(b->shader->key->is_helper);
+      if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2) {
+         agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_DEVICE);
+         return NULL;
+      }
+
       agx_memory_barrier(b);
       agx_unknown_barrier_1(b);
       agx_memory_barrier_2(b);

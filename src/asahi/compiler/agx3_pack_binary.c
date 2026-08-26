@@ -993,6 +993,21 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
           agx3_append(emission, encoded.bytes, encoded.length);
 }
 
+static bool
+agx3_emit_scoped_barrier(struct util_dynarray *emission,
+                         enum agx_isa_encoding enc, const agx_instr *I,
+                         uint16_t wait_mask)
+{
+   if (wait_mask != 0 || I->op != AGX_OPCODE_SCOPED_BARRIER_AGX3 ||
+       I->nr_dests != 0 || I->nr_srcs != 0 ||
+       I->imm > AGX3_BARRIER_SCOPE_TEXTURE)
+      return false;
+
+   struct agx3_encoded_scoped_barrier encoded;
+   return agx3_pack_scoped_barrier(enc, I->imm, &encoded) &&
+          agx3_append(emission, encoded.bytes, encoded.length);
+}
+
 /* The grounded AGX3 compare forms are 32-bit and address the lower 128
  * half-registers. Source modifiers and memory/uniform operands select forms
  * whose routing has not been proved. */
@@ -1498,6 +1513,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_SHUFFLE) {
             if (!agx3_emit_simd_broadcast(emission, enc, I, wait))
+               goto fail;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3) {
+            if (!agx3_emit_scoped_barrier(emission, enc, I, wait))
                goto fail;
             continue;
          }

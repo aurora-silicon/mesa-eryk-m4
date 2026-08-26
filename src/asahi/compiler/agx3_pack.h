@@ -45,6 +45,7 @@ extern "C" {
 #define AGX3_YIELD_I16_REG_LENGTH 6
 #define AGX3_NOP_LENGTH 2
 #define AGX3_THREADGROUP_BARRIER_LENGTH 6
+#define AGX3_SCOPED_BARRIER_MAX_LENGTH 12
 #define AGX3_SIMD_BROADCAST_F32_IMM_LENGTH 10
 #define AGX3_INTERSECT_RAY_MAX_LENGTH 14
 #define AGX3_CONTINUE_RAY_MAX_LENGTH 8
@@ -207,6 +208,18 @@ struct agx3_encoded_nop {
 
 struct agx3_encoded_threadgroup_barrier {
    uint8_t bytes[AGX3_THREADGROUP_BARRIER_LENGTH];
+   uint8_t length;
+};
+
+enum agx3_barrier_scope {
+   AGX3_BARRIER_SCOPE_EXECUTION = 0,
+   AGX3_BARRIER_SCOPE_THREADGROUP,
+   AGX3_BARRIER_SCOPE_DEVICE,
+   AGX3_BARRIER_SCOPE_TEXTURE,
+};
+
+struct agx3_encoded_scoped_barrier {
+   uint8_t bytes[AGX3_SCOPED_BARRIER_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -907,6 +920,21 @@ bool agx3_pack_threadgroup_barrier(
 bool agx3_unpack_threadgroup_barrier(enum agx_isa_encoding encoding,
                                      const uint8_t *bytes, size_t available,
                                      uint8_t *length);
+
+/*
+ * Encode/decode the complete field-free AGX3 fence scope family recovered
+ * from five independent Metal mem_flags contrasts on G15G/G16G/G17S.
+ * Execution-only, threadgroup-memory and device-memory scopes are one six-byte
+ * barrier. Texture memory is the exact ordered scope-4/scope-3 pair and is
+ * therefore twelve bytes. Wait attachments remain outside this API.
+ */
+bool agx3_pack_scoped_barrier(enum agx_isa_encoding encoding,
+                              enum agx3_barrier_scope scope,
+                              struct agx3_encoded_scoped_barrier *out);
+bool agx3_unpack_scoped_barrier(enum agx_isa_encoding encoding,
+                                const uint8_t *bytes, size_t available,
+                                enum agx3_barrier_scope *scope,
+                                uint8_t *length);
 
 /*
  * Encode/decode the canonical unconditional shader terminator.  The exact

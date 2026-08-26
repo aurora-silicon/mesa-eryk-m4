@@ -5730,6 +5730,73 @@ test_nop(void)
 }
 
 static void
+test_scoped_barrier(void)
+{
+   static const struct {
+      enum agx_isa_encoding encoding;
+      enum agx3_barrier_scope scope;
+      uint8_t length;
+      uint8_t expected[AGX3_SCOPED_BARRIER_MAX_LENGTH];
+   } vectors[] = {
+      {AGX_ISA_ENCODING_AGX3B, AGX3_BARRIER_SCOPE_EXECUTION, 6,
+       {0x07, 0x04, 0x54, 0x41, 0x09, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, AGX3_BARRIER_SCOPE_THREADGROUP, 6,
+       {0x07, 0x04, 0x54, 0x61, 0x09, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, AGX3_BARRIER_SCOPE_DEVICE, 6,
+       {0x07, 0x04, 0x54, 0x85, 0x08, 0x00}},
+      {AGX_ISA_ENCODING_AGX3B, AGX3_BARRIER_SCOPE_TEXTURE, 12,
+       {0x07, 0x04, 0x54, 0x51, 0x0e, 0x00,
+        0x07, 0x04, 0x54, 0xd1, 0x0e, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, AGX3_BARRIER_SCOPE_EXECUTION, 6,
+       {0x07, 0x51, 0x00, 0x06, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, AGX3_BARRIER_SCOPE_THREADGROUP, 6,
+       {0x27, 0x51, 0x00, 0x06, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, AGX3_BARRIER_SCOPE_DEVICE, 6,
+       {0x0f, 0x69, 0x00, 0x06, 0x00, 0x00}},
+      {AGX_ISA_ENCODING_AGX3C, AGX3_BARRIER_SCOPE_TEXTURE, 12,
+       {0x87, 0x67, 0x00, 0x06, 0x00, 0x00,
+        0x87, 0x5f, 0x00, 0x06, 0x00, 0x00}},
+   };
+
+   for (unsigned v = 0; v < sizeof(vectors) / sizeof(vectors[0]); ++v) {
+      struct agx3_encoded_scoped_barrier packed;
+      CHECK(agx3_pack_scoped_barrier(vectors[v].encoding, vectors[v].scope,
+                                     &packed));
+      CHECK(packed.length == vectors[v].length);
+      CHECK(memcmp(packed.bytes, vectors[v].expected, packed.length) == 0);
+
+      enum agx3_barrier_scope scope = AGX3_BARRIER_SCOPE_EXECUTION;
+      uint8_t length = 0;
+      CHECK(agx3_unpack_scoped_barrier(
+         vectors[v].encoding, vectors[v].expected, vectors[v].length, &scope,
+         &length));
+      CHECK(scope == vectors[v].scope);
+      CHECK(length == vectors[v].length);
+      CHECK(!agx3_unpack_scoped_barrier(
+         vectors[v].encoding, vectors[v].expected, vectors[v].length - 1,
+         &scope, &length));
+   }
+
+   struct agx3_encoded_scoped_barrier packed;
+   enum agx3_barrier_scope scope;
+   uint8_t length;
+   CHECK(!agx3_pack_scoped_barrier(AGX_ISA_ENCODING_AGX2,
+                                    AGX3_BARRIER_SCOPE_DEVICE, &packed));
+   CHECK(!agx3_pack_scoped_barrier(AGX_ISA_ENCODING_AGX3B,
+                                    (enum agx3_barrier_scope)-1, &packed));
+   CHECK(!agx3_pack_scoped_barrier(AGX_ISA_ENCODING_AGX3C,
+                                    AGX3_BARRIER_SCOPE_TEXTURE + 1, &packed));
+   CHECK(!agx3_pack_scoped_barrier(AGX_ISA_ENCODING_AGX3C,
+                                    AGX3_BARRIER_SCOPE_DEVICE, NULL));
+   CHECK(!agx3_unpack_scoped_barrier(
+      AGX_ISA_ENCODING_AGX3B, vectors[0].expected, vectors[0].length, NULL,
+      &length));
+   CHECK(!agx3_unpack_scoped_barrier(
+      AGX_ISA_ENCODING_AGX3B, vectors[0].expected, vectors[0].length, &scope,
+      NULL));
+}
+
+static void
 test_threadgroup_barrier(void)
 {
    static const struct {
@@ -6822,6 +6889,7 @@ main(void)
    test_yield_i16_reg();
    test_yield_i16_reg_rejection();
    test_nop();
+   test_scoped_barrier();
    test_threadgroup_barrier();
    test_simd_broadcast_f32_imm();
    test_end();

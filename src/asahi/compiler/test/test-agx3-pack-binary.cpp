@@ -138,6 +138,39 @@ TEST_F(AGX3PackBinary, SimdBroadcastRefusesUnwitnessedLane)
    pack(b, /*expect_ok=*/false);
 }
 
+TEST_F(AGX3PackBinary, ScopedMemoryBarriers)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (unsigned s = AGX3_BARRIER_SCOPE_EXECUTION;
+           s <= AGX3_BARRIER_SCOPE_TEXTURE; ++s) {
+         agx_builder *b = builder(enc);
+         agx_scoped_barrier_agx3(b, s);
+         agx_stop(b);
+
+         struct agx3_encoded_scoped_barrier barrier;
+         ASSERT_TRUE(agx3_pack_scoped_barrier(
+            enc, (enum agx3_barrier_scope)s, &barrier));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+         std::vector<uint8_t> want;
+         append(want, barrier.bytes, barrier.length);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, ScopedMemoryBarrierRefusesUnknownScope)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE + 1);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
 TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
 {
    for (int e = 0; e < 2; ++e) {
