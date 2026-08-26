@@ -24,6 +24,7 @@
 #include "agx3_scs_core.h"
 #include "agx3_sr_core.h"
 #include "agx3_static_spill_core.h"
+#include "agx3_subgroup_core.h"
 #include "agx3_tex_core.h"
 #include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
@@ -250,6 +251,254 @@ TEST_F(AGX3PackBinary, SimdBroadcastRefusesUnwitnessedLane)
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
    agx_shuffle_to(b, agx_register(4, AGX_SIZE_32),
                   agx_register(0, AGX_SIZE_32), agx_immediate(1));
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
+static void
+build_shuffle(agx_builder *b, bool quad, unsigned op, agx_index dest,
+              agx_index src, agx_index lane)
+{
+   if (!quad) {
+      switch (op) {
+      case AGX3_SUBGROUP_SHUFFLE_BROADCAST:
+         agx_shuffle_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_XOR:
+         agx_shuffle_xor_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_UP:
+         agx_shuffle_up_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_DOWN:
+         agx_shuffle_down_to(b, dest, src, lane);
+         break;
+      default:
+         UNREACHABLE("bad shuffle");
+      }
+   } else {
+      switch (op) {
+      case AGX3_SUBGROUP_SHUFFLE_BROADCAST:
+         agx_quad_shuffle_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_XOR:
+         agx_quad_shuffle_xor_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_UP:
+         agx_quad_shuffle_up_to(b, dest, src, lane);
+         break;
+      case AGX3_SUBGROUP_SHUFFLE_DOWN:
+         agx_quad_shuffle_down_to(b, dest, src, lane);
+         break;
+      default:
+         UNREACHABLE("bad shuffle");
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, RegisterAndUniformSubgroupShuffles)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (unsigned quad = 0; quad < 2; ++quad) {
+         for (unsigned op = 0; op < AGX3_SUBGROUP_SHUFFLE_NUM; ++op) {
+            for (unsigned uniform = 0; uniform < 2; ++uniform) {
+               agx_builder *b = builder(enc);
+               const agx_index lane = uniform ? agx_uniform(8, AGX_SIZE_32)
+                                              : agx_register(8, AGX_SIZE_32);
+               build_shuffle(b, quad, op, agx_register(4, AGX_SIZE_32),
+                             agx_register(2, AGX_SIZE_32), lane);
+               agx_stop(b);
+
+               const struct agx3_subgroup_shuffle_desc d = {
+                  .quad = (bool)quad,
+                  .op = (enum agx3_subgroup_shuffle_op)op,
+                  .lane_kind = uniform ? AGX3_SUBGROUP_LANE_UNIFORM
+                                       : AGX3_SUBGROUP_LANE_REGISTER,
+                  .dest = 4,
+                  .src = 2,
+                  .lane = 8,
+               };
+               uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
+               ASSERT_TRUE(agx3_subgroup_encode_shuffle(enc, &d, subgroup,
+                                                         &subgroup_len));
+               struct agx3_encoded_end end;
+               ASSERT_TRUE(agx3_pack_end(enc, &end));
+               std::vector<uint8_t> want;
+               append(want, subgroup, subgroup_len);
+               append(want, end.bytes, end.length);
+               EXPECT_EQ(pack(b), want);
+            }
+         }
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, BallotCompareZero)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (unsigned quad = 0; quad < 2; ++quad) {
+         for (unsigned floating = 0; floating < 2; ++floating) {
+            agx_builder *b = builder(enc);
+            if (floating) {
+               if (quad)
+                  agx_fcmp_quad_ballot_to(
+                     b, agx_register(4, AGX_SIZE_32),
+                     agx_register(2, AGX_SIZE_32), agx_zero(), AGX_FCOND_LT,
+                     false);
+               else
+                  agx_fcmp_ballot_to(b, agx_register(4, AGX_SIZE_32),
+                                     agx_register(2, AGX_SIZE_32), agx_zero(),
+                                     AGX_FCOND_LT, false);
+            } else {
+               if (quad)
+                  agx_icmp_quad_ballot_to(
+                     b, agx_register(4, AGX_SIZE_32),
+                     agx_register(2, AGX_SIZE_32), agx_zero(), AGX_ICOND_UEQ,
+                     true);
+               else
+                  agx_icmp_ballot_to(b, agx_register(4, AGX_SIZE_32),
+                                     agx_register(2, AGX_SIZE_32), agx_zero(),
+                                     AGX_ICOND_UEQ, true);
+            }
+            agx_stop(b);
+
+            const struct agx3_subgroup_ballot_desc d = {
+               .quad = (bool)quad,
+               .type = floating ? AGX3_SUBGROUP_BALLOT_FLOAT
+                                : AGX3_SUBGROUP_BALLOT_INTEGER,
+               .dest = 4,
+               .src = 2,
+               .condition = (uint8_t)(floating ? 1 : 4),
+               .invert = !floating,
+            };
+            uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
+            ASSERT_TRUE(agx3_subgroup_encode_ballot(enc, &d, subgroup,
+                                                     &subgroup_len));
+            struct agx3_encoded_end end;
+            ASSERT_TRUE(agx3_pack_end(enc, &end));
+            std::vector<uint8_t> want;
+            append(want, subgroup, subgroup_len);
+            append(want, end.bytes, end.length);
+            EXPECT_EQ(pack(b), want);
+         }
+      }
+   }
+}
+
+static enum agx_simd_op
+mesa_reduce_op(unsigned op)
+{
+   static const enum agx_simd_op map[] = {
+      AGX_SIMD_OP_AND,  AGX_SIMD_OP_FADD, AGX_SIMD_OP_OR,
+      AGX_SIMD_OP_FMUL, AGX_SIMD_OP_XOR,  AGX_SIMD_OP_FMIN,
+      AGX_SIMD_OP_FMAX, AGX_SIMD_OP_IADD, AGX_SIMD_OP_SMIN,
+      AGX_SIMD_OP_SMAX, AGX_SIMD_OP_UMIN, AGX_SIMD_OP_UMAX,
+   };
+   return map[op];
+}
+
+TEST_F(AGX3PackBinary, SimdReductionsAndExactPrefixes)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (unsigned op = 0; op < AGX3_SUBGROUP_REDUCE_NUM; ++op) {
+         agx_builder *b = builder(enc);
+         agx_simd_reduce_to(b, agx_register(4, AGX_SIZE_32),
+                            agx_register(2, AGX_SIZE_32), mesa_reduce_op(op));
+         agx_stop(b);
+         const struct agx3_subgroup_reduce_desc d = {
+            .op = (enum agx3_subgroup_reduce_op)op,
+            .dest = 4,
+            .src = 2,
+         };
+         uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
+         ASSERT_TRUE(agx3_subgroup_encode_reduce(enc, &d, subgroup,
+                                                  &subgroup_len));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         std::vector<uint8_t> want;
+         append(want, subgroup, subgroup_len);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+
+      for (unsigned op : {AGX3_SUBGROUP_REDUCE_FADD,
+                          AGX3_SUBGROUP_REDUCE_FMUL,
+                          AGX3_SUBGROUP_REDUCE_FMIN,
+                          AGX3_SUBGROUP_REDUCE_FMAX,
+                          AGX3_SUBGROUP_REDUCE_IADD}) {
+         agx_builder *b = builder(enc);
+         agx_quad_reduce_to(b, agx_register(4, AGX_SIZE_32),
+                            agx_register(2, AGX_SIZE_32), mesa_reduce_op(op));
+         agx_stop(b);
+         const struct agx3_subgroup_reduce_desc d = {
+            .quad = true,
+            .op = (enum agx3_subgroup_reduce_op)op,
+            .dest = 4,
+            .src = 2,
+         };
+         uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
+         ASSERT_TRUE(agx3_subgroup_encode_reduce(enc, &d, subgroup,
+                                                  &subgroup_len));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         std::vector<uint8_t> want;
+         append(want, subgroup, subgroup_len);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+
+      for (unsigned op : {AGX3_SUBGROUP_REDUCE_FADD,
+                          AGX3_SUBGROUP_REDUCE_FMUL,
+                          AGX3_SUBGROUP_REDUCE_IADD}) {
+         agx_builder *b = builder(enc);
+         agx_simd_prefix_to(b, agx_register(4, AGX_SIZE_32),
+                            agx_register(2, AGX_SIZE_32), mesa_reduce_op(op));
+         agx_stop(b);
+         const struct agx3_subgroup_reduce_desc d = {
+            .prefix = true,
+            .op = (enum agx3_subgroup_reduce_op)op,
+            .dest = 4,
+            .src = 2,
+         };
+         uint8_t subgroup[AGX3_SUBGROUP_MAX_LENGTH], subgroup_len = 0;
+         ASSERT_TRUE(agx3_subgroup_encode_reduce(enc, &d, subgroup,
+                                                  &subgroup_len));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         std::vector<uint8_t> want;
+         append(want, subgroup, subgroup_len);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, SubgroupUnknownAxesFailClosed)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_icmp_ballot_to(b, agx_register(4, AGX_SIZE_32),
+                      agx_register(2, AGX_SIZE_32), agx_immediate(1),
+                      AGX_ICOND_SEQ, false);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+
+   b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_simd_reduce_to(b, agx_register(4, AGX_SIZE_16),
+                      agx_register(2, AGX_SIZE_16), AGX_SIMD_OP_IADD);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+
+   b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_index killed = agx_register(2, AGX_SIZE_32);
+   killed.kill = true;
+   agx_simd_reduce_to(b, agx_register(4, AGX_SIZE_32), killed,
+                      AGX_SIMD_OP_IADD);
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
 }

@@ -36,6 +36,7 @@
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
 #include "agx3_static_spill_core.h"
+#include "agx3_subgroup_core.h"
 #include "agx3_tex_core.h"
 #include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
@@ -1203,10 +1204,15 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return true;
 }
 
-/* Emit the bounded subgroup broadcast shape already recovered from the
- * SB_bcast0/SB_bcast3 corpus.  The generic Mesa `shuffle` operation is a SIMD
- * broadcast when its lane is immediate; all other subgroup/quad directions,
- * lane kinds, widths and dependency-marker shapes remain fail-closed. */
+static bool
+agx3_subgroup_plain(agx_index index, enum agx_index_type type)
+{
+   return index.type == type && !index.memory && index.size == AGX_SIZE_32 &&
+          agx_channels(index) == 1 && !index.abs && !index.neg && !index.cache &&
+          !index.discard && !index.kill && (index.value & 1) == 0;
+}
+
+/* Preserve the older bounded immediate broadcast witnesses. */
 static bool
 agx3_emit_simd_broadcast(struct util_dynarray *emission,
                          enum agx_isa_encoding enc, const agx_instr *I,
@@ -1227,6 +1233,181 @@ agx3_emit_simd_broadcast(struct util_dynarray *emission,
              enc, I->dest[0].value, I->src[0].value, I->src[1].value,
              &encoded) &&
           agx3_append(emission, encoded.bytes, encoded.length);
+}
+
+static bool
+agx3_map_shuffle(unsigned op, bool *quad,
+                 enum agx3_subgroup_shuffle_op *shuffle)
+{
+   *quad = false;
+   switch (op) {
+   case AGX_OPCODE_SHUFFLE:
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_BROADCAST;
+      return true;
+   case AGX_OPCODE_SHUFFLE_XOR:
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_XOR;
+      return true;
+   case AGX_OPCODE_SHUFFLE_UP:
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_UP;
+      return true;
+   case AGX_OPCODE_SHUFFLE_DOWN:
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_DOWN;
+      return true;
+   case AGX_OPCODE_QUAD_SHUFFLE:
+      *quad = true;
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_BROADCAST;
+      return true;
+   case AGX_OPCODE_QUAD_SHUFFLE_XOR:
+      *quad = true;
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_XOR;
+      return true;
+   case AGX_OPCODE_QUAD_SHUFFLE_UP:
+      *quad = true;
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_UP;
+      return true;
+   case AGX_OPCODE_QUAD_SHUFFLE_DOWN:
+      *quad = true;
+      *shuffle = AGX3_SUBGROUP_SHUFFLE_DOWN;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+agx3_emit_subgroup_shuffle(struct util_dynarray *emission,
+                           enum agx_isa_encoding enc, const agx_instr *I,
+                           uint16_t wait_mask)
+{
+   bool quad;
+   enum agx3_subgroup_shuffle_op op;
+   if (!agx3_map_shuffle(I->op, &quad, &op))
+      return false;
+
+   if (I->op == AGX_OPCODE_SHUFFLE && I->nr_srcs == 2 &&
+       I->src[1].type == AGX_INDEX_IMMEDIATE)
+      return agx3_emit_simd_broadcast(emission, enc, I, wait_mask);
+
+   if (I->nr_dests != 1 || I->nr_srcs != 2 || I->saturate ||
+       !agx3_subgroup_plain(I->dest[0], AGX_INDEX_REGISTER) ||
+       !agx3_subgroup_plain(I->src[0], AGX_INDEX_REGISTER))
+      return false;
+
+   enum agx3_subgroup_lane_kind lane_kind;
+   if (agx3_subgroup_plain(I->src[1], AGX_INDEX_REGISTER))
+      lane_kind = AGX3_SUBGROUP_LANE_REGISTER;
+   else if (agx3_subgroup_plain(I->src[1], AGX_INDEX_UNIFORM))
+      lane_kind = AGX3_SUBGROUP_LANE_UNIFORM;
+   else
+      return false;
+
+   const struct agx3_subgroup_shuffle_desc d = {
+      .quad = quad,
+      .op = op,
+      .lane_kind = lane_kind,
+      .dest = I->dest[0].value,
+      .src = I->src[0].value,
+      .lane = I->src[1].value,
+      .wait_mask = wait_mask,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_shuffle(enc, &d, bytes, &length) &&
+          agx3_append(emission, bytes, length);
+}
+
+static bool
+agx3_map_reduce_op(enum agx_simd_op in, enum agx3_subgroup_reduce_op *out)
+{
+   switch (in) {
+   case AGX_SIMD_OP_AND:  *out = AGX3_SUBGROUP_REDUCE_AND; return true;
+   case AGX_SIMD_OP_FADD: *out = AGX3_SUBGROUP_REDUCE_FADD; return true;
+   case AGX_SIMD_OP_OR:   *out = AGX3_SUBGROUP_REDUCE_OR; return true;
+   case AGX_SIMD_OP_FMUL: *out = AGX3_SUBGROUP_REDUCE_FMUL; return true;
+   case AGX_SIMD_OP_XOR:  *out = AGX3_SUBGROUP_REDUCE_XOR; return true;
+   case AGX_SIMD_OP_FMIN: *out = AGX3_SUBGROUP_REDUCE_FMIN; return true;
+   case AGX_SIMD_OP_FMAX: *out = AGX3_SUBGROUP_REDUCE_FMAX; return true;
+   case AGX_SIMD_OP_IADD: *out = AGX3_SUBGROUP_REDUCE_IADD; return true;
+   case AGX_SIMD_OP_SMIN: *out = AGX3_SUBGROUP_REDUCE_SMIN; return true;
+   case AGX_SIMD_OP_SMAX: *out = AGX3_SUBGROUP_REDUCE_SMAX; return true;
+   case AGX_SIMD_OP_UMIN: *out = AGX3_SUBGROUP_REDUCE_UMIN; return true;
+   case AGX_SIMD_OP_UMAX: *out = AGX3_SUBGROUP_REDUCE_UMAX; return true;
+   default: return false;
+   }
+}
+
+static bool
+agx3_emit_subgroup_reduce(struct util_dynarray *emission,
+                          enum agx_isa_encoding enc, const agx_instr *I,
+                          uint16_t wait_mask)
+{
+   const bool quad = I->op == AGX_OPCODE_QUAD_REDUCE ||
+                     I->op == AGX_OPCODE_QUAD_PREFIX;
+   const bool prefix = I->op == AGX_OPCODE_SIMD_PREFIX ||
+                       I->op == AGX_OPCODE_QUAD_PREFIX;
+   if (I->nr_dests != 1 || I->nr_srcs != 1 || I->saturate ||
+       !agx3_subgroup_plain(I->dest[0], AGX_INDEX_REGISTER) ||
+       !agx3_subgroup_plain(I->src[0], AGX_INDEX_REGISTER))
+      return false;
+
+   enum agx3_subgroup_reduce_op op;
+   if (!agx3_map_reduce_op(I->simd_op, &op))
+      return false;
+   const struct agx3_subgroup_reduce_desc d = {
+      .quad = quad,
+      .prefix = prefix,
+      .op = op,
+      .dest = I->dest[0].value,
+      .src = I->src[0].value,
+      .wait_mask = wait_mask,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_reduce(enc, &d, bytes, &length) &&
+          agx3_append(emission, bytes, length);
+}
+
+static bool
+agx3_emit_subgroup_ballot(struct util_dynarray *emission,
+                          enum agx_isa_encoding enc, const agx_instr *I,
+                          uint16_t wait_mask)
+{
+   const bool is_float = I->op == AGX_OPCODE_FCMP_BALLOT ||
+                         I->op == AGX_OPCODE_FCMP_QUAD_BALLOT;
+   const bool quad = I->op == AGX_OPCODE_ICMP_QUAD_BALLOT ||
+                     I->op == AGX_OPCODE_FCMP_QUAD_BALLOT;
+   if (I->nr_dests != 1 || I->nr_srcs != 2 || I->saturate ||
+       !agx3_subgroup_plain(I->dest[0], AGX_INDEX_REGISTER) ||
+       !agx3_subgroup_plain(I->src[0], AGX_INDEX_REGISTER) ||
+       I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0 ||
+       I->src[1].memory || I->src[1].abs || I->src[1].neg ||
+       I->src[1].cache || I->src[1].discard || I->src[1].kill)
+      return false;
+
+   uint8_t condition;
+   if (is_float) {
+      condition = I->fcond;
+   } else {
+      switch (I->icond) {
+      case AGX_ICOND_UEQ:
+      case AGX_ICOND_SEQ: condition = 4; break;
+      case AGX_ICOND_SLT: condition = 5; break;
+      case AGX_ICOND_SGT: condition = 6; break;
+      default: return false;
+      }
+   }
+
+   const struct agx3_subgroup_ballot_desc d = {
+      .quad = quad,
+      .type = is_float ? AGX3_SUBGROUP_BALLOT_FLOAT
+                       : AGX3_SUBGROUP_BALLOT_INTEGER,
+      .dest = I->dest[0].value,
+      .src = I->src[0].value,
+      .condition = condition,
+      .invert = I->invert_cond,
+      .wait_mask = wait_mask,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_ballot(enc, &d, bytes, &length) &&
+          agx3_append(emission, bytes, length);
 }
 
 static bool
@@ -1796,8 +1977,28 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
-         if (I->op == AGX_OPCODE_SHUFFLE) {
-            if (!agx3_emit_simd_broadcast(emission, enc, I, wait))
+         bool subgroup_quad;
+         enum agx3_subgroup_shuffle_op subgroup_shuffle;
+         if (agx3_map_shuffle(I->op, &subgroup_quad, &subgroup_shuffle)) {
+            if (!agx3_emit_subgroup_shuffle(emission, enc, I, wait))
+               goto fail;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_SIMD_REDUCE ||
+             I->op == AGX_OPCODE_QUAD_REDUCE ||
+             I->op == AGX_OPCODE_SIMD_PREFIX ||
+             I->op == AGX_OPCODE_QUAD_PREFIX) {
+            if (!agx3_emit_subgroup_reduce(emission, enc, I, wait))
+               goto fail;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_ICMP_BALLOT ||
+             I->op == AGX_OPCODE_ICMP_QUAD_BALLOT ||
+             I->op == AGX_OPCODE_FCMP_BALLOT ||
+             I->op == AGX_OPCODE_FCMP_QUAD_BALLOT) {
+            if (!agx3_emit_subgroup_ballot(emission, enc, I, wait))
                goto fail;
             continue;
          }
