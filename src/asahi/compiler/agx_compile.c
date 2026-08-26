@@ -3871,6 +3871,16 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
           "agx_preprocess_nir is called first, then the shader is specalized,"
           "then the specialized shader is compiled");
 
+   /* The AGX3 backend has byte-grounded traversal/SCS codecs, but no complete
+    * NIR ray-query lowering yet.  Reject before instruction selection reaches
+    * its fatal unhandled-intrinsic path, and keep the output transactional.
+    * This gate is removed only together with the full lowering and scheduling
+    * contract; it does not prevent direct internal encoder tests. */
+   if (nir->info.ray_queries != 0 &&
+       (key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
+        key->dev.encoding == AGX_ISA_ENCODING_AGX3C))
+      return false;
+
    /* If required, tag writes will be enabled by instruction selection */
    if (nir->info.stage == MESA_SHADER_FRAGMENT)
       info->tag_write_disable = !nir->info.writes_memory;

@@ -285,4 +285,17 @@ if with_tests
     suite : ['asahi'],
     protocol : 'gtest',
   )
+
+  test(
+    'agx3_compile_fail_closed',
+    executable(
+      'agx3_compile_fail_closed_test',
+      files('test/test-agx3-compile-fail-closed.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
 endif
