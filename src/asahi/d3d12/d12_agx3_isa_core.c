@@ -9,6 +9,7 @@
 #include "asahi/compiler/agx3_local_tps_core.h"
 #include "asahi/compiler/agx3_pack.h"
 #include "asahi/compiler/agx3_static_spill_core.h"
+#include "asahi/compiler/agx3_subgroup_core.h"
 #include "asahi/compiler/agx3_tex_core.h"
 #include "asahi/compiler/agx3_tile_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
@@ -65,6 +66,8 @@ _Static_assert(AGX3_YIELD_I16_REG_LENGTH == D12_AGX3_YIELD_I16_REG_LENGTH,
 _Static_assert(AGX3_SIMD_BROADCAST_F32_IMM_LENGTH ==
                   D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH,
                "D3D AGX3 wave-lane storage must match the canonical form");
+_Static_assert(AGX3_SUBGROUP_MAX_LENGTH == D12_AGX3_SUBGROUP_MAX_LENGTH,
+               "D3D AGX3 subgroup storage must match the shared encoder");
 _Static_assert(AGX3_END_LENGTH ==
                   D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH,
                "D3D AGX3 terminal wait storage must match canonical end");
@@ -139,6 +142,108 @@ d12_agx3_subgroup_target_encoding(enum agx_chip chip,
       return true;
    case AGX_CHIP_G17S:
       *encoding = AGX_ISA_ENCODING_AGX3C;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_map_subgroup_scope(enum d12_agx3_subgroup_scope scope, bool *quad)
+{
+   switch (scope) {
+   case D12_AGX3_SUBGROUP_SCOPE_WAVE:
+      *quad = false;
+      return true;
+   case D12_AGX3_SUBGROUP_SCOPE_QUAD:
+      *quad = true;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_map_subgroup_shuffle(
+   enum d12_agx3_subgroup_shuffle_op op,
+   enum agx3_subgroup_shuffle_op *shared)
+{
+   switch (op) {
+   case D12_AGX3_SUBGROUP_SHUFFLE_READ_LANE_AT:
+      *shared = AGX3_SUBGROUP_SHUFFLE_BROADCAST;
+      return true;
+   case D12_AGX3_SUBGROUP_SHUFFLE_XOR:
+      *shared = AGX3_SUBGROUP_SHUFFLE_XOR;
+      return true;
+   case D12_AGX3_SUBGROUP_SHUFFLE_UP:
+      *shared = AGX3_SUBGROUP_SHUFFLE_UP;
+      return true;
+   case D12_AGX3_SUBGROUP_SHUFFLE_DOWN:
+      *shared = AGX3_SUBGROUP_SHUFFLE_DOWN;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_map_subgroup_lane(
+   enum d12_agx3_subgroup_lane_source source,
+   enum agx3_subgroup_lane_kind *shared)
+{
+   switch (source) {
+   case D12_AGX3_SUBGROUP_LANE_REGISTER:
+      *shared = AGX3_SUBGROUP_LANE_REGISTER;
+      return true;
+   case D12_AGX3_SUBGROUP_LANE_UNIFORM:
+      *shared = AGX3_SUBGROUP_LANE_UNIFORM;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_map_subgroup_reduce(
+   enum d12_agx3_subgroup_reduce_op op,
+   enum agx3_subgroup_reduce_op *shared)
+{
+   switch (op) {
+   case D12_AGX3_SUBGROUP_REDUCE_AND_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_AND;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_FADD_F32:
+      *shared = AGX3_SUBGROUP_REDUCE_FADD;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_OR_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_OR;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_FMUL_F32:
+      *shared = AGX3_SUBGROUP_REDUCE_FMUL;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_XOR_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_XOR;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_FMIN_F32:
+      *shared = AGX3_SUBGROUP_REDUCE_FMIN;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_FMAX_F32:
+      *shared = AGX3_SUBGROUP_REDUCE_FMAX;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_IADD_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_IADD;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_SMIN_I32:
+      *shared = AGX3_SUBGROUP_REDUCE_SMIN;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_SMAX_I32:
+      *shared = AGX3_SUBGROUP_REDUCE_SMAX;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_UMIN_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_UMIN;
+      return true;
+   case D12_AGX3_SUBGROUP_REDUCE_UMAX_U32:
+      *shared = AGX3_SUBGROUP_REDUCE_UMAX;
       return true;
    default:
       return false;
@@ -2204,6 +2309,176 @@ d12_agx3_decode_wave_read_lane_at_f32_imm(
    *src = decoded_src;
    *lane = decoded_lane;
    return true;
+}
+
+static bool
+d12_agx3_store_subgroup(const uint8_t *bytes, uint8_t length,
+                        struct d12_agx3_subgroup_encoding *out)
+{
+   if (length == 0 || length > sizeof(out->bytes))
+      return false;
+
+   memcpy(out->bytes, bytes, length);
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_subgroup_shuffle(
+   enum agx_chip chip, const struct d12_agx3_subgroup_shuffle_desc *desc,
+   struct d12_agx3_subgroup_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+   if (!desc)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   bool quad;
+   enum agx3_subgroup_shuffle_op op;
+   enum agx3_subgroup_lane_kind lane_kind;
+   if (!d12_agx3_subgroup_target_encoding(chip, &encoding) ||
+       !d12_agx3_map_subgroup_scope(desc->scope, &quad) ||
+       !d12_agx3_map_subgroup_shuffle(desc->op, &op) ||
+       !d12_agx3_map_subgroup_lane(desc->lane_source, &lane_kind))
+      return false;
+
+   const struct agx3_subgroup_shuffle_desc shared = {
+      .quad = quad,
+      .op = op,
+      .lane_kind = lane_kind,
+      .dest = desc->dest,
+      .src = desc->src,
+      .lane = desc->lane,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_shuffle(encoding, &shared, bytes, &length) &&
+          d12_agx3_store_subgroup(bytes, length, out);
+}
+
+bool
+d12_agx3_encode_zero_compare_ballot(
+   enum agx_chip chip, const struct d12_agx3_zero_ballot_desc *desc,
+   struct d12_agx3_subgroup_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+   if (!desc)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   bool quad, invert = false;
+   enum agx3_subgroup_ballot_type type;
+   uint8_t condition;
+   if (!d12_agx3_subgroup_target_encoding(chip, &encoding) ||
+       !d12_agx3_map_subgroup_scope(desc->scope, &quad))
+      return false;
+
+   switch (desc->type) {
+   case D12_AGX3_ZERO_BALLOT_I32:
+      type = AGX3_SUBGROUP_BALLOT_INTEGER;
+      switch (desc->predicate) {
+      case D12_AGX3_ZERO_BALLOT_EQUAL:
+         condition = 4;
+         break;
+      case D12_AGX3_ZERO_BALLOT_NOT_EQUAL:
+         condition = 4;
+         invert = true;
+         break;
+      case D12_AGX3_ZERO_BALLOT_LESS:
+         condition = 5;
+         break;
+      case D12_AGX3_ZERO_BALLOT_GREATER_EQUAL:
+         condition = 5;
+         invert = true;
+         break;
+      case D12_AGX3_ZERO_BALLOT_GREATER:
+         condition = 6;
+         break;
+      case D12_AGX3_ZERO_BALLOT_LESS_EQUAL:
+         condition = 6;
+         invert = true;
+         break;
+      default:
+         return false;
+      }
+      break;
+
+   case D12_AGX3_ZERO_BALLOT_F32:
+      type = AGX3_SUBGROUP_BALLOT_FLOAT;
+      switch (desc->predicate) {
+      case D12_AGX3_ZERO_BALLOT_EQUAL:
+         condition = 0;
+         break;
+      case D12_AGX3_ZERO_BALLOT_NOT_EQUAL:
+         condition = 0;
+         invert = true;
+         break;
+      case D12_AGX3_ZERO_BALLOT_LESS:
+         condition = 1;
+         break;
+      case D12_AGX3_ZERO_BALLOT_GREATER_EQUAL:
+         condition = 5;
+         break;
+      case D12_AGX3_ZERO_BALLOT_GREATER:
+         condition = 2;
+         break;
+      case D12_AGX3_ZERO_BALLOT_LESS_EQUAL:
+         condition = 6;
+         break;
+      default:
+         return false;
+      }
+      break;
+
+   default:
+      return false;
+   }
+
+   const struct agx3_subgroup_ballot_desc shared = {
+      .quad = quad,
+      .type = type,
+      .dest = desc->dest,
+      .src = desc->src,
+      .condition = condition,
+      .invert = invert,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_ballot(encoding, &shared, bytes, &length) &&
+          d12_agx3_store_subgroup(bytes, length, out);
+}
+
+bool
+d12_agx3_encode_subgroup_reduce(
+   enum agx_chip chip, const struct d12_agx3_subgroup_reduce_desc *desc,
+   struct d12_agx3_subgroup_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+   if (!desc)
+      return false;
+
+   enum agx_isa_encoding encoding;
+   bool quad;
+   enum agx3_subgroup_reduce_op op;
+   if (!d12_agx3_subgroup_target_encoding(chip, &encoding) ||
+       !d12_agx3_map_subgroup_scope(desc->scope, &quad) ||
+       !d12_agx3_map_subgroup_reduce(desc->op, &op))
+      return false;
+
+   const struct agx3_subgroup_reduce_desc shared = {
+      .quad = quad,
+      .prefix = desc->prefix,
+      .op = op,
+      .dest = desc->dest,
+      .src = desc->src,
+   };
+   uint8_t bytes[AGX3_SUBGROUP_MAX_LENGTH], length = 0;
+   return agx3_subgroup_encode_reduce(encoding, &shared, bytes, &length) &&
+          d12_agx3_store_subgroup(bytes, length, out);
 }
 
 bool

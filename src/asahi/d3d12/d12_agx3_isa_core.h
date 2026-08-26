@@ -34,6 +34,7 @@ extern "C" {
 #define D12_AGX3_F32_TO_INT_RTZ_REG_LENGTH 10
 #define D12_AGX3_YIELD_I16_REG_LENGTH 6
 #define D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH 10
+#define D12_AGX3_SUBGROUP_MAX_LENGTH 16
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 #define D12_AGX3_CF_MAX_LENGTH 14
 #define D12_AGX3_VARY_MAX_LENGTH 10
@@ -245,6 +246,84 @@ struct d12_agx3_static_spill_desc {
    uint16_t wait_mask;
 };
 
+/* Register-ready wave/quad forms used after DXIL subgroup lowering. */
+enum d12_agx3_subgroup_scope {
+   D12_AGX3_SUBGROUP_SCOPE_WAVE = 0,
+   D12_AGX3_SUBGROUP_SCOPE_QUAD,
+};
+
+enum d12_agx3_subgroup_shuffle_op {
+   /* WaveReadLaneAt / QuadReadLaneAt after the lane is materialized. */
+   D12_AGX3_SUBGROUP_SHUFFLE_READ_LANE_AT = 0,
+   D12_AGX3_SUBGROUP_SHUFFLE_XOR,
+   D12_AGX3_SUBGROUP_SHUFFLE_UP,
+   D12_AGX3_SUBGROUP_SHUFFLE_DOWN,
+};
+
+enum d12_agx3_subgroup_lane_source {
+   D12_AGX3_SUBGROUP_LANE_REGISTER = 0,
+   D12_AGX3_SUBGROUP_LANE_UNIFORM,
+};
+
+struct d12_agx3_subgroup_shuffle_desc {
+   enum d12_agx3_subgroup_scope scope;
+   enum d12_agx3_subgroup_shuffle_op op;
+   enum d12_agx3_subgroup_lane_source lane_source;
+   uint16_t dest;
+   uint16_t src;
+   uint16_t lane;
+};
+
+enum d12_agx3_zero_ballot_type {
+   D12_AGX3_ZERO_BALLOT_I32 = 0,
+   D12_AGX3_ZERO_BALLOT_F32,
+};
+
+/* Integer ordering is signed. Float ordering follows the recovered f32
+ * condition forms; NOT_EQUAL is the exact inverted-equality witness. */
+enum d12_agx3_zero_ballot_predicate {
+   D12_AGX3_ZERO_BALLOT_EQUAL = 0,
+   D12_AGX3_ZERO_BALLOT_NOT_EQUAL,
+   D12_AGX3_ZERO_BALLOT_LESS,
+   D12_AGX3_ZERO_BALLOT_GREATER_EQUAL,
+   D12_AGX3_ZERO_BALLOT_GREATER,
+   D12_AGX3_ZERO_BALLOT_LESS_EQUAL,
+};
+
+struct d12_agx3_zero_ballot_desc {
+   enum d12_agx3_subgroup_scope scope;
+   enum d12_agx3_zero_ballot_type type;
+   enum d12_agx3_zero_ballot_predicate predicate;
+   uint16_t dest;
+   uint16_t src;
+};
+
+/* WaveActive* and WavePrefix* register-ready operations. Prefix is grounded
+ * only for FADD_F32, FMUL_F32 and IADD_U32; the shared encoder rejects every
+ * unsupported wave/quad/operation combination. */
+enum d12_agx3_subgroup_reduce_op {
+   D12_AGX3_SUBGROUP_REDUCE_AND_U32 = 0,
+   D12_AGX3_SUBGROUP_REDUCE_FADD_F32,
+   D12_AGX3_SUBGROUP_REDUCE_OR_U32,
+   D12_AGX3_SUBGROUP_REDUCE_FMUL_F32,
+   D12_AGX3_SUBGROUP_REDUCE_XOR_U32,
+   D12_AGX3_SUBGROUP_REDUCE_FMIN_F32,
+   D12_AGX3_SUBGROUP_REDUCE_FMAX_F32,
+   D12_AGX3_SUBGROUP_REDUCE_IADD_U32,
+   D12_AGX3_SUBGROUP_REDUCE_SMIN_I32,
+   D12_AGX3_SUBGROUP_REDUCE_SMAX_I32,
+   D12_AGX3_SUBGROUP_REDUCE_UMIN_U32,
+   D12_AGX3_SUBGROUP_REDUCE_UMAX_U32,
+};
+
+struct d12_agx3_subgroup_reduce_desc {
+   enum d12_agx3_subgroup_scope scope;
+   enum d12_agx3_subgroup_reduce_op op;
+   bool prefix;
+   uint16_t dest;
+   uint16_t src;
+};
+
 struct d12_agx3_binary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
    uint8_t length;
@@ -332,6 +411,11 @@ struct d12_agx3_yield_i16_reg_encoding {
 
 struct d12_agx3_wave_read_lane_at_f32_imm_encoding {
    uint8_t bytes[D12_AGX3_WAVE_READ_LANE_AT_F32_IMM_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_subgroup_encoding {
+   uint8_t bytes[D12_AGX3_SUBGROUP_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -721,6 +805,22 @@ bool d12_agx3_encode_wave_read_lane_at_f32_imm(
 bool d12_agx3_decode_wave_read_lane_at_f32_imm(
    enum agx_chip chip, const void *instruction, uint32_t instruction_size,
    uint16_t *dest, uint16_t *src, uint8_t *lane);
+
+/* Encode only the exact dynamic-lane, zero-compare and aggregation families
+ * recovered on G15G, G16G and G17S. Operands are scalar f32/i32 half-register
+ * indices; a uniform lane is an even 0..510 uniform half-register index.
+ * These APIs are a bounded post-lowering ISA bridge only: they do not lower
+ * DXIL, schedule dependency markers, expose wave caps, or enable runtime use.
+ */
+bool d12_agx3_encode_subgroup_shuffle(
+   enum agx_chip chip, const struct d12_agx3_subgroup_shuffle_desc *desc,
+   struct d12_agx3_subgroup_encoding *out);
+bool d12_agx3_encode_zero_compare_ballot(
+   enum agx_chip chip, const struct d12_agx3_zero_ballot_desc *desc,
+   struct d12_agx3_subgroup_encoding *out);
+bool d12_agx3_encode_subgroup_reduce(
+   enum agx_chip chip, const struct d12_agx3_subgroup_reduce_desc *desc,
+   struct d12_agx3_subgroup_encoding *out);
 
 /*
  * Encode/decode only the dependency mask carried by a canonical terminal

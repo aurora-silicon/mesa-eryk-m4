@@ -85,6 +85,7 @@ done
     "$repo_root/src/asahi/compiler/agx3_vary_core.c" \
     "$repo_root/src/asahi/compiler/agx3_local_tps_core.c" \
     "$repo_root/src/asahi/compiler/agx3_static_spill_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_subgroup_core.c" \
     "$repo_root/src/asahi/compiler/agx3_binder.c" \
     "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
     "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \

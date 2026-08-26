@@ -7,6 +7,7 @@
 
 #include "asahi/compiler/agx3_cf_core.h"
 #include "asahi/compiler/agx3_pack.h"
+#include "asahi/compiler/agx3_subgroup_core.h"
 #include "asahi/compiler/agx3_tile_core.h"
 #include "asahi/compiler/agx3_vary_core.h"
 
@@ -5938,6 +5939,388 @@ check_tile_encoding(const struct d12_agx3_tile_encoding *encoded,
    return 0;
 }
 
+static bool
+subgroup_encoding_is_cleared(const struct d12_agx3_subgroup_encoding *encoded)
+{
+   const struct d12_agx3_subgroup_encoding zero = {0};
+   return memcmp(encoded, &zero, sizeof(zero)) == 0;
+}
+
+static int
+check_subgroup_encoding(const struct d12_agx3_subgroup_encoding *encoded,
+                        const uint8_t *expected, uint8_t length)
+{
+   CHECK(encoded->length == length);
+   CHECK(memcmp(encoded->bytes, expected, length) == 0);
+   for (unsigned i = length; i < sizeof(encoded->bytes); ++i)
+      CHECK(encoded->bytes[i] == 0);
+   return 0;
+}
+
+static int
+check_dynamic_subgroup_shuffle_bridge(void)
+{
+   static const struct integer_target targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const uint8_t reg_b[] = {
+      0x47, 0x04, 0x54, 0x04, 0x03, 0x00, 0x08, 0x2c, 0x1a, 0x00,
+   };
+   static const uint8_t reg_c[] = {
+      0x27, 0x80, 0x01, 0x1a, 0x28, 0x00, 0xa8, 0x0a, 0x08, 0x81,
+   };
+   static const enum agx3_subgroup_shuffle_op shared_ops[] = {
+      AGX3_SUBGROUP_SHUFFLE_BROADCAST,
+      AGX3_SUBGROUP_SHUFFLE_XOR,
+      AGX3_SUBGROUP_SHUFFLE_UP,
+      AGX3_SUBGROUP_SHUFFLE_DOWN,
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      struct d12_agx3_subgroup_shuffle_desc desc = {
+         .scope = D12_AGX3_SUBGROUP_SCOPE_WAVE,
+         .op = D12_AGX3_SUBGROUP_SHUFFLE_READ_LANE_AT,
+         .lane_source = D12_AGX3_SUBGROUP_LANE_REGISTER,
+         .dest = 4,
+         .src = 0,
+         .lane = 4,
+      };
+      struct d12_agx3_subgroup_encoding encoded;
+      CHECK(d12_agx3_encode_subgroup_shuffle(targets[t].chip, &desc,
+                                              &encoded));
+      CHECK(check_subgroup_encoding(
+               &encoded,
+               targets[t].encoding == AGX_ISA_ENCODING_AGX3B ? reg_b : reg_c,
+               sizeof(reg_b)) == 0);
+
+      for (unsigned scope = 0; scope < 2; ++scope) {
+         desc.scope = (enum d12_agx3_subgroup_scope)scope;
+         for (unsigned op = 0; op < 4; ++op) {
+            desc.op = (enum d12_agx3_subgroup_shuffle_op)op;
+            for (unsigned uniform = 0; uniform < 2; ++uniform) {
+               desc.lane_source = uniform ? D12_AGX3_SUBGROUP_LANE_UNIFORM
+                                          : D12_AGX3_SUBGROUP_LANE_REGISTER;
+               desc.dest = 4;
+               desc.src = 2;
+               desc.lane = 8;
+               const struct agx3_subgroup_shuffle_desc shared_desc = {
+                  .quad = scope != 0,
+                  .op = shared_ops[op],
+                  .lane_kind = uniform ? AGX3_SUBGROUP_LANE_UNIFORM
+                                       : AGX3_SUBGROUP_LANE_REGISTER,
+                  .dest = desc.dest,
+                  .src = desc.src,
+                  .lane = desc.lane,
+               };
+               uint8_t shared[AGX3_SUBGROUP_MAX_LENGTH], shared_length = 0;
+               CHECK(agx3_subgroup_encode_shuffle(
+                  targets[t].encoding, &shared_desc, shared, &shared_length));
+               CHECK(d12_agx3_encode_subgroup_shuffle(targets[t].chip, &desc,
+                                                       &encoded));
+               CHECK(check_subgroup_encoding(&encoded, shared, shared_length) ==
+                     0);
+            }
+         }
+      }
+
+      const uint16_t reg_limit =
+         targets[t].encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+      desc = (struct d12_agx3_subgroup_shuffle_desc){
+         .scope = D12_AGX3_SUBGROUP_SCOPE_QUAD,
+         .op = D12_AGX3_SUBGROUP_SHUFFLE_DOWN,
+         .lane_source = D12_AGX3_SUBGROUP_LANE_REGISTER,
+         .dest = reg_limit - 2,
+         .src = reg_limit - 2,
+         .lane = reg_limit - 2,
+      };
+      CHECK(d12_agx3_encode_subgroup_shuffle(targets[t].chip, &desc,
+                                              &encoded));
+      desc.lane_source = D12_AGX3_SUBGROUP_LANE_UNIFORM;
+      desc.lane = 510;
+      CHECK(d12_agx3_encode_subgroup_shuffle(targets[t].chip, &desc,
+                                              &encoded));
+
+#define REJECT_SHUFFLE()                                                        \
+   do {                                                                         \
+      memset(&encoded, 0xff, sizeof(encoded));                                  \
+      CHECK(!d12_agx3_encode_subgroup_shuffle(targets[t].chip, &desc,           \
+                                               &encoded));                      \
+      CHECK(subgroup_encoding_is_cleared(&encoded));                            \
+   } while (0)
+      desc.dest = 1;
+      REJECT_SHUFFLE();
+      desc.dest = 0;
+      desc.src = reg_limit;
+      REJECT_SHUFFLE();
+      desc.src = 0;
+      desc.lane = 512;
+      REJECT_SHUFFLE();
+      desc.lane = 8;
+      desc.scope = (enum d12_agx3_subgroup_scope)-1;
+      REJECT_SHUFFLE();
+      desc.scope = D12_AGX3_SUBGROUP_SCOPE_WAVE;
+      desc.op = (enum d12_agx3_subgroup_shuffle_op)-1;
+      REJECT_SHUFFLE();
+      desc.op = D12_AGX3_SUBGROUP_SHUFFLE_READ_LANE_AT;
+      desc.lane_source = (enum d12_agx3_subgroup_lane_source)-1;
+      REJECT_SHUFFLE();
+#undef REJECT_SHUFFLE
+   }
+
+   struct d12_agx3_subgroup_shuffle_desc desc = {
+      .lane_source = D12_AGX3_SUBGROUP_LANE_REGISTER,
+   };
+   struct d12_agx3_subgroup_encoding rejected;
+   static const enum agx_chip rejected_chips[] = {
+      AGX_CHIP_G15S, AGX_CHIP_G16P, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected_chips) / sizeof(rejected_chips[0]);
+        ++i) {
+      memset(&rejected, 0xff, sizeof(rejected));
+      CHECK(!d12_agx3_encode_subgroup_shuffle(rejected_chips[i], &desc,
+                                               &rejected));
+      CHECK(subgroup_encoding_is_cleared(&rejected));
+   }
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_subgroup_shuffle(AGX_CHIP_G17S, NULL, &rejected));
+   CHECK(subgroup_encoding_is_cleared(&rejected));
+   CHECK(!d12_agx3_encode_subgroup_shuffle(AGX_CHIP_G17S, &desc, NULL));
+   return 0;
+}
+
+static int
+check_zero_compare_ballot_bridge(void)
+{
+   static const struct integer_target targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const uint8_t int_eq_b[] = {
+      0x17, 0x07, 0x54, 0x00, 0x02, 0x08, 0x00, 0xf8, 0xa2, 0x02,
+   };
+   static const uint8_t int_eq_c[] = {
+      0x27, 0x00, 0x00, 0x3a, 0x25, 0x00, 0xae, 0x02, 0x08, 0x80, 0x20, 0x04,
+   };
+   static const uint8_t conditions[2][6] = {
+      {4, 4, 5, 5, 6, 6},
+      {0, 0, 1, 5, 2, 6},
+   };
+   static const bool invert[2][6] = {
+      {false, true, false, true, false, true},
+      {false, true, false, false, false, false},
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      struct d12_agx3_zero_ballot_desc desc = {
+         .scope = D12_AGX3_SUBGROUP_SCOPE_WAVE,
+         .type = D12_AGX3_ZERO_BALLOT_I32,
+         .predicate = D12_AGX3_ZERO_BALLOT_EQUAL,
+         .src = 4,
+      };
+      struct d12_agx3_subgroup_encoding encoded;
+      CHECK(d12_agx3_encode_zero_compare_ballot(targets[t].chip, &desc,
+                                                 &encoded));
+      CHECK(check_subgroup_encoding(
+               &encoded,
+               targets[t].encoding == AGX_ISA_ENCODING_AGX3B ? int_eq_b
+                                                              : int_eq_c,
+               targets[t].encoding == AGX_ISA_ENCODING_AGX3B
+                  ? sizeof(int_eq_b)
+                  : sizeof(int_eq_c)) == 0);
+
+      for (unsigned scope = 0; scope < 2; ++scope) {
+         desc.scope = (enum d12_agx3_subgroup_scope)scope;
+         for (unsigned type = 0; type < 2; ++type) {
+            desc.type = (enum d12_agx3_zero_ballot_type)type;
+            for (unsigned predicate = 0; predicate < 6; ++predicate) {
+               desc.predicate =
+                  (enum d12_agx3_zero_ballot_predicate)predicate;
+               desc.dest = 4;
+               desc.src = 2;
+               const struct agx3_subgroup_ballot_desc shared_desc = {
+                  .quad = scope != 0,
+                  .type = type ? AGX3_SUBGROUP_BALLOT_FLOAT
+                               : AGX3_SUBGROUP_BALLOT_INTEGER,
+                  .dest = desc.dest,
+                  .src = desc.src,
+                  .condition = conditions[type][predicate],
+                  .invert = invert[type][predicate],
+               };
+               uint8_t shared[AGX3_SUBGROUP_MAX_LENGTH], shared_length = 0;
+               CHECK(agx3_subgroup_encode_ballot(
+                  targets[t].encoding, &shared_desc, shared, &shared_length));
+               CHECK(d12_agx3_encode_zero_compare_ballot(
+                  targets[t].chip, &desc, &encoded));
+               CHECK(check_subgroup_encoding(&encoded, shared, shared_length) ==
+                     0);
+            }
+         }
+      }
+
+#define REJECT_BALLOT()                                                        \
+   do {                                                                         \
+      memset(&encoded, 0xff, sizeof(encoded));                                  \
+      CHECK(!d12_agx3_encode_zero_compare_ballot(targets[t].chip, &desc,        \
+                                                  &encoded));                   \
+      CHECK(subgroup_encoding_is_cleared(&encoded));                            \
+   } while (0)
+      desc.dest = 1;
+      REJECT_BALLOT();
+      desc.dest = 0;
+      desc.src = targets[t].encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+      REJECT_BALLOT();
+      desc.src = 0;
+      desc.type = (enum d12_agx3_zero_ballot_type)-1;
+      REJECT_BALLOT();
+      desc.type = D12_AGX3_ZERO_BALLOT_I32;
+      desc.predicate = (enum d12_agx3_zero_ballot_predicate)-1;
+      REJECT_BALLOT();
+#undef REJECT_BALLOT
+   }
+
+   struct d12_agx3_zero_ballot_desc desc = {0};
+   struct d12_agx3_subgroup_encoding rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_zero_compare_ballot(AGX_CHIP_G17P, &desc,
+                                               &rejected));
+   CHECK(subgroup_encoding_is_cleared(&rejected));
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_zero_compare_ballot(AGX_CHIP_G17S, NULL,
+                                               &rejected));
+   CHECK(subgroup_encoding_is_cleared(&rejected));
+   CHECK(!d12_agx3_encode_zero_compare_ballot(AGX_CHIP_G17S, &desc, NULL));
+   return 0;
+}
+
+static int
+check_subgroup_reduce_bridge(void)
+{
+   static const struct integer_target targets[] = {
+      {AGX_CHIP_G15G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G16G, AGX_ISA_ENCODING_AGX3B},
+      {AGX_CHIP_G17S, AGX_ISA_ENCODING_AGX3C},
+   };
+   static const enum agx3_subgroup_reduce_op shared_ops[] = {
+      AGX3_SUBGROUP_REDUCE_AND,  AGX3_SUBGROUP_REDUCE_FADD,
+      AGX3_SUBGROUP_REDUCE_OR,   AGX3_SUBGROUP_REDUCE_FMUL,
+      AGX3_SUBGROUP_REDUCE_XOR,  AGX3_SUBGROUP_REDUCE_FMIN,
+      AGX3_SUBGROUP_REDUCE_FMAX, AGX3_SUBGROUP_REDUCE_IADD,
+      AGX3_SUBGROUP_REDUCE_SMIN, AGX3_SUBGROUP_REDUCE_SMAX,
+      AGX3_SUBGROUP_REDUCE_UMIN, AGX3_SUBGROUP_REDUCE_UMAX,
+   };
+   static const bool quad_supported[] = {
+      false, true, false, true, false, true,
+      true,  true, false, false, false, false,
+   };
+   static const bool prefix_supported[] = {
+      false, true, false, true, false, false,
+      false, true, false, false, false, false,
+   };
+
+   for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
+      struct d12_agx3_subgroup_reduce_desc desc = {
+         .dest = 4,
+         .src = 2,
+      };
+      struct d12_agx3_subgroup_encoding encoded;
+      for (unsigned op = 0; op < 12; ++op) {
+         desc.op = (enum d12_agx3_subgroup_reduce_op)op;
+         desc.scope = D12_AGX3_SUBGROUP_SCOPE_WAVE;
+         desc.prefix = false;
+         for (unsigned scope = 0; scope < 2; ++scope) {
+            desc.scope = (enum d12_agx3_subgroup_scope)scope;
+            const struct agx3_subgroup_reduce_desc shared_desc = {
+               .quad = scope != 0,
+               .op = shared_ops[op],
+               .dest = desc.dest,
+               .src = desc.src,
+            };
+            uint8_t shared[AGX3_SUBGROUP_MAX_LENGTH], shared_length = 0;
+            const bool shared_ok = agx3_subgroup_encode_reduce(
+               targets[t].encoding, &shared_desc, shared, &shared_length);
+            memset(&encoded, 0xff, sizeof(encoded));
+            const bool bridge_ok = d12_agx3_encode_subgroup_reduce(
+               targets[t].chip, &desc, &encoded);
+            CHECK(bridge_ok == shared_ok);
+            CHECK(bridge_ok == (scope == 0 || quad_supported[op]));
+            if (bridge_ok)
+               CHECK(check_subgroup_encoding(&encoded, shared, shared_length) ==
+                     0);
+            else
+               CHECK(subgroup_encoding_is_cleared(&encoded));
+         }
+
+         desc.scope = D12_AGX3_SUBGROUP_SCOPE_WAVE;
+         desc.prefix = true;
+         memset(&encoded, 0xff, sizeof(encoded));
+         const bool prefix_ok = d12_agx3_encode_subgroup_reduce(
+            targets[t].chip, &desc, &encoded);
+         CHECK(prefix_ok == prefix_supported[op]);
+         if (prefix_ok) {
+            const struct agx3_subgroup_reduce_desc shared_desc = {
+               .prefix = true,
+               .op = shared_ops[op],
+               .dest = desc.dest,
+               .src = desc.src,
+            };
+            uint8_t shared[AGX3_SUBGROUP_MAX_LENGTH], shared_length = 0;
+            CHECK(agx3_subgroup_encode_reduce(
+               targets[t].encoding, &shared_desc, shared, &shared_length));
+            CHECK(check_subgroup_encoding(&encoded, shared, shared_length) ==
+                  0);
+         } else {
+            CHECK(subgroup_encoding_is_cleared(&encoded));
+         }
+
+         desc.scope = D12_AGX3_SUBGROUP_SCOPE_QUAD;
+         memset(&encoded, 0xff, sizeof(encoded));
+         CHECK(!d12_agx3_encode_subgroup_reduce(targets[t].chip, &desc,
+                                                 &encoded));
+         CHECK(subgroup_encoding_is_cleared(&encoded));
+      }
+
+#define REJECT_REDUCE()                                                        \
+   do {                                                                         \
+      memset(&encoded, 0xff, sizeof(encoded));                                  \
+      CHECK(!d12_agx3_encode_subgroup_reduce(targets[t].chip, &desc,            \
+                                              &encoded));                       \
+      CHECK(subgroup_encoding_is_cleared(&encoded));                            \
+   } while (0)
+      desc = (struct d12_agx3_subgroup_reduce_desc){
+         .op = D12_AGX3_SUBGROUP_REDUCE_IADD_U32,
+         .dest = 1,
+      };
+      REJECT_REDUCE();
+      desc.dest = 0;
+      desc.src = targets[t].encoding == AGX_ISA_ENCODING_AGX3B ? 192 : 256;
+      REJECT_REDUCE();
+      desc.src = 0;
+      desc.op = (enum d12_agx3_subgroup_reduce_op)-1;
+      REJECT_REDUCE();
+      desc.op = D12_AGX3_SUBGROUP_REDUCE_IADD_U32;
+      desc.scope = (enum d12_agx3_subgroup_scope)-1;
+      REJECT_REDUCE();
+#undef REJECT_REDUCE
+   }
+
+   struct d12_agx3_subgroup_reduce_desc desc = {
+      .op = D12_AGX3_SUBGROUP_REDUCE_IADD_U32,
+   };
+   struct d12_agx3_subgroup_encoding rejected;
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_subgroup_reduce(AGX_CHIP_G17G, &desc, &rejected));
+   CHECK(subgroup_encoding_is_cleared(&rejected));
+   memset(&rejected, 0xff, sizeof(rejected));
+   CHECK(!d12_agx3_encode_subgroup_reduce(AGX_CHIP_G17S, NULL, &rejected));
+   CHECK(subgroup_encoding_is_cleared(&rejected));
+   CHECK(!d12_agx3_encode_subgroup_reduce(AGX_CHIP_G17S, &desc, NULL));
+   return 0;
+}
+
 static int
 check_wave_read_lane_at_f32_imm_bridge(void)
 {
@@ -6620,6 +7003,9 @@ main(void)
    CHECK(check_varying_bridge() == 0);
    CHECK(check_texture_fetch_bridge() == 0);
    CHECK(check_wave_read_lane_at_f32_imm_bridge() == 0);
+   CHECK(check_dynamic_subgroup_shuffle_bridge() == 0);
+   CHECK(check_zero_compare_ballot_bridge() == 0);
+   CHECK(check_subgroup_reduce_bridge() == 0);
    CHECK(check_tile_bridge() == 0);
    CHECK(check_local_tps_bridge() == 0);
    CHECK(check_static_spill_bridge() == 0);
