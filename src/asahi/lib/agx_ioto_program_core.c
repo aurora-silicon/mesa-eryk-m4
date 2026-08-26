@@ -9,8 +9,6 @@
 
 #include <string.h>
 
-#define AGX_IOTO_GPU0_INLINE_LDDEV_SIZE 14u
-
 static const uint8_t g17s_minimal_compute_resource_body[] = {
    /* First-use gather base at half4/6, then two-dword gather load to half20. */
    0x2c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,

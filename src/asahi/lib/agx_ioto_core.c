@@ -346,6 +346,89 @@ agx_ioto_decode_one(enum agx_chip chip, const void *stream, size_t available,
    return true;
 }
 
+static bool
+agx_ioto_program_gpu0(enum agx_chip chip)
+{
+   return agx_ioto_target_encoding(chip) == AGX_IOTO_ENCODING_GPU0;
+}
+
+static void
+agx_ioto_clear_program_outputs(struct agx_ioto_program_record *out,
+                               size_t *consumed)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+   if (consumed)
+      *consumed = 0;
+}
+
+bool
+agx_ioto_decode_program_record(enum agx_chip chip, const void *stream,
+                               size_t available,
+                               struct agx_ioto_program_record *out,
+                               size_t *consumed)
+{
+   agx_ioto_clear_program_outputs(out, consumed);
+
+   if (!agx_ioto_target_supported(chip) || !stream || !out || !consumed ||
+       available == 0)
+      return false;
+
+   const uint8_t *bytes = stream;
+   static const uint8_t terminate[AGX_IOTO_PROGRAM_TERMINATE_SIZE] = {
+      (uint8_t)AGX_IOTO_PROGRAM_TERMINATE_WORD,
+      (uint8_t)(AGX_IOTO_PROGRAM_TERMINATE_WORD >> 8),
+      (uint8_t)(AGX_IOTO_PROGRAM_TERMINATE_WORD >> 16),
+      (uint8_t)(AGX_IOTO_PROGRAM_TERMINATE_WORD >> 24),
+   };
+
+   const size_t terminal_visible =
+      available < sizeof(terminate) ? available : sizeof(terminate);
+   if (memcmp(bytes, terminate, terminal_visible) == 0) {
+      if (available < sizeof(terminate))
+         return false;
+
+      out->kind = AGX_IOTO_PROGRAM_RECORD_TERMINATE;
+      out->length = sizeof(terminate);
+      memcpy(out->bytes, bytes, sizeof(terminate));
+      *consumed = sizeof(terminate);
+      return true;
+   }
+
+   /* The GPU0 compiler writes this AGX3b device load inline instead of
+    * constructing an AGXIotoInstruction object.  Its low eleven opcode bits
+    * and fourteen-byte boundary are exact; every other bit remains opaque. */
+   if (agx_ioto_program_gpu0(chip) && bytes[0] == UINT8_C(0x67)) {
+      if (available < sizeof(uint16_t))
+         return false;
+
+      const uint16_t word =
+         (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8);
+      if ((word & UINT16_C(0x07ff)) == UINT16_C(0x0067)) {
+         if (available < AGX_IOTO_GPU0_INLINE_LDDEV_SIZE)
+            return false;
+
+         out->kind = AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV;
+         out->length = AGX_IOTO_GPU0_INLINE_LDDEV_SIZE;
+         memcpy(out->bytes, bytes, out->length);
+         *consumed = out->length;
+         return true;
+      }
+   }
+
+   struct agx_ioto_record record;
+   size_t record_size = 0;
+   if (!agx_ioto_decode_one(chip, stream, available, &record, &record_size))
+      return false;
+
+   out->kind = AGX_IOTO_PROGRAM_RECORD_IOTO;
+   out->length = record.length;
+   out->ioto = record;
+   memcpy(out->bytes, record.bytes, record.length);
+   *consumed = record_size;
+   return true;
+}
+
 bool
 agx_ioto_record_copy(enum agx_chip chip, const struct agx_ioto_record *record,
                      void *out, size_t out_size)

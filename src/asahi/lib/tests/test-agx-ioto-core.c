@@ -178,6 +178,13 @@ record_clear(const struct agx_ioto_record *record)
    return true;
 }
 
+static bool
+program_record_clear(const struct agx_ioto_program_record *record)
+{
+   static const struct agx_ioto_program_record zero;
+   return memcmp(record, &zero, sizeof(*record)) == 0;
+}
+
 static void
 make_canonical(const struct expected_form *form,
                uint8_t bytes[AGX_IOTO_MAX_RECORD_SIZE],
@@ -524,6 +531,134 @@ check_failures(void)
    return 0;
 }
 
+static int
+check_program_records(void)
+{
+   static const enum agx_chip all_targets[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17S, AGX_CHIP_G17C,
+   };
+   static const uint8_t nop[] = {0x06, 0x00, 0xa5, 0xa5};
+   static const uint8_t terminate[] = {0x0e, 0x00, 0x00, 0x00, 0xa5};
+   static const uint8_t inline_lddev[AGX_IOTO_GPU0_INLINE_LDDEV_SIZE] = {
+      0x67, 0x00, 0x12, 0x34, 0x56, 0x78, 0x9a,
+      0xbc, 0xde, 0xf0, 0x24, 0x68, 0xac, 0xe0,
+   };
+
+   for (size_t i = 0; i < sizeof(all_targets) / sizeof(all_targets[0]); ++i) {
+      const enum agx_chip chip = all_targets[i];
+      struct agx_ioto_program_record record;
+      size_t consumed = 99;
+
+      memset(&record, 0xff, sizeof(record));
+      CHECK(agx_ioto_decode_program_record(chip, nop, sizeof(nop), &record,
+                                           &consumed));
+      CHECK(record.kind == AGX_IOTO_PROGRAM_RECORD_IOTO);
+      CHECK(record.length == 2);
+      CHECK(record.ioto.kind == AGX_IOTO_KIND_NOP_EP0);
+      CHECK(consumed == 2);
+      CHECK(memcmp(record.bytes, nop, 2) == 0);
+
+      memset(&record, 0xff, sizeof(record));
+      consumed = 99;
+      CHECK(agx_ioto_decode_program_record(chip, terminate,
+                                           sizeof(terminate), &record,
+                                           &consumed));
+      CHECK(record.kind == AGX_IOTO_PROGRAM_RECORD_TERMINATE);
+      CHECK(record.length == AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+      CHECK(consumed == AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+      CHECK(memcmp(record.bytes, terminate,
+                   AGX_IOTO_PROGRAM_TERMINATE_SIZE) == 0);
+
+      for (size_t truncated = 0;
+           truncated < AGX_IOTO_PROGRAM_TERMINATE_SIZE; ++truncated) {
+         memset(&record, 0xff, sizeof(record));
+         consumed = 99;
+         CHECK(!agx_ioto_decode_program_record(chip, terminate, truncated,
+                                               &record, &consumed));
+         CHECK(program_record_clear(&record));
+         CHECK(consumed == 0);
+      }
+
+      for (unsigned bit = 0; bit < 32; ++bit) {
+         uint8_t mutated[sizeof(terminate)];
+         memcpy(mutated, terminate, sizeof(mutated));
+         mutated[bit / 8] ^= (uint8_t)(1u << (bit % 8));
+         memset(&record, 0xff, sizeof(record));
+         consumed = 99;
+         const bool decoded = agx_ioto_decode_program_record(
+            chip, mutated, sizeof(mutated), &record, &consumed);
+         CHECK(!decoded || record.kind != AGX_IOTO_PROGRAM_RECORD_TERMINATE);
+      }
+   }
+
+   for (size_t i = 0; i < sizeof(gpu0_targets) / sizeof(gpu0_targets[0]);
+        ++i) {
+      struct agx_ioto_program_record record;
+      size_t consumed = 99;
+      CHECK(agx_ioto_decode_program_record(
+         gpu0_targets[i], inline_lddev, sizeof(inline_lddev), &record,
+         &consumed));
+      CHECK(record.kind == AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV);
+      CHECK(record.length == sizeof(inline_lddev));
+      CHECK(consumed == sizeof(inline_lddev));
+      CHECK(memcmp(record.bytes, inline_lddev, sizeof(inline_lddev)) == 0);
+
+      for (size_t truncated = 0; truncated < sizeof(inline_lddev);
+           ++truncated) {
+         memset(&record, 0xff, sizeof(record));
+         consumed = 99;
+         CHECK(!agx_ioto_decode_program_record(
+            gpu0_targets[i], inline_lddev, truncated, &record, &consumed));
+         CHECK(program_record_clear(&record));
+         CHECK(consumed == 0);
+      }
+
+      for (unsigned bit = 0; bit < 11; ++bit) {
+         uint8_t mutated[sizeof(inline_lddev)];
+         memcpy(mutated, inline_lddev, sizeof(mutated));
+         mutated[bit / 8] ^= (uint8_t)(1u << (bit % 8));
+         memset(&record, 0xff, sizeof(record));
+         consumed = 99;
+         const bool decoded = agx_ioto_decode_program_record(
+            gpu0_targets[i], mutated, sizeof(mutated), &record, &consumed);
+         CHECK(!decoded ||
+               record.kind != AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV);
+      }
+   }
+
+   for (size_t i = 0; i < sizeof(gpu1_targets) / sizeof(gpu1_targets[0]);
+        ++i) {
+      struct agx_ioto_program_record record;
+      size_t consumed = 99;
+      memset(&record, 0xff, sizeof(record));
+      CHECK(!agx_ioto_decode_program_record(
+         gpu1_targets[i], inline_lddev, sizeof(inline_lddev), &record,
+         &consumed));
+      CHECK(program_record_clear(&record));
+      CHECK(consumed == 0);
+   }
+
+   struct agx_ioto_program_record record;
+   size_t consumed = 99;
+   memset(&record, 0xff, sizeof(record));
+   CHECK(!agx_ioto_decode_program_record(AGX_CHIP_G14G, nop, sizeof(nop),
+                                         &record, &consumed));
+   CHECK(program_record_clear(&record));
+   CHECK(consumed == 0);
+   CHECK(!agx_ioto_decode_program_record(AGX_CHIP_G15G, NULL, sizeof(nop),
+                                         &record, &consumed));
+   CHECK(program_record_clear(&record));
+   CHECK(consumed == 0);
+   CHECK(!agx_ioto_decode_program_record(AGX_CHIP_G15G, nop, sizeof(nop),
+                                         NULL, &consumed));
+   CHECK(consumed == 0);
+   CHECK(!agx_ioto_decode_program_record(AGX_CHIP_G15G, nop, sizeof(nop),
+                                         &record, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
@@ -535,7 +670,7 @@ main(void)
                       sizeof(gpu1_targets) / sizeof(gpu1_targets[0]),
                       gpu1_forms, sizeof(gpu1_forms) / sizeof(gpu1_forms[0])))
       return 1;
-   if (check_corpus_vectors() || check_failures())
+   if (check_corpus_vectors() || check_failures() || check_program_records())
       return 1;
 
    printf("AGX3 Ioto raw core: %u checks passed\n", checks);

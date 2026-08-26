@@ -6,6 +6,7 @@
 #pragma once
 
 #include "agx_chip.h"
+#include "agx_ioto_core.h"
 #include "agx_ioto_preshader_core.h"
 #include "agx_ioto_profile_core.h"
 #include "agx_ioto_state_core.h"
@@ -19,8 +20,6 @@ extern "C" {
 #endif
 
 #define AGX_IOTO_PROGRAM_ALIGNMENT 64u
-#define AGX_IOTO_PROGRAM_TERMINATE_SIZE 4u
-#define AGX_IOTO_PROGRAM_TERMINATE_WORD UINT32_C(0x0000000e)
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE 194u
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA \
    UINT64_C(0x10000018020)

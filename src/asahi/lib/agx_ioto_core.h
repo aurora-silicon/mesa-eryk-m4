@@ -73,6 +73,27 @@ struct agx_ioto_record {
    uint8_t bytes[AGX_IOTO_MAX_RECORD_SIZE];
 };
 
+/* Records which may occur while walking a complete pipeline program.  The
+ * GPU0 inline LDDEV form is emitted directly by the G15/G16/G17P EslBuilder,
+ * so it deliberately remains outside enum agx_ioto_kind. */
+enum agx_ioto_program_record_kind {
+   AGX_IOTO_PROGRAM_RECORD_INVALID = 0,
+   AGX_IOTO_PROGRAM_RECORD_IOTO,
+   AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV,
+   AGX_IOTO_PROGRAM_RECORD_TERMINATE,
+};
+
+#define AGX_IOTO_GPU0_INLINE_LDDEV_SIZE 14u
+#define AGX_IOTO_PROGRAM_TERMINATE_SIZE 4u
+#define AGX_IOTO_PROGRAM_TERMINATE_WORD UINT32_C(0x0000000e)
+
+struct agx_ioto_program_record {
+   enum agx_ioto_program_record_kind kind;
+   uint8_t length;
+   struct agx_ioto_record ioto;
+   uint8_t bytes[AGX_IOTO_MAX_RECORD_SIZE];
+};
+
 /* Exactly the eleven byte-witnessed M3/M4/A18 Pro/M5 identities. */
 bool agx_ioto_target_supported(enum agx_chip chip);
 
@@ -97,6 +118,16 @@ bool agx_ioto_validate_kind(enum agx_chip chip,
 bool agx_ioto_decode_one(enum agx_chip chip, const void *stream,
                          size_t available, struct agx_ioto_record *out,
                          size_t *consumed);
+
+/* Decode one exact record while walking the program addressed by an AGX3
+ * CDM/VDM pipeline pointer.  In addition to the public Ioto grammar this
+ * recognizes the separately witnessed GPU0 inline LDDEV boundary and the
+ * four-byte terminal suffix.  Truncated special-form prefixes fail rather
+ * than being reinterpreted as another record. */
+bool agx_ioto_decode_program_record(enum agx_chip chip, const void *stream,
+                                    size_t available,
+                                    struct agx_ioto_program_record *out,
+                                    size_t *consumed);
 
 /*
  * Copy a target-valid raw record without interpreting or rewriting opaque

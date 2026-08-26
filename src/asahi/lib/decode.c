@@ -20,6 +20,7 @@
 #include "asahi/isa/disasm.h"
 #include "agx3_cdm_decode_core.h"
 #include "agx3_cdm_direct_launch_semantic_core.h"
+#include "agx_ioto_core.h"
 #include "agx_vdm_decode_core.h"
 #include "util/u_hexdump.h"
 #include "decode.h"
@@ -651,9 +652,48 @@ agxdecode_record(struct agxdecode_ctx *ctx, uint64_t va, size_t size,
 }
 
 static unsigned
-agxdecode_cdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
-                   size_t available, uint64_t *link, UNUSED bool verbose,
-                   enum agx_chip chip)
+agxdecode_ioto(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
+               size_t available, UNUSED uint64_t *link, bool verbose,
+               decoder_params *params, UNUSED void *data)
+{
+   const enum agx_chip chip = agxdecode_chip_from_params(params);
+   struct agx_ioto_program_record record;
+   size_t consumed = 0;
+
+   if (!agx_ioto_decode_program_record(chip, map, available, &record,
+                                       &consumed)) {
+      fprintf(agxdecode_dump_stream,
+              "Unknown or non-canonical AGX3 Ioto record for %s\n",
+              agxdecode_chip_name(chip));
+      return STATE_ERROR;
+   }
+
+   switch (record.kind) {
+   case AGX_IOTO_PROGRAM_RECORD_IOTO:
+      fprintf(agxdecode_dump_stream, "AGX3 Ioto record kind %u (%zu bytes)\n",
+              (unsigned)record.ioto.kind, consumed);
+      break;
+   case AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Ioto inline device load (%zu bytes)\n", consumed);
+      break;
+   case AGX_IOTO_PROGRAM_RECORD_TERMINATE:
+      agxdecode_log("AGX3 Ioto program terminate\n");
+      return STATE_DONE;
+   case AGX_IOTO_PROGRAM_RECORD_INVALID:
+   default:
+      return STATE_ERROR;
+   }
+
+   if (verbose)
+      u_hexdump(agxdecode_dump_stream, record.bytes, consumed, false);
+   return (unsigned)consumed;
+}
+
+static unsigned
+agxdecode_cdm_agx3(struct agxdecode_ctx *ctx, const uint8_t *map,
+                   size_t available, uint64_t *link, bool verbose,
+                   decoder_params *params, enum agx_chip chip)
 {
    struct agx3_cdm_decoded_record record;
 
@@ -701,6 +741,9 @@ agxdecode_cdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
               record.data.launch.local_size[0],
               record.data.launch.local_size[1],
               record.data.launch.local_size[2]);
+      if (record.data.launch.pipeline != 0)
+         agxdecode_stateful(ctx, record.data.launch.pipeline, "Ioto pipeline",
+                            agxdecode_ioto, verbose, params, NULL);
       return record.length;
 
    case AGX3_CDM_RECORD_STREAM_LINK:
@@ -751,7 +794,8 @@ agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map,
 {
    const enum agx_chip chip = agxdecode_chip_from_params(params);
    if (agxdecode_chip_uses_agx3(chip))
-      return agxdecode_cdm_agx3(ctx, map, available, link, verbose, chip);
+      return agxdecode_cdm_agx3(ctx, map, available, link, verbose, params,
+                                chip);
 
    /* Bits 29-31 contain the block type */
    enum agx_cdm_block_type block_type = (map[3] >> 5);
