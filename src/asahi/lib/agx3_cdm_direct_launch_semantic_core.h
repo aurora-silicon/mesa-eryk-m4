@@ -95,9 +95,12 @@ bool agx3_cdm_direct_template_build_from_sources(
 /* Derive the exact direct-compute ShaderInfo source tuple witnessed on G17X.
  * max_total_threads_per_threadgroup is an Apple schema name, not the Metal
  * pipeline limit: AGC repurposes it as the table below.  The extended texture
- * write field remains zero even with 65 live writable textures. */
+ * write field remains zero even with 65 live writable textures.  ShaderInfo
+ * ID32/launch bit23 is an independent committed-path property and is rejected
+ * if supplied without traversal use. */
 bool agx3_cdm_direct_template_sources_compute(
    bool uses_resource_info_query, bool uses_ray_traversal,
+   bool ray_traversal_depth_nonzero,
    struct agx3_cdm_direct_template_sources *sources);
 
 bool agx3_cdm_direct_template_decode(

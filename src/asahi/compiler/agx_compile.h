@@ -161,9 +161,11 @@ struct agx_shader_info {
    /* Exact AGX3 direct-launch ShaderInfo producers. Resource-info queries
     * come from NIR. Every backend lowering which emits a ray traversal/query
     * opcode must set uses_ray_traversal as well; ray_queries alone is not a
-    * future-proof proxy for full RT pipelines. */
+    * future-proof proxy for full RT pipelines. ShaderInfo ID32 is independent
+    * from traversal use and must have its own committed-path producer. */
    bool uses_resource_info_query;
    bool uses_ray_traversal;
+   bool ray_traversal_depth_nonzero;
 
    /* There may be constants in the binary. The driver must map these to uniform
     * registers as specified hre.

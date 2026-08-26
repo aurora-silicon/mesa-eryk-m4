@@ -3878,6 +3878,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    info->local_size = nir->info.shared_size;
    info->uses_resource_info_query = nir->info.uses_resource_info_query;
    info->uses_ray_traversal = nir->info.ray_queries != 0;
+   /* NIR ray_queries counts inline intersection_query variables, matching the
+    * G17S next()/committed witness whose ShaderInfo ID32 is nonzero.  Future
+    * one-shot/full traversal lowerings must set uses_ray_traversal without
+    * automatically setting this committed-path property. */
+   info->ray_traversal_depth_nonzero = nir->info.ray_queries != 0;
 
    nir_foreach_function_with_impl(func, impl, nir) {
       unsigned offset;

@@ -46,9 +46,10 @@ agx3_cdm_direct_template_build(
 bool
 agx3_cdm_direct_template_sources_compute(
    bool uses_resource_info_query, bool uses_ray_traversal,
+   bool ray_traversal_depth_nonzero,
    struct agx3_cdm_direct_template_sources *sources)
 {
-   if (!sources)
+   if (!sources || (ray_traversal_depth_nonzero && !uses_ray_traversal))
       return false;
 
    uint32_t field31;
@@ -64,7 +65,7 @@ agx3_cdm_direct_template_sources_compute(
    *sources = (struct agx3_cdm_direct_template_sources){
       .max_total_threads_per_threadgroup = field31,
       .extended_texture_write_mask_qword_1 = 0,
-      .ray_traversal_depth_nonzero = uses_ray_traversal,
+      .ray_traversal_depth_nonzero = ray_traversal_depth_nonzero,
    };
    return true;
 }
