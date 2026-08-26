@@ -20,6 +20,7 @@
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
+#include "agx3_scs_core.h"
 #include "agx3_sr_core.h"
 #include "agx3_static_spill_core.h"
 #include "agx3_tex_core.h"
@@ -167,6 +168,91 @@ TEST_F(AGX3PackBinary, ScopedMemoryBarrierRefusesUnknownScope)
 {
    agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
    agx_scoped_barrier_agx3(b, AGX3_BARRIER_SCOPE_TEXTURE + 1);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
+TEST_F(AGX3PackBinary, DirectScsLoadStoreCarriesWait)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      const agx_index value = agx_register(2, AGX_SIZE_32);
+      agx_scs_load_agx3_to(b, value, 4, AGX_FORMAT_I32);
+      agx_scs_store_agx3(b, value, 8, AGX_FORMAT_I32);
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+      uint8_t length = 0;
+      std::vector<uint8_t> want;
+      struct agx3_scs_desc d = {
+         .data = 2,
+         .width = AGX3_MEM_W32,
+         .byte_offset = 4,
+         .slot = 1,
+      };
+      ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &length));
+      append(want, bytes, length);
+      d.byte_offset = 8;
+      d.slot = 0;
+      d.wait_mask = 1;
+      ASSERT_TRUE(agx3_scs_encode_store(enc, &d, bytes, &length));
+      append(want, bytes, length);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, DirectScsScalarWidthsAndSignedOffsets)
+{
+   struct {
+      enum agx_format format;
+      enum agx_size size;
+      enum agx3_mem_width width;
+      int16_t offset;
+   } cases[] = {
+      {AGX_FORMAT_I8, AGX_SIZE_16, AGX3_MEM_W8, -8},
+      {AGX_FORMAT_I16, AGX_SIZE_16, AGX3_MEM_W16, 10},
+      {AGX_FORMAT_I32, AGX_SIZE_32, AGX3_MEM_W32, -12},
+   };
+
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (const auto &c : cases) {
+         agx_builder *b = builder(enc);
+         const agx_index value = agx_register(6, c.size);
+         agx_scs_load_agx3_to(b, value, (uint64_t)(int64_t)c.offset, c.format);
+         agx_stop(b);
+
+         uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+         uint8_t length = 0;
+         std::vector<uint8_t> want;
+         const struct agx3_scs_desc d = {
+            .data = 6,
+            .width = c.width,
+            .byte_offset = c.offset,
+            .slot = 1,
+         };
+         ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &length));
+         append(want, bytes, length);
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, DirectScsRefusesVectorAccess)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_index value = agx_register(2, AGX_SIZE_32);
+   value.channels_m1 = 1;
+   agx_scs_load_agx3_to(b, value, 0, AGX_FORMAT_I32);
    agx_stop(b);
    pack(b, /*expect_ok=*/false);
 }

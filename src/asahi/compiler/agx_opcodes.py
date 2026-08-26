@@ -433,6 +433,14 @@ op("scoped_barrier_agx3", _, dests = 0, srcs = 0, imms = [IMM],
    can_eliminate = False, schedule_class = "barrier",
    agx3_mnemonic = "barrier")
 
+# Direct-absolute scalar coverage-stack access. These internal pseudos are the
+# bounded landing point for future ray-query lowering; no generic address-space
+# operation is silently reinterpreted as SCS.
+op("scs_load_agx3", _, dests = 1, srcs = 0, imms = [IMM, FORMAT],
+   schedule_class = "load", agx3_mnemonic = "ldscs")
+op("scs_store_agx3", _, dests = 0, srcs = 1, imms = [IMM, FORMAT],
+   can_eliminate = False, schedule_class = "store", agx3_mnemonic = "stscs")
+
 def memory_barrier(name, a, b, c):
     op(name, (0xF5 | (a << 10) | (b << 8) | (c << 12), 2, _), dests = 0, srcs = 0,
        can_eliminate = False, schedule_class = "barrier")

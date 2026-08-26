@@ -30,6 +30,7 @@
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
+#include "agx3_scs_core.h"
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
@@ -348,6 +349,7 @@ agx3_is_async(const agx_instr *I)
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
           I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE ||
+          I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
           I->op == AGX_OPCODE_STACK_LOAD ||
           I->op == AGX_OPCODE_STACK_STORE;
 }
@@ -668,6 +670,37 @@ agx3_fmt_to_width(enum agx_format f)
    default:
       return -1; /* norm/packed formats have no AGX3 device-op witness */
    }
+}
+
+static bool
+agx3_translate_scs(const agx_instr *I, bool is_store, uint8_t slot,
+                   uint16_t wait_mask, struct agx3_scs_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+   const int width = agx3_fmt_to_width(I->format);
+   const int64_t byte_offset = (int64_t)I->imm;
+   if (width < 0 || byte_offset < INT16_MIN || byte_offset > INT16_MAX ||
+       I->nr_dests != (is_store ? 0 : 1) ||
+       I->nr_srcs != (is_store ? 1 : 0))
+      return false;
+
+   const agx_index data = is_store ? I->src[0] : I->dest[0];
+   const enum agx_size expected =
+      width == AGX3_MEM_W32 ? AGX_SIZE_32 : AGX_SIZE_16;
+   if (!agx3_src_is_register(data) || data.memory || data.abs || data.neg ||
+       data.size != expected || agx_channels(data) != 1 ||
+       (data.value & (agx_size_align_16(expected) - 1)) ||
+       data.value + agx_size_align_16(expected) > 256)
+      return false;
+
+   *d = (struct agx3_scs_desc){
+      .data = data.value,
+      .width = (enum agx3_mem_width)width,
+      .byte_offset = (int16_t)byte_offset,
+      .slot = is_store ? 0 : slot,
+      .wait_mask = wait_mask,
+   };
+   return true;
 }
 
 /* Translate a device_load/device_store into the normalized memory descriptor.
@@ -1480,6 +1513,24 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool ok =
                is_store ? agx3_local_encode_store(enc, &d, bytes, &len)
                         : agx3_local_encode_load(enc, &d, bytes, &len);
+            if (!ok)
+               goto fail;
+            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            async_seen |= !is_store;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
+             I->op == AGX_OPCODE_SCS_STORE_AGX3) {
+            const bool is_store = I->op == AGX_OPCODE_SCS_STORE_AGX3;
+            struct agx3_scs_desc d;
+            uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_scs(I, is_store, slot, wait, &d))
+               goto fail;
+            const bool ok =
+               is_store ? agx3_scs_encode_store(enc, &d, bytes, &len)
+                        : agx3_scs_encode_load(enc, &d, bytes, &len);
             if (!ok)
                goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
