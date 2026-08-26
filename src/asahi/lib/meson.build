@@ -45,6 +45,8 @@ libasahi_lib_files = files(
   'agx_ppp_hal300_depth_bias_scissor_core.h',
   'agx_ppp_hal300_depth_stencil_core.c',
   'agx_ppp_hal300_depth_stencil_core.h',
+  'agx_ppp_decode_core.c',
+  'agx_ppp_decode_core.h',
   'agx_ppp_viewport_payload_core.c',
   'agx_ppp_viewport_payload_core.h',
   'agx_ppp_w_clamp_cull2_core.c',
@@ -138,6 +140,11 @@ libasahi_decode_files = files(
   'agx3_cdm_decode_core.c',
   'agx3_cdm_direct_launch_semantic_core.c',
   'agx_ioto_core.c',
+  'agx_ppp_decode_core.c',
+  'agx_ppp_hal300_depth_bias_scissor_core.c',
+  'agx_ppp_hal300_depth_stencil_core.c',
+  'agx_ppp_viewport_payload_core.c',
+  'agx_ppp_w_clamp_cull2_core.c',
   'agx_vdm_barrier_core.c',
   'agx_vdm_decode_core.c',
   'agx_vdm_index_list_core.c',
@@ -506,6 +513,23 @@ if with_tests
       files(
         'agx_ppp_w_clamp_cull2_core.c',
         'tests/test-ppp-w-clamp-cull2-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-decode-core',
+    executable(
+      'asahi-ppp-decode-core',
+      files(
+        'agx_ppp_decode_core.c',
+        'agx_ppp_hal300_depth_bias_scissor_core.c',
+        'agx_ppp_hal300_depth_stencil_core.c',
+        'agx_ppp_viewport_payload_core.c',
+        'agx_ppp_w_clamp_cull2_core.c',
+        'tests/test-ppp-decode-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

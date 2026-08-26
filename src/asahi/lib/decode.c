@@ -21,6 +21,7 @@
 #include "agx3_cdm_decode_core.h"
 #include "agx3_cdm_direct_launch_semantic_core.h"
 #include "agx_ioto_core.h"
+#include "agx_ppp_decode_core.h"
 #include "agx_vdm_decode_core.h"
 #include "util/u_hexdump.h"
 #include "decode.h"
@@ -876,10 +877,92 @@ agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map,
    }
 }
 
+static void
+agxdecode_ppp_agx3(struct agxdecode_ctx *ctx, enum agx_chip chip, uint64_t va,
+                   size_t size, bool verbose)
+{
+   uint8_t payload[AGX_PPP_VIEWPORT_PAYLOAD_MAX_LENGTH];
+   if (size == 0 || size > sizeof(payload)) {
+      fprintf(agxdecode_dump_stream,
+              "AGX3 PPP payload size %zu is outside the bounded grammar\n",
+              size);
+      return;
+   }
+
+   if (!lib_config.read_gpu_mem &&
+       !agxdecode_find_mapped_gpu_mem_containing(ctx, va)) {
+      fprintf(agxdecode_dump_stream,
+              "AGX3 PPP payload 0x%012" PRIx64 " is not mapped\n", va);
+      return;
+   }
+
+   const int read = agxdecode_fetch_gpu_mem(ctx, va, size, payload);
+   if (read < 0 || (size_t)read != size) {
+      fprintf(agxdecode_dump_stream,
+              "Failed to read AGX3 PPP payload at 0x%012" PRIx64 "\n", va);
+      return;
+   }
+
+   struct agx_ppp_decoded_record record;
+   if (!agx_ppp_decode_one(chip, payload, size, &record)) {
+      fprintf(agxdecode_dump_stream,
+              "Unsupported or non-canonical AGX3 PPP payload for %s "
+              "(%zu bytes)\n",
+              agxdecode_chip_name(chip), size);
+      if (verbose)
+         u_hexdump(agxdecode_dump_stream, payload, size, false);
+      return;
+   }
+
+   switch (record.kind) {
+   case AGX_PPP_DECODED_RECORD_W_CLAMP_CULL2:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 PPP W-clamp/Cull-2\n"
+              "  W-clamp raw = 0x%08" PRIx32 "\n"
+              "  Cull-2 raw = 0x%08" PRIx32 "\n",
+              record.data.w_clamp_cull2.w_clamp_raw,
+              record.data.w_clamp_cull2.cull2_raw);
+      break;
+   case AGX_PPP_DECODED_RECORD_VIEWPORT:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 PPP Viewports\n"
+              "  Count = %u\n"
+              "  Control raw = 0x%08" PRIx32 "\n",
+              record.data.viewport.viewport_count,
+              record.data.viewport.viewport_control_raw);
+      break;
+   case AGX_PPP_DECODED_RECORD_HAL300_DEPTH_STENCIL:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 HAL300 PPP Depth/Stencil\n"
+              "  Fragment control raw = 0x%08" PRIx32 "\n"
+              "  Front face raw = 0x%08" PRIx32 "\n"
+              "  Back face raw = 0x%08" PRIx32 "\n"
+              "  Front stencil raw = 0x%08" PRIx32 "\n"
+              "  Back stencil raw = 0x%08" PRIx32 "\n",
+              record.data.hal300_depth_stencil.fragment_control_raw,
+              record.data.hal300_depth_stencil.fragment_front_face_raw,
+              record.data.hal300_depth_stencil.fragment_back_face_raw,
+              record.data.hal300_depth_stencil.fragment_front_stencil_raw,
+              record.data.hal300_depth_stencil.fragment_back_stencil_raw);
+      break;
+   case AGX_PPP_DECODED_RECORD_HAL300_DEPTH_BIAS_SCISSOR_BASES:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 HAL300 PPP Depth-bias/Scissor bases\n"
+              "  Depth-bias base = 0x%012" PRIx64 "\n"
+              "  Scissor base = 0x%012" PRIx64 "\n",
+              record.data.hal300_depth_bias_scissor_bases.depth_bias_base,
+              record.data.hal300_depth_bias_scissor_bases.scissor_base);
+      break;
+   case AGX_PPP_DECODED_RECORD_INVALID:
+   default:
+      break;
+   }
+}
+
 static unsigned
-agxdecode_vdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
-                   size_t available, uint64_t *link, UNUSED bool verbose,
-                   enum agx_chip chip)
+agxdecode_vdm_agx3(struct agxdecode_ctx *ctx, const uint8_t *map,
+                   size_t available, uint64_t *link, bool verbose,
+                   decoder_params *params, enum agx_chip chip)
 {
    struct agx_vdm_decoded_record record;
 
@@ -898,6 +981,9 @@ agxdecode_vdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
               "  Size = %" PRIu32 " words\n",
               record.data.ppp_state_update.pointer,
               record.data.ppp_state_update.size_words);
+      agxdecode_ppp_agx3(ctx, chip, record.data.ppp_state_update.pointer,
+                         (size_t)record.data.ppp_state_update.size_words * 4,
+                         verbose);
       return record.length;
 
    case AGX_VDM_RECORD_BARRIER:
@@ -919,6 +1005,10 @@ agxdecode_vdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
               record.data.state_update.raw_vertex_outputs[0],
               record.data.state_update.raw_vertex_outputs[1],
               record.data.state_update.raw_vertex_unknown);
+      if (record.data.state_update.pipeline != 0)
+         agxdecode_stateful(ctx, record.data.state_update.pipeline,
+                            "Vertex Ioto pipeline", agxdecode_ioto, verbose,
+                            params, NULL);
       return record.length;
 
    case AGX_VDM_RECORD_INDEX_LIST_NONINDEXED:
@@ -1029,7 +1119,8 @@ agxdecode_vdm(struct agxdecode_ctx *ctx, const uint8_t *map,
 {
    const enum agx_chip chip = agxdecode_chip_from_params(params);
    if (agxdecode_chip_uses_agx3(chip))
-      return agxdecode_vdm_agx3(ctx, map, available, link, verbose, chip);
+      return agxdecode_vdm_agx3(ctx, map, available, link, verbose, params,
+                                chip);
 
    /* Bits 29-31 contain the block type */
    enum agx_vdm_block_type block_type = (map[3] >> 5);
