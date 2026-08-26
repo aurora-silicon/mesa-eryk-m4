@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "target": "Apple A18 Pro / G17P",
+  "device_regex": "(?i)(A18[ -]Pro|G17P)",
+  "driver_regex": "(?i)(Honeykrisp|MESA_HONEYKRISP)",
+  "drm_driver_regex": "(?i)^asahi$",
+  "kernel_fault_regex": "(?i)(BUG:|Oops:|kernel panic|watchdog:.*lockup|GPU[^\\n]*(fault|hang|timeout|reset)|IOMMU[^\\n]*fault|asahi[^\\n]*(fault|hang|timeout|reset)|drm[^\\n]*(fault|hang|timeout))",
+  "stages": [
+    {
+      "name": "loader",
+      "gate": "loader/device",
+      "timeout_seconds": 180,
+      "tests_per_group": 1,
+      "selectors": [
+        {
+          "name": "cts-device-info",
+          "regex": "^dEQP-VK\\.info\\.",
+          "minimum": 3,
+          "limit": 12
+        }
+      ]
+    },
+    {
+      "name": "compute",
+      "gate": "compute submission",
+      "timeout_seconds": 300,
+      "tests_per_group": 1,
+      "selectors": [
+        {
+          "name": "compute-basic-submit",
+          "regex": "^dEQP-VK\\.compute\\.pipeline\\.basic\\.(copy_ssbo_single_invocation|empty_shader|shared_var_single_invocation|ubo_to_ssbo_single_invocation)$",
+          "minimum": 4,
+          "limit": 4
+        }
+      ]
+    },
+    {
+      "name": "triangle",
+      "gate": "graphics submission",
+      "timeout_seconds": 300,
+      "tests_per_group": 1,
+      "selectors": [
+        {
+          "name": "single-triangle-draw",
+          "regex": "^dEQP-VK\\.draw\\.renderpass\\.basic_draw\\.(draw|draw_indexed)\\.triangle_(list|strip)\\.3$",
+          "minimum": 4,
+          "limit": 4
+        }
+      ]
+    },
+    {
+      "name": "expanded",
+      "gate": "bounded API/compute/render sample",
+      "timeout_seconds": 1800,
+      "tests_per_group": 1,
+      "selectors": [
+        {
+          "name": "api-format-info",
+          "regex": "^dEQP-VK\\.api\\.info\\.",
+          "minimum": 16,
+          "limit": 16
+        },
+        {
+          "name": "compute-basic-more",
+          "regex": "^dEQP-VK\\.compute\\.pipeline\\.basic\\.(copy_image_to_ssbo_(large|small)|copy_ssbo_multiple_(groups|invocations)|copy_ssbo_to_image_(large|small)|empty_workgroup_(all|x|y|z)|ssbo_rw_(multiple_groups|single_invocation)|ubo_to_ssbo_(multiple_groups|multiple_invocations|single_group))$",
+          "minimum": 12,
+          "limit": 15
+        },
+        {
+          "name": "triangle-draw-more",
+          "regex": "^dEQP-VK\\.draw\\.renderpass\\.basic_draw\\.(draw|draw_indexed)\\.triangle_(fan|list|strip)\\.(1|17|45)$",
+          "minimum": 12,
+          "limit": 18
+        }
+      ]
+    },
+    {
+      "name": "full",
+      "gate": "full Vulkan CTS",
+      "timeout_seconds": 86400,
+      "tests_per_group": 1000,
+      "requires_full_opt_in": true,
+      "rerun_prior": true,
+      "selectors": [
+        {
+          "name": "vk-main",
+          "regex": "^dEQP-VK\\.",
+          "minimum": 1,
+          "limit": 0
+        }
+      ]
+    }
+  ]
+}
