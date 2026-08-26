@@ -341,6 +341,57 @@ test_g17s_minimal_compute_admission(void)
    CHECK(live_program.chip == AGX_CHIP_G17S &&
          live_program.program_va == live_upload.gpu_va);
 
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS,
+      .size = {2, 3, 4},
+      .local_size = {8, 4, 2},
+      .dimensions = 3,
+   };
+   uint8_t expected_launch[AGX3_CDM_DIRECT_LAUNCH_SIZE];
+   CHECK(agx3_compute_program_pack_direct_launch(&live_program, &grid,
+                                                  expected_launch));
+   uint8_t dispatch[AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE + 3];
+   memset(dispatch, 0xb6, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink dispatch_sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+      .length = 2,
+   };
+   CHECK(hk_agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &dispatch_sink));
+   CHECK(dispatch_sink.length ==
+         2 + AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE);
+   CHECK(dispatch[0] == 0xb6 && dispatch[1] == 0xb6 &&
+         dispatch[dispatch_sink.length] == 0xb6);
+   CHECK(memcmp(dispatch + 2, expected_launch,
+                AGX3_CDM_DIRECT_LAUNCH_SIZE) == 0);
+   static const uint8_t strong_barrier[] = {0x60, 0x15, 0x00, 0x60};
+   CHECK(memcmp(dispatch + 2 + AGX3_CDM_DIRECT_LAUNCH_SIZE, strong_barrier,
+                sizeof(strong_barrier)) == 0);
+
+   uint8_t dispatch_before[sizeof(dispatch)];
+   memcpy(dispatch_before, dispatch, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink failed_sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+      .length = 1,
+   };
+   CHECK(!hk_agx3_g17s_minimal_compute_dispatch_append(
+      &direct_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 1 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+   struct agx3_compute_program sibling_program = live_program;
+   sibling_program.chip = AGX_CHIP_G17G;
+   CHECK(!hk_agx3_g17s_minimal_compute_dispatch_append(
+      &sibling_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 1 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+   failed_sink.capacity = AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE;
+   CHECK(!hk_agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 1 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+
    uint8_t live_before[sizeof(live_mapped)];
    memcpy(live_before, live_mapped, sizeof(live_mapped));
    const struct agx3_compute_program live_program_before = live_program;

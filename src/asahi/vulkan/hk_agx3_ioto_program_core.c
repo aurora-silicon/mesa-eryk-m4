@@ -81,3 +81,12 @@ hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
    return agx3_g17s_minimal_compute_program_live_upload_prepare(
       chip, desc, resources, upload, written, program);
 }
+
+bool
+hk_agx3_g17s_minimal_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   return agx3_g17s_minimal_compute_dispatch_append(program, grid, sink);
+}

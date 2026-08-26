@@ -72,6 +72,13 @@ bool hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
    const struct agx3_compute_program_upload *upload, size_t *written,
    struct agx3_compute_program *program);
 
+/* Append one live-admitted G17S launch plus its strong barrier.  This is a
+ * bounded byte bridge only and does not publish a Vulkan capability. */
+bool hk_agx3_g17s_minimal_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
 #ifdef __cplusplus
 }
 #endif

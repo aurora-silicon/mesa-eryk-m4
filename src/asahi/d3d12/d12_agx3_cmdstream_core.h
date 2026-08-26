@@ -263,6 +263,17 @@ d12_agx3_g17s_minimal_compute_program_live_upload_prepare(
       chip, desc, resources, upload, written, program);
 }
 
+/* Append one live-admitted G17S launch plus its strong barrier.  This remains
+ * command-stream byte plumbing and does not publish a D3D12 capability. */
+static inline bool
+d12_agx3_g17s_minimal_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   return agx3_g17s_minimal_compute_dispatch_append(program, grid, sink);
+}
+
 /*
  * Host-only bridge for the suffix appended after LoadShader and PIXREL.
  * The output and all target admission remain owned by the shared strict core.

@@ -191,6 +191,7 @@ test_g17s_minimal_program_join(void)
    CHECK(state[written] == 0xa5);
    CHECK(program.chip == AGX_CHIP_G17S);
    CHECK(program.program_va == desc.program_va);
+   CHECK(!program.g17s_minimal_live_admitted);
 
    const struct agx3_compute_direct_grid grid = {
       .source = AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS,
@@ -224,6 +225,7 @@ test_g17s_minimal_program_join(void)
    CHECK(mapped[mapped_written] == 0x3c);
    CHECK(mapped_program.chip == AGX_CHIP_G17S);
    CHECK(mapped_program.program_va == upload.gpu_va);
+   CHECK(!mapped_program.g17s_minimal_live_admitted);
 
    CHECK(agx3_compute_program_pack_direct_launch(&mapped_program, &grid,
                                                   launch));
@@ -256,6 +258,7 @@ test_g17s_minimal_program_join(void)
    CHECK(memcmp(live_mapped, mapped, 32) != 0);
    CHECK(live_program.chip == AGX_CHIP_G17S &&
          live_program.program_va == live_upload.gpu_va);
+   CHECK(live_program.g17s_minimal_live_admitted);
    CHECK(agx3_compute_program_pack_direct_launch(&live_program, &grid,
                                                   launch));
    CHECK(agx3_cdm_direct_launch_unpack(AGX_CHIP_G17S, launch, sizeof(launch),
@@ -285,6 +288,78 @@ test_g17s_minimal_program_join(void)
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
       AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
    };
+   CHECK(agx3_g17s_minimal_compute_dispatch_ready(AGX_CHIP_G17S));
+   for (unsigned i = 0; i < ARRAY_SIZE(rejected_upload_targets); ++i)
+      CHECK(!agx3_g17s_minimal_compute_dispatch_ready(
+         rejected_upload_targets[i]));
+
+   uint8_t dispatch[AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE + 5];
+   memset(dispatch, 0xa7, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink dispatch_sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+      .length = 3,
+   };
+   CHECK(agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &dispatch_sink));
+   CHECK(dispatch_sink.length ==
+         3 + AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE);
+   CHECK(dispatch[0] == 0xa7 && dispatch[1] == 0xa7 &&
+         dispatch[2] == 0xa7 && dispatch[dispatch_sink.length] == 0xa7);
+   CHECK(memcmp(dispatch + 3, launch, AGX3_CDM_DIRECT_LAUNCH_SIZE) == 0);
+   static const uint8_t strong_barrier[4] = {
+      0x60, 0x15, 0x00, 0x60,
+   };
+   CHECK(memcmp(dispatch + 3 + AGX3_CDM_DIRECT_LAUNCH_SIZE, strong_barrier,
+                sizeof(strong_barrier)) == 0);
+   CHECK(agx3_cdm_direct_launch_unpack(
+      AGX_CHIP_G17S, dispatch + 3, AGX3_CDM_DIRECT_LAUNCH_SIZE, &decoded));
+   CHECK(decoded.pipeline == live_upload.gpu_va);
+
+   uint8_t dispatch_before[sizeof(dispatch)];
+   memcpy(dispatch_before, dispatch, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink failed_sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+      .length = 2,
+   };
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 2 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &mapped_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 2 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+
+   struct agx3_compute_program sibling_program = live_program;
+   sibling_program.chip = AGX_CHIP_G17G;
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &sibling_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 2 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+
+   failed_sink.length = 3;
+   failed_sink.capacity =
+      3 + AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE - 1;
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 3 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+   failed_sink.length = 3;
+   failed_sink.capacity = 2;
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 3 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+   failed_sink.data = NULL;
+   failed_sink.capacity = AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE;
+   failed_sink.length = 0;
+   CHECK(!agx3_g17s_minimal_compute_dispatch_append(
+      &live_program, &grid, &failed_sink));
+   CHECK(failed_sink.length == 0 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+
    for (unsigned i = 0; i < ARRAY_SIZE(rejected_upload_targets); ++i) {
       mapped_written = 47;
       CHECK(!agx3_g17s_minimal_compute_program_upload_prepare(

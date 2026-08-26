@@ -65,6 +65,11 @@ struct agx3_compute_program {
    enum agx_chip chip;
    uint64_t program_va;
    struct agx3_cdm_direct_template launch_template;
+
+   /* Only the live G17S minimal-resource preparation path sets this.  Keep
+    * research composers and the zero-relocation witness out of a command
+    * stream even when their launch metadata is otherwise encodable. */
+   bool g17s_minimal_live_admitted;
 };
 
 /* Caller-owned CPU mapping of one GPU allocation.  Apple writes the dynamic
@@ -76,6 +81,17 @@ struct agx3_compute_program_upload {
    void *cpu;
    size_t capacity;
    uint64_t gpu_va;
+};
+
+#define AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE \
+   (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
+
+/* Caller-owned command-stream span.  A successful append writes one exact
+ * direct launch followed by CommandEncodingNext's strong flags=5 barrier. */
+struct agx3_compute_dispatch_sink {
+   uint8_t *data;
+   size_t capacity;
+   size_t length;
 };
 
 struct agx3_compute_direct_grid {
@@ -134,6 +150,19 @@ bool agx3_g17s_minimal_compute_program_live_upload_prepare(
    const struct agx_ioto_g17s_minimal_compute_resources *resources,
    const struct agx3_compute_program_upload *upload, size_t *written,
    struct agx3_compute_program *program);
+
+/* Narrow production condition for the independently witnessed G17S minimal
+ * root-uniform program.  This does not imply chip-wide Ioto load readiness. */
+bool agx3_g17s_minimal_compute_dispatch_ready(enum agx_chip chip);
+
+/* Append the live-admitted program's canonical 40-byte direct launch and the
+ * exact four-byte strong post-dispatch barrier.  sink and sink->length are
+ * unchanged on every failure; sibling chips and non-live program provenance
+ * are rejected. */
+bool agx3_g17s_minimal_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
 
 /*
  * Encode a canonical 40-byte direct launch whose 48-bit pipeline pointer and

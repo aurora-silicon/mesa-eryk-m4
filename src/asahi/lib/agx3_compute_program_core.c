@@ -5,7 +5,13 @@
 
 #include "agx3_compute_program_core.h"
 
+#include "asahi/genxml/agx3_cmdstream.h"
+
 #include <string.h>
+
+_Static_assert(AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE ==
+                  AGX3_CDM_DIRECT_LAUNCH_SIZE + AGX3_CDM_BARRIER_SIZE,
+               "G17S dispatch size must cover launch plus barrier");
 
 bool
 agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
@@ -79,6 +85,43 @@ agx3_g17s_minimal_compute_program_prepare(
 }
 
 bool
+agx3_g17s_minimal_compute_dispatch_ready(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17S;
+}
+
+bool
+agx3_g17s_minimal_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   if (!program || !grid || !sink ||
+       (sink->capacity != 0 && !sink->data) || sink->length > sink->capacity ||
+       AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE >
+          sink->capacity - sink->length ||
+       !agx3_g17s_minimal_compute_dispatch_ready(program->chip) ||
+       !program->g17s_minimal_live_admitted)
+      return false;
+
+   uint8_t staged[AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE];
+   if (!agx3_compute_program_pack_direct_launch(program, grid, staged))
+      return false;
+
+   const struct agx3_cdm_barrier_info barrier = {
+      .chip = AGX_CHIP_G17S,
+      .flags = 5,
+   };
+   if (!agx3_cdm_barrier_pack(&barrier,
+                              staged + AGX3_CDM_DIRECT_LAUNCH_SIZE))
+      return false;
+
+   memcpy(sink->data + sink->length, staged, sizeof(staged));
+   sink->length += sizeof(staged);
+   return true;
+}
+
+bool
 agx3_g17s_minimal_compute_program_upload_prepare(
    enum agx_chip chip,
    const struct agx3_g17s_minimal_compute_program_desc *desc,
@@ -129,6 +172,7 @@ agx3_g17s_minimal_compute_program_live_upload_prepare(
       .chip = AGX_CHIP_G17S,
       .program_va = desc->program_va,
       .launch_template = launch_template,
+      .g17s_minimal_live_admitted = true,
    };
    *written = staged_written;
    return true;

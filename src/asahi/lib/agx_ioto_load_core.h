@@ -188,8 +188,9 @@ enum agx_ioto_load_alloc_result {
 
 enum agx_ioto_load_encoding agx_ioto_load_target_encoding(enum agx_chip chip);
 
-/* Remains false until every live resource category, loadFrom* form and final
- * integration order is grounded, even when a narrow native packer is ready. */
+/* Remains false until every live resource category and loadFrom* form is
+ * grounded.  Narrow G17S minimal dispatch admission is tracked separately by
+ * agx3_g17s_minimal_compute_dispatch_ready(). */
 bool agx_ioto_load_production_ready(enum agx_chip chip);
 
 bool agx_ioto_load_core_init(struct agx_ioto_load_core *core,
