@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #define AGX_IOTO_PROFILE_CONTROL_MAX_SIZE 6
+#define AGX_IOTO_G17S_MINIMAL_PROFILE_LOADER_SIZE 52
 
 /*
  * Bounded canonical subset of Ioto SETPROFILECTL_0.  payload0/payload1 hold
@@ -36,6 +37,18 @@ size_t agx_ioto_profile_control_size(enum agx_chip chip);
 bool
 agx_ioto_profile_control_pack(const struct agx_ioto_profile_control *profile,
                               uint8_t out[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE]);
+
+/* Build the exact direct HAL300 SETPROFILECTL operand tuple recovered from
+ * G17S.  This record is used only when Apple's profile selects the direct
+ * path; the ordinary minimal compute profile uses the loader below instead. */
+bool agx_ioto_g17s_profile_control_build(
+   uint8_t value, bool mode_table_bit, bool high_bit,
+   struct agx_ioto_profile_control *profile);
+
+/* Exact minimal-profile loader emitted by G17S after the state tail.  A
+ * zero-payload SETPROFILECTL is not an equivalent encoding. */
+bool agx_ioto_g17s_minimal_profile_loader_pack(
+   void *output, size_t capacity);
 
 /* Decode one record from a possibly longer stream and return its byte count. */
 bool agx_ioto_profile_control_unpack(enum agx_chip chip, const void *stream,

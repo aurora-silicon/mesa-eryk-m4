@@ -72,6 +72,52 @@ round_trip(enum agx_chip chip, uint16_t payload0, uint16_t payload1)
 int
 main(void)
 {
+   static const uint8_t g17s_minimal_loader[] = {
+      0x1c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x34, 0x81, 0x01, 0x00, 0x20, 0x00, 0xa0, 0x02,
+      0x0c, 0x80, 0x02, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x27, 0x04, 0x04, 0x1a, 0x21, 0x00, 0xa3, 0x02,
+      0x88, 0x80, 0x00, 0x00,
+      0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x27, 0x04, 0x04, 0x00, 0x30, 0x00, 0xa4, 0x12,
+   };
+   uint8_t loader[sizeof(g17s_minimal_loader)];
+   memset(loader, 0xa5, sizeof(loader));
+   CHECK(agx_ioto_g17s_minimal_profile_loader_pack(loader, sizeof(loader)));
+   CHECK(memcmp(loader, g17s_minimal_loader, sizeof(loader)) == 0);
+   loader[0] = 0x5a;
+   CHECK(!agx_ioto_g17s_minimal_profile_loader_pack(
+      loader, sizeof(loader) - 1));
+   CHECK(loader[0] == 0x5a);
+   CHECK(!agx_ioto_g17s_minimal_profile_loader_pack(NULL, sizeof(loader)));
+
+   const struct {
+      uint8_t value;
+      bool mode_table_bit;
+      bool high_bit;
+      const uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+   } direct_profiles[] = {
+      {1, false, false, {0x07, 0x00, 0x08, 0x0f, 0x00, 0x00}},
+      {1, false, true,  {0x07, 0x00, 0x08, 0x1f, 0x00, 0x00}},
+      {2, false, false, {0x07, 0x00, 0x10, 0x0f, 0x00, 0x00}},
+      {1, true,  false, {0x07, 0x00, 0x88, 0x0f, 0x00, 0x00}},
+   };
+   for (unsigned i = 0;
+        i < sizeof(direct_profiles) / sizeof(direct_profiles[0]); ++i) {
+      struct agx_ioto_profile_control profile;
+      uint8_t bytes[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+      CHECK(agx_ioto_g17s_profile_control_build(
+         direct_profiles[i].value, direct_profiles[i].mode_table_bit,
+         direct_profiles[i].high_bit, &profile));
+      CHECK(agx_ioto_profile_control_pack(&profile, bytes));
+      CHECK(memcmp(bytes, direct_profiles[i].bytes, sizeof(bytes)) == 0);
+   }
+   struct agx_ioto_profile_control invalid_profile = {.chip = AGX_CHIP_G15G};
+   CHECK(!agx_ioto_g17s_profile_control_build(4, false, false,
+                                               &invalid_profile));
+   CHECK(invalid_profile.chip == AGX_CHIP_G15G);
+   CHECK(!agx_ioto_g17s_profile_control_build(0, false, false, NULL));
+
    const enum agx_chip targets[] = {
       AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,

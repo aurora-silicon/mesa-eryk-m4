@@ -14,6 +14,17 @@
 #define AGX_IOTO_PROFILE_CONTROL_HAL300_PAYLOAD1  UINT16_C(0xfc00)
 #define AGX_IOTO_PROFILE_CONTROL_HAL300_WORD1_FIXED UINT16_C(0x0f00)
 
+static const uint8_t g17s_minimal_profile_loader
+   [AGX_IOTO_G17S_MINIMAL_PROFILE_LOADER_SIZE] = {
+      0x1c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x34, 0x81, 0x01, 0x00, 0x20, 0x00, 0xa0, 0x02,
+      0x0c, 0x80, 0x02, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x27, 0x04, 0x04, 0x1a, 0x21, 0x00, 0xa3, 0x02,
+      0x88, 0x80, 0x00, 0x00,
+      0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x27, 0x04, 0x04, 0x00, 0x30, 0x00, 0xa4, 0x12,
+   };
+
 static uint16_t
 load_le16(const uint8_t *bytes)
 {
@@ -96,6 +107,35 @@ agx_ioto_profile_control_pack(const struct agx_ioto_profile_control *profile,
    if (is_hal300(profile->chip))
       store_le16(out + 4, profile->payload1);
 
+   return true;
+}
+
+bool
+agx_ioto_g17s_profile_control_build(
+   uint8_t value, bool mode_table_bit, bool high_bit,
+   struct agx_ioto_profile_control *profile)
+{
+   if (!profile || value > 3)
+      return false;
+
+   *profile = (struct agx_ioto_profile_control){
+      .chip = AGX_CHIP_G17S,
+      .payload0 = (uint16_t)(((uint16_t)value << 3) |
+                            ((uint16_t)mode_table_bit << 7) |
+                            ((uint16_t)high_bit << 12)),
+      .payload1 = 0,
+   };
+   return true;
+}
+
+bool
+agx_ioto_g17s_minimal_profile_loader_pack(void *output, size_t capacity)
+{
+   if (!output || capacity < sizeof(g17s_minimal_profile_loader))
+      return false;
+
+   memcpy(output, g17s_minimal_profile_loader,
+          sizeof(g17s_minimal_profile_loader));
    return true;
 }
 
