@@ -104,6 +104,40 @@ TEST_F(AGX3PackBinary, StraightLineALU)
    }
 }
 
+TEST_F(AGX3PackBinary, SimdBroadcastImmediateWitnesses)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (uint8_t lane : {0, 3}) {
+         agx_builder *b = builder(enc);
+         agx_shuffle_to(b, agx_register(4, AGX_SIZE_32),
+                        agx_register(0, AGX_SIZE_32), agx_immediate(lane));
+         agx_stop(b);
+
+         struct agx3_encoded_simd_broadcast_f32_imm broadcast;
+         ASSERT_TRUE(agx3_pack_simd_broadcast_f32_imm(enc, 4, 0, lane,
+                                                       &broadcast));
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+         std::vector<uint8_t> want;
+         append(want, broadcast.bytes, broadcast.length);
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, SimdBroadcastRefusesUnwitnessedLane)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_shuffle_to(b, agx_register(4, AGX_SIZE_32),
+                  agx_register(0, AGX_SIZE_32), agx_immediate(1));
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
 TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
 {
    for (int e = 0; e < 2; ++e) {

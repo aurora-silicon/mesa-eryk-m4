@@ -265,8 +265,9 @@ struct agx3_encoded_update_node {
  * Only immediate lanes 0 and 3 have direct `simdbcast` witnesses, so every
  * other immediate, register/uniform lane selection, element width, shuffle
  * mnemonic and scheduler-marker shape fails closed.  The fixed marker shape
- * here is the one carried by SB_bcast0/SB_bcast3; callers must not treat this
- * as subgroup lowering, scheduling, runtime support or feature exposure.
+ * here is the one carried by SB_bcast0/SB_bcast3.  The production backend may
+ * lower only this exact bounded form; it does not imply wider subgroup
+ * support or feature exposure.
  */
 bool agx3_pack_simd_broadcast_f32_imm(
    enum agx_isa_encoding encoding, uint16_t dest, uint16_t src, uint8_t lane,

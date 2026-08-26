@@ -29,6 +29,7 @@
 #include "agx3_falu_mod_core.h"
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
+#include "agx3_pack.h"
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
@@ -966,6 +967,32 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return true;
 }
 
+/* Emit the bounded subgroup broadcast shape already recovered from the
+ * SB_bcast0/SB_bcast3 corpus.  The generic Mesa `shuffle` operation is a SIMD
+ * broadcast when its lane is immediate; all other subgroup/quad directions,
+ * lane kinds, widths and dependency-marker shapes remain fail-closed. */
+static bool
+agx3_emit_simd_broadcast(struct util_dynarray *emission,
+                         enum agx_isa_encoding enc, const agx_instr *I,
+                         uint16_t wait_mask)
+{
+   if (wait_mask != 0 || I->op != AGX_OPCODE_SHUFFLE || I->nr_dests != 1 ||
+       I->nr_srcs != 2 || !agx3_mod_src_ok(I->dest[0]) ||
+       !agx3_mod_src_ok(I->src[0]) || I->src[0].abs || I->src[0].neg ||
+       agx_channels(I->dest[0]) != 1 || agx_channels(I->src[0]) != 1 ||
+       I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].memory ||
+       I->src[1].abs || I->src[1].neg ||
+       agx_channels(I->src[1]) != 1 || I->saturate ||
+       (I->src[1].value != 0 && I->src[1].value != 3))
+      return false;
+
+   struct agx3_encoded_simd_broadcast_f32_imm encoded;
+   return agx3_pack_simd_broadcast_f32_imm(
+             enc, I->dest[0].value, I->src[0].value, I->src[1].value,
+             &encoded) &&
+          agx3_append(emission, encoded.bytes, encoded.length);
+}
+
 /* The grounded AGX3 compare forms are 32-bit and address the lower 128
  * half-registers. Source modifiers and memory/uniform operands select forms
  * whose routing has not been proved. */
@@ -1466,6 +1493,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!ok || !agx3_append(emission, bytes, len))
                goto fail;
             async_seen = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_SHUFFLE) {
+            if (!agx3_emit_simd_broadcast(emission, enc, I, wait))
+               goto fail;
             continue;
          }
 
