@@ -20,6 +20,7 @@
 #include "asahi/isa/disasm.h"
 #include "agx3_cdm_decode_core.h"
 #include "agx3_cdm_direct_launch_semantic_core.h"
+#include "agx_vdm_decode_core.h"
 #include "util/u_hexdump.h"
 #include "decode.h"
 
@@ -832,10 +833,130 @@ agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map,
 }
 
 static unsigned
+agxdecode_vdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
+                   size_t available, uint64_t *link, UNUSED bool verbose,
+                   enum agx_chip chip)
+{
+   struct agx_vdm_decoded_record record;
+
+   if (!agx_vdm_decode_one(chip, map, available, &record)) {
+      fprintf(agxdecode_dump_stream,
+              "Unknown or non-canonical AGX3 VDM record for %s\n",
+              agxdecode_chip_name(chip));
+      return STATE_ERROR;
+   }
+
+   switch (record.kind) {
+   case AGX_VDM_RECORD_PPP_STATE_UPDATE:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 PPP State Update\n"
+              "  Pointer = 0x%012" PRIx64 "\n"
+              "  Size = %" PRIu32 " words\n",
+              record.data.ppp_state_update.pointer,
+              record.data.ppp_state_update.size_words);
+      return record.length;
+
+   case AGX_VDM_RECORD_BARRIER:
+      agxdecode_log("AGX3 VDM Barrier\n");
+      return record.length;
+
+   case AGX_VDM_RECORD_STATE_UPDATE:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 VDM State Update\n"
+              "  Vertex shader word 0 = 0x%08" PRIx32 "\n"
+              "  Pipeline = 0x%012" PRIx64 "\n"
+              "  Pipeline template = 0x%08" PRIx32 "\n"
+              "  Vertex outputs = { 0x%08" PRIx32 ", 0x%08" PRIx32
+              " }\n"
+              "  Vertex unknown = 0x%08" PRIx32 "\n",
+              record.data.state_update.raw_vertex_shader_word0,
+              record.data.state_update.pipeline,
+              record.data.state_update.raw_pipeline_template,
+              record.data.state_update.raw_vertex_outputs[0],
+              record.data.state_update.raw_vertex_outputs[1],
+              record.data.state_update.raw_vertex_unknown);
+      return record.length;
+
+   case AGX_VDM_RECORD_INDEX_LIST_NONINDEXED:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Direct Non-indexed Draw\n"
+              "  Primitive = %u\n"
+              "  Count = %" PRIu32 "\n"
+              "  Instances = %" PRIu32 "\n"
+              "  Start = %" PRIu32 "\n",
+              record.data.index_list_nonindexed.primitive,
+              record.data.index_list_nonindexed.count,
+              record.data.index_list_nonindexed.instances,
+              record.data.index_list_nonindexed.start);
+      return record.length;
+
+   case AGX_VDM_RECORD_INDEX_LIST_INDEXED:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Direct Indexed Draw\n"
+              "  Primitive = %u\n"
+              "  Restart = %s\n"
+              "  Index size = %u\n"
+              "  Index buffer = 0x%012" PRIx64 "\n"
+              "  Count = %" PRIu32 "\n"
+              "  Instances = %" PRIu32 "\n"
+              "  Start = %" PRIu32 "\n"
+              "  Index buffer size word = 0x%08" PRIx32 "\n",
+              record.data.index_list_indexed.primitive,
+              record.data.index_list_indexed.restart_enable ? "true" :
+                                                              "false",
+              record.data.index_list_indexed.index_size,
+              record.data.index_list_indexed.index_buffer,
+              record.data.index_list_indexed.count,
+              record.data.index_list_indexed.instances,
+              record.data.index_list_indexed.start,
+              record.data.index_list_indexed.index_buffer_size_word);
+      return record.length;
+
+   case AGX_VDM_RECORD_STREAM_LINK:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 VDM Stream Link\n  Target = 0x%012" PRIx64 "\n",
+              record.data.stream_link.target);
+      *link = record.data.stream_link.target;
+      return STATE_LINK;
+
+   case AGX_VDM_RECORD_STREAM_TERMINATE:
+      agxdecode_log("AGX3 VDM Stream Terminate\n");
+      return STATE_DONE;
+
+   case AGX_VDM_RECORD_TESSELLATE_DIRECT:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Direct Tessellate\n"
+              "  Factor buffer = 0x%012" PRIx64 "\n"
+              "  Patch count = %" PRIu32 "\n"
+              "  Instance count = %" PRIu32 "\n"
+              "  Base patch = %" PRIu32 "\n"
+              "  Base instance = %" PRIu32 "\n"
+              "  Instance stride word = 0x%08" PRIx32 "\n"
+              "  Factor buffer size minus one = 0x%08" PRIx32 "\n",
+              record.data.tessellate_direct.factor_buffer,
+              record.data.tessellate_direct.patch_count,
+              record.data.tessellate_direct.instance_count,
+              record.data.tessellate_direct.base_patch,
+              record.data.tessellate_direct.base_instance,
+              record.data.tessellate_direct.instance_stride_word,
+              record.data.tessellate_direct.factor_buffer_size_minus_one);
+      return record.length;
+
+   case AGX_VDM_RECORD_UNKNOWN:
+   default:
+      return STATE_ERROR;
+   }
+}
+
+static unsigned
 agxdecode_vdm(struct agxdecode_ctx *ctx, const uint8_t *map,
-              UNUSED size_t available, uint64_t *link, bool verbose,
+              size_t available, uint64_t *link, bool verbose,
               decoder_params *params, UNUSED void *data)
 {
+   const enum agx_chip chip = agxdecode_chip_from_params(params);
+   if (agxdecode_chip_uses_agx3(chip))
+      return agxdecode_vdm_agx3(ctx, map, available, link, verbose, chip);
+
    /* Bits 29-31 contain the block type */
    enum agx_vdm_block_type block_type = (map[3] >> 5);
 
