@@ -55,6 +55,14 @@ bool hk_agx3_g17s_minimal_compute_program_prepare(
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
    size_t capacity, size_t *written, struct agx3_compute_program *program);
 
+/* G17S-only mapped upload/launch-address join.  This is host-side admission
+ * plumbing and does not publish a Vulkan feature or device capability. */
+bool hk_agx3_g17s_minimal_compute_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
+
 #ifdef __cplusplus
 }
 #endif

@@ -65,11 +65,12 @@ bool agx_ioto_straight_line_program_compose(
 /* Compose the complete byte-for-byte G17S minimal root-uniform/no-texture
  * compute Ioto program: fixed resource loads, semantic state tail, the real
  * 52-byte minimal-profile loader, eight witnessed COPY records, and terminal
- * suffix.  Only shader_va is patched.  The first COPY pair consumes temporary
- * base zero produced by the preceding buffer-pointer load for buffer(1) at
- * byte offset zero; it is not external Ioto-entry state.  Remaining resource
- * categories are still witness-only, so success does not admit a device or
- * prove frontend ABI compatibility.  Output and *written are transactional. */
+ * suffix.  Only shader_va is patched.  The fixed body contains a two-dword
+ * gather load, the buffer(1) root-uniform load, and a witnessed three-dword
+ * absolute load.  The root uniform is copied from half24 to CProg half8; the
+ * first COPY pair instead consumes still-ungrounded Ioto-entry half0.  Success
+ * therefore does not admit a device or prove frontend ABI compatibility.
+ * Output and *written are transactional. */
 bool agx_ioto_g17s_minimal_compute_program_compose(
    uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
    size_t *written);

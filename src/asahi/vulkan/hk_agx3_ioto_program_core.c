@@ -58,3 +58,14 @@ hk_agx3_g17s_minimal_compute_program_prepare(
    return agx3_g17s_minimal_compute_program_prepare(
       desc, output, capacity, written, program);
 }
+
+bool
+hk_agx3_g17s_minimal_compute_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   return agx3_g17s_minimal_compute_program_upload_prepare(
+      chip, desc, upload, written, program);
+}

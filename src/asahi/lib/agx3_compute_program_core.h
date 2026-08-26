@@ -67,6 +67,17 @@ struct agx3_compute_program {
    struct agx3_cdm_direct_template launch_template;
 };
 
+/* Caller-owned CPU mapping of one GPU allocation.  Apple writes the dynamic
+ * state-loader program at a 64-byte-aligned mapped address, then puts that
+ * mapping's corresponding GPU address into the CDM launch in 64-byte units.
+ * Keeping both views in one object prevents a successfully composed program
+ * from being launched through a different allocation. */
+struct agx3_compute_program_upload {
+   void *cpu;
+   size_t capacity;
+   uint64_t gpu_va;
+};
+
 struct agx3_compute_direct_grid {
    enum agx3_cdm_direct_grid_source source;
    uint32_t size[3];
@@ -91,13 +102,24 @@ bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
 
 /* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch
  * template.  The root-uniform source must match Apple's independently traced
- * buffer(1), offset-zero load into temporary base zero; the post-round COPYs
- * are therefore not admitted as external entry state.  Other resource-body
- * categories remain witness-only, so success still does not admit a live
+ * buffer(1), offset-zero load into temporary base zero.  Its result is loaded
+ * at half24 and copied to CProg half8.  The leading source-half-zero COPY pair
+ * remains ungrounded Ioto-entry state, so success still does not admit a live
  * frontend path. */
 bool agx3_g17s_minimal_compute_program_prepare(
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
    size_t capacity, size_t *written, struct agx3_compute_program *program);
+
+/* Exact mapped-allocation handoff for the G17S witness.  Both cpu and gpu_va
+ * must identify the beginning of the same 64-byte-aligned allocation, and
+ * gpu_va must equal desc->program_va.  No sibling target is admitted.  The
+ * mapped bytes, *written and *program are unchanged on every failure.  This
+ * does not establish the two still-unknown source-half-zero entry values. */
+bool agx3_g17s_minimal_compute_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
 
 /*
  * Encode a canonical 40-byte direct launch whose 48-bit pipeline pointer and

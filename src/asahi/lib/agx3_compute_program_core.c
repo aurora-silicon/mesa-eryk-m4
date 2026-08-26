@@ -79,6 +79,23 @@ agx3_g17s_minimal_compute_program_prepare(
 }
 
 bool
+agx3_g17s_minimal_compute_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   if (chip != AGX_CHIP_G17S || !desc || !upload || !upload->cpu ||
+       !written || !program ||
+       ((uintptr_t)upload->cpu & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       upload->gpu_va != desc->program_va)
+      return false;
+
+   return agx3_g17s_minimal_compute_program_prepare(
+      desc, upload->cpu, upload->capacity, written, program);
+}
+
+bool
 agx3_compute_program_pack_direct_launch(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,

@@ -236,6 +236,19 @@ d12_agx3_g17s_minimal_compute_program_prepare(
       desc, output, capacity, written, program);
 }
 
+/* Bind the exact G17S program bytes to the mapped allocation whose GPU
+ * address is subsequently encoded by the shared direct-launch path. */
+static inline bool
+d12_agx3_g17s_minimal_compute_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   return agx3_g17s_minimal_compute_program_upload_prepare(
+      chip, desc, upload, written, program);
+}
+
 /*
  * Host-only bridge for the suffix appended after LoadShader and PIXREL.
  * The output and all target admission remain owned by the shared strict core.

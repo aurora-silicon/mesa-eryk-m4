@@ -297,14 +297,55 @@ test_g17s_minimal_compute_admission(void)
                 &direct_program.launch_template,
                 sizeof(bridged_program.launch_template)) == 0);
 
+   _Alignas(AGX_IOTO_PROGRAM_ALIGNMENT)
+      uint8_t mapped[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
+   memset(mapped, 0x3c, sizeof(mapped));
+   struct agx3_compute_program_upload upload = {
+      .cpu = mapped,
+      .capacity = sizeof(mapped),
+      .gpu_va = desc.program_va,
+   };
+   size_t mapped_written = SIZE_MAX;
+   struct agx3_compute_program mapped_program;
+   CHECK(hk_agx3_g17s_minimal_compute_program_upload_prepare(
+      AGX_CHIP_G17S, &desc, &upload, &mapped_written, &mapped_program));
+   CHECK(mapped_written == direct_written);
+   CHECK(memcmp(mapped, direct, mapped_written) == 0);
+   CHECK(mapped[mapped_written] == 0x3c);
+   CHECK(mapped_program.chip == AGX_CHIP_G17S);
+   CHECK(mapped_program.program_va == upload.gpu_va);
+
+   uint8_t mapped_before[sizeof(mapped)];
+   memcpy(mapped_before, mapped, sizeof(mapped));
+   const struct agx3_compute_program mapped_program_before = mapped_program;
+
    static const enum agx_chip rejected[] = {
       AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
       AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
    };
-   for (size_t i = 0; i < ARRAY_SIZE(rejected); ++i)
+   for (size_t i = 0; i < ARRAY_SIZE(rejected); ++i) {
       CHECK(expect_g17s_minimal_hk_failure(rejected[i], &desc,
                                             sizeof(bridged)) == 0);
+      mapped_written = 47;
+      CHECK(!hk_agx3_g17s_minimal_compute_program_upload_prepare(
+         rejected[i], &desc, &upload, &mapped_written, &mapped_program));
+      CHECK(memcmp(mapped, mapped_before, sizeof(mapped)) == 0 &&
+            mapped_written == 47);
+      CHECK(memcmp(&mapped_program, &mapped_program_before,
+                   sizeof(mapped_program)) == 0);
+   }
+
+   struct agx3_compute_program_upload invalid_upload = upload;
+   invalid_upload.gpu_va += AGX_IOTO_PROGRAM_ALIGNMENT;
+   mapped_written = 47;
+   CHECK(!hk_agx3_g17s_minimal_compute_program_upload_prepare(
+      AGX_CHIP_G17S, &desc, &invalid_upload, &mapped_written,
+      &mapped_program));
+   CHECK(memcmp(mapped, mapped_before, sizeof(mapped)) == 0 &&
+         mapped_written == 47);
+   CHECK(memcmp(&mapped_program, &mapped_program_before,
+                sizeof(mapped_program)) == 0);
 
    struct agx3_g17s_minimal_compute_program_desc invalid = desc;
    invalid.root_uniform.user_buffer_binding = 0;
