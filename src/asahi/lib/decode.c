@@ -18,6 +18,8 @@
 #include <agx_pack.h>
 
 #include "asahi/isa/disasm.h"
+#include "agx3_cdm_decode_core.h"
+#include "agx3_cdm_direct_launch_semantic_core.h"
 #include "util/u_hexdump.h"
 #include "decode.h"
 
@@ -171,15 +173,119 @@ __agxdecode_fetch_gpu_mem(struct agxdecode_ctx *ctx, const struct agx_bo *mem,
 
 typedef struct drm_asahi_params_global decoder_params;
 
+/* Keep command-stream selection on the kernel's explicit generation/variant
+ * identity.  Cluster count cannot distinguish A18 Pro (G17P/AGX3b) from M5
+ * (G17G/AGX3c), and must never be used as an architecture proxy.  This local
+ * form avoids making the standalone decoder library depend on libasahi_lib;
+ * agx_chip_from_params() is the equivalent device-open mapping. */
+static enum agx_chip
+agxdecode_chip_from_params(const decoder_params *params)
+{
+   if (!params)
+      return AGX_CHIP_UNKNOWN;
+
+   switch (params->gpu_generation) {
+   case 13:
+      switch (params->gpu_variant) {
+      case 'G': return AGX_CHIP_G13G;
+      case 'S':
+      case 'C':
+      case 'D': return AGX_CHIP_G13X;
+      default: return AGX_CHIP_UNKNOWN;
+      }
+   case 14:
+      switch (params->gpu_variant) {
+      case 'G': return AGX_CHIP_G14G;
+      case 'S':
+      case 'C':
+      case 'D': return AGX_CHIP_G14X;
+      default: return AGX_CHIP_UNKNOWN;
+      }
+   case 15:
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G15P;
+      case 'G': return AGX_CHIP_G15G;
+      case 'S': return AGX_CHIP_G15S;
+      case 'C': return AGX_CHIP_G15C;
+      case 'D': return AGX_CHIP_G15D;
+      default: return AGX_CHIP_UNKNOWN;
+      }
+   case 16:
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G16P;
+      case 'G': return AGX_CHIP_G16G;
+      case 'S': return AGX_CHIP_G16S;
+      case 'C': return AGX_CHIP_G16C;
+      default: return AGX_CHIP_UNKNOWN;
+      }
+   case 17:
+      switch (params->gpu_variant) {
+      case 'P': return AGX_CHIP_G17P;
+      case 'A': return AGX_CHIP_G17A;
+      case 'G': return AGX_CHIP_G17G;
+      case 'S': return AGX_CHIP_G17S;
+      case 'C': return AGX_CHIP_G17C;
+      default: return AGX_CHIP_UNKNOWN;
+      }
+   default:
+      return AGX_CHIP_UNKNOWN;
+   }
+}
+
+static bool
+agxdecode_chip_uses_agx3(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G:
+   case AGX_CHIP_G15S:
+   case AGX_CHIP_G15C:
+   case AGX_CHIP_G15D:
+   case AGX_CHIP_G16P:
+   case AGX_CHIP_G16G:
+   case AGX_CHIP_G16S:
+   case AGX_CHIP_G16C:
+   case AGX_CHIP_G17P:
+   case AGX_CHIP_G17A:
+   case AGX_CHIP_G17G:
+   case AGX_CHIP_G17S:
+   case AGX_CHIP_G17C:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static const char *
+agxdecode_chip_name(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G15G: return "G15G";
+   case AGX_CHIP_G15S: return "G15S";
+   case AGX_CHIP_G15C: return "G15C";
+   case AGX_CHIP_G15D: return "G15D";
+   case AGX_CHIP_G16P: return "G16P";
+   case AGX_CHIP_G16G: return "G16G";
+   case AGX_CHIP_G16S: return "G16S";
+   case AGX_CHIP_G16C: return "G16C";
+   case AGX_CHIP_G17P: return "G17P";
+   case AGX_CHIP_G17A: return "G17A";
+   case AGX_CHIP_G17G: return "G17G";
+   case AGX_CHIP_G17S: return "G17S";
+   case AGX_CHIP_G17C: return "G17C";
+   default: return "unknown";
+   }
+}
+
 /* Abstraction for command stream parsing */
 typedef unsigned (*decode_cmd)(struct agxdecode_ctx *ctx, const uint8_t *map,
-                               uint64_t *link, bool verbose,
+                               size_t available, uint64_t *link, bool verbose,
                                decoder_params *params, void *data);
 
 #define STATE_DONE (0xFFFFFFFFu)
 #define STATE_LINK (0xFFFFFFFEu)
 #define STATE_CALL (0xFFFFFFFDu)
 #define STATE_RET  (0xFFFFFFFCu)
+#define STATE_ERROR (0xFFFFFFFBu)
 
 static void
 agxdecode_stateful(struct agxdecode_ctx *ctx, uint64_t va, const char *label,
@@ -217,7 +323,8 @@ agxdecode_stateful(struct agxdecode_ctx *ctx, uint64_t va, const char *label,
          return;
       }
 
-      unsigned count = decoder(ctx, map, &link, verbose, params, data);
+      unsigned count =
+         decoder(ctx, map, (size_t)left, &link, verbose, params, data);
 
       /* If we fail to decode, default to a hexdump (don't hang) */
       if (count == 0) {
@@ -248,6 +355,10 @@ agxdecode_stateful(struct agxdecode_ctx *ctx, uint64_t va, const char *label,
          fprintf(agxdecode_dump_stream, "Returning to 0x%" PRIx64 "\n\n", va);
          left = len = agxdecode_fetch_gpu_array(ctx, va, buf);
          map = buf;
+      } else if (count == STATE_ERROR) {
+         fprintf(agxdecode_dump_stream,
+                 "Stopping at a non-canonical command record\n");
+         break;
       } else {
          va += count;
          map += count;
@@ -292,7 +403,8 @@ agxdecode_texture_pbe(struct agxdecode_ctx *ctx, const void *map)
 
 static unsigned
 agxdecode_usc(struct agxdecode_ctx *ctx, const uint8_t *map,
-              UNUSED uint64_t *link, UNUSED bool verbose,
+              UNUSED size_t available, UNUSED uint64_t *link,
+              UNUSED bool verbose,
               decoder_params *params, UNUSED void *data)
 {
    enum agx_sampler_states *sampler_states = data;
@@ -538,9 +650,108 @@ agxdecode_record(struct agxdecode_ctx *ctx, uint64_t va, size_t size,
 }
 
 static unsigned
-agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map, uint64_t *link,
-              bool verbose, decoder_params *params, UNUSED void *data)
+agxdecode_cdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
+                   size_t available, uint64_t *link, UNUSED bool verbose,
+                   enum agx_chip chip)
 {
+   struct agx3_cdm_decoded_record record;
+
+   if (available < sizeof(uint32_t))
+      return STATE_ERROR;
+
+   /* Type zero has three witnessed lengths (24/36/40 bytes).  Only the
+    * 40-byte direct form has a semantic discriminant strong enough for a
+    * record-at-a-time stream parser: canonical template masks plus word-3's
+    * direct bit/dimension value.  Refuse an indirect or malformed prefix
+    * instead of consuming it as a 40-byte record and losing synchronization. */
+   if ((map[3] >> 5) == AGX_CDM_BLOCK_TYPE_LAUNCH) {
+      struct agx3_cdm_direct_launch_info direct;
+      if (!agx3_cdm_direct_launch_unpack(chip, map, available, &direct)) {
+         fprintf(agxdecode_dump_stream,
+                 "Ambiguous or non-canonical AGX3 launch for %s\n",
+                 agxdecode_chip_name(chip));
+         return STATE_ERROR;
+      }
+   }
+
+   if (!agx3_cdm_decode_one(chip, map, available, &record)) {
+      fprintf(agxdecode_dump_stream,
+              "Unknown or non-canonical AGX3 CDM record for %s\n",
+              agxdecode_chip_name(chip));
+      return STATE_ERROR;
+   }
+
+   switch (record.kind) {
+   case AGX3_CDM_RECORD_LAUNCH:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Compute\n"
+              "  Word 0 payload = 0x%08" PRIx32 "\n"
+              "  Word 1 payload = 0x%08" PRIx32 "\n"
+              "  Pipeline = 0x%012" PRIx64 "\n"
+              "  Opaque word 3 = 0x%08" PRIx32 "\n"
+              "  Global size = (%" PRIu32 ", %" PRIu32 ", %" PRIu32 ")\n"
+              "  Local size = (%" PRIu32 ", %" PRIu32 ", %" PRIu32 ")\n",
+              record.data.launch.word0_payload,
+              record.data.launch.word1_payload, record.data.launch.pipeline,
+              record.data.launch.opaque_word3,
+              record.data.launch.global_size[0],
+              record.data.launch.global_size[1],
+              record.data.launch.global_size[2],
+              record.data.launch.local_size[0],
+              record.data.launch.local_size[1],
+              record.data.launch.local_size[2]);
+      return record.length;
+
+   case AGX3_CDM_RECORD_STREAM_LINK:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Stream Link\n  Target = 0x%012" PRIx64
+              "\n  With return = %s\n",
+              record.data.stream_link.target,
+              record.data.stream_link.with_return ? "true" : "false");
+      *link = record.data.stream_link.target;
+      return record.data.stream_link.with_return ? STATE_CALL : STATE_LINK;
+
+   case AGX3_CDM_RECORD_LINK_PADDING:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Link Padding\n  Count = %u\n",
+              record.data.link_padding.count);
+      return record.length;
+
+   case AGX3_CDM_RECORD_BARRIER:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Barrier\n  Flags = 0x%x\n", record.data.barrier.flags);
+      return record.length;
+
+   case AGX3_CDM_RECORD_SUBSTREAM_BARRIER:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Substream Barrier\n  Flags = 0x%x\n  Substream = %u\n",
+              record.data.substream_barrier.flags,
+              record.data.substream_barrier.substream);
+      return record.length;
+
+   case AGX3_CDM_RECORD_SECONDARY_BARRIER:
+      agxdecode_log("AGX3 Secondary Barrier\n");
+      return record.length;
+
+   case AGX3_CDM_RECORD_STREAM_TERMINATE:
+      agxdecode_log("AGX3 Stream Terminate\n");
+      return STATE_DONE;
+
+   case AGX3_CDM_RECORD_UNKNOWN:
+   default:
+      return STATE_ERROR;
+   }
+}
+
+static unsigned
+agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map,
+              UNUSED size_t available, uint64_t *link, bool verbose,
+              decoder_params *params, UNUSED void *data)
+{
+   const enum agx_chip chip = agxdecode_chip_from_params(params);
+   if (agxdecode_chip_uses_agx3(chip))
+      return agxdecode_cdm_agx3(ctx, map, available, link, verbose, chip);
+
    /* Bits 29-31 contain the block type */
    enum agx_cdm_block_type block_type = (map[3] >> 5);
 
@@ -621,8 +832,9 @@ agxdecode_cdm(struct agxdecode_ctx *ctx, const uint8_t *map, uint64_t *link,
 }
 
 static unsigned
-agxdecode_vdm(struct agxdecode_ctx *ctx, const uint8_t *map, uint64_t *link,
-              bool verbose, decoder_params *params, UNUSED void *data)
+agxdecode_vdm(struct agxdecode_ctx *ctx, const uint8_t *map,
+              UNUSED size_t available, uint64_t *link, bool verbose,
+              decoder_params *params, UNUSED void *data)
 {
    /* Bits 29-31 contain the block type */
    enum agx_vdm_block_type block_type = (map[3] >> 5);

@@ -135,6 +135,8 @@ else
 endif
 
 libasahi_decode_files = files(
+  'agx3_cdm_decode_core.c',
+  'agx3_cdm_direct_launch_semantic_core.c',
   'decode.c',
 )
 
