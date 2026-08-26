@@ -17,6 +17,7 @@
 #include "agx3_alu_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
 #include "agx3_sr_core.h"
@@ -543,6 +544,59 @@ TEST_F(AGX3PackBinary, LoadAddStoreCarriesWait)
       append(want, end.bytes, end.length);
 
       EXPECT_EQ(got, want);
+   }
+}
+
+TEST_F(AGX3PackBinary, LocalLoadAddStoreCarriesWait)
+{
+   /* Current Mesa shared-memory lowering folds the byte address into the
+    * 16-bit base and leaves an immediate-zero index. Exercise that live path,
+    * including the async ldtg slot and the dependent ALU wait. */
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_index base = agx_uniform(8, AGX_SIZE_16);
+      agx_index v0 = agx_register(0, AGX_SIZE_32);
+      agx_index v2 = agx_register(2, AGX_SIZE_32);
+
+      agx_local_load_to(b, v0, base, agx_zero(), AGX_FORMAT_I32, 1);
+      agx_iadd_to(b, v2, v0, v0, 0);
+      agx_local_store(b, v2, base, agx_zero(), AGX_FORMAT_I32, 1);
+      agx_stop(b);
+
+      struct agx3_local_desc ld = {};
+      ld.data = 0;
+      ld.width = AGX3_MEM_W32;
+      ld.mask = 1;
+      ld.shift = 2;
+      ld.base_kind = AGX3_LOCAL_BASE_UNIFORM;
+      ld.base = 8;
+      ld.slot = 1;
+      uint8_t lb[AGX3_LOCAL_TPS_MAX_LENGTH];
+      uint8_t ll = 0;
+      ASSERT_TRUE(agx3_local_encode_load(enc, &ld, lb, &ll));
+
+      uint8_t ab[AGX3_ALU_MAX_LENGTH];
+      uint8_t al = 0;
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 2, 0, 0, 0, 0,
+                                   /*wait*/ 1, ab, &al));
+
+      struct agx3_local_desc st = ld;
+      st.data = 2;
+      st.slot = 0;
+      uint8_t sb[AGX3_LOCAL_TPS_MAX_LENGTH];
+      uint8_t sl = 0;
+      ASSERT_TRUE(agx3_local_encode_store(enc, &st, sb, &sl));
+
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      std::vector<uint8_t> want;
+      append(want, lb, ll);
+      append(want, ab, al);
+      append(want, sb, sl);
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
    }
 }
 

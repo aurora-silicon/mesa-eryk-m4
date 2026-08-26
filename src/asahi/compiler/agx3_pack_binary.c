@@ -27,6 +27,7 @@
 #include "agx3_alu_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
@@ -342,9 +343,9 @@ agx3_try_float_modifier(struct util_dynarray *emission,
 static bool
 agx3_is_async(const agx_instr *I)
 {
-   return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LDCF ||
-          I->op == AGX_OPCODE_GET_SR || I->op == AGX_OPCODE_TEXTURE_LOAD ||
-          I->op == AGX_OPCODE_LD_TILE;
+   return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
+          I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
+          I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE;
 }
 
 /* Map a Mesa special register to the corpus-witnessed Apple SR number and
@@ -723,6 +724,74 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
       return false;
    }
 
+   d->slot = slot;
+   d->wait_mask = wait_mask;
+   return true;
+}
+
+static uint8_t
+agx3_local_vector_shift(enum agx3_mem_width width, uint8_t mask)
+{
+   const unsigned channels = util_bitcount(mask);
+   unsigned bytes = channels << width;
+   uint8_t shift = 0;
+   while ((1u << shift) < bytes)
+      shift++;
+   return shift;
+}
+
+/* Translate the shared-memory shape Mesa currently emits. Address arithmetic
+ * is folded into the 16-bit base by agx_compile, leaving an immediate-zero
+ * index. This is exactly the grounded Apple ldtg/sttg subset; a register index
+ * is refused because Mesa's byte-addressed IR has not yet been legalized to
+ * AGX3's scaled-index convention. */
+static bool
+agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
+                     uint16_t wait_mask, struct agx3_local_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+
+   const int w = agx3_fmt_to_width(I->format);
+   if (w < 0 || I->mask < 1 || I->mask > 15 ||
+       I->mask != BITFIELD_MASK(util_bitcount(I->mask)))
+      return false;
+   d->width = (enum agx3_mem_width)w;
+   d->mask = (uint8_t)I->mask;
+   d->shift = agx3_local_vector_shift(d->width, d->mask);
+
+   const agx_index data = is_store ? I->src[0] : I->dest[0];
+   const enum agx_size expected =
+      d->width == AGX3_MEM_W32 ? AGX_SIZE_32 : AGX_SIZE_16;
+   const unsigned halves = agx_size_align_16(expected) * util_bitcount(I->mask);
+   if (!agx3_src_is_register(data) || data.memory || data.size != expected ||
+       (data.value & (agx_size_align_16(expected) - 1)) ||
+       data.value + halves > 256)
+      return false;
+   d->data = data.value;
+   d->value_kill = is_store && data.kill;
+
+   const agx_index base = I->src[is_store ? 1 : 0];
+   if (base.size != AGX_SIZE_16 || base.memory || base.abs || base.neg)
+      return false;
+   if (base.type == AGX_INDEX_IMMEDIATE && base.value == 0) {
+      d->base_kind = AGX3_LOCAL_BASE_IMMEDIATE;
+   } else if (base.type == AGX_INDEX_UNIFORM && base.value < 512) {
+      d->base_kind = AGX3_LOCAL_BASE_UNIFORM;
+      d->base = base.value;
+   } else if (agx3_src_is_register(base) && base.value < 256) {
+      d->base_kind = AGX3_LOCAL_BASE_REGISTER;
+      d->base = base.value;
+      d->base_kill = base.kill;
+   } else {
+      return false;
+   }
+
+   const agx_index index = I->src[is_store ? 2 : 1];
+   if (index.type != AGX_INDEX_IMMEDIATE || index.size != AGX_SIZE_16 ||
+       index.value != 0 || index.memory || index.abs || index.neg)
+      return false;
+
+   d->narrow_extend = d->width == AGX3_MEM_W8;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
@@ -1259,6 +1328,27 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool ok = is_store
                                ? agx3_mem_encode_store(enc, &d, bytes, &len)
                                : agx3_mem_encode_load(enc, &d, bytes, &len);
+            if (!ok)
+               goto fail;
+            memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
+            async_seen |= !is_store;
+            continue;
+         }
+
+         /* Threadgroup memory. The scaled register-indexed axis stays closed;
+          * current Mesa IR reaches this path with its byte address in base and
+          * an immediate-zero index. */
+         if (I->op == AGX_OPCODE_LOCAL_LOAD ||
+             I->op == AGX_OPCODE_LOCAL_STORE) {
+            const bool is_store = I->op == AGX_OPCODE_LOCAL_STORE;
+            struct agx3_local_desc d;
+            uint8_t bytes[AGX3_LOCAL_TPS_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_local(I, is_store, slot, wait, &d))
+               goto fail;
+            const bool ok =
+               is_store ? agx3_local_encode_store(enc, &d, bytes, &len)
+                        : agx3_local_encode_load(enc, &d, bytes, &len);
             if (!ok)
                goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);

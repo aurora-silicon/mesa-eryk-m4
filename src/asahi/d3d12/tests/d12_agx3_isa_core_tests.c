@@ -6312,6 +6312,169 @@ check_tile_bridge(void)
    return 0;
 }
 
+static int
+check_local_tps_encoding(const struct d12_agx3_local_tps_encoding *encoded,
+                         const uint8_t *expected, uint8_t expected_length)
+{
+   CHECK(encoded->length == expected_length);
+   CHECK(memcmp(encoded->bytes, expected, expected_length) == 0);
+   for (unsigned i = expected_length; i < sizeof(encoded->bytes); ++i)
+      CHECK(encoded->bytes[i] == 0);
+   return 0;
+}
+
+static int
+check_local_tps_bridge(void)
+{
+   static const uint8_t g15g_sttg[] = {
+      0xe7, 0x02, 0x56, 0x00, 0x08, 0x0a, 0x80,
+      0x00, 0x44, 0x02, 0x00, 0x30, 0x02, 0x00,
+   };
+   static const uint8_t agx3b_ldtg[] = {
+      0x67, 0x02, 0x54, 0x00, 0x08, 0x08, 0x80,
+      0x00, 0x44, 0x0d, 0x00, 0xc0, 0x08, 0x00,
+   };
+   static const uint8_t g17s_sttg[] = {
+      0x0f, 0x08, 0x03, 0x04, 0x03, 0x06, 0x11, 0xc0, 0x00, 0x20,
+   };
+   static const uint8_t g17s_ldtg[] = {
+      0x0f, 0x08, 0x03, 0x06, 0x1a, 0x06, 0x11, 0x40,
+   };
+   static const uint8_t agx3b_ldtps[] = {
+      0x6f, 0x00, 0x54, 0x00, 0x00, 0x0a,
+      0x49, 0x01, 0x01, 0x40, 0x03, 0x00,
+   };
+   static const uint8_t g17s_sttps[] = {
+      0x8f, 0x00, 0x43, 0x04, 0x61, 0x2a, 0x92, 0x40,
+   };
+   static const uint8_t g17s_ldtps[] = {
+      0x17, 0x01, 0x03, 0x02, 0x38, 0x0a, 0x92, 0x40,
+   };
+
+   struct d12_agx3_local_tps_encoding encoded;
+   struct d12_agx3_threadgroup_desc local = {
+      .data = 0,
+      .width = D12_AGX3_MEMORY_WIDTH_32,
+      .mask = 1,
+      .index_scale_log2 = 2,
+      .base_kind = D12_AGX3_THREADGROUP_BASE_UNIFORM,
+      .base = 8,
+      .index_is_register = true,
+      .index = 5,
+      .index_kill = true,
+      .wait_mask = 1u << 5,
+   };
+   CHECK(d12_agx3_encode_threadgroup_store(AGX_CHIP_G15G, &local,
+                                             &encoded));
+   CHECK(check_local_tps_encoding(&encoded, g15g_sttg,
+                                  sizeof(g15g_sttg)) == 0);
+
+   local.index = 4;
+   local.slot = 6;
+   local.wait_mask = 0;
+   CHECK(d12_agx3_encode_threadgroup_load(AGX_CHIP_G17P, &local,
+                                            &encoded));
+   CHECK(check_local_tps_encoding(&encoded, agx3b_ldtg,
+                                  sizeof(agx3b_ldtg)) == 0);
+
+   local.index = 5;
+   local.slot = 0;
+   local.value_kill = true;
+   local.wait_mask = 1u << 7;
+   CHECK(d12_agx3_encode_threadgroup_store(AGX_CHIP_G17S, &local,
+                                             &encoded));
+   CHECK(check_local_tps_encoding(&encoded, g17s_sttg,
+                                  sizeof(g17s_sttg)) == 0);
+
+   local.index = 7;
+   local.slot = 8;
+   local.value_kill = false;
+   local.wait_mask = 0;
+   CHECK(d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local,
+                                            &encoded));
+   CHECK(check_local_tps_encoding(&encoded, g17s_ldtg,
+                                  sizeof(g17s_ldtg)) == 0);
+
+   struct d12_agx3_tps_desc tps = {
+      .data = 0,
+      .width = D12_AGX3_MEMORY_WIDTH_16,
+      .mask = 3,
+      .index_scale_log2 = 2,
+      .byte_offset = 4,
+      .index = 0,
+      .index_kill = true,
+      .frame_region = 1,
+      .slot = 6,
+   };
+   CHECK(d12_agx3_encode_tps_load(AGX_CHIP_G17P, &tps, &encoded));
+   CHECK(check_local_tps_encoding(&encoded, agx3b_ldtps,
+                                  sizeof(agx3b_ldtps)) == 0);
+
+   tps.data = 48;
+   tps.width = D12_AGX3_MEMORY_WIDTH_32;
+   tps.mask = 15;
+   tps.index = 4;
+   tps.index_kill = false;
+   tps.value_kill = true;
+   tps.slot = 0;
+   tps.wait_mask = 1;
+   CHECK(d12_agx3_encode_tps_store(AGX_CHIP_G17S, &tps, &encoded));
+   CHECK(check_local_tps_encoding(&encoded, g17s_sttps,
+                                  sizeof(g17s_sttps)) == 0);
+
+   tps.data = 2;
+   tps.width = D12_AGX3_MEMORY_WIDTH_16;
+   tps.mask = 3;
+   tps.index = 2;
+   tps.value_kill = false;
+   tps.slot = 8;
+   tps.wait_mask = 0;
+   CHECK(d12_agx3_encode_tps_load(AGX_CHIP_G17S, &tps, &encoded));
+   CHECK(check_local_tps_encoding(&encoded, g17s_ldtps,
+                                  sizeof(g17s_ldtps)) == 0);
+
+#define REJECT_LOCAL_TPS(call)                                                 \
+   do {                                                                        \
+      memset(&encoded, 0xa5, sizeof(encoded));                                 \
+      CHECK(!(call));                                                          \
+      const struct d12_agx3_local_tps_encoding zero = {0};                     \
+      CHECK(memcmp(&encoded, &zero, sizeof(encoded)) == 0);                    \
+   } while (0)
+
+   REJECT_LOCAL_TPS(
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17C, &local, &encoded));
+   local.width = (enum d12_agx3_memory_width)64;
+   REJECT_LOCAL_TPS(
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local, &encoded));
+   local.width = D12_AGX3_MEMORY_WIDTH_32;
+   local.slot = 0;
+   REJECT_LOCAL_TPS(
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local, &encoded));
+   local.slot = 8;
+   local.width = D12_AGX3_MEMORY_WIDTH_8;
+   REJECT_LOCAL_TPS(
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local, &encoded));
+   local.width = D12_AGX3_MEMORY_WIDTH_32;
+   REJECT_LOCAL_TPS(
+      d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, NULL, &encoded));
+
+   tps.frame_region = 0;
+   REJECT_LOCAL_TPS(d12_agx3_encode_tps_load(AGX_CHIP_G17S, &tps,
+                                               &encoded));
+   tps.frame_region = 1;
+   tps.wait_mask = 1u << 8;
+   REJECT_LOCAL_TPS(d12_agx3_encode_tps_load(AGX_CHIP_G17S, &tps,
+                                               &encoded));
+   tps.wait_mask = 0;
+   tps.width = D12_AGX3_MEMORY_WIDTH_8;
+   REJECT_LOCAL_TPS(d12_agx3_encode_tps_load(AGX_CHIP_G17S, &tps,
+                                               &encoded));
+   CHECK(!d12_agx3_encode_threadgroup_load(AGX_CHIP_G17S, &local, NULL));
+   CHECK(!d12_agx3_encode_tps_load(AGX_CHIP_G17S, &tps, NULL));
+#undef REJECT_LOCAL_TPS
+   return 0;
+}
+
 int
 main(void)
 {
@@ -6320,6 +6483,7 @@ main(void)
    CHECK(check_texture_fetch_bridge() == 0);
    CHECK(check_wave_read_lane_at_f32_imm_bridge() == 0);
    CHECK(check_tile_bridge() == 0);
+   CHECK(check_local_tps_bridge() == 0);
 
    static const uint8_t iadd_b[] = {
       0x9f, 0x01, 0x56, 0x00, 0x02, 0x00, 0x00, 0xa8, 0x13, 0x05,

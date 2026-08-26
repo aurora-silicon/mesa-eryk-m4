@@ -6,6 +6,7 @@
 #include "d12_agx3_isa_core.h"
 
 #include "asahi/compiler/agx3_cf_core.h"
+#include "asahi/compiler/agx3_local_tps_core.h"
 #include "asahi/compiler/agx3_pack.h"
 #include "asahi/compiler/agx3_tex_core.h"
 #include "asahi/compiler/agx3_tile_core.h"
@@ -76,6 +77,8 @@ _Static_assert(AGX3_TEX_MAX_LENGTH == D12_AGX3_TEX_MAX_LENGTH,
                "D3D AGX3 texture storage must match the canonical forms");
 _Static_assert(AGX3_TILE_MAX_LENGTH == D12_AGX3_TILE_MAX_LENGTH,
                "D3D AGX3 tile storage must match the canonical forms");
+_Static_assert(AGX3_LOCAL_TPS_MAX_LENGTH == D12_AGX3_LOCAL_TPS_MAX_LENGTH,
+               "D3D AGX3 local/TPS storage must match canonical forms");
 
 static bool
 d12_agx3_compiler_target_encoding(enum agx_chip chip,
@@ -724,6 +727,175 @@ d12_agx3_encode_tile_load(enum agx_chip chip,
 
    out->length = length;
    return true;
+}
+
+static bool
+d12_agx3_memory_width(enum d12_agx3_memory_width in,
+                      enum agx3_mem_width *out)
+{
+   switch (in) {
+   case D12_AGX3_MEMORY_WIDTH_8:
+      *out = AGX3_MEM_W8;
+      return true;
+   case D12_AGX3_MEMORY_WIDTH_16:
+      *out = AGX3_MEM_W16;
+      return true;
+   case D12_AGX3_MEMORY_WIDTH_32:
+      *out = AGX3_MEM_W32;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_threadgroup_base(enum d12_agx3_threadgroup_base_kind in,
+                          enum agx3_local_base_kind *out)
+{
+   switch (in) {
+   case D12_AGX3_THREADGROUP_BASE_IMMEDIATE:
+      *out = AGX3_LOCAL_BASE_IMMEDIATE;
+      return true;
+   case D12_AGX3_THREADGROUP_BASE_REGISTER:
+      *out = AGX3_LOCAL_BASE_REGISTER;
+      return true;
+   case D12_AGX3_THREADGROUP_BASE_UNIFORM:
+      *out = AGX3_LOCAL_BASE_UNIFORM;
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+d12_agx3_encode_threadgroup(enum agx_chip chip,
+                            const struct d12_agx3_threadgroup_desc *desc,
+                            bool is_load,
+                            struct d12_agx3_local_tps_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_mem_width width;
+   enum agx3_local_base_kind base_kind;
+   if (!desc || !d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !d12_agx3_memory_width(desc->width, &width) ||
+       !d12_agx3_threadgroup_base(desc->base_kind, &base_kind) ||
+       (is_load &&
+        (desc->value_kill || desc->width == D12_AGX3_MEMORY_WIDTH_8)) ||
+       (desc->base_kind != D12_AGX3_THREADGROUP_BASE_REGISTER &&
+        desc->base_kill) ||
+       (!desc->index_is_register && desc->index_kill))
+      return false;
+
+   const struct agx3_local_desc d = {
+      .data = desc->data,
+      .width = width,
+      .mask = desc->mask,
+      .shift = desc->index_scale_log2,
+      .base_kind = base_kind,
+      .base = desc->base,
+      .base_kill = desc->base_kill,
+      .index_is_register = desc->index_is_register,
+      .index = desc->index,
+      .index_kill = desc->index_kill,
+      .byte_offset = desc->byte_offset,
+      .value_kill = desc->value_kill,
+      .slot = desc->slot,
+      .wait_mask = desc->wait_mask,
+   };
+
+   uint8_t length = 0;
+   const bool ok = is_load ? agx3_local_encode_load(encoding, &d, out->bytes,
+                                                     &length)
+                           : agx3_local_encode_store(encoding, &d, out->bytes,
+                                                      &length);
+   if (!ok || length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_threadgroup_load(
+   enum agx_chip chip, const struct d12_agx3_threadgroup_desc *desc,
+   struct d12_agx3_local_tps_encoding *out)
+{
+   return d12_agx3_encode_threadgroup(chip, desc, true, out);
+}
+
+bool
+d12_agx3_encode_threadgroup_store(
+   enum agx_chip chip, const struct d12_agx3_threadgroup_desc *desc,
+   struct d12_agx3_local_tps_encoding *out)
+{
+   return d12_agx3_encode_threadgroup(chip, desc, false, out);
+}
+
+static bool
+d12_agx3_encode_tps(enum agx_chip chip, const struct d12_agx3_tps_desc *desc,
+                    bool is_load, struct d12_agx3_local_tps_encoding *out)
+{
+   if (!out)
+      return false;
+   memset(out, 0, sizeof(*out));
+
+   enum agx_isa_encoding encoding;
+   enum agx3_mem_width width;
+   if (!desc || !d12_agx3_compiler_target_encoding(chip, &encoding) ||
+       !d12_agx3_memory_width(desc->width, &width) ||
+       (is_load &&
+        (desc->value_kill || desc->width == D12_AGX3_MEMORY_WIDTH_8)))
+      return false;
+
+   const struct agx3_tps_desc d = {
+      .data = desc->data,
+      .width = width,
+      .mask = desc->mask,
+      .shift = desc->index_scale_log2,
+      .byte_offset = desc->byte_offset,
+      .index = desc->index,
+      .index_kill = desc->index_kill,
+      .index_signed = desc->index_signed,
+      .frame_region = desc->frame_region,
+      .value_kill = desc->value_kill,
+      .slot = desc->slot,
+      .wait_mask = desc->wait_mask,
+   };
+
+   uint8_t length = 0;
+   const bool ok = is_load ? agx3_tps_encode_load(encoding, &d, out->bytes,
+                                                   &length)
+                           : agx3_tps_encode_store(encoding, &d, out->bytes,
+                                                    &length);
+   if (!ok || length > sizeof(out->bytes)) {
+      memset(out, 0, sizeof(*out));
+      return false;
+   }
+
+   out->length = length;
+   return true;
+}
+
+bool
+d12_agx3_encode_tps_load(enum agx_chip chip,
+                         const struct d12_agx3_tps_desc *desc,
+                         struct d12_agx3_local_tps_encoding *out)
+{
+   return d12_agx3_encode_tps(chip, desc, true, out);
+}
+
+bool
+d12_agx3_encode_tps_store(enum agx_chip chip,
+                          const struct d12_agx3_tps_desc *desc,
+                          struct d12_agx3_local_tps_encoding *out)
+{
+   return d12_agx3_encode_tps(chip, desc, false, out);
 }
 
 bool

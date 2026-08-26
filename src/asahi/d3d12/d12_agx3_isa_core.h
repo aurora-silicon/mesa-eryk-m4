@@ -38,6 +38,7 @@ extern "C" {
 #define D12_AGX3_VARY_MAX_LENGTH 10
 #define D12_AGX3_TEX_MAX_LENGTH 14
 #define D12_AGX3_TILE_MAX_LENGTH 14
+#define D12_AGX3_LOCAL_TPS_MAX_LENGTH 16
 
 /* These are D3D/DXIL scalar semantics, not raw Apple opcode numbers. */
 enum d12_agx3_binary_alu_op {
@@ -177,6 +178,60 @@ struct d12_agx3_tile_load_desc {
    bool last;
 };
 
+enum d12_agx3_memory_width {
+   D12_AGX3_MEMORY_WIDTH_8 = 8,
+   D12_AGX3_MEMORY_WIDTH_16 = 16,
+   D12_AGX3_MEMORY_WIDTH_32 = 32,
+};
+
+enum d12_agx3_threadgroup_base_kind {
+   D12_AGX3_THREADGROUP_BASE_IMMEDIATE = 0,
+   D12_AGX3_THREADGROUP_BASE_REGISTER = 1,
+   D12_AGX3_THREADGROUP_BASE_UNIFORM = 2,
+};
+
+/* Normalized ldtg/sttg roles used by DXIL groupshared-memory lowering.  All
+ * register operands are Mesa half-register indices. */
+struct d12_agx3_threadgroup_desc {
+   uint16_t data; /* load destination / store value */
+   enum d12_agx3_memory_width width;
+   uint8_t mask;
+   uint8_t index_scale_log2;
+
+   enum d12_agx3_threadgroup_base_kind base_kind;
+   uint16_t base;
+   bool base_kill;
+
+   bool index_is_register;
+   uint16_t index;
+   bool index_kill;
+   uint16_t byte_offset;
+
+   bool value_kill; /* store only */
+   uint8_t slot;    /* load only */
+   uint16_t wait_mask;
+};
+
+/* Normalized dynamic ldtps/sttps roles.  frame_region is the witnessed 1..6
+ * structural selector; its hardware taxonomy is deliberately not inferred.
+ * Static spill copy/rld forms and RT-only SCS memory are separate families. */
+struct d12_agx3_tps_desc {
+   uint16_t data; /* load destination / store value */
+   enum d12_agx3_memory_width width;
+   uint8_t mask;
+   uint8_t index_scale_log2;
+   uint16_t byte_offset;
+
+   uint16_t index;
+   bool index_kill;
+   bool index_signed;
+   uint8_t frame_region;
+
+   bool value_kill; /* store only */
+   uint8_t slot;    /* load only */
+   uint16_t wait_mask;
+};
+
 struct d12_agx3_binary_alu_encoding {
    uint8_t bytes[D12_AGX3_BINARY_ALU_MAX_LENGTH];
    uint8_t length;
@@ -289,6 +344,11 @@ struct d12_agx3_texture_fetch_encoding {
 
 struct d12_agx3_tile_encoding {
    uint8_t bytes[D12_AGX3_TILE_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct d12_agx3_local_tps_encoding {
+   uint8_t bytes[D12_AGX3_LOCAL_TPS_MAX_LENGTH];
    uint8_t length;
 };
 
@@ -743,6 +803,25 @@ bool d12_agx3_encode_tile_store(
 bool d12_agx3_encode_tile_load(
    enum agx_chip chip, const struct d12_agx3_tile_load_desc *desc,
    struct d12_agx3_tile_encoding *out);
+
+/* Target-gated bridges for byte-exact ldtg/sttg and dynamic ldtps/sttps.
+ * The descriptors expose only source-grounded operand roles and scoreboard
+ * state.  Eight-bit loads remain rejected because the policy for Apple's
+ * structural narrow-extension bit is not grounded.  These functions do not
+ * enable live DXIL lowering, AGX3 device admission, static spill copy/rld, or
+ * the ungrounded RT-only ldscs/stscs family. */
+bool d12_agx3_encode_threadgroup_load(
+   enum agx_chip chip, const struct d12_agx3_threadgroup_desc *desc,
+   struct d12_agx3_local_tps_encoding *out);
+bool d12_agx3_encode_threadgroup_store(
+   enum agx_chip chip, const struct d12_agx3_threadgroup_desc *desc,
+   struct d12_agx3_local_tps_encoding *out);
+bool d12_agx3_encode_tps_load(
+   enum agx_chip chip, const struct d12_agx3_tps_desc *desc,
+   struct d12_agx3_local_tps_encoding *out);
+bool d12_agx3_encode_tps_store(
+   enum agx_chip chip, const struct d12_agx3_tps_desc *desc,
+   struct d12_agx3_local_tps_encoding *out);
 
 /* Encoding-level form used by the target-aware lowering contract above. */
 bool d12_agx3_encode_ternary_alu(

@@ -83,6 +83,7 @@ done
     "$repo_root/src/asahi/compiler/agx3_tex_core.c" \
     "$repo_root/src/asahi/compiler/agx3_tile_core.c" \
     "$repo_root/src/asahi/compiler/agx3_vary_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_local_tps_core.c" \
     "$repo_root/src/asahi/compiler/agx3_binder.c" \
     "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
     "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
@@ -133,6 +134,18 @@ done
     "$repo_root/src/asahi/compiler/test/test-agx3-mem-core.c" \
     -o "$out/test_agx3_mem_core"
 "$out/test_agx3_mem_core"
+
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" \
+    -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_local_tps_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-local-tps-core.c" \
+    -o "$out/test_agx3_local_tps_core"
+"$out/test_agx3_local_tps_core"
 
 "$cc" "$common[@]" -Wno-c23-extensions \
     -I"$repo_root/src" -I"$repo_root/include" \

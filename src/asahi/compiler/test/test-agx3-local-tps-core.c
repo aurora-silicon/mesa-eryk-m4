@@ -1,0 +1,232 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Byte-exact witnesses from the hash-pinned G16G/G17S local/stack corpus.
+ */
+
+#include "agx3_local_tps_core.h"
+
+#include <stdio.h>
+#include <string.h>
+
+struct local_vec {
+   enum agx_isa_encoding enc;
+   bool load;
+   uint8_t ep;
+   struct agx3_local_desc d;
+   uint8_t bytes[AGX3_LOCAL_TPS_MAX_LENGTH];
+   uint8_t len;
+};
+
+static const struct local_vec local_vecs[] = {
+   {AGX_ISA_ENCODING_AGX3B, false, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 5, .index_kill = true,
+     .wait_mask = 1u << 5},
+    {0xe7, 0x02, 0x56, 0x00, 0x08, 0x0a, 0x80, 0x00, 0x44, 0x02, 0x00,
+     0x30, 0x02, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 4, .index_kill = true, .slot = 6},
+    {0x67, 0x02, 0x54, 0x00, 0x08, 0x08, 0x80, 0x00, 0x44, 0x0d, 0x00,
+     0xc0, 0x08, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .value_kill = true},
+    {0xe7, 0x02, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x44, 0x01, 0x00,
+     0x10, 0x00, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 6, .width = AGX3_MEM_W32, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .slot = 6},
+    {0x67, 0x02, 0x54, 0x06, 0x00, 0x00, 0x00, 0x00, 0x44, 0x05, 0x00,
+     0x40, 0x00, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, false, 0,
+    {.data = 4, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_REGISTER,
+     .index_is_register = true, .index = 7, .index_kill = true,
+     .wait_mask = 1},
+    {0xe7, 0x12, 0x54, 0x04, 0x00, 0x0e, 0x80, 0x00, 0x44, 0x00, 0x00,
+     0x30, 0x03, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_REGISTER, .base_kill = true,
+     .index_is_register = true, .index = 1, .index_kill = true, .slot = 6},
+    {0x67, 0x02, 0x54, 0x00, 0x00, 0x02, 0x80, 0x00, 0x44, 0x0d, 0x00,
+     0xc0, 0x0c, 0x00}, 14},
+
+   {AGX_ISA_ENCODING_AGX3C, false, 1,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 5, .index_kill = true,
+     .value_kill = true, .wait_mask = 1u << 7},
+    {0x0f, 0x08, 0x03, 0x04, 0x03, 0x06, 0x11, 0xc0, 0x00, 0x20}, 10},
+   {AGX_ISA_ENCODING_AGX3C, true, 2,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 4, .index_kill = true, .slot = 8,
+     .c_load_marker = true},
+    {0x0f, 0x08, 0x03, 0x04, 0x1a, 0x06, 0x10, 0xc0, 0x41, 0x00, 0x80,
+     0x00, 0x00, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3C, false, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 12,
+     .index_is_register = true, .index = 8, .index_kill = true,
+     .value_kill = true, .wait_mask = 1},
+    {0x0f, 0x0c, 0x03, 0x08, 0x03, 0x26, 0x10, 0x40}, 8},
+   {AGX_ISA_ENCODING_AGX3C, true, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 7, .index_kill = true, .slot = 8},
+    {0x0f, 0x08, 0x03, 0x06, 0x1a, 0x06, 0x11, 0x40}, 8},
+   {AGX_ISA_ENCODING_AGX3C, false, 0,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .value_kill = true},
+    {0x0f, 0x00, 0x03, 0x00, 0x03, 0x05, 0x10, 0x20}, 8},
+   {AGX_ISA_ENCODING_AGX3C, true, 2,
+    {.data = 6, .width = AGX3_MEM_W32, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_IMMEDIATE, .slot = 8,
+     .c_load_marker = true},
+    {0x3f, 0x00, 0x03, 0x00, 0x1a, 0x05, 0x10, 0xa0, 0x41, 0x00, 0x80,
+     0x00, 0x00, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3C, false, 2,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 14, .byte_offset = 1200,
+     .value_kill = true, .wait_mask = 1u << 1},
+    {0x0f, 0x08, 0x03, 0x0e, 0x03, 0x42, 0x10, 0xd6, 0x01, 0x00, 0x00,
+     0x00, 0x00, 0x04}, 14},
+   {AGX_ISA_ENCODING_AGX3C, false, 0,
+    {.data = 4, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_REGISTER,
+     .index_is_register = true, .index = 7, .index_kill = true,
+     .value_kill = true, .wait_mask = 1},
+    {0x2f, 0x00, 0x03, 0x06, 0x83, 0x26, 0x11, 0x40}, 8},
+   {AGX_ISA_ENCODING_AGX3C, true, 2,
+    {.data = 0, .width = AGX3_MEM_W32, .mask = 1, .shift = 2,
+     .base_kind = AGX3_LOCAL_BASE_REGISTER,
+     .index_is_register = true, .index = 1, .slot = 8,
+     .c_load_marker = true},
+    {0x0f, 0x00, 0x03, 0x00, 0x9a, 0x02, 0x11, 0xc0, 0x41, 0x00, 0x80,
+     0x00, 0x00, 0x00}, 14},
+   {AGX_ISA_ENCODING_AGX3C, true, 2,
+    {.data = 2, .width = AGX3_MEM_W8, .mask = 1,
+     .base_kind = AGX3_LOCAL_BASE_UNIFORM, .base = 8,
+     .index_is_register = true, .index = 4, .index_kill = true, .slot = 8,
+     .narrow_extend = true, .c_load_marker = true},
+    {0x17, 0x08, 0x23, 0x04, 0x1a, 0x06, 0x10, 0xa0, 0x41, 0x04, 0x80,
+     0x00, 0x00, 0x00}, 14},
+};
+
+struct tps_vec {
+   enum agx_isa_encoding enc;
+   bool load;
+   uint8_t ep;
+   struct agx3_tps_desc d;
+   uint8_t bytes[AGX3_LOCAL_TPS_MAX_LENGTH];
+   uint8_t len;
+};
+
+static const struct tps_vec tps_vecs[] = {
+   {AGX_ISA_ENCODING_AGX3B, false, 0,
+    {.data = 48, .width = AGX3_MEM_W32, .mask = 15, .shift = 2,
+     .byte_offset = 4, .index = 4, .frame_region = 5, .value_kill = true,
+     .wait_mask = 1u << 5},
+    {0xef, 0x00, 0x56, 0x30, 0x04, 0x02, 0x17, 0x43, 0x00, 0x60}, 10},
+   {AGX_ISA_ENCODING_AGX3B, true, 0,
+    {.data = 0, .width = AGX3_MEM_W16, .mask = 3, .shift = 2,
+     .byte_offset = 4, .index = 0, .index_kill = true, .frame_region = 1,
+     .slot = 6},
+    {0x6f, 0x00, 0x54, 0x00, 0x00, 0x0a, 0x49, 0x01, 0x01, 0x40, 0x03,
+     0x00}, 12},
+   {AGX_ISA_ENCODING_AGX3C, false, 0,
+    {.data = 48, .width = AGX3_MEM_W32, .mask = 15, .shift = 2,
+     .byte_offset = 4, .index = 4, .frame_region = 1, .value_kill = true,
+     .wait_mask = 1},
+    {0x8f, 0x00, 0x43, 0x04, 0x61, 0x2a, 0x92, 0x40}, 8},
+   {AGX_ISA_ENCODING_AGX3C, false, 1,
+    {.data = 38, .width = AGX3_MEM_W32, .mask = 15, .shift = 2,
+     .byte_offset = 20, .index = 4, .frame_region = 1, .value_kill = true,
+     .wait_mask = 1u << 7},
+    {0x3f, 0x00, 0x43, 0x04, 0x61, 0x0a, 0x92, 0xc2, 0x00, 0x20}, 10},
+   {AGX_ISA_ENCODING_AGX3C, true, 0,
+    {.data = 2, .width = AGX3_MEM_W16, .mask = 3, .shift = 2,
+     .byte_offset = 4, .index = 2, .frame_region = 1, .slot = 8},
+    {0x17, 0x01, 0x03, 0x02, 0x38, 0x0a, 0x92, 0x40}, 8},
+   {AGX_ISA_ENCODING_AGX3C, true, 1,
+    {.data = 2, .width = AGX3_MEM_W8, .mask = 1, .byte_offset = 4,
+     .index = 2, .frame_region = 1, .narrow_extend = true, .slot = 8},
+    {0x17, 0x01, 0x23, 0x02, 0x18, 0x02, 0x92, 0xa0, 0x00, 0x04}, 10},
+};
+
+static unsigned
+test_local(void)
+{
+   unsigned failures = 0;
+   for (unsigned i = 0; i < sizeof(local_vecs) / sizeof(local_vecs[0]); ++i) {
+      const struct local_vec *v = &local_vecs[i];
+      uint8_t out[AGX3_LOCAL_TPS_MAX_LENGTH] = {0};
+      uint8_t len = 0;
+      const bool ok = v->load ? agx3_local_encode_load(v->enc, &v->d, out, &len)
+                              : agx3_local_encode_store(v->enc, &v->d, out, &len);
+      if (!ok || len != v->len || memcmp(out, v->bytes, v->len) != 0) {
+         fprintf(stderr, "local vector %u failed (ok=%u len=%u/%u)\n", i,
+                 ok, len, v->len);
+         failures++;
+      }
+
+      len = 0;
+      const bool form_ok =
+         v->load ? agx3_local_encode_load_form(v->enc, &v->d, v->ep, out, &len)
+                 : agx3_local_encode_store_form(v->enc, &v->d, v->ep, out, &len);
+      if (!form_ok || len != v->len || memcmp(out, v->bytes, v->len) != 0) {
+         fprintf(stderr, "local form vector %u failed\n", i);
+         failures++;
+      }
+   }
+   return failures;
+}
+
+static unsigned
+test_tps(void)
+{
+   unsigned failures = 0;
+   for (unsigned i = 0; i < sizeof(tps_vecs) / sizeof(tps_vecs[0]); ++i) {
+      const struct tps_vec *v = &tps_vecs[i];
+      uint8_t out[AGX3_LOCAL_TPS_MAX_LENGTH] = {0};
+      uint8_t len = 0;
+      const bool ok = v->load ? agx3_tps_encode_load(v->enc, &v->d, out, &len)
+                              : agx3_tps_encode_store(v->enc, &v->d, out, &len);
+      if (!ok || len != v->len || memcmp(out, v->bytes, v->len) != 0) {
+         fprintf(stderr, "TPS vector %u failed (ok=%u len=%u/%u)\n", i,
+                 ok, len, v->len);
+         failures++;
+      }
+
+      len = 0;
+      const bool form_ok =
+         v->load ? agx3_tps_encode_load_form(v->enc, &v->d, v->ep, out, &len)
+                 : agx3_tps_encode_store_form(v->enc, &v->d, v->ep, out, &len);
+      if (!form_ok || len != v->len || memcmp(out, v->bytes, v->len) != 0) {
+         fprintf(stderr, "TPS form vector %u failed\n", i);
+         failures++;
+      }
+   }
+   return failures;
+}
+
+int
+main(void)
+{
+   const unsigned failures = test_local() + test_tps();
+   if (failures)
+      return 1;
+
+   printf("agx3_local_tps_core: %zu Apple local/TPS vectors reproduced via "
+          "auto and explicit forms\n",
+          sizeof(local_vecs) / sizeof(local_vecs[0]) +
+             sizeof(tps_vecs) / sizeof(tps_vecs[0]));
+   return 0;
+}
