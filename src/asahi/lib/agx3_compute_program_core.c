@@ -46,6 +46,18 @@ agx3_g17s_minimal_compute_program_prepare(
    if (!desc || !output || !written || !program)
       return false;
 
+   /* G17S live witness, ProgramVariantESLState::ProgramVariantESLState
+    * +12508 -> EslBuilder::loadFromUserBuffer.  Exact arguments are
+    * (w1..w6) = (4, 1, 0, 0x20000001, 0, 0).  The binding tag is constructed
+    * from user-buffer index one; keep only caller-visible/raw UniformData
+    * axes here and fail closed on every other layout. */
+   if (desc->root_uniform.user_buffer_binding != 1 ||
+       desc->root_uniform.byte_offset != 0 ||
+       desc->root_uniform.uniform_data_destination != 4 ||
+       desc->root_uniform.uniform_data_count != 1 ||
+       desc->root_uniform.temporary_base != 0)
+      return false;
+
    struct agx3_cdm_direct_template launch_template;
    if (!agx3_cdm_direct_template_build_from_sources(&desc->launch_sources,
                                                     &launch_template))

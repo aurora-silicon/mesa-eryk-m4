@@ -172,6 +172,13 @@ test_g17s_minimal_program_join(void)
    const struct agx3_g17s_minimal_compute_program_desc desc = {
       .program_va = UINT64_C(0x100000040),
       .shader_va = UINT64_C(0x100000006c0),
+      .root_uniform = {
+         .user_buffer_binding = 1,
+         .byte_offset = 0,
+         .uniform_data_destination = 4,
+         .uniform_data_count = 1,
+         .temporary_base = 0,
+      },
       .launch_sources = sources,
    };
    uint8_t state[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
@@ -210,6 +217,38 @@ test_g17s_minimal_program_join(void)
       &invalid, state, sizeof(state), &written, &program));
    CHECK(memcmp(state, before, sizeof(state)) == 0 && written == 47);
    CHECK(memcmp(&program, &program_before, sizeof(program)) == 0);
+
+   static const struct {
+      uint32_t user_buffer_binding;
+      uint32_t byte_offset;
+      uint32_t uniform_data_destination;
+      uint32_t uniform_data_count;
+      uint32_t temporary_base;
+   } invalid_root_uniforms[] = {
+      {0, 0, 4, 1, 0},
+      {1, 4, 4, 1, 0},
+      {1, 0, 2, 1, 0},
+      {1, 0, 4, 2, 0},
+      {1, 0, 4, 1, 1},
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(invalid_root_uniforms); ++i) {
+      invalid = desc;
+      invalid.root_uniform.user_buffer_binding =
+         invalid_root_uniforms[i].user_buffer_binding;
+      invalid.root_uniform.byte_offset = invalid_root_uniforms[i].byte_offset;
+      invalid.root_uniform.uniform_data_destination =
+         invalid_root_uniforms[i].uniform_data_destination;
+      invalid.root_uniform.uniform_data_count =
+         invalid_root_uniforms[i].uniform_data_count;
+      invalid.root_uniform.temporary_base =
+         invalid_root_uniforms[i].temporary_base;
+      written = 47;
+      CHECK(!agx3_g17s_minimal_compute_program_prepare(
+         &invalid, state, sizeof(state), &written, &program));
+      CHECK(memcmp(state, before, sizeof(state)) == 0 && written == 47);
+      CHECK(memcmp(&program, &program_before, sizeof(program)) == 0);
+   }
    return true;
 }
 

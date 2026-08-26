@@ -44,6 +44,19 @@ struct agx3_compute_program_desc {
 struct agx3_g17s_minimal_compute_program_desc {
    uint64_t program_va;
    uint64_t shader_va;
+
+   /* Exact ProgramVariantESLState UniformData/loadFromUserBuffer inputs for
+    * the witnessed root-uniform pointer.  These names preserve the Apple
+    * call ABI: destination/count are the values at UniformData +0x30/+0x38,
+    * and temporary_base is loadFromUserBuffer's final argument. */
+   struct {
+      uint32_t user_buffer_binding;
+      uint32_t byte_offset;
+      uint32_t uniform_data_destination;
+      uint32_t uniform_data_count;
+      uint32_t temporary_base;
+   } root_uniform;
+
    struct agx3_cdm_direct_template_sources launch_sources;
 };
 
@@ -77,8 +90,11 @@ bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
                                   struct agx3_compute_program *program);
 
 /* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch
- * template.  The program remains dispatch-local; success does not resolve the
- * two external Ioto-entry COPY sources or admit a live frontend path. */
+ * template.  The root-uniform source must match Apple's independently traced
+ * buffer(1), offset-zero load into temporary base zero; the post-round COPYs
+ * are therefore not admitted as external entry state.  Other resource-body
+ * categories remain witness-only, so success still does not admit a live
+ * frontend path. */
 bool agx3_g17s_minimal_compute_program_prepare(
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
    size_t capacity, size_t *written, struct agx3_compute_program *program);
