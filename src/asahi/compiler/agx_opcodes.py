@@ -107,6 +107,8 @@ SHADOW = immediate("shadow", "bool")
 SPARSE = immediate("sparse", "bool")
 QUERY_LOD = immediate("query_lod", "bool")
 COHERENT = immediate("coherent", "bool")
+SCS_ZERO_EXTEND = immediate("scs_zero_extend", "bool")
+SCS_C_LOAD_MARKER = immediate("scs_c_load_marker", "bool")
 SCOREBOARD = immediate("scoreboard")
 ICOND = immediate("icond", "enum agx_icond")
 FCOND = immediate("fcond", "enum agx_fcond")
@@ -440,6 +442,18 @@ op("scs_load_agx3", _, dests = 1, srcs = 0, imms = [IMM, FORMAT],
    schedule_class = "load", agx3_mnemonic = "ldscs")
 op("scs_store_agx3", _, dests = 0, srcs = 1, imms = [IMM, FORMAT],
    can_eliminate = False, schedule_class = "store", agx3_mnemonic = "stscs")
+
+# Uniform-base plus scalar-GPR-index SCS access.  The source order keeps the
+# address provenance explicit instead of recovering it from generic pointer
+# arithmetic after the fact: load(base, index), store(value, base, index).
+# The backend derives the hardware scale from FORMAT and refuses every other
+# address form.
+op("scs_load_uniform_indexed_agx3", _, dests = 1, srcs = 2,
+   imms = [IMM, FORMAT, SCS_ZERO_EXTEND, SCS_C_LOAD_MARKER],
+   schedule_class = "load", agx3_mnemonic = "ldscs")
+op("scs_store_uniform_indexed_agx3", _, dests = 0, srcs = 3,
+   imms = [IMM, FORMAT], can_eliminate = False, schedule_class = "store",
+   agx3_mnemonic = "stscs")
 
 def memory_barrier(name, a, b, c):
     op(name, (0xF5 | (a << 10) | (b << 8) | (c << 12), 2, _), dests = 0, srcs = 0,

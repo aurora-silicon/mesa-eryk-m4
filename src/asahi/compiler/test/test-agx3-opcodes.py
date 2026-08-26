@@ -16,7 +16,10 @@ assert opcodes["threadgroup_barrier"].agx3_mnemonic == "barrier"
 assert opcodes["scoped_barrier_agx3"].agx3_mnemonic == "barrier"
 assert opcodes["scs_load_agx3"].agx3_mnemonic == "ldscs"
 assert opcodes["scs_store_agx3"].agx3_mnemonic == "stscs"
-assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 6
+assert opcodes["scs_load_uniform_indexed_agx3"].agx3_mnemonic == "ldscs"
+assert opcodes["scs_store_uniform_indexed_agx3"].agx3_mnemonic == "stscs"
+assert sum(op.agx3_mnemonic is not None for op in opcodes.values()) == 8
 print("agx3 opcode mapping: mov_imm -> ldimm, stop -> end, "
-      "threadgroup/scoped barriers -> barrier, direct SCS -> ldscs/stscs; "
+      "threadgroup/scoped barriers -> barrier, direct/uniform-indexed SCS "
+      "-> ldscs/stscs; "
       "all other opcodes fail closed")

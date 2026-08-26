@@ -257,6 +257,222 @@ TEST_F(AGX3PackBinary, DirectScsRefusesVectorAccess)
    pack(b, /*expect_ok=*/false);
 }
 
+TEST_F(AGX3PackBinary, UniformIndexedScsScalarWidthsAndSignedOffsets)
+{
+   struct {
+      enum agx_format format;
+      enum agx_size size;
+      enum agx3_mem_width width;
+      int16_t offset;
+   } cases[] = {
+      {AGX_FORMAT_I8, AGX_SIZE_16, AGX3_MEM_W8, INT16_MAX},
+      {AGX_FORMAT_I16, AGX_SIZE_16, AGX3_MEM_W16, INT16_MIN},
+      {AGX_FORMAT_I32, AGX_SIZE_32, AGX3_MEM_W32, -12},
+   };
+
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      for (const auto &c : cases) {
+         agx_builder *b = builder(enc);
+         const agx_index value = agx_register(6, c.size);
+         const agx_index base = agx_uniform(126, AGX_SIZE_64);
+         const agx_index index = agx_register(10, AGX_SIZE_32);
+         const uint64_t offset = (uint64_t)(int64_t)c.offset;
+         agx_scs_load_uniform_indexed_agx3_to(b, value, base, index, offset,
+                                               c.format,
+                                               enc == AGX_ISA_ENCODING_AGX3C &&
+                                                  c.width != AGX3_MEM_W32,
+                                               enc == AGX_ISA_ENCODING_AGX3C);
+         agx_scs_store_uniform_indexed_agx3(b, value, base, index, offset,
+                                             c.format);
+         agx_stop(b);
+
+         uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+         uint8_t length = 0;
+         std::vector<uint8_t> want;
+         struct agx3_scs_desc d = {
+            .data = 6,
+            .width = c.width,
+            .byte_offset = c.offset,
+            .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+            .index = 10,
+            .uniform_base = 126,
+            .slot = 1,
+            .zero_extend = enc == AGX_ISA_ENCODING_AGX3C &&
+                           c.width != AGX3_MEM_W32,
+            .c_load_marker = enc == AGX_ISA_ENCODING_AGX3C,
+         };
+         ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &length));
+         append(want, bytes, length);
+         d.slot = 0;
+         d.wait_mask = 1;
+         d.zero_extend = false;
+         d.c_load_marker = false;
+         ASSERT_TRUE(agx3_scs_encode_store(enc, &d, bytes, &length));
+         append(want, bytes, length);
+         struct agx3_encoded_end end;
+         ASSERT_TRUE(agx3_pack_end(enc, &end));
+         append(want, end.bytes, end.length);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, UniformIndexedScsCarriesHighestSlotWait)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      const unsigned slots = e ? 8 : 6;
+      agx_builder *b = builder(enc);
+      const agx_index base = agx_uniform(4, AGX_SIZE_64);
+      const agx_index index = agx_register(32, AGX_SIZE_32);
+      for (unsigned i = 0; i < slots; ++i) {
+         agx_scs_load_uniform_indexed_agx3_to(
+            b, agx_register(2 * i, AGX_SIZE_32), base, index, 0,
+            AGX_FORMAT_I32, false, enc == AGX_ISA_ENCODING_AGX3C);
+      }
+      agx_scs_store_uniform_indexed_agx3(
+         b, agx_register(2 * (slots - 1), AGX_SIZE_32), base, index, 0,
+         AGX_FORMAT_I32);
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+      uint8_t length = 0;
+      std::vector<uint8_t> want;
+      for (unsigned i = 0; i < slots; ++i) {
+         const struct agx3_scs_desc d = {
+            .data = (uint16_t)(2 * i),
+            .width = AGX3_MEM_W32,
+            .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+            .index = 32,
+            .uniform_base = 4,
+            .slot = (uint8_t)(i + 1),
+            .c_load_marker = enc == AGX_ISA_ENCODING_AGX3C,
+         };
+         ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &length));
+         append(want, bytes, length);
+      }
+      const struct agx3_scs_desc store = {
+         .data = (uint16_t)(2 * (slots - 1)),
+         .width = AGX3_MEM_W32,
+         .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+         .index = 32,
+         .uniform_base = 4,
+         .wait_mask = (uint16_t)(1u << (slots - 1)),
+      };
+      ASSERT_TRUE(agx3_scs_encode_store(enc, &store, bytes, &length));
+      append(want, bytes, length);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, UniformIndexedScsSelectorBoundaries)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      const unsigned index_value = e ? 254 : 190;
+      agx_builder *b = builder(enc);
+      agx_scs_load_uniform_indexed_agx3_to(
+         b, agx_register(2, AGX_SIZE_32), agx_uniform(511, AGX_SIZE_64),
+         agx_register(index_value, AGX_SIZE_32), 0, AGX_FORMAT_I32, false,
+         enc == AGX_ISA_ENCODING_AGX3C);
+      agx_stop(b);
+
+      uint8_t bytes[AGX3_SCS_MAX_LENGTH];
+      uint8_t length = 0;
+      std::vector<uint8_t> want;
+      const struct agx3_scs_desc d = {
+         .data = 2,
+         .width = AGX3_MEM_W32,
+         .address_kind = AGX3_SCS_ADDRESS_UNIFORM_INDEXED,
+         .index = (uint16_t)index_value,
+         .uniform_base = 511,
+         .slot = 1,
+         .c_load_marker = enc == AGX_ISA_ENCODING_AGX3C,
+      };
+      ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &length));
+      append(want, bytes, length);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, UniformIndexedScsRefusesUnprovenAxes)
+{
+   const auto expect_load_failure = [this](enum agx_isa_encoding enc,
+                                            agx_index value, agx_index base,
+                                            agx_index index, uint64_t offset) {
+      agx_builder *b = builder(enc);
+      agx_scs_load_uniform_indexed_agx3_to(b, value, base, index, offset,
+                                            AGX_FORMAT_I32, false,
+                                            enc == AGX_ISA_ENCODING_AGX3C);
+      agx_stop(b);
+      pack(b, /*expect_ok=*/false);
+   };
+
+   const agx_index value = agx_register(2, AGX_SIZE_32);
+   const agx_index base = agx_uniform(4, AGX_SIZE_64);
+   const agx_index index = agx_register(6, AGX_SIZE_32);
+
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value,
+                       agx_register(4, AGX_SIZE_64), index, 0);
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value,
+                       agx_uniform(4, AGX_SIZE_32), index, 0);
+
+   agx_index killed_index = index;
+   killed_index.kill = true;
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base, killed_index, 0);
+
+   agx_index vector_index = index;
+   vector_index.channels_m1 = 1;
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base, vector_index, 0);
+
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base,
+                       agx_register(6, AGX_SIZE_16), 0);
+
+   agx_index base_oob = base;
+   base_oob.value = 512;
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base_oob, index, 0);
+
+   agx_index b_index_oob = index;
+   b_index_oob.value = 192;
+   expect_load_failure(AGX_ISA_ENCODING_AGX3B, value, base, b_index_oob, 0);
+
+   agx_index c_index_oob = index;
+   c_index_oob.value = 256;
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base, c_index_oob, 0);
+
+   expect_load_failure(AGX_ISA_ENCODING_AGX3C, value, base, index, 32768);
+
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_scs_load_uniform_indexed_agx3_to(b, value, base, index, 0,
+                                         AGX_FORMAT_I32, false, true);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+
+   b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_scs_load_uniform_indexed_agx3_to(b, value, base, index, 0,
+                                         AGX_FORMAT_I32, true, true);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+
+   b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_index killed_value = value;
+   killed_value.kill = true;
+   agx_scs_store_uniform_indexed_agx3(b, killed_value, base, index, 0,
+                                       AGX_FORMAT_I32);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false);
+}
+
 TEST_F(AGX3PackBinary, StaticSpillCopyReloadDependency)
 {
    for (int e = 0; e < 2; ++e) {

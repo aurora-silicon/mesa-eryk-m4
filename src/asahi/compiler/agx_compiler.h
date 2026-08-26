@@ -414,6 +414,11 @@ typedef struct {
    /* TODO: Handle loads more efficiently */
    bool coherent : 1;
 
+   /* Explicit AGX3 SCS load semantics.  These stay on the internal SCS pseudo
+    * and are never inferred from generic memory IR. */
+   bool scs_zero_extend : 1;
+   bool scs_c_load_marker : 1;
+
    /* Final st_vary op */
    bool last : 1;
 
@@ -428,7 +433,7 @@ typedef struct {
    bool saturate : 1;
    unsigned mask : 4;
 
-   unsigned padding : 7;
+   unsigned padding : 5;
 } agx_instr;
 
 static inline void

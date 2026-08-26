@@ -350,6 +350,7 @@ agx3_is_async(const agx_instr *I)
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
           I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE ||
           I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
+          I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
           I->op == AGX_OPCODE_STACK_LOAD ||
           I->op == AGX_OPCODE_STACK_STORE;
 }
@@ -673,21 +674,34 @@ agx3_fmt_to_width(enum agx_format f)
 }
 
 static bool
-agx3_translate_scs(const agx_instr *I, bool is_store, uint8_t slot,
-                   uint16_t wait_mask, struct agx3_scs_desc *d)
+agx3_scs_plain_index(agx_index index)
+{
+   return !index.kill && !index.cache && !index.discard && !index.abs &&
+          !index.neg && !index.memory && !index.has_reg &&
+          agx_channels(index) == 1;
+}
+
+static bool
+agx3_translate_scs(const agx_instr *I, bool is_store, bool indexed,
+                   uint8_t slot, uint16_t wait_mask,
+                   struct agx3_scs_desc *d)
 {
    memset(d, 0, sizeof(*d));
    const int width = agx3_fmt_to_width(I->format);
    const int64_t byte_offset = (int64_t)I->imm;
+   const unsigned expected_srcs = indexed ? (is_store ? 3 : 2)
+                                          : (is_store ? 1 : 0);
    if (width < 0 || byte_offset < INT16_MIN || byte_offset > INT16_MAX ||
        I->nr_dests != (is_store ? 0 : 1) ||
-       I->nr_srcs != (is_store ? 1 : 0))
+       I->nr_srcs != expected_srcs ||
+       ((is_store || !indexed) &&
+        (I->scs_zero_extend || I->scs_c_load_marker)))
       return false;
 
    const agx_index data = is_store ? I->src[0] : I->dest[0];
    const enum agx_size expected =
       width == AGX3_MEM_W32 ? AGX_SIZE_32 : AGX_SIZE_16;
-   if (!agx3_src_is_register(data) || data.memory || data.abs || data.neg ||
+   if (!agx3_src_is_register(data) || !agx3_scs_plain_index(data) ||
        data.size != expected || agx_channels(data) != 1 ||
        (data.value & (agx_size_align_16(expected) - 1)) ||
        data.value + agx_size_align_16(expected) > 256)
@@ -697,9 +711,35 @@ agx3_translate_scs(const agx_instr *I, bool is_store, uint8_t slot,
       .data = data.value,
       .width = (enum agx3_mem_width)width,
       .byte_offset = (int16_t)byte_offset,
+      .address_kind = indexed ? AGX3_SCS_ADDRESS_UNIFORM_INDEXED
+                              : AGX3_SCS_ADDRESS_DIRECT,
       .slot = is_store ? 0 : slot,
       .wait_mask = wait_mask,
    };
+
+   if (indexed) {
+      const agx_index base = I->src[is_store ? 1 : 0];
+      const agx_index index = I->src[is_store ? 2 : 1];
+
+      /* The pseudo itself preserves the address-space provenance.  Require
+       * the physical operands to preserve it too: a scalar 64-bit uniform
+       * base and a scalar aligned 32-bit GPR index.  In particular, no
+       * register base, vector, source modifier, or inferred last-use bit is
+       * silently encoded into fields whose semantics are not yet grounded.
+       */
+      if (base.type != AGX_INDEX_UNIFORM || base.size != AGX_SIZE_64 ||
+          !agx3_scs_plain_index(base) || base.value >= 512 ||
+          !agx3_src_is_register(index) || index.size != AGX_SIZE_32 ||
+          !agx3_scs_plain_index(index) || (index.value & 1) ||
+          index.value + agx_size_align_16(index.size) > 256)
+         return false;
+
+      d->uniform_base = base.value;
+      d->index = index.value;
+      d->zero_extend = !is_store && I->scs_zero_extend;
+      d->c_load_marker = !is_store && I->scs_c_load_marker;
+   }
+
    return true;
 }
 
@@ -1521,12 +1561,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
-             I->op == AGX_OPCODE_SCS_STORE_AGX3) {
-            const bool is_store = I->op == AGX_OPCODE_SCS_STORE_AGX3;
+             I->op == AGX_OPCODE_SCS_STORE_AGX3 ||
+             I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
+             I->op == AGX_OPCODE_SCS_STORE_UNIFORM_INDEXED_AGX3) {
+            const bool is_store = I->op == AGX_OPCODE_SCS_STORE_AGX3 ||
+                                  I->op ==
+                                     AGX_OPCODE_SCS_STORE_UNIFORM_INDEXED_AGX3;
+            const bool indexed =
+               I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
+               I->op == AGX_OPCODE_SCS_STORE_UNIFORM_INDEXED_AGX3;
             struct agx3_scs_desc d;
             uint8_t bytes[AGX3_SCS_MAX_LENGTH];
             uint8_t len = 0;
-            if (!agx3_translate_scs(I, is_store, slot, wait, &d))
+            if (!agx3_translate_scs(I, is_store, indexed, slot, wait, &d))
                goto fail;
             const bool ok =
                is_store ? agx3_scs_encode_store(enc, &d, bytes, &len)
