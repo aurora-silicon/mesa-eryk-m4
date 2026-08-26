@@ -24,6 +24,8 @@ libasahi_lib_files = files(
   'agx_ioto_program_core.h',
   'agx_ioto_state_core.c',
   'agx_ioto_state_core.h',
+  'agx_scs_layout.c',
+  'agx_scs_layout.h',
   'agx_bo.c',
   'agx_border.c',
   'agx_chip.c',
@@ -202,6 +204,19 @@ libasahi_lib = static_library(
 )
 
 if with_tests
+  test(
+    'asahi-agx-scs-layout',
+    executable(
+      'asahi-agx-scs-layout',
+      files(
+        'agx_scs_layout.c',
+        'tests/test-agx-scs-layout.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'asahi-agx-ioto-core',
     executable(
