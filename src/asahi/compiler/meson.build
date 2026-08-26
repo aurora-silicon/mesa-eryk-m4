@@ -14,6 +14,7 @@ libasahi_agx_files = files(
   'agx_nir_lower_sample_mask.c',
   'agx_nir_lower_discard_zs_emit.c',
   'agx_nir_lower_interpolation.c',
+  'agx_nir_ray_query.c',
   'agx_nir_lower_shared_bitsize.c',
   'agx_nir_lower_subgroups.c',
   'agx_nir_lower_texture.c',
@@ -331,6 +332,19 @@ if with_tests
     executable(
       'agx3_compile_fail_closed_test',
       files('test/test-agx3-compile-fail-closed.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_ray_query_prerequisites',
+    executable(
+      'agx3_ray_query_prerequisites_test',
+      files('test/test-agx3-ray-query-prerequisites.c'),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
       dependencies : [idep_nir, idep_mesautil],
