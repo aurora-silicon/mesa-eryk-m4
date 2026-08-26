@@ -95,6 +95,12 @@ bool agx_ioto_g17s_minimal_compute_tail_build(
 bool agx_ioto_g17p_compute_ldshdr_build(
    uint64_t shader_va, struct agx_ioto_state *state);
 
+/* Build the exact pre-runtime G17P SPECTPR fields from Apple's raw compiler
+ * spill-byte and D values.  These are intentionally not sourced from Mesa's
+ * scratch_size: the runtime may subsequently overwrite f10/f11/f20/f22. */
+bool agx_ioto_g17p_compiler_spectpr_build(
+   uint32_t spill_bytes, uint32_t d_value, struct agx_ioto_state *state);
+
 #ifdef __cplusplus
 }
 #endif

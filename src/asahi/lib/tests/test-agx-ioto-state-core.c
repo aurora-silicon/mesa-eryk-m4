@@ -776,6 +776,34 @@ test_g17p_compute_ldshdr(void)
    return 0;
 }
 
+static int
+test_g17p_compiler_spectpr(void)
+{
+   static const uint8_t pinned_expected[AGX_IOTO_SPECTPR_SIZE] = {
+      0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_ioto_state state;
+   memset(&state, 0xa5, sizeof(state));
+   CHECK(agx_ioto_g17p_compiler_spectpr_build(0, 8, &state));
+   CHECK(state.f[20] == 0 && state.f[21] == 0 && state.f[22] == 2);
+   uint8_t packed[AGX_IOTO_SPECTPR_SIZE];
+   CHECK(agx_ioto_state_pack_spectpr(AGX_CHIP_G17P, &state, packed,
+                                     sizeof(packed)));
+   CHECK(memcmp(packed, pinned_expected, sizeof(packed)) == 0);
+
+   CHECK(agx_ioto_g17p_compiler_spectpr_build(UINT32_C(0x3fff9),
+                                               UINT32_C(0x3ff8), &state));
+   CHECK(state.f[20] == UINT16_MAX && state.f[21] == UINT16_MAX);
+   CHECK(state.f[22] == UINT16_C(0x0ffe));
+   struct agx_ioto_state before = state;
+   CHECK(!agx_ioto_g17p_compiler_spectpr_build(UINT32_MAX, 0, &state));
+   CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+   CHECK(!agx_ioto_g17p_compiler_spectpr_build(0, UINT32_MAX, &state));
+   CHECK(memcmp(&state, &before, sizeof(state)) == 0);
+   CHECK(!agx_ioto_g17p_compiler_spectpr_build(0, 8, NULL));
+   return 0;
+}
+
 int
 main(void)
 {
@@ -786,6 +814,7 @@ main(void)
    CHECK(test_tail_failures_and_shader_convenience() == 0);
    CHECK(test_g17s_minimal_compute_tail() == 0);
    CHECK(test_g17p_compute_ldshdr() == 0);
+   CHECK(test_g17p_compiler_spectpr() == 0);
 
    printf("agx_ioto_state_core: %llu checks passed\n",
           (unsigned long long)checks);

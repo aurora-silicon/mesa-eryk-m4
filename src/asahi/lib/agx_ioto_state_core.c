@@ -480,4 +480,28 @@ agx_ioto_g17p_compute_ldshdr_build(
    return true;
 }
 
+bool
+agx_ioto_g17p_compiler_spectpr_build(
+   uint32_t spill_bytes, uint32_t d_value, struct agx_ioto_state *state)
+{
+   if (!state || spill_bytes > UINT32_MAX - 3 || d_value > UINT32_MAX - 3)
+      return false;
+
+   const uint16_t spill_quads = (uint16_t)((spill_bytes + 3) >> 2);
+   const uint16_t d_rounded =
+      (uint16_t)(((((uint64_t)d_value + 3) >> 2) + 1) & UINT64_C(0xffe));
+   struct agx_ioto_state staged = {0};
+   staged.f[20] = spill_quads;
+   staged.f[21] = spill_quads;
+   staged.f[22] = d_rounded;
+
+   uint8_t packed[AGX_IOTO_SPECTPR_SIZE];
+   if (!agx_ioto_state_pack_spectpr(AGX_CHIP_G17P, &staged, packed,
+                                    sizeof(packed)))
+      return false;
+
+   *state = staged;
+   return true;
+}
+
 #undef FM
