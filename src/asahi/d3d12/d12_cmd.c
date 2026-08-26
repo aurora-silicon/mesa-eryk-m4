@@ -1039,6 +1039,20 @@ d12_list_emit_cdm_cache_flush(struct d12_cmd_list *list, uint8_t **cursor)
    return false;
 }
 
+static bool
+d12_list_require_legacy_compute(struct d12_cmd_list *list)
+{
+   if (agx_chip_command_stream_generation(list->device->dev.chip) !=
+       AGX_CS_GENERATION_AGX2) {
+      mesa_loge("legacy USC compute launch rejected for %s",
+                agx_chip_name(list->device->dev.chip));
+      list->state = D12_LIST_ERROR;
+      return false;
+   }
+
+   return true;
+}
+
 /* The existing launch inputs describe AGX2 USC state.  Keep every caller on
  * one generation gate so a latent AGX3 device can never receive a legacy CDM
  * packet while the dispatch-local Ioto program path is being brought up. */
@@ -1048,13 +1062,8 @@ d12_list_emit_legacy_cdm_launch(
    struct agx_workgroup workgroup,
    struct agx_cdm_launch_word_0_packed launch, uint32_t usc)
 {
-   if (agx_chip_command_stream_generation(list->device->dev.chip) !=
-       AGX_CS_GENERATION_AGX2) {
-      mesa_loge("legacy USC compute launch rejected for %s",
-                agx_chip_name(list->device->dev.chip));
-      list->state = D12_LIST_ERROR;
+   if (!d12_list_require_legacy_compute(list))
       return false;
-   }
 
    *cursor = (uint8_t *)agx_cdm_launch(
       (uint32_t *)*cursor, list->device->dev.chip, grid, workgroup, launch, usc);
@@ -1445,6 +1454,9 @@ d12_list_dispatch_precomp_to(struct d12_cmd_list *list,
       mesa_loge("recording into a non-recording command list");
       return;
    }
+
+   if (!d12_list_require_legacy_compute(list))
+      return;
 
    /* Tessellation runs its libagx kernels ahead of the draw that consumes
     * them, so they go in the pre-graphics stream rather than ending the
@@ -5618,6 +5630,9 @@ d12_list_dispatch_pso(struct d12_cmd_list *list, unsigned x, unsigned y,
    if (list->state != D12_LIST_RECORDING)
       return;
 
+   if (!d12_list_require_legacy_compute(list))
+      return;
+
    if (!d12_command_has_compute_pipeline(pso != NULL,
                                          pso ? pso->is_compute : false))
       return;
@@ -6342,6 +6357,9 @@ d12_list_dispatch_gs_stage(struct d12_cmd_list *list,
                            const struct d12_dispatch_uniforms *u,
                            D3D12_SHADER_VISIBILITY visibility)
 {
+   if (!d12_list_require_legacy_compute(list))
+      return false;
+
    if (!va || !info->binary_size ||
        !d12_segment_reserve_scratch(list, seg, D12_SCRATCH_CS, info))
       return false;
@@ -7046,6 +7064,9 @@ d12_list_tess_prerast(struct d12_cmd_list *list,
 {
    struct d12_device *device = list->device;
 
+   if (!d12_list_require_legacy_compute(list))
+      return false;
+
    if (!pso->tcs_output_patch_size || !pso->tcs_output_stride) {
       mesa_loge("tessellation pipeline has no patch layout");
       list->state = D12_LIST_ERROR;
@@ -7390,6 +7411,9 @@ d12_list_mesh_prerast(struct d12_cmd_list *list,
                       struct d12_dispatch_uniforms *out_poly)
 {
    struct d12_device *device = list->device;
+
+   if (!d12_list_require_legacy_compute(list))
+      return false;
 
    unsigned groups = tg_x * tg_y * tg_z;
    if (!groups) {

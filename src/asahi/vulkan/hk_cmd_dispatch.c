@@ -97,13 +97,8 @@ hk_dispatch_with_usc_launch(struct hk_device *dev, struct hk_cs *cs,
                             uint32_t usc, struct agx_grid grid,
                             struct agx_workgroup wg)
 {
-   hk_ensure_cs_has_space(cs->cmd, cs, 0x2000 /* TODO */);
-   cs->stats.cmds++;
-
    switch (agx_chip_command_stream_generation(dev->dev.chip)) {
    case AGX_CS_GENERATION_AGX2:
-      cs->current =
-         agx_cdm_launch(cs->current, dev->dev.chip, grid, wg, launch, usc);
       break;
 
    case AGX_CS_GENERATION_G15:
@@ -127,6 +122,11 @@ hk_dispatch_with_usc_launch(struct hk_device *dev, struct hk_cs *cs,
                                   VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
+
+   hk_ensure_cs_has_space(cs->cmd, cs, 0x2000 /* TODO */);
+   cs->stats.cmds++;
+   cs->current =
+      agx_cdm_launch(cs->current, dev->dev.chip, grid, wg, launch, usc);
 
    hk_cdm_cache_flush(dev, cs);
 }

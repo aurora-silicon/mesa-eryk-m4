@@ -1237,6 +1237,13 @@ static HRESULT
 d12_queue_signal_arena_init(struct d12_queue *queue)
 {
    struct agx_device *dev = &queue->device->dev;
+   if (agx_chip_command_stream_generation(dev->chip) !=
+       AGX_CS_GENERATION_AGX2) {
+      mesa_loge("legacy USC queue-signal launch rejected for %s",
+                agx_chip_name(dev->chip));
+      return E_NOTIMPL;
+   }
+
    struct agx_precompiled_shader *program =
       agx_get_precompiled(&queue->device->bg_eot, LIBAGX_WRITE_U64);
    struct agx_bo *stream = NULL;
