@@ -877,6 +877,8 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
     -Wno-c23-extensions \
     -I"$repo_root/include" -I"$repo_root/src" \
     -I"$repo_root/src/asahi/vulkan" \
+    "$repo_root/src/asahi/lib/agx3_cdm_direct_launch_semantic_core.c" \
+    "$repo_root/src/asahi/lib/agx3_compute_program_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \
@@ -893,6 +895,8 @@ cp "$out/agx_pack.h" "$out/asahi/genxml/agx_pack.h"
     -I"$out" -I"$repo_root/include" -I"$repo_root/src" \
     -I"$repo_root/src/asahi" \
     "$repo_root/src/asahi/lib/agx3_cdm_decode_core.c" \
+    "$repo_root/src/asahi/lib/agx3_cdm_direct_launch_semantic_core.c" \
+    "$repo_root/src/asahi/lib/agx3_compute_program_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_preshader_core.c" \
     "$repo_root/src/asahi/lib/agx_ioto_profile_core.c" \

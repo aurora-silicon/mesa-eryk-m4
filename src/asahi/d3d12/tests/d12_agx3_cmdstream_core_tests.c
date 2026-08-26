@@ -412,6 +412,91 @@ test_ioto_program_bridge(void)
 }
 
 static int
+expect_g17s_minimal_d12_failure(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   size_t capacity)
+{
+   uint8_t output[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
+   uint8_t before[sizeof(output)];
+   memset(output, 0x5a, sizeof(output));
+   memcpy(before, output, sizeof(output));
+   size_t written = 47;
+   struct agx3_compute_program program;
+   memset(&program, 0xa5, sizeof(program));
+   uint8_t program_before[sizeof(program)];
+   memcpy(program_before, &program, sizeof(program));
+
+   CHECK(!d12_agx3_g17s_minimal_compute_program_prepare(
+      chip, desc, output, capacity, &written, &program));
+   CHECK(memcmp(output, before, sizeof(output)) == 0);
+   CHECK(written == 47);
+   CHECK(memcmp(&program, program_before, sizeof(program)) == 0);
+   return 0;
+}
+
+static int
+test_g17s_minimal_compute_program_bridge(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false,
+                                                   &sources));
+   const struct agx3_g17s_minimal_compute_program_desc desc = {
+      .program_va = UINT64_C(0x100000040),
+      .shader_va = UINT64_C(0x100000006c0),
+      .root_uniform = {
+         .user_buffer_binding = 1,
+         .byte_offset = 0,
+         .uniform_data_destination = 4,
+         .uniform_data_count = 1,
+         .temporary_base = 0,
+      },
+      .launch_sources = sources,
+   };
+   uint8_t direct[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
+   uint8_t bridged[sizeof(direct)];
+   memset(direct, 0xa5, sizeof(direct));
+   memset(bridged, 0x5a, sizeof(bridged));
+   size_t direct_written = SIZE_MAX, bridged_written = SIZE_MAX;
+   struct agx3_compute_program direct_program, bridged_program;
+
+   CHECK(agx3_g17s_minimal_compute_program_prepare(
+      &desc, direct, sizeof(direct), &direct_written, &direct_program));
+   CHECK(d12_agx3_g17s_minimal_compute_program_prepare(
+      AGX_CHIP_G17S, &desc, bridged, sizeof(bridged), &bridged_written,
+      &bridged_program));
+   CHECK(bridged_written == AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE);
+   CHECK(bridged_written == direct_written);
+   CHECK(memcmp(bridged, direct, bridged_written) == 0);
+   CHECK(bridged[bridged_written] == 0x5a);
+   CHECK(bridged_program.chip == AGX_CHIP_G17S);
+   CHECK(bridged_program.program_va == desc.program_va);
+   CHECK(memcmp(&bridged_program.launch_template,
+                &direct_program.launch_template,
+                sizeof(bridged_program.launch_template)) == 0);
+
+   static const enum agx_chip rejected[] = {
+      AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
+      AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
+      AGX_CHIP_G17G, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+   };
+   for (unsigned i = 0; i < sizeof(rejected) / sizeof(rejected[0]); ++i)
+      CHECK(expect_g17s_minimal_d12_failure(rejected[i], &desc,
+                                             sizeof(bridged)) == 0);
+
+   struct agx3_g17s_minimal_compute_program_desc invalid = desc;
+   invalid.root_uniform.user_buffer_binding = 0;
+   CHECK(expect_g17s_minimal_d12_failure(AGX_CHIP_G17S, &invalid,
+                                          sizeof(bridged)) == 0);
+   CHECK(expect_g17s_minimal_d12_failure(
+            AGX_CHIP_G17S, &desc,
+            AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE - 1) == 0);
+   CHECK(expect_g17s_minimal_d12_failure(AGX_CHIP_G17S, NULL,
+                                          sizeof(bridged)) == 0);
+   return 0;
+}
+
+static int
 test_ioto_preshader_bridge(void)
 {
    static const enum agx_chip targets[] = {
@@ -634,6 +719,8 @@ main(void)
    if (test_ioto_profile())
       return 1;
    if (test_ioto_program_bridge())
+      return 1;
+   if (test_g17s_minimal_compute_program_bridge())
       return 1;
    if (test_ioto_preshader_bridge())
       return 1;

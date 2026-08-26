@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "asahi/lib/agx3_compute_program_core.h"
 #include "asahi/lib/agx_ioto_program_core.h"
 
 #include <stdbool.h>
@@ -43,6 +44,16 @@ bool hk_agx3_ioto_program_generate_no_pixrel(
    enum agx_chip chip, const struct hk_agx3_ioto_program_desc *desc,
    const struct agx_ioto_preshader_desc *preshader, void *output,
    size_t capacity, size_t *written);
+
+/*
+ * Host-only admission bridge for the exact G17S minimal compute witness.
+ * The explicit chip argument is intentionally rejected for every sibling
+ * identity; this does not publish a Vulkan feature or admit a device.
+ */
+bool hk_agx3_g17s_minimal_compute_program_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program);
 
 #ifdef __cplusplus
 }

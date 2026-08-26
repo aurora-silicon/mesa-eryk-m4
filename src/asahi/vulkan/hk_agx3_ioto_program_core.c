@@ -45,3 +45,16 @@ hk_agx3_ioto_program_generate_no_pixrel(
       chip, desc->program_va, desc->body, desc->body_size, &desc->tail,
       &profile, preshader, output, capacity, written);
 }
+
+bool
+hk_agx3_g17s_minimal_compute_program_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program)
+{
+   if (chip != AGX_CHIP_G17S)
+      return false;
+
+   return agx3_g17s_minimal_compute_program_prepare(
+      desc, output, capacity, written, program);
+}

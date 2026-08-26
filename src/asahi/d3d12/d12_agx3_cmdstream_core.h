@@ -9,6 +9,7 @@
 
 #include "asahi/genxml/agx3_cmdstream.h"
 #include "asahi/lib/agx3_cdm_decode_core.h"
+#include "asahi/lib/agx3_compute_program_core.h"
 #include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_ioto_preshader_core.h"
 #include "asahi/lib/agx_ioto_profile_core.h"
@@ -215,6 +216,24 @@ d12_agx3_encode_ioto_straight_line_program(
    return agx_ioto_straight_line_program_compose(
       chip, program_va, body, body_size, tail, profile, output, capacity,
       written);
+}
+
+/*
+ * Host-only admission bridge for the independently witnessed G17S minimal
+ * compute program.  Keep the target explicit so sibling HAL300 identities
+ * cannot accidentally inherit the G17S stream.
+ */
+static inline bool
+d12_agx3_g17s_minimal_compute_program_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program)
+{
+   if (chip != AGX_CHIP_G17S)
+      return false;
+
+   return agx3_g17s_minimal_compute_program_prepare(
+      desc, output, capacity, written, program);
 }
 
 /*
