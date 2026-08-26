@@ -15,6 +15,7 @@
 #include "agx_pack.h"
 #include "agx_usc.h"
 #include "agx_uvs.h"
+#include "agx_vdm_state_update_core.h"
 
 #include "hk_device.h"
 #include "hk_device_memory.h"
@@ -138,6 +139,11 @@ struct hk_shader {
    struct hk_shader_info info;
    struct agx_fragment_face_2_packed frag_face;
    struct agx_counts_packed counts;
+
+   /* Native AGX3 VertexProgramVariant state.  The existing compiler only
+    * publishes AGX2 Counts/UVS, so this stays UNSPECIFIED and makes an AGX3
+    * draw fail closed until every exact producer is available. */
+   struct agx_vdm_state_update_program_info agx3_vdm_state_update;
 
    const void *code_ptr;
    uint32_t code_size;

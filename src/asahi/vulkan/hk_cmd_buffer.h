@@ -358,6 +358,12 @@ struct hk_cs {
    /* Whether there is more than just the root chunk */
    bool stream_linked;
 
+   /* RenderContext+0x8410 supplies the active-context selector consumed by
+    * AGX3 VertexProgramVariant.  The producer is not grounded yet, so a new
+    * control stream leaves this invalid and native AGX3 draws fail closed. */
+   bool agx3_active_context_selector_valid;
+   uint32_t agx3_raw_active_context_selector;
+
    /* Whether the sampler heap is required. Although we always must maintain the
     * heap for correctness, it's often not necessary since we can push lots of
     * samplers (especially for GL/DX11-era engines).

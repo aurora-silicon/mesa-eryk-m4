@@ -118,7 +118,7 @@ agx_vdm_state_update_template_materialize(
        info->raw_state_load_count_12 > UINT16_C(0x0fff) ||
        info->raw_state_load_count_18 > UINT32_C(0x0003ffff) ||
        info->variant < AGX_VDM_STATE_UPDATE_TEMPLATE_00 ||
-       info->variant > AGX_VDM_STATE_UPDATE_TEMPLATE_11)
+       info->variant > AGX_VDM_STATE_UPDATE_TEMPLATE_21)
       return false;
 
    const bool hal300 = agx_vdm_state_update_is_hal300(chip);
@@ -143,9 +143,12 @@ agx_vdm_state_update_template_materialize(
       (uint32_t)info->raw_vs_output_count_0 | (output_count_1 << 8) |
       ((uint32_t)info->raw_vs_output_count_2 << 16);
 
-   static const uint8_t pre_hal300_variant_bits[4] = {0x30, 0x00, 0x31,
-                                                      0x01};
-   static const uint8_t hal300_variant_bits[4] = {0x20, 0x00, 0x21, 0x01};
+   static const uint8_t pre_hal300_variant_bits[6] = {
+      0x30, 0x00, 0x31, 0x01, 0x32, 0x02,
+   };
+   static const uint8_t hal300_variant_bits[6] = {
+      0x20, 0x00, 0x21, 0x01, 0x22, 0x02,
+   };
    const uint8_t *variant_bits =
       hal300 ? hal300_variant_bits : pre_hal300_variant_bits;
 
@@ -199,7 +202,8 @@ agx_vdm_state_update_draw_pack(
 
    if (!out || !info ||
        info->source_layout !=
-          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT)
+          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
+       info->raw_provoking_selector > 2)
       return false;
 
    switch (info->draw_path) {
@@ -215,8 +219,8 @@ agx_vdm_state_update_draw_pack(
    struct agx_vdm_state_update_template_info selected = info->template_info;
    selected.variant =
       (enum agx_vdm_state_update_template_variant)(
-         (info->raw_render_selector_bit_0 ? 1u : 0u) |
-         (info->raw_render_selector_bit_1 ? 2u : 0u));
+         (info->rasterization_enabled ? 1u : 0u) |
+         ((uint32_t)info->raw_provoking_selector << 1));
 
    return agx_vdm_state_update_template_pack(chip, &selected, out);
 }

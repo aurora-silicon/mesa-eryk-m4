@@ -3849,6 +3849,9 @@ d12_pipeline_state_create_graphics(struct d12_device *device,
       return E_OUTOFMEMORY;
 
    pso->has_pixel_shader = ps_dxil && ps_size;
+   pso->rasterization_enabled =
+      !so_desc || !so_desc->NumEntries ||
+      so_desc->RasterizedStream != D3D12_SO_NO_RASTERIZED_STREAM;
    pso->strip_cut = strip_cut;
    if (!pso->has_pixel_shader) {
       /* D3D12 treats declared RTV state as inactive when there is no pixel

@@ -123,14 +123,14 @@ test_honeykrisp_bridge(void)
             (hal300 ? UINT32_C(0x0000006d) : UINT32_C(0x0000007d)));
       CHECK(record.data.state_update.raw_vertex_unknown == ((t & 1) ? 0 : 7));
 
-      for (unsigned selector = 0; selector < 4; ++selector) {
+      for (unsigned selector = 0; selector < 6; ++selector) {
          for (unsigned draw = 0; draw < 4; ++draw) {
             struct agx_vdm_state_update_draw_info draw_info = {
                .source_layout =
                   AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
                .draw_path = (enum agx_vdm_state_update_draw_path)draw,
-               .raw_render_selector_bit_0 = (selector & 1) != 0,
-               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .rasterization_enabled = (selector & 1) != 0,
+               .raw_provoking_selector = selector >> 1,
                .template_info = template_info,
             };
             struct agx_vdm_state_update hk_draw;
@@ -139,7 +139,7 @@ test_honeykrisp_bridge(void)
             /* Prove the wrapper uses the renderer selector instead of a
              * caller-supplied legacy/template enum. */
             draw_info.template_info.variant =
-               (enum agx_vdm_state_update_template_variant)4;
+               (enum agx_vdm_state_update_template_variant)6;
             CHECK(hk_agx3_encode_vdm_state_update_draw(chip, &draw_info,
                                                         &hk_draw));
             CHECK(agx_vdm_state_update_draw_pack(chip, &draw_info,

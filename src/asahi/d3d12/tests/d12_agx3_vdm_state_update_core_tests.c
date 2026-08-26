@@ -265,7 +265,7 @@ check_template_bridge(void)
                encoded.bytes[26] == 0 && encoded.bytes[27] == 0);
       }
       info = template_witness_info;
-      info.variant = (enum d12_agx3_vdm_state_update_template_variant)4;
+      info.variant = (enum d12_agx3_vdm_state_update_template_variant)6;
       CHECK(!d12_agx3_encode_vdm_state_update_template(AGX_CHIP_G15G, &info,
                                                         &encoded));
       if (check_zero_encoding(&encoded))
@@ -370,7 +370,7 @@ check_native_draw_template_bridge(void)
       const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
                           chip == AGX_CHIP_G17C;
 
-      for (unsigned selector = 0; selector < 4; ++selector) {
+      for (unsigned selector = 0; selector < 6; ++selector) {
          struct d12_agx3_vdm_state_update first_path;
          for (unsigned draw = 0; draw < 4; ++draw) {
             struct d12_agx3_vdm_state_update_draw_info info = {
@@ -378,8 +378,8 @@ check_native_draw_template_bridge(void)
                   D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
                .draw_path =
                   (enum d12_agx3_vdm_state_update_draw_path)draw,
-               .raw_render_selector_bit_0 = (selector & 1) != 0,
-               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .rasterization_enabled = (selector & 1) != 0,
+               .raw_provoking_selector = selector >> 1,
                .template_info = template_witness_info,
             };
             struct d12_agx3_vdm_state_update actual;
@@ -390,7 +390,7 @@ check_native_draw_template_bridge(void)
                info.template_info.pre_hal300_flag_bit_4 = false;
             }
             info.template_info.variant =
-               (enum d12_agx3_vdm_state_update_template_variant)4;
+               (enum d12_agx3_vdm_state_update_template_variant)6;
 
             struct d12_agx3_vdm_state_update_template_info selected =
                info.template_info;
@@ -455,6 +455,13 @@ check_native_draw_template_bridge(void)
       }
 
       info.draw_path = D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED;
+      info.raw_provoking_selector = 3;
+      CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &info,
+                                                    &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      info.raw_provoking_selector = 0;
+
       CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G16P, &info,
                                                     &encoded));
       if (check_zero_encoding(&encoded))

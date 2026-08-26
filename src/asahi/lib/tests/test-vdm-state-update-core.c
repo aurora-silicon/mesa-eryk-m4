@@ -188,15 +188,18 @@ check_template_witnesses(void)
 static int
 check_template_variants_and_selectors(void)
 {
-   static const uint8_t pre_hal300_variant_bits[] = {0x30, 0x00, 0x31,
-                                                     0x01};
-   static const uint8_t hal300_variant_bits[] = {0x20, 0x00, 0x21, 0x01};
+   static const uint8_t pre_hal300_variant_bits[] = {
+      0x30, 0x00, 0x31, 0x01, 0x32, 0x02,
+   };
+   static const uint8_t hal300_variant_bits[] = {
+      0x20, 0x00, 0x21, 0x01, 0x22, 0x02,
+   };
 
    static const uint32_t raw_context_selectors[] = {
       UINT32_MAX, 0, 1, 7, 8, 9, UINT32_C(0x12345678), UINT32_MAX - 1,
    };
 
-   for (unsigned variant = 0; variant < 4; ++variant) {
+   for (unsigned variant = 0; variant < 6; ++variant) {
       for (unsigned selector_index = 0;
            selector_index < sizeof(raw_context_selectors) /
                                sizeof(raw_context_selectors[0]);
@@ -303,7 +306,7 @@ check_template_ranges_and_rejections(void)
       if (check_zero_info(&raw))
          return 1;
 
-      info.variant = (enum agx_vdm_state_update_template_variant)4;
+      info.variant = (enum agx_vdm_state_update_template_variant)6;
       CHECK(!agx_vdm_state_update_template_materialize(AGX_CHIP_G15G, &info,
                                                         &raw));
       if (check_zero_info(&raw))
@@ -386,16 +389,16 @@ check_native_draw_template_producer(void)
       const enum agx_chip chip = supported_chips[target];
       const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
                           chip == AGX_CHIP_G17C;
-      struct agx_vdm_state_update first_path[4];
+      struct agx_vdm_state_update first_path[6];
 
-      for (unsigned selector = 0; selector < 4; ++selector) {
+      for (unsigned selector = 0; selector < 6; ++selector) {
          for (unsigned draw = 0; draw < 4; ++draw) {
             struct agx_vdm_state_update_draw_info info = {
                .source_layout =
                   AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
                .draw_path = (enum agx_vdm_state_update_draw_path)draw,
-               .raw_render_selector_bit_0 = (selector & 1) != 0,
-               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .rasterization_enabled = (selector & 1) != 0,
+               .raw_provoking_selector = selector >> 1,
                .template_info = template_witness_info,
             };
             struct agx_vdm_state_update expected;
@@ -409,7 +412,7 @@ check_native_draw_template_producer(void)
             /* The renderer selector, not a stale caller value, chooses the
              * template. */
             info.template_info.variant =
-               (enum agx_vdm_state_update_template_variant)4;
+               (enum agx_vdm_state_update_template_variant)6;
             struct agx_vdm_state_update_template_info selected =
                info.template_info;
             selected.variant =
@@ -477,6 +480,13 @@ check_native_draw_template_producer(void)
       if (check_zero_encoding(&encoded))
          return 1;
       info.template_info = template_witness_info;
+
+      info.raw_provoking_selector = 3;
+      CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, &info,
+                                             &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      info.raw_provoking_selector = 0;
 
       for (unsigned i = 0;
            i < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]); ++i) {

@@ -33,14 +33,16 @@ struct agx_vdm_state_update {
    uint8_t length;
 };
 
-/* The live renderer selects one of the first four 28-byte templates with two
- * boolean inputs.  Two more templates are built by VertexProgramVariant but
- * are not selected by the inspected encodeAndEmitRenderState path. */
+/* The live renderer selects one of six 28-byte templates.  The low selector
+ * bit is boolean; the high axis is the three-valued provoking-vertex value
+ * stored by setProvokingVertexMode:. */
 enum agx_vdm_state_update_template_variant {
    AGX_VDM_STATE_UPDATE_TEMPLATE_00 = 0,
    AGX_VDM_STATE_UPDATE_TEMPLATE_01 = 1,
    AGX_VDM_STATE_UPDATE_TEMPLATE_10 = 2,
    AGX_VDM_STATE_UPDATE_TEMPLATE_11 = 3,
+   AGX_VDM_STATE_UPDATE_TEMPLATE_20 = 4,
+   AGX_VDM_STATE_UPDATE_TEMPLATE_21 = 5,
 };
 
 /*
@@ -104,21 +106,32 @@ struct agx_vdm_state_update_template_info {
    uint32_t raw_active_context_selector;
 };
 
+/* Shader-lifetime portion of the VertexProgramVariant state.  Zero-filled
+ * shader objects remain UNSPECIFIED and are rejected.  The draw path replaces
+ * `template_info.pipeline` with its freshly uploaded pipeline pointer, ignores
+ * `template_info.variant` (selected dynamically), and replaces
+ * `template_info.raw_active_context_selector` from render-context state. */
+struct agx_vdm_state_update_program_info {
+   enum agx_vdm_state_update_source_layout source_layout;
+   struct agx_vdm_state_update_template_info template_info;
+};
+
 /*
- * Exact renderer-side selector inputs.  The two booleans are retained as raw
- * positional inputs because their higher-level API meaning is not yet
- * grounded.  The pinned renderer computes
+ * Exact renderer-side selector inputs.  The low bit is loaded from
+ * RenderPipeline+0x2f0, which the pipeline constructor populates from
+ * isRasterizationEnabled.  The provoking selector is the exact stored
+ * renderer value, whose accepted domain is 0..2.  The pinned renderer computes
  *
- *   variant = raw_render_selector_bit_0 |
- *             (raw_render_selector_bit_1 << 1)
+ *   variant = rasterization_enabled |
+ *             (raw_provoking_selector << 1)
  *
- * before indexing the first four 28-byte VertexProgramVariant templates.
+ * before indexing all six 28-byte VertexProgramVariant templates.
  */
 struct agx_vdm_state_update_draw_info {
    enum agx_vdm_state_update_source_layout source_layout;
    enum agx_vdm_state_update_draw_path draw_path;
-   bool raw_render_selector_bit_0;
-   bool raw_render_selector_bit_1;
+   bool rasterization_enabled;
+   uint8_t raw_provoking_selector;
    struct agx_vdm_state_update_template_info template_info;
 };
 
@@ -152,15 +165,15 @@ bool agx_vdm_state_update_unpack(enum agx_chip chip, const void *bytes,
                                  struct agx_vdm_state_update_info *info);
 
 /*
- * Materialize/pack the exact first-four-template path observed in:
+ * Materialize/pack the exact six-template path observed in:
  *
  *   G15X_M1, G16X, G17P: VertexProgramVariant + VDMEncoderGen5
  *   G17G, G17X:          VertexProgramVariant + VDMEncoderGen6
  *
  * HAL300 intentionally differs: vertex word 0 has no pre-HAL300 bit-31 rule,
- * and the four per-template output constants are 0x20/0/0x21/1 instead of
- * 0x30/0/0x31/1.  Both calls are transactional and fail closed outside the
- * directly observed target/input domains.
+ * and the six per-template output constants are 0x20/0/0x21/1/0x22/2 instead
+ * of 0x30/0/0x31/1/0x32/2.  Both calls are transactional and fail closed
+ * outside the directly observed target/input domains.
  */
 bool agx_vdm_state_update_template_materialize(
    enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,

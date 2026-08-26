@@ -36,6 +36,8 @@ enum d12_agx3_vdm_state_update_template_variant {
    D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_01 = 1,
    D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_10 = 2,
    D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_11 = 3,
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_20 = 4,
+   D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_21 = 5,
 };
 
 enum d12_agx3_vdm_state_update_source_layout {
@@ -71,19 +73,25 @@ struct d12_agx3_vdm_state_update_template_info {
    uint32_t raw_active_context_selector;
 };
 
+struct d12_agx3_vdm_state_update_program_info {
+   enum d12_agx3_vdm_state_update_source_layout source_layout;
+   struct d12_agx3_vdm_state_update_template_info template_info;
+};
+
 struct d12_agx3_vdm_state_update_draw_info {
    enum d12_agx3_vdm_state_update_source_layout source_layout;
    enum d12_agx3_vdm_state_update_draw_path draw_path;
-   bool raw_render_selector_bit_0;
-   bool raw_render_selector_bit_1;
+   bool rasterization_enabled;
+   uint8_t raw_provoking_selector;
    struct d12_agx3_vdm_state_update_template_info template_info;
 };
 
 /*
- * Research/validation bridge only.  Raw payload words remain unnamed beyond
- * their proven record positions.  These functions are not wired to D3D draw
- * lowering or command submission and do not change AGX3 device admission or
- * D3D12 capabilities.
+ * Bounded pack/decode bridge.  Raw payload words remain unnamed beyond their
+ * proven record positions.  The draw selector is wired into command
+ * recording, but source_layout stays UNSPECIFIED until the compiler publishes
+ * every AGX3 template axis, so live AGX3 draws fail closed and no capability
+ * is exposed.
  */
 bool d12_agx3_encode_vdm_state_update(
    enum agx_chip chip, const struct d12_agx3_vdm_state_update_info *info,
@@ -94,8 +102,7 @@ bool d12_agx3_encode_vdm_state_update_template(
    const struct d12_agx3_vdm_state_update_template_info *info,
    struct d12_agx3_vdm_state_update *out);
 
-/* Admission-only producer for the exact native AGX3 draw-state prefix.  The
- * live D3D draw path remains closed while its PSO stores AGX2 Counts/UVS. */
+/* Producer for the exact native AGX3 draw-state prefix. */
 bool d12_agx3_encode_vdm_state_update_draw(
    enum agx_chip chip, const struct d12_agx3_vdm_state_update_draw_info *info,
    struct d12_agx3_vdm_state_update *out);

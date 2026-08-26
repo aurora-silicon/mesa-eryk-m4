@@ -75,7 +75,7 @@ d12_agx3_encode_vdm_state_update_template(
 
    if (!out || !info ||
        info->variant < D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_00 ||
-       info->variant > D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_11)
+       info->variant > D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_21)
       return false;
 
    const struct agx_vdm_state_update_template_info shared_info = {
@@ -144,8 +144,8 @@ d12_agx3_encode_vdm_state_update_draw(
       .source_layout =
          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
       .draw_path = shared_draw_path,
-      .raw_render_selector_bit_0 = info->raw_render_selector_bit_0,
-      .raw_render_selector_bit_1 = info->raw_render_selector_bit_1,
+      .rasterization_enabled = info->rasterization_enabled,
+      .raw_provoking_selector = info->raw_provoking_selector,
       .template_info = {
          .pipeline = d12->pipeline,
          .raw_state_load_count_12 = d12->raw_state_load_count_12,

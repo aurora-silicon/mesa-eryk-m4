@@ -26,6 +26,7 @@
 #include "hk_entrypoints.h"
 #include "hk_image.h"
 #include "hk_image_view.h"
+#include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
 #include "hk_private.h"
 #include "hk_shader.h"
@@ -3322,33 +3323,98 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       /* TODO: Do less often? */
       hk_reserve_scratch(cmd, cs, hw_vs);
 
-      agx_push(out, VDM_STATE, cfg) {
-         cfg.vertex_shader_word_0_present = true;
-         cfg.vertex_shader_word_1_present = true;
-         cfg.vertex_outputs_present = true;
-         cfg.vertex_unknown_present = true;
-      }
-
-      agx_push_packed(out, hw_vs->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
-
       struct hk_linked_shader *linked_hw_vs =
          (hw_vs == sw_vs) ? linked_vs : hw_vs->only_linked;
+      const uint32_t pipeline =
+         hk_upload_usc_words(cmd, hw_vs, linked_hw_vs);
 
-      agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-         cfg.pipeline = hk_upload_usc_words(cmd, hw_vs, linked_hw_vs);
+      switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+      case AGX_CS_GENERATION_AGX2:
+         agx_push(out, VDM_STATE, cfg) {
+            cfg.vertex_shader_word_0_present = true;
+            cfg.vertex_shader_word_1_present = true;
+            cfg.vertex_outputs_present = true;
+            cfg.vertex_unknown_present = true;
+         }
+
+         agx_push_packed(out, hw_vs->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
+
+         agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
+            cfg.pipeline = pipeline;
+         }
+
+         agx_push_packed(out, hw_vs->info.uvs.vdm,
+                         VDM_STATE_VERTEX_OUTPUTS);
+
+         agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
+            cfg.flat_shading_control = translate_vdm_vertex(gfx->provoking);
+            cfg.unknown_4 = cfg.unknown_5 = hk_rast_discard(cmd);
+            cfg.generate_primitive_id = gfx->generate_primitive_id;
+         }
+
+         /* Pad up to a multiple of 8 bytes */
+         memset(out, 0, 4);
+         out += 4;
+         break;
+
+      case AGX_CS_GENERATION_G15:
+      case AGX_CS_GENERATION_HAL200:
+      case AGX_CS_GENERATION_HAL300: {
+         const struct agx_vdm_state_update_program_info *program =
+            &hw_vs->agx3_vdm_state_update;
+         const bool complete_program =
+            program->source_layout ==
+               AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT &&
+            cs->agx3_active_context_selector_valid;
+         struct agx_vdm_state_update_draw_info info = {
+            .source_layout = complete_program
+                  ? AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
+                  : AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED,
+            .draw_path = agx_is_indirect(draw.b)
+               ? (draw.indexed
+                     ? AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED
+                     : AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED)
+               : (draw.indexed
+                     ? AGX_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED
+                     : AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED),
+            /* RenderPipeline+0x2f0 is populated from
+             * isRasterizationEnabled; the selected template carries 0x30
+             * when this is false on pre-HAL300. */
+            .rasterization_enabled = !hk_rast_discard(cmd),
+            /* hk already stores the actual hardware provoking vertex 0..2.
+             * Apple's setter maps its API mode to this same value before
+             * selecting one of the six templates. */
+            .raw_provoking_selector = gfx->provoking,
+            .template_info = program->template_info,
+         };
+         info.template_info.pipeline = pipeline;
+         info.template_info.raw_active_context_selector =
+            cs->agx3_raw_active_context_selector;
+
+         struct agx_vdm_state_update encoded;
+         if (!hk_agx3_encode_vdm_state_update_draw(dev->dev.chip, &info,
+                                                    &encoded)) {
+            mesa_loge("no complete AGX3 VertexProgramVariant state for %s",
+                      agx_chip_name(dev->dev.chip));
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FEATURE_NOT_PRESENT);
+            cs->current = out;
+            return;
+         }
+
+         memcpy(out, encoded.bytes, encoded.length);
+         out += encoded.length;
+         break;
       }
 
-      agx_push_packed(out, hw_vs->info.uvs.vdm, VDM_STATE_VERTEX_OUTPUTS);
-
-      agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg) {
-         cfg.flat_shading_control = translate_vdm_vertex(gfx->provoking);
-         cfg.unknown_4 = cfg.unknown_5 = hk_rast_discard(cmd);
-         cfg.generate_primitive_id = gfx->generate_primitive_id;
+      default:
+         mesa_loge("unknown command-stream generation for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk,
+                                     VK_ERROR_FEATURE_NOT_PRESENT);
+         cs->current = out;
+         return;
       }
-
-      /* Pad up to a multiple of 8 bytes */
-      memset(out, 0, 4);
-      out += 4;
    }
 
    if (IS_DIRTY(RS_DEPTH_BIAS_FACTORS)) {
@@ -3769,6 +3835,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
        * device. Just drop the draw so we don't crash.
        */
       if (!cs)
+         return;
+      if (vk_command_buffer_has_error(&cmd->vk))
          return;
 
       struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;

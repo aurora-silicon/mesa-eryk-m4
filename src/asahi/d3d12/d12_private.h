@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "d12_frontend.h"
+#include "d12_agx3_vdm_state_update_core.h"
 #include "d12_bundle_state_core.h"
 #include "d12_command_validation_core.h"
 #include "d12_device_removal_core.h"
@@ -974,6 +975,10 @@ struct d12_gfx_stage {
    struct agx_bo *code_bo;
    uint64_t preamble_va;
    struct agx_counts_packed counts;                  /* vertex */
+   /* Exact shader-lifetime AGX3 template axes.  Zero is UNSPECIFIED and
+    * therefore rejects live AGX3 draw emission while the compiler still
+    * exposes only AGX2 Counts/UVS state. */
+   struct d12_agx3_vdm_state_update_program_info agx3_vdm_state_update;
    struct agx_fragment_shader_word_0_packed fs_counts; /* fragment */
    struct agx_fragment_face_2_packed frag_face;        /* fragment */
 };
@@ -1050,6 +1055,9 @@ struct d12_pipeline_state {
     * depth/stencil rasterization, but it has no colour attachments or stores.
     */
    bool has_pixel_shader;
+   /* False only for a stream-output PSO whose RasterizedStream is explicitly
+    * D3D12_SO_NO_RASTERIZED_STREAM. */
+   bool rasterization_enabled;
 
    /* Shader-declared texture shape for every dense resource slot. This is
     * intentionally PSO state rather than descriptor state: the same D3D12
@@ -1418,6 +1426,10 @@ struct d12_segment {
    uint16_t width_px, height_px;
    uint16_t layers;
    struct agx_tilebuffer_layout tib;
+   /* RenderContext+0x8410 supplies this independently of shader program
+    * state.  It remains invalid until an exact producer is available. */
+   bool agx3_active_context_selector_valid;
+   uint32_t agx3_raw_active_context_selector;
    struct d12_resource *rt[AGX_MAX_RENDER_TARGETS];
    enum pipe_format rt_view_format[AGX_MAX_RENDER_TARGETS];
    uint8_t rt_level[AGX_MAX_RENDER_TARGETS];

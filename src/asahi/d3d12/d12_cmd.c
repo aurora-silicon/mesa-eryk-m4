@@ -8365,22 +8365,81 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
       }
    }
 
-   /* Vertex shader state */
-   agx_push(out, VDM_STATE, cfg) {
-      cfg.vertex_shader_word_0_present = true;
-      cfg.vertex_shader_word_1_present = true;
-      cfg.vertex_outputs_present = true;
-      cfg.vertex_unknown_present = true;
+   /* Vertex shader state.  AGX3 uses the exact six-way
+    * VertexProgramVariant selector; AGX2 Counts/UVS are never substituted for
+    * its independently produced state-load and VsStateConfig fields. */
+   switch (agx_chip_command_stream_generation(list->device->dev.chip)) {
+   case AGX_CS_GENERATION_AGX2:
+      agx_push(out, VDM_STATE, cfg) {
+         cfg.vertex_shader_word_0_present = true;
+         cfg.vertex_shader_word_1_present = true;
+         cfg.vertex_outputs_present = true;
+         cfg.vertex_unknown_present = true;
+      }
+      agx_push_packed(out, vstage->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
+      agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
+         cfg.pipeline = vs_usc;
+      }
+      agx_push_packed(out, uvs->vdm, VDM_STATE_VERTEX_OUTPUTS);
+      agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg);
+      /* Pad to a multiple of 8 bytes */
+      memset(out, 0, 4);
+      out += 4;
+      break;
+
+   case AGX_CS_GENERATION_G15:
+   case AGX_CS_GENERATION_HAL200:
+   case AGX_CS_GENERATION_HAL300: {
+      const struct d12_agx3_vdm_state_update_program_info *program =
+         &vstage->agx3_vdm_state_update;
+      const bool complete_program =
+         program->source_layout ==
+            D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT &&
+         seg->agx3_active_context_selector_valid;
+      struct d12_agx3_vdm_state_update_draw_info info = {
+         .source_layout = complete_program
+               ? D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
+               : D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED,
+         .draw_path = agx_is_indirect(draw.b)
+            ? (draw.indexed
+                  ? D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED
+                  : D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED)
+            : (draw.indexed
+                  ? D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED
+                  : D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED),
+         /* The native renderer sources this bit from
+          * RenderPipeline::isRasterizationEnabled. */
+         .rasterization_enabled = pso->rasterization_enabled,
+         /* D3D12 is first-provoking.  Triangle fans use AGX's dedicated
+          * first-fan (vertex 1) coefficient layout. */
+         .raw_provoking_selector =
+            topology == MESA_PRIM_TRIANGLE_FAN ? 1 : 0,
+         .template_info = program->template_info,
+      };
+      info.template_info.pipeline = vs_usc;
+      info.template_info.raw_active_context_selector =
+         seg->agx3_raw_active_context_selector;
+
+      struct d12_agx3_vdm_state_update encoded;
+      if (!d12_agx3_encode_vdm_state_update_draw(
+             list->device->dev.chip, &info, &encoded)) {
+         mesa_loge("no complete AGX3 VertexProgramVariant state for %s",
+                   agx_chip_name(list->device->dev.chip));
+         list->state = D12_LIST_ERROR;
+         return;
+      }
+
+      memcpy(out, encoded.bytes, encoded.length);
+      out += encoded.length;
+      break;
    }
-   agx_push_packed(out, vstage->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
-   agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-      cfg.pipeline = vs_usc;
+
+   default:
+      mesa_loge("unknown command-stream generation for %s",
+                agx_chip_name(list->device->dev.chip));
+      list->state = D12_LIST_ERROR;
+      return;
    }
-   agx_push_packed(out, uvs->vdm, VDM_STATE_VERTEX_OUTPUTS);
-   agx_push(out, VDM_STATE_VERTEX_UNKNOWN, cfg);
-   /* Pad to a multiple of 8 bytes */
-   memset(out, 0, 4);
-   out += 4;
 
    /* Viewport, scissor and depth bias */
    {
