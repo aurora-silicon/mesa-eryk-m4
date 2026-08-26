@@ -158,6 +158,13 @@ struct agx_shader_info {
    /* Workgroup size */
    uint16_t workgroup_size[3];
 
+   /* Exact AGX3 direct-launch ShaderInfo producers. Resource-info queries
+    * come from NIR. Every backend lowering which emits a ray traversal/query
+    * opcode must set uses_ray_traversal as well; ray_queries alone is not a
+    * future-proof proxy for full RT pipelines. */
+   bool uses_resource_info_query;
+   bool uses_ray_traversal;
+
    /* There may be constants in the binary. The driver must map these to uniform
     * registers as specified hre.
     */

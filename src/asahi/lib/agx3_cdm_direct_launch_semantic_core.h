@@ -52,8 +52,9 @@ struct agx3_cdm_direct_template_sources {
     * of this ULong before finalize constructs launch word 0. */
    uint64_t extended_texture_write_mask_qword_1;
 
-   /* Finalize booleanizes this ULong into launch word 0 bit 23. */
-   uint64_t ray_traversal_depth;
+   /* Finalize consumes only whether ShaderInfo ID32 is nonzero.  Its full
+    * 32-bit RT metadata subfields remain outside this launch-only contract. */
+   bool ray_traversal_depth_nonzero;
 };
 
 struct agx3_cdm_direct_template {
@@ -90,6 +91,14 @@ bool agx3_cdm_direct_template_build(
 bool agx3_cdm_direct_template_build_from_sources(
    const struct agx3_cdm_direct_template_sources *sources,
    struct agx3_cdm_direct_template *result);
+
+/* Derive the exact direct-compute ShaderInfo source tuple witnessed on G17X.
+ * max_total_threads_per_threadgroup is an Apple schema name, not the Metal
+ * pipeline limit: AGC repurposes it as the table below.  The extended texture
+ * write field remains zero even with 65 live writable textures. */
+bool agx3_cdm_direct_template_sources_compute(
+   bool uses_resource_info_query, bool uses_ray_traversal,
+   struct agx3_cdm_direct_template_sources *sources);
 
 bool agx3_cdm_direct_template_decode(
    const struct agx3_cdm_direct_template *template_words,

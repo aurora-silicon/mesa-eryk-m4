@@ -54,7 +54,7 @@ make_desc(enum agx_chip chip)
          {
             .max_total_threads_per_threadgroup = 0x345,
             .extended_texture_write_mask_qword_1 = 0x124,
-            .ray_traversal_depth = 1,
+            .ray_traversal_depth_nonzero = true,
          },
    };
 

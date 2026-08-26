@@ -183,7 +183,7 @@ test_template_contract(void)
    const struct agx3_cdm_direct_template_sources source_fields = {
       .max_total_threads_per_threadgroup = 5,
       .extended_texture_write_mask_qword_1 = 4,
-      .ray_traversal_depth = 1,
+      .ray_traversal_depth_nonzero = true,
    };
    CHECK(agx3_cdm_direct_template_build_from_sources(&source_fields,
                                                       &template_words));
@@ -192,6 +192,36 @@ test_template_contract(void)
    CHECK(decoded.word1_bits_3_20 == 2);
    CHECK(decoded.ray_traversal_depth_nonzero);
    CHECK(decoded.subkernel_x_target_workitems);
+
+   const struct {
+      bool resource_info;
+      bool ray_traversal;
+      uint32_t field31;
+   } compute_sources[] = {
+      {false, false, 0x00},
+      {true, false, 0x20},
+      {false, true, 0x30},
+      {true, true, 0x40},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(compute_sources); ++i) {
+      struct agx3_cdm_direct_template_sources sources;
+      CHECK(agx3_cdm_direct_template_sources_compute(
+         compute_sources[i].resource_info, compute_sources[i].ray_traversal,
+         &sources));
+      CHECK(sources.max_total_threads_per_threadgroup ==
+            compute_sources[i].field31);
+      CHECK(sources.extended_texture_write_mask_qword_1 == 0);
+      CHECK(sources.ray_traversal_depth_nonzero ==
+            compute_sources[i].ray_traversal);
+      CHECK(agx3_cdm_direct_template_build_from_sources(&sources,
+                                                         &template_words));
+      CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
+      CHECK(decoded.word1_bits_3_20 ==
+            DIV_ROUND_UP(compute_sources[i].field31, 4));
+      CHECK(decoded.ray_traversal_depth_nonzero ==
+            compute_sources[i].ray_traversal);
+   }
+   CHECK(!agx3_cdm_direct_template_sources_compute(false, false, NULL));
 
    const uint32_t extended_mask_boundaries[][2] = {
       {0, 0}, {1, 2}, {4, 2}, {5, 2}, {8, 2},

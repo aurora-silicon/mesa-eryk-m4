@@ -44,6 +44,32 @@ agx3_cdm_direct_template_build(
 }
 
 bool
+agx3_cdm_direct_template_sources_compute(
+   bool uses_resource_info_query, bool uses_ray_traversal,
+   struct agx3_cdm_direct_template_sources *sources)
+{
+   if (!sources)
+      return false;
+
+   uint32_t field31;
+   if (uses_resource_info_query && uses_ray_traversal)
+      field31 = 0x40;
+   else if (uses_ray_traversal)
+      field31 = 0x30;
+   else if (uses_resource_info_query)
+      field31 = 0x20;
+   else
+      field31 = 0;
+
+   *sources = (struct agx3_cdm_direct_template_sources){
+      .max_total_threads_per_threadgroup = field31,
+      .extended_texture_write_mask_qword_1 = 0,
+      .ray_traversal_depth_nonzero = uses_ray_traversal,
+   };
+   return true;
+}
+
+bool
 agx3_cdm_direct_template_build_from_sources(
    const struct agx3_cdm_direct_template_sources *sources,
    struct agx3_cdm_direct_template *result)
@@ -74,7 +100,7 @@ agx3_cdm_direct_template_build_from_sources(
    const struct agx3_cdm_direct_template_fields fields = {
       .word0_bits_3_14 = (uint16_t)word0_value,
       .word1_bits_3_20 = (uint32_t)word1_value,
-      .ray_traversal_depth_nonzero = sources->ray_traversal_depth != 0,
+      .ray_traversal_depth_nonzero = sources->ray_traversal_depth_nonzero,
 
       /* Every recovered HAL200/HAL300 finalize path initializes
        * getSubKernelXTargetWorkitems() to one before constructing a direct

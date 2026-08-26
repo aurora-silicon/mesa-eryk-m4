@@ -3876,6 +3876,8 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       nir_print_shader(nir, stdout);
 
    info->local_size = nir->info.shared_size;
+   info->uses_resource_info_query = nir->info.uses_resource_info_query;
+   info->uses_ray_traversal = nir->info.ray_queries != 0;
 
    nir_foreach_function_with_impl(func, impl, nir) {
       unsigned offset;
