@@ -89,7 +89,9 @@ agx3_atomic_encode_device(enum agx_isa_encoding enc,
    case AGX3_ATOMIC_INDEX_IMMEDIATE:
       break;
    case AGX3_ATOMIC_INDEX_REGISTER:
-      if ((d->index & 1) != 0 || d->index > 190)
+      if ((d->index & 1) != 0 ||
+          d->index >
+             (enc == AGX_ISA_ENCODING_AGX3C ? 254 : 190))
          return false;
       break;
    case AGX3_ATOMIC_INDEX_UNIFORM:

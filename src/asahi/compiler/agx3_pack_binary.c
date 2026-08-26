@@ -25,6 +25,7 @@
  */
 
 #include "agx3_alu_core.h"
+#include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
 #include "agx3_local_tps_core.h"
@@ -346,6 +347,10 @@ agx3_try_float_modifier(struct util_dynarray *emission,
 static bool
 agx3_is_async(const agx_instr *I)
 {
+   if ((I->op == AGX_OPCODE_ATOMIC || I->op == AGX_OPCODE_LOCAL_ATOMIC) &&
+       I->nr_dests == 1 && !agx_is_null(I->dest[0]))
+      return true;
+
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
           I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE ||
@@ -869,6 +874,164 @@ agx3_translate_local(const agx_instr *I, bool is_store, uint8_t slot,
       return false;
 
    d->narrow_extend = d->width == AGX3_MEM_W8;
+   d->slot = slot;
+   d->wait_mask = wait_mask;
+   return true;
+}
+
+static bool
+agx3_atomic_plain_reg(agx_index index, enum agx_size size, unsigned channels)
+{
+   return agx3_src_is_register(index) && !index.memory && !index.abs &&
+          !index.neg && !index.cache && !index.discard && index.size == size &&
+          agx_channels(index) == channels &&
+          (index.value & (agx_size_align_16(size) - 1)) == 0 &&
+          index.value + agx_size_align_16(size) * channels <= 256;
+}
+
+static bool
+agx3_map_atomic_op(enum agx_atomic_opc in, enum agx3_atomic_op *out)
+{
+   switch (in) {
+#define OP(x)                                                                  \
+   case AGX_ATOMIC_OPC_##x:                                                    \
+      *out = AGX3_ATOMIC_##x;                                                  \
+      return true
+      OP(ADD);
+      OP(SUB);
+      OP(XCHG);
+      OP(CMPXCHG);
+      OP(UMIN);
+      OP(IMIN);
+      OP(UMAX);
+      OP(IMAX);
+      OP(AND);
+      OP(OR);
+      OP(XOR);
+#undef OP
+   }
+
+   return false;
+}
+
+/* Translate Mesa's global atomic IR into the fully witnessed 32-bit AGX3
+ * family.  The address lowering represents a constant byte displacement as a
+ * 32-bit element index; fold it back into the signed byte-offset field when it
+ * fits, matching Apple.  AGX3b returned atomics are physically in-place, so
+ * only an RA-coalesced value/result pair is accepted on that encoding. */
+static bool
+agx3_translate_device_atomic(const agx_instr *I,
+                             enum agx_isa_encoding enc, uint8_t slot,
+                             uint16_t wait_mask,
+                             struct agx3_device_atomic_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+   if (I->op != AGX_OPCODE_ATOMIC || I->nr_dests != 1 || I->nr_srcs != 3 ||
+       !agx3_map_atomic_op(I->atomic_opc, &d->op))
+      return false;
+
+   const unsigned value_channels =
+      d->op == AGX3_ATOMIC_CMPXCHG ? 2 : 1;
+   const agx_index value = I->src[0];
+   if (!agx3_atomic_plain_reg(value, AGX_SIZE_32, value_channels))
+      return false;
+   d->value = value.value;
+   d->value_kill = value.kill;
+
+   const agx_index result = I->dest[0];
+   d->returns_value = !agx_is_null(result);
+   if (d->returns_value) {
+      if (!agx3_atomic_plain_reg(result, AGX_SIZE_32, 1) ||
+          (enc == AGX_ISA_ENCODING_AGX3B && result.value != value.value))
+         return false;
+      d->result = result.value;
+      d->slot = slot;
+   } else if (slot != 0) {
+      return false;
+   }
+
+   const agx_index base = I->src[1];
+   if (base.memory || base.abs || base.neg || base.cache || base.discard ||
+       base.kill || base.size != AGX_SIZE_64 || agx_channels(base) != 1) {
+      return false;
+   } else if (base.type == AGX_INDEX_UNIFORM) {
+      d->base_kind = AGX3_ATOMIC_BASE_UNIFORM;
+      d->base = base.value;
+   } else if (agx3_src_is_register(base)) {
+      d->base_kind = AGX3_ATOMIC_BASE_REGISTER;
+      d->base = base.value;
+   } else {
+      return false;
+   }
+
+   const agx_index index = I->src[2];
+   if (index.memory || index.abs || index.neg || index.cache || index.discard ||
+       agx_channels(index) != 1)
+      return false;
+
+   if (index.type == AGX_INDEX_IMMEDIATE) {
+      if (index.kill || index.value > UINT16_MAX)
+         return false;
+      const uint64_t byte_offset = (uint64_t)index.value << 2;
+      if (byte_offset <= INT16_MAX) {
+         d->index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE;
+         d->byte_offset = byte_offset;
+      } else {
+         d->index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE;
+         d->index = index.value;
+         d->index_shift = 2;
+      }
+   } else if (agx3_src_is_register(index) && index.size == AGX_SIZE_32 &&
+              (index.value & 1) == 0) {
+      d->index_kind = AGX3_ATOMIC_INDEX_REGISTER;
+      d->index = index.value;
+      d->index_kill = index.kill;
+      d->index_shift = 2;
+   } else if (index.type == AGX_INDEX_UNIFORM && index.size == AGX_SIZE_32 &&
+              index.value < 512 && !index.kill) {
+      d->index_kind = AGX3_ATOMIC_INDEX_UNIFORM;
+      d->index = index.value;
+      d->index_shift = 2;
+   } else {
+      return false;
+   }
+
+   d->wait_mask = wait_mask;
+   return true;
+}
+
+/* Only Apple's directly witnessed scalar shared-variable form is selected:
+ * returning 32-bit atomics at local address zero.  Dynamic/shared-array
+ * addressing remains closed until its operand field is isolated. */
+static bool
+agx3_translate_local_atomic(const agx_instr *I, uint8_t slot,
+                            uint16_t wait_mask,
+                            struct agx3_local_atomic_desc *d)
+{
+   memset(d, 0, sizeof(*d));
+   if (I->op != AGX_OPCODE_LOCAL_ATOMIC || I->nr_dests != 1 ||
+       I->nr_srcs != 3 || agx_is_null(I->dest[0]) ||
+       !agx3_map_atomic_op(I->atomic_opc, &d->op))
+      return false;
+
+   const unsigned value_channels =
+      d->op == AGX3_ATOMIC_CMPXCHG ? 2 : 1;
+   if (!agx3_atomic_plain_reg(I->src[0], AGX_SIZE_32, value_channels) ||
+       !agx3_atomic_plain_reg(I->dest[0], AGX_SIZE_32, 1))
+      return false;
+
+   const agx_index base = I->src[1], index = I->src[2];
+   if (base.type != AGX_INDEX_IMMEDIATE || base.value != 0 ||
+       base.size != AGX_SIZE_16 || base.memory || base.abs || base.neg ||
+       base.cache || base.discard || base.kill ||
+       index.type != AGX_INDEX_IMMEDIATE || index.value != 0 ||
+       index.size != AGX_SIZE_16 || index.memory || index.abs || index.neg ||
+       index.cache || index.discard || index.kill)
+      return false;
+
+   d->value = I->src[0].value;
+   d->result = I->dest[0].value;
+   d->value_kill = I->src[0].kill;
    d->slot = slot;
    d->wait_mask = wait_mask;
    return true;
@@ -1539,6 +1702,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (I->op == AGX_OPCODE_ATOMIC) {
+            struct agx3_device_atomic_desc d;
+            uint8_t bytes[AGX3_ATOMIC_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_device_atomic(I, enc, slot, wait, &d) ||
+                !agx3_atomic_encode_device(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               goto fail;
+            async_seen |= d.returns_value;
+            continue;
+         }
+
          /* Threadgroup memory. The scaled register-indexed axis stays closed;
           * current Mesa IR reaches this path with its byte address in base and
           * an immediate-zero index. */
@@ -1557,6 +1732,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                goto fail;
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen |= !is_store;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_LOCAL_ATOMIC) {
+            struct agx3_local_atomic_desc d;
+            uint8_t bytes[AGX3_ATOMIC_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_translate_local_atomic(I, slot, wait, &d) ||
+                !agx3_atomic_encode_local(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               goto fail;
+            async_seen = true;
             continue;
          }
 

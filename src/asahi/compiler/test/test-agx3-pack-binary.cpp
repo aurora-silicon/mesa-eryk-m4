@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "agx3_alu_core.h"
+#include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
 #include "agx3_local_tps_core.h"
@@ -103,6 +104,120 @@ TEST_F(AGX3PackBinary, StraightLineALU)
 
       EXPECT_EQ(pack(b), want);
    }
+}
+
+TEST_F(AGX3PackBinary, DeviceAtomicsUseGenerationSpecificReturnRegisters)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      const agx_index value = agx_register(6, AGX_SIZE_32);
+      const agx_index result =
+         agx_register(e ? 4 : 6, AGX_SIZE_32); /* b is physically in-place */
+      agx_atomic_to(b, result, value, agx_uniform(0, AGX_SIZE_64),
+                    agx_immediate(0), AGX_ATOMIC_OPC_XOR);
+      agx_stop(b);
+
+      struct agx3_device_atomic_desc d = {
+         .op = AGX3_ATOMIC_XOR,
+         .value = 6,
+         .returns_value = true,
+         .result = (uint16_t)(e ? 4 : 6),
+         .slot = 1,
+         .base_kind = AGX3_ATOMIC_BASE_UNIFORM,
+         .index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE,
+      };
+      uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
+      ASSERT_TRUE(agx3_atomic_encode_device(enc, &d, atomic, &atomic_len));
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, atomic, atomic_len);
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, DeviceAtomicFoldsElementOffsetToBytes)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_atomic_to(b, agx_register(4, AGX_SIZE_32),
+                 agx_register(6, AGX_SIZE_32),
+                 agx_uniform(4, AGX_SIZE_64), agx_immediate(7),
+                 AGX_ATOMIC_OPC_ADD);
+   agx_stop(b);
+
+   struct agx3_device_atomic_desc d = {
+      .op = AGX3_ATOMIC_ADD,
+      .value = 6,
+      .returns_value = true,
+      .result = 4,
+      .slot = 1,
+      .base_kind = AGX3_ATOMIC_BASE_UNIFORM,
+      .base = 4,
+      .index_kind = AGX3_ATOMIC_INDEX_IMMEDIATE,
+      .byte_offset = 28,
+   };
+   uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
+   ASSERT_TRUE(agx3_atomic_encode_device(AGX_ISA_ENCODING_AGX3C, &d, atomic,
+                                         &atomic_len));
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3C, &end));
+
+   std::vector<uint8_t> want;
+   append(want, atomic, atomic_len);
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+}
+
+TEST_F(AGX3PackBinary, LocalAtomicScalarZeroAddress)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      agx_local_atomic_to(b, agx_register(6, AGX_SIZE_32),
+                          agx_register(4, AGX_SIZE_32), agx_immediate(0),
+                          agx_immediate(0), AGX_ATOMIC_OPC_UMIN);
+      agx_stop(b);
+
+      const struct agx3_local_atomic_desc d = {
+         .op = AGX3_ATOMIC_UMIN,
+         .value = 4,
+         .result = 6,
+         .slot = 1,
+      };
+      uint8_t atomic[AGX3_ATOMIC_MAX_LENGTH], atomic_len = 0;
+      ASSERT_TRUE(agx3_atomic_encode_local(enc, &d, atomic, &atomic_len));
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+
+      std::vector<uint8_t> want;
+      append(want, atomic, atomic_len);
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, AtomicsRefuseUngroundedStructuralAxes)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_atomic_to(b, agx_register(4, AGX_SIZE_32),
+                 agx_register(6, AGX_SIZE_32),
+                 agx_uniform(0, AGX_SIZE_64), agx_immediate(0),
+                 AGX_ATOMIC_OPC_ADD);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false); /* AGX3b return was not RA-coalesced */
+
+   b = builder(AGX_ISA_ENCODING_AGX3C);
+   agx_local_atomic_to(b, agx_register(6, AGX_SIZE_32),
+                       agx_register(4, AGX_SIZE_32),
+                       agx_register(8, AGX_SIZE_16), agx_immediate(0),
+                       AGX_ATOMIC_OPC_ADD);
+   agx_stop(b);
+   pack(b, /*expect_ok=*/false); /* dynamic local address is not isolated */
 }
 
 TEST_F(AGX3PackBinary, SimdBroadcastImmediateWitnesses)
