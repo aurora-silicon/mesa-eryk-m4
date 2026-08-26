@@ -317,14 +317,15 @@ class ISA:
                         ensure(ins.name not in self.instrs, f'Multiple instructions named {ins.name}')
                         self.instrs[ins.name] = ins
 
-# The XML to build from. meson already passes it as argv[1] (the second
-# '@INPUT@'); it was previously ignored because AGX2 was the only ISA. AGX3 adds
-# two more tables, so honour it and fall back to AGX2 for direct invocation.
-xmlfile = sys.argv[1] if len(sys.argv) > 1 else \
-    os.path.join(os.path.dirname(__file__), 'AGX2.xml')
-isa = ISA(ET.parse(xmlfile).getroot())
+def load_isa(xmlfile):
+    return ISA(ET.parse(xmlfile).getroot())
 
-# Symbol prefix for generated code, derived from the table name: AGX2.xml ->
-# "agx2", AGX3b.xml -> "agx3b". Every ISA generates a full set of decode tables,
-# so they must not collide when more than one is linked into the same binary.
-isa_prefix = os.path.splitext(os.path.basename(xmlfile))[0].lower()
+def isa_prefix_for_file(xmlfile):
+    return os.path.splitext(os.path.basename(xmlfile))[0].lower()
+
+# Python disassembler users import this module while carrying their own command
+# line arguments, so the library default must not inspect sys.argv. Generators
+# select their XML explicitly after import.
+xmlfile = os.path.join(os.path.dirname(__file__), 'AGX2.xml')
+isa = load_isa(xmlfile)
+isa_prefix = isa_prefix_for_file(xmlfile)

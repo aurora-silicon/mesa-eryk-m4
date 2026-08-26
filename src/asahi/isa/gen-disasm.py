@@ -6,7 +6,12 @@
 
 from mako.template import Template
 from mako import exceptions
-from isa import isa, isa_prefix
+import sys
+from isa import isa_prefix_for_file, load_isa
+
+xmlfile = sys.argv[1]
+isa = load_isa(xmlfile)
+isa_prefix = isa_prefix_for_file(xmlfile)
 
 # XXX: deduplicate
 def to_alphanum(name):
