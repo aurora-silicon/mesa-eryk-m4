@@ -17,10 +17,10 @@ check_empty_compute(enum agx_isa_encoding encoding)
 
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "empty AGX3 compute");
-   b.shader->info.io_lowered = true;
    b.shader->info.workgroup_size[0] = 1;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
+   agx_preprocess_nir(b.shader);
 
    struct agx_shader_key key = {0};
    key.dev.encoding = encoding;
@@ -57,13 +57,13 @@ check_shared_store_compute(enum agx_isa_encoding encoding)
 
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 shared store");
-   b.shader->info.io_lowered = true;
    b.shader->info.workgroup_size[0] = 1;
    b.shader->info.workgroup_size[1] = 1;
    b.shader->info.workgroup_size[2] = 1;
    b.shader->info.shared_size = 4;
    nir_store_shared(&b, nir_imm_int(&b, 0x12345678), nir_imm_int(&b, 0),
                     .align_mul = 4);
+   agx_preprocess_nir(b.shader);
 
    struct agx_shader_key key = {0};
    key.dev.encoding = encoding;
@@ -91,6 +91,139 @@ check_shared_store_compute(enum agx_isa_encoding encoding)
    return valid;
 }
 
+static bool
+check_shared_rmw_compute(enum agx_isa_encoding encoding)
+{
+   static const uint8_t end[] = {0x0e, 0x00, 0x00, 0x00};
+
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 shared RMW");
+   b.shader->info.workgroup_size[0] = 32;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.shared_size = 32 * sizeof(uint32_t);
+
+   nir_def *offset = nir_imul_imm(
+      &b, nir_load_local_invocation_index(&b), sizeof(uint32_t));
+   nir_def *value = nir_load_shared(&b, 1, 32, offset, .align_mul = 4);
+   nir_store_shared(&b, nir_iadd_imm(&b, value, 1), offset, .align_mul = 4);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {0};
+   key.dev.encoding = encoding;
+   struct agx_shader_part part = {0};
+
+   if (!agx_compile_shader_nir(b.shader, &key, &part)) {
+      fprintf(stderr, "AGX3 shared-RMW compute shader was rejected\n");
+      ralloc_free(b.shader);
+      return false;
+   }
+
+   const bool valid =
+      part.binary != NULL && part.info.binary_size > sizeof(end) &&
+      part.info.main_offset == 0 &&
+      part.info.main_size == part.info.binary_size &&
+      part.info.stats.instrs > 3 &&
+      part.info.local_size == 32 * sizeof(uint32_t) &&
+      memcmp((const uint8_t *)part.binary + part.info.binary_size - sizeof(end),
+             end, sizeof(end)) == 0;
+
+   if (!valid)
+      fprintf(stderr, "AGX3 shared-RMW metadata/binary mismatch\n");
+
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
+static bool
+check_local_id_compute(enum agx_isa_encoding encoding)
+{
+   static const uint8_t end[] = {0x0e, 0x00, 0x00, 0x00};
+
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 local invocation ID");
+   b.shader->info.workgroup_size[0] = 4;
+   b.shader->info.workgroup_size[1] = 2;
+   b.shader->info.workgroup_size[2] = 2;
+   b.shader->info.shared_size = sizeof(uint32_t);
+
+   nir_def *id = nir_load_local_invocation_id(&b);
+   nir_def *sum = nir_iadd(
+      &b, nir_iadd(&b, nir_channel(&b, id, 0), nir_channel(&b, id, 1)),
+      nir_channel(&b, id, 2));
+   nir_store_shared(&b, sum, nir_imm_int(&b, 0), .align_mul = 4);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {0};
+   key.dev.encoding = encoding;
+   struct agx_shader_part part = {0};
+
+   if (!agx_compile_shader_nir(b.shader, &key, &part)) {
+      fprintf(stderr, "AGX3 local-ID compute shader was rejected\n");
+      ralloc_free(b.shader);
+      return false;
+   }
+
+   const bool valid =
+      part.binary != NULL && part.info.binary_size > sizeof(end) &&
+      part.info.main_offset == 0 &&
+      part.info.main_size == part.info.binary_size &&
+      part.info.stats.instrs >= 7 && part.info.local_size == sizeof(uint32_t) &&
+      memcmp((const uint8_t *)part.binary + part.info.binary_size - sizeof(end),
+             end, sizeof(end)) == 0;
+
+   if (!valid)
+      fprintf(stderr, "AGX3 local-ID metadata/binary mismatch\n");
+
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
+static bool
+check_subgroup_id_compute(enum agx_isa_encoding encoding)
+{
+   static const uint8_t end[] = {0x0e, 0x00, 0x00, 0x00};
+
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 subgroup IDs");
+   b.shader->info.workgroup_size[0] = 64;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+   b.shader->info.shared_size = sizeof(uint32_t);
+
+   nir_def *sum = nir_iadd(&b, nir_load_subgroup_invocation(&b),
+                           nir_load_subgroup_id(&b));
+   nir_store_shared(&b, sum, nir_imm_int(&b, 0), .align_mul = 4);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {0};
+   key.dev.encoding = encoding;
+   struct agx_shader_part part = {0};
+
+   if (!agx_compile_shader_nir(b.shader, &key, &part)) {
+      fprintf(stderr, "AGX3 subgroup-ID compute shader was rejected\n");
+      ralloc_free(b.shader);
+      return false;
+   }
+
+   const bool valid =
+      part.binary != NULL && part.info.binary_size > sizeof(end) &&
+      part.info.main_offset == 0 &&
+      part.info.main_size == part.info.binary_size &&
+      part.info.stats.instrs >= 5 && part.info.local_size == sizeof(uint32_t) &&
+      memcmp((const uint8_t *)part.binary + part.info.binary_size - sizeof(end),
+             end, sizeof(end)) == 0;
+
+   if (!valid)
+      fprintf(stderr, "AGX3 subgroup-ID metadata/binary mismatch\n");
+
+   free(part.binary);
+   ralloc_free(b.shader);
+   return valid;
+}
+
 int
 main(void)
 {
@@ -103,6 +236,12 @@ main(void)
       if (!check_empty_compute(encodings[i]))
          return 1;
       if (!check_shared_store_compute(encodings[i]))
+         return 1;
+      if (!check_shared_rmw_compute(encodings[i]))
+         return 1;
+      if (!check_local_id_compute(encodings[i]))
+         return 1;
+      if (!check_subgroup_id_compute(encodings[i]))
          return 1;
 
       nir_builder b = nir_builder_init_simple_shader(
@@ -131,6 +270,6 @@ main(void)
       ralloc_free(b.shader);
    }
 
-   puts("agx3_compile: empty/shared-store compute emitted; unlowered ray queries rejected");
+   puts("agx3_compile: compute SR/shared-memory paths emitted; unlowered ray queries rejected");
    return 0;
 }

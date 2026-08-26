@@ -982,6 +982,44 @@ agx_emit_block_image_store(agx_builder *b, nir_intrinsic_instr *instr)
 }
 
 static agx_instr *
+agx_get_sr_native_width_to(agx_builder *b, agx_index dst, enum agx_sr sr)
+{
+   bool narrow_agx3 = false;
+
+   switch (sr) {
+   case AGX_SR_THREADS_PER_THREADGROUP_X:
+   case AGX_SR_THREADS_PER_THREADGROUP_Y:
+   case AGX_SR_THREADS_PER_THREADGROUP_Z:
+   case AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_X:
+   case AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_Y:
+   case AGX_SR_DISPATCH_THREADS_PER_THREADGROUP_Z:
+   case AGX_SR_THREAD_POSITION_IN_THREADGROUP_X:
+   case AGX_SR_THREAD_POSITION_IN_THREADGROUP_Y:
+   case AGX_SR_THREAD_POSITION_IN_THREADGROUP_Z:
+   case AGX_SR_THREAD_INDEX_IN_THREADGROUP:
+   case AGX_SR_THREAD_INDEX_IN_SUBGROUP:
+   case AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP:
+      narrow_agx3 = true;
+      break;
+   default:
+      break;
+   }
+
+   if (b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2 && narrow_agx3 &&
+       dst.size == AGX_SIZE_32) {
+      /* Apple's AGX3 get_sr forms expose these builtins as witnessed 16-bit
+       * values. NIR presents the Vulkan/D3D builtins as uint32_t, so read the
+       * native half register and explicitly zero-extend it. This also makes
+       * the async dependency visible to the scoreboard allocator. */
+      agx_index native = agx_temp(b->shader, AGX_SIZE_16);
+      agx_get_sr_to(b, native, sr);
+      return agx_mov_to(b, dst, native);
+   }
+
+   return agx_get_sr_to(b, dst, sr);
+}
+
+static agx_instr *
 agx_load_compute_dimension(agx_builder *b, agx_index dst,
                            nir_intrinsic_instr *instr, enum agx_sr base)
 {
@@ -989,11 +1027,11 @@ agx_load_compute_dimension(agx_builder *b, agx_index dst,
    unsigned size = instr->def.bit_size;
    assert(size == 16 || size == 32);
 
-   agx_index srcs[] = {
-      agx_get_sr(b, size, base + 0),
-      agx_get_sr(b, size, base + 1),
-      agx_get_sr(b, size, base + 2),
-   };
+   agx_index srcs[3];
+   for (unsigned i = 0; i < ARRAY_SIZE(srcs); ++i) {
+      srcs[i] = agx_temp(b->shader, agx_size_for_bits(size));
+      agx_get_sr_native_width_to(b, srcs[i], base + i);
+   }
 
    return agx_emit_collect_to(b, dst, dim, srcs);
 }
@@ -1551,7 +1589,8 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
          b, dst, instr, AGX_SR_THREAD_POSITION_IN_THREADGROUP_X);
 
    case nir_intrinsic_load_local_invocation_index:
-      return agx_get_sr_to(b, dst, AGX_SR_THREAD_INDEX_IN_THREADGROUP);
+      return agx_get_sr_native_width_to(
+         b, dst, AGX_SR_THREAD_INDEX_IN_THREADGROUP);
 
    case nir_intrinsic_load_layer_id:
       return agx_get_sr_to(b, dst, AGX_SR_THREADGROUP_POSITION_IN_GRID_Z);
@@ -1723,10 +1762,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_dfdy_to(b, dst, agx_src_index(&instr->src[0]));
 
    case nir_intrinsic_load_subgroup_invocation:
-      return agx_get_sr_to(b, dst, AGX_SR_THREAD_INDEX_IN_SUBGROUP);
+      return agx_get_sr_native_width_to(b, dst,
+                                        AGX_SR_THREAD_INDEX_IN_SUBGROUP);
 
    case nir_intrinsic_load_subgroup_id:
-      return agx_get_sr_to(b, dst, AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP);
+      return agx_get_sr_native_width_to(
+         b, dst, AGX_SR_SUBGROUP_INDEX_IN_THREADGROUP);
 
    case nir_intrinsic_load_active_subgroup_invocation_agx:
       return agx_get_sr_coverage_to(b, dst,
