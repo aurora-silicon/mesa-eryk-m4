@@ -63,6 +63,15 @@ bool hk_agx3_g17s_minimal_compute_program_upload_prepare(
    const struct agx3_compute_program_upload *upload, size_t *written,
    struct agx3_compute_program *program);
 
+/* Exact G17S live-resource bridge.  The shared core owns all target,
+ * relocation and transactional validation; this publishes no Vulkan cap. */
+bool hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
+
 #ifdef __cplusplus
 }
 #endif

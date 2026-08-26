@@ -103,9 +103,9 @@ bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
 /* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch
  * template.  The root-uniform source must match Apple's independently traced
  * buffer(1), offset-zero load into temporary base zero.  Its result is loaded
- * at half24 and copied to CProg half8.  The leading source-half-zero COPY pair
- * remains ungrounded Ioto-entry state, so success still does not admit a live
- * frontend path. */
+ * at half24 and copied to CProg half8.  This template form intentionally
+ * retains Apple's zero runtime relocations and does not admit a live frontend
+ * path. */
 bool agx3_g17s_minimal_compute_program_prepare(
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
    size_t capacity, size_t *written, struct agx3_compute_program *program);
@@ -114,10 +114,24 @@ bool agx3_g17s_minimal_compute_program_prepare(
  * must identify the beginning of the same 64-byte-aligned allocation, and
  * gpu_va must equal desc->program_va.  No sibling target is admitted.  The
  * mapped bytes, *written and *program are unchanged on every failure.  This
- * does not establish the two still-unknown source-half-zero entry values. */
+ * does not patch the live gather or root-uniform addresses. */
 bool agx3_g17s_minimal_compute_program_upload_prepare(
    enum agx_chip chip,
    const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
+
+/* G17S-only live-resource handoff.  This is the exact direct-enqueue contract
+ * recovered for the minimal witness: the mapped program allocation is joined
+ * to the secondary gather allocation VA and UserComputeArgumentTable GPU VA
+ * entry 1 and the constructor-owned absolute UniformData source VA.
+ * loadImmediateUserBuffer passes the same kind-3 Register zero to the pointer
+ * load and the leading COPY pair, so no separate hardware entry seed is
+ * required.  The mapping, *written and *program are unchanged on failure. */
+bool agx3_g17s_minimal_compute_program_live_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
    const struct agx3_compute_program_upload *upload, size_t *written,
    struct agx3_compute_program *program);
 

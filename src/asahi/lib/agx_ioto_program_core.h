@@ -22,6 +22,21 @@ extern "C" {
 #define AGX_IOTO_PROGRAM_TERMINATE_SIZE 4u
 #define AGX_IOTO_PROGRAM_TERMINATE_WORD UINT32_C(0x0000000e)
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE 194u
+#define AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA \
+   UINT64_C(0x10000018020)
+#define AGX_IOTO_G17S_MINIMAL_COMPUTE_USER_BUFFER_ADDEND UINT64_C(0x8000)
+
+/* Exact runtime relocations applied by Apple's G17S ComputeContext before
+ * enqueue.  gather_buffer_va is emitUscStateLoad's x3 argument.  The root
+ * uniform address is user_compute_argument_gpu_va_1 plus the relocation's
+ * witnessed 0x8000 addend.  The absolute UniformData source is constructor-
+ * owned rather than an enqueue relocation, so the caller supplies the exact
+ * VA used to construct this program. */
+struct agx_ioto_g17s_minimal_compute_resources {
+   uint64_t gather_buffer_va;
+   uint64_t user_compute_argument_gpu_va_1;
+   uint64_t absolute_uniform_data_va;
+};
 
 /*
  * Compose the bounded direct-profile no-PIXREL program form recovered from
@@ -67,13 +82,24 @@ bool agx_ioto_straight_line_program_compose(
  * 52-byte minimal-profile loader, eight witnessed COPY records, and terminal
  * suffix.  Only shader_va is patched.  The fixed body contains a two-dword
  * gather load, the buffer(1) root-uniform load, and a witnessed three-dword
- * absolute load.  The root uniform is copied from half24 to CProg half8; the
- * first COPY pair instead consumes still-ungrounded Ioto-entry half0.  Success
- * therefore does not admit a device or prove frontend ABI compatibility.
- * Output and *written are transactional. */
+ * absolute load.  The root uniform is copied from half24 to CProg half8.  The
+ * first COPY pair transfers the same logical kind-3 Register zero passed to
+ * addBufferPointerLoad by loadImmediateUserBuffer, so it carries the low/high
+ * halves of the relocated user-buffer pointer into CProg dwords 2..3.  This
+ * template form leaves the two runtime address pairs zero.  Output and
+ * *written are transactional. */
 bool agx_ioto_g17s_minimal_compute_program_compose(
    uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
    size_t *written);
+
+/* Apply the two exact host-side G17S relocations and the constructor-owned
+ * absolute UniformData source.  The six LDIMM records remain the witnessed
+ * eight-byte ep2 forms even when an address half could use a short encoding.
+ * Output and *written are unchanged on every failure. */
+bool agx_ioto_g17s_minimal_compute_program_compose_resources(
+   uint64_t program_va, uint64_t shader_va,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   void *output, size_t capacity, size_t *written);
 
 #ifdef __cplusplus
 }

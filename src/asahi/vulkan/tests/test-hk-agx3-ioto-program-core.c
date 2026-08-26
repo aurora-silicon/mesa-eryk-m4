@@ -315,6 +315,36 @@ test_g17s_minimal_compute_admission(void)
    CHECK(mapped_program.chip == AGX_CHIP_G17S);
    CHECK(mapped_program.program_va == upload.gpu_va);
 
+   const struct agx_ioto_g17s_minimal_compute_resources resources = {
+      .gather_buffer_va = UINT64_C(0x100000e1ba0),
+      .user_compute_argument_gpu_va_1 = UINT64_C(0x10000030100),
+      .absolute_uniform_data_va =
+         AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA,
+   };
+   _Alignas(AGX_IOTO_PROGRAM_ALIGNMENT)
+      uint8_t live_mapped[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
+   memset(live_mapped, 0x6d, sizeof(live_mapped));
+   const struct agx3_compute_program_upload live_upload = {
+      .cpu = live_mapped,
+      .capacity = sizeof(live_mapped),
+      .gpu_va = desc.program_va,
+   };
+   size_t live_written = SIZE_MAX;
+   struct agx3_compute_program live_program;
+   CHECK(hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
+      AGX_CHIP_G17S, &desc, &resources, &live_upload, &live_written,
+      &live_program));
+   CHECK(live_written == direct_written);
+   CHECK(memcmp(live_mapped + 32, direct + 32, live_written - 32) == 0);
+   CHECK(memcmp(live_mapped, direct, 32) != 0);
+   CHECK(live_mapped[live_written] == 0x6d);
+   CHECK(live_program.chip == AGX_CHIP_G17S &&
+         live_program.program_va == live_upload.gpu_va);
+
+   uint8_t live_before[sizeof(live_mapped)];
+   memcpy(live_before, live_mapped, sizeof(live_mapped));
+   const struct agx3_compute_program live_program_before = live_program;
+
    uint8_t mapped_before[sizeof(mapped)];
    memcpy(mapped_before, mapped, sizeof(mapped));
    const struct agx3_compute_program mapped_program_before = mapped_program;
@@ -334,6 +364,14 @@ test_g17s_minimal_compute_admission(void)
             mapped_written == 47);
       CHECK(memcmp(&mapped_program, &mapped_program_before,
                    sizeof(mapped_program)) == 0);
+      live_written = 47;
+      CHECK(!hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
+         rejected[i], &desc, &resources, &live_upload, &live_written,
+         &live_program));
+      CHECK(memcmp(live_mapped, live_before, sizeof(live_mapped)) == 0 &&
+            live_written == 47);
+      CHECK(memcmp(&live_program, &live_program_before,
+                   sizeof(live_program)) == 0);
    }
 
    struct agx3_compute_program_upload invalid_upload = upload;
@@ -346,6 +384,18 @@ test_g17s_minimal_compute_admission(void)
          mapped_written == 47);
    CHECK(memcmp(&mapped_program, &mapped_program_before,
                 sizeof(mapped_program)) == 0);
+
+   struct agx_ioto_g17s_minimal_compute_resources invalid_resources =
+      resources;
+   invalid_resources.absolute_uniform_data_va = 0;
+   live_written = 47;
+   CHECK(!hk_agx3_g17s_minimal_compute_program_live_upload_prepare(
+      AGX_CHIP_G17S, &desc, &invalid_resources, &live_upload, &live_written,
+      &live_program));
+   CHECK(memcmp(live_mapped, live_before, sizeof(live_mapped)) == 0 &&
+         live_written == 47);
+   CHECK(memcmp(&live_program, &live_program_before,
+                sizeof(live_program)) == 0);
 
    struct agx3_g17s_minimal_compute_program_desc invalid = desc;
    invalid.root_uniform.user_buffer_binding = 0;

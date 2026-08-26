@@ -18,7 +18,7 @@ static const uint8_t g17s_minimal_compute_resource_body[] = {
    /* Runtime-patched buffer(1) pointer at half24/26. */
    0xcc, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
    0xdc, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
-   /* Absolute base 0x00000100_00018020 at half28/30. */
+   /* Constructor-owned absolute UniformData base at half28/30. */
    0xec, 0xa0, 0x02, 0x00, 0x00, 0x00, 0x0c, 0x00,
    0xfc, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
    /* gather(2), buffer(1) root uniform(1), absolute(3), base-sorted. */
@@ -29,7 +29,8 @@ static const uint8_t g17s_minimal_compute_resource_body[] = {
 };
 
 static const uint8_t g17s_minimal_compute_copies[] = {
-   /* Ungrounded entry half0 -> CProg half4/6. */
+   /* The pointer loaded by loadImmediateUserBuffer's kind-3 Register zero is
+    * copied into CProg dwords 2..3. */
    0x2b, 0x00, 0x01, 0x04,
    0x3b, 0x00, 0x01, 0x04,
    /* Gather half20/22 -> CProg half0/2 (first COPY waits on slot 1). */
@@ -202,15 +203,56 @@ agx_ioto_straight_line_program_compose(
                                              capacity, written);
 }
 
-bool
-agx_ioto_g17s_minimal_compute_program_compose(
-   uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
-   size_t *written)
+static bool
+agx_ioto_g17s_ldimm_ep2_pack(uint16_t dest_half, uint32_t immediate,
+                            uint8_t output[8])
+{
+   if (!output || (dest_half & 1) != 0 || dest_half >= 256)
+      return false;
+
+   /* Exact HAL300 LDIMM ep2 equations.  This deliberately does not select
+    * the two-byte short form: emitUscStateLoad patches the pre-existing
+    * sixteen-byte address pair in place. */
+   const uint16_t w0 = UINT16_C(0x800c) |
+                       (uint16_t)(((dest_half >> 1) & 0xf) << 4) |
+                       (uint16_t)((immediate & 0x7f) << 8);
+   const uint16_t w1 = UINT16_C(0x0002) |
+                       (uint16_t)(((dest_half >> 5) & 3) << 6) |
+                       (uint16_t)(((dest_half >> 7) & 1) << 3) |
+                       (uint16_t)(((immediate >> 25) & 0x7f) << 9);
+   const uint16_t w2 = (uint16_t)(((immediate >> 7) & 0xf) << 1) |
+                       (uint16_t)(((immediate >> 11) & 3) << 10);
+   const uint16_t w3 = (uint16_t)((immediate >> 13) & 0xf) |
+                       (uint16_t)(((immediate >> 17) & 0xff) << 4);
+
+   output[0] = (uint8_t)w0;
+   output[1] = (uint8_t)(w0 >> 8);
+   output[2] = (uint8_t)w1;
+   output[3] = (uint8_t)(w1 >> 8);
+   output[4] = (uint8_t)w2;
+   output[5] = (uint8_t)(w2 >> 8);
+   output[6] = (uint8_t)w3;
+   output[7] = (uint8_t)(w3 >> 8);
+   return true;
+}
+
+static bool
+agx_ioto_g17s_minimal_compute_program_compose_internal(
+   uint64_t program_va, uint64_t shader_va,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   void *output, size_t capacity, size_t *written)
 {
    if (!output || !written ||
        program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
-       capacity < AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE)
+       capacity < AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE ||
+       (resources &&
+        (resources->gather_buffer_va == 0 ||
+         resources->user_compute_argument_gpu_va_1 == 0 ||
+         resources->user_compute_argument_gpu_va_1 >
+            UINT64_MAX -
+               AGX_IOTO_G17S_MINIMAL_COMPUTE_USER_BUFFER_ADDEND ||
+         resources->absolute_uniform_data_va == 0)))
       return false;
 
    struct agx_ioto_state_tail tail;
@@ -226,6 +268,28 @@ agx_ioto_g17s_minimal_compute_program_compose(
    size_t offset = 0;
    memcpy(staged + offset, g17s_minimal_compute_resource_body,
           sizeof(g17s_minimal_compute_resource_body));
+   const uint64_t user_buffer_va =
+      resources ? resources->user_compute_argument_gpu_va_1 +
+                     AGX_IOTO_G17S_MINIMAL_COMPUTE_USER_BUFFER_ADDEND
+                : 0;
+   if (resources &&
+       (!agx_ioto_g17s_ldimm_ep2_pack(
+           4, (uint32_t)resources->gather_buffer_va, staged + offset) ||
+        !agx_ioto_g17s_ldimm_ep2_pack(
+           6, (uint32_t)(resources->gather_buffer_va >> 32),
+           staged + offset + 8) ||
+        !agx_ioto_g17s_ldimm_ep2_pack(
+           24, (uint32_t)user_buffer_va, staged + offset + 16) ||
+        !agx_ioto_g17s_ldimm_ep2_pack(
+           26, (uint32_t)(user_buffer_va >> 32),
+           staged + offset + 24) ||
+        !agx_ioto_g17s_ldimm_ep2_pack(
+           28, (uint32_t)resources->absolute_uniform_data_va,
+           staged + offset + 32) ||
+        !agx_ioto_g17s_ldimm_ep2_pack(
+           30, (uint32_t)(resources->absolute_uniform_data_va >> 32),
+           staged + offset + 40)))
+      return false;
    offset += sizeof(g17s_minimal_compute_resource_body);
    memcpy(staged + offset, packed_tail.bytes, packed_tail.length);
    offset += packed_tail.length;
@@ -248,4 +312,26 @@ agx_ioto_g17s_minimal_compute_program_compose(
    memcpy(output, staged, sizeof(staged));
    *written = sizeof(staged);
    return true;
+}
+
+bool
+agx_ioto_g17s_minimal_compute_program_compose(
+   uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
+   size_t *written)
+{
+   return agx_ioto_g17s_minimal_compute_program_compose_internal(
+      program_va, shader_va, NULL, output, capacity, written);
+}
+
+bool
+agx_ioto_g17s_minimal_compute_program_compose_resources(
+   uint64_t program_va, uint64_t shader_va,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   void *output, size_t capacity, size_t *written)
+{
+   if (!resources)
+      return false;
+
+   return agx_ioto_g17s_minimal_compute_program_compose_internal(
+      program_va, shader_va, resources, output, capacity, written);
 }

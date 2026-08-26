@@ -249,6 +249,20 @@ d12_agx3_g17s_minimal_compute_program_upload_prepare(
       chip, desc, upload, written, program);
 }
 
+/* Exact G17S live-resource bridge.  This remains host-side command-stream
+ * admission and does not open a D3D12 feature or physical-device cap. */
+static inline bool
+d12_agx3_g17s_minimal_compute_program_live_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   return agx3_g17s_minimal_compute_program_live_upload_prepare(
+      chip, desc, resources, upload, written, program);
+}
+
 /*
  * Host-only bridge for the suffix appended after LoadShader and PIXREL.
  * The output and all target admission remain owned by the shared strict core.

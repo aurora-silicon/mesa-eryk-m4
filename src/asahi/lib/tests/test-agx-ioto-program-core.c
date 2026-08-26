@@ -457,6 +457,71 @@ test_g17s_minimal_compute_program(void)
    CHECK(memcmp(output, expected, sizeof(expected)) == 0);
    CHECK(output[sizeof(expected)] == 0xa5);
 
+   const struct agx_ioto_g17s_minimal_compute_resources resources = {
+      .gather_buffer_va = UINT64_C(0x100000e1ba0),
+      .user_compute_argument_gpu_va_1 = UINT64_C(0x10000030100),
+      .absolute_uniform_data_va =
+         AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA,
+   };
+   static const uint8_t expected_live_resources[48] = {
+      0x2c, 0xa0, 0x02, 0x00, 0x0e, 0x0c, 0x70, 0x00,
+      0x3c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0xcc, 0x80, 0x02, 0x00, 0x04, 0x00, 0x1c, 0x00,
+      0xdc, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0xec, 0xa0, 0x02, 0x00, 0x00, 0x00, 0x0c, 0x00,
+      0xfc, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+   };
+   uint8_t live[sizeof(output)];
+   memset(live, 0x3c, sizeof(live));
+   size_t live_written = SIZE_MAX;
+   CHECK(agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0), &resources, live,
+      sizeof(live), &live_written));
+   CHECK(live_written == sizeof(expected));
+   CHECK(memcmp(live, expected_live_resources,
+                sizeof(expected_live_resources)) == 0);
+   CHECK(memcmp(live + sizeof(expected_live_resources),
+                expected + sizeof(expected_live_resources),
+                sizeof(expected) - sizeof(expected_live_resources)) == 0);
+   CHECK(live[live_written] == 0x3c);
+
+   struct agx_ioto_g17s_minimal_compute_resources alternate_resources =
+      resources;
+   alternate_resources.absolute_uniform_data_va = UINT64_C(0x10000018030);
+   CHECK(agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0),
+      &alternate_resources, live, sizeof(live), &live_written));
+   CHECK(live[32] == 0xec && live[33] == 0xb0);
+   CHECK(memcmp(live, expected_live_resources, 32) == 0);
+   CHECK(memcmp(live + 48, expected + 48, sizeof(expected) - 48) == 0);
+
+   uint8_t live_before[sizeof(live)];
+   memcpy(live_before, live, sizeof(live));
+   struct agx_ioto_g17s_minimal_compute_resources invalid_resources =
+      resources;
+   invalid_resources.absolute_uniform_data_va = 0;
+   live_written = 23;
+   CHECK(!agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0), &invalid_resources,
+      live, sizeof(live), &live_written));
+   CHECK(memcmp(live, live_before, sizeof(live)) == 0 && live_written == 23);
+   invalid_resources = resources;
+   invalid_resources.gather_buffer_va = 0;
+   CHECK(!agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0), &invalid_resources,
+      live, sizeof(live), &live_written));
+   CHECK(memcmp(live, live_before, sizeof(live)) == 0 && live_written == 23);
+   invalid_resources = resources;
+   invalid_resources.user_compute_argument_gpu_va_1 = 0;
+   CHECK(!agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0), &invalid_resources,
+      live, sizeof(live), &live_written));
+   CHECK(memcmp(live, live_before, sizeof(live)) == 0 && live_written == 23);
+   CHECK(!agx_ioto_g17s_minimal_compute_program_compose_resources(
+      UINT64_C(0x100000040), UINT64_C(0x100000006c0), NULL, live,
+      sizeof(live), &live_written));
+   CHECK(memcmp(live, live_before, sizeof(live)) == 0 && live_written == 23);
+
    uint8_t before[sizeof(output)];
    memcpy(before, output, sizeof(output));
    written = 29;

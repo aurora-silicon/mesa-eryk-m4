@@ -96,6 +96,45 @@ agx3_g17s_minimal_compute_program_upload_prepare(
 }
 
 bool
+agx3_g17s_minimal_compute_program_live_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17s_minimal_compute_program_desc *desc,
+   const struct agx_ioto_g17s_minimal_compute_resources *resources,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   if (chip != AGX_CHIP_G17S || !desc || !resources || !upload ||
+       !upload->cpu || !written || !program ||
+       ((uintptr_t)upload->cpu & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       upload->gpu_va != desc->program_va ||
+       desc->root_uniform.user_buffer_binding != 1 ||
+       desc->root_uniform.byte_offset != 0 ||
+       desc->root_uniform.uniform_data_destination != 4 ||
+       desc->root_uniform.uniform_data_count != 1 ||
+       desc->root_uniform.temporary_base != 0)
+      return false;
+
+   struct agx3_cdm_direct_template launch_template;
+   if (!agx3_cdm_direct_template_build_from_sources(&desc->launch_sources,
+                                                    &launch_template))
+      return false;
+
+   size_t staged_written;
+   if (!agx_ioto_g17s_minimal_compute_program_compose_resources(
+          desc->program_va, desc->shader_va, resources, upload->cpu,
+          upload->capacity, &staged_written))
+      return false;
+
+   *program = (struct agx3_compute_program){
+      .chip = AGX_CHIP_G17S,
+      .program_va = desc->program_va,
+      .launch_template = launch_template,
+   };
+   *written = staged_written;
+   return true;
+}
+
+bool
 agx3_compute_program_pack_direct_launch(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,
