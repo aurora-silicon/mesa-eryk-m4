@@ -21,11 +21,10 @@ extern "C" {
 
 /*
  * Apple derives the two launch-template fields from the same LoadShader
- * object whose instruction stream is addressed by program_va.  On G17P,
- * ProgramVariantESLState ctor 0x216be7de0 sources variant+0xc44 and +0xc50
- * directly from AGC reply vtable entries +0x42 and +0x4e; finalize
- * 0x216baa9d8 consumes them at 0x216bab4bc and 0x216bab4c4.  Their schema
- * meanings remain unnamed until grounded.  Keep the objects joined so a
+ * object whose instruction stream is addressed by program_va.  On HAL300,
+ * ProgramVariantESLState sources ShaderInfo::max_total_threads_per_threadgroup
+ * and the low word of ShaderInfo::extended_texture_write_mask_qword_1 from
+ * AGC reply vtable entries +0x42 and +0x4e.  Keep the objects joined so a
  * frontend cannot accidentally launch one Ioto program with another
  * program's template or with an AGX2 shader-base-relative USC pointer.
  */
@@ -63,8 +62,8 @@ struct agx3_compute_direct_grid {
 /*
  * Compose the Ioto program and prepare its native launch state as one
  * transaction.  output, *written and *program are unchanged on every
- * failure.  This does not infer the two LoadShader source meanings, allocate
- * GPU memory, submit work, or admit an AGX3 device.
+ * failure.  This does not infer either ShaderInfo value from legacy Mesa USC
+ * counts, allocate GPU memory, submit work, or admit an AGX3 device.
  */
 bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
                                   void *output, size_t capacity,

@@ -54,13 +54,18 @@ agx3_cdm_direct_template_build_from_sources(
    if (!sources || !result)
       return false;
 
-   /* HAL200 uses state-load fields +0x128/+0x12c and HAL300 uses
-    * +0x158/+0x15c, but both finalize implementations apply these exact
-    * transforms before inserting the values in the launch template. */
+   /* ProgramVariantESLState sources max_total_threads_per_threadgroup from
+    * ShaderInfo vtable +0x42 and the low word of
+    * extended_texture_write_mask_qword_1 from +0x4e.  HAL200 uses state-load
+    * fields +0x128/+0x12c and HAL300 uses +0x158/+0x15c, but both finalize
+    * implementations apply these exact transforms before inserting them in
+    * launch words 1 and 0, respectively. */
    const uint64_t word1_value =
-      ((uint64_t)sources->load_shader_word1_source_bytes + 3) >> 2;
+      ((uint64_t)sources->max_total_threads_per_threadgroup + 3) >> 2;
+   const uint32_t extended_texture_write_mask_low =
+      (uint32_t)sources->extended_texture_write_mask_qword_1;
    const uint64_t word0_rounded =
-      ((uint64_t)sources->load_shader_word0_source_bytes + 3) >> 2;
+      ((uint64_t)extended_texture_write_mask_low + 3) >> 2;
    const uint64_t word0_value = (word0_rounded + 1) & ~UINT64_C(1);
 
    if (word0_value > 0xfff || word1_value > 0x3ffff)
@@ -69,7 +74,7 @@ agx3_cdm_direct_template_build_from_sources(
    const struct agx3_cdm_direct_template_fields fields = {
       .word0_bits_3_14 = (uint16_t)word0_value,
       .word1_bits_3_20 = (uint32_t)word1_value,
-      .ray_traversal_depth_nonzero = sources->ray_traversal_depth_nonzero,
+      .ray_traversal_depth_nonzero = sources->ray_traversal_depth != 0,
 
       /* Every recovered HAL200/HAL300 finalize path initializes
        * getSubKernelXTargetWorkitems() to one before constructing a direct

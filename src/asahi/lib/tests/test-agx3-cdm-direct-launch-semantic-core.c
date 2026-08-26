@@ -181,9 +181,9 @@ test_template_contract(void)
    CHECK(!agx3_cdm_direct_template_decode(&template_words, NULL));
 
    const struct agx3_cdm_direct_template_sources source_fields = {
-      .load_shader_word0_source_bytes = 4,
-      .load_shader_word1_source_bytes = 5,
-      .ray_traversal_depth_nonzero = true,
+      .max_total_threads_per_threadgroup = 5,
+      .extended_texture_write_mask_qword_1 = 4,
+      .ray_traversal_depth = 1,
    };
    CHECK(agx3_cdm_direct_template_build_from_sources(&source_fields,
                                                       &template_words));
@@ -193,39 +193,49 @@ test_template_contract(void)
    CHECK(decoded.ray_traversal_depth_nonzero);
    CHECK(decoded.subkernel_x_target_workitems);
 
-   const uint32_t word0_source_boundaries[][2] = {
+   const uint32_t extended_mask_boundaries[][2] = {
       {0, 0}, {1, 2}, {4, 2}, {5, 2}, {8, 2},
       {9, 4}, {UINT32_C(0x3ff8), 0xffe},
    };
-   for (unsigned i = 0; i < ARRAY_SIZE(word0_source_boundaries); ++i) {
+   for (unsigned i = 0; i < ARRAY_SIZE(extended_mask_boundaries); ++i) {
       struct agx3_cdm_direct_template_sources sources = {
-         .load_shader_word0_source_bytes = word0_source_boundaries[i][0],
+         .extended_texture_write_mask_qword_1 =
+            extended_mask_boundaries[i][0],
       };
       CHECK(agx3_cdm_direct_template_build_from_sources(&sources,
                                                          &template_words));
       CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
-      CHECK(decoded.word0_bits_3_14 == word0_source_boundaries[i][1]);
+      CHECK(decoded.word0_bits_3_14 == extended_mask_boundaries[i][1]);
    }
 
-   const uint32_t word1_source_boundaries[][2] = {
+   /* HAL300 uses a 32-bit load from the ULong field. */
+   const struct agx3_cdm_direct_template_sources high_mask_word = {
+      .extended_texture_write_mask_qword_1 = UINT64_C(1) << 32,
+   };
+   CHECK(agx3_cdm_direct_template_build_from_sources(&high_mask_word,
+                                                       &template_words));
+   CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
+   CHECK(decoded.word0_bits_3_14 == 0);
+
+   const uint32_t max_threads_boundaries[][2] = {
       {0, 0}, {1, 1}, {4, 1}, {5, 2},
       {UINT32_C(0xffffc), 0x3ffff},
    };
-   for (unsigned i = 0; i < ARRAY_SIZE(word1_source_boundaries); ++i) {
+   for (unsigned i = 0; i < ARRAY_SIZE(max_threads_boundaries); ++i) {
       struct agx3_cdm_direct_template_sources sources = {
-         .load_shader_word1_source_bytes = word1_source_boundaries[i][0],
+         .max_total_threads_per_threadgroup = max_threads_boundaries[i][0],
       };
       CHECK(agx3_cdm_direct_template_build_from_sources(&sources,
                                                          &template_words));
       CHECK(agx3_cdm_direct_template_decode(&template_words, &decoded));
-      CHECK(decoded.word1_bits_3_20 == word1_source_boundaries[i][1]);
+      CHECK(decoded.word1_bits_3_20 == max_threads_boundaries[i][1]);
    }
 
    const struct agx3_cdm_direct_template_sources invalid_sources[] = {
-      {.load_shader_word0_source_bytes = UINT32_C(0x3ff9)},
-      {.load_shader_word0_source_bytes = UINT32_MAX},
-      {.load_shader_word1_source_bytes = UINT32_C(0xffffd)},
-      {.load_shader_word1_source_bytes = UINT32_MAX},
+      {.extended_texture_write_mask_qword_1 = UINT32_C(0x3ff9)},
+      {.extended_texture_write_mask_qword_1 = UINT32_MAX},
+      {.max_total_threads_per_threadgroup = UINT32_C(0xffffd)},
+      {.max_total_threads_per_threadgroup = UINT32_MAX},
    };
    for (unsigned i = 0; i < ARRAY_SIZE(invalid_sources); ++i) {
       memset(&template_words, 0xa5, sizeof(template_words));

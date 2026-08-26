@@ -42,16 +42,18 @@ struct agx3_cdm_direct_template_fields {
    bool subkernel_x_target_workitems;
 };
 
-/* Inputs to the exact ComputeProgramVariant::finalize transforms.  The two
- * byte-count meanings in AGC/Mesa shader state are not yet grounded, so their
- * names intentionally describe only the witnessed LoadShader producers. */
+/* Inputs to the exact ComputeProgramVariant::finalize transforms.  These are
+ * the names and scalar types from AGCCodeTranslator.ShaderInfo in Apple's
+ * embedded BFBS schema. */
 struct agx3_cdm_direct_template_sources {
-   uint32_t load_shader_word0_source_bytes;
-   uint32_t load_shader_word1_source_bytes;
+   uint32_t max_total_threads_per_threadgroup;
 
-   /* AGCCodeTranslator.CompileReply.common_info is ShaderInfo.  Finalize
-    * booleanizes its ray_traversal_depth field into word 0 bit 23. */
-   bool ray_traversal_depth_nonzero;
+   /* HAL300's ProgramVariantESLState constructor reads only the low 32 bits
+    * of this ULong before finalize constructs launch word 0. */
+   uint64_t extended_texture_write_mask_qword_1;
+
+   /* Finalize booleanizes this ULong into launch word 0 bit 23. */
+   uint64_t ray_traversal_depth;
 };
 
 struct agx3_cdm_direct_template {

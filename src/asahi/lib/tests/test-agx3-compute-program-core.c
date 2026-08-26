@@ -52,9 +52,9 @@ make_desc(enum agx_chip chip)
       .preshader.external_va = AGX_IOTO_PRESHADER_NO_VA,
       .launch_sources =
          {
-            .load_shader_word0_source_bytes = 0x124,
-            .load_shader_word1_source_bytes = 0x345,
-            .ray_traversal_depth_nonzero = true,
+            .max_total_threads_per_threadgroup = 0x345,
+            .extended_texture_write_mask_qword_1 = 0x124,
+            .ray_traversal_depth = 1,
          },
    };
 
@@ -193,7 +193,7 @@ test_fail_closed(void)
    desc.program_va |= 1;
    CHECK(prepare_fails_unchanged(&desc, 96));
    desc.program_va &= ~UINT64_C(63);
-   desc.launch_sources.load_shader_word0_source_bytes = UINT32_MAX;
+   desc.launch_sources.extended_texture_write_mask_qword_1 = UINT32_MAX;
    CHECK(prepare_fails_unchanged(&desc, 96));
    desc = make_desc(AGX_CHIP_G17P);
    CHECK(prepare_fails_unchanged(&desc, 1));
