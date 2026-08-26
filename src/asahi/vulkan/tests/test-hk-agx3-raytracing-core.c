@@ -367,6 +367,172 @@ main(void)
    }
 
    {
+      struct hk_agx3_continue_ray_fixed_first_site_witness b;
+      struct hk_agx3_continue_ray_fixed_first_site_witness c;
+      CHECK(hk_agx3_continue_ray_fixed_first_site_witness_generate(
+         AGX_CHIP_G16G, &b));
+      CHECK(hk_agx3_continue_ray_fixed_first_site_witness_generate(
+         AGX_CHIP_G17S, &c));
+      CHECK(b.length == 6 && c.length == 8);
+      CHECK(hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G16G, b.bytes, b.length));
+      CHECK(hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G17S, c.bytes, c.length));
+      CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G16G, c.bytes, c.length));
+      CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G17S, b.bytes, b.length));
+
+      for (unsigned i = 0;
+           i < sizeof(supported_chips) / sizeof(supported_chips[0]); ++i) {
+         struct hk_agx3_continue_ray_fixed_first_site_witness witness;
+         CHECK(hk_agx3_continue_ray_fixed_first_site_witness_generate(
+            supported_chips[i], &witness));
+         CHECK(hk_agx3_continue_ray_fixed_first_site_witness_valid(
+            supported_chips[i], witness.bytes, witness.length));
+
+         for (size_t size = 0; size < witness.length; ++size) {
+            CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+               supported_chips[i], witness.bytes, size));
+         }
+      }
+
+      for (unsigned i = 0;
+           i < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]);
+           ++i) {
+         struct hk_agx3_continue_ray_fixed_first_site_witness rejected_fixed;
+         memset(&rejected_fixed, 0xff, sizeof(rejected_fixed));
+         CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_generate(
+            unsupported_chips[i], &rejected_fixed));
+         CHECK(rejected_fixed.length == 0);
+         for (unsigned j = 0; j < sizeof(rejected_fixed.bytes); ++j)
+            CHECK(rejected_fixed.bytes[j] == 0);
+      }
+
+      for (unsigned bit = 0; bit < c.length * 8; ++bit) {
+         uint8_t changed[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+         memcpy(changed, c.bytes, c.length);
+         changed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+            AGX_CHIP_G17S, changed, c.length));
+      }
+
+      uint8_t appended[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH +
+                       1];
+      memcpy(appended, c.bytes, c.length);
+      appended[c.length] = 0;
+      CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G17S, appended, c.length + 1));
+      CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_generate(
+         AGX_CHIP_G17S, NULL));
+      CHECK(!hk_agx3_continue_ray_fixed_first_site_witness_valid(
+         AGX_CHIP_G17S, NULL, c.length));
+   }
+
+   {
+      static const enum agx_chip scoped_chips[] = {
+         AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15D,
+         AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G17P,
+         AGX_CHIP_G17G, AGX_CHIP_G17S,
+      };
+      static const enum agx_chip rejected_chips[] = {
+         AGX_CHIP_G13G, AGX_CHIP_G13X, AGX_CHIP_G14G, AGX_CHIP_G14X,
+         AGX_CHIP_G15P, AGX_CHIP_G15C, AGX_CHIP_G16P, AGX_CHIP_G16C,
+         AGX_CHIP_G17A, AGX_CHIP_G17C, AGX_CHIP_UNKNOWN,
+         (enum agx_chip)999,
+      };
+
+      struct hk_agx3_update_node_expansion b;
+      struct hk_agx3_update_node_expansion c;
+      CHECK(hk_agx3_update_node_expansion_generate(AGX_CHIP_G16G, &b));
+      CHECK(hk_agx3_update_node_expansion_generate(AGX_CHIP_G17S, &c));
+      CHECK(b.length == 10 && c.length == 14);
+      CHECK(!hk_agx3_update_node_expansion_valid(AGX_CHIP_G16G, c.bytes,
+                                                  c.length));
+      CHECK(!hk_agx3_update_node_expansion_valid(AGX_CHIP_G17S, b.bytes,
+                                                  b.length));
+
+      for (unsigned i = 0;
+           i < sizeof(scoped_chips) / sizeof(scoped_chips[0]); ++i) {
+         struct hk_agx3_update_node_expansion expansion;
+         CHECK(hk_agx3_update_node_expansion_generate(scoped_chips[i],
+                                                       &expansion));
+         CHECK(hk_agx3_update_node_expansion_valid(
+            scoped_chips[i], expansion.bytes, expansion.length));
+         for (unsigned bit = 0; bit < expansion.length * 8; ++bit) {
+            uint8_t changed[AGX3_UPDATE_NODE_MAX_LENGTH];
+            memcpy(changed, expansion.bytes, expansion.length);
+            changed[bit / 8] ^= 1u << (bit % 8);
+            CHECK(!hk_agx3_update_node_expansion_valid(
+               scoped_chips[i], changed, expansion.length));
+         }
+         for (size_t size = 0; size < expansion.length; ++size) {
+            CHECK(!hk_agx3_update_node_expansion_valid(
+               scoped_chips[i], expansion.bytes, size));
+         }
+      }
+
+      for (unsigned i = 0;
+           i < sizeof(rejected_chips) / sizeof(rejected_chips[0]); ++i) {
+         struct hk_agx3_update_node_expansion rejected;
+         memset(&rejected, 0xff, sizeof(rejected));
+         CHECK(!hk_agx3_update_node_expansion_generate(rejected_chips[i],
+                                                        &rejected));
+         CHECK(rejected.length == 0);
+         for (unsigned j = 0; j < sizeof(rejected.bytes); ++j)
+            CHECK(rejected.bytes[j] == 0);
+      }
+
+      CHECK(!hk_agx3_update_node_expansion_generate(AGX_CHIP_G17S, NULL));
+      CHECK(!hk_agx3_update_node_expansion_valid(AGX_CHIP_G17S, NULL,
+                                                  c.length));
+   }
+
+   {
+      struct hk_agx3_update_bvh_fixed_witness witness;
+      memset(&witness, 0xff, sizeof(witness));
+      CHECK(hk_agx3_update_bvh_fixed_witness_generate(AGX_CHIP_G17S,
+                                                       &witness));
+      CHECK(witness.length == AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH);
+      CHECK(hk_agx3_update_bvh_fixed_witness_valid(
+         AGX_CHIP_G17S, witness.bytes, witness.length));
+
+      for (unsigned bit = 0; bit < witness.length * 8; ++bit) {
+         uint8_t changed[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
+         memcpy(changed, witness.bytes, witness.length);
+         changed[bit / 8] ^= 1u << (bit % 8);
+         CHECK(!hk_agx3_update_bvh_fixed_witness_valid(
+            AGX_CHIP_G17S, changed, witness.length));
+      }
+      for (size_t size = 0; size < witness.length; ++size) {
+         CHECK(!hk_agx3_update_bvh_fixed_witness_valid(
+            AGX_CHIP_G17S, witness.bytes, size));
+      }
+
+      const enum agx_chip siblings[] = {AGX_CHIP_G17G, AGX_CHIP_G17C,
+                                        AGX_CHIP_G17P, AGX_CHIP_G16G};
+      for (unsigned i = 0; i < sizeof(siblings) / sizeof(siblings[0]); ++i) {
+         struct hk_agx3_update_bvh_fixed_witness rejected;
+         memset(&rejected, 0xff, sizeof(rejected));
+         CHECK(!hk_agx3_update_bvh_fixed_witness_generate(siblings[i],
+                                                           &rejected));
+         CHECK(rejected.length == 0);
+         CHECK(!hk_agx3_update_bvh_fixed_witness_valid(
+            siblings[i], witness.bytes, witness.length));
+      }
+
+      uint8_t appended[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH + 1];
+      memcpy(appended, witness.bytes, witness.length);
+      appended[witness.length] = 0;
+      CHECK(!hk_agx3_update_bvh_fixed_witness_valid(
+         AGX_CHIP_G17S, appended, sizeof(appended)));
+      CHECK(!hk_agx3_update_bvh_fixed_witness_generate(AGX_CHIP_G17S,
+                                                        NULL));
+      CHECK(!hk_agx3_update_bvh_fixed_witness_valid(
+         AGX_CHIP_G17S, NULL, witness.length));
+   }
+
+   {
       uint8_t raw[AGX_RT_HIT_RESULT_SIZE] = {0};
       put_u32_le(raw, AGX_RT_HIT_OFF_TYPE, 1);
       put_f32_le(raw, AGX_RT_HIT_OFF_T, 12.5f);

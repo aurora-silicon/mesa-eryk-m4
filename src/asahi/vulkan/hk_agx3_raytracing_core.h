@@ -33,6 +33,21 @@ struct hk_agx3_inc_stk_fixed_witness {
    uint8_t length;
 };
 
+struct hk_agx3_continue_ray_fixed_first_site_witness {
+   uint8_t bytes[AGX3_CONTINUE_RAY_FIXED_FIRST_SITE_WITNESS_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct hk_agx3_update_node_expansion {
+   uint8_t bytes[AGX3_UPDATE_NODE_MAX_LENGTH];
+   uint8_t length;
+};
+
+struct hk_agx3_update_bvh_fixed_witness {
+   uint8_t bytes[AGX3_UPDATE_BVH_FIXED_WITNESS_LENGTH];
+   uint8_t length;
+};
+
 /*
  * Encode/decode the exact M3/M4/A18 Pro/M5 native differential pairs for one
  * hardware `intersect_ray` instruction.  `state_register` is Apple's varying
@@ -68,6 +83,16 @@ bool hk_agx3_continue_ray_instruction_decode(
    enum agx_chip chip, const void *instruction, size_t instruction_size,
    uint16_t *state_register);
 
+/* Preserve the exact first continue_ray site from the native lowering.  This
+ * is intentionally distinct from the operand-bearing codec above and is not
+ * sufficient to lower or submit a ray query. */
+bool hk_agx3_continue_ray_fixed_first_site_witness_generate(
+   enum agx_chip chip,
+   struct hk_agx3_continue_ray_fixed_first_site_witness *out);
+
+bool hk_agx3_continue_ray_fixed_first_site_witness_valid(
+   enum agx_chip chip, const void *instruction, size_t instruction_size);
+
 /*
  * Generate/validate only the exact per-encoding `incStk` fixed witness on
  * scoped chip identities whose native rt_rayquery_committed corpus contains
@@ -84,6 +109,23 @@ bool hk_agx3_inc_stk_fixed_witness_generate(
 bool hk_agx3_inc_stk_fixed_witness_valid(enum agx_chip chip,
                                          const void *instruction,
                                          size_t instruction_size);
+
+/* Exact barrier-plus-operation expansions recovered from Apple's RT compiler.
+ * update_node is admitted only on the scoped cross-target RT corpus;
+ * update_bvh remains G17S-only because that is the sole pinned witness. */
+bool hk_agx3_update_node_expansion_generate(
+   enum agx_chip chip, struct hk_agx3_update_node_expansion *out);
+
+bool hk_agx3_update_node_expansion_valid(enum agx_chip chip,
+                                         const void *instructions,
+                                         size_t instruction_size);
+
+bool hk_agx3_update_bvh_fixed_witness_generate(
+   enum agx_chip chip, struct hk_agx3_update_bvh_fixed_witness *out);
+
+bool hk_agx3_update_bvh_fixed_witness_valid(enum agx_chip chip,
+                                            const void *instructions,
+                                            size_t instruction_size);
 
 /* Decode Apple's exact shared traversal-result and TLAS instance-leaf ABI.
  * This maps the result side into Honeykrisp without lowering or advertising a
