@@ -11,6 +11,30 @@
 
 #define AGX_IOTO_GPU0_INLINE_LDDEV_SIZE 14u
 
+static const uint8_t g17s_minimal_compute_resource_body[] = {
+   0x2c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0x3c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0xcc, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0xdc, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0xec, 0xa0, 0x02, 0x00, 0x00, 0x00, 0x0c, 0x00,
+   0xfc, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+   0xaf, 0x04, 0x03, 0x00, 0xa8, 0x0c, 0x00, 0x40,
+   0xcf, 0x18, 0x03, 0x00, 0x88, 0x04, 0x00, 0xc0,
+   0x01, 0x00, 0x00, 0x00, 0x00, 0x80,
+   0xef, 0x1c, 0x03, 0x00, 0xc8, 0x0c, 0x00, 0x40,
+};
+
+static const uint8_t g17s_minimal_compute_copies[] = {
+   0x2b, 0x00, 0x01, 0x04,
+   0x3b, 0x00, 0x01, 0x04,
+   0x0b, 0x14, 0x09, 0x44,
+   0x1b, 0x16, 0x09, 0x04,
+   0x4b, 0x18, 0x09, 0x04,
+   0x5b, 0x1c, 0x09, 0x04,
+   0x6b, 0x1e, 0x09, 0x04,
+   0x7b, 0x20, 0x09, 0x04,
+};
+
 static bool
 agx_ioto_program_target_gpu0(enum agx_chip chip)
 {
@@ -168,4 +192,52 @@ agx_ioto_straight_line_program_compose(
    return agx_ioto_program_compose_no_pixrel(chip, program_va, body, body_size,
                                              tail, profile, &absent, output,
                                              capacity, written);
+}
+
+bool
+agx_ioto_g17s_minimal_compute_program_compose(
+   uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
+   size_t *written)
+{
+   if (!output || !written ||
+       program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       capacity < AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE)
+      return false;
+
+   struct agx_ioto_state_tail tail;
+   if (!agx_ioto_g17s_minimal_compute_tail_build(shader_va, &tail))
+      return false;
+
+   struct agx_ioto_state_tail_output packed_tail;
+   if (!agx_ioto_state_tail_pack(AGX_CHIP_G17S, &tail, &packed_tail) ||
+       packed_tail.length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE)
+      return false;
+
+   uint8_t staged[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE];
+   size_t offset = 0;
+   memcpy(staged + offset, g17s_minimal_compute_resource_body,
+          sizeof(g17s_minimal_compute_resource_body));
+   offset += sizeof(g17s_minimal_compute_resource_body);
+   memcpy(staged + offset, packed_tail.bytes, packed_tail.length);
+   offset += packed_tail.length;
+   if (!agx_ioto_g17s_minimal_profile_loader_pack(
+          staged + offset, sizeof(staged) - offset))
+      return false;
+   offset += AGX_IOTO_G17S_MINIMAL_PROFILE_LOADER_SIZE;
+   memcpy(staged + offset, g17s_minimal_compute_copies,
+          sizeof(g17s_minimal_compute_copies));
+   offset += sizeof(g17s_minimal_compute_copies);
+   static const uint8_t terminal[AGX_IOTO_PROGRAM_TERMINATE_SIZE] = {
+      0x0e, 0x00, 0x00, 0x00,
+   };
+   memcpy(staged + offset, terminal, sizeof(terminal));
+   offset += sizeof(terminal);
+
+   if (offset != sizeof(staged))
+      return false;
+
+   memcpy(output, staged, sizeof(staged));
+   *written = sizeof(staged);
+   return true;
 }

@@ -39,6 +39,34 @@ agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
 }
 
 bool
+agx3_g17s_minimal_compute_program_prepare(
+   const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program)
+{
+   if (!desc || !output || !written || !program)
+      return false;
+
+   struct agx3_cdm_direct_template launch_template;
+   if (!agx3_cdm_direct_template_build_from_sources(&desc->launch_sources,
+                                                    &launch_template))
+      return false;
+
+   size_t staged_written;
+   if (!agx_ioto_g17s_minimal_compute_program_compose(
+          desc->program_va, desc->shader_va, output, capacity,
+          &staged_written))
+      return false;
+
+   *program = (struct agx3_compute_program){
+      .chip = AGX_CHIP_G17S,
+      .program_va = desc->program_va,
+      .launch_template = launch_template,
+   };
+   *written = staged_written;
+   return true;
+}
+
+bool
 agx3_compute_program_pack_direct_launch(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,

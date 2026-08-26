@@ -41,6 +41,12 @@ struct agx3_compute_program_desc {
    struct agx3_cdm_direct_template_sources launch_sources;
 };
 
+struct agx3_g17s_minimal_compute_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   struct agx3_cdm_direct_template_sources launch_sources;
+};
+
 /* Flat, pointer-free state needed after the Ioto bytes have been uploaded. */
 struct agx3_compute_program {
    enum agx_chip chip;
@@ -69,6 +75,13 @@ bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
                                   void *output, size_t capacity,
                                   size_t *written,
                                   struct agx3_compute_program *program);
+
+/* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch
+ * template.  The program remains dispatch-local; success does not resolve the
+ * two external Ioto-entry COPY sources or admit a live frontend path. */
+bool agx3_g17s_minimal_compute_program_prepare(
+   const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program);
 
 /*
  * Encode a canonical 40-byte direct launch whose 48-bit pipeline pointer and

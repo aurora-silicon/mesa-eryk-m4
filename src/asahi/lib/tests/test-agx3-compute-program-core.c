@@ -164,6 +164,56 @@ test_a18_pro_one_dimensional_launch(void)
 }
 
 static bool
+test_g17s_minimal_program_join(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false,
+                                                   &sources));
+   const struct agx3_g17s_minimal_compute_program_desc desc = {
+      .program_va = UINT64_C(0x100000040),
+      .shader_va = UINT64_C(0x100000006c0),
+      .launch_sources = sources,
+   };
+   uint8_t state[AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE + 1];
+   memset(state, 0xa5, sizeof(state));
+   size_t written = 0;
+   struct agx3_compute_program program;
+   CHECK(agx3_g17s_minimal_compute_program_prepare(
+      &desc, state, sizeof(state), &written, &program));
+   CHECK(written == AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE);
+   CHECK(state[written] == 0xa5);
+   CHECK(program.chip == AGX_CHIP_G17S);
+   CHECK(program.program_va == desc.program_va);
+
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_THREADGROUP_COUNTS,
+      .size = {2, 3, 4},
+      .local_size = {8, 4, 2},
+      .dimensions = 3,
+   };
+   uint8_t launch[AGX3_CDM_DIRECT_LAUNCH_SIZE];
+   CHECK(agx3_compute_program_pack_direct_launch(&program, &grid, launch));
+   struct agx3_cdm_direct_launch_info decoded;
+   CHECK(agx3_cdm_direct_launch_unpack(AGX_CHIP_G17S, launch, sizeof(launch),
+                                       &decoded));
+   CHECK(decoded.pipeline == desc.program_va);
+   CHECK(decoded.global_size[0] == 16 && decoded.global_size[1] == 12 &&
+         decoded.global_size[2] == 8);
+
+   uint8_t before[sizeof(state)];
+   memcpy(before, state, sizeof(state));
+   struct agx3_compute_program program_before = program;
+   written = 47;
+   struct agx3_g17s_minimal_compute_program_desc invalid = desc;
+   invalid.shader_va |= 1;
+   CHECK(!agx3_g17s_minimal_compute_program_prepare(
+      &invalid, state, sizeof(state), &written, &program));
+   CHECK(memcmp(state, before, sizeof(state)) == 0 && written == 47);
+   CHECK(memcmp(&program, &program_before, sizeof(program)) == 0);
+   return true;
+}
+
+static bool
 prepare_fails_unchanged(struct agx3_compute_program_desc *desc, size_t capacity)
 {
    uint8_t state[96], before[sizeof(state)];
@@ -242,7 +292,7 @@ int
 main(void)
 {
    if (!test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
-       !test_fail_closed())
+       !test_g17s_minimal_program_join() || !test_fail_closed())
       return 1;
 
    printf("agx3_compute_program_core: %u checks passed\n", checks);
