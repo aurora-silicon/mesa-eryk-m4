@@ -129,6 +129,28 @@ agx_ioto_g17s_profile_control_build(
 }
 
 bool
+agx_ioto_g17p_compiler_profile_control_build(
+   uint8_t value, bool table_bit, bool high_bit,
+   struct agx_ioto_profile_control *profile)
+{
+   static const uint8_t value_encoding[4] = {2, 0, 1, 3};
+
+   if (!profile || value >= sizeof(value_encoding))
+      return false;
+
+   *profile = (struct agx_ioto_profile_control){
+      .chip = AGX_CHIP_G17P,
+      .payload0 =
+         (uint16_t)(UINT16_C(0x002a) |
+                    ((uint16_t)value_encoding[value] << 7) |
+                    ((uint16_t)table_bit << 9) |
+                    ((uint16_t)high_bit << 10)),
+      .payload1 = 0,
+   };
+   return true;
+}
+
+bool
 agx_ioto_g17s_minimal_profile_loader_pack(void *output, size_t capacity)
 {
    if (!output || capacity < sizeof(g17s_minimal_profile_loader))

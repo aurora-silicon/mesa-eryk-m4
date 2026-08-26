@@ -118,6 +118,44 @@ main(void)
    CHECK(invalid_profile.chip == AGX_CHIP_G15G);
    CHECK(!agx_ioto_g17s_profile_control_build(0, false, false, NULL));
 
+   const struct {
+      uint8_t value;
+      bool table_bit;
+      bool high_bit;
+      const uint8_t bytes[4];
+   } g17p_compiler_profiles[] = {
+      {0, false, false, {0xf7, 0x03, 0x2a, 0x01}},
+      {1, false, false, {0xf7, 0x03, 0x2a, 0x00}},
+      {2, false, false, {0xf7, 0x03, 0xaa, 0x00}},
+      {3, false, false, {0xf7, 0x03, 0xaa, 0x01}},
+      {1, true,  false, {0xf7, 0x03, 0x2a, 0x02}},
+      {1, false, true,  {0xf7, 0x03, 0x2a, 0x04}},
+      {3, true,  true,  {0xf7, 0x03, 0xaa, 0x07}},
+   };
+   for (unsigned i = 0;
+        i < sizeof(g17p_compiler_profiles) /
+               sizeof(g17p_compiler_profiles[0]);
+        ++i) {
+      struct agx_ioto_profile_control profile;
+      uint8_t encoded[AGX_IOTO_PROFILE_CONTROL_MAX_SIZE];
+      CHECK(agx_ioto_g17p_compiler_profile_control_build(
+         g17p_compiler_profiles[i].value,
+         g17p_compiler_profiles[i].table_bit,
+         g17p_compiler_profiles[i].high_bit, &profile));
+      CHECK(agx_ioto_profile_control_pack(&profile, encoded));
+      CHECK(memcmp(encoded, g17p_compiler_profiles[i].bytes,
+                   sizeof(g17p_compiler_profiles[i].bytes)) == 0);
+   }
+   struct agx_ioto_profile_control invalid_g17p_profile = {
+      .chip = AGX_CHIP_G17P,
+      .payload0 = 0x55,
+   };
+   CHECK(!agx_ioto_g17p_compiler_profile_control_build(
+      4, false, false, &invalid_g17p_profile));
+   CHECK(invalid_g17p_profile.payload0 == 0x55);
+   CHECK(!agx_ioto_g17p_compiler_profile_control_build(
+      0, false, false, NULL));
+
    const enum agx_chip targets[] = {
       AGX_CHIP_G15G, AGX_CHIP_G15S, AGX_CHIP_G15C, AGX_CHIP_G15D,
       AGX_CHIP_G16G, AGX_CHIP_G16S, AGX_CHIP_G16C, AGX_CHIP_G17P,
