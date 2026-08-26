@@ -2176,8 +2176,14 @@ static void
 hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   const bool hal300 =
+      agx_chip_command_stream_generation(dev->dev.chip) ==
+      AGX_CS_GENERATION_HAL300;
    const struct vk_dynamic_graphics_state *dyn =
       &cmd->vk.dynamic_graphics_state;
+
+   static_assert(AGX_SCISSOR_LENGTH ==
+                 AGX_PPP_HAL300_SCISSOR_RECORD_LENGTH);
 
    /* We always need at least 1 viewport for the hardware. With rasterizer
     * discard the app may not supply any, but we can just program garbage.
@@ -2224,36 +2230,58 @@ hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
     * corresponding API scissor or not.
     */
    unsigned index = cs->scissor.size / AGX_SCISSOR_LENGTH;
-   struct agx_scissor_packed *scissors =
+   uint8_t *scissors =
       util_dynarray_grow_bytes(&cs->scissor, count, AGX_SCISSOR_LENGTH);
 
    for (unsigned i = 0; i < count; ++i) {
       const VkViewport *vp = &dyn->vp.viewports[i];
 
-      agx_pack(scissors + i, SCISSOR, cfg) {
-         cfg.min_x = minx[i];
-         cfg.min_y = miny[i];
-         cfg.max_x = maxx[i];
-         cfg.max_y = maxy[i];
+      /* These settings in conjunction with the PPP control depth clip/clamp
+       * settings implement depth clip/clamping. Properly setting them
+       * together is required for conformant depth clip enable.
+       *
+       * TODO: Reverse-engineer the finer interactions here.
+       */
+      const float min_z = dyn->rs.depth_clamp_enable
+                             ? MIN2(vp->minDepth, vp->maxDepth)
+                             : 0.0f;
+      const float max_z = dyn->rs.depth_clamp_enable
+                             ? MAX2(vp->minDepth, vp->maxDepth)
+                             : 1.0f;
+      uint8_t *record = scissors + i * AGX_SCISSOR_LENGTH;
 
-         /* These settings in conjunction with the PPP control depth clip/clamp
-          * settings implement depth clip/clamping. Properly setting them
-          * together is required for conformant depth clip enable.
-          *
-          * TODO: Reverse-engineer the finer interactions here.
-          */
-         if (dyn->rs.depth_clamp_enable) {
-            cfg.min_z = MIN2(vp->minDepth, vp->maxDepth);
-            cfg.max_z = MAX2(vp->minDepth, vp->maxDepth);
-         } else {
-            cfg.min_z = 0.0;
-            cfg.max_z = 1.0;
+      if (hal300) {
+         const struct agx_ppp_hal300_scissor_record_fields fields = {
+            .max_x = maxx[i],
+            .min_x = minx[i],
+            .max_y = maxy[i],
+            .min_y = miny[i],
+            .min_z_raw = fui(min_z),
+            .max_z_raw = fui(max_z),
+         };
+         struct agx_ppp_hal300_scissor_record exact;
+         if (!agx_ppp_hal300_scissor_record_pack(dev->dev.chip, &fields,
+                                                  &exact)) {
+            mesa_loge("no grounded HAL300 scissor record for %s",
+                      agx_chip_name(dev->dev.chip));
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+         memcpy(record, exact.bytes, exact.length);
+      } else {
+         agx_pack(record, SCISSOR, cfg) {
+            cfg.min_x = minx[i];
+            cfg.min_y = miny[i];
+            cfg.max_x = maxx[i];
+            cfg.max_y = maxy[i];
+            cfg.min_z = min_z;
+            cfg.max_z = max_z;
          }
       }
    }
 
-   if (agx_chip_command_stream_generation(dev->dev.chip) ==
-       AGX_CS_GENERATION_HAL300) {
+   if (hal300) {
       if (!hk_emit_hal300_vp_state(cmd, cs, dev->dev.chip, count, index, minx,
                                    miny, maxx, maxy, dyn->vp.viewports, out)) {
          mesa_loge("no grounded HAL300 viewport/base emitter for %s",
@@ -3307,21 +3335,49 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 
    if (IS_DIRTY(RS_DEPTH_BIAS_FACTORS)) {
-      void *ptr =
-         util_dynarray_grow_bytes(&cs->depth_bias, 1, AGX_DEPTH_BIAS_LENGTH);
-
       bool exact = dyn->rs.depth_bias.exact;
       bool force_unorm =
          dyn->rs.depth_bias.representation ==
          VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
 
-      agx_pack(ptr, DEPTH_BIAS, cfg) {
-         cfg.slope_scale = dyn->rs.depth_bias.slope_factor;
-         cfg.clamp = dyn->rs.depth_bias.clamp;
-         cfg.depth_bias = dyn->rs.depth_bias.constant_factor;
-         cfg.depth_bias /= hk_depth_bias_factor(render->depth_att.vk_format,
-                                                exact, force_unorm);
+      const float slope_scale = dyn->rs.depth_bias.slope_factor;
+      const float clamp = dyn->rs.depth_bias.clamp;
+      const float depth_bias =
+         dyn->rs.depth_bias.constant_factor /
+         hk_depth_bias_factor(render->depth_att.vk_format, exact, force_unorm);
+      uint8_t record[AGX_DEPTH_BIAS_LENGTH];
+
+      static_assert(AGX_DEPTH_BIAS_LENGTH ==
+                    AGX_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH);
+      if (agx_chip_command_stream_generation(dev->dev.chip) ==
+          AGX_CS_GENERATION_HAL300) {
+         const struct agx_ppp_hal300_depth_bias_record_fields fields = {
+            .depth_bias_raw = fui(depth_bias),
+            .slope_scale_raw = fui(slope_scale),
+            .clamp_raw = fui(clamp),
+         };
+         struct agx_ppp_hal300_depth_bias_record exact_record;
+         if (!agx_ppp_hal300_depth_bias_record_pack(
+                dev->dev.chip, &fields, &exact_record)) {
+            mesa_loge("no grounded HAL300 depth-bias record for %s",
+                      agx_chip_name(dev->dev.chip));
+            vk_command_buffer_set_error(&cmd->vk,
+                                        VK_ERROR_FEATURE_NOT_PRESENT);
+            cs->current = out;
+            return;
+         }
+         memcpy(record, exact_record.bytes, exact_record.length);
+      } else {
+         agx_pack(record, DEPTH_BIAS, cfg) {
+            cfg.depth_bias = depth_bias;
+            cfg.slope_scale = slope_scale;
+            cfg.clamp = clamp;
+         }
       }
+
+      void *ptr =
+         util_dynarray_grow_bytes(&cs->depth_bias, 1, sizeof(record));
+      memcpy(ptr, record, sizeof(record));
    }
 
    /* Hardware viewport/scissor state is entangled with depth bias. */

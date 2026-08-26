@@ -186,6 +186,51 @@ check_every_record_bit(void)
    return 0;
 }
 
+/* Representative live draw values.  The G17 scissor record is max/min in
+ * each axis (not the API-facing min/max order), followed by raw IEEE-754 Z.
+ */
+static int
+check_live_draw_record_bytes(void)
+{
+   const struct agx_ppp_hal300_depth_bias_record_fields depth = {
+      .depth_bias_raw = UINT32_C(0xbe800000), /* -0.25 */
+      .slope_scale_raw = UINT32_C(0x3fc00000), /* 1.5 */
+      .clamp_raw = UINT32_C(0x3e000000), /* 0.125 */
+   };
+   const struct agx_ppp_hal300_scissor_record_fields scissor = {
+      .max_x = UINT16_C(1920),
+      .min_x = UINT16_C(16),
+      .max_y = UINT16_C(1080),
+      .min_y = UINT16_C(8),
+      .min_z_raw = UINT32_C(0x00000000), /* 0.0 */
+      .max_z_raw = UINT32_C(0x3f800000), /* 1.0 */
+   };
+   static const uint8_t expected_depth[] = {
+      0x00, 0x00, 0x80, 0xbe, 0x00, 0x00, 0xc0, 0x3f, 0x00, 0x00, 0x00, 0x3e,
+   };
+   static const uint8_t expected_scissor[] = {
+      0x80, 0x07, 0x10, 0x00, 0x38, 0x04, 0x08, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3f,
+   };
+
+   for (unsigned i = 0;
+        i < sizeof(supported_chips) / sizeof(supported_chips[0]); ++i) {
+      struct agx_ppp_hal300_depth_bias_record packed_depth;
+      struct agx_ppp_hal300_scissor_record packed_scissor;
+      CHECK(agx_ppp_hal300_depth_bias_record_pack(
+         supported_chips[i], &depth, &packed_depth));
+      CHECK(packed_depth.length == sizeof(expected_depth));
+      CHECK(memcmp(packed_depth.bytes, expected_depth,
+                   sizeof(expected_depth)) == 0);
+      CHECK(agx_ppp_hal300_scissor_record_pack(
+         supported_chips[i], &scissor, &packed_scissor));
+      CHECK(packed_scissor.length == sizeof(expected_scissor));
+      CHECK(memcmp(packed_scissor.bytes, expected_scissor,
+                   sizeof(expected_scissor)) == 0);
+   }
+   return 0;
+}
+
 static bool
 is_reserved_bases_bit(unsigned bit)
 {
@@ -414,7 +459,8 @@ int
 main(void)
 {
    if (check_exact_records_and_initial_update_order() ||
-       check_every_record_bit() || check_every_bases_bit() ||
+       check_live_draw_record_bytes() || check_every_record_bit() ||
+       check_every_bases_bit() ||
        check_base_alignment_and_range() || check_transactional_rejections())
       return 1;
 

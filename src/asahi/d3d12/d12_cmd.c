@@ -5935,6 +5935,11 @@ d12_segment_ensure_viewport_arrays(struct d12_cmd_list *list,
 {
    struct d12_viewport_storage_plan plan;
 
+   static_assert(AGX_SCISSOR_LENGTH ==
+                 D12_AGX3_PPP_HAL300_SCISSOR_RECORD_LENGTH);
+   static_assert(AGX_DEPTH_BIAS_LENGTH ==
+                 D12_AGX3_PPP_HAL300_DEPTH_BIAS_RECORD_LENGTH);
+
    if (seg->scissor_base && seg->depth_bias_base)
       return true;
    if (seg->scissor_base || seg->depth_bias_base) {
@@ -5966,8 +5971,8 @@ d12_list_push_scissors(
    struct d12_cmd_list *list, struct d12_segment *seg, unsigned count,
    const struct d12_viewport_hw_state states[D12_VIEWPORT_STATE_MAX])
 {
-   struct agx_scissor_packed
-      packed[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+   uint8_t packed[D3D12_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE]
+                 [AGX_SCISSOR_LENGTH];
 
    if (!count || count > ARRAY_SIZE(packed)) {
       list->state = D12_LIST_ERROR;
@@ -5976,17 +5981,39 @@ d12_list_push_scissors(
    if (!d12_segment_ensure_viewport_arrays(list, seg))
       return ~0u;
 
+   const enum agx_chip chip = list->device->dev.chip;
+   const bool hal300 = agx_chip_command_stream_generation(chip) ==
+                       AGX_CS_GENERATION_HAL300;
    for (unsigned i = 0; i < count; ++i) {
-      agx_pack(&packed[i], SCISSOR, cfg) {
-         cfg.min_x = states[i].clip[0];
-         cfg.min_y = states[i].clip[1];
-         cfg.max_x = states[i].clip[2];
-         cfg.max_y = states[i].clip[3];
-
-         /* D3D12 clips against 0 <= z <= w in clip space. MinDepth and
-          * MaxDepth define the viewport mapping, not the clip range. */
-         cfg.min_z = 0.0f;
-         cfg.max_z = 1.0f;
+      if (hal300) {
+         const struct d12_agx3_ppp_hal300_scissor_record_fields fields = {
+            .max_x = states[i].clip[2],
+            .min_x = states[i].clip[0],
+            .max_y = states[i].clip[3],
+            .min_y = states[i].clip[1],
+            /* D3D12 clips against 0 <= z <= w in clip space. MinDepth and
+             * MaxDepth define the viewport mapping, not the clip range. */
+            .min_z_raw = fui(0.0f),
+            .max_z_raw = fui(1.0f),
+         };
+         struct d12_agx3_ppp_hal300_scissor_record exact;
+         if (!d12_agx3_encode_ppp_hal300_scissor_record(chip, &fields,
+                                                         &exact)) {
+            mesa_loge("no grounded HAL300 scissor record for %s",
+                      agx_chip_name(chip));
+            list->state = D12_LIST_ERROR;
+            return ~0u;
+         }
+         memcpy(packed[i], exact.bytes, exact.length);
+      } else {
+         agx_pack(packed[i], SCISSOR, cfg) {
+            cfg.min_x = states[i].clip[0];
+            cfg.min_y = states[i].clip[1];
+            cfg.max_x = states[i].clip[2];
+            cfg.max_y = states[i].clip[3];
+            cfg.min_z = 0.0f;
+            cfg.max_z = 1.0f;
+         }
       }
    }
 
@@ -6045,11 +6072,30 @@ d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
    else if (format == DXGI_FORMAT_D24_UNORM_S8_UINT)
       constant *= 32.0f;
 
-   struct agx_depth_bias_packed packed;
-   agx_pack(&packed, DEPTH_BIAS, cfg) {
-      cfg.depth_bias = constant;
-      cfg.slope_scale = slope;
-      cfg.clamp = clamp;
+   uint8_t packed[AGX_DEPTH_BIAS_LENGTH];
+   const enum agx_chip chip = list->device->dev.chip;
+   if (agx_chip_command_stream_generation(chip) ==
+       AGX_CS_GENERATION_HAL300) {
+      const struct d12_agx3_ppp_hal300_depth_bias_record_fields fields = {
+         .depth_bias_raw = fui(constant),
+         .slope_scale_raw = fui(slope),
+         .clamp_raw = fui(clamp),
+      };
+      struct d12_agx3_ppp_hal300_depth_bias_record exact;
+      if (!d12_agx3_encode_ppp_hal300_depth_bias_record(chip, &fields,
+                                                        &exact)) {
+         mesa_loge("no grounded HAL300 depth-bias record for %s",
+                   agx_chip_name(chip));
+         list->state = D12_LIST_ERROR;
+         return ~0u;
+      }
+      memcpy(packed, exact.bytes, exact.length);
+   } else {
+      agx_pack(packed, DEPTH_BIAS, cfg) {
+         cfg.depth_bias = constant;
+         cfg.slope_scale = slope;
+         cfg.clamp = clamp;
+      }
    }
 
    uint8_t *array = d12_list_data_cpu(list, seg->depth_bias_base);
@@ -6062,7 +6108,7 @@ d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
    if (seg->depth_bias_count) {
       uint8_t *prev = array +
                       (seg->depth_bias_count - 1) * AGX_DEPTH_BIAS_LENGTH;
-      if (!memcmp(prev, &packed, AGX_DEPTH_BIAS_LENGTH))
+      if (!memcmp(prev, packed, AGX_DEPTH_BIAS_LENGTH))
          return seg->depth_bias_count - 1;
    }
 
@@ -6074,7 +6120,7 @@ d12_list_push_depth_bias(struct d12_cmd_list *list, struct d12_segment *seg,
    }
 
    unsigned index = seg->depth_bias_count++;
-   memcpy(array + index * AGX_DEPTH_BIAS_LENGTH, &packed,
+   memcpy(array + index * AGX_DEPTH_BIAS_LENGTH, packed,
           AGX_DEPTH_BIAS_LENGTH);
    return index;
 }

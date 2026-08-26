@@ -200,10 +200,51 @@ check_bridge_rejections(void)
    return 0;
 }
 
+static int
+check_live_draw_record_bytes(void)
+{
+   const struct agx_ppp_hal300_depth_bias_record_fields depth = {
+      UINT32_C(0xbe800000), UINT32_C(0x3fc00000), UINT32_C(0x3e000000),
+   };
+   const struct agx_ppp_hal300_scissor_record_fields scissor = {
+      UINT16_C(1920), UINT16_C(16),         UINT16_C(1080),
+      UINT16_C(8),    UINT32_C(0x00000000), UINT32_C(0x3f800000),
+   };
+   static const uint8_t expected_depth[] = {
+      0x00, 0x00, 0x80, 0xbe, 0x00, 0x00, 0xc0, 0x3f, 0x00, 0x00, 0x00, 0x3e,
+   };
+   static const uint8_t expected_scissor[] = {
+      0x80, 0x07, 0x10, 0x00, 0x38, 0x04, 0x08, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x3f,
+   };
+   const enum agx_chip chips[] = {
+      AGX_CHIP_G17G,
+      AGX_CHIP_G17S,
+      AGX_CHIP_G17C,
+   };
+
+   for (unsigned i = 0; i < sizeof(chips) / sizeof(chips[0]); ++i) {
+      struct agx_ppp_hal300_depth_bias_record packed_depth;
+      struct agx_ppp_hal300_scissor_record packed_scissor;
+      CHECK(hk_agx3_encode_ppp_hal300_depth_bias_record(
+         chips[i], &depth, &packed_depth));
+      CHECK(packed_depth.length == sizeof(expected_depth));
+      CHECK(memcmp(packed_depth.bytes, expected_depth,
+                   sizeof(expected_depth)) == 0);
+      CHECK(hk_agx3_encode_ppp_hal300_scissor_record(
+         chips[i], &scissor, &packed_scissor));
+      CHECK(packed_scissor.length == sizeof(expected_scissor));
+      CHECK(memcmp(packed_scissor.bytes, expected_scissor,
+                   sizeof(expected_scissor)) == 0);
+   }
+   return 0;
+}
+
 int
 main(void)
 {
-   if (check_exact_shared_bridge() || check_bridge_rejections())
+   if (check_exact_shared_bridge() || check_live_draw_record_bytes() ||
+       check_bridge_rejections())
       return 1;
 
    printf("hk_agx3_ppp_hal300_depth_bias_scissor: %u checks passed\n", checks);
