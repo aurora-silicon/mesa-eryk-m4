@@ -27,6 +27,8 @@ enum agx_vdm_record_kind {
    AGX_VDM_RECORD_STATE_UPDATE,
    AGX_VDM_RECORD_INDEX_LIST_NONINDEXED,
    AGX_VDM_RECORD_INDEX_LIST_INDEXED,
+   AGX_VDM_RECORD_INDEX_LIST_INDIRECT_NONINDEXED,
+   AGX_VDM_RECORD_INDEX_LIST_INDIRECT_INDEXED,
    AGX_VDM_RECORD_STREAM_LINK,
    AGX_VDM_RECORD_STREAM_TERMINATE,
    AGX_VDM_RECORD_TESSELLATE_DIRECT,
@@ -44,6 +46,10 @@ struct agx_vdm_decoded_record {
       struct agx_vdm_state_update_info state_update;
       struct agx_vdm_index_list_direct_nonindexed_info index_list_nonindexed;
       struct agx_vdm_index_list_direct_indexed_info index_list_indexed;
+      struct agx_vdm_index_list_indirect_nonindexed_info
+         index_list_indirect_nonindexed;
+      struct agx_vdm_index_list_indirect_indexed_info
+         index_list_indirect_indexed;
       struct agx_vdm_tessellate_direct_info tessellate_direct;
       struct {
          uint64_t target;

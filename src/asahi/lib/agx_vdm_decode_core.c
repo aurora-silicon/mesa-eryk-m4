@@ -68,43 +68,84 @@ agx_vdm_decode_one(enum agx_chip chip, const void *bytes, size_t available,
       record->chip = chip;
       return true;
 
-   case 2:
-      if (available < AGX_VDM_STATE_UPDATE_LENGTH ||
-          !agx_vdm_state_update_unpack(chip, bytes, AGX_VDM_STATE_UPDATE_LENGTH,
-                                       &record->data.state_update))
+   case 2: {
+      const bool hal300 = agx_vdm_decode_is_hal300(chip);
+      const size_t indirect_indexed_length =
+         hal300 ? AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH
+                : AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH - 4;
+      struct agx_vdm_state_update_info state_update;
+      struct agx_vdm_index_list_indirect_indexed_info indirect_indexed;
+      const bool is_state_update =
+         available >= AGX_VDM_STATE_UPDATE_LENGTH &&
+         agx_vdm_state_update_unpack(chip, bytes, AGX_VDM_STATE_UPDATE_LENGTH,
+                                     &state_update);
+      const bool is_indirect_indexed =
+         available >= indirect_indexed_length &&
+         agx_vdm_index_list_indirect_indexed_unpack(
+            chip, bytes, indirect_indexed_length, &indirect_indexed);
+
+      /* The indexed-indirect form starts with its exact 8-byte restart State
+       * Update.  Require a unique complete grammar match rather than treating
+       * that prefix as a standalone state record. */
+      if ((unsigned)is_state_update + (unsigned)is_indirect_indexed != 1)
          return false;
 
-      record->kind = AGX_VDM_RECORD_STATE_UPDATE;
-      record->length = AGX_VDM_STATE_UPDATE_LENGTH;
       record->chip = chip;
+      if (is_state_update) {
+         record->kind = AGX_VDM_RECORD_STATE_UPDATE;
+         record->length = AGX_VDM_STATE_UPDATE_LENGTH;
+         record->data.state_update = state_update;
+      } else {
+         record->kind = AGX_VDM_RECORD_INDEX_LIST_INDIRECT_INDEXED;
+         record->length = (uint8_t)indirect_indexed_length;
+         record->data.index_list_indirect_indexed = indirect_indexed;
+      }
       return true;
+   }
 
    case 3: {
       const bool hal300 = agx_vdm_decode_is_hal300(chip);
       const size_t indexed_length = hal300 ? 32 : 28;
       const size_t nonindexed_length = hal300 ? 20 : 16;
+      const size_t indirect_nonindexed_length =
+         hal300 ? AGX_VDM_INDEX_LIST_INDIRECT_NONINDEXED_MAX_LENGTH
+                : AGX_VDM_INDEX_LIST_INDIRECT_NONINDEXED_MAX_LENGTH - 4;
+      struct agx_vdm_index_list_direct_indexed_info indexed;
+      struct agx_vdm_index_list_direct_nonindexed_info nonindexed;
+      struct agx_vdm_index_list_indirect_nonindexed_info indirect_nonindexed;
+      const bool is_indexed =
+         available >= indexed_length &&
+         agx_vdm_index_list_direct_indexed_unpack(chip, bytes, indexed_length,
+                                                  &indexed);
+      const bool is_nonindexed =
+         available >= nonindexed_length &&
+         agx_vdm_index_list_direct_nonindexed_unpack(
+            chip, bytes, nonindexed_length, &nonindexed);
+      const bool is_indirect_nonindexed =
+         available >= indirect_nonindexed_length &&
+         agx_vdm_index_list_indirect_nonindexed_unpack(
+            chip, bytes, indirect_nonindexed_length, &indirect_nonindexed);
 
-      if (available >= indexed_length &&
-          agx_vdm_index_list_direct_indexed_unpack(
-             chip, bytes, indexed_length, &record->data.index_list_indexed)) {
+      if ((unsigned)is_indexed + (unsigned)is_nonindexed +
+             (unsigned)is_indirect_nonindexed !=
+          1)
+         return false;
+
+      record->chip = chip;
+      if (is_indexed) {
          record->kind = AGX_VDM_RECORD_INDEX_LIST_INDEXED;
          record->length = (uint8_t)indexed_length;
-         record->chip = chip;
-         return true;
-      }
-
-      if (available >= nonindexed_length &&
-          agx_vdm_index_list_direct_nonindexed_unpack(
-             chip, bytes, nonindexed_length,
-             &record->data.index_list_nonindexed)) {
+         record->data.index_list_indexed = indexed;
+      } else if (is_nonindexed) {
          record->kind = AGX_VDM_RECORD_INDEX_LIST_NONINDEXED;
          record->length = (uint8_t)nonindexed_length;
-         record->chip = chip;
-         return true;
+         record->data.index_list_nonindexed = nonindexed;
+      } else {
+         record->kind = AGX_VDM_RECORD_INDEX_LIST_INDIRECT_NONINDEXED;
+         record->length = (uint8_t)indirect_nonindexed_length;
+         record->data.index_list_indirect_nonindexed = indirect_nonindexed;
       }
-
-      memset(record, 0, sizeof(*record));
-      return false;
+      return true;
    }
 
    case 4: {

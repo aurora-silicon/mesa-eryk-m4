@@ -912,6 +912,36 @@ agxdecode_vdm_agx3(UNUSED struct agxdecode_ctx *ctx, const uint8_t *map,
               record.data.index_list_indexed.index_buffer_size_word);
       return record.length;
 
+   case AGX_VDM_RECORD_INDEX_LIST_INDIRECT_NONINDEXED:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Indirect Non-indexed Draw\n"
+              "  Primitive = %u\n"
+              "  Indirect buffer = 0x%012" PRIx64 "\n",
+              record.data.index_list_indirect_nonindexed.primitive,
+              record.data.index_list_indirect_nonindexed.indirect_buffer);
+      return record.length;
+
+   case AGX_VDM_RECORD_INDEX_LIST_INDIRECT_INDEXED:
+      fprintf(agxdecode_dump_stream,
+              "AGX3 Indirect Indexed Draw\n"
+              "  Primitive = %u\n"
+              "  Restart = %s\n"
+              "  Index size = %u\n"
+              "  Index buffer = 0x%012" PRIx64 "\n"
+              "  Indirect buffer = 0x%012" PRIx64 "\n"
+              "  Restart index = 0x%08" PRIx32 "\n"
+              "  Index buffer size word = 0x%08" PRIx32 "\n",
+              record.data.index_list_indirect_indexed.primitive,
+              record.data.index_list_indirect_indexed.restart_enable
+                 ? "true"
+                 : "false",
+              record.data.index_list_indirect_indexed.index_size,
+              record.data.index_list_indirect_indexed.index_buffer,
+              record.data.index_list_indirect_indexed.indirect_buffer,
+              record.data.index_list_indirect_indexed.restart_index,
+              record.data.index_list_indirect_indexed.index_buffer_size_word);
+      return record.length;
+
    case AGX_VDM_RECORD_STREAM_LINK:
       fprintf(agxdecode_dump_stream,
               "AGX3 VDM Stream Link\n  Target = 0x%012" PRIx64 "\n",

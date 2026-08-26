@@ -36,6 +36,13 @@ static const enum agx_chip unsupported_targets[] = {
 };
 
 static bool
+is_hal300(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+          chip == AGX_CHIP_G17C;
+}
+
+static bool
 record_is_cleared(const struct agx_vdm_decoded_record *record)
 {
    const uint8_t *bytes = (const uint8_t *)record;
@@ -238,6 +245,169 @@ test_index_lists(void)
 }
 
 static int
+test_indirect_index_lists(void)
+{
+   static const uint8_t primitives[] = {0, 1, 3, 5, 6, 9, 11, 13, 14, 15};
+
+   for (unsigned t = 0;
+        t < sizeof(supported_targets) / sizeof(supported_targets[0]); ++t) {
+      const enum agx_chip chip = supported_targets[t];
+      const bool hal300 = is_hal300(chip);
+
+      for (unsigned p = 0; p < sizeof(primitives); ++p) {
+         const uint64_t indirect_buffer =
+            UINT64_C(0xab1234567800) + ((uint64_t)t << 12) +
+            ((uint64_t)p << 2);
+         const struct agx_vdm_index_list_indirect_nonindexed_info
+            nonindexed = {
+               .primitive = primitives[p],
+               .indirect_buffer = indirect_buffer,
+            };
+         struct agx_vdm_index_list_indirect_nonindexed packed_nonindexed;
+         CHECK(agx_vdm_index_list_indirect_nonindexed_pack(
+            chip, &nonindexed, &packed_nonindexed));
+         CHECK(packed_nonindexed.length == (hal300 ? 16 : 12));
+
+         uint8_t nonindexed_stream
+            [AGX_VDM_INDEX_LIST_INDIRECT_NONINDEXED_MAX_LENGTH + 8];
+         memcpy(nonindexed_stream, packed_nonindexed.bytes,
+                packed_nonindexed.length);
+         memset(nonindexed_stream + packed_nonindexed.length, 0xa5, 8);
+
+         struct agx_vdm_decoded_record record;
+         CHECK(agx_vdm_decode_one(chip, nonindexed_stream,
+                                  sizeof(nonindexed_stream), &record));
+         CHECK(record.kind ==
+               AGX_VDM_RECORD_INDEX_LIST_INDIRECT_NONINDEXED);
+         CHECK(record.length == packed_nonindexed.length);
+         CHECK(record.chip == chip);
+         CHECK(record.data.index_list_indirect_nonindexed.primitive ==
+               nonindexed.primitive);
+         CHECK(record.data.index_list_indirect_nonindexed.indirect_buffer ==
+               nonindexed.indirect_buffer);
+
+         for (size_t available = 0; available < packed_nonindexed.length;
+              ++available) {
+            CHECK(check_rejected(chip, packed_nonindexed.bytes, available) ==
+                  0);
+         }
+
+         for (unsigned size = AGX_VDM_INDEX_LIST_INDEX_SIZE_U16;
+              size <= AGX_VDM_INDEX_LIST_INDEX_SIZE_U32; ++size) {
+            for (unsigned restart = 0; restart < 2; ++restart) {
+               const struct agx_vdm_index_list_indirect_indexed_info indexed = {
+                  .primitive = primitives[p],
+                  .restart_enable = restart != 0,
+                  .index_size =
+                     (enum agx_vdm_index_list_index_size)size,
+                  .index_buffer = UINT64_C(0xcd1234567800) +
+                                  ((uint64_t)t << 12) +
+                                  ((uint64_t)p << 4),
+                  .indirect_buffer = indirect_buffer,
+                  .restart_index = UINT32_C(0x10203040) ^
+                                   ((uint32_t)t << 8) ^ p ^ restart,
+                  .index_buffer_size_word = UINT32_C(0x50607080) + p,
+               };
+               struct agx_vdm_index_list_indirect_indexed packed_indexed;
+               CHECK(agx_vdm_index_list_indirect_indexed_pack(
+                  chip, &indexed, &packed_indexed));
+               CHECK(packed_indexed.length == (hal300 ? 36 : 32));
+
+               uint8_t indexed_stream
+                  [AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH + 8];
+               memcpy(indexed_stream, packed_indexed.bytes,
+                      packed_indexed.length);
+               memset(indexed_stream + packed_indexed.length, 0x5a, 8);
+
+               CHECK(agx_vdm_decode_one(chip, indexed_stream,
+                                        sizeof(indexed_stream), &record));
+               CHECK(record.kind ==
+                     AGX_VDM_RECORD_INDEX_LIST_INDIRECT_INDEXED);
+               CHECK(record.length == packed_indexed.length);
+               CHECK(record.chip == chip);
+               CHECK(record.data.index_list_indirect_indexed.primitive ==
+                     indexed.primitive);
+               CHECK(record.data.index_list_indirect_indexed.restart_enable ==
+                     indexed.restart_enable);
+               CHECK(record.data.index_list_indirect_indexed.index_size ==
+                     indexed.index_size);
+               CHECK(record.data.index_list_indirect_indexed.index_buffer ==
+                     indexed.index_buffer);
+               CHECK(record.data.index_list_indirect_indexed.indirect_buffer ==
+                     indexed.indirect_buffer);
+               CHECK(record.data.index_list_indirect_indexed.restart_index ==
+                     indexed.restart_index);
+               CHECK(record.data.index_list_indirect_indexed
+                        .index_buffer_size_word ==
+                     indexed.index_buffer_size_word);
+
+               for (size_t available = 0; available < packed_indexed.length;
+                    ++available) {
+                  CHECK(check_rejected(chip, packed_indexed.bytes, available) ==
+                        0);
+               }
+            }
+         }
+      }
+   }
+
+   const struct agx_vdm_index_list_indirect_nonindexed_info nonindexed_info = {
+      .primitive = 9,
+      .indirect_buffer = UINT64_C(0x23456789abc0),
+   };
+   const struct agx_vdm_index_list_indirect_indexed_info indexed_info = {
+      .primitive = 9,
+      .restart_enable = true,
+      .index_size = AGX_VDM_INDEX_LIST_INDEX_SIZE_U32,
+      .index_buffer = UINT64_C(0x123456789abc),
+      .indirect_buffer = UINT64_C(0x23456789abc0),
+      .restart_index = UINT32_MAX,
+      .index_buffer_size_word = UINT32_C(0x1020303f),
+   };
+   struct agx_vdm_index_list_indirect_nonindexed pre_nonindexed;
+   struct agx_vdm_index_list_indirect_nonindexed hal_nonindexed;
+   struct agx_vdm_index_list_indirect_indexed pre_indexed;
+   struct agx_vdm_index_list_indirect_indexed hal_indexed;
+   CHECK(agx_vdm_index_list_indirect_nonindexed_pack(
+      AGX_CHIP_G17P, &nonindexed_info, &pre_nonindexed));
+   CHECK(agx_vdm_index_list_indirect_nonindexed_pack(
+      AGX_CHIP_G17S, &nonindexed_info, &hal_nonindexed));
+   CHECK(agx_vdm_index_list_indirect_indexed_pack(
+      AGX_CHIP_G17P, &indexed_info, &pre_indexed));
+   CHECK(agx_vdm_index_list_indirect_indexed_pack(
+      AGX_CHIP_G17S, &indexed_info, &hal_indexed));
+
+   CHECK(check_rejected(AGX_CHIP_G17S, pre_nonindexed.bytes,
+                        pre_nonindexed.length) == 0);
+   CHECK(check_rejected(AGX_CHIP_G17P, hal_nonindexed.bytes,
+                        hal_nonindexed.length) == 0);
+   CHECK(check_rejected(AGX_CHIP_G17S, pre_indexed.bytes,
+                        pre_indexed.length) == 0);
+   CHECK(check_rejected(AGX_CHIP_G17P, hal_indexed.bytes,
+                        hal_indexed.length) == 0);
+
+   struct agx_vdm_index_list_indirect_nonindexed malformed_nonindexed =
+      hal_nonindexed;
+   malformed_nonindexed.bytes[2] ^= 1;
+   CHECK(check_rejected(AGX_CHIP_G17S, malformed_nonindexed.bytes,
+                        malformed_nonindexed.length) == 0);
+   malformed_nonindexed = hal_nonindexed;
+   malformed_nonindexed.bytes[12] = 6;
+   CHECK(check_rejected(AGX_CHIP_G17S, malformed_nonindexed.bytes,
+                        malformed_nonindexed.length) == 0);
+
+   struct agx_vdm_index_list_indirect_indexed malformed_indexed = hal_indexed;
+   malformed_indexed.bytes[11] ^= 0x20;
+   CHECK(check_rejected(AGX_CHIP_G17S, malformed_indexed.bytes,
+                        malformed_indexed.length) == 0);
+   malformed_indexed = hal_indexed;
+   malformed_indexed.bytes[24] = 6;
+   CHECK(check_rejected(AGX_CHIP_G17S, malformed_indexed.bytes,
+                        malformed_indexed.length) == 0);
+   return 0;
+}
+
+static int
 test_stream_link(void)
 {
    for (unsigned t = 0;
@@ -336,6 +506,8 @@ test_rejection(void)
    struct agx_vdm_state_update state;
    struct agx_vdm_index_list_direct_nonindexed nonindexed;
    struct agx_vdm_index_list_direct_indexed indexed;
+   struct agx_vdm_index_list_indirect_nonindexed indirect_nonindexed;
+   struct agx_vdm_index_list_indirect_indexed indirect_indexed;
    struct agx_vdm_stream_link_core link;
    struct agx_vdm_tessellate_direct tessellate;
    struct agx_vdm_stream_terminate_core terminate;
@@ -357,6 +529,21 @@ test_rejection(void)
       .start = 2,
       .index_buffer_size_word = 9,
    };
+   const struct agx_vdm_index_list_indirect_nonindexed_info
+      indirect_nonindexed_info = {
+         .primitive = 3,
+         .indirect_buffer = UINT64_C(0x23456789abc0),
+      };
+   const struct agx_vdm_index_list_indirect_indexed_info
+      indirect_indexed_info = {
+         .primitive = 3,
+         .restart_enable = true,
+         .index_size = AGX_VDM_INDEX_LIST_INDEX_SIZE_U16,
+         .index_buffer = UINT64_C(0x123456780),
+         .indirect_buffer = UINT64_C(0x23456789abc0),
+         .restart_index = UINT32_MAX,
+         .index_buffer_size_word = 9,
+      };
    const struct agx_vdm_tessellate_direct_info tessellate_info = {
       .factor_buffer = UINT64_C(0x123456780),
       .patch_count = 7,
@@ -373,6 +560,10 @@ test_rejection(void)
    CHECK(agx_vdm_index_list_direct_nonindexed_pack(chip, &nonindexed_info,
                                                    &nonindexed));
    CHECK(agx_vdm_index_list_direct_indexed_pack(chip, &indexed_info, &indexed));
+   CHECK(agx_vdm_index_list_indirect_nonindexed_pack(
+      chip, &indirect_nonindexed_info, &indirect_nonindexed));
+   CHECK(agx_vdm_index_list_indirect_indexed_pack(
+      chip, &indirect_indexed_info, &indirect_indexed));
    CHECK(agx_vdm_stream_link_core_pack(chip, UINT64_C(0x123456789), &link));
    CHECK(agx_vdm_tessellate_direct_pack(chip, &tessellate_info, &tessellate));
    CHECK(agx_vdm_stream_terminate_core_pack(chip, &terminate));
@@ -386,6 +577,8 @@ test_rejection(void)
       {state.bytes, state.length},
       {nonindexed.bytes, nonindexed.length},
       {indexed.bytes, indexed.length},
+      {indirect_nonindexed.bytes, indirect_nonindexed.length},
+      {indirect_indexed.bytes, indirect_indexed.length},
       {link.bytes, link.length},
       {tessellate.bytes, tessellate.length},
       {terminate.bytes, terminate.length},
@@ -464,6 +657,7 @@ main(void)
    CHECK(test_barrier() == 0);
    CHECK(test_state_update() == 0);
    CHECK(test_index_lists() == 0);
+   CHECK(test_indirect_index_lists() == 0);
    CHECK(test_stream_link() == 0);
    CHECK(test_tessellate_direct() == 0);
    CHECK(test_stream_terminate() == 0);
