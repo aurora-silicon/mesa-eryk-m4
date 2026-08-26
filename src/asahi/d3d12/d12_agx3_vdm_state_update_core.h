@@ -53,6 +53,9 @@ enum d12_agx3_vdm_state_update_draw_path {
    D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED = 3,
 };
 
+enum d12_agx3_vdm_state_update_draw_path
+d12_agx3_vdm_state_update_classify_draw(bool indirect, bool indexed);
+
 /* Structural compiler/configuration inputs only.  This mirrors the bounded
  * shared template materializer without claiming that the existing AGX2 D3D
  * counts, UVS, or vertex-unknown state has the same encoding. */

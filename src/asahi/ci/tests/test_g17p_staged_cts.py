@@ -8,6 +8,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 
@@ -192,6 +193,80 @@ class G17PStagedCTSTests(unittest.TestCase):
          )
          self.assertTrue(result["timed_out"])
          self.assertNotEqual(result["exit_code"], 0)
+
+   def test_proof_results_require_exact_passes(self):
+      with tempfile.TemporaryDirectory() as temporary:
+         stage = Path(temporary) / "01-compute"
+         (stage / "results").mkdir(parents=True)
+         cases = ["dEQP-VK.compute.first", "dEQP-VK.compute.second"]
+         (stage / "caselist.txt").write_text("\n".join(cases) + "\n")
+         (stage / "results/results.csv").write_text(
+            "dEQP-VK.compute.first,Pass,0.1\n"
+            "dEQP-VK.compute.second,Pass,0.2\n"
+         )
+         report = RUNNER.validate_proof_stage_results(stage, len(cases))
+         self.assertEqual(report["status"], "passed")
+         self.assertEqual(report["pass_count"], len(cases))
+
+   def test_proof_results_reject_deqp_runner_success_statuses(self):
+      for result_status in ("Skip", "Warn", "Flake"):
+         with self.subTest(result_status=result_status):
+            with tempfile.TemporaryDirectory() as temporary:
+               stage = Path(temporary) / "02-triangle"
+               (stage / "results").mkdir(parents=True)
+               (stage / "caselist.txt").write_text("dEQP-VK.draw.triangle\n")
+               (stage / "results/results.csv").write_text(
+                  f"dEQP-VK.draw.triangle,{result_status},0.1\n"
+               )
+               with self.assertRaises(RUNNER.BringupError):
+                  RUNNER.validate_proof_stage_results(stage, 1)
+               report = json.loads(
+                  (stage / "result-validation.json").read_text()
+               )
+               self.assertEqual(report["status"], "failed")
+               self.assertIn("non-Pass results", report["problems"][0])
+
+   def test_proof_results_reject_missing_or_unselected_cases(self):
+      with tempfile.TemporaryDirectory() as temporary:
+         stage = Path(temporary) / "03-expanded"
+         (stage / "results").mkdir(parents=True)
+         (stage / "caselist.txt").write_text(
+            "dEQP-VK.expected.first\ndEQP-VK.expected.second\n"
+         )
+         (stage / "results/results.csv").write_text(
+            "dEQP-VK.expected.first,Pass,0.1\n"
+            "dEQP-VK.unselected,Pass,0.2\n"
+         )
+         with self.assertRaises(RUNNER.BringupError):
+            RUNNER.validate_proof_stage_results(stage, 2)
+         report = json.loads((stage / "result-validation.json").read_text())
+         self.assertTrue(any("missing results" in item for item in report["problems"]))
+         self.assertTrue(any("unexpected results" in item
+                             for item in report["problems"]))
+
+   def test_continuous_kernel_monitor_preserves_fault_lines(self):
+      with tempfile.TemporaryDirectory() as temporary:
+         path = Path(temporary) / "continuous.log"
+         command = [
+            sys.executable, "-u", "-c",
+            "import time; print('asahi: GPU fault before ring wrap', flush=True); "
+            "time.sleep(30)",
+         ]
+         monitor = RUNNER.KernelLogMonitor(path, command)
+         monitor.start()
+         lines = []
+         deadline = time.monotonic() + 2
+         while not lines and time.monotonic() < deadline:
+            lines.extend(monitor.read_new_lines())
+            if not lines:
+               time.sleep(0.01)
+         monitor.require_alive("test gate")
+         result, tail = monitor.stop()
+         self.assertFalse(result["premature_exit"])
+         faults = RUNNER.matching_faults(
+            [*lines, *tail], RUNNER.read_json(CONFIG)["kernel_fault_regex"]
+         )
+         self.assertEqual(faults, ["asahi: GPU fault before ring wrap"])
 
    def test_terminal_markers_distinguish_smoke_from_full(self):
       self.assertEqual(RUNNER.success_marker("compute"),

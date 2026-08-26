@@ -9,6 +9,17 @@
 
 #include <string.h>
 
+enum d12_agx3_vdm_state_update_draw_path
+d12_agx3_vdm_state_update_classify_draw(bool indirect, bool indexed)
+{
+   if (indirect)
+      return indexed ? D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED
+                     : D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED;
+
+   return indexed ? D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED
+                  : D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED;
+}
+
 bool
 d12_agx3_encode_vdm_state_update(
    enum agx_chip chip, const struct d12_agx3_vdm_state_update_info *info,

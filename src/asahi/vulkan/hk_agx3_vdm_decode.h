@@ -13,9 +13,30 @@
 
 #include "asahi/lib/agx_vdm_decode_core.h"
 
+struct blob;
+struct blob_reader;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* Bump whenever the Honeykrisp shader payload below changes.  Vulkan shader
+ * binaries carry this version outside the driver-private blob, so stale
+ * layouts are rejected before any fields are consumed. */
+#define HK_AGX3_SHADER_BINARY_VERSION 1u
+
+bool hk_agx3_shader_binary_version_supported(uint32_t version);
+
+bool hk_agx3_vdm_program_cache_serialize(
+   struct blob *blob, const struct agx_vdm_state_update_program_info *info);
+
+bool hk_agx3_vdm_program_cache_deserialize(
+   struct blob_reader *blob, struct agx_vdm_state_update_program_info *info);
+
+enum agx_vdm_state_update_source_layout
+hk_agx3_vdm_live_source_layout(
+   const struct agx_vdm_state_update_program_info *program,
+   bool active_context_selector_valid, bool ordinary_draw_path);
 
 /*
  * Decode one record from a potentially longer AGX3 VDM stream through the

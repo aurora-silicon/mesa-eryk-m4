@@ -156,6 +156,14 @@ struct agx_vdm_state_update_draw_info {
  */
 bool agx_vdm_state_update_supported(enum agx_chip chip);
 
+/* AGX2 USC pointers are stored relative to `shader_base`, while the AGX3
+ * VertexProgramVariant pipeline pair carries an absolute 48-bit GPU VA.
+ * Resolve that representation boundary explicitly so live producers cannot
+ * accidentally feed the legacy packed offset to the AGX3 encoder. */
+bool agx_vdm_state_update_resolve_pipeline_va(uint64_t shader_base,
+                                              uint32_t packed_usc,
+                                              uint64_t *pipeline_va);
+
 bool agx_vdm_state_update_pack(enum agx_chip chip,
                                const struct agx_vdm_state_update_info *info,
                                struct agx_vdm_state_update *out);

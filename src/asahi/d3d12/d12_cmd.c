@@ -32,6 +32,7 @@
 #include "agx_helpers.h"
 #include "agx_nir_texture.h"
 #include "agx_usc.h"
+#include "agx_vdm_state_update_core.h"
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
 #include "present_blt.h"
@@ -8392,21 +8393,26 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
    case AGX_CS_GENERATION_HAL300: {
       const struct d12_agx3_vdm_state_update_program_info *program =
          &vstage->agx3_vdm_state_update;
+      uint64_t pipeline_va;
+      const bool pipeline_va_valid =
+         agx_vdm_state_update_resolve_pipeline_va(
+            list->device->dev.shader_base, vs_usc, &pipeline_va);
       const bool complete_program =
+         pipeline_va_valid &&
          program->source_layout ==
             D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT &&
          seg->agx3_active_context_selector_valid;
+      const bool state_indexed = draw_set ? draw.indexed : indexed;
+      const bool state_indirect =
+         draw_set ? agx_is_indirect(draw.b)
+                  : indirect_ibv ? false
+                                 : indirect_args || list->predicate_gpu;
       struct d12_agx3_vdm_state_update_draw_info info = {
          .source_layout = complete_program
                ? D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
                : D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED,
-         .draw_path = agx_is_indirect(draw.b)
-            ? (draw.indexed
-                  ? D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED
-                  : D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED)
-            : (draw.indexed
-                  ? D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED
-                  : D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED),
+         .draw_path = d12_agx3_vdm_state_update_classify_draw(
+            state_indirect, state_indexed),
          /* The native renderer sources this bit from
           * RenderPipeline::isRasterizationEnabled. */
          .rasterization_enabled = pso->rasterization_enabled,
@@ -8416,7 +8422,7 @@ d12_list_draw(struct d12_cmd_list *list, unsigned vertex_count,
             topology == MESA_PRIM_TRIANGLE_FAN ? 1 : 0,
          .template_info = program->template_info,
       };
-      info.template_info.pipeline = vs_usc;
+      info.template_info.pipeline = pipeline_va;
       info.template_info.raw_active_context_selector =
          seg->agx3_raw_active_context_selector;
 

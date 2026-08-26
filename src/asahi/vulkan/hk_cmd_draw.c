@@ -2836,7 +2836,8 @@ agx_fill_velem_keys(const struct vk_vertex_input_state *vi,
 
 static void
 hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
-                       uint32_t draw_id, struct agx_draw draw)
+                       uint32_t draw_id, struct agx_draw draw,
+                       bool ordinary_draw_path)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const struct hk_rendering_state *render = &cmd->state.gfx.render;
@@ -2846,6 +2847,20 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    struct hk_shader *hw_vs = hk_bound_hw_vs(gfx);
    struct hk_shader *sw_vs = hk_bound_sw_vs(gfx);
+
+   /* The grounded VertexProgramVariant producer covers only the four ordinary
+    * Index List entry points.  Reject software-transformed draw paths even if
+    * no dynamic state happens to be dirty, otherwise they could inherit a
+    * preceding ordinary draw's admitted AGX3 state. */
+   if (agx_chip_command_stream_generation(dev->dev.chip) !=
+          AGX_CS_GENERATION_AGX2 &&
+       !ordinary_draw_path) {
+      mesa_loge("no grounded AGX3 VertexProgramVariant state for transformed "
+                "draw path on %s",
+                agx_chip_name(dev->dev.chip));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
 
    if (!vk_dynamic_graphics_state_any_dirty(dyn) && !gfx->dirty &&
        !gfx->descriptors.root_dirty && !gfx->shaders_dirty &&
@@ -3325,7 +3340,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
       struct hk_linked_shader *linked_hw_vs =
          (hw_vs == sw_vs) ? linked_vs : hw_vs->only_linked;
-      const uint32_t pipeline =
+      const uint32_t pipeline_usc =
          hk_upload_usc_words(cmd, hw_vs, linked_hw_vs);
 
       switch (agx_chip_command_stream_generation(dev->dev.chip)) {
@@ -3340,7 +3355,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          agx_push_packed(out, hw_vs->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
 
          agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-            cfg.pipeline = pipeline;
+            cfg.pipeline = pipeline_usc;
          }
 
          agx_push_packed(out, hw_vs->info.uvs.vdm,
@@ -3362,10 +3377,16 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       case AGX_CS_GENERATION_HAL300: {
          const struct agx_vdm_state_update_program_info *program =
             &hw_vs->agx3_vdm_state_update;
+         uint64_t pipeline_va;
+         const bool pipeline_va_valid =
+            agx_vdm_state_update_resolve_pipeline_va(
+               dev->dev.shader_base, pipeline_usc, &pipeline_va);
          const bool complete_program =
-            program->source_layout ==
-               AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT &&
-            cs->agx3_active_context_selector_valid;
+            pipeline_va_valid &&
+            hk_agx3_vdm_live_source_layout(
+               program, cs->agx3_active_context_selector_valid,
+               ordinary_draw_path) ==
+               AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
          struct agx_vdm_state_update_draw_info info = {
             .source_layout = complete_program
                   ? AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
@@ -3387,7 +3408,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             .raw_provoking_selector = gfx->provoking,
             .template_info = program->template_info,
          };
-         info.template_info.pipeline = pipeline;
+         info.template_info.pipeline = pipeline_va;
          info.template_info.raw_active_context_selector =
             cs->agx3_raw_active_context_selector;
 
@@ -3581,7 +3602,7 @@ hk_handle_passthrough_gs(struct hk_cmd_buffer *cmd, struct agx_draw draw)
 
 static struct hk_cs *
 hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
-                   struct agx_draw draw)
+                   struct agx_draw *draw, bool *needs_idx_robust)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_graphics_state *gfx = &cmd->state.gfx;
@@ -3659,17 +3680,26 @@ hk_flush_gfx_state(struct hk_cmd_buffer *cmd, uint32_t draw_id,
    }
 
    /* TODO: Try to reduce draw overhead of this */
-   hk_handle_passthrough_gs(cmd, draw);
+   hk_handle_passthrough_gs(cmd, *draw);
 
    hk_flush_shaders(cmd);
+
+   const bool geom = gfx->shaders[MESA_SHADER_GEOMETRY];
+   const bool tess = gfx->shaders[MESA_SHADER_TESS_EVAL];
+   bool adj = mesa_prim_has_adjacency(
+      vk_topology_to_mesa(dyn->ia.primitive_topology));
+   adj &= !geom;
+   *needs_idx_robust = hk_needs_index_robustness(cmd, draw);
+   const bool ordinary_draw_path =
+      !geom && !tess && !adj && !*needs_idx_robust;
 
    if (desc->push_dirty)
       hk_cmd_buffer_flush_push_descriptors(cmd, desc);
 
-   if (draw.restart || gfx->shaders[MESA_SHADER_GEOMETRY])
+   if (draw->restart || geom)
       hk_flush_index(cmd, cs);
 
-   hk_flush_dynamic_state(cmd, cs, draw_id, draw);
+   hk_flush_dynamic_state(cmd, cs, draw_id, *draw, ordinary_draw_path);
    return cs;
 }
 
@@ -3830,7 +3860,9 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
 
    hk_foreach_view(cmd) {
       struct agx_draw draw = draw_;
-      struct hk_cs *cs = hk_flush_gfx_state(cmd, draw_id, draw);
+      bool needs_idx_robust = false;
+      struct hk_cs *cs =
+         hk_flush_gfx_state(cmd, draw_id, &draw, &needs_idx_robust);
       /* If we failed to allocate a control stream, we've already lost the
        * device. Just drop the draw so we don't crash.
        */
@@ -3842,7 +3874,6 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
       struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
       bool geom = cmd->state.gfx.shaders[MESA_SHADER_GEOMETRY];
       bool tess = cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL];
-      bool needs_idx_robust = hk_needs_index_robustness(cmd, &draw);
       bool adj = mesa_prim_has_adjacency(
          vk_topology_to_mesa(dyn->ia.primitive_topology));
       adj &= !geom;

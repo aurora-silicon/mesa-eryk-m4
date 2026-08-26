@@ -15,6 +15,7 @@
 #include "agx_nir_lower_vbo.h"
 #include "glsl_types.h"
 #include "hk_instance.h"
+#include "hk_agx3_vdm_decode.h"
 #include "libagx.h"
 #include "nir.h"
 #include "nir_builder.h"
@@ -1633,6 +1634,11 @@ hk_deserialize_shader(struct hk_device *dev, struct blob_reader *blob,
    struct agx_shader_info b_info;
    blob_copy_bytes(blob, &b_info, sizeof(b_info));
 
+   struct agx_vdm_state_update_program_info agx3_vdm_state_update;
+   if (!hk_agx3_vdm_program_cache_deserialize(blob,
+                                               &agx3_vdm_state_update))
+      return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
+
    const uint32_t code_size = blob_read_uint32(blob);
    const uint32_t data_size = blob_read_uint32(blob);
    if (blob->overrun)
@@ -1646,6 +1652,7 @@ hk_deserialize_shader(struct hk_device *dev, struct blob_reader *blob,
 
    shader->b.info = b_info;
    shader->info = info;
+   shader->agx3_vdm_state_update = agx3_vdm_state_update;
    shader->code_size = code_size;
    shader->data_size = data_size;
    shader->b.info.binary_size = code_size;
@@ -1675,6 +1682,9 @@ hk_deserialize_api_shader(struct vk_device *vk_dev, struct blob_reader *blob,
                           struct vk_shader **shader_out)
 {
    struct hk_device *dev = container_of(vk_dev, struct hk_device, vk);
+
+   if (!hk_agx3_shader_binary_version_supported(binary_version))
+      return vk_error(dev, VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT);
 
    mesa_shader_stage stage = blob_read_uint8(blob);
    if (blob->overrun)
@@ -1708,6 +1718,9 @@ hk_shader_serialize(struct vk_device *vk_dev, const struct hk_shader *shader,
 {
    blob_write_bytes(blob, &shader->info, sizeof(shader->info));
    blob_write_bytes(blob, &shader->b.info, sizeof(shader->b.info));
+   if (!hk_agx3_vdm_program_cache_serialize(
+          blob, &shader->agx3_vdm_state_update))
+      return;
 
    blob_write_uint32(blob, shader->code_size);
    blob_write_uint32(blob, shader->data_size);

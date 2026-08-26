@@ -363,6 +363,15 @@ check_rejections(void)
 static int
 check_native_draw_template_bridge(void)
 {
+   CHECK(d12_agx3_vdm_state_update_classify_draw(false, false) ==
+         D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED);
+   CHECK(d12_agx3_vdm_state_update_classify_draw(false, true) ==
+         D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED);
+   CHECK(d12_agx3_vdm_state_update_classify_draw(true, false) ==
+         D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED);
+   CHECK(d12_agx3_vdm_state_update_classify_draw(true, true) ==
+         D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED);
+
    for (unsigned target = 0;
         target < sizeof(supported_chips) / sizeof(supported_chips[0]);
         ++target) {

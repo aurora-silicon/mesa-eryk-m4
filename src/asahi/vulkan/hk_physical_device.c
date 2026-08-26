@@ -16,6 +16,7 @@
 #include "hk_entrypoints.h"
 #include "hk_image.h"
 #include "hk_instance.h"
+#include "hk_agx3_vdm_decode.h"
 #include "hk_native_descriptor.h"
 #include "hk_private.h"
 #include "hk_shader.h"
@@ -1038,7 +1039,7 @@ hk_get_device_properties(const struct agx_device *dev,
       .variableSampleLocations = false,
 
       /* VK_EXT_shader_object */
-      .shaderBinaryVersion = 0,
+      .shaderBinaryVersion = HK_AGX3_SHADER_BINARY_VERSION,
 
       /* VK_EXT_transform_feedback */
       .maxTransformFeedbackStreams = 4,

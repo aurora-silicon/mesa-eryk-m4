@@ -32,6 +32,27 @@ agx_vdm_state_update_supported(enum agx_chip chip)
 }
 
 bool
+agx_vdm_state_update_resolve_pipeline_va(uint64_t shader_base,
+                                         uint32_t packed_usc,
+                                         uint64_t *pipeline_va)
+{
+   if (pipeline_va)
+      *pipeline_va = 0;
+
+   if (!pipeline_va || (shader_base & UINT64_C(0x3f)) != 0 ||
+       (packed_usc & UINT32_C(0x3f)) != 0 ||
+       shader_base > UINT64_MAX - packed_usc)
+      return false;
+
+   const uint64_t candidate = shader_base + packed_usc;
+   if (candidate >= (UINT64_C(1) << 48))
+      return false;
+
+   *pipeline_va = candidate;
+   return true;
+}
+
+bool
 agx_vdm_state_update_pack(enum agx_chip chip,
                           const struct agx_vdm_state_update_info *info,
                           struct agx_vdm_state_update *out)

@@ -9,6 +9,7 @@
 #include "asahi/lib/agx_vdm_ppp_state_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
 #include "asahi/lib/agx_vdm_stream_terminate_core.h"
+#include "util/blob.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -40,6 +41,104 @@ record_is_cleared(const struct agx_vdm_decoded_record *record)
          return false;
    }
    return true;
+}
+
+static bool
+program_info_equal(const struct agx_vdm_state_update_program_info *a,
+                   const struct agx_vdm_state_update_program_info *b)
+{
+   const struct agx_vdm_state_update_template_info *x = &a->template_info;
+   const struct agx_vdm_state_update_template_info *y = &b->template_info;
+   return a->source_layout == b->source_layout && x->pipeline == y->pipeline &&
+          x->raw_state_load_count_12 == y->raw_state_load_count_12 &&
+          x->raw_state_load_count_18 == y->raw_state_load_count_18 &&
+          x->raw_vs_output_count_0 == y->raw_vs_output_count_0 &&
+          x->raw_vs_output_count_2 == y->raw_vs_output_count_2 &&
+          x->raw_vs_output_count_1_extra ==
+             y->raw_vs_output_count_1_extra &&
+          x->raw_vs_output_selector == y->raw_vs_output_selector &&
+          x->raw_vs_output_flag_6 == y->raw_vs_output_flag_6 &&
+          x->pre_hal300_flag_group_nonzero ==
+             y->pre_hal300_flag_group_nonzero &&
+          x->pre_hal300_flag_bit_4 == y->pre_hal300_flag_bit_4 &&
+          x->variant == y->variant &&
+          x->raw_active_context_selector == y->raw_active_context_selector;
+}
+
+static bool
+program_info_is_cleared(
+   const struct agx_vdm_state_update_program_info *program)
+{
+   const uint8_t *bytes = (const uint8_t *)program;
+   for (size_t i = 0; i < sizeof(*program); ++i) {
+      if (bytes[i] != 0)
+         return false;
+   }
+   return true;
+}
+
+static int
+test_program_cache_lifetime(void)
+{
+   const struct agx_vdm_state_update_program_info expected = {
+      .source_layout =
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+      .template_info = {
+         .pipeline = UINT64_C(0xac12345680),
+         .raw_state_load_count_12 = UINT16_C(0x0abc),
+         .raw_state_load_count_18 = UINT32_C(0x00023456),
+         .raw_vs_output_count_0 = UINT8_C(0x12),
+         .raw_vs_output_count_2 = UINT8_C(0x34),
+         .raw_vs_output_count_1_extra = true,
+         .raw_vs_output_selector = UINT8_C(0x03),
+         .raw_vs_output_flag_6 = true,
+         .pre_hal300_flag_group_nonzero = true,
+         .pre_hal300_flag_bit_4 = true,
+         .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_21,
+         .raw_active_context_selector = UINT32_C(0x12345678),
+      },
+   };
+
+   CHECK(!hk_agx3_shader_binary_version_supported(0));
+   CHECK(hk_agx3_shader_binary_version_supported(
+      HK_AGX3_SHADER_BINARY_VERSION));
+   CHECK(!hk_agx3_shader_binary_version_supported(
+      HK_AGX3_SHADER_BINARY_VERSION + 1));
+
+   CHECK(hk_agx3_vdm_live_source_layout(&expected, true, true) ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT);
+   CHECK(hk_agx3_vdm_live_source_layout(&expected, false, true) ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
+   CHECK(hk_agx3_vdm_live_source_layout(&expected, true, false) ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
+   CHECK(hk_agx3_vdm_live_source_layout(NULL, true, true) ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
+
+   struct blob writer;
+   blob_init(&writer);
+   CHECK(hk_agx3_vdm_program_cache_serialize(&writer, &expected));
+   CHECK(writer.size > 0);
+
+   struct blob_reader reader;
+   blob_reader_init(&reader, writer.data, writer.size);
+   struct agx_vdm_state_update_program_info actual;
+   memset(&actual, 0xa5, sizeof(actual));
+   CHECK(hk_agx3_vdm_program_cache_deserialize(&reader, &actual));
+   CHECK(program_info_equal(&actual, &expected));
+
+   for (size_t size = 0; size < writer.size; ++size) {
+      blob_reader_init(&reader, writer.data, size);
+      memset(&actual, 0xa5, sizeof(actual));
+      CHECK(!hk_agx3_vdm_program_cache_deserialize(&reader, &actual));
+      CHECK(program_info_is_cleared(&actual));
+   }
+
+   CHECK(!hk_agx3_vdm_program_cache_serialize(NULL, &expected));
+   CHECK(!hk_agx3_vdm_program_cache_serialize(&writer, NULL));
+   CHECK(!hk_agx3_vdm_program_cache_deserialize(NULL, &actual));
+   CHECK(!hk_agx3_vdm_program_cache_deserialize(&reader, NULL));
+   blob_finish(&writer);
+   return 0;
 }
 
 static int
@@ -377,6 +476,7 @@ test_rejection(void)
 int
 main(void)
 {
+   CHECK(test_program_cache_lifetime() == 0);
    CHECK(test_honeykrisp_bridge() == 0);
    CHECK(test_rejection() == 0);
 

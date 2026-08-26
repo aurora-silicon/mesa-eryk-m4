@@ -186,6 +186,37 @@ check_template_witnesses(void)
 }
 
 static int
+check_pipeline_va_resolution(void)
+{
+   uint64_t pipeline = UINT64_MAX;
+
+   CHECK(agx_vdm_state_update_resolve_pipeline_va(
+      UINT64_C(0x1000000000), UINT32_C(0x123440), &pipeline));
+   CHECK(pipeline == UINT64_C(0x1000123440));
+
+   CHECK(agx_vdm_state_update_resolve_pipeline_va(
+      UINT64_C(0x1000000000), 0, &pipeline));
+   CHECK(pipeline == UINT64_C(0x1000000000));
+
+   pipeline = UINT64_MAX;
+   CHECK(!agx_vdm_state_update_resolve_pipeline_va(
+      UINT64_C(0x1000000001), UINT32_C(0x123440), &pipeline));
+   CHECK(pipeline == 0);
+   pipeline = UINT64_MAX;
+   CHECK(!agx_vdm_state_update_resolve_pipeline_va(
+      UINT64_C(0x1000000000), UINT32_C(0x123441), &pipeline));
+   CHECK(pipeline == 0);
+   pipeline = UINT64_MAX;
+   CHECK(!agx_vdm_state_update_resolve_pipeline_va(
+      (UINT64_C(1) << 48) - 64, 64, &pipeline));
+   CHECK(pipeline == 0);
+   CHECK(!agx_vdm_state_update_resolve_pipeline_va(
+      UINT64_C(0x1000000000), 0, NULL));
+
+   return 0;
+}
+
+static int
 check_template_variants_and_selectors(void)
 {
    static const uint8_t pre_hal300_variant_bits[] = {
@@ -685,7 +716,8 @@ check_rejections(void)
 int
 main(void)
 {
-   if (check_exact_witnesses() || check_template_witnesses() ||
+   if (check_pipeline_va_resolution() || check_exact_witnesses() ||
+       check_template_witnesses() ||
        check_template_variants_and_selectors() ||
        check_template_ranges_and_rejections() ||
        check_native_draw_template_producer() || check_field_domains() ||

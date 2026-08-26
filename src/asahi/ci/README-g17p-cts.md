@@ -28,8 +28,11 @@ deliberately double-gated and requires both `--through full` and
 `--allow-full-cts`. Every run uses a fresh output directory and records the
 plan, selected case lists, suite TOMLs, device/host properties, CTS output,
 dmesg snapshots, detected kernel faults, timeouts, and SHA-256 artifact
-inventory. Unreadable dmesg fails preflight unless external capture is
-explicitly acknowledged with `--allow-unreadable-dmesg`.
+inventory. Every bounded proof stage requires an exact `Pass` result for each
+selected case; skips, warnings, flakes, missing cases, and extra cases fail the
+gate. A continuous kernel-log capture spans the live run so ring-buffer wrap
+cannot erase an earlier fault. Unreadable dmesg fails preflight unless external
+capture is explicitly acknowledged with `--allow-unreadable-dmesg`.
 
 The hardware ladder supplies `A18_GPU_ARTIFACT_DIR`; the runner uses it as the
 output root and emits `summary.json`, `plan.json`, and `artifact-manifest.json`.

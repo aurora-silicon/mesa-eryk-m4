@@ -5,6 +5,106 @@
 
 #include "hk_agx3_vdm_decode.h"
 
+#include "util/blob.h"
+
+#include <string.h>
+
+bool
+hk_agx3_shader_binary_version_supported(uint32_t version)
+{
+   return version == HK_AGX3_SHADER_BINARY_VERSION;
+}
+
+bool
+hk_agx3_vdm_program_cache_serialize(
+   struct blob *blob, const struct agx_vdm_state_update_program_info *info)
+{
+   if (!blob || !info)
+      return false;
+
+   const struct agx_vdm_state_update_template_info *template =
+      &info->template_info;
+   blob_write_uint32(blob, info->source_layout);
+   blob_write_uint64(blob, template->pipeline);
+   blob_write_uint16(blob, template->raw_state_load_count_12);
+   blob_write_uint32(blob, template->raw_state_load_count_18);
+   blob_write_uint8(blob, template->raw_vs_output_count_0);
+   blob_write_uint8(blob, template->raw_vs_output_count_2);
+   blob_write_uint8(blob, template->raw_vs_output_count_1_extra);
+   blob_write_uint8(blob, template->raw_vs_output_selector);
+   blob_write_uint8(blob, template->raw_vs_output_flag_6);
+   blob_write_uint8(blob, template->pre_hal300_flag_group_nonzero);
+   blob_write_uint8(blob, template->pre_hal300_flag_bit_4);
+   blob_write_uint32(blob, template->variant);
+   blob_write_uint32(blob, template->raw_active_context_selector);
+   return !blob->out_of_memory;
+}
+
+bool
+hk_agx3_vdm_program_cache_deserialize(
+   struct blob_reader *blob, struct agx_vdm_state_update_program_info *info)
+{
+   if (info)
+      memset(info, 0, sizeof(*info));
+   if (!blob || !info)
+      return false;
+
+   const uint32_t source_layout = blob_read_uint32(blob);
+   const uint64_t pipeline = blob_read_uint64(blob);
+   const uint16_t state_load_count_12 = blob_read_uint16(blob);
+   const uint32_t state_load_count_18 = blob_read_uint32(blob);
+   const uint8_t output_count_0 = blob_read_uint8(blob);
+   const uint8_t output_count_2 = blob_read_uint8(blob);
+   const uint8_t output_count_1_extra = blob_read_uint8(blob);
+   const uint8_t output_selector = blob_read_uint8(blob);
+   const uint8_t output_flag_6 = blob_read_uint8(blob);
+   const uint8_t pre_hal300_flag_group_nonzero = blob_read_uint8(blob);
+   const uint8_t pre_hal300_flag_bit_4 = blob_read_uint8(blob);
+   const uint32_t variant = blob_read_uint32(blob);
+   const uint32_t active_context_selector = blob_read_uint32(blob);
+
+   if (blob->overrun ||
+       source_layout >
+          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
+       variant > AGX_VDM_STATE_UPDATE_TEMPLATE_21 ||
+       output_count_1_extra > 1 || output_flag_6 > 1 ||
+       pre_hal300_flag_group_nonzero > 1 || pre_hal300_flag_bit_4 > 1)
+      return false;
+
+   *info = (struct agx_vdm_state_update_program_info){
+      .source_layout =
+         (enum agx_vdm_state_update_source_layout)source_layout,
+      .template_info = {
+         .pipeline = pipeline,
+         .raw_state_load_count_12 = state_load_count_12,
+         .raw_state_load_count_18 = state_load_count_18,
+         .raw_vs_output_count_0 = output_count_0,
+         .raw_vs_output_count_2 = output_count_2,
+         .raw_vs_output_count_1_extra = output_count_1_extra,
+         .raw_vs_output_selector = output_selector,
+         .raw_vs_output_flag_6 = output_flag_6,
+         .pre_hal300_flag_group_nonzero =
+            pre_hal300_flag_group_nonzero,
+         .pre_hal300_flag_bit_4 = pre_hal300_flag_bit_4,
+         .variant = (enum agx_vdm_state_update_template_variant)variant,
+         .raw_active_context_selector = active_context_selector,
+      },
+   };
+   return true;
+}
+
+enum agx_vdm_state_update_source_layout
+hk_agx3_vdm_live_source_layout(
+   const struct agx_vdm_state_update_program_info *program,
+   bool active_context_selector_valid, bool ordinary_draw_path)
+{
+   return program && ordinary_draw_path && active_context_selector_valid &&
+                 program->source_layout ==
+                    AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
+             ? AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT
+             : AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED;
+}
+
 bool
 hk_agx3_decode_vdm_record(enum agx_chip chip, const void *command,
                           size_t available,

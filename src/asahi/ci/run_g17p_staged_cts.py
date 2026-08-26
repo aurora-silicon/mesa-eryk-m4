@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import datetime as dt
 import gzip
 import hashlib
@@ -297,6 +298,102 @@ def run_logged(command: list[str], log_path: Path, timeout: int,
    }
 
 
+class KernelLogMonitor:
+   """Continuously capture new kernel messages without relying on ring retention."""
+
+   def __init__(self, path: Path, command: list[str] | None = None):
+      self.path = path
+      self.command = command or ["dmesg", "--follow-new", "--color=never"]
+      self.process: subprocess.Popen[bytes] | None = None
+      self.log: Any = None
+      self.read_offset = 0
+      self.started = time.monotonic()
+      self.started_utc = dt.datetime.now(dt.timezone.utc).isoformat()
+
+   def start(self) -> dict[str, Any]:
+      self.path.parent.mkdir(parents=True, exist_ok=True)
+      self.log = self.path.open("wb")
+      self.log.write(f"$ {shlex.join(self.command)}\n".encode("utf-8"))
+      self.log.flush()
+      self.read_offset = self.log.tell()
+      try:
+         self.process = subprocess.Popen(
+            self.command, stdout=self.log, stderr=subprocess.STDOUT,
+         )
+      except OSError as exc:
+         self.log.write(f"exec failed: {exc}\n".encode("utf-8", errors="replace"))
+         self.log.close()
+         raise BringupError(f"kernel monitor: cannot start: {exc}") from exc
+      try:
+         exit_code = self.process.wait(timeout=0.1)
+      except subprocess.TimeoutExpired:
+         pass
+      else:
+         self.log.flush()
+         self.log.close()
+         raise BringupError(
+            f"kernel monitor: exited during startup with code {exit_code}; "
+            f"see {self.path}"
+         )
+      return {
+         "command": self.command,
+         "log": str(self.path.resolve()),
+         "started_utc": self.started_utc,
+         "status": "running",
+      }
+
+   def read_new_lines(self, final: bool = False) -> list[str]:
+      try:
+         with self.path.open("rb") as stream:
+            stream.seek(self.read_offset)
+            data = stream.read()
+      except OSError as exc:
+         raise BringupError(f"kernel monitor: cannot read {self.path}: {exc}") from exc
+
+      if not final:
+         last_newline = data.rfind(b"\n")
+         if last_newline < 0:
+            return []
+         data = data[:last_newline + 1]
+      self.read_offset += len(data)
+      return data.decode("utf-8", errors="replace").splitlines()
+
+   def require_alive(self, gate: str) -> None:
+      assert self.process is not None
+      exit_code = self.process.poll()
+      if exit_code is not None:
+         raise BringupError(
+            f"{gate}: continuous kernel monitor exited early with code {exit_code}"
+         )
+
+   def stop(self) -> tuple[dict[str, Any], list[str]]:
+      assert self.process is not None
+      premature = self.process.poll() is not None
+      if not premature:
+         try:
+            self.process.terminate()
+         except ProcessLookupError:
+            pass
+         try:
+            self.process.wait(timeout=5)
+         except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+      if self.log is not None and not self.log.closed:
+         self.log.flush()
+         self.log.close()
+      tail = self.read_new_lines(final=True)
+      return ({
+         "command": self.command,
+         "log": str(self.path.resolve()),
+         "started_utc": self.started_utc,
+         "duration_seconds": round(time.monotonic() - self.started, 3),
+         "exit_code": self.process.returncode,
+         "premature_exit": premature,
+         "status": "failed" if premature else "stopped",
+      }, tail)
+
+
 def dmesg_snapshot(path: Path) -> dict[str, Any]:
    return run_logged(["dmesg", "--color=never"], path, 30)
 
@@ -361,6 +458,86 @@ def capture_host(output: Path, render_node: Path) -> dict[str, Any]:
 def write_json(path: Path, value: Any) -> None:
    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n",
                    encoding="utf-8")
+
+
+def validate_proof_stage_results(stage_dir: Path,
+                                 expected_count: int) -> dict[str, Any]:
+   """Require one exact Pass result for every selected bring-up proof case."""
+   caselist = stage_dir / "caselist.txt"
+   results = stage_dir / "results/results.csv"
+   report_path = stage_dir / "result-validation.json"
+   problems: list[str] = []
+
+   try:
+      expected = [line.strip() for line in caselist.read_text(
+         encoding="utf-8", errors="strict").splitlines() if line.strip()]
+   except (OSError, UnicodeError) as exc:
+      raise BringupError(
+         f"{stage_dir.name} result gate: cannot read selected cases: {exc}"
+      ) from exc
+   expected_set = set(expected)
+   if len(expected) != expected_count:
+      problems.append(
+         f"caselist has {len(expected)} cases, plan expected {expected_count}"
+      )
+   if len(expected_set) != len(expected):
+      problems.append("caselist contains duplicate cases")
+
+   observed: dict[str, str] = {}
+   duplicate_results: list[str] = []
+   malformed_rows: list[int] = []
+   try:
+      with results.open("r", encoding="utf-8", errors="strict", newline="") as stream:
+         for row_number, row in enumerate(csv.reader(stream), start=1):
+            if len(row) != 3:
+               malformed_rows.append(row_number)
+               continue
+            case, status, duration = row
+            try:
+               float(duration)
+            except ValueError:
+               malformed_rows.append(row_number)
+               continue
+            if case in observed:
+               duplicate_results.append(case)
+            else:
+               observed[case] = status
+   except (OSError, UnicodeError, csv.Error) as exc:
+      problems.append(f"cannot read results.csv: {exc}")
+
+   observed_set = set(observed)
+   missing = sorted(expected_set - observed_set)
+   unexpected = sorted(observed_set - expected_set)
+   non_pass = sorted(
+      {case: observed[case] for case in expected_set & observed_set
+       if observed[case] != "Pass"}.items()
+   )
+   if malformed_rows:
+      problems.append(f"malformed result rows: {malformed_rows}")
+   if duplicate_results:
+      problems.append(f"duplicate result cases: {sorted(set(duplicate_results))}")
+   if missing:
+      problems.append(f"missing results: {missing}")
+   if unexpected:
+      problems.append(f"unexpected results: {unexpected}")
+   if non_pass:
+      problems.append(f"non-Pass results: {non_pass}")
+
+   report = {
+      "schema": 1,
+      "status": "failed" if problems else "passed",
+      "expected_count": expected_count,
+      "observed_count": len(observed),
+      "pass_count": sum(status == "Pass" for status in observed.values()),
+      "problems": problems,
+   }
+   write_json(report_path, report)
+   if problems:
+      raise BringupError(
+         f"{stage_dir.name} result gate did not prove every selected case passed; "
+         f"see {report_path}"
+      )
+   return report
 
 
 def artifact_inventory(output: Path) -> list[dict[str, Any]]:
@@ -447,6 +624,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
    raw_argv = sys.argv[1:] if argv is None else argv
    args = parse_args(raw_argv)
+   kernel_monitor: KernelLogMonitor | None = None
    try:
       check_capability_environment()
       config = read_json(args.config)
@@ -550,6 +728,10 @@ def main(argv: list[str] | None = None) -> int:
       baseline = (dmesg_payload(kernel_dir / "00-before-device.log")
                   if baseline_result["exit_code"] == 0 else [])
       require_dmesg = baseline_result["exit_code"] == 0
+      if require_dmesg:
+         monitor = KernelLogMonitor(kernel_dir / "continuous.log")
+         state["kernel_monitor"] = monitor.start()
+         kernel_monitor = monitor
 
       device_dir = output / "device"
       summary_result = run_logged([args.vulkaninfo, "--summary"],
@@ -562,8 +744,13 @@ def main(argv: list[str] | None = None) -> int:
       device_faults: list[str] = []
       if after_device_result["exit_code"] == 0:
          after_device = dmesg_payload(kernel_dir / "01-after-device.log")
-         device_faults = matching_faults(new_dmesg_lines(baseline, after_device),
-                                         config["kernel_fault_regex"])
+         new_lines = new_dmesg_lines(baseline, after_device)
+         if kernel_monitor is not None:
+            new_lines.extend(kernel_monitor.read_new_lines())
+            kernel_monitor.require_alive("device gate")
+         device_faults = matching_faults(
+            dict.fromkeys(new_lines), config["kernel_fault_regex"]
+         )
          if device_faults:
             (kernel_dir / "01-device-faults.log").write_text(
                "\n".join(device_faults) + "\n", encoding="utf-8")
@@ -589,9 +776,12 @@ def main(argv: list[str] | None = None) -> int:
       property_faults: list[str] = []
       if after_properties_result["exit_code"] == 0:
          after_properties = dmesg_payload(kernel_dir / "02-after-properties.log")
+         new_lines = new_dmesg_lines(baseline, after_properties)
+         if kernel_monitor is not None:
+            new_lines.extend(kernel_monitor.read_new_lines())
+            kernel_monitor.require_alive("device properties gate")
          property_faults = matching_faults(
-            new_dmesg_lines(baseline, after_properties),
-            config["kernel_fault_regex"],
+            dict.fromkeys(new_lines), config["kernel_fault_regex"],
          )
          if property_faults:
             (kernel_dir / "02-properties-faults.log").write_text(
@@ -628,8 +818,13 @@ def main(argv: list[str] | None = None) -> int:
          if kernel_result["exit_code"] == 0:
             after = dmesg_payload(
                kernel_dir / f"{stage['number'] + 2:02d}-after-{stage['name']}.log")
-            faults = matching_faults(new_dmesg_lines(baseline, after),
-                                     config["kernel_fault_regex"])
+            new_lines = new_dmesg_lines(baseline, after)
+            if kernel_monitor is not None:
+               new_lines.extend(kernel_monitor.read_new_lines())
+               kernel_monitor.require_alive(f"{stage['name']} gate")
+            faults = matching_faults(
+               dict.fromkeys(new_lines), config["kernel_fault_regex"]
+            )
             baseline = after
          if faults:
             (stage_dir / "kernel-faults.log").write_text(
@@ -642,9 +837,28 @@ def main(argv: list[str] | None = None) -> int:
                                f"{result['exit_code']}")
          if faults:
             raise BringupError(f"{stage['name']} gate produced kernel faults")
+         if stage["name"] != "full":
+            proof = validate_proof_stage_results(stage_dir, stage["case_count"])
+            state.setdefault("proof_results", {})[stage["name"]] = proof
          state["completed_stages"].append(stage["name"])
          if stage["number"] + 1 < len(plan["stages"]):
             update_manifest(output, state)
+
+      if kernel_monitor is not None:
+         monitor_result, monitor_tail = kernel_monitor.stop()
+         kernel_monitor = None
+         state["kernel_monitor"] = monitor_result
+         tail_faults = matching_faults(
+            monitor_tail, config["kernel_fault_regex"]
+         )
+         if tail_faults:
+            (kernel_dir / "continuous-tail-faults.log").write_text(
+               "\n".join(tail_faults) + "\n", encoding="utf-8"
+            )
+         if monitor_result["premature_exit"]:
+            raise BringupError("kernel gate: continuous kernel monitor exited early")
+         if tail_faults:
+            raise BringupError("kernel gate: trailing kernel fault signatures detected")
 
       state["status"] = "passed"
       state["finished_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -663,6 +877,22 @@ def main(argv: list[str] | None = None) -> int:
       return 0
    except (BringupError, OSError) as exc:
       print(f"g17p staged CTS: {exc}", file=sys.stderr)
+      if kernel_monitor is not None:
+         try:
+            monitor_result, monitor_tail = kernel_monitor.stop()
+            kernel_monitor = None
+            if "state" in locals():
+               state["kernel_monitor"] = monitor_result
+            tail_faults = matching_faults(
+               monitor_tail, config.get("kernel_fault_regex", r"(?!)")
+            )
+            if tail_faults and "kernel_dir" in locals():
+               (kernel_dir / "continuous-tail-faults.log").write_text(
+                  "\n".join(tail_faults) + "\n", encoding="utf-8"
+               )
+         except (BringupError, OSError, subprocess.SubprocessError) as monitor_exc:
+            print(f"g17p staged CTS: kernel monitor cleanup: {monitor_exc}",
+                  file=sys.stderr)
       if "output" in locals() and output.exists():
          state = locals().get("state", {
             "schema": 1, "target": "Apple A18 Pro / G17P",
