@@ -33,6 +33,12 @@ bool hk_agx3_encode_vdm_state_update_template(
    enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
    struct agx_vdm_state_update *out);
 
+/* Exact AGX3 VertexProgramVariant selector bridge.  This remains an admission
+ * boundary until hk_shader carries every raw AGX3 template axis. */
+bool hk_agx3_encode_vdm_state_update_draw(
+   enum agx_chip chip, const struct agx_vdm_state_update_draw_info *info,
+   struct agx_vdm_state_update *out);
+
 #ifdef __cplusplus
 }
 #endif

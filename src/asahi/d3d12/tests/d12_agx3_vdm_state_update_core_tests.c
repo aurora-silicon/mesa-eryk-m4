@@ -360,12 +360,122 @@ check_rejections(void)
    return 0;
 }
 
+static int
+check_native_draw_template_bridge(void)
+{
+   for (unsigned target = 0;
+        target < sizeof(supported_chips) / sizeof(supported_chips[0]);
+        ++target) {
+      const enum agx_chip chip = supported_chips[target];
+      const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+                          chip == AGX_CHIP_G17C;
+
+      for (unsigned selector = 0; selector < 4; ++selector) {
+         struct d12_agx3_vdm_state_update first_path;
+         for (unsigned draw = 0; draw < 4; ++draw) {
+            struct d12_agx3_vdm_state_update_draw_info info = {
+               .source_layout =
+                  D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+               .draw_path =
+                  (enum d12_agx3_vdm_state_update_draw_path)draw,
+               .raw_render_selector_bit_0 = (selector & 1) != 0,
+               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .template_info = template_witness_info,
+            };
+            struct d12_agx3_vdm_state_update actual;
+            struct d12_agx3_vdm_state_update expected;
+
+            if (hal300) {
+               info.template_info.pre_hal300_flag_group_nonzero = false;
+               info.template_info.pre_hal300_flag_bit_4 = false;
+            }
+            info.template_info.variant =
+               (enum d12_agx3_vdm_state_update_template_variant)4;
+
+            struct d12_agx3_vdm_state_update_template_info selected =
+               info.template_info;
+            selected.variant =
+               (enum d12_agx3_vdm_state_update_template_variant)selector;
+            CHECK(d12_agx3_encode_vdm_state_update_template(chip, &selected,
+                                                             &expected));
+            CHECK(d12_agx3_encode_vdm_state_update_draw(chip, &info,
+                                                         &actual));
+            CHECK(actual.length == expected.length);
+            CHECK(memcmp(actual.bytes, expected.bytes, sizeof(actual.bytes)) ==
+                  0);
+
+            if (draw == 0)
+               first_path = actual;
+            else
+               CHECK(memcmp(actual.bytes, first_path.bytes,
+                            sizeof(actual.bytes)) == 0);
+         }
+      }
+   }
+
+   {
+      struct d12_agx3_vdm_state_update_draw_info info = {
+         .source_layout =
+            D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+         .draw_path = D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED,
+         .template_info = template_witness_info,
+      };
+      struct d12_agx3_vdm_state_update encoded;
+      static const enum d12_agx3_vdm_state_update_source_layout
+         rejected_layouts[] = {
+            D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED,
+            D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX2_LEGACY,
+            (enum d12_agx3_vdm_state_update_source_layout)-1,
+            (enum d12_agx3_vdm_state_update_source_layout)3,
+         };
+
+      for (unsigned i = 0;
+           i < sizeof(rejected_layouts) / sizeof(rejected_layouts[0]); ++i) {
+         info.source_layout = rejected_layouts[i];
+         memset(&encoded, 0xa5, sizeof(encoded));
+         CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &info,
+                                                       &encoded));
+         if (check_zero_encoding(&encoded))
+            return 1;
+      }
+
+      info.source_layout =
+         D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
+      for (int draw = -4; draw <= 7; ++draw) {
+         if (draw >= D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED &&
+             draw <= D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED)
+            continue;
+         info.draw_path =
+            (enum d12_agx3_vdm_state_update_draw_path)draw;
+         memset(&encoded, 0xa5, sizeof(encoded));
+         CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &info,
+                                                       &encoded));
+         if (check_zero_encoding(&encoded))
+            return 1;
+      }
+
+      info.draw_path = D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED;
+      CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G16P, &info,
+                                                    &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, NULL,
+                                                    &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!d12_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &info,
+                                                    NULL));
+   }
+
+   return 0;
+}
+
 int
 main(void)
 {
    if (check_targets_and_shared_equality() ||
        check_domains_and_corruptions() || check_template_bridge() ||
-       check_rejections())
+       check_native_draw_template_bridge() || check_rejections())
       return 1;
 
    printf("d12_agx3_vdm_state_update_core: %u checks passed\n", checks);

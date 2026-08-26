@@ -188,3 +188,35 @@ agx_vdm_state_update_template_pack(
           agx_vdm_state_update_template_materialize(chip, info, &raw) &&
           agx_vdm_state_update_pack(chip, &raw, out);
 }
+
+bool
+agx_vdm_state_update_draw_pack(
+   enum agx_chip chip, const struct agx_vdm_state_update_draw_info *info,
+   struct agx_vdm_state_update *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!out || !info ||
+       info->source_layout !=
+          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT)
+      return false;
+
+   switch (info->draw_path) {
+   case AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED:
+   case AGX_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED:
+   case AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED:
+   case AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED:
+      break;
+   default:
+      return false;
+   }
+
+   struct agx_vdm_state_update_template_info selected = info->template_info;
+   selected.variant =
+      (enum agx_vdm_state_update_template_variant)(
+         (info->raw_render_selector_bit_0 ? 1u : 0u) |
+         (info->raw_render_selector_bit_1 ? 2u : 0u));
+
+   return agx_vdm_state_update_template_pack(chip, &selected, out);
+}

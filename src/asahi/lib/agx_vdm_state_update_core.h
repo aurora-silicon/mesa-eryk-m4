@@ -44,6 +44,30 @@ enum agx_vdm_state_update_template_variant {
 };
 
 /*
+ * Source-layout and draw-path admission for the native renderer template
+ * producer.  The inspected Apple direct, indexed, indirect, and indexed-
+ * indirect entry points all invoke the same state producer before emitting
+ * their Index List record.  Tessellation and mesh paths are intentionally not
+ * represented here.
+ *
+ * AGX2 Counts/UVS state is not byte-compatible with this producer.  Callers
+ * must therefore name the exact AGX3 VertexProgramVariant layout explicitly;
+ * zero/legacy/unknown values fail closed.
+ */
+enum agx_vdm_state_update_source_layout {
+   AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED = 0,
+   AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX2_LEGACY = 1,
+   AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT = 2,
+};
+
+enum agx_vdm_state_update_draw_path {
+   AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED = 0,
+   AGX_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED = 1,
+   AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED = 2,
+   AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED = 3,
+};
+
+/*
  * Structural inputs used by Apple's VertexProgramVariant template builder.
  *
  * The two state-load counts and the VsStateConfig fields are deliberately
@@ -78,6 +102,24 @@ struct agx_vdm_state_update_template_info {
     * value emits `(raw_active_context_selector - 1) & 7`.  No narrower
     * producer domain is assumed here. */
    uint32_t raw_active_context_selector;
+};
+
+/*
+ * Exact renderer-side selector inputs.  The two booleans are retained as raw
+ * positional inputs because their higher-level API meaning is not yet
+ * grounded.  The pinned renderer computes
+ *
+ *   variant = raw_render_selector_bit_0 |
+ *             (raw_render_selector_bit_1 << 1)
+ *
+ * before indexing the first four 28-byte VertexProgramVariant templates.
+ */
+struct agx_vdm_state_update_draw_info {
+   enum agx_vdm_state_update_source_layout source_layout;
+   enum agx_vdm_state_update_draw_path draw_path;
+   bool raw_render_selector_bit_0;
+   bool raw_render_selector_bit_1;
+   struct agx_vdm_state_update_template_info template_info;
 };
 
 /*
@@ -126,6 +168,17 @@ bool agx_vdm_state_update_template_materialize(
 
 bool agx_vdm_state_update_template_pack(
    enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
+   struct agx_vdm_state_update *out);
+
+/*
+ * Select and pack the State Update prefix used by the four native draw paths.
+ * This emits only the 28-byte State Update record: dirty restart/index state
+ * may legally intervene before the Index List record, so this helper does not
+ * claim byte adjacency or append a draw.  The output is cleared on every
+ * failure.
+ */
+bool agx_vdm_state_update_draw_pack(
+   enum agx_chip chip, const struct agx_vdm_state_update_draw_info *info,
    struct agx_vdm_state_update *out);
 
 #ifdef __cplusplus

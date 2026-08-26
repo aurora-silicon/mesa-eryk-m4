@@ -123,6 +123,33 @@ test_honeykrisp_bridge(void)
             (hal300 ? UINT32_C(0x0000006d) : UINT32_C(0x0000007d)));
       CHECK(record.data.state_update.raw_vertex_unknown == ((t & 1) ? 0 : 7));
 
+      for (unsigned selector = 0; selector < 4; ++selector) {
+         for (unsigned draw = 0; draw < 4; ++draw) {
+            struct agx_vdm_state_update_draw_info draw_info = {
+               .source_layout =
+                  AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+               .draw_path = (enum agx_vdm_state_update_draw_path)draw,
+               .raw_render_selector_bit_0 = (selector & 1) != 0,
+               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .template_info = template_info,
+            };
+            struct agx_vdm_state_update hk_draw;
+            struct agx_vdm_state_update shared_draw;
+
+            /* Prove the wrapper uses the renderer selector instead of a
+             * caller-supplied legacy/template enum. */
+            draw_info.template_info.variant =
+               (enum agx_vdm_state_update_template_variant)4;
+            CHECK(hk_agx3_encode_vdm_state_update_draw(chip, &draw_info,
+                                                        &hk_draw));
+            CHECK(agx_vdm_state_update_draw_pack(chip, &draw_info,
+                                                  &shared_draw));
+            CHECK(hk_draw.length == shared_draw.length);
+            CHECK(memcmp(hk_draw.bytes, shared_draw.bytes,
+                         AGX_VDM_STATE_UPDATE_LENGTH) == 0);
+         }
+      }
+
       const struct agx_vdm_index_list_direct_nonindexed_info nonindexed_info = {
          .primitive = 11,
          .count = UINT32_C(0x56789abc) + t,
@@ -218,6 +245,27 @@ test_rejection(void)
    struct agx_vdm_ppp_state_core ppp;
    CHECK(agx_vdm_ppp_state_core_pack(AGX_CHIP_G17S, UINT64_C(0x123456780), 8,
                                      &ppp));
+
+   {
+      struct agx_vdm_state_update_draw_info draw_info = {
+         .source_layout = AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX2_LEGACY,
+         .draw_path = AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED,
+         .template_info = {
+            .pipeline = UINT64_C(0x123456780),
+         },
+      };
+      struct agx_vdm_state_update encoded;
+      memset(&encoded, 0xa5, sizeof(encoded));
+      CHECK(!hk_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &draw_info,
+                                                   &encoded));
+      for (unsigned i = 0; i < sizeof(encoded.bytes); ++i)
+         CHECK(encoded.bytes[i] == 0);
+      CHECK(encoded.length == 0);
+      CHECK(!hk_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, NULL,
+                                                   &encoded));
+      CHECK(!hk_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17S, &draw_info,
+                                                   NULL));
+   }
 
    for (size_t available = 0; available < ppp.length; ++available) {
       struct agx_vdm_decoded_record record;

@@ -378,6 +378,125 @@ check_template_ranges_and_rejections(void)
 }
 
 static int
+check_native_draw_template_producer(void)
+{
+   for (unsigned target = 0;
+        target < sizeof(supported_chips) / sizeof(supported_chips[0]);
+        ++target) {
+      const enum agx_chip chip = supported_chips[target];
+      const bool hal300 = chip == AGX_CHIP_G17G || chip == AGX_CHIP_G17S ||
+                          chip == AGX_CHIP_G17C;
+      struct agx_vdm_state_update first_path[4];
+
+      for (unsigned selector = 0; selector < 4; ++selector) {
+         for (unsigned draw = 0; draw < 4; ++draw) {
+            struct agx_vdm_state_update_draw_info info = {
+               .source_layout =
+                  AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+               .draw_path = (enum agx_vdm_state_update_draw_path)draw,
+               .raw_render_selector_bit_0 = (selector & 1) != 0,
+               .raw_render_selector_bit_1 = (selector & 2) != 0,
+               .template_info = template_witness_info,
+            };
+            struct agx_vdm_state_update expected;
+            struct agx_vdm_state_update actual;
+
+            if (hal300) {
+               info.template_info.pre_hal300_flag_group_nonzero = false;
+               info.template_info.pre_hal300_flag_bit_4 = false;
+            }
+
+            /* The renderer selector, not a stale caller value, chooses the
+             * template. */
+            info.template_info.variant =
+               (enum agx_vdm_state_update_template_variant)4;
+            struct agx_vdm_state_update_template_info selected =
+               info.template_info;
+            selected.variant =
+               (enum agx_vdm_state_update_template_variant)selector;
+
+            CHECK(agx_vdm_state_update_template_pack(chip, &selected,
+                                                       &expected));
+            CHECK(agx_vdm_state_update_draw_pack(chip, &info, &actual));
+            CHECK(actual.length == AGX_VDM_STATE_UPDATE_LENGTH);
+            CHECK(memcmp(actual.bytes, expected.bytes,
+                         AGX_VDM_STATE_UPDATE_LENGTH) == 0);
+
+            if (draw == 0)
+               first_path[selector] = actual;
+            else
+               CHECK(memcmp(actual.bytes, first_path[selector].bytes,
+                            AGX_VDM_STATE_UPDATE_LENGTH) == 0);
+         }
+      }
+   }
+
+   {
+      struct agx_vdm_state_update_draw_info info = {
+         .source_layout =
+            AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+         .draw_path = AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED,
+         .template_info = template_witness_info,
+      };
+      struct agx_vdm_state_update encoded;
+
+      static const enum agx_vdm_state_update_source_layout rejected_layouts[] = {
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED,
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX2_LEGACY,
+         (enum agx_vdm_state_update_source_layout)-1,
+         (enum agx_vdm_state_update_source_layout)3,
+      };
+      for (unsigned i = 0;
+           i < sizeof(rejected_layouts) / sizeof(rejected_layouts[0]); ++i) {
+         info.source_layout = rejected_layouts[i];
+         memset(&encoded, 0xa5, sizeof(encoded));
+         CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, &info,
+                                                &encoded));
+         if (check_zero_encoding(&encoded))
+            return 1;
+      }
+
+      info.source_layout =
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
+      for (int draw = -4; draw <= 7; ++draw) {
+         if (draw >= AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED &&
+             draw <= AGX_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED)
+            continue;
+         info.draw_path = (enum agx_vdm_state_update_draw_path)draw;
+         memset(&encoded, 0xa5, sizeof(encoded));
+         CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, &info,
+                                                &encoded));
+         if (check_zero_encoding(&encoded))
+            return 1;
+      }
+
+      info.draw_path = AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED;
+      info.template_info.pipeline = 1;
+      CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, &info,
+                                             &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      info.template_info = template_witness_info;
+
+      for (unsigned i = 0;
+           i < sizeof(unsupported_chips) / sizeof(unsupported_chips[0]); ++i) {
+         memset(&encoded, 0xa5, sizeof(encoded));
+         CHECK(!agx_vdm_state_update_draw_pack(unsupported_chips[i], &info,
+                                                &encoded));
+         if (check_zero_encoding(&encoded))
+            return 1;
+      }
+
+      CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, NULL, &encoded));
+      if (check_zero_encoding(&encoded))
+         return 1;
+      CHECK(!agx_vdm_state_update_draw_pack(AGX_CHIP_G15G, &info, NULL));
+   }
+
+   return 0;
+}
+
+static int
 check_field_domains(void)
 {
    for (unsigned bit = 6; bit < 48; ++bit) {
@@ -558,7 +677,8 @@ main(void)
 {
    if (check_exact_witnesses() || check_template_witnesses() ||
        check_template_variants_and_selectors() ||
-       check_template_ranges_and_rejections() || check_field_domains() ||
+       check_template_ranges_and_rejections() ||
+       check_native_draw_template_producer() || check_field_domains() ||
        check_every_bit_classification() || check_rejections())
       return 1;
 

@@ -20,3 +20,11 @@ hk_agx3_encode_vdm_state_update_template(
 {
    return agx_vdm_state_update_template_pack(chip, info, out);
 }
+
+bool
+hk_agx3_encode_vdm_state_update_draw(
+   enum agx_chip chip, const struct agx_vdm_state_update_draw_info *info,
+   struct agx_vdm_state_update *out)
+{
+   return agx_vdm_state_update_draw_pack(chip, info, out);
+}

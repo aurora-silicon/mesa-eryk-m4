@@ -38,6 +38,19 @@ enum d12_agx3_vdm_state_update_template_variant {
    D12_AGX3_VDM_STATE_UPDATE_TEMPLATE_11 = 3,
 };
 
+enum d12_agx3_vdm_state_update_source_layout {
+   D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED = 0,
+   D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX2_LEGACY = 1,
+   D12_AGX3_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT = 2,
+};
+
+enum d12_agx3_vdm_state_update_draw_path {
+   D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED = 0,
+   D12_AGX3_VDM_STATE_UPDATE_DRAW_DIRECT_INDEXED = 1,
+   D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_NONINDEXED = 2,
+   D12_AGX3_VDM_STATE_UPDATE_DRAW_INDIRECT_INDEXED = 3,
+};
+
 /* Structural compiler/configuration inputs only.  This mirrors the bounded
  * shared template materializer without claiming that the existing AGX2 D3D
  * counts, UVS, or vertex-unknown state has the same encoding. */
@@ -58,6 +71,14 @@ struct d12_agx3_vdm_state_update_template_info {
    uint32_t raw_active_context_selector;
 };
 
+struct d12_agx3_vdm_state_update_draw_info {
+   enum d12_agx3_vdm_state_update_source_layout source_layout;
+   enum d12_agx3_vdm_state_update_draw_path draw_path;
+   bool raw_render_selector_bit_0;
+   bool raw_render_selector_bit_1;
+   struct d12_agx3_vdm_state_update_template_info template_info;
+};
+
 /*
  * Research/validation bridge only.  Raw payload words remain unnamed beyond
  * their proven record positions.  These functions are not wired to D3D draw
@@ -71,6 +92,12 @@ bool d12_agx3_encode_vdm_state_update(
 bool d12_agx3_encode_vdm_state_update_template(
    enum agx_chip chip,
    const struct d12_agx3_vdm_state_update_template_info *info,
+   struct d12_agx3_vdm_state_update *out);
+
+/* Admission-only producer for the exact native AGX3 draw-state prefix.  The
+ * live D3D draw path remains closed while its PSO stores AGX2 Counts/UVS. */
+bool d12_agx3_encode_vdm_state_update_draw(
+   enum agx_chip chip, const struct d12_agx3_vdm_state_update_draw_info *info,
    struct d12_agx3_vdm_state_update *out);
 
 bool d12_agx3_decode_vdm_state_update(
