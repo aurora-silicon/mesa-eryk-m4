@@ -30,6 +30,7 @@
 #include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_funop_core.h"
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
@@ -372,6 +373,59 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    return 1;
 }
 
+/*
+ * The transcendental / rounding / gradient funops with a corpus-grounded
+ * AGX3 form. roundeven keeps its existing select-core route; sin_pt_1 and
+ * sin_pt_2 are deliberately absent: AGX3 has no counterpart of the sin_pt_1
+ * quadrant fixup at all (Apple computes it with an fma/isel polynomial), and
+ * although f32sinc's *encoding* is grounded (agx3_funop_core emits it and
+ * replays Apple's bytes), whether its input contract equals AGX2 sin_pt_2's
+ * is not decidable offline -- Apple folds a phase constant into the preceding
+ * polynomial. Routing sin_pt_2 onto f32sinc would be a semantic guess, so
+ * fsin_agx stays fail-closed until an executed-numerics witness exists.
+ */
+static int
+agx3_map_funop(unsigned op)
+{
+   switch (op) {
+   case AGX_OPCODE_FLOOR:
+      return AGX3_FUNOP_FLOOR;
+   case AGX_OPCODE_CEIL:
+      return AGX3_FUNOP_CEIL;
+   case AGX_OPCODE_TRUNC:
+      return AGX3_FUNOP_TRUNC;
+   case AGX_OPCODE_LOG2:
+      return AGX3_FUNOP_LOG2;
+   case AGX_OPCODE_EXP2:
+      return AGX3_FUNOP_EXP2;
+   case AGX_OPCODE_DFDX:
+      return AGX3_FUNOP_DFDX;
+   case AGX_OPCODE_DFDY:
+      return AGX3_FUNOP_DFDY;
+   default:
+      return -1;
+   }
+}
+
+static bool
+agx3_emit_funop(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                const agx_instr *I, enum agx3_funop op, uint16_t wait_mask)
+{
+   if (I->nr_dests != 1 || I->nr_srcs != 1 ||
+       I->dest[0].type == AGX_INDEX_NULL ||
+       !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+       I->dest[0].size != AGX_SIZE_32 || !agx3_src_is_register(I->src[0]) ||
+       I->src[0].memory || I->src[0].size != AGX_SIZE_32)
+      return false;
+
+   uint8_t bytes[AGX3_FUNOP_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_funop_encode(enc, op, I->dest[0].value, I->src[0].value,
+                            I->src[0].abs, I->src[0].neg, I->saturate,
+                            wait_mask, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
+
 /* An async producer whose result later consumers must wait on. */
 static bool
 agx3_is_async(const agx_instr *I)
@@ -382,7 +436,8 @@ agx3_is_async(const agx_instr *I)
 
    return I->op == AGX_OPCODE_DEVICE_LOAD || I->op == AGX_OPCODE_LOCAL_LOAD ||
           I->op == AGX_OPCODE_LDCF || I->op == AGX_OPCODE_GET_SR ||
-          I->op == AGX_OPCODE_TEXTURE_LOAD || I->op == AGX_OPCODE_LD_TILE ||
+          I->op == AGX_OPCODE_TEXTURE_LOAD ||
+          I->op == AGX_OPCODE_TEXTURE_SAMPLE || I->op == AGX_OPCODE_LD_TILE ||
           I->op == AGX_OPCODE_SCS_LOAD_AGX3 ||
           I->op == AGX_OPCODE_SCS_LOAD_UNIFORM_INDEXED_AGX3 ||
           I->op == AGX_OPCODE_STACK_LOAD ||
@@ -592,6 +647,78 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
           agx3_append(emission, bytes, len);
 }
 
+/*
+ * Translate the corpus-grounded filtered 2D sample: implicit LOD (the shape
+ * every fragment `texture()` reaches the backend with -- Mesa also folds
+ * `textureLod(.., 0)` into it), immediate texture and sampler state, no
+ * array/offset/shadow/gather axis.
+ *
+ * Every witnessed smp reads its coordinates through a scoreboard-signalling
+ * producer and waits on that slot: Apple stages ALU-computed coordinates with
+ * in-place `copy` instructions carrying the smp's slot (x_coordreg,
+ * fs_bufcoord), so this path emits that exact three-instruction group --
+ * copy(x), copy(y), smp -- with any producer dependency of the coordinates
+ * carried on the first copy, precisely where Apple's own schedule puts it.
+ */
+static bool
+agx3_emit_texture_sample(struct util_dynarray *emission,
+                         enum agx_isa_encoding enc, const agx_instr *I,
+                         uint8_t slot, uint16_t wait_mask, bool final)
+{
+   if (I->nr_dests != 1 || I->nr_srcs != 6 ||
+       !agx3_tex_plain_reg(I->dest[0]) ||
+       (I->dest[0].size != AGX_SIZE_16 &&
+        I->dest[0].size != AGX_SIZE_32) ||
+       agx_channels(I->dest[0]) != 4 || I->dest[0].value >= 128 ||
+       (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
+       !agx3_tex_plain_reg(I->src[0]) ||
+       I->src[0].size != AGX_SIZE_32 || agx_channels(I->src[0]) != 2 ||
+       (I->src[0].value & 3) || I->src[0].value > 60 ||
+       !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
+       I->src[3].type != AGX_INDEX_IMMEDIATE || I->src[3].value > 15 ||
+       I->src[3].memory || I->src[3].abs || I->src[3].neg ||
+       I->src[4].type != AGX_INDEX_IMMEDIATE || I->src[4].value > 15 ||
+       I->src[4].memory || I->src[4].abs || I->src[4].neg ||
+       !agx_is_null(I->src[5]) || I->dim != AGX_DIM_2D ||
+       I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
+       (I->mask != 1 && I->mask != 3 && I->mask != 8 && I->mask != 12 &&
+        I->mask != 15) ||
+       I->offset || I->shadow || I->query_lod ||
+       I->gather != AGX_GATHER_NONE || I->sparse)
+      return false;
+
+   /* The witnessed copy form carries at most one producer dependency. */
+   if (wait_mask & (wait_mask - 1))
+      return false;
+
+   const uint16_t coord = I->src[0].value;
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH];
+   uint8_t len = 0;
+
+   if (!agx3_tex_stage_copy(enc, coord, coord, slot, wait_mask, bytes, &len) ||
+       !agx3_append(emission, bytes, len))
+      return false;
+   if (!agx3_tex_stage_copy(enc, coord + 2, coord + 2, slot, 0, bytes, &len) ||
+       !agx3_append(emission, bytes, len))
+      return false;
+
+   const struct agx3_tex_sample_desc d = {
+      .dest = I->dest[0].value,
+      .coord = coord,
+      .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
+      .mask = I->mask,
+      .texture = I->src[3].value,
+      .sampler = I->src[4].value,
+      .lod = AGX3_TEX_LOD_AUTO,
+      .slot = slot,
+      .wait_mask = (uint16_t)(1u << (slot - 1)),
+      .coord_kill = I->src[0].kill,
+      .final = final,
+   };
+   return agx3_tex_encode_sample(enc, &d, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
+
 static int
 agx3_tile_format_width(enum agx_format format)
 {
@@ -696,20 +823,25 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
  * Fragment ops that stay refused, and why. Each is a missing *witness*, not
  * missing routing, so grounding one is a corpus session rather than a patch:
  *
- * - sample_mask (the AGX3 mnemonic is cmsk). The only cmsk witnesses are
- *   alpha-to-coverage shaders, and Apple's own discard_fragment does not emit
- *   cmsk at all: it reads the live coverage mask with movmsk and does the
- *   arithmetic in ALU. Mesa's (mask, value) operand split has no witnessed
- *   encoding, so discard cannot be encoded yet.
+ * - sample_mask (Mesa's mask+value write, from discard or an explicit
+ *   gl_SampleMask). Apple's discard and [[sample_mask]] shaders both use the
+ *   same writeout group as depthf -- a staging `copy` whose destination field
+ *   is 0 in every witness, then `movmsk` under the class-1 pixwait/pixrel
+ *   bracket -- and never `cmsk` (cmsk appears only in alpha-to-coverage
+ *   shaders). movmsk's operand roles (f13/f17) are not isolated and the
+ *   staged-register ABI below applies equally, so both spellings stay closed.
  *
- * - zs_emit (depthf). depthf's enable and mode bits are grade A, but the
- *   instruction carries no value register: the depth float and stencil byte
- *   are staged into fixed physical registers by preceding copies, and the
- *   corpus does not identify which registers those are. Emitting depthf
- *   without that ABI would write whatever happened to be in those registers.
- *
- * - texture_sample (smp). agx3_tex_core encodes ldtg (texel fetch) only;
- *   there is no sampler-form encoder yet.
+ * - zs_emit (depthf). depthf's enable bits are grade A (f25 depth, f26
+ *   stencil), but the instruction carries no value register: the values are
+ *   staged by a preceding `copy` whose destination field is 0 (r0) in all
+ *   nine witnesses (five corpus + four fresh RA-contrast probes, 2026-08-27),
+ *   with the stencil byte reaching r0h via a 32-bit copy in the stencil
+ *   probes. Two things are still missing before emitting it: the depth value
+ *   is produced by an un-decomposed iadd(imm15)/fsel cluster whose
+ *   destination-field identity is unproven (so "r0" is a strong correlation,
+ *   not a traced ABI), and that cluster may be a required format transform --
+ *   Apple never stages the raw float. Emitting depthf against a guessed ABI
+ *   would write undefined bits into the depth test.
  *
  * See research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md sections 4 and 6.
  */
@@ -1830,7 +1962,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    struct util_dynarray fixups;
    bool async_seen = false;
    uint8_t next_uvs_slot = 1;
-   unsigned texture_fetches_left = 0;
+   unsigned texture_ops_left = 0;
    unsigned tile_loads_left = 0;
    unsigned tile_loads_seen = 0;
    unsigned count = 0;
@@ -1842,8 +1974,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       agx_foreach_instr_in_block(scan_block, scan_I) {
          if (scan_I->op != AGX_OPCODE_STOP)
             count++;
-         if (scan_I->op == AGX_OPCODE_TEXTURE_LOAD)
-            texture_fetches_left++;
+         /* Apple's "last texture op" marker goes on the final smp of the
+          * whole stream, fetch or sample alike. */
+         if (scan_I->op == AGX_OPCODE_TEXTURE_LOAD ||
+             scan_I->op == AGX_OPCODE_TEXTURE_SAMPLE)
+            texture_ops_left++;
          if (scan_I->op == AGX_OPCODE_LD_TILE)
             tile_loads_left++;
       }
@@ -1930,9 +2065,23 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
-            assert(texture_fetches_left > 0);
-            const bool final = --texture_fetches_left == 0;
+            assert(texture_ops_left > 0);
+            const bool final = --texture_ops_left == 0;
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
+               AGX3_REFUSE(I);
+            async_seen = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_TEXTURE_SAMPLE) {
+            assert(texture_ops_left > 0);
+            const bool final = --texture_ops_left == 0;
+            /* The implicit-LOD form needs the 2x2 quad's derivatives; every
+             * witness is a fragment shader and the hardware has no quad
+             * outside one. */
+            if (ctx->stage != MESA_SHADER_FRAGMENT ||
+                !agx3_emit_texture_sample(emission, enc, I, slot, wait,
+                                          final))
                AGX3_REFUSE(I);
             async_seen = true;
             continue;
@@ -2112,6 +2261,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3) {
             if (!agx3_emit_scoped_barrier(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         /* Transcendental / rounding / gradient funops. The gradients need
+          * the 2x2 quad, and every witness is a fragment shader. */
+         const int fop = agx3_map_funop(I->op);
+         if (fop >= 0) {
+            if (((fop == AGX3_FUNOP_DFDX || fop == AGX3_FUNOP_DFDY) &&
+                 ctx->stage != MESA_SHADER_FRAGMENT) ||
+                !agx3_emit_funop(emission, enc, I, (enum agx3_funop)fop, wait))
                AGX3_REFUSE(I);
             continue;
          }

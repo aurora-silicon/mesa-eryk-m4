@@ -52,6 +52,7 @@ libasahi_agx_files = files(
   'agx3_rt_core.c',
   'agx3_slot_core.c',
   'agx3_alu_core.c',
+  'agx3_funop_core.c',
   'agx3_sr_core.c',
   'agx_performance.c',
   'agx_print.c',
@@ -353,6 +354,25 @@ if with_tests
         'agx3_compose/agx3b_tables.c',
         'agx3_compose/agx3c_tables.c',
         'test/test-agx3-pixel-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_funop_core',
+    executable(
+      'agx3_funop_core_test',
+      files(
+        'agx3_funop_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-funop-core.c',
       ),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',

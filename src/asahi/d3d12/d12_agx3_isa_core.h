@@ -44,7 +44,9 @@ extern "C" {
 #define D12_AGX3_END_WITH_WAIT_FENCE_MASK_LENGTH 4
 #define D12_AGX3_CF_MAX_LENGTH 14
 #define D12_AGX3_VARY_MAX_LENGTH 10
-#define D12_AGX3_TEX_MAX_LENGTH 14
+/* Texture ops: the texel fetch is 14 bytes (AGX3b) / 8 (AGX3c); the
+ * filtered sample reaches 22 bytes (AGX3c smp.ep3). */
+#define D12_AGX3_TEX_MAX_LENGTH 22
 #define D12_AGX3_TILE_MAX_LENGTH 14
 #define D12_AGX3_LOCAL_TPS_MAX_LENGTH 16
 #define D12_AGX3_STATIC_SPILL_MAX_LENGTH 10

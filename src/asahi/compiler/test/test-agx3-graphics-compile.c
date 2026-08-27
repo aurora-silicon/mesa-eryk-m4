@@ -291,6 +291,73 @@ build_fs_texture(void)
    return b.shader;
 }
 
+/*
+ * Fragment shader sampling texture 0 through sampler 0 by immediate index
+ * with implicit LOD -- a textured triangle, the exact shape the smp sampler
+ * form is grounded for (fragment auto-LOD witnesses ts_auto / fs_bufcoord).
+ */
+static nir_shader *
+build_fs_texture_imm(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 textured-triangle FS");
+
+   nir_def *bary = nir_load_barycentric_pixel(
+      &b, 32, .interp_mode = INTERP_MODE_SMOOTH);
+   nir_def *uv = nir_load_interpolated_input(
+      &b, 2, 32, bary, nir_imm_int(&b, 0), .base = 0, .component = 0,
+      .io_semantics.location = VARYING_SLOT_VAR0, .io_semantics.num_slots = 1);
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 1);
+   tex->op = nir_texop_tex;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->dest_type = nir_type_float32;
+   tex->coord_components = 2;
+   tex->texture_index = 0;
+   tex->sampler_index = 0;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, uv);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+   nir_builder_instr_insert(&b, &tex->instr);
+
+   fs_store_colour(&b, &tex->def);
+
+   b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
+
+   NIR_PASS(_, b.shader, agx_nir_lower_texture_early, false);
+   NIR_PASS(_, b.shader, agx_nir_lower_texture);
+   agx_preprocess_nir(b.shader);
+   fs_lower(b.shader);
+   NIR_PASS(_, b.shader, agx_nir_lower_texture);
+   return b.shader;
+}
+
+/*
+ * Fragment shader exercising the funop family: floor/exp2/log2 (f32rint and
+ * friends) plus the fragment-only gradient dfdx.
+ */
+static nir_shader *
+build_fs_funops(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 funop FS");
+
+   nir_def *bary = nir_load_barycentric_pixel(
+      &b, 32, .interp_mode = INTERP_MODE_SMOOTH);
+   nir_def *v = nir_load_interpolated_input(
+      &b, 2, 32, bary, nir_imm_int(&b, 0), .base = 0, .component = 0,
+      .io_semantics.location = VARYING_SLOT_VAR0, .io_semantics.num_slots = 1);
+
+   nir_def *x = nir_channel(&b, v, 0);
+   nir_def *y = nir_channel(&b, v, 1);
+
+   fs_store_colour(&b, nir_vec4(&b, nir_ffloor(&b, x), nir_fexp2(&b, y),
+                                nir_flog2(&b, nir_fabs(&b, x)),
+                                nir_ddx(&b, y)));
+   b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   return fs_finish(&b);
+}
+
 struct agx3_graphics_case {
    const char *name;
    nir_shader *(*build)(void);
@@ -303,30 +370,36 @@ static const struct agx3_graphics_case cases[] = {
    {"fs-flat-colour", build_fs_flat, true},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
+   {"fs-textured-triangle", build_fs_texture_imm, true},
+   {"fs-transcendentals", build_fs_funops, true},
 
    /*
     * Deliberate refusals. Each one names a specific missing witness, not a
     * missing line of routing:
     *
-    * - discard lowers to sample_mask, whose AGX3 counterpart is cmsk. The only
-    *   cmsk witnesses are alpha-to-coverage, and Apple's own discard_fragment
-    *   does not emit cmsk at all (it reads the coverage mask with movmsk and
-    *   does the arithmetic in ALU). Mesa's mask+value operand split has no
-    *   witnessed encoding.
+    * - discard lowers to sample_mask. Apple's discard and [[sample_mask]]
+    *   shaders both go through movmsk under the class-1 pixwait/pixrel
+    *   bracket with a value staged by a copy (never cmsk, which only
+    *   alpha-to-coverage emits), and movmsk's operand roles plus the staging
+    *   ABI are not isolated. Mesa's mask+value operand split has no
+    *   witnessed encoding either way.
     *
     * - a depth write lowers to zs_emit, whose counterpart is depthf. depthf's
-    *   enable/mode bits are grounded, but it carries no value register: the
-    *   depth float and stencil byte are staged into fixed physical registers
-    *   by preceding copies, and which registers those are is not traced.
+    *   enable bits are grounded, but it carries no value register: every
+    *   witness stages the value through a copy whose destination field is 0,
+    *   behind an un-decomposed iadd/fsel cluster that may be a required
+    *   format transform, so the staging ABI is a correlation rather than a
+    *   traced contract (see agx3_pack_binary.c).
     *
-    * - a filtered texture sample needs smp. agx3_tex_core encodes only ldtg
-    *   (texel fetch); there is no sampler-form encoder yet. This shader also
-    *   reaches an ALU op with a uniform source, which the AGX3 selection core
-    *   refuses independently of anything fragment-specific.
+    * - the *bindless* texture sample stays refused: the sampler form is
+    *   grounded for immediate texture/sampler state only (fs-textured-triangle
+    *   above), the bindless heap operand selects a different encoding branch
+    *   with no in-domain witness, and this shader also reaches an ALU op with
+    *   a uniform source, which the AGX3 selection core refuses independently.
     */
    {"fs-discard", build_fs_discard, false},
    {"fs-depth-write", build_fs_depth, false},
-   {"fs-texture-sample", build_fs_texture, false},
+   {"fs-texture-sample-bindless", build_fs_texture, false},
 };
 
 static bool

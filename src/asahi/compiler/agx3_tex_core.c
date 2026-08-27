@@ -104,6 +104,169 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
    return true;
 }
 
+static bool
+mask_witnessed(uint8_t mask)
+{
+   /* Result-mask codes Apple's sample corpus emitted: .x .xy .w .zw .xyzw. */
+   return mask == 1 || mask == 3 || mask == 8 || mask == 12 || mask == 15;
+}
+
+static bool
+sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
+{
+   if (d == NULL || (enc != AGX_ISA_ENCODING_AGX3B &&
+                     enc != AGX_ISA_ENCODING_AGX3C))
+      return false;
+
+   if ((d->width != AGX3_TEX_W16 && d->width != AGX3_TEX_W32) ||
+       d->dest >= 128 || (d->width == AGX3_TEX_W32 && (d->dest & 1)) ||
+       (d->coord & 3) || d->coord > 60 || !mask_witnessed(d->mask) ||
+       d->texture > 15 || d->sampler > 15)
+      return false;
+
+   if (d->lod == AGX3_TEX_LOD_LEVEL) {
+      /* 12-bit immediate level field; witnessed up to 464 (level 7.25). */
+      if (d->lod_x64 > 0xfff)
+         return false;
+   } else if (d->lod != AGX3_TEX_LOD_AUTO || d->lod_x64 != 0) {
+      return false;
+   }
+
+   const unsigned slots = enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
+   const uint16_t waits = enc == AGX_ISA_ENCODING_AGX3C ? 0xff : 0x3f;
+   return d->slot >= 1 && d->slot <= slots &&
+          (d->wait_mask & ~waits) == 0 && one_or_zero(d->wait_mask);
+}
+
+bool
+agx3_tex_encode_sample(enum agx_isa_encoding enc,
+                       const struct agx3_tex_sample_desc *d,
+                       uint8_t out[AGX3_TEX_MAX_LENGTH], uint8_t *len)
+{
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_TEX_MAX_LENGTH);
+   *len = 0;
+   if (!sample_ok(enc, d))
+      return false;
+
+   /* The fetch baseline plus f74=1: the sample witnesses carry the extra
+    * mask-group bit on every mask value, where the fetch form does not. */
+   struct agx3_field_kv base[20];
+   unsigned nb = 0;
+   base[nb++] = (struct agx3_field_kv)KV(9, 2);
+   base[nb++] = (struct agx3_field_kv)KV(23, 5);
+   base[nb++] = (struct agx3_field_kv)KV(38, 1);
+   base[nb++] = (struct agx3_field_kv)KV(52, 1);
+   base[nb++] = (struct agx3_field_kv)KV(74, 1);
+   base[nb++] = (struct agx3_field_kv)KV(89, 3);
+   base[nb++] = (struct agx3_field_kv)KV(90, 3);
+   base[nb++] = (struct agx3_field_kv)KV(103, 1);
+   base[nb++] = (struct agx3_field_kv)KV(104, 1);
+   base[nb++] = (struct agx3_field_kv)KV(112, 4);
+   base[nb++] = (struct agx3_field_kv)KV(118, 3);
+   base[nb++] = (struct agx3_field_kv)KV(119, 3);
+   base[nb++] = (struct agx3_field_kv)KV(132, 1);
+   base[nb++] = (struct agx3_field_kv)KV(133, 1);
+   base[nb++] = (struct agx3_field_kv)KV(138, 1);
+   if (enc == AGX_ISA_ENCODING_AGX3C) {
+      base[nb++] = (struct agx3_field_kv)KV(24, 2);
+      base[nb++] = (struct agx3_field_kv)KV(60, 2);
+      base[nb++] = (struct agx3_field_kv)KV(61, 164);
+   }
+
+   struct agx3_field_kv ov[24];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
+   ov[n++] = (struct agx3_field_kv)KV(10, d->width);
+   ov[n++] = (struct agx3_field_kv)KV(12, d->slot);
+   ov[n++] = (struct agx3_field_kv)KV(19, d->coord);
+   ov[n++] = (struct agx3_field_kv)KV(26, d->slot);
+   ov[n++] = (struct agx3_field_kv)KV(27, d->coord_kill ? 1 : 0);
+   ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
+   ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
+   ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
+   ov[n++] = (struct agx3_field_kv)KV(95, d->texture);
+   ov[n++] = (struct agx3_field_kv)KV(124, d->sampler);
+   if (d->lod == AGX3_TEX_LOD_AUTO) {
+      ov[n++] = (struct agx3_field_kv)KV(156, 1); /* implicit-LOD marker */
+   } else {
+      ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD operand */
+      ov[n++] = (struct agx3_field_kv)KV(139, 2); /* explicit-level mode */
+      ov[n++] = (struct agx3_field_kv)KV(29, d->lod_x64);
+   }
+   if (enc == AGX_ISA_ENCODING_AGX3B)
+      ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
+   else
+      ov[n++] = (struct agx3_field_kv)KV(150, d->final ? 2 : 0);
+   for (unsigned i = 0; i < 8; ++i)
+      if (d->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(62 + i, 1);
+
+   if (!agx3_bind_compose(enc, "smp", 3, base, nb, ov, n, out, len)) {
+      memset(out, 0, AGX3_TEX_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+   return true;
+}
+
+bool
+agx3_tex_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                    uint8_t slot, uint16_t wait_mask,
+                    uint8_t out[AGX3_TEX_COPY_MAX_LENGTH], uint8_t *len)
+{
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_TEX_COPY_MAX_LENGTH);
+   *len = 0;
+
+   if (enc != AGX_ISA_ENCODING_AGX3B && enc != AGX_ISA_ENCODING_AGX3C)
+      return false;
+
+   /* One even 32-bit register each way, as in every witness. */
+   if ((dest & 1) || (src & 1) || dest >= 256 || src >= 256)
+      return false;
+
+   const unsigned slots = enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
+   const uint16_t waits = enc == AGX_ISA_ENCODING_AGX3C ? 0xff : 0x3f;
+   if (slot < 1 || slot > slots || (wait_mask & ~waits) ||
+       !one_or_zero(wait_mask))
+      return false;
+
+   struct agx3_field_kv base[8];
+   unsigned nb = 0;
+   base[nb++] = (struct agx3_field_kv)KV(9, 5);
+   base[nb++] = (struct agx3_field_kv)KV(10, 2);
+   base[nb++] = (struct agx3_field_kv)KV(23, 2);
+   base[nb++] = (struct agx3_field_kv)KV(24, 2);
+   base[nb++] = (struct agx3_field_kv)KV(27, 1);
+   if (enc == AGX_ISA_ENCODING_AGX3C) {
+      base[nb++] = (struct agx3_field_kv)KV(28, 1);
+      base[nb++] = (struct agx3_field_kv)KV(29, 35);
+   }
+
+   struct agx3_field_kv ov[12];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(5, dest);
+   ov[n++] = (struct agx3_field_kv)KV(16, src);
+   ov[n++] = (struct agx3_field_kv)KV(12, slot);
+   for (unsigned i = 0; i < 8; ++i)
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(30 + i, 1);
+
+   /* The compact form first; Apple escalates the encoding point when a slot
+    * or wait bit does not fit, and the composer's first-success order
+    * reproduces that choice on every witness. */
+   for (int ep = 0; ep <= 1; ++ep) {
+      if (agx3_bind_compose(enc, "copy", ep, base, nb, ov, n, out, len))
+         return true;
+   }
+   memset(out, 0, AGX3_TEX_COPY_MAX_LENGTH);
+   *len = 0;
+   return false;
+}
+
 static uint16_t
 word(const uint8_t *p, unsigned i)
 {
