@@ -1,0 +1,72 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * AGX3 pixel writeout barriers: wait_pix -> pixwait and signal_pix -> pixrel.
+ *
+ * Every Apple fragment shader brackets its tile traffic with these two:
+ *
+ *   pixwait(gate) ... [movmsk] ... lstcol x (RT x sample) ... pixrel(release)
+ *
+ * Both carry a writeout-class mask that is the same bitmask AGX2 spells as the
+ * wait_pix / signal_pix `writeout` immediate -- 1 for the depth/coverage class,
+ * 4/8/12 for the colour classes -- so the IR immediate passes straight through.
+ * Only the masks Apple's own compiler emitted are accepted; anything else fails
+ * closed rather than guessing a class the hardware may interpret differently.
+ *
+ * Composer-driven; reproduces Apple's witnessed bytes exactly (see
+ * test/test-agx3-pixel-core.c). Evidence:
+ * research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md §4 plus the raw corpus at
+ * research/gpu/isa-re/gen-x/tileops/corpus/tile{1,2,3,4}/{g15g,g16g,g17s}.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "asahi/lib/agx_chip.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* pixwait and pixrel are both six bytes on AGX3b and AGX3c. */
+#define AGX3_PIXEL_MAX_LENGTH 6u
+
+/*
+ * Wait for the writeout classes named by `writeout` before continuing.
+ *
+ * `writeout` is the AGX2 wait_pix immediate. Accepted values are exactly those
+ * witnessed in Apple's fragment corpus: 1 (depth/coverage) and 4, 8, 12, 16,
+ * 32, 48, 60, 64, 128, 192 (colour classes; the multi-RT shaders widen the
+ * mask). Mesa emits 1, 4, 8 and 12.
+ *
+ * The shader-entry gate (`f14=512, f15=1`) is deliberately not reachable from
+ * here: it is a prologue Apple's compiler inserts, it selects a different
+ * encoding branch, and no Mesa IR describes it.
+ *
+ * `wait_mask` is the scoreboard wait set, one bit per slot starting at slot 1
+ * (six slots on AGX3b, eight on AGX3c), matching the tile and memory cores.
+ */
+bool agx3_pixel_wait(enum agx_isa_encoding enc, uint32_t writeout,
+                     uint16_t wait_mask, uint8_t out[AGX3_PIXEL_MAX_LENGTH],
+                     uint8_t *len);
+
+/*
+ * Release the writeout classes named by `writeout`.
+ *
+ * The corpus descriptor factors exactly as `(last ? 0x200 : 0) | writeout`
+ * across all nine witnessed values, so `last` -- set on the release that ends
+ * the shader's writeout sequence -- is a separate argument. Accepted
+ * `writeout` values are the witnessed set {0, 1, 12, 48, 60, 192}; the
+ * colour-class singletons that only ever appear on pixwait (4, 8, 16, ...) are
+ * refused here because no pixrel witness carries them.
+ */
+bool agx3_pixel_release(enum agx_isa_encoding enc, uint32_t writeout, bool last,
+                        uint16_t wait_mask, uint8_t out[AGX3_PIXEL_MAX_LENGTH],
+                        uint8_t *len);
+
+#ifdef __cplusplus
+}
+#endif

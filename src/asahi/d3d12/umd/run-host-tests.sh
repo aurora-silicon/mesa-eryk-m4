@@ -218,6 +218,17 @@ done
     -o "$out/test_agx3_tile_core"
 "$out/test_agx3_tile_core"
 
+"$cc" "$common[@]" -Wno-c23-extensions \
+    -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/asahi/compiler" \
+    "$repo_root/src/asahi/compiler/agx3_pixel_core.c" \
+    "$repo_root/src/asahi/compiler/agx3_binder.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3_compose.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3b_tables.c" \
+    "$repo_root/src/asahi/compiler/agx3_compose/agx3c_tables.c" \
+    "$repo_root/src/asahi/compiler/test/test-agx3-pixel-core.c" \
+    -o "$out/test_agx3_pixel_core"
+"$out/test_agx3_pixel_core"
+
 "$cc" "$common[@]" \
     -I"$repo_root/src" -I"$repo_root/include" -I"$repo_root/src/asahi/compiler" \
     "$repo_root/src/asahi/compiler/agx3_slot_core.c" \

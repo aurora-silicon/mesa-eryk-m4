@@ -27,7 +27,12 @@
 #include "agx3_subgroup_core.h"
 #include "agx3_tex_core.h"
 #include "agx3_tile_core.h"
+#include "agx3_pixel_core.h"
 #include "agx3_vary_core.h"
+
+/* agx_nir_lower_tilebuffer's ALL_SAMPLES: the pixel-rate sample mask, and the
+ * only immediate AGX3's single-sample tile group can represent. */
+static constexpr unsigned AGX_ALL_SAMPLES = 0xFF;
 
 static void
 append(std::vector<uint8_t> &v, const uint8_t *b, unsigned n)
@@ -1135,8 +1140,8 @@ TEST_F(AGX3PackBinary, TileStoreSingleSampleFormats)
          agx_builder *b = builder(enc);
          agx_index value = agx_register(0, AGX_SIZE_32);
          value.channels_m1 = 3;
-         agx_st_tile(b, value, agx_immediate(0), agx_null(), f.format, 15,
-                     24, false);
+         agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     f.format, 15, 24, false);
          agx_stop(b);
 
          uint8_t tile[AGX3_TILE_MAX_LENGTH];
@@ -1162,15 +1167,15 @@ TEST_F(AGX3PackBinary, TileLoadStoreWaitSurvivesFallthroughBlock)
       agx_block *first = agx_start_block(b->shader);
       agx_index value = agx_register(0, AGX_SIZE_32);
       value.channels_m1 = 3;
-      agx_ld_tile_to(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32,
-                     15, 16, false);
+      agx_ld_tile_to(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     AGX_FORMAT_I32, 15, 16, false);
 
       agx_block *second = agx_test_block(b->shader);
       agx_block_add_successor(first, second);
       b->cursor = agx_after_block(second);
       value.discard = true; /* nonsemantic post-RA last-use hint */
-      agx_st_tile(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
-                  16, false);
+      agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                  AGX_FORMAT_I32, 15, 16, false);
       agx_stop(b);
 
       uint8_t tile[AGX3_TILE_MAX_LENGTH];
@@ -1199,10 +1204,10 @@ TEST_F(AGX3PackBinary, TileLoadSequenceBoundaryMarkers)
       agx_index a = agx_register(0, AGX_SIZE_32);
       agx_index c = agx_register(8, AGX_SIZE_32);
       a.channels_m1 = c.channels_m1 = 3;
-      agx_ld_tile_to(b, a, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
-                     0, false);
-      agx_ld_tile_to(b, c, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
-                     16, false);
+      agx_ld_tile_to(b, a, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     AGX_FORMAT_I32, 15, 0, false);
+      agx_ld_tile_to(b, c, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     AGX_FORMAT_I32, 15, 16, false);
       agx_stop(b);
 
       uint8_t tile[AGX3_TILE_MAX_LENGTH];
@@ -1236,8 +1241,9 @@ TEST_F(AGX3PackBinary, TileRefusesUngroundedAxes)
    }
    {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
-      agx_ld_tile_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0),
-                     agx_null(), AGX_FORMAT_I32, 1, 0, false);
+      agx_ld_tile_to(b, agx_register(0, AGX_SIZE_32),
+                     agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     AGX_FORMAT_I32, 1, 0, false);
       agx_stop(b);
       EXPECT_TRUE(pack(b, false).empty());
    }
@@ -1245,7 +1251,19 @@ TEST_F(AGX3PackBinary, TileRefusesUngroundedAxes)
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       agx_index value = agx_register(16, AGX_SIZE_32);
       value.channels_m1 = 3;
-      agx_st_tile(b, value, agx_immediate(0), agx_null(), AGX_FORMAT_I32, 15,
+      agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                  AGX_FORMAT_I32, 15, 0, false);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+   {
+      /* A partial sample mask is per-sample traffic. AGX3's single-sample
+       * group has no sample selector, so encoding it there would silently
+       * widen the store to the whole pixel: refuse instead. */
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3C);
+      agx_index value = agx_register(0, AGX_SIZE_32);
+      value.channels_m1 = 3;
+      agx_st_tile(b, value, agx_immediate(0x3), agx_null(), AGX_FORMAT_I32, 15,
                   0, false);
       agx_stop(b);
       EXPECT_TRUE(pack(b, false).empty());

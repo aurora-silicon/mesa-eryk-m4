@@ -16,8 +16,10 @@ agx_chip_from_params(const struct drm_asahi_params_global *params)
     *
     * Generations 15 and up are recognised so an unsupported part is refused
     * by name rather than as an anonymous "unsupported architecture", and so
-    * that the reason -- no AGX3 code generator -- is the reason reported.
-    * agx_chip_codegen_supported is what decides whether the driver proceeds.
+    * that the reason -- no HAL200/HAL300 command stream -- is the reason
+    * reported. agx_chip_driver_supported is what decides whether the driver
+    * proceeds; agx_chip_codegen_supported is only about the shader packer, and
+    * now admits the AGX3 encodings.
     *
     * The variant character is load-bearing. Cluster count cannot distinguish
     * G17P (A18 Pro, AGX3b) from G17G (M5, AGX3c), and G15P is an AGX2 part in
@@ -310,23 +312,48 @@ bool
 agx_chip_codegen_supported(enum agx_chip chip)
 {
    /*
-    * One *packing* table exists, and it is AGX2 (agx_pack.c, AGX2.xml).
+    * Two independent packers exist, one per encoding family:
     *
-    * Naming an AGX3 part's encoding does not make it supported. AGX3b.xml and
-    * AGX3c.xml drive disassemblers, which decode; emitting code needs an
-    * encoder, and the operand layout AGX3 selects from is not resolved far
-    * enough to build one. Keep this gated on AGX2 until agx_pack.c can emit
-    * AGX3, or a recognised M3 will be handed AGX2 instructions.
+    *   AGX2         -> agx_pack.c            (AGX2.xml)
+    *   AGX3b/AGX3c  -> agx3_pack_binary.c    (agx3_compose/, AGX3{b,c}.xml)
+    *
+    * The AGX3 side is a real encoder, not a decoder: agx3_compose replays
+    * 1,494 corpus instructions byte-exactly (test-agx3-compose-corpus.c), and
+    * agx3_pack_binary emits compute, vertex and fragment shaders end to end
+    * (test-agx3-compile-fail-closed.c, test-agx3-graphics-compile.c).
+    *
+    * "Has a code generator" is all this predicate claims. agx3_pack_binary is
+    * fail-closed per instruction: an AGX3 shader outside the grounded domain
+    * makes agx_compile_shader_nir return false rather than emit wrong code, so
+    * admitting the encoding here cannot silently miscompile. Whether the rest
+    * of the driver can *run* such a shader is agx_chip_driver_supported's
+    * question, and it is still answered no for every AGX3 part.
+    *
+    * UNKNOWN stays refused: without an encoding there is no packer to pick.
     */
-   return agx_chip_isa_encoding(chip) == AGX_ISA_ENCODING_AGX2;
+   const enum agx_isa_encoding encoding = agx_chip_isa_encoding(chip);
+
+   return encoding == AGX_ISA_ENCODING_AGX2 ||
+          encoding == AGX_ISA_ENCODING_AGX3B ||
+          encoding == AGX_ISA_ENCODING_AGX3C;
 }
 
 bool
 agx_chip_driver_supported(enum agx_chip chip)
 {
-   /* Only the existing AGX2 command stream and descriptor path is wired into
-    * the driver today. Keep all independently-versioned axes in the gate so a
-    * newly-added packer cannot accidentally enable an incomplete chip. */
+   /*
+    * Codegen is necessary, not sufficient. A usable device also needs the
+    * command stream (VDM/CDM/PPP), the descriptor and sampler ABIs, and the
+    * submission model for its generation. Only the AGX2 command stream is
+    * wired end to end today: HAL200 (G15/G16/G17P) and HAL300 (G17 Mac) have
+    * packers and tests but no driver path that submits with them.
+    *
+    * So the two gates deliberately diverge. agx_chip_codegen_supported now
+    * admits AGX3b/AGX3c because the encoder exists; this one keeps refusing
+    * them, because admitting HAL200 here would let a device open and advertise
+    * a driver that cannot submit work. Keep every independently-versioned axis
+    * in this gate so adding a packer cannot accidentally enable a chip.
+    */
    return agx_chip_codegen_supported(chip) &&
           agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_AGX2 &&
           agx_chip_descriptor_generation(chip) !=

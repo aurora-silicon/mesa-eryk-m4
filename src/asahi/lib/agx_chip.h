@@ -149,9 +149,9 @@ extern "C" {
 
 /* Return the exact supported command-stream architecture, or UNKNOWN.
  *
- * A recognised chip is not a supported one: G15 and above are recognised so
- * they can be reported by name, but have no code generator. Callers opening a
- * device must gate on agx_chip_codegen_supported, not on UNKNOWN. */
+ * A recognised chip is not a supported one: G15 and above have a code
+ * generator but no command stream the driver can submit with. Callers opening
+ * a device must gate on agx_chip_driver_supported, not on UNKNOWN. */
 enum agx_chip
 agx_chip_from_params(const struct drm_asahi_params_global *params);
 
@@ -182,8 +182,14 @@ agx_chip_submission_model(enum agx_chip chip);
 /*
  * Whether this driver can generate code for a chip.
  *
- * False does not mean the hardware is incapable; it means there is no packing
- * table for its encoding. This is the gate a device open must use.
+ * True for every known encoding: AGX2 through agx_pack.c, AGX3b/AGX3c through
+ * agx3_pack_binary.c. False only for an unrecognised part, where no packer can
+ * be chosen at all.
+ *
+ * This is a statement about the compiler, not about the driver. It says a
+ * shader compiled for this chip is encoded by the right packer, and that an
+ * ungrounded shader is refused rather than mis-encoded -- not that the driver
+ * can submit the result. Device open must gate on agx_chip_driver_supported.
  */
 bool agx_chip_codegen_supported(enum agx_chip chip);
 

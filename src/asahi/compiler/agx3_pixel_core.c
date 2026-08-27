@@ -1,0 +1,137 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_pixel_core.h"
+
+#include "agx3_binder.h"
+
+#include <string.h>
+
+#define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
+#define NELEM(a) (sizeof(a) / sizeof((a)[0]))
+
+static bool
+is_b(enum agx_isa_encoding e)
+{
+   return e == AGX_ISA_ENCODING_AGX3B;
+}
+
+static bool
+enc_ok(enum agx_isa_encoding e)
+{
+   return e == AGX_ISA_ENCODING_AGX3B || e == AGX_ISA_ENCODING_AGX3C;
+}
+
+static unsigned
+nslots(enum agx_isa_encoding e)
+{
+   return is_b(e) ? 6 : 8;
+}
+
+static bool
+wait_mask_ok(enum agx_isa_encoding e, uint16_t wait_mask)
+{
+   return (wait_mask & ~(uint16_t)((1u << nslots(e)) - 1)) == 0;
+}
+
+/*
+ * The scoreboard wait bits are consecutive fields starting at `first`; pixwait
+ * numbers them from f18 and pixrel from f17, because pixwait carries the extra
+ * f15 gate bit ahead of them.
+ */
+static unsigned
+wait_overrides(enum agx_isa_encoding e, uint16_t wait_mask, unsigned first,
+               struct agx3_field_kv *ov, unsigned n)
+{
+   for (unsigned i = 0; i < nslots(e); ++i) {
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(first + i, 1);
+   }
+   return n;
+}
+
+static bool
+in_set(uint32_t value, const uint32_t *set, unsigned n)
+{
+   for (unsigned i = 0; i < n; ++i) {
+      if (set[i] == value)
+         return true;
+   }
+   return false;
+}
+
+bool
+agx3_pixel_wait(enum agx_isa_encoding enc, uint32_t writeout,
+                uint16_t wait_mask, uint8_t out[AGX3_PIXEL_MAX_LENGTH],
+                uint8_t *len)
+{
+   /* Every writeout mask Apple's fragment corpus emitted on pixwait, less the
+    * f15-gated shader-entry form (512). */
+   static const uint32_t witnessed[] = {1,  4,  8,  12, 16, 32,
+                                        48, 60, 64, 128, 192};
+
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+   *len = 0;
+
+   if (!enc_ok(enc) || !wait_mask_ok(enc, wait_mask) ||
+       !in_set(writeout, witnessed, NELEM(witnessed)))
+      return false;
+
+   /* f34 separates the colour writeout classes from the depth/coverage class:
+    * set on every witnessed mask except 1. */
+   const struct agx3_field_kv base_c[] = {KV(16, 3), KV(17, 122)};
+
+   struct agx3_field_kv ov[12];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(14, writeout);
+   ov[n++] = (struct agx3_field_kv)KV(34, writeout == 1 ? 0 : 1);
+   n = wait_overrides(enc, wait_mask, 18, ov, n);
+
+   if (!agx3_bind_compose(enc, "pixwait", 0, is_b(enc) ? NULL : base_c,
+                          is_b(enc) ? 0 : NELEM(base_c), ov, n, out,
+                          len)) {
+      memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+   return true;
+}
+
+bool
+agx3_pixel_release(enum agx_isa_encoding enc, uint32_t writeout, bool last,
+                   uint16_t wait_mask, uint8_t out[AGX3_PIXEL_MAX_LENGTH],
+                   uint8_t *len)
+{
+   /* The witnessed pixrel descriptors are exactly {0,1,12,48,60,192} with an
+    * optional 0x200 "final release" bit. */
+   static const uint32_t witnessed[] = {0, 1, 12, 48, 60, 192};
+
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+   *len = 0;
+
+   if (!enc_ok(enc) || !wait_mask_ok(enc, wait_mask) ||
+       !in_set(writeout, witnessed, NELEM(witnessed)))
+      return false;
+
+   const struct agx3_field_kv base_c[] = {KV(15, 1), KV(16, 121)};
+
+   struct agx3_field_kv ov[12];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(14, writeout | (last ? 0x200u : 0u));
+   n = wait_overrides(enc, wait_mask, 17, ov, n);
+
+   if (!agx3_bind_compose(enc, "pixrel", 0, is_b(enc) ? NULL : base_c,
+                          is_b(enc) ? 0 : NELEM(base_c), ov, n, out,
+                          len)) {
+      memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+   return true;
+}

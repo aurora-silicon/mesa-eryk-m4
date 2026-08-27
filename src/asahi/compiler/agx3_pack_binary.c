@@ -17,11 +17,13 @@
  * walk, nothing more.
  *
  * The production subset includes grounded ALU, device-memory, special-register
- * and structured-control-flow forms. It fails the shader -- never aborts,
- * since this runs inside the UMD -- on any unmapped op or out-of-domain
- * instruction. In particular, a compare after an asynchronous producer is
- * refused until the compare/cnd hazard fields are grounded; emitting the
- * witnessed all-clear form there could consume stale data.
+ * and structured-control-flow forms, plus the graphics path: varying
+ * interpolation and UVS stores for vertex shaders, and coefficient loads, tile
+ * load/store and the pixel writeout barriers for fragment shaders. It fails the
+ * shader -- never aborts, since this runs inside the UMD -- on any unmapped op
+ * or out-of-domain instruction. In particular, a compare after an asynchronous
+ * producer is refused until the compare/cnd hazard fields are grounded;
+ * emitting the witnessed all-clear form there could consume stale data.
  */
 
 #include "agx3_alu_core.h"
@@ -31,6 +33,7 @@
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
+#include "agx3_pixel_core.h"
 #include "agx3_scs_core.h"
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
@@ -41,7 +44,9 @@
 #include "agx3_tile_core.h"
 #include "agx3_vary_core.h"
 #include "agx_compiler.h"
+#include "agx_debug.h"
 
+#include <stdio.h>
 #include <string.h>
 
 struct agx3_branch_fixup {
@@ -50,6 +55,29 @@ struct agx3_branch_fixup {
    bool skip_to_end;
    bool is_bn;
 };
+
+/*
+ * This backend is fail-closed per instruction: a shader containing anything
+ * outside the grounded domain is refused, never mis-encoded. A bare refusal is
+ * hard to act on, so name the instruction that closed the door under the
+ * compiler's existing shader-debug flag (AGX_MESA_DEBUG=shaders). This is the
+ * difference between "AGX3 rejected this shader" and a usable bug report.
+ */
+static void
+agx3_report_refusal(const agx_instr *I, unsigned line)
+{
+   if (agx_compiler_debug & AGX_DBG_SHADERS) {
+      fprintf(stderr,
+              "agx3_pack_binary.c:%u: no grounded AGX3 encoding for %s\n",
+              line, agx_opcodes_info[I->op].name);
+   }
+}
+
+#define AGX3_REFUSE(I)                                                         \
+   do {                                                                        \
+      agx3_report_refusal((I), __LINE__);                                      \
+      goto fail;                                                               \
+   } while (0)
 
 static bool
 agx3_append(struct util_dynarray *emission, const uint8_t *bytes, uint8_t len)
@@ -600,12 +628,26 @@ agx3_tile_value_ok(agx_index value, uint8_t mask)
    return value.value + agx_index_size_16(value) <= 256;
 }
 
+/*
+ * AGX3's single-sample coverage group (f51=1) encodes no sample selector at
+ * all: it stores or loads the whole pixel. The only sample source it can
+ * faithfully represent is therefore one that names every sample, which
+ * agx_nir_lower_tilebuffer spells as the ALL_SAMPLES immediate 0xFF.
+ *
+ * A narrower immediate, and any register source, mean per-sample traffic. That
+ * is the f51=2 group, whose f44 selector is not grounded (its register-versus-
+ * selector meaning is an open question in the corpus), so both fail closed
+ * rather than silently becoming a whole-pixel access.
+ */
+#define AGX3_TILE_ALL_SAMPLES 0xFFu
+
 static bool
-agx3_tile_zero_sample(agx_index sample)
+agx3_tile_pixel_rate_sample(agx_index sample)
 {
-   return sample.type == AGX_INDEX_IMMEDIATE && sample.value == 0 &&
-          sample.size == AGX_SIZE_16 && !sample.memory && !sample.abs &&
-          !sample.neg && !sample.cache && !sample.discard && !sample.kill;
+   return sample.type == AGX_INDEX_IMMEDIATE &&
+          sample.value == AGX3_TILE_ALL_SAMPLES && sample.size == AGX_SIZE_16 &&
+          !sample.memory && !sample.abs && !sample.neg && !sample.cache &&
+          !sample.discard && !sample.kill;
 }
 
 /* Bind the directly witnessed single-sample tile subset.  Explicit pixel
@@ -628,7 +670,7 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const agx_index coords = load ? I->src[1] : I->src[2];
    const int width = agx3_tile_format_width(I->format);
    if (width < 0 || !agx3_tile_value_ok(value, I->mask) ||
-       !agx3_tile_zero_sample(sample) || !agx_is_null(coords))
+       !agx3_tile_pixel_rate_sample(sample) || !agx_is_null(coords))
       return false;
 
    /* AGX3b f13 varies independently in high-register store witnesses.  The
@@ -648,6 +690,57 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
                              I->pixel_offset, AGX3_TILE_COV_1X, wait_mask,
                              bytes, &length);
    return ok && agx3_append(emission, bytes, length);
+}
+
+/*
+ * Fragment ops that stay refused, and why. Each is a missing *witness*, not
+ * missing routing, so grounding one is a corpus session rather than a patch:
+ *
+ * - sample_mask (the AGX3 mnemonic is cmsk). The only cmsk witnesses are
+ *   alpha-to-coverage shaders, and Apple's own discard_fragment does not emit
+ *   cmsk at all: it reads the live coverage mask with movmsk and does the
+ *   arithmetic in ALU. Mesa's (mask, value) operand split has no witnessed
+ *   encoding, so discard cannot be encoded yet.
+ *
+ * - zs_emit (depthf). depthf's enable and mode bits are grade A, but the
+ *   instruction carries no value register: the depth float and stencil byte
+ *   are staged into fixed physical registers by preceding copies, and the
+ *   corpus does not identify which registers those are. Emitting depthf
+ *   without that ABI would write whatever happened to be in those registers.
+ *
+ * - texture_sample (smp). agx3_tex_core encodes ldtg (texel fetch) only;
+ *   there is no sampler-form encoder yet.
+ *
+ * See research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md sections 4 and 6.
+ */
+
+/*
+ * Pixel writeout barriers: wait_pix -> pixwait, signal_pix -> pixrel.
+ *
+ * The IR carries the writeout-class bitmask in `writeout`, which is the same
+ * mask Apple's fragment corpus puts in the instruction, so it passes straight
+ * through; agx3_pixel_core refuses any class Apple never emitted.
+ *
+ * signal_pix has no producer in Mesa today. It is routed anyway because it is
+ * grounded, but only for the release descriptors witnessed without the
+ * end-of-sequence bit: Mesa's IR has no way to say "this is the final release",
+ * and inventing that bit is exactly the kind of guess this backend refuses.
+ */
+static bool
+agx3_emit_pixel(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                const agx_instr *I, uint16_t wait_mask)
+{
+   if (I->nr_dests != 0 || I->nr_srcs != 0)
+      return false;
+
+   uint8_t bytes[AGX3_PIXEL_MAX_LENGTH];
+   uint8_t len = 0;
+   const bool ok =
+      I->op == AGX_OPCODE_WAIT_PIX
+         ? agx3_pixel_wait(enc, I->writeout, wait_mask, bytes, &len)
+         : agx3_pixel_release(enc, I->writeout, false, wait_mask, bytes, &len);
+
+   return ok && agx3_append(emission, bytes, len);
 }
 
 /* Append the half-registers an operand occupies (empty for immediates,
@@ -1809,7 +1902,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const int cf = agx3_try_control_flow(emission, &fixups, enc, I, wait,
                                               async_seen, after_loop_backedge);
          if (cf < 0)
-            goto fail;
+            AGX3_REFUSE(I);
          if (cf > 0) {
             after_loop_backedge = I->op == AGX_OPCODE_JMP_EXEC_ANY;
             continue;
@@ -1818,20 +1911,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_INTERP_AGX3) {
             if (!agx3_emit_interp(emission, enc, I, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             continue;
          }
 
          if (I->op == AGX_OPCODE_LDCF) {
             if (!agx3_emit_ldcf(emission, enc, I, slot, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen = true;
             continue;
          }
 
          if (I->op == AGX_OPCODE_ST_VARY) {
             if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             next_uvs_slot = (next_uvs_slot % nslots) + 1;
             continue;
          }
@@ -1840,8 +1933,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             assert(texture_fetches_left > 0);
             const bool final = --texture_fetches_left == 0;
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_WAIT_PIX ||
+             I->op == AGX_OPCODE_SIGNAL_PIX) {
+            if (!agx3_emit_pixel(emission, enc, I, wait))
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -1853,7 +1953,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                last = --tile_loads_left == 0;
             }
             if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen |= I->op == AGX_OPCODE_LD_TILE;
             continue;
          }
@@ -1865,7 +1965,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_sr(I, slot, wait, &d) ||
                 !agx3_sr_encode(enc, &d, bytes, &len))
-               goto fail;
+               AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen = true;
             continue;
@@ -1879,12 +1979,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_MEM_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_translate_mem(I, is_store, slot, wait, &d))
-               goto fail;
+               AGX3_REFUSE(I);
             const bool ok = is_store
                                ? agx3_mem_encode_store(enc, &d, bytes, &len)
                                : agx3_mem_encode_load(enc, &d, bytes, &len);
             if (!ok)
-               goto fail;
+               AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen |= !is_store;
             continue;
@@ -1897,7 +1997,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_translate_device_atomic(I, enc, slot, wait, &d) ||
                 !agx3_atomic_encode_device(enc, &d, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen |= d.returns_value;
             continue;
          }
@@ -1912,12 +2012,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_LOCAL_TPS_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_translate_local(I, is_store, slot, wait, &d))
-               goto fail;
+               AGX3_REFUSE(I);
             const bool ok =
                is_store ? agx3_local_encode_store(enc, &d, bytes, &len)
                         : agx3_local_encode_load(enc, &d, bytes, &len);
             if (!ok)
-               goto fail;
+               AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen |= !is_store;
             continue;
@@ -1930,7 +2030,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_translate_local_atomic(I, slot, wait, &d) ||
                 !agx3_atomic_encode_local(enc, &d, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen = true;
             continue;
          }
@@ -1949,12 +2049,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_SCS_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_translate_scs(I, is_store, indexed, slot, wait, &d))
-               goto fail;
+               AGX3_REFUSE(I);
             const bool ok =
                is_store ? agx3_scs_encode_store(enc, &d, bytes, &len)
                         : agx3_scs_encode_load(enc, &d, bytes, &len);
             if (!ok)
-               goto fail;
+               AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
             async_seen |= !is_store;
             continue;
@@ -1972,14 +2072,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_static_spill(I, is_store, slot, wait, &store,
                                              &load))
-               goto fail;
+               AGX3_REFUSE(I);
             const bool ok =
                is_store ? agx3_static_spill_encode_store(enc, &store, bytes,
                                                           &len)
                         : agx3_static_spill_encode_load(enc, &load, bytes,
                                                         &len);
             if (!ok || !agx3_append(emission, bytes, len))
-               goto fail;
+               AGX3_REFUSE(I);
             async_seen = true;
             continue;
          }
@@ -1988,7 +2088,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          enum agx3_subgroup_shuffle_op subgroup_shuffle;
          if (agx3_map_shuffle(I->op, &subgroup_quad, &subgroup_shuffle)) {
             if (!agx3_emit_subgroup_shuffle(emission, enc, I, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -1997,7 +2097,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              I->op == AGX_OPCODE_SIMD_PREFIX ||
              I->op == AGX_OPCODE_QUAD_PREFIX) {
             if (!agx3_emit_subgroup_reduce(emission, enc, I, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -2006,13 +2106,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              I->op == AGX_OPCODE_FCMP_BALLOT ||
              I->op == AGX_OPCODE_FCMP_QUAD_BALLOT) {
             if (!agx3_emit_subgroup_ballot(emission, enc, I, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             continue;
          }
 
          if (I->op == AGX_OPCODE_SCOPED_BARRIER_AGX3) {
             if (!agx3_emit_scoped_barrier(emission, enc, I, wait))
-               goto fail;
+               AGX3_REFUSE(I);
             continue;
          }
 
@@ -2020,16 +2120,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const int mod = agx3_try_float_modifier(emission, enc, I);
          if (mod == 1) {
             if (wait != 0)
-               goto fail; /* modifier form cannot carry a wait */
+               AGX3_REFUSE(I); /* modifier form cannot carry a wait */
             continue;
          }
          if (mod < 0)
-            goto fail;
+            AGX3_REFUSE(I);
 
          struct agx3_sel_instr S;
          if (!agx3_translate_instr(I, &S) ||
              !agx3_emit_alu(emission, enc, &S, wait))
-            goto fail;
+            AGX3_REFUSE(I);
       }
    }
 

@@ -48,6 +48,7 @@ libasahi_agx_files = files(
   'agx3_falu_mod_core.c',
   'agx3_vary_core.c',
   'agx3_tile_core.c',
+  'agx3_pixel_core.c',
   'agx3_slot_core.c',
   'agx3_alu_core.c',
   'agx3_sr_core.c',
@@ -332,6 +333,38 @@ if with_tests
     executable(
       'agx3_compile_fail_closed_test',
       files('test/test-agx3-compile-fail-closed.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_pixel_core',
+    executable(
+      'agx3_pixel_core_test',
+      files(
+        'agx3_pixel_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-pixel-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_graphics_compile',
+    executable(
+      'agx3_graphics_compile_test',
+      files('test/test-agx3-graphics-compile.c'),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
       dependencies : [idep_nir, idep_mesautil],

@@ -115,8 +115,10 @@ test_recovered_table(void)
       CHECK(agx_chip_has_hardware_ray_tracing(c->chip) == c->ray_tracing);
       CHECK(agx_chip_needs_scheduling_stalls(c->chip) ==
             c->scheduling_stalls);
-      CHECK(agx_chip_codegen_supported(c->chip) ==
-            (c->encoding == AGX_ISA_ENCODING_AGX2));
+      /* Every named chip has a known encoding and therefore a packer:
+       * AGX2 through agx_pack.c, AGX3b/AGX3c through agx3_pack_binary.c. */
+      CHECK(c->encoding != AGX_ISA_ENCODING_UNKNOWN);
+      CHECK(agx_chip_codegen_supported(c->chip));
       CHECK(!seen[c->chip]);
       seen[c->chip] = true;
    }
@@ -211,10 +213,23 @@ test_independent_generation_axes(void)
 
    CHECK(agx_chip_driver_supported(AGX_CHIP_G13G));
    CHECK(agx_chip_driver_supported(AGX_CHIP_G14X));
+
+   /* Codegen and driver support are separate axes, and they diverge on every
+    * AGX3 part: agx3_pack_binary is a real encoder, but no HAL200/HAL300
+    * command stream is wired into the driver, so device open must still
+    * refuse. G15P is the AGX2 phone part, so only its command stream is
+    * missing; G15G/G17P/G17S are AGX3 and now pass the codegen gate. */
    CHECK(agx_chip_codegen_supported(AGX_CHIP_G15P));
+   CHECK(agx_chip_codegen_supported(AGX_CHIP_G15G));
+   CHECK(agx_chip_codegen_supported(AGX_CHIP_G17P));
+   CHECK(agx_chip_codegen_supported(AGX_CHIP_G17S));
+   CHECK(!agx_chip_codegen_supported(AGX_CHIP_UNKNOWN));
+
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G15P));
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G15G));
+   CHECK(!agx_chip_driver_supported(AGX_CHIP_G17P));
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G17S));
+   CHECK(!agx_chip_driver_supported(AGX_CHIP_UNKNOWN));
 
    CHECK(strcmp(agx_command_stream_generation_name(
                    AGX_CS_GENERATION_HAL200),
