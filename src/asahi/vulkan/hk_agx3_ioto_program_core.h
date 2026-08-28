@@ -19,6 +19,8 @@
 extern "C" {
 #endif
 
+struct agx_tilebuffer_layout;
+
 struct hk_agx3_ioto_program_desc {
    uint64_t program_va;
    const void *body;
@@ -158,6 +160,14 @@ struct hk_agx3_g17p_rt0_eot_program {
 bool hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program);
+
+/* The bounded G17P render path handles one ordinary framebuffer layer. */
+bool hk_agx3_g17p_single_layer_rendering(uint32_t view_mask,
+                                        uint32_t layer_count);
+
+/* Admit the one-sample, one-attachment tilebuffer used by that path. */
+bool hk_agx3_g17p_rt0_tile_layout_supported(
+   struct agx_tilebuffer_layout *tib);
 
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.

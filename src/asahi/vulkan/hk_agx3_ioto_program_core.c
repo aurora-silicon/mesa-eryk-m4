@@ -6,6 +6,7 @@
 #include "hk_agx3_ioto_program_core.h"
 
 #include "asahi/lib/agx_ioto_core.h"
+#include "asahi/lib/agx_tilebuffer.h"
 
 #include <string.h>
 
@@ -59,6 +60,29 @@ hk_agx3_g17p_no_resource_program_generate(
 
    return agx_ioto_g17p_no_resource_program_compose(program_va, packed_tail,
                                                     output, capacity, written);
+}
+
+bool
+hk_agx3_g17p_single_layer_rendering(uint32_t view_mask, uint32_t layer_count)
+{
+   return view_mask == 0 && layer_count == 1;
+}
+
+bool
+hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
+{
+   if (!tib || tib->nr_samples != 1 || tib->layered ||
+       tib->sample_size_B != 8 || tib->tile_size != 32 * 32 ||
+       tib->spilled[0] || tib->logical_format[0] == PIPE_FORMAT_NONE ||
+       agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM)
+      return false;
+
+   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
+         return false;
+   }
+
+   return true;
 }
 
 static bool

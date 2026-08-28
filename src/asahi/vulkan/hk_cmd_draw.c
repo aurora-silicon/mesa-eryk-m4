@@ -268,23 +268,6 @@ is_attachment_stored(const VkRenderingAttachmentInfo *att)
           att->resolveMode != VK_RESOLVE_MODE_NONE;
 }
 
-static bool
-hk_g17p_rt0_tile_layout(struct agx_tilebuffer_layout *tib)
-{
-   if (tib->nr_samples != 1 || tib->layered || tib->sample_size_B != 8 ||
-       tib->tile_size != 32 * 32 || tib->spilled[0] ||
-       tib->logical_format[0] == PIPE_FORMAT_NONE ||
-       agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM)
-      return false;
-
-   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
-      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
-         return false;
-   }
-
-   return true;
-}
-
 static struct agx_bo *
 hk_g17p_alloc_ioto_program(struct hk_cmd_buffer *cmd, size_t size,
                            const char *label)
@@ -320,7 +303,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
                      const VkRenderingInfo *info, bool store)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   if (!hk_g17p_rt0_tile_layout(&key->tib)) {
+   if (!hk_agx3_g17p_rt0_tile_layout_supported(&key->tib)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return (struct hk_bg_eot){0};
    }
@@ -866,11 +849,14 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
       formats[i] = hk_format_to_pipe_format(render->color_att[i].vk_format);
    }
 
-   /* For now, we force layered=true since it makes compatibility problems way
-    * easier.
+   /* G17P's bounded RT0 programs use non-array image operations. Other chips
+    * keep the existing always-layered layout.
     */
+   const bool layered =
+      dev->dev.chip != AGX_CHIP_G17P ||
+      !hk_agx3_g17p_single_layer_rendering(render->view_mask, layer_count);
    render->tilebuffer = agx_build_tilebuffer_layout(
-      formats, render->color_att_count, render->tilebuffer.nr_samples, true);
+      formats, render->color_att_count, render->tilebuffer.nr_samples, layered);
 
    const VkRenderingAttachmentLocationInfoKHR ral_info = {
       .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_LOCATION_INFO_KHR,

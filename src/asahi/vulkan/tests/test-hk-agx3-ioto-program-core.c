@@ -5,6 +5,7 @@
 
 #include "asahi/lib/agx_ioto_profile_core.h"
 #include "asahi/lib/agx_ioto_state_core.h"
+#include "asahi/lib/agx_tilebuffer.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -875,6 +876,43 @@ test_g17p_rt0_background_programs(void)
 }
 
 static int
+test_g17p_single_layer_rt0_layout(void)
+{
+   CHECK(hk_agx3_g17p_single_layer_rendering(0, 1));
+   CHECK(!hk_agx3_g17p_single_layer_rendering(0, 0));
+   CHECK(!hk_agx3_g17p_single_layer_rendering(0, 2));
+   CHECK(!hk_agx3_g17p_single_layer_rendering(1, 1));
+
+   enum pipe_format rgba[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+   };
+   struct agx_tilebuffer_layout tib =
+      agx_build_tilebuffer_layout(rgba, 1, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   enum pipe_format bgra[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_B8G8R8A8_UNORM,
+   };
+   tib = agx_build_tilebuffer_layout(bgra, 1, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   tib.layered = true;
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   enum pipe_format mrt[AGX_MAX_RENDER_TARGETS] = {
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+      PIPE_FORMAT_R8G8B8A8_UNORM,
+   };
+   tib = agx_build_tilebuffer_layout(mrt, 2, 1, false);
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+
+   tib = agx_build_tilebuffer_layout(rgba, 1, 2, false);
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(NULL));
+   return 0;
+}
+
+static int
 test_alias(void)
 {
    struct hk_agx3_ioto_program_desc desc = make_desc(AGX_CHIP_G17G);
@@ -916,7 +954,8 @@ main(void)
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
        test_g17p_combined_sampler_ranges() ||
        test_g17p_root_range() ||
-       test_g17p_rt0_background_programs() || test_alias())
+       test_g17p_rt0_background_programs() ||
+       test_g17p_single_layer_rt0_layout() || test_alias())
       return 1;
 
    printf("Honeykrisp AGX3 Ioto program core: %u checks passed\n", checks);
