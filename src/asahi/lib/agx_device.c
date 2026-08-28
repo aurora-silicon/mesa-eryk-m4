@@ -736,25 +736,32 @@ agx_open_device(void *memctx, struct agx_device *dev)
       return false;
    }
 
-   const char *variant = " Unknown";
-   switch (dev->params.gpu_variant) {
-   case 'G':
-      variant = "";
-      break;
-   case 'S':
-      variant = " Pro";
-      break;
-   case 'C':
-      variant = " Max";
-      break;
-   case 'D':
-      variant = " Ultra";
-      break;
+   const char *product = agx_chip_exact_product_name(dev->chip);
+   if (product) {
+      snprintf(dev->name, sizeof(dev->name), "Apple %s (G%d%c %02X)",
+               product, dev->params.gpu_generation, dev->params.gpu_variant,
+               dev->params.gpu_revision + 0xA0);
+   } else {
+      const char *variant = " Unknown";
+      switch (dev->params.gpu_variant) {
+      case 'G':
+         variant = "";
+         break;
+      case 'S':
+         variant = " Pro";
+         break;
+      case 'C':
+         variant = " Max";
+         break;
+      case 'D':
+         variant = " Ultra";
+         break;
+      }
+      snprintf(dev->name, sizeof(dev->name), "Apple M%d%s (G%d%c %02X)",
+               dev->params.gpu_generation - 12, variant,
+               dev->params.gpu_generation, dev->params.gpu_variant,
+               dev->params.gpu_revision + 0xA0);
    }
-   snprintf(dev->name, sizeof(dev->name), "Apple M%d%s (G%d%c %02X)",
-            dev->params.gpu_generation - 12, variant,
-            dev->params.gpu_generation, dev->params.gpu_variant,
-            dev->params.gpu_revision + 0xA0);
 
    /* We need a large chunk of VA space carved out for robustness. Hardware
     * loads can shift an i32 by up to 2, for a total shift of 4. If the base

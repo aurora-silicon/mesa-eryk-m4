@@ -5,6 +5,8 @@
 
 #include "agx_chip.h"
 
+#include <stddef.h>
+
 enum agx_chip
 agx_chip_from_params(const struct drm_asahi_params_global *params)
 {
@@ -14,12 +16,10 @@ agx_chip_from_params(const struct drm_asahi_params_global *params)
 
    /* These are command-stream architecture identities, not an ordering.
     *
-    * Generations 15 and up are recognised so an unsupported part is refused
-    * by name rather than as an anonymous "unsupported architecture", and so
-    * that the reason -- no HAL200/HAL300 command stream -- is the reason
-    * reported. agx_chip_driver_supported is what decides whether the driver
-    * proceeds; agx_chip_codegen_supported is only about the shader packer, and
-    * now admits the AGX3 encodings.
+    * Generations 15 and up are recognised so diagnostics can name the part and
+    * its command-stream generation. agx_chip_driver_supported decides whether
+    * the driver proceeds; agx_chip_codegen_supported covers only the shader
+    * packer.
     *
     * The variant character is load-bearing. Cluster count cannot distinguish
     * G17P (A18 Pro, AGX3b) from G17G (M5, AGX3c), and G15P is an AGX2 part in
@@ -320,16 +320,15 @@ agx_chip_codegen_supported(enum agx_chip chip)
     * The AGX3 side is a real encoder, not a decoder: agx3_compose replays
     * 1,494 corpus instructions byte-exactly (test-agx3-compose-corpus.c), and
     * agx3_pack_binary emits compute, vertex and fragment shaders end to end
-    * (test-agx3-compile-fail-closed.c, test-agx3-graphics-compile.c).
+    * (the AGX3 compile-negative and graphics-compile tests).
     *
-    * "Has a code generator" is all this predicate claims. agx3_pack_binary is
-    * fail-closed per instruction: an AGX3 shader outside the grounded domain
-    * makes agx_compile_shader_nir return false rather than emit wrong code, so
-    * admitting the encoding here cannot silently miscompile. Whether the rest
-    * of the driver can *run* such a shader is agx_chip_driver_supported's
-    * question, and it is still answered no for every AGX3 part.
+    * "Has a code generator" is all this predicate claims. Instruction
+    * coverage is explicit: an AGX3 shader outside the grounded domain makes
+    * agx_compile_shader_nir return false rather than emit wrong code. The
+    * runnable device set is tracked separately by
+    * agx_chip_driver_supported.
     *
-    * UNKNOWN stays refused: without an encoding there is no packer to pick.
+    * UNKNOWN remains unsupported: without an encoding there is no packer.
     */
    const enum agx_isa_encoding encoding = agx_chip_isa_encoding(chip);
 
@@ -378,11 +377,26 @@ agx_params_driver_supported(const struct drm_asahi_params_global *params)
       return false;
 
    if (chip == AGX_CHIP_G17P) {
-      return params->usc_generation == AGX_ISA_AGX3 &&
+      /* Honeykrisp's first AGX3 path is the exact T8140/A18 Pro contract.
+       * Do not let the shared G17P ISA name admit another SoC or topology. */
+      return params->chip_id == 0x8140 && params->num_dies == 1 &&
+             params->num_clusters_total == 1 &&
+             params->usc_generation == AGX_ISA_AGX3 &&
              params->gpu_hal_generation == DRM_ASAHI_GPU_HAL_200;
    }
 
    return true;
+}
+
+const char *
+agx_chip_exact_product_name(enum agx_chip chip)
+{
+   switch (chip) {
+   case AGX_CHIP_G17P:
+      return "A18 Pro";
+   default:
+      return NULL;
+   }
 }
 
 bool

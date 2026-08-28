@@ -20,13 +20,10 @@
  *   - AGX3 is not one encoding. Two binary encodings exist, and which one a
  *     part uses is now known for every chip this driver can enumerate.
  *
- * Nothing here can make the driver run on an AGX3 part. AGX3 can now be
- * *decoded* -- src/asahi/isa/AGX3{b,c}.xml generate working disassemblers --
- * but decoding is not encoding, and agx_pack.c still emits AGX2 only. What this
- * does is make the distinction explicit, so that a part the driver cannot
- * generate code for is refused by name instead of being handed AGX2
- * instructions, and so that each piece of the reverse engineering has somewhere
- * to land as it arrives.
+ * AGX3 now has separate decoders and encoders. Device support remains a
+ * stricter question: G17P is admitted only through its exact T8140 contract,
+ * while other AGX3 identities stay outside the runnable Honeykrisp path until
+ * their independently-versioned pieces are connected.
  *
  * Evidence for every claim below is in research/gpu/, principally
  * GPU_AGX3_APPLE_ENCODER_TABLES_2026-08-23.md (encodings, Apple's tables),
@@ -186,8 +183,9 @@ agx_chip_submission_model(enum agx_chip chip);
  *
  * This is a statement about the compiler, not about the driver. It says a
  * shader compiled for this chip is encoded by the right packer, and that an
- * ungrounded shader is refused rather than mis-encoded -- not that the driver
- * can submit the result. Device open must gate on agx_chip_driver_supported.
+ * ungrounded shader produces no binary rather than a mis-encoded one -- not
+ * that the driver can submit the result. Device open must gate on
+ * agx_chip_driver_supported.
  */
 bool agx_chip_codegen_supported(enum agx_chip chip);
 
@@ -201,6 +199,11 @@ bool agx_chip_driver_supported(enum agx_chip chip);
  * HAL fields added to drm_asahi_params_global. */
 bool agx_params_driver_supported(
    const struct drm_asahi_params_global *params);
+
+/* Exact product name when the chip identity maps to one unambiguous SoC.
+ * Variant letters are not marketing tiers: notably, G17P is A18 Pro rather
+ * than an M5 variant. Returns NULL when one chip identity spans products. */
+const char *agx_chip_exact_product_name(enum agx_chip chip);
 
 /* libagx_g13{g,x} contains AGX2 machine code and USC records. It must never be
  * selected for an AGX3 device, even when no current draw is expected to call a

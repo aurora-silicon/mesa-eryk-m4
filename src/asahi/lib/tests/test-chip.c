@@ -211,7 +211,7 @@ test_independent_generation_axes(void)
 
    /* These phone identities are useful for selecting the ISA, but the Mac
     * driver corpus did not contain enough evidence to select every other
-    * driver axis. They must therefore remain fail-closed. */
+    * driver axis. They remain outside the runnable device set. */
    CHECK_EQ(agx_chip_command_stream_generation(AGX_CHIP_G15P),
             AGX_CS_GENERATION_UNKNOWN);
    CHECK_EQ(agx_chip_sampler_heap_element_size(AGX_CHIP_G15P), 0);
@@ -223,11 +223,9 @@ test_independent_generation_axes(void)
    CHECK(agx_chip_driver_supported(AGX_CHIP_G13G));
    CHECK(agx_chip_driver_supported(AGX_CHIP_G14X));
 
-   /* Codegen and driver support are separate axes, and they diverge on every
-    * AGX3 part: agx3_pack_binary is a real encoder, but no HAL200/HAL300
-    * command stream is wired into the driver, so device open must still
-    * refuse. G15P is the AGX2 phone part, so only its command stream is
-    * missing; G15G/G17P/G17S are AGX3 and now pass the codegen gate. */
+   /* Codegen and device support are separate axes. G17P has the exact
+    * T8140/HAL200 path; the other AGX3 identities have encoders but not a
+    * complete Honeykrisp device path. */
    CHECK(agx_chip_codegen_supported(AGX_CHIP_G15P));
    CHECK(agx_chip_codegen_supported(AGX_CHIP_G15G));
    CHECK(agx_chip_codegen_supported(AGX_CHIP_G17P));
@@ -243,11 +241,25 @@ test_independent_generation_axes(void)
    struct drm_asahi_params_global g17p = {
       .gpu_generation = 17,
       .gpu_variant = 'P',
+      .chip_id = 0x8140,
+      .num_dies = 1,
       .num_clusters_total = 1,
       .usc_generation = 3,
       .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
    };
    CHECK(agx_params_driver_supported(&g17p));
+   CHECK(strcmp(agx_chip_exact_product_name(AGX_CHIP_G17P), "A18 Pro") ==
+         0);
+   CHECK(agx_chip_exact_product_name(AGX_CHIP_G17G) == NULL);
+   g17p.chip_id = 0x8141;
+   CHECK(!agx_params_driver_supported(&g17p));
+   g17p.chip_id = 0x8140;
+   g17p.num_dies = 2;
+   CHECK(!agx_params_driver_supported(&g17p));
+   g17p.num_dies = 1;
+   g17p.num_clusters_total = 2;
+   CHECK(!agx_params_driver_supported(&g17p));
+   g17p.num_clusters_total = 1;
    g17p.usc_generation = 2;
    CHECK(!agx_params_driver_supported(&g17p));
    g17p.usc_generation = 3;
