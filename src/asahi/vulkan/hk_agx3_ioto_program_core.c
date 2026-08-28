@@ -67,7 +67,7 @@ hk_agx3_g17p_graphics_state_tail(
    struct agx_ioto_state_tail_output *tail)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
-       desc->shader_binary_size > 256 || desc->nr_gprs == 0)
+       desc->nr_gprs == 0)
       return false;
 
    static const uint8_t vertex_speclm[AGX_IOTO_SPECLM_SIZE] = {
@@ -79,7 +79,12 @@ hk_agx3_g17p_graphics_state_tail(
 
    struct agx_ioto_state ldshdr = {0};
    ldshdr.f[0] = desc->shader_va;
-   ldshdr.f[1] = (desc->shader_binary_size + 63) / 64 - 1;
+   /* f1 is the two-bit instruction-fetch line hint, not a code-size limit.
+    * Native G17P graphics shaders exceed four 64-byte lines and saturate this
+    * field; execution remains bounded by the shader's terminal end.
+    */
+   const uint32_t fetch_lines_m1 = (desc->shader_binary_size - 1) / 64;
+   ldshdr.f[1] = fetch_lines_m1 < 3 ? fetch_lines_m1 : 3;
    ldshdr.f[23] = 1;
 
    struct agx_ioto_state spectpr;

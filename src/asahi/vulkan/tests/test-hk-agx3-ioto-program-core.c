@@ -576,6 +576,7 @@ test_g17p_basic_graphics_program(void)
    resource = vertex;
    resource.uniform_ranges = two_attribs_and_set;
    resource.uniform_range_count = ARRAY_SIZE(two_attribs_and_set);
+   resource.shader_binary_size = 344;
    CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,
                                                       &resource, &program));
    CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
@@ -583,9 +584,37 @@ test_g17p_basic_graphics_program(void)
    CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
          0x0e);
 
+   const struct hk_agx3_g17p_graphics_program three_range_program = program;
+   for (unsigned i = 0; i < ARRAY_SIZE(two_attribs_and_set); ++i) {
+      struct agx3_ioto_uniform_range changed[ARRAY_SIZE(two_attribs_and_set)];
+      memcpy(changed, two_attribs_and_set, sizeof(changed));
+      changed[i].address += 0x40;
+      resource.uniform_ranges = changed;
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+         AGX_CHIP_G17P, &resource, &program));
+      CHECK(program.length == three_range_program.length &&
+            memcmp(program.bytes, three_range_program.bytes,
+                   program.length) != 0);
+   }
+   resource.uniform_ranges = two_attribs_and_set;
+
+   /* LDSHDR f1 is a four-line fetch hint.  Crossing 256 bytes saturates the
+    * hint instead of imposing a shader-size ceiling.
+    */
+   struct hk_agx3_g17p_graphics_program at_four_lines;
+   struct hk_agx3_g17p_graphics_program_desc boundary = vertex;
+   boundary.shader_binary_size = 256;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+      AGX_CHIP_G17P, &boundary, &at_four_lines));
+   boundary.shader_binary_size = 257;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,
+                                                       &boundary, &program));
+   CHECK(program.length == at_four_lines.length &&
+         memcmp(program.bytes, at_four_lines.bytes, program.length) == 0);
+
    const struct hk_agx3_g17p_graphics_program before = program;
    struct hk_agx3_g17p_graphics_program_desc invalid = vertex;
-   invalid.shader_binary_size = 257;
+   invalid.shader_binary_size = 0;
    CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &invalid,
                                                        &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);

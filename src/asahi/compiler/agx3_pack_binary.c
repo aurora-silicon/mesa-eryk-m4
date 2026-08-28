@@ -1429,11 +1429,57 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const uint16_t s0 = S->nr_srcs > 0 ? S->src[0].reg : 0;
    const uint16_t s1 = S->nr_srcs > 1 ? S->src[1].reg : 0;
    const uint16_t s2 = S->nr_srcs > 2 ? S->src[2].reg : 0;
-   if (!agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask, bytes,
+
+   if (agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask,
+                        bytes, &len)) {
+      return agx3_append(emission, bytes, len);
+   }
+
+   /* Some compact ALU forms cannot carry the needed scoreboard wait. Retire
+    * it with a synchronous prelude, then emit the ordinary no-wait form.
+    * A fresh destination can take an ldimm; an in-place accumulator instead
+    * uses bit_and(x, x), which preserves every bit of its live source.
+    */
+   if (!S->has_dest || S->dest_size != AGX_SIZE_32)
+      return false;
+
+   bool overlaps_source = false;
+   bool exact_in_place = false;
+   for (unsigned i = 0; i < S->nr_srcs; ++i) {
+      if (!S->src[i].is_reg)
+         continue;
+      const unsigned dest_halves = agx_size_align_16(S->dest_size);
+      const unsigned halves = agx_size_align_16(S->src[i].size);
+      if (S->dest < S->src[i].reg + halves &&
+          S->src[i].reg < S->dest + dest_halves) {
+         overlaps_source = true;
+         exact_in_place |=
+            S->src[i].reg == S->dest && S->src[i].size == AGX_SIZE_32;
+      }
+   }
+
+   if (overlaps_source &&
+       (!exact_in_place || (wait_mask & (wait_mask - 1)) != 0))
+      return false;
+
+   while (wait_mask != 0) {
+      const uint16_t prewait = wait_mask & -wait_mask;
+      uint8_t prelude[AGX3_ALU_MAX_LENGTH];
+      uint8_t prelude_len = 0;
+      const enum agx3_alu_op prelude_op =
+         exact_in_place ? AGX3_ALU_BAND : AGX3_ALU_LDIMM;
+      if (!agx3_alu_compose(enc, prelude_op, S->dest, S->dest, S->dest, 0, 0,
+                            prewait, prelude, &prelude_len) ||
+          !agx3_append(emission, prelude, prelude_len))
+         return false;
+      wait_mask &= ~prewait;
+   }
+
+   if (!agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, 0, bytes,
                          &len))
       return false;
-   memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-   return true;
+
+   return agx3_append(emission, bytes, len);
 }
 
 static bool

@@ -816,7 +816,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                                          struct hk_linked_shader *linked)
 {
    if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
-       linked->b.size > 256 || s->b.info.has_preamble ||
+       linked->b.size > UINT32_MAX || s->b.info.has_preamble ||
        s->b.info.scratch_size != 0 ||
        s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
        s->b.info.rodata.size_16 != 0 || s->b.info.texture_state_count != 0 ||

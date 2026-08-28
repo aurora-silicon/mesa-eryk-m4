@@ -154,6 +154,71 @@ build_vs_vkcube_varyings(void)
    return b.shader;
 }
 
+/* The bounded live vkcube vertex shape: position and texture coordinates come
+ * from two VBO CProg bases, while set 0 binding 0 supplies a column-major MVP
+ * matrix through the descriptor-set pointer following the root pointer.
+ */
+static nir_shader *
+build_vs_vkcube_vbo_ubo(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "AGX3 vkcube VBO plus UBO VS");
+
+   const unsigned nr_vbos = 2;
+   const unsigned root = AGX_ABI_VUNI_COUNT_VK(nr_vbos);
+   nir_def *vertex = nir_load_vertex_id(&b);
+   nir_def *position = nir_load_agx(
+      &b, 4, 32,
+      nir_load_preamble(&b, 1, 64, .base = AGX_ABI_VUNI_VBO_BASE(0)), vertex,
+      .access = 0, .base = 0, .format = PIPE_FORMAT_R32_UINT,
+      .sign_extend = false);
+   nir_def *texcoord = nir_load_agx(
+      &b, 4, 32,
+      nir_load_preamble(&b, 1, 64, .base = AGX_ABI_VUNI_VBO_BASE(1)), vertex,
+      .access = 0, .base = 0, .format = PIPE_FORMAT_R32_UINT,
+      .sign_extend = false);
+
+   nir_def *set = nir_load_preamble(&b, 1, 64, .base = root + 4);
+   nir_def *descriptor = nir_load_global_constant(
+      &b, 4, 32, set, .align_mul = 16, .access = ACCESS_CAN_SPECULATE);
+   nir_def *ubo = nir_pack_64_2x32_split(
+      &b, nir_channel(&b, descriptor, 0), nir_channel(&b, descriptor, 1));
+
+   nir_def *column[4];
+   for (unsigned c = 0; c < ARRAY_SIZE(column); ++c) {
+      column[c] = nir_load_global_constant(
+         &b, 4, 32, nir_iadd_imm(&b, ubo, c * 16), .align_mul = 16,
+         .access = ACCESS_CAN_SPECULATE);
+   }
+
+   nir_def *transformed[4];
+   for (unsigned row = 0; row < ARRAY_SIZE(transformed); ++row) {
+      transformed[row] = nir_ffma(
+         &b, nir_channel(&b, position, 0), nir_channel(&b, column[0], row),
+         nir_ffma(
+            &b, nir_channel(&b, position, 1),
+            nir_channel(&b, column[1], row),
+            nir_ffma(&b, nir_channel(&b, position, 2),
+                     nir_channel(&b, column[2], row),
+                     nir_fmul(&b, nir_channel(&b, position, 3),
+                              nir_channel(&b, column[3], row)))));
+   }
+
+   for (unsigned c = 0; c < 4; ++c) {
+      nir_store_uvs_agx(&b, transformed[c], nir_imm_intN_t(&b, c, 16));
+      nir_store_uvs_agx(&b, nir_channel(&b, texcoord, c),
+                        nir_imm_intN_t(&b, 4 + c, 16));
+   }
+   for (unsigned c = 0; c < 3; ++c)
+      nir_store_uvs_agx(&b, transformed[c], nir_imm_intN_t(&b, 8 + c, 16));
+
+   b.shader->info.outputs_written =
+      VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0) |
+      BITFIELD64_BIT(VARYING_SLOT_VAR1);
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
 /*
  * The FS lowering passes introduce driver-owned system values that every
  * driver resolves itself (d12_dxil_lower_root_mask / hk_lower_uvs_index and
@@ -512,6 +577,7 @@ struct agx3_graphics_case {
    bool expect_ok;
    bool lower_combined_sampler;
    uint16_t reserved_preamble;
+   uint16_t minimum_binary_size;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -519,6 +585,8 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-attribute-fetch", build_vs_attribute, true},
    {"vs-uniform-attribute-fetch", build_vs_uniform_attribute, true},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
+   {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
+    AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
    {"fs-flat-colour", build_fs_flat, true},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
@@ -605,6 +673,9 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
          result = !part.info.has_preamble &&
                   part.info.push_count == c->reserved_preamble;
       }
+
+      if (result && c->minimum_binary_size != 0)
+         result = part.info.binary_size >= c->minimum_binary_size;
 
       if (result && c->lower_combined_sampler) {
          nir_shader *reference_nir = build_fs_texture_imm();
