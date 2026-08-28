@@ -22,6 +22,7 @@
 #include "decode.h"
 #include "hk_cmd_buffer.h"
 #include "hk_device.h"
+#include "hk_drm_render_core.h"
 #include "hk_image.h"
 #include "hk_physical_device.h"
 
@@ -176,10 +177,14 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    c->partial_bg.usc = cs->cr.bg.partial.usc | 4;
    c->partial_eot.usc = cs->cr.eot.partial.usc | 4;
 
-   c->bg.rsrc_spec = cs->cr.bg.main.rsrc_spec;
-   c->eot.rsrc_spec = cs->cr.eot.main.rsrc_spec;
-   c->partial_bg.rsrc_spec = cs->cr.bg.partial.rsrc_spec;
-   c->partial_eot.rsrc_spec = cs->cr.eot.partial.rsrc_spec;
+   hk_drm_render_resource_specs_pack(
+      &(struct hk_drm_render_resource_specs){
+         .bg = cs->cr.bg.main.rsrc_spec,
+         .eot = cs->cr.eot.main.rsrc_spec,
+         .partial_bg = cs->cr.bg.partial.rsrc_spec,
+         .partial_eot = cs->cr.eot.partial.rsrc_spec,
+      },
+      c);
 
    c->isp_scissor_base = cs->uploaded_scissor;
    c->isp_dbias_base = cs->uploaded_zbias;

@@ -68,6 +68,8 @@ hk_files = files(
   'hk_private.h',
   'hk_query_pool.c',
   'hk_query_pool.h',
+  'hk_drm_render_core.c',
+  'hk_drm_render_core.h',
   'hk_queue.c',
   'hk_queue.h',
   'hk_sampler.c',
@@ -79,6 +81,19 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_drm_render_core',
+    executable(
+      'hk_drm_render_core_test',
+      files('tests/test-hk-drm-render-core.c',
+            'hk_drm_render_core.c'),
+      include_directories : [inc_include, inc_src],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'hk_agx3_ioto_decode',
     executable(
