@@ -1098,6 +1098,26 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    unsigned nr_vbos = 0;
    bool kill_psiz = false;
 
+   if (dev->dev.chip == AGX_CHIP_G17P &&
+       nir->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_shader *candidate = nir_shader_clone(NULL, nir);
+      struct agx_g17p_combined_sampler_binding binding;
+      if (candidate &&
+          agx_nir_lower_g17p_combined_sampler(candidate, &binding)) {
+         ralloc_free(nir);
+         nir = candidate;
+         shader->info.agx3_combined_sampler_valid = true;
+         shader->info.agx3_combined_sampler = binding;
+
+         /* The specialized shader no longer reads the root or a descriptor
+          * set. Their CProg slots are used by the native texture and sampler.
+          */
+         set_count = 0;
+      } else {
+         ralloc_free(candidate);
+      }
+   }
+
    /* For now, only shader objects are supported */
    if (sw_stage == MESA_SHADER_VERTEX) {
       nr_vbos = DIV_ROUND_UP(

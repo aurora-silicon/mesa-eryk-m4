@@ -168,6 +168,44 @@ hk_agx3_g17p_basic_graphics_program_generate(
 }
 
 bool
+hk_agx3_g17p_combined_sampler_ranges(
+   const struct hk_agx3_g17p_combined_sampler_heap *heap,
+   struct agx3_ioto_uniform_range ranges[2])
+{
+   if (!heap || !ranges || heap->descriptor_set_va == 0 ||
+       heap->sampler_heap_va == 0 || (heap->texture_offset_B & 7) != 0 ||
+       heap->sampler_element_size_B != 32 ||
+       heap->sampler_index < HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX)
+      return false;
+
+   const uint32_t native_index =
+      heap->sampler_index - HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX;
+   if (native_index >= heap->sampler_count)
+      return false;
+
+   const uint64_t texture_va =
+      heap->descriptor_set_va + heap->texture_offset_B;
+   const uint64_t sampler_offset =
+      (uint64_t)native_index * heap->sampler_element_size_B;
+   const uint64_t sampler_va = heap->sampler_heap_va + sampler_offset;
+   if (texture_va < heap->descriptor_set_va ||
+       sampler_va < heap->sampler_heap_va)
+      return false;
+
+   ranges[0] = (struct agx3_ioto_uniform_range){
+      .start_halfs = 0,
+      .size_halfs = 16,
+      .address = texture_va,
+   };
+   ranges[1] = (struct agx3_ioto_uniform_range){
+      .start_halfs = 32,
+      .size_halfs = 16,
+      .address = sampler_va,
+   };
+   return true;
+}
+
+bool
 hk_agx3_g17p_rt0_bg_shader_resources_match(
    enum hk_agx3_g17p_rt0_bg_op op, unsigned push_count, bool uses_txf)
 {

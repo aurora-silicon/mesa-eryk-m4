@@ -305,9 +305,12 @@ build_fs_tilebuffer_load(void)
    return fs_finish(&b);
 }
 
-/* Fragment shader sampling a bindless 2D texture. */
+/* Fragment shader matching vkcube's statically indexed set-0 combined image
+ * sampler after Honeykrisp descriptor lowering. The Gen9 texture starts at
+ * byte 64, followed by the native sampler word at byte 96.
+ */
 static nir_shader *
-build_fs_texture(void)
+build_fs_texture_bias_offset(uint32_t bias_offset_B)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 textured FS");
@@ -318,20 +321,30 @@ build_fs_texture(void)
       &b, 2, 32, bary, nir_imm_int(&b, 0), .base = 0, .component = 0,
       .io_semantics.location = VARYING_SLOT_VAR0, .io_semantics.num_slots = 1);
 
-   nir_def *timage = nir_bindless_image_agx(&b, nir_imm_int(&b, 0),
+   nir_def *timage = nir_bindless_image_agx(&b, nir_imm_int(&b, 64),
                                             .desc_set = 0);
-   nir_def *tsampler = nir_bindless_sampler_agx(&b, nir_imm_int(&b, 0),
-                                                nir_imm_intN_t(&b, 0, 16),
-                                                .desc_set = 1);
+   nir_def *tsampler = nir_bindless_sampler_agx(
+      &b, nir_imm_int(&b, 96), nir_imm_intN_t(&b, 45, 16), .desc_set = 0);
 
-   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
-   tex->op = nir_texop_tex;
+   /* Honeykrisp lowers the API sampler bias to a descriptor load. HAL200
+    * carries that bias in the native sampler word, while the software field is
+    * always zero, so the bounded lowering removes this source again.
+    */
+   nir_def *set = nir_load_descriptor_set_agx(&b, 0);
+   nir_def *bias_offset = nir_u2u64(&b, nir_imm_int(&b, bias_offset_B));
+   nir_def *bias = nir_load_global_constant(
+      &b, 1, 16, nir_iadd(&b, set, bias_offset), .align_mul = 4,
+      .align_offset = 0, .access = ACCESS_CAN_SPECULATE);
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 4);
+   tex->op = nir_texop_txb;
    tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
    tex->dest_type = nir_type_float32;
    tex->coord_components = 2;
    tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, uv);
    tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, timage);
    tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, tsampler);
+   tex->src[3] = nir_tex_src_for_ssa(nir_tex_src_bias, bias);
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
 
@@ -340,12 +353,34 @@ build_fs_texture(void)
    b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
    b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
 
-   NIR_PASS(_, b.shader, agx_nir_lower_texture_early, false);
    NIR_PASS(_, b.shader, agx_nir_lower_texture);
    agx_preprocess_nir(b.shader);
    fs_lower(b.shader);
    NIR_PASS(_, b.shader, agx_nir_lower_texture);
    return b.shader;
+}
+
+static nir_shader *
+build_fs_texture(void)
+{
+   return build_fs_texture_bias_offset(108);
+}
+
+static bool
+test_combined_sampler_scope(void)
+{
+   nir_shader *nir = build_fs_texture_bias_offset(112);
+   struct agx_g17p_combined_sampler_binding binding = {
+      .texture_offset_B = UINT32_MAX,
+      .sampler_index_offset_B = UINT32_MAX,
+   };
+
+   const bool lowered =
+      agx_nir_lower_g17p_combined_sampler(nir, &binding);
+   const bool ok = !lowered && binding.texture_offset_B == UINT32_MAX &&
+                   binding.sampler_index_offset_B == UINT32_MAX;
+   ralloc_free(nir);
+   return ok;
 }
 
 /*
@@ -436,6 +471,7 @@ struct agx3_graphics_case {
    const char *name;
    nir_shader *(*build)(void);
    bool expect_ok;
+   bool lower_combined_sampler;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -447,6 +483,7 @@ static const struct agx3_graphics_case cases[] = {
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
    {"fs-textured-triangle", build_fs_texture_imm, true},
+   {"fs-vkcube-combined-sampler", build_fs_texture, true, true},
    {"fs-descriptor-resource", build_fs_descriptor_resource, true},
    {"fs-transcendentals", build_fs_funops, true},
 
@@ -468,21 +505,27 @@ static const struct agx3_graphics_case cases[] = {
     *   format transform, so the staging ABI is a correlation rather than a
     *   traced contract (see agx3_pack_binary.c).
     *
-    * - the *bindless* texture sample stays refused: the sampler form is
-    *   grounded for immediate texture/sampler state only (fs-textured-triangle
-    *   above), the bindless heap operand selects a different encoding branch
-    *   with no in-domain witness, and this shader also reaches an ALU op with
-    *   a uniform source, which the AGX3 selection core refuses independently.
     */
    {"fs-discard", build_fs_discard, false},
    {"fs-depth-write", build_fs_depth, false},
-   {"fs-texture-sample-bindless", build_fs_texture, false},
 };
 
 static bool
 run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 {
    nir_shader *nir = c->build();
+
+   if (c->lower_combined_sampler) {
+      struct agx_g17p_combined_sampler_binding binding;
+      if (!agx_nir_lower_g17p_combined_sampler(nir, &binding) ||
+          binding.texture_offset_B != 64 ||
+          binding.sampler_index_offset_B != 104) {
+         fprintf(stderr, "%s %s: combined descriptor lowering mismatch\n",
+                 enc_name(enc), c->name);
+         ralloc_free(nir);
+         return false;
+      }
+   }
 
    struct agx_shader_key key = {0};
    key.dev.encoding = enc;
@@ -514,6 +557,33 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
                          sizeof(agx3_end),
                       agx3_end, sizeof(agx3_end)) == 0;
 
+      if (result && c->lower_combined_sampler) {
+         nir_shader *reference_nir = build_fs_texture_imm();
+         struct agx_shader_part reference = {0};
+         const bool reference_ok =
+            agx_compile_shader_nir(reference_nir, &key, &reference);
+         const bool binary_matches =
+            reference_ok &&
+            reference.info.binary_size == part.info.binary_size &&
+            memcmp(reference.binary, part.binary, part.info.binary_size) == 0;
+         result = binary_matches && !part.info.has_preamble &&
+                  !part.info.uses_sampler_heap &&
+                  part.info.texture_state_count == 0 &&
+                  part.info.sampler_state_count == 0;
+         if (!result) {
+            fprintf(stderr,
+                    "%s %s: specialized=%u reference=%u binary_match=%u "
+                    "preamble=%u heap=%u ts=%u ss=%u\n",
+                    enc_name(enc), c->name, part.info.binary_size,
+                    reference.info.binary_size, binary_matches,
+                    part.info.has_preamble, part.info.uses_sampler_heap,
+                    part.info.texture_state_count,
+                    part.info.sampler_state_count);
+         }
+         free(reference.binary);
+         ralloc_free(reference_nir);
+      }
+
       if (!result) {
          fprintf(stderr, "%s %s: %s\n", enc_name(enc), c->name,
                  c->expect_ok ? "accepted but binary is malformed"
@@ -541,6 +611,11 @@ main(void)
       AGX_ISA_ENCODING_AGX3C,
    };
    bool all_ok = true;
+
+   if (!test_combined_sampler_scope()) {
+      fputs("combined sampler lowering consumed a non-sampler bias\n", stderr);
+      all_ok = false;
+   }
 
    for (unsigned e = 0; e < ARRAY_SIZE(encodings); ++e) {
       for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {

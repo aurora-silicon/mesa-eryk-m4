@@ -6,6 +6,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct nir_shader;
 struct nir_instr;
@@ -27,3 +28,15 @@ bool agx_nir_lower_texture_early(struct nir_shader *s, bool support_lod_bias);
 bool agx_nir_lower_texture(struct nir_shader *s);
 bool agx_nir_lower_multisampled_image_store(struct nir_shader *s);
 bool agx_nir_needs_texture_crawl(struct nir_instr *instr);
+
+struct agx_g17p_combined_sampler_binding {
+   uint32_t texture_offset_B;
+   uint32_t sampler_index_offset_B;
+};
+
+/* Turn the one statically indexed set-0 Gen9 combined image/sampler used by
+ * the initial G17P graphics path into texture-state 0 / sampler-state 1. The
+ * caller must place the corresponding native states in those CProg regions.
+ */
+bool agx_nir_lower_g17p_combined_sampler(
+   struct nir_shader *s, struct agx_g17p_combined_sampler_binding *binding);

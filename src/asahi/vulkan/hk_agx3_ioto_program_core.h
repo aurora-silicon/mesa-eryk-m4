@@ -71,10 +71,29 @@ struct hk_agx3_g17p_graphics_program {
    uint16_t length;
 };
 
+#define HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX 28u
+
+struct hk_agx3_g17p_combined_sampler_heap {
+   uint64_t descriptor_set_va;
+   uint64_t sampler_heap_va;
+   uint32_t texture_offset_B;
+   uint16_t sampler_index;
+   uint16_t sampler_count;
+   uint16_t sampler_element_size_B;
+};
+
+/* Join one Gen9 texture descriptor and one indexed HAL200 native sampler into
+ * the CProg slots consumed by texture 0 and sampler 1. Sampler 0 remains the
+ * libagx texel-fetch reservation.
+ */
+bool hk_agx3_g17p_combined_sampler_ranges(
+   const struct hk_agx3_g17p_combined_sampler_heap *heap,
+   struct agx3_ioto_uniform_range ranges[2]);
+
 /* Build the bounded G17P vertex or fragment Ioto program. Zero ranges preserve
  * the exact no-resource triangle bytes. Up to three dword-aligned absolute
- * uniform ranges add the CProg loads used by two vertex attributes and one
- * descriptor-set pointer. */
+ * uniform ranges add the CProg loads used by vertex attributes, descriptor
+ * roots, or the bounded native texture/sampler pair above. */
 bool hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program);

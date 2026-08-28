@@ -649,6 +649,57 @@ test_g17p_rt0_eot_program(void)
 }
 
 static int
+test_g17p_combined_sampler_ranges(void)
+{
+   const struct hk_agx3_g17p_combined_sampler_heap heap = {
+      .descriptor_set_va = UINT64_C(0x10000020000),
+      .sampler_heap_va = UINT64_C(0x10000080000),
+      .texture_offset_B = 64,
+      .sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX + 7,
+      .sampler_count = 1024,
+      .sampler_element_size_B = 32,
+   };
+   struct agx3_ioto_uniform_range ranges[2] = {0};
+   CHECK(hk_agx3_g17p_combined_sampler_ranges(&heap, ranges));
+   CHECK(ranges[0].start_halfs == 0 && ranges[0].size_halfs == 16 &&
+         ranges[0].address == UINT64_C(0x10000020040));
+   CHECK(ranges[1].start_halfs == 32 && ranges[1].size_halfs == 16 &&
+         ranges[1].address == UINT64_C(0x100000800e0));
+
+   const struct hk_agx3_g17p_graphics_program_desc desc = {
+      .program_va = UINT64_C(0x10001990240),
+      .shader_va = UINT64_C(0x10000000080),
+      .uniform_ranges = ranges,
+      .uniform_range_count = ARRAY_SIZE(ranges),
+      .shader_binary_size = 54,
+      .nr_gprs = 8,
+      .fragment = true,
+   };
+   struct hk_agx3_g17p_graphics_program program;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &desc,
+                                                      &program));
+   CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE &&
+         program.length <= HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE &&
+         program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
+            0x0e);
+
+   const struct agx3_ioto_uniform_range before[2] = {ranges[0], ranges[1]};
+   struct hk_agx3_g17p_combined_sampler_heap bad = heap;
+   bad.sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX - 1;
+   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
+   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX + 1024;
+   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
+   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.sampler_element_size_B = 8;
+   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
+   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   return 0;
+}
+
+static int
 test_g17p_rt0_background_programs(void)
 {
    CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
@@ -814,6 +865,7 @@ main(void)
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
+       test_g17p_combined_sampler_ranges() ||
        test_g17p_rt0_background_programs() || test_alias())
       return 1;
 

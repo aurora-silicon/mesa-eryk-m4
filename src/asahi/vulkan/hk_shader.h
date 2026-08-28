@@ -8,6 +8,7 @@
 #pragma once
 
 #include "asahi/compiler/agx_compile.h"
+#include "asahi/compiler/agx_nir.h"
 #include "poly/nir/poly_nir.h"
 #include "util/macros.h"
 #include "agx_linker.h"
@@ -110,6 +111,14 @@ struct hk_shader_info {
    uint8_t clip_distance_array_size;
    uint8_t cull_distance_array_size;
    uint8_t set_count;
+
+   /* The bounded G17P fragment path lowers one Gen9 combined image/sampler to
+    * texture-state 0 and sampler-state 1. Command recording joins the bound
+    * descriptor set and the native sampler heap into those CProg slots.
+    */
+   bool agx3_combined_sampler_valid;
+   uint8_t _agx3_combined_sampler_pad[3];
+   struct agx_g17p_combined_sampler_binding agx3_combined_sampler;
 
    /* XXX: is there a less goofy way to do this? I really don't want dynamic
     * allocation here.

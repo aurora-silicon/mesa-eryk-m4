@@ -843,6 +843,7 @@ hk_g17p_graphics_uniform_ranges(
    struct hk_cmd_buffer *cmd, struct hk_shader *s,
    struct agx3_ioto_uniform_range ranges[3], size_t *range_count)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const uint64_t root_ptr = cmd->state.gfx.root;
    size_t count = 0;
    unsigned root_uniform = 0;
@@ -876,6 +877,46 @@ hk_g17p_graphics_uniform_ranges(
       root_uniform = AGX_ABI_FUNI_ROOT;
    } else {
       return false;
+   }
+
+   if (s->info.agx3_combined_sampler_valid) {
+      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0)
+         return false;
+
+      struct hk_descriptor_set *set = cmd->state.gfx.descriptors.sets[0];
+      const struct agx_g17p_combined_sampler_binding *binding =
+         &s->info.agx3_combined_sampler;
+      if (!set || !set->mapped_ptr ||
+          binding->texture_offset_B > set->size ||
+          set->size - binding->texture_offset_B < 32 ||
+          binding->sampler_index_offset_B > set->size ||
+          set->size - binding->sampler_index_offset_B < sizeof(uint16_t))
+         return false;
+
+      uint16_t sampler_index;
+      memcpy(&sampler_index,
+             (const uint8_t *)set->mapped_ptr +
+                binding->sampler_index_offset_B,
+             sizeof(sampler_index));
+
+      const unsigned sampler_element_size =
+         agx_chip_sampler_heap_element_size(dev->dev.chip);
+      if (!dev->samplers.table.bo || !dev->samplers.table.bo->va ||
+          dev->samplers.table.alloc > UINT16_MAX ||
+          sampler_element_size > UINT16_MAX)
+         return false;
+
+      const struct hk_agx3_g17p_combined_sampler_heap heap = {
+         .descriptor_set_va = hk_descriptor_set_addr(set),
+         .sampler_heap_va = dev->samplers.table.bo->va->addr,
+         .texture_offset_B = binding->texture_offset_B,
+         .sampler_index = sampler_index,
+         .sampler_count = dev->samplers.table.alloc,
+         .sampler_element_size_B = sampler_element_size,
+      };
+      if (!hk_agx3_g17p_combined_sampler_ranges(&heap, &ranges[count]))
+         return false;
+      count += 2;
    }
 
    if (s->info.set_count != 0) {
