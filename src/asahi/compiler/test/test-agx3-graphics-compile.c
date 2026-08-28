@@ -120,6 +120,39 @@ build_vs_uniform_attribute(void)
    return b.shader;
 }
 
+/* Standard vkcube's vertex interface: position plus a vec4 texture coordinate
+ * and a vec3 object-space position, occupying UVS words 4..10. */
+static nir_shader *
+build_vs_vkcube_varyings(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "AGX3 vkcube varying VS");
+
+   nir_def *id = nir_u2f32(&b, nir_load_vertex_id(&b));
+   nir_def *values[11] = {
+      id,
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 1.0f),
+      id,
+      nir_imm_float(&b, 0.25f),
+      nir_imm_float(&b, 0.5f),
+      nir_imm_float(&b, 1.0f),
+      id,
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 1.0f),
+   };
+
+   for (unsigned c = 0; c < ARRAY_SIZE(values); ++c)
+      nir_store_uvs_agx(&b, values[c], nir_imm_intN_t(&b, c, 16));
+
+   b.shader->info.outputs_written =
+      VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0) |
+      BITFIELD64_BIT(VARYING_SLOT_VAR1);
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
 /*
  * The FS lowering passes introduce driver-owned system values that every
  * driver resolves itself (d12_dxil_lower_root_mask / hk_lower_uvs_index and
@@ -409,6 +442,7 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-flat-triangle", build_vs_flat, true},
    {"vs-attribute-fetch", build_vs_attribute, true},
    {"vs-uniform-attribute-fetch", build_vs_uniform_attribute, true},
+   {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"fs-flat-colour", build_fs_flat, true},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},

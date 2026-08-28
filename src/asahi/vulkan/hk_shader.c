@@ -1253,8 +1253,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          .uvs_size = shader->info.uvs.size,
          .user_size = shader->info.uvs.user_size,
       };
-      hk_agx3_g17p_basic_vertex_program_info(dev->dev.chip, &compiler_info,
-                                             &shader->agx3_vdm_state_update);
+      hk_agx3_g17p_vertex_program_info(dev->dev.chip, &compiler_info,
+                                       &shader->agx3_vdm_state_update);
    }
 
    if (xfb_info) {

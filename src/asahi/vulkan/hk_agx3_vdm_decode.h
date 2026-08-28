@@ -23,7 +23,7 @@ extern "C" {
 /* Bump whenever the Honeykrisp shader payload below changes.  Vulkan shader
  * binaries carry this version outside the driver-private blob, so stale
  * layouts are rejected before any fields are consumed. */
-#define HK_AGX3_SHADER_BINARY_VERSION 1u
+#define HK_AGX3_SHADER_BINARY_VERSION 2u
 
 bool hk_agx3_shader_binary_version_supported(uint32_t version);
 
@@ -54,11 +54,10 @@ struct hk_agx3_g17p_vertex_compile_info {
    uint8_t user_size;
 };
 
-/* Build the exact G17P VertexProgramVariant fields for the procedural
- * position-only vertex shader.  The finished Ioto loader has no preamble
- * state, and the four position words reproduce m1n1's 28-byte direct-triangle
- * VDM prefix. */
-bool hk_agx3_g17p_basic_vertex_program_info(
+/* Build the exact G17P VertexProgramVariant fields for a hardware vertex
+ * shader with position and, optionally, up to two ordinary user-varying
+ * slots.  System outputs and preambles are separate state shapes. */
+bool hk_agx3_g17p_vertex_program_info(
    enum agx_chip chip,
    const struct hk_agx3_g17p_vertex_compile_info *compiler_info,
    struct agx_vdm_state_update_program_info *program);

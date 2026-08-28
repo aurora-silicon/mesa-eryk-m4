@@ -6,6 +6,7 @@
 #include "hk_agx3_vdm_decode.h"
 
 #include "util/blob.h"
+#include "util/bitscan.h"
 
 #include <string.h>
 
@@ -106,7 +107,7 @@ hk_agx3_vdm_live_source_layout(
 }
 
 bool
-hk_agx3_g17p_basic_vertex_program_info(
+hk_agx3_g17p_vertex_program_info(
    enum agx_chip chip,
    const struct hk_agx3_g17p_vertex_compile_info *compiler_info,
    struct agx_vdm_state_update_program_info *program)
@@ -115,13 +116,18 @@ hk_agx3_g17p_basic_vertex_program_info(
       memset(program, 0, sizeof(*program));
 
    if (chip != AGX_CHIP_G17P || !compiler_info || !program ||
-       !compiler_info->hardware_vertex || !compiler_info->position_only ||
+       !compiler_info->hardware_vertex ||
        compiler_info->has_preamble || compiler_info->nr_preamble_gprs != 0 ||
        compiler_info->preamble_scratch_size != 0 ||
-       compiler_info->uvs_written != 0 || compiler_info->uvs_size != 4 ||
-       compiler_info->user_size != 0 || compiler_info->position_off != 0 ||
-       compiler_info->varyings_off != 4 || compiler_info->psiz_off != 4 ||
-       compiler_info->layer_viewport_off != 4 || compiler_info->clip_off != 4)
+       compiler_info->position_off != 0 || compiler_info->varyings_off != 4 ||
+       compiler_info->psiz_off != 4 + compiler_info->user_size ||
+       compiler_info->layer_viewport_off != compiler_info->psiz_off ||
+       compiler_info->clip_off != compiler_info->layer_viewport_off ||
+       compiler_info->uvs_size != compiler_info->clip_off ||
+       compiler_info->position_only != (compiler_info->user_size == 0) ||
+       compiler_info->position_only != (compiler_info->uvs_written == 0) ||
+       compiler_info->user_size > 8 ||
+       util_bitcount64(compiler_info->uvs_written) > 2)
       return false;
 
    *program = (struct agx_vdm_state_update_program_info){
@@ -133,9 +139,11 @@ hk_agx3_g17p_basic_vertex_program_info(
              */
             .raw_state_load_count_12 = 0,
             .raw_state_load_count_18 = 0,
-            /* VsStateConfig places the four position words in count 0. */
+            /* VertexProgramVariant reads position words from
+             * VsStateConfig+0xc and user words from +0x14.  Its middle count
+             * is their sum when no system output is present. */
             .raw_vs_output_count_0 = 4,
-            .raw_vs_output_count_2 = 0,
+            .raw_vs_output_count_2 = compiler_info->user_size,
             .raw_vs_output_count_1_extra = false,
             .raw_vs_output_selector = 0,
             .raw_vs_output_flag_6 = false,
