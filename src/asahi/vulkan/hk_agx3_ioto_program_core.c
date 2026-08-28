@@ -110,22 +110,59 @@ hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P)
+   if (!program || chip != AGX_CHIP_G17P || !desc ||
+       desc->uniform_range_count > 3 ||
+       (desc->uniform_range_count != 0 && !desc->uniform_ranges))
       return false;
 
    struct agx_ioto_state_tail_output tail;
    if (!hk_agx3_g17p_graphics_state_tail(desc, &tail))
       return false;
 
-   struct hk_agx3_g17p_graphics_program staged;
+   struct hk_agx3_g17p_graphics_program staged = {0};
    size_t written = 0;
-   if (!agx_ioto_g17p_no_resource_program_compose(
-          desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
-          &written) ||
-       written != sizeof(staged.bytes))
+   if (desc->uniform_range_count == 0) {
+      if (!agx_ioto_g17p_no_resource_program_compose(
+             desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
+             &written) ||
+          written != AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
+         return false;
+   } else {
+      uint8_t body[384];
+      struct agx_ioto_inflight_load loads[64];
+      struct agx_ioto_inflight_load sort[64];
+      struct agx_ioto_load_cache_entry cache[64];
+      const struct agx3_ioto_uniform_program_desc load_desc = {
+         .program_va = desc->program_va,
+         .ranges = desc->uniform_ranges,
+         .range_count = desc->uniform_range_count,
+      };
+      const struct agx3_ioto_uniform_program_workspace workspace = {
+         .body = body,
+         .body_capacity = sizeof(body),
+         .loads = loads,
+         .load_capacity = sizeof(loads) / sizeof(loads[0]),
+         .sort = sort,
+         .sort_capacity = sizeof(sort) / sizeof(sort[0]),
+         .cache = cache,
+         .cache_capacity = sizeof(cache) / sizeof(cache[0]),
+      };
+
+      size_t body_size, copy_offset;
+      if (!agx3_ioto_uniform_program_body_generate(
+             chip, &load_desc, workspace, &body_size, &copy_offset) ||
+          copy_offset > body_size ||
+          !agx_ioto_g17p_resource_program_compose(
+             desc->program_va, body, copy_offset, body + copy_offset,
+             body_size - copy_offset, &tail, staged.bytes,
+             sizeof(staged.bytes), &written))
+         return false;
+   }
+
+   if (written > UINT16_MAX)
       return false;
 
-   staged.length = (uint8_t)written;
+   staged.length = (uint16_t)written;
    *program = staged;
    return true;
 }

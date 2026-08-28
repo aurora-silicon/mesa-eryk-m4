@@ -96,6 +96,30 @@ build_vs_attribute(void)
    return b.shader;
 }
 
+/* The live HAL200 vertex path fills uniform halfs 0..3 with the first VBO
+ * address. This covers the same device load with that Ioto-populated base. */
+static nir_shader *
+build_vs_uniform_attribute(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "AGX3 uniform-base attribute VS");
+
+   nir_def *base = nir_load_preamble(&b, 1, 64, .base = 0);
+   nir_def *index = nir_load_vertex_id(&b);
+   nir_def *attr = nir_load_agx(&b, 4, 32, base, index, .access = 0, .base = 0,
+                                .format = PIPE_FORMAT_R32_UINT,
+                                .sign_extend = false);
+
+   for (unsigned c = 0; c < 4; ++c) {
+      nir_store_uvs_agx(&b, nir_u2f32(&b, nir_channel(&b, attr, c)),
+                        nir_imm_intN_t(&b, c, 16));
+   }
+
+   b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
 /*
  * The FS lowering passes introduce driver-owned system values that every
  * driver resolves itself (d12_dxil_lower_root_mask / hk_lower_uvs_index and
@@ -332,6 +356,23 @@ build_fs_texture_imm(void)
    return b.shader;
 }
 
+/* Descriptor set 0 is placed in fragment uniform halfs 16..19. Load one
+ * vec4 directly from that descriptor resource and write it to RT0. */
+static nir_shader *
+build_fs_descriptor_resource(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 descriptor resource FS");
+
+   nir_def *set = nir_load_preamble(&b, 1, 64, .base = 16);
+   nir_def *raw = nir_load_agx(&b, 4, 32, set, nir_imm_int(&b, 0),
+                               .access = ACCESS_CAN_SPECULATE, .base = 0,
+                               .format = PIPE_FORMAT_R32_UINT,
+                               .sign_extend = false);
+   fs_store_colour(&b, nir_u2f32(&b, raw));
+   return fs_finish(&b);
+}
+
 /*
  * Fragment shader exercising the funop family: floor/exp2/log2 (f32rint and
  * friends) plus the fragment-only gradient dfdx.
@@ -367,10 +408,12 @@ struct agx3_graphics_case {
 static const struct agx3_graphics_case cases[] = {
    {"vs-flat-triangle", build_vs_flat, true},
    {"vs-attribute-fetch", build_vs_attribute, true},
+   {"vs-uniform-attribute-fetch", build_vs_uniform_attribute, true},
    {"fs-flat-colour", build_fs_flat, true},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
    {"fs-textured-triangle", build_fs_texture_imm, true},
+   {"fs-descriptor-resource", build_fs_descriptor_resource, true},
    {"fs-transcendentals", build_fs_funops, true},
 
    /*

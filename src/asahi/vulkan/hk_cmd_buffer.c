@@ -821,18 +821,76 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
        s->b.info.rodata.size_16 != 0 || s->b.info.texture_state_count != 0 ||
        s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
-       linked->b.uses_txf || s->data_size != 0 || s->info.set_count != 0)
+       linked->b.uses_txf || s->data_size != 0 || s->info.set_count > 1)
       return false;
 
    if (s->info.stage == MESA_SHADER_VERTEX) {
+      const unsigned nr_attribs = DIV_ROUND_UP(
+         BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
+
       return !linked->sw_indexing && !linked->b.uses_base_param &&
-             BITSET_LAST_BIT(s->info.vs.attrib_components_read) == 0 &&
+             nr_attribs <= 2 &&
              s->agx3_vdm_state_update.source_layout ==
                 AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
    }
 
    return s->info.stage == MESA_SHADER_FRAGMENT &&
           linked->b.cf.nr_bindings == 0 && hk_g17p_basic_fragment_layout(cmd);
+}
+
+static bool
+hk_g17p_graphics_uniform_ranges(
+   struct hk_cmd_buffer *cmd, struct hk_shader *s,
+   struct agx3_ioto_uniform_range ranges[3], size_t *range_count)
+{
+   const uint64_t root_ptr = cmd->state.gfx.root;
+   size_t count = 0;
+   unsigned root_uniform = 0;
+
+   if (s->info.stage == MESA_SHADER_VERTEX) {
+      const unsigned nr_attribs = DIV_ROUND_UP(
+         BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
+      if (nr_attribs > 2)
+         return false;
+
+      if (nr_attribs != 0) {
+         if (!root_ptr)
+            return false;
+
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_VUNI_VBO_BASE(0),
+            .size_halfs = 4 * nr_attribs,
+            .address =
+               root_ptr + hk_root_descriptor_offset(draw.attrib_base),
+         };
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_VUNI_VBO_CLAMP(nr_attribs, 0),
+            .size_halfs = 2 * nr_attribs,
+            .address =
+               root_ptr + hk_root_descriptor_offset(draw.attrib_clamps),
+         };
+      }
+
+      root_uniform = AGX_ABI_VUNI_COUNT_VK(nr_attribs);
+   } else if (s->info.stage == MESA_SHADER_FRAGMENT) {
+      root_uniform = AGX_ABI_FUNI_ROOT;
+   } else {
+      return false;
+   }
+
+   if (s->info.set_count != 0) {
+      if (!root_ptr)
+         return false;
+
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = root_uniform,
+         .size_halfs = 4 * (1 + s->info.set_count),
+         .address = root_ptr,
+      };
+   }
+
+   *range_count = count;
+   return count <= 3;
 }
 
 uint64_t
@@ -849,8 +907,18 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
+      struct agx3_ioto_uniform_range ranges[3];
+      size_t range_count;
+      if (!hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return 0;
+      }
+
+      const size_t program_capacity =
+         range_count ? HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE
+                     : AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
       struct agx_bo *program_bo =
-         agx_bo_create(&dev->dev, AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
+         agx_bo_create(&dev->dev, program_capacity,
                        AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
                        "G17P Ioto program");
       if (!program_bo) {
@@ -868,6 +936,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       const struct hk_agx3_g17p_graphics_program_desc desc = {
          .program_va = program_bo->va->addr,
          .shader_va = linked->b.bo->va->addr,
+         .uniform_ranges = ranges,
+         .uniform_range_count = range_count,
          .shader_binary_size = linked->b.size,
          .scratch_size = linked->b.scratch_size,
          .nr_gprs = linked->b.nr_gprs,

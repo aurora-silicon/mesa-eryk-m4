@@ -544,6 +544,45 @@ test_g17p_basic_graphics_program(void)
    };
    CHECK(memcmp(program.bytes, vertex_tail, sizeof(vertex_tail)) == 0);
 
+   static const struct agx3_ioto_uniform_range descriptor_root = {
+      .start_halfs = 20,
+      .size_halfs = 4,
+      .address = 0x20,
+   };
+   static const uint8_t expected_resource_prefix[] = {
+      0x0c, 0x20, 0x1c, 0x00, 0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x19, 0x00, 0x00, 0x40, 0x22, 0x00, 0x06, 0x08, 0x06, 0x00, 0x06, 0x00,
+      0x06, 0x00, 0xab, 0x00, 0x01, 0x04, 0xbb, 0x02, 0x01, 0x04,
+   };
+   struct hk_agx3_g17p_graphics_program_desc resource = fragment;
+   resource.uniform_ranges = &descriptor_root;
+   resource.uniform_range_count = 1;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,
+                                                      &resource, &program));
+   CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
+   CHECK(program.length <= HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE);
+   const size_t pre_copy_size = sizeof(expected_resource_prefix) - 8;
+   CHECK(memcmp(program.bytes, expected_resource_prefix, pre_copy_size) == 0);
+   CHECK(memcmp(program.bytes + pre_copy_size,
+                expected_fragment, AGX_IOTO_STATE_TAIL_TYPE0_SIZE) == 0);
+   CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
+         0x0e);
+
+   static const struct agx3_ioto_uniform_range two_attribs_and_set[] = {
+      {.start_halfs = 0, .size_halfs = 8, .address = 0x1000},
+      {.start_halfs = 8, .size_halfs = 4, .address = 0x2000},
+      {.start_halfs = 24, .size_halfs = 8, .address = 0x3000},
+   };
+   resource = vertex;
+   resource.uniform_ranges = two_attribs_and_set;
+   resource.uniform_range_count = ARRAY_SIZE(two_attribs_and_set);
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,
+                                                      &resource, &program));
+   CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
+   CHECK(program.length <= HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE);
+   CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
+         0x0e);
+
    const struct hk_agx3_g17p_graphics_program before = program;
    struct hk_agx3_g17p_graphics_program_desc invalid = vertex;
    invalid.shader_binary_size = 257;
@@ -552,6 +591,11 @@ test_g17p_basic_graphics_program(void)
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17S, &vertex,
                                                        &program));
+   invalid = resource;
+   invalid.uniform_range_count = 4;
+   CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &invalid,
+                                                       &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    return 0;
 }
 

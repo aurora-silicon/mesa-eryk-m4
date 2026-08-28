@@ -56,20 +56,25 @@ bool hk_agx3_g17p_no_resource_program_generate(
 struct hk_agx3_g17p_graphics_program_desc {
    uint64_t program_va;
    uint64_t shader_va;
+   const struct agx3_ioto_uniform_range *uniform_ranges;
+   size_t uniform_range_count;
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
    bool fragment;
 };
 
+#define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 512u
+
 struct hk_agx3_g17p_graphics_program {
-   uint8_t bytes[AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE];
-   uint8_t length;
+   uint8_t bytes[HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE];
+   uint16_t length;
 };
 
-/* Build the position-only vertex or flat-colour fragment Ioto program used by
- * the basic G17P triangle.  The two stage-specific SPECLM records, LDSHDR text
- * span rule, SPECTPR compiler rule, and default profile are all byte-exact. */
+/* Build the bounded G17P vertex or fragment Ioto program. Zero ranges preserve
+ * the exact no-resource triangle bytes. Up to three dword-aligned absolute
+ * uniform ranges add the CProg loads used by two vertex attributes and one
+ * descriptor-set pointer. */
 bool hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program);
