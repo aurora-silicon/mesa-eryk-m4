@@ -6,6 +6,8 @@
  */
 
 #include "agx_device.h"
+#include "agx_va_runtime_hole.h"
+#include <errno.h>
 #include <inttypes.h>
 #include "clc/asahi_clc.h"
 #include "drm-uapi/asahi_drm.h"
@@ -192,6 +194,11 @@ agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
    assert((size_B % 16384) == 0 && "alignment required");
    assert((offset_B % 16384) == 0 && "alignment required");
    assert((addr % 16384) == 0 && "alignment required");
+
+   if (agx_va_overlaps_runtime_graph_hole(dev->chip, addr, size_B)) {
+      errno = EINVAL;
+      return -1;
+   }
 
    struct drm_asahi_gem_bind_op op = {
       .flags = flags,
@@ -829,6 +836,14 @@ agx_open_device(void *memctx, struct agx_device *dev)
    simple_mtx_init(&dev->vma_lock, mtx_plain);
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
+
+   if (!agx_va_reserve_runtime_graph_hole(
+          dev->chip, &dev->main_heap, user_start, user_size,
+          dev->sparse_ro_offset, &dev->usc_heap, dev->shader_base,
+          shader_size)) {
+      fprintf(stderr, "Failed to reserve firmware runtime-graph GPU VA\n");
+      return false;
+   }
 
    if (dev->ops.va_init != NULL &&
        !dev->ops.va_init(dev, user_start, user_size, dev->shader_base,

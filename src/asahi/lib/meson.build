@@ -75,6 +75,8 @@ libasahi_lib_files = files(
   'agx_vdm_state_update_core.c',
   'agx_vdm_state_update_core.h',
   'agx_va.c',
+  'agx_va_runtime_hole.c',
+  'agx_va_runtime_hole.h',
   'pool.c',
 )
 
@@ -224,6 +226,20 @@ libasahi_lib = static_library(
 )
 
 if with_tests
+  test(
+    'asahi-agx-va-runtime-hole',
+    executable(
+      'asahi-agx-va-runtime-hole',
+      files(
+        'agx_va_runtime_hole.c',
+        'tests/test-agx-va-runtime-hole.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      dependencies : [idep_mesautil],
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'asahi-agx-scs-layout',
     executable(
