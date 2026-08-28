@@ -345,6 +345,17 @@ if with_tests
     ),
     suite : ['asahi'],
   )
+
+  if with_platform_x11
+    executable(
+      'g17p-wsi-triangle',
+      files('tests/g17p_wsi_triangle.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl, dep_xcb],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+  endif
 endif
 
 hk_entrypoints = custom_target(
