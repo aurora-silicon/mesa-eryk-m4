@@ -73,6 +73,27 @@ bool hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program);
 
+struct hk_agx3_g17p_rt0_eot_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   uint64_t pbe_argument_va;
+   uint32_t shader_binary_size;
+   uint32_t scratch_size;
+   uint16_t nr_gprs;
+};
+
+struct hk_agx3_g17p_rt0_eot_program {
+   uint8_t bytes[AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE];
+   uint16_t length;
+};
+
+/* Build the one-attachment G17P EOT Ioto program. The PBE argument address is
+ * materialized into the first two LDIMM records; the remaining records retain
+ * the compiler's RT0 selector and resource contract. */
+bool hk_agx3_g17p_rt0_eot_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
+   struct hk_agx3_g17p_rt0_eot_program *program);
+
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.
  * The explicit chip argument is intentionally rejected for every sibling

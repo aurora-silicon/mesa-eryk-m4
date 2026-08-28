@@ -176,17 +176,10 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    c->partial_bg.usc = cs->cr.bg.partial.usc | 4;
    c->partial_eot.usc = cs->cr.eot.partial.usc | 4;
 
-   memcpy(&c->bg.rsrc_spec, &cs->cr.bg.main.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->eot.rsrc_spec, &cs->cr.eot.main.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->partial_bg.rsrc_spec, &cs->cr.bg.partial.counts,
-          sizeof(struct agx_counts_packed));
-
-   memcpy(&c->partial_eot.rsrc_spec, &cs->cr.eot.partial.counts,
-          sizeof(struct agx_counts_packed));
+   c->bg.rsrc_spec = cs->cr.bg.main.rsrc_spec;
+   c->eot.rsrc_spec = cs->cr.eot.main.rsrc_spec;
+   c->partial_bg.rsrc_spec = cs->cr.bg.partial.rsrc_spec;
+   c->partial_eot.rsrc_spec = cs->cr.eot.partial.rsrc_spec;
 
    c->isp_scissor_base = cs->uploaded_scissor;
    c->isp_dbias_base = cs->uploaded_zbias;

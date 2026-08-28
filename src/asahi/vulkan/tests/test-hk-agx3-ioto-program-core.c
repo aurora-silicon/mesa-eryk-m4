@@ -556,6 +556,55 @@ test_g17p_basic_graphics_program(void)
 }
 
 static int
+test_g17p_rt0_eot_program(void)
+{
+   const struct hk_agx3_g17p_rt0_eot_program_desc desc = {
+      .program_va = UINT64_C(0x10001990640),
+      .shader_va = UINT64_C(0x10000000140),
+      .pbe_argument_va = UINT64_C(0x10000020220),
+      .shader_binary_size = 128,
+      .scratch_size = 0,
+      .nr_gprs = 8,
+   };
+   struct hk_agx3_g17p_rt0_eot_program program;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
+                                               &program));
+   CHECK(program.length == AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE);
+
+   static const uint8_t source_prefix[] = {
+      0x0c, 0xa0, 0x02, 0x00, 0x08, 0x00, 0x10, 0x00,
+      0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x17, 0x00, 0x00, 0x40, 0x22, 0x00,
+      0x67, 0x00, 0x54, 0x08, 0x00, 0x00, 0x00, 0x00,
+      0x17, 0x00, 0x02, 0x40, 0x22, 0x00,
+   };
+   CHECK(memcmp(program.bytes, source_prefix, sizeof(source_prefix)) == 0);
+   CHECK(program.bytes[44] == 0x77 && program.bytes[45] == 0x00 &&
+         program.bytes[46] == 0x2a && program.bytes[47] == 0x43);
+   CHECK(program.bytes[162] == 0x0e && program.bytes[163] == 0x00 &&
+         program.bytes[164] == 0x00 && program.bytes[165] == 0x00);
+
+   struct hk_agx3_g17p_rt0_eot_program relocated;
+   struct hk_agx3_g17p_rt0_eot_program_desc moved = desc;
+   moved.pbe_argument_va += UINT64_C(0x10000);
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                               &relocated));
+   CHECK(memcmp(program.bytes, relocated.bytes, 16) != 0);
+   CHECK(memcmp(program.bytes + 16, relocated.bytes + 16,
+                sizeof(program.bytes) - 16) == 0);
+
+   const struct hk_agx3_g17p_rt0_eot_program before = program;
+   moved.pbe_argument_va++;
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17S, &desc,
+                                                &program));
+   return 0;
+}
+
+static int
 test_alias(void)
 {
    struct hk_agx3_ioto_program_desc desc = make_desc(AGX_CHIP_G17G);
@@ -594,7 +643,8 @@ main(void)
    if (test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
        test_g17p_no_resource_program_bridge() ||
-       test_g17p_basic_graphics_program() || test_alias())
+       test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
+       test_alias())
       return 1;
 
    printf("Honeykrisp AGX3 Ioto program core: %u checks passed\n", checks);

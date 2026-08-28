@@ -61,14 +61,13 @@ hk_agx3_g17p_no_resource_program_generate(
                                                     output, capacity, written);
 }
 
-bool
-hk_agx3_g17p_basic_graphics_program_generate(
-   enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
-   struct hk_agx3_g17p_graphics_program *program)
+static bool
+hk_agx3_g17p_graphics_state_tail(
+   const struct hk_agx3_g17p_graphics_program_desc *desc,
+   struct agx_ioto_state_tail_output *tail)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc ||
-       desc->shader_binary_size == 0 || desc->shader_binary_size > 256 ||
-       desc->nr_gprs == 0)
+   if (!desc || !tail || desc->shader_binary_size == 0 ||
+       desc->shader_binary_size > 256 || desc->nr_gprs == 0)
       return false;
 
    static const uint8_t vertex_speclm[AGX_IOTO_SPECLM_SIZE] = {
@@ -88,18 +87,34 @@ hk_agx3_g17p_basic_graphics_program_generate(
                                              &spectpr))
       return false;
 
-   struct agx_ioto_state_tail_output tail = {
+   struct agx_ioto_state_tail_output staged = {
       .length = AGX_IOTO_STATE_TAIL_TYPE0_SIZE,
    };
-   memcpy(tail.bytes, desc->fragment ? fragment_speclm : vertex_speclm,
+   memcpy(staged.bytes, desc->fragment ? fragment_speclm : vertex_speclm,
           AGX_IOTO_SPECLM_SIZE);
    if (!agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &ldshdr,
-                                   tail.bytes + AGX_IOTO_SPECLM_SIZE,
+                                   staged.bytes + AGX_IOTO_SPECLM_SIZE,
                                    AGX_IOTO_LDSHDR_SIZE) ||
        !agx_ioto_state_pack_spectpr(
           AGX_CHIP_G17P, &spectpr,
-          tail.bytes + AGX_IOTO_SPECLM_SIZE + AGX_IOTO_LDSHDR_SIZE,
+          staged.bytes + AGX_IOTO_SPECLM_SIZE + AGX_IOTO_LDSHDR_SIZE,
           AGX_IOTO_SPECTPR_SIZE))
+      return false;
+
+   *tail = staged;
+   return true;
+}
+
+bool
+hk_agx3_g17p_basic_graphics_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
+   struct hk_agx3_g17p_graphics_program *program)
+{
+   if (!program || chip != AGX_CHIP_G17P)
+      return false;
+
+   struct agx_ioto_state_tail_output tail;
+   if (!hk_agx3_g17p_graphics_state_tail(desc, &tail))
       return false;
 
    struct hk_agx3_g17p_graphics_program staged;
@@ -111,6 +126,39 @@ hk_agx3_g17p_basic_graphics_program_generate(
       return false;
 
    staged.length = (uint8_t)written;
+   *program = staged;
+   return true;
+}
+
+bool
+hk_agx3_g17p_rt0_eot_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
+   struct hk_agx3_g17p_rt0_eot_program *program)
+{
+   if (!program || chip != AGX_CHIP_G17P || !desc)
+      return false;
+
+   const struct hk_agx3_g17p_graphics_program_desc shader = {
+      .program_va = desc->program_va,
+      .shader_va = desc->shader_va,
+      .shader_binary_size = desc->shader_binary_size,
+      .scratch_size = desc->scratch_size,
+      .nr_gprs = desc->nr_gprs,
+      .fragment = true,
+   };
+   struct agx_ioto_state_tail_output tail;
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+      return false;
+
+   struct hk_agx3_g17p_rt0_eot_program staged;
+   size_t written = 0;
+   if (!agx_ioto_g17p_rt0_eot_program_compose(
+          desc->program_va, desc->pbe_argument_va, &tail, staged.bytes,
+          sizeof(staged.bytes), &written) ||
+       written != sizeof(staged.bytes))
+      return false;
+
+   staged.length = (uint16_t)written;
    *program = staged;
    return true;
 }

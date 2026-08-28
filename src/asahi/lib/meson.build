@@ -327,6 +327,7 @@ if with_tests
         'agx_ioto_preshader_core.c',
         'agx_ioto_profile_core.c',
         'agx_ioto_state_core.c',
+        'agx_ioto_load_core.c',
         'agx_ioto_program_core.c',
         'tests/test-agx-ioto-program-core.c',
       ),

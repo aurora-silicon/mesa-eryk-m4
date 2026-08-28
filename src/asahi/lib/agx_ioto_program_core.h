@@ -23,6 +23,10 @@ extern "C" {
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE  48u
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE  10u
 #define AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE     90u
+#define AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE         166u
+#define AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE        32u
+#define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0x8)
+#define AGX_IOTO_G17P_BG_RESOURCE_SPEC             UINT64_C(0x0007800000000040)
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE 194u
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA \
    UINT64_C(0x10000018020)
@@ -93,6 +97,15 @@ bool agx_ioto_straight_line_program_compose(
 bool agx_ioto_g17p_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
    void *output, size_t capacity, size_t *written);
+
+/* Compose the exact G17P RT0 end-of-tile program.  pbe_argument_va points to
+ * one 32-byte Gen9 PBE descriptor; the program materializes that dynamic VA,
+ * loads its two 16-byte halves, copies eight dwords to CProg, and appends the
+ * packed shader tail and default profile framing. */
+bool agx_ioto_g17p_rt0_eot_program_compose(
+   uint64_t program_va, uint64_t pbe_argument_va,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
 
 /* Compose the complete byte-for-byte G17S minimal root-uniform/no-texture
  * compute Ioto program: fixed resource loads, semantic state tail, the real

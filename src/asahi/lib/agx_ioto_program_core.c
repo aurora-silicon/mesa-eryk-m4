@@ -6,6 +6,7 @@
 #include "agx_ioto_program_core.h"
 
 #include "agx_ioto_core.h"
+#include "agx_ioto_load_core.h"
 
 #include <string.h>
 
@@ -22,12 +23,33 @@ static const uint8_t
       0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00, 0x60, 0x00,
 };
 
+static const uint8_t g17p_rt0_eot_loads[] = {
+   0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00,
+   0x40, 0x22, 0x00, 0x67, 0x00, 0x54, 0x08, 0x00, 0x00, 0x00, 0x00,
+   0x17, 0x00, 0x02, 0x40, 0x22, 0x00,
+};
+
+static const uint8_t g17p_rt0_eot_copies[] = {
+   0x0b, 0x00, 0x01, 0x44, 0x1b, 0x02, 0x01, 0x04, 0x2b, 0x04, 0x01,
+   0x04, 0x3b, 0x06, 0x01, 0x04, 0x4b, 0x08, 0x01, 0x04, 0x5b, 0x0a,
+   0x01, 0x04, 0x6b, 0x0c, 0x01, 0x04, 0x7b, 0x0e, 0x01, 0x04,
+};
+
 _Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
                      sizeof(g17p_default_profile_prefix) +
                      sizeof(g17p_default_profile_suffix) +
                      AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
                   AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
                "G17P no-resource Ioto size must remain 90 bytes");
+
+_Static_assert(2 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE + sizeof(g17p_rt0_eot_loads) +
+                     AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
+                     sizeof(g17p_default_profile_prefix) +
+                     sizeof(g17p_rt0_eot_copies) +
+                     sizeof(g17p_default_profile_suffix) +
+                     AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
+                  AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE,
+               "G17P RT0 EOT Ioto size must remain 166 bytes");
 
 static uint16_t
 g17p_load_le16(const uint8_t *bytes)
@@ -44,6 +66,38 @@ g17p_ldshdr_has_shader_va(const uint8_t *ldshdr)
    const uint16_t word4 = g17p_load_le16(ldshdr + 8);
    return (word1 & UINT16_C(0xff80)) != 0 || word2 != 0 || word3 != 0 ||
           (word4 & UINT16_C(1)) != 0;
+}
+
+static bool
+g17p_type0_tail_valid(const struct agx_ioto_state_tail_output *packed_tail)
+{
+   if (!packed_tail || packed_tail->length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE)
+      return false;
+
+   static const enum agx_ioto_kind kinds[] = {
+      AGX_IOTO_KIND_SPECLM_EP0,
+      AGX_IOTO_KIND_LDSHDR_EP0,
+      AGX_IOTO_KIND_SPECTPR_EP0,
+   };
+   static const size_t sizes[] = {
+      AGX_IOTO_SPECLM_SIZE,
+      AGX_IOTO_LDSHDR_SIZE,
+      AGX_IOTO_SPECTPR_SIZE,
+   };
+   size_t offset = 0;
+   for (size_t i = 0; i < sizeof(kinds) / sizeof(kinds[0]); ++i) {
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_validate_kind(
+             AGX_CHIP_G17P, kinds[i], packed_tail->bytes + offset,
+             packed_tail->length - offset, &record, &consumed) ||
+          consumed != sizes[i])
+         return false;
+      offset += consumed;
+   }
+
+   return offset == packed_tail->length &&
+          g17p_ldshdr_has_shader_va(packed_tail->bytes + AGX_IOTO_SPECLM_SIZE);
 }
 
 static const uint8_t g17s_minimal_compute_resource_body[] = {
@@ -243,38 +297,10 @@ agx_ioto_g17p_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
    void *output, size_t capacity, size_t *written)
 {
-   if (!packed_tail || !output || !written ||
-       packed_tail->length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE ||
+   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
        capacity < AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
-      return false;
-
-   static const enum agx_ioto_kind kinds[] = {
-      AGX_IOTO_KIND_SPECLM_EP0,
-      AGX_IOTO_KIND_LDSHDR_EP0,
-      AGX_IOTO_KIND_SPECTPR_EP0,
-   };
-   static const size_t sizes[] = {
-      AGX_IOTO_SPECLM_SIZE,
-      AGX_IOTO_LDSHDR_SIZE,
-      AGX_IOTO_SPECTPR_SIZE,
-   };
-   size_t tail_offset = 0;
-   for (size_t i = 0; i < sizeof(kinds) / sizeof(kinds[0]); ++i) {
-      struct agx_ioto_record record;
-      size_t consumed = 0;
-      if (!agx_ioto_validate_kind(
-             AGX_CHIP_G17P, kinds[i], packed_tail->bytes + tail_offset,
-             packed_tail->length - tail_offset, &record, &consumed) ||
-          consumed != sizes[i])
-         return false;
-      tail_offset += consumed;
-   }
-   if (tail_offset != packed_tail->length)
-      return false;
-
-   if (!g17p_ldshdr_has_shader_va(packed_tail->bytes + AGX_IOTO_SPECLM_SIZE))
       return false;
 
    uint8_t staged[AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE];
@@ -291,6 +317,58 @@ agx_ioto_g17p_no_resource_program_compose(
    staged[offset] = UINT8_C(0x0e);
    offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
 
+   if (offset != sizeof(staged))
+      return false;
+
+   memcpy(output, staged, sizeof(staged));
+   *written = sizeof(staged);
+   return true;
+}
+
+bool
+agx_ioto_g17p_rt0_eot_program_compose(
+   uint64_t program_va, uint64_t pbe_argument_va,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+       program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       pbe_argument_va == 0 || pbe_argument_va > UINT64_C(0xffffffffffff) ||
+       (pbe_argument_va & UINT64_C(7)) != 0 ||
+       capacity < AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE)
+      return false;
+
+   uint8_t low[AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   uint8_t high[AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   uint8_t low_length = 0, high_length = 0;
+   if (!agx_ioto_load_pack_ldimm(AGX_CHIP_G17P, 0, (uint32_t)pbe_argument_va,
+                                 low, &low_length) ||
+       !agx_ioto_load_pack_ldimm(AGX_CHIP_G17P, 2,
+                                 (uint32_t)(pbe_argument_va >> 32), high,
+                                 &high_length) ||
+       low_length != sizeof(low) || high_length != sizeof(high))
+      return false;
+
+   uint8_t staged[AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE];
+   size_t offset = 0;
+#define APPEND(bytes)                                                          \
+   do {                                                                        \
+      memcpy(staged + offset, (bytes), sizeof(bytes));                         \
+      offset += sizeof(bytes);                                                 \
+   } while (0)
+   APPEND(low);
+   APPEND(high);
+   APPEND(g17p_rt0_eot_loads);
+   memcpy(staged + offset, packed_tail->bytes, packed_tail->length);
+   offset += packed_tail->length;
+   APPEND(g17p_default_profile_prefix);
+   APPEND(g17p_rt0_eot_copies);
+   APPEND(g17p_default_profile_suffix);
+#undef APPEND
+   memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+   staged[offset] = UINT8_C(0x0e);
+   offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
    if (offset != sizeof(staged))
       return false;
 

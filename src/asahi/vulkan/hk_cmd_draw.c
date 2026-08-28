@@ -26,6 +26,7 @@
 #include "hk_entrypoints.h"
 #include "hk_image.h"
 #include "hk_image_view.h"
+#include "hk_agx3_ioto_program_core.h"
 #include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
 #include "hk_private.h"
@@ -267,6 +268,166 @@ is_attachment_stored(const VkRenderingAttachmentInfo *att)
           att->resolveMode != VK_RESOLVE_MODE_NONE;
 }
 
+static bool
+hk_g17p_rt0_tile_layout(struct agx_tilebuffer_layout *tib)
+{
+   if (tib->nr_samples != 1 || tib->layered || tib->sample_size_B != 8 ||
+       tib->tile_size != 32 * 32 || tib->spilled[0] ||
+       tib->logical_format[0] == PIPE_FORMAT_NONE ||
+       agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM)
+      return false;
+
+   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
+         return false;
+   }
+
+   return true;
+}
+
+static struct agx_bo *
+hk_g17p_alloc_ioto_program(struct hk_cmd_buffer *cmd, size_t size,
+                           const char *label)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   struct agx_bo *bo =
+      agx_bo_create(&dev->dev, size, AGX_IOTO_PROGRAM_ALIGNMENT,
+                    AGX_BO_EXEC | AGX_BO_LOW_VA, label);
+   if (!bo) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return NULL;
+   }
+
+   util_dynarray_append(&cmd->large_bos, bo);
+   return bo;
+}
+
+static bool
+hk_g17p_bg_eot_shader_supported(const struct agx_bg_eot_shader *shader)
+{
+   return shader && shader->bo && shader->bo->va && shader->ptr != 0 &&
+          shader->info.binary_size > 0 && shader->info.binary_size <= 256 &&
+          shader->info.main_offset < shader->info.binary_size &&
+          shader->info.main_size <=
+             shader->info.binary_size - shader->info.main_offset &&
+          !shader->info.has_preamble && shader->info.rodata.size_16 == 0 &&
+          shader->info.nr_gprs > 0;
+}
+
+static struct hk_bg_eot
+hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
+                     struct agx_bg_eot_key *key,
+                     const VkRenderingInfo *info, bool store)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (!hk_g17p_rt0_tile_layout(&key->tib)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return (struct hk_bg_eot){0};
+   }
+
+   const enum agx_bg_eot_op expected = store ? AGX_EOT_STORE : AGX_BG_EOT_NONE;
+   for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
+      const enum agx_bg_eot_op op = key->op[rt];
+      if ((rt == 0 && op != expected) || (rt != 0 && op != AGX_BG_EOT_NONE)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+   }
+
+   struct agx_bg_eot_shader *shader =
+      agx_get_bg_eot_shader(&dev->bg_eot, key);
+   if (!hk_g17p_bg_eot_shader_supported(shader)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return (struct hk_bg_eot){0};
+   }
+
+   struct agx_bo *program_bo = hk_g17p_alloc_ioto_program(
+      cmd, store ? AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE
+                 : AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
+      store ? "G17P RT0 EOT Ioto program" : "G17P background Ioto program");
+   if (!program_bo)
+      return (struct hk_bg_eot){0};
+
+   void *program_map = agx_bo_map(program_bo);
+   if (!program_map) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_MEMORY_MAP_FAILED);
+      return (struct hk_bg_eot){0};
+   }
+
+   size_t program_length;
+   uint64_t resource_spec;
+   if (store) {
+      struct hk_image_view *iview = cmd->state.gfx.render.color_att[0].iview;
+      if (!iview || !iview->planes[0].eot_pbe_valid ||
+          info->pColorAttachments[0].imageView == VK_NULL_HANDLE) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FORMAT_NOT_SUPPORTED);
+         return (struct hk_bg_eot){0};
+      }
+
+      const unsigned descriptor_generation =
+         agx_chip_descriptor_generation(dev->dev.chip);
+      if (hk_pbe_descriptor_size(descriptor_generation) !=
+          AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+
+      const uint64_t pbe_argument_va =
+         hk_pool_upload(cmd, &iview->planes[0].eot,
+                        AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE, 8);
+      if (!pbe_argument_va)
+         return (struct hk_bg_eot){0};
+
+      const struct hk_agx3_g17p_rt0_eot_program_desc desc = {
+         .program_va = program_bo->va->addr,
+         .shader_va = shader->ptr + shader->info.main_offset,
+         .pbe_argument_va = pbe_argument_va,
+         .shader_binary_size = shader->info.binary_size,
+         .scratch_size = shader->info.scratch_size,
+         .nr_gprs = shader->info.nr_gprs,
+      };
+      struct hk_agx3_g17p_rt0_eot_program program;
+      if (!hk_agx3_g17p_rt0_eot_program_generate(dev->dev.chip, &desc,
+                                                  &program)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+
+      memcpy(program_map, program.bytes, program.length);
+      program_length = program.length;
+      resource_spec = AGX_IOTO_G17P_EOT_RESOURCE_SPEC;
+   } else {
+      const struct hk_agx3_g17p_graphics_program_desc desc = {
+         .program_va = program_bo->va->addr,
+         .shader_va = shader->ptr + shader->info.main_offset,
+         .shader_binary_size = shader->info.binary_size,
+         .scratch_size = shader->info.scratch_size,
+         .nr_gprs = shader->info.nr_gprs,
+         .fragment = true,
+      };
+      struct hk_agx3_g17p_graphics_program program;
+      if (!hk_agx3_g17p_basic_graphics_program_generate(dev->dev.chip, &desc,
+                                                        &program)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+
+      memcpy(program_map, program.bytes, program.length);
+      program_length = program.length;
+      resource_spec = AGX_IOTO_G17P_BG_RESOURCE_SPEC;
+   }
+
+   if (agx_bo_sync_for_device(program_bo, 0, program_length)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
+      return (struct hk_bg_eot){0};
+   }
+
+   return (struct hk_bg_eot){
+      .usc = program_bo->va->addr,
+      .rsrc_spec = resource_spec,
+   };
+}
+
 static struct hk_bg_eot
 hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
                 bool store, bool partial_render, bool incomplete_render_area)
@@ -357,6 +518,9 @@ hk_build_bg_eot(struct hk_cmd_buffer *cmd, const VkRenderingInfo *info,
             key.op[i] = AGX_BG_CLEAR;
       }
    }
+
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      return hk_build_g17p_bg_eot(cmd, &key, info, store);
 
    const unsigned descriptor_generation =
       agx_chip_descriptor_generation(dev->dev.chip);
@@ -661,10 +825,16 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    if (vk_command_buffer_has_error(&cmd->vk))
       return;
 
-   render->cr.bg.partial =
-      hk_build_bg_eot(cmd, pRenderingInfo, false, true, incomplete_render_area);
-   if (vk_command_buffer_has_error(&cmd->vk))
-      return;
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      /* The recovered 90-byte form has no attachment-reload records. Keep the
+       * initial single-stream path usable without inventing those records. */
+      render->cr.bg.partial = render->cr.bg.main;
+   } else {
+      render->cr.bg.partial = hk_build_bg_eot(
+         cmd, pRenderingInfo, false, true, incomplete_render_area);
+      if (vk_command_buffer_has_error(&cmd->vk))
+         return;
+   }
 
    render->cr.eot.main =
       hk_build_bg_eot(cmd, pRenderingInfo, true, false, incomplete_render_area);

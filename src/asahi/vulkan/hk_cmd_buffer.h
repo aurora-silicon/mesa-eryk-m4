@@ -150,7 +150,10 @@ struct hk_attachment {
 
 struct hk_bg_eot {
    uint64_t usc;
-   struct agx_counts_packed counts;
+   union {
+      struct agx_counts_packed counts;
+      uint64_t rsrc_spec;
+   };
 };
 
 struct hk_render_registers {
