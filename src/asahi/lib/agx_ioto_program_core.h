@@ -23,6 +23,8 @@ extern "C" {
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE  48u
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE  10u
 #define AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE     90u
+#define AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE       144u
+#define AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE  250u
 #define AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE         166u
 #define AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE        32u
 #define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0x8)
@@ -97,6 +99,17 @@ bool agx_ioto_straight_line_program_compose(
 bool agx_ioto_g17p_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
    void *output, size_t capacity, size_t *written);
+
+/* Compose a G17P resource program around a body emitted by the HAL200 ESL
+ * scheduler. Resource loads and their drain padding precede the packed shader
+ * state. The default profile loader then copies those results into CProg and
+ * terminates. pre_copy_body and copies are validated as separate record spans;
+ * the latter may contain COPY records only. */
+bool agx_ioto_g17p_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
 
 /* Compose the exact G17P RT0 end-of-tile program.  pbe_argument_va points to
  * one 32-byte Gen9 PBE descriptor; the program materializes that dynamic VA,

@@ -63,11 +63,20 @@ bool agx3_ioto_uniform_program_body_bound(
    enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
    size_t range_count, size_t *bytes, size_t *chunks);
 
+/* Build only the scheduled resource-load body. copy_offset marks the first
+ * trailing COPY record emitted by finishRound(), so a target-specific program
+ * container can place its shader state and profile-loader prefix before those
+ * copies. The workspace bytes may change on failure; the two outputs do not. */
+bool agx3_ioto_uniform_program_body_generate(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
+   size_t *copy_offset);
+
 /* Generate:
  *   absolute uniform resource loads, profile, state tail, terminal suffix.
  *
- * This is not a broad production-readiness gate.  Odd-half ranges and every
- * texture, sampler, image and loadFrom* semantic are rejected/not exposed.
+ * This is not a broad production-readiness gate. Odd-half ranges and the
+ * texture, sampler, image, and loadFrom* semantics are not exposed here.
  */
 bool agx3_ioto_uniform_program_generate(
    enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,

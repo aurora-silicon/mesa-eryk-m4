@@ -475,6 +475,66 @@ test_g17p_no_resource_program(void)
 }
 
 static int
+test_g17p_resource_program(void)
+{
+   static const uint8_t tail_bytes[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01,
+      0x2a, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+      0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t pre_copy[] = {
+      0x0c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x46, 0x00, 0x1c, 0x80,
+      0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x67, 0x00, 0x54, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x40, 0x22, 0x00,
+      0x06, 0x08, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
+   };
+   static const uint8_t copies[] = {
+      0x2b, 0x00, 0x01, 0x04, 0x3b, 0x02, 0x01, 0x04,
+      0x4b, 0x04, 0x01, 0x04, 0x5b, 0x06, 0x01, 0x04,
+   };
+   struct agx_ioto_state_tail_output tail = {
+      .length = sizeof(tail_bytes),
+   };
+   memcpy(tail.bytes, tail_bytes, sizeof(tail_bytes));
+
+   uint8_t output[AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE + 1];
+   memset(output, 0xa5, sizeof(output));
+   size_t written = SIZE_MAX;
+   CHECK(agx_ioto_g17p_resource_program_compose(
+      UINT64_C(0x10001990240), pre_copy, sizeof(pre_copy), copies,
+      sizeof(copies), &tail, output, sizeof(output) - 1, &written));
+   CHECK(written == AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE);
+   CHECK(memcmp(output, pre_copy, sizeof(pre_copy)) == 0);
+   CHECK(memcmp(output + sizeof(pre_copy), tail.bytes, tail.length) == 0);
+   const size_t copies_offset = sizeof(pre_copy) + tail.length +
+                                AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
+   CHECK(memcmp(output + copies_offset, copies, sizeof(copies)) == 0);
+   static const uint8_t terminate[] = {0x0e, 0x00, 0x00, 0x00};
+   CHECK(memcmp(output + written - sizeof(terminate), terminate,
+                sizeof(terminate)) == 0);
+   CHECK(output[written] == 0xa5);
+
+   uint8_t before[sizeof(output)];
+   memcpy(before, output, sizeof(output));
+   written = 41;
+   CHECK(!agx_ioto_g17p_resource_program_compose(
+      UINT64_C(0x10001990240), copies, sizeof(copies), copies, sizeof(copies),
+      &tail, output, sizeof(output), &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 41);
+   static const uint8_t nop[] = {0x06, 0x00};
+   CHECK(!agx_ioto_g17p_resource_program_compose(
+      UINT64_C(0x10001990240), pre_copy, sizeof(pre_copy), nop, sizeof(nop),
+      &tail, output, sizeof(output), &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 41);
+   CHECK(!agx_ioto_g17p_resource_program_compose(
+      UINT64_C(0x10001990240), pre_copy, sizeof(pre_copy), copies,
+      sizeof(copies), &tail, output, AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE - 1,
+      &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 41);
+   return 0;
+}
+
+static int
 test_g17p_rt0_eot_program(void)
 {
    static const uint8_t expected[AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE] = {
@@ -666,6 +726,7 @@ main(void)
    CHECK(test_rejects_composer_owned_and_pixel_records() == 0);
    CHECK(test_empty_body_and_alias() == 0);
    CHECK(test_g17p_no_resource_program() == 0);
+   CHECK(test_g17p_resource_program() == 0);
    CHECK(test_g17p_rt0_eot_program() == 0);
    CHECK(test_g17s_minimal_compute_program() == 0);
    printf("agx_ioto_program_core: %llu checks passed\n",

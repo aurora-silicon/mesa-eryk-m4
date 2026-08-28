@@ -154,6 +154,43 @@ test_exact_uniform_program(void)
 }
 
 static bool
+test_g17p_background_clear_body(void)
+{
+   static const struct agx3_ioto_uniform_range range = {
+      .start_halfs = 4,
+      .size_halfs = 8,
+      .address = UINT64_C(0x1000008c000),
+   };
+   static const uint8_t expected[] = {
+      0x0c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x46, 0x00, 0x1c, 0x80, 0x02,
+      0x00, 0x04, 0x00, 0x00, 0x00, 0x67, 0x00, 0x54, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x17, 0x00, 0x00, 0x40, 0x22, 0x00, 0x06, 0x08, 0x06,
+      0x00, 0x06, 0x00, 0x06, 0x00, 0x2b, 0x00, 0x01, 0x04, 0x3b, 0x02,
+      0x01, 0x04, 0x4b, 0x04, 0x01, 0x04, 0x5b, 0x06, 0x01, 0x04,
+   };
+   struct agx3_ioto_uniform_program_desc desc =
+      program_desc(AGX_CHIP_G17P, &range, 1);
+   struct fixture f;
+   memset(&f, 0xa5, sizeof(f));
+   size_t written = SIZE_MAX, copy_offset = SIZE_MAX;
+   CHECK(agx3_ioto_uniform_program_body_generate(
+      AGX_CHIP_G17P, &desc, workspace(&f), &written, &copy_offset));
+   CHECK(written == sizeof(expected));
+   CHECK(copy_offset == 38);
+   CHECK(memcmp(f.body, expected, sizeof(expected)) == 0);
+   CHECK(f.body[written] == 0xa5);
+
+   written = 27;
+   copy_offset = 29;
+   struct agx3_ioto_uniform_program_workspace ws = workspace(&f);
+   ws.load_capacity = 0;
+   CHECK(!agx3_ioto_uniform_program_body_generate(AGX_CHIP_G17P, &desc, ws,
+                                                  &written, &copy_offset));
+   CHECK(written == 27 && copy_offset == 29);
+   return true;
+}
+
+static bool
 test_bounds_and_cohorts(void)
 {
    const struct agx3_ioto_uniform_range ranges[] = {
@@ -271,8 +308,8 @@ test_fail_closed(void)
 int
 main(void)
 {
-   if (!test_exact_uniform_program() || !test_bounds_and_cohorts() ||
-       !test_fail_closed())
+   if (!test_exact_uniform_program() || !test_g17p_background_clear_body() ||
+       !test_bounds_and_cohorts() || !test_fail_closed())
       return 1;
 
    printf("agx3_ioto_uniform_program: %u checks passed\n", checks);

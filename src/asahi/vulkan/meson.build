@@ -135,7 +135,14 @@ if with_tests
     executable(
       'hk_agx3_ioto_program_core_test',
       files('tests/test-hk-agx3-ioto-program-core.c',
-            'hk_agx3_ioto_program_core.c'),
+            'hk_agx3_ioto_program_core.c',
+            '../compiler/agx3_ioto_uniform_program.c',
+            '../compiler/agx3_ioto_load_packer.c',
+            '../compiler/agx3_mem_core.c',
+            '../compiler/agx3_binder.c',
+            '../compiler/agx3_compose/agx3_compose.c',
+            '../compiler/agx3_compose/agx3b_tables.c',
+            '../compiler/agx3_compose/agx3c_tables.c'),
       include_directories : [
         include_directories('.'), inc_include, inc_src, inc_asahi,
       ],

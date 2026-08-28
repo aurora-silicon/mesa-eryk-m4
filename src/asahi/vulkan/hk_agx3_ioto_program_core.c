@@ -131,6 +131,114 @@ hk_agx3_g17p_basic_graphics_program_generate(
 }
 
 bool
+hk_agx3_g17p_rt0_bg_shader_resources_match(
+   enum hk_agx3_g17p_rt0_bg_op op, unsigned push_count, bool uses_txf)
+{
+   switch (op) {
+   case HK_AGX3_G17P_RT0_BG_CLEAR:
+      return push_count == HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS && !uses_txf;
+   case HK_AGX3_G17P_RT0_BG_RELOAD:
+      return push_count == 0 && uses_txf;
+   default:
+      return false;
+   }
+}
+
+bool
+hk_agx3_g17p_rt0_bg_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_rt0_bg_program_desc *desc,
+   struct hk_agx3_g17p_rt0_bg_program *program)
+{
+   if (!program || chip != AGX_CHIP_G17P || !desc)
+      return false;
+
+   struct agx3_ioto_uniform_range ranges[2];
+   size_t range_count;
+   switch (desc->op) {
+   case HK_AGX3_G17P_RT0_BG_CLEAR:
+      if (!desc->clear_value_va || desc->texture_va || desc->sampler_va)
+         return false;
+      ranges[0] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 4,
+         .size_halfs = HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS - 4,
+         .address = desc->clear_value_va,
+      };
+      range_count = 1;
+      break;
+   case HK_AGX3_G17P_RT0_BG_RELOAD:
+      if (desc->clear_value_va || !desc->texture_va || !desc->sampler_va)
+         return false;
+      ranges[0] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 0,
+         .size_halfs = 16,
+         .address = desc->texture_va,
+      };
+      ranges[1] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 16,
+         .size_halfs = 16,
+         .address = desc->sampler_va,
+      };
+      range_count = 2;
+      break;
+   default:
+      return false;
+   }
+
+   const struct hk_agx3_g17p_graphics_program_desc shader = {
+      .program_va = desc->program_va,
+      .shader_va = desc->shader_va,
+      .shader_binary_size = desc->shader_binary_size,
+      .scratch_size = desc->scratch_size,
+      .nr_gprs = desc->nr_gprs,
+      .fragment = true,
+   };
+   struct agx_ioto_state_tail_output tail;
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+      return false;
+
+   uint8_t body[512];
+   struct agx_ioto_inflight_load loads[64];
+   struct agx_ioto_inflight_load sort[64];
+   struct agx_ioto_load_cache_entry cache[64];
+   const struct agx3_ioto_uniform_program_desc load_desc = {
+      .program_va = desc->program_va,
+      .ranges = ranges,
+      .range_count = range_count,
+   };
+   const struct agx3_ioto_uniform_program_workspace workspace = {
+      .body = body,
+      .body_capacity = sizeof(body),
+      .loads = loads,
+      .load_capacity = sizeof(loads) / sizeof(loads[0]),
+      .sort = sort,
+      .sort_capacity = sizeof(sort) / sizeof(sort[0]),
+      .cache = cache,
+      .cache_capacity = sizeof(cache) / sizeof(cache[0]),
+   };
+
+   size_t body_size, copy_offset;
+   if (!agx3_ioto_uniform_program_body_generate(chip, &load_desc, workspace,
+                                                &body_size, &copy_offset) ||
+       copy_offset > body_size)
+      return false;
+
+   struct hk_agx3_g17p_rt0_bg_program staged;
+   size_t written = 0;
+   if (!agx_ioto_g17p_resource_program_compose(
+          desc->program_va, body, copy_offset, body + copy_offset,
+          body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
+          &written) ||
+       written > UINT16_MAX ||
+       (desc->op == HK_AGX3_G17P_RT0_BG_CLEAR &&
+        written != AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE))
+      return false;
+
+   staged.length = (uint16_t)written;
+   *program = staged;
+   return true;
+}
+
+bool
 hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program)

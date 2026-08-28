@@ -588,19 +588,145 @@ test_g17p_rt0_eot_program(void)
    struct hk_agx3_g17p_rt0_eot_program relocated;
    struct hk_agx3_g17p_rt0_eot_program_desc moved = desc;
    moved.pbe_argument_va += UINT64_C(0x10000);
-   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
-                                               &relocated));
+   CHECK(
+      hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &relocated));
    CHECK(memcmp(program.bytes, relocated.bytes, 16) != 0);
    CHECK(memcmp(program.bytes + 16, relocated.bytes + 16,
                 sizeof(program.bytes) - 16) == 0);
 
    const struct hk_agx3_g17p_rt0_eot_program before = program;
    moved.pbe_argument_va++;
-   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
-                                                &program));
+   CHECK(
+      !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
-   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17S, &desc,
-                                                &program));
+   CHECK(
+      !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17S, &desc, &program));
+   return 0;
+}
+
+static int
+test_g17p_rt0_background_programs(void)
+{
+   CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_CLEAR, HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS, false));
+   CHECK(!hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_CLEAR, HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS - 1,
+      false));
+   CHECK(!hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_CLEAR, HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS + 1,
+      false));
+   CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_RELOAD, 0, true));
+   CHECK(!hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_RELOAD, 0, false));
+
+   const struct hk_agx3_g17p_rt0_bg_program_desc clear = {
+      .program_va = UINT64_C(0x10001990240),
+      .shader_va = UINT64_C(0x10000000080),
+      .clear_value_va = UINT64_C(0x1000008c000),
+      .shader_binary_size = 54,
+      .scratch_size = 0,
+      .nr_gprs = 8,
+      .op = HK_AGX3_G17P_RT0_BG_CLEAR,
+   };
+   struct hk_agx3_g17p_rt0_bg_program program;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &clear, &program));
+   CHECK(program.length == AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE);
+
+   /* m1n1 g17p_triangle_source.py, split where HAL200 inserts LoadShader and
+    * the default profile-loader prefix before the trailing COPY records. */
+   static const uint8_t clear_pre_copy[] = {
+      0x0c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x46, 0x00, 0x1c, 0x80,
+      0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x67, 0x00, 0x54, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x40, 0x22, 0x00,
+      0x06, 0x08, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
+   };
+   static const uint8_t clear_copies[] = {
+      0x2b, 0x00, 0x01, 0x04, 0x3b, 0x02, 0x01, 0x04,
+      0x4b, 0x04, 0x01, 0x04, 0x5b, 0x06, 0x01, 0x04,
+   };
+   CHECK(memcmp(program.bytes, clear_pre_copy, sizeof(clear_pre_copy)) == 0);
+   const size_t copy_offset = sizeof(clear_pre_copy) +
+                              AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
+                              AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
+   CHECK(memcmp(program.bytes + copy_offset, clear_copies,
+                sizeof(clear_copies)) == 0);
+   CHECK(program.bytes[program.length - 4] == 0x0e &&
+         program.bytes[program.length - 3] == 0 &&
+         program.bytes[program.length - 2] == 0 &&
+         program.bytes[program.length - 1] == 0);
+
+   struct hk_agx3_g17p_rt0_bg_program relocated;
+   struct hk_agx3_g17p_rt0_bg_program_desc moved = clear;
+   moved.clear_value_va += UINT64_C(0x10000);
+   CHECK(
+      hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &moved, &relocated));
+   CHECK(relocated.length == program.length);
+   CHECK(memcmp(relocated.bytes, program.bytes, 16) != 0);
+   CHECK(memcmp(relocated.bytes + 16, program.bytes + 16,
+                program.length - 16) == 0);
+
+   const struct hk_agx3_g17p_rt0_bg_program_desc reload = {
+      .program_va = UINT64_C(0x10001990000),
+      .shader_va = UINT64_C(0x10000000100),
+      .texture_va = UINT64_C(0x10000020220),
+      .sampler_va = UINT64_C(0x10000020300),
+      .shader_binary_size = 128,
+      .scratch_size = 0,
+      .nr_gprs = 12,
+      .op = HK_AGX3_G17P_RT0_BG_RELOAD,
+   };
+   CHECK(
+      hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &reload, &program));
+   CHECK(program.length == 234);
+   static const uint8_t reload_copies[] = {
+      0x0b, 0x00, 0x01, 0x04, 0x1b, 0x02, 0x01, 0x04,
+      0x2b, 0x04, 0x01, 0x04, 0x3b, 0x06, 0x01, 0x04,
+      0x4b, 0x08, 0x01, 0x04, 0x5b, 0x0a, 0x01, 0x04,
+      0x6b, 0x0c, 0x01, 0x04, 0x7b, 0x0e, 0x01, 0x04,
+      0x8b, 0x10, 0x01, 0x04, 0x9b, 0x12, 0x01, 0x04,
+      0xab, 0x14, 0x01, 0x04, 0xbb, 0x16, 0x01, 0x04,
+      0xcb, 0x18, 0x01, 0x04, 0xdb, 0x1a, 0x01, 0x04,
+      0xeb, 0x1c, 0x01, 0x04, 0xfb, 0x1e, 0x01, 0x04,
+   };
+   const size_t reload_copy_offset =
+      program.length - sizeof(reload_copies) -
+      AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE -
+      AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   CHECK(memcmp(program.bytes + reload_copy_offset, reload_copies,
+                sizeof(reload_copies)) == 0);
+   CHECK(program.bytes[program.length - 4] == 0x0e &&
+         program.bytes[program.length - 3] == 0 &&
+         program.bytes[program.length - 2] == 0 &&
+         program.bytes[program.length - 1] == 0);
+
+   struct hk_agx3_g17p_rt0_bg_program far_program;
+   struct hk_agx3_g17p_rt0_bg_program_desc far_reload = reload;
+   far_reload.sampler_va += UINT64_C(0x100000);
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &far_reload,
+                                               &far_program));
+   CHECK(far_program.length == AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE);
+   const size_t far_copy_offset =
+      far_program.length - sizeof(reload_copies) -
+      AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE -
+      AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   CHECK(memcmp(far_program.bytes + far_copy_offset, reload_copies,
+                sizeof(reload_copies)) == 0);
+
+   const struct hk_agx3_g17p_rt0_bg_program before = program;
+   moved = clear;
+   moved.clear_value_va++;
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = clear;
+   moved.texture_va = UINT64_C(0x10000020220);
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   CHECK(
+      !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17S, &reload, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    return 0;
 }
 
@@ -644,7 +770,7 @@ main(void)
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
-       test_alias())
+       test_g17p_rt0_background_programs() || test_alias())
       return 1;
 
    printf("Honeykrisp AGX3 Ioto program core: %u checks passed\n", checks);

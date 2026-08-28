@@ -125,27 +125,19 @@ workspace_overlaps(struct agx3_ioto_uniform_program_workspace workspace)
 }
 
 bool
-agx3_ioto_uniform_program_generate(
+agx3_ioto_uniform_program_body_generate(
    enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
-   struct agx3_ioto_uniform_program_workspace workspace, void *output,
-   size_t capacity, size_t *written)
+   struct agx3_ioto_uniform_program_workspace workspace, size_t *written,
+   size_t *copy_offset)
 {
    size_t body_bound, chunk_count;
-   if (desc == NULL || output == NULL || written == NULL ||
+   if (desc == NULL || written == NULL || copy_offset == NULL ||
        !agx3_ioto_uniform_program_body_bound(
           chip, desc != NULL ? desc->ranges : NULL,
           desc != NULL ? desc->range_count : 0, &body_bound, &chunk_count) ||
        body_bound > workspace.body_capacity ||
        (workspace.body_capacity != 0 && workspace.body == NULL) ||
-       workspace_overlaps(workspace) ||
-       spans_overlap(workspace.body, workspace.body_capacity, output,
-                     capacity) ||
-       array_overlaps(workspace.loads, workspace.load_capacity,
-                      sizeof(workspace.loads[0]), output, capacity) ||
-       array_overlaps(workspace.sort, workspace.sort_capacity,
-                      sizeof(workspace.sort[0]), output, capacity) ||
-       array_overlaps(workspace.cache, workspace.cache_capacity,
-                      sizeof(workspace.cache[0]), output, capacity))
+       workspace_overlaps(workspace))
       return false;
 
    (void)chunk_count;
@@ -165,9 +157,14 @@ agx3_ioto_uniform_program_generate(
       workspace.sort_capacity,
    };
    uint32_t cprog_dest_half = 0;
+   size_t copy_bytes = 0;
 
    for (size_t i = 0; i < desc->range_count; ++i) {
       const struct agx3_ioto_uniform_range *range = &desc->ranges[i];
+      const size_t range_copy_bytes = (size_t)(range->size_halfs / 2) * 4;
+      if (!add_size(&copy_bytes, range_copy_bytes))
+         return false;
+
       uint32_t dword = 0;
       const uint32_t dword_count = range->size_halfs / 2;
       while (dword < dword_count) {
@@ -196,12 +193,69 @@ agx3_ioto_uniform_program_generate(
    if (!agx3_ioto_load_finish_round_native(&core, true, sort))
       return false;
 
+   if (copy_bytes > core.sink.length)
+      return false;
+
+   const size_t staged_copy_offset = core.sink.length - copy_bytes;
+   size_t offset = staged_copy_offset;
+   while (offset < core.sink.length) {
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_decode_one(chip, workspace.body + offset,
+                               core.sink.length - offset, &record, &consumed) ||
+          consumed == 0 ||
+          (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
+           record.kind != AGX_IOTO_KIND_COPY_EP1))
+         return false;
+      offset += consumed;
+   }
+
+   if (offset != core.sink.length)
+      return false;
+
+   *written = core.sink.length;
+   *copy_offset = staged_copy_offset;
+   return true;
+}
+
+bool
+agx3_ioto_uniform_program_generate(
+   enum agx_chip chip, const struct agx3_ioto_uniform_program_desc *desc,
+   struct agx3_ioto_uniform_program_workspace workspace, void *output,
+   size_t capacity, size_t *written)
+{
+   size_t body_bound, chunk_count;
+   if (desc == NULL || output == NULL || written == NULL ||
+       !agx3_ioto_uniform_program_body_bound(
+          chip, desc != NULL ? desc->ranges : NULL,
+          desc != NULL ? desc->range_count : 0, &body_bound, &chunk_count) ||
+       body_bound > workspace.body_capacity ||
+       (workspace.body_capacity != 0 && workspace.body == NULL) ||
+       workspace_overlaps(workspace) ||
+       spans_overlap(workspace.body, workspace.body_capacity, output,
+                     capacity) ||
+       array_overlaps(workspace.loads, workspace.load_capacity,
+                      sizeof(workspace.loads[0]), output, capacity) ||
+       array_overlaps(workspace.sort, workspace.sort_capacity,
+                      sizeof(workspace.sort[0]), output, capacity) ||
+       array_overlaps(workspace.cache, workspace.cache_capacity,
+                      sizeof(workspace.cache[0]), output, capacity))
+      return false;
+
+   (void)body_bound;
+   (void)chunk_count;
+   size_t body_size, copy_offset;
+   if (!agx3_ioto_uniform_program_body_generate(chip, desc, workspace,
+                                                &body_size, &copy_offset))
+      return false;
+   (void)copy_offset;
+
    const struct agx_ioto_profile_control profile = {
       .chip = chip,
       .payload0 = desc->profile_payload0,
       .payload1 = desc->profile_payload1,
    };
    return agx_ioto_program_compose_no_pixrel(
-      chip, desc->program_va, workspace.body, core.sink.length, &desc->tail,
-      &profile, &desc->preshader, output, capacity, written);
+      chip, desc->program_va, workspace.body, body_size, &desc->tail, &profile,
+      &desc->preshader, output, capacity, written);
 }

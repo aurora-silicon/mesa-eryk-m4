@@ -224,6 +224,57 @@ agx_ioto_straight_line_body_validate(enum agx_chip chip, const void *body,
    return offset == body_size;
 }
 
+static bool
+agx_ioto_g17p_copy_body_validate(const void *body, size_t body_size)
+{
+   if (body_size == 0)
+      return true;
+   if (!body)
+      return false;
+
+   const uint8_t *bytes = body;
+   size_t offset = 0;
+   while (offset < body_size) {
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
+                               body_size - offset, &record, &consumed) ||
+          consumed == 0 || record.kind != AGX_IOTO_KIND_COPY_EP0)
+         return false;
+      offset += consumed;
+   }
+
+   return offset == body_size;
+}
+
+static bool
+agx_ioto_g17p_pre_copy_body_validate(const void *body, size_t body_size)
+{
+   if (!agx_ioto_straight_line_body_validate(AGX_CHIP_G17P, body, body_size))
+      return false;
+
+   const uint8_t *bytes = body;
+   size_t offset = 0;
+   while (offset < body_size) {
+      if (agx_ioto_program_gpu0_inline_lddev(AGX_CHIP_G17P, bytes + offset,
+                                             body_size - offset)) {
+         offset += AGX_IOTO_GPU0_INLINE_LDDEV_SIZE;
+         continue;
+      }
+
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
+                               body_size - offset, &record, &consumed) ||
+          consumed == 0 || record.kind == AGX_IOTO_KIND_COPY_EP0 ||
+          record.kind == AGX_IOTO_KIND_COPY_EP1)
+         return false;
+      offset += consumed;
+   }
+
+   return offset == body_size;
+}
+
 bool
 agx_ioto_program_compose_no_pixrel(
    enum agx_chip chip, uint64_t program_va, const void *body, size_t body_size,
@@ -322,6 +373,67 @@ agx_ioto_g17p_no_resource_program_compose(
 
    memcpy(output, staged, sizeof(staged));
    *written = sizeof(staged);
+   return true;
+}
+
+bool
+agx_ioto_g17p_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+       program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       !agx_ioto_g17p_pre_copy_body_validate(pre_copy_body,
+                                             pre_copy_body_size) ||
+       !agx_ioto_g17p_copy_body_validate(copies, copies_size) ||
+       pre_copy_body_size > SIZE_MAX - packed_tail->length ||
+       pre_copy_body_size + packed_tail->length >
+          SIZE_MAX - sizeof(g17p_default_profile_prefix) ||
+       pre_copy_body_size + packed_tail->length +
+             sizeof(g17p_default_profile_prefix) >
+          SIZE_MAX - copies_size ||
+       pre_copy_body_size + packed_tail->length +
+             sizeof(g17p_default_profile_prefix) + copies_size >
+          SIZE_MAX - sizeof(g17p_default_profile_suffix) ||
+       pre_copy_body_size + packed_tail->length +
+             sizeof(g17p_default_profile_prefix) + copies_size +
+             sizeof(g17p_default_profile_suffix) >
+          SIZE_MAX - AGX_IOTO_PROGRAM_TERMINATE_SIZE)
+      return false;
+
+   const size_t total = pre_copy_body_size + packed_tail->length +
+                        sizeof(g17p_default_profile_prefix) + copies_size +
+                        sizeof(g17p_default_profile_suffix) +
+                        AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   if (capacity < total)
+      return false;
+
+   uint8_t *dst = output;
+   size_t offset = 0;
+#define APPEND_SPAN(span, span_size)                                           \
+   do {                                                                        \
+      if ((span_size) != 0)                                                    \
+         memmove(dst + offset, (span), (span_size));                           \
+      offset += (span_size);                                                   \
+   } while (0)
+   APPEND_SPAN(pre_copy_body, pre_copy_body_size);
+   APPEND_SPAN(packed_tail->bytes, packed_tail->length);
+   APPEND_SPAN(g17p_default_profile_prefix,
+               sizeof(g17p_default_profile_prefix));
+   APPEND_SPAN(copies, copies_size);
+   APPEND_SPAN(g17p_default_profile_suffix,
+               sizeof(g17p_default_profile_suffix));
+#undef APPEND_SPAN
+   memset(dst + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+   dst[offset] = UINT8_C(0x0e);
+   offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   if (offset != total)
+      return false;
+
+   *written = total;
    return true;
 }
 
