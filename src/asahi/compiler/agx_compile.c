@@ -1473,12 +1473,24 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return NULL;
 
    case nir_intrinsic_load_pixel_coord:
-      return agx_emit_collect_to(
-         b, dst, 2,
-         (agx_index[2]){
-            agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_X),
-            agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_Y),
-         });
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2) {
+         return agx_emit_collect_to(
+            b, dst, 2,
+            (agx_index[2]){
+               agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_X),
+               agx_get_sr(b, 16, AGX_SR_THREAD_POSITION_IN_GRID_Y),
+            });
+      } else {
+         agx_index xy[2];
+         for (unsigned i = 0; i < 2; i++) {
+            agx_index native = agx_temp(b->shader, AGX_SIZE_32);
+            agx_get_sr_native_width_to(
+               b, native, AGX_SR_THREAD_POSITION_IN_GRID_X + i);
+            xy[i] = agx_temp(b->shader, AGX_SIZE_16);
+            agx_subdivide_to(b, xy[i], native, 0);
+         }
+         return agx_emit_collect_to(b, dst, 2, xy);
+      }
 
    case nir_intrinsic_load_frag_coord_z: {
       agx_index cf = agx_get_cf(b->shader, VARYING_SLOT_POS, 2);
@@ -1995,6 +2007,26 @@ agx_fminmax_to(agx_builder *b, agx_index dst, agx_index s0, agx_index s1,
     * handle denorms, but we were already lowered for that.
     */
    return agx_fcmpsel_to(b, dst, s0, s1, s0, s1, fcond);
+}
+
+static void
+agx_materialize_agx3_alu_constants(agx_context *ctx)
+{
+   agx_foreach_instr_global_safe(ctx, I) {
+      agx_builder b = agx_init_builder(ctx, agx_before_instr(I));
+      if ((I->op == AGX_OPCODE_BFI || I->op == AGX_OPCODE_BFEIL) &&
+          I->nr_dests == 1 && I->nr_srcs == 3 &&
+          I->dest[0].size == AGX_SIZE_32 &&
+          I->src[2].type == AGX_INDEX_IMMEDIATE) {
+         I->src[2] = agx_mov_imm(&b, 32, I->src[2].value);
+      } else if (I->op == AGX_OPCODE_BITOP && I->nr_dests == 1 &&
+                 I->dest[0].size == AGX_SIZE_32) {
+         agx_foreach_src(I, s) {
+            if (I->src[s].type == AGX_INDEX_IMMEDIATE)
+               I->src[s] = agx_mov_imm(&b, 32, I->src[s].value);
+         }
+      }
+   }
 }
 
 /* Half-precision ALU instructions cannot encode 32-bit register sources.
@@ -3566,6 +3598,9 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       }
    }
 
+   if (key->dev.encoding != AGX_ISA_ENCODING_AGX2)
+      agx_materialize_agx3_alu_constants(ctx);
+
    /* For correctness, lower uniform sources after copyprop (for correctness,
     * as copyprop creates uniform sources). To keep register pressure in
     * check, lower after CSE, since moves are cheaper than registers.
@@ -3978,12 +4013,13 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
             nir_metadata_control_flow, NULL);
 
    info->push_count = key->reserved_preamble;
+   const bool form_preamble = !key->secondary && !key->no_preamble;
    agx_optimize_nir(
-      nir, key->dev.soft_fault, key->secondary ? NULL : &info->push_count,
-      (key->secondary || !key->promote_textures) ? NULL
-                                                 : &info->texture_state_count,
-      (key->secondary || !key->promote_textures) ? NULL
-                                                 : &info->sampler_state_count);
+      nir, key->dev.soft_fault, form_preamble ? &info->push_count : NULL,
+      (form_preamble && key->promote_textures) ? &info->texture_state_count
+                                              : NULL,
+      (form_preamble && key->promote_textures) ? &info->sampler_state_count
+                                              : NULL);
 
    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
       info->varyings.fs.nr_cf = key->fs.cf_base;

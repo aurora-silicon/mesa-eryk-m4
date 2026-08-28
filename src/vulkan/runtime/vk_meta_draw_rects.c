@@ -74,10 +74,13 @@ vk_meta_draw_rects_vs_nir(struct vk_meta_device *device, bool use_gs)
                           use_gs ? "pos_out" : "gl_Position");
    pos->data.location = use_gs ? VARYING_SLOT_VAR0 : VARYING_SLOT_POS;
 
-   nir_variable *layer =
-      nir_variable_create(b->shader, nir_var_shader_out, glsl_int_type(),
-                          use_gs ? "layer_out" : "gl_Layer");
-   layer->data.location = use_gs ? VARYING_SLOT_VAR1 : VARYING_SLOT_LAYER;
+   nir_variable *layer = NULL;
+   if (use_gs || device->use_layer_output) {
+      layer = nir_variable_create(b->shader, nir_var_shader_out,
+                                  glsl_int_type(),
+                                  use_gs ? "layer_out" : "gl_Layer");
+      layer->data.location = use_gs ? VARYING_SLOT_VAR1 : VARYING_SLOT_LAYER;
+   }
 
    nir_def *vtx = nir_load_var(b, in);
    nir_store_var(b, pos, nir_vec4(b, nir_channel(b, vtx, 0),
@@ -86,9 +89,12 @@ vk_meta_draw_rects_vs_nir(struct vk_meta_device *device, bool use_gs)
                                      nir_imm_float(b, 1)),
                  0xf);
 
-   nir_store_var(b, layer, nir_iadd(b, nir_load_instance_id(b),
-                                       nir_channel(b, vtx, 3)),
-                 0x1);
+   if (layer) {
+      nir_store_var(b, layer,
+                    nir_iadd(b, nir_load_instance_id(b),
+                             nir_channel(b, vtx, 3)),
+                    0x1);
+   }
 
    return b->shader;
 }
@@ -275,6 +281,11 @@ vk_meta_draw_volume(struct vk_command_buffer *cmd,
       &cmd->base.device->dispatch_table;
    VkCommandBuffer _cmd = vk_command_buffer_to_handle(cmd);
 
+   if (!meta->use_layer_output && layer_count != 1) {
+      vk_command_buffer_set_error(cmd, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
    float x_scale, y_scale;
    setup_viewport_scissor(cmd, 1, rect, &x_scale, &y_scale);
 
@@ -309,6 +320,15 @@ vk_meta_draw_rects(struct vk_command_buffer *cmd,
 
    if (rect_count == 0)
       return;
+
+   if (!meta->use_layer_output) {
+      for (uint32_t i = 0; i < rect_count; i++) {
+         if (rects[i].layer != 0) {
+            vk_command_buffer_set_error(cmd, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+      }
+   }
 
    float x_scale, y_scale;
    setup_viewport_scissor(cmd, rect_count, rects, &x_scale, &y_scale);

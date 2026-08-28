@@ -111,7 +111,9 @@ struct vk_meta_device {
    uint32_t max_bind_map_buffer_size_B;
    bool use_layered_rendering;
    bool use_gs_for_layer;
+   bool use_layer_output;
    bool use_stencil_export;
+   bool use_masked_rgba8_buffer_unpack;
 
    bool use_rect_list_pipeline;
 

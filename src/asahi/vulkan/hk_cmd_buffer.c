@@ -880,7 +880,8 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    if (s->info.agx3_combined_sampler_valid) {
-      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0)
+      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0 ||
+          s->info.agx3_uses_root)
          return false;
 
       struct hk_descriptor_set *set = cmd->state.gfx.descriptors.sets[0];
@@ -919,15 +920,14 @@ hk_g17p_graphics_uniform_ranges(
       count += 2;
    }
 
-   if (s->info.set_count != 0) {
+   if (s->info.agx3_uses_root || s->info.set_count != 0) {
       if (!root_ptr)
          return false;
 
-      ranges[count++] = (struct agx3_ioto_uniform_range){
-         .start_halfs = root_uniform,
-         .size_halfs = 4 * (1 + s->info.set_count),
-         .address = root_ptr,
-      };
+      if (!hk_agx3_g17p_root_range(root_uniform, s->info.set_count, root_ptr,
+                                   &ranges[count]))
+         return false;
+      count++;
    }
 
    *range_count = count;

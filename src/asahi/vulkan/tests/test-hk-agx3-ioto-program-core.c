@@ -700,6 +700,26 @@ test_g17p_combined_sampler_ranges(void)
 }
 
 static int
+test_g17p_root_range(void)
+{
+   struct agx3_ioto_uniform_range range = {0};
+   CHECK(hk_agx3_g17p_root_range(12, 0, UINT64_C(0x10000024000), &range));
+   CHECK(range.start_halfs == 12 && range.size_halfs == 4 &&
+         range.address == UINT64_C(0x10000024000));
+   CHECK(hk_agx3_g17p_root_range(12, 1, UINT64_C(0x10000024000), &range));
+   CHECK(range.start_halfs == 12 && range.size_halfs == 8);
+
+   const struct agx3_ioto_uniform_range before = range;
+   CHECK(!hk_agx3_g17p_root_range(13, 0, UINT64_C(0x10000024000), &range));
+   CHECK(memcmp(&range, &before, sizeof(range)) == 0);
+   CHECK(!hk_agx3_g17p_root_range(12, 2, UINT64_C(0x10000024000), &range));
+   CHECK(memcmp(&range, &before, sizeof(range)) == 0);
+   CHECK(!hk_agx3_g17p_root_range(12, 0, 0, &range));
+   CHECK(memcmp(&range, &before, sizeof(range)) == 0);
+   return 0;
+}
+
+static int
 test_g17p_rt0_background_programs(void)
 {
    CHECK(hk_agx3_g17p_rt0_bg_shader_resources_match(
@@ -866,6 +886,7 @@ main(void)
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
        test_g17p_combined_sampler_ranges() ||
+       test_g17p_root_range() ||
        test_g17p_rt0_background_programs() || test_alias())
       return 1;
 

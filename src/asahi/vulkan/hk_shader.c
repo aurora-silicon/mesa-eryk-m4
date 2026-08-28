@@ -1066,6 +1066,23 @@ kill_psiz_write(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
+static bool
+hk_nir_uses_root(const nir_shader *nir)
+{
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(instr)->intrinsic ==
+                   nir_intrinsic_load_root_agx)
+               return true;
+         }
+      }
+   }
+
+   return false;
+}
+
 static void
 hk_lower_hw_vs(nir_shader *nir, struct hk_shader *shader, bool kill_psiz)
 {
@@ -1117,6 +1134,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          ralloc_free(candidate);
       }
    }
+
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      shader->info.agx3_uses_root = hk_nir_uses_root(nir);
 
    /* For now, only shader objects are supported */
    if (sw_stage == MESA_SHADER_VERTEX) {
@@ -1221,6 +1241,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       .has_scratch = !nir->info.internal,
       .promote_constants = true,
       .promote_textures = true,
+      .no_preamble = dev->dev.chip == AGX_CHIP_G17P,
    };
 
    /* For now, sample shading is always dynamic. Indicate that. */

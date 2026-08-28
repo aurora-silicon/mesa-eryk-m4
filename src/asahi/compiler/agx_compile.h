@@ -320,6 +320,11 @@ struct agx_shader_key {
     */
    bool promote_textures;
 
+   /* Keep the main shader monolithic even when profitable instructions could
+    * otherwise be moved to a generated preamble.
+    */
+   bool no_preamble;
+
    /* Set if this is a non-monolithic shader that must be linked with additional
     * shader parts before the program can be used. This suppresses omission of
     * `stop` instructions, which the linker must insert instead.

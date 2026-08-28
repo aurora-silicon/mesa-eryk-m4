@@ -26,6 +26,8 @@ hk_files = files(
   'hk_event.c',
   'hk_event.h',
   'hk_format.c',
+  'hk_g17p_meta_copy_core.c',
+  'hk_g17p_meta_copy_core.h',
   'hk_agx3_ioto_decode.c',
   'hk_agx3_ioto_decode.h',
   'hk_agx3_ioto_preshader_core.c',
@@ -81,6 +83,19 @@ hk_files = files(
 )
 
 if with_tests
+  test(
+    'hk_g17p_meta_copy_core',
+    executable(
+      'hk_g17p_meta_copy_core_test',
+      files('tests/test-hk-g17p-meta-copy-core.c',
+            'hk_g17p_meta_copy_core.c'),
+      include_directories : [inc_include, inc_src, inc_asahi],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'hk_drm_render_core',
     executable(

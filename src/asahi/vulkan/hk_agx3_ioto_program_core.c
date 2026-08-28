@@ -206,6 +206,22 @@ hk_agx3_g17p_combined_sampler_ranges(
 }
 
 bool
+hk_agx3_g17p_root_range(uint16_t start_halfs, uint8_t set_count,
+                        uint64_t root_va,
+                        struct agx3_ioto_uniform_range *range)
+{
+   if (!range || root_va == 0 || (start_halfs & 1) != 0 || set_count > 1)
+      return false;
+
+   *range = (struct agx3_ioto_uniform_range){
+      .start_halfs = start_halfs,
+      .size_halfs = 4 * (1 + set_count),
+      .address = root_va,
+   };
+   return true;
+}
+
+bool
 hk_agx3_g17p_rt0_bg_shader_resources_match(
    enum hk_agx3_g17p_rt0_bg_op op, unsigned push_count, bool uses_txf)
 {

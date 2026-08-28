@@ -1055,8 +1055,8 @@ build_buffer_to_image_fs(const struct vk_meta_device *meta,
 
    coords = nir_isub(b, coords, img_offs);
 
-   nir_def *texel = nir_load_global(b,
-      comp_count, comp_sz, copy_img_buf_addr(b, buf_pfmt, coords),
+   nir_def *texel = nir_load_global(
+      b, comp_count, comp_sz, copy_img_buf_addr(b, buf_pfmt, coords),
       .align_mul = 1 << (ffs(blk_sz) - 1));
 
    /* We don't do compressed formats. The driver should select a non-compressed
@@ -1067,7 +1067,25 @@ build_buffer_to_image_fs(const struct vk_meta_device *meta,
       copy_img_view_format_for_aspect(&key->img.view, key->img.aspect);
    nir_variable *out_var = frag_var(b, &key->img.view, key->img.aspect, 0);
 
-   texel = convert_texel(b, buf_fmt, iview_fmt, texel);
+   if (meta->use_masked_rgba8_buffer_unpack &&
+       buf_fmt == VK_FORMAT_R32_UINT &&
+       iview_fmt == VK_FORMAT_R8G8B8A8_UNORM) {
+      /* Keep the unpack in 32-bit ALU: each masked byte retains its original
+       * bit position, which the per-channel scale removes while normalizing.
+       */
+      nir_def *channel[4];
+      for (unsigned i = 0; i < ARRAY_SIZE(channel); ++i) {
+         const unsigned shift = i * 8;
+         const uint32_t mask = 0xffu << shift;
+         nir_def *masked = nir_iand(b, texel, nir_imm_int(b, mask));
+         channel[i] = nir_fmul_imm(
+            b, nir_u2f32(b, masked),
+            1.0f / (255.0f * (float)(1u << shift)));
+      }
+      texel = nir_vec4(b, channel[0], channel[1], channel[2], channel[3]);
+   } else {
+      texel = convert_texel(b, buf_fmt, iview_fmt, texel);
+   }
    write_frag(b, &key->img.view, key->img.aspect, out_var, texel);
    return b->shader;
 }

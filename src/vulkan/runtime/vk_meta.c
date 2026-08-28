@@ -91,6 +91,7 @@ vk_meta_device_init(struct vk_device *device,
 
    meta->cmd_draw_rects = vk_meta_draw_rects;
    meta->cmd_draw_volume = vk_meta_draw_volume;
+   meta->use_layer_output = true;
 
    return VK_SUCCESS;
 }

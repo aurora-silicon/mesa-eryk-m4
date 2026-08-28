@@ -90,6 +90,11 @@ bool hk_agx3_g17p_combined_sampler_ranges(
    const struct hk_agx3_g17p_combined_sampler_heap *heap,
    struct agx3_ioto_uniform_range ranges[2]);
 
+/* Load one root descriptor followed by zero or one descriptor-set pointer. */
+bool hk_agx3_g17p_root_range(uint16_t start_halfs, uint8_t set_count,
+                            uint64_t root_va,
+                            struct agx3_ioto_uniform_range *range);
+
 /* Build the bounded G17P vertex or fragment Ioto program. Zero ranges preserve
  * the exact no-resource triangle bytes. Up to three dword-aligned absolute
  * uniform ranges add the CProg loads used by vertex attributes, descriptor

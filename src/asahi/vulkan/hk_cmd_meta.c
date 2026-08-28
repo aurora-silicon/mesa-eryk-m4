@@ -14,6 +14,7 @@
 #include "hk_cmd_buffer.h"
 #include "hk_device.h"
 #include "hk_entrypoints.h"
+#include "hk_g17p_meta_copy_core.h"
 #include "hk_image.h"
 #include "hk_physical_device.h"
 
@@ -62,7 +63,10 @@ hk_device_init_meta(struct hk_device *dev)
       return result;
 
    dev->meta.use_gs_for_layer = false;
+   dev->meta.use_layer_output = dev->dev.chip != AGX_CHIP_G17P;
    dev->meta.use_stencil_export = true;
+   dev->meta.use_masked_rgba8_buffer_unpack =
+      dev->dev.chip == AGX_CHIP_G17P;
    dev->meta.use_rect_list_pipeline = true;
    dev->meta.cmd_bind_map_buffer = hk_cmd_bind_map_buffer;
    dev->meta.max_bind_map_buffer_size_B = 64 * 1024;
@@ -1405,6 +1409,37 @@ hk_copy_requires_gfx(struct hk_image *img)
 }
 
 static bool
+hk_g17p_copy_buffer_to_image_supported(
+   struct hk_device *dev, const struct hk_image *image,
+   const VkCopyBufferToImageInfo2 *info)
+{
+   if (info->regionCount != 1)
+      return false;
+
+   const VkBufferImageCopy2 *region = &info->pRegions[0];
+   return hk_g17p_buffer_to_image_copy_supported(
+      &(const struct hk_g17p_buffer_to_image_copy){
+         .chip = dev->dev.chip,
+         .format = image->vk.format,
+         .layout = info->dstImageLayout,
+         .image_type = image->vk.image_type,
+         .samples = image->vk.samples,
+         .plane_count = image->plane_count,
+         .mip_levels = image->vk.mip_levels,
+         .array_layers = image->vk.array_layers,
+         .image_extent = image->vk.extent,
+         .aspect = region->imageSubresource.aspectMask,
+         .mip_level = region->imageSubresource.mipLevel,
+         .base_array_layer = region->imageSubresource.baseArrayLayer,
+         .layer_count = region->imageSubresource.layerCount,
+         .image_offset = region->imageOffset,
+         .copy_extent = region->imageExtent,
+         .buffer_row_length = region->bufferRowLength,
+         .buffer_image_height = region->bufferImageHeight,
+      });
+}
+
+static bool
 hk_bind_point(bool gfx)
 {
    return gfx ? VK_PIPELINE_BIND_POINT_GRAPHICS
@@ -1420,6 +1455,14 @@ hk_CmdCopyBufferToImage2(VkCommandBuffer commandBuffer,
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
    bool gfx = hk_copy_requires_gfx(dst_image);
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      if (!hk_g17p_copy_buffer_to_image_supported(
+             dev, dst_image, pCopyBufferToImageInfo)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      gfx = true;
+   }
    VkPipelineBindPoint bind_point = hk_bind_point(gfx);
 
    struct hk_meta_save save;

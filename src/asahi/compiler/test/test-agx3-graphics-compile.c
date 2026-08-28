@@ -24,6 +24,7 @@
 
 #include "agx_compile.h"
 #include "agx_nir.h"
+#include "asahi/lib/agx_abi.h"
 #include "nir_builder.h"
 #include "util/format/u_formats.h"
 
@@ -441,6 +442,44 @@ build_fs_descriptor_resource(void)
    return fs_finish(&b);
 }
 
+/* The bounded buffer-to-image meta fragment shape: use the root uniform to
+ * fetch a staging-buffer address, index it by pixel coordinate, unpack one
+ * RGBA8 texel, and write RT0.
+ */
+static nir_shader *
+build_fs_meta_rgba_upload(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 RGBA upload FS");
+
+   nir_def *root =
+      nir_load_preamble(&b, 1, 64, .base = AGX_ABI_FUNI_ROOT);
+   nir_def *source = nir_load_global_constant(
+      &b, 1, 64, root, .align_mul = 8, .access = ACCESS_CAN_SPECULATE);
+   nir_def *xy = nir_u2u32(&b, nir_load_pixel_coord(&b));
+   nir_def *pixel = nir_iadd(
+      &b, nir_channel(&b, xy, 0),
+      nir_imul_imm(&b, nir_channel(&b, xy, 1), 256));
+   nir_def *address =
+      nir_iadd(&b, source, nir_u2u64(&b, nir_imul_imm(&b, pixel, 4)));
+   nir_def *packed =
+      nir_load_global(&b, 1, 32, address, .align_mul = 4);
+   nir_def *channel[4];
+   for (unsigned i = 0; i < ARRAY_SIZE(channel); ++i) {
+      const unsigned shift = i * 8;
+      nir_def *masked =
+         nir_iand(&b, packed, nir_imm_int(&b, 0xffu << shift));
+      channel[i] = nir_fmul_imm(
+         &b, nir_u2f32(&b, masked),
+         1.0f / (255.0f * (float)(1u << shift)));
+   }
+   nir_def *colour =
+      nir_vec4(&b, channel[0], channel[1], channel[2], channel[3]);
+
+   fs_store_colour(&b, colour);
+   return fs_finish(&b);
+}
+
 /*
  * Fragment shader exercising the funop family: floor/exp2/log2 (f32rint and
  * friends) plus the fragment-only gradient dfdx.
@@ -472,6 +511,7 @@ struct agx3_graphics_case {
    nir_shader *(*build)(void);
    bool expect_ok;
    bool lower_combined_sampler;
+   uint16_t reserved_preamble;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -485,6 +525,8 @@ static const struct agx3_graphics_case cases[] = {
    {"fs-textured-triangle", build_fs_texture_imm, true},
    {"fs-vkcube-combined-sampler", build_fs_texture, true, true},
    {"fs-descriptor-resource", build_fs_descriptor_resource, true},
+   {"fs-meta-rgba-upload", build_fs_meta_rgba_upload, true, false,
+    AGX_ABI_FUNI_ROOT + 4},
    {"fs-transcendentals", build_fs_funops, true},
 
    /*
@@ -529,6 +571,8 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 
    struct agx_shader_key key = {0};
    key.dev.encoding = enc;
+   key.no_preamble = true;
+   key.reserved_preamble = c->reserved_preamble;
 
    struct agx_shader_part part;
    memset(&part, 0xa5, sizeof(part));
@@ -556,6 +600,11 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
                memcmp((const uint8_t *)part.binary + part.info.binary_size -
                          sizeof(agx3_end),
                       agx3_end, sizeof(agx3_end)) == 0;
+
+      if (result && c->reserved_preamble != 0) {
+         result = !part.info.has_preamble &&
+                  part.info.push_count == c->reserved_preamble;
+      }
 
       if (result && c->lower_combined_sampler) {
          nir_shader *reference_nir = build_fs_texture_imm();

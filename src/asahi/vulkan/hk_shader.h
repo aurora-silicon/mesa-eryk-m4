@@ -117,7 +117,8 @@ struct hk_shader_info {
     * descriptor set and the native sampler heap into those CProg slots.
     */
    bool agx3_combined_sampler_valid;
-   uint8_t _agx3_combined_sampler_pad[3];
+   bool agx3_uses_root;
+   uint8_t _agx3_combined_sampler_pad[2];
    struct agx_g17p_combined_sampler_binding agx3_combined_sampler;
 
    /* XXX: is there a less goofy way to do this? I really don't want dynamic
