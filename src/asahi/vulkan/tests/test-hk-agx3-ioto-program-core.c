@@ -461,6 +461,43 @@ test_g17s_minimal_compute_admission(void)
 }
 
 static int
+test_g17p_no_resource_program_bridge(void)
+{
+   static const uint8_t exact_tail[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01,
+      0x2a, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+      0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_ioto_state_tail_output tail = {
+      .length = sizeof(exact_tail),
+   };
+   memcpy(tail.bytes, exact_tail, sizeof(exact_tail));
+
+   uint8_t shared[AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE];
+   uint8_t bridged[sizeof(shared) + 1];
+   memset(bridged, 0xa5, sizeof(bridged));
+   size_t shared_written = 0, bridged_written = 0;
+   CHECK(agx_ioto_g17p_no_resource_program_compose(
+      UINT64_C(0x10001990240), &tail, shared, sizeof(shared), &shared_written));
+   CHECK(hk_agx3_g17p_no_resource_program_generate(
+      AGX_CHIP_G17P, UINT64_C(0x10001990240), &tail, bridged, sizeof(shared),
+      &bridged_written));
+   CHECK(bridged_written == shared_written &&
+         memcmp(bridged, shared, shared_written) == 0);
+   CHECK(bridged[bridged_written] == 0xa5);
+
+   uint8_t before[sizeof(bridged)];
+   memcpy(before, bridged, sizeof(bridged));
+   bridged_written = 31;
+   CHECK(!hk_agx3_g17p_no_resource_program_generate(
+      AGX_CHIP_G17S, UINT64_C(0x10001990240), &tail, bridged, sizeof(shared),
+      &bridged_written));
+   CHECK(memcmp(bridged, before, sizeof(bridged)) == 0 &&
+         bridged_written == 31);
+   return 0;
+}
+
+static int
 test_alias(void)
 {
    struct hk_agx3_ioto_program_desc desc = make_desc(AGX_CHIP_G17G);
@@ -498,7 +535,7 @@ main(void)
 {
    if (test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
-       test_alias())
+       test_g17p_no_resource_program_bridge() || test_alias())
       return 1;
 
    printf("Honeykrisp AGX3 Ioto program core: %u checks passed\n", checks);

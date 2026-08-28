@@ -147,11 +147,9 @@ enum agx_submission_model {
 extern "C" {
 #endif
 
-/* Return the exact supported command-stream architecture, or UNKNOWN.
- *
- * A recognised chip is not a supported one: G15 and above have a code
- * generator but no command stream the driver can submit with. Callers opening
- * a device must gate on agx_chip_driver_supported, not on UNKNOWN. */
+/* Return the exact command-stream architecture, or UNKNOWN.  Recognition does
+ * not imply a complete Honeykrisp upload-to-submit path.  Callers opening a
+ * device must check agx_chip_driver_supported, not only UNKNOWN. */
 enum agx_chip
 agx_chip_from_params(const struct drm_asahi_params_global *params);
 

@@ -9,6 +9,43 @@
 
 #include <string.h>
 
+static const uint8_t
+   g17p_default_profile_prefix[AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE] = {
+      0x1c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x81, 0x11, 0x06,
+      0x00, 0x00, 0x00, 0x00, 0x0c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x08, 0xa8, 0x10, 0x05, 0x1c, 0x80,
+      0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x0f, 0x12, 0x54, 0x00, 0x4c, 0x00,
+};
+
+static const uint8_t
+   g17p_default_profile_suffix[AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE] = {
+      0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00, 0x60, 0x00,
+};
+
+_Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
+                     sizeof(g17p_default_profile_prefix) +
+                     sizeof(g17p_default_profile_suffix) +
+                     AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
+                  AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
+               "G17P no-resource Ioto size must remain 90 bytes");
+
+static uint16_t
+g17p_load_le16(const uint8_t *bytes)
+{
+   return (uint16_t)bytes[0] | ((uint16_t)bytes[1] << 8);
+}
+
+static bool
+g17p_ldshdr_has_shader_va(const uint8_t *ldshdr)
+{
+   const uint16_t word1 = g17p_load_le16(ldshdr + 2);
+   const uint16_t word2 = g17p_load_le16(ldshdr + 4);
+   const uint16_t word3 = g17p_load_le16(ldshdr + 6);
+   const uint16_t word4 = g17p_load_le16(ldshdr + 8);
+   return (word1 & UINT16_C(0xff80)) != 0 || word2 != 0 || word3 != 0 ||
+          (word4 & UINT16_C(1)) != 0;
+}
+
 static const uint8_t g17s_minimal_compute_resource_body[] = {
    /* First-use gather base at half4/6, then two-dword gather load to half20. */
    0x2c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -199,6 +236,67 @@ agx_ioto_straight_line_program_compose(
    return agx_ioto_program_compose_no_pixrel(chip, program_va, body, body_size,
                                              tail, profile, &absent, output,
                                              capacity, written);
+}
+
+bool
+agx_ioto_g17p_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   void *output, size_t capacity, size_t *written)
+{
+   if (!packed_tail || !output || !written ||
+       packed_tail->length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE ||
+       program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       capacity < AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
+      return false;
+
+   static const enum agx_ioto_kind kinds[] = {
+      AGX_IOTO_KIND_SPECLM_EP0,
+      AGX_IOTO_KIND_LDSHDR_EP0,
+      AGX_IOTO_KIND_SPECTPR_EP0,
+   };
+   static const size_t sizes[] = {
+      AGX_IOTO_SPECLM_SIZE,
+      AGX_IOTO_LDSHDR_SIZE,
+      AGX_IOTO_SPECTPR_SIZE,
+   };
+   size_t tail_offset = 0;
+   for (size_t i = 0; i < sizeof(kinds) / sizeof(kinds[0]); ++i) {
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_validate_kind(
+             AGX_CHIP_G17P, kinds[i], packed_tail->bytes + tail_offset,
+             packed_tail->length - tail_offset, &record, &consumed) ||
+          consumed != sizes[i])
+         return false;
+      tail_offset += consumed;
+   }
+   if (tail_offset != packed_tail->length)
+      return false;
+
+   if (!g17p_ldshdr_has_shader_va(packed_tail->bytes + AGX_IOTO_SPECLM_SIZE))
+      return false;
+
+   uint8_t staged[AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE];
+   size_t offset = 0;
+   memcpy(staged + offset, packed_tail->bytes, packed_tail->length);
+   offset += packed_tail->length;
+   memcpy(staged + offset, g17p_default_profile_prefix,
+          sizeof(g17p_default_profile_prefix));
+   offset += sizeof(g17p_default_profile_prefix);
+   memcpy(staged + offset, g17p_default_profile_suffix,
+          sizeof(g17p_default_profile_suffix));
+   offset += sizeof(g17p_default_profile_suffix);
+   memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+   staged[offset] = UINT8_C(0x0e);
+   offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+
+   if (offset != sizeof(staged))
+      return false;
+
+   memcpy(output, staged, sizeof(staged));
+   *written = sizeof(staged);
+   return true;
 }
 
 static bool

@@ -20,6 +20,9 @@ extern "C" {
 #endif
 
 #define AGX_IOTO_PROGRAM_ALIGNMENT 64u
+#define AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE  48u
+#define AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE  10u
+#define AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE     90u
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE 194u
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA \
    UINT64_C(0x10000018020)
@@ -75,6 +78,21 @@ bool agx_ioto_straight_line_program_compose(
    const struct agx_ioto_state_tail *tail,
    const struct agx_ioto_profile_control *profile, void *output,
    size_t capacity, size_t *written);
+
+/* Compose the G17P program form used when the state loader has no resource
+ * records.  Apple's program is one packed type-0 state tail, the 58-byte
+ * default profile loader, and the four-byte terminal record.  program_va
+ * identifies the separately uploaded, 64-byte-aligned program.
+ *
+ * The packed form is required because the hardware-positive G17P fragment
+ * tail contains runtime SPECLM bits which the anonymous semantic field map
+ * does not name yet.  Each record is still checked against the G17P Ioto
+ * grammar before publication.  This function does not add uniform, texture,
+ * sampler, image, or driver argument loads.  Output and *written are unchanged
+ * when validation fails. */
+bool agx_ioto_g17p_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   void *output, size_t capacity, size_t *written);
 
 /* Compose the complete byte-for-byte G17S minimal root-uniform/no-texture
  * compute Ioto program: fixed resource loads, semantic state tail, the real

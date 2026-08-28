@@ -140,9 +140,9 @@ struct hk_shader {
    struct agx_fragment_face_2_packed frag_face;
    struct agx_counts_packed counts;
 
-   /* Native AGX3 VertexProgramVariant state.  The existing compiler only
-    * publishes AGX2 Counts/UVS, so this stays UNSPECIFIED and makes an AGX3
-    * draw fail closed until every exact producer is available. */
+   /* Native AGX3 VertexProgramVariant state.  The compiler emits AGX3 shader
+    * text, but it does not yet publish the state-loader counts and
+    * VsStateConfig fields required by this object. */
    struct agx_vdm_state_update_program_info agx3_vdm_state_update;
 
    const void *code_ptr;

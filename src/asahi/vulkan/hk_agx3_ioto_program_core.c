@@ -47,6 +47,19 @@ hk_agx3_ioto_program_generate_no_pixrel(
 }
 
 bool
+hk_agx3_g17p_no_resource_program_generate(
+   enum agx_chip chip, uint64_t program_va,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   if (chip != AGX_CHIP_G17P)
+      return false;
+
+   return agx_ioto_g17p_no_resource_program_compose(program_va, packed_tail,
+                                                    output, capacity, written);
+}
+
+bool
 hk_agx3_g17s_minimal_compute_program_prepare(
    enum agx_chip chip,
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,

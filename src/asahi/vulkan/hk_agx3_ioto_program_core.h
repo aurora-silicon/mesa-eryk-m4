@@ -45,6 +45,13 @@ bool hk_agx3_ioto_program_generate_no_pixrel(
    const struct agx_ioto_preshader_desc *preshader, void *output,
    size_t capacity, size_t *written);
 
+/* Honeykrisp bridge for G17P's default-profile program with no resource-load
+ * records. */
+bool hk_agx3_g17p_no_resource_program_generate(
+   enum agx_chip chip, uint64_t program_va,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
+
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.
  * The explicit chip argument is intentionally rejected for every sibling
