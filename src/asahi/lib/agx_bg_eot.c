@@ -274,6 +274,9 @@ agx_get_precompiled_locked(struct agx_bg_eot_cache *cache, unsigned program)
    if (cache->precomp[program])
       return cache->precomp[program];
 
+   if (!cache->dev->libagx_programs)
+      return NULL;
+
    /* Otherwise, we need to upload. */
    struct agx_precompiled_shader *p =
       ralloc(cache->ht, struct agx_precompiled_shader);
@@ -363,5 +366,5 @@ agx_helper_program(struct agx_bg_eot_cache *cache)
    struct agx_precompiled_shader *pc =
       agx_get_precompiled(cache, LIBAGX_HELPER);
 
-   return pc->ptr | 1;
+   return pc ? (pc->ptr | 1) : 0;
 }

@@ -95,12 +95,23 @@ test_field_order_and_flag_clear(void)
    assert(cmd.bg_partial_rsrc_spec_hi == 0);
 }
 
+static void
+test_submit_command_limit(void)
+{
+   assert(hk_drm_submit_command_limit(false, 64) == 1);
+   assert(hk_drm_submit_command_limit(true, 64) == 64);
+   assert(hk_drm_submit_command_limit(true, 32) == 32);
+   assert(hk_drm_submit_command_limit(true, 1) == 1);
+   assert(hk_drm_submit_command_limit(false, 0) == 1);
+}
+
 int
 main(void)
 {
    test_uapi_extension_layout();
    test_exact_g17p_specs();
    test_field_order_and_flag_clear();
+   test_submit_command_limit();
    puts("Honeykrisp DRM render resource specs: all checks passed");
    return 0;
 }

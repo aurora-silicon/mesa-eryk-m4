@@ -7,6 +7,7 @@
 
 #include "drm-uapi/asahi_drm.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 
 struct hk_drm_render_resource_specs {
@@ -19,3 +20,6 @@ struct hk_drm_render_resource_specs {
 void hk_drm_render_resource_specs_pack(
    const struct hk_drm_render_resource_specs *specs,
    struct drm_asahi_cmd_render *cmd);
+
+unsigned hk_drm_submit_command_limit(bool batch_enabled,
+                                     uint32_t kernel_limit);

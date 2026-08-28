@@ -673,6 +673,29 @@ hk_get_device_features(
       .presentAtAbsoluteTime = true,
 #endif
    };
+
+   if (dev->chip == AGX_CHIP_G17P) {
+      /* The first HAL200 path is intentionally one ordinary, single-sample
+       * graphics pipeline. Keep optional feature reporting within that path
+       * until the corresponding joined Ioto programs are implemented. */
+      features->geometryShader = false;
+      features->tessellationShader = false;
+      features->sampleRateShading = false;
+      features->samplerAnisotropy = false;
+      features->pipelineStatisticsQuery = false;
+      features->vertexPipelineStoresAndAtomics = false;
+      features->fragmentStoresAndAtomics = false;
+      features->shaderTessellationAndGeometryPointSize = false;
+      features->shaderResourceResidency = false;
+      features->shaderResourceMinLod = false;
+      features->sparseBinding = false;
+      features->sparseResidencyAliased = false;
+      features->sparseResidencyImage2D = false;
+      features->sparseResidencyBuffer = false;
+      features->multiview = false;
+      features->transformFeedback = false;
+      features->geometryStreams = false;
+   }
 }
 
 static void
@@ -687,7 +710,10 @@ hk_get_device_properties(const struct agx_device *dev,
 
    /* Note: update nir_shader_compiler_options.max_samples when changing this. */
    const VkSampleCountFlagBits sample_counts =
-      VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT | VK_SAMPLE_COUNT_4_BIT;
+      dev->chip == AGX_CHIP_G17P
+         ? VK_SAMPLE_COUNT_1_BIT
+         : VK_SAMPLE_COUNT_1_BIT | VK_SAMPLE_COUNT_2_BIT |
+              VK_SAMPLE_COUNT_4_BIT;
 
    uint64_t os_page_size = 16384;
    os_get_page_size(&os_page_size);
@@ -1365,9 +1391,18 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
    assert(pdev->mem_heap_count <= ARRAY_SIZE(pdev->mem_heaps));
    assert(pdev->mem_type_count <= ARRAY_SIZE(pdev->mem_types));
 
+   VkQueueFlags queue_flags =
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
+      VK_QUEUE_SPARSE_BINDING_BIT;
+   if (pdev->dev.chip == AGX_CHIP_G17P) {
+      /* G17P graphics uses joined HAL200 Ioto programs. The generic compute
+       * launcher still accepts an AGX2 USC block, so do not advertise compute
+       * or sparse work until it supplies the matching joined object. */
+      queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
+   }
+
    pdev->queue_families[pdev->queue_family_count++] = (struct hk_queue_family){
-      .queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
-                     VK_QUEUE_TRANSFER_BIT | VK_QUEUE_SPARSE_BINDING_BIT,
+      .queue_flags = queue_flags,
 
       .queue_count = 1,
    };

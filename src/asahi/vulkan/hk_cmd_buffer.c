@@ -817,6 +817,8 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
 {
    if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
        linked->b.size > 256 || s->b.info.has_preamble ||
+       s->b.info.scratch_size != 0 ||
+       s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
        s->b.info.rodata.size_16 != 0 || s->b.info.texture_state_count != 0 ||
        s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
        linked->b.uses_txf || s->data_size != 0 || s->info.set_count != 0)
@@ -983,6 +985,10 @@ hk_dispatch_precomp(struct hk_cmd_buffer *cmd, struct agx_grid grid,
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct agx_precompiled_shader *prog = agx_get_precompiled(&dev->bg_eot, idx);
+   if (!prog) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
 
    struct hk_cs **target = (barrier & AGX_POSTGFX)  ? &cmd->current_cs.post_gfx
                            : (barrier & AGX_PREGFX) ? &cmd->current_cs.pre_gfx

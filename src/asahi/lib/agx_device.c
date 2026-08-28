@@ -693,7 +693,7 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * is implemented; otherwise a newly-recognised chip can silently reach an
     * encoder from the wrong generation.
     */
-   if (!agx_chip_driver_supported(dev->chip)) {
+   if (!agx_params_driver_supported(&dev->params)) {
       if (dev->chip == AGX_CHIP_UNKNOWN) {
          fprintf(stderr,
                  "Unsupported Apple GPU architecture G%u (variant 0x%x, %u "
@@ -709,6 +709,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
                  agx_isa_name(agx_chip_isa(dev->chip)),
                  dev->params.gpu_variant,
                  dev->params.num_clusters_total);
+      } else if (dev->chip == AGX_CHIP_G17P) {
+         fprintf(stderr,
+                 "Apple G17P kernel contract does not match Honeykrisp "
+                 "(USC %u, HAL %u; expected USC 3, HAL 200)\n",
+                 dev->params.usc_generation,
+                 dev->params.gpu_hal_generation);
       } else {
          fprintf(stderr,
                  "Apple %s uses the %s command stream, which this driver "
@@ -856,10 +862,13 @@ agx_open_device(void *memctx, struct agx_device *dev)
 
    glsl_type_singleton_init_or_ref();
 
-   if (agx_gather_device_key(dev).needs_g13x_coherency == U_TRISTATE_YES) {
-      dev->libagx_programs = libagx_g13x;
+   if (agx_chip_uses_legacy_precompiled_programs(dev->chip)) {
+      if (agx_gather_device_key(dev).needs_g13x_coherency == U_TRISTATE_YES)
+         dev->libagx_programs = libagx_g13x;
+      else
+         dev->libagx_programs = libagx_g13g;
    } else {
-      dev->libagx_programs = libagx_g13g;
+      dev->libagx_programs = NULL;
    }
 
    /* Bind read-only zero page at 2^32. This is in our reservation, and can be

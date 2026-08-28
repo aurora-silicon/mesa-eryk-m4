@@ -196,6 +196,17 @@ bool agx_chip_codegen_supported(enum agx_chip chip);
  */
 bool agx_chip_driver_supported(enum agx_chip chip);
 
+/* Validate the kernel-published identity as well as the userspace chip table.
+ * G17P is the first identity whose runnable path depends on explicit USC and
+ * HAL fields added to drm_asahi_params_global. */
+bool agx_params_driver_supported(
+   const struct drm_asahi_params_global *params);
+
+/* libagx_g13{g,x} contains AGX2 machine code and USC records. It must never be
+ * selected for an AGX3 device, even when no current draw is expected to call a
+ * precompiled helper. */
+bool agx_chip_uses_legacy_precompiled_programs(enum agx_chip chip);
+
 /*
  * Hardware ray tracing.
  *

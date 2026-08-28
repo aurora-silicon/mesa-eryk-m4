@@ -342,18 +342,54 @@ bool
 agx_chip_driver_supported(enum agx_chip chip)
 {
    /*
-    * Codegen is necessary, not sufficient. A usable device also needs the
-    * command stream (VDM/CDM/PPP), the descriptor and sampler ABIs, and the
-    * submission model for its generation. The basic G17P VDM/PPP path now
-    * uploads its no-resource Ioto programs. Dynamic BG/EOT resource programs
-    * and dual-submission selection are still separate work, so only AGX2 has
-    * the complete upload-to-submit path today.
+    * Codegen is necessary, not sufficient. G17P is admitted as one exact
+    * bring-up identity because its HAL200 VDM/PPP records, Gen9 descriptors,
+    * HAL200 sampler layout, dual queue model, no-resource graphics programs,
+    * and RT0 clear/reload/store programs are all wired into Honeykrisp. Other
+    * AGX3 identities still lack at least one of those pieces.
     */
-   return agx_chip_codegen_supported(chip) &&
-          agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_AGX2 &&
-          agx_chip_descriptor_generation(chip) !=
-             AGX_DESCRIPTOR_GENERATION_UNKNOWN &&
-          agx_chip_sampler_generation(chip) != AGX_SAMPLER_GENERATION_UNKNOWN;
+   if (!agx_chip_codegen_supported(chip))
+      return false;
+
+   if (agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_AGX2) {
+      return agx_chip_descriptor_generation(chip) !=
+                AGX_DESCRIPTOR_GENERATION_UNKNOWN &&
+             agx_chip_sampler_generation(chip) !=
+                AGX_SAMPLER_GENERATION_UNKNOWN;
+   }
+
+   return chip == AGX_CHIP_G17P &&
+          agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_HAL200 &&
+          agx_chip_descriptor_generation(chip) == AGX_DESCRIPTOR_GENERATION_9 &&
+          agx_chip_sampler_generation(chip) ==
+             AGX_SAMPLER_GENERATION_GEN4_HAL200 &&
+          agx_chip_sampler_heap_element_size(chip) == 32 &&
+          agx_chip_submission_model(chip) == AGX_SUBMISSION_MODEL_DUAL;
+}
+
+bool
+agx_params_driver_supported(const struct drm_asahi_params_global *params)
+{
+   if (!params)
+      return false;
+
+   const enum agx_chip chip = agx_chip_from_params(params);
+   if (!agx_chip_driver_supported(chip))
+      return false;
+
+   if (chip == AGX_CHIP_G17P) {
+      return params->usc_generation == AGX_ISA_AGX3 &&
+             params->gpu_hal_generation == DRM_ASAHI_GPU_HAL_200;
+   }
+
+   return true;
+}
+
+bool
+agx_chip_uses_legacy_precompiled_programs(enum agx_chip chip)
+{
+   return agx_chip_driver_supported(chip) &&
+          agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_AGX2;
 }
 
 bool

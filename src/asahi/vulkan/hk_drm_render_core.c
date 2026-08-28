@@ -40,3 +40,14 @@ hk_drm_render_resource_specs_pack(
    else
       cmd->flags &= ~DRM_ASAHI_RENDER_RSRC_SPEC_HI;
 }
+
+unsigned
+hk_drm_submit_command_limit(bool batch_enabled, uint32_t kernel_limit)
+{
+   const unsigned userspace_limit = batch_enabled ? 64 : 1;
+
+   if (kernel_limit == 0)
+      return 1;
+
+   return userspace_limit < kernel_limit ? userspace_limit : kernel_limit;
+}

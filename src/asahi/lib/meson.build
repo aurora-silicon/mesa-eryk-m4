@@ -227,6 +227,19 @@ libasahi_lib = static_library(
 
 if with_tests
   test(
+    'asahi-agx-chip',
+    executable(
+      'asahi-agx-chip',
+      files(
+        'agx_chip.c',
+        'tests/test-chip.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'asahi-agx-va-runtime-hole',
     executable(
       'asahi-agx-va-runtime-hole',

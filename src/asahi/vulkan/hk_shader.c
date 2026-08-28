@@ -1903,6 +1903,12 @@ hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
       }
    }
 
+   /* HAL200 consumes the joined Ioto program built at command-recording time.
+    * The legacy USC list below is not part of that contract. */
+   if (agx_chip_command_stream_generation(dev->dev.chip) !=
+       AGX_CS_GENERATION_AGX2)
+      return s;
+
    /* Now that we've linked, bake the USC words to bind this program */
    struct agx_usc_builder b = agx_usc_builder(s->usc.data, sizeof(s->usc.data));
 

@@ -75,10 +75,15 @@ hk_upload_rodata(struct hk_device *dev)
    uint32_t offs = 0;
 
    offs = align(offs, 8);
-   agx_pack(&dev->dev.txf_sampler, USC_SAMPLER, cfg) {
-      cfg.start = 0;
-      cfg.count = 1;
-      cfg.buffer = dev->rodata.bo->va->addr + offs;
+   if (agx_chip_command_stream_generation(dev->dev.chip) ==
+       AGX_CS_GENERATION_AGX2) {
+      agx_pack(&dev->dev.txf_sampler, USC_SAMPLER, cfg) {
+         cfg.start = 0;
+         cfg.count = 1;
+         cfg.buffer = dev->rodata.bo->va->addr + offs;
+      }
+   } else {
+      memset(&dev->dev.txf_sampler, 0, sizeof(dev->dev.txf_sampler));
    }
 
    struct hk_native_sampler_descriptor txf;

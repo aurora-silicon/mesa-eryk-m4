@@ -143,7 +143,8 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
       c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
    }
 
-   if (dev->dev.debug & AGX_DBG_NOCLUSTER) {
+   if ((dev->dev.debug & AGX_DBG_NOCLUSTER) &&
+       dev->dev.chip != AGX_CHIP_G17P) {
       c->flags |= DRM_ASAHI_RENDER_NO_VERTEX_CLUSTERING;
    }
 
@@ -251,7 +252,8 @@ union drm_asahi_cmd {
 static inline unsigned
 max_commands_per_submit(struct hk_device *dev)
 {
-   return HK_PERF(dev, BATCH) ? 64 : 1;
+   return hk_drm_submit_command_limit(
+      HK_PERF(dev, BATCH), dev->dev.params.max_commands_per_submission);
 }
 
 static VkResult

@@ -5,8 +5,17 @@
 
 #include "agx_chip.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+
+_Static_assert(sizeof(struct drm_asahi_params_global) == 600,
+               "drm_asahi_params_global ABI");
+_Static_assert(offsetof(struct drm_asahi_params_global, usc_generation) == 592,
+               "USC generation ABI");
+_Static_assert(offsetof(struct drm_asahi_params_global, gpu_hal_generation) ==
+                  596,
+               "GPU HAL generation ABI");
 
 static unsigned failures;
 static unsigned checks;
@@ -227,9 +236,29 @@ test_independent_generation_axes(void)
 
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G15P));
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G15G));
-   CHECK(!agx_chip_driver_supported(AGX_CHIP_G17P));
+   CHECK(agx_chip_driver_supported(AGX_CHIP_G17P));
    CHECK(!agx_chip_driver_supported(AGX_CHIP_G17S));
    CHECK(!agx_chip_driver_supported(AGX_CHIP_UNKNOWN));
+
+   struct drm_asahi_params_global g17p = {
+      .gpu_generation = 17,
+      .gpu_variant = 'P',
+      .num_clusters_total = 1,
+      .usc_generation = 3,
+      .gpu_hal_generation = DRM_ASAHI_GPU_HAL_200,
+   };
+   CHECK(agx_params_driver_supported(&g17p));
+   g17p.usc_generation = 2;
+   CHECK(!agx_params_driver_supported(&g17p));
+   g17p.usc_generation = 3;
+   g17p.gpu_hal_generation = DRM_ASAHI_GPU_HAL_300;
+   CHECK(!agx_params_driver_supported(&g17p));
+   CHECK(!agx_params_driver_supported(NULL));
+
+   CHECK(agx_chip_uses_legacy_precompiled_programs(AGX_CHIP_G13G));
+   CHECK(agx_chip_uses_legacy_precompiled_programs(AGX_CHIP_G14X));
+   CHECK(!agx_chip_uses_legacy_precompiled_programs(AGX_CHIP_G17P));
+   CHECK(!agx_chip_uses_legacy_precompiled_programs(AGX_CHIP_UNKNOWN));
 
    CHECK(strcmp(agx_command_stream_generation_name(
                    AGX_CS_GENERATION_HAL200),
