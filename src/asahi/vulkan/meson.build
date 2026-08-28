@@ -356,6 +356,16 @@ if with_tests
       gnu_symbol_visibility : 'hidden',
     )
   endif
+
+  if host_machine.system() == 'linux'
+    executable(
+      'asahi-submit-g17p-add3',
+      files('tests/asahi_submit_g17p_add3.c'),
+      include_directories : [inc_include],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+  endif
 endif
 
 hk_entrypoints = custom_target(
