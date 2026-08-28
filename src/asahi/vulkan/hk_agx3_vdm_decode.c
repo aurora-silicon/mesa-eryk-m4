@@ -106,6 +106,49 @@ hk_agx3_vdm_live_source_layout(
 }
 
 bool
+hk_agx3_g17p_basic_vertex_program_info(
+   enum agx_chip chip,
+   const struct hk_agx3_g17p_vertex_compile_info *compiler_info,
+   struct agx_vdm_state_update_program_info *program)
+{
+   if (program)
+      memset(program, 0, sizeof(*program));
+
+   if (chip != AGX_CHIP_G17P || !compiler_info || !program ||
+       !compiler_info->hardware_vertex || !compiler_info->position_only ||
+       compiler_info->has_preamble || compiler_info->nr_preamble_gprs != 0 ||
+       compiler_info->preamble_scratch_size != 0 ||
+       compiler_info->uvs_written != 0 || compiler_info->uvs_size != 4 ||
+       compiler_info->user_size != 0 || compiler_info->position_off != 0 ||
+       compiler_info->varyings_off != 4 || compiler_info->psiz_off != 4 ||
+       compiler_info->layer_viewport_off != 4 || compiler_info->clip_off != 4)
+      return false;
+
+   *program = (struct agx_vdm_state_update_program_info){
+      .source_layout =
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT,
+      .template_info =
+         {
+            /* The no-preamble Ioto loader finishes with both state counts zero.
+             */
+            .raw_state_load_count_12 = 0,
+            .raw_state_load_count_18 = 0,
+            /* VsStateConfig places the four position words in count 0. */
+            .raw_vs_output_count_0 = 4,
+            .raw_vs_output_count_2 = 0,
+            .raw_vs_output_count_1_extra = false,
+            .raw_vs_output_selector = 0,
+            .raw_vs_output_flag_6 = false,
+            .pre_hal300_flag_group_nonzero = true,
+            .pre_hal300_flag_bit_4 = false,
+            .variant = AGX_VDM_STATE_UPDATE_TEMPLATE_00,
+            .raw_active_context_selector = UINT32_MAX,
+         },
+   };
+   return true;
+}
+
+bool
 hk_agx3_decode_vdm_record(enum agx_chip chip, const void *command,
                           size_t available,
                           struct agx_vdm_decoded_record *record)

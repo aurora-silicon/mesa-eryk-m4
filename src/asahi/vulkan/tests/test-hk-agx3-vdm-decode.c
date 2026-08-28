@@ -142,6 +142,61 @@ test_program_cache_lifetime(void)
 }
 
 static int
+test_g17p_basic_vertex_program_info(void)
+{
+   const struct hk_agx3_g17p_vertex_compile_info compiler_info = {
+      .hardware_vertex = true,
+      .position_only = true,
+      .position_off = 0,
+      .varyings_off = 4,
+      .psiz_off = 4,
+      .layer_viewport_off = 4,
+      .clip_off = 4,
+      .uvs_size = 4,
+   };
+   struct agx_vdm_state_update_program_info program;
+   CHECK(hk_agx3_g17p_basic_vertex_program_info(AGX_CHIP_G17P, &compiler_info,
+                                                &program));
+   CHECK(program.source_layout ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT);
+   CHECK(program.template_info.raw_state_load_count_12 == 0);
+   CHECK(program.template_info.raw_state_load_count_18 == 0);
+   CHECK(program.template_info.raw_vs_output_count_0 == 4);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+   CHECK(program.template_info.pre_hal300_flag_group_nonzero);
+   CHECK(!program.template_info.pre_hal300_flag_bit_4);
+
+   program.template_info.pipeline = UINT64_C(0x10000128000);
+   const struct agx_vdm_state_update_draw_info draw = {
+      .source_layout = program.source_layout,
+      .draw_path = AGX_VDM_STATE_UPDATE_DRAW_DIRECT_NONINDEXED,
+      .rasterization_enabled = true,
+      .raw_provoking_selector = 0,
+      .template_info = program.template_info,
+   };
+   struct agx_vdm_state_update encoded;
+   CHECK(hk_agx3_encode_vdm_state_update_draw(AGX_CHIP_G17P, &draw, &encoded));
+   static const uint8_t m1n1_direct_triangle_prefix[] = {
+      0x2e, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x00, 0x4a, 0x00, 0x00, 0x04, 0x04, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   CHECK(encoded.length == sizeof(m1n1_direct_triangle_prefix));
+   CHECK(memcmp(encoded.bytes, m1n1_direct_triangle_prefix,
+                sizeof(m1n1_direct_triangle_prefix)) == 0);
+
+   struct hk_agx3_g17p_vertex_compile_info invalid_info = compiler_info;
+   invalid_info.has_preamble = true;
+   CHECK(!hk_agx3_g17p_basic_vertex_program_info(AGX_CHIP_G17P, &invalid_info,
+                                                 &program));
+   CHECK(program.source_layout ==
+         AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
+   CHECK(!hk_agx3_g17p_basic_vertex_program_info(AGX_CHIP_G17S, &compiler_info,
+                                                 &program));
+   return 0;
+}
+
+static int
 test_honeykrisp_bridge(void)
 {
    for (unsigned t = 0; t < sizeof(targets) / sizeof(targets[0]); ++t) {
@@ -477,6 +532,7 @@ int
 main(void)
 {
    CHECK(test_program_cache_lifetime() == 0);
+   CHECK(test_g17p_basic_vertex_program_info() == 0);
    CHECK(test_honeykrisp_bridge() == 0);
    CHECK(test_rejection() == 0);
 

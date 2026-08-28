@@ -344,11 +344,10 @@ agx_chip_driver_supported(enum agx_chip chip)
    /*
     * Codegen is necessary, not sufficient. A usable device also needs the
     * command stream (VDM/CDM/PPP), the descriptor and sampler ABIs, and the
-    * submission model for its generation. HAL200 VDM/PPP records and the G17P
-    * no-resource Ioto program now have live-library encoders. Honeykrisp still
-    * uploads AGX2 USC blocks in hk_upload_usc_words and hk_build_bg_eot, and it
-    * does not produce the VertexProgramVariant fields used by the HAL200 VDM
-    * state update. Only AGX2 has the complete upload-to-submit path today.
+    * submission model for its generation. The basic G17P VDM/PPP path now
+    * uploads its no-resource Ioto programs. Dynamic BG/EOT resource programs
+    * and dual-submission selection are still separate work, so only AGX2 has
+    * the complete upload-to-submit path today.
     */
    return agx_chip_codegen_supported(chip) &&
           agx_chip_command_stream_generation(chip) == AGX_CS_GENERATION_AGX2 &&

@@ -38,6 +38,31 @@ hk_agx3_vdm_live_source_layout(
    const struct agx_vdm_state_update_program_info *program,
    bool active_context_selector_valid, bool ordinary_draw_path);
 
+struct hk_agx3_g17p_vertex_compile_info {
+   bool hardware_vertex;
+   bool position_only;
+   bool has_preamble;
+   uint16_t nr_preamble_gprs;
+   uint32_t preamble_scratch_size;
+   uint64_t uvs_written;
+   uint8_t position_off;
+   uint8_t varyings_off;
+   uint8_t psiz_off;
+   uint8_t layer_viewport_off;
+   uint8_t clip_off;
+   uint8_t uvs_size;
+   uint8_t user_size;
+};
+
+/* Build the exact G17P VertexProgramVariant fields for the procedural
+ * position-only vertex shader.  The finished Ioto loader has no preamble
+ * state, and the four position words reproduce m1n1's 28-byte direct-triangle
+ * VDM prefix. */
+bool hk_agx3_g17p_basic_vertex_program_info(
+   enum agx_chip chip,
+   const struct hk_agx3_g17p_vertex_compile_info *compiler_info,
+   struct agx_vdm_state_update_program_info *program);
+
 /*
  * Decode one record from a potentially longer AGX3 VDM stream through the
  * shared Mesa classifier. This is a validation surface only: it does not
@@ -48,15 +73,12 @@ bool hk_agx3_decode_vdm_record(enum agx_chip chip, const void *command,
                                size_t available,
                                struct agx_vdm_decoded_record *record);
 
-/* Validation-only structural bridge.  The live Honeykrisp draw path remains
- * closed until its compiler produces every AGX3 template input directly. */
+/* Validation-only structural bridge. */
 bool hk_agx3_encode_vdm_state_update_template(
    enum agx_chip chip, const struct agx_vdm_state_update_template_info *info,
    struct agx_vdm_state_update *out);
 
-/* Exact AGX3 VertexProgramVariant selector bridge used by live draw emission.
- * hk_shader source_layout remains UNSPECIFIED until the compiler publishes
- * every raw AGX3 template axis, so that path currently fails closed. */
+/* Exact AGX3 VertexProgramVariant selector bridge used by live draw emission. */
 bool hk_agx3_encode_vdm_state_update_draw(
    enum agx_chip chip, const struct agx_vdm_state_update_draw_info *info,
    struct agx_vdm_state_update *out);

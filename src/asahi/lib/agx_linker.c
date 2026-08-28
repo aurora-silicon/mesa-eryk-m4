@@ -202,6 +202,9 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    assert(offset == size);
 
+   linked->scratch_size = scratch_size;
+   linked->nr_gprs = nr_gprs;
+
    if (agx_bo_sync_for_device(linked->bo, 0, size)) {
       agx_bo_unreference(dev, linked->bo);
       linked->bo = NULL;

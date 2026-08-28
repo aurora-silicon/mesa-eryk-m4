@@ -498,6 +498,64 @@ test_g17p_no_resource_program_bridge(void)
 }
 
 static int
+test_g17p_basic_graphics_program(void)
+{
+   static const uint8_t expected_fragment[] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01, 0x2a, 0x01,
+      0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x1c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x14, 0x81, 0x11, 0x06, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x80, 0x02, 0x00,
+      0x04, 0x00, 0x00, 0x00, 0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x08, 0xa8,
+      0x10, 0x05, 0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00, 0x0f, 0x12,
+      0x54, 0x00, 0x4c, 0x00, 0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00,
+      0x60, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   };
+   CHECK(sizeof(expected_fragment) == AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
+   const struct hk_agx3_g17p_graphics_program_desc fragment = {
+      .program_va = UINT64_C(0x10001990240),
+      .shader_va = UINT64_C(0x10000000080),
+      .shader_binary_size = 54,
+      .scratch_size = 0,
+      .nr_gprs = 8,
+      .fragment = true,
+   };
+   struct hk_agx3_g17p_graphics_program program;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &fragment,
+                                                      &program));
+   CHECK(program.length == sizeof(expected_fragment));
+   CHECK(memcmp(program.bytes, expected_fragment, sizeof(expected_fragment)) ==
+         0);
+
+   const struct hk_agx3_g17p_graphics_program_desc vertex = {
+      .program_va = UINT64_C(0x10000128000),
+      .shader_va = UINT64_C(0x10000000000),
+      .shader_binary_size = 74,
+      .scratch_size = 0,
+      .nr_gprs = 14,
+      .fragment = false,
+   };
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &vertex,
+                                                      &program));
+   CHECK(program.length == AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
+   static const uint8_t vertex_tail[] = {
+      0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00, 0x77, 0x01,
+      0x2a, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0xf7, 0x00,
+      0x2a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   CHECK(memcmp(program.bytes, vertex_tail, sizeof(vertex_tail)) == 0);
+
+   const struct hk_agx3_g17p_graphics_program before = program;
+   struct hk_agx3_g17p_graphics_program_desc invalid = vertex;
+   invalid.shader_binary_size = 257;
+   CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &invalid,
+                                                       &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17S, &vertex,
+                                                       &program));
+   return 0;
+}
+
+static int
 test_alias(void)
 {
    struct hk_agx3_ioto_program_desc desc = make_desc(AGX_CHIP_G17G);
@@ -535,7 +593,8 @@ main(void)
 {
    if (test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
-       test_g17p_no_resource_program_bridge() || test_alias())
+       test_g17p_no_resource_program_bridge() ||
+       test_g17p_basic_graphics_program() || test_alias())
       return 1;
 
    printf("Honeykrisp AGX3 Ioto program core: %u checks passed\n", checks);

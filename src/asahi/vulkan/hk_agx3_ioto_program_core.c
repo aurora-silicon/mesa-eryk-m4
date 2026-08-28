@@ -7,6 +7,8 @@
 
 #include "asahi/lib/agx_ioto_core.h"
 
+#include <string.h>
+
 bool
 hk_agx3_ioto_program_generate(
    enum agx_chip chip, const struct hk_agx3_ioto_program_desc *desc,
@@ -57,6 +59,60 @@ hk_agx3_g17p_no_resource_program_generate(
 
    return agx_ioto_g17p_no_resource_program_compose(program_va, packed_tail,
                                                     output, capacity, written);
+}
+
+bool
+hk_agx3_g17p_basic_graphics_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
+   struct hk_agx3_g17p_graphics_program *program)
+{
+   if (!program || chip != AGX_CHIP_G17P || !desc ||
+       desc->shader_binary_size == 0 || desc->shader_binary_size > 256 ||
+       desc->nr_gprs == 0)
+      return false;
+
+   static const uint8_t vertex_speclm[AGX_IOTO_SPECLM_SIZE] = {
+      0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t fragment_speclm[AGX_IOTO_SPECLM_SIZE] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
+   };
+
+   struct agx_ioto_state ldshdr = {0};
+   ldshdr.f[0] = desc->shader_va;
+   ldshdr.f[1] = (desc->shader_binary_size + 63) / 64 - 1;
+   ldshdr.f[23] = 1;
+
+   struct agx_ioto_state spectpr;
+   if (!agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size, desc->nr_gprs,
+                                             &spectpr))
+      return false;
+
+   struct agx_ioto_state_tail_output tail = {
+      .length = AGX_IOTO_STATE_TAIL_TYPE0_SIZE,
+   };
+   memcpy(tail.bytes, desc->fragment ? fragment_speclm : vertex_speclm,
+          AGX_IOTO_SPECLM_SIZE);
+   if (!agx_ioto_state_pack_ldshdr(AGX_CHIP_G17P, &ldshdr,
+                                   tail.bytes + AGX_IOTO_SPECLM_SIZE,
+                                   AGX_IOTO_LDSHDR_SIZE) ||
+       !agx_ioto_state_pack_spectpr(
+          AGX_CHIP_G17P, &spectpr,
+          tail.bytes + AGX_IOTO_SPECLM_SIZE + AGX_IOTO_LDSHDR_SIZE,
+          AGX_IOTO_SPECTPR_SIZE))
+      return false;
+
+   struct hk_agx3_g17p_graphics_program staged;
+   size_t written = 0;
+   if (!agx_ioto_g17p_no_resource_program_compose(
+          desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
+          &written) ||
+       written != sizeof(staged.bytes))
+      return false;
+
+   staged.length = (uint8_t)written;
+   *program = staged;
+   return true;
 }
 
 bool

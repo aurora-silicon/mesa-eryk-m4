@@ -20,6 +20,10 @@ struct agx_linked_shader {
     * BO size is not a safe disassembler bound. */
    size_t size;
 
+   /* Aggregated main-program resources after fast linking. */
+   uint32_t scratch_size;
+   uint16_t nr_gprs;
+
    /* Set if the linked SW vertex shader reads base vertex/instance. The VS
     * prolog can read base instance even when the API VS does not, which is why
     * this needs to be aggregated in the linker.

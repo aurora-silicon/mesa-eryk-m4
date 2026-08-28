@@ -12,6 +12,7 @@
 #include "agx_linker.h"
 #include "agx_tilebuffer.h"
 #include "agx_usc.h"
+#include "hk_agx3_ioto_program_core.h"
 #include "hk_buffer.h"
 #include "hk_cmd_pool.h"
 #include "hk_descriptor_set.h"
@@ -792,11 +793,104 @@ hk_reserve_scratch(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 }
 
-uint32_t
+static bool
+hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
+{
+   struct agx_tilebuffer_layout *tib = &cmd->state.gfx.render.tilebuffer;
+   if (tib->nr_samples != 1 || tib->layered || tib->sample_size_B != 8 ||
+       tib->tile_size != 32 * 32 || tib->spilled[0] ||
+       tib->logical_format[0] == PIPE_FORMAT_NONE ||
+       agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM)
+      return false;
+
+   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
+      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
+         return false;
+   }
+   return true;
+}
+
+static bool
+hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
+                                         struct hk_shader *s,
+                                         struct hk_linked_shader *linked)
+{
+   if (!linked || !linked->b.bo || !linked->b.bo->va || linked->b.size == 0 ||
+       linked->b.size > 256 || s->b.info.has_preamble ||
+       s->b.info.rodata.size_16 != 0 || s->b.info.texture_state_count != 0 ||
+       s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
+       linked->b.uses_txf || s->data_size != 0 || s->info.set_count != 0)
+      return false;
+
+   if (s->info.stage == MESA_SHADER_VERTEX) {
+      return !linked->sw_indexing && !linked->b.uses_base_param &&
+             BITSET_LAST_BIT(s->info.vs.attrib_components_read) == 0 &&
+             s->agx3_vdm_state_update.source_layout ==
+                AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
+   }
+
+   return s->info.stage == MESA_SHADER_FRAGMENT &&
+          linked->b.cf.nr_bindings == 0 && hk_g17p_basic_fragment_layout(cmd);
+}
+
+uint64_t
 hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
                     struct hk_linked_shader *linked)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   if (agx_chip_command_stream_generation(dev->dev.chip) ==
+       AGX_CS_GENERATION_HAL200) {
+      if (dev->dev.chip != AGX_CHIP_G17P ||
+          !hk_g17p_basic_graphics_program_supported(cmd, s, linked)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return 0;
+      }
+
+      struct agx_bo *program_bo =
+         agx_bo_create(&dev->dev, AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
+                       AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
+                       "G17P Ioto program");
+      if (!program_bo) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return 0;
+      }
+      util_dynarray_append(&cmd->large_bos, program_bo);
+
+      void *program_map = agx_bo_map(program_bo);
+      if (!program_map) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_MEMORY_MAP_FAILED);
+         return 0;
+      }
+
+      const struct hk_agx3_g17p_graphics_program_desc desc = {
+         .program_va = program_bo->va->addr,
+         .shader_va = linked->b.bo->va->addr,
+         .shader_binary_size = linked->b.size,
+         .scratch_size = linked->b.scratch_size,
+         .nr_gprs = linked->b.nr_gprs,
+         .fragment = s->info.stage == MESA_SHADER_FRAGMENT,
+      };
+      struct hk_agx3_g17p_graphics_program program;
+      if (!hk_agx3_g17p_basic_graphics_program_generate(dev->dev.chip, &desc,
+                                                        &program)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return 0;
+      }
+
+      memcpy(program_map, program.bytes, program.length);
+      if (agx_bo_sync_for_device(program_bo, 0, program.length)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
+         return 0;
+      }
+      return program_bo->va->addr;
+   }
+
+   if (agx_chip_command_stream_generation(dev->dev.chip) !=
+       AGX_CS_GENERATION_AGX2) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return 0;
+   }
 
    mesa_shader_stage sw_stage = s->info.stage;
 
@@ -914,6 +1008,13 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_rendering_state *render = &cmd->state.gfx.render;
    uint8_t *map = cs->current;
+
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      /* The kext preserves a zero final VDM word when this selector is the
+       * UINT32_MAX sentinel.  This reproduces m1n1's direct-triangle prefix. */
+      cs->agx3_active_context_selector_valid = true;
+      cs->agx3_raw_active_context_selector = UINT32_MAX;
+   }
 
    cs->tib = render->tilebuffer;
 

@@ -358,9 +358,7 @@ struct hk_cs {
    /* Whether there is more than just the root chunk */
    bool stream_linked;
 
-   /* RenderContext+0x8410 supplies the active-context selector consumed by
-    * AGX3 VertexProgramVariant.  The producer is not grounded yet, so a new
-    * control stream leaves this invalid and native AGX3 draws fail closed. */
+   /* Active-context selector consumed by AGX3 VertexProgramVariant. */
    bool agx3_active_context_selector_valid;
    uint32_t agx3_raw_active_context_selector;
 
@@ -837,7 +835,9 @@ uint64_t hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
 void hk_reserve_scratch(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                         struct hk_shader *s);
 
-uint32_t hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
+/* AGX2 returns its shader-base-relative USC offset.  G17P returns the absolute
+ * 48-bit Ioto program VA consumed by HAL200 VDM state. */
+uint64_t hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
                              struct hk_linked_shader *linked);
 
 void hk_usc_upload_spilled_rt_descs(struct agx_usc_builder *b,
@@ -864,7 +864,12 @@ hk_dispatch_with_local_size(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
 
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   uint32_t usc = hk_upload_usc_words(cmd, s, s->only_linked);
+   uint64_t uploaded = hk_upload_usc_words(cmd, s, s->only_linked);
+   if (uploaded > UINT32_MAX) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+   uint32_t usc = uploaded;
 
    hk_reserve_scratch(cmd, cs, s);
    hk_dispatch_with_usc(dev, cs, &s->b.info, usc, grid, local_size);

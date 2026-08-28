@@ -2730,10 +2730,36 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       /* TODO: Do less often? */
       hk_reserve_scratch(cmd, cs, fs);
 
+      const uint64_t uploaded = hk_upload_usc_words(cmd, fs, linked_fs);
+      uint32_t fragment_pipeline;
+      switch (agx_chip_command_stream_generation(dev->dev.chip)) {
+      case AGX_CS_GENERATION_AGX2:
+         if (uploaded > UINT32_MAX) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+         fragment_pipeline = uploaded;
+         break;
+      case AGX_CS_GENERATION_HAL200:
+         if (uploaded == 0 || uploaded < dev->dev.shader_base ||
+             uploaded - dev->dev.shader_base > UINT32_MAX) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            return;
+         }
+         fragment_pipeline = agx_usc_addr(&dev->dev, uploaded);
+         break;
+      case AGX_CS_GENERATION_G15:
+      case AGX_CS_GENERATION_HAL300:
+      case AGX_CS_GENERATION_UNKNOWN:
+      default:
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
       agx_ppp_push_packed(&ppp, &linked_fs->fs_counts, FRAGMENT_SHADER_WORD_0);
 
       agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_1, cfg) {
-         cfg.pipeline = hk_upload_usc_words(cmd, fs, linked_fs);
+         cfg.pipeline = fragment_pipeline;
       }
 
       agx_ppp_push(&ppp, FRAGMENT_SHADER_WORD_2, cfg) {
@@ -3340,11 +3366,17 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
       struct hk_linked_shader *linked_hw_vs =
          (hw_vs == sw_vs) ? linked_vs : hw_vs->only_linked;
-      const uint32_t pipeline_usc =
+      const uint64_t pipeline_program =
          hk_upload_usc_words(cmd, hw_vs, linked_hw_vs);
 
       switch (agx_chip_command_stream_generation(dev->dev.chip)) {
       case AGX_CS_GENERATION_AGX2:
+         if (pipeline_program > UINT32_MAX) {
+            vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+            cs->current = out;
+            return;
+         }
+
          agx_push(out, VDM_STATE, cfg) {
             cfg.vertex_shader_word_0_present = true;
             cfg.vertex_shader_word_1_present = true;
@@ -3355,7 +3387,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          agx_push_packed(out, hw_vs->counts, VDM_STATE_VERTEX_SHADER_WORD_0);
 
          agx_push(out, VDM_STATE_VERTEX_SHADER_WORD_1, cfg) {
-            cfg.pipeline = pipeline_usc;
+            cfg.pipeline = pipeline_program;
          }
 
          agx_push_packed(out, hw_vs->info.uvs.vdm,
@@ -3377,10 +3409,9 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       case AGX_CS_GENERATION_HAL300: {
          const struct agx_vdm_state_update_program_info *program =
             &hw_vs->agx3_vdm_state_update;
-         uint64_t pipeline_va;
          const bool pipeline_va_valid =
-            agx_vdm_state_update_resolve_pipeline_va(
-               dev->dev.shader_base, pipeline_usc, &pipeline_va);
+            pipeline_program != 0 && pipeline_program < (UINT64_C(1) << 48) &&
+            (pipeline_program & UINT64_C(0x3f)) == 0;
          const bool complete_program =
             pipeline_va_valid &&
             hk_agx3_vdm_live_source_layout(
@@ -3408,7 +3439,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             .raw_provoking_selector = gfx->provoking,
             .template_info = program->template_info,
          };
-         info.template_info.pipeline = pipeline_va;
+         info.template_info.pipeline = pipeline_program;
          info.template_info.raw_active_context_selector =
             cs->agx3_raw_active_context_selector;
 

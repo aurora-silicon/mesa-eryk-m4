@@ -52,6 +52,27 @@ bool hk_agx3_g17p_no_resource_program_generate(
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written);
 
+struct hk_agx3_g17p_graphics_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   uint32_t shader_binary_size;
+   uint32_t scratch_size;
+   uint16_t nr_gprs;
+   bool fragment;
+};
+
+struct hk_agx3_g17p_graphics_program {
+   uint8_t bytes[AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE];
+   uint8_t length;
+};
+
+/* Build the position-only vertex or flat-colour fragment Ioto program used by
+ * the basic G17P triangle.  The two stage-specific SPECLM records, LDSHDR text
+ * span rule, SPECTPR compiler rule, and default profile are all byte-exact. */
+bool hk_agx3_g17p_basic_graphics_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
+   struct hk_agx3_g17p_graphics_program *program);
+
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.
  * The explicit chip argument is intentionally rejected for every sibling

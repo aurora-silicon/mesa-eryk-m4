@@ -1237,6 +1237,26 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    shader->info.cull_distance_array_size = nir->info.cull_distance_array_size;
    shader->b.info.outputs = outputs;
 
+   if (dev->dev.chip == AGX_CHIP_G17P && sw_stage == MESA_SHADER_VERTEX && hw) {
+      const struct hk_agx3_g17p_vertex_compile_info compiler_info = {
+         .hardware_vertex = shader->b.info.stage == MESA_SHADER_VERTEX,
+         .position_only = shader->b.info.outputs == VARYING_BIT_POS,
+         .has_preamble = shader->b.info.has_preamble,
+         .nr_preamble_gprs = shader->b.info.nr_preamble_gprs,
+         .preamble_scratch_size = shader->b.info.preamble_scratch_size,
+         .uvs_written = shader->info.uvs.written,
+         .position_off = shader->info.uvs.group_offs[UVS_POSITION],
+         .varyings_off = shader->info.uvs.group_offs[UVS_VARYINGS],
+         .psiz_off = shader->info.uvs.group_offs[UVS_PSIZ],
+         .layer_viewport_off = shader->info.uvs.group_offs[UVS_LAYER_VIEWPORT],
+         .clip_off = shader->info.uvs.group_offs[UVS_CLIP_DIST],
+         .uvs_size = shader->info.uvs.size,
+         .user_size = shader->info.uvs.user_size,
+      };
+      hk_agx3_g17p_basic_vertex_program_info(dev->dev.chip, &compiler_info,
+                                             &shader->agx3_vdm_state_update);
+   }
+
    if (xfb_info) {
       assert(xfb_info->output_count < ARRAY_SIZE(shader->info.xfb_outputs));
 
