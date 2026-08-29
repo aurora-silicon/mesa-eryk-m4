@@ -164,6 +164,77 @@ test_a18_pro_one_dimensional_launch(void)
 }
 
 static bool
+test_g17p_native_compute_join(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(true, false, false,
+                                                   &sources));
+   const struct agx3_g17p_native_compute_program_desc desc = {
+      .program_va = UINT64_C(0x100000b0000),
+      .shader_va = UINT64_C(0x10000000100),
+      .launch_sources = sources,
+   };
+   struct agx3_compute_program program;
+   CHECK(agx3_g17p_native_compute_program_bind(&desc, &program));
+   CHECK(program.chip == AGX_CHIP_G17P);
+   CHECK(program.program_va == desc.program_va);
+   CHECK(program.shader_va == desc.shader_va);
+   CHECK(program.g17p_native_compute_live_bound);
+
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {96, 4, 1},
+      .local_size = {32, 2, 1},
+      .dimensions = 2,
+   };
+   static const uint8_t expected[] = {
+      0x00, 0x00, 0x08, 0x00, 0x40, 0x00, 0x00, 0x01,
+      0x00, 0x2c, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+      0x60, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+      0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x60, 0x01, 0x00, 0x60,
+   };
+   uint8_t dispatch[AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE + 2];
+   memset(dispatch, 0xa5, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+      .length = 1,
+   };
+   CHECK(agx3_g17p_native_compute_dispatch_append(&program, &grid, &sink));
+   CHECK(sink.length == 1 + sizeof(expected));
+   CHECK(dispatch[0] == 0xa5 && dispatch[sink.length] == 0xa5);
+   CHECK(memcmp(dispatch + 1, expected, sizeof(expected)) == 0);
+
+   uint8_t before[sizeof(dispatch)];
+   memcpy(before, dispatch, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink failed = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+   };
+   struct agx3_compute_direct_grid invalid_grid = grid;
+   invalid_grid.dimensions = 1;
+   CHECK(!agx3_g17p_native_compute_dispatch_append(
+      &program, &invalid_grid, &failed));
+   CHECK(failed.length == 0 &&
+         memcmp(dispatch, before, sizeof(dispatch)) == 0);
+   invalid_grid = grid;
+   invalid_grid.local_size[0] = 0;
+   CHECK(!agx3_g17p_native_compute_dispatch_append(
+      &program, &invalid_grid, &failed));
+   CHECK(failed.length == 0 &&
+         memcmp(dispatch, before, sizeof(dispatch)) == 0);
+
+   const struct agx3_compute_program program_before = program;
+   struct agx3_g17p_native_compute_program_desc invalid_desc = desc;
+   invalid_desc.program_va |= 1;
+   CHECK(!agx3_g17p_native_compute_program_bind(&invalid_desc, &program));
+   CHECK(memcmp(&program, &program_before, sizeof(program)) == 0);
+   return true;
+}
+
+static bool
 test_g17p_direct_add3_program_join(void)
 {
    struct agx3_cdm_direct_template_sources sources;
@@ -676,6 +747,7 @@ int
 main(void)
 {
    if (!test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
+       !test_g17p_native_compute_join() ||
        !test_g17p_direct_add3_program_join() ||
        !test_g17s_minimal_program_join() || !test_fail_closed())
       return 1;

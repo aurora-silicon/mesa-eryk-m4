@@ -92,7 +92,8 @@ bool hk_agx3_g17p_combined_sampler_ranges(
    const struct hk_agx3_g17p_combined_sampler_heap *heap,
    struct agx3_ioto_uniform_range ranges[2]);
 
-/* Load one root descriptor followed by zero or one descriptor-set pointer. */
+/* Load one root descriptor followed by every descriptor-set pointer named by
+ * the shader's pipeline layout. */
 bool hk_agx3_g17p_root_range(uint16_t start_halfs, uint8_t set_count,
                             uint64_t root_va,
                             struct agx3_ioto_uniform_range *range);
@@ -179,6 +180,39 @@ bool hk_agx3_g17p_direct_add3_program_upload_prepare(
    struct agx3_compute_program *program);
 
 bool hk_agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
+#define HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE 6144u
+#define HK_AGX3_G17P_COMPUTE_MAX_LOAD_CHUNKS  128u
+#define HK_AGX3_G17P_MAX_ROOT_SETS            8u
+
+struct hk_agx3_g17p_compute_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   const struct agx3_ioto_uniform_range *uniform_ranges;
+   size_t uniform_range_count;
+   uint32_t shader_binary_size;
+   uint32_t scratch_size;
+   uint16_t nr_gprs;
+   struct agx3_cdm_direct_template_sources launch_sources;
+};
+
+struct hk_agx3_g17p_compute_program {
+   uint8_t bytes[HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE];
+   uint16_t length;
+   struct agx3_compute_program launch;
+};
+
+/* Build a dispatch-local Ioto program from dword-aligned root, descriptor and
+ * constant ranges, then bind that exact allocation to the native A18 Pro CDM
+ * launch state.  Spilling and indirect dispatch have separate contracts. */
+bool hk_agx3_g17p_compute_program_generate(
+   enum agx_chip chip, const struct hk_agx3_g17p_compute_program_desc *desc,
+   struct hk_agx3_g17p_compute_program *program);
+
+bool hk_agx3_g17p_native_compute_dispatch_append(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,
    struct agx3_compute_dispatch_sink *sink);

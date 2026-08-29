@@ -858,6 +858,10 @@ void hk_dispatch_with_usc(struct hk_device *dev, struct hk_cs *cs,
                           struct agx_grid grid,
                           struct agx_workgroup local_size);
 
+void hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                             struct hk_shader *s, struct agx_grid grid,
+                             struct agx_workgroup local_size);
+
 static inline void
 hk_dispatch_with_local_size(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                             struct hk_shader *s, struct agx_grid grid,
@@ -867,6 +871,13 @@ hk_dispatch_with_local_size(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
 
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (agx_chip_command_stream_generation(dev->dev.chip) ==
+       AGX_CS_GENERATION_HAL200) {
+      hk_reserve_scratch(cmd, cs, s);
+      hk_dispatch_g17p_native(cmd, cs, s, grid, local_size);
+      return;
+   }
+
    uint64_t uploaded = hk_upload_usc_words(cmd, s, s->only_linked);
    if (uploaded > UINT32_MAX) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);

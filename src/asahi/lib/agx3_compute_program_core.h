@@ -49,6 +49,15 @@ struct agx3_g17p_direct_add3_program_desc {
    struct agx3_cdm_direct_template_sources launch_sources;
 };
 
+/* Runtime-built G17P Ioto program joined to the native A18 Pro CDM pointer
+ * form.  The Ioto bytes remain frontend-owned; this object binds their exact
+ * allocation to the launch metadata used below. */
+struct agx3_g17p_native_compute_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   struct agx3_cdm_direct_template_sources launch_sources;
+};
+
 struct agx3_g17s_minimal_compute_program_desc {
    uint64_t program_va;
    uint64_t shader_va;
@@ -79,6 +88,10 @@ struct agx3_compute_program {
     * the mapped allocation named by program_va. */
    bool g17p_direct_add3_live_admitted;
 
+   /* Set only after a runtime G17P Ioto program has been composed in the
+    * allocation named by program_va. */
+   bool g17p_native_compute_live_bound;
+
    /* Only the live G17S minimal-resource preparation path sets this.  Keep
     * research composers and the zero-relocation witness out of a command
     * stream even when their launch metadata is otherwise encodable. */
@@ -99,6 +112,8 @@ struct agx3_compute_program_upload {
 #define AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE \
    (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
 #define AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE \
+   (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
+#define AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE \
    (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
 
 /* Caller-owned command-stream span.  A successful append writes one exact
@@ -153,6 +168,20 @@ bool agx3_g17p_direct_add3_dispatch_ready(enum agx_chip chip);
  * barrier.  The witnessed grid is fixed at 64 global threads in groups of
  * 32.  This remains a bring-up API and does not expose a Vulkan capability. */
 bool agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
+/* Bind a successfully composed runtime Ioto program to its native direct CDM
+ * launch state.  No bytes are generated here. */
+bool agx3_g17p_native_compute_program_bind(
+   const struct agx3_g17p_native_compute_program_desc *desc,
+   struct agx3_compute_program *program);
+
+/* Append one direct G17P launch and the flags=0 barrier used by the
+ * output-positive native compute stream.  Direct global or threadgroup counts
+ * are accepted; indirect dispatch uses a different helper-program contract. */
+bool agx3_g17p_native_compute_dispatch_append(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,
    struct agx3_compute_dispatch_sink *sink);

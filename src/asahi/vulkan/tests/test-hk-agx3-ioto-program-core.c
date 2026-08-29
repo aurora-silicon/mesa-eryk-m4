@@ -462,6 +462,101 @@ test_g17s_minimal_compute_admission(void)
 }
 
 static int
+test_g17p_dynamic_compute_program(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(true, false, false,
+                                                   &sources));
+   const struct agx3_ioto_uniform_range ranges[] = {
+      {
+         .start_halfs = 0,
+         .size_halfs = 12,
+         .address = UINT64_C(0x10000024000),
+      },
+      {
+         .start_halfs = 12,
+         .size_halfs = 8,
+         .address = UINT64_C(0x10000030000),
+      },
+   };
+   const struct hk_agx3_g17p_compute_program_desc desc = {
+      .program_va = UINT64_C(0x100000b0000),
+      .shader_va = UINT64_C(0x10000000100),
+      .uniform_ranges = ranges,
+      .uniform_range_count = ARRAY_SIZE(ranges),
+      .shader_binary_size = 96,
+      .nr_gprs = 8,
+      .launch_sources = sources,
+   };
+   struct hk_agx3_g17p_compute_program program;
+   memset(&program, 0xa5, sizeof(program));
+   CHECK(hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &desc,
+                                               &program));
+   CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
+   CHECK(program.length < sizeof(program.bytes));
+   CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
+         0x0e);
+   CHECK(program.launch.chip == AGX_CHIP_G17P);
+   CHECK(program.launch.program_va == desc.program_va);
+   CHECK(program.launch.shader_va == desc.shader_va);
+   CHECK(program.launch.g17p_native_compute_live_bound);
+
+   struct agx_ioto_state_tail_output expected_tail;
+   CHECK(agx_ioto_g17p_runtime_compute_tail_build(
+      desc.shader_va, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER,
+      &expected_tail));
+   size_t tail_matches = 0;
+   for (size_t i = 0; i + expected_tail.length <= program.length; ++i) {
+      if (memcmp(program.bytes + i, expected_tail.bytes,
+                 expected_tail.length) == 0)
+         tail_matches++;
+   }
+   CHECK(tail_matches == 1);
+
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {96, 4, 1},
+      .local_size = {32, 2, 1},
+      .dimensions = 2,
+   };
+   static const uint8_t expected_dispatch[] = {
+      0x00, 0x00, 0x08, 0x00, 0x40, 0x00, 0x00, 0x01,
+      0x00, 0x2c, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+      0x60, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+      0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x60, 0x01, 0x00, 0x60,
+   };
+   uint8_t dispatch[AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE + 1];
+   memset(dispatch, 0xb6, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+   };
+   CHECK(hk_agx3_g17p_native_compute_dispatch_append(
+      &program.launch, &grid, &sink));
+   CHECK(sink.length == sizeof(expected_dispatch));
+   CHECK(memcmp(dispatch, expected_dispatch, sizeof(expected_dispatch)) == 0);
+   CHECK(dispatch[sink.length] == 0xb6);
+
+   const struct hk_agx3_g17p_compute_program before = program;
+   struct hk_agx3_g17p_compute_program_desc invalid = desc;
+   invalid.scratch_size = 16;
+   CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   invalid = desc;
+   invalid.uniform_ranges = NULL;
+   CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17P, &invalid,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   CHECK(!hk_agx3_g17p_compute_program_generate(AGX_CHIP_G17S, &desc,
+                                                &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   return 0;
+}
+
+static int
 test_g17p_direct_add3_compute_bridge(void)
 {
    struct agx3_cdm_direct_template_sources sources;
@@ -835,11 +930,13 @@ test_g17p_root_range(void)
          range.address == UINT64_C(0x10000024000));
    CHECK(hk_agx3_g17p_root_range(12, 1, UINT64_C(0x10000024000), &range));
    CHECK(range.start_halfs == 12 && range.size_halfs == 8);
+   CHECK(hk_agx3_g17p_root_range(12, 8, UINT64_C(0x10000024000), &range));
+   CHECK(range.start_halfs == 12 && range.size_halfs == 36);
 
    const struct agx3_ioto_uniform_range before = range;
    CHECK(!hk_agx3_g17p_root_range(13, 0, UINT64_C(0x10000024000), &range));
    CHECK(memcmp(&range, &before, sizeof(range)) == 0);
-   CHECK(!hk_agx3_g17p_root_range(12, 2, UINT64_C(0x10000024000), &range));
+   CHECK(!hk_agx3_g17p_root_range(12, 9, UINT64_C(0x10000024000), &range));
    CHECK(memcmp(&range, &before, sizeof(range)) == 0);
    CHECK(!hk_agx3_g17p_root_range(12, 0, 0, &range));
    CHECK(memcmp(&range, &before, sizeof(range)) == 0);
@@ -1047,6 +1144,7 @@ main(void)
 {
    if (test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
+       test_g17p_dynamic_compute_program() ||
        test_g17p_direct_add3_compute_bridge() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||

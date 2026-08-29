@@ -1395,9 +1395,9 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
       VK_QUEUE_SPARSE_BINDING_BIT;
    if (pdev->dev.chip == AGX_CHIP_G17P) {
-      /* G17P graphics uses joined HAL200 Ioto programs. The generic compute
-       * launcher still accepts an AGX2 USC block, so do not advertise compute
-       * or sparse work until it supplies the matching joined object. */
+      /* G17P graphics and direct compute now use joined HAL200 Ioto programs.
+       * Keep compute and sparse work private until the kernel queue path has
+       * completed its hardware smoke test. */
       queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
    }
 

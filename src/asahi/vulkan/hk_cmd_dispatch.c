@@ -16,6 +16,7 @@
 #include "hk_descriptor_set.h"
 #include "hk_device.h"
 #include "hk_entrypoints.h"
+#include "hk_agx3_ioto_program_core.h"
 #include "hk_physical_device.h"
 #include "hk_shader.h"
 #include "libagx_dgc.h"
@@ -146,6 +147,158 @@ hk_dispatch_with_usc(struct hk_device *dev, struct hk_cs *cs,
    }
 
    hk_dispatch_with_usc_launch(dev, cs, launch, usc, grid, local_size);
+}
+
+static bool
+hk_g17p_compute_shader_supported(struct hk_shader *s,
+                                 struct hk_linked_shader *linked)
+{
+   return s && linked && s->info.stage == MESA_SHADER_COMPUTE &&
+          linked->b.bo && linked->b.bo->va && linked->b.size != 0 &&
+          linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
+          !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
+          s->b.info.scratch_size == 0 && linked->b.scratch_size == 0 &&
+          s->b.info.local_size == 0 && s->b.info.texture_state_count == 0 &&
+          s->b.info.sampler_state_count == 0 &&
+          !s->b.info.uses_sampler_heap && !linked->b.uses_txf &&
+          s->data_size == 0 &&
+          s->info.set_count <= HK_AGX3_G17P_MAX_ROOT_SETS;
+}
+
+static bool
+hk_g17p_compute_uniform_ranges(
+   struct hk_shader *s, uint64_t root_ptr,
+   struct agx3_ioto_uniform_range ranges[2], size_t *range_count)
+{
+   if (!s || !ranges || !range_count ||
+       !hk_agx3_g17p_root_range(0, s->info.set_count, root_ptr, &ranges[0]))
+      return false;
+
+   size_t count = 1;
+   const struct agx_rodata *rodata = &s->b.info.rodata;
+   if (rodata->size_16 != 0) {
+      const uint64_t size_B = (uint64_t)rodata->size_16 * 2;
+      if (!s->bo || !s->bo->va || (rodata->base_uniform & 1) != 0 ||
+          (rodata->size_16 & 1) != 0 || rodata->size_16 > 512 ||
+          rodata->offset > s->bo->size ||
+          size_B > s->bo->size - rodata->offset)
+         return false;
+
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = rodata->base_uniform,
+         .size_halfs = rodata->size_16,
+         .address = s->bo->va->addr + rodata->offset,
+      };
+   }
+
+   *range_count = count;
+   return true;
+}
+
+void
+hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                        struct hk_shader *s, struct agx_grid grid,
+                        struct agx_workgroup local_size)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   struct hk_linked_shader *linked = s ? s->only_linked : NULL;
+   static_assert(HK_MAX_SETS == HK_AGX3_G17P_MAX_ROOT_SETS,
+                 "G17P root range must cover every Honeykrisp set");
+
+   if (dev->dev.chip != AGX_CHIP_G17P || cs->type != HK_CS_CDM ||
+       !hk_g17p_compute_shader_supported(s, linked) ||
+       agx_is_indirect(grid)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   if (grid.count[0] == 0 || grid.count[1] == 0 || grid.count[2] == 0)
+      return;
+
+   const uint64_t root_ptr =
+      hk_cmd_buffer_upload_root(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);
+   if (!root_ptr)
+      return;
+
+   struct agx3_ioto_uniform_range ranges[2];
+   size_t range_count;
+   if (!hk_g17p_compute_uniform_ranges(s, root_ptr, ranges, &range_count)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   struct agx3_cdm_direct_template_sources launch_sources;
+   if (!agx3_cdm_direct_template_sources_compute(
+          s->b.info.uses_resource_info_query,
+          s->b.info.uses_ray_traversal,
+          s->b.info.ray_traversal_depth_nonzero, &launch_sources)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   struct agx_bo *program_bo = agx_bo_create(
+      &dev->dev, HK_AGX3_G17P_COMPUTE_PROGRAM_MAX_SIZE,
+      AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,
+      "G17P compute Ioto program");
+   if (!program_bo) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      return;
+   }
+   util_dynarray_append(&cmd->large_bos, program_bo);
+
+   void *program_map = agx_bo_map(program_bo);
+   if (!program_map) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_MEMORY_MAP_FAILED);
+      return;
+   }
+
+   const struct hk_agx3_g17p_compute_program_desc desc = {
+      .program_va = program_bo->va->addr,
+      .shader_va = linked->b.bo->va->addr,
+      .uniform_ranges = ranges,
+      .uniform_range_count = range_count,
+      .shader_binary_size = linked->b.size,
+      .scratch_size = linked->b.scratch_size,
+      .nr_gprs = linked->b.nr_gprs,
+      .launch_sources = launch_sources,
+   };
+   struct hk_agx3_g17p_compute_program program;
+   if (!hk_agx3_g17p_compute_program_generate(dev->dev.chip, &desc,
+                                               &program)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   memcpy(program_map, program.bytes, program.length);
+   if (agx_bo_sync_for_device(program_bo, 0, program.length)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
+      return;
+   }
+
+   const uint8_t dimensions =
+      grid.count[2] != 1 || local_size.z != 1
+         ? 3
+         : grid.count[1] != 1 || local_size.y != 1 ? 2 : 1;
+   const struct agx3_compute_direct_grid direct = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {grid.count[0], grid.count[1], grid.count[2]},
+      .local_size = {local_size.x, local_size.y, local_size.z},
+      .dimensions = dimensions,
+   };
+
+   hk_ensure_cs_has_space(cmd, cs, 0x2000);
+   struct agx3_compute_dispatch_sink sink = {
+      .data = (uint8_t *)cs->current,
+      .capacity = (uint8_t *)cs->end - (uint8_t *)cs->current,
+   };
+   if (!hk_agx3_g17p_native_compute_dispatch_append(&program.launch, &direct,
+                                                     &sink)) {
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return;
+   }
+
+   cs->current = (uint32_t *)((uint8_t *)cs->current + sink.length);
+   cs->stats.cmds++;
 }
 
 static void
