@@ -376,6 +376,14 @@ if with_tests
     )
 
     executable(
+      'asahi-submit-g17p-render',
+      files('tests/asahi_submit_g17p_render.c'),
+      include_directories : [inc_include],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
       'g17p-offscreen-triangle',
       files('tests/g17p_offscreen_triangle.c'),
       include_directories : [inc_include],
