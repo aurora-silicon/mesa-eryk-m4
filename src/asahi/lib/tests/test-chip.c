@@ -16,6 +16,9 @@ _Static_assert(offsetof(struct drm_asahi_params_global, usc_generation) == 592,
 _Static_assert(offsetof(struct drm_asahi_params_global, gpu_hal_generation) ==
                   596,
                "GPU HAL generation ABI");
+_Static_assert(DRM_ASAHI_GPU_HAL_LEGACY == 0, "legacy HAL ABI");
+_Static_assert(DRM_ASAHI_GPU_HAL_200 == 200, "HAL200 ABI");
+_Static_assert(DRM_ASAHI_GPU_HAL_300 == 300, "HAL300 ABI");
 
 static unsigned failures;
 static unsigned checks;

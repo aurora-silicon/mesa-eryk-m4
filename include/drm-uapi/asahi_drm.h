@@ -821,11 +821,9 @@ enum drm_asahi_render_flags {
 	DRM_ASAHI_RENDER_NO_VERTEX_CLUSTERING = (1U << 2),
 
 	/**
-	 * @DRM_ASAHI_RENDER_RSRC_SPEC_HI: The four resource-specifier high
-	 * dwords appended to drm_asahi_cmd_render are present.
-	 *
-	 * This flag lets an older kernel report an unsupported command instead
-	 * of silently discarding resource-specifier bits required by newer GPUs.
+	 * @DRM_ASAHI_RENDER_RSRC_SPEC_HI: The appended resource-specifier high
+	 * dwords are present. This flag lets old kernels report an unsupported
+	 * render payload instead of silently truncating 64-bit G17 values.
 	 */
 	DRM_ASAHI_RENDER_RSRC_SPEC_HI = (1U << 4),
 
@@ -1148,16 +1146,16 @@ struct drm_asahi_cmd_render {
 	/** @ts_frag: Timestamps for the fragment portion of the render */
 	struct drm_asahi_timestamps ts_frag;
 
-	/** @bg_eot_rsrc_spec_hi: High dword of @eot.rsrc_spec. */
+	/** @bg_eot_rsrc_spec_hi: High dword of @eot.rsrc_spec */
 	__u32 bg_eot_rsrc_spec_hi;
 
-	/** @bg_eot_partial_rsrc_spec_hi: High dword of @partial_eot.rsrc_spec. */
+	/** @bg_eot_partial_rsrc_spec_hi: High dword of @partial_eot.rsrc_spec */
 	__u32 bg_eot_partial_rsrc_spec_hi;
 
-	/** @bg_rsrc_spec_hi: High dword of @bg.rsrc_spec. */
+	/** @bg_rsrc_spec_hi: High dword of @bg.rsrc_spec */
 	__u32 bg_rsrc_spec_hi;
 
-	/** @bg_partial_rsrc_spec_hi: High dword of @partial_bg.rsrc_spec. */
+	/** @bg_partial_rsrc_spec_hi: High dword of @partial_bg.rsrc_spec */
 	__u32 bg_partial_rsrc_spec_hi;
 };
 

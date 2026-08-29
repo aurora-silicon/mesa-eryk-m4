@@ -13,6 +13,8 @@
 static void
 test_uapi_extension_layout(void)
 {
+   static_assert(DRM_ASAHI_RENDER_RSRC_SPEC_HI == (1U << 4),
+                 "resource-specifier high-tail flag ABI");
    static_assert(offsetof(struct drm_asahi_cmd_render,
                           bg_eot_rsrc_spec_hi) == 240,
                  "append-only render command ABI");
