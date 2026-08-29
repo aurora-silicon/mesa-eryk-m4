@@ -830,7 +830,12 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   // NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
+   /* G17P has no legacy USC constant-data upload.  Lower compute constants
+    * to load_constant so the private native path can address the immutable
+    * blob through its root descriptor. */
+   if (dev->dev.chip == AGX_CHIP_G17P &&
+       nir->info.stage == MESA_SHADER_COMPUTE)
+      NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
 
    /* Turn cache flushes into image coherency bits while we still have derefs */
    NIR_PASS(_, nir, nir_lower_memory_model);

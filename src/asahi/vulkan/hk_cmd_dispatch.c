@@ -161,7 +161,6 @@ hk_g17p_compute_shader_supported(struct hk_shader *s,
           s->b.info.local_size == 0 && s->b.info.texture_state_count == 0 &&
           s->b.info.sampler_state_count == 0 &&
           !s->b.info.uses_sampler_heap && !linked->b.uses_txf &&
-          s->data_size == 0 &&
           s->info.set_count <= HK_AGX3_G17P_MAX_ROOT_SETS;
 }
 
@@ -214,6 +213,17 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    if (grid.count[0] == 0 || grid.count[1] == 0 || grid.count[2] == 0)
       return;
+
+   if (s->data_size != 0) {
+      const uint64_t constant_data = hk_pool_upload(
+         cmd, s->data_ptr, s->data_size, HK_MIN_UBO_ALIGNMENT);
+      if (!constant_data)
+         return;
+
+      cmd->state.cs.descriptors.root.cs.constant_data_addr = constant_data;
+   } else {
+      cmd->state.cs.descriptors.root.cs.constant_data_addr = 0;
+   }
 
    const uint64_t root_ptr =
       hk_cmd_buffer_upload_root(cmd, VK_PIPELINE_BIND_POINT_COMPUTE);

@@ -207,6 +207,63 @@ test_g17p_native_compute_join(void)
    CHECK(dispatch[0] == 0xa5 && dispatch[sink.length] == 0xa5);
    CHECK(memcmp(dispatch + 1, expected, sizeof(expected)) == 0);
 
+   struct agx3_cdm_direct_template_sources indirect_sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false,
+                                                   &indirect_sources));
+   struct agx3_g17p_native_compute_program_desc indirect_program_desc = desc;
+   indirect_program_desc.launch_sources = indirect_sources;
+   struct agx3_compute_program indirect_program;
+   CHECK(agx3_g17p_native_compute_program_bind(&indirect_program_desc,
+                                                &indirect_program));
+
+   const struct agx3_g17p_native_indirect_dispatch indirect = {
+      .helper_program_va = UINT64_C(0x100000b0100),
+      .geometry_va = UINT64_C(0x100001014c0),
+      .inline_global_size = {96, 1, 1},
+      .local_size = {32, 1, 1},
+   };
+   static const uint8_t expected_indirect[] = {
+      0x00, 0x00, 0x88, 0x00, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x2c, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+      0x60, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x60, 0x01, 0x00, 0x60,
+      0x00, 0x00, 0x08, 0x10, 0x00, 0x00, 0x00, 0x01,
+      0x04, 0x2c, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+      0x00, 0x01, 0x00, 0x00, 0xc0, 0x14, 0x10, 0x00,
+      0x60, 0x01, 0x00, 0x60,
+   };
+   uint8_t indirect_bytes[sizeof(expected_indirect) + 2];
+   memset(indirect_bytes, 0x4d, sizeof(indirect_bytes));
+   struct agx3_compute_dispatch_sink indirect_sink = {
+      .data = indirect_bytes,
+      .capacity = sizeof(indirect_bytes),
+      .length = 1,
+   };
+   CHECK(agx3_g17p_native_indirect_compute_dispatch_append(
+      &indirect_program, &indirect, &indirect_sink));
+   CHECK(indirect_sink.length == 1 + sizeof(expected_indirect));
+   CHECK(indirect_bytes[0] == 0x4d &&
+         indirect_bytes[indirect_sink.length] == 0x4d);
+   CHECK(memcmp(indirect_bytes + 1, expected_indirect,
+                sizeof(expected_indirect)) == 0);
+
+   const uint8_t indirect_before[sizeof(indirect_bytes)] = {
+      [0 ... sizeof(indirect_bytes) - 1] = 0x4d,
+   };
+   struct agx3_g17p_native_indirect_dispatch bad_indirect = indirect;
+   bad_indirect.helper_program_va |= 1;
+   struct agx3_compute_dispatch_sink bad_indirect_sink = {
+      .data = indirect_bytes,
+      .capacity = sizeof(indirect_bytes),
+   };
+   memcpy(indirect_bytes, indirect_before, sizeof(indirect_bytes));
+   CHECK(!agx3_g17p_native_indirect_compute_dispatch_append(
+      &indirect_program, &bad_indirect, &bad_indirect_sink));
+   CHECK(bad_indirect_sink.length == 0 &&
+         memcmp(indirect_bytes, indirect_before, sizeof(indirect_bytes)) == 0);
+
    uint8_t before[sizeof(dispatch)];
    memcpy(before, dispatch, sizeof(dispatch));
    struct agx3_compute_dispatch_sink failed = {

@@ -6,6 +6,7 @@ package_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 for file in \
    asahi-vulkan-g17p-enumerate \
+   g17p-vulkan-compute \
    g17p-offscreen-triangle
 do
    if [ ! -x "$package_dir/$file" ]; then
@@ -28,10 +29,13 @@ export VK_DRIVER_FILES="$package_dir/g17p_wsi_triangle_icd.json"
 export LD_LIBRARY_PATH="$package_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export MESA_SHADER_CACHE_DISABLE=true
 
-echo "[Neo Vulkan] 1/2 Enumerating T8140/G17P"
+echo "[Neo Vulkan] 1/3 Enumerating T8140/G17P"
 "$package_dir/asahi-vulkan-g17p-enumerate"
 
-echo "[Neo Vulkan] 2/2 Rendering and reading back one offscreen triangle"
+echo "[Neo Vulkan] 2/3 Dispatching one private buffer-only compute group"
+"$package_dir/g17p-vulkan-compute"
+
+echo "[Neo Vulkan] 3/3 Rendering and reading back one offscreen triangle"
 "$package_dir/g17p-offscreen-triangle"
 
-echo "[Neo Vulkan] Enumeration and offscreen triangle passed"
+echo "[Neo Vulkan] Enumeration, compute, and offscreen triangle passed"

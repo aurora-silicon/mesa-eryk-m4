@@ -29,6 +29,7 @@ struct lower_descriptors_ctx {
    nir_address_format ubo_addr_format;
    nir_address_format ssbo_addr_format;
    unsigned descriptor_generation;
+   mesa_shader_stage stage;
 };
 
 static const struct hk_descriptor_set_binding_layout *
@@ -67,19 +68,24 @@ lower_load_constant(nir_builder *b, nir_intrinsic_instr *load,
                     const struct lower_descriptors_ctx *ctx)
 {
    assert(load->intrinsic == nir_intrinsic_load_constant);
-   UNREACHABLE("todo: stick an address in the root descriptor or something");
+   if (ctx->stage != MESA_SHADER_COMPUTE)
+      return false;
 
    uint32_t base = nir_intrinsic_base(load);
-   uint32_t range = nir_intrinsic_range(load);
 
    b->cursor = nir_before_instr(&load->instr);
 
+   const unsigned root_offset =
+      hk_root_descriptor_offset(cs.constant_data_addr);
+   nir_def *constant_data =
+      load_root(b, 1, 64, nir_imm_int(b, root_offset), 8);
    nir_def *offset = nir_iadd_imm(b, load->src[0].ssa, base);
-   nir_def *data = nir_load_ubo(
-      b, load->def.num_components, load->def.bit_size, nir_imm_int(b, 0),
-      offset, .align_mul = nir_intrinsic_align_mul(load),
-      .align_offset = nir_intrinsic_align_offset(load), .range_base = base,
-      .range = range);
+   nir_def *addr = nir_iadd(b, constant_data, nir_u2u64(b, offset));
+   nir_def *data = nir_load_global_constant(
+      b, load->def.num_components, load->def.bit_size, addr,
+      .align_mul = nir_intrinsic_align_mul(load),
+      .align_offset = nir_intrinsic_align_offset(load),
+      .access = ACCESS_CAN_SPECULATE);
 
    nir_def_rewrite_uses(&load->def, data);
 
@@ -910,6 +916,7 @@ hk_nir_lower_descriptors(nir_shader *nir,
                          struct vk_descriptor_set_layout *const *set_layouts)
 {
    struct lower_descriptors_ctx ctx = {
+      .stage = nir->info.stage,
       .clamp_desc_array_bounds =
          rs->storage_buffers !=
             VK_PIPELINE_ROBUSTNESS_BUFFER_BEHAVIOR_DISABLED_EXT ||

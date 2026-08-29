@@ -217,6 +217,13 @@ bool hk_agx3_g17p_native_compute_dispatch_append(
    const struct agx3_compute_direct_grid *grid,
    struct agx3_compute_dispatch_sink *sink);
 
+/* Byte bridge for the native main/grid-helper indirect record pair.  Helper
+ * program and resource construction remain caller-owned. */
+bool hk_agx3_g17p_native_indirect_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_g17p_native_indirect_dispatch *dispatch,
+   struct agx3_compute_dispatch_sink *sink);
+
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.
  * The explicit chip argument is intentionally rejected for every sibling

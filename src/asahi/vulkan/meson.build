@@ -391,6 +391,15 @@ if with_tests
       c_args : [c_msvc_compat_args],
       gnu_symbol_visibility : 'hidden',
     )
+
+    executable(
+      'g17p-vulkan-compute',
+      files('tests/g17p_vulkan_compute.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
   endif
 endif
 

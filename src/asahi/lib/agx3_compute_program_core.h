@@ -115,6 +115,10 @@ struct agx3_compute_program_upload {
    (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
 #define AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE \
    (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
+#define AGX3_G17P_NATIVE_INDIRECT_HELPER_SIZE 28u
+#define AGX3_G17P_NATIVE_INDIRECT_COMPUTE_DISPATCH_SIZE \
+   (AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE + \
+    AGX3_G17P_NATIVE_INDIRECT_HELPER_SIZE)
 
 /* Caller-owned command-stream span.  A successful append writes one exact
  * direct launch followed by CommandEncodingNext's strong flags=5 barrier. */
@@ -133,6 +137,16 @@ struct agx3_compute_direct_grid {
    /* Valid only for the aggregate G15X identities accepted by the lower
     * launch codec.  It must remain false for G17P/A18 Pro. */
    bool g15x_has_multiple_agcs;
+};
+
+/* Native A18 Pro indirect compute is a pair of records.  The first launches
+ * the caller program with its inline grid ignored; the compact second launch
+ * runs the grid helper and names the six-u32 geometry output it publishes. */
+struct agx3_g17p_native_indirect_dispatch {
+   uint64_t helper_program_va;
+   uint64_t geometry_va;
+   uint32_t inline_global_size[3];
+   uint32_t local_size[3];
 };
 
 /*
@@ -184,6 +198,14 @@ bool agx3_g17p_native_compute_program_bind(
 bool agx3_g17p_native_compute_dispatch_append(
    const struct agx3_compute_program *program,
    const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
+/* Append the byte-exact main/helper record pair used by native G17P indirect
+ * compute.  The caller owns the helper program, its resources, and geometry
+ * storage; this encoder only publishes their already-established GPU VAs. */
+bool agx3_g17p_native_indirect_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_g17p_native_indirect_dispatch *dispatch,
    struct agx3_compute_dispatch_sink *sink);
 
 /* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch

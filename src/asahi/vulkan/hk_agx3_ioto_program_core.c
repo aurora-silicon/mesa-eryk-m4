@@ -412,6 +412,16 @@ hk_agx3_g17p_direct_add3_dispatch_append(
    return agx3_g17p_direct_add3_dispatch_append(program, grid, sink);
 }
 
+bool
+hk_agx3_g17p_native_indirect_compute_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_g17p_native_indirect_dispatch *dispatch,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   return agx3_g17p_native_indirect_compute_dispatch_append(program, dispatch,
+                                                             sink);
+}
+
 static bool
 hk_agx3_g17p_compute_state_tail(
    const struct hk_agx3_g17p_compute_program_desc *desc,

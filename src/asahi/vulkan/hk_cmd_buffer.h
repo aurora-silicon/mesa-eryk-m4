@@ -106,6 +106,9 @@ struct hk_root_descriptor_table {
          uint8_t uvs_index[VARYING_SLOT_MAX];
       } draw;
       struct {
+         /* GPU address of the immutable NIR constant-data blob for the
+          * currently bound compute shader. */
+         uint64_t constant_data_addr;
          uint64_t group_count_addr;
          uint32_t base_group[3];
       } cs;
