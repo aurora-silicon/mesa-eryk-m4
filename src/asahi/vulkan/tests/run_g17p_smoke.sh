@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 set -eu
 
-package_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+package_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 render_node=${1:-/dev/dri/renderD128}
 frames=${2:-60}
 
@@ -16,6 +16,7 @@ esac
 for file in \
    asahi-vulkan-g17p-enumerate \
    asahi-submit-g17p-add3 \
+   g17p-offscreen-triangle \
    g17p-wsi-triangle
 do
    if [ ! -x "$package_dir/$file" ]; then
@@ -53,13 +54,16 @@ export VK_DRIVER_FILES="$package_dir/g17p_wsi_triangle_icd.json"
 export LD_LIBRARY_PATH="$package_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export MESA_SHADER_CACHE_DISABLE=true
 
-echo "[Neo Vulkan] 1/3 Enumerating T8140/G17P"
+echo "[Neo Vulkan] 1/4 Enumerating T8140/G17P"
 "$package_dir/asahi-vulkan-g17p-enumerate"
 
-echo "[Neo Vulkan] 2/3 Submitting 64-float add3 on $render_node"
+echo "[Neo Vulkan] 2/4 Submitting 64-float add3 on $render_node"
 "$package_dir/asahi-submit-g17p-add3" "$render_node"
 
-echo "[Neo Vulkan] 3/3 Presenting $frames triangle frames on $DISPLAY"
+echo "[Neo Vulkan] 3/4 Rendering and reading back one off-screen tile"
+"$package_dir/g17p-offscreen-triangle"
+
+echo "[Neo Vulkan] 4/4 Presenting $frames triangle frames on $DISPLAY"
 "$package_dir/g17p-wsi-triangle" "$frames"
 
-echo "[Neo Vulkan] All three checks passed"
+echo "[Neo Vulkan] All four checks passed"

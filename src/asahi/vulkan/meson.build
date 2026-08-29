@@ -374,6 +374,15 @@ if with_tests
       c_args : [c_msvc_compat_args],
       gnu_symbol_visibility : 'hidden',
     )
+
+    executable(
+      'g17p-offscreen-triangle',
+      files('tests/g17p_offscreen_triangle.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
   endif
 endif
 
