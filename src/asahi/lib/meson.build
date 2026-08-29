@@ -422,6 +422,7 @@ if with_tests
         'agx3_cdm_direct_launch_semantic_core.c',
         'agx3_compute_program_core.c',
         'agx_ioto_core.c',
+        'agx_ioto_load_core.c',
         'agx_ioto_preshader_core.c',
         'agx_ioto_profile_core.c',
         'agx_ioto_program_core.c',
