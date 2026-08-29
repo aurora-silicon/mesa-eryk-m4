@@ -169,6 +169,20 @@ bool hk_agx3_g17p_single_layer_rendering(uint32_t view_mask,
 bool hk_agx3_g17p_rt0_tile_layout_supported(
    struct agx_tilebuffer_layout *tib);
 
+/* Bounded Honeykrisp bridge for the exact G17P direct-add3 Ioto/CDM pair.
+ * These functions expose a tested bring-up primitive only; Vulkan compute
+ * capability advertisement remains unchanged. */
+bool hk_agx3_g17p_direct_add3_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17p_direct_add3_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
+
+bool hk_agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
+
 /*
  * Host-only admission bridge for the exact G17S minimal compute witness.
  * The explicit chip argument is intentionally rejected for every sibling

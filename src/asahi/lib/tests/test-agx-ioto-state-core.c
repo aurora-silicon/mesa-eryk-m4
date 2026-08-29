@@ -777,6 +777,53 @@ test_g17p_compute_ldshdr(void)
 }
 
 static int
+test_g17p_runtime_compute_tail(void)
+{
+   static const struct {
+      uint64_t shader_va;
+      enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1;
+      uint8_t expected[AGX_IOTO_STATE_TAIL_TYPE0_SIZE];
+   } cases[] = {
+      {UINT64_C(0x100000003c0),
+       AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3,
+       {0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00,
+        0x77, 0x01, 0xaa, 0x07, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00,
+        0xf7, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      {UINT64_C(0x10000000400),
+       AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER,
+       {0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00,
+        0x77, 0x01, 0x2a, 0x08, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+        0xf7, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+      {UINT64_C(0x10000000740),
+       AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3,
+       {0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00,
+        0x77, 0x01, 0xaa, 0x0e, 0x00, 0x00, 0x00, 0x02, 0x06, 0x00,
+        0xf7, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+   };
+
+   struct agx_ioto_state_tail_output output;
+   for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {
+      memset(&output, 0xa5, sizeof(output));
+      CHECK(agx_ioto_g17p_runtime_compute_tail_build(
+         cases[i].shader_va, cases[i].ldshdr_f1, &output));
+      CHECK(output.length == sizeof(cases[i].expected));
+      CHECK(memcmp(output.bytes, cases[i].expected,
+                   sizeof(cases[i].expected)) == 0);
+   }
+
+   const struct agx_ioto_state_tail_output before = output;
+   CHECK(!agx_ioto_g17p_runtime_compute_tail_build(
+      UINT64_C(0x100000003c1),
+      AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3, &output));
+   CHECK(memcmp(&output, &before, sizeof(output)) == 0);
+   CHECK(!agx_ioto_g17p_runtime_compute_tail_build(
+      UINT64_C(0x100000003c0),
+      (enum agx_ioto_g17p_compute_ldshdr_f1)2, &output));
+   CHECK(memcmp(&output, &before, sizeof(output)) == 0);
+   return 0;
+}
+
+static int
 test_g17p_compiler_spectpr(void)
 {
    static const uint8_t pinned_expected[AGX_IOTO_SPECTPR_SIZE] = {
@@ -814,6 +861,7 @@ main(void)
    CHECK(test_tail_failures_and_shader_convenience() == 0);
    CHECK(test_g17s_minimal_compute_tail() == 0);
    CHECK(test_g17p_compute_ldshdr() == 0);
+   CHECK(test_g17p_runtime_compute_tail() == 0);
    CHECK(test_g17p_compiler_spectpr() == 0);
 
    printf("agx_ioto_state_core: %llu checks passed\n",

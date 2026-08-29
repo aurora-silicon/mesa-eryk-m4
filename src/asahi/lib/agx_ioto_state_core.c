@@ -481,6 +481,43 @@ agx_ioto_g17p_compute_ldshdr_build(
 }
 
 bool
+agx_ioto_g17p_runtime_compute_tail_build(
+   uint64_t shader_va, enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1,
+   struct agx_ioto_state_tail_output *output)
+{
+   if (!output)
+      return false;
+
+   switch (ldshdr_f1) {
+   case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3:
+   case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER:
+   case AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3:
+      break;
+   default:
+      return false;
+   }
+
+   struct agx_ioto_state_tail tail = {
+      .type = AGX_IOTO_STATE_TAIL_TYPE0,
+   };
+   tail.ldshdr.f[0] = shader_va;
+   tail.ldshdr.f[1] = ldshdr_f1;
+   tail.ldshdr.f[23] = 1;
+
+   struct agx_ioto_state_tail_output staged;
+   if (!agx_ioto_state_tail_pack(AGX_CHIP_G17P, &tail, &staged) ||
+       staged.length != AGX_IOTO_STATE_TAIL_TYPE0_SIZE)
+      return false;
+
+   /* All three runtime witnesses set SPECLM word 1 bit 14. The recovered
+    * anonymous-field encoder graph does not yet name this bit. */
+   staged.bytes[3] |= UINT8_C(0x40);
+
+   *output = staged;
+   return true;
+}
+
+bool
 agx_ioto_g17p_compiler_spectpr_build(
    uint32_t spill_bytes, uint32_t d_value, struct agx_ioto_state *state)
 {

@@ -392,6 +392,26 @@ hk_agx3_g17p_rt0_eot_program_generate(
 }
 
 bool
+hk_agx3_g17p_direct_add3_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17p_direct_add3_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   return agx3_g17p_direct_add3_program_upload_prepare(
+      chip, desc, upload, written, program);
+}
+
+bool
+hk_agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   return agx3_g17p_direct_add3_dispatch_append(program, grid, sink);
+}
+
+bool
 hk_agx3_g17s_minimal_compute_program_prepare(
    enum agx_chip chip,
    const struct agx3_g17s_minimal_compute_program_desc *desc, void *output,

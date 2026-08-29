@@ -12,6 +12,9 @@
 _Static_assert(AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE ==
                   AGX3_CDM_DIRECT_LAUNCH_SIZE + AGX3_CDM_BARRIER_SIZE,
                "G17S dispatch size must cover launch plus barrier");
+_Static_assert(AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE ==
+                  AGX3_CDM_DIRECT_LAUNCH_SIZE + AGX3_CDM_BARRIER_SIZE,
+               "G17P dispatch size must cover launch plus barrier");
 
 bool
 agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
@@ -41,6 +44,146 @@ agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
       .launch_template = launch_template,
    };
    *written = staged_written;
+   return true;
+}
+
+bool
+agx3_g17p_direct_add3_program_prepare(
+   const struct agx3_g17p_direct_add3_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program)
+{
+   if (!desc || !output || !written || !program)
+      return false;
+
+   struct agx3_cdm_direct_template launch_template;
+   if (!agx3_cdm_direct_template_build_from_sources(&desc->launch_sources,
+                                                    &launch_template) ||
+       launch_template.word0 != UINT32_C(0x00080000) ||
+       launch_template.word1 != 0)
+      return false;
+
+   size_t staged_written;
+   if (!agx_ioto_g17p_direct_add3_program_compose(
+          desc->program_va, desc->shader_va, output, capacity,
+          &staged_written))
+      return false;
+
+   *program = (struct agx3_compute_program){
+      .chip = AGX_CHIP_G17P,
+      .program_va = desc->program_va,
+      .shader_va = desc->shader_va,
+      .launch_template = launch_template,
+   };
+   *written = staged_written;
+   return true;
+}
+
+bool
+agx3_g17p_direct_add3_dispatch_ready(enum agx_chip chip)
+{
+   return chip == AGX_CHIP_G17P;
+}
+
+static bool
+agx3_g17p_direct_add3_launch_pack(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   uint8_t packed[AGX3_CDM_DIRECT_LAUNCH_SIZE])
+{
+   if (!packed)
+      return false;
+
+   memset(packed, 0, AGX3_CDM_DIRECT_LAUNCH_SIZE);
+   if (!program || !grid || program->chip != AGX_CHIP_G17P ||
+       program->program_va == 0 ||
+       program->program_va > UINT64_C(0xffffffffffff) ||
+       (program->program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       program->launch_template.word0 != UINT32_C(0x00080000) ||
+       program->launch_template.word1 != 0 || grid->dimensions != 1 ||
+       grid->g15x_has_multiple_agcs || grid->local_size[0] != 32 ||
+       grid->local_size[1] != 1 || grid->local_size[2] != 1)
+      return false;
+
+   uint32_t global_size[3];
+   if (!agx3_cdm_direct_grid_resolve(grid->source, grid->size,
+                                     grid->local_size, global_size) ||
+       global_size[0] != 64 || global_size[1] != 1 || global_size[2] != 1)
+      return false;
+
+   /* The output-positive A18 Pro add3 record stores the Ioto program pointer
+    * as a low VA>>6 word followed by 0x40000000 | VA[47:40].  This differs
+    * from the generic CommandEncodingNext direct form, whose word 1 carries
+    * the upper pointer bits and whose word 3 carries a dimension code. */
+   agx3_cmdstream_store_le32(packed, program->launch_template.word0);
+   agx3_cmdstream_store_le32(packed + 4, UINT32_C(0x01000000));
+   agx3_cmdstream_store_le32(packed + 8,
+                             (uint32_t)(program->program_va >> 6));
+   agx3_cmdstream_store_le32(
+      packed + 12,
+      UINT32_C(0x40000000) | (uint32_t)(program->program_va >> 40));
+
+   for (unsigned axis = 0; axis < 3; ++axis) {
+      agx3_cmdstream_store_le32(packed + 16 + axis * 4, global_size[axis]);
+      agx3_cmdstream_store_le32(packed + 28 + axis * 4,
+                                grid->local_size[axis]);
+   }
+
+   return true;
+}
+
+bool
+agx3_g17p_direct_add3_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17p_direct_add3_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program)
+{
+   if (chip != AGX_CHIP_G17P || !desc || !upload || !upload->cpu ||
+       !written || !program ||
+       ((uintptr_t)upload->cpu & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       upload->gpu_va != desc->program_va)
+      return false;
+
+   struct agx3_compute_program staged_program;
+   size_t staged_written;
+   if (!agx3_g17p_direct_add3_program_prepare(
+          desc, upload->cpu, upload->capacity, &staged_written,
+          &staged_program))
+      return false;
+
+   staged_program.g17p_direct_add3_live_admitted = true;
+   *program = staged_program;
+   *written = staged_written;
+   return true;
+}
+
+bool
+agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink)
+{
+   if (!program || !grid || !sink ||
+       (sink->capacity != 0 && !sink->data) || sink->length > sink->capacity ||
+       AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE > sink->capacity - sink->length ||
+       !agx3_g17p_direct_add3_dispatch_ready(program->chip) ||
+       !program->g17p_direct_add3_live_admitted)
+      return false;
+
+   uint8_t staged[AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE];
+   if (!agx3_g17p_direct_add3_launch_pack(program, grid, staged))
+      return false;
+
+   const struct agx3_cdm_barrier_info barrier = {
+      .chip = AGX_CHIP_G17P,
+      .flags = 0,
+   };
+   if (!agx3_cdm_barrier_pack(&barrier,
+                              staged + AGX3_CDM_DIRECT_LAUNCH_SIZE))
+      return false;
+
+   memcpy(sink->data + sink->length, staged, sizeof(staged));
+   sink->length += sizeof(staged);
    return true;
 }
 
@@ -78,6 +221,7 @@ agx3_g17s_minimal_compute_program_prepare(
    *program = (struct agx3_compute_program){
       .chip = AGX_CHIP_G17S,
       .program_va = desc->program_va,
+      .shader_va = desc->shader_va,
       .launch_template = launch_template,
    };
    *written = staged_written;
@@ -171,6 +315,7 @@ agx3_g17s_minimal_compute_program_live_upload_prepare(
    *program = (struct agx3_compute_program){
       .chip = AGX_CHIP_G17S,
       .program_va = desc->program_va,
+      .shader_va = desc->shader_va,
       .launch_template = launch_template,
       .g17s_minimal_live_admitted = true,
    };

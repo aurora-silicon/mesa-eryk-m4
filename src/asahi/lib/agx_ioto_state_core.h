@@ -95,6 +95,22 @@ bool agx_ioto_g17s_minimal_compute_tail_build(
 bool agx_ioto_g17p_compute_ldshdr_build(
    uint64_t shader_va, struct agx_ioto_state *state);
 
+/* Raw LDSHDR f1 values from three explicitly MIT-licensed, output-positive
+ * G17P compute witnesses. The names identify those witnesses; they do not
+ * assign inferred hardware semantics to the anonymous field. */
+enum agx_ioto_g17p_compute_ldshdr_f1 {
+   AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3 = 0,
+   AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER = 1,
+   AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3 = 3,
+};
+
+/* Build the exact packed type-0 runtime compute tail shared by the witnessed
+ * direct-add3, grid-helper and indirect-add3 programs. Only their observed f1
+ * values are accepted. `output` is unchanged on failure. */
+bool agx_ioto_g17p_runtime_compute_tail_build(
+   uint64_t shader_va, enum agx_ioto_g17p_compute_ldshdr_f1 ldshdr_f1,
+   struct agx_ioto_state_tail_output *output);
+
 /* Build the exact pre-runtime G17P SPECTPR fields from Apple's raw compiler
  * spill-byte and D values.  These are intentionally not sourced from Mesa's
  * scratch_size: the runtime may subsequently overwrite f10/f11/f20/f22. */

@@ -29,6 +29,11 @@ extern "C" {
 #define AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE        32u
 #define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0x8)
 #define AGX_IOTO_G17P_BG_RESOURCE_SPEC             UINT64_C(0x0007800000000040)
+#define AGX_IOTO_G17P_DIRECT_ADD3_PROGRAM_SIZE      196u
+#define AGX_IOTO_G17P_DIRECT_ADD3_WITNESS_PROGRAM_VA \
+   UINT64_C(0x100000a8000)
+#define AGX_IOTO_G17P_DIRECT_ADD3_WITNESS_SHADER_VA \
+   UINT64_C(0x100000003c0)
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_PROGRAM_SIZE 194u
 #define AGX_IOTO_G17S_MINIMAL_COMPUTE_WITNESS_ABSOLUTE_VA \
    UINT64_C(0x10000018020)
@@ -84,6 +89,15 @@ bool agx_ioto_straight_line_program_compose(
    const struct agx_ioto_state_tail *tail,
    const struct agx_ioto_profile_control *profile, void *output,
    size_t capacity, size_t *written);
+
+/* Compose the exact 196-byte G17P direct-add3 Ioto program recovered in the
+ * SPDX-MIT m1n1 NATIVE_ADD3_SHADER witness. The two fixed scheduled regions
+ * surround a semantic runtime state tail. Only the witnessed launch-header
+ * fields and shader address are relocated. This is a bounded bring-up
+ * program, not general compute feature admission. */
+bool agx_ioto_g17p_direct_add3_program_compose(
+   uint64_t program_va, uint64_t shader_va, void *output, size_t capacity,
+   size_t *written);
 
 /* Compose the G17P program form used when the state loader has no resource
  * records.  Apple's program is one packed type-0 state tail, the 58-byte

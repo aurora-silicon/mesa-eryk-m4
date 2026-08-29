@@ -462,6 +462,103 @@ test_g17s_minimal_compute_admission(void)
 }
 
 static int
+test_g17p_direct_add3_compute_bridge(void)
+{
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false,
+                                                   &sources));
+   const struct agx3_g17p_direct_add3_program_desc desc = {
+      .program_va = AGX_IOTO_G17P_DIRECT_ADD3_WITNESS_PROGRAM_VA,
+      .shader_va = AGX_IOTO_G17P_DIRECT_ADD3_WITNESS_SHADER_VA,
+      .launch_sources = sources,
+   };
+   _Alignas(AGX_IOTO_PROGRAM_ALIGNMENT)
+      uint8_t direct[AGX_IOTO_G17P_DIRECT_ADD3_PROGRAM_SIZE + 1];
+   _Alignas(AGX_IOTO_PROGRAM_ALIGNMENT)
+      uint8_t bridged[AGX_IOTO_G17P_DIRECT_ADD3_PROGRAM_SIZE + 1];
+   memset(direct, 0xa5, sizeof(direct));
+   memset(bridged, 0x5a, sizeof(bridged));
+   const struct agx3_compute_program_upload direct_upload = {
+      .cpu = direct,
+      .capacity = sizeof(direct),
+      .gpu_va = desc.program_va,
+   };
+   const struct agx3_compute_program_upload bridged_upload = {
+      .cpu = bridged,
+      .capacity = sizeof(bridged),
+      .gpu_va = desc.program_va,
+   };
+   size_t direct_written = SIZE_MAX, bridged_written = SIZE_MAX;
+   struct agx3_compute_program direct_program, bridged_program;
+   CHECK(agx3_g17p_direct_add3_program_upload_prepare(
+      AGX_CHIP_G17P, &desc, &direct_upload, &direct_written,
+      &direct_program));
+   CHECK(hk_agx3_g17p_direct_add3_program_upload_prepare(
+      AGX_CHIP_G17P, &desc, &bridged_upload, &bridged_written,
+      &bridged_program));
+   CHECK(bridged_written == direct_written &&
+         bridged_written == AGX_IOTO_G17P_DIRECT_ADD3_PROGRAM_SIZE);
+   CHECK(memcmp(bridged, direct, bridged_written) == 0);
+   CHECK(bridged[bridged_written] == 0x5a);
+   CHECK(bridged_program.chip == AGX_CHIP_G17P);
+   CHECK(bridged_program.program_va == desc.program_va);
+   CHECK(bridged_program.shader_va == desc.shader_va);
+   CHECK(bridged_program.g17p_direct_add3_live_admitted);
+
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {64, 1, 1},
+      .local_size = {32, 1, 1},
+      .dimensions = 1,
+   };
+   static const uint8_t expected_dispatch[] = {
+      0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x2a, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+      0x40, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x60, 0x01, 0x00, 0x60,
+   };
+   uint8_t dispatch[AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE + 1];
+   memset(dispatch, 0xb6, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+   };
+   CHECK(hk_agx3_g17p_direct_add3_dispatch_append(
+      &bridged_program, &grid, &sink));
+   CHECK(sink.length == sizeof(expected_dispatch));
+   CHECK(memcmp(dispatch, expected_dispatch, sizeof(expected_dispatch)) == 0);
+   CHECK(dispatch[sink.length] == 0xb6);
+
+   uint8_t dispatch_before[sizeof(dispatch)];
+   memcpy(dispatch_before, dispatch, sizeof(dispatch));
+   struct agx3_compute_dispatch_sink failed_sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+   };
+   struct agx3_compute_program sibling = bridged_program;
+   sibling.chip = AGX_CHIP_G17S;
+   CHECK(!hk_agx3_g17p_direct_add3_dispatch_append(
+      &sibling, &grid, &failed_sink));
+   CHECK(failed_sink.length == 0 &&
+         memcmp(dispatch, dispatch_before, sizeof(dispatch)) == 0);
+
+   uint8_t bridged_before[sizeof(bridged)];
+   memcpy(bridged_before, bridged, sizeof(bridged));
+   const struct agx3_compute_program program_before = bridged_program;
+   bridged_written = 47;
+   CHECK(!hk_agx3_g17p_direct_add3_program_upload_prepare(
+      AGX_CHIP_G17S, &desc, &bridged_upload, &bridged_written,
+      &bridged_program));
+   CHECK(bridged_written == 47 &&
+         memcmp(bridged, bridged_before, sizeof(bridged)) == 0);
+   CHECK(memcmp(&bridged_program, &program_before,
+                sizeof(bridged_program)) == 0);
+   return 0;
+}
+
+static int
 test_g17p_no_resource_program_bridge(void)
 {
    static const uint8_t exact_tail[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
@@ -950,6 +1047,7 @@ main(void)
 {
    if (test_exact_target_order() || test_terminal_suffix_modes() ||
        test_fail_closed() || test_g17s_minimal_compute_admission() ||
+       test_g17p_direct_add3_compute_bridge() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
        test_g17p_combined_sampler_ranges() ||

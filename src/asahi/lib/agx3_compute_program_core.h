@@ -41,6 +41,14 @@ struct agx3_compute_program_desc {
    struct agx3_cdm_direct_template_sources launch_sources;
 };
 
+/* Bounded A18 Pro bring-up program: the exact output-positive direct-add3
+ * Ioto witness joined to its native direct-launch template. */
+struct agx3_g17p_direct_add3_program_desc {
+   uint64_t program_va;
+   uint64_t shader_va;
+   struct agx3_cdm_direct_template_sources launch_sources;
+};
+
 struct agx3_g17s_minimal_compute_program_desc {
    uint64_t program_va;
    uint64_t shader_va;
@@ -64,7 +72,12 @@ struct agx3_g17s_minimal_compute_program_desc {
 struct agx3_compute_program {
    enum agx_chip chip;
    uint64_t program_va;
+   uint64_t shader_va;
    struct agx3_cdm_direct_template launch_template;
+
+   /* Set only after the exact G17P witness has been composed directly into
+    * the mapped allocation named by program_va. */
+   bool g17p_direct_add3_live_admitted;
 
    /* Only the live G17S minimal-resource preparation path sets this.  Keep
     * research composers and the zero-relocation witness out of a command
@@ -84,6 +97,8 @@ struct agx3_compute_program_upload {
 };
 
 #define AGX3_G17S_MINIMAL_COMPUTE_DISPATCH_SIZE \
+   (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
+#define AGX3_G17P_DIRECT_ADD3_DISPATCH_SIZE \
    (AGX3_CDM_DIRECT_LAUNCH_SIZE + 4u)
 
 /* Caller-owned command-stream span.  A successful append writes one exact
@@ -115,6 +130,32 @@ bool agx3_compute_program_prepare(const struct agx3_compute_program_desc *desc,
                                   void *output, size_t capacity,
                                   size_t *written,
                                   struct agx3_compute_program *program);
+
+/* Compose the exact G17P direct-add3 Ioto witness and bind it to the native
+ * direct-launch template. This host-only preparation does not enable Vulkan
+ * compute advertisement. */
+bool agx3_g17p_direct_add3_program_prepare(
+   const struct agx3_g17p_direct_add3_program_desc *desc, void *output,
+   size_t capacity, size_t *written, struct agx3_compute_program *program);
+
+/* Transactional mapped-allocation handoff. cpu and gpu_va identify the same
+ * 64-byte-aligned program allocation; success admits only this exact witness
+ * for the bounded launch append below. */
+bool agx3_g17p_direct_add3_program_upload_prepare(
+   enum agx_chip chip,
+   const struct agx3_g17p_direct_add3_program_desc *desc,
+   const struct agx3_compute_program_upload *upload, size_t *written,
+   struct agx3_compute_program *program);
+
+bool agx3_g17p_direct_add3_dispatch_ready(enum agx_chip chip);
+
+/* Append the output-positive 40-byte A18 Pro add3 launch and its flags=0
+ * barrier.  The witnessed grid is fixed at 64 global threads in groups of
+ * 32.  This remains a bring-up API and does not expose a Vulkan capability. */
+bool agx3_g17p_direct_add3_dispatch_append(
+   const struct agx3_compute_program *program,
+   const struct agx3_compute_direct_grid *grid,
+   struct agx3_compute_dispatch_sink *sink);
 
 /* Join the exact 194-byte G17S minimal Ioto witness to its native direct-launch
  * template.  The root-uniform source must match Apple's independently traced
