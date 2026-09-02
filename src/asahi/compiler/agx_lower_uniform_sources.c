@@ -13,8 +13,9 @@
  * This pass lowers invalid uniforms.
  */
 bool
-agx_instr_accepts_uniform(enum agx_opcode op, unsigned src_index,
-                          unsigned value, enum agx_size size)
+agx_instr_accepts_uniform(enum agx_isa_encoding encoding, enum agx_opcode op,
+                          unsigned src_index, unsigned value,
+                          enum agx_size size)
 {
    /* Some instructions only seem able to access uniforms in the low half */
    bool high = value >= 256;
@@ -70,6 +71,18 @@ agx_instr_accepts_uniform(enum agx_opcode op, unsigned src_index,
       /* We would fail validation otherwise */
       return true;
    default:
+      /* Generic ALU.  AGX2 can read the uniform file directly here; AGX3
+       * cannot -- its ALU operands are register-or-immediate only
+       * (agx3_pack_binary.c:141-145 agx3_src_is_register, and the whole
+       * agx3_sel_instr operand form has no uniform encoding).  Every
+       * AGX_INDEX_UNIFORM the AGX3 packer does accept is a memory-op base,
+       * texture heap, or subgroup source, all named explicitly above.  So on
+       * AGX3 the generic case must be lowered to a move, or the shader is
+       * refused at pack time with no way to recover.
+       */
+      if (encoding != AGX_ISA_ENCODING_AGX2)
+         return false;
+
       return !is_64;
    }
 }
@@ -82,8 +95,8 @@ agx_lower_uniform_sources(agx_context *ctx)
 
       agx_foreach_src(I, s) {
          if (I->src[s].type == AGX_INDEX_UNIFORM &&
-             !agx_instr_accepts_uniform(I->op, s, I->src[s].value,
-                                        I->src[s].size)) {
+             !agx_instr_accepts_uniform(ctx->key->dev.encoding, I->op, s,
+                                        I->src[s].value, I->src[s].size)) {
 
             agx_index idx = I->src[s];
             idx.abs = idx.neg = false;

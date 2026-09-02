@@ -43,6 +43,29 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
          }
       }
 
+      /*
+       * Write-after-write. An async result that is still in flight for this
+       * register lands LATER than this instruction, so a synchronous write
+       * here is silently overwritten by the load when it retires -- and any
+       * consumer that waits the slot then reads the loaded word instead of
+       * the computed one. Mesa's own AGX2 pass checks this case explicitly
+       * (agx_insert_waits.c, "Check for write-after-write"); omitting it here
+       * produced no diagnostic, just wrong values on hardware.
+       *
+       * This runs before the bookkeeping below, so reg_slot[] still names the
+       * previous writer rather than this instruction.
+       */
+      for (unsigned d = 0; d < I->nr_dsts; ++d) {
+         const uint16_t r = I->dst[d];
+         if (r >= AGX3_SLOT_NUM_TOKENS)
+            return false;
+         const uint8_t slot = reg_slot[r];
+         if (slot != 0 && !slot_waited[slot]) {
+            wait_mask |= (uint16_t)(1u << (slot - 1));
+            slot_waited[slot] = true;
+         }
+      }
+
       out[i].wait_mask = wait_mask;
 
       if (I->is_async) {

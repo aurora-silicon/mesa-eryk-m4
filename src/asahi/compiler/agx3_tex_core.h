@@ -3,9 +3,16 @@
  * SPDX-License-Identifier: MIT
  *
  * Strict AGX3 2D texel-fetch encoding.  This deliberately models only the
- * directly witnessed, non-array LOD0 form with immediate texture selection
- * and sampler zero.  Unsupported texture modes are represented by the
- * absence of an API, rather than guessed selector values.
+ * directly witnessed LOD0 forms with immediate texture selection and sampler
+ * zero.  Unsupported texture modes are represented by the absence of an API,
+ * rather than guessed selector values.
+ *
+ * The array axis is f77, independent of the dimension selector f76: compiling
+ * `texture2d<>::read()` against `texture2d_array<>::read()` with
+ * `metal-nt -arch applegpu_g16g` changes that field alone (0 -> 2), leaving
+ * the coordinate operand untouched, so the layer is read from the register
+ * following the coordinate pair.  A constant layer selects a third value (1)
+ * with the layer inline, which is not modelled here.
  */
 
 #pragma once
@@ -29,6 +36,28 @@ enum agx3_tex_width {
    AGX3_TEX_W32 = 2,
 };
 
+/*
+ * How a texture or sampler operand is located. The kind selects which of three
+ * consecutive fields carries the value -- the same 1/2/3 convention documented
+ * in agx3_copy_core.h -- and immediate vs non-immediate also selects the
+ * encoding point (ep3 vs ep4 on AGX3b).
+ *
+ *     slot      immediate   register   uniform     selector
+ *     texture   f95         f96        f97         f103
+ *     sampler   f124        f125       f126        f132
+ *
+ * IMMEDIATE names an index into the texture state registers. REGISTER and
+ * UNIFORM carry a 64-bit descriptor value, located by half-register or
+ * uniform-half index; Apple's own shaders load a 16-byte argument-buffer
+ * entry and name the texture at +0 and the sampler at +8. All three kinds are
+ * witnessed byte-exactly in test/test-agx3-smp-witness.c.
+ */
+enum agx3_tex_operand_kind {
+   AGX3_TEX_OPERAND_IMMEDIATE = 1,
+   AGX3_TEX_OPERAND_REGISTER = 2,
+   AGX3_TEX_OPERAND_UNIFORM = 3,
+};
+
 struct agx3_tex_fetch_desc {
    uint16_t dest;       /* half-register index */
    uint16_t coord;      /* four-half aligned pair of f32 coordinates */
@@ -39,6 +68,15 @@ struct agx3_tex_fetch_desc {
    uint16_t wait_mask;  /* zero or one compactly encodable dependency */
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
+   bool array;          /* 2D array: layer in the register after the pair */
+   /* Operand kinds. Zero is treated as IMMEDIATE so existing callers, which
+    * set only `texture`, keep their exact previous encoding. */
+   enum agx3_tex_operand_kind texture_kind;
+   enum agx3_tex_operand_kind sampler_kind;
+   /* Value for the non-immediate kinds; `texture` remains the immediate
+    * index. Half-register index for REGISTER, uniform half for UNIFORM. */
+   uint16_t texture_value;
+   uint16_t sampler_value;
 };
 
 bool agx3_tex_encode_fetch(enum agx_isa_encoding enc,
@@ -87,6 +125,7 @@ struct agx3_tex_sample_desc {
    uint16_t wait_mask;  /* zero or one compactly encodable dependency */
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
+   bool array;          /* 2D array: layer in the register after the pair */
 };
 
 bool agx3_tex_encode_sample(enum agx_isa_encoding enc,

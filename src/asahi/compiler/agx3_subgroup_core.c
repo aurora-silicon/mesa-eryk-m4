@@ -53,17 +53,61 @@ agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,
                              uint8_t out[AGX3_SUBGROUP_MAX_LENGTH],
                              uint8_t *length)
 {
-   if (d == NULL || out == NULL || length == NULL || d->wait_mask != 0 ||
-       !valid_reg(enc, d->dest) || !valid_reg(enc, d->src) ||
+   if (d == NULL || out == NULL || length == NULL || !valid_reg(enc, d->dest) ||
+       !valid_reg(enc, d->src))
+      return false;
+
+   const char *mnemonic = shuffle_mnemonic(d->quad, d->op);
+   if (mnemonic == NULL)
+      return false;
+
+   /*
+    * The immediate-lane form, added from the g17p session. f37 = 1 selects it
+    * and the lane index sits in f29; f39 and f41, which the register form
+    * carries, are absent. The per-slot wait bits are f44 + (slot - 1): PROVEN
+    * by three probes whose source comes from a device load on slot 6, all of
+    * which set f49 and nothing else.
+    */
+   if (d->lane_kind == AGX3_SUBGROUP_LANE_IMMEDIATE) {
+      const unsigned slots = 6;
+      /* Only the sub-group broadcast is witnessed with an immediate lane, and
+       * only on AGX3b; everything else fails closed. */
+      if (enc != AGX_ISA_ENCODING_AGX3B || d->quad ||
+          d->op != AGX3_SUBGROUP_SHUFFLE_BROADCAST)
+         return false;
+      if (d->lane > 0x7f || (d->wait_mask >> slots) != 0)
+         return false;
+
+      struct agx3_field_kv ibase[8];
+      unsigned inb = 0;
+      ibase[inb++] = (struct agx3_field_kv){9, 2};
+      ibase[inb++] = (struct agx3_field_kv){10, 2};
+      ibase[inb++] = (struct agx3_field_kv){23, 2};
+      ibase[inb++] = (struct agx3_field_kv){24, 2};
+      ibase[inb++] = (struct agx3_field_kv){27, 1};
+      ibase[inb++] = (struct agx3_field_kv){37, 1};
+      ibase[inb++] = (struct agx3_field_kv){38, 1};
+
+      struct agx3_field_kv iov[14];
+      unsigned inv = 0;
+      iov[inv++] = (struct agx3_field_kv){2, d->dest};
+      iov[inv++] = (struct agx3_field_kv){11, d->dest_hint ? 1u : 0u};
+      iov[inv++] = (struct agx3_field_kv){16, d->src};
+      iov[inv++] = (struct agx3_field_kv){29, d->lane};
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            iov[inv++] = (struct agx3_field_kv){(uint16_t)(44 + i), 1};
+
+      return agx3_bind_compose(enc, mnemonic, 0, ibase, inb, iov, inv, out,
+                               length);
+   }
+
+   if (d->wait_mask != 0 ||
        (d->lane_kind != AGX3_SUBGROUP_LANE_REGISTER &&
         d->lane_kind != AGX3_SUBGROUP_LANE_UNIFORM) ||
        (d->lane & 1) != 0 ||
        (d->lane_kind == AGX3_SUBGROUP_LANE_REGISTER ? !valid_reg(enc, d->lane)
                                                     : d->lane >= 512))
-      return false;
-
-   const char *mnemonic = shuffle_mnemonic(d->quad, d->op);
-   if (mnemonic == NULL)
       return false;
 
    struct agx3_field_kv base[16];
@@ -223,7 +267,7 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
                             uint8_t out[AGX3_SUBGROUP_MAX_LENGTH],
                             uint8_t *length)
 {
-   if (d == NULL || out == NULL || length == NULL || d->wait_mask != 0 ||
+   if (d == NULL || out == NULL || length == NULL ||
        (unsigned)d->op >= AGX3_SUBGROUP_REDUCE_NUM ||
        !valid_reg(enc, d->dest) ||
        !valid_reg(enc, d->src))
@@ -245,7 +289,8 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
    if (f->is_float) {
       ADD_FIELD(25, 2);
       ADD_FIELD(26, 2);
-      ADD_FIELD(29, 1);
+      if (!d->src_live)
+         ADD_FIELD(29, 1);
       if (is_c(enc)) {
          ADD_FIELD(47, 3);
          ADD_FIELD(48, d->quad ? f->c_quad : f->c_simd);
@@ -282,11 +327,44 @@ agx3_subgroup_encode_reduce(enum agx_isa_encoding enc,
    if (d->prefix)
       ADD_FIELD(f->is_float ? 57 : 53, 1);
 
-   struct agx3_field_kv ov[] = {
-      {2, d->dest},
-      {f->is_float ? 18 : 16, d->src},
-   };
-   return agx3_bind_compose(enc, mnemonic, 0, base, nb, ov, 2, out, length);
+   /*
+    * Per-slot wait bits. Their base differs by operand family, each pinned by
+    * a g17p probe whose source arrives on scoreboard slot 6:
+    *   float reductions            f49 + (slot - 1)   (sRedf32add, sRedfmax)
+    *   integer add                 f45 + (slot - 1)   (sRediadd, also catomic
+    *                                                   at slot 1)
+    *   bitwise / unsigned min-max  f44 + (slot - 1)   (sRedAND, sRedumax)
+    * The signed min/max family has no witness, so a wait on it is refused
+    * rather than assumed to share either base.
+    */
+   const unsigned slots = is_c(enc) ? 8 : 6;
+   if (d->wait_mask != 0) {
+      if (is_c(enc) || (d->wait_mask >> slots) != 0)
+         return false;
+      uint16_t wait_base;
+      if (f->is_float)
+         wait_base = 49;
+      else if (f->integer_class == 2)
+         wait_base = 44;
+      else if (f->integer_class == 0)
+         wait_base = 45;
+      else
+         return false;
+      for (unsigned i = 0; i < slots; ++i)
+         if (d->wait_mask & (1u << i))
+            ADD_FIELD((uint16_t)(wait_base + i), 1);
+   }
+
+   struct agx3_field_kv ov[4];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv){2, d->dest};
+   ov[n++] = (struct agx3_field_kv){f->is_float ? 18u : 16u, d->src};
+   ov[n++] = (struct agx3_field_kv){11, d->dest_hint ? 1u : 0u};
+   /* Float reductions pick between the two source-liveness bits; the integer
+    * families carry f27 unconditionally and have no such pair. */
+   if (f->is_float && d->src_live)
+      ov[n++] = (struct agx3_field_kv){27, 1};
+   return agx3_bind_compose(enc, mnemonic, 0, base, nb, ov, n, out, length);
 }
 
 #undef ADD_FIELD

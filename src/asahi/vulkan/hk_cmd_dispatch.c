@@ -22,7 +22,12 @@
 #include "libagx_dgc.h"
 #include "libagx_shaders.h"
 #include "asahi/genxml/agx3_cmdstream.h"
+#include "util/log.h"
+#include "util/u_debug.h"
 #include "pool.h"
+
+#include <inttypes.h>
+#include <stdio.h>
 
 void
 hk_cmd_buffer_begin_compute(struct hk_cmd_buffer *cmd,
@@ -169,9 +174,53 @@ hk_g17p_compute_uniform_ranges(
    struct hk_shader *s, uint64_t root_ptr,
    struct agx3_ioto_uniform_range ranges[2], size_t *range_count)
 {
-   if (!s || !ranges || !range_count ||
-       !hk_agx3_g17p_root_range(0, s->info.set_count, root_ptr, &ranges[0]))
+   if (!s || !ranges || !range_count)
       return false;
+
+   /* A shader that reads neither the root descriptor nor any descriptor set
+    * needs NO preamble loads at all.
+    *
+    * This path used to build a root range unconditionally, so every dispatch
+    * got an Ioto program that loads the root descriptor and sets[0] from
+    * memory before the first shader instruction runs -- even a shader that
+    * touches nothing.  That matters because the preamble's loads happen
+    * whatever the shader does: a null-shader dispatch still faults with
+    * reason=3 and zero retire duration, which is a fault BEFORE the first
+    * instruction, and the preamble is the only thing that executes there.
+    *
+    * `agx3_uses_root` already records whether the compiler emitted
+    * load_root_agx (hk_shader.c:1156, and hk_cmd_buffer.c:979 already gates on
+    * it), and `hk_agx3_g17p_compute_program_generate` already composes a
+    * no-resource program when range_count == 0.  Both halves existed; compute
+    * simply never connected them.
+    *
+    * Zero ranges is therefore both a correctness improvement (no load the
+    * shader cannot consume) and the bisect the null probe needs: a dispatch
+    * whose preamble performs no memory access whatsoever.
+    */
+   const struct agx_rodata *rodata_probe = &s->b.info.rodata;
+   if (!s->info.agx3_uses_root && s->info.set_count == 0 &&
+       rodata_probe->size_16 == 0) {
+      *range_count = 0;
+      return true;
+   }
+
+   if (!hk_agx3_g17p_root_range(0, s->info.set_count, root_ptr, &ranges[0]))
+      return false;
+
+   /* Deliver the footprint the compiler finally settled on.
+    *
+    * `reserved_preamble = root + 4 * (1 + set_count)` (hk_shader.c:1255) is
+    * where the compiler STARTS; agx_opt_promote_constants() can raise
+    * `push_count` afterwards (agx_opt_promote_constants.c:149).  Measured on
+    * hardware this is currently a no-op -- push_count reads 8 for the probe,
+    * exactly 4 * (1 + 1) -- so this only matters for a shader whose constants
+    * were promoted.  Safe either way: push_count is in the same 16-bit
+    * uniform registers as size_halfs, and the bytes come from the root
+    * descriptor table, which is larger than the range.
+    */
+   if (s->b.info.push_count > ranges[0].size_halfs)
+      ranges[0].size_halfs = s->b.info.push_count;
 
    size_t count = 1;
    const struct agx_rodata *rodata = &s->b.info.rodata;
@@ -262,9 +311,35 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return;
    }
 
+   /* Fail closed on a USC-window escape.
+    *
+    * usc_exec_base (== dev->dev.shader_base) is handed to the kernel once at
+    * queue-create time and programmed into USC_EXEC_BASE_CP.  Every exec
+    * pointer this record carries -- the Ioto program the CDM launch points at,
+    * and the shader binary the Ioto LDSHDR record points at -- must resolve
+    * inside that 4 GiB window.  A pointer outside it is a GPU page fault a few
+    * microseconds later with no attribution, so refuse the dispatch here,
+    * where both numbers are known, instead of letting the GPU discover it.
+    */
+   if (!agx_va_in_usc_window(&dev->dev, program_bo->va->addr) ||
+       !agx_va_in_usc_window(&dev->dev,
+                             linked->b.bo->va->addr + linked->b.entry_offset)) {
+      mesa_loge("G17P dispatch: exec pointer outside the USC window "
+                "[%" PRIx64 ", %" PRIx64 "): program=%" PRIx64
+                " shader=%" PRIx64 "\n",
+                dev->dev.shader_base,
+                dev->dev.shader_base + AGX_USC_WINDOW_SIZE,
+                program_bo->va->addr,
+                linked->b.bo->va->addr + linked->b.entry_offset);
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_UNKNOWN);
+      return;
+   }
+
    const struct hk_agx3_g17p_compute_program_desc desc = {
       .program_va = program_bo->va->addr,
-      .shader_va = linked->b.bo->va->addr,
+      /* The container's entry point, not the allocation base: the
+       * shader loader reads the block-size dword at entry - 0x80. */
+      .shader_va = linked->b.bo->va->addr + linked->b.entry_offset,
       .uniform_ranges = ranges,
       .uniform_range_count = range_count,
       .shader_binary_size = linked->b.size,
@@ -283,6 +358,68 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (agx_bo_sync_for_device(program_bo, 0, program.length)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
       return;
+   }
+
+   if (hk_g17p_launch_trace_enabled()) {
+      /* The Ioto program's whole job is to load these ranges into the uniform
+       * file before the shader runs. The shader reads uniform quad u0
+       * (halves 0..3) and u1 (halves 4..7) as 64-bit base pointers, so the
+       * root range must start at half 0 and cover at least 8 halves, and the
+       * 16 bytes at root_va must be those two pointers. If the uniform file is
+       * not populated the shader addresses nowhere and stores silently into
+       * the void -- which is indistinguishable, from the buffer side, from
+       * never having run. */
+      for (size_t r = 0; r < range_count; ++r)
+         fprintf(stderr,
+                 "G17P uniform range[%zu]: start_halfs=%u size_halfs=%u "
+                 "address=%" PRIx64 "\n",
+                 r, (unsigned)ranges[r].start_halfs,
+                 (unsigned)ranges[r].size_halfs,
+                 (uint64_t)ranges[r].address);
+      fprintf(stderr,
+              "G17P root: va=%" PRIx64 " set_count=%u push_count=%u "
+              "reserved_preamble_formula=%u rodata(base=%u size16=%u)\n",
+              root_ptr, (unsigned)s->info.set_count,
+              (unsigned)s->b.info.push_count,
+              (unsigned)(4 * (1 + s->info.set_count)),
+              (unsigned)s->b.info.rodata.base_uniform,
+              (unsigned)s->b.info.rodata.size_16);
+      /* Exactly the bytes hk_cmd_buffer_upload_root pushed to root_ptr. The
+       * first 16 are what the uniform range covers: root_desc_addr then
+       * sets[0]. Two plausible GPU VAs there mean the descriptor chain the
+       * shader dereferences is populated; sixteen zero bytes would settle the
+       * question on their own. */
+      hk_g17p_trace_line("rootdesc", root_ptr,
+                         &cmd->state.cs.descriptors.root, 32);
+      fprintf(stderr,
+              "G17P rootdesc fields: root_desc_addr=%" PRIx64
+              " sets[0]=%" PRIx64 " constant_data_addr=%" PRIx64 "\n",
+              (uint64_t)cmd->state.cs.descriptors.root.root_desc_addr,
+              (uint64_t)cmd->state.cs.descriptors.root.sets[0],
+              (uint64_t)cmd->state.cs.descriptors.root.cs.constant_data_addr);
+      hk_g17p_trace_hexdump("ioto-program", program_bo->va->addr,
+                            program.bytes, program.length);
+      fprintf(stderr,
+              "G17P shader: va=%" PRIx64 " size=%u nr_gprs=%u scratch=%u "
+              "uniform_ranges=%zu set_count=%u rodata(base=%u size16=%u "
+              "off=%u)\n",
+              linked->b.bo->va->addr + linked->b.entry_offset,
+              (unsigned)linked->b.size,
+              (unsigned)linked->b.nr_gprs, (unsigned)linked->b.scratch_size,
+              range_count, (unsigned)s->info.set_count,
+              (unsigned)s->b.info.rodata.base_uniform,
+              (unsigned)s->b.info.rodata.size_16,
+              (unsigned)s->b.info.rodata.offset);
+      /* The shader binary is what actually has to terminate; a wave that never
+       * stops is the one thing that produces a fault-free, completion-free
+       * per-queue restart request. Dump enough to see its tail. */
+      void *shader_map = agx_bo_map(linked->b.bo);
+      if (shader_map) {
+         hk_g17p_trace_hexdump("shader-binary",
+                               linked->b.bo->va->addr + linked->b.entry_offset,
+                               (uint8_t *)shader_map + linked->b.entry_offset,
+                               linked->b.size < 512 ? linked->b.size : 512);
+      }
    }
 
    const uint8_t dimensions =
@@ -305,6 +442,39 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                                      &sink)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
+   }
+
+   /* One-shot ground truth for the GMMU fault forensics: the fault bank only
+    * reports a 64-byte-granular address, and reconstructing it by hand from
+    * dmesg has already produced two mutually inconsistent readings.  Print the
+    * pointers and the exact packed words so a single run decides whether a
+    * reported fault address is this dispatch's program pointer, its shader
+    * pointer, or neither (i.e. a stale/phantom latch).  Off unless asked for.
+    */
+   if (hk_g17p_launch_trace_enabled()) {
+      const uint8_t *packed = (const uint8_t *)sink.data;
+      uint32_t w[4];
+      for (unsigned i = 0; i < 4; ++i)
+         memcpy(&w[i], packed + i * 4, 4);
+      const uint64_t reconstructed =
+         ((uint64_t)(w[1] >> 22) << 38) | ((uint64_t)w[2] << 6);
+      /* Words 1 and 3 carry OVERLAPPING high address bits (47:38 and 47:40)
+       * and the add3 witness cannot say which the hardware consumes, because
+       * on its VA both encode the same 2^40.  Print the OR of both: it is the
+       * worst case the GPU can compute, so `pipeline_or == program_va` is the
+       * only state in which no model of the redundancy can fault. */
+      const uint64_t reconstructed_or =
+         reconstructed | ((uint64_t)(w[3] & 0xff) << 40);
+      fprintf(stderr,
+              "G17P launch: usc_window=[%" PRIx64 ",%" PRIx64 ") "
+              "program_va=%" PRIx64 " shader_va=%" PRIx64
+              " words=%08x %08x %08x %08x pipeline=%" PRIx64
+              " pipeline_or=%" PRIx64 "%s\n",
+              dev->dev.shader_base,
+              dev->dev.shader_base + AGX_USC_WINDOW_SIZE,
+              program_bo->va->addr, linked->b.bo->va->addr, w[0], w[1], w[2],
+              w[3], reconstructed, reconstructed_or,
+              reconstructed_or == program_bo->va->addr ? "" : " MISMATCH");
    }
 
    cs->current = (uint32_t *)((uint8_t *)cs->current + sink.length);

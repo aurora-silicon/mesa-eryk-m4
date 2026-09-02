@@ -1,0 +1,310 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Every positive vector is an instruction Apple's own compiler emitted.
+ * Kernels of the form `o[i] = (cast(x[i]) << S) + 7u` were compiled with
+ * `metal-nt -arch applegpu_g16g`, varying one thing at a time: the shift
+ * amount, the source width (uint vs ushort), and its signedness (ushort vs
+ * short). The wait vectors come from kernels whose addend is a loaded value,
+ * where the consuming add waits on the load's scoreboard slot.
+ */
+
+#include "agx3_iadd_core.h"
+
+#include <stdio.h>
+#include <string.h>
+
+static unsigned checks, failures;
+
+#define CHECK(x)                                                               \
+   do {                                                                        \
+      ++checks;                                                                \
+      if (!(x)) {                                                              \
+         fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #x);          \
+         ++failures;                                                           \
+      }                                                                        \
+   } while (0)
+
+struct vec {
+   const char *name;
+   struct agx3_iadd_desc d;
+   uint8_t bytes[10];
+};
+
+/* All ten bytes; every vector below is length 10. */
+static const struct vec vectors[] = {
+   {"u32 shift0 wait6",
+    {.dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x88, 0x15, 0x04}},
+   {"u32 shift1 wait6",
+    {.dest = 0, .immediate = 7, .src = 0, .shift = 1, .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0xc8, 0x14, 0x04}},
+   {"u32 shift3 wait6",
+    {.dest = 0, .immediate = 7, .src = 0, .shift = 3, .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0xc8, 0x14, 0x14}},
+   {"u32 shift0 wait1",
+    {.dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 0},
+    {0x9f, 0x11, 0x54, 0x00, 0x02, 0x0e, 0x00, 0x88, 0x15, 0x04}},
+   {"u32 dest4 src2 wait6",
+    {.dest = 4, .immediate = 7, .src = 2, .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x04, 0x02, 0x0e, 0x08, 0x88, 0x15, 0x04}},
+   {"u16 zero-extend shift0",
+    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true,
+     .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x15, 0x04}},
+   {"u16 zero-extend shift2",
+    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .shift = 2,
+     .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x14, 0x14}},
+   {"s16 sign-extend shift0",
+    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
+     .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x15, 0x0c}},
+   {"s16 sign-extend shift2",
+    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
+     .shift = 2, .wait_mask = 1u << 5},
+    {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x14, 0x1c}},
+};
+
+
+/*
+ * Apple's shifted-add and multiply forms, captured from five compute kernels
+ * on an A18 Pro that differ only in the shift amount:
+ *
+ *   imad_s0    o[i] = a[i]*b[i] + c[i]
+ *   imad_s1..3 o[i] = a[i]*b[i] + (c[i] << N)   for N = 1, 2, 3
+ *   imad_addr  o[i] = a[i]*16u  + (i << 2)
+ *
+ * The decisive result is that s1, s2 and s3 have a BYTE-IDENTICAL imadd: the
+ * shift never reaches the multiply. Apple emits an unshifted product and puts
+ * the shift on a following add, where f54 carries it (1, 2, 3 and 4 across
+ * these kernels). agx_emit_imadshl_agx() splits AGX3's shifted imad the same
+ * way rather than inventing a shift field the instruction does not have.
+ */
+static int
+test_apple_shift_witnesses(void)
+{
+   uint8_t out[AGX3_IADD_MAX_LENGTH];
+   uint8_t len;
+
+   /* imad_s0: a*b + c, register multiplier, waits slot 6. */
+   {
+      static const uint8_t want[] = {0x9f, 0x00, 0x56, 0x00, 0x02, 0x08,
+                                     0x00, 0x40, 0xd0, 0x2f, 0x2a, 0x00};
+      struct agx3_imad_desc d = {
+         .dest = 0, .src_a = 4, .multiplier_is_register = true,
+         .multiplier_reg = 0, .multiplier_kill = true, .src_c = 8,
+         .wait_mask = 1u << 5,
+      };
+      len = 0;
+      CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(want) && memcmp(out, want, sizeof(want)) == 0);
+   }
+
+   /* imad_s1..s3: the pure multiply, identical for every shift. */
+   {
+      static const uint8_t want[] = {0x9f, 0x00, 0x56, 0x00, 0x03, 0x10,
+                                     0x00, 0x00, 0xd0, 0x26, 0x0a, 0x00};
+      struct agx3_imad_desc d = {
+         .dest = 0, .src_a = 8, .multiplier_is_register = true,
+         .multiplier_reg = 0, .multiplier_kill = true, .no_addend = true,
+         .wait_mask = 1u << 5,
+      };
+      len = 0;
+      CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+      CHECK(len == sizeof(want) && memcmp(out, want, sizeof(want)) == 0);
+   }
+
+   /* The shifted adds that carry what the multiply does not. */
+   {
+      static const struct {
+         uint8_t shift, src_a, src, wait;
+         uint8_t bytes[10];
+      } adds[] = {
+         {1, 0, 4, 1u << 0,
+          {0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x10, 0xe8, 0x16, 0x05}},
+         {2, 0, 4, 1u << 0,
+          {0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x10, 0xa8, 0x16, 0x15}},
+         {3, 0, 4, 1u << 0,
+          {0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x10, 0xe8, 0x16, 0x15}},
+         {4, 4, 0, 1u << 5,
+          {0x9f, 0x01, 0x56, 0x00, 0x02, 0x08, 0x00, 0xa8, 0x16, 0x05}},
+      };
+
+      for (unsigned i = 0; i < sizeof(adds) / sizeof(adds[0]); ++i) {
+         struct agx3_iadd_desc d = {
+            .src_a_is_register = true,
+            .src_a_reg = adds[i].src_a,
+            .src_a_kill = true,
+            .src = adds[i].src,
+            .src_kill = true,
+            .shift = adds[i].shift,
+            .wait_mask = adds[i].wait,
+         };
+         len = 0;
+         CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+         CHECK(len == 10 && memcmp(out, adds[i].bytes, 10) == 0);
+      }
+   }
+
+   /* A register slot A is witnessed only on AGX3b. */
+   {
+      struct agx3_iadd_desc d = {.src_a_is_register = true, .src = 0};
+      len = 0;
+      CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
+   }
+   return 0;
+}
+
+int
+main(void)
+{
+   for (unsigned i = 0; i < sizeof(vectors) / sizeof(vectors[0]); ++i) {
+      const struct vec *v = &vectors[i];
+      uint8_t out[AGX3_IADD_MAX_LENGTH];
+      uint8_t len = 0;
+
+      memset(out, 0xcd, sizeof(out));
+      CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &v->d, out, &len));
+      CHECK(len == 10);
+      ++checks;
+      if (len != 10 || memcmp(out, v->bytes, 10) != 0) {
+         ++failures;
+         fprintf(stderr, "FAIL %s: got", v->name);
+         for (unsigned b = 0; b < len; ++b)
+            fprintf(stderr, " %02x", out[b]);
+         fprintf(stderr, ", want");
+         for (unsigned b = 0; b < 10; ++b)
+            fprintf(stderr, " %02x", v->bytes[b]);
+         fprintf(stderr, "\n");
+      }
+   }
+
+   /* Fail closed outside the witnessed domain. */
+   uint8_t out[AGX3_IADD_MAX_LENGTH];
+   uint8_t len = 0;
+   struct agx3_iadd_desc d = {.dest = 0, .immediate = 7, .src = 0};
+
+   /* Shift 4 IS witnessed: Apple's `o[i] = a[i]*16u + (i << 2)` kernel emits
+    * a shifted add with f54 = 4. Only 5 and above are out of domain. */
+   d.shift = 4;
+   CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.shift = 5;
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.shift = 0;
+
+   d.dest = 1; /* a 32-bit destination is an aligned pair */
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.dest = 0;
+
+   d.src = 1; /* likewise a 32-bit source */
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.src = 1;
+   d.src_16 = true; /* but a narrow source may sit in an odd half */
+   CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.src = 0;
+   d.src_16 = false;
+
+   d.wait_mask = 1u << 6; /* six scoreboard slots on AGX3b */
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.wait_mask = 0;
+
+   CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX2, &d, out, &len));
+
+   /*
+    * AGX3c, from the same ladder against `-arch applegpu_g17s`: `iadd32`,
+    * the shift at f55, and eight wait slots. Its single load signals slot 8,
+    * the top one, exactly as AGX3b's signals slot 6.
+    */
+   {
+      static const struct {
+         const char *name;
+         struct agx3_iadd_desc d;
+         uint8_t bytes[12];
+      } cvec[] = {
+         {"u32 shift0", {.dest = 0, .immediate = 7, .src = 0,
+                         .wait_mask = 1u << 7},
+          {0x2f, 0x03, 0x04, 0x3a, 0x25, 0x00, 0xa3, 0x02, 0x20, 0x80, 0x21,
+           0x00}},
+         {"u32 shift2", {.dest = 0, .immediate = 7, .src = 0, .shift = 2,
+                         .wait_mask = 1u << 7},
+          {0x2f, 0x03, 0x04, 0x3a, 0x25, 0x00, 0xa3, 0x02, 0x20, 0x80, 0x25,
+           0x00}},
+         {"u16 shift2", {.dest = 0, .immediate = 7, .src = 0, .src_16 = true,
+                         .shift = 2, .wait_mask = 1u << 7},
+          {0x2f, 0x03, 0x04, 0x3a, 0x25, 0x00, 0xa3, 0x02, 0x20, 0x00, 0x25,
+           0x00}},
+         {"s16 shift2", {.dest = 0, .immediate = 7, .src = 0, .src_16 = true,
+                         .sign_extend = true, .shift = 2,
+                         .wait_mask = 1u << 7},
+          {0x2f, 0x03, 0x04, 0x3a, 0x25, 0x00, 0xa3, 0x02, 0x20, 0x00, 0xa5,
+           0x00}},
+      };
+      for (unsigned i = 0; i < sizeof(cvec) / sizeof(cvec[0]); ++i) {
+         uint8_t co[AGX3_IADD_MAX_LENGTH];
+         uint8_t cl = 0;
+         CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3C, &cvec[i].d, co, &cl));
+         CHECK(cl == 12);
+         ++checks;
+         if (cl != 12 || memcmp(co, cvec[i].bytes, 12) != 0) {
+            ++failures;
+            fprintf(stderr, "FAIL agx3c %s\n", cvec[i].name);
+         }
+      }
+
+      /* AGX3c has eight slots, so bit 8 is still out of range. */
+      struct agx3_iadd_desc bad = {.dest = 0, .immediate = 7, .src = 0,
+                                   .wait_mask = 1u << 8};
+      CHECK(!agx3_iadd_encode(AGX_ISA_ENCODING_AGX3C, &bad, out, &len));
+   }
+
+   /*
+    * imad with a constant multiplier, and its addend in a narrow register.
+    * From `o[i] = a[i] * 255u + <addend>` over a uint, a ushort and a short.
+    */
+   {
+      static const struct {
+         const char *name;
+         struct agx3_imad_desc d;
+         uint8_t bytes[12];
+      } iv[] = {
+         {"c 32-bit", {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+                       .wait_mask = 1u << 5},
+          {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2b, 0x22,
+           0x00}},
+         {"c 16-bit zero-extend",
+          {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+           .src_c_16 = true, .wait_mask = 1u << 5},
+          {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2a, 0x22,
+           0x00}},
+         {"c 16-bit sign-extend",
+          {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+           .src_c_16 = true, .src_c_sign_extend = true, .wait_mask = 1u << 5},
+          {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2a, 0x62,
+           0x00}},
+      };
+      for (unsigned i = 0; i < sizeof(iv) / sizeof(iv[0]); ++i) {
+         uint8_t o[AGX3_IADD_MAX_LENGTH];
+         uint8_t l = 0;
+         CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &iv[i].d, o, &l));
+         CHECK(l == 12);
+         ++checks;
+         if (l != 12 || memcmp(o, iv[i].bytes, 12) != 0) {
+            ++failures;
+            fprintf(stderr, "FAIL imad %s\n", iv[i].name);
+         }
+      }
+
+      struct agx3_imad_desc bad = {.dest = 0, .src_a = 0, .multiplier = 255,
+                                   .src_c = 4, .wait_mask = 1u << 6};
+      CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &bad, out, &len));
+      bad.wait_mask = 0;
+      CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3C, &bad, out, &len));
+   }
+
+   test_apple_shift_witnesses();
+
+   printf("%u checks, %u failures\n", checks, failures);
+   return failures ? 1 : 0;
+}

@@ -3,8 +3,14 @@
  * SPDX-License-Identifier: MIT
  *
  * Display-independent Vulkan graphics proof for T8140/G17P. Render one
- * full-screen triangle into a one-tile RGBA8 image, copy it to a coherent
- * buffer, and verify every byte.
+ * full-screen triangle into a one-tile RGBA8 image and verify every byte.
+ *
+ * The default build uses vkCmdCopyImageToBuffer and intentionally exercises
+ * Honeykrisp's GPU meta-copy path.  g17p-hostcopy-triangle compiles this same
+ * render proof with G17P_HOST_IMAGE_COPY set: it keeps the optimal tiled render
+ * target but reads it back on the CPU through VK_EXT_host_image_copy.  Keeping
+ * the paths as separate binaries lets render bring-up prove TA/3D/PBE output
+ * without hiding regressions in the eventual GPU copy implementation.
  */
 
 #define VK_NO_PROTOTYPES
@@ -25,6 +31,18 @@
 #define IMAGE_WIDTH 32
 #define IMAGE_HEIGHT 32
 #define IMAGE_BYTES (IMAGE_WIDTH * IMAGE_HEIGHT * 4)
+
+#ifndef G17P_HOST_IMAGE_COPY
+#define G17P_HOST_IMAGE_COPY 0
+#endif
+
+#if G17P_HOST_IMAGE_COPY
+#define PROBE_NAME "g17p-hostcopy-triangle"
+#define READBACK_IMAGE_USAGE VK_IMAGE_USAGE_HOST_TRANSFER_BIT_EXT
+#else
+#define PROBE_NAME "g17p-offscreen-triangle"
+#define READBACK_IMAGE_USAGE 0
+#endif
 
 #define VK_FN(name) static PFN_##name name
 
@@ -60,7 +78,11 @@ VK_FN(vkCmdBindPipeline);
 VK_FN(vkCmdBindVertexBuffers);
 VK_FN(vkCmdDraw);
 VK_FN(vkCmdEndRenderPass);
+#if G17P_HOST_IMAGE_COPY
+VK_FN(vkCopyImageToMemoryEXT);
+#else
 VK_FN(vkCmdCopyImageToBuffer);
+#endif
 VK_FN(vkEndCommandBuffer);
 VK_FN(vkCreateFence);
 VK_FN(vkQueueSubmit);
@@ -69,7 +91,7 @@ VK_FN(vkWaitForFences);
 static void
 die(const char *what)
 {
-   fprintf(stderr, "g17p-offscreen-triangle: %s\n", what);
+   fprintf(stderr, PROBE_NAME ": %s\n", what);
    exit(EXIT_FAILURE);
 }
 
@@ -77,8 +99,7 @@ static void
 check(VkResult result, const char *what)
 {
    if (result != VK_SUCCESS) {
-      fprintf(stderr, "g17p-offscreen-triangle: %s returned %d\n", what,
-              result);
+      fprintf(stderr, PROBE_NAME ": %s returned %d\n", what, result);
       exit(EXIT_FAILURE);
    }
 }
@@ -144,7 +165,7 @@ main(void)
 
    const VkApplicationInfo app_info = {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .pApplicationName = "g17p-offscreen-triangle",
+      .pApplicationName = PROBE_NAME,
       .applicationVersion = 1,
       .pEngineName = "none",
       .engineVersion = 1,
@@ -223,7 +244,7 @@ main(void)
        required_format)
       die("RGBA8 optimal images lack color-attachment or transfer-src support");
 
-   fprintf(stderr, "g17p-offscreen-triangle: device %s, queue %u\n",
+   fprintf(stderr, PROBE_NAME ": device %s, queue %u\n",
            properties.deviceName, queue_family);
 
    const float queue_priority = 1.0f;
@@ -233,10 +254,26 @@ main(void)
       .queueCount = 1,
       .pQueuePriorities = &queue_priority,
    };
+#if G17P_HOST_IMAGE_COPY
+   const VkPhysicalDeviceHostImageCopyFeaturesEXT host_copy_features = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_IMAGE_COPY_FEATURES_EXT,
+      .hostImageCopy = VK_TRUE,
+   };
+   const char *device_extensions[] = {
+      VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME,
+   };
+#endif
    const VkDeviceCreateInfo device_info = {
       .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+#if G17P_HOST_IMAGE_COPY
+      .pNext = &host_copy_features,
+#endif
       .queueCreateInfoCount = 1,
       .pQueueCreateInfos = &queue_info,
+#if G17P_HOST_IMAGE_COPY
+      .enabledExtensionCount = 1,
+      .ppEnabledExtensionNames = device_extensions,
+#endif
    };
    VkDevice device;
    check(vkCreateDevice(physical, &device_info, NULL, &device),
@@ -265,7 +302,11 @@ main(void)
    LOAD_DEVICE(device, vkCmdBindVertexBuffers);
    LOAD_DEVICE(device, vkCmdDraw);
    LOAD_DEVICE(device, vkCmdEndRenderPass);
+#if G17P_HOST_IMAGE_COPY
+   LOAD_DEVICE(device, vkCopyImageToMemoryEXT);
+#else
    LOAD_DEVICE(device, vkCmdCopyImageToBuffer);
+#endif
    LOAD_DEVICE(device, vkEndCommandBuffer);
    LOAD_DEVICE(device, vkCreateFence);
    LOAD_DEVICE(device, vkQueueSubmit);
@@ -323,7 +364,7 @@ main(void)
       .samples = VK_SAMPLE_COUNT_1_BIT,
       .tiling = VK_IMAGE_TILING_OPTIMAL,
       .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-               VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+               VK_IMAGE_USAGE_TRANSFER_SRC_BIT | READBACK_IMAGE_USAGE,
       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
    };
@@ -345,6 +386,10 @@ main(void)
    check(vkBindImageMemory(device, image, image_memory, 0),
          "vkBindImageMemory");
 
+#if G17P_HOST_IMAGE_COPY
+   uint8_t readback_storage[IMAGE_BYTES];
+   uint8_t *readback_map = readback_storage;
+#else
    const VkBufferCreateInfo readback_info = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size = IMAGE_BYTES,
@@ -375,6 +420,7 @@ main(void)
    check(vkMapMemory(device, readback_memory, 0, IMAGE_BYTES, 0,
                      (void **)&readback_map),
          "vkMapMemory(readback)");
+#endif
    memset(readback_map, 0xa5, IMAGE_BYTES);
 
    const VkImageViewCreateInfo view_info = {
@@ -605,6 +651,7 @@ main(void)
    vkCmdDraw(command_buffer, 3, 1, 0, 0);
    vkCmdEndRenderPass(command_buffer);
 
+#if !G17P_HOST_IMAGE_COPY
    const VkBufferImageCopy copy = {
       .imageSubresource = {
          .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -615,6 +662,7 @@ main(void)
    vkCmdCopyImageToBuffer(command_buffer, image,
                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, readback, 1,
                           &copy);
+#endif
    check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");
 
    const VkFenceCreateInfo fence_info = {
@@ -628,15 +676,44 @@ main(void)
       .pCommandBuffers = &command_buffer,
    };
    check(vkQueueSubmit(queue, 1, &submit, fence), "vkQueueSubmit");
+#if G17P_HOST_IMAGE_COPY
+   const VkResult waited =
+      vkWaitForFences(device, 1, &fence, true, UINT64_C(5000000000));
+   if (waited == VK_TIMEOUT)
+      die("vkWaitForFences timed out after five seconds");
+   check(waited, "vkWaitForFences");
+#else
    check(vkWaitForFences(device, 1, &fence, true, UINT64_MAX),
          "vkWaitForFences");
+#endif
+
+#if G17P_HOST_IMAGE_COPY
+   const VkImageToMemoryCopyEXT host_copy_region = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY_EXT,
+      .pHostPointer = readback_map,
+      .imageSubresource = {
+         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+         .layerCount = 1,
+      },
+      .imageExtent = {IMAGE_WIDTH, IMAGE_HEIGHT, 1},
+   };
+   const VkCopyImageToMemoryInfoEXT host_copy = {
+      .sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO_EXT,
+      .srcImage = image,
+      .srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      .regionCount = 1,
+      .pRegions = &host_copy_region,
+   };
+   check(vkCopyImageToMemoryEXT(device, &host_copy),
+         "vkCopyImageToMemoryEXT");
+#endif
 
    static const uint8_t expected[4] = {255, 71, 13, 255};
    for (size_t pixel = 0; pixel < IMAGE_WIDTH * IMAGE_HEIGHT; ++pixel) {
       const uint8_t *actual = &readback_map[pixel * 4];
       if (memcmp(actual, expected, sizeof(expected)) != 0) {
          fprintf(stderr,
-                 "g17p-offscreen-triangle: pixel %zu is {%u,%u,%u,%u}, "
+                 PROBE_NAME ": pixel %zu is {%u,%u,%u,%u}, "
                  "expected {255,71,13,255}\n",
                  pixel, actual[0], actual[1], actual[2], actual[3]);
          return EXIT_FAILURE;
@@ -644,7 +721,7 @@ main(void)
    }
 
    const uint64_t checksum = fnv1a64(readback_map, IMAGE_BYTES);
-   printf("g17p-offscreen-triangle: PASS — %ux%u RGBA8, checksum "
+   printf(PROBE_NAME ": PASS — %ux%u RGBA8, checksum "
           "%016" PRIx64 "\n",
           IMAGE_WIDTH, IMAGE_HEIGHT, checksum);
    return EXIT_SUCCESS;

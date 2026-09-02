@@ -148,7 +148,7 @@ agx_validate_defs(agx_instr *I, BITSET_WORD *defs)
 
 /** Returns number of registers written by an instruction */
 static unsigned
-agx_write_registers(const agx_instr *I, unsigned d)
+agx_write_registers(const agx_context *ctx, const agx_instr *I, unsigned d)
 {
    unsigned size = agx_size_align_16(I->dest[d].size);
 
@@ -176,10 +176,23 @@ agx_write_registers(const agx_instr *I, unsigned d)
    case AGX_OPCODE_LOCAL_LOAD:
    case AGX_OPCODE_STACK_LOAD:
    case AGX_OPCODE_LD_TILE:
+      /* An AGX3 tile load of an 8-bit normalized attachment comes back
+       * packed, two channels to a 16-bit register; normflt_agx3 unpacks it.
+       * See agx_unpack_normalized_agx3. */
+      if (I->op == AGX_OPCODE_LD_TILE &&
+          ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+          I->dest[d].size == AGX_SIZE_16 &&
+          (I->format == AGX_FORMAT_U8NORM || I->format == AGX_FORMAT_S8NORM))
+         return DIV_ROUND_UP(util_bitcount(I->mask), 2);
+
       /* Can write 16-bit or 32-bit. Anything logically 64-bit is already
        * expanded to 32-bit in the mask.
        */
       return util_bitcount(I->mask) * MIN2(size, 2);
+
+   /* One packed 16-bit register in, one 32-bit float per lane out. */
+   case AGX_OPCODE_NORMFLT_AGX3:
+      return agx_channels(I->dest[d]) * size;
 
    case AGX_OPCODE_LDCF:
       return 6;
@@ -237,7 +250,7 @@ agx_coordinate_registers(const agx_instr *I, enum agx_size size)
 }
 
 static unsigned
-agx_read_registers(const agx_instr *I, unsigned s)
+agx_read_registers(const agx_context *ctx, const agx_instr *I, unsigned s)
 {
    unsigned size = agx_size_align_16(I->src[s].size);
 
@@ -267,9 +280,20 @@ agx_read_registers(const agx_instr *I, unsigned s)
    case AGX_OPCODE_STACK_STORE:
    case AGX_OPCODE_ST_TILE:
       /* See agx_write_registers */
-      if (s == 0)
+      if (s == 0) {
+         /* AGX3's tile store carries a width, not a format, so an 8-bit
+          * normalized target arrives packed two channels to a 16-bit register
+          * (agx_pack_normalized_agx3 -> fltnorm_agx3). The value is then half
+          * as wide as the write mask is long. */
+         if (I->op == AGX_OPCODE_ST_TILE &&
+             ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX2 &&
+             I->src[0].size == AGX_SIZE_16 &&
+             (I->format == AGX_FORMAT_U8NORM ||
+              I->format == AGX_FORMAT_S8NORM))
+            return DIV_ROUND_UP(util_bitcount(I->mask), 2);
+
          return util_bitcount(I->mask) * MIN2(size, 2);
-      else if (s == 2 && I->explicit_coords)
+      } else if (s == 2 && I->explicit_coords)
          return 2;
       else
          return size;
@@ -366,7 +390,7 @@ agx_validate_width(agx_context *ctx)
 
    agx_foreach_instr_global(ctx, I) {
       agx_foreach_dest(I, d) {
-         unsigned exp = agx_write_registers(I, d);
+         unsigned exp = agx_write_registers(ctx, I, d);
          unsigned act =
             agx_channels(I->dest[d]) * agx_size_align_16(I->dest[d].size);
 
@@ -386,7 +410,7 @@ agx_validate_width(agx_context *ctx)
          if (I->src[s].type == AGX_INDEX_NULL)
             continue;
 
-         unsigned exp = agx_read_registers(I, s);
+         unsigned exp = agx_read_registers(ctx, I, s);
          unsigned act =
             agx_channels(I->src[s]) * agx_size_align_16(I->src[s].size);
 

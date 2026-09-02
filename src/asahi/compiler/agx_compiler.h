@@ -1018,7 +1018,8 @@ agx_builder_insert(agx_cursor *cursor, agx_instr *I)
    UNREACHABLE("Invalid cursor option");
 }
 
-bool agx_instr_accepts_uniform(enum agx_opcode op, unsigned src_index,
+bool agx_instr_accepts_uniform(enum agx_isa_encoding encoding,
+                               enum agx_opcode op, unsigned src_index,
                                unsigned value, enum agx_size size);
 
 /* Routines defined for AIR */

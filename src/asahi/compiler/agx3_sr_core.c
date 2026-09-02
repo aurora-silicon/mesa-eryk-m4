@@ -18,6 +18,19 @@
  * dispatch_threads_per_threadgroup.xyz, 34/36 (witnessed in Apple device-atomic
  * kernels, attribution UNKNOWN). 32-bit: 23/24/25 thread_position_in_grid.xyz,
  * 26/27/28 threadgroup_position_in_grid.xyz.
+ *
+ * Two more 16-bit numbers are fragment-only and were added from the G17P
+ * writeout session (offline `applegpu-nt -arch applegpu_g17p`, 2026-08-31):
+ *
+ *  - 39 is the *incoming* coverage word. PROVEN: a fragment shader that reads
+ *    `uint m [[sample_mask]]` compiles to exactly `rld h0 <- SR 39 (W16)`,
+ *    `h0 >>= 4`, `int2flt`, so the incoming mask sits in bits 4..7.
+ *  - 2 is read by every 1x fragment shader that writes a sample mask or a
+ *    depth and by no colour-only shader; its value is combined into the staged
+ *    coverage word as N | (T << 4) | (T << 8). Reproducing Apple's own
+ *    kill-all constant from that formula requires T = 0xF0, i.e. a four-bit
+ *    mask in bits 4..7 exactly like SR 39. Presence and use are PROVEN;
+ *    "the per-invocation target-sample mask" is INFERRED from that arithmetic.
  */
 bool
 agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
@@ -27,6 +40,8 @@ agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
       case 6: case 7: case 9: case 10: case 11: case 13:
       case 17: case 18: case 19: case 20: case 21: case 22:
       case 34: case 36:
+      /* fragment-only, see the comment above */
+      case 2: case 39:
          return true;
       default:
          return false;

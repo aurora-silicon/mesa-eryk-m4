@@ -175,6 +175,25 @@ hk_preprocess_nir_internal(struct vk_physical_device *vk_pdev, nir_shader *nir)
    NIR_PASS(_, nir, nir_split_var_copies);
    NIR_PASS(_, nir, nir_split_struct_vars, nir_var_function_temp);
 
+   /* G17P has no legacy USC constant-data upload.  Lower compute constants to
+    * load_constant so the private native path can address the immutable blob
+    * through its root descriptor (hk_nir_lower_descriptors.c
+    * lower_load_constant, and hk_cmd_dispatch.c uploads the blob per
+    * dispatch).
+    *
+    * This MUST run before agx_preprocess_nir.  That helper's first act is
+    * nir_lower_vars_to_scratch with a 256-byte threshold (agx_compile.c:3852),
+    * which claims exactly the large read-only arrays this pass exists to
+    * capture -- and it claims them as scratch, which the AGX3 backend cannot
+    * encode and hk_g17p_compute_shader_supported() refuses anyway.  Running
+    * afterwards silently does nothing: there is no function_temp array left to
+    * move, and nir_opt_large_constants only ever looks at function_temp
+    * (nir_opt_large_constants.c:545-561).
+    */
+   if (nir->info.stage == MESA_SHADER_COMPUTE &&
+       ((struct hk_physical_device *)vk_pdev)->dev.chip == AGX_CHIP_G17P)
+      NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
+
    /* Optimize but allow copies because we haven't lowered them yet */
    agx_preprocess_nir(nir);
 
@@ -830,13 +849,6 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
    NIR_PASS(_, nir, nir_lower_explicit_io, nir_var_mem_push_const,
             nir_address_format_32bit_offset);
 
-   /* G17P has no legacy USC constant-data upload.  Lower compute constants
-    * to load_constant so the private native path can address the immutable
-    * blob through its root descriptor. */
-   if (dev->dev.chip == AGX_CHIP_G17P &&
-       nir->info.stage == MESA_SHADER_COMPUTE)
-      NIR_PASS(_, nir, nir_opt_large_constants, NULL, 32);
-
    /* Turn cache flushes into image coherency bits while we still have derefs */
    NIR_PASS(_, nir, nir_lower_memory_model);
 
@@ -1242,6 +1254,36 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_uniforms,
             nir_metadata_control_flow, &root);
 
+   /* Report every uniform half this shader actually reads.
+    *
+    * The disassembled G17P binary references uniform halves the declared
+    * footprint (`reserved_preamble = root + 4 * (1 + set_count)`) does not
+    * cover.  That is either the descriptor lowering emitting a set index the
+    * layout does not have, or the backend assigning uniforms above the
+    * reservation -- and the two need different fixes.  `lower_uniforms` has
+    * just rewritten every root/descriptor-set read into a load_preamble, so
+    * the bases here are exactly what the compiler believes it needs, from the
+    * compiler's own side rather than from a disassembly of its output.
+    */
+   if (hk_g17p_launch_trace_enabled()) {
+      fprintf(stderr,
+              "G17P uniforms: stage=%u set_count=%u root=%u reserved=%u ",
+              (unsigned)sw_stage, set_count, root,
+              root + (4 * (1 + set_count)));
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type != nir_instr_type_intrinsic)
+                  continue;
+               nir_intrinsic_instr *in = nir_instr_as_intrinsic(instr);
+               if (in->intrinsic == nir_intrinsic_load_preamble)
+                  fprintf(stderr, "half%u ", nir_intrinsic_base(in));
+            }
+         }
+      }
+      fprintf(stderr, "\n");
+   }
+
 #if 0
    /* TODO */
    nir_variable_mode robust2_modes = 0;
@@ -1288,6 +1330,19 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       simple_mtx_unlock(lock);
 
    if (!compiled) {
+      /* On G17P this is currently the single biggest functional gap in the
+       * driver, and it is not a shader-specific accident: the AGX3 packer
+       * encodes AT MOST ONE SSBO ACCESS PER SHADER and no atomics at all.
+       * One store encodes; one load plus one store does not; two stores do
+       * not.  Uniform/`load_preamble` reads and constant-data (rodata) loads
+       * do not count against it.
+       *
+       * That means no real compute workload compiles, and a conformance run
+       * is blocked behind this regardless of the command-stream, launch and
+       * memory work being correct.  The measured matrix, the reproduction
+       * (which needs no hardware -- it runs under the G17P drm-shim) and the
+       * two traps that make the bisect lie are in
+       * src/asahi/isa/README-agx3-packer-limits.md. */
       ralloc_free(nir);
       return vk_errorf(dev, VK_ERROR_FEATURE_NOT_PRESENT,
                        "AGX backend cannot encode shader for %s",
@@ -1574,9 +1629,22 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                   .soft_fault = agx_has_soft_fault(&dev->dev),
 
                   /* Correctly handling GPL + pipeline-robustness requires
-                   * runtime changes, and I don't care enough to optimize this.
+                   * runtime changes, so derive the level from the enabled
+                   * device features exactly as the vertex prolog does
+                   * (hk_cmd_draw.c:3200-3208) rather than pessimising every
+                   * pipeline to D3D.  Hardcoding D3D here made every vertex
+                   * fetch emit an out-of-bounds select even when the
+                   * application never asked for robustness; the two paths
+                   * must agree anyway, since a monolithic VS and a prologue
+                   * fetch the same attributes.
                    */
-                  .level = AGX_ROBUSTNESS_D3D,
+                  .level =
+                     (dev->vk.enabled_features.robustBufferAccess2 ||
+                      dev->vk.enabled_features.pipelineRobustness)
+                        ? AGX_ROBUSTNESS_D3D
+                     : dev->vk.enabled_features.robustBufferAccess
+                        ? AGX_ROBUSTNESS_GL
+                        : AGX_ROBUSTNESS_DISABLED,
                };
 
                agx_nir_lower_vbo(clone, attribs, agx_rs,

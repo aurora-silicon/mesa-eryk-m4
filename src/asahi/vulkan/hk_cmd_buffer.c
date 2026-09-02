@@ -25,6 +25,12 @@
 #include "hk_physical_device.h"
 #include "hk_shader.h"
 
+#include "util/log.h"
+#include "util/u_debug.h"
+
+#include <inttypes.h>
+#include <stdio.h>
+
 #include "asahi/genxml/agx3_cmdstream.h"
 #include "asahi/lib/agx_ppp_hal300_depth_stencil_core.h"
 #include "asahi/lib/agx_ppp_w_clamp_cull2_core.h"
@@ -200,7 +206,12 @@ hk_pool_alloc_internal(struct hk_cmd_buffer *cmd, uint32_t size,
    if (size > HK_CMD_BO_SIZE) {
       uint32_t flags = usc ? AGX_BO_LOW_VA : 0;
       struct agx_bo *bo =
-         agx_bo_create(&dev->dev, size, flags, 0, "Large pool allocation");
+         agx_bo_create(&dev->dev, size, 0, flags, "Large pool allocation");
+
+      if (unlikely(bo == NULL)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return (struct agx_ptr){0};
+      }
 
       util_dynarray_append(&cmd->large_bos, bo);
       return (struct agx_ptr){
@@ -261,11 +272,26 @@ hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data, uint32_t size,
    return T.gpu;
 }
 
+uint64_t
+hk_pool_usc_upload(struct hk_cmd_buffer *cmd, const void *data, uint32_t size,
+                   uint32_t alignment)
+{
+   struct agx_ptr T = hk_pool_usc_alloc(cmd, size, alignment);
+   if (unlikely(T.cpu == NULL))
+      return 0;
+
+   memcpy(T.cpu, data, size);
+   return T.gpu;
+}
+
 void *
 hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
                            uint64_t target, bool vdm)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   if (vdm && hk_g17p_vdm_low_window_enabled(&dev->dev))
+      target = hk_g17p_vdm_low(&dev->dev, target);
 
    switch (agx_chip_command_stream_generation(dev->dev.chip)) {
    case AGX_CS_GENERATION_AGX2:
@@ -305,6 +331,56 @@ hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
    return current;
 }
 
+/* Diagnostics for the G17P native compute/graphics route.
+ *
+ * The raw add3 probe and a Honeykrisp dispatch drive the *same* kernel path
+ * with the same 44-byte launch + 4-byte terminate shape, yet only the
+ * Honeykrisp one makes the firmware request a stamp-blamed recovery. The two
+ * objects that differ are the CDM stream as a whole and the composed Ioto
+ * program; both are small, so dump them verbatim and diff against the
+ * known-good 48-byte add3 stream instead of reasoning about them.
+ */
+bool
+hk_g17p_launch_trace_enabled(void)
+{
+   static int enabled = -1;
+   if (enabled < 0)
+      enabled = debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false);
+   return enabled != 0;
+}
+
+/* Single line, distinct tag. The multi-line dump below has twice been reported
+ * as "only the header printed", so anything that must not be lost in a log
+ * filter goes through this instead. */
+void
+hk_g17p_trace_line(const char *label, uint64_t base, const void *data,
+                   size_t len)
+{
+   const uint8_t *bytes = data;
+   fprintf(stderr, "G17P %s: base=%" PRIx64 " len=%zu bytes=", label, base,
+           len);
+   for (size_t i = 0; i < len; ++i)
+      fprintf(stderr, "%02x", bytes[i]);
+   fprintf(stderr, "\n");
+   fflush(stderr);
+}
+
+void
+hk_g17p_trace_hexdump(const char *label, uint64_t base, const void *data,
+                      size_t len)
+{
+   const uint8_t *bytes = data;
+   fprintf(stderr, "G17P dump: %s base=%" PRIx64 " len=%zu\n", label, base,
+           len);
+   for (size_t off = 0; off < len; off += 16) {
+      fprintf(stderr, "G17P dump:   +%04zx ", off);
+      for (size_t i = 0; i < 16 && off + i < len; ++i)
+         fprintf(stderr, "%02x ", bytes[off + i]);
+      fprintf(stderr, "\n");
+   }
+   fflush(stderr);
+}
+
 void *
 hk_cmd_buffer_emit_cdm_terminate(struct hk_cmd_buffer *cmd, void *current)
 {
@@ -340,6 +416,18 @@ void *
 hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd, void *current)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   /* HAL200's established native direct record includes the stream
+    * terminator as its last dword.  In Metal's two-draw trace, the following
+    * VertexProgramVariant header replaces that exact dword; appending another
+    * 0xc0000000 after a final direct draw is not part of the native stream.
+    */
+   if (dev->dev.chip == AGX_CHIP_G17P && current) {
+      uint32_t tail;
+      memcpy(&tail, (uint8_t *)current - sizeof(tail), sizeof(tail));
+      if (tail == UINT32_C(0xc0000000))
+         return current;
+   }
 
    switch (agx_chip_command_stream_generation(dev->dev.chip)) {
    case AGX_CS_GENERATION_AGX2:
@@ -819,7 +907,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        linked->b.size > UINT32_MAX || s->b.info.has_preamble ||
        s->b.info.scratch_size != 0 ||
        s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
-       s->b.info.rodata.size_16 != 0 || s->b.info.texture_state_count != 0 ||
+       s->b.info.texture_state_count != 0 ||
        s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
        linked->b.uses_txf || s->data_size != 0 || s->info.set_count > 1)
       return false;
@@ -930,6 +1018,39 @@ hk_g17p_graphics_uniform_ranges(
       count++;
    }
 
+   /*
+    * Promoted constants. agx_opt_promote_constants() parks a shader's
+    * constant pool in the binary's rodata section and addresses it through a
+    * uniform, so the driver has to publish that address as a uniform range --
+    * exactly as the compute path does (hk_cmd_dispatch.c). Without it a
+    * fragment shader as simple as a constant colour is refused, because the
+    * compiler promotes its three floats.
+    *
+    * The data is read through the uniform, not the program counter, so it is
+    * addressed in the shader's own BO even though graphics executes from the
+    * linked binary. Same bounds checks as compute: the range must lie inside
+    * that BO, and both halves must be even.
+    */
+   if (count < 3 && s->b.info.rodata.size_16 != 0) {
+      const struct agx_rodata *rodata = &s->b.info.rodata;
+      const uint64_t size_B = (uint64_t)rodata->size_16 * 2;
+
+      if (!s->bo || !s->bo->va || (rodata->base_uniform & 1) != 0 ||
+          (rodata->size_16 & 1) != 0 || rodata->size_16 > 512 ||
+          rodata->offset > s->bo->size ||
+          size_B > s->bo->size - rodata->offset)
+         return false;
+
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = rodata->base_uniform,
+         .size_halfs = rodata->size_16,
+         .address = s->bo->va->addr + rodata->offset,
+      };
+   } else if (s->b.info.rodata.size_16 != 0) {
+      /* No room left in the program's three-range budget. */
+      return false;
+   }
+
    *range_count = count;
    return count <= 3;
 }
@@ -974,9 +1095,30 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
+      /* Same fail-closed USC-window containment check as the compute path in
+       * hk_cmd_dispatch.c: usc_exec_base is fixed per queue, so an exec
+       * pointer outside [shader_base, +4 GiB) can only end as an unattributed
+       * GPU page fault.
+       */
+      if (!agx_va_in_usc_window(&dev->dev, program_bo->va->addr) ||
+          !agx_va_in_usc_window(&dev->dev,
+                             linked->b.bo->va->addr + linked->b.entry_offset)) {
+         mesa_loge("G17P graphics: exec pointer outside the USC window "
+                   "[%" PRIx64 ", %" PRIx64 "): program=%" PRIx64
+                   " shader=%" PRIx64 "\n",
+                   dev->dev.shader_base,
+                   dev->dev.shader_base + AGX_USC_WINDOW_SIZE,
+                   program_bo->va->addr,
+                linked->b.bo->va->addr + linked->b.entry_offset);
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_UNKNOWN);
+         return 0;
+      }
+
       const struct hk_agx3_g17p_graphics_program_desc desc = {
          .program_va = program_bo->va->addr,
-         .shader_va = linked->b.bo->va->addr,
+         /* The container's entry point, not the allocation base: the
+       * shader loader reads the block-size dword at entry - 0x80. */
+      .shader_va = linked->b.bo->va->addr + linked->b.entry_offset,
          .uniform_ranges = ranges,
          .uniform_range_count = range_count,
          .shader_binary_size = linked->b.size,
@@ -1126,6 +1268,74 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    struct hk_rendering_state *render = &cmd->state.gfx.render;
    uint8_t *map = cs->current;
 
+   hk_drm_attachment_set_init(&cs->fragment_attachments);
+
+   /* Retain the image allocation spans now. A command buffer may contain
+    * several VDM commands with different render state, while queue submission
+    * happens only after all of them have been recorded. */
+   struct hk_attachment_view_ref {
+      struct hk_image_view *view;
+      VkImageAspectFlags aspect;
+   } views[(2 * HK_MAX_RTS) + 4];
+   static_assert(ARRAY_SIZE(views) == HK_DRM_MAX_FRAGMENT_ATTACHMENTS,
+                 "fragment attachment capture capacity");
+   unsigned view_count = 0;
+
+   for (unsigned i = 0; i < render->color_att_count; ++i) {
+      views[view_count++] = (struct hk_attachment_view_ref){
+         .view = render->color_att[i].iview,
+         .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+      };
+      views[view_count++] = (struct hk_attachment_view_ref){
+         .view = render->color_att[i].resolve_iview,
+         .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+      };
+   }
+
+   views[view_count++] = (struct hk_attachment_view_ref){
+      .view = render->depth_att.iview,
+      .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+   };
+   views[view_count++] = (struct hk_attachment_view_ref){
+      .view = render->depth_att.resolve_iview,
+      .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+   };
+   views[view_count++] = (struct hk_attachment_view_ref){
+      .view = render->stencil_att.iview,
+      .aspect = VK_IMAGE_ASPECT_STENCIL_BIT,
+   };
+   views[view_count++] = (struct hk_attachment_view_ref){
+      .view = render->stencil_att.resolve_iview,
+      .aspect = VK_IMAGE_ASPECT_STENCIL_BIT,
+   };
+
+   assert(view_count <= ARRAY_SIZE(views));
+   for (unsigned i = 0; i < view_count; ++i) {
+      struct hk_image_view *view = views[i].view;
+      if (!view)
+         continue;
+
+      struct hk_image *image =
+         container_of(view->vk.image, struct hk_image, vk);
+      const uint8_t image_plane =
+         views[i].aspect == VK_IMAGE_ASPECT_COLOR_BIT
+            ? view->planes[0].image_plane
+            : hk_image_aspects_to_plane(image, views[i].aspect);
+      if (image_plane >= image->plane_count) {
+         cs->fragment_attachments.complete = false;
+         continue;
+      }
+
+      const struct hk_image_plane *plane = &image->planes[image_plane];
+      const uint64_t size = plane->layout.size_B;
+      if (!plane->addr || !size) {
+         cs->fragment_attachments.complete = false;
+         continue;
+      }
+
+      hk_drm_attachment_set_add(&cs->fragment_attachments, plane->addr, size);
+   }
+
    if (dev->dev.chip == AGX_CHIP_G17P) {
       /* The kext preserves a zero final VDM word when this selector is the
        * UINT32_MAX sentinel.  This reproduces m1n1's direct-triangle prefix. */
@@ -1227,6 +1437,42 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 
       memcpy(map, records, sizeof(records));
       map += sizeof(records);
+   } else if (dev->dev.chip == AGX_CHIP_G17P) {
+      /* PPPEncoderGen6's inspected G17P fixed-layout opening is one exact
+       * W-clamp/Cull-2 payload, not the legacy AGX2 selector graph below.
+       * Keep the payload in the compact VDM window just like every other
+       * nested HAL200 PPP pointer.
+       */
+      struct agx_ppp_w_clamp_cull2_core initial;
+      const struct agx_ppp_w_clamp_cull2_fields fields = {
+         .w_clamp_raw = 0,
+         .cull2_raw = UINT32_C(0x80),
+      };
+
+      if (!agx_ppp_w_clamp_cull2_core_pack(dev->dev.chip, &fields,
+                                            &initial)) {
+         mesa_loge("no grounded G17P initial PPP payload for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk,
+                                     VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+
+      struct agx_ptr T =
+         hk_pool_vdm_alloc(cmd, initial.length, AGX_PPP_HEADER_ALIGN);
+      if (!T.cpu)
+         return;
+
+      memcpy(T.cpu, initial.bytes, initial.length);
+      if (!agx_ppp_emit_state(dev->dev.chip, &map, T.gpu, initial.length)) {
+         mesa_loge("failed to emit G17P initial PPP state for %s",
+                   agx_chip_name(dev->dev.chip));
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         return;
+      }
+
+      if (hk_g17p_launch_trace_enabled())
+         hk_g17p_trace_line("ppp-initial", T.gpu, T.cpu, initial.length);
    } else {
       struct AGX_PPP_HEADER present = {
          .w_clamp = true,
@@ -1237,7 +1483,7 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       };
 
       size_t size = agx_ppp_update_size(&present);
-      struct agx_ptr T = hk_pool_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
+      struct agx_ptr T = hk_pool_vdm_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
       if (!T.cpu)
          return;
 
@@ -1250,13 +1496,18 @@ hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       agx_ppp_push(&ppp, VARYING_2, cfg);
       /* clang-format on */
 
-      if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
-          !agx_ppp_fini(dev->dev.chip, &map, &ppp)) {
+      const bool ppp_ok = agx_ppp_legacy_payload_supported(dev->dev.chip) &&
+                          agx_ppp_fini(dev->dev.chip, &map, &ppp);
+      if (!ppp_ok) {
          mesa_loge("no grounded legacy PPP payload/finalizer for %s",
                    agx_chip_name(dev->dev.chip));
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
+
+      if (hk_g17p_launch_trace_enabled())
+         hk_g17p_trace_line("ppp-initial", ppp.gpu_base, ppp.cpu_base,
+                            ppp.total_size);
    }
    cs->current = map;
 

@@ -57,6 +57,20 @@ bool agx3_cf_icmp_reg(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
 bool agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                       unsigned slot, uint16_t src0, uint8_t imm,
                       uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+/*
+ * Compare a 16-bit register against the immediate zero -- the shape every
+ * branch on a boolean takes, since Mesa keeps booleans in 16-bit halves.
+ *
+ * The compare width lives in f10 (1 = 16-bit, 2 = 32-bit); Apple's own
+ * `if (ushort != 0)` sets it to 1 and adds f14, where the 32-bit form has
+ * neither. Probe-witnessed with `metal-nt -arch applegpu_g16g`; the non-zero
+ * 16-bit immediate and 16-bit register/register compares are a different
+ * encoding point (ep0) and are not covered here.
+ */
+bool agx3_cf_icmp_zero16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                         unsigned slot, uint16_t src0,
+                         uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+
 bool agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
                       bool or_nan, unsigned slot, uint16_t src0, uint16_t src1,
                       uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);

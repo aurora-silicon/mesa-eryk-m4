@@ -1,0 +1,176 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "agx3_iadd_core.h"
+
+#include "agx3_binder.h"
+
+#define KV(f, v) {(uint16_t)(f), (uint64_t)(v)}
+
+bool
+agx3_iadd_encode(enum agx_isa_encoding encoding,
+                 const struct agx3_iadd_desc *d,
+                 uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
+{
+   if (d == NULL || out == NULL || len == NULL)
+      return false;
+
+   const bool agx3b = encoding == AGX_ISA_ENCODING_AGX3B;
+   if (!agx3b && encoding != AGX_ISA_ENCODING_AGX3C)
+      return false;
+
+   /* Six scoreboard slots on AGX3b, eight on AGX3c. */
+   const unsigned slots = agx3b ? 6 : 8;
+
+   /* A 32-bit destination spans two halves. The source is one half when
+    * narrow, an aligned pair otherwise. */
+   if ((d->dest & 1) || d->dest + 2 > 256)
+      return false;
+   if (d->src_16 ? (d->src >= 256) : ((d->src & 1) || d->src + 2 > 256))
+      return false;
+
+   /* Only the witnessed shift range, and only real scoreboard slots. Apple's
+    * shifted adds witness 1..4; shift 0 is the unshifted form. */
+   if (d->shift > 4 || d->wait_mask >= (1u << slots))
+      return false;
+   if (d->src_a_is_register) {
+      /* Only AGX3b is witnessed for a register slot A. */
+      if (!agx3b || (d->src_a_reg & 1) || d->src_a_reg + 2 > 256 ||
+          d->immediate != 0)
+         return false;
+   }
+
+   const struct agx3_field_kv baseline_b[] = {
+      KV(9, 2), KV(10, 2), KV(23, 1), KV(24, 1), KV(38, 2), KV(42, 1),
+   };
+   /* Register slot A: f23/f24 = 2 with the value in f16 instead of f15. */
+   const struct agx3_field_kv baseline_b_reg[] = {
+      KV(9, 2), KV(10, 2), KV(23, 2), KV(24, 2), KV(38, 2), KV(39, 2),
+   };
+   const struct agx3_field_kv baseline_c[] = {
+      KV(9, 2),  KV(10, 2), KV(23, 1), KV(24, 1),
+      KV(38, 2), KV(42, 1), KV(44, 3),  KV(45, 80),
+   };
+   const struct agx3_field_kv *baseline =
+      d->src_a_is_register ? baseline_b_reg : (agx3b ? baseline_b : baseline_c);
+   const unsigned nbaseline =
+      d->src_a_is_register
+         ? sizeof(baseline_b_reg) / sizeof(baseline_b_reg[0])
+      : agx3b ? sizeof(baseline_b) / sizeof(baseline_b[0])
+              : sizeof(baseline_c) / sizeof(baseline_c[0]);
+
+   struct agx3_field_kv ov[16];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
+   if (d->src_a_is_register) {
+      ov[n++] = (struct agx3_field_kv)KV(16, d->src_a_reg);
+      /* Liveness, not baseline: see the note in the header. */
+      ov[n++] = (struct agx3_field_kv)KV(27, d->src_a_kill ? 1 : 0);
+      ov[n++] = (struct agx3_field_kv)KV(42, d->src_kill ? 1 : 0);
+   }
+   else
+      ov[n++] = (struct agx3_field_kv)KV(15, d->immediate);
+   ov[n++] = (struct agx3_field_kv)KV(31, d->src);
+   if (!d->src_a_is_register)
+      ov[n++] = (struct agx3_field_kv)KV(39, d->src_16 ? 1 : 2);
+   if (d->sign_extend)
+      ov[n++] = (struct agx3_field_kv)KV(43, 1);
+   if (d->shift)
+      ov[n++] = (struct agx3_field_kv)KV(agx3b ? 54 : 55, d->shift);
+   for (unsigned i = 0; i < slots; ++i) {
+      if (d->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV((agx3b ? 45 : 46) + i, 1);
+   }
+
+   return agx3_bind_compose(encoding, agx3b ? "iadd" : "iadd32", 0, baseline,
+                            nbaseline, ov, n, out, len);
+}
+
+bool
+agx3_imad_encode(enum agx_isa_encoding encoding,
+                 const struct agx3_imad_desc *d,
+                 uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
+{
+   if (d == NULL || out == NULL || len == NULL)
+      return false;
+
+   /* Only the AGX3b form is witnessed. */
+   if (encoding != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   if ((d->dest & 1) || d->dest + 2 > 256)
+      return false;
+   if ((d->src_a & 1) || d->src_a + 2 > 256)
+      return false;
+   if (!d->no_addend && (d->src_c_16 ? (d->src_c >= 256)
+                                     : ((d->src_c & 1) || d->src_c + 2 > 256)))
+      return false;
+   /* A pure multiply has no addend to widen or sign-extend. */
+   if (d->no_addend && (d->src_c || d->src_c_16 || d->src_c_sign_extend))
+      return false;
+   if (d->wait_mask >= (1u << 6))
+      return false;
+
+   if (d->multiplier_is_register &&
+       ((d->multiplier_reg & 1) || d->multiplier_reg + 2 > 256))
+      return false;
+
+   /*
+    * Slot B holds the multiplier. Immediate is f38/f39 = 1 with the value in
+    * f30; a register is f38/f39 = 2 with the value in f31, and carries f42,
+    * exactly as Apple emits it and as every register-slot-B `imadd` in the
+    * command-stream corpus does.
+    */
+   const struct agx3_field_kv baseline_imm[] = {
+      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2), KV(27, 1),
+      KV(38, 1), KV(39, 1), KV(53, 2), KV(57, 1),
+   };
+   const struct agx3_field_kv baseline_reg[] = {
+      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2), KV(27, 1),
+      KV(38, 2), KV(39, 2), KV(53, 2), KV(57, 1),
+   };
+   /* Pure multiply: no addend field, f11 set, and f53 drops to 1. */
+   const struct agx3_field_kv baseline_reg_nc[] = {
+      KV(9, 2),  KV(10, 2), KV(11, 1), KV(23, 2),
+      KV(24, 2), KV(27, 1), KV(38, 2), KV(39, 2), KV(53, 1),
+   };
+   if (d->no_addend && !d->multiplier_is_register)
+      return false; /* only the register-multiplier pure multiply is witnessed */
+   const struct agx3_field_kv *baseline =
+      d->no_addend ? baseline_reg_nc
+                   : (d->multiplier_is_register ? baseline_reg : baseline_imm);
+   const unsigned nbaseline =
+      d->no_addend ? (sizeof(baseline_reg_nc) / sizeof(baseline_reg_nc[0]))
+      : d->multiplier_is_register
+         ? (sizeof(baseline_reg) / sizeof(baseline_reg[0]))
+         : (sizeof(baseline_imm) / sizeof(baseline_imm[0]));
+
+   struct agx3_field_kv ov[12];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
+   ov[n++] = (struct agx3_field_kv)KV(16, d->src_a);
+   if (d->multiplier_is_register) {
+      ov[n++] = (struct agx3_field_kv)KV(31, d->multiplier_reg);
+      /* f42 is the multiplier's last-use hint, not a baseline bit. */
+      ov[n++] = (struct agx3_field_kv)KV(42, d->multiplier_kill ? 1 : 0);
+   }
+   else
+      ov[n++] = (struct agx3_field_kv)KV(30, d->multiplier);
+   if (d->no_addend) {
+      ov[n++] = (struct agx3_field_kv)KV(54, 1);
+   } else {
+      ov[n++] = (struct agx3_field_kv)KV(46, d->src_c);
+      ov[n++] = (struct agx3_field_kv)KV(54, d->src_c_16 ? 1 : 2);
+   }
+   if (d->src_c_sign_extend)
+      ov[n++] = (struct agx3_field_kv)KV(58, 1);
+   for (unsigned i = 0; i < 6; ++i) {
+      if (d->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(60 + i, 1);
+   }
+
+   return agx3_bind_compose(encoding, "imadd", 0, baseline, nbaseline, ov, n,
+                            out, len);
+}

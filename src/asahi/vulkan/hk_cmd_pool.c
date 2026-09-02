@@ -6,10 +6,52 @@
  */
 #include "hk_cmd_pool.h"
 #include "asahi/lib/agx_bo.h"
+#include "asahi/lib/agx_device.h"
+#include "drm-uapi/asahi_drm.h"
+#include "util/u_debug.h"
 
 #include "hk_device.h"
 #include "hk_entrypoints.h"
 #include "hk_physical_device.h"
+
+#define G17P_VDM_USER_BASE UINT64_C(0x1000000000)
+
+bool
+hk_g17p_vdm_low_window_enabled(const struct agx_device *dev)
+{
+   static int enabled = -1;
+
+   if (enabled < 0)
+      enabled = debug_get_bool_option("ASAHI_G17P_VDM_LOW_WINDOW", false);
+
+   return dev->chip == AGX_CHIP_G17P && enabled;
+}
+
+uint64_t
+hk_g17p_vdm_low(const struct agx_device *dev, uint64_t addr)
+{
+   assert(hk_g17p_vdm_low_window_enabled(dev));
+   assert(addr >= dev->main_heap_base);
+
+   const uint64_t offset = addr - dev->main_heap_base;
+   assert(offset < dev->main_heap_size);
+   assert(offset < BITFIELD64_BIT(39));
+
+   /* The native HAL200 encoder stores every bound render-state address as a
+    * 32-bit offset from 0x1000000000.  Main-heap allocations sit near the top
+    * of the larger compact window, so preserve their low 32 bits in a second
+    * alias rather than serializing an unrepresentable 38-bit offset into the
+    * bind-pair field.  Command-pool BOs descend linearly and retain their
+    * unique 128 KiB slots within this 4 GiB context window.
+    */
+   return (uint32_t)offset;
+}
+
+uint64_t
+hk_g17p_vdm_alias(const struct agx_device *dev, uint64_t addr)
+{
+   return G17P_VDM_USER_BASE + hk_g17p_vdm_low(dev, addr);
+}
 
 static VkResult
 hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
@@ -29,6 +71,28 @@ hk_cmd_bo_create(struct hk_cmd_pool *pool, bool usc, struct hk_cmd_bo **bo_out)
       return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
    }
 
+   if (!usc && hk_g17p_vdm_low_window_enabled(&dev->dev)) {
+      const uint64_t alias = hk_g17p_vdm_alias(&dev->dev, bo->bo->va->addr);
+      const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+
+      if (agx_bo_bind(&dev->dev, bo->bo, alias, bo->bo->size, 0, flags)) {
+         fprintf(stderr,
+                 "asahi: failed to bind G17P VDM alias %#llx\n",
+                 (unsigned long long)alias);
+         agx_bo_unreference(&dev->dev, bo->bo);
+         vk_free(&pool->vk.alloc, bo);
+         return vk_error(pool, VK_ERROR_OUT_OF_DEVICE_MEMORY);
+      }
+
+      bo->g17p_vdm_alias = alias;
+      fprintf(stderr,
+              "asahi: G17P VDM command BO full=%#llx alias=%#llx low=%#llx size=%#llx\n",
+              (unsigned long long)bo->bo->va->addr,
+              (unsigned long long)alias,
+              (unsigned long long)(alias - G17P_VDM_USER_BASE),
+              (unsigned long long)bo->bo->size);
+   }
+
    bo->map = agx_bo_map(bo->bo);
 
    *bo_out = bo;
@@ -39,6 +103,10 @@ static void
 hk_cmd_bo_destroy(struct hk_cmd_pool *pool, struct hk_cmd_bo *bo)
 {
    struct hk_device *dev = hk_cmd_pool_device(pool);
+   if (bo->g17p_vdm_alias) {
+      agx_bo_bind(&dev->dev, NULL, bo->g17p_vdm_alias, bo->bo->size, 0,
+                  DRM_ASAHI_BIND_UNBIND);
+   }
    agx_bo_unreference(&dev->dev, bo->bo);
    vk_free(&pool->vk.alloc, bo);
 }

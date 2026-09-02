@@ -393,8 +393,107 @@ if with_tests
     )
 
     executable(
+      'g17p-hostcopy-triangle',
+      files('tests/g17p_offscreen_triangle.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args, '-DG17P_HOST_IMAGE_COPY=1'],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-render-only',
+      files('tests/g17p_render_only.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
       'g17p-vulkan-compute',
       files('tests/g17p_vulkan_compute.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    # Same probe, minimal shader: one store of a computed constant, no
+    # constant-data array. Isolates "does any G17P dispatch execute" from
+    # "does the constant-data path work".
+    # No descriptor set at all: set_count == 0, so the Ioto preamble has
+    # nothing to load either. The only dispatch that touches no memory before
+    # OR during the shader.
+    executable(
+      'g17p-vulkan-compute-noroot',
+      files('tests/g17p_vulkan_compute_noroot.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    # No memory access at run time: separates "dispatches execute and the
+    # memory access faults" from "no dispatch has ever executed". The
+    # observable is the retire duration in dmesg, not the buffer.
+    executable(
+      'g17p-vulkan-compute-null',
+      files('tests/g17p_vulkan_compute_null.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-min',
+      files('tests/g17p_vulkan_compute_min.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-count',
+      files('tests/g17p_vulkan_compute_count.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-cover',
+      files('tests/g17p_vulkan_compute_cover.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-lid',
+      files('tests/g17p_vulkan_compute_lid.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-lane',
+      files('tests/g17p_vulkan_compute_lane.c'),
+      include_directories : [inc_include],
+      dependencies : [dep_dl],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    )
+
+    executable(
+      'g17p-vulkan-compute-stride',
+      files('tests/g17p_vulkan_compute_stride.c'),
       include_directories : [inc_include],
       dependencies : [dep_dl],
       c_args : [c_msvc_compat_args],

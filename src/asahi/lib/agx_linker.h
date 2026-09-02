@@ -20,6 +20,16 @@ struct agx_linked_shader {
     * BO size is not a safe disassembler bound. */
    size_t size;
 
+   /* Byte offset of the entry point inside `bo`.
+    *
+    * Zero everywhere except G17P, where the executable is wrapped in Apple's
+    * AGX3 code container and the entry sits at +0x3C0.  The shader loader
+    * reads the container's block-size dword at `entry - 0x80`, so the entry
+    * address handed to LDSHDR is `bo->va->addr + entry_offset`, never the BO
+    * base -- a shader at offset 0 has nothing mapped in front of it and the
+    * loader's first read takes a GMMU page fault. */
+   uint32_t entry_offset;
+
    /* Aggregated main-program resources after fast linking. */
    uint32_t scratch_size;
    uint16_t nr_gprs;
@@ -48,6 +58,10 @@ struct agx_linked_shader {
    struct agx_output_select_packed osel;
    struct agx_fragment_control_packed fragment_control;
 };
+
+/* Write the AGX3 code container's fixed 0x340-byte leading block. */
+#define AGX3_CONTAINER_LEAD_SIZE 0x340u
+void agx3_build_container_lead(uint8_t *image);
 
 bool agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
                    bool fragment, struct agx_shader_part *main,

@@ -1,0 +1,89 @@
+/*
+ * Copyright 2026 Aurora Silicon
+ * SPDX-License-Identifier: MIT
+ *
+ * Writers for the AGX3 *staging* register file.
+ *
+ * `movmsk`, `depthf`, `uvsw` and the texture coordinate operand do not name a
+ * general register. Their operand field is selected by the destination-class
+ * selector f9 = 5, and it indexes a separate file that only a small set of
+ * instructions can write. agx3_tex_core has carried one such writer since the
+ * sampler work (the coordinate `copy`); this header collects the whole family
+ * so the coverage/depth writeout path can reach it too.
+ *
+ * The destination-class selector is shared by every AGX3 form:
+ *
+ *   f9 = 2  general register, index in f2, plus the one-bit hint f11
+ *   f9 = 3  uniform / IOTO destination, index in f3
+ *   f9 = 4  thread-parameter-store spill slot, index in f4
+ *   f9 = 5  staging register, index in f5, with kill f13 and slot f12
+ *
+ * A staging write is asynchronous: it takes a scoreboard slot (f12) that the
+ * consuming writeout instruction waits on. That is why `copy`, `ldimm.ep2` and
+ * the staging `clr` all carry f12 while their general-register siblings do not.
+ *
+ * Evidence (G17P / AGX3b, offline `applegpu-nt -arch applegpu_g17p`, decoded
+ * with the composer that also generates Mesa's own encoder tables):
+ *
+ *  - `ldimm.ep2` staging form: three distinct witnesses in every Apple vertex
+ *    object of apple-g17p-isa.metalar, e.g. `0c 80 23 3e 00 00 00 0c 40 20`
+ *    = staging[0] <- 0x3F800000 on slot 2, and the discard constant
+ *    `0c 80 23 fe 1c 0c ff 0f 40 00` = staging[0] <- 0xFFFFFF00 on slot 1.
+ *  - staging `clr`: `1b 00 20 04` = staging[2] <- 0, slot 1 (vmain).
+ *  - general `clr`: `0b 00 00 00` / `1b 00 00 00` / `2b 00 00 00` /
+ *    `3b 00 00 00` = r0/r2/r4/r6 <- 0 (uint4(0) store probe).
+ *
+ * AGX3c has all three forms but no witness, so every entry point here refuses
+ * anything but AGX3b rather than guessing the longer encoding's constants.
+ */
+
+#pragma once
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "asahi/lib/agx_chip.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* copy is 10 bytes, ldimm.ep2 is 10 bytes, clr.ep0 is 4. */
+#define AGX3_STAGE_MAX_LENGTH 10u
+
+/*
+ * staging[dest] <- reg[src], 32-bit, taking scoreboard slot `slot`.
+ *
+ * This is exactly agx3_tex_stage_copy; it is re-exported here so the writeout
+ * path does not have to include the texture header to reach a general encoder.
+ */
+bool agx3_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                     uint8_t slot, uint16_t wait_mask,
+                     uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
+/* staging[dest] <- imm32, 32-bit, taking scoreboard slot `slot`. */
+bool agx3_stage_ldimm(enum agx_isa_encoding enc, uint16_t dest, uint32_t imm,
+                      bool kill, uint8_t slot, uint16_t wait_mask,
+                      uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
+/* staging[dest] <- 0, 32-bit, taking scoreboard slot `slot`. */
+bool agx3_stage_clr(enum agx_isa_encoding enc, uint16_t dest, bool kill,
+                    uint8_t slot, uint8_t out[AGX3_STAGE_MAX_LENGTH],
+                    uint8_t *len);
+
+/* staging[dest] <- reg[src] with the operand's last-use bit f13 set. Apple
+ * escalates to the ten-byte `copy.ep1` for this; the four-byte compact form
+ * cannot carry the bit. */
+bool agx3_stage_copy_kill(enum agx_isa_encoding enc, uint16_t dest,
+                          uint16_t src, bool kill, uint8_t slot,
+                          uint16_t wait_mask,
+                          uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
+/* reg[dest] <- 0. `half` selects the 16-bit form (f10 = 1), which cbits uses;
+ * `hint` is the one-bit destination flag f11. */
+bool agx3_clr(enum agx_isa_encoding enc, uint16_t dest, bool half, bool hint,
+              uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
+#ifdef __cplusplus
+}
+#endif

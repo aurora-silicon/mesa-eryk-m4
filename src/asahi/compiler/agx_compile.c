@@ -715,6 +715,55 @@ agx_wait_pixel_mask(agx_builder *b, uint32_t mask)
    }
 }
 
+/*
+ * AGX3's `lstcol` carries only a width, so unlike AGX2's st_tile it cannot
+ * normalize on the way out: an 8-bit normalized target has to arrive already
+ * packed, two channels to a 16-bit register. `fltnorm` is that pack -- it
+ * clamps and scales two 32-bit floats into the two halves of one 16-bit
+ * register -- and Apple's own G17P fragment shaders spend exactly
+ * ceil(channels / 2) of them before every 8-bit colour store.
+ *
+ * Returns the number of packed 16-bit registers, or 0 if this store is not one
+ * this path can pack, in which case the caller keeps the unpacked value and
+ * the AGX3 packer refuses the shader rather than storing raw floats through a
+ * width that would truncate them.
+ */
+static unsigned
+agx_pack_normalized_agx3(agx_builder *b, const agx_index *channels,
+                         unsigned nr_channels, enum agx_format format,
+                         agx_index *packed)
+{
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
+      return 0;
+
+   /* Only the two normalized 8-bit formats are witnessed. sRGB needs an
+    * encode `fltnorm` has no field for, and every wider format stores its
+    * channels unpacked. */
+   if (format != AGX_FORMAT_U8NORM && format != AGX_FORMAT_S8NORM)
+      return 0;
+
+   if (nr_channels < 1 || nr_channels > 4)
+      return 0;
+
+   /* Every fltnorm witness takes 32-bit float sources. */
+   for (unsigned i = 0; i < nr_channels; ++i) {
+      if (channels[i].size != AGX_SIZE_32)
+         return 0;
+   }
+
+   unsigned n = 0;
+   for (unsigned i = 0; i < nr_channels; i += 2) {
+      const agx_index hi =
+         (i + 1 < nr_channels) ? channels[i + 1] : agx_null();
+      /* The destination is a 16-bit half, not the sources' 32 bits, so the
+       * generated temp-allocating helper cannot be used here. */
+      agx_index dest = agx_temp(b->shader, AGX_SIZE_16);
+      agx_fltnorm_agx3_to(b, dest, channels[i], hi, format);
+      packed[n++] = dest;
+   }
+   return n;
+}
+
 static agx_instr *
 agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
 {
@@ -733,13 +782,21 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
       compacted[compact_count++] = agx_extract_nir_src(b, instr->src[0], i);
    }
 
-   agx_index collected = agx_emit_collect(b, compact_count, compacted);
+   const enum agx_format format =
+      agx_format_for_pipe(nir_intrinsic_format(instr));
+
+   agx_index packed[4] = {agx_null()};
+   const unsigned nr_packed =
+      agx_pack_normalized_agx3(b, compacted, compact_count, format, packed);
+
+   agx_index collected =
+      nr_packed ? agx_emit_collect(b, nr_packed, packed)
+                : agx_emit_collect(b, compact_count, compacted);
    agx_index coords = explicit ? agx_src_index(&instr->src[2]) : agx_null();
 
    b->shader->out->tag_write_disable = false;
    return agx_st_tile(b, collected, agx_src_index(&instr->src[1]), coords,
-                      agx_format_for_pipe(nir_intrinsic_format(instr)),
-                      nir_intrinsic_write_mask(instr),
+                      format, nir_intrinsic_write_mask(instr),
                       nir_intrinsic_base(instr), explicit);
 }
 
@@ -773,6 +830,57 @@ agx_emit_store_zs(agx_builder *b, nir_intrinsic_instr *instr)
    return agx_zs_emit(b, agx_src_index(&instr->src[0]), zs, base);
 }
 
+/*
+ * The tilebuffer read half of the same story as agx_pack_normalized_agx3():
+ * an 8-bit normalized attachment comes back packed, two channels to a 16-bit
+ * register, and `normflt` is the unpack -- one 16-bit register in, two 32-bit
+ * floats out. Apple's programmable-blending shaders spend exactly
+ * ceil(channels / 2) of them straight after the tile load.
+ *
+ * Returns true if it handled the load.
+ */
+static bool
+agx_unpack_normalized_agx3(agx_builder *b, agx_index dest,
+                           nir_intrinsic_instr *instr, enum agx_format format,
+                           unsigned nr_comps)
+{
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
+      return false;
+   if (format != AGX_FORMAT_U8NORM && format != AGX_FORMAT_S8NORM)
+      return false;
+   if (nr_comps < 1 || nr_comps > 4 || dest.size != AGX_SIZE_32)
+      return false;
+
+   const unsigned nr_packed = DIV_ROUND_UP(nr_comps, 2);
+
+   agx_index packed = agx_temp(b->shader, AGX_SIZE_16);
+   packed.channels_m1 = nr_packed - 1;
+   agx_ld_tile_to(b, packed, agx_src_index(&instr->src[0]), agx_null(), format,
+                  BITFIELD_MASK(nr_comps), nir_intrinsic_base(instr), false);
+
+   agx_index halves[4] = {agx_null()};
+   agx_emit_split(b, halves, packed, nr_packed);
+
+   agx_index channels[4] = {agx_null()};
+   for (unsigned i = 0; i < nr_packed; ++i) {
+      /* One unpack per packed register; each yields a 32-bit pair, which the
+       * split below turns back into the two scalar channels. */
+      agx_index pair = agx_temp(b->shader, AGX_SIZE_32);
+      const unsigned lanes = MIN2(2u, nr_comps - i * 2);
+      pair.channels_m1 = lanes - 1;
+      agx_normflt_agx3_to(b, pair, halves[i], format);
+
+      agx_index unpacked[2] = {agx_null()};
+      agx_emit_split(b, unpacked, pair, lanes);
+      for (unsigned c = 0; c < lanes; ++c)
+         channels[i * 2 + c] = unpacked[c];
+   }
+
+   agx_emit_collect_to(b, dest, nr_comps, channels);
+   agx_emit_cached_split(b, dest, nr_comps);
+   return true;
+}
+
 static void
 agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
                           nir_intrinsic_instr *instr)
@@ -780,8 +888,13 @@ agx_emit_local_load_pixel(agx_builder *b, agx_index dest,
    agx_wait_pixel_mask(b, 0x8);
 
    unsigned nr_comps = instr->def.num_components;
-   agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]), agx_null(),
-                  agx_format_for_pipe(nir_intrinsic_format(instr)),
+   const enum agx_format format =
+      agx_format_for_pipe(nir_intrinsic_format(instr));
+
+   if (agx_unpack_normalized_agx3(b, dest, instr, format, nr_comps))
+      return;
+
+   agx_ld_tile_to(b, dest, agx_src_index(&instr->src[0]), agx_null(), format,
                   BITFIELD_MASK(nr_comps), nir_intrinsic_base(instr), false);
    agx_emit_cached_split(b, dest, nr_comps);
 }
@@ -1969,6 +2082,27 @@ agx_emit_imadshl_agx(agx_builder *b, nir_alu_instr *alu, agx_index dst,
 
       return agx_iadd_to(b, dst, s0, s2, shift);
    } else {
+      /*
+       * AGX3 has no shifted imad. Apple's own compiler does not emit one:
+       * across `o[i] = a[i]*b[i] + (c[i] << N)` kernels for N = 1, 2 and 3,
+       * the imadd is BYTE-IDENTICAL and the shift appears on a following
+       * iadd instead. So split it the same way rather than inventing a shift
+       * field for an instruction that has none.
+       *
+       * imad(a, b, c, s) is a*b + (c << s), and integer wraparound makes the
+       * split exact: the product is computed unshifted, then added with the
+       * shift on the addend. Both halves are witnessed byte-exactly -- the
+       * pure-multiply imadd and the shifted iadd -- in test-agx3-iadd-core.c.
+       */
+      const enum agx_isa_encoding enc = b->shader->key->dev.encoding;
+      const bool agx3 = enc != AGX_ISA_ENCODING_AGX2;
+
+      if (agx3 && shift != 0) {
+         agx_index product = agx_temp(b->shader, dst.size);
+         agx_imad_to(b, product, s0, s1, agx_immediate(0), 0);
+         return agx_iadd_to(b, dst, product, s2, shift);
+      }
+
       return agx_imad_to(b, dst, s0, s1, s2, shift);
    }
 }
@@ -3061,8 +3195,8 @@ set_speculate(nir_builder *b, nir_instr *instr, UNUSED void *_)
 }
 
 static void
-agx_optimize_nir(nir_shader *nir, bool soft_fault, uint16_t *preamble_size,
-                 uint8_t *ts_count, uint8_t *ss_count)
+agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
+                 uint16_t *preamble_size, uint8_t *ts_count, uint8_t *ss_count)
 {
    /* This runs only once up front since other optimizations don't affect it */
    NIR_PASS(_, nir, nir_opt_shrink_stores, true);
@@ -3107,7 +3241,23 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, uint16_t *preamble_size,
       .lower_subgroup_masks = true,
    };
 
-   NIR_PASS(progress, nir, nir_opt_uniform_atomics, true);
+   /*
+    * Rewrites a uniform-address atomic into "one lane of the subgroup performs
+    * the whole operation", which needs ACTIVE_THREAD_INDEX_IN_SUBGROUP and
+    * TOTAL_ACTIVE_THREADS_IN_SUBGROUP. Apple's AGX3 numbers for those two
+    * special registers are not witnessed (agx3_map_sr() carries only the
+    * registers we have witnesses for), so on AGX3 the optimized form cannot
+    * be encoded and every shader containing a uniform-address atomic failed
+    * to compile.
+    *
+    * Skipping the optimization keeps atomics CORRECT -- each lane performs its
+    * own atomic, which is what the unoptimized program means -- at the cost of
+    * one atomic per lane instead of one per subgroup on uniform addresses.
+    * Re-enable once those two SR numbers are witnessed rather than guessed; a
+    * wrong SR number would silently elect the wrong lane.
+    */
+   if (uniform_atomics)
+      NIR_PASS(progress, nir, nir_opt_uniform_atomics, true);
 
    /* Lower addressing modes. The sooner we do this, the sooner we get rid of
     * amul/aadd instructions and can let nir_opt_algebraic do its job. But we
@@ -4014,8 +4164,12 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    info->push_count = key->reserved_preamble;
    const bool form_preamble = !key->secondary && !key->no_preamble;
+   const bool is_agx3 = key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
+                       key->dev.encoding == AGX_ISA_ENCODING_AGX3C;
+
    agx_optimize_nir(
-      nir, key->dev.soft_fault, form_preamble ? &info->push_count : NULL,
+      nir, key->dev.soft_fault, !is_agx3,
+      form_preamble ? &info->push_count : NULL,
       (form_preamble && key->promote_textures) ? &info->texture_state_count
                                               : NULL,
       (form_preamble && key->promote_textures) ? &info->sampler_state_count

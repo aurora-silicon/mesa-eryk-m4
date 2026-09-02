@@ -6,11 +6,51 @@
 #include "agx_va_runtime_hole.h"
 
 #include "util/macros.h"
+#include "util/u_math.h"
 
 struct agx_va_interval {
    uint64_t start;
    uint64_t end;
 };
+
+bool
+agx_va_split_user_window(uint64_t user_start, uint64_t user_size,
+                         uint64_t *out_start, uint64_t *out_size)
+{
+   if (!out_start || !out_size || user_start == 0 || user_size == 0)
+      return false;
+
+   /* Round the user VA window to powers-of-two... */
+   user_start = util_next_power_of_two64(user_start);
+   user_size = util_next_power_of_two64(user_size + 1) >> 1;
+
+   /* ...so when we cut user size in half to emulate sparse buffers... */
+   user_size /= 2;
+
+   /*
+    * ...and again as many times as it takes for the whole window to sit below
+    * the bit we are about to steal.  Upstream halves at most once more, which
+    * is exactly enough for AGX2: a 39-bit user top leaves a window equal to
+    * the rounded start, so one extra halving lands it below.  AGX3 needs the
+    * loop -- T8140's 42-bit root leaves a window eight times the start, so a
+    * single fixup would still straddle the sparse bit and the read-only alias
+    * of a high allocation would carry out of its own half.
+    */
+   while (user_size >= user_start)
+      user_size /= 2;
+
+   if (user_size == 0)
+      return false;
+
+   /* ...we can distinguish the top/bottom half by an address bit */
+   if ((user_start & user_size) != 0 ||
+       ((user_start + (user_size - 1)) & user_size) != 0)
+      return false;
+
+   *out_start = user_start;
+   *out_size = user_size;
+   return true;
+}
 
 bool
 agx_va_overlaps_runtime_graph_hole(enum agx_chip chip, uint64_t addr,

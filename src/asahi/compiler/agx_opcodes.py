@@ -343,6 +343,21 @@ op("sample_mask", (0x7fc1, 6, _), dests = 0, srcs = 2,
 op("zs_emit", (0x41, 4, _), dests = 0, srcs = 2,
               can_eliminate = False, imms = [ZS], schedule_class = "coverage")
 
+# AGX3's tile store carries a *width*, not a format: `lstcol` cannot normalize
+# on the way out the way AGX2's st_tile could. A normalized 8-bit target is
+# therefore packed first -- `fltnorm` takes two 32-bit floats and writes them,
+# clamped and scaled, into the two halves of one 16-bit register, so a
+# four-channel 8-bit store costs exactly two of them. Sources: the two
+# channels; the second is null for an odd trailing channel. FORMAT selects
+# unsigned or signed normalization.
+op("fltnorm_agx3", _, dests = 1, srcs = 2, imms = [FORMAT], is_float = True,
+   agx3_mnemonic = "fltnorm")
+
+# The tilebuffer-read inverse: one 16-bit register of packed normalized lanes
+# in, a 32-bit float pair out.
+op("normflt_agx3", _, dests = 1, srcs = 1, imms = [FORMAT], is_float = True,
+   agx3_mnemonic = "normflt")
+
 # Sources: sample mask, explicit coords (if present)
 op("ld_tile", (0x49, 8, _), dests = 1, srcs = 2,
         imms = [FORMAT, MASK, PIXEL_OFFSET, EXPLICIT_COORDS], can_reorder = False,

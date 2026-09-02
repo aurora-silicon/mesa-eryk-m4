@@ -323,8 +323,12 @@ agx_bo_dump_all(struct agx_device *dev)
          continue;
 
       if (verbose) {
-         fprintf(stderr, "%u: %s %zu KiB\n", handle, bo->label,
-                 bo->size / 1024);
+         fprintf(stderr,
+                 "%u: %s %zu KiB va=%#llx span=%#llx flags=%#x heap=%s\n",
+                 handle, bo->label, bo->size / 1024,
+                 (unsigned long long)(bo->va ? bo->va->addr : 0),
+                 (unsigned long long)(bo->va ? bo->va->size_B : 0), bo->flags,
+                 bo->va && (bo->va->flags & AGX_VA_USC) ? "usc" : "main");
       }
 
       account_bo(&accum, bo);

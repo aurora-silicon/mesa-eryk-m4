@@ -30,6 +30,10 @@ enum agx3_subgroup_shuffle_op {
 };
 
 enum agx3_subgroup_lane_kind {
+   /* An immediate lane index, in f29 with the class selector f37 = 1. This is
+    * what Apple emits for `simd_broadcast(v, K)`; PROVEN against the corpus
+    * csimd shader (lane 3) and three offline g17p probes (lanes 0, 3, 5). */
+   AGX3_SUBGROUP_LANE_IMMEDIATE = 1,
    AGX3_SUBGROUP_LANE_REGISTER = 2,
    AGX3_SUBGROUP_LANE_UNIFORM = 3,
 };
@@ -42,6 +46,10 @@ struct agx3_subgroup_shuffle_desc {
    uint16_t src;
    uint16_t lane;
    uint16_t wait_mask;
+   /* f11, the one-bit general-destination hint. Only consulted on the
+    * immediate-lane path; the register and uniform paths keep the constants
+    * their own corpus pinned. */
+   bool dest_hint;
 };
 
 enum agx3_subgroup_ballot_type {
@@ -82,6 +90,17 @@ struct agx3_subgroup_reduce_desc {
    uint16_t dest;
    uint16_t src;
    uint16_t wait_mask;
+   /* f11, the general-destination hint. */
+   bool dest_hint;
+   /*
+    * Float reductions carry a two-way liveness selector on their source:
+    * f29 = 1 when this is the last read, f27 = 1 when the value stays live.
+    * Both are witnessed on g17p -- f29 in the `o[t] = simd_sum(a[t])` probes,
+    * where the source dies, and f27 in the corpus csimd shader, where it is
+    * reduced twice. The default (false) keeps the f29 the previously pinned
+    * corpus expects.
+    */
+   bool src_live;
 };
 
 bool agx3_subgroup_encode_shuffle(enum agx_isa_encoding enc,

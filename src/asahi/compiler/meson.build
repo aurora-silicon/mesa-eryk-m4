@@ -29,6 +29,9 @@ libasahi_agx_files = files(
   'agx_pack.c',
   'agx3_pack.c',
   'agx3_select_core.c',
+  'agx3_copy_core.c',
+  'agx3_isel_core.c',
+  'agx3_iadd_core.c',
   'agx3_pack_binary.c',
   'agx3_compose/agx3_compose.c',
   'agx3_compose/agx3b_tables.c',
@@ -50,6 +53,10 @@ libasahi_agx_files = files(
   'agx3_vary_core.c',
   'agx3_tile_core.c',
   'agx3_pixel_core.c',
+  'agx3_stage_core.c',
+  'agx3_fltnorm_core.c',
+  'agx3_writeout_core.c',
+  'agx3_zs_core.c',
   'agx3_rt_core.c',
   'agx3_slot_core.c',
   'agx3_alu_core.c',
@@ -240,6 +247,274 @@ if with_tests
   )
 
   test(
+    'agx3_falu_mod_core',
+    executable(
+      'agx3_falu_mod_core_test',
+      files(
+        'agx3_falu_mod_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-falu-mod-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_vary_core',
+    executable(
+      'agx3_vary_core_test',
+      files(
+        'agx3_vary_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-vary-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_cf_core',
+    executable(
+      'agx3_cf_core_test',
+      files(
+        'agx3_cf_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-cf-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_mem_core',
+    executable(
+      'agx3_mem_core_test',
+      files(
+        'agx3_mem_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-mem-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_alu_core',
+    executable(
+      'agx3_alu_core_test',
+      files(
+        'agx3_alu_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-alu-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_select_core',
+    executable(
+      'agx3_select_core_test',
+      files(
+        'agx3_select_core.c',
+        'agx3_pack.c',
+        'agx3_copy_core.c',
+        'agx3_isel_core.c',
+        'agx3_iadd_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-select-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_tile_core',
+    executable(
+      'agx3_tile_core_test',
+      files(
+        'agx3_tile_core.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'agx3_binder.c',
+        'test/test-agx3-tile-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  # Pulls in a dozen encoder cores, so link the compiler library rather than
+  # enumerating sources.
+  test(
+    'agx3_g17p_producers',
+    executable(
+      'agx3_g17p_producers_test',
+      files('test/test-agx3-g17p-producers.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+      dependencies : [idep_nir, idep_agx_opcodes_h, idep_agx_builder_h,
+                      idep_mesautil, idep_libagx],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  # Apple's own G17P texture instructions, captured on real hardware. The
+  # command-stream corpus contains no `smp` at all, so these are the only
+  # ground truth for AGX3 texture addressing.
+  test(
+    'agx3_smp_witness',
+    executable(
+      'agx3_smp_witness_test',
+      files(
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-smp-witness.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  # Apple's own decoded instructions, reproduced byte-exactly. This is the
+  # ground truth every hand-written AGX3 encoder is validated against, so it
+  # belongs in CI rather than being run by hand.
+  test(
+    'agx3_compose_corpus',
+    executable(
+      'agx3_compose_corpus_test',
+      files(
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/agx3_compose_corpus_vectors.c',
+        'test/test-agx3-compose-corpus.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_slot_core',
+    executable(
+      'agx3_slot_core_test',
+      files(
+        'agx3_slot_core.c',
+        'test/test-agx3-slot-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_iadd_core',
+    executable(
+      'agx3_iadd_core_test',
+      files(
+        'agx3_iadd_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-iadd-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_isel_core',
+    executable(
+      'agx3_isel_core_test',
+      files(
+        'agx3_isel_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-isel-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_copy_core',
+    executable(
+      'agx3_copy_core_test',
+      files(
+        'agx3_copy_core.c',
+        'agx3_binder.c',
+        'agx3_compose/agx3_compose.c',
+        'agx3_compose/agx3b_tables.c',
+        'agx3_compose/agx3c_tables.c',
+        'test/test-agx3-copy-core.c',
+      ),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_scs_core',
     executable(
       'agx3_scs_core_test',
@@ -338,6 +613,20 @@ if with_tests
       files('test/test-agx3-compile-fail-closed.c'),
       c_args : [c_msvc_compat_args, no_override_init_args],
       gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'agx3_multi_store',
+    executable(
+      'agx3_multi_store_test',
+      files('test/test-agx3-multi-store.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      include_directories : [inc_include, inc_src],
       dependencies : [idep_nir, idep_mesautil],
       link_with : [libasahi_compiler],
     ),

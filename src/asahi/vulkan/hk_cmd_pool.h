@@ -20,9 +20,18 @@ struct hk_cmd_bo {
 
    void *map;
 
+   /* Full VA of the G17P VDM alias in the architectural user window. */
+   uint64_t g17p_vdm_alias;
+
    /** Link in hk_cmd_pool::free_bos or hk_cmd_buffer::bos */
    struct list_head link;
 };
+
+struct agx_device;
+
+bool hk_g17p_vdm_low_window_enabled(const struct agx_device *dev);
+uint64_t hk_g17p_vdm_low(const struct agx_device *dev, uint64_t addr);
+uint64_t hk_g17p_vdm_alias(const struct agx_device *dev, uint64_t addr);
 
 struct hk_cmd_pool {
    struct vk_command_pool vk;

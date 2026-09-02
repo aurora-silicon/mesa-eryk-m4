@@ -107,6 +107,86 @@ test_submit_command_limit(void)
    assert(hk_drm_submit_command_limit(false, 0) == 1);
 }
 
+static void
+test_fragment_attachment_ranges(void)
+{
+   struct hk_drm_attachment_set set;
+   hk_drm_attachment_set_init(&set);
+   assert(set.complete && set.count == 0);
+
+   assert(hk_drm_attachment_set_add(&set, 0x1000, 0x1000));
+   assert(hk_drm_attachment_set_add(&set, 0x4000, 0x1000));
+   assert(set.count == 2);
+
+   /* Bridge both ranges, proving adjacency and overlap are coalesced even if
+    * the bridge is appended after both original ranges. */
+   assert(hk_drm_attachment_set_add(&set, 0x2000, 0x2000));
+   assert(set.count == 1);
+   assert(set.list[0].pointer == 0x1000);
+   assert(set.list[0].size == 0x4000);
+
+   /* Duplicate depth/stencil or resolve views do not consume another slot. */
+   assert(hk_drm_attachment_set_add(&set, 0x1800, 0x100));
+   assert(set.count == 1 && set.complete);
+
+   assert(!hk_drm_attachment_set_add(&set, 0, 0x1000));
+   assert(!set.complete);
+}
+
+static void
+append_command(uint8_t *buffer, size_t *size, uint16_t type,
+               uint16_t payload_size)
+{
+   const struct drm_asahi_cmd_header header = {
+      .cmd_type = type,
+      .size = payload_size,
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+   memcpy(buffer + *size, &header, sizeof(header));
+   *size += sizeof(header);
+   memset(buffer + *size, 0, payload_size);
+   *size += payload_size;
+}
+
+static void
+test_hardware_command_spans_skip_attachment_commands(void)
+{
+   uint8_t buffer[1024] = {0};
+   size_t size = 0;
+   append_command(buffer, &size, DRM_ASAHI_SET_FRAGMENT_ATTACHMENTS,
+                  2 * sizeof(struct drm_asahi_attachment));
+   const size_t first_render = size;
+   append_command(buffer, &size, DRM_ASAHI_CMD_RENDER,
+                  sizeof(struct drm_asahi_cmd_render));
+   append_command(buffer, &size, DRM_ASAHI_SET_COMPUTE_ATTACHMENTS,
+                  sizeof(struct drm_asahi_attachment));
+   append_command(buffer, &size, DRM_ASAHI_CMD_COMPUTE,
+                  sizeof(struct drm_asahi_cmd_compute));
+   const size_t second_span = size;
+   append_command(buffer, &size, DRM_ASAHI_SET_FRAGMENT_ATTACHMENTS, 0);
+   const size_t second_render = size;
+   append_command(buffer, &size, DRM_ASAHI_CMD_RENDER,
+                  sizeof(struct drm_asahi_cmd_render));
+
+   struct hk_drm_command_span span;
+   assert(hk_drm_next_command_span(buffer, size, 0, 2, &span));
+   assert(span.first_hardware_offset == first_render);
+   assert(span.end_offset == second_span);
+   assert(span.hardware_count == 2);
+   assert(span.render_count == 1);
+   assert(span.compute_count == 1);
+
+   assert(hk_drm_next_command_span(buffer, size, span.end_offset, 1, &span));
+   assert(span.first_hardware_offset == second_render);
+   assert(span.end_offset == size);
+   assert(span.hardware_count == 1 && span.render_count == 1);
+
+   /* A synthetic command must keep both barriers at NONE. */
+   ((struct drm_asahi_cmd_header *)buffer)->vdm_barrier = 0;
+   assert(!hk_drm_next_command_span(buffer, size, 0, 1, &span));
+}
+
 int
 main(void)
 {
@@ -114,6 +194,8 @@ main(void)
    test_exact_g17p_specs();
    test_field_order_and_flag_clear();
    test_submit_command_limit();
+   test_fragment_attachment_ranges();
+   test_hardware_command_spans_skip_attachment_commands();
    puts("Honeykrisp DRM render resource specs: all checks passed");
    return 0;
 }

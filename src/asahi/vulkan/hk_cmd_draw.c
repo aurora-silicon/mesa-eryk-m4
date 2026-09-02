@@ -15,11 +15,15 @@
 #include "agx_linker.h"
 #include "agx_nir_lower_vbo.h"
 #include "agx_ppp.h"
+#include "agx_ppp_hal200_graphics_core.h"
 #include "agx_ppp_hal300_depth_bias_scissor_core.h"
 #include "agx_ppp_viewport_payload_core.h"
+#include "agx_ppp_w_clamp_cull2_core.h"
 #include "agx_tilebuffer.h"
 #include "agx_usc.h"
 #include "agx_uvs.h"
+#include "agx_vdm_hal200_bind_tail_core.h"
+#include "agx_vdm_hal200_direct_draw_core.h"
 #include "hk_buffer.h"
 #include "hk_cmd_buffer.h"
 #include "hk_device.h"
@@ -2274,12 +2278,13 @@ translate_stencil_op(VkStencilOp vk_op)
    return (enum agx_stencil_op)vk_op;
 }
 
-static void
-hk_ppp_push_stencil_face(struct agx_ppp_update *ppp,
-                         struct vk_stencil_test_face_state s, bool enabled)
+static struct agx_fragment_stencil_packed
+hk_pack_stencil_face(struct vk_stencil_test_face_state s, bool enabled)
 {
+   struct agx_fragment_stencil_packed packed;
+
    if (enabled) {
-      agx_ppp_push(ppp, FRAGMENT_STENCIL, cfg) {
+      agx_pack(&packed, FRAGMENT_STENCIL, cfg) {
          cfg.compare = translate_compare_op(s.op.compare);
          cfg.write_mask = s.write_mask;
          cfg.read_mask = s.compare_mask;
@@ -2289,7 +2294,7 @@ hk_ppp_push_stencil_face(struct agx_ppp_update *ppp,
          cfg.stencil_fail = translate_stencil_op(s.op.fail);
       }
    } else {
-      agx_ppp_push(ppp, FRAGMENT_STENCIL, cfg) {
+      agx_pack(&packed, FRAGMENT_STENCIL, cfg) {
          cfg.compare = AGX_ZS_FUNC_ALWAYS;
          cfg.write_mask = 0xFF;
          cfg.read_mask = 0xFF;
@@ -2299,6 +2304,17 @@ hk_ppp_push_stencil_face(struct agx_ppp_update *ppp,
          cfg.stencil_fail = AGX_STENCIL_OP_KEEP;
       }
    }
+
+   return packed;
+}
+
+static void
+hk_ppp_push_stencil_face(struct agx_ppp_update *ppp,
+                         struct vk_stencil_test_face_state s, bool enabled)
+{
+   struct agx_fragment_stencil_packed packed =
+      hk_pack_stencil_face(s, enabled);
+   agx_ppp_push_packed(ppp, &packed, FRAGMENT_STENCIL);
 }
 
 static bool
@@ -2547,7 +2563,7 @@ hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
    };
 
    size_t size = agx_ppp_update_size(&present);
-   struct agx_ptr T = hk_pool_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
+   struct agx_ptr T = hk_pool_vdm_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
    if (!T.cpu)
       return;
 
@@ -2589,11 +2605,15 @@ hk_flush_vp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       }
    }
 
-   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
-       !agx_ppp_fini(dev->dev.chip, out, &ppp)) {
+   const bool ppp_ok = agx_ppp_legacy_payload_supported(dev->dev.chip) &&
+                       agx_ppp_fini(dev->dev.chip, out, &ppp);
+   if (!ppp_ok) {
       mesa_loge("no grounded legacy PPP payload/finalizer for %s",
                 agx_chip_name(dev->dev.chip));
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   } else if (hk_g17p_launch_trace_enabled()) {
+      hk_g17p_trace_line("ppp-viewport", ppp.gpu_base, ppp.cpu_base,
+                         ppp.total_size);
    }
 }
 
@@ -2682,6 +2702,210 @@ hk_flush_index(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
       cs->current = out;
       cs->restart_index = index;
    }
+}
+
+#define HK_G17P_BIND0_BYTES 0x400u
+#define HK_G17P_BIND_GROUP_OFFSET UINT32_C(0x58000)
+#define HK_G17P_VIEWPORT_OFFSET UINT32_C(0x68900)
+#define HK_G17P_DRAW_STATE_OFFSET UINT32_C(0x48000)
+
+static bool
+hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
+                              uint8_t **out)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   struct hk_graphics_state *gfx = &cmd->state.gfx;
+   struct vk_dynamic_graphics_state *dyn = &cmd->vk.dynamic_graphics_state;
+   const struct hk_rendering_state *render = &gfx->render;
+
+   if (dev->dev.chip != AGX_CHIP_G17P || !out || !*out)
+      return false;
+
+   /* Rebuild the exact compact direct-draw Bind0 page.  The first VDM pair
+    * names +0x40, while the surrounding records remain live state reached by
+    * the fixed hardware walk.
+    */
+   uint8_t bind0[HK_G17P_BIND0_BYTES] = {0};
+   for (unsigned i = 0; i < 7; ++i) {
+      const size_t base = i * 0x80;
+      const uint32_t head = UINT32_C(0x80);
+      const uint32_t body = UINT32_C(0x10040000);
+      memcpy(&bind0[base], &head, sizeof(head));
+      memcpy(&bind0[base + 0x40], &body, sizeof(body));
+   }
+   const uint32_t direct_word = UINT32_C(0x0000fcc0);
+   memcpy(&bind0[0x300], &direct_word, sizeof(direct_word));
+   /* The compact direct profile disables the seventh record body.  The
+    * generic seven-record initializer above writes 0x10040000 here, so apply
+    * Metal's explicit direct-draw delta after constructing the baseline.
+    */
+   memset(&bind0[0x340], 0, sizeof(uint32_t));
+
+   struct agx_ppp_hal200_graphics_core fs_record;
+   const struct agx_ppp_hal200_graphics_fields fs_fields = {
+      .words = {0, 0, 0, UINT32_C(0x01000000)},
+   };
+
+   struct agx_ppp_hal200_graphics_core output_record;
+   const struct agx_ppp_hal200_graphics_fields output_fields = {
+      .words = {0, 0, 0, UINT32_C(4),
+                AGX_PPP_HAL200_PRIMARY_FACE_HEADER, UINT32_C(0x00040200)},
+   };
+
+   struct agx_ppp_hal200_graphics_core primary_record;
+   const struct agx_ppp_hal200_graphics_fields primary_fields = {
+      .words = {UINT32_C(0x00040200), UINT32_C(0x07200f00),
+                UINT32_C(0x0e000000), UINT32_C(0x07200f00),
+                UINT32_C(0x0e000000), 0},
+   };
+
+   struct agx_ppp_hal200_graphics_core secondary_record;
+   const struct agx_ppp_hal200_graphics_fields secondary_fields = {
+      .words = {UINT32_C(0x00000200), UINT32_C(0x07e00000),
+                UINT32_C(0x07e00000), UINT32_C(0x0001ffff)},
+   };
+
+   struct agx_ppp_hal200_graphics_core cull_record;
+   const struct agx_ppp_hal200_graphics_fields cull_fields = {
+      .words = {UINT32_C(0x00000480)},
+   };
+
+   struct agx_ppp_w_clamp_cull2_core w_cull2_record;
+   const struct agx_ppp_w_clamp_cull2_fields w_cull2_fields = {
+      .w_clamp_raw = 0,
+      .cull2_raw = UINT32_C(0x80),
+   };
+
+   if (!agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_FS, &fs_fields,
+          &fs_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_OUTPUT, &output_fields,
+          &output_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_PRIMARY_FACE,
+          &primary_fields, &primary_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_SECONDARY_FACE,
+          &secondary_fields, &secondary_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_CULL, &cull_fields,
+          &cull_record) ||
+       !agx_ppp_w_clamp_cull2_core_pack(dev->dev.chip, &w_cull2_fields,
+                                         &w_cull2_record))
+      return false;
+
+   /* Preserve the physical +0x00..+0x73 layout from Metal.  The output
+    * window at +0x1c intentionally overlaps the primary header/control at
+    * +0x30/+0x34, and the unbound +0x14 metadata pair is part of the FS pool.
+    */
+   uint8_t bind_group[0x80] = {0};
+   const uint32_t direct_metadata = UINT32_C(0x00004e19);
+   memcpy(&bind_group[0x00], fs_record.bytes, fs_record.length);
+   memcpy(&bind_group[0x14], &direct_metadata, sizeof(direct_metadata));
+   memcpy(&bind_group[0x1c], output_record.bytes, output_record.length);
+   memcpy(&bind_group[0x30], primary_record.bytes, primary_record.length);
+   memcpy(&bind_group[0x4c], secondary_record.bytes, secondary_record.length);
+   memcpy(&bind_group[0x60], w_cull2_record.bytes, w_cull2_record.length);
+   memcpy(&bind_group[0x6c], cull_record.bytes, cull_record.length);
+
+   struct agx_ppp_viewport_payload_fields viewport_fields = {
+      .viewport_count = 1,
+   };
+   const VkViewport *vp = &dyn->vp.viewports[0];
+   unsigned minx = MIN2(vp->x, vp->x + vp->width);
+   unsigned miny = MIN2(vp->y, vp->y + vp->height);
+   unsigned maxx = MAX2(vp->x, vp->x + vp->width);
+   unsigned maxy = MAX2(vp->y, vp->y + vp->height);
+   minx = MIN2(minx, render->cr.width);
+   miny = MIN2(miny, render->cr.height);
+   maxx = MIN2(maxx, render->cr.width);
+   maxy = MIN2(maxy, render->cr.height);
+   if (dyn->vp.scissor_count > 0) {
+      const VkRect2D *s = &dyn->vp.scissors[0];
+      minx = MAX2(minx, s->offset.x);
+      miny = MAX2(miny, s->offset.y);
+      maxx = MIN2(maxx, s->offset.x + s->extent.width);
+      maxy = MIN2(maxy, s->offset.y + s->extent.height);
+   }
+
+   uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
+   agx_pack(region_clip, REGION_CLIP, cfg) {
+      cfg.enable = true;
+      cfg.min_x = minx / 32;
+      cfg.min_y = miny / 32;
+      cfg.max_x = DIV_ROUND_UP(MAX2(maxx, 1), 32);
+      cfg.max_y = DIV_ROUND_UP(MAX2(maxy, 1), 32);
+   }
+   memcpy(&viewport_fields.region_clip_raw[0], region_clip,
+          sizeof(region_clip));
+   viewport_fields.viewports[0] =
+      (struct agx_ppp_viewport_transform_raw){
+         .translate_x = fui(vp->x + 0.5f * vp->width),
+         .scale_x = fui(vp->width * 0.5f),
+         .translate_y = fui(vp->y + 0.5f * vp->height),
+         .scale_y = fui(vp->height * 0.5f),
+         .translate_z = fui(vp->minDepth),
+         .scale_z = fui(vp->maxDepth - vp->minDepth),
+      };
+
+   struct agx_ppp_viewport_payload_core viewport_record;
+   if (!agx_ppp_viewport_payload_core_pack(dev->dev.chip, &viewport_fields,
+                                            &viewport_record))
+      return false;
+
+   struct agx_bo *context_bo = dev->dev.g17p_render_context_bo;
+   uint8_t *context = context_bo ? agx_bo_map(context_bo) : NULL;
+   if (!context)
+      return false;
+
+   memcpy(&context[0], bind0, sizeof(bind0));
+   memcpy(&context[HK_G17P_BIND_GROUP_OFFSET], bind_group,
+          sizeof(bind_group));
+   memcpy(&context[HK_G17P_VIEWPORT_OFFSET], viewport_record.bytes,
+          viewport_record.length);
+   if (agx_bo_sync_for_device(context_bo, 0,
+                              AGX_G17P_RENDER_CONTEXT_SIZE))
+      return false;
+
+   if (hk_g17p_launch_trace_enabled()) {
+      hk_g17p_trace_line("hal200-bind-group", HK_G17P_BIND_GROUP_OFFSET,
+                         &context[HK_G17P_BIND_GROUP_OFFSET],
+                         sizeof(bind_group));
+      hk_g17p_trace_line("hal200-viewport", HK_G17P_VIEWPORT_OFFSET,
+                         &context[HK_G17P_VIEWPORT_OFFSET],
+                         viewport_record.length);
+   }
+
+   const struct agx_vdm_hal200_bind_pair pairs[] = {
+      {0x40, 0x700},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x00, 0x500},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x1c, 0x700},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x30, 0x500},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x4c, 0xa00},
+      {HK_G17P_VIEWPORT_OFFSET, 0x300},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x60, 0x200},
+      {HK_G17P_BIND_GROUP_OFFSET + 0x6c, 0x200},
+   };
+   struct agx_vdm_hal200_bind_tail tail;
+   if (!agx_vdm_hal200_bind_tail_pack(dev->dev.chip, pairs, &tail))
+      return false;
+
+   memcpy(*out, tail.bytes, tail.length);
+   *out += tail.length;
+   if (hk_g17p_launch_trace_enabled()) {
+      fprintf(stderr,
+              "G17P HAL200 bind tail: bind0=%08x fs=%08x output=%08x "
+              "primary=%08x secondary=%08x viewport=%08x wcull2=%08x "
+              "cull=%08x\n",
+              pairs[0].context_offset, pairs[1].context_offset,
+              pairs[2].context_offset, pairs[3].context_offset,
+              pairs[4].context_offset, pairs[5].context_offset,
+              pairs[6].context_offset, pairs[7].context_offset);
+   }
+
+   (void)cs;
+   return true;
 }
 
 /*
@@ -2794,6 +3018,65 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
 
    dirty.fragment_shader &= !linked_fs->b.no_op;
 
+   /* The first G17P hardware fault is introduced by this aggregate dirty PPP
+    * update. Keep a diagnostic-only selector that emits one independently
+    * consumable legacy group at a time so the bad HAL200 block can be
+    * identified without changing any of its dynamic values.
+    *
+    * 1: fragment control and non-stencil faces
+    * 2: cull words
+    * 3: fragment shader words
+    * 4: output selection, varying counts, and output size
+    * 5: occlusion query and output size
+    */
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      static int g17p_dirty_bisect = -1;
+      if (g17p_dirty_bisect < 0)
+         g17p_dirty_bisect =
+            debug_get_num_option("HK_G17P_DIRTY_BISECT", 0);
+
+      if (g17p_dirty_bisect > 0) {
+         const struct AGX_PPP_HEADER all = dirty;
+         dirty = (struct AGX_PPP_HEADER){.viewport_count = 1};
+
+         switch (g17p_dirty_bisect) {
+         case 1:
+            dirty.fragment_control = all.fragment_control;
+            dirty.fragment_control_2 = all.fragment_control_2;
+            dirty.fragment_front_face = all.fragment_front_face;
+            dirty.fragment_front_face_2 = all.fragment_front_face_2;
+            dirty.fragment_back_face = all.fragment_back_face;
+            dirty.fragment_back_face_2 = all.fragment_back_face_2;
+            break;
+         case 2:
+            dirty.cull = all.cull;
+            dirty.cull_2 = all.cull_2;
+            break;
+         case 3:
+            dirty.fragment_shader = all.fragment_shader;
+            break;
+         case 4:
+            dirty.output_select = all.output_select;
+            dirty.varying_counts_32 = all.varying_counts_32;
+            dirty.varying_counts_16 = all.varying_counts_16;
+            dirty.output_size = all.output_size;
+            break;
+         case 5:
+            dirty.occlusion_query = all.occlusion_query;
+            dirty.output_size = all.output_size;
+            break;
+         default:
+            mesa_loge("HK_G17P_DIRTY_BISECT=%d is outside 1..5",
+                      g17p_dirty_bisect);
+            dirty = all;
+            break;
+         }
+
+         fprintf(stderr, "G17P dirty PPP bisect: group=%d\n",
+                 g17p_dirty_bisect);
+      }
+   }
+
    /* Calculate the update size. If it equals the header, there is nothing to
     * update so early-exit.
     */
@@ -2804,7 +3087,7 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
    /* Otherwise, allocate enough space for the update and push it. */
    assert(size > AGX_PPP_HEADER_LENGTH);
 
-   struct agx_ptr T = hk_pool_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
+   struct agx_ptr T = hk_pool_vdm_alloc(cmd, size, AGX_PPP_HEADER_ALIGN);
    if (!T.cpu)
       return;
 
@@ -3011,11 +3294,15 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       }
    }
 
-   if (!agx_ppp_legacy_payload_supported(dev->dev.chip) ||
-       !agx_ppp_fini(dev->dev.chip, out, &ppp)) {
+   const bool ppp_ok = agx_ppp_legacy_payload_supported(dev->dev.chip) &&
+                       agx_ppp_fini(dev->dev.chip, out, &ppp);
+   if (!ppp_ok) {
       mesa_loge("no grounded legacy PPP payload/finalizer for %s",
                 agx_chip_name(dev->dev.chip));
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+   } else if (hk_g17p_launch_trace_enabled()) {
+      hk_g17p_trace_line("ppp-dirty", ppp.gpu_base, ppp.cpu_base,
+                         ppp.total_size);
    }
 }
 
@@ -3102,6 +3389,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    struct hk_shader *hw_vs = hk_bound_hw_vs(gfx);
    struct hk_shader *sw_vs = hk_bound_sw_vs(gfx);
+   bool g17p_native_bind_tail_emitted = false;
 
    /* The grounded VertexProgramVariant producer covers only the four ordinary
     * Index List entry points.  Reject software-transformed draw paths even if
@@ -3683,8 +3971,26 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             return;
          }
 
+         /* Keep both words of the packed 48-bit vertex-pipeline pair.  The
+          * Metal witness's 0x01000000/0x00004a00 pair decodes to its own
+          * 0x10000128000 pipeline allocation; substituting only the second
+          * word redirects Honeykrisp to an unrelated shader container.
+          */
+
          memcpy(out, encoded.bytes, encoded.length);
          out += encoded.length;
+
+         if (dev->dev.chip == AGX_CHIP_G17P) {
+            if (!hk_g17p_emit_native_bind_tail(cmd, cs, &out)) {
+               mesa_loge("failed to emit native HAL200 bind tail for %s",
+                         agx_chip_name(dev->dev.chip));
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_FEATURE_NOT_PRESENT);
+               cs->current = out;
+               return;
+            }
+            g17p_native_bind_tail_emitted = true;
+         }
          break;
       }
 
@@ -3745,11 +4051,12 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    }
 
    /* Hardware viewport/scissor state is entangled with depth bias. */
-   if (IS_DIRTY(RS_DEPTH_BIAS_FACTORS) || IS_DIRTY(VP_SCISSORS) ||
+   if (!g17p_native_bind_tail_emitted &&
+       (IS_DIRTY(RS_DEPTH_BIAS_FACTORS) || IS_DIRTY(VP_SCISSORS) ||
        IS_DIRTY(VP_SCISSOR_COUNT) || IS_DIRTY(VP_VIEWPORTS) ||
        IS_DIRTY(VP_VIEWPORT_COUNT) ||
        IS_DIRTY(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) ||
-       IS_DIRTY(RS_DEPTH_CLIP_ENABLE) || IS_DIRTY(RS_DEPTH_CLAMP_ENABLE)) {
+       IS_DIRTY(RS_DEPTH_CLIP_ENABLE) || IS_DIRTY(RS_DEPTH_CLAMP_ENABLE))) {
 
       hk_flush_vp_state(cmd, cs, &out);
       if (vk_command_buffer_has_error(&cmd->vk)) {
@@ -3758,7 +4065,8 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       }
    }
 
-   hk_flush_ppp_state(cmd, cs, &out);
+   if (!g17p_native_bind_tail_emitted)
+      hk_flush_ppp_state(cmd, cs, &out);
    cs->current = out;
 
    if (vk_command_buffer_has_error(&cmd->vk))
@@ -4231,8 +4539,59 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                                   draw.restart, dev->dev.chip, topology,
                                   draw.index_size);
       } else {
-         cs->current = (void *)agx_vdm_draw((uint32_t *)out, dev->dev.chip,
-                                            draw, topology);
+         if (dev->dev.chip == AGX_CHIP_G17P) {
+            if (agx_is_indirect(draw.b) || draw.indexed) {
+               mesa_loge("native HAL200 indexed/indirect draw framing is not "
+                         "yet admitted");
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_FEATURE_NOT_PRESENT);
+               return;
+            }
+
+            /* Native direct draws begin with a context-relative graphics
+             * object.  Its only separated field in the source-controlled
+             * one-triangle witness is the leading 0x100 word; retain the full
+             * zero-filled page around it.
+             */
+            struct agx_bo *context_bo =
+               dev->dev.g17p_render_context_bo;
+            uint8_t *context = context_bo ? agx_bo_map(context_bo) : NULL;
+            if (!context)
+               return;
+
+            void *draw_state = &context[HK_G17P_DRAW_STATE_OFFSET];
+            memset(draw_state, 0, 0x4000);
+            const uint32_t draw_state_word = UINT32_C(0x100);
+            memcpy(draw_state, &draw_state_word, sizeof(draw_state_word));
+            if (agx_bo_sync_for_device(context_bo,
+                                       HK_G17P_DRAW_STATE_OFFSET, 0x4000))
+               return;
+
+            const struct agx_vdm_hal200_direct_draw_fields fields = {
+               .draw_state_context_offset = HK_G17P_DRAW_STATE_OFFSET,
+               .primitive = (uint8_t)topology,
+               .vertex_count = draw.b.count[0],
+               .instance_count = draw.b.count[1],
+               .vertex_start = draw.start,
+            };
+            struct agx_vdm_hal200_direct_draw encoded;
+            if (!agx_vdm_hal200_direct_draw_pack(dev->dev.chip, &fields,
+                                                  &encoded)) {
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_FEATURE_NOT_PRESENT);
+               return;
+            }
+
+            memcpy(out, encoded.bytes, encoded.length);
+            cs->current = out + encoded.length;
+            if (hk_g17p_launch_trace_enabled())
+               hk_g17p_trace_line("hal200-draw-state",
+                                  HK_G17P_DRAW_STATE_OFFSET, draw_state,
+                                  sizeof(draw_state_word));
+         } else {
+            cs->current = (void *)agx_vdm_draw((uint32_t *)out,
+                                               dev->dev.chip, draw, topology);
+         }
       }
 
       cs->stats.cmds++;

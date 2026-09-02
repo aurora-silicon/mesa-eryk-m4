@@ -334,11 +334,25 @@ test_fails_closed(void)
       expect_refused(enc, &I);
    }
 
-   /* Immediate / uniform sources. */
+   /* Immediate / uniform sources.
+    *
+    * An immediate addend is no longer refused on AGX3b: Apple's iadd/imm8
+    * form is grounded there (see agx3_pack_iadd_u32_imm8 and the boundary
+    * vectors in test-agx3-pack.c), so the core encodes it rather than
+    * pushing the constant through a register. AGX3c has no grounded imm8
+    * form yet and still fails closed. This block previously required a
+    * refusal on both, which was correct only before that form was grounded.
+    */
    {
       struct agx3_sel_instr I = binop(AGX3_SEL_OP_IADD, 0, 2, 4);
       I.src[1].is_reg = false;
-      expect_refused(enc, &I);
+      if (enc == AGX_ISA_ENCODING_AGX3B) {
+         uint8_t out[AGX3_SEL_MAX_LENGTH];
+         uint8_t len = 0;
+         CHECK(agx3_select_encode(enc, &I, out, &len));
+      } else {
+         expect_refused(enc, &I);
+      }
    }
 
    /* A shift on the integer add/mad forms. */

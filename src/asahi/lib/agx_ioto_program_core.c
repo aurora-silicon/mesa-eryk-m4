@@ -572,12 +572,26 @@ agx_ioto_g17p_rt0_eot_program_compose(
    uint8_t low[AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    uint8_t high[AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    uint8_t low_length = 0, high_length = 0;
+   /*
+    * These two LDIMMs carry the PBE argument address, and
+    * agx_ioto_load_pack_ldimm() is variable length: a record whose
+    * destination half is below 32 and whose immediate is below 128 takes a
+    * 2-byte compact form instead of the 8-byte long one. The high word here
+    * is pbe_argument_va >> 32, which is small for any ordinary allocation, so
+    * the compact form is the common case rather than the exception.
+    *
+    * Requiring the long form rejected the end-of-tile store of every render
+    * pass whose PBE argument did not happen to live above the 128 GiB mark.
+    * AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE is the long-form maximum, exactly as
+    * the clear program's constant is, so the composed program is appended at
+    * its true length and *written reports it.
+    */
    if (!agx_ioto_load_pack_ldimm(AGX_CHIP_G17P, 0, (uint32_t)pbe_argument_va,
                                  low, &low_length) ||
        !agx_ioto_load_pack_ldimm(AGX_CHIP_G17P, 2,
                                  (uint32_t)(pbe_argument_va >> 32), high,
                                  &high_length) ||
-       low_length != sizeof(low) || high_length != sizeof(high))
+       low_length > sizeof(low) || high_length > sizeof(high))
       return false;
 
    uint8_t staged[AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE];
@@ -587,8 +601,10 @@ agx_ioto_g17p_rt0_eot_program_compose(
       memcpy(staged + offset, (bytes), sizeof(bytes));                         \
       offset += sizeof(bytes);                                                 \
    } while (0)
-   APPEND(low);
-   APPEND(high);
+   memcpy(staged + offset, low, low_length);
+   offset += low_length;
+   memcpy(staged + offset, high, high_length);
+   offset += high_length;
    APPEND(g17p_rt0_eot_loads);
    memcpy(staged + offset, packed_tail->bytes, packed_tail->length);
    offset += packed_tail->length;
@@ -599,11 +615,11 @@ agx_ioto_g17p_rt0_eot_program_compose(
    memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
    staged[offset] = UINT8_C(0x0e);
    offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
-   if (offset != sizeof(staged))
+   if (offset > sizeof(staged))
       return false;
 
-   memcpy(output, staged, sizeof(staged));
-   *written = sizeof(staged);
+   memcpy(output, staged, offset);
+   *written = offset;
    return true;
 }
 

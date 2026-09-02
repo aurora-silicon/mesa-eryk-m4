@@ -76,6 +76,22 @@ agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
 }
 
 bool
+agx3_cf_icmp_zero16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                    unsigned slot, uint16_t src0,
+                    uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+{
+   /* Only the AGX3b form is witnessed. */
+   if (!agx3b(enc) || !icond_ok(cond) || !slot_ok(slot) || src0 >= 128)
+      return false;
+
+   const struct agx3_field_kv base[] = {KV(9, 2),  KV(10, 1), KV(13, 1),
+                                        KV(14, 1), KV(24, 1), KV(25, 1),
+                                        KV(39, 1)};
+   const struct agx3_field_kv ov[] = {KV(2, src0), KV(42, cond), KV(31, slot)};
+   return agx3_bind_compose(enc, "icmp", 1, base, 7, ov, 3, out, len);
+}
+
+bool
 agx3_cf_fcmp_reg(enum agx_isa_encoding enc, enum agx3_cf_fcond cond,
                  bool or_nan, unsigned slot, uint16_t src0, uint16_t src1,
                  uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)

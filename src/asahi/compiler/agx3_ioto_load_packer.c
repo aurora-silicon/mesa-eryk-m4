@@ -93,13 +93,31 @@ pack_copy_fields(enum agx_isa_encoding enc, uint16_t destination_half,
                  uint16_t source_half, int wait_slot,
                  struct agx_ioto_load_raw_record *record)
 {
-   struct agx3_field_kv baseline[6] = {
+   /* Field 27 selects the COPY's source: clear = "Register zero" (the
+    * loadImmediateUserBuffer result), set = the *gathered* register data this
+    * packer is actually moving.  Every witnessed copy that carries loaded data
+    * sets it -- the A18 Pro add3 program (`4b 2c 09 44`, `0b 24 09 04`, ...)
+    * and the G17S minimal-compute body in agx_ioto_program_core.c
+    * (`0b 14 09 44`, `1b 16 09 04`, ...) -- and the only witnessed copies that
+    * leave it clear are the two register-zero ones, which is why both of those
+    * carry source half 0x00.
+    *
+    * Omitting it emitted `0b 00 01 04 / 1b 02 01 04 / ...`: a form that occurs
+    * in no witness, naming meaningful source halves while telling the hardware
+    * to copy register zero instead.  The LDDEV's gathered dwords were then
+    * never moved into CProg, so the shader's uniform quads held register zero,
+    * its buffer pointer was garbage, and with soft faults enabled the store was
+    * silently discarded -- a dispatch that ran to `stop`, retired cleanly,
+    * raised no fault, and left the destination completely untouched.
+    */
+   struct agx3_field_kv baseline[7] = {
       KV(9, 3),
       KV(10, 2),
       KV(23, 2),
       KV(24, 2),
+      KV(27, 1),
    };
-   unsigned nbaseline = 4;
+   unsigned nbaseline = 5;
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       baseline[nbaseline++] = (struct agx3_field_kv)KV(28, 1);
       baseline[nbaseline++] = (struct agx3_field_kv)KV(29, 35);

@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: MIT
  */
 #include "hk_image.h"
+#include "hk_native_descriptor.h"
 #include "asahi/layout/layout.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "util/bitscan.h"
@@ -220,6 +221,30 @@ hk_can_compress(const struct agx_device *dev, VkFormat format, unsigned plane,
    /* Allow disabling compression for debugging */
    if (dev->debug & AGX_DBG_NOCOMPRESS)
       return false;
+
+   /*
+    * AGX3 has no grounded compressed PBE (write) descriptor. The read side is
+    * fine -- hk_pack_native_texture() carries the compression mode and the
+    * acceleration buffer -- but hk_pack_native_pbe() accepts only the plain 2D
+    * subset, so a compressed colour attachment cannot be stored at
+    * end-of-tile, and every render pass with a store fails at
+    * pack_pbe()/eot_pbe_valid.
+    *
+    * Storing one through a non-compressed descriptor is not an option: it
+    * would put raw pixels where every reader expects compressed blocks plus
+    * their metadata. The image must therefore not be compressed in the first
+    * place. Unlike the shader encodings, a descriptor layout cannot be
+    * witnessed with the Metal compiler probes -- descriptors are built by the
+    * driver, not the shader compiler -- so this stays closed until the
+    * compressed AGX3 PBE form is recovered from a real macOS descriptor.
+    *
+    * Cost is performance only. Delete this together with that descriptor.
+    */
+   if (hk_descriptor_generation_is_agx3(
+          agx_chip_descriptor_generation(dev->chip))) {
+      perf_debug_dev(dev, "No compression: no AGX3 PBE descriptor yet");
+      return false;
+   }
 
    /* TODO: Handle compression with sparse. This should be doable but it's a bit
     * subtle. Correctness first.

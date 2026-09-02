@@ -41,6 +41,8 @@ libasahi_lib_files = files(
   'agx_nir_lower_vbo.c',
   'agx_nir_prolog_epilog.c',
   'agx_ppp.h',
+  'agx_ppp_hal200_graphics_core.c',
+  'agx_ppp_hal200_graphics_core.h',
   'agx_ppp_hal300_depth_bias_scissor_core.c',
   'agx_ppp_hal300_depth_bias_scissor_core.h',
   'agx_ppp_hal300_depth_stencil_core.c',
@@ -58,6 +60,10 @@ libasahi_lib_files = files(
   'agx_texture_side_entry.h',
   'agx_vdm_barrier_core.c',
   'agx_vdm_barrier_core.h',
+  'agx_vdm_hal200_bind_tail_core.c',
+  'agx_vdm_hal200_bind_tail_core.h',
+  'agx_vdm_hal200_direct_draw_core.c',
+  'agx_vdm_hal200_direct_draw_core.h',
   'agx_vdm_decode_core.c',
   'agx_vdm_decode_core.h',
   'agx_vdm_index_list_core.c',
@@ -143,11 +149,14 @@ libasahi_decode_files = files(
   'agx3_cdm_direct_launch_semantic_core.c',
   'agx_ioto_core.c',
   'agx_ppp_decode_core.c',
+  'agx_ppp_hal200_graphics_core.c',
   'agx_ppp_hal300_depth_bias_scissor_core.c',
   'agx_ppp_hal300_depth_stencil_core.c',
   'agx_ppp_viewport_payload_core.c',
   'agx_ppp_w_clamp_cull2_core.c',
   'agx_vdm_barrier_core.c',
+  'agx_vdm_hal200_bind_tail_core.c',
+  'agx_vdm_hal200_direct_draw_core.c',
   'agx_vdm_decode_core.c',
   'agx_vdm_index_list_core.c',
   'agx_vdm_ppp_state_core.c',
@@ -226,6 +235,16 @@ libasahi_lib = static_library(
 )
 
 if with_tests
+  test(
+    'asahi-agx-rt-bvh',
+    executable(
+      'asahi-agx-rt-bvh',
+      files('tests/test-rt-bvh.c'),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
   test(
     'asahi-agx-chip',
     executable(
@@ -499,6 +518,19 @@ if with_tests
   )
 
   test(
+    'asahi-ppp-hal200-graphics-core',
+    executable(
+      'asahi-ppp-hal200-graphics-core',
+      files(
+        'agx_ppp_hal200_graphics_core.c',
+        'tests/test-ppp-hal200-graphics-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'asahi-ppp-hal300-depth-bias-scissor-core',
     executable(
       'asahi-ppp-hal300-depth-bias-scissor-core',
@@ -561,6 +593,32 @@ if with_tests
         'agx_ppp_viewport_payload_core.c',
         'agx_ppp_w_clamp_cull2_core.c',
         'tests/test-ppp-decode-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-hal200-bind-tail-core',
+    executable(
+      'asahi-vdm-hal200-bind-tail-core',
+      files(
+        'agx_vdm_hal200_bind_tail_core.c',
+        'tests/test-vdm-hal200-bind-tail-core.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-vdm-hal200-direct-draw-core',
+    executable(
+      'asahi-vdm-hal200-direct-draw-core',
+      files(
+        'agx_vdm_hal200_direct_draw_core.c',
+        'tests/test-vdm-hal200-direct-draw-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

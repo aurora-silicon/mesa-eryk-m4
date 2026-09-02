@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "util/macros.h"
 #include "util/ralloc.h"
 #include "agx_abi.h"
 #include "agx_compile.h"
@@ -80,6 +81,127 @@ static const uint8_t sample_loop_footer[] = {
 #define SAMPLE_LOOP_FOOTER_COUNT_SHIFT (4)
 /* clang-format on */
 
+
+/*
+ * Apple's AGX3 code container.
+ *
+ * On G17P the LDSHDR record names an entry point INSIDE a container, not the
+ * base of an executable allocation, and the shader loader reads container
+ * metadata at fixed negative offsets from that entry.  The m1n1 add3 witness
+ * (proxyclient/experiments/g17p_add3_code.py) lays it out as:
+ *
+ *   +0x000  dword 0x340                 size of the leading block
+ *   +0x040  0x0006 filler .. +0x340
+ *   +0x100  helper record table
+ *   +0x200  helper record table (identical)
+ *   +0x340  dword block_size            == entry - 0x80, the CODE block size
+ *   +0x380  constant program (0x40)     == entry - 0x40
+ *   +0x3C0  main program                <- LDSHDR points here
+ *
+ * block_size = 0x40 (its own header) + 0x40 (constant program) +
+ * align64(code).  For the witness's 56-byte main program that is
+ * 0x40 + 0x40 + 0x40 = 0xC0, which is the dword the capture actually
+ * contains, and the container ends at 0x340 + 0xC0 = 0x400 -- exactly the
+ * 1 KiB closure the witness proved on hardware.  So this rule reproduces the
+ * witness byte for byte rather than merely resembling it.
+ *
+ * Honeykrisp's compute path guarantees no preamble, so the constant program
+ * is the witness's minimal terminating one.
+ */
+#define AGX3_CONTAINER_LEAD        0x340u
+#define AGX3_CONTAINER_ENTRY       0x3C0u
+#define AGX3_CONTAINER_BLOCK_HDR   0x40u
+#define AGX3_CONTAINER_CONST_PROG  0x40u
+
+/* "0f 00 54 <opcode> 00 x6 06 00 06 00 06 00" per record, then two terminals. */
+static void
+agx3_fill_helper_table(uint8_t *image, size_t base)
+{
+   static const uint8_t opcodes[] = {0x60, 0x50, 0x40, 0x30, 0x20, 0x10};
+   static const uint8_t terminal[16] = {
+      0xf7, 0x03, 0xaa, 0x00, 0x8f, 0x02, 0x54, 0x01,
+      0x06, 0x00, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
+   };
+
+   for (unsigned i = 0; i < ARRAY_SIZE(opcodes); ++i) {
+      uint8_t *record = image + base + i * 0x10;
+
+      memset(record, 0, 0x10);
+      record[0] = 0x0f;
+      record[2] = 0x54;
+      record[3] = opcodes[i];
+      for (unsigned h = 10; h < 16; h += 2) {
+         record[h] = 0x06;
+         record[h + 1] = 0x00;
+      }
+   }
+   memcpy(image + base + 0x60, terminal, sizeof(terminal));
+   memcpy(image + base + 0x70, terminal, sizeof(terminal));
+}
+
+static void
+agx3_put_le32(uint8_t *where, uint32_t value)
+{
+   where[0] = value;
+   where[1] = value >> 8;
+   where[2] = value >> 16;
+   where[3] = value >> 24;
+}
+
+/* Total container bytes for `code_size` bytes of executable. */
+static size_t
+agx3_container_size(size_t code_size)
+{
+   return AGX3_CONTAINER_LEAD + AGX3_CONTAINER_BLOCK_HDR +
+          AGX3_CONTAINER_CONST_PROG + ALIGN_POT(code_size, 64);
+}
+
+/* The container's leading block: dword 0x340, 0x0006 filler, two helper
+ * tables. Identical in both captured Apple code images, so it is a fixed
+ * prologue rather than anything workload-specific. */
+void
+agx3_build_container_lead(uint8_t *image)
+{
+   memset(image, 0, AGX3_CONTAINER_LEAD);
+   agx3_put_le32(image, AGX3_CONTAINER_LEAD);
+   for (size_t offset = 0x40; offset < AGX3_CONTAINER_LEAD; offset += 2) {
+      image[offset] = 0x06;
+      image[offset + 1] = 0x00;
+   }
+   agx3_fill_helper_table(image, 0x100);
+   agx3_fill_helper_table(image, 0x200);
+}
+
+static void
+agx3_build_container(uint8_t *image, size_t code_size)
+{
+   static const uint8_t constant_program[0x40] = {
+      0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00,
+      0x60, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x06, 0x00,
+      /* the rest is 0x0006 filler, written below */
+   };
+
+   memset(image, 0, agx3_container_size(code_size));
+   agx3_build_container_lead(image);
+
+   agx3_put_le32(image + AGX3_CONTAINER_LEAD,
+                 AGX3_CONTAINER_BLOCK_HDR + AGX3_CONTAINER_CONST_PROG +
+                    ALIGN_POT(code_size, 64));
+
+   uint8_t *constant = image + AGX3_CONTAINER_LEAD + AGX3_CONTAINER_BLOCK_HDR;
+   memcpy(constant, constant_program, 14);
+   for (size_t offset = 14; offset < AGX3_CONTAINER_CONST_PROG; offset += 2) {
+      constant[offset] = 0x06;
+      constant[offset + 1] = 0x00;
+   }
+}
+
+static bool
+agx3_uses_code_container(const struct agx_device *dev)
+{
+   return dev->chip == AGX_CHIP_G17P;
+}
+
 bool
 agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               bool fragment, struct agx_shader_part *main,
@@ -121,9 +243,13 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 
    assert(size > 0 && "must stop");
 
-   linked->bo = agx_bo_create(dev, size, 0, AGX_BO_EXEC | AGX_BO_LOW_VA,
+   const bool container = agx3_uses_code_container(dev);
+   const size_t alloc_size = container ? agx3_container_size(size) : size;
+
+   linked->bo = agx_bo_create(dev, alloc_size, 0, AGX_BO_EXEC | AGX_BO_LOW_VA,
                               "Linked executable");
    linked->size = size;
+   linked->entry_offset = container ? AGX3_CONTAINER_ENTRY : 0;
    if (!linked->bo) {
       fprintf(stderr,
               "agx_fast_link: executable low-VA allocation of %zu bytes "
@@ -132,7 +258,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       return false;
    }
 
-   uint8_t *linked_map = agx_bo_map(linked->bo);
+   uint8_t *container_map = agx_bo_map(linked->bo);
+   uint8_t *linked_map = container_map ? container_map + linked->entry_offset : NULL;
    if (!linked_map) {
       fprintf(stderr,
               "agx_fast_link: executable BO mapping failed (size %zu, "
@@ -143,6 +270,9 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       linked->bo = NULL;
       return false;
    }
+
+   if (container)
+      agx3_build_container(container_map, size);
 
    size_t offset = 0;
 
@@ -205,14 +335,14 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    linked->scratch_size = scratch_size;
    linked->nr_gprs = nr_gprs;
 
-   if (agx_bo_sync_for_device(linked->bo, 0, size)) {
+   if (agx_bo_sync_for_device(linked->bo, 0, alloc_size)) {
       agx_bo_unreference(dev, linked->bo);
       linked->bo = NULL;
       return false;
    }
 
    agx_pack(&linked->shader, USC_SHADER, cfg) {
-      cfg.code = agx_usc_addr(dev, linked->bo->va->addr);
+      cfg.code = agx_usc_addr(dev, linked->bo->va->addr + linked->entry_offset);
       cfg.unk_2 = fragment ? 2 : 3;
 
       if (fragment)

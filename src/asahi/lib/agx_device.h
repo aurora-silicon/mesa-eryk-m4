@@ -246,8 +246,15 @@ struct agx_device {
    /* VMA heaps */
    simple_mtx_t vma_lock;
    uint64_t shader_base;
+
+   /* G17P only: the resident page bound at shader_base, so USC_EXEC_BASE_CP
+    * names mapped memory the way it does in every m1n1 witness. */
+   struct agx_bo *usc_base_bo;
+   struct agx_bo *g17p_render_context_bo;
    struct util_vma_heap main_heap;
    struct util_vma_heap usc_heap;
+   uint64_t main_heap_base;
+   uint64_t main_heap_size;
    uint64_t guard_size;
 
    /* To emulate sparse-resident buffers, we map buffers in both the bottom half
@@ -385,6 +392,15 @@ agx_has_soft_fault(struct agx_device *dev)
           !(dev->debug & AGX_DBG_NOSOFT);
 }
 
+/* Base of the G17P USC exec window.  MEASURED RULE: bit 40 of the program VA
+ * must be set.  Do not lower this.  See the note in agx_open_device(). */
+#define AGX_G17P_USC_WINDOW_BASE UINT64_C(0x10000000000)
+
+/* Metal's HAL200 direct encoder binds fixed offsets below +0x80000.  The
+ * kernel-owned PM metrics mapping begins exactly at +0x80000. */
+#define AGX_G17P_RENDER_CONTEXT_BASE UINT64_C(0x1000000000)
+#define AGX_G17P_RENDER_CONTEXT_SIZE UINT64_C(0x00080000)
+
 static uint32_t
 agx_usc_addr(struct agx_device *dev, uint64_t addr)
 {
@@ -392,6 +408,31 @@ agx_usc_addr(struct agx_device *dev, uint64_t addr)
    assert((addr - dev->shader_base) <= UINT32_MAX);
 
    return addr - dev->shader_base;
+}
+
+/* The USC exec window the kernel is told about at queue-create time.
+ *
+ * agx_create_command_queue() passes dev->shader_base as
+ * drm_asahi_queue_create.usc_exec_base, and the kernel programs it into
+ * USC_EXEC_BASE_{TA,ISP,CP} for every command on that queue.  The uapi
+ * contract is a fixed 4 GiB carveout at that base (asahi_drm.h: "we expect
+ * userspace to fix a 4GiB VA carveout for USC memory and pass its base address
+ * here"), which is exactly the size dev->usc_heap is initialised with.
+ *
+ * Note the window BASE PAGE is deliberately not required to be mapped:
+ * util_vma_heap defaults to alloc_high, so USC allocations descend from
+ * shader_base + 4 GiB and the first page of the window is never handed out
+ * until the heap is nearly exhausted.  Residency of `shader_base` itself is
+ * therefore not a valid health check -- containment of each individual
+ * exec pointer is.
+ */
+#define AGX_USC_WINDOW_SIZE UINT64_C(0x100000000)
+
+static inline bool
+agx_va_in_usc_window(const struct agx_device *dev, uint64_t addr)
+{
+   return addr >= dev->shader_base &&
+          (addr - dev->shader_base) < AGX_USC_WINDOW_SIZE;
 }
 
 bool agx_open_device(void *memctx, struct agx_device *dev);

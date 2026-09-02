@@ -15,6 +15,24 @@
 #define AGX_G17_RUNTIME_GRAPH_VA_START UINT64_C(0x7000000000)
 #define AGX_G17_RUNTIME_GRAPH_VA_END   UINT64_C(0x7100000000)
 
+/*
+ * Reduce the kernel-reported user VA window to the power-of-two window the
+ * driver actually allocates from, and derive the address bit that tells a
+ * sparse buffer's read-only alias apart from its primary mapping.
+ *
+ * A sparse buffer is bound a second time at `addr + sparse_ro_offset`
+ * (hk_buffer.c:95, d12_resource.c:1118).  For that to be a pure bit-set with
+ * no carry -- and for the alias window to stay disjoint from the primary one
+ * -- every address in [*out_start, *out_start + *out_size) must have the
+ * sparse bit clear.  Since both are powers of two once rounded, that reduces
+ * to *out_start > *out_size.  On success `*out_size` is both the window size
+ * and the sparse read-only offset.
+ *
+ * Returns false if no usable split exists.
+ */
+bool agx_va_split_user_window(uint64_t user_start, uint64_t user_size,
+                              uint64_t *out_start, uint64_t *out_size);
+
 bool agx_va_overlaps_runtime_graph_hole(enum agx_chip chip, uint64_t addr,
                                         uint64_t size);
 

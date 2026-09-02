@@ -27,7 +27,8 @@ same(const struct agx3_tex_fetch_desc *a,
           a->width == b->width && a->mask == b->mask &&
           a->texture == b->texture && a->slot == b->slot &&
           a->wait_mask == b->wait_mask && a->coord_kill == b->coord_kill &&
-          a->final == b->final;
+          a->final == b->final &&
+          a->array == b->array;
 }
 
 static int
@@ -478,12 +479,135 @@ test_sample_fail_closed(void)
    return 0;
 }
 
+/*
+ * The 2D-array texel fetch. Both vectors are Apple's own bytes, from
+ * `texture2d<float, access::read>::read()` and
+ * `texture2d_array<float, access::read>::read()` compiled by
+ * `metal-nt -arch applegpu_g16g`; they differ in the array selector alone.
+ */
+static int
+test_array_fetch(void)
+{
+   static const uint8_t plain_2d[14] = {0x05, 0x80, 0x0c, 0xb8, 0x30, 0x01,
+                                        0x17, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                        0x01, 0x00};
+   static const uint8_t array_2d[14] = {0x05, 0x80, 0x0c, 0xb8, 0xb0, 0x00,
+                                        0x97, 0x01, 0x00, 0x00, 0x00, 0x00,
+                                        0x01, 0x00};
+
+   const struct agx3_tex_fetch_desc plain = {
+      .dest = 0, .coord = 0, .width = AGX3_TEX_W32, .mask = 15,
+      .texture = 0, .slot = 1, .wait_mask = 1u << 1, .coord_kill = true,
+      .final = true, .array = false,
+   };
+   const struct agx3_tex_fetch_desc arr = {
+      .dest = 0, .coord = 0, .width = AGX3_TEX_W32, .mask = 15,
+      .texture = 0, .slot = 1, .wait_mask = 1u << 0, .coord_kill = true,
+      .final = true, .array = true,
+   };
+
+   uint8_t bytes[AGX3_TEX_MAX_LENGTH];
+   uint8_t length = 0;
+
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &plain, bytes,
+                               &length));
+   CHECK(length == 14);
+   CHECK(memcmp(bytes, plain_2d, 14) == 0);
+
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &arr, bytes, &length));
+   CHECK(length == 14);
+   CHECK(memcmp(bytes, array_2d, 14) == 0);
+
+   /* The array flag survives a decode, and the two forms stay distinct. */
+   struct agx3_tex_fetch_desc back;
+   CHECK(agx3_tex_decode_fetch(AGX_ISA_ENCODING_AGX3B, array_2d, 14, &back));
+   CHECK(back.array);
+   CHECK(same(&back, &arr));
+   CHECK(agx3_tex_decode_fetch(AGX_ISA_ENCODING_AGX3B, plain_2d, 14, &back));
+   CHECK(!back.array);
+   CHECK(same(&back, &plain));
+
+   return 0;
+}
+
+
+/*
+ * Bindless operand kinds. The texture and sampler each select one of three
+ * consecutive fields by kind (95/96/97 and 124/125/126), and immediate vs
+ * non-immediate also selects the encoding point: ep3 for immediate, ep4 for
+ * register and uniform. All three kinds are witnessed byte-exactly from
+ * Apple shaders captured on an A18 Pro; see test-agx3-smp-witness.c.
+ */
+static int
+test_bindless_operand_kinds(void)
+{
+   struct agx3_tex_fetch_desc d;
+   uint8_t out[AGX3_TEX_MAX_LENGTH];
+   uint8_t len;
+
+#define FETCH_BASE()                                                           \
+   do {                                                                        \
+      memset(&d, 0, sizeof(d));                                                \
+      d.dest = 8;                                                              \
+      d.coord = 16;                                                            \
+      d.width = 1;                                                             \
+      d.mask = 15;                                                             \
+      d.slot = 1;                                                              \
+      d.array = true;                                                          \
+      len = 0;                                                                 \
+   } while (0)
+
+   /* Immediate operands keep the 14-byte ep3 form. A caller that never heard
+    * of operand kinds leaves them zero and must encode exactly as before. */
+   FETCH_BASE();
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == 14);
+
+   /* Register descriptors: the ep4 form, 20 bytes. */
+   FETCH_BASE();
+   d.texture_kind = AGX3_TEX_OPERAND_REGISTER;
+   d.sampler_kind = AGX3_TEX_OPERAND_REGISTER;
+   d.texture_value = 0;
+   d.sampler_value = 4;
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == 20);
+
+   /* Uniform descriptors: also ep4. */
+   FETCH_BASE();
+   d.texture_kind = AGX3_TEX_OPERAND_UNIFORM;
+   d.sampler_kind = AGX3_TEX_OPERAND_UNIFORM;
+   d.texture_value = 16;
+   d.sampler_value = 20;
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(len == 20);
+
+   /* Mixing an immediate sampler with a non-immediate texture is refused.
+    * No Apple shader mixes them, and the composed table rejects the pairing,
+    * so this fails closed rather than inventing a hybrid. Honeykrisp's meta
+    * copy wants exactly this shape today, which is why it must materialise a
+    * sampler descriptor rather than passing an immediate index. */
+   FETCH_BASE();
+   d.texture_kind = AGX3_TEX_OPERAND_REGISTER;
+   d.sampler_kind = AGX3_TEX_OPERAND_IMMEDIATE;
+   CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+
+   /* Only AGX3b is witnessed for the non-immediate kinds. */
+   FETCH_BASE();
+   d.texture_kind = AGX3_TEX_OPERAND_REGISTER;
+   d.sampler_kind = AGX3_TEX_OPERAND_REGISTER;
+   CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3C, &d, out, &len));
+
+#undef FETCH_BASE
+   return 0;
+}
+
 int
 main(void)
 {
    if (test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
-       test_sample_fail_closed())
+       test_sample_fail_closed() || test_array_fetch() ||
+       test_bindless_operand_kinds())
       return 1;
    printf("agx3 texture core: %u checks passed\n", checks);
    return 0;

@@ -26,9 +26,13 @@
 #include "hk_image.h"
 #include "hk_physical_device.h"
 
+#include <inttypes.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <xf86drm.h>
 #include "util/list.h"
 #include "util/macros.h"
+#include "util/u_debug.h"
 #include "util/u_dynarray.h"
 #include "vulkan/vulkan_core.h"
 
@@ -101,15 +105,211 @@ asahi_fill_cdm_command(struct hk_device *dev, struct hk_cs *cs,
       cmd->helper.cfg = cs->scratch.cs.preamble ? (1 << 16) : 0;
       cmd->helper.binary = agx_helper_program(&dev->bg_eot);
    }
+
+   /* Dump the finished CDM stream, terminator included -- this runs after
+    * hk_EndCommandBuffer has appended it. The known-good add3 stream is
+    * exactly 48 bytes (40-byte direct launch + 4-byte barrier 0x60000160 +
+    * 4-byte terminate 0x40000000); anything else here is a structural
+    * difference from the submission the firmware is known to complete. The
+    * kernel also assumes the last dword of [base, end) is the terminator
+    * (translate_compute_command: terminator = end - 4). */
+   if (hk_g17p_launch_trace_enabled()) {
+      fprintf(stderr,
+              "G17P cdm: base=%" PRIx64 " end=%" PRIx64 " len=%zu linked=%d "
+              "sampler_heap=%" PRIx64 " sampler_count=%u helper(bin=%" PRIx64
+              " data=%" PRIx64 " cfg=%x)\n",
+              (uint64_t)cmd->cdm_ctrl_stream_base,
+              (uint64_t)cmd->cdm_ctrl_stream_end, len, (int)cs->stream_linked,
+              (uint64_t)cmd->sampler_heap, cmd->sampler_count,
+              (uint64_t)cmd->helper.binary, (uint64_t)cmd->helper.data,
+              cmd->helper.cfg);
+      if (!cs->stream_linked) {
+         hk_g17p_trace_hexdump("cdm-stream", cs->addr, cs->start, len);
+      }
+   }
+}
+
+/* Diagnostic prefix bisect for the fault-free G17P TA timeout. Each stage
+ * replaces the next packet with a terminator, preserving a structurally valid
+ * prefix so a fresh-boot run identifies the first state block that firmware
+ * cannot execute:
+ *
+ *   1: barrier + initial PPP
+ *   2: + VDM state
+ *   3: + native VertexProgramVariant header-control word
+ *   4..11: + each of the eight native HAL200 bind pairs
+ *   12: + the complete native 24-byte direct draw record, whose last dword is
+ *       already the stream terminator
+ *
+ * The full stream remains the default and every boundary is checked against
+ * the exact HAL200 packet header before any byte is changed.
+ */
+static size_t
+asahi_g17p_vdm_bisect(struct hk_device *dev, struct hk_cs *cs, size_t len)
+{
+   static int stage = -1;
+   if (stage < 0)
+      stage = debug_get_num_option("HK_G17P_VDM_BISECT", 0);
+
+   if (stage == 0)
+      return len;
+
+   if (dev->dev.chip != AGX_CHIP_G17P || cs->stream_linked || stage < 1 ||
+       stage > 12) {
+      mesa_loge("HK_G17P_VDM_BISECT=%d requires an unlinked G17P stream",
+                stage);
+      return len;
+   }
+
+   const size_t boundary =
+      stage == 1 ? 12 : stage == 2 ? 40
+                 : stage == 3 ? 44
+                 : stage <= 11 ? 44 + ((stage - 3) * 8)
+                               : 132;
+
+   const size_t required = stage == 12 ? boundary : boundary + 4;
+   if (len < required) {
+      mesa_loge("HK_G17P_VDM_BISECT=%d stream too short (%zu)", stage, len);
+      return len;
+   }
+
+   uint32_t barrier, initial, prefix;
+   memcpy(&barrier, (uint8_t *)cs->start, 4);
+   memcpy(&initial, (uint8_t *)cs->start + 4, 4);
+   memcpy(&prefix, (uint8_t *)cs->start + 12, 4);
+   if (barrier != UINT32_C(0x21000960) ||
+       (initial & UINT32_C(0xffffff00)) != UINT32_C(0x00000300) ||
+       prefix != UINT32_C(0x4000002e)) {
+      mesa_loge("HK_G17P_VDM_BISECT=%d opening mismatch: barrier=%#x "
+                "initial=%#x prefix=%#x",
+                stage, barrier, initial, prefix);
+      return len;
+   }
+
+   if (stage >= 3) {
+      uint32_t header_control;
+      memcpy(&header_control, (uint8_t *)cs->start + 40, 4);
+      if (header_control != UINT32_C(0x500)) {
+         mesa_loge("HK_G17P_VDM_BISECT=%d bind header mismatch: %#x", stage,
+                   header_control);
+         return len;
+      }
+   }
+
+   static const uint32_t controls[] = {
+      UINT32_C(0x700), UINT32_C(0x500), UINT32_C(0x700), UINT32_C(0x500),
+      UINT32_C(0xa00), UINT32_C(0x300), UINT32_C(0x200), UINT32_C(0x200),
+   };
+   const unsigned pair_count = stage >= 4 ? MIN2((unsigned)(stage - 3), 8) : 0;
+   for (unsigned i = 0; i < pair_count; ++i) {
+      uint32_t address, control;
+      const size_t offset = 44 + (8 * i);
+      memcpy(&address, (uint8_t *)cs->start + offset, 4);
+      memcpy(&control, (uint8_t *)cs->start + offset + 4, 4);
+      if (address == 0 || (address & 3) != 0 || control != controls[i]) {
+         mesa_loge("HK_G17P_VDM_BISECT=%d bind[%u] mismatch: addr=%#x "
+                   "control=%#x expected=%#x",
+                   stage, i, address, control, controls[i]);
+         return len;
+      }
+   }
+
+   if (stage == 12) {
+      uint32_t draw_state, header, vertex_count, instance_count, tail;
+      memcpy(&draw_state, (uint8_t *)cs->start + 108, 4);
+      memcpy(&header, (uint8_t *)cs->start + 112, 4);
+      memcpy(&vertex_count, (uint8_t *)cs->start + 116, 4);
+      memcpy(&instance_count, (uint8_t *)cs->start + 120, 4);
+      memcpy(&tail, (uint8_t *)cs->start + 128, 4);
+      if (draw_state == 0 || (draw_state & 3) != 0 ||
+          header != UINT32_C(0x61c40600) || vertex_count == 0 ||
+          instance_count == 0 || tail != UINT32_C(0xc0000000)) {
+         mesa_loge("HK_G17P_VDM_BISECT=12 draw mismatch: state=%#x "
+                   "header=%#x count=%u instances=%u tail=%#x",
+                   draw_state, header, vertex_count, instance_count, tail);
+         return len;
+      }
+
+      fprintf(stderr, "G17P VDM bisect: stage=%d prefix=%zu total=%zu\n",
+              stage, boundary, boundary);
+      return boundary;
+   }
+
+   static const uint8_t terminate[4] = {0x00, 0x00, 0x00, 0xc0};
+   memcpy((uint8_t *)cs->start + boundary, terminate, sizeof(terminate));
+   fprintf(stderr, "G17P VDM bisect: stage=%d prefix=%zu total=%zu\n", stage,
+           boundary, boundary + sizeof(terminate));
+   return boundary + sizeof(terminate);
 }
 
 static void
 asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
                        struct drm_asahi_cmd_render *c)
 {
+   size_t len = cs->stream_linked ? 65536 /* XXX */ : (cs->current - cs->start);
+   len = asahi_g17p_vdm_bisect(dev, cs, len);
+   const uint8_t *submitted_start = cs->start;
+   uint64_t submitted_full = cs->addr;
+
    memset(c, 0, sizeof(*c));
 
-   c->vdm_ctrl_stream_base = cs->addr;
+   c->vdm_ctrl_stream_base =
+      hk_g17p_vdm_low_window_enabled(&dev->dev)
+         ? hk_g17p_vdm_alias(&dev->dev, cs->addr)
+         : cs->addr;
+
+   /* Metal's compact direct encoder starts at the 0x4000002e
+    * VertexProgramVariant header.  Honeykrisp normally precedes it with a
+    * 12-byte barrier/initial-PPP sequence.  Keep this opt-in and validate the
+    * exact boundary so one hardware run can isolate that address/order
+    * difference without rewriting the command BO.
+    */
+   static int native_base = -1;
+   if (native_base < 0)
+      native_base =
+         debug_get_bool_option("HK_G17P_VDM_NATIVE_BASE", false) ? 1 : 0;
+   if (native_base && dev->dev.chip == AGX_CHIP_G17P && !cs->stream_linked) {
+      uint32_t header = 0;
+      if (len >= 16)
+         memcpy(&header, (const uint8_t *)cs->start + 12, sizeof(header));
+
+      if (header == UINT32_C(0x4000002e)) {
+         c->vdm_ctrl_stream_base += 12;
+         submitted_full += 12;
+         submitted_start += 12;
+         len -= 12;
+         fprintf(stderr,
+                 "G17P VDM native base: skipped 12-byte barrier/PPP prelude\n");
+      } else {
+         mesa_loge("HK_G17P_VDM_NATIVE_BASE opening mismatch: len=%zu "
+                   "header=%#x",
+                   len, header);
+      }
+   }
+
+   if (hk_g17p_vdm_low_window_enabled(&dev->dev)) {
+      fprintf(stderr,
+              "asahi: G17P VDM submit full=%#llx alias=%#llx low=%#llx\n",
+              (unsigned long long)submitted_full,
+              (unsigned long long)c->vdm_ctrl_stream_base,
+              (unsigned long long)(c->vdm_ctrl_stream_base -
+                                   UINT64_C(0x1000000000)));
+   }
+
+   /* Capture the exact live VDM stream after its terminator was appended.
+    * The nested PPP state records in this dump can then be resolved against
+    * the payload dumps emitted while the command buffer was built.
+    */
+   if (hk_g17p_launch_trace_enabled()) {
+      fprintf(stderr,
+              "G17P vdm: base=%" PRIx64 " submit=%" PRIx64
+              " len=%zu linked=%d\n",
+              submitted_full, (uint64_t)c->vdm_ctrl_stream_base, len,
+              (int)cs->stream_linked);
+      if (!cs->stream_linked)
+         hk_g17p_trace_hexdump("vdm-stream", submitted_full, submitted_start,
+                               len);
+   }
 
    agx_pack(&c->ppp_ctrl, CR_PPP_CONTROL, cfg) {
       cfg.enable_w_clamp = true;
@@ -138,6 +338,23 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    c->stencil.stride = cs->cr.stencil.stride;
    c->stencil.comp_base = cs->cr.stencil.meta;
    c->stencil.comp_stride = cs->cr.stencil.meta_stride;
+
+   /* Diagnostic: working color-only G17P Metal records leave
+    * CR_ISP_ZLS_PIXELS at zero and retain the neutral 1.0 depth-clear value.
+    * Honeykrisp currently fills ZLS dimensions from the render area even when
+    * no depth or stencil attachment exists, producing non-zero dimensions
+    * beside four null Z/S buffer pointers. Match the native inactive-ZLS
+    * state without changing passes which actually own a Z/S attachment.
+    */
+   if (dev->dev.chip == AGX_CHIP_G17P &&
+       getenv("HK_G17P_NATIVE_NO_ZLS") != NULL && c->depth.base == 0 &&
+       c->stencil.base == 0) {
+      memset(&c->isp_zls_pixels, 0, sizeof(c->isp_zls_pixels));
+      c->isp_bgobjdepth = fui(1.0f);
+      fprintf(stderr,
+              "G17P native inactive ZLS: pixels=0 depth-clear=%#x\n",
+              c->isp_bgobjdepth);
+   }
 
    if (cs->cr.dbias_is_int == U_TRISTATE_YES) {
       c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
@@ -217,6 +434,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
       c->ts_frag.end.handle = cs->timestamp.end.handle;
       c->ts_frag.end.offset = cs->timestamp.end.offset_B;
    }
+
 }
 
 static void
@@ -244,6 +462,117 @@ union drm_asahi_cmd {
    struct drm_asahi_cmd_render render;
 };
 
+static bool
+hk_g17p_write_range_candidates(struct hk_device *dev,
+                               struct drm_asahi_attachment spans[2])
+{
+   const bool dump = getenv("HK_G17P_DUMP_WRITE_RANGES") != NULL;
+   const bool synthesize = getenv("HK_G17P_NATIVE_WRITE_SPANS") != NULL;
+   if (dev->dev.chip != AGX_CHIP_G17P || (!dump && !synthesize))
+      return false;
+
+   uint64_t main_start = UINT64_MAX, main_end = 0;
+   uint64_t usc_start = UINT64_MAX, usc_end = 0;
+
+   simple_mtx_lock(&dev->dev.bo_map_lock);
+   for (uint32_t handle = 0; handle < dev->dev.max_handle; ++handle) {
+      struct agx_bo *bo = agx_lookup_bo(&dev->dev, handle);
+      if (!bo->size || !bo->va || bo->size > UINT64_MAX - bo->va->addr)
+         continue;
+
+      const uint64_t start = bo->va->addr;
+      const uint64_t end = start + bo->size;
+      const bool usc = bo->va->flags & AGX_VA_USC;
+      if (dump) {
+         fprintf(stderr,
+                 "G17P BO range: handle=%u label=%s va=%#" PRIx64
+                 " size=%#" PRIx64 " flags=%#x heap=%s writable=%u\n",
+                 handle, bo->label, start, (uint64_t)bo->size, bo->flags,
+                 usc ? "usc" : "main", !(bo->flags & AGX_BO_READONLY));
+      }
+
+      if (bo->flags & AGX_BO_READONLY)
+         continue;
+
+      uint64_t *span_start = usc ? &usc_start : &main_start;
+      uint64_t *span_end = usc ? &usc_end : &main_end;
+      *span_start = MIN2(*span_start, start);
+      *span_end = MAX2(*span_end, end);
+   }
+   simple_mtx_unlock(&dev->dev.bo_map_lock);
+
+   if (dump) {
+      fprintf(stderr,
+              "G17P BO writable spans: main=%#" PRIx64 "..%#" PRIx64
+              " usc=%#" PRIx64 "..%#" PRIx64 "\n",
+              main_start == UINT64_MAX ? 0 : main_start, main_end,
+              usc_start == UINT64_MAX ? 0 : usc_start, usc_end);
+   }
+
+   if (main_start == UINT64_MAX || usc_start == UINT64_MAX ||
+       main_end <= main_start || usc_end <= usc_start)
+      return false;
+
+   spans[0] = (struct drm_asahi_attachment){
+      .pointer = main_start,
+      .size = main_end - main_start,
+   };
+   spans[1] = (struct drm_asahi_attachment){
+      .pointer = usc_start,
+      .size = usc_end - usc_start,
+   };
+   return true;
+}
+
+static void
+asahi_append_fragment_attachments(struct hk_device *dev,
+                                  struct util_dynarray *payload,
+                                  const struct hk_cs *cs)
+{
+   struct drm_asahi_attachment writable_spans[2];
+   const bool have_writable_spans =
+      hk_g17p_write_range_candidates(dev, writable_spans);
+   struct hk_drm_attachment_set synthetic;
+   const struct hk_drm_attachment_set *set = &cs->fragment_attachments;
+   if (getenv("HK_G17P_NATIVE_WRITE_SPANS") != NULL &&
+       have_writable_spans) {
+      hk_drm_attachment_set_init(&synthetic);
+      synthetic.list[0] = writable_spans[0];
+      synthetic.list[1] = writable_spans[1];
+      synthetic.count = 2;
+      set = &synthetic;
+      fprintf(stderr,
+              "G17P native write spans: main=%#" PRIx64 "+%#" PRIx64
+              " usc=%#" PRIx64 "+%#" PRIx64 "\n",
+              (uint64_t)writable_spans[0].pointer,
+              (uint64_t)writable_spans[0].size,
+              (uint64_t)writable_spans[1].pointer,
+              (uint64_t)writable_spans[1].size);
+   }
+
+   const uint32_t count = MIN2(set->count, dev->dev.params.max_attachments);
+   const struct drm_asahi_cmd_header header = {
+      .cmd_type = DRM_ASAHI_SET_FRAGMENT_ATTACHMENTS,
+      .size = count * sizeof(set->list[0]),
+      .vdm_barrier = DRM_ASAHI_BARRIER_NONE,
+      .cdm_barrier = DRM_ASAHI_BARRIER_NONE,
+   };
+
+   /* Emit even an empty set. Attachment commands affect subsequent hardware
+    * commands in the same submit, so an attachmentless render must clear the
+    * set retained by the preceding render. */
+   util_dynarray_append(payload, header);
+   if (count)
+      util_dynarray_append_array(payload, struct drm_asahi_attachment,
+                                 set->list, count);
+
+   if (!set->complete || count != set->count) {
+      perf_debug_dev(&dev->dev,
+                     "Fragment attachment hint incomplete: retained %u, emitted %u (kernel limit %u)",
+                     set->count, count, dev->dev.params.max_attachments);
+   }
+}
+
 /* XXX: Batching multiple commands per submission is causing rare (7ppm) flakes
  * on the CTS once lossless compression is enabled. This needs to be
  * investigated before we can reenable this mechanism. We are likely missing a
@@ -261,6 +590,14 @@ queue_submit_single(struct hk_device *dev, struct drm_asahi_submit *submit,
                     unsigned ring_idx)
 {
    struct agx_submit_virt virt = {.ring_idx = ring_idx};
+
+   if (dev->dev.chip == AGX_CHIP_G17P &&
+       getenv("HK_G17P_ABORT_BEFORE_IOCTL") != NULL) {
+      fprintf(stderr,
+              "G17P diagnostic: aborting before DRM_IOCTL_ASAHI_SUBMIT\n");
+      return vk_device_set_lost(&dev->vk,
+                                "G17P diagnostic pre-submit abort");
+   }
 
    if (dev->dev.is_virtio) {
       u_rwlock_rdlock(&dev->external_bos.lock);
@@ -310,17 +647,28 @@ queue_submit_looped(struct hk_device *dev, struct drm_asahi_submit *submit,
       assert(count > 0);
 
       unsigned base_offs = offs;
-      unsigned cdm_count = 0, vdm_count = 0;
+      struct hk_drm_command_span span;
+      if (!hk_drm_next_command_span(cmdbuf, submit->cmdbuf_size, base_offs,
+                                    count, &span)) {
+         return vk_device_set_lost(
+            &dev->vk, "Invalid internal Asahi command stream framing");
+      }
+      offs = span.end_offset;
+      unsigned cdm_count = span.compute_count;
+      unsigned vdm_count = span.render_count;
+      if (last && offs != submit->cmdbuf_size) {
+         return vk_device_set_lost(
+            &dev->vk, "Trailing synthetic Asahi commands without hardware");
+      }
 
       /* We need to fix up the barriers since barriers are ioctl-relative */
-      for (unsigned i = 0; i < count; ++i) {
-         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + offs);
-         offs += sizeof(*cmd) + cmd->size;
+      for (unsigned scan = base_offs; scan < offs;) {
+         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + scan);
+         scan += sizeof(*cmd) + cmd->size;
 
-         if (cmd->cmd_type == DRM_ASAHI_CMD_RENDER)
-            vdm_count++;
-         else if (cmd->cmd_type == DRM_ASAHI_CMD_COMPUTE)
-            cdm_count++;
+         if (cmd->cmd_type != DRM_ASAHI_CMD_RENDER &&
+             cmd->cmd_type != DRM_ASAHI_CMD_COMPUTE)
+            continue;
 
          if (cmd->vdm_barrier != DRM_ASAHI_BARRIER_NONE) {
             assert(cmd->vdm_barrier >= submitted_vdm);
@@ -337,9 +685,11 @@ queue_submit_looped(struct hk_device *dev, struct drm_asahi_submit *submit,
        * only the last ioctl will signal, make sure it waits on prior ioctls.
        *
        * TODO: there might be a more performant way to do this.
-       */
+      */
       if (last && !first) {
-         struct drm_asahi_cmd_header *cmd = (void *)(cmdbuf + base_offs);
+         assert(span.first_hardware_offset != SIZE_MAX);
+         struct drm_asahi_cmd_header *cmd =
+            (void *)(cmdbuf + span.first_hardware_offset);
 
          if (cmd->vdm_barrier == DRM_ASAHI_BARRIER_NONE)
             cmd->vdm_barrier = 0;
@@ -820,8 +1170,6 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
          struct drm_asahi_cmd_header header =
             agx_cmd_header(cs->type == HK_CS_CDM, nr_vdm, nr_cdm);
 
-         util_dynarray_append(&payload, header);
-
          if (cs->type == HK_CS_CDM) {
             perf_debug(
                cmdbuf,
@@ -832,6 +1180,7 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
             assert(cs->stats.cmds > 0 || cs->stats.flushes > 0 ||
                    cs->timestamp.end.handle);
 
+            util_dynarray_append(&payload, header);
             struct drm_asahi_cmd_compute cmd;
             asahi_fill_cdm_command(dev, cs, &cmd);
             util_dynarray_append(&payload, cmd);
@@ -842,6 +1191,9 @@ queue_submit(struct hk_device *dev, struct hk_queue *queue,
                        i, cs->stats.calls, cs->stats.cmds);
             assert(cs->stats.cmds > 0 || cs->cr.process_empty_tiles ||
                    cs->timestamp.end.handle);
+
+            asahi_append_fragment_attachments(dev, &payload, cs);
+            util_dynarray_append(&payload, header);
 
             struct drm_asahi_cmd_render cmd;
             asahi_fill_vdm_command(dev, cs, &cmd);

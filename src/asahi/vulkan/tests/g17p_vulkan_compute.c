@@ -22,6 +22,10 @@
 #define T8140_DEVICE_ID 0x8140
 #define ELEMENT_COUNT   32
 
+/* Distinct per element and distinguishable from both 0 and any plausible
+ * shader result. */
+#define SENTINEL(i) (UINT32_C(0xA5A50000) | (uint32_t)(i))
+
 #define VK_FN(name) static PFN_##name name
 
 VK_FN(vkGetInstanceProcAddr);
@@ -294,7 +298,13 @@ main(void)
    uint32_t *mapped;
    check(vkMapMemory(device, memory, 0, buffer_size, 0, (void **)&mapped),
          "vkMapMemory");
-   memset(mapped, 0, buffer_size);
+   /* Prefill with a per-element sentinel instead of zero. A zero prefill
+    * cannot distinguish "the dispatch never ran" from "the store ran and wrote
+    * zero", and that ambiguity is exactly what stalled the last round: every
+    * element read back as 0, which is also what an untouched buffer looks
+    * like. With the sentinel the readback classifies itself. */
+   for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
+      mapped[i] = SENTINEL(i);
 
    const VkDescriptorSetLayoutBinding binding = {
       .binding = 0,
@@ -439,14 +449,57 @@ main(void)
    check(vkWaitForFences(device, 1, &fence, true, UINT64_MAX),
          "vkWaitForFences");
 
+   unsigned untouched = 0, zeroed = 0, wrong = 0, first_bad = UINT32_MAX;
    for (uint32_t i = 0; i < ELEMENT_COUNT; ++i) {
       const uint32_t expected = UINT32_C(0x12340000) + (2 * i) + 3;
-      if (mapped[i] != expected) {
+      if (mapped[i] == expected)
+         continue;
+      if (first_bad == UINT32_MAX)
+         first_bad = i;
+      if (mapped[i] == SENTINEL(i))
+         untouched++;
+      else if (mapped[i] == 0)
+         zeroed++;
+      else
+         wrong++;
+   }
+
+   if (untouched || zeroed || wrong) {
+      fprintf(stderr,
+              "g17p-vulkan-compute: FAIL untouched=%u zeroed=%u wrong=%u of %u\n"
+              "g17p-vulkan-compute:   value[%u] is %#x, expected %#x "
+              "(sentinel would be %#x)\n",
+              untouched, zeroed, wrong, ELEMENT_COUNT, first_bad,
+              mapped[first_bad], UINT32_C(0x12340000) + (2 * first_bad) + 3,
+              SENTINEL(first_bad));
+      /* The classification is the whole point, so spell it out. */
+      if (untouched == ELEMENT_COUNT)
          fprintf(stderr,
-                 "g17p-vulkan-compute: value[%u] is %#x, expected %#x\n",
-                 i, mapped[i], expected);
-         return EXIT_FAILURE;
+                 "g17p-vulkan-compute:   -> the store never executed: every "
+                 "element still holds its prefill sentinel. The dispatch did "
+                 "not run (or ran and was discarded); this is NOT a shader "
+                 "arithmetic bug.\n");
+      else if (zeroed == ELEMENT_COUNT)
+         fprintf(stderr,
+                 "g17p-vulkan-compute:   -> the buffer was zeroed by something "
+                 "other than this shader; the store wrote 0 or the memory was "
+                 "clobbered.\n");
+      else if (wrong)
+         fprintf(stderr,
+                 "g17p-vulkan-compute:   -> the store DID execute; the value "
+                 "is wrong, so the arithmetic or the constant-data load is at "
+                 "fault.\n");
+      /* "Wrote nothing" and "wrote somewhere else" have completely different
+       * causes, and reporting only element 0 cannot tell them apart. Dump the
+       * whole buffer so a store landing at a wrong offset is visible. */
+      fprintf(stderr, "g17p-vulkan-compute:   buffer:\n");
+      for (uint32_t i = 0; i < ELEMENT_COUNT; i += 8) {
+         fprintf(stderr, "g17p-vulkan-compute:     [%2u] ", i);
+         for (uint32_t j = 0; j < 8 && i + j < ELEMENT_COUNT; ++j)
+            fprintf(stderr, "%08x ", mapped[i + j]);
+         fprintf(stderr, "\n");
       }
+      return EXIT_FAILURE;
    }
 
    printf("g17p-vulkan-compute: PASS — 32 buffer writes on queue family %u "

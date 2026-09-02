@@ -56,13 +56,20 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(52, 1);
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
-   base[nb++] = (struct agx3_field_kv)KV(103, 1);
-   base[nb++] = (struct agx3_field_kv)KV(104, 1);
+   const enum agx3_tex_operand_kind tk =
+      d->texture_kind ? d->texture_kind : AGX3_TEX_OPERAND_IMMEDIATE;
+   const enum agx3_tex_operand_kind sk =
+      d->sampler_kind ? d->sampler_kind : AGX3_TEX_OPERAND_IMMEDIATE;
+   const bool immediate_operands = tk == AGX3_TEX_OPERAND_IMMEDIATE &&
+                                   sk == AGX3_TEX_OPERAND_IMMEDIATE;
+
+   base[nb++] = (struct agx3_field_kv)KV(103, tk);
+   base[nb++] = (struct agx3_field_kv)KV(104, immediate_operands ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(112, 4);
    base[nb++] = (struct agx3_field_kv)KV(118, 3);
    base[nb++] = (struct agx3_field_kv)KV(119, 3);
-   base[nb++] = (struct agx3_field_kv)KV(132, 1);
-   base[nb++] = (struct agx3_field_kv)KV(133, 1);
+   base[nb++] = (struct agx3_field_kv)KV(132, sk);
+   base[nb++] = (struct agx3_field_kv)KV(133, immediate_operands ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(138, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(24, 2);
@@ -81,9 +88,21 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(37, 1);  /* immediate LOD */
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
+   if (d->array)
+      ov[n++] = (struct agx3_field_kv)KV(77, 2); /* array, register layer */
    ov[n++] = (struct agx3_field_kv)KV(78, 1);  /* texel fetch */
-   ov[n++] = (struct agx3_field_kv)KV(95, d->texture);
-   ov[n++] = (struct agx3_field_kv)KV(124, 0); /* sampler zero */
+   /* Each operand lands in the field its kind selects: 95/96/97 for the
+    * texture, 124/125/126 for the sampler. */
+   ov[n++] = (struct agx3_field_kv)KV(
+      tk == AGX3_TEX_OPERAND_IMMEDIATE   ? 95
+      : tk == AGX3_TEX_OPERAND_REGISTER  ? 96
+                                         : 97,
+      tk == AGX3_TEX_OPERAND_IMMEDIATE ? d->texture : d->texture_value);
+   ov[n++] = (struct agx3_field_kv)KV(
+      sk == AGX3_TEX_OPERAND_IMMEDIATE   ? 124
+      : sk == AGX3_TEX_OPERAND_REGISTER  ? 125
+                                         : 126,
+      sk == AGX3_TEX_OPERAND_IMMEDIATE ? 0 : d->sampler_value);
    ov[n++] = (struct agx3_field_kv)KV(139, 2); /* LOD0 immediate shape */
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
@@ -95,7 +114,15 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
       if (d->wait_mask & (1u << i))
          ov[n++] = (struct agx3_field_kv)KV(62 + i, 1);
 
-   const int ep = enc == AGX_ISA_ENCODING_AGX3B ? 3 : 0;
+   /*
+    * Immediate operands are ep3; register and uniform operands are ep4. Only
+    * AGX3b is witnessed for the non-immediate kinds, so AGX3c refuses them
+    * rather than assuming its encoding points line up.
+    */
+   if (!immediate_operands && enc != AGX_ISA_ENCODING_AGX3B)
+      return false;
+   const int ep =
+      enc == AGX_ISA_ENCODING_AGX3B ? (immediate_operands ? 3 : 4) : 0;
    if (!agx3_bind_compose(enc, "smp", ep, base, nb, ov, n, out, len)) {
       memset(out, 0, AGX3_TEX_MAX_LENGTH);
       *len = 0;
@@ -358,12 +385,20 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
        !fetch_ok(enc, &d))
       return false;
 
-   uint8_t canonical[AGX3_TEX_MAX_LENGTH];
-   uint8_t length = 0;
-   if (!agx3_tex_encode_fetch(enc, &d, canonical, &length) ||
-       length != instruction_size || memcmp(canonical, instruction, length))
-      return false;
+   /* The array axis is a single selector the hand decoders above do not
+    * extract; recover it the same way everything else here is validated, by
+    * requiring one of the two readings to repack byte-for-byte. */
+   for (unsigned a = 0; a < 2; ++a) {
+      uint8_t canonical[AGX3_TEX_MAX_LENGTH];
+      uint8_t length = 0;
+      d.array = a != 0;
+      if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
+          length == instruction_size &&
+          memcmp(canonical, instruction, length) == 0) {
+         *out = d;
+         return true;
+      }
+   }
 
-   *out = d;
-   return true;
+   return false;
 }

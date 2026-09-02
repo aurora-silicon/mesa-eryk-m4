@@ -800,11 +800,111 @@ test_fail_closed(void)
    return true;
 }
 
+/* Every witnessed G17P launch record was captured with a program VA that has
+ * bit 40 set (0x100000a8000, 0x100000b0000), where word 1's `(va >> 38) << 22`
+ * and word 3's `va[47:40]` BOTH evaluate to the same 2^40 contribution
+ * (4 << 38 == 1 << 40).  Hard-coding either one therefore "reproduces" the
+ * witness while injecting 2^40 into any bit-40-clear VA -- which is every
+ * address in Mesa's USC window at 0x11xxxxxxxx.  Hardware proved this for
+ * word 1 (program at 0x11fffac100 fetched from 0x111fffac100, FAULT_ADDR
+ * 0x447ffeb04).  Pin BOTH fields as VA-derived against a USC-window VA:
+ *
+ *   word 1 bits 22..31 == program_va[47:38]  (derived, so 0 here)
+ *   word at +8         == program_va >> 6    (truncated to 32 bits)
+ *   word at +12        == 0x40000000 | program_va[47:40]  (so 0x40000000 here)
+ *
+ * and the same for the indirect record's pointer pair.  Under any OR of the
+ * two overlapping high fields the reconstruction is then exactly the VA.
+ */
+static uint32_t
+load_le32(const uint8_t *bytes)
+{
+   return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
+          ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
+}
+
+static bool
+test_g17p_usc_window_va_is_encoded_without_constants(void)
+{
+   /* A real USC-window address: dev->shader_base is 0x1100000000 on T8140
+    * (ALIGN_POT(2^36 + printf, 4 GiB)) and util_vma_heap allocates high, so
+    * the first Ioto program BO lands just under shader_base + 4 GiB. */
+   const uint64_t program_va = UINT64_C(0x11ffff8000);
+   const uint64_t shader_va = UINT64_C(0x11ffff0000);
+
+   struct agx3_cdm_direct_template_sources sources;
+   CHECK(agx3_cdm_direct_template_sources_compute(false, false, false,
+                                                   &sources));
+   const struct agx3_g17p_native_compute_program_desc desc = {
+      .program_va = program_va,
+      .shader_va = shader_va,
+      .launch_sources = sources,
+   };
+   struct agx3_compute_program program;
+   CHECK(agx3_g17p_native_compute_program_bind(&desc, &program));
+
+   const struct agx3_compute_direct_grid grid = {
+      .source = AGX3_CDM_DIRECT_GRID_GLOBAL_THREADS,
+      .size = {64, 1, 1},
+      .local_size = {32, 1, 1},
+      .dimensions = 1,
+   };
+   uint8_t dispatch[AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE];
+   struct agx3_compute_dispatch_sink sink = {
+      .data = dispatch,
+      .capacity = sizeof(dispatch),
+   };
+   CHECK(agx3_g17p_native_compute_dispatch_append(&program, &grid, &sink));
+
+   /* bit 40 is clear, so the derived high field must be zero -- the old
+    * hard-coded 0x01000000 would have injected 2^40 into the fetch. */
+   CHECK((load_le32(dispatch + 4) >> 22) == 0);
+   CHECK(load_le32(dispatch + 8) == (uint32_t)(program_va >> 6));
+   CHECK(load_le32(dispatch + 12) == UINT32_C(0x40000000));
+
+   /* The hardware reconstruction must land exactly on the program VA under
+    * the OR of BOTH high fields -- word 1 bits 22..31 at bit 38 and word 3's
+    * low byte at bit 40 -- because the witness cannot distinguish which of
+    * them the hardware consumes. */
+   const uint64_t reconstructed =
+      ((uint64_t)(load_le32(dispatch + 4) >> 22) << 38) |
+      ((uint64_t)load_le32(dispatch + 8) << 6) |
+      ((uint64_t)(load_le32(dispatch + 12) & 0xff) << 40);
+   CHECK(reconstructed == program_va);
+
+   /* Indirect record: same two fields, plus the helper's pointer pair. */
+   const struct agx3_g17p_native_indirect_dispatch indirect = {
+      .helper_program_va = UINT64_C(0x11fffe8000),
+      .geometry_va = UINT64_C(0x11fffe0000),
+      .inline_global_size = {64, 1, 1},
+      .local_size = {32, 1, 1},
+   };
+   uint8_t indirect_bytes[AGX3_G17P_NATIVE_INDIRECT_COMPUTE_DISPATCH_SIZE];
+   struct agx3_compute_dispatch_sink indirect_sink = {
+      .data = indirect_bytes,
+      .capacity = sizeof(indirect_bytes),
+   };
+   CHECK(agx3_g17p_native_indirect_compute_dispatch_append(
+      &program, &indirect, &indirect_sink));
+   CHECK((load_le32(indirect_bytes + 4) >> 22) == 0);
+   CHECK(load_le32(indirect_bytes + 8) == (uint32_t)(program_va >> 6));
+   CHECK(load_le32(indirect_bytes + 12) == UINT32_C(0x40000000));
+
+   const uint8_t *helper =
+      indirect_bytes + AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE;
+   CHECK((load_le32(helper + 4) >> 22) == 0);
+   CHECK(load_le32(helper + 8) ==
+         (uint32_t)(indirect.helper_program_va >> 6));
+   CHECK(load_le32(helper + 12) == UINT32_C(0x40000000));
+   return true;
+}
+
 int
 main(void)
 {
    if (!test_prepare_and_launch() || !test_a18_pro_one_dimensional_launch() ||
        !test_g17p_native_compute_join() ||
+       !test_g17p_usc_window_va_is_encoded_without_constants() ||
        !test_g17p_direct_add3_program_join() ||
        !test_g17s_minimal_program_join() || !test_fail_closed())
       return 1;

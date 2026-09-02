@@ -857,6 +857,13 @@ hk_meta_copy_image_to_buffer2(struct vk_command_buffer *cmd,
          result = get_image_copy_pipeline(device, meta, &key, pipeline_layout,
                                           &pipeline);
          if (unlikely(result != VK_SUCCESS)) {
+            /* The only reason an image<->buffer copy fails with nothing else
+             * logged: the internal copy shader samples its source, and if that
+             * texture op has no grounded encoding the pipeline never builds.
+             * Without this the app just sees the command buffer's deferred
+             * error at vkEndCommandBuffer, with nothing naming the site.
+             * AGX_MESA_DEBUG=shaders prints the refused opcode. */
+            mesa_loge("meta image-copy pipeline unavailable (%d)", (int)result);
             vk_command_buffer_set_error(cmd, result);
             return;
          }
@@ -1060,6 +1067,13 @@ hk_meta_copy_buffer_to_image2(struct vk_command_buffer *cmd,
          result = get_image_copy_pipeline(device, meta, &key, pipeline_layout,
                                           &pipeline);
          if (unlikely(result != VK_SUCCESS)) {
+            /* The only reason an image<->buffer copy fails with nothing else
+             * logged: the internal copy shader samples its source, and if that
+             * texture op has no grounded encoding the pipeline never builds.
+             * Without this the app just sees the command buffer's deferred
+             * error at vkEndCommandBuffer, with nothing naming the site.
+             * AGX_MESA_DEBUG=shaders prints the refused opcode. */
+            mesa_loge("meta image-copy pipeline unavailable (%d)", (int)result);
             vk_command_buffer_set_error(cmd, result);
             return;
          }

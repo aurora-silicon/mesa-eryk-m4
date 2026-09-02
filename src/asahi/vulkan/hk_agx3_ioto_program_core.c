@@ -103,12 +103,26 @@ hk_agx3_g17p_graphics_state_tail(
 
    struct agx_ioto_state ldshdr = {0};
    ldshdr.f[0] = desc->shader_va;
-   /* f1 is the two-bit instruction-fetch line hint, not a code-size limit.
-    * Native G17P graphics shaders exceed four 64-byte lines and saturate this
-    * field; execution remains bounded by the shader's terminal end.
+   /* LDSHDR f1 is a program-kind SELECTOR, not a fetch-line hint.
+    *
+    * agx_ioto_state_encode_ldshdr() puts it through `agx_ioto_e4[4] =
+    * {2, 0, 1, 3}` into a two-bit field (agx_ioto_state_core.c:19, :247).  A
+    * permuted two-bit code is an enumeration; a length or a line hint is never
+    * table-permuted, and a hint that saturated at four 64-byte lines would be
+    * useless for the shaders this path emits.  All three witnessed values
+    * decode as distinct program kinds, and the encoded word matches m1n1's
+    * captured LDSHDRs bit for bit:
+    *
+    *   direct add3   f1=0 -> e4=2 -> word4 0x0004   "77 01 aa 07 .. 04 00"
+    *   grid setup    f1=1 -> e4=0 -> word4 0x0000   "77 01 2a 08 .. 00 00"
+    *   indirect add3 f1=3 -> e4=3 -> word4 0x0006   "77 01 aa 0e .. 06 00"
+    *
+    * Deriving it from the binary size announced a 118-byte Honeykrisp shader
+    * as the GRID-SETUP HELPER kind, and any shader over 256 bytes overflowed
+    * the field's own validator (`f[1] <= 3`) and failed the compose outright --
+    * which a real length field could not do.  Emit the direct kind.
     */
-   const uint32_t fetch_lines_m1 = (desc->shader_binary_size - 1) / 64;
-   ldshdr.f[1] = fetch_lines_m1 < 3 ? fetch_lines_m1 : 3;
+   ldshdr.f[1] = AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3;
    ldshdr.f[23] = 1;
 
    struct agx_ioto_state spectpr;
@@ -343,6 +357,21 @@ hk_agx3_g17p_rt0_bg_program_generate(
        copy_offset > body_size)
       return false;
 
+   /*
+    * The clear program's length is a bound, not a constant. It embeds
+    * clear_value_va as two LDIMM records, and agx_ioto_load_pack_ldimm() is
+    * variable length: a record whose destination half is below 32 and whose
+    * immediate is below 128 takes a 2-byte compact form instead of the 8-byte
+    * long one. The address's high word is `clear_value_va >> 32`, so whenever
+    * the clear value happens to live below the 128 GiB mark the program comes
+    * out 6 bytes shorter -- exactly the 144 - 138 seen in practice.
+    *
+    * AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE is therefore the long-form maximum,
+    * which is also what the caller allocates (hk_cmd_draw.c:349-351), so a
+    * shorter program is written and used as-is. Demanding equality rejected
+    * every clear whose colour landed at a low address, which is to say the
+    * background program of an entire class of render passes.
+    */
    struct hk_agx3_g17p_rt0_bg_program staged;
    size_t written = 0;
    if (!agx_ioto_g17p_resource_program_compose(
@@ -351,7 +380,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
           &written) ||
        written > UINT16_MAX ||
        (desc->op == HK_AGX3_G17P_RT0_BG_CLEAR &&
-        written != AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE))
+        written > AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE))
       return false;
 
    staged.length = (uint16_t)written;
@@ -379,12 +408,22 @@ hk_agx3_g17p_rt0_eot_program_generate(
    if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
       return false;
 
+   /*
+    * A bound, not a constant -- the same variable-length LDIMM effect as the
+    * clear program above. This one embeds pbe_argument_va, so whenever the
+    * PBE argument lands at a low enough address the composed program is
+    * shorter than the long-form maximum. The composer is already given
+    * sizeof(staged.bytes) as its capacity, so it cannot overrun; demanding
+    * exact equality only rejected valid programs, and it rejected the
+    * end-of-tile store of every render pass whose argument allocation
+    * happened to fall low.
+    */
    struct hk_agx3_g17p_rt0_eot_program staged;
    size_t written = 0;
    if (!agx_ioto_g17p_rt0_eot_program_compose(
           desc->program_va, desc->pbe_argument_va, &tail, staged.bytes,
           sizeof(staged.bytes), &written) ||
-       written != sizeof(staged.bytes))
+       written > sizeof(staged.bytes))
       return false;
 
    staged.length = (uint16_t)written;
@@ -431,15 +470,47 @@ hk_agx3_g17p_compute_state_tail(
        desc->nr_gprs == 0 || desc->scratch_size != 0)
       return false;
 
-   const uint32_t fetch_lines_m1 = (desc->shader_binary_size - 1) / 64;
+   /* The direct-dispatch program kind, exactly as the add3 witness announces
+    * its own compute shader.  See the graphics path above for why f1 is a
+    * selector rather than a size: deriving it from `shader_binary_size` made
+    * this 118-byte shader announce itself as GRID_HELPER, the kind m1n1 uses
+    * for the indirect grid-setup helper, and made every shader over 256 bytes
+    * fail the compose. */
    const enum agx_ioto_g17p_compute_ldshdr_f1 fetch =
-      fetch_lines_m1 == 0
-         ? AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3
-         : fetch_lines_m1 == 1
-              ? AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_GRID_HELPER
-              : AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_INDIRECT_ADD3;
-   return agx_ioto_g17p_runtime_compute_tail_build(desc->shader_va, fetch,
-                                                   tail);
+      AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3;
+   struct agx_ioto_state_tail_output staged;
+   if (!agx_ioto_g17p_runtime_compute_tail_build(desc->shader_va, fetch,
+                                                 &staged))
+      return false;
+
+   /* Declare the shader's register footprint.
+    *
+    * agx_ioto_g17p_runtime_compute_tail_build() leaves SPECTPR entirely zero,
+    * because it was recovered from the hand-written add3 witness, whose
+    * register use fits the default allocation. Every compiler-produced shader
+    * must declare its own: the graphics path directly above already does this
+    * (hk_agx3_g17p_graphics_state_tail -> agx_ioto_g17p_compiler_spectpr_build)
+    * and this function *validates* nr_gprs/scratch_size and then never used
+    * them -- vestigial checks for a wiring that was never finished.
+    *
+    * Observed consequence: a 16-GPR Honeykrisp compute shader shipped the
+    * add3 footprint (`f7 00 2a 00 00 00 00 00 00 00`, i.e. the nr_gprs==0
+    * form that spectpr_build itself refuses to produce). The dispatch ran to
+    * `stop` and faulted nowhere -- with soft faults enabled a store through a
+    * register outside the declared allocation is silently discarded -- and the
+    * destination buffer came back completely untouched.
+    */
+   struct agx_ioto_state spectpr;
+   if (!agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size, desc->nr_gprs,
+                                             &spectpr) ||
+       !agx_ioto_state_pack_spectpr(
+          AGX_CHIP_G17P, &spectpr,
+          staged.bytes + AGX_IOTO_SPECLM_SIZE + AGX_IOTO_LDSHDR_SIZE,
+          AGX_IOTO_SPECTPR_SIZE))
+      return false;
+
+   *tail = staged;
+   return true;
 }
 
 bool

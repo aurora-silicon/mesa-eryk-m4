@@ -6,8 +6,10 @@
  */
 
 #include "agx_device.h"
+#include "agx_linker.h"
 #include "agx_va_runtime_hole.h"
 #include <errno.h>
+#include <stdlib.h>
 #include <inttypes.h>
 #include "clc/asahi_clc.h"
 #include "drm-uapi/asahi_drm.h"
@@ -209,6 +211,65 @@ agx_bo_bind(struct agx_device *dev, struct agx_bo *bo, uint64_t addr,
    };
 
    return dev->ops.bo_bind(dev, &op, 1);
+}
+
+/*
+ * Metal's HAL200 render context is six independently allocated resources.
+ * The first five are 32 KiB and the last is 48 KiB.  Each resource has a
+ * compact high mapping and an identity low alias in the render VM:
+ *
+ *   0x1000018000 -> 0x18000, ..., 0x1000068000 -> 0x68000
+ *
+ * Honeykrisp intentionally combines those resources into one fixed BO at
+ * 0x1000000000, preserving the exact high addresses as BO offsets.  Bind the
+ * corresponding ranges a second time so hardware-side direct-context reads
+ * see the same low aperture as Metal.  The resource sizes and gaps are
+ * trace-observed; do not turn this into one broad low mapping.
+ */
+static const struct {
+   uint64_t offset;
+   uint64_t size;
+} agx_g17p_render_context_low_slots[] = {
+   {UINT64_C(0x18000), UINT64_C(0x8000)},
+   {UINT64_C(0x28000), UINT64_C(0x8000)},
+   {UINT64_C(0x38000), UINT64_C(0x8000)},
+   {UINT64_C(0x48000), UINT64_C(0x8000)},
+   {UINT64_C(0x58000), UINT64_C(0x8000)},
+   {UINT64_C(0x68000), UINT64_C(0xc000)},
+};
+
+static void
+agx_g17p_unbind_render_context_low_slots(struct agx_device *dev,
+                                         unsigned count)
+{
+   for (unsigned i = 0; i < count; ++i) {
+      const uint64_t slot = agx_g17p_render_context_low_slots[i].offset;
+      const uint64_t size = agx_g17p_render_context_low_slots[i].size;
+      agx_bo_bind(dev, NULL, slot, size, 0, DRM_ASAHI_BIND_UNBIND);
+   }
+}
+
+static bool
+agx_g17p_bind_render_context_low_slots(struct agx_device *dev,
+                                       struct agx_bo *context)
+{
+   const uint32_t flags = DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE;
+
+   for (unsigned i = 0;
+        i < ARRAY_SIZE(agx_g17p_render_context_low_slots); ++i) {
+      const uint64_t slot = agx_g17p_render_context_low_slots[i].offset;
+      const uint64_t size = agx_g17p_render_context_low_slots[i].size;
+
+      if (agx_bo_bind(dev, context, slot, size, slot, flags)) {
+         fprintf(stderr,
+                 "Failed to bind G17P render-context low slot %#llx\n",
+                 (unsigned long long)slot);
+         agx_g17p_unbind_render_context_low_slots(dev, i);
+         return false;
+      }
+   }
+
+   return true;
 }
 
 int
@@ -780,9 +841,123 @@ agx_open_device(void *memctx, struct agx_device *dev)
    reservation += LIBAGX_PRINTF_BUFFER_SIZE;
 
    dev->guard_size = AIL_PAGESIZE;
+
+   /* Diagnostic: native Metal exposes each render write-resource group to
+    * MCache as one contiguous aperture. Mesa normally reserves an unmapped
+    * guard page after every BO, so a broad range spanning the live heap has
+    * holes and is correctly rejected by the kernel's write-range validator.
+    * Remove those holes only for the explicit G17P native-range experiment;
+    * this is set before either VMA heap is initialized or any BO is created.
+    */
+   if (dev->chip == AGX_CHIP_G17P &&
+       getenv("ASAHI_G17P_NO_GUARD") != NULL) {
+      dev->guard_size = 0;
+      fprintf(stderr,
+              "asahi: G17P diagnostic disabled per-BO VA guard pages\n");
+   }
    // Put the USC heap at the bottom of the user address space, 4GiB aligned
    dev->shader_base =
       ALIGN_POT(MAX2(dev->params.vm_start, reservation), 0x100000000ull);
+
+   /* G17P: the USC exec window must sit at 2^40.
+    *
+    * HARDWARE FACT, not a preference.  With the window at the address this
+    * formula derives from vm_start (0x1100000000), every Honeykrisp kick --
+    * including one whose shader and preamble touch no memory at all -- ended
+    * in a GMMU page fault (reason=3) with zero elapsed time, i.e. before the
+    * first instruction.  With the window at 0x10000000000 the identical
+    * binary executes: non-zero duration, no fault, and the shader's stores
+    * land in the right buffer.  Three consecutive clients on one boot, no
+    * faults.  It is also the address of the only other configuration ever
+    * observed to execute on this chip, m1n1's add3 witness (CODE_IMAGE).
+    *
+    * Why the address matters is visible in the launch record.  The CDM
+    * pipeline pointer is split across three fields: word 2 carries
+    * program_va[37:6], word 1 bits 22..31 carry program_va[47:38], and word
+    * 3's low byte carries program_va[47:40].  Below 2^38 the two high fields
+    * are BOTH ZERO, so an entire half of the pointer encoding is never
+    * exercised -- and that is exactly the regime the old base put us in.  At
+    * 2^40 they carry 4 and 1, byte-identical to add3's long-standing
+    * "constant" 0x01000000 and control 0x40000001.
+    *
+    * What is NOT the cause, each ruled out by this same experiment: the
+    * offset within the window (unchanged at ~+0xfffac000 across the failing
+    * and passing runs, so the window's reach is not the limit), the
+    * preamble, the shader, the container, and the descriptor chain.
+    *
+    * The boundary IS pinned, by experiment.  A base of 0x4000000000 (2^38)
+    * makes word 1 non-zero while leaving word 3's byte zero; it was run on
+    * hardware and the dispatch does NOT execute (vkQueueSubmit -4, no
+    * timestamps).  So "the high fields are exercised" is not the rule --
+    *
+    *     the program VA must have BIT 40 SET.
+    *
+    * Note the asymmetry this exposes: bits 38 and 39 live in the same
+    * va[47:38] field as bit 40, yet setting them is not enough.  Word 3's
+    * low byte carries only va[47:40], so the hardware appears to require the
+    * bits that word 3 alone provides; the two fields are not the pure
+    * redundancy the encoding suggests.  Anything that revisits the launch-word
+    * decode, or that moves this layout again, has to explain that.
+    *
+    * Consequence, and it is not a conservative choice but a forced one: the
+    * user heap ends up at 32GiB rather than 64GiB, because the read-only
+    * sparse alias has to fit below the kernel range and the window must stay
+    * a power of two.  Shrinking the kernel reservation buys nothing -- the
+    * power-of-two step dominates.  32GiB of VA against <=16GB of RAM is not
+    * a practical limit.
+    *
+    * ASAHI_G17P_USC_BASE below overrides this for further experiments only. */
+   if (dev->chip == AGX_CHIP_G17P)
+      dev->shader_base = AGX_G17P_USC_WINDOW_BASE;
+
+   /* G17P launch-level bring-up controls.
+    *
+    * Two properties of the USC exec window have never been varied on this
+    * chip, and both differ by orders of magnitude from the only configuration
+    * that has ever executed a kick on it (the m1n1 add3 witness):
+    *
+    *   - the window BASE.  add3 uses 0x10000000000; Honeykrisp derives
+    *     0x1100000000 from the kernel-reported vm_start.
+    *   - the OFFSET of code within the window.  add3 places its Ioto program
+    *     at base+0xa8000 and its shader container at base+0x3c0, i.e. inside
+    *     the first megabyte.  util_vma_heap_init() defaults to alloc_high, so
+    *     Honeykrisp places both within ~21KB of the TOP of a 4GiB window
+    *     (base+0xfffac000), four orders of magnitude further out.
+    *
+    * The offset is the one with a documented narrow field behind it.  m1n1's
+    * build_add3_preamble() (agx_g17p_native_add3.py) relocates the launch
+    * header's code pointer through a 16-bit halfword counted in 0x2000-byte
+    * chunks measured from usc_exec_base, and raises if the result will not fit
+    * -- a reach of exactly 512MiB.  Our allocations sit 4GiB out, eight times
+    * beyond it.
+    *
+    * Both are selected at runtime rather than compiled in so that one frozen
+    * artifact covers the baseline and each experiment, and so a run's own
+    * stderr records which layout produced it.  Bad values are fatal rather
+    * than clamped: a silently adjusted layout would produce a result that
+    * looks like an answer but is not.
+    */
+   const char *usc_base_env = getenv("ASAHI_G17P_USC_BASE");
+   if (usc_base_env != NULL && usc_base_env[0] != '\0') {
+      char *end = NULL;
+      errno = 0;
+      unsigned long long requested = strtoull(usc_base_env, &end, 0);
+
+      if (errno != 0 || end == usc_base_env || *end != '\0') {
+         fprintf(stderr, "ASAHI_G17P_USC_BASE=\"%s\" is not a number\n",
+                 usc_base_env);
+         return false;
+      }
+
+      if ((requested & 0xffffffffull) != 0) {
+         fprintf(stderr,
+                 "ASAHI_G17P_USC_BASE 0x%llx is not 4GiB aligned\n",
+                 requested);
+         return false;
+      }
+
+      dev->shader_base = requested;
+   }
 
    if (dev->shader_base < reservation) {
       /* Our robustness implementation requires the bottom unmapped */
@@ -792,11 +967,63 @@ agx_open_device(void *memctx, struct agx_device *dev)
    }
 
    uint64_t shader_size = 0x100000000ull;
-   // Put the user heap after the USC heap
-   uint64_t user_start = dev->shader_base + shader_size;
 
-   assert(dev->shader_base >= dev->params.vm_start);
-   assert(user_start < dev->params.vm_end);
+   /*
+    * Where the user heap goes relative to the USC window.
+    *
+    * Everywhere else the heap follows the USC window, which is what the
+    * original layout did. G17P cannot: its USC window sits at exactly 2^40,
+    * so a heap placed after it starts above 2^40 -- and the VDM PPP State
+    * Update carries its payload pointer in a FORTY BIT field (word 0 bits
+    * 0..7 hold pointer bits 32..39; see agx_vdm_ppp_state_core.h, which reads
+    * that layout off Apple's own G15/HAL200/HAL300 emitters). Every PPP
+    * payload was therefore unaddressable, agx_ppp_fini() refused it, and
+    * vkEndCommandBuffer returned VK_ERROR_FEATURE_NOT_PRESENT before a render
+    * command buffer could ever be recorded.
+    *
+    * Compute never noticed because nothing on that path encodes a 40-bit
+    * pointer.
+    *
+    * So put G17P's heap BELOW its USC window, in [reservation, 2^40). That
+    * keeps the window itself exactly where it is -- the only placement
+    * observed to execute -- and leaves the bottom 2^36 robustness carveout
+    * untouched, while bringing every command-stream allocation inside the
+    * field the hardware actually has.
+    */
+   const bool heap_below_usc = dev->chip == AGX_CHIP_G17P;
+
+   /*
+    * Start the low heap as high as it can go rather than at the reservation.
+    * agx_va_split_user_window() requires size < start and the sparse alias
+    * needs a second window of the same size, so the usable heap is maximised
+    * by start = shader_base/2: that yields size = shader_base/4 with the alias
+    * ending exactly at shader_base. Starting at the reservation instead would
+    * waste three quarters of the range on unused low VA.
+    */
+   uint64_t low_floor =
+      ALIGN_POT(MAX2(dev->params.vm_start, reservation), 0x100000000ull);
+   uint64_t user_start;
+   if (heap_below_usc) {
+      user_start = MAX2(low_floor, dev->shader_base / 2);
+   } else {
+      user_start = dev->shader_base + shader_size;
+   }
+
+   /* Checked rather than asserted: the base is settable at runtime and these
+    * are release builds. */
+   if (dev->shader_base < dev->params.vm_start ||
+       (!heap_below_usc && user_start <= dev->shader_base) ||
+       (heap_below_usc && user_start >= dev->shader_base) ||
+       user_start >= dev->params.vm_end) {
+      fprintf(stderr,
+              "USC window [%#llx, %#llx) does not fit the kernel VA window "
+              "[%#llx, %#llx)\n",
+              (unsigned long long)dev->shader_base,
+              (unsigned long long)user_start,
+              (unsigned long long)dev->params.vm_start,
+              (unsigned long long)dev->params.vm_end);
+      return false;
+   }
 
    // Put the kernel heap at the top of the address space.
    // Give it 32GB of address space, should be more than enough for any
@@ -807,7 +1034,10 @@ agx_open_device(void *memctx, struct agx_device *dev)
       .kernel_end = dev->params.vm_end,
    };
 
-   uint64_t user_size = vm_create.kernel_start - user_start;
+   /* A heap below the USC window is bounded by the window, not the kernel. */
+   const uint64_t user_limit =
+      heap_below_usc ? dev->shader_base : vm_create.kernel_start;
+   uint64_t user_size = user_limit - user_start;
 
    int ret = dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_VM_CREATE, &vm_create);
    if (ret) {
@@ -829,26 +1059,85 @@ agx_open_device(void *memctx, struct agx_device *dev)
    for (unsigned i = 0; i < ARRAY_SIZE(dev->bo_cache.buckets); ++i)
       list_inithead(&dev->bo_cache.buckets[i]);
 
-   /* Round the user VA window to powers-of-two... */
-   user_start = util_next_power_of_two64(user_start);
-   user_size = util_next_power_of_two64(user_size + 1) >> 1;
-
-   /* ...so when we cut user size in half to emulate sparse buffers... */
-   user_size /= 2;
-
-   /* ...or maybe in quarters if necessary to disambiguate */
-   if (user_size == user_start) {
-      user_size /= 2;
+   /* Round the user VA window to a power-of-two window whose top half can be
+    * addressed by a single bit, so sparse buffers can be aliased read-only at
+    * +sparse_ro_offset.  This is a hard failure rather than an assert: the
+    * reduction depends on the kernel-reported window, so a geometry we cannot
+    * split must be reported, not tripped over in a debug build and silently
+    * miscomputed in a release one.
+    */
+   if (!agx_va_split_user_window(user_start, user_size, &user_start,
+                                 &user_size)) {
+      fprintf(stderr,
+              "Cannot split the kernel user VA window [%#llx, %#llx) for "
+              "sparse aliasing\n",
+              (unsigned long long)dev->params.vm_start,
+              (unsigned long long)dev->params.vm_end);
+      return false;
    }
 
-   /* ...we can distinguish the top/bottom half by an address bit */
+   /* Every vkAllocateMemory() binds a read-only shadow of the allocation at
+    * +sparse_ro_offset, unconditionally, "in case this is used for a sparse
+    * resident buffer" (hk_device_memory.c).  So the ALIAS window
+    * [user_start + user_size, user_start + 2 * user_size) is live for every
+    * app allocation, not just sparse ones, and the kernel rejects a bind that
+    * leaves the user range or touches the kernel range (file.rs gem_bind:
+    * "not contained in user range" / "intrudes in kernel range", both EINVAL).
+    *
+    * agx_va_split_user_window() only sizes the window against its own start;
+    * it never sees kernel_start, so nothing has been checking that the alias
+    * half still fits underneath it.  At the default base it fits with three
+    * orders of magnitude to spare, which is why this has never fired.  Move
+    * the USC window to 2^40 and the split yields a 1TiB user heap at
+    * 0x20000000000 whose alias reaches 0x40000000000 -- past the top of the
+    * user range and straight through the kernel's 32GiB reservation -- and
+    * the FIRST app allocation fails with VK_ERROR_UNKNOWN before anything is
+    * ever submitted.
+    *
+    * Halve until the alias fits.  This is a no-op for the default layout
+    * (0x2000000000 + 2 * 0x1000000000 = 0x4000000000, far below a kernel
+    * range starting at 0x3f7fff_f8000), so it does not perturb the baseline. */
+   while (user_size > 0 && user_start + 2 * user_size > user_limit)
+      user_size /= 2;
+
+   if (user_size == 0) {
+      fprintf(stderr,
+              "User VA window at %#llx leaves no room for the sparse "
+              "read-only alias below %#llx\n",
+              (unsigned long long)user_start,
+              (unsigned long long)user_limit);
+      return false;
+   }
+
    dev->sparse_ro_offset = user_size;
-   assert((user_start & dev->sparse_ro_offset) == 0);
-   assert(((user_start + (user_size - 1)) & dev->sparse_ro_offset) == 0);
+   dev->main_heap_base = user_start;
+   dev->main_heap_size = user_size;
 
    simple_mtx_init(&dev->vma_lock, mtx_plain);
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
+
+   /* util_vma_heap_init() defaults to alloc_high, which puts every shader and
+    * Ioto program within a few pages of the TOP of the 4GiB USC window.  The
+    * only G17P configuration ever observed to execute keeps its code inside
+    * the first megabyte of the window; see the note on the base above.  This
+    * makes the direction selectable so that difference can be tested on its
+    * own.  It only reverses a search order -- no address is computed from it
+    * -- so an unrecognised value simply keeps the upstream default. */
+   const char *usc_low_env = getenv("ASAHI_G17P_USC_LOW");
+   const bool usc_low = usc_low_env != NULL && usc_low_env[0] == '1' &&
+                        usc_low_env[1] == '\0';
+   if (usc_low)
+      dev->usc_heap.alloc_high = false;
+
+   if (dev->chip == AGX_CHIP_G17P) {
+      fprintf(stderr,
+              "asahi: G17P USC window base %#llx size %#llx alloc=%s; "
+              "user heap %#llx size %#llx\n",
+              (unsigned long long)dev->shader_base,
+              (unsigned long long)shader_size, usc_low ? "low" : "high",
+              (unsigned long long)user_start, (unsigned long long)user_size);
+   }
 
    if (!agx_va_reserve_runtime_graph_hole(
           dev->chip, &dev->main_heap, user_start, user_size,
@@ -911,16 +1200,99 @@ agx_open_device(void *memctx, struct agx_device *dev)
       memset(agx_bo_map(dev->scratch_bo), 0xCA, AIL_PAGESIZE);
    }
 
+   if (dev->chip == AGX_CHIP_G17P) {
+      struct agx_bo *context = agx_create_fixed_bo(
+         dev, AGX_G17P_RENDER_CONTEXT_SIZE, AGX_BO_WRITEBACK,
+         AGX_G17P_RENDER_CONTEXT_BASE,
+         DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE,
+         "G17P native render context");
+      if (context == NULL) {
+         fprintf(stderr, "Failed to bind G17P native render context");
+         return false;
+      }
+
+      void *context_map = agx_bo_map(context);
+      if (context_map == NULL) {
+         fprintf(stderr, "Failed to map G17P native render context");
+         return false;
+      }
+      memset(context_map, 0, AGX_G17P_RENDER_CONTEXT_SIZE);
+      if (agx_bo_sync_for_device(context, 0, AGX_G17P_RENDER_CONTEXT_SIZE))
+         return false;
+
+      if (!agx_g17p_bind_render_context_low_slots(dev, context)) {
+         agx_bo_unreference(dev, context);
+         return false;
+      }
+
+      dev->g17p_render_context_bo = context;
+   }
+
+   const uint64_t printf_address =
+      dev->chip == AGX_CHIP_G17P
+         ? AGX_G17P_RENDER_CONTEXT_BASE + UINT64_C(0x100000)
+         : LIBAGX_PRINTF_BUFFER_ADDRESS;
    struct agx_bo *bo = agx_create_fixed_bo(
-      dev, LIBAGX_PRINTF_BUFFER_SIZE, AGX_BO_WRITEBACK,
-      LIBAGX_PRINTF_BUFFER_ADDRESS, DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE,
-      "Printf/abort");
+      dev, LIBAGX_PRINTF_BUFFER_SIZE, AGX_BO_WRITEBACK, printf_address,
+      DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "Printf/abort");
    if (bo == NULL) {
       fprintf(stderr, "Failed to bind printf buffer");
       return false;
    }
 
    u_printf_init(&dev->printf, bo, agx_bo_map(bo));
+
+   /* G17P: make the USC exec window's base page resident.
+    *
+    * The kernel programs dev->shader_base into USC_EXEC_BASE_CP for every
+    * command on the queue, so that register always names a real address to
+    * the hardware.  In every m1n1 witness that address is the base of the
+    * code container and is mapped; in Honeykrisp it was the bottom of a
+    * top-down heap and was mapped by nothing, which the kernel audit confirms
+    * on hardware ("usc_exec_base 0x1100000000+0x4000 covered=false phys=0x0").
+    * That is the last structural difference left between a passing add3 kick
+    * and a failing Honeykrisp one.
+    *
+    * The page carries the container's fixed leading block -- the same bytes
+    * both captured Apple code images start with -- and its own block-size
+    * dword terminates the chain, so it is a well-formed empty container
+    * rather than a blank page.
+    */
+   if (dev->chip == AGX_CHIP_G17P) {
+      const size_t usc_base_size = AIL_PAGESIZE;
+
+      simple_mtx_lock(&dev->vma_lock);
+      bool reserved = util_vma_heap_alloc_addr(&dev->usc_heap, dev->shader_base,
+                                               usc_base_size + dev->guard_size);
+      simple_mtx_unlock(&dev->vma_lock);
+
+      if (!reserved) {
+         fprintf(stderr, "Failed to reserve the USC window base page\n");
+         return false;
+      }
+
+      struct agx_bo *usc_base = agx_create_fixed_bo(
+         dev, usc_base_size, AGX_BO_WRITEBACK, dev->shader_base,
+         DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "G17P USC window base");
+      if (usc_base == NULL) {
+         fprintf(stderr, "Failed to bind the USC window base page\n");
+         return false;
+      }
+
+      void *map = agx_bo_map(usc_base);
+      if (map == NULL) {
+         fprintf(stderr, "Failed to map the USC window base page\n");
+         return false;
+      }
+
+      memset(map, 0, usc_base_size);
+      agx3_build_container_lead(map);
+      if (agx_bo_sync_for_device(usc_base, 0, usc_base_size))
+         return false;
+
+      dev->usc_base_bo = usc_base;
+   }
+
    return true;
 }
 
@@ -928,6 +1300,12 @@ void
 agx_close_device(struct agx_device *dev)
 {
    agx_bo_unreference(dev, dev->printf.bo);
+   agx_bo_unreference(dev, dev->usc_base_bo);
+   if (dev->g17p_render_context_bo) {
+      agx_g17p_unbind_render_context_low_slots(
+         dev, ARRAY_SIZE(agx_g17p_render_context_low_slots));
+   }
+   agx_bo_unreference(dev, dev->g17p_render_context_bo);
    agx_bo_unreference(dev, dev->zero_bo);
    agx_bo_unreference(dev, dev->scratch_bo);
    u_printf_destroy(&dev->printf);

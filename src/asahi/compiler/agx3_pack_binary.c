@@ -29,8 +29,12 @@
 #include "agx3_alu_core.h"
 #include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
+#include "agx3_copy_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_fltnorm_core.h"
 #include "agx3_funop_core.h"
+#include "agx3_iadd_core.h"
+#include "agx3_isel_core.h"
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
@@ -39,6 +43,7 @@
 #include "agx3_select_core.h"
 #include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_stage_core.h"
 #include "agx3_static_spill_core.h"
 #include "agx3_subgroup_core.h"
 #include "agx3_tex_core.h"
@@ -618,13 +623,15 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        agx_channels(I->dest[0]) != 4 || I->dest[0].value >= 128 ||
        (I->dest[0].size == AGX_SIZE_32 && (I->dest[0].value & 1)) ||
        !agx3_tex_plain_reg(I->src[0]) ||
-       I->src[0].size != AGX_SIZE_32 || agx_channels(I->src[0]) != 2 ||
+       I->src[0].size != AGX_SIZE_32 ||
+       agx_channels(I->src[0]) != (I->dim == AGX_DIM_2D_ARRAY ? 3 : 2) ||
        (I->src[0].value & 3) || I->src[0].value > 60 ||
        !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
        I->src[3].type != AGX_INDEX_IMMEDIATE || I->src[3].value > 15 ||
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        !agx3_tex_imm(I->src[4], 0) ||
-       !agx_is_null(I->src[5]) || I->dim != AGX_DIM_2D ||
+       !agx_is_null(I->src[5]) ||
+       (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
        I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
        (I->mask != 1 && I->mask != 15) || I->offset || I->shadow ||
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
@@ -640,6 +647,7 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .wait_mask = wait_mask,
       .coord_kill = I->src[0].kill,
       .final = final,
+      .array = I->dim == AGX_DIM_2D_ARRAY,
    };
    uint8_t bytes[AGX3_TEX_MAX_LENGTH];
    uint8_t len = 0;
@@ -743,17 +751,42 @@ agx3_tile_format_width(enum agx_format format)
    }
 }
 
+/*
+ * The register span a tile store or load names.
+ *
+ * At 16 and 32 bits that is one register per written channel. At 8 bits it is
+ * not: `lstcol` carries a width, not a format, so an 8-bit access moves *two*
+ * channels per 16-bit register and the value is half as wide as the mask is
+ * long. Apple's fragment shaders show this directly -- a four-channel 8-bit
+ * store reads two 16-bit registers, a two-channel one reads a single register,
+ * and a one-channel one reads the low byte of a single register.
+ *
+ * Anything else at 8 bits is refused. Before the `fltnorm` pack existed this
+ * function accepted a four-channel 32-bit float value with an 8-bit width,
+ * which would have stored the low byte of each float's raw bit pattern.
+ */
 static bool
-agx3_tile_value_ok(agx_index value, uint8_t mask)
+agx3_tile_value_ok(agx_index value, uint8_t mask, int width)
 {
    if (!agx3_src_is_register(value) || value.memory || value.abs || value.neg ||
        (value.size != AGX_SIZE_16 && value.size != AGX_SIZE_32) ||
-       (value.value & (agx_size_align_16(value.size) - 1)) ||
-       agx_channels(value) != util_bitcount(mask))
+       (value.value & (agx_size_align_16(value.size) - 1)))
       return false;
+
+   const unsigned channels = util_bitcount(mask);
+   if (width == AGX3_TILE_W8) {
+      /* Both directions: the store's value is packed by fltnorm, and the
+       * load's destination is what normflt then unpacks. */
+      if (value.size != AGX_SIZE_16 ||
+          agx_channels(value) != DIV_ROUND_UP(channels, 2))
+         return false;
+   } else if (agx_channels(value) != channels) {
+      return false;
+   }
 
    return value.value + agx_index_size_16(value) <= 256;
 }
+
 
 /*
  * AGX3's single-sample coverage group (f51=1) encodes no sample selector at
@@ -796,7 +829,7 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const agx_index sample = load ? I->src[0] : I->src[1];
    const agx_index coords = load ? I->src[1] : I->src[2];
    const int width = agx3_tile_format_width(I->format);
-   if (width < 0 || !agx3_tile_value_ok(value, I->mask) ||
+   if (width < 0 || !agx3_tile_value_ok(value, I->mask, width) ||
        !agx3_tile_pixel_rate_sample(sample) || !agx_is_null(coords))
       return false;
 
@@ -845,6 +878,123 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
  *
  * See research/gpu/GPU_AGX3_TILE_OPS_2026-08-24.md sections 4 and 6.
  */
+
+/*
+ * `fltnorm`: pack two 32-bit floats, clamped and scaled, into the two halves
+ * of one 16-bit register. agx_pack_normalized_agx3() in agx_compile.c creates
+ * these immediately before an 8-bit normalized tile store, one per channel
+ * pair, which is exactly what Apple's own G17P fragment shaders do.
+ *
+ * The second source is null for an odd trailing channel; that selects the
+ * single-lane form Apple emits for a one-component 8-bit target.
+ *
+ * Both sources are marked "still live" rather than "last read". The bit pair
+ * is a liveness hint -- Apple sets one or the other per operand, and both
+ * shapes are witnessed -- but Mesa cannot supply the fact: agx_register_like
+ * drops kill/discard when RA lowers SSA to registers, so the IR's own bit
+ * reads false here regardless of the truth. Claiming a value is still live is
+ * the conservative half of the pair.
+ */
+static bool
+agx3_emit_fltnorm(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                  const agx_instr *I, uint16_t wait_mask)
+{
+   if (I->nr_dests != 1 || I->nr_srcs != 2)
+      return false;
+
+   const agx_index dest = I->dest[0];
+   if (!agx3_src_is_register(dest) || dest.memory || dest.size != AGX_SIZE_16 ||
+       agx_channels(dest) != 1 || dest.value >= 256)
+      return false;
+
+   bool snorm;
+   if (I->format == AGX_FORMAT_U8NORM)
+      snorm = false;
+   else if (I->format == AGX_FORMAT_S8NORM)
+      snorm = true;
+   else
+      return false;
+
+   struct agx3_fltnorm_desc d = {
+      .dest = dest.value,
+      .two_lanes = !agx_is_null(I->src[1]),
+      .snorm = snorm,
+      .wait_mask = wait_mask,
+   };
+
+   for (unsigned i = 0; i < 2; ++i) {
+      if (i == 1 && !d.two_lanes)
+         break;
+      const agx_index src = I->src[i];
+      if (src.memory || src.abs || src.neg || agx_channels(src) != 1)
+         return false;
+
+      /* All three operand classes are witnessed: a register (every
+       * interpolated shader), an 8-bit AGX minifloat immediate (a constant
+       * colour, which the optimizer folds straight into this source), and a
+       * uniform (a colour read from a buffer). */
+      if (agx3_src_is_register(src)) {
+         if (src.size != AGX_SIZE_32)
+            return false;
+         d.src[i].kind = AGX3_FLTNORM_SRC_REGISTER;
+      } else if (src.type == AGX_INDEX_IMMEDIATE) {
+         if (src.value > 0xff)
+            return false;
+         d.src[i].kind = AGX3_FLTNORM_SRC_IMMEDIATE;
+      } else if (src.type == AGX_INDEX_UNIFORM) {
+         if (src.size != AGX_SIZE_32)
+            return false;
+         d.src[i].kind = AGX3_FLTNORM_SRC_UNIFORM;
+      } else {
+         return false;
+      }
+
+      d.src[i].value = src.value;
+      d.src[i].kill = false;
+   }
+
+   uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_fltnorm_encode(enc, &d, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
+
+/*
+ * `normflt`: the tilebuffer-read inverse of `fltnorm`. One 16-bit register of
+ * packed normalized lanes in, a 32-bit float pair out.
+ */
+static bool
+agx3_emit_normflt(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                  const agx_instr *I, uint16_t wait_mask)
+{
+   if (I->nr_dests != 1 || I->nr_srcs != 1)
+      return false;
+
+   const agx_index dest = I->dest[0];
+   const agx_index src = I->src[0];
+
+   if (!agx3_src_is_register(dest) || dest.memory || dest.size != AGX_SIZE_32 ||
+       agx_channels(dest) > 2 || agx_channels(dest) < 1)
+      return false;
+   if (!agx3_src_is_register(src) || src.memory || src.abs || src.neg ||
+       src.size != AGX_SIZE_16 || agx_channels(src) != 1)
+      return false;
+   if (I->format != AGX_FORMAT_U8NORM && I->format != AGX_FORMAT_S8NORM)
+      return false;
+
+   const struct agx3_normflt_desc d = {
+      .dest = dest.value,
+      .dest_hint = true,
+      .src = src.value,
+      .two_lanes = agx_channels(dest) == 2,
+      .wait_mask = wait_mask,
+   };
+
+   uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH];
+   uint8_t len = 0;
+   return agx3_normflt_encode(enc, &d, bytes, &len) &&
+          agx3_append(emission, bytes, len);
+}
 
 /*
  * Pixel writeout barriers: wait_pix -> pixwait, signal_pix -> pixrel.
@@ -1008,16 +1158,34 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
    }
 
    const agx_index index = I->src[is_store ? 2 : 1];
+
+   /*
+    * The index -- immediate or register -- counts ELEMENTS, and
+    * agx_nir_lower_address() has already subtracted the format shift from
+    * I->shift (match.shift = shift - format_shift, the AGX2 convention where
+    * the hardware rescales). AGX3 does not rescale, so the true scale is
+    * I->shift + w, where w is log2(element bytes).
+    */
+   const unsigned total_shift = (unsigned)I->shift + (unsigned)w;
+
    if (index.type == AGX_INDEX_IMMEDIATE) {
       d->idx_kind = AGX3_MEM_IDX_IMM;
-      const int64_t bytes = (int64_t)index.value << I->shift;
+      /*
+       * A byte offset is absolute, so it must carry the FULL scale. Using
+       * I->shift alone addressed element 9 of the root descriptor table at
+       * byte 9 instead of byte 36 -- invisible on every probe whose only
+       * immediate index is 0, and the reason the constant-data (rodata)
+       * pointer came back wrong.
+       */
+      const int64_t bytes = (int64_t)index.value << total_shift;
       if (bytes >= -32768 && bytes <= 32767) {
          d->idx_scaled = false;
          d->byte_off = (int32_t)bytes;
          d->shift = 0;
-      } else if (index.value <= 0xffff) {
+      } else if (index.value <= 0xffff && total_shift <= 4) {
          d->idx_scaled = true;
          d->elem_idx = index.value;
+         d->shift = (uint8_t)total_shift;
       } else {
          return false; /* needs address-math legalization */
       }
@@ -1026,8 +1194,35 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
       if ((index.value & 1) != 0 || index.value > 191)
          return false;
       d->idx_reg = index.value;
+      /* Tested on hardware 2026-08-31 and REFUTED: forcing this bit to 1 (so
+       * the store's index operand cannot decode as "operand absent") did not
+       * change the result -- the Vulkan dispatch still wrote nothing. Keep the
+       * IR's own liveness. */
       d->idx_kill = index.kill;
       d->idx_signed = false;
+
+      /*
+       * A REGISTER index is scaled by the shift alone -- the hardware does
+       * NOT additionally scale it by the access format. Apple's corpus is
+       * unambiguous: every register-indexed lddev/stdev carries
+       * shift == log2(element bytes) plus any vector stride (16-bit -> 1,
+       * 32-bit -> 2, vec4-of-32-bit -> 4), and shift 0 occurs only on
+       * immediate byte offsets.
+       *
+       * agx_nir_lower_address() has already SUBTRACTED the format shift
+       * (match.shift = shift - format_shift) because that is the AGX2
+       * convention, so add it back. `w` is log2(element bytes).
+       *
+       * Without this a `values[i]` store addressed base + i BYTES: 32 lanes
+       * folded onto 8 elements (the hardware aligns the access down), which
+       * read back as a bogus 4x scaling on the value and as 8-of-32 coverage.
+       * The immediate-index path above never had the bug because it converts
+       * to a byte offset itself and forces shift 0 -- which is why constant
+       * indices worked while index-derived ones did not.
+       */
+      if (total_shift > 4)
+         return false;
+      d->shift = (uint8_t)total_shift;
    } else {
       return false;
    }
@@ -1421,8 +1616,24 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
       return agx3_emit(emission, enc, S);
 
    const enum agx3_alu_op op = agx3_sel_to_alu(S);
-   if (op == AGX3_ALU_NUM)
-      return false; /* consumer of a load with no wait-carrying encoding */
+
+   /*
+    * Every wait-carrying form deposits its sources into register fields
+    * (agx3_alu_table.h gives f_src0/f_src1/f_src2; only ldimm has an f_imm,
+    * and it has no sources). agx3_sel_instr keeps an immediate's value in the
+    * same `reg` slot a register index uses, so handing one to the composer
+    * would encode the constant AS a register number: `iadd d, r0, #1` became
+    * `iadd d, r0, r1`, reading whatever half 1 happened to hold. That was
+    * silently wrong code, not a refusal.
+    *
+    * An instruction with an immediate source therefore skips the composer
+    * entirely and takes the prelude path below, which retires the wait and
+    * then emits the ordinary no-wait form through the select core -- where
+    * the real immediate encodings live.
+    */
+   bool all_sources_registers = true;
+   for (unsigned i = 0; i < S->nr_srcs; ++i)
+      all_sources_registers &= S->src[i].is_reg;
 
    uint8_t bytes[AGX3_ALU_MAX_LENGTH];
    uint8_t len = 0;
@@ -1430,7 +1641,8 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const uint16_t s1 = S->nr_srcs > 1 ? S->src[1].reg : 0;
    const uint16_t s2 = S->nr_srcs > 2 ? S->src[2].reg : 0;
 
-   if (agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask,
+   if (op != AGX3_ALU_NUM && all_sources_registers &&
+       agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, wait_mask,
                         bytes, &len)) {
       return agx3_append(emission, bytes, len);
    }
@@ -1475,11 +1687,10 @@ agx3_emit_alu(struct util_dynarray *emission, enum agx_isa_encoding enc,
       wait_mask &= ~prewait;
    }
 
-   if (!agx3_alu_compose(enc, op, S->dest, s0, s1, s2, S->imm, 0, bytes,
-                         &len))
-      return false;
-
-   return agx3_append(emission, bytes, len);
+   /* The wait is retired; emit the plain form. Go through the select core
+    * rather than the composer so that immediate operands use their own
+    * encodings instead of being mistaken for register numbers. */
+   return agx3_emit(emission, enc, S);
 }
 
 static bool
@@ -1713,6 +1924,15 @@ agx3_cf_reg32(agx_index src)
           (src.value & 1) == 0 && src.value < 128 && !src.abs && !src.neg;
 }
 
+/* The 16-bit compare form addresses the same lower 128 halves, but a single
+ * half rather than an aligned pair. */
+static bool
+agx3_cf_reg16(agx_index src)
+{
+   return agx3_src_is_register(src) && !src.memory && src.size == AGX_SIZE_16 &&
+          src.value < 128 && !src.abs && !src.neg;
+}
+
 static bool
 agx3_cf_map_icond(enum agx_icond in, enum agx3_cf_icond *out)
 {
@@ -1797,7 +2017,23 @@ agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
    uint8_t bytes[AGX3_CF_MAX_LENGTH];
    uint8_t len = 0;
 
-   if (I->nr_srcs != 2 || !agx3_cf_reg32(I->src[0]))
+   if (I->nr_srcs != 2)
+      return false;
+
+   /* Branching on a boolean: Mesa keeps them in 16-bit halves, so the
+    * compare is `r0h != 0` rather than a 32-bit one. */
+   if (!is_float && agx3_cf_reg16(I->src[0]) &&
+       I->src[1].type == AGX_INDEX_IMMEDIATE && !I->src[1].abs &&
+       !I->src[1].neg && I->src[1].value == 0) {
+      enum agx3_cf_icond cond16;
+      if (!agx3_cf_map_icond(I->icond, &cond16) ||
+          !agx3_cf_icmp_zero16(enc, cond16, flag_slot, I->src[0].value, bytes,
+                               &len))
+         return false;
+      return agx3_append(emission, bytes, len);
+   }
+
+   if (!agx3_cf_reg32(I->src[0]))
       return false;
 
    bool ok;
@@ -1866,11 +2102,72 @@ agx3_emit_cnd(struct util_dynarray *emission, enum agx_isa_encoding enc,
 /* Returns 1 when I is a grounded control-flow instruction and was emitted,
  * zero when it is not control flow, and -1 when it is control flow but falls
  * outside the grounded domain. */
+/*
+ * Retire scoreboard slots ahead of a control-flow boundary.
+ *
+ * agx3_slot_assign() is a linear pass, so its "waited once = satisfied
+ * globally" rule is only sound when every path into a block sees the same
+ * scoreboard. The sufficient condition is an empty one. A result that is
+ * still in flight at a divergence would otherwise have its wait land inside
+ * ONE arm -- the atomic lowering does exactly this, hoisting the descriptor
+ * load above the branch and consuming it in the taken arm -- and the other
+ * arm would then read it unwaited.
+ *
+ * Waiting early is always semantically safe (it only costs latency), so
+ * rather than refusing, retire everything here. `band(r0, r0, r0)` is a true
+ * no-op -- x & x == x preserves every bit -- and it is the same wait-carrying
+ * form agx3_emit_alu() already uses as a prelude. Writing r0 is safe even if
+ * r0 is an in-flight load's destination, because the wait retires before the
+ * write, so the band stores back exactly what the load delivered.
+ *
+ * Emits one instruction per slot, matching the witnessed prelude usage.
+ */
+static bool
+agx3_retire_slots_noop(struct util_dynarray *emission, enum agx_isa_encoding enc,
+                       uint16_t mask)
+{
+   while (mask != 0) {
+      const uint16_t one = mask & (uint16_t)-(int16_t)mask;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+      uint8_t len = 0;
+      if (!agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0, one, bytes,
+                            &len) ||
+          !agx3_append(emission, bytes, len))
+         return false;
+      mask &= (uint16_t)~one;
+   }
+   return true;
+}
+
+/* The instructions agx3_try_control_flow() claims. */
+static bool
+agx3_is_cf_op(const agx_instr *I)
+{
+   switch (I->op) {
+   case AGX_OPCODE_BEGIN_CF:
+   case AGX_OPCODE_IF_ICMP:
+   case AGX_OPCODE_IF_FCMP:
+   case AGX_OPCODE_WHILE_ICMP:
+   case AGX_OPCODE_WHILE_FCMP:
+   case AGX_OPCODE_BREAK_IF_ICMP:
+   case AGX_OPCODE_BREAK_IF_FCMP:
+   case AGX_OPCODE_ELSE_ICMP:
+   case AGX_OPCODE_ELSE_FCMP:
+   case AGX_OPCODE_POP_EXEC:
+   case AGX_OPCODE_JMP_EXEC_ANY:
+   case AGX_OPCODE_JMP_EXEC_NONE:
+   case AGX_OPCODE_JMP_EXEC_NONE_AFTER:
+      return true;
+   default:
+      return false;
+   }
+}
+
 static int
 agx3_try_control_flow(struct util_dynarray *emission,
                       struct util_dynarray *fixups, enum agx_isa_encoding enc,
-                      const agx_instr *I, uint16_t wait_mask, bool async_seen,
-                      bool after_loop_backedge)
+                      const agx_instr *I, uint16_t wait_mask,
+                      uint16_t outstanding, bool after_loop_backedge)
 {
    const bool is_if =
       I->op == AGX_OPCODE_IF_ICMP || I->op == AGX_OPCODE_IF_FCMP;
@@ -1884,12 +2181,23 @@ agx3_try_control_flow(struct util_dynarray *emission,
                         I->op == AGX_OPCODE_JMP_EXEC_NONE ||
                         I->op == AGX_OPCODE_JMP_EXEC_NONE_AFTER;
 
-   /* Slot assignment is deliberately linear.  Once an async producer has
-    * appeared, accepting any later control-flow boundary would require
-    * predecessor-aware scoreboard state (including loop-carried state), which
-    * is not grounded yet.  Keep those shaders closed instead of letting the
-    * linear pre-pass invent a path-specific wait set. */
-   if (async_seen &&
+   /*
+    * Slot assignment is deliberately linear, so a control-flow boundary is
+    * only safe when the scoreboard state entering it is the same on every
+    * path. The sufficient condition is that nothing is in flight: if every
+    * slot issued so far has already been waited, then every block is entered
+    * with an empty scoreboard no matter which predecessor ran, and the linear
+    * pass's "waited once = satisfied globally" reasoning never depends on a
+    * wait that some other path skipped. A result still outstanding here would
+    * carry its slot across the branch -- including around a backedge -- and
+    * that needs the predecessor-aware analysis this backend does not have, so
+    * it stays refused.
+    *
+    * This replaces a sticky "an async op appeared anywhere earlier" flag,
+    * which refused shaders whose loads were all consumed before the branch --
+    * the common case, and the one every real kernel with a bounds check hits.
+    */
+   if (outstanding != 0 &&
        (I->op == AGX_OPCODE_BEGIN_CF || is_if || is_while || is_break_if ||
         is_else || I->op == AGX_OPCODE_POP_EXEC || is_jump))
       return -1;
@@ -2006,7 +2314,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
    const unsigned initial_size = emission->size;
    struct util_dynarray fixups;
-   bool async_seen = false;
+   uint16_t outstanding = 0;
    uint8_t next_uvs_slot = 1;
    unsigned texture_ops_left = 0;
    unsigned tile_loads_left = 0;
@@ -2057,8 +2365,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          e->nr_srcs = (uint8_t)ns;
          if ((I->op == AGX_OPCODE_STACK_LOAD ||
               I->op == AGX_OPCODE_STACK_STORE) &&
-             !agx3_append_static_spill_tokens(I, e))
+             !agx3_append_static_spill_tokens(I, e)) {
+            /* Report like every other refusal.  Without this the whole
+             * shader fails with no diagnostic at all, which is how a
+             * scratch-lowered constant array once looked like a mystery
+             * VK_ERROR_FEATURE_NOT_PRESENT from vkCreateComputePipelines. */
+            agx3_report_refusal(I, __LINE__);
             goto fail;
+         }
       }
    }
    assert(k == count);
@@ -2080,8 +2394,30 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          const uint16_t wait = res[k].wait_mask;
          k++;
 
-         const int cf = agx3_try_control_flow(emission, &fixups, enc, I, wait,
-                                              async_seen, after_loop_backedge);
+         /* A wait retires its slots before this instruction issues its own. */
+         outstanding &= (uint16_t)~wait;
+         const uint16_t outstanding_here = outstanding;
+         if (slot)
+            outstanding |= (uint16_t)(1u << (slot - 1));
+
+         /* Give every control-flow boundary an empty scoreboard, rather
+          * than refusing the shader when something is still in flight. */
+         uint16_t cf_wait = wait;
+         uint16_t cf_outstanding = outstanding_here;
+         if (agx3_is_cf_op(I)) {
+            const uint16_t retire = (uint16_t)(cf_wait | cf_outstanding);
+            if (retire != 0) {
+               if (!agx3_retire_slots_noop(emission, enc, retire))
+                  AGX3_REFUSE(I);
+               cf_wait = 0;
+               cf_outstanding = 0;
+               outstanding = 0;
+            }
+         }
+
+         const int cf = agx3_try_control_flow(emission, &fixups, enc, I,
+                                              cf_wait, cf_outstanding,
+                                              after_loop_backedge);
          if (cf < 0)
             AGX3_REFUSE(I);
          if (cf > 0) {
@@ -2089,6 +2425,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
          after_loop_backedge = false;
+
+         /*
+          * `export` is a zero-byte pseudo-op, exactly as on AGX2
+          * (agx_pack.c:1242).  Register allocation has already turned it into
+          * a parallel copy into its ABI register and rewritten the source to
+          * that register (agx_register_allocate.c:1296-1310), so there is
+          * nothing left to encode.  The value reaches the epilog in the
+          * register; the tilebuffer write itself is the epilog's.
+          */
+         if (I->op == AGX_OPCODE_EXPORT)
+            continue;
 
          if (I->op == AGX_OPCODE_INTERP_AGX3) {
             if (!agx3_emit_interp(emission, enc, I, wait))
@@ -2099,7 +2446,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_LDCF) {
             if (!agx3_emit_ldcf(emission, enc, I, slot, wait))
                AGX3_REFUSE(I);
-            async_seen = true;
             continue;
          }
 
@@ -2115,7 +2461,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const bool final = --texture_ops_left == 0;
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
                AGX3_REFUSE(I);
-            async_seen = true;
             continue;
          }
 
@@ -2129,13 +2474,24 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_emit_texture_sample(emission, enc, I, slot, wait,
                                           final))
                AGX3_REFUSE(I);
-            async_seen = true;
             continue;
          }
 
          if (I->op == AGX_OPCODE_WAIT_PIX ||
              I->op == AGX_OPCODE_SIGNAL_PIX) {
             if (!agx3_emit_pixel(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_FLTNORM_AGX3) {
+            if (!agx3_emit_fltnorm(emission, enc, I, wait))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_NORMFLT_AGX3) {
+            if (!agx3_emit_normflt(emission, enc, I, wait))
                AGX3_REFUSE(I);
             continue;
          }
@@ -2149,8 +2505,60 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
             if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
                AGX3_REFUSE(I);
-            async_seen |= I->op == AGX_OPCODE_LD_TILE;
             continue;
+         }
+
+         /*
+          * Preamble uniform write. Apple's own constant program writes its
+          * uniforms with an ordinary `copy` whose f9 is 3 -- the destination
+          * moves from f2 into f3 and becomes a uniform half. Witnessed
+          * byte-exactly against a write to uniform half 24; see
+          * agx3_copy_core.h.
+          *
+          * Only the single 32-bit component is grounded: Apple's witnesses
+          * are one uniform half per copy, and a wider mask would be an
+          * assumption about how the halves are strided.
+          */
+         if (I->op == AGX_OPCODE_UNIFORM_STORE && I->nr_srcs == 2 &&
+             (I->mask == 1 || I->mask == 3 || I->mask == 7 ||
+              I->mask == 15)) {
+            const agx_index value = I->src[0], index = I->src[1];
+            const unsigned components = util_bitcount(I->mask);
+
+            if (agx3_src_is_register(value) && !value.memory && !value.abs &&
+                !value.neg && value.size == AGX_SIZE_32 &&
+                agx_channels(value) == components &&
+                index.type == AGX_INDEX_IMMEDIATE && !index.abs &&
+                !index.neg && index.value + 2 * components <= 512) {
+               /*
+                * Apple's witnessed uniform write carries no wait bits, and
+                * the wait bank for this form is not witnessed, so retire any
+                * scoreboard dependency with the band no-op first rather than
+                * guessing a field. Both halves are witnessed encodings.
+                */
+               /*
+                * One copy per 32-bit component, exactly as Apple's constant
+                * program does: its four uniform writes land on halves 20, 22,
+                * 24 and 26 -- consecutive 32-bit slots two halves apart.
+                */
+               bool ok = wait == 0 || agx3_retire_slots_noop(emission, enc, wait);
+
+               for (unsigned i = 0; ok && i < components; ++i) {
+                  uint8_t bytes[AGX3_COPY_MAX_LENGTH];
+                  uint8_t len = 0;
+                  const bool last = i + 1 == components;
+                  ok = agx3_copy_encode_reg_to_uniform(
+                          enc, index.value + 2 * i, value.value + 2 * i,
+                          last && value.kill, bytes, &len) &&
+                       agx3_append(emission, bytes, len);
+               }
+
+               if (ok) {
+                  outstanding &= (uint16_t)~wait;
+                  continue;
+               }
+            }
+            AGX3_REFUSE(I);
          }
 
          /* Special-register read. */
@@ -2162,7 +2570,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_sr_encode(enc, &d, bytes, &len))
                AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-            async_seen = true;
             continue;
          }
 
@@ -2181,7 +2588,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!ok)
                AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-            async_seen |= !is_store;
             continue;
          }
 
@@ -2193,7 +2599,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_atomic_encode_device(enc, &d, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
-            async_seen |= d.returns_value;
             continue;
          }
 
@@ -2214,7 +2619,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!ok)
                AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-            async_seen |= !is_store;
             continue;
          }
 
@@ -2226,7 +2630,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_atomic_encode_local(enc, &d, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
-            async_seen = true;
             continue;
          }
 
@@ -2251,7 +2654,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!ok)
                AGX3_REFUSE(I);
             memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
-            async_seen |= !is_store;
             continue;
          }
 
@@ -2275,7 +2677,6 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                                                         &len);
             if (!ok || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
-            async_seen = true;
             continue;
          }
 
@@ -2322,6 +2723,368 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         /*
+          * A zero immediate has its own instruction, `clr`, at both widths.
+          * Apple emits it wherever a register is set to zero, and it is the
+          * only grounded way to materialize a 16-bit zero, which `ldimm` has
+          * no AGX3b form for.
+          */
+         if (I->op == AGX_OPCODE_MOV_IMM && I->imm == 0 && wait == 0 &&
+             I->nr_dests == 1 && I->nr_srcs == 0 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             agx_channels(I->dest[0]) == 1 &&
+             (I->dest[0].size == AGX_SIZE_16 ||
+              I->dest[0].size == AGX_SIZE_32)) {
+            uint8_t bytes[AGX3_STAGE_MAX_LENGTH];
+            uint8_t len = 0;
+            if (agx3_clr(enc, I->dest[0].value,
+                         I->dest[0].size == AGX_SIZE_16, false, bytes, &len)) {
+               if (!agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+            /* Fall through to ldimm when clr cannot express it. */
+         }
+
+         /*
+          * Uniform -> GPR.  AGX3 ALU operands are register-or-immediate, so
+          * agx_lower_uniform_sources() materializes every generic-ALU uniform
+          * source as a move; agx_lower_pseudo() then turns that move into a
+          * bitop whose source is still a uniform.  Apple moves a uniform into
+          * a register with `copy` -- 49 of the 100 G16G corpus copies do
+          * exactly this -- so encode that rather than refusing the bitop.
+          * Without it no shader that reads a pushed uniform in an ALU op can
+          * be compiled at all.
+          */
+         /*
+          * `imad dst32, srcA, #imm, srcC` -- a constant multiplier, which is
+          * how every index-derived address is formed (`gid * stride + base`).
+          * Like the iadd below it, this used to reach the wait-carrying
+          * composer, which would have deposited the multiplier into a
+          * register field.
+          */
+         if (I->op == AGX_OPCODE_IMAD && I->nr_dests == 1 && I->nr_srcs >= 3 &&
+             I->shift == 0 && agx3_src_is_register(I->dest[0]) &&
+             !I->dest[0].memory && I->dest[0].size == AGX_SIZE_32 &&
+             agx_channels(I->dest[0]) == 1) {
+            const agx_index a = I->src[0], m = I->src[1], c = I->src[2];
+
+            /* The multiplier is either an 8-bit immediate or a 32-bit
+             * register; both are witnessed (test-agx3-iadd-core.c). */
+            const bool mult_imm = m.type == AGX_INDEX_IMMEDIATE && !m.abs &&
+                                  !m.neg && m.value <= 0xff;
+            const bool mult_reg = agx3_src_is_register(m) && !m.memory &&
+                                  !m.abs && !m.neg && m.size == AGX_SIZE_32 &&
+                                  agx_channels(m) == 1;
+
+            /* An immediate-zero addend is the pure-multiply form, whose
+             * addend operand is absent rather than zero. Only the
+             * register-multiplier variant of it is witnessed. */
+            const bool no_addend = c.type == AGX_INDEX_IMMEDIATE &&
+                                   c.value == 0 && !c.abs && !c.neg &&
+                                   mult_reg;
+            const bool addend_ok =
+               no_addend ||
+               (agx3_src_is_register(c) && !c.memory &&
+                agx_channels(c) == 1 && !(c.abs && c.neg) &&
+                (c.size == AGX_SIZE_32 ||
+                 (c.size == AGX_SIZE_16 && (c.abs || c.neg))));
+
+            if (agx3_src_is_register(a) && !a.memory && !a.abs && !a.neg &&
+                a.size == AGX_SIZE_32 && agx_channels(a) == 1 &&
+                (mult_imm || mult_reg) && addend_ok) {
+               const struct agx3_imad_desc d = {
+                  .dest = I->dest[0].value,
+                  .src_a = a.value,
+                  .multiplier = mult_imm ? (uint8_t)m.value : 0,
+                  .multiplier_is_register = mult_reg,
+                  .multiplier_reg = mult_reg ? m.value : 0,
+                  .multiplier_kill = mult_reg && m.kill,
+                  .no_addend = no_addend,
+                  .src_c = no_addend ? 0 : c.value,
+                  .src_c_16 = !no_addend && c.size == AGX_SIZE_16,
+                  .src_c_sign_extend = !no_addend && c.neg,
+                  .wait_mask = wait,
+               };
+               uint8_t bytes[AGX3_IADD_MAX_LENGTH];
+               uint8_t len = 0;
+               if (agx3_imad_encode(enc, &d, bytes, &len) &&
+                   agx3_append(emission, bytes, len))
+                  continue;
+            }
+         }
+
+         /*
+          * `iadd dst32, #imm, src << shift` -- constant address arithmetic,
+          * which is what every shader with more than one memory access is
+          * built out of. The source may be a 16-bit half, zero- or
+          * sign-extended (abs and neg respectively, as on AGX2).
+          *
+          * This carries its own scoreboard wait, so it does not need the
+          * wait-retiring prelude and does not disturb the operands.
+          */
+         if (I->op == AGX_OPCODE_IADD && I->nr_dests == 1 && I->nr_srcs == 2 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_32 &&
+             agx_channels(I->dest[0]) == 1) {
+            const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index constant = imm_first ? I->src[0] : I->src[1];
+            const agx_index reg = imm_first ? I->src[1] : I->src[0];
+
+            if (constant.type == AGX_INDEX_IMMEDIATE && !constant.abs &&
+                !constant.neg && constant.value <= 0xff &&
+                agx3_src_is_register(reg) && !reg.memory &&
+                agx_channels(reg) == 1 && !(reg.abs && reg.neg) &&
+                (reg.size == AGX_SIZE_32 ||
+                 (reg.size == AGX_SIZE_16 && (reg.abs || reg.neg)))) {
+               const struct agx3_iadd_desc d = {
+                  .dest = I->dest[0].value,
+                  .immediate = (uint8_t)constant.value,
+                  .src = reg.value,
+                  .src_16 = reg.size == AGX_SIZE_16,
+                  .sign_extend = reg.neg,
+                  .shift = I->shift,
+                  .wait_mask = wait,
+               };
+               uint8_t bytes[AGX3_IADD_MAX_LENGTH];
+               uint8_t len = 0;
+               if (agx3_iadd_encode(enc, &d, bytes, &len) &&
+                   agx3_append(emission, bytes, len))
+                  continue;
+               /* Outside the witnessed domain; fall through to refuse. */
+            }
+
+            /*
+             * Register + (register << shift). This is the second half of the
+             * shifted-imad split in agx_emit_imadshl_agx(): AGX3 has no
+             * shifted imad, so the product is added here with the shift on
+             * the addend. Apple emits exactly this, and f54 carries the
+             * shift (witnessed at 1..4 in test-agx3-iadd-core.c).
+             */
+            const agx_index a = I->src[0], bsrc = I->src[1];
+
+            /*
+             * Only take this path for a SHIFTED add. An unshifted register
+             * add already had a working encoding through the select core, and
+             * re-routing it here changed its bytes -- which cost two compute
+             * probes on hardware. New encodings belong on shapes that were
+             * previously refused, not on shapes that already worked.
+             */
+            if (I->shift != 0 &&
+                agx3_src_is_register(a) && !a.memory && !a.abs && !a.neg &&
+                a.size == AGX_SIZE_32 && agx_channels(a) == 1 &&
+                agx3_src_is_register(bsrc) && !bsrc.memory && !bsrc.abs &&
+                !bsrc.neg && bsrc.size == AGX_SIZE_32 &&
+                agx_channels(bsrc) == 1) {
+               const struct agx3_iadd_desc d = {
+                  .dest = I->dest[0].value,
+                  .src_a_is_register = true,
+                  .src_a_reg = a.value,
+                  .src_a_kill = a.kill,
+                  .src = bsrc.value,
+                  .src_kill = bsrc.kill,
+                  .shift = I->shift,
+                  .wait_mask = wait,
+               };
+               uint8_t bytes[AGX3_IADD_MAX_LENGTH];
+               uint8_t len = 0;
+               if (agx3_iadd_encode(enc, &d, bytes, &len) &&
+                   agx3_append(emission, bytes, len))
+                  continue;
+            }
+         }
+
+         /*
+          * Widening move: a 32-bit destination fed by a 16-bit half. Apple
+          * does not have a widening `copy`; its compiler moves the half and
+          * clears the upper one, which is what a zero-extend is. (Its ALU can
+          * also just consume a 16-bit operand in a 32-bit op -- the width is
+          * per-operand -- but that folds into the consumer and there is no
+          * consumer here.) Both halves of this pair are witnessed encodings.
+          */
+         if (I->op == AGX_OPCODE_BITOP &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV && wait == 0 &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
+             agx3_src_is_register(I->src[0]) && !I->src[0].memory &&
+             !I->src[0].abs && !I->src[0].neg &&
+             I->src[0].size == AGX_SIZE_16 && agx_channels(I->src[0]) == 1 &&
+             I->src[1].type == AGX_INDEX_IMMEDIATE && I->src[1].value == 0 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
+             (I->dest[0].value & 1) == 0) {
+            uint8_t lo[AGX3_COPY_MAX_LENGTH], hi[AGX3_STAGE_MAX_LENGTH];
+            uint8_t lo_len = 0, hi_len = 0;
+            if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
+                                        I->src[0].value, 0, lo, &lo_len) ||
+                !agx3_clr(enc, I->dest[0].value + 1, true, false, hi,
+                          &hi_len) ||
+                !agx3_append(emission, lo, lo_len) ||
+                !agx3_append(emission, hi, hi_len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         /*
+          * The same lowering at 16 bits, register to register: Mesa keeps
+          * booleans in halves and the select core's 32-bit `iadd d, s, #0`
+          * move cannot express them. Apple copies a half with `copy`.
+          */
+         if (I->op == AGX_OPCODE_BITOP &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV && wait == 0 &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
+             agx3_src_is_register(I->src[0]) && !I->src[0].memory &&
+             !I->src[0].abs && !I->src[0].neg &&
+             I->src[0].size == AGX_SIZE_16 && agx_channels(I->src[0]) == 1 &&
+             I->src[1].type == AGX_INDEX_IMMEDIATE && I->src[1].value == 0 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1) {
+            uint8_t bytes[AGX3_COPY_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
+                                        I->src[0].value, 0, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_BITOP &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
+             I->src[0].type == AGX_INDEX_UNIFORM && !I->src[0].memory &&
+             !I->src[0].abs && !I->src[0].neg &&
+             I->src[0].size == AGX_SIZE_32 && agx_channels(I->src[0]) == 1 &&
+             I->src[1].type == AGX_INDEX_IMMEDIATE && I->src[1].value == 0 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1) {
+            uint8_t bytes[AGX3_COPY_MAX_LENGTH];
+            uint8_t len = 0;
+            /* Apple's uniform->GPR copy witness has no wait field. Retire a
+             * pending producer through the already-grounded band no-op, then
+             * emit that exact copy instead of guessing scoreboard bits on a
+             * form that has none in the corpus. Meta image copies reach this
+             * when global IDs and pushed extents share a scoreboard slot. */
+            const bool retired =
+               wait == 0 || agx3_retire_slots_noop(emission, enc, wait);
+            if (!retired ||
+                !agx3_copy_encode_uniform_to_reg32(enc, I->dest[0].value,
+                                                   I->src[0].value, bytes,
+                                                   &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            outstanding &= (uint16_t)~wait;
+            continue;
+         }
+
+         /*
+          * Fused integer compare-select. agx_lower_pseudo() turns every
+          * AGX_OPCODE_ICMP into one of these, so without it no shader with an
+          * integer comparison compiles at all. Apple's `isel` is the same
+          * instruction with the same operand order and the same condition
+          * numbering (probe-witnessed; see agx3_isel_core.h).
+          */
+         if (I->op == AGX_OPCODE_ICMPSEL && I->nr_dests == 1 &&
+             I->nr_srcs == 4) {
+            struct agx3_isel_desc d;
+            memset(&d, 0, sizeof(d));
+
+            const agx_index dest = I->dest[0];
+            const agx_index a = I->src[0], b = I->src[1];
+            const agx_index t = I->src[2], f = I->src[3];
+
+            const bool dest_ok =
+               agx3_src_is_register(dest) && !dest.memory &&
+               agx_channels(dest) == 1 &&
+               (dest.size == AGX_SIZE_32 || dest.size == AGX_SIZE_16);
+            const bool cmp_ok =
+               agx3_src_is_register(a) && !a.memory && !a.abs && !a.neg &&
+               a.size == AGX_SIZE_32 && agx_channels(a) == 1 &&
+               agx3_src_is_register(b) && !b.memory && !b.abs && !b.neg &&
+               b.size == AGX_SIZE_32 && agx_channels(b) == 1;
+
+            if (!dest_ok || !cmp_ok)
+               AGX3_REFUSE(I);
+
+            d.dest = dest.value;
+            d.dest_16 = dest.size == AGX_SIZE_16;
+            d.cmp0 = a.value;
+            d.cmp1 = b.value;
+
+            /* AGX3 has one equality condition, 4. Mesa spells the same
+             * comparison two ways (UEQ = 0 and SEQ = 4) because AGX2 did;
+             * the probes compiled `uint ==` and `int ==` and Apple emitted 4
+             * for both, equality being sign-agnostic. Every other condition
+             * keeps its number. */
+            switch (I->icond) {
+            case AGX_ICOND_UEQ:
+            case AGX_ICOND_SEQ:
+               d.cond = AGX3_ISEL_ICOND_EQ;
+               break;
+            case AGX_ICOND_ULT:
+               d.cond = AGX3_ISEL_ICOND_ULT;
+               break;
+            case AGX_ICOND_UGT:
+               d.cond = AGX3_ISEL_ICOND_UGT;
+               break;
+            case AGX_ICOND_SLT:
+               d.cond = AGX3_ISEL_ICOND_SLT;
+               break;
+            case AGX_ICOND_SGT:
+               d.cond = AGX3_ISEL_ICOND_SGT;
+               break;
+            default:
+               AGX3_REFUSE(I);
+            }
+
+            /* Each selected operand is independently a register or an
+             * 8-bit immediate; the encoder knows all four combinations. */
+            bool selects_ok = true;
+            const agx_index sel[2] = {t, f};
+            enum agx3_isel_operand kind[2];
+            uint16_t value[2];
+
+            for (unsigned n = 0; n < 2; ++n) {
+               const agx_index s = sel[n];
+               if (s.type == AGX_INDEX_IMMEDIATE && !s.memory && !s.abs &&
+                   !s.neg) {
+                  kind[n] = AGX3_ISEL_IMMEDIATE;
+                  value[n] = s.value;
+               } else if (agx3_src_is_register(s) && !s.memory && !s.abs &&
+                          !s.neg && s.size == dest.size &&
+                          agx_channels(s) == 1) {
+                  kind[n] = AGX3_ISEL_REGISTER;
+                  value[n] = s.value;
+               } else {
+                  selects_ok = false;
+                  break;
+               }
+            }
+
+            if (!selects_ok)
+               AGX3_REFUSE(I);
+
+            d.true_kind = kind[0];
+            d.false_kind = kind[1];
+            d.sel_true = value[0];
+            d.sel_false = value[1];
+            d.wait_mask = wait;
+
+            uint8_t bytes[AGX3_ISEL_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_isel_encode(enc, &d, bytes, &len) ||
+                !agx3_append(emission, bytes, len)) {
+               if (agx_compiler_debug & AGX_DBG_SHADERS)
+                  fprintf(stderr,
+                          "isel refused: dest=%u/%s cmp=%u,%u cond=%u "
+                          "t=%s:%u f=%s:%u wait=%x\n",
+                          d.dest, d.dest_16 ? "16" : "32", d.cmp0, d.cmp1,
+                          d.cond, d.true_kind ? "imm" : "reg", d.sel_true,
+                          d.false_kind ? "imm" : "reg", d.sel_false,
+                          d.wait_mask);
+               AGX3_REFUSE(I);
+            }
+            continue;
+         }
+
          /* Modifier-carrying float ALU (no wait support yet). */
          const int mod = agx3_try_float_modifier(emission, enc, I);
          if (mod == 1) {
@@ -2334,8 +3097,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          struct agx3_sel_instr S;
          if (!agx3_translate_instr(I, &S) ||
-             !agx3_emit_alu(emission, enc, &S, wait))
+             !agx3_emit_alu(emission, enc, &S, wait)) {
+            if (agx_compiler_debug & AGX_DBG_SHADERS)
+               fprintf(stderr,
+                       "ALUX %s wait=%x shift=%u d{v=%u sz=%u} s0{t=%u v=%u "
+                       "sz=%u abs=%u} s1{t=%u v=%u sz=%u abs=%u}\n",
+                       agx_opcodes_info[I->op].name, wait, I->shift,
+                       I->dest[0].value, I->dest[0].size, I->src[0].type,
+                       I->src[0].value, I->src[0].size, I->src[0].abs,
+                       I->src[1].type, I->src[1].value, I->src[1].size,
+                       I->src[1].abs);
             AGX3_REFUSE(I);
+         }
       }
    }
 

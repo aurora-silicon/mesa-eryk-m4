@@ -51,14 +51,47 @@ int main(void)
       CHECK(r[1].slot==0 && r[1].wait_mask==0);
    }
 
-   /* A load result overwritten by an ALU op before use: the later read of that
-    * register must NOT wait (the value is synchronous now). */
+   /* Write-after-write. An ALU op that overwrites a register an in-flight load
+    * is still going to land in MUST wait for that load first: otherwise the
+    * load retires afterwards and silently replaces the computed value. This
+    * case previously asserted the opposite (that the ALU need not wait), and
+    * the resulting miscompile reached hardware -- a compute shader stored the
+    * 4th word of its own descriptor load instead of the value it computed. */
    {
       struct agx3_slot_instr p[] = { ld(0), alu(0,2,4), alu(6,0,0) };
       CHECK(agx3_slot_assign(p, 3, 6, r));
       CHECK(r[0].slot==1);
-      CHECK(r[1].wait_mask==0);   /* alu writes r0, does not read the load */
-      CHECK(r[2].wait_mask==0);   /* r0 is now the alu (sync) result */
+      CHECK(r[1].wait_mask==0x1u); /* WAW against the pending load */
+      CHECK(r[2].wait_mask==0);    /* slot 1 already retired above */
+   }
+
+   /* The exact shape that miscompiled: a 4-component descriptor load claims
+    * r0..r3, only r0:r1 are used for the address, and the register allocator
+    * reuses r3 for the stored value. The write to r3 must retire the load. */
+   {
+      struct agx3_slot_instr load = {0};
+      load.is_async = true;
+      load.nr_dsts = 4;
+      load.dst[0] = 0; load.dst[1] = 2; load.dst[2] = 4; load.dst[3] = 6;
+
+      struct agx3_slot_instr movimm = {0};
+      movimm.nr_dsts = 1; movimm.dst[0] = 6;      /* r3 = imm */
+
+      struct agx3_slot_instr p[] = { load, movimm, alu(6,6,4), st(6) };
+      CHECK(agx3_slot_assign(p, 4, 6, r));
+      CHECK(r[0].slot==1);
+      CHECK(r[1].wait_mask==0x1u); /* must wait before clobbering r3 */
+      CHECK(r[2].wait_mask==0);
+      CHECK(r[3].wait_mask==0);
+   }
+
+   /* A write that does NOT alias the pending load still needs no wait. */
+   {
+      struct agx3_slot_instr p[] = { ld(0), alu(8,2,4), st(8) };
+      CHECK(agx3_slot_assign(p, 3, 6, r));
+      CHECK(r[0].slot==1);
+      CHECK(r[1].wait_mask==0);
+      CHECK(r[2].wait_mask==0);
    }
 
    /* Round-robin over nslots: the 7th async op on a 6-slot part reuses slot 1;

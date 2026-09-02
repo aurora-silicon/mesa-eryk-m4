@@ -548,10 +548,36 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    if ((load->lane_mask & ~valid_lane_bits) != 0)
       return false;
 
+   /*
+    * Reserve the 64-bit base register AND the loaded data separately.
+    *
+    * An absolute load needs two disjoint register regions: two halves' worth
+    * of 32-bit LDIMM slots holding the address (`temp_half`, `temp_half + 2`),
+    * and `count_dwords` dwords receiving the LDDEV result.  This function used
+    * to hand `allocation->temp_half` to BOTH -- `queued->base.half` and
+    * `queued->data.half` were literally the same register -- so the LDDEV
+    * wrote its result over the address it had just been given.  For the
+    * Honeykrisp root-descriptor load that is r0:r1 holding 0x2ffff6c540 and a
+    * four-dword LDDEV landing on halves 0..7, i.e. the base is destroyed by
+    * the very load that reads it, and the loaded value is itself a pointer the
+    * shader then dereferences.
+    *
+    * Reserving `count_dwords + 2` and putting the base at the bottom of the
+    * reservation with the data two dwords above it makes the two disjoint.
+    * This is correct whether or not the hardware happened to tolerate the
+    * overlay (a read-then-write LDDEV would), so it is safe either way, and it
+    * matches every witness: neither the G17P add3 preamble (data at halves
+    * 0x24/0x2c/0x30) nor the G17S minimal witness (0x14/0x16/0x18) ever lands
+    * loaded data on its address registers.
+    */
+   if (load->count_dwords > UINT8_MAX - 2)
+      return false;
+   const uint8_t requested_dwords = (uint8_t)(load->count_dwords + 2u);
+
    /* Predict the allocation without mutating caller-owned state. */
    struct agx_ioto_load_core predicted_core = *core;
    enum agx_ioto_load_alloc_result result = agx_ioto_load_allocator_reserve(
-      &predicted_core, load->count_dwords, load->cprog_dest_half,
+      &predicted_core, requested_dwords, load->cprog_dest_half,
       load->lane_mask, allocation);
    if (result == AGX_IOTO_LOAD_ALLOC_INVALID)
       return false;
@@ -560,11 +586,18 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
    if (needs_round) {
       predicted_core.current_gpr_dwords = core->initial_gpr_dwords;
       result = agx_ioto_load_allocator_reserve(
-         &predicted_core, load->count_dwords, load->cprog_dest_half,
+         &predicted_core, requested_dwords, load->cprog_dest_half,
          load->lane_mask, allocation);
       if (result != AGX_IOTO_LOAD_ALLOC_OK)
          return false;
    }
+
+   /* Base at the bottom of the reservation, data two dwords (four halves)
+    * above it. */
+   const uint16_t base_temp_half = allocation->temp_half;
+   if (base_temp_half > UINT16_MAX - 4)
+      return false;
+   const uint16_t data_temp_half = (uint16_t)(base_temp_half + 4u);
 
    /*
     * Apple performs rollover before consulting the address map and destroys
@@ -586,10 +619,10 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
       high[AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    uint8_t low_length = 0, high_length = 0;
    if (!cache_hit &&
-       (!agx_ioto_load_pack_ldimm(core->chip, allocation->temp_half,
+       (!agx_ioto_load_pack_ldimm(core->chip, base_temp_half,
                                   (uint32_t)load->address, low, &low_length) ||
         !agx_ioto_load_pack_ldimm(
-           core->chip, (uint16_t)(allocation->temp_half + 2),
+           core->chip, (uint16_t)(base_temp_half + 2),
            (uint32_t)(load->address >> 32), high, &high_length)))
       return false;
 
@@ -630,15 +663,15 @@ agx_ioto_load_absolute(struct agx_ioto_load_core *core,
       memmove(&core->cache[cache_insert + 1], &core->cache[cache_insert],
               (core->cache_count - cache_insert) * sizeof(core->cache[0]));
       core->cache[cache_insert].address = load->address;
-      core->cache[cache_insert].base_half = allocation->temp_half;
+      core->cache[cache_insert].base_half = base_temp_half;
       ++core->cache_count;
-      base_half = allocation->temp_half;
+      base_half = base_temp_half;
       delta = 0;
    }
 
    struct agx_ioto_inflight_load *queued = &core->loads[core->load_count++];
    memset(queued, 0, sizeof(*queued));
-   queued->data.half = allocation->temp_half;
+   queued->data.half = data_temp_half;
    queued->data.type = 3;
    queued->data.value = 1;
    queued->base.half = base_half;

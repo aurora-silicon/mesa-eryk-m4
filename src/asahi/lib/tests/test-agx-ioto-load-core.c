@@ -506,7 +506,11 @@ test_rollover(void)
    struct fixture f;
    struct emit_context ctx = {0};
    struct agx_ioto_load_emit_ops emit = ops(&ctx);
-   CHECK(fixture_init(&f, AGX_CHIP_G15G, 94, false, false));
+   /* Each absolute load now reserves count+2 dwords: two for the 64-bit
+    * base and count for the loaded data, which must not overlap.  Start
+    * two dwords lower so this still exercises the rollover boundary
+    * rather than the allocator's hard limit. */
+   CHECK(fixture_init(&f, AGX_CHIP_G15G, 92, false, false));
    f.core.cache_capacity = 1;
    CHECK(queue_absolute(&f, &emit, UINT64_C(0x10000), 40));
    CHECK(f.core.current_gpr_dwords == 96 && f.core.load_count == 1);

@@ -149,17 +149,44 @@ agx3_g17p_native_compute_launch_pack(
    }
 
    /* The output-positive A18 Pro add3 record stores the Ioto program pointer
-    * as a low VA>>6 word followed by 0x40000000 | VA[47:40].  This differs
-    * from the generic CommandEncodingNext direct form, whose word 1 carries
-    * the upper pointer bits and whose word 3 carries a dimension code. */
+    * as a low VA>>6 word followed by 0x40000000 | VA[47:40].  Word 1 still
+    * carries the upper pointer bits and must be derived from the VA, not
+    * hard-coded -- see the note on the store below. */
    agx3_cmdstream_store_le32(packed, program->launch_template.word0);
+   /* Word 1 bits 22..31 carry program_va[47:38]; the hardware reconstructs
+    * pipeline = ((word1 >> 22) << 38) | (word@+8 << 6).  This used to be the
+    * constant 0x01000000, which is only correct for a VA whose bit 40 is set
+    * (the add3 witness at 0x100000a8000, where va>>38 == 4).  For any other
+    * program -- Mesa's USC heap at 0x11fffac100, where va>>38 == 0 -- that
+    * constant injected 2^40 and the GPU fetched 0x111fffac100, taking a GMMU
+    * page fault before it ever reached the shader. */
    agx3_cmdstream_store_le32(
-      packed + 4, UINT32_C(0x01000000) | program->launch_template.word1);
+      packed + 4,
+      (uint32_t)(((program->program_va >> 38) & 0x3ff) << 22) |
+         program->launch_template.word1);
    agx3_cmdstream_store_le32(packed + 8,
                              (uint32_t)(program->program_va >> 6));
+   /* Word 3's low byte carries program_va[47:40]; bit 30 is the record's own
+    * flag.  This is m1n1's `encode_shader_pointer` (g17p_compute.py:925-939),
+    * the encoder that produced every hardware-positive G17P compute stream:
+    * the +8/+12 pair is ONE pointer descriptor, `low = (va >> 6) & 0xffffffff`
+    * and `control = 0x40000000 | (va >> 40)`.
+    *
+    * Word 1 bits 22..31 (bits 47:38) and this byte (bits 47:40) overlap, and
+    * on every witness VA they contribute the SAME 2^40 -- 0x100000a8000 gives
+    * `va >> 38 == 4` and `va >> 40 == 1`, and `4 << 38 == 1 << 40`.  An OR of
+    * the two is therefore indistinguishable on the witness, which is why
+    * hard-coding either one "reproduces" it.  Hardware has already settled
+    * which way the redundancy resolves: with word 1 hard-coded to 0x01000000
+    * and word 3 VA-derived, the GPU fetched 0x111fffac100 for a program at
+    * 0x11fffac100 -- FAULT_ADDR 0x447ffeb04, exactly +2^40.  Hard-coding word
+    * 3 to 0x40000001 instead re-injects the same 2^40 through the other half
+    * of the descriptor.  Derive BOTH from the VA: for a bit-40-clear USC
+    * window address both fields are zero and no model of the OR can add
+    * anything, and for the witness VA the record is byte-identical. */
    agx3_cmdstream_store_le32(
       packed + 12,
-      UINT32_C(0x40000000) | (uint32_t)(program->program_va >> 40));
+      UINT32_C(0x40000000) | (uint32_t)((program->program_va >> 40) & 0xff));
 
    for (unsigned axis = 0; axis < 3; ++axis) {
       agx3_cmdstream_store_le32(packed + 16 + axis * 4, global_size[axis]);
@@ -205,9 +232,14 @@ static void
 agx3_g17p_store_native_program_pointer(uint8_t *packed, uint64_t program_va)
 {
    agx3_cmdstream_store_le32(packed, (uint32_t)(program_va >> 6));
+   /* Same pointer descriptor as the direct path: `low = va >> 6`,
+    * `control = 0x40000000 | va[47:40]` (m1n1 `encode_shader_pointer`).  A
+    * hard-coded 0x40000001 here injects 2^40 into every helper/indirect
+    * program fetch whose VA has bit 40 clear -- i.e. every address in Mesa's
+    * USC window -- which is the same defect the direct path took. */
    agx3_cmdstream_store_le32(
       packed + 4,
-      UINT32_C(0x40000000) | (uint32_t)(program_va >> 40));
+      UINT32_C(0x40000000) | (uint32_t)((program_va >> 40) & 0xff));
 }
 
 bool
@@ -245,7 +277,9 @@ agx3_g17p_native_indirect_compute_dispatch_append(
    agx3_cmdstream_store_le32(
       staged, program->launch_template.word0 | UINT32_C(0x00800000));
    agx3_cmdstream_store_le32(
-      staged + 4, UINT32_C(0x01000000) | program->launch_template.word1);
+      staged + 4,
+      (uint32_t)(((program->program_va >> 38) & 0x3ff) << 22) |
+         program->launch_template.word1);
    agx3_g17p_store_native_program_pointer(staged + 8, program->program_va);
    for (unsigned axis = 0; axis < 3; ++axis) {
       agx3_cmdstream_store_le32(staged + 16 + axis * 4,
@@ -263,7 +297,9 @@ agx3_g17p_native_indirect_compute_dispatch_append(
 
    uint8_t *helper = staged + AGX3_G17P_NATIVE_COMPUTE_DISPATCH_SIZE;
    agx3_cmdstream_store_le32(helper, UINT32_C(0x10080000));
-   agx3_cmdstream_store_le32(helper + 4, UINT32_C(0x01000000));
+   agx3_cmdstream_store_le32(
+      helper + 4,
+      (uint32_t)(((dispatch->helper_program_va >> 38) & 0x3ff) << 22));
    agx3_g17p_store_native_program_pointer(helper + 8,
                                            dispatch->helper_program_va);
    agx3_cmdstream_store_le32(helper + 16,

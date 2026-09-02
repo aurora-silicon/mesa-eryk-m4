@@ -25,6 +25,7 @@
 
 #include "hk_cmd_pool.h"
 #include "hk_descriptor_set.h"
+#include "hk_drm_render_core.h"
 
 #include "asahi/lib/agx_nir_lower_vbo.h"
 #include "util/u_dynarray.h"
@@ -419,6 +420,11 @@ struct hk_cs {
 
    struct hk_render_registers cr;
 
+   /* Snapshot of the writable image ranges for this exact VDM command. Render
+    * state may change before queue submission, so the synthetic fragment
+    * attachment command must travel with the control stream it describes. */
+   struct hk_drm_attachment_set fragment_attachments;
+
    /* Active restart index if one is set. Zero if there is no restart index set
     * yet, since Vulkan does not allow zero restart indices (unlike OpenGL).
     * This is used in place of dirty tracking, because dirty tracking
@@ -586,6 +592,8 @@ struct agx_ptr hk_pool_alloc_internal(struct hk_cmd_buffer *cmd, uint32_t size,
 
 uint64_t hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data,
                         uint32_t size, uint32_t alignment);
+uint64_t hk_pool_usc_upload(struct hk_cmd_buffer *cmd, const void *data,
+                            uint32_t size, uint32_t alignment);
 
 static inline struct agx_ptr
 hk_pool_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
@@ -597,6 +605,27 @@ static inline struct agx_ptr
 hk_pool_usc_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
 {
    return hk_pool_alloc_internal(cmd, size, alignment, true);
+}
+
+/*
+ * Allocate a payload that a VDM record references through its 40-bit pointer.
+ * G17P's ordinary main heap has bit 39 set, which selects the upper UAT root
+ * in the VDM state-fetch path. Main command-pool BOs are also bound in the
+ * architectural user window. Internal VDM packets and HAL200 bind pairs carry
+ * the context-relative low 32-bit offset; hardware adds that window's
+ * 0x1000000000 base before fetching the alias. Retain the same CPU mapping and
+ * backing storage.
+ */
+static inline struct agx_ptr
+hk_pool_vdm_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
+{
+   struct agx_ptr T = hk_pool_alloc(cmd, size, alignment);
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   if (T.gpu && hk_g17p_vdm_low_window_enabled(&dev->dev))
+      T.gpu = hk_g17p_vdm_low(&dev->dev, T.gpu);
+
+   return T;
 }
 
 void hk_cs_init_graphics(struct hk_cmd_buffer *cmd, struct hk_cs *cs);
@@ -699,6 +728,12 @@ hk_cs_destroy(struct hk_cs *cs)
 
 void hk_dispatch_imm_writes(struct hk_cmd_buffer *cmd, struct hk_cs *cs);
 
+bool hk_g17p_launch_trace_enabled(void);
+void hk_g17p_trace_hexdump(const char *label, uint64_t base, const void *data,
+                           size_t len);
+void hk_g17p_trace_line(const char *label, uint64_t base, const void *data,
+                        size_t len);
+
 void *hk_cmd_buffer_emit_cdm_terminate(struct hk_cmd_buffer *cmd,
                                        void *current);
 void *hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd,
@@ -738,15 +773,25 @@ hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
    if (cs && cs->stats.cmds == 0) {
       hk_optimize_empty_vdm(cmd);
    } else if (cs) {
+      struct hk_device *dev = hk_cmd_buffer_device(cmd);
+      const bool full_usc_state = dev->dev.chip == AGX_CHIP_G17P;
       /* Scissor and depth bias arrays are staged to dynamic arrays on the
        * CPU. When we end the control stream, they're done growing and are
-       * ready for upload.
+       * ready for upload. G17P's ISP consumes these as full bit-40-set GART
+       * addresses, matching native's USC-window allocations; a main-heap
+       * address has bit 39 set and incorrectly selects the upper root.
        */
       cs->uploaded_scissor =
-         hk_pool_upload(cmd, cs->scissor.data, cs->scissor.size, 64);
+         full_usc_state
+            ? hk_pool_usc_upload(cmd, cs->scissor.data, cs->scissor.size, 64)
+            : hk_pool_upload(cmd, cs->scissor.data, cs->scissor.size, 64);
 
       cs->uploaded_zbias =
-         hk_pool_upload(cmd, cs->depth_bias.data, cs->depth_bias.size, 64);
+         full_usc_state
+            ? hk_pool_usc_upload(cmd, cs->depth_bias.data,
+                                 cs->depth_bias.size, 64)
+            : hk_pool_upload(cmd, cs->depth_bias.data,
+                             cs->depth_bias.size, 64);
 
       /* TODO: maybe free scissor/depth_bias now? */
       cs->current = hk_cmd_buffer_emit_vdm_terminate(cmd, cs->current);
