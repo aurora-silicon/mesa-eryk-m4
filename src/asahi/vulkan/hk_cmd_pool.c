@@ -21,8 +21,18 @@ hk_g17p_vdm_low_window_enabled(const struct agx_device *dev)
 {
    static int enabled = -1;
 
+   /* On by default: a VDM record's pointer is 40 bits and hardware reads bit
+    * 39 as the UAT root select, adding 0x1000000000 when it is clear. G17P's
+    * main heap sits at 0x8000000000, so every main-heap pointer a VDM record
+    * carries has bit 39 set and is fetched from the upper root instead. That
+    * is exactly the dVDM_SSD unmapped read at (1<<42)|0x7ffee0400 hardware
+    * reported for the first PPP state record after the root chunk
+    * (0x87ffee0400). Native keeps these payloads inside the architectural
+    * 0x1000000000 window, which is what this path reproduces. The environment
+    * variable now only exists to turn the correct behaviour back off for A/B
+    * testing. */
    if (enabled < 0)
-      enabled = debug_get_bool_option("ASAHI_G17P_VDM_LOW_WINDOW", false);
+      enabled = debug_get_bool_option("ASAHI_G17P_VDM_LOW_WINDOW", true);
 
    return dev->chip == AGX_CHIP_G17P && enabled;
 }
