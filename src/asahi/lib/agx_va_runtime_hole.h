@@ -15,6 +15,14 @@
 #define AGX_G17_RUNTIME_GRAPH_VA_START UINT64_C(0x7000000000)
 #define AGX_G17_RUNTIME_GRAPH_VA_END   UINT64_C(0x7100000000)
 
+/* G17P's compact VDM pointer is a 39-bit offset from 0x1000000000.
+ * Keep the ordinary allocation and sparse-shadow windows below this exclusive
+ * limit so every VDM control stream and payload is directly representable. */
+#define AGX_G17P_VDM_USER_BASE  UINT64_C(0x1000000000)
+#define AGX_G17P_VDM_USER_SIZE  (UINT64_C(1) << 39)
+#define AGX_G17P_VDM_USER_LIMIT                                            \
+   (AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_USER_SIZE)
+
 /*
  * Reduce the kernel-reported user VA window to the power-of-two window the
  * driver actually allocates from, and derive the address bit that tells a

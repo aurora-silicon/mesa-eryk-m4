@@ -246,7 +246,8 @@ test_user_window_split(void)
 
 
 /*
- * G17P's user heap and its sparse read-only alias must both fit below 2^40.
+ * G17P's user heap and its sparse read-only alias must both fit inside the
+ * compact VDM aperture.
  *
  * The VDM PPP State Update carries its payload pointer in a 40-bit field
  * (agx_vdm_ppp_state_core.h: word 0 bits 0..7 are pointer bits 32..39, read
@@ -257,14 +258,17 @@ test_user_window_split(void)
  * payload and vkEndCommandBuffer() failed before a render command buffer
  * could be recorded.
  *
- * agx_device.c now derives G17P's window from [reservation, shader_base).
- * This checks the arithmetic that placement depends on.
+ * The VDM control-stream register carries a 39-bit offset from 0x1000000000,
+ * so merely remaining below 2^40 is insufficient: 0xbfff... is a valid
+ * 40-bit absolute address but is not representable by that register.
+ * agx_device.c bounds the two allocation windows by 0x9000000000.
  */
 static void
 test_g17p_user_window_fits_ppp_pointer_field(void)
 {
    const uint64_t ppp_pointer_limit = UINT64_C(1) << 40;
    const uint64_t shader_base = UINT64_C(0x10000000000); /* AGX_G17P_USC_WINDOW_BASE */
+   const uint64_t vdm_pointer_limit = AGX_G17P_VDM_USER_LIMIT;
    const uint64_t reservation = UINT64_C(1) << 36;
 
    assert(shader_base == ppp_pointer_limit &&
@@ -275,22 +279,23 @@ test_g17p_user_window_fits_ppp_pointer_field(void)
     * window of the same size. */
    uint64_t start = shader_base / 2;
    assert(start >= reservation);
-   uint64_t size = shader_base - start;
+   assert(start < vdm_pointer_limit && vdm_pointer_limit < shader_base);
+   uint64_t size = vdm_pointer_limit - start;
    uint64_t out_start = 0, out_size = 0;
    assert(agx_va_split_user_window(start, size, &out_start, &out_size));
 
    /* Whatever the split picks, halving until the alias fits must terminate
     * with a non-empty window -- the same loop agx_device.c runs. */
-   while (out_size > 0 && out_start + 2 * out_size > shader_base)
+   while (out_size > 0 && out_start + 2 * out_size > vdm_pointer_limit)
       out_size /= 2;
    assert(out_size > 0);
 
    /* The heap itself, and the read-only alias above it, are both addressable
-    * by a 40-bit PPP payload pointer. */
+    * by the 39-bit base-relative VDM pointer and the wider PPP pointer. */
    assert(out_start >= reservation);
-   /* And the layout is not wastefully small: it uses a quarter of the range
-    * below the window, which is the most this split admits. */
-   assert(out_size == shader_base / 4);
+   assert(out_size == UINT64_C(0x800000000)); /* 32 GiB */
+   assert(out_start + out_size <= vdm_pointer_limit);
+   assert(out_start + 2 * out_size <= vdm_pointer_limit);
    assert(out_start + out_size <= ppp_pointer_limit);
    assert(out_start + 2 * out_size <= ppp_pointer_limit);
 

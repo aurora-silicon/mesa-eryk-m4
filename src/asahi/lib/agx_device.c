@@ -984,11 +984,12 @@ agx_open_device(void *memctx, struct agx_device *dev)
     * Compute never noticed because nothing on that path encodes a 40-bit
     * pointer.
     *
-    * So put G17P's heap BELOW its USC window, in [reservation, 2^40). That
-    * keeps the window itself exactly where it is -- the only placement
-    * observed to execute -- and leaves the bottom 2^36 robustness carveout
-    * untouched, while bringing every command-stream allocation inside the
-    * field the hardware actually has.
+    * The VDM control-stream register is narrower still: G17P interprets its
+    * value as a 39-bit offset from 0x1000000000. Therefore both the primary
+    * heap and its sparse shadow must end by 0x9000000000, not merely below
+    * the 2^40 USC window. This leaves the bottom 2^36 robustness carveout
+    * untouched while making every ordinary control-stream allocation
+    * directly representable, with no per-run alias option.
     */
    const bool heap_below_usc = dev->chip == AGX_CHIP_G17P;
 
@@ -1034,9 +1035,10 @@ agx_open_device(void *memctx, struct agx_device *dev)
       .kernel_end = dev->params.vm_end,
    };
 
-   /* A heap below the USC window is bounded by the window, not the kernel. */
+   /* G17P is bounded by the compact VDM aperture, which is below the USC
+    * window. Other chips retain the kernel-reported user limit. */
    const uint64_t user_limit =
-      heap_below_usc ? dev->shader_base : vm_create.kernel_start;
+      heap_below_usc ? AGX_G17P_VDM_USER_LIMIT : vm_create.kernel_start;
    uint64_t user_size = user_limit - user_start;
 
    int ret = dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_VM_CREATE, &vm_create);
