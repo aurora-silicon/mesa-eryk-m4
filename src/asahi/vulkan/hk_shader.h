@@ -118,8 +118,10 @@ struct hk_shader_info {
     */
    bool agx3_combined_sampler_valid;
    bool agx3_uses_root;
-   uint8_t _agx3_combined_sampler_pad[2];
+   bool agx3_txf_texture_valid;
+   uint8_t _agx3_combined_sampler_pad;
    struct agx_g17p_combined_sampler_binding agx3_combined_sampler;
+   struct agx_g17p_txf_binding agx3_txf_texture;
 
    /* XXX: is there a less goofy way to do this? I really don't want dynamic
     * allocation here.

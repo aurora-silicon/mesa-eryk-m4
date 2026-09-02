@@ -24,6 +24,7 @@
 
 #include "agx_compile.h"
 #include "agx_nir.h"
+#include "agx_nir_texture.h"
 #include "asahi/lib/agx_abi.h"
 #include "nir_builder.h"
 #include "util/format/u_formats.h"
@@ -449,6 +450,67 @@ test_combined_sampler_scope(void)
    return ok;
 }
 
+static nir_shader *
+build_cs_bindless_txf(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "AGX3 static bindless TXF CS");
+   b.shader->info.workgroup_size[0] = 1;
+   b.shader->info.workgroup_size[1] = 1;
+   b.shader->info.workgroup_size[2] = 1;
+
+   nir_def *coord = nir_load_global_invocation_id(&b, 32);
+   nir_def *handle = nir_bindless_image_agx(
+      &b, nir_imm_int(&b, 64), .desc_set = 0);
+
+   nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
+   tex->op = nir_texop_txf;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->is_array = true;
+   tex->dest_type = nir_type_uint32;
+   tex->coord_components = 3;
+   tex->backend_flags = AGX_TEXTURE_FLAG_NO_CLAMP;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, coord);
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_lod, nir_imm_int(&b, 0));
+   tex->src[2] =
+      nir_tex_src_for_ssa(nir_tex_src_texture_handle, handle);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+   nir_builder_instr_insert(&b, &tex->instr);
+
+   /* Keep the fetch live without introducing an unrelated memory operation. */
+   nir_def *sink = nir_channel(&b, &tex->def, 0);
+   nir_export_agx(&b, sink, .base = 0);
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+static bool
+test_txf_lowering(void)
+{
+   nir_shader *nir = build_cs_bindless_txf();
+   struct agx_g17p_txf_binding binding = {.texture_offset_B = UINT32_MAX};
+
+   const bool lowered = agx_nir_lower_g17p_txf(nir, &binding);
+   bool ok = lowered && binding.texture_offset_B == 64;
+   if (ok) {
+      nir_tex_instr *fetch = NULL;
+      nir_foreach_function_impl(impl, nir) {
+         nir_foreach_block(block, impl) {
+            nir_foreach_instr(instr, block) {
+               if (instr->type == nir_instr_type_tex)
+                  fetch = nir_instr_as_tex(instr);
+            }
+         }
+      }
+
+      ok = fetch && fetch->texture_index == 0 &&
+           nir_tex_instr_src_index(fetch, nir_tex_src_texture_handle) < 0;
+   }
+
+   ralloc_free(nir);
+   return ok;
+}
+
 /*
  * Fragment shader sampling texture 0 through sampler 0 by immediate index
  * with implicit LOD -- a textured triangle, the exact shape the smp sampler
@@ -734,6 +796,11 @@ main(void)
 
    if (!test_combined_sampler_scope()) {
       fputs("combined sampler lowering consumed a non-sampler bias\n", stderr);
+      all_ok = false;
+   }
+
+   if (!test_txf_lowering()) {
+      fputs("static TXF descriptor lowering mismatch\n", stderr);
       all_ok = false;
    }
 

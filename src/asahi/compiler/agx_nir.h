@@ -34,9 +34,21 @@ struct agx_g17p_combined_sampler_binding {
    uint32_t sampler_index_offset_B;
 };
 
+struct agx_g17p_txf_binding {
+   uint32_t texture_offset_B;
+};
+
 /* Turn the one statically indexed set-0 Gen9 combined image/sampler used by
  * the initial G17P graphics path into texture-state 0 / sampler-state 1. The
  * caller must place the corresponding native states in those CProg regions.
  */
 bool agx_nir_lower_g17p_combined_sampler(
    struct nir_shader *s, struct agx_g17p_combined_sampler_binding *binding);
+
+/* Turn the one statically indexed set-0 Gen9 texture used by the initial
+ * G17P compute texel-fetch path into texture-state 0.  Sampler-state 0 remains
+ * the device TXF sampler.  The caller must publish both native states through
+ * the G17P resource program; no executable shader preamble is generated.
+ */
+bool agx_nir_lower_g17p_txf(
+   struct nir_shader *s, struct agx_g17p_txf_binding *binding);

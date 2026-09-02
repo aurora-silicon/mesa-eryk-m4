@@ -4,6 +4,7 @@
  */
 
 #include "agx_nir.h"
+#include "agx_nir_texture.h"
 
 #include "nir.h"
 #include "nir_builder.h"
@@ -208,6 +209,105 @@ agx_nir_lower_g17p_combined_sampler(
    *binding = (struct agx_g17p_combined_sampler_binding){
       .texture_offset_B = texture_offset_B,
       .sampler_index_offset_B = sampler_state_offset_B + 8,
+   };
+   return true;
+}
+
+static bool
+g17p_txf_shape(const nir_tex_instr *tex)
+{
+   if (tex->op != nir_texop_txf ||
+       tex->sampler_dim != GLSL_SAMPLER_DIM_2D || tex->is_shadow ||
+       tex->is_sparse || (tex->coord_components != 2 &&
+                          tex->coord_components != 3) ||
+       tex->is_array != (tex->coord_components == 3) ||
+       (tex->backend_flags & ~AGX_TEXTURE_FLAG_NO_CLAMP) != 0 ||
+       tex->dest_type != nir_type_uint32 || tex->def.num_components != 4 ||
+       tex->def.bit_size != 32 || tex->texture_index != 0 ||
+       tex->sampler_index != 0)
+      return false;
+
+   const int handle =
+      nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+   const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   int coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   if (coord < 0)
+      coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
+
+   if (handle < 0 || lod < 0 || coord < 0 || tex->num_srcs != 3 ||
+       nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle) >= 0 ||
+       nir_tex_instr_src_index(tex, nir_tex_src_sampler_offset) >= 0 ||
+       nir_tex_instr_src_index(tex, nir_tex_src_texture_offset) >= 0 ||
+       !nir_src_is_const(tex->src[lod].src) ||
+       nir_src_as_uint(tex->src[lod].src) != 0)
+      return false;
+
+   return nir_src_num_components(tex->src[coord].src) ==
+             tex->coord_components &&
+          nir_src_bit_size(tex->src[coord].src) == 32;
+}
+
+static bool
+g17p_has_bindless_texture_access(const nir_shader *shader)
+{
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic)
+               continue;
+
+            const nir_intrinsic_op op =
+               nir_instr_as_intrinsic(instr)->intrinsic;
+            if (op == nir_intrinsic_bindless_image_agx ||
+                op == nir_intrinsic_bindless_sampler_agx)
+               return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+bool
+agx_nir_lower_g17p_txf(nir_shader *shader,
+                        struct agx_g17p_txf_binding *binding)
+{
+   if (!shader || !binding || shader->info.stage != MESA_SHADER_COMPUTE)
+      return false;
+
+   nir_tex_instr *fetch = NULL;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            if (fetch || !g17p_txf_shape(nir_instr_as_tex(instr)))
+               return false;
+            fetch = nir_instr_as_tex(instr);
+         }
+      }
+   }
+
+   if (!fetch)
+      return false;
+
+   uint32_t texture_offset_B;
+   if (!g17p_handle_offset(fetch, nir_tex_src_texture_handle,
+                           nir_intrinsic_bindless_image_agx,
+                           &texture_offset_B) ||
+       (texture_offset_B & 7) != 0)
+      return false;
+
+   nir_steal_tex_src(fetch, nir_tex_src_texture_handle);
+   fetch->texture_index = 0;
+
+   NIR_PASS(_, shader, nir_opt_dce);
+   if (g17p_has_bindless_texture_access(shader))
+      return false;
+
+   *binding = (struct agx_g17p_txf_binding){
+      .texture_offset_B = texture_offset_B,
    };
    return true;
 }

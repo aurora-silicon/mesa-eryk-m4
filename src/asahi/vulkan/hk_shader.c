@@ -1138,6 +1138,18 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       } else {
          ralloc_free(candidate);
       }
+   } else if (dev->dev.chip == AGX_CHIP_G17P &&
+              nir->info.stage == MESA_SHADER_COMPUTE) {
+      nir_shader *candidate = nir_shader_clone(NULL, nir);
+      struct agx_g17p_txf_binding binding;
+      if (candidate && agx_nir_lower_g17p_txf(candidate, &binding)) {
+         ralloc_free(nir);
+         nir = candidate;
+         shader->info.agx3_txf_texture_valid = true;
+         shader->info.agx3_txf_texture = binding;
+      } else {
+         ralloc_free(candidate);
+      }
    }
 
    if (dev->dev.chip == AGX_CHIP_G17P)
@@ -1246,6 +1258,13 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       .has_scratch = !nir->info.internal,
       .promote_constants = true,
       .promote_textures = true,
+      /* G17P's Ioto resource program populates CProg before the main shader;
+       * it does not execute AGX2's tex_state_store/sampler_state_store shader
+       * preamble.  The bounded G17P descriptor lowerings above convert the
+       * admitted static texture cases to immediate state slots before the
+       * backend runs.  Keep this architectural, not environment-selected:
+       * an unhandled descriptor shape must fail closed in the main packer.
+       */
       .no_preamble = dev->dev.chip == AGX_CHIP_G17P,
    };
 
