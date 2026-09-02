@@ -110,6 +110,20 @@ check(VkResult result, const char *what)
          die("device is missing " #name);                                     \
    } while (0)
 
+/* Non-fatal variant: returns UINT32_MAX instead of dying, so an optional
+ * memory class can be probed. */
+static uint32_t
+try_memory_type(const VkPhysicalDeviceMemoryProperties *properties,
+                uint32_t allowed, VkMemoryPropertyFlags required)
+{
+   for (uint32_t i = 0; i < properties->memoryTypeCount; ++i) {
+      if ((allowed & (1u << i)) &&
+          (properties->memoryTypes[i].propertyFlags & required) == required)
+         return i;
+   }
+   return UINT32_MAX;
+}
+
 static uint32_t
 find_memory_type(const VkPhysicalDeviceMemoryProperties *properties,
                  uint32_t allowed, VkMemoryPropertyFlags required)
@@ -308,6 +322,7 @@ main(void)
          "vkMapMemory(vertex)");
    memcpy(vertex_map, vertices, sizeof(vertices));
 
+
    const VkImageCreateInfo image_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
       .imageType = VK_IMAGE_TYPE_2D,
@@ -326,9 +341,21 @@ main(void)
    check(vkCreateImage(device, &image_info, NULL, &image), "vkCreateImage");
    VkMemoryRequirements image_requirements;
    vkGetImageMemoryRequirements(device, image, &image_requirements);
-   const uint32_t image_memory_type =
-      find_memory_type(&memory_properties, image_requirements.memoryTypeBits,
-                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+   /* Host-visible so the render target can be inspected WITHOUT a copy
+    * command: this ICD does not implement vkCmdCopyImageToBuffer and fails
+    * vkEndCommandBuffer with -8 if one is recorded. Falls back to device-local
+    * if no host-visible type accepts the image. */
+   uint32_t image_memory_type =
+      try_memory_type(&memory_properties, image_requirements.memoryTypeBits,
+                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+   bool image_host_visible = image_memory_type != UINT32_MAX;
+   if (!image_host_visible)
+      image_memory_type =
+         find_memory_type(&memory_properties, image_requirements.memoryTypeBits,
+                          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+   fprintf(stderr, "g17p-render-only: image memory host-visible=%d type=%u\n",
+           (int)image_host_visible, image_memory_type);
    const VkMemoryAllocateInfo image_memory_info = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .allocationSize = image_requirements.size,
@@ -570,6 +597,7 @@ main(void)
    vkCmdDraw(command_buffer, 3, 1, 0, 0);
    vkCmdEndRenderPass(command_buffer);
 
+
    check(vkEndCommandBuffer(command_buffer), "vkEndCommandBuffer");
    fprintf(stderr, "g17p-render-only: command buffer recorded\n");
 
@@ -601,7 +629,49 @@ main(void)
       return EXIT_FAILURE;
    }
 
-   printf("g17p-render-only: PASS - %ux%u RGBA8 clear+draw+store completed\n",
-          IMAGE_WIDTH, IMAGE_HEIGHT);
+   /* Verify PIXELS, not just the fence. The clear is opaque black and the
+    * vertex data is a full-viewport triangle, so a correct render leaves NO
+    * cleared pixel behind. */
+   if (!image_host_visible) {
+      printf("g17p-render-only: INCONCLUSIVE - fence signalled but the render "
+             "target is not host-visible, so no pixel was verified\n");
+      return EXIT_FAILURE;
+   }
+   uint8_t *pixels = NULL;
+   check(vkMapMemory(device, image_memory, 0, IMAGE_BYTES, 0,
+                     (void **)&pixels),
+         "vkMapMemory(image)");
+   unsigned cleared = 0, drawn = 0;
+   uint32_t first = 0;
+   for (unsigned i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; i++) {
+      const uint8_t r = pixels[i * 4 + 0], g = pixels[i * 4 + 1];
+      const uint8_t b = pixels[i * 4 + 2], a = pixels[i * 4 + 3];
+      if (i == 0)
+         first = ((uint32_t)r << 24) | ((uint32_t)g << 16) |
+                 ((uint32_t)b << 8) | a;
+      if (r == 0 && g == 0 && b == 0)
+         cleared++;
+      else
+         drawn++;
+   }
+   fprintf(stderr,
+           "g17p-render-only: pixels drawn=%u cleared=%u first=%#010x\n",
+           drawn, cleared, first);
+   for (unsigned y = 0; y < IMAGE_HEIGHT; y += 4) {
+      char row[IMAGE_WIDTH / 2 + 1];
+      for (unsigned x = 0; x < IMAGE_WIDTH; x += 2) {
+         const uint8_t *p = &pixels[(y * IMAGE_WIDTH + x) * 4];
+         row[x / 2] = (p[0] | p[1] | p[2]) ? '#' : '.';
+      }
+      row[IMAGE_WIDTH / 2] = 0;
+      fprintf(stderr, "g17p-render-only: |%s|\n", row);
+   }
+   if (drawn == 0) {
+      printf("g17p-render-only: FAIL - fence signalled but every pixel is the "
+             "clear colour; nothing was drawn\n");
+      return EXIT_FAILURE;
+   }
+   printf("g17p-render-only: PASS - %ux%u RGBA8, %u/%u pixels drawn\n",
+          IMAGE_WIDTH, IMAGE_HEIGHT, drawn, IMAGE_WIDTH * IMAGE_HEIGHT);
    return EXIT_SUCCESS;
 }
