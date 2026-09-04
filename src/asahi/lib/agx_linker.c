@@ -10,6 +10,7 @@
 #include "util/macros.h"
 #include "util/ralloc.h"
 #include "agx_abi.h"
+#include "agx3_code_container_core.h"
 #include "agx_compile.h"
 #include "agx_device.h"
 #include "agx_pack.h"
@@ -173,14 +174,8 @@ agx3_build_container_lead(uint8_t *image)
 }
 
 static void
-agx3_build_container(uint8_t *image, size_t code_size)
+agx3_build_container(uint8_t *image, size_t code_size, bool fragment)
 {
-   static const uint8_t constant_program[0x40] = {
-      0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00,
-      0x60, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x06, 0x00,
-      /* the rest is 0x0006 filler, written below */
-   };
-
    memset(image, 0, agx3_container_size(code_size));
    agx3_build_container_lead(image);
 
@@ -189,11 +184,7 @@ agx3_build_container(uint8_t *image, size_t code_size)
                     ALIGN_POT(code_size, 64));
 
    uint8_t *constant = image + AGX3_CONTAINER_LEAD + AGX3_CONTAINER_BLOCK_HDR;
-   memcpy(constant, constant_program, 14);
-   for (size_t offset = 14; offset < AGX3_CONTAINER_CONST_PROG; offset += 2) {
-      constant[offset] = 0x06;
-      constant[offset + 1] = 0x00;
-   }
+   agx3_build_container_constant_program(constant, fragment);
 }
 
 static bool
@@ -272,7 +263,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    if (container)
-      agx3_build_container(container_map, size);
+      agx3_build_container(container_map, size, fragment);
 
    size_t offset = 0;
 

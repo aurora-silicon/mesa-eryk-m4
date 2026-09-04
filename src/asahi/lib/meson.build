@@ -10,6 +10,8 @@ libasahi_lib_files = files(
   'agx3_cdm_direct_launch_semantic_core.h',
   'agx3_compute_program_core.c',
   'agx3_compute_program_core.h',
+  'agx3_code_container_core.c',
+  'agx3_code_container_core.h',
   'agx_ioto_core.c',
   'agx_ioto_core.h',
   'agx_ioto_imageblock_core.c',
@@ -252,6 +254,19 @@ if with_tests
       files(
         'agx_chip.c',
         'tests/test-chip.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-agx-linker-container',
+    executable(
+      'asahi-agx-linker-container',
+      files(
+        'agx3_code_container_core.c',
+        'tests/test-agx-linker-container.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),
