@@ -88,7 +88,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 static bool
 hk_agx3_g17p_graphics_state_tail(
    const struct hk_agx3_g17p_graphics_program_desc *desc,
-   struct agx_ioto_state_tail_output *tail)
+   struct agx_ioto_state_tail_output *tail, bool ordinary)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
        desc->nr_gprs == 0)
@@ -116,10 +116,24 @@ hk_agx3_g17p_graphics_state_tail(
    ldshdr.f[1] = fetch_span > 3 ? 3 : fetch_span;
    ldshdr.f[23] = 1;
 
-   struct agx_ioto_state spectpr;
-   if (!agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size, desc->nr_gprs,
-                                             &spectpr))
+   struct agx_ioto_state spectpr = {0};
+   /* The valid cold G1a no-vary fragment and the matched Apple Metal
+    * 32023.917 constant-colour probe both omit ProgramVariant field 38.
+    * FragmentProgramVariantESLState supplies D=0, whose rounded SPECTPR
+    * payload is entirely zero. Mesa's nr_gprs is not this Apple metadata
+    * field; using even a two-GPR shader here incorrectly sets f22=2.
+    *
+    * Resource fragments retain the compiler-footprint path below until their
+    * ProgramVariant metadata contract is independently recovered.
+   */
+   const bool exact_no_resource_fragment =
+      ordinary && desc->fragment && desc->uniform_range_count == 0 &&
+      desc->scratch_size == 0;
+   if (!exact_no_resource_fragment &&
+       !agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size,
+                                             desc->nr_gprs, &spectpr)) {
       return false;
+   }
 
    struct agx_ioto_state_tail_output staged = {
       .length = AGX_IOTO_STATE_TAIL_TYPE0_SIZE,
@@ -150,7 +164,7 @@ hk_agx3_g17p_basic_graphics_program_generate(
       return false;
 
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(desc, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(desc, &tail, true))
       return false;
 
    struct hk_agx3_g17p_graphics_program staged = {0};
@@ -327,7 +341,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail, false))
       return false;
 
    uint8_t body[512];
@@ -405,7 +419,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail, false))
       return false;
 
    /*

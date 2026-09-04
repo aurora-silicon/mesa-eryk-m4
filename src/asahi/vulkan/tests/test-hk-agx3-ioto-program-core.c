@@ -727,7 +727,7 @@ test_g17p_basic_graphics_program(void)
 {
    static const uint8_t expected_fragment[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01, 0x2a, 0x01,
-      0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00, 0x2a, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x1c, 0x80, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x14, 0x81, 0x11, 0x06, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x80, 0x02, 0x00,
       0x04, 0x00, 0x00, 0x00, 0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x08, 0xa8,
@@ -737,6 +737,10 @@ test_g17p_basic_graphics_program(void)
    };
    CHECK(sizeof(expected_fragment) ==
          AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE);
+   /* Both the valid cold G1a vary0 tail and the matched applegpu_g17p
+    * constant-colour/no-varying probe leave compiler ProgramVariant field 38
+    * absent. FragmentProgramVariantESLState therefore supplies D=0, making
+    * the complete SPECTPR payload above zero. */
    const struct hk_agx3_g17p_graphics_program_desc fragment = {
       .program_va = UINT64_C(0x10001990240),
       .shader_va = UINT64_C(0x10000000080),
@@ -790,9 +794,14 @@ test_g17p_basic_graphics_program(void)
    CHECK(program.length > AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
    CHECK(program.length <= HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE);
    const size_t pre_copy_size = sizeof(expected_resource_prefix) - 8;
+   static const uint8_t expected_resource_tail[] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01,
+      0x2a, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+      0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
    CHECK(memcmp(program.bytes, expected_resource_prefix, pre_copy_size) == 0);
    CHECK(memcmp(program.bytes + pre_copy_size,
-                expected_fragment, AGX_IOTO_STATE_TAIL_TYPE0_SIZE) == 0);
+                expected_resource_tail, sizeof(expected_resource_tail)) == 0);
    CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
          0x0e);
 
