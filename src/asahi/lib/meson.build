@@ -45,6 +45,8 @@ libasahi_lib_files = files(
   'agx_ppp.h',
   'agx_ppp_hal200_graphics_core.c',
   'agx_ppp_hal200_graphics_core.h',
+  'agx_ppp_hal200_raster_core.c',
+  'agx_ppp_hal200_raster_core.h',
   'agx_ppp_hal300_depth_bias_scissor_core.c',
   'agx_ppp_hal300_depth_bias_scissor_core.h',
   'agx_ppp_hal300_depth_stencil_core.c',
@@ -267,6 +269,19 @@ if with_tests
       files(
         'agx3_code_container_core.c',
         'tests/test-agx-linker-container.c',
+      ),
+      include_directories : [inc_include, inc_src, inc_asahi],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
+    'asahi-ppp-hal200-raster-core',
+    executable(
+      'asahi-ppp-hal200-raster-core',
+      files(
+        'agx_ppp_hal200_raster_core.c',
+        'tests/test-ppp-hal200-raster-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),

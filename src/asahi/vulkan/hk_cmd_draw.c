@@ -16,6 +16,7 @@
 #include "agx_nir_lower_vbo.h"
 #include "agx_ppp.h"
 #include "agx_ppp_hal200_graphics_core.h"
+#include "agx_ppp_hal200_raster_core.h"
 #include "agx_ppp_hal300_depth_bias_scissor_core.h"
 #include "agx_ppp_viewport_payload_core.h"
 #include "agx_ppp_w_clamp_cull2_core.h"
@@ -2712,6 +2713,9 @@ hk_flush_index(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
 #define HK_G17P_VIEWPORT_OFFSET UINT32_C(0x68900)
 #define HK_G17P_DRAW_STATE_OFFSET UINT32_C(0x48000)
 
+static float hk_depth_bias_factor(VkFormat format, bool exact,
+                                  bool force_unorm);
+
 static bool
 hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                               uint8_t **out)
@@ -2769,14 +2773,14 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    };
 
    struct agx_ppp_hal200_graphics_core output_record;
-   const struct agx_ppp_hal200_graphics_fields output_fields = {
+   struct agx_ppp_hal200_graphics_fields output_fields = {
       .words = {0, 0, 0, UINT32_C(4),
-                AGX_PPP_HAL200_PRIMARY_FACE_HEADER, UINT32_C(0x00040200)},
+                AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0},
    };
 
    struct agx_ppp_hal200_graphics_core primary_record;
-   const struct agx_ppp_hal200_graphics_fields primary_fields = {
-      .words = {UINT32_C(0x00040200), UINT32_C(0x07200f00),
+   struct agx_ppp_hal200_graphics_fields primary_fields = {
+      .words = {0, UINT32_C(0x07200f00),
                 UINT32_C(0x0e000000), UINT32_C(0x07200f00),
                 UINT32_C(0x0e000000), 0},
    };
@@ -2798,40 +2802,6 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .cull2_raw = UINT32_C(0x80),
    };
 
-   if (!agx_ppp_hal200_fragment_core_pack(dev->dev.chip, &fs_fields,
-                                          &fs_record) ||
-       !agx_ppp_hal200_graphics_core_pack(
-          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_OUTPUT, &output_fields,
-          &output_record) ||
-       !agx_ppp_hal200_graphics_core_pack(
-          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_PRIMARY_FACE,
-          &primary_fields, &primary_record) ||
-       !agx_ppp_hal200_graphics_core_pack(
-          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_SECONDARY_FACE,
-          &secondary_fields, &secondary_record) ||
-       !agx_ppp_hal200_graphics_core_pack(
-          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_CULL, &cull_fields,
-          &cull_record) ||
-       !agx_ppp_w_clamp_cull2_core_pack(dev->dev.chip, &w_cull2_fields,
-                                         &w_cull2_record))
-      return false;
-
-   /* Preserve the physical +0x00..+0x73 layout from Metal.  The complete
-    * 28-byte FS record occupies +0x00..+0x1b; in particular, +0x14 is the
-    * low stage-program word and must not be overlaid by the old anonymous
-    * metadata guess.  The output window at +0x1c intentionally overlaps the
-    * primary header/control at +0x30/+0x34.
-    */
-   static_assert(AGX_PPP_HAL200_FS_LENGTH == 0x1c,
-                 "HAL200 FS must end where the output record begins");
-   uint8_t bind_group[0x80] = {0};
-   memcpy(&bind_group[0x00], fs_record.bytes, fs_record.length);
-   memcpy(&bind_group[0x1c], output_record.bytes, output_record.length);
-   memcpy(&bind_group[0x30], primary_record.bytes, primary_record.length);
-   memcpy(&bind_group[0x4c], secondary_record.bytes, secondary_record.length);
-   memcpy(&bind_group[0x60], w_cull2_record.bytes, w_cull2_record.length);
-   memcpy(&bind_group[0x6c], cull_record.bytes, cull_record.length);
-
    struct agx_ppp_viewport_payload_fields viewport_fields = {
       .viewport_count = 1,
    };
@@ -2851,6 +2821,89 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       maxx = MIN2(maxx, s->offset.x + s->extent.width);
       maxy = MIN2(maxy, s->offset.y + s->extent.height);
    }
+
+   const bool scissor_enable = dyn->vp.viewport_count > 0;
+   const bool depth_bias_enable =
+      dyn->rs.depth_bias.enable &&
+      gfx->object_type == AGX_OBJECT_TYPE_TRIANGLE;
+   const bool exact = dyn->rs.depth_bias.exact;
+   const bool force_unorm =
+      dyn->rs.depth_bias.representation ==
+      VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+   const float min_z = dyn->rs.depth_clamp_enable
+                          ? MIN2(vp->minDepth, vp->maxDepth)
+                          : 0.0f;
+   const float max_z = dyn->rs.depth_clamp_enable
+                          ? MAX2(vp->minDepth, vp->maxDepth)
+                          : 1.0f;
+   const float depth_bias =
+      depth_bias_enable
+         ? dyn->rs.depth_bias.constant_factor /
+              hk_depth_bias_factor(render->depth_att.vk_format, exact,
+                                   force_unorm)
+         : 0.0f;
+   const struct agx_ppp_hal200_raster_fields raster_fields = {
+      .scissor_enable = scissor_enable,
+      .depth_bias_enable = depth_bias_enable,
+      .max_x = MIN2(maxx, UINT16_MAX),
+      .min_x = MIN2(minx, UINT16_MAX),
+      .max_y = MIN2(maxy, UINT16_MAX),
+      .min_y = MIN2(miny, UINT16_MAX),
+      .min_z_raw = fui(min_z),
+      .max_z_raw = fui(max_z),
+      .depth_bias_raw = fui(depth_bias),
+      .slope_scale_raw =
+         depth_bias_enable ? fui(dyn->rs.depth_bias.slope_factor) : 0,
+      .clamp_raw = depth_bias_enable ? fui(dyn->rs.depth_bias.clamp) : 0,
+   };
+   struct agx_ppp_hal200_raster_state raster_state;
+   if (!agx_ppp_hal200_raster_state_build(dev->dev.chip, &raster_fields,
+                                           &raster_state))
+      return false;
+
+   output_fields.words[5] = raster_state.fragment_control;
+   primary_fields.words[0] = raster_state.fragment_control;
+   if (!agx_ppp_hal200_fragment_core_pack(dev->dev.chip, &fs_fields,
+                                          &fs_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_OUTPUT, &output_fields,
+          &output_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_PRIMARY_FACE,
+          &primary_fields, &primary_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_SECONDARY_FACE,
+          &secondary_fields, &secondary_record) ||
+       !agx_ppp_hal200_graphics_core_pack(
+          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_CULL, &cull_fields,
+          &cull_record) ||
+       !agx_ppp_w_clamp_cull2_core_pack(dev->dev.chip, &w_cull2_fields,
+                                         &w_cull2_record))
+      return false;
+
+   void *scissor = util_dynarray_grow_bytes(
+      &cs->scissor, 1, sizeof(raster_state.scissor));
+   void *depth_bias_record = util_dynarray_grow_bytes(
+      &cs->depth_bias, 1, sizeof(raster_state.depth_bias));
+   memcpy(scissor, raster_state.scissor, sizeof(raster_state.scissor));
+   memcpy(depth_bias_record, raster_state.depth_bias,
+          sizeof(raster_state.depth_bias));
+
+   /* Preserve the physical +0x00..+0x73 layout from Metal.  The complete
+    * 28-byte FS record occupies +0x00..+0x1b; in particular, +0x14 is the
+    * low stage-program word and must not be overlaid by the old anonymous
+    * metadata guess.  The output window at +0x1c intentionally overlaps the
+    * primary header/control at +0x30/+0x34.
+    */
+   static_assert(AGX_PPP_HAL200_FS_LENGTH == 0x1c,
+                 "HAL200 FS must end where the output record begins");
+   uint8_t bind_group[0x80] = {0};
+   memcpy(&bind_group[0x00], fs_record.bytes, fs_record.length);
+   memcpy(&bind_group[0x1c], output_record.bytes, output_record.length);
+   memcpy(&bind_group[0x30], primary_record.bytes, primary_record.length);
+   memcpy(&bind_group[0x4c], secondary_record.bytes, secondary_record.length);
+   memcpy(&bind_group[0x60], w_cull2_record.bytes, w_cull2_record.length);
+   memcpy(&bind_group[0x6c], cull_record.bytes, cull_record.length);
 
    uint8_t region_clip[AGX_REGION_CLIP_LENGTH];
    agx_pack(region_clip, REGION_CLIP, cfg) {
@@ -3901,7 +3954,12 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     */
    if ((gfx->dirty & (HK_DIRTY_PROVOKING | HK_DIRTY_VARYINGS)) ||
        IS_DIRTY(RS_RASTERIZER_DISCARD_ENABLE) || linked_vs_dirty || vgt_dirty ||
-       gfx->descriptors.root_dirty || gfx->draw_id_ptr || gfx->draw_params) {
+       gfx->descriptors.root_dirty || gfx->draw_id_ptr || gfx->draw_params ||
+       IS_DIRTY(RS_DEPTH_BIAS_ENABLE) || IS_DIRTY(RS_DEPTH_BIAS_FACTORS) ||
+       IS_DIRTY(VP_SCISSORS) || IS_DIRTY(VP_SCISSOR_COUNT) ||
+       IS_DIRTY(VP_VIEWPORTS) || IS_DIRTY(VP_VIEWPORT_COUNT) ||
+       IS_DIRTY(VP_DEPTH_CLIP_NEGATIVE_ONE_TO_ONE) ||
+       IS_DIRTY(RS_DEPTH_CLIP_ENABLE) || IS_DIRTY(RS_DEPTH_CLAMP_ENABLE)) {
 
       /* TODO: Do less often? */
       hk_reserve_scratch(cmd, cs, hw_vs);
@@ -4029,7 +4087,7 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       }
    }
 
-   if (IS_DIRTY(RS_DEPTH_BIAS_FACTORS)) {
+   if (!g17p_native_bind_tail_emitted && IS_DIRTY(RS_DEPTH_BIAS_FACTORS)) {
       bool exact = dyn->rs.depth_bias.exact;
       bool force_unorm =
          dyn->rs.depth_bias.representation ==
@@ -4574,9 +4632,9 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             }
 
             /* Native direct draws begin with a context-relative graphics
-             * object.  Its only separated field in the source-controlled
-             * one-triangle witness is the leading 0x100 word; retain the full
-             * zero-filled page around it.
+             * object.  The leading 0x100 word selects the direct shape and
+             * +0x04 mirrors the fragment scissor-enable state; retain the
+             * full zero-filled page around those separated fields.
              */
             struct agx_bo *context_bo =
                dev->dev.g17p_render_context_bo;
@@ -4588,6 +4646,10 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             memset(draw_state, 0, 0x4000);
             const uint32_t draw_state_word = UINT32_C(0x100);
             memcpy(draw_state, &draw_state_word, sizeof(draw_state_word));
+            const uint32_t draw_state_scissor_flag =
+               dyn->vp.viewport_count > 0 ? 1 : 0;
+            memcpy((uint8_t *)draw_state + 4, &draw_state_scissor_flag,
+                   sizeof(draw_state_scissor_flag));
             if (agx_bo_sync_for_device(context_bo,
                                        HK_G17P_DRAW_STATE_OFFSET, 0x4000))
                return;
@@ -4612,7 +4674,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             if (hk_g17p_launch_trace_enabled())
                hk_g17p_trace_line("hal200-draw-state",
                                   HK_G17P_DRAW_STATE_OFFSET, draw_state,
-                                  sizeof(draw_state_word));
+                                  2 * sizeof(draw_state_word));
          } else {
             cs->current = (void *)agx_vdm_draw((uint32_t *)out,
                                                dev->dev.chip, draw, topology);
