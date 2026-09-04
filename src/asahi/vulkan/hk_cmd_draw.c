@@ -840,7 +840,10 @@ hk_CmdBeginRendering(VkCommandBuffer commandBuffer,
    render->cr.height = MAX2(render->cr.height,
                             render->area.offset.y + render->area.extent.height);
 
-   if (!render->cr.zls_width) {
+   /* On G17P, zero dimensions are the native inactive-ZLS encoding.  Keep
+    * them zero for attachmentless and colour-only rendering; every control
+    * stream, including a partial stream, inherits that state from render. */
+   if (!render->cr.zls_width && dev->dev.chip != AGX_CHIP_G17P) {
       render->cr.zls_width = render->cr.width;
       render->cr.zls_height = render->cr.height;
    }

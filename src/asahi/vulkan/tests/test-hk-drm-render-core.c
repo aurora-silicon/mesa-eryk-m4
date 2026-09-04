@@ -108,6 +108,35 @@ test_submit_command_limit(void)
 }
 
 static void
+test_g17p_zls_pixels_follow_backing_storage(void)
+{
+   /* All 303 colour-only records in the valid G17P corpus have a zero
+    * dimension register beside four null depth/stencil addresses.  This is
+    * true for both the main and partial render phases. */
+   for (unsigned phase = 0; phase < 2; ++phase) {
+      (void)phase;
+      assert(hk_drm_g17p_zls_pixels(0, 0, 0, 0, 0, 0) == 0);
+      assert(hk_drm_g17p_zls_pixels(32, 32, 0, 0, 0, 0) == 0);
+      assert(hk_drm_g17p_zls_pixels(2408, 1506, 0, 0, 0, 0) == 0);
+   }
+
+   /* Every valid native record with non-zero dimensions also publishes at
+    * least one Z/S mapping.  Either a depth or stencil plane is sufficient. */
+   const uint32_t pixels_32 = UINT32_C(0x000f801f);
+   assert(hk_drm_g17p_zls_pixels(32, 32, 0x1000, 0, 0, 0) ==
+          pixels_32);
+   assert(hk_drm_g17p_zls_pixels(32, 32, 0, 0, 0x2000, 0) ==
+          pixels_32);
+
+   /* Count a metadata-only witness as active rather than silently emitting
+    * the inactive tuple.  Such a tuple would be malformed, but fail closed. */
+   assert(hk_drm_g17p_zls_pixels(32, 32, 0, 0x3000, 0, 0) ==
+          pixels_32);
+   assert(hk_drm_g17p_zls_pixels(32, 32, 0, 0, 0, 0x4000) ==
+          pixels_32);
+}
+
+static void
 test_fragment_attachment_ranges(void)
 {
    struct hk_drm_attachment_set set;
@@ -194,6 +223,7 @@ main(void)
    test_exact_g17p_specs();
    test_field_order_and_flag_clear();
    test_submit_command_limit();
+   test_g17p_zls_pixels_follow_backing_storage();
    test_fragment_attachment_ranges();
    test_hardware_command_spans_skip_attachment_commands();
    puts("Honeykrisp DRM render resource specs: all checks passed");

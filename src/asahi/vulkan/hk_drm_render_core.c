@@ -5,6 +5,7 @@
 
 #include "hk_drm_render_core.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,21 @@ static uint32_t
 high32(uint64_t value)
 {
    return (uint32_t)(value >> 32);
+}
+
+uint32_t
+hk_drm_g17p_zls_pixels(uint32_t width, uint32_t height,
+                       uint64_t depth_base, uint64_t depth_meta,
+                       uint64_t stencil_base, uint64_t stencil_meta)
+{
+   /* Native G17P keeps ISP_ZLS_PIXELS zero when there is no depth/stencil
+    * storage.  Zero is a special inactive encoding, not minus-one 1x1. */
+   if (!(depth_base | depth_meta | stencil_base | stencil_meta))
+      return 0;
+
+   assert(width >= 1 && width <= 0x8000);
+   assert(height >= 1 && height <= 0x8000);
+   return (width - 1) | ((height - 1) << 15);
 }
 
 void

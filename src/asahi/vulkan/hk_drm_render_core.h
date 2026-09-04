@@ -34,6 +34,10 @@ struct hk_drm_render_resource_specs {
    uint64_t partial_eot;
 };
 
+uint32_t hk_drm_g17p_zls_pixels(uint32_t width, uint32_t height,
+                                uint64_t depth_base, uint64_t depth_meta,
+                                uint64_t stencil_base, uint64_t stencil_meta);
+
 void hk_drm_render_resource_specs_pack(
    const struct hk_drm_render_resource_specs *specs,
    struct drm_asahi_cmd_render *cmd);

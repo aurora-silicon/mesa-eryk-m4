@@ -325,9 +325,15 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    static_assert(sizeof(c->zls_ctrl) == sizeof(cs->cr.zls_control));
    memcpy(&c->zls_ctrl, &cs->cr.zls_control, sizeof(cs->cr.zls_control));
 
-   agx_pack(&c->isp_zls_pixels, CR_ISP_ZLS_PIXELS, cfg) {
-      cfg.x = cs->cr.zls_width;
-      cfg.y = cs->cr.zls_height;
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      c->isp_zls_pixels = hk_drm_g17p_zls_pixels(
+         cs->cr.zls_width, cs->cr.zls_height, cs->cr.depth.buffer,
+         cs->cr.depth.meta, cs->cr.stencil.buffer, cs->cr.stencil.meta);
+   } else {
+      agx_pack(&c->isp_zls_pixels, CR_ISP_ZLS_PIXELS, cfg) {
+         cfg.x = cs->cr.zls_width;
+         cfg.y = cs->cr.zls_height;
+      }
    }
 
    c->depth.base = cs->cr.depth.buffer;
@@ -338,23 +344,6 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
    c->stencil.stride = cs->cr.stencil.stride;
    c->stencil.comp_base = cs->cr.stencil.meta;
    c->stencil.comp_stride = cs->cr.stencil.meta_stride;
-
-   /* Diagnostic: working color-only G17P Metal records leave
-    * CR_ISP_ZLS_PIXELS at zero and retain the neutral 1.0 depth-clear value.
-    * Honeykrisp currently fills ZLS dimensions from the render area even when
-    * no depth or stencil attachment exists, producing non-zero dimensions
-    * beside four null Z/S buffer pointers. Match the native inactive-ZLS
-    * state without changing passes which actually own a Z/S attachment.
-    */
-   if (dev->dev.chip == AGX_CHIP_G17P &&
-       getenv("HK_G17P_NATIVE_NO_ZLS") != NULL && c->depth.base == 0 &&
-       c->stencil.base == 0) {
-      memset(&c->isp_zls_pixels, 0, sizeof(c->isp_zls_pixels));
-      c->isp_bgobjdepth = fui(1.0f);
-      fprintf(stderr,
-              "G17P native inactive ZLS: pixels=0 depth-clear=%#x\n",
-              c->isp_bgobjdepth);
-   }
 
    if (cs->cr.dbias_is_int == U_TRISTATE_YES) {
       c->flags |= DRM_ASAHI_RENDER_DBIAS_IS_INT;
