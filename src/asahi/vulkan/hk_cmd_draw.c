@@ -2741,9 +2741,29 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     */
    memset(&bind0[0x340], 0, sizeof(uint32_t));
 
+   struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
+   struct hk_linked_shader *linked_fs = gfx->linked[MESA_SHADER_FRAGMENT];
+   if (!fs || !linked_fs || linked_fs->b.no_op)
+      return false;
+
+   const uint64_t fragment_program = hk_upload_usc_words(cmd, fs, linked_fs);
+   if (!fragment_program || fragment_program < dev->dev.shader_base ||
+       fragment_program - dev->dev.shader_base > UINT32_MAX ||
+       (fragment_program & UINT64_C(0x3f)) != 0 ||
+       gfx->varyings > UINT32_MAX)
+      return false;
+
+   uint32_t resource_counts;
+   static_assert(sizeof(resource_counts) == sizeof(linked_fs->fs_counts),
+                 "HAL200 fragment counts are one word");
+   memcpy(&resource_counts, &linked_fs->fs_counts, sizeof(resource_counts));
+
    struct agx_ppp_hal200_graphics_core fs_record;
-   const struct agx_ppp_hal200_graphics_fields fs_fields = {
-      .words = {0, 0, 0, UINT32_C(0x01000000)},
+   const struct agx_ppp_hal200_fragment_fields fs_fields = {
+      .resource_counts = resource_counts,
+      .pipeline = agx_usc_addr(&dev->dev, fragment_program),
+      .cf_bindings = (uint32_t)gfx->varyings,
+      .control = AGX_PPP_HAL200_FS_DIRECT_CONTROL,
    };
 
    struct agx_ppp_hal200_graphics_core output_record;
@@ -2776,9 +2796,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       .cull2_raw = UINT32_C(0x80),
    };
 
-   if (!agx_ppp_hal200_graphics_core_pack(
-          dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_FS, &fs_fields,
-          &fs_record) ||
+   if (!agx_ppp_hal200_fragment_core_pack(dev->dev.chip, &fs_fields,
+                                          &fs_record) ||
        !agx_ppp_hal200_graphics_core_pack(
           dev->dev.chip, AGX_PPP_HAL200_GRAPHICS_OUTPUT, &output_fields,
           &output_record) ||
@@ -2872,6 +2891,8 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       hk_g17p_trace_line("hal200-bind-group", HK_G17P_BIND_GROUP_OFFSET,
                          &context[HK_G17P_BIND_GROUP_OFFSET],
                          sizeof(bind_group));
+      hk_g17p_trace_line("hal200-fragment-bind", fragment_program,
+                         fs_record.bytes, fs_record.length);
       hk_g17p_trace_line("hal200-viewport", HK_G17P_VIEWPORT_OFFSET,
                          &context[HK_G17P_VIEWPORT_OFFSET],
                          viewport_record.length);

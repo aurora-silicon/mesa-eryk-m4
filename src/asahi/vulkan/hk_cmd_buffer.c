@@ -1134,6 +1134,13 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
       }
 
       memcpy(program_map, program.bytes, program.length);
+      if (hk_g17p_launch_trace_enabled()) {
+         const char *label = s->info.stage == MESA_SHADER_FRAGMENT
+                                ? "fragment-ioto"
+                                : "vertex-ioto";
+         hk_g17p_trace_line(label, program_bo->va->addr, program_map,
+                            program.length);
+      }
       if (agx_bo_sync_for_device(program_bo, 0, program.length)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_DEVICE_LOST);
          return 0;

@@ -112,3 +112,27 @@ agx_ppp_hal200_graphics_core_unpack(
 
    return true;
 }
+
+bool
+agx_ppp_hal200_fragment_core_pack(
+   enum agx_chip chip, const struct agx_ppp_hal200_fragment_fields *fields,
+   struct agx_ppp_hal200_graphics_core *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   if (!fields || !out || (fields->pipeline & UINT32_C(0x3f)) != 0 ||
+       (fields->cf_bindings & UINT32_C(0x3)) != 0)
+      return false;
+
+   const struct agx_ppp_hal200_graphics_fields raw = {
+      .words = {
+         fields->resource_counts,
+         fields->pipeline,
+         fields->cf_bindings,
+         fields->control,
+      },
+   };
+   return agx_ppp_hal200_graphics_core_pack(
+      chip, AGX_PPP_HAL200_GRAPHICS_FS, &raw, out);
+}

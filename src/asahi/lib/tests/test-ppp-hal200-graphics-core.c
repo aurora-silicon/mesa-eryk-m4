@@ -38,6 +38,29 @@ main(void)
    check(AGX_PPP_HAL200_GRAPHICS_FS, fs_words, 4, fs_expected,
          sizeof(fs_expected));
 
+   /* The live fragment path must put the uploaded Ioto program in word 1,
+    * rather than retaining the zero from the source-control witness. */
+   const struct agx_ppp_hal200_fragment_fields live_fs = {
+      .resource_counts = 0x00020100,
+      .pipeline = 0x000004c0,
+      .cf_bindings = 0,
+      .control = AGX_PPP_HAL200_FS_DIRECT_CONTROL,
+   };
+   struct agx_ppp_hal200_graphics_core live_fs_packed;
+   assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &live_fs,
+                                            &live_fs_packed));
+   assert(live_fs_packed.length == sizeof(fs_expected));
+   assert(memcmp(live_fs_packed.bytes, fs_expected, sizeof(fs_expected)) == 0);
+
+   struct agx_ppp_hal200_fragment_fields bad_fs = live_fs;
+   bad_fs.pipeline |= 4;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+   bad_fs = live_fs;
+   bad_fs.cf_bindings |= 1;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+
    static const uint32_t output_words[] = {
       0, 0, 0, 4, AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0x00010200,
    };
@@ -83,5 +106,7 @@ main(void)
    struct agx_ppp_hal200_graphics_core packed;
    assert(!agx_ppp_hal200_graphics_core_pack(
       AGX_CHIP_G17G, AGX_PPP_HAL200_GRAPHICS_FS, &fields, &packed));
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17G, &live_fs,
+                                             &packed));
    return 0;
 }
