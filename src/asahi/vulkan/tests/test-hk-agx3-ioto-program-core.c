@@ -36,6 +36,23 @@ is_gpu1(enum agx_chip chip)
           chip == AGX_CHIP_G17C;
 }
 
+static size_t
+find_unique_bytes(const uint8_t *haystack, size_t haystack_size,
+                  const uint8_t *needle, size_t needle_size)
+{
+   size_t found = SIZE_MAX;
+
+   for (size_t i = 0; i + needle_size <= haystack_size; ++i) {
+      if (memcmp(haystack + i, needle, needle_size) != 0)
+         continue;
+      if (found != SIZE_MAX)
+         return SIZE_MAX;
+      found = i;
+   }
+
+   return found;
+}
+
 static struct hk_agx3_ioto_program_desc
 make_desc(enum agx_chip chip)
 {
@@ -745,13 +762,11 @@ test_g17p_basic_graphics_program(void)
    CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &vertex,
                                                       &program));
    CHECK(program.length == AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE);
-   /* LDSHDR word 4 is 0x0004: f1 = the direct program kind. It used to read
-    * 0x0000 (= f1 1, the grid-setup helper kind) only because this vector was
-    * pinned against the size-derived f1 and 74 bytes lands in the "one line"
-    * bucket. The fragment vector above, at 54 bytes, already carried 0x0004. */
+   /* The 74-byte shader spans two 64-byte fetch lines, matching native f1=1
+    * and encoded LDSHDR word 4 = 0x0000. */
    static const uint8_t vertex_tail[] = {
       0x77, 0x00, 0x2a, 0x41, 0x00, 0x00, 0x00, 0x00, 0x77, 0x01,
-      0x2a, 0x00, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+      0x2a, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0xf7, 0x00,
       0x2a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
    CHECK(memcmp(program.bytes, vertex_tail, sizeof(vertex_tail)) == 0);
@@ -810,20 +825,22 @@ test_g17p_basic_graphics_program(void)
    }
    resource.uniform_ranges = two_attribs_and_set;
 
-   /* LDSHDR f1 is a four-line fetch hint.  Crossing 256 bytes saturates the
-    * hint instead of imposing a shader-size ceiling.
-    */
-   struct hk_agx3_g17p_graphics_program at_four_lines;
    struct hk_agx3_g17p_graphics_program_desc boundary = vertex;
-   boundary.shader_binary_size = 256;
-   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
-      AGX_CHIP_G17P, &boundary, &at_four_lines));
-   boundary.shader_binary_size = 257;
-   CHECK(hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P,
-                                                       &boundary, &program));
-   CHECK(program.length == at_four_lines.length &&
-         memcmp(program.bytes, at_four_lines.bytes, program.length) == 0);
-
+   static const struct {
+      uint32_t size;
+      uint8_t encoded_word4_lo;
+   } proven_fetch_lines[] = {
+      {1, 0x04},   {64, 0x04},  {65, 0x00},  {128, 0x00},
+      {129, 0x00}, {192, 0x00}, {193, 0x02}, {256, 0x02},
+      {257, 0x02}, {320, 0x02}, {321, 0x06}, {344, 0x06},
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(proven_fetch_lines); ++i) {
+      boundary.shader_binary_size = proven_fetch_lines[i].size;
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+         AGX_CHIP_G17P, &boundary, &program));
+      CHECK(program.bytes[16] == proven_fetch_lines[i].encoded_word4_lo &&
+            program.bytes[17] == 0x00);
+   }
    const struct hk_agx3_g17p_graphics_program before = program;
    struct hk_agx3_g17p_graphics_program_desc invalid = vertex;
    invalid.shader_binary_size = 0;
@@ -1055,6 +1072,15 @@ test_g17p_rt0_background_programs(void)
    CHECK(
       hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &reload, &program));
    CHECK(program.length == 234);
+   static const uint8_t fragment_speclm[] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
+   };
+   const size_t reload_tail =
+      find_unique_bytes(program.bytes, program.length, fragment_speclm,
+                        sizeof(fragment_speclm));
+   CHECK(reload_tail != SIZE_MAX);
+   CHECK(program.bytes[reload_tail + 16] == 0x00 &&
+         program.bytes[reload_tail + 17] == 0x00);
    static const uint8_t reload_copies[] = {
       0x0b, 0x04, 0x09, 0x04, 0x1b, 0x06, 0x09, 0x04,
       0x2b, 0x08, 0x09, 0x04, 0x3b, 0x0a, 0x09, 0x04,

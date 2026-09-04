@@ -10,8 +10,6 @@
 
 #include <string.h>
 
-#define HK_AGX3_G17P_EOT_LDSHDR_F1 1u
-
 bool
 hk_agx3_ioto_program_generate(
    enum agx_chip chip, const struct hk_agx3_ioto_program_desc *desc,
@@ -90,7 +88,6 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 static bool
 hk_agx3_g17p_graphics_state_tail(
    const struct hk_agx3_g17p_graphics_program_desc *desc,
-   uint8_t ldshdr_kind,
    struct agx_ioto_state_tail_output *tail)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
@@ -106,29 +103,17 @@ hk_agx3_g17p_graphics_state_tail(
 
    struct agx_ioto_state ldshdr = {0};
    ldshdr.f[0] = desc->shader_va;
-   /* LDSHDR f1 is a program-kind selector.  Ordinary API graphics programs
-    * use the direct kind (0); the compiler-produced EOT text has its own exact
-    * kind (1), supplied by that dedicated caller below.
-    *
-    * agx_ioto_state_encode_ldshdr() puts it through `agx_ioto_e4[4] =
-    * {2, 0, 1, 3}` into a two-bit field (agx_ioto_state_core.c:19, :247).  A
-    * permuted two-bit code is an enumeration; a length or a line hint is never
-    * table-permuted, and a hint that saturated at four 64-byte lines would be
-    * useless for the shaders this path emits.  All three witnessed values
-    * decode as distinct program kinds, and the encoded word matches m1n1's
-    * captured LDSHDRs bit for bit:
-    *
-    *   direct add3   f1=0 -> e4=2 -> word4 0x0004   "77 01 aa 07 .. 04 00"
-    *   grid setup    f1=1 -> e4=0 -> word4 0x0000   "77 01 2a 08 .. 00 00"
-    *   indirect add3 f1=3 -> e4=3 -> word4 0x0006   "77 01 aa 0e .. 06 00"
-    *
-    * Deriving ordinary API shaders from binary size announced a 118-byte
-    * Honeykrisp shader as the GRID-SETUP HELPER kind, and any shader over 256
-    * bytes overflowed
-    * the field's own validator (`f[1] <= 3`) and failed the compose outright --
-    * which a real length field could not do.  Keep the choice explicit.
+   /* Native G17P graphics code containers reserve an 0x80-byte framing area
+    * before the 64-byte-aligned main code. LDSHDR f1 is the saturated number
+    * of complete 0x80-byte spans in that padded main-code region. Valid
+    * captures cover container sizes 0xc0/0x100/0x140/0x1c0/0x240 and yield
+    * f1 0/1/1/2/3 respectively, including the cold 88-byte VS and 128-byte
+    * EOT. Compute uses a separate state builder and remains unchanged.
     */
-   ldshdr.f[1] = ldshdr_kind;
+   const uint64_t padded_shader_size =
+      ((uint64_t)desc->shader_binary_size + 63) & ~UINT64_C(63);
+   const uint64_t fetch_span = padded_shader_size >> 7;
+   ldshdr.f[1] = fetch_span > 3 ? 3 : fetch_span;
    ldshdr.f[23] = 1;
 
    struct agx_ioto_state spectpr;
@@ -165,8 +150,7 @@ hk_agx3_g17p_basic_graphics_program_generate(
       return false;
 
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(
-          desc, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(desc, &tail))
       return false;
 
    struct hk_agx3_g17p_graphics_program staged = {0};
@@ -335,8 +319,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(
-          &shader, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
       return false;
 
    uint8_t body[512];
@@ -414,8 +397,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(
-          &shader, HK_AGX3_G17P_EOT_LDSHDR_F1, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
       return false;
 
    /*
