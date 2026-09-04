@@ -23,6 +23,7 @@ extern "C" {
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE  48u
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE  10u
 #define AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE     90u
+#define AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE 86u
 #define AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE       144u
 #define AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE  250u
 #define AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE         166u
@@ -111,6 +112,14 @@ bool agx_ioto_g17p_direct_add3_program_compose(
  * sampler, image, or driver argument loads.  Output and *written are unchanged
  * when validation fails. */
 bool agx_ioto_g17p_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   void *output, size_t capacity, size_t *written);
+
+/* Compose the ordinary no-resource G17P fragment-stage program captured in
+ * every valid EXP-G1a vary0-class run.  Unlike compute and vertex programs,
+ * the fragment loader terminates its default profile prefix with the exact
+ * six-byte PIXREL record before stop; it has no SETPROFILECTL suffix. */
+bool agx_ioto_g17p_fragment_no_resource_program_compose(
    uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
    void *output, size_t capacity, size_t *written);
 

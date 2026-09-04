@@ -156,10 +156,18 @@ hk_agx3_g17p_basic_graphics_program_generate(
    struct hk_agx3_g17p_graphics_program staged = {0};
    size_t written = 0;
    if (desc->uniform_range_count == 0) {
-      if (!agx_ioto_g17p_no_resource_program_compose(
-             desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
-             &written) ||
-          written != AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
+      const bool composed =
+         desc->fragment
+            ? agx_ioto_g17p_fragment_no_resource_program_compose(
+                 desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
+                 &written)
+            : agx_ioto_g17p_no_resource_program_compose(
+                 desc->program_va, &tail, staged.bytes, sizeof(staged.bytes),
+                 &written);
+      const size_t expected =
+         desc->fragment ? AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE
+                        : AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
+      if (!composed || written != expected)
          return false;
    } else {
       uint8_t body[384];

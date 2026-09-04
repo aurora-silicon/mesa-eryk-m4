@@ -548,6 +548,54 @@ test_g17p_no_resource_program(void)
 }
 
 static int
+test_g17p_fragment_no_resource_program(void)
+{
+   static const uint8_t tail_bytes[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01,
+      0x2a, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+      0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   static const uint8_t expected[] = {
+         0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00, 0x77, 0x01,
+         0x2a, 0x01, 0x00, 0x00, 0x00, 0x02, 0x04, 0x00, 0xf7, 0x00,
+         0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1c, 0x80,
+         0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14, 0x81, 0x11, 0x06,
+         0x00, 0x00, 0x00, 0x00, 0x0c, 0x80, 0x02, 0x00, 0x04, 0x00,
+         0x00, 0x00, 0x9f, 0x11, 0x54, 0x00, 0x02, 0x00, 0x08, 0xa8,
+         0x10, 0x05, 0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
+         0x0f, 0x12, 0x54, 0x00, 0x4c, 0x00, 0x07, 0x02, 0x54, 0xf3,
+         0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+      };
+   CHECK(sizeof(expected) ==
+         AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE);
+   struct agx_ioto_state_tail_output tail = {
+      .length = sizeof(tail_bytes),
+   };
+   memcpy(tail.bytes, tail_bytes, sizeof(tail_bytes));
+
+   uint8_t output[sizeof(expected) + 1];
+   memset(output, 0xa5, sizeof(output));
+   size_t written = SIZE_MAX;
+   CHECK(agx_ioto_g17p_fragment_no_resource_program_compose(
+      UINT64_C(0x10000130640), &tail, output, sizeof(expected), &written));
+   CHECK(written == sizeof(expected));
+   CHECK(memcmp(output, expected, sizeof(expected)) == 0);
+   CHECK(output[sizeof(expected)] == 0xa5);
+
+   uint8_t before[sizeof(output)];
+   memcpy(before, output, sizeof(output));
+   written = 37;
+   CHECK(!agx_ioto_g17p_fragment_no_resource_program_compose(
+      UINT64_C(0x10000130641), &tail, output, sizeof(expected), &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 37);
+   CHECK(!agx_ioto_g17p_fragment_no_resource_program_compose(
+      UINT64_C(0x10000130640), &tail, output, sizeof(expected) - 1,
+      &written));
+   CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 37);
+   return 0;
+}
+
+static int
 test_g17p_resource_program(void)
 {
    static const uint8_t tail_bytes[AGX_IOTO_STATE_TAIL_TYPE0_SIZE] = {
@@ -800,6 +848,7 @@ main(void)
    CHECK(test_empty_body_and_alias() == 0);
    CHECK(test_g17p_direct_add3_program() == 0);
    CHECK(test_g17p_no_resource_program() == 0);
+   CHECK(test_g17p_fragment_no_resource_program() == 0);
    CHECK(test_g17p_resource_program() == 0);
    CHECK(test_g17p_rt0_eot_program() == 0);
    CHECK(test_g17s_minimal_compute_program() == 0);

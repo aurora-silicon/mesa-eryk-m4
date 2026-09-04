@@ -63,6 +63,14 @@ static const uint8_t
       0x03, 0x00, 0x07, 0x00, 0x02, 0x00, 0x00, 0x00, 0x60, 0x00,
 };
 
+/* Valid EXP-G1a ordinary fragment programs, from vary0 through vary8, all
+ * place this exact AGX3b PIXREL after the default profile prefix.  The
+ * no-resource vary0 form then stops immediately; it does not carry the
+ * compute/vertex SETPROFILECTL suffix above. */
+static const uint8_t g17p_fragment_pixrel[] = {
+   0x07, 0x02, 0x54, 0xf3, 0x02, 0x00,
+};
+
 static const uint8_t g17p_rt0_eot_loads[] = {
    0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00,
    0x40, 0x22, 0x00, 0x67, 0x00, 0x54, 0x08, 0x00, 0x00, 0x00, 0x00,
@@ -81,6 +89,13 @@ _Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
                      AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
                   AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE,
                "G17P no-resource Ioto size must remain 90 bytes");
+
+_Static_assert(AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
+                     sizeof(g17p_default_profile_prefix) +
+                     sizeof(g17p_fragment_pixrel) +
+                     AGX_IOTO_PROGRAM_TERMINATE_SIZE ==
+                  AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE,
+               "G17P fragment no-resource Ioto size must remain 86 bytes");
 
 _Static_assert(2 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE + sizeof(g17p_rt0_eot_loads) +
                      AGX_IOTO_STATE_TAIL_TYPE0_SIZE +
@@ -482,6 +497,39 @@ agx_ioto_g17p_no_resource_program_compose(
    memcpy(staged + offset, g17p_default_profile_suffix,
           sizeof(g17p_default_profile_suffix));
    offset += sizeof(g17p_default_profile_suffix);
+   memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
+   staged[offset] = UINT8_C(0x0e);
+   offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+
+   if (offset != sizeof(staged))
+      return false;
+
+   memcpy(output, staged, sizeof(staged));
+   *written = sizeof(staged);
+   return true;
+}
+
+bool
+agx_ioto_g17p_fragment_no_resource_program_compose(
+   uint64_t program_va, const struct agx_ioto_state_tail_output *packed_tail,
+   void *output, size_t capacity, size_t *written)
+{
+   if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
+       program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
+       (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
+       capacity < AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE)
+      return false;
+
+   uint8_t staged[AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE];
+   size_t offset = 0;
+   memcpy(staged + offset, packed_tail->bytes, packed_tail->length);
+   offset += packed_tail->length;
+   memcpy(staged + offset, g17p_default_profile_prefix,
+          sizeof(g17p_default_profile_prefix));
+   offset += sizeof(g17p_default_profile_prefix);
+   memcpy(staged + offset, g17p_fragment_pixrel,
+          sizeof(g17p_fragment_pixrel));
+   offset += sizeof(g17p_fragment_pixrel);
    memset(staged + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
    staged[offset] = UINT8_C(0x0e);
    offset += AGX_IOTO_PROGRAM_TERMINATE_SIZE;
