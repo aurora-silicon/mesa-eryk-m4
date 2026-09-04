@@ -118,6 +118,42 @@ g17p_vs_matches_apple(const uint8_t *binary, size_t size)
    return memcmp(&apple, &mesa, sizeof(apple)) == 0;
 }
 
+/* In 71 fully decoded AGX3b vertex programs, f79 selects byte2=0x44 on the
+ * final LDDEV (and only the final LDDEV), while the first LDDEV always uses
+ * scoreboard slot 6. Locate the compiler's 14-byte device-load forms and pin
+ * those two corpus invariants without constraining allocation-only fields. */
+static bool
+g17p_vertex_load_policy(const uint8_t *binary, size_t size,
+                        unsigned expected_loads)
+{
+   const uint8_t *loads[8];
+   unsigned count = 0;
+
+   for (unsigned i = 0; i + 14 <= size; ++i) {
+      const uint8_t *p = binary + i;
+      if (p[0] != 0x67 || (p[2] != 0x44 && p[2] != 0x54) ||
+          p[6] != 0x20 || p[11] != 0x40 || p[13] != 0)
+         continue;
+      if (count == ARRAY_SIZE(loads))
+         return false;
+      loads[count++] = p;
+      i += 13;
+   }
+
+   if (count != expected_loads)
+      return false;
+
+   for (unsigned i = 0; i < count; ++i) {
+      const bool terminal = loads[i][2] == 0x44;
+      if (terminal != (i + 1 == count))
+         return false;
+   }
+
+   const unsigned first_slot =
+      1 + (loads[0][8] >> 6) + 4 * (loads[0][9] & 1);
+   return first_slot == 6;
+}
+
 /* AIL_ISA_FORMAT_U8NORM: the tilebuffer format for an RGBA8_UNORM target. */
 #define AGX3_TEST_TIB_FORMAT PIPE_FORMAT_R8_UNORM
 
@@ -254,6 +290,63 @@ build_vs_g17p_float2_position(void)
       nir_store_uvs_agx(&b, position[c], nir_imm_intN_t(&b, c, 16));
 
    b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+static nir_shader *
+build_vs_g17p_single_instanced_varying(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options,
+      "G17P single instanced load with varying VS");
+
+   nir_def *base = nir_load_preamble(&b, 1, 64, .base = 0);
+   nir_def *attr = nir_load_agx(&b, 2, 32, base, nir_load_instance_id(&b),
+                                .access = 0, .base = 1,
+                                .format = PIPE_FORMAT_R32_UINT,
+                                .sign_extend = false);
+   nir_def *values[] = {
+      nir_channel(&b, attr, 0), nir_channel(&b, attr, 1),
+      nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f),
+      nir_channel(&b, attr, 0), nir_channel(&b, attr, 1),
+   };
+
+   for (unsigned c = 0; c < ARRAY_SIZE(values); ++c)
+      nir_store_uvs_agx(&b, values[c], nir_imm_intN_t(&b, c, 16));
+
+   b.shader->info.outputs_written =
+      VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+static nir_shader *
+build_vs_g17p_two_loads(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "G17P two-load position VS");
+
+   nir_def *index = nir_load_vertex_id(&b);
+   nir_def *position = nir_load_agx(
+      &b, 2, 32, nir_load_preamble(&b, 1, 64, .base = 0), index,
+      .access = 0, .base = 1, .format = PIPE_FORMAT_R32_UINT,
+      .sign_extend = false);
+   nir_def *varying = nir_load_agx(
+      &b, 2, 32, nir_load_preamble(&b, 1, 64, .base = 4), index,
+      .access = 0, .base = 1, .format = PIPE_FORMAT_R32_UINT,
+      .sign_extend = false);
+   nir_def *values[] = {
+      nir_channel(&b, position, 0), nir_channel(&b, position, 1),
+      nir_imm_float(&b, 0.0f), nir_imm_float(&b, 1.0f),
+      nir_channel(&b, varying, 0), nir_channel(&b, varying, 1),
+   };
+
+   for (unsigned c = 0; c < ARRAY_SIZE(values); ++c)
+      nir_store_uvs_agx(&b, values[c], nir_imm_intN_t(&b, c, 16));
+
+   b.shader->info.outputs_written =
+      VARYING_BIT_POS | BITFIELD64_BIT(VARYING_SLOT_VAR0);
    agx_preprocess_nir(b.shader);
    return b.shader;
 }
@@ -780,6 +873,7 @@ struct agx3_graphics_case {
    const uint8_t *expected_g17p_binary;
    size_t expected_g17p_binary_size;
    bool compare_apple_g17p_vs;
+   uint8_t expected_g17p_loads;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -792,7 +886,11 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-g17p-float2-position", build_vs_g17p_float2_position, true,
     .expected_g17p_binary = mesa_g17p_float2_vs,
     .expected_g17p_binary_size = sizeof(mesa_g17p_float2_vs),
-    .compare_apple_g17p_vs = true},
+    .compare_apple_g17p_vs = true, .expected_g17p_loads = 1},
+   {"vs-g17p-single-instanced-varying", build_vs_g17p_single_instanced_varying,
+    true, .expected_g17p_loads = 1},
+   {"vs-g17p-two-loads", build_vs_g17p_two_loads, true,
+    .expected_g17p_loads = 2},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
     AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
@@ -924,6 +1022,16 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
          result = g17p_vs_matches_apple(part.binary, part.info.binary_size);
          if (!result) {
             fprintf(stderr, "%s %s: Apple-88 VS protocol mismatch\n",
+                    enc_name(enc), c->name);
+         }
+      }
+
+      if (result && enc == AGX_ISA_ENCODING_AGX3B &&
+          c->expected_g17p_loads != 0) {
+         result = g17p_vertex_load_policy(part.binary, part.info.binary_size,
+                                           c->expected_g17p_loads);
+         if (!result) {
+            fprintf(stderr, "%s %s: vertex LDDEV policy mismatch\n",
                     enc_name(enc), c->name);
          }
       }

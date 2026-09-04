@@ -30,6 +30,8 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
       const struct agx3_slot_instr *I = &instrs[i];
       if (I->nr_srcs > AGX3_SLOT_MAX_REGS || I->nr_dsts > AGX3_SLOT_MAX_REGS)
          return false;
+      if (I->preferred_slot > nslots || (!I->is_async && I->preferred_slot))
+         return false;
 
       uint16_t wait_mask = 0;
       for (unsigned s = 0; s < I->nr_srcs; ++s) {
@@ -69,8 +71,10 @@ agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
       out[i].wait_mask = wait_mask;
 
       if (I->is_async) {
-         const uint8_t slot = (uint8_t)(next + 1);
-         next = (next + 1) % nslots;
+         const uint8_t slot =
+            I->preferred_slot ? I->preferred_slot : (uint8_t)(next + 1);
+         if (!I->preferred_slot)
+            next = (next + 1) % nslots;
          out[i].slot = slot;
          slot_waited[slot] = false; /* freshly outstanding */
          for (unsigned d = 0; d < I->nr_dsts; ++d) {

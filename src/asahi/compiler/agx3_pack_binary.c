@@ -2391,6 +2391,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    unsigned tile_loads_left = 0;
    unsigned tile_loads_seen = 0;
    unsigned tile_stores_left = 0;
+   unsigned device_loads_left = 0;
    unsigned count = 0;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
@@ -2409,6 +2410,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             tile_loads_left++;
          if (scan_I->op == AGX_OPCODE_ST_TILE)
             tile_stores_left++;
+         if (scan_I->op == AGX_OPCODE_DEVICE_LOAD)
+            device_loads_left++;
       }
    }
 
@@ -2424,6 +2427,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    bool g17p_colour_open = false;
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
+   /* Across 71 fully decoded own-shader AGX3b vertex programs, f79 marks the
+    * final LDDEV with zero exceptions and the first LDDEV uses slot 6 with
+    * zero exceptions. Later slots vary with scheduling, so only the two
+    * invariant choices are generalized here. UVSW hint bytes likewise vary
+    * with liveness and were splice-proven inert; the byte-exact triangle path
+    * above retains its native hints, while general shaders keep Mesa's. */
+   const bool g17p_vertex_load_policy =
+      enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX &&
+      device_loads_left > 0;
 
    /* Assign one scoreboard timeline over the whole linearized shader, rather
     * than restarting at each basic block.  Fallthrough blocks may consume an
@@ -2437,12 +2449,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       goto fail;
 
    unsigned k = 0;
+   unsigned vertex_loads_scheduled = 0;
    agx_foreach_block(ctx, slot_block) {
       agx_foreach_instr_in_block(slot_block, I) {
          if (I->op == AGX_OPCODE_STOP)
             continue;
          struct agx3_slot_instr *e = &sl[k++];
          e->is_async = agx3_is_async(I);
+         if (g17p_vertex_load_policy && I->op == AGX_OPCODE_DEVICE_LOAD &&
+             vertex_loads_scheduled++ == 0)
+            e->preferred_slot = 6;
          unsigned nd = 0, ns = 0;
          for (unsigned d = 0; d < I->nr_dests; ++d)
             nd = agx3_expand_regs(I->dest[d], e->dst, nd);
@@ -2467,6 +2483,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       goto fail;
 
    k = 0;
+   unsigned vertex_loads_seen = 0;
 
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
@@ -2696,17 +2713,23 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_mem(I, is_store, slot, wait, &d))
                AGX3_REFUSE(I);
+            if (g17p_vertex_load_policy && !is_store) {
+               const bool first = vertex_loads_seen++ == 0;
+               const bool last = --device_loads_left == 0;
+               if (first && d.slot != 6)
+                  AGX3_REFUSE(I);
+               d.agx3b_last_load = last;
+            }
             if (g17p_position_protocol && !is_store) {
                /* These assertions are the descriptor-level half of the shape
                 * guard above. Refuse if a later lowering changes it. */
                if (d.data != 0 || d.width != AGX3_MEM_W32 || d.mask != 3 ||
                    d.shift != 3 || !d.base_is_uniform || d.base != 0 ||
                    d.idx_kind != AGX3_MEM_IDX_REG || d.idx_reg != 0 ||
-                   d.idx_signed || d.wait_mask != 1)
+                   d.idx_signed || d.slot != 6 || d.wait_mask != 1 ||
+                   !d.agx3b_last_load)
                   AGX3_REFUSE(I);
                d.idx_kill = true;
-               d.slot = 6;
-               d.agx3b_last_load = true;
             }
             const bool ok = is_store
                                ? agx3_mem_encode_store(enc, &d, bytes, &len)

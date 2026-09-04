@@ -114,6 +114,24 @@ int main(void)
       CHECK(r[7].slot==8 && r[8].slot==1);  /* wraps at 8 */
    }
 
+   /* A corpus-witnessed preferred slot becomes the producer's real slot, so
+    * dependency waits follow it rather than the round-robin cursor. */
+   {
+      struct agx3_slot_instr preferred = ld(2);
+      preferred.preferred_slot = 6;
+      struct agx3_slot_instr p[] = {ld(0), preferred, alu(4, 2, 2)};
+      CHECK(agx3_slot_assign(p, 3, 6, r));
+      CHECK(r[0].slot == 1 && r[0].wait_mask == 0);
+      CHECK(r[1].slot == 6 && r[1].wait_mask == 0);
+      CHECK(r[2].slot == 0 && r[2].wait_mask == 0x20);
+
+      preferred.preferred_slot = 7;
+      CHECK(!agx3_slot_assign(&preferred, 1, 6, r));
+      preferred = st(0);
+      preferred.preferred_slot = 1;
+      CHECK(!agx3_slot_assign(&preferred, 1, 6, r));
+   }
+
    /* Static copy produces a TPS dependency token and a later rld consumes it.
     * The reload must wait the copy even though the two operations share no
     * architectural GPR. Its own GPR result then remains async as usual. */

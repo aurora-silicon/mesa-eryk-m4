@@ -43,6 +43,7 @@ extern "C" {
 
 struct agx3_slot_instr {
    bool is_async;   /* produces a scoreboard-tracked result */
+   uint8_t preferred_slot; /* 0=round-robin, otherwise required slot */
    uint8_t nr_dsts; /* dependency tokens this instruction writes */
    uint8_t nr_srcs; /* dependency tokens this instruction reads */
    uint16_t dst[AGX3_SLOT_MAX_REGS];
@@ -62,8 +63,9 @@ struct agx3_slot_result {
  *
  * GPR tokens are half-register indices; static TPS tokens use the disjoint
  * range above. A value that is not currently the live result of an async op
- * contributes no wait. The slot policy is round-robin, which the RE showed is
- * always correct (reuse only forces an earlier wait, never misses a hazard).
+ * contributes no wait. The default slot policy is round-robin. A caller may
+ * request a corpus-witnessed slot for one async instruction with
+ * preferred_slot; dependencies then follow that actual slot normally.
  */
 bool agx3_slot_assign(const struct agx3_slot_instr *instrs, unsigned n,
                       unsigned nslots, struct agx3_slot_result *out);
