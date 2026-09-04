@@ -553,6 +553,11 @@ typedef struct {
    unsigned loop_count;
    unsigned max_reg;
 
+   /* AGX3 staging-file high-water mark, in 16-bit halves. Unlike max_reg,
+    * this describes the separate file consumed by UVSW and texture inputs. */
+   unsigned agx3_staging_halfs;
+   bool agx3_staging_known;
+
    /* Promoted constants. These will be appended to the binary at the end. */
    uint16_t rodata[512];
 } agx_context;

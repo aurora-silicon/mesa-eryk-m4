@@ -40,6 +40,42 @@ agx3_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
 }
 
 bool
+agx3_stage_copy_source(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                        bool src_kill, uint8_t slot, uint16_t wait_mask,
+                        uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len)
+{
+   const unsigned slots = enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
+   if (!out || !len ||
+       (enc != AGX_ISA_ENCODING_AGX3B && enc != AGX_ISA_ENCODING_AGX3C) ||
+       (dest & 1) || (src & 1) || dest >= 256 || src >= 256 ||
+       slot < 1 || slot > slots || (wait_mask & ~((1u << slots) - 1)))
+      return false;
+
+   struct agx3_field_kv base[7] = {
+      KV(9, 5), KV(10, 2), KV(23, 2), KV(24, 2), KV(27, src_kill),
+   };
+   unsigned nb = 5;
+   if (enc == AGX_ISA_ENCODING_AGX3C) {
+      base[nb++] = (struct agx3_field_kv)KV(28, 1);
+      base[nb++] = (struct agx3_field_kv)KV(29, 35);
+   }
+   struct agx3_field_kv ov[11] = {
+      KV(5, dest), KV(16, src), KV(12, slot),
+   };
+   unsigned n = 3;
+   for (unsigned i = 0; i < slots; ++i) {
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(30 + i, 1);
+   }
+
+   for (int ep = 0; ep <= 1; ++ep) {
+      if (agx3_bind_compose(enc, "copy", ep, base, nb, ov, n, out, len))
+         return true;
+   }
+   return false;
+}
+
+bool
 agx3_stage_copy_kill(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                      bool kill, uint8_t slot, uint16_t wait_mask,
                      uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len)

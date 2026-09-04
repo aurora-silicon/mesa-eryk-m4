@@ -1158,6 +1158,8 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          .shader_binary_size = linked->b.size,
          .scratch_size = linked->b.scratch_size,
          .nr_gprs = linked->b.nr_gprs,
+         .compiler_d_valid = linked->b.g17p_compiler_d_valid,
+         .compiler_d = linked->b.g17p_compiler_d,
          .fragment = s->info.stage == MESA_SHADER_FRAGMENT,
       };
       struct hk_agx3_g17p_graphics_program program;

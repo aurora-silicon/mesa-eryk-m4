@@ -47,9 +47,9 @@ static const uint8_t g17p_flat_colour[] = {
    0x0e, 0x00, 0x00, 0x00,
 };
 
-/* Apple's complete G17P float2-position VS. Apple stages the four position
- * components in distinct registers; Mesa legally reuses registers, so the
- * protocol comparison below normalizes only each UVSW value operand. */
+/* Apple's complete G17P float2-position VS. UVSW operands name the separate
+ * staging file, not general registers. The dataflow check below requires a
+ * real producer in that file before accepting each position write. */
 static const uint8_t apple_g17p_float2_vs[] = {
    0x0c, 0xdd, 0x10, 0x06,
    0x67, 0x10, 0x44, 0x00, 0x00, 0x80, 0x20, 0x00, 0x59, 0x01, 0x00, 0x40,
@@ -65,7 +65,7 @@ static const uint8_t apple_g17p_float2_vs[] = {
    0x0e, 0x00, 0x00, 0x00,
 };
 
-static const uint8_t mesa_g17p_float2_vs[] = {
+static const uint8_t mesa_unstaged_g17p_float2_vs[] = {
    0x0c, 0xdd, 0x10, 0x06,
    0x67, 0x10, 0x44, 0x00, 0x00, 0x80, 0x20, 0x00, 0x59, 0x01, 0x00, 0x40,
    0x48, 0x00,
@@ -78,44 +78,116 @@ static const uint8_t mesa_g17p_float2_vs[] = {
    0x0e, 0x00, 0x00, 0x00,
 };
 
-struct g17p_vs_protocol {
-   uint8_t vertex_id[4];
-   uint8_t attribute_load[14];
-   uint8_t position_write[4][8];
-   uint8_t end[4];
+static const uint8_t mesa_g17p_float2_vs[] = {
+   0x0c,0xdd,0x10,0x06,0x67,0x10,0x44,0x00,0x00,0x80,0x20,0x00,0x59,0x01,0x00,0x40,
+   0x48,0x00,0x0b,0x00,0x21,0xc4,
+   0x1b,0x03,0x27,0x00,0x42,0x00,0x00,0x04,0x00,0x00,
+   0x0b,0x00,0x00,0x00,
+   0x2b,0x01,0x27,0x00,0x42,0x00,0x00,0x08,0x00,0x00,
+   0x0c,0x80,0x02,0x3e,0x00,0x00,0x00,0x0c,
+   0x3b,0x01,0x27,0x00,0x42,0x00,0x00,0x0c,0x00,0x00,
+   0x57,0x16,0x54,0x00,0x00,0x40,0x48,0x00,
+   0x57,0x26,0x54,0x02,0x20,0x40,0x49,0x00,
+   0x57,0x46,0x54,0x04,0x40,0x40,0x4a,0x00,
+   0x57,0x86,0x54,0x06,0x60,0x40,0x4b,0x00,0x0e,0x00,0x00,0x00,
 };
 
-static void
-normalize_g17p_vs(const uint8_t *binary, bool apple,
-                  struct g17p_vs_protocol *protocol)
+static bool
+g17p_vs_position_dataflow(const uint8_t *binary, size_t size)
 {
-   static const uint8_t apple_uvsw[] = {52, 60, 68, 76};
-   static const uint8_t mesa_uvsw[] = {18, 26, 38, 54};
-   const uint8_t *uvsw = apple ? apple_uvsw : mesa_uvsw;
+   if (size < 22 || memcmp(binary, apple_g17p_float2_vs, 18))
+      return false;
 
-   memcpy(protocol->vertex_id, binary, sizeof(protocol->vertex_id));
-   memcpy(protocol->attribute_load, binary + 4,
-          sizeof(protocol->attribute_load));
-   for (unsigned i = 0; i < ARRAY_SIZE(protocol->position_write); ++i) {
-      memcpy(protocol->position_write[i], binary + uvsw[i],
-             sizeof(protocol->position_write[i]));
-      /* f5 is the physical source register. Apple keeps r3/r2/r1/r0 while
-       * Mesa reuses r0/r1/r0/r0; that is allocation, not protocol. */
-      protocol->position_write[i][3] = 0;
+   /* Symbolic values: 1=x, 2=y, 3=zero, 4=one. Decode only the grounded
+    * producer forms occurring in these two isolated float2 shaders. Unlike
+    * the former normalizer, this cannot mistake an unwritten staging slot
+    * for a general register with the same numeric index. */
+   uint8_t gpr[256] = {1, 0, 2}, staging[256] = {0};
+   uint8_t staging_slot[256] = {0};
+   bool attribute_ready = false;
+   unsigned writes = 0, offset = 18;
+   while (offset + 4 <= size) {
+      const uint8_t *p = binary + offset;
+      unsigned length = 0;
+      const unsigned dest = (p[0] >> 4) * 2;
+      if (p[0] == 0x0e && p[1] == 0 && p[2] == 0 && p[3] == 0)
+         return writes == 4 && offset + 4 == size;
+      if ((p[0] & 0xf) == 0xb &&
+          ((p[2] & 0xf7) == 0x21 || (p[2] & 0xf7) == 0x27)) {
+         length = (p[2] & 7) == 1 ? 4 : 10;
+         if (length > size - offset)
+            return false;
+         /* Compact COPY has an enumerated one-hot wait and implicit slot1;
+          * extended COPY has six independent wait bits and explicit f12. */
+         const unsigned wait_index = p[3] >> 5;
+         const unsigned wait = length == 4
+                                  ? (wait_index ? 1u << (wait_index - 1) : 0)
+                                  : (p[5] >> 5) | ((p[7] >> 5) << 3);
+         attribute_ready |= (wait & 0x20) != 0;
+         const unsigned src = p[1] & 0xfe;
+         if ((gpr[src] == 1 || gpr[src] == 2) && !attribute_ready)
+            return false;
+         staging[dest] = gpr[src];
+         staging_slot[dest] = length == 4 ? 1 : 1 + ((p[7] >> 2) & 7);
+      } else if ((p[0] & 0xf) == 0xb && p[1] == 0 && p[2] == 0 &&
+                 p[3] == 0) {
+         length = 4;
+         gpr[dest] = 3;
+      } else if ((p[0] & 0xf) == 0xb && p[1] == 0 && p[2] == 0x26) {
+         length = 10;
+         if (length > size - offset)
+            return false;
+         staging[dest] = 3;
+         staging_slot[dest] = 1 + ((p[7] >> 2) & 7);
+      } else if ((p[0] & 0xf) == 0xc && p[1] == 0x80 &&
+                 (p[2] == 2 || p[2] == 0x23) && p[3] == 0x3e) {
+         length = p[2] == 2 ? 8 : 10;
+         if (length > size - offset)
+            return false;
+         if (p[2] == 2)
+            gpr[dest] = 4;
+         else {
+            staging[dest] = 4;
+            staging_slot[dest] = 1 + (p[9] >> 5);
+         }
+      } else if (p[0] == 0x57 && p[2] == 0x54 && offset + 8 <= size) {
+         length = 8;
+         const unsigned component = p[4] >> 5;
+         /* The matched native shape produces all four before first UVSW. */
+         if (!staging[0] || !staging[2] || !staging[4] || !staging[6])
+            return false;
+         if (component != writes || staging[p[3]] != component + 1 ||
+             (p[1] >> 4) != (1u << writes) ||
+             staging_slot[p[3]] != 1 + (p[6] & 7) ||
+             staging_slot[p[3]] != writes + 1)
+            return false;
+         writes++;
+      } else {
+         return false;
+      }
+      if (length > size - offset)
+         return false;
+      offset += length;
    }
-   memcpy(protocol->end, binary + (apple ? 84 : 62), sizeof(protocol->end));
+   return false;
 }
 
 static bool
 g17p_vs_matches_apple(const uint8_t *binary, size_t size)
 {
-   if (size != sizeof(mesa_g17p_float2_vs))
-      return false;
-
-   struct g17p_vs_protocol apple = {0}, mesa = {0};
-   normalize_g17p_vs(apple_g17p_float2_vs, true, &apple);
-   normalize_g17p_vs(binary, false, &mesa);
-   return memcmp(&apple, &mesa, sizeof(apple)) == 0;
+   uint8_t bad_wait[sizeof(mesa_g17p_float2_vs)];
+   memcpy(bad_wait, mesa_g17p_float2_vs, sizeof(bad_wait));
+   bad_wait[21] = 4; /* staging COPY no longer waits for attribute LDDEV */
+   uint8_t bad_bank[sizeof(mesa_g17p_float2_vs)];
+   memcpy(bad_bank, mesa_g17p_float2_vs, sizeof(bad_bank));
+   bad_bank[20] &= ~0x20; /* destination no longer selects staging */
+   return !g17p_vs_position_dataflow(bad_wait, sizeof(bad_wait)) &&
+          !g17p_vs_position_dataflow(bad_bank, sizeof(bad_bank)) &&
+          g17p_vs_position_dataflow(apple_g17p_float2_vs,
+                                    sizeof(apple_g17p_float2_vs)) &&
+          !g17p_vs_position_dataflow(mesa_unstaged_g17p_float2_vs,
+                                     sizeof(mesa_unstaged_g17p_float2_vs)) &&
+          g17p_vs_position_dataflow(binary, size);
 }
 
 /* In 71 fully decoded AGX3b vertex programs, f79 selects byte2=0x44 on the
@@ -806,7 +878,8 @@ test_g17p_eot_block_store(void)
    };
 
    bool ok = compiled && part.info.binary_size == sizeof(apple_eot) &&
-             part.info.nr_gprs == 8 &&
+             part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
+             part.info.agx3_staging_halfs == 8 &&
              memcmp(part.binary, apple_eot, sizeof(apple_eot)) == 0;
    if (!ok) {
       fprintf(stderr,
@@ -1120,12 +1193,18 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
             fprintf(stderr,
                     "%s %s: G17P binary/resource metadata mismatch\n",
                     enc_name(enc), c->name);
+            fprintf(stderr, "actual main (%u bytes, staging %u halfs): ",
+                    part.info.binary_size, part.info.agx3_staging_halfs);
+            for (unsigned j = 0; j < part.info.binary_size; ++j)
+               fprintf(stderr, "%02x", ((const uint8_t *)part.binary)[j]);
+            fprintf(stderr, "\n");
          }
       }
 
       if (result && enc == AGX_ISA_ENCODING_AGX3B &&
           c->compare_apple_g17p_vs) {
-         result = g17p_vs_matches_apple(part.binary, part.info.binary_size);
+         result = part.info.agx3_staging_known && part.info.agx3_staging_halfs == 8 &&
+                  g17p_vs_matches_apple(part.binary, part.info.binary_size);
          if (!result) {
             fprintf(stderr, "%s %s: Apple-88 VS protocol mismatch\n",
                     enc_name(enc), c->name);

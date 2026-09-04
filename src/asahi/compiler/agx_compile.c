@@ -3881,8 +3881,11 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
     */
    if (impl->function->is_preamble)
       out->nr_preamble_gprs = ctx->scratch_size_B ? 256 : nr_gprs;
-   else
+   else {
       out->nr_gprs = nr_gprs;
+      out->agx3_staging_halfs = ctx->agx3_staging_halfs;
+      out->agx3_staging_known = ctx->agx3_staging_known;
+   }
 
    if (impl->function->is_preamble) {
       uint32_t instrs = 0;

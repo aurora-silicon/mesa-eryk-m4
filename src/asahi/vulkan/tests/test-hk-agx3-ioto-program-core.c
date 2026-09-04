@@ -776,6 +776,35 @@ test_g17p_basic_graphics_program(void)
    };
    CHECK(memcmp(program.bytes, vertex_tail, sizeof(vertex_tail)) == 0);
 
+   /* The exact Apple 88-byte float2 VS has four 32-bit staging values and
+    * compiler ProgramVariant field 38 is 16. Preserve the distinct domains:
+    * metadata D=16 yields SPECTPR f22=4, whereas using
+    * physical GPR halfs=8 here would incorrectly yield f22=2.
+    */
+   struct hk_agx3_g17p_graphics_program_desc apple_vertex = vertex;
+   apple_vertex.shader_binary_size = 88;
+   apple_vertex.nr_gprs = 8;
+   apple_vertex.compiler_d_valid = true;
+   apple_vertex.compiler_d = 16;
+   const struct hk_agx3_g17p_graphics_program normal_vertex = program;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+      AGX_CHIP_G17P, &apple_vertex, &program));
+   CHECK(program.length == normal_vertex.length);
+   CHECK(memcmp(program.bytes, normal_vertex.bytes, program.length) == 0);
+   apple_vertex.nr_gprs = 4;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+      AGX_CHIP_G17P, &apple_vertex, &program));
+   CHECK(memcmp(program.bytes, normal_vertex.bytes, program.length) == 0);
+   apple_vertex.nr_gprs = 8;
+   apple_vertex.compiler_d_valid = false;
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+      AGX_CHIP_G17P, &apple_vertex, &program));
+   static const uint8_t old_d_from_gprs[] = {
+      0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   CHECK(memcmp(program.bytes + 18, old_d_from_gprs,
+                sizeof(old_d_from_gprs)) == 0);
+
    static const struct agx3_ioto_uniform_range descriptor_root = {
       .start_halfs = 20,
       .size_halfs = 4,
@@ -881,6 +910,7 @@ test_g17p_rt0_eot_program(void)
       .shader_binary_size = 128,
       .scratch_size = 0,
       .nr_gprs = 8,
+      .staging_halfs = 8,
    };
    struct hk_agx3_g17p_rt0_eot_program program;
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
@@ -901,7 +931,7 @@ test_g17p_rt0_eot_program(void)
    static const uint8_t eot_state_tail[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
       0x77, 0x01, 0xaa, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
-      0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0xf7, 0x00, 0x2a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
    CHECK(memcmp(program.bytes + 44, eot_state_tail,
                 sizeof(eot_state_tail)) == 0);
@@ -918,6 +948,11 @@ test_g17p_rt0_eot_program(void)
                 sizeof(program.bytes) - 16) == 0);
 
    const struct hk_agx3_g17p_rt0_eot_program before = program;
+   moved = desc;
+   moved.staging_halfs = 0;
+   CHECK(
+      !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    moved = desc;
    moved.shader_binary_size = 64;
    CHECK(

@@ -129,9 +129,11 @@ hk_agx3_g17p_graphics_state_tail(
    const bool exact_no_resource_fragment =
       ordinary && desc->fragment && desc->uniform_range_count == 0 &&
       desc->scratch_size == 0;
-   if (!exact_no_resource_fragment &&
+   const uint32_t compiler_d =
+      desc->compiler_d_valid ? desc->compiler_d : desc->nr_gprs;
+   if ((desc->compiler_d_valid || !exact_no_resource_fragment) &&
        !agx_ioto_g17p_compiler_spectpr_build(desc->scratch_size,
-                                             desc->nr_gprs, &spectpr)) {
+                                             compiler_d, &spectpr)) {
       return false;
    }
 
@@ -413,7 +415,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
    struct hk_agx3_g17p_rt0_eot_program *program)
 {
    if (!program || chip != AGX_CHIP_G17P || !desc ||
-       desc->shader_binary_size != 128 || desc->nr_gprs != 8)
+       desc->shader_binary_size != 128 || desc->nr_gprs != 8 ||
+       desc->staging_halfs != 8)
       return false;
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
@@ -422,6 +425,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
       .shader_binary_size = desc->shader_binary_size,
       .scratch_size = desc->scratch_size,
       .nr_gprs = desc->nr_gprs,
+      .compiler_d_valid = true,
+      .compiler_d = desc->staging_halfs * 2,
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;

@@ -586,20 +586,27 @@ agx3_emit_ldcf(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
 static bool
 agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
-               const agx_instr *I, uint8_t slot, uint16_t wait_mask,
-               bool force_value_kill)
+               const agx_instr *I, uint16_t staging_half, uint8_t slot,
+               uint16_t wait_mask, bool defer_writeout)
 {
    if (I->nr_dests != 0 || I->nr_srcs != 2 ||
        I->src[0].type != AGX_INDEX_IMMEDIATE ||
        !agx3_vary_reg32(I->src[1]))
       return false;
 
-   uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+   uint8_t bytes[MAX2(AGX3_STAGE_MAX_LENGTH, AGX3_VARY_MAX_LENGTH)];
    uint8_t len = 0;
-   return agx3_vary_uvsw(enc, I->src[1].value, I->src[0].value, slot,
-                         force_value_kill || I->src[1].kill, wait_mask, bytes,
-                         &len) &&
-          agx3_append(emission, bytes, len);
+   /* UVSW's f9=5/f5 operand is a staging-file address, not the GPR named
+    * by ST_VARY IR. First transfer the source into that file and wait for
+    * its actual producer; UVSW then waits for this staging write's slot. */
+   if (!agx3_stage_copy_source(enc, staging_half, I->src[1].value,
+                                I->src[1].kill, slot, wait_mask, bytes, &len) ||
+       !agx3_append(emission, bytes, len))
+      return false;
+   return defer_writeout ||
+          (agx3_vary_uvsw(enc, staging_half, I->src[0].value, slot, true,
+                          (uint16_t)(1u << (slot - 1)), bytes, &len) &&
+           agx3_append(emission, bytes, len));
 }
 
 static bool
@@ -2317,9 +2324,10 @@ agx3_fixup_branch(struct util_dynarray *emission, enum agx_isa_encoding enc,
 /*
  * Apple's complete G17P float2-position shader uses a protocol that is not
  * selected by the generic round-robin scoreboard pass: its sole attribute
- * LDDEV carries f79=2 and signals slot 6, while its four position UVSWs carry
- * one-hot masks 1/2/4/8. Keep this exact exception fenced to the witnessed
- * post-RA shape. Other vertex shaders retain the generic path.
+ * LDDEV carries f79=2 and signals slot 6. Keep its index last-use exception
+ * fenced to the witnessed post-RA shape. All UVSWs, including this shader's,
+ * require explicit staging producers; copying their one-hot wait masks alone
+ * does not produce the data they consume.
  */
 static bool
 agx3_is_g17p_float2_position_vs(agx_context *ctx,
@@ -2462,6 +2470,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
    const unsigned initial_size = emission->size;
+   ctx->agx3_staging_known = true;
 
    if (agx3_is_g17p_rt0_eot(ctx, enc)) {
       static const uint8_t apple_g17p_rt0_eot[] = {
@@ -2474,9 +2483,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
          0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
       };
-      /* Apple's metadata reports D=8 for this body; the Ioto SPECTPR state
-       * must describe the fixed replacement body, not Mesa's shorter IR. */
+      /* The byte-identical Apple EOT compiler object reports field38 D=16:
+       * its coordinate/pixel writeout staging allocation is eight halves,
+       * independently of the eight-half general-register requirement. */
       ctx->max_reg = MAX2(ctx->max_reg, 7);
+      ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
       return agx3_append(emission, apple_g17p_rt0_eot,
                          sizeof(apple_g17p_rt0_eot));
    }
@@ -2524,6 +2535,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    bool g17p_colour_open = false;
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
+   unsigned g17p_positions_staged = 0;
    /* Across 71 fully decoded own-shader AGX3b vertex programs, f79 marks the
     * final LDDEV with zero exceptions and the first LDDEV uses slot 6 with
     * zero exceptions. Later slots vary with scheduling, so only the two
@@ -2651,18 +2663,45 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_ST_VARY) {
-            const uint16_t uvs_wait =
-               g17p_position_protocol
-                  ? (uint16_t)(1u << I->src[0].value)
-                  : wait;
-            if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, uvs_wait,
-                                g17p_position_protocol))
+            /* Use a bounded staging allocation independent of GPR indices.
+             * Each scalar is consumed immediately, before its slot/address
+             * can be reused. A still-live general producer sharing the slot
+             * must retire before the staging COPY reuses it. */
+            const uint8_t stage_slot = g17p_position_protocol
+                                         ? I->src[0].value + 1 : next_uvs_slot;
+            const uint16_t staging_half = 2 * (stage_slot - 1);
+            const uint16_t staging_bit = 1u << (stage_slot - 1);
+            const uint16_t stage_wait = wait | (outstanding_here & staging_bit);
+            if (!agx3_emit_uvsw(emission, enc, I, staging_half, stage_slot,
+                                stage_wait, g17p_position_protocol))
                AGX3_REFUSE(I);
+            ctx->agx3_staging_halfs =
+               MAX2(ctx->agx3_staging_halfs, staging_half + 2);
+            outstanding &= (uint16_t)~stage_wait;
+            /* Match the complete Apple float2 VS's producer-before-writeout
+             * schedule: stage x/y before Mesa reuses their GPRs for z/w,
+             * then emit the four UVSWs only after all four values exist.
+             * This is the existing exact straight-line shape guard, not a
+             * fixed shader-body replacement. */
+            if (g17p_position_protocol && ++g17p_positions_staged == 4) {
+               for (unsigned component = 0; component < 4; ++component) {
+                  uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
+                  if (!agx3_vary_uvsw(enc, component * 2, component,
+                                       component + 1, true, 1u << component,
+                                       bytes, &len) ||
+                      !agx3_append(emission, bytes, len))
+                     AGX3_REFUSE(I);
+               }
+            }
             next_uvs_slot = (next_uvs_slot % nslots) + 1;
             continue;
          }
 
          if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
+            /* The texel-fetch message's coordinate-bank producer is not
+             * accounted for by this lowering yet. Zero is not a proved
+             * staging requirement for such a shader. */
+            ctx->agx3_staging_known = false;
             assert(texture_ops_left > 0);
             const bool final = --texture_ops_left == 0;
             if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
@@ -2680,6 +2719,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                 !agx3_emit_texture_sample(emission, enc, I, slot, wait,
                                           final))
                AGX3_REFUSE(I);
+            /* The sample emitter stages exactly two 32-bit coordinates. */
+            ctx->agx3_staging_halfs =
+               MAX2(ctx->agx3_staging_halfs, I->src[0].value + 4);
             continue;
          }
 

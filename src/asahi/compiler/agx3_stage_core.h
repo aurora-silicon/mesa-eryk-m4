@@ -61,6 +61,14 @@ bool agx3_stage_copy(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                      uint8_t slot, uint16_t wait_mask,
                      uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
 
+/* General-register source liveness is independent of staging liveness.
+ * Vertex outputs may export the same GPR more than once; do not kill that
+ * source merely because each staging value has a single UVSW consumer. */
+bool agx3_stage_copy_source(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t src, bool src_kill, uint8_t slot,
+                            uint16_t wait_mask,
+                            uint8_t out[AGX3_STAGE_MAX_LENGTH], uint8_t *len);
+
 /* staging[dest] <- imm32, 32-bit, taking scoreboard slot `slot`. */
 bool agx3_stage_ldimm(enum agx_isa_encoding enc, uint16_t dest, uint32_t imm,
                       bool kill, uint8_t slot, uint16_t wait_mask,

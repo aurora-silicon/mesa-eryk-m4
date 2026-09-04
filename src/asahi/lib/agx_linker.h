@@ -34,6 +34,12 @@ struct agx_linked_shader {
    uint32_t scratch_size;
    uint16_t nr_gprs;
 
+   /* Apple's compiler ProgramVariant field 38 describes staging bytes,
+    * independently of GPR count. Valid only for accounted-for staging paths.
+    */
+   bool g17p_compiler_d_valid;
+   uint32_t g17p_compiler_d;
+
    /* Set if the linked SW vertex shader reads base vertex/instance. The VS
     * prolog can read base instance even when the API VS does not, which is why
     * this needs to be aggregated in the linker.

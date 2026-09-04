@@ -23,6 +23,7 @@
 #include "agx3_pack.h"
 #include "agx3_scs_core.h"
 #include "agx3_sr_core.h"
+#include "agx3_stage_core.h"
 #include "agx3_static_spill_core.h"
 #include "agx3_subgroup_core.h"
 #include "agx3_tex_core.h"
@@ -1489,7 +1490,7 @@ TEST_F(AGX3PackBinary, VaryingInterpolationCoefficientAndUvs)
       store->src[1].kill = true;
       agx_stop(b);
 
-      uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+      uint8_t bytes[MAX2(AGX3_STAGE_MAX_LENGTH, AGX3_VARY_MAX_LENGTH)];
       uint8_t len = 0;
       std::vector<uint8_t> want;
       ASSERT_TRUE(agx3_vary_interp_at(enc, 0, 3, false, AGX3_VARY_CENTER,
@@ -1500,13 +1501,16 @@ TEST_F(AGX3PackBinary, VaryingInterpolationCoefficientAndUvs)
       append(want, bytes, len);
       ASSERT_TRUE(agx3_vary_ldcf(enc, 4, 5, 1, bytes, &len));
       append(want, bytes, len);
-      ASSERT_TRUE(agx3_vary_uvsw(enc, 4, 7, 1, true, 1, bytes, &len));
+      ASSERT_TRUE(agx3_stage_copy_source(enc, 0, 4, true, 1, 1, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_vary_uvsw(enc, 0, 7, 1, true, 1, bytes, &len));
       append(want, bytes, len);
       struct agx3_encoded_end end;
       ASSERT_TRUE(agx3_pack_end(enc, &end));
       append(want, end.bytes, end.length);
 
       EXPECT_EQ(pack(b), want);
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 2u);
    }
 }
 
@@ -1518,6 +1522,83 @@ TEST_F(AGX3PackBinary, RefusesExplicitSampleInterpolation)
                       false);
    agx_stop(b);
    EXPECT_TRUE(pack(b, /*expect_ok=*/false).empty());
+}
+
+TEST_F(AGX3PackBinary, VertexStagingProducerMatchesAppleAndPreservesLiveness)
+{
+   static const uint8_t apple_x[] = {0x0b, 0x00, 0x29, 0xc4};
+   static const uint8_t apple_y[] = {
+      0x1b, 0x03, 0x2f, 0x00, 0x42, 0x00, 0x00, 0x04, 0x00, 0x00,
+   };
+   uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len;
+   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 0, 0, true,
+                                      1, 0x20, bytes, &len));
+   ASSERT_EQ(len, sizeof(apple_x));
+   EXPECT_EQ(memcmp(bytes, apple_x, len), 0);
+   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 2, 2, true,
+                                      2, 0, bytes, &len));
+   ASSERT_EQ(len, sizeof(apple_y));
+   EXPECT_EQ(memcmp(bytes, apple_y, len), 0);
+
+   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 2, 2, false,
+                                      2, 0, bytes, &len));
+   /* f27 is the GPR last-use flag, independent of staging f9/f5/f12. */
+   EXPECT_EQ(bytes[2], apple_y[2] & ~8u);
+   bytes[2] |= 8;
+   EXPECT_EQ(memcmp(bytes, apple_y, len), 0);
+}
+
+TEST_F(AGX3PackBinary, VertexStagingBankAndScoreboardRoundTrip)
+{
+   for (unsigned slot = 1; slot <= 6; ++slot) {
+      for (unsigned wait : {0u, 1u, 2u, 4u, 8u, 16u, 32u, 33u}) {
+         uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len;
+         const unsigned staging = 2 * (slot - 1);
+         ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, staging,
+                                            200, false, slot, wait, bytes, &len));
+         /* Decode the selected COPY destination bank and narrow indices.
+          * This is the actual f9=5 form, not a GPR copy to numeric index s. */
+         EXPECT_EQ(bytes[0] & 0xf, 0xbu);
+         EXPECT_EQ(bytes[2] & 0xf7, len == 4 ? 0x21u : 0x27u);
+         EXPECT_EQ((bytes[0] >> 4) * 2, staging);
+         EXPECT_EQ((bytes[1] & 0xfe) | (len == 10 ? (bytes[5] & 1) << 7
+                                                             : (bytes[3] & 16) << 3),
+                   200u);
+         unsigned decoded_slot, decoded_wait;
+         if (len == 4) {
+            decoded_slot = 1;
+            const unsigned index = bytes[3] >> 5;
+            decoded_wait = index ? 1u << (index - 1) : 0;
+         } else {
+            ASSERT_EQ(len, 10u);
+            decoded_slot = 1 + ((bytes[7] >> 2) & 7);
+            decoded_wait = (bytes[5] >> 5) | ((bytes[7] >> 5) << 3);
+         }
+         EXPECT_EQ(decoded_slot, slot);
+         EXPECT_EQ(decoded_wait, wait);
+
+         ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, staging, 0, slot,
+                                    true, 1u << (slot - 1), bytes, &len));
+         ASSERT_EQ(len, 8u);
+         EXPECT_EQ(bytes[3], staging);
+         EXPECT_EQ(1 + (bytes[6] & 7), decoded_slot);
+         const unsigned consumer_wait = (bytes[1] >> 4) | ((bytes[2] & 3) << 4);
+         EXPECT_EQ(consumer_wait, 1u << (decoded_slot - 1));
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, VertexStagingAllocationDoesNotUseGprHighWater)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->max_reg = 201;
+   agx_st_vary(b, agx_immediate(0), agx_register(200, AGX_SIZE_32));
+   agx_st_vary(b, agx_immediate(1), agx_register(200, AGX_SIZE_32));
+   agx_stop(b);
+   EXPECT_FALSE(pack(b).empty());
+   EXPECT_EQ(b->shader->max_reg, 201u);
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 4u);
+   EXPECT_TRUE(b->shader->agx3_staging_known);
 }
 
 TEST_F(AGX3PackBinary, AllGroundedComparisonRelations)

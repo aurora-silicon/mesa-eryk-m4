@@ -401,6 +401,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
          .nr_gprs = shader->info.nr_gprs,
+         .staging_halfs = shader->info.agx3_staging_known
+                            ? shader->info.agx3_staging_halfs : 0,
       };
       struct hk_agx3_g17p_rt0_eot_program program;
       if (!hk_agx3_g17p_rt0_eot_program_generate(dev->dev.chip, &desc,

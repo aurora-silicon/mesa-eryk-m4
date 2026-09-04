@@ -152,6 +152,10 @@ struct agx_shader_info {
     */
    uint16_t nr_gprs, nr_preamble_gprs;
 
+   /* Separate AGX3 staging allocation, in 16-bit halves. */
+   uint16_t agx3_staging_halfs;
+   bool agx3_staging_known;
+
    /* Output mask set during driver lowering */
    uint64_t outputs;
 

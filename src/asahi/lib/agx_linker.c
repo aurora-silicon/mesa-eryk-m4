@@ -201,6 +201,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
 {
    size_t size = 0;
    unsigned nr_gprs = 0, scratch_size = 0;
+   unsigned staging_halfs = 0;
+   bool staging_known = true;
    bool reads_tib = false, writes_sample_mask = false,
         disable_tri_merging = false, tag_write_disable = true;
 
@@ -223,6 +225,8 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       size += part->info.main_size;
 
       nr_gprs = MAX2(nr_gprs, part->info.nr_gprs);
+      staging_halfs = MAX2(staging_halfs, part->info.agx3_staging_halfs);
+      staging_known &= part->info.agx3_staging_known;
       scratch_size = MAX2(scratch_size, part->info.scratch_size);
       reads_tib |= part->info.reads_tib;
       writes_sample_mask |= part->info.writes_sample_mask;
@@ -233,6 +237,14 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    assert(size > 0 && "must stop");
+
+   if (dev->chip == AGX_CHIP_G17P &&
+       (main->info.stage == MESA_SHADER_VERTEX ||
+        main->info.stage == MESA_SHADER_FRAGMENT) &&
+       staging_known && !linked->g17p_compiler_d_valid) {
+      linked->g17p_compiler_d_valid = true;
+      linked->g17p_compiler_d = staging_halfs * 2;
+   }
 
    const bool container = agx3_uses_code_container(dev);
    const size_t alloc_size = container ? agx3_container_size(size) : size;

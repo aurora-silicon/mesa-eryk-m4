@@ -63,6 +63,8 @@ struct hk_agx3_g17p_graphics_program_desc {
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
+   bool compiler_d_valid;
+   uint32_t compiler_d;
    bool fragment;
 };
 
@@ -149,6 +151,7 @@ struct hk_agx3_g17p_rt0_eot_program_desc {
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
+   uint16_t staging_halfs;
 };
 
 struct hk_agx3_g17p_rt0_eot_program {
