@@ -7,7 +7,9 @@
 #include "util/simple_mtx.h"
 #include "util/u_debug.h"
 #include "agx_compile.h"
+#include "agx3_code_container_core.h"
 #include "agx_device.h"
+#include "agx_linker.h"
 #include "agx_nir.h"
 #include "agx_nir_texture.h"
 #include "agx_tilebuffer.h"
@@ -17,6 +19,7 @@
 #include "nir_builder.h"
 #include "pool.h"
 
+#include <inttypes.h>
 #include <stdlib.h>
 
 static bool
@@ -45,6 +48,85 @@ agx_g17p_wrap_eot_text(struct agx_shader_part *bin)
    bin->info.binary_size = 128;
    bin->info.main_offset = 64;
    bin->info.main_size = 64;
+   return true;
+}
+
+static bool
+agx_g17p_upload_bg_eot(struct agx_bg_eot_cache *cache,
+                       const struct agx_shader_part *bin,
+                       struct agx_bg_eot_shader *res)
+{
+   /* Match the standalone allocation lead already used for G17P main
+    * shaders. Native packed CODE blocks do not each own such a lead. */
+   const size_t lead_size = 0x340;
+   /* LDSHDR's existing auxiliary fetch-span metadata is based on compiler
+    * text size. Reserve at least that span after the main entry too, so the
+    * EOT text128/main64 case cannot prefetch outside this CODE block. */
+   const size_t main_span = MAX2(bin->info.main_size, bin->info.binary_size);
+   const size_t block_size = agx3_code_block_size(main_span);
+   const unsigned main_offset = bin->info.main_offset;
+   if (!bin->binary || !block_size || block_size > SIZE_MAX - lead_size ||
+       bin->info.has_preamble ||
+       bin->info.rodata.size_16 ||
+       (main_offset != 0 &&
+        main_offset != AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE) ||
+       main_offset > bin->info.binary_size ||
+       bin->info.main_size > bin->info.binary_size - main_offset)
+      return false;
+
+   const size_t size = lead_size + block_size;
+   uint8_t *image = malloc(size);
+   if (!image)
+      return false;
+
+   agx3_build_container_lead(image);
+   const uint8_t *text = bin->binary;
+   const bool built = agx3_build_code_block(
+      image + lead_size, block_size, text + main_offset, bin->info.main_size,
+      main_span, main_offset ? text : NULL, true);
+   const uint64_t allocation = built
+      ? agx_pool_upload_aligned_with_bo(&cache->pool, image, size, 128,
+                                         &res->bo)
+      : 0;
+   if (!allocation) {
+      free(image);
+      return false;
+   }
+
+   /* Keep compiler-text metadata intact: EOT has binary_size=128,
+    * main_offset=64 and main_size=64. Its LDSHDR fetch-span calculation uses
+    * the 128-byte compiler text, not this allocation's size. Rebase ptr so
+    * the existing ptr + main_offset expression names CODE block +0x80.
+    * Clear/reload have main_offset=0 and get a fragment constant program.
+    *
+    * The valid 194053 first EOT Ioto names a different, larger shader whose
+    * code page was not captured. This repairs the common loader contract;
+    * it is not an assertion of byte parity with that uncaptured EOT block.
+    */
+   res->ptr = allocation + lead_size + AGX3_CODE_BLOCK_ENTRY_OFFSET - main_offset;
+   if (debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
+      const uint8_t *block = image + lead_size;
+      const uint32_t header = (uint32_t)block[0] | ((uint32_t)block[1] << 8) |
+                              ((uint32_t)block[2] << 16) |
+                              ((uint32_t)block[3] << 24);
+      fprintf(stderr,
+              "G17P auxiliary-shader: kind=%s text=%" PRIx64
+              " entry=%" PRIx64 " block=%" PRIx64
+              " header=%x allocation_size=%zu binary_size=%u main_offset=%u"
+              " main_size=%u main_span=%zu nr_gprs=%u scratch=%u constant=",
+              bin->info.stage == MESA_SHADER_COMPUTE ? "eot" : "background",
+              res->ptr, res->ptr + main_offset, allocation + lead_size,
+              header, size, bin->info.binary_size, main_offset,
+              bin->info.main_size, main_span, bin->info.nr_gprs,
+              bin->info.scratch_size);
+      for (unsigned i = 0; i < AGX3_CONTAINER_CONSTANT_PROGRAM_SIZE; ++i)
+         fprintf(stderr, "%02x", block[AGX3_CODE_BLOCK_HEADER_SIZE + i]);
+      fprintf(stderr, " main=");
+      for (unsigned i = 0; i < bin->info.main_size; ++i)
+         fprintf(stderr, "%02x", block[AGX3_CODE_BLOCK_ENTRY_OFFSET + i]);
+      fprintf(stderr, "\n");
+   }
+   free(image);
    return true;
 }
 
@@ -126,8 +208,17 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
    }
 
    res->info = bin.info;
-   res->ptr = agx_pool_upload_aligned_with_bo(
-      &cache->pool, bin.binary, bin.info.binary_size, 128, &res->bo);
+   if (cache->dev->chip == AGX_CHIP_G17P) {
+      if (!agx_g17p_upload_bg_eot(cache, &bin, res)) {
+         free(bin.binary);
+         ralloc_free(shader);
+         ralloc_free(res);
+         return NULL;
+      }
+   } else {
+      res->ptr = agx_pool_upload_aligned_with_bo(
+         &cache->pool, bin.binary, bin.info.binary_size, 128, &res->bo);
+   }
    free(bin.binary);
    ralloc_free(shader);
 

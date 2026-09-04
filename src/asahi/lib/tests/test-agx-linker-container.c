@@ -31,6 +31,53 @@ mismatch:
    return 1;
 }
 
+static int
+check_auxiliary_block(void)
+{
+   /* Apple 32023.917's 128-byte RT0 EOT compiler text comprises a 64-byte
+    * constant program plus this 64-byte main (the prefix is tested above).
+    * It must not become a raw LDSHDR entry at allocation +0x40. */
+   static const uint8_t eot_main[64] = {
+      0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
+      0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
+      0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
+      0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
+      0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
+      0x2f, 0x00, 0x42, 0x40, 0x00, 0x08, 0x00, 0x00,
+      0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
+      0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   };
+   uint8_t constant[64], image[0x101];
+   agx3_build_container_constant_program(constant, true);
+   memset(image, 0xa5, sizeof(image));
+   if (agx3_code_block_size(128) != 0x100 ||
+       !agx3_build_code_block(image, sizeof(image), eot_main, sizeof(eot_main),
+                               128, constant, true) ||
+       memcmp(image, (uint8_t[]){0, 1, 0, 0}, 4) ||
+       memcmp(image + 0x40, constant, 64) ||
+       memcmp(image + 0x80, eot_main, 64) || image[0x100] != 0xa5)
+      return fprintf(stderr, "EOT CODE block framing mismatch\n"), 1;
+   for (unsigned i = 0xc0; i < 0x100; ++i) {
+      if (image[i] != 0)
+         return fprintf(stderr, "EOT fetch padding is not zero\n"), 1;
+   }
+
+   /* A raw clear body has no compiler constant prefix. Fill that prefix
+    * without moving the main relative to the shared CODE block contract. */
+   memset(image, 0xa5, sizeof(image));
+   if (agx3_code_block_size(65) != 0x100 ||
+       !agx3_build_code_block(image, sizeof(image), eot_main, 63, 63, NULL, true) ||
+       memcmp(image + 0x40, constant, 64) ||
+       memcmp(image + 0x80, eot_main, 63) || image[0xbf] != 0 ||
+       image[0xc0] != 0xa5 ||
+       agx3_code_block_size(0) || agx3_code_block_size(SIZE_MAX) ||
+       agx3_build_code_block(image, 0xbf, eot_main, 64, 64, constant, true) ||
+       agx3_build_code_block(image, sizeof(image), eot_main, 64, 63, constant,
+                               true))
+      return fprintf(stderr, "auxiliary CODE block bounds mismatch\n"), 1;
+   return 0;
+}
+
 int
 main(void)
 {
@@ -51,5 +98,6 @@ main(void)
    return check_program("vertex/compute", false, vertex_compute_prefix,
                         sizeof(vertex_compute_prefix)) ||
           check_program("fragment", true, fragment_prefix,
-                        sizeof(fragment_prefix));
+                        sizeof(fragment_prefix)) ||
+          check_auxiliary_block();
 }
