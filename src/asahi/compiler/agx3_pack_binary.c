@@ -585,7 +585,8 @@ agx3_emit_ldcf(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
 static bool
 agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
-               const agx_instr *I, uint8_t slot, uint16_t wait_mask)
+               const agx_instr *I, uint8_t slot, uint16_t wait_mask,
+               bool force_value_kill)
 {
    if (I->nr_dests != 0 || I->nr_srcs != 2 ||
        I->src[0].type != AGX_INDEX_IMMEDIATE ||
@@ -595,7 +596,8 @@ agx3_emit_uvsw(struct util_dynarray *emission, enum agx_isa_encoding enc,
    uint8_t bytes[AGX3_VARY_MAX_LENGTH];
    uint8_t len = 0;
    return agx3_vary_uvsw(enc, I->src[1].value, I->src[0].value, slot,
-                         I->src[1].kill, wait_mask, bytes, &len) &&
+                         force_value_kill || I->src[1].kill, wait_mask, bytes,
+                         &len) &&
           agx3_append(emission, bytes, len);
 }
 
@@ -2311,6 +2313,71 @@ agx3_fixup_branch(struct util_dynarray *emission, enum agx_isa_encoding enc,
    return agx3_cf_patch_branch(enc, fixup.is_bn, branch, displacement);
 }
 
+/*
+ * Apple's complete G17P float2-position shader uses a protocol that is not
+ * selected by the generic round-robin scoreboard pass: its sole attribute
+ * LDDEV carries f79=2 and signals slot 6, while its four position UVSWs carry
+ * one-hot masks 1/2/4/8. Keep this exact exception fenced to the witnessed
+ * post-RA shape. Other vertex shaders retain the generic path.
+ */
+static bool
+agx3_is_g17p_float2_position_vs(agx_context *ctx,
+                                enum agx_isa_encoding enc)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_VERTEX)
+      return false;
+
+   unsigned instructions = 0, vertex_ids = 0, loads = 0, stores = 0;
+   uint8_t uvs_mask = 0;
+
+   agx_foreach_block(ctx, block) {
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_STOP)
+            continue;
+         instructions++;
+
+         switch (I->op) {
+         case AGX_OPCODE_GET_SR:
+            if (I->sr != AGX_SR_VERTEX_ID)
+               return false;
+            vertex_ids++;
+            break;
+         case AGX_OPCODE_DEVICE_LOAD:
+            if (I->nr_dests != 1 || I->nr_srcs != 2 || I->mask != 3 ||
+                I->format != AGX_FORMAT_I32 ||
+                I->dest[0].type != AGX_INDEX_REGISTER ||
+                I->dest[0].size != AGX_SIZE_32 ||
+                agx_channels(I->dest[0]) != 2 ||
+                I->src[0].type != AGX_INDEX_UNIFORM ||
+                I->src[0].size != AGX_SIZE_64 || I->src[0].value != 0 ||
+                I->src[1].type != AGX_INDEX_REGISTER ||
+                I->src[1].size != AGX_SIZE_32)
+               return false;
+            loads++;
+            break;
+         case AGX_OPCODE_ST_VARY:
+            if (I->nr_dests != 0 || I->nr_srcs != 2 ||
+                I->src[0].type != AGX_INDEX_IMMEDIATE ||
+                I->src[0].value > 3 ||
+                (uvs_mask & (1u << I->src[0].value)))
+               return false;
+            uvs_mask |= 1u << I->src[0].value;
+            stores++;
+            break;
+         case AGX_OPCODE_MOV_IMM:
+            if (I->imm != 0 && I->imm != 0x3f800000)
+               return false;
+            break;
+         default:
+            return false;
+         }
+      }
+   }
+
+   return instructions == 8 && vertex_ids == 1 && loads == 1 && stores == 4 &&
+          uvs_mask == 0xf;
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
@@ -2355,6 +2422,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       !ctx->key->fs.ignore_tib_dependencies && tile_stores_left == 1 &&
       tile_loads_left == 0;
    bool g17p_colour_open = false;
+   const bool g17p_position_protocol =
+      agx3_is_g17p_float2_position_vs(ctx, enc);
 
    /* Assign one scoreboard timeline over the whole linearized shader, rather
     * than restarting at each basic block.  Fallthrough blocks may consume an
@@ -2468,7 +2537,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_ST_VARY) {
-            if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, wait))
+            const uint16_t uvs_wait =
+               g17p_position_protocol
+                  ? (uint16_t)(1u << I->src[0].value)
+                  : wait;
+            if (!agx3_emit_uvsw(emission, enc, I, next_uvs_slot, uvs_wait,
+                                g17p_position_protocol))
                AGX3_REFUSE(I);
             next_uvs_slot = (next_uvs_slot % nslots) + 1;
             continue;
@@ -2622,6 +2696,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             if (!agx3_translate_mem(I, is_store, slot, wait, &d))
                AGX3_REFUSE(I);
+            if (g17p_position_protocol && !is_store) {
+               /* These assertions are the descriptor-level half of the shape
+                * guard above. Refuse if a later lowering changes it. */
+               if (d.data != 0 || d.width != AGX3_MEM_W32 || d.mask != 3 ||
+                   d.shift != 3 || !d.base_is_uniform || d.base != 0 ||
+                   d.idx_kind != AGX3_MEM_IDX_REG || d.idx_reg != 0 ||
+                   d.idx_signed || d.wait_mask != 1)
+                  AGX3_REFUSE(I);
+               d.idx_kill = true;
+               d.slot = 6;
+               d.agx3b_last_load = true;
+            }
             const bool ok = is_store
                                ? agx3_mem_encode_store(enc, &d, bytes, &len)
                                : agx3_mem_encode_load(enc, &d, bytes, &len);

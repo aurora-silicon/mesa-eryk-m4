@@ -116,9 +116,14 @@ agx3_mem_encode_load_form(enum agx_isa_encoding enc,
        (enc == AGX_ISA_ENCODING_AGX3B ? ep != 0 : ep > 5))
       return false;
 
-   struct agx3_field_kv base[6];
+   struct agx3_field_kv base[7];
    unsigned nbase;
    mem_baseline(enc, true, base, &nbase);
+   if (d->agx3b_last_load) {
+      if (enc != AGX_ISA_ENCODING_AGX3B)
+         return false;
+      base[nbase++] = (struct agx3_field_kv)KV(79, 2);
+   }
 
    struct agx3_field_kv ov[32];
    unsigned n = common_overrides(d, /*off*/ 76, /*shift*/ 75, /*mask*/ 73, ov);
@@ -138,7 +143,7 @@ bool
 agx3_mem_encode_store(enum agx_isa_encoding enc, const struct agx3_mem_desc *d,
                       uint8_t out[AGX3_MEM_MAX_LENGTH], uint8_t *len)
 {
-   if (!common_ok(d))
+   if (!common_ok(d) || d->agx3b_last_load)
       return false;
 
    struct agx3_field_kv base[6];

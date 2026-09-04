@@ -47,6 +47,77 @@ static const uint8_t g17p_flat_colour[] = {
    0x0e, 0x00, 0x00, 0x00,
 };
 
+/* Apple's complete G17P float2-position VS. Apple stages the four position
+ * components in distinct registers; Mesa legally reuses registers, so the
+ * protocol comparison below normalizes only each UVSW value operand. */
+static const uint8_t apple_g17p_float2_vs[] = {
+   0x0c, 0xdd, 0x10, 0x06,
+   0x67, 0x10, 0x44, 0x00, 0x00, 0x80, 0x20, 0x00, 0x59, 0x01, 0x00, 0x40,
+   0x48, 0x00,
+   0x3b, 0x00, 0x29, 0xc4,
+   0x2b, 0x03, 0x2f, 0x00, 0x42, 0x00, 0x00, 0x04, 0x00, 0x00,
+   0x1b, 0x00, 0x26, 0x00, 0x40, 0x00, 0x00, 0x08, 0x00, 0x00,
+   0x0c, 0x80, 0x23, 0x3e, 0x00, 0x00, 0x00, 0x0c, 0x40, 0x60,
+   0x57, 0x16, 0x54, 0x06, 0x00, 0x40, 0x48, 0x00,
+   0x57, 0x26, 0x54, 0x04, 0x20, 0x40, 0x49, 0x00,
+   0x57, 0x46, 0x54, 0x02, 0x40, 0x40, 0x4a, 0x00,
+   0x57, 0x86, 0x54, 0x00, 0x60, 0x40, 0x4b, 0x00,
+   0x0e, 0x00, 0x00, 0x00,
+};
+
+static const uint8_t mesa_g17p_float2_vs[] = {
+   0x0c, 0xdd, 0x10, 0x06,
+   0x67, 0x10, 0x44, 0x00, 0x00, 0x80, 0x20, 0x00, 0x59, 0x01, 0x00, 0x40,
+   0x48, 0x00,
+   0x57, 0x16, 0x54, 0x00, 0x00, 0x40, 0x48, 0x00,
+   0x57, 0x26, 0x54, 0x02, 0x20, 0x40, 0x49, 0x00,
+   0x0b, 0x00, 0x00, 0x00,
+   0x57, 0x46, 0x54, 0x00, 0x40, 0x40, 0x4a, 0x00,
+   0x0c, 0x80, 0x02, 0x3e, 0x00, 0x00, 0x00, 0x0c,
+   0x57, 0x86, 0x54, 0x00, 0x60, 0x40, 0x4b, 0x00,
+   0x0e, 0x00, 0x00, 0x00,
+};
+
+struct g17p_vs_protocol {
+   uint8_t vertex_id[4];
+   uint8_t attribute_load[14];
+   uint8_t position_write[4][8];
+   uint8_t end[4];
+};
+
+static void
+normalize_g17p_vs(const uint8_t *binary, bool apple,
+                  struct g17p_vs_protocol *protocol)
+{
+   static const uint8_t apple_uvsw[] = {52, 60, 68, 76};
+   static const uint8_t mesa_uvsw[] = {18, 26, 38, 54};
+   const uint8_t *uvsw = apple ? apple_uvsw : mesa_uvsw;
+
+   memcpy(protocol->vertex_id, binary, sizeof(protocol->vertex_id));
+   memcpy(protocol->attribute_load, binary + 4,
+          sizeof(protocol->attribute_load));
+   for (unsigned i = 0; i < ARRAY_SIZE(protocol->position_write); ++i) {
+      memcpy(protocol->position_write[i], binary + uvsw[i],
+             sizeof(protocol->position_write[i]));
+      /* f5 is the physical source register. Apple keeps r3/r2/r1/r0 while
+       * Mesa reuses r0/r1/r0/r0; that is allocation, not protocol. */
+      protocol->position_write[i][3] = 0;
+   }
+   memcpy(protocol->end, binary + (apple ? 84 : 62), sizeof(protocol->end));
+}
+
+static bool
+g17p_vs_matches_apple(const uint8_t *binary, size_t size)
+{
+   if (size != sizeof(mesa_g17p_float2_vs))
+      return false;
+
+   struct g17p_vs_protocol apple = {0}, mesa = {0};
+   normalize_g17p_vs(apple_g17p_float2_vs, true, &apple);
+   normalize_g17p_vs(binary, false, &mesa);
+   return memcmp(&apple, &mesa, sizeof(apple)) == 0;
+}
+
 /* AIL_ISA_FORMAT_U8NORM: the tilebuffer format for an RGBA8_UNORM target. */
 #define AGX3_TEST_TIB_FORMAT PIPE_FORMAT_R8_UNORM
 
@@ -153,6 +224,34 @@ build_vs_uniform_attribute(void)
       nir_store_uvs_agx(&b, nir_u2f32(&b, nir_channel(&b, attr, c)),
                         nir_imm_intN_t(&b, c, 16));
    }
+
+   b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
+/* The exact live G17P render-only shape: one float2 VBO attribute indexed by
+ * vertex_id, expanded to a four-component position with z=0 and w=1. */
+static nir_shader *
+build_vs_g17p_float2_position(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "G17P float2 position VS");
+
+   nir_def *base = nir_load_preamble(&b, 1, 64, .base = 0);
+   nir_def *index = nir_load_vertex_id(&b);
+   nir_def *attr = nir_load_agx(&b, 2, 32, base, index, .access = 0, .base = 1,
+                                .format = PIPE_FORMAT_R32_UINT,
+                                .sign_extend = false);
+   nir_def *position[] = {
+      nir_channel(&b, attr, 0),
+      nir_channel(&b, attr, 1),
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 1.0f),
+   };
+
+   for (unsigned c = 0; c < ARRAY_SIZE(position); ++c)
+      nir_store_uvs_agx(&b, position[c], nir_imm_intN_t(&b, c, 16));
 
    b.shader->info.outputs_written = VARYING_BIT_POS;
    agx_preprocess_nir(b.shader);
@@ -680,6 +779,7 @@ struct agx3_graphics_case {
    uint8_t expected_leading_sr;
    const uint8_t *expected_g17p_binary;
    size_t expected_g17p_binary_size;
+   bool compare_apple_g17p_vs;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -689,6 +789,10 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-attribute-fetch", build_vs_attribute, true,
     .expected_leading_sr = 0xdd},
    {"vs-uniform-attribute-fetch", build_vs_uniform_attribute, true},
+   {"vs-g17p-float2-position", build_vs_g17p_float2_position, true,
+    .expected_g17p_binary = mesa_g17p_float2_vs,
+    .expected_g17p_binary_size = sizeof(mesa_g17p_float2_vs),
+    .compare_apple_g17p_vs = true},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
     AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
@@ -810,7 +914,16 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
                          c->expected_g17p_binary_size) == 0;
          if (!result) {
             fprintf(stderr,
-                    "%s %s: colour tile protocol/resource metadata mismatch\n",
+                    "%s %s: G17P binary/resource metadata mismatch\n",
+                    enc_name(enc), c->name);
+         }
+      }
+
+      if (result && enc == AGX_ISA_ENCODING_AGX3B &&
+          c->compare_apple_g17p_vs) {
+         result = g17p_vs_matches_apple(part.binary, part.info.binary_size);
+         if (!result) {
+            fprintf(stderr, "%s %s: Apple-88 VS protocol mismatch\n",
                     enc_name(enc), c->name);
          }
       }

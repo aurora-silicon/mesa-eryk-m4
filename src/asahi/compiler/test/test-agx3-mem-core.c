@@ -57,6 +57,47 @@ main(void)
       }
    }
 
+   /* Apple's complete G17P float2-position VS: its sole/final LDDEV uses
+    * normalized f79=2, signals slot 6, and waits for vertex_id in slot 1. */
+   {
+      static const uint8_t expected[] = {
+         0x67, 0x10, 0x44, 0x00, 0x00, 0x80, 0x20,
+         0x00, 0x59, 0x01, 0x00, 0x40, 0x48, 0x00,
+      };
+      struct agx3_mem_desc d = {
+         .data = 0,
+         .width = AGX3_MEM_W32,
+         .mask = 3,
+         .shift = 3,
+         .base_is_uniform = true,
+         .base = 0,
+         .idx_kind = AGX3_MEM_IDX_REG,
+         .idx_reg = 0,
+         .idx_kill = true,
+         .slot = 6,
+         .wait_mask = 1,
+         .agx3b_last_load = true,
+      };
+      uint8_t out[AGX3_MEM_MAX_LENGTH];
+      uint8_t len = 0;
+      const bool ok = agx3_mem_encode_load(AGX_ISA_ENCODING_AGX3B, &d, out,
+                                           &len);
+      if (!ok || len != sizeof(expected) || memcmp(out, expected, len)) {
+         fprintf(stderr, "FAIL G17P final vertex LDDEV\n");
+         fail++;
+      } else {
+         pass++;
+      }
+
+      if (agx3_mem_encode_load(AGX_ISA_ENCODING_AGX3C, &d, out, &len) ||
+          agx3_mem_encode_store(AGX_ISA_ENCODING_AGX3B, &d, out, &len)) {
+         fprintf(stderr, "FAIL G17P final-load guard\n");
+         fail++;
+      } else {
+         pass += 2;
+      }
+   }
+
    if (fail) {
       fprintf(stderr, "agx3_mem_core: %u of %zu failed\n", fail, mem_vec_count);
       return 1;
