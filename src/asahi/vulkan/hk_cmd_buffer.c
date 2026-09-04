@@ -1637,11 +1637,67 @@ clear_attachment_as_image(struct hk_cmd_buffer *cmd,
                   att->clear_colour, &range, false /* partially clear 3D */);
 }
 
-void
+bool
 hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd)
 {
    struct hk_cs *cs = cmd->current_cs.gfx;
    struct hk_rendering_state *render = &cmd->state.gfx.render;
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+
+   /* G17P already has native BG/EOT programs for the supported render-target
+    * clear path, but no precompiled fill_uint4 for the compute replacement
+    * below. Do not discard the working graphics representation and record an
+    * unsupported compute command instead. Once that precompiled shader is
+    * available, the normal optimization becomes eligible again.
+    *
+    * BeginRendering retained the attachments, initialized TA/PPP and selected
+    * the BG clear; EndRendering selected the final EOT. process_empty_tiles
+    * is the existing clear-and-store predicate, not a fabricated draw. The
+    * common finalizer will append the native VDM terminator without uploading
+    * any ordinary vertex or fragment program.
+    */
+   if (dev->dev.chip == AGX_CHIP_G17P && cs->cr.process_empty_tiles &&
+       !agx_get_precompiled(&dev->bg_eot, LIBAGX_FILL_UINT4)) {
+      /* Normally supplied by the first draw. A clear has no application
+       * sample-location state; use the attachment sample count and leave
+       * has_sample_locations uncommitted, just like other meta operations.
+       */
+      cs->ppp_multisamplectl =
+         hk_default_sample_positions(MAX2(cs->tib.nr_samples, 1));
+
+      /* The render submission still binds these arrays even without PPP draw
+       * state referencing them. Give it an owned, neutral full-frame entry
+       * rather than a zero-byte upload. Render-area handling and empty-tile
+       * selection remain in the existing render setup.
+       */
+      if (cs->scissor.size == 0) {
+         uint8_t *scissor =
+            util_dynarray_grow_bytes(&cs->scissor, 1, AGX_SCISSOR_LENGTH);
+         agx_pack(scissor, SCISSOR, cfg) {
+            cfg.min_x = cfg.min_y = 0;
+            cfg.max_x = cs->cr.width;
+            cfg.max_y = cs->cr.height;
+            cfg.min_z = 0.0f;
+            cfg.max_z = 1.0f;
+         }
+      }
+
+      if (cs->depth_bias.size == 0) {
+         void *bias = util_dynarray_grow_bytes(&cs->depth_bias, 1,
+                                              AGX_DEPTH_BIAS_LENGTH);
+         memset(bias, 0, AGX_DEPTH_BIAS_LENGTH);
+      }
+
+      if (hk_g17p_launch_trace_enabled()) {
+         fprintf(stderr, "G17P clear-only graphics: %ux%u samples=%u "
+                         "sample_control=%#x process_empty_tiles=1 "
+                         "scissor=%u zbias=%u\n",
+                 cs->cr.width, cs->cr.height, MAX2(cs->tib.nr_samples, 1),
+                 cs->ppp_multisamplectl, cs->scissor.size,
+                 cs->depth_bias.size);
+      }
+      return false;
+   }
 
    for (unsigned i = 0; i < render->color_att_count; ++i) {
       clear_attachment_as_image(cmd, render, &render->color_att[i], ~0);
@@ -1658,4 +1714,5 @@ hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd)
     */
    list_del(&cs->node);
    hk_cs_destroy(cs);
+   return true;
 }

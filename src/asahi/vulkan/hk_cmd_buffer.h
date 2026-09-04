@@ -774,16 +774,19 @@ hk_cmd_buffer_end_compute(struct hk_cmd_buffer *cmd)
    hk_cmd_buffer_end_compute_internal(cmd, &cmd->current_cs.cs);
 }
 
-void hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd);
+/* Return true when the VDM was replaced/removed, false when it needs normal
+ * graphics finalization (for example, a native background clear). */
+bool hk_optimize_empty_vdm(struct hk_cmd_buffer *cmd);
 
 static void
 hk_cmd_buffer_end_graphics(struct hk_cmd_buffer *cmd)
 {
    struct hk_cs *cs = cmd->current_cs.gfx;
 
-   if (cs && cs->stats.cmds == 0) {
-      hk_optimize_empty_vdm(cmd);
-   } else if (cs) {
+   if (cs && cs->stats.cmds == 0 && hk_optimize_empty_vdm(cmd))
+      cs = NULL;
+
+   if (cs) {
       struct hk_device *dev = hk_cmd_buffer_device(cmd);
       const bool full_usc_state = dev->dev.chip == AGX_CHIP_G17P;
       /* Scissor and depth bias arrays are staged to dynamic arrays on the
