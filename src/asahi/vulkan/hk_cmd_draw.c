@@ -2750,23 +2750,22 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       return false;
 
    const uint64_t fragment_program = hk_upload_usc_words(cmd, fs, linked_fs);
-   if (!fragment_program || fragment_program < dev->dev.shader_base ||
-       fragment_program - dev->dev.shader_base > UINT32_MAX ||
-       (fragment_program & UINT64_C(0x3f)) != 0 ||
-       gfx->varyings > UINT32_MAX)
+   if (!fragment_program || (fragment_program & UINT64_C(0x3f)) != 0 ||
+       fragment_program >= (UINT64_C(1) << 48) ||
+       linked_fs->b.cf.nr_bindings != 0 || gfx->varyings != 0)
       return false;
-
-   uint32_t resource_counts;
-   static_assert(sizeof(resource_counts) == sizeof(linked_fs->fs_counts),
-                 "HAL200 fragment counts are one word");
-   memcpy(&resource_counts, &linked_fs->fs_counts, sizeof(resource_counts));
 
    struct agx_ppp_hal200_graphics_core fs_record;
    const struct agx_ppp_hal200_fragment_fields fs_fields = {
-      .resource_counts = resource_counts,
-      .pipeline = agx_usc_addr(&dev->dev, fragment_program),
-      .cf_bindings = (uint32_t)gfx->varyings,
-      .control = AGX_PPP_HAL200_FS_DIRECT_CONTROL,
+      /* Valid G1a vary0 has no FragmentShaderIteration entries. Apple's
+       * ProgramVaryingTable therefore emits no VIT block and both of these
+       * fields are zero. Keep the bounded path closed to varyings above. */
+      .resource_counts = 0,
+      .varying_table = 0,
+      .unknown_0c = 0,
+      .stage_program = fragment_program,
+      .stage_program_template = 0,
+      .flags = 0,
    };
 
    struct agx_ppp_hal200_graphics_core output_record;
@@ -2817,14 +2816,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                          &w_cull2_record))
       return false;
 
-   /* Preserve the physical +0x00..+0x73 layout from Metal.  The output
-    * window at +0x1c intentionally overlaps the primary header/control at
-    * +0x30/+0x34, and the unbound +0x14 metadata pair is part of the FS pool.
+   /* Preserve the physical +0x00..+0x73 layout from Metal.  The complete
+    * 28-byte FS record occupies +0x00..+0x1b; in particular, +0x14 is the
+    * low stage-program word and must not be overlaid by the old anonymous
+    * metadata guess.  The output window at +0x1c intentionally overlaps the
+    * primary header/control at +0x30/+0x34.
     */
+   static_assert(AGX_PPP_HAL200_FS_LENGTH == 0x1c,
+                 "HAL200 FS must end where the output record begins");
    uint8_t bind_group[0x80] = {0};
-   const uint32_t direct_metadata = UINT32_C(0x00004e19);
    memcpy(&bind_group[0x00], fs_record.bytes, fs_record.length);
-   memcpy(&bind_group[0x14], &direct_metadata, sizeof(direct_metadata));
    memcpy(&bind_group[0x1c], output_record.bytes, output_record.length);
    memcpy(&bind_group[0x30], primary_record.bytes, primary_record.length);
    memcpy(&bind_group[0x4c], secondary_record.bytes, secondary_record.length);

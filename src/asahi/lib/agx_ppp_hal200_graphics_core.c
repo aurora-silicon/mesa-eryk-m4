@@ -4,6 +4,7 @@
  */
 
 #include "agx_ppp_hal200_graphics_core.h"
+#include "agx_vdm_state_core.h"
 
 #include <string.h>
 
@@ -30,7 +31,7 @@ bundle_layout(enum agx_ppp_hal200_graphics_bundle bundle, uint32_t *header,
    switch (bundle) {
    case AGX_PPP_HAL200_GRAPHICS_FS:
       *header = AGX_PPP_HAL200_FS_HEADER;
-      *payload_words = 4;
+      *payload_words = 6;
       return true;
    case AGX_PPP_HAL200_GRAPHICS_OUTPUT:
       *header = AGX_PPP_HAL200_OUTPUT_HEADER;
@@ -121,16 +122,23 @@ agx_ppp_hal200_fragment_core_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!fields || !out || (fields->pipeline & UINT32_C(0x3f)) != 0 ||
-       (fields->cf_bindings & UINT32_C(0x3)) != 0)
+   if (!fields || !out || (fields->varying_table & UINT32_C(0x3f)) != 0)
+      return false;
+
+   struct agx_vdm_state_vertex_pipeline_pair stage_program;
+   if (!agx_vdm_state_vertex_pipeline_pair_pack(
+          chip, fields->stage_program, fields->stage_program_template,
+          &stage_program))
       return false;
 
    const struct agx_ppp_hal200_graphics_fields raw = {
       .words = {
          fields->resource_counts,
-         fields->pipeline,
-         fields->cf_bindings,
-         fields->control,
+         fields->varying_table,
+         fields->unknown_0c,
+         load_le32(&stage_program.bytes[0]),
+         load_le32(&stage_program.bytes[4]),
+         fields->flags,
       },
    };
    return agx_ppp_hal200_graphics_core_pack(

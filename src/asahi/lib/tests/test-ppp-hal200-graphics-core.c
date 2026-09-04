@@ -30,34 +30,55 @@ check(enum agx_ppp_hal200_graphics_bundle bundle, const uint32_t *words,
 int
 main(void)
 {
-   static const uint32_t fs_words[] = {0x00020100, 0x000004c0, 0, 0x01000000};
-   static const uint8_t fs_expected[] = {
-      0x00, 0x00, 0x80, 0x00, 0x00, 0x01, 0x02, 0x00, 0xc0, 0x04,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+   static const uint32_t fs_words[] = {
+      0x00020100, 0x000004c0, 0, 0x01000000, 0x00004c19, 0,
    };
-   check(AGX_PPP_HAL200_GRAPHICS_FS, fs_words, 4, fs_expected,
+   static const uint8_t fs_expected[] = {
+      0x00, 0x00, 0x80, 0x00, 0x00, 0x01, 0x02, 0x00,
+      0xc0, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x01, 0x19, 0x4c, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+   };
+   check(AGX_PPP_HAL200_GRAPHICS_FS, fs_words, 6, fs_expected,
          sizeof(fs_expected));
 
-   /* The live fragment path must put the uploaded Ioto program in word 1,
-    * rather than retaining the zero from the source-control witness. */
+   /* Valid G1a vary0 is the exact no-varying shape: it has no VIT allocation,
+    * and its separately uploaded Ioto stage program is the split pointer in
+    * words 4/5. */
+   static const uint8_t no_vary_expected[] = {
+      0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+      0x19, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
    const struct agx_ppp_hal200_fragment_fields live_fs = {
-      .resource_counts = 0x00020100,
-      .pipeline = 0x000004c0,
-      .cf_bindings = 0,
-      .control = AGX_PPP_HAL200_FS_DIRECT_CONTROL,
+      .resource_counts = 0,
+      .varying_table = 0,
+      .unknown_0c = 0,
+      .stage_program = UINT64_C(0x10000130640),
+      .stage_program_template = 0,
+      .flags = 0,
    };
    struct agx_ppp_hal200_graphics_core live_fs_packed;
    assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &live_fs,
                                             &live_fs_packed));
-   assert(live_fs_packed.length == sizeof(fs_expected));
-   assert(memcmp(live_fs_packed.bytes, fs_expected, sizeof(fs_expected)) == 0);
+   assert(live_fs_packed.length == sizeof(no_vary_expected));
+   assert(memcmp(live_fs_packed.bytes, no_vary_expected,
+                 sizeof(no_vary_expected)) == 0);
 
    struct agx_ppp_hal200_fragment_fields bad_fs = live_fs;
-   bad_fs.pipeline |= 4;
+   bad_fs.varying_table = 4;
    assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
-   bad_fs.cf_bindings |= 1;
+   bad_fs.stage_program |= 4;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+   bad_fs = live_fs;
+   bad_fs.stage_program = UINT64_C(1) << 48;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+   bad_fs = live_fs;
+   bad_fs.stage_program_template = 0x00400000;
    assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
                                              &live_fs_packed));
 

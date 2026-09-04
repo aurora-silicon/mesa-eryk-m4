@@ -522,8 +522,9 @@ if with_tests
     executable(
       'asahi-ppp-hal200-graphics-core',
       files(
-        'agx_ppp_hal200_graphics_core.c',
-        'tests/test-ppp-hal200-graphics-core.c',
+         'agx_ppp_hal200_graphics_core.c',
+         'agx_vdm_state_core.c',
+         'tests/test-ppp-hal200-graphics-core.c',
       ),
       include_directories : [inc_include, inc_src, inc_asahi],
     ),
