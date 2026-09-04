@@ -123,6 +123,9 @@ struct hk_root_descriptor_table {
 
    /* Start index in dynamic_buffers where each set starts */
    uint8_t set_dynamic_buffer_start[HK_MAX_SETS];
+
+   /* Process-local on G17P; loaded through the root instead of cached code. */
+   uint64_t printf_buffer_address;
 };
 
 /* helper macro for computing root descriptor byte offsets */

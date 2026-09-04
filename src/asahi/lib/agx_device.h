@@ -173,10 +173,11 @@ typedef struct {
                    enum agx_va_flags flags);
 
    /*
-    * Optional fixed-ABI BO hook.  AGX shaders bake the zero, scratch and
-    * printf addresses into code.  On WDDM these mappings must name one shared
-    * backing allocation across every UMD in the process; ordinary backends
-    * create and bind private BOs in agx_device.c as before.
+    * Optional fixed-ABI BO hook.  AGX2 shaders bake the zero, scratch and
+    * printf addresses into code.  G17P instead carries printf through runtime
+    * root state, leaving only zero, scratch, and its native render context as
+    * fixed process mappings.  On WDDM fixed mappings must name one shared
+    * backing allocation across every UMD in the process.
     */
    struct agx_bo *(*bo_alloc_fixed)(struct agx_device *dev, size_t size,
                                     enum agx_bo_flags flags, uint64_t fixed_va,
@@ -335,6 +336,7 @@ struct agx_device {
    } user_timestamp_to_ns;
 
    struct u_printf_ctx printf;
+   uint64_t printf_buffer_address;
 };
 
 static inline void

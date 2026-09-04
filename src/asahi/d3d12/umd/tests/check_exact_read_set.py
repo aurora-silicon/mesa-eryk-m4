@@ -127,7 +127,8 @@ for token in (
     "device->oclqry_bo",
     "AGX_ZERO_PAGE_ADDRESS",
     "AGX_SCRATCH_PAGE_ADDRESS",
-    "LIBAGX_PRINTF_BUFFER_ADDRESS",
+    "dev->printf_buffer_address",
+    "AGX_G17P_RENDER_CONTEXT_BASE",
     "op->read_set_complete = complete",
     "op->exact_read_range_count = 0",
 ):

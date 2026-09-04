@@ -812,6 +812,7 @@ uint64_t
 hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
                           VkPipelineBindPoint bind_point)
 {
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_descriptor_state *desc = hk_get_descriptors_state(cmd, bind_point);
    struct hk_root_descriptor_table *root = &desc->root;
 
@@ -820,6 +821,7 @@ hk_cmd_buffer_upload_root(struct hk_cmd_buffer *cmd,
       return 0;
 
    root->root_desc_addr = root_ptr.gpu;
+   root->printf_buffer_address = dev->dev.printf_buffer_address;
 
    memcpy(root_ptr.cpu, root, sizeof(*root));
    return root_ptr.gpu;

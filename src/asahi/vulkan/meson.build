@@ -84,6 +84,26 @@ hk_files = files(
 
 if with_tests
   test(
+    'hk_printf_root',
+    executable(
+      'hk_printf_root_test',
+      files('tests/test-hk-printf-root.c',
+            'hk_nir_lower_descriptors.c'),
+      include_directories : [
+        include_directories('.', '../libagx', '../../gallium/include',
+                            '../../gallium/auxiliary', '../../vulkan/runtime',
+                            '../../vulkan/util', '../../vulkan/wsi',
+                            '../../compiler/spirv', '../../virtio/virtio-gpu',
+                            '../../virtio/vdrm'),
+        inc_include, inc_src, inc_asahi,
+      ],
+      dependencies : [idep_nir, idep_mesautil],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'hk_g17p_meta_copy_core',
     executable(
       'hk_g17p_meta_copy_core_test',

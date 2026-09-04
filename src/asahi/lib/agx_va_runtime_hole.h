@@ -25,7 +25,7 @@
 
 /* Host command-pool BO aliases occupy a deliberately small, low compact
  * aperture. Native VDM starts range from +0x18000 through +0x10b8000; leave
- * the fixed render context/printf pages below +0x200000 and retain headroom
+ * the fixed render context below +0x200000 and retain headroom
  * through the exclusive +0x02000000 hardware field limit. */
 #define AGX_G17P_VDM_ALIAS_OFFSET_START UINT64_C(0x00200000)
 #define AGX_G17P_VDM_ALIAS_OFFSET_END   UINT64_C(0x02000000)

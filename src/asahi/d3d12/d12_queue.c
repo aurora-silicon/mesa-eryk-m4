@@ -1161,8 +1161,16 @@ d12_queue_op_build_read_set(struct d12_queue_op *op,
    struct agx_bo *printf_bo = dev->printf.bo;
    if (printf_bo) {
       d12_queue_op_capture_bo(op, printf_bo);
+      complete &= printf_bo->va
+                     ? d12_queue_read_set_add_bo(op, printf_bo)
+                     : d12_queue_read_set_add_range(
+                          op, dev->printf_buffer_address, printf_bo->size);
+   }
+   if (dev->g17p_render_context_bo) {
+      d12_queue_op_capture_bo(op, dev->g17p_render_context_bo);
       complete &= d12_queue_read_set_add_range(
-         op, LIBAGX_PRINTF_BUFFER_ADDRESS, printf_bo->size);
+         op, AGX_G17P_RENDER_CONTEXT_BASE,
+         dev->g17p_render_context_bo->size);
    }
 
    if (list->reads.initialized) {

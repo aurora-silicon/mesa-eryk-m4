@@ -4082,19 +4082,44 @@ agx_preprocess_nir(nir_shader *nir)
 }
 
 static bool
-lower_printf_buffer(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *_)
+lower_printf_buffer(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
+   const struct agx_device_key *dev = data;
    uint64_t value = 0;
-   if (intr->intrinsic == nir_intrinsic_load_printf_buffer_address)
+   if (intr->intrinsic == nir_intrinsic_load_printf_buffer_address) {
+      /* AGX3 frontends must publish the process-local printf address through
+       * runtime state.  Baking it here would poison serialized shader caches;
+       * the preflight below rejects an address intrinsic that escaped that
+       * lowering.  AGX2 retains its established fixed-address ABI. */
+      if (dev->encoding != AGX_ISA_ENCODING_AGX2)
+         return false;
       value = LIBAGX_PRINTF_BUFFER_ADDRESS;
-   else if (intr->intrinsic == nir_intrinsic_load_printf_buffer_size)
+   } else if (intr->intrinsic == nir_intrinsic_load_printf_buffer_size) {
       value = LIBAGX_PRINTF_BUFFER_SIZE;
-   else
+   } else {
       return false;
+   }
 
    b->cursor = nir_before_instr(&intr->instr);
    nir_def_replace(&intr->def, nir_imm_intN_t(b, value, intr->def.bit_size));
    return true;
+}
+
+static bool
+has_unlowered_printf_address(const nir_shader *nir)
+{
+   nir_foreach_function_impl(impl, nir) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic &&
+                nir_instr_as_intrinsic(instr)->intrinsic ==
+                   nir_intrinsic_load_printf_buffer_address)
+               return true;
+         }
+      }
+   }
+
+   return false;
 }
 
 bool
@@ -4107,6 +4132,11 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
    struct util_dynarray binary = UTIL_DYNARRAY_INIT;
 
    memset(out, 0, sizeof *out);
+
+   if ((key->dev.encoding == AGX_ISA_ENCODING_AGX3B ||
+        key->dev.encoding == AGX_ISA_ENCODING_AGX3C) &&
+       has_unlowered_printf_address(nir))
+      return false;
 
    assert(nir->info.io_lowered &&
           "agx_preprocess_nir is called first, then the shader is specalized,"
@@ -4127,7 +4157,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
       info->tag_write_disable = !nir->info.writes_memory;
 
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_printf_buffer,
-            nir_metadata_control_flow, NULL);
+            nir_metadata_control_flow, &key->dev);
 
    NIR_PASS(_, nir, nir_lower_frag_coord_to_pixel_coord);
    NIR_PASS(_, nir, nir_lower_vars_to_ssa);

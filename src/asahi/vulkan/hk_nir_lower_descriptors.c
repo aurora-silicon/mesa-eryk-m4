@@ -584,6 +584,9 @@ try_lower_intrin(nir_builder *b, nir_intrinsic_instr *intrin,
    case nir_intrinsic_load_view_index:
       return lower_sysval_to_root_table(b, intrin, draw.view_index);
 
+   case nir_intrinsic_load_printf_buffer_address:
+      return lower_sysval_to_root_table(b, intrin, printf_buffer_address);
+
    case nir_intrinsic_image_deref_load:
    case nir_intrinsic_image_deref_sparse_load:
    case nir_intrinsic_image_deref_store:

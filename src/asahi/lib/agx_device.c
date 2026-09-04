@@ -834,8 +834,9 @@ agx_open_device(void *memctx, struct agx_device *dev)
     */
    uint64_t reservation = (1ull << 36);
 
-   /* Also reserve VA space for the printf buffer at a stable address, avoiding
-    * the need for relocs in precompiled shaders.
+   /* Keep the established AGX2 printf address outside the ordinary heap.
+    * G17P publishes its allocator-owned address through runtime root state,
+    * but retaining the same floor keeps the robustness carveout unchanged.
     */
    assert(reservation == LIBAGX_PRINTF_BUFFER_ADDRESS);
    reservation += LIBAGX_PRINTF_BUFFER_SIZE;
@@ -1235,17 +1236,32 @@ agx_open_device(void *memctx, struct agx_device *dev)
       dev->g17p_render_context_bo = context;
    }
 
-   const uint64_t printf_address =
+   struct agx_bo *bo =
       dev->chip == AGX_CHIP_G17P
-         ? AGX_G17P_RENDER_CONTEXT_BASE + UINT64_C(0x100000)
-         : LIBAGX_PRINTF_BUFFER_ADDRESS;
-   struct agx_bo *bo = agx_create_fixed_bo(
-      dev, LIBAGX_PRINTF_BUFFER_SIZE, AGX_BO_WRITEBACK, printf_address,
-      DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "Printf/abort");
+         ? agx_bo_create(dev, LIBAGX_PRINTF_BUFFER_SIZE, 0, AGX_BO_WRITEBACK,
+                         "Printf/abort")
+         : agx_create_fixed_bo(
+              dev, LIBAGX_PRINTF_BUFFER_SIZE, AGX_BO_WRITEBACK,
+              LIBAGX_PRINTF_BUFFER_ADDRESS,
+              DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE, "Printf/abort");
    if (bo == NULL) {
       fprintf(stderr, "Failed to bind printf buffer");
       return false;
    }
+
+   if (dev->chip == AGX_CHIP_G17P &&
+       (bo->va == NULL || dev->main_heap_size < LIBAGX_PRINTF_BUFFER_SIZE ||
+        bo->va->addr < dev->main_heap_base ||
+        bo->va->addr - dev->main_heap_base >
+           dev->main_heap_size - LIBAGX_PRINTF_BUFFER_SIZE)) {
+      fprintf(stderr, "G17P printf buffer escaped the allocator-owned heap");
+      agx_bo_unreference(dev, bo);
+      return false;
+   }
+
+   dev->printf_buffer_address =
+      dev->chip == AGX_CHIP_G17P ? bo->va->addr
+                                 : LIBAGX_PRINTF_BUFFER_ADDRESS;
 
    u_printf_init(&dev->printf, bo, agx_bo_map(bo));
 

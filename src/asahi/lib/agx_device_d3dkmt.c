@@ -320,7 +320,7 @@ out:
  * includes the PID; no handle is ever consumed by another process.
  * ------------------------------------------------------------------------- */
 #define AGX_D3DKMT_PROCESS_VA_MAGIC   0x41565841u /* 'AXVA' */
-#define AGX_D3DKMT_PROCESS_VA_VERSION 2u
+#define AGX_D3DKMT_PROCESS_VA_VERSION 3u
 #define AGX_D3DKMT_FIXED_BO_COUNT     3u
 
 struct agx_d3dkmt_shared_fixed_bo {
@@ -1355,7 +1355,7 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
 {
    struct agx_d3dkmt_winsys *ws = agx_d3dkmt_ws(dev);
    struct agx_d3dkmt_process_va_shared *shared = ws->process_va->shared;
-   static const struct {
+   const struct {
       uint64_t address;
       uint64_t size;
       enum agx_bo_flags flags;
@@ -1364,7 +1364,10 @@ d3dkmt_create_fixed_anchors(struct agx_device *dev)
       {AGX_ZERO_PAGE_ADDRESS, AGX_ZERO_PAGE_SIZE, 0, DRM_ASAHI_BIND_READ},
       {AGX_SCRATCH_PAGE_ADDRESS, AIL_PAGESIZE, 0,
        DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE},
-      {LIBAGX_PRINTF_BUFFER_ADDRESS, LIBAGX_PRINTF_BUFFER_SIZE,
+      {dev->chip == AGX_CHIP_G17P ? AGX_G17P_RENDER_CONTEXT_BASE
+                                  : LIBAGX_PRINTF_BUFFER_ADDRESS,
+       dev->chip == AGX_CHIP_G17P ? AGX_G17P_RENDER_CONTEXT_SIZE
+                                  : LIBAGX_PRINTF_BUFFER_SIZE,
        AGX_BO_WRITEBACK, DRM_ASAHI_BIND_READ | DRM_ASAHI_BIND_WRITE},
    };
    struct agx_d3dkmt_allocation_record records[AGX_D3DKMT_FIXED_BO_COUNT] = {0};
@@ -1430,13 +1433,17 @@ fail:
 }
 
 static int
-d3dkmt_fixed_bo_index(uint64_t address)
+d3dkmt_fixed_bo_index(const struct agx_device *dev, uint64_t address)
 {
    if (address == AGX_ZERO_PAGE_ADDRESS)
       return 0;
    if (address == AGX_SCRATCH_PAGE_ADDRESS)
       return 1;
-   if (address == LIBAGX_PRINTF_BUFFER_ADDRESS)
+   if (dev->chip == AGX_CHIP_G17P &&
+       address == AGX_G17P_RENDER_CONTEXT_BASE)
+      return 2;
+   if (dev->chip != AGX_CHIP_G17P &&
+       address == LIBAGX_PRINTF_BUFFER_ADDRESS)
       return 2;
    return -1;
 }
@@ -1477,7 +1484,7 @@ d3dkmt_bo_alloc_fixed(struct agx_device *dev, size_t size,
    }
 
    struct agx_d3dkmt_process_va *process = ws->process_va;
-   int index = d3dkmt_fixed_bo_index(fixed_va);
+   int index = d3dkmt_fixed_bo_index(dev, fixed_va);
    if (process == NULL || !process->attached || index < 0 ||
        !process_va_lock(process)) {
       errno = EINVAL;
@@ -2469,10 +2476,14 @@ d3dkmt_scan_conservative_read_set(
    } fixed[] = {
       {dev->zero_bo, AGX_ZERO_PAGE_ADDRESS},
       {dev->scratch_bo, AGX_SCRATCH_PAGE_ADDRESS},
-      {dev->printf.bo, LIBAGX_PRINTF_BUFFER_ADDRESS},
+      {dev->printf.bo, dev->printf_buffer_address},
+      {dev->g17p_render_context_bo, AGX_G17P_RENDER_CONTEXT_BASE},
    };
    for (uint32_t i = 0; i < ARRAY_SIZE(fixed); ++i) {
-      if (d3dkmt_add_conservative_bo_range(
+      /* Allocator-owned BOs were included by the ordinary walk above.  Only
+       * process-root wrappers lack agx_va and need their fixed VA supplied. */
+      if (fixed[i].bo != NULL && fixed[i].bo->va == NULL &&
+          d3dkmt_add_conservative_bo_range(
              ws, fixed[i].bo, fixed[i].gpu_va, ranges, &count)) {
          simple_mtx_unlock(&dev->bo_map_lock);
          return -1;
@@ -2889,9 +2900,9 @@ d3dkmt_reserve(struct agx_d3dkmt_winsys *ws, uint64_t base, uint64_t size)
     * than overriding it is unproven. This check is the seam: if VidMm
     * relocates, exactly one call site fails loudly here instead of every GPU
     * address in the driver being silently wrong. Honeykrisp's VA layout is
-    * not relocatable -- shader_base, the zero page at 2^32 and the printf
-    * buffer at 2^36 are baked into precompiled shaders
-    * (agx_device.c:580-600, LIBAGX_PRINTF_BUFFER_ADDRESS) -- so a driver that
+    * not relocatable -- shader_base and the zero page at 2^32 are fixed ABI,
+    * while legacy AGX2 additionally bakes its printf buffer at 2^36 into
+    * precompiled shaders -- so a driver that
     * cannot pin its own addresses cannot run at all, and saying so on the
     * first reservation is the cheapest possible discovery.
     */
