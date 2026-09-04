@@ -542,13 +542,16 @@ agx_ioto_g17p_fragment_no_resource_program_compose(
    return true;
 }
 
-bool
-agx_ioto_g17p_resource_program_compose(
+static bool
+g17p_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
-   size_t capacity, size_t *written)
+   size_t capacity, size_t *written, bool fragment)
 {
+   const size_t terminal_protocol_size =
+      fragment ? sizeof(g17p_fragment_pixrel)
+               : sizeof(g17p_default_profile_suffix);
    if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
@@ -563,16 +566,16 @@ agx_ioto_g17p_resource_program_compose(
           SIZE_MAX - copies_size ||
        pre_copy_body_size + packed_tail->length +
              sizeof(g17p_default_profile_prefix) + copies_size >
-          SIZE_MAX - sizeof(g17p_default_profile_suffix) ||
+          SIZE_MAX - terminal_protocol_size ||
        pre_copy_body_size + packed_tail->length +
              sizeof(g17p_default_profile_prefix) + copies_size +
-             sizeof(g17p_default_profile_suffix) >
+             terminal_protocol_size >
           SIZE_MAX - AGX_IOTO_PROGRAM_TERMINATE_SIZE)
       return false;
 
    const size_t total = pre_copy_body_size + packed_tail->length +
                         sizeof(g17p_default_profile_prefix) + copies_size +
-                        sizeof(g17p_default_profile_suffix) +
+                        terminal_protocol_size +
                         AGX_IOTO_PROGRAM_TERMINATE_SIZE;
    if (capacity < total)
       return false;
@@ -590,8 +593,11 @@ agx_ioto_g17p_resource_program_compose(
    APPEND_SPAN(g17p_default_profile_prefix,
                sizeof(g17p_default_profile_prefix));
    APPEND_SPAN(copies, copies_size);
-   APPEND_SPAN(g17p_default_profile_suffix,
-               sizeof(g17p_default_profile_suffix));
+   if (fragment)
+      APPEND_SPAN(g17p_fragment_pixrel, sizeof(g17p_fragment_pixrel));
+   else
+      APPEND_SPAN(g17p_default_profile_suffix,
+                  sizeof(g17p_default_profile_suffix));
 #undef APPEND_SPAN
    memset(dst + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
    dst[offset] = UINT8_C(0x0e);
@@ -601,6 +607,30 @@ agx_ioto_g17p_resource_program_compose(
 
    *written = total;
    return true;
+}
+
+bool
+agx_ioto_g17p_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, false);
+}
+
+bool
+agx_ioto_g17p_fragment_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, true);
 }
 
 bool

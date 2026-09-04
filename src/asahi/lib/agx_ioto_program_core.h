@@ -24,8 +24,8 @@ extern "C" {
 #define AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE  10u
 #define AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE     90u
 #define AGX_IOTO_G17P_FRAGMENT_NO_RESOURCE_PROGRAM_SIZE 86u
-#define AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE       144u
-#define AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE  250u
+#define AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE       140u
+#define AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE  246u
 #define AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE         166u
 #define AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE        32u
 #define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0x8)
@@ -129,6 +129,15 @@ bool agx_ioto_g17p_fragment_no_resource_program_compose(
  * terminates. pre_copy_body and copies are validated as separate record spans;
  * the latter may contain COPY records only. */
 bool agx_ioto_g17p_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
+
+/* The resource-bearing fragment form has the same scheduled loads, shader
+ * tail, profile prefix and COPY body, but closes with PIXREL instead of the
+ * vertex/compute SETPROFILECTL suffix. */
+bool agx_ioto_g17p_fragment_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
    const struct agx_ioto_state_tail_output *packed_tail, void *output,

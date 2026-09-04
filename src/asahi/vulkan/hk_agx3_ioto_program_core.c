@@ -208,10 +208,15 @@ hk_agx3_g17p_basic_graphics_program_generate(
       if (!agx3_ioto_uniform_program_body_generate(
              chip, &load_desc, workspace, &body_size, &copy_offset) ||
           copy_offset > body_size ||
-          !agx_ioto_g17p_resource_program_compose(
-             desc->program_va, body, copy_offset, body + copy_offset,
-             body_size - copy_offset, &tail, staged.bytes,
-             sizeof(staged.bytes), &written))
+          !(desc->fragment
+               ? agx_ioto_g17p_fragment_resource_program_compose(
+                    desc->program_va, body, copy_offset, body + copy_offset,
+                    body_size - copy_offset, &tail, staged.bytes,
+                    sizeof(staged.bytes), &written)
+               : agx_ioto_g17p_resource_program_compose(
+                    desc->program_va, body, copy_offset, body + copy_offset,
+                    body_size - copy_offset, &tail, staged.bytes,
+                    sizeof(staged.bytes), &written)))
          return false;
    }
 
@@ -377,7 +382,8 @@ hk_agx3_g17p_rt0_bg_program_generate(
     * immediate is below 128 takes a 2-byte compact form instead of the 8-byte
     * long one. The address's high word is `clear_value_va >> 32`, so whenever
     * the clear value happens to live below the 128 GiB mark the program comes
-    * out 6 bytes shorter -- exactly the 144 - 138 seen in practice.
+    * out 6 bytes shorter -- 140 versus 134 with the fragment PIXREL terminal
+    * protocol.
     *
     * AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE is therefore the long-form maximum,
     * which is also what the caller allocates (hk_cmd_draw.c:349-351), so a
@@ -387,7 +393,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
     */
    struct hk_agx3_g17p_rt0_bg_program staged;
    size_t written = 0;
-   if (!agx_ioto_g17p_resource_program_compose(
+   if (!agx_ioto_g17p_fragment_resource_program_compose(
           desc->program_va, body, copy_offset, body + copy_offset,
           body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
           &written) ||

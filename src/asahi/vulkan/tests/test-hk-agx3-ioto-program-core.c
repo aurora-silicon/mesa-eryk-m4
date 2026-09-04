@@ -802,8 +802,11 @@ test_g17p_basic_graphics_program(void)
    CHECK(memcmp(program.bytes, expected_resource_prefix, pre_copy_size) == 0);
    CHECK(memcmp(program.bytes + pre_copy_size,
                 expected_resource_tail, sizeof(expected_resource_tail)) == 0);
-   CHECK(program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
-         0x0e);
+   static const uint8_t fragment_termination[] = {
+      0x07, 0x02, 0x54, 0xf3, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   };
+   CHECK(memcmp(program.bytes + program.length - sizeof(fragment_termination),
+                fragment_termination, sizeof(fragment_termination)) == 0);
 
    static const struct agx3_ioto_uniform_range two_attribs_and_set[] = {
       {.start_halfs = 0, .size_halfs = 8, .address = 0x1000},
@@ -1054,10 +1057,11 @@ test_g17p_rt0_background_programs(void)
                               AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
    CHECK(memcmp(program.bytes + copy_offset, clear_copies,
                 sizeof(clear_copies)) == 0);
-   CHECK(program.bytes[program.length - 4] == 0x0e &&
-         program.bytes[program.length - 3] == 0 &&
-         program.bytes[program.length - 2] == 0 &&
-         program.bytes[program.length - 1] == 0);
+   static const uint8_t fragment_termination[] = {
+      0x07, 0x02, 0x54, 0xf3, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   };
+   CHECK(memcmp(program.bytes + program.length - sizeof(fragment_termination),
+                fragment_termination, sizeof(fragment_termination)) == 0);
 
    struct hk_agx3_g17p_rt0_bg_program relocated;
    struct hk_agx3_g17p_rt0_bg_program_desc moved = clear;
@@ -1081,7 +1085,7 @@ test_g17p_rt0_background_programs(void)
    };
    CHECK(
       hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &reload, &program));
-   CHECK(program.length == 234);
+   CHECK(program.length == 230);
    static const uint8_t fragment_speclm[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
    };
@@ -1103,8 +1107,7 @@ test_g17p_rt0_background_programs(void)
    };
    const size_t reload_copy_offset =
       program.length - sizeof(reload_copies) -
-      AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE -
-      AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+      sizeof(fragment_termination);
    if (memcmp(program.bytes + reload_copy_offset, reload_copies,
               sizeof(reload_copies)) != 0) {
       fprintf(stderr, "ACTUAL4:");
@@ -1114,10 +1117,8 @@ test_g17p_rt0_background_programs(void)
    }
    CHECK(memcmp(program.bytes + reload_copy_offset, reload_copies,
                 sizeof(reload_copies)) == 0);
-   CHECK(program.bytes[program.length - 4] == 0x0e &&
-         program.bytes[program.length - 3] == 0 &&
-         program.bytes[program.length - 2] == 0 &&
-         program.bytes[program.length - 1] == 0);
+   CHECK(memcmp(program.bytes + program.length - sizeof(fragment_termination),
+                fragment_termination, sizeof(fragment_termination)) == 0);
 
    struct hk_agx3_g17p_rt0_bg_program far_program;
    struct hk_agx3_g17p_rt0_bg_program_desc far_reload = reload;
@@ -1127,10 +1128,12 @@ test_g17p_rt0_background_programs(void)
    CHECK(far_program.length == AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE);
    const size_t far_copy_offset =
       far_program.length - sizeof(reload_copies) -
-      AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE -
-      AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+      sizeof(fragment_termination);
    CHECK(memcmp(far_program.bytes + far_copy_offset, reload_copies,
                 sizeof(reload_copies)) == 0);
+   CHECK(memcmp(far_program.bytes + far_program.length -
+                   sizeof(fragment_termination),
+                fragment_termination, sizeof(fragment_termination)) == 0);
 
    const struct hk_agx3_g17p_rt0_bg_program before = program;
    moved = clear;
