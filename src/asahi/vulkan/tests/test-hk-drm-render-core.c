@@ -137,6 +137,19 @@ test_g17p_zls_pixels_follow_backing_storage(void)
 }
 
 static void
+test_g17p_inactive_zls_uses_neutral_depth(void)
+{
+   /* The valid corpus has a perfect split: every item with all Z/S mappings
+    * absent uses 1.0, while mapped Z/S preserves the application clear. */
+   assert(hk_drm_g17p_depth_clear(0, 0, 0, 0, 0) == UINT32_C(0x3f800000));
+   assert(hk_drm_g17p_depth_clear(UINT32_C(0x3f000000), 0, 0, 0, 0) ==
+          UINT32_C(0x3f800000));
+   assert(hk_drm_g17p_depth_clear(0, 0x1000, 0, 0, 0) == 0);
+   assert(hk_drm_g17p_depth_clear(UINT32_C(0x3f000000), 0, 0, 0x2000, 0) ==
+          UINT32_C(0x3f000000));
+}
+
+static void
 test_fragment_attachment_ranges(void)
 {
    struct hk_drm_attachment_set set;
@@ -224,6 +237,7 @@ main(void)
    test_field_order_and_flag_clear();
    test_submit_command_limit();
    test_g17p_zls_pixels_follow_backing_storage();
+   test_g17p_inactive_zls_uses_neutral_depth();
    test_fragment_attachment_ranges();
    test_hardware_command_spans_skip_attachment_commands();
    puts("Honeykrisp DRM render resource specs: all checks passed");

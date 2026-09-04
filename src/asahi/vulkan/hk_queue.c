@@ -329,6 +329,9 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
       c->isp_zls_pixels = hk_drm_g17p_zls_pixels(
          cs->cr.zls_width, cs->cr.zls_height, cs->cr.depth.buffer,
          cs->cr.depth.meta, cs->cr.stencil.buffer, cs->cr.stencil.meta);
+      c->isp_bgobjdepth = hk_drm_g17p_depth_clear(
+         c->isp_bgobjdepth, cs->cr.depth.buffer, cs->cr.depth.meta,
+         cs->cr.stencil.buffer, cs->cr.stencil.meta);
    } else {
       agx_pack(&c->isp_zls_pixels, CR_ISP_ZLS_PIXELS, cfg) {
          cfg.x = cs->cr.zls_width;
