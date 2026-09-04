@@ -2323,6 +2323,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    unsigned texture_ops_left = 0;
    unsigned tile_loads_left = 0;
    unsigned tile_loads_seen = 0;
+   unsigned tile_stores_left = 0;
    unsigned count = 0;
 
    assert(enc == AGX_ISA_ENCODING_AGX3B || enc == AGX_ISA_ENCODING_AGX3C);
@@ -2339,8 +2340,21 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             texture_ops_left++;
          if (scan_I->op == AGX_OPCODE_LD_TILE)
             tile_loads_left++;
+         if (scan_I->op == AGX_OPCODE_ST_TILE)
+            tile_stores_left++;
       }
    }
+
+   /* The valid G17P colour-only corpus has one class-12 wait/store bracket:
+    * an entry gate immediately before the ordinary wait, and a final release
+    * immediately after the store. Restrict synthesis to that exact API-shader
+    * shape; programmable blending, MRT and special BG/EOT programs retain
+    * their existing independently witnessed protocols. */
+   const bool g17p_colour_protocol =
+      enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
+      !ctx->key->fs.ignore_tib_dependencies && tile_stores_left == 1 &&
+      tile_loads_left == 0;
+   bool g17p_colour_open = false;
 
    /* Assign one scoreboard timeline over the whole linearized shader, rather
     * than restarting at each basic block.  Fallthrough blocks may consume an
@@ -2483,6 +2497,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_WAIT_PIX ||
              I->op == AGX_OPCODE_SIGNAL_PIX) {
+            if (g17p_colour_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
+                I->writeout == 0xc && !g17p_colour_open) {
+               uint8_t entry[AGX3_PIXEL_MAX_LENGTH];
+               uint8_t entry_len = 0;
+               if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
+                   !agx3_append(emission, entry, entry_len))
+                  AGX3_REFUSE(I);
+               g17p_colour_open = true;
+            }
             if (!agx3_emit_pixel(emission, enc, I, wait))
                AGX3_REFUSE(I);
             continue;
@@ -2506,9 +2529,22 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                assert(tile_loads_left > 0);
                first = tile_loads_seen++ == 0;
                last = --tile_loads_left == 0;
+            } else {
+               assert(tile_stores_left > 0);
+               last = --tile_stores_left == 0;
             }
             if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
                AGX3_REFUSE(I);
+
+            if (g17p_colour_protocol && last) {
+               uint8_t release[AGX3_PIXEL_MAX_LENGTH];
+               uint8_t release_len = 0;
+               if (!g17p_colour_open ||
+                   !agx3_pixel_release(enc, 0xc, true, 0, release,
+                                      &release_len) ||
+                   !agx3_append(emission, release, release_len))
+                  AGX3_REFUSE(I);
+            }
             continue;
          }
 

@@ -58,6 +58,14 @@ main(void)
    uint8_t b[AGX3_PIXEL_MAX_LENGTH];
    uint8_t len;
 
+   expect("AGX3b colour entry",
+          agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B, b, &len), b, len,
+          "870254000600");
+   expect_refused("AGX3c colour entry",
+                  agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3C, b, &len));
+   expect_refused("AGX2 colour entry",
+                  agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX2, b, &len));
+
    /* AGX3b pixwait: the writeout mask passes straight through, and f34
     * separates the colour classes from the depth/coverage class. */
    static const struct {

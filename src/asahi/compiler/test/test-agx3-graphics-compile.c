@@ -35,6 +35,18 @@
 
 static const uint8_t agx3_end[] = {0x0e, 0x00, 0x00, 0x00};
 
+/* Apple G17P's byte-exact colour-only tile protocol around the existing
+ * normalized RGBA8 store. */
+static const uint8_t g17p_flat_colour[] = {
+   0x87, 0x02, 0x54, 0x00, 0x06, 0x00, /* entry gate */
+   0x87, 0x02, 0x54, 0x0c, 0x08, 0x00, /* colour wait */
+   0x97, 0x04, 0x54, 0x00, 0x02, 0x20, 0x80, 0x50, 0x04, 0xc8,
+   0x97, 0x04, 0x54, 0x01, 0x02, 0x50, 0xc0, 0x50, 0x04, 0xc8,
+   0xe7, 0x06, 0x54, 0x00, 0x00, 0x00, 0x01, 0x4e, 0x00, 0x00, 0x00, 0x00,
+   0x07, 0x02, 0x54, 0x0c, 0x02, 0x00, /* final colour release */
+   0x0e, 0x00, 0x00, 0x00,
+};
+
 /* AIL_ISA_FORMAT_U8NORM: the tilebuffer format for an RGBA8_UNORM target. */
 #define AGX3_TEST_TIB_FORMAT PIPE_FORMAT_R8_UNORM
 
@@ -666,6 +678,8 @@ struct agx3_graphics_case {
    uint16_t reserved_preamble;
    uint16_t minimum_binary_size;
    uint8_t expected_leading_sr;
+   const uint8_t *expected_g17p_binary;
+   size_t expected_g17p_binary_size;
 };
 
 static const struct agx3_graphics_case cases[] = {
@@ -678,7 +692,9 @@ static const struct agx3_graphics_case cases[] = {
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
     AGX_ABI_VUNI_COUNT_VK(2) + 8, 257},
-   {"fs-flat-colour", build_fs_flat, true},
+   {"fs-flat-colour", build_fs_flat, true,
+    .expected_g17p_binary = g17p_flat_colour,
+    .expected_g17p_binary_size = sizeof(g17p_flat_colour)},
    {"fs-interpolated-varying", build_fs_interpolated, true},
    {"fs-tilebuffer-load", build_fs_tilebuffer_load, true},
    {"fs-textured-triangle", build_fs_texture_imm, true},
@@ -777,6 +793,25 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
          if (!result) {
             fprintf(stderr, "%s %s: missing leading SR %#x rld\n",
                     enc_name(enc), c->name, c->expected_leading_sr);
+         }
+      }
+
+      if (result && enc == AGX_ISA_ENCODING_AGX3B &&
+          c->expected_g17p_binary != NULL) {
+         const bool resources_unchanged =
+            !part.info.has_preamble && part.info.push_count == 0 &&
+            part.info.scratch_size == 0 && !part.info.uses_txf &&
+            !part.info.uses_sampler_heap &&
+            part.info.texture_state_count == 0 &&
+            part.info.sampler_state_count == 0;
+         result = resources_unchanged &&
+                  part.info.binary_size == c->expected_g17p_binary_size &&
+                  memcmp(part.binary, c->expected_g17p_binary,
+                         c->expected_g17p_binary_size) == 0;
+         if (!result) {
+            fprintf(stderr,
+                    "%s %s: colour tile protocol/resource metadata mismatch\n",
+                    enc_name(enc), c->name);
          }
       }
 

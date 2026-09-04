@@ -63,6 +63,31 @@ in_set(uint32_t value, const uint32_t *set, unsigned n)
 }
 
 bool
+agx3_pixel_colour_entry(enum agx_isa_encoding enc,
+                        uint8_t out[AGX3_PIXEL_MAX_LENGTH], uint8_t *len)
+{
+   if (out == NULL || len == NULL)
+      return false;
+   memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+   *len = 0;
+
+   /* G17P is AGX3b. The pair below is Apple's normalized composer input for
+    * the exact 87 02 54 00 06 00 entry gate. */
+   if (enc != AGX_ISA_ENCODING_AGX3B)
+      return false;
+
+   const struct agx3_field_kv fields[] = {KV(14, 512), KV(15, 1)};
+   if (!agx3_bind_compose(enc, "pixwait", 0, fields, NELEM(fields), NULL, 0,
+                          out, len)) {
+      memset(out, 0, AGX3_PIXEL_MAX_LENGTH);
+      *len = 0;
+      return false;
+   }
+
+   return true;
+}
+
+bool
 agx3_pixel_wait(enum agx_isa_encoding enc, uint32_t writeout,
                 uint16_t wait_mask, uint8_t out[AGX3_PIXEL_MAX_LENGTH],
                 uint8_t *len)
