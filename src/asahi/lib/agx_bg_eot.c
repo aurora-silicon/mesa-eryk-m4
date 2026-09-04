@@ -17,6 +17,37 @@
 #include "nir_builder.h"
 #include "pool.h"
 
+#include <stdlib.h>
+
+static bool
+agx_g17p_wrap_eot_text(struct agx_shader_part *bin)
+{
+   if (!bin || !bin->binary || bin->info.binary_size != 64 ||
+       bin->info.main_offset != 0 || bin->info.main_size != 64 ||
+       bin->info.nr_gprs != 8)
+      return false;
+
+   uint8_t *text = malloc(128);
+   if (!text)
+      return false;
+
+   /* Exact AGXMetalG17P EOT text framing: one stop and thirty 0x0006 fill
+    * halfwords before the 64-byte main body.  LDSHDR points at text +0x40. */
+   text[0] = 0x0e;
+   text[1] = text[2] = text[3] = 0;
+   for (unsigned i = 4; i < 64; i += 2) {
+      text[i] = 0x06;
+      text[i + 1] = 0;
+   }
+   memcpy(text + 64, bin->binary, 64);
+   free(bin->binary);
+   bin->binary = text;
+   bin->info.binary_size = 128;
+   bin->info.main_offset = 64;
+   bin->info.main_size = 64;
+   return true;
+}
+
 static bool
 lower_tex_handle_to_u0(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
@@ -86,6 +117,14 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
       return NULL;
    }
 
+   if (cache->dev->chip == AGX_CHIP_G17P && tib == NULL &&
+       !agx_g17p_wrap_eot_text(&bin)) {
+      free(bin.binary);
+      ralloc_free(shader);
+      ralloc_free(res);
+      return NULL;
+   }
+
    res->info = bin.info;
    res->ptr = agx_pool_upload_aligned_with_bo(
       &cache->pool, bin.binary, bin.info.binary_size, 128, &res->bo);
@@ -97,7 +136,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
 
 static nir_def *
 build_background_op(nir_builder *b, enum agx_bg_eot_op op, unsigned rt,
-                    unsigned nr, bool msaa, bool layered)
+                    unsigned nr, bool msaa, bool layered, bool wide_coords)
 {
    if (op == AGX_BG_LOAD) {
       nir_def *coord = nir_load_pixel_coord(b);
@@ -105,7 +144,7 @@ build_background_op(nir_builder *b, enum agx_bg_eot_op op, unsigned rt,
       /* MSAA/array lowerings assume 32-bit coordinates, could be lifted but
        * that's going to need more work.
        */
-      if (layered || msaa)
+      if (layered || msaa || wide_coords)
          coord = nir_u2u32(b, coord);
 
       if (layered) {
@@ -146,8 +185,10 @@ agx_build_background_shader(struct agx_bg_eot_cache *cache,
    b.shader->info.fs.untyped_color_outputs = true;
 
    struct agx_shader_key compiler_key = {
+      .dev = agx_gather_device_key(cache->dev),
       .fs.ignore_tib_dependencies = true,
       .reserved_preamble = key->reserved_preamble,
+      .no_preamble = cache->dev->chip == AGX_CHIP_G17P,
    };
 
    for (unsigned rt = 0; rt < ARRAY_SIZE(key->op); ++rt) {
@@ -160,7 +201,8 @@ agx_build_background_shader(struct agx_bg_eot_cache *cache,
       assert(nr > 0);
 
       nir_store_output(
-         &b, build_background_op(&b, key->op[rt], rt, nr, msaa, layered),
+         &b, build_background_op(&b, key->op[rt], rt, nr, msaa, layered,
+                                 cache->dev->chip == AGX_CHIP_G17P),
          nir_imm_int(&b, 0), .write_mask = BITFIELD_MASK(nr),
          .src_type = nir_type_uint32,
          .io_semantics.location = FRAG_RESULT_DATA0 + rt,
@@ -200,14 +242,27 @@ agx_build_end_of_tile_shader(struct agx_bg_eot_cache *cache,
       if (key->tib.layered)
          layer = nir_u2u16(&b, nir_load_layer_id(&b));
 
+      bool explicit = false;
+      nir_def *coords = layer;
+      if (cache->dev->chip == AGX_CHIP_G17P) {
+         /* AGX3's EOT imgwblk has no implicit pixel-coordinate form.  Apple's
+          * G17P compiler reads the hardware grid X/Y SRs explicitly. */
+         coords = nir_trim_vector(
+            &b, nir_load_global_invocation_id(&b, 32), 2);
+         explicit = true;
+      }
+
       nir_image_store_block_agx(
-         &b, nir_imm_intN_t(&b, rt, 16), nir_imm_int(&b, offset_B), layer,
+         &b, nir_imm_intN_t(&b, rt, 16), nir_imm_int(&b, offset_B), coords,
          .format = agx_tilebuffer_physical_format(&key->tib, rt),
-         .image_dim = dim, .image_array = key->tib.layered);
+         .image_dim = dim, .image_array = key->tib.layered,
+         .explicit_coord = explicit);
    }
 
    struct agx_shader_key compiler_key = {
+      .dev = agx_gather_device_key(cache->dev),
       .reserved_preamble = key->reserved_preamble,
+      .no_preamble = cache->dev->chip == AGX_CHIP_G17P,
    };
 
    return agx_compile_bg_eot_shader(cache, b.shader, &compiler_key, NULL);

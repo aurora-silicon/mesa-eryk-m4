@@ -10,6 +10,8 @@
 
 #include <string.h>
 
+#define HK_AGX3_G17P_EOT_LDSHDR_F1 1u
+
 bool
 hk_agx3_ioto_program_generate(
    enum agx_chip chip, const struct hk_agx3_ioto_program_desc *desc,
@@ -88,6 +90,7 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
 static bool
 hk_agx3_g17p_graphics_state_tail(
    const struct hk_agx3_g17p_graphics_program_desc *desc,
+   uint8_t ldshdr_kind,
    struct agx_ioto_state_tail_output *tail)
 {
    if (!desc || !tail || desc->shader_binary_size == 0 ||
@@ -103,7 +106,9 @@ hk_agx3_g17p_graphics_state_tail(
 
    struct agx_ioto_state ldshdr = {0};
    ldshdr.f[0] = desc->shader_va;
-   /* LDSHDR f1 is a program-kind SELECTOR, not a fetch-line hint.
+   /* LDSHDR f1 is a program-kind selector.  Ordinary API graphics programs
+    * use the direct kind (0); the compiler-produced EOT text has its own exact
+    * kind (1), supplied by that dedicated caller below.
     *
     * agx_ioto_state_encode_ldshdr() puts it through `agx_ioto_e4[4] =
     * {2, 0, 1, 3}` into a two-bit field (agx_ioto_state_core.c:19, :247).  A
@@ -117,12 +122,13 @@ hk_agx3_g17p_graphics_state_tail(
     *   grid setup    f1=1 -> e4=0 -> word4 0x0000   "77 01 2a 08 .. 00 00"
     *   indirect add3 f1=3 -> e4=3 -> word4 0x0006   "77 01 aa 0e .. 06 00"
     *
-    * Deriving it from the binary size announced a 118-byte Honeykrisp shader
-    * as the GRID-SETUP HELPER kind, and any shader over 256 bytes overflowed
+    * Deriving ordinary API shaders from binary size announced a 118-byte
+    * Honeykrisp shader as the GRID-SETUP HELPER kind, and any shader over 256
+    * bytes overflowed
     * the field's own validator (`f[1] <= 3`) and failed the compose outright --
-    * which a real length field could not do.  Emit the direct kind.
+    * which a real length field could not do.  Keep the choice explicit.
     */
-   ldshdr.f[1] = AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3;
+   ldshdr.f[1] = ldshdr_kind;
    ldshdr.f[23] = 1;
 
    struct agx_ioto_state spectpr;
@@ -159,7 +165,8 @@ hk_agx3_g17p_basic_graphics_program_generate(
       return false;
 
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(desc, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(
+          desc, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3, &tail))
       return false;
 
    struct hk_agx3_g17p_graphics_program staged = {0};
@@ -328,7 +335,8 @@ hk_agx3_g17p_rt0_bg_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(
+          &shader, AGX_IOTO_G17P_COMPUTE_LDSHDR_F1_DIRECT_ADD3, &tail))
       return false;
 
    uint8_t body[512];
@@ -393,7 +401,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,
    struct hk_agx3_g17p_rt0_eot_program *program)
 {
-   if (!program || chip != AGX_CHIP_G17P || !desc)
+   if (!program || chip != AGX_CHIP_G17P || !desc ||
+       desc->shader_binary_size != 128 || desc->nr_gprs != 8)
       return false;
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
@@ -405,7 +414,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;
-   if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail))
+   if (!hk_agx3_g17p_graphics_state_tail(
+          &shader, HK_AGX3_G17P_EOT_LDSHDR_F1, &tail))
       return false;
 
    /*

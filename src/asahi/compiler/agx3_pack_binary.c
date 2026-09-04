@@ -52,6 +52,7 @@
 #include "agx_compiler.h"
 #include "agx_debug.h"
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -2378,12 +2379,108 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
+/* Apple emits this complete 64-byte body for the one-store RT0 EOT program.
+ * The AGX3 imgwblk is not a standalone translation of AGX2's block store: the
+ * preceding pack_imgwir and coordinate-select sequence is part of its ABI.
+ * Recognize the exact post-RA semantic graph and replace it atomically, so no
+ * partially grounded imgwblk ever escapes for a different format or shape. */
+static bool
+agx3_is_g17p_rt0_eot(const agx_context *ctx, enum agx_isa_encoding enc)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_COMPUTE ||
+       ctx->is_preamble || ctx->key->no_stop)
+      return false;
+
+   unsigned instructions = 0, get_x = 0, get_y = 0, zeros = 0, stores = 0;
+   unsigned x_reg = UINT_MAX, y_reg = UINT_MAX, zero_reg = UINT_MAX;
+   unsigned coord_reg = UINT_MAX, offset_reg = UINT_MAX;
+
+   agx_foreach_block(ctx, block) {
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_STOP)
+            continue;
+         instructions++;
+
+         if (I->op == AGX_OPCODE_GET_SR) {
+            if (I->nr_dests != 1 || I->nr_srcs != 0 ||
+                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+                I->dest[0].size != AGX_SIZE_32 ||
+                agx_channels(I->dest[0]) != 1)
+               return false;
+
+            if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_X) {
+               get_x++;
+               x_reg = I->dest[0].value;
+            } else if (I->sr == AGX_SR_THREAD_POSITION_IN_GRID_Y) {
+               get_y++;
+               y_reg = I->dest[0].value;
+            } else {
+               return false;
+            }
+         } else if (I->op == AGX_OPCODE_MOV_IMM) {
+            if (I->nr_dests != 1 || I->nr_srcs != 0 || I->imm != 0 ||
+                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+                I->dest[0].size != AGX_SIZE_32 ||
+                agx_channels(I->dest[0]) != 1)
+               return false;
+            zeros++;
+            zero_reg = I->dest[0].value;
+         } else if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE) {
+            if (I->nr_dests != 0 || I->nr_srcs != 4 ||
+                I->format != AGX_FORMAT_U8NORM || I->dim != AGX_DIM_2D ||
+                !I->explicit_coords ||
+                I->src[0].type != AGX_INDEX_IMMEDIATE ||
+                I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
+                I->src[1].type != AGX_INDEX_IMMEDIATE ||
+                I->src[1].value != 0 || I->src[1].size != AGX_SIZE_16 ||
+                !agx3_src_is_register(I->src[2]) || I->src[2].memory ||
+                I->src[2].abs || I->src[2].neg ||
+                I->src[2].size != AGX_SIZE_32 ||
+                agx_channels(I->src[2]) != 1 ||
+                !agx3_src_is_register(I->src[3]) || I->src[3].memory ||
+                I->src[3].abs || I->src[3].neg ||
+                I->src[3].size != AGX_SIZE_32 ||
+                agx_channels(I->src[3]) != 2)
+               return false;
+            stores++;
+            offset_reg = I->src[2].value;
+            coord_reg = I->src[3].value;
+         } else {
+            return false;
+         }
+      }
+   }
+
+   return instructions == 4 && get_x == 1 && get_y == 1 && zeros == 1 &&
+          stores == 1 && x_reg == coord_reg && y_reg == coord_reg + 2 &&
+          zero_reg == offset_reg;
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
    const enum agx_isa_encoding enc = ctx->key->dev.encoding;
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
    const unsigned initial_size = emission->size;
+
+   if (agx3_is_g17p_rt0_eot(ctx, enc)) {
+      static const uint8_t apple_g17p_rt0_eot[] = {
+         0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
+         0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
+         0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
+         0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
+         0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
+         0x2f, 0x00, 0x42, 0x40, 0x00, 0x08, 0x00, 0x00,
+         0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
+         0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+      };
+      /* Apple's metadata reports D=8 for this body; the Ioto SPECTPR state
+       * must describe the fixed replacement body, not Mesa's shorter IR. */
+      ctx->max_reg = MAX2(ctx->max_reg, 7);
+      return agx3_append(emission, apple_g17p_rt0_eot,
+                         sizeof(apple_g17p_rt0_eot));
+   }
+
    struct util_dynarray fixups;
    uint16_t outstanding = 0;
    uint8_t next_uvs_slot = 1;
@@ -3052,7 +3149,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * consumer here.) Both halves of this pair are witnessed encodings.
           */
          if (I->op == AGX_OPCODE_BITOP &&
-             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV && wait == 0 &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV &&
              I->nr_dests == 1 && I->nr_srcs == 2 &&
              agx3_src_is_register(I->src[0]) && !I->src[0].memory &&
              !I->src[0].abs && !I->src[0].neg &&
@@ -3064,7 +3161,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t lo[AGX3_COPY_MAX_LENGTH], hi[AGX3_STAGE_MAX_LENGTH];
             uint8_t lo_len = 0, hi_len = 0;
             if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
-                                        I->src[0].value, 0, lo, &lo_len) ||
+                                        I->src[0].value, wait, lo, &lo_len) ||
                 !agx3_clr(enc, I->dest[0].value + 1, true, false, hi,
                           &hi_len) ||
                 !agx3_append(emission, lo, lo_len) ||
@@ -3079,7 +3176,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * move cannot express them. Apple copies a half with `copy`.
           */
          if (I->op == AGX_OPCODE_BITOP &&
-             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV && wait == 0 &&
+             (I->truth_table & 0xfu) == AGX3_SEL_TT_MOV &&
              I->nr_dests == 1 && I->nr_srcs == 2 &&
              agx3_src_is_register(I->src[0]) && !I->src[0].memory &&
              !I->src[0].abs && !I->src[0].neg &&
@@ -3090,7 +3187,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_COPY_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
-                                        I->src[0].value, 0, bytes, &len) ||
+                                        I->src[0].value, wait, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;

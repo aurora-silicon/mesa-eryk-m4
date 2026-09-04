@@ -507,6 +507,38 @@ fs_finish(nir_builder *b)
    return b->shader;
 }
 
+static bool
+test_g17p_background_clear(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "G17P RT0 background clear");
+   b.shader->info.internal = true;
+   fs_store_colour(&b, nir_load_preamble(&b, 4, 32, .base = 4));
+   nir_shader *nir = fs_finish(&b);
+
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .fs.ignore_tib_dependencies = true,
+      .reserved_preamble = 12,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(nir, &key, &part);
+   const bool ok = compiled && part.binary != NULL &&
+                   part.info.binary_size > sizeof(agx3_end) &&
+                   part.info.push_count == key.reserved_preamble &&
+                   !part.info.has_preamble &&
+                   memcmp((const uint8_t *)part.binary +
+                             part.info.binary_size - sizeof(agx3_end),
+                          agx3_end, sizeof(agx3_end)) == 0;
+   if (!ok)
+      fprintf(stderr, "AGX3b background-clear compiler mismatch\n");
+
+   free(part.binary);
+   ralloc_free(nir);
+   return ok;
+}
+
 /*
  * Minimal fragment shader: colour = vec4(0.25, 0.5, 0.75, 1.0) stored to
  * render target 0, as agx_nir_lower_tilebuffer lowers a store_output of
@@ -737,6 +769,80 @@ test_txf_lowering(void)
    }
 
    ralloc_free(nir);
+   return ok;
+}
+
+static bool
+test_g17p_eot_block_store(void)
+{
+   /* Apple Metal Toolchain 32023.917, target applegpu_g17p.  The complete AIR
+    * source, pipeline-image recipe, extracted bytes and hashes live in
+    * test/probes/README-g17p-rt0-eot.md. */
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "G17P RT0 EOT");
+   nir_def *coords =
+      nir_trim_vector(&b, nir_load_global_invocation_id(&b, 32), 2);
+   nir_image_store_block_agx(
+      &b, nir_imm_intN_t(&b, 0, 16), nir_imm_int(&b, 0), coords,
+      .format = PIPE_FORMAT_R8_UNORM, .image_dim = GLSL_SAMPLER_DIM_2D,
+      .explicit_coord = true);
+   agx_preprocess_nir(b.shader);
+
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
+   static const uint8_t apple_eot[] = {
+      0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
+      0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
+      0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
+      0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
+      0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
+      0x2f, 0x00, 0x42, 0x40, 0x00, 0x08, 0x00, 0x00,
+      0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
+      0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   };
+
+   bool ok = compiled && part.info.binary_size == sizeof(apple_eot) &&
+             part.info.nr_gprs == 8 &&
+             memcmp(part.binary, apple_eot, sizeof(apple_eot)) == 0;
+   if (!ok) {
+      fprintf(stderr,
+              "AGX3b EOT block-store compiler mismatch: compiled=%u size=%u "
+              "gprs=%u\n",
+              compiled, part.info.binary_size, part.info.nr_gprs);
+      if (compiled) {
+         for (unsigned i = 0; i < part.info.binary_size; ++i)
+            fprintf(stderr, "%02x", ((const uint8_t *)part.binary)[i]);
+         fputc('\n', stderr);
+      }
+   }
+
+   free(part.binary);
+   ralloc_free(b.shader);
+
+   /* A different store format must not inherit RT0's byte string. */
+   nir_builder bad = nir_builder_init_simple_shader(
+      MESA_SHADER_COMPUTE, &agx_nir_options, "unsupported G17P EOT");
+   coords = nir_trim_vector(&bad, nir_load_global_invocation_id(&bad, 32), 2);
+   nir_image_store_block_agx(
+      &bad, nir_imm_intN_t(&bad, 0, 16), nir_imm_int(&bad, 0), coords,
+      .format = PIPE_FORMAT_R16_FLOAT, .image_dim = GLSL_SAMPLER_DIM_2D,
+      .explicit_coord = true);
+   agx_preprocess_nir(bad.shader);
+   memset(&part, 0xa5, sizeof(part));
+   const bool bad_compiled = agx_compile_shader_nir(bad.shader, &key, &part);
+   const bool rejected = !bad_compiled;
+   const struct agx_shader_part cleared = {0};
+   if (!rejected || memcmp(&part, &cleared, sizeof(part)) != 0) {
+      fprintf(stderr, "unsupported G17P EOT format did not fail closed\n");
+      ok = false;
+   }
+   if (bad_compiled)
+      free(part.binary);
+   ralloc_free(bad.shader);
    return ok;
 }
 
@@ -1100,6 +1206,12 @@ main(void)
       fputs("static TXF descriptor lowering mismatch\n", stderr);
       all_ok = false;
    }
+
+   if (!test_g17p_eot_block_store())
+      all_ok = false;
+
+   if (!test_g17p_background_clear())
+      all_ok = false;
 
    for (unsigned e = 0; e < ARRAY_SIZE(encodings); ++e) {
       for (unsigned i = 0; i < ARRAY_SIZE(cases); ++i) {

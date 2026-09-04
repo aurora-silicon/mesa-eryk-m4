@@ -867,6 +867,13 @@ test_g17p_rt0_eot_program(void)
    CHECK(memcmp(program.bytes, source_prefix, sizeof(source_prefix)) == 0);
    CHECK(program.bytes[44] == 0x77 && program.bytes[45] == 0x00 &&
          program.bytes[46] == 0x2a && program.bytes[47] == 0x43);
+   static const uint8_t eot_state_tail[] = {
+      0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
+      0x77, 0x01, 0xaa, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+      0xf7, 0x00, 0x2a, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   CHECK(memcmp(program.bytes + 44, eot_state_tail,
+                sizeof(eot_state_tail)) == 0);
    CHECK(program.bytes[162] == 0x0e && program.bytes[163] == 0x00 &&
          program.bytes[164] == 0x00 && program.bytes[165] == 0x00);
 
@@ -880,6 +887,17 @@ test_g17p_rt0_eot_program(void)
                 sizeof(program.bytes) - 16) == 0);
 
    const struct hk_agx3_g17p_rt0_eot_program before = program;
+   moved = desc;
+   moved.shader_binary_size = 64;
+   CHECK(
+      !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = desc;
+   moved.nr_gprs = 6;
+   CHECK(
+      !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = desc;
    moved.pbe_argument_va++;
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
