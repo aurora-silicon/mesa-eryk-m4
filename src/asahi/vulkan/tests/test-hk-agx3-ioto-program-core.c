@@ -920,23 +920,45 @@ test_g17p_rt0_eot_program(void)
    static const uint8_t source_prefix[] = {
       0x0c, 0xa0, 0x02, 0x00, 0x08, 0x00, 0x10, 0x00,
       0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
-      0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x67, 0x00, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
       0x17, 0x00, 0x00, 0x40, 0x22, 0x00,
-      0x67, 0x00, 0x54, 0x08, 0x00, 0x00, 0x00, 0x00,
+      0x67, 0x00, 0x54, 0x10, 0x00, 0x00, 0x00, 0x00,
       0x17, 0x00, 0x02, 0x40, 0x22, 0x00,
+      0x06, 0x08, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
    };
    CHECK(memcmp(program.bytes, source_prefix, sizeof(source_prefix)) == 0);
-   CHECK(program.bytes[44] == 0x77 && program.bytes[45] == 0x00 &&
-         program.bytes[46] == 0x2a && program.bytes[47] == 0x43);
+   CHECK(program.bytes[52] == 0x77 && program.bytes[53] == 0x00 &&
+         program.bytes[54] == 0x2a && program.bytes[55] == 0x43);
    static const uint8_t eot_state_tail[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
       0x77, 0x01, 0xaa, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
       0xf7, 0x00, 0x2a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
-   CHECK(memcmp(program.bytes + 44, eot_state_tail,
+   CHECK(memcmp(program.bytes + 52, eot_state_tail,
                 sizeof(eot_state_tail)) == 0);
-   CHECK(program.bytes[162] == 0x0e && program.bytes[163] == 0x00 &&
-         program.bytes[164] == 0x00 && program.bytes[165] == 0x00);
+   CHECK(program.bytes[170] == 0x0e && program.bytes[171] == 0x00 &&
+         program.bytes[172] == 0x00 && program.bytes[173] == 0x00);
+
+   /* The profile prefix occupies0..3, while both gathered blocks remain
+    * live until these COPYs. f27 stays clear; the preceding explicit wait
+    * replaces the former first-COPY wait. Uniform destinations0..15 and
+    * the shader state/terminal protocol are unchanged. */
+   static const uint8_t expected_copies[] = {
+      0x0b,0x04,0x01,0x04, 0x1b,0x06,0x01,0x04,
+      0x2b,0x08,0x01,0x04, 0x3b,0x0a,0x01,0x04,
+      0x4b,0x10,0x01,0x04, 0x5b,0x12,0x01,0x04,
+      0x6b,0x14,0x01,0x04, 0x7b,0x16,0x01,0x04,
+   };
+   const size_t copies_offset = 52 + sizeof(eot_state_tail) +
+                               AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
+   CHECK(memcmp(program.bytes + copies_offset, expected_copies,
+                sizeof(expected_copies)) == 0);
+   static const uint8_t terminal[] = {
+      0x03,0x00,0x07,0x00,0x02,0x00,0x00,0x00,0x60,0x00,
+      0x0e,0x00,0x00,0x00,
+   };
+   CHECK(memcmp(program.bytes + copies_offset + sizeof(expected_copies),
+                terminal, sizeof(terminal)) == 0);
 
    struct hk_agx3_g17p_rt0_eot_program relocated;
    struct hk_agx3_g17p_rt0_eot_program_desc moved = desc;
@@ -968,6 +990,23 @@ test_g17p_rt0_eot_program(void)
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = desc;
+   moved.pbe_argument_va = UINT64_C(0xfffffffffff0);
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                 &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = desc;
+   moved.pbe_argument_va = 0;
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                 &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved = desc;
+   moved.pbe_argument_va = 32;
+   CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                &relocated));
+   CHECK(relocated.length == program.length - 12);
+   CHECK(memcmp(relocated.bytes + 4, program.bytes + 16,
+                relocated.length - 4) == 0);
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17S, &desc, &program));
    return 0;

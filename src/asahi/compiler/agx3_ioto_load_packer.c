@@ -93,22 +93,14 @@ pack_copy_fields(enum agx_isa_encoding enc, uint16_t destination_half,
                  uint16_t source_half, int wait_slot,
                  struct agx_ioto_load_raw_record *record)
 {
-   /* Field 27 selects the COPY's source: clear = "Register zero" (the
-    * loadImmediateUserBuffer result), set = the *gathered* register data this
-    * packer is actually moving.  Every witnessed copy that carries loaded data
-    * sets it -- the A18 Pro add3 program (`4b 2c 09 44`, `0b 24 09 04`, ...)
-    * and the G17S minimal-compute body in agx_ioto_program_core.c
-    * (`0b 14 09 44`, `1b 16 09 04`, ...) -- and the only witnessed copies that
-    * leave it clear are the two register-zero ones, which is why both of those
-    * carry source half 0x00.
-    *
-    * Omitting it emitted `0b 00 01 04 / 1b 02 01 04 / ...`: a form that occurs
-    * in no witness, naming meaningful source halves while telling the hardware
-    * to copy register zero instead.  The LDDEV's gathered dwords were then
-    * never moved into CProg, so the shader's uniform quads held register zero,
-    * its buffer pointer was garbage, and with soft faults enabled the store was
-    * silently discarded -- a dispatch that ran to `stop`, retired cleanly,
-    * raised no fault, and left the destination completely untouched.
+   /* f23 selects the register source file; f27 is carried as a last-use
+    * hint by this all-dwords gathered-copy path. Native EOT's final gathered
+    * copies have it set, but native BG also has f27-clear copies with
+    * nonzero sources followed by further reads of those source halves
+    * (valid194053 first Ioto page+0x10a: 4b2c0144). Therefore f27 must not be
+    * described as selecting gathered data instead of register zero. Keep
+    * this existing last-use policy; do not infer data loss from the bit
+    * alone or apply it to copies whose source remains live.
     */
    struct agx3_field_kv baseline[7] = {
       KV(9, 3),
