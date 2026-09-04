@@ -28,7 +28,10 @@ extern "C" {
 #define AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE  246u
 #define AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE         166u
 #define AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE        32u
-#define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0x8)
+/* All 437 valid G17P 3D descriptors leave RCE register 0x15379 zero.  The EOT
+ * Ioto program loads its PBE argument into CProg itself, so it has no external
+ * resource-specifier binding. */
+#define AGX_IOTO_G17P_EOT_RESOURCE_SPEC            UINT64_C(0)
 #define AGX_IOTO_G17P_BG_RESOURCE_SPEC             UINT64_C(0x0007800000000040)
 #define AGX_IOTO_G17P_DIRECT_ADD3_PROGRAM_SIZE      196u
 #define AGX_IOTO_G17P_DIRECT_ADD3_WITNESS_PROGRAM_VA \

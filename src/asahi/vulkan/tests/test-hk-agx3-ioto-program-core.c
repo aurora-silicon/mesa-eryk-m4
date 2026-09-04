@@ -873,6 +873,7 @@ test_g17p_basic_graphics_program(void)
 static int
 test_g17p_rt0_eot_program(void)
 {
+   CHECK(AGX_IOTO_G17P_EOT_RESOURCE_SPEC == 0);
    const struct hk_agx3_g17p_rt0_eot_program_desc desc = {
       .program_va = UINT64_C(0x10001990640),
       .shader_va = UINT64_C(0x10000000140),
