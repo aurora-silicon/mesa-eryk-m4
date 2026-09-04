@@ -1093,11 +1093,11 @@ test_g17p_rt0_background_programs(void)
                               AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
    CHECK(memcmp(program.bytes + copy_offset, clear_copies,
                 sizeof(clear_copies)) == 0);
-   static const uint8_t fragment_termination[] = {
-      0x07, 0x02, 0x54, 0xf3, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   static const uint8_t background_termination[] = {
+      0x07, 0x02, 0x54, 0x00, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
    };
-   CHECK(memcmp(program.bytes + program.length - sizeof(fragment_termination),
-                fragment_termination, sizeof(fragment_termination)) == 0);
+   CHECK(memcmp(program.bytes + program.length - sizeof(background_termination),
+                background_termination, sizeof(background_termination)) == 0);
 
    struct hk_agx3_g17p_rt0_bg_program relocated;
    struct hk_agx3_g17p_rt0_bg_program_desc moved = clear;
@@ -1143,7 +1143,7 @@ test_g17p_rt0_background_programs(void)
    };
    const size_t reload_copy_offset =
       program.length - sizeof(reload_copies) -
-      sizeof(fragment_termination);
+      sizeof(background_termination);
    if (memcmp(program.bytes + reload_copy_offset, reload_copies,
               sizeof(reload_copies)) != 0) {
       fprintf(stderr, "ACTUAL4:");
@@ -1153,8 +1153,8 @@ test_g17p_rt0_background_programs(void)
    }
    CHECK(memcmp(program.bytes + reload_copy_offset, reload_copies,
                 sizeof(reload_copies)) == 0);
-   CHECK(memcmp(program.bytes + program.length - sizeof(fragment_termination),
-                fragment_termination, sizeof(fragment_termination)) == 0);
+   CHECK(memcmp(program.bytes + program.length - sizeof(background_termination),
+                background_termination, sizeof(background_termination)) == 0);
 
    struct hk_agx3_g17p_rt0_bg_program far_program;
    struct hk_agx3_g17p_rt0_bg_program_desc far_reload = reload;
@@ -1164,12 +1164,12 @@ test_g17p_rt0_background_programs(void)
    CHECK(far_program.length == AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE);
    const size_t far_copy_offset =
       far_program.length - sizeof(reload_copies) -
-      sizeof(fragment_termination);
+      sizeof(background_termination);
    CHECK(memcmp(far_program.bytes + far_copy_offset, reload_copies,
                 sizeof(reload_copies)) == 0);
    CHECK(memcmp(far_program.bytes + far_program.length -
-                   sizeof(fragment_termination),
-                fragment_termination, sizeof(fragment_termination)) == 0);
+                   sizeof(background_termination),
+                background_termination, sizeof(background_termination)) == 0);
 
    const struct hk_agx3_g17p_rt0_bg_program before = program;
    moved = clear;

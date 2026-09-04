@@ -146,6 +146,17 @@ bool agx_ioto_g17p_fragment_resource_program_compose(
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
    size_t capacity, size_t *written);
 
+/* Internal background clear/reload programs with no shader pixel-dependency
+ * operations use the native BG PIXREL descriptor 0x200, not ordinary FS
+ * 0x2f3. The scheduled-load and COPY validation is identical to the other
+ * resource composers. This is not a general replacement for fragment state.
+ */
+bool agx_ioto_g17p_background_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written);
+
 /* Compose the exact G17P RT0 end-of-tile program.  pbe_argument_va points to
  * one 32-byte Gen9 PBE descriptor; the program materializes that dynamic VA,
  * loads its two 16-byte halves, copies eight dwords to CProg, and appends the

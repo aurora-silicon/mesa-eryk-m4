@@ -71,6 +71,19 @@ static const uint8_t g17p_fragment_pixrel[] = {
    0x07, 0x02, 0x54, 0xf3, 0x02, 0x00,
 };
 
+/* Background programs do not inherit the ordinary fragment release mask.
+ * Valid 20260904-194053 doorbell 1 BG and partial-BG Ioto both emit this
+ * record at +0x1de. AGXMetalG17P's BackgroundObject ESL constructor reads
+ * __GPU_METADATA_2 root field 1 into encoder+0xac (arm64e 0x3c49f8..3c4a78),
+ * then ESLStateLoadEncoderGen2::finish serializes that value as PIXREL
+ * (0x32cbd0..32ccc8). The BG value is 0x200, versus ordinary FS 0x2f3.
+ * This form is for the bounded internal clear/reload shaders compiled with
+ * ignore_tib_dependencies, not arbitrary shaders that own pixel waits.
+ */
+static const uint8_t g17p_background_pixrel[] = {
+   0x07, 0x02, 0x54, 0x00, 0x02, 0x00,
+};
+
 static const uint8_t g17p_rt0_eot_loads[] = {
    0x67, 0x00, 0x54, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00,
    0x40, 0x22, 0x00, 0x67, 0x00, 0x54, 0x08, 0x00, 0x00, 0x00, 0x00,
@@ -547,11 +560,9 @@ g17p_resource_program_compose(
    uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
    const void *copies, size_t copies_size,
    const struct agx_ioto_state_tail_output *packed_tail, void *output,
-   size_t capacity, size_t *written, bool fragment)
+   size_t capacity, size_t *written, const uint8_t *terminal_protocol,
+   size_t terminal_protocol_size)
 {
-   const size_t terminal_protocol_size =
-      fragment ? sizeof(g17p_fragment_pixrel)
-               : sizeof(g17p_default_profile_suffix);
    if (!output || !written || !g17p_type0_tail_valid(packed_tail) ||
        program_va == 0 || program_va > UINT64_C(0xffffffffffff) ||
        (program_va & (AGX_IOTO_PROGRAM_ALIGNMENT - 1)) != 0 ||
@@ -593,11 +604,7 @@ g17p_resource_program_compose(
    APPEND_SPAN(g17p_default_profile_prefix,
                sizeof(g17p_default_profile_prefix));
    APPEND_SPAN(copies, copies_size);
-   if (fragment)
-      APPEND_SPAN(g17p_fragment_pixrel, sizeof(g17p_fragment_pixrel));
-   else
-      APPEND_SPAN(g17p_default_profile_suffix,
-                  sizeof(g17p_default_profile_suffix));
+   APPEND_SPAN(terminal_protocol, terminal_protocol_size);
 #undef APPEND_SPAN
    memset(dst + offset, 0, AGX_IOTO_PROGRAM_TERMINATE_SIZE);
    dst[offset] = UINT8_C(0x0e);
@@ -618,7 +625,8 @@ agx_ioto_g17p_resource_program_compose(
 {
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
-      packed_tail, output, capacity, written, false);
+      packed_tail, output, capacity, written, g17p_default_profile_suffix,
+      sizeof(g17p_default_profile_suffix));
 }
 
 bool
@@ -630,7 +638,21 @@ agx_ioto_g17p_fragment_resource_program_compose(
 {
    return g17p_resource_program_compose(
       program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
-      packed_tail, output, capacity, written, true);
+      packed_tail, output, capacity, written, g17p_fragment_pixrel,
+      sizeof(g17p_fragment_pixrel));
+}
+
+bool
+agx_ioto_g17p_background_resource_program_compose(
+   uint64_t program_va, const void *pre_copy_body, size_t pre_copy_body_size,
+   const void *copies, size_t copies_size,
+   const struct agx_ioto_state_tail_output *packed_tail, void *output,
+   size_t capacity, size_t *written)
+{
+   return g17p_resource_program_compose(
+      program_va, pre_copy_body, pre_copy_body_size, copies, copies_size,
+      packed_tail, output, capacity, written, g17p_background_pixrel,
+      sizeof(g17p_background_pixrel));
 }
 
 bool

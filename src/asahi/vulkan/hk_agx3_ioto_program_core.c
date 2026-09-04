@@ -384,7 +384,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
     * immediate is below 128 takes a 2-byte compact form instead of the 8-byte
     * long one. The address's high word is `clear_value_va >> 32`, so whenever
     * the clear value happens to live below the 128 GiB mark the program comes
-    * out 6 bytes shorter -- 140 versus 134 with the fragment PIXREL terminal
+    * out 6 bytes shorter -- 140 versus 134 with the background PIXREL terminal
     * protocol.
     *
     * AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE is therefore the long-form maximum,
@@ -395,7 +395,11 @@ hk_agx3_g17p_rt0_bg_program_generate(
     */
    struct hk_agx3_g17p_rt0_bg_program staged;
    size_t written = 0;
-   if (!agx_ioto_g17p_fragment_resource_program_compose(
+   /* Both bounded auxiliary shaders are compiled by agx_bg_eot.c with
+    * ignore_tib_dependencies. Their release descriptor is native BG 0x200;
+    * ordinary FS 0x2f3 releases a different set of pixel classes.
+    */
+   if (!agx_ioto_g17p_background_resource_program_compose(
           desc->program_va, body, copy_offset, body + copy_offset,
           body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
           &written) ||

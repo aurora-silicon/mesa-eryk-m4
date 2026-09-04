@@ -722,6 +722,47 @@ test_g17p_fragment_resource_program(void)
    CHECK(written == sizeof(expected));
    CHECK(memcmp(output, expected, sizeof(expected)) == 0);
    CHECK(output[sizeof(expected)] == 0xa5);
+   /* Reusing the scheduled loads must not reuse the ordinary FS release.
+    * Native BG/partial-BG use 0x200 while ordinary FS uses 0x2f3. The full
+    * composed programs differ in exactly this one descriptor byte.
+    */
+   uint8_t bg_expected[sizeof(expected)];
+   memcpy(bg_expected, expected, sizeof(expected));
+   bg_expected[sizeof(expected) - 7] = 0;
+   CHECK(agx_ioto_g17p_background_resource_program_compose(
+      UINT64_C(0x10000130640), pre_copy, sizeof(pre_copy), copies,
+      sizeof(copies), &tail, output, sizeof(expected), &written));
+   CHECK(written == sizeof(expected));
+   CHECK(memcmp(output, bg_expected, sizeof(expected)) == 0);
+   CHECK(output[sizeof(expected)] == 0xa5);
+
+   uint8_t before[sizeof(output)];
+   memcpy(before, output, sizeof(output));
+   written = 41;
+#define BG_REJECT(va, pre, pre_size, cp, cp_size, state, cap)                  \
+   do {                                                                       \
+      CHECK(!agx_ioto_g17p_background_resource_program_compose(                \
+         va, pre, pre_size, cp, cp_size, state, output, cap, &written));        \
+      CHECK(memcmp(output, before, sizeof(output)) == 0 && written == 41);     \
+   } while (0)
+   BG_REJECT(0, pre_copy, sizeof(pre_copy), copies, sizeof(copies), &tail,
+             sizeof(expected));
+   BG_REJECT(UINT64_C(0x10000130641), pre_copy, sizeof(pre_copy), copies,
+             sizeof(copies), &tail, sizeof(expected));
+   BG_REJECT(UINT64_C(0x10000130640), pre_copy, sizeof(pre_copy), copies,
+             sizeof(copies), &tail, sizeof(expected) - 1);
+   BG_REJECT(UINT64_C(0x10000130640), pre_copy, sizeof(pre_copy), copies,
+             sizeof(copies), NULL, sizeof(expected));
+   BG_REJECT(UINT64_C(0x10000130640), copies, sizeof(copies), copies,
+             sizeof(copies), &tail, sizeof(expected));
+   static const uint8_t bad_copy[] = {0x06, 0x00};
+   BG_REJECT(UINT64_C(0x10000130640), pre_copy, sizeof(pre_copy), bad_copy,
+             sizeof(bad_copy), &tail, sizeof(expected));
+   BG_REJECT(UINT64_C(0x10000130640), NULL, sizeof(pre_copy), copies,
+             sizeof(copies), &tail, sizeof(expected));
+   BG_REJECT(UINT64_C(0x10000130640), pre_copy, sizeof(pre_copy), copies,
+             sizeof(copies) - 1, &tail, sizeof(expected));
+#undef BG_REJECT
    return 0;
 }
 
