@@ -1189,6 +1189,72 @@ test_g17p_rt0_background_programs(void)
 }
 
 static int
+test_g17p_rt0_background_staging(void)
+{
+   struct hk_agx3_g17p_rt0_bg_program_desc desc = {
+      .program_va = UINT64_C(0x10001990240),
+      .shader_va = UINT64_C(0x100fffbc3c0),
+      .clear_value_va = UINT64_C(0x87ffee0000),
+      .shader_binary_size = 52,
+      .nr_gprs = 6,
+      .op = HK_AGX3_G17P_RT0_BG_CLEAR,
+   };
+   const struct {
+      bool known;
+      uint16_t halfs;
+      uint32_t d;
+   } cases[] = {{true, 0, 0}, {true, 8, 16}, {false, 8, 6}};
+   struct hk_agx3_g17p_rt0_bg_program baseline;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &desc,
+                                               &baseline));
+   static const uint8_t speclm[] = {0x77, 0x00, 0x2a, 0x43,
+                                  0x4b, 0x00, 0x00, 0x00};
+   const size_t tail = find_unique_bytes(baseline.bytes, baseline.length,
+                                          speclm, sizeof(speclm));
+   CHECK(tail != SIZE_MAX);
+   const size_t offset = tail + AGX_IOTO_SPECLM_SIZE + AGX_IOTO_LDSHDR_SIZE;
+
+   for (size_t i = 0; i < ARRAY_SIZE(cases); ++i) {
+      desc.staging_known = cases[i].known;
+      desc.staging_halfs = cases[i].halfs;
+      struct hk_agx3_g17p_rt0_bg_program program;
+      CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &desc,
+                                                  &program));
+      struct agx_ioto_state state;
+      uint8_t expected[AGX_IOTO_SPECTPR_SIZE];
+      CHECK(agx_ioto_g17p_compiler_spectpr_build(0, cases[i].d, &state));
+      CHECK(agx_ioto_state_pack_spectpr(AGX_CHIP_G17P, &state, expected,
+                                         sizeof(expected)));
+      CHECK(program.length == baseline.length);
+      CHECK(memcmp(program.bytes + offset, expected, sizeof(expected)) == 0);
+      CHECK(memcmp(program.bytes, baseline.bytes, offset) == 0);
+      CHECK(memcmp(program.bytes + offset + sizeof(expected),
+                   baseline.bytes + offset + sizeof(expected),
+                   baseline.length - offset - sizeof(expected)) == 0);
+   }
+
+   /* The current texel-fetch lowering deliberately reports unknown staging.
+    * Changing its untrusted count must not change the fallback launch. */
+   desc.op = HK_AGX3_G17P_RT0_BG_RELOAD;
+   desc.clear_value_va = 0;
+   desc.texture_va = UINT64_C(0x87ffee0200);
+   desc.sampler_va = UINT64_C(0x87ffee0240);
+   desc.shader_binary_size = 74;
+   desc.nr_gprs = 16;
+   desc.staging_known = false;
+   desc.staging_halfs = 0;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &desc,
+                                               &baseline));
+   desc.staging_halfs = UINT16_MAX;
+   struct hk_agx3_g17p_rt0_bg_program unknown;
+   CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &desc,
+                                               &unknown));
+   CHECK(unknown.length == baseline.length);
+   CHECK(memcmp(unknown.bytes, baseline.bytes, baseline.length) == 0);
+   return 0;
+}
+
+static int
 test_g17p_single_layer_rt0_layout(void)
 {
    CHECK(hk_agx3_g17p_single_layer_rendering(0, 1));
@@ -1222,6 +1288,42 @@ test_g17p_single_layer_rt0_layout(void)
    tib = agx_build_tilebuffer_layout(rgba, 1, 2, false);
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(NULL));
+   return 0;
+}
+
+static int
+test_g17p_rt0_background_pass_control(void)
+{
+   uint64_t resource_spec = UINT64_C(0x123456789abcdef0);
+   CHECK(hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G17P, HK_AGX3_G17P_RT0_BG_CLEAR, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0xffff800000000040));
+   CHECK((resource_spec >> 47) == 0x1ffff);
+   CHECK(hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G17P, HK_AGX3_G17P_RT0_BG_RELOAD, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0xffff800000000040));
+
+   /* No-op is not a real RT0 write and must not inherit its extended mask. */
+   CHECK(hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G17P, HK_AGX3_G17P_RT0_BG_NONE, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0x40));
+   CHECK((resource_spec >> 47) == 0);
+   CHECK(AGX_IOTO_G17P_EOT_RESOURCE_SPEC == UINT64_C(0));
+
+   for (size_t i = 0; i < ARRAY_SIZE(targets); ++i) {
+      if (targets[i] == AGX_CHIP_G17P)
+         continue;
+      CHECK(!hk_agx3_g17p_rt0_bg_resource_spec(
+         targets[i], HK_AGX3_G17P_RT0_BG_CLEAR, &resource_spec));
+      CHECK(resource_spec == UINT64_C(0x40));
+   }
+   CHECK(!hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G17P, (enum hk_agx3_g17p_rt0_bg_op)99, &resource_spec));
+   CHECK(resource_spec == UINT64_C(0x40));
+   CHECK(!hk_agx3_g17p_rt0_bg_resource_spec(
+      AGX_CHIP_G17P, HK_AGX3_G17P_RT0_BG_CLEAR, NULL));
+   CHECK(!hk_agx3_g17p_rt0_bg_shader_resources_match(
+      HK_AGX3_G17P_RT0_BG_NONE, 0, false));
    return 0;
 }
 
@@ -1270,6 +1372,8 @@ main(void)
        test_g17p_combined_sampler_ranges() ||
        test_g17p_root_range() ||
        test_g17p_rt0_background_programs() ||
+       test_g17p_rt0_background_staging() ||
+       test_g17p_rt0_background_pass_control() ||
        test_g17p_single_layer_rt0_layout() || test_alias())
       return 1;
 

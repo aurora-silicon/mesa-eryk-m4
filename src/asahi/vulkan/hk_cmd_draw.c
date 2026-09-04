@@ -421,6 +421,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
          .nr_gprs = shader->info.nr_gprs,
+         .compiler_d_valid = shader->info.agx3_staging_known,
+         .compiler_d = (uint32_t)shader->info.agx3_staging_halfs * 2,
          .fragment = true,
       };
       struct hk_agx3_g17p_graphics_program program;
@@ -432,7 +434,11 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       memcpy(program_map, program.bytes, program.length);
       program_length = program.length;
-      resource_spec = AGX_IOTO_G17P_BG_RESOURCE_SPEC;
+      if (!hk_agx3_g17p_rt0_bg_resource_spec(
+             dev->dev.chip, HK_AGX3_G17P_RT0_BG_NONE, &resource_spec)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
    } else {
       const VkRenderingAttachmentInfo *att_info = &info->pColorAttachments[0];
       struct hk_image_view *iview = cmd->state.gfx.render.color_att[0].iview;
@@ -455,6 +461,8 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          .shader_binary_size = shader->info.binary_size,
          .scratch_size = shader->info.scratch_size,
          .nr_gprs = shader->info.nr_gprs,
+         .staging_halfs = shader->info.agx3_staging_halfs,
+         .staging_known = shader->info.agx3_staging_known,
          .op = op == AGX_BG_CLEAR ? HK_AGX3_G17P_RT0_BG_CLEAR
                                   : HK_AGX3_G17P_RT0_BG_RELOAD,
       };
@@ -483,7 +491,25 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       memcpy(program_map, program.bytes, program.length);
       program_length = program.length;
-      resource_spec = AGX_IOTO_G17P_BG_RESOURCE_SPEC;
+      if (!hk_agx3_g17p_rt0_bg_resource_spec(dev->dev.chip, desc.op,
+                                            &resource_spec)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return (struct hk_bg_eot){0};
+      }
+   }
+
+   if (!store && debug_get_bool_option("HK_G17P_LAUNCH_TRACE", false)) {
+      fprintf(stderr,
+              "G17P BG launch: op=%s program=%" PRIx64 " resources=%" PRIx64
+              " staging_known=%u staging_halfs=%u compiler_d=%u\n",
+              op == AGX_BG_CLEAR ? "clear" :
+              op == AGX_BG_LOAD ? "reload" : "none",
+              program_bo->va->addr, resource_spec,
+              shader->info.agx3_staging_known,
+              shader->info.agx3_staging_halfs,
+              shader->info.agx3_staging_known
+                 ? (unsigned)shader->info.agx3_staging_halfs * 2
+                 : shader->info.nr_gprs);
    }
 
    if (agx_bo_sync_for_device(program_bo, 0, program_length)) {

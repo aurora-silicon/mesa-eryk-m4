@@ -286,6 +286,45 @@ hk_agx3_g17p_root_range(uint16_t start_halfs, uint8_t set_count,
 }
 
 bool
+hk_agx3_g17p_rt0_bg_resource_spec(
+   enum agx_chip chip, enum hk_agx3_g17p_rt0_bg_op op, uint64_t *resource_spec)
+{
+   if (chip != AGX_CHIP_G17P || !resource_spec)
+      return false;
+
+   uint64_t pass_mask;
+   switch (op) {
+   case HK_AGX3_G17P_RT0_BG_CLEAR:
+   case HK_AGX3_G17P_RT0_BG_RELOAD:
+      /* AGXMetalG17P agxsGetShaderPassInfo (0x3ababc, extension at
+       * 0x3abe60..0x3abe8c) repeats the highest active pass's write bit to
+       * fill its 17-bit result. agx_bg_eot.c emits a full-component RT0
+       * store for these two bounded shaders, so the result is all ones,
+       * not the unextended four-component mask 0xf from a different native
+       * framebuffer. calculateBackgroundObjectBits (0x3f0d90) places this
+       * pass mask at bit 47, independently of the USC pointer and resource
+       * fields. This is not a general MRT or partial-component encoder.
+       * It is the ordinary pass-control mode: native loader +0xb0 starts
+       * at 0 (0x4bdb7c). calculateBackgroundObjectBits mode 0 uses all 17
+       * bits, mode 1 reserves the low 8, and mode 2 suppresses the mask.
+       * Do not reuse this helper for those specialized modes.
+       */
+      pass_mask = (UINT64_C(1) << 17) - 1;
+      break;
+   case HK_AGX3_G17P_RT0_BG_NONE:
+      pass_mask = 0;
+      break;
+   default:
+      return false;
+   }
+
+   const uint64_t resources =
+      AGX_IOTO_G17P_BG_RESOURCE_SPEC & ((UINT64_C(1) << 47) - 1);
+   *resource_spec = resources | (pass_mask << 47);
+   return true;
+}
+
+bool
 hk_agx3_g17p_rt0_bg_shader_resources_match(
    enum hk_agx3_g17p_rt0_bg_op op, unsigned push_count, bool uses_txf)
 {
@@ -345,6 +384,12 @@ hk_agx3_g17p_rt0_bg_program_generate(
       .shader_binary_size = desc->shader_binary_size,
       .scratch_size = desc->scratch_size,
       .nr_gprs = desc->nr_gprs,
+      /* BG uses the same independent compiler staging requirement as the
+       * main graphics stages. In particular a uniform-fed clear needs D=0
+       * despite using GPRs. Unknown texel-fetch staging keeps the existing
+       * fallback instead of falsely advertising zero. */
+      .compiler_d_valid = desc->staging_known,
+      .compiler_d = (uint32_t)desc->staging_halfs * 2,
       .fragment = true,
    };
    struct agx_ioto_state_tail_output tail;

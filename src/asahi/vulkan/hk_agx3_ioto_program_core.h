@@ -112,9 +112,16 @@ bool hk_agx3_g17p_basic_graphics_program_generate(
 enum hk_agx3_g17p_rt0_bg_op {
    HK_AGX3_G17P_RT0_BG_CLEAR,
    HK_AGX3_G17P_RT0_BG_RELOAD,
+   HK_AGX3_G17P_RT0_BG_NONE,
 };
 
 #define HK_AGX3_G17P_RT0_CLEAR_PUSH_HALFS 12u
+
+/* Resource spec for the bounded one-RT background shaders, not an ordinary
+ * fragment shader or EOT. CLEAR/RELOAD write every live RT0 component; NONE
+ * has no color output. The upper 17 bits are shader pass control, not a VA. */
+bool hk_agx3_g17p_rt0_bg_resource_spec(
+   enum agx_chip chip, enum hk_agx3_g17p_rt0_bg_op op, uint64_t *resource_spec);
 
 struct hk_agx3_g17p_rt0_bg_program_desc {
    uint64_t program_va;
@@ -125,6 +132,8 @@ struct hk_agx3_g17p_rt0_bg_program_desc {
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
+   uint16_t staging_halfs;
+   bool staging_known;
    enum hk_agx3_g17p_rt0_bg_op op;
 };
 
@@ -136,7 +145,7 @@ struct hk_agx3_g17p_rt0_bg_program {
 /* Build the one-attachment clear or reload background program. Clear maps one
  * 16-byte value to uniform halfs 4..11. Reload maps one 32-byte Gen9 texture
  * descriptor and one 32-byte HAL200 sampler heap element to consecutive CProg
- * resource slots. Both use the default G17P background resource spec. */
+ * resource slots. Use hk_agx3_g17p_rt0_bg_resource_spec for their pass mask. */
 bool hk_agx3_g17p_rt0_bg_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_bg_program_desc *desc,
    struct hk_agx3_g17p_rt0_bg_program *program);
