@@ -255,7 +255,7 @@ asahi_fill_vdm_command(struct hk_device *dev, struct hk_cs *cs,
 
    c->vdm_ctrl_stream_base =
       hk_g17p_vdm_low_window_enabled(&dev->dev)
-         ? hk_g17p_vdm_alias(&dev->dev, cs->addr)
+         ? hk_g17p_vdm_alias(cs->cmd, cs->addr)
          : cs->addr;
 
    /* Metal's compact direct encoder starts at the 0x4000002e

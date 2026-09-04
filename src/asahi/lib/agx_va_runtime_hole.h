@@ -23,6 +23,17 @@
 #define AGX_G17P_VDM_USER_LIMIT                                            \
    (AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_USER_SIZE)
 
+/* Host command-pool BO aliases occupy a deliberately small, low compact
+ * aperture. Native VDM starts range from +0x18000 through +0x10b8000; leave
+ * the fixed render context/printf pages below +0x200000 and retain headroom
+ * through the exclusive +0x02000000 hardware field limit. */
+#define AGX_G17P_VDM_ALIAS_OFFSET_START UINT64_C(0x00200000)
+#define AGX_G17P_VDM_ALIAS_OFFSET_END   UINT64_C(0x02000000)
+#define AGX_G17P_VDM_ALIAS_BASE                                         \
+   (AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_ALIAS_OFFSET_START)
+#define AGX_G17P_VDM_ALIAS_SIZE                                         \
+   (AGX_G17P_VDM_ALIAS_OFFSET_END - AGX_G17P_VDM_ALIAS_OFFSET_START)
+
 /*
  * Reduce the kernel-reported user VA window to the power-of-two window the
  * driver actually allocates from, and derive the address bit that tells a
@@ -43,6 +54,10 @@ bool agx_va_split_user_window(uint64_t user_start, uint64_t user_size,
 
 bool agx_va_overlaps_runtime_graph_hole(enum agx_chip chip, uint64_t addr,
                                         uint64_t size);
+
+bool agx_g17p_vdm_alias_heap_init(struct util_vma_heap *heap);
+bool agx_g17p_vdm_alias_range_valid(uint64_t addr, uint64_t size);
+bool agx_g17p_vdm_alias_compact(uint64_t addr, uint32_t *offset);
 
 bool agx_va_reserve_runtime_graph_hole(
    enum agx_chip chip, struct util_vma_heap *main_heap, uint64_t main_start,

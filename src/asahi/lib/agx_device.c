@@ -1118,6 +1118,11 @@ agx_open_device(void *memctx, struct agx_device *dev)
    simple_mtx_init(&dev->vma_lock, mtx_plain);
    util_vma_heap_init(&dev->main_heap, user_start, user_size);
    util_vma_heap_init(&dev->usc_heap, dev->shader_base, shader_size);
+   if (dev->chip == AGX_CHIP_G17P &&
+       !agx_g17p_vdm_alias_heap_init(&dev->g17p_vdm_alias_heap)) {
+      fprintf(stderr, "Failed to initialize G17P low VDM alias heap\n");
+      return false;
+   }
 
    /* util_vma_heap_init() defaults to alloc_high, which puts every shader and
     * Ioto program within a few pages of the TOP of the 4GiB USC window.  The
@@ -1317,6 +1322,8 @@ agx_close_device(struct agx_device *dev)
 
    util_vma_heap_finish(&dev->main_heap);
    util_vma_heap_finish(&dev->usc_heap);
+   if (dev->chip == AGX_CHIP_G17P)
+      util_vma_heap_finish(&dev->g17p_vdm_alias_heap);
    glsl_type_singleton_decref();
 
    /* Non-DRM winsyses own their platform handles and tear them down after

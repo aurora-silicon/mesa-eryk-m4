@@ -303,6 +303,51 @@ test_g17p_user_window_fits_ppp_pointer_field(void)
    assert(out_start + 2 * out_size <= shader_base);
 }
 
+static void
+test_g17p_vdm_command_alias_heap(void)
+{
+   struct util_vma_heap heap;
+   assert(agx_g17p_vdm_alias_heap_init(&heap));
+
+   const uint64_t command_bo_size = UINT64_C(0x20000);
+   const uint64_t first =
+      util_vma_heap_alloc(&heap, command_bo_size, PAGE);
+   assert(first == AGX_G17P_VDM_ALIAS_BASE);
+   assert(agx_g17p_vdm_alias_range_valid(first, command_bo_size));
+   assert(first - AGX_G17P_VDM_USER_BASE <
+          AGX_G17P_VDM_ALIAS_OFFSET_END);
+
+   const unsigned capacity = AGX_G17P_VDM_ALIAS_SIZE / command_bo_size;
+   uint64_t last = first;
+   for (unsigned i = 1; i < capacity; ++i) {
+      last = util_vma_heap_alloc(&heap, command_bo_size, PAGE);
+      assert(last != 0);
+      assert(agx_g17p_vdm_alias_range_valid(last, command_bo_size));
+   }
+   assert(last + command_bo_size ==
+          AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_ALIAS_OFFSET_END);
+   assert(util_vma_heap_alloc(&heap, command_bo_size, PAGE) == 0);
+
+   util_vma_heap_free(&heap, first, command_bo_size);
+   assert(util_vma_heap_alloc(&heap, command_bo_size, PAGE) == first);
+
+   assert(!agx_g17p_vdm_alias_range_valid(
+      AGX_G17P_VDM_ALIAS_BASE - PAGE, PAGE));
+   assert(!agx_g17p_vdm_alias_range_valid(
+      AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_ALIAS_OFFSET_END, PAGE));
+   assert(!agx_g17p_vdm_alias_range_valid(AGX_G17P_VDM_ALIAS_BASE, 0));
+
+   uint32_t compact = 0;
+   assert(agx_g17p_vdm_alias_compact(first, &compact));
+   assert(compact == AGX_G17P_VDM_ALIAS_OFFSET_START);
+   assert(agx_g17p_vdm_alias_compact(last + command_bo_size - 1, &compact));
+   assert(compact == AGX_G17P_VDM_ALIAS_OFFSET_END - 1);
+   assert(!agx_g17p_vdm_alias_compact(AGX_G17P_VDM_ALIAS_BASE - 1,
+                                      &compact));
+   assert(!agx_g17p_vdm_alias_compact(first, NULL));
+   util_vma_heap_finish(&heap);
+}
+
 int
 main(void)
 {
@@ -313,6 +358,7 @@ main(void)
    test_fixed_usc_allocation_skips_hole();
    test_other_chips_keep_existing_layout();
    test_g17p_user_window_fits_ppp_pointer_field();
+   test_g17p_vdm_command_alias_heap();
    puts("AGX VA layout: user-window split and G17 runtime-graph hole checks passed");
    return 0;
 }

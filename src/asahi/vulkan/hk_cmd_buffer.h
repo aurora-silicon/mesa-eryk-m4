@@ -590,6 +590,9 @@ hk_bound_sw_vs_before_gs(struct hk_graphics_state *gfx)
 struct agx_ptr hk_pool_alloc_internal(struct hk_cmd_buffer *cmd, uint32_t size,
                                       uint32_t alignment, bool usc);
 
+uint64_t hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary);
+uint64_t hk_g17p_vdm_alias(struct hk_cmd_buffer *cmd, uint64_t primary);
+
 uint64_t hk_pool_upload(struct hk_cmd_buffer *cmd, const void *data,
                         uint32_t size, uint32_t alignment);
 uint64_t hk_pool_usc_upload(struct hk_cmd_buffer *cmd, const void *data,
@@ -610,11 +613,10 @@ hk_pool_usc_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
 /*
  * Allocate a payload that a VDM record references through its 40-bit pointer.
  * G17P's ordinary main heap has bit 39 set, which selects the upper UAT root
- * in the VDM state-fetch path. Main command-pool BOs are also bound in the
- * architectural user window. Internal VDM packets and HAL200 bind pairs carry
- * the context-relative low 32-bit offset; hardware adds that window's
- * 0x1000000000 base before fetching the alias. Retain the same CPU mapping and
- * backing storage.
+ * in the VDM state-fetch path. Main command-pool BOs are also bound in a
+ * device-global low alias aperture. Internal VDM packets and HAL200 bind pairs
+ * carry that context-relative compact offset; hardware adds 0x1000000000
+ * before fetching the alias. Retain the same CPU mapping and backing storage.
  */
 static inline struct agx_ptr
 hk_pool_vdm_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
@@ -622,8 +624,14 @@ hk_pool_vdm_alloc(struct hk_cmd_buffer *cmd, uint32_t size, uint32_t alignment)
    struct agx_ptr T = hk_pool_alloc(cmd, size, alignment);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   if (T.gpu && hk_g17p_vdm_low_window_enabled(&dev->dev))
-      T.gpu = hk_g17p_vdm_low(&dev->dev, T.gpu);
+   if (T.gpu && hk_g17p_vdm_low_window_enabled(&dev->dev)) {
+      T.gpu = hk_g17p_vdm_compact(cmd, T.gpu);
+      if (!T.gpu) {
+         vk_command_buffer_set_error(&cmd->vk,
+                                     VK_ERROR_OUT_OF_DEVICE_MEMORY);
+         T.cpu = NULL;
+      }
+   }
 
    return T;
 }

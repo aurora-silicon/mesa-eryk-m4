@@ -14,6 +14,43 @@ struct agx_va_interval {
 };
 
 bool
+agx_g17p_vdm_alias_heap_init(struct util_vma_heap *heap)
+{
+   if (!heap)
+      return false;
+
+   util_vma_heap_init(heap, AGX_G17P_VDM_ALIAS_BASE,
+                      AGX_G17P_VDM_ALIAS_SIZE);
+   heap->alloc_high = false;
+   return heap->free_size == AGX_G17P_VDM_ALIAS_SIZE;
+}
+
+bool
+agx_g17p_vdm_alias_range_valid(uint64_t addr, uint64_t size)
+{
+   if (size == 0 || addr < AGX_G17P_VDM_ALIAS_BASE ||
+       size > UINT64_MAX - addr)
+      return false;
+
+   return addr + size <=
+          AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_ALIAS_OFFSET_END;
+}
+
+bool
+agx_g17p_vdm_alias_compact(uint64_t addr, uint32_t *offset)
+{
+   if (!offset || !agx_g17p_vdm_alias_range_valid(addr, 1))
+      return false;
+
+   const uint64_t compact = addr - AGX_G17P_VDM_USER_BASE;
+   if (compact > UINT32_MAX)
+      return false;
+
+   *offset = (uint32_t)compact;
+   return true;
+}
+
+bool
 agx_va_split_user_window(uint64_t user_start, uint64_t user_size,
                          uint64_t *out_start, uint64_t *out_size)
 {

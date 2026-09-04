@@ -37,6 +37,7 @@
 #include "asahi/lib/agx_vdm_barrier_core.h"
 #include "asahi/lib/agx_vdm_stream_link_core.h"
 #include "asahi/lib/agx_vdm_stream_terminate_core.h"
+#include "asahi/lib/agx_va_runtime_hole.h"
 #include "libagx_dgc.h"
 #include "pool.h"
 #include "shader_enums.h"
@@ -47,6 +48,37 @@
 #include "util/macros.h"
 #include "util/u_dynarray.h"
 #include "vulkan/vulkan_core.h"
+
+uint64_t
+hk_g17p_vdm_compact(struct hk_cmd_buffer *cmd, uint64_t primary)
+{
+   struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (!hk_g17p_vdm_low_window_enabled(&dev->dev))
+      return primary;
+
+   list_for_each_entry(struct hk_cmd_bo, bo, &cmd->uploader.main.bos, link) {
+      const uint64_t start = bo->bo->va->addr;
+      if (primary < start || primary - start >= bo->bo->size)
+         continue;
+
+      const uint64_t alias = bo->g17p_vdm_alias + (primary - start);
+      uint32_t compact = 0;
+      if (agx_g17p_vdm_alias_compact(alias, &compact))
+         return compact;
+      break;
+   }
+
+   mesa_loge("G17P VDM address %#" PRIx64 " has no low command-BO alias",
+             primary);
+   return 0;
+}
+
+uint64_t
+hk_g17p_vdm_alias(struct hk_cmd_buffer *cmd, uint64_t primary)
+{
+   const uint64_t compact = hk_g17p_vdm_compact(cmd, primary);
+   return compact ? AGX_G17P_VDM_USER_BASE + compact : 0;
+}
 
 static void
 hk_descriptor_state_fini(struct hk_cmd_buffer *cmd,
@@ -291,7 +323,7 @@ hk_cmd_buffer_emit_cs_jump(struct hk_cmd_buffer *cmd, void *current,
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
    if (vdm && hk_g17p_vdm_low_window_enabled(&dev->dev))
-      target = hk_g17p_vdm_low(&dev->dev, target);
+      target = hk_g17p_vdm_compact(cmd, target);
 
    switch (agx_chip_command_stream_generation(dev->dev.chip)) {
    case AGX_CS_GENERATION_AGX2:
