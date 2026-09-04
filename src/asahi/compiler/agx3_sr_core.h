@@ -38,7 +38,7 @@ enum agx3_sr_width {
 struct agx3_sr_desc {
    uint16_t dest;      /* destination register, 16-bit half units */
    enum agx3_sr_width width;
-   uint8_t sr;         /* Apple special-register number (field f21) */
+   uint8_t sr;         /* Apple's normalized special-register field f21 */
    uint8_t slot;       /* scoreboard slot this read signals: 1..6 (b) / 1..8 (c) */
    uint16_t wait_mask; /* bit i sets wait on slot i+1 */
 };

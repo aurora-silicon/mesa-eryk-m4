@@ -481,6 +481,10 @@ agx3_map_sr(enum agx_sr sr, uint8_t *apple, enum agx3_sr_width *width)
       SR(AGX_SR_THREAD_POSITION_IN_GRID_X, 23, AGX3_SR_W32);
       SR(AGX_SR_THREAD_POSITION_IN_GRID_Y, 24, AGX3_SR_W32);
       SR(AGX_SR_THREAD_POSITION_IN_GRID_Z, 25, AGX3_SR_W32);
+      /* The semantic enum carries the hardware SR byte (0xd8/0xdd), while
+       * agx3_sr_core consumes Apple's anonymous normalized f21 value. */
+      SR(AGX_SR_INSTANCE_ID, 46, AGX3_SR_W32);
+      SR(AGX_SR_VERTEX_ID, 51, AGX3_SR_W32);
    default:
       return false;
    }

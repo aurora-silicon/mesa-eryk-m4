@@ -19,6 +19,12 @@
  * kernels, attribution UNKNOWN). 32-bit: 23/24/25 thread_position_in_grid.xyz,
  * 26/27/28 threadgroup_position_in_grid.xyz.
  *
+ * Two 32-bit numbers are hardware-vertex invocation inputs. The composer's
+ * anonymous f21 values 51 and 46 encode hardware SR bytes 0xdd vertex ID and
+ * 0xd8 instance ID respectively. They are isolated by otherwise identical
+ * G17P vertex shaders and compile to `0cdd1006` / `0cd81006` for destination
+ * r0.
+ *
  * Two more 16-bit numbers are fragment-only and were added from the G17P
  * writeout session (offline `applegpu-nt -arch applegpu_g17p`, 2026-08-31):
  *
@@ -48,7 +54,7 @@ agx3_sr_witnessed(uint8_t sr, enum agx3_sr_width width)
       }
    }
    if (width == AGX3_SR_W32)
-      return sr >= 23 && sr <= 28;
+      return (sr >= 23 && sr <= 28) || sr == 46 || sr == 51;
    return false;
 }
 

@@ -1660,7 +1660,16 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id_zero_base(b)));
 
    case nir_intrinsic_load_vertex_id:
-      /* We don't assert the HW stage since we use this same ABI with SW VS */
+      /* AGX3 hardware vertex shaders read the invocation index explicitly.
+       * Apple's isolated G17P vertex-attribute shaders begin with
+       * `0cdd1006`, a 32-bit rld from SR 0xdd. Retaining AGX2's preloaded r5
+       * ABI made every invocation observe the same index and collapse a
+       * triangle to one vertex. Software vertex shaders still use the preload
+       * ABI populated by their compute launcher. */
+      if (stage == MESA_SHADER_VERTEX &&
+          b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2)
+         return agx_get_sr_to(b, dst, AGX_SR_VERTEX_ID);
+
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
    case nir_intrinsic_load_primitive_id:
@@ -1668,6 +1677,12 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
       return agx_mov_to(b, dst, agx_abs(agx_vertex_id(b)));
 
    case nir_intrinsic_load_instance_id:
+      /* The matching Apple hardware-vertex witness is `0cd81006`, reading
+       * instance ID from SR 0xd8. */
+      if (stage == MESA_SHADER_VERTEX &&
+          b->shader->key->dev.encoding != AGX_ISA_ENCODING_AGX2)
+         return agx_get_sr_to(b, dst, AGX_SR_INSTANCE_ID);
+
       return agx_mov_to(b, dst, agx_abs(agx_instance_id(b)));
 
    case nir_intrinsic_load_tess_coord_xy: {

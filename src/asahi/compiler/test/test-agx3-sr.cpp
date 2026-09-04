@@ -70,6 +70,36 @@ TEST(AGX3SrCore, WitnessSpotChecks)
    }
 }
 
+TEST(AGX3SrCore, HardwareVertexInvocationInputs)
+{
+   /* Apple's isolated hardware-vertex shaders begin with these byte-exact
+    * 32-bit reads into r0. The encoder input is normalized f21, not the
+    * hardware SR byte visible in the instruction. */
+   static const struct {
+      uint8_t normalized;
+      uint8_t bytes[4];
+   } cases[] = {
+      {51, {0x0c, 0xdd, 0x10, 0x06}}, /* vertex_id */
+      {46, {0x0c, 0xd8, 0x10, 0x06}}, /* instance_id */
+   };
+
+   for (int e = 0; e < 2; ++e) {
+      for (const auto &c : cases) {
+         struct agx3_sr_desc d = {};
+         d.dest = 0;
+         d.width = AGX3_SR_W32;
+         d.sr = c.normalized;
+         d.slot = 1;
+
+         uint8_t out[AGX3_SR_MAX_LENGTH];
+         uint8_t len = 0;
+         ASSERT_TRUE(agx3_sr_encode(enc_of(e), &d, out, &len));
+         ASSERT_EQ(len, sizeof(c.bytes));
+         EXPECT_EQ(0, memcmp(out, c.bytes, len));
+      }
+   }
+}
+
 TEST(AGX3SrCore, WaitEscalatesToLongForm)
 {
    /* A wait bit cannot ride the compact form; Apple's own at_dev_nr witness

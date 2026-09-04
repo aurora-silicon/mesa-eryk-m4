@@ -71,6 +71,31 @@ build_vs_flat(void)
    return b.shader;
 }
 
+/* Instance ID uses its own G17P special register. Keep a complete shader case
+ * so the end-to-end compiler, not only the standalone rld encoder, proves the
+ * hardware-vertex lowering. */
+static nir_shader *
+build_vs_instance_id(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_VERTEX, &agx_nir_options, "AGX3 instance ID VS");
+
+   nir_def *id = nir_u2f32(&b, nir_load_instance_id(&b));
+   nir_def *pos[4] = {
+      id,
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 0.0f),
+      nir_imm_float(&b, 1.0f),
+   };
+
+   for (unsigned c = 0; c < 4; ++c)
+      nir_store_uvs_agx(&b, pos[c], nir_imm_intN_t(&b, c, 16));
+
+   b.shader->info.outputs_written = VARYING_BIT_POS;
+   agx_preprocess_nir(b.shader);
+   return b.shader;
+}
+
 /*
  * Vertex shader with a real attribute fetch: agx_nir_lower_vbo turns
  * load_input into the load_agx used here, so this is the shape a DRAW with a
@@ -640,11 +665,15 @@ struct agx3_graphics_case {
    bool lower_combined_sampler;
    uint16_t reserved_preamble;
    uint16_t minimum_binary_size;
+   uint8_t expected_leading_sr;
 };
 
 static const struct agx3_graphics_case cases[] = {
-   {"vs-flat-triangle", build_vs_flat, true},
-   {"vs-attribute-fetch", build_vs_attribute, true},
+   {"vs-flat-triangle", build_vs_flat, true, .expected_leading_sr = 0xdd},
+   {"vs-instance-id", build_vs_instance_id, true,
+    .expected_leading_sr = 0xd8},
+   {"vs-attribute-fetch", build_vs_attribute, true,
+    .expected_leading_sr = 0xdd},
    {"vs-uniform-attribute-fetch", build_vs_uniform_attribute, true},
    {"vs-vkcube-varyings", build_vs_vkcube_varyings, true},
    {"vs-vkcube-vbo-ubo", build_vs_vkcube_vbo_ubo, true, false,
@@ -738,6 +767,18 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 
       if (result && c->minimum_binary_size != 0)
          result = part.info.binary_size >= c->minimum_binary_size;
+
+      if (result && c->expected_leading_sr != 0) {
+         const uint8_t expected[] = {
+            0x0c, c->expected_leading_sr, 0x10, 0x06,
+         };
+         result = part.info.binary_size >= sizeof(expected) &&
+                  memcmp(part.binary, expected, sizeof(expected)) == 0;
+         if (!result) {
+            fprintf(stderr, "%s %s: missing leading SR %#x rld\n",
+                    enc_name(enc), c->name, c->expected_leading_sr);
+         }
+      }
 
       if (result && c->lower_combined_sampler) {
          nir_shader *reference_nir = build_fs_texture_imm();
