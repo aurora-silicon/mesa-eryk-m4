@@ -390,7 +390,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
       const uint64_t pbe_argument_va =
          hk_pool_upload(cmd, &iview->planes[0].eot,
-                        AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE, 8);
+                        AGX_IOTO_G17P_RT0_PBE_ARGUMENT_SIZE, 32);
       if (!pbe_argument_va)
          return (struct hk_bg_eot){0};
 

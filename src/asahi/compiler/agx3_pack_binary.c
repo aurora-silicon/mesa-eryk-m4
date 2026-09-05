@@ -2387,7 +2387,11 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
-/* Apple emits this complete 64-byte body for the one-store RT0 EOT program.
+/* Apple's one-store RT0 EOT probe supplies the 64-byte instruction skeleton.
+ * Its null AS64 argument clears the IMGW descriptor-table base; that is not
+ * a valid production binding. The matched non-null Apple probe uses two
+ * uniform-to-GPR COPYs instead. Our EOT CProg supplies the retained PBE table
+ * address in uniform halves0..3, so relocate those COPY sources accordingly.
  * The AGX3 imgwblk is not a standalone translation of AGX2's block store: the
  * preceding pack_imgwir and coordinate-select sequence is part of its ABI.
  * Recognize the exact post-RA semantic graph and replace it atomically, so no
@@ -2473,9 +2477,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    ctx->agx3_staging_known = true;
 
    if (agx3_is_g17p_rt0_eot(ctx, enc)) {
-      static const uint8_t apple_g17p_rt0_eot[] = {
+      static const uint8_t g17p_rt0_eot[] = {
          0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
-         0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
+         /* COPY32 u0 -> r0 and u2 -> r2: low/high halves of the table VA.
+          * These GPRs were already live as IMGW's 64-bit base. The coordinate
+          * COPYs below read r6/r4 and write the separate staging file. */
+         0x0b, 0x00, 0x01, 0x08, 0x1b, 0x02, 0x01, 0x08,
          0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
          0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
          0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
@@ -2483,13 +2490,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
          0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
       };
-      /* The byte-identical Apple EOT compiler object reports field38 D=16:
+      /* The original Apple EOT compiler object reports field38 D=16:
        * its coordinate/pixel writeout staging allocation is eight halves,
-       * independently of the eight-half general-register requirement. */
+       * independently of the eight-half general-register requirement.
+       * Binding the existing base registers changes neither allocation nor
+       * the 64-byte main / 128-byte wrapped text and LDSHDR fetch span. */
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
-      return agx3_append(emission, apple_g17p_rt0_eot,
-                         sizeof(apple_g17p_rt0_eot));
+      return agx3_append(emission, g17p_rt0_eot, sizeof(g17p_rt0_eot));
    }
 
    struct util_dynarray fixups;

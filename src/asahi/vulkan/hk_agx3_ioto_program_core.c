@@ -468,7 +468,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
        desc->shader_binary_size != 128 || desc->nr_gprs != 8 ||
        desc->staging_halfs != 8 || !desc->pbe_argument_va ||
        desc->pbe_argument_va > UINT64_C(0xffffffffffff) - 31 ||
-       (desc->pbe_argument_va & 7))
+       (desc->pbe_argument_va & 31))
       return false;
 
    const struct hk_agx3_g17p_graphics_program_desc shader = {
@@ -485,66 +485,53 @@ hk_agx3_g17p_rt0_eot_program_generate(
    if (!hk_agx3_g17p_graphics_state_tail(&shader, &tail, false))
       return false;
 
-   /* The fixed EOT body loaded into GPR halves0..15 while retaining its
-    * address in0..3. Its second load reused that overwritten address; the
-    * profile loader also clobbered0..3 before the final uniform COPYs.
-    * Use the same tracked, disjoint allocation as BG clear/reload. Its
-    * wait/NOP round drains both loads before the now-dead address registers
-    * become profile scratch. The gathered dwords start at half4 or above.
+   /* The EOT consumes a PBE table pointer, not inline descriptor words.
+    * Matching G17P eot_uber metadata binds driver argument 0x32 through
+    * the qword gather to uniform halves 0..3. The driver supplies a raw,
+    * 32-byte-aligned GPU VA to its flat PBE32 table, separately from the
+    * image address encoded inside each descriptor.
+    *
+    * Our bounded RT0 program needs only that pointer. Materialize it in
+    * GPR halves 4..7: the unchanged profile loader uses 0..3 before the final
+    * COPYs. No descriptor-memory load or load-completion wait is needed.
     */
-   const struct agx3_ioto_uniform_range range = {
-      .start_halfs = 0, .size_halfs = 16, .address = desc->pbe_argument_va,
-   };
-   uint8_t body[160];
-   struct agx_ioto_inflight_load loads[2], sort[2];
-   struct agx_ioto_load_cache_entry cache[2];
-   const struct agx3_ioto_uniform_program_desc load_desc = {
-      .program_va = desc->program_va, .ranges = &range, .range_count = 1,
-   };
-   const struct agx3_ioto_uniform_program_workspace workspace = {
-      .body = body, .body_capacity = sizeof(body),
-      .loads = loads, .load_capacity = 2,
-      .sort = sort, .sort_capacity = 2,
-      .cache = cache, .cache_capacity = 2,
-   };
-   size_t body_size, copy_offset;
-   if (!agx3_ioto_uniform_program_body_generate(
-          chip, &load_desc, workspace, &body_size, &copy_offset) ||
-       copy_offset > body_size || body_size - copy_offset != 32)
-      return false;
-
-   /* Preserve the old EOT COPY source-file and no-kill policy. f27 is not
-    * a source-file selector: valid native BG copies have it clear with
-    * nonzero sources. Register relocation/waiting must not silently become
-    * a separate liveness-hint experiment. Source indices come from the
-    * allocator's completed sorted round, not duplicated fixed literals.
-    */
-   const struct agx3_field_kv baseline[] = {{9,3},{10,2},{23,2},{24,2}};
+   uint8_t body[2 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   size_t body_size = 0;
    for (unsigned i = 0; i < 2; ++i) {
-      if (sort[i].count_dwords != 4 || sort[i].lane_mask != 0xff ||
-          sort[i].native_slot_half != i * 8 || sort[i].data.half < 4)
+      uint8_t bytes[AGX_IOTO_LOAD_LDIMM_MAX_SIZE], length;
+      if (!agx_ioto_load_pack_ldimm(chip, 4 + 2 * i,
+                                     (uint32_t)(desc->pbe_argument_va >> (32 * i)),
+                                     bytes, &length))
          return false;
-      for (unsigned dword = 0; dword < 4; ++dword) {
-         const struct agx3_field_kv operands[] = {
-            {3, sort[i].native_slot_half + 2u * dword},
-            {16, sort[i].data.half + 2u * dword},
-         };
-         uint8_t bytes[AGX3_MAX_WORDS * 2], length = 0;
-         if (!agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "copy", 0,
-                                baseline, 4, operands, 2, bytes, &length) ||
-             length != 4)
-            return false;
-         memcpy(body + copy_offset + (i * 4 + dword) * 4, bytes, length);
-      }
+      memcpy(body + body_size, bytes, length);
+      body_size += length;
    }
 
-   /* Variable-length address LDIMMs may shorten the174-byte maximum. */
-   struct hk_agx3_g17p_rt0_eot_program staged;
+   /* Preserve the proven EOT COPY source-file and no-kill policy. Only
+    * the two pointer dwords are published, in uniform halves 0 and 2.
+    */
+   uint8_t copies[8];
+   const struct agx3_field_kv baseline[] = {{9,3},{10,2},{23,2},{24,2}};
+   for (unsigned i = 0; i < 2; ++i) {
+      const struct agx3_field_kv operands[] = {
+         {3, 2u * i}, {16, 4u + 2u * i},
+      };
+      uint8_t bytes[AGX3_MAX_WORDS * 2], length = 0;
+      if (!agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "copy", 0,
+                               baseline, 4, operands, 2, bytes, &length) ||
+          length != 4)
+         return false;
+      memcpy(copies + 4 * i, bytes, length);
+   }
+
+   /* Keep the existing 174-byte allocation capacity. Pointer-only programs
+    * need at most 114 bytes; compact LDIMMs can shorten them further.
+    */
+   struct hk_agx3_g17p_rt0_eot_program staged = {0};
    size_t written = 0;
    if (!agx_ioto_g17p_resource_program_compose(
-          desc->program_va, body, copy_offset, body + copy_offset,
-          body_size - copy_offset, &tail, staged.bytes, sizeof(staged.bytes),
-          &written) ||
+          desc->program_va, body, body_size, copies, sizeof(copies), &tail,
+          staged.bytes, sizeof(staged.bytes), &written) ||
        written > sizeof(staged.bytes))
       return false;
 

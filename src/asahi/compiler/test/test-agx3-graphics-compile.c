@@ -23,6 +23,7 @@
  */
 
 #include "agx_compile.h"
+#include "agx3_copy_core.h"
 #include "agx_nir.h"
 #include "agx_nir_texture.h"
 #include "asahi/lib/agx_abi.h"
@@ -866,7 +867,7 @@ test_g17p_eot_block_store(void)
    };
    struct agx_shader_part part = {0};
    const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
-   static const uint8_t apple_eot[] = {
+   static const uint8_t apple_null_base_eot[] = {
       0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
       0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
       0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
@@ -877,10 +878,32 @@ test_g17p_eot_block_store(void)
       0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
    };
 
-   bool ok = compiled && part.info.binary_size == sizeof(apple_eot) &&
+   /* The original probe's AS64 argument was null, hence its two CLR32s.
+    * Production receives a real descriptor-table VA in uniform halves0..3.
+    * Only those eight bytes may change; SR coordinates, PACK, index0 IMGW,
+    * staging producers and END must retain their independent witness. */
+   static const uint8_t table_base_copies[] = {
+      0x0b, 0x00, 0x01, 0x08, 0x1b, 0x02, 0x01, 0x08,
+   };
+   uint8_t expected[sizeof(apple_null_base_eot)];
+   memcpy(expected, apple_null_base_eot, sizeof(expected));
+   memcpy(expected + 8, table_base_copies, sizeof(table_base_copies));
+
+   bool ok = compiled && part.info.binary_size == sizeof(expected) &&
              part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
              part.info.agx3_staging_halfs == 8 &&
-             memcmp(part.binary, apple_eot, sizeof(apple_eot)) == 0;
+             memcmp(part.binary, expected, sizeof(expected)) == 0;
+
+   /* Check both complete 32-bit pointer words against the independently
+    * grounded COPY encoder, including the high word. A GPR-source copy,
+    * a 16-bit copy or the old null-base body must not pass this ABI check. */
+   for (unsigned half = 0; half < 4; half += 2) {
+      uint8_t copy[AGX3_COPY_MAX_LENGTH], length = 0;
+      ok &= agx3_copy_encode_uniform_to_reg32(
+               AGX_ISA_ENCODING_AGX3B, half, half, copy, &length) &&
+            length == 4 &&
+            memcmp(copy, table_base_copies + half * 2, 4) == 0;
+   }
    if (!ok) {
       fprintf(stderr,
               "AGX3b EOT block-store compiler mismatch: compiled=%u size=%u "

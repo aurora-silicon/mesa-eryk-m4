@@ -3,6 +3,7 @@
 
 #include "hk_agx3_ioto_program_core.h"
 
+#include "asahi/lib/agx_ioto_core.h"
 #include "asahi/lib/agx_ioto_profile_core.h"
 #include "asahi/lib/agx_ioto_state_core.h"
 #include "asahi/lib/agx_tilebuffer.h"
@@ -899,6 +900,53 @@ test_g17p_basic_graphics_program(void)
    return 0;
 }
 
+/* Independently decode the actual emitted LDIMMs, rather than regenerating
+ * expected bytes with the encoder under test. No descriptor load is allowed
+ * in this prefix: the value published to uniforms is the raw table VA.
+ */
+static int
+check_eot_pointer_prefix(const struct hk_agx3_g17p_rt0_eot_program *program,
+                         uint64_t expected, size_t *prefix_size)
+{
+   uint64_t pointer = 0;
+   size_t offset = 0;
+   for (unsigned i = 0; i < 2; ++i) {
+      struct agx_ioto_record record;
+      size_t consumed;
+      CHECK(agx_ioto_decode_one(AGX_CHIP_G17P, program->bytes + offset,
+                                  program->length - offset, &record, &consumed));
+      CHECK(record.kind == AGX_IOTO_KIND_LDIMM_EP0 ||
+            record.kind == AGX_IOTO_KIND_LDIMM_EP1);
+      CHECK(consumed == 2 || consumed == 8);
+      const uint8_t *p = record.bytes;
+      unsigned dest_half;
+      uint32_t immediate;
+      if (consumed == 2) {
+         dest_half = ((p[0] >> 4) & 15) * 2;
+         immediate = p[1];
+      } else {
+         const uint16_t w0 = p[0] | (uint16_t)p[1] << 8;
+         const uint16_t w1 = p[2] | (uint16_t)p[3] << 8;
+         const uint16_t w2 = p[4] | (uint16_t)p[5] << 8;
+         const uint16_t w3 = p[6] | (uint16_t)p[7] << 8;
+         dest_half = ((w0 >> 4) & 15) * 2 + ((w1 >> 6) & 3) * 32 +
+                     ((w1 >> 3) & 1) * 128;
+         immediate = ((w0 >> 8) & 127) | (uint32_t)((w2 >> 1) & 15) << 7 |
+                     (uint32_t)((w2 >> 10) & 3) << 11 |
+                     (uint32_t)(w3 & 15) << 13 |
+                     (uint32_t)((w3 >> 4) & 255) << 17 |
+                     (uint32_t)((w1 >> 9) & 127) << 25;
+      }
+      CHECK(dest_half == 4 + 2 * i);
+      pointer |= (uint64_t)immediate << (32 * i);
+      offset += consumed;
+   }
+   CHECK(pointer == expected);
+   CHECK(program->length <= 114);
+   *prefix_size = offset;
+   return 0;
+}
+
 static int
 test_g17p_rt0_eot_program(void)
 {
@@ -915,41 +963,43 @@ test_g17p_rt0_eot_program(void)
    struct hk_agx3_g17p_rt0_eot_program program;
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
                                                &program));
-   CHECK(program.length == AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE);
+   CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE == 174);
+   CHECK(program.length == 114);
+   size_t prefix_size;
+   CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va,
+                                 &prefix_size) == 0);
+   CHECK(prefix_size == 16);
 
    static const uint8_t source_prefix[] = {
-      0x0c, 0xa0, 0x02, 0x00, 0x08, 0x00, 0x10, 0x00,
-      0x1c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
-      0x67, 0x00, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
-      0x17, 0x00, 0x00, 0x40, 0x22, 0x00,
-      0x67, 0x00, 0x54, 0x10, 0x00, 0x00, 0x00, 0x00,
-      0x17, 0x00, 0x02, 0x40, 0x22, 0x00,
-      0x06, 0x08, 0x06, 0x00, 0x06, 0x00, 0x06, 0x00,
+      0x2c, 0xa0, 0x02, 0x00, 0x08, 0x00, 0x10, 0x00,
+      0x3c, 0x80, 0x02, 0x00, 0x04, 0x00, 0x00, 0x00,
    };
    CHECK(memcmp(program.bytes, source_prefix, sizeof(source_prefix)) == 0);
-   CHECK(program.bytes[52] == 0x77 && program.bytes[53] == 0x00 &&
-         program.bytes[54] == 0x2a && program.bytes[55] == 0x43);
    static const uint8_t eot_state_tail[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
       0x77, 0x01, 0xaa, 0x02, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
       0xf7, 0x00, 0x2a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
-   CHECK(memcmp(program.bytes + 52, eot_state_tail,
+   CHECK(memcmp(program.bytes + prefix_size, eot_state_tail,
                 sizeof(eot_state_tail)) == 0);
-   CHECK(program.bytes[170] == 0x0e && program.bytes[171] == 0x00 &&
-         program.bytes[172] == 0x00 && program.bytes[173] == 0x00);
 
-   /* The profile prefix occupies0..3, while both gathered blocks remain
-    * live until these COPYs. f27 stays clear; the preceding explicit wait
-    * replaces the former first-COPY wait. Uniform destinations0..15 and
-    * the shader state/terminal protocol are unchanged. */
+   /* Profile scratch occupies0..3; the table pointer survives in4..7.
+    * Its only publications are COPY GPR4->uniform0 and GPR6->uniform2.
+    * These COPY source-file/no-kill bits and the terminal are unchanged.
+    */
+   static const uint8_t expected_profile[] = {
+      0x1c,0x80,0x02,0x00,0x00,0x00,0x00,0x00,0x14,0x81,0x11,0x06,
+      0x00,0x00,0x00,0x00,0x0c,0x80,0x02,0x00,0x04,0x00,0x00,0x00,
+      0x9f,0x11,0x54,0x00,0x02,0x00,0x08,0xa8,0x10,0x05,0x1c,0x80,
+      0x02,0x00,0x04,0x00,0x00,0x00,0x0f,0x12,0x54,0x00,0x4c,0x00,
+   };
+   CHECK(sizeof(expected_profile) == AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE);
+   CHECK(memcmp(program.bytes + prefix_size + sizeof(eot_state_tail),
+                expected_profile, sizeof(expected_profile)) == 0);
    static const uint8_t expected_copies[] = {
       0x0b,0x04,0x01,0x04, 0x1b,0x06,0x01,0x04,
-      0x2b,0x08,0x01,0x04, 0x3b,0x0a,0x01,0x04,
-      0x4b,0x10,0x01,0x04, 0x5b,0x12,0x01,0x04,
-      0x6b,0x14,0x01,0x04, 0x7b,0x16,0x01,0x04,
    };
-   const size_t copies_offset = 52 + sizeof(eot_state_tail) +
+   const size_t copies_offset = prefix_size + sizeof(eot_state_tail) +
                                AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
    CHECK(memcmp(program.bytes + copies_offset, expected_copies,
                 sizeof(expected_copies)) == 0);
@@ -967,7 +1017,24 @@ test_g17p_rt0_eot_program(void)
       hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &relocated));
    CHECK(memcmp(program.bytes, relocated.bytes, 16) != 0);
    CHECK(memcmp(program.bytes + 16, relocated.bytes + 16,
-                sizeof(program.bytes) - 16) == 0);
+                program.length - 16) == 0);
+
+   const uint64_t pointers[] = {
+      32, 128, UINT64_C(0xffffffe0), UINT64_C(0x100000020),
+      UINT64_C(0x8000002000), UINT64_C(0x123456780120),
+      UINT64_C(0xffffffffffe0),
+   };
+   for (unsigned i = 0; i < ARRAY_SIZE(pointers); ++i) {
+      moved = desc;
+      moved.pbe_argument_va = pointers[i];
+      CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                   &relocated));
+      size_t moved_prefix;
+      CHECK(check_eot_pointer_prefix(&relocated, pointers[i], &moved_prefix) == 0);
+      CHECK(relocated.length - moved_prefix == program.length - prefix_size);
+      CHECK(memcmp(relocated.bytes + moved_prefix, program.bytes + prefix_size,
+                   program.length - prefix_size) == 0);
+   }
 
    const struct hk_agx3_g17p_rt0_eot_program before = program;
    moved = desc;
@@ -975,6 +1042,13 @@ test_g17p_rt0_eot_program(void)
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   for (unsigned offset = 8; offset < 32; offset += 8) {
+      moved = desc;
+      moved.pbe_argument_va += offset;
+      CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                    &program));
+      CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   }
    moved = desc;
    moved.shader_binary_size = 64;
    CHECK(
