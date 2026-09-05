@@ -317,6 +317,23 @@ test_g17p_vdm_command_alias_heap(void)
    assert(first - AGX_G17P_VDM_USER_BASE <
           AGX_G17P_VDM_ALIAS_OFFSET_END);
 
+   /* Kernel g17_resources.rs, native 092506 page-list capture. Each sparse
+    * four-page block must remain disjoint from the entire command aperture. */
+   const uint32_t native_tvb_pages[] = {
+      0x11, 0x16, 0x1b, 0x20, 0x25, 0x2a, 0x4a, 0x4f,
+      0x54, 0x59, 0x5e, 0x63, 0x68, 0x6d, 0x72, 0x77,
+      0x7c, 0x81, 0x86, 0x8b, 0x90, 0x95, 0x9a, 0x9f,
+      0xa4, 0xa9, 0xae, 0xb3, 0xb8, 0xbd, 0xc2, 0xc7,
+   };
+   for (unsigned i = 0; i < sizeof(native_tvb_pages) / sizeof(native_tvb_pages[0]); ++i) {
+      const uint64_t end = ((uint64_t)native_tvb_pages[i] + 4) * 0x8000;
+      assert(end <= AGX_G17P_VDM_ALIAS_OFFSET_START);
+   }
+   /* The old third command BO collided with block six. */
+   assert(0x200000 + 3 * command_bo_size > (uint64_t)native_tvb_pages[6] * 0x8000);
+   assert(0x200000 + 2 * command_bo_size < ((uint64_t)native_tvb_pages[6] + 4) * 0x8000);
+   assert(AGX_G17P_VDM_ALIAS_OFFSET_START == 0x800000);
+
    const unsigned capacity = AGX_G17P_VDM_ALIAS_SIZE / command_bo_size;
    uint64_t last = first;
    for (unsigned i = 1; i < capacity; ++i) {

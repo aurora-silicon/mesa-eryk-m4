@@ -23,11 +23,12 @@
 #define AGX_G17P_VDM_USER_LIMIT                                            \
    (AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_USER_SIZE)
 
-/* Host command-pool BO aliases occupy a deliberately small, low compact
- * aperture. Native VDM starts range from +0x18000 through +0x10b8000; leave
- * the fixed render context below +0x200000 and retain headroom
- * through the exclusive +0x02000000 hardware field limit. */
-#define AGX_G17P_VDM_ALIAS_OFFSET_START UINT64_C(0x00200000)
+/* Native TVB blocks are sparse 128-KiB mappings with 32-KiB page IDs
+ * 0x11..0xc7. Their last range ends at compact 0x658000; the fixed scene,
+ * discard and status mappings also live below this bound. Start command BOs
+ * at +8 MiB, above the complete retained render pool, and retain the native
+ * exclusive +32 MiB command-field limit. */
+#define AGX_G17P_VDM_ALIAS_OFFSET_START UINT64_C(0x00800000)
 #define AGX_G17P_VDM_ALIAS_OFFSET_END   UINT64_C(0x02000000)
 #define AGX_G17P_VDM_ALIAS_BASE                                         \
    (AGX_G17P_VDM_USER_BASE + AGX_G17P_VDM_ALIAS_OFFSET_START)
