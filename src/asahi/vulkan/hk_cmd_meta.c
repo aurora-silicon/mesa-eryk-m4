@@ -70,6 +70,8 @@ hk_device_init_meta(struct hk_device *dev)
    dev->meta.use_rect_list_pipeline = true;
    dev->meta.cmd_bind_map_buffer = hk_cmd_bind_map_buffer;
    dev->meta.max_bind_map_buffer_size_B = 64 * 1024;
+   dev->meta.buffer_access.max_fill_chunk_size =
+      dev->dev.chip == AGX_CHIP_G17P ? 16 : 0;
 
    for (unsigned i = 0; i < VK_META_BUFFER_CHUNK_SIZE_COUNT; ++i) {
       dev->meta.buffer_access.optimal_wg_size[i] = 64;
@@ -1406,6 +1408,35 @@ hk_CmdCopyBuffer2(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2 *info)
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      struct hk_meta_save save;
+      hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      /* Retain the aligned 16-byte bulk path even when the original
+       * region has a scalar tail, as hk_cmd_copy does for libagx. */
+      for (unsigned i = 0; i < info->regionCount; i++) {
+         VkBufferCopy2 region = info->pRegions[i];
+         VkCopyBufferInfo2 copy = *info;
+         copy.regionCount = 1;
+         copy.pRegions = &region;
+         uint64_t src = vk_meta_buffer_address(
+            &dev->vk, info->srcBuffer, region.srcOffset, region.size);
+         uint64_t dst = vk_meta_buffer_address(
+            &dev->vk, info->dstBuffer, region.dstOffset, region.size);
+         if (region.size > 16 && ((src | dst) & 15) == 0 &&
+             (region.size & 15) != 0) {
+            const VkDeviceSize tail = region.size & 15;
+            region.size -= tail;
+            vk_meta_copy_buffer(&cmd->vk, &dev->meta, &copy);
+            region.srcOffset += region.size;
+            region.dstOffset += region.size;
+            region.size = tail;
+         }
+         vk_meta_copy_buffer(&cmd->vk, &dev->meta, &copy);
+      }
+      hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      return;
+   }
+
    for (unsigned i = 0; i < info->regionCount; i++) {
       const VkBufferCopy2 *region = &info->pRegions[i];
       VK_FROM_HANDLE(hk_buffer, src_buffer, info->srcBuffer);
@@ -1546,6 +1577,15 @@ hk_CmdFillBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer,
    VK_FROM_HANDLE(hk_buffer, buffer, dstBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      struct hk_meta_save save;
+      hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      vk_meta_fill_buffer(&cmd->vk, &dev->meta, dstBuffer, dstOffset, dstRange,
+                          data);
+      hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      return;
+   }
+
    size_t range = vk_buffer_range(&buffer->vk, dstOffset, dstRange);
    uint64_t addr =
       vk_meta_buffer_address(&dev->vk, dstBuffer, dstOffset, dstRange);
@@ -1566,6 +1606,15 @@ hk_CmdUpdateBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer,
    VK_FROM_HANDLE(hk_cmd_buffer, cmd, commandBuffer);
    VK_FROM_HANDLE(hk_buffer, buffer, dstBuffer);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      struct hk_meta_save save;
+      hk_meta_begin(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      vk_meta_update_buffer(&cmd->vk, &dev->meta, dstBuffer, dstOffset, dstRange,
+                            pData);
+      hk_meta_end(cmd, &save, VK_PIPELINE_BIND_POINT_COMPUTE);
+      return;
+   }
+
    size_t range = vk_buffer_range(&buffer->vk, dstOffset, dstRange);
 
    hk_cmd_copy(cmd,

@@ -38,6 +38,7 @@
 
 struct vk_meta_fill_buffer_key {
    enum vk_meta_object_key_type key_type;
+   uint32_t chunk_size;
 };
 
 struct vk_meta_copy_buffer_key {
@@ -2541,21 +2542,24 @@ vk_meta_update_buffer(struct vk_command_buffer *cmd,
 
 static nir_shader *
 build_fill_buffer_shader(const struct vk_meta_device *meta,
-                         UNUSED const void *key_data)
+                         const void *key_data)
 {
+   const struct vk_meta_fill_buffer_key *key = key_data;
    nir_builder builder = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, NULL, "vk-meta-fill-buffer");
    nir_builder *b = &builder;
 
-   b->shader->info.workgroup_size[0] = vk_meta_buffer_access_wg_size(meta, 4);
+   b->shader->info.workgroup_size[0] =
+      vk_meta_buffer_access_wg_size(meta, key->chunk_size);
    b->shader->info.workgroup_size[1] = 1;
    b->shader->info.workgroup_size[2] = 1;
 
    nir_def *global_id = nir_load_global_invocation_id(b, 32);
    nir_def *copy_id = nir_channel(b, global_id, 0);
-   nir_def *offset = nir_imul_imm(b, copy_id, 4);
+   nir_def *offset = nir_imul_imm(b, copy_id, key->chunk_size);
    nir_def *size = load_info(b, struct vk_meta_fill_buffer_info, size);
    nir_def *data = load_info(b, struct vk_meta_fill_buffer_info, data);
+   data = nir_replicate(b, data, key->chunk_size / 4);
 
    nir_push_if(b, nir_ult(b, offset, size));
 
@@ -2565,7 +2569,7 @@ build_fill_buffer_shader(const struct vk_meta_device *meta,
       load_info(b, struct vk_meta_fill_buffer_info, buf_addr);
 
    nir_store_global(b, data, nir_iadd(b, buf_addr, offset),
-                          .align_mul = 4);
+                          .align_mul = key->chunk_size);
 
    nir_pop_if(b, NULL);
 
@@ -2600,8 +2604,20 @@ vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
    const struct vk_device_dispatch_table *disp = &dev->dispatch_table;
    VkResult result;
 
+   /* VK_WHOLE_SIZE rounds down to complete 32-bit words. Select the
+    * vector width from the actual address and complete range, so no vector
+    * store can cross the caller's requested interval. */
+   size = vk_buffer_range(buf, offset, size) & ~UINT64_C(3);
+   if (size == 0)
+      return;
+
+   const uint64_t addr = vk_meta_buffer_address(dev, buffer, offset, size);
+   const uint32_t max_chunk = MAX2(meta->buffer_access.max_fill_chunk_size, 4);
+   assert(util_is_power_of_two_nonzero(max_chunk) && max_chunk <= 16);
+
    struct vk_meta_fill_buffer_key key = {
       .key_type = VK_META_OBJECT_KEY_FILL_BUFFER,
+      .chunk_size = MIN2(max_chunk, 1u << MIN2(4, ffsll(addr | size) - 1)),
    };
 
    VkPipelineLayout pipeline_layout;
@@ -2623,10 +2639,9 @@ vk_meta_fill_buffer(struct vk_command_buffer *cmd, struct vk_meta_device *meta,
     *
     * hence the mask to align the size on 4 bytes here.
     */
-   size = vk_buffer_range(buf, offset, size) & ~3u;
-
-   const uint32_t optimal_wg_size = vk_meta_buffer_access_wg_size(meta, 4);
-   const uint32_t per_wg_copy_size = optimal_wg_size * 4;
+   const uint32_t optimal_wg_size =
+      vk_meta_buffer_access_wg_size(meta, key.chunk_size);
+   const uint32_t per_wg_copy_size = optimal_wg_size * key.chunk_size;
    uint32_t max_per_dispatch_size =
       pdev->properties.maxComputeWorkGroupCount[0] * per_wg_copy_size;
 

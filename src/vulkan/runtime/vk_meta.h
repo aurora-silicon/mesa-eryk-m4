@@ -125,6 +125,10 @@ struct vk_meta_device {
        * fast enough.
        */
       uint32_t optimal_wg_size[VK_META_BUFFER_CHUNK_SIZE_COUNT];
+
+      /* Maximum aligned fill chunk, in bytes. Zero retains scalar 32-bit
+       * fills; drivers may opt in to 8- or 16-byte vector stores. */
+      uint32_t max_fill_chunk_size;
    } buffer_access;
 
    VkResult (*cmd_bind_map_buffer)(struct vk_command_buffer *cmd,
