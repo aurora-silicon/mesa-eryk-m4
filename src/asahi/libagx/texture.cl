@@ -252,3 +252,105 @@ libagx_buffer_image_offset(constant struct agx_pbe_packed *ptr, uint x)
 
    return x + d.buffer_offset_sw;
 }
+
+/* Gen9 queries consume the same descriptor bytes as the native texture
+ * hardware. Address, sample-count and mip-level fields differ from AGX2;
+ * arrays retain their native tiled/linear depth fields. */
+uint3
+libagx_txs_gen9(constant struct agx_texture_gen9_packed *ptr, uint16_t lod,
+           unsigned nr_comps, bool is_1d, bool is_2d,
+           bool is_cube, bool is_array)
+{
+   agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
+
+   /* From the Vulkan spec:
+    *
+    *    OpImageQuery*...  return 0 if the bound descriptor is a null descriptor
+    */
+   if (d.address == AGX_ZERO_PAGE_ADDRESS)
+      return 0;
+
+   /* Load standard dimensions */
+   uint3 size = (uint3)(d.width, d.height, d.depth);
+   lod += d.first_level;
+
+   /* Linear 2D arrays are special.
+    *
+    * TODO: Optimize this, since linear 2D arrays aren't needed for APIs and
+    * this just gets used internally for blits.
+    */
+   if (is_2d && is_array && d.layout == AGX_LAYOUT_LINEAR)
+      size.z = d.depth_linear;
+
+   /* 1D Arrays have their second component as the layer count */
+   if (is_1d && is_array)
+      size.y = size.z;
+
+   /* Adjust for LOD, do not adjust array size */
+   size.x = max(size.x >> lod, 1u);
+
+   if (nr_comps - (uint)is_array >= 2)
+      size.y = max(size.y >> lod, 1u);
+
+   if (nr_comps - (uint)is_array >= 3)
+      size.z = max(size.z >> lod, 1u);
+
+   /* Cube maps have equal width and height, we save some instructions by only
+    * reading one. Dead code elimination will remove the redundant instructions.
+    */
+   if (is_cube)
+      size.y = size.x;
+
+   return size;
+}
+
+uint
+libagx_texture_samples_gen9(constant struct agx_texture_gen9_packed *ptr)
+{
+   agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
+
+   /* As above */
+   if (d.address == AGX_ZERO_PAGE_ADDRESS)
+      return 0;
+
+   /* We may assume the input is multisampled, so just check the samples */
+   return 2u << d.samples;
+}
+
+uint
+libagx_texture_levels_gen9(constant struct agx_texture_gen9_packed *ptr)
+{
+   agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
+
+   if (d.address == AGX_ZERO_PAGE_ADDRESS)
+      return 0;
+   else
+      return (d.last_level - d.first_level) + 1;
+}
+
+uint
+libagx_lower_txf_robustness_gen9(constant struct agx_texture_gen9_packed *ptr,
+                            bool check_lod, ushort lod, bool check_min_lod,
+                            ushort min_lod, bool check_layer, uint layer,
+                            uint x)
+{
+   agx_unpack(NULL, ptr, TEXTURE_GEN9, d);
+
+   bool valid = true;
+
+   if (check_lod)
+      valid &= lod <= (d.last_level - d.first_level);
+
+   if (check_min_lod)
+      valid &= lod >= min_lod;
+
+   if (check_layer) {
+      bool linear = (d.layout == AGX_LAYOUT_LINEAR);
+      valid &= layer < (linear ? d.depth_linear : d.depth);
+   }
+
+   /* The maximum tail offset is 0xF so by returning 0xFFF0 for out-of-bounds we
+    * stay under 0xFFFF and keep robustness after offsetting.
+    */
+   return valid ? x : 0xFFF0;
+}

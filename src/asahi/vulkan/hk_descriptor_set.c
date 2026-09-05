@@ -79,7 +79,8 @@ write_sampled_image_view_desc(struct hk_descriptor_set *set,
       for (uint8_t plane = 0; plane < plane_count; plane++) {
          desc[plane].tex =
             ia ? view->planes[plane].ia : view->planes[plane].sampled;
-         desc[plane].sw.sampled_heap_index =
+         desc[plane].sw.sampled_heap_index = ia ?
+            view->planes[plane].input_heap_index :
             view->planes[plane].sampled_heap_index;
 
          float min_lod = MAX2(view->vk.min_lod - view->vk.base_mip_level, 0.0);

@@ -28,7 +28,14 @@ same(const struct agx3_tex_fetch_desc *a,
           a->texture == b->texture && a->slot == b->slot &&
           a->wait_mask == b->wait_mask && a->coord_kill == b->coord_kill &&
           a->final == b->final &&
-          a->array == b->array;
+          a->array == b->array &&
+          (a->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
+             (b->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) &&
+          (a->sampler_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) ==
+             (b->sampler_kind ?: AGX3_TEX_OPERAND_IMMEDIATE) &&
+          a->texture_value == b->texture_value &&
+          a->sampler_value == b->sampler_value &&
+          a->texture_kill == b->texture_kill;
 }
 
 static int
@@ -38,7 +45,9 @@ roundtrip(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
    uint8_t length = 0;
    struct agx3_tex_fetch_desc decoded;
    CHECK(agx3_tex_encode_fetch(enc, d, bytes, &length));
-   CHECK(length == (enc == AGX_ISA_ENCODING_AGX3B ? 14 : 8));
+   CHECK(length == (enc == AGX_ISA_ENCODING_AGX3B ?
+      ((d->texture_kind <= AGX3_TEX_OPERAND_IMMEDIATE &&
+        d->sampler_kind <= AGX3_TEX_OPERAND_IMMEDIATE) ? 14 : 20) : 8));
    CHECK(agx3_tex_decode_fetch(enc, bytes, length, &decoded));
    CHECK(same(d, &decoded));
    return 0;
@@ -198,7 +207,7 @@ test_fail_closed(void)
    d.coord = 64;
    CHECK(rejected_and_cleared(AGX_ISA_ENCODING_AGX3C, &d));
    d.coord = 0;
-   d.mask = 3;
+   d.mask = 0;
    CHECK(rejected_and_cleared(AGX_ISA_ENCODING_AGX3B, &d));
    d.mask = 15;
    d.texture = 16;
@@ -581,15 +590,12 @@ test_bindless_operand_kinds(void)
    CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    CHECK(len == 20);
 
-   /* Mixing an immediate sampler with a non-immediate texture is refused.
-    * No Apple shader mixes them, and the composed table rejects the pairing,
-    * so this fails closed rather than inventing a hybrid. Honeykrisp's meta
-    * copy wants exactly this shape today, which is why it must materialise a
-    * sampler descriptor rather than passing an immediate index. */
+   /* Fresh native read() uses an indirect texture with an immediate
+    * sampler index. Each operand has its own immediate/indirect class. */
    FETCH_BASE();
    d.texture_kind = AGX3_TEX_OPERAND_REGISTER;
    d.sampler_kind = AGX3_TEX_OPERAND_IMMEDIATE;
-   CHECK(!agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
 
    /* Only AGX3b is witnessed for the non-immediate kinds. */
    FETCH_BASE();
@@ -672,13 +678,271 @@ test_sample_mask_domain(void)
    return 0;
 }
 
+static int
+test_indexed_fetch_native(void)
+{
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb8,0xb0,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0xe0,0x0c,0xb8,0xb0,0x00,0x17,0x01,0x80,0x03,0x80,0x00,0x01,0x00,0x00,0x20,0x00,0x00,0x00,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=3,.texture_value=12,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb8,0x30,0x00,0x17,0x01,0x00,0x03,0x80,0x00,0x01,0x00,0x00,0x28,0x00,0x00,0x40,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=2,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=32,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=1};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0xe0,0x0c,0xb8,0xb0,0x00,0x97,0x01,0x80,0x03,0x80,0x00,0x01,0x00,0x00,0x20,0x00,0x00,0x00,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=3,.texture_value=12,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=1,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0xc0,0x0c,0xb8,0xb0,0x00,0x97,0x01,0x00,0x03,0x80,0x00,0x01,0x00,0x00,0x28,0x00,0x00,0x00,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=2,.texture_value=8,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=1,
+         .final=1,.texture_kill=1};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0xe0,0x0c,0x38,0xb1,0x00,0x17,0x01,0x80,0x02,0x80,0x00,0x01,0x00,0x00,0x20,0x00,0x00,0x00,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=3,.texture_value=12,.sampler_value=2,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=0,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa0,0x90,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=1,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa8,0x90,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=2,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa8,0xb0,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=3,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x0d,0x80,0x0c,0xb0,0x90,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=2,.coord=0,.width=AGX3_TEX_W32,
+         .mask=4,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa0,0x90,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=5,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa8,0x90,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=6,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb0,0xb0,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=7,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x0d,0x80,0x0c,0xb8,0x90,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=2,.coord=0,.width=AGX3_TEX_W32,
+         .mask=8,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa0,0xb0,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=9,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb0,0x90,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=10,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa8,0xb0,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=11,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb8,0x90,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=12,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xa0,0xb0,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=13,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb0,0xb0,0x00,0x17,0x01,0x00,0x01,0x40,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=14,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   {
+      const uint8_t native[]={0x05,0x80,0x0c,0xb8,0xb0,0x00,0x17,0x01,0x00,0x01,0x00,0x00,0x01,0x00};
+      struct agx3_tex_fetch_desc d={.dest=0,.coord=0,.width=AGX3_TEX_W32,
+         .mask=15,.texture_kind=1,.texture_value=0,.sampler_value=1,
+         .slot=1,.wait_mask=1,.coord_kill=true,.array=0,
+         .final=1,.texture_kill=0};
+      uint8_t out[AGX3_TEX_MAX_LENGTH],len;
+      CHECK(agx3_tex_encode_fetch(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==sizeof(native));
+      CHECK(!memcmp(out,native,len));
+      CHECK(roundtrip(AGX_ISA_ENCODING_AGX3B,&d)==0);
+   }
+   return 0;
+}
+
 int
 main(void)
 {
    if (test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
        test_sample_fail_closed() || test_array_fetch() ||
-       test_bindless_operand_kinds() || test_indexed_sample_witnesses() || test_sample_mask_domain())
+       test_bindless_operand_kinds() || test_indexed_sample_witnesses() || test_sample_mask_domain() || test_indexed_fetch_native())
       return 1;
    printf("agx3 texture core: %u checks passed\n", checks);
    return 0;

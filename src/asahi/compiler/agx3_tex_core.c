@@ -27,7 +27,19 @@ fetch_ok(enum agx_isa_encoding enc, const struct agx3_tex_fetch_desc *d)
    if ((d->width != AGX3_TEX_W16 && d->width != AGX3_TEX_W32) ||
        d->dest >= 128 || (d->width == AGX3_TEX_W32 && (d->dest & 1)) ||
        (d->coord & 3) || d->coord > 60 ||
-       (d->mask != 1 && d->mask != 15) || d->texture > 15)
+       (enc == AGX_ISA_ENCODING_AGX3B ? (!d->mask || d->mask > 15)
+                                    : (d->mask != 1 && d->mask != 15)) ||
+       d->texture > 15)
+      return false;
+
+   const unsigned tk = d->texture_kind ?: AGX3_TEX_OPERAND_IMMEDIATE;
+   const unsigned sk = d->sampler_kind ?: AGX3_TEX_OPERAND_IMMEDIATE;
+   if (tk > AGX3_TEX_OPERAND_UNIFORM || sk > AGX3_TEX_OPERAND_UNIFORM ||
+       (tk != AGX3_TEX_OPERAND_IMMEDIATE &&
+        ((d->texture_value & 1) || d->texture_value > 252)) ||
+       (sk == AGX3_TEX_OPERAND_IMMEDIATE ? d->sampler_value > 15
+         : ((d->sampler_value & 1) || d->sampler_value > 252)) ||
+       (d->texture_kill && tk != AGX3_TEX_OPERAND_REGISTER))
       return false;
 
    const unsigned slots = enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
@@ -64,12 +76,12 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
                                    sk == AGX3_TEX_OPERAND_IMMEDIATE;
 
    base[nb++] = (struct agx3_field_kv)KV(103, tk);
-   base[nb++] = (struct agx3_field_kv)KV(104, immediate_operands ? 1 : 2);
+   base[nb++] = (struct agx3_field_kv)KV(104, tk == AGX3_TEX_OPERAND_IMMEDIATE ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(112, 4);
    base[nb++] = (struct agx3_field_kv)KV(118, 3);
    base[nb++] = (struct agx3_field_kv)KV(119, 3);
    base[nb++] = (struct agx3_field_kv)KV(132, sk);
-   base[nb++] = (struct agx3_field_kv)KV(133, immediate_operands ? 1 : 2);
+   base[nb++] = (struct agx3_field_kv)KV(133, sk == AGX3_TEX_OPERAND_IMMEDIATE ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(138, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(24, 2);
@@ -102,7 +114,8 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
       sk == AGX3_TEX_OPERAND_IMMEDIATE   ? 124
       : sk == AGX3_TEX_OPERAND_REGISTER  ? 125
                                          : 126,
-      sk == AGX3_TEX_OPERAND_IMMEDIATE ? 0 : d->sampler_value);
+      d->sampler_value);
+   ov[n++] = (struct agx3_field_kv)KV(107, d->texture_kill);
    ov[n++] = (struct agx3_field_kv)KV(139, 2); /* LOD0 immediate shape */
    if (enc == AGX_ISA_ENCODING_AGX3B)
       ov[n++] = (struct agx3_field_kv)KV(147, d->final ? 2 : 0);
@@ -336,12 +349,14 @@ decode_b(const uint8_t *p, struct agx3_tex_fetch_desc *d)
 
    const unsigned mask_code = ((w1 >> 11) & 3) | (((w2 >> 5) & 1) << 2) |
                               (((w5 >> 6) & 1) << 3);
-   if (mask_code == 0)
-      d->mask = 1;
-   else if (mask_code == 7)
-      d->mask = 15;
-   else
+   static const uint8_t masks[16] = {
+      1, 2, 4, 8, 9, 3, 7, 15, 5, 6, 10, 12, 13, 11, 14, 0,
+   };
+   d->mask = masks[mask_code];
+   if (!d->mask)
       return false;
+   d->sampler_value = ((w4 >> 8) & 1) | ((w2 & 0xf) << 1) |
+                      (((w4 >> 1) & 7) << 5);
 
    const unsigned slot_code = (w2 >> 10) & 7;
    if (slot_code > 5)
@@ -396,6 +411,37 @@ agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
    memset(out, 0, sizeof(*out));
    if (enc != AGX_ISA_ENCODING_AGX3B && enc != AGX_ISA_ENCODING_AGX3C)
       return false;
+   if (enc == AGX_ISA_ENCODING_AGX3B && instruction && instruction_size == 20) {
+      const uint8_t *p = instruction;
+      struct agx3_tex_fetch_desc d = {0};
+      if (!decode_b(p, &d))
+         return false;
+      d.texture = 0;
+      d.texture_value = (((word(p, 0) >> 12) & 7) << 1) |
+                        (((word(p, 4) >> 4) & 7) << 4) |
+                        (((p[15] >> 2) & 1) << 7);
+      d.wait_mask = ((p[4] >> 7) & 1) | ((p[5] & 3) << 1) |
+                    (((p[18] >> 4) & 7) << 3);
+      d.sampler_kind = AGX3_TEX_OPERAND_IMMEDIATE;
+      /* Repack both native index kinds. Their context selector, upper bits,
+       * and every reserved field are validated by exact byte comparison. */
+      for (unsigned kind = AGX3_TEX_OPERAND_REGISTER;
+           kind <= AGX3_TEX_OPERAND_UNIFORM; ++kind) {
+         d.texture_kind = kind;
+         d.texture_kill = kind == AGX3_TEX_OPERAND_REGISTER && (p[15] & 8);
+         for (unsigned array = 0; array < 2; ++array) {
+            d.array = array;
+            uint8_t canonical[AGX3_TEX_MAX_LENGTH], length;
+            if (agx3_tex_encode_fetch(enc, &d, canonical, &length) &&
+                length == instruction_size &&
+                !memcmp(canonical, instruction, length)) {
+               *out = d;
+               return true;
+            }
+         }
+      }
+      return false;
+   }
    const uint32_t expected = enc == AGX_ISA_ENCODING_AGX3B ? 14 : 8;
    if (instruction == NULL || instruction_size != expected)
       return false;

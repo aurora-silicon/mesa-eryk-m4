@@ -1002,8 +1002,12 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        s->b.info.scratch_size != 0 ||
        s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
-       s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
-       linked->b.uses_txf || s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS)
+       (s->b.info.sampler_state_count != 0 &&
+        !(s->info.agx3_indexed_sampler_valid &&
+          s->b.info.sampler_state_count == 1)) ||
+       s->b.info.uses_sampler_heap ||
+       (linked->b.uses_txf && !s->info.agx3_indexed_sampler_valid) ||
+       s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS)
       return false;
 
    if (s->info.stage == MESA_SHADER_VERTEX) {

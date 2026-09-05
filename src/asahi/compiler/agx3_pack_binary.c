@@ -718,6 +718,8 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
                         uint8_t slot, uint16_t wait_mask, bool final,
                         bool stage_coordinates)
 {
+   const bool immediate = I->nr_srcs == 6 &&
+      I->src[3].type == AGX_INDEX_IMMEDIATE;
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
        (I->dest[0].size != AGX_SIZE_16 &&
@@ -729,13 +731,19 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        agx_channels(I->src[0]) != (I->dim == AGX_DIM_2D_ARRAY ? 3 : 2) ||
        (I->src[0].value & 3) || I->src[0].value > 60 ||
        !agx3_tex_imm(I->src[1], 0) || !agx3_tex_imm(I->src[2], 0) ||
-       I->src[3].type != AGX_INDEX_IMMEDIATE || I->src[3].value > 15 ||
+       (immediate ? I->src[3].value > 15 :
+        (enc != AGX_ISA_ENCODING_AGX3B ||
+         (I->src[3].type != AGX_INDEX_REGISTER && I->src[3].type != AGX_INDEX_UNIFORM) ||
+         I->src[3].size != AGX_SIZE_64 || agx_channels(I->src[3]) != 1 ||
+         (I->src[3].value & 1) || I->src[3].value > 252)) ||
        I->src[3].memory || I->src[3].abs || I->src[3].neg ||
        !agx3_tex_imm(I->src[4], 0) ||
        !agx_is_null(I->src[5]) ||
        (I->dim != AGX_DIM_2D && I->dim != AGX_DIM_2D_ARRAY) ||
        I->lod_mode != AGX_LOD_MODE_AUTO_LOD ||
-       (I->mask != 1 && I->mask != 15) || I->offset || I->shadow ||
+       (enc == AGX_ISA_ENCODING_AGX3B ? (!I->mask || (I->mask & ~15u))
+                                    : (I->mask != 1 && I->mask != 15)) ||
+       I->offset || I->shadow ||
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
 
@@ -758,7 +766,13 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
       .coord = stage_coordinates ? 0 : I->src[0].value,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
       .mask = I->mask,
-      .texture = I->src[3].value,
+      .texture = immediate ? I->src[3].value : 0,
+      .texture_kind = immediate ? AGX3_TEX_OPERAND_IMMEDIATE :
+         I->src[3].type == AGX_INDEX_UNIFORM ? AGX3_TEX_OPERAND_UNIFORM :
+                                             AGX3_TEX_OPERAND_REGISTER,
+      .texture_value = immediate ? 0 : I->src[3].value,
+      .texture_kill = !immediate && I->src[3].type == AGX_INDEX_REGISTER &&
+         (I->src[3].discard || I->src[3].kill),
       .slot = slot,
       .wait_mask = stage_coordinates ? (1u << (slot - 1)) : wait_mask,
       .coord_kill = stage_coordinates || I->src[0].kill,

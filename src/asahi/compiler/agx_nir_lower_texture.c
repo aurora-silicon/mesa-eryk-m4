@@ -70,7 +70,7 @@ has_nonzero_lod(nir_tex_instr *tex)
 }
 
 static bool
-lower_tex_crawl(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_tex_crawl(nir_builder *b, nir_instr *instr, void *data)
 {
    if (instr->type != nir_instr_type_tex)
       return false;
@@ -91,7 +91,19 @@ lower_tex_crawl(nir_builder *b, nir_instr *instr, UNUSED void *data)
                                : nir_imm_intN_t(b, 0, 16);
 
    nir_def *res;
-   if (tex->op == nir_texop_txs) {
+   const bool gen9 = data && *(const bool *)data;
+   if (gen9 && tex->op == nir_texop_txs &&
+       tex->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
+      res = libagx_txs_gen9(b, ptr, lod, nir_imm_int(b, nr_comps),
+                    nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_1D),
+                    nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_2D),
+                    nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_CUBE),
+                    nir_imm_bool(b, tex->is_array));
+   } else if (gen9 && tex->op == nir_texop_query_levels) {
+      res = libagx_texture_levels_gen9(b, ptr);
+   } else if (gen9 && tex->op == nir_texop_texture_samples) {
+      res = libagx_texture_samples_gen9(b, ptr);
+   } else if (tex->op == nir_texop_txs) {
       res =
          libagx_txs(b, ptr, lod, nir_imm_int(b, nr_comps),
                     nir_imm_bool(b, tex->sampler_dim == GLSL_SAMPLER_DIM_BUF),
@@ -202,7 +214,7 @@ lower_buffer_texture(nir_builder *b, nir_tex_instr *tex)
  * tex_src_backend1 for array textures by type-converting and clamping.
  */
 static bool
-lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
+lower_regular_texture(nir_builder *b, nir_instr *instr, void *data)
 {
    if (instr->type != nir_instr_type_tex)
       return false;
@@ -246,7 +258,11 @@ lower_regular_texture(nir_builder *b, nir_instr *instr, UNUSED void *data)
       unsigned lidx = coord->num_components - 1;
       nir_def *layer = nir_channel(b, coord, lidx);
 
-      nir_def *replaced = libagx_lower_txf_robustness(
+      nir_def *(*lower)(nir_builder *, nir_def *, nir_def *, nir_def *,
+                         nir_def *, nir_def *, nir_def *, nir_def *, nir_def *) =
+         data && *(const bool *)data ? libagx_lower_txf_robustness_gen9
+                                    : libagx_lower_txf_robustness;
+      nir_def *replaced = lower(
          b, texture_descriptor_ptr(b, tex),
          nir_imm_bool(b, has_nonzero_lod(tex)), lod,
          nir_imm_bool(b, min_lod != NULL), min_lod ?: nir_undef(b, 1, 16),
@@ -510,7 +526,7 @@ lower_1d_image(nir_builder *b, nir_intrinsic_instr *intr)
  * libagx_lower_txf_robustness for more info.
  */
 static bool
-lower_image_load_robustness(nir_builder *b, nir_intrinsic_instr *intr)
+lower_image_load_robustness(nir_builder *b, nir_intrinsic_instr *intr, bool gen9)
 {
    if (nir_intrinsic_access(intr) & ACCESS_IN_BOUNDS)
       return false;
@@ -533,7 +549,10 @@ lower_image_load_robustness(nir_builder *b, nir_intrinsic_instr *intr)
    nir_def *layer = nir_channel(b, coord, lidx);
 
    /* image_load is effectively the same as txf, reuse the txf lower */
-   nir_def *replaced = libagx_lower_txf_robustness(
+   nir_def *(*lower)(nir_builder *, nir_def *, nir_def *, nir_def *,
+                      nir_def *, nir_def *, nir_def *, nir_def *, nir_def *) =
+      gen9 ? libagx_lower_txf_robustness_gen9 : libagx_lower_txf_robustness;
+   nir_def *replaced = lower(
       b, nir_load_from_texture_handle_agx(b, intr->src[0].ssa),
       nir_imm_bool(b, false /* lower LOD */), lod,
       nir_imm_bool(b, false /* lower min LOD */), lod,
@@ -544,7 +563,7 @@ lower_image_load_robustness(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static bool
-lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
+lower_images(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 {
    b->cursor = nir_before_instr(&intr->instr);
 
@@ -560,7 +579,7 @@ lower_images(nir_builder *b, nir_intrinsic_instr *intr, UNUSED void *data)
       if (intr->intrinsic == nir_intrinsic_image_load ||
           intr->intrinsic == nir_intrinsic_bindless_image_load ||
           intr->intrinsic == nir_intrinsic_bindless_image_sparse_load) {
-         lower_image_load_robustness(b, intr);
+         lower_image_load_robustness(b, intr, data && *(const bool *)data);
       }
 
       switch (nir_intrinsic_image_dim(intr)) {
@@ -712,9 +731,10 @@ agx_nir_lower_texture_early(nir_shader *s, bool support_lod_bias)
 }
 
 bool
-agx_nir_lower_texture(nir_shader *s)
+agx_nir_lower_texture_for_generation(nir_shader *s, unsigned generation)
 {
    bool progress = false;
+   const bool gen9 = generation == 9;
 
    nir_tex_src_type_constraints tex_constraints = {
       [nir_tex_src_lod] = {true, 16},
@@ -736,7 +756,7 @@ agx_nir_lower_texture(nir_shader *s)
    NIR_PASS(progress, s, nir_shader_intrinsics_pass, legalize_image_lod,
             nir_metadata_control_flow, NULL);
    NIR_PASS(progress, s, nir_shader_intrinsics_pass, lower_images,
-            nir_metadata_control_flow, NULL);
+            nir_metadata_control_flow, (void *)&gen9);
    NIR_PASS(progress, s, nir_legalize_16bit_sampler_srcs, tex_constraints);
 
    /* Fold constants after nir_legalize_16bit_sampler_srcs so we can detect 0 in
@@ -749,11 +769,17 @@ agx_nir_lower_texture(nir_shader *s)
     * generates txs for array textures).
     */
    NIR_PASS(progress, s, nir_shader_instructions_pass, lower_regular_texture,
-            nir_metadata_none, NULL);
+            nir_metadata_none, (void *)&gen9);
    NIR_PASS(progress, s, nir_shader_instructions_pass, lower_tex_crawl,
-            nir_metadata_control_flow, NULL);
+            nir_metadata_control_flow, (void *)&gen9);
 
    return progress;
+}
+
+bool
+agx_nir_lower_texture(nir_shader *s)
+{
+   return agx_nir_lower_texture_for_generation(s, 0);
 }
 
 static bool

@@ -177,13 +177,31 @@ hk_init_sampler_heap(struct hk_device *dev, struct hk_sampler_heap *h)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    VkResult result =
-      hk_descriptor_table_init(dev, &h->table, sampler_size, 1024, 1024);
+      hk_descriptor_table_init(dev, &h->table, sampler_size, 1024,
+                               dev->dev.chip == AGX_CHIP_G17P ? 2048 : 1024);
 
    if (result != VK_SUCCESS) {
       ralloc_free(h->ht);
       return result;
    }
 
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      /* Native indexed read() and sample() share the sampler table prefix.
+       * Reserve texel-fetch sampler zero once, so mixed shaders need no
+       * per-fetch pointer switch or descriptor copy. Preserve at least the
+       * previous 1024 application slots in the enlarged table. */
+      struct hk_native_sampler_descriptor txf;
+      uint32_t index = UINT32_MAX;
+      result = hk_pack_native_txf_sampler(dev->dev.chip, &txf)
+         ? hk_descriptor_table_add(dev, &h->table, &txf, sampler_size, &index)
+         : VK_ERROR_FEATURE_NOT_PRESENT;
+      if (result != VK_SUCCESS) {
+         hk_descriptor_table_finish(dev, &h->table);
+         ralloc_free(h->ht);
+         return result;
+      }
+      assert(index == 0);
+   }
    simple_mtx_init(&h->lock, mtx_plain);
    return VK_SUCCESS;
 }

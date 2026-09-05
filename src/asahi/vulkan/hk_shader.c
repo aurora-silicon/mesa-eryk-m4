@@ -941,7 +941,8 @@ hk_lower_nir(struct hk_device *dev, nir_shader *nir,
                nir_metadata_control_flow, NULL);
    }
 
-   NIR_PASS(_, nir, agx_nir_lower_texture);
+   NIR_PASS(_, nir, agx_nir_lower_texture_for_generation,
+            agx_chip_descriptor_generation(dev->dev.chip));
    NIR_PASS(_, nir, agx_nir_lower_multisampled_image_store);
 
    agx_preprocess_nir(nir);
@@ -1192,9 +1193,6 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
    }
 
-   if (dev->dev.chip == AGX_CHIP_G17P)
-      shader->info.agx3_uses_root = hk_nir_uses_root(nir);
-
    /* For now, only shader objects are supported */
    if (sw_stage == MESA_SHADER_VERTEX) {
       nr_vbos = DIV_ROUND_UP(
@@ -1284,6 +1282,13 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
 
    /* XXX: rename */
    NIR_PASS(_, nir, hk_lower_uvs_index, sw_stage, nr_vbos);
+   /* Stage lowering can introduce driver sysvals (for example discard's
+    * no_epilog_discard mask). hk_lower_uvs_index turns those into root
+    * accesses, so gather the resource requirement after that pass and before
+    * lower_uniforms removes the load_root_agx markers. */
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      shader->info.agx3_uses_root = hk_nir_uses_root(nir);
+
    NIR_PASS(_, nir, nir_shader_intrinsics_pass, lower_uniforms,
             nir_metadata_control_flow, &root);
 

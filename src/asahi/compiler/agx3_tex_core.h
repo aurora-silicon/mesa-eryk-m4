@@ -62,13 +62,14 @@ struct agx3_tex_fetch_desc {
    uint16_t dest;       /* half-register index */
    uint16_t coord;      /* four-half aligned pair of f32 coordinates */
    enum agx3_tex_width width;
-   uint8_t mask;        /* directly witnessed fetch masks: 1 or 15 */
+   uint8_t mask;        /* Packed result channels, nonempty RGBA subset */
    uint8_t texture;     /* immediate texture index, compact-domain 0..15 */
    uint8_t slot;
    uint16_t wait_mask;  /* zero or one compactly encodable dependency */
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
+   bool texture_kill;   /* Last use of an indirect texture index */
    /* Operand kinds. Zero is treated as IMMEDIATE so existing callers, which
     * set only `texture`, keep their exact previous encoding. */
    enum agx3_tex_operand_kind texture_kind;

@@ -219,6 +219,33 @@ agx_nir_lower_g17p_combined_sampler(
    return true;
 }
 
+/* Ordinary native integer-coordinate read. The descriptor selects float,
+ * signed, or unsigned texel interpretation; the result is a 32-bit register
+ * value in each case. Input attachments arrive as 2D-array reads. */
+static bool
+g17p_indexed_fetch_shape(const nir_tex_instr *tex)
+{
+   if (tex->op != nir_texop_txf || tex->sampler_dim != GLSL_SAMPLER_DIM_2D ||
+       tex->is_shadow || tex->is_sparse || tex->texture_index ||
+       tex->sampler_index || tex->def.bit_size != 32 ||
+       tex->def.num_components != 4 ||
+       (tex->dest_type != nir_type_float32 && tex->dest_type != nir_type_int32 &&
+        tex->dest_type != nir_type_uint32) ||
+       tex->coord_components != (tex->is_array ? 3 : 2) ||
+       (tex->backend_flags & ~AGX_TEXTURE_FLAG_NO_CLAMP))
+      return false;
+   const int handle = nir_tex_instr_src_index(tex, nir_tex_src_texture_handle);
+   const int lod = nir_tex_instr_src_index(tex, nir_tex_src_lod);
+   int coord = nir_tex_instr_src_index(tex, nir_tex_src_backend1);
+   if (coord < 0)
+      coord = nir_tex_instr_src_index(tex, nir_tex_src_coord);
+   return handle >= 0 && lod >= 0 && coord >= 0 && tex->num_srcs == 3 &&
+      nir_src_is_const(tex->src[lod].src) &&
+      nir_src_as_uint(tex->src[lod].src) == 0 &&
+      nir_src_bit_size(tex->src[coord].src) == 32 &&
+      nir_src_num_components(tex->src[coord].src) == tex->coord_components;
+}
+
 /* Native indexed samples consume zero-extended heap indices, loaded by the
  * GPU from the descriptor set. Keep descriptor-set roots alive so updates
  * after command recording and dynamically selected array elements are visible.
@@ -236,14 +263,16 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             if (instr->type != nir_instr_type_tex)
                continue;
             nir_tex_instr *tex = nir_instr_as_tex(instr);
-            if (!g17p_sample_shape(tex) || tex->op != nir_texop_tex)
+            const bool fetch = g17p_indexed_fetch_shape(tex);
+            if (!fetch && (!g17p_sample_shape(tex) || tex->op != nir_texop_tex))
                return false;
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
-            nir_intrinsic_instr *sampler = nir_src_as_intrinsic(
+            nir_intrinsic_instr *sampler = fetch ? NULL : nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle)].src);
             if (!image || image->intrinsic != nir_intrinsic_bindless_image_agx ||
-                !sampler || sampler->intrinsic != nir_intrinsic_bindless_sampler_agx)
+                (!fetch && (!sampler ||
+                            sampler->intrinsic != nir_intrinsic_bindless_sampler_agx)))
                return false;
             samples++;
          }
@@ -262,7 +291,8 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             b.cursor = nir_before_instr(instr);
             nir_intrinsic_instr *image = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
-            nir_intrinsic_instr *sampler = nir_src_as_intrinsic(
+            const bool fetch = tex->op == nir_texop_txf;
+            nir_intrinsic_instr *sampler = fetch ? NULL : nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle)].src);
             nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(image));
             /* Descriptor offsets are 32-bit and valid sets fit far below
@@ -274,13 +304,18 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             nir_def *texture_index = nir_load_global_constant(&b, 1, 32, address, .align_mul = 4);
             /* The software sampler index includes AGX2's reservation of 28.
              * Native G17P heaps are zero-based, as the immediate path is. */
-            nir_def *sampler_index = nir_iadd_imm(&b, nir_u2u32(&b, sampler->src[1].ssa), -28);
             texture_index = nir_u2u64(&b, texture_index);
-            sampler_index = nir_u2u64(&b, sampler_index);
             nir_steal_tex_src(tex, nir_tex_src_texture_handle);
-            nir_steal_tex_src(tex, nir_tex_src_sampler_handle);
             nir_tex_instr_add_src(tex, nir_tex_src_texture_offset, texture_index);
-            nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, sampler_index);
+            if (!fetch) {
+               nir_def *sampler_index = nir_iadd_imm(
+                  &b, nir_u2u32(&b, sampler->src[1].ssa), -28);
+               sampler_index = nir_u2u64(&b, sampler_index);
+               nir_steal_tex_src(tex, nir_tex_src_sampler_handle);
+               nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, sampler_index);
+            }
+            /* Fetch uses native sampler0, reserved in the same device heap
+             * that ordinary samples use, so mixed reads share one prefix. */
          }
       }
       nir_progress(true, impl, nir_metadata_control_flow);
