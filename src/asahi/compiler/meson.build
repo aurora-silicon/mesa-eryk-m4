@@ -704,6 +704,19 @@ if with_tests
   )
 
   test(
+    'agx3_rgb10_memory',
+    executable(
+      'agx3_rgb10_memory_test',
+      files('test/test-agx3-rgb10-memory.c'),
+      c_args : [c_msvc_compat_args, no_override_init_args],
+      gnu_symbol_visibility : 'hidden',
+      dependencies : [idep_nir, idep_mesautil],
+      link_with : [libasahi_compiler],
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'agx3_ray_query_prerequisites',
     executable(
       'agx3_ray_query_prerequisites_test',

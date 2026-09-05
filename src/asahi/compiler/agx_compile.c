@@ -962,6 +962,21 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    if (!nir_intrinsic_sign_extend(instr))
       offset = agx_abs(offset);
 
+   /* AGX3 memory traffic is raw. Convert a normalized packed texel with
+    * the same native instruction used by tile loads, after its real load. */
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       fmt == AGX_FORMAT_RGB10A2) {
+      assert(dest.size == AGX_SIZE_32 && instr->def.num_components == 4);
+      assert(packed_count == 0);
+      agx_index packed = agx_temp(b->shader, AGX_SIZE_32);
+      agx_instr *load = agx_device_load_to(b, packed, addr, offset,
+         AGX_FORMAT_I32, 1, shift, nir_is_coherent(instr));
+      load->memory_index_is_bytes = index_bytes;
+      agx_unpack_rgb10a2_agx3_to(b, dest, packed);
+      agx_emit_cached_split(b, dest, 4);
+      return;
+   }
+
    agx_instr *load = agx_device_load_to(b, dest, addr, offset, fmt,
                       BITFIELD_MASK(packed_count ? packed_count : instr->def.num_components), shift,
                       nir_is_coherent(instr));
@@ -987,9 +1002,25 @@ agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
    if (!nir_intrinsic_sign_extend(instr))
       offset = agx_abs(offset);
 
-   agx_instr *store = agx_device_store(b, agx_recollect_vector(b, instr->src[0]), addr, offset,
-                    fmt, BITFIELD_MASK(nir_src_num_components(instr->src[0])),
-                    shift, nir_is_coherent(instr));
+   agx_index value;
+   unsigned mask;
+   if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+       fmt == AGX_FORMAT_RGB10A2) {
+      assert(nir_src_num_components(instr->src[0]) == 4 &&
+             nir_src_bit_size(instr->src[0]) == 32);
+      value = agx_pack_rgb10a2_agx3(b,
+         agx_extract_nir_src(b, instr->src[0], 0),
+         agx_extract_nir_src(b, instr->src[0], 1),
+         agx_extract_nir_src(b, instr->src[0], 2),
+         agx_extract_nir_src(b, instr->src[0], 3));
+      fmt = AGX_FORMAT_I32;
+      mask = 1;
+   } else {
+      value = agx_recollect_vector(b, instr->src[0]);
+      mask = BITFIELD_MASK(nir_src_num_components(instr->src[0]));
+   }
+   agx_instr *store = agx_device_store(b, value, addr, offset, fmt, mask,
+                                      shift, nir_is_coherent(instr));
    store->memory_index_is_bytes = index_bytes;
 }
 
