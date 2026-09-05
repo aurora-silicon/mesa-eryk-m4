@@ -3668,3 +3668,43 @@ TEST_F(AGX3PackBinary, Rgb10TileRejectsRawFloatChannels)
    agx_stop(b);
    EXPECT_TRUE(pack(b, false).empty());
 }
+
+TEST_F(AGX3PackBinary, NativeBfeilExtractPreservesSourceLifetime)
+{
+   for (bool dynamic : {false,true}) {
+      agx_builder *b=builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index value=agx_register(0,AGX_SIZE_32);value.discard=true;
+      agx_index shift=dynamic?agx_register(2,AGX_SIZE_32):agx_immediate(14);
+      if(dynamic)shift.discard=true;
+      agx_bfeil_to(b,agx_register(0,AGX_SIZE_32),agx_immediate(0),value,shift,14);
+      agx_stop(b);
+      auto code=pack(b);
+      const uint8_t expected[2][12]={
+         {0xa7,0,0x54,0,2,0,0x38,0,0xf0,0x11,0xe1,0},
+         {0xa7,0,0x54,0,2,0,8,0,0xf0,0x13,0xe5,0},
+      };
+      ASSERT_EQ(code.size(),16);
+      EXPECT_EQ(memcmp(code.data(),expected[dynamic],12),0);
+   }
+}
+
+TEST_F(AGX3PackBinary, BfeilKeepsNonzeroMergeBaseClosed)
+{
+   agx_builder *b=builder(AGX_ISA_ENCODING_AGX3B);
+   agx_bfeil_to(b,agx_register(0,AGX_SIZE_32),agx_register(4,AGX_SIZE_32),
+               agx_register(0,AGX_SIZE_32),agx_immediate(14),14);
+   agx_stop(b);EXPECT_TRUE(pack(b,false).empty());
+}
+
+TEST(AGX3NativeBfeil, NativeWaitAndOperandBounds)
+{
+   const enum agx3_alu_hint hints[2]={AGX3_ALU_HINT_DISCARD,AGX3_ALU_HINT_NONE};
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH],length;
+   const uint8_t dead[12]={0xa7,0,0x56,0,2,0,0x38,0,0xf0,0x11,0xe1,0};
+   ASSERT_TRUE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,14,false,14,hints,32,bytes,&length));
+   ASSERT_EQ(length,12);EXPECT_EQ(memcmp(bytes,dead,12),0);
+   EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,1,0,14,false,14,hints,0,bytes,&length));
+   EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,32,false,14,hints,0,bytes,&length));
+   EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,14,false,32,hints,0,bytes,&length));
+   EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,14,false,14,hints,64,bytes,&length));
+}

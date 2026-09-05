@@ -451,3 +451,37 @@ agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
       fields[n++] = (struct agx3_field_kv){33 + i, !!(wait_mask & (1u << i))};
    return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
 }
+
+bool
+agx3_alu_bfeil(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
+               uint16_t shift, bool shift_is_register, uint8_t width,
+               const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+               uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *length)
+{
+   if (!out || !length || !hints || enc != AGX_ISA_ENCODING_AGX3B ||
+       dest >= 256 || source >= 256 || ((dest | source) & 1) ||
+       (shift_is_register ? (shift >= 256 || (shift & 1)) : shift >= 32) ||
+       width < 1 || width > 31 || (wait_mask & ~0x3f) ||
+       (unsigned)hints[0] > AGX3_ALU_HINT_CACHE ||
+       (unsigned)hints[1] > AGX3_ALU_HINT_CACHE ||
+       (!shift_is_register && hints[1] != AGX3_ALU_HINT_NONE))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9,2},{10,2},{23,2},{24,2},{39,2},{52,1},{53,2},
+   };
+   struct agx3_field_kv fields[16] = {
+      {2,dest},{16,source},{25,hints[0] == AGX3_ALU_HINT_CACHE},
+      {27,hints[0] == AGX3_ALU_HINT_DISCARD},
+      {38,shift_is_register ? 2 : 1},{shift_is_register ? 31 : 30,shift},
+      {44,0},{57,width},
+   };
+   unsigned count=8;
+   if (shift_is_register) {
+      fields[count++] = (struct agx3_field_kv){40,hints[1] == AGX3_ALU_HINT_CACHE};
+      fields[count++] = (struct agx3_field_kv){42,hints[1] == AGX3_ALU_HINT_DISCARD};
+   }
+   for (unsigned i=0;i<6;++i)
+      if (wait_mask & (1u<<i))
+         fields[count++] = (struct agx3_field_kv){60+i,1};
+   return agx3_bind_compose(enc,"srl",0,base,7,fields,count,out,length);
+}

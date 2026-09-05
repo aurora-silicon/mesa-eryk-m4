@@ -119,6 +119,14 @@ bool agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest,
                             uint16_t src, uint16_t immediate, enum agx3_alu_hint hint,
                             uint16_t wait_mask,
                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+/* Unsigned G17P extract into a zero base, with a fixed1..31-bit width.
+ * Native srl performs shift+mask in one instruction. Dynamic shifts and
+ * immediate14, dead/live sources and slot6 waits are native witnesses. */
+bool agx3_alu_bfeil(enum agx_isa_encoding enc, uint16_t dest, uint16_t source,
+                    uint16_t shift, bool shift_is_register, uint8_t width,
+                    const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                    uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *length);
+
 #ifdef __cplusplus
 }
 #endif

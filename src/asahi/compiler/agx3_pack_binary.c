@@ -4329,6 +4329,28 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BFEIL &&
+             I->nr_dests == 1 && I->nr_srcs == 3 && I->imm >= 1 && I->imm <= 31 &&
+             agx3_src_is_zero_imm(I->src[0])) {
+            const agx_index dest=I->dest[0], value=I->src[1], shift=I->src[2];
+            const bool reg_shift=agx3_src_is_register(shift);
+            if (!agx3_src_is_register(dest) || dest.memory || dest.size != AGX_SIZE_32 ||
+                agx_channels(dest) != 1 || !agx3_src_is_register(value) || value.memory ||
+                value.size != AGX_SIZE_32 || agx_channels(value) != 1 || value.abs || value.neg ||
+                shift.memory || shift.abs || shift.neg || agx_channels(shift) != 1 ||
+                (reg_shift ? shift.size != AGX_SIZE_32 : shift.type != AGX_INDEX_IMMEDIATE))
+               AGX3_REFUSE(I);
+            const enum agx3_alu_hint hints[2] = {
+               agx3_post_ra_hint(value), reg_shift ? agx3_post_ra_hint(shift) : AGX3_ALU_HINT_NONE,
+            };
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], length;
+            if (!agx3_alu_bfeil(enc,dest.value,value.value,shift.value,reg_shift,
+                                I->imm,hints,wait,bytes,&length) ||
+                !agx3_append(emission,bytes,length))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Modified G17P FMA carries its native dependency waits and the
           * actual post-RA hints, without draining unrelated texture slots. */
          const int mod = agx3_try_float_modifier(emission, enc, I, wait);
