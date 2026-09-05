@@ -1263,7 +1263,8 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       }
    }
 
-   unsigned root = 0;
+   unsigned root = shader->info.agx3_txf_texture_valid
+                      ? AGX_G17P_TXF_ROOT_HALFS : 0;
    if (sw_stage == MESA_SHADER_FRAGMENT)
       root = AGX_ABI_FUNI_ROOT;
    else if (sw_stage == MESA_SHADER_VERTEX)

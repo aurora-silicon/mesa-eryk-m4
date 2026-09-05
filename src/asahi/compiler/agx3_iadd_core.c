@@ -107,6 +107,11 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
 
    if ((d->dest & 1) || d->dest + 2 > 256)
       return false;
+   if ((d->src_a_kill && d->src_a_cache) ||
+       (d->multiplier_kill && d->multiplier_cache) ||
+       (d->src_c_kill && d->src_c_cache))
+      return false;
+
    if ((d->src_a & 1) || d->src_a + 2 > 256)
       return false;
    if (!d->no_addend && (d->src_c_16 ? (d->src_c >= 256)
@@ -129,17 +134,17 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
     * command-stream corpus does.
     */
    const struct agx3_field_kv baseline_imm[] = {
-      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2), KV(27, 1),
-      KV(38, 1), KV(39, 1), KV(53, 2), KV(57, 1),
+      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2),
+      KV(38, 1), KV(39, 1), KV(53, 2),
    };
    const struct agx3_field_kv baseline_reg[] = {
-      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2), KV(27, 1),
-      KV(38, 2), KV(39, 2), KV(53, 2), KV(57, 1),
+      KV(9, 2),  KV(10, 2), KV(23, 2), KV(24, 2),
+      KV(38, 2), KV(39, 2), KV(53, 2),
    };
    /* Pure multiply: no addend field, f11 set, and f53 drops to 1. */
    const struct agx3_field_kv baseline_reg_nc[] = {
       KV(9, 2),  KV(10, 2), KV(11, 1), KV(23, 2),
-      KV(24, 2), KV(27, 1), KV(38, 2), KV(39, 2), KV(53, 1),
+      KV(24, 2),  KV(38, 2), KV(39, 2), KV(53, 1),
    };
    if (d->no_addend && !d->multiplier_is_register)
       return false; /* only the register-multiplier pure multiply is witnessed */
@@ -152,14 +157,17 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
          ? (sizeof(baseline_reg) / sizeof(baseline_reg[0]))
          : (sizeof(baseline_imm) / sizeof(baseline_imm[0]));
 
-   struct agx3_field_kv ov[12];
+   struct agx3_field_kv ov[20];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(16, d->src_a);
+   ov[n++] = (struct agx3_field_kv)KV(25, d->src_a_cache);
+   ov[n++] = (struct agx3_field_kv)KV(27, d->src_a_kill);
    if (d->multiplier_is_register) {
       ov[n++] = (struct agx3_field_kv)KV(31, d->multiplier_reg);
       /* f42 is the multiplier's last-use hint, not a baseline bit. */
       ov[n++] = (struct agx3_field_kv)KV(42, d->multiplier_kill ? 1 : 0);
+      ov[n++] = (struct agx3_field_kv)KV(40, d->multiplier_cache);
    }
    else
       ov[n++] = (struct agx3_field_kv)KV(30, d->multiplier);
@@ -167,6 +175,8 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
       ov[n++] = (struct agx3_field_kv)KV(54, 1);
    } else {
       ov[n++] = (struct agx3_field_kv)KV(46, d->src_c);
+      ov[n++] = (struct agx3_field_kv)KV(55, d->src_c_cache);
+      ov[n++] = (struct agx3_field_kv)KV(57, d->src_c_kill);
       ov[n++] = (struct agx3_field_kv)KV(54, d->src_c_16 ? 1 : 2);
    }
    if (d->src_c_sign_extend)

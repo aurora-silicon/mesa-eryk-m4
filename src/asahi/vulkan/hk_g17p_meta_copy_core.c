@@ -25,7 +25,7 @@ hk_g17p_buffer_to_image_copy_supported(
       return false;
 
    return (copy->buffer_row_length == 0 ||
-           copy->buffer_row_length == copy->copy_extent.width) &&
+           copy->buffer_row_length >= copy->copy_extent.width) &&
           (copy->buffer_image_height == 0 ||
-           copy->buffer_image_height == copy->copy_extent.height);
+           copy->buffer_image_height >= copy->copy_extent.height);
 }

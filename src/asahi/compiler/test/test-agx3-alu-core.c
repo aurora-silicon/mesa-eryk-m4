@@ -434,7 +434,63 @@ static void test_half_uv(void)
    printf("Validated%u register/half/wait shapes through actual composer; offline production encoder coverage\n",shapes);
 }
 
+static void
+test_bitwise_lifetimes(void)
+{
+   /* Apple g17p native kernels reuse the second operand, then release it;
+    * keep_both stores both unmodified operands after the AND result. */
+   const struct {
+      enum agx3_alu_op op;
+      uint16_t dest, src[2];
+      enum agx3_alu_hint hints[2];
+      unsigned wait;
+      const char *hex;
+   } cases[] = {
+      {AGX3_ALU_BAND, 0, {0, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_CACHE}, 32, "0b010f83000000800000"},
+      {AGX3_ALU_BAND, 2, {6, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD}, 1, "1b071f03002000000000"},
+      {AGX3_ALU_BOR, 0, {0, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_CACHE}, 32, "0b010f83020800800000"},
+      {AGX3_ALU_BOR, 2, {6, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD}, 1, "1b071f03022800000000"},
+      {AGX3_ALU_BXOR, 0, {0, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_CACHE}, 32, "0b010e83020800800000"},
+      {AGX3_ALU_BXOR, 2, {6, 2}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD}, 1, "1b071e03022800000000"},
+      {AGX3_ALU_BAND, 6, {2, 0}, {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE}, 32, "3b030701000000800000"},
+   };
+   uint8_t out[AGX3_ALU_MAX_LENGTH], size;
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      assert(agx3_alu_bit_reg(AGX_ISA_ENCODING_AGX3B, cases[i].op,
+                            cases[i].dest, cases[i].src, cases[i].hints,
+                            cases[i].wait, out, &size));
+      exact(out, size, cases[i].hex);
+   }
+   puts("Bitwise lifetimes: seven exact native AND/OR/XOR live/dead witnesses PASS");
+}
+
+static void
+test_integer_lifetimes(void)
+{
+   const struct {
+      enum agx3_alu_op op;
+      uint16_t dest, src[2];
+      enum agx3_alu_hint hints[2];
+      const char *hex;
+   } cases[] = {
+      {AGX3_ALU_IADD, 0, {4, 0}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD}, "9f015600020800a81705"},
+      {AGX3_ALU_IADD, 0, {4, 2}, {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE}, "9f015600020808a81105"},
+      {AGX3_ALU_ISUB, 0, {0, 4}, {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD}, "1f015600020010a81705"},
+      {AGX3_ALU_ISUB, 0, {2, 4}, {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE}, "1f015600020410a81105"},
+   };
+   uint8_t out[AGX3_ALU_MAX_LENGTH], size;
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      assert(agx3_alu_integer_reg(AGX_ISA_ENCODING_AGX3B, cases[i].op,
+                                cases[i].dest, cases[i].src, cases[i].hints,
+                                32, out, &size));
+      exact(out, size, cases[i].hex);
+   }
+   puts("Integer lifetimes: four exact native IADD/ISUB live/dead witnesses PASS");
+}
+
 int main(void){
+   test_integer_lifetimes();
+   test_bitwise_lifetimes();
    test_modified_minifloat_add();
    test_half_uv();
    test_fmul_minifloat();

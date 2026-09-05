@@ -287,3 +287,75 @@ agx3_alu_compose(enum agx_isa_encoding enc, enum agx3_alu_op op, uint16_t dest,
    return agx3_bind_compose(enc, F->mnemonic, F->ep, base, F->nbase, ov, n, out,
                             len);
 }
+
+/* Native and_live/or_live/xor_live retain their second input for a later
+ * operation (f39), then discard it on its last use (f41). and_keep_both
+ * clears both discard fields. The operation classes and register fields
+ * are identical; only truth-table bits differ. */
+bool
+agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                 uint16_t dest, const uint16_t src[2],
+                 const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                 uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if(enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+      (op != AGX3_ALU_BAND && op != AGX3_ALU_BOR && op != AGX3_ALU_BXOR) ||
+      dest >= 256 || (dest & 1) || (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+   for(unsigned i=0;i<2;i++)
+      if(src[i]>=256 || (src[i]&1) || (unsigned)hints[i]>AGX3_ALU_HINT_CACHE)
+         return false;
+   const struct agx3_alu_form *f=&agx3_alu_forms[op][0];
+   struct agx3_field_kv base[20],ov[13];unsigned nb=0,n=0;
+   for(unsigned i=0;i<f->nbase;i++){
+      unsigned field=f->base[i].f;bool wait=false;
+      for(unsigned j=0;j<f->nwait;j++)wait|=field==f->wait[j];
+      if(field!=27 && field!=41 && !wait)
+         base[nb++]=(struct agx3_field_kv){field,f->base[i].v};
+   }
+   ov[n++]=(struct agx3_field_kv){2,dest};
+   const unsigned operand[]={16,30},cache[]={25,39},discard[]={27,41};
+   for(unsigned i=0;i<2;i++){
+      ov[n++]=(struct agx3_field_kv){operand[i],src[i]};
+      ov[n++]=(struct agx3_field_kv){cache[i],hints[i]==AGX3_ALU_HINT_CACHE};
+      ov[n++]=(struct agx3_field_kv){discard[i],hints[i]==AGX3_ALU_HINT_DISCARD};
+   }
+   for(unsigned i=0;i<f->nwait;i++)
+      if(wait_mask&(1u<<i))ov[n++]=(struct agx3_field_kv){f->wait[i],1};
+   return agx3_bind_compose(enc,f->mnemonic,f->ep,base,nb,ov,n,out,len);
+}
+
+/* Native iadd_live/isub_live retain both inputs, while their dead variants
+ * set f27/f42. Keep the same canonical opcode/register fields. */
+bool
+agx3_alu_integer_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                 uint16_t dest, const uint16_t src[2],
+                 const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                 uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if(enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+      (op != AGX3_ALU_IADD && op != AGX3_ALU_ISUB) ||
+      dest >= 256 || (dest & 1) || (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+   for(unsigned i=0;i<2;i++)
+      if(src[i]>=256 || (src[i]&1) || (unsigned)hints[i]>AGX3_ALU_HINT_CACHE)
+         return false;
+   const struct agx3_alu_form *f=&agx3_alu_forms[op][0];
+   struct agx3_field_kv base[20],ov[13];unsigned nb=0,n=0;
+   for(unsigned i=0;i<f->nbase;i++){
+      unsigned field=f->base[i].f;bool wait=false;
+      for(unsigned j=0;j<f->nwait;j++)wait|=field==f->wait[j];
+      if(field!=27 && field!=42 && !wait)
+         base[nb++]=(struct agx3_field_kv){field,f->base[i].v};
+   }
+   ov[n++]=(struct agx3_field_kv){2,dest};
+   const unsigned operand[]={16,31},cache[]={25,40},discard[]={27,42};
+   for(unsigned i=0;i<2;i++){
+      ov[n++]=(struct agx3_field_kv){operand[i],src[i]};
+      ov[n++]=(struct agx3_field_kv){cache[i],hints[i]==AGX3_ALU_HINT_CACHE};
+      ov[n++]=(struct agx3_field_kv){discard[i],hints[i]==AGX3_ALU_HINT_DISCARD};
+   }
+   for(unsigned i=0;i<f->nwait;i++)
+      if(wait_mask&(1u<<i))ov[n++]=(struct agx3_field_kv){f->wait[i],1};
+   return agx3_bind_compose(enc,f->mnemonic,f->ep,base,nb,ov,n,out,len);
+}

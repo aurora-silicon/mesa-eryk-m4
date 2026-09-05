@@ -1272,7 +1272,8 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
     * the hardware rescales). AGX3 does not rescale, so the true scale is
     * I->shift + w, where w is log2(element bytes).
     */
-   const unsigned total_shift = (unsigned)I->shift + (unsigned)w;
+   const unsigned total_shift = (unsigned)I->shift +
+      (I->memory_index_is_bytes ? 0 : (unsigned)w);
 
    if (index.type == AGX_INDEX_IMMEDIATE) {
       d->idx_kind = AGX3_MEM_IDX_IMM;
@@ -3199,7 +3200,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
             /* Native TEX reads staging coordinates, independently of GPRs.
              * This also applies to the background reload's pixel coordinates. */
-            const bool staged = ctx->stage == MESA_SHADER_FRAGMENT;
+            const bool staged = ctx->stage == MESA_SHADER_FRAGMENT ||
+                                ctx->stage == MESA_SHADER_COMPUTE;
             if (staged)
                ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs,
                                               2 * agx_channels(I->src[0]));
@@ -3617,7 +3619,12 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   .multiplier = mult_imm ? (uint8_t)m.value : 0,
                   .multiplier_is_register = mult_reg,
                   .multiplier_reg = mult_reg ? m.value : 0,
-                  .multiplier_kill = mult_reg && m.kill,
+                  .multiplier_kill = mult_reg && m.discard,
+                  .multiplier_cache = mult_reg && m.cache,
+                  .src_a_kill = a.discard,
+                  .src_a_cache = a.cache,
+                  .src_c_kill = !no_addend && c.discard,
+                  .src_c_cache = !no_addend && c.cache,
                   .no_addend = no_addend,
                   .src_c = no_addend ? 0 : c.value,
                   .src_c_16 = !no_addend && c.size == AGX_SIZE_16,
@@ -3630,6 +3637,29 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                    agx3_append(emission, bytes, len))
                   continue;
             }
+         }
+
+         /* Unshifted register arithmetic shares the original canonical
+          * form, but its native source hints come from post-RA lifetime. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
+             I->shift == 0 && I->nr_dests == 1 && I->nr_srcs == 2 &&
+             !I->saturate && agx3_mod_src_ok(I->dest[0]) &&
+             agx3_mod_src_ok(I->src[0]) && agx3_mod_src_ok(I->src[1]) &&
+             !I->src[0].abs && !I->src[0].neg && !I->src[1].abs) {
+            const enum agx3_alu_op op = I->src[1].neg ? AGX3_ALU_ISUB
+                                                    : AGX3_ALU_IADD;
+            const uint16_t src[] = {I->src[0].value, I->src[1].value};
+            const enum agx3_alu_hint hints[] = {
+               agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (I->src[0].kill || I->src[1].kill ||
+                (I->src[0].cache && I->src[0].discard) ||
+                (I->src[1].cache && I->src[1].discard) ||
+                !agx3_alu_integer_reg(enc, op, I->dest[0].value, src,
+                                      hints, wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
          }
 
          /*
@@ -3659,7 +3689,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   .dest = I->dest[0].value,
                   .immediate = (uint8_t)constant.value,
                   .src = reg.value,
-                  .src_kill = reg.kill,
+                  .src_kill = reg.discard,
                   .src_16 = reg.size == AGX_SIZE_16,
                   .sign_extend = reg.neg,
                   .shift = I->shift,
@@ -3699,9 +3729,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   .dest = I->dest[0].value,
                   .src_a_is_register = true,
                   .src_a_reg = a.value,
-                  .src_a_kill = a.kill,
+                  .src_a_kill = a.discard,
                   .src = bsrc.value,
-                  .src_kill = bsrc.kill,
+                  .src_kill = bsrc.discard,
                   .shift = I->shift,
                   .wait_mask = wait,
                };
@@ -4008,6 +4038,33 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!encoded || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITOP &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             agx3_vary_reg32(I->dest[0]) &&
+             agx_channels(I->dest[0]) == 1 &&
+             agx3_vary_reg32(I->src[0]) && agx3_vary_reg32(I->src[1]) &&
+             agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1) {
+            const unsigned tt = I->truth_table & 0xfu;
+            const enum agx3_alu_op op = tt == AGX3_SEL_TT_AND ? AGX3_ALU_BAND :
+               tt == AGX3_SEL_TT_OR ? AGX3_ALU_BOR : AGX3_ALU_BXOR;
+            if (tt == AGX3_SEL_TT_AND || tt == AGX3_SEL_TT_OR ||
+                tt == AGX3_SEL_TT_XOR) {
+               if (I->src[0].kill || I->src[1].kill ||
+                   (I->src[0].cache && I->src[0].discard) ||
+                   (I->src[1].cache && I->src[1].discard))
+                  AGX3_REFUSE(I);
+               const uint16_t src[2]={I->src[0].value,I->src[1].value};
+               const enum agx3_alu_hint hints[2]={
+                  agx3_post_ra_hint(I->src[0]),agx3_post_ra_hint(I->src[1])};
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH],len=0;
+               if (!agx3_alu_bit_reg(enc,op,I->dest[0].value,src,hints,wait,
+                                     bytes,&len) ||
+                   !agx3_append(emission,bytes,len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
          }
 
          /* The legacy generic packers embed specimen discard flags. Keep

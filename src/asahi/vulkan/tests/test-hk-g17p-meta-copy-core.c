@@ -38,6 +38,10 @@ main(void)
    explicit_stride.buffer_image_height = explicit_stride.copy_extent.height;
    CHECK(hk_g17p_buffer_to_image_copy_supported(&explicit_stride));
 
+   explicit_stride.buffer_row_length += 8;
+   explicit_stride.buffer_image_height += 4;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&explicit_stride));
+
    struct hk_g17p_buffer_to_image_copy bad = vkcube;
    bad.format = VK_FORMAT_B8G8R8A8_UNORM;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
@@ -48,7 +52,7 @@ main(void)
    bad.layer_count = 2;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
    bad = vkcube;
-   bad.buffer_row_length = 257;
+   bad.buffer_row_length = 255;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
    bad = vkcube;
    bad.chip = AGX_CHIP_G17S;
@@ -63,6 +67,6 @@ main(void)
    bad.layout = VK_IMAGE_LAYOUT_GENERAL;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
 
-   puts("Honeykrisp G17P bounded meta copy: 10 checks passed");
+   puts("Honeykrisp G17P bounded meta copy: 11 checks passed");
    return 0;
 }

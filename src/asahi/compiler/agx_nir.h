@@ -11,7 +11,9 @@
 struct nir_shader;
 struct nir_instr;
 
-bool agx_nir_lower_address(struct nir_shader *shader);
+/* BASE bit3 selects an explicit byte-scaled AGX3 load/store index. */
+#define AGX_NIR_MEMORY_INDEX_BYTES 8u
+bool agx_nir_lower_address(struct nir_shader *shader, bool byte_indices);
 bool agx_nir_lower_algebraic_late(struct nir_shader *shader);
 bool agx_nir_cleanup_amul(struct nir_shader *shader);
 bool agx_nir_fuse_lea(struct nir_shader *shader);
@@ -34,6 +36,8 @@ struct agx_g17p_combined_sampler_binding {
    uint32_t sampler_index_offset_B;
 };
 
+/* Native compute texture/sampler table pointers occupy halves0..7. */
+#define AGX_G17P_TXF_ROOT_HALFS 8u
 struct agx_g17p_txf_binding {
    uint32_t texture_offset_B;
 };

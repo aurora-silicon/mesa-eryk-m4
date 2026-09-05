@@ -94,14 +94,15 @@ bool agx3_iadd_encode(enum agx_isa_encoding encoding,
  *   f58  slot-C sign-extend    `short` sets it, `ushort` does not
  *   f60..f65  scoreboard wait, slots 1..6
  *
- * f27 and f57 are carried verbatim from the witnessed vectors, as f42 is for
- * iadd; their meaning is not established here. The multiply's shift field is
+ * Native reused-input variants establish per-source cache/discard hints:
+ * f25/f27 (A), f40/f42 (B), and f55/f57 (C). The multiply's shift field is
  * not modelled, so a shifted imad is refused rather than encoded with the
  * shift dropped -- which is exactly the silent failure this replaces.
  */
 struct agx3_imad_desc {
    uint16_t dest;      /* 32-bit register half */
    uint16_t src_a;     /* multiplicand register half */
+   bool src_a_kill, src_a_cache;
    uint8_t multiplier; /* constant multiplied by src_a (immediate form) */
    /*
     * Register multiplier. When set, src_a is multiplied by the 32-bit
@@ -115,7 +116,9 @@ struct agx3_imad_desc {
    bool multiplier_is_register;
    uint16_t multiplier_reg;
    bool multiplier_kill; /* f42: last use of the multiplier register */
+   bool multiplier_cache;
    uint16_t src_c;     /* addend register half */
+   bool src_c_kill, src_c_cache;
    /*
     * Pure multiply, no addend. AGX3 has no shifted imad: to build
     * `a*b + (c << s)` Apple emits this form and then a shifted iadd, which is

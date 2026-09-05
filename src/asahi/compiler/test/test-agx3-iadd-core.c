@@ -95,6 +95,7 @@ test_apple_shift_witnesses(void)
       struct agx3_imad_desc d = {
          .dest = 0, .src_a = 4, .multiplier_is_register = true,
          .multiplier_reg = 0, .multiplier_kill = true, .src_c = 8,
+         .src_a_kill = true, .src_c_kill = true,
          .wait_mask = 1u << 5,
       };
       len = 0;
@@ -109,6 +110,7 @@ test_apple_shift_witnesses(void)
       struct agx3_imad_desc d = {
          .dest = 0, .src_a = 8, .multiplier_is_register = true,
          .multiplier_reg = 0, .multiplier_kill = true, .no_addend = true,
+         .src_a_kill = true,
          .wait_mask = 1u << 5,
       };
       len = 0;
@@ -288,16 +290,19 @@ main(void)
          uint8_t bytes[12];
       } iv[] = {
          {"c 32-bit", {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+           .src_a_kill = true, .src_c_kill = true,
                        .wait_mask = 1u << 5},
           {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2b, 0x22,
            0x00}},
          {"c 16-bit zero-extend",
           {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+           .src_a_kill = true, .src_c_kill = true,
            .src_c_16 = true, .wait_mask = 1u << 5},
           {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2a, 0x22,
            0x00}},
          {"c 16-bit sign-extend",
           {.dest = 0, .src_a = 0, .multiplier = 255, .src_c = 4,
+           .src_a_kill = true, .src_c_kill = true,
            .src_c_16 = true, .src_c_sign_extend = true, .wait_mask = 1u << 5},
           {0x9f, 0x00, 0x56, 0x00, 0x02, 0x00, 0xfc, 0x23, 0x50, 0x2a, 0x62,
            0x00}},
@@ -319,6 +324,31 @@ main(void)
       CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &bad, out, &len));
       bad.wait_mask = 0;
       CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3C, &bad, out, &len));
+   }
+
+   /* Native imad_live retains all three inputs; imad_chain caches its
+    * multiplier and addend across two operations, then discards both. */
+   {
+      const struct {
+         struct agx3_imad_desc d;
+         uint8_t bytes[12];
+      } live[] = {
+         {{.dest=0, .src_a=4, .multiplier_is_register=true,
+           .multiplier_reg=2, .src_c=6, .wait_mask=32},
+          {0x9f,0x00,0x56,0x00,0x02,0x08,0x08,0x30,0xd0,0x21,0x2a,0x00}},
+         {{.dest=2, .src_a=2, .src_a_kill=true, .multiplier_is_register=true,
+           .multiplier_reg=0, .multiplier_cache=true, .src_c=4,
+           .src_c_cache=true, .wait_mask=32},
+          {0x9f,0x00,0x56,0x02,0x02,0x04,0x00,0x24,0xd8,0x23,0x2a,0x00}},
+         {{.dest=4, .src_a=6, .src_a_kill=true, .multiplier_is_register=true,
+           .multiplier_reg=0, .multiplier_kill=true, .src_c=4,
+           .src_c_kill=true, .wait_mask=0},
+          {0x9f,0x00,0x54,0x04,0x02,0x0c,0x00,0x20,0xd0,0x2f,0x2a,0x00}},
+      };
+      for (unsigned i=0; i<sizeof(live)/sizeof(live[0]); ++i) {
+         CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B, &live[i].d, out, &len));
+         CHECK(len==12 && !memcmp(out,live[i].bytes,12));
+      }
    }
 
    test_apple_shift_witnesses();

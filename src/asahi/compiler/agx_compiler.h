@@ -413,6 +413,8 @@ typedef struct {
 
    /* TODO: Handle loads more efficiently */
    bool coherent : 1;
+   /* AGX3 memory index scale excludes the access-format size. */
+   bool memory_index_is_bytes : 1;
 
    /* Explicit AGX3 SCS load semantics.  These stay on the internal SCS pseudo
     * and are never inferred from generic memory IR. */
@@ -433,7 +435,7 @@ typedef struct {
    bool saturate : 1;
    unsigned mask : 4;
 
-   unsigned padding : 5;
+   unsigned padding : 4;
 } agx_instr;
 
 static inline void

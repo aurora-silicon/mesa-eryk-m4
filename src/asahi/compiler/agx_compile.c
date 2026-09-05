@@ -926,6 +926,9 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    agx_index offset = agx_src_index(&instr->src[1]);
    enum agx_format fmt = agx_format_for_pipe(nir_intrinsic_format(instr));
    unsigned shift = nir_intrinsic_base(instr);
+   const bool index_bytes = shift & AGX_NIR_MEMORY_INDEX_BYTES;
+   assert(!index_bytes || b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
+   shift &= ~AGX_NIR_MEMORY_INDEX_BYTES;
 
    assert(shift <= 3);
 
@@ -933,9 +936,10 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    if (!nir_intrinsic_sign_extend(instr))
       offset = agx_abs(offset);
 
-   agx_device_load_to(b, dest, addr, offset, fmt,
+   agx_instr *load = agx_device_load_to(b, dest, addr, offset, fmt,
                       BITFIELD_MASK(instr->def.num_components), shift,
                       nir_is_coherent(instr));
+   load->memory_index_is_bytes = index_bytes;
    agx_emit_cached_split(b, dest, instr->def.num_components);
 }
 
@@ -946,6 +950,9 @@ agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
    agx_index offset = agx_src_index(&instr->src[2]);
    enum agx_format fmt = agx_format_for_pipe(nir_intrinsic_format(instr));
    unsigned shift = nir_intrinsic_base(instr);
+   const bool index_bytes = shift & AGX_NIR_MEMORY_INDEX_BYTES;
+   assert(!index_bytes || b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
+   shift &= ~AGX_NIR_MEMORY_INDEX_BYTES;
 
    assert(shift <= 3);
 
@@ -953,9 +960,10 @@ agx_emit_store(agx_builder *b, nir_intrinsic_instr *instr)
    if (!nir_intrinsic_sign_extend(instr))
       offset = agx_abs(offset);
 
-   agx_device_store(b, agx_recollect_vector(b, instr->src[0]), addr, offset,
+   agx_instr *store = agx_device_store(b, agx_recollect_vector(b, instr->src[0]), addr, offset,
                     fmt, BITFIELD_MASK(nir_src_num_components(instr->src[0])),
                     shift, nir_is_coherent(instr));
+   store->memory_index_is_bytes = index_bytes;
 }
 
 /*
@@ -3225,6 +3233,7 @@ set_speculate(nir_builder *b, nir_instr *instr, UNUSED void *_)
 
 static void
 agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
+                 bool byte_indices,
                  uint16_t *preamble_size, uint8_t *ts_count, uint8_t *ss_count)
 {
    /* This runs only once up front since other optimizations don't affect it */
@@ -3293,7 +3302,7 @@ agx_optimize_nir(nir_shader *nir, bool soft_fault, bool uniform_atomics,
     * want to vectorize first since nir_opt_load_store_vectorize doesn't know
     * how to handle our loads. Likewise for uniform atomic optimization.
     */
-   NIR_PASS(_, nir, agx_nir_lower_address);
+   NIR_PASS(_, nir, agx_nir_lower_address, byte_indices);
 
    NIR_PASS(progress, nir, nir_opt_uniform_subgroup, &subgroups_options);
    if (progress) {
@@ -4299,6 +4308,7 @@ agx_compile_shader_nir(nir_shader *nir, struct agx_shader_key *key,
 
    agx_optimize_nir(
       nir, key->dev.soft_fault, !is_agx3,
+      key->dev.encoding == AGX_ISA_ENCODING_AGX3B,
       form_preamble ? &info->push_count : NULL,
       (form_preamble && key->promote_textures) ? &info->texture_state_count
                                               : NULL,

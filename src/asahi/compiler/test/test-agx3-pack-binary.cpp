@@ -10,6 +10,10 @@
  */
 
 #include "agx_test.h"
+extern "C" {
+#include "agx_nir.h"
+}
+#include "compiler/nir/nir_builder.h"
 
 #include <algorithm>
 #include <vector>
@@ -3427,7 +3431,7 @@ TEST_F(AGX3PackBinary, ImmediateIaddPreservesLiveSource)
    for (bool killed : {false, true}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       agx_index source = agx_register(2, AGX_SIZE_32);
-      source.kill = killed;
+      source.discard = killed;
       agx_iadd_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0), source, 2);
       agx_stop(b);
       auto bytes = pack(b);
@@ -3435,5 +3439,35 @@ TEST_F(AGX3PackBinary, ImmediateIaddPreservesLiveSource)
                                 (uint8_t)(killed ? 0x14 : 0x10),0x14};
       ASSERT_GE(bytes.size(), sizeof(native));
       EXPECT_EQ(memcmp(bytes.data(), native, sizeof(native)), 0);
+   }
+}
+
+TEST_F(AGX3PackBinary, ByteAddressLoweringKeepsFullU32Offset)
+{
+   for (bool enabled : {false, true}) {
+      nir_builder b=nir_builder_init_simple_shader(MESA_SHADER_COMPUTE,NULL,
+                                                   "byte-index-address");
+      nir_def *base=nir_load_push_constant(&b,1,64,nir_imm_int(&b,0));
+      nir_def *offset=nir_channel(&b,nir_load_global_invocation_id(&b,32),0);
+      nir_def *value=nir_load_global(&b,1,32,
+         nir_iadd(&b,base,nir_u2u64(&b,offset)),.align_mul=4);
+      nir_store_global(&b,value,nir_imm_int64(&b,0x100000),.align_mul=4);
+      ASSERT_TRUE(agx_nir_lower_address(b.shader,enabled));
+      unsigned found=0;
+      nir_foreach_function_impl(impl,b.shader) {
+         nir_foreach_block(block,impl) {
+            nir_foreach_instr(instr,block) {
+               if(instr->type!=nir_instr_type_intrinsic)continue;
+               auto intr=nir_instr_as_intrinsic(instr);
+               if(intr->intrinsic!=nir_intrinsic_load_agx)continue;
+               found++;
+               EXPECT_EQ(nir_intrinsic_base(intr),
+                         enabled?AGX_NIR_MEMORY_INDEX_BYTES:0u);
+               if(enabled){EXPECT_EQ(intr->src[0].ssa,base);
+                           EXPECT_EQ(intr->src[1].ssa,offset);}
+            }
+         }
+      }
+      EXPECT_EQ(found,1u);ralloc_free(b.shader);
    }
 }

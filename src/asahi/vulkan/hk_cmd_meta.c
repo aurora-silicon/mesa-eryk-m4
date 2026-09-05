@@ -389,12 +389,12 @@ is_format_native(enum pipe_format format)
 
 static nir_def *
 load_store_formatted(nir_builder *b, nir_def *base, nir_def *index,
-                     nir_def *value, enum pipe_format format)
+                     nir_def *value, enum pipe_format format, bool native_formatted_memory)
 {
    if (util_format_is_depth_or_stencil(format))
       format = canonical_format_pipe(format);
 
-   if (is_format_native(format)) {
+   if (native_formatted_memory && is_format_native(format)) {
       enum pipe_format isa = ail_pixel_format[format].renderable;
       unsigned isa_size = util_format_get_blocksize(isa);
       unsigned isa_components = util_format_get_blocksize(format) / isa_size;
@@ -412,7 +412,14 @@ load_store_formatted(nir_builder *b, nir_def *base, nir_def *index,
          nir_iadd(b, base, nir_imul_imm(b, nir_u2u64(b, index), blocksize_B));
 
       if (value) {
-         nir_def *raw = nir_format_pack_rgba(b, format, value);
+         /* UINT texel fetch (or the format conversion above) already
+          * guarantees each RGBA8 component fits eight bits. Pack without
+          * redundant clamps, retaining one aligned 32-bit global store. */
+         const unsigned rgba8_bits[] = {8, 8, 8, 8};
+         nir_def *raw = !native_formatted_memory &&
+                       format == PIPE_FORMAT_R8G8B8A8_UINT
+            ? nir_format_pack_uint_unmasked(b, value, rgba8_bits, 4)
+            : nir_format_pack_rgba(b, format, value);
 
          if (blocksize_B <= 4) {
             assert(raw->num_components == 1);
@@ -436,7 +443,8 @@ load_store_formatted(nir_builder *b, nir_def *base, nir_def *index,
 }
 
 static nir_shader *
-build_image_copy_shader(const struct vk_meta_image_copy_key *key)
+build_image_copy_shader(const struct vk_meta_image_copy_key *key,
+                        bool native_formatted_memory)
 {
    nir_builder build =
       nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "hk-meta-copy");
@@ -545,7 +553,7 @@ build_image_copy_shader(const struct vk_meta_image_copy_key *key)
 
          if (src_is_buf) {
             value1 = load_store_formatted(b, get_push(b, buffer), src_coord,
-                                          NULL, key->dst_format);
+                                          NULL, key->dst_format, native_formatted_memory);
          } else {
             value1 = nir_txf(b, src_coord, .texture_deref = deref,
                              .ms_index = msaa ? ms_index : NULL);
@@ -562,7 +570,7 @@ build_image_copy_shader(const struct vk_meta_image_copy_key *key)
 
          if (dst_is_buf) {
             load_store_formatted(b, get_push(b, buffer), dst_coord, value1,
-                                 key->dst_format);
+                                 key->dst_format, native_formatted_memory);
          } else if (!key->block_based) {
             nir_image_deref_store(b, image_deref, nir_pad_vec4(b, dst_coord),
                                   ms_index, value1, nir_imm_int(b, 0),
@@ -707,7 +715,12 @@ get_image_copy_pipeline(struct vk_device *device, struct vk_meta_device *meta,
 
    const VkPipelineShaderStageNirCreateInfoMESA nir_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_NIR_CREATE_INFO_MESA,
-      .nir = build_image_copy_shader(key),
+      /* G17P LDDEV/STDEV transfer raw packed bytes; they do not implement
+       * AGX2's component-wise formatted conversion from four 32-bit values.
+       * The existing NIR pack/unpack path retains a single aligned raw store.
+       * Meta pipelines are cached per device, so no extra key is needed. */
+      .nir = build_image_copy_shader(key,
+         container_of(device, struct hk_device, vk)->dev.chip != AGX_CHIP_G17P),
    };
    const VkPipelineShaderStageCreateInfo cs_info = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,

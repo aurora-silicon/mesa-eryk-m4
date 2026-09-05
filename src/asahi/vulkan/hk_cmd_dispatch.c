@@ -158,23 +158,32 @@ static bool
 hk_g17p_compute_shader_supported(struct hk_shader *s,
                                  struct hk_linked_shader *linked)
 {
+   if (s && linked && hk_g17p_launch_trace_enabled())
+      fprintf(stderr,"G17P compute resources: txf=%u binding=%u preamble=%u local=%u texture=%u sampler=%u heap=%u scratch=%u/%u\n",
+         linked->b.uses_txf,s->info.agx3_txf_texture_valid,s->b.info.has_preamble,
+         s->b.info.local_size,s->b.info.texture_state_count,s->b.info.sampler_state_count,
+         s->b.info.uses_sampler_heap,s->b.info.scratch_size,linked->b.scratch_size);
    return s && linked && s->info.stage == MESA_SHADER_COMPUTE &&
           linked->b.bo && linked->b.bo->va && linked->b.size != 0 &&
           linked->b.size <= UINT32_MAX && linked->b.nr_gprs != 0 &&
           !s->b.info.has_preamble && s->b.info.preamble_scratch_size == 0 &&
           s->b.info.scratch_size == 0 && linked->b.scratch_size == 0 &&
           s->b.info.local_size == 0 && s->b.info.texture_state_count == 0 &&
-          s->b.info.sampler_state_count == 0 &&
-          !s->b.info.uses_sampler_heap && !linked->b.uses_txf &&
+          (s->b.info.sampler_state_count == 0 ||
+           (s->info.agx3_txf_texture_valid &&
+            s->b.info.sampler_state_count == 1)) &&
+          !s->b.info.uses_sampler_heap &&
+          (!linked->b.uses_txf || s->info.agx3_txf_texture_valid) &&
           s->info.set_count <= HK_AGX3_G17P_MAX_ROOT_SETS;
 }
 
 static bool
 hk_g17p_compute_uniform_ranges(
-   struct hk_shader *s, uint64_t root_ptr,
-   struct agx3_ioto_uniform_range ranges[2], size_t *range_count)
+   struct hk_shader *s, uint64_t root_ptr, uint64_t texture_pointers,
+   struct agx3_ioto_uniform_range ranges[3], size_t *range_count)
 {
-   if (!s || !ranges || !range_count)
+   if (!s || !ranges || !range_count ||
+       (!!texture_pointers != s->info.agx3_txf_texture_valid))
       return false;
 
    /* A shader that reads neither the root descriptor nor any descriptor set
@@ -199,13 +208,14 @@ hk_g17p_compute_uniform_ranges(
     * whose preamble performs no memory access whatsoever.
     */
    const struct agx_rodata *rodata_probe = &s->b.info.rodata;
-   if (!s->info.agx3_uses_root && s->info.set_count == 0 &&
+   if (!texture_pointers && !s->info.agx3_uses_root && s->info.set_count == 0 &&
        rodata_probe->size_16 == 0) {
       *range_count = 0;
       return true;
    }
 
-   if (!hk_agx3_g17p_root_range(0, s->info.set_count, root_ptr, &ranges[0]))
+   const unsigned root_uniform = texture_pointers ? AGX_G17P_TXF_ROOT_HALFS : 0;
+   if (!hk_agx3_g17p_root_range(root_uniform, s->info.set_count, root_ptr, &ranges[0]))
       return false;
 
    /* Deliver the footprint the compiler finally settled on.
@@ -219,10 +229,16 @@ hk_g17p_compute_uniform_ranges(
     * uniform registers as size_halfs, and the bytes come from the root
     * descriptor table, which is larger than the range.
     */
-   if (s->b.info.push_count > ranges[0].size_halfs)
-      ranges[0].size_halfs = s->b.info.push_count;
+   if (s->b.info.push_count > root_uniform + ranges[0].size_halfs)
+      ranges[0].size_halfs = s->b.info.push_count - root_uniform;
 
    size_t count = 1;
+   if (texture_pointers) {
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 0, .size_halfs = AGX_G17P_TXF_ROOT_HALFS,
+         .address = texture_pointers,
+      };
+   }
    const struct agx_rodata *rodata = &s->b.info.rodata;
    if (rodata->size_16 != 0) {
       const uint64_t size_B = (uint64_t)rodata->size_16 * 2;
@@ -279,9 +295,33 @@ hk_dispatch_g17p_native(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (!root_ptr)
       return;
 
-   struct agx3_ioto_uniform_range ranges[2];
+   uint64_t texture_pointers = 0;
+   if (s->info.agx3_txf_texture_valid) {
+      const struct hk_descriptor_state *descriptors = &cmd->state.cs.descriptors;
+      const uint64_t set_address = descriptors->root.sets[0];
+      const uint32_t set_size = descriptors->set_sizes[0];
+      const uint32_t offset = s->info.agx3_txf_texture.texture_offset_B;
+      if (!set_address || offset > set_size ||
+          set_size - offset < 32 || !dev->rodata.bo ||
+          !dev->rodata.bo->va) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+      /* Native G17P compute read() uses table pointers in uniform halves0..7,
+       * with its ordinary buffer arguments beginning at half8. Preserve the
+       * existing root ABI after that prefix and keep both pointers immutable. */
+      const uint64_t pointers[2] = {
+         set_address + offset, dev->rodata.bo->va->addr,
+      };
+      texture_pointers = hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+      if (!texture_pointers)
+         return;
+   }
+
+   struct agx3_ioto_uniform_range ranges[3];
    size_t range_count;
-   if (!hk_g17p_compute_uniform_ranges(s, root_ptr, ranges, &range_count)) {
+   if (!hk_g17p_compute_uniform_ranges(s, root_ptr, texture_pointers,
+                                      ranges, &range_count)) {
       vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
       return;
    }
