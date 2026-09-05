@@ -918,6 +918,100 @@ test_indexed_sampler_sets(void)
    return ok;
 }
 
+static nir_tex_instr *
+custom_border_sample(nir_builder *b, nir_def *image, nir_def *sampler,
+                     nir_def *coord, unsigned flags)
+{
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, 3);
+   tex->op = nir_texop_tex;
+   tex->sampler_dim = GLSL_SAMPLER_DIM_2D;
+   tex->dest_type = nir_type_float32;
+   tex->coord_components = 2;
+   tex->backend_flags = flags;
+   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_backend1, coord);
+   tex->src[1] = nir_tex_src_for_ssa(nir_tex_src_texture_handle, image);
+   tex->src[2] = nir_tex_src_for_ssa(nir_tex_src_sampler_handle, sampler);
+   nir_def_init(&tex->instr, &tex->def, 4, 32);
+   nir_builder_instr_insert(b, &tex->instr);
+   return tex;
+}
+
+static bool
+test_custom_border_samplers(bool dynamic, unsigned invalid)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "custom border indexed samples");
+   nir_def *set = nir_load_descriptor_set_agx(&b, 24);
+   nir_def *ordinary_index = dynamic ? nir_load_global_constant(
+      &b, 1, 16, nir_iadd_imm(&b, set, 40), .align_mul = 2)
+      : nir_imm_intN_t(&b, 80, 16);
+   nir_def *clamp_index = dynamic ? nir_load_global_constant(
+      &b, 1, 16, nir_iadd_imm(&b, set, 42), .align_mul = 2)
+      : nir_imm_intN_t(&b, 84, 16);
+   nir_def *image = nir_bindless_image_agx(&b, nir_imm_int(&b, 0), .desc_set = 24);
+   nir_def *sampler = nir_bindless_sampler_agx(
+      &b, nir_imm_int(&b, 32), ordinary_index, .desc_set = 24);
+   nir_def *coord = nir_imm_vec2(&b, -.125, .75);
+   nir_tex_instr *ordinary = custom_border_sample(&b, image, sampler, coord, 0);
+   nir_def *condition = nir_ige_imm(&b, clamp_index, 0);
+   nir_if *branch = nir_push_if(&b, condition);
+   nir_tex_instr *clamp = custom_border_sample(
+      &b, image, clamp_index, coord,
+      invalid == 2 ? 0 :
+      invalid ? AGX_TEXTURE_FLAG_NO_CLAMP : AGX_TEXTURE_FLAG_CLAMP_TO_0);
+   nir_def *border = nir_load_global_constant(
+      &b, 4, 32, nir_iadd_imm(&b, set, 52), .align_mul = 4);
+   nir_def *mixed = nir_flrp(&b, &clamp->def, &ordinary->def, border);
+   nir_pop_if(&b, branch);
+   nir_def *result = nir_if_phi(&b, mixed, &ordinary->def);
+   nir_store_output(&b, result, nir_imm_int(&b, 0), .write_mask = 15,
+                    .src_type = nir_type_float32);
+
+   bool lowered = agx_nir_lower_g17p_indexed_samplers(b.shader);
+   bool ok = lowered == (invalid == 0);
+   if (invalid) {
+      /* An unsupported third shape must not partially convert the first. */
+      ok &= nir_tex_instr_src_index(ordinary, nir_tex_src_texture_handle) >= 0;
+      ok &= nir_tex_instr_src_index(clamp, nir_tex_src_texture_handle) >= 0;
+   } else {
+      ok &= branch->condition.ssa == condition;
+      ok &= nir_def_instr(mixed)->block == clamp->instr.block;
+      ok &= clamp->instr.block != ordinary->instr.block;
+      nir_alu_instr *lerp = nir_instr_as_alu(nir_def_instr(mixed));
+      ok &= lerp->op == nir_op_flrp && lerp->src[0].src.ssa == &clamp->def &&
+            lerp->src[1].src.ssa == &ordinary->def &&
+            lerp->src[2].src.ssa == border;
+      nir_tex_instr *samples[] = {ordinary, clamp};
+      nir_def *original[] = {ordinary_index, clamp_index};
+      for (unsigned i = 0; i < 2; ++i) {
+         nir_tex_instr *tex = samples[i];
+         int si = nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle);
+         int ti = nir_tex_instr_src_index(tex, nir_tex_src_texture_offset);
+         ok &= si >= 0 && ti >= 0;
+         if (si < 0 || ti < 0)
+            continue;
+         ok &= nir_src_bit_size(tex->src[si].src) == 64 &&
+               nir_src_bit_size(tex->src[ti].src) == 64;
+         nir_alu_instr *wide = nir_def_as_alu_or_null(tex->src[si].src.ssa);
+         nir_alu_instr *subtract = wide ? nir_def_as_alu_or_null(wide->src[0].src.ssa) : NULL;
+         nir_alu_instr *extend = subtract ? nir_def_as_alu_or_null(subtract->src[0].src.ssa) : NULL;
+         ok &= wide && wide->op == nir_op_u2u64 && subtract &&
+               subtract->op == nir_op_iadd && extend &&
+               extend->op == nir_op_u2u32 && extend->src[0].src.ssa == original[i];
+      }
+      if (!dynamic) {
+         NIR_PASS(_, b.shader, nir_opt_constant_folding);
+         for (unsigned i = 0; i < 2; ++i) {
+            int si = nir_tex_instr_src_index(samples[i], nir_tex_src_sampler_handle);
+            ok &= nir_src_is_const(samples[i]->src[si].src) &&
+                  nir_src_as_uint(samples[i]->src[si].src) == (i ? 56 : 52);
+         }
+      }
+   }
+   ralloc_free(b.shader);
+   return ok;
+}
+
 static bool
 test_indexed_fetch_sets(void)
 {
@@ -1612,6 +1706,16 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--custom-border-only")) {
+      bool ok = test_custom_border_samplers(false, false) &&
+                test_custom_border_samplers(true, false) &&
+                test_custom_border_samplers(true, 1) &&
+                test_custom_border_samplers(true, 2) &&
+                test_indexed_sampler_sets() && test_indexed_fetch_sets();
+      printf("custom border runtime branch, exact indices, mixed reads: %s\n",
+             ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--indexed-fetch-only")) {
       const bool ok=test_indexed_fetch_sets();
       printf("mixed indexed texture reads, sample, sets and arrays: %s\n",ok?"PASS":"FAIL");
@@ -1636,7 +1740,10 @@ main(int argc, char **argv)
       AGX_ISA_ENCODING_AGX3B,
       AGX_ISA_ENCODING_AGX3C,
    };
-   bool all_ok = true;
+   bool all_ok = test_custom_border_samplers(false, 0) &&
+                 test_custom_border_samplers(true, 0) &&
+                 test_custom_border_samplers(true, 1) &&
+                 test_custom_border_samplers(true, 2);
 
    if (!test_texture_index_abis()) {
       fputs("legacy and compact-native sampler index ABIs conflated\n", stderr);
