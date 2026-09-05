@@ -65,6 +65,12 @@ bool agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
 /* Native f32 comparison with byte-sized integer alternatives and a16/32-bit result. */
+bool agx3_alu_fcmp_select_zero(enum agx_isa_encoding enc, uint16_t dest,
+                             const uint16_t src[3], bool compare_16,
+                             const enum agx3_alu_hint hints[3], unsigned condition,
+                             bool dest_cache, uint16_t wait_mask,
+                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 bool agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
                              const uint16_t src[2],
                              const enum agx3_alu_hint hints[2],

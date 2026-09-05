@@ -495,6 +495,55 @@ test_integer_lifetimes(void)
 }
 
 static void
+test_float_compare_zero(void)
+{
+   const struct {
+      unsigned dest, src[3], hints[3], cond, wait;
+      bool half;
+      const char *hex;
+   } cases[] = {
+      {0,{10,0,2},{1,1,1},0,32,true,"020a0f81840200c2"},
+      {0,{2,4,6},{2,0,0},0,32,true,"02820781060400c20006"},
+      {0,{10,0,2},{1,1,1},1,32,true,"020a0f81800203c2"},
+      {0,{0,2,4},{1,1,1},0,32,false,"02010f81860200c28004"},
+      {0,{6,2,4},{1,2,2},0,32,true,"02060f81068200c20084"},
+      {2,{7,4,2},{1,1,1},0,0,true,"12060f8185040802"},
+   };
+   for (unsigned i=0;i<sizeof(cases)/sizeof(cases[0]);++i) {
+      uint8_t out[AGX3_ALU_MAX_LENGTH], len;
+      uint16_t src[3]; enum agx3_alu_hint hints[3];
+      for(unsigned j=0;j<3;++j) {src[j]=cases[i].src[j];hints[j]=cases[i].hints[j];}
+      assert(agx3_alu_fcmp_select_zero(AGX_ISA_ENCODING_AGX3B,cases[i].dest,
+             src,cases[i].half,hints,cases[i].cond,false,cases[i].wait,out,&len));
+      exact(out,len,cases[i].hex);
+   }
+   /* Rejection leaves the output untouched. Half comparisons may be odd,
+    * but full float operands/results must be aligned, and unsupported wait
+    * sets must be retired explicitly by the caller. */
+   for (unsigned bad=0;bad<8;++bad) {
+      uint16_t src[] = {1,4,2};
+      enum agx3_alu_hint hints[] = {AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE,AGX3_ALU_HINT_NONE};
+      uint8_t out[AGX3_ALU_MAX_LENGTH],len=0xa5;
+      memset(out,0xa5,sizeof(out));
+      unsigned dest=70,cond=0,wait=0;
+      bool half=true;
+      if(bad==0)dest=71;
+      if(bad==1)src[1]=5;
+      if(bad==2)src[2]=256;
+      if(bad==3)half=false;
+      if(bad==4)hints[0]=3;
+      if(bad==5)wait=1;
+      if(bad==6)cond=7;
+      if(bad==7)dest=256;
+      assert(!agx3_alu_fcmp_select_zero(AGX_ISA_ENCODING_AGX3B,dest,src,half,
+                                      hints,cond,false,wait,out,&len));
+      assert(len==0xa5);
+      for(unsigned j=0;j<sizeof(out);++j)assert(out[j]==0xa5);
+   }
+   puts("FSEL zero: six exact mixed-width native lifetime witnesses PASS");
+}
+
+static void
 test_float_compare_select(void)
 {
    const uint16_t src[] = {0, 2};
@@ -654,6 +703,7 @@ int main(void){
    test_native_fma_minifloat();
    test_int_to_float_liveness();
    test_float_compare_select();
+   test_float_compare_zero();
    test_integer_lifetimes();
    test_bitwise_lifetimes();
    test_modified_minifloat_add();

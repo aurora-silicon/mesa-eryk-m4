@@ -446,6 +446,48 @@ agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
    return false;
 }
 
+/* Compare a half/full float register with floating zero, selecting full float
+ * registers. The three source lifetimes are independent (including aliases).
+ * Native Metal uses these compact forms for mixed-precision shader selects. */
+bool
+agx3_alu_fcmp_select_zero(enum agx_isa_encoding enc, uint16_t dest,
+                          const uint16_t src[3], bool compare_16,
+                          const enum agx3_alu_hint hints[3], unsigned condition,
+                          bool dest_cache, uint16_t wait_mask,
+                          uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || !src || !hints ||
+       dest >= 256 || (dest & 1) ||
+       (condition != 0 && condition != 1 && condition != 2 &&
+        condition != 5 && condition != 6) ||
+       (wait_mask != 0 && wait_mask != 32))
+      return false;
+   for (unsigned i = 0; i < 3; ++i)
+      if (src[i] >= 256 || ((i != 0 || !compare_16) && (src[i] & 1)) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
+         return false;
+   const struct agx3_field_kv base[] = {
+      {10, 2}, {11, 2}, {42, 2}, {43, compare_16 ? 1 : 2},
+      {59, 1}, {60, 2}, {76, 2}, {77, 2}, {93, 2}, {94, 2},
+   };
+   const struct agx3_field_kv fields[] = {
+      {3, dest}, {12, dest_cache}, {35, src[0]}, {51, 0},
+      {69, src[1]}, {86, src[2]},
+      {44, hints[0] == AGX3_ALU_HINT_CACHE},
+      {46, hints[0] == AGX3_ALU_HINT_DISCARD},
+      {78, hints[1] == AGX3_ALU_HINT_CACHE},
+      {80, hints[1] == AGX3_ALU_HINT_DISCARD},
+      {95, hints[2] == AGX3_ALU_HINT_CACHE},
+      {97, hints[2] == AGX3_ALU_HINT_DISCARD},
+      {110, condition}, {107, wait_mask == 32},
+   };
+   /* Native forms are ordered by size: 6, 8, then 10 bytes. */
+   for (unsigned ep = 0; ep < 28; ++ep)
+      if (agx3_bind_compose(enc, "fsel", ep, base, 10, fields, 14, out, len))
+         return true;
+   return false;
+}
+
 /* Integer source liveness remains relevant after conversion: IDs can still
  * address later stores. Keep the native instruction and actual RA hints. */
 bool

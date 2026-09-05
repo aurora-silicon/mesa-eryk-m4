@@ -3854,3 +3854,45 @@ TEST_F(AGX3PackBinary, NarrowFaddKeepsOddHalfAndLiveInput)
       EXPECT_EQ(memcmp(code.data(),expected,6),0);
    }
 }
+
+TEST_F(AGX3PackBinary, FselZeroMixedGnomeRegisterShape)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      const bool zero_first = mode & 1, invert = mode & 2;
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_register(1, AGX_SIZE_16);
+      agx_index zero = agx_immediate(0);
+      agx_instr *I = agx_fcmpsel_to(b, agx_register(70, AGX_SIZE_32),
+                     zero_first ? zero : half, zero_first ? half : zero,
+                     agx_register(invert ? 2 : 4, AGX_SIZE_32),
+                     agx_register(invert ? 4 : 2, AGX_SIZE_32),
+                     AGX_FCOND_EQ);
+      I->invert_cond = invert;
+      agx_stop(b);
+      auto code = pack(b);
+      /* Original GNOME post-RA shape: odd half comparison, both full float
+       * alternatives remain live, one FSEL followed by STOP. */
+      ASSERT_EQ(code.size(), 14u);
+      const uint8_t expected[] = {0x32,0x00,0x87,0x81,0x06,0x04,0x08,0x02,0x00,0x02};
+      EXPECT_EQ(memcmp(code.data(),expected,sizeof(expected)),0);
+   }
+}
+
+TEST_F(AGX3PackBinary, FselZeroNativeLifetimeAndCompareOrder)
+{
+   for (bool zero_first : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_register(10, AGX_SIZE_16);
+      agx_index t = agx_register(0, AGX_SIZE_32), f = agx_register(2, AGX_SIZE_32);
+      half.discard = t.discard = f.discard = true;
+      agx_fcmpsel_to(b, agx_register(0, AGX_SIZE_32),
+                     zero_first ? agx_immediate(0) : half,
+                     zero_first ? half : agx_immediate(0), t, f,
+                     zero_first ? AGX_FCOND_GT : AGX_FCOND_LT);
+      agx_stop(b);
+      auto code = pack(b);
+      const uint8_t native[] = {0x02,0x0a,0x0f,0x81,0x80,0x02,0x03,0x02};
+      ASSERT_EQ(code.size(), sizeof(native)+4);
+      EXPECT_EQ(memcmp(code.data(), native, sizeof(native)),0);
+   }
+}

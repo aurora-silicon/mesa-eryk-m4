@@ -3805,6 +3805,68 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         /* Native mixed-width comparison against floating zero with full
+          * float alternatives. Keep the half comparator in its assigned half
+          * register; neither widening nor a separate comparison is needed. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests == 1 && I->nr_srcs == 4 &&
+             agx3_mod_src_ok(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             agx3_mod_src_ok(I->src[2]) && agx3_mod_src_ok(I->src[3]) &&
+             agx_channels(I->src[2]) == 1 && agx_channels(I->src[3]) == 1) {
+            const bool zero_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index zero = I->src[zero_first ? 0 : 1];
+            const agx_index compare = I->src[zero_first ? 1 : 0];
+            if (zero.type == AGX_INDEX_IMMEDIATE && zero.value == 0 &&
+                compare.type == AGX_INDEX_REGISTER && !compare.memory &&
+                agx_channels(compare) == 1 &&
+                (compare.size == AGX_SIZE_16 || compare.size == AGX_SIZE_32)) {
+               unsigned condition = I->fcond;
+               bool swap = I->invert_cond;
+               if (condition == AGX_FCOND_LTN) {
+                  condition = AGX_FCOND_GE;
+                  swap = !swap;
+               } else if (condition == AGX_FCOND_GTN) {
+                  condition = AGX_FCOND_LE;
+                  swap = !swap;
+               }
+               if (zero_first) {
+                  switch (condition) {
+                  case AGX_FCOND_LT: condition = AGX_FCOND_GT; break;
+                  case AGX_FCOND_GT: condition = AGX_FCOND_LT; break;
+                  case AGX_FCOND_LE: condition = AGX_FCOND_GE; break;
+                  case AGX_FCOND_GE: condition = AGX_FCOND_LE; break;
+                  default: break;
+                  }
+               }
+               const agx_index selected[] = {
+                  I->src[swap ? 3 : 2], I->src[swap ? 2 : 3]};
+               const uint16_t sources[] = {
+                  compare.value, selected[0].value, selected[1].value};
+               const enum agx3_alu_hint hints[] = {
+                  agx3_post_ra_hint(compare), agx3_post_ra_hint(selected[0]),
+                  agx3_post_ra_hint(selected[1])};
+               bool invalid = I->saturate;
+               for (unsigned i = 0; i < 4; ++i)
+                  invalid |= I->src[i].abs || I->src[i].neg || I->src[i].kill ||
+                             (I->src[i].cache && I->src[i].discard);
+               if (invalid)
+                  AGX3_REFUSE(I);
+               uint16_t fsel_wait = wait;
+               if (fsel_wait != 0 && fsel_wait != 32) {
+                  if (!agx3_retire_slots_noop(emission, enc, fsel_wait))
+                     AGX3_REFUSE(I);
+                  fsel_wait = 0;
+               }
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+               if (!agx3_alu_fcmp_select_zero(enc, I->dest[0].value, sources,
+                       compare.size == AGX_SIZE_16, hints, condition,
+                       I->dest[0].cache, fsel_wait, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
          /* Float comparison selecting integer byte constants, preserving the
           * native 16/32-bit destination width assigned by register allocation. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
