@@ -272,7 +272,7 @@ main(void)
     */
    static const uint8_t gen9_pbe[32] = {
       0x22, 0x0a, 0xe4, 0xff, 0xc0, 0x1f, 0x00, 0x00,
-      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x10,
+      0x00, 0x80, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
@@ -287,6 +287,9 @@ main(void)
    pbe.extended = false;
    pbe.acceleration_buffer = 0;
    pbe.page_aligned_layers = true;
+   /* Allocator padding is not Gen9's single-layer PBE word1 bit60.
+    * Gen10 and the legacy-generation bridge retain their original bytes.
+    */
    assert(hk_pack_native_pbe(9, &native_pbe, &pbe));
    assert(memcmp(&native_pbe, gen9_pbe, sizeof(gen9_pbe)) == 0);
    assert(hk_pack_native_pbe(10, &native_pbe, &pbe));

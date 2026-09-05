@@ -119,10 +119,17 @@ agx_pbe_agx3_2d_pack(uint32_t generation,
    word0 |= (uint64_t)(fields->width - 1u) << 24;
    word0 |= (uint64_t)(fields->height - 1u) << height_shift;
 
+   /* Gen9 StateFields (0x34f188..0x34f1f8) only writes word1 bit60 for
+    * array/type-flagged or kind3/4 images. This codec admits ordinary kind2,
+    * one layer only: its implicit extent and bit60 remain zero, even when
+    * the allocator padded that layer to a page. The legacy allocator flag
+    * is not that Gen9 field. Preserve the existing Gen10 encoding.
+    */
+   const bool layer_flag = generation == AGX_PBE_AGX3_GENERATION_10 &&
+                           fields->page_aligned_layers;
    store_le64(&out->bytes[0], word0);
    store_le64(&out->bytes[8], (fields->buffer >> 4) |
-                                     ((uint64_t)fields->page_aligned_layers
-                                      << 60));
+                            ((uint64_t)layer_flag << 60));
    out->length = AGX_PBE_AGX3_DESCRIPTOR_LENGTH;
    return true;
 }
@@ -149,7 +156,8 @@ agx_pbe_agx3_2d_unpack(uint32_t generation, const void *bytes, size_t size,
          ? (UINT64_C(1) << 52) - 1
          : (UINT64_C(1) << 54) - 1;
 
-   const uint64_t word1_mask = ((UINT64_C(1) << 44) - 1) | (UINT64_C(1) << 60);
+   const uint64_t word1_mask = ((UINT64_C(1) << 44) - 1) |
+      (generation == AGX_PBE_AGX3_GENERATION_10 ? UINT64_C(1) << 60 : 0);
    if ((word0 & 0xf) != AGX_PBE_DIMENSION_2D ||
        (word0 & ~word0_mask) || (word1 & ~word1_mask) || word2 || word3)
       return false;

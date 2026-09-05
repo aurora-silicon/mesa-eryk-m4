@@ -25,7 +25,7 @@ static const uint8_t channels[] = {
 };
 
 static bool
-same_fields(const struct agx_pbe_agx3_2d_fields *a,
+same_fields(uint32_t generation, const struct agx_pbe_agx3_2d_fields *a,
             const struct agx_pbe_agx3_2d_fields *b)
 {
    return a->layout == b->layout && a->channels == b->channels &&
@@ -34,7 +34,8 @@ same_fields(const struct agx_pbe_agx3_2d_fields *a,
           a->swizzle_b == b->swizzle_b &&
           a->swizzle_a == b->swizzle_a && a->width == b->width &&
           a->height == b->height && a->buffer == b->buffer &&
-          a->page_aligned_layers == b->page_aligned_layers;
+          a->page_aligned_layers ==
+             (generation == AGX_PBE_AGX3_GENERATION_10 && b->page_aligned_layers);
 }
 
 static int
@@ -80,7 +81,7 @@ check_exact_generation_vectors(void)
       CHECK(memcmp(packed.bytes, cases[i].expected, sizeof(gen9)) == 0);
       CHECK(agx_pbe_agx3_2d_unpack(cases[i].generation, packed.bytes,
                                    packed.length, &decoded));
-      CHECK(same_fields(&decoded, &fields));
+      CHECK(same_fields(cases[i].generation, &decoded, &fields));
    }
    return 0;
 }
@@ -119,7 +120,7 @@ check_exhaustive_format_axes(void)
                                              &packed));
                   CHECK(agx_pbe_agx3_2d_unpack(
                      generations[g], packed.bytes, packed.length, &decoded));
-                  CHECK(same_fields(&decoded, &fields));
+                  CHECK(same_fields(generations[g], &decoded, &fields));
                }
    return 0;
 }
@@ -153,7 +154,7 @@ check_dimension_and_address_bits(void)
          CHECK(agx_pbe_agx3_2d_pack(generations[g], &fields, &packed));
          CHECK(agx_pbe_agx3_2d_unpack(generations[g], packed.bytes,
                                       packed.length, &decoded));
-         CHECK(same_fields(&decoded, &fields));
+         CHECK(same_fields(generations[g], &decoded, &fields));
       }
 
       for (unsigned bit = 4; bit < 48; ++bit) {
@@ -169,7 +170,7 @@ check_dimension_and_address_bits(void)
          CHECK(agx_pbe_agx3_2d_pack(generations[g], &fields, &packed));
          CHECK(agx_pbe_agx3_2d_unpack(generations[g], packed.bytes,
                                       packed.length, &decoded));
-         CHECK(same_fields(&decoded, &fields));
+         CHECK(same_fields(generations[g], &decoded, &fields));
       }
    }
    return 0;
@@ -227,7 +228,7 @@ check_fail_closed_axes(void)
    fields.buffer = UINT64_C(0x1000);
    CHECK(agx_pbe_agx3_2d_pack(AGX_PBE_AGX3_GENERATION_9, &fields, &packed));
    for (unsigned bit = 52; bit < 256; ++bit) {
-      if ((bit >= 64 && bit < 108) || bit == 124)
+      if (bit >= 64 && bit < 108)
          continue;
       uint8_t malformed[AGX_PBE_AGX3_DESCRIPTOR_LENGTH];
       struct agx_pbe_agx3_2d_fields decoded;
@@ -241,11 +242,62 @@ check_fail_closed_axes(void)
    return 0;
 }
 
+static int
+check_gen9_single_layer_packet(void)
+{
+   /* Matching Gen9 MTL80 table878fa8[79] ->818c40 supplies channels0x28,
+    * type0, bytes-per-pixel4. StateFields34edf4 takes depth1/base-slice0,
+    * sparsePageSize0: layout2, no high control bits or extended words.
+    * This is a constructor-derived vector, not a native32x32 capture.
+    */
+   static const uint8_t expected[32] = {
+      0x22, 0x0a, 0xe4, 0x1f, 0xc0, 0x07, 0x00, 0x00,
+      0x00, 0xf4, 0xfe, 0x7f, 0x08, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   };
+   struct agx_pbe_agx3_2d_fields fields = {
+      .layout = 2, .channels = 0x28, .type = 0,
+      .swizzle_r = 0, .swizzle_g = 1, .swizzle_b = 2, .swizzle_a = 3,
+      .width = 32, .height = 32, .buffer = UINT64_C(0x87ffef4000),
+      .page_aligned_layers = true,
+   };
+   struct agx_pbe_agx3_descriptor packed;
+   CHECK(agx_pbe_agx3_2d_pack(9, &fields, &packed));
+   CHECK(memcmp(packed.bytes, expected, sizeof(expected)) == 0);
+
+   const uint64_t addresses[] = {
+      UINT64_C(0x4000), UINT64_C(0x87ffef4000), UINT64_C(0x10002000000),
+   };
+   for (unsigned generation = 9; generation <= 10; ++generation) {
+      for (unsigned layout = 1; layout <= 2; ++layout) {
+         for (unsigned i = 0; i < sizeof(addresses) / sizeof(addresses[0]); ++i) {
+            fields.layout = layout;
+            fields.buffer = addresses[i];
+            fields.page_aligned_layers = false;
+            struct agx_pbe_agx3_descriptor unpadded;
+            CHECK(agx_pbe_agx3_2d_pack(generation, &fields, &unpadded));
+            fields.page_aligned_layers = true;
+            CHECK(agx_pbe_agx3_2d_pack(generation, &fields, &packed));
+            if (generation == 10)
+               unpadded.bytes[15] |= 0x10;
+            CHECK(memcmp(&packed, &unpadded, sizeof(packed)) == 0);
+            struct agx_pbe_agx3_2d_fields decoded;
+            CHECK(agx_pbe_agx3_2d_unpack(generation, packed.bytes,
+                                        packed.length, &decoded));
+            CHECK(same_fields(generation, &decoded, &fields));
+         }
+      }
+   }
+   return 0;
+}
+
 int
 main(void)
 {
    if (check_exact_generation_vectors() || check_exhaustive_format_axes() ||
-       check_dimension_and_address_bits() || check_fail_closed_axes())
+       check_dimension_and_address_bits() || check_fail_closed_axes() ||
+       check_gen9_single_layer_packet())
       return 1;
 
    printf("agx_pbe_agx3_core: %u checks passed\n", checks);
