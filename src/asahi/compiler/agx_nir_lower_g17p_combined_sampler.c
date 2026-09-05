@@ -265,8 +265,12 @@ agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
             nir_intrinsic_instr *sampler = nir_src_as_intrinsic(
                tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle)].src);
             nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(image));
-            nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, image->src[0].ssa));
-            address = nir_iadd_imm(&b, address, AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+            /* Descriptor offsets are 32-bit and valid sets fit far below
+             * 4GiB. Add the field offset before widening so native LDDEV can
+             * consume base+byte-index without a separate 64-bit base add. */
+            nir_def *offset = nir_iadd_imm(&b, image->src[0].ssa,
+                                          AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+            nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, offset));
             nir_def *texture_index = nir_load_global_constant(&b, 1, 32, address, .align_mul = 4);
             /* The software sampler index includes AGX2's reservation of 28.
              * Native G17P heaps are zero-based, as the immediate path is. */
