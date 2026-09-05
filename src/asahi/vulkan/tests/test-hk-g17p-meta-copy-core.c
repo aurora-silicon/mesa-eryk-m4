@@ -65,8 +65,14 @@ main(void)
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
    bad = vkcube;
    bad.layout = VK_IMAGE_LAYOUT_GENERAL;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&bad));
+   bad.format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&bad));
+   bad.layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   CHECK(hk_g17p_buffer_to_image_copy_supported(&bad));
+   bad.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
    CHECK(!hk_g17p_buffer_to_image_copy_supported(&bad));
 
-   puts("Honeykrisp G17P bounded meta copy: 11 checks passed");
+   puts("Honeykrisp G17P bounded meta copy: 14 checks passed");
    return 0;
 }

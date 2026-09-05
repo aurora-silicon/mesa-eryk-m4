@@ -32,8 +32,8 @@ struct hk_g17p_buffer_to_image_copy {
    uint32_t buffer_image_height;
 };
 
-/* The initial HAL200 upload path renders one tightly packed RGBA8 staging
- * buffer into one complete, single-layer 2D image.
+/* The HAL200 upload path renders an RGBA8 or RGB10A2 staging buffer into
+ * one complete, single-layer 2D image; explicit padded row strides are valid.
  */
 bool hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy);

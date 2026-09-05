@@ -10,8 +10,10 @@ hk_g17p_buffer_to_image_copy_supported(
    const struct hk_g17p_buffer_to_image_copy *copy)
 {
    if (!copy || copy->chip != AGX_CHIP_G17P ||
-       copy->format != VK_FORMAT_R8G8B8A8_UNORM ||
-       copy->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL ||
+       (copy->format != VK_FORMAT_R8G8B8A8_UNORM &&
+        copy->format != VK_FORMAT_A2B10G10R10_UNORM_PACK32) ||
+       (copy->layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL &&
+        copy->layout != VK_IMAGE_LAYOUT_GENERAL) ||
        copy->image_type != VK_IMAGE_TYPE_2D ||
        copy->samples != VK_SAMPLE_COUNT_1_BIT || copy->plane_count != 1 ||
        copy->mip_levels != 1 || copy->array_layers != 1 ||
