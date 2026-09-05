@@ -165,3 +165,24 @@ agx_ppp_hal200_output_size_pack(uint32_t count_0, uint32_t count_2,
    *out = count_0 | (count_2 << 16);
    return true;
 }
+
+/* Native HAL200 setDepthStencilState, 0x458878..0x458894, derives inverted
+ * write-enable at bit21 and comparison at bits24..26. 0x458970..0x4589ac
+ * merges those fields into both front and back face state. The depth descriptor
+ * constructor reads Metal comparison directly at 0x26ab04..0x26ab10; its values
+ * are the same eight comparison operations as Vulkan. No stencil bits move.
+ */
+bool
+agx_ppp_hal200_depth_face_pack(enum agx_chip chip, bool test_enable,
+                               bool write_enable, uint32_t compare,
+                               uint32_t original, uint32_t *out)
+{
+   if (!out || chip != AGX_CHIP_G17P || compare > 7)
+      return false;
+
+   const uint32_t mask = UINT32_C(0x07200000);
+   const uint32_t function = test_enable ? compare : 7;
+   const uint32_t disable_write = !(test_enable && write_enable);
+   *out = (original & ~mask) | (function << 24) | (disable_write << 21);
+   return true;
+}

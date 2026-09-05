@@ -177,6 +177,36 @@ main(void)
    check(AGX_PPP_HAL200_GRAPHICS_CULL, cull_words, 1, cull_expected,
          sizeof(cull_expected));
 
+   /* Grounded native depth bitfields; all unrelated bits survive. */
+   uint32_t depth_face = 0;
+   assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+                                         1, 0x07200f00, &depth_face));
+   assert(depth_face == UINT32_C(0x01000f00));
+   assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, false,
+                                         1, 0x07200f00, &depth_face));
+   assert(depth_face == UINT32_C(0x01200f00));
+   for (unsigned compare = 0; compare < 8; ++compare) {
+      for (unsigned write = 0; write < 2; ++write) {
+         assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, write,
+                                               compare, 0xf8dabcde, &depth_face));
+         assert(((depth_face >> 24) & 7) == compare);
+         assert(((depth_face >> 21) & 1) == !write);
+         assert((depth_face & ~UINT32_C(0x07200000)) ==
+                (UINT32_C(0xf8dabcde) & ~UINT32_C(0x07200000)));
+         assert(agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, false, write,
+                                               compare, 0x07200f00, &depth_face));
+         assert(depth_face == UINT32_C(0x07200f00));
+      }
+   }
+   depth_face = UINT32_C(0xa5a5a5a5);
+   assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17G, true, true,
+                                          1, 0, &depth_face));
+   assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+                                          8, 0, &depth_face));
+   assert(depth_face == UINT32_C(0xa5a5a5a5));
+   assert(!agx_ppp_hal200_depth_face_pack(AGX_CHIP_G17P, true, true,
+                                          1, 0, NULL));
+
    struct agx_ppp_hal200_graphics_fields fields = {0};
    struct agx_ppp_hal200_graphics_core packed;
    assert(!agx_ppp_hal200_graphics_core_pack(

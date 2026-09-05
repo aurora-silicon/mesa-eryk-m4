@@ -2846,6 +2846,21 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                 UINT32_C(0x0e000000), 0},
    };
 
+   /* Each draw already owns its complete PRIMARY_FACE record. Native depth
+    * control only changes these two words; retain the allocation and staging
+    * layout and do not add launches, cache flushes or device-global state. */
+   const bool depth_test = render->depth_att.iview && dyn->ds.depth.test_enable;
+   if (dyn->ds.depth.bounds_test.enable || hk_stencil_test_enabled(cmd) ||
+       !agx_ppp_hal200_depth_face_pack(
+          dev->dev.chip, depth_test, dyn->ds.depth.write_enable,
+          dyn->ds.depth.compare_op, primary_fields.words[1],
+          &primary_fields.words[1]) ||
+       !agx_ppp_hal200_depth_face_pack(
+          dev->dev.chip, depth_test, dyn->ds.depth.write_enable,
+          dyn->ds.depth.compare_op, primary_fields.words[3],
+          &primary_fields.words[3]))
+      return false;
+
    struct agx_ppp_hal200_graphics_core secondary_record;
    struct agx_ppp_hal200_graphics_fields secondary_fields = {
       .words = {UINT32_C(0x00000200), UINT32_C(0x07e00000),

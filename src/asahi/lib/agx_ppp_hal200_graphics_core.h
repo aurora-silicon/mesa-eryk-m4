@@ -96,6 +96,12 @@ bool agx_ppp_hal200_fragment_core_pack(
    enum agx_chip chip, const struct agx_ppp_hal200_fragment_fields *fields,
    struct agx_ppp_hal200_graphics_core *out);
 
+/* Update only native PRIMARY_FACE depth fields, preserving raster state.
+ * Compare values use Metal/Vulkan ordering: NEVER=0 through ALWAYS=7. */
+bool agx_ppp_hal200_depth_face_pack(enum agx_chip chip, bool test_enable,
+                                    bool write_enable, uint32_t compare,
+                                    uint32_t original, uint32_t *out);
+
 /* Native VsStateConfig+0xc/+0x14 fields; the first includes all f32 UVS. */
 bool agx_ppp_hal200_output_size_pack(uint32_t count_0,
                                       uint32_t count_2, uint32_t *out);
