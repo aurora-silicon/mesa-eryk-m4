@@ -3516,3 +3516,102 @@ TEST_F(AGX3PackBinary, PackedVertexMemoryNativeBytes)
       EXPECT_EQ(memcmp(bytes, native[half], length), 0);
    }
 }
+
+/* The engine's instance transform branches finish before vertex writeout.
+ * The sink must leave that CFG intact and move stores only inside its final
+ * block; this is independent of the native branch encoder's validation. */
+TEST_F(AGX3PackBinary, VertexTerminalOutputBlockPreservesEarlierControlFlow)
+{
+   for (unsigned count : {6u, 9u, 32u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      agx_block *entry = agx_start_block(b->shader);
+      agx_block *merge = agx_test_block(b->shader);
+      agx_block *output = agx_test_block(b->shader);
+      agx_begin_cf(b);
+      agx_if_icmp(b, agx_register(0, AGX_SIZE_32),
+                    agx_register(2, AGX_SIZE_32), 1, AGX_ICOND_ULT, false, merge);
+      agx_jmp_exec_none(b, merge);
+      agx_block_add_successor(entry, merge);
+      b->cursor = agx_after_block(merge);
+      agx_pop_exec(b, 1);
+      agx_block_add_successor(merge, output);
+      std::vector<agx_instr *> prefix;
+      agx_foreach_instr_global(b->shader, I) prefix.push_back(I);
+      b->cursor = agx_after_block(output);
+      std::vector<agx_instr *> stores(count);
+      for (unsigned c = count; c-- > 0;) {
+         agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+         stores[c] = agx_st_vary(b, agx_immediate(c), value);
+      }
+      agx_stop(b);
+      ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
+      unsigned pos = 0, next = 0;
+      agx_foreach_block(b->shader, block) {
+         agx_foreach_instr_in_block(block, I) {
+            if (block != output) {
+               ASSERT_LT(pos, prefix.size());
+               EXPECT_EQ(I, prefix[pos++]);
+            } else if (I->op == AGX_OPCODE_ST_VARY) {
+               ASSERT_LT(next, count);
+               EXPECT_EQ(I, stores[next++]);
+            } else if (next) {
+               EXPECT_EQ(I->op, AGX_OPCODE_STOP);
+            }
+         }
+      }
+      EXPECT_EQ(pos, prefix.size());
+      EXPECT_EQ(next, count);
+   }
+}
+
+TEST_F(AGX3PackBinary, VertexOutputCannotMoveAcrossControlFlow)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   for (unsigned c = 0; c < 9; ++c) {
+      agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+      agx_st_vary(b, agx_immediate(c), value);
+   }
+   agx_block *end = agx_test_block(b->shader);
+   b->cursor = agx_after_block(end);
+   agx_stop(b);
+   std::vector<agx_instr *> before, after;
+   agx_foreach_instr_global(b->shader, I) before.push_back(I);
+   EXPECT_FALSE(agx3_sink_vertex_outputs(b->shader));
+   agx_foreach_instr_global(b->shader, I) after.push_back(I);
+   EXPECT_EQ(before, after);
+}
+
+TEST_F(AGX3PackBinary, VertexCFGTerminalOutputBytesMatchSingleBlock)
+{
+   for (unsigned count : {6u, 9u, 32u}) {
+      std::vector<uint8_t> straight;
+      for (bool cfg : {false, true}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         b->shader->stage = MESA_SHADER_VERTEX;
+         if (cfg) {
+            agx_block *merge = agx_test_block(b->shader);
+            agx_block *output = agx_test_block(b->shader);
+            agx_begin_cf(b);
+            agx_if_icmp(b, agx_register(0, AGX_SIZE_32),
+                          agx_register(2, AGX_SIZE_32), 1, AGX_ICOND_ULT, false, merge);
+            agx_jmp_exec_none(b, merge);
+            b->cursor = agx_after_block(merge);
+            agx_pop_exec(b, 1);
+            b->cursor = agx_after_block(output);
+         }
+         for (unsigned c = 0; c < count; ++c)
+            agx_st_vary(b, agx_immediate(c), agx_register(4, AGX_SIZE_32));
+         agx_stop(b);
+         auto code = pack(b);
+         if (!cfg) {
+            straight = code;
+         } else {
+            ASSERT_GT(code.size(), straight.size());
+            EXPECT_TRUE(std::equal(straight.begin(), straight.end(),
+                                    code.end() - straight.size()));
+         }
+      }
+   }
+}

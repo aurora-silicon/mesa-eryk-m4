@@ -3721,11 +3721,28 @@ agx3_sink_vertex_outputs(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
        ctx->stage != MESA_SHADER_VERTEX || ctx->is_preamble ||
-       ctx->key->secondary || list_length(&ctx->blocks) != 1)
+       ctx->key->secondary)
       return false;
 
+   /* Outputs already belonging to the final block can be bundled locally
+    * even when earlier blocks contain instance transforms. Never move an
+    * output across a branch or change its execution mask. */
+   agx_block *output_block = NULL;
+   agx_foreach_block(ctx, block)
+      output_block = block;
+   if (output_block == NULL)
+      return false;
+   agx_foreach_block(ctx, block) {
+      if (block == output_block)
+         break;
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_ST_VARY || I->op == AGX_OPCODE_STOP)
+            return false;
+      }
+   }
+
    agx_instr *stores[AGX3_MAX_VERTEX_OUTPUTS] = {0}, *stop = NULL;
-   agx_foreach_instr_global(ctx, I) {
+   agx_foreach_instr_in_block(output_block, I) {
       if (stop)
          return false;
       switch (I->op) {

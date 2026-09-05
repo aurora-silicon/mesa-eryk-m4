@@ -2523,13 +2523,21 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
        ctx->is_preamble)
       return 0;
 
-   unsigned blocks = 0;
+   agx_block *output_block = NULL;
+   agx_foreach_block(ctx, block)
+      output_block = block;
    uint64_t outputs = 0;
    bool stopped = false;
    agx_foreach_block(ctx, block) {
-      if (++blocks != 1)
-         return 0;
       agx_foreach_instr_in_block(block, I) {
+         if (block != output_block) {
+            /* Earlier control flow and producers retain ordinary encoding
+             * validation. The terminal output protocol owns only this final
+             * block, with no conditional or earlier vertex writeout. */
+            if (I->op == AGX_OPCODE_ST_VARY || I->op == AGX_OPCODE_STOP)
+               return 0;
+            continue;
+         }
          if (stopped)
             return 0;
          switch (I->op) {
