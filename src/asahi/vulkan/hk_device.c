@@ -290,7 +290,51 @@ static VkResult
 hk_check_status(struct vk_device *device)
 {
    struct hk_device *dev = container_of(device, struct hk_device, vk);
+   if (dev->dev.params.features & DRM_ASAHI_FEATURE_VM_STATUS) {
+      struct drm_asahi_vm_status status = {.vm_id = dev->dev.vm_id};
+      struct drm_asahi_get_params query = {
+         .param_group = DRM_ASAHI_PARAM_GROUP_VM_STATUS,
+         .pointer = (uintptr_t)&status,
+         .size = sizeof(status),
+      };
+      /* A DRM syncobj can signal an error fence successfully. The kernel
+       * publishes this sticky VM error before signaling such a fence. */
+      if (drmIoctl(dev->dev.fd, DRM_IOCTL_ASAHI_GET_PARAMS, &query))
+         return vk_device_set_lost(&dev->vk, "VM status query failed: %m");
+      if (status.error)
+         return vk_device_set_lost(&dev->vk, "GPU VM %u failed: %s",
+                                    status.vm_id, strerror(-status.error));
+   }
    return vk_check_printf_status(&dev->vk, &dev->dev.printf);
+}
+
+/* The common wait entrypoints already invoke check_status. Their polling
+ * counterparts only inspect the syncobj, so cover those two paths here too.
+ * Older kernels perform no additional ioctl; known-lost devices short circuit.
+ */
+VKAPI_ATTR VkResult VKAPI_CALL
+hk_GetFenceStatus(VkDevice device, VkFence fence)
+{
+   VkResult result = vk_common_GetFenceStatus(device, fence);
+   if (result < 0)
+      return result;
+
+   VK_FROM_HANDLE(hk_device, dev, device);
+   VkResult status = vk_device_check_status(&dev->vk);
+   return status == VK_SUCCESS ? result : status;
+}
+
+VKAPI_ATTR VkResult VKAPI_CALL
+hk_GetSemaphoreCounterValue(VkDevice device, VkSemaphore semaphore,
+                            uint64_t *value)
+{
+   VkResult result = vk_common_GetSemaphoreCounterValue(device, semaphore, value);
+   if (result < 0)
+      return result;
+
+   VK_FROM_HANDLE(hk_device, dev, device);
+   VkResult status = vk_device_check_status(&dev->vk);
+   return status == VK_SUCCESS ? result : status;
 }
 
 static VkResult
