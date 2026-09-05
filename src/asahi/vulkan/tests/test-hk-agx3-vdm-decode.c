@@ -236,6 +236,21 @@ test_g17p_vertex_program_info(void)
    CHECK(encoded.length == sizeof(vkcube_prefix));
    CHECK(memcmp(encoded.bytes, vkcube_prefix, sizeof(vkcube_prefix)) == 0);
 
+   /* Three scalar/vector slots still occupy the same seven f32 user words. */
+   struct hk_agx3_g17p_vertex_compile_info quake_info = vkcube_info;
+   quake_info.uvs_written |= BITFIELD64_BIT(VARYING_SLOT_VAR2);
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &quake_info, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 11);
+
+   struct hk_agx3_g17p_vertex_compile_info native32 = vkcube_info;
+   native32.user_size = 28;
+   native32.psiz_off = native32.layer_viewport_off = native32.clip_off = 32;
+   native32.uvs_size = 32;
+   native32.uvs_written = BITFIELD64_MASK(7) << VARYING_SLOT_VAR0;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &native32, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 32);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+
    struct hk_agx3_g17p_vertex_compile_info invalid_info = vkcube_info;
    invalid_info.has_preamble = true;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &invalid_info,
@@ -243,9 +258,9 @@ test_g17p_vertex_program_info(void)
    CHECK(program.source_layout ==
          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_UNSPECIFIED);
    invalid_info = vkcube_info;
-   invalid_info.user_size = 9;
+   invalid_info.user_size = HK_AGX3_G17P_MAX_USER_WORDS + 1;
    invalid_info.psiz_off = invalid_info.layer_viewport_off =
-      invalid_info.clip_off = invalid_info.uvs_size = 13;
+      invalid_info.clip_off = invalid_info.uvs_size = invalid_info.user_size + 4;
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &invalid_info,
                                            &program));
    CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17S, &compiler_info,

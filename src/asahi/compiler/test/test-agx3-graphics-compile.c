@@ -762,7 +762,7 @@ build_fs_tilebuffer_load(void)
  * byte 64, followed by the native sampler word at byte 96.
  */
 static nir_shader *
-build_fs_texture_bias_offset(uint32_t bias_offset_B)
+build_fs_texture_bias_offset_root(uint32_t bias_offset_B, bool use_root)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 textured FS");
@@ -800,7 +800,14 @@ build_fs_texture_bias_offset(uint32_t bias_offset_B)
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
 
-   fs_store_colour(&b, &tex->def);
+   nir_def *colour = &tex->def;
+   if (use_root) {
+      nir_def *constant = nir_load_global_constant(
+         &b, 1, 32, nir_load_root_agx(&b), .align_mul = 4,
+         .access = ACCESS_CAN_SPECULATE);
+      colour = nir_fmul(&b, colour, constant);
+   }
+   fs_store_colour(&b, colour);
 
    b.shader->info.inputs_read = BITFIELD64_BIT(VARYING_SLOT_VAR0);
    b.shader->info.outputs_written = BITFIELD64_BIT(FRAG_RESULT_DATA0);
@@ -810,6 +817,42 @@ build_fs_texture_bias_offset(uint32_t bias_offset_B)
    fs_lower(b.shader);
    NIR_PASS(_, b.shader, agx_nir_lower_texture);
    return b.shader;
+}
+
+static nir_shader *
+build_fs_texture_bias_offset(uint32_t bias_offset_B)
+{
+   return build_fs_texture_bias_offset_root(bias_offset_B, false);
+}
+
+static bool
+test_combined_sampler_root(void)
+{
+   nir_shader *shader = build_fs_texture_bias_offset_root(108, true);
+   struct agx_g17p_combined_sampler_binding binding;
+   bool ok = agx_nir_lower_g17p_combined_sampler(shader, &binding);
+   unsigned roots = 0, descriptors = 0, samples = 0;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_tex) {
+               nir_tex_instr *tex = nir_instr_as_tex(instr);
+               samples += tex->op == nir_texop_tex && tex->texture_index == 0 &&
+                          tex->sampler_index == 0;
+            } else if (instr->type == nir_instr_type_intrinsic) {
+               nir_intrinsic_op op = nir_instr_as_intrinsic(instr)->intrinsic;
+               roots += op == nir_intrinsic_load_root_agx;
+               descriptors += op == nir_intrinsic_load_descriptor_set_agx ||
+                              op == nir_intrinsic_bindless_image_agx ||
+                              op == nir_intrinsic_bindless_sampler_agx;
+            }
+         }
+      }
+   }
+   ok &= roots == 1 && descriptors == 0 && samples == 1 &&
+         binding.texture_offset_B == 64 && binding.sampler_index_offset_B == 104;
+   ralloc_free(shader);
+   return ok;
 }
 
 static nir_shader *
@@ -1429,6 +1472,11 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--sampler-root-only")) {
+      const bool ok = test_combined_sampler_root() && test_combined_sampler_scope();
+      fprintf(stderr, "native sampler plus push-root lowering: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--reload-staging-only")) {
       const bool ok = test_g17p_background_reload_staging();
       fprintf(stderr, "G17P background reload staging: %s\n", ok ? "PASS" : "FAIL");
@@ -1445,7 +1493,7 @@ main(int argc, char **argv)
       all_ok = false;
    }
 
-   if (!test_combined_sampler_scope()) {
+   if (!test_combined_sampler_scope() || !test_combined_sampler_root()) {
       fputs("combined sampler lowering consumed a non-sampler bias\n", stderr);
       all_ok = false;
    }

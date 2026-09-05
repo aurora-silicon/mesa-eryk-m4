@@ -1161,8 +1161,9 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          shader->info.agx3_combined_sampler_valid = true;
          shader->info.agx3_combined_sampler = binding;
 
-         /* The specialized shader no longer reads the root or a descriptor
-          * set. Their CProg slots are used by the native texture and sampler.
+         /* Texture and sampler table pointers occupy uniform halves 0..7.
+          * Keep ordinary push-root accesses at AGX_ABI_FUNI_ROOT (half 12);
+          * the lowering removes descriptor accesses, not push constants.
           */
          set_count = 0;
       } else {

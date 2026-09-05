@@ -157,14 +157,9 @@ agx3_ioto_uniform_program_body_generate(
       workspace.sort_capacity,
    };
    uint32_t cprog_dest_half = 0;
-   size_t copy_bytes = 0;
 
    for (size_t i = 0; i < desc->range_count; ++i) {
       const struct agx3_ioto_uniform_range *range = &desc->ranges[i];
-      const size_t range_copy_bytes = (size_t)(range->size_halfs / 2) * 4;
-      if (!add_size(&copy_bytes, range_copy_bytes))
-         return false;
-
       uint32_t dword = 0;
       const uint32_t dword_count = range->size_halfs / 2;
       while (dword < dword_count) {
@@ -193,24 +188,13 @@ agx3_ioto_uniform_program_body_generate(
    if (!agx3_ioto_load_finish_round_native(&core, true, sort))
       return false;
 
-   if (copy_bytes > core.sink.length)
-      return false;
-
-   const size_t staged_copy_offset = core.sink.length - copy_bytes;
-   size_t offset = staged_copy_offset;
-   while (offset < core.sink.length) {
-      struct agx_ioto_record record;
-      size_t consumed = 0;
-      if (!agx_ioto_decode_one(chip, workspace.body + offset,
-                               core.sink.length - offset, &record, &consumed) ||
-          consumed == 0 ||
-          (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
-           record.kind != AGX_IOTO_KIND_COPY_EP1))
-         return false;
-      offset += consumed;
-   }
-
-   if (offset != core.sink.length)
+   /* finishRound may have already copied earlier rounds before recycling
+    * temporaries, and extended native COPY records are not always four bytes.
+    * Find the actual final suffix by decoding emitted record boundaries. */
+   size_t staged_copy_offset;
+   if (!agx_ioto_program_copy_suffix_offset(chip, workspace.body,
+                                             core.sink.length,
+                                             &staged_copy_offset))
       return false;
 
    *written = core.sink.length;

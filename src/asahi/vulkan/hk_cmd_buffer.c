@@ -13,6 +13,7 @@
 #include "agx_tilebuffer.h"
 #include "agx_usc.h"
 #include "hk_agx3_ioto_program_core.h"
+#include "hk_agx3_vdm_decode.h"
 #include "hk_buffer.h"
 #include "hk_cmd_pool.h"
 #include "hk_descriptor_set.h"
@@ -925,7 +926,7 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 }
 
 /* Keep native interpolation bounded to the f32 UVS layout already supported
- * by hk_agx3_g17p_vertex_program_info: position plus up to 8 user words.
+ * by hk_agx3_g17p_vertex_program_info: position plus up to 28 user words.
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
  * smooth, linear and flat inputs. Flat admission is a single f32 vec3/vec4
  * on triangle lists; its compiler directly selects the C coefficient and
@@ -948,10 +949,11 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
       api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
    if (!vs || gfx->shaders[MESA_SHADER_GEOMETRY] ||
        gfx->shaders[MESA_SHADER_TESS_EVAL] || cf->reads_z ||
-       cf->nr_bindings > 3 || cf->nr_cf > 9 ||
+       cf->nr_bindings > HK_AGX3_G17P_MAX_USER_WORDS + 1 ||
+       cf->nr_cf > HK_AGX3_G17P_MAX_USER_WORDS + 1 ||
        vs->agx3_vdm_state_update.source_layout !=
           AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
-       vs->info.uvs.user_size == 0 || vs->info.uvs.user_size > 8)
+       vs->info.uvs.user_size == 0 || vs->info.uvs.user_size > HK_AGX3_G17P_MAX_USER_WORDS)
       return false;
 
    unsigned next_cf = 0;
@@ -999,7 +1001,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
        s->b.info.preamble_scratch_size != 0 || linked->b.scratch_size != 0 ||
        s->b.info.texture_state_count != 0 ||
        s->b.info.sampler_state_count != 0 || s->b.info.uses_sampler_heap ||
-       linked->b.uses_txf || s->data_size != 0 || s->info.set_count > 1)
+       linked->b.uses_txf || s->data_size != 0 || s->info.set_count > HK_AGX3_G17P_MAX_ROOT_SETS)
       return false;
 
    if (s->info.stage == MESA_SHADER_VERTEX) {
@@ -1007,7 +1009,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
          BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
 
       return !linked->sw_indexing && !linked->b.uses_base_param &&
-             nr_attribs <= 2 &&
+             nr_attribs <= AGX_MAX_VBUFS &&
              s->agx3_vdm_state_update.source_layout ==
                 AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
    }
@@ -1020,7 +1022,8 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
 static bool
 hk_g17p_graphics_uniform_ranges(
    struct hk_cmd_buffer *cmd, struct hk_shader *s,
-   struct agx3_ioto_uniform_range ranges[3], size_t *range_count)
+   struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES],
+   size_t *range_count)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    const uint64_t root_ptr = cmd->state.gfx.root;
@@ -1030,7 +1033,7 @@ hk_g17p_graphics_uniform_ranges(
    if (s->info.stage == MESA_SHADER_VERTEX) {
       const unsigned nr_attribs = DIV_ROUND_UP(
          BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
-      if (nr_attribs > 2)
+      if (nr_attribs > AGX_MAX_VBUFS)
          return false;
 
       if (nr_attribs != 0) {
@@ -1059,8 +1062,7 @@ hk_g17p_graphics_uniform_ranges(
    }
 
    if (s->info.agx3_combined_sampler_valid) {
-      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0 ||
-          s->info.agx3_uses_root)
+      if (s->info.stage != MESA_SHADER_FRAGMENT || s->info.set_count != 0)
          return false;
 
       struct hk_descriptor_set *set = cmd->state.gfx.descriptors.sets[0];
@@ -1140,7 +1142,7 @@ hk_g17p_graphics_uniform_ranges(
     * linked binary. Same bounds checks as compute: the range must lie inside
     * that BO, and both halves must be even.
     */
-   if (count < 3 && s->b.info.rodata.size_16 != 0) {
+   if (count < HK_AGX3_G17P_GRAPHICS_MAX_RANGES && s->b.info.rodata.size_16 != 0) {
       const struct agx_rodata *rodata = &s->b.info.rodata;
       const uint64_t size_B = (uint64_t)rodata->size_16 * 2;
 
@@ -1156,12 +1158,12 @@ hk_g17p_graphics_uniform_ranges(
          .address = s->bo->va->addr + rodata->offset,
       };
    } else if (s->b.info.rodata.size_16 != 0) {
-      /* No room left in the program's three-range budget. */
+      /* No room left in the program's range budget. */
       return false;
    }
 
    *range_count = count;
-   return count <= 3;
+   return count <= HK_AGX3_G17P_GRAPHICS_MAX_RANGES;
 }
 
 uint64_t
@@ -1178,16 +1180,19 @@ hk_upload_usc_words(struct hk_cmd_buffer *cmd, struct hk_shader *s,
          return 0;
       }
 
-      struct agx3_ioto_uniform_range ranges[3];
+      struct agx3_ioto_uniform_range ranges[HK_AGX3_G17P_GRAPHICS_MAX_RANGES];
       size_t range_count;
       if (!hk_g17p_graphics_uniform_ranges(cmd, s, ranges, &range_count)) {
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return 0;
       }
 
-      const size_t program_capacity =
-         range_count ? HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE
-                     : AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
+      size_t program_capacity;
+      if (!hk_agx3_g17p_graphics_program_bound(dev->dev.chip, ranges,
+                                              range_count, &program_capacity)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return 0;
+      }
       struct agx_bo *program_bo =
          agx_bo_create(&dev->dev, program_capacity,
                        AGX_IOTO_PROGRAM_ALIGNMENT, AGX_BO_EXEC | AGX_BO_LOW_VA,

@@ -868,6 +868,64 @@ test_g17p_basic_graphics_program(void)
    }
    resource.uniform_ranges = two_attribs_and_set;
 
+   /* Full attribute pointers + clamps, descriptor root, and constant pool.
+    * Every range must affect actual native CProg bytes independently. */
+   const struct agx3_ioto_uniform_range full_vertex[] = {
+      {.start_halfs = 0, .size_halfs = 64, .address = 0x1000},
+      {.start_halfs = 64, .size_halfs = 32, .address = 0x2000},
+      {.start_halfs = 108, .size_halfs = 36, .address = 0x3000},
+      {.start_halfs = 144, .size_halfs = 128, .address = 0x4000},
+   };
+   resource.uniform_ranges = full_vertex;
+   resource.uniform_range_count = ARRAY_SIZE(full_vertex);
+   size_t bound = 0;
+   CHECK(hk_agx3_g17p_graphics_program_bound(AGX_CHIP_G17P, full_vertex,
+                                              ARRAY_SIZE(full_vertex), &bound));
+   CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+      AGX_CHIP_G17P, &resource, &program));
+   CHECK(program.length <= bound);
+   const struct hk_agx3_g17p_graphics_program full_program = program;
+   unsigned copies = 0, copy_then_load = 0;
+   bool saw_copy = false;
+   const size_t loader_end = program.length - AGX_IOTO_G17P_DEFAULT_PROFILE_SUFFIX_SIZE -
+                             AGX_IOTO_PROGRAM_TERMINATE_SIZE;
+   for (size_t at = 0; at < loader_end;) {
+      struct agx_ioto_program_record record;
+      size_t consumed = 0;
+      CHECK(agx_ioto_decode_program_record(AGX_CHIP_G17P, program.bytes + at,
+                                             loader_end - at, &record,
+                                             &consumed));
+      CHECK(consumed > 0);
+      if (record.kind == AGX_IOTO_PROGRAM_RECORD_IOTO &&
+          (record.ioto.kind == AGX_IOTO_KIND_COPY_EP0 ||
+           record.ioto.kind == AGX_IOTO_KIND_COPY_EP1)) {
+         copies++;
+         saw_copy = true;
+      }
+      if (record.kind == AGX_IOTO_PROGRAM_RECORD_GPU0_INLINE_LDDEV && saw_copy)
+         copy_then_load++;
+      at += consumed;
+   }
+   fprintf(stderr, "full-interface native COPY count=%u, copies before later loads=%u\n", copies, copy_then_load);
+   CHECK(copies == (64 + 32 + 36 + 128) / 2);
+   CHECK(copy_then_load > 0);
+
+   for (unsigned r = 0; r < ARRAY_SIZE(full_vertex); ++r) {
+      struct agx3_ioto_uniform_range changed[ARRAY_SIZE(full_vertex)];
+      memcpy(changed, full_vertex, sizeof(changed));
+      changed[r].address += 0x40;
+      resource.uniform_ranges = changed;
+      CHECK(hk_agx3_g17p_basic_graphics_program_generate(
+         AGX_CHIP_G17P, &resource, &program));
+      CHECK(program.length == full_program.length);
+      CHECK(memcmp(program.bytes, full_program.bytes, program.length) != 0);
+   }
+   resource.uniform_ranges = full_vertex;
+   size_t untouched = 123;
+   CHECK(!hk_agx3_g17p_graphics_program_bound(AGX_CHIP_G17S, full_vertex,
+                                               ARRAY_SIZE(full_vertex), &untouched));
+   CHECK(untouched == 123);
+
    struct hk_agx3_g17p_graphics_program_desc boundary = vertex;
    static const struct {
       uint32_t size;
@@ -893,7 +951,7 @@ test_g17p_basic_graphics_program(void)
    CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17S, &vertex,
                                                        &program));
    invalid = resource;
-   invalid.uniform_range_count = 4;
+   invalid.uniform_range_count = HK_AGX3_G17P_GRAPHICS_MAX_RANGES + 1;
    CHECK(!hk_agx3_g17p_basic_graphics_program_generate(AGX_CHIP_G17P, &invalid,
                                                        &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);

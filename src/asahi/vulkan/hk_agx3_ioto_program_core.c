@@ -157,12 +157,33 @@ hk_agx3_g17p_graphics_state_tail(
 }
 
 bool
+hk_agx3_g17p_graphics_program_bound(
+   enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
+   size_t range_count, size_t *size)
+{
+   size_t body, chunks;
+   if (!size || chip != AGX_CHIP_G17P ||
+       range_count > HK_AGX3_G17P_GRAPHICS_MAX_RANGES ||
+       !agx3_ioto_uniform_program_body_bound(chip, ranges, range_count,
+                                              &body, &chunks) ||
+       chunks > HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS ||
+       body > HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE -
+                 AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE)
+      return false;
+
+   /* The vertex envelope is four bytes larger than the fragment envelope.
+    * Preserve the native composition and allocate only this shader's bound. */
+   *size = body + AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
+   return true;
+}
+
+bool
 hk_agx3_g17p_basic_graphics_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_graphics_program_desc *desc,
    struct hk_agx3_g17p_graphics_program *program)
 {
    if (!program || chip != AGX_CHIP_G17P || !desc ||
-       desc->uniform_range_count > 3 ||
+       desc->uniform_range_count > HK_AGX3_G17P_GRAPHICS_MAX_RANGES ||
        (desc->uniform_range_count != 0 && !desc->uniform_ranges))
       return false;
 
@@ -187,10 +208,14 @@ hk_agx3_g17p_basic_graphics_program_generate(
       if (!composed || written != expected)
          return false;
    } else {
-      uint8_t body[384];
-      struct agx_ioto_inflight_load loads[64];
-      struct agx_ioto_inflight_load sort[64];
-      struct agx_ioto_load_cache_entry cache[64];
+      size_t bound;
+      if (!hk_agx3_g17p_graphics_program_bound(
+             chip, desc->uniform_ranges, desc->uniform_range_count, &bound))
+         return false;
+      uint8_t body[HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE];
+      struct agx_ioto_inflight_load loads[HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS];
+      struct agx_ioto_inflight_load sort[HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS];
+      struct agx_ioto_load_cache_entry cache[HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS];
       const struct agx3_ioto_uniform_program_desc load_desc = {
          .program_va = desc->program_va,
          .ranges = desc->uniform_ranges,

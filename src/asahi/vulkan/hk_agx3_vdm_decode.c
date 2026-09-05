@@ -126,8 +126,8 @@ hk_agx3_g17p_vertex_program_info(
        compiler_info->uvs_size != compiler_info->clip_off ||
        compiler_info->position_only != (compiler_info->user_size == 0) ||
        compiler_info->position_only != (compiler_info->uvs_written == 0) ||
-       compiler_info->user_size > 8 ||
-       util_bitcount64(compiler_info->uvs_written) > 2)
+       compiler_info->user_size > HK_AGX3_G17P_MAX_USER_WORDS ||
+       util_bitcount64(compiler_info->uvs_written) > compiler_info->user_size)
       return false;
 
    *program = (struct agx_vdm_state_update_program_info){

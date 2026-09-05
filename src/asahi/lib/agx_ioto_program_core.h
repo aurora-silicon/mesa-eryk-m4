@@ -82,6 +82,11 @@ struct agx_ioto_g17s_minimal_compute_resources {
  * failure.  body may be NULL only when body_size is zero and may overlap
  * output on success.  preshader code may also overlap output.
  */
+/* Locate the final contiguous COPY round after validating the whole body.
+ * Earlier completed rounds may contain COPYs before later loads reuse GPRs. */
+bool agx_ioto_program_copy_suffix_offset(enum agx_chip chip, const void *body,
+                                          size_t body_size, size_t *offset);
+
 bool agx_ioto_program_compose_no_pixrel(
    enum agx_chip chip, uint64_t program_va, const void *body, size_t body_size,
    const struct agx_ioto_state_tail *tail,

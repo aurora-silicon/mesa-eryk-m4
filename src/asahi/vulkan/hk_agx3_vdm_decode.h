@@ -25,6 +25,9 @@ extern "C" {
  * layouts are rejected before any fields are consumed. */
 #define HK_AGX3_SHADER_BINARY_VERSION 5u
 
+/* Native VS witnesses export position plus seven float4 user locations. */
+#define HK_AGX3_G17P_MAX_USER_WORDS 28u
+
 bool hk_agx3_shader_binary_version_supported(uint32_t version);
 
 bool hk_agx3_vdm_program_cache_serialize(

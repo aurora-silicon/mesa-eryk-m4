@@ -125,6 +125,9 @@ g17p_is_sampler_bias(const nir_tex_instr *tex, uint32_t expected_offset_B)
            g17p_is_constant_scalar(lhs, expected_offset_B));
 }
 
+/* The native texture/sampler table prefix is separate from the fragment
+ * push-root ABI. Residual descriptor accesses need their own lowering, but a
+ * root load used by push constants is valid alongside this sampled resource. */
 static bool
 g17p_has_descriptor_access(const nir_shader *shader)
 {
@@ -138,8 +141,7 @@ g17p_has_descriptor_access(const nir_shader *shader)
                nir_instr_as_intrinsic(instr)->intrinsic;
             if (op == nir_intrinsic_bindless_image_agx ||
                 op == nir_intrinsic_bindless_sampler_agx ||
-                op == nir_intrinsic_load_descriptor_set_agx ||
-                op == nir_intrinsic_load_root_agx)
+                op == nir_intrinsic_load_descriptor_set_agx)
                return true;
          }
       }

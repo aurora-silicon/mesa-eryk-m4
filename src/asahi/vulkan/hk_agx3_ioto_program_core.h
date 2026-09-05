@@ -68,7 +68,13 @@ struct hk_agx3_g17p_graphics_program_desc {
    bool fragment;
 };
 
-#define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 512u
+#define HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE 6144u
+#define HK_AGX3_G17P_GRAPHICS_MAX_RANGES 4u
+#define HK_AGX3_G17P_GRAPHICS_MAX_LOAD_CHUNKS 128u
+
+bool hk_agx3_g17p_graphics_program_bound(
+   enum agx_chip chip, const struct agx3_ioto_uniform_range *ranges,
+   size_t range_count, size_t *size);
 
 struct hk_agx3_g17p_graphics_program {
    uint8_t bytes[HK_AGX3_G17P_GRAPHICS_PROGRAM_MAX_SIZE];

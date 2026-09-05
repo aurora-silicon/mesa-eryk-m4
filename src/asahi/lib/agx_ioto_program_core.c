@@ -271,6 +271,36 @@ agx_ioto_straight_line_body_validate(enum agx_chip chip, const void *body,
    return offset == body_size;
 }
 
+bool
+agx_ioto_program_copy_suffix_offset(enum agx_chip chip, const void *body,
+                                      size_t body_size, size_t *offset)
+{
+   if (!offset || !agx_ioto_straight_line_body_validate(chip, body, body_size))
+      return false;
+
+   const uint8_t *bytes = body;
+   size_t cursor = 0, suffix = 0;
+   while (cursor < body_size) {
+      if (agx_ioto_program_gpu0_inline_lddev(chip, bytes + cursor,
+                                             body_size - cursor)) {
+         cursor += AGX_IOTO_GPU0_INLINE_LDDEV_SIZE;
+         suffix = cursor;
+         continue;
+      }
+      struct agx_ioto_record record;
+      size_t consumed = 0;
+      if (!agx_ioto_decode_one(chip, bytes + cursor, body_size - cursor,
+                                 &record, &consumed) || consumed == 0)
+         return false;
+      cursor += consumed;
+      if (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
+          record.kind != AGX_IOTO_KIND_COPY_EP1)
+         suffix = cursor;
+   }
+   *offset = suffix;
+   return true;
+}
+
 static bool
 agx_ioto_g17p_copy_body_validate(const void *body, size_t body_size)
 {
@@ -286,7 +316,8 @@ agx_ioto_g17p_copy_body_validate(const void *body, size_t body_size)
       size_t consumed = 0;
       if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
                                body_size - offset, &record, &consumed) ||
-          consumed == 0 || record.kind != AGX_IOTO_KIND_COPY_EP0)
+          consumed == 0 || (record.kind != AGX_IOTO_KIND_COPY_EP0 &&
+                            record.kind != AGX_IOTO_KIND_COPY_EP1))
          return false;
       offset += consumed;
    }
@@ -313,8 +344,7 @@ agx_ioto_g17p_pre_copy_body_validate(const void *body, size_t body_size)
       size_t consumed = 0;
       if (!agx_ioto_decode_one(AGX_CHIP_G17P, bytes + offset,
                                body_size - offset, &record, &consumed) ||
-          consumed == 0 || record.kind == AGX_IOTO_KIND_COPY_EP0 ||
-          record.kind == AGX_IOTO_KIND_COPY_EP1)
+          consumed == 0)
          return false;
       offset += consumed;
    }
