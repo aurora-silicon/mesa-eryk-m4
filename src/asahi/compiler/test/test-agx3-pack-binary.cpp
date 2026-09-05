@@ -2707,7 +2707,7 @@ TEST_F(AGX3PackBinary, ProjectiveRhwModeIndependentOfFirstAndRcpDestination)
 
 TEST_F(AGX3PackBinary, ProjectiveRhwRefusesUnprovenDomainsAndSharedValues)
 {
-   for (unsigned mode = 0; mode < 11; ++mode) {
+   for (unsigned mode = 0; mode < 10; ++mode) {
       agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C :
                                          AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = mode == 1 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
@@ -2724,8 +2724,6 @@ TEST_F(AGX3PackBinary, ProjectiveRhwRefusesUnprovenDomainsAndSharedValues)
       if (mode == 9)
          agx_mov_to(b, agx_register(4, AGX_SIZE_16),
                     agx_register(1, AGX_SIZE_16));
-      if (mode == 10)
-         agx_test_block(b->shader);
       agx_stop(b);
       EXPECT_TRUE(pack(b, false).empty()) << "mode=" << mode;
    }
@@ -3776,4 +3774,44 @@ TEST_F(AGX3PackBinary, NativeIselImageCopyBooleanHalfRegisters)
    agx_stop(b);
    /* Both original image-copy shapes stay fused: two10-byte selects+stop. */
    EXPECT_EQ(pack(b).size(), 24);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveRhwTracksBranchesAndPartialRegisterLifetimes)
+{
+   for (unsigned mode = 0; mode < 8; ++mode) {
+      SCOPED_TRACE(mode);
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_block *entry = list_first_entry(&b->shader->blocks, agx_block, link);
+      agx_block *left = agx_test_block(b->shader);
+      agx_block *right = agx_test_block(b->shader);
+      entry->successors[0] = left;
+      entry->successors[1] = right;
+      const agx_index rhw = agx_register(0, AGX_SIZE_32);
+      agx_rhw_interp_agx3_to(b, rhw, agx_immediate(0), agx_immediate(0),
+                            AGX_INTERPOLATION_CENTER);
+      if (mode == 0 || mode == 6)
+         agx_persp_rcp_agx3_to(b, mode == 0 ? rhw : agx_register(2, AGX_SIZE_32), rhw, 0);
+      b->cursor = agx_after_block(left);
+      if (mode == 4 || mode == 5 || mode == 6)
+         agx_mov_imm_to(b, agx_register(0, AGX_SIZE_16), 0);
+      if (mode == 6)
+         agx_mov_imm_to(b, agx_register(1, AGX_SIZE_16), 0);
+      if (mode == 4)
+         agx_mov_to(b, agx_register(4, AGX_SIZE_16), agx_register(1, AGX_SIZE_16));
+      else if (mode == 6)
+         agx_fmul_to(b, agx_register(4, AGX_SIZE_32), rhw, rhw);
+      else if (mode != 0)
+         agx_persp_rcp_agx3_to(b, agx_register(2, AGX_SIZE_32), rhw, mode == 7 ? 1 : 0);
+      if (mode == 3)
+         left->successors[0] = left;
+      b->cursor = agx_after_block(right);
+      if (mode == 2)
+         agx_fmul_to(b, agx_register(4, AGX_SIZE_32), rhw, rhw);
+      else if (mode != 0)
+         agx_persp_rcp_agx3_to(b, agx_register(2, AGX_SIZE_32), rhw, 0);
+      agx_stop(b);
+      const bool valid = mode == 0 || mode == 1 || mode == 3 || mode == 6;
+      EXPECT_EQ(!pack(b, valid).empty(), valid);
+   }
 }

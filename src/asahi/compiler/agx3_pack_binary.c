@@ -563,61 +563,95 @@ agx3_vary_reg32(agx_index index)
           index.value < 256 && !index.abs && !index.neg;
 }
 
-/* f54 is witnessed only for a private RHW value. Refuse sharing with any
- * ordinary arithmetic/output use, including reads of either 16-bit half.
- * A single block keeps the physical-register lifetime proof local. */
+/* Projective RHW is private to reciprocal interpolation. Follow its physical
+ * half-register lifetime through the CFG: unrelated branches do not change
+ * the iterator encoding, and a full overwrite ends the old value's lifetime.
+ * Track each half independently so an ordinary read after a partial overwrite
+ * cannot accidentally be accepted as a read of an unrelated new value. */
 static bool
 agx3_private_rhw_use(const agx_context *ctx, const agx_block *block,
                      const agx_instr *producer)
 {
-   unsigned blocks = 0;
-   agx_foreach_block(ctx, B) {
-      if (++blocks != 1)
-         return false;
-   }
-
    if (producer->nr_dests != 1 || producer->nr_srcs != 2 ||
        !agx3_vary_reg32(producer->dest[0]) ||
        agx_channels(producer->dest[0]) != 1 ||
        producer->src[0].type != AGX_INDEX_IMMEDIATE)
       return false;
 
+   struct rhw_path {
+      const agx_block *block;
+      unsigned live_halves;
+      const agx_instr *after;
+   };
+   struct util_dynarray paths;
+   util_dynarray_init(&paths, NULL);
+   uint8_t *visited = calloc(ctx->num_blocks, sizeof(*visited));
+   if (!visited)
+      return false;
+   util_dynarray_append(&paths,
+                       ((struct rhw_path){block, 3, producer}));
    const unsigned reg = producer->dest[0].value;
-   bool after = false;
-   unsigned consumers = 0;
-   agx_foreach_instr_in_block(block, I) {
-      if (I == producer) {
-         after = true;
-         continue;
-      }
-      if (!after)
-         continue;
+   bool consumer = false, valid = false;
 
-      agx_foreach_src(I, src) {
-         agx_index value = I->src[src];
-         if (!agx3_src_is_register(value) || value.memory ||
-             value.value >= reg + 2 ||
-             value.value + agx_index_size_16(value) <= reg)
+   for (unsigned p = 0; p < util_dynarray_num_elements(&paths, struct rhw_path); ++p) {
+      struct rhw_path path = *util_dynarray_element(&paths, struct rhw_path, p);
+      bool after = path.after == NULL;
+      unsigned live = path.live_halves;
+      agx_foreach_instr_in_block(path.block, I) {
+         if (!after) {
+            after = I == path.after;
             continue;
-         if (I->op != AGX_OPCODE_PERSP_RCP_AGX3 || src != 0 ||
-             value.value != reg || value.size != AGX_SIZE_32 ||
-             agx_channels(value) != 1 ||
-             I->imm != producer->src[0].value || ++consumers != 1)
-            return false;
+         }
+         agx_foreach_src(I, src) {
+            agx_index value = I->src[src];
+            if (!agx3_src_is_register(value) || value.memory)
+               continue;
+            unsigned overlap = 0;
+            for (unsigned h = 0; h < 2; ++h) {
+               if (value.value <= reg + h &&
+                   value.value + agx_index_size_16(value) > reg + h)
+                  overlap |= 1u << h;
+            }
+            if (!(overlap & live))
+               continue;
+            if (live != 3 || I->op != AGX_OPCODE_PERSP_RCP_AGX3 || src != 0 ||
+                value.value != reg || value.size != AGX_SIZE_32 ||
+                agx_channels(value) != 1 || I->imm != producer->src[0].value)
+               goto out;
+            consumer = true;
+         }
+         agx_foreach_dest(I, dst) {
+            agx_index value = I->dest[dst];
+            if (!agx3_src_is_register(value) || value.memory)
+               continue;
+            for (unsigned h = 0; h < 2; ++h) {
+               if (value.value <= reg + h &&
+                   value.value + agx_index_size_16(value) > reg + h)
+                  live &= ~(1u << h);
+            }
+         }
+         if (!live)
+            break;
       }
-
-      agx_foreach_dest(I, dst) {
-         agx_index value = I->dest[dst];
-         if (!agx3_src_is_register(value) || value.memory ||
-             value.value >= reg + 2 ||
-             value.value + agx_index_size_16(value) <= reg)
+      if (!live)
+         continue;
+      for (unsigned e = 0; e < ARRAY_SIZE(path.block->successors); ++e) {
+         const agx_block *next = path.block->successors[e];
+         if (!next)
             continue;
-         /* Partial overwrite cannot terminate the whole RHW lifetime. */
-         return consumers == 1 && value.value <= reg &&
-                value.value + agx_index_size_16(value) >= reg + 2;
+         assert(next->index < ctx->num_blocks);
+         if (visited[next->index] & (1u << live))
+            continue;
+         visited[next->index] |= 1u << live;
+         util_dynarray_append(&paths,
+                             ((struct rhw_path){next, live, NULL}));
       }
    }
-   return consumers == 1;
+   valid = consumer;
+out:
+   free(visited);
+   util_dynarray_fini(&paths);
+   return valid;
 }
 
 static bool
