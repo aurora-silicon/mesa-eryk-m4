@@ -40,6 +40,11 @@ struct isel_vec {
 };
 
 static const struct isel_vec vectors[] = {
+   {"u32_mixed_retains_scheduling", {
+       .cmp1_immediate=true, .cmp1=2, .cond=AGX3_ISEL_ICOND_EQ,
+       .discard={true,false,true,false}, .false_kind=AGX3_ISEL_IMMEDIATE,
+       .sel_true=2, .sel_false=13, .wait_mask=32},
+    {0x02,0x01,0x2f,0x82,0x86,0x02,0x07,0xc2,0x20,0x8d}, 10},
    {"u32_zero_dead", {.wait_mask=32,.cmp1_immediate=true,.cond=AGX3_ISEL_ICOND_EQ,.sel_true=2,.sel_false=4,.discard={1,0,1,1}},
     {0x02,0x01,0x0f,0x80,0x86,0x02,0x07,0xc2,0x80,0x04}, 10},
    {"u32_regs_dead", {.wait_mask=32,.explicit_hints=true,.cmp1=2,.cond=AGX3_ISEL_ICOND_ULT,.sel_true=4,.sel_false=6,.discard={1,1,1,1}},

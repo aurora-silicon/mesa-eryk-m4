@@ -168,7 +168,8 @@ encode_explicit(const struct agx3_isel_desc *d,
 
    const unsigned width = d->dest_16 ? 1 : 2;
    const struct agx3_field_kv base[] = {
-      KV(10, 2), KV(11, width), KV(42, 2), KV(43, d->cmp_16 ? 1 : 2),
+      KV(10, 2), KV(11, width), KV(12, !d->dest_16 && (ti != fi)),
+      KV(42, 2), KV(43, d->cmp_16 ? 1 : 2),
       KV(57, d->cmp1_immediate ? 1 : 2),
       KV(58, (d->cmp1_immediate || d->cmp_16) ? 1 : 2), KV(72, ti ? 1 : 2), KV(73, width),
       KV(89, fi ? 1 : 2), KV(90, width),

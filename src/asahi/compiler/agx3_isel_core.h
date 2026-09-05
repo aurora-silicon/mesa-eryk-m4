@@ -53,8 +53,8 @@
  *
  * The original form vectors remain available to callers without explicit
  * hints, preserving their exact encoding and unexplained scheduling field
- * f12. New explicit-hint forms leave that field clear, as in native direct
- * stores. The compact native wait selector represents one slot or slots1+2;
+ * f12. Explicit forms preserve the same f12=1 on32-bit mixed selected
+ * operands, also reproduced by the fresh G17P eq2_mix witness. The compact native wait selector represents one slot or slots1+2;
  * other producer combinations must be retired separately before this form.
  */
 
