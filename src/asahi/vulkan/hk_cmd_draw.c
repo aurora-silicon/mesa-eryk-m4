@@ -4545,6 +4545,26 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    hk_stat_enabled(stat_c_inv) || hk_stat_enabled(stat_c_prims);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
+   /* Admit only the native direct uint16 domain before any robustness or
+    * geometry lowering can introduce a pre-render compute dispatch. */
+   if (dev->dev.chip == AGX_CHIP_G17P && draw_.indexed) {
+      uint64_t address;
+      uint32_t size_word;
+      if (agx_is_indirect(draw_.b) || draw_.index_size != AGX_INDEX_SIZE_U16 ||
+          draw_.b.count[1] != 1 || draw_.start_instance != 0 || draw_.restart ||
+          dyn->ia.primitive_topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ||
+          ia_stats || cmd->state.gfx.shaders[MESA_SHADER_GEOMETRY] ||
+          cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL] ||
+          !agx_vdm_hal200_u16_index_range(
+             draw_.index_buffer, draw_.index_buffer_range_B, draw_.start,
+             draw_.b.count[0], &address, &size_word)) {
+         mesa_loge("native G17P indexed draw requires an in-bounds direct "
+                   "uint16 triangle list, one instance, no restart or queries");
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         return;
+      }
+   }
+
    hk_foreach_view(cmd) {
       struct agx_draw draw = draw_;
       bool needs_idx_robust = false;
@@ -4659,9 +4679,8 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                                   draw.index_size);
       } else {
          if (dev->dev.chip == AGX_CHIP_G17P) {
-            if (agx_is_indirect(draw.b) || draw.indexed) {
-               mesa_loge("native HAL200 indexed/indirect draw framing is not "
-                         "yet admitted");
+            if (agx_is_indirect(draw.b)) {
+               mesa_loge("native HAL200 indirect draw framing is not yet admitted");
                vk_command_buffer_set_error(&cmd->vk,
                                            VK_ERROR_FEATURE_NOT_PRESENT);
                return;
@@ -4681,23 +4700,47 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                                            VK_ERROR_FEATURE_NOT_PRESENT);
                return;
             }
-            const struct agx_vdm_hal200_direct_draw_fields fields = {
-               .draw_state_context_offset = draw_state_offset,
-               .primitive = (uint8_t)topology,
-               .vertex_count = draw.b.count[0],
-               .instance_count = draw.b.count[1],
-               .vertex_start = draw.start,
-            };
-            struct agx_vdm_hal200_direct_draw encoded;
-            if (!agx_vdm_hal200_direct_draw_pack(dev->dev.chip, &fields,
-                                                  &encoded)) {
-               vk_command_buffer_set_error(&cmd->vk,
-                                           VK_ERROR_FEATURE_NOT_PRESENT);
-               return;
-            }
+            if (draw.indexed) {
+               const struct agx_vdm_hal200_indexed_draw_fields fields = {
+                  .draw_state_context_offset = draw_state_offset,
+                  .index_buffer = draw.index_buffer,
+                  .index_buffer_range_B = draw.index_buffer_range_B,
+                  .first_index = draw.start,
+                  .index_count = draw.b.count[0],
+                  .instance_count = draw.b.count[1],
+                  .base_vertex = (int32_t)draw.index_bias,
+               };
+               struct agx_vdm_hal200_indexed_draw encoded;
+               if (!agx_vdm_hal200_indexed_draw_pack(dev->dev.chip, &fields,
+                                                      &encoded)) {
+                  vk_command_buffer_set_error(&cmd->vk,
+                                              VK_ERROR_FEATURE_NOT_PRESENT);
+                  return;
+               }
+               memcpy(out, encoded.bytes, encoded.length);
+               cs->current = out + encoded.length;
+               if (hk_g17p_launch_trace_enabled())
+                  hk_g17p_trace_line("hal200-indexed-draw", draw.index_buffer,
+                                     encoded.bytes, encoded.length);
+            } else {
+               const struct agx_vdm_hal200_direct_draw_fields fields = {
+                  .draw_state_context_offset = draw_state_offset,
+                  .primitive = (uint8_t)topology,
+                  .vertex_count = draw.b.count[0],
+                  .instance_count = draw.b.count[1],
+                  .vertex_start = draw.start,
+               };
+               struct agx_vdm_hal200_direct_draw encoded;
+               if (!agx_vdm_hal200_direct_draw_pack(dev->dev.chip, &fields,
+                                                     &encoded)) {
+                  vk_command_buffer_set_error(&cmd->vk,
+                                              VK_ERROR_FEATURE_NOT_PRESENT);
+                  return;
+               }
 
-            memcpy(out, encoded.bytes, encoded.length);
-            cs->current = out + encoded.length;
+               memcpy(out, encoded.bytes, encoded.length);
+               cs->current = out + encoded.length;
+            }
             if (hk_g17p_launch_trace_enabled())
                hk_g17p_trace_line("hal200-draw-state",
                                   draw_state.gpu, draw_state.cpu, 8);

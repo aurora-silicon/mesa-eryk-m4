@@ -4,6 +4,7 @@
  */
 
 #include "agx_vdm_hal200_direct_draw_core.h"
+#include "agx_vdm_index_list_core.h"
 
 #include <string.h>
 
@@ -97,5 +98,68 @@ agx_vdm_hal200_direct_draw_unpack(
    fields->vertex_count = load_le32(&raw[8]);
    fields->instance_count = load_le32(&raw[12]);
    fields->vertex_start = load_le32(&raw[16]);
+   return true;
+}
+
+bool
+agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
+                               uint32_t first_index, uint32_t count,
+                               uint64_t *relocated, uint32_t *size_word)
+{
+   if (relocated)
+      *relocated = 0;
+   if (size_word)
+      *size_word = 0;
+
+   const uint64_t limit = UINT64_C(1) << 48;
+   const uint64_t offset_B = (uint64_t)first_index * 2;
+   const uint64_t count_B = (uint64_t)count * 2;
+   if (!relocated || !size_word || !address || (address & 1) ||
+       address >= limit || !range_B || range_B > UINT32_MAX ||
+       range_B > limit - address || !count || offset_B >= range_B ||
+       count_B > range_B - offset_B)
+      return false;
+
+   /* Native direct indexed 0x47e57c..0x47e584 rounds the supplied byte
+    * length up to dwords, then 0x47e664 subtracts one. Keep arithmetic 64-bit
+    * so firstIndex and a near-4GiB range cannot wrap before validation. */
+   *relocated = address + offset_B;
+   *size_word = (uint32_t)(((range_B - offset_B + 3) >> 2) - 1);
+   return true;
+}
+
+bool
+agx_vdm_hal200_indexed_draw_pack(
+   enum agx_chip chip, const struct agx_vdm_hal200_indexed_draw_fields *fields,
+   struct agx_vdm_hal200_indexed_draw *out)
+{
+   if (out)
+      memset(out, 0, sizeof(*out));
+
+   uint64_t address;
+   uint32_t size_word;
+   if (!out || !fields || chip != AGX_CHIP_G17P ||
+       !fields->draw_state_context_offset ||
+       (fields->draw_state_context_offset & 3) || fields->instance_count != 1 ||
+       !agx_vdm_hal200_u16_index_range(
+          fields->index_buffer, fields->index_buffer_range_B,
+          fields->first_index, fields->index_count, &address, &size_word))
+      return false;
+
+   struct agx_vdm_index_list_direct_words packet;
+   if (!agx_vdm_index_list_direct_pack_words(
+          chip, 6, true, false, AGX_VDM_INDEX_LIST_INDEX_SIZE_U16, address,
+          fields->index_count, fields->instance_count,
+          (uint32_t)fields->base_vertex, size_word, &packet) || packet.count != 7)
+      return false;
+
+   /* 0x47e618..0x47e678: restart state precedes every native indexed draw,
+    * even with restart disabled; baseVertex is copied as a raw signed word. */
+   store_le32(out->bytes, fields->draw_state_context_offset);
+   store_le32(out->bytes + 4, UINT32_C(0x40000001));
+   store_le32(out->bytes + 8, UINT32_C(0xffff));
+   for (unsigned i = 0; i < packet.count; ++i)
+      store_le32(out->bytes + 12 + 4 * i, packet.words[i]);
+   out->length = AGX_VDM_HAL200_INDEXED_DRAW_LENGTH;
    return true;
 }

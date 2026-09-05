@@ -43,6 +43,35 @@ bool agx_vdm_hal200_direct_draw_unpack(
    enum agx_chip chip, const void *bytes, size_t size,
    struct agx_vdm_hal200_direct_draw_fields *fields);
 
+/* Finish the preceding PPP pointer, publish native restart state, then the
+ * 28-byte direct indexed record. This bounded path is uint16 triangle-list,
+ * one instance; API firstInstance/restart restrictions are checked by HK. */
+#define AGX_VDM_HAL200_INDEXED_DRAW_LENGTH 40u
+
+struct agx_vdm_hal200_indexed_draw_fields {
+   uint32_t draw_state_context_offset;
+   uint64_t index_buffer;
+   uint64_t index_buffer_range_B;
+   uint32_t first_index;
+   uint32_t index_count;
+   uint32_t instance_count;
+   int32_t base_vertex;
+};
+
+struct agx_vdm_hal200_indexed_draw {
+   uint8_t bytes[AGX_VDM_HAL200_INDEXED_DRAW_LENGTH];
+   uint8_t length;
+};
+
+/* Checked relocation and native dword-range-minus-one conversion. */
+bool agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
+                                    uint32_t first_index, uint32_t count,
+                                    uint64_t *relocated, uint32_t *size_word);
+
+bool agx_vdm_hal200_indexed_draw_pack(
+   enum agx_chip chip, const struct agx_vdm_hal200_indexed_draw_fields *fields,
+   struct agx_vdm_hal200_indexed_draw *out);
+
 #ifdef __cplusplus
 }
 #endif
