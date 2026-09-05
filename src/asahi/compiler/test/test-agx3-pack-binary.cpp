@@ -3896,3 +3896,39 @@ TEST_F(AGX3PackBinary, FselZeroNativeLifetimeAndCompareOrder)
       EXPECT_EQ(memcmp(code.data(), native, sizeof(native)),0);
    }
 }
+
+TEST_F(AGX3PackBinary, HalfCompareGnomeLoopBreakAndBothBranchFixups)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_push_exec(b, 1);
+   agx_block *body = agx_test_block(b->shader);
+   agx_block *pop = agx_test_block(b->shader);
+   agx_block *after = agx_test_block(b->shader);
+   agx_builder lb = agx_init_builder(b->shader, agx_after_block(body));
+   /* Original blur-loop comparison. The limit and counter are both live
+    * after the comparison, including on the next iteration. */
+   agx_break_if_icmp(&lb, agx_register(18, AGX_SIZE_16),
+                     agx_register(1, AGX_SIZE_16), 1, false, AGX_ICOND_SLT, after);
+   agx_jmp_exec_none_after(&lb, pop);
+   agx_builder pb = agx_init_builder(b->shader, agx_after_block(pop));
+   agx_jmp_exec_any(&pb, body);
+   agx_pop_exec(&pb, 1);
+   agx_builder ab = agx_init_builder(b->shader, agx_after_block(after));
+   agx_stop(&ab);
+   const auto code = pack(b);
+   const uint8_t prefix[] = {
+      0x0f,0x05,0x54,0x1a,
+      0x0a,0x12,0x23,0x00,0x02,0x00,0x17,0x08,0x02,0x00,
+      0x8f,0x04,0x54,0x02,
+   };
+   ASSERT_EQ(code.size(),48u);
+   EXPECT_EQ(memcmp(code.data(),prefix,sizeof(prefix)),0);
+   /* Reserved native branches deposit a signed byte displacement at byte3.
+    * Forward reaches the footer POP; backward re-enters the compare. */
+   const uint8_t forward[] = {0x0f,0x01,0x54,0x14,0,0,0,0,0,0};
+   const uint8_t backward[] = {0x0f,0x00,0x54,0xe8,0xff,0xff,0xff,0xff,0xff,0};
+   EXPECT_EQ(memcmp(code.data()+18,forward,sizeof(forward)),0);
+   EXPECT_EQ(memcmp(code.data()+28,backward,sizeof(backward)),0);
+   const uint8_t pop_native[] = {0x0f,0x06,0x04,0x02,0,0};
+   EXPECT_EQ(memcmp(code.data()+38,pop_native,sizeof(pop_native)),0);
+}

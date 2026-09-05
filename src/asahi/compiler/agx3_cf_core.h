@@ -50,6 +50,16 @@ enum agx3_cf_fcond {
 #define AGX3_CF_MAX_LENGTH 10u
 #define AGX3_CF_MAX_FLAG_SLOT 5u /* slots 0..5 are witnessed */
 
+struct agx3_cf_source_hints {
+   bool cache;
+   bool discard;
+};
+
+bool agx3_cf_icmp_reg16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                        unsigned slot, const uint16_t src[2],
+                        const struct agx3_cf_source_hints hints[2], uint16_t wait_mask,
+                        uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+
 /* Compares: write flag[slot] = (src0 cond src1). */
 bool agx3_cf_icmp_reg(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                       unsigned slot, uint16_t src0, uint16_t src1,
@@ -64,8 +74,8 @@ bool agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
  * The compare width lives in f10 (1 = 16-bit, 2 = 32-bit); Apple's own
  * `if (ushort != 0)` sets it to 1 and adds f14, where the 32-bit form has
  * neither. Probe-witnessed with `metal-nt -arch applegpu_g16g`; the non-zero
- * 16-bit immediate and 16-bit register/register compares are a different
- * encoding point (ep0) and are not covered here.
+ * 16-bit immediate forms are not covered here. Register/register compares
+ * use agx3_cf_icmp_reg16(), including its compact unsigned encoding point.
  */
 bool agx3_cf_icmp_zero16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                          unsigned slot, uint16_t src0,

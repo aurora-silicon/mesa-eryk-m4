@@ -2169,13 +2169,12 @@ agx3_cf_reg32(agx_index src)
           (src.value & 1) == 0 && src.value < 128 && !src.abs && !src.neg;
 }
 
-/* The 16-bit compare form addresses the same lower 128 halves, but a single
- * half rather than an aligned pair. */
+/* Native 16-bit register comparison addresses all 256 individual halves. */
 static bool
 agx3_cf_reg16(agx_index src)
 {
    return agx3_src_is_register(src) && !src.memory && src.size == AGX_SIZE_16 &&
-          src.value < 128 && !src.abs && !src.neg;
+          src.value < 256 && !src.abs && !src.neg;
 }
 
 static bool
@@ -2264,6 +2263,21 @@ agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
    if (I->nr_srcs != 2)
       return false;
+
+   if (!is_float && agx3_cf_reg16(I->src[0]) && agx3_cf_reg16(I->src[1]) &&
+       agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1) {
+      enum agx3_cf_icond condition;
+      const uint16_t src[] = {I->src[0].value, I->src[1].value};
+      const struct agx3_cf_source_hints hints[] = {
+         {I->src[0].cache, I->src[0].discard},
+         {I->src[1].cache, I->src[1].discard},
+      };
+      if (I->src[0].kill || I->src[1].kill ||
+          !agx3_cf_map_icond(I->icond, &condition) ||
+          !agx3_cf_icmp_reg16(enc, condition, flag_slot, src, hints, 0, bytes, &len))
+         return false;
+      return agx3_append(emission, bytes, len);
+   }
 
    /* Branching on a boolean: Mesa keeps them in 16-bit halves, so the
     * compare is `r0h != 0` rather than a 32-bit one. */

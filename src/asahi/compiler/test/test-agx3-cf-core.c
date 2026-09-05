@@ -37,9 +37,59 @@ expect(const struct cf_vec *v, const uint8_t *got, uint8_t len, bool ok)
    }
 }
 
+static void
+test_half_comparisons(void)
+{
+   const struct {
+      uint16_t src[2];
+      struct agx3_cf_source_hints hints[2];
+      enum agx3_cf_icond cond;
+      uint8_t len, bytes[10];
+   } native[] = {
+      {{2,3},{{false,true},{false,true}},AGX3_CF_ICOND_SLT,10,
+       {0x0a,0x02,0x3b,0x02,0x02,0x00,0x17,0xc8,0x02,0x00}},
+      {{2,3},{{false,true},{false,true}},AGX3_CF_ICOND_ULT,6,
+       {0x0a,0x02,0x3a,0x02,0x15,0xc0}},
+      {{2,3},{{false,false},{false,false}},AGX3_CF_ICOND_SLT,10,
+       {0x0a,0x02,0x23,0x02,0x02,0x00,0x17,0xc8,0x02,0x00}},
+      {{3,2},{{false,true},{false,false}},AGX3_CF_ICOND_SLT,10,
+       {0x0a,0x02,0x2b,0x02,0x02,0x00,0x0f,0xc8,0x02,0x00}},
+   };
+   for(unsigned i=0;i<sizeof(native)/sizeof(native[0]);++i) {
+      uint8_t out[AGX3_CF_MAX_LENGTH],len=0;
+      bool ok=agx3_cf_icmp_reg16(AGX_ISA_ENCODING_AGX3B,native[i].cond,0,
+                               native[i].src,native[i].hints,32,out,&len);
+      ++checks;
+      if(!ok || len!=native[i].len || memcmp(out,native[i].bytes,len)) {
+         fprintf(stderr,"half compare %u failed len%u: ",i,len);
+         for(unsigned j=0;j<len;++j)fprintf(stderr,"%02x",out[j]);
+         fprintf(stderr,"\n"); ++failures;
+      }
+   }
+   for(unsigned bad=0;bad<6;++bad) {
+      uint16_t src[]={18,1};
+      struct agx3_cf_source_hints hints[2]={{false,false},{false,false}};
+      uint8_t out[AGX3_CF_MAX_LENGTH],len=0xa5;
+      memset(out,0xa5,sizeof(out));
+      unsigned slot=0,wait=0;
+      enum agx3_cf_icond cond=AGX3_CF_ICOND_SLT;
+      if(bad==0)src[0]=256;
+      if(bad==1)src[1]=256;
+      if(bad==2)hints[0].cache=hints[0].discard=true;
+      if(bad==3)slot=7;
+      if(bad==4)wait=3;
+      if(bad==5)cond=3;
+      REJECT(agx3_cf_icmp_reg16(AGX_ISA_ENCODING_AGX3B,cond,slot,src,hints,wait,out,&len));
+      ++checks;
+      if(len!=0xa5)++failures;
+      for(unsigned j=0;j<sizeof(out);++j)if(out[j]!=0xa5)++failures;
+   }
+}
+
 int
 main(void)
 {
+   test_half_comparisons();
    for (size_t i = 0; i < cf_vec_count; ++i) {
       const struct cf_vec *v = &cf_vecs[i];
       const enum agx_isa_encoding e =

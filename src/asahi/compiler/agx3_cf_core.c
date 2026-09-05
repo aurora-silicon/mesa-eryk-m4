@@ -41,6 +41,37 @@ fcond_ok(enum agx3_cf_fcond cond)
           cond == AGX3_CF_FCOND_GT;
 }
 
+/* Native half comparisons use the half indices directly. Signed relations
+ * sign-extend both inputs; cache/discard belongs to each source independently.
+ * The compact unsigned form is six bytes, signed forms are ten bytes. */
+bool
+agx3_cf_icmp_reg16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                   unsigned slot, const uint16_t src[2],
+                   const struct agx3_cf_source_hints hints[2], uint16_t wait_mask,
+                   uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+{
+   if (!agx3b(enc) || !icond_ok(cond) || !slot_ok(slot) || !src || !hints ||
+       !out || !len || (wait_mask != 0 && wait_mask != 32))
+      return false;
+   for (unsigned i = 0; i < 2; ++i)
+      if (src[i] >= 256 || (hints[i].cache && hints[i].discard))
+         return false;
+   const bool sign_extend = cond == AGX3_CF_ICOND_SLT || cond == AGX3_CF_ICOND_SGT;
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,1), KV(24,2), KV(25,1),
+   };
+   const struct agx3_field_kv fields[] = {
+      KV(2,src[0]), KV(17,src[1]), KV(31,slot), KV(42,cond),
+      KV(11,hints[0].cache), KV(13,hints[0].discard), KV(14,sign_extend),
+      KV(26,hints[1].cache), KV(28,hints[1].discard), KV(29,sign_extend),
+      KV(39,wait_mask == 32),
+   };
+   for (unsigned ep = 0; ep < 2; ++ep)
+      if (agx3_bind_compose(enc,"icmp",ep,base,4,fields,11,out,len))
+         return true;
+   return false;
+}
+
 bool
 agx3_cf_icmp_reg(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                  unsigned slot, uint16_t src0, uint16_t src1,
