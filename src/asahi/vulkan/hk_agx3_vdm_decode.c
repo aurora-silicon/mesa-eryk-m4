@@ -121,11 +121,16 @@ hk_agx3_g17p_vertex_program_info(
        compiler_info->preamble_scratch_size != 0 ||
        compiler_info->position_off != 0 || compiler_info->varyings_off != 4 ||
        compiler_info->psiz_off != 4 + compiler_info->user_size ||
-       compiler_info->layer_viewport_off != compiler_info->psiz_off ||
+       (compiler_info->layer_viewport_off != compiler_info->psiz_off &&
+        compiler_info->layer_viewport_off != compiler_info->psiz_off + 1) ||
        compiler_info->clip_off != compiler_info->layer_viewport_off ||
        compiler_info->uvs_size != compiler_info->clip_off ||
-       compiler_info->position_only != (compiler_info->user_size == 0) ||
-       compiler_info->position_only != (compiler_info->uvs_written == 0) ||
+       compiler_info->position_only !=
+          (compiler_info->user_size == 0 &&
+           compiler_info->layer_viewport_off == compiler_info->psiz_off) ||
+       compiler_info->position_only !=
+          (compiler_info->uvs_written == 0 &&
+           compiler_info->layer_viewport_off == compiler_info->psiz_off) ||
        compiler_info->user_size > HK_AGX3_G17P_MAX_USER_WORDS ||
        util_bitcount64(compiler_info->uvs_written) > compiler_info->user_size)
       return false;
@@ -142,7 +147,8 @@ hk_agx3_g17p_vertex_program_info(
             /* VsStateConfig+0xc is the total f32 UVS footprint, including
              * position AND user outputs; +0x14 stays zero in this all-f32
              * path. Apple vs0/vs2/vs4 __GPU_LD_MD root.field1.field3 gives
-             * 4/6/8, with field4 absent. The former 4/user split described
+             * 4/6/8, with field4 absent. The native position+point-size
+             * vertex shader likewise gives field3=5 with field4 absent. The former 4/user split described
              * the wrong vertex layout even though its middle sum matched. */
             .raw_vs_output_count_0 = compiler_info->uvs_size,
             .raw_vs_output_count_2 = 0,

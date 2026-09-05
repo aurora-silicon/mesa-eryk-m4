@@ -2659,7 +2659,7 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
          }
       }
    }
-   return stopped && outputs >= 0x3f && !(outputs & (outputs + 1))
+   return stopped && outputs >= 0x1f && !(outputs & (outputs + 1))
              ? util_bitcount64(outputs) : 0;
 }
 
@@ -3044,7 +3044,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    /* Only the old six-output fallback supports intervening physical GPR
     * reuse. Wider outputs require the pre-RA terminal bundle. */
    const bool g17p_user_output_protocol = g17p_output_count == 6 ||
-      (g17p_output_count > 6 && g17p_terminal_outputs);
+      (g17p_output_count >= 5 && g17p_terminal_outputs);
    unsigned g17p_outputs_staged = 0;
    /* User-output graphs outside the qualified scalar shapes must not
     * silently fall back to immediate, potentially out-of-order writeout. */

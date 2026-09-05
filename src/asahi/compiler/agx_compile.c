@@ -3834,7 +3834,7 @@ agx3_sink_vertex_outputs(agx_context *ctx)
    unsigned count = 0;
    while (count < ARRAY_SIZE(stores) && stores[count])
       ++count;
-   if (count < 6)
+   if (count < 5)
       return false;
    for (unsigned i = count; i < ARRAY_SIZE(stores); ++i) {
       if (stores[i])

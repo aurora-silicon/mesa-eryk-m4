@@ -3335,6 +3335,7 @@ TEST_F(AGX3PackBinary, NativeHighVertexOutputIndices)
       unsigned component, slot, wait;
       uint8_t bytes[8];
    } native[] = {
+      {4, 5, 16, {0x57,0x06,0x55,0x08,0x80,0x40,0x4c,0x00}},
       {8, 6, 16, {0x57,0x06,0x55,0x10,0x00,0x41,0x4d,0x00}},
       {9, 5, 0, {0x57,0x06,0x54,0x12,0x20,0x41,0x4c,0x00}},
       {10, 4, 8, {0x57,0x86,0x54,0x14,0x40,0x41,0x4b,0x00}},
@@ -3351,7 +3352,7 @@ TEST_F(AGX3PackBinary, NativeHighVertexOutputIndices)
 
 TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites)
 {
-   for (unsigned count : {7u, 8u, 9u, 11u, 16u, 32u}) {
+   for (unsigned count : {5u, 7u, 8u, 9u, 11u, 16u, 32u}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       b->shader->nir = rzalloc(mem_ctx, nir_shader);

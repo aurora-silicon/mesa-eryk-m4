@@ -200,6 +200,17 @@ test_g17p_vertex_program_info(void)
    CHECK(program.template_info.raw_vs_output_count_0 == 6);
    CHECK(program.template_info.raw_vs_output_count_2 == 0);
 
+   /* Fresh native point-size pipeline has five f32 outputs (four position
+    * plus point-size) and no secondary-width stream. */
+   struct hk_agx3_g17p_vertex_compile_info point_info = compiler_info;
+   point_info.position_only = false;
+   point_info.layer_viewport_off = point_info.clip_off = point_info.uvs_size = 5;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &point_info, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 5);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+   point_info.layer_viewport_off = point_info.clip_off = point_info.uvs_size = 6;
+   CHECK(!hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &point_info, &program));
+
    const struct hk_agx3_g17p_vertex_compile_info vkcube_info = {
       .hardware_vertex = true,
       .uvs_written = BITFIELD64_BIT(VARYING_SLOT_VAR0) |
