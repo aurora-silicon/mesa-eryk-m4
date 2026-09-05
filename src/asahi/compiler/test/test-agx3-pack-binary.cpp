@@ -19,6 +19,7 @@
 #include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
+#include "agx3_fltnorm_core.h"
 #include "agx3_local_tps_core.h"
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
@@ -1843,6 +1844,7 @@ TEST_F(AGX3PackBinary, VaryingInterpolationCoefficientAndUvs)
       const enum agx_isa_encoding enc =
          e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
       agx_builder *b = builder(enc);
+      b->shader->stage = MESA_SHADER_COMPUTE; /* Synthetic opcode mixture. */
 
       agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(3),
                          agx_zero(), AGX_INTERPOLATION_CENTER, false);
@@ -2378,6 +2380,369 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolPreservesConstantColourBracket)
    EXPECT_EQ(pack(b), std::vector<uint8_t>(std::begin(exact),std::end(exact)));
 }
 
+TEST_F(AGX3PackBinary, FragmentInterpolationStartsOnce)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0),
+                        agx_immediate(0), AGX_INTERPOLATION_CENTER, true);
+   agx_interp_agx3_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(1),
+                        agx_immediate(0), AGX_INTERPOLATION_CENTER, true);
+   agx_stop(b);
+   const std::vector<uint8_t> want = {
+      0x2f,0x0d,0x54,0,0x03,0,0,0x02,0x10,0,
+      0x2f,0x05,0x54,2,0x03,2,0,0x02,0x10,0,0x0e,0,0,0,
+   };
+   EXPECT_EQ(pack(b), want);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveMultiplyPreservesCoefficientAndHints)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index x = agx_register(0, AGX_SIZE_32);
+   agx_index y = agx_register(4, AGX_SIZE_32);
+   agx_index recip = agx_register(2, AGX_SIZE_32);
+   x.discard = y.discard = true;
+   recip.cache = true;
+   agx_persp_mul_agx3_to(b, agx_register(0, AGX_SIZE_32), x, recip, 1);
+   recip.cache = false;
+   recip.discard = true;
+   agx_persp_mul_agx3_to(b, agx_register(2, AGX_SIZE_32), y, recip, 2);
+   agx_stop(b);
+   /* Exact consecutive native gradient instructions: coefficient tags1/2. */
+   const std::vector<uint8_t> want = {
+      0x09,0x01,0x2f,0x83,0x00,0x01,0x00,0x00,
+      0x19,0x05,0x3f,0x03,0x00,0x02,0x00,0x00,0x0e,0,0,0,
+   };
+   EXPECT_EQ(pack(b), want);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveMultiplyRefusesUnsupportedForms)
+{
+   for (unsigned mode = 0; mode < 8; ++mode) {
+      agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B);
+      agx_index raw = agx_register(0, AGX_SIZE_32);
+      agx_index recip = agx_register(2, AGX_SIZE_32);
+      if (mode == 1) raw.neg = true;
+      if (mode == 2) raw = agx_uniform(0, AGX_SIZE_32);
+      if (mode == 3) recip.size = AGX_SIZE_16;
+      if (mode == 4) raw.cache = raw.discard = true;
+      if (mode == 5) raw.kill = true;
+      agx_instr *I = agx_persp_mul_agx3_to(b, agx_register(4, AGX_SIZE_32),
+                                         raw, recip, mode == 6 ? 128 : 1);
+      I->saturate = mode == 7;
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+}
+
+TEST_F(AGX3PackBinary, FourPositionProtocolRemainsByteExact)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   agx_index r0 = agx_register(0, AGX_SIZE_32);
+   agx_index xy = r0;
+   xy.channels_m1 = 1;
+   agx_index idx = r0;
+   idx.abs = true;
+   idx.kill = true;
+   agx_get_sr_to(b, r0, AGX_SR_VERTEX_ID);
+   agx_device_load_to(b, xy, agx_uniform(0, AGX_SIZE_64), idx,
+                        AGX_FORMAT_I32, 3, 1, false);
+   for (unsigned component = 0; component < 4; ++component) {
+      if (component >= 2)
+         agx_mov_imm_to(b, r0, component == 2 ? 0 : 0x3f800000);
+      agx_index value = agx_register(component == 1 ? 2 : 0, AGX_SIZE_32);
+      value.discard = true;
+      agx_st_vary(b, agx_immediate(component), value);
+   }
+   agx_stop(b);
+   /* Qualified VS108 recording, excluding its 8-byte linked prolog. */
+   const std::vector<uint8_t> want = {
+      0x0c,0xdd,0x10,0x06,0x67,0x10,0x44,0x00,0x00,0x80,0x20,0x00,
+      0x59,0x01,0x00,0x40,0x48,0x00,0x0b,0x00,0x21,0xc4,0x1b,0x03,
+      0x27,0x00,0x42,0x00,0x00,0x04,0x00,0x00,0x0b,0x00,0x00,0x00,
+      0x2b,0x01,0x27,0x00,0x42,0x00,0x00,0x08,0x00,0x00,0x0c,0x80,
+      0x02,0x3e,0x00,0x00,0x00,0x0c,0x3b,0x01,0x27,0x00,0x42,0x00,
+      0x00,0x0c,0x00,0x00,0x57,0x16,0x54,0x00,0x00,0x40,0x48,0x00,
+      0x57,0x26,0x54,0x02,0x20,0x40,0x49,0x00,0x57,0x46,0x54,0x04,
+      0x40,0x40,0x4a,0x00,0x57,0x86,0x54,0x06,0x60,0x40,0x4b,0x00,
+      0x0e,0x00,0x00,0x00,
+   };
+   EXPECT_EQ(pack(b), want);
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 8u);
+}
+
+TEST_F(AGX3PackBinary, SixVertexOutputsRetireSourcesBeforeReuseAndWriteInOrder)
+{
+   /* Deliberately reuse r0 after every store, with the failing gradient's
+    * output order. A deferred COPY must finish its source read before the
+    * next MOV_IMM overwrites r0. */
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   const unsigned order[] = {3, 2, 1, 5, 0, 4};
+   std::vector<uint8_t> want;
+   for (unsigned component : order) {
+      agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + component);
+      agx_st_vary(b, agx_immediate(component), agx_register(0, AGX_SIZE_32));
+      struct agx3_encoded_ldimm ld;
+      ASSERT_TRUE(agx3_pack_ldimm_u32(AGX_ISA_ENCODING_AGX3B, 0,
+                                     0x3f000000 + component, &ld));
+      append(want, ld.bytes, ld.length);
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+      uint8_t len = 0;
+      ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B,
+                     component * 2, 0, false, component + 1, 0, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND,
+                     0, 0, 0, 0, 0, 1u << component, bytes, &len));
+      append(want, bytes, len);
+   }
+   for (unsigned component = 0; component < 6; ++component) {
+      uint8_t bytes[AGX3_VARY_MAX_LENGTH];
+      uint8_t len = 0;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, component * 2,
+                     component, component + 1, true, 1u << component,
+                     bytes, &len));
+      append(want, bytes, len);
+   }
+   agx_stop(b);
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(AGX_ISA_ENCODING_AGX3B, &end));
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+   EXPECT_TRUE(b->shader->agx3_staging_known);
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
+}
+
+TEST_F(AGX3PackBinary, SixVertexOutputsDrainUnrelatedSlotsBeforeInjectedCopy)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   /* Two live async results unrelated to r0, including a slot later used
+    * by output0. Both must retire before the injected r0-preserving wait. */
+   agx_get_sr_to(b, agx_register(2, AGX_SIZE_32), AGX_SR_VERTEX_ID);
+   agx_get_sr_to(b, agx_register(4, AGX_SIZE_32), AGX_SR_VERTEX_ID);
+   agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f800000);
+   const unsigned order[] = {3, 2, 1, 5, 0, 4};
+   for (unsigned component : order)
+      agx_st_vary(b, agx_immediate(component), agx_register(0, AGX_SIZE_32));
+   agx_stop(b);
+   const auto got = pack(b);
+   uint8_t bytes[AGX3_STAGE_MAX_LENGTH];
+   uint8_t len = 0;
+   ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, 6, 0,
+                                      false, 4, 3, bytes, &len));
+   const auto at = std::search(got.begin(), got.end(), bytes, bytes + len);
+   ASSERT_NE(at, got.end());
+   uint8_t wait_bytes[AGX3_ALU_MAX_LENGTH], wait_len = 0;
+   ASSERT_TRUE(agx3_alu_compose(AGX_ISA_ENCODING_AGX3B, AGX3_ALU_BAND,
+                  0, 0, 0, 0, 0, 8, wait_bytes, &wait_len));
+   ASSERT_GE(got.end() - at, len + wait_len);
+   EXPECT_EQ(memcmp(&*(at + len), wait_bytes, wait_len), 0);
+}
+
+TEST_F(AGX3PackBinary, SixVertexOutputsRefuseUnqualifiedGraphs)
+{
+   for (unsigned mode = 0; mode < 7; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      for (unsigned component = 0; component < 6; ++component) {
+         if (mode == 0 && component == 0)
+            continue; /* Missing position but user outputs remain. */
+         unsigned index = mode == 1 && component == 0 ? 1 : component;
+         if (mode == 2 && component == 5)
+            index = 6;
+         agx_st_vary(b, agx_immediate(index),
+                     agx_register(0, mode == 3 ? AGX_SIZE_16 : AGX_SIZE_32));
+      }
+      if (mode == 4)
+         agx_begin_cf(b);
+      if (mode == 5)
+         agx_test_block(b->shader);
+      if (mode == 6)
+         agx_device_store(b, agx_register(0, AGX_SIZE_32),
+                          agx_uniform(0, AGX_SIZE_64), agx_immediate(0),
+                          AGX_FORMAT_I32, 1, 2, false);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty()) << "mode=" << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, ProjectiveReciprocalMatchesNativeOperandForm)
+{
+   const struct {
+      unsigned dest;
+      bool cache;
+      uint8_t bytes[10];
+   } witnesses[] = {
+      {0, false, {0xaf,0,0x54,0,3,0,0,0x48,0x20,1}},
+      {2, true,  {0xaf,0,0x54,2,3,0,2,0x48,0x20,1}},
+      {4, true,  {0xaf,0,0x54,4,3,0,2,0x48,0x20,1}},
+   };
+   for (const auto &v : witnesses) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index rhw = agx_register(0, AGX_SIZE_32);
+      rhw.cache = v.cache;
+      agx_persp_rcp_agx3_to(b, agx_register(v.dest, AGX_SIZE_32), rhw, 0);
+      agx_stop(b);
+      std::vector<uint8_t> want(v.bytes, v.bytes + 10);
+      want.insert(want.end(), {0x0e, 0, 0, 0});
+      EXPECT_EQ(pack(b), want);
+   }
+   /* Ordinary reciprocal keeps its previously qualified encoding. */
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_rcp_to(b, agx_register(0, AGX_SIZE_32), agx_register(0, AGX_SIZE_32));
+   agx_stop(b);
+   const std::vector<uint8_t> ordinary = {
+      0xaf,0,0x56,0,2,0,0x10,0x48,0x20,0, 0x0e,0,0,0,
+   };
+   EXPECT_EQ(pack(b), ordinary);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveReciprocalCoefficientAndWaitBits)
+{
+   /* Independent physical extraction catches coefficient/source overlap and
+    * accidental retention of ordinary RCP's unconditional slot6 wait. */
+   for (unsigned dest : {0u, 2u, 126u, 128u, 190u}) {
+      for (unsigned rhw : {0u, 2u, 126u, 128u, 190u}) {
+         for (unsigned coef : {0u, 1u, 4u, 63u, 127u}) {
+            for (unsigned wait = 0; wait < 64; ++wait) {
+               struct agx3_persp_rcp_desc d = {};
+               d.dest = dest;
+               d.rhw = rhw;
+               d.coef_index = coef;
+               d.rhw_cache = (dest != rhw);
+               d.wait_mask = wait;
+               uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH], len = 0;
+               ASSERT_TRUE(agx3_persp_rcp_encode(AGX_ISA_ENCODING_AGX3B,
+                                                &d, bytes, &len));
+               ASSERT_EQ(len, 10u);
+               EXPECT_EQ(bytes[3], dest);
+               EXPECT_EQ(((bytes[5] >> 1) & 0x7f) | ((bytes[6] & 1) << 7), rhw);
+               EXPECT_EQ(((bytes[6] >> 2) | ((bytes[7] & 1) << 6)), coef);
+               EXPECT_EQ((bytes[6] >> 1) & 1, unsigned(d.rhw_cache));
+               EXPECT_EQ((bytes[1] >> 4) | ((bytes[2] & 3) << 4), wait);
+               EXPECT_EQ(bytes[9] & 1, 1u);
+               EXPECT_EQ(bytes[4] & 1, 1u);
+            }
+         }
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, ProjectiveReciprocalRefusesUnsupportedForms)
+{
+   for (unsigned mode = 0; mode < 8; ++mode) {
+      agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C :
+                                         AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index rhw = agx_register(mode == 1 ? 192 : 0, AGX_SIZE_32);
+      rhw.abs = mode == 2;
+      rhw.neg = mode == 3;
+      rhw.channels_m1 = mode == 4 ? 1 : 0;
+      rhw.cache = rhw.discard = mode == 5;
+      agx_instr *I = agx_persp_rcp_agx3_to(b,
+         agx_register(0, AGX_SIZE_32), rhw, mode == 6 ? 128 : 0);
+      I->saturate = mode == 7;
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty()) << "mode=" << mode;
+   }
+   struct agx3_persp_rcp_desc d = {};
+   uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH], len;
+   d.wait_mask = 0x40;
+   EXPECT_FALSE(agx3_persp_rcp_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len));
+}
+
+TEST_F(AGX3PackBinary, ProjectiveRhwMatchesNativeAndKeepsUserInterp)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_index r0 = agx_register(0, AGX_SIZE_32);
+   agx_rhw_interp_agx3_to(b, r0, agx_immediate(0), agx_immediate(0),
+                         AGX_INTERPOLATION_CENTER);
+   agx_persp_rcp_agx3_to(b, r0, r0, 0);
+   agx_interp_agx3_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(1),
+                     agx_immediate(0), AGX_INTERPOLATION_CENTER, true);
+   agx_stop(b);
+   /* Native smooth_scalar: private RHW f54=1, first f63=1; user f54=f63=0. */
+   const std::vector<uint8_t> want = {
+      0x2f,0x0d,0x54,0,3,0,4,2,0x10,0,
+      0xaf,0,0x54,0,3,0,0,0x48,0x20,1,
+      0x2f,0x05,0x54,2,3,2,0,2,0x10,0, 0x0e,0,0,0,
+   };
+   EXPECT_EQ(pack(b), want);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveRhwModeIndependentOfFirstAndRcpDestination)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_interp_agx3_to(b, agx_register(4, AGX_SIZE_32), agx_immediate(1),
+                     agx_immediate(0), AGX_INTERPOLATION_CENTER, false);
+   agx_index r0 = agx_register(0, AGX_SIZE_32);
+   agx_rhw_interp_agx3_to(b, r0, agx_immediate(0), agx_immediate(0),
+                         AGX_INTERPOLATION_CENTER);
+   r0.cache = true;
+   agx_persp_rcp_agx3_to(b, agx_register(2, AGX_SIZE_32), r0, 0);
+   agx_stop(b);
+   auto bytes = pack(b);
+   ASSERT_EQ(bytes.size(), 34u);
+   EXPECT_EQ(bytes[1] & 8, 8u);
+   EXPECT_EQ(bytes[6] & 4, 0u);
+   EXPECT_EQ(bytes[11] & 8, 0u);
+   EXPECT_EQ(bytes[16] & 4, 4u);
+   const std::vector<uint8_t> native_rcp =
+      {0xaf,0,0x54,2,3,0,2,0x48,0x20,1};
+   EXPECT_EQ(std::vector<uint8_t>(bytes.begin()+20,bytes.begin()+30), native_rcp);
+}
+
+TEST_F(AGX3PackBinary, ProjectiveRhwRefusesUnprovenDomainsAndSharedValues)
+{
+   for (unsigned mode = 0; mode < 11; ++mode) {
+      agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C :
+                                         AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode == 1 ? MESA_SHADER_VERTEX : MESA_SHADER_FRAGMENT;
+      agx_index r0 = agx_register(0, AGX_SIZE_32);
+      agx_instr *producer = agx_rhw_interp_agx3_to(b, r0,
+         agx_immediate(mode == 2 ? 128 : 0), agx_immediate(mode == 3 ? 1 : 0),
+         mode == 4 ? AGX_INTERPOLATION_CENTROID : AGX_INTERPOLATION_CENTER);
+      producer->saturate = mode == 5;
+      if (mode != 6)
+         agx_persp_rcp_agx3_to(b, agx_register(2, AGX_SIZE_32), r0,
+                              mode == 7 ? 1 : 0);
+      if (mode == 8)
+         agx_fmul_to(b, agx_register(4, AGX_SIZE_32), r0, r0);
+      if (mode == 9)
+         agx_mov_to(b, agx_register(4, AGX_SIZE_16),
+                    agx_register(1, AGX_SIZE_16));
+      if (mode == 10)
+         agx_test_block(b->shader);
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty()) << "mode=" << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, ProjectiveRhwCseCannotMergeOrdinaryPositionW)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index ordinary = agx_temp(b->shader, AGX_SIZE_32);
+   agx_index private_rhw = agx_temp(b->shader, AGX_SIZE_32);
+   agx_interp_agx3_to(b, ordinary, agx_immediate(0), agx_immediate(0),
+                     AGX_INTERPOLATION_CENTER, true);
+   agx_rhw_interp_agx3_to(b, private_rhw, agx_immediate(0), agx_immediate(0),
+                         AGX_INTERPOLATION_CENTER);
+   agx_instr *rcp = agx_persp_rcp_agx3_to(b, agx_temp(b->shader, AGX_SIZE_32),
+                                        private_rhw, 0);
+   agx_opt_cse(b->shader);
+   EXPECT_EQ(rcp->src[0].value, private_rhw.value);
+   EXPECT_NE(rcp->src[0].value, ordinary.value);
+}
+
+/* Native scene-crescent / scene-ring place their write fence after both
+ * FLTNORMs, immediately before LSTCOL. Exercise actual packing, including an
+ * asynchronous producer whose wait must remain on the first FLTNORM.
+ */
 TEST_F(AGX3PackBinary, G17PWriteWaitFollowsPackingAndPreservesScoreboard)
 {
    for (bool blend : {false, true}) {
@@ -2756,5 +3121,204 @@ TEST_F(AGX3PackBinary, G17PColourFusionRejectsNonOpaqueOrExtraEpilogWork)
       agx_stop(b);
       pack(b);
       EXPECT_FALSE(b->shader->agx3_colour_link.opaque_pack) << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, G17PLinearCenterInterpolationMatchesNative)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   agx_interp_agx3_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0),
+                     agx_zero(), AGX_INTERPOLATION_CENTER, false);
+   agx_interp_agx3_to(b, agx_register(2, AGX_SIZE_32), agx_immediate(1),
+                     agx_zero(), AGX_INTERPOLATION_CENTER, false);
+   agx_stop(b);
+   /* Native linear_scalar start; linear_vector next scalar with r1/cf1.
+    * No projective RHW marker, reciprocal, or multiply. */
+   const std::vector<uint8_t> want = {
+      0x2f,0x0d,0x54,0,3,0,0,2,0x10,0,
+      0x2f,0x05,0x54,2,3,2,0,2,0x10,0,
+      0x0e,0,0,0,
+   };
+   EXPECT_EQ(pack(b), want);
+}
+
+
+TEST_F(AGX3PackBinary, SixOutputTailSinkingPreservesValuesThroughRA)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   b->shader->nir = rzalloc(mem_ctx, nir_shader);
+   b->shader->nir->info.stage = MESA_SHADER_VERTEX;
+   const unsigned order[] = {3, 2, 1, 5, 0, 4};
+   agx_instr *stores[6];
+   for (unsigned c : order) {
+      agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+      stores[c] = agx_st_vary(b, agx_immediate(c), value);
+   }
+   agx_stop(b);
+   agx_pressure_schedule(b->shader);
+   ASSERT_TRUE(agx3_sink_six_vertex_outputs(b->shader));
+   unsigned next = 0;
+   agx_foreach_instr_global(b->shader, I) {
+      if (I->op == AGX_OPCODE_ST_VARY) {
+         ASSERT_LT(next, 6u);
+         EXPECT_EQ(I, stores[next++]);
+      } else if (next) {
+         EXPECT_EQ(I->op, AGX_OPCODE_STOP);
+      }
+   }
+   EXPECT_EQ(next, 6u);
+   agx_ra(b->shader);
+   /* Independently interpret the physical assignments: all six original
+    * constants must survive until their terminal stores after actual RA. */
+   uint32_t regs[256] = {0};
+   std::vector<uint8_t> want;
+   unsigned stored = 0;
+   agx_foreach_instr_global(b->shader, I) {
+      if (I->op == AGX_OPCODE_MOV_IMM) {
+         regs[I->dest[0].value] = I->imm;
+         struct agx3_encoded_ldimm ld;
+         ASSERT_TRUE(agx3_pack_ldimm_u32(AGX_ISA_ENCODING_AGX3B,
+                         I->dest[0].value, I->imm, &ld));
+         append(want, ld.bytes, ld.length);
+      } else if (I->op == AGX_OPCODE_ST_VARY) {
+         const unsigned c = I->src[0].value;
+         EXPECT_EQ(regs[I->src[1].value], 0x3f000000u + c);
+         uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B,
+                       c * 2, I->src[1].value, I->src[1].kill,
+                       c + 1, 0, bytes, &len));
+         append(want, bytes, len);
+         stored++;
+      } else {
+         ASSERT_EQ(I->op, AGX_OPCODE_STOP);
+      }
+   }
+   EXPECT_EQ(stored, 6u);
+   for (unsigned c = 0; c < 6; ++c) {
+      uint8_t bytes[AGX3_VARY_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, c * 2, c,
+                                c + 1, true, 1u << c, bytes, &len));
+      append(want, bytes, len);
+   }
+   want.insert(want.end(), {14, 0, 0, 0});
+   EXPECT_EQ(pack(b), want); /* No intervening band waits. */
+   EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
+}
+
+TEST_F(AGX3PackBinary, SixTerminalOutputsDrainOriginalProducersOnce)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_VERTEX;
+   agx_get_sr_to(b, agx_register(2, AGX_SIZE_32), AGX_SR_VERTEX_ID);
+   agx_get_sr_to(b, agx_register(4, AGX_SIZE_32), AGX_SR_VERTEX_ID);
+   for (unsigned c = 0; c < 6; ++c)
+      agx_st_vary(b, agx_immediate(c),
+                     agx_register(c % 2 ? 4 : 2, AGX_SIZE_32));
+   agx_stop(b);
+   auto got = pack(b);
+   std::vector<uint8_t> tail;
+   for (unsigned c = 0; c < 6; ++c) {
+      uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B, c * 2,
+                 c % 2 ? 4 : 2, false, c + 1, c == 0 ? 3 : 0, bytes, &len));
+      append(tail, bytes, len);
+   }
+   for (unsigned c = 0; c < 6; ++c) {
+      uint8_t bytes[AGX3_VARY_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, c * 2, c,
+                                c + 1, true, 1u << c, bytes, &len));
+      append(tail, bytes, len);
+   }
+   tail.insert(tail.end(), {14, 0, 0, 0});
+   ASSERT_GE(got.size(), tail.size());
+   EXPECT_TRUE(std::equal(tail.begin(), tail.end(), got.end() - tail.size()));
+}
+
+TEST_F(AGX3PackBinary, SixOutputTailSinkingRefusesWithoutMutation)
+{
+   for (unsigned mode = 0; mode < 9; ++mode) {
+      agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C :
+                                           AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = mode == 1 ? MESA_SHADER_FRAGMENT : MESA_SHADER_VERTEX;
+      b->shader->is_preamble = mode == 2;
+      for (unsigned c = 0; c < (mode == 3 ? 4u : 6u); ++c) {
+         agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+         if (mode == 4) value = agx_register(0, AGX_SIZE_32);
+         agx_st_vary(b, agx_immediate(mode == 5 && c == 5 ? 4 : c), value);
+      }
+      if (mode == 6) agx_begin_cf(b);
+      if (mode != 7) agx_stop(b);
+      if (mode == 8) agx_test_block(b->shader);
+      std::vector<agx_instr *> before;
+      agx_foreach_instr_global(b->shader, I) before.push_back(I);
+      EXPECT_FALSE(agx3_sink_six_vertex_outputs(b->shader)) << mode;
+      std::vector<agx_instr *> after;
+      agx_foreach_instr_global(b->shader, I) after.push_back(I);
+      EXPECT_EQ(before, after) << mode;
+   }
+}
+
+
+TEST_F(AGX3PackBinary, SixOutputVertexAddressArithmeticSurvivesRA)
+{
+   for (unsigned shift : {0u, 3u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      b->shader->nir->info.stage = MESA_SHADER_VERTEX;
+      agx_index vertex = agx_temp(b->shader, AGX_SIZE_32);
+      agx_get_sr_to(b, vertex, AGX_SR_VERTEX_ID);
+      /* Pure integer address arithmetic supplies the stride adjustment
+       * before the device load. Exercise both unshifted and shifted forms
+       * already supported by the normal IADD encoder. */
+      agx_index index = agx_temp(b->shader, AGX_SIZE_32);
+      agx_iadd_to(b, index, vertex, vertex, shift);
+      agx_index loaded = agx_temp(b->shader, AGX_SIZE_32);
+      agx_device_load_to(b, loaded, agx_uniform(0, AGX_SIZE_64), index,
+                         AGX_FORMAT_I32, 1, 2, false);
+      for (unsigned c : {3u, 2u, 1u, 5u, 0u, 4u}) {
+         agx_index value = c >= 4 ? loaded :
+                            agx_mov_imm(b, 32, 0x3f000000 + c);
+         agx_st_vary(b, agx_immediate(c), value);
+      }
+      agx_stop(b);
+      agx_pressure_schedule(b->shader);
+      ASSERT_TRUE(agx3_sink_six_vertex_outputs(b->shader));
+      agx_ra(b->shader);
+      /* The first vertex load owns native slot 6. Its result stays live
+       * through RA until both user stores, and the first terminal COPY
+       * must retire that load even when copying a constant position. */
+      unsigned loaded_reg = ~0u, stores = 0;
+      std::vector<uint8_t> tail;
+      agx_foreach_instr_global(b->shader, I) {
+         if (I->op == AGX_OPCODE_DEVICE_LOAD)
+            loaded_reg = I->dest[0].value;
+         if (I->op != AGX_OPCODE_ST_VARY)
+            continue;
+         const unsigned c = I->src[0].value;
+         ASSERT_EQ(c, stores++);
+         if (c >= 4) {
+            EXPECT_EQ(I->src[1].value, loaded_reg);
+         }
+         uint8_t bytes[AGX3_STAGE_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_stage_copy_source(AGX_ISA_ENCODING_AGX3B,
+                       c * 2, I->src[1].value, I->src[1].kill,
+                       c + 1, c == 0 ? 32 : 0, bytes, &len));
+         append(tail, bytes, len);
+      }
+      ASSERT_EQ(stores, 6u);
+      for (unsigned c = 0; c < 6; ++c) {
+         uint8_t bytes[AGX3_VARY_MAX_LENGTH], len;
+         ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, c * 2, c,
+                                   c + 1, true, 1u << c, bytes, &len));
+         append(tail, bytes, len);
+      }
+      tail.insert(tail.end(), {14, 0, 0, 0});
+      auto got = pack(b);
+      ASSERT_GE(got.size(), tail.size());
+      EXPECT_TRUE(std::equal(tail.begin(), tail.end(), got.end() - tail.size()));
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
    }
 }

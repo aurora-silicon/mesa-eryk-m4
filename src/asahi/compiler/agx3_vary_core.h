@@ -43,6 +43,22 @@ bool agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
                          enum agx3_vary_location location,
                          uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
 
+/* Native G17P sets f63 on the first interpolation of each fragment part.
+ * This marker is independent of f54, whose optimization/liveness role remains
+ * unproven and is deliberately left clear. */
+/* G17P center RHW used only by the coefficient-tagged projective reciprocal.
+ * Native pure smooth and smooth+position.z witnesses set f54(bit50); ordinary
+ * position.w/output/arithmetic witnesses clear it. Numerical semantics beyond
+ * that use domain are not established. `first` independently controls f63. */
+bool agx3_vary_projective_rhw(enum agx_isa_encoding enc, uint16_t dest,
+                             uint16_t coef_index, bool first,
+                             uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
+bool agx3_vary_interp_at_start(enum agx_isa_encoding enc, uint16_t dest,
+                               uint16_t coef_index, bool perspective,
+                               enum agx3_vary_location location, bool first,
+                               uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
 /* Backward-compatible center-location wrapper. */
 bool agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest,
                       uint16_t coef_index, bool perspective,

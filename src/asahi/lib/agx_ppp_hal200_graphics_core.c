@@ -122,7 +122,9 @@ agx_ppp_hal200_fragment_core_pack(
    if (out)
       memset(out, 0, sizeof(*out));
 
-   if (!fields || !out || (fields->varying_table & UINT32_C(0x3f)) != 0)
+   if (!fields || !out || (fields->varying_table & UINT64_C(0x3f)) != 0 ||
+       fields->varying_table >= (UINT64_C(1) << 48) ||
+       (fields->resource_counts & UINT32_C(0xffff)) != 0)
       return false;
 
    struct agx_vdm_state_vertex_pipeline_pair stage_program;
@@ -133,8 +135,10 @@ agx_ppp_hal200_fragment_core_pack(
 
    const struct agx_ppp_hal200_graphics_fields raw = {
       .words = {
-         fields->resource_counts,
-         fields->varying_table,
+         /* HAL200 emitFragmentProgramVariant at 0x4c5e38..0x4c5ec4
+          * merges the absolute VIT pair, using masks at 0x812f70. */
+         fields->resource_counts | (uint32_t)(fields->varying_table >> 32),
+         (uint32_t)fields->varying_table,
          fields->unknown_0c,
          load_le32(&stage_program.bytes[0]),
          load_le32(&stage_program.bytes[4]),
@@ -143,4 +147,21 @@ agx_ppp_hal200_fragment_core_pack(
    };
    return agx_ppp_hal200_graphics_core_pack(
       chip, AGX_PPP_HAL200_GRAPHICS_FS, &raw, out);
+}
+
+bool
+agx_ppp_hal200_output_size_pack(uint32_t count_0, uint32_t count_2,
+                                 uint32_t *out)
+{
+   if (!out)
+      return false;
+   *out = 0;
+   if (count_0 > 0xff || count_2 > 0xff)
+      return false;
+
+   /* VertexProgramVariant 0x35b314..0x35b328 packs VsStateConfig+0xc/+0x14.
+    * The first field includes all position and user f32 words, as proven by
+    * Apple vs0/vs2/vs4 metadata giving (4,0)/(6,0)/(8,0). */
+   *out = count_0 | (count_2 << 16);
+   return true;
 }

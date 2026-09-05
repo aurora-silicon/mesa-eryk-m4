@@ -7,8 +7,11 @@
 
 #define HK_G17P_BIND_GROUP_BYTES 0x80u
 #define HK_G17P_VIEWPORT_RECORD_BYTES 40u
-#define HK_G17P_BIND_STATE_BYTES \
+#define HK_G17P_VARYING_RECORD_BYTES 20u
+#define HK_G17P_VARYING_RECORD_OFFSET \
    (HK_G17P_BIND_GROUP_BYTES + HK_G17P_VIEWPORT_RECORD_BYTES)
+#define HK_G17P_BIND_STATE_BYTES \
+   (HK_G17P_VARYING_RECORD_OFFSET + HK_G17P_VARYING_RECORD_BYTES)
 
 struct hk_g17p_bind_state_upload {
    struct agx_vdm_hal200_bind_pair pairs[AGX_VDM_HAL200_BIND_COUNT];
@@ -32,11 +35,12 @@ hk_g17p_draw_state_range_valid(uint64_t compact, size_t size)
 static inline bool
 hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
                           const uint8_t *bind_group, const uint8_t *viewport,
-                          size_t viewport_size,
+                          size_t viewport_size, uint32_t counts_32, uint32_t counts_16,
                           struct hk_g17p_bind_state_upload *out)
 {
    if (!cpu || !bind_group || !viewport || !out ||
        capacity < HK_G17P_BIND_STATE_BYTES ||
+       ((counts_32 | counts_16) & UINT32_C(0xff000000)) != 0 ||
        viewport_size != HK_G17P_VIEWPORT_RECORD_BYTES ||
        !hk_g17p_draw_state_range_valid(compact, HK_G17P_BIND_STATE_BYTES))
       return false;
@@ -44,7 +48,7 @@ hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
    const uint32_t group = (uint32_t)compact;
    struct hk_g17p_bind_state_upload encoded = {
       .pairs = {
-         {0x40, 0x700}, /* Fixed immutable Bind0: implicit walk unchanged. */
+         {group + HK_G17P_VARYING_RECORD_OFFSET, 0x700},
          {group + 0x00, 0x500},
          {group + 0x1c, 0x700},
          {group + 0x30, 0x500},
@@ -59,6 +63,16 @@ hk_g17p_upload_bind_state(void *cpu, size_t capacity, uint64_t compact,
       return false;
    memcpy(cpu, bind_group, HK_G17P_BIND_GROUP_BYTES);
    memcpy((uint8_t *)cpu + HK_G17P_BIND_GROUP_BYTES, viewport, viewport_size);
+   /* Native VertexProgramVariant+0x1008 (35b628..35b694): separate
+    * f32/f16 smooth, flat, linear counts followed by two auxiliary words.
+    * The admitted user-only layout has no auxiliary outputs. This record
+    * belongs to the draw, just like FS/OUTPUT, never the shared Bind0 page. */
+   const uint32_t words[5] = {UINT32_C(0x10040000), counts_32, counts_16, 0, 0};
+   uint8_t *varyings = (uint8_t *)cpu + HK_G17P_VARYING_RECORD_OFFSET;
+   for (unsigned i = 0; i < 5; ++i) {
+      for (unsigned byte = 0; byte < 4; ++byte)
+         varyings[4 * i + byte] = words[i] >> (8 * byte);
+   }
    *out = encoded;
    return true;
 }

@@ -65,8 +65,37 @@ main(void)
    assert(memcmp(live_fs_packed.bytes, no_vary_expected,
                  sizeof(no_vary_expected)) == 0);
 
+   /* Native 0x4c5e38 packs absolute VIT 0x100000004c0 and 2 iterations as
+    * counts 0x00020100 / low-pointer 0x4c0, independently of the Ioto VA. */
+   struct agx_ppp_hal200_fragment_fields varying_fs = live_fs;
+   varying_fs.resource_counts = UINT32_C(2) << 16;
+   varying_fs.varying_table = UINT64_C(0x100000004c0);
+   assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &varying_fs,
+                                            &live_fs_packed));
+   assert(memcmp(live_fs_packed.bytes, fs_expected, sizeof(fs_expected)) == 0);
+
+   /* Relocation across all 48 address bits must survive the split fields. */
+   for (unsigned bit = 6; bit < 48; ++bit) {
+      varying_fs.varying_table = UINT64_C(1) << bit;
+      assert(agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &varying_fs,
+                                               &live_fs_packed));
+      uint32_t words[7];
+      memcpy(words, live_fs_packed.bytes, sizeof(words));
+      uint64_t decoded = ((uint64_t)(words[1] & 0xffff) << 32) | words[2];
+      assert(decoded == varying_fs.varying_table);
+      assert(words[1] >> 16 == 2);
+   }
+
    struct agx_ppp_hal200_fragment_fields bad_fs = live_fs;
    bad_fs.varying_table = 4;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+   bad_fs = live_fs;
+   bad_fs.varying_table = UINT64_C(1) << 48;
+   assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
+                                             &live_fs_packed));
+   bad_fs = live_fs;
+   bad_fs.resource_counts = 1;
    assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
                                              &live_fs_packed));
    bad_fs = live_fs;
@@ -82,6 +111,17 @@ main(void)
    assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17P, &bad_fs,
                                              &live_fs_packed));
 
+   uint32_t output_size;
+   assert(agx_ppp_hal200_output_size_pack(4, 0, &output_size));
+   assert(output_size == 4);
+   assert(agx_ppp_hal200_output_size_pack(6, 0, &output_size));
+   assert(output_size == 6);
+   assert(agx_ppp_hal200_output_size_pack(8, 0, &output_size));
+   assert(output_size == 8);
+   assert(!agx_ppp_hal200_output_size_pack(256, 0, &output_size));
+   assert(!agx_ppp_hal200_output_size_pack(4, 256, &output_size));
+   assert(!agx_ppp_hal200_output_size_pack(4, 2, NULL));
+
    static const uint32_t output_words[] = {
       0, 0, 0, 4, AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0x00010200,
    };
@@ -92,6 +132,20 @@ main(void)
    };
    check(AGX_PPP_HAL200_GRAPHICS_OUTPUT, output_words, 6, output_expected,
          sizeof(output_expected));
+
+   /* Captured 194053 doorbell1 output record: varying enabled, middle
+    * words zero, total f32 footprint6. Empty iteration metadata stays off. */
+   static const uint32_t varying_output_words[] = {
+      0x10000, 0, 0, 6, AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0x00040200,
+   };
+   static const uint8_t varying_output_expected[] = {
+      0x00, 0x00, 0x0a, 0x0c, 0x00, 0x00, 0x01, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x06, 0x00, 0x00, 0x00, 0xb4, 0x00, 0x00, 0x01,
+      0x00, 0x02, 0x04, 0x00,
+   };
+   check(AGX_PPP_HAL200_GRAPHICS_OUTPUT, varying_output_words, 6,
+         varying_output_expected, sizeof(varying_output_expected));
 
    static const uint32_t primary_words[] = {
       0x00010200, 0x07200f00, 0x0e00ffff,

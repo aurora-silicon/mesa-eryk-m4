@@ -924,6 +924,63 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
    return true;
 }
 
+/* Keep native interpolation bounded to the f32 UVS layout already supported
+ * by hk_agx3_g17p_vertex_program_info: position plus up to 8 user words.
+ * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
+ * smooth and linear inputs. System inputs other than reciprocal W, flat,
+ * and Z stay closed.
+ */
+bool
+hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
+                                 const struct hk_linked_shader *linked)
+{
+   if (!linked)
+      return false;
+   const struct agx_varyings_fs *cf = &linked->b.cf;
+   if (cf->nr_bindings == 0)
+      return cf->nr_cf == 0;
+
+   const struct hk_graphics_state *gfx = &cmd->state.gfx;
+   const struct hk_api_shader *api_vs = gfx->shaders[MESA_SHADER_VERTEX];
+   const struct hk_shader *vs =
+      api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
+   if (!vs || gfx->shaders[MESA_SHADER_GEOMETRY] ||
+       gfx->shaders[MESA_SHADER_TESS_EVAL] || cf->reads_z ||
+       cf->nr_bindings > 3 || cf->nr_cf > 9 ||
+       vs->agx3_vdm_state_update.source_layout !=
+          AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT ||
+       vs->info.uvs.user_size == 0 || vs->info.uvs.user_size > 8)
+      return false;
+
+   unsigned next_cf = 0;
+   bool has_rhw = false;
+   unsigned user_bindings = 0;
+   for (unsigned i = 0; i < cf->nr_bindings; ++i) {
+      const struct agx_cf_binding *b = &cf->bindings[i];
+      if (!b->smooth || b->count == 0 || b->count > 4 ||
+          b->cf_base != next_cf)
+         return false;
+      if (b->slot == VARYING_SLOT_POS) {
+         /* Perspective interpolation first reads reciprocal W, linearly. */
+         if (i != 0 || b->offset != 3 ||
+             b->count != 1 || b->perspective)
+            return false;
+         has_rhw = true;
+      } else {
+         if (b->slot < VARYING_SLOT_VAR0 || b->slot > VARYING_SLOT_VAR31 ||
+             (b->perspective && !has_rhw) ||
+             b->offset + b->count > vs->info.uvs.components[b->slot])
+            return false;
+         ++user_bindings;
+         const unsigned slot = gfx->linked_varyings.slots[b->slot];
+         if (slot < 4 || slot + b->offset + b->count > vs->info.uvs.size)
+            return false;
+      }
+      next_cf += b->count;
+   }
+   return user_bindings > 0 && next_cf == cf->nr_cf;
+}
+
 static bool
 hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
                                          struct hk_shader *s,
@@ -949,7 +1006,8 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
    }
 
    return s->info.stage == MESA_SHADER_FRAGMENT &&
-          linked->b.cf.nr_bindings == 0 && hk_g17p_basic_fragment_layout(cmd);
+          hk_g17p_smooth_varyings_supported(cmd, linked) &&
+          hk_g17p_basic_fragment_layout(cmd);
 }
 
 static bool

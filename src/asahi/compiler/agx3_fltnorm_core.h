@@ -175,6 +175,22 @@ enum agx3_operand_liveness {
    AGX3_OPERAND_KILL,
 };
 
+/* Projective reciprocal: native f32rcp has a second coefficient operand
+ * (f42=6/f57=1), distinct from the ordinary single-GPR reciprocal. Its
+ * coefficient occupies the ordinary source-discard bit, so only the cache
+ * hint is available in this form. */
+struct agx3_persp_rcp_desc {
+   uint16_t dest;
+   uint16_t rhw;
+   uint16_t coef_index;
+   bool rhw_cache;
+   uint16_t wait_mask;
+};
+
+bool agx3_persp_rcp_encode(enum agx_isa_encoding enc,
+                           const struct agx3_persp_rcp_desc *d,
+                           uint8_t out[AGX3_FLTNORM_MAX_LENGTH], uint8_t *len);
+
 struct agx3_persp_mul_desc {
    bool stage_dest;      /* destination is a staging register (f9 = 5) */
    uint16_t dest;        /* 32-bit register or staging index */

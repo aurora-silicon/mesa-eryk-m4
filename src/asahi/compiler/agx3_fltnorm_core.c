@@ -251,6 +251,35 @@ agx3_fuse_colour_parts(const struct agx3_colour_link_info *main,
 }
 
 bool
+agx3_persp_rcp_encode(enum agx_isa_encoding enc,
+                       const struct agx3_persp_rcp_desc *d,
+                       uint8_t out[AGX3_FLTNORM_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || !d || !b_only(enc) || d->dest >= 192 ||
+       d->rhw >= 192 || ((d->dest | d->rhw) & 1) ||
+       d->coef_index > 0x7f || (d->wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Fresh native smooth_scalar: af005400030000482001 (r0 -> r0).
+    * Native exactgradient: af005402030002482001 (r0 -> r1, cache).
+    * The final byte's bit0 selects the coefficient-bearing operand leaf;
+    * f39 is the RHW coefficient index, not a discard hint. */
+   const struct agx3_field_kv base[] = {
+      KV(9, 2), KV(10, 2), KV(25, 2), KV(26, 2),
+      KV(42, 6), KV(43, 2), KV(57, 1),
+   };
+   struct agx3_field_kv ov[11] = {
+      KV(2, d->dest), KV(11, 1), KV(18, d->rhw),
+      KV(27, d->rhw_cache), KV(39, d->coef_index),
+   };
+   unsigned n = 5;
+   for (unsigned i = 0; i < 6; ++i)
+      if (d->wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv)KV(49 + i, 1);
+   return agx3_bind_compose(enc, "f32rcp", 0, base, 7, ov, n, out, len);
+}
+
+bool
 agx3_persp_mul_encode(enum agx_isa_encoding enc,
                       const struct agx3_persp_mul_desc *d,
                       uint8_t out[AGX3_FLTNORM_MAX_LENGTH], uint8_t *len)

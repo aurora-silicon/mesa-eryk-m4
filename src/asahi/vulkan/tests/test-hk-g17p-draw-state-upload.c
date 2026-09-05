@@ -38,17 +38,21 @@ int main(void)
     */
    uint8_t retained[3][256], saved[3][256], group[128], viewport[40];
    struct hk_g17p_bind_state_upload uploads[3];
+   const uint32_t counts[] = {2, 0x20000, 0};
    const uint32_t bases[] = {0x200000, 0x200100, 0x220000};
    for (unsigned draw = 0; draw < 3; ++draw) {
       memset(retained[draw], 0xa5, sizeof(retained[draw]));
       memset(group, 0x10 + draw, sizeof(group));
       memset(viewport, 0x80 + draw, sizeof(viewport));
       assert(hk_g17p_upload_bind_state(retained[draw], sizeof(retained[draw]),
-                bases[draw], group, viewport, sizeof(viewport), &uploads[draw]));
+                bases[draw], group, viewport, sizeof(viewport), counts[draw], 0, &uploads[draw]));
       struct agx_vdm_hal200_bind_pair decoded[8];
       assert(agx_vdm_hal200_bind_tail_unpack(AGX_CHIP_G17P,
              uploads[draw].tail.bytes, uploads[draw].tail.length, decoded));
-      assert(decoded[0].context_offset == 0x40);
+      assert(decoded[0].context_offset == bases[draw] + HK_G17P_VARYING_RECORD_OFFSET);
+      const uint32_t expected[5] = {0x10040000, counts[draw], 0, 0, 0};
+      assert(!memcmp(retained[draw] + HK_G17P_VARYING_RECORD_OFFSET,
+                     expected, sizeof(expected)));
       assert(decoded[1].context_offset == bases[draw]);
       assert(decoded[5].context_offset == bases[draw] + 128);
       for (unsigned i = 1; i < 8; ++i) {
@@ -95,12 +99,15 @@ int main(void)
    for (unsigned i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
       uint32_t untouched = 0xdeadbeef;
       assert(!hk_g17p_upload_bind_state(retained[0], sizeof(retained[0]),
-                 bad[i], group, viewport, sizeof(viewport), &uploads[0]));
+                 bad[i], group, viewport, sizeof(viewport), 2, 0, &uploads[0]));
       assert(!memcmp(saved[0], retained[0], sizeof(saved[0])));
       assert(!hk_g17p_upload_draw_indices(indices[0], 8, bad[i], 16, 12, &untouched));
       assert(untouched == 0xdeadbeef && indices[0][4] == 0);
    }
+   assert(!hk_g17p_upload_bind_state(retained[0], sizeof(retained[0]),
+              bases[0], group, viewport, sizeof(viewport), 0x1000000, 0, &uploads[0]));
+   assert(!memcmp(saved[0], retained[0], sizeof(saved[0])));
    assert(hk_g17p_draw_state_range_valid(0x1fffff8, 8));
    assert(!hk_g17p_draw_state_range_valid(0x1fffff8, 9));
-   puts("immutable G17P draw state: Bind0 parity, aliases, retained records and transactional guards PASS");
+   puts("immutable G17P draw state: per-draw smooth/linear/zero counts, Bind0 parity, aliases, retained records and transactional guards PASS");
 }

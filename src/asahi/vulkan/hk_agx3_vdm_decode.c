@@ -139,11 +139,13 @@ hk_agx3_g17p_vertex_program_info(
              */
             .raw_state_load_count_12 = 0,
             .raw_state_load_count_18 = 0,
-            /* VertexProgramVariant reads position words from
-             * VsStateConfig+0xc and user words from +0x14.  Its middle count
-             * is their sum when no system output is present. */
-            .raw_vs_output_count_0 = 4,
-            .raw_vs_output_count_2 = compiler_info->user_size,
+            /* VsStateConfig+0xc is the total f32 UVS footprint, including
+             * position AND user outputs; +0x14 stays zero in this all-f32
+             * path. Apple vs0/vs2/vs4 __GPU_LD_MD root.field1.field3 gives
+             * 4/6/8, with field4 absent. The former 4/user split described
+             * the wrong vertex layout even though its middle sum matched. */
+            .raw_vs_output_count_0 = compiler_info->uvs_size,
+            .raw_vs_output_count_2 = 0,
             .raw_vs_output_count_1_extra = false,
             .raw_vs_output_selector = 0,
             .raw_vs_output_flag_6 = false,

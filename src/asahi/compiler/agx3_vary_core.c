@@ -15,14 +15,18 @@ is_b(enum agx_isa_encoding e)
    return e == AGX_ISA_ENCODING_AGX3B;
 }
 
-bool
-agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
+static bool
+agx3_vary_interp_mode(enum agx_isa_encoding enc, uint16_t dest,
                     uint16_t coef_index, bool perspective,
-                    enum agx3_vary_location location,
+                    enum agx3_vary_location location, bool first, bool projective_rhw,
                     uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
    if ((enc != AGX_ISA_ENCODING_AGX3B &&
         enc != AGX_ISA_ENCODING_AGX3C) ||
+       (first && enc != AGX_ISA_ENCODING_AGX3B) ||
+       (projective_rhw && (enc != AGX_ISA_ENCODING_AGX3B ||
+                           location != AGX3_VARY_CENTER || !perspective ||
+                           coef_index > 0x7f)) ||
        (dest & 1) != 0 || dest >= 256 ||
        (location != AGX3_VARY_CENTER && location != AGX3_VARY_CENTROID))
       return false;
@@ -31,7 +35,7 @@ agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
    const struct agx3_field_kv base_c[] = {KV(9, 2),  KV(10, 2), KV(25, 6),
                                           KV(26, 2), KV(40, 2), KV(44, 3),
                                           KV(45, 58)};
-   struct agx3_field_kv ov[7];
+   struct agx3_field_kv ov[9];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, dest);
    ov[n++] = (struct agx3_field_kv)KV(22, coef_index);
@@ -49,8 +53,41 @@ agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
       ov[n++] =
          (struct agx3_field_kv)KV(32, perspective ? 0 : 6);
    }
+   if (projective_rhw)
+      ov[n++] = (struct agx3_field_kv)KV(54, 1);
+   if (first)
+      ov[n++] = (struct agx3_field_kv)KV(63, 1);
    return agx3_bind_compose(enc, "f32interp", 0, is_b(enc) ? base_b : base_c,
                             is_b(enc) ? 5 : 7, ov, n, out, len);
+}
+
+bool
+agx3_vary_interp_at_start(enum agx_isa_encoding enc, uint16_t dest,
+                         uint16_t coef_index, bool perspective,
+                         enum agx3_vary_location location, bool first,
+                         uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_vary_interp_mode(enc, dest, coef_index, perspective, location,
+                               first, false, out, len);
+}
+
+bool
+agx3_vary_projective_rhw(enum agx_isa_encoding enc, uint16_t dest,
+                         uint16_t coef_index, bool first,
+                         uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_vary_interp_mode(enc, dest, coef_index, true, AGX3_VARY_CENTER,
+                               first, true, out, len);
+}
+
+bool
+agx3_vary_interp_at(enum agx_isa_encoding enc, uint16_t dest,
+                    uint16_t coef_index, bool perspective,
+                    enum agx3_vary_location location,
+                    uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_vary_interp_at_start(enc, dest, coef_index, perspective,
+                                    location, false, out, len);
 }
 
 bool

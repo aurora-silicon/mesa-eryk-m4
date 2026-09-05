@@ -49,8 +49,9 @@ struct agx_ppp_hal200_graphics_core {
 
 struct agx_ppp_hal200_fragment_fields {
    uint32_t resource_counts;
-   /* Queue-USC-relative VIT address. Zero when the fragment has no varyings. */
-   uint32_t varying_table;
+   /* Absolute 48-bit VIT address; its upper 16 bits occupy counts[15:0].
+    * Zero when the fragment has no varyings. The bounded uploader aligns to 64 bytes. */
+   uint64_t varying_table;
    uint32_t unknown_0c;
    /* Absolute 48-bit, 64-byte-aligned Ioto/ESL stage-program address. */
    uint64_t stage_program;
@@ -94,6 +95,10 @@ bool agx_ppp_hal200_graphics_core_unpack(
 bool agx_ppp_hal200_fragment_core_pack(
    enum agx_chip chip, const struct agx_ppp_hal200_fragment_fields *fields,
    struct agx_ppp_hal200_graphics_core *out);
+
+/* Native VsStateConfig+0xc/+0x14 fields; the first includes all f32 UVS. */
+bool agx_ppp_hal200_output_size_pack(uint32_t count_0,
+                                      uint32_t count_2, uint32_t *out);
 
 #ifdef __cplusplus
 }

@@ -638,8 +638,14 @@ agx_emit_load_vary_agx3(agx_builder *b, agx_index dest, agx_index cf,
          return false;
 
       agx_index rhw = agx_temp(b->shader, AGX_SIZE_32);
-      agx_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp, true);
-      reciprocal_w = agx_rcp(b, rhw);
+      if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B &&
+          interp == AGX_INTERPOLATION_CENTER)
+         agx_rhw_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp);
+      else
+         agx_interp_agx3_to(b, rhw, rhw_cf, sample_index, interp, true);
+      reciprocal_w = b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B
+                        ? agx_persp_rcp_agx3(b, rhw, rhw_cf.value)
+                        : agx_rcp(b, rhw);
    }
 
    agx_index channels[4];
@@ -650,7 +656,15 @@ agx_emit_load_vary_agx3(agx_builder *b, agx_index dest, agx_index cf,
       agx_index raw = agx_temp(b->shader, AGX_SIZE_32);
       agx_interp_agx3_to(b, raw, channel_cf, sample_index, interp,
                          perspective);
-      channels[c] = perspective ? agx_fmul(b, raw, reciprocal_w) : raw;
+      if (perspective &&
+          b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B) {
+         /* Native f32mul.ep4 identifies the coefficient involved in this
+          * projective divide. Preserve it explicitly rather than trying to
+          * reconstruct SSA provenance after physical register allocation. */
+         channels[c] = agx_persp_mul_agx3(b, raw, reciprocal_w, channel_cf.value);
+      } else {
+         channels[c] = perspective ? agx_fmul(b, raw, reciprocal_w) : raw;
+      }
    }
 
    agx_emit_collect_to(b, dest, components, channels);
@@ -3685,6 +3699,65 @@ agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
       agx_validate(ctx, #pass);                                                \
    } while (0)
 
+/* Keep six scalar UVS values live until a native-shaped terminal writeout.
+ * Run after pressure scheduling but before RA: moving physical-register stores
+ * would lose values when later instructions reuse their sources. */
+bool
+agx3_sink_six_vertex_outputs(agx_context *ctx)
+{
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
+       ctx->stage != MESA_SHADER_VERTEX || ctx->is_preamble ||
+       ctx->key->secondary || list_length(&ctx->blocks) != 1)
+      return false;
+
+   agx_instr *stores[6] = {0}, *stop = NULL;
+   agx_foreach_instr_global(ctx, I) {
+      if (stop)
+         return false;
+      switch (I->op) {
+      case AGX_OPCODE_STOP:
+         stop = I;
+         break;
+      case AGX_OPCODE_ST_VARY: {
+         if (I->nr_dests || I->nr_srcs != 2 ||
+             I->src[0].type != AGX_INDEX_IMMEDIATE || I->src[0].value >= 6 ||
+             I->src[1].type != AGX_INDEX_NORMAL || I->src[1].memory ||
+             I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 1 ||
+             stores[I->src[0].value])
+            return false;
+         stores[I->src[0].value] = I;
+         break;
+      }
+      case AGX_OPCODE_GET_SR:
+         if (I->sr != AGX_SR_VERTEX_ID)
+            return false;
+         break;
+      case AGX_OPCODE_IADD:
+      case AGX_OPCODE_DEVICE_LOAD:
+      case AGX_OPCODE_MOV_IMM:
+      case AGX_OPCODE_MOV:
+      case AGX_OPCODE_FADD:
+      case AGX_OPCODE_FMUL:
+      case AGX_OPCODE_COLLECT:
+      case AGX_OPCODE_SPLIT:
+         break;
+      default:
+         return false;
+      }
+   }
+   if (!stop)
+      return false;
+   for (unsigned i = 0; i < 6; ++i) {
+      if (!stores[i])
+         return false;
+   }
+   for (unsigned i = 0; i < 6; ++i) {
+      list_del(&stores[i]->link);
+      list_addtail(&stores[i]->link, &stop->link);
+   }
+   return true;
+}
+
 static bool
 agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
                          struct agx_shader_key *key,
@@ -3784,6 +3857,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
 
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
+
+   AGX_PASS(ctx, agx3_sink_six_vertex_outputs);
 
    AGX_PASS(ctx, agx_ra);
    agx_lower_64bit_postra(ctx);

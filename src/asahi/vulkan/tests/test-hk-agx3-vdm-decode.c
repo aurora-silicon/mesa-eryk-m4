@@ -187,6 +187,19 @@ test_g17p_vertex_program_info(void)
    CHECK(memcmp(encoded.bytes, m1n1_direct_triangle_prefix,
                 sizeof(m1n1_direct_triangle_prefix)) == 0);
 
+   /* Apple vs2 float2 varying witness: __GPU_LD_MD root.field1 gives
+    * field3=6 and field4 absent, mapping to VsStateConfig+0xc/+0x14.
+    * This protects the actual producer semantics, not just byte packing. */
+   struct hk_agx3_g17p_vertex_compile_info vs2_info = compiler_info;
+   vs2_info.position_only = false;
+   vs2_info.uvs_written = BITFIELD64_BIT(VARYING_SLOT_VAR0);
+   vs2_info.psiz_off = vs2_info.layer_viewport_off = vs2_info.clip_off = 6;
+   vs2_info.uvs_size = 6;
+   vs2_info.user_size = 2;
+   CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &vs2_info, &program));
+   CHECK(program.template_info.raw_vs_output_count_0 == 6);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
+
    const struct hk_agx3_g17p_vertex_compile_info vkcube_info = {
       .hardware_vertex = true,
       .uvs_written = BITFIELD64_BIT(VARYING_SLOT_VAR0) |
@@ -201,8 +214,8 @@ test_g17p_vertex_program_info(void)
    };
    CHECK(hk_agx3_g17p_vertex_program_info(AGX_CHIP_G17P, &vkcube_info,
                                           &program));
-   CHECK(program.template_info.raw_vs_output_count_0 == 4);
-   CHECK(program.template_info.raw_vs_output_count_2 == 7);
+   CHECK(program.template_info.raw_vs_output_count_0 == 11);
+   CHECK(program.template_info.raw_vs_output_count_2 == 0);
    CHECK(!program.template_info.raw_vs_output_count_1_extra);
 
    program.template_info.pipeline = UINT64_C(0x10000128000);
@@ -217,7 +230,7 @@ test_g17p_vertex_program_info(void)
                                                &encoded));
    static const uint8_t vkcube_prefix[] = {
       0x2e, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x01, 0x00, 0x4a, 0x00, 0x00, 0x04, 0x0b, 0x07, 0x00,
+      0x00, 0x01, 0x00, 0x4a, 0x00, 0x00, 0x0b, 0x0b, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    };
    CHECK(encoded.length == sizeof(vkcube_prefix));

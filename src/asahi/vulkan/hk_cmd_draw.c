@@ -2803,25 +2803,39 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    const uint64_t fragment_program = hk_upload_usc_words(cmd, fs, linked_fs);
    if (!fragment_program || (fragment_program & UINT64_C(0x3f)) != 0 ||
        fragment_program >= (UINT64_C(1) << 48) ||
-       linked_fs->b.cf.nr_bindings != 0 || gfx->varyings != 0)
+       !hk_g17p_smooth_varyings_supported(cmd, linked_fs) ||
+       (linked_fs->b.cf.nr_bindings != 0) != (gfx->varyings != 0))
       return false;
 
    struct agx_ppp_hal200_graphics_core fs_record;
    const struct agx_ppp_hal200_fragment_fields fs_fields = {
-      /* Valid G1a vary0 has no FragmentShaderIteration entries. Apple's
-       * ProgramVaryingTable therefore emits no VIT block and both of these
-       * fields are zero. Keep the bounded path closed to varyings above. */
-      .resource_counts = 0,
-      .varying_table = 0,
+      /* HAL200 finalize 0x3f04e4..0x3f0508 puts iteration count at bit 16.
+       * The packer merges the complete VIT address, including its high bits. */
+      .resource_counts = linked_fs->b.cf.nr_bindings << 16,
+      .varying_table = gfx->varyings,
       .unknown_0c = 0,
       .stage_program = fragment_program,
       .stage_program_template = 0,
       .flags = 0,
    };
 
+   const struct hk_api_shader *api_vs = gfx->shaders[MESA_SHADER_VERTEX];
+   const struct hk_shader *vs =
+      api_vs ? &api_vs->variants[HK_VS_VARIANT_HW] : NULL;
+   uint32_t output_size;
+   if (!vs || !agx_ppp_hal200_output_size_pack(
+                 vs->info.uvs.size, 0, &output_size))
+      return false;
+
    struct agx_ppp_hal200_graphics_core output_record;
    struct agx_ppp_hal200_graphics_fields output_fields = {
-      .words = {0, 0, 0, UINT32_C(4),
+      /* Native vertex update 0x481be8..0x481c2c writes zero at
+       * context+0x1f90 and viewport_count-1 at +0x1f94; both are zero
+       * for this single-viewport layout. VIT supplies interpolation.
+       * FragmentProgramVariant 0x373eb4..0x373ee0 sets output-select bit16
+       * for nonempty iteration metadata, merged by 0x4824fc..0x482518. */
+      .words = {linked_fs->b.cf.nr_bindings ? UINT32_C(0x10000) : 0,
+                0, 0, output_size,
                 AGX_PPP_HAL200_PRIMARY_FACE_HEADER, 0},
    };
 
@@ -3033,7 +3047,10 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    if (!state.cpu ||
        !hk_g17p_upload_bind_state(state.cpu, HK_G17P_BIND_STATE_BYTES, state.gpu,
                                   bind_group, viewport_record.bytes,
-                                  viewport_record.length, &uploaded))
+                                  viewport_record.length,
+                                  gfx->linked_varyings.counts_32.opaque[0],
+                                  gfx->linked_varyings.counts_16.opaque[0],
+                                  &uploaded))
       return false;
 
    if (hk_g17p_launch_trace_enabled()) {
@@ -3979,7 +3996,9 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          size_t linkage_size =
             AGX_CF_BINDING_HEADER_LENGTH + (bindings * AGX_CF_BINDING_LENGTH);
 
-         struct agx_ptr t = hk_pool_usc_alloc(cmd, linkage_size, 16);
+         const bool native_vit = dev->dev.chip == AGX_CHIP_G17P;
+         struct agx_ptr t =
+            hk_pool_usc_alloc(cmd, linkage_size, native_vit ? 64 : 16);
          if (!t.cpu)
             return;
 
@@ -3987,7 +4006,10 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
             t.cpu, &gfx->linked_varyings, hw_vs->info.uvs.user_size,
             &linked_fs->b.cf, gfx->provoking, 0, &gfx->generate_primitive_id);
 
-         gfx->varyings = agx_usc_addr(&dev->dev, t.gpu);
+         gfx->varyings = native_vit ? t.gpu : agx_usc_addr(&dev->dev, t.gpu);
+         if (native_vit && hk_g17p_launch_trace_enabled())
+            hk_g17p_trace_line("hal200-varying-table", t.gpu, t.cpu,
+                               linkage_size);
       } else {
          gfx->varyings = 0;
       }

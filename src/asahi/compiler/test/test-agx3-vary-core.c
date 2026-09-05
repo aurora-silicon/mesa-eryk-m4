@@ -37,6 +37,19 @@ int main(void){
       if(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B,0,0,0,false,0,out,&len)) fail++; else pass++;
       if(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B,0,0,1,false,0x40,out,&len)) fail++; else pass++;
    }
+   {
+      const uint8_t native[] = {0x2f,0x0d,0x54,0,3,0,4,2,0x10,0};
+      uint8_t out[AGX3_VARY_MAX_LENGTH]; uint8_t len=0;
+      if (!agx3_vary_projective_rhw(AGX_ISA_ENCODING_AGX3B,0,0,true,out,&len) ||
+          len != sizeof(native) || memcmp(out,native,sizeof(native))) fail++;
+      else pass++;
+      if (agx3_vary_projective_rhw(AGX_ISA_ENCODING_AGX3C,0,0,false,out,&len)) fail++;
+      else pass++;
+      if (agx3_vary_projective_rhw(AGX_ISA_ENCODING_AGX3B,0,128,false,out,&len)) fail++;
+      else pass++;
+      if (agx3_vary_projective_rhw(AGX_ISA_ENCODING_AGX3B,1,0,false,out,&len)) fail++;
+      else pass++;
+   }
    if(fail){ fprintf(stderr,"agx3_vary_core: %u of %zu failed\n",fail,vary_vec_count); return 1; }
    printf("agx3_vary_core: all %u varying ops reproduced\n",pass); return 0;
 }

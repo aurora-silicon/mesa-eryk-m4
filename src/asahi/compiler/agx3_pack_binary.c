@@ -547,9 +547,66 @@ agx3_vary_reg32(agx_index index)
           index.value < 256 && !index.abs && !index.neg;
 }
 
+/* f54 is witnessed only for a private RHW value. Refuse sharing with any
+ * ordinary arithmetic/output use, including reads of either 16-bit half.
+ * A single block keeps the physical-register lifetime proof local. */
+static bool
+agx3_private_rhw_use(const agx_context *ctx, const agx_block *block,
+                     const agx_instr *producer)
+{
+   unsigned blocks = 0;
+   agx_foreach_block(ctx, B) {
+      if (++blocks != 1)
+         return false;
+   }
+
+   if (producer->nr_dests != 1 || producer->nr_srcs != 2 ||
+       !agx3_vary_reg32(producer->dest[0]) ||
+       agx_channels(producer->dest[0]) != 1 ||
+       producer->src[0].type != AGX_INDEX_IMMEDIATE)
+      return false;
+
+   const unsigned reg = producer->dest[0].value;
+   bool after = false;
+   unsigned consumers = 0;
+   agx_foreach_instr_in_block(block, I) {
+      if (I == producer) {
+         after = true;
+         continue;
+      }
+      if (!after)
+         continue;
+
+      agx_foreach_src(I, src) {
+         agx_index value = I->src[src];
+         if (!agx3_src_is_register(value) || value.memory ||
+             value.value >= reg + 2 ||
+             value.value + agx_index_size_16(value) <= reg)
+            continue;
+         if (I->op != AGX_OPCODE_PERSP_RCP_AGX3 || src != 0 ||
+             value.value != reg || value.size != AGX_SIZE_32 ||
+             agx_channels(value) != 1 ||
+             I->imm != producer->src[0].value || ++consumers != 1)
+            return false;
+      }
+
+      agx_foreach_dest(I, dst) {
+         agx_index value = I->dest[dst];
+         if (!agx3_src_is_register(value) || value.memory ||
+             value.value >= reg + 2 ||
+             value.value + agx_index_size_16(value) <= reg)
+            continue;
+         /* Partial overwrite cannot terminate the whole RHW lifetime. */
+         return consumers == 1 && value.value <= reg &&
+                value.value + agx_index_size_16(value) >= reg + 2;
+      }
+   }
+   return consumers == 1;
+}
+
 static bool
 agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
-                 const agx_instr *I, uint16_t wait_mask)
+                 const agx_instr *I, uint16_t wait_mask, bool first, bool fragment)
 {
    if (wait_mask != 0 || I->nr_dests != 1 || I->nr_srcs != 2 ||
        !agx3_vary_reg32(I->dest[0]) ||
@@ -563,8 +620,22 @@ agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
    uint8_t bytes[AGX3_VARY_MAX_LENGTH];
    uint8_t len = 0;
-   return agx3_vary_interp_at(enc, I->dest[0].value, I->src[0].value,
-                              I->perspective, location, bytes, &len) &&
+   if (I->op == AGX_OPCODE_RHW_INTERP_AGX3) {
+      if (I->saturate || location != AGX3_VARY_CENTER)
+         return false;
+      return agx3_vary_projective_rhw(enc, I->dest[0].value,
+                                     I->src[0].value, first, bytes, &len) &&
+             agx3_append(emission, bytes, len);
+   }
+   /* The native G17P center_no_perspective scalar/vector programs use
+    * f11=1 as well. This bit does not select perspective correction: the
+    * VIT shade model and explicit RCP/MUL sequence do that. Keep the raw
+    * codec able to reproduce both native f11 forms. */
+   const bool native_mode = I->perspective ||
+      (fragment && enc == AGX_ISA_ENCODING_AGX3B &&
+       location == AGX3_VARY_CENTER);
+   return agx3_vary_interp_at_start(enc, I->dest[0].value, I->src[0].value,
+                                    native_mode, location, first, bytes, &len) &&
           agx3_append(emission, bytes, len);
 }
 
@@ -2393,6 +2464,85 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
+/* Ordinary position.xyzw plus one float2 user varying. The fresh native
+ * gradient stages six values and writes indices 0..5 in order. Keep this
+ * separate from the byte-exact four-position protocol and from wider/CF VSs.
+ */
+static bool
+agx3_is_g17p_six_output_vs(agx_context *ctx, enum agx_isa_encoding enc)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_VERTEX ||
+       ctx->is_preamble)
+      return false;
+
+   unsigned blocks = 0, outputs = 0;
+   bool stopped = false;
+   agx_foreach_block(ctx, block) {
+      if (++blocks != 1)
+         return false;
+      agx_foreach_instr_in_block(block, I) {
+         if (stopped)
+            return false;
+         switch (I->op) {
+         case AGX_OPCODE_STOP:
+            stopped = true;
+            break;
+         case AGX_OPCODE_ST_VARY:
+            if (I->nr_dests != 0 || I->nr_srcs != 2 ||
+                I->src[0].type != AGX_INDEX_IMMEDIATE ||
+                I->src[0].value >= 6 ||
+                (outputs & (1u << I->src[0].value)) ||
+                !agx3_vary_reg32(I->src[1]) ||
+                agx_channels(I->src[1]) != 1)
+               return false;
+            outputs |= 1u << I->src[0].value;
+            break;
+         case AGX_OPCODE_GET_SR:
+            if (I->sr != AGX_SR_VERTEX_ID)
+               return false;
+            break;
+         case AGX_OPCODE_IADD:
+         case AGX_OPCODE_DEVICE_LOAD:
+         case AGX_OPCODE_MOV_IMM:
+         case AGX_OPCODE_MOV:
+         case AGX_OPCODE_FADD:
+         case AGX_OPCODE_FMUL:
+            /* Normal packing still validates each operand/width/encoding. */
+            break;
+         default:
+            return false;
+         }
+      }
+   }
+   return outputs == 0x3f;
+}
+
+/* The sources of a contiguous terminal store bundle cannot be overwritten
+ * before their injected staging COPY reads retire. All six staging addresses
+ * and scoreboard slots are distinct. Original producers retire on first COPY;
+ * only the final UVSWs need wait for the six new staging producers. */
+static bool
+agx3_six_outputs_are_terminal(agx_context *ctx)
+{
+   unsigned next = 0;
+   bool stopped = false;
+   agx_foreach_instr_global(ctx, I) {
+      if (stopped)
+         return false;
+      if (I->op == AGX_OPCODE_ST_VARY) {
+         if (I->src[0].value != next++)
+            return false;
+      } else if (I->op == AGX_OPCODE_STOP) {
+         if (next != 6)
+            return false;
+         stopped = true;
+      } else if (next) {
+         return false;
+      }
+   }
+   return next == 6 && stopped;
+}
+
 /* Apple's real builtin EOT factory (BTNF kind5, EOT key0x10020300) emits
  * this complete 68-byte fragment program. Its ESL contract is a PBE table
  * pointer in uniform halves0..3 and imageblock byte offset in halves4..5.
@@ -2735,6 +2885,22 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
    unsigned g17p_positions_staged = 0;
+   const bool g17p_six_output_protocol = agx3_is_g17p_six_output_vs(ctx, enc);
+   const bool g17p_terminal_outputs = g17p_six_output_protocol &&
+      agx3_six_outputs_are_terminal(ctx);
+   unsigned g17p_outputs_staged = 0;
+   /* User-output graphs outside the qualified six-scalar shape must not
+    * silently fall back to immediate, potentially out-of-order writeout. */
+   if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
+      agx_foreach_block(ctx, block) {
+         agx_foreach_instr_in_block(block, I) {
+            if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs >= 1 &&
+                I->src[0].type == AGX_INDEX_IMMEDIATE &&
+                I->src[0].value >= 4 && !g17p_six_output_protocol)
+               AGX3_REFUSE(I);
+         }
+      }
+   }
    /* Across 71 fully decoded own-shader AGX3b vertex programs, f79 marks the
     * final LDDEV with zero exceptions and the first LDDEV uses slot 6 with
     * zero exceptions. Later slots vary with scheduling, so only the two
@@ -2799,6 +2965,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
    k = 0;
    unsigned vertex_loads_seen = 0;
+   bool interpolation_started = false;
 
    agx_foreach_block(ctx, block) {
       block->offset = emission->size;
@@ -2857,8 +3024,73 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
 
-         if (I->op == AGX_OPCODE_INTERP_AGX3) {
-            if (!agx3_emit_interp(emission, enc, I, wait))
+         if (I->op == AGX_OPCODE_INTERP_AGX3 ||
+             I->op == AGX_OPCODE_RHW_INTERP_AGX3) {
+            if (I->op == AGX_OPCODE_RHW_INTERP_AGX3 &&
+                (enc != AGX_ISA_ENCODING_AGX3B ||
+                 ctx->stage != MESA_SHADER_FRAGMENT ||
+                 !agx3_private_rhw_use(ctx, block, I)))
+               AGX3_REFUSE(I);
+            const bool first = enc == AGX_ISA_ENCODING_AGX3B &&
+               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started;
+            if (!agx3_emit_interp(emission, enc, I, wait, first,
+                                  ctx->stage == MESA_SHADER_FRAGMENT))
+               AGX3_REFUSE(I);
+            interpolation_started = true;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PERSP_RCP_AGX3) {
+            if (I->nr_dests != 1 || I->nr_srcs != 1 || I->saturate ||
+                I->imm > 0x7f || !agx3_vary_reg32(I->dest[0]) ||
+                agx_channels(I->dest[0]) != 1 ||
+                !agx3_vary_reg32(I->src[0]) ||
+                agx_channels(I->src[0]) != 1 || I->src[0].kill ||
+                (I->src[0].cache && I->src[0].discard))
+               AGX3_REFUSE(I);
+            const struct agx3_persp_rcp_desc desc = {
+               .dest = I->dest[0].value,
+               .rhw = I->src[0].value,
+               .coef_index = I->imm,
+               .rhw_cache = I->src[0].cache,
+               .wait_mask = wait,
+            };
+            /* Post-RA discard is optional liveness. This operand leaf has no
+             * discard bit: those bits carry the coefficient index instead. */
+            uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH], len = 0;
+            if (!agx3_persp_rcp_encode(enc, &desc, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PERSP_MUL_AGX3) {
+            if (I->nr_dests != 1 || I->nr_srcs != 2 || I->saturate ||
+                I->imm > 0x7f || !agx3_vary_reg32(I->dest[0]) ||
+                agx_channels(I->dest[0]) != 1 ||
+                !agx3_vary_reg32(I->src[0]) ||
+                !agx3_vary_reg32(I->src[1]) ||
+                agx_channels(I->src[0]) != 1 ||
+                agx_channels(I->src[1]) != 1 ||
+                I->src[0].kill || I->src[1].kill ||
+                (I->src[0].cache && I->src[0].discard) ||
+                (I->src[1].cache && I->src[1].discard))
+               AGX3_REFUSE(I);
+            const struct agx3_persp_mul_desc desc = {
+               .dest = I->dest[0].value,
+               .raw = I->src[0].value,
+               .reciprocal = I->src[1].value,
+               .raw_liveness = I->src[0].discard ? AGX3_OPERAND_KILL :
+                  I->src[0].cache ? AGX3_OPERAND_LIVE : AGX3_OPERAND_UNMARKED,
+               .reciprocal_liveness = I->src[1].discard ? AGX3_OPERAND_KILL :
+                  I->src[1].cache ? AGX3_OPERAND_LIVE : AGX3_OPERAND_UNMARKED,
+               .vary_index = I->imm,
+               .dest_hint = true,
+               .wait_mask = wait,
+            };
+            uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH], len = 0;
+            if (!agx3_persp_mul_encode(enc, &desc, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
          }
@@ -2874,17 +3106,42 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * Each scalar is consumed immediately, before its slot/address
              * can be reused. A still-live general producer sharing the slot
              * must retire before the staging COPY reuses it. */
-            const uint8_t stage_slot = g17p_position_protocol
+            const uint8_t stage_slot = (g17p_position_protocol ||
+                                        g17p_six_output_protocol)
                                          ? I->src[0].value + 1 : next_uvs_slot;
             const uint16_t staging_half = 2 * (stage_slot - 1);
             const uint16_t staging_bit = 1u << (stage_slot - 1);
-            const uint16_t stage_wait = wait | (outstanding_here & staging_bit);
+            const uint16_t stage_wait = g17p_terminal_outputs ?
+               (g17p_outputs_staged == 0 ? (wait | outstanding_here) : 0) :
+               (wait | (g17p_six_output_protocol ? outstanding_here :
+                                                  (outstanding_here & staging_bit)));
             if (!agx3_emit_uvsw(emission, enc, I, staging_half, stage_slot,
-                                stage_wait, g17p_position_protocol))
+                                stage_wait, g17p_position_protocol ||
+                                            g17p_six_output_protocol))
                AGX3_REFUSE(I);
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs, staging_half + 2);
             outstanding &= (uint16_t)~stage_wait;
+            if (g17p_six_output_protocol) {
+               /* Nonterminal stores can be followed by GPR/slot reuse, so
+                * retain the existing immediate retirement there. A terminal
+                * bundle has no intervening IR and uses six unique slots;
+                * its original producers were all retired by the first COPY.
+                * The final UVSWs retire those six staging reads instead. */
+               if (!g17p_terminal_outputs &&
+                   !agx3_retire_slots_noop(emission, enc, staging_bit))
+                  AGX3_REFUSE(I);
+               if (++g17p_outputs_staged == 6) {
+                  for (unsigned component = 0; component < 6; ++component) {
+                     uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
+                     if (!agx3_vary_uvsw(enc, component * 2, component,
+                                          component + 1, true,
+                                          1u << component, bytes, &len) ||
+                         !agx3_append(emission, bytes, len))
+                        AGX3_REFUSE(I);
+                  }
+               }
+            }
             /* Match the complete Apple float2 VS's producer-before-writeout
              * schedule: stage x/y before Mesa reuses their GPRs for z/w,
              * then emit the four UVSWs only after all four values exist.

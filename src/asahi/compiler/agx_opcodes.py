@@ -406,6 +406,18 @@ op("iter", (0x21, 8, _), srcs = 2, imms = [CHANNELS, INTERPOLATION])
 op("interp_agx3", None, srcs = 2,
    imms = [INTERPOLATION, PERSPECTIVE])
 
+# Native projective-only RHW producer. A distinct opcode prevents CSE from
+# merging it with ordinary position.w, whose f32interp f54 must remain clear.
+op("rhw_interp_agx3", None, srcs = 2, imms = [INTERPOLATION])
+
+# G17P's native projective multiply carries the originating coefficient index.
+# Keep that provenance through SSA/RA; an ordinary fmul cannot encode it.
+op("persp_mul_agx3", None, srcs = 2, imms = [IMM], is_float = True)
+
+# Projective RCP also carries the RHW coefficient; preserve it independently.
+op("persp_rcp_agx3", None, srcs = 1, imms = [IMM], is_float = True)
+
+
 # Sources are the coeffient register for the varying, the coefficient register
 # for W, and the sample index (if applicable)
 op("iterproj", (0x21, 8, _), srcs = 3, imms = [CHANNELS, INTERPOLATION])
