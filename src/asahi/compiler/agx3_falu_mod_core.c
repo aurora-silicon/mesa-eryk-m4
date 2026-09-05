@@ -135,6 +135,41 @@ agx3_falu_add_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
    return true;
 }
 
+/* Apple lowers float-to-half conversion to f32add with a16-bit destination
+ * and the exact negative-zero minifloat in the other input. This preserves
+ * signed zero and rounds only once; half4 witnesses include odd halves. */
+bool
+agx3_falu_narrow_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                     bool saturate, const struct agx3_falu_runtime *runtime,
+                     uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !runtime || !out || !len ||
+       dest >= 256 || src >= 256 || (src & 1) || runtime->wait_mask > 0x3f ||
+       (runtime->cache[0] && runtime->discard[0]))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(9, 2), KV(10, 1), KV(25, 2), KV(26, 2), KV(42, 1), KV(43, 2),
+   };
+   struct agx3_field_kv ov[14] = {
+      KV(2, dest), KV(18, src), KV(34, 0x80), KV(11, runtime->dest_cache),
+      KV(27, runtime->cache[0]), KV(29, runtime->discard[0]), KV(14, saturate),
+   };
+   unsigned n = 7;
+   for (unsigned i = 0; i < 6; ++i)
+      ov[n++] = (struct agx3_field_kv)KV(52 + i,
+                                       (runtime->wait_mask >> i) & 1);
+   for (unsigned ep = 0; ep <= 3; ++ep) {
+      uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], size;
+      if (agx3_bind_compose(enc, "f32add", ep, base, 6, ov, n, bytes, &size)) {
+         for (unsigned i = 0; i < size; ++i)
+            out[i] = bytes[i];
+         *len = size;
+         return true;
+      }
+   }
+   return false;
+}
+
 bool
 agx3_falu_mul_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
                   uint16_t src1, const struct agx3_falu_mods *m,

@@ -14,6 +14,46 @@
 #include <string.h>
 
 static unsigned
+narrow_runtime_vectors(void)
+{
+   const struct {
+      uint16_t dest, src;
+      bool discard, dest_cache, saturate;
+      uint8_t wait, size, bytes[8];
+   } vectors[] = {
+      {0,0,true,false,false,32,6,{0x01,0x01,0x1c,0x81,0,0xc2}},
+      {1,2,true,false,false,0,6,{0x01,0x03,0x1c,0x81,0x04,0x02}},
+      {3,6,true,false,false,0,6,{0x11,0x07,0x1c,0x81,0x04,0x02}},
+      {0,2,false,true,false,32,6,{0x01,0x03,0x34,0x81,0,0xc2}},
+      {2,2,true,false,true,32,8,{0x11,0x03,0x1c,0x81,0x01,0x02,0,0x82}},
+   };
+   unsigned fail = 0;
+   for (unsigned i=0; i<sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      struct agx3_falu_runtime rt = {
+         .discard={vectors[i].discard}, .dest_cache=vectors[i].dest_cache,
+         .wait_mask=vectors[i].wait,
+      };
+      uint8_t bytes[16], length;
+      if (!agx3_falu_narrow_f32(AGX_ISA_ENCODING_AGX3B, vectors[i].dest,
+             vectors[i].src, vectors[i].saturate, &rt, bytes, &length) ||
+          length!=vectors[i].size || memcmp(bytes,vectors[i].bytes,length)) {
+         fprintf(stderr,"native narrowing vector %u failed\n",i);
+         fail++;
+      }
+   }
+   struct agx3_falu_runtime rt = {.cache={true},.wait_mask=63};
+   uint8_t bytes[16], length=0;
+   fail += !agx3_falu_narrow_f32(AGX_ISA_ENCODING_AGX3B,255,254,false,&rt,bytes,&length);
+   fail += length>10;
+   fail += agx3_falu_narrow_f32(AGX_ISA_ENCODING_AGX3B,256,254,false,&rt,bytes,&length);
+   fail += agx3_falu_narrow_f32(AGX_ISA_ENCODING_AGX3B,0,255,false,&rt,bytes,&length);
+   rt.discard[0]=true;
+   fail += agx3_falu_narrow_f32(AGX_ISA_ENCODING_AGX3B,0,2,false,&rt,bytes,&length);
+   printf("native f32-to-f16: odd/even halves, live/dead input, saturate, waits: %u failures\n",fail);
+   return fail;
+}
+
+static unsigned
 add_runtime_vectors(void)
 {
    struct add_vector {
@@ -216,7 +256,7 @@ runtime_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors();
+   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors() + narrow_runtime_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

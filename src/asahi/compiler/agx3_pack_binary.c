@@ -4239,6 +4239,32 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         /* AGX models a narrowing float conversion as add with exact -0.
+          * Keep one native operation, with actual source lifetime and waits. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FADD &&
+             I->nr_dests == 1 && I->nr_srcs == 2 &&
+             agx3_src_is_register(I->dest[0]) && !I->dest[0].memory &&
+             I->dest[0].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1) {
+            const bool swap = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index src = I->src[swap ? 1 : 0];
+            const agx_index zero = I->src[swap ? 0 : 1];
+            if (agx3_src_is_register(src) && !src.memory && !src.abs && !src.neg &&
+                !src.kill && src.size == AGX_SIZE_32 && agx_channels(src) == 1 &&
+                zero.type == AGX_INDEX_IMMEDIATE && zero.value == 0x80 &&
+                !zero.memory && !zero.abs && !zero.neg) {
+               const struct agx3_falu_runtime runtime = {
+                  .cache = {src.cache}, .discard = {src.discard},
+                  .dest_cache = I->dest[0].cache, .wait_mask = wait,
+               };
+               uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], len;
+               if (!agx3_falu_narrow_f32(enc, I->dest[0].value, src.value,
+                                         I->saturate, &runtime, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
          /* Native scalar f32 x f16 -> f32. Keep the half register distinct
           * from its neighbour, preserve post-RA hints and producer waits. */
          if (I->op == AGX_OPCODE_FMUL && I->nr_dests == 1 &&

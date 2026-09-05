@@ -3837,3 +3837,20 @@ TEST_F(AGX3PackBinary, ModifiedFaddWaitAndLifetimeStayFused)
    ASSERT_GE(code.size(), 10u);
    EXPECT_EQ(memcmp(code.data()+code.size()-10, native, 6), 0);
 }
+
+TEST_F(AGX3PackBinary, NarrowFaddKeepsOddHalfAndLiveInput)
+{
+   for (bool swapped : {false,true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index source = agx_register(2, AGX_SIZE_32);
+      agx_index zero = agx_immediate(0x80);
+      agx_fadd_to(b, agx_register(1, AGX_SIZE_16),
+                  swapped ? zero : source, swapped ? source : zero);
+      agx_stop(b);
+      auto code = pack(b);
+      /* One16-bit rounding ADD, with no source discard and no widening. */
+      const uint8_t expected[6] = {0x01,0x03,0x14,0x81,0x04,0x02};
+      ASSERT_EQ(code.size(),10);
+      EXPECT_EQ(memcmp(code.data(),expected,6),0);
+   }
+}
