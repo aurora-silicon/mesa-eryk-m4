@@ -296,6 +296,99 @@ static void exact(const uint8_t *bytes, uint8_t length, const char *hex)
    }
 }
 
+static void
+test_modified_minifloat_add(void)
+{
+   /* Fresh Apple Metal 32023.917, applegpu_g17p: sat_only, complement,
+    * sat_add, sat_neg, complement_reuse, sat_reuse, sat_pair, cache_add.
+    * Source and native objects are retained in .tmp/g17p-alpha-20260905.
+    */
+   const struct {
+      unsigned dest, src, imm;
+      bool neg, sat;
+      enum agx3_alu_hint hint;
+      unsigned wait;
+      const char *hex;
+   } cases[] = {
+      {0, 0, 0x80, false, true, AGX3_ALU_HINT_DISCARD, 32, "09011c8101020082"},
+      {0, 0, 0x30, true, false, AGX3_ALU_HINT_DISCARD, 32, "09b1140180c8"},
+      {0, 0, 0x20, false, true, AGX3_ALU_HINT_DISCARD, 32, "09a1140181000082"},
+      {0, 0, 0x30, true, true, AGX3_ALU_HINT_DISCARD, 32, "09b1140181080082"},
+      {0, 2, 0x30, true, false, AGX3_ALU_HINT_NONE, 32, "09b1040380c8"},
+      {0, 2, 0x80, false, true, AGX3_ALU_HINT_NONE, 32, "0903148101020082"},
+      {2, 2, 0x80, false, true, AGX3_ALU_HINT_DISCARD, 0, "19031c8101020002"},
+      {0, 6, 0x80, false, true, AGX3_ALU_HINT_CACHE, 32, "0987148101020082"},
+      {2, 6, 0x30, true, false, AGX3_ALU_HINT_CACHE, 0, "19b104878008"},
+   };
+   uint8_t out[AGX3_ALU_MAX_LENGTH], len;
+   for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+      assert(agx3_alu_fadd_minifloat_mod(
+         AGX_ISA_ENCODING_AGX3B, cases[i].dest, cases[i].src, cases[i].imm,
+         cases[i].neg, cases[i].sat, cases[i].hint, cases[i].wait, out, &len));
+      exact(out, len, cases[i].hex);
+   }
+
+   const unsigned regs[] = {0, 2, 30, 62, 126, 128, 254};
+   const unsigned immediates[] = {0, 0x20, 0x30, 0x80, 0xb0, 0xff};
+   unsigned shapes = 0;
+   for (unsigned d = 0; d < sizeof(regs) / sizeof(regs[0]); ++d)
+      for (unsigned r = 0; r < sizeof(regs) / sizeof(regs[0]); ++r)
+         for (unsigned k = 0; k < sizeof(immediates) / sizeof(immediates[0]); ++k)
+            for (unsigned neg = 0; neg < 2; ++neg)
+               for (unsigned hint = 0; hint <= AGX3_ALU_HINT_CACHE; ++hint)
+                  for (unsigned wait = 0; wait < 64; ++wait) {
+                     const unsigned imm = immediates[k];
+                     const bool swap = imm == 0x80 && !neg;
+                     assert(agx3_alu_fadd_minifloat_mod(
+                        AGX_ISA_ENCODING_AGX3B, regs[d], regs[r], imm, neg,
+                        true, hint, wait, out, &len));
+                     assert(len == 8);
+                     uint64_t bits = 0;
+                     for (unsigned i = 0; i < len; ++i)
+                        bits |= (uint64_t)out[i] << (i * 8);
+                     /* Physical bit extraction independent of the composer. */
+                     assert((((bits >> 34) & 1) | (((bits >> 4) & 15) << 1) |
+                             (((bits >> 22) & 3) << 5) |
+                             (((bits >> 44) & 1) << 7)) == regs[d]);
+                     const unsigned low = swap ? 35 : 36;
+                     const unsigned middle = swap ? 9 : 25;
+                     const unsigned high = swap ? 40 : 42;
+                     assert((((bits >> low) & 1) |
+                             (((bits >> middle) & 63) << 1) |
+                             (((bits >> high) & 1) << 7)) == regs[r]);
+                     assert((((bits >> (swap ? 36 : 35)) & 1) |
+                             (((bits >> (swap ? 25 : 9)) & 63) << 1) |
+                             (((bits >> (swap ? 20 : 19)) & 1) << 7)) == imm);
+                     assert(((bits >> (swap ? 15 : 31)) & 1) ==
+                            (hint == AGX3_ALU_HINT_CACHE));
+                     assert(((bits >> (swap ? 19 : 20)) & 1) ==
+                            (hint == AGX3_ALU_HINT_DISCARD));
+                     assert(((bits >> 43) & 1) == neg);
+                     assert((bits >> 57) & 1);
+                     assert((((bits >> 45) & 7) | (((bits >> 61) & 7) << 3)) == wait);
+                     ++shapes;
+                  }
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3C, 0, 0, 0x80,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 1, 0, 0x80,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 1, 0x80,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 256, 0, 0x80,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 256, 0x80,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 0, 256,
+                                     false, true, 0, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 0, 0x80,
+                                     false, true, 3, 0, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 0, 0x80,
+                                     false, true, 0, 64, out, &len));
+   assert(!agx3_alu_fadd_minifloat_mod(AGX_ISA_ENCODING_AGX3B, 0, 0, 0x30,
+                                     true, false, 0, 63, out, &len));
+   printf("Modified minifloat add:9 native witnesses +%u physical bit checks passed\n", shapes);
+}
+
 static void test_half_uv(void)
 {
    uint8_t out[16], size;
@@ -342,6 +435,7 @@ static void test_half_uv(void)
 }
 
 int main(void){
+   test_modified_minifloat_add();
    test_half_uv();
    test_fmul_minifloat();
    test_fadd_minifloat();

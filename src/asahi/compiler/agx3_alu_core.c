@@ -72,6 +72,103 @@ agx3_alu_fadd_minifloat(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
 }
 
 bool
+agx3_alu_fadd_minifloat_mod(enum agx_isa_encoding enc, uint16_t dest,
+                           uint16_t src, uint16_t immediate, bool negate_src,
+                           bool saturate, enum agx3_alu_hint hint,
+                           uint16_t wait_mask,
+                           uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) || immediate > 0xff ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Apple sat_only: 09011c8101020082, sat(r0 + -0), wait6.
+    * Native puts this -0 minifloat in field34 and its GPR in field18.
+    * Apple complement: 09b1140180c8, -r0 + 1, discard/wait6.
+    * sat_add and sat_neg retain that field35/field17 routing, extending
+    * the instruction to ep2 for saturation and independent wait bits.
+    * Commuting the add's two unmodified operands retains signed-zero
+    * semantics; do not commute a negation away from its source register.
+    */
+   const bool swap = saturate && immediate == 0x80 && !negate_src;
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, swap ? 2 : 1}, {26, 2},
+      {42, swap ? 1 : 2}, {43, 2},
+   };
+   struct agx3_field_kv fields[13] = {
+      {2, dest}, {swap ? 18 : 35, src}, {swap ? 34 : 17, immediate},
+      {swap ? 27 : 44, hint == AGX3_ALU_HINT_CACHE},
+      {swap ? 29 : 46, hint == AGX3_ALU_HINT_DISCARD},
+      {swap ? 31 : 48, negate_src}, {14, saturate},
+   };
+   unsigned n = 7;
+   for (unsigned slot = 0; slot < 6; ++slot)
+      if (wait_mask & (1u << slot))
+         fields[n++] = (struct agx3_field_kv){52 + slot, 1};
+
+   return agx3_bind_compose(enc, "f32add", saturate ? 2 : 1,
+                            base, 6, fields, n, out, len);
+}
+
+bool
+agx3_alu_float_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                     uint16_t dest, const uint16_t src[3],
+                     const enum agx3_alu_hint hints[3], uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       (op != AGX3_ALU_FADD && op != AGX3_ALU_FMUL && op != AGX3_ALU_FMA) ||
+       (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+   const unsigned count = op == AGX3_ALU_FMA ? 3 : 2;
+   const unsigned limit = op == AGX3_ALU_FADD ? 256 : 128;
+   if (dest >= limit || (dest & 1))
+      return false;
+   for (unsigned i = 0; i < count; ++i)
+      if (src[i] >= limit || (src[i] & 1) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
+         return false;
+
+   /* Retain the qualified operand classes, not a specimen's liveness or
+    * unconditional waits. In Mesa order src0/src1/src2 map to f35/f18/f52.
+    * Fresh add_live/mul_live/fma_live witnesses retain all their operands;
+    * all_ops additionally witnesses independently cached/discarded sources.
+    */
+   const struct agx3_alu_form *f = &agx3_alu_forms[op][0];
+   struct agx3_field_kv base[20], ov[16];
+   unsigned nb = 0, n = 0;
+   for (unsigned i = 0; i < f->nbase; ++i) {
+      unsigned field = f->base[i].f;
+      bool wait_field = false;
+      for (unsigned w = 0; w < f->nwait; ++w)
+         wait_field |= field == f->wait[w];
+      if (field != 29 && field != 46 && field != 63 && !wait_field)
+         base[nb++] = (struct agx3_field_kv){field, f->base[i].v};
+   }
+   ov[n++] = (struct agx3_field_kv){2, dest};
+   const unsigned operands[] = {35, 18, 52};
+   const unsigned cache[] = {44, 27, 61};
+   const unsigned discard[] = {46, 29, 63};
+   for (unsigned i = 0; i < count; ++i) {
+      ov[n++] = (struct agx3_field_kv){operands[i], src[i]};
+      ov[n++] = (struct agx3_field_kv){cache[i], hints[i] == AGX3_ALU_HINT_CACHE};
+      ov[n++] = (struct agx3_field_kv){discard[i], hints[i] == AGX3_ALU_HINT_DISCARD};
+   }
+   for (unsigned i = 0; i < f->nwait; ++i)
+      if (wait_mask & (1u << i))
+         ov[n++] = (struct agx3_field_kv){f->wait[i], 1};
+
+   const unsigned first = op == AGX3_ALU_FMA ? 2 : 0;
+   const unsigned last = op == AGX3_ALU_FMA ? 3 : 1;
+   for (unsigned ep = first; ep <= last; ++ep)
+      if (agx3_bind_compose(enc, f->mnemonic, ep, base, nb, ov, n, out, len))
+         return true;
+   return false;
+}
+
+bool
 agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
                     enum agx3_alu_hint hint, uint16_t wait_mask,
                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)

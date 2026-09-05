@@ -2832,7 +2832,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    };
 
    struct agx_ppp_hal200_graphics_core secondary_record;
-   const struct agx_ppp_hal200_graphics_fields secondary_fields = {
+   struct agx_ppp_hal200_graphics_fields secondary_fields = {
       .words = {UINT32_C(0x00000200), UINT32_C(0x07e00000),
                 UINT32_C(0x07e00000), UINT32_C(0x0001ffff)},
    };
@@ -2907,6 +2907,16 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                            &raster_state))
       return false;
 
+   /* Native update 0x46c6ac..0x46c6dc stores pass type at context+0x1f78.
+    * The 0x46ff78 path emits it in SECONDARY header 0x02000048's first
+    * payload word, masked by 0xe6600000 and ORed with 0x200. It is not the
+    * older-generation FRAGMENT_CONTROL location in our PRIMARY record.
+    */
+   const uint32_t pass_type = linked_fs->b.fragment_control.opaque[0] >> 29;
+   if (pass_type != AGX_PASS_TYPE_OPAQUE &&
+       pass_type != AGX_PASS_TYPE_TRANSLUCENT)
+      return false;
+   secondary_fields.words[0] |= pass_type << 29;
    output_fields.words[5] = raster_state.fragment_control;
    primary_fields.words[0] = raster_state.fragment_control;
    if (!agx_ppp_hal200_fragment_core_pack(dev->dev.chip, &fs_fields,

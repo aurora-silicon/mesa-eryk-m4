@@ -2544,6 +2544,43 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
       !ctx->key->fs.ignore_tib_dependencies && tile_stores_left == 1 &&
       tile_loads_left == 0;
+   /* Exact native RGBA8 alpha pipeline: one class-8 read wait/load followed
+    * by one class-4 write wait/store, under the same class-12 entry/release.
+    * Keep MRT, special coordinates, other formats and control flow closed.
+    */
+   bool g17p_blend_protocol =
+      enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_FRAGMENT &&
+      !ctx->key->fs.ignore_tib_dependencies && tile_loads_left == 1 &&
+      tile_stores_left == 1;
+   if (g17p_blend_protocol) {
+      unsigned blocks = 0, phase = 0;
+      agx_foreach_block(ctx, protocol_block) {
+         if (++blocks != 1)
+            g17p_blend_protocol = false;
+         agx_foreach_instr_in_block(protocol_block, P) {
+            if (P->op == AGX_OPCODE_WAIT_PIX) {
+               if (phase == 0 && P->writeout == 8)
+                  phase = 1;
+               else if (phase == 2 && P->writeout == 4)
+                  phase = 3;
+               else
+                  g17p_blend_protocol = false;
+            } else if (P->op == AGX_OPCODE_LD_TILE ||
+                       P->op == AGX_OPCODE_ST_TILE) {
+               const bool load = P->op == AGX_OPCODE_LD_TILE;
+               if (phase != (load ? 1 : 3) || P->format != AGX_FORMAT_U8NORM ||
+                   P->mask != 15 || P->pixel_offset || P->explicit_coords)
+                  g17p_blend_protocol = false;
+               phase = load ? 2 : 4;
+            } else if (P->op == AGX_OPCODE_SIGNAL_PIX) {
+               g17p_blend_protocol = false;
+            }
+         }
+      }
+      g17p_blend_protocol &= phase == 4;
+   }
+   const bool g17p_pixel_protocol =
+      g17p_colour_protocol || g17p_blend_protocol;
    bool g17p_colour_open = false;
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
@@ -2747,8 +2784,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_WAIT_PIX ||
              I->op == AGX_OPCODE_SIGNAL_PIX) {
-            if (g17p_colour_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
-                I->writeout == 0xc && !g17p_colour_open) {
+            if (g17p_pixel_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
+                I->writeout == (g17p_blend_protocol ? 8 : 0xc) &&
+                !g17p_colour_open) {
                uint8_t entry[AGX3_PIXEL_MAX_LENGTH];
                uint8_t entry_len = 0;
                if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
@@ -2786,7 +2824,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
                AGX3_REFUSE(I);
 
-            if (g17p_colour_protocol && last) {
+            if (g17p_pixel_protocol && I->op == AGX_OPCODE_ST_TILE && last) {
                uint8_t release[AGX3_PIXEL_MAX_LENGTH];
                uint8_t release_len = 0;
                if (!g17p_colour_open ||
@@ -3461,7 +3499,8 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           */
          if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
              I->nr_dests == 1 &&
-             I->nr_srcs == 2 && !I->saturate &&
+             I->nr_srcs == 2 &&
+             (I->op == AGX_OPCODE_FADD || !I->saturate) &&
              agx3_src_is_register(I->dest[0]) &&
              I->dest[0].size == AGX_SIZE_32 &&
              agx_channels(I->dest[0]) == 1 &&
@@ -3475,15 +3514,72 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t len = 0;
             const bool multiply = I->op == AGX_OPCODE_FMUL;
             if (imm.memory || imm.abs || imm.neg ||
-                !agx3_src_is_register(reg) || reg.abs || reg.neg || reg.kill ||
+                !agx3_src_is_register(reg) || reg.abs || reg.kill ||
+                (multiply && reg.neg) ||
                 (reg.cache && reg.discard) ||
-                reg.size != AGX_SIZE_32 || agx_channels(reg) != 1 ||
-                !(multiply ? agx3_alu_fmul_minifloat : agx3_alu_fadd_minifloat)(
-                   enc, I->dest[0].value, reg.value, imm.value, agx3_post_ra_hint(reg), wait,
-                   bytes, &len) ||
-                !agx3_append(emission, bytes, len))
+                reg.size != AGX_SIZE_32 || agx_channels(reg) != 1)
+               AGX3_REFUSE(I);
+
+            bool encoded;
+            if (!multiply && (I->saturate || reg.neg)) {
+               encoded = agx3_alu_fadd_minifloat_mod(
+                  enc, I->dest[0].value, reg.value, imm.value, reg.neg,
+                  I->saturate, agx3_post_ra_hint(reg), wait, bytes, &len);
+            } else {
+               encoded = (multiply ? agx3_alu_fmul_minifloat :
+                                     agx3_alu_fadd_minifloat)(
+                  enc, I->dest[0].value, reg.value, imm.value,
+                  agx3_post_ra_hint(reg), wait, bytes, &len);
+            }
+            if (!encoded || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
+         }
+
+         /* The legacy generic packers embed specimen discard flags. Keep
+          * G17P's plain register ALU on the post-RA-aware path so an alpha or
+          * blend factor reused by later channels is not discarded early. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && !I->saturate &&
+             (I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL ||
+              I->op == AGX_OPCODE_FFMA)) {
+            bool plain = I->nr_dests == 1 &&
+                         agx3_vary_reg32(I->dest[0]) &&
+                         agx_channels(I->dest[0]) == 1 &&
+                         I->nr_srcs == (I->op == AGX_OPCODE_FFMA ? 3 : 2);
+            for (unsigned i = 0; i < I->nr_srcs; ++i)
+               plain &= agx3_vary_reg32(I->src[i]) &&
+                        agx_channels(I->src[i]) == 1;
+            if (plain) {
+               uint16_t src[3] = {0};
+               enum agx3_alu_hint hints[3] = {0};
+               for (unsigned i = 0; i < I->nr_srcs; ++i) {
+                  if (I->src[i].kill ||
+                      (I->src[i].cache && I->src[i].discard))
+                     AGX3_REFUSE(I);
+                  src[i] = I->src[i].value;
+                  hints[i] = agx3_post_ra_hint(I->src[i]);
+               }
+               const enum agx3_alu_op op = I->op == AGX_OPCODE_FADD
+                  ? AGX3_ALU_FADD : I->op == AGX_OPCODE_FMUL
+                  ? AGX3_ALU_FMUL : AGX3_ALU_FMA;
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+               if (!agx3_alu_float_reg(enc, op, I->dest[0].value, src, hints,
+                                        wait, bytes, &len)) {
+                  /* Compact forms cannot carry every wait combination. Drain
+                   * all outstanding work before the r0-preserving prelude,
+                   * then retry the same operands/hints without waits. */
+                  if (wait == 0 ||
+                      !agx3_retire_slots_noop(emission, enc,
+                                              wait | outstanding_here) ||
+                      !agx3_alu_float_reg(enc, op, I->dest[0].value, src,
+                                           hints, 0, bytes, &len))
+                     AGX3_REFUSE(I);
+                  outstanding = 0;
+               }
+               if (!agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
          }
 
          /* Modifier-carrying float ALU (no wait support yet). */

@@ -35,6 +35,14 @@ enum agx3_alu_hint {
    AGX3_ALU_HINT_CACHE = 2,
 };
 
+/* Plain f32 register FADD/FMUL/FMA with actual post-RA source hints and
+ * scheduler waits. Compact witnessed forms only; unsupported wait combinations
+ * return false so the caller can retire them explicitly before retrying. */
+bool agx3_alu_float_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                         uint16_t dest, const uint16_t src[3],
+                         const enum agx3_alu_hint hints[3], uint16_t wait_mask,
+                         uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 bool agx3_alu_mov16(enum agx_isa_encoding enc, uint16_t dest, uint32_t bits,
                      uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
                      uint8_t *len);
@@ -61,6 +69,17 @@ bool agx3_alu_fadd_minifloat(enum agx_isa_encoding enc, uint16_t dest,
                             uint16_t src, uint16_t immediate, enum agx3_alu_hint hint,
                             uint16_t wait_mask,
                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+/* Same f32/minifloat inputs with GPR negation and/or output saturation.
+ * Native ep2 carries saturation and all six independent wait bits; the
+ * unsaturated ep1 retains the compact helper's bounded wait combinations.
+ * Source hints apply to the GPR even when the native operand slots commute.
+ */
+bool agx3_alu_fadd_minifloat_mod(enum agx_isa_encoding enc, uint16_t dest,
+                                uint16_t src, uint16_t immediate,
+                                bool negate_src, bool saturate,
+                                enum agx3_alu_hint hint, uint16_t wait_mask,
+                                uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
 /* Same bounded operand/wait domain as fadd_minifloat, native f32 multiply. */
 bool agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest,
