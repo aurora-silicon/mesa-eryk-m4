@@ -6,6 +6,145 @@
 #include "agx3_binder.h"
 
 bool
+agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                       uint16_t immediate, enum agx3_alu_hint hint, uint16_t wait_mask,
+                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) || immediate > 0xff ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Fresh Apple mul_scale: 0983150180c0 is loaded f32 * minifloat0x02
+    * (1/32), wait6. mul_reuse: 0983050380c0 retains its half2 source.
+    * The ordinary multiply's additional fixed fields60/74 are both2;
+    * it shares add's operand routing, but its wait fields are80..85.
+    */
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, 1}, {26, 2},
+      {42, 2}, {43, 2}, {60, 2}, {74, 2},
+   };
+   struct agx3_field_kv fields[11] = {
+      {2, dest}, {35, src}, {17, immediate}, {46, hint == AGX3_ALU_HINT_DISCARD},
+      {44, hint == AGX3_ALU_HINT_CACHE},
+   };
+   unsigned n = 5;
+   for (unsigned slot = 0; slot < 6; ++slot)
+      if (wait_mask & (1u << slot))
+         fields[n++] = (struct agx3_field_kv){80 + slot, 1};
+
+   return agx3_bind_compose(enc, "f32mul", 1, base, 8, fields, n, out, len);
+}
+
+bool
+agx3_alu_fadd_minifloat(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                       uint16_t immediate, enum agx3_alu_hint hint, uint16_t wait_mask,
+                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       src >= 256 || ((dest | src) & 1) || immediate > 0xff ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Apple add_half: 09a1140180c0 (f32 register + minifloat0x20, wait6).
+    * add_reuse: 09a1040380c0 keeps its half2 source for a later store.
+    * Fragment position uses the same add without a wait. f25=1 selects the
+    * minifloat; f42=2 selects the GPR. The register is field35, not field18.
+    */
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, 1}, {26, 2}, {42, 2}, {43, 2},
+   };
+   struct agx3_field_kv fields[11] = {
+      {2, dest}, {35, src}, {17, immediate}, {46, hint == AGX3_ALU_HINT_DISCARD},
+      {44, hint == AGX3_ALU_HINT_CACHE},
+   };
+   unsigned n = 5;
+   for (unsigned slot = 0; slot < 6; ++slot)
+      if (wait_mask & (1u << slot))
+         fields[n++] = (struct agx3_field_kv){52 + slot, 1};
+
+   /* This encoding point rejects unsupported wait combinations. Do not
+    * silently clear waits or switch to an unwitnessed long-form variant.
+    */
+   return agx3_bind_compose(enc, "f32add", 1, base, 6, fields, n, out, len);
+}
+
+bool
+agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest, uint16_t src,
+                    enum agx3_alu_hint hint, uint16_t wait_mask,
+                    uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 128 ||
+       (dest & 1) || src >= 128 || (unsigned)hint > AGX3_ALU_HINT_CACHE ||
+       (wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Apple ushort_cs: a70756000200a420 (r0f <- r0h, wait slot6).
+    * ushort_pair_cs additionally witnesses odd source half3 and no wait;
+    * ushort_reuse_cs has f29=0 with a later16-bit store of the same source.
+    * Versus U32 int2flt only f26 changes2->1. f30=0 remains unsigned.
+    */
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, 2}, {26, 1},
+   };
+   struct agx3_field_kv fields[10] = {
+      {2, dest}, {18, src}, {29, hint == AGX3_ALU_HINT_DISCARD},
+      {27, hint == AGX3_ALU_HINT_CACHE},
+   };
+   unsigned n = 4;
+   for (unsigned slot = 0; slot < 6; ++slot)
+      if (wait_mask & (1u << slot))
+         fields[n++] = (struct agx3_field_kv){33 + slot, 1};
+   return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
+}
+
+/* Exact native G17P witnesses include 0x1800 (1/512), adjacent literals,
+ * odd destination halves and mixed multiplies with both source hints.
+ * LDIMM's nonzero-wait form has not been witnessed and remains refused. */
+bool
+agx3_alu_mov16(enum agx_isa_encoding enc, uint16_t dest, uint32_t bits,
+               uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       bits > 0xffff || wait_mask)
+      return false;
+   const struct agx3_field_kv fields[] = {{9, 2}, {10, 1}, {2, dest}, {14, bits}};
+   return agx3_bind_compose(enc, "ldimm", 1, fields, 4, NULL, 0, out, len);
+}
+
+bool
+agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
+                    uint16_t f32, uint16_t f16,
+                    enum agx3_alu_hint hint32, enum agx3_alu_hint hint16,
+                    uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                    uint8_t *len)
+{
+   if (!out || !len || enc != AGX_ISA_ENCODING_AGX3B || dest >= 256 ||
+       f32 >= 256 || f16 >= 256 || ((dest | f32) & 1) ||
+       (unsigned)hint32 > AGX3_ALU_HINT_CACHE ||
+       (unsigned)hint16 > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, 2}, {26, 2}, {42, 2}, {43, 1}, {60, 2}, {74, 2},
+   };
+   struct agx3_field_kv fields[13] = {
+      {2, dest}, {18, f32}, {35, f16},
+      {27, hint32 == AGX3_ALU_HINT_CACHE},
+      {29, hint32 == AGX3_ALU_HINT_DISCARD},
+      {44, hint16 == AGX3_ALU_HINT_CACHE},
+      {46, hint16 == AGX3_ALU_HINT_DISCARD},
+   };
+   unsigned n = 7;
+   for (unsigned bit = 0; bit < 6; ++bit)
+      if (wait_mask & (1u << bit))
+         fields[n++] = (struct agx3_field_kv){80 + bit, 1};
+   return agx3_bind_compose(enc, "f32mul", 0, base, 8, fields, n, out, len) ||
+          agx3_bind_compose(enc, "f32mul", 1, base, 8, fields, n, out, len);
+}
+
+bool
 agx3_alu_wait_supported(enum agx3_alu_op op)
 {
    /* fmin/fmax use a tied-operand fsel form whose duplicated compare fields

@@ -113,6 +113,228 @@ TEST_F(AGX3PackBinary, StraightLineALU)
    }
 }
 
+TEST_F(AGX3PackBinary, HalfUVPreservesSharedHalfAndOperandOrder)
+{
+   for (unsigned order = 0; order < 2; ++order) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_register(10, AGX_SIZE_16);
+      agx_mov_imm_to(b, half, 0x1800);
+      agx_index x = agx_register(0, AGX_SIZE_32);
+      agx_index y = agx_register(2, AGX_SIZE_32);
+      x.discard = y.discard = true;
+      half.cache = true;
+      agx_fmul_to(b, agx_register(0, AGX_SIZE_32),
+                    order ? half : x, order ? x : half);
+      half.cache = false;
+      half.discard = true;
+      agx_fmul_to(b, agx_register(2, AGX_SIZE_32), y, half);
+      agx_stop(b);
+      /* Native LDIMM and shared-half MUL forms, independently decoded. */
+      const std::vector<uint8_t> want = {
+         0x54,0x80,0x02,0x00,0x00,0x0c,0x00,0x00,
+         0x09,0x01,0x09,0x8a, 0x19,0x03,0x19,0x0a, 0x0e,0,0,0,
+      };
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, HalfUVRefusesUngroundedModes)
+{
+   for (unsigned mode = 0; mode < 9; ++mode) {
+      agx_builder *b = builder(mode == 0 ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B);
+      agx_index half = agx_register(10, AGX_SIZE_16);
+      agx_index wide = agx_register(0, AGX_SIZE_32);
+      if (mode == 1) half.neg = true;
+      if (mode == 2) half.abs = true;
+      if (mode == 3) half.cache = half.discard = true;
+      if (mode == 4) half.kill = true;
+      if (mode == 5) wide.value = 1;
+      if (mode == 6) half.value = 256;
+      if (mode == 7) wide.size = AGX_SIZE_16;
+      agx_instr *mul = agx_fmul_to(b, agx_register(2, AGX_SIZE_32), wide, half);
+      mul->saturate = mode == 8;
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+}
+
+TEST_F(AGX3PackBinary, U16ToF32PreservesHalfLivenessAndLoadWait)
+{
+   const enum agx_isa_encoding enc = AGX_ISA_ENCODING_AGX3B;
+   agx_builder *b = builder(enc);
+   agx_get_sr_to(b, agx_register(0, AGX_SIZE_32), AGX_SR_THREAD_POSITION_IN_GRID_X);
+   agx_index even = agx_register(0, AGX_SIZE_16);
+   agx_index odd = agx_register(1, AGX_SIZE_16);
+   even.discard = false;
+   odd.discard = true;
+   agx_convert_to(b, agx_register(4, AGX_SIZE_32),
+                   agx_immediate(AGX_CONVERT_U16_TO_F), even, AGX_ROUND_RTE);
+   agx_convert_to(b, agx_register(6, AGX_SIZE_32),
+                   agx_immediate(AGX_CONVERT_U16_TO_F), odd, AGX_ROUND_RTE);
+   agx_stop(b);
+   struct agx3_sr_desc sr = {};
+   sr.dest = 0;
+   sr.width = AGX3_SR_W32;
+   sr.sr = 23;
+   sr.slot = 1;
+   uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+   std::vector<uint8_t> want;
+   ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
+   append(want, bytes, len);
+   ASSERT_TRUE(agx3_alu_u16_to_f32(enc, 4, 0, AGX3_ALU_HINT_NONE, 1, bytes, &len));
+   append(want, bytes, len);
+   ASSERT_TRUE(agx3_alu_u16_to_f32(enc, 6, 1, AGX3_ALU_HINT_DISCARD, 0, bytes, &len));
+   append(want, bytes, len);
+   struct agx3_encoded_end end;
+   ASSERT_TRUE(agx3_pack_end(enc, &end));
+   append(want, end.bytes, end.length);
+   EXPECT_EQ(pack(b), want);
+}
+
+TEST_F(AGX3PackBinary, U16ToF32RejectsUnwitnessedDomains)
+{
+   for (unsigned variant = 0; variant < 6; ++variant) {
+      agx_builder *b = builder(variant == 0 ? AGX_ISA_ENCODING_AGX3C
+                                           : AGX_ISA_ENCODING_AGX3B);
+      agx_index dest = agx_register(4, variant == 1 ? AGX_SIZE_16 : AGX_SIZE_32);
+      agx_index src = variant == 2 ? agx_uniform(0, AGX_SIZE_16)
+                                   : agx_register(0, AGX_SIZE_16);
+      if (variant == 3)
+         src.neg = true;
+      agx_convert_to(b, dest,
+         agx_immediate(variant == 4 ? AGX_CONVERT_S16_TO_F : AGX_CONVERT_U16_TO_F),
+         src, variant == 5 ? AGX_ROUND_RTZ : AGX_ROUND_RTE);
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+}
+
+TEST_F(AGX3PackBinary, FaddMinifloatPreservesWaitLivenessAndCommutativity)
+{
+   const enum agx_isa_encoding enc = AGX_ISA_ENCODING_AGX3B;
+   for (unsigned order = 0; order < 2; ++order) {
+      agx_builder *b = builder(enc);
+      agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
+                    AGX_SR_THREAD_POSITION_IN_GRID_X);
+      agx_index live = agx_register(0, AGX_SIZE_32);
+      agx_index last = live;
+      live.discard = false;
+      last.discard = true;
+      agx_index imm = agx_immediate(0x20);
+      agx_fadd_to(b, agx_register(4, AGX_SIZE_32),
+                  order ? imm : live, order ? live : imm);
+      agx_fadd_to(b, agx_register(6, AGX_SIZE_32), last,
+                  agx_immediate(0x21));
+      agx_stop(b);
+      struct agx3_sr_desc sr = {};
+      sr.dest = 0;
+      sr.width = AGX3_SR_W32;
+      sr.sr = 23;
+      sr.slot = 1;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_fadd_minifloat(enc, 4, 0, 0x20, AGX3_ALU_HINT_NONE, 1,
+                                         bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_fadd_minifloat(enc, 6, 0, 0x21, AGX3_ALU_HINT_DISCARD, 0,
+                                         bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, FaddMinifloatRefusesUngroundedModes)
+{
+   for (unsigned variant = 0; variant < 10; ++variant) {
+      agx_builder *b = builder(variant == 0 ? AGX_ISA_ENCODING_AGX3C
+                                           : AGX_ISA_ENCODING_AGX3B);
+      agx_index dest = agx_register(4, variant == 1 ? AGX_SIZE_16 : AGX_SIZE_32);
+      agx_index src = variant == 2 ? agx_uniform(0, AGX_SIZE_32)
+                                   : agx_register(0, AGX_SIZE_32);
+      agx_index imm = agx_immediate(variant == 3 ? 256 : 0x20);
+      if (variant == 4)
+         src.neg = true;
+      if (variant == 5)
+         src.abs = true;
+      if (variant == 6)
+         imm.neg = true;
+      if (variant == 7)
+         src = agx_immediate(0x20);
+      if (variant == 8)
+         src.size = AGX_SIZE_16;
+      agx_instr *add = agx_fadd_to(b, dest, src, imm);
+      add->saturate = variant == 9;
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+}
+
+TEST_F(AGX3PackBinary, FmulMinifloatPreservesWaitLivenessAndCommutativity)
+{
+   const enum agx_isa_encoding enc = AGX_ISA_ENCODING_AGX3B;
+   for (unsigned order = 0; order < 2; ++order) {
+      agx_builder *b = builder(enc);
+      agx_get_sr_to(b, agx_register(0, AGX_SIZE_32),
+                    AGX_SR_THREAD_POSITION_IN_GRID_X);
+      agx_index live = agx_register(0, AGX_SIZE_32);
+      agx_index last = live;
+      live.discard = false;
+      last.discard = true;
+      agx_index imm = agx_immediate(0x02);
+      agx_fmul_to(b, agx_register(4, AGX_SIZE_32),
+                  order ? imm : live, order ? live : imm);
+      agx_fmul_to(b, agx_register(6, AGX_SIZE_32), last,
+                  agx_immediate(0x03));
+      agx_stop(b);
+      struct agx3_sr_desc sr = {};
+      sr.dest = 0;
+      sr.width = AGX3_SR_W32;
+      sr.sr = 23;
+      sr.slot = 1;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+      std::vector<uint8_t> want;
+      ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_fmul_minifloat(enc, 4, 0, 0x02, AGX3_ALU_HINT_NONE, 1,
+                                         bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_fmul_minifloat(enc, 6, 0, 0x03, AGX3_ALU_HINT_DISCARD, 0,
+                                         bytes, &len));
+      append(want, bytes, len);
+      struct agx3_encoded_end end;
+      ASSERT_TRUE(agx3_pack_end(enc, &end));
+      append(want, end.bytes, end.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, FmulMinifloatRefusesUngroundedModes)
+{
+   for (unsigned variant = 0; variant < 10; ++variant) {
+      agx_builder *b = builder(variant == 0 ? AGX_ISA_ENCODING_AGX3C
+                                           : AGX_ISA_ENCODING_AGX3B);
+      agx_index dest = agx_register(4, variant == 1 ? AGX_SIZE_16 : AGX_SIZE_32);
+      agx_index src = variant == 2 ? agx_uniform(0, AGX_SIZE_32)
+                                   : agx_register(0, AGX_SIZE_32);
+      agx_index imm = agx_immediate(variant == 3 ? 256 : 0x02);
+      if (variant == 4)
+         src.neg = true;
+      if (variant == 5)
+         src.abs = true;
+      if (variant == 6)
+         imm.neg = true;
+      if (variant == 7)
+         src = agx_immediate(0x02);
+      if (variant == 8)
+         src.size = AGX_SIZE_16;
+      agx_instr *mul = agx_fmul_to(b, dest, src, imm);
+      mul->saturate = variant == 9;
+      EXPECT_TRUE(pack(b, false).empty());
+   }
+}
+
 TEST_F(AGX3PackBinary, DeviceAtomicsUseGenerationSpecificReturnRegisters)
 {
    for (int e = 0; e < 2; ++e) {

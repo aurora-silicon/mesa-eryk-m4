@@ -27,6 +27,46 @@ bool agx3_alu_compose(enum agx_isa_encoding enc, enum agx3_alu_op op,
                       uint16_t dest, uint16_t src0, uint16_t src1,
                       uint16_t src2, uint32_t imm, uint16_t wait_mask,
                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+/* Post-RA source hints. These are distinct from the SSA kill flag. */
+enum agx3_alu_hint {
+   AGX3_ALU_HINT_NONE = 0,
+   AGX3_ALU_HINT_DISCARD = 1,
+   AGX3_ALU_HINT_CACHE = 2,
+};
+
+bool agx3_alu_mov16(enum agx_isa_encoding enc, uint16_t dest, uint32_t bits,
+                     uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                     uint8_t *len);
+bool agx3_alu_fmul_mixed(enum agx_isa_encoding enc, uint16_t dest,
+                          uint16_t f32, uint16_t f16,
+                          enum agx3_alu_hint hint32, enum agx3_alu_hint hint16,
+                          uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                          uint8_t *len);
+
+/* G17P's unsigned16 GPR half -> float32, RTE. Every U16 is exactly
+ * representable, so no precision is discarded. Native compiler witnesses
+ * include both last-use and reused input, odd half indices and load waits.
+ * This does not admit signed, byte, float16, vector, uniform or AGX3c forms.
+ */
+bool agx3_alu_u16_to_f32(enum agx_isa_encoding enc, uint16_t dest,
+                        uint16_t src, enum agx3_alu_hint hint, uint16_t wait_mask,
+                        uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+/* Native G17P f32 GPR + 8-bit minifloat, normal rounding, no modifiers.
+ * The six-byte form carries no wait, one of six waits, or slots1+2 together.
+ * Other wait combinations, operand files/widths and AGX3c are not admitted.
+ */
+bool agx3_alu_fadd_minifloat(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t src, uint16_t immediate, enum agx3_alu_hint hint,
+                            uint16_t wait_mask,
+                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+/* Same bounded operand/wait domain as fadd_minifloat, native f32 multiply. */
+bool agx3_alu_fmul_minifloat(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t src, uint16_t immediate, enum agx3_alu_hint hint,
+                            uint16_t wait_mask,
+                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 #ifdef __cplusplus
 }
 #endif

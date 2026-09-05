@@ -2468,6 +2468,13 @@ agx3_is_g17p_rt0_eot(const agx_context *ctx, enum agx_isa_encoding enc)
           zero_reg == offset_reg;
 }
 
+static enum agx3_alu_hint
+agx3_post_ra_hint(agx_index index)
+{
+   return index.discard ? AGX3_ALU_HINT_DISCARD :
+          index.cache ? AGX3_ALU_HINT_CACHE : AGX3_ALU_HINT_NONE;
+}
+
 bool
 agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 {
@@ -3027,8 +3034,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          /*
           * A zero immediate has its own instruction, `clr`, at both widths.
           * Apple emits it wherever a register is set to zero, and it is the
-          * only grounded way to materialize a 16-bit zero, which `ldimm` has
-          * no AGX3b form for.
+          * compact grounded way to materialize a 16-bit zero.
           */
          if (I->op == AGX_OPCODE_MOV_IMM && I->imm == 0 && wait == 0 &&
              I->nr_dests == 1 && I->nr_srcs == 0 &&
@@ -3383,6 +3389,100 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                           d.wait_mask);
                AGX3_REFUSE(I);
             }
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_MOV_IMM && I->nr_dests == 1 &&
+             I->nr_srcs == 0 && !I->saturate &&
+             agx3_src_is_register(I->dest[0]) &&
+             I->dest[0].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1) {
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+            if (I->imm > 0xffff ||
+                !agx3_alu_mov16(enc, I->dest[0].value, I->imm, wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         /* Native scalar f32 x f16 -> f32. Keep the half register distinct
+          * from its neighbour, preserve post-RA hints and producer waits. */
+         if (I->op == AGX_OPCODE_FMUL && I->nr_dests == 1 &&
+             I->nr_srcs == 2 && !I->saturate &&
+             agx3_src_is_register(I->dest[0]) &&
+             I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
+             (I->src[0].size == AGX_SIZE_16 || I->src[1].size == AGX_SIZE_16) &&
+             agx3_src_is_register(I->src[0]) && agx3_src_is_register(I->src[1])) {
+            const bool half_first = I->src[0].size == AGX_SIZE_16;
+            const agx_index f32 = I->src[half_first ? 1 : 0];
+            const agx_index f16 = I->src[half_first ? 0 : 1];
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+            if (f32.size != AGX_SIZE_32 || f16.size != AGX_SIZE_16 ||
+                agx_channels(f32) != 1 || agx_channels(f16) != 1 ||
+                f32.abs || f32.neg || f16.abs || f16.neg ||
+                f32.kill || f16.kill || (f32.cache && f32.discard) ||
+                (f16.cache && f16.discard) ||
+                !agx3_alu_fmul_mixed(enc, I->dest[0].value, f32.value,
+                    f16.value, agx3_post_ra_hint(f32), agx3_post_ra_hint(f16),
+                    wait, bytes, &len) || !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         /* Pixel coordinates are16-bit unsigned halves. Apple has a direct
+          * unsigned-half int2flt form, distinct from the existing U32 form.
+          * Preserve liveness and async producer waits; do not reinterpret the
+          * neighbouring half as part of a32-bit integer or widen in place.
+          */
+         if (I->op == AGX_OPCODE_CONVERT && I->nr_dests == 1 &&
+             I->nr_srcs == 2 && !I->saturate &&
+             I->round == AGX_ROUND_RTE &&
+             I->src[0].type == AGX_INDEX_IMMEDIATE &&
+             I->src[0].value == AGX_CONVERT_U16_TO_F &&
+             agx3_src_is_register(I->dest[0]) &&
+             I->dest[0].size == AGX_SIZE_32 && agx_channels(I->dest[0]) == 1 &&
+             agx3_src_is_register(I->src[1]) && !I->src[1].abs &&
+             !I->src[1].neg && !I->src[1].kill &&
+             !(I->src[1].cache && I->src[1].discard) &&
+             I->src[1].size == AGX_SIZE_16 &&
+             agx_channels(I->src[1]) == 1) {
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+            uint8_t len = 0;
+            if (!agx3_alu_u16_to_f32(enc, I->dest[0].value, I->src[1].value,
+                                     agx3_post_ra_hint(I->src[1]), wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
+         /* Pixel-centre +0.5 and coordinate scaling use minifloat sources,
+          * not GPRs. Native f32add/f32mul accept this pair directly, with the
+          * register's last-use hint and the compact form's supported waits.
+          * Commuting plain operands changes no operation or rounding.
+          */
+         if ((I->op == AGX_OPCODE_FADD || I->op == AGX_OPCODE_FMUL) &&
+             I->nr_dests == 1 &&
+             I->nr_srcs == 2 && !I->saturate &&
+             agx3_src_is_register(I->dest[0]) &&
+             I->dest[0].size == AGX_SIZE_32 &&
+             agx_channels(I->dest[0]) == 1 &&
+             (I->src[0].type == AGX_INDEX_IMMEDIATE ||
+              I->src[1].type == AGX_INDEX_IMMEDIATE)) {
+            const bool immediate_first =
+               I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index imm = I->src[immediate_first ? 0 : 1];
+            const agx_index reg = I->src[immediate_first ? 1 : 0];
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH];
+            uint8_t len = 0;
+            const bool multiply = I->op == AGX_OPCODE_FMUL;
+            if (imm.memory || imm.abs || imm.neg ||
+                !agx3_src_is_register(reg) || reg.abs || reg.neg || reg.kill ||
+                (reg.cache && reg.discard) ||
+                reg.size != AGX_SIZE_32 || agx_channels(reg) != 1 ||
+                !(multiply ? agx3_alu_fmul_minifloat : agx3_alu_fadd_minifloat)(
+                   enc, I->dest[0].value, reg.value, imm.value, agx3_post_ra_hint(reg), wait,
+                   bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
             continue;
          }
 
