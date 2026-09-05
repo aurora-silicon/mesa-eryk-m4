@@ -2856,7 +2856,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
     * control only changes these two words; retain the allocation and staging
     * layout and do not add launches, cache flushes or device-global state. */
    const bool depth_test = render->depth_att.iview && dyn->ds.depth.test_enable;
-   if (dyn->ds.depth.bounds_test.enable || hk_stencil_test_enabled(cmd) ||
+   if (dyn->ds.depth.bounds_test.enable ||
        !agx_ppp_hal200_depth_face_pack(
           dev->dev.chip, depth_test, dyn->ds.depth.write_enable,
           dyn->ds.depth.compare_op, primary_fields.words[1],
@@ -2866,6 +2866,21 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
           dyn->ds.depth.compare_op, primary_fields.words[3],
           &primary_fields.words[3]))
       return false;
+
+   const bool stencil_test = hk_stencil_test_enabled(cmd);
+   const struct vk_stencil_test_face_state stencil_faces[2] = {
+      dyn->ds.stencil.front, dyn->ds.stencil.back,
+   };
+   for (unsigned i = 0; i < 2; ++i) {
+      const struct vk_stencil_test_face_state *face = &stencil_faces[i];
+      const unsigned face_word = 1 + 2 * i;
+      /* Native458734/458740 updates only the low reference byte. */
+      primary_fields.words[face_word] =
+         (primary_fields.words[face_word] & ~0xffu) | (face->reference & 0xffu);
+      primary_fields.words[face_word + 1] = agx_ppp_hal200_stencil_pack(
+         stencil_test, face->op.compare, face->op.fail, face->op.depth_fail,
+         face->op.pass, face->compare_mask, face->write_mask);
+   }
 
    struct agx_ppp_hal200_graphics_core secondary_record;
    struct agx_ppp_hal200_graphics_fields secondary_fields = {
@@ -3000,8 +3015,12 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
        pass_type != AGX_PASS_TYPE_TRANSLUCENT)
       return false;
    secondary_fields.words[0] |= pass_type << 29;
-   output_fields.words[5] = raster_state.fragment_control;
-   primary_fields.words[0] = raster_state.fragment_control;
+   /* Native458934..45896c retains both stencil-control bits in the
+    * same per-draw record as depth. No extra state allocation or launch. */
+   const uint32_t fragment_control = raster_state.fragment_control |
+      (stencil_test ? UINT32_C(0x000c0000) : 0);
+   output_fields.words[5] = fragment_control;
+   primary_fields.words[0] = fragment_control;
    if (!agx_ppp_hal200_fragment_core_pack(dev->dev.chip, &fs_fields,
                                           &fs_record) ||
        !agx_ppp_hal200_graphics_core_pack(

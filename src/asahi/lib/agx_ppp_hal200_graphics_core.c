@@ -210,3 +210,21 @@ agx_ppp_hal200_depth_face_pack(enum agx_chip chip, bool test_enable,
    *out = (original & ~mask) | (function << 24) | (disable_write << 21);
    return true;
 }
+
+/* AGXMetalG17P 26aa64..26ab64 constructs the descriptor; 458898..45891c
+ * lowers both faces to this layout. The vector shifts/masks at811700/811710
+ * route pass/depth-fail/fail/compare to16/19/22/25, respectively. Disabled
+ * stencil is ALWAYS+KEEP with zero masks, exactly the native0x0e000000.
+ */
+uint32_t
+agx_ppp_hal200_stencil_pack(bool enabled, unsigned compare, unsigned fail,
+                           unsigned depth_fail, unsigned pass,
+                           unsigned compare_mask, unsigned write_mask)
+{
+   if (!enabled)
+      return UINT32_C(0x0e000000);
+
+   return (write_mask & 0xff) | ((compare_mask & 0xff) << 8) |
+          ((pass & 7) << 16) | ((depth_fail & 7) << 19) |
+          ((fail & 7) << 22) | ((compare & 7) << 25);
+}

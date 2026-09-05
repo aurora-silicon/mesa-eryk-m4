@@ -30,6 +30,13 @@ check(enum agx_ppp_hal200_graphics_bundle bundle, const uint32_t *words,
 int
 main(void)
 {
+   /* Derived directly from native458898..45891c and vector constants
+    * 811700/811710: asymmetric masks and distinct operations expose swaps. */
+   assert(agx_ppp_hal200_stencil_pack(false, 0, 7, 6, 5, 0xaa, 0x55) == 0x0e000000);
+   assert(agx_ppp_hal200_stencil_pack(true, 7, 0, 0, 2, 0xff, 0xff) == 0x0e02ffff);
+   assert(agx_ppp_hal200_stencil_pack(true, 2, 3, 4, 5, 0x3c, 0xa5) == 0x04e53ca5);
+   assert(agx_ppp_hal200_stencil_pack(true, 6, 7, 1, 0, 0x196, 0x269) == 0x0dc89669);
+
    static const uint32_t fs_words[] = {
       0x00020100, 0x000004c0, 0, 0x01000000, 0x00004c19, 0,
    };

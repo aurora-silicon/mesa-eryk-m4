@@ -112,6 +112,12 @@ bool agx_ppp_hal200_depth_face_pack(enum agx_chip chip, bool test_enable,
                                     bool write_enable, uint32_t compare,
                                     uint32_t original, uint32_t *out);
 
+/* Native stencil word: Vulkan/Metal operation and comparison ordering. */
+uint32_t agx_ppp_hal200_stencil_pack(bool enabled, unsigned compare,
+                                    unsigned fail, unsigned depth_fail,
+                                    unsigned pass, unsigned compare_mask,
+                                    unsigned write_mask);
+
 /* Native VsStateConfig+0xc/+0x14 fields; the first includes all f32 UVS. */
 bool agx_ppp_hal200_output_size_pack(uint32_t count_0,
                                       uint32_t count_2, uint32_t *out);
