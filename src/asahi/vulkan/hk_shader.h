@@ -119,7 +119,7 @@ struct hk_shader_info {
    bool agx3_combined_sampler_valid;
    bool agx3_uses_root;
    bool agx3_txf_texture_valid;
-   uint8_t _agx3_combined_sampler_pad;
+   bool agx3_indexed_sampler_valid;
    struct agx_g17p_combined_sampler_binding agx3_combined_sampler;
    struct agx_g17p_txf_binding agx3_txf_texture;
 

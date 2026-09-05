@@ -1119,6 +1119,22 @@ hk_g17p_graphics_uniform_ranges(
       };
    }
 
+   if (s->info.agx3_indexed_sampler_valid) {
+      if (s->info.stage != MESA_SHADER_FRAGMENT ||
+          !dev->sampled_images.bo || !dev->samplers.table.bo)
+         return false;
+      const uint64_t pointers[2] = {
+         dev->sampled_images.bo->va->addr,
+         dev->samplers.table.bo->va->addr,
+      };
+      const uint64_t pointers_va = hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+      if (!pointers_va)
+         return false;
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 0, .size_halfs = 8, .address = pointers_va,
+      };
+   }
+
    if (s->info.agx3_uses_root || s->info.set_count != 0) {
       if (!root_ptr)
          return false;

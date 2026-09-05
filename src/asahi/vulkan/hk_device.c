@@ -446,11 +446,28 @@ hk_CreateDevice(VkPhysicalDevice physicalDevice,
    if (result != VK_SUCCESS)
       goto fail_dev;
 
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      result = hk_descriptor_table_init(dev, &dev->sampled_images, 32,
+                                        HK_MAX_DESCRIPTORS, HK_MAX_DESCRIPTORS);
+      if (result != VK_SUCCESS)
+         goto fail_samplers;
+
+      struct hk_native_texture_descriptor null_texture;
+      hk_set_null_native_texture(agx_chip_descriptor_generation(dev->dev.chip),
+                                 &null_texture);
+      uint32_t null_index;
+      result = hk_descriptor_table_add(dev, &dev->sampled_images,
+                                       &null_texture, 32, &null_index);
+      if (result != VK_SUCCESS)
+         goto fail_sampled_images;
+      assert(null_index == 0);
+   }
+
    result = hk_descriptor_table_init(
       dev, &dev->occlusion_queries, sizeof(uint64_t), AGX_MAX_OCCLUSION_QUERIES,
       AGX_MAX_OCCLUSION_QUERIES);
    if (result != VK_SUCCESS)
-      goto fail_samplers;
+      goto fail_sampled_images;
 
    result = hk_upload_rodata(dev);
    if (result != VK_SUCCESS)
@@ -541,6 +558,9 @@ fail_rodata:
    agx_bo_unreference(&dev->dev, dev->rodata.bo);
 fail_queries:
    hk_descriptor_table_finish(dev, &dev->occlusion_queries);
+fail_sampled_images:
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      hk_descriptor_table_finish(dev, &dev->sampled_images);
 fail_samplers:
    hk_destroy_sampler_heap(dev, &dev->samplers);
 fail_dev:
@@ -589,6 +609,8 @@ hk_DestroyDevice(VkDevice _device, const VkAllocationCallbacks *pAllocator)
    }
 
    hk_destroy_sampler_heap(dev, &dev->samplers);
+   if (dev->dev.chip == AGX_CHIP_G17P)
+      hk_descriptor_table_finish(dev, &dev->sampled_images);
    hk_descriptor_table_finish(dev, &dev->occlusion_queries);
    agx_bo_unreference(&dev->dev, dev->rodata.bo);
    agx_bo_unreference(&dev->dev, dev->heap);

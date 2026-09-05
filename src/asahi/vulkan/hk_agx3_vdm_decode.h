@@ -23,7 +23,7 @@ extern "C" {
 /* Bump whenever the Honeykrisp shader payload below changes.  Vulkan shader
  * binaries carry this version outside the driver-private blob, so stale
  * layouts are rejected before any fields are consumed. */
-#define HK_AGX3_SHADER_BINARY_VERSION 5u
+#define HK_AGX3_SHADER_BINARY_VERSION 6u
 
 /* Native VS witnesses export position plus seven float4 user locations. */
 #define HK_AGX3_G17P_MAX_USER_WORDS 28u

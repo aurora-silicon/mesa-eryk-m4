@@ -639,6 +639,12 @@ lower_tex(nir_builder *b, nir_tex_instr *tex,
     * plus this saves on precious sampler heap spots.
     */
    if (tex->op == nir_texop_lod_bias) {
+      /* G17P carries API LOD bias in its native sampler word. Avoid a
+       * redundant software load, including for dynamically indexed sets. */
+      if (ctx->descriptor_generation == 9) {
+         nir_def_replace(&tex->def, nir_imm_float16(b, 0.0));
+         return true;
+      }
       unsigned offs = native.lod_bias;
 
       nir_def *bias = load_resource_deref_desc(

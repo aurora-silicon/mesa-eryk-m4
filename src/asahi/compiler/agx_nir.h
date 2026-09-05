@@ -34,6 +34,11 @@ bool agx_nir_lower_texture(struct nir_shader *s);
 bool agx_nir_lower_multisampled_image_store(struct nir_shader *s);
 bool agx_nir_needs_texture_crawl(struct nir_instr *instr);
 
+/* Existing reserved software tail, relative to a Gen9 sampled texture. */
+#define AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET 68
+
+bool agx_nir_lower_g17p_indexed_samplers(struct nir_shader *s);
+
 struct agx_g17p_combined_sampler_binding {
    uint32_t texture_offset_B;
    uint32_t sampler_index_offset_B;

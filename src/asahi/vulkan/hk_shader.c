@@ -1155,6 +1155,7 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
       nir_shader *candidate = nir_shader_clone(NULL, nir);
       struct agx_g17p_combined_sampler_binding binding;
       if (candidate &&
+          !dev->vk.enabled_features.descriptorBindingSampledImageUpdateAfterBind &&
           agx_nir_lower_g17p_combined_sampler(candidate, &binding)) {
          ralloc_free(nir);
          nir = candidate;
@@ -1168,6 +1169,14 @@ hk_compile_nir(struct hk_device *dev, const VkAllocationCallbacks *pAllocator,
          set_count = 0;
       } else {
          ralloc_free(candidate);
+         candidate = nir_shader_clone(NULL, nir);
+         if (candidate && agx_nir_lower_g17p_indexed_samplers(candidate)) {
+            ralloc_free(nir);
+            nir = candidate;
+            shader->info.agx3_indexed_sampler_valid = true;
+         } else {
+            ralloc_free(candidate);
+         }
       }
    } else if (dev->dev.chip == AGX_CHIP_G17P &&
               nir->info.stage == MESA_SHADER_COMPUTE) {

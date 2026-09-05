@@ -41,8 +41,11 @@ struct hk_sampled_image_descriptor_sw {
    uint16_t pad;
    /* TODO: This should probably be a heap! */
    uint32_t border[4];
-   uint8_t pad2[4];
+   /* Native G17P global texture index; the descriptor's size is unchanged. */
+   uint32_t sampled_heap_index;
 };
+static_assert(offsetof(struct hk_sampled_image_descriptor_sw, sampled_heap_index) == 36,
+              "native texture heap index keeps the reserved software tail ABI");
 static_assert(sizeof(struct hk_sampled_image_descriptor_sw) ==
                  HK_SAMPLED_IMAGE_SW_SIZE,
               "hk_sampled_image_descriptor_sw has no holes");

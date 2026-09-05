@@ -134,8 +134,9 @@ agx3_tex_encode_fetch(enum agx_isa_encoding enc,
 static bool
 mask_witnessed(uint8_t mask)
 {
-   /* Result-mask codes Apple's sample corpus emitted: .x .xy .w .zw .xyzw. */
-   return mask == 1 || mask == 3 || mask == 8 || mask == 12 || mask == 15;
+   /* All 15 nonempty RGBA subsets are witnessed by native fragment samples.
+    * Results remain densely packed in selected-component order. */
+   return mask != 0 && (mask & ~15u) == 0;
 }
 
 static bool
@@ -158,6 +159,10 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
    } else if (d->lod != AGX3_TEX_LOD_AUTO || d->lod_x64 != 0) {
       return false;
    }
+
+   if (enc == AGX_ISA_ENCODING_AGX3C && d->mask != 1 && d->mask != 3 &&
+       d->mask != 8 && d->mask != 12 && d->mask != 15)
+      return false;
 
    const unsigned tk = d->texture_kind ? d->texture_kind : 1;
    const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;

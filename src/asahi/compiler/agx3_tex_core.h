@@ -116,7 +116,7 @@ struct agx3_tex_sample_desc {
    uint16_t dest;       /* half-register index */
    uint16_t coord;      /* four-half aligned pair of f32 coordinates */
    enum agx3_tex_width width;
-   uint8_t mask;        /* witnessed sample masks: 1, 3, 8, 12, 15 */
+   uint8_t mask;        /* G17P: every nonempty RGBA subset, packed results */
    uint8_t texture;     /* immediate texture-state index, 0..15 */
    uint8_t sampler;     /* immediate sampler-state index, 0..15 */
    enum agx3_tex_lod lod;

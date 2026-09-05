@@ -219,6 +219,72 @@ agx_nir_lower_g17p_combined_sampler(
    return true;
 }
 
+/* Native indexed samples consume zero-extended heap indices, loaded by the
+ * GPU from the descriptor set. Keep descriptor-set roots alive so updates
+ * after command recording and dynamically selected array elements are visible.
+ */
+bool
+agx_nir_lower_g17p_indexed_samplers(nir_shader *shader)
+{
+   if (!shader || shader->info.stage != MESA_SHADER_FRAGMENT)
+      return false;
+
+   unsigned samples = 0;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            if (!g17p_sample_shape(tex) || tex->op != nir_texop_tex)
+               return false;
+            nir_intrinsic_instr *image = nir_src_as_intrinsic(
+               tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
+            nir_intrinsic_instr *sampler = nir_src_as_intrinsic(
+               tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle)].src);
+            if (!image || image->intrinsic != nir_intrinsic_bindless_image_agx ||
+                !sampler || sampler->intrinsic != nir_intrinsic_bindless_sampler_agx)
+               return false;
+            samples++;
+         }
+      }
+   }
+   if (!samples)
+      return false;
+
+   nir_foreach_function_impl(impl, shader) {
+      nir_builder b = nir_builder_create(impl);
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+            nir_tex_instr *tex = nir_instr_as_tex(instr);
+            b.cursor = nir_before_instr(instr);
+            nir_intrinsic_instr *image = nir_src_as_intrinsic(
+               tex->src[nir_tex_instr_src_index(tex, nir_tex_src_texture_handle)].src);
+            nir_intrinsic_instr *sampler = nir_src_as_intrinsic(
+               tex->src[nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle)].src);
+            nir_def *set = nir_load_descriptor_set_agx(&b, nir_intrinsic_desc_set(image));
+            nir_def *address = nir_iadd(&b, set, nir_u2u64(&b, image->src[0].ssa));
+            address = nir_iadd_imm(&b, address, AGX_G17P_SAMPLED_HEAP_INDEX_OFFSET);
+            nir_def *texture_index = nir_load_global_constant(&b, 1, 32, address, .align_mul = 4);
+            /* The software sampler index includes AGX2's reservation of 28.
+             * Native G17P heaps are zero-based, as the immediate path is. */
+            nir_def *sampler_index = nir_iadd_imm(&b, nir_u2u32(&b, sampler->src[1].ssa), -28);
+            texture_index = nir_u2u64(&b, texture_index);
+            sampler_index = nir_u2u64(&b, sampler_index);
+            nir_steal_tex_src(tex, nir_tex_src_texture_handle);
+            nir_steal_tex_src(tex, nir_tex_src_sampler_handle);
+            nir_tex_instr_add_src(tex, nir_tex_src_texture_offset, texture_index);
+            nir_tex_instr_add_src(tex, nir_tex_src_sampler_handle, sampler_index);
+         }
+      }
+      nir_progress(true, impl, nir_metadata_control_flow);
+   }
+   NIR_PASS(_, shader, nir_opt_dce);
+   return true;
+}
+
 static bool
 g17p_txf_shape(const nir_tex_instr *tex)
 {

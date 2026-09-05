@@ -855,6 +855,69 @@ test_combined_sampler_root(void)
    return ok;
 }
 
+static bool
+test_indexed_sampler_sets(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "indexed sample sets");
+   nir_def *root = nir_load_root_agx(&b);
+   nir_def *element = nir_load_global_constant(&b, 1, 32, root, .align_mul=4);
+   nir_def *offset = nir_imul_imm(&b, element, 72);
+   nir_def *result = nir_imm_vec4(&b, 0, 0, 0, 0);
+   const unsigned sets[] = {0, 3, 7};
+   for (unsigned i = 0; i < ARRAY_SIZE(sets); ++i) {
+      nir_def *address = nir_load_descriptor_set_agx(&b, sets[i]);
+      address = nir_iadd(&b, address, nir_u2u64(&b, offset));
+      nir_def *sampler_index = nir_load_global_constant(
+         &b, 1, 16, nir_iadd_imm(&b, address, 40), .align_mul=2);
+      nir_def *image = nir_bindless_image_agx(&b, offset, .desc_set=sets[i]);
+      nir_def *sampler = nir_bindless_sampler_agx(
+         &b, nir_iadd_imm(&b, offset, 32), sampler_index, .desc_set=sets[i]);
+      nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
+      tex->op=nir_texop_tex; tex->sampler_dim=GLSL_SAMPLER_DIM_2D;
+      tex->dest_type=nir_type_float32; tex->coord_components=2;
+      tex->src[0]=nir_tex_src_for_ssa(nir_tex_src_coord, nir_imm_vec2(&b, .25, .75));
+      tex->src[1]=nir_tex_src_for_ssa(nir_tex_src_texture_handle,image);
+      tex->src[2]=nir_tex_src_for_ssa(nir_tex_src_sampler_handle,sampler);
+      nir_def_init(&tex->instr,&tex->def,4,32);
+      nir_builder_instr_insert(&b,&tex->instr);
+      result=nir_fadd(&b,result,&tex->def);
+   }
+   nir_store_output(&b,result,nir_imm_int(&b,0),.write_mask=15,
+                    .src_type=nir_type_float32);
+   bool ok=agx_nir_lower_g17p_indexed_samplers(b.shader);
+   unsigned samples=0, descriptors=0, roots=0, image_loads=0, sampler_loads=0, set_mask=0;
+   nir_foreach_block(block, nir_shader_get_entrypoint(b.shader)) {
+      nir_foreach_instr(instr,block) {
+         if (instr->type==nir_instr_type_tex) {
+            nir_tex_instr *tex=nir_instr_as_tex(instr);
+            int ti=nir_tex_instr_src_index(tex,nir_tex_src_texture_offset);
+            int si=nir_tex_instr_src_index(tex,nir_tex_src_sampler_handle);
+            ok &= ti>=0 && si>=0;
+            if (ti>=0 && si>=0)
+               ok &= nir_src_bit_size(tex->src[ti].src)==64 &&
+                     nir_src_bit_size(tex->src[si].src)==64;
+            samples++;
+         } else if (instr->type==nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *in=nir_instr_as_intrinsic(instr);
+            roots += in->intrinsic==nir_intrinsic_load_root_agx;
+            descriptors += in->intrinsic==nir_intrinsic_bindless_image_agx ||
+                           in->intrinsic==nir_intrinsic_bindless_sampler_agx;
+            if (in->intrinsic==nir_intrinsic_load_descriptor_set_agx)
+               set_mask |= 1u << nir_intrinsic_desc_set(in);
+            if (in->intrinsic==nir_intrinsic_load_global_constant) {
+               image_loads += in->def.bit_size==32;
+               sampler_loads += in->def.bit_size==16;
+            }
+         }
+      }
+   }
+   ok &= samples==3 && descriptors==0 && roots==1 && image_loads==4 &&
+         sampler_loads==3 && set_mask==((1u<<0)|(1u<<3)|(1u<<7));
+   ralloc_free(b.shader);
+   return ok;
+}
+
 static nir_shader *
 build_fs_texture(void)
 {
@@ -1472,6 +1535,11 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 int
 main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--indexed-samplers-only")) {
+      const bool ok = test_indexed_sampler_sets();
+      printf("indexed sampler sets, dynamic offsets and live roots: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    if (argc == 2 && !strcmp(argv[1], "--sampler-root-only")) {
       const bool ok = test_combined_sampler_root() && test_combined_sampler_scope();
       fprintf(stderr, "native sampler plus push-root lowering: %s\n", ok ? "PASS" : "FAIL");

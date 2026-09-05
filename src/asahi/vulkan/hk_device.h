@@ -70,6 +70,12 @@ struct hk_device {
    struct hk_descriptor_table occlusion_queries;
    struct hk_sampler_heap samplers;
 
+   /* Native sampled-image indices are stable for an image-view lifetime.
+    * G17P shaders dereference this table on the GPU, including descriptors
+    * updated after command recording. Other generations keep inline state.
+    */
+   struct hk_descriptor_table sampled_images;
+
    struct vk_meta_device meta;
    struct agx_bg_eot_cache bg_eot;
 

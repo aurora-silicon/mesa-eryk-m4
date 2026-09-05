@@ -583,6 +583,14 @@ hk_image_view_init(struct hk_device *dev, struct hk_image_view *view,
       if (!textures_valid)
          return VK_ERROR_FORMAT_NOT_SUPPORTED;
 
+      if (dev->dev.chip == AGX_CHIP_G17P) {
+         VkResult result = hk_descriptor_table_add(
+            dev, &dev->sampled_images, &view->planes[p].sampled, 32,
+            &view->planes[p].sampled_heap_index);
+         if (result != VK_SUCCESS)
+            return result;
+      }
+
       view->planes[p].storage_pbe_valid = pack_pbe(
          dev, view, p, HK_DESC_USAGE_STORAGE, &view->planes[p].storage);
       view->planes[p].eot_pbe_valid =
@@ -606,6 +614,14 @@ hk_DestroyImageView(VkDevice _device, VkImageView imageView,
 
    if (!view)
       return;
+
+   if (dev->dev.chip == AGX_CHIP_G17P) {
+      for (unsigned p = 0; p < view->plane_count; ++p) {
+         if (view->planes[p].sampled_heap_index)
+            hk_descriptor_table_remove(dev, &dev->sampled_images,
+                                        view->planes[p].sampled_heap_index);
+      }
+   }
 
    vk_image_view_finish(&view->vk);
    vk_free2(&dev->vk.alloc, pAllocator, view);
