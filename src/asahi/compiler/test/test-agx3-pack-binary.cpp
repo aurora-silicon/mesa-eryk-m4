@@ -3158,7 +3158,7 @@ TEST_F(AGX3PackBinary, SixOutputTailSinkingPreservesValuesThroughRA)
    }
    agx_stop(b);
    agx_pressure_schedule(b->shader);
-   ASSERT_TRUE(agx3_sink_six_vertex_outputs(b->shader));
+   ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
    unsigned next = 0;
    agx_foreach_instr_global(b->shader, I) {
       if (I->op == AGX_OPCODE_ST_VARY) {
@@ -3253,7 +3253,7 @@ TEST_F(AGX3PackBinary, SixOutputTailSinkingRefusesWithoutMutation)
       if (mode == 8) agx_test_block(b->shader);
       std::vector<agx_instr *> before;
       agx_foreach_instr_global(b->shader, I) before.push_back(I);
-      EXPECT_FALSE(agx3_sink_six_vertex_outputs(b->shader)) << mode;
+      EXPECT_FALSE(agx3_sink_vertex_outputs(b->shader)) << mode;
       std::vector<agx_instr *> after;
       agx_foreach_instr_global(b->shader, I) after.push_back(I);
       EXPECT_EQ(before, after) << mode;
@@ -3285,7 +3285,7 @@ TEST_F(AGX3PackBinary, SixOutputVertexAddressArithmeticSurvivesRA)
       }
       agx_stop(b);
       agx_pressure_schedule(b->shader);
-      ASSERT_TRUE(agx3_sink_six_vertex_outputs(b->shader));
+      ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
       agx_ra(b->shader);
       /* The first vertex load owns native slot 6. Its result stays live
        * through RA until both user stores, and the first terminal COPY
@@ -3320,5 +3320,102 @@ TEST_F(AGX3PackBinary, SixOutputVertexAddressArithmeticSurvivesRA)
       ASSERT_GE(got.size(), tail.size());
       EXPECT_TRUE(std::equal(tail.begin(), tail.end(), got.end() - tail.size()));
       EXPECT_EQ(b->shader->agx3_staging_halfs, 12u);
+   }
+}
+
+TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites)
+{
+   for (unsigned count : {7u, 8u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      b->shader->nir = rzalloc(mem_ctx, nir_shader);
+      b->shader->nir->info.stage = MESA_SHADER_VERTEX;
+      for (unsigned c = count; c-- > 0;) {
+         agx_index value = agx_mov_imm(b, 32, 0x3f000000 + c);
+         agx_st_vary(b, agx_immediate(c), value);
+      }
+      agx_stop(b);
+      agx_pressure_schedule(b->shader);
+      ASSERT_TRUE(agx3_sink_vertex_outputs(b->shader));
+      agx_ra(b->shader);
+      uint32_t regs[256] = {0};
+      unsigned stored = 0;
+      agx_foreach_instr_global(b->shader, I) {
+         if (I->op == AGX_OPCODE_MOV_IMM)
+            regs[I->dest[0].value] = I->imm;
+         else if (I->op == AGX_OPCODE_ST_VARY) {
+            EXPECT_EQ(I->src[0].value, stored);
+            EXPECT_EQ(regs[I->src[1].value], 0x3f000000u + stored++);
+         } else
+            ASSERT_EQ(I->op, AGX_OPCODE_STOP);
+      }
+      ASSERT_EQ(stored, count);
+      const auto bytes = pack(b);
+      /* Skip the independently sized immediate producers. Decode actual
+       * emitted COPY/UVSW operands, tracking outstanding staging reads and
+       * writeout slots. This catches premature reuse or lost UVS values. */
+      size_t at = 0;
+      agx_foreach_instr_global(b->shader, I) {
+         if (I->op != AGX_OPCODE_MOV_IMM) break;
+         struct agx3_encoded_ldimm ld;
+         ASSERT_TRUE(agx3_pack_ldimm_u32(AGX_ISA_ENCODING_AGX3B,
+                       I->dest[0].value, I->imm, &ld));
+         at += ld.length;
+      }
+      unsigned copies = 0, writes = 0, pending = 0, active_writes = 0;
+      bool ready[8] = {false};
+      while (at + 4 < bytes.size()) {
+         const uint8_t *p = bytes.data() + at;
+         if ((p[0] & 0xf) == 0xb) {
+            const unsigned len = (p[2] & 7) == 1 ? 4 : 10;
+            ASSERT_LE(at + len, bytes.size());
+            const unsigned slot = len == 4 ? 1 : 1 + ((p[7] >> 2) & 7);
+            const unsigned wait = len == 4 ?
+               (p[3] >> 5 ? 1u << ((p[3] >> 5) - 1) : 0) :
+               (p[5] >> 5) | ((p[7] >> 5) << 3);
+            ASSERT_LE(slot, 6u);
+            EXPECT_EQ(p[0] >> 4, copies);
+            EXPECT_EQ((active_writes & (1u << (slot - 1))) & ~wait, 0u);
+            active_writes &= ~wait;
+            EXPECT_EQ(pending & (1u << (slot - 1)), 0u);
+            pending |= 1u << (slot - 1);
+            ready[copies++] = true;
+            at += len;
+         } else {
+            ASSERT_EQ(p[0], 0x57);
+            ASSERT_LE(at + 8, bytes.size());
+            const unsigned component = p[4] >> 5;
+            const unsigned slot = 1 + (p[6] & 7);
+            const unsigned wait = (p[1] >> 4) | ((p[2] & 3) << 4);
+            ASSERT_EQ(component, writes);
+            ASSERT_TRUE(ready[component]);
+            EXPECT_EQ(p[3], 2 * component);
+            EXPECT_EQ(wait & (1u << (slot - 1)), 1u << (slot - 1));
+            pending &= ~wait;
+            active_writes |= 1u << (slot - 1);
+            ++writes;
+            at += 8;
+         }
+      }
+      EXPECT_EQ(copies, count);
+      EXPECT_EQ(writes, count);
+      EXPECT_EQ(pending, 0u);
+      EXPECT_EQ(b->shader->agx3_staging_halfs, 2 * count);
+      ASSERT_EQ(at + 4, bytes.size());
+      EXPECT_EQ(bytes[at], 14);
+   }
+}
+
+TEST_F(AGX3PackBinary, WideVertexOutputsRefuseNonterminalAndOutOfRange)
+{
+   for (unsigned count : {7u, 8u, 9u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_VERTEX;
+      for (unsigned c = 0; c < count; ++c) {
+         agx_mov_imm_to(b, agx_register(0, AGX_SIZE_32), 0x3f000000 + c);
+         agx_st_vary(b, agx_immediate(c), agx_register(0, AGX_SIZE_32));
+      }
+      agx_stop(b);
+      EXPECT_TRUE(pack(b, false).empty());
    }
 }

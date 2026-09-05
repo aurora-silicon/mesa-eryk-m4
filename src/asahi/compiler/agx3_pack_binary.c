@@ -2464,25 +2464,24 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
-/* Ordinary position.xyzw plus one float2 user varying. The fresh native
- * gradient stages six values and writes indices 0..5 in order. Keep this
- * separate from the byte-exact four-position protocol and from wider/CF VSs.
- */
-static bool
-agx3_is_g17p_six_output_vs(agx_context *ctx, enum agx_isa_encoding enc)
+/* Position plus two to four scalar user outputs. Native eight-output VSs
+ * interleave staging and UVSWs, recycling the six scoreboard slots after
+ * waiting for earlier writes. Keep the four-position golden independent. */
+static unsigned
+agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
 {
    if (enc != AGX_ISA_ENCODING_AGX3B || ctx->stage != MESA_SHADER_VERTEX ||
        ctx->is_preamble)
-      return false;
+      return 0;
 
    unsigned blocks = 0, outputs = 0;
    bool stopped = false;
    agx_foreach_block(ctx, block) {
       if (++blocks != 1)
-         return false;
+         return 0;
       agx_foreach_instr_in_block(block, I) {
          if (stopped)
-            return false;
+            return 0;
          switch (I->op) {
          case AGX_OPCODE_STOP:
             stopped = true;
@@ -2490,16 +2489,16 @@ agx3_is_g17p_six_output_vs(agx_context *ctx, enum agx_isa_encoding enc)
          case AGX_OPCODE_ST_VARY:
             if (I->nr_dests != 0 || I->nr_srcs != 2 ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
-                I->src[0].value >= 6 ||
+                I->src[0].value >= 8 ||
                 (outputs & (1u << I->src[0].value)) ||
                 !agx3_vary_reg32(I->src[1]) ||
                 agx_channels(I->src[1]) != 1)
-               return false;
+               return 0;
             outputs |= 1u << I->src[0].value;
             break;
          case AGX_OPCODE_GET_SR:
             if (I->sr != AGX_SR_VERTEX_ID)
-               return false;
+               return 0;
             break;
          case AGX_OPCODE_IADD:
          case AGX_OPCODE_DEVICE_LOAD:
@@ -2510,19 +2509,20 @@ agx3_is_g17p_six_output_vs(agx_context *ctx, enum agx_isa_encoding enc)
             /* Normal packing still validates each operand/width/encoding. */
             break;
          default:
-            return false;
+            return 0;
          }
       }
    }
-   return outputs == 0x3f;
+   return stopped && (outputs == 0x3f || outputs == 0x7f || outputs == 0xff)
+             ? util_bitcount(outputs) : 0;
 }
 
 /* The sources of a contiguous terminal store bundle cannot be overwritten
- * before their injected staging COPY reads retire. All six staging addresses
- * and scoreboard slots are distinct. Original producers retire on first COPY;
- * only the final UVSWs need wait for the six new staging producers. */
+ * before their injected staging COPY reads retire. Each batch has distinct staging addresses
+ * and scoreboard slots. Original producers retire on first COPY;
+ * only the final UVSWs need wait for the new staging producers. */
 static bool
-agx3_six_outputs_are_terminal(agx_context *ctx)
+agx3_outputs_are_terminal(agx_context *ctx, unsigned count)
 {
    unsigned next = 0;
    bool stopped = false;
@@ -2533,14 +2533,14 @@ agx3_six_outputs_are_terminal(agx_context *ctx)
          if (I->src[0].value != next++)
             return false;
       } else if (I->op == AGX_OPCODE_STOP) {
-         if (next != 6)
+         if (next != count)
             return false;
          stopped = true;
       } else if (next) {
          return false;
       }
    }
-   return next == 6 && stopped;
+   return next == count && stopped;
 }
 
 /* Apple's real builtin EOT factory (BTNF kind5, EOT key0x10020300) emits
@@ -2885,18 +2885,22 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
    unsigned g17p_positions_staged = 0;
-   const bool g17p_six_output_protocol = agx3_is_g17p_six_output_vs(ctx, enc);
-   const bool g17p_terminal_outputs = g17p_six_output_protocol &&
-      agx3_six_outputs_are_terminal(ctx);
+   const unsigned g17p_output_count = agx3_g17p_vertex_output_count(ctx, enc);
+   const bool g17p_terminal_outputs = g17p_output_count &&
+      agx3_outputs_are_terminal(ctx, g17p_output_count);
+   /* Only the old six-output fallback supports intervening physical GPR
+    * reuse. Wider outputs require the pre-RA terminal bundle. */
+   const bool g17p_user_output_protocol = g17p_output_count == 6 ||
+      (g17p_output_count > 6 && g17p_terminal_outputs);
    unsigned g17p_outputs_staged = 0;
-   /* User-output graphs outside the qualified six-scalar shape must not
+   /* User-output graphs outside the qualified scalar shapes must not
     * silently fall back to immediate, potentially out-of-order writeout. */
    if (enc == AGX_ISA_ENCODING_AGX3B && ctx->stage == MESA_SHADER_VERTEX) {
       agx_foreach_block(ctx, block) {
          agx_foreach_instr_in_block(block, I) {
             if (I->op == AGX_OPCODE_ST_VARY && I->nr_srcs >= 1 &&
                 I->src[0].type == AGX_INDEX_IMMEDIATE &&
-                I->src[0].value >= 4 && !g17p_six_output_protocol)
+                I->src[0].value >= 4 && !g17p_user_output_protocol)
                AGX3_REFUSE(I);
          }
       }
@@ -3106,37 +3110,50 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * Each scalar is consumed immediately, before its slot/address
              * can be reused. A still-live general producer sharing the slot
              * must retire before the staging COPY reuses it. */
-            const uint8_t stage_slot = (g17p_position_protocol ||
-                                        g17p_six_output_protocol)
-                                         ? I->src[0].value + 1 : next_uvs_slot;
-            const uint16_t staging_half = 2 * (stage_slot - 1);
+            const uint8_t stage_slot =
+               (g17p_position_protocol || g17p_user_output_protocol)
+                  ? I->src[0].value % nslots + 1 : next_uvs_slot;
+            const uint16_t staging_half =
+               2 * (g17p_user_output_protocol ? I->src[0].value : stage_slot - 1);
             const uint16_t staging_bit = 1u << (stage_slot - 1);
-            const uint16_t stage_wait = g17p_terminal_outputs ?
-               (g17p_outputs_staged == 0 ? (wait | outstanding_here) : 0) :
-               (wait | (g17p_six_output_protocol ? outstanding_here :
-                                                  (outstanding_here & staging_bit)));
+            uint16_t stage_wait;
+            if (g17p_terminal_outputs) {
+               /* The first batch drains original GPR producers. Each later
+                * batch drains prior UVSWs before recycling their six slots.
+                * Staging addresses remain distinct across both batches. */
+               stage_wait = g17p_outputs_staged == 0 ? wait | outstanding_here :
+                  g17p_outputs_staged % nslots == 0 ? (1u << nslots) - 1 : 0;
+            } else {
+               stage_wait = wait | (g17p_user_output_protocol ? outstanding_here :
+                                     outstanding_here & staging_bit);
+            }
             if (!agx3_emit_uvsw(emission, enc, I, staging_half, stage_slot,
                                 stage_wait, g17p_position_protocol ||
-                                            g17p_six_output_protocol))
+                                            g17p_user_output_protocol))
                AGX3_REFUSE(I);
             ctx->agx3_staging_halfs =
                MAX2(ctx->agx3_staging_halfs, staging_half + 2);
             outstanding &= (uint16_t)~stage_wait;
-            if (g17p_six_output_protocol) {
+            if (g17p_user_output_protocol) {
                /* Nonterminal stores can be followed by GPR/slot reuse, so
                 * retain the existing immediate retirement there. A terminal
-                * bundle has no intervening IR and uses six unique slots;
+                * bundle has no intervening IR and uses unique slots per batch;
                 * its original producers were all retired by the first COPY.
-                * The final UVSWs retire those six staging reads instead. */
+                * Each batch's UVSWs retire its staging reads instead. */
                if (!g17p_terminal_outputs &&
                    !agx3_retire_slots_noop(emission, enc, staging_bit))
                   AGX3_REFUSE(I);
-               if (++g17p_outputs_staged == 6) {
-                  for (unsigned component = 0; component < 6; ++component) {
+               ++g17p_outputs_staged;
+               if (g17p_outputs_staged % nslots == 0 ||
+                   g17p_outputs_staged == g17p_output_count) {
+                  const unsigned first =
+                     ((g17p_outputs_staged - 1) / nslots) * nslots;
+                  for (unsigned component = first;
+                       component < g17p_outputs_staged; ++component) {
                      uint8_t bytes[AGX3_VARY_MAX_LENGTH], len = 0;
                      if (!agx3_vary_uvsw(enc, component * 2, component,
-                                          component + 1, true,
-                                          1u << component, bytes, &len) ||
+                                          component % nslots + 1, true,
+                                          1u << (component % nslots), bytes, &len) ||
                          !agx3_append(emission, bytes, len))
                         AGX3_REFUSE(I);
                   }

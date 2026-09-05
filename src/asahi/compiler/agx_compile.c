@@ -3699,18 +3699,18 @@ agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
       agx_validate(ctx, #pass);                                                \
    } while (0)
 
-/* Keep six scalar UVS values live until a native-shaped terminal writeout.
+/* Keep six to eight scalar UVS values live until a native-shaped terminal writeout.
  * Run after pressure scheduling but before RA: moving physical-register stores
  * would lose values when later instructions reuse their sources. */
 bool
-agx3_sink_six_vertex_outputs(agx_context *ctx)
+agx3_sink_vertex_outputs(agx_context *ctx)
 {
    if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
        ctx->stage != MESA_SHADER_VERTEX || ctx->is_preamble ||
        ctx->key->secondary || list_length(&ctx->blocks) != 1)
       return false;
 
-   agx_instr *stores[6] = {0}, *stop = NULL;
+   agx_instr *stores[8] = {0}, *stop = NULL;
    agx_foreach_instr_global(ctx, I) {
       if (stop)
          return false;
@@ -3720,7 +3720,7 @@ agx3_sink_six_vertex_outputs(agx_context *ctx)
          break;
       case AGX_OPCODE_ST_VARY: {
          if (I->nr_dests || I->nr_srcs != 2 ||
-             I->src[0].type != AGX_INDEX_IMMEDIATE || I->src[0].value >= 6 ||
+             I->src[0].type != AGX_INDEX_IMMEDIATE || I->src[0].value >= 8 ||
              I->src[1].type != AGX_INDEX_NORMAL || I->src[1].memory ||
              I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 1 ||
              stores[I->src[0].value])
@@ -3747,11 +3747,16 @@ agx3_sink_six_vertex_outputs(agx_context *ctx)
    }
    if (!stop)
       return false;
-   for (unsigned i = 0; i < 6; ++i) {
-      if (!stores[i])
+   unsigned count = 0;
+   while (count < ARRAY_SIZE(stores) && stores[count])
+      ++count;
+   if (count < 6)
+      return false;
+   for (unsigned i = count; i < ARRAY_SIZE(stores); ++i) {
+      if (stores[i])
          return false;
    }
-   for (unsigned i = 0; i < 6; ++i) {
+   for (unsigned i = 0; i < count; ++i) {
       list_del(&stores[i]->link);
       list_addtail(&stores[i]->link, &stop->link);
    }
@@ -3858,7 +3863,7 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
    if (agx_should_dump(nir, AGX_DBG_SHADERS))
       agx_print_shader(ctx, stdout);
 
-   AGX_PASS(ctx, agx3_sink_six_vertex_outputs);
+   AGX_PASS(ctx, agx3_sink_vertex_outputs);
 
    AGX_PASS(ctx, agx_ra);
    agx_lower_64bit_postra(ctx);
