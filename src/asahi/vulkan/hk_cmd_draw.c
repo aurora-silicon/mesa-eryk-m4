@@ -32,6 +32,7 @@
 #include "hk_image.h"
 #include "hk_image_view.h"
 #include "hk_agx3_ioto_program_core.h"
+#include "hk_g17p_ppp_indices.h"
 #include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
 #include "hk_private.h"
@@ -4659,11 +4660,18 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                return;
             }
 
-            /* Native direct draws begin with a context-relative graphics
-             * object.  The leading 0x100 word selects the direct shape and
-             * +0x04 mirrors the fragment scissor-enable state; retain the
-             * full zero-filled page around those separated fields.
+            /* This context-relative PPP record selects the latest scissor
+             * and depth-bias array entries. Header0x100 is PPP selector bit8,
+             * not a direct-draw shape; +4 contains indices, not enable flags.
+             * Native bind-state emission appended those owned records above.
              */
+            uint8_t indices[8];
+            if (!hk_g17p_ppp_indices_pack(cs->scissor.size, cs->depth_bias.size,
+                                           indices)) {
+               vk_command_buffer_set_error(&cmd->vk,
+                                           VK_ERROR_FEATURE_NOT_PRESENT);
+               return;
+            }
             struct agx_bo *context_bo =
                dev->dev.g17p_render_context_bo;
             uint8_t *context = context_bo ? agx_bo_map(context_bo) : NULL;
@@ -4672,12 +4680,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
 
             void *draw_state = &context[HK_G17P_DRAW_STATE_OFFSET];
             memset(draw_state, 0, 0x4000);
-            const uint32_t draw_state_word = UINT32_C(0x100);
-            memcpy(draw_state, &draw_state_word, sizeof(draw_state_word));
-            const uint32_t draw_state_scissor_flag =
-               dyn->vp.viewport_count > 0 ? 1 : 0;
-            memcpy((uint8_t *)draw_state + 4, &draw_state_scissor_flag,
-                   sizeof(draw_state_scissor_flag));
+            memcpy(draw_state, indices, sizeof(indices));
             if (agx_bo_sync_for_device(context_bo,
                                        HK_G17P_DRAW_STATE_OFFSET, 0x4000))
                return;
@@ -4702,7 +4705,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             if (hk_g17p_launch_trace_enabled())
                hk_g17p_trace_line("hal200-draw-state",
                                   HK_G17P_DRAW_STATE_OFFSET, draw_state,
-                                  2 * sizeof(draw_state_word));
+                                  sizeof(indices));
          } else {
             cs->current = (void *)agx_vdm_draw((uint32_t *)out,
                                                dev->dev.chip, draw, topology);
