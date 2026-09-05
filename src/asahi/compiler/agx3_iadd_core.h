@@ -25,10 +25,10 @@
  * at f46..f53. The same four-kernel ladder was run against
  * `-arch applegpu_g17s` to witness it.
  *
- * f42 is carried verbatim at 1. Apple sets it on every witnessed instance
- * whose operand came from a device load, and clears it when the value came
- * from a system register instead; its meaning is not established here, and
- * that is the one value in this encoder that is copied rather than explained.
+ * On AGX3b, f42 is the slot-B last-use hint for either slot-A kind. Fresh
+ * G17P `o[id] = id << N` witnesses clear it because the store still needs
+ * id; loaded values dead after the add set it. Drive it from IR liveness.
+ * The separately witnessed AGX3c baseline remains unchanged.
  */
 
 #pragma once

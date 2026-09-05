@@ -3419,3 +3419,21 @@ TEST_F(AGX3PackBinary, WideVertexOutputsRefuseNonterminalAndOutOfRange)
       EXPECT_TRUE(pack(b, false).empty());
    }
 }
+
+/* The ID remains live after both immediate adds in the transfer lowering.
+ * Old encoding unconditionally set f42, discarding it before the store. */
+TEST_F(AGX3PackBinary, ImmediateIaddPreservesLiveSource)
+{
+   for (bool killed : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_index source = agx_register(2, AGX_SIZE_32);
+      source.kill = killed;
+      agx_iadd_to(b, agx_register(0, AGX_SIZE_32), agx_immediate(0), source, 2);
+      agx_stop(b);
+      auto bytes = pack(b);
+      const uint8_t native[] = {0x9f,0x01,0x54,0x00,0x02,0x00,0x08,0x88,
+                                (uint8_t)(killed ? 0x14 : 0x10),0x14};
+      ASSERT_GE(bytes.size(), sizeof(native));
+      EXPECT_EQ(memcmp(bytes.data(), native, sizeof(native)), 0);
+   }
+}

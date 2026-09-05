@@ -72,6 +72,11 @@ agx3_iadd_encode(enum agx_isa_encoding encoding,
    }
    else
       ov[n++] = (struct agx3_field_kv)KV(15, d->immediate);
+   /* f42 is source liveness for both immediate and register slot A.
+    * In particular, an address add must preserve an ID used by later stores.
+    * Keep the separately witnessed AGX3c baseline unchanged here. */
+   if (agx3b && !d->src_a_is_register)
+      ov[n++] = (struct agx3_field_kv)KV(42, d->src_kill ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(31, d->src);
    if (!d->src_a_is_register)
       ov[n++] = (struct agx3_field_kv)KV(39, d->src_16 ? 1 : 2);

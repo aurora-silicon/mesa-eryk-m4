@@ -3637,6 +3637,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   .dest = I->dest[0].value,
                   .immediate = (uint8_t)constant.value,
                   .src = reg.value,
+                  .src_kill = reg.kill,
                   .src_16 = reg.size == AGX_SIZE_16,
                   .sign_extend = reg.neg,
                   .shift = I->shift,

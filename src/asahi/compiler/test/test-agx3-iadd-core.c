@@ -35,34 +35,34 @@ struct vec {
 /* All ten bytes; every vector below is length 10. */
 static const struct vec vectors[] = {
    {"u32 shift0 wait6",
-    {.dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 5},
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x88, 0x15, 0x04}},
    {"u32 shift1 wait6",
-    {.dest = 0, .immediate = 7, .src = 0, .shift = 1, .wait_mask = 1u << 5},
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .shift = 1, .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0xc8, 0x14, 0x04}},
    {"u32 shift3 wait6",
-    {.dest = 0, .immediate = 7, .src = 0, .shift = 3, .wait_mask = 1u << 5},
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .shift = 3, .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0xc8, 0x14, 0x14}},
    {"u32 shift0 wait1",
-    {.dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 0},
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .wait_mask = 1u << 0},
     {0x9f, 0x11, 0x54, 0x00, 0x02, 0x0e, 0x00, 0x88, 0x15, 0x04}},
    {"u32 dest4 src2 wait6",
-    {.dest = 4, .immediate = 7, .src = 2, .wait_mask = 1u << 5},
+    {.src_kill = true, .dest = 4, .immediate = 7, .src = 2, .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x04, 0x02, 0x0e, 0x08, 0x88, 0x15, 0x04}},
    {"u16 zero-extend shift0",
-    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true,
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .src_16 = true,
      .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x15, 0x04}},
    {"u16 zero-extend shift2",
-    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .shift = 2,
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .src_16 = true, .shift = 2,
      .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x14, 0x14}},
    {"s16 sign-extend shift0",
-    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
      .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x15, 0x0c}},
    {"s16 sign-extend shift2",
-    {.dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
+    {.src_kill = true, .dest = 0, .immediate = 7, .src = 0, .src_16 = true, .sign_extend = true,
      .shift = 2, .wait_mask = 1u << 5},
     {0x9f, 0x01, 0x56, 0x00, 0x02, 0x0e, 0x00, 0x08, 0x14, 0x1c}},
 };
@@ -178,6 +178,24 @@ main(void)
          for (unsigned b = 0; b < 10; ++b)
             fprintf(stderr, " %02x", v->bytes[b]);
          fprintf(stderr, "\n");
+      }
+   }
+
+   /* Fresh G17P native witnesses: id remains live for the output address.
+    * f42 is clear even though this add uses a shifted source. */
+   {
+      static const uint8_t native[][10] = {
+         {0x9f,0x11,0x54,0x00,0x02,0x00,0x08,0xc8,0x10,0x04},
+         {0x9f,0x11,0x54,0x00,0x02,0x00,0x08,0x88,0x10,0x14},
+         {0x9f,0x11,0x54,0x00,0x02,0x00,0x08,0xc8,0x10,0x14},
+         {0x9f,0x11,0x54,0x00,0x02,0x00,0x08,0x88,0x10,0x04},
+      };
+      for (unsigned shift = 1; shift <= 4; ++shift) {
+         struct agx3_iadd_desc d = {.dest=0, .src=2, .shift=shift,
+                                     .wait_mask=1, .src_kill=false};
+         uint8_t out[AGX3_IADD_MAX_LENGTH], len=0;
+         CHECK(agx3_iadd_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+         CHECK(len==10 && !memcmp(out,native[shift-1],10));
       }
    }
 
