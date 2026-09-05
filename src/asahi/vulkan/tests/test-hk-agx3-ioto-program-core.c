@@ -906,11 +906,12 @@ test_g17p_basic_graphics_program(void)
  */
 static int
 check_eot_pointer_prefix(const struct hk_agx3_g17p_rt0_eot_program *program,
-                         uint64_t expected, size_t *prefix_size)
+                         uint64_t expected, uint8_t expected_offset,
+                         size_t *prefix_size)
 {
    uint64_t pointer = 0;
    size_t offset = 0;
-   for (unsigned i = 0; i < 2; ++i) {
+   for (unsigned i = 0; i < 3; ++i) {
       struct agx_ioto_record record;
       size_t consumed;
       CHECK(agx_ioto_decode_one(AGX_CHIP_G17P, program->bytes + offset,
@@ -938,11 +939,14 @@ check_eot_pointer_prefix(const struct hk_agx3_g17p_rt0_eot_program *program,
                      (uint32_t)((w1 >> 9) & 127) << 25;
       }
       CHECK(dest_half == 4 + 2 * i);
-      pointer |= (uint64_t)immediate << (32 * i);
+      if (i < 2)
+         pointer |= (uint64_t)immediate << (32 * i);
+      else
+         CHECK(immediate == expected_offset);
       offset += consumed;
    }
    CHECK(pointer == expected);
-   CHECK(program->length <= 114);
+   CHECK(program->length <= 126);
    *prefix_size = offset;
    return 0;
 }
@@ -955,7 +959,7 @@ test_g17p_rt0_eot_program(void)
       .program_va = UINT64_C(0x10001990640),
       .shader_va = UINT64_C(0x10000000140),
       .pbe_argument_va = UINT64_C(0x10000020220),
-      .shader_binary_size = 128,
+      .shader_binary_size = 68,
       .scratch_size = 0,
       .nr_gprs = 8,
       .staging_halfs = 8,
@@ -964,11 +968,11 @@ test_g17p_rt0_eot_program(void)
    CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &desc,
                                                &program));
    CHECK(AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE == 174);
-   CHECK(program.length == 114);
+   CHECK(program.length == 120);
    size_t prefix_size;
-   CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va,
+   CHECK(check_eot_pointer_prefix(&program, desc.pbe_argument_va, desc.imageblock_offset_B,
                                  &prefix_size) == 0);
-   CHECK(prefix_size == 16);
+   CHECK(prefix_size == 18);
 
    static const uint8_t source_prefix[] = {
       0x2c, 0xa0, 0x02, 0x00, 0x08, 0x00, 0x10, 0x00,
@@ -998,11 +1002,15 @@ test_g17p_rt0_eot_program(void)
                 expected_profile, sizeof(expected_profile)) == 0);
    static const uint8_t expected_copies[] = {
       0x0b,0x04,0x01,0x04, 0x1b,0x06,0x01,0x04,
+      0x2b,0x08,0x01,0x04, /* COPY32 GPR8 -> uniform half4. */
    };
    const size_t copies_offset = prefix_size + sizeof(eot_state_tail) +
                                AGX_IOTO_G17P_DEFAULT_PROFILE_PREFIX_SIZE;
    CHECK(memcmp(program.bytes + copies_offset, expected_copies,
                 sizeof(expected_copies)) == 0);
+   const size_t offset_position = prefix_size - 2;
+   CHECK(program.bytes[offset_position] == 0x4c);
+   CHECK(program.bytes[offset_position + 1] == 0);
    static const uint8_t terminal[] = {
       0x03,0x00,0x07,0x00,0x02,0x00,0x00,0x00,0x60,0x00,
       0x0e,0x00,0x00,0x00,
@@ -1012,6 +1020,24 @@ test_g17p_rt0_eot_program(void)
 
    struct hk_agx3_g17p_rt0_eot_program relocated;
    struct hk_agx3_g17p_rt0_eot_program_desc moved = desc;
+   /* Actual driver kind5 is an8-bit byte offset, loaded as a complete32-bit
+    * uniform. Exercise all values; only this third immediate changes.
+    * Runtime supplies the validated tilebuffer layout, not a fixed literal. */
+   for (unsigned offset = 0; offset <= UINT8_MAX; ++offset) {
+      moved = desc;
+      moved.imageblock_offset_B = offset;
+      CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
+                                                   &relocated));
+      size_t relocated_prefix;
+      CHECK(check_eot_pointer_prefix(&relocated, desc.pbe_argument_va, offset,
+                                     &relocated_prefix) == 0);
+      CHECK(relocated.length == program.length + (offset >= 128 ? 6 : 0));
+      CHECK(memcmp(relocated.bytes, program.bytes, offset_position) == 0);
+      CHECK(memcmp(relocated.bytes + relocated_prefix,
+                   program.bytes + prefix_size,
+                   program.length - prefix_size) == 0);
+   }
+   moved = desc;
    moved.pbe_argument_va += UINT64_C(0x10000);
    CHECK(
       hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &relocated));
@@ -1030,7 +1056,7 @@ test_g17p_rt0_eot_program(void)
       CHECK(hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved,
                                                    &relocated));
       size_t moved_prefix;
-      CHECK(check_eot_pointer_prefix(&relocated, pointers[i], &moved_prefix) == 0);
+      CHECK(check_eot_pointer_prefix(&relocated, pointers[i], 0, &moved_prefix) == 0);
       CHECK(relocated.length - moved_prefix == program.length - prefix_size);
       CHECK(memcmp(relocated.bytes + moved_prefix, program.bytes + prefix_size,
                    program.length - prefix_size) == 0);
@@ -1053,6 +1079,9 @@ test_g17p_rt0_eot_program(void)
    moved.shader_binary_size = 64;
    CHECK(
       !hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
+   CHECK(memcmp(&program, &before, sizeof(program)) == 0);
+   moved.shader_binary_size = 128;
+   CHECK(!hk_agx3_g17p_rt0_eot_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    moved = desc;
    moved.nr_gprs = 6;
@@ -1381,12 +1410,14 @@ test_g17p_single_layer_rt0_layout(void)
    struct agx_tilebuffer_layout tib =
       agx_build_tilebuffer_layout(rgba, 1, 1, false);
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
 
    enum pipe_format bgra[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_B8G8R8A8_UNORM,
    };
    tib = agx_build_tilebuffer_layout(bgra, 1, 1, false);
    CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&tib));
+   CHECK(agx_tilebuffer_offset_B(&tib, 0) == 0);
 
    tib.layered = true;
    CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&tib));

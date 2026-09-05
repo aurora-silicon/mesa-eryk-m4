@@ -23,32 +23,15 @@
 #include <stdlib.h>
 
 static bool
-agx_g17p_wrap_eot_text(struct agx_shader_part *bin)
+agx_g17p_rt0_eot_text_supported(const struct agx_shader_part *bin)
 {
-   if (!bin || !bin->binary || bin->info.binary_size != 64 ||
-       bin->info.main_offset != 0 || bin->info.main_size != 64 ||
-       bin->info.nr_gprs != 8)
-      return false;
-
-   uint8_t *text = malloc(128);
-   if (!text)
-      return false;
-
-   /* Exact AGXMetalG17P EOT text framing: one stop and thirty 0x0006 fill
-    * halfwords before the 64-byte main body.  LDSHDR points at text +0x40. */
-   text[0] = 0x0e;
-   text[1] = text[2] = text[3] = 0;
-   for (unsigned i = 4; i < 64; i += 2) {
-      text[i] = 0x06;
-      text[i + 1] = 0;
-   }
-   memcpy(text + 64, bin->binary, 64);
-   free(bin->binary);
-   bin->binary = text;
-   bin->info.binary_size = 128;
-   bin->info.main_offset = 64;
-   bin->info.main_size = 64;
-   return true;
+   /* The builtin compiler's complete native EOT text is68 bytes, with no
+    * synthetic compute preamble. The CODE container supplies its own stop
+    * constant program and places the actual entry at block+0x80. */
+   return bin && bin->binary && bin->info.binary_size == 68 &&
+          bin->info.main_offset == 0 && bin->info.main_size == 68 &&
+          bin->info.nr_gprs == 8 && !bin->info.scratch_size &&
+          bin->info.agx3_staging_known && bin->info.agx3_staging_halfs == 8;
 }
 
 static bool
@@ -93,9 +76,9 @@ agx_g17p_upload_bg_eot(struct agx_bg_eot_cache *cache,
       return false;
    }
 
-   /* Keep compiler-text metadata intact: EOT has binary_size=128,
-    * main_offset=64 and main_size=64. Its LDSHDR fetch-span calculation uses
-    * the 128-byte compiler text, not this allocation's size. Rebase ptr so
+   /* Keep compiler-text metadata intact: native EOT has binary_size=68,
+    * main_offset=0 and main_size=68. Its LDSHDR fetch-span calculation uses
+    * the main padded to128, not this allocation's size. Rebase ptr so
     * the existing ptr + main_offset expression names CODE block +0x80.
     * Clear/reload have main_offset=0 and get a fragment constant program.
     *
@@ -200,7 +183,7 @@ agx_compile_bg_eot_shader(struct agx_bg_eot_cache *cache, nir_shader *shader,
    }
 
    if (cache->dev->chip == AGX_CHIP_G17P && tib == NULL &&
-       !agx_g17p_wrap_eot_text(&bin)) {
+       !agx_g17p_rt0_eot_text_supported(&bin)) {
       free(bin.binary);
       ralloc_free(shader);
       ralloc_free(res);

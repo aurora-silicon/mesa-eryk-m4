@@ -465,7 +465,7 @@ hk_agx3_g17p_rt0_eot_program_generate(
    struct hk_agx3_g17p_rt0_eot_program *program)
 {
    if (!program || chip != AGX_CHIP_G17P || !desc ||
-       desc->shader_binary_size != 128 || desc->nr_gprs != 8 ||
+       desc->shader_binary_size != 68 || desc->nr_gprs != 8 ||
        desc->staging_halfs != 8 || !desc->pbe_argument_va ||
        desc->pbe_argument_va > UINT64_C(0xffffffffffff) - 31 ||
        (desc->pbe_argument_va & 31))
@@ -491,11 +491,11 @@ hk_agx3_g17p_rt0_eot_program_generate(
     * 32-byte-aligned GPU VA to its flat PBE32 table, separately from the
     * image address encoded inside each descriptor.
     *
-    * Our bounded RT0 program needs only that pointer. Materialize it in
-    * GPR halves 4..7: the unchanged profile loader uses 0..3 before the final
+    * Materialize the pointer in GPR halves4..7: the unchanged profile loader
+    * uses0..3 before the final
     * COPYs. No descriptor-memory load or load-completion wait is needed.
     */
-   uint8_t body[2 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
+   uint8_t body[3 * AGX_IOTO_LOAD_LDIMM_MAX_SIZE];
    size_t body_size = 0;
    for (unsigned i = 0; i < 2; ++i) {
       uint8_t bytes[AGX_IOTO_LOAD_LDIMM_MAX_SIZE], length;
@@ -506,13 +506,21 @@ hk_agx3_g17p_rt0_eot_program_generate(
       memcpy(body + body_size, bytes, length);
       body_size += length;
    }
+   /* Native kind5 supplies the byte offset inside an imageblock sample.
+    * Keep it in CProg GPR8 across profile scratch0..3, independently of the
+    * fragment program's register allocation. */
+   uint8_t offset_length;
+   if (!agx_ioto_load_pack_ldimm(chip, 8, desc->imageblock_offset_B,
+                                   body + body_size, &offset_length))
+      return false;
+   body_size += offset_length;
 
-   /* Preserve the proven EOT COPY source-file and no-kill policy. Only
-    * the two pointer dwords are published, in uniform halves 0 and 2.
+   /* Preserve the proven EOT COPY source-file and no-kill policy. Publish
+    * pointer dwords in halves0/2 and the imageblock byte offset in half4.
     */
-   uint8_t copies[8];
+   uint8_t copies[12];
    const struct agx3_field_kv baseline[] = {{9,3},{10,2},{23,2},{24,2}};
-   for (unsigned i = 0; i < 2; ++i) {
+   for (unsigned i = 0; i < 3; ++i) {
       const struct agx3_field_kv operands[] = {
          {3, 2u * i}, {16, 4u + 2u * i},
       };
@@ -524,8 +532,8 @@ hk_agx3_g17p_rt0_eot_program_generate(
       memcpy(copies + 4 * i, bytes, length);
    }
 
-   /* Keep the existing 174-byte allocation capacity. Pointer-only programs
-    * need at most 114 bytes; compact LDIMMs can shorten them further.
+   /* Keep the existing174-byte allocation capacity. The zero RT0 offset
+    * uses a compact LDIMM (at most120 bytes); offsets128..255 need126.
     */
    struct hk_agx3_g17p_rt0_eot_program staged = {0};
    size_t written = 0;

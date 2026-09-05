@@ -159,6 +159,9 @@ struct hk_agx3_g17p_rt0_eot_program_desc {
    /* Raw 32-byte-aligned GPU VA to the owned RT0 PBE32 descriptor. The
     * CProg publishes this pointer in uniform halves 0..3, not its pointee. */
    uint64_t pbe_argument_va;
+   /* RT0 byte offset inside one imageblock sample (native kind5 argument).
+    * Published as a zero-extended32-bit value in uniform halves4..5. */
+   uint8_t imageblock_offset_B;
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
@@ -172,7 +175,9 @@ struct hk_agx3_g17p_rt0_eot_program {
 
 /* Build the one-attachment G17P EOT Ioto program. Two LDIMM records hold the
  * raw PBE table pointer in GPR halves 4..7 across the profile setup, then COPY
- * publishes it in uniform halves 0..3. The shader must consume this pointer
+ * publishes it in uniform halves 0..3. A third LDIMM/COPY supplies
+ * imageblock_offset_B through CProg GPR8 into halves4..5. The native68-byte
+ * shader consumes this
  * ABI; no inline PBE uniform payload is supplied. */
 bool hk_agx3_g17p_rt0_eot_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_eot_program_desc *desc,

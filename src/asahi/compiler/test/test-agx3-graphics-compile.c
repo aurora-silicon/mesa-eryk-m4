@@ -848,9 +848,9 @@ test_txf_lowering(void)
 static bool
 test_g17p_eot_block_store(void)
 {
-   /* Apple Metal Toolchain 32023.917, target applegpu_g17p.  The complete AIR
-    * source, pipeline-image recipe, extracted bytes and hashes live in
-    * test/probes/README-g17p-rt0-eot.md. */
+   /* Genuine applegpu-nt builtin EOT, key0x10020300, RTmask1. Native fragment
+    * metadata requests tableVA64 at u0 and imageblock byteoffset32 at u4;
+    * common0=3 GPRdwords, fields38/42 D=16. Not a compute-wrapper prefix. */
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_COMPUTE, &agx_nir_options, "G17P RT0 EOT");
    nir_def *coords =
@@ -867,43 +867,26 @@ test_g17p_eot_block_store(void)
    };
    struct agx_shader_part part = {0};
    const bool compiled = agx_compile_shader_nir(b.shader, &key, &part);
-   static const uint8_t apple_null_base_eot[] = {
-      0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
-      0x0b, 0x00, 0x00, 0x00, 0x1b, 0x00, 0x00, 0x00,
-      0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
-      0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
-      0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
-      0x2f, 0x00, 0x42, 0x40, 0x00, 0x08, 0x00, 0x00,
-      0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
-      0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+   static const uint8_t expected[] = {
+      0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
+      0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
+      0x9f, 0x10, 0x54, 0x00, 0x00, 0x04, 0x14, 0x00,
+      0x50, 0x06, 0x0b, 0x00,
+      0x9f, 0x20, 0x54, 0x02, 0x00, 0x00, 0x10, 0x00,
+      0x50, 0x06, 0x0b, 0x00,
+      0x97, 0x05, 0x54, 0x04, 0x00, 0x08, 0x00, 0x00,
+      0xd0, 0x40, 0x10, 0x00,
+      0x57, 0x10, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
+      0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
    };
-
-   /* The original probe's AS64 argument was null, hence its two CLR32s.
-    * Production receives a real descriptor-table VA in uniform halves0..3.
-    * Only those eight bytes may change; SR coordinates, PACK, index0 IMGW,
-    * staging producers and END must retain their independent witness. */
-   static const uint8_t table_base_copies[] = {
-      0x0b, 0x00, 0x01, 0x08, 0x1b, 0x02, 0x01, 0x08,
-   };
-   uint8_t expected[sizeof(apple_null_base_eot)];
-   memcpy(expected, apple_null_base_eot, sizeof(expected));
-   memcpy(expected + 8, table_base_copies, sizeof(table_base_copies));
 
    bool ok = compiled && part.info.binary_size == sizeof(expected) &&
              part.info.nr_gprs == 8 && part.info.agx3_staging_known &&
              part.info.agx3_staging_halfs == 8 &&
              memcmp(part.binary, expected, sizeof(expected)) == 0;
 
-   /* Check both complete 32-bit pointer words against the independently
-    * grounded COPY encoder, including the high word. A GPR-source copy,
-    * a 16-bit copy or the old null-base body must not pass this ABI check. */
-   for (unsigned half = 0; half < 4; half += 2) {
-      uint8_t copy[AGX3_COPY_MAX_LENGTH], length = 0;
-      ok &= agx3_copy_encode_uniform_to_reg32(
-               AGX_ISA_ENCODING_AGX3B, half, half, copy, &length) &&
-            length == 4 &&
-            memcmp(copy, table_base_copies + half * 2, 4) == 0;
-   }
+   ok &= sizeof(expected) == 68 && part.info.main_offset == 0 &&
+         part.info.main_size == 68;
    if (!ok) {
       fprintf(stderr,
               "AGX3b EOT block-store compiler mismatch: compiled=%u size=%u "

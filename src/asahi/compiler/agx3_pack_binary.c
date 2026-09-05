@@ -2387,11 +2387,11 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
-/* Apple's one-store RT0 EOT probe supplies the 64-byte instruction skeleton.
- * Its null AS64 argument clears the IMGW descriptor-table base; that is not
- * a valid production binding. The matched non-null Apple probe uses two
- * uniform-to-GPR COPYs instead. Our EOT CProg supplies the retained PBE table
- * address in uniform halves0..3, so relocate those COPY sources accordingly.
+/* Apple's real builtin EOT factory (BTNF kind5, EOT key0x10020300) emits
+ * this complete 68-byte fragment program. Its ESL contract is a PBE table
+ * pointer in uniform halves0..3 and imageblock byte offset in halves4..5.
+ * Coordinates are group position times dispatched group dimensions, not
+ * per-thread coordinates from the older compute-wrapper probe.
  * The AGX3 imgwblk is not a standalone translation of AGX2's block store: the
  * preceding pack_imgwir and coordinate-select sequence is part of its ABI.
  * Recognize the exact post-RA semantic graph and replace it atomically, so no
@@ -2478,23 +2478,20 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
    if (agx3_is_g17p_rt0_eot(ctx, enc)) {
       static const uint8_t g17p_rt0_eot[] = {
-         0x3c, 0xa0, 0x10, 0x06, 0x2c, 0xa1, 0x10, 0x26,
-         /* COPY32 u0 -> r0 and u2 -> r2: low/high halves of the table VA.
-          * These GPRs were already live as IMGW's 64-bit base. The coordinate
-          * COPYs below read r6/r4 and write the separate staging file. */
-         0x0b, 0x00, 0x01, 0x08, 0x1b, 0x02, 0x01, 0x08,
-         0x97, 0x05, 0x54, 0x04, 0x00, 0x00, 0x00, 0x00,
-         0x50, 0x50, 0x10, 0x00, 0x0b, 0x07, 0x2f, 0x00,
-         0x42, 0x20, 0x00, 0x08, 0x00, 0x00, 0x1b, 0x05,
-         0x2f, 0x00, 0x42, 0x40, 0x00, 0x08, 0x00, 0x00,
-         0x57, 0x40, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
-         0xaa, 0x75, 0x02, 0x00, 0x0e, 0x00, 0x00, 0x00,
+         0x1c, 0x9c, 0x10, 0x06, 0x24, 0xa8, 0x14, 0x06,
+         0x0c, 0x9d, 0x10, 0x26, 0x24, 0xa9, 0x10, 0x26,
+         0x9f, 0x10, 0x54, 0x00, 0x00, 0x04, 0x14, 0x00,
+         0x50, 0x06, 0x0b, 0x00,
+         0x9f, 0x20, 0x54, 0x02, 0x00, 0x00, 0x10, 0x00,
+         0x50, 0x06, 0x0b, 0x00,
+         0x97, 0x05, 0x54, 0x04, 0x00, 0x08, 0x00, 0x00,
+         0xd0, 0x40, 0x10, 0x00,
+         0x57, 0x10, 0x54, 0x00, 0x00, 0x00, 0x00, 0x80,
+         0xa8, 0x75, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00,
       };
-      /* The original Apple EOT compiler object reports field38 D=16:
-       * its coordinate/pixel writeout staging allocation is eight halves,
-       * independently of the eight-half general-register requirement.
-       * Binding the existing base registers changes neither allocation nor
-       * the 64-byte main / 128-byte wrapped text and LDSHDR fetch span. */
+      /* Native metadata common0=3 means six GPR halves; retain the existing
+       * conservative eight-half allocation. Fields38/42 are D=16, requiring
+       * eight staging halves independently. Main68 pads to128: LDSHDR f1=1. */
       ctx->max_reg = MAX2(ctx->max_reg, 7);
       ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs, 8);
       return agx3_append(emission, g17p_rt0_eot, sizeof(g17p_rt0_eot));
