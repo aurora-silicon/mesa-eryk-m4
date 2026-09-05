@@ -1495,6 +1495,14 @@ test_g17p_single_layer_rt0_layout(void)
    CHECK(!hk_agx3_g17p_single_layer_rendering(0, 2));
    CHECK(!hk_agx3_g17p_single_layer_rendering(1, 1));
 
+   enum pipe_format empty[AGX_MAX_RENDER_TARGETS] = {PIPE_FORMAT_NONE};
+   struct agx_tilebuffer_layout empty_tib =
+      agx_build_tilebuffer_layout(empty, 0, 1, false);
+   CHECK(hk_agx3_g17p_rt0_tile_layout_supported(&empty_tib));
+   CHECK(empty_tib.sample_size_B == 0);
+   empty_tib.sample_size_B = 8;
+   CHECK(!hk_agx3_g17p_rt0_tile_layout_supported(&empty_tib));
+
    enum pipe_format rgba[AGX_MAX_RENDER_TARGETS] = {
       PIPE_FORMAT_R8G8B8A8_UNORM,
    };

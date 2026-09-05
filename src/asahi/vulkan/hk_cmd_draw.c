@@ -319,7 +319,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
    for (unsigned rt = 0; rt < HK_MAX_RTS; ++rt) {
       const enum agx_bg_eot_op op = key->op[rt];
       const bool rt0_supported = store
-                                    ? op == AGX_EOT_STORE
+                                    ? (op == AGX_EOT_STORE || op == AGX_BG_EOT_NONE)
                                     : (op == AGX_BG_EOT_NONE ||
                                        op == AGX_BG_CLEAR || op == AGX_BG_LOAD);
       if ((rt == 0 && !rt0_supported) || (rt != 0 && op != AGX_BG_EOT_NONE)) {
@@ -348,12 +348,12 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
    size_t program_capacity;
    const char *program_label;
-   if (store) {
+   if (op == AGX_BG_EOT_NONE) {
+      program_capacity = AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
+      program_label = "G17P empty tile Ioto program";
+   } else if (store) {
       program_capacity = AGX_IOTO_G17P_RT0_EOT_PROGRAM_SIZE;
       program_label = "G17P RT0 EOT Ioto program";
-   } else if (op == AGX_BG_EOT_NONE) {
-      program_capacity = AGX_IOTO_G17P_NO_RESOURCE_PROGRAM_SIZE;
-      program_label = "G17P background Ioto program";
    } else if (op == AGX_BG_CLEAR) {
       program_capacity = AGX_IOTO_G17P_RT0_CLEAR_PROGRAM_SIZE;
       program_label = "G17P RT0 clear Ioto program";
@@ -375,7 +375,7 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
 
    size_t program_length;
    uint64_t resource_spec;
-   if (store) {
+   if (store && op == AGX_EOT_STORE) {
       struct hk_image_view *iview = cmd->state.gfx.render.color_att[0].iview;
       if (!iview || !iview->planes[0].eot_pbe_valid ||
           info->pColorAttachments[0].imageView == VK_NULL_HANDLE) {
