@@ -912,19 +912,7 @@ static bool
 hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 {
    struct agx_tilebuffer_layout *tib = &cmd->state.gfx.render.tilebuffer;
-   const enum pipe_format physical = agx_tilebuffer_physical_format(tib, 0);
-   if (tib->nr_samples != 1 || tib->layered || tib->sample_size_B != 8 ||
-       tib->tile_size != 32 * 32 || tib->spilled[0] ||
-       tib->logical_format[0] == PIPE_FORMAT_NONE ||
-       (physical != PIPE_FORMAT_R8_UNORM &&
-        physical != PIPE_FORMAT_R10G10B10A2_UNORM))
-      return false;
-
-   for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {
-      if (tib->logical_format[rt] != PIPE_FORMAT_NONE)
-         return false;
-   }
-   return true;
+   return hk_agx3_g17p_rt0_tile_layout_supported(tib);
 }
 
 /* Keep native interpolation bounded to the f32 UVS layout already supported

@@ -2810,7 +2810,7 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
    struct hk_linked_shader *linked_fs = gfx->linked[MESA_SHADER_FRAGMENT];
-   if (!fs || !linked_fs || linked_fs->b.no_op)
+   if (!fs || !linked_fs)
       return false;
 
    const uint64_t fragment_program = hk_upload_usc_words(cmd, fs, linked_fs);
@@ -3246,7 +3246,8 @@ hk_flush_ppp_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs, uint8_t **out)
       .viewport_count = 1, /* irrelevant */
    };
 
-   dirty.fragment_shader &= !linked_fs->b.no_op;
+   if (dev->dev.chip != AGX_CHIP_G17P)
+      dirty.fragment_shader &= !linked_fs->b.no_op;
 
    /* The first G17P hardware fault is introduced by this aggregate dirty PPP
     * update. Keep a diagnostic-only selector that emits one independently
