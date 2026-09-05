@@ -292,7 +292,13 @@ static void exact(const uint8_t *bytes, uint8_t length, const char *hex)
    assert(strlen(hex) == (size_t)length*2);
    for (unsigned i=0;i<length;++i) {
       unsigned value;
-      assert(sscanf(hex+2*i,"%2x",&value)==1 && bytes[i]==value);
+      assert(sscanf(hex+2*i,"%2x",&value)==1);
+      if (bytes[i] != value) {
+         fprintf(stderr, "expected %s, got ", hex);
+         for (unsigned j=0;j<length;++j) fprintf(stderr, "%02x", bytes[j]);
+         fputc('\n', stderr);
+         assert(bytes[i] == value);
+      }
    }
 }
 
@@ -488,7 +494,85 @@ test_integer_lifetimes(void)
    puts("Integer lifetimes: four exact native IADD/ISUB live/dead witnesses PASS");
 }
 
+static void
+test_float_compare_select(void)
+{
+   const uint16_t src[] = {0, 2};
+   const enum agx3_alu_hint dead[] = {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD};
+   const enum agx3_alu_hint live[] = {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_NONE};
+   uint8_t out[AGX3_ALU_MAX_LENGTH], len;
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,1,255,0,true,false,32,out,&len));
+   exact(out,len,"02011d03a2ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,1,255,0,true,false,32,out,&len));
+   exact(out,len,"42010503a2ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,5,255,0,true,false,32,out,&len));
+   exact(out,len,"02011d03a6ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,5,255,0,true,false,32,out,&len));
+   exact(out,len,"42010503a6ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,2,255,0,true,false,32,out,&len));
+   exact(out,len,"02011d03a2ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,2,255,0,true,false,32,out,&len));
+   exact(out,len,"42010503a2ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,6,255,0,true,false,32,out,&len));
+   exact(out,len,"02011d03a6ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,6,255,0,true,false,32,out,&len));
+   exact(out,len,"42010503a6ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,0,255,0,true,false,32,out,&len));
+   exact(out,len,"02011d03a6ff00c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,0,255,0,true,false,32,out,&len));
+   exact(out,len,"42010503a6ff00c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,0,0,255,true,false,32,out,&len));
+   exact(out,len,"02011d03268000c0a0ff");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,8,src,live,0,0,255,true,false,32,out,&len));
+   exact(out,len,"42010503268000c0a0ff");
+   const uint16_t alpha_src[] = {6, 10};
+   const enum agx3_alu_hint alpha_hint[] = {AGX3_ALU_HINT_NONE, AGX3_ALU_HINT_DISCARD};
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,11,alpha_src,alpha_hint,1,0,1,true,true,0,out,&len));
+   exact(out,len,"5a07350b228003002081");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,1,255,0,false,false,32,out,&len));
+   exact(out,len,"02011f03a2ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,1,255,0,false,false,32,out,&len));
+   exact(out,len,"32010703a2ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,5,255,0,false,false,32,out,&len));
+   exact(out,len,"02011f03a6ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,5,255,0,false,false,32,out,&len));
+   exact(out,len,"32010703a6ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,2,255,0,false,false,32,out,&len));
+   exact(out,len,"02011f03a2ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,2,255,0,false,false,32,out,&len));
+   exact(out,len,"32010703a2ff02c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,6,255,0,false,false,32,out,&len));
+   exact(out,len,"02011f03a6ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,6,255,0,false,false,32,out,&len));
+   exact(out,len,"32010703a6ff03c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,0,255,0,false,false,32,out,&len));
+   exact(out,len,"02011f03a6ff00c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,0,255,0,false,false,32,out,&len));
+   exact(out,len,"32010703a6ff00c02080");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,0,src,dead,0,0,255,false,false,32,out,&len));
+   exact(out,len,"02011f03268000c0a0ff");
+   assert(agx3_alu_fcmp_select_imm(AGX_ISA_ENCODING_AGX3B,6,src,live,0,0,255,false,false,32,out,&len));
+   exact(out,len,"32010703268000c0a0ff");
+   puts("Float select:25 native comparison/alpha dead-live vectors PASS");
+}
+
+static void test_int_to_float_liveness(void)
+{
+   uint8_t out[AGX3_ALU_MAX_LENGTH], len;
+   assert(agx3_alu_int_to_float(AGX_ISA_ENCODING_AGX3B,0,0,false,AGX3_ALU_HINT_DISCARD,32,out,&len));
+   exact(out,len,"a70756000200ac20");
+   assert(agx3_alu_int_to_float(AGX_ISA_ENCODING_AGX3B,0,2,false,AGX3_ALU_HINT_NONE,32,out,&len));
+   exact(out,len,"a707560002048c20");
+   assert(agx3_alu_int_to_float(AGX_ISA_ENCODING_AGX3B,0,0,true,AGX3_ALU_HINT_DISCARD,32,out,&len));
+   exact(out,len,"a70756000200ac60");
+   assert(agx3_alu_int_to_float(AGX_ISA_ENCODING_AGX3B,0,2,true,AGX3_ALU_HINT_NONE,32,out,&len));
+   exact(out,len,"a707560002048c60");
+   puts("Integer-to-float: four native signed/unsigned live/dead vectors PASS");
+}
+
 int main(void){
+   test_int_to_float_liveness();
+   test_float_compare_select();
    test_integer_lifetimes();
    test_bitwise_lifetimes();
    test_modified_minifloat_add();

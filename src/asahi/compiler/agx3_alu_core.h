@@ -47,6 +47,20 @@ bool agx3_alu_integer_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
                           const enum agx3_alu_hint hints[2], uint16_t wait_mask,
                           uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
+/* Signed/unsigned32 integer conversion with actual source lifetime hints. */
+bool agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t src, bool is_signed,
+                            enum agx3_alu_hint hint, uint16_t wait_mask,
+                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+/* Native f32 comparison with byte-sized integer alternatives and a16/32-bit result. */
+bool agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
+                             const uint16_t src[2],
+                             const enum agx3_alu_hint hints[2],
+                             unsigned condition, uint8_t if_true,
+                             uint8_t if_false, bool dest_16, bool dest_cache, uint16_t wait_mask,
+                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 /* Plain f32 register FADD/FMUL/FMA with actual post-RA source hints and
  * scheduler waits. Compact witnessed forms only; unsupported wait combinations
  * return false so the caller can retire them explicitly before retrying. */

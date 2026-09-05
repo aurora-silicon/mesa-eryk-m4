@@ -359,3 +359,64 @@ agx3_alu_integer_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
       if(wait_mask&(1u<<i))ov[n++]=(struct agx3_field_kv){f->wait[i],1};
    return agx3_bind_compose(enc,f->mnemonic,f->ep,base,nb,ov,n,out,len);
 }
+
+/* Native float comparison selects two integer immediates. Field 11 selects
+ * the result width; a 16-bit result can target either register half. */
+bool
+agx3_alu_fcmp_select_imm(enum agx_isa_encoding enc, uint16_t dest,
+                        const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                        unsigned condition, uint8_t if_true, uint8_t if_false,
+                        bool dest_16, bool dest_cache, uint16_t wait_mask,
+                        uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len || !src || !hints ||
+       dest >= 256 || (!dest_16 && (dest & 1)) || (condition != 0 && condition != 1 && condition != 2 &&
+        condition != 5 && condition != 6) ||
+       (wait_mask != 0 && wait_mask != 32))
+      return false;
+   for (unsigned i = 0; i < 2; ++i)
+      if (src[i] >= 256 || (src[i] & 1) ||
+          (unsigned)hints[i] > AGX3_ALU_HINT_CACHE)
+         return false;
+   const struct agx3_field_kv base[] = {
+      {10, 2}, {11, dest_16 ? 1 : 2}, {42, 2}, {43, 2}, {59, 2}, {60, 2},
+      {76, 1}, {77, dest_16 ? 1 : 2}, {93, 1}, {94, dest_16 ? 1 : 2},
+   };
+   const struct agx3_field_kv fields[] = {
+      {3, dest}, {12, dest_cache}, {35, src[0]}, {52, src[1]},
+      {44, hints[0] == AGX3_ALU_HINT_CACHE},
+      {46, hints[0] == AGX3_ALU_HINT_DISCARD},
+      {61, hints[1] == AGX3_ALU_HINT_CACHE},
+      {63, hints[1] == AGX3_ALU_HINT_DISCARD},
+      {68, if_true}, {85, if_false}, {110, condition}, {107, wait_mask == 32},
+   };
+   for (unsigned ep = 20; ep < 28; ++ep)
+      if (agx3_bind_compose(enc, "fsel", ep, base, 10, fields, 12, out, len))
+         return true;
+   return false;
+}
+
+/* Integer source liveness remains relevant after conversion: IDs can still
+ * address later stores. Keep the native instruction and actual RA hints. */
+bool
+agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
+                      uint16_t src, bool is_signed, enum agx3_alu_hint hint,
+                      uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
+                      uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !out || !len ||
+       dest >= 256 || src >= 256 || ((dest | src) & 1) ||
+       (unsigned)hint > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 2}, {25, 2}, {26, 2},
+   };
+   struct agx3_field_kv fields[12] = {
+      {2, dest}, {18, src}, {27, hint == AGX3_ALU_HINT_CACHE},
+      {29, hint == AGX3_ALU_HINT_DISCARD}, {30, is_signed},
+   };
+   unsigned n = 5;
+   for (unsigned i = 0; i < 6; ++i)
+      fields[n++] = (struct agx3_field_kv){33 + i, !!(wait_mask & (1u << i))};
+   return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
+}

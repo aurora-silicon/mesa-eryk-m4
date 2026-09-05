@@ -1246,8 +1246,10 @@ agx3_translate_mem(const agx_instr *I, bool is_store, uint8_t slot,
    d->shift = (uint8_t)I->shift;
 
    const agx_index data = is_store ? I->src[0] : I->dest[0];
-   if (!agx3_src_is_register(data) || data.memory || (data.value & 1) != 0 ||
-       data.value >= 256)
+   const bool scalar_half = data.size == AGX_SIZE_16 &&
+      w == AGX3_MEM_W16 && I->mask == 1 && agx_channels(data) == 1;
+   if (!agx3_src_is_register(data) || data.memory ||
+       (!scalar_half && (data.value & 1)) || data.value >= 256)
       return false;
    d->data = data.value;
 
@@ -3634,6 +3636,52 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         /* Float comparison selecting integer byte constants, preserving the
+          * native 16/32-bit destination width assigned by register allocation. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FCMPSEL &&
+             I->nr_dests == 1 && I->nr_srcs == 4 &&
+             I->dest[0].type == AGX_INDEX_REGISTER && !I->dest[0].memory &&
+             agx_channels(I->dest[0]) == 1 &&
+             (I->dest[0].size == AGX_SIZE_16 || I->dest[0].size == AGX_SIZE_32) &&
+             agx3_mod_src_ok(I->src[0]) &&
+             agx3_mod_src_ok(I->src[1]) && !I->src[0].abs && !I->src[0].neg &&
+             !I->src[1].abs && !I->src[1].neg &&
+             I->src[2].type == AGX_INDEX_IMMEDIATE && I->src[2].value <= 255 &&
+             I->src[3].type == AGX_INDEX_IMMEDIATE && I->src[3].value <= 255) {
+            const uint16_t src[] = {I->src[0].value, I->src[1].value};
+            const enum agx3_alu_hint hints[] = {
+               agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            unsigned condition = I->fcond;
+            bool swap = I->invert_cond;
+            if (condition == AGX_FCOND_LTN) {
+               condition = AGX_FCOND_GE;
+               swap = !swap;
+            } else if (condition == AGX_FCOND_GTN) {
+               condition = AGX_FCOND_LE;
+               swap = !swap;
+            }
+            uint16_t fsel_wait = wait;
+            if (fsel_wait != 0 && fsel_wait != 32) {
+               if (!agx3_retire_slots_noop(emission, enc, fsel_wait))
+                  AGX3_REFUSE(I);
+               fsel_wait = 0;
+            }
+            if (I->saturate || I->src[0].kill || I->src[1].kill ||
+                (I->src[0].cache && I->src[0].discard) ||
+                (I->src[1].cache && I->src[1].discard) ||
+                I->src[2].abs || I->src[2].neg ||
+                I->src[3].abs || I->src[3].neg ||
+                !agx3_alu_fcmp_select_imm(enc, I->dest[0].value, src, hints,
+                    condition, I->src[swap ? 3 : 2].value,
+                    I->src[swap ? 2 : 3].value, I->dest[0].size == AGX_SIZE_16,
+                    I->dest[0].cache,
+                    fsel_wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Unshifted register arithmetic shares the original canonical
           * form, but its native source hints come from post-RA lifetime. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
@@ -4057,6 +4105,25 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                if (!agx3_alu_bit_reg(enc,op,I->dest[0].value,src,hints,wait,
                                      bytes,&len) ||
                    !agx3_append(emission,bytes,len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_CONVERT &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1 &&
+             agx3_vary_reg32(I->src[1]) && agx_channels(I->src[1]) == 1) {
+            struct agx3_sel_instr S;
+            if (agx3_translate_instr(I, &S) &&
+                (S.op == AGX3_SEL_OP_I32_TO_F || S.op == AGX3_SEL_OP_U32_TO_F)) {
+               if (I->src[1].kill || (I->src[1].cache && I->src[1].discard))
+                  AGX3_REFUSE(I);
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+               if (!agx3_alu_int_to_float(enc, I->dest[0].value, I->src[1].value,
+                       S.op == AGX3_SEL_OP_I32_TO_F,
+                       agx3_post_ra_hint(I->src[1]), wait, bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
                   AGX3_REFUSE(I);
                continue;
             }
