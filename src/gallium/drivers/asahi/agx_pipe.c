@@ -1791,6 +1791,11 @@ agx_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
     */
 
    ctx->queue_id = agx_create_command_queue(agx_device(screen), priority);
+   if (ctx->queue_id == UINT32_MAX) {
+      u_upload_destroy(pctx->stream_uploader);
+      ralloc_free(ctx);
+      return NULL;
+   }
    ctx->virt_ring_idx = priority + 1;
 
    pctx->destroy = agx_destroy_context;

@@ -32,6 +32,7 @@
 #include "util/u_math.h"
 
 #include <time.h>
+#include <errno.h>
 
 /*
  * Aurora: forward progress must not depend on a native waiter wakeup.
@@ -2970,6 +2971,12 @@ d12_queue_create_internal(struct d12_device *device,
 
    queue->agx_queue_id =
       agx_create_command_queue(dev, DRM_ASAHI_PRIORITY_MEDIUM);
+   if (queue->agx_queue_id == UINT32_MAX) {
+      const int error = errno;
+      free(queue);
+      return (error == ENOMEM || error == ENOSPC || error == EBUSY) ?
+             E_OUTOFMEMORY : E_FAIL;
+   }
 
    if (device->sync->create(device->sync, 0, &queue->syncobj)) {
       mesa_loge("d12_queue_create: sync object creation failed");

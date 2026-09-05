@@ -1380,8 +1380,11 @@ agx_create_command_queue(struct agx_device *dev,
    int ret =
       dev->ops.simple_ioctl(dev, DRM_IOCTL_ASAHI_QUEUE_CREATE, &queue_create);
    if (ret) {
-      fprintf(stderr, "DRM_IOCTL_ASAHI_QUEUE_CREATE failed: %m\n");
-      assert(0);
+      int saved_errno = errno;
+      if (dev->debug & AGX_DBG_1QUEUE)
+         simple_mtx_unlock(&dev->vma_lock);
+      errno = saved_errno;
+      return UINT32_MAX;
    }
 
    if (dev->debug & AGX_DBG_1QUEUE) {

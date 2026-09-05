@@ -1395,16 +1395,38 @@ hk_create_drm_physical_device(struct vk_instance *_instance,
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT |
       VK_QUEUE_SPARSE_BINDING_BIT;
    if (pdev->dev.chip == AGX_CHIP_G17P) {
-      /* G17P graphics and direct compute now use joined HAL200 Ioto programs.
-       * Keep compute and sparse work private until the kernel queue path has
-       * completed its hardware smoke test. */
-      queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
+      /* Graphics, compute and transfers use the native HAL200 queue path.
+       * Sparse binding still requires separate kernel support. */
+      queue_flags = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT |
+                    VK_QUEUE_TRANSFER_BIT;
+   }
+
+   uint32_t queue_count = 1;
+   if (pdev->dev.params.features & DRM_ASAHI_FEATURE_INDEPENDENT_QUEUES) {
+      struct drm_asahi_queue_limits limits = {0};
+      struct drm_asahi_get_params query = {
+         .param_group = DRM_ASAHI_PARAM_GROUP_QUEUE_LIMITS,
+         .pointer = (uintptr_t)&limits,
+         .size = sizeof(limits),
+      };
+      if (pdev->dev.ops.simple_ioctl(&pdev->dev, DRM_IOCTL_ASAHI_GET_PARAMS,
+                                    &query)) {
+         result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                            "Failed to query kernel queue limits: %m");
+         goto fail_disk_cache;
+      }
+      if (!limits.max_queues || !limits.max_in_flight_per_queue) {
+         result = vk_errorf(instance, VK_ERROR_INITIALIZATION_FAILED,
+                            "Kernel reports no usable command queues");
+         goto fail_disk_cache;
+      }
+      queue_count = limits.max_queues;
    }
 
    pdev->queue_families[pdev->queue_family_count++] = (struct hk_queue_family){
       .queue_flags = queue_flags,
 
-      .queue_count = 1,
+      .queue_count = queue_count,
    };
    assert(pdev->queue_family_count <= ARRAY_SIZE(pdev->queue_families));
 

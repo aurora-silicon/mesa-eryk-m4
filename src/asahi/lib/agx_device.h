@@ -460,6 +460,7 @@ agx_include_bo_handle(struct agx_device *dev, uint32_t handle)
       dev->max_handle = exclusive;
 }
 
+/* Returns UINT32_MAX on allocation failure, preserving the backend errno. */
 uint32_t agx_create_command_queue(struct agx_device *dev,
                                   enum drm_asahi_priority priority);
 int agx_destroy_command_queue(struct agx_device *dev, uint32_t queue_id);

@@ -26,6 +26,7 @@
 #include "hk_image.h"
 #include "hk_physical_device.h"
 
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1298,27 +1299,40 @@ hk_queue_init(struct hk_device *dev, const VkDeviceQueueCreateInfo *pCreateInfo,
       priority_info ? priority_info->globalPriority
                     : VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_KHR;
 
-   /* TODO: Lift when kernel side is ready and we can handle failures in
-    * create_command_queue.
-    */
+   /* High-priority scheduling still needs kernel qualification. */
    enum drm_asahi_priority drm_priority = translate_priority(priority);
    if (drm_priority >= DRM_ASAHI_PRIORITY_HIGH) {
+      vk_free(&dev->vk.alloc, queue);
       return VK_ERROR_NOT_PERMITTED_EXT;
    }
 
    result = vk_queue_init(&queue->vk, &dev->vk, pCreateInfo, index_in_family);
-   if (result != VK_SUCCESS)
+   if (result != VK_SUCCESS) {
+      vk_free(&dev->vk.alloc, queue);
       return result;
+   }
 
    queue->vk.driver_submit = hk_queue_submit;
 
    queue->drm.id = agx_create_command_queue(&dev->dev, drm_priority);
+   if (queue->drm.id == UINT32_MAX) {
+      const int error = errno;
+      vk_queue_finish(&queue->vk);
+      vk_free(&dev->vk.alloc, queue);
+      result = error == ENOMEM ? VK_ERROR_OUT_OF_HOST_MEMORY :
+               (error == ENOSPC || error == EBUSY) ? VK_ERROR_OUT_OF_DEVICE_MEMORY :
+               (error == EPERM || error == EACCES) ? VK_ERROR_NOT_PERMITTED_EXT :
+               VK_ERROR_INITIALIZATION_FAILED;
+      return vk_errorf(dev, result, "DRM_IOCTL_ASAHI_QUEUE_CREATE failed: %s",
+                       strerror(error));
+   }
    queue->drm.virt_ring_idx = drm_priority + 1;
 
    if (drmSyncobjCreate(dev->dev.fd, 0, &queue->drm.syncobj)) {
       mesa_loge("drmSyncobjCreate() failed %d\n", errno);
       agx_destroy_command_queue(&dev->dev, queue->drm.id);
       vk_queue_finish(&queue->vk);
+      vk_free(&dev->vk.alloc, queue);
 
       return vk_errorf(dev, VK_ERROR_OUT_OF_HOST_MEMORY,
                        "DRM_IOCTL_SYNCOBJ_CREATE failed: %m");
