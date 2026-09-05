@@ -97,23 +97,40 @@ main(void)
          uint8_t o[AGX3_COPY_MAX_LENGTH];
          uint8_t l = 0;
          CHECK(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, reg16[i].dest,
-                                      reg16[i].src, 0, o, &l));
+                                      reg16[i].src, true, false, true, 0, o, &l));
          CHECK(l == 4);
          CHECK(memcmp(o, reg16[i].bytes, 4) == 0);
       }
       uint8_t o[AGX3_COPY_MAX_LENGTH];
       uint8_t l = 0;
-      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 128, 5, 0, o, &l));
-      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 0, 256, 0, o, &l));
-      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX2, 0, 5, 0, o, &l));
+      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 128, 5, true, false, true, 0, o, &l));
+      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 0, 256, true, false, true, 0, o, &l));
+      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX2, 0, 5, true, false, true, 0, o, &l));
 
       /* A slot-1 wait is f30, reproducing an Apple corpus copy exactly. */
       static const uint8_t waited[4] = {0x93, 0x05, 0x21, 0x20};
-      CHECK(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 18, 5, 1u << 0, o,
+      CHECK(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 18, 5, true, false, false, 1u << 0, o,
                                    &l));
       CHECK(l == 4 && memcmp(o, waited, 4) == 0);
-      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 18, 5, 1u << 6, o,
+      CHECK(!agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, 18, 5, true, false, false, 1u << 6, o,
                                     &l));
+   }
+
+   /* Fresh Apple copy-live.nat and half-live.nat: ordinary live sources and
+    * true dead sources, including odd halves, retain their distinct hints. */
+   {
+      const struct { unsigned dest, src; bool discard; uint8_t bytes[4]; } v[] = {
+         {2, 3, false, {0x13,0x03,0x01,0x00}},
+         {0, 5, false, {0x03,0x05,0x01,0x00}},
+         {6, 8, true, {0x33,0x08,0x09,0x00}},
+         {0, 9, false, {0x03,0x09,0x01,0x00}},
+      };
+      for (unsigned i=0;i<sizeof(v)/sizeof(v[0]);i++) {
+         uint8_t o[AGX3_COPY_MAX_LENGTH], l=0;
+         CHECK(agx3_copy_encode_reg16(AGX_ISA_ENCODING_AGX3B, v[i].dest,
+               v[i].src, false, false, v[i].discard, 0, o, &l));
+         CHECK(l==4 && !memcmp(o,v[i].bytes,4));
+      }
    }
 
    /* Fail closed outside the witnessed domain. */

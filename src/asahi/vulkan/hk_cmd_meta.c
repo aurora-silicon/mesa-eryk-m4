@@ -394,7 +394,11 @@ load_store_formatted(nir_builder *b, nir_def *base, nir_def *index,
    if (util_format_is_depth_or_stencil(format))
       format = canonical_format_pipe(format);
 
-   if (native_formatted_memory && is_format_native(format)) {
+   /* G17P now lowers this formatted intrinsic to a native packed
+    * conversion plus one raw32-bit transfer. Keep the original compatible
+    * compression-class view, without scalar normalize/shift/or expansion. */
+   if ((native_formatted_memory && is_format_native(format)) ||
+       (!native_formatted_memory && format == PIPE_FORMAT_R10G10B10A2_UNORM)) {
       enum pipe_format isa = ail_pixel_format[format].renderable;
       unsigned isa_size = util_format_get_blocksize(isa);
       unsigned isa_components = util_format_get_blocksize(format) / isa_size;
