@@ -189,7 +189,11 @@ agx3_fuse_colour_parts(const struct agx3_colour_link_info *main,
             return false;
    }
 
-   uint8_t code[AGX3_COLOUR_LINK_SIZE], bytes[AGX3_FLTNORM_MAX_LENGTH], len;
+   /* Tile emitters clear their full14-byte destination even for12-byte G17P
+    * output. Reserve the largest emitter capacity, not the returned size. */
+   uint8_t code[AGX3_COLOUR_LINK_SIZE], len;
+   uint8_t bytes[AGX3_TILE_MAX_LENGTH > AGX3_FLTNORM_MAX_LENGTH
+                    ? AGX3_TILE_MAX_LENGTH : AGX3_FLTNORM_MAX_LENGTH];
    unsigned offset = 0, used = 0;
    for (unsigned i = 0; i < 2; ++i) {
       struct agx3_fltnorm_desc d = epilog->packs[i];
