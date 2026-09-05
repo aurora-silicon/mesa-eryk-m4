@@ -8,6 +8,17 @@
 
 #include <string.h>
 
+bool
+agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
+                                   uint32_t original, uint32_t *out)
+{
+   if (chip != AGX_CHIP_G17P || selector > 2 || !out)
+      return false;
+
+   *out = (original & ~UINT32_C(0x180)) | ((selector + 1) << 7);
+   return true;
+}
+
 static void
 store_le32(uint8_t *dst, uint32_t value)
 {

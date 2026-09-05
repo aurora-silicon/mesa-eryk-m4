@@ -641,7 +641,7 @@ agx3_emit_interp(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
 static bool
 agx3_emit_ldcf(struct util_dynarray *emission, enum agx_isa_encoding enc,
-               const agx_instr *I, uint8_t slot, uint16_t wait_mask)
+               const agx_instr *I, uint8_t slot, uint16_t wait_mask, bool first)
 {
    if (wait_mask != 0 || I->nr_dests != 1 || I->nr_srcs != 1 ||
        !agx3_vary_reg32(I->dest[0]) ||
@@ -650,8 +650,8 @@ agx3_emit_ldcf(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
    uint8_t bytes[AGX3_VARY_MAX_LENGTH];
    uint8_t len = 0;
-   return agx3_vary_ldcf(enc, I->dest[0].value, I->src[0].value, slot, bytes,
-                         &len) &&
+   return agx3_vary_ldcf_at_start(enc, I->dest[0].value, I->src[0].value,
+                                 slot, first, bytes, &len) &&
           agx3_append(emission, bytes, len);
 }
 
@@ -3100,8 +3100,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_LDCF) {
-            if (!agx3_emit_ldcf(emission, enc, I, slot, wait))
+            const bool first = enc == AGX_ISA_ENCODING_AGX3B &&
+               ctx->stage == MESA_SHADER_FRAGMENT && !interpolation_started;
+            if (!agx3_emit_ldcf(emission, enc, I, slot, wait, first))
                AGX3_REFUSE(I);
+            interpolation_started = true;
             continue;
          }
 

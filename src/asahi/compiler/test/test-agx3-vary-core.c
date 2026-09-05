@@ -50,6 +50,18 @@ int main(void){
       if (agx3_vary_projective_rhw(AGX_ISA_ENCODING_AGX3B,1,0,false,out,&len)) fail++;
       else pass++;
    }
+   {
+      /* Fresh Apple flat float3 fragment, 2026-09-05: only its first
+       * coefficient load carries f48. Later loads preserve the old codec. */
+      const uint8_t first[] = {0x1f,0x0b,0x54,0x07,0x00,0x05};
+      const uint8_t next[] = {0x1f,0x03,0x54,0x83,0x00,0x05};
+      uint8_t out[AGX3_VARY_MAX_LENGTH]; uint8_t len=0;
+      if(!agx3_vary_ldcf_at_start(AGX_ISA_ENCODING_AGX3B,14,0,6,true,out,&len) ||
+         len!=sizeof(first) || memcmp(out,first,sizeof(first))) fail++; else pass++;
+      if(!agx3_vary_ldcf_at_start(AGX_ISA_ENCODING_AGX3B,6,1,6,false,out,&len) ||
+         len!=sizeof(next) || memcmp(out,next,sizeof(next))) fail++; else pass++;
+      if(agx3_vary_ldcf_at_start(AGX_ISA_ENCODING_AGX3C,14,0,6,true,out,&len)) fail++; else pass++;
+   }
    if(fail){ fprintf(stderr,"agx3_vary_core: %u of %zu failed\n",fail,vary_vec_count); return 1; }
    printf("agx3_vary_core: all %u varying ops reproduced\n",pass); return 0;
 }

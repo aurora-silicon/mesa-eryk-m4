@@ -2868,9 +2868,14 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    };
 
    struct agx_ppp_hal200_graphics_core cull_record;
-   const struct agx_ppp_hal200_graphics_fields cull_fields = {
+   struct agx_ppp_hal200_graphics_fields cull_fields = {
       .words = {UINT32_C(0x00000480)},
    };
+   if (!agx_ppp_hal200_cull_provoking_pack(dev->dev.chip, gfx->provoking,
+                                         cull_fields.words[0],
+                                         &cull_fields.words[0]))
+      return false;
+
 
    struct agx_ppp_w_clamp_cull2_core w_cull2_record;
    const struct agx_ppp_w_clamp_cull2_fields w_cull2_fields = {

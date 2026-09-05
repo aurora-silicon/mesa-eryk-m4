@@ -100,11 +100,13 @@ agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest,
 }
 
 bool
-agx3_vary_ldcf(enum agx_isa_encoding enc, uint16_t dest, uint16_t coef_index,
-               uint8_t slot, uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+agx3_vary_ldcf_at_start(enum agx_isa_encoding enc, uint16_t dest,
+                        uint16_t coef_index, uint8_t slot, bool first,
+                        uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
 {
    if ((enc != AGX_ISA_ENCODING_AGX3B &&
         enc != AGX_ISA_ENCODING_AGX3C) ||
+       (first && !is_b(enc)) ||
        (dest & 1) != 0 || dest >= 256 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;
@@ -113,9 +115,16 @@ agx3_vary_ldcf(enum agx_isa_encoding enc, uint16_t dest, uint16_t coef_index,
    const struct agx3_field_kv base_c[] = {KV(9, 2),  KV(10, 2), KV(23, 1),
                                           KV(24, 1), KV(38, 7), KV(29, 103)};
    const struct agx3_field_kv ov[] = {KV(2, dest), KV(15, coef_index),
-                                      KV(12, slot)};
+                                      KV(12, slot), KV(48, first)};
    return agx3_bind_compose(enc, "ldcfr", 0, is_b(enc) ? base_b : base_c,
-                            is_b(enc) ? 5 : 6, ov, 3, out, len);
+                            is_b(enc) ? 5 : 6, ov, first ? 4 : 3, out, len);
+}
+
+bool
+agx3_vary_ldcf(enum agx_isa_encoding enc, uint16_t dest, uint16_t coef_index,
+               uint8_t slot, uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_vary_ldcf_at_start(enc, dest, coef_index, slot, false, out, len);
 }
 
 bool

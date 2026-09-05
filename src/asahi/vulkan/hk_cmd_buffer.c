@@ -927,8 +927,10 @@ hk_g17p_basic_fragment_layout(struct hk_cmd_buffer *cmd)
 /* Keep native interpolation bounded to the f32 UVS layout already supported
  * by hk_agx3_g17p_vertex_program_info: position plus up to 8 user words.
  * HAL200 updateVaryingTable (0x3efa58) uses the same CF entry encoding for
- * smooth and linear inputs. System inputs other than reciprocal W, flat,
- * and Z stay closed.
+ * smooth, linear and flat inputs. Flat admission is a single f32 vec3/vec4
+ * on triangle lists; its compiler directly selects the C coefficient and
+ * therefore must not admit the first-fan layout. System inputs other than
+ * reciprocal W and all Z inputs stay closed.
  */
 bool
 hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
@@ -957,8 +959,13 @@ hk_g17p_smooth_varyings_supported(struct hk_cmd_buffer *cmd,
    unsigned user_bindings = 0;
    for (unsigned i = 0; i < cf->nr_bindings; ++i) {
       const struct agx_cf_binding *b = &cf->bindings[i];
-      if (!b->smooth || b->count == 0 || b->count > 4 ||
-          b->cf_base != next_cf)
+      if (b->count == 0 || b->count > 4 || b->cf_base != next_cf)
+         return false;
+      if (!b->smooth &&
+          (cf->nr_bindings != 1 || b->perspective || b->offset != 0 ||
+           b->slot != VARYING_SLOT_VAR0 || b->count < 3 ||
+           gfx->topology != AGX_PRIMITIVE_TRIANGLES ||
+           (gfx->provoking != 0 && gfx->provoking != 2)))
          return false;
       if (b->slot == VARYING_SLOT_POS) {
          /* Perspective interpolation first reads reciprocal W, linearly. */

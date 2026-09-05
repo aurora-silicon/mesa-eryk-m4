@@ -66,6 +66,11 @@ bool agx3_vary_interp(enum agx_isa_encoding enc, uint16_t dest,
 
 /* Load the raw coefficient triple for `coef_index` into `dest`, on scoreboard
  * slot `slot` (1..6/1..8). */
+/* Native G17P flat fragment shaders mark their first coefficient load. */
+bool agx3_vary_ldcf_at_start(enum agx_isa_encoding enc, uint16_t dest,
+                            uint16_t coef_index, uint8_t slot, bool first,
+                            uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);
+
 bool agx3_vary_ldcf(enum agx_isa_encoding enc, uint16_t dest,
                     uint16_t coef_index, uint8_t slot,
                     uint8_t out[AGX3_VARY_MAX_LENGTH], uint8_t *len);

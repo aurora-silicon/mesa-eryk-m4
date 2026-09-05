@@ -213,5 +213,20 @@ main(void)
       AGX_CHIP_G17G, AGX_PPP_HAL200_GRAPHICS_FS, &fields, &packed));
    assert(!agx_ppp_hal200_fragment_core_pack(AGX_CHIP_G17G, &live_fs,
                                              &packed));
+   for (unsigned selector = 0; selector < 3; ++selector) {
+      uint32_t cull;
+      assert(agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, selector,
+                                               0x480, &cull));
+      assert((cull == (uint32_t[]){0x480, 0x500, 0x580}[selector]));
+      assert(agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, selector,
+                                               0xdeadbeef, &cull));
+      assert((cull & ~0x180u) == (0xdeadbeefu & ~0x180u));
+      assert(((cull >> 7) & 3) == selector + 1);
+   }
+   uint32_t unchanged = 0xdeadbeef;
+   assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, 3, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17G, 0, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, 0, 0, NULL));
+   assert(unchanged == 0xdeadbeef);
    return 0;
 }
