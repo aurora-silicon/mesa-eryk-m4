@@ -601,13 +601,50 @@ test_bindless_operand_kinds(void)
    return 0;
 }
 
+/* Fresh offline G17P Metal argument-buffer samples, September 5 2026.
+ * Native UMD 0x33dcc8/0x33db40 stores zero-extended heap indices into these
+ * 64-bit argument slots; their contents are not descriptor addresses.
+ */
+static int
+test_indexed_sample_witnesses(void)
+{
+   const uint8_t uniform_bytes[] = {
+      0x05,0xe0,0x0c,0xb8,0xb0,0x00,0x00,0x00,0x83,0x03,
+      0x90,0x01,0x01,0x00,0x80,0x20,0x00,0x00,0x00,0x00};
+   const uint8_t register_bytes[] = {
+      0x05,0x80,0x0c,0xb8,0x34,0x00,0x00,0x00,0x01,0x02,
+      0x90,0x01,0x01,0x00,0xa0,0x28,0x00,0x00,0x40,0x00};
+   struct agx3_tex_sample_desc d = {
+      .width=AGX3_TEX_W32, .mask=15, .slot=1, .wait_mask=1,
+      .coord_kill=true, .final=true, .lod=AGX3_TEX_LOD_AUTO,
+      .texture_kind=AGX3_TEX_OPERAND_UNIFORM,
+      .sampler_kind=AGX3_TEX_OPERAND_UNIFORM,
+      .texture_value=12, .sampler_value=16,
+   };
+   uint8_t out[AGX3_TEX_MAX_LENGTH], len;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(uniform_bytes));
+   CHECK(memcmp(out,uniform_bytes,len)==0);
+   d.texture_kind=d.sampler_kind=AGX3_TEX_OPERAND_REGISTER;
+   d.texture_value=0; d.sampler_value=4; d.wait_mask=32;
+   d.texture_kill=d.sampler_kill=true;
+   CHECK(agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   CHECK(len==sizeof(register_bytes));
+   CHECK(memcmp(out,register_bytes,len)==0);
+   d.texture_value=1;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   d.texture_value=0; d.texture_kind=AGX3_TEX_OPERAND_UNIFORM;
+   CHECK(!agx3_tex_encode_sample(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   return 0;
+}
+
 int
 main(void)
 {
    if (test_exact_witnesses() || test_supported_axes() || test_fail_closed() ||
        test_sample_witnesses() || test_copy_witnesses() ||
        test_sample_fail_closed() || test_array_fetch() ||
-       test_bindless_operand_kinds())
+       test_bindless_operand_kinds() || test_indexed_sample_witnesses())
       return 1;
    printf("agx3 texture core: %u checks passed\n", checks);
    return 0;

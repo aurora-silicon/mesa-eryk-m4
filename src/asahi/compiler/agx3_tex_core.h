@@ -47,7 +47,7 @@ enum agx3_tex_width {
  *     sampler   f124        f125       f126        f132
  *
  * IMMEDIATE names an index into the texture state registers. REGISTER and
- * UNIFORM carry a 64-bit descriptor value, located by half-register or
+ * UNIFORM carry a zero-extended native heap index in a 64-bit value, located by half-register or
  * uniform-half index; Apple's own shaders load a 16-byte argument-buffer
  * entry and name the texture at +0 and the sampler at +8. All three kinds are
  * witnessed byte-exactly in test/test-agx3-smp-witness.c.
@@ -103,7 +103,7 @@ bool agx3_tex_decode_fetch(enum agx_isa_encoding enc, const void *instruction,
  *    the corpus quantizes it (level(2.0) = 128, level(7.25) = 464).
  *
  * Everything else about the sampler family -- arrays, other dimensions,
- * register/bindless state, register LOD, bias, gradients, min-LOD, offsets,
+ * register LOD, bias, gradients, min-LOD, offsets,
  * shadow compare, gather -- remains a deliberate refusal: those axes either
  * lack a witness or need the unmodelled pack_smpir marshalling helper.
  */
@@ -126,6 +126,12 @@ struct agx3_tex_sample_desc {
    bool coord_kill;
    bool final;          /* witnessed final texture-op marker */
    bool array;          /* 2D array: layer in the register after the pair */
+   enum agx3_tex_operand_kind texture_kind;
+   enum agx3_tex_operand_kind sampler_kind;
+   uint16_t texture_value;
+   uint16_t sampler_value;
+   bool texture_kill;
+   bool sampler_kill;
 };
 
 bool agx3_tex_encode_sample(enum agx_isa_encoding enc,

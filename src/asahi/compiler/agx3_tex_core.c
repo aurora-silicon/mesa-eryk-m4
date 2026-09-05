@@ -159,6 +159,15 @@ sample_ok(enum agx_isa_encoding enc, const struct agx3_tex_sample_desc *d)
       return false;
    }
 
+   const unsigned tk = d->texture_kind ? d->texture_kind : 1;
+   const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;
+   if (tk > 3 || sk > 3 || (tk == 1) != (sk == 1) ||
+       ((tk != 1 || sk != 1) && enc != AGX_ISA_ENCODING_AGX3B) ||
+       (tk != 1 && ((d->texture_value & 1) || d->texture_value > 252)) ||
+       (sk != 1 && ((d->sampler_value & 1) || d->sampler_value > 252)) ||
+       (d->texture_kill && tk != 2) || (d->sampler_kill && sk != 2))
+      return false;
+
    const unsigned slots = enc == AGX_ISA_ENCODING_AGX3C ? 8 : 6;
    const uint16_t waits = enc == AGX_ISA_ENCODING_AGX3C ? 0xff : 0x3f;
    return d->slot >= 1 && d->slot <= slots &&
@@ -179,6 +188,9 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
 
    /* The fetch baseline plus f74=1: the sample witnesses carry the extra
     * mask-group bit on every mask value, where the fetch form does not. */
+   const unsigned tk = d->texture_kind ? d->texture_kind : 1;
+   const unsigned sk = d->sampler_kind ? d->sampler_kind : 1;
+   const bool immediate = tk == 1 && sk == 1;
    struct agx3_field_kv base[20];
    unsigned nb = 0;
    base[nb++] = (struct agx3_field_kv)KV(9, 2);
@@ -188,13 +200,13 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    base[nb++] = (struct agx3_field_kv)KV(74, 1);
    base[nb++] = (struct agx3_field_kv)KV(89, 3);
    base[nb++] = (struct agx3_field_kv)KV(90, 3);
-   base[nb++] = (struct agx3_field_kv)KV(103, 1);
-   base[nb++] = (struct agx3_field_kv)KV(104, 1);
+   base[nb++] = (struct agx3_field_kv)KV(103, tk);
+   base[nb++] = (struct agx3_field_kv)KV(104, immediate ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(112, 4);
    base[nb++] = (struct agx3_field_kv)KV(118, 3);
    base[nb++] = (struct agx3_field_kv)KV(119, 3);
-   base[nb++] = (struct agx3_field_kv)KV(132, 1);
-   base[nb++] = (struct agx3_field_kv)KV(133, 1);
+   base[nb++] = (struct agx3_field_kv)KV(132, sk);
+   base[nb++] = (struct agx3_field_kv)KV(133, immediate ? 1 : 2);
    base[nb++] = (struct agx3_field_kv)KV(138, 1);
    if (enc == AGX_ISA_ENCODING_AGX3C) {
       base[nb++] = (struct agx3_field_kv)KV(24, 2);
@@ -202,7 +214,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       base[nb++] = (struct agx3_field_kv)KV(61, 164);
    }
 
-   struct agx3_field_kv ov[24];
+   struct agx3_field_kv ov[26];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(2, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(10, d->width);
@@ -213,8 +225,12 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(75, d->mask);
    ov[n++] = (struct agx3_field_kv)KV(76, 1);  /* 2D */
    ov[n++] = (struct agx3_field_kv)KV(78, 2);  /* filtered sample */
-   ov[n++] = (struct agx3_field_kv)KV(95, d->texture);
-   ov[n++] = (struct agx3_field_kv)KV(124, d->sampler);
+   ov[n++] = (struct agx3_field_kv)KV(94 + tk, tk == 1 ? d->texture : d->texture_value);
+   ov[n++] = (struct agx3_field_kv)KV(123 + sk, sk == 1 ? d->sampler : d->sampler_value);
+   if (d->texture_kill)
+      ov[n++] = (struct agx3_field_kv)KV(107, 1);
+   if (d->sampler_kill)
+      ov[n++] = (struct agx3_field_kv)KV(136, 1);
    if (d->lod == AGX3_TEX_LOD_AUTO) {
       ov[n++] = (struct agx3_field_kv)KV(156, 1); /* implicit-LOD marker */
    } else {
@@ -230,7 +246,7 @@ agx3_tex_encode_sample(enum agx_isa_encoding enc,
       if (d->wait_mask & (1u << i))
          ov[n++] = (struct agx3_field_kv)KV(62 + i, 1);
 
-   if (!agx3_bind_compose(enc, "smp", 3, base, nb, ov, n, out, len)) {
+   if (!agx3_bind_compose(enc, "smp", immediate ? 3 : 4, base, nb, ov, n, out, len)) {
       memset(out, 0, AGX3_TEX_MAX_LENGTH);
       *len = 0;
       return false;

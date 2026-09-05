@@ -31,24 +31,16 @@
  *   capture 2  `idx` derived per-thread (`gid.x & 3u`) -- cannot be hoisted:
  *              f103=2/f96, f132=2/f125.
  *
- * The register and uniform kinds carry a 64-BIT DESCRIPTOR, not an index.
- * capture 2's compute shader makes this explicit:
+ * The register and uniform kinds name 64-bit argument slots. Native UMD
+ * producer evidence now identifies their values: setTexture:atIndex:
+ * (0x33dcc8) writes the zero-extended TextureGen4 heap allocation index from
+ * +0x78; setSamplerState:atIndex: (0x33db40) similarly writes the sampler
+ * heap index. They are not raw texture or sampler descriptor payloads.
  *
- *     bit_and  dest=half0                          idx & 3
- *     lddev    base=uniform8 index=half0 shift=4 mask=15    16 bytes -> r0..r3
- *     smp      f96=0 (half 0)   f125=4 (half 4)
- *
- * A 16-byte argument-buffer entry is loaded whole, and the sample names the
- * texture descriptor at half 0 and the sampler descriptor at half 4 -- two
- * adjacent 64-bit descriptors. The uniform capture spaces f97/f126 by the
- * same 4 halves. Only kind 1 is an index, into the texture state registers.
- *
- * This is NOT the operand shape Honeykrisp currently emits. Its texture_load
- * carries AGX2's addressing -- a uniform base plus a register INDEX, with the
- * sampler as an immediate -- which has no direct AGX3 equivalent, because the
- * AGX3 slot names one descriptor rather than a base/index pair. Closing that
- * needs the descriptor loaded into registers first, as Apple does above; the
- * encoder below is only the second half of that work.
+ * A 16-byte argument-buffer entry contains two such indices. Per-thread
+ * loading places texture at half 0 and sampler at half 4. The shader still
+ * needs the native global texture/sampler heap pointers in its prefix.
+ * AGX2 base-plus-byte-offset addressing cannot be passed through unchanged.
  */
 #include "agx3_binder.h"
 
