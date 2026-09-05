@@ -570,7 +570,67 @@ static void test_int_to_float_liveness(void)
    puts("Integer-to-float: four native signed/unsigned live/dead vectors PASS");
 }
 
+static void
+test_native_fma_minifloat(void)
+{
+   {const uint8_t native[]={0x49,0x11,0x2e,0xc1,0x81,0x08,0x02,0x42};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,8,16,64,8,1,1,1,2,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x59,0x13,0x2e,0xc1,0xa0,0x0a};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,10,18,64,10,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x09,0x01,0x2e,0xd1,0x81,0x08,0x02,0x22};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,0,0,80,8,1,1,1,1,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x19,0x03,0x2e,0xd1,0xa0,0x0a};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,2,2,80,10,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x19,0x15,0x2e,0xc1,0xa0,0x0c};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,2,20,64,12,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x49,0x17,0x2e,0xc1,0xa0,0x0e};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,8,22,64,14,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x19,0x05,0x2e,0xd1,0xa0,0x02};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,2,4,80,2,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x29,0x07,0x2e,0xd1,0xa0,0x08};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,4,6,80,8,1,1,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x49,0x09,0x2e,0xc1,0x01,0x80,0x02,0x42};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,8,8,64,0,1,2,1,2,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x59,0x0b,0x2e,0xc1,0x20,0x82};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,10,10,64,2,1,2,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x19,0x0d,0x2e,0xc1,0x20,0x84};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,2,12,64,4,1,2,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x49,0x0f,0x2e,0xc1,0x20,0x86};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,8,14,64,6,1,2,1,0,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x09,0x01,0x0e,0xc1,0x81,0x04,0x02,0xc2};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,0,0,64,4,1,1,0,32,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   {const uint8_t native[]={0x09,0x83,0x06,0xd1,0x01,0x86,0x02,0xc2};uint8_t out[16],len;
+    assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,0,2,80,6,2,2,0,32,out,&len));
+    assert(len==sizeof(native) && !memcmp(out,native,len));}
+   for(unsigned wait=0;wait<64;wait++) {
+      uint8_t out[16],len;
+      assert(agx3_alu_fma_minifloat(AGX_ISA_ENCODING_AGX3B,4,24,64,4,1,1,false,wait,out,&len));
+      assert(len==6 || len==8 || len==10);
+      if(len==10) {
+         /* Extended FMA physical wait bits: slots1..3 at61..63 and
+          * slots4..6 at77..79, independent of the composer. */
+         const unsigned decoded=(out[7]>>5)|((out[9]>>5)<<3);
+         assert(decoded==wait);
+      }
+   }
+   puts("native FMA minifloat:14 byte vectors and64 wait combinations PASS");
+}
+
 int main(void){
+   test_native_fma_minifloat();
    test_int_to_float_liveness();
    test_float_compare_select();
    test_integer_lifetimes();

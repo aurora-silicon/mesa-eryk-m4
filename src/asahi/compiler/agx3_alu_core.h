@@ -69,6 +69,13 @@ bool agx3_alu_float_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
                          const enum agx3_alu_hint hints[3], uint16_t wait_mask,
                          uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
+bool agx3_alu_fma_minifloat(enum agx_isa_encoding enc, uint16_t dest,
+                             uint16_t src, uint8_t immediate, uint16_t addend,
+                             enum agx3_alu_hint src_hint,
+                             enum agx3_alu_hint addend_hint, bool dest_cache,
+                             uint16_t wait_mask,
+                             uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 bool agx3_alu_mov16(enum agx_isa_encoding enc, uint16_t dest, uint32_t bits,
                      uint16_t wait_mask, uint8_t out[AGX3_ALU_MAX_LENGTH],
                      uint8_t *len);

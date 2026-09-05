@@ -4168,6 +4168,32 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
+         /* Native FMA with a minifloat multiplier. Preserve both async
+          * dependencies in the instruction, including the extended two-wait
+          * form; do not serialize independent texture operations. */
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_FFMA &&
+             !I->saturate && I->nr_dests == 1 && I->nr_srcs == 3 &&
+             agx3_vary_reg32(I->dest[0]) && agx_channels(I->dest[0]) == 1) {
+            const bool imm_first = I->src[0].type == AGX_INDEX_IMMEDIATE;
+            const agx_index imm = I->src[imm_first ? 0 : 1];
+            const agx_index reg = I->src[imm_first ? 1 : 0];
+            const agx_index add = I->src[2];
+            if (imm.type == AGX_INDEX_IMMEDIATE && imm.value <= 255 &&
+                !imm.memory && !imm.abs && !imm.neg &&
+                agx3_vary_reg32(reg) && agx_channels(reg) == 1 &&
+                agx3_vary_reg32(add) && agx_channels(add) == 1) {
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH],len;
+               if (reg.kill || add.kill || (reg.cache && reg.discard) ||
+                   (add.cache && add.discard) ||
+                   !agx3_alu_fma_minifloat(enc,I->dest[0].value,reg.value,
+                       imm.value,add.value,agx3_post_ra_hint(reg),
+                       agx3_post_ra_hint(add),I->dest[0].cache,wait,bytes,&len) ||
+                   !agx3_append(emission,bytes,len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
+         }
+
          /* The legacy generic packers embed specimen discard flags. Keep
           * G17P's plain register ALU on the post-RA-aware path so an alpha or
           * blend factor reused by later channels is not discarded early. */
