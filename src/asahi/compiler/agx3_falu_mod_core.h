@@ -9,7 +9,9 @@
  * encoders emit the always-capable long form through the composer: both
  * commutative source slots (f35, f18) carry independent abs/neg bits, the ffma
  * addend (f52) carries its own, and f14 saturates the result. There is no slot
- * swap -- src0 binds to f35 and src1 to f18 unconditionally.
+ * swap in those legacy interfaces. The runtime-aware ADD additionally tries
+ * the equivalent commuted order, moving both modifiers and lifetime hints,
+ * to keep subtraction in the shortest native form.
  *
  * Evidence: research/gpu/GPU_AGX3_FLOAT_MODIFIERS_2026-08-24.md (96/96 byte
  * exact from baseline + operands + modifiers).
@@ -58,6 +60,13 @@ struct agx3_falu_runtime {
    bool dest_cache;
    uint8_t wait_mask;
 };
+
+bool agx3_falu_add_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
+                              uint16_t src0, uint16_t src1,
+                              const struct agx3_falu_mods *m,
+                              const struct agx3_falu_runtime *runtime,
+                              uint8_t out[AGX3_FALU_MOD_MAX_LENGTH],
+                              uint8_t *len);
 
 bool agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
                               uint16_t src0, uint16_t src1, uint16_t addend,

@@ -14,6 +14,71 @@
 #include <string.h>
 
 static unsigned
+add_runtime_vectors(void)
+{
+   struct add_vector {
+      uint16_t src0, src1;
+      struct agx3_falu_mods mods;
+      struct agx3_falu_runtime runtime;
+      unsigned length;
+      uint8_t bytes[10];
+   };
+   const struct add_vector vectors[] = {
+      /* Original x-y ordering commutes to Apple's shorter negate-first form. */
+      {0, 2, {.src1_neg=true}, {.discard={true,true}, .wait_mask=32}, 6,
+       {0x09,0x01,0x1c,0x03,0,0xc8}},
+      {2, 0, {.src0_neg=true}, {.discard={true,true}, .wait_mask=32}, 6,
+       {0x09,0x01,0x1c,0x03,0,0xc8}},
+      {4, 2, {.src0_neg=true}, {.wait_mask=32}, 6,
+       {0x09,0x03,0x04,0x05,0,0xc8}},
+      {2, 0, {.src0_abs=true, .src0_neg=true, .src1_abs=true},
+       {.discard={true,true}, .wait_mask=32}, 10,
+       {0x09,0x01,0x1c,0x03,0x02,0x08,0,0x80,0x03,0}},
+      {2, 0, {.src0_neg=true, .saturate=true},
+       {.discard={true,true}, .wait_mask=32}, 8,
+       {0x09,0x01,0x1c,0x03,0x01,0x08,0,0x82}},
+      {2, 0, {.src0_neg=true, .src1_neg=true},
+       {.discard={true,true}, .wait_mask=32}, 8,
+       {0x09,0x01,0x1c,0x03,0x01,0x08,0x02,0x80}},
+   };
+   unsigned fail = 0;
+   for (unsigned i = 0; i < sizeof(vectors)/sizeof(vectors[0]); ++i) {
+      const struct add_vector *v = &vectors[i];
+      uint8_t out[16], length;
+      if (!agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0,
+             v->src0, v->src1, &v->mods, &v->runtime, out, &length) ||
+          length != v->length || memcmp(out, v->bytes, length)) {
+         fprintf(stderr, "native modified ADD vector %u failed\n", i);
+         fail++;
+      }
+   }
+   struct agx3_falu_mods m = {.src0_neg=true, .src1_abs=true};
+   struct agx3_falu_runtime rt = {.wait_mask=63};
+   uint8_t out[16], length = 0;
+   /* Long forms must carry multiple dependency slots without a separate
+    * arithmetic operation or discarding either live input. */
+   fail += !agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 254, 252, 250,
+                                       &m, &rt, out, &length);
+   fail += length > 10;
+   memset(out, 0xa5, sizeof(out)); length = 0xa5;
+   rt.cache[0] = rt.discard[0] = true;
+   fail += agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 4,
+                                      &m, &rt, out, &length);
+   rt.cache[0] = false; rt.wait_mask = 64;
+   fail += agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 2, 4,
+                                      &m, &rt, out, &length);
+   rt.wait_mask = 0;
+   fail += agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3B, 0, 255, 4,
+                                      &m, &rt, out, &length);
+   fail += agx3_falu_add_mod_runtime(AGX_ISA_ENCODING_AGX3C, 0, 2, 4,
+                                      &m, &rt, out, &length);
+   fail += length != 0xa5;
+   for (unsigned i=0; i<sizeof(out); ++i) fail += out[i] != 0xa5;
+   printf("native modified ADD: five Apple vectors plus commuted subtraction, live operands, waits and bounds: %u failures\n",fail);
+   return fail;
+}
+
+static unsigned
 runtime_vectors(void)
 {
    unsigned fail = 0;
@@ -151,7 +216,7 @@ runtime_vectors(void)
 int
 main(void)
 {
-   unsigned pass = 0, fail = runtime_vectors();
+   unsigned pass = 0, fail = runtime_vectors() + add_runtime_vectors();
    for (size_t i = 0; i < mod_vec_count; ++i) {
       const struct mod_vec *v = &mod_vecs[i];
       const enum agx_isa_encoding e =

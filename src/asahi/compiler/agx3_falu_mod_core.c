@@ -74,6 +74,67 @@ agx3_falu_add_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
                             b(enc) ? 9 : 11, ov, n, out, len);
 }
 
+/* Keep subtraction and other modified adds fused while preserving both live
+ * operands and their producer slots. The native forms grow from4 to10bytes
+ * only when modifiers or wait combinations require it. */
+bool
+agx3_falu_add_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
+                         uint16_t src0, uint16_t src1,
+                         const struct agx3_falu_mods *m,
+                         const struct agx3_falu_runtime *runtime,
+                         uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !m || !runtime || !out || !len ||
+       !regs_ok(dest, src0, src1) || m->addend_abs || m->addend_neg ||
+       runtime->wait_mask > 0x3f)
+      return false;
+   for (unsigned i = 0; i < 2; ++i)
+      if (runtime->cache[i] && runtime->discard[i])
+         return false;
+
+   uint8_t best[AGX3_FALU_MOD_MAX_LENGTH], best_size = 0;
+   /* Addition is commutative, but the compact form gives the first source
+    * the cheap negate modifier. Native subtraction places its negated input
+    * there. Swap both modifiers and lifetime hints when this saves bytes. */
+   for (unsigned swap = 0; swap < 2; ++swap) {
+      struct agx3_falu_mods mods = *m;
+      if (swap) {
+         mods.src0_abs = m->src1_abs;
+         mods.src0_neg = m->src1_neg;
+         mods.src1_abs = m->src0_abs;
+         mods.src1_neg = m->src0_neg;
+      }
+      struct agx3_field_kv ov[20];
+      unsigned n = common_mods(dest, swap ? src1 : src0, swap ? src0 : src1,
+                               &mods, ov);
+      ov[n++] = (struct agx3_field_kv)KV(11, runtime->dest_cache);
+      ov[n++] = (struct agx3_field_kv)KV(44, runtime->cache[swap]);
+      ov[n++] = (struct agx3_field_kv)KV(46, runtime->discard[swap]);
+      ov[n++] = (struct agx3_field_kv)KV(27, runtime->cache[1 - swap]);
+      ov[n++] = (struct agx3_field_kv)KV(29, runtime->discard[1 - swap]);
+      for (unsigned i = 0; i < 6; ++i)
+         ov[n++] = (struct agx3_field_kv)KV(52 + i,
+                                          (runtime->wait_mask >> i) & 1);
+      for (unsigned ep = 0; ep <= 3; ++ep) {
+         uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], size;
+         if (agx3_bind_compose(enc, "f32add", ep, add_b, 9, ov, n, bytes, &size)) {
+            if (!best_size || size < best_size) {
+               for (unsigned i = 0; i < size; ++i)
+                  best[i] = bytes[i];
+               best_size = size;
+            }
+            break;
+         }
+      }
+   }
+   if (!best_size)
+      return false;
+   for (unsigned i = 0; i < best_size; ++i)
+      out[i] = best[i];
+   *len = best_size;
+   return true;
+}
+
 bool
 agx3_falu_mul_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
                   uint16_t src1, const struct agx3_falu_mods *m,

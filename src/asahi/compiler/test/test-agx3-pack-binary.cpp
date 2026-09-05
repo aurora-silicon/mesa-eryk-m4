@@ -3816,3 +3816,24 @@ TEST_F(AGX3PackBinary, ProjectiveRhwTracksBranchesAndPartialRegisterLifetimes)
       EXPECT_EQ(!pack(b, valid).empty(), valid);
    }
 }
+
+TEST_F(AGX3PackBinary, ModifiedFaddWaitAndLifetimeStayFused)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index loaded = agx_register(0, AGX_SIZE_32);
+   loaded.channels_m1 = 1;
+   agx_device_load_to(b, loaded, agx_uniform(0, AGX_SIZE_64),
+                      agx_immediate(0), AGX_FORMAT_I32, 3, 2, false);
+   agx_index x = agx_register(0, AGX_SIZE_32);
+   agx_index y = agx_register(2, AGX_SIZE_32);
+   x.cache = true;
+   y.neg = y.discard = true;
+   agx_fadd_to(b, agx_register(4, AGX_SIZE_32), x, y);
+   agx_stop(b);
+   const auto code = pack(b);
+   /* Native negate-first subtraction consumes the load directly, retains x
+    * and discards y. No temporary negation or separate wait operation. */
+   const uint8_t native[6] = {0x29,0x81,0x14,0x03,0,0xc8};
+   ASSERT_GE(code.size(), 10u);
+   EXPECT_EQ(memcmp(code.data()+code.size()-10, native, 6), 0);
+}

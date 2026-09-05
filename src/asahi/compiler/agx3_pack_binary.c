@@ -363,7 +363,19 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    bool ok;
    const uint16_t d = I->dest[0].value, s0 = I->src[0].value,
                   s1 = I->src[1].value;
-   if (is_add)
+   if (is_add && enc == AGX_ISA_ENCODING_AGX3B) {
+      struct agx3_falu_runtime runtime = {
+         .dest_cache = I->dest[0].cache,
+         .wait_mask = wait,
+      };
+      for (unsigned i = 0; i < 2; ++i) {
+         if (I->src[i].kill)
+            return -1;
+         runtime.cache[i] = I->src[i].cache;
+         runtime.discard[i] = I->src[i].discard;
+      }
+      ok = agx3_falu_add_mod_runtime(enc, d, s0, s1, &m, &runtime, bytes, &len);
+   } else if (is_add)
       ok = agx3_falu_add_mod(enc, d, s0, s1, &m, bytes, &len);
    else if (is_mul)
       ok = agx3_falu_mul_mod(enc, d, s0, s1, &m, bytes, &len);
@@ -388,7 +400,7 @@ agx3_try_float_modifier(struct util_dynarray *emission,
                                &m, bytes, &len);
       }
    }
-   if (!ok || (wait && !(is_fma && enc == AGX_ISA_ENCODING_AGX3B)))
+   if (!ok || (wait && !((is_add || is_fma) && enc == AGX_ISA_ENCODING_AGX3B)))
       return -1;
 
    memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
@@ -4486,7 +4498,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
-         /* Modified G17P FMA carries its native dependency waits and the
+         /* Modified G17P ADD/FMA carry their native dependency waits and the
           * actual post-RA hints, without draining unrelated texture slots. */
          const int mod = agx3_try_float_modifier(emission, enc, I, wait);
          if (mod == 1)
