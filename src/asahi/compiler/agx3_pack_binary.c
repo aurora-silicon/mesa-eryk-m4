@@ -327,7 +327,7 @@ agx3_mod_src_ok(agx_index s)
  */
 static int
 agx3_try_float_modifier(struct util_dynarray *emission,
-                        enum agx_isa_encoding enc, const agx_instr *I)
+                        enum agx_isa_encoding enc, const agx_instr *I, unsigned wait)
 {
    const bool is_add = I->op == AGX_OPCODE_FADD;
    const bool is_mul = I->op == AGX_OPCODE_FMUL;
@@ -370,9 +370,25 @@ agx3_try_float_modifier(struct util_dynarray *emission,
    else {
       m.addend_abs = I->src[2].abs;
       m.addend_neg = I->src[2].neg;
-      ok = agx3_falu_fma_mod(enc, d, s0, s1, I->src[2].value, &m, bytes, &len);
+      if (enc == AGX_ISA_ENCODING_AGX3B) {
+         struct agx3_falu_runtime runtime = {
+            .dest_cache = I->dest[0].cache,
+            .wait_mask = wait,
+         };
+         for (unsigned i = 0; i < 3; ++i) {
+            if (I->src[i].kill)
+               return -1;
+            runtime.cache[i] = I->src[i].cache;
+            runtime.discard[i] = I->src[i].discard;
+         }
+         ok = agx3_falu_fma_mod_runtime(enc, d, s0, s1, I->src[2].value,
+                                       &m, &runtime, bytes, &len);
+      } else {
+         ok = agx3_falu_fma_mod(enc, d, s0, s1, I->src[2].value,
+                               &m, bytes, &len);
+      }
    }
-   if (!ok)
+   if (!ok || (wait && !(is_fma && enc == AGX_ISA_ENCODING_AGX3B)))
       return -1;
 
    memcpy(util_dynarray_grow_bytes(emission, 1, len), bytes, len);
@@ -4240,13 +4256,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             }
          }
 
-         /* Modifier-carrying float ALU (no wait support yet). */
-         const int mod = agx3_try_float_modifier(emission, enc, I);
-         if (mod == 1) {
-            if (wait != 0)
-               AGX3_REFUSE(I); /* modifier form cannot carry a wait */
+         /* Modified G17P FMA carries its native dependency waits and the
+          * actual post-RA hints, without draining unrelated texture slots. */
+         const int mod = agx3_try_float_modifier(emission, enc, I, wait);
+         if (mod == 1)
             continue;
-         }
          if (mod < 0)
             AGX3_REFUSE(I);
 

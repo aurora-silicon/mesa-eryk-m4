@@ -105,3 +105,51 @@ agx3_falu_fma_mod(enum agx_isa_encoding enc, uint16_t dest, uint16_t src0,
    return agx3_bind_compose(enc, "f32fma", b(enc) ? 5 : 7, b(enc) ? fma_b : fma_c,
                             b(enc) ? 14 : 16, ov, n, out, len);
 }
+
+/* Native dead/live modifier witnesses use the same source cache/discard
+ * fields as ordinary FMA. Encoding points 2..5 carry progressively wider
+ * modifiers and dependency waits; choose the shortest exact representation.
+ * This keeps fog subtraction fused while waiting only on its dependencies.
+ */
+bool
+agx3_falu_fma_mod_runtime(enum agx_isa_encoding enc, uint16_t dest,
+                          uint16_t src0, uint16_t src1, uint16_t addend,
+                          const struct agx3_falu_mods *m,
+                          const struct agx3_falu_runtime *runtime,
+                          uint8_t out[AGX3_FALU_MOD_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || m == NULL || runtime == NULL ||
+       out == NULL || len == NULL || !regs_ok(dest, src0, src1) ||
+       (addend & 1) || addend >= 256 || runtime->wait_mask > 0x3f)
+      return false;
+   for (unsigned i = 0; i < 3; ++i)
+      if (runtime->cache[i] && runtime->discard[i])
+         return false;
+
+   struct agx3_field_kv ov[24];
+   unsigned n = common_mods(dest, src0, src1, m, ov);
+   ov[n++] = (struct agx3_field_kv)KV(52, addend);
+   ov[n++] = (struct agx3_field_kv)KV(64, m->addend_abs);
+   ov[n++] = (struct agx3_field_kv)KV(65, m->addend_neg);
+   ov[n++] = (struct agx3_field_kv)KV(11, runtime->dest_cache);
+   ov[n++] = (struct agx3_field_kv)KV(44, runtime->cache[0]);
+   ov[n++] = (struct agx3_field_kv)KV(46, runtime->discard[0]);
+   ov[n++] = (struct agx3_field_kv)KV(27, runtime->cache[1]);
+   ov[n++] = (struct agx3_field_kv)KV(29, runtime->discard[1]);
+   ov[n++] = (struct agx3_field_kv)KV(61, runtime->cache[2]);
+   ov[n++] = (struct agx3_field_kv)KV(63, runtime->discard[2]);
+   for (unsigned i = 0; i < 6; ++i)
+      ov[n++] = (struct agx3_field_kv)KV(97 + i,
+                                       (runtime->wait_mask >> i) & 1);
+   for (unsigned ep = 2; ep <= 5; ++ep) {
+      uint8_t bytes[AGX3_FALU_MOD_MAX_LENGTH], size;
+      if (agx3_bind_compose(enc, "f32fma", ep, fma_b, 14, ov, n,
+                           bytes, &size)) {
+         for (unsigned i = 0; i < size; ++i)
+            out[i] = bytes[i];
+         *len = size;
+         return true;
+      }
+   }
+   return false;
+}
