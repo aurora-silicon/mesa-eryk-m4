@@ -128,8 +128,8 @@ struct hk_agx3_g17p_rt0_bg_program_desc {
    uint64_t program_va;
    uint64_t shader_va;
    uint64_t clear_value_va;
-   uint64_t texture_va;
-   uint64_t sampler_va;
+   uint64_t texture_pointer_va;
+   uint64_t sampler_pointer_va;
    uint32_t shader_binary_size;
    uint32_t scratch_size;
    uint16_t nr_gprs;
@@ -144,9 +144,10 @@ struct hk_agx3_g17p_rt0_bg_program {
 };
 
 /* Build the one-attachment clear or reload background program. Clear maps one
- * 16-byte value to uniform halfs 4..11. Reload maps one 32-byte Gen9 texture
- * descriptor and one 32-byte HAL200 sampler heap element to consecutive CProg
- * resource slots. Use hk_agx3_g17p_rt0_bg_resource_spec for their pass mask. */
+ * 16-byte value to uniform halfs 4..11. Reload maps two 64-bit texture/sampler
+ * pointers to uniform halfs0..7, matching the native immediate-TEX ABI. The
+ * input VAs name pointer cells, not inline descriptors. Use
+ * hk_agx3_g17p_rt0_bg_resource_spec for their pass mask. */
 bool hk_agx3_g17p_rt0_bg_program_generate(
    enum agx_chip chip, const struct hk_agx3_g17p_rt0_bg_program_desc *desc,
    struct hk_agx3_g17p_rt0_bg_program *program);

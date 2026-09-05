@@ -24,6 +24,7 @@
 
 #include "agx_compile.h"
 #include "agx3_copy_core.h"
+#include "agx3_tex_core.h"
 #include "agx_nir.h"
 #include "agx_nir_texture.h"
 #include "asahi/lib/agx_abi.h"
@@ -607,6 +608,56 @@ test_g17p_background_clear(void)
    if (!ok)
       fprintf(stderr, "AGX3b background-clear compiler mismatch\n");
 
+   free(part.binary);
+   ralloc_free(nir);
+   return ok;
+}
+
+static bool
+test_g17p_background_reload_staging(void)
+{
+   nir_builder b = nir_builder_init_simple_shader(
+      MESA_SHADER_FRAGMENT, &agx_nir_options, "G17P RT0 reload staging");
+   b.shader->info.internal = true;
+   nir_def *coord = nir_u2u32(&b, nir_load_pixel_coord(&b));
+   nir_def *tex = nir_txf(&b, coord, .lod = nir_imm_int(&b, 0),
+                          .dim = GLSL_SAMPLER_DIM_2D,
+                          .dest_type = nir_type_float32,
+                          .backend_flags = AGX_TEXTURE_FLAG_NO_CLAMP);
+   fs_store_colour(&b, tex);
+   NIR_PASS(_, b.shader, agx_nir_lower_texture);
+   nir_shader *nir = fs_finish(&b);
+   NIR_PASS(_, nir, agx_nir_lower_texture);
+   struct agx_shader_key key = {
+      .dev.encoding = AGX_ISA_ENCODING_AGX3B,
+      .fs.ignore_tib_dependencies = true,
+      .no_preamble = true,
+   };
+   struct agx_shader_part part = {0};
+   bool ok = agx_compile_shader_nir(nir, &key, &part);
+   ok &= part.info.agx3_staging_known && part.info.agx3_staging_halfs == 4 &&
+         part.info.uses_txf && part.info.push_count == 0 &&
+         part.info.scratch_size == 0;
+   unsigned found = 0;
+   for (unsigned i = 8; part.binary && i + 14 <= part.info.binary_size; i++) {
+      struct agx3_tex_fetch_desc fetch;
+      if (!agx3_tex_decode_fetch(AGX_ISA_ENCODING_AGX3B,
+                                 (const uint8_t *)part.binary + i, 14, &fetch))
+         continue;
+      uint8_t x[AGX3_TEX_COPY_MAX_LENGTH], y[AGX3_TEX_COPY_MAX_LENGTH];
+      uint8_t nx, ny;
+      ok &= fetch.coord == 0 && fetch.wait_mask == (1u << (fetch.slot - 1)) &&
+            agx3_tex_stage_copy(AGX_ISA_ENCODING_AGX3B, 0, 4, fetch.slot, 0, x, &nx) &&
+            agx3_tex_stage_copy(AGX_ISA_ENCODING_AGX3B, 2, 6, fetch.slot, 0, y, &ny) &&
+            i >= nx + ny &&
+            !memcmp((const uint8_t *)part.binary + i - nx - ny, x, nx) &&
+            !memcmp((const uint8_t *)part.binary + i - ny, y, ny);
+      found++;
+   }
+   ok &= found == 1;
+   if (!ok)
+      fprintf(stderr, "G17P reload staging mismatch: fetches=%u known=%u halves=%u\n",
+              found, part.info.agx3_staging_known, part.info.agx3_staging_halfs);
    free(part.binary);
    ralloc_free(nir);
    return ok;
@@ -1376,8 +1427,13 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
+   if (argc == 2 && !strcmp(argv[1], "--reload-staging-only")) {
+      const bool ok = test_g17p_background_reload_staging();
+      fprintf(stderr, "G17P background reload staging: %s\n", ok ? "PASS" : "FAIL");
+      return ok ? 0 : 1;
+   }
    const enum agx_isa_encoding encodings[] = {
       AGX_ISA_ENCODING_AGX3B,
       AGX_ISA_ENCODING_AGX3C,
@@ -1402,6 +1458,8 @@ main(void)
    if (!test_g17p_eot_block_store())
       all_ok = false;
 
+   if (!test_g17p_background_reload_staging())
+      return 1;
    if (!test_g17p_background_clear())
       all_ok = false;
 

@@ -1293,8 +1293,8 @@ test_g17p_rt0_background_programs(void)
    const struct hk_agx3_g17p_rt0_bg_program_desc reload = {
       .program_va = UINT64_C(0x10001990000),
       .shader_va = UINT64_C(0x10000000100),
-      .texture_va = UINT64_C(0x10000020220),
-      .sampler_va = UINT64_C(0x10000020300),
+      .texture_pointer_va = UINT64_C(0x10000020220),
+      .sampler_pointer_va = UINT64_C(0x10000020300),
       .shader_binary_size = 128,
       .scratch_size = 0,
       .nr_gprs = 12,
@@ -1302,7 +1302,7 @@ test_g17p_rt0_background_programs(void)
    };
    CHECK(
       hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &reload, &program));
-   CHECK(program.length == 230);
+   CHECK(program.length == 154);
    static const uint8_t fragment_speclm[] = {
       0x77, 0x00, 0x2a, 0x43, 0x4b, 0x00, 0x00, 0x00,
    };
@@ -1314,13 +1314,7 @@ test_g17p_rt0_background_programs(void)
          program.bytes[reload_tail + 17] == 0x00);
    static const uint8_t reload_copies[] = {
       0x0b, 0x04, 0x09, 0x04, 0x1b, 0x06, 0x09, 0x04,
-      0x2b, 0x08, 0x09, 0x04, 0x3b, 0x0a, 0x09, 0x04,
-      0x4b, 0x10, 0x09, 0x04, 0x5b, 0x12, 0x09, 0x04,
-      0x6b, 0x14, 0x09, 0x04, 0x7b, 0x16, 0x09, 0x04,
-      0x8b, 0x1c, 0x09, 0x04, 0x9b, 0x1e, 0x09, 0x04,
-      0xab, 0x20, 0x09, 0x04, 0xbb, 0x22, 0x09, 0x04,
-      0xcb, 0x28, 0x09, 0x04, 0xdb, 0x2a, 0x09, 0x04,
-      0xeb, 0x2c, 0x09, 0x04, 0xfb, 0x2e, 0x09, 0x04,
+      0x2b, 0x0c, 0x09, 0x04, 0x3b, 0x0e, 0x09, 0x04,
    };
    const size_t reload_copy_offset =
       program.length - sizeof(reload_copies) -
@@ -1339,10 +1333,10 @@ test_g17p_rt0_background_programs(void)
 
    struct hk_agx3_g17p_rt0_bg_program far_program;
    struct hk_agx3_g17p_rt0_bg_program_desc far_reload = reload;
-   far_reload.sampler_va += UINT64_C(0x100000);
+   far_reload.sampler_pointer_va += UINT64_C(0x100000);
    CHECK(hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &far_reload,
                                                &far_program));
-   CHECK(far_program.length == AGX_IOTO_G17P_RT0_RELOAD_PROGRAM_MAX_SIZE);
+   CHECK(far_program.length == 170);
    const size_t far_copy_offset =
       far_program.length - sizeof(reload_copies) -
       sizeof(background_termination);
@@ -1359,7 +1353,7 @@ test_g17p_rt0_background_programs(void)
       !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
    moved = clear;
-   moved.texture_va = UINT64_C(0x10000020220);
+   moved.texture_pointer_va = UINT64_C(0x10000020220);
    CHECK(
       !hk_agx3_g17p_rt0_bg_program_generate(AGX_CHIP_G17P, &moved, &program));
    CHECK(memcmp(&program, &before, sizeof(program)) == 0);
@@ -1414,12 +1408,12 @@ test_g17p_rt0_background_staging(void)
                    baseline.length - offset - sizeof(expected)) == 0);
    }
 
-   /* The current texel-fetch lowering deliberately reports unknown staging.
-    * Changing its untrusted count must not change the fallback launch. */
+   /* A caller with unknown staging must use the fallback; changing its
+    * untrusted count cannot change that launch. */
    desc.op = HK_AGX3_G17P_RT0_BG_RELOAD;
    desc.clear_value_va = 0;
-   desc.texture_va = UINT64_C(0x87ffee0200);
-   desc.sampler_va = UINT64_C(0x87ffee0240);
+   desc.texture_pointer_va = UINT64_C(0x87ffee0200);
+   desc.sampler_pointer_va = UINT64_C(0x87ffee0240);
    desc.shader_binary_size = 74;
    desc.nr_gprs = 16;
    desc.staging_known = false;

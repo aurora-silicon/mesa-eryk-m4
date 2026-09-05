@@ -478,12 +478,18 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          if (!desc.clear_value_va)
             return (struct hk_bg_eot){0};
       } else {
-         desc.texture_va =
+         const uint64_t texture_va =
             hk_pool_upload(cmd, &iview->planes[0].background, 32, 8);
-         desc.sampler_va =
+         const uint64_t sampler_va =
             dev->rodata.bo && dev->rodata.bo->va ? dev->rodata.bo->va->addr : 0;
-         if (!desc.texture_va || !desc.sampler_va)
+         if (!texture_va || !sampler_va)
             return (struct hk_bg_eot){0};
+         const uint64_t pointers[2] = {texture_va, sampler_va};
+         const uint64_t table = hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+         if (!table)
+            return (struct hk_bg_eot){0};
+         desc.texture_pointer_va = table;
+         desc.sampler_pointer_va = table + sizeof(uint64_t);
       }
 
       struct hk_agx3_g17p_rt0_bg_program program;

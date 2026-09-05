@@ -699,7 +699,8 @@ agx3_tex_imm(agx_index index, uint16_t value)
 static bool
 agx3_emit_texture_fetch(struct util_dynarray *emission,
                         enum agx_isa_encoding enc, const agx_instr *I,
-                        uint8_t slot, uint16_t wait_mask, bool final)
+                        uint8_t slot, uint16_t wait_mask, bool final,
+                        bool stage_coordinates)
 {
    if (I->nr_dests != 1 || I->nr_srcs != 6 ||
        !agx3_tex_plain_reg(I->dest[0]) ||
@@ -722,15 +723,29 @@ agx3_emit_texture_fetch(struct util_dynarray *emission,
        I->query_lod || I->gather != AGX_GATHER_NONE || I->sparse)
       return false;
 
+   /* Native read() stages its coordinates into bank0 before the fetch.
+    * The bounded single-fetch path can reuse these first three entries,
+    * independently of the source GPR numbers. */
+   if (stage_coordinates) {
+      for (unsigned i = 0; i < agx_channels(I->src[0]); i++) {
+         uint8_t copy[AGX3_TEX_MAX_LENGTH], copy_len = 0;
+         if (!agx3_tex_stage_copy(enc, 2 * i, I->src[0].value + 2 * i,
+                                  slot, i == 0 ? wait_mask : 0,
+                                  copy, &copy_len) ||
+             !agx3_append(emission, copy, copy_len))
+            return false;
+      }
+   }
+
    const struct agx3_tex_fetch_desc d = {
       .dest = I->dest[0].value,
-      .coord = I->src[0].value,
+      .coord = stage_coordinates ? 0 : I->src[0].value,
       .width = I->dest[0].size == AGX_SIZE_32 ? AGX3_TEX_W32 : AGX3_TEX_W16,
       .mask = I->mask,
       .texture = I->src[3].value,
       .slot = slot,
-      .wait_mask = wait_mask,
-      .coord_kill = I->src[0].kill,
+      .wait_mask = stage_coordinates ? (1u << (slot - 1)) : wait_mask,
+      .coord_kill = stage_coordinates || I->src[0].kill,
       .final = final,
       .array = I->dim == AGX_DIM_2D_ARRAY,
    };
@@ -3182,13 +3197,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_TEXTURE_LOAD) {
-            /* The texel-fetch message's coordinate-bank producer is not
-             * accounted for by this lowering yet. Zero is not a proved
-             * staging requirement for such a shader. */
-            ctx->agx3_staging_known = false;
+            /* Native TEX reads staging coordinates, independently of GPRs.
+             * This also applies to the background reload's pixel coordinates. */
+            const bool staged = ctx->stage == MESA_SHADER_FRAGMENT;
+            if (staged)
+               ctx->agx3_staging_halfs = MAX2(ctx->agx3_staging_halfs,
+                                              2 * agx_channels(I->src[0]));
+            else
+               ctx->agx3_staging_known = false;
             assert(texture_ops_left > 0);
             const bool final = --texture_ops_left == 0;
-            if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final))
+            if (!agx3_emit_texture_fetch(emission, enc, I, slot, wait, final, staged))
                AGX3_REFUSE(I);
             continue;
          }

@@ -247,18 +247,18 @@ hk_agx3_g17p_combined_sampler_pointers(
    if (native_index >= heap->sampler_count)
       return false;
 
-   const uint64_t texture_va =
+   const uint64_t texture_pointer_va =
       heap->descriptor_set_va + heap->texture_offset_B;
    const uint64_t sampler_offset =
       (uint64_t)native_index * heap->sampler_element_size_B;
-   const uint64_t sampler_va = heap->sampler_heap_va + sampler_offset;
-   if (texture_va < heap->descriptor_set_va ||
-       sampler_va < heap->sampler_heap_va ||
-       texture_va > UINT64_MAX - 31 || sampler_va > UINT64_MAX - 31)
+   const uint64_t sampler_pointer_va = heap->sampler_heap_va + sampler_offset;
+   if (texture_pointer_va < heap->descriptor_set_va ||
+       sampler_pointer_va < heap->sampler_heap_va ||
+       texture_pointer_va > UINT64_MAX - 31 || sampler_pointer_va > UINT64_MAX - 31)
       return false;
 
-   pointers[0] = texture_va;
-   pointers[1] = sampler_va;
+   pointers[0] = texture_pointer_va;
+   pointers[1] = sampler_pointer_va;
    return true;
 }
 
@@ -344,7 +344,7 @@ hk_agx3_g17p_rt0_bg_program_generate(
    size_t range_count;
    switch (desc->op) {
    case HK_AGX3_G17P_RT0_BG_CLEAR:
-      if (!desc->clear_value_va || desc->texture_va || desc->sampler_va)
+      if (!desc->clear_value_va || desc->texture_pointer_va || desc->sampler_pointer_va)
          return false;
       ranges[0] = (struct agx3_ioto_uniform_range){
          .start_halfs = 4,
@@ -354,17 +354,17 @@ hk_agx3_g17p_rt0_bg_program_generate(
       range_count = 1;
       break;
    case HK_AGX3_G17P_RT0_BG_RELOAD:
-      if (desc->clear_value_va || !desc->texture_va || !desc->sampler_va)
+      if (desc->clear_value_va || !desc->texture_pointer_va || !desc->sampler_pointer_va)
          return false;
       ranges[0] = (struct agx3_ioto_uniform_range){
          .start_halfs = 0,
-         .size_halfs = 16,
-         .address = desc->texture_va,
+         .size_halfs = 4,
+         .address = desc->texture_pointer_va,
       };
       ranges[1] = (struct agx3_ioto_uniform_range){
-         .start_halfs = 16,
-         .size_halfs = 16,
-         .address = desc->sampler_va,
+         .start_halfs = 4,
+         .size_halfs = 4,
+         .address = desc->sampler_pointer_va,
       };
       range_count = 2;
       break;
