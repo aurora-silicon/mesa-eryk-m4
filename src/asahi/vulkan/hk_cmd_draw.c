@@ -2165,7 +2165,9 @@ hk_get_fast_linked_locked_vs(struct hk_device *dev, struct hk_shader *shader,
 {
    struct agx_shader_part *prolog =
       hk_get_prolog_epilog(dev, &key->prolog, sizeof(key->prolog),
-                           agx_nir_vs_prolog, false, false, 0);
+                           dev->dev.chip == AGX_CHIP_G17P
+                              ? agx_nir_vs_prolog_raw : agx_nir_vs_prolog,
+                           false, false, 0);
    if (!prolog)
       return NULL;
 

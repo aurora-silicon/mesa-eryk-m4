@@ -168,8 +168,8 @@ lower_adjacency(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
-void
-agx_nir_vs_prolog(nir_builder *b, const void *key_)
+static void
+agx_nir_vs_prolog_impl(nir_builder *b, const void *key_, bool native_raw)
 {
    const struct agx_vs_prolog_key *key = key_;
    b->shader->info.stage = MESA_SHADER_VERTEX;
@@ -206,7 +206,10 @@ agx_nir_vs_prolog(nir_builder *b, const void *key_)
 
    /* Now lower the resulting program using the key */
    if (!key->static_vi) {
-      agx_nir_lower_vbo(b->shader, key->attribs, key->robustness, false);
+      if (native_raw)
+         agx_nir_lower_vbo_raw(b->shader, key->attribs, key->robustness, false);
+      else
+         agx_nir_lower_vbo(b->shader, key->attribs, key->robustness, false);
 
       /* Clean up redundant vertex ID loads */
       if (!key->hw || key->adjacency) {
@@ -229,6 +232,18 @@ agx_nir_vs_prolog(nir_builder *b, const void *key_)
    unsigned nr = DIV_ROUND_UP(BITSET_LAST_BIT(key->component_mask), 4);
    agx_nir_lower_non_monolithic_uniforms(b->shader, nr);
    b->shader->info.io_lowered = true;
+}
+
+void
+agx_nir_vs_prolog(nir_builder *b, const void *key)
+{
+   agx_nir_vs_prolog_impl(b, key, false);
+}
+
+void
+agx_nir_vs_prolog_raw(nir_builder *b, const void *key)
+{
+   agx_nir_vs_prolog_impl(b, key, true);
 }
 
 static bool

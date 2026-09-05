@@ -213,7 +213,7 @@ if with_tests
     files('tests/test-hk-vbo-raw.c'),
     include_directories : [include_directories('.'), inc_include, inc_src, inc_asahi],
     dependencies : [idep_nir, idep_mesautil],
-    link_with : [libasahi_lib, libasahi_layout],
+    link_with : [libasahi_lib, libasahi_layout, libasahi_compiler],
     c_args : [c_msvc_compat_args],
     gnu_symbol_visibility : 'hidden'), suite : ['asahi'])
 

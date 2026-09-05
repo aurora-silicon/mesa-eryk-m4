@@ -293,6 +293,7 @@ struct agx_fs_epilog_key {
 };
 
 void agx_nir_vs_prolog(struct nir_builder *b, const void *key_);
+void agx_nir_vs_prolog_raw(struct nir_builder *b, const void *key_);
 void agx_nir_fs_epilog(struct nir_builder *b, const void *key_);
 void agx_nir_fs_prolog(struct nir_builder *b, const void *key_);
 

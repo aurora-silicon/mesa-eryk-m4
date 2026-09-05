@@ -48,9 +48,40 @@ static void check_format(enum pipe_format format, unsigned stride, unsigned coun
    for(unsigned c=0;c<4;c++)CHECK(fabsf(value[c].f32-expected[c])<0.000001f);
    ralloc_free(b.shader);
 }
+static void check_prolog(bool native_raw)
+{
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
+                                                 "packed vertex prolog");
+   struct agx_vs_prolog_key key = {.hw = true};
+   key.attribs[0] = (struct agx_velem_key){.format = PIPE_FORMAT_R8G8B8A8_UNORM,
+                                         .stride = 5};
+   for (unsigned c = 0; c < 4; ++c) BITSET_SET(key.component_mask, c);
+   if (native_raw) agx_nir_vs_prolog_raw(&b, &key);
+   else agx_nir_vs_prolog(&b, &key);
+   unsigned loads = 0;
+   nir_foreach_function_impl(impl, b.shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_intrinsic) continue;
+            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+            if (intr->intrinsic != nir_intrinsic_load_constant_agx) continue;
+            ++loads;
+            CHECK(nir_intrinsic_format(intr) ==
+                  (native_raw ? PIPE_FORMAT_R8_UINT : PIPE_FORMAT_R8_UNORM));
+            CHECK(intr->def.num_components == (native_raw ? 1 : 4));
+            if (native_raw)
+               CHECK((nir_intrinsic_base(intr) >> AGX_NIR_MEMORY_PACKED_COUNT_SHIFT) == 4);
+         }
+      }
+   }
+   CHECK(loads == 1);
+   ralloc_free(b.shader);
+}
 int main(void)
 {
    glsl_type_singleton_init_or_ref();
+   check_prolog(true);
+   check_prolog(false);
    check_format(PIPE_FORMAT_R8G8B8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){32.f/255,64.f/255,128.f/255,1});
    check_format(PIPE_FORMAT_B8G8R8A8_UNORM,5,4,1,(uint32_t[]){0xff804020,0},(float[]){128.f/255,64.f/255,32.f/255,1});
    check_format(PIPE_FORMAT_R8G8B8A8_SNORM,5,4,1,(uint32_t[]){0x7f00ff80,0},(float[]){-1,-1.f/127,0,1});
