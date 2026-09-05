@@ -84,6 +84,21 @@ hk_files = files(
 
 if with_tests
   test(
+    'hk_g17p_full_frame_scissor',
+    executable(
+      'hk_g17p_full_frame_scissor_test',
+      files('tests/test-hk-g17p-full-frame-scissor.c',
+            '../lib/agx_ppp_hal200_raster_core.c',
+            '../lib/agx_ppp_hal200_graphics_core.c',
+            '../lib/agx_vdm_state_core.c'),
+      include_directories : [inc_include, inc_src],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'hk_g17p_draw_state_upload',
     executable(
       'hk_g17p_draw_state_upload_test',

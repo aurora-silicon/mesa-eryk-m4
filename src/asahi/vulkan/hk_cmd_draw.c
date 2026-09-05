@@ -33,6 +33,7 @@
 #include "hk_image_view.h"
 #include "hk_agx3_ioto_program_core.h"
 #include "hk_g17p_ppp_indices.h"
+#include "hk_g17p_full_frame_scissor.h"
 #include "hk_g17p_draw_state_upload.h"
 #include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
@@ -2868,7 +2869,44 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
       maxy = MIN2(maxy, s->offset.y + s->extent.height);
    }
 
-   const bool scissor_enable = dyn->vp.viewport_count > 0;
+   const struct hk_image_view *color = render->color_att_count == 1
+                                         ? render->color_att[0].iview : NULL;
+   const VkRect2D api_scissor = dyn->vp.scissor_count
+                                  ? dyn->vp.scissors[0] : (VkRect2D){0};
+   const struct hk_g17p_full_frame_scissor full_frame = {
+      .width = render->cr.width,
+      .height = render->cr.height,
+      .area_x = render->area.offset.x,
+      .area_y = render->area.offset.y,
+      .area_width = render->area.extent.width,
+      .area_height = render->area.extent.height,
+      .scissor_x = api_scissor.offset.x,
+      .scissor_y = api_scissor.offset.y,
+      .scissor_width = api_scissor.extent.width,
+      .scissor_height = api_scissor.extent.height,
+      .viewport_x = vp->x,
+      .viewport_y = vp->y,
+      .viewport_width = vp->width,
+      .viewport_height = vp->height,
+      .min_depth = vp->minDepth,
+      .max_depth = vp->maxDepth,
+      .viewport_count = dyn->vp.viewport_count,
+      .scissor_count = dyn->vp.scissor_count,
+      .single_color_layer_sample =
+         color && !render->depth_att.iview && !render->stencil_att.iview &&
+         render->layer_count == 1 && !render->view_mask &&
+         render->tilebuffer.nr_samples == 1 &&
+         u_minify(color->vk.image->extent.width, color->vk.base_mip_level) ==
+            render->cr.width &&
+         u_minify(color->vk.image->extent.height, color->vk.base_mip_level) ==
+            render->cr.height,
+      .default_depth =
+         vk_rasterization_state_depth_clip_enable(&dyn->rs) &&
+         !dyn->rs.depth_clamp_enable && !dyn->vp.depth_clip_negative_one_to_one &&
+         !dyn->rs.depth_bias.enable && !hk_rast_discard(cmd),
+   };
+   const bool scissor_enable = dyn->vp.viewport_count > 0 &&
+                              !hk_g17p_full_frame_scissor_can_elide(&full_frame);
    const bool depth_bias_enable =
       dyn->rs.depth_bias.enable &&
       gfx->object_type == AGX_OBJECT_TYPE_TRIANGLE;
