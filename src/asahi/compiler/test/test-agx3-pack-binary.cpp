@@ -3327,9 +3327,29 @@ TEST_F(AGX3PackBinary, SixOutputVertexAddressArithmeticSurvivesRA)
    }
 }
 
+TEST_F(AGX3PackBinary, NativeHighVertexOutputIndices)
+{
+   const struct {
+      unsigned component, slot, wait;
+      uint8_t bytes[8];
+   } native[] = {
+      {8, 6, 16, {0x57,0x06,0x55,0x10,0x00,0x41,0x4d,0x00}},
+      {9, 5, 0, {0x57,0x06,0x54,0x12,0x20,0x41,0x4c,0x00}},
+      {10, 4, 8, {0x57,0x86,0x54,0x14,0x40,0x41,0x4b,0x00}},
+      {31, 2, 2, {0x57,0x26,0x54,0x3e,0xe0,0x43,0x49,0x00}},
+   };
+   for (auto &v : native) {
+      uint8_t out[AGX3_VARY_MAX_LENGTH], len;
+      ASSERT_TRUE(agx3_vary_uvsw(AGX_ISA_ENCODING_AGX3B, v.component * 2,
+                                v.component, v.slot, true, v.wait, out, &len));
+      ASSERT_EQ(len, 8u);
+      EXPECT_EQ(memcmp(out, v.bytes, 8), 0);
+   }
+}
+
 TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites)
 {
-   for (unsigned count : {7u, 8u}) {
+   for (unsigned count : {7u, 8u, 9u, 11u, 16u, 32u}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       b->shader->nir = rzalloc(mem_ctx, nir_shader);
@@ -3367,7 +3387,7 @@ TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
          at += ld.length;
       }
       unsigned copies = 0, writes = 0, pending = 0, active_writes = 0;
-      bool ready[8] = {false};
+      bool ready[AGX3_MAX_VERTEX_OUTPUTS] = {false};
       while (at + 4 < bytes.size()) {
          const uint8_t *p = bytes.data() + at;
          if ((p[0] & 0xf) == 0xb) {
@@ -3378,7 +3398,8 @@ TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
                (p[3] >> 5 ? 1u << ((p[3] >> 5) - 1) : 0) :
                (p[5] >> 5) | ((p[7] >> 5) << 3);
             ASSERT_LE(slot, 6u);
-            EXPECT_EQ(p[0] >> 4, copies);
+            EXPECT_EQ(((p[3] & 1) | ((p[0] >> 4) << 1) |
+                       ((p[2] >> 6) << 5)), 2 * copies);
             EXPECT_EQ((active_writes & (1u << (slot - 1))) & ~wait, 0u);
             active_writes &= ~wait;
             EXPECT_EQ(pending & (1u << (slot - 1)), 0u);
@@ -3388,7 +3409,7 @@ TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
          } else {
             ASSERT_EQ(p[0], 0x57);
             ASSERT_LE(at + 8, bytes.size());
-            const unsigned component = p[4] >> 5;
+            const unsigned component = (p[4] >> 5) | ((p[5] & 0x1f) << 3);
             const unsigned slot = 1 + (p[6] & 7);
             const unsigned wait = (p[1] >> 4) | ((p[2] & 3) << 4);
             ASSERT_EQ(component, writes);
@@ -3412,7 +3433,7 @@ TEST_F(AGX3PackBinary, WideVertexOutputsPreserveValuesAndRecycleSlotsAfterWrites
 
 TEST_F(AGX3PackBinary, WideVertexOutputsRefuseNonterminalAndOutOfRange)
 {
-   for (unsigned count : {7u, 8u, 9u}) {
+   for (unsigned count : {7u, 8u, 9u, 33u}) {
       agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
       b->shader->stage = MESA_SHADER_VERTEX;
       for (unsigned c = 0; c < count; ++c) {
@@ -3469,5 +3490,29 @@ TEST_F(AGX3PackBinary, ByteAddressLoweringKeepsFullU32Offset)
          }
       }
       EXPECT_EQ(found,1u);ralloc_free(b.shader);
+   }
+}
+
+TEST_F(AGX3PackBinary, PackedVertexMemoryNativeBytes)
+{
+   /* Apple packed_uchar4/ushort4 records with pad then colour, stride5/10.
+    * The unaligned whole vector is one native load into packed GPR words. */
+   const uint8_t native[2][14] = {
+      {0x67,0x00,0x44,0x00,0x00,0x00,0x00,0x00,0x67,0x25,0x00,0x40,0x22,0x00},
+      {0x67,0x00,0x44,0x00,0x00,0x00,0x00,0x00,0x47,0x45,0x00,0x40,0x22,0x00},
+   };
+   for (unsigned half = 0; half < 2; ++half) {
+      struct agx3_mem_desc desc = {};
+      desc.width = half ? AGX3_MEM_W16 : AGX3_MEM_W8;
+      desc.mask = 15;
+      desc.base_kill = true;
+      desc.idx_kind = AGX3_MEM_IDX_IMM;
+      desc.byte_off = 1u << half;
+      desc.slot = 6;
+      desc.agx3b_last_load = true;
+      uint8_t bytes[AGX3_MEM_MAX_LENGTH], length;
+      ASSERT_TRUE(agx3_mem_encode_load(AGX_ISA_ENCODING_AGX3B, &desc, bytes, &length));
+      ASSERT_EQ(length, sizeof(native[half]));
+      EXPECT_EQ(memcmp(bytes, native[half], length), 0);
    }
 }

@@ -351,6 +351,20 @@ main(void)
       }
    }
 
+   /* Fresh native scalar constant multiplication without an addend. */
+   {
+      const uint8_t native[][12] = {
+         {0x9f,0x00,0x56,0x00,0x02,0x00,0x94,0x00,0x50,0x22,0x02,0x00},
+         {0x9f,0x00,0x56,0x00,0x02,0x00,0xfc,0x03,0x50,0x22,0x02,0x00},
+      };
+      for (unsigned i=0; i<2; ++i) {
+         struct agx3_imad_desc m = {.src_a_kill=true, .no_addend=true,
+            .multiplier=i ? 255 : 37, .wait_mask=32};
+         CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B,&m,out,&len));
+         CHECK(len==12 && !memcmp(out,native[i],12));
+      }
+   }
+
    test_apple_shift_witnesses();
 
    printf("%u checks, %u failures\n", checks, failures);

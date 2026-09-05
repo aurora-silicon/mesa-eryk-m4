@@ -176,6 +176,14 @@ agx_write_registers(const agx_context *ctx, const agx_instr *I, unsigned d)
    case AGX_OPCODE_LOCAL_LOAD:
    case AGX_OPCODE_STACK_LOAD:
    case AGX_OPCODE_LD_TILE:
+      if (I->op == AGX_OPCODE_DEVICE_LOAD && I->memory_is_packed) {
+         assert(ctx->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
+         assert(I->dest[d].size == AGX_SIZE_32);
+         const unsigned bytes = I->format == AGX_FORMAT_I8 ? 1 :
+                                I->format == AGX_FORMAT_I16 ? 2 : 4;
+         return DIV_ROUND_UP(util_bitcount(I->mask) * bytes, 4) * 2;
+      }
+
       /* An AGX3 tile load of an 8-bit normalized attachment comes back
        * packed, two channels to a 16-bit register; normflt_agx3 unpacks it.
        * See agx_unpack_normalized_agx3. */

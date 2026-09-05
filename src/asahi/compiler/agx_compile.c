@@ -928,7 +928,11 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
    unsigned shift = nir_intrinsic_base(instr);
    const bool index_bytes = shift & AGX_NIR_MEMORY_INDEX_BYTES;
    assert(!index_bytes || b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
-   shift &= ~AGX_NIR_MEMORY_INDEX_BYTES;
+   const unsigned packed_count = (shift & AGX_NIR_MEMORY_PACKED_COUNT_MASK) >>
+                                 AGX_NIR_MEMORY_PACKED_COUNT_SHIFT;
+   assert(packed_count <= 4);
+   assert(!packed_count || b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX3B);
+   shift &= ~(AGX_NIR_MEMORY_INDEX_BYTES | AGX_NIR_MEMORY_PACKED_COUNT_MASK);
 
    assert(shift <= 3);
 
@@ -937,9 +941,10 @@ agx_emit_load(agx_builder *b, agx_index dest, nir_intrinsic_instr *instr)
       offset = agx_abs(offset);
 
    agx_instr *load = agx_device_load_to(b, dest, addr, offset, fmt,
-                      BITFIELD_MASK(instr->def.num_components), shift,
+                      BITFIELD_MASK(packed_count ? packed_count : instr->def.num_components), shift,
                       nir_is_coherent(instr));
    load->memory_index_is_bytes = index_bytes;
+   load->memory_is_packed = packed_count != 0;
    agx_emit_cached_split(b, dest, instr->def.num_components);
 }
 
@@ -3708,7 +3713,7 @@ agx_should_dump(nir_shader *nir, unsigned agx_dbg_bit)
       agx_validate(ctx, #pass);                                                \
    } while (0)
 
-/* Keep six to eight scalar UVS values live until a native-shaped terminal writeout.
+/* Keep scalar UVS values live until a native-shaped terminal writeout.
  * Run after pressure scheduling but before RA: moving physical-register stores
  * would lose values when later instructions reuse their sources. */
 bool
@@ -3719,7 +3724,7 @@ agx3_sink_vertex_outputs(agx_context *ctx)
        ctx->key->secondary || list_length(&ctx->blocks) != 1)
       return false;
 
-   agx_instr *stores[8] = {0}, *stop = NULL;
+   agx_instr *stores[AGX3_MAX_VERTEX_OUTPUTS] = {0}, *stop = NULL;
    agx_foreach_instr_global(ctx, I) {
       if (stop)
          return false;
@@ -3729,7 +3734,7 @@ agx3_sink_vertex_outputs(agx_context *ctx)
          break;
       case AGX_OPCODE_ST_VARY: {
          if (I->nr_dests || I->nr_srcs != 2 ||
-             I->src[0].type != AGX_INDEX_IMMEDIATE || I->src[0].value >= 8 ||
+             I->src[0].type != AGX_INDEX_IMMEDIATE || I->src[0].value >= ARRAY_SIZE(stores) ||
              I->src[1].type != AGX_INDEX_NORMAL || I->src[1].memory ||
              I->src[1].size != AGX_SIZE_32 || agx_channels(I->src[1]) != 1 ||
              stores[I->src[0].value])
@@ -3741,17 +3746,13 @@ agx3_sink_vertex_outputs(agx_context *ctx)
          if (I->sr != AGX_SR_VERTEX_ID)
             return false;
          break;
-      case AGX_OPCODE_IADD:
-      case AGX_OPCODE_DEVICE_LOAD:
-      case AGX_OPCODE_MOV_IMM:
-      case AGX_OPCODE_MOV:
-      case AGX_OPCODE_FADD:
-      case AGX_OPCODE_FMUL:
-      case AGX_OPCODE_COLLECT:
-      case AGX_OPCODE_SPLIT:
-         break;
       default:
-         return false;
+         /* Pure SSA producers may move relative to vertex writeout. Their
+          * actual encodings remain validated by the normal compiler path;
+          * side effects and control flow require a separate ordering proof. */
+         if (!agx_opcodes_info[I->op].can_eliminate)
+            return false;
+         break;
       }
    }
    if (!stop)

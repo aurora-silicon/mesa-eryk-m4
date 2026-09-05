@@ -1671,8 +1671,12 @@ hk_compile_shader(struct hk_device *dev, struct vk_shader_compile_info *info,
                         : AGX_ROBUSTNESS_DISABLED,
                };
 
-               agx_nir_lower_vbo(clone, attribs, agx_rs,
-                                 !key->vs.static_strides);
+               if (dev->dev.chip == AGX_CHIP_G17P)
+                  agx_nir_lower_vbo_raw(clone, attribs, agx_rs,
+                                        !key->vs.static_strides);
+               else
+                  agx_nir_lower_vbo(clone, attribs, agx_rs,
+                                    !key->vs.static_strides);
 
                unsigned nr = DIV_ROUND_UP(
                   BITSET_LAST_BIT(shader->info.vs.attrib_components_read), 4);

@@ -13,6 +13,9 @@ struct nir_instr;
 
 /* BASE bit3 selects an explicit byte-scaled AGX3 load/store index. */
 #define AGX_NIR_MEMORY_INDEX_BYTES 8u
+/* BASE bits4..6 carry the native packed element count (1..4). */
+#define AGX_NIR_MEMORY_PACKED_COUNT_SHIFT 4u
+#define AGX_NIR_MEMORY_PACKED_COUNT_MASK (7u << AGX_NIR_MEMORY_PACKED_COUNT_SHIFT)
 bool agx_nir_lower_address(struct nir_shader *shader, bool byte_indices);
 bool agx_nir_lower_algebraic_late(struct nir_shader *shader);
 bool agx_nir_cleanup_amul(struct nir_shader *shader);

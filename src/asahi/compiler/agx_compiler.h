@@ -415,6 +415,8 @@ typedef struct {
    bool coherent : 1;
    /* AGX3 memory index scale excludes the access-format size. */
    bool memory_index_is_bytes : 1;
+   /* Raw subword memory elements occupy packed 32-bit SSA words. */
+   bool memory_is_packed : 1;
 
    /* Explicit AGX3 SCS load semantics.  These stay on the internal SCS pseudo
     * and are never inferred from generic memory IR. */
@@ -1047,6 +1049,8 @@ void agx_opt_compact_constants(agx_context *ctx);
 void agx_opt_promote_constants(agx_context *ctx);
 void agx_dce(agx_context *ctx, bool partial);
 void agx_pressure_schedule(agx_context *ctx);
+/* Native G17P VS witnesses cover contiguous output/staging indices0..31. */
+#define AGX3_MAX_VERTEX_OUTPUTS 32u
 bool agx3_sink_vertex_outputs(agx_context *ctx);
 void agx_spill(agx_context *ctx, unsigned k, bool remat_only);
 void agx_repair_ssa(agx_context *ctx);

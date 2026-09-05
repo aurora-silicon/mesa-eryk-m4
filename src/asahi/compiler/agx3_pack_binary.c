@@ -2480,9 +2480,9 @@ agx3_is_g17p_float2_position_vs(agx_context *ctx,
           uvs_mask == 0xf;
 }
 
-/* Position plus two to four scalar user outputs. Native eight-output VSs
- * interleave staging and UVSWs, recycling the six scoreboard slots after
- * waiting for earlier writes. Keep the four-position golden independent. */
+/* Native 11/16/32-output VSs use contiguous scalar UVSW indices and distinct
+ * staging addresses. Recycle the six scoreboard slots after waiting for
+ * earlier writes; keep the four-position golden independent. */
 static unsigned
 agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
 {
@@ -2490,7 +2490,8 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
        ctx->is_preamble)
       return 0;
 
-   unsigned blocks = 0, outputs = 0;
+   unsigned blocks = 0;
+   uint64_t outputs = 0;
    bool stopped = false;
    agx_foreach_block(ctx, block) {
       if (++blocks != 1)
@@ -2505,32 +2506,27 @@ agx3_g17p_vertex_output_count(agx_context *ctx, enum agx_isa_encoding enc)
          case AGX_OPCODE_ST_VARY:
             if (I->nr_dests != 0 || I->nr_srcs != 2 ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
-                I->src[0].value >= 8 ||
-                (outputs & (1u << I->src[0].value)) ||
+                I->src[0].value >= AGX3_MAX_VERTEX_OUTPUTS ||
+                (outputs & (UINT64_C(1) << I->src[0].value)) ||
                 !agx3_vary_reg32(I->src[1]) ||
                 agx_channels(I->src[1]) != 1)
                return 0;
-            outputs |= 1u << I->src[0].value;
+            outputs |= UINT64_C(1) << I->src[0].value;
             break;
          case AGX_OPCODE_GET_SR:
             if (I->sr != AGX_SR_VERTEX_ID)
                return 0;
             break;
-         case AGX_OPCODE_IADD:
-         case AGX_OPCODE_DEVICE_LOAD:
-         case AGX_OPCODE_MOV_IMM:
-         case AGX_OPCODE_MOV:
-         case AGX_OPCODE_FADD:
-         case AGX_OPCODE_FMUL:
+         default:
+            if (!agx_opcodes_info[I->op].can_eliminate)
+               return 0;
             /* Normal packing still validates each operand/width/encoding. */
             break;
-         default:
-            return 0;
          }
       }
    }
-   return stopped && (outputs == 0x3f || outputs == 0x7f || outputs == 0xff)
-             ? util_bitcount(outputs) : 0;
+   return stopped && outputs >= 0x3f && !(outputs & (outputs + 1))
+             ? util_bitcount64(outputs) : 0;
 }
 
 /* The sources of a contiguous terminal store bundle cannot be overwritten
@@ -3598,11 +3594,10 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                                   agx_channels(m) == 1;
 
             /* An immediate-zero addend is the pure-multiply form, whose
-             * addend operand is absent rather than zero. Only the
-             * register-multiplier variant of it is witnessed. */
+             * addend operand is absent rather than zero. Native constant
+             * and register multiplier variants have distinct baselines. */
             const bool no_addend = c.type == AGX_INDEX_IMMEDIATE &&
-                                   c.value == 0 && !c.abs && !c.neg &&
-                                   mult_reg;
+                                   c.value == 0 && !c.abs && !c.neg;
             const bool addend_ok =
                no_addend ||
                (agx3_src_is_register(c) && !c.memory &&

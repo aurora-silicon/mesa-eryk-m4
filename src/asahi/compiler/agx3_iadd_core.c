@@ -146,13 +146,19 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
       KV(9, 2),  KV(10, 2), KV(11, 1), KV(23, 2),
       KV(24, 2),  KV(38, 2), KV(39, 2), KV(53, 1),
    };
-   if (d->no_addend && !d->multiplier_is_register)
-      return false; /* only the register-multiplier pure multiply is witnessed */
+   /* Native mul37/mul255 use an immediate multiplier and absent addend;
+    * unlike the register variant, their destination hint f11 is clear. */
+   const struct agx3_field_kv baseline_imm_nc[] = {
+      KV(9, 2), KV(10, 2), KV(23, 2), KV(24, 2),
+      KV(38, 1), KV(39, 1), KV(53, 1),
+   };
    const struct agx3_field_kv *baseline =
-      d->no_addend ? baseline_reg_nc
+      d->no_addend ? (d->multiplier_is_register ? baseline_reg_nc : baseline_imm_nc)
                    : (d->multiplier_is_register ? baseline_reg : baseline_imm);
    const unsigned nbaseline =
-      d->no_addend ? (sizeof(baseline_reg_nc) / sizeof(baseline_reg_nc[0]))
+      d->no_addend ? (d->multiplier_is_register
+         ? sizeof(baseline_reg_nc) / sizeof(baseline_reg_nc[0])
+         : sizeof(baseline_imm_nc) / sizeof(baseline_imm_nc[0]))
       : d->multiplier_is_register
          ? (sizeof(baseline_reg) / sizeof(baseline_reg[0]))
          : (sizeof(baseline_imm) / sizeof(baseline_imm[0]));

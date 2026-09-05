@@ -88,6 +88,8 @@ instrs_equal(const void *_i1, const void *_i2)
       return false;
    if (i1->shift != i2->shift)
       return false;
+   if (i1->memory_is_packed != i2->memory_is_packed)
+      return false;
    if (i1->memory_index_is_bytes != i2->memory_index_is_bytes)
       return false;
    if (i1->saturate != i2->saturate)

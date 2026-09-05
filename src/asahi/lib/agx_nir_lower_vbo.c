@@ -4,6 +4,7 @@
  */
 
 #include "agx_nir_lower_vbo.h"
+#include "asahi/compiler/agx_nir.h"
 #include "asahi/layout/layout.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_format_convert.h"
@@ -16,6 +17,7 @@ struct ctx {
    const struct agx_velem_key *attribs;
    struct agx_robustness rs;
    bool dynamic_strides;
+   bool native_raw;
 };
 
 static bool
@@ -237,6 +239,38 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
       base = nir_bcsel(b, oob, nir_imm_int64(b, 0), base);
    }
 
+   /* Native G17P LDDEV returns packed raw bytes/halves. Keep one word for
+    * RGBA8 even at byte-aligned base/stride (Apple packed_uchar4 stride5,
+    * offset1 witness), then perform Vulkan format conversion explicitly.
+    * This also handles half floats, signed/scaled channels and packed10bit
+    * attributes through the common NIR format helpers. */
+   if (ctx->native_raw && (!desc->is_array || desc->channel[chan].size < 32)) {
+      const unsigned bits = desc->is_array ? desc->channel[chan].size : 32;
+      const unsigned count = desc->is_array ? desc->nr_channels : 1;
+      assert((bits == 8 || bits == 16 || bits == 32) && count <= 4);
+      enum pipe_format raw_format = bits == 8 ? PIPE_FORMAT_R8_UINT :
+                                    bits == 16 ? PIPE_FORMAT_R16_UINT :
+                                                 PIPE_FORMAT_R32_UINT;
+      nir_def *raw = nir_load_constant_agx(
+         b, DIV_ROUND_UP(bits * count, 32), 32, base, stride_offset_el,
+         .format = raw_format,
+         .base = shift | (count << AGX_NIR_MEMORY_PACKED_COUNT_SHIFT));
+      if (ctx->rs.level >= AGX_ROBUSTNESS_D3D && !rs_address_fixup)
+         raw = nir_bcsel(b, oob, nir_imm_zero(b, raw->num_components, 32), raw);
+
+      nir_def *rgba = nir_format_unpack_rgba(b, raw, attrib.format);
+      rgba = is_int ? (is_signed ? nir_i2iN(b, rgba, intr->def.bit_size)
+                                 : nir_u2uN(b, rgba, intr->def.bit_size))
+                    : nir_f2fN(b, rgba, intr->def.bit_size);
+      unsigned components[4];
+      for (unsigned i = 0; i < intr->def.num_components; ++i)
+         components[i] = nir_intrinsic_component(intr) + i;
+      nir_def_rewrite_uses(&intr->def,
+                          nir_swizzle(b, rgba, components,
+                                      intr->def.num_components));
+      return true;
+   }
+
    /* Load the raw vector */
    nir_def *memory = nir_load_constant_agx(
       b, interchange_comps, interchange_register_size, base, stride_offset_el,
@@ -309,9 +343,9 @@ pass(struct nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
-bool
-agx_nir_lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
-                  struct agx_robustness robustness, bool dynamic_strides)
+static bool
+lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
+          struct agx_robustness robustness, bool dynamic_strides, bool native_raw)
 {
    assert(shader->info.stage == MESA_SHADER_VERTEX);
 
@@ -326,8 +360,23 @@ agx_nir_lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
       .attribs = attribs,
       .rs = robustness,
       .dynamic_strides = dynamic_strides,
+      .native_raw = native_raw,
    };
 
    return nir_shader_intrinsics_pass(shader, pass, nir_metadata_control_flow,
                                      &ctx);
+}
+
+bool
+agx_nir_lower_vbo(nir_shader *shader, const struct agx_velem_key *attribs,
+                  struct agx_robustness robustness, bool dynamic_strides)
+{
+   return lower_vbo(shader, attribs, robustness, dynamic_strides, false);
+}
+
+bool
+agx_nir_lower_vbo_raw(nir_shader *shader, const struct agx_velem_key *attribs,
+                      struct agx_robustness robustness, bool dynamic_strides)
+{
+   return lower_vbo(shader, attribs, robustness, dynamic_strides, true);
 }
