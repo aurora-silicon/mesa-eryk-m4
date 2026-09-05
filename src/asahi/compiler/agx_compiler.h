@@ -557,6 +557,8 @@ typedef struct {
     * this describes the separate file consumed by UVSW and texture inputs. */
    unsigned agx3_staging_halfs;
    bool agx3_staging_known;
+   bool agx3_fltnorm_start;
+   struct agx3_colour_link_info agx3_colour_link;
 
    /* Promoted constants. These will be appended to the binary at the end. */
    uint16_t rodata[512];

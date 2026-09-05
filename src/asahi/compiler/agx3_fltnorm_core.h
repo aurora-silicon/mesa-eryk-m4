@@ -41,9 +41,10 @@
  * 16, 0.5 is 32, 0.75 is 40, 1.0 is 48 (probe fn_const, whose two instructions
  * carry exactly those four values).
  *
- * f68, a one-bit field Apple sets on the first instruction of the main program
- * and clears elsewhere, is left clear; it is not modelled because no probe
- * separates it from "first instruction".
+ * f68 is set when FLTNORM starts the main program, for both immediate and
+ * uniform operands. It is clear after pixel operations or position arithmetic,
+ * including when that later FLTNORM is the first uniform reader. Model only
+ * this native instruction-position rule; the hardware meaning is not named.
  *
  * ## f32mul.ep4
  *
@@ -95,6 +96,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "asahi/lib/agx_chip.h"
@@ -130,11 +132,34 @@ struct agx3_fltnorm_desc {
    bool two_lanes;                /* pack both sources; false = one lane */
    bool snorm;                    /* signed-normalized target */
    uint16_t wait_mask;            /* bit i waits scoreboard slot i + 1 */
+   bool first_instruction;       /* G17P f68, first main instruction only */
 };
 
 bool agx3_fltnorm_encode(enum agx_isa_encoding enc,
                          const struct agx3_fltnorm_desc *d,
                          uint8_t out[AGX3_FLTNORM_MAX_LENGTH], uint8_t *len);
+
+/* Relocate a compiler-proven part-start marker after joining shader parts.
+ * This does not discover instructions by scanning arbitrary executable bytes.
+ */
+bool agx3_fltnorm_relocate_start(uint8_t *code, size_t size,
+                                 bool has_start_marker, size_t linked_offset);
+
+/* Finite compiler provenance for a uniform-copy-only main and an opaque
+ * RGBA8 two-pack epilog. No executable byte parsing is used for fusion. */
+struct agx3_colour_link_info {
+   bool copy_only;
+   uint8_t copy_count;
+   struct { uint16_t reg, uniform; } copies[4];
+   bool opaque_pack;
+   uint16_t store_reg;
+   struct agx3_fltnorm_desc packs[2];
+};
+
+#define AGX3_COLOUR_LINK_SIZE 54u
+bool agx3_fuse_colour_parts(const struct agx3_colour_link_info *main,
+                             const struct agx3_colour_link_info *epilog,
+                             uint8_t out[AGX3_COLOUR_LINK_SIZE]);
 
 /*
  * Each register operand of an AGX3 float op picks between two bits: one marks

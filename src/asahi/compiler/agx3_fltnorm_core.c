@@ -4,6 +4,8 @@
  */
 
 #include "agx3_fltnorm_core.h"
+#include "agx3_pixel_core.h"
+#include "agx3_tile_core.h"
 
 #include <string.h>
 
@@ -90,7 +92,8 @@ agx3_fltnorm_encode(enum agx_isa_encoding enc,
    memset(out, 0, AGX3_FLTNORM_MAX_LENGTH);
    *len = 0;
 
-   if (!enc_ok(enc) || d->dest >= 256)
+   if (!enc_ok(enc) || d->dest >= 256 ||
+       (d->first_instruction && enc != AGX_ISA_ENCODING_AGX3B))
       return false;
    if ((d->wait_mask & ~wait_limit(enc)) != 0)
       return false;
@@ -124,6 +127,8 @@ agx3_fltnorm_encode(enum agx_isa_encoding enc,
    ov[n++] = (struct agx3_field_kv)KV(11, d->dest_hint ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(58, d->snorm ? 1 : 0);
    ov[n++] = (struct agx3_field_kv)KV(59, d->two_lanes ? 1 : 0);
+   if (d->first_instruction)
+      ov[n++] = (struct agx3_field_kv)KV(68, 1);
 
    if (!append_src(ov, &n, &d->src[0], &s0))
       return false;
@@ -148,6 +153,101 @@ agx3_fltnorm_encode(enum agx_isa_encoding enc,
    memset(out, 0, AGX3_FLTNORM_MAX_LENGTH);
    *len = 0;
    return false;
+}
+
+bool
+agx3_fltnorm_relocate_start(uint8_t *code, size_t size,
+                            bool has_start_marker, size_t linked_offset)
+{
+   if (!has_start_marker)
+      return true;
+
+   /* Provenance comes from the packer. Check the promised ten-byte FLTNORM
+    * and its f68 bit before changing it; f68 is physical bit 11 on G17P. */
+   if (!code || size < 10 || code[0] != 0x97 || (code[1] & 0xf) != 0xc)
+      return false;
+   if (linked_offset != 0)
+      code[1] &= ~0x08;
+   return true;
+}
+
+bool
+agx3_fuse_colour_parts(const struct agx3_colour_link_info *main,
+                       const struct agx3_colour_link_info *epilog,
+                       uint8_t out[AGX3_COLOUR_LINK_SIZE])
+{
+   if (!main || !epilog || !out || !main->copy_only ||
+       !main->copy_count || main->copy_count > 4 || !epilog->opaque_pack)
+      return false;
+
+   for (unsigned i = 0; i < main->copy_count; ++i) {
+      if ((main->copies[i].reg | main->copies[i].uniform) & 1 ||
+          main->copies[i].reg >= 256 || main->copies[i].uniform >= 512)
+         return false;
+      for (unsigned j = 0; j < i; ++j)
+         if (main->copies[i].reg == main->copies[j].reg)
+            return false;
+   }
+
+   uint8_t code[AGX3_COLOUR_LINK_SIZE], bytes[AGX3_FLTNORM_MAX_LENGTH], len;
+   unsigned offset = 0, used = 0;
+   for (unsigned i = 0; i < 2; ++i) {
+      struct agx3_fltnorm_desc d = epilog->packs[i];
+      if (!d.two_lanes || d.snorm || d.wait_mask ||
+          d.dest != epilog->store_reg + i)
+         return false;
+      /* A pack must not overwrite a register whose exported value a later
+       * pack could read. Keep this sufficient alias rule deliberately tight. */
+      for (unsigned j = 0; j < main->copy_count; ++j)
+         if (d.dest == main->copies[j].reg ||
+             d.dest == main->copies[j].reg + 1)
+            return false;
+      for (unsigned s = 0; s < 2; ++s) {
+         if (d.src[s].kind == AGX3_FLTNORM_SRC_REGISTER) {
+            unsigned j;
+            for (j = 0; j < main->copy_count; ++j)
+               if (d.src[s].value == main->copies[j].reg)
+                  break;
+            if (j == main->copy_count)
+               return false;
+            used |= 1u << j;
+            d.src[s].kind = AGX3_FLTNORM_SRC_UNIFORM;
+            d.src[s].value = main->copies[j].uniform;
+            d.src[s].kill = false;
+         } else if (d.src[s].kind != AGX3_FLTNORM_SRC_IMMEDIATE) {
+            return false;
+         }
+      }
+      d.first_instruction = i == 0;
+      if (!agx3_fltnorm_encode(AGX_ISA_ENCODING_AGX3B, &d, bytes, &len) ||
+          len != 10)
+         return false;
+      memcpy(code + offset, bytes, len);
+      offset += len;
+   }
+   if (used != (1u << main->copy_count) - 1)
+      return false;
+
+   if (!agx3_pixel_colour_entry(AGX_ISA_ENCODING_AGX3B, bytes, &len) || len != 6)
+      return false;
+   memcpy(code + offset, bytes, len); offset += len;
+   if (!agx3_pixel_wait(AGX_ISA_ENCODING_AGX3B, 12, 0, bytes, &len) || len != 6)
+      return false;
+   memcpy(code + offset, bytes, len); offset += len;
+   if (!agx3_tile_store(AGX_ISA_ENCODING_AGX3B, epilog->store_reg, AGX3_TILE_W8,
+                       15, 0, AGX3_TILE_COV_1X, 0, bytes, &len) || len != 12)
+      return false;
+   memcpy(code + offset, bytes, len); offset += len;
+   if (!agx3_pixel_release(AGX_ISA_ENCODING_AGX3B, 12, true, 0, bytes, &len) ||
+       len != 6)
+      return false;
+   memcpy(code + offset, bytes, len); offset += len;
+   const uint8_t end[] = {14, 0, 0, 0};
+   memcpy(code + offset, end, sizeof(end)); offset += sizeof(end);
+   if (offset != sizeof(code))
+      return false;
+   memcpy(out, code, sizeof(code));
+   return true;
 }
 
 bool

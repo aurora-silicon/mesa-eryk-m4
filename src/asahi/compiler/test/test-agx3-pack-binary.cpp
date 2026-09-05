@@ -23,6 +23,7 @@
 #include "agx3_mem_core.h"
 #include "agx3_pack.h"
 #include "agx3_scs_core.h"
+#include "agx3_slot_core.h"
 #include "agx3_sr_core.h"
 #include "agx3_stage_core.h"
 #include "agx3_static_spill_core.h"
@@ -2375,4 +2376,385 @@ TEST_F(AGX3PackBinary, G17PAlphaProtocolPreservesConstantColourBracket)
       0x0e,0x00,0x00,0x00,
    };
    EXPECT_EQ(pack(b), std::vector<uint8_t>(std::begin(exact),std::end(exact)));
+}
+
+TEST_F(AGX3PackBinary, G17PWriteWaitFollowsPackingAndPreservesScoreboard)
+{
+   for (bool blend : {false, true}) {
+      for (bool async : {false, true}) {
+         SCOPED_TRACE(blend);
+         SCOPED_TRACE(async);
+         const auto enc = AGX_ISA_ENCODING_AGX3B;
+         agx_builder *b = builder(enc);
+         b->shader->stage = MESA_SHADER_FRAGMENT;
+         std::vector<uint8_t> want;
+         uint8_t bytes[32], len;
+         const uint8_t entry[] = {0x87,0x02,0x54,0,6,0};
+         const uint8_t read[] = {0x87,0x02,0x54,8,8,0};
+         const uint8_t release_end[] = {7,2,0x54,12,2,0,14,0,0,0};
+         agx_index packed = agx_register(0, AGX_SIZE_16);
+         packed.channels_m1 = 1;
+         if (async) {
+            agx_scs_load_agx3_to(b, agx_register(4, AGX_SIZE_32), 4,
+                                AGX_FORMAT_I32);
+            struct agx3_scs_desc d = {};
+            d.data = 4; d.width = AGX3_MEM_W32;
+            d.byte_offset = 4; d.slot = 1;
+            ASSERT_TRUE(agx3_scs_encode_load(enc, &d, bytes, &len));
+            append(want, bytes, len);
+         }
+         if (blend) {
+            append(want, entry, sizeof(entry));
+            append(want, read, sizeof(read));
+            agx_wait_pix(b, 8);
+            agx_index loaded = agx_register(12, AGX_SIZE_16);
+            loaded.channels_m1 = 1;
+            agx_ld_tile_to(b, loaded, agx_immediate(AGX_ALL_SAMPLES),
+                          agx_null(), AGX_FORMAT_U8NORM, 15, 0, false);
+            ASSERT_TRUE(agx3_tile_load(enc, 12, AGX3_TILE_W8, async ? 2 : 1, 15, 0,
+               AGX3_TILE_COV_1X, 0, true, true, bytes, &len));
+            append(want, bytes, len);
+            agx_index unpacked = agx_register(8, AGX_SIZE_32);
+            unpacked.channels_m1 = 1;
+            agx_normflt_agx3_to(b, unpacked, agx_register(12, AGX_SIZE_16),
+                               AGX_FORMAT_U8NORM);
+            struct agx3_normflt_desc d = {};
+            d.dest = 8; d.dest_hint = true; d.src = 12;
+            d.two_lanes = true; d.wait_mask = async ? 2 : 1;
+            ASSERT_TRUE(agx3_normflt_encode(enc, &d, bytes, &len));
+            append(want, bytes, len);
+         }
+         agx_wait_pix(b, blend ? 4 : 12);
+         for (unsigned i = 0; i < 2; ++i) {
+            agx_fltnorm_agx3_to(b, agx_register(i, AGX_SIZE_16),
+               agx_register(4 + 4*i, AGX_SIZE_32),
+               agx_register(6 + 4*i, AGX_SIZE_32), AGX_FORMAT_U8NORM);
+            struct agx3_fltnorm_desc d = {};
+            d.dest = i; d.two_lanes = true;
+            d.src[0] = {AGX3_FLTNORM_SRC_REGISTER, uint16_t(4+4*i), false};
+            d.src[1] = {AGX3_FLTNORM_SRC_REGISTER, uint16_t(6+4*i), false};
+            d.wait_mask = async && i == 0 ? 1 : 0;
+            d.first_instruction = !blend && !async && i == 0;
+            ASSERT_TRUE(agx3_fltnorm_encode(enc, &d, bytes, &len));
+            append(want, bytes, len);
+         }
+         if (!blend)
+            append(want, entry, sizeof(entry));
+         const uint8_t write[] = {0x87,2,0x54,uint8_t(blend ? 4 : 12),8,0};
+         append(want, write, sizeof(write));
+         agx_st_tile(b, packed, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                     AGX_FORMAT_U8NORM, 15, 0, false);
+         ASSERT_TRUE(agx3_tile_store(enc, 0, AGX3_TILE_W8, 15, 0,
+                                    AGX3_TILE_COV_1X, 0, bytes, &len));
+         append(want, bytes, len);
+         append(want, release_end, sizeof(release_end));
+         agx_stop(b);
+         EXPECT_EQ(pack(b), want);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, G17PWriteWaitDoesNotCrossUnprovenOperations)
+{
+   for (unsigned axis = 0; axis < 6; ++axis) {
+      SCOPED_TRACE(axis);
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_block *first = agx_start_block(b->shader);
+      if (axis == 5)
+         agx_begin_cf(b);
+      agx_wait_pix(b, 12);
+      if (axis == 2) {
+         agx_block *second = agx_test_block(b->shader);
+         agx_block_add_successor(first, second);
+         b->cursor = agx_after_block(second);
+      } else if (axis == 3) {
+         agx_fadd_to(b, agx_register(4, AGX_SIZE_32),
+                     agx_register(6, AGX_SIZE_32), agx_register(8, AGX_SIZE_32));
+      } else if (axis == 4) {
+         agx_signal_pix(b, 12);
+      }
+      const auto format = axis == 0 ? AGX_FORMAT_S8NORM : AGX_FORMAT_U8NORM;
+      agx_fltnorm_agx3_to(b, agx_register(0, AGX_SIZE_16),
+                         agx_immediate(32), agx_immediate(48), format);
+      agx_index packed = agx_register(0, AGX_SIZE_16);
+      packed.channels_m1 = 1;
+      agx_st_tile(b, packed, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+                  format, 15, axis == 1 ? 16 : 0, false);
+      agx_stop(b);
+      const auto bin = pack(b);
+      const uint8_t original_prefix[] = {
+         0x87,2,0x54,0,6,0, 0x87,2,0x54,12,8,0,
+      };
+      ASSERT_GE(bin.size(), sizeof(original_prefix));
+      EXPECT_TRUE(std::equal(std::begin(original_prefix),
+                             std::end(original_prefix), bin.begin())) << axis;
+   }
+}
+
+TEST_F(AGX3PackBinary, OperandlessPixelWaitDoesNotRetireAsyncRegisters)
+{
+   /* agx3_emit_pixel requires zero src/dest operands; WAIT_PIX is synchronous.
+    * Thus its scheduler mask is zero even with all six slots outstanding.
+    * The real first consumer must retain all six waits after fence deferral.
+    */
+   struct agx3_slot_instr instrs[8] = {};
+   struct agx3_slot_result res[8] = {};
+   for (unsigned i = 0; i < 6; ++i) {
+      instrs[i].is_async = true;
+      instrs[i].nr_dsts = 1;
+      instrs[i].dst[0] = i;
+      instrs[7].src[i] = i;
+   }
+   instrs[7].nr_srcs = 6;
+   ASSERT_TRUE(agx3_slot_assign(instrs, 8, 6, res));
+   EXPECT_EQ(res[6].slot, 0);
+   EXPECT_EQ(res[6].wait_mask, 0);
+   EXPECT_EQ(res[7].wait_mask, 0x3f);
+}
+
+TEST_F(AGX3PackBinary, G17PColourPackingKeepsNativeUniformSources)
+{
+   for (unsigned base : {0u, 16u, 256u, 508u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      agx_instr *I = agx_fltnorm_agx3_to(b, agx_register(0, AGX_SIZE_16),
+         agx_uniform(base, AGX_SIZE_32), agx_uniform(base + 2, AGX_SIZE_32),
+         AGX_FORMAT_U8NORM);
+      agx_stop(b);
+      agx_lower_uniform_sources(b->shader);
+      EXPECT_EQ(I->src[0].type, AGX_INDEX_UNIFORM);
+      EXPECT_EQ(I->src[1].type, AGX_INDEX_UNIFORM);
+      struct agx3_fltnorm_desc d = {};
+      d.two_lanes = true;
+      d.src[0].kind = d.src[1].kind = AGX3_FLTNORM_SRC_UNIFORM;
+      d.src[0].value = base; d.src[1].value = base + 2;
+      uint8_t encoded[AGX3_FLTNORM_MAX_LENGTH], len = 0;
+      ASSERT_TRUE(agx3_fltnorm_encode(AGX_ISA_ENCODING_AGX3B, &d, encoded, &len));
+      std::vector<uint8_t> expected(encoded, encoded + len);
+      const uint8_t stop[] = {14, 0, 0, 0};
+      append(expected, stop, sizeof(stop));
+      EXPECT_EQ(pack(b), expected);
+   }
+   for (unsigned value : {1u, 511u, 512u})
+      EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FLTNORM_AGX3, 0, value, AGX_SIZE_32));
+   for (auto size : {AGX_SIZE_16, AGX_SIZE_64})
+      EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+         AGX_OPCODE_FLTNORM_AGX3, 0, 16, size));
+   EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+      AGX_OPCODE_FLTNORM_AGX3, 2, 16, AGX_SIZE_32));
+   EXPECT_FALSE(agx_instr_accepts_uniform(AGX_ISA_ENCODING_AGX3B,
+      AGX_OPCODE_IADD, 0, 16, AGX_SIZE_32));
+}
+
+TEST_F(AGX3PackBinary, G17PFltnormStartMatchesNativeF32Uniforms)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   b->shader->stage = MESA_SHADER_FRAGMENT;
+   /* Actual native uniform-f32.nat, constant float4 buffer input: uniform
+    * half indices 4,6,8,10 with f24=f41=2 (32-bit). */
+   for (unsigned i = 0; i < 2; ++i)
+      agx_fltnorm_agx3_to(b, agx_register(i, AGX_SIZE_16),
+         agx_uniform(4 + 4*i, AGX_SIZE_32),
+         agx_uniform(6 + 4*i, AGX_SIZE_32), AGX_FORMAT_U8NORM);
+   agx_wait_pix(b, 12);
+   agx_index packed = agx_register(0, AGX_SIZE_16);
+   packed.channels_m1 = 1;
+   agx_st_tile(b, packed, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
+               AGX_FORMAT_U8NORM, 15, 0, false);
+   agx_stop(b);
+   const std::vector<uint8_t> native = {
+      0x97,0x0c,0x54,0,2,8,0x18,0xd0,5,0xc8,
+      0x97,4,0x54,1,2,0x10,0x28,0xd0,5,0xc8,
+      0x87,2,0x54,0,6,0, 0x87,2,0x54,12,8,0,
+      0xe7,6,0x54,0,0,0,1,0x4e,0,0,0,0,
+      7,2,0x54,12,2,0, 14,0,0,0,
+   };
+   EXPECT_EQ(pack(b), native);
+}
+
+TEST_F(AGX3PackBinary, G17PFltnormStartIsPositionNotFirstUniformRead)
+{
+   for (bool preceding : {false, true}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      if (preceding)
+         agx_fadd_to(b, agx_register(4, AGX_SIZE_32),
+                    agx_register(6, AGX_SIZE_32), agx_register(8, AGX_SIZE_32));
+      agx_fltnorm_agx3_to(b, agx_register(0, AGX_SIZE_16),
+                         agx_immediate(16), agx_immediate(32), AGX_FORMAT_U8NORM);
+      agx_fltnorm_agx3_to(b, agx_register(1, AGX_SIZE_16),
+                         agx_uniform(8, AGX_SIZE_32),
+                         agx_uniform(10, AGX_SIZE_32), AGX_FORMAT_U8NORM);
+      agx_stop(b);
+      const auto bin = pack(b);
+      const uint8_t immediate[] = {
+         0x97,uint8_t(preceding ? 4 : 12),0x54,0,2,0x20,0x80,0x50,4,0xc8,
+      };
+      const uint8_t later[] = {0x97,4,0x54,1,2,0x10,0x28,0xd0,5,0xc8};
+      /* Native immediate-only first FLTNORM sets f68; native position-derived
+       * arithmetic before the first uniform FLTNORM leaves it clear. */
+      const auto at = std::search(bin.begin(),bin.end(),std::begin(immediate),
+                                  std::end(immediate));
+      ASSERT_NE(at, bin.end());
+      EXPECT_TRUE(std::equal(std::begin(later),std::end(later),at+10));
+   }
+   struct agx3_fltnorm_desc d = {};
+   d.src[0] = {AGX3_FLTNORM_SRC_IMMEDIATE, 16, false};
+   d.first_instruction = true;
+   uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH], len;
+   EXPECT_FALSE(agx3_fltnorm_encode(AGX_ISA_ENCODING_AGX3C, &d, bytes, &len));
+}
+
+TEST_F(AGX3PackBinary, G17PFltnormStartRelocatesAcrossLinkedParts)
+{
+   for (unsigned main_bytes : {0u, 12u}) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_fltnorm_agx3_to(b, agx_register(0, AGX_SIZE_16),
+                         agx_uniform(4, AGX_SIZE_32),
+                         agx_uniform(6, AGX_SIZE_32), AGX_FORMAT_U8NORM);
+      agx_stop(b);
+      const auto epilog = pack(b);
+      ASSERT_TRUE(b->shader->agx3_fltnorm_start);
+      /* Real crescent main's three 4-byte uniform COPY exports. */
+      const uint8_t main[] = {0x4b,0x10,1,8,0x5b,0x14,1,8,0x6b,0x12,1,8};
+      std::vector<uint8_t> linked(main, main+main_bytes);
+      linked.insert(linked.end(),epilog.begin(),epilog.end());
+      ASSERT_TRUE(agx3_fltnorm_relocate_start(linked.data()+main_bytes,
+                  epilog.size(),b->shader->agx3_fltnorm_start,main_bytes));
+      EXPECT_EQ(linked[main_bytes+1], main_bytes ? 4 : 12);
+      EXPECT_TRUE(std::equal(main,main+main_bytes,linked.begin()));
+      EXPECT_EQ(epilog[1], 12); /* cached part remains reusable */
+      EXPECT_TRUE(std::equal(epilog.begin()+2,epilog.end(),
+                             linked.begin()+main_bytes+2));
+   }
+   uint8_t invalid[10] = {0x97,4,0x54};
+   EXPECT_FALSE(agx3_fltnorm_relocate_start(invalid,10,true,12));
+   invalid[1] = 12;
+   EXPECT_FALSE(agx3_fltnorm_relocate_start(invalid,9,true,12));
+   /* No provenance means no scanning or rewriting, even for matching bytes. */
+   EXPECT_TRUE(agx3_fltnorm_relocate_start(invalid,10,false,12));
+   EXPECT_EQ(invalid[1],12);
+}
+
+TEST_F(AGX3PackBinary, G17PColourFusionUsesCompilerProvenanceAndNativeUniforms)
+{
+   for (unsigned copies = 1; copies <= 4; ++copies) {
+      agx_builder *main = builder(AGX_ISA_ENCODING_AGX3B);
+      main->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = true; key.secondary = false;
+      for (unsigned i = 0; i < copies; ++i) {
+         agx_index reg = agx_register(8+2*i, AGX_SIZE_32);
+         agx_bitop_to(main,reg,agx_uniform(4+2*i,AGX_SIZE_32),agx_immediate(0),0xa);
+         agx_export(main,reg,reg.value);
+      }
+      agx_stop(main);
+      const auto main_bin = pack(main);
+      EXPECT_EQ(main_bin.size(),4*copies);
+      const auto main_info = main->shader->agx3_colour_link;
+      ASSERT_TRUE(main_info.copy_only);
+      ASSERT_EQ(main_info.copy_count,copies);
+
+      agx_builder *epi = builder(AGX_ISA_ENCODING_AGX3B);
+      epi->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = false; key.secondary = true;
+      agx_wait_pix(epi,12);
+      for (unsigned i = 0; i < 2; ++i)
+         agx_fltnorm_agx3_to(epi,agx_register(i,AGX_SIZE_16),
+            agx_register(8+2*((2*i)%copies),AGX_SIZE_32),
+            agx_register(8+2*((2*i+1)%copies),AGX_SIZE_32),AGX_FORMAT_U8NORM);
+      agx_index packed = agx_register(0,AGX_SIZE_16);
+      packed.channels_m1 = 1;
+      agx_st_tile(epi,packed,agx_immediate(AGX_ALL_SAMPLES),agx_null(),
+                  AGX_FORMAT_U8NORM,15,0,false);
+      agx_stop(epi);
+      const auto epi_bin = pack(epi);
+      const auto epi_info = epi->shader->agx3_colour_link;
+      ASSERT_TRUE(epi_info.opaque_pack);
+      uint8_t fused[AGX3_COLOUR_LINK_SIZE];
+      ASSERT_TRUE(agx3_fuse_colour_parts(&main_info,&epi_info,fused));
+      /* Four distinct exports produce the exact native float4-buffer shader. */
+      if (copies == 4) {
+         const uint8_t native[] = {
+            0x97,12,0x54,0,2,8,0x18,0xd0,5,0xc8,
+            0x97,4,0x54,1,2,0x10,0x28,0xd0,5,0xc8,
+            0x87,2,0x54,0,6,0,0x87,2,0x54,12,8,0,
+            0xe7,6,0x54,0,0,0,1,0x4e,0,0,0,0,
+            7,2,0x54,12,2,0,14,0,0,0,
+         };
+         EXPECT_EQ(std::vector<uint8_t>(fused,fused+sizeof(fused)),
+                   std::vector<uint8_t>(std::begin(native),std::end(native)));
+      }
+      EXPECT_EQ(main_bin.size(),4*copies); /* cached inputs remain immutable */
+      EXPECT_EQ(epi_bin.size(),54u);
+      for (unsigned mode = 0; mode < 8; ++mode) {
+         auto bad_main = main_info;
+         auto bad_epi = epi_info;
+         switch (mode) {
+         case 0: bad_main.copy_only = false; break;
+         case 1: bad_main.copies[0].uniform |= 1; break;
+         case 2: bad_epi.opaque_pack = false; break;
+         case 3: bad_epi.packs[1].src[0].value = 250; break;
+         case 4: bad_epi.packs[0].wait_mask = 1; break;
+         case 5: bad_epi.packs[0].snorm = true; break;
+         case 6: bad_epi.store_reg = bad_main.copies[0].reg;
+                 bad_epi.packs[0].dest = bad_epi.store_reg;
+                 bad_epi.packs[1].dest = bad_epi.store_reg+1; break;
+         case 7: bad_main.copy_count = 0; break;
+         }
+         memset(fused,0xa5,sizeof(fused));
+         EXPECT_FALSE(agx3_fuse_colour_parts(&bad_main,&bad_epi,fused)) << mode;
+         EXPECT_TRUE(std::all_of(fused,fused+sizeof(fused),[](uint8_t v){return v==0xa5;}));
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, G17PColourFusionRejectsIncompleteMainProof)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = true; key.secondary = false;
+      agx_index reg = agx_register(8,AGX_SIZE_32);
+      agx_bitop_to(b,reg,agx_uniform(16,AGX_SIZE_32),agx_immediate(0),0xa);
+      if (mode != 0)
+         agx_export(b,reg,8);
+      if (mode == 1)
+         agx_bitop_to(b,reg,agx_uniform(18,AGX_SIZE_32),agx_immediate(0),0xa);
+      if (mode == 2)
+         agx_fadd_to(b,agx_register(10,AGX_SIZE_32),reg,reg);
+      if (mode == 3)
+         agx_test_block(b->shader);
+      agx_stop(b);
+      pack(b);
+      EXPECT_FALSE(b->shader->agx3_colour_link.copy_only) << mode;
+   }
+}
+
+TEST_F(AGX3PackBinary, G17PColourFusionRejectsNonOpaqueOrExtraEpilogWork)
+{
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      key.no_stop = false; key.secondary = true;
+      if (mode == 0)
+         agx_fadd_to(b,agx_register(8,AGX_SIZE_32),
+                    agx_register(10,AGX_SIZE_32),agx_register(12,AGX_SIZE_32));
+      if (mode == 1)
+         agx_begin_cf(b);
+      agx_wait_pix(b,12);
+      for (unsigned i = 0; i < 2; ++i)
+         agx_fltnorm_agx3_to(b,agx_register(i,AGX_SIZE_16),
+                            agx_register(8,AGX_SIZE_32),agx_immediate(48),
+                            mode == 2 ? AGX_FORMAT_S8NORM : AGX_FORMAT_U8NORM);
+      agx_index packed = agx_register(0,AGX_SIZE_16);
+      packed.channels_m1 = 1;
+      agx_st_tile(b,packed,agx_immediate(AGX_ALL_SAMPLES),agx_null(),
+                  mode == 2 ? AGX_FORMAT_S8NORM : AGX_FORMAT_U8NORM,
+                  15,mode == 3 ? 16 : 0,false);
+      agx_stop(b);
+      pack(b);
+      EXPECT_FALSE(b->shader->agx3_colour_link.opaque_pack) << mode;
+   }
 }

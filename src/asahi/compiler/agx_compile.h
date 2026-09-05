@@ -7,6 +7,7 @@
 
 #include "compiler/nir/nir.h"
 #include "asahi/lib/agx_chip.h"
+#include "agx3_fltnorm_core.h"
 #include "util/shader_stats.h"
 #include "util/u_dynarray.h"
 #include "util/u_tristate.h"
@@ -177,6 +178,11 @@ struct agx_shader_info {
    struct agx_rodata rodata;
 
    struct agx2_stats stats;
+
+   /* Main of this part begins with G17P FLTNORM carrying f68. The linker
+    * clears it if another part precedes this one in the executable. */
+   bool agx3_fltnorm_start;
+   struct agx3_colour_link_info agx3_colour_link;
 };
 
 struct agx_precompiled_kernel_info {

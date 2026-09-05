@@ -12,6 +12,7 @@
 #include "agx_abi.h"
 #include "agx3_code_container_core.h"
 #include "agx_compile.h"
+#include "agx3_fltnorm_core.h"
 #include "agx_device.h"
 #include "agx_pack.h"
 #include "agx_scratch.h"
@@ -199,6 +200,11 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               struct agx_shader_part *prolog, struct agx_shader_part *epilog,
               unsigned nr_samples_shaded)
 {
+   uint8_t fused_colour[AGX3_COLOUR_LINK_SIZE];
+   const bool colour_fused = dev->chip == AGX_CHIP_G17P && fragment &&
+      !prolog && !nr_samples_shaded && main && epilog &&
+      agx3_fuse_colour_parts(&main->info.agx3_colour_link,
+                              &epilog->info.agx3_colour_link, fused_colour);
    size_t size = 0;
    unsigned nr_gprs = 0, scratch_size = 0;
    unsigned staging_halfs = 0;
@@ -235,6 +241,9 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       linked->uses_txf |= part->info.uses_txf;
       tag_write_disable &= part->info.tag_write_disable;
    }
+
+   if (colour_fused)
+      size = sizeof(fused_colour);
 
    assert(size > 0 && "must stop");
 
@@ -278,11 +287,19 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       agx3_build_container(container_map, size, fragment);
 
    size_t offset = 0;
+   if (colour_fused) {
+      memcpy(linked_map, fused_colour, sizeof(fused_colour));
+      offset = sizeof(fused_colour);
+   }
 
    /* FS prolog happens per-pixel, outside the sample loop */
    if (prolog) {
       size_t sz = prolog->info.main_size;
       memcpy(linked_map + offset, prolog->binary, sz);
+      if (dev->chip == AGX_CHIP_G17P && fragment &&
+          !agx3_fltnorm_relocate_start(linked_map + offset, sz,
+                                       prolog->info.agx3_fltnorm_start, offset))
+         goto invalid_start_marker;
       offset += sz;
    }
 
@@ -295,7 +312,7 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    size_t sample_loop_begin = offset;
 
    /* Main shader and epilog happen in the sample loop, so start from i=1 */
-   for (unsigned i = 1; i < ARRAY_SIZE(parts); ++i) {
+   for (unsigned i = 1; !colour_fused && i < ARRAY_SIZE(parts); ++i) {
       struct agx_shader_part *part = parts[i];
       if (!part)
          continue;
@@ -303,6 +320,10 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
       size_t sz = part->info.main_size;
       memcpy(linked_map + offset,
              (const uint8_t *)part->binary + part->info.main_offset, sz);
+      if (dev->chip == AGX_CHIP_G17P && fragment &&
+          !agx3_fltnorm_relocate_start(linked_map + offset, sz,
+                                       part->info.agx3_fltnorm_start, offset))
+         goto invalid_start_marker;
       offset += sz;
    }
 
@@ -418,4 +439,10 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
    }
 
    return true;
+
+invalid_start_marker:
+   fprintf(stderr, "agx_fast_link: invalid G17P part-start FLTNORM marker\n");
+   agx_bo_unreference(dev, linked->bo);
+   linked->bo = NULL;
+   return false;
 }

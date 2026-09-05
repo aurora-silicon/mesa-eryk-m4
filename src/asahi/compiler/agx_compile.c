@@ -3885,6 +3885,8 @@ agx_compile_function_nir(nir_shader *nir, nir_function_impl *impl,
       out->nr_gprs = nr_gprs;
       out->agx3_staging_halfs = ctx->agx3_staging_halfs;
       out->agx3_staging_known = ctx->agx3_staging_known;
+      out->agx3_fltnorm_start = ctx->agx3_fltnorm_start;
+      out->agx3_colour_link = ctx->agx3_colour_link;
    }
 
    if (impl->function->is_preamble) {

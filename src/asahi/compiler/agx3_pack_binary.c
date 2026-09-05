@@ -911,7 +911,8 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
  */
 static bool
 agx3_emit_fltnorm(struct util_dynarray *emission, enum agx_isa_encoding enc,
-                  const agx_instr *I, uint16_t wait_mask)
+                  const agx_instr *I, uint16_t wait_mask, bool first_instruction,
+                  struct agx3_fltnorm_desc *link_desc)
 {
    if (I->nr_dests != 1 || I->nr_srcs != 2)
       return false;
@@ -934,6 +935,7 @@ agx3_emit_fltnorm(struct util_dynarray *emission, enum agx_isa_encoding enc,
       .two_lanes = !agx_is_null(I->src[1]),
       .snorm = snorm,
       .wait_mask = wait_mask,
+      .first_instruction = first_instruction,
    };
 
    for (unsigned i = 0; i < 2; ++i) {
@@ -969,8 +971,12 @@ agx3_emit_fltnorm(struct util_dynarray *emission, enum agx_isa_encoding enc,
 
    uint8_t bytes[AGX3_FLTNORM_MAX_LENGTH];
    uint8_t len = 0;
-   return agx3_fltnorm_encode(enc, &d, bytes, &len) &&
-          agx3_append(emission, bytes, len);
+   if (!agx3_fltnorm_encode(enc, &d, bytes, &len) ||
+       !agx3_append(emission, bytes, len))
+      return false;
+   if (link_desc)
+      *link_desc = d;
+   return true;
 }
 
 /*
@@ -2468,6 +2474,144 @@ agx3_is_g17p_rt0_eot(const agx_context *ctx, enum agx_isa_encoding enc)
           zero_reg == offset_reg;
 }
 
+/* Native RGBA8 shaders pack before the write fence: opaque shaders then
+ * acquire class 12, while blending already acquired it before the read/load.
+ * Defer only over FLTNORM in one straight-line block, with exactly the native
+ * wait/load/store sequence. Other pixel operations and control flow retain
+ * their original ordering.
+ */
+static const agx_instr *
+agx3_g17p_deferred_write_wait(agx_context *ctx, bool blend)
+{
+   const agx_instr *write = NULL;
+   unsigned blocks = 0, phase = blend ? 0 : 2;
+   agx_foreach_block(ctx, block) {
+      if (++blocks != 1)
+         return NULL;
+      agx_foreach_instr_in_block(block, I) {
+         if (agx3_is_cf_op(I) || I->op == AGX_OPCODE_SIGNAL_PIX)
+            return NULL;
+         if (I->op == AGX_OPCODE_WAIT_PIX) {
+            if (phase == 0 && I->writeout == 8) {
+               phase = 1;
+            } else if (phase == 2 && I->writeout == (blend ? 4 : 12)) {
+               write = I;
+               phase = 3;
+            } else {
+               return NULL;
+            }
+         } else if (I->op == AGX_OPCODE_LD_TILE ||
+                    I->op == AGX_OPCODE_ST_TILE) {
+            const bool load = I->op == AGX_OPCODE_LD_TILE;
+            if (phase != (load ? 1 : 3) ||
+                I->format != AGX_FORMAT_U8NORM || I->mask != 15 ||
+                I->pixel_offset || I->explicit_coords)
+               return NULL;
+            phase = load ? 2 : 4;
+         } else if (phase == 1 ||
+                    (phase == 3 && I->op != AGX_OPCODE_FLTNORM_AGX3)) {
+            return NULL;
+         }
+      }
+   }
+   return phase == 4 ? write : NULL;
+}
+
+/* Prove complete shader-part shapes from post-RA IR. EXPORT is an ABI
+ * declaration with no machine instruction; every declared source must be
+ * supplied by one of the bounded uniform copies. Never infer this from bytes.
+ */
+static void
+agx3_g17p_colour_link_info(agx_context *ctx, bool opaque_protocol)
+{
+   struct agx3_colour_link_info info = {0};
+   memset(&ctx->agx3_colour_link, 0, sizeof(ctx->agx3_colour_link));
+   if (ctx->key->dev.encoding != AGX_ISA_ENCODING_AGX3B ||
+       ctx->stage != MESA_SHADER_FRAGMENT ||
+       ctx->key->fs.ignore_tib_dependencies)
+      return;
+
+   unsigned blocks = 0, packs = 0, stores = 0, waits = 0;
+   const bool copy_only = !ctx->key->secondary && ctx->key->no_stop;
+   const bool pack_only = ctx->key->secondary && opaque_protocol;
+   if (!copy_only && !pack_only)
+      return;
+
+   agx_foreach_block(ctx, block) {
+      if (++blocks != 1)
+         return;
+      agx_foreach_instr_in_block(block, I) {
+         if (I->op == AGX_OPCODE_STOP)
+            continue;
+         if (copy_only) {
+            if (I->op == AGX_OPCODE_EXPORT)
+               continue;
+            if (I->op != AGX_OPCODE_BITOP ||
+                (I->truth_table & 0xfu) != AGX3_SEL_TT_MOV || I->saturate ||
+                I->nr_dests != 1 || I->nr_srcs != 2 ||
+                I->src[0].type != AGX_INDEX_UNIFORM || I->src[0].memory ||
+                I->src[0].abs || I->src[0].neg ||
+                I->src[0].size != AGX_SIZE_32 || agx_channels(I->src[0]) != 1 ||
+                I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0 ||
+                !agx3_src_is_register(I->dest[0]) || I->dest[0].memory ||
+                I->dest[0].size != AGX_SIZE_32 || agx_channels(I->dest[0]) != 1 ||
+                ((I->dest[0].value | I->src[0].value) & 1) ||
+                I->dest[0].value >= 256 || I->src[0].value >= 512 ||
+                info.copy_count == 4)
+               return;
+            for (unsigned j = 0; j < info.copy_count; ++j)
+               if (info.copies[j].reg == I->dest[0].value)
+                  return;
+            info.copies[info.copy_count].reg = I->dest[0].value;
+            info.copies[info.copy_count++].uniform = I->src[0].value;
+         } else if (I->op == AGX_OPCODE_FLTNORM_AGX3) {
+            if (++packs > 2 || stores)
+               return;
+         } else if (I->op == AGX_OPCODE_WAIT_PIX) {
+            if (I->writeout != 12 || ++waits != 1 || stores)
+               return;
+         } else if (I->op == AGX_OPCODE_ST_TILE) {
+            if (++stores != 1 || packs != 2 || waits != 1 ||
+                I->nr_srcs != 3 ||
+                I->src[0].size != AGX_SIZE_16 || agx_channels(I->src[0]) != 2 ||
+                !agx3_src_is_register(I->src[0]) || I->src[0].memory ||
+                I->src[1].type != AGX_INDEX_IMMEDIATE || I->src[1].value != 0xff ||
+                !agx_is_null(I->src[2]) || I->explicit_coords || I->pixel_offset ||
+                I->format != AGX_FORMAT_U8NORM || I->mask != 15)
+               return;
+            info.store_reg = I->src[0].value;
+         } else {
+            return;
+         }
+      }
+   }
+   if (copy_only) {
+      unsigned exported = 0;
+      agx_foreach_block(ctx, block) {
+         agx_foreach_instr_in_block(block, I) {
+            if (I->op != AGX_OPCODE_EXPORT)
+               continue;
+            if (I->nr_srcs != 1 || !agx3_src_is_register(I->src[0]) ||
+                I->src[0].memory || I->src[0].size != AGX_SIZE_32 ||
+                agx_channels(I->src[0]) != 1 || I->src[0].value != I->imm)
+               return;
+            unsigned j;
+            for (j = 0; j < info.copy_count; ++j)
+               if (info.copies[j].reg == I->src[0].value)
+                  break;
+            if (j == info.copy_count)
+               return;
+            exported |= 1u << j;
+         }
+      }
+      info.copy_only = info.copy_count &&
+         exported == (1u << info.copy_count) - 1;
+   } else {
+      info.opaque_pack = packs == 2 && stores == 1 && waits == 1;
+   }
+   ctx->agx3_colour_link = info;
+}
+
 static enum agx3_alu_hint
 agx3_post_ra_hint(agx_index index)
 {
@@ -2482,6 +2626,7 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    const unsigned nslots = (enc == AGX_ISA_ENCODING_AGX3C) ? 8 : 6;
    const unsigned initial_size = emission->size;
    ctx->agx3_staging_known = true;
+   ctx->agx3_fltnorm_start = false;
 
    if (agx3_is_g17p_rt0_eot(ctx, enc)) {
       static const uint8_t g17p_rt0_eot[] = {
@@ -2581,6 +2726,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
    }
    const bool g17p_pixel_protocol =
       g17p_colour_protocol || g17p_blend_protocol;
+   const agx_instr *g17p_deferred_write = g17p_pixel_protocol ?
+      agx3_g17p_deferred_write_wait(ctx, g17p_blend_protocol) : NULL;
+   agx3_g17p_colour_link_info(ctx, g17p_colour_protocol &&
+                                  g17p_deferred_write != NULL);
+   unsigned g17p_link_packs_seen = 0;
    bool g17p_colour_open = false;
    const bool g17p_position_protocol =
       agx3_is_g17p_float2_position_vs(ctx, enc);
@@ -2784,6 +2934,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
 
          if (I->op == AGX_OPCODE_WAIT_PIX ||
              I->op == AGX_OPCODE_SIGNAL_PIX) {
+            if (I == g17p_deferred_write) {
+               /* The scoreboard has already retired these dependencies here.
+                * Keep that retirement at the original instruction, independent
+                * of where the pixel fence is emitted. */
+               if (!agx3_retire_slots_noop(emission, enc, wait))
+                  AGX3_REFUSE(I);
+               continue;
+            }
             if (g17p_pixel_protocol && I->op == AGX_OPCODE_WAIT_PIX &&
                 I->writeout == (g17p_blend_protocol ? 8 : 0xc) &&
                 !g17p_colour_open) {
@@ -2800,8 +2958,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          }
 
          if (I->op == AGX_OPCODE_FLTNORM_AGX3) {
-            if (!agx3_emit_fltnorm(emission, enc, I, wait))
+            const bool first = enc == AGX_ISA_ENCODING_AGX3B &&
+               ctx->stage == MESA_SHADER_FRAGMENT &&
+               !ctx->key->fs.ignore_tib_dependencies &&
+               emission->size == initial_size;
+            struct agx3_fltnorm_desc *link_desc =
+               ctx->agx3_colour_link.opaque_pack ?
+                  &ctx->agx3_colour_link.packs[g17p_link_packs_seen++] : NULL;
+            if (!agx3_emit_fltnorm(emission, enc, I, wait, first, link_desc))
                AGX3_REFUSE(I);
+            ctx->agx3_fltnorm_start |= first;
             continue;
          }
 
@@ -2820,6 +2986,17 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             } else {
                assert(tile_stores_left > 0);
                last = --tile_stores_left == 0;
+            }
+            if (I->op == AGX_OPCODE_ST_TILE && g17p_deferred_write) {
+               if (!g17p_colour_open) {
+                  uint8_t entry[AGX3_PIXEL_MAX_LENGTH], entry_len = 0;
+                  if (!agx3_pixel_colour_entry(enc, entry, &entry_len) ||
+                      !agx3_append(emission, entry, entry_len))
+                     AGX3_REFUSE(I);
+                  g17p_colour_open = true;
+               }
+               if (!agx3_emit_pixel(emission, enc, g17p_deferred_write, 0))
+                  AGX3_REFUSE(I);
             }
             if (!agx3_emit_tile(emission, enc, I, slot, wait, first, last))
                AGX3_REFUSE(I);

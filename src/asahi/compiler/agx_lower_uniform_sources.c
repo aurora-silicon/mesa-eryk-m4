@@ -24,6 +24,12 @@ agx_instr_accepts_uniform(enum agx_isa_encoding encoding, enum agx_opcode op,
    bool is_64 = size == AGX_SIZE_64;
 
    switch (op) {
+   case AGX_OPCODE_FLTNORM_AGX3:
+      /* G17P colour packing has native uniform operands in both lanes.
+       * Preserve aligned float32 sources instead of allocating temporary
+       * GPRs and copying the constant buffer before every pack. */
+      return encoding == AGX_ISA_ENCODING_AGX3B && src_index < 2 &&
+             size == AGX_SIZE_32 && value < 512 && !(value & 1);
    case AGX_OPCODE_IMAGE_LOAD:
    case AGX_OPCODE_TEXTURE_LOAD:
    case AGX_OPCODE_TEXTURE_SAMPLE:
