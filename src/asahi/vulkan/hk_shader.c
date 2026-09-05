@@ -2015,6 +2015,8 @@ hk_fast_link(struct hk_device *dev, bool fragment, struct hk_shader *main,
              unsigned nr_samples_shaded)
 {
    struct hk_linked_shader *s = rzalloc(NULL, struct hk_linked_shader);
+   if (!s)
+      return NULL;
    if (!agx_fast_link(&s->b, &dev->dev, fragment, &main->b, prolog, epilog,
                       nr_samples_shaded)) {
       ralloc_free(s);

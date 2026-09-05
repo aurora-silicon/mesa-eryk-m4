@@ -449,18 +449,10 @@ hk_cmd_buffer_emit_vdm_terminate(struct hk_cmd_buffer *cmd, void *current)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   /* HAL200's established native direct record includes the stream
-    * terminator as its last dword.  In Metal's two-draw trace, the following
-    * VertexProgramVariant header replaces that exact dword; appending another
-    * 0xc0000000 after a final direct draw is not part of the native stream.
+   /* Draw emission leaves the stream open for further state, draws or links.
+    * EndCommandStream supplies exactly one terminal record here. Do not infer
+    * termination from the preceding dword: it may be a draw's vertex_start.
     */
-   if (dev->dev.chip == AGX_CHIP_G17P && current) {
-      uint32_t tail;
-      memcpy(&tail, (uint8_t *)current - sizeof(tail), sizeof(tail));
-      if (tail == UINT32_C(0xc0000000))
-         return current;
-   }
-
    switch (agx_chip_command_stream_generation(dev->dev.chip)) {
    case AGX_CS_GENERATION_AGX2:
       return agx_vdm_terminate(current);

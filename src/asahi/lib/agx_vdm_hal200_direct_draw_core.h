@@ -15,9 +15,8 @@
 extern "C" {
 #endif
 
-#define AGX_VDM_HAL200_DIRECT_DRAW_LENGTH 24u
+#define AGX_VDM_HAL200_DIRECT_DRAW_LENGTH 20u
 #define AGX_VDM_HAL200_DIRECT_DRAW_OPCODE UINT32_C(0x61c4)
-#define AGX_VDM_HAL200_DIRECT_DRAW_TAIL UINT32_C(0xc0000000)
 
 struct agx_vdm_hal200_direct_draw_fields {
    uint32_t draw_state_context_offset;
@@ -32,7 +31,10 @@ struct agx_vdm_hal200_direct_draw {
    uint8_t length;
 };
 
-/* Pack the exact direct, non-indexed draw record at native encoder +0x60. */
+/* Pack the context-relative PPP pointer plus the direct, non-indexed draw.
+ * Stream Terminate is a separate four-byte record emitted only when the
+ * complete control stream is closed, not after each draw.
+ */
 bool agx_vdm_hal200_direct_draw_pack(
    enum agx_chip chip, const struct agx_vdm_hal200_direct_draw_fields *fields,
    struct agx_vdm_hal200_direct_draw *out);

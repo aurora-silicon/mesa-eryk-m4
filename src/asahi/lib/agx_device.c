@@ -6,6 +6,7 @@
  */
 
 #include "agx_device.h"
+#include "agx_g17p_bind0.h"
 #include "agx_linker.h"
 #include "agx_va_runtime_hole.h"
 #include <errno.h>
@@ -1225,6 +1226,10 @@ agx_open_device(void *memctx, struct agx_device *dev)
          return false;
       }
       memset(context_map, 0, AGX_G17P_RENDER_CONTEXT_SIZE);
+      /* Publish fixed Bind0 exactly once, before any command buffer can
+       * reference this context. Mutable PPP payloads use retained uploads. */
+      if (!agx_g17p_bind0_initialize(context_map, AGX_G17P_RENDER_CONTEXT_SIZE))
+         return false;
       if (agx_bo_sync_for_device(context, 0, AGX_G17P_RENDER_CONTEXT_SIZE))
          return false;
 

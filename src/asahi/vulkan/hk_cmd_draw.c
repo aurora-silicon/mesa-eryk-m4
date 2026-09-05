@@ -33,6 +33,7 @@
 #include "hk_image_view.h"
 #include "hk_agx3_ioto_program_core.h"
 #include "hk_g17p_ppp_indices.h"
+#include "hk_g17p_draw_state_upload.h"
 #include "hk_agx3_vdm_decode.h"
 #include "hk_physical_device.h"
 #include "hk_private.h"
@@ -2096,10 +2097,20 @@ hk_get_prolog_epilog_locked(struct hk_device *dev, struct hk_internal_key *key,
 
    struct agx_shader_part *part =
       rzalloc(dev->prolog_epilog.ht, struct agx_shader_part);
+   if (!part) {
+      ralloc_free(b.shader);
+      return NULL;
+   }
 
-   agx_compile_shader_nir(b.shader, &backend_key, part);
+   const bool compiled = agx_compile_shader_nir(b.shader, &backend_key, part);
 
    ralloc_free(b.shader);
+   if (!compiled) {
+      /* A rejected backend instruction leaves an empty part. Caching that
+       * as success lets fast-link silently omit required output/blend code. */
+      ralloc_free(part);
+      return NULL;
+   }
 
    /* ..and cache it before we return. The key is on the stack right now, so
     * clone it before using it as a hash table key. The clone is logically owned
@@ -2107,6 +2118,11 @@ hk_get_prolog_epilog_locked(struct hk_device *dev, struct hk_internal_key *key,
     */
    size_t total_key_size = sizeof(*key) + key->key_size;
    void *cloned_key = ralloc_memdup(dev->prolog_epilog.ht, key, total_key_size);
+   if (!cloned_key) {
+      free(part->binary);
+      ralloc_free(part);
+      return NULL;
+   }
 
    _mesa_hash_table_insert(dev->prolog_epilog.ht, cloned_key, part);
    return part;
@@ -2143,12 +2159,20 @@ hk_get_fast_linked_locked_vs(struct hk_device *dev, struct hk_shader *shader,
    struct agx_shader_part *prolog =
       hk_get_prolog_epilog(dev, &key->prolog, sizeof(key->prolog),
                            agx_nir_vs_prolog, false, false, 0);
-
-   struct hk_linked_shader *linked =
-      hk_fast_link(dev, false, shader, prolog, NULL, 0);
+   if (!prolog)
+      return NULL;
 
    struct hk_fast_link_key *key_clone =
       ralloc_memdup(shader->linked.ht, key, sizeof(*key));
+   if (!key_clone)
+      return NULL;
+
+   struct hk_linked_shader *linked =
+      hk_fast_link(dev, false, shader, prolog, NULL, 0);
+   if (!linked) {
+      ralloc_free(key_clone);
+      return NULL;
+   }
 
    /* XXX: Fix this higher up the stack */
    linked->sw_indexing = !key->prolog.hw || key->prolog.adjacency;
@@ -2195,6 +2219,8 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
       prolog = hk_get_prolog_epilog(dev, &key->prolog, sizeof(key->prolog),
                                     build_fs_prolog, false, false,
                                     key->prolog.cf_base);
+      if (!prolog)
+         return NULL;
    }
 
    /* If sample shading is used, don't stop at the epilog, there's a
@@ -2205,12 +2231,20 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
    struct agx_shader_part *epilog =
       hk_get_prolog_epilog(dev, &key->epilog, sizeof(key->epilog),
                            agx_nir_fs_epilog, true, epilog_stop, 0);
-
-   struct hk_linked_shader *linked =
-      hk_fast_link(dev, true, shader, prolog, epilog, key->nr_samples_shaded);
+   if (!epilog)
+      return NULL;
 
    struct hk_fast_link_key *key_clone =
       ralloc_memdup(shader->linked.ht, key, sizeof(*key));
+   if (!key_clone)
+      return NULL;
+
+   struct hk_linked_shader *linked =
+      hk_fast_link(dev, true, shader, prolog, epilog, key->nr_samples_shaded);
+   if (!linked) {
+      ralloc_free(key_clone);
+      return NULL;
+   }
 
    _mesa_hash_table_insert(shader->linked.ht, key_clone, linked);
    return linked;
@@ -2241,18 +2275,25 @@ hk_get_fast_linked(struct hk_device *dev, struct hk_shader *shader, void *key)
    return linked;
 }
 
-static void
+static bool
 hk_update_fast_linked(struct hk_cmd_buffer *cmd, struct hk_shader *shader,
                       void *key)
 {
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
    struct hk_linked_shader *new = hk_get_fast_linked(dev, shader, key);
    mesa_shader_stage stage = shader->info.stage;
+   if (!new) {
+      mesa_loge("failed to compile or link required %s shader parts",
+                _mesa_shader_stage_to_string(stage));
+      vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+      return false;
+   }
 
    if (cmd->state.gfx.linked[stage] != new) {
       cmd->state.gfx.linked[stage] = new;
       cmd->state.gfx.linked_dirty |= BITFIELD_BIT(stage);
    }
+   return true;
 }
 
 static enum agx_polygon_mode
@@ -2738,11 +2779,6 @@ hk_flush_index(struct hk_cmd_buffer *cmd, struct hk_cs *cs)
    }
 }
 
-#define HK_G17P_BIND0_BYTES 0x400u
-#define HK_G17P_BIND_GROUP_OFFSET UINT32_C(0x58000)
-#define HK_G17P_VIEWPORT_OFFSET UINT32_C(0x68900)
-#define HK_G17P_DRAW_STATE_OFFSET UINT32_C(0x48000)
-
 static float hk_depth_bias_factor(VkFormat format, bool exact,
                                   bool force_unorm);
 
@@ -2757,26 +2793,6 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
 
    if (dev->dev.chip != AGX_CHIP_G17P || !out || !*out)
       return false;
-
-   /* Rebuild the exact compact direct-draw Bind0 page.  The first VDM pair
-    * names +0x40, while the surrounding records remain live state reached by
-    * the fixed hardware walk.
-    */
-   uint8_t bind0[HK_G17P_BIND0_BYTES] = {0};
-   for (unsigned i = 0; i < 7; ++i) {
-      const size_t base = i * 0x80;
-      const uint32_t head = UINT32_C(0x80);
-      const uint32_t body = UINT32_C(0x10040000);
-      memcpy(&bind0[base], &head, sizeof(head));
-      memcpy(&bind0[base + 0x40], &body, sizeof(body));
-   }
-   const uint32_t direct_word = UINT32_C(0x0000fcc0);
-   memcpy(&bind0[0x300], &direct_word, sizeof(direct_word));
-   /* The compact direct profile disables the seventh record body.  The
-    * generic seven-record initializer above writes 0x10040000 here, so apply
-    * Metal's explicit direct-draw delta after constructing the baseline.
-    */
-   memset(&bind0[0x340], 0, sizeof(uint32_t));
 
    struct hk_shader *fs = hk_only_variant(gfx->shaders[MESA_SHADER_FRAGMENT]);
    struct hk_linked_shader *linked_fs = gfx->linked[MESA_SHADER_FRAGMENT];
@@ -2960,48 +2976,32 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
                                             &viewport_record))
       return false;
 
-   struct agx_bo *context_bo = dev->dev.g17p_render_context_bo;
-   uint8_t *context = context_bo ? agx_bo_map(context_bo) : NULL;
-   if (!context)
-      return false;
-
-   memcpy(&context[0], bind0, sizeof(bind0));
-   memcpy(&context[HK_G17P_BIND_GROUP_OFFSET], bind_group,
-          sizeof(bind_group));
-   memcpy(&context[HK_G17P_VIEWPORT_OFFSET], viewport_record.bytes,
-          viewport_record.length);
-   if (agx_bo_sync_for_device(context_bo, 0,
-                              AGX_G17P_RENDER_CONTEXT_SIZE))
+   /* A VDM fetch happens after recording. Never point earlier draws at a
+    * device-global record that another draw/CB can overwrite. This upload
+    * and its architectural low alias live until command-buffer reset. */
+   struct agx_ptr state =
+      hk_pool_vdm_alloc(cmd, HK_G17P_BIND_STATE_BYTES, 64);
+   struct hk_g17p_bind_state_upload uploaded;
+   if (!state.cpu ||
+       !hk_g17p_upload_bind_state(state.cpu, HK_G17P_BIND_STATE_BYTES, state.gpu,
+                                  bind_group, viewport_record.bytes,
+                                  viewport_record.length, &uploaded))
       return false;
 
    if (hk_g17p_launch_trace_enabled()) {
-      hk_g17p_trace_line("hal200-bind-group", HK_G17P_BIND_GROUP_OFFSET,
-                         &context[HK_G17P_BIND_GROUP_OFFSET],
+      hk_g17p_trace_line("hal200-bind-group", state.gpu, state.cpu,
                          sizeof(bind_group));
       hk_g17p_trace_line("hal200-fragment-bind", fragment_program,
                          fs_record.bytes, fs_record.length);
-      hk_g17p_trace_line("hal200-viewport", HK_G17P_VIEWPORT_OFFSET,
-                         &context[HK_G17P_VIEWPORT_OFFSET],
+      hk_g17p_trace_line("hal200-viewport", state.gpu + HK_G17P_BIND_GROUP_BYTES,
+                         (uint8_t *)state.cpu + HK_G17P_BIND_GROUP_BYTES,
                          viewport_record.length);
    }
 
-   const struct agx_vdm_hal200_bind_pair pairs[] = {
-      {0x40, 0x700},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x00, 0x500},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x1c, 0x700},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x30, 0x500},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x4c, 0xa00},
-      {HK_G17P_VIEWPORT_OFFSET, 0x300},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x60, 0x200},
-      {HK_G17P_BIND_GROUP_OFFSET + 0x6c, 0x200},
-   };
-   struct agx_vdm_hal200_bind_tail tail;
-   if (!agx_vdm_hal200_bind_tail_pack(dev->dev.chip, pairs, &tail))
-      return false;
-
-   memcpy(*out, tail.bytes, tail.length);
-   *out += tail.length;
+   memcpy(*out, uploaded.tail.bytes, uploaded.tail.length);
+   *out += uploaded.tail.length;
    if (hk_g17p_launch_trace_enabled()) {
+      const struct agx_vdm_hal200_bind_pair *pairs = uploaded.pairs;
       fprintf(stderr,
               "G17P HAL200 bind tail: bind0=%08x fs=%08x output=%08x "
               "primary=%08x secondary=%08x viewport=%08x wcull2=%08x "
@@ -3639,7 +3639,10 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          }
       }
 
-      hk_update_fast_linked(cmd, sw_vs, &key);
+      if (!hk_update_fast_linked(cmd, sw_vs, &key)) {
+         cs->current = out;
+         return;
+      }
    }
 
    if (IS_DIRTY(VI) || IS_DIRTY(VI_BINDINGS_VALID) ||
@@ -3805,7 +3808,10 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          }
       }
 
-      hk_update_fast_linked(cmd, fs, &key);
+      if (!hk_update_fast_linked(cmd, fs, &key)) {
+         cs->current = out;
+         return;
+      }
    }
 
    /* If the vertex shader uses draw parameters, vertex uniforms are dirty every
@@ -4666,28 +4672,17 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
              * not a direct-draw shape; +4 contains indices, not enable flags.
              * Native bind-state emission appended those owned records above.
              */
-            uint8_t indices[8];
-            if (!hk_g17p_ppp_indices_pack(cs->scissor.size, cs->depth_bias.size,
-                                           indices)) {
+            struct agx_ptr draw_state = hk_pool_vdm_alloc(cmd, 8, 4);
+            uint32_t draw_state_offset;
+            if (!draw_state.cpu ||
+                !hk_g17p_upload_draw_indices(draw_state.cpu, 8, draw_state.gpu,
+                    cs->scissor.size, cs->depth_bias.size, &draw_state_offset)) {
                vk_command_buffer_set_error(&cmd->vk,
                                            VK_ERROR_FEATURE_NOT_PRESENT);
                return;
             }
-            struct agx_bo *context_bo =
-               dev->dev.g17p_render_context_bo;
-            uint8_t *context = context_bo ? agx_bo_map(context_bo) : NULL;
-            if (!context)
-               return;
-
-            void *draw_state = &context[HK_G17P_DRAW_STATE_OFFSET];
-            memset(draw_state, 0, 0x4000);
-            memcpy(draw_state, indices, sizeof(indices));
-            if (agx_bo_sync_for_device(context_bo,
-                                       HK_G17P_DRAW_STATE_OFFSET, 0x4000))
-               return;
-
             const struct agx_vdm_hal200_direct_draw_fields fields = {
-               .draw_state_context_offset = HK_G17P_DRAW_STATE_OFFSET,
+               .draw_state_context_offset = draw_state_offset,
                .primitive = (uint8_t)topology,
                .vertex_count = draw.b.count[0],
                .instance_count = draw.b.count[1],
@@ -4705,8 +4700,7 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             cs->current = out + encoded.length;
             if (hk_g17p_launch_trace_enabled())
                hk_g17p_trace_line("hal200-draw-state",
-                                  HK_G17P_DRAW_STATE_OFFSET, draw_state,
-                                  sizeof(indices));
+                                  draw_state.gpu, draw_state.cpu, 8);
          } else {
             cs->current = (void *)agx_vdm_draw((uint32_t *)out,
                                                dev->dev.chip, draw, topology);

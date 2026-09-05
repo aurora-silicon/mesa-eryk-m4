@@ -65,7 +65,6 @@ agx_vdm_hal200_direct_draw_pack(
    store_le32(&out->bytes[8], fields->vertex_count);
    store_le32(&out->bytes[12], fields->instance_count);
    store_le32(&out->bytes[16], fields->vertex_start);
-   store_le32(&out->bytes[20], AGX_VDM_HAL200_DIRECT_DRAW_TAIL);
    out->length = AGX_VDM_HAL200_DIRECT_DRAW_LENGTH;
    return true;
 }
@@ -90,8 +89,7 @@ agx_vdm_hal200_direct_draw_unpack(
        (header & UINT32_C(0xffff00ff)) !=
           (AGX_VDM_HAL200_DIRECT_DRAW_OPCODE << 16) ||
        !primitive_supported(primitive) || load_le32(&raw[8]) == 0 ||
-       load_le32(&raw[12]) == 0 ||
-       load_le32(&raw[20]) != AGX_VDM_HAL200_DIRECT_DRAW_TAIL)
+       load_le32(&raw[12]) == 0)
       return false;
 
    fields->draw_state_context_offset = offset;

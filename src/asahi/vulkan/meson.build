@@ -84,6 +84,20 @@ hk_files = files(
 
 if with_tests
   test(
+    'hk_g17p_draw_state_upload',
+    executable(
+      'hk_g17p_draw_state_upload_test',
+      files('tests/test-hk-g17p-draw-state-upload.c',
+            '../lib/agx_vdm_hal200_bind_tail_core.c',
+            '../lib/agx_vdm_hal200_direct_draw_core.c'),
+      include_directories : [inc_include, inc_src],
+      c_args : [c_msvc_compat_args],
+      gnu_symbol_visibility : 'hidden',
+    ),
+    suite : ['asahi'],
+  )
+
+  test(
     'hk_printf_root',
     executable(
       'hk_printf_root_test',
