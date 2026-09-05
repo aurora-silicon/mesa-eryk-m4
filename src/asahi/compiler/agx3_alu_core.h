@@ -41,6 +41,17 @@ bool agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
                       const enum agx3_alu_hint hints[2], uint16_t wait_mask,
                       uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
 
+bool agx3_alu_bit_reg16(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                          uint16_t dest, const uint16_t src[2],
+                          const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                          uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
+bool agx3_alu_shift_add16(enum agx_isa_encoding enc, uint16_t dest,
+                            const uint16_t src[2],
+                            const enum agx3_alu_hint hints[2], unsigned shift,
+                            bool dest_cache, uint16_t wait_mask,
+                            uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len);
+
 /* G17P unshifted IADD/ISUB, preserving the canonical operation form. */
 bool agx3_alu_integer_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
                           uint16_t dest, const uint16_t src[2],

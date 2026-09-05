@@ -629,7 +629,28 @@ test_native_fma_minifloat(void)
    puts("native FMA minifloat:14 byte vectors and64 wait combinations PASS");
 }
 
+static void test_native_u16_arithmetic(void)
+{
+   uint8_t out[AGX3_ALU_MAX_LENGTH], len;
+   const uint16_t xy[] = {3, 4};
+   const enum agx3_alu_hint cache[] = {AGX3_ALU_HINT_CACHE, AGX3_ALU_HINT_CACHE};
+   const enum agx3_alu_hint dead[] = {AGX3_ALU_HINT_DISCARD, AGX3_ALU_HINT_DISCARD};
+   assert(agx3_alu_bit_reg16(AGX_ISA_ENCODING_AGX3B,AGX3_ALU_BAND,2,xy,cache,32,out,&len));
+   exact(out,len,"13820784080000800000");
+   assert(agx3_alu_bit_reg16(AGX_ISA_ENCODING_AGX3B,AGX3_ALU_BOR,2,xy,cache,32,out,&len));
+   exact(out,len,"138207840a0800800000");
+   assert(agx3_alu_bit_reg16(AGX_ISA_ENCODING_AGX3B,AGX3_ALU_BXOR,3,xy,dead,0,out,&len));
+   exact(out,len,"13021e040e0800000000");
+   const uint16_t t[] = {16, 16}, n[] = {11, 10};
+   assert(agx3_alu_shift_add16(AGX_ISA_ENCODING_AGX3B,10,t,dead,4,true,2,out,&len));
+   exact(out,len,"9f21540a032040001605");
+   assert(agx3_alu_shift_add16(AGX_ISA_ENCODING_AGX3B,10,n,dead,4,true,0,out,&len));
+   exact(out,len,"9f01540a031628001605");
+   puts("Native u16 ALU: five exact native narrow-bitwise/shift-add vectors PASS");
+}
+
 int main(void){
+   test_native_u16_arithmetic();
    test_native_fma_minifloat();
    test_int_to_float_liveness();
    test_float_compare_select();

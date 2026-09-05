@@ -35,56 +35,35 @@ static const struct agx3_field_kv agx3c_copy_baseline[] = {
    KV(29, 35),
 };
 
-/*
- * The 16-bit register-to-register baseline, decoded from Apple's corpus
- * (two instances: r0 <- r5 and r1 <- r6). f27 is one of the liveness hint
- * bits -- other corpus instances set f30 instead -- and is carried verbatim.
- */
+/* Native half copies use the same independent destination cache, source
+ * cache/discard and scoreboard fields as other copy operands. In particular,
+ * a zero wait mask is not evidence that its source dies at this instruction. */
 bool
 agx3_copy_encode_reg16(enum agx_isa_encoding encoding, uint16_t dest_half,
-                       uint16_t src_half, uint16_t wait_mask,
+                       uint16_t src_half, bool dest_cache, bool src_cache,
+                       bool src_discard, uint16_t wait_mask,
                        uint8_t out[AGX3_COPY_MAX_LENGTH], uint8_t *len)
 {
-   if (out == NULL || len == NULL)
+   if (out == NULL || len == NULL || encoding != AGX_ISA_ENCODING_AGX3B ||
+       dest_half >= 128 || src_half >= 256 || wait_mask >= (1u << 6) ||
+       (src_cache && src_discard))
       return false;
 
-   /* Only the AGX3b form is grounded here. */
-   if (encoding != AGX_ISA_ENCODING_AGX3B)
-      return false;
-
-   /* A single half either way; the destination field is the narrower one. */
-   if (dest_half >= 128 || src_half >= 256 || wait_mask >= (1u << 6))
-      return false;
-
-   /*
-    * Two witnessed shapes: the no-wait corpus copies carry f27, and the one
-    * that waits carries f30 instead and leaves f27 clear. Follow each rather
-    * than setting both, which matches neither.
-    */
-   const struct agx3_field_kv baseline_plain[] = {
-      KV(9, 2), KV(10, 1), KV(11, 1), KV(23, 2), KV(24, 1), KV(27, 1),
+   const struct agx3_field_kv baseline[] = {
+      KV(9, 2), KV(10, 1), KV(23, 2), KV(24, 1),
    };
-   const struct agx3_field_kv baseline_waited[] = {
-      KV(9, 2), KV(10, 1), KV(11, 1), KV(23, 2), KV(24, 1),
+   struct agx3_field_kv overrides[11] = {
+      KV(2, dest_half), KV(16, src_half), KV(11, dest_cache),
+      KV(25, src_cache), KV(27, src_discard),
    };
-   const struct agx3_field_kv *baseline =
-      wait_mask ? baseline_waited : baseline_plain;
-   const unsigned nbaseline = wait_mask
-                                 ? AGX3_COPY_ARRAY_SIZE(baseline_waited)
-                                 : AGX3_COPY_ARRAY_SIZE(baseline_plain);
-
-   struct agx3_field_kv overrides[8] = {
-      KV(2, dest_half),
-      KV(16, src_half),
-   };
-   unsigned n = 2;
+   unsigned n = 5;
    for (unsigned i = 0; i < 6; ++i) {
       if (wait_mask & (1u << i))
          overrides[n++] = (struct agx3_field_kv)KV(30 + i, 1);
    }
-
-   return agx3_bind_compose(encoding, "copy", 0, baseline, nbaseline,
-                            overrides, n, out, len);
+   return agx3_bind_compose(encoding, "copy", 0, baseline,
+                            AGX3_COPY_ARRAY_SIZE(baseline), overrides, n,
+                            out, len);
 }
 
 bool

@@ -323,18 +323,18 @@ agx3_alu_compose(enum agx_isa_encoding enc, enum agx3_alu_op op, uint16_t dest,
  * operation (f39), then discard it on its last use (f41). and_keep_both
  * clears both discard fields. The operation classes and register fields
  * are identical; only truth-table bits differ. */
-bool
-agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+static bool
+agx3_alu_bit_width(enum agx_isa_encoding enc, enum agx3_alu_op op, bool narrow,
                  uint16_t dest, const uint16_t src[2],
                  const enum agx3_alu_hint hints[2], uint16_t wait_mask,
                  uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
 {
    if(enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
       (op != AGX3_ALU_BAND && op != AGX3_ALU_BOR && op != AGX3_ALU_BXOR) ||
-      dest >= 256 || (dest & 1) || (wait_mask & ~UINT16_C(0x3f)))
+      dest >= 256 || (!narrow && (dest & 1)) || (wait_mask & ~UINT16_C(0x3f)))
       return false;
    for(unsigned i=0;i<2;i++)
-      if(src[i]>=256 || (src[i]&1) || (unsigned)hints[i]>AGX3_ALU_HINT_CACHE)
+      if(src[i]>=256 || (!narrow && (src[i]&1)) || (unsigned)hints[i]>AGX3_ALU_HINT_CACHE)
          return false;
    const struct agx3_alu_form *f=&agx3_alu_forms[op][0];
    struct agx3_field_kv base[20],ov[13];unsigned nb=0,n=0;
@@ -342,7 +342,8 @@ agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
       unsigned field=f->base[i].f;bool wait=false;
       for(unsigned j=0;j<f->nwait;j++)wait|=field==f->wait[j];
       if(field!=27 && field!=41 && !wait)
-         base[nb++]=(struct agx3_field_kv){field,f->base[i].v};
+         base[nb++]=(struct agx3_field_kv){field,
+            narrow && (field == 10 || field == 24 || field == 38) ? 1 : f->base[i].v};
    }
    ov[n++]=(struct agx3_field_kv){2,dest};
    const unsigned operand[]={16,30},cache[]={25,39},discard[]={27,41};
@@ -354,6 +355,24 @@ agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
    for(unsigned i=0;i<f->nwait;i++)
       if(wait_mask&(1u<<i))ov[n++]=(struct agx3_field_kv){f->wait[i],1};
    return agx3_bind_compose(enc,f->mnemonic,f->ep,base,nb,ov,n,out,len);
+}
+
+bool
+agx3_alu_bit_reg(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                 uint16_t dest, const uint16_t src[2],
+                 const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                 uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_alu_bit_width(enc, op, false, dest, src, hints, wait_mask, out, len);
+}
+
+bool
+agx3_alu_bit_reg16(enum agx_isa_encoding enc, enum agx3_alu_op op,
+                 uint16_t dest, const uint16_t src[2],
+                 const enum agx3_alu_hint hints[2], uint16_t wait_mask,
+                 uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   return agx3_alu_bit_width(enc, op, true, dest, src, hints, wait_mask, out, len);
 }
 
 /* Native iadd_live/isub_live retain both inputs, while their dead variants
@@ -450,4 +469,32 @@ agx3_alu_int_to_float(enum agx_isa_encoding enc, uint16_t dest,
    for (unsigned i = 0; i < 6; ++i)
       fields[n++] = (struct agx3_field_kv){33 + i, !!(wait_mask & (1u << i))};
    return agx3_bind_compose(enc, "int2flt", 0, base, 4, fields, n, out, len);
+}
+
+bool
+agx3_alu_shift_add16(enum agx_isa_encoding enc, uint16_t dest,
+                     const uint16_t src[2], const enum agx3_alu_hint hints[2],
+                     unsigned shift, bool dest_cache, uint16_t wait_mask,
+                     uint8_t out[AGX3_ALU_MAX_LENGTH], uint8_t *len)
+{
+   if (enc != AGX_ISA_ENCODING_AGX3B || !src || !hints || !out || !len ||
+       dest >= 192 || src[0] >= 192 || src[1] >= 192 || shift > 4 ||
+       (unsigned)hints[0] > AGX3_ALU_HINT_CACHE ||
+       (unsigned)hints[1] > AGX3_ALU_HINT_CACHE || (wait_mask & ~0x3fu))
+      return false;
+   const struct agx3_field_kv base[] = {
+      {9, 2}, {10, 1}, {23, 2}, {24, 1}, {38, 2}, {39, 1},
+   };
+   struct agx3_field_kv fields[15] = {
+      {2, dest}, {11, dest_cache}, {16, src[0]}, {31, src[1]},
+      {25, hints[0] == AGX3_ALU_HINT_CACHE},
+      {27, hints[0] == AGX3_ALU_HINT_DISCARD},
+      {40, hints[1] == AGX3_ALU_HINT_CACHE},
+      {42, hints[1] == AGX3_ALU_HINT_DISCARD}, {54, shift},
+   };
+   unsigned n = 9;
+   for (unsigned i = 0; i < 6; ++i)
+      if (wait_mask & (1u << i))
+         fields[n++] = (struct agx3_field_kv){45 + i, 1};
+   return agx3_bind_compose(enc, "iadd", 0, base, 6, fields, n, out, len);
 }

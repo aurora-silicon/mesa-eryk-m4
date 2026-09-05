@@ -2249,10 +2249,14 @@ agx_materialize_agx3_alu_constants(agx_context *ctx)
           I->src[2].type == AGX_INDEX_IMMEDIATE) {
          I->src[2] = agx_mov_imm(&b, 32, I->src[2].value);
       } else if (I->op == AGX_OPCODE_BITOP && I->nr_dests == 1 &&
-                 I->dest[0].size == AGX_SIZE_32) {
+                 (I->dest[0].size == AGX_SIZE_32 ||
+                  (I->dest[0].size == AGX_SIZE_16 &&
+                   (I->truth_table == 0x8 || I->truth_table == 0xe ||
+                    I->truth_table == 0x6)))) {
          agx_foreach_src(I, s) {
             if (I->src[s].type == AGX_INDEX_IMMEDIATE)
-               I->src[s] = agx_mov_imm(&b, 32, I->src[s].value);
+               I->src[s] = agx_mov_imm(&b, I->dest[0].size == AGX_SIZE_16 ? 16 : 32,
+                                      I->src[s].value);
          }
       }
    }

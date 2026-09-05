@@ -3791,6 +3791,26 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             continue;
          }
 
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             I->dest[0].size == AGX_SIZE_16 && I->src[0].size == AGX_SIZE_16 &&
+             I->src[1].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1 &&
+             agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1 &&
+             agx3_src_is_register(I->dest[0]) && agx3_src_is_register(I->src[0]) &&
+             agx3_src_is_register(I->src[1]) &&
+             !I->src[0].abs && !I->src[0].neg && !I->src[1].abs && !I->src[1].neg) {
+            const uint16_t src[2] = {I->src[0].value, I->src[1].value};
+            const enum agx3_alu_hint hints[2] = {
+               agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
+            uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+            if (I->src[0].kill || I->src[1].kill ||
+                !agx3_alu_shift_add16(enc, I->dest[0].value, src, hints, I->shift,
+                                      I->dest[0].cache, wait, bytes, &len) ||
+                !agx3_append(emission, bytes, len))
+               AGX3_REFUSE(I);
+            continue;
+         }
+
          /* Unshifted register arithmetic shares the original canonical
           * form, but its native source hints come from post-RA lifetime. */
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_IADD &&
@@ -3935,7 +3955,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t lo[AGX3_COPY_MAX_LENGTH], hi[AGX3_STAGE_MAX_LENGTH];
             uint8_t lo_len = 0, hi_len = 0;
             if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
-                                        I->src[0].value, wait, lo, &lo_len) ||
+                                        I->src[0].value, I->dest[0].cache,
+                                        I->src[0].cache, I->src[0].discard,
+                                        wait, lo, &lo_len) ||
                 !agx3_clr(enc, I->dest[0].value + 1, true, false, hi,
                           &hi_len) ||
                 !agx3_append(emission, lo, lo_len) ||
@@ -3961,7 +3983,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             uint8_t bytes[AGX3_COPY_MAX_LENGTH];
             uint8_t len = 0;
             if (!agx3_copy_encode_reg16(enc, I->dest[0].value,
-                                        I->src[0].value, wait, bytes, &len) ||
+                                        I->src[0].value, I->dest[0].cache,
+                                        I->src[0].cache, I->src[0].discard,
+                                        wait, bytes, &len) ||
                 !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
@@ -4209,6 +4233,31 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!encoded || !agx3_append(emission, bytes, len))
                AGX3_REFUSE(I);
             continue;
+         }
+
+         if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITOP &&
+             I->nr_dests == 1 && I->nr_srcs == 2 && !I->saturate &&
+             I->dest[0].size == AGX_SIZE_16 && I->src[0].size == AGX_SIZE_16 &&
+             I->src[1].size == AGX_SIZE_16 && agx_channels(I->dest[0]) == 1 &&
+             agx_channels(I->src[0]) == 1 && agx_channels(I->src[1]) == 1 &&
+             agx3_src_is_register(I->dest[0]) && agx3_src_is_register(I->src[0]) &&
+             agx3_src_is_register(I->src[1]) &&
+             !I->src[0].abs && !I->src[0].neg && !I->src[1].abs && !I->src[1].neg) {
+            const unsigned tt = I->truth_table & 15;
+            if (tt == AGX3_SEL_TT_AND || tt == AGX3_SEL_TT_OR || tt == AGX3_SEL_TT_XOR) {
+               const enum agx3_alu_op op = tt == AGX3_SEL_TT_AND ? AGX3_ALU_BAND :
+                  tt == AGX3_SEL_TT_OR ? AGX3_ALU_BOR : AGX3_ALU_BXOR;
+               const uint16_t src[2] = {I->src[0].value, I->src[1].value};
+               const enum agx3_alu_hint hints[2] = {
+                  agx3_post_ra_hint(I->src[0]), agx3_post_ra_hint(I->src[1])};
+               uint8_t bytes[AGX3_ALU_MAX_LENGTH], len;
+               if (I->src[0].kill || I->src[1].kill ||
+                   !agx3_alu_bit_reg16(enc, op, I->dest[0].value, src, hints, wait,
+                                       bytes, &len) ||
+                   !agx3_append(emission, bytes, len))
+                  AGX3_REFUSE(I);
+               continue;
+            }
          }
 
          if (enc == AGX_ISA_ENCODING_AGX3B && I->op == AGX_OPCODE_BITOP &&
