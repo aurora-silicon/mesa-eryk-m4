@@ -40,6 +40,26 @@ struct isel_vec {
 };
 
 static const struct isel_vec vectors[] = {
+   {"s32_zero", {.dest_16=false, .cmp_16=false,
+       .cmp1_immediate=true, .explicit_hints=true, .cmp0=0, .cmp1=0,
+       .cond=AGX3_ISEL_ICOND_SLT, .sel_true=2, .sel_false=4,
+       .discard={true,false,true,true}, .wait_mask=32},
+    {0x02,0x01,0x0f,0x80,0x82,0x02,0x07,0xc2,0x80,0x04}, 10},
+   {"s32_u8", {.dest_16=false, .cmp_16=false,
+       .cmp1_immediate=true, .explicit_hints=true, .cmp0=0, .cmp1=255,
+       .cond=AGX3_ISEL_ICOND_SGT, .sel_true=2, .sel_false=4,
+       .discard={true,false,true,true}, .wait_mask=32},
+    {0x02,0x01,0x1f,0xfe,0x82,0x02,0x16,0xc2,0x80,0x04}, 10},
+   {"s16_u8", {.dest_16=true, .cmp_16=true,
+       .cmp1_immediate=true, .explicit_hints=true, .cmp0=0, .cmp1=2,
+       .cond=AGX3_ISEL_ICOND_SLT, .sel_true=1, .sel_false=2,
+       .discard={true,false,true,true}, .wait_mask=32},
+    {0x02,0x00,0x0d,0x82,0x82,0x01,0x07,0xc2,0x82,0x02}, 10},
+   {"s16_regs", {.dest_16=true, .cmp_16=true,
+       .cmp1_immediate=false, .explicit_hints=true, .cmp0=0, .cmp1=1,
+       .cond=AGX3_ISEL_ICOND_SGT, .sel_true=2, .sel_false=3,
+       .discard={true,true,true,true}, .wait_mask=32},
+    {0x02,0x00,0x1d,0x00,0x82,0x02,0x16,0xc8,0x82,0x03}, 10},
    {"u32_mixed_retains_scheduling", {
        .cmp1_immediate=true, .cmp1=2, .cond=AGX3_ISEL_ICOND_EQ,
        .discard={true,false,true,false}, .false_kind=AGX3_ISEL_IMMEDIATE,

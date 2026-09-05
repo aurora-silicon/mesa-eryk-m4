@@ -148,10 +148,7 @@ encode_explicit(const struct agx3_isel_desc *d,
 {
    if (!(d->cmp_16 ? reg16_ok(d->cmp0) : reg32_ok(d->cmp0)) ||
        (d->cmp1_immediate ? d->cmp1 > 255 :
-        !(d->cmp_16 ? reg16_ok(d->cmp1) : reg32_ok(d->cmp1))) ||
-       (d->cond != AGX3_ISEL_ICOND_EQ && d->cond != AGX3_ISEL_ICOND_ULT &&
-        d->cond != AGX3_ISEL_ICOND_UGT &&
-        (d->cmp_16 || d->cmp1_immediate)))
+        !(d->cmp_16 ? reg16_ok(d->cmp1) : reg32_ok(d->cmp1))))
       return false;
 
    for (unsigned i = 0; i < 4; ++i) {
@@ -184,12 +181,12 @@ encode_explicit(const struct agx3_isel_desc *d,
    ov[n++] = (struct agx3_field_kv)KV(fi ? 81 : 82, d->sel_false);
    ov[n++] = (struct agx3_field_kv)KV(44, d->cache[0]);
    ov[n++] = (struct agx3_field_kv)KV(46, d->discard[0]);
-   if (d->cmp_16 && d->cond == AGX3_ISEL_ICOND_EQ)
+   if (d->cmp_16 && d->cond >= AGX3_ISEL_ICOND_EQ)
       ov[n++] = (struct agx3_field_kv)KV(47, 1);
    if (!d->cmp1_immediate) {
       ov[n++] = (struct agx3_field_kv)KV(59, d->cache[1]);
       ov[n++] = (struct agx3_field_kv)KV(61, d->discard[1]);
-      if (d->cmp_16 && d->cond == AGX3_ISEL_ICOND_EQ)
+      if (d->cmp_16 && d->cond >= AGX3_ISEL_ICOND_EQ)
          ov[n++] = (struct agx3_field_kv)KV(62, 1);
    }
    if (!ti) {

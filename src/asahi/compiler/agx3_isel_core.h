@@ -46,9 +46,10 @@
  * The production explicit-hint form uses kind-2 register operands and actual
  * post-RA cache/discard bits. Fresh G17P uint/ushort dead/live witnesses pin
  * comparator fields f44/f46 and f59/f61, and selection fields f74/f76 and
- * f91/f93. Native 16-bit equality also carries f47/f62 on register comparands.
+ * f91/f93. Native 16-bit signed comparisons/equality carry f47/f62 on register
+ * comparands, matching the signed short and unsigned equality witnesses.
  * A right-hand u8 immediate uses f49/kind1; the packer reverses comparisons
- * with an immediate on the left. Unsigned 16-bit and u8-comparand forms stay
+ * with an immediate on the left. Signed/unsigned 16-bit and u8-comparand forms stay
  * fused, without temporary register materialization.
  *
  * The original form vectors remain available to callers without explicit
