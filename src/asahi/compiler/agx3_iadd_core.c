@@ -146,7 +146,12 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
 
    if ((d->src_a & 1) || d->src_a + 2 > 256)
       return false;
-   if (!d->no_addend && (d->src_c_16 ? (d->src_c >= 256)
+   if (d->addend_is_immediate &&
+       (d->no_addend || d->multiplier_is_register || d->addend_immediate > 255 ||
+        d->src_c || d->src_c_16 || d->src_c_sign_extend ||
+        d->src_c_cache || d->src_c_kill))
+      return false;
+   if (!d->no_addend && !d->addend_is_immediate && (d->src_c_16 ? (d->src_c >= 256)
                                      : ((d->src_c & 1) || d->src_c + 2 > 256)))
       return false;
    /* A pure multiply has no addend to widen or sign-extend. */
@@ -184,11 +189,12 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
       KV(9, 2), KV(10, 2), KV(23, 2), KV(24, 2),
       KV(38, 1), KV(39, 1), KV(53, 1),
    };
+   const bool immediate_c = d->no_addend || d->addend_is_immediate;
    const struct agx3_field_kv *baseline =
-      d->no_addend ? (d->multiplier_is_register ? baseline_reg_nc : baseline_imm_nc)
+      immediate_c ? (d->multiplier_is_register ? baseline_reg_nc : baseline_imm_nc)
                    : (d->multiplier_is_register ? baseline_reg : baseline_imm);
    const unsigned nbaseline =
-      d->no_addend ? (d->multiplier_is_register
+      immediate_c ? (d->multiplier_is_register
          ? sizeof(baseline_reg_nc) / sizeof(baseline_reg_nc[0])
          : sizeof(baseline_imm_nc) / sizeof(baseline_imm_nc[0]))
       : d->multiplier_is_register
@@ -209,8 +215,10 @@ agx3_imad_encode(enum agx_isa_encoding encoding,
    }
    else
       ov[n++] = (struct agx3_field_kv)KV(30, d->multiplier);
-   if (d->no_addend) {
+   if (immediate_c) {
       ov[n++] = (struct agx3_field_kv)KV(54, 1);
+      if (d->addend_is_immediate)
+         ov[n++] = (struct agx3_field_kv)KV(45, d->addend_immediate);
    } else {
       ov[n++] = (struct agx3_field_kv)KV(46, d->src_c);
       ov[n++] = (struct agx3_field_kv)KV(55, d->src_c_cache);

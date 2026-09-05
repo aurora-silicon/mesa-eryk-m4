@@ -3615,8 +3615,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
              * and register multiplier variants have distinct baselines. */
             const bool no_addend = c.type == AGX_INDEX_IMMEDIATE &&
                                    c.value == 0 && !c.abs && !c.neg;
+            const bool addend_imm = mult_imm &&
+               c.type == AGX_INDEX_IMMEDIATE && c.value != 0 &&
+               c.value <= 0xff && !c.abs && !c.neg && !c.memory;
             const bool addend_ok =
-               no_addend ||
+               no_addend || addend_imm ||
                (agx3_src_is_register(c) && !c.memory &&
                 agx_channels(c) == 1 && !(c.abs && c.neg) &&
                 (c.size == AGX_SIZE_32 ||
@@ -3635,12 +3638,14 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                   .multiplier_cache = mult_reg && m.cache,
                   .src_a_kill = a.discard,
                   .src_a_cache = a.cache,
-                  .src_c_kill = !no_addend && c.discard,
-                  .src_c_cache = !no_addend && c.cache,
+                  .src_c_kill = !no_addend && !addend_imm && c.discard,
+                  .src_c_cache = !no_addend && !addend_imm && c.cache,
                   .no_addend = no_addend,
-                  .src_c = no_addend ? 0 : c.value,
-                  .src_c_16 = !no_addend && c.size == AGX_SIZE_16,
-                  .src_c_sign_extend = !no_addend && c.neg,
+                  .addend_is_immediate = addend_imm,
+                  .addend_immediate = addend_imm ? c.value : 0,
+                  .src_c = (no_addend || addend_imm) ? 0 : c.value,
+                  .src_c_16 = !no_addend && !addend_imm && c.size == AGX_SIZE_16,
+                  .src_c_sign_extend = !no_addend && !addend_imm && c.neg,
                   .wait_mask = wait,
                };
                uint8_t bytes[AGX3_IADD_MAX_LENGTH];

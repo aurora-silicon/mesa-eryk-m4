@@ -129,6 +129,8 @@ struct agx3_imad_desc {
    uint16_t multiplier_reg;
    bool multiplier_kill; /* f42: last use of the multiplier register */
    bool multiplier_cache;
+   bool addend_is_immediate;
+   uint16_t addend_immediate; /* native slot-C unsigned8 immediate */
    uint16_t src_c;     /* addend register half */
    bool src_c_kill, src_c_cache;
    /*

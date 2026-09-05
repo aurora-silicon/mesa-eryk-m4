@@ -209,6 +209,34 @@ test_native_immediate_subtract(void)
    CHECK(!agx3_isub_immediate_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
 }
 
+static void
+test_native_imad_immediate_addend(void)
+{
+   static const uint8_t native[6][12] = {
+      {0x9f,0x00,0x56,0x00,0x02,0x00,0x94,0x28,0x50,0x22,0x02,0x00},
+      {0x9f,0x00,0x56,0x00,0x02,0x04,0x94,0x28,0x50,0x20,0x02,0x00},
+      {0x9f,0x00,0x56,0x00,0x02,0x00,0x24,0x89,0x50,0x22,0x02,0x00},
+      {0x9f,0x00,0x56,0x00,0x02,0x04,0x24,0x89,0x50,0x20,0x02,0x00},
+      {0x9f,0x00,0x56,0x00,0x02,0x00,0xfc,0x23,0x52,0x22,0x02,0x00},
+      {0x9f,0x00,0x56,0x00,0x02,0x04,0xfc,0x23,0x52,0x20,0x02,0x00}
+   };
+   const unsigned mul[]={37,73,255}, add[]={5,17,68};
+   for(unsigned i=0;i<3;i++)for(unsigned live=0;live<2;live++) {
+      const struct agx3_imad_desc d={
+         .src_a=live ? 2 : 0,.src_a_kill=!live,.multiplier=mul[i],
+         .addend_is_immediate=true,.addend_immediate=add[i],.wait_mask=32,
+      };
+      uint8_t out[AGX3_IADD_MAX_LENGTH],len;
+      CHECK(agx3_imad_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+      CHECK(len==12 && !memcmp(out,native[i*2+live],12));
+   }
+   struct agx3_imad_desc d={.multiplier=9,.addend_is_immediate=true,.addend_immediate=256};
+   uint8_t out[AGX3_IADD_MAX_LENGTH],len;
+   CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+   d.addend_immediate=5; d.src_c_kill=true;
+   CHECK(!agx3_imad_encode(AGX_ISA_ENCODING_AGX3B,&d,out,&len));
+}
+
 int
 main(void)
 {
@@ -417,6 +445,7 @@ main(void)
 
    test_apple_shift_witnesses();
    test_native_immediate_subtract();
+   test_native_imad_immediate_addend();
 
    printf("%u checks, %u failures\n", checks, failures);
    return failures ? 1 : 0;
