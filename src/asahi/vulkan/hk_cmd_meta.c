@@ -1565,7 +1565,11 @@ hk_CmdCopyImage2(VkCommandBuffer commandBuffer,
    VK_FROM_HANDLE(hk_image, src_image, pCopyImageInfo->srcImage);
    VK_FROM_HANDLE(hk_image, dst_image, pCopyImageInfo->dstImage);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
-   bool gfx = hk_copy_requires_gfx(dst_image);
+   /* G17P copies through its native tile renderer, as buffer uploads do.
+    * The common meta path preserves partial rectangles, layers and format
+    * reinterpretation without the AGX2 compute imageblock protocol. */
+   bool gfx = dev->dev.chip == AGX_CHIP_G17P ||
+              hk_copy_requires_gfx(dst_image);
    VkPipelineBindPoint bind_point = hk_bind_point(gfx);
 
    struct hk_meta_save save;
