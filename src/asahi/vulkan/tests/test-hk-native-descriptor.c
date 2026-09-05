@@ -47,9 +47,105 @@ check_layout(unsigned generation, unsigned texture_size,
    assert(storage.stride == storage_stride);
 }
 
+static void
+check_gen9_layer_mode_preserved(struct AGX_TEXTURE semantic)
+{
+   struct hk_native_texture_descriptor unaligned, aligned;
+   semantic.page_aligned_layers = false;
+   assert(hk_pack_native_texture(9, &unaligned, &semantic));
+   semantic.page_aligned_layers = true;
+   assert(hk_pack_native_texture(9, &aligned, &semantic));
+
+   /* Outside the corrected contract, retain exactly the inherited bit and
+    * leave every other byte unchanged. This is a scope check, not native
+    * qualification of the excluded descriptor kinds.
+    */
+   assert((unaligned.opaque[3] & (1u << 30)) == 0);
+   aligned.opaque[3] ^= 1u << 30;
+   assert(memcmp(&aligned, &unaligned, sizeof(aligned)) == 0);
+}
+
 int
 main(void)
 {
+   /* Ordinary HAL200 2D has no layer-mode bit, even when its backing BO
+    * allocation is page aligned. Compare the entire packet, not only bit62.
+    */
+   struct AGX_TEXTURE plain = {
+      AGX_TEXTURE_header,
+      .dimension = AGX_TEXTURE_DIMENSION_2D,
+      .layout = AGX_LAYOUT_GPU,
+      .channels = AGX_CHANNELS_R8G8B8A8,
+      .type = AGX_TEXTURE_TYPE_UNORM,
+      .swizzle_r = AGX_CHANNEL_R, .swizzle_g = AGX_CHANNEL_G,
+      .swizzle_b = AGX_CHANNEL_B, .swizzle_a = AGX_CHANNEL_A,
+      .width = 2, .height = 2, .address = 0x87ffefc000ull,
+   };
+   struct hk_native_texture_descriptor plain_unaligned, plain_aligned;
+   for (unsigned generation = 8; generation <= 10; ++generation) {
+      plain.page_aligned_layers = false;
+      assert(hk_pack_native_texture(generation, &plain_unaligned, &plain));
+      plain.page_aligned_layers = true;
+      assert(hk_pack_native_texture(generation, &plain_aligned, &plain));
+      if (generation == 9) {
+         static const uint8_t expected[32] = {
+            0x22,0x0a,0x88,0x16,0x00,0x04,0x00,0x00,
+            0x00,0xfc,0xfe,0x7f,0x08,0x00,0x00,0x00,
+         };
+         assert(memcmp(&plain_aligned, expected, sizeof(expected)) == 0);
+         assert(memcmp(&plain_aligned, &plain_unaligned, sizeof(plain_aligned)) == 0);
+      } else {
+         assert(memcmp(&plain_aligned, &plain_unaligned, sizeof(plain_aligned)) != 0);
+      }
+   }
+
+   /* Each case independently crosses one plain-2D predicate boundary. In
+    * particular, a one-layer array must still preserve the old array policy.
+    */
+   struct AGX_TEXTURE excluded = plain;
+   excluded.dimension = AGX_TEXTURE_DIMENSION_2D_ARRAY;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.dimension = AGX_TEXTURE_DIMENSION_2D_MULTISAMPLED;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.depth = 2;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.layout = AGX_LAYOUT_LINEAR;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.layout = AGX_LAYOUT_TWIDDLED;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.first_level = 1;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.last_level = 1;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.unk_mipmapped = true;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.extended = true;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.compressed = true;
+   check_gen9_layer_mode_preserved(excluded);
+
+   excluded = plain;
+   excluded.mode = AGX_IMAGE_MODE_SPARSE;
+   check_gen9_layer_mode_preserved(excluded);
+
    static const struct {
       const char *chip;
       unsigned generation;

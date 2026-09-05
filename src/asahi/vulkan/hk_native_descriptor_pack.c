@@ -77,6 +77,18 @@ hk_pack_native_texture(unsigned generation,
           legacy->height > 16384)
          return false;
 
+      /* HAL200 encodeImageReadState (4d238c, 4d2270..4d22e8) clears
+       * word1[62] for an ordinary non-array 2D texture. Its conditional
+       * layer-mode writer is not the inherited AIL page-aligned-allocation
+       * flag. Keep this correction bounded to the fully represented plain
+       * one-level case; array/compression policies need their own evidence.
+       */
+      const bool plain_2d =
+         legacy->dimension == AGX_TEXTURE_DIMENSION_2D &&
+         legacy->layout == AGX_LAYOUT_GPU && legacy->depth == 1 &&
+         !legacy->compressed && !extended &&
+         legacy->mode == AGX_IMAGE_MODE_NORMAL;
+
       struct AGX_TEXTURE_GEN9 cfg = {
          .dimension = legacy->dimension,
          .layout = legacy->layout,
@@ -96,7 +108,7 @@ hk_pack_native_texture(unsigned generation,
          .srgb_2_channel = legacy->srgb_2_channel,
          .stride = legacy->layout == AGX_LAYOUT_LINEAR ? legacy->stride : 0,
          .depth = legacy->layout == AGX_LAYOUT_LINEAR ? 1 : legacy->depth,
-         .page_aligned_layers = legacy->page_aligned_layers,
+         .page_aligned_layers = plain_2d ? false : legacy->page_aligned_layers,
          .extended = extended,
          .acceleration_buffer =
             legacy->compressed && legacy->extended
