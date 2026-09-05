@@ -86,13 +86,14 @@ struct hk_agx3_g17p_combined_sampler_heap {
    uint16_t sampler_element_size_B;
 };
 
-/* Join one Gen9 texture descriptor and one indexed HAL200 native sampler into
- * the CProg slots consumed by texture 0 and sampler 1. Sampler 0 remains the
- * libagx texel-fetch reservation.
+/* Resolve two raw table pointers for the bounded texture0/sampler0 fragment
+ * ABI. Upload these qwords into command-owned memory, then load its 16 bytes
+ * into uniform halves 0..7. Descriptors themselves remain in their tables;
+ * copying inline descriptor bytes to those uniforms is not this ABI.
  */
-bool hk_agx3_g17p_combined_sampler_ranges(
+bool hk_agx3_g17p_combined_sampler_pointers(
    const struct hk_agx3_g17p_combined_sampler_heap *heap,
-   struct agx3_ioto_uniform_range ranges[2]);
+   uint64_t pointers[2]);
 
 /* Load one root descriptor followed by every descriptor-set pointer named by
  * the shader's pipeline layout. */

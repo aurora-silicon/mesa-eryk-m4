@@ -232,11 +232,11 @@ hk_agx3_g17p_basic_graphics_program_generate(
 }
 
 bool
-hk_agx3_g17p_combined_sampler_ranges(
+hk_agx3_g17p_combined_sampler_pointers(
    const struct hk_agx3_g17p_combined_sampler_heap *heap,
-   struct agx3_ioto_uniform_range ranges[2])
+   uint64_t pointers[2])
 {
-   if (!heap || !ranges || heap->descriptor_set_va == 0 ||
+   if (!heap || !pointers || heap->descriptor_set_va == 0 ||
        heap->sampler_heap_va == 0 || (heap->texture_offset_B & 7) != 0 ||
        heap->sampler_element_size_B != 32 ||
        heap->sampler_index < HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX)
@@ -253,19 +253,12 @@ hk_agx3_g17p_combined_sampler_ranges(
       (uint64_t)native_index * heap->sampler_element_size_B;
    const uint64_t sampler_va = heap->sampler_heap_va + sampler_offset;
    if (texture_va < heap->descriptor_set_va ||
-       sampler_va < heap->sampler_heap_va)
+       sampler_va < heap->sampler_heap_va ||
+       texture_va > UINT64_MAX - 31 || sampler_va > UINT64_MAX - 31)
       return false;
 
-   ranges[0] = (struct agx3_ioto_uniform_range){
-      .start_halfs = 0,
-      .size_halfs = 16,
-      .address = texture_va,
-   };
-   ranges[1] = (struct agx3_ioto_uniform_range){
-      .start_halfs = 32,
-      .size_halfs = 16,
-      .address = sampler_va,
-   };
+   pointers[0] = texture_va;
+   pointers[1] = sampler_va;
    return true;
 }
 

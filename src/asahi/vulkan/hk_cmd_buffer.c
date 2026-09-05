@@ -1029,9 +1029,27 @@ hk_g17p_graphics_uniform_ranges(
          .sampler_count = dev->samplers.table.alloc,
          .sampler_element_size_B = sampler_element_size,
       };
-      if (!hk_agx3_g17p_combined_sampler_ranges(&heap, &ranges[count]))
+      uint64_t pointers[2];
+      if (!hk_agx3_g17p_combined_sampler_pointers(&heap, pointers))
          return false;
-      count += 2;
+
+      /* HAL200 FragmentProgramVariant::finalize (374968..3749c0) maps
+       * compiler bindpoints 0x31/0x35 to driver qwords +0xc0/+0xe0.
+       * encodeAndEmitRenderState writes the raw texture/sampler table VAs
+       * there (4c5580/4c5598); ESL copies them to uniform dwords 0..3.
+       * Keep this upload immutable for the command-buffer lifetime, just
+       * like the per-draw graphics state. Both shader indices are zero.
+       */
+      const uint64_t pointers_va =
+         hk_pool_upload(cmd, pointers, sizeof(pointers), 8);
+      if (!pointers_va)
+         return false;
+
+      ranges[count++] = (struct agx3_ioto_uniform_range){
+         .start_halfs = 0,
+         .size_halfs = 8,
+         .address = pointers_va,
+      };
    }
 
    if (s->info.agx3_uses_root || s->info.set_count != 0) {

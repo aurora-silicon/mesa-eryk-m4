@@ -1116,7 +1116,7 @@ test_g17p_rt0_eot_program(void)
 }
 
 static int
-test_g17p_combined_sampler_ranges(void)
+test_g17p_combined_sampler_pointers(void)
 {
    const struct hk_agx3_g17p_combined_sampler_heap heap = {
       .descriptor_set_va = UINT64_C(0x10000020000),
@@ -1126,18 +1126,25 @@ test_g17p_combined_sampler_ranges(void)
       .sampler_count = 1024,
       .sampler_element_size_B = 32,
    };
-   struct agx3_ioto_uniform_range ranges[2] = {0};
-   CHECK(hk_agx3_g17p_combined_sampler_ranges(&heap, ranges));
-   CHECK(ranges[0].start_halfs == 0 && ranges[0].size_halfs == 16 &&
-         ranges[0].address == UINT64_C(0x10000020040));
-   CHECK(ranges[1].start_halfs == 32 && ranges[1].size_halfs == 16 &&
-         ranges[1].address == UINT64_C(0x100000800e0));
+   uint64_t pointers[2] = {0};
+   CHECK(hk_agx3_g17p_combined_sampler_pointers(&heap, pointers));
+   CHECK(pointers[0] == UINT64_C(0x10000020040));
+   CHECK(pointers[1] == UINT64_C(0x100000800e0));
+
+   /* Native ESL consumes these two qwords, not the inline 32-byte records
+    * that they address. Both hardware table indices select entry zero.
+    */
+   const struct agx3_ioto_uniform_range range = {
+      .start_halfs = 0,
+      .size_halfs = 8,
+      .address = UINT64_C(0x10000090000),
+   };
 
    const struct hk_agx3_g17p_graphics_program_desc desc = {
       .program_va = UINT64_C(0x10001990240),
       .shader_va = UINT64_C(0x10000000080),
-      .uniform_ranges = ranges,
-      .uniform_range_count = ARRAY_SIZE(ranges),
+      .uniform_ranges = &range,
+      .uniform_range_count = 1,
       .shader_binary_size = 54,
       .nr_gprs = 8,
       .fragment = true,
@@ -1150,19 +1157,51 @@ test_g17p_combined_sampler_ranges(void)
          program.bytes[program.length - AGX_IOTO_PROGRAM_TERMINATE_SIZE] ==
             0x0e);
 
-   const struct agx3_ioto_uniform_range before[2] = {ranges[0], ranges[1]};
+   const uint64_t before[2] = {pointers[0], pointers[1]};
    struct hk_agx3_g17p_combined_sampler_heap bad = heap;
    bad.sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX - 1;
-   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
-   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
    bad = heap;
    bad.sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX + 1024;
-   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
-   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
    bad = heap;
    bad.sampler_element_size_B = 8;
-   CHECK(!hk_agx3_g17p_combined_sampler_ranges(&bad, ranges));
-   CHECK(memcmp(ranges, before, sizeof(before)) == 0);
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.texture_offset_B++;
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.descriptor_set_va = UINT64_MAX - 32;
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.sampler_heap_va = UINT64_MAX - 32;
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.texture_offset_B = 0;
+   bad.descriptor_set_va = UINT64_MAX - 15;
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   bad = heap;
+   bad.sampler_index = HK_AGX3_G17P_BINDLESS_SAMPLER_BASE_INDEX;
+   bad.sampler_heap_va = UINT64_MAX - 15;
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&bad, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(NULL, pointers));
+   CHECK(memcmp(pointers, before, sizeof(before)) == 0);
+   CHECK(!hk_agx3_g17p_combined_sampler_pointers(&heap, NULL));
+
+   struct hk_agx3_g17p_combined_sampler_heap client = heap;
+   client.descriptor_set_va = UINT64_C(0x87ffed0000);
+   client.sampler_heap_va = UINT64_C(0x87ffef4000);
+   CHECK(hk_agx3_g17p_combined_sampler_pointers(&client, pointers));
+   CHECK(pointers[0] == UINT64_C(0x87ffed0040));
+   CHECK(pointers[1] == UINT64_C(0x87ffef40e0));
    return 0;
 }
 
@@ -1513,7 +1552,7 @@ main(void)
        test_g17p_direct_add3_compute_bridge() ||
        test_g17p_no_resource_program_bridge() ||
        test_g17p_basic_graphics_program() || test_g17p_rt0_eot_program() ||
-       test_g17p_combined_sampler_ranges() ||
+       test_g17p_combined_sampler_pointers() ||
        test_g17p_root_range() ||
        test_g17p_rt0_background_programs() ||
        test_g17p_rt0_background_staging() ||

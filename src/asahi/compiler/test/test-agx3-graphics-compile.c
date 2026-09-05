@@ -926,12 +926,14 @@ test_g17p_eot_block_store(void)
 }
 
 /*
- * Fragment shader sampling texture 0 through sampler 0 by immediate index
- * with implicit LOD -- a textured triangle, the exact shape the smp sampler
- * form is grounded for (fragment auto-LOD witnesses ts_auto / fs_bufcoord).
+ * Fragment shader sampling texture 0 through sampler 0 with implicit LOD.
+ * Keep both index ABIs explicit: ordinary bound sampling reserves sampler 0
+ * for texel fetch, while G17P's compact pointer tables select native slot 0.
+ * The compact reference is constructed directly at the post-lowering level;
+ * it must not run the combined-sampler pass that it independently checks.
  */
 static nir_shader *
-build_fs_texture_imm(void)
+build_fs_texture_index_abi(bool compact_native)
 {
    nir_builder b = nir_builder_init_simple_shader(
       MESA_SHADER_FRAGMENT, &agx_nir_options, "AGX3 textured-triangle FS");
@@ -949,7 +951,9 @@ build_fs_texture_imm(void)
    tex->coord_components = 2;
    tex->texture_index = 0;
    tex->sampler_index = 0;
-   tex->src[0] = nir_tex_src_for_ssa(nir_tex_src_coord, uv);
+   tex->src[0] = nir_tex_src_for_ssa(compact_native ? nir_tex_src_backend1
+                                                 : nir_tex_src_coord,
+                                     uv);
    nir_def_init(&tex->instr, &tex->def, 4, 32);
    nir_builder_instr_insert(&b, &tex->instr);
 
@@ -964,6 +968,102 @@ build_fs_texture_imm(void)
    fs_lower(b.shader);
    NIR_PASS(_, b.shader, agx_nir_lower_texture);
    return b.shader;
+}
+
+static nir_shader *
+build_fs_texture_imm(void)
+{
+   return build_fs_texture_index_abi(false);
+}
+
+static nir_shader *
+build_fs_texture_compact_native(void)
+{
+   return build_fs_texture_index_abi(true);
+}
+
+static bool
+has_compact_native_sample(const nir_shader *shader)
+{
+   unsigned samples = 0;
+   nir_foreach_function_impl(impl, shader) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_intrinsic) {
+               const nir_intrinsic_op op =
+                  nir_instr_as_intrinsic(instr)->intrinsic;
+               if (op == nir_intrinsic_bindless_image_agx ||
+                   op == nir_intrinsic_bindless_sampler_agx ||
+                   op == nir_intrinsic_load_descriptor_set_agx ||
+                   op == nir_intrinsic_load_root_agx)
+                  return false;
+            }
+
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            const nir_tex_instr *tex = nir_instr_as_tex(instr);
+            if (++samples != 1 || tex->op != nir_texop_tex ||
+                tex->texture_index != 0 || tex->sampler_index != 0 ||
+                tex->num_srcs != 1 ||
+                tex->src[0].src_type != nir_tex_src_backend1 ||
+                tex->sampler_dim != GLSL_SAMPLER_DIM_2D || tex->is_array ||
+                tex->is_shadow || tex->is_sparse || tex->backend_flags != 0 ||
+                tex->coord_components != 2 ||
+                nir_src_num_components(tex->src[0].src) != 2 ||
+                nir_src_bit_size(tex->src[0].src) != 32 ||
+                tex->dest_type != nir_type_float32 ||
+                tex->def.num_components != 4 || tex->def.bit_size != 32)
+               return false;
+         }
+      }
+   }
+   return samples == 1;
+}
+
+static bool
+test_texture_index_abis(void)
+{
+   nir_shader *legacy = build_fs_texture_imm();
+   nir_shader *native = build_fs_texture_compact_native();
+   unsigned samples = 0;
+   bool legacy_ok = true;
+
+   nir_foreach_function_impl(impl, legacy) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            const nir_tex_instr *tex = nir_instr_as_tex(instr);
+            const int sampler =
+               nir_tex_instr_src_index(tex, nir_tex_src_sampler_handle);
+            ++samples;
+            legacy_ok &= sampler >= 0 &&
+                         nir_src_is_const(tex->src[sampler].src) &&
+                         nir_src_as_uint(tex->src[sampler].src) == 1;
+         }
+      }
+   }
+
+   bool ok = legacy_ok && samples == 1 &&
+             !has_compact_native_sample(legacy) &&
+             has_compact_native_sample(native);
+
+   /* The old specialized result had no handles, but still selected sampler
+    * 1. Reject that exact regression, independently of the source count. */
+   nir_foreach_function_impl(impl, native) {
+      nir_foreach_block(block, impl) {
+         nir_foreach_instr(instr, block) {
+            if (instr->type == nir_instr_type_tex)
+               nir_instr_as_tex(instr)->sampler_index = 1;
+         }
+      }
+   }
+   ok &= !has_compact_native_sample(native);
+   ralloc_free(legacy);
+   ralloc_free(native);
+   return ok;
 }
 
 /* Descriptor set 0 is placed in fragment uniform halfs 16..19. Load one
@@ -1123,7 +1223,8 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
       struct agx_g17p_combined_sampler_binding binding;
       if (!agx_nir_lower_g17p_combined_sampler(nir, &binding) ||
           binding.texture_offset_B != 64 ||
-          binding.sampler_index_offset_B != 104) {
+          binding.sampler_index_offset_B != 104 ||
+          !has_compact_native_sample(nir)) {
          fprintf(stderr, "%s %s: combined descriptor lowering mismatch\n",
                  enc_name(enc), c->name);
          ralloc_free(nir);
@@ -1228,9 +1329,10 @@ run_case(const struct agx3_graphics_case *c, enum agx_isa_encoding enc)
       }
 
       if (result && c->lower_combined_sampler) {
-         nir_shader *reference_nir = build_fs_texture_imm();
+         nir_shader *reference_nir = build_fs_texture_compact_native();
          struct agx_shader_part reference = {0};
          const bool reference_ok =
+            has_compact_native_sample(reference_nir) &&
             agx_compile_shader_nir(reference_nir, &key, &reference);
          const bool binary_matches =
             reference_ok &&
@@ -1281,6 +1383,11 @@ main(void)
       AGX_ISA_ENCODING_AGX3C,
    };
    bool all_ok = true;
+
+   if (!test_texture_index_abis()) {
+      fputs("legacy and compact-native sampler index ABIs conflated\n", stderr);
+      all_ok = false;
+   }
 
    if (!test_combined_sampler_scope()) {
       fputs("combined sampler lowering consumed a non-sampler bias\n", stderr);

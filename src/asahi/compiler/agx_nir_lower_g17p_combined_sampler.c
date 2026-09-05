@@ -199,8 +199,12 @@ agx_nir_lower_g17p_combined_sampler(
       sample->op = nir_texop_tex;
    }
    sample->texture_index = 0;
-   /* Sampler state 0 is reserved for texel fetches throughout libagx. */
-   sample->sampler_index = 1;
+   /* HAL200's bounded fragment ABI binds independent texture/sampler table
+    * pointers. Each table is rebased to the selected API resource, so both
+    * hardware indices are zero; the legacy texel-fetch reservation is not
+    * an extra entry in this sampler table.
+    */
+   sample->sampler_index = 0;
 
    NIR_PASS(_, shader, nir_opt_dce);
    if (g17p_has_descriptor_access(shader))
