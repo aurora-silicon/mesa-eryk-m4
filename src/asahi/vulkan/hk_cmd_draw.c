@@ -478,8 +478,13 @@ hk_build_g17p_bg_eot(struct hk_cmd_buffer *cmd,
          if (!desc.clear_value_va)
             return (struct hk_bg_eot){0};
       } else {
+         /* Native texture-table entries occupy aligned 32-byte slots.
+          * This private one-entry table follows the same contract as the
+          * sampled-image heap; arbitrary preceding uploads may otherwise
+          * place its base inside a descriptor slot. */
          const uint64_t texture_va =
-            hk_pool_upload(cmd, &iview->planes[0].background, 32, 8);
+            hk_pool_upload(cmd, &iview->planes[0].background,
+                           AGX_TEXTURE_GEN9_LENGTH, AGX_TEXTURE_GEN9_LENGTH);
          const uint64_t sampler_va =
             dev->rodata.bo && dev->rodata.bo->va ? dev->rodata.bo->va->addr : 0;
          if (!texture_va || !sampler_va)
