@@ -9,6 +9,19 @@
 #include <string.h>
 
 bool
+agx_ppp_hal200_cull_mode_pack(enum agx_chip chip, unsigned cull_mode,
+                              bool front_face_ccw, uint32_t original,
+                              uint32_t *out)
+{
+   if (chip != AGX_CHIP_G17P || cull_mode > 3 || !out)
+      return false;
+
+   *out = (original & ~UINT32_C(0x10003)) | cull_mode |
+          ((uint32_t)front_face_ccw << 16);
+   return true;
+}
+
+bool
 agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,
                                    uint32_t original, uint32_t *out)
 {

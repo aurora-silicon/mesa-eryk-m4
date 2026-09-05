@@ -2877,6 +2877,11 @@ hk_g17p_emit_native_bind_tail(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
    struct agx_ppp_hal200_graphics_fields cull_fields = {
       .words = {UINT32_C(0x00000480)},
    };
+   if (!agx_ppp_hal200_cull_mode_pack(
+          dev->dev.chip, dyn->rs.cull_mode,
+          dyn->rs.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE,
+          cull_fields.words[0], &cull_fields.words[0]))
+      return false;
    if (!agx_ppp_hal200_cull_provoking_pack(dev->dev.chip, gfx->provoking,
                                          cull_fields.words[0],
                                          &cull_fields.words[0]))
@@ -4217,6 +4222,18 @@ hk_flush_dynamic_state(struct hk_cmd_buffer *cmd, struct hk_cs *cs,
          cs->current = out;
          return;
       }
+   }
+
+   /* A pure cull/winding update needs new immutable fragment state, but
+    * leaves the vertex program and its VDM state unchanged. */
+   if (dev->dev.chip == AGX_CHIP_G17P && !g17p_native_bind_tail_emitted &&
+       (IS_DIRTY(RS_CULL_MODE) || IS_DIRTY(RS_FRONT_FACE))) {
+      if (!hk_g17p_emit_native_bind_tail(cmd, cs, &out)) {
+         vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
+         cs->current = out;
+         return;
+      }
+      g17p_native_bind_tail_emitted = true;
    }
 
    if (!g17p_native_bind_tail_emitted && IS_DIRTY(RS_DEPTH_BIAS_FACTORS)) {

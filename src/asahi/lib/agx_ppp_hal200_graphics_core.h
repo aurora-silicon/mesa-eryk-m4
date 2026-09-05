@@ -42,6 +42,11 @@ struct agx_ppp_hal200_graphics_fields {
    uint32_t words[6];
 };
 
+/* Native setCullMode/setFrontFacingWinding merge only bits0..1/16. */
+bool agx_ppp_hal200_cull_mode_pack(enum agx_chip chip, unsigned cull_mode,
+                                  bool front_face_ccw, uint32_t original,
+                                  uint32_t *out);
+
 /* Native setProvokingVertexMode (458b4c..458b60): CULL bits7..8
  * encode raw vertex selector+1 independently of VDM and the VIT. */
 bool agx_ppp_hal200_cull_provoking_pack(enum agx_chip chip, unsigned selector,

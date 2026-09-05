@@ -228,5 +228,22 @@ main(void)
    assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17G, 0, 0, &unchanged));
    assert(!agx_ppp_hal200_cull_provoking_pack(AGX_CHIP_G17P, 0, 0, NULL));
    assert(unchanged == 0xdeadbeef);
+   for (unsigned mode = 0; mode < 4; ++mode) {
+      for (unsigned ccw = 0; ccw < 2; ++ccw) {
+         uint32_t cull;
+         assert(agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, mode, ccw,
+                                               0x480, &cull));
+         assert(cull == (0x480u | mode | (ccw << 16)));
+         assert(agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, mode, ccw,
+                                               0xdeadbeef, &cull));
+         assert((cull & ~0x10003u) == (0xdeadbeefu & ~0x10003u));
+         assert((cull & 3) == mode && ((cull >> 16) & 1) == ccw);
+      }
+   }
+   unchanged = 0xdeadbeef;
+   assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, 4, 0, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17G, 0, 0, 0, &unchanged));
+   assert(!agx_ppp_hal200_cull_mode_pack(AGX_CHIP_G17P, 0, 0, 0, NULL));
+   assert(unchanged == 0xdeadbeef);
    return 0;
 }
