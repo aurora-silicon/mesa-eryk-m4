@@ -397,3 +397,38 @@ agx3_normflt_encode(enum agx_isa_encoding enc,
    *len = 0;
    return false;
 }
+
+/* Fresh Apple RGB10A2Unorm pipelines, with dead sources and a second float32
+ * attachment that retains all sources, establish both lifetime encodings.
+ * One native conversion replaces per-channel multiply/convert/shift/or work.
+ */
+bool
+agx3_rgb10a2_encode(const struct agx3_rgb10a2_desc *d,
+                    uint8_t out[14], uint8_t *length)
+{
+   if (!d || !out || !length || d->dest >= 256 || (d->dest & 1))
+      return false;
+   const struct agx3_field_kv base[] = {KV(9, 2), KV(10, 2)};
+   struct agx3_field_kv fields[30];
+   unsigned n = 0;
+   fields[n++] = (struct agx3_field_kv)KV(2, d->dest);
+   for (unsigned i = 0; i < 4; ++i) {
+      const bool reg = d->kind[i] == AGX3_FLTNORM_SRC_REGISTER;
+      const bool imm = d->kind[i] == AGX3_FLTNORM_SRC_IMMEDIATE;
+      if ((!reg && !imm) || d->source[i] >= 256 || (reg && (d->source[i] & 1)))
+         return false;
+      fields[n++] = (struct agx3_field_kv)KV(23 + 17 * i, d->kind[i]);
+      fields[n++] = (struct agx3_field_kv)KV(24 + 17 * i, 2);
+      fields[n++] = (struct agx3_field_kv)KV((reg ? 16 : 15) + 17 * i, d->source[i]);
+      if (reg) {
+         fields[n++] = (struct agx3_field_kv)KV(25 + 17 * i, d->cache[i]);
+         fields[n++] = (struct agx3_field_kv)KV(27 + 17 * i, d->discard[i]);
+      }
+   }
+   fields[n++] = (struct agx3_field_kv)KV(102, d->first_instruction);
+   fields[n++] = (struct agx3_field_kv)KV(94, 0);
+   fields[n++] = (struct agx3_field_kv)KV(95, 0);
+   fields[n++] = (struct agx3_field_kv)KV(96, 0);
+   return agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "pack", 0,
+                           base, 2, fields, n, out, length);
+}

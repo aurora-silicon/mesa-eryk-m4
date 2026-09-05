@@ -3615,3 +3615,18 @@ TEST_F(AGX3PackBinary, VertexCFGTerminalOutputBytesMatchSingleBlock)
       }
    }
 }
+
+TEST(AGX3NativeRgb10A2, NativeDeadLiveAndConstantOperands)
+{
+ const struct agx3_rgb10a2_desc d[3]={
+  {.dest=0,.source={0,2,4,6},.kind={2,2,2,2},.discard={1,1,1,1}},
+  {.dest=8,.source={6,4,2,0},.kind={2,2,2,2}},
+  {.source={48,32,16,48},.kind={1,1,1,1},.first_instruction=true},
+ };
+ const unsigned char want[3][14]={{0xa7,0x06,0x54,0x00,0x02,0x00,0x08,0x20,0x60,0xa0,0xea,0x8b,0x24,0x11},{0xa7,0x06,0x54,0x08,0x02,0x0c,0x10,0x10,0x00,0xa0,0x2a,0x88,0x24,0x11},{0xa7,0x0e,0x54,0,2,0x60,0x80,0x80,0,0xa3,0x2a,8,0,0x10}};
+ for(unsigned i=0;i<3;i++){
+  unsigned char out[14]={0};unsigned char len=0;
+  ASSERT_TRUE(agx3_rgb10a2_encode(&d[i],out,&len));
+  ASSERT_EQ(len,14); EXPECT_EQ(memcmp(out,want[i],14),0);
+ }
+}

@@ -125,6 +125,18 @@ struct agx3_fltnorm_src {
    bool kill; /* register sources only: this is the last read */
 };
 
+/* Native RGB10A2 conversion packs four f32 registers into one32-bit word. */
+struct agx3_rgb10a2_desc {
+   uint16_t dest;
+   uint16_t source[4];
+   uint8_t kind[4]; /* agx3_fltnorm_src_kind */
+   bool first_instruction;
+   bool discard[4];
+   bool cache[4];
+};
+bool agx3_rgb10a2_encode(const struct agx3_rgb10a2_desc *desc,
+                        uint8_t out[14], uint8_t *length);
+
 struct agx3_fltnorm_desc {
    uint16_t dest;                 /* 16-bit (half) register index */
    bool dest_hint;                /* f11, unmodelled; clear in every witness */
