@@ -77,6 +77,11 @@ bool agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
  * 16-bit immediate forms are not covered here. Register/register compares
  * use agx3_cf_icmp_reg16(), including its compact unsigned encoding point.
  */
+bool agx3_cf_icmp_zero16_runtime(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                                 unsigned slot, uint16_t src,
+                                 struct agx3_cf_source_hints hint, uint16_t wait_mask,
+                                 uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);
+
 bool agx3_cf_icmp_zero16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                          unsigned slot, uint16_t src0,
                          uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len);

@@ -86,10 +86,29 @@ test_half_comparisons(void)
    }
 }
 
+static void
+test_half_zero_lifetime(void)
+{
+   const uint8_t native[3][10] = {
+      {0x0a,0x02,0x2b,0x80,0x02,0x00,0x07,0xc2,0x02,0x00},
+      {0x0a,0x02,0x23,0x80,0x02,0x00,0x07,0xc2,0x02,0x00},
+      {0x0a,0x02,0x23,0x80,0x06,0x00,0x07,0xc2,0x02,0x00},
+   };
+   for(unsigned i=0;i<3;++i) {
+      uint8_t out[AGX3_CF_MAX_LENGTH],len=0;
+      const struct agx3_cf_source_hints hint={false,i==0};
+      bool ok=agx3_cf_icmp_zero16_runtime(AGX_ISA_ENCODING_AGX3B,
+                 i==2 ? AGX3_CF_ICOND_EQ : AGX3_CF_ICOND_SLT,0,2,hint,32,out,&len);
+      ++checks;
+      if(!ok || len!=10 || memcmp(out,native[i],10))++failures;
+   }
+}
+
 int
 main(void)
 {
    test_half_comparisons();
+   test_half_zero_lifetime();
    for (size_t i = 0; i < cf_vec_count; ++i) {
       const struct cf_vec *v = &cf_vecs[i];
       const enum agx_isa_encoding e =

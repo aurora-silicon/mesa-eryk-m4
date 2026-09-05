@@ -3932,3 +3932,20 @@ TEST_F(AGX3PackBinary, HalfCompareGnomeLoopBreakAndBothBranchFixups)
    const uint8_t pop_native[] = {0x0f,0x06,0x04,0x02,0,0};
    EXPECT_EQ(memcmp(code.data()+38,pop_native,sizeof(pop_native)),0);
 }
+
+TEST_F(AGX3PackBinary, HalfZeroGnomeSamplerIndexSurvivesBranch)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index index = agx_register(3, AGX_SIZE_16);
+   agx_if_icmp(b,index,agx_immediate(0),1,AGX_ICOND_UEQ,true,NULL);
+   agx_index zext = index; zext.abs = true;
+   agx_index bias = agx_immediate(28); bias.neg = true;
+   agx_iadd_to(b,agx_register(8,AGX_SIZE_32),zext,bias,0);
+   agx_pop_exec(b,1);
+   agx_stop(b);
+   auto code=pack(b);
+   const uint8_t native[] = {0x0a,0x02,0x23,0x80,0x06,0x00,0x0f,0x02,0x02,0x00};
+   ASSERT_GT(code.size(),sizeof(native));
+   /* Both original halves remain live; no specimen-only discard/wait6. */
+   EXPECT_EQ(memcmp(code.data(),native,sizeof(native)),0);
+}

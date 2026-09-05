@@ -107,19 +107,37 @@ agx3_cf_icmp_imm(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
 }
 
 bool
+agx3_cf_icmp_zero16_runtime(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
+                            unsigned slot, uint16_t src,
+                            struct agx3_cf_source_hints hint, uint16_t wait_mask,
+                            uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
+{
+   if (!agx3b(enc) || !icond_ok(cond) || !slot_ok(slot) || src >= 256 ||
+       !out || !len || (hint.cache && hint.discard) ||
+       (wait_mask != 0 && wait_mask != 32))
+      return false;
+   /* Native signed and unsigned zero tests both sign-extend the half.
+    * This preserves equality and every relation to zero. Live witnesses
+    * retain the source for the taken branch instead of discarding it. */
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,1), KV(14,1), KV(24,1), KV(25,1),
+   };
+   const struct agx3_field_kv fields[] = {
+      KV(2,src), KV(42,cond), KV(31,slot), KV(11,hint.cache),
+      KV(13,hint.discard), KV(39,wait_mask == 32),
+   };
+   return agx3_bind_compose(enc,"icmp",1,base,5,fields,6,out,len);
+}
+
+bool
 agx3_cf_icmp_zero16(enum agx_isa_encoding enc, enum agx3_cf_icond cond,
                     unsigned slot, uint16_t src0,
                     uint8_t out[AGX3_CF_MAX_LENGTH], uint8_t *len)
 {
-   /* Only the AGX3b form is witnessed. */
-   if (!agx3b(enc) || !icond_ok(cond) || !slot_ok(slot) || src0 >= 128)
-      return false;
-
-   const struct agx3_field_kv base[] = {KV(9, 2),  KV(10, 1), KV(13, 1),
-                                        KV(14, 1), KV(24, 1), KV(25, 1),
-                                        KV(39, 1)};
-   const struct agx3_field_kv ov[] = {KV(2, src0), KV(42, cond), KV(31, slot)};
-   return agx3_bind_compose(enc, "icmp", 1, base, 7, ov, 3, out, len);
+   /* Preserve the historical native specimen API; production uses the
+    * runtime variant with register-allocation hints and actual waits. */
+   return src0 < 128 && agx3_cf_icmp_zero16_runtime(enc,cond,slot,src0,
+                 (struct agx3_cf_source_hints){false,true},32,out,len);
 }
 
 bool

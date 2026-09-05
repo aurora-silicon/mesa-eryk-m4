@@ -2285,9 +2285,10 @@ agx3_emit_cf_compare(struct util_dynarray *emission, enum agx_isa_encoding enc,
        I->src[1].type == AGX_INDEX_IMMEDIATE && !I->src[1].abs &&
        !I->src[1].neg && I->src[1].value == 0) {
       enum agx3_cf_icond cond16;
-      if (!agx3_cf_map_icond(I->icond, &cond16) ||
-          !agx3_cf_icmp_zero16(enc, cond16, flag_slot, I->src[0].value, bytes,
-                               &len))
+      if (I->src[0].kill || !agx3_cf_map_icond(I->icond, &cond16) ||
+          !agx3_cf_icmp_zero16_runtime(enc, cond16, flag_slot, I->src[0].value,
+             (struct agx3_cf_source_hints){I->src[0].cache,I->src[0].discard},
+             0, bytes, &len))
          return false;
       return agx3_append(emission, bytes, len);
    }
