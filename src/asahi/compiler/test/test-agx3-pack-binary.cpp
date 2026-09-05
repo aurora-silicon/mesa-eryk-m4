@@ -20,6 +20,7 @@ extern "C" {
 #include <gtest/gtest.h>
 
 #include "agx3_alu_core.h"
+#include "agx3_isel_core.h"
 #include "agx3_atomic_core.h"
 #include "agx3_cf_core.h"
 #include "agx3_falu_mod_core.h"
@@ -3707,4 +3708,72 @@ TEST(AGX3NativeBfeil, NativeWaitAndOperandBounds)
    EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,32,false,14,hints,0,bytes,&length));
    EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,14,false,32,hints,0,bytes,&length));
    EXPECT_FALSE(agx3_alu_bfeil(AGX_ISA_ENCODING_AGX3B,0,0,14,false,14,hints,64,bytes,&length));
+}
+
+TEST_F(AGX3PackBinary, NativeIselImmediateAndNarrowComparands)
+{
+   for (bool narrow : {false, true}) {
+      for (bool lhs : {false, true}) {
+         agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+         const auto size = narrow ? AGX_SIZE_16 : AGX_SIZE_32;
+         agx_index a = agx_register(narrow ? 1 : 2, size);
+         agx_index t = agx_register(narrow ? 3 : 4, size);
+         agx_index f = agx_register(narrow ? 5 : 6, size);
+         a.cache = true;
+         t.discard = f.discard = true;
+         agx_icmpsel_to(b, agx_register(0, size),
+                        lhs ? agx_immediate(2) : a,
+                        lhs ? a : agx_immediate(2), t, f,
+                        lhs ? AGX_ICOND_UGT : AGX_ICOND_ULT);
+         agx_stop(b);
+         auto code = pack(b);
+         ASSERT_EQ(code.size(), 14);
+         struct agx3_isel_desc d = {};
+         d.dest_16 = narrow;
+         d.cmp_16 = narrow;
+         d.cmp1_immediate = true;
+         d.cmp0 = a.value;
+         d.cmp1 = 2;
+         d.cond = AGX3_ISEL_ICOND_ULT;
+         d.sel_true = t.value;
+         d.sel_false = f.value;
+         d.cache[0] = true;
+         d.discard[2] = d.discard[3] = true;
+         uint8_t expected[AGX3_ISEL_MAX_LENGTH], length;
+         ASSERT_TRUE(agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, expected, &length));
+         EXPECT_EQ(memcmp(code.data(), expected, length), 0);
+      }
+   }
+}
+
+TEST_F(AGX3PackBinary, NativeIselRetainsLiveRegisterComparands)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index a = agx_register(2, AGX_SIZE_32);
+   agx_index c = agx_register(4, AGX_SIZE_32);
+   agx_index t = agx_register(6, AGX_SIZE_32);
+   agx_index f = agx_register(8, AGX_SIZE_32);
+   a.cache = c.cache = t.cache = f.cache = true;
+   agx_icmpsel_to(b, agx_register(0, AGX_SIZE_32), a, c, t, f, AGX_ICOND_ULT);
+   agx_stop(b);
+   auto code = pack(b);
+   const uint8_t native_nowait[10] = {0x02,0x83,0x07,0x85,0x02,0x86,0x05,0,0,0x88};
+   ASSERT_EQ(code.size(), 14);
+   EXPECT_EQ(memcmp(code.data(), native_nowait, 10), 0);
+}
+
+TEST_F(AGX3PackBinary, NativeIselImageCopyBooleanHalfRegisters)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_index a = agx_register(1, AGX_SIZE_16);
+   agx_index f = agx_register(10, AGX_SIZE_16);
+   a.discard = f.discard = true;
+   agx_icmpsel_to(b, agx_register(1, AGX_SIZE_16), a, agx_immediate(0),
+                  agx_immediate(0), f, AGX_ICOND_UEQ);
+   agx_index x = agx_register(4, AGX_SIZE_16);
+   agx_index y = agx_register(6, AGX_SIZE_16);
+   agx_icmpsel_to(b, agx_register(1, AGX_SIZE_16), x, y, x, y, AGX_ICOND_UEQ);
+   agx_stop(b);
+   /* Both original image-copy shapes stay fused: two10-byte selects+stop. */
+   EXPECT_EQ(pack(b).size(), 24);
 }

@@ -4008,7 +4008,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             memset(&d, 0, sizeof(d));
 
             const agx_index dest = I->dest[0];
-            const agx_index a = I->src[0], b = I->src[1];
+            agx_index a = I->src[0], b = I->src[1];
+            const bool swap_compare = a.type == AGX_INDEX_IMMEDIATE;
+            if (swap_compare) {
+               const agx_index tmp = a;
+               a = b;
+               b = tmp;
+            }
             const agx_index t = I->src[2], f = I->src[3];
 
             const bool dest_ok =
@@ -4017,9 +4023,11 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                (dest.size == AGX_SIZE_32 || dest.size == AGX_SIZE_16);
             const bool cmp_ok =
                agx3_src_is_register(a) && !a.memory && !a.abs && !a.neg &&
-               a.size == AGX_SIZE_32 && agx_channels(a) == 1 &&
-               agx3_src_is_register(b) && !b.memory && !b.abs && !b.neg &&
-               b.size == AGX_SIZE_32 && agx_channels(b) == 1;
+               (a.size == AGX_SIZE_32 || a.size == AGX_SIZE_16) &&
+               agx_channels(a) == 1 && !b.memory && !b.abs && !b.neg &&
+               ((b.type == AGX_INDEX_IMMEDIATE && b.value <= 255) ||
+                (agx3_src_is_register(b) && b.size == a.size &&
+                 agx_channels(b) == 1));
 
             if (!dest_ok || !cmp_ok)
                AGX3_REFUSE(I);
@@ -4028,6 +4036,16 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             d.dest_16 = dest.size == AGX_SIZE_16;
             d.cmp0 = a.value;
             d.cmp1 = b.value;
+            d.cmp1_immediate = b.type == AGX_INDEX_IMMEDIATE;
+            d.cmp_16 = a.size == AGX_SIZE_16;
+            d.explicit_hints = true;
+            const agx_index hinted[4] = {a, b, t, f};
+            for (unsigned n = 0; n < 4; ++n) {
+               if (hinted[n].type == AGX_INDEX_REGISTER) {
+                  d.cache[n] = hinted[n].cache;
+                  d.discard[n] = hinted[n].discard;
+               }
+            }
 
             /* AGX3 has one equality condition, 4. Mesa spells the same
              * comparison two ways (UEQ = 0 and SEQ = 4) because AGX2 did;
@@ -4053,6 +4071,18 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
                break;
             default:
                AGX3_REFUSE(I);
+            }
+
+            /* Canonicalize an immediate LHS by reversing the comparison,
+             * retaining the selected operands and their actual lifetimes. */
+            if (swap_compare) {
+               switch (d.cond) {
+               case AGX3_ISEL_ICOND_ULT: d.cond = AGX3_ISEL_ICOND_UGT; break;
+               case AGX3_ISEL_ICOND_UGT: d.cond = AGX3_ISEL_ICOND_ULT; break;
+               case AGX3_ISEL_ICOND_SLT: d.cond = AGX3_ISEL_ICOND_SGT; break;
+               case AGX3_ISEL_ICOND_SGT: d.cond = AGX3_ISEL_ICOND_SLT; break;
+               case AGX3_ISEL_ICOND_EQ: break;
+               }
             }
 
             /* Each selected operand is independently a register or an
@@ -4086,7 +4116,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             d.false_kind = kind[1];
             d.sel_true = value[0];
             d.sel_false = value[1];
+            /* The compact isel wait selector encodes one slot or slots1+2.
+             * Retire other producer combinations through the established
+             * native no-op, keeping the select itself fused. */
             d.wait_mask = wait;
+            if (wait != 3 && util_bitcount(wait) > 1) {
+               d.wait_mask = 1u << (ffs(wait) - 1);
+               if (!agx3_retire_slots_noop(emission, enc, wait & ~d.wait_mask))
+                  AGX3_REFUSE(I);
+            }
 
             uint8_t bytes[AGX3_ISEL_MAX_LENGTH];
             uint8_t len = 0;

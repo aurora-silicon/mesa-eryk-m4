@@ -139,6 +139,74 @@ operand_ok(enum agx3_isel_operand kind, uint16_t value, bool narrow)
    return false;
 }
 
+/* Fresh G17P eq0/eq0_live/lt2/gt255 native witnesses. This form uses kind-2
+ * selected registers even with two register selections; it cannot reuse the
+ * older register-comparand form's kind-3 fields. */
+static bool
+encode_explicit(const struct agx3_isel_desc *d,
+                 uint8_t out[AGX3_ISEL_MAX_LENGTH], uint8_t *len)
+{
+   if (!(d->cmp_16 ? reg16_ok(d->cmp0) : reg32_ok(d->cmp0)) ||
+       (d->cmp1_immediate ? d->cmp1 > 255 :
+        !(d->cmp_16 ? reg16_ok(d->cmp1) : reg32_ok(d->cmp1))) ||
+       (d->cond != AGX3_ISEL_ICOND_EQ && d->cond != AGX3_ISEL_ICOND_ULT &&
+        d->cond != AGX3_ISEL_ICOND_UGT &&
+        (d->cmp_16 || d->cmp1_immediate)))
+      return false;
+
+   for (unsigned i = 0; i < 4; ++i) {
+      if (d->cache[i] && d->discard[i])
+         return false;
+   }
+
+   const bool ti = d->true_kind == AGX3_ISEL_IMMEDIATE;
+   const bool fi = d->false_kind == AGX3_ISEL_IMMEDIATE;
+   if ((d->cmp1_immediate && (d->cache[1] || d->discard[1])) ||
+       (ti && (d->cache[2] || d->discard[2])) ||
+       (fi && (d->cache[3] || d->discard[3])))
+      return false;
+
+   const unsigned width = d->dest_16 ? 1 : 2;
+   const struct agx3_field_kv base[] = {
+      KV(10, 2), KV(11, width), KV(42, 2), KV(43, d->cmp_16 ? 1 : 2),
+      KV(57, d->cmp1_immediate ? 1 : 2),
+      KV(58, (d->cmp1_immediate || d->cmp_16) ? 1 : 2), KV(72, ti ? 1 : 2), KV(73, width),
+      KV(89, fi ? 1 : 2), KV(90, width),
+   };
+   struct agx3_field_kv ov[24];
+   unsigned n = 0;
+   ov[n++] = (struct agx3_field_kv)KV(3, d->dest);
+   ov[n++] = (struct agx3_field_kv)KV(35, d->cmp0);
+   ov[n++] = (struct agx3_field_kv)KV(d->cmp1_immediate ? 49 : 50, d->cmp1);
+   ov[n++] = (struct agx3_field_kv)KV(106, d->cond);
+   ov[n++] = (struct agx3_field_kv)KV(ti ? 64 : 65, d->sel_true);
+   ov[n++] = (struct agx3_field_kv)KV(fi ? 81 : 82, d->sel_false);
+   ov[n++] = (struct agx3_field_kv)KV(44, d->cache[0]);
+   ov[n++] = (struct agx3_field_kv)KV(46, d->discard[0]);
+   if (d->cmp_16 && d->cond == AGX3_ISEL_ICOND_EQ)
+      ov[n++] = (struct agx3_field_kv)KV(47, 1);
+   if (!d->cmp1_immediate) {
+      ov[n++] = (struct agx3_field_kv)KV(59, d->cache[1]);
+      ov[n++] = (struct agx3_field_kv)KV(61, d->discard[1]);
+      if (d->cmp_16 && d->cond == AGX3_ISEL_ICOND_EQ)
+         ov[n++] = (struct agx3_field_kv)KV(62, 1);
+   }
+   if (!ti) {
+      ov[n++] = (struct agx3_field_kv)KV(74, d->cache[2]);
+      ov[n++] = (struct agx3_field_kv)KV(76, d->discard[2]);
+   }
+   if (!fi) {
+      ov[n++] = (struct agx3_field_kv)KV(91, d->cache[3]);
+      ov[n++] = (struct agx3_field_kv)KV(93, d->discard[3]);
+   }
+   for (unsigned i = 0; i < 6; ++i)
+      ov[n++] = (struct agx3_field_kv)KV(98 + i, (d->wait_mask >> i) & 1);
+
+   const unsigned ep = d->dest_16 ? 25 + (d->dest & 1) : 27;
+   return agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "isel", ep,
+                           base, sizeof(base) / sizeof(base[0]), ov, n, out, len);
+}
+
 bool
 agx3_isel_encode(enum agx_isa_encoding encoding,
                  const struct agx3_isel_desc *d,
@@ -152,8 +220,11 @@ agx3_isel_encode(enum agx_isa_encoding encoding,
    if (encoding != AGX_ISA_ENCODING_AGX3B)
       return false;
 
-   /* The compared operands are always a pair of 32-bit registers. */
-   if (!cond_ok(d->cond) || !reg32_ok(d->cmp0) || !reg32_ok(d->cmp1))
+   /* The register comparands share a width; immediates carry no register. */
+   if (!cond_ok(d->cond) ||
+       !(d->cmp_16 ? reg16_ok(d->cmp0) : reg32_ok(d->cmp0)) ||
+       (!d->cmp1_immediate &&
+        !(d->cmp_16 ? reg16_ok(d->cmp1) : reg32_ok(d->cmp1))))
       return false;
    if (d->wait_mask >= (1u << 6))
       return false;
@@ -164,12 +235,15 @@ agx3_isel_encode(enum agx_isa_encoding encoding,
        !operand_ok(d->false_kind, d->sel_false, d->dest_16))
       return false;
 
+   if (d->cmp1_immediate || d->cmp_16 || d->explicit_hints)
+      return encode_explicit(d, out, len);
+
    const struct agx3_isel_form *form =
       pick_form(d->dest_16, d->true_kind, d->false_kind);
    const uint8_t ep =
       (d->dest_16 && (d->dest & 1)) ? (uint8_t)(form->ep + 1) : form->ep;
 
-   struct agx3_field_kv ov[10];
+   struct agx3_field_kv ov[12];
    unsigned n = 0;
    ov[n++] = (struct agx3_field_kv)KV(3, d->dest);
    ov[n++] = (struct agx3_field_kv)KV(35, d->cmp0);

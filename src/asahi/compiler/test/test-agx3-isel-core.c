@@ -40,6 +40,18 @@ struct isel_vec {
 };
 
 static const struct isel_vec vectors[] = {
+   {"u32_zero_dead", {.wait_mask=32,.cmp1_immediate=true,.cond=AGX3_ISEL_ICOND_EQ,.sel_true=2,.sel_false=4,.discard={1,0,1,1}},
+    {0x02,0x01,0x0f,0x80,0x86,0x02,0x07,0xc2,0x80,0x04}, 10},
+   {"u32_regs_dead", {.wait_mask=32,.explicit_hints=true,.cmp1=2,.cond=AGX3_ISEL_ICOND_ULT,.sel_true=4,.sel_false=6,.discard={1,1,1,1}},
+    {0x02,0x01,0x1f,0x03,0x82,0x04,0x05,0xc0,0x80,0x06}, 10},
+   {"u32_regs_cached", {.wait_mask=32,.explicit_hints=true,.cmp0=2,.cmp1=4,.cond=AGX3_ISEL_ICOND_ULT,.sel_true=6,.sel_false=8,.cache={1,1,1,1}},
+    {0x02,0x83,0x07,0x85,0x02,0x86,0x05,0xc0,0x00,0x88}, 10},
+   {"u16_zero_dead", {.wait_mask=32,.cmp_16=true,.dest_16=true,.cmp1_immediate=true,.cond=AGX3_ISEL_ICOND_EQ,.sel_true=1,.sel_false=2,.discard={1,0,1,1}},
+    {0x02,0x00,0x0d,0x80,0x86,0x01,0x07,0xc2,0x82,0x02}, 10},
+   {"u16_regs_dead", {.wait_mask=32,.cmp_16=true,.dest_16=true,.cmp1=1,.cond=AGX3_ISEL_ICOND_ULT,.sel_true=2,.sel_false=3,.discard={1,1,1,1}},
+    {0x02,0x00,0x1d,0x00,0x82,0x02,0x15,0xc0,0x80,0x03}, 10},
+   {"u16_regs_cached", {.wait_mask=32,.cmp_16=true,.dest_16=true,.cmp0=2,.cmp1=3,.cond=AGX3_ISEL_ICOND_EQ,.sel_true=4,.sel_false=5,.cache={1,1,1,1}},
+    {0x02,0x82,0x05,0x82,0x06,0x84,0x17,0xc8,0x02,0x85}, 10},
    /* `(a OP b) ? c : d` -- dest r0, compares halves 2 and 6, selects 12/16. */
    {"ult", {.dest = 0, .cmp0 = 2, .cmp1 = 6, .cond = AGX3_ISEL_ICOND_ULT,
             .sel_true = 12, .sel_false = 16, .wait_mask = 1u << 5},
@@ -238,6 +250,26 @@ main(void)
    CHECK(!agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, nowait, &ln));
    d.wait_mask = 0;
 
+   /* The compact native wait selector has single slots and paired slots1+2.
+    * Other combinations require separate native retirement by the caller. */
+   d.explicit_hints = true;
+   d.wait_mask = 63;
+   CHECK(!agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.wait_mask = 3;
+   CHECK(agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.cache[0] = d.discard[0] = true;
+   CHECK(!agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.cache[0] = false;
+   d.cmp1_immediate = true;
+   d.cmp1 = 256;
+   CHECK(!agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.cmp1 = 255;
+   CHECK(agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.cmp_16 = true;
+   d.cmp0 = 255;
+   CHECK(agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
+   d.cmp0 = 256;
+   CHECK(!agx3_isel_encode(AGX_ISA_ENCODING_AGX3B, &d, out, &len));
    printf("%u checks, %u failures\n", checks, failures);
    return failures ? 1 : 0;
 }

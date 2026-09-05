@@ -37,19 +37,25 @@
  * The mixed register fields f65/f82 were pinned by a kernel containing two
  * such selects over different registers: only those fields tracked the two
  * register numbers. Every shape below reproduces its witnessed instruction
- * byte-for-byte (see test-agx3-isel-core.c). A 16-bit result is witnessed
- * only for the both-immediates shape, so the others refuse it.
+ * byte-for-byte (see test-agx3-isel-core.c). Both widths support all four selected-operand shapes.
  *
  * Scoreboard waits ride on fields f98..f103, one per slot 1..6. That is
  * probe-derived at both ends: a select consuming a load that signalled slot 6
  * sets f103, and one consuming a load that signalled slot 1 sets f98.
  *
- * The per-operand liveness hint bits (f44/f46, f59/f61) are taken verbatim
- * from each shape's witnessed vector. They are hints Apple sets from last-use
- * information that Mesa has already discarded by this point, so this encoder
- * does not attempt to compute them. The same applies to f12, which Apple sets
- * on the mixed shapes' witnessed instructions and whose meaning is not
- * established here; it is carried verbatim rather than guessed at.
+ * The production explicit-hint form uses kind-2 register operands and actual
+ * post-RA cache/discard bits. Fresh G17P uint/ushort dead/live witnesses pin
+ * comparator fields f44/f46 and f59/f61, and selection fields f74/f76 and
+ * f91/f93. Native 16-bit equality also carries f47/f62 on register comparands.
+ * A right-hand u8 immediate uses f49/kind1; the packer reverses comparisons
+ * with an immediate on the left. Unsigned 16-bit and u8-comparand forms stay
+ * fused, without temporary register materialization.
+ *
+ * The original form vectors remain available to callers without explicit
+ * hints, preserving their exact encoding and unexplained scheduling field
+ * f12. New explicit-hint forms leave that field clear, as in native direct
+ * stores. The compact native wait selector represents one slot or slots1+2;
+ * other producer combinations must be retired separately before this form.
  */
 
 #pragma once
@@ -81,10 +87,20 @@ enum agx3_isel_operand {
 
 struct agx3_isel_desc {
    uint16_t dest;      /* half-register units */
-   bool dest_16;       /* 16-bit result; both-immediates shape only */
-   uint16_t cmp0;      /* 32-bit register half, compared first */
-   uint16_t cmp1;      /* 32-bit register half, compared second */
+   bool dest_16;       /* 16-bit result, including odd destination halves */
+   uint16_t cmp0;      /* register half, compared first */
+   uint16_t cmp1;      /* register half or unsigned8 immediate */
    enum agx3_isel_icond cond;
+
+   /* Native unsigned register-versus-u8 comparison. The four register
+    * hints follow Mesa source order: both comparands, true, false; immediate
+    * selected operands have no hint. Existing register/register forms retain
+    * their separate native encoding. */
+   bool cmp1_immediate;
+   bool cmp_16;
+   bool explicit_hints;
+   bool cache[4];
+   bool discard[4];
 
    /* The selected operands: each a 32-bit register half or an 8-bit
     * immediate. sel_true is taken when (cmp0 cond cmp1) holds. */
