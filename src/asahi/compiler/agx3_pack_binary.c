@@ -3737,6 +3737,25 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             const agx_index constant = imm_first ? I->src[0] : I->src[1];
             const agx_index reg = imm_first ? I->src[1] : I->src[0];
 
+            if (!imm_first && I->shift == 0 && !I->saturate &&
+                constant.type == AGX_INDEX_IMMEDIATE && constant.neg &&
+                !constant.abs && !constant.memory && constant.value <= 0xff &&
+                agx3_src_is_register(reg) && !reg.memory && !reg.kill &&
+                agx_channels(reg) == 1 && !(reg.cache && reg.discard) &&
+                ((reg.size == AGX_SIZE_32 && !reg.abs && !reg.neg) ||
+                 (reg.size == AGX_SIZE_16 && (reg.abs != reg.neg)))) {
+               const struct agx3_isub_imm_desc d = {
+                  .dest=I->dest[0].value, .src=reg.value,
+                  .immediate=constant.value, .src_16=reg.size==AGX_SIZE_16,
+                  .sign_extend=reg.neg, .src_cache=reg.cache,
+                  .src_kill=reg.discard, .wait_mask=wait,
+               };
+               uint8_t bytes[AGX3_IADD_MAX_LENGTH],len;
+               if (agx3_isub_immediate_encode(enc,&d,bytes,&len) &&
+                   agx3_append(emission,bytes,len))
+                  continue;
+            }
+
             if (constant.type == AGX_INDEX_IMMEDIATE && !constant.abs &&
                 !constant.neg && constant.value <= 0xff &&
                 agx3_src_is_register(reg) && !reg.memory &&

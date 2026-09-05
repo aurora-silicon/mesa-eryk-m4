@@ -77,6 +77,18 @@ bool agx3_iadd_encode(enum agx_isa_encoding encoding,
                       const struct agx3_iadd_desc *desc,
                       uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len);
 
+/* Native G17P register minus an 8-bit unsigned immediate. Subtraction is
+ * not commuted: the register occupies slot A, immediate slot B. */
+struct agx3_isub_imm_desc {
+   uint16_t dest, src, immediate;
+   bool src_16, sign_extend;
+   bool src_cache, src_kill;
+   uint16_t wait_mask;
+};
+bool agx3_isub_immediate_encode(enum agx_isa_encoding encoding,
+                                 const struct agx3_isub_imm_desc *desc,
+                                 uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len);
+
 /*
  * `imad dst32, srcA, #imm, srcC` -- multiply-accumulate with a constant
  * multiplier. This is how an index-derived address is computed

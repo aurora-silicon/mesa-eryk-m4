@@ -94,6 +94,38 @@ agx3_iadd_encode(enum agx_isa_encoding encoding,
 }
 
 bool
+agx3_isub_immediate_encode(enum agx_isa_encoding encoding,
+                            const struct agx3_isub_imm_desc *d,
+                            uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
+{
+   if (!d || !out || !len || encoding != AGX_ISA_ENCODING_AGX3B ||
+       d->dest > 254 || (d->dest & 1) || d->src >= 256 ||
+       (!d->src_16 && ((d->src & 1) || d->sign_extend)) ||
+       d->immediate > 255 || (d->src_cache && d->src_kill) ||
+       (d->wait_mask & ~UINT16_C(0x3f)))
+      return false;
+
+   /* Native ushort/short/uint minus1/7/28/255, with paired live/dead
+    * sources. f24 selects source width, f28 sign extension, and f25/f27
+    * are independent cache/discard hints. Wait fields45..50 retain all
+    * producer dependencies; no additional retirement instruction is needed.
+    */
+   const struct agx3_field_kv base[] = {
+      KV(9,2), KV(10,2), KV(23,2), KV(24,d->src_16 ? 1 : 2),
+      KV(38,1), KV(39,1),
+   };
+   struct agx3_field_kv fields[13] = {
+      KV(2,d->dest), KV(16,d->src), KV(30,d->immediate),
+      KV(25,d->src_cache), KV(27,d->src_kill), KV(28,d->sign_extend),
+   };
+   unsigned n=6;
+   for (unsigned slot=0;slot<6;slot++)
+      if(d->wait_mask & (1u<<slot))
+         fields[n++]=(struct agx3_field_kv)KV(45+slot,1);
+   return agx3_bind_compose(encoding,"isub",0,base,6,fields,n,out,len);
+}
+
+bool
 agx3_imad_encode(enum agx_isa_encoding encoding,
                  const struct agx3_imad_desc *d,
                  uint8_t out[AGX3_IADD_MAX_LENGTH], uint8_t *len)
