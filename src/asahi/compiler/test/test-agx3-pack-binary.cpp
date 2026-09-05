@@ -1061,6 +1061,140 @@ TEST_F(AGX3PackBinary, TextureFetchRefusesUngroundedAxes)
    pack(b, /*expect_ok=*/false);
 }
 
+TEST_F(AGX3PackBinary, TextureExportRetiresAtPartBoundary)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      key.no_stop = true;
+      b->shader->stage = MESA_SHADER_FRAGMENT;
+      agx_index dest = agx_register(8, AGX_SIZE_32);
+      agx_index coord = agx_register(0, AGX_SIZE_32);
+      dest.channels_m1 = 3;
+      coord.channels_m1 = 1;
+      agx_instr *tex = agx_texture_sample_to(
+         b, dest, coord, agx_immediate(0), agx_immediate(0),
+         agx_immediate(0), agx_immediate(0), agx_null(), AGX_DIM_2D,
+         AGX_LOD_MODE_AUTO_LOD, 0, false, false, false, AGX_GATHER_NONE,
+         false);
+      tex->mask = 15;
+      for (unsigned channel = 0; channel < 4; ++channel)
+         agx_export(b, agx_register(8 + 2 * channel, AGX_SIZE_32),
+                     8 + 2 * channel);
+
+      std::vector<uint8_t> want;
+      uint8_t bytes[AGX3_TEX_MAX_LENGTH], len = 0;
+      ASSERT_TRUE(agx3_tex_stage_copy(enc, 0, 0, 1, 0, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_tex_stage_copy(enc, 2, 2, 1, 0, bytes, &len));
+      append(want, bytes, len);
+      struct agx3_tex_sample_desc d = {};
+      d.dest = 8;
+      d.coord = 0;
+      d.width = AGX3_TEX_W32;
+      d.mask = 15;
+      d.slot = 1;
+      d.wait_mask = 1;
+      d.final = true;
+      ASSERT_TRUE(agx3_tex_encode_sample(enc, &d, bytes, &len));
+      append(want, bytes, len);
+
+      /* Four zero-byte exports are one outstanding texture result. The
+       * independently compiled epilog cannot inherit this slot implicitly. */
+      uint8_t wait[AGX3_ALU_MAX_LENGTH];
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+                                  1, wait, &len));
+      append(want, wait, len);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, ExportDoesNotConsumeRealReadWait)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      key.no_stop = true;
+      agx_index value = agx_register(4, AGX_SIZE_32);
+      agx_get_sr_to(b, value, AGX_SR_THREAD_POSITION_IN_GRID_X);
+      agx_export(b, value, 4);
+      agx_iadd_to(b, agx_register(6, AGX_SIZE_32), value, value, 0);
+      agx_export(b, agx_register(6, AGX_SIZE_32), 6);
+
+      std::vector<uint8_t> want;
+      struct agx3_sr_desc sr = {};
+      sr.dest = 4;
+      sr.width = AGX3_SR_W32;
+      sr.sr = 23;
+      sr.slot = 1;
+      uint8_t bytes[AGX3_ALU_MAX_LENGTH], len = 0;
+      ASSERT_TRUE(agx3_sr_encode(enc, &sr, bytes, &len));
+      append(want, bytes, len);
+      ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_IADD, 6, 4, 4, 0, 0,
+                                  1, bytes, &len));
+      append(want, bytes, len);
+      /* The real consumer already waited: no extra tail instruction. */
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, DeviceLoadExportsRetireEveryOutstandingSlot)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      key.no_stop = true;
+      b->shader->stage = MESA_SHADER_COMPUTE;
+      const agx_index base = agx_register(0, AGX_SIZE_64);
+      const agx_index index = agx_register(4, AGX_SIZE_32);
+      std::vector<uint8_t> want;
+      uint8_t bytes[AGX3_MEM_MAX_LENGTH], len = 0;
+      for (unsigned i = 0; i < 2; ++i) {
+         const agx_index value = agx_register(6 + 2 * i, AGX_SIZE_32);
+         agx_device_load_to(b, value, base, index, AGX_FORMAT_I32, 1, 0,
+                             false);
+         agx_export(b, value, value.value);
+         struct agx3_mem_desc ld = {};
+         ld.data = value.value;
+         ld.width = AGX3_MEM_W32;
+         ld.mask = 1;
+         ld.shift = 2;
+         ld.base = 0;
+         ld.idx_kind = AGX3_MEM_IDX_REG;
+         ld.idx_reg = 4;
+         ld.slot = i + 1;
+         ASSERT_TRUE(agx3_mem_encode_load(enc, &ld, bytes, &len));
+         append(want, bytes, len);
+      }
+      for (unsigned i = 0; i < 2; ++i) {
+         ASSERT_TRUE(agx3_alu_compose(enc, AGX3_ALU_BAND, 0, 0, 0, 0, 0,
+                                     1u << i, bytes, &len));
+         append(want, bytes, len);
+      }
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
+TEST_F(AGX3PackBinary, SynchronousExportPartHasNoTailDrain)
+{
+   for (int e = 0; e < 2; ++e) {
+      const enum agx_isa_encoding enc =
+         e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
+      agx_builder *b = builder(enc);
+      key.no_stop = true;
+      agx_mov_imm_to(b, agx_register(8, AGX_SIZE_32), 0x3f800000);
+      agx_export(b, agx_register(8, AGX_SIZE_32), 8);
+      struct agx3_encoded_ldimm ld;
+      ASSERT_TRUE(agx3_pack_ldimm_u32(enc, 8, 0x3f800000, &ld));
+      std::vector<uint8_t> want;
+      append(want, ld.bytes, ld.length);
+      EXPECT_EQ(pack(b), want);
+   }
+}
+
 TEST_F(AGX3PackBinary, TextureFetchWaitSurvivesFallthroughBlock)
 {
    for (int e = 0; e < 2; ++e) {

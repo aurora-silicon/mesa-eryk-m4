@@ -2569,6 +2569,13 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
          if (I->op == AGX_OPCODE_STOP)
             continue;
          struct agx3_slot_instr *e = &sl[k++];
+         /* EXPORT is a zero-byte register-ABI declaration after RA, not a
+          * physical read. Letting it consume an async dependency marks the
+          * slot waited without emitting any wait, so a linked epilog reads
+          * the result too early. Real consumers retain their own waits;
+          * outstanding results are synchronized at the shader-part tail. */
+         if (I->op == AGX_OPCODE_EXPORT)
+            continue;
          e->is_async = agx3_is_async(I);
          if (g17p_vertex_load_policy && I->op == AGX_OPCODE_DEVICE_LOAD &&
              vertex_loads_scheduled++ == 0)
@@ -2649,8 +2656,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
           * (agx_pack.c:1242).  Register allocation has already turned it into
           * a parallel copy into its ABI register and rewritten the source to
           * that register (agx_register_allocate.c:1296-1310), so there is
-          * nothing left to encode.  The value reaches the epilog in the
-          * register; the tilebuffer write itself is the epilog's.
+          * nothing left to encode here. The slot pass must not treat this
+          * pseudo-op as a hardware read; a no-stop part drains outstanding
+          * results before handing its ABI registers to a separate epilog.
           */
          if (I->op == AGX_OPCODE_EXPORT)
             continue;
@@ -3409,6 +3417,15 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
       if (!agx3_fixup_branch(emission, enc, *fixup))
          goto fail;
    }
+
+   /* Separately compiled parts do not share a scoreboard ledger. Apple's
+    * monolithic sampled fragment waits for TEX on its first FLTNORM; our
+    * epilog cannot know that upstream slot, so finish only the still-live
+    * async work at this boundary. Constant-colour parts and parts with real
+    * in-part consumers add no instructions. */
+   if (ctx->key->no_stop && !ctx->is_preamble && outstanding != 0 &&
+       !agx3_retire_slots_noop(emission, enc, outstanding))
+      goto fail;
 
    if (!ctx->key->no_stop || ctx->is_preamble) {
       const struct agx3_sel_instr end = {.op = AGX3_SEL_OP_END};
