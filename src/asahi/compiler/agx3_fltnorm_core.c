@@ -164,7 +164,12 @@ agx3_fltnorm_relocate_start(uint8_t *code, size_t size,
 
    /* Provenance comes from the packer. Check the promised ten-byte FLTNORM
     * and its f68 bit before changing it; f68 is physical bit 11 on G17P. */
-   if (!code || size < 10 || code[0] != 0x97 || (code[1] & 0xf) != 0xc)
+   if (!code || size < 10)
+      return false;
+   const bool fltnorm = code[0] == 0x97 && (code[1] & 0xf) == 0xc;
+   const bool rgb10a2 = size >= 14 && code[0] == 0xa7 &&
+                       (code[1] & 0xf) == 0xe;
+   if (!fltnorm && !rgb10a2)
       return false;
    if (linked_offset != 0)
       code[1] &= ~0x08;
@@ -406,10 +411,11 @@ bool
 agx3_rgb10a2_encode(const struct agx3_rgb10a2_desc *d,
                     uint8_t out[14], uint8_t *length)
 {
-   if (!d || !out || !length || d->dest >= 256 || (d->dest & 1))
+   if (!d || !out || !length || d->dest >= 256 || (d->dest & 1) ||
+       (d->wait_mask & ~0x3f))
       return false;
    const struct agx3_field_kv base[] = {KV(9, 2), KV(10, 2)};
-   struct agx3_field_kv fields[30];
+   struct agx3_field_kv fields[36];
    unsigned n = 0;
    fields[n++] = (struct agx3_field_kv)KV(2, d->dest);
    for (unsigned i = 0; i < 4; ++i) {
@@ -425,10 +431,38 @@ agx3_rgb10a2_encode(const struct agx3_rgb10a2_desc *d,
          fields[n++] = (struct agx3_field_kv)KV(27 + 17 * i, d->discard[i]);
       }
    }
+   /* Fresh texture-to-RGB10 native main waits for smp slot1 at field84. */
+   for (unsigned i = 0; i < 6; ++i)
+      if (d->wait_mask & (1u << i))
+         fields[n++] = (struct agx3_field_kv)KV(84 + i, 1);
    fields[n++] = (struct agx3_field_kv)KV(102, d->first_instruction);
    fields[n++] = (struct agx3_field_kv)KV(94, 0);
    fields[n++] = (struct agx3_field_kv)KV(95, 0);
    fields[n++] = (struct agx3_field_kv)KV(96, 0);
    return agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "pack", 0,
                            base, 2, fields, n, out, length);
+}
+
+/* Fresh single- and two-attachment fetch programs identify the source register
+ * and slot1/slot6 wait fields independently. The result is four contiguous f32s. */
+bool
+agx3_rgb10a2_unpack_encode(const struct agx3_rgb10a2_unpack_desc *d,
+                         uint8_t out[8], uint8_t *length)
+{
+   if (!d || !out || !length || d->dest > 248 || d->source > 254 ||
+       ((d->dest | d->source) & 1) || (d->wait_mask & ~0x3f))
+      return false;
+   const struct agx3_field_kv base[] = {
+      KV(9, 2), KV(10, 2), KV(25, 2), KV(26, 2),
+   };
+   struct agx3_field_kv fields[12] = {
+      KV(2, d->dest), KV(18, d->source), KV(29, d->discard),
+      KV(41, 0), KV(42, 0), KV(43, 0),
+   };
+   unsigned n = 6;
+   for (unsigned i = 0; i < 6; ++i)
+      if (d->wait_mask & (1u << i))
+         fields[n++] = (struct agx3_field_kv)KV(32 + i, 1);
+   return agx3_bind_compose(AGX_ISA_ENCODING_AGX3B, "unpack", 0,
+                           base, 4, fields, n, out, length);
 }

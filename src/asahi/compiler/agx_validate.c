@@ -200,6 +200,7 @@ agx_write_registers(const agx_context *ctx, const agx_instr *I, unsigned d)
 
    /* One packed 16-bit register in, one 32-bit float per lane out. */
    case AGX_OPCODE_NORMFLT_AGX3:
+   case AGX_OPCODE_UNPACK_RGB10A2_AGX3:
       return agx_channels(I->dest[d]) * size;
 
    case AGX_OPCODE_LDCF:

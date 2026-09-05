@@ -130,12 +130,21 @@ struct agx3_rgb10a2_desc {
    uint16_t dest;
    uint16_t source[4];
    uint8_t kind[4]; /* agx3_fltnorm_src_kind */
+   uint16_t wait_mask;
    bool first_instruction;
    bool discard[4];
    bool cache[4];
 };
 bool agx3_rgb10a2_encode(const struct agx3_rgb10a2_desc *desc,
                         uint8_t out[14], uint8_t *length);
+
+struct agx3_rgb10a2_unpack_desc {
+   uint16_t dest, source; /* half indices: four f32 outputs, one u32 input */
+   uint16_t wait_mask;
+   bool discard;
+};
+bool agx3_rgb10a2_unpack_encode(const struct agx3_rgb10a2_unpack_desc *desc,
+                               uint8_t out[8], uint8_t *length);
 
 struct agx3_fltnorm_desc {
    uint16_t dest;                 /* 16-bit (half) register index */

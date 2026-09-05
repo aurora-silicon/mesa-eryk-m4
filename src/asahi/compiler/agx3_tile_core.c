@@ -102,10 +102,11 @@ agx3_tile_load(enum agx_isa_encoding enc, uint16_t dest,
    memset(out, 0, AGX3_TILE_MAX_LENGTH);
    *len = 0;
 
-   /* The single-sample load corpus never carries an incoming wait, and only a
-    * full-component lldcol was observed. */
+   /* Full-component loads, plus fresh G17P RGB10A2 native fetches carrying
+    * exactly one packed W32 component. Neither carries an incoming wait. */
    if (!common_ok(dest, width, chan_mask, cov, enc, wait_mask, tile_off) ||
-       chan_mask != 15 || wait_mask != 0 || slot < 1 ||
+       (chan_mask != 15 && !(is_b(enc) && width == AGX3_TILE_W32 && chan_mask == 1)) ||
+       wait_mask != 0 || slot < 1 ||
        slot > (is_b(enc) ? 6 : 8))
       return false;
    const struct agx3_field_kv base_b[] = {KV(9, 2),  KV(35, 9), KV(37, 7),

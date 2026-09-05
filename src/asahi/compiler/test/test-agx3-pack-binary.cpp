@@ -1508,15 +1508,18 @@ TEST_F(AGX3PackBinary, TileStoreSingleSampleFormats)
          e ? AGX_ISA_ENCODING_AGX3C : AGX_ISA_ENCODING_AGX3B;
       for (const auto &f : formats) {
          agx_builder *b = builder(enc);
-         agx_index value = agx_register(0, AGX_SIZE_32);
-         value.channels_m1 = 3;
+         const bool rgb10 = f.format == AGX_FORMAT_RGB10A2;
+         const unsigned mask = rgb10 ? 1 : 15;
+         agx_index value = agx_register(0, f.width == AGX3_TILE_W8 ?
+                                          AGX_SIZE_16 : AGX_SIZE_32);
+         value.channels_m1 = f.width == AGX3_TILE_W8 ? 1 : rgb10 ? 0 : 3;
          agx_st_tile(b, value, agx_immediate(AGX_ALL_SAMPLES), agx_null(),
-                     f.format, 15, 24, false);
+                     f.format, mask, 24, false);
          agx_stop(b);
 
          uint8_t tile[AGX3_TILE_MAX_LENGTH];
          uint8_t tile_len = 0;
-         ASSERT_TRUE(agx3_tile_store(enc, 0, f.width, 15, 24,
+         ASSERT_TRUE(agx3_tile_store(enc, 0, f.width, mask, 24,
                                      AGX3_TILE_COV_1X, 0, tile, &tile_len));
          struct agx3_encoded_end end;
          ASSERT_TRUE(agx3_pack_end(enc, &end));
@@ -3629,4 +3632,39 @@ TEST(AGX3NativeRgb10A2, NativeDeadLiveAndConstantOperands)
   ASSERT_TRUE(agx3_rgb10a2_encode(&d[i],out,&len));
   ASSERT_EQ(len,14); EXPECT_EQ(memcmp(out,want[i],14),0);
  }
+}
+
+TEST(AGX3NativeRgb10A2, NativeUnpackAndTextureDependency)
+{
+   const uint8_t expected[3][8] = {
+      {0x27,6,0x56,0,1,0,0x5a,8}, {0x27,6,0x56,4,1,2,0x5a,8},
+      {0x27,0x16,0x54,0,1,0,0x5a,8},
+   };
+   for (unsigned i = 0; i < 3; ++i) {
+      struct agx3_rgb10a2_unpack_desc d = {
+         .dest = (uint16_t)(i == 1 ? 8 : 0),
+         .source = (uint16_t)(i == 1 ? 2 : 0),
+         .wait_mask = (uint16_t)(i == 2 ? 1 : 32), .discard = true,
+      };
+      uint8_t out[8], length;
+      ASSERT_TRUE(agx3_rgb10a2_unpack_encode(&d, out, &length));
+      ASSERT_EQ(length, 8); EXPECT_EQ(memcmp(out, expected[i], 8), 0);
+   }
+   struct agx3_rgb10a2_desc p = {
+      .source = {0,2,4,6}, .kind = {2,2,2,2}, .wait_mask = 1,
+      .discard = {true,true,true,true},
+   };
+   uint8_t bytes[14], length;
+   const uint8_t want[14] = {0xa7,0x16,0x54,0,2,0,8,0x20,0x60,0xa0,0xea,0x8b,0x24,0x11};
+   ASSERT_TRUE(agx3_rgb10a2_encode(&p, bytes, &length));
+   EXPECT_EQ(memcmp(bytes, want, 14), 0);
+}
+
+TEST_F(AGX3PackBinary, Rgb10TileRejectsRawFloatChannels)
+{
+   agx_builder *b = builder(AGX_ISA_ENCODING_AGX3B);
+   agx_st_tile(b, agx_register(0, AGX_SIZE_32), agx_immediate(255),
+               agx_null(), AGX_FORMAT_RGB10A2, 15, 0, false);
+   agx_stop(b);
+   EXPECT_TRUE(pack(b, false).empty());
 }

@@ -565,3 +565,7 @@ for (name, is_float) in [("break_if_icmp", False), ("break_if_fcmp", True)]:
     op(name, _, dests = 0, srcs = 2,
        imms = [NEST, INVERT_COND, FCOND if is_float else ICOND, TARGET],
        can_eliminate = False, schedule_class = "invalid")
+
+# Native normalized RGB10A2 conversion, four floats to/from one packed word.
+op("pack_rgb10a2_agx3", _, dests=1, srcs=4, is_float=True, agx3_mnemonic="pack")
+op("unpack_rgb10a2_agx3", _, dests=1, srcs=1, agx3_mnemonic="unpack")

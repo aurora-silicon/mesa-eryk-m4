@@ -75,7 +75,8 @@ hk_agx3_g17p_rt0_tile_layout_supported(struct agx_tilebuffer_layout *tib)
    if (!tib || tib->nr_samples != 1 || tib->layered ||
        tib->sample_size_B != 8 || tib->tile_size != 32 * 32 ||
        tib->spilled[0] || tib->logical_format[0] == PIPE_FORMAT_NONE ||
-       agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM)
+       (agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R8_UNORM &&
+        agx_tilebuffer_physical_format(tib, 0) != PIPE_FORMAT_R10G10B10A2_UNORM))
       return false;
 
    for (unsigned rt = 1; rt < AGX_MAX_RENDER_TARGETS; ++rt) {

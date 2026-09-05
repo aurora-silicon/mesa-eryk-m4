@@ -960,7 +960,9 @@ agx3_emit_tile(struct util_dynarray *emission, enum agx_isa_encoding enc,
    const agx_index sample = load ? I->src[0] : I->src[1];
    const agx_index coords = load ? I->src[1] : I->src[2];
    const int width = agx3_tile_format_width(I->format);
-   if (width < 0 || !agx3_tile_value_ok(value, I->mask, width) ||
+   if ((I->format == AGX_FORMAT_RGB10A2 &&
+        (I->mask != 1 || value.size != AGX_SIZE_32)) ||
+       width < 0 || !agx3_tile_value_ok(value, I->mask, width) ||
        !agx3_tile_pixel_rate_sample(sample) || !agx_is_null(coords))
       return false;
 
@@ -1094,6 +1096,49 @@ agx3_emit_fltnorm(struct util_dynarray *emission, enum agx_isa_encoding enc,
    if (link_desc)
       *link_desc = d;
    return true;
+}
+
+static bool
+agx3_emit_rgb10a2(struct util_dynarray *emission, const agx_instr *I,
+                 uint16_t wait, bool first)
+{
+   const bool unpack = I->op == AGX_OPCODE_UNPACK_RGB10A2_AGX3;
+   if (I->nr_dests != 1 || I->nr_srcs != (unpack ? 1 : 4))
+      return false;
+   const agx_index dest = I->dest[0];
+   if (!agx3_src_is_register(dest) || dest.memory || dest.size != AGX_SIZE_32 ||
+       agx_channels(dest) != (unpack ? 4 : 1))
+      return false;
+   uint8_t bytes[14], length = 0;
+   if (unpack) {
+      const agx_index src = I->src[0];
+      if (!agx3_src_is_register(src) || src.memory || src.abs || src.neg ||
+          src.size != AGX_SIZE_32 || agx_channels(src) != 1)
+         return false;
+      const struct agx3_rgb10a2_unpack_desc d = {
+         .dest = dest.value, .source = src.value,
+         .wait_mask = wait, .discard = src.discard,
+      };
+      if (!agx3_rgb10a2_unpack_encode(&d, bytes, &length))
+         return false;
+   } else {
+      struct agx3_rgb10a2_desc d = {.dest = dest.value,
+                                   .first_instruction = first, .wait_mask = wait};
+      for (unsigned i = 0; i < 4; ++i) {
+         const agx_index src = I->src[i];
+         if (src.memory || src.abs || src.neg || agx_channels(src) != 1 ||
+             (agx3_src_is_register(src) && src.size != AGX_SIZE_32))
+            return false;
+         d.kind[i] = agx3_src_is_register(src) ? AGX3_FLTNORM_SRC_REGISTER :
+                     src.type == AGX_INDEX_IMMEDIATE ? AGX3_FLTNORM_SRC_IMMEDIATE : 0;
+         d.source[i] = src.value;
+         d.discard[i] = src.discard;
+         d.cache[i] = src.cache;
+      }
+      if (!agx3_rgb10a2_encode(&d, bytes, &length))
+         return false;
+   }
+   return agx3_append(emission, bytes, length);
 }
 
 /*
@@ -2603,6 +2648,9 @@ agx3_outputs_are_terminal(agx_context *ctx, unsigned count)
  * per-thread coordinates from the older compute-wrapper probe.
  * The AGX3 imgwblk is not a standalone translation of AGX2's block store: the
  * preceding pack_imgwir and coordinate-select sequence is part of its ABI.
+ * Fresh native RGB10A2 key0x10021300 emits the identical physical program:
+ * its normalized conversion happens before W32 tile storage; PBE describes
+ * the destination format. RGBA16 key0x10020c00 gives distinct imgwblk bytes.
  * Recognize the exact post-RA semantic graph and replace it atomically, so no
  * partially grounded imgwblk ever escapes for a different format or shape. */
 static bool
@@ -2648,7 +2696,8 @@ agx3_is_g17p_rt0_eot(const agx_context *ctx, enum agx_isa_encoding enc)
             zero_reg = I->dest[0].value;
          } else if (I->op == AGX_OPCODE_BLOCK_IMAGE_STORE) {
             if (I->nr_dests != 0 || I->nr_srcs != 4 ||
-                I->format != AGX_FORMAT_U8NORM || I->dim != AGX_DIM_2D ||
+                (I->format != AGX_FORMAT_U8NORM &&
+                 I->format != AGX_FORMAT_RGB10A2) || I->dim != AGX_DIM_2D ||
                 !I->explicit_coords ||
                 I->src[0].type != AGX_INDEX_IMMEDIATE ||
                 I->src[0].value != 0 || I->src[0].size != AGX_SIZE_16 ||
@@ -2707,12 +2756,14 @@ agx3_g17p_deferred_write_wait(agx_context *ctx, bool blend)
                     I->op == AGX_OPCODE_ST_TILE) {
             const bool load = I->op == AGX_OPCODE_LD_TILE;
             if (phase != (load ? 1 : 3) ||
-                I->format != AGX_FORMAT_U8NORM || I->mask != 15 ||
+                !((I->format == AGX_FORMAT_U8NORM && I->mask == 15) ||
+                  (I->format == AGX_FORMAT_RGB10A2 && I->mask == 1)) ||
                 I->pixel_offset || I->explicit_coords)
                return NULL;
             phase = load ? 2 : 4;
          } else if (phase == 1 ||
-                    (phase == 3 && I->op != AGX_OPCODE_FLTNORM_AGX3)) {
+                    (phase == 3 && I->op != AGX_OPCODE_FLTNORM_AGX3 &&
+                     I->op != AGX_OPCODE_PACK_RGB10A2_AGX3)) {
             return NULL;
          }
       }
@@ -2916,8 +2967,9 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             } else if (P->op == AGX_OPCODE_LD_TILE ||
                        P->op == AGX_OPCODE_ST_TILE) {
                const bool load = P->op == AGX_OPCODE_LD_TILE;
-               if (phase != (load ? 1 : 3) || P->format != AGX_FORMAT_U8NORM ||
-                   P->mask != 15 || P->pixel_offset || P->explicit_coords)
+               if (phase != (load ? 1 : 3) ||
+                   !((P->format == AGX_FORMAT_U8NORM && P->mask == 15) ||
+                     (P->format == AGX_FORMAT_RGB10A2 && P->mask == 1)) || P->pixel_offset || P->explicit_coords)
                   g17p_blend_protocol = false;
                phase = load ? 2 : 4;
             } else if (P->op == AGX_OPCODE_SIGNAL_PIX) {
@@ -3303,6 +3355,19 @@ agx3_pack_binary(agx_context *ctx, struct util_dynarray *emission)
             if (!agx3_emit_fltnorm(emission, enc, I, wait, first, link_desc))
                AGX3_REFUSE(I);
             ctx->agx3_fltnorm_start |= first;
+            continue;
+         }
+
+         if (I->op == AGX_OPCODE_PACK_RGB10A2_AGX3 ||
+             I->op == AGX_OPCODE_UNPACK_RGB10A2_AGX3) {
+            const bool first = ctx->stage == MESA_SHADER_FRAGMENT &&
+               !ctx->key->fs.ignore_tib_dependencies &&
+               emission->size == initial_size;
+            if (enc != AGX_ISA_ENCODING_AGX3B ||
+                !agx3_emit_rgb10a2(emission, I, wait, first))
+               AGX3_REFUSE(I);
+            ctx->agx3_fltnorm_start |= first &&
+               I->op == AGX_OPCODE_PACK_RGB10A2_AGX3;
             continue;
          }
 

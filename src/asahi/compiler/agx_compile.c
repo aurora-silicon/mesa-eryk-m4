@@ -750,6 +750,17 @@ agx_pack_normalized_agx3(agx_builder *b, const agx_index *channels,
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
       return 0;
 
+   if (format == AGX_FORMAT_RGB10A2) {
+      if (nr_channels != 4)
+         return 0;
+      for (unsigned i = 0; i < 4; ++i)
+         if (channels[i].size != AGX_SIZE_32)
+            return 0;
+      packed[0] = agx_pack_rgb10a2_agx3(b, channels[0], channels[1],
+                                      channels[2], channels[3]);
+      return 1;
+   }
+
    /* Only the two normalized 8-bit formats are witnessed. sRGB needs an
     * encode `fltnorm` has no field for, and every wider format stores its
     * channels unpacked. */
@@ -810,7 +821,8 @@ agx_emit_local_store_pixel(agx_builder *b, nir_intrinsic_instr *instr)
 
    b->shader->out->tag_write_disable = false;
    return agx_st_tile(b, collected, agx_src_index(&instr->src[1]), coords,
-                      format, nir_intrinsic_write_mask(instr),
+                      format, (nr_packed && format == AGX_FORMAT_RGB10A2) ? 1 :
+                         nir_intrinsic_write_mask(instr),
                       nir_intrinsic_base(instr), explicit);
 }
 
@@ -860,6 +872,16 @@ agx_unpack_normalized_agx3(agx_builder *b, agx_index dest,
 {
    if (b->shader->key->dev.encoding == AGX_ISA_ENCODING_AGX2)
       return false;
+   if (format == AGX_FORMAT_RGB10A2) {
+      if (nr_comps != 4 || dest.size != AGX_SIZE_32)
+         return false;
+      agx_index packed = agx_temp(b->shader, AGX_SIZE_32);
+      agx_ld_tile_to(b, packed, agx_src_index(&instr->src[0]), agx_null(),
+                    format, 1, nir_intrinsic_base(instr), false);
+      agx_unpack_rgb10a2_agx3_to(b, dest, packed);
+      agx_emit_cached_split(b, dest, 4);
+      return true;
+   }
    if (format != AGX_FORMAT_U8NORM && format != AGX_FORMAT_S8NORM)
       return false;
    if (nr_comps < 1 || nr_comps > 4 || dest.size != AGX_SIZE_32)

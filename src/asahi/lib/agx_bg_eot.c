@@ -25,7 +25,9 @@
 static bool
 agx_g17p_rt0_eot_text_supported(const struct agx_shader_part *bin)
 {
-   /* The builtin compiler's complete native EOT text is68 bytes, with no
+   /* Native RGBA8 and RGB10A2 EOT keys independently produce the same
+    * complete68-byte physical store program (conversion is in the fragment).
+    * The builtin compiler's complete native EOT text is68 bytes, with no
     * synthetic compute preamble. The CODE container supplies its own stop
     * constant program and places the actual entry at block+0x80. */
    return bin && bin->binary && bin->info.binary_size == 68 &&
