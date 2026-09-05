@@ -1014,7 +1014,7 @@ hk_g17p_basic_graphics_program_supported(struct hk_cmd_buffer *cmd,
       const unsigned nr_attribs = DIV_ROUND_UP(
          BITSET_LAST_BIT(s->info.vs.attrib_components_read), 4);
 
-      return !linked->sw_indexing && !linked->b.uses_base_param &&
+      return !linked->sw_indexing &&
              nr_attribs <= AGX_MAX_VBUFS &&
              s->agx3_vdm_state_update.source_layout ==
                 AGX_VDM_STATE_UPDATE_SOURCE_LAYOUT_AGX3_VERTEX_PROGRAM_VARIANT;
@@ -1057,6 +1057,25 @@ hk_g17p_graphics_uniform_ranges(
             .size_halfs = 2 * nr_attribs,
             .address =
                root_ptr + hk_root_descriptor_offset(draw.attrib_clamps),
+         };
+      }
+
+      /* The compiler's vertex ABI reserves these independent ranges after
+       * attribute bases/clamps. Direct draws already upload baseVertex and
+       * firstInstance together; native Ioto can bind them without a prolog
+       * specialization, shader patch or pre-render compute dispatch. */
+      if (cmd->state.gfx.draw_params) {
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_VUNI_FIRST_VERTEX(nr_attribs),
+            .size_halfs = 4,
+            .address = cmd->state.gfx.draw_params,
+         };
+      }
+      if (cmd->state.gfx.draw_id_ptr) {
+         ranges[count++] = (struct agx3_ioto_uniform_range){
+            .start_halfs = AGX_ABI_VUNI_DRAW_ID(nr_attribs),
+            .size_halfs = 1,
+            .address = cmd->state.gfx.draw_id_ptr,
          };
       }
 

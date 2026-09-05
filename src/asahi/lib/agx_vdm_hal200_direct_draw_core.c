@@ -102,9 +102,10 @@ agx_vdm_hal200_direct_draw_unpack(
 }
 
 bool
-agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
-                               uint32_t first_index, uint32_t count,
-                               uint64_t *relocated, uint32_t *size_word)
+agx_vdm_hal200_index_range(uint64_t address, uint64_t range_B,
+                           uint32_t first_index, uint32_t count,
+                           uint8_t index_size_B, uint64_t *relocated,
+                           uint32_t *size_word)
 {
    if (relocated)
       *relocated = 0;
@@ -112,9 +113,11 @@ agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
       *size_word = 0;
 
    const uint64_t limit = UINT64_C(1) << 48;
-   const uint64_t offset_B = (uint64_t)first_index * 2;
-   const uint64_t count_B = (uint64_t)count * 2;
-   if (!relocated || !size_word || !address || (address & 1) ||
+   const uint64_t offset_B = (uint64_t)first_index * index_size_B;
+   const uint64_t count_B = (uint64_t)count * index_size_B;
+   if (!relocated || !size_word || !address ||
+       (index_size_B != 1 && index_size_B != 2 && index_size_B != 4) ||
+       (address & (index_size_B - 1)) ||
        address >= limit || !range_B || range_B > UINT32_MAX ||
        range_B > limit - address || !count || offset_B >= range_B ||
        count_B > range_B - offset_B)
@@ -129,6 +132,15 @@ agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
 }
 
 bool
+agx_vdm_hal200_u16_index_range(uint64_t address, uint64_t range_B,
+                               uint32_t first_index, uint32_t count,
+                               uint64_t *relocated, uint32_t *size_word)
+{
+   return agx_vdm_hal200_index_range(address, range_B, first_index, count,
+                                    2, relocated, size_word);
+}
+
+bool
 agx_vdm_hal200_indexed_draw_pack(
    enum agx_chip chip, const struct agx_vdm_hal200_indexed_draw_fields *fields,
    struct agx_vdm_hal200_indexed_draw *out)
@@ -140,15 +152,20 @@ agx_vdm_hal200_indexed_draw_pack(
    uint32_t size_word;
    if (!out || !fields || chip != AGX_CHIP_G17P ||
        !fields->draw_state_context_offset ||
-       (fields->draw_state_context_offset & 3) || fields->instance_count != 1 ||
-       !agx_vdm_hal200_u16_index_range(
+       (fields->draw_state_context_offset & 3) || fields->instance_count == 0 ||
+       !primitive_supported(fields->primitive) ||
+       !agx_vdm_hal200_index_range(
           fields->index_buffer, fields->index_buffer_range_B,
-          fields->first_index, fields->index_count, &address, &size_word))
+          fields->first_index, fields->index_count, fields->index_size_B,
+          &address, &size_word))
       return false;
 
    struct agx_vdm_index_list_direct_words packet;
    if (!agx_vdm_index_list_direct_pack_words(
-          chip, 6, true, false, AGX_VDM_INDEX_LIST_INDEX_SIZE_U16, address,
+          chip, fields->primitive, true, fields->restart_enable,
+          fields->index_size_B == 1 ? AGX_VDM_INDEX_LIST_INDEX_SIZE_U8
+          : fields->index_size_B == 2 ? AGX_VDM_INDEX_LIST_INDEX_SIZE_U16
+                                    : AGX_VDM_INDEX_LIST_INDEX_SIZE_U32, address,
           fields->index_count, fields->instance_count,
           (uint32_t)fields->base_vertex, size_word, &packet) || packet.count != 7)
       return false;
@@ -157,7 +174,11 @@ agx_vdm_hal200_indexed_draw_pack(
     * even with restart disabled; baseVertex is copied as a raw signed word. */
    store_le32(out->bytes, fields->draw_state_context_offset);
    store_le32(out->bytes + 4, UINT32_C(0x40000001));
-   store_le32(out->bytes + 8, UINT32_C(0xffff));
+   const uint32_t restart_max = fields->index_size_B == 1 ? UINT32_C(0xff)
+                                 : fields->index_size_B == 2 ? UINT32_C(0xffff)
+                                                            : UINT32_MAX;
+   store_le32(out->bytes + 8, fields->restart_index < restart_max
+                                 ? fields->restart_index : restart_max);
    for (unsigned i = 0; i < packet.count; ++i)
       store_le32(out->bytes + 12 + 4 * i, packet.words[i]);
    out->length = AGX_VDM_HAL200_INDEXED_DRAW_LENGTH;

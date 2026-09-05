@@ -340,7 +340,8 @@ check_corruption_classification(void)
             chip, changed, baseline_indexed.length, &decoded);
          if (accepted) {
             CHECK(primitive_supported(decoded.primitive));
-            CHECK(decoded.index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 ||
+            CHECK(decoded.index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U8 ||
+                  decoded.index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 ||
                   decoded.index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U32);
             CHECK(decoded.instances != 0);
             CHECK(agx_vdm_index_list_direct_indexed_pack(chip, &decoded,
@@ -459,7 +460,7 @@ check_rejections(void)
    }
 
    for (unsigned index_size = 0; index_size < 8; ++index_size) {
-      if (index_size == 1 || index_size == 2)
+      if (index_size <= 2)
          continue;
       struct agx_vdm_index_list_direct_indexed_info bad = indexed_info;
       struct agx_vdm_index_list_direct_indexed encoded;

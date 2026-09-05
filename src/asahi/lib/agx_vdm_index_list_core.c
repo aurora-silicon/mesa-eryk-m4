@@ -39,7 +39,8 @@ static bool
 agx_vdm_index_list_index_size_supported(
    enum agx_vdm_index_list_index_size index_size)
 {
-   return index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 ||
+   return index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U8 ||
+          index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 ||
           index_size == AGX_VDM_INDEX_LIST_INDEX_SIZE_U32;
 }
 

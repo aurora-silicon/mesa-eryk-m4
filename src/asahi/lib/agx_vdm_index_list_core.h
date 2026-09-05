@@ -32,6 +32,7 @@ extern "C" {
 #define AGX_VDM_INDEX_LIST_INDIRECT_INDEXED_MAX_LENGTH 36u
 
 enum agx_vdm_index_list_index_size {
+   AGX_VDM_INDEX_LIST_INDEX_SIZE_U8 = 0,
    AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 = 1,
    AGX_VDM_INDEX_LIST_INDEX_SIZE_U32 = 2,
 };
@@ -180,7 +181,8 @@ agx_vdm_index_list_direct_pack_words(
    if (!agx_vdm_index_list_direct_target_supported_inline(chip) ||
        !agx_vdm_index_list_direct_primitive_supported_inline(primitive) ||
        instances == 0 ||
-       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
+       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U8 &&
+                     index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
                      index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U32) ||
                     index_buffer >= ((uint64_t)1 << 48))))
       return false;
@@ -248,7 +250,8 @@ agx_vdm_index_list_indirect_pack_words(
    if (!agx_vdm_index_list_direct_target_supported_inline(chip) ||
        !agx_vdm_index_list_direct_primitive_supported_inline(primitive) ||
        indirect_buffer >= ((uint64_t)1 << 48) || (indirect_buffer & 3u) != 0 ||
-       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
+       (indexed && ((index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U8 &&
+                     index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U16 &&
                      index_size != AGX_VDM_INDEX_LIST_INDEX_SIZE_U32) ||
                     index_buffer >= ((uint64_t)1 << 48))))
       return false;

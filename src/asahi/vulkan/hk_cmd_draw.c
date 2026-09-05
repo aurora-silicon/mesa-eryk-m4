@@ -4679,21 +4679,23 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
                    hk_stat_enabled(stat_c_inv) || hk_stat_enabled(stat_c_prims);
    struct hk_device *dev = hk_cmd_buffer_device(cmd);
 
-   /* Admit only the native direct uint16 domain before any robustness or
-    * geometry lowering can introduce a pre-render compute dispatch. */
+   /* Validate the native direct index span before robustness or geometry
+    * lowering can introduce a pre-render compute dispatch. */
    if (dev->dev.chip == AGX_CHIP_G17P && draw_.indexed) {
       uint64_t address;
       uint32_t size_word;
-      if (agx_is_indirect(draw_.b) || draw_.index_size != AGX_INDEX_SIZE_U16 ||
-          draw_.b.count[1] != 1 || draw_.start_instance != 0 || draw_.restart ||
-          dyn->ia.primitive_topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST ||
+      if (agx_is_indirect(draw_.b) ||
+          (draw_.index_size != AGX_INDEX_SIZE_U8 &&
+           draw_.index_size != AGX_INDEX_SIZE_U16 &&
+           draw_.index_size != AGX_INDEX_SIZE_U32) ||
           ia_stats || cmd->state.gfx.shaders[MESA_SHADER_GEOMETRY] ||
           cmd->state.gfx.shaders[MESA_SHADER_TESS_EVAL] ||
-          !agx_vdm_hal200_u16_index_range(
+          !agx_vdm_hal200_index_range(
              draw_.index_buffer, draw_.index_buffer_range_B, draw_.start,
-             draw_.b.count[0], &address, &size_word)) {
+             draw_.b.count[0], agx_index_size_to_B(draw_.index_size),
+             &address, &size_word)) {
          mesa_loge("native G17P indexed draw requires an in-bounds direct "
-                   "uint16 triangle list, one instance, no restart or queries");
+                   "uint8/uint16/uint32 span without geometry or query lowering");
          vk_command_buffer_set_error(&cmd->vk, VK_ERROR_FEATURE_NOT_PRESENT);
          return;
       }
@@ -4836,6 +4838,10 @@ hk_draw(struct hk_cmd_buffer *cmd, uint16_t draw_id, struct agx_draw draw_)
             }
             if (draw.indexed) {
                const struct agx_vdm_hal200_indexed_draw_fields fields = {
+                  .primitive = (uint8_t)topology,
+                  .index_size_B = agx_index_size_to_B(draw.index_size),
+                  .restart_enable = draw.restart,
+                  .restart_index = cmd->state.gfx.index.restart,
                   .draw_state_context_offset = draw_state_offset,
                   .index_buffer = draw.index_buffer,
                   .index_buffer_range_B = draw.index_buffer_range_B,
