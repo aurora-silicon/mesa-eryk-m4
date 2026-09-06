@@ -598,6 +598,7 @@ agx_nir_fs_epilog(nir_builder *b, const void *key_)
 struct lower_epilog_ctx {
    struct agx_fs_epilog_link_info *info;
    nir_variable *masked_samples;
+   bool preserve_early_demote;
 };
 
 static bool
@@ -625,6 +626,12 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
 
    if (intr->intrinsic == nir_intrinsic_demote_samples &&
        b->shader->info.fs.early_fragment_tests) {
+
+      /* G17P has no sample operand on LSTCOL.  Keep the demote in the main
+       * shader so its grounded MOVMSK lowering updates coverage before the
+       * linked epilog emits the ordinary whole-pixel store. */
+      if (ctx->preserve_early_demote)
+         return false;
 
       if (!ctx->masked_samples) {
          b->cursor = nir_before_impl(nir_shader_get_entrypoint(b->shader));
@@ -705,11 +712,14 @@ lower_output_to_epilog(nir_builder *b, nir_intrinsic_instr *intr, void *data)
    return true;
 }
 
-bool
-agx_nir_lower_fs_output_to_epilog(nir_shader *s,
-                                  struct agx_fs_epilog_link_info *out)
+static bool
+lower_fs_output_to_epilog(nir_shader *s, struct agx_fs_epilog_link_info *out,
+                          bool preserve_early_demote)
 {
-   struct lower_epilog_ctx ctx = {.info = out};
+   struct lower_epilog_ctx ctx = {
+      .info = out,
+      .preserve_early_demote = preserve_early_demote,
+   };
 
    nir_shader_intrinsics_pass(s, lower_output_to_epilog,
                               nir_metadata_control_flow, &ctx);
@@ -732,6 +742,75 @@ agx_nir_lower_fs_output_to_epilog(nir_shader *s,
 
    out->sample_shading = s->info.fs.uses_sample_shading;
    return true;
+}
+
+bool
+agx_nir_lower_fs_output_to_epilog(nir_shader *s,
+                                  struct agx_fs_epilog_link_info *out)
+{
+   return lower_fs_output_to_epilog(s, out, false);
+}
+
+bool
+agx_nir_lower_fs_output_to_epilog_g17p(
+   nir_shader *s, struct agx_fs_epilog_link_info *out)
+{
+   return lower_fs_output_to_epilog(s, out, true);
+}
+
+static bool
+lower_g17p_1x_tile_sample(nir_builder *b, nir_intrinsic_instr *intr,
+                          UNUSED void *data)
+{
+   unsigned src;
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_local_pixel_agx:
+      src = 0;
+      break;
+   case nir_intrinsic_store_local_pixel_agx:
+      src = 1;
+      break;
+   default:
+      return false;
+   }
+
+   if (nir_src_is_const(intr->src[src]) &&
+       nir_src_as_uint(intr->src[src]) == 0xff)
+      return false;
+
+   b->cursor = nir_before_instr(&intr->instr);
+   nir_src_rewrite(&intr->src[src], nir_imm_intN_t(b, 0xff, 16));
+   return true;
+}
+
+bool
+agx_nir_lower_g17p_1x_tile_samples(nir_shader *s)
+{
+   /* Honeykrisp advertises only one sample on G17P.  Per-sample epilog
+    * lowering still materializes `1 << sample_id`, but sample_id can only be
+    * zero.  Native 1x fragments encode the ordinary whole-pixel LSTCOL/LLDCOL
+    * forms, which carry no sample operand. */
+   return nir_shader_intrinsics_pass(s, lower_g17p_1x_tile_sample,
+                                     nir_metadata_control_flow, NULL);
+}
+
+bool
+agx_nir_lower_g17p_1x_sample_shading(nir_shader *s)
+{
+   assert(s->info.stage == MESA_SHADER_FRAGMENT);
+
+   const bool sample_shading = s->info.fs.uses_sample_shading;
+   nir_lower_single_sampled_options options = {
+      .lower_sample_mask_in = true,
+   };
+   const bool progress = nir_lower_single_sampled(s, &options);
+
+   /* With one rasterization sample, per-sample and per-pixel invocation are
+    * identical. Leaving this set makes agx_fast_link append its AGX2 sample
+    * loop header/footer (including 0x0088 STOP) to AGX3 code, whereas G17P's
+    * grounded terminator is 0x0000000e. */
+   s->info.fs.uses_sample_shading = false;
+   return progress || sample_shading;
 }
 
 bool

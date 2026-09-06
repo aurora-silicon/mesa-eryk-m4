@@ -304,6 +304,14 @@ bool agx_nir_lower_vs_input_to_prolog(nir_shader *s);
 
 bool agx_nir_lower_fs_output_to_epilog(nir_shader *s,
                                        struct agx_fs_epilog_link_info *out);
+bool agx_nir_lower_fs_output_to_epilog_g17p(
+   nir_shader *s, struct agx_fs_epilog_link_info *out);
+bool agx_nir_lower_g17p_1x_tile_samples(nir_shader *s);
+
+/* G17P currently exposes only single-sample rasterization. Collapse API
+ * sample shading before split FS lowering so fast-linking never needs the
+ * legacy AGX2 external sample-loop byte sequences. */
+bool agx_nir_lower_g17p_1x_sample_shading(nir_shader *s);
 
 bool agx_nir_lower_fs_active_samples_to_register(nir_shader *s);
 

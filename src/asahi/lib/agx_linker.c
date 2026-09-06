@@ -201,6 +201,15 @@ agx_fast_link(struct agx_linked_shader *linked, struct agx_device *dev,
               struct agx_shader_part *prolog, struct agx_shader_part *epilog,
               unsigned nr_samples_shaded)
 {
+   /* These literal loop fragments are AGX2 machine code. G17P exposes only
+    * one sample and its Vulkan path folds sample shading before split-FS
+    * lowering; fail closed if a caller ever bypasses that canonicalization. */
+   if (dev->chip == AGX_CHIP_G17P && nr_samples_shaded) {
+      fprintf(stderr,
+              "agx_fast_link: external sample loop is not AGX3 machine code\n");
+      return false;
+   }
+
    uint8_t fused_colour[AGX3_COLOUR_LINK_SIZE];
    const bool colour_fused = dev->chip == AGX_CHIP_G17P && fragment &&
       !prolog && !nr_samples_shaded && main && epilog &&

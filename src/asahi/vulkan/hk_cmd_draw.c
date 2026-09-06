@@ -2322,6 +2322,16 @@ build_fs_prolog(nir_builder *b, const void *key)
             nir_metadata_control_flow, NULL);
 }
 
+static void
+build_g17p_fs_epilog(nir_builder *b, const void *key_)
+{
+   const struct agx_fs_epilog_key *key = key_;
+   agx_nir_fs_epilog(b, key);
+
+   if (key->nr_samples == 1)
+      NIR_PASS(_, b->shader, agx_nir_lower_g17p_1x_tile_samples);
+}
+
 static struct hk_linked_shader *
 hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
                              struct hk_fast_link_key_fs *key)
@@ -2347,7 +2357,10 @@ hk_get_fast_linked_locked_fs(struct hk_device *dev, struct hk_shader *shader,
 
    struct agx_shader_part *epilog =
       hk_get_prolog_epilog(dev, &key->epilog, sizeof(key->epilog),
-                           agx_nir_fs_epilog, true, epilog_stop, 0);
+                           dev->dev.chip == AGX_CHIP_G17P
+                              ? build_g17p_fs_epilog
+                              : agx_nir_fs_epilog,
+                           true, epilog_stop, 0);
    if (!epilog)
       return NULL;
 
